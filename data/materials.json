@@ -1,0 +1,43 @@
+{
+  "_note": "Draft data backing DESIGN.md's type system. Not balanced or final. The demo in ../demo/ currently only uses a small hardcoded subset of this (freeFermion, brokenMagnet, chernFlicker) directly in game.js — this file is the reference for expanding it later, not yet wired up to the demo.",
+
+  "mainTypes": [
+    { "id": "trivial",     "name": "Free fermion",              "topic": 1,  "description": "Tutorial baseline type; no protected structure." },
+    { "id": "magnet",      "name": "Broken-symmetry magnet",     "topic": 1,  "description": "Ordered via spontaneous symmetry breaking." },
+    { "id": "topological", "name": "Topological (Chern) insulator", "topic": 3, "description": "Protected edge states, resistant to disorder." },
+    { "id": "qhe",         "name": "Quantum Hall state",         "topic": 4,  "description": "Landau-level quantized states." },
+    { "id": "supercon",    "name": "Superconductor",             "topic": 5,  "description": "Phase-rigid, gapped; s-wave by default." },
+    { "id": "classicalmag","name": "Classical magnet",           "topic": 6,  "description": "Magnon-carrying ordered spin state." },
+    { "id": "tensornet",   "name": "Tensor-network / entangled state", "topic": 7, "description": "Correlated across bonded pairs." },
+    { "id": "spinliquid",  "name": "Quantum spin liquid",        "topic": 8,  "description": "Fractionalizes into spinons/holons; no thermal order to melt." },
+    { "id": "defect",      "name": "Defect-bound state",         "topic": 9,  "description": "Localized around an impurity or dislocation." },
+    { "id": "adaptive",    "name": "Adaptive / ML state",        "topic": 10, "description": "Endgame-only; models and counters the player's own strategy." }
+  ],
+
+  "subtypes": [
+    { "id": "magnetSub", "name": "Magnet", "unlockedBy": "Curie", "combinesWith": ["supercon"], "resultName": "Spin-triplet superconductor" },
+    { "id": "topoSub",   "name": "Topological", "unlockedBy": "Dirac", "combinesWith": ["supercon"], "resultName": "Topological superconductor" }
+  ],
+
+  "moves": [
+    { "id": "disorderPulse",      "name": "Impurity Scatter", "class": "disorder",      "power": 9 },
+    { "id": "tunnelStrike",       "name": "Electron Pulse",   "class": "trivial",       "power": 8 },
+    { "id": "magneticField",      "name": "Magnon Pulse",     "class": "magnetic",      "power": 8 },
+    { "id": "thermalFluctuation", "name": "Phonon Beam",      "class": "thermal",       "power": 9 },
+    { "id": "localizationPin",    "name": "Polaron Drag",     "class": "localization",  "power": 7 },
+    { "id": "fluxTwist",          "name": "Anyon Braid",      "class": "gauge",         "power": 7 },
+    { "id": "entanglementSwap",   "name": "Spinon Swap",      "class": "entanglement",  "power": 8 },
+    { "id": "decoherenceWave",    "name": "Majorana Split",   "class": "decoherence",   "power": 8 }
+  ],
+
+  "typeChart": {
+    "_format": "moveClass -> { defenderType: multiplier }. Missing pairs default to 1.0.",
+    "disorder":     { "trivial": 1.5, "magnet": 1.5, "topological": 0.5 },
+    "magnetic":     { "trivial": 1.5, "supercon": 1.5, "topological": 0.5 },
+    "thermal":      { "magnet": 1.5, "classicalmag": 1.5, "spinliquid": 0.5 },
+    "localization": { "spinliquid": 1.5, "supercon": 0.5, "topological": 0.5 },
+    "gauge":        { "qhe": 1.5 },
+    "entanglement": { "tensornet": 1.5, "trivial": 0.5 },
+    "decoherence":  { "classicalmag": 0.5 }
+  }
+}
