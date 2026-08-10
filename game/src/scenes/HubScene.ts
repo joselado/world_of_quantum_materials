@@ -1,14 +1,14 @@
 import Phaser from 'phaser';
 import { makeCrystal } from '../art/crystals';
 import { CANVAS_W, CANVAS_H } from '../art/perspective';
-import { getPlayerMaterial, WORLD_NAMES } from '../data/materials';
+import { getPlayerMaterial } from '../data/materials';
 import { materialBlurb } from '../data/materialdex';
 import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
 import type { CrystalVariant } from '../data/types';
 import { TUTORIAL_TIPS, hasSeenTip, markTipSeen } from '../data/tutorial';
 import { music } from '../audio/music';
-import { fontPx, fontScale } from '../ui/text';
+import { fontPx } from '../ui/text';
 
 // World 0, "The Lab" (DESIGN.md's world table) -- boot destination from
 // TitleScene and the return point from Overworld (press H). Unlike the
@@ -133,98 +133,26 @@ export class HubScene extends Phaser.Scene {
     return world;
   }
 
-  private isDebugMode(): boolean {
-    return !!this.game.registry.get('debugMode');
+  private isSuperpositionMode(): boolean {
+    return !!this.game.registry.get('superpositionMode');
   }
 
+  // Superposition Mode drops the player straight into World 2 -- Bloch's
+  // world -- rather than the normal `highestUnlockedWorld()` gate. Bloch's
+  // own teleport hub (OverworldScene.showBlochHub) then offers every world
+  // as a destination, since superposition mode also pre-seeds `visitedWorlds`
+  // with all of BUILT_WORLDS (see OverworldScene.create) -- no separate
+  // warp UI needed, Bloch already does that job.
   private doorLabel(): string {
-    return this.isDebugMode() ? 'Debug: Warp' : `Enter World ${this.highestUnlockedWorld()}`;
+    return this.isSuperpositionMode() ? 'Enter World 2 (Bloch)' : `Enter World ${this.highestUnlockedWorld()}`;
   }
 
   private enterWorld() {
-    if (this.isDebugMode()) {
-      this.showWorldSelectPanel();
+    if (this.isSuperpositionMode()) {
+      this.scene.start('Overworld', { world: 2, regenerate: true });
       return;
     }
     this.scene.start('Overworld', { world: this.highestUnlockedWorld() });
-  }
-
-  // Debug-mode-only alternative to the normal door: jumps straight to any of
-  // the 10 worlds regardless of rivalDefeated progress, since debug mode is
-  // about testing/exploring every world rather than earning access to it.
-  // OverworldScene.create() re-levels the player's stats/moves/HP for
-  // whichever world is entered (see its applyDebugLeveling).
-  // Content laid out top-down (running `y`, panel sized/inserted behind
-  // afterward) with the same fixed-10-row shrink-to-fit as OverworldScene's
-  // showDebugWarpPanel -- a fixed per-row height ran world 10's longer
-  // names off the bottom of the canvas once text size became a setting.
-  private showWorldSelectPanel() {
-    if (this.dialogueContainer) return;
-    const container = this.add.container(0, 0).setDepth(100);
-    this.dialogueContainer = container;
-
-    const rowCount = 10;
-    const panelWidth = 360;
-    const top = 10;
-    let y = top;
-
-    const title = this.add
-      .text(CANVAS_W / 2, y, 'Debug: Warp to World', {
-        fontSize: fontPx(this, 14),
-        color: '#ff8fe0',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5, 0);
-    container.add(title);
-    y += title.height + 6;
-
-    const scale = fontScale(this);
-    let rowBase = 12;
-    const rowGap = 2;
-    const longestLabel = Array.from({ length: rowCount }, (_, i) => i + 1)
-      .map((w) => `World ${w} -- ${WORLD_NAMES[w] ?? `World ${w}`}`)
-      .reduce((a, b) => (b.length > a.length ? b : a));
-    const sample = this.add.text(-1000, -1000, longestLabel, {
-      fontSize: `${Math.round(rowBase * scale)}px`,
-      padding: { x: 8, y: 4 },
-      align: 'center',
-      wordWrap: { width: 320 },
-    });
-    while (rowBase > 7) {
-      const rowH = sample.height + rowGap;
-      const estTotal = y + rowCount * rowH + 6 + sample.height + top;
-      if (estTotal <= CANVAS_H) break;
-      rowBase -= 1;
-      sample.setFontSize(`${Math.round(rowBase * scale)}px`);
-    }
-    const rowFontPx = `${Math.round(rowBase * scale)}px`;
-    sample.destroy();
-
-    for (let w = 1; w <= rowCount; w++) {
-      const name = WORLD_NAMES[w] ?? `World ${w}`;
-      const row = this.addButton(
-        CANVAS_W / 2,
-        y,
-        `World ${w} -- ${name}`,
-        () => this.scene.start('Overworld', { world: w, regenerate: true }),
-        rowFontPx
-      );
-      container.add(row);
-      y += row.height + rowGap;
-    }
-    y += 6;
-
-    const close = this.addButton(CANVAS_W / 2, y, '[ Close ]', () => this.closeDialogue(), rowFontPx);
-    container.add(close);
-    y += close.height + top;
-
-    const panelHeight = y - top;
-    const panel = this.add
-      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.96)
-      .setStrokeStyle(2, 0xff4fd8);
-    container.addAt(panel, 0);
-
-    container.y = Math.max(0, Math.round((CANVAS_H - panelHeight) / 2)) - top;
   }
 
   private addButton(x: number, y: number, label: string, onClick: () => void, fontSizePxOverride?: string): Phaser.GameObjects.Text {

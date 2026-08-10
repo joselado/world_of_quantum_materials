@@ -13,9 +13,10 @@ stale, fix it rather than leaving it wrong.
 game/src/
   main.ts                    Phaser game config, scene list, boot order
   scenes/
-    TitleScene.ts             Loads save -> registry, title showcase crystals, "Continue"/"New Game" -> Hub, Debug Mode toggle
-    HubScene.ts                World 0, static room, 3 hotspots (Materialdex/Save/Door, door doubles
-                                 as a debug world-select when Debug Mode is on)
+    TitleScene.ts             Loads save -> registry, title showcase crystals, "Continue"/"New Game" -> Hub,
+                                 Story Mode / Superposition Mode picker
+    HubScene.ts                World 0, static room, 3 hotspots (Materialdex/Save/Door, door reads
+                                 "Enter World 2 (Bloch)" and drops straight into World 2 in Superposition Mode)
     OverworldScene.ts          Per-world walkable map: movement, encounters, shop, rival gate
     BattleScene.ts             Turn-based battle: move buttons, HP bars, attack effects, log
   world/
@@ -27,6 +28,12 @@ game/src/
     mentor.ts                   makeNoetherAvatar()
     bloch.ts                    makeBlochAvatar()
     bohr.ts                     makeBohrAvatar()
+    laughlin.ts                  makeLaughlinAvatar()
+    majorana.ts                  makeMajoranaAvatar()
+    curie.ts                     makeCurieAvatar()
+    bell.ts                      makeBellAvatar()
+    kondo.ts                     makeKondoAvatar()
+    anderson.ts                   makeAndersonAvatar() -- disordered-lattice head motif, world 9
     boss.ts                      makeBossCrystal() -- gigantic multi-shard boss avatar at a world's goal
     tokens.ts                   makeToken() -- qumatoken pickup sprite
     attackEffects.ts            playAttackEffect() -- bolt/ring/burst/beam/eruption particle effect;
@@ -43,6 +50,9 @@ game/src/
                                   DEFAULT_STATS, getWildPool(), getRival(), compatibleMoves(),
                                   canHost(), getPlayerMaterial(), getPlayerStats(), getBattleMoves(),
                                   enemyStatsForWorld(), statUpgradeCost(), findMaterialByName(),
+                                  allCrystals() -- every WORLD_CRYSTALS entry deduped by name, feeds
+                                  Bohr/Majorana/Anderson's Superposition Mode candidate pools,
+                                  hybridResultType()/HYBRID_RULES -- Majorana's valid-pairing table,
                                   combineMaterials() -- Majorana's hybrid-material fuser
     tokens.ts                    Qumatoken value tiers + weights
     quiz.ts                      Per-material physics question pools (>=6 each) via
@@ -115,7 +125,8 @@ data/materials.json            Repo-root design-time reference (fuller roster th
   encounter (`OverworldScene.showEncounter`) and the Enter-key menu/info panels (`0x8fa0c9`,
   a distinct blue-grey so it doesn't collide), gold `0xffe066` = Noether (and its analytic-move
   counterpart, Curie's `showCuriePanel`, at olive `0xc9d84a`), teal `0x4adde0` = Bloch, amber
-  `0xffa64a` = Bohr, green `0x4fd97a` = Majorana's hybrid panel, red `0xff6666` = rival gate,
+  `0xffa64a` = Bohr, green `0x4fd97a` = Majorana's hybrid panel, rust `0xc9884a` = Anderson's
+  impurity-doping panel, red `0xff6666` = rival gate,
   purple `0x9a6ad9` = Hub's `showPanel` (Materialdex/Save), lavender `0xd9a5ff` =
   `OverworldScene.showStoryBeat`'s between-worlds panel, and gold `0xffe066` again (matching
   Curie) for `BattleScene.showAnalyticQuestion`'s in-battle question panel, the one dialogue-style
@@ -157,6 +168,10 @@ hybrid -- `findMaterialByName` only searches `WORLD_CRYSTALS`, so it silently re
 with an already-resolved `Material` object instead (either freshly built by
 `combineMaterials` or pulled straight from the `hybridMaterials` save list), since there's
 nothing to look up by name for a hybrid that was never in `WORLD_CRYSTALS` to begin with.
+Anderson's `learnImpurityMove` is a third mentor that touches player state but deliberately
+*doesn't* go through `applyPlayerForm` at all -- it only appends a move id to `unlockedMoves`,
+leaving `playerForm` untouched, since the whole point of the impurity-doping mechanic is
+borrowing one move without becoming (or fusing into) anything.
 
 **Move availability is an intersection, not a flat list.** `unlockedMoves` (registry/save) is
 a global "moves learned," unaffected by transmuting. What's actually offered in the battle
@@ -241,9 +256,10 @@ through `showGatePanel`, not by reaching for `renderShopFooter` directly.
 `HubScene.highestUnlockedWorld()` walks `rivalDefeated` from world 1 until it finds a world not
 yet beaten. `OverworldScene.tryAdvanceToNextWorld()`/`advanceToWorld(this.world + 1)` likewise
 compute the next world rather than hardcoding it. `BUILT_WORLDS = [1, 2, 3, 4, 5, 6, 7, 8, 9,
-10]` is the single source of truth for "worlds with a walkable map," used by both Bloch's
-teleport destination filter and Debug Mode's warp panels; extend it (plus a biome entry in
-`art/biomes.ts`) together if a future world is ever added past 10.
+10]` is the single source of truth for "worlds with a walkable map," used by Bloch's
+teleport destination filter (and, in Superposition Mode, the list every world gets
+pre-marked visited against -- `OverworldScene.applySuperpositionLeveling`); extend it (plus
+a biome entry in `art/biomes.ts`) together if a future world is ever added past 10.
 `OverworldScene.recordVisit()`/`getVisitedWorlds()` track registry/save key `visitedWorlds`
 (distinct from `rivalDefeated` -- you can visit a world without beating its rival), written
 once per world the first time that world's scene is created.
@@ -258,9 +274,11 @@ Every mentor has its own avatar builder in its own file: `art/mentor.ts`'s `make
 `art/bloch.ts`'s `makeBlochAvatar` (wireframe Bloch-sphere head, teal), `art/bohr.ts`'s
 `makeBohrAvatar` (Bohr-model-atom head, amber), and one file per remaining mentor
 (`art/laughlin.ts`, `art/majorana.ts`, `art/curie.ts`, `art/bell.ts`, `art/kondo.ts`,
-`art/feynman.ts`). Every mentor spawns through one unified `OverworldScene.spawnMentorSprite`
-(looked up from the `WORLD_MENTORS` table), not a bespoke `spawnXSprite` per mentor, and all
-share one chime, `playMentorChime()` in `audio/sfx.ts`.
+`art/anderson.ts` -- disordered-lattice head motif, world 9, formerly `feynman.ts`/
+`makeFeynmanAvatar` before the Feynman→Anderson rename). Every mentor spawns through one
+unified `OverworldScene.spawnMentorSprite` (looked up from the `WORLD_MENTORS` table), not a
+bespoke `spawnXSprite` per mentor, and all share one chime, `playMentorChime()` in
+`audio/sfx.ts`.
 
 **Renaming a mentor is a display-layer change, not a mechanic change.** `WORLD_MENTORS[N].id`
 (a `metMentors`/save-list key, never displayed) can stay whatever it was, or change to match --
@@ -272,10 +290,11 @@ every doc that names the mentor by name (DESIGN.md §5, this file, DEVELOPMENT.m
 `grep -rn` the old name across the repo, not just `game/src/`, since course-content
 cross-references in DESIGN.md's crystal database can share a physicist's name with a mentor
 without being about the mentor at all -- e.g. "Dirac point"/"Dirac fermion" physics terminology
-stays untouched by a Dirac→Laughlin mentor rename).
+stays untouched by a Dirac→Laughlin mentor rename, and "Feynman diagram" terminology elsewhere
+in the repo stays untouched by the later Feynman→Anderson rename).
 
-**Majorana (world 5) and Curie (world 6) both have real mechanics**, following the same
-`open: (s) => s.showXPanel()` pattern as Noether/Bloch/Bohr:
+**Majorana (world 5), Curie (world 6), and Anderson (world 9) all have real mechanics**,
+following the same `open: (s) => s.showXPanel()` pattern as Noether/Bloch/Bohr:
 - **Majorana's hybrid-material panel** (`OverworldScene.showMajoranaPanel`) lets the player fuse
   two `defeatedMaterials` into a new `Material` via `data/materials.ts`'s `combineMaterials(a,
   b)` (`maxHp: round(max(a.maxHp, b.maxHp) * 1.5)`, colors blended) and become it immediately
@@ -302,6 +321,14 @@ stays untouched by a Dirac→Laughlin mentor rename).
   (currently `skyfallBeam`/`groundEruption`), which `SHOP_MOVE_IDS` deliberately excludes so
   Noether never also offers them. See `BattleScene.showAnalyticQuestion` (Stats and battle
   resolution, above) for how a purchased analytic move actually plays out in a fight.
+- **Anderson's impurity-doping panel** (`OverworldScene.showAndersonPanel`/
+  `learnImpurityMove`) is a two-step pick like Majorana's, but the *result* is different: step
+  one picks a host crystal (`defeatedMaterials`, or every crystal in Superposition Mode -- same
+  pool source as Bohr/Majorana), step two looks the host up via `findMaterialByName` and lists
+  whichever of its `.moves` the player hasn't already learned (`!unlockedMoves.includes(id)`);
+  picking one just does `unlockedMoves.push(id)` + persist. No `applyPlayerForm` call at all --
+  see "Player form" above. `this.andersonSelection: string | null` mirrors
+  `majoranaSelection`'s reset rules (`create()`/`closeDialogue()`).
 
 **Every mentor stands mid-corridor, not at the goal or start.** `MentorDef.tile` is `'goal' |
 'start' | 'middle'`, but every current `WORLD_MENTORS` entry uses `'middle'` -- `world/mapgen
@@ -320,21 +347,34 @@ future mentor could choose them; nothing currently does.
 follows the `dialogueContainer`/`dialogueActive`/`closeDialogue()` overlay convention, gated so
 it can't open over another panel. Lives only in `OverworldScene`, not `BattleScene` or
 `HubScene`. `showPauseMenu`'s rows are a data-driven array (label + onClick) rather than
-hand-placed buttons, specifically so the debug-only "Warp" row can be spliced in without
-recomputing every other button's y position -- follow that pattern for any future conditional
-row rather than reverting to fixed positions.
+hand-placed buttons -- a fixed six rows (Return to Lab, View Moves, View Stats, Advisors,
+Tutorial, Settings, Close) now that the old debug-only "Warp" row is gone; keep the
+data-driven-array shape for any future conditional row rather than reverting to fixed
+positions. `showMovesPanel` lists `getBattleMoves(registry)` (learned ∩ currently
+form-compatible, not the raw `unlockedMoves` list) as plain `<name> -- Pwr N` lines -- no
+move-class label, no "incompatible" entries; a move the player has learned but can't currently
+use just doesn't show up until they transmute into a form that supports it.
 
-**Debug Mode** (save/registry `debugMode`, toggled on `TitleScene`'s title screen via
-`addDebugToggle`): a testing/exploration aid, not part of normal progression.
-`OverworldScene.applyDebugLeveling()` runs on every `create()` (covers Continue, Bloch teleport,
-and an explicit debug warp alike) and re-levels `playerStats` to `enemyStatsForWorld(this.world)`
-plus a flat `+2`, grants every move (`Object.keys(MOVES)`), and fully heals. World access while
-debug mode is on bypasses `rivalDefeated` entirely via two separate warp panels that both jump
-straight to any of the 10 worlds: `HubScene.showWorldSelectPanel` (replaces the door's normal
-`enterWorld()` when `isDebugMode()`) and `OverworldScene.showDebugWarpPanel` (an extra
-pause-menu row, for mid-run use without backtracking to the Hub). Both are stroked magenta
-(`0xff4fd8`/`0xff5a7a` label tint) to read as clearly non-diegetic, distinct from every
-mentor/dialogue panel color.
+**Story Mode vs. Superposition Mode** (save/registry `superpositionMode`, picked on
+`TitleScene`'s title screen via `addModeSelector` -- a two-button picker, not a toggle; Story
+Mode is just `superpositionMode: false`, no separate field): Superposition Mode is a
+testing/exploration aid, not part of normal progression. Three things key off
+`isSuperpositionMode()`:
+- `OverworldScene.applySuperpositionLeveling()` runs on every `create()` (covers Continue,
+  Bloch teleport, and the Hub door's World-2 jump alike) -- re-levels `playerStats` to
+  `enemyStatsForWorld(this.world)` plus a flat `+2`, grants every move (`Object.keys(MOVES)`),
+  fully heals, and merges every `BUILT_WORLDS` entry into `visitedWorlds` so Bloch's teleport
+  hub (gated on `visitedWorlds`, see "Mentors" above) offers every world immediately -- this is
+  what makes Bloch alone sufficient for world-to-world movement in this mode; there is no
+  separate warp panel anymore (removed along with `HubScene.showWorldSelectPanel`/
+  `OverworldScene.showDebugWarpPanel`).
+- `HubScene.enterWorld()`/`doorLabel()` branch on `isSuperpositionMode()` to jump straight to
+  World 2 (`{ world: 2, regenerate: true }`) instead of `highestUnlockedWorld()`, bypassing
+  `rivalDefeated` entirely -- reaching Bloch (who stands at World 2's own middle tile) is what
+  then unlocks every other world via the point above.
+- `showBohrPanel`/`showMajoranaPanel`/`showAndersonPanel` each swap their candidate pool from
+  `getDefeatedMaterials()` to `data/materials.ts`'s `allCrystals()` when `isSuperpositionMode()`
+  is true, per their own sections above.
 
 **Contextual tutorial tips** (`data/tutorial.ts`'s `TUTORIAL_TIPS`/`TutorialTipId`/
 `hasSeenTip`/`markTipSeen`): each tip fires once per save, right at the trigger site for its
@@ -363,6 +403,21 @@ touching -- both this and the contextual popups above read it generically.
 = 2`, `materialdexPage` field reset to 0 on open, Back/Next re-render in place, same shape as
 `OverworldScene`'s tutorial paging.
 
+**Candidate-crystal lists share one pager: `OverworldScene.renderPagedButtons<T>`.** Used by
+Bohr's transmute list, both steps of Majorana's and Anderson's combine/dope flows, and Bloch's
+destination list -- anywhere Superposition Mode's "every crystal"/"every world" pool can
+outgrow one panel. Takes the container/running-`y`/item array/current page/a `maxPerPage`
+ceiling/label+onPick callbacks/an `onPageChange` callback (expected to rebuild the whole panel:
+set the field, destroy `dialogueContainer`, re-call `showXPanel()` -- same pattern as every
+other in-panel action) and returns the advanced `y`. **The actual per-page row count isn't
+`maxPerPage` verbatim** -- it measures one sample button at the current `fontScale` (`ui/text
+.ts`) and shrinks to whatever still fits above the panel's own trailing footer, because a fixed
+row count overflowed the canvas once the *default* text-size preset (1.5x, not 1x) met a
+9-destination Bloch list. Each caller owns its own page field (`bohrPage`, `majoranaPage`,
+`andersonPage`, `blochPage`), all reset in both `create()` and `closeDialogue()` the same way
+`majoranaSelection` is. Reuse this rather than a bespoke row-count/shrink-to-fit calculation for
+any future candidate list that can grow unboundedly.
+
 ## Save schema
 
 `data/save.ts`'s `SaveData`: `playerStats: Stats`, `visitedWorlds: number[]`,
@@ -372,7 +427,8 @@ wild win, same "not for rivals" rule as `discoveredMaterials`), `playerForm: Mat
 again" list -- note `playerForm` already round-trips a *whole* `Material` object through
 `JSON.stringify`/`localStorage`, so the player's *current* hybrid form survives a reload for
 free even without this list; this field only exists for the history), `tutorialTipsSeen:
-string[]`, `debugMode: boolean`, `encounterDensity: number` (one of
+string[]`, `superpositionMode: boolean` (Story Mode is just its `false` state -- see "Story
+Mode vs. Superposition Mode" above), `encounterDensity: number` (one of
 `data/settings.ts`'s `DENSITY_PRESETS`, set via the Enter-menu's Settings panel), plus the
 earlier fields covered under Registry-then-persist above. `defaultSave()`/
 `persistFromRegistry()` are the two places that need touching together for any future field, and

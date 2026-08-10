@@ -47,7 +47,7 @@ export class TitleScene extends Phaser.Scene {
     registry.set('playerForm', save.playerForm);
     registry.set('metMentors', save.metMentors);
     registry.set('tutorialTipsSeen', save.tutorialTipsSeen);
-    registry.set('debugMode', save.debugMode);
+    registry.set('superpositionMode', save.superpositionMode);
     registry.set('encounterDensity', save.encounterDensity);
     registry.set('fontScale', save.fontScale);
 
@@ -105,12 +105,12 @@ export class TitleScene extends Phaser.Scene {
       y += erase.height + 6;
     }
 
-    // Debug Mode before the SPACE hint, not after -- it's an actual control
-    // (vs. the hint's passive reminder), so it's the one that should stay
-    // on-screen if a big text-size setting plus the extra "erase save" line
-    // (a returning player only) leaves no room for both above the fold.
-    const toggle = this.addDebugToggle(registry, y);
-    y += toggle.height + 6;
+    // Mode picker before the SPACE hint, not after -- it's an actual
+    // control (vs. the hint's passive reminder), so it's the one that should
+    // stay on-screen if a big text-size setting plus the extra "erase save"
+    // line (a returning player only) leaves no room for both above the fold.
+    y = this.addModeSelector(registry, y);
+    y += 6;
 
     this.add
       .text(CANVAS_W / 2, y, 'Press SPACE or click Continue to begin', {
@@ -124,68 +124,152 @@ export class TitleScene extends Phaser.Scene {
 
   // "New Game (erase save)" is destructive and irreversible (localStorage,
   // no undo), so it goes through an inline yes/no confirm rather than
-  // wiping on a single click.
+  // wiping on a single click. Content laid out top-down first (running `y`,
+  // wordWrap on the confirm text) with the panel sized/inserted behind and
+  // the whole container re-centered afterward -- same pattern every other
+  // panel in the game uses -- rather than the earlier fixed 380x150 box at
+  // fixed text/button offsets, which overflowed its own border once a
+  // larger Text Size preset grew the confirm text past what the fixed
+  // layout had room for.
   private confirmNewGame() {
-    const panel = this.add.container(0, 0).setDepth(200);
-    const bg = this.add.rectangle(CANVAS_W / 2, CANVAS_H / 2, 380, 150, 0x10101c, 0.96).setStrokeStyle(2, 0xff5a7a);
+    const panelWidth = 420;
+    const top = 20;
+    const container = this.add.container(0, 0).setDepth(200);
+
+    let y = top;
+
     const text = this.add
-      .text(CANVAS_W / 2, CANVAS_H / 2 - 36, 'Erase your current save and start over?\nThis cannot be undone.', {
+      .text(CANVAS_W / 2, y, 'Erase your current save and start over?\nThis cannot be undone.', {
         fontSize: fontPx(this, 13),
         color: '#ffffff',
         align: 'center',
+        wordWrap: { width: panelWidth - 40 },
+        lineSpacing: 6,
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5, 0);
+    container.add(text);
+    y += text.height + 20;
+
+    // Positioned by measured width (button width grows with the Text Size
+    // preset) rather than a fixed +/-70 offset, which let the two buttons
+    // touch/overlap at the larger presets.
     const yes = this.add
-      .text(CANVAS_W / 2 - 70, CANVAS_H / 2 + 30, '[ Erase ]', {
+      .text(0, y, '[ Erase ]', {
         fontSize: fontPx(this, 14),
         color: '#ff8fa0',
         backgroundColor: '#222244',
         padding: { x: 10, y: 6 },
       })
-      .setOrigin(0.5)
+      .setOrigin(0.5, 0)
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => {
         clearSave();
         this.scene.restart();
       });
+    container.add(yes);
     const no = this.add
-      .text(CANVAS_W / 2 + 70, CANVAS_H / 2 + 30, '[ Cancel ]', {
+      .text(0, y, '[ Cancel ]', {
         fontSize: fontPx(this, 14),
         color: '#cfd8ff',
         backgroundColor: '#222244',
         padding: { x: 10, y: 6 },
       })
-      .setOrigin(0.5)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => panel.destroy());
-    panel.add([bg, text, yes, no]);
-  }
-
-  // Debug mode (data/save.ts's `debugMode`) is a testing/exploration aid,
-  // not part of the normal progression: while on, OverworldScene re-levels
-  // the player to match every world it enters and both the Hub's door and
-  // the Enter-menu gain a "Warp" option that jumps straight to any world.
-  // Toggled here rather than mid-run so it's a deliberate choice made before
-  // starting, not something stumbled into during play.
-  private addDebugToggle(registry: Phaser.Data.DataManager, y: number) {
-    const label = () => (registry.get('debugMode') ? 'Debug Mode: ON' : 'Debug Mode: OFF');
-    const colorFor = () => (registry.get('debugMode') ? '#ff8fa0' : '#8fa0c9');
-
-    const toggle = this.add
-      .text(CANVAS_W / 2, y, label(), {
-        fontSize: fontPx(this, 12),
-        color: colorFor(),
-        backgroundColor: '#1a1a2e',
-        padding: { x: 8, y: 4 },
-      })
       .setOrigin(0.5, 0)
       .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => {
-        registry.set('debugMode', !registry.get('debugMode'));
-        persistFromRegistry(registry);
-        toggle.setText(label()).setColor(colorFor());
-      });
-    return toggle;
+      .on('pointerdown', () => container.destroy());
+    container.add(no);
+    const buttonGap = 16;
+    const buttonsTotalW = yes.width + no.width + buttonGap;
+    yes.setX(CANVAS_W / 2 - buttonsTotalW / 2 + yes.width / 2);
+    no.setX(CANVAS_W / 2 + buttonsTotalW / 2 - no.width / 2);
+    y += Math.max(yes.height, no.height) + top;
+
+    const panelHeight = y - top;
+    const bg = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.96)
+      .setStrokeStyle(2, 0xff5a7a);
+    container.addAt(bg, 0);
+
+    container.y = Math.max(0, Math.round((CANVAS_H - panelHeight) / 2)) - top;
+  }
+
+  // Two mutually exclusive starting modes, both backed by the same
+  // data/save.ts `superpositionMode` boolean (Story Mode is just its
+  // `false` state, not a separate field). Story Mode is the normal
+  // progression: start at World 1, defeat each world's rival to open the
+  // next one, meet each mentor in turn. Superposition Mode is a testing/
+  // exploration mode: OverworldScene re-levels the player to match every
+  // world it enters, every world counts as already visited so Bloch's
+  // teleport hub can fold the player to any of them immediately (no
+  // separate warp UI needed -- Bloch already does that job), and
+  // Bohr/Majorana's panels offer every crystal/hybrid pairing rather than
+  // only ones actually defeated. Picked here rather than mid-run so it's a
+  // deliberate choice made before starting, not something stumbled into
+  // during play. Returns the y position just past the whole control (label,
+  // two buttons, and the description line), for the caller's running `y`.
+  private addModeSelector(registry: Phaser.Data.DataManager, y: number): number {
+    const heading = this.add
+      .text(CANVAS_W / 2, y, 'Choose your mode:', {
+        fontSize: fontPx(this, 12),
+        color: '#cfd8ff',
+      })
+      .setOrigin(0.5, 0);
+    y += heading.height + 4;
+
+    const isSuperposition = () => !!registry.get('superpositionMode');
+
+    const storyBtn = this.add
+      .text(0, y, 'Story Mode', {
+        fontSize: fontPx(this, 12),
+        backgroundColor: '#1a1a2e',
+        padding: { x: 10, y: 5 },
+      })
+      .setOrigin(0.5, 0)
+      .setInteractive({ useHandCursor: true });
+    const superBtn = this.add
+      .text(0, y, 'Superposition Mode', {
+        fontSize: fontPx(this, 12),
+        backgroundColor: '#1a1a2e',
+        padding: { x: 10, y: 5 },
+      })
+      .setOrigin(0.5, 0)
+      .setInteractive({ useHandCursor: true });
+
+    const refresh = () => {
+      const superposition = isSuperposition();
+      storyBtn.setColor(superposition ? '#8fa0c9' : '#ffff88').setBackgroundColor(superposition ? '#1a1a2e' : '#33335a');
+      superBtn.setColor(superposition ? '#ff8fa0' : '#8fa0c9').setBackgroundColor(superposition ? '#33335a' : '#1a1a2e');
+    };
+    refresh();
+
+    const gap = 12;
+    const totalW = storyBtn.width + superBtn.width + gap;
+    storyBtn.setX(CANVAS_W / 2 - totalW / 2 + storyBtn.width / 2);
+    superBtn.setX(CANVAS_W / 2 + totalW / 2 - superBtn.width / 2);
+
+    storyBtn.on('pointerdown', () => {
+      registry.set('superpositionMode', false);
+      persistFromRegistry(registry);
+      refresh();
+    });
+    superBtn.on('pointerdown', () => {
+      registry.set('superpositionMode', true);
+      persistFromRegistry(registry);
+      refresh();
+    });
+    y += Math.max(storyBtn.height, superBtn.height) + 4;
+
+    const hint = this.add
+      .text(
+        CANVAS_W / 2,
+        y,
+        'Story Mode: start at World 1 and progress in order. Superposition Mode: every advisor, transmutation, and hybrid material is available right away.',
+        { fontSize: fontPx(this, 10), color: '#6f7ea8', align: 'center', wordWrap: { width: CANVAS_W - 60 } }
+      )
+      .setOrigin(0.5, 0);
+    y += hint.height;
+
+    return y;
   }
 
   private drawShowcaseCrystals() {

@@ -82,9 +82,13 @@ stats, Bloch teleports you between worlds you've already visited, Bohr lets
 you *transmute* into any crystal you've defeated, Majorana lets you fuse two
 defeated crystals into a brand-new hybrid state and become it, Curie sells
 "analytic" moves that ask you a physics-equation question before they land
-(get it right for double damage, wrong for half), and Laughlin, Bell, Kondo,
-and Feynman share the physics behind their own world's topic. Every mentor
-you've met stays reachable from the Advisors panel, from anywhere.
+(get it right for double damage, wrong for half) with dramatically flashier
+effects than an ordinary move -- a multi-layer beam of light falling from the
+sky, a shockwave-ringed eruption bursting from the ground -- Anderson lets
+you "dope in" a crystal you've encountered as an impurity and learn one
+specific move from it, and Laughlin, Bell, and Kondo share the physics
+behind their own world's topic. Every mentor you've met stays reachable from
+the Advisors panel, from anywhere.
 
 <table>
 <tr>
@@ -102,6 +106,9 @@ you've met stays reachable from the Advisors panel, from anywhere.
 <tr>
 <td><img src="screenshots/mentor-laughlin.png" width="300" alt="Laughlin's lore panel"></td>
 <td><img src="screenshots/mentor-bell.png" width="300" alt="Bell's lore panel"></td>
+</tr>
+<tr>
+<td><img src="screenshots/mentor-anderson.png" width="300" alt="Anderson's impurity-doping panel"></td>
 </tr>
 </table>
 
@@ -174,21 +181,25 @@ reaching your first goal -- instead of one long popup dumped on you up
 front. Want the whole thing again as a refresher? Open the Enter-key menu
 and click **Tutorial** to replay every tip in order.
 
-## Debug Mode
+## Story Mode vs. Superposition Mode
 
-Want to see a later world without grinding through the earlier ones? Toggle
-**Debug Mode** on the title screen before starting. With it on:
+Before you start, the title screen asks you to pick a mode:
 
-- The Lab's door (and the Enter-menu's new **Warp** button, mid-run) opens a
-  world-select list -- jump straight to any of the 10 worlds, in any order.
-- Every time you enter a world, your stats, moves, and HP are automatically
-  brought up to a level competitive with that world's opponents, so you're
-  never stuck under-leveled just because you skipped ahead.
+- **Story Mode** is the normal playthrough -- start at World 1, defeat each
+  world's rival to open the next one, meet each mentor in turn.
+- **Superposition Mode** is for exploring/testing without grinding: every
+  time you enter a world your stats, moves, and HP are automatically brought
+  up to a level competitive with that world's opponents, every world is
+  already marked visited so Bloch's teleport hub (see above) can fold you to
+  any of them immediately, and Bohr/Majorana/Anderson offer every crystal in
+  the game rather than only ones you've actually defeated.
 
-![Debug mode's world-select panel](screenshots/hub-debug-warp.png)
+![Title screen's Story Mode / Superposition Mode picker](screenshots/title.png)
+![Bloch's teleport hub with every world unlocked in Superposition Mode](screenshots/superposition-bloch.png)
 
-This is meant for exploring/testing the later worlds, not the intended way
-to play through the story the first time.
+Superposition Mode isn't the intended way to play through the story the
+first time -- it's there for seeing later worlds/mentors without earning
+your way there first.
 
 ## Playing it
 

@@ -284,7 +284,7 @@ export class BattleScene extends Phaser.Scene {
     // and the panel ran ~60-165px past the bottom of the canvas (worse at
     // larger text-size settings) for any 'adaptive'-form player with every
     // move unlocked -- reachable in normal play via Bohr transmuting into a
-    // defeated world-10 Echo, not just Debug Mode. Unchanged (30) for
+    // defeated world-10 Echo, not just Superposition Mode. Unchanged (30) for
     // rowCount <= 7, the original tuning; only the 8-9 case needs a lower
     // floor, verified against both text-size presets (fontScale 1 and 2)
     // via the headless-Chromium harness in DEVELOPMENT.md's "Verifying UI

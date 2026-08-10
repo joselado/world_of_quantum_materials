@@ -44,13 +44,15 @@ export interface SaveData {
   // Enter-menu's "Tutorial" button replays the full set as a paged recap on
   // demand regardless of this list.
   tutorialTipsSeen: string[];
-  // Title-screen toggle (TitleScene). While on, OverworldScene.create()
-  // re-levels the player's stats/moves/HP to match enemyStatsForWorld() on
-  // every world entry, and both the Hub's door and the Enter-menu gain a
-  // "Warp" option that jumps straight to any of the 10 worlds regardless of
-  // rivalDefeated progress -- a testing/exploration aid, not part of the
-  // normal progression.
-  debugMode: boolean;
+  // Title-screen toggle (TitleScene), "Superposition Mode" -- a testing/
+  // exploration aid, not part of the normal progression. While on,
+  // OverworldScene.create() re-levels the player's stats/moves/HP to match
+  // enemyStatsForWorld() on every world entry, pre-seeds `visitedWorlds`
+  // with every BUILT_WORLDS entry so Bloch's existing teleport hub (no
+  // separate warp UI needed) can fold the player to any world immediately,
+  // and Bohr/Majorana's panels offer every crystal/hybrid pairing rather
+  // than only ones actually defeated.
+  superpositionMode: boolean;
   // Enter-menu Settings panel (OverworldScene.showSettingsPanel): the
   // per-corridor-row chance a wild crystal spawns, one of data/settings.ts's
   // DENSITY_PRESETS. Only affects maps generated after the change (a fresh
@@ -78,7 +80,7 @@ export function defaultSave(): SaveData {
     hybridMaterials: [],
     metMentors: [],
     tutorialTipsSeen: [],
-    debugMode: false,
+    superpositionMode: false,
     encounterDensity: DEFAULT_ENCOUNTER_DENSITY,
     fontScale: DEFAULT_FONT_SCALE,
   };
@@ -140,7 +142,7 @@ export function persistFromRegistry(registry: RegistryLike) {
     hybridMaterials: (registry.get('hybridMaterials') as Material[]) ?? [],
     metMentors: (registry.get('metMentors') as string[]) ?? [],
     tutorialTipsSeen: (registry.get('tutorialTipsSeen') as string[]) ?? [],
-    debugMode: (registry.get('debugMode') as boolean) ?? false,
+    superpositionMode: (registry.get('superpositionMode') as boolean) ?? false,
     encounterDensity: (registry.get('encounterDensity') as number) ?? DEFAULT_ENCOUNTER_DENSITY,
     fontScale: (registry.get('fontScale') as number) ?? DEFAULT_FONT_SCALE,
   };

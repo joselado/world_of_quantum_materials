@@ -62,8 +62,8 @@ game/
     art/                 procedural sprite/tile drawing (crystals, biomes, mentors)
     audio/                procedural sfx + per-scene music tracks
     scenes/
-      TitleScene.ts       loads the save, Debug Mode toggle, "Continue"/"New Game"
-      HubScene.ts          World 0, static room, hotspots (+ debug world-select)
+      TitleScene.ts       loads the save, Story Mode / Superposition Mode picker, "Continue"/"New Game"
+      HubScene.ts          World 0, static room, hotspots (door jumps to World 2 in Superposition Mode)
       OverworldScene.ts    per-world walkable map, encounters, shop, tutorial, pause menu
       BattleScene.ts        turn-based battle loop
     world/
@@ -82,16 +82,18 @@ wanted.
 
 Per `DESIGN.md`'s roadmap, the "full build-out" pass is done: all 10 worlds
 have a walkable map, biome, wild-encounter pool, rival gate, and a mentor
-standing mid-corridor (Noether, Bloch, Bohr, Majorana, and Curie have real
-mechanics; Laughlin, Bell, Kondo, and Feynman are lore-only pending a
+standing mid-corridor (Noether, Bloch, Bohr, Majorana, Curie, and Anderson
+have real mechanics; Laughlin, Bell, and Kondo are lore-only pending a
 subtype system, see `DESIGN.md` §10), with that world's boss now standing
 at the goal tile as a gigantic
-visual landmark. The contextual tutorial tips, the Debug Mode
-title-screen toggle (instant world warp + auto-leveling, for testing any
-world without grinding), and the Enter-menu's Settings panel (wild-encounter
-density, and a Text Size preset applied via `ui/text.ts`'s `fontPx`/`fontScale`
-helpers) were added most recently. `game/` is the only build now -- the
-earlier no-install single-file `demo/` prototype has been removed.
+visual landmark. The contextual tutorial tips, the Story Mode / Superposition
+Mode title-screen picker (Superposition Mode auto-levels the player and
+pre-marks every world visited so Bloch's teleport hub gives instant access to
+any world/mentor, for testing without grinding), and the Enter-menu's
+Settings panel (wild-encounter density, and a Text Size preset applied via
+`ui/text.ts`'s `fontPx`/`fontScale` helpers) were added most recently.
+`game/` is the only build now -- the earlier no-install single-file `demo/`
+prototype has been removed.
 
 ## Verifying UI changes
 
@@ -126,3 +128,24 @@ frame. When driving multiple scene switches from outside any scene, stop
 every other gameplay scene explicitly before starting the next one
 (`window.__game.scene.stop('Battle')` etc.), or route every switch through
 a small in-page helper that does that for you.
+
+**Gotcha:** the default `fontScale` preset (`data/settings.ts`'s
+`DEFAULT_FONT_SCALE`) is `1.5`, not `1` -- a bounds check run only at
+`fontScale: 1` (or only at the largest preset, `2`) can miss an overflow
+that's actually present at the *default* a fresh player sees. Bloch's
+teleport hub overflowed exactly this way once Superposition Mode made a
+9-destination list routine: it fit fine at `1` and the bug wasn't caught
+until checked at `1.5`. Always include the default preset, not just the
+extremes, when bounds-checking a panel across `FONT_SCALE_PRESETS`.
+
+**Gotcha:** when driving a battle scene from outside a UI click (e.g. via
+`page.evaluate` calling `emit('pointerdown')` on a button object), scope the
+search to the specific overlay container (`scene['dialogueContainer']` for
+an overworld panel, or the specific `Container` at the panel's own `depth`
+for an in-battle popup like `showAnalyticQuestion`) rather than walking the
+whole scene's `children.list`. Decorative wandering-crystal name labels and
+orbiting avatar glyphs (Majorana's/Anderson's `×`/Greek-letter orbit marks)
+are plain, non-interactive `Text` objects that can share a candidate's exact
+label text -- filtering to `obj.input` (only set once `setInteractive()` is
+called) is necessary but not sufficient once a scene has multiple panels/
+containers layered at once.

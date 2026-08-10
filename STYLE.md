@@ -24,10 +24,14 @@ than appending a changelog, so this always reflects current reality.
   drawn last so it renders on top) flanked by two nearer and two further/smaller ones, each
   bobbing on its own independent duration/delay so the cluster reads as alive rather than a
   single synchronized animation.
-- Below the "Press SPACE..." hint, a small **Debug Mode** toggle (`addDebugToggle`) -- a single
-  text button reading `Debug Mode: OFF`/`ON`, dim blue-grey (`#8fa0c9`) when off and a warning
-  pink (`#ff8fa0`) when on so it's visually obvious debug mode is active. Deliberately placed on
-  the title screen (a deliberate choice made before starting) rather than toggleable mid-run.
+- Below the "Press SPACE..." hint, a **mode picker** (`addModeSelector`) rather than a single
+  toggle switch -- two side-by-side text buttons, "Story Mode" and "Superposition Mode", both
+  backed by the same `superpositionMode` boolean (Story Mode is just its `false` state). The
+  active one highlights (`#ffff88` yellow for Story, `#ff8fa0` warning pink for Superposition,
+  each with a lighter `#33335a` background) while the inactive one dims to `#8fa0c9`/`#1a1a2e`.
+  A one-line dim caption underneath spells out what each mode actually does (start at World 1
+  in order, vs. every advisor/transmutation/hybrid available immediately). Deliberately placed
+  on the title screen (a deliberate choice made before starting) rather than toggleable mid-run.
 
 ## The Hub (`scenes/HubScene.ts`, world 0)
 
@@ -39,8 +43,10 @@ than appending a changelog, so this always reflects current reality.
   bobbing in place with a label underneath, in the same gold-on-black label treatment as
   overworld encounters/tokens: a purple prism for "Materialdex", a gold shard for "Save
   Point", and a green cluster for the door, whose label switches between "Enter World 1" and
-  "Enter World N+1" depending on how far `rivalDefeated` has progressed -- or, while Debug Mode
-  is on, reads "Debug: Warp" and opens a world-select panel instead (see below). Clicking a
+  "Enter World N+1" depending on how far `rivalDefeated` has progressed -- or, in Superposition
+  Mode, reads "Enter World 2 (Bloch)" and drops the player straight into World 2, where Bloch's
+  own teleport hub (already pre-seeded with every world as visited) takes over as the sole way
+  to reach any other world -- there is no separate warp/world-select panel anymore. Clicking a
   hotspot while another panel is already open is a no-op (one panel at a time).
 - Materialdex/Save Point panels reuse the same dark rounded-rectangle-with-stroke treatment
   as overworld dialogues (`showPanel`), stroked in purple (`0x9a6ad9`) to match the
@@ -220,6 +226,10 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
   visited (`visitedWorlds`) that also has a built map (`BUILT_WORLDS`), excluding the
   current world, labeled `Travel to World N -- <name>`; clicking teleports there instantly
   (`advanceToWorld`, no battle). Empty state: "You haven't mapped anywhere else yet."
+  Destinations paginate (see "Paginated candidate lists" below) once there are more than
+  fit on one page -- routine in Superposition Mode, which pre-seeds every built world as
+  visited and makes Bloch's hub the *sole* way to move between worlds (there's no separate
+  warp panel anymore).
 
 ## Bohr in the overworld (`OverworldScene.showBohrPanel`)
 
@@ -229,13 +239,15 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
   (`art/bohr.ts`'s `makeBohrAvatar`) swaps the head for a small Bohr-model atom -- a bright
   additive nucleus with three tilted elliptical shells, each carrying one orbiting electron
   at its own speed.
-- His panel is stroked amber (`0xffa64a`); up to the 3 most recently defeated wild
-  materials (`defeatedMaterials`) each get a button (`Become <name>`, or a dimmed
+- His panel is stroked amber (`0xffa64a`); every defeated wild material
+  (`defeatedMaterials`, or in Superposition Mode every crystal in the game --
+  `data/materials.ts`'s `allCrystals()`) gets a button (`Become <name>`, or a dimmed
   `<name> (current form)` for whichever the player is already wearing) that transmutes the
   player's own crystal into that form (`transmuteInto`) -- swaps color/variant/max HP and
   clamps current HP down if needed, and immediately redraws the overworld avatar
   (`redrawPlayerCrystal`). Empty state: "You haven't defeated any crystals yet -- there is
-  nothing to become."
+  nothing to become." Paginates once the list is longer than one page (see "Paginated
+  candidate lists" below) -- the common case in Superposition Mode.
 
 ## Majorana in the overworld (`OverworldScene.showMajoranaPanel`)
 
@@ -243,19 +255,20 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
   name label and panel stroke; his avatar (`art/majorana.ts`'s `makeMajoranaAvatar`) is
   unchanged by this mechanic.
 - His panel reuses the tab-content/footer shape Noether/Bloch/Bohr share, but with a
-  two-step flow instead of one screen: up to the 3 most recently defeated wild materials
-  *that pair with at least one of the others* each get a button (same-type pairs, and any
-  pairing not in `data/materials.ts`'s `HYBRID_RULES`, are filtered out before they ever
-  render), picking one asks "Combine `<first>` with..." and re-lists only the remaining
-  defeated materials that pair with it specifically (plus a "Never mind" to back out)
-  rather than showing every possible pair at once. Picking the second immediately
-  transmutes the player into the new fused `Material` (`data/materials.ts`'s
-  `combineMaterials`, color-blended, `maxHp` = 1.5x the stronger parent's) the same way
-  Bohr's transmutation does -- no separate "confirm" step. Above the combine flow, up to 3
-  previously created hybrids (`hybridMaterials` save list) get their own "Become `<name>`
-  again" buttons, same dimmed-when-current treatment as Bohr's list. Empty state (no valid
-  pairing among the recently defeated crystals -- including having fewer than 2 total):
-  "None of your recently defeated crystals pair into a hybrid yet -- try a magnet or
+  two-step flow instead of one screen: every defeated wild material (or, in Superposition
+  Mode, every crystal in the game) *that pairs with at least one of the others* gets a
+  button (same-type pairs, and any pairing not in `data/materials.ts`'s `HYBRID_RULES`,
+  are filtered out before they ever render), picking one asks "Combine `<first>` with..."
+  and re-lists only the remaining candidates that pair with it specifically (plus a "Never
+  mind" to back out) rather than showing every possible pair at once. Both steps paginate
+  (see "Paginated candidate lists" below) once the filtered list is longer than one page.
+  Picking the second immediately transmutes the player into the new fused `Material`
+  (`data/materials.ts`'s `combineMaterials`, color-blended, `maxHp` = 1.5x the stronger
+  parent's) the same way Bohr's transmutation does -- no separate "confirm" step. Above the
+  combine flow, up to 3 previously created hybrids (`hybridMaterials` save list) get their
+  own "Become `<name>` again" buttons, same dimmed-when-current treatment as Bohr's list.
+  Empty state (no valid pairing among the candidates -- including having fewer than 2
+  total): "None of the crystals you've defeated pair into a hybrid yet -- try a magnet or
   classical magnet together with a superconductor or quantum-Hall state."
 
 ## Curie in the overworld (`OverworldScene.showCuriePanel`)
@@ -269,6 +282,43 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
   same `<move name> -- <cost> qumatokens` label and afford/dim treatment as Noether's Moves
   tab, reusing `shopCost`. Empty state once both are bought: "You already carry every
   analytic technique I can teach."
+
+## Anderson in the overworld (`OverworldScene.showAndersonPanel`)
+
+- World 9 only, standing at the middle tile like every other mentor. Rust/amber
+  (`0xc9884a`) name label and panel stroke; his avatar (`art/anderson.ts`'s
+  `makeAndersonAvatar`) swaps the head for a scattered, irregular lattice of dim dots with
+  one bright point pulsing at the center -- Anderson localization's own picture, a wave
+  trapped by disorder instead of spreading freely -- rather than any other mentor's motif,
+  plus four orbiting `×` glyphs instead of Noether's `✦` or Bloch's `◇`.
+- Two-step flow like Majorana's: every defeated wild material (or, in Superposition Mode,
+  every crystal in the game) gets a button under "Dope in which crystal?" (paginated, see
+  below); picking one asks "Learn which move from `<host>`?" and lists whichever of that
+  host's own moves the player hasn't already learned (`<move name> (Pwr N)`), plus a "Never
+  mind" to back out. Picking a move just appends it to the ordinary `unlockedMoves` list
+  (`learnImpurityMove`) -- no form change, no HP change, unlike Bohr/Majorana. Empty states:
+  "You haven't encountered any crystals yet -- there is nothing to dope in" (no host
+  candidates) or "You already carry every move `<host>` has to offer" (host picked, but
+  every one of its moves is already learned).
+
+## Paginated candidate lists (`OverworldScene.renderPagedButtons`)
+
+- Shared by every panel whose candidate pool can outgrow one screen -- Bohr's transmute
+  list, both steps of Majorana's and Anderson's combine/dope flows, and Bloch's destination
+  list. Superposition Mode is what makes this routine rather than a rare edge case: its
+  candidate pool is every crystal in the game (or, for Bloch, every built world pre-marked
+  visited), commonly 8-30+ entries where the equivalent Story Mode list is a handful.
+- One button per row, same treatment as every other dialogue button, followed by a
+  `<- Prev` / `Next ->` row (each dimmed to 35% alpha and inert at the start/end of the
+  list) and a small blue-grey `Page N/M` label beneath -- only rendered at all once the
+  list is longer than one page.
+- The actual row count per page isn't a fixed number: it's computed from one sample row
+  measured at the current Settings-panel text-size preset (`ui/text.ts`'s `fontScale`),
+  shrunk to whatever still fits above the panel's own trailing Farewell/Close button. This
+  replaced an earlier fixed 4-per-page cap after the *default* text-size preset (1.5x, not
+  1x) overflowed Bloch's hub once Superposition Mode made a 9-destination list the common
+  case -- verified with no overflow at every font-scale preset via the headless-Chromium
+  harness (see DEVELOPMENT.md's "Verifying UI changes" section).
 
 ## Boss avatars (`OverworldScene.spawnBossSprite`, `art/boss.ts`)
 
@@ -385,16 +435,18 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
 - Same dark rounded-rectangle-with-stroke panel treatment as everywhere else, stroked
   blue-grey (`0x8fa0c9`, distinct from every mentor/encounter panel's own stroke color). Rows
   are a data-driven list (`320` wide, height grows with row count, vertically centered on
-  the canvas rather than a fixed `panelY` now that the row count regularly reaches 7-8)
-  rather than fixed buttons: Return to Lab (same destination as the `H` key), View Moves,
-  View Stats, Advisors, Tutorial, Settings, and -- only while Debug Mode is on -- Warp
-  (Debug), then Close. Respects `dialogueActive` (won't open over an already-open panel)
-  and only exists in `OverworldScene`, not mid-battle.
+  the canvas rather than a fixed `panelY`) rather than fixed buttons: Return to Lab (same
+  destination as the `H` key), View Moves, View Stats, Advisors, Tutorial, Settings, then
+  Close -- a fixed six rows now that the old debug-only Warp row is gone (world-to-world
+  movement goes through Bloch's own panel instead, see above). Respects `dialogueActive`
+  (won't open over an already-open panel) and only exists in `OverworldScene`, not mid-battle.
 - "View Moves"/"View Stats" swap the pause menu for a second, generic info panel
-  (`showInfoPanel`, `420x300`, same blue-grey stroke) listing the player's learned moves
-  (each flagged "-- not compatible with your current form" if the current crystal form
-  doesn't support it) or their Quantumness/Velocity/Correlation plus qumatokens and current
-  form name, with a single "Close" button.
+  (`showInfoPanel`, `420x300`, same blue-grey stroke). View Moves lists only the moves
+  actually usable right now (`getBattleMoves` -- learned moves intersected with what the
+  current crystal form's physics can host, §3) as plain `<name> -- Pwr N` lines, no move-class
+  label and no "incompatible" entries cluttering the list; View Stats lists
+  Quantumness/Velocity/Correlation plus qumatokens and current form name. Both end in a
+  single "Close" button.
 
 ## Settings panel (`OverworldScene.showSettingsPanel`)
 
@@ -434,17 +486,6 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
 - No longer triggers automatically on its own -- see "Contextual tutorial tips" above for what
   a new save actually sees; this is opt-in only, always restarting from page 1.
 
-## Debug warp panels (`HubScene.showWorldSelectPanel`, `OverworldScene.showDebugWarpPanel`)
-
-- Both replace the normal way to change world with a plain scrollable-feeling list of all 10
-  worlds (`World N -- <name>`, one button per row) when Debug Mode is on -- the Hub's version
-  in place of the door's usual "Enter World N" action, the Overworld's as an extra pause-menu
-  row for warping mid-run without backtracking to the Hub. Deliberately stroked magenta
-  (`0xff4fd8` panel border, `#ff8fe0` title text) -- distinct from every diegetic mentor/
-  dialogue panel color on purpose, so a debug-only panel never reads as part of the story.
-  The Overworld version dims (50% alpha) and disables the row matching the world already
-  entered, labeled "(current)".
-
 ## Attack effects (`art/attackEffects.ts`, `audio/sfx.ts`, `scenes/BattleScene.ts`)
 
 - Every move renders a distinct particle effect keyed by its move class, not just a color
@@ -457,20 +498,29 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
 - Curie's two analytic moves break the "one shape per class" rule on purpose -- gold
   (`0xffe066`), but each with its own silhouette rather than sharing the `'analytic'`
   class's one default (`art/attackEffects.ts`'s `ANALYTIC_SHAPES`, keyed by move id, not
-  class). **Skyfall Beam** drops a thick column of light from off the top of the screen
-  straight down onto the target -- a faint full-height column telegraphs first, then a
-  brighter head with a white core falls the rest of the way; deliberately ignores the
-  attacker's own position, since a beam falling out of the sky doesn't originate there.
-  **Ground Eruption** bursts shards up and outward from a crack in the ground under the
-  target, also ignoring the attacker's position. Both are visibly bigger/more dramatic than
-  the original three shapes, matching their higher-stakes answer-gated payoff.
+  class), and each substantially more elaborate than the original three shapes -- Curie's
+  own request was moves that clearly read as stronger than an ordinary hit, not just a
+  bigger bolt/ring/burst. **Skyfall Beam** (`playBeam`) drops a multi-layer column of light
+  from off the top of the screen straight down onto the target: a wide pulsing telegraph
+  halo fades in first, then a white-hot core inside a brighter/wider outer column falls the
+  rest of the way, flanked by two side-rays that swirl around it and trailed by a chain of
+  falling sparks, while a radiant sun (a bright circle plus an expanding ring) grows at the
+  point of origin as the beam charges. **Ground Eruption** (`playEruption`) bursts a wide
+  double shockwave ring (white inner rim, colored outer rim) plus a bright vertical geyser
+  core straight up through nearly twice the shard count (18 vs. the ordinary burst's 12),
+  spread wider than a normal burst. Both deliberately ignore the attacker's own position --
+  a beam falling from the sky and a crack opening in the ground don't originate there.
 - The full beat, in order: a ~90ms additive windup flash at the attacker's own position, the
-  travelling effect itself (~340-460ms depending on shape), then a fire-and-forget impact
-  shockwave (a white flash plus 8 radiating shards, ~260ms) at the target -- on top of which
+  travelling effect itself (`art/attackEffects.ts`'s `TRAVEL_MS`, 340-520ms depending on
+  shape -- beam is the longest at 520ms), then a fire-and-forget impact shockwave (a white
+  flash plus 8 radiating shards, ~260ms) at the target -- on top of which
   `BattleScene.impactPunch` layers the target crystal's scale-squash (`flashHit`), a small
   camera shake (`0.006`, kept subtle since the field's background is solid black right up to
-  the canvas edge), and a brief camera flash. `BattleScene`'s `TURN_GAP_MS` (850ms) leaves
-  room for the full ~810ms worst case (ring shape) before the next turn fires.
+  the canvas edge), and a brief camera flash. `BattleScene`'s `TURN_GAP_MS` (850ms) covers
+  every other shape's ~810-830ms worst case comfortably but sits ~20ms under Skyfall Beam's
+  own 870ms total -- in practice an imperceptible overlap with the very start of the next
+  turn's own windup flash, not worth chasing given how minor it is, but worth knowing if
+  `TRAVEL_MS`/`TURN_GAP_MS` are ever retuned together.
   Drawn fresh each frame with a `Graphics` object cleared and redrawn every tween tick (same
   pattern as the overworld's per-frame ground mesh) rather than a sprite, then destroyed on
   arrival/decay.

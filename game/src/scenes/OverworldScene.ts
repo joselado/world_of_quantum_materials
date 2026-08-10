@@ -13,7 +13,7 @@ import { makeMajoranaAvatar } from '../art/majorana';
 import { makeCurieAvatar } from '../art/curie';
 import { makeBellAvatar } from '../art/bell';
 import { makeKondoAvatar } from '../art/kondo';
-import { makeFeynmanAvatar } from '../art/feynman';
+import { makeAndersonAvatar } from '../art/anderson';
 import { playMentorChime } from '../audio/sfx';
 import { project, fogColor, HORIZON_Y, CANVAS_W, CANVAS_H, ProjectedPoint } from '../art/perspective';
 import {
@@ -29,6 +29,7 @@ import {
   getPlayerStats,
   getBattleMoves,
   findMaterialByName,
+  allCrystals,
   combineMaterials,
   hybridResultType,
   statUpgradeCost,
@@ -44,7 +45,7 @@ import { STORY_BEATS } from '../data/story';
 import { DENSITY_PRESETS, DEFAULT_ENCOUNTER_DENSITY, FONT_SCALE_PRESETS, DEFAULT_FONT_SCALE } from '../data/settings';
 import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
-import type { Material, Move, Stats } from '../data/types';
+import type { Material, MaterialType, Move, Stats } from '../data/types';
 import { generateWorldMap } from '../world/mapgen';
 import type { GridPoint } from '../world/mapgen';
 import { fontPx, fontScale } from '../ui/text';
@@ -94,7 +95,8 @@ const QUIZ_WRONG_MULTIPLIER = 0.6;
 
 // Worlds with a built overworld map (biome + rival, where applicable) --
 // bounds Bloch's teleport offers (a "visited" world the player can't
-// actually walk isn't a real destination) and Debug Mode's warp panels. All
+// actually walk isn't a real destination), including the Superposition-Mode
+// case where every one of them is marked visited from the start. All
 // 10 worlds are built as of DESIGN.md's "full build-out" pass. Exported so
 // data/integrity.ts can assert every entry here actually has a biome and a
 // rival.
@@ -199,6 +201,25 @@ export class OverworldScene extends Phaser.Scene {
   // show the initial pick list." Reset on every fresh scene create and every
   // closeDialogue() so a stale first pick can't survive a cancel-and-reopen.
   private majoranaSelection: string | null = null;
+  // Bohr's transmute list and Majorana's per-step combine list both paginate
+  // (Superposition Mode's candidate pool is every crystal in the game, far
+  // more than one panel can show at once) -- same reset rules as
+  // majoranaSelection above, plus a reset whenever majoranaSelection itself
+  // changes (see showMajoranaPanel) so switching steps starts back on page 0.
+  private bohrPage = 0;
+  private majoranaPage = 0;
+  // Anderson's impurity-doping panel (§5, World 9): the host crystal picked
+  // to "dope in," while the panel rebuilds to ask which one of its moves to
+  // learn -- null means "no doping in progress, show the host pick list."
+  // Same reset/pagination rules as majoranaSelection/majoranaPage above.
+  private andersonSelection: string | null = null;
+  private andersonPage = 0;
+  // Bloch's teleport hub (§5, World 2): paginated for the same reason as
+  // Bohr/Majorana/Anderson above -- Superposition Mode pre-seeds every
+  // built world as visited, so a well-traveled player is no longer the rare
+  // case Bloch's own destination list has to handle, it's the common one
+  // (up to 9 destinations at once). Same reset rules.
+  private blochPage = 0;
 
   // One entry per world with a mentor (see MentorDef above). A static field
   // initializer is still lexically inside the class body, so `s.showX()`
@@ -284,13 +305,14 @@ export class OverworldScene extends Phaser.Scene {
       tile: 'middle',
     },
     9: {
-      id: 'feynman',
-      name: 'Feynman',
-      labelColor: '#ffb24a',
-      strokeColor: 0xe89a3a,
-      quote: 'Draw the diagram. Every defect is just an excitation that forgot how to propagate freely.',
-      avatar: makeFeynmanAvatar,
+      id: 'anderson',
+      name: 'Anderson',
+      labelColor: '#e8b27a',
+      strokeColor: 0xc9884a,
+      quote: 'Enough disorder and a wave stops spreading at all -- it localizes, trapped by the very randomness that surrounds it.',
+      avatar: makeAndersonAvatar,
       tile: 'middle',
+      open: (s) => s.showAndersonPanel(),
     },
     // 10: none -- the finale is the final boss only, no mentor waiting there.
   };
@@ -318,6 +340,11 @@ export class OverworldScene extends Phaser.Scene {
     this.dialogueActive = false;
     this.dialogueContainer = undefined;
     this.majoranaSelection = null;
+    this.bohrPage = 0;
+    this.majoranaPage = 0;
+    this.andersonSelection = null;
+    this.andersonPage = 0;
+    this.blochPage = 0;
     this.biome = getBiome(this.world);
 
     const state = this.game.registry;
@@ -340,7 +367,7 @@ export class OverworldScene extends Phaser.Scene {
 
     this.qumatokens = (state.get('qumatokens') as number) || 0;
     this.playerMaterial = getPlayerMaterial(state);
-    this.applyDebugLeveling();
+    this.applySuperpositionLeveling();
     this.shopTab = 'moves';
     this.recordVisit();
 
@@ -429,20 +456,23 @@ export class OverworldScene extends Phaser.Scene {
     if (!this.dialogueActive) this.showTutorialTip('controls');
   }
 
-  private isDebugMode(): boolean {
-    return !!this.game.registry.get('debugMode');
+  private isSuperpositionMode(): boolean {
+    return !!this.game.registry.get('superpositionMode');
   }
 
-  // Debug mode (Title screen toggle, data/save.ts's `debugMode`): re-levels
-  // the player to a fair footing for whatever world this scene just entered,
-  // on every entry -- not just an explicit debug warp, so Continue-to-next-
-  // world and Bloch's teleport stay competitive too. A flat +2 over
-  // enemyStatsForWorld keeps the player
-  // slightly ahead rather than exactly even. Also grants every move (so
-  // there's always something to fight with regardless of what's been
-  // bought) and a full heal.
-  private applyDebugLeveling() {
-    if (!this.isDebugMode()) return;
+  // Superposition Mode (Title screen toggle, data/save.ts's `superpositionMode`):
+  // re-levels the player to a fair footing for whatever world this scene
+  // just entered, on every entry -- not just the Hub door's initial jump, so
+  // Continue-to-next-world and Bloch's teleport stay competitive too. A flat
+  // +2 over enemyStatsForWorld keeps the player slightly ahead rather than
+  // exactly even. Also grants every move (so there's always something to
+  // fight with regardless of what's been bought), a full heal, and marks
+  // every built world visited so Bloch's teleport hub (showBlochHub, gated
+  // on `visitedWorlds`) offers all of them immediately -- this is what makes
+  // Bloch alone sufficient for world-to-world movement in this mode, with no
+  // separate warp panel needed.
+  private applySuperpositionLeveling() {
+    if (!this.isSuperpositionMode()) return;
     const target = enemyStatsForWorld(this.world);
     const stats: Stats = {
       quantumness: target.quantumness + 2,
@@ -452,6 +482,9 @@ export class OverworldScene extends Phaser.Scene {
     this.game.registry.set('playerStats', stats);
     this.game.registry.set('unlockedMoves', Object.keys(MOVES));
     this.game.registry.set('playerHp', this.playerMaterial.maxHp);
+    const visited = this.getVisitedWorlds();
+    const merged = Array.from(new Set([...visited, ...BUILT_WORLDS]));
+    this.game.registry.set('visitedWorlds', merged);
     persistFromRegistry(this.game.registry);
   }
 
@@ -1351,6 +1384,11 @@ export class OverworldScene extends Phaser.Scene {
     this.dialogueContainer = undefined;
     this.dialogueActive = false;
     this.majoranaSelection = null;
+    this.bohrPage = 0;
+    this.majoranaPage = 0;
+    this.andersonSelection = null;
+    this.andersonPage = 0;
+    this.blochPage = 0;
   }
 
   private isRivalDefeated(): boolean {
@@ -1766,8 +1804,9 @@ export class OverworldScene extends Phaser.Scene {
   // deliberately the *only* place "Face the Rival"/"Continue" appears, so
   // reaching it requires actually walking to the goal where that world's
   // boss is waiting (spawnBossSprite), not just meeting the mid-corridor
-  // mentor. Debug Mode's warp panels are the one path that still bypasses
-  // this gate entirely (see applyDebugLeveling/rivalDefeated above).
+  // mentor. Bloch's teleport, once Superposition Mode has pre-seeded every
+  // world as visited, is the one path that still bypasses this gate
+  // entirely (see applySuperpositionLeveling/rivalDefeated above).
   // Takes/returns the actual y the footer should render at (and ends at)
   // rather than deriving it from a fixed offset off a panel-center constant
   // -- callers now build their content top-down with a running `y` and
@@ -1914,19 +1953,20 @@ export class OverworldScene extends Phaser.Scene {
   // on. Ends in the plain "Farewell"-only renderFarewellFooter, not the
   // Face-the-Rival/Continue footer -- that stays exclusive to the goal
   // panel now that Bloch stands mid-corridor rather than at the goal.
+  // Destinations paginate via renderPagedButtons (same helper Bohr/
+  // Majorana/Anderson use) -- with only a handful of built worlds this used
+  // to just shrink the row font/drop the avatar past 5 destinations, but
+  // Superposition Mode pre-seeding every world as visited made a 9-
+  // destination list the common case rather than a rare one, and no amount
+  // of font shrinking keeps 9 full rows plus avatar/quote/footer inside the
+  // 480px canvas -- capping the row *count* per page is the only fix that
+  // actually bounds the height.
   // Content laid out top-down first (running `y`), panel sized/inserted
   // behind everything afterward -- same pattern as showSettingsPanel.
   private showBlochHub() {
     this.dialogueActive = true;
 
     const destinations = this.getVisitedWorlds().filter((w) => BUILT_WORLDS.includes(w) && w !== this.world);
-    // With only 3 built worlds this list could show at most 2 destinations.
-    // Now that all 10 are built, a well-traveled player can see up to 9 --
-    // avatar + full quote + 9 rows + footer doesn't fit inside the 480px
-    // canvas even with an adaptive layout, so past a handful of
-    // destinations this still drops the avatar and shrinks the intro
-    // rather than shrinking rows below a clickable size.
-    const compact = destinations.length > 5;
 
     const panelWidth = 600;
     const top = 20;
@@ -1935,14 +1975,12 @@ export class OverworldScene extends Phaser.Scene {
 
     let y = top;
 
-    if (!compact) {
-      const avatarY = y + 55;
-      const avatar = makeBlochAvatar(this);
-      avatar.setPosition(CANVAS_W / 2, avatarY);
-      container.add(avatar);
-      this.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-      y = avatarY + 65;
-    }
+    const avatarY = y + 55;
+    const avatar = makeBlochAvatar(this);
+    avatar.setPosition(CANVAS_W / 2, avatarY);
+    container.add(avatar);
+    this.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    y = avatarY + 65;
     playMentorChime();
 
     const intro = this.add
@@ -1951,7 +1989,7 @@ export class OverworldScene extends Phaser.Scene {
         y,
         '"I am Bloch. Every crystal is a superposition of the worlds it has touched -- name one you have visited, and I will fold you there."',
         {
-          fontSize: fontPx(this, compact ? 11 : 12),
+          fontSize: fontPx(this, 12),
           fontStyle: 'italic',
           color: '#cfd8ff',
           align: 'center',
@@ -1969,11 +2007,21 @@ export class OverworldScene extends Phaser.Scene {
       container.add(text);
       y += text.height;
     } else {
-      destinations.forEach((w) => {
-        const name = WORLD_NAMES[w] ?? `World ${w}`;
-        const btn = this.addDialogueButton(container, y, `Travel to World ${w} -- ${name}`, () => this.advanceToWorld(w));
-        y += btn.height + (compact ? 4 : 6);
-      });
+      const items = destinations.map((w) => ({ world: w, name: WORLD_NAMES[w] ?? `World ${w}` }));
+      y = this.renderPagedButtons(
+        container,
+        y,
+        items,
+        this.blochPage,
+        4,
+        (d) => `Travel to World ${d.world} -- ${d.name}`,
+        (d) => this.advanceToWorld(d.world),
+        (page) => {
+          this.blochPage = page;
+          this.dialogueContainer?.destroy(true);
+          this.showBlochHub();
+        }
+      );
     }
     y += 8;
 
@@ -1987,11 +2035,100 @@ export class OverworldScene extends Phaser.Scene {
     container.addAt(panel, 0);
   }
 
+  // Shared pager for candidate-crystal lists (Bohr's transmute list,
+  // Majorana's two combine-pick steps, Anderson's host list, Bloch's
+  // destination list) -- Superposition Mode's candidate pool (or, for
+  // Bloch, every world pre-marked visited) is far bigger than one panel can
+  // show at once, so this renders one page of buttons plus Prev/Next
+  // controls when there's more than a page's worth. `page`/`onPageChange`
+  // are the caller's own page field and setter (each panel keeps its own
+  // independent page number), and `onPageChange` is expected to rebuild the
+  // whole panel in place (same "destroy container, re-call showXPanel"
+  // pattern every other in-panel action already uses).
+  //
+  // `maxPerPage` is a ceiling, not the actual row count: row height (and
+  // therefore how many rows actually fit before the panel runs off the
+  // canvas) grows with the Settings panel's own text-size preset
+  // (ui/text.ts's fontScale) -- the *default* preset is already 1.5x, not
+  // 1x, and a fixed 4-row page overflowed the canvas at that default once
+  // Bloch's destination list started routinely hitting 9 entries
+  // (Superposition Mode pre-seeding every world as visited). So this
+  // measures one sample row at the current scale first and shrinks the
+  // actual per-page row count to whatever still fits above both this
+  // function's own Prev/Next/page-label row and the caller's own trailing
+  // content (its Farewell/Close button) -- reserved space, not exact
+  // measurement, but conservative enough that no caller has overflowed
+  // since (verified via headless-Chromium bounds checks at every font-scale
+  // preset, see DEVELOPMENT.md's "Verifying UI changes" section).
+  private renderPagedButtons<T extends { name: string }>(
+    container: Phaser.GameObjects.Container,
+    y: number,
+    items: T[],
+    page: number,
+    maxPerPage: number,
+    labelFor: (item: T) => string,
+    onPick: (item: T) => void,
+    onPageChange: (page: number) => void,
+    isDim?: (item: T) => boolean
+  ): number {
+    const sample = this.add.text(-1000, -1000, 'Sample', { fontSize: fontPx(this, 13), padding: { x: 10, y: 5 } });
+    const rowH = sample.height + 6;
+    sample.destroy();
+    const reservedTail = rowH * 2; // caller's own footer button + margin below this function's return
+    const reservedControls = rowH * 2; // this function's own Prev/Next row + page label, reserved whether or not they end up showing
+    const available = CANVAS_H - y - reservedTail - reservedControls;
+    const fitPerPage = Math.max(1, Math.floor(available / rowH));
+    const perPage = Math.min(maxPerPage, fitPerPage);
+
+    const totalPages = Math.max(1, Math.ceil(items.length / perPage));
+    const clampedPage = Phaser.Math.Clamp(page, 0, totalPages - 1);
+    const pageItems = items.slice(clampedPage * perPage, clampedPage * perPage + perPage);
+    pageItems.forEach((item) => {
+      const btn = this.addDialogueButton(container, y, labelFor(item), () => onPick(item));
+      if (isDim?.(item)) btn.setAlpha(0.5);
+      y += btn.height + 6;
+    });
+    if (totalPages > 1) {
+      const prev = this.addDialogueButtonAt(
+        container,
+        CANVAS_W / 2 - 90,
+        y,
+        '<- Prev',
+        () => {
+          if (clampedPage > 0) onPageChange(clampedPage - 1);
+        },
+        140
+      );
+      if (clampedPage === 0) prev.setAlpha(0.35);
+      const next = this.addDialogueButtonAt(
+        container,
+        CANVAS_W / 2 + 90,
+        y,
+        'Next ->',
+        () => {
+          if (clampedPage < totalPages - 1) onPageChange(clampedPage + 1);
+        },
+        140
+      );
+      if (clampedPage === totalPages - 1) next.setAlpha(0.35);
+      y += Math.max(prev.height, next.height) + 6;
+      const pageLabel = this.add
+        .text(CANVAS_W / 2, y, `Page ${clampedPage + 1}/${totalPages}`, { fontSize: fontPx(this, 11), color: '#8fa0c9' })
+        .setOrigin(0.5, 0);
+      container.add(pageLabel);
+      y += pageLabel.height + 4;
+    }
+    return y;
+  }
+
   // Bohr stands at world 3's middle tile like every other mentor now (see
   // spawnMentorSprite/WORLD_MENTORS), triggered on reaching that row
   // (maybeAutoOpenMiddleDialogue). Lets the player transmute into any
   // crystal they've defeated -- the physics rationale being that beating
   // something is understanding it well enough to become it for a while.
+  // Superposition Mode replaces "defeated" with every crystal in the game
+  // (allCrystals()), paginated via renderPagedButtons since that pool is
+  // far bigger than the normal handful of recent defeats.
   // Content laid out top-down first (running `y`), panel sized/inserted
   // behind everything afterward -- same pattern as showSettingsPanel.
   private showBohrPanel() {
@@ -2012,19 +2149,24 @@ export class OverworldScene extends Phaser.Scene {
     playMentorChime();
     y = avatarY + 65;
 
+    const superposition = this.isSuperpositionMode();
     const intro = this.add
       .text(
         CANVAS_W / 2,
         y,
-        '"I am Bohr. Every crystal you have defeated is a state you now understand well enough to become, for a while."',
+        superposition
+          ? '"I am Bohr. In superposition every state is within reach at once -- become anything that exists, not only what you have already beaten."'
+          : '"I am Bohr. Every crystal you have defeated is a state you now understand well enough to become, for a while."',
         { fontSize: fontPx(this, 12), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
       )
       .setOrigin(0.5, 0);
     container.add(intro);
     y += intro.height + 14;
 
-    const defeated = this.getDefeatedMaterials().slice(-3);
-    if (defeated.length === 0) {
+    const candidates: { name: string }[] = superposition
+      ? allCrystals().slice().sort((a, b) => a.name.localeCompare(b.name))
+      : this.getDefeatedMaterials().slice(-3);
+    if (candidates.length === 0) {
       const text = this.add
         .text(CANVAS_W / 2, y, "You haven't defeated any crystals yet -- there is nothing to become.", {
           fontSize: fontPx(this, 13),
@@ -2036,16 +2178,24 @@ export class OverworldScene extends Phaser.Scene {
       container.add(text);
       y += text.height;
     } else {
-      defeated.forEach((m) => {
-        const isCurrent = this.playerMaterial.name === m.name;
-        const label = isCurrent ? `${m.name} (current form)` : `Become ${m.name}`;
-        const btn = this.addDialogueButton(container, y, label, () => {
-          if (isCurrent) return;
+      y = this.renderPagedButtons(
+        container,
+        y,
+        candidates,
+        this.bohrPage,
+        4,
+        (m) => (this.playerMaterial.name === m.name ? `${m.name} (current form)` : `Become ${m.name}`),
+        (m) => {
+          if (this.playerMaterial.name === m.name) return;
           this.transmuteInto(m.name);
-        });
-        if (isCurrent) btn.setAlpha(0.5);
-        y += btn.height + 6;
-      });
+        },
+        (page) => {
+          this.bohrPage = page;
+          this.dialogueContainer?.destroy(true);
+          this.showBohrPanel();
+        },
+        (m) => this.playerMaterial.name === m.name
+      );
     }
     y += 8;
 
@@ -2108,6 +2258,9 @@ export class OverworldScene extends Phaser.Scene {
   // separate `hybridMaterials` list -- kept apart from the defeated-crystal
   // list used to *create* new ones so a hybrid can never be fed back in as
   // an ingredient (that would compound the 1.5x multiplier every time).
+  // Superposition Mode replaces "defeated" with every crystal in the game
+  // (allCrystals()) as the ingredient pool, paginated (renderPagedButtons)
+  // at both steps since that pool is far bigger than a normal defeat count.
   private showMajoranaPanel() {
     this.dialogueActive = true;
 
@@ -2126,11 +2279,14 @@ export class OverworldScene extends Phaser.Scene {
     playMentorChime();
     y = avatarY + 65;
 
+    const superposition = this.isSuperpositionMode();
     const intro = this.add
       .text(
         CANVAS_W / 2,
         y,
-        '"I am Majorana. Fuse two states you already understand and see what phase they make together -- a magnet and a superconductor, say, become something with edges neither one had alone."',
+        superposition
+          ? '"I am Majorana. In superposition every pairing is already possible -- fuse any two states that make physical sense together, defeated or not."'
+          : '"I am Majorana. Fuse two states you already understand and see what phase they make together -- a magnet and a superconductor, say, become something with edges neither one had alone."',
         { fontSize: fontPx(this, 12), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
       )
       .setOrigin(0.5, 0);
@@ -2158,20 +2314,16 @@ export class OverworldScene extends Phaser.Scene {
     // defeated crystal is a valid transmute target) would make Majorana's
     // paired requirement nearly unreachable -- the player's last few
     // defeats right before reaching him are almost always all the same
-    // type. Query the *whole* `defeatedMaterials` history for
-    // combinability first (an earlier world's magnet still counts), then
-    // cap only the display list.
-    const allDefeated = this.getDefeatedMaterials();
-    const isCombinable = (m: DiscoveredMaterial) =>
-      allDefeated.some((other) => other.name !== m.name && hybridResultType(m.type, other.type));
-    // Display-only cap, applied *after* filtering against the full history
-    // above -- every entry shown here is guaranteed to have a valid partner
-    // somewhere in `allDefeated`, even if that specific partner didn't also
-    // make this cut (a rare, non-broken edge case: that entry's step-2 list
-    // would just come up empty, same as if it had no partner at all).
-    const defeated = allDefeated.filter(isCombinable).slice(-6);
+    // type. `pool` is the *whole* `defeatedMaterials` history normally (an
+    // earlier world's magnet still counts) or, in Superposition Mode, every
+    // crystal in the game -- either way filtered for combinability first,
+    // then paginated for display rather than an arbitrary recency cap.
+    const pool: { name: string; type: MaterialType }[] = superposition ? allCrystals() : this.getDefeatedMaterials();
+    const isCombinable = (m: { name: string; type: MaterialType }) =>
+      pool.some((other) => other.name !== m.name && hybridResultType(m.type, other.type));
+    const combinable = pool.filter(isCombinable).sort((a, b) => a.name.localeCompare(b.name));
     if (this.majoranaSelection === null) {
-      if (defeated.length < 2) {
+      if (combinable.length < 2) {
         const text = this.add
           .text(
             CANVAS_W / 2,
@@ -2192,18 +2344,29 @@ export class OverworldScene extends Phaser.Scene {
           .setOrigin(0.5, 0);
         container.add(label);
         y += label.height + 6;
-        defeated.forEach((m) => {
-          const btn = this.addDialogueButton(container, y, m.name, () => {
+        y = this.renderPagedButtons(
+          container,
+          y,
+          combinable,
+          this.majoranaPage,
+          4,
+          (m) => m.name,
+          (m) => {
             this.majoranaSelection = m.name;
+            this.majoranaPage = 0;
             this.dialogueContainer?.destroy(true);
             this.showMajoranaPanel();
-          });
-          y += btn.height + 6;
-        });
+          },
+          (page) => {
+            this.majoranaPage = page;
+            this.dialogueContainer?.destroy(true);
+            this.showMajoranaPanel();
+          }
+        );
       }
     } else {
       const first = this.majoranaSelection;
-      const firstType = defeated.find((m) => m.name === first)?.type;
+      const firstType = combinable.find((m) => m.name === first)?.type;
       const label = this.add
         .text(CANVAS_W / 2, y, `Combine ${first} with...`, {
           fontSize: fontPx(this, 12),
@@ -2214,14 +2377,26 @@ export class OverworldScene extends Phaser.Scene {
         .setOrigin(0.5, 0);
       container.add(label);
       y += label.height + 6;
-      defeated
+      const partners = pool
         .filter((m) => m.name !== first && firstType && hybridResultType(firstType, m.type))
-        .forEach((m) => {
-          const btn = this.addDialogueButton(container, y, m.name, () => this.createHybrid(first, m.name));
-          y += btn.height + 6;
-        });
+        .sort((a, b) => a.name.localeCompare(b.name));
+      y = this.renderPagedButtons(
+        container,
+        y,
+        partners,
+        this.majoranaPage,
+        4,
+        (m) => m.name,
+        (m) => this.createHybrid(first, m.name),
+        (page) => {
+          this.majoranaPage = page;
+          this.dialogueContainer?.destroy(true);
+          this.showMajoranaPanel();
+        }
+      );
       const cancelBtn = this.addDialogueButton(container, y, 'Never mind', () => {
         this.majoranaSelection = null;
+        this.majoranaPage = 0;
         this.dialogueContainer?.destroy(true);
         this.showMajoranaPanel();
       });
@@ -2267,10 +2442,172 @@ export class OverworldScene extends Phaser.Scene {
     this.becomeHybrid(hybrid);
   }
 
+  // Anderson stands at world 9's middle tile (WORLD_MENTORS) and lets the
+  // player "dope in" a crystal they've encountered (or, in Superposition
+  // Mode, any crystal in the game) as an impurity, then learn one specific
+  // move from its moveset -- an Anderson-impurity take on the same idea
+  // Bohr/Majorana explore differently: Bohr becomes the whole state,
+  // Majorana fuses two states together, Anderson borrows just one
+  // excitation channel from a state without becoming it. The learned move
+  // is a completely ordinary entry in `unlockedMoves` -- MOVE_COMPATIBILITY
+  // still gates whether it actually shows up in the battle move menu
+  // (getBattleMoves), which is the point: an impurity's channel only
+  // manifests in combat once the player's own current form can physically
+  // host it. Two-step pick (this.andersonSelection holds the host while the
+  // panel rebuilds to ask which of its moves to learn), paginated at the
+  // host-pick step via renderPagedButtons -- same shape as Majorana's
+  // combine flow, minus a second pagination pass since a host's moveset is
+  // always small (crystal() only ever assigns two).
+  private showAndersonPanel() {
+    this.dialogueActive = true;
+
+    const panelWidth = 600;
+    const top = 20;
+    const container = this.add.container(0, 0).setDepth(100);
+    this.dialogueContainer = container;
+
+    let y = top;
+
+    const avatarY = y + 55;
+    const avatar = makeAndersonAvatar(this);
+    avatar.setPosition(CANVAS_W / 2, avatarY);
+    container.add(avatar);
+    this.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    playMentorChime();
+    y = avatarY + 65;
+
+    const superposition = this.isSuperpositionMode();
+    const intro = this.add
+      .text(
+        CANVAS_W / 2,
+        y,
+        superposition
+          ? '"I am Anderson. In superposition every crystal is available to dope in as an impurity -- pick one, and I will teach you the single channel it opens."'
+          : '"I am Anderson. Dope in a crystal you have encountered as an impurity, and I will teach you the one channel it opens in your own lattice -- whether it ever fires depends on what your own physics can carry."',
+        { fontSize: fontPx(this, 12), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
+      )
+      .setOrigin(0.5, 0);
+    container.add(intro);
+    y += intro.height + 14;
+
+    const pool: { name: string }[] = superposition ? allCrystals() : this.getDefeatedMaterials();
+
+    if (this.andersonSelection === null) {
+      if (pool.length === 0) {
+        const text = this.add
+          .text(CANVAS_W / 2, y, "You haven't encountered any crystals yet -- there is nothing to dope in.", {
+            fontSize: fontPx(this, 13),
+            color: '#ffffff',
+            align: 'center',
+            wordWrap: { width: 480 },
+          })
+          .setOrigin(0.5, 0);
+        container.add(text);
+        y += text.height;
+      } else {
+        const label = this.add
+          .text(CANVAS_W / 2, y, 'Dope in which crystal?', {
+            fontSize: fontPx(this, 12),
+            color: '#e8b27a',
+            align: 'center',
+          })
+          .setOrigin(0.5, 0);
+        container.add(label);
+        y += label.height + 6;
+        const sorted = pool.slice().sort((a, b) => a.name.localeCompare(b.name));
+        y = this.renderPagedButtons(
+          container,
+          y,
+          sorted,
+          this.andersonPage,
+          4,
+          (m) => m.name,
+          (m) => {
+            this.andersonSelection = m.name;
+            this.andersonPage = 0;
+            this.dialogueContainer?.destroy(true);
+            this.showAndersonPanel();
+          },
+          (page) => {
+            this.andersonPage = page;
+            this.dialogueContainer?.destroy(true);
+            this.showAndersonPanel();
+          }
+        );
+      }
+    } else {
+      const host = findMaterialByName(this.andersonSelection);
+      const unlocked = this.getUnlockedMoves();
+      const learnable = host ? host.moves.filter((id) => !unlocked.includes(id)) : [];
+      const label = this.add
+        .text(CANVAS_W / 2, y, `Learn which move from ${this.andersonSelection}?`, {
+          fontSize: fontPx(this, 12),
+          color: '#e8b27a',
+          align: 'center',
+          wordWrap: { width: 480 },
+        })
+        .setOrigin(0.5, 0);
+      container.add(label);
+      y += label.height + 6;
+
+      if (learnable.length === 0) {
+        const text = this.add
+          .text(CANVAS_W / 2, y, `You already carry every move ${this.andersonSelection} has to offer.`, {
+            fontSize: fontPx(this, 13),
+            color: '#ffffff',
+            align: 'center',
+            wordWrap: { width: 480 },
+          })
+          .setOrigin(0.5, 0);
+        container.add(text);
+        y += text.height + 6;
+      } else {
+        learnable.forEach((id) => {
+          const move = MOVES[id];
+          const btn = this.addDialogueButton(container, y, `${move.name} (Pwr ${move.power})`, () => this.learnImpurityMove(id));
+          y += btn.height + 6;
+        });
+      }
+      const cancelBtn = this.addDialogueButton(container, y, 'Never mind', () => {
+        this.andersonSelection = null;
+        this.andersonPage = 0;
+        this.dialogueContainer?.destroy(true);
+        this.showAndersonPanel();
+      });
+      y += cancelBtn.height + 6;
+    }
+    y += 8;
+
+    const closeBtn = this.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Farewell', () => this.closeDialogue(), 300);
+    y += closeBtn.height + 12;
+
+    const panelHeight = y - top;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+      .setStrokeStyle(2, 0xc9884a);
+    container.addAt(panel, 0);
+  }
+
+  // Learns one move from the doped-in host's moveset -- just an ordinary
+  // append to `unlockedMoves` (see showAndersonPanel's comment for why this
+  // needs no special-case handling anywhere else: MOVE_COMPATIBILITY
+  // already gates whether it's actually usable).
+  private learnImpurityMove(moveId: string) {
+    const unlocked = this.getUnlockedMoves();
+    if (!unlocked.includes(moveId)) {
+      this.game.registry.set('unlockedMoves', [...unlocked, moveId]);
+      persistFromRegistry(this.game.registry);
+    }
+    this.andersonSelection = null;
+    this.andersonPage = 0;
+    this.dialogueContainer?.destroy(true);
+    this.showAndersonPanel();
+  }
+
   // Shared panel for every mentor left without a bespoke `open` handler
-  // (Laughlin, Bell, Kondo, Feynman -- see WORLD_MENTORS): avatar + a
-  // topic-tied quote, no shop tabs (DESIGN.md §5 records their lack of a
-  // mechanic as a deliberate, temporary state, not a finished design). Ends
+  // (Laughlin, Bell, Kondo -- see WORLD_MENTORS): avatar + a topic-tied
+  // quote, no shop tabs (DESIGN.md §5 records their lack of a mechanic as a
+  // deliberate, temporary state, not a finished design). Ends
   // in renderFarewellFooter,
   // not renderShopFooter -- these mentors stand mid-corridor now, so the
   // Face-the-Rival/Continue progression action stays exclusive to the goal
@@ -2351,9 +2688,8 @@ export class OverworldScene extends Phaser.Scene {
   private showPauseMenu() {
     this.dialogueActive = true;
 
-    // Data-driven row list (rather than fixed hand-placed buttons) so an
-    // optional row -- the debug-only "Warp" -- can be spliced in without
-    // hand-recomputing every other button's y position.
+    // Data-driven row list (rather than fixed hand-placed buttons) so rows
+    // can be added without hand-recomputing every other button's y position.
     const rows: { label: string; onClick: () => void }[] = [
       {
         label: 'Return to Lab',
@@ -2367,11 +2703,8 @@ export class OverworldScene extends Phaser.Scene {
       { label: 'Advisors', onClick: () => this.showAdvisorsPanel() },
       { label: 'Tutorial', onClick: () => this.showTutorial(0) },
       { label: 'Settings', onClick: () => this.showSettingsPanel() },
+      { label: 'Close', onClick: () => this.closeDialogue() },
     ];
-    if (this.isDebugMode()) {
-      rows.push({ label: 'Warp (Debug)', onClick: () => this.showDebugWarpPanel() });
-    }
-    rows.push({ label: 'Close', onClick: () => this.closeDialogue() });
 
     // Content built top-down at local y (running `y`, each row's own
     // height advancing it -- row count regularly reaches 7-8 with Settings
@@ -2523,99 +2856,16 @@ export class OverworldScene extends Phaser.Scene {
     return FONT_SCALE_PRESETS.findIndex((p) => p.value === DEFAULT_FONT_SCALE);
   }
 
-  // Debug-mode-only (see applyDebugLeveling): jumps straight to any of the
-  // 10 worlds from wherever the player currently is, regardless of
-  // rivalDefeated progress -- the in-run counterpart to the Hub door's own
-  // debug warp panel (HubScene.showWorldSelectPanel), for players who don't
-  // want to backtrack to World 0 first.
-  private showDebugWarpPanel() {
-    this.dialogueContainer?.destroy(true);
-    this.dialogueActive = true;
-
-    const rowCount = 10;
-    const panelWidth = 360;
-    const top = 10;
-    const container = this.add.container(0, 0).setDepth(100);
-    this.dialogueContainer = container;
-
-    let y = top;
-
-    const title = this.add
-      .text(CANVAS_W / 2, y, 'Debug: Warp to World', {
-        fontSize: fontPx(this, 14),
-        color: '#ff8fe0',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5, 0);
-    container.add(title);
-    y += title.height + 6;
-
-    // 10 rows is a fixed count regardless of world-count growth -- measure
-    // one sample row at the desired size and shrink in whole-px steps
-    // (floor 7 -- still legible, and the row label is redundant with the
-    // panel's own title so it doesn't need to carry much weight on its
-    // own) until all 10 rows plus Close actually fit the canvas, rather
-    // than letting row 10 run off the bottom at a big text-size setting.
-    const scale = fontScale(this);
-    let rowBase = 13;
-    const rowGap = 2;
-    const longestLabel = Array.from({ length: rowCount }, (_, i) => i + 1)
-      .map((w) => `World ${w} -- ${WORLD_NAMES[w] ?? `World ${w}`}`)
-      .reduce((a, b) => (b.length > a.length ? b : a));
-    const sample = this.add.text(-1000, -1000, longestLabel, {
-      fontSize: `${Math.round(rowBase * scale)}px`,
-      padding: { x: 10, y: 5 },
-      align: 'center',
-      wordWrap: { width: 320 },
-    });
-    while (rowBase > 7) {
-      const rowH = sample.height + rowGap;
-      const estTotal = y + rowCount * rowH + 6 + sample.height + top;
-      if (estTotal <= CANVAS_H) break;
-      rowBase -= 1;
-      sample.setFontSize(`${Math.round(rowBase * scale)}px`);
-    }
-    const rowFontPx = `${Math.round(rowBase * scale)}px`;
-    sample.destroy();
-
-    for (let w = 1; w <= rowCount; w++) {
-      const name = WORLD_NAMES[w] ?? `World ${w}`;
-      const label = w === this.world ? `World ${w} -- ${name} (current)` : `World ${w} -- ${name}`;
-      const btn = this.addDialogueButtonAt(
-        container,
-        CANVAS_W / 2,
-        y,
-        label,
-        () => {
-          if (w === this.world) return;
-          this.advanceToWorld(w);
-        },
-        320,
-        rowFontPx
-      );
-      if (w === this.world) btn.setAlpha(0.5);
-      y += btn.height + rowGap;
-    }
-    y += 6;
-
-    const closeBtn = this.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Close', () => this.closeDialogue(), 260, rowFontPx);
-    y += closeBtn.height;
-    y += top;
-
-    const panelHeight = y - top;
-    const panel = this.add
-      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.96)
-      .setStrokeStyle(2, 0xff4fd8);
-    container.addAt(panel, 0);
-
-    container.y = Math.max(0, Math.round((CANVAS_H - panelHeight) / 2)) - top;
-  }
-
   // Lists every mentor the player has met so far (registry `metMentors`,
   // grown by openMentor as middle tiles are reached), each row
   // reopening that mentor's own panel -- works from any world's scene, not
   // just the mentor's own, which is the whole point of putting this in the
-  // Enter menu rather than only at their home tile.
+  // Enter menu rather than only at their home tile. In Superposition Mode
+  // every mentor lists immediately regardless of `metMentors` -- "access to
+  // every advisor from the beginning" (the whole point of the mode) would
+  // otherwise still be gated behind physically walking up to each one first,
+  // even though every mentor's own panel already works correctly when
+  // opened from anywhere (openMentor doesn't touch `this.world`).
   // Content laid out top-down first (running `y`), panel sized/inserted
   // behind everything afterward -- same pattern as showSettingsPanel. Row
   // count grows with how many of up to 10 mentors have been met, so a
@@ -2639,8 +2889,9 @@ export class OverworldScene extends Phaser.Scene {
     y += title.height + 14;
 
     const met = (this.game.registry.get('metMentors') as string[]) ?? [];
+    const superposition = this.isSuperpositionMode();
     const mentors = Object.values(OverworldScene.WORLD_MENTORS).filter(
-      (m): m is MentorDef => !!m && met.includes(m.id)
+      (m): m is MentorDef => !!m && (superposition || met.includes(m.id))
     );
 
     if (mentors.length === 0) {
@@ -2683,11 +2934,9 @@ export class OverworldScene extends Phaser.Scene {
 
   private showMovesPanel() {
     this.dialogueContainer?.destroy(true);
-    const battleMoves = new Set(getBattleMoves(this.game.registry));
-    const lines = this.getUnlockedMoves().map((id) => {
+    const lines = getBattleMoves(this.game.registry).map((id) => {
       const move = MOVES[id];
-      const usable = battleMoves.has(id);
-      return `${move.name} -- Pwr ${move.power}, ${move.class}${usable ? '' : ' (incompatible with current form)'}`;
+      return `${move.name} -- Pwr ${move.power}`;
     });
     this.showInfoPanel('Your Moves', lines.join('\n'));
   }

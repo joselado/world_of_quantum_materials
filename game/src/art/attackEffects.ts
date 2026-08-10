@@ -201,10 +201,16 @@ function playBurst(scene: Phaser.Scene, color: number, from: Point, to: Point, o
 // position) since a beam falling out of the sky doesn't originate there.
 // Telegraphs first (a faint, full-height column fades in before the bright
 // head starts falling) so the "incoming" beat reads clearly, then the head
-// travels the height of the field to land.
+// travels the height of the field to land. Substantially flashier than the
+// other move classes on purpose -- Curie's own request was "a beam falling
+// from the sky," clearly reading as stronger than an ordinary hit: a pair of
+// swirling side-rays orbit the main column, a radiant sun expands at the
+// point of origin as the beam charges, and a trail of falling sparks chases
+// the head down.
 function playBeam(scene: Phaser.Scene, color: number, to: Point, onImpact?: () => void) {
   const g = scene.add.graphics().setDepth(60).setBlendMode(Phaser.BlendModes.ADD);
-  const originY = -30;
+  const sun = scene.add.graphics().setDepth(59).setBlendMode(Phaser.BlendModes.ADD);
+  const originY = -40;
   scene.tweens.addCounter({
     from: 0,
     to: 1,
@@ -213,16 +219,40 @@ function playBeam(scene: Phaser.Scene, color: number, to: Point, onImpact?: () =
     onUpdate: (tw) => {
       const t = tw.getValue() ?? 0;
       const headY = Phaser.Math.Linear(originY, to.y, Math.min(1, t * 1.3));
+      const pulse = 0.75 + 0.25 * Math.sin(t * 46);
+      const swirl = Math.sin(t * 20) * 12;
       g.clear();
-      g.fillStyle(color, 0.14 * t);
-      g.fillRect(to.x - 15, originY, 30, to.y - originY);
-      g.fillStyle(color, 0.85);
-      g.fillRect(to.x - 11, originY, 22, headY - originY);
-      g.fillStyle(0xffffff, 0.95);
-      g.fillRect(to.x - 4, originY, 8, headY - originY);
+      // Wide, pulsing telegraph halo.
+      g.fillStyle(color, 0.24 * t * pulse);
+      g.fillRect(to.x - 34, originY, 68, to.y - originY);
+      // Two side-rays swirling around the main column.
+      g.fillStyle(color, 0.55 * t);
+      g.fillRect(to.x - 24 + swirl, originY, 9, headY - originY);
+      g.fillRect(to.x + 15 - swirl, originY, 9, headY - originY);
+      // Main column, brighter/wider than the original.
+      g.fillStyle(color, 0.97);
+      g.fillRect(to.x - 15, originY, 30, headY - originY);
+      // White-hot core.
+      g.fillStyle(0xffffff, 1);
+      g.fillRect(to.x - 5, originY, 10, headY - originY);
+      // Falling sparks trailing the head.
+      for (let i = 0; i < 7; i++) {
+        const sy = headY - i * 16;
+        if (sy < originY) continue;
+        const sx = to.x + Math.sin(t * 34 + i * 1.7) * (14 - i);
+        g.fillStyle(i % 2 === 0 ? 0xffffff : color, 0.85 - i * 0.11);
+        g.fillCircle(sx, sy, 3.2 - i * 0.22);
+      }
+      // Radiant sun expanding at the point of origin as the beam charges.
+      sun.clear();
+      sun.fillStyle(0xffffff, 0.65 * (1 - t));
+      sun.fillCircle(to.x, originY, 12 + t * 46);
+      sun.lineStyle(2, color, 0.75 * (1 - t));
+      sun.strokeCircle(to.x, originY, 18 + t * 58);
     },
     onComplete: () => {
       g.destroy();
+      sun.destroy();
       onImpact?.();
     },
   });
@@ -230,10 +260,14 @@ function playBeam(scene: Phaser.Scene, color: number, to: Point, onImpact?: () =
 
 // Shards bursting up and outward from a crack in the ground under the
 // target -- also ignores `from`, since the eruption comes up from beneath
-// the defender rather than travelling from the attacker.
+// the defender rather than travelling from the attacker. Substantially
+// flashier than the other move classes on purpose (Curie's own request):
+// an expanding double shockwave ring on the ground, a bright geyser core
+// punching straight up through the shards, and nearly double the shard
+// count spread wider than an ordinary burst.
 function playEruption(scene: Phaser.Scene, color: number, to: Point, onImpact?: () => void) {
   const g = scene.add.graphics().setDepth(60).setBlendMode(Phaser.BlendModes.ADD);
-  const n = 10;
+  const n = 18;
   const groundY = to.y + 18;
   scene.tweens.addCounter({
     from: 0,
@@ -243,15 +277,28 @@ function playEruption(scene: Phaser.Scene, color: number, to: Point, onImpact?: 
     onUpdate: (tw) => {
       const t = tw.getValue() ?? 0;
       g.clear();
-      g.fillStyle(color, 0.5 * (1 - t));
-      g.fillEllipse(to.x, groundY, 50 + t * 30, 14);
+      // Expanding double shockwave ring on the ground.
+      g.lineStyle(3, color, 0.85 * (1 - t));
+      g.strokeCircle(to.x, groundY, 16 + t * 76);
+      g.lineStyle(2, 0xffffff, 0.55 * (1 - t));
+      g.strokeCircle(to.x, groundY, 10 + t * 54);
+      // Brighter, wider crack glow.
+      g.fillStyle(color, 0.65 * (1 - t));
+      g.fillEllipse(to.x, groundY, 74 + t * 54, 22);
+      // Bright geyser core punching straight up through the shards.
+      const coreH = 96 * Math.min(1, t * 1.6);
+      g.fillStyle(color, 0.55 * (1 - t * 0.5));
+      g.fillRect(to.x - 11, groundY - coreH * 0.8, 22, coreH * 0.8);
+      g.fillStyle(0xffffff, 0.9 * (1 - t * 0.5));
+      g.fillRect(to.x - 4, groundY - coreH, 8, coreH);
+      // Shards, nearly double the ordinary burst count and spread wider.
       for (let i = 0; i < n; i++) {
-        const ang = -Math.PI / 2 + ((i / (n - 1)) - 0.5) * 1.7;
-        const dist = t * 70;
-        const px = to.x + Math.cos(ang) * dist * 0.5;
+        const ang = -Math.PI / 2 + ((i / (n - 1)) - 0.5) * 2.3;
+        const dist = t * 100;
+        const px = to.x + Math.cos(ang) * dist * 0.6;
         const py = groundY + Math.sin(ang) * dist;
-        g.fillStyle(i % 2 === 0 ? color : 0xffffff, 0.9 * (1 - t * 0.6));
-        g.fillCircle(px, py, 4);
+        g.fillStyle(i % 2 === 0 ? color : 0xffffff, 0.95 * (1 - t * 0.6));
+        g.fillCircle(px, py, 5 - t * 1.6);
       }
     },
     onComplete: () => {

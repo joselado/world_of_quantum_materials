@@ -329,9 +329,9 @@ the goal tile itself is now occupied by that world's boss (see below), so a ment
 is someone the player meets partway through the journey, not a gate to it. Every
 mentor stays reachable from anywhere afterward via the Enter-menu's Advisors panel
 once met (`showAdvisorsPanel`, `data/save.ts`'s `metMentors`). **Current state
-(deliberately not the final design -- see §10):** five mentors have a real
-mechanic (Noether, Bloch, Bohr, Majorana, Curie); Laughlin, Bell, Kondo, and
-Feynman are still topic-tied lore stops with an avatar and a quote but no
+(deliberately not the final design -- see §10):** six mentors have a real
+mechanic (Noether, Bloch, Bohr, Majorana, Curie, Anderson); Laughlin, Bell, and
+Kondo are still topic-tied lore stops with an avatar and a quote but no
 mechanic of its own yet (`OverworldScene.showMentorLore`) -- what each of them
 should actually unlock is still an open design question, not implemented.
 World 10 has no mentor; its only encounter is the finale.
@@ -341,12 +341,17 @@ World 10 has no mentor; its only encounter is the finale.
   law" -- here, conserving enough qumatokens gets you a new move or a sharper stat)
 - **Bloch** → world 2 middle → folds space between worlds: teleports the player to any
   world they've already visited (`OverworldScene.showBlochHub`) -- fitting, since a
-  Bloch state is a superposition spread across every unit cell, not pinned to one
+  Bloch state is a superposition spread across every unit cell, not pinned to one.
+  The destination list paginates (`renderPagedButtons`, see below) once it grows past
+  a page -- routine in Superposition Mode (see §7), which pre-seeds every built world
+  as visited, making Bloch's hub the *sole* way to move between worlds now that the
+  separate Warp panels are gone
 - **Bohr** → world 3 middle → lets the player transmute into any crystal they've already
   defeated (`OverworldScene.showBohrPanel`/`transmuteInto`) -- beating a crystal means
   understanding its physics well enough to become it for a while; transmuting changes the
   player's look, HP cap, and which moves are currently usable (§3), without erasing any
-  move already learned
+  move already learned. In Superposition Mode the candidate list is every crystal in the
+  game (`data/materials.ts`'s `allCrystals()`) rather than only ones actually defeated
 - **Laughlin** → world 4 middle → lore only for now; flavor ties in via the fractional
   quantum Hall wavefunction (world 4's own topic)
 - **Majorana** → world 5 middle → lets the player fuse two crystals they've already
@@ -362,21 +367,32 @@ World 10 has no mentor; its only encounter is the finale.
   topological + quantum-Hall state → topological, the quantum-anomalous-Hall route).
   A valid hybrid's HP scales to 1.5x its stronger parent's, never a downgrade. Every
   hybrid ever created is remembered (`hybridMaterials` save field) so the panel also
-  offers "become again" for an earlier one without recombining.
+  offers "become again" for an earlier one without recombining. In Superposition Mode
+  the ingredient pool is every crystal in the game, same as Bohr above
 - **Curie** → world 6 middle → sells "analytic" moves (currently Skyfall Beam, Ground
   Eruption -- `OverworldScene.showCuriePanel`) -- using one asks a physics-equation
   question first (`data/quiz.ts`'s `ANALYTIC_QUESTIONS`, `BattleScene
   .showAnalyticQuestion`): answer right and the hit lands at 2x, answer wrong and it
-  lands at 0.5x. Each analytic move also gets its own flashier, per-move (not
-  per-class) visual -- Skyfall Beam drops a beam of light from off the top of the
-  screen, Ground Eruption bursts shards up from underneath the target
-  (`art/attackEffects.ts`'s `ANALYTIC_SHAPES`) -- rather than sharing one look the way
-  every other move class does.
+  lands at 0.5x. Each analytic move also gets its own dramatically flashier, per-move
+  (not per-class) visual, deliberately reading as stronger than every other move class
+  (`art/attackEffects.ts`'s `ANALYTIC_SHAPES`/`playBeam`/`playEruption`): Skyfall Beam
+  drops a multi-layer column of light from off the top of the screen -- a white-hot
+  core, two swirling side-rays, a trail of falling sparks, and a radiant sun expanding
+  at the point of origin; Ground Eruption bursts a wide double shockwave ring and a
+  bright geyser core up through nearly twice the shard count of an ordinary burst.
 - **Bell** → world 7 middle → lore only for now; flavor ties in via Bell's inequality
   (measured entanglement correlations exceeding any local, pre-agreed strategy)
 - **Kondo** → world 8 middle → lore only for now; flavor ties in via the Kondo effect
-- **Feynman** → world 9 middle → lore only for now; flavor ties in via Feynman diagrams
-  for excitations
+- **Anderson** → world 9 middle → "dopes in" a crystal the player has encountered as an
+  impurity, then teaches one specific move from that crystal's own moveset
+  (`OverworldScene.showAndersonPanel`/`learnImpurityMove`) -- a two-step pick (host,
+  then which of its moves to learn) that just appends to the ordinary `unlockedMoves`
+  list, no special-casing needed: `MOVE_COMPATIBILITY` (§3) already gates whether the
+  learned move actually shows up in the battle menu, which is the whole point -- an
+  impurity's channel only manifests once the player's *own* current form can physically
+  host it. Distinct from Bohr (become the whole state) and Majorana (fuse two states
+  together): Anderson borrows a single excitation channel without becoming anything. In
+  Superposition Mode the host pool is every crystal in the game, same as Bohr/Majorana
 
 **Boss avatars.** Every built world's rival/boss (`WORLD_RIVALS`/`getRival`)
 stands visibly at the goal tile as a gigantic landmark (`OverworldScene
@@ -490,15 +506,23 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   in the same order, can still be replayed as one paged recap any time from
   the Enter-menu's "Tutorial" button (`OverworldScene.showTutorial`, reading
   `TUTORIAL_PAGES`, the same tips in a fixed array).
-- **Debug Mode.** A Title-screen toggle (save/registry `debugMode`,
-  `TitleScene.addDebugToggle`) meant for testing/exploring the game rather
-  than the intended first playthrough: while on, the Hub's door and the
-  Enter-menu both gain a "Warp" option that jumps straight to any of the 10
-  worlds regardless of `rivalDefeated` progress (`HubScene
-  .showWorldSelectPanel`, `OverworldScene.showDebugWarpPanel`), and every
-  world entry re-levels the player's stats/moves/HP to stay competitive with
-  that world's opponents (`OverworldScene.applyDebugLeveling`, a flat +2 over
-  `enemyStatsForWorld`) instead of requiring the normal qumatoken grind.
+- **Story Mode vs. Superposition Mode.** The Title screen has the player pick
+  one of two starting modes (`TitleScene.addModeSelector`) before Continue/New
+  Game -- both back the same save/registry `superpositionMode` boolean (Story
+  Mode is just its `false` state, not a separate field). **Story Mode** is the
+  normal playthrough: start at World 1, defeat each world's rival to open the
+  next one, meet each mentor in turn. **Superposition Mode** is a testing/
+  exploration mode, not the intended first playthrough: every world entry
+  re-levels the player's stats/moves/HP to stay competitive with that world's
+  opponents (`OverworldScene.applySuperpositionLeveling`, a flat +2 over
+  `enemyStatsForWorld`, full move unlock, full heal) instead of requiring the
+  normal qumatoken grind, every built world is pre-marked visited so Bloch's
+  teleport hub (§5) alone provides full world-to-world movement -- there is no
+  separate "Warp" UI, that was removed in favor of just leaning on Bloch's
+  existing mechanic -- and Bohr/Majorana/Anderson's panels (§5) offer every
+  crystal in the game as a candidate rather than only ones actually defeated.
+  Toggled once at the title screen rather than mid-run, so it's a deliberate
+  choice made before starting, not something stumbled into during play.
 
 ## 8. Art & content pipeline
 
@@ -514,15 +538,15 @@ world 7's boss fights as an entangled pair where damaging one damages both.
 
 Built and playable end to end: all 10 worlds have an overworld map, biome, wild-encounter
 pool, rival, and mentor slot; the Hub, title screen, localStorage save, Materialdex, the
-contextual tutorial tips, and Debug Mode are all in place (§2, §4, §5, §7). `game/` is the
-only build; the earlier no-install single-file `demo/` prototype (world 1 only, placeholder
-rectangle graphics) has been removed.
+contextual tutorial tips, and the Story Mode/Superposition Mode picker are all in place
+(§2, §4, §5, §7). `game/` is the only build; the earlier no-install single-file `demo/`
+prototype (world 1 only, placeholder rectangle graphics) has been removed.
 
 Not yet built:
 - Bespoke per-world boss puzzles (§6) — every world currently uses the same reach-goal →
   beat-rival → continue gate instead.
-- Real mentor mechanics for Laughlin, Bell, Kondo, and Feynman, beyond
-  Noether/Bloch/Bohr/Majorana/Curie (§5, §10).
+- Real mentor mechanics for Laughlin, Bell, and Kondo, beyond
+  Noether/Bloch/Bohr/Majorana/Curie/Anderson (§5, §10).
 - Battle music variants per world (only overworld tracks are per-world so far).
 - A mobile wrapper (Capacitor) and playtesting with students.
 
@@ -530,11 +554,11 @@ Not yet built:
 
 - **Subtype combination rules** — which main+subtype pairs are physically/
   narratively sensible needs a full compatibility table, not just one example.
-- **What Laughlin/Bell/Kondo/Feynman actually unlock** — they're currently
-  lore-only stops (§5, Majorana and Curie now have real mechanics: hybrid
-  materials and analytic moves); their real mechanics (fractional-charge
-  moves, entanglement moves, screening, defect exploitation) may or may not
-  depend on the subtype system above existing first.
+- **What Laughlin/Bell/Kondo actually unlock** — they're currently
+  lore-only stops (§5; Majorana, Curie, and Anderson now have real mechanics:
+  hybrid materials, analytic moves, and impurity doping); their real
+  mechanics (fractional-charge moves, entanglement moves, screening) may or
+  may not depend on the subtype system above existing first.
 - **Scope vs. solo-dev reality** — 10 worlds + full art + mentor roster is large for
   one person; consider cutting to 3–4 flagship worlds for a v1 before building all 10.
 - **Course integration** — supplementary/optional tool, or tied into assessment?

@@ -360,6 +360,24 @@ export function findMaterialByName(name: string): Material | undefined {
   return undefined;
 }
 
+// Every real compound across every world's wild pool, deduped by name (a
+// few names repeat across worlds, e.g. Graphene and Herbertsmithite) --
+// Superposition Mode's "every transmutation/hybrid available from the start"
+// behavior (Bohr/Majorana's panels) draws candidates from this instead of
+// the player's actual `defeatedMaterials` history.
+export function allCrystals(): Material[] {
+  const seen = new Set<string>();
+  const out: Material[] = [];
+  for (const pool of Object.values(WORLD_CRYSTALS)) {
+    for (const m of pool ?? []) {
+      if (seen.has(m.name)) continue;
+      seen.add(m.name);
+      out.push(m);
+    }
+  }
+  return out;
+}
+
 // Averages each color channel of two crystal colors -- used to give a
 // player-created hybrid a look that visually blends its two parents rather
 // than just inheriting one type's flat TYPE_LOOK color.
