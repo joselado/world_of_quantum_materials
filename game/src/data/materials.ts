@@ -4,26 +4,36 @@ import type { Material, Move, MoveClass, MaterialType, CrystalVariant, Stats } f
 // Every move is named after the quasiparticle/excitation that actually
 // carries it, not an abstract "class" label -- Phonon Beam is a beam of
 // phonons, Magnon Pulse a pulse of magnons, and so on. `id` and `class`
-// still mirror ../../../data/materials.json's moves/typeChart (both are
-// small enough now to keep 1:1 rather than a "small subset"); only the
-// display `name` is quasiparticle-themed. Every entry here is a real
-// quasiparticle -- there's deliberately no "impurity scattering" move, since
-// disorder/impurities aren't a particle a crystal emits (see
-// MOVE_COMPATIBILITY below for which of these each material can actually
-// host).
+// still mirror ../../../data/materials.json's moves; only the display `name`
+// is quasiparticle-themed. Every entry here is a real quasiparticle --
+// there's deliberately no "impurity scattering" move, since disorder/
+// impurities aren't a particle a crystal emits (see MOVE_COMPATIBILITY below
+// for which of these each material can actually host).
+//
+// Power climbs with how unconventional the underlying physics is -- an
+// ordinary lattice vibration or band electron is weak, a topological/
+// non-Abelian excitation is strong -- so every move a player buys from
+// Noether outpowers the free starting Phonon Beam:
+//   thermal (Phonon Beam, every crystal has a lattice) < trivial (Electron
+//   Pulse, ordinary band electron) < magnetic (Magnon Pulse, a broken-
+//   symmetry collective mode) < localization (Polaron Drag, a correlated
+//   lattice-bound distortion) < entanglement (Spinon Swap, a fractionalized
+//   spin-liquid excitation) < gauge/decoherence (Anyon Braid, Majorana
+//   Split -- topological and non-Abelian, tied for the most exotic tier the
+//   course covers).
 export const MOVES: Record<string, Move> = {
-  tunnelStrike: { id: 'tunnelStrike', name: 'Electron Pulse', class: 'trivial', power: 8 },
+  tunnelStrike: { id: 'tunnelStrike', name: 'Electron Pulse', class: 'trivial', power: 7 },
   magneticField: { id: 'magneticField', name: 'Magnon Pulse', class: 'magnetic', power: 8 },
   thermalFluctuation: {
     id: 'thermalFluctuation',
     name: 'Phonon Beam',
     class: 'thermal',
-    power: 9,
+    power: 6,
   },
-  localizationPin: { id: 'localizationPin', name: 'Polaron Drag', class: 'localization', power: 7 },
-  fluxTwist: { id: 'fluxTwist', name: 'Anyon Braid', class: 'gauge', power: 7 },
-  entanglementSwap: { id: 'entanglementSwap', name: 'Spinon Swap', class: 'entanglement', power: 8 },
-  decoherenceWave: { id: 'decoherenceWave', name: 'Majorana Split', class: 'decoherence', power: 8 },
+  localizationPin: { id: 'localizationPin', name: 'Polaron Drag', class: 'localization', power: 9 },
+  fluxTwist: { id: 'fluxTwist', name: 'Anyon Braid', class: 'gauge', power: 11 },
+  entanglementSwap: { id: 'entanglementSwap', name: 'Spinon Swap', class: 'entanglement', power: 10 },
+  decoherenceWave: { id: 'decoherenceWave', name: 'Majorana Split', class: 'decoherence', power: 11 },
 };
 
 // Every move Noether can eventually teach, priced by raw power
@@ -65,31 +75,17 @@ export function compatibleMoves(material: Material): string[] {
 // Whether a defender's own type can physically host a given quasiparticle
 // class at all -- the same MOVE_COMPATIBILITY table compatibleMoves() reads
 // for the attacker's side, checked here for the defender's. Backs
-// BattleScene.resolveHit's "quasiparticle mismatch" damage rule: a defender
-// with no natural channel for a quasiparticle (e.g. a plain band insulator
-// hit by a magnon pulse, having no magnetic order to carry/damp it at all)
-// takes that hit at double force, on top of whatever TYPE_CHART's
-// effectiveness() already says for that class/type pair.
+// BattleScene.resolveHit's "quasiparticle mismatch" damage rule, now the
+// sole type-interaction term in battle (the earlier strong/weak TYPE_CHART
+// was dropped as an unnecessary second system on top of it -- see DESIGN.md
+// §4): a defender with no natural channel for a quasiparticle (e.g. a plain
+// band insulator hit by a magnon pulse, having no magnetic order to carry/
+// damp it at all) takes that hit at double force. Thermal (Phonon Beam) is
+// on every type's MOVE_COMPATIBILITY list, so it can never trigger this --
+// the one universal move is also the one that never gets the mismatch bonus,
+// by design, not an oversight.
 export function canHost(type: MaterialType, moveClass: MoveClass): boolean {
   return MOVE_COMPATIBILITY[type].includes(moveClass);
-}
-
-// DESIGN.md §3's table also lists Majorana Split (decoherence) as strong
-// against "Majorana/entangled pairs" -- tensornet is the entangled-state
-// main type, so that half of the row was simply missing here (decoherence
-// previously had a "weak against" entry but no "strong against" at all,
-// unlike every other move class).
-const TYPE_CHART: Partial<Record<MoveClass, Partial<Record<MaterialType, number>>>> = {
-  magnetic: { trivial: 1.5, supercon: 1.5, topological: 0.5 },
-  thermal: { magnet: 1.5, classicalmag: 1.5, spinliquid: 0.5 },
-  localization: { spinliquid: 1.5, supercon: 0.5, topological: 0.5 },
-  gauge: { qhe: 1.5 },
-  entanglement: { tensornet: 1.5, trivial: 0.5 },
-  decoherence: { tensornet: 1.5, classicalmag: 0.5 },
-};
-
-export function effectiveness(moveClass: MoveClass, defenderType: MaterialType): number {
-  return TYPE_CHART[moveClass]?.[defenderType] ?? 1.0;
 }
 
 // Battle stats (DESIGN.md §3): every crystal starts at the same baseline:
@@ -194,18 +190,31 @@ export const TYPE_LOOK: Record<MaterialType, { color: number; variant: CrystalVa
 };
 
 // A crystal database row: real compound name + main type (which fixes its
-// look and its type-chart matchups) + battle stats. `shadeStep` just
+// look and its move compatibility) + battle stats. `shadeStep` just
 // separates same-type siblings visually (e.g. Iron vs. Cobalt) using
-// TYPE_LOOK's base color.
+// TYPE_LOOK's base color. `variantOverride` lets a specific compound render
+// as a floating 2D sheet or a twisted double-layer instead of its type's
+// usual shard/cluster/prism look -- for the handful of compounds the design
+// doc's crystal database itself calls out as monolayer/van der Waals/twisted
+// (Graphene, Monolayer WTe2, CrI3, Twisted Bilayer MoTe2), not a blanket
+// per-type rule.
 function crystal(
   name: string,
   type: MaterialType,
   maxHp: number,
   moves: string[],
-  shadeStep = 0
+  shadeStep = 0,
+  variantOverride?: CrystalVariant
 ): Material {
   const look = TYPE_LOOK[type];
-  return { name, type, color: shade(look.color, shadeStep * 18), variant: look.variant, maxHp, moves };
+  return {
+    name,
+    type,
+    color: shade(look.color, shadeStep * 18),
+    variant: variantOverride ?? look.variant,
+    maxHp,
+    moves,
+  };
 }
 
 // Per-world (course-topic) wild-crystal pools, keyed by world number --
@@ -224,7 +233,7 @@ function crystal(
 // magnetic order to carry one.
 export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
   1: [
-    crystal('Graphene', 'trivial', 22, ['tunnelStrike', 'thermalFluctuation']),
+    crystal('Graphene', 'trivial', 22, ['tunnelStrike', 'thermalFluctuation'], 0, 'layer'),
     crystal('Manganese Oxide', 'magnet', 26, ['thermalFluctuation', 'magneticField']),
     crystal('Nickel Oxide', 'magnet', 25, ['thermalFluctuation', 'magneticField'], 1),
   ],
@@ -232,19 +241,19 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
   // own in the type system -- it stays at the trivial baseline, just with
   // "lattice" flavor compounds instead of world 1's tutorial picks.
   2: [
-    crystal('Graphene', 'trivial', 22, ['tunnelStrike', 'thermalFluctuation']),
+    crystal('Graphene', 'trivial', 22, ['tunnelStrike', 'thermalFluctuation'], 0, 'layer'),
     crystal('Gallium Nitride', 'trivial', 23, ['tunnelStrike', 'thermalFluctuation'], 1),
     crystal('Magnesium Oxide', 'trivial', 21, ['thermalFluctuation', 'tunnelStrike'], 2),
   ],
   3: [
     crystal('Cr-doped (Bi,Sb)₂Te₃', 'topological', 24, ['fluxTwist', 'decoherenceWave']),
     crystal('Tantalum Arsenide', 'topological', 26, ['fluxTwist', 'tunnelStrike'], 1),
-    crystal('Monolayer WTe₂', 'topological', 23, ['fluxTwist', 'thermalFluctuation'], 2),
+    crystal('Monolayer WTe₂', 'topological', 23, ['fluxTwist', 'thermalFluctuation'], 2, 'layer'),
   ],
   4: [
     crystal('Gallium Arsenide', 'qhe', 25, ['fluxTwist', 'tunnelStrike']),
-    crystal('Graphene (strong field)', 'qhe', 24, ['fluxTwist', 'thermalFluctuation'], 1),
-    crystal('Twisted Bilayer MoTe₂', 'qhe', 26, ['fluxTwist', 'thermalFluctuation'], 2),
+    crystal('Graphene (strong field)', 'qhe', 24, ['fluxTwist', 'thermalFluctuation'], 1, 'layer'),
+    crystal('Twisted Bilayer MoTe₂', 'qhe', 26, ['fluxTwist', 'thermalFluctuation'], 2, 'twisted'),
   ],
   5: [
     crystal('Aluminum', 'supercon', 28, ['localizationPin', 'thermalFluctuation']),
@@ -255,7 +264,7 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
   6: [
     crystal('Iron', 'classicalmag', 27, ['thermalFluctuation', 'magneticField']),
     crystal('Cobalt', 'classicalmag', 27, ['thermalFluctuation', 'magneticField'], 1),
-    crystal('Chromium Triiodide', 'classicalmag', 25, ['thermalFluctuation', 'magneticField'], 2),
+    crystal('Chromium Triiodide', 'classicalmag', 25, ['thermalFluctuation', 'magneticField'], 2, 'layer'),
   ],
   7: [
     crystal('Herbertsmithite', 'tensornet', 23, ['entanglementSwap', 'thermalFluctuation']),

@@ -8,7 +8,6 @@ import { playAttackEffect } from '../art/attackEffects';
 import { fontPx, fontScale } from '../ui/text';
 import {
   MOVES,
-  effectiveness,
   canHost,
   BASE_STAT,
   getPlayerMaterial,
@@ -26,6 +25,7 @@ import { music } from '../audio/music';
 const FIELD_W = 640;
 const FIELD_H = 480;
 const HORIZON_Y = 262;
+const LOG_Y = 440; // combat log's usual bottom-anchored resting position
 const BATTLE_TOKEN_STAKE = 50; // won on a win, lost (floored at 0) on a loss
 const RIVAL_TOKEN_STAKE = 100; // the gating rival fight pays out double, win or lose
 const OPPONENT_POS = { x: 460, y: 150 };
@@ -147,13 +147,14 @@ export class BattleScene extends Phaser.Scene {
     }
 
     const openingLine = this.isRival ? `${this.wild.name} blocks the way onward!` : `A wild ${this.wild.name} appeared!`;
-    this.logText = this.add.text(20, 440, openingLine, {
+    this.logText = this.add.text(20, LOG_Y, '', {
       fontSize: fontPx(this, 14),
       color: '#ffffff',
       backgroundColor: 'rgba(0,0,0,0.45)',
       padding: { x: 8, y: 6 },
       wordWrap: { width: 600 },
     });
+    this.setLogText(openingLine);
 
     this.drawMoveMenu(getBattleMoves(this.game.registry));
 
@@ -167,12 +168,11 @@ export class BattleScene extends Phaser.Scene {
   // positioned buttons across the field.
   //
   // Move menu matchup info (DESIGN.md §4): each button also shows the
-  // move's power and, against *this* opponent, whether the type chart
-  // favors it (^ strong / v weak) and whether the opponent has no natural
-  // way to host it at all (the "quasiparticle mismatch" double-damage rule,
-  // marked !! 2x) -- both were previously only visible after the hit landed
-  // in the battle log, so a first-time player had no way to plan a move
-  // before swinging.
+  // move's power and, against *this* opponent, whether the opponent has no
+  // natural way to host it at all -- the "quasiparticle mismatch"
+  // double-damage rule, the sole type-interaction term in battle, marked
+  // !! 2x -- previously only visible after the hit landed in the battle
+  // log, so a first-time player had no way to plan a move before swinging.
   private drawMoveMenu(moveIds: string[]) {
     const rowCount = Math.max(moveIds.length, 1);
     const scale = fontScale(this);
@@ -197,7 +197,7 @@ export class BattleScene extends Phaser.Scene {
     y += title.height + 4;
 
     const legend = this.add
-      .text(MENU_X + MENU_WIDTH / 2, y, `vs ${this.wild.name}: ^ strong  v weak  !! no defense (2x)`, {
+      .text(MENU_X + MENU_WIDTH / 2, y, `vs ${this.wild.name}: !! no natural defense (2x)`, {
         fontSize: fontPx(this, 10),
         color: '#8fa0c9',
         align: 'center',
@@ -259,19 +259,12 @@ export class BattleScene extends Phaser.Scene {
 
     moveIds.forEach((moveId, i) => {
       const move = MOVES[moveId];
-      const mult = effectiveness(move.class, this.wild.type);
       const mismatch = !canHost(this.wild.type, move.class);
       let tag = '';
       let color = '#ffff88';
       if (mismatch) {
         tag = ' !!2x';
         color = '#ffaa44';
-      } else if (mult > 1) {
-        tag = ' ^';
-        color = '#88ff88';
-      } else if (mult < 1) {
-        tag = ' v';
-        color = '#ff8888';
       }
       const btn = this.add
         .text(MENU_X + MENU_WIDTH / 2, rowsTop + i * rowH, `${move.name}\nPwr ${move.power}${tag}`, {
@@ -532,6 +525,19 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
+  // Sets the combat-log text and repositions it upward just enough to keep
+  // it on screen. Most per-turn messages are one line and rest at the usual
+  // bottom-anchored LOG_Y, but a message that wraps to two lines (e.g. a
+  // quasiparticle-mismatch hit's "No natural defense against this!" suffix)
+  // would otherwise run its second line off the bottom of the canvas at a
+  // fixed y -- `restY` lets endBattle's much longer summary reuse the same
+  // clamp with a higher ceiling instead of duplicating it.
+  private setLogText(text: string, restY = LOG_Y) {
+    this.logText.setText(text);
+    const y = Math.max(8, Math.min(restY, FIELD_H - this.logText.height - 16));
+    this.logText.setPosition(20, y);
+  }
+
   // Shared by both the player's and the opponent's swings -- the only
   // difference is which side is attacking, so the damage/crit/log/effect
   // logic lives here once instead of duplicated per side.
@@ -540,11 +546,12 @@ export class BattleScene extends Phaser.Scene {
     const attackerStats = isPlayer ? this.playerStats : this.enemyStats;
     const defenderStats = isPlayer ? this.enemyStats : this.playerStats;
     const defenderType = isPlayer ? this.wild.type : this.playerMaterial.type;
-    const mult = effectiveness(move.class, defenderType);
     // A defender whose own physics can't host this quasiparticle at all (no
     // magnetic order to carry a magnon pulse, no gauge structure for an
     // anyon braid, ...) has no natural way to dampen it -- it lands at
-    // double force, stacked on top of whatever the type chart already says.
+    // double force. This is the only type-interaction term battle damage
+    // has (DESIGN.md §4) -- there is no separate strong/weak type chart on
+    // top of it.
     const mismatch = !canHost(defenderType, move.class);
 
     const critChance = Phaser.Math.Clamp((attackerStats.quantumness - BASE_STAT) * 0.02, 0, 0.5);
@@ -553,7 +560,6 @@ export class BattleScene extends Phaser.Scene {
     const defenseFactor = BASE_STAT / defenderStats.correlation;
     const dmg = Math.round(
       move.power *
-        mult *
         (mismatch ? 2 : 1) *
         attackMult *
         defenseFactor *
@@ -564,7 +570,7 @@ export class BattleScene extends Phaser.Scene {
     const from = isPlayer ? PLAYER_POS : this.opponentPos;
     const to = isPlayer ? this.opponentPos : PLAYER_POS;
     const targetCrystal = isPlayer ? this.opponentCrystal : this.playerCrystal;
-    playAttackEffect(this, move.class, from, to, () => this.impactPunch(targetCrystal), mult);
+    playAttackEffect(this, move.class, from, to, () => this.impactPunch(targetCrystal), mismatch ? 2 : 1);
 
     if (isPlayer) {
       this.opponentHp = Math.max(0, this.opponentHp - dmg);
@@ -575,11 +581,10 @@ export class BattleScene extends Phaser.Scene {
     }
     this.updateBars();
 
-    const effText = mult > 1 ? ' It was super effective!' : mult < 1 ? ' It was not very effective...' : '';
     const mismatchText = mismatch ? ' No natural defense against this!' : '';
     const critText = crit ? ' A coherent critical hit!' : '';
     const who = isPlayer ? 'You' : `Wild ${this.wild.name}`;
-    this.logText.setText(`${who} used ${move.name}! (${dmg} dmg)${effText}${mismatchText}${critText}`);
+    this.setLogText(`${who} used ${move.name}! (${dmg} dmg)${mismatchText}${critText}`);
 
     if (this.opponentHp <= 0) {
       this.endBattle(true);
@@ -642,16 +647,11 @@ export class BattleScene extends Phaser.Scene {
     const tokenText = won ? `+${stake} qumatokens!` : `-${tokens - newTokens} qumatokens...`;
     const flavor = won ? victoryLine(this.wild) : defeatLine(this.wild);
     const blurb = materialBlurb(this.wild);
-    // The end-of-battle summary runs several lines longer than an
-    // in-combat log line (flavor + token delta + the physics blurb) --
-    // moved up from the combat log's usual bottom-anchored position so the
-    // extra lines don't run off the bottom of the canvas. setText first so
-    // .height reflects the actual wrapped line count at the current text
-    // size setting, then clamp upward (never down past 210) so a big text
-    // size or a long blurb can't push the bottom off-canvas.
-    this.logText.setText(`${flavor}\n${tokenText}\n\n${blurb}\n\nPress SPACE to return.`);
-    const y = Math.max(8, Math.min(210, FIELD_H - this.logText.height - 16));
-    this.logText.setPosition(20, y);
+    // The end-of-battle summary runs several lines longer than an in-combat
+    // log line (flavor + token delta + the physics blurb), so it needs a
+    // much higher clamp ceiling than setLogText's default LOG_Y -- a big
+    // text size or a long blurb still can't push the bottom off-canvas.
+    this.setLogText(`${flavor}\n${tokenText}\n\n${blurb}\n\nPress SPACE to return.`, 210);
 
     this.input.keyboard!.once('keydown-SPACE', () => this.scene.start('Overworld', { world: this.world }));
   }

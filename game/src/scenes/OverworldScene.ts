@@ -35,7 +35,8 @@ import {
 import { tokenColorForValue } from '../data/tokens';
 import { getMaterialQuestion } from '../data/quiz';
 import { encounterGreeting } from '../data/greetings';
-import { TUTORIAL_PAGES } from '../data/tutorial';
+import { TUTORIAL_PAGES, TUTORIAL_TIPS, hasSeenTip, markTipSeen } from '../data/tutorial';
+import type { TutorialTipId } from '../data/tutorial';
 import { STORY_BEATS } from '../data/story';
 import { DENSITY_PRESETS, DEFAULT_ENCOUNTER_DENSITY, FONT_SCALE_PRESETS, DEFAULT_FONT_SCALE } from '../data/settings';
 import { persistFromRegistry } from '../data/save';
@@ -408,7 +409,11 @@ export class OverworldScene extends Phaser.Scene {
 
     this.maybeAutoOpenGoalDialogue();
     this.maybeAutoOpenMiddleDialogue();
-    this.maybeShowFirstTimeTutorial();
+    // Same "don't stack on top of an already-open panel" guard the old
+    // first-run tutorial used -- the player's starting tile is never on the
+    // goal/middle row, so this only actually skips in practice if a future
+    // change moves the start closer to either.
+    if (!this.dialogueActive) this.showTutorialTip('controls');
   }
 
   private isDebugMode(): boolean {
@@ -437,17 +442,80 @@ export class OverworldScene extends Phaser.Scene {
     persistFromRegistry(this.game.registry);
   }
 
-  // First-run onboarding (data/tutorial.ts's TUTORIAL_PAGES): plays once,
-  // the first time an Overworld scene is ever created for this save, then
-  // never auto-triggers again -- the Enter-menu's "Tutorial" button is the
-  // way to replay it after that. Guarded by dialogueActive so it never
-  // stacks on top of a goal/start-tile mentor panel that just opened.
-  private maybeShowFirstTimeTutorial() {
-    if (this.dialogueActive) return;
-    if (this.game.registry.get('tutorialSeen')) return;
-    this.game.registry.set('tutorialSeen', true);
+  // Contextual onboarding (data/tutorial.ts's TUTORIAL_TIPS): each tip fires
+  // once per save, the moment its own feature actually becomes relevant --
+  // see the call sites in maybeTriggerEncounter (encounter), startBattle
+  // (battle), maybeCollectToken (qumatoken), openMentor (mentor), and
+  // maybeAutoOpenGoalDialogue (goal), plus the 'controls' call right above
+  // this method. `onClose` is whatever the caller was about to do next (open
+  // the encounter panel, launch the battle, ...) -- it always still runs,
+  // either immediately (tip already seen) or after the player dismisses the
+  // popup (first time), so callers don't need their own seen/unseen branch.
+  private showTutorialTip(id: TutorialTipId, onClose?: () => void) {
+    if (hasSeenTip(this.game.registry, id)) {
+      onClose?.();
+      return;
+    }
+    markTipSeen(this.game.registry, id);
     persistFromRegistry(this.game.registry);
-    this.showTutorial(0);
+    this.renderTutorialTipPopup(TUTORIAL_TIPS[id], onClose);
+  }
+
+  // A single-page version of renderTutorialPage below (no counter/Back/Next,
+  // just a "Got it" button) -- content laid out top-down first, panel sized/
+  // inserted behind it afterward, same pattern as every other panel here.
+  private renderTutorialTipPopup(page: (typeof TUTORIAL_TIPS)[TutorialTipId], onClose?: () => void) {
+    this.dialogueContainer?.destroy(true);
+    this.dialogueActive = true;
+
+    const panelWidth = 520;
+    const top = 60;
+    const container = this.add.container(0, 0).setDepth(100);
+    this.dialogueContainer = container;
+
+    let y = top;
+    const title = this.add
+      .text(CANVAS_W / 2, y, page.title, {
+        fontSize: fontPx(this, 16),
+        color: '#ffffff',
+        fontStyle: 'bold',
+        align: 'center',
+        wordWrap: { width: panelWidth - 60 },
+      })
+      .setOrigin(0.5, 0);
+    container.add(title);
+    y += title.height + 12;
+
+    const body = this.add
+      .text(CANVAS_W / 2, y, page.body, {
+        fontSize: fontPx(this, 12),
+        color: '#cfd8ff',
+        align: 'center',
+        wordWrap: { width: panelWidth - 60 },
+        lineSpacing: 5,
+      })
+      .setOrigin(0.5, 0);
+    container.add(body);
+    y += body.height + 18;
+
+    const gotIt = this.addDialogueButtonAt(
+      container,
+      CANVAS_W / 2,
+      y,
+      'Got it',
+      () => {
+        this.closeDialogue();
+        onClose?.();
+      },
+      140
+    );
+    y += gotIt.height + 14;
+
+    const panelHeight = y - top;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.95)
+      .setStrokeStyle(2, 0x5ad9ff);
+    container.addAt(panel, 0);
   }
 
   // Renders data/tutorial.ts's TUTORIAL_PAGES as a paged overlay -- Back/
@@ -1128,7 +1196,7 @@ export class OverworldScene extends Phaser.Scene {
     // "Let me pass" never triggers a scene change at all, so it doesn't
     // need this snapshot, but saving unconditionally is simplest.
     this.saveMapState();
-    this.showEncounter(material);
+    this.showTutorialTip('encounter', () => this.showEncounter(material));
   }
 
   // Adds a wild material to the Materialdex the Hub scene reads from, the
@@ -1256,8 +1324,10 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   private startBattle(material: Material, attackMultiplier: number, isRival = false) {
-    this.closeDialogue();
-    this.scene.start('Battle', { wild: material, world: this.world, attackMultiplier, isRival });
+    this.showTutorialTip('battle', () => {
+      this.closeDialogue();
+      this.scene.start('Battle', { wild: material, world: this.world, attackMultiplier, isRival });
+    });
   }
 
   // Closes whatever dialogue panel is open (wild encounter, the rival gate,
@@ -1286,7 +1356,7 @@ export class OverworldScene extends Phaser.Scene {
   // "Continue to World N+1" triggers (see tryAdvanceToNextWorld).
   private maybeAutoOpenGoalDialogue() {
     if (!this.reachedGoal || this.dialogueActive) return;
-    this.openGoalMentorPanel();
+    this.showTutorialTip('goal', () => this.openGoalMentorPanel());
   }
 
   // Looks up this world's goal-tile mentor (if any) in WORLD_MENTORS and
@@ -1318,7 +1388,7 @@ export class OverworldScene extends Phaser.Scene {
       this.game.registry.set('metMentors', [...met, mentor.id]);
       persistFromRegistry(this.game.registry);
     }
-    (mentor.open ?? ((s: OverworldScene) => s.showMentorLore(mentor)))(this);
+    this.showTutorialTip('mentor', () => (mentor.open ?? ((s: OverworldScene) => s.showMentorLore(mentor)))(this));
   }
 
   // Every world's goal panel now that no mentor stands there (they've all
@@ -2419,6 +2489,7 @@ export class OverworldScene extends Phaser.Scene {
     this.game.registry.set('qumatokens', this.qumatokens);
     this.tokenText.setText(`Qumatokens: ${this.qumatokens}`);
     persistFromRegistry(this.game.registry);
+    this.showTutorialTip('qumatoken');
   }
 
   // The goal is a whole finish row (the corridor is wide), not a single

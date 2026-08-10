@@ -85,6 +85,13 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
 | 1 | Tutorial Meadow | pale blue gradient (`0x8fd0ff`→`0xe8f6ff`) | grass `0x2e7d32` | dirt `0xb08d57` | flowers | yes |
 | 2 | Crystalline Caves | dark purple gradient (`0x1a1730`→`0x362f5c`) | stone `0x2b2b3a` | cave floor `0x585073` | crystal glints (cyan) | no |
 | 3 | Floating Islands | deep-to-pale blue gradient (`0x2a3d6b`→`0x8fb8e8`) | slate blue `0x35507a` | pale sky-blue walkway `0x9ac0e0` | crystal glints (cyan) | yes |
+| 4 | Landau Level Terrain | deep electric-blue gradient (`0x081428`→`0x1f4d8f`) | field-line blue `0x2a5ca8` | glowing blue `0x3a7fd4` | field lines | no |
+| 5 | Frozen Caverns | icy dark gradient (`0x0d1b2a`→`0x2a4858`) | icy slate `0x24404f` | pale ice-blue `0x8fdcff` | crystal glints (cyan) | no |
+| 6 | Magnon Plains | pale blue-green gradient (`0x9fd8ff`→`0xdff3ff`) | olive-gold `0x8fae5c` | warm gold `0xd4c07a` | ripples | yes |
+| 7 | Tensor-Network World | dark violet gradient (`0x120a24`→`0x2c1a4a`) | deep purple `0x3a2560` | violet bond-path `0x8a5cd9` | network nodes | no |
+| 8 | Spinon Forest | muted grey-green gradient (`0x2a2f28`→`0x4a5248`) | low-contrast green `0x3a4238` | muted sage `0x5a6a58` | mist motes | no |
+| 9 | Defect Wastes | scorched red-black gradient (`0x1a0808`→`0x3a1414`) | charred red `0x4a1c1c` | cracked red `0x8a2a2a` | cracks | no |
+| 10 | Adaptive Meta-World | shimmering violet gradient (`0x2a1a3a`→`0x6a4a8a`) | violet `0x5a3a7a` | lavender `0xc9a8f0` | crystal glints (cyan) | yes |
 
 ## Qumatoken pickups (`art/tokens.ts`, `data/tokens.ts`)
 
@@ -107,6 +114,16 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
 - Shared `makeCrystal()` builder (`art/crystals.ts`): faceted `shard` / `cluster` / `prism`
   silhouette per material, colored per its main type (`TYPE_LOOK` in `data/materials.ts`),
   plus a highlight and twinkling sparkles.
+- Two more variants exist for compounds whose actual dimensionality/stacking doesn't read
+  as a solid gem: `layer` is a single thin, flattened hexagonal sheet with a soft
+  *detached* shadow underneath it (not touching the sheet) so it reads as floating rather
+  than resting on the ground — used for 2D/van der Waals compounds (Graphene, Monolayer
+  WTe₂, Chromium Triiodide). `twisted` is two of those sheets stacked with a rotational
+  offset between their hex outlines (the moiré mismatch is the point), both rendered
+  semi-transparent so the offset is actually visible — used for twisted systems (Twisted
+  Bilayer MoTe₂). Picked per-compound via `data/materials.ts`'s `crystal()`
+  `variantOverride` param, not derived from `TYPE_LOOK`, since a compound's dimensionality
+  doesn't track its main type.
 - Sizes: player `PLAYER_CRYSTAL_SIZE = 34` (largest, always on-screen), wild encounters
   `CRYSTAL_SIZE = 22`.
 
@@ -275,14 +292,18 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
   `data/greetings.ts` (`victoryLine`/`defeatLine`), keyed to the wild material's type the
   same way the overworld encounter greeting is. A rival fight swaps the opener for "X blocks
   the way onward!" (no "wild") but reuses the same victory/defeat lines.
-- The end-of-battle log text repositions from its usual bottom-anchored combat-log spot
-  (`20, 440`) up to `20, 210` -- the summary runs several lines longer once the physics blurb
-  (`data/materialdex.ts`'s `materialBlurb`) is appended after the flavor/token lines, and at
-  the original position those extra lines would run off the bottom of the canvas.
-- Per-turn log text appends "It was super effective!"/"It was not very effective..." for the
-  type chart, then a separate "No natural defense against this!" when the quasiparticle
-  mismatch multiplier fires (`BattleScene.resolveHit`), then "A coherent critical hit!" for a
-  crit -- up to three clauses can stack on one line, in that fixed order.
+- Every combat-log update goes through `BattleScene.setLogText`, which clamps the text
+  upward just enough to keep it on screen rather than sitting at a fixed y regardless of how
+  many lines it wraps to. A one-line per-turn message rests at the usual bottom-anchored spot
+  (`20, LOG_Y = 440`); a message that wraps to two lines (e.g. a quasiparticle-mismatch hit's
+  "No natural defense against this!" suffix) gets nudged up just enough to keep its second
+  line on screen. The end-of-battle summary reuses the same helper with a much higher ceiling
+  (`20, 210`) since it runs several lines longer once the physics blurb (`data/materialdex.ts`'s
+  `materialBlurb`) is appended after the flavor/token lines.
+- Per-turn log text appends "No natural defense against this!" when the quasiparticle
+  mismatch multiplier fires (`BattleScene.resolveHit`, the sole type-interaction rule in
+  battle -- see DESIGN.md §3/§4), then "A coherent critical hit!" for a crit -- up to two
+  clauses can stack on one line, in that fixed order.
 
 ## Battle move menu (`BattleScene.drawMoveMenu`)
 
@@ -291,11 +312,10 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
   (`0xffe066`) to match Noether's own panel color, titled "MOVES" in bold gold. Height grows
   with however many moves are currently usable (`34 + rowCount * 34`) rather than a fixed
   size, since that count changes as the player learns moves or transmutes into a form with
-  a different physics-compatible set (§3 of DESIGN.md). Replaces the old scattered
-  individually-positioned buttons that used to run off the field past ~4 moves.
+  a different physics-compatible set (§3 of DESIGN.md).
 - Each move is a `[ #222244 background / #ffff88 text ]` button, same treatment used
-  everywhere else (overworld dialogue buttons, the old scattered layout) for visual
-  continuity, stacked vertically inside the panel rather than spread horizontally. A form
+  everywhere else (overworld dialogue buttons) for visual continuity, stacked vertically
+  inside the panel rather than spread horizontally. A form
   with zero currently-usable moves (shouldn't normally happen, since Phonon Beam is
   universal) shows "No usable moves" instead of an empty panel.
 
@@ -325,19 +345,33 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
   blue-grey hint line beneath explains it only affects maps generated after the
   change, then a single "Close" button.
 
-## Tutorial popup (`OverworldScene.showTutorial`/`renderTutorialPage`)
+## Contextual tutorial tips (`OverworldScene.showTutorialTip`/`renderTutorialTipPopup`, `HubScene.maybeShowLabTip`)
 
-- Same dark rounded-rectangle-with-stroke panel as everywhere else (`560x300`), stroked a
-  fresh cyan (`0x5ad9ff`) not used by any other panel. A small `TUTORIAL -- n / N` counter in
-  that same cyan sits above the page title (bold white) and body text (muted blue-grey
-  `#cfd8ff`, center-aligned, matching the wild-encounter greeting's tone).
+- Same dark rounded-rectangle-with-stroke panel family as everywhere else (`520` wide, height
+  grown to fit), stroked the same cyan (`0x5ad9ff`) the old paged tutorial used -- title (bold
+  white) above body text (muted blue-grey `#cfd8ff`, center-aligned, matching the
+  wild-encounter greeting's tone), a single "Got it" button beneath. No page counter or
+  Back/Next -- each popup is one tip, not a sequence, so paging chrome would be pure noise.
+  The Lab's version (`HubScene.maybeShowLabTip`) reuses `HubScene.showPanel` instead (purple
+  `0x9a6ad9` stroke, that scene's own panel treatment) rather than duplicating this one, since
+  it's a single one-off popup there too.
+- Fires automatically the first time its own feature becomes relevant (`tutorialTipsSeen`,
+  data/tutorial.ts's `TutorialTipId`) -- walking into the Lab, taking your first steps in a
+  world, bumping into your first wild crystal, and so on -- never more than one on screen at a
+  time, and never all of them in a row the way the old single first-run sequence did.
+
+## Full tutorial recap (`OverworldScene.showTutorial`/`renderTutorialPage`)
+
+- Same panel family, `560x300`, same cyan stroke -- this is the paged, multi-tip version, kept
+  only for the Enter-menu's "Tutorial" button (replays every tip in `data/tutorial.ts`'s
+  `TUTORIAL_PAGES`, in order, on demand). A small `TUTORIAL -- n / N` counter sits above the
+  page title.
 - Footer row: `<- Back` (hidden on the first page) and `Next ->` (hidden on the last page)
   flank a center button that reads "Skip" on every page except the last, where it becomes
   "Done" -- both close the panel either way, "Skip"/"Done" is just the honest label for what
   happens at that point in the sequence.
-- Triggers automatically once, the first time an Overworld scene is ever created for a save
-  (`tutorialSeen`); afterward only opens on request via the Enter-menu's "Tutorial" button,
-  always restarting from page 1.
+- No longer triggers automatically on its own -- see "Contextual tutorial tips" above for what
+  a new save actually sees; this is opt-in only, always restarting from page 1.
 
 ## Debug warp panels (`HubScene.showWorldSelectPanel`, `OverworldScene.showDebugWarpPanel`)
 
@@ -370,7 +404,8 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
   pattern as the overworld's per-frame ground mesh) rather than a sprite, then destroyed on
   arrival/decay.
 - Each attack also plays a procedural one-shot sound keyed to the same bolt/ring/burst shape
-  (`audio/sfx.ts`'s `playAttackSfx`) on launch and an impact thump scaled by the move's
-  type-effectiveness multiplier (`playImpactSfx`) on arrival, and dips the currently-playing
+  (`audio/sfx.ts`'s `playAttackSfx`) on launch and an impact thump scaled by the
+  quasiparticle-mismatch multiplier (`playImpactSfx`, 2x on a mismatched hit, 1x otherwise)
+  on arrival, and dips the currently-playing
   music track's volume for the beat's duration (`audio/music.ts`'s `MusicEngine.duck`) so the
   hit reads clearly over the score before the music comes back up.

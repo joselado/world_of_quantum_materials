@@ -39,8 +39,8 @@ One world per course topic (see the topic table in the repo's top-level `CLAUDE.
 | 10 | ML for quantum materials | **The Adaptive Meta-World** — reflects the player's own team | Echoes of earlier phases of matter, plus the adaptive final boss | Final battle |
 
 World and rival names are meant to read as the lecture topic, not generic RPG terrain/monster
-names -- e.g. world 2's rival was originally "Rival Lattice Defect", which is actually world 9's
-topic (defects), not world 2's (symmetries/Bloch's theorem); renamed to "Rival Bloch Wave".
+names (check `WORLD_NAMES` and `WORLD_RIVALS` together when naming a world -- a mismatched
+rival name is easy to miss if only one table is updated).
 
 World 10 has no course notebook, which fits it being the finale rather than a taught
 topic: the boss is "a model of you," which is an honest metaphor for an ML surrogate.
@@ -158,6 +158,15 @@ the level of "a metal," "a superconductor," generic ML methods), so those two ro
 entirely on textbook fill-ins rather than course-sourced examples — worth flagging if
 a stricter "must appear in the course material" rule is later adopted.
 
+**2D and twisted crystal graphics.** Most compounds render as the shard/cluster/prism
+gem look their main type's `TYPE_LOOK` fixes, but a handful the table above itself calls
+out as monolayer/van der Waals/twisted get a per-compound look override instead
+(`data/materials.ts`'s `crystal()` `variantOverride` param, `art/crystals.ts`'s
+`drawLayerShape`/`drawTwistedShape`, see STYLE.md): Graphene, Monolayer WTe₂, and
+Chromium Triiodide render as a single floating 2D sheet (`'layer'`); Twisted Bilayer
+MoTe₂ renders as two twisted, moiré-offset sheets (`'twisted'`) — the crystal's shape
+reflects the actual dimensionality/stacking of the compound, not just its main type.
+
 World 10's wild pool (`WORLD_CRYSTALS[10]` in `data/materials.ts`) is "Echo of ..."
 crystals — 'adaptive' type, no real compound behind them, each one's moveset recalling
 an earlier world (e.g. Echo of the Islands carries the same Anyon Braid/Majorana Split
@@ -196,26 +205,27 @@ menu (`getBattleMoves` = learned moves ∩ compatible moves) and Noether's shop 
 intersection, so she only ever offers what the player's *current* crystal form can
 actually carry — see the transmutation mechanic in §5).
 
-**Type-effectiveness chart** (draft — see `data/materials.json`, needs playtesting):
+**Battle dynamics are deliberately simple: one type-interaction rule, not a chart.**
+An earlier draft strong/weak type-effectiveness chart (per attack, per defender main type)
+was removed — it stacked a second, untested multiplier on top of the quasiparticle-mismatch
+rule below for no real gain in clarity, and DESIGN.md §10 had already flagged it as an
+unplaytested hypothesis. The single rule that remains is §4's "quasiparticle mismatch":
+double damage when the defender's own physics can't host the attacking move's quasiparticle
+class at all. See `data/materials.ts`'s `canHost()`/`MOVE_COMPATIBILITY` and
+`BattleScene.resolveHit`.
 
-| Attack (quasiparticle) | Strong against | Weak against |
-|---|---|---|
-| Magnon Pulse | Free fermion, s-wave SC (pair-breaking) | Chern insulator, triplet SC |
-| Phonon Beam | Any symmetry-broken/ordered type | Quantum spin liquid (no order to melt) |
-| Polaron Drag | Spinon/holon states | Superconductor (phase rigidity), topological edge states |
-| Anyon Braid | Quantum Hall states | — (universally relevant, low power) |
-| Spinon Swap | Tensor-network states (mirrors damage) | Trivial/product states (no effect) |
-| Majorana Split | Majorana/entangled pairs (splits their bonus) | Classical magnet (already decohered) |
-
-This table's "strong against" column is now fully implemented in `data/materials.ts`'s
-`TYPE_CHART` — Majorana Split's `tensornet: 1.5` entry (its "Majorana/entangled pairs" match)
-was missing until a 2026-08 pass added it; every other row already had both its strong and weak
-entries. Shown to the player directly in the battle move menu now too (see §4's "Move menu
-matchup info"), not just documented here.
-
-Electron Pulse (the trivial-class move) has no dedicated row — trivial-type moves deal
-neutral damage everywhere, matching ordinary (non-topological, non-correlated) electrons
-having no special matchup of their own.
+**Move power scales with how unconventional the quasiparticle is.** An ordinary lattice
+vibration or band electron is weak; a topological or non-Abelian excitation is strong — so
+every move the player can buy from Noether outpowers the free starting Phonon Beam. Ordered,
+low to high (`data/materials.ts`'s `MOVES`): Phonon Beam (thermal, every crystal has a
+lattice) < Electron Pulse (trivial, an ordinary band electron) < Magnon Pulse (magnetic, a
+broken-symmetry collective mode) < Polaron Drag (localization, a correlated lattice-bound
+distortion) < Spinon Swap (entanglement, a fractionalized spin-liquid excitation) <
+Anyon Braid / Majorana Split (gauge / decoherence, topological and non-Abelian — tied for
+the most exotic tier the course covers). Because Phonon Beam (thermal) is on every type's
+`MOVE_COMPATIBILITY` list, it can never trigger the quasiparticle-mismatch double-damage
+rule above — the one universal move is also the one that never gets the mismatch bonus, by
+design.
 
 ## 4. Battle system
 
@@ -225,33 +235,28 @@ Turn-based, speed-ordered by Velocity. Status effects mirror real phenomena:
 - **Gapped down** — defense drops (mirrors gap closing)
 - **Symmetry-broken** — forced type shift for N turns
 
-**Quasiparticle mismatch.** On top of the type-effectiveness chart above, a defender
+**Quasiparticle mismatch.** The sole type-interaction rule in battle (§3): a defender
 whose own type can't physically host the attacking move's quasiparticle class at all
-(`data/materials.ts`'s `MOVE_COMPATIBILITY`, checked via the new `canHost()`) takes that
+(`data/materials.ts`'s `MOVE_COMPATIBILITY`, checked via `canHost()`) takes that
 hit at double force (`BattleScene.resolveHit`) — a plain band insulator has no magnetic
-order to damp a magnon pulse with, so it lands unmitigated, stacked multiplicatively with
-whatever `effectiveness()` already says for that class/type pair. Applies symmetrically
+order to damp a magnon pulse with, so it lands unmitigated. Applies symmetrically
 to both sides, same as every other `resolveHit` term. Surfaced in the battle log as "No
 natural defense against this!".
 
-**Move menu matchup info.** Both of the above used to be visible only after a hit
-landed, in the battle log text — a first-time player had no way to plan a move against
-a given opponent before swinging. `BattleScene.drawMoveMenu` now labels each move
-button with its power and, computed against the current opponent's type, a `^` (type
-chart favors it), `v` (type chart disfavors it), or `!!2x` (quasiparticle mismatch, the
-double-damage rule above) tag, plus a one-line legend at the top of the panel spelling
-out what those symbols mean. The panel's row height is computed from how many moves are
+**Move menu matchup info.** `BattleScene.drawMoveMenu` labels each move
+button with its power and, computed against the current opponent's type, a `!!2x` tag
+when the quasiparticle-mismatch double-damage rule above applies, plus a one-line legend
+at the top of the panel spelling out what that symbol means. The panel's row height is computed from how many moves are
 currently listed (`drawMoveMenu`'s `rowH`) rather than fixed, since an 'adaptive'-type
 crystal (world 10, see §3) can host every move class at once and a fixed row height
 sized for the usual 2-4 moves would push the panel off the bottom of the canvas once
 all 7 are unlocked.
 
-**Battle background per world.** `BattleScene.drawBackground` now reads the same
-`art/biomes.ts` table the overworld corridor uses (`getBiome(this.world)`) instead of
-a single hardcoded pastoral-meadow arena — sky, ridgelines, ground, and the decorative
-crystal outcrops/ground tufts are all shaded off that world's biome colors, so a fight
-in the frozen caverns or the cracked world actually looks like it, not like every other
-world's battle.
+**Battle background per world.** `BattleScene.drawBackground` reads the same
+`art/biomes.ts` table the overworld corridor uses (`getBiome(this.world)`) —
+sky, ridgelines, ground, and the decorative crystal outcrops/ground tufts are all
+shaded off that world's biome colors, so a fight in the frozen caverns or the cracked
+world actually looks like it, not like every other world's battle.
 
 **Wild encounter dialogue.** Bumping into a wild crystal opens a single in-map dialogue
 screen (`OverworldScene.showEncounter`, not a separate scene): a greeting line tied to
@@ -279,8 +284,8 @@ player is only ever offered Electron Pulse until they transmute into a form that
 more. Unlocked moves persist in the Phaser registry's `unlockedMoves` entry (a global
 "moves learned," never erased by transmuting) and become available as battle buttons in
 `BattleScene` once filtered through that same compatibility check
-(`getBattleMoves` = learned ∩ compatible). The move list now renders as a docked panel on
-the right of the field rather than individually positioned buttons (`BattleScene.drawMoveMenu`).
+(`getBattleMoves` = learned ∩ compatible). The move list renders as a docked panel on
+the right of the field (`BattleScene.drawMoveMenu`).
 Noether's shop panel also carries a second tab for spending qumatokens on the player's own
 Quantumness/Velocity/Correlation stats (§3). The actual "leave this world" action -- a
 footer button that fights the world's rival crystal the first time it's clicked (see §2),
@@ -303,8 +308,7 @@ encountered (not per-battle, and not for rival crystals, which aren't real compo
 recorded into the Phaser registry's `discoveredMaterials` list
 (`OverworldScene.recordDiscovery`); the Hub's Materialdex hotspot (§2) lists every
 discovered material together with its blurb, paginated two entries per page
-(`HubScene.renderMaterialdexPage`) rather than one long block of text — a long-run save
-with 20+ discoveries used to overflow both the panel and the canvas itself.
+(`HubScene.renderMaterialdexPage`).
 
 ## 5. Mentors, economy, and story arc
 
@@ -343,14 +347,14 @@ mentor; its only encounter is the finale.
 - **Feynman** → world 9 middle → lore only for now; flavor ties in via Feynman diagrams
   for excitations
 
-**Boss avatars.** Every built world's rival/boss (`WORLD_RIVALS`/`getRival`) now
+**Boss avatars.** Every built world's rival/boss (`WORLD_RIVALS`/`getRival`)
 stands visibly at the goal tile as a gigantic landmark (`OverworldScene
 .spawnBossSprite`, `art/boss.ts`'s `makeBossCrystal`) -- a fused mass of several
 shards around an oversized core, a pulsing danger aura, and orbiting embers, so it
 reads as unmistakably more dangerous than an ordinary wild crystal from a distance,
 before the player ever opens the goal panel. It's a pure visual landmark: the fight
-itself is still only reached through "Face the Rival" in the goal gate panel, same
-as before this was added. The same `makeBossCrystal` look carries into the fight
+itself is only reached through "Face the Rival" in the goal gate panel. The same
+`makeBossCrystal` look carries into the fight
 itself -- `BattleScene` renders a rival's opponent crystal at `BOSS_CRYSTAL_SIZE`
 (bigger than an ordinary wild encounter's), shifted a bit left of the usual
 opponent spot so the wider silhouette clears the move menu, instead of the plain
@@ -388,10 +392,10 @@ world 7's boss fights as an entangled pair where damaging one damages both.
 
 - **Engine:** Phaser 3 via **Vite + TypeScript** (`game/`) — `npm install && npm
   run dev` gets hot-reload, ES modules split by concern (`data/`, `art/`,
-  `scenes/`, `world/`), and type-checking on the material/move/type-chart data
-  model, which is exactly the kind of many-interacting-fields data that
-  silently breaks without it. `demo/` holds a frozen, no-install single-file
-  fallback build; active development happens in `game/`.
+  `scenes/`, `world/`), and type-checking on the material/move data model,
+  which is exactly the kind of many-interacting-fields data that silently
+  breaks without it. `game/` is the only build; the earlier no-install
+  single-file `demo/` prototype has been removed.
 - **Overworld camera:** over-the-shoulder pseudo-3D (`src/art/perspective.ts`)
   — the player's crystal floats in place at the bottom of the screen while the
   world is redrawn every frame from a smoothly-tweened camera position, giving
@@ -439,13 +443,22 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   per-world `WORLD_CRYSTALS` database) with `data/materials.json` at the repo
   root as the fuller design-time reference — so balance/content can be tuned
   without touching engine/rendering code.
-- **Onboarding.** A first-run tutorial (`game/src/data/tutorial.ts`'s
-  `TUTORIAL_PAGES`, a paged popup covering movement/encounters/battles/
-  qumatokens/mentors/the Lab/the menu) plays automatically the first time an
-  Overworld scene is ever created for a save (`OverworldScene
-  .maybeShowFirstTimeTutorial`, gated by save/registry `tutorialSeen`), and
-  can be replayed any time after from the Enter-menu's "Tutorial" button
-  (`OverworldScene.showTutorial`).
+- **Onboarding is contextual, not one paged popup up front.** Seven short tips
+  (`game/src/data/tutorial.ts`'s `TUTORIAL_TIPS`, keyed by `TutorialTipId`) each
+  fire once per save, right as their own feature actually becomes relevant
+  rather than all at once before the player has done anything: `lab` on first
+  entering the Lab (`HubScene.maybeShowLabTip`); `controls` on first entering
+  an Overworld world; `encounter` on the first wild-crystal bump; `battle` on
+  first committing to a fight; `qumatoken` on first collecting a pickup;
+  `mentor` on first meeting any mentor; `goal` on first reaching a world's
+  goal row (all six of the latter via `OverworldScene.showTutorialTip`, gated
+  by save/registry `tutorialTipsSeen`). Each trigger site passes whatever it
+  was about to do next as the tip's close callback (open the encounter panel,
+  launch the battle, ...), so the tip is a one-time detour in front of that
+  action rather than a separate step callers have to branch on. The full set,
+  in the same order, can still be replayed as one paged recap any time from
+  the Enter-menu's "Tutorial" button (`OverworldScene.showTutorial`, reading
+  `TUTORIAL_PAGES`, the same tips in a fixed array).
 - **Debug Mode.** A Title-screen toggle (save/registry `debugMode`,
   `TitleScene.addDebugToggle`) meant for testing/exploring the game rather
   than the intended first playthrough: while on, the Hub's door and the
@@ -465,43 +478,23 @@ world 7's boss fights as an entangled pair where damaging one damages both.
 - Materialdex entries and post-battle explanations can be adapted from
   `../lecture_notes/tex_extended/sessions/sessionNN.tex` rather than written fresh.
 
-## 9. Roadmap
+## 9. Current build status
 
-1. **Prototype** (done, frozen at `demo/`): core battle loop + minimal type chart for
-   world 1 only, placeholder rectangle graphics — validated the core loop is fun.
-2. **Vertical slice** (done, in `game/`): worlds 1–3, full overworld/battle/
-   Materialdex loop. World 0 (the Hub), the title screen, localStorage saving, a rival
-   gate for both worlds 1 and 2, and a first-pass Materialdex are all built (§2, §4, §7).
-   Worlds 1–3 have built overworld maps; Noether (world 1's mentor) sells attack unlocks
-   and stat upgrades, Bloch (world 2's mentor) teleports between visited worlds, and Bohr
-   (waiting at the start of world 3) lets the player transmute into a defeated crystal.
-3. **Full build-out** (done): worlds 4–9 built (biomes, wild pools, rivals, quiz
-   content), a mentor at every world 1-9 goal/start tile (`WORLD_MENTORS`), the
-   Advisors pause-menu panel so any met mentor is reachable from anywhere
-   (`metMentors`), and a distinct overworld music track per world. No bespoke
-   per-world boss puzzles (see §2's note under the world table) -- every world uses
-   the same reach-goal → beat-rival → continue gate. Mentors past Bohr are lore-only
-   (§5) pending a real subtype/unlock system (§10).
-4. **Finale + polish:** world 10 adaptive boss is built as a rival-style fight (no
-   mentor there by design); still open: real mentor mechanics beyond Noether, battle
-   music variants per world, mobile wrapper (Capacitor), playtesting with students.
-5. **Onboarding + testing aids** (done): the first-run tutorial popup sequence and
-   the Title-screen Debug Mode toggle (§7's "Onboarding"/"Debug Mode" bullets).
-6. **Mentor relocation + boss avatars + density setting** (done): every mentor moved
-   from its world's goal/start tile to mid-corridor, freeing the goal tile for a
-   gigantic, purely-visual boss avatar per world; added the Enter-menu's Settings
-   panel for adjusting wild-encounter density (§5's "Boss avatars"/"Wild-encounter
-   density" bullets).
-7. **Boss battles + quasiparticle mismatch + title screen** (done): the boss look
-   carries into `BattleScene` itself, not just the overworld landmark (§5's "Boss
-   avatars"); added the quasiparticle-mismatch double-damage rule (§4); retitled
-   the game "World of Quantum Materials" and replaced the title screen's single
-   crystal with a small showcase cluster of several material types.
+Built and playable end to end: all 10 worlds have an overworld map, biome, wild-encounter
+pool, rival, and mentor slot; the Hub, title screen, localStorage save, Materialdex, the
+contextual tutorial tips, and Debug Mode are all in place (§2, §4, §5, §7). `game/` is the
+only build; the earlier no-install single-file `demo/` prototype (world 1 only, placeholder
+rectangle graphics) has been removed.
+
+Not yet built:
+- Bespoke per-world boss puzzles (§6) — every world currently uses the same reach-goal →
+  beat-rival → continue gate instead.
+- Real mentor mechanics for Dirac through Feynman, beyond Noether/Bloch/Bohr (§5, §10).
+- Battle music variants per world (only overworld tracks are per-world so far).
+- A mobile wrapper (Capacitor) and playtesting with students.
 
 ## 10. Open design questions
 
-- **Type-chart balance** — the draft chart is an untested hypothesis; needs a
-  playtest pass or simple simulator before locking move numbers.
 - **Subtype combination rules** — which main+subtype pairs are physically/
   narratively sensible needs a full compatibility table, not just one example.
 - **What Dirac/Majorana/Curie/Einstein/Kondo/Feynman actually unlock** — they're

@@ -67,10 +67,78 @@ function drawPrismShape(g: Phaser.GameObjects.Graphics, size: number, color: num
   g.strokePoints(sidePts, true);
 }
 
+// A thin, flattened hexagonal sheet -- a single atomic layer floating in
+// place rather than a solid faceted gem -- for 2D-material compounds
+// (monolayer graphene, monolayer WTe2, CrI3, ...). A soft detached shadow
+// underneath is what sells "floating": a solid crystal's shading implies a
+// gem resting on the ground, this implies a sheet hovering above it.
+function drawLayerShape(g: Phaser.GameObjects.Graphics, size: number, color: number) {
+  const s = size;
+  g.fillStyle(0x000000, 0.18);
+  g.fillEllipse(0, s * 0.55, s * 1.1, s * 0.22);
+
+  const hexPts = (radius: number, yOff: number) => {
+    const pts: { x: number; y: number }[] = [];
+    for (let i = 0; i < 6; i++) {
+      const ang = Phaser.Math.DegToRad(60 * i - 90);
+      pts.push({ x: Math.cos(ang) * radius, y: yOff + Math.sin(ang) * radius * 0.34 });
+    }
+    return pts;
+  };
+
+  // A thin rim just below the top face -- enough thickness to read as a
+  // sheet rather than a flat 2D sticker -- drawn first so the top face
+  // overlaps it.
+  const rim = hexPts(s * 0.8, s * 0.08);
+  g.fillStyle(shade(color, -30), 0.95);
+  g.fillPoints(rim, true);
+  g.lineStyle(2, shade(color, -55), 1);
+  g.strokePoints(rim, true);
+
+  const top = hexPts(s * 0.8, 0);
+  g.fillStyle(shade(color, 25), 0.85);
+  g.fillPoints(top, true);
+  g.lineStyle(2, shade(color, -35), 1);
+  g.strokePoints(top, true);
+}
+
+// Two layer-shapes stacked with a rotational offset between them -- the
+// moire mismatch between the two hex outlines is the whole point, for
+// twisted-system compounds (twisted bilayer MoTe2, ...). Both faces render
+// semi-transparent so the offset between them is actually visible rather
+// than the top layer just occluding the bottom one.
+function drawTwistedShape(g: Phaser.GameObjects.Graphics, size: number, color: number) {
+  const s = size;
+  g.fillStyle(0x000000, 0.18);
+  g.fillEllipse(0, s * 0.6, s * 1.15, s * 0.22);
+
+  const hexPts = (radius: number, yOff: number, rotDeg: number) => {
+    const pts: { x: number; y: number }[] = [];
+    for (let i = 0; i < 6; i++) {
+      const ang = Phaser.Math.DegToRad(60 * i - 90 + rotDeg);
+      pts.push({ x: Math.cos(ang) * radius, y: yOff + Math.sin(ang) * radius * 0.4 });
+    }
+    return pts;
+  };
+
+  const bottom = hexPts(s * 0.78, s * 0.14, -12);
+  g.fillStyle(shade(color, -10), 0.55);
+  g.fillPoints(bottom, true);
+  g.lineStyle(2, shade(color, -45), 0.85);
+  g.strokePoints(bottom, true);
+
+  const top = hexPts(s * 0.78, -s * 0.1, 12);
+  g.fillStyle(shade(color, 30), 0.6);
+  g.fillPoints(top, true);
+  g.lineStyle(2, shade(color, -25), 0.9);
+  g.strokePoints(top, true);
+}
+
 // Builds a shiny crystal (a Container so it can be positioned/tweened as one
 // unit) matching a material's `variant`: a single shard, a jagged cluster of
-// three shards, or a layered prism -- plus a specular highlight and a few
-// twinkling sparkles for the "shiny" look.
+// three shards, a layered prism, a floating 2D sheet, or two twisted
+// sheets -- plus a specular highlight and a few twinkling sparkles for the
+// "shiny" look.
 export function makeCrystal(
   scene: Phaser.Scene,
   size: number,
@@ -98,6 +166,14 @@ export function makeCrystal(
   } else if (variant === 'prism') {
     const g = scene.add.graphics();
     drawPrismShape(g, size, color);
+    container.add(g);
+  } else if (variant === 'layer') {
+    const g = scene.add.graphics();
+    drawLayerShape(g, size, color);
+    container.add(g);
+  } else if (variant === 'twisted') {
+    const g = scene.add.graphics();
+    drawTwistedShape(g, size, color);
     container.add(g);
   } else {
     const g = scene.add.graphics();

@@ -85,13 +85,12 @@ have a walkable map, biome, wild-encounter pool, rival gate, and a mentor
 standing mid-corridor (Noether, Bloch, and Bohr have real mechanics; Dirac
 through Feynman are lore-only pending a subtype system, see `DESIGN.md`
 §10), with that world's boss now standing at the goal tile as a gigantic
-visual landmark. The first-run tutorial popup sequence, the Debug Mode
+visual landmark. The contextual tutorial tips, the Debug Mode
 title-screen toggle (instant world warp + auto-leveling, for testing any
 world without grinding), and the Enter-menu's Settings panel (wild-encounter
 density, and a Text Size preset applied via `ui/text.ts`'s `fontPx`/`fontScale`
-helpers) were added most recently. `demo/` remains frozen at the much
-earlier prototype stage described in its own commit history --
-don't treat it as reflecting current mechanics.
+helpers) were added most recently. `game/` is the only build now -- the
+earlier no-install single-file `demo/` prototype has been removed.
 
 ## Verifying UI changes
 
@@ -114,3 +113,15 @@ is compile-time only. Combined with `page.evaluate` measuring
 every panel for text overflow/overlap at every font-scale preset
 (`localStorage.setItem('qm-rpg-save-v1', JSON.stringify({ fontScale: 2 }))`
 before reload) without a display or manual playtesting.
+
+**Gotcha:** `window.__game.scene.start(key)` called on the top-level
+`SceneManager` does *not* stop whatever scene was already running, unlike
+`this.scene.start()` called from inside a live scene (`ScenePlugin`, which
+does stop-then-start). Since `main.ts`'s scene array is
+`[Title, Hub, Overworld, Battle]` and later-indexed scenes always render on
+top, jumping straight from e.g. Battle to Overworld this way leaves Battle
+running invisibly underneath and the canvas silently freezes on its last
+frame. When driving multiple scene switches from outside any scene, stop
+every other gameplay scene explicitly before starting the next one
+(`window.__game.scene.stop('Battle')` etc.), or route every switch through
+a small in-page helper that does that for you.

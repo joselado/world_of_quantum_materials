@@ -23,7 +23,7 @@ export type MaterialType =
   | 'defect'
   | 'adaptive';
 
-export type CrystalVariant = 'shard' | 'cluster' | 'prism';
+export type CrystalVariant = 'shard' | 'cluster' | 'prism' | 'layer' | 'twisted';
 
 export interface Move {
   id: string;

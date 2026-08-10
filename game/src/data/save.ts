@@ -31,12 +31,13 @@ export interface SaveData {
   // (OverworldScene.showAdvisorsPanel), which should only offer mentors
   // actually met rather than every mentor in the game.
   metMentors: string[];
-  // Whether the first-run tutorial popup sequence has already played
-  // (OverworldScene.maybeShowFirstTimeTutorial) -- true after the first
-  // Overworld scene ever created, so it doesn't replay on every visit. The
-  // Enter-menu's "Tutorial" button replays the same pages on demand
-  // regardless of this flag.
-  tutorialSeen: boolean;
+  // Which contextual tutorial tips (data/tutorial.ts's TutorialTipId) have
+  // already fired -- each one plays once, the first time its own feature
+  // becomes relevant (HubScene.maybeShowLabTip, OverworldScene
+  // .showTutorialTip), rather than one paged sequence up front. The
+  // Enter-menu's "Tutorial" button replays the full set as a paged recap on
+  // demand regardless of this list.
+  tutorialTipsSeen: string[];
   // Title-screen toggle (TitleScene). While on, OverworldScene.create()
   // re-levels the player's stats/moves/HP to match enemyStatsForWorld() on
   // every world entry, and both the Hub's door and the Enter-menu gain a
@@ -69,7 +70,7 @@ export function defaultSave(): SaveData {
     defeatedMaterials: [],
     playerForm: null,
     metMentors: [],
-    tutorialSeen: false,
+    tutorialTipsSeen: [],
     debugMode: false,
     encounterDensity: DEFAULT_ENCOUNTER_DENSITY,
     fontScale: DEFAULT_FONT_SCALE,
@@ -130,7 +131,7 @@ export function persistFromRegistry(registry: RegistryLike) {
     defeatedMaterials: (registry.get('defeatedMaterials') as DiscoveredMaterial[]) ?? [],
     playerForm: (registry.get('playerForm') as Material | null) ?? null,
     metMentors: (registry.get('metMentors') as string[]) ?? [],
-    tutorialSeen: (registry.get('tutorialSeen') as boolean) ?? false,
+    tutorialTipsSeen: (registry.get('tutorialTipsSeen') as string[]) ?? [],
     debugMode: (registry.get('debugMode') as boolean) ?? false,
     encounterDensity: (registry.get('encounterDensity') as number) ?? DEFAULT_ENCOUNTER_DENSITY,
     fontScale: (registry.get('fontScale') as number) ?? DEFAULT_FONT_SCALE,

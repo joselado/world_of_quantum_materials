@@ -46,7 +46,7 @@ export class TitleScene extends Phaser.Scene {
     registry.set('defeatedMaterials', save.defeatedMaterials);
     registry.set('playerForm', save.playerForm);
     registry.set('metMentors', save.metMentors);
-    registry.set('tutorialSeen', save.tutorialSeen);
+    registry.set('tutorialTipsSeen', save.tutorialTipsSeen);
     registry.set('debugMode', save.debugMode);
     registry.set('encounterDensity', save.encounterDensity);
     registry.set('fontScale', save.fontScale);

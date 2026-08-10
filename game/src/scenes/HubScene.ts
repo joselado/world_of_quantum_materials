@@ -6,6 +6,7 @@ import { materialBlurb } from '../data/materialdex';
 import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
 import type { CrystalVariant } from '../data/types';
+import { TUTORIAL_TIPS, hasSeenTip, markTipSeen } from '../data/tutorial';
 import { music } from '../audio/music';
 import { fontPx, fontScale } from '../ui/text';
 
@@ -62,6 +63,22 @@ export class HubScene extends Phaser.Scene {
     this.add
       .text(CANVAS_W / 2, 410, 'Click a station to interact.', { fontSize: fontPx(this, 12), color: '#8fa0c9' })
       .setOrigin(0.5);
+
+    this.maybeShowLabTip();
+  }
+
+  // First contextual tutorial tip (data/tutorial.ts): the Lab is always the
+  // very first scene a new save ever sees (TitleScene hands off here before
+  // the player has left for World 1), so it's the natural place for a
+  // one-time "welcome, here's this room" popup -- the rest of the tutorial
+  // tips fire contextually in OverworldScene as each later feature comes up.
+  private maybeShowLabTip() {
+    if (this.dialogueContainer) return;
+    if (hasSeenTip(this.game.registry, 'lab')) return;
+    markTipSeen(this.game.registry, 'lab');
+    persistFromRegistry(this.game.registry);
+    const tip = TUTORIAL_TIPS.lab;
+    this.showPanel(tip.title, tip.body);
   }
 
   private drawRoom() {

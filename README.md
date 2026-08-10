@@ -58,11 +58,12 @@ on with no consequence either way.
 move is a real quasiparticle -- Phonon Beam, Magnon Pulse, Anyon Braid,
 Majorana Split -- and every material can only ever learn the moves its
 actual physics supports (a plain band insulator never gets a magnon move,
-since it has no magnetic order to carry one). Some moves are strong or weak
-against certain material types on top of that, so matchups matter twice
-over: if a defender's own physics can't host your move's quasiparticle at
-all, it lands at **double damage**, on top of whatever the type matchup
-already says.
+since it has no magnetic order to carry one). Move power itself climbs with
+how unconventional the quasiparticle is, from an ordinary Phonon Beam up to
+a topological Anyon Braid or a non-Abelian Majorana Split. If a defender's
+own physics can't host your move's quasiparticle at all, it lands at
+**double damage** -- the one type-interaction rule in battle, kept
+deliberately simple rather than a separate strong/weak chart on top of it.
 
 <table>
 <tr>
@@ -155,10 +156,12 @@ Open the Enter-key menu and click **Settings** to adjust:
 
 ## Tutorial
 
-The first time you step into World 1, a short paged popup walks through
-movement, encounters, battles, qumatokens, mentors, and the Lab. If you skip
-past it too fast (or just want a refresher), open the Enter-key menu and
-click **Tutorial** to replay it any time.
+Short tips appear one at a time, right as each feature comes up for the
+first time -- entering the Lab, taking your first steps, your first wild
+encounter, your first battle, your first qumatoken, your first mentor,
+reaching your first goal -- instead of one long popup dumped on you up
+front. Want the whole thing again as a refresher? Open the Enter-key menu
+and click **Tutorial** to replay every tip in order.
 
 ## Debug Mode
 
