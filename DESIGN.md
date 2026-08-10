@@ -119,6 +119,8 @@ pool.
 | trivial (1) | Gallium Nitride (GaN) | Doped semiconductor, plain single-particle band picture |
 | trivial (1) | Magnesium Oxide (MgO) | Simple ionic band insulator, textbook baseline contrast to topological insulators |
 | trivial (1→2 bridge) | Graphene (pristine, half-filled) | Gapless Dirac semimetal — the throughline example of session 2 (Bloch's theorem, tight-binding); precursor before symmetry-breaking (→ magnet) or band-topology (→ topological) sets in |
+| trivial (2) | Indium Arsenide (InAs) | Ordinary band semiconductor whose real role is strong spin-orbit coupling — the actual second ingredient (alongside Aluminum) in a real Majorana-nanowire platform, §5's InAs/Al Majorana Wire hybrid recipe |
+| trivial (2) | Monolayer Molybdenum Ditelluride, 2H phase (MoTe$_2$) | The untwisted, semiconducting monolayer phase — distinct from the already-topological 1T′ phase below — that becomes Twisted Bilayer MoTe₂ once fused with itself (§5) |
 | magnet (1) | Manganese Oxide (MnO) | Mott-insulating antiferromagnet — canonical mean-field/Hubbard-$U$ SSB example |
 | magnet (1) | Nickel Oxide (NiO) | Same family, another textbook mean-field SSB magnet |
 | magnet (1, rare/special) | Graphene at strong coupling | Session 1 notes a finite $U_c$ opens a Mott/antiferromagnetic gap at the Dirac point — same base crystal as the trivial entry above, but pushed past its symmetry-breaking threshold |
@@ -136,22 +138,28 @@ pool.
 | supercon (5) | YBCO / cuprates | Unconventional nodal d-wave high-$T_c$ superconductor |
 | supercon (5, engineered) | NbSe$_2$/CrBr$_3$ heterostructure | s-wave SC + spin-orbit + exchange field engineered into a topological superconductor |
 | supercon (5, engineered) | Iron chains on lead (Fe/Pb) | Majorana-chain platform — topological superconductivity from a magnetic chain on an s-wave SC |
+| supercon (5) | Niobium (Nb) | Highest-$T_c$ elemental BCS superconductor at ambient pressure, same conventional family as Aluminum/Lead |
+| supercon (5) | Tantalum Disulfide, 1H phase (TaS$_2$) | Metallic/superconducting TMD monolayer in its own right — distinct from the 1T phase below, and the other half of §5's 1T/1H-TaS₂ heterostructure hybrid recipe |
 | classicalmag (6) | Iron (Fe) | Classic itinerant ferromagnet, magnon carrier |
 | classicalmag (6) | Cobalt (Co) | Same family |
 | classicalmag (6) | Chromium Triiodide (CrI$_3$) | Van der Waals ferromagnet with an observed topological magnon gap |
-| classicalmag (6) | Nickel Diiodide (NiI$_2$) | Non-collinear, multiferroic magnetism from competing exchange interactions |
+| classicalmag (6) | Chromium Tribromide (CrBr$_3$) | Same van der Waals ferromagnet family as CrI₃ — pairs with Niobium Diselenide in Kezilebieke et al., Nature 588, 424 (2020)'s topological-superconductor heterostructure, §5 |
 | tensornet (7, textbook fill-in) | Strontium Copper Borate (SrCu$_2$(BO$_3$)$_2$) | Shastry–Sutherland lattice — exactly-solvable dimerized/entangled ground state, a standard tensor-network benchmark material |
 | tensornet (7, textbook fill-in) | Thallium Copper Chloride (TlCuCl$_3$) | Quantum spin-dimer compound — textbook entangled-singlet-pair example |
 | tensornet (7) | Herbertsmithite | The one real compound session 7 itself names, motivating MPS/tensor-network methods (kagome local moments) |
 | spinliquid (8) | Herbertsmithite (ZnCu$_3$(OH)$_6$Cl$_2$) | Flagship kagome quantum-spin-liquid candidate |
 | spinliquid (8) | α-Ruthenium Trichloride (RuCl$_3$) | Candidate Kitaev spin liquid |
 | spinliquid (8) | Ytterbium Magnesium Gallium Oxide (YbMgGaO$_4$) | Triangular-lattice spin-liquid candidate |
-| spinliquid (8, engineered) | 1T-TaS$_2$ on 1H-TaS$_2$ | Engineered 2D Kondo-insulator heterostructure |
+| spinliquid (8, engineered) | 1T-TaS$_2$ on 1H-TaS$_2$ | Engineered 2D Kondo-insulator heterostructure — now wired in as §5's 1T/1H-TaS₂ heterostructure hybrid recipe, fusing the two standalone phase entries below |
+| spinliquid (8) | Tantalum Disulfide, 1T phase (TaS$_2$) | Star-of-David CDW Mott insulator / quantum-spin-liquid candidate (Law & Lee 2017) — the other half of the 1T/1H heterostructure above |
 | defect (9, textbook fill-in) | Nitrogen-vacancy center in diamond (NV-diamond) | Canonical atomic-scale defect-bound state / solid-state qubit |
 | defect (9, textbook fill-in) | Iron Telluride/Selenide (Fe(Te,Se)) | Hosts Yu-Shiba-Rusinov and vortex-bound (Majorana) defect states in a superconductor |
-| defect (9, textbook fill-in) | Niobium Diselenide (NbSe$_2$), STM-imaged impurities | Friedel oscillations / impurity-resonance textbook platform |
+| defect (9, textbook fill-in) | Niobium Diselenide (NbSe$_2$), STM-imaged impurities | Friedel oscillations / impurity-resonance textbook platform; also pairs with CrI₃/CrBr₃ in §5's topological-SC heterostructure recipes |
 | defect (9, textbook fill-in) | Silicon vacancy in silicon carbide (SiC) | Another well-known solid-state defect qubit |
-| adaptive (10) | — (no compound, by design) | Boss ("a model of you") and ordinary wilds alike — deliberately not real materials, per the plot hook in §5 |
+| multiferroic (6, new type) | Nickel Diiodide (NiI$_2$), monolayer | Type-II multiferroic from noncollinear/helimagnetic order down to the monolayer limit (Song et al., Nature 2022) — hosts genuine electromagnons, the type's flagship. Same session (classical magnetism/magnons) as classicalmag, not its own world -- lives as a World 10 wild (§5) alongside the game's hybrid recipe results |
+| multiferroic (6, new type, hybrid) | Twisted CrI₃ | §5 hybrid recipe (CrI₃ + CrI₃) — noncollinear moiré spin textures theoretically predicted (not yet confirmed) to induce magnetoelectric coupling; untwisted CrI₃ itself is only classicalmag |
+| chernInsulator (4, new type) | Manganese Bismuth Telluride (MnBi$_2$Te$_4$) | Real intrinsic magnetic topological insulator — the actual zero-field QAHE/Chern-insulator material, standalone (not a hybrid recipe result). Same session (quantum Hall effect) as qhe, not its own world -- lives as a World 10 wild (§5) alongside the game's hybrid recipe results |
+| adaptive (10) | — (no compound, by design) | `WORLD_RIVALS[10]`'s finale boss ("a model of you") only now — World 10's ordinary wilds are no longer 'adaptive', see the note above the crystal-database table |
 
 Session files for topics 9 and 10 name no concrete real compounds at all (they stay at
 the level of "a metal," "a superconductor," generic ML methods), so those two rows lean
@@ -182,11 +190,16 @@ overworld's own non-black sky) so the overlap region genuinely mixes both colors
 a glowing seam. See `data/materials.ts`'s `combineMaterials`/`hybridParents` and
 STYLE.md's "Crystal sprites" section.
 
-World 10's wild pool (`WORLD_CRYSTALS[10]` in `data/materials.ts`) is "Echo of ..."
-crystals — 'adaptive' type, no real compound behind them, each one's moveset recalling
-an earlier world (e.g. Echo of the Islands carries the same Anyon Braid/Majorana Split
-pair world 3's topological wilds do) — so the meta-world's corridor itself plays back
-the player's own journey before the boss at the goal does the same thing at full scale.
+World 10's wild pool (`WORLD_CRYSTALS[10]` in `data/materials.ts`) used to be "Echo of
+..." crystals — 'adaptive' type, no real compound behind them, each one's moveset
+recalling an earlier world. It now hosts the game's actual named hybrid-recipe results
+(§5's `HYBRID_RECIPES`) plus two standalone compounds whose own type belongs to an
+existing topic's session (chernInsulator → topic 4, quantum Hall; multiferroic → topic 6,
+classical magnetism/magnons) but has no dedicated world of its own (MnBi₂Te₄, the real
+intrinsic QAHE/Chern-insulator material; Monolayer NiI₂, the multiferroic type's flagship,
+Song et al., Nature 2022) — so the meta-world's corridor plays back the player's own
+fusions/discoveries literally rather than as echo flavor text. `WORLD_RIVALS[10]` ("The
+Adapted") keeps the "no real compound, a model of you" finale-boss role unchanged.
 
 **Subtype combination flavor (real-compound tie-ins):** the same mechanic from §3
 (main type + subtype → new material) has ready real-world flavor text once crystals are
@@ -371,19 +384,32 @@ World 10 has no mentor; its only encounter is the finale.
   quantum Hall wavefunction (world 4's own topic)
 - **Majorana** → world 5 middle → lets the player fuse two crystals they've already
   defeated into a new hybrid material and become it immediately
-  (`OverworldScene.showMajoranaPanel`/`combineMaterials`) -- but only specific,
-  physically sensible type pairings (`data/materials.ts`'s `HYBRID_RULES`/
-  `hybridResultType`), not any two defeated crystals. Two materials of the *same*
-  main type never combine (fusing two superconductors isn't a new phase, it's just a
-  bigger superconductor) -- every recognized pairing mirrors a real engineered
-  platform already in the crystal database (magnet/classical-magnet + superconductor
-  → topological superconductor, the mechanic's own worked example and the
-  Fe/Pb-chain/NbSe₂-CrBr₃-heterostructure mechanism; magnet/classical-magnet or
-  topological + quantum-Hall state → topological, the quantum-anomalous-Hall route).
-  A valid hybrid's HP scales to 1.5x its stronger parent's, never a downgrade. Every
-  hybrid ever created is remembered (`hybridMaterials` save field) so the panel also
-  offers "become again" for an earlier one without recombining. In Superposition Mode
-  the ingredient pool is every crystal in the game, same as Bohr above
+  (`OverworldScene.showMajoranaPanel`/`combineMaterials`) -- but only a curated
+  catalog of named parent pairs (`data/materials.ts`'s `HYBRID_RECIPES`/
+  `hybridRecipeResult`), keyed by parent *name* rather than main type, not any two
+  defeated crystals. This used to be a generic "these two main types always produce
+  that main type" rule that forbade same-type pairs on the reasoning that "fusing two
+  superconductors isn't a new phase" -- but real platforms include exactly that
+  (Twisted Bilayer Graphene from two graphene sheets), so it's now a closed catalog:
+  a pair with no named recipe simply can't be fused, same-type or not. Every recipe
+  mirrors a real (or credibly engineered) platform -- an InAs/Al Majorana nanowire; two
+  Graphenes → Twisted Bilayer Graphene (magic-angle superconductivity); CrI₃ + NbSe₂
+  or NbSe₂ + CrBr₃ → topological-superconductor heterostructures (the latter is
+  Kezilebieke et al., Nature 2020); Iron + Lead → the Fe/Pb Majorana chain, literalizing
+  the mechanic's own original worked example; CrI₃ + CrI₃ → Twisted CrI₃, a
+  *theoretically proposed* (not yet confirmed) multiferroic from noncollinear moiré
+  spin textures; two 2H-phase MoTe₂ monolayers → the existing Twisted Bilayer MoTe₂
+  entry (its own "zero-field fractional quantum Hall from topological flat bands" already
+  *is* the fractional Chern-insulator result, so the recipe resolves to that entry rather
+  than a duplicate); 1T-phase + 1H-phase Tantalum Disulfide → a Kondo-screened
+  heterostructure. Recipe results are ordinary `WORLD_CRYSTALS` entries (mostly World
+  10's pool, see §2/§7 below) rather than synthesized on the fly, so a hybrid
+  encountered wild and one fused by hand are the exact same crystal; `combineMaterials`
+  additionally attaches `hybridParents` so the fused form still renders as an actual
+  visual mixture of both parents. Every hybrid ever created is remembered
+  (`hybridMaterials` save field) so the panel also offers "become again" for an earlier
+  one without recombining. In Superposition Mode the ingredient pool is every crystal
+  in the game, same as Bohr above
 - **Curie** → world 6 middle → sells "analytic" moves (currently Skyfall Beam, Ground
   Eruption -- `OverworldScene.showCuriePanel`) -- using one asks a physics-equation
   question first (`data/quiz.ts`'s `ANALYTIC_QUESTIONS`, `BattleScene
@@ -502,11 +528,12 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   destructive and irreversible. Confirming calls `data/save.ts`'s `clearSave()` then
   `this.scene.restart()`, so the Title's existing `loadSave()`-into-registry block re-seeds
   every registry key from `defaultSave()` rather than needing a second seeding path.
-- **Data-driven content:** materials, moves, and the type chart live in
-  `game/src/data/materials.ts` (the subset the running game uses, including the
-  per-world `WORLD_CRYSTALS` database) with `data/materials.json` at the repo
-  root as the fuller design-time reference — so balance/content can be tuned
-  without touching engine/rendering code.
+- **Data-driven content:** materials and moves live in `game/src/data/materials.ts`
+  (including the per-world `WORLD_CRYSTALS` database) — the sole source of truth now;
+  the repo-root `data/materials.json` draft it used to shadow has been removed, since
+  it had drifted out of sync (a type-effectiveness chart and an "Impurity Scatter"
+  move both later deliberately dropped from the real implementation, per this file's
+  own §3/§4) — so balance/content can be tuned without touching engine/rendering code.
 - **Onboarding is contextual, not one paged popup up front.** Seven short tips
   (`game/src/data/tutorial.ts`'s `TUTORIAL_TIPS`, keyed by `TutorialTipId`) each
   fire once per save, right as their own feature actually becomes relevant

@@ -17,6 +17,8 @@ const ENCOUNTER_GREETINGS: Record<MaterialType, string> = {
   spinliquid: '{name} refuses to settle down, on principle.',
   defect: '{name} arrives a little broken, and weirdly proud of it.',
   adaptive: '{name} has already seen your last three moves.',
+  multiferroic: '{name} hums with a polarization that shouldn\'t line up with its spins -- and does anyway.',
+  chernInsulator: '{name} conducts along its own edge, no field required, thank you.',
 };
 
 const VICTORY_LINES: Record<MaterialType, string> = {
@@ -30,6 +32,8 @@ const VICTORY_LINES: Record<MaterialType, string> = {
   spinliquid: 'The {name} finally, reluctantly, orders itself. You win!',
   defect: "The {name}'s flaw finally gives way. Victory!",
   adaptive: 'The {name} runs out of counter-strategies. Victory!',
+  multiferroic: "The {name}'s polarization and spins fall out of lock. Victory!",
+  chernInsulator: "The {name}'s edge current finally stalls. Victory!",
 };
 
 const DEFEAT_LINES: Record<MaterialType, string> = {
@@ -43,6 +47,8 @@ const DEFEAT_LINES: Record<MaterialType, string> = {
   spinliquid: 'The {name} outlasts you without ever settling down.',
   defect: "The {name}'s flaw turns out to be a feature. You lose.",
   adaptive: 'The {name} adapts faster than you can. Defeat.',
+  multiferroic: 'The {name} locks its polarization to your every move. Defeat.',
+  chernInsulator: "The {name}'s edge current sweeps you off the path. Defeat.",
 };
 
 function fill(template: string, name: string): string {

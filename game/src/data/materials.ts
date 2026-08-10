@@ -3,9 +3,9 @@ import type { Material, Move, MoveClass, MaterialType, CrystalVariant, Stats } f
 
 // Every move is named after the quasiparticle/excitation that actually
 // carries it, not an abstract "class" label -- Phonon Beam is a beam of
-// phonons, Magnon Pulse a pulse of magnons, and so on. `id` and `class`
-// still mirror ../../../data/materials.json's moves; only the display `name`
-// is quasiparticle-themed. Every entry here is a real quasiparticle --
+// phonons, Magnon Pulse a pulse of magnons, and so on; only the display
+// `name` is quasiparticle-themed, `id`/`class` stay plain. Every entry here
+// is a real quasiparticle --
 // there's deliberately no "impurity scattering" move, since disorder/
 // impurities aren't a particle a crystal emits (see MOVE_COMPATIBILITY below
 // for which of these each material can actually host).
@@ -41,6 +41,12 @@ export const MOVES: Record<string, Move> = {
   // ever be asked one of these questions.
   skyfallBeam: { id: 'skyfallBeam', name: 'Skyfall Beam', class: 'analytic', power: 10 },
   groundEruption: { id: 'groundEruption', name: 'Ground Eruption', class: 'analytic', power: 10 },
+  // The multiferroic type's signature quasiparticle -- a spin wave that
+  // picks up electric-dipole activity through magnon-phonon hybridization
+  // (the magnetoelectric coupling itself), sitting alongside ordinary
+  // magnons rather than replacing them (MOVE_COMPATIBILITY still grants
+  // multiferroics 'magnetic' too).
+  electromagnonPulse: { id: 'electromagnonPulse', name: 'Electromagnon Pulse', class: 'magnetoelectric', power: 9 },
 };
 
 // Curie is the sole seller of analytic moves (OverworldScene.showCuriePanel,
@@ -88,6 +94,11 @@ const MOVE_COMPATIBILITY: Record<MaterialType, MoveClass[]> = {
   spinliquid: ['entanglement', 'thermal', 'localization', 'analytic'],
   defect: ['localization', 'decoherence', 'thermal', 'analytic'],
   adaptive: ['trivial', 'magnetic', 'thermal', 'localization', 'gauge', 'entanglement', 'decoherence', 'analytic'],
+  multiferroic: ['magnetoelectric', 'magnetic', 'thermal', 'analytic'],
+  // Shares 'gauge' with topological/qhe rather than getting its own class --
+  // a Chern insulator's edge modes (and, for a fractional state, its anyons)
+  // are the same quasiparticle family those two types already host.
+  chernInsulator: ['gauge', 'trivial', 'thermal', 'analytic'],
 };
 
 export function compatibleMoves(material: Material): string[] {
@@ -212,6 +223,8 @@ export const TYPE_LOOK: Record<MaterialType, { color: number; variant: CrystalVa
   spinliquid: { color: 0x5ad9c9, variant: 'cluster' },
   defect: { color: 0xe0527a, variant: 'shard' },
   adaptive: { color: 0x333333, variant: 'prism' },
+  multiferroic: { color: 0xc94ac0, variant: 'layer' },
+  chernInsulator: { color: 0xc9d94a, variant: 'twisted' },
 };
 
 // A crystal database row: real compound name + main type (which fixes its
@@ -248,10 +261,14 @@ function crystal(
 // database" section. Each scene pulls its own world's pool via
 // `getWildPool()` rather than sharing one global list, so later worlds can
 // each have their own specials without touching the encounter logic.
-// World 10 is the one exception to "named after a real compound" (see the
-// 'Echo of ...' pool below it): its wilds are deliberately not real
-// materials, matching the meta-world's own "reflects the player's journey
-// back at them" theme, same reasoning as the world-10 boss itself.
+// World 10's own pool (below) is no longer an exception to "named after a
+// real compound" the way it once was -- it now hosts the game's named
+// hybrid-recipe results (HYBRID_RECIPES further down) plus a couple of
+// standalone single compounds whose own type belongs to an existing topic's
+// session (chernInsulator -> topic 4, quantum Hall; multiferroic -> topic 6,
+// classical magnetism/magnons) but has no dedicated world of its own.
+// WORLD_RIVALS[10] (the finale boss "The Adapted") is the one entity that's
+// still deliberately not a real material -- see that table's own comment.
 // Every moveset below is drawn only from MOVE_COMPATIBILITY[type] -- e.g.
 // trivial crystals (Si, GaN, MgO, Graphene) only ever get Electron Pulse and
 // Phonon Beam, never Magnon Pulse, since a plain band insulator has no
@@ -269,6 +286,14 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     crystal('Graphene', 'trivial', 22, ['tunnelStrike', 'thermalFluctuation'], 0, 'layer'),
     crystal('Gallium Nitride', 'trivial', 23, ['tunnelStrike', 'thermalFluctuation'], 1),
     crystal('Magnesium Oxide', 'trivial', 21, ['thermalFluctuation', 'tunnelStrike'], 2),
+    // Ordinary trivial-type semiconductors added as hybrid-recipe parents
+    // (HYBRID_RECIPES below) -- InAs's own role is providing the strong
+    // spin-orbit coupling a Majorana wire needs; the 2H (semiconducting)
+    // MoTe₂ monolayer is the untwisted parent that becomes Twisted Bilayer
+    // MoTe₂ once fused with itself -- distinct from the already-topological
+    // 1T′ monolayer phase (world 3's Monolayer WTe₂ sibling).
+    crystal('Indium Arsenide', 'trivial', 24, ['tunnelStrike', 'thermalFluctuation'], 3),
+    crystal('Monolayer MoTe₂ (2H)', 'trivial', 22, ['tunnelStrike', 'thermalFluctuation'], 4, 'layer'),
   ],
   3: [
     crystal('Cr-doped (Bi,Sb)₂Te₃', 'topological', 24, ['fluxTwist', 'decoherenceWave']),
@@ -285,11 +310,21 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     crystal('Lead', 'supercon', 30, ['localizationPin', 'thermalFluctuation'], 1),
     crystal('YBCO', 'supercon', 27, ['localizationPin', 'thermalFluctuation'], 2),
     crystal('Fe/Pb Majorana Chain', 'supercon', 29, ['localizationPin', 'decoherenceWave'], 3),
+    // Niobium: the highest-Tc elemental BCS superconductor at ambient
+    // pressure, same conventional family as Aluminum/Lead above. Tantalum
+    // Disulfide's 1H phase is a standalone metallic/superconducting TMD
+    // monolayer in its own right -- distinct from the 1T phase (world 8),
+    // and the other half of the 1T/1H-TaS₂ heterostructure hybrid recipe.
+    crystal('Niobium', 'supercon', 29, ['localizationPin', 'thermalFluctuation'], 4),
+    crystal('Tantalum Disulfide (1H)', 'supercon', 26, ['localizationPin', 'thermalFluctuation'], 5, 'layer'),
   ],
   6: [
     crystal('Iron', 'classicalmag', 27, ['thermalFluctuation', 'magneticField']),
     crystal('Cobalt', 'classicalmag', 27, ['thermalFluctuation', 'magneticField'], 1),
     crystal('Chromium Triiodide', 'classicalmag', 25, ['thermalFluctuation', 'magneticField'], 2, 'layer'),
+    // Same van der Waals ferromagnet family as Chromium Triiodide above, the
+    // other half of the NbSe₂/CrBr₃ topological-superconductor recipe.
+    crystal('Chromium Tribromide', 'classicalmag', 25, ['thermalFluctuation', 'magneticField'], 3, 'layer'),
   ],
   7: [
     crystal('Herbertsmithite', 'tensornet', 23, ['entanglementSwap', 'thermalFluctuation']),
@@ -300,22 +335,33 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     crystal('α-Ruthenium Trichloride', 'spinliquid', 24, ['entanglementSwap', 'localizationPin']),
     crystal('Herbertsmithite', 'spinliquid', 23, ['entanglementSwap', 'localizationPin'], 1),
     crystal('YbMgGaO₄', 'spinliquid', 22, ['entanglementSwap', 'thermalFluctuation'], 2),
+    // The star-of-David CDW Mott insulator / spin-liquid candidate phase --
+    // the other half of the 1T/1H-TaS₂ heterostructure hybrid recipe (world
+    // 5's 1H phase above).
+    crystal('Tantalum Disulfide (1T)', 'spinliquid', 24, ['entanglementSwap', 'localizationPin'], 3),
   ],
   9: [
     crystal('NV-Diamond', 'defect', 20, ['localizationPin', 'thermalFluctuation']),
     crystal('Fe(Te,Se)', 'defect', 22, ['localizationPin', 'decoherenceWave'], 1),
     crystal('Niobium Diselenide', 'defect', 21, ['localizationPin', 'thermalFluctuation'], 2),
   ],
-  // The meta-world's wilds are echoes of earlier phases of matter rather
-  // than new real compounds -- 'adaptive' type, same as the world-10 boss,
-  // each one recalling a different earlier world's moveset so the corridor
-  // itself reads as "your own journey played back at you" before the boss
-  // at the goal does the same thing at full scale.
+  // The meta-world's wilds used to be 'adaptive'-type "Echo of ..." crystals
+  // with no real compound behind them, flavor-echoing an earlier world's
+  // moveset. Replaced with the game's actual named hybrid materials (see
+  // HYBRID_RECIPES below) plus two standalone compounds whose own type isn't
+  // tied to any of course topics 1-9 -- so the corridor now plays back the
+  // player's own fusions/discoveries literally, not just as flavor text.
+  // WORLD_RIVALS[10] ("The Adapted") keeps the old "not a real material"
+  // meta-boss role on its own.
   10: [
-    crystal('Echo of the Meadow', 'adaptive', 30, ['tunnelStrike', 'thermalFluctuation']),
-    crystal('Echo of the Islands', 'adaptive', 32, ['fluxTwist', 'decoherenceWave'], 1),
-    crystal('Echo of the Caverns', 'adaptive', 31, ['localizationPin', 'decoherenceWave'], 2),
-    crystal('Echo of the Network', 'adaptive', 30, ['entanglementSwap', 'magneticField'], 3),
+    crystal('Twisted Bilayer Graphene', 'supercon', 32, ['localizationPin', 'decoherenceWave'], 0, 'twisted'),
+    crystal('InAs/Al Majorana Wire', 'supercon', 31, ['localizationPin', 'decoherenceWave'], 1),
+    crystal('CrI₃/NbSe₂ Topological-SC Heterostructure', 'topological', 33, ['fluxTwist', 'decoherenceWave'], 0, 'layer'),
+    crystal('NbSe₂/CrBr₃ Topological-SC Heterostructure', 'topological', 33, ['fluxTwist', 'decoherenceWave'], 1, 'layer'),
+    crystal('Twisted CrI₃', 'multiferroic', 32, ['electromagnonPulse', 'magneticField'], 0, 'twisted'),
+    crystal('1T/1H-TaS₂ Heterostructure', 'spinliquid', 30, ['entanglementSwap', 'localizationPin'], 4, 'layer'),
+    crystal('MnBi₂Te₄', 'chernInsulator', 30, ['fluxTwist', 'tunnelStrike'], 0, 'layer'),
+    crystal('Monolayer NiI₂', 'multiferroic', 28, ['electromagnonPulse', 'magneticField'], 1, 'layer'),
   ],
 };
 
@@ -378,76 +424,86 @@ export function allCrystals(): Material[] {
   return out;
 }
 
-// Averages each color channel of two crystal colors -- used to give a
-// player-created hybrid a look that visually blends its two parents rather
-// than just inheriting one type's flat TYPE_LOOK color.
-function blendColor(a: number, b: number): number {
-  const ar = (a >> 16) & 0xff, ag = (a >> 8) & 0xff, ab = a & 0xff;
-  const br = (b >> 16) & 0xff, bg = (b >> 8) & 0xff, bb = b & 0xff;
-  return (Math.round((ar + br) / 2) << 16) | (Math.round((ag + bg) / 2) << 8) | Math.round((ab + bb) / 2);
+// Majorana's hybridization mechanic (§5): fuse two materials the player has
+// already defeated into a new state -- a curated, physically-grounded
+// catalog of named parent pairs, not a generic type-pair rule. This used to
+// be a generic "these two main types always produce that main type" table
+// (the old HYBRID_RULES), which forbade same-type pairs on the reasoning
+// that "fusing two superconductors isn't a new phase, it's just a bigger
+// superconductor" -- but real engineered platforms include exactly that
+// (Twisted Bilayer Graphene from two graphene sheets; an InAs/Al Majorana
+// wire pairs a superconductor with a spin-orbit semiconductor, not two
+// different main types), so this is now a closed catalog keyed by parent
+// *name*: a pair with no entry below simply can't be fused, same-type or
+// not, rather than falling back to a generic type-derived result. Not
+// exhaustive over every possible pair on purpose, same reasoning as the
+// table's predecessor -- inventing an arbitrary result for a pair with no
+// real-world grounding isn't the goal. Every `result` is a real
+// WORLD_CRYSTALS entry (most live in World 10, see that pool's own comment),
+// reused as-is rather than duplicated, so a hybrid a player fuses and the
+// same hybrid encountered wild are the exact same crystal.
+function namedResult(name: string): Material {
+  const found = findMaterialByName(name);
+  if (!found) throw new Error(`HYBRID_RECIPES: no WORLD_CRYSTALS entry named "${name}"`);
+  return found;
 }
 
-// Majorana's hybridization mechanic (§5): fuse two materials the player has
-// already defeated into a new state -- but only specific, physically
-// sensible type pairings, not any two defeated crystals. Two materials of
-// the *same* main type never combine (fusing two superconductors isn't a
-// new phase, it's just a bigger superconductor) -- every entry below is an
-// unordered pair of *different* types. Each pairing here mirrors a real
-// engineered platform DESIGN.md §3's crystal database already names
-// (magnet/classicalmag + supercon -> topological superconductor, the
-// Fe/Pb-chain/NbSe2-CrBr3-heterostructure mechanism and the mechanic's own
-// worked example; magnet/classicalmag + qhe -> the same "add magnetism to a
-// quantum-Hall-family state" route the quantum anomalous Hall effect takes;
-// topological + supercon or topological + qhe -> still topological, since
-// both inputs are already in that family). Not exhaustive over all 10
-// types on purpose -- combining e.g. a spin liquid with a defect state has
-// no equally concrete real-world hybrid to point to yet, so it's left out
-// rather than inventing an arbitrary result.
-const HYBRID_RULES: { types: [MaterialType, MaterialType]; result: MaterialType }[] = [
-  { types: ['magnet', 'supercon'], result: 'topological' },
-  { types: ['classicalmag', 'supercon'], result: 'topological' },
-  { types: ['topological', 'supercon'], result: 'topological' },
-  { types: ['magnet', 'qhe'], result: 'topological' },
-  { types: ['classicalmag', 'qhe'], result: 'topological' },
-  { types: ['topological', 'qhe'], result: 'topological' },
+const HYBRID_RECIPES: { parents: [string, string]; result: Material }[] = [
+  // Real Majorana-wire platforms pair a superconductor with a strong
+  // spin-orbit semiconductor, not two superconductors -- Aluminum/InAs is
+  // the actual Copenhagen/Delft platform.
+  { parents: ['Aluminum', 'Indium Arsenide'], result: namedResult('InAs/Al Majorana Wire') },
+  // Magic-angle twisted bilayer graphene's flagship result is unconventional
+  // superconductivity (Cao et al. 2018) -- a same-type (trivial + trivial)
+  // fusion, deliberately allowed here since a named recipe covers it.
+  { parents: ['Graphene', 'Graphene'], result: namedResult('Twisted Bilayer Graphene') },
+  { parents: ['Chromium Triiodide', 'Niobium Diselenide'], result: namedResult('CrI₃/NbSe₂ Topological-SC Heterostructure') },
+  // Literalizes the mechanic's own original worked example -- Fe chains on
+  // Pb (Nadj-Perge et al. 2014) already exists as an ordinary world-5 wild;
+  // this just makes it reachable by fusion too.
+  { parents: ['Iron', 'Lead'], result: namedResult('Fe/Pb Majorana Chain') },
+  // Twisted CrI₃'s multiferroicity (electromagnons from noncollinear moiré
+  // spin textures) is a theoretical proposal, not yet an established
+  // experimental result -- see materialdex.ts's blurb for the honest framing.
+  { parents: ['Chromium Triiodide', 'Chromium Triiodide'], result: namedResult('Twisted CrI₃') },
+  // Fuses the untwisted 2H (semiconducting) monolayer into the *existing*
+  // Twisted Bilayer MoTe₂ qhe entry rather than a second, redundant result --
+  // that entry's own "zero-field fractional quantum Hall from topological
+  // flat bands" already *is* the fractional Chern insulator state.
+  { parents: ['Monolayer MoTe₂ (2H)', 'Monolayer MoTe₂ (2H)'], result: namedResult('Twisted Bilayer MoTe₂') },
+  // Kezilebieke et al., Nature 588, 424 (2020) -- CrBr₃/NbSe₂ topological
+  // superconductivity with chiral Majorana edge modes.
+  { parents: ['Niobium Diselenide', 'Chromium Tribromide'], result: namedResult('NbSe₂/CrBr₃ Topological-SC Heterostructure') },
+  { parents: ['Tantalum Disulfide (1T)', 'Tantalum Disulfide (1H)'], result: namedResult('1T/1H-TaS₂ Heterostructure') },
 ];
 
-// The result type for combining two main types, or `undefined` if that pair
-// (in either order) isn't a recognized hybrid -- includes same-type pairs,
-// which are never valid (see HYBRID_RULES' comment). Majorana's panel calls
-// this to decide which defeated-material pairs to even offer, not just to
-// resolve one the player already picked.
-export function hybridResultType(typeA: MaterialType, typeB: MaterialType): MaterialType | undefined {
-  if (typeA === typeB) return undefined;
-  const rule = HYBRID_RULES.find(
-    (r) => (r.types[0] === typeA && r.types[1] === typeB) || (r.types[0] === typeB && r.types[1] === typeA)
+// The recipe result for fusing two named materials, or `undefined` if that
+// pair (in either order, same-name pairs included) has no authored recipe --
+// Majorana's panel calls this to decide which defeated-material pairs to
+// even offer, not just to resolve one the player already picked.
+export function hybridRecipeResult(nameA: string, nameB: string): Material | undefined {
+  const recipe = HYBRID_RECIPES.find(
+    (r) => (r.parents[0] === nameA && r.parents[1] === nameB) || (r.parents[0] === nameB && r.parents[1] === nameA)
   );
-  return rule?.result;
+  return recipe?.result;
 }
 
-// Fuses two materials whose types are a recognized pairing (checked via
-// `hybridResultType` -- callers must not call this for an invalid pair,
-// this doesn't re-validate) into a new hybrid `Material`. maxHp scales off
-// max(a, b), not avg(a, b), so a hybrid is never a downgrade from its
-// stronger parent -- "multiplies your attributes by 1.5" should never read
-// as a trap. Not looked up by findMaterialByName (that only searches
-// WORLD_CRYSTALS, real compounds) -- callers must set playerForm to the
-// returned object directly, the same way OverworldScene.transmuteInto sets
-// it for an ordinary crystal.
+// Fuses two materials with an authored recipe (checked via
+// `hybridRecipeResult` -- callers must not call this for an unrecognized
+// pair, this doesn't re-validate) into that recipe's named result. Unlike
+// the old type-derived hybrid, the result's own name/type/maxHp/moves are
+// all authored on its WORLD_CRYSTALS entry, not computed here -- this
+// function's job is just attaching `hybridParents` (so the fused crystal
+// still renders as an actual visual mixture of both parents, per DESIGN.md's
+// "player-created hybrid" note), sorted the same order-independent way the
+// lookup above is, so picking Aluminum-then-InAs and InAs-then-Aluminum
+// render identically.
 export function combineMaterials(a: Material, b: Material): Material {
-  const resultType = hybridResultType(a.type, b.type);
-  // Sorted so picking Aluminum-then-Lead and Lead-then-Aluminum name (and
-  // therefore dedupe against) the same hybrid, regardless of pick order --
-  // `hybridParents` is sorted the same way so a hybrid's rendered look is
-  // likewise independent of pick order.
+  const result = hybridRecipeResult(a.name, b.name);
+  if (!result) throw new Error(`combineMaterials: no recipe for "${a.name}" + "${b.name}"`);
   const [first, second] = [a, b].sort((x, y) => x.name.localeCompare(y.name));
   return {
-    name: `${first.name} × ${second.name}`,
-    type: resultType ?? 'topological',
-    color: blendColor(a.color, b.color),
-    variant: TYPE_LOOK[resultType ?? 'topological'].variant,
-    maxHp: Math.round(Math.max(a.maxHp, b.maxHp) * 1.5),
-    moves: Array.from(new Set([...a.moves, ...b.moves])),
+    ...result,
     hybridParents: {
       colorA: first.color,
       variantA: first.variant,

@@ -27,6 +27,10 @@ const EFFECT_STYLE: Record<MoveClass, { color: number; shape: AttackShape }> = {
   entanglement: { color: 0x5ad9c9, shape: 'bolt' },
   decoherence: { color: 0x333333, shape: 'burst' },
   analytic: { color: 0xffe066, shape: 'beam' },
+  // Electromagnon Pulse -- a magnon-family excitation, so it shares
+  // Magnon Pulse's expanding-ring silhouette, tinted the multiferroic
+  // type's own magenta rather than magnetic's red.
+  magnetoelectric: { color: 0xc94ac0, shape: 'ring' },
 };
 
 // Per-move-id shape overrides for 'analytic' -- the one class where two

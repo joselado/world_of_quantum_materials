@@ -16,10 +16,6 @@ mechanics/content decisions see `DESIGN.md`, for visual conventions see
 - `CODEMAP.md` -- where things live in the code: function names, file
   locations, established patterns to reuse. Read this before touching
   `game/src/` so you're not re-exploring the tree from scratch.
-- `data/materials.json` -- data-driven reference for the full type system
-  (all 10 material types, subtypes, moves, type chart). This is the
-  design-time source of truth; `game/src/data/materials.ts` is the smaller,
-  type-checked subset the running game actually imports.
 - `game/` -- **active development happens here.** A Vite + TypeScript +
   Phaser 3 project (see "Running the game" below).
 - `screenshots/` -- the images embedded in `README.md`. Regenerate rather

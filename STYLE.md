@@ -307,19 +307,21 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 - His panel reuses the tab-content/footer shape Noether/Bloch/Bohr share, but with a
   two-step flow instead of one screen: every defeated wild material (or, in Superposition
   Mode, every crystal in the game) *that pairs with at least one of the others* gets a
-  button (same-type pairs, and any pairing not in `data/materials.ts`'s `HYBRID_RULES`,
-  are filtered out before they ever render), picking one asks "Combine `<first>` with..."
-  and re-lists only the remaining candidates that pair with it specifically (plus a "Never
-  mind" to back out) rather than showing every possible pair at once. Both steps paginate
-  (see "Paginated candidate lists" below) once the filtered list is longer than one page.
-  Picking the second immediately transmutes the player into the new fused `Material`
-  (`data/materials.ts`'s `combineMaterials`, color-blended, `maxHp` = 1.5x the stronger
-  parent's) the same way Bohr's transmutation does -- no separate "confirm" step. Above the
-  combine flow, up to 3 previously created hybrids (`hybridMaterials` save list) get their
-  own "Become `<name>` again" buttons, same dimmed-when-current treatment as Bohr's list.
-  Empty state (no valid pairing among the candidates -- including having fewer than 2
-  total): "None of the crystals you've defeated pair into a hybrid yet -- try a magnet or
-  classical magnet together with a superconductor or quantum-Hall state."
+  button (any pairing with no matching entry in `data/materials.ts`'s `HYBRID_RECIPES` --
+  keyed by parent name, not main type, so a same-type pair can still be valid if a named
+  recipe covers it -- is filtered out before it ever renders), picking one asks "Combine
+  `<first>` with..." and re-lists only the remaining candidates that pair with it
+  specifically (plus a "Never mind" to back out) rather than showing every possible pair at
+  once. Both steps paginate (see "Paginated candidate lists" below) once the filtered list is
+  longer than one page. Picking the second immediately transmutes the player into the
+  recipe's own named result (`data/materials.ts`'s `combineMaterials` -- name/type/maxHp all
+  fixed on the recipe, not computed at combine time) the same way Bohr's transmutation does --
+  no separate "confirm" step. Above the combine flow, up to 3 previously created hybrids
+  (`hybridMaterials` save list) get their own "Become `<name>` again" buttons, same
+  dimmed-when-current treatment as Bohr's list. Empty state (no valid pairing among the
+  candidates -- including having fewer than 2 total): "None of the crystals you've defeated
+  pair into a known hybrid recipe yet -- Majorana only knows specific real pairings (e.g.
+  Aluminum + Indium Arsenide, or two Graphenes together)."
 
 ## Curie in the overworld (`OverworldScene.showCuriePanel`)
 

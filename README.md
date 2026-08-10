@@ -24,7 +24,10 @@ sideways. The corridor bends
 as it climbs, so reaching the far end takes actually tracking the bend, not
 just holding one direction. Short dead-end side paths branch off with a
 qumatoken (the in-game currency) waiting at the end. Every world has its own
-biome, matching that topic's flavor.
+biome, matching that topic's flavor -- and stepping off the path doesn't
+always mean a wall: the Floating Islands drop away into open sky, the Frozen
+Caverns are a rippling frozen lake, and the Defect Wastes are a glowing
+molten crust, alongside the more ordinary raised stone everywhere else.
 
 <table>
 <tr>
@@ -41,7 +44,10 @@ biome, matching that topic's flavor.
 just a fight. Most ask a short physics question pulled straight from the
 course material -- answer correctly and you go into battle with a power
 boost, answer wrong and you're weakened, or just say "let me pass" and walk
-on with no consequence either way.
+on with no consequence either way. Every compound has its own look, too --
+same main type, same base silhouette family, but each one gets its own tilt,
+proportions, and tint, so a wild Manganese Oxide doesn't read as a recolored
+copy of the Nickel Oxide standing next to it.
 
 <table>
 <tr>
@@ -80,7 +86,9 @@ deliberately simple rather than a separate strong/weak chart on top of it.
 waiting partway through each world -- Noether sells new moves and sharper
 stats, Bloch teleports you between worlds you've already visited, Bohr lets
 you *transmute* into any crystal you've defeated, Majorana lets you fuse two
-defeated crystals into a brand-new hybrid state and become it, Curie sells
+defeated crystals into a brand-new hybrid state and become it -- rendered as
+an actual mixture of both parents' own colors and shapes, not just a single
+blended-together crystal -- Curie sells
 "analytic" moves that ask you a physics-equation question before they land
 (get it right for double damage, wrong for half) with dramatically flashier
 effects than an ordinary move -- a multi-layer beam of light falling from the
@@ -150,6 +158,27 @@ archetypes, and a rival crystal gating the way to the next world.
 World 10's wilds are "echoes" of earlier phases of matter rather than new
 real compounds, and its rival is a final boss built as "a model of you,"
 drawing from whatever moves you've collected by then.
+
+## Battle mechanics, quick reference
+
+- **Turn order** is speed-ordered by your crystal's Velocity stat; Quantumness
+  raises your crit ("coherent hit") chance, Correlation raises your defense.
+  Every crystal also carries HP, fully healed after each battle -- qumatokens,
+  not HP attrition, are what's actually on the line from one fight to the next.
+- **Every move is a real quasiparticle**, never an abstract "attack type" --
+  Phonon Beam, Electron Pulse, Magnon Pulse, Polaron Drag, Spinon Swap, Anyon
+  Braid, Majorana Split, and a couple more that unlock later. A crystal can
+  only ever learn the moves its own physics actually supports.
+- **One type-interaction rule, on purpose:** if a defender's own physics can't
+  host the attacking move's quasiparticle at all, the hit lands at double
+  force -- no separate strong/weak chart stacked on top of it.
+- **Hybrid materials.** Some crystals aren't single compounds at all, but
+  named real (or credibly engineered) combinations of two others -- one
+  mentor partway through the game lets you fuse two crystals you've already
+  defeated into one of these, if the pairing is a known one.
+- **A rarer class of move exists beyond the ordinary quasiparticle roster** --
+  taught by a mentor of its own, it trades a physics gamble for a much bigger
+  payoff (or a real cost if you get it wrong). You'll know it when you see it.
 
 ## Controls
 

@@ -21,6 +21,14 @@ export const MATERIAL_BLURBS: Record<string, string> = {
     'MgO is a simple ionic band insulator, the textbook baseline against which topological insulators (a gapped spectrum for a very different reason) are usually contrasted.',
   'Rival Silicon':
     "Silicon's electrons fill a conventional band structure right up to a gap -- an ordinary semiconductor, no protected states or broken symmetry needed to explain it.",
+  // CrI3 itself is "just" a van der Waals ferromagnet, not multiferroic --
+  // twisting two layers together is what's new, and even then this is a
+  // theoretical proposal (noncollinear moiré spin textures inducing
+  // magnetoelectric coupling), not yet an established experimental result,
+  // so this overrides the type's fallback blurb to say so rather than assert
+  // it as settled fact.
+  'Twisted CrI₃':
+    'Untwisted CrI₃ is only an ordinary van der Waals ferromagnet -- stacking two layers at a twist angle is predicted to create noncollinear moiré spin textures whose magnetoelectric coupling would host genuine electromagnons.',
 };
 
 const TYPE_FALLBACK_BLURBS: Record<MaterialType, string> = {
@@ -41,6 +49,10 @@ const TYPE_FALLBACK_BLURBS: Record<MaterialType, string> = {
     'Frustration keeps its spins from ever ordering, even at zero temperature -- it stays in a highly entangled, fractionalized state instead.',
   defect: 'A localized defect or impurity binds its own resonance or bound state, distinct from the clean bulk around it.',
   adaptive: 'Not a real material -- an adaptive model that learns and exploits whatever strategy is thrown at it.',
+  multiferroic:
+    'Magnetically ordered with an electric polarization coupled to that order -- its spin waves (electromagnons) carry an electric-dipole activity an ordinary magnon never does.',
+  chernInsulator:
+    "Quantized Hall conductance even with no external magnetic field, from a nonzero Chern number baked into its own band structure rather than field-induced Landau levels.",
 };
 
 export function materialBlurb(material: { name: string; type: MaterialType }): string {

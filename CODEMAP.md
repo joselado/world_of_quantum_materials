@@ -55,8 +55,8 @@ game/src/
                                   enemyStatsForWorld(), statUpgradeCost(), findMaterialByName(),
                                   allCrystals() -- every WORLD_CRYSTALS entry deduped by name, feeds
                                   Bohr/Majorana/Anderson's Superposition Mode candidate pools,
-                                  hybridResultType()/HYBRID_RULES -- Majorana's valid-pairing table,
-                                  combineMaterials() -- Majorana's hybrid-material fuser
+                                  hybridRecipeResult()/HYBRID_RECIPES -- Majorana's named parent-pair
+                                  recipe catalog, combineMaterials() -- Majorana's hybrid-material fuser
     tokens.ts                    Qumatoken value tiers + weights
     quiz.ts                      Per-material physics question pools (>=6 each) via
                                   getMaterialQuestion(), plus one flat ANALYTIC_QUESTIONS pool via
@@ -67,7 +67,6 @@ game/src/
     tutorial.ts                    TUTORIAL_TIPS/TUTORIAL_PAGES -- contextual + replayable tutorial copy
     settings.ts                    DENSITY_PRESETS/DEFAULT_ENCOUNTER_DENSITY -- wild-encounter density presets
     story.ts                       STORY_BEATS -- per-world Decoherence-arc line shown on advancing worlds
-data/materials.json            Repo-root design-time reference (fuller roster than materials.ts)
 ```
 
 ## Data model (`data/types.ts`, `data/materials.ts`)
@@ -114,12 +113,14 @@ data/materials.json            Repo-root design-time reference (fuller roster th
   whose actual dimensionality/stacking doesn't match its type's usual gem look overrides it via
   `crystal()`'s `variantOverride` param (Graphene/Monolayer WTe₂/Chromium Triiodide → `'layer'`,
   Twisted Bilayer MoTe₂ → `'twisted'`; see STYLE.md).
-- `combineMaterials(a, b)` (Majorana's hybrid fuser, §5) sets the new `Material`'s
-  `hybridParents` to both inputs' own `color`/`variant` (sorted the same way the hybrid's own
-  name is, so pick order doesn't change the rendered look) -- `makeCrystal()`'s `opts.hybrid`
-  reads this to render an actual fused mixture instead of the flat `blendColor` average alone
-  (see STYLE.md). Optional field, so a hybrid `playerForm` loaded from a save written before it
-  existed just renders the ordinary single-shape look instead of throwing.
+- `combineMaterials(a, b)` (Majorana's hybrid fuser, §5) looks up `hybridRecipeResult(a.name,
+  b.name)` -- a curated, named parent-pair catalog (`HYBRID_RECIPES`), not a type-derived
+  result -- and spreads that recipe's own authored `Material` (name/type/color/maxHp/moves all
+  fixed on its `WORLD_CRYSTALS` entry, not computed here), adding only `hybridParents` (both
+  inputs' own `color`/`variant`, sorted the same way the lookup itself is order-independent) so
+  `makeCrystal()`'s `opts.hybrid` can render an actual fused mixture on top of the recipe's own
+  base look (see STYLE.md). Optional field, so a hybrid `playerForm` loaded from a save written
+  before it existed just renders the ordinary single-shape look instead of throwing.
 
 ## Cross-cutting patterns (reuse these, don't reinvent)
 
@@ -178,12 +179,15 @@ types the player goes through this rather than `PLAYER_MATERIAL` directly: `Batt
 both through the shared `OverworldScene.applyPlayerForm(material)` (sets `playerForm`, clamps
 HP down to the new form's `maxHp` if lower, persists, redraws the crystal -- never a full
 heal): Bohr's `transmuteInto(name)` looks the target up by name across `WORLD_CRYSTALS` via
-`findMaterialByName` (never `WORLD_RIVALS` -- rivals aren't real compounds, and never a
-hybrid -- `findMaterialByName` only searches `WORLD_CRYSTALS`, so it silently returns
-`undefined` for a synthesized hybrid name); Majorana's `becomeHybrid(material)` is called
-with an already-resolved `Material` object instead (either freshly built by
-`combineMaterials` or pulled straight from the `hybridMaterials` save list), since there's
-nothing to look up by name for a hybrid that was never in `WORLD_CRYSTALS` to begin with.
+`findMaterialByName` (never `WORLD_RIVALS` -- rivals aren't real compounds). Since
+`HYBRID_RECIPES`' results are themselves ordinary `WORLD_CRYSTALS` entries (mostly World 10's
+pool) rather than synthesized on the fly, a hybrid's name is now findable there too -- the one
+exception is a `hybridMaterials` save entry written before this change, back when
+`combineMaterials` still synthesized a `"A × B"` placeholder name with no matching
+`WORLD_CRYSTALS` row. Majorana's `becomeHybrid(material)` is still called with an
+already-resolved `Material` object rather than a name (either freshly built by
+`combineMaterials`, which additionally attaches `hybridParents` for the fused-visual render, or
+pulled straight from the `hybridMaterials` save list).
 Anderson's `learnImpurityMove` is a third mentor that touches player state but deliberately
 *doesn't* go through `applyPlayerForm` at all -- it only appends a move id to `unlockedMoves`,
 leaving `playerForm` untouched, since the whole point of the impurity-doping mechanic is
@@ -313,25 +317,26 @@ in the repo stays untouched by the later Feynman→Anderson rename).
 following the same `open: (s) => s.showXPanel()` pattern as Noether/Bloch/Bohr:
 - **Majorana's hybrid-material panel** (`OverworldScene.showMajoranaPanel`) lets the player fuse
   two `defeatedMaterials` into a new `Material` via `data/materials.ts`'s `combineMaterials(a,
-  b)` (`maxHp: round(max(a.maxHp, b.maxHp) * 1.5)`, colors blended) and become it immediately
-  via `applyPlayerForm` (see "Player form" above). **Not any two defeated crystals** -- only
-  pairs whose main types are both different *and* listed together in `HYBRID_RULES`
-  (`hybridResultType(typeA, typeB)` returns the result type, or `undefined` for an unrecognized
-  or same-type pair). The panel filters both the first-pick list (only crystals with *some*
-  valid partner among the other recently-defeated ones) and the second-pick list (only
-  crystals that pair with whichever was picked first) through this before ever rendering a
-  button, so an invalid combination is never one click away -- `createHybrid` doesn't
-  re-validate, it trusts the panel already filtered. A two-step pick
-  (`this.majoranaSelection: string | null`, the first choice, while the panel rebuilds for the
-  second) rather than one screen of every valid pair -- reset in both `create()` and
-  `closeDialogue()` so a stale first pick can't survive a cancel-and-reopen. Every hybrid ever
-  created is appended to the `hybridMaterials` save list (deduped by name, since
-  `combineMaterials` sorts its two parents' names before formatting so pick order doesn't
-  produce two differently-named hybrids for the same pair) so the panel's own "become again"
-  section can offer an earlier one without recombining -- deliberately sourced separately from
-  `defeatedMaterials`, so a hybrid can never be fed back in as a combine ingredient (that would
-  compound the 1.5x multiplier every time, on top of never being a recognized `HYBRID_RULES`
-  type to begin with).
+  b)`, which spreads whatever `Material` the matching `HYBRID_RECIPES` entry authored
+  (name/type/maxHp/moves all fixed there, not computed at combine time) and adds only
+  `hybridParents` for the fused-visual render, then becomes it immediately via `applyPlayerForm`
+  (see "Player form" above). **Not any two defeated crystals** -- only pairs with a named entry
+  in `HYBRID_RECIPES`, keyed by parent *name* rather than main type (`hybridRecipeResult(nameA,
+  nameB)` returns the recipe's result, or `undefined` for an unrecognized pair) -- same-type
+  pairs are allowed when a named recipe explicitly covers them (e.g. Graphene + Graphene). The
+  panel filters both the first-pick list (only crystals with *some* valid partner among the
+  other recently-defeated ones) and the second-pick list (only crystals that pair with whichever
+  was picked first) through this before ever rendering a button, so an invalid combination is
+  never one click away -- `createHybrid` doesn't re-validate, it trusts the panel already
+  filtered. A two-step pick (`this.majoranaSelection: string | null`, the first choice, while the
+  panel rebuilds for the second) rather than one screen of every valid pair -- reset in both
+  `create()` and `closeDialogue()` so a stale first pick can't survive a cancel-and-reopen. Every
+  hybrid ever created is appended to the `hybridMaterials` save list (deduped by name -- a
+  recipe's result name is fixed regardless of parent pick order, so fusing the same pair twice
+  would otherwise list the same hybrid twice) so the panel's own "become again" section can offer
+  an earlier one without recombining -- deliberately sourced separately from
+  `defeatedMaterials`, so a hybrid can never be fed back in as a combine ingredient (no recipe
+  takes another hybrid as a parent, by construction of `HYBRID_RECIPES`).
 - **Curie's analytic-move shop** (`OverworldScene.showCuriePanel`/`renderCurieMoves`) mirrors
   `showNoetherShop`/`renderShopMoves` but sells only `data/materials.ts`'s `ANALYTIC_MOVE_IDS`
   (currently `skyfallBeam`/`groundEruption`), which `SHOP_MOVE_IDS` deliberately excludes so

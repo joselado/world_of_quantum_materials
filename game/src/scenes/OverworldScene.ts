@@ -31,7 +31,7 @@ import {
   findMaterialByName,
   allCrystals,
   combineMaterials,
-  hybridResultType,
+  hybridRecipeResult,
   statUpgradeCost,
   enemyStatsForWorld,
   DEFAULT_STATS,
@@ -2469,7 +2469,7 @@ export class OverworldScene extends Phaser.Scene {
     // then paginated for display rather than an arbitrary recency cap.
     const pool: { name: string; type: MaterialType }[] = superposition ? allCrystals() : this.getDefeatedMaterials();
     const isCombinable = (m: { name: string; type: MaterialType }) =>
-      pool.some((other) => other.name !== m.name && hybridResultType(m.type, other.type));
+      pool.some((other) => other.name !== m.name && hybridRecipeResult(m.name, other.name));
     const combinable = pool.filter(isCombinable).sort((a, b) => a.name.localeCompare(b.name));
     if (this.majoranaSelection === null) {
       if (combinable.length < 2) {
@@ -2477,7 +2477,7 @@ export class OverworldScene extends Phaser.Scene {
           .text(
             CANVAS_W / 2,
             y,
-            "None of the crystals you've defeated pair into a hybrid yet -- try a magnet or classical magnet together with a superconductor or quantum-Hall state.",
+            "None of the crystals you've defeated pair into a known hybrid recipe yet -- Majorana only knows specific real pairings (e.g. Aluminum + Indium Arsenide, or two Graphenes together).",
             { fontSize: fontPx(this, 13), color: '#ffffff', align: 'center', wordWrap: { width: 480 } }
           )
           .setOrigin(0.5, 0);
@@ -2515,7 +2515,6 @@ export class OverworldScene extends Phaser.Scene {
       }
     } else {
       const first = this.majoranaSelection;
-      const firstType = combinable.find((m) => m.name === first)?.type;
       const label = this.add
         .text(CANVAS_W / 2, y, `Combine ${first} with...`, {
           fontSize: fontPx(this, 12),
@@ -2527,7 +2526,7 @@ export class OverworldScene extends Phaser.Scene {
       container.add(label);
       y += label.height + 6;
       const partners = pool
-        .filter((m) => m.name !== first && firstType && hybridResultType(firstType, m.type))
+        .filter((m) => m.name !== first && hybridRecipeResult(first, m.name))
         .sort((a, b) => a.name.localeCompare(b.name));
       y = this.renderPagedButtons(
         container,

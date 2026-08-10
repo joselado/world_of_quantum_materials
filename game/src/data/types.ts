@@ -1,6 +1,9 @@
-// Mirrors the shape of ../../../data/materials.json (the design-time reference
-// for the full 10-type roster) -- this file is what the running game actually
-// imports and type-checks against.
+// The type system's sole source of truth -- there used to be a fuller
+// repo-root data/materials.json "design-time reference" this mirrored, but it
+// had drifted out of sync with real implementation decisions (a
+// type-effectiveness chart and an "Impurity Scatter" move, both later
+// deliberately dropped -- see materials.ts) and was removed rather than kept
+// in sync by hand.
 
 export type MoveClass =
   | 'trivial'
@@ -10,6 +13,11 @@ export type MoveClass =
   | 'gauge'
   | 'entanglement'
   | 'decoherence'
+  // Carries Electromagnon Pulse (multiferroic type only) -- the quasiparticle
+  // a multiferroic hosts on top of its ordinary magnons, a spin wave that
+  // picks up electric-dipole activity through magnon-phonon hybridization
+  // (the magnetoelectric coupling itself).
+  | 'magnetoelectric'
   // Curie's moves (§5, World 6): using one asks an analytic-equation
   // question first (data/quiz.ts's ANALYTIC_QUESTIONS) -- answering right
   // doubles the hit, answering wrong halves it. Not gated by
@@ -29,7 +37,17 @@ export type MaterialType =
   | 'tensornet'
   | 'spinliquid'
   | 'defect'
-  | 'adaptive';
+  | 'adaptive'
+  // Magnetically ordered with an additional electric polarization coupled to
+  // it (electromagnon-hosting) -- distinct from a plain classicalmag/magnet,
+  // which has no such magnetoelectric coupling.
+  | 'multiferroic'
+  // A 2D state with quantized Hall conductance at zero external field from a
+  // nonzero Chern number of its bands (as opposed to 'qhe', reserved here for
+  // field-driven Landau-level physics) -- shares 'topological'/'qhe''s gauge
+  // quasiparticle family (edge modes, and anyons where the state is
+  // fractional) rather than hosting a class of its own.
+  | 'chernInsulator';
 
 export type CrystalVariant = 'shard' | 'cluster' | 'prism' | 'layer' | 'twisted';
 
