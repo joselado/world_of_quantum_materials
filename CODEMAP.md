@@ -297,7 +297,7 @@ re-seed every key itself -- prefer the restart approach.
 
 ## How to use this file
 
-Before touching `video_game/game/src/`, read this file (and the relevant section of
+Before touching `game/src/`, read this file (and the relevant section of
 `DESIGN.md`/`STYLE.md`) instead of re-exploring the tree. If you learn something mid-task that
 would have saved a file read -- an exact function name, a pattern you had to reverse-engineer,
 a gotcha in how two files interact -- add it here before you forget it, in the section it best

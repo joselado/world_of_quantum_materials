@@ -184,7 +184,7 @@ to play through the story the first time.
 The game isn't hosted yet -- to run it locally:
 
 ```
-cd video_game/game
+cd game
 npm install
 npm run dev
 ```

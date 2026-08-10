@@ -30,7 +30,7 @@ mechanics/content decisions see `DESIGN.md`, for visual conventions see
 `game/` needs Node.js (npm) installed.
 
 ```
-cd video_game/game
+cd game
 npm install
 npm run dev
 ```
