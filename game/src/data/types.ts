@@ -9,7 +9,15 @@ export type MoveClass =
   | 'localization'
   | 'gauge'
   | 'entanglement'
-  | 'decoherence';
+  | 'decoherence'
+  // Curie's moves (§5, World 6): using one asks an analytic-equation
+  // question first (data/quiz.ts's ANALYTIC_QUESTIONS) -- answering right
+  // doubles the hit, answering wrong halves it. Not gated by
+  // MOVE_COMPATIBILITY the way every other class is (see that table's own
+  // comment) -- these are a technique the player learned, not a quasiparticle
+  // a crystal's own physics has to host, so they're usable/purchasable from
+  // any form.
+  | 'analytic';
 
 export type MaterialType =
   | 'trivial'

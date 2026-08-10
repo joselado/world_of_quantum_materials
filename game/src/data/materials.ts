@@ -34,16 +34,33 @@ export const MOVES: Record<string, Move> = {
   fluxTwist: { id: 'fluxTwist', name: 'Anyon Braid', class: 'gauge', power: 11 },
   entanglementSwap: { id: 'entanglementSwap', name: 'Spinon Swap', class: 'entanglement', power: 10 },
   decoherenceWave: { id: 'decoherenceWave', name: 'Majorana Split', class: 'decoherence', power: 11 },
+  // Curie's analytic moves (§5, World 6) -- power sits below the other
+  // exotic-tier moves since their real payoff is the answer-gated 2x/0.5x
+  // multiplier BattleScene applies, not raw power. Never listed in any
+  // material's `moves` array (wild/rival movesets) -- only the player can
+  // ever be asked one of these questions.
+  skyfallBeam: { id: 'skyfallBeam', name: 'Skyfall Beam', class: 'analytic', power: 10 },
+  groundEruption: { id: 'groundEruption', name: 'Ground Eruption', class: 'analytic', power: 10 },
 };
+
+// Curie is the sole seller of analytic moves (OverworldScene.showCuriePanel,
+// mirroring Noether's showNoetherShop) -- kept out of SHOP_MOVE_IDS so
+// Noether's own shop never offers them too.
+export const ANALYTIC_MOVE_IDS = Object.values(MOVES)
+  .filter((m) => m.class === 'analytic')
+  .map((m) => m.id);
 
 // Every move Noether can eventually teach, priced by raw power
 // (`OverworldScene.shopCost`) -- everything except the player's starting
-// Phonon Beam. What actually shows up in her shop (and what actually
-// appears as a battle button) is this list filtered down to
+// Phonon Beam and Curie's analytic moves (ANALYTIC_MOVE_IDS, sold only by
+// her). What actually shows up in her shop (and what actually appears as a
+// battle button) is this list filtered down to
 // `compatibleMoves(currentPlayerForm)`, so a trivial-type player is only
 // ever offered Electron Pulse until they transmute into a form whose
 // physics supports the rest (see MOVE_COMPATIBILITY/compatibleMoves).
-export const SHOP_MOVE_IDS = Object.keys(MOVES).filter((id) => id !== 'thermalFluctuation');
+export const SHOP_MOVE_IDS = Object.keys(MOVES).filter(
+  (id) => id !== 'thermalFluctuation' && !ANALYTIC_MOVE_IDS.includes(id)
+);
 
 // Which quasiparticle classes a given main type can physically host --
 // Phonon Beam (thermal) is on every list since every crystal has a lattice,
@@ -51,18 +68,26 @@ export const SHOP_MOVE_IDS = Object.keys(MOVES).filter((id) => id !== 'thermalFl
 // (magnet, classicalmag), never for a plain band insulator/semiconductor
 // like Silicon. This is what makes "Si doesn't have magnons" a rule the
 // game enforces, not just flavor text -- both the battle move list
-// (getBattleMoves) and Noether's shop filter through this.
+// (getBattleMoves) and Noether's shop filter through this. 'analytic' is the
+// one exception, on every list -- it's not a quasiparticle a crystal's own
+// physics has to host, it's a technique the player themselves learned from
+// Curie, so it's never mismatched and never gated by current form. Adding a
+// new MoveClass here always means deciding this on purpose, not by
+// omission: an analytic-style class left off every list would make its
+// moves *always* mismatch (canHost) against every defender -- a silent 2x
+// on top of whatever bonus BattleScene itself applies for that class, not a
+// neutral default.
 const MOVE_COMPATIBILITY: Record<MaterialType, MoveClass[]> = {
-  trivial: ['trivial', 'thermal'],
-  magnet: ['magnetic', 'thermal'],
-  topological: ['gauge', 'trivial', 'thermal', 'decoherence'],
-  qhe: ['gauge', 'trivial', 'thermal'],
-  supercon: ['localization', 'decoherence', 'thermal', 'trivial'],
-  classicalmag: ['magnetic', 'thermal'],
-  tensornet: ['entanglement', 'thermal', 'localization'],
-  spinliquid: ['entanglement', 'thermal', 'localization'],
-  defect: ['localization', 'decoherence', 'thermal'],
-  adaptive: ['trivial', 'magnetic', 'thermal', 'localization', 'gauge', 'entanglement', 'decoherence'],
+  trivial: ['trivial', 'thermal', 'analytic'],
+  magnet: ['magnetic', 'thermal', 'analytic'],
+  topological: ['gauge', 'trivial', 'thermal', 'decoherence', 'analytic'],
+  qhe: ['gauge', 'trivial', 'thermal', 'analytic'],
+  supercon: ['localization', 'decoherence', 'thermal', 'trivial', 'analytic'],
+  classicalmag: ['magnetic', 'thermal', 'analytic'],
+  tensornet: ['entanglement', 'thermal', 'localization', 'analytic'],
+  spinliquid: ['entanglement', 'thermal', 'localization', 'analytic'],
+  defect: ['localization', 'decoherence', 'thermal', 'analytic'],
+  adaptive: ['trivial', 'magnetic', 'thermal', 'localization', 'gauge', 'entanglement', 'decoherence', 'analytic'],
 };
 
 export function compatibleMoves(material: Material): string[] {
@@ -333,6 +358,77 @@ export function findMaterialByName(name: string): Material | undefined {
     if (found) return found;
   }
   return undefined;
+}
+
+// Averages each color channel of two crystal colors -- used to give a
+// player-created hybrid a look that visually blends its two parents rather
+// than just inheriting one type's flat TYPE_LOOK color.
+function blendColor(a: number, b: number): number {
+  const ar = (a >> 16) & 0xff, ag = (a >> 8) & 0xff, ab = a & 0xff;
+  const br = (b >> 16) & 0xff, bg = (b >> 8) & 0xff, bb = b & 0xff;
+  return (Math.round((ar + br) / 2) << 16) | (Math.round((ag + bg) / 2) << 8) | Math.round((ab + bb) / 2);
+}
+
+// Majorana's hybridization mechanic (§5): fuse two materials the player has
+// already defeated into a new state -- but only specific, physically
+// sensible type pairings, not any two defeated crystals. Two materials of
+// the *same* main type never combine (fusing two superconductors isn't a
+// new phase, it's just a bigger superconductor) -- every entry below is an
+// unordered pair of *different* types. Each pairing here mirrors a real
+// engineered platform DESIGN.md §3's crystal database already names
+// (magnet/classicalmag + supercon -> topological superconductor, the
+// Fe/Pb-chain/NbSe2-CrBr3-heterostructure mechanism and the mechanic's own
+// worked example; magnet/classicalmag + qhe -> the same "add magnetism to a
+// quantum-Hall-family state" route the quantum anomalous Hall effect takes;
+// topological + supercon or topological + qhe -> still topological, since
+// both inputs are already in that family). Not exhaustive over all 10
+// types on purpose -- combining e.g. a spin liquid with a defect state has
+// no equally concrete real-world hybrid to point to yet, so it's left out
+// rather than inventing an arbitrary result.
+const HYBRID_RULES: { types: [MaterialType, MaterialType]; result: MaterialType }[] = [
+  { types: ['magnet', 'supercon'], result: 'topological' },
+  { types: ['classicalmag', 'supercon'], result: 'topological' },
+  { types: ['topological', 'supercon'], result: 'topological' },
+  { types: ['magnet', 'qhe'], result: 'topological' },
+  { types: ['classicalmag', 'qhe'], result: 'topological' },
+  { types: ['topological', 'qhe'], result: 'topological' },
+];
+
+// The result type for combining two main types, or `undefined` if that pair
+// (in either order) isn't a recognized hybrid -- includes same-type pairs,
+// which are never valid (see HYBRID_RULES' comment). Majorana's panel calls
+// this to decide which defeated-material pairs to even offer, not just to
+// resolve one the player already picked.
+export function hybridResultType(typeA: MaterialType, typeB: MaterialType): MaterialType | undefined {
+  if (typeA === typeB) return undefined;
+  const rule = HYBRID_RULES.find(
+    (r) => (r.types[0] === typeA && r.types[1] === typeB) || (r.types[0] === typeB && r.types[1] === typeA)
+  );
+  return rule?.result;
+}
+
+// Fuses two materials whose types are a recognized pairing (checked via
+// `hybridResultType` -- callers must not call this for an invalid pair,
+// this doesn't re-validate) into a new hybrid `Material`. maxHp scales off
+// max(a, b), not avg(a, b), so a hybrid is never a downgrade from its
+// stronger parent -- "multiplies your attributes by 1.5" should never read
+// as a trap. Not looked up by findMaterialByName (that only searches
+// WORLD_CRYSTALS, real compounds) -- callers must set playerForm to the
+// returned object directly, the same way OverworldScene.transmuteInto sets
+// it for an ordinary crystal.
+export function combineMaterials(a: Material, b: Material): Material {
+  const resultType = hybridResultType(a.type, b.type);
+  // Sorted so picking Aluminum-then-Lead and Lead-then-Aluminum name (and
+  // therefore dedupe against) the same hybrid, regardless of pick order.
+  const [first, second] = [a, b].sort((x, y) => x.name.localeCompare(y.name));
+  return {
+    name: `${first.name} × ${second.name}`,
+    type: resultType ?? 'topological',
+    color: blendColor(a.color, b.color),
+    variant: TYPE_LOOK[resultType ?? 'topological'].variant,
+    maxHp: Math.round(Math.max(a.maxHp, b.maxHp) * 1.5),
+    moves: Array.from(new Set([...a.moves, ...b.moves])),
+  };
 }
 
 // Named after the lecture topic each world actually teaches (the numbered

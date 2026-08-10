@@ -1,13 +1,16 @@
 import Phaser from 'phaser';
 import { shade } from './colors';
 
-// Einstein's avatar -- world 7's mentor (entanglement/tensor networks,
-// fittingly the physicist whose own objection to entanglement -- the EPR
-// paradox -- made it a central problem). Own file, same convention as every
-// other mentor (glow -> sway -> cloak -> head-motif -> orbit ring). Head
-// motif: a warped spacetime grid in place of a face, grey/white rather than
-// any other mentor's palette.
-export function makeEinsteinAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameObjects.Container {
+// Bell's avatar -- world 7's mentor (entanglement/tensor networks, fittingly
+// the physicist whose inequality turned "spooky action at a distance" from
+// a philosophical objection into something you can actually measure and
+// violate). Own file, same convention as every other mentor (glow -> sway ->
+// cloak -> head-motif -> orbit ring). Head motif: a small correlation
+// network -- measurement stations linked by lines, with a node lit up at
+// each intersection -- in place of a face, grey/white rather than any other
+// mentor's palette (repurposed from an earlier warped-spacetime-grid motif,
+// which fit Einstein but not the correlations Bell's own theorem is about).
+export function makeBellAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameObjects.Container {
   const S = 30 * scale;
   const grey = 0xdfe6ec;
   const cloakColor = 0x2a2e36;
@@ -67,12 +70,15 @@ export function makeEinsteinAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameO
   head.fillCircle(0, headY, S * 0.38);
   sway.add(head);
 
-  // A small warped grid -- straight lines that dip toward a central mass,
-  // the classic "rubber sheet" spacetime-curvature picture, drawn small
-  // enough to sit where a face would go.
+  // A small correlation network -- a grid of measurement-station lines with
+  // a lit node at every intersection, small enough to sit where a face
+  // would go. The grid itself is unchanged from the earlier spacetime-grid
+  // motif (still reads as "a lattice of linked points"); the nodes are what
+  // reframe it as correlated measurements rather than curved spacetime.
   const grid = scene.add.graphics();
   grid.lineStyle(1, grey, 0.7);
   const dip = (x: number) => (x * x) / (S * 0.5);
+  const nodes: { x: number; y: number }[] = [];
   for (let gx = -2; gx <= 2; gx++) {
     const x = gx * S * 0.1;
     grid.beginPath();
@@ -87,9 +93,14 @@ export function makeEinsteinAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameO
       const y = headY - S * 0.02 + gy * S * 0.09 + dip(x) * 0.4;
       if (gx === -2) grid.moveTo(x, y);
       else grid.lineTo(x, y);
+      nodes.push({ x, y });
     }
     grid.strokePath();
   }
+  nodes.forEach((n) => {
+    grid.fillStyle(0xffffff, 0.9);
+    grid.fillCircle(n.x, n.y, S * 0.025);
+  });
   sway.add(grid);
 
   const orbit = scene.add.container(0, 0);

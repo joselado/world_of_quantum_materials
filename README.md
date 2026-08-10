@@ -79,8 +79,11 @@ deliberately simple rather than a separate strong/weak chart on top of it.
 **Grow.** Winning battles and grabbing qumatoken pickups funds the mentors
 waiting partway through each world -- Noether sells new moves and sharper
 stats, Bloch teleports you between worlds you've already visited, Bohr lets
-you *transmute* into any crystal you've defeated, and mentors from Dirac
-onward share the physics behind their own world's topic. Every mentor
+you *transmute* into any crystal you've defeated, Majorana lets you fuse two
+defeated crystals into a brand-new hybrid state and become it, Curie sells
+"analytic" moves that ask you a physics-equation question before they land
+(get it right for double damage, wrong for half), and Laughlin, Bell, Kondo,
+and Feynman share the physics behind their own world's topic. Every mentor
 you've met stays reachable from the Advisors panel, from anywhere.
 
 <table>
@@ -90,7 +93,15 @@ you've met stays reachable from the Advisors panel, from anywhere.
 </tr>
 <tr>
 <td><img src="screenshots/mentor.png" width="300" alt="Bohr's transmutation panel"></td>
-<td><img src="screenshots/mentor-dirac.png" width="300" alt="Dirac's lore panel"></td>
+<td><img src="screenshots/mentor-majorana.png" width="300" alt="Majorana's hybrid-material panel"></td>
+</tr>
+<tr>
+<td><img src="screenshots/mentor-curie.png" width="300" alt="Curie's analytic-move shop"></td>
+<td><img src="screenshots/battle-analytic-move.png" width="300" alt="An analytic move asking a physics question mid-battle"></td>
+</tr>
+<tr>
+<td><img src="screenshots/mentor-laughlin.png" width="300" alt="Laughlin's lore panel"></td>
+<td><img src="screenshots/mentor-bell.png" width="300" alt="Bell's lore panel"></td>
 </tr>
 </table>
 

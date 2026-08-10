@@ -82,9 +82,10 @@ wanted.
 
 Per `DESIGN.md`'s roadmap, the "full build-out" pass is done: all 10 worlds
 have a walkable map, biome, wild-encounter pool, rival gate, and a mentor
-standing mid-corridor (Noether, Bloch, and Bohr have real mechanics; Dirac
-through Feynman are lore-only pending a subtype system, see `DESIGN.md`
-§10), with that world's boss now standing at the goal tile as a gigantic
+standing mid-corridor (Noether, Bloch, Bohr, Majorana, and Curie have real
+mechanics; Laughlin, Bell, Kondo, and Feynman are lore-only pending a
+subtype system, see `DESIGN.md` §10), with that world's boss now standing
+at the goal tile as a gigantic
 visual landmark. The contextual tutorial tips, the Debug Mode
 title-screen toggle (instant world warp + auto-leveling, for testing any
 world without grinding), and the Enter-menu's Settings panel (wild-encounter

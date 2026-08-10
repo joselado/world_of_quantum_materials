@@ -1,15 +1,18 @@
 import Phaser from 'phaser';
 import { shade } from './colors';
 
-// Dirac's avatar -- world 4's mentor (Landau levels of Dirac fermions, the
-// relativistic-quantization thread that connects graphene's strong-field
-// behavior back to the Dirac equation). Same structural convention as every
-// other mentor (its own file, glow -> sway -> cloak -> head-motif -> orbit
-// ring -- see art/mentor.ts), never a shared parameterized builder. Head
-// motif: a row of paired positive/negative-energy dots either side of a
-// horizontal "sea level" line, with one dot excited above it and a hollow
-// gap left behind -- the Dirac sea, made literal.
-export function makeDiracAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameObjects.Container {
+// Laughlin's avatar -- world 4's mentor (the fractional quantum Hall
+// wavefunction: a strong-field electron liquid that condenses into a state
+// where the excitations carry a fraction of an electron's charge, world 4's
+// own topic). Same structural convention as every other mentor (its own
+// file, glow -> sway -> cloak -> head-motif -> orbit ring -- see
+// art/mentor.ts), never a shared parameterized builder. Head motif: a row of
+// filled Landau-level dots either side of a horizontal "filling" line, with
+// one dot excited above it and a hollow gap left behind -- a fractionally
+// charged quasihole, made literal (repurposed from an earlier Dirac-sea
+// motif, which reads just as well as a row of occupied states with one
+// excitation pulled out of it).
+export function makeLaughlinAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameObjects.Container {
   const S = 30 * scale;
   const navy = 0x6a7fff;
   const cloakColor = 0x1c2050;
@@ -40,7 +43,7 @@ export function makeDiracAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameObje
   const headY = -S * 0.55;
 
   // A simple dark cloak silhouette, no visible feet -- floats like Noether's
-  // robe but plainer and narrower, matching Dirac's austere reputation.
+  // robe but plainer and narrower, matching Laughlin's austere reputation.
   const cloak = scene.add.graphics();
   cloak.fillStyle(cloakColor, 1);
   cloak.fillPoints(
@@ -71,9 +74,10 @@ export function makeDiracAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameObje
   head.fillCircle(0, headY, S * 0.38);
   sway.add(head);
 
-  // The Dirac sea: a horizontal line of filled dots (occupied negative-
-  // energy states) with one hollow dot excited above the line and a hollow
-  // gap left in the row below it (a particle-hole pair).
+  // The fractional filling row: a horizontal line of filled dots (occupied
+  // Landau-level states at partial filling) with one hollow dot excited
+  // above the line and a hollow gap left in the row below it -- a
+  // fractionally charged quasihole and the quasiparticle it left behind.
   const sea = scene.add.graphics();
   sea.lineStyle(1, navy, 0.6);
   sea.lineBetween(-S * 0.32, headY, S * 0.32, headY);
@@ -92,11 +96,13 @@ export function makeDiracAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameObje
   sea.strokePath();
   sway.add(sea);
 
+  // Orbit glyphs read '1/3' rather than a generic '±' -- the fractional
+  // charge is the whole point of the fractional quantum Hall effect.
   const orbit = scene.add.container(0, 0);
   for (let i = 0; i < 4; i++) {
     const ang = (i * Math.PI) / 2;
     const spark = scene.add
-      .text(Math.cos(ang) * S * 0.95, Math.sin(ang) * S * 0.95 - S * 0.1, '±', {
+      .text(Math.cos(ang) * S * 0.95, Math.sin(ang) * S * 0.95 - S * 0.1, '⅓', {
         fontSize: `${Math.round(S * 0.3)}px`,
         color: '#8fa0ff',
       })

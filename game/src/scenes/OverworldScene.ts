@@ -8,10 +8,10 @@ import { makeNoetherAvatar } from '../art/mentor';
 import { makeBossCrystal } from '../art/boss';
 import { makeBlochAvatar } from '../art/bloch';
 import { makeBohrAvatar } from '../art/bohr';
-import { makeDiracAvatar } from '../art/dirac';
+import { makeLaughlinAvatar } from '../art/laughlin';
 import { makeMajoranaAvatar } from '../art/majorana';
 import { makeCurieAvatar } from '../art/curie';
-import { makeEinsteinAvatar } from '../art/einstein';
+import { makeBellAvatar } from '../art/bell';
 import { makeKondoAvatar } from '../art/kondo';
 import { makeFeynmanAvatar } from '../art/feynman';
 import { playMentorChime } from '../audio/sfx';
@@ -23,11 +23,14 @@ import {
   getRival,
   MOVES,
   SHOP_MOVE_IDS,
+  ANALYTIC_MOVE_IDS,
   compatibleMoves,
   getPlayerMaterial,
   getPlayerStats,
   getBattleMoves,
   findMaterialByName,
+  combineMaterials,
+  hybridResultType,
   statUpgradeCost,
   enemyStatsForWorld,
   DEFAULT_STATS,
@@ -119,14 +122,15 @@ interface WorldSprite {
 // `spawnXSprite`/`this.world === N` branches with a single data-driven
 // dispatch (spawnMentorSprite/openMentor), the same "reusable rather than
 // per-world bespoke" approach the map generator and biome table already
-// use. Noether/Bloch/Bohr keep their own bespoke panels (shop, teleport hub,
-// transmutation) and set `open` explicitly; every mentor from Dirac onward
-// leaves `open` unset and falls through to the shared showMentorLore panel
+// use. Five mentors have bespoke panels and set `open` explicitly: Noether
+// (shop), Bloch (teleport hub), Bohr (transmutation), Majorana (hybrid
+// materials), Curie (analytic moves). Laughlin, Bell, Kondo, and Feynman
+// leave `open` unset and fall through to the shared showMentorLore panel
 // instead (see DESIGN.md §5 -- their own mechanics are still an open design
-// question, Noether stays the sole moves/stats seller). Leaving `open`
-// unset rather than hand-writing `(s) => s.showMentorLore(WORLD_MENTORS[N]!)`
-// per lore entry means there's no self-referencing world-number literal to
-// forget updating if a world ever gets renumbered.
+// question). Leaving `open` unset rather than hand-writing
+// `(s) => s.showMentorLore(WORLD_MENTORS[N]!)` per lore entry means there's
+// no self-referencing world-number literal to forget updating if a world
+// ever gets renumbered.
 interface MentorDef {
   id: string;
   name: string;
@@ -190,6 +194,11 @@ export class OverworldScene extends Phaser.Scene {
   // reset to 0 every time the tutorial is (re)opened, whether that's the
   // automatic first-run play or a manual replay from the Enter-menu.
   private tutorialIndex = 0;
+  // Majorana's combine panel (§5): the first crystal picked, while the panel
+  // rebuilds to ask for the second -- null means "no combine in progress,
+  // show the initial pick list." Reset on every fresh scene create and every
+  // closeDialogue() so a stale first pick can't survive a cancel-and-reopen.
+  private majoranaSelection: string | null = null;
 
   // One entry per world with a mentor (see MentorDef above). A static field
   // initializer is still lexically inside the class body, so `s.showX()`
@@ -227,13 +236,13 @@ export class OverworldScene extends Phaser.Scene {
       open: (s) => s.showBohrPanel(),
     },
     4: {
-      id: 'dirac',
-      name: 'Dirac',
+      id: 'laughlin',
+      name: 'Laughlin',
       labelColor: '#8fa0ff',
       strokeColor: 0x6a7fff,
       quote:
-        "Put a Dirac fermion in a strong field and its Landau levels crowd toward zero energy differently than an ordinary electron's would -- graphene remembers its own relativity.",
-      avatar: makeDiracAvatar,
+        'Take an electron liquid in a strong enough field and it condenses into something new -- excite it, and the charge that peels off is a fraction of an electron, not a whole one.',
+      avatar: makeLaughlinAvatar,
       tile: 'middle',
     },
     5: {
@@ -244,6 +253,7 @@ export class OverworldScene extends Phaser.Scene {
       quote: 'Split one fermion into two halves, each its own antiparticle, and see what a superconductor can hide at its edge.',
       avatar: makeMajoranaAvatar,
       tile: 'middle',
+      open: (s) => s.showMajoranaPanel(),
     },
     6: {
       id: 'curie',
@@ -253,14 +263,15 @@ export class OverworldScene extends Phaser.Scene {
       quote: 'Every magnet has a temperature where its order gives up -- above it, the same atoms, no memory of which way is up.',
       avatar: makeCurieAvatar,
       tile: 'middle',
+      open: (s) => s.showCuriePanel(),
     },
     7: {
-      id: 'einstein',
-      name: 'Einstein',
+      id: 'bell',
+      name: 'Bell',
       labelColor: '#dfe6ec',
       strokeColor: 0xaeb8c4,
-      quote: "I called it spooky at a distance. I was wrong to doubt it, but I was right that it deserved doubting.",
-      avatar: makeEinsteinAvatar,
+      quote: 'Write down what any local, pre-agreed strategy could achieve -- then measure a pair of crystals and watch the number climb past it.',
+      avatar: makeBellAvatar,
       tile: 'middle',
     },
     8: {
@@ -306,6 +317,7 @@ export class OverworldScene extends Phaser.Scene {
     // panel container needs clearing too.
     this.dialogueActive = false;
     this.dialogueContainer = undefined;
+    this.majoranaSelection = null;
     this.biome = getBiome(this.world);
 
     const state = this.game.registry;
@@ -404,6 +416,7 @@ export class OverworldScene extends Phaser.Scene {
       state.set('visitedWorlds', []);
       state.set('defeatedMaterials', []);
       state.set('playerForm', null);
+      state.set('hybridMaterials', []);
       state.set('metMentors', []);
     }
 
@@ -1337,6 +1350,7 @@ export class OverworldScene extends Phaser.Scene {
     this.dialogueContainer?.destroy(true);
     this.dialogueContainer = undefined;
     this.dialogueActive = false;
+    this.majoranaSelection = null;
   }
 
   private isRivalDefeated(): boolean {
@@ -1780,6 +1794,92 @@ export class OverworldScene extends Phaser.Scene {
     return footerY + btn.height;
   }
 
+  // Curie stands at world 6's middle tile (WORLD_MENTORS) and sells the
+  // analytic-class moves (data/materials.ts's ANALYTIC_MOVE_IDS, currently
+  // Skyfall Beam/Ground Eruption) -- kept out of Noether's own shop
+  // (SHOP_MOVE_IDS excludes them, see materials.ts's comment) so Curie is
+  // their one source. Mirrors showNoetherShop's layout/structure, minus the
+  // Moves/Stats tabs since she only ever has one thing to sell.
+  private showCuriePanel() {
+    this.dialogueActive = true;
+
+    const panelWidth = 600;
+    const top = 20;
+    const container = this.add.container(0, 0).setDepth(100);
+    this.dialogueContainer = container;
+
+    let y = top;
+
+    const avatarY = y + 45;
+    const avatar = makeCurieAvatar(this);
+    avatar.setPosition(CANVAS_W / 2, avatarY);
+    container.add(avatar);
+    this.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    playMentorChime();
+    y = avatarY + 55;
+
+    const intro = this.add
+      .text(
+        CANVAS_W / 2,
+        y,
+        '"I am Curie. Learn the analytic side of the physics and I will teach you to strike by it -- answer right and the hit lands twice as hard, answer wrong and it barely lands at all."',
+        { fontSize: fontPx(this, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
+      )
+      .setOrigin(0.5, 0);
+    container.add(intro);
+    y += intro.height + 14;
+
+    y = this.renderCurieMoves(container, y);
+    y += 8;
+    y = this.renderFarewellFooter(container, y);
+    y += 8;
+
+    const panelHeight = y - top;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+      .setStrokeStyle(2, 0xc9d84a);
+    container.addAt(panel, 0);
+  }
+
+  private renderCurieMoves(container: Phaser.GameObjects.Container, y: number): number {
+    const unlocked = this.getUnlockedMoves();
+    const compatible = new Set(compatibleMoves(this.playerMaterial));
+    const forSale = ANALYTIC_MOVE_IDS.filter((id) => !unlocked.includes(id) && compatible.has(id));
+    const tokens = (this.game.registry.get('qumatokens') as number) || 0;
+
+    if (forSale.length === 0) {
+      const text = this.add
+        .text(CANVAS_W / 2, y, 'You already carry every analytic technique I can teach.', {
+          fontSize: fontPx(this, 13),
+          color: '#ffffff',
+          align: 'center',
+          wordWrap: { width: 480 },
+        })
+        .setOrigin(0.5, 0);
+      container.add(text);
+      return y + text.height;
+    }
+
+    forSale.forEach((id) => {
+      const move = MOVES[id];
+      const cost = shopCost(move);
+      const affordable = tokens >= cost;
+      const btn = this.addDialogueButton(container, y, `${move.name} -- ${cost} qumatokens`, () => {
+        if ((this.game.registry.get('qumatokens') as number) < cost) return;
+        this.qumatokens -= cost;
+        this.game.registry.set('qumatokens', this.qumatokens);
+        this.tokenText.setText(`Qumatokens: ${this.qumatokens}`);
+        this.game.registry.set('unlockedMoves', [...this.getUnlockedMoves(), id]);
+        persistFromRegistry(this.game.registry);
+        this.dialogueContainer?.destroy(true);
+        this.showCuriePanel();
+      });
+      if (!affordable) btn.setAlpha(0.5);
+      y += btn.height + 3;
+    });
+    return y;
+  }
+
   private advanceToWorld(world: number) {
     this.closeDialogue();
     this.scene.start('Overworld', { world, regenerate: true });
@@ -1959,10 +2059,13 @@ export class OverworldScene extends Phaser.Scene {
     container.addAt(panel, 0);
   }
 
-  private transmuteInto(name: string) {
-    const material = findMaterialByName(name);
-    if (!material) return;
-
+  // Sets the player's current crystal form to `material` and persists it --
+  // shared by Bohr's ordinary transmutation (transmuteInto, looks the form
+  // up by name in WORLD_CRYSTALS) and Majorana's hybrid panel (becomeHybrid,
+  // whose synthesized Material was never in WORLD_CRYSTALS to look up by
+  // name in the first place). Doesn't heal -- HP is only clamped down to the
+  // new form's maxHp if it's lower, same as it always has been.
+  private applyPlayerForm(material: Material) {
     this.game.registry.set('playerForm', material);
     const clampedHp = Math.min((this.game.registry.get('playerHp') as number) ?? material.maxHp, material.maxHp);
     this.game.registry.set('playerHp', clampedHp);
@@ -1970,6 +2073,12 @@ export class OverworldScene extends Phaser.Scene {
 
     this.playerMaterial = material;
     this.redrawPlayerCrystal();
+  }
+
+  private transmuteInto(name: string) {
+    const material = findMaterialByName(name);
+    if (!material) return;
+    this.applyPlayerForm(material);
 
     // Rebuild the panel in place (dialogueActive already true from the open
     // showBohrPanel call) so the new form's "(current form)" tag updates.
@@ -1983,10 +2092,186 @@ export class OverworldScene extends Phaser.Scene {
     this.player.add(this.playerCrystalGfx);
   }
 
-  // Shared panel for every mentor from Dirac onward (see WORLD_MENTORS):
-  // avatar + a topic-tied quote, no shop tabs -- Noether stays the sole
-  // seller of moves/stats (DESIGN.md §5 records this as a deliberate,
-  // temporary state, not a finished design). Ends in renderFarewellFooter,
+  private getHybridMaterials(): Material[] {
+    return (this.game.registry.get('hybridMaterials') as Material[]) ?? [];
+  }
+
+  // Majorana stands at world 5's middle tile (WORLD_MENTORS) and lets the
+  // player fuse two crystals they've already defeated into a new
+  // topological hybrid (data/materials.ts's combineMaterials), becoming it
+  // immediately via the same applyPlayerForm helper Bohr's transmutation
+  // uses. A two-step pick (this.majoranaSelection holds the first choice
+  // while the panel rebuilds for the second) rather than one list of every
+  // pair, since the pair count grows quadratically with how many crystals
+  // are shown and a two-step flow reads more like an actual choice anyway.
+  // Earlier hybrids get their own "become again" section sourced from the
+  // separate `hybridMaterials` list -- kept apart from the defeated-crystal
+  // list used to *create* new ones so a hybrid can never be fed back in as
+  // an ingredient (that would compound the 1.5x multiplier every time).
+  private showMajoranaPanel() {
+    this.dialogueActive = true;
+
+    const panelWidth = 600;
+    const top = 20;
+    const container = this.add.container(0, 0).setDepth(100);
+    this.dialogueContainer = container;
+
+    let y = top;
+
+    const avatarY = y + 55;
+    const avatar = makeMajoranaAvatar(this);
+    avatar.setPosition(CANVAS_W / 2, avatarY);
+    container.add(avatar);
+    this.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    playMentorChime();
+    y = avatarY + 65;
+
+    const intro = this.add
+      .text(
+        CANVAS_W / 2,
+        y,
+        '"I am Majorana. Fuse two states you already understand and see what phase they make together -- a magnet and a superconductor, say, become something with edges neither one had alone."',
+        { fontSize: fontPx(this, 12), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
+      )
+      .setOrigin(0.5, 0);
+    container.add(intro);
+    y += intro.height + 14;
+
+    const hybrids = this.getHybridMaterials().slice(-3);
+    if (hybrids.length > 0) {
+      hybrids.forEach((h) => {
+        const isCurrent = this.playerMaterial.name === h.name;
+        const label = isCurrent ? `${h.name} (current form)` : `Become ${h.name} again`;
+        const btn = this.addDialogueButton(container, y, label, () => {
+          if (isCurrent) return;
+          this.becomeHybrid(h);
+        });
+        if (isCurrent) btn.setAlpha(0.5);
+        y += btn.height + 6;
+      });
+      y += 8;
+    }
+
+    // Every world's wild pool is a single main type (world 5 is all
+    // 'supercon', world 6 all 'classicalmag', ...), so a same-world-only
+    // recency window (Bohr's `slice(-3)`, fine there since any single
+    // defeated crystal is a valid transmute target) would make Majorana's
+    // paired requirement nearly unreachable -- the player's last few
+    // defeats right before reaching him are almost always all the same
+    // type. Query the *whole* `defeatedMaterials` history for
+    // combinability first (an earlier world's magnet still counts), then
+    // cap only the display list.
+    const allDefeated = this.getDefeatedMaterials();
+    const isCombinable = (m: DiscoveredMaterial) =>
+      allDefeated.some((other) => other.name !== m.name && hybridResultType(m.type, other.type));
+    // Display-only cap, applied *after* filtering against the full history
+    // above -- every entry shown here is guaranteed to have a valid partner
+    // somewhere in `allDefeated`, even if that specific partner didn't also
+    // make this cut (a rare, non-broken edge case: that entry's step-2 list
+    // would just come up empty, same as if it had no partner at all).
+    const defeated = allDefeated.filter(isCombinable).slice(-6);
+    if (this.majoranaSelection === null) {
+      if (defeated.length < 2) {
+        const text = this.add
+          .text(
+            CANVAS_W / 2,
+            y,
+            "None of the crystals you've defeated pair into a hybrid yet -- try a magnet or classical magnet together with a superconductor or quantum-Hall state.",
+            { fontSize: fontPx(this, 13), color: '#ffffff', align: 'center', wordWrap: { width: 480 } }
+          )
+          .setOrigin(0.5, 0);
+        container.add(text);
+        y += text.height;
+      } else {
+        const label = this.add
+          .text(CANVAS_W / 2, y, 'Combine which crystal?', {
+            fontSize: fontPx(this, 12),
+            color: '#9fffb0',
+            align: 'center',
+          })
+          .setOrigin(0.5, 0);
+        container.add(label);
+        y += label.height + 6;
+        defeated.forEach((m) => {
+          const btn = this.addDialogueButton(container, y, m.name, () => {
+            this.majoranaSelection = m.name;
+            this.dialogueContainer?.destroy(true);
+            this.showMajoranaPanel();
+          });
+          y += btn.height + 6;
+        });
+      }
+    } else {
+      const first = this.majoranaSelection;
+      const firstType = defeated.find((m) => m.name === first)?.type;
+      const label = this.add
+        .text(CANVAS_W / 2, y, `Combine ${first} with...`, {
+          fontSize: fontPx(this, 12),
+          color: '#9fffb0',
+          align: 'center',
+          wordWrap: { width: 480 },
+        })
+        .setOrigin(0.5, 0);
+      container.add(label);
+      y += label.height + 6;
+      defeated
+        .filter((m) => m.name !== first && firstType && hybridResultType(firstType, m.type))
+        .forEach((m) => {
+          const btn = this.addDialogueButton(container, y, m.name, () => this.createHybrid(first, m.name));
+          y += btn.height + 6;
+        });
+      const cancelBtn = this.addDialogueButton(container, y, 'Never mind', () => {
+        this.majoranaSelection = null;
+        this.dialogueContainer?.destroy(true);
+        this.showMajoranaPanel();
+      });
+      y += cancelBtn.height + 6;
+    }
+    y += 8;
+
+    const closeBtn = this.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Farewell', () => this.closeDialogue(), 300);
+    y += closeBtn.height + 12;
+
+    const panelHeight = y - top;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+      .setStrokeStyle(2, 0x4fd97a);
+    container.addAt(panel, 0);
+  }
+
+  private becomeHybrid(hybrid: Material) {
+    this.applyPlayerForm(hybrid);
+    this.dialogueContainer?.destroy(true);
+    this.showMajoranaPanel();
+  }
+
+  // findMaterialByName only searches WORLD_CRYSTALS -- both names passed in
+  // here always come from getDefeatedMaterials(), which only ever records
+  // real wild crystals (never a rival, never an earlier hybrid), so this
+  // should never actually miss; the early return is just defensive.
+  private createHybrid(nameA: string, nameB: string) {
+    this.majoranaSelection = null;
+    const a = findMaterialByName(nameA);
+    const b = findMaterialByName(nameB);
+    if (!a || !b) {
+      this.dialogueContainer?.destroy(true);
+      this.showMajoranaPanel();
+      return;
+    }
+
+    const hybrid = combineMaterials(a, b);
+    const existing = this.getHybridMaterials();
+    if (!existing.some((m) => m.name === hybrid.name)) {
+      this.game.registry.set('hybridMaterials', [...existing, hybrid]);
+    }
+    this.becomeHybrid(hybrid);
+  }
+
+  // Shared panel for every mentor left without a bespoke `open` handler
+  // (Laughlin, Bell, Kondo, Feynman -- see WORLD_MENTORS): avatar + a
+  // topic-tied quote, no shop tabs (DESIGN.md §5 records their lack of a
+  // mechanic as a deliberate, temporary state, not a finished design). Ends
+  // in renderFarewellFooter,
   // not renderShopFooter -- these mentors stand mid-corridor now, so the
   // Face-the-Rival/Continue progression action stays exclusive to the goal
   // panel (showGatePanel), reached only once the player actually walks the

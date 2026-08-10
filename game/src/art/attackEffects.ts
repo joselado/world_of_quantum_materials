@@ -13,6 +13,11 @@ interface Point {
 // bolt = a fast, focused shot (Phonon Beam, Electron Pulse, Spinon Swap);
 // ring = an expanding wave pulse (Magnon Pulse, Polaron Drag); burst = many
 // small particles converging/scattering (Anyon Braid, Majorana Split).
+// 'analytic' (Curie's moves) is the one class with two different moves in
+// it (Skyfall Beam, Ground Eruption) that deliberately don't share a look --
+// this entry is just the fallback if playAttackEffect is ever called for an
+// analytic move without an explicit shape override (see ANALYTIC_SHAPES
+// below, and BattleScene's resolveHit which always supplies one).
 const EFFECT_STYLE: Record<MoveClass, { color: number; shape: AttackShape }> = {
   trivial: { color: 0x4a90d9, shape: 'bolt' },
   magnetic: { color: 0xd94a4a, shape: 'ring' },
@@ -21,10 +26,19 @@ const EFFECT_STYLE: Record<MoveClass, { color: number; shape: AttackShape }> = {
   gauge: { color: 0xd9a24a, shape: 'burst' },
   entanglement: { color: 0x5ad9c9, shape: 'bolt' },
   decoherence: { color: 0x333333, shape: 'burst' },
+  analytic: { color: 0xffe066, shape: 'beam' },
+};
+
+// Per-move-id shape overrides for 'analytic' -- the one class where two
+// distinct moves (Skyfall Beam, Ground Eruption) want two distinct
+// silhouettes rather than sharing EFFECT_STYLE's one shape per class.
+export const ANALYTIC_SHAPES: Record<string, AttackShape> = {
+  skyfallBeam: 'beam',
+  groundEruption: 'eruption',
 };
 
 const WINDUP_MS = 90;
-const TRAVEL_MS: Record<AttackShape, number> = { bolt: 340, ring: 460, burst: 400 };
+const TRAVEL_MS: Record<AttackShape, number> = { bolt: 340, ring: 460, burst: 400, beam: 520, eruption: 480 };
 const IMPACT_MS = 260;
 
 // Plays the full attack beat: a quick windup flash at the attacker, the
@@ -33,19 +47,24 @@ const IMPACT_MS = 260;
 // arrival) and a matching dip in the music so the hit reads clearly over the
 // score. `onImpact` fires the moment the travelling effect lands (in time
 // for BattleScene's HP-bar update/flashHit), not after the shockwave finishes
-// decaying -- the shockwave itself is fire-and-forget.
+// decaying -- the shockwave itself is fire-and-forget. `shapeOverride` lets a
+// caller pick a specific silhouette regardless of moveClass's usual one
+// (BattleScene passes ANALYTIC_SHAPES[move.id] for analytic moves so Skyfall
+// Beam and Ground Eruption read differently despite sharing a class).
 export function playAttackEffect(
   scene: Phaser.Scene,
   moveClass: MoveClass,
   from: Point,
   to: Point,
   onImpact?: () => void,
-  powerRatio = 1
+  powerRatio = 1,
+  shapeOverride?: AttackShape
 ) {
   const style = EFFECT_STYLE[moveClass];
-  const totalMs = WINDUP_MS + TRAVEL_MS[style.shape] + IMPACT_MS;
+  const shape = shapeOverride ?? style.shape;
+  const totalMs = WINDUP_MS + TRAVEL_MS[shape] + IMPACT_MS;
   music.duck(totalMs);
-  playAttackSfx(style.shape);
+  playAttackSfx(shape);
 
   playWindup(scene, style.color, from, () => {
     const land = () => {
@@ -53,8 +72,10 @@ export function playAttackEffect(
       playImpactSfx(powerRatio);
       onImpact?.();
     };
-    if (style.shape === 'ring') playRing(scene, style.color, from, to, land);
-    else if (style.shape === 'burst') playBurst(scene, style.color, from, to, land);
+    if (shape === 'ring') playRing(scene, style.color, from, to, land);
+    else if (shape === 'burst') playBurst(scene, style.color, from, to, land);
+    else if (shape === 'beam') playBeam(scene, style.color, to, land);
+    else if (shape === 'eruption') playEruption(scene, style.color, to, land);
     else playBolt(scene, style.color, from, to, land);
   });
 }
@@ -166,6 +187,71 @@ function playBurst(scene: Phaser.Scene, color: number, from: Point, to: Point, o
         const ang = (i / n) * Math.PI * 2 + t * 3;
         g.fillStyle(color, 0.5 + t * 0.5);
         g.fillCircle(cx + Math.cos(ang) * spread, cy + Math.sin(ang) * spread, 3.5);
+      }
+    },
+    onComplete: () => {
+      g.destroy();
+      onImpact?.();
+    },
+  });
+}
+
+// A thick column of light dropping straight down onto the target from off
+// the top of the screen -- deliberately ignores `from` (the attacker's own
+// position) since a beam falling out of the sky doesn't originate there.
+// Telegraphs first (a faint, full-height column fades in before the bright
+// head starts falling) so the "incoming" beat reads clearly, then the head
+// travels the height of the field to land.
+function playBeam(scene: Phaser.Scene, color: number, to: Point, onImpact?: () => void) {
+  const g = scene.add.graphics().setDepth(60).setBlendMode(Phaser.BlendModes.ADD);
+  const originY = -30;
+  scene.tweens.addCounter({
+    from: 0,
+    to: 1,
+    duration: TRAVEL_MS.beam,
+    ease: 'Cubic.easeIn',
+    onUpdate: (tw) => {
+      const t = tw.getValue() ?? 0;
+      const headY = Phaser.Math.Linear(originY, to.y, Math.min(1, t * 1.3));
+      g.clear();
+      g.fillStyle(color, 0.14 * t);
+      g.fillRect(to.x - 15, originY, 30, to.y - originY);
+      g.fillStyle(color, 0.85);
+      g.fillRect(to.x - 11, originY, 22, headY - originY);
+      g.fillStyle(0xffffff, 0.95);
+      g.fillRect(to.x - 4, originY, 8, headY - originY);
+    },
+    onComplete: () => {
+      g.destroy();
+      onImpact?.();
+    },
+  });
+}
+
+// Shards bursting up and outward from a crack in the ground under the
+// target -- also ignores `from`, since the eruption comes up from beneath
+// the defender rather than travelling from the attacker.
+function playEruption(scene: Phaser.Scene, color: number, to: Point, onImpact?: () => void) {
+  const g = scene.add.graphics().setDepth(60).setBlendMode(Phaser.BlendModes.ADD);
+  const n = 10;
+  const groundY = to.y + 18;
+  scene.tweens.addCounter({
+    from: 0,
+    to: 1,
+    duration: TRAVEL_MS.eruption,
+    ease: 'Cubic.easeOut',
+    onUpdate: (tw) => {
+      const t = tw.getValue() ?? 0;
+      g.clear();
+      g.fillStyle(color, 0.5 * (1 - t));
+      g.fillEllipse(to.x, groundY, 50 + t * 30, 14);
+      for (let i = 0; i < n; i++) {
+        const ang = -Math.PI / 2 + ((i / (n - 1)) - 0.5) * 1.7;
+        const dist = t * 70;
+        const px = to.x + Math.cos(ang) * dist * 0.5;
+        const py = groundY + Math.sin(ang) * dist;
+        g.fillStyle(i % 2 === 0 ? color : 0xffffff, 0.9 * (1 - t * 0.6));
+        g.fillCircle(px, py, 4);
       }
     },
     onComplete: () => {

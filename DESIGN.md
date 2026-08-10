@@ -205,6 +205,15 @@ menu (`getBattleMoves` = learned moves ∩ compatible moves) and Noether's shop 
 intersection, so she only ever offers what the player's *current* crystal form can
 actually carry — see the transmutation mechanic in §5).
 
+**One deliberate exception: analytic moves aren't gated by a crystal's physics
+at all.** Curie's moves (§5) are on every main type's `MOVE_COMPATIBILITY`
+list, purchasable and usable from any form — they're a technique the player
+themselves learned, not a quasiparticle a crystal has to host, so unlike
+every other class they can never trigger the quasiparticle-mismatch rule
+below. Their real risk/reward instead comes from the question
+`BattleScene.showAnalyticQuestion` asks before the hit resolves: right
+answer doubles the damage, wrong answer halves it.
+
 **Battle dynamics are deliberately simple: one type-interaction rule, not a chart.**
 An earlier draft strong/weak type-effectiveness chart (per attack, per defender main type)
 was removed — it stacked a second, untested multiplier on top of the quasiparticle-mismatch
@@ -225,7 +234,9 @@ Anyon Braid / Majorana Split (gauge / decoherence, topological and non-Abelian �
 the most exotic tier the course covers). Because Phonon Beam (thermal) is on every type's
 `MOVE_COMPATIBILITY` list, it can never trigger the quasiparticle-mismatch double-damage
 rule above — the one universal move is also the one that never gets the mismatch bonus, by
-design.
+design. Curie's analytic moves (Skyfall Beam, Ground Eruption) sit at a middling base power
+below this ordering on purpose — their real payoff is the answer-gated 2x/0.5x multiplier
+above, not raw power.
 
 ## 4. Battle system
 
@@ -318,12 +329,12 @@ the goal tile itself is now occupied by that world's boss (see below), so a ment
 is someone the player meets partway through the journey, not a gate to it. Every
 mentor stays reachable from anywhere afterward via the Enter-menu's Advisors panel
 once met (`showAdvisorsPanel`, `data/save.ts`'s `metMentors`). **Current state
-(deliberately not the final design -- see §10):** Noether is the sole seller of
-moves/stat upgrades; every mentor from Dirac onward is a topic-tied lore stop with
-an avatar and a quote but no mechanic of its own yet (`OverworldScene.showMentorLore`)
--- what each of them should actually unlock (subtype system, pairing/screening
-mechanics, etc.) is still an open design question, not implemented. World 10 has no
-mentor; its only encounter is the finale.
+(deliberately not the final design -- see §10):** five mentors have a real
+mechanic (Noether, Bloch, Bohr, Majorana, Curie); Laughlin, Bell, Kondo, and
+Feynman are still topic-tied lore stops with an avatar and a quote but no
+mechanic of its own yet (`OverworldScene.showMentorLore`) -- what each of them
+should actually unlock is still an open design question, not implemented.
+World 10 has no mentor; its only encounter is the finale.
 
 - **Noether** → world 1 middle → sells every extra attack move and stat upgrade in the
   game (fitting, since Noether's theorem is literally "symmetry implies a conservation
@@ -336,13 +347,33 @@ mentor; its only encounter is the finale.
   understanding its physics well enough to become it for a while; transmuting changes the
   player's look, HP cap, and which moves are currently usable (§3), without erasing any
   move already learned
-- **Dirac** → world 4 middle → lore only for now; flavor ties in via relativistic
-  Landau-level quantization of Dirac fermions (world 4's own topic)
-- **Majorana** → world 5 middle → lore only for now; flavor ties in via Majorana pairing
-- **Curie** → world 6 middle → lore only for now; flavor ties in via Curie-temperature
-  magnetic ordering
-- **Einstein** → world 7 middle → lore only for now; flavor ties in via the EPR paradox
-  (his own objection to entanglement)
+- **Laughlin** → world 4 middle → lore only for now; flavor ties in via the fractional
+  quantum Hall wavefunction (world 4's own topic)
+- **Majorana** → world 5 middle → lets the player fuse two crystals they've already
+  defeated into a new hybrid material and become it immediately
+  (`OverworldScene.showMajoranaPanel`/`combineMaterials`) -- but only specific,
+  physically sensible type pairings (`data/materials.ts`'s `HYBRID_RULES`/
+  `hybridResultType`), not any two defeated crystals. Two materials of the *same*
+  main type never combine (fusing two superconductors isn't a new phase, it's just a
+  bigger superconductor) -- every recognized pairing mirrors a real engineered
+  platform already in the crystal database (magnet/classical-magnet + superconductor
+  → topological superconductor, the mechanic's own worked example and the
+  Fe/Pb-chain/NbSe₂-CrBr₃-heterostructure mechanism; magnet/classical-magnet or
+  topological + quantum-Hall state → topological, the quantum-anomalous-Hall route).
+  A valid hybrid's HP scales to 1.5x its stronger parent's, never a downgrade. Every
+  hybrid ever created is remembered (`hybridMaterials` save field) so the panel also
+  offers "become again" for an earlier one without recombining.
+- **Curie** → world 6 middle → sells "analytic" moves (currently Skyfall Beam, Ground
+  Eruption -- `OverworldScene.showCuriePanel`) -- using one asks a physics-equation
+  question first (`data/quiz.ts`'s `ANALYTIC_QUESTIONS`, `BattleScene
+  .showAnalyticQuestion`): answer right and the hit lands at 2x, answer wrong and it
+  lands at 0.5x. Each analytic move also gets its own flashier, per-move (not
+  per-class) visual -- Skyfall Beam drops a beam of light from off the top of the
+  screen, Ground Eruption bursts shards up from underneath the target
+  (`art/attackEffects.ts`'s `ANALYTIC_SHAPES`) -- rather than sharing one look the way
+  every other move class does.
+- **Bell** → world 7 middle → lore only for now; flavor ties in via Bell's inequality
+  (measured entanglement correlations exceeding any local, pre-agreed strategy)
 - **Kondo** → world 8 middle → lore only for now; flavor ties in via the Kondo effect
 - **Feynman** → world 9 middle → lore only for now; flavor ties in via Feynman diagrams
   for excitations
@@ -490,7 +521,8 @@ rectangle graphics) has been removed.
 Not yet built:
 - Bespoke per-world boss puzzles (§6) — every world currently uses the same reach-goal →
   beat-rival → continue gate instead.
-- Real mentor mechanics for Dirac through Feynman, beyond Noether/Bloch/Bohr (§5, §10).
+- Real mentor mechanics for Laughlin, Bell, Kondo, and Feynman, beyond
+  Noether/Bloch/Bohr/Majorana/Curie (§5, §10).
 - Battle music variants per world (only overworld tracks are per-world so far).
 - A mobile wrapper (Capacitor) and playtesting with students.
 
@@ -498,10 +530,11 @@ Not yet built:
 
 - **Subtype combination rules** — which main+subtype pairs are physically/
   narratively sensible needs a full compatibility table, not just one example.
-- **What Dirac/Majorana/Curie/Einstein/Kondo/Feynman actually unlock** — they're
-  currently lore-only stops (§5); their real mechanics (topological promotion,
-  Majorana pairing, subtype unlocks, entanglement moves, screening, defect
-  exploitation) all depend on the subtype system above not existing yet.
+- **What Laughlin/Bell/Kondo/Feynman actually unlock** — they're currently
+  lore-only stops (§5, Majorana and Curie now have real mechanics: hybrid
+  materials and analytic moves); their real mechanics (fractional-charge
+  moves, entanglement moves, screening, defect exploitation) may or may not
+  depend on the subtype system above existing first.
 - **Scope vs. solo-dev reality** — 10 worlds + full art + mentor roster is large for
   one person; consider cutting to 3–4 flagship worlds for a v1 before building all 10.
 - **Course integration** — supplementary/optional tool, or tied into assessment?

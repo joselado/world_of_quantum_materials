@@ -26,6 +26,12 @@ export interface SaveData {
   visitedWorlds: number[];
   defeatedMaterials: DiscoveredMaterial[];
   playerForm: Material | null; // null = still the default PLAYER_MATERIAL (Silicon)
+  // Every hybrid the player has ever created with Majorana's combine panel
+  // (data/materials.ts's combineMaterials, §5) -- playerForm round-trips a
+  // whole Material object already, so the *current* hybrid survives a
+  // reload for free, but this list is what lets the panel offer "become
+  // again" for an earlier hybrid without recombining its two parents.
+  hybridMaterials: Material[];
   // Mentor ids (WORLD_MENTORS' `id` field) the player has opened the panel
   // of at least once -- drives the Advisors pause-menu list
   // (OverworldScene.showAdvisorsPanel), which should only offer mentors
@@ -69,6 +75,7 @@ export function defaultSave(): SaveData {
     visitedWorlds: [],
     defeatedMaterials: [],
     playerForm: null,
+    hybridMaterials: [],
     metMentors: [],
     tutorialTipsSeen: [],
     debugMode: false,
@@ -130,6 +137,7 @@ export function persistFromRegistry(registry: RegistryLike) {
     visitedWorlds: (registry.get('visitedWorlds') as number[]) ?? [],
     defeatedMaterials: (registry.get('defeatedMaterials') as DiscoveredMaterial[]) ?? [],
     playerForm: (registry.get('playerForm') as Material | null) ?? null,
+    hybridMaterials: (registry.get('hybridMaterials') as Material[]) ?? [],
     metMentors: (registry.get('metMentors') as string[]) ?? [],
     tutorialTipsSeen: (registry.get('tutorialTipsSeen') as string[]) ?? [],
     debugMode: (registry.get('debugMode') as boolean) ?? false,

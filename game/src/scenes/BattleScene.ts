@@ -4,7 +4,7 @@ import { makeBossCrystal } from '../art/boss';
 import { shade } from '../art/colors';
 import { getBiome } from '../art/biomes';
 import type { Biome } from '../art/biomes';
-import { playAttackEffect } from '../art/attackEffects';
+import { playAttackEffect, ANALYTIC_SHAPES } from '../art/attackEffects';
 import { fontPx, fontScale } from '../ui/text';
 import {
   MOVES,
@@ -17,10 +17,19 @@ import {
 } from '../data/materials';
 import { victoryLine, defeatLine } from '../data/greetings';
 import { materialBlurb } from '../data/materialdex';
+import { getAnalyticQuestion } from '../data/quiz';
 import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
-import type { Material, Stats } from '../data/types';
+import type { Material, Move, Stats } from '../data/types';
 import { music } from '../audio/music';
+
+// Correct/wrong multipliers for Curie's analytic moves (§5) -- deliberately
+// steeper than the pre-battle quiz's QUIZ_CORRECT_MULTIPLIER/
+// QUIZ_WRONG_MULTIPLIER (OverworldScene.ts, 1.5/0.6): those apply to every
+// attack for a whole fight as a one-time roll, these are a per-use gamble
+// the player opts into by picking one of these two moves specifically.
+const ANALYTIC_CORRECT_MULTIPLIER = 2;
+const ANALYTIC_WRONG_MULTIPLIER = 0.5;
 
 const FIELD_W = 640;
 const FIELD_H = 480;
@@ -214,8 +223,19 @@ export class BattleScene extends Phaser.Scene {
     container.add(title);
     y += title.height + 4;
 
+    // Kept short and name-independent on purpose -- this line's wrapped
+    // height feeds directly into rowsTop, which shrinks every row's
+    // available space (see the row-height budget below), so its length
+    // can't scale with the current opponent's name (an early version read
+    // "vs <wild.name>: ...", which overflowed the panel off-canvas against
+    // a long name like "Thallium Copper Chloride" or "Rival Impurity
+    // Resonance" at the largest text-size preset). The full explanation of
+    // both mechanics lives in Bohr/Curie's own panels and each move
+    // button's own `!!2x`/`★` tag; this is just a reminder.
+    const hasAnalytic = moveIds.some((id) => MOVES[id].class === 'analytic');
+    const legendText = hasAnalytic ? '!! mismatch =2x, ★ right=2x wrong=½x' : '!! no natural defense (2x)';
     const legend = this.add
-      .text(MENU_X + MENU_WIDTH / 2, y, `vs ${this.wild.name}: !! no natural defense (2x)`, {
+      .text(MENU_X + MENU_WIDTH / 2, y, legendText, {
         fontSize: fontPx(this, 10),
         color: '#8fa0c9',
         align: 'center',
@@ -250,17 +270,30 @@ export class BattleScene extends Phaser.Scene {
     // left in the field below the title/legend, divided across however
     // many moves are usable -- not something the text-size setting can
     // just grow past. An 'adaptive'-type crystal (world 10's boss and its
-    // wild echoes, MOVE_COMPATIBILITY's broadest entry) can host all 7
-    // MOVES at once, and 7 two-line buttons at the setting's largest
-    // preset would never fit no matter the row height. So each button's
-    // font size is derived from its own row's actual height (fitPx) and
-    // clamped against the setting-scaled desired size (desiredPx) --
-    // growing with the setting wherever the box has slack (few moves), but
-    // never past what the box can physically hold.
+    // wild echoes, MOVE_COMPATIBILITY's broadest entry) can host every
+    // MoveClass at once (9 as of Curie's analytic moves), and 9 two-line
+    // buttons at the setting's largest preset would never fit no matter the
+    // row height. So each button's font size is derived from its own row's
+    // actual height (fitPx) and clamped against the setting-scaled desired
+    // size (desiredPx) -- growing with the setting wherever the box has
+    // slack (few moves), but never past what the box can physically hold.
+    //
+    // The minimum row height also has to shrink once rowCount can exceed 7,
+    // or a fixed floor stops being a floor and becomes an overflow:
+    // MOVES.length grew 7 -> 9 (Curie's analytic moves) without this once,
+    // and the panel ran ~60-165px past the bottom of the canvas (worse at
+    // larger text-size settings) for any 'adaptive'-form player with every
+    // move unlocked -- reachable in normal play via Bohr transmuting into a
+    // defeated world-10 Echo, not just Debug Mode. Unchanged (30) for
+    // rowCount <= 7, the original tuning; only the 8-9 case needs a lower
+    // floor, verified against both text-size presets (fontScale 1 and 2)
+    // via the headless-Chromium harness in DEVELOPMENT.md's "Verifying UI
+    // changes" section, not just eyeballed.
+    const rowFloor = rowCount <= 7 ? 30 : 17;
     const avail = FIELD_H - rowsTop - MENU_BOTTOM_MARGIN;
     const naturalRowH = Math.floor(avail / rowCount);
     const maxRowH = Math.round(46 * Math.min(scale, 1.35));
-    const rowH = Phaser.Math.Clamp(naturalRowH, 30, Math.max(maxRowH, 30));
+    const rowH = Phaser.Math.Clamp(naturalRowH, rowFloor, Math.max(maxRowH, rowFloor));
     const compact = rowH < 40;
     const height = rowsTop - MENU_TOP + rowCount * rowH + 8;
 
@@ -280,8 +313,12 @@ export class BattleScene extends Phaser.Scene {
       const mismatch = !canHost(this.wild.type, move.class);
       let tag = '';
       let color = '#ffff88';
+      if (move.class === 'analytic') {
+        tag += ' ★';
+        color = '#ffe066';
+      }
       if (mismatch) {
-        tag = ' !!2x';
+        tag += ' !!2x';
         color = '#ffaa44';
       }
       const btn = this.add
@@ -294,9 +331,93 @@ export class BattleScene extends Phaser.Scene {
         })
         .setOrigin(0.5, 0)
         .setInteractive({ useHandCursor: true })
-        .on('pointerdown', () => this.playerAttack(moveId));
+        .on('pointerdown', () => {
+          if (this.turnLock) return;
+          if (move.class === 'analytic') {
+            this.turnLock = true;
+            this.showAnalyticQuestion(move, (bonusMultiplier) => {
+              this.turnLock = false;
+              this.playerAttack(moveId, bonusMultiplier);
+            });
+          } else {
+            this.playerAttack(moveId);
+          }
+        });
       container.add(btn);
     });
+  }
+
+  // The question panel an analytic move (Curie's Skyfall Beam/Ground
+  // Eruption, §5) opens before it resolves -- turnLock is already true by
+  // the time this is called (the move button handler sets it before
+  // calling this), so no other move/menu interaction can happen underneath
+  // it. Both options lead to `onAnswered`, which the caller uses to release
+  // turnLock and re-enter the normal attack flow via playerAttack -- there
+  // is no third way out (no cancel), so every path this panel can take
+  // ends in the lock being released, same invariant playerAttack/resolveHit
+  // already rely on.
+  private showAnalyticQuestion(move: Move, onAnswered: (bonusMultiplier: number) => void) {
+    const question = getAnalyticQuestion();
+    const container = this.add.container(0, 0).setDepth(100);
+
+    const panelWidth = 520;
+    const top = 90;
+    let y = top + 16;
+
+    const title = this.add
+      .text(FIELD_W / 2, y, move.name, { fontSize: fontPx(this, 15), color: '#ffe066', fontStyle: 'bold' })
+      .setOrigin(0.5, 0);
+    container.add(title);
+    y += title.height + 8;
+
+    const prompt = this.add
+      .text(FIELD_W / 2, y, question.prompt, {
+        fontSize: fontPx(this, 12),
+        color: '#ffffff',
+        align: 'center',
+        wordWrap: { width: panelWidth - 60 },
+      })
+      .setOrigin(0.5, 0);
+    container.add(prompt);
+    y += prompt.height + 14;
+
+    const options = Phaser.Utils.Array.Shuffle([
+      { text: question.correct, correct: true },
+      { text: question.incorrect, correct: false },
+    ]);
+
+    const finish = (correct: boolean) => {
+      container.destroy(true);
+      onAnswered(correct ? ANALYTIC_CORRECT_MULTIPLIER : ANALYTIC_WRONG_MULTIPLIER);
+    };
+
+    options.forEach((opt) => {
+      const btn = this.addAnswerButton(container, y, opt.text, () => finish(opt.correct));
+      y += btn.height + 8;
+    });
+
+    const panelHeight = y - top + 10;
+    const panel = this.add
+      .rectangle(FIELD_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+      .setStrokeStyle(2, 0xffe066);
+    container.addAt(panel, 0);
+  }
+
+  private addAnswerButton(container: Phaser.GameObjects.Container, y: number, label: string, onClick: () => void) {
+    const btn = this.add
+      .text(FIELD_W / 2, y, label, {
+        fontSize: fontPx(this, 12),
+        color: '#ffff88',
+        backgroundColor: '#222244',
+        padding: { x: 10, y: 5 },
+        align: 'center',
+        wordWrap: { width: 440 },
+      })
+      .setOrigin(0.5, 0)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', onClick);
+    container.add(btn);
+    return btn;
   }
 
   // Colored from that world's own biome (art/biomes.ts, the same table
@@ -518,8 +639,11 @@ export class BattleScene extends Phaser.Scene {
   }
 
   // Velocity decides who swings first each round (DESIGN.md §3); ties keep
-  // the original player-first behavior.
-  private playerAttack(moveId: string) {
+  // the original player-first behavior. `bonusMultiplier` only ever applies
+  // to the player's own hit with this specific moveId (an analytic move
+  // already answered via showAnalyticQuestion) -- the opponent's follow-up
+  // hit in the same exchange always resolves at the default 1.
+  private playerAttack(moveId: string, bonusMultiplier = 1) {
     if (this.turnLock) return;
     this.turnLock = true;
 
@@ -531,14 +655,19 @@ export class BattleScene extends Phaser.Scene {
     };
 
     if (playerFirst) {
-      this.resolveHit(true, moveId, () => {
-        if (this.opponentHp <= 0 || this.playerHp <= 0) return;
-        this.time.delayedCall(TURN_GAP_MS, () => this.resolveHit(false, opponentMoveId(), releaseLock));
-      });
+      this.resolveHit(
+        true,
+        moveId,
+        () => {
+          if (this.opponentHp <= 0 || this.playerHp <= 0) return;
+          this.time.delayedCall(TURN_GAP_MS, () => this.resolveHit(false, opponentMoveId(), releaseLock));
+        },
+        bonusMultiplier
+      );
     } else {
       this.resolveHit(false, opponentMoveId(), () => {
         if (this.opponentHp <= 0 || this.playerHp <= 0) return;
-        this.time.delayedCall(TURN_GAP_MS, () => this.resolveHit(true, moveId, releaseLock));
+        this.time.delayedCall(TURN_GAP_MS, () => this.resolveHit(true, moveId, releaseLock, bonusMultiplier));
       });
     }
   }
@@ -558,8 +687,12 @@ export class BattleScene extends Phaser.Scene {
 
   // Shared by both the player's and the opponent's swings -- the only
   // difference is which side is attacking, so the damage/crit/log/effect
-  // logic lives here once instead of duplicated per side.
-  private resolveHit(isPlayer: boolean, moveId: string, onDone: () => void) {
+  // logic lives here once instead of duplicated per side. `bonusMultiplier`
+  // is the analytic-move correct/wrong multiplier (default 1, a no-op for
+  // every ordinary move) -- always already decided by the time this runs
+  // (showAnalyticQuestion resolves before playerAttack ever calls this), so
+  // resolveHit itself stays synchronous.
+  private resolveHit(isPlayer: boolean, moveId: string, onDone: () => void, bonusMultiplier = 1) {
     const move = MOVES[moveId];
     const attackerStats = isPlayer ? this.playerStats : this.enemyStats;
     const defenderStats = isPlayer ? this.enemyStats : this.playerStats;
@@ -569,7 +702,9 @@ export class BattleScene extends Phaser.Scene {
     // anyon braid, ...) has no natural way to dampen it -- it lands at
     // double force. This is the only type-interaction term battle damage
     // has (DESIGN.md §4) -- there is no separate strong/weak type chart on
-    // top of it.
+    // top of it. 'analytic' is on every type's MOVE_COMPATIBILITY list, so
+    // this can never fire for Curie's moves -- their own multiplier is
+    // bonusMultiplier, decided by the question, not by the defender's type.
     const mismatch = !canHost(defenderType, move.class);
 
     const critChance = Phaser.Math.Clamp((attackerStats.quantumness - BASE_STAT) * 0.02, 0, 0.5);
@@ -580,6 +715,7 @@ export class BattleScene extends Phaser.Scene {
       move.power *
         (mismatch ? 2 : 1) *
         attackMult *
+        bonusMultiplier *
         defenseFactor *
         (crit ? 1.5 : 1) *
         Phaser.Math.FloatBetween(0.85, 1.15)
@@ -588,7 +724,16 @@ export class BattleScene extends Phaser.Scene {
     const from = isPlayer ? PLAYER_POS : this.opponentPos;
     const to = isPlayer ? this.opponentPos : PLAYER_POS;
     const targetCrystal = isPlayer ? this.opponentCrystal : this.playerCrystal;
-    playAttackEffect(this, move.class, from, to, () => this.impactPunch(targetCrystal), mismatch ? 2 : 1);
+    const shapeOverride = ANALYTIC_SHAPES[move.id];
+    playAttackEffect(
+      this,
+      move.class,
+      from,
+      to,
+      () => this.impactPunch(targetCrystal),
+      (mismatch ? 2 : 1) * bonusMultiplier,
+      shapeOverride
+    );
 
     if (isPlayer) {
       this.opponentHp = Math.max(0, this.opponentHp - dmg);

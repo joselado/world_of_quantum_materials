@@ -894,3 +894,67 @@ export function getMaterialQuestion(materialName: string): MaterialQuestion | un
   if (!pool || pool.length === 0) return undefined;
   return pool[Math.floor(Math.random() * pool.length)];
 }
+
+// Curie's analytic moves (§5, World 6, BattleScene.showAnalyticQuestion):
+// using Skyfall Beam or Ground Eruption asks one of these before the hit
+// resolves -- correct doubles the damage, wrong halves it. One shared pool
+// rather than per-world/per-material (unlike MATERIAL_QUESTIONS above),
+// since an analytic move is usable from any crystal form, not tied to a
+// single world's topic -- each question instead names the equation/law it's
+// asking about directly. Same {prompt, correct, incorrect} shape.
+export const ANALYTIC_QUESTIONS: MaterialQuestion[] = [
+  {
+    prompt: "Bloch's theorem writes a crystal electron's wavefunction as a plane wave times...",
+    correct: 'A lattice-periodic function, u_k(r + R) = u_k(r)',
+    incorrect: 'A second, independent plane wave',
+  },
+  {
+    prompt: 'For a 1D tight-binding chain with hopping t, the band dispersion E(k) is proportional to...',
+    correct: '-2t cos(ka)',
+    incorrect: '-2t sin(ka)',
+  },
+  {
+    prompt: 'The Stoner criterion for a spontaneous ferromagnetic instability is...',
+    correct: 'U·D(E_F) ≥ 1',
+    incorrect: 'U·D(E_F) ≤ 1',
+  },
+  {
+    prompt: 'The energy of the n-th Landau level in a magnetic field B is...',
+    correct: 'E_n = ħω_c(n + 1/2)',
+    incorrect: 'E_n = ħω_c·n²',
+  },
+  {
+    prompt: "At zero temperature, the BCS gap Δ(0) relates to T_c as...",
+    correct: 'Δ(0) ≈ 1.76 k_B T_c',
+    incorrect: 'Δ(0) ≈ 0.5 k_B T_c',
+  },
+  {
+    prompt: 'The London equation relates a superconductor’s current density J to the magnetic field B via...',
+    correct: '∇×J = -(n_s e² / m) B',
+    incorrect: '∇·J = -(n_s e² / m) B',
+  },
+  {
+    prompt: 'A band’s Chern number is the integral, over the Brillouin zone, of...',
+    correct: 'The Berry curvature, divided by 2π',
+    incorrect: 'The band energy itself',
+  },
+  {
+    prompt: "Near k=0, a ferromagnet's magnon dispersion behaves as...",
+    correct: 'E(k) ∝ k² (quadratic)',
+    incorrect: 'E(k) ∝ |k| (linear)',
+  },
+  {
+    prompt: 'The von Neumann entanglement entropy of a density matrix ρ is defined as...',
+    correct: 'S = -Tr(ρ log ρ)',
+    incorrect: 'S = Tr(ρ²)',
+  },
+  {
+    prompt: 'The Kondo temperature T_K depends on the exchange coupling J roughly as...',
+    correct: 'T_K ∝ exp(-1/(J·D(E_F))) -- exponentially small',
+    incorrect: 'T_K ∝ J² -- a simple power law',
+  },
+];
+
+export function getAnalyticQuestion(): MaterialQuestion {
+  return ANALYTIC_QUESTIONS[Math.floor(Math.random() * ANALYTIC_QUESTIONS.length)];
+}

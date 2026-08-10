@@ -6,8 +6,11 @@
 
 import { music } from './music';
 
-// Same three silhouettes art/attackEffects.ts uses per move class.
-export type AttackShape = 'bolt' | 'ring' | 'burst';
+// Same silhouettes art/attackEffects.ts uses per move class -- bolt/ring/
+// burst for the original seven classes, plus beam/eruption for Curie's
+// analytic moves (a flashier, per-move rather than per-class pair: Skyfall
+// Beam gets 'beam', Ground Eruption gets 'eruption').
+export type AttackShape = 'bolt' | 'ring' | 'burst' | 'beam' | 'eruption';
 
 // A fast upward-sweeping, high-passed sawtooth "zap" -- bolt moves (a
 // focused shot: Phonon Beam, Electron Pulse, Spinon Swap).
@@ -92,11 +95,86 @@ function playBurstSfx(ctx: AudioContext, dest: GainNode, noiseBuffer: AudioBuffe
   }
 }
 
+// A descending high whistle (something falling from a height) plus a
+// high-passed noise trail -- Skyfall Beam.
+function playBeamSfx(ctx: AudioContext, dest: GainNode, noiseBuffer: AudioBuffer, t: number) {
+  const osc = ctx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(2200, t);
+  osc.frequency.exponentialRampToValueAtTime(300, t + 0.32);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.001, t);
+  g.gain.exponentialRampToValueAtTime(0.24, t + 0.05);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.34);
+  osc.connect(g);
+  g.connect(dest);
+  osc.start(t);
+  osc.stop(t + 0.36);
+
+  const src = ctx.createBufferSource();
+  src.buffer = noiseBuffer;
+  const hp = ctx.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.value = 1200;
+  const ng = ctx.createGain();
+  ng.gain.setValueAtTime(0.001, t);
+  ng.gain.exponentialRampToValueAtTime(0.18, t + 0.02);
+  ng.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+  src.connect(hp);
+  hp.connect(ng);
+  ng.connect(dest);
+  src.start(t);
+  src.stop(t + 0.32);
+}
+
+// A rising, low-passed rumble (the ground itself building up) followed by a
+// scatter of noise cracks (shards bursting up out of it) -- Ground Eruption.
+function playEruptionSfx(ctx: AudioContext, dest: GainNode, noiseBuffer: AudioBuffer, t: number) {
+  const osc = ctx.createOscillator();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(50, t);
+  osc.frequency.exponentialRampToValueAtTime(180, t + 0.28);
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = 500;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.001, t);
+  g.gain.exponentialRampToValueAtTime(0.32, t + 0.1);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.34);
+  osc.connect(filter);
+  filter.connect(g);
+  g.connect(dest);
+  osc.start(t);
+  osc.stop(t + 0.36);
+
+  const hits = 5;
+  for (let i = 0; i < hits; i++) {
+    const st = t + 0.18 + (i / hits) * 0.16 + Math.random() * 0.02;
+    const src = ctx.createBufferSource();
+    src.buffer = noiseBuffer;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 700 + Math.random() * 1200;
+    bp.Q.value = 2.5;
+    const ng = ctx.createGain();
+    ng.gain.setValueAtTime(0.001, st);
+    ng.gain.exponentialRampToValueAtTime(0.22, st + 0.01);
+    ng.gain.exponentialRampToValueAtTime(0.001, st + 0.1);
+    src.connect(bp);
+    bp.connect(ng);
+    ng.connect(dest);
+    src.start(st);
+    src.stop(st + 0.11);
+  }
+}
+
 export function playAttackSfx(shape: AttackShape) {
   const { ctx, dest, noiseBuffer } = music.getSfxBus();
   const t = ctx.currentTime;
   if (shape === 'ring') playRingSfx(ctx, dest, noiseBuffer, t);
   else if (shape === 'burst') playBurstSfx(ctx, dest, noiseBuffer, t);
+  else if (shape === 'beam') playBeamSfx(ctx, dest, noiseBuffer, t);
+  else if (shape === 'eruption') playEruptionSfx(ctx, dest, noiseBuffer, t);
   else playBoltSfx(ctx, dest, t);
 }
 

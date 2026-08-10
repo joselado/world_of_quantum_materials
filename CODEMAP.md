@@ -29,7 +29,9 @@ game/src/
     bohr.ts                     makeBohrAvatar()
     boss.ts                      makeBossCrystal() -- gigantic multi-shard boss avatar at a world's goal
     tokens.ts                   makeToken() -- qumatoken pickup sprite
-    attackEffects.ts            playAttackEffect() -- bolt/ring/burst particle effect per MoveClass
+    attackEffects.ts            playAttackEffect() -- bolt/ring/burst/beam/eruption particle effect;
+                                  beam/eruption are ANALYTIC_SHAPES' per-move-id overrides (Curie's
+                                  Skyfall Beam/Ground Eruption), every other shape is per-MoveClass
     colors.ts                   shade() and other color helpers
   audio/
     sfx.ts                      Procedural sound effects (attack/impact/playMentorChime)
@@ -37,12 +39,15 @@ game/src/
   data/
     types.ts                    Move, Material, MoveClass, MaterialType, CrystalVariant, Stats
     materials.ts                 MOVES, TYPE_LOOK, WORLD_CRYSTALS, WORLD_RIVALS,
-                                  PLAYER_MATERIAL, SHOP_MOVE_IDS, WORLD_NAMES, DEFAULT_STATS,
-                                  getWildPool(), getRival(), compatibleMoves(),
+                                  PLAYER_MATERIAL, SHOP_MOVE_IDS, ANALYTIC_MOVE_IDS, WORLD_NAMES,
+                                  DEFAULT_STATS, getWildPool(), getRival(), compatibleMoves(),
                                   canHost(), getPlayerMaterial(), getPlayerStats(), getBattleMoves(),
-                                  enemyStatsForWorld(), statUpgradeCost(), findMaterialByName()
+                                  enemyStatsForWorld(), statUpgradeCost(), findMaterialByName(),
+                                  combineMaterials() -- Majorana's hybrid-material fuser
     tokens.ts                    Qumatoken value tiers + weights
-    quiz.ts                      Per-material physics question pools (>=6 each)
+    quiz.ts                      Per-material physics question pools (>=6 each) via
+                                  getMaterialQuestion(), plus one flat ANALYTIC_QUESTIONS pool via
+                                  getAnalyticQuestion() for Curie's analytic moves (not per-material)
     greetings.ts                 Per-MaterialType flavor lines (encounter/victory/defeat)
     materialdex.ts               Per-material (fallback per-type) physics blurb for Materialdex
     save.ts                      localStorage schema + persistFromRegistry()/load()
@@ -73,6 +78,16 @@ data/materials.json            Repo-root design-time reference (fuller roster th
   `effectiveness()` stacked on top of this -- removed as an unplaytested second system; don't
   reintroduce it without updating DESIGN.md §3/§4 and STYLE.md's battle-log/move-menu
   sections together.
+- **`MOVE_COMPATIBILITY` gates both offense *and* defense at once -- a gotcha worth
+  remembering before adding a new `MoveClass`.** The same table backs `compatibleMoves`
+  (what the attacker can use) and `canHost` (whether the defender takes the mismatch 2x), so
+  leaving a new class off every type's list doesn't make it "unavailable," it makes every
+  defender mismatch against it -- a silent, permanent 2x stacked on top of whatever bonus the
+  move's own mechanic already applies. This is why `'analytic'` (Curie's moves) is
+  deliberately on *every* type's list rather than scoped like every other class: they're a
+  technique the player learned, not physics a crystal has to host, so the intent is "always
+  usable, never mismatched," and the 2x/0.5x answer-gated multiplier is the class's only
+  risk/reward term. Decide this on purpose for any future class, not by omission.
 - Per-type look lives in `TYPE_LOOK` (base color + variant, exported); individual compounds
   of the same type get `shade(color, shadeStep * 18)` so siblings (Iron vs. Cobalt) read as a
   family. `TitleScene`'s showcase cluster is the one consumer outside `data/materials.ts`
@@ -98,18 +113,28 @@ data/materials.json            Repo-root design-time reference (fuller roster th
   Materialdex/Save panels, the Enter-key menu) is the same dark rounded-rectangle-with-stroke
   treatment, with the stroke color signaling the panel's kind: blue-grey `0x444466` = wild
   encounter (`OverworldScene.showEncounter`) and the Enter-key menu/info panels (`0x8fa0c9`,
-  a distinct blue-grey so it doesn't collide), gold `0xffe066` = Noether, teal `0x4adde0` =
-  Bloch, amber `0xffa64a` = Bohr, red `0xff6666` = rival gate, purple `0x9a6ad9` = Hub's
-  `showPanel` (Materialdex/Save), lavender `0xd9a5ff` = `OverworldScene.showStoryBeat`'s
-  between-worlds panel. A new panel should pick a stroke color that doesn't collide
-  with these.
+  a distinct blue-grey so it doesn't collide), gold `0xffe066` = Noether (and its analytic-move
+  counterpart, Curie's `showCuriePanel`, at olive `0xc9d84a`), teal `0x4adde0` = Bloch, amber
+  `0xffa64a` = Bohr, green `0x4fd97a` = Majorana's hybrid panel, red `0xff6666` = rival gate,
+  purple `0x9a6ad9` = Hub's `showPanel` (Materialdex/Save), lavender `0xd9a5ff` =
+  `OverworldScene.showStoryBeat`'s between-worlds panel, and gold `0xffe066` again (matching
+  Curie) for `BattleScene.showAnalyticQuestion`'s in-battle question panel, the one dialogue-style
+  overlay that lives in `BattleScene` rather than `OverworldScene`. A new panel should pick a
+  stroke color that doesn't collide with these.
 - **Mentor avatars.** One builder per mentor in its own file: `art/mentor.ts`'s
   `makeNoetherAvatar()`, `art/bloch.ts`'s `makeBlochAvatar()`, `art/bohr.ts`'s
   `makeBohrAvatar()`. Never a shared parameterized builder -- each mentor needs to read as
   visually distinct.
 - **Attack effects keyed by MoveClass**, not by move id -- adding/removing a move never touches
   `attackEffects.ts`, only adding/removing a whole `MoveClass` does (update `EFFECT_STYLE` in
-  `art/attackEffects.ts` and `MOVE_COMPATIBILITY` in `data/materials.ts` together).
+  `art/attackEffects.ts` and `MOVE_COMPATIBILITY` in `data/materials.ts` together). One
+  deliberate exception: `ANALYTIC_SHAPES: Record<moveId, AttackShape>` overrides the shape
+  per move id for the `'analytic'` class specifically, since Curie's two moves (Skyfall Beam,
+  Ground Eruption) want two different silhouettes despite sharing one class --
+  `BattleScene.resolveHit` looks a move up in `ANALYTIC_SHAPES` and passes it as
+  `playAttackEffect`'s `shapeOverride` param, falling back to `EFFECT_STYLE`'s per-class shape
+  when a move isn't in that map. A future class wanting the same per-move variety should reuse
+  this pattern rather than inventing a second override mechanism.
 - **Discovery vs. defeat tracking.** Two separate registry/save lists, both excluding rivals
   (not real compounds): `discoveredMaterials` (`OverworldScene.recordDiscovery`, written on
   first wild *encounter*, feeds the Hub's Materialdex) and `defeatedMaterials`
@@ -122,9 +147,16 @@ data/materials.json            Repo-root design-time reference (fuller roster th
 current crystal is `getPlayerMaterial(registry)` (`data/materials.ts`), which reads
 registry/save key `playerForm` (a full `Material` or `null`). Every scene that draws/sizes/
 types the player goes through this rather than `PLAYER_MATERIAL` directly: `BattleScene
-.playerMaterial`, `OverworldScene.playerMaterial`, `HubScene`'s crystal. Bohr's `OverworldScene
-.transmuteInto(name)` is the only writer (`findMaterialByName` looks the target up across
-`WORLD_CRYSTALS`, never `WORLD_RIVALS` -- rivals aren't real compounds).
+.playerMaterial`, `OverworldScene.playerMaterial`, `HubScene`'s crystal. Two mentors write it,
+both through the shared `OverworldScene.applyPlayerForm(material)` (sets `playerForm`, clamps
+HP down to the new form's `maxHp` if lower, persists, redraws the crystal -- never a full
+heal): Bohr's `transmuteInto(name)` looks the target up by name across `WORLD_CRYSTALS` via
+`findMaterialByName` (never `WORLD_RIVALS` -- rivals aren't real compounds, and never a
+hybrid -- `findMaterialByName` only searches `WORLD_CRYSTALS`, so it silently returns
+`undefined` for a synthesized hybrid name); Majorana's `becomeHybrid(material)` is called
+with an already-resolved `Material` object instead (either freshly built by
+`combineMaterials` or pulled straight from the `hybridMaterials` save list), since there's
+nothing to look up by name for a hybrid that was never in `WORLD_CRYSTALS` to begin with.
 
 **Move availability is an intersection, not a flat list.** `unlockedMoves` (registry/save) is
 a global "moves learned," unaffected by transmuting. What's actually offered in the battle
@@ -150,6 +182,14 @@ correlation`), and a `2x` "quasiparticle mismatch" multiplier from `data/materia
 `canHost(defenderType, move.class)` -- a defender whose own `MOVE_COMPATIBILITY` list doesn't
 include the attacking move's class takes it at double force. This is the only type-interaction
 term in the damage formula (DESIGN.md §3/§4) -- there is no separate type-chart multiplier.
+`resolveHit` also takes a `bonusMultiplier` param (default `1`, a no-op) -- the only current
+caller that passes anything else is `playerAttack` forwarding an analytic move's answer-gated
+2x/0.5x through to the one `resolveHit` call for that specific move id; the opponent's
+follow-up hit in the same exchange is never affected. The question itself is always answered
+*before* `resolveHit` runs (`BattleScene.showAnalyticQuestion`, called from the move button's
+own handler, not from inside `playerAttack`/`resolveHit`) -- keeping `resolveHit` synchronous
+rather than teaching it to await something was a deliberate call, since it already inline-calls
+`endBattle` and chains via `time.delayedCall`.
 
 **Battle move menu.** `BattleScene.drawMoveMenu(moveIds)` builds a docked `Container` (field
 `moveMenu`) on the right of the field from `getBattleMoves`, sized to the current move count.
@@ -158,7 +198,12 @@ tag (plus a power number) to each button when the quasiparticle-mismatch rule ap
 height (`rowH`) is
 computed from `rowCount` via `Phaser.Math.Clamp` rather than a fixed constant, since world 10's
 'adaptive' type can host all 7 `MOVES` at once (see `MOVE_COMPATIBILITY`). Below `rowH < 40` the
-row switches to a smaller font/padding (`compact`) rather than clipping.
+row switches to a smaller font/padding (`compact`) rather than clipping. A move whose `class`
+is `'analytic'` also gets a `★` tag and a legend line explaining the 2x/0.5x mechanic; its
+button's `pointerdown` handler branches before `playerAttack` -- it opens
+`BattleScene.showAnalyticQuestion` first (locking `turnLock` for the duration) and only calls
+`playerAttack(moveId, bonusMultiplier)` once answered, rather than calling `playerAttack`
+directly the way every other move button does.
 
 **BattleScene reads the world's biome.** `drawBackground` calls `getBiome(this.world)` (the
 same `art/biomes.ts` table `OverworldScene`'s corridor uses) -- sky/ridge/ground gradients, the
@@ -211,10 +256,52 @@ world, since a mismatched rival name is easy to miss if only `WORLD_NAMES` is up
 
 Every mentor has its own avatar builder in its own file: `art/mentor.ts`'s `makeNoetherAvatar`,
 `art/bloch.ts`'s `makeBlochAvatar` (wireframe Bloch-sphere head, teal), `art/bohr.ts`'s
-`makeBohrAvatar` (Bohr-model-atom head, amber), and one file per mentor from Dirac onward.
-Every mentor spawns through one unified `OverworldScene.spawnMentorSprite` (looked up from the
-`WORLD_MENTORS` table), not a bespoke `spawnXSprite` per mentor, and all share one chime,
-`playMentorChime()` in `audio/sfx.ts`.
+`makeBohrAvatar` (Bohr-model-atom head, amber), and one file per remaining mentor
+(`art/laughlin.ts`, `art/majorana.ts`, `art/curie.ts`, `art/bell.ts`, `art/kondo.ts`,
+`art/feynman.ts`). Every mentor spawns through one unified `OverworldScene.spawnMentorSprite`
+(looked up from the `WORLD_MENTORS` table), not a bespoke `spawnXSprite` per mentor, and all
+share one chime, `playMentorChime()` in `audio/sfx.ts`.
+
+**Renaming a mentor is a display-layer change, not a mechanic change.** `WORLD_MENTORS[N].id`
+(a `metMentors`/save-list key, never displayed) can stay whatever it was, or change to match --
+nothing special-cases a specific id string. What actually needs touching for a rename: the
+avatar file + exported function name (by convention, `art/<name>.ts`'s `make<Name>Avatar`,
+though this is a style convention, not something the code enforces), the `WORLD_MENTORS` entry's
+`id`/`name`/`quote`/`avatar` fields, the corresponding `import` line in `OverworldScene.ts`, and
+every doc that names the mentor by name (DESIGN.md §5, this file, DEVELOPMENT.md, README.md --
+`grep -rn` the old name across the repo, not just `game/src/`, since course-content
+cross-references in DESIGN.md's crystal database can share a physicist's name with a mentor
+without being about the mentor at all -- e.g. "Dirac point"/"Dirac fermion" physics terminology
+stays untouched by a Dirac→Laughlin mentor rename).
+
+**Majorana (world 5) and Curie (world 6) both have real mechanics**, following the same
+`open: (s) => s.showXPanel()` pattern as Noether/Bloch/Bohr:
+- **Majorana's hybrid-material panel** (`OverworldScene.showMajoranaPanel`) lets the player fuse
+  two `defeatedMaterials` into a new `Material` via `data/materials.ts`'s `combineMaterials(a,
+  b)` (`maxHp: round(max(a.maxHp, b.maxHp) * 1.5)`, colors blended) and become it immediately
+  via `applyPlayerForm` (see "Player form" above). **Not any two defeated crystals** -- only
+  pairs whose main types are both different *and* listed together in `HYBRID_RULES`
+  (`hybridResultType(typeA, typeB)` returns the result type, or `undefined` for an unrecognized
+  or same-type pair). The panel filters both the first-pick list (only crystals with *some*
+  valid partner among the other recently-defeated ones) and the second-pick list (only
+  crystals that pair with whichever was picked first) through this before ever rendering a
+  button, so an invalid combination is never one click away -- `createHybrid` doesn't
+  re-validate, it trusts the panel already filtered. A two-step pick
+  (`this.majoranaSelection: string | null`, the first choice, while the panel rebuilds for the
+  second) rather than one screen of every valid pair -- reset in both `create()` and
+  `closeDialogue()` so a stale first pick can't survive a cancel-and-reopen. Every hybrid ever
+  created is appended to the `hybridMaterials` save list (deduped by name, since
+  `combineMaterials` sorts its two parents' names before formatting so pick order doesn't
+  produce two differently-named hybrids for the same pair) so the panel's own "become again"
+  section can offer an earlier one without recombining -- deliberately sourced separately from
+  `defeatedMaterials`, so a hybrid can never be fed back in as a combine ingredient (that would
+  compound the 1.5x multiplier every time, on top of never being a recognized `HYBRID_RULES`
+  type to begin with).
+- **Curie's analytic-move shop** (`OverworldScene.showCuriePanel`/`renderCurieMoves`) mirrors
+  `showNoetherShop`/`renderShopMoves` but sells only `data/materials.ts`'s `ANALYTIC_MOVE_IDS`
+  (currently `skyfallBeam`/`groundEruption`), which `SHOP_MOVE_IDS` deliberately excludes so
+  Noether never also offers them. See `BattleScene.showAnalyticQuestion` (Stats and battle
+  resolution, above) for how a purchased analytic move actually plays out in a fight.
 
 **Every mentor stands mid-corridor, not at the goal or start.** `MentorDef.tile` is `'goal' |
 'start' | 'middle'`, but every current `WORLD_MENTORS` entry uses `'middle'` -- `world/mapgen
@@ -281,7 +368,11 @@ touching -- both this and the contextual popups above read it generically.
 `data/save.ts`'s `SaveData`: `playerStats: Stats`, `visitedWorlds: number[]`,
 `defeatedMaterials: DiscoveredMaterial[]` (written by `BattleScene.endBattle` on an ordinary
 wild win, same "not for rivals" rule as `discoveredMaterials`), `playerForm: Material | null`,
-`tutorialTipsSeen: string[]`, `debugMode: boolean`, `encounterDensity: number` (one of
+`hybridMaterials: Material[]` (every hybrid Majorana's panel has ever created, for its "become
+again" list -- note `playerForm` already round-trips a *whole* `Material` object through
+`JSON.stringify`/`localStorage`, so the player's *current* hybrid form survives a reload for
+free even without this list; this field only exists for the history), `tutorialTipsSeen:
+string[]`, `debugMode: boolean`, `encounterDensity: number` (one of
 `data/settings.ts`'s `DENSITY_PRESETS`, set via the Enter-menu's Settings panel), plus the
 earlier fields covered under Registry-then-persist above. `defaultSave()`/
 `persistFromRegistry()` are the two places that need touching together for any future field, and

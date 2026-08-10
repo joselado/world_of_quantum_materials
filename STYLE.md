@@ -237,6 +237,39 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
   (`redrawPlayerCrystal`). Empty state: "You haven't defeated any crystals yet -- there is
   nothing to become."
 
+## Majorana in the overworld (`OverworldScene.showMajoranaPanel`)
+
+- World 5 only, standing at the middle tile like every other mentor. Green (`0x4fd97a`)
+  name label and panel stroke; his avatar (`art/majorana.ts`'s `makeMajoranaAvatar`) is
+  unchanged by this mechanic.
+- His panel reuses the tab-content/footer shape Noether/Bloch/Bohr share, but with a
+  two-step flow instead of one screen: up to the 3 most recently defeated wild materials
+  *that pair with at least one of the others* each get a button (same-type pairs, and any
+  pairing not in `data/materials.ts`'s `HYBRID_RULES`, are filtered out before they ever
+  render), picking one asks "Combine `<first>` with..." and re-lists only the remaining
+  defeated materials that pair with it specifically (plus a "Never mind" to back out)
+  rather than showing every possible pair at once. Picking the second immediately
+  transmutes the player into the new fused `Material` (`data/materials.ts`'s
+  `combineMaterials`, color-blended, `maxHp` = 1.5x the stronger parent's) the same way
+  Bohr's transmutation does -- no separate "confirm" step. Above the combine flow, up to 3
+  previously created hybrids (`hybridMaterials` save list) get their own "Become `<name>`
+  again" buttons, same dimmed-when-current treatment as Bohr's list. Empty state (no valid
+  pairing among the recently defeated crystals -- including having fewer than 2 total):
+  "None of your recently defeated crystals pair into a hybrid yet -- try a magnet or
+  classical magnet together with a superconductor or quantum-Hall state."
+
+## Curie in the overworld (`OverworldScene.showCuriePanel`)
+
+- World 6 only, standing at the middle tile like every other mentor. Olive (`0xc9d84a`)
+  name label; panel stroked gold (`0xffe066`, matching Noether's shop rather than getting
+  its own color, since it's the same "buy a move" interaction). Her avatar
+  (`art/curie.ts`'s `makeCurieAvatar`) is unchanged by this mechanic.
+- Single list, no tabs -- one button per still-unbought analytic move
+  (`data/materials.ts`'s `ANALYTIC_MOVE_IDS`, currently Skyfall Beam and Ground Eruption),
+  same `<move name> -- <cost> qumatokens` label and afford/dim treatment as Noether's Moves
+  tab, reusing `shopCost`. Empty state once both are bought: "You already carry every
+  analytic technique I can teach."
+
 ## Boss avatars (`OverworldScene.spawnBossSprite`, `art/boss.ts`)
 
 - Every built world's rival/boss stands at the goal tile as a purely visual
@@ -310,14 +343,42 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
 - A docked panel on the right of the field (`x = 456`, `y = 190`, width `176`), same dark
   rounded-rectangle-with-stroke treatment as the overworld's dialogue panels, stroked gold
   (`0xffe066`) to match Noether's own panel color, titled "MOVES" in bold gold. Height grows
-  with however many moves are currently usable (`34 + rowCount * 34`) rather than a fixed
-  size, since that count changes as the player learns moves or transmutes into a form with
-  a different physics-compatible set (§3 of DESIGN.md).
+  with however many moves are currently usable rather than a fixed size, since that count
+  changes as the player learns moves or transmutes into a form with a different
+  physics-compatible set (§3 of DESIGN.md).
 - Each move is a `[ #222244 background / #ffff88 text ]` button, same treatment used
   everywhere else (overworld dialogue buttons) for visual continuity, stacked vertically
   inside the panel rather than spread horizontally. A form
   with zero currently-usable moves (shouldn't normally happen, since Phonon Beam is
-  universal) shows "No usable moves" instead of an empty panel.
+  universal) shows "No usable moves" instead of an empty panel. An analytic-class move
+  (Curie's Skyfall Beam/Ground Eruption) gets a gold `★` tag appended to its label, and the
+  legend line above the rows grows a short `★2x/½x` reminder when at least one is usable --
+  kept deliberately terse (not the full "answer right for 2x, wrong for half" sentence),
+  since that line's wrapped height eats directly into the space every row gets.
+- Row height is a hard geometric budget (whatever vertical space is left below the
+  title/legend, divided across however many moves are usable), with a minimum floor so rows
+  never shrink to illegible -- `30`px for up to 7 moves (the original roster's max), `17`px
+  for 8-9 (reachable once an 'adaptive'-type form, e.g. a defeated world-10 Echo via Bohr,
+  has learned everything including both analytic moves). Below `rowH < 40` the row switches
+  to smaller font/padding rather than clipping. Verified to fit within the field's 480px
+  height at both text-size presets (`fontScale` 1 and 2, `data/settings.ts`) for the 9-move
+  worst case via the headless-Chromium harness described in DEVELOPMENT.md, not just
+  eyeballed at the default preset.
+
+## Analytic question panel (`BattleScene.showAnalyticQuestion`)
+
+- The one dialogue-style overlay that lives in `BattleScene` rather than `OverworldScene` --
+  opened by clicking an analytic move's button, before that move resolves. Same dark
+  rounded-rectangle-with-stroke family as every overworld panel (520 wide, height grown to
+  fit), stroked gold (`0xffe066`) to match Curie's own shop and the `★` tag. Move name in
+  bold gold above the question prompt (white, center-aligned, matching the wild-encounter
+  quiz's tone), then two shuffled answer buttons in the same `[ #222244 / #ffff88 ]`
+  treatment every other button uses. No "let me pass" -- picking an analytic move already
+  commits to using it; both answers lead to the hit resolving, just at a different
+  multiplier.
+- Locks the move menu (`BattleScene.turnLock`) for the panel's duration so no other move can
+  be queued underneath it, released the instant an answer is picked -- the panel itself has
+  no other exit.
 
 ## Enter-key pause menu (`OverworldScene.showPauseMenu`/`showInfoPanel`)
 
@@ -391,8 +452,18 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
   Electron Pulse, Spinon Swap), an **expanding ring** pulse with a bright inner rim (Magnon
   Pulse, Polaron Drag), or a cluster of small particles that **converge/scatter** near the
   target (Anyon Braid, Majorana Split). Each class also has its own color (e.g. orange for
-  Phonon Beam, red for Magnon Pulse). All three shapes render additive-blended
+  Phonon Beam, red for Magnon Pulse). All shapes render additive-blended
   (`Phaser.BlendModes.ADD`) so they glow instead of reading as flat shapes.
+- Curie's two analytic moves break the "one shape per class" rule on purpose -- gold
+  (`0xffe066`), but each with its own silhouette rather than sharing the `'analytic'`
+  class's one default (`art/attackEffects.ts`'s `ANALYTIC_SHAPES`, keyed by move id, not
+  class). **Skyfall Beam** drops a thick column of light from off the top of the screen
+  straight down onto the target -- a faint full-height column telegraphs first, then a
+  brighter head with a white core falls the rest of the way; deliberately ignores the
+  attacker's own position, since a beam falling out of the sky doesn't originate there.
+  **Ground Eruption** bursts shards up and outward from a crack in the ground under the
+  target, also ignoring the attacker's position. Both are visibly bigger/more dramatic than
+  the original three shapes, matching their higher-stakes answer-gated payoff.
 - The full beat, in order: a ~90ms additive windup flash at the attacker's own position, the
   travelling effect itself (~340-460ms depending on shape), then a fire-and-forget impact
   shockwave (a white flash plus 8 radiating shards, ~260ms) at the target -- on top of which
