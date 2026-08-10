@@ -63,14 +63,33 @@ than appending a changelog, so this always reflects current reality.
   actually tracking the bend sideways, not just holding "forward."
 - Short (3-6 tile) dead-end branches fork off the corridor's edges at random rows. Exactly
   one route (the corridor itself) reaches the goal row; branches never reconnect to it.
-- Off-path tiles render as raised, solid-looking wall blocks, not just differently-colored
-  flat ground: every edge a non-walkable tile shares with a walkable neighbor gets an
-  extruded vertical face (`OverworldScene.drawWallFaces`, `WALL_HEIGHT_PX = 30`), shaded
-  darker than the tile's own top color and shaded differently per facing (near/far/left/
-  right) for a bit of pseudo-3D shading. Each face also gets a darker mortar line partway
-  up and a brighter rim along its top edge (as if lit from above), so it reads as a
-  stacked stone block rather than a flat colored card. Reads unambiguously as "you cannot
-  walk here."
+- Off-path tiles read as unambiguously "you cannot walk here," but not always the same way --
+  `OverworldScene.drawOffPathTile` dispatches on the current biome's `wallTheme`
+  (`art/biomes.ts`, see the Biomes table below):
+  - **'rock'** (most biomes, the original look): a raised, solid-looking wall block, not just
+    differently-colored flat ground -- every edge a non-walkable tile shares with a walkable
+    neighbor gets an extruded vertical face (`OverworldScene.drawWallFaces`, `WALL_HEIGHT_PX =
+    30`), shaded darker than the tile's own top color and shaded differently per facing (near/
+    far/left/right) for a bit of pseudo-3D shading. Each face also gets a darker mortar line
+    partway up and a brighter rim along its top edge (as if lit from above), so it reads as a
+    stacked stone block rather than a flat colored card.
+  - **'lava'** (Defect Wastes, world 9): a flat, glowing molten crust flush with the ground --
+    no extruded block, since lava is a hazard you'd sink into, not a wall you'd bump into
+    (`OverworldScene.drawLavaTile`). A pulsing warm overlay, a bright crack line, and a hot
+    core dot animate per-tile off `this.time.now`, skipped past `depthRatio 0.75` (same gate
+    `decorateTile` uses) so distant tiles stay a cheap flat fill.
+  - **'water'** (Frozen Caverns, world 5): a dark, rippling frozen lake, likewise flush with
+    the ground (`OverworldScene.drawWaterTile`) -- animated shimmer streaks rather than a
+    crack/glow overlay, same depth gate as lava.
+  - **'void'** (Floating Islands, world 3): no ground fill at all -- the static sky/hill
+    gradient `drawSky()` paints once behind `worldGfx` shows through, so stepping off the
+    island reads as open air rather than a solid tile in a different color
+    (`OverworldScene.drawVoidTile`). Only the edge shared with a walkable neighbor gets a
+    glowing rail marking the drop-off; a void tile with no walkable neighbor draws nothing at
+    all, which is also why this is the cheapest theme per frame, not the most expensive.
+  A ground-tile fill itself (walkable or 'rock' off-path) is a single flat color per tile --
+  a per-tile diagonal-facet/gradient shading was tried and reverted at the user's request
+  (floors read better flat); don't reintroduce it without asking first.
 - Decoration (flowers / crystal glints) is placed in the off-path terrain only, not on
   walkable tiles -- those are reserved for wild encounters (on the corridor) and
   qumatoken pickups (at branch dead ends).
@@ -84,20 +103,21 @@ than appending a changelog, so this always reflects current reality.
 ## Biomes (`art/biomes.ts`)
 
 Per-world skin: sky/ceiling gradient, hill/ceiling silhouette, wall-block color (off-path),
-on-path trail color, ambient decoration style, fog blend target, and whether clouds render.
+on-path trail color, ambient decoration style, fog blend target, whether clouds render, and
+(see "Overworld path" above) what the off-path terrain actually *is* -- `wallTheme`.
 
-| World | Biome | Sky/ceiling | Walls (off-path) | Path | Decoration | Clouds |
-|---|---|---|---|---|---|---|
-| 1 | Tutorial Meadow | pale blue gradient (`0x8fd0ff`→`0xe8f6ff`) | grass `0x2e7d32` | dirt `0xb08d57` | flowers | yes |
-| 2 | Crystalline Caves | dark purple gradient (`0x1a1730`→`0x362f5c`) | stone `0x2b2b3a` | cave floor `0x585073` | crystal glints (cyan) | no |
-| 3 | Floating Islands | deep-to-pale blue gradient (`0x2a3d6b`→`0x8fb8e8`) | slate blue `0x35507a` | pale sky-blue walkway `0x9ac0e0` | crystal glints (cyan) | yes |
-| 4 | Landau Level Terrain | deep electric-blue gradient (`0x081428`→`0x1f4d8f`) | field-line blue `0x2a5ca8` | glowing blue `0x3a7fd4` | field lines | no |
-| 5 | Frozen Caverns | icy dark gradient (`0x0d1b2a`→`0x2a4858`) | icy slate `0x24404f` | pale ice-blue `0x8fdcff` | crystal glints (cyan) | no |
-| 6 | Magnon Plains | pale blue-green gradient (`0x9fd8ff`→`0xdff3ff`) | olive-gold `0x8fae5c` | warm gold `0xd4c07a` | ripples | yes |
-| 7 | Tensor-Network World | dark violet gradient (`0x120a24`→`0x2c1a4a`) | deep purple `0x3a2560` | violet bond-path `0x8a5cd9` | network nodes | no |
-| 8 | Spinon Forest | muted grey-green gradient (`0x2a2f28`→`0x4a5248`) | low-contrast green `0x3a4238` | muted sage `0x5a6a58` | mist motes | no |
-| 9 | Defect Wastes | scorched red-black gradient (`0x1a0808`→`0x3a1414`) | charred red `0x4a1c1c` | cracked red `0x8a2a2a` | cracks | no |
-| 10 | Adaptive Meta-World | shimmering violet gradient (`0x2a1a3a`→`0x6a4a8a`) | violet `0x5a3a7a` | lavender `0xc9a8f0` | crystal glints (cyan) | yes |
+| World | Biome | Sky/ceiling | Walls (off-path) | Path | Decoration | Clouds | Wall theme |
+|---|---|---|---|---|---|---|---|
+| 1 | Tutorial Meadow | pale blue gradient (`0x8fd0ff`→`0xe8f6ff`) | grass `0x2e7d32` | dirt `0xb08d57` | flowers | yes | rock |
+| 2 | Crystalline Caves | dark purple gradient (`0x1a1730`→`0x362f5c`) | stone `0x2b2b3a` | cave floor `0x585073` | crystal glints (cyan) | no | rock |
+| 3 | Floating Islands | deep-to-pale blue gradient (`0x2a3d6b`→`0x8fb8e8`) | slate blue `0x35507a` | pale sky-blue walkway `0x9ac0e0` | crystal glints (cyan) | yes | **void** -- open sky/chasm, matches "one-way edge paths" |
+| 4 | Landau Level Terrain | deep electric-blue gradient (`0x081428`→`0x1f4d8f`) | field-line blue `0x2a5ca8` | glowing blue `0x3a7fd4` | field lines | no | rock |
+| 5 | Frozen Caverns | icy dark gradient (`0x0d1b2a`→`0x2a4858`) | icy slate `0x24404f` | pale ice-blue `0x8fdcff` | crystal glints (cyan) | no | **water** -- a frozen lake, "zero-resistance" made literal underfoot |
+| 6 | Magnon Plains | pale blue-green gradient (`0x9fd8ff`→`0xdff3ff`) | olive-gold `0x8fae5c` | warm gold `0xd4c07a` | ripples | yes | rock |
+| 7 | Tensor-Network World | dark violet gradient (`0x120a24`→`0x2c1a4a`) | deep purple `0x3a2560` | violet bond-path `0x8a5cd9` | network nodes | no | rock |
+| 8 | Spinon Forest | muted grey-green gradient (`0x2a2f28`→`0x4a5248`) | low-contrast green `0x3a4238` | muted sage `0x5a6a58` | mist motes | no | rock |
+| 9 | Defect Wastes | scorched red-black gradient (`0x1a0808`→`0x3a1414`) | charred red `0x4a1c1c` | cracked red `0x8a2a2a` | cracks | no | **lava** -- the world's own "scorched" theme made literal |
+| 10 | Adaptive Meta-World | shimmering violet gradient (`0x2a1a3a`→`0x6a4a8a`) | violet `0x5a3a7a` | lavender `0xc9a8f0` | crystal glints (cyan) | yes | rock |
 
 ## Qumatoken pickups (`art/tokens.ts`, `data/tokens.ts`)
 
@@ -132,6 +152,36 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
   doesn't track its main type.
 - Sizes: player `PLAYER_CRYSTAL_SIZE = 34` (largest, always on-screen), wild encounters
   `CRYSTAL_SIZE = 22`.
+- **Per-compound identity.** `TYPE_LOOK` still fixes one shard/cluster/prism/layer/twisted
+  silhouette + base color per `MaterialType`, but individual compounds of the same type no
+  longer render as that same silhouette in only a different brightness. Every call site that
+  has an actual `Material` passes `makeCrystal()`'s `opts.seed` (the material's own name);
+  `art/crystals.ts`'s `jitterFor` hashes that name into a small deterministic PRNG
+  (`hashSeed`/`seededRandom`, `art/colors.ts`) and derives a hue shift (`hueShift`, ±35°), a
+  shape rotation (±18°), a non-uniform x/y stretch (0.76-1.28, applied inside the shape-drawing
+  functions themselves via a `Stretch` param so it survives whatever a caller does to the
+  returned *container* afterward -- world-sprite depth scaling, etc.), and a sparkle
+  glyph/count pick -- all baked into the inner `Graphics` object(s), not the container, and
+  stable across reloads since it's re-derived from the same name every time, not re-rolled per
+  render. Purely decorative, non-`Material` crystals (UI hotspot icons, background outcrops,
+  `boss.ts`'s own satellite shards, the title screen's `TYPE_LOOK`-only showcase) omit `seed`
+  and keep their exact hand-tuned look.
+- **Hybrid materials** (Majorana's fuse mechanic, DESIGN.md §5) render as an actual mixture of
+  both parents, not one flat blended color. `data/materials.ts`'s `combineMaterials` carries
+  each parent's own `color`/`variant` forward as the new `Material`'s `hybridParents`; when
+  present, `makeCrystal()`'s `opts.hybrid` routes to `drawHybridCrystal` instead of the
+  ordinary single-shape path: both parents' own shapes (`drawVariantShape`, one silhouette per
+  variant, 'cluster' collapsing to a plain shard so it doesn't crowd a shape already sharing
+  space with a second parent's own shape) render off-center at a slight opposing tilt, the
+  second layered on top at less than full opacity so the overlap region genuinely blends both
+  parent colors via normal alpha compositing -- **not** `Phaser.BlendModes.ADD` on the shapes
+  themselves, which was tried first and washed out to solid white against anything but a black
+  background (the overworld sky never is). A soft additive-blended glow (their averaged color)
+  and a jagged white-gold seam down the middle *do* use `ADD`, since those are meant to read as
+  light/energy rather than solid material. Finished with sparkles tinted in both parents' own
+  colors (`hexColor`) instead of the plain-white default. A hybrid `playerForm` loaded from a
+  save written before `hybridParents` existed simply has no `hybridParents` key and falls back
+  to the ordinary single-shape render rather than throwing.
 
 ## Wild encounter dialogue (`OverworldScene.showEncounter`)
 

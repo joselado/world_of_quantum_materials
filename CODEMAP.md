@@ -23,8 +23,10 @@ game/src/
     mapgen.ts                  Per-world corridor layout generator (walkable grid, branches)
   art/
     perspective.ts             Pseudo-3D projection (grid coord -> screen point)
-    biomes.ts                  Per-world visual skin (sky, walls, path, decoration, fog)
-    crystals.ts                 makeCrystal() -- shared shard/cluster/prism sprite builder
+    biomes.ts                  Per-world visual skin (sky, walls, path, decoration, fog, wallTheme)
+    crystals.ts                 makeCrystal() -- shared shard/cluster/prism sprite builder, opts.seed
+                                  for per-compound jitter (jitterFor) and opts.hybrid for a fused
+                                  hybrid look (drawHybridCrystal)
     mentor.ts                   makeNoetherAvatar()
     bloch.ts                    makeBlochAvatar()
     bohr.ts                     makeBohrAvatar()
@@ -39,7 +41,8 @@ game/src/
     attackEffects.ts            playAttackEffect() -- bolt/ring/burst/beam/eruption particle effect;
                                   beam/eruption are ANALYTIC_SHAPES' per-move-id overrides (Curie's
                                   Skyfall Beam/Ground Eruption), every other shape is per-MoveClass
-    colors.ts                   shade() and other color helpers
+    colors.ts                   shade(), hueShift(), hashSeed()/seededRandom() -- the deterministic
+                                  per-compound PRNG jitterFor() (crystals.ts) is built from
   audio/
     sfx.ts                      Procedural sound effects (attack/impact/playMentorChime)
     music.ts                    MusicEngine, per-scene tracks, duck() for attack beats
@@ -70,7 +73,9 @@ data/materials.json            Repo-root design-time reference (fuller roster th
 ## Data model (`data/types.ts`, `data/materials.ts`)
 
 - A **Material** is a crystal: `name`, `type` (`MaterialType`), `color`, `variant`
-  (shard/cluster/prism/layer/twisted), `maxHp`, `moves` (string ids into `MOVES`).
+  (shard/cluster/prism/layer/twisted), `maxHp`, `moves` (string ids into `MOVES`), and an
+  optional `hybridParents` (both parents' own `color`/`variant`, set only by
+  `combineMaterials` -- see below and STYLE.md's "Crystal sprites" section).
 - The player is not a separate class -- `PLAYER_MATERIAL` is just one `Material` row (currently
   Silicon, `type: 'trivial'`). Its starting `moves` is the tutorial loadout; moves actually
   available in battle also depend on the registry's `unlockedMoves` (grows via Noether's shop).
@@ -100,10 +105,21 @@ data/materials.json            Repo-root design-time reference (fuller roster th
   risk/reward term. Decide this on purpose for any future class, not by omission.
 - Per-type look lives in `TYPE_LOOK` (base color + variant, exported); individual compounds
   of the same type get `shade(color, shadeStep * 18)` so siblings (Iron vs. Cobalt) read as a
-  family. `TitleScene`'s showcase cluster is the one consumer outside `data/materials.ts`
-  itself so far. A compound whose actual dimensionality/stacking doesn't match its type's
-  usual gem look overrides it via `crystal()`'s `variantOverride` param (Graphene/Monolayer
-  WTe₂/Chromium Triiodide → `'layer'`, Twisted Bilayer MoTe₂ → `'twisted'`; see STYLE.md).
+  family, *and* (rendering-side, not stored on the `Material` itself) `art/crystals.ts`'s
+  `jitterFor(material.name, ...)` gives each one its own hue/rotation/stretch/sparkle
+  variation so same-type siblings don't render as one recolored shape reused across every
+  compound of that type -- see STYLE.md. `TitleScene`'s showcase cluster is the one consumer
+  outside `data/materials.ts` itself so far (and the one place that skips per-compound jitter,
+  since it only has a `MaterialType` to draw from, not a specific compound name). A compound
+  whose actual dimensionality/stacking doesn't match its type's usual gem look overrides it via
+  `crystal()`'s `variantOverride` param (Graphene/Monolayer WTe₂/Chromium Triiodide → `'layer'`,
+  Twisted Bilayer MoTe₂ → `'twisted'`; see STYLE.md).
+- `combineMaterials(a, b)` (Majorana's hybrid fuser, §5) sets the new `Material`'s
+  `hybridParents` to both inputs' own `color`/`variant` (sorted the same way the hybrid's own
+  name is, so pick order doesn't change the rendered look) -- `makeCrystal()`'s `opts.hybrid`
+  reads this to render an actual fused mixture instead of the flat `blendColor` average alone
+  (see STYLE.md). Optional field, so a hybrid `playerForm` loaded from a save written before it
+  existed just renders the ordinary single-shape look instead of throwing.
 
 ## Cross-cutting patterns (reuse these, don't reinvent)
 

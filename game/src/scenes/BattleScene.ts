@@ -130,12 +130,15 @@ export class BattleScene extends Phaser.Scene {
     this.opponentPos = this.isRival ? BOSS_OPPONENT_POS : OPPONENT_POS;
     this.opponentCrystal = this.isRival
       ? makeBossCrystal(this, BOSS_CRYSTAL_SIZE, this.wild.color, this.wild.variant)
-      : makeCrystal(this, 50, this.wild.color, this.wild.variant);
+      : makeCrystal(this, 50, this.wild.color, this.wild.variant, { seed: this.wild.name, hybrid: this.wild.hybridParents });
     this.opponentCrystal.setPosition(this.opponentPos.x, this.opponentPos.y);
     this.bobCrystal(this.opponentCrystal, this.opponentPos.y);
 
     // Player (bottom-left)
-    this.playerCrystal = makeCrystal(this, 55, this.playerMaterial.color, this.playerMaterial.variant);
+    this.playerCrystal = makeCrystal(this, 55, this.playerMaterial.color, this.playerMaterial.variant, {
+      seed: this.playerMaterial.name,
+      hybrid: this.playerMaterial.hybridParents,
+    });
     this.playerCrystal.setPosition(PLAYER_POS.x, PLAYER_POS.y);
     this.bobCrystal(this.playerCrystal, PLAYER_POS.y);
 

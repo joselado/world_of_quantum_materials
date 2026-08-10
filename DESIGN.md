@@ -167,6 +167,21 @@ Chromium Triiodide render as a single floating 2D sheet (`'layer'`); Twisted Bil
 MoTe₂ renders as two twisted, moiré-offset sheets (`'twisted'`) — the crystal's shape
 reflects the actual dimensionality/stacking of the compound, not just its main type.
 
+**Every compound has its own look, not just its type's.** Beyond the `variantOverride`
+above, every crystal built with `data/materials.ts`'s `crystal()` gets a small,
+deterministic per-compound hue/rotation/stretch/sparkle variation (`art/crystals.ts`'s
+`jitterFor`, keyed off the compound's own name) layered on top of its `TYPE_LOOK`
+silhouette/color, so e.g. Manganese Oxide and Nickel Oxide (both `magnet`-type clusters)
+read as individuals rather than one recolored shape reused twice. See STYLE.md's "Crystal
+sprites" section for the mechanism.
+
+**A player-created hybrid material (§5's Majorana mechanic) renders as an actual mixture
+of both parents**, not one flat blended color — both parents' own shapes overlap
+off-center, normal-alpha-blended (not additive; additive washes out against the
+overworld's own non-black sky) so the overlap region genuinely mixes both colors, split by
+a glowing seam. See `data/materials.ts`'s `combineMaterials`/`hybridParents` and
+STYLE.md's "Crystal sprites" section.
+
 World 10's wild pool (`WORLD_CRYSTALS[10]` in `data/materials.ts`) is "Echo of ..."
 crystals — 'adaptive' type, no real compound behind them, each one's moveset recalling
 an earlier world (e.g. Echo of the Islands carries the same Anyon Braid/Majorana Split
@@ -458,9 +473,11 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   direction. Short dead-end branches fork off the corridor's edges at random
   rows; exactly one route (the corridor) reaches the goal, and each branch
   ends in a single qumatoken pickup worth 1, 5, or 10 (`src/data/tokens.ts`),
-  rarer at higher value. Off-path tiles render as raised wall blocks (see
-  `STYLE.md`), not just differently-colored ground, so blocked terrain reads
-  unambiguously. The layout is regenerated (fresh `Math.random` calls) on
+  rarer at higher value. Off-path tiles render as terrain you can plausibly see is
+  impassable, not just differently-colored ground -- a raised wall block by default, or
+  (per-biome `wallTheme`, see `STYLE.md`) a molten lava crust, a frozen lake, or open
+  sky/chasm you'd fall through -- so blocked terrain reads unambiguously either way. The
+  layout is regenerated (fresh `Math.random` calls) on
   first load and whenever the player switches worlds; a round trip through
   battle instead restores the exact layout and player position it started
   from (`OverworldScene.saveMapState`/`restoreMap`, via the Phaser registry).

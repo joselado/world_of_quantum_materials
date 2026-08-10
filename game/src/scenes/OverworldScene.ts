@@ -420,7 +420,10 @@ export class OverworldScene extends Phaser.Scene {
     // walking.
     this.player = this.add.container(CANVAS_W / 2, 400);
     const playerShadow = this.add.ellipse(0, 34, 34, 11, 0x000000, 0.28);
-    this.playerCrystalGfx = makeCrystal(this, PLAYER_CRYSTAL_SIZE, this.playerMaterial.color, this.playerMaterial.variant);
+    this.playerCrystalGfx = makeCrystal(this, PLAYER_CRYSTAL_SIZE, this.playerMaterial.color, this.playerMaterial.variant, {
+      seed: this.playerMaterial.name,
+      hybrid: this.playerMaterial.hybridParents,
+    });
     this.player.add([playerShadow, this.playerCrystalGfx]);
     this.player.setDepth(40);
     this.idleBob();
@@ -903,21 +906,156 @@ export class OverworldScene extends Phaser.Scene {
 
         const depthRatio = Phaser.Math.Clamp(depthFar / DRAW_DISTANCE_TILES, 0, 1);
         const walkable = !!this.walkable[y]?.[x];
-        const base = walkable ? this.biome.path : this.biome.ground;
-        const color = fogColor(base, depthRatio, this.biome.fogTarget);
 
-        g.fillStyle(color, 1);
-        g.fillPoints([pFL, pFR, pNR, pNL], true);
-        g.lineStyle(1, shade(color, -20), 0.3);
-        g.strokePoints([pFL, pFR, pNR, pNL], true);
-
-        if (!walkable) {
-          this.drawWallFaces(g, x, y, pFL, pFR, pNR, pNL, color);
-        } else if (depthRatio < 0.75 && this.flowerMap[y]?.[x]) {
-          this.decorateTile(g, pFL, pFR, pNR, pNL);
+        if (walkable) {
+          const color = fogColor(this.biome.path, depthRatio, this.biome.fogTarget);
+          g.fillStyle(color, 1);
+          g.fillPoints([pFL, pFR, pNR, pNL], true);
+          g.lineStyle(1, shade(color, -20), 0.3);
+          g.strokePoints([pFL, pFR, pNR, pNL], true);
+          if (depthRatio < 0.75 && this.flowerMap[y]?.[x]) {
+            this.decorateTile(g, pFL, pFR, pNR, pNL);
+          }
+        } else {
+          this.drawOffPathTile(g, x, y, pFL, pFR, pNR, pNL, depthRatio);
         }
       }
     }
+  }
+
+  // Dispatches an off-path tile's look by the current biome's `wallTheme`
+  // (art/biomes.ts) -- most biomes stay 'rock' (raised stacked-stone block,
+  // the original look), but a few render terrain you can plausibly see is
+  // impassable instead of a uniformly-colored wall: 'lava' (a flat glowing
+  // molten crust), 'water' (a dark rippling frozen lake), 'void' (open sky
+  // you'd fall through). Only 'rock' extrudes a solid block; the other three
+  // are flush with the ground plane, since a wall of lava/water/open air
+  // isn't a raised stone block.
+  private drawOffPathTile(
+    g: Phaser.GameObjects.Graphics,
+    x: number,
+    y: number,
+    pFL: ProjectedPoint,
+    pFR: ProjectedPoint,
+    pNR: ProjectedPoint,
+    pNL: ProjectedPoint,
+    depthRatio: number
+  ) {
+    const theme = this.biome.wallTheme;
+    if (theme === 'lava') {
+      this.drawLavaTile(g, pFL, pFR, pNR, pNL, depthRatio);
+      return;
+    }
+    if (theme === 'water') {
+      this.drawWaterTile(g, pFL, pFR, pNR, pNL, depthRatio);
+      return;
+    }
+    if (theme === 'void') {
+      this.drawVoidTile(g, x, y, pFL, pFR, pNR, pNL, depthRatio);
+      return;
+    }
+
+    const color = fogColor(this.biome.ground, depthRatio, this.biome.fogTarget);
+    g.fillStyle(color, 1);
+    g.fillPoints([pFL, pFR, pNR, pNL], true);
+    g.lineStyle(1, shade(color, -20), 0.3);
+    g.strokePoints([pFL, pFR, pNR, pNL], true);
+    this.drawWallFaces(g, x, y, pFL, pFR, pNR, pNL, color);
+  }
+
+  // A flat, glowing molten crust (Defect Wastes, world 9) -- no extruded
+  // block, since lava is a hazard you'd sink into, not a wall you'd bump
+  // into. The crack/glow overlay is skipped past depthRatio 0.75 (same gate
+  // `decorateTile` uses) so distant tiles stay a cheap flat fill rather than
+  // paying the animated-detail cost for the couple hundred off-path tiles a
+  // single frame can contain.
+  private drawLavaTile(
+    g: Phaser.GameObjects.Graphics,
+    pFL: ProjectedPoint,
+    pFR: ProjectedPoint,
+    pNR: ProjectedPoint,
+    pNL: ProjectedPoint,
+    depthRatio: number
+  ) {
+    const crust = fogColor(this.biome.ground, depthRatio, this.biome.fogTarget);
+    g.fillStyle(crust, 1);
+    g.fillPoints([pFL, pFR, pNR, pNL], true);
+    if (depthRatio > 0.75) return;
+
+    const cx = (pFL.x + pFR.x + pNR.x + pNL.x) / 4;
+    const cy = (pFL.y + pFR.y + pNR.y + pNL.y) / 4;
+    const s = pNL.scale;
+    const pulse = 0.55 + 0.45 * Math.sin(this.time.now / 260 + cx * 0.05 + cy * 0.03);
+
+    g.fillStyle(0xff5a1a, 0.32 * pulse);
+    g.fillPoints([pFL, pFR, pNR, pNL], true);
+
+    g.lineStyle(1.6, 0xffcf4a, 0.7 * pulse);
+    g.beginPath();
+    g.moveTo(cx - 2.6 * s, cy - 1.2 * s);
+    g.lineTo(cx - 0.4 * s, cy + 0.6 * s);
+    g.lineTo(cx + 1.6 * s, cy - 0.8 * s);
+    g.strokePath();
+
+    g.fillStyle(0xfff0a0, 0.55 * pulse);
+    g.fillCircle(cx, cy, 1.1 * s * pulse);
+  }
+
+  // A dark, rippling frozen lake (Frozen Caverns, world 5) -- flush with the
+  // ground, same "not a wall block" reasoning as lava above.
+  private drawWaterTile(
+    g: Phaser.GameObjects.Graphics,
+    pFL: ProjectedPoint,
+    pFR: ProjectedPoint,
+    pNR: ProjectedPoint,
+    pNL: ProjectedPoint,
+    depthRatio: number
+  ) {
+    const base = fogColor(this.biome.ground, depthRatio, this.biome.fogTarget);
+    g.fillStyle(base, 1);
+    g.fillPoints([pFL, pFR, pNR, pNL], true);
+    if (depthRatio > 0.75) return;
+
+    const cx = (pFL.x + pFR.x + pNR.x + pNL.x) / 4;
+    const cy = (pFL.y + pFR.y + pNR.y + pNL.y) / 4;
+    const s = pNL.scale;
+    const shimmer = 0.4 + 0.35 * Math.sin(this.time.now / 420 + cx * 0.04);
+
+    g.lineStyle(1, 0xcdeeff, 0.35 * shimmer);
+    g.lineBetween(cx - 2.4 * s, cy - 0.4 * s, cx + 2.4 * s, cy - 0.9 * s);
+    g.lineBetween(cx - 2 * s, cy + 0.6 * s, cx + 2 * s, cy + 0.2 * s);
+
+    g.fillStyle(0xffffff, 0.2 * shimmer);
+    g.fillEllipse(cx - 0.6 * s, cy - 0.5 * s, 2.4 * s, 0.6 * s);
+  }
+
+  // Open sky/chasm (Floating Islands, world 3) -- deliberately no ground
+  // fill at all: the static sky/hill gradient `drawSky()` paints once behind
+  // `worldGfx` shows through, so stepping off the island reads as open air
+  // rather than a solid tile in a different color. Only the edge shared with
+  // a walkable neighbor gets a glowing rail -- the drop-off itself -- since a
+  // void tile with no walkable neighbor needs nothing drawn at all.
+  private drawVoidTile(
+    g: Phaser.GameObjects.Graphics,
+    x: number,
+    y: number,
+    pFL: ProjectedPoint,
+    pFR: ProjectedPoint,
+    pNR: ProjectedPoint,
+    pNL: ProjectedPoint,
+    depthRatio: number
+  ) {
+    const edgeAlpha = 1 - depthRatio * 0.6;
+    const rail = (a: ProjectedPoint, b: ProjectedPoint) => {
+      g.lineStyle(6, 0xbfe3ff, 0.16 * edgeAlpha);
+      g.lineBetween(a.x, a.y, b.x, b.y);
+      g.lineStyle(2, 0xeaf6ff, 0.85 * edgeAlpha);
+      g.lineBetween(a.x, a.y, b.x, b.y);
+    };
+    if (this.walkable[y + 1]?.[x]) rail(pNL, pNR);
+    if (this.walkable[y - 1]?.[x]) rail(pFR, pFL);
+    if (this.walkable[y]?.[x - 1]) rail(pFL, pNL);
+    if (this.walkable[y]?.[x + 1]) rail(pNR, pFR);
   }
 
   // Off-path tiles read as raised, solid blocks rather than just
@@ -926,7 +1064,9 @@ export class OverworldScene extends Phaser.Scene {
   // screen-space trick: shift the far end of the edge up by a fixed pixel
   // height scaled by that point's own perspective scale). Each face gets a
   // lit rim along its top edge and a darker mortar line partway up, so it
-  // reads as a stacked stone block rather than a flat colored card.
+  // reads as a stacked stone block rather than a flat colored card. Only
+  // called for the 'rock' wallTheme (see `drawOffPathTile`) -- lava/water/
+  // void render their own flush-with-the-ground look instead.
   private drawWallFaces(
     g: Phaser.GameObjects.Graphics,
     x: number,
@@ -1071,7 +1211,10 @@ export class OverworldScene extends Phaser.Scene {
         const material = this.encounterTiles[y]?.[x];
         if (!material) continue;
 
-        const container = makeCrystal(this, CRYSTAL_SIZE, material.color, material.variant);
+        const container = makeCrystal(this, CRYSTAL_SIZE, material.color, material.variant, {
+          seed: material.name,
+          hybrid: material.hybridParents,
+        });
         container.setDepth(20);
 
         const label = this.add
@@ -1275,7 +1418,10 @@ export class OverworldScene extends Phaser.Scene {
     this.dialogueContainer = container;
 
     const crystalY = top + 34;
-    const crystal = makeCrystal(this, 30, material.color, material.variant);
+    const crystal = makeCrystal(this, 30, material.color, material.variant, {
+      seed: material.name,
+      hybrid: material.hybridParents,
+    });
     crystal.setPosition(CANVAS_W / 2, crystalY);
     container.add(crystal);
     this.tweens.add({ targets: crystal, y: crystalY + 8, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
@@ -1612,7 +1758,7 @@ export class OverworldScene extends Phaser.Scene {
     let y = top;
 
     const crystalY = y + 34;
-    const crystal = makeCrystal(this, 34, rival.color, rival.variant);
+    const crystal = makeCrystal(this, 34, rival.color, rival.variant, { seed: rival.name });
     crystal.setPosition(CANVAS_W / 2, crystalY);
     container.add(crystal);
     this.tweens.add({ targets: crystal, y: crystalY + 10, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
@@ -2238,7 +2384,10 @@ export class OverworldScene extends Phaser.Scene {
 
   private redrawPlayerCrystal() {
     this.playerCrystalGfx.destroy();
-    this.playerCrystalGfx = makeCrystal(this, PLAYER_CRYSTAL_SIZE, this.playerMaterial.color, this.playerMaterial.variant);
+    this.playerCrystalGfx = makeCrystal(this, PLAYER_CRYSTAL_SIZE, this.playerMaterial.color, this.playerMaterial.variant, {
+      seed: this.playerMaterial.name,
+      hybrid: this.playerMaterial.hybridParents,
+    });
     this.player.add(this.playerCrystalGfx);
   }
 

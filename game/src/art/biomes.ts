@@ -6,6 +6,18 @@
 
 export type DecorationKind = 'flowers' | 'crystalGlints' | 'fieldLines' | 'networkNodes' | 'ripples' | 'cracks' | 'mistMotes';
 
+// What the *off-path* terrain actually is, not just what color it's painted
+// -- OverworldScene.drawOffPathTile branches on this to render impassable
+// ground as something you can plausibly see is impassable rather than a
+// uniformly-colored wall block everywhere: 'rock' (the original raised
+// stacked-stone block, still the default), 'lava' (a flat, glowing molten
+// crust -- Defect Wastes' "scorched" theme made literal), 'water' (a dark,
+// rippling frozen lake -- Frozen Caverns), 'void' (open sky/chasm you'd fall
+// through -- Floating Islands' "one-way edge paths"). Not every biome needs
+// its own theme; most stay 'rock' and differ only by wall/hill color, same
+// as before this field existed.
+export type WallTheme = 'rock' | 'lava' | 'water' | 'void';
+
 export interface Biome {
   name: string;
   skyTop: number;
@@ -17,6 +29,7 @@ export interface Biome {
   fogTarget: number;
   clouds: boolean;
   decoration: DecorationKind;
+  wallTheme: WallTheme;
 }
 
 const MEADOW: Biome = {
@@ -30,6 +43,7 @@ const MEADOW: Biome = {
   fogTarget: 0xbfe3ff,
   clouds: true,
   decoration: 'flowers',
+  wallTheme: 'rock',
 };
 
 const CRYSTAL_CAVE: Biome = {
@@ -43,6 +57,7 @@ const CRYSTAL_CAVE: Biome = {
   fogTarget: 0x24203f,
   clouds: false,
   decoration: 'crystalGlints',
+  wallTheme: 'rock',
 };
 
 const FLOATING_ISLANDS: Biome = {
@@ -56,6 +71,9 @@ const FLOATING_ISLANDS: Biome = {
   fogTarget: 0x6888c0,
   clouds: true,
   decoration: 'crystalGlints',
+  // Off-path here is the open sky between islands, not solid ground -- you'd
+  // fall through it, matching the world's own "one-way edge paths" design.
+  wallTheme: 'void',
 };
 
 // Topic 4 (QHE/Landau levels): a terrain of visible, glowing field lines and
@@ -71,6 +89,7 @@ const LANDAU_TERRAIN: Biome = {
   fogTarget: 0x1b3868,
   clouds: false,
   decoration: 'fieldLines',
+  wallTheme: 'rock',
 };
 
 // Topic 5 (superconductivity/Majorana): a frozen, zero-resistance cavern --
@@ -86,6 +105,9 @@ const FROZEN_CAVERNS: Biome = {
   fogTarget: 0x14313e,
   clouds: false,
   decoration: 'crystalGlints',
+  // "Zero-resistance" made literal underfoot too: off-path here is a frozen
+  // lake, not stacked stone.
+  wallTheme: 'water',
 };
 
 // Topic 6 (classical magnetism/magnons): windswept plains with spin-wave
@@ -101,6 +123,7 @@ const WINDSWEPT_PLAINS: Biome = {
   fogTarget: 0xcbe8ff,
   clouds: true,
   decoration: 'ripples',
+  wallTheme: 'rock',
 };
 
 // Topic 7 (entanglement/tensor networks): a dark network-graph world, bonds
@@ -116,6 +139,7 @@ const NETWORK_GRAPH_WORLD: Biome = {
   fogTarget: 0x201238,
   clouds: false,
   decoration: 'networkNodes',
+  wallTheme: 'rock',
 };
 
 // Topic 8 (quantum magnetism/spinons/Kondo): a foggy forest that
@@ -131,6 +155,7 @@ const FOGGY_FOREST: Biome = {
   fogTarget: 0x454e46,
   clouds: false,
   decoration: 'mistMotes',
+  wallTheme: 'rock',
 };
 
 // Topic 9 (excitations and defects): a cracked, glitching world -- scorched
@@ -146,6 +171,9 @@ const CRACKED_WORLD: Biome = {
   fogTarget: 0x2e1010,
   clouds: false,
   decoration: 'cracks',
+  // The world's own "scorched"/"damaged" theme made literal underfoot: a
+  // glowing molten crust, not a stacked stone wall.
+  wallTheme: 'lava',
 };
 
 // Topic 10 (finale, ML/adaptive boss): a meta-world reflecting the player's
@@ -162,6 +190,7 @@ const META_WORLD: Biome = {
   fogTarget: 0x4a3068,
   clouds: true,
   decoration: 'crystalGlints',
+  wallTheme: 'rock',
 };
 
 export const BIOMES: Partial<Record<number, Biome>> = {

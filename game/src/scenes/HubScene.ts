@@ -52,7 +52,10 @@ export class HubScene extends Phaser.Scene {
       .setOrigin(0.5, 0);
 
     const playerMaterial = getPlayerMaterial(this.game.registry);
-    const player = makeCrystal(this, 46, playerMaterial.color, playerMaterial.variant);
+    const player = makeCrystal(this, 46, playerMaterial.color, playerMaterial.variant, {
+      seed: playerMaterial.name,
+      hybrid: playerMaterial.hybridParents,
+    });
     player.setPosition(CANVAS_W / 2, 230);
     this.tweens.add({ targets: player, y: 220, duration: 1000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 

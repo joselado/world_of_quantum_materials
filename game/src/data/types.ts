@@ -47,6 +47,19 @@ export interface Material {
   variant: CrystalVariant;
   maxHp: number;
   moves: string[];
+  // Set only for a Majorana-fused hybrid (data/materials.ts's
+  // combineMaterials) -- both parents' own look, carried forward so
+  // art/crystals.ts can render the fused crystal as an actual mixture
+  // instead of just `color`'s flat blend. Optional so a hybrid `playerForm`
+  // loaded from a save written before this field existed still round-trips
+  // (JSON.parse just omits the key) and falls back to the ordinary
+  // single-shape render rather than throwing.
+  hybridParents?: {
+    colorA: number;
+    variantA: CrystalVariant;
+    colorB: number;
+    variantB: CrystalVariant;
+  };
 }
 
 // Quantumness -> crit ("coherent hit") chance; Velocity -> which side acts

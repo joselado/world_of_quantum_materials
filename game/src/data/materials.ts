@@ -437,7 +437,9 @@ export function hybridResultType(typeA: MaterialType, typeB: MaterialType): Mate
 export function combineMaterials(a: Material, b: Material): Material {
   const resultType = hybridResultType(a.type, b.type);
   // Sorted so picking Aluminum-then-Lead and Lead-then-Aluminum name (and
-  // therefore dedupe against) the same hybrid, regardless of pick order.
+  // therefore dedupe against) the same hybrid, regardless of pick order --
+  // `hybridParents` is sorted the same way so a hybrid's rendered look is
+  // likewise independent of pick order.
   const [first, second] = [a, b].sort((x, y) => x.name.localeCompare(y.name));
   return {
     name: `${first.name} × ${second.name}`,
@@ -446,6 +448,12 @@ export function combineMaterials(a: Material, b: Material): Material {
     variant: TYPE_LOOK[resultType ?? 'topological'].variant,
     maxHp: Math.round(Math.max(a.maxHp, b.maxHp) * 1.5),
     moves: Array.from(new Set([...a.moves, ...b.moves])),
+    hybridParents: {
+      colorA: first.color,
+      variantA: first.variant,
+      colorB: second.color,
+      variantB: second.variant,
+    },
   };
 }
 
