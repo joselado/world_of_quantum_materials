@@ -5,6 +5,7 @@ import type { Biome } from '../art/biomes';
 import { makeCrystal } from '../art/crystals';
 import { makeToken } from '../art/tokens';
 import { makeNoetherAvatar } from '../art/mentor';
+import { makeBossCrystal } from '../art/boss';
 import { makeBlochAvatar } from '../art/bloch';
 import { makeBohrAvatar } from '../art/bohr';
 import { makeDiracAvatar } from '../art/dirac';
@@ -35,6 +36,7 @@ import { tokenColorForValue } from '../data/tokens';
 import { getMaterialQuestion } from '../data/quiz';
 import { encounterGreeting } from '../data/greetings';
 import { TUTORIAL_PAGES } from '../data/tutorial';
+import { DENSITY_PRESETS, DEFAULT_ENCOUNTER_DENSITY } from '../data/settings';
 import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
 import type { Material, Move, Stats } from '../data/types';
@@ -56,7 +58,9 @@ interface SavedMapState {
   flowerMap: boolean[][];
   goalTile: GridPoint;
   startTile: GridPoint;
+  midTile: GridPoint;
   reachedGoal: boolean;
+  reachedMiddle: boolean;
 }
 
 // Grid is deliberately fine-grained (many small tiles) rather than few large
@@ -72,7 +76,11 @@ const DRAW_DISTANCE_TILES = 15;
 const CRYSTAL_SIZE = 22;
 const TOKEN_SIZE = 26;
 const PLAYER_CRYSTAL_SIZE = 34;
-const ENCOUNTER_CHANCE = 0.12;
+// Substantially bigger than a wild crystal (CRYSTAL_SIZE) or even the player
+// (PLAYER_CRYSTAL_SIZE) -- the boss standing at the goal tile should read as
+// gigantic at a glance (art/boss.ts's makeBossCrystal further composes
+// several of these into one fused mass with its own aura on top).
+const BOSS_CRYSTAL_SIZE = 70;
 const WALL_HEIGHT_PX = 30;
 const QUIZ_CORRECT_MULTIPLIER = 1.5;
 const QUIZ_WRONG_MULTIPLIER = 0.6;
@@ -122,7 +130,11 @@ interface MentorDef {
   strokeColor: number;
   quote: string;
   avatar: (scene: Phaser.Scene, scale?: number) => Phaser.GameObjects.Container;
-  tile: 'goal' | 'start';
+  // Every mentor now stands mid-corridor ('middle', see DESIGN.md §5) so the
+  // goal tile is free for that world's boss avatar (spawnBossSprite) --
+  // 'start'/'goal' stay valid tile choices for a future mentor, but nothing
+  // currently uses them.
+  tile: 'goal' | 'start' | 'middle';
   open?: (scene: OverworldScene) => void;
 }
 
@@ -142,7 +154,9 @@ export class OverworldScene extends Phaser.Scene {
   private flowerMap: boolean[][] = [];
   private goalTile: GridPoint = { x: 0, y: 0 };
   private startTile: GridPoint = { x: 0, y: 0 };
+  private midTile: GridPoint = { x: 0, y: 0 };
   private reachedGoal = false;
+  private reachedMiddle = false;
   private qumatokens = 0;
   private crystalSprites: (WorldSprite & { material: Material })[] = [];
   private tokenSprites: WorldSprite[] = [];
@@ -151,6 +165,10 @@ export class OverworldScene extends Phaser.Scene {
   // visible, wandering landmark standing on the map rather than only
   // appearing once their dialogue triggers.
   private mentorSprites: WorldSprite[] = [];
+  // 0 or 1 entries -- this world's rival/boss (if built), a purely visual
+  // landmark standing at the goal tile now that mentors have moved to the
+  // corridor's middle (see spawnBossSprite/art/boss.ts's makeBossCrystal).
+  private bossSprites: WorldSprite[] = [];
   private worldGfx!: Phaser.GameObjects.Graphics;
   private player!: Phaser.GameObjects.Container;
   private playerCrystalGfx!: Phaser.GameObjects.Container;
@@ -181,7 +199,7 @@ export class OverworldScene extends Phaser.Scene {
       strokeColor: 0xffe066,
       quote: 'Every symmetry hides a conservation law.',
       avatar: makeNoetherAvatar,
-      tile: 'goal',
+      tile: 'middle',
       open: (s) => s.showNoetherShop(),
     },
     2: {
@@ -191,7 +209,7 @@ export class OverworldScene extends Phaser.Scene {
       strokeColor: 0x4adde0,
       quote: 'Every crystal is a superposition of the worlds it has touched.',
       avatar: makeBlochAvatar,
-      tile: 'goal',
+      tile: 'middle',
       open: (s) => s.showBlochHub(),
     },
     3: {
@@ -201,7 +219,7 @@ export class OverworldScene extends Phaser.Scene {
       strokeColor: 0xffa64a,
       quote: 'Every crystal you have defeated is a state you now understand well enough to become.',
       avatar: makeBohrAvatar,
-      tile: 'start',
+      tile: 'middle',
       open: (s) => s.showBohrPanel(),
     },
     4: {
@@ -212,7 +230,7 @@ export class OverworldScene extends Phaser.Scene {
       quote:
         "Put a Dirac fermion in a strong field and its Landau levels crowd toward zero energy differently than an ordinary electron's would -- graphene remembers its own relativity.",
       avatar: makeDiracAvatar,
-      tile: 'goal',
+      tile: 'middle',
     },
     5: {
       id: 'majorana',
@@ -221,7 +239,7 @@ export class OverworldScene extends Phaser.Scene {
       strokeColor: 0x4fd97a,
       quote: 'Split one fermion into two halves, each its own antiparticle, and see what a superconductor can hide at its edge.',
       avatar: makeMajoranaAvatar,
-      tile: 'goal',
+      tile: 'middle',
     },
     6: {
       id: 'curie',
@@ -230,7 +248,7 @@ export class OverworldScene extends Phaser.Scene {
       strokeColor: 0xc9d84a,
       quote: 'Every magnet has a temperature where its order gives up -- above it, the same atoms, no memory of which way is up.',
       avatar: makeCurieAvatar,
-      tile: 'goal',
+      tile: 'middle',
     },
     7: {
       id: 'einstein',
@@ -239,7 +257,7 @@ export class OverworldScene extends Phaser.Scene {
       strokeColor: 0xaeb8c4,
       quote: "I called it spooky at a distance. I was wrong to doubt it, but I was right that it deserved doubting.",
       avatar: makeEinsteinAvatar,
-      tile: 'goal',
+      tile: 'middle',
     },
     8: {
       id: 'kondo',
@@ -248,7 +266,7 @@ export class OverworldScene extends Phaser.Scene {
       strokeColor: 0xe86a44,
       quote: 'A single stray spin, screened by a sea of conduction electrons until it all but disappears at low temperature.',
       avatar: makeKondoAvatar,
-      tile: 'goal',
+      tile: 'middle',
     },
     9: {
       id: 'feynman',
@@ -257,7 +275,7 @@ export class OverworldScene extends Phaser.Scene {
       strokeColor: 0xe89a3a,
       quote: 'Draw the diagram. Every defect is just an excitation that forgot how to propagate freely.',
       avatar: makeFeynmanAvatar,
-      tile: 'goal',
+      tile: 'middle',
     },
     // 10: none -- the finale is the final boss only, no mentor waiting there.
   };
@@ -301,6 +319,7 @@ export class OverworldScene extends Phaser.Scene {
     this.spawnCrystalSprites();
     this.spawnTokenSprites();
     this.spawnMentorSprite();
+    this.spawnBossSprite();
     music.play(`overworld:${this.world}`);
 
     this.qumatokens = (state.get('qumatokens') as number) || 0;
@@ -394,7 +413,7 @@ export class OverworldScene extends Phaser.Scene {
     }
 
     this.maybeAutoOpenGoalDialogue();
-    this.maybeAutoOpenStartDialogue();
+    this.maybeAutoOpenMiddleDialogue();
     this.maybeShowFirstTimeTutorial();
   }
 
@@ -513,6 +532,7 @@ export class OverworldScene extends Phaser.Scene {
   // reshuffle the map.
   private generateMap() {
     this.reachedGoal = false;
+    this.reachedMiddle = false;
     this.playerTile = { x: Math.floor(GRID_W / 2), y: GRID_H - 5 };
 
     const wildPool = getWildPool(this.world);
@@ -521,6 +541,7 @@ export class OverworldScene extends Phaser.Scene {
     this.tokenTiles = map.tokens;
     this.goalTile = map.goal;
     this.startTile = map.start;
+    this.midTile = map.mid;
 
     this.encounterTiles = Array.from({ length: GRID_H }, () => Array(GRID_W).fill(null));
     this.flowerMap = Array.from({ length: GRID_H }, () => Array(GRID_W).fill(false));
@@ -540,13 +561,22 @@ export class OverworldScene extends Phaser.Scene {
     // One wild encounter roll per corridor row (not per tile) so encounter
     // density stays roughly constant regardless of how wide the corridor
     // is -- placed at a random column within that row's walkable band.
+    const encounterChance = this.encounterChance();
     map.rows.forEach((r) => {
       if (r.y === this.playerTile.y) return; // never spawn right on the player
-      if (wildPool.length === 0 || Math.random() >= ENCOUNTER_CHANCE) return;
+      if (wildPool.length === 0 || Math.random() >= encounterChance) return;
       const x = r.left + Math.floor(Math.random() * (r.right - r.left + 1));
       if (this.tokenTiles[r.y][x]) return;
       this.encounterTiles[r.y][x] = Phaser.Utils.Array.GetRandom(wildPool);
     });
+  }
+
+  // Enter-menu Settings panel (showSettingsPanel) knob: the per-corridor-row
+  // chance a wild crystal spawns, one of data/settings.ts's DENSITY_PRESETS.
+  // Read fresh at map-generation time rather than cached, so a mid-run
+  // Settings change takes effect the next time a map is (re)generated.
+  private encounterChance(): number {
+    return (this.game.registry.get('encounterDensity') as number) ?? DEFAULT_ENCOUNTER_DENSITY;
   }
 
   // Round trip through BattleScene resumes here -- restores the exact
@@ -560,7 +590,9 @@ export class OverworldScene extends Phaser.Scene {
     this.flowerMap = saved.flowerMap;
     this.goalTile = saved.goalTile;
     this.startTile = saved.startTile;
+    this.midTile = saved.midTile;
     this.reachedGoal = saved.reachedGoal;
+    this.reachedMiddle = saved.reachedMiddle;
     this.crystalSprites = [];
     this.tokenSprites = [];
   }
@@ -575,7 +607,9 @@ export class OverworldScene extends Phaser.Scene {
       flowerMap: this.flowerMap,
       goalTile: this.goalTile,
       startTile: this.startTile,
+      midTile: this.midTile,
       reachedGoal: this.reachedGoal,
+      reachedMiddle: this.reachedMiddle,
     };
     this.game.registry.set('mapState', saved);
   }
@@ -635,6 +669,7 @@ export class OverworldScene extends Phaser.Scene {
     this.updateWorldSprites(this.crystalSprites);
     this.updateWorldSprites(this.tokenSprites);
     this.updateWorldSprites(this.mentorSprites);
+    this.updateWorldSprites(this.bossSprites);
 
     if (this.moving || this.dialogueActive) return;
 
@@ -669,6 +704,7 @@ export class OverworldScene extends Phaser.Scene {
         this.moving = false;
         this.maybeTriggerEncounter(nx, ny);
         this.maybeCollectToken(nx, ny);
+        this.maybeReachMiddle(nx, ny);
         this.maybeReachGoal(nx, ny);
       },
     });
@@ -940,14 +976,15 @@ export class OverworldScene extends Phaser.Scene {
     }
   }
 
-  // This world's mentor (if any) stands (floats) at its goal or start tile
-  // as a visible landmark, not just something that materializes once its
-  // dialogue opens -- the player sees and walks up to them, the same way a
-  // wild encounter is seen coming rather than sprung from nowhere. Reuses
+  // This world's mentor (if any) stands (floats) mid-corridor as a visible
+  // landmark, not just something that materializes once its dialogue opens
+  // -- the player sees and walks up to them, the same way a wild encounter
+  // is seen coming rather than sprung from nowhere. Every mentor uses
+  // `tile: 'middle'` now (see WORLD_MENTORS/DESIGN.md §5), freeing the goal
+  // tile for that world's boss (spawnBossSprite below); 'start'/'goal'
+  // remain valid lookups here for any future mentor that wants them. Reuses
   // the crystal/token WorldSprite machinery (projection, wander, bob) so
-  // they scroll and fade with the rest of the world for free. Replaces the
-  // old spawnNoetherSprite/spawnBlochSprite/spawnBohrSprite trio -- one
-  // lookup into WORLD_MENTORS instead of three `this.world === N` guards.
+  // they scroll and fade with the rest of the world for free.
   private spawnMentorSprite() {
     this.mentorSprites = [];
     const mentor = OverworldScene.WORLD_MENTORS[this.world];
@@ -966,8 +1003,43 @@ export class OverworldScene extends Phaser.Scene {
       .setOrigin(0.5, 1)
       .setDepth(21);
 
-    const tile = mentor.tile === 'start' ? this.startTile : this.goalTile;
+    const tile = mentor.tile === 'start' ? this.startTile : mentor.tile === 'middle' ? this.midTile : this.goalTile;
     this.mentorSprites.push({ x: tile.x, y: tile.y, size: 42, container: avatar, label, seed: Math.random() * Math.PI * 2 });
+  }
+
+  // This world's rival/boss (getRival), standing at the goal tile as a
+  // gigantic, unmissable-from-a-distance landmark -- purely visual (no
+  // world has a WORLD_RIVALS gap, so this always finds one for a built
+  // world). The actual fight still only starts from "Face the Rival" in the
+  // goal gate panel (showGatePanel/showRivalEncounter); walking up to this
+  // sprite doesn't trigger anything on its own, same as a mentor sprite.
+  private spawnBossSprite() {
+    this.bossSprites = [];
+    const boss = getRival(this.world);
+    if (!boss) return;
+
+    const avatar = makeBossCrystal(this, BOSS_CRYSTAL_SIZE, boss.color, boss.variant);
+    avatar.setDepth(20);
+
+    const label = this.add
+      .text(0, 0, boss.name, {
+        fontSize: '12px',
+        fontStyle: 'bold',
+        color: '#ff8f8f',
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        padding: { x: 4, y: 2 },
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(21);
+
+    this.bossSprites.push({
+      x: this.goalTile.x,
+      y: this.goalTile.y,
+      size: BOSS_CRYSTAL_SIZE,
+      container: avatar,
+      label,
+      seed: Math.random() * Math.PI * 2,
+    });
   }
 
   // Wanders each sprite a little around its home tile (small sinusoidal
@@ -1147,27 +1219,29 @@ export class OverworldScene extends Phaser.Scene {
     return !!rivalDefeated[this.world];
   }
 
-  // Reopens this world's goal-tile mentor panel every time this scene is
-  // (re)created with the goal already reached -- both right after first
+  // Reopens this world's goal gate panel (showGatePanel -- no mentor stands
+  // here anymore, see WORLD_MENTORS' `tile: 'middle'`) every time this scene
+  // is (re)created with the goal already reached -- both right after first
   // stepping onto the goal row and after any later round trip through
   // BattleScene (a wild fight fought near the goal, or the rival fight
   // itself resolving). Keeps the panel revisitable across multiple battles
-  // instead of a single one-shot popup. The mentor is reachable regardless
-  // of the rival gate -- gating them behind the rival fight would strand
-  // the player needing bought moves/prep for a rival they can't reach the
-  // mentor to prepare for; instead the rival fight is what "Continue to
-  // World N+1" triggers (see tryAdvanceToNextWorld), so the player can
-  // prepare first, then fight, on their own schedule.
+  // instead of a single one-shot popup. Since the mentor is mid-corridor,
+  // reached well before the goal, the player always has a chance to shop/
+  // prep before ever facing the boss waiting here; the rival fight is what
+  // "Continue to World N+1" triggers (see tryAdvanceToNextWorld).
   private maybeAutoOpenGoalDialogue() {
     if (!this.reachedGoal || this.dialogueActive) return;
     this.openGoalMentorPanel();
   }
 
   // Looks up this world's goal-tile mentor (if any) in WORLD_MENTORS and
-  // opens their panel. A world with no goal-tile mentor (world 3, whose
-  // mentor Bohr stands at the *start* instead -- and world 10, the finale,
-  // which has no mentor at all) still needs a way to trigger its rival gate
-  // from the goal, or reaching it would be a dead end with no way onward.
+  // opens their panel. No mentor currently uses `tile: 'goal'` -- every
+  // mentor stands mid-corridor now (see WORLD_MENTORS) -- so this always
+  // falls through to showGatePanel() in practice, which is exactly what a
+  // world needs at its goal: a way to trigger the rival gate, or reaching
+  // the goal would be a dead end with no way onward. Left branching on
+  // `tile === 'goal'` rather than calling showGatePanel() directly so a
+  // future mentor can still choose to stand at the goal instead.
   private openGoalMentorPanel() {
     const mentor = OverworldScene.WORLD_MENTORS[this.world];
     if (mentor?.tile === 'goal') {
@@ -1179,7 +1253,7 @@ export class OverworldScene extends Phaser.Scene {
 
   // Opens a mentor's panel and records the first time this mentor is met,
   // so the Advisors pause-menu list (showAdvisorsPanel) grows as the player
-  // reaches each world's goal/start tile -- regardless of which panel that
+  // reaches each world's middle tile -- regardless of which panel that
   // mentor actually shows (shop, teleport hub, transmutation, or lore).
   // `open` is only set on Noether/Bloch/Bohr, whose panels are bespoke;
   // every other mentor falls through to the shared lore panel.
@@ -1192,9 +1266,11 @@ export class OverworldScene extends Phaser.Scene {
     (mentor.open ?? ((s: OverworldScene) => s.showMentorLore(mentor)))(this);
   }
 
-  // A minimal panel for a goal tile with no mentor waiting there (world 3,
-  // whose mentor stands at the start instead) -- just enough to reach the
-  // rival gate via the shared footer, so no built world is ever a dead end.
+  // Every world's goal panel now that no mentor stands there (they've all
+  // moved mid-corridor) -- the boss looming at this same tile (spawnBossSprite)
+  // is what's actually guarding the way, this panel is just enough text plus
+  // the shared footer to reach the rival gate, so no built world is ever a
+  // dead end.
   private showGatePanel() {
     this.dialogueActive = true;
 
@@ -1323,10 +1399,10 @@ export class OverworldScene extends Phaser.Scene {
     this.addDialogueButton(container, panelY - 4, 'Battle!', () => this.startBattle(rival, 1, true));
   }
 
-  // Noether appears once the player beats world 1's rival, selling the
-  // other early moves and (new) stat upgrades for qumatokens, in two tabs
-  // of the same panel. Same in-map dialogue pattern as a wild encounter,
-  // but with a mentor avatar and a shop list instead of a fight.
+  // Noether appears once the player reaches world 1's middle tile, selling
+  // the other early moves and stat upgrades for qumatokens, in two tabs of
+  // the same panel. Same in-map dialogue pattern as a wild encounter, but
+  // with a mentor avatar and a shop list instead of a fight.
   private showNoetherShop() {
     this.dialogueActive = true;
 
@@ -1418,7 +1494,7 @@ export class OverworldScene extends Phaser.Scene {
       });
     }
 
-    this.renderShopFooter(container, panelY);
+    this.renderFarewellFooter(container, panelY);
   }
 
   private renderShopStats(container: Phaser.GameObjects.Container, panelY: number) {
@@ -1454,15 +1530,17 @@ export class OverworldScene extends Phaser.Scene {
       if (!affordable) btn.setAlpha(0.5);
     });
 
-    this.renderShopFooter(container, panelY);
+    this.renderFarewellFooter(container, panelY);
   }
 
-  // Fixed footer row (not stacked below the variable-length shop list) so
-  // it never runs off the panel/canvas regardless of how many moves/stats
-  // are shown above it. This is the real, discoverable way to advance --
-  // Space is a dev-only shortcut that skips the rival gate entirely. The
-  // label itself tells the player what will happen: fight the rival first,
-  // then (once it's beaten) actually leave for the next world.
+  // Fixed footer row (not stacked below the variable-length content above
+  // it) so it never runs off the panel/canvas. showGatePanel's only caller
+  // now that mentors stand mid-corridor instead of at the goal (see
+  // renderFarewellFooter below for the mentor-panel equivalent) -- this is
+  // deliberately the *only* place "Face the Rival"/"Continue" appears, so
+  // reaching it requires actually walking to the goal where that world's
+  // boss is waiting (spawnBossSprite), not just meeting the mid-corridor
+  // mentor. Space is a dev-only shortcut that skips the rival gate entirely.
   private renderShopFooter(container: Phaser.GameObjects.Container, panelY: number) {
     const footerY = panelY + 120;
     const rivalDefeated = this.isRivalDefeated();
@@ -1474,6 +1552,13 @@ export class OverworldScene extends Phaser.Scene {
       : `Continue to World ${this.world + 1} ->`;
     this.addDialogueButtonAt(container, CANVAS_W / 2 - 118, footerY, 'Farewell', () => this.closeDialogue());
     this.addDialogueButtonAt(container, CANVAS_W / 2 + 118, footerY, nextLabel, () => this.tryAdvanceToNextWorld());
+  }
+
+  // Mid-corridor mentor panels (every one but the goal's showGatePanel) only
+  // need a way to close -- see renderShopFooter's comment for why the
+  // Face-the-Rival/Continue action doesn't belong here anymore.
+  private renderFarewellFooter(container: Phaser.GameObjects.Container, panelY: number) {
+    this.addDialogueButtonAt(container, CANVAS_W / 2, panelY + 120, 'Farewell', () => this.closeDialogue(), 260);
   }
 
   private advanceToWorld(world: number) {
@@ -1503,12 +1588,13 @@ export class OverworldScene extends Phaser.Scene {
     return (this.game.registry.get('defeatedMaterials') as DiscoveredMaterial[]) ?? [];
   }
 
-  // Bloch stands at world 2's goal (see spawnBlochSprite) and folds the
-  // player to any other world they've already visited and that actually has
-  // a built map (BUILT_WORLDS) -- offering an unbuilt world would teleport
-  // the player somewhere with no map to stand on. Shares the same "Farewell
-  // / Face the Rival / Continue" footer as Noether's panel, since Bloch
-  // stands at the same kind of goal-tile gate.
+  // Bloch stands at world 2's middle tile (see spawnMentorSprite/
+  // WORLD_MENTORS) and folds the player to any other world they've already
+  // visited and that actually has a built map (BUILT_WORLDS) -- offering an
+  // unbuilt world would teleport the player somewhere with no map to stand
+  // on. Ends in the plain "Farewell"-only renderFarewellFooter, not the
+  // Face-the-Rival/Continue footer -- that stays exclusive to the goal
+  // panel now that Bloch stands mid-corridor rather than at the goal.
   private showBlochHub() {
     this.dialogueActive = true;
 
@@ -1526,7 +1612,7 @@ export class OverworldScene extends Phaser.Scene {
 
     const panelY = 240;
     const panelHeight = 440;
-    const footerPanelY = panelY + 200 - 120; // renderShopFooter adds +120 back
+    const footerPanelY = panelY + 200 - 120; // renderFarewellFooter adds +120 back
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
 
@@ -1573,14 +1659,14 @@ export class OverworldScene extends Phaser.Scene {
       });
     }
 
-    this.renderShopFooter(container, footerPanelY);
+    this.renderFarewellFooter(container, footerPanelY);
   }
 
-  // Bohr stands at world 3's start (see spawnBohrSprite), triggered on
-  // entering the scene rather than on reaching a goal (maybeAutoOpenStartDialogue).
-  // Lets the player transmute into any crystal they've defeated -- the
-  // physics rationale being that beating something is understanding it well
-  // enough to become it for a while.
+  // Bohr stands at world 3's middle tile like every other mentor now (see
+  // spawnMentorSprite/WORLD_MENTORS), triggered on reaching that row
+  // (maybeAutoOpenMiddleDialogue). Lets the player transmute into any
+  // crystal they've defeated -- the physics rationale being that beating
+  // something is understanding it well enough to become it for a while.
   private showBohrPanel() {
     this.dialogueActive = true;
 
@@ -1660,11 +1746,11 @@ export class OverworldScene extends Phaser.Scene {
   // Shared panel for every mentor from Dirac onward (see WORLD_MENTORS):
   // avatar + a topic-tied quote, no shop tabs -- Noether stays the sole
   // seller of moves/stats (DESIGN.md §5 records this as a deliberate,
-  // temporary state, not a finished design). Still ends in the same
-  // renderShopFooter every goal-tile panel uses, though -- these mentors
-  // stand at their world's goal, so this panel is also that world's only
-  // way to reach its rival gate; a lore-only mentor still needs to hand off
-  // to "Face the Rival"/"Continue," not just a dead-end "Farewell."
+  // temporary state, not a finished design). Ends in renderFarewellFooter,
+  // not renderShopFooter -- these mentors stand mid-corridor now, so the
+  // Face-the-Rival/Continue progression action stays exclusive to the goal
+  // panel (showGatePanel), reached only once the player actually walks the
+  // rest of the way to the boss waiting there.
   private showMentorLore(mentor: MentorDef) {
     this.dialogueActive = true;
 
@@ -1702,17 +1788,17 @@ export class OverworldScene extends Phaser.Scene {
       .setOrigin(0.5, 0);
     container.add(note);
 
-    this.renderShopFooter(container, panelY);
+    this.renderFarewellFooter(container, panelY);
   }
 
-  // A start-tile mentor (Bohr, at world 3) appears "at the beginning of"
-  // their world -- fires on stepping into the scene (like the goal-tile
-  // mentors' own re-entry behavior) rather than on reaching any tile, since
-  // the player starts right next to them.
-  private maybeAutoOpenStartDialogue() {
-    if (this.dialogueActive) return;
+  // Mirrors maybeAutoOpenGoalDialogue for the middle row every mentor now
+  // stands on: reopens their panel both the first time the player reaches
+  // the middle and again after every later round trip through BattleScene,
+  // so it stays revisitable rather than a one-shot popup.
+  private maybeAutoOpenMiddleDialogue() {
+    if (!this.reachedMiddle || this.dialogueActive) return;
     const mentor = OverworldScene.WORLD_MENTORS[this.world];
-    if (mentor?.tile === 'start') this.openMentor(mentor);
+    if (mentor?.tile === 'middle') this.openMentor(mentor);
   }
 
   // The Enter-key menu (DESIGN.md §4/§7 territory: quick access without
@@ -1742,14 +1828,21 @@ export class OverworldScene extends Phaser.Scene {
       { label: 'View Stats', onClick: () => this.showStatsPanel() },
       { label: 'Advisors', onClick: () => this.showAdvisorsPanel() },
       { label: 'Tutorial', onClick: () => this.showTutorial(0) },
+      { label: 'Settings', onClick: () => this.showSettingsPanel() },
     ];
     if (this.isDebugMode()) {
       rows.push({ label: 'Warp (Debug)', onClick: () => this.showDebugWarpPanel() });
     }
     rows.push({ label: 'Close', onClick: () => this.closeDialogue() });
 
-    const panelY = 300;
-    const panelHeight = 90 + rows.length * 38;
+    // Vertically centered on the canvas (rather than a fixed panelY like
+    // most other panels) and a tighter row spacing than the earlier
+    // 5-6-row version needed, since the row count now regularly reaches 7-8
+    // (Settings, and the debug-only Warp row) and a fixed low panelY would
+    // otherwise push the panel's bottom edge past the canvas.
+    const rowSpacing = 34;
+    const panelY = CANVAS_H / 2;
+    const panelHeight = 80 + rows.length * rowSpacing;
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
 
@@ -1761,10 +1854,67 @@ export class OverworldScene extends Phaser.Scene {
       .setOrigin(0.5, 0);
     container.add(title);
 
-    const rowsTop = panelY - panelHeight / 2 + 56;
+    const rowsTop = panelY - panelHeight / 2 + 54;
     rows.forEach((row, i) => {
-      this.addDialogueButtonAt(container, CANVAS_W / 2, rowsTop + i * 38, row.label, row.onClick, 260);
+      this.addDialogueButtonAt(container, CANVAS_W / 2, rowsTop + i * rowSpacing, row.label, row.onClick, 260);
     });
+  }
+
+  // Enter-menu "Settings" panel: currently just the one knob, wild-encounter
+  // density (data/settings.ts's DENSITY_PRESETS, read by generateMap via
+  // encounterChance()). One button cycles through the presets in place
+  // (same rebuild-the-panel-on-click pattern as Noether's shop), rather than
+  // a slider, since there are only four discrete steps.
+  private showSettingsPanel() {
+    this.dialogueContainer?.destroy(true);
+    this.dialogueActive = true;
+
+    const panelY = 300;
+    const container = this.add.container(0, 0).setDepth(100);
+    this.dialogueContainer = container;
+
+    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 380, 220, 0x10101c, 0.95).setStrokeStyle(2, 0x8fa0c9);
+    container.add(panel);
+
+    const title = this.add
+      .text(CANVAS_W / 2, panelY - 90, 'Settings', { fontSize: '15px', color: '#ffffff', fontStyle: 'bold' })
+      .setOrigin(0.5, 0);
+    container.add(title);
+
+    const currentIndex = this.encounterDensityIndex();
+    const preset = DENSITY_PRESETS[currentIndex];
+    this.addDialogueButtonAt(
+      container,
+      CANVAS_W / 2,
+      panelY - 40,
+      `Enemy Density: ${preset.label}`,
+      () => {
+        const next = DENSITY_PRESETS[(currentIndex + 1) % DENSITY_PRESETS.length];
+        this.game.registry.set('encounterDensity', next.value);
+        persistFromRegistry(this.game.registry);
+        this.showSettingsPanel();
+      },
+      280
+    );
+
+    const hint = this.add
+      .text(
+        CANVAS_W / 2,
+        panelY,
+        'How often wild crystals appear along the path. Takes effect the next time a world map is generated (a fresh world entry or a rematch of one).',
+        { fontSize: '11px', color: '#8fa0c9', align: 'center', wordWrap: { width: 330 }, lineSpacing: 4 }
+      )
+      .setOrigin(0.5, 0);
+    container.add(hint);
+
+    this.addDialogueButtonAt(container, CANVAS_W / 2, panelY + 70, 'Close', () => this.closeDialogue(), 260);
+  }
+
+  private encounterDensityIndex(): number {
+    const value = this.encounterChance();
+    const idx = DENSITY_PRESETS.findIndex((p) => p.value === value);
+    if (idx !== -1) return idx;
+    return DENSITY_PRESETS.findIndex((p) => p.value === DEFAULT_ENCOUNTER_DENSITY);
   }
 
   // Debug-mode-only (see applyDebugLeveling): jumps straight to any of the
@@ -1811,7 +1961,7 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   // Lists every mentor the player has met so far (registry `metMentors`,
-  // grown by openMentor as goal/start tiles are reached), each row
+  // grown by openMentor as middle tiles are reached), each row
   // reopening that mentor's own panel -- works from any world's scene, not
   // just the mentor's own, which is the whole point of putting this in the
   // Enter menu rather than only at their home tile.
@@ -1940,5 +2090,14 @@ export class OverworldScene extends Phaser.Scene {
     this.goalText.setVisible(true);
     this.saveMapState();
     this.maybeAutoOpenGoalDialogue();
+  }
+
+  // Same "whole row counts, not a single tile" rule as maybeReachGoal,
+  // applied to the mentor's mid-corridor row instead.
+  private maybeReachMiddle(_x: number, y: number) {
+    if (this.reachedMiddle || y !== this.midTile.y) return;
+    this.reachedMiddle = true;
+    this.saveMapState();
+    this.maybeAutoOpenMiddleDialogue();
   }
 }

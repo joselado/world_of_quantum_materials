@@ -316,7 +316,7 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
       incorrect: 'Rises smoothly and continuously with B',
     },
     {
-      prompt: 'If the chemical potential in a GaAs 2DEG sits between the 2nd and 3rd Landau level, the Hall conductance locks onto...',
+      prompt: 'If the chemical potential in a GaAs 2DEG sits between the n=1 and n=2 Landau levels, the Hall conductance locks onto...',
       correct: 'σ_xy = 2 e²/h',
       incorrect: 'σ_xy = 3 e²/h',
     },
@@ -452,7 +452,7 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
     {
       prompt: "A superconductor's ground state isn't an eigenstate of particle number N, but it does have a fixed...",
       correct: 'Fermion parity',
-      incorrect: 'Total spin',
+      incorrect: 'The exact number of Cooper pairs',
     },
     {
       prompt: "Unlike a magnetic (Zeeman) field, Rashba spin-orbit coupling leaves an s-wave gap like lead's...",
@@ -636,9 +636,9 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
       incorrect: 'The lattice has too much symmetry to break',
     },
     {
-      prompt: "Unlike a conventional antiferromagnet, a quantum spin liquid's ground state does not break which symmetry?",
-      correct: 'Time-reversal symmetry',
-      incorrect: 'Translational symmetry',
+      prompt: "Unlike a conventional antiferromagnet, a quantum spin liquid's ground state does not do which of the following?",
+      correct: 'Spontaneously break any symmetry',
+      incorrect: 'Support long-range quantum entanglement',
     },
     {
       prompt: 'Which numerical method gives the leading quantitative evidence for spin-liquid physics on kagome and triangular lattices?',
@@ -863,7 +863,7 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
     },
     {
       prompt: 'The spatial wavelength of Friedel oscillations around a 1D metallic impurity is set by...',
-      correct: 'π/k_F -- twice the Fermi wavelength',
+      correct: 'π/k_F -- half the Fermi wavelength',
       incorrect: 'The lattice constant, regardless of filling',
     },
     {

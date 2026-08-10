@@ -211,6 +211,15 @@ Turn-based, speed-ordered by Velocity. Status effects mirror real phenomena:
 - **Gapped down** — defense drops (mirrors gap closing)
 - **Symmetry-broken** — forced type shift for N turns
 
+**Quasiparticle mismatch.** On top of the type-effectiveness chart above, a defender
+whose own type can't physically host the attacking move's quasiparticle class at all
+(`data/materials.ts`'s `MOVE_COMPATIBILITY`, checked via the new `canHost()`) takes that
+hit at double force (`BattleScene.resolveHit`) — a plain band insulator has no magnetic
+order to damp a magnon pulse with, so it lands unmitigated, stacked multiplicatively with
+whatever `effectiveness()` already says for that class/type pair. Applies symmetrically
+to both sides, same as every other `resolveHit` term. Surfaced in the battle log as "No
+natural defense against this!".
+
 **Wild encounter dialogue.** Bumping into a wild crystal opens a single in-map dialogue
 screen (`OverworldScene.showEncounter`, not a separate scene): a greeting line tied to
 that material's main type (`game/src/data/greetings.ts` -- a magnet's greeting reads
@@ -229,7 +238,7 @@ greeting screen -- the same "not every world is filled in yet" pattern the per-w
 crystal/biome tables already use.
 
 **Starting loadout and unlocking moves.** The player's crystal starts knowing only Phonon
-Beam. Reaching the goal of world 1 for the first time introduces the mentor Noether (§5),
+Beam. Reaching world 1's middle tile for the first time introduces the mentor Noether (§5),
 who sells every other move (`SHOP_MOVE_IDS`) for qumatokens, priced by move power
 (`OverworldScene.shopCost`, currently power × 5) -- filtered down to whatever the player's
 *current* crystal form can physically carry (§3's `MOVE_COMPATIBILITY`), so a trivial-type
@@ -240,10 +249,11 @@ more. Unlocked moves persist in the Phaser registry's `unlockedMoves` entry (a g
 (`getBattleMoves` = learned ∩ compatible). The move list now renders as a docked panel on
 the right of the field rather than individually positioned buttons (`BattleScene.drawMoveMenu`).
 Noether's shop panel also carries a second tab for spending qumatokens on the player's own
-Quantumness/Velocity/Correlation stats (§3), and the actual "leave this world" action -- a
+Quantumness/Velocity/Correlation stats (§3). The actual "leave this world" action -- a
 footer button that fights the world's rival crystal the first time it's clicked (see §2),
 then becomes "Continue to World N+1" once that rival is beaten
-(`OverworldScene.tryAdvanceToNextWorld`).
+(`OverworldScene.tryAdvanceToNextWorld`) -- lives only in the goal panel now, not Noether's
+(or any mentor's) own panel, since the goal is where that world's boss actually stands (§2).
 
 **Stakes.** Winning a battle earns 50 qumatokens; losing costs 50, floored at 0 (a rival
 fight doubles both to 100, `BattleScene`'s `RIVAL_TOKEN_STAKE`). Either way the player's
@@ -263,37 +273,61 @@ discovered material together with its blurb.
 
 ## 5. Mentors, economy, and story arc
 
-Every world 1-9 has its own mentor, waiting at that world's goal tile (or, for Bohr,
-its start tile) and reachable from anywhere afterward via the Enter-menu's Advisors
-panel once met (`OverworldScene`'s `WORLD_MENTORS` table, `showAdvisorsPanel`,
-`data/save.ts`'s `metMentors`). **Current state (deliberately not the final design --
-see §10):** Noether is the sole seller of moves/stat upgrades; every mentor from
-Dirac onward is a topic-tied lore stop with an avatar and a quote but no mechanic of
-its own yet (`OverworldScene.showMentorLore`) -- what each of them should actually
-unlock (subtype system, pairing/screening mechanics, etc.) is still an open design
-question, not implemented. World 10 has no mentor; its only encounter is the finale.
+Every world 1-9 has its own mentor, waiting mid-corridor (`OverworldScene`'s
+`WORLD_MENTORS` table, every entry's `tile: 'middle'`) rather than at the goal --
+the goal tile itself is now occupied by that world's boss (see below), so a mentor
+is someone the player meets partway through the journey, not a gate to it. Every
+mentor stays reachable from anywhere afterward via the Enter-menu's Advisors panel
+once met (`showAdvisorsPanel`, `data/save.ts`'s `metMentors`). **Current state
+(deliberately not the final design -- see §10):** Noether is the sole seller of
+moves/stat upgrades; every mentor from Dirac onward is a topic-tied lore stop with
+an avatar and a quote but no mechanic of its own yet (`OverworldScene.showMentorLore`)
+-- what each of them should actually unlock (subtype system, pairing/screening
+mechanics, etc.) is still an open design question, not implemented. World 10 has no
+mentor; its only encounter is the finale.
 
-- **Noether** → world 1 goal → sells every extra attack move and stat upgrade in the
+- **Noether** → world 1 middle → sells every extra attack move and stat upgrade in the
   game (fitting, since Noether's theorem is literally "symmetry implies a conservation
   law" -- here, conserving enough qumatokens gets you a new move or a sharper stat)
-- **Bloch** → world 2 goal → folds space between worlds: teleports the player to any
+- **Bloch** → world 2 middle → folds space between worlds: teleports the player to any
   world they've already visited (`OverworldScene.showBlochHub`) -- fitting, since a
   Bloch state is a superposition spread across every unit cell, not pinned to one
-- **Bohr** → world 3 start → lets the player transmute into any crystal they've already
+- **Bohr** → world 3 middle → lets the player transmute into any crystal they've already
   defeated (`OverworldScene.showBohrPanel`/`transmuteInto`) -- beating a crystal means
   understanding its physics well enough to become it for a while; transmuting changes the
   player's look, HP cap, and which moves are currently usable (§3), without erasing any
   move already learned
-- **Dirac** → world 4 goal → lore only for now; flavor ties in via relativistic
+- **Dirac** → world 4 middle → lore only for now; flavor ties in via relativistic
   Landau-level quantization of Dirac fermions (world 4's own topic)
-- **Majorana** → world 5 goal → lore only for now; flavor ties in via Majorana pairing
-- **Curie** → world 6 goal → lore only for now; flavor ties in via Curie-temperature
+- **Majorana** → world 5 middle → lore only for now; flavor ties in via Majorana pairing
+- **Curie** → world 6 middle → lore only for now; flavor ties in via Curie-temperature
   magnetic ordering
-- **Einstein** → world 7 goal → lore only for now; flavor ties in via the EPR paradox
+- **Einstein** → world 7 middle → lore only for now; flavor ties in via the EPR paradox
   (his own objection to entanglement)
-- **Kondo** → world 8 goal → lore only for now; flavor ties in via the Kondo effect
-- **Feynman** → world 9 goal → lore only for now; flavor ties in via Feynman diagrams
+- **Kondo** → world 8 middle → lore only for now; flavor ties in via the Kondo effect
+- **Feynman** → world 9 middle → lore only for now; flavor ties in via Feynman diagrams
   for excitations
+
+**Boss avatars.** Every built world's rival/boss (`WORLD_RIVALS`/`getRival`) now
+stands visibly at the goal tile as a gigantic landmark (`OverworldScene
+.spawnBossSprite`, `art/boss.ts`'s `makeBossCrystal`) -- a fused mass of several
+shards around an oversized core, a pulsing danger aura, and orbiting embers, so it
+reads as unmistakably more dangerous than an ordinary wild crystal from a distance,
+before the player ever opens the goal panel. It's a pure visual landmark: the fight
+itself is still only reached through "Face the Rival" in the goal gate panel, same
+as before this was added. The same `makeBossCrystal` look carries into the fight
+itself -- `BattleScene` renders a rival's opponent crystal at `BOSS_CRYSTAL_SIZE`
+(bigger than an ordinary wild encounter's), shifted a bit left of the usual
+opponent spot so the wider silhouette clears the move menu, instead of the plain
+`makeCrystal` every wild battle uses.
+
+**Wild-encounter density.** The Enter-menu's Settings panel
+(`OverworldScene.showSettingsPanel`) lets the player choose how often ordinary wild
+crystals spawn per corridor row -- Low/Normal/High/Very High
+(`data/settings.ts`'s `DENSITY_PRESETS`), persisted like every other save field.
+Takes effect the next time a world map is generated (a fresh world entry or an
+explicit regenerate), not retroactively on the map the player is currently
+standing on.
 
 **Plot hook:** a "Decoherence" is spreading through the material worlds, causing wild
 materials to lose their protected properties. The player masters each phase of
@@ -405,6 +439,16 @@ world 7's boss fights as an entangled pair where damaging one damages both.
    music variants per world, mobile wrapper (Capacitor), playtesting with students.
 5. **Onboarding + testing aids** (done): the first-run tutorial popup sequence and
    the Title-screen Debug Mode toggle (§7's "Onboarding"/"Debug Mode" bullets).
+6. **Mentor relocation + boss avatars + density setting** (done): every mentor moved
+   from its world's goal/start tile to mid-corridor, freeing the goal tile for a
+   gigantic, purely-visual boss avatar per world; added the Enter-menu's Settings
+   panel for adjusting wild-encounter density (§5's "Boss avatars"/"Wild-encounter
+   density" bullets).
+7. **Boss battles + quasiparticle mismatch + title screen** (done): the boss look
+   carries into `BattleScene` itself, not just the overworld landmark (§5's "Boss
+   avatars"); added the quasiparticle-mismatch double-damage rule (§4); retitled
+   the game "World of Quantum Materials" and replaced the title screen's single
+   crystal with a small showcase cluster of several material types.
 
 ## 10. Open design questions
 

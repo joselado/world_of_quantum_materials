@@ -13,7 +13,7 @@ stale, fix it rather than leaving it wrong.
 game/src/
   main.ts                    Phaser game config, scene list, boot order
   scenes/
-    TitleScene.ts             Loads save -> registry, "Continue"/"New Game" -> Hub, Debug Mode toggle
+    TitleScene.ts             Loads save -> registry, title showcase crystals, "Continue"/"New Game" -> Hub, Debug Mode toggle
     HubScene.ts                World 0, static room, 3 hotspots (Materialdex/Save/Door, door doubles
                                  as a debug world-select when Debug Mode is on)
     OverworldScene.ts          Per-world walkable map: movement, encounters, shop, rival gate
@@ -27,6 +27,7 @@ game/src/
     mentor.ts                   makeNoetherAvatar()
     bloch.ts                    makeBlochAvatar()
     bohr.ts                     makeBohrAvatar()
+    boss.ts                      makeBossCrystal() -- gigantic multi-shard boss avatar at a world's goal
     tokens.ts                   makeToken() -- qumatoken pickup sprite
     attackEffects.ts            playAttackEffect() -- bolt/ring/burst particle effect per MoveClass
     colors.ts                   shade() and other color helpers
@@ -35,10 +36,10 @@ game/src/
     music.ts                    MusicEngine, per-scene tracks, duck() for attack beats
   data/
     types.ts                    Move, Material, MoveClass, MaterialType, CrystalVariant, Stats
-    materials.ts                 MOVES, MOVE_COMPATIBILITY, TYPE_CHART, WORLD_CRYSTALS, WORLD_RIVALS,
+    materials.ts                 MOVES, TYPE_LOOK, TYPE_CHART, WORLD_CRYSTALS, WORLD_RIVALS,
                                   PLAYER_MATERIAL, SHOP_MOVE_IDS, WORLD_NAMES, DEFAULT_STATS,
                                   getWildPool(), getRival(), effectiveness(), compatibleMoves(),
-                                  getPlayerMaterial(), getPlayerStats(), getBattleMoves(),
+                                  canHost(), getPlayerMaterial(), getPlayerStats(), getBattleMoves(),
                                   enemyStatsForWorld(), statUpgradeCost(), findMaterialByName()
     tokens.ts                    Qumatoken value tiers + weights
     quiz.ts                      Per-material physics question pools (>=6 each)
@@ -46,6 +47,7 @@ game/src/
     materialdex.ts               Per-material (fallback per-type) physics blurb for Materialdex
     save.ts                      localStorage schema + persistFromRegistry()/load()
     tutorial.ts                    TUTORIAL_PAGES -- first-run/replayable tutorial popup copy
+    settings.ts                    DENSITY_PRESETS/DEFAULT_ENCOUNTER_DENSITY -- wild-encounter density presets
 data/materials.json            Repo-root design-time reference (fuller roster than materials.ts)
 ```
 
@@ -63,9 +65,14 @@ data/materials.json            Repo-root design-time reference (fuller roster th
   (Phonon Beam, not "Thermal Attack"). `class: MoveClass` still drives the type chart and the
   attack-effect shape/color (`art/attackEffects.ts`'s `EFFECT_STYLE`).
 - `TYPE_CHART` + `effectiveness(moveClass, defenderType)` -- draft, described in DESIGN.md
-  section 3's table; not yet playtested.
-- Per-type look lives in `TYPE_LOOK` (base color + variant); individual compounds of the same
-  type get `shade(color, shadeStep * 18)` so siblings (Iron vs. Cobalt) read as a family.
+  section 3's table; not yet playtested. `canHost(defenderType, moveClass)` is a separate,
+  narrower check (does the defender's own `MOVE_COMPATIBILITY` list include this class at
+  all) that stacks on top of `effectiveness()` as BattleScene's 2x "quasiparticle mismatch"
+  multiplier (DESIGN.md §4) -- don't conflate the two, they answer different questions.
+- Per-type look lives in `TYPE_LOOK` (base color + variant, exported); individual compounds
+  of the same type get `shade(color, shadeStep * 18)` so siblings (Iron vs. Cobalt) read as a
+  family. `TitleScene`'s showcase cluster is the one consumer outside `data/materials.ts`
+  itself so far.
 
 ## Cross-cutting patterns (reuse these, don't reinvent)
 
@@ -131,7 +138,18 @@ per-material -- `enemyStatsForWorld(world)` computes them fresh at battle start
 is the single damage-resolution function both sides' attacks go through (unified from the old
 separate `playerAttack`/`opponentAttack` bodies): crit chance from the attacker's Quantumness,
 turn order each round from comparing both sides' Velocity, incoming damage divided by the
-defender's Correlation (`BASE_STAT / correlation`).
+defender's Correlation (`BASE_STAT / correlation`), and a `2x` "quasiparticle mismatch"
+multiplier from `data/materials.ts`'s `canHost(defenderType, move.class)` -- a defender whose
+own `MOVE_COMPATIBILITY` list doesn't include the attacking move's class takes it at double
+force, stacked with `effectiveness()`'s own type-chart multiplier, not a replacement for it.
+
+**Rival fights render the boss look in battle too.** `BattleScene.create` picks
+`art/boss.ts`'s `makeBossCrystal` over the plain `makeCrystal` when `this.isRival`, sized
+`BOSS_CRYSTAL_SIZE` and positioned at `BOSS_OPPONENT_POS` (both module constants) instead of
+the wild encounter's `OPPONENT_POS` -- the instance field `this.opponentPos` tracks whichever
+was actually used, and `resolveHit`'s attack-effect `from`/`to` read that field, not the
+`OPPONENT_POS` constant directly, so bolts/rings/bursts still travel to the crystal's real
+(possibly shifted) position.
 
 **Battle move menu** is a real component now: `BattleScene.drawMoveMenu(moveIds)` builds a
 docked `Container` (field `moveMenu`) on the right of the field from `getBattleMoves`, sized to
@@ -151,19 +169,41 @@ once per world the first time that world's scene is created.
 
 **New mentors follow the established one-file-per-avatar pattern**: `art/bloch.ts`'s
 `makeBlochAvatar` (a wireframe Bloch-sphere head, teal) and `art/bohr.ts`'s `makeBohrAvatar`
-(a Bohr-model-atom head, amber), alongside `art/mentor.ts`'s `makeNoetherAvatar`. Both spawn
-via the same `WorldSprite`/`updateWorldSprites` machinery as Noether
-(`OverworldScene.spawnBlochSprite`/`spawnBohrSprite`, modeled on `spawnNoetherSprite`) --
-Bloch stands at world 2's *goal* tile, Bohr at world 3's *start* tile (`OverworldScene.startTile`,
-now threaded through `SavedMapState` alongside `goalTile`). Bloch's panel
-(`showBlochHub`) and Bohr's panel (`showBohrPanel`) both reuse Noether's panel shape
-(`renderShopFooter` for the Farewell/rival-gate footer row), and all three now share one
-chime, `playMentorChime()` in `audio/sfx.ts` (renamed from `playNoetherChime`).
+(a Bohr-model-atom head, amber), alongside `art/mentor.ts`'s `makeNoetherAvatar`, and one file
+per mentor from Dirac onward too. Every mentor now spawns through one unified
+`OverworldScene.spawnMentorSprite` (looked up from the `WORLD_MENTORS` table), not a bespoke
+`spawnXSprite` per mentor. All three (all nine, now) share one chime, `playMentorChime()` in
+`audio/sfx.ts`.
 
-**Goal-tile mentor dispatch is centralized**: `OverworldScene.maybeAutoOpenGoalDialogue()` no
-longer hardcodes `this.world !== 1` -- it calls `openGoalMentorPanel()`, which branches on
-`this.world` (1 -> Noether, 2 -> Bloch, else no-op). `showRivalEncounter()`'s no-rival fallback
-calls the same function instead of unconditionally reopening Noether's shop.
+**Every mentor stands mid-corridor, not at the goal or start.** `MentorDef.tile` is
+`'goal' | 'start' | 'middle'`, but every current `WORLD_MENTORS` entry uses `'middle'` --
+`world/mapgen.ts`'s `generateWorldMap` computes a `mid: GridPoint` (roughly the corridor's
+halfway row) alongside `start`/`goal`, threaded through `OverworldScene.midTile` and
+`SavedMapState` the same way `goalTile`/`startTile` already were. Reaching that row
+(`OverworldScene.maybeReachMiddle`, mirroring `maybeReachGoal`'s "whole row counts, not one
+tile" rule) sets `reachedMiddle` and calls `maybeAutoOpenMiddleDialogue()` -- the direct
+counterpart to `maybeAutoOpenGoalDialogue()`/`maybeReachGoal`, both still used for the goal
+tile's own panel. `'start'`/`'goal'` remain valid `tile` values (and `spawnMentorSprite`'s
+tile-lookup still branches on all three) purely so a future mentor could choose them; nothing
+currently does.
+
+**The goal tile now belongs to that world's boss, not a mentor.** `OverworldScene
+.spawnBossSprite` spawns `art/boss.ts`'s `makeBossCrystal` (a fused multi-shard cluster +
+pulsing aura + orbiting embers, `BOSS_CRYSTAL_SIZE = 70`) at `goalTile` for every built
+world's `getRival()` -- purely a visual landmark via the same `WorldSprite` machinery, no
+click handler of its own. `openGoalMentorPanel()`'s branch on `mentor?.tile === 'goal'` is
+now permanently a no-op (no entry uses it) so it always falls through to `showGatePanel()`,
+which is what actually renders at the goal now that no mentor does.
+
+**Progression (Face the Rival/Continue) is exclusive to the goal panel.** `renderShopFooter`
+(Farewell + Face-the-Rival/Continue, `showGatePanel`'s only caller) and the new
+`renderFarewellFooter` (Farewell only) are siblings -- every mid-corridor mentor panel
+(`showNoetherShop`'s two tabs, `showBlochHub`, `showMentorLore`; `showBohrPanel` already had
+its own plain Farewell button) calls `renderFarewellFooter`, never `renderShopFooter`. This
+split matters: before it existed, a mentor panel reachable mid-corridor also carried the
+Face-the-Rival button, letting the player trigger that world's boss fight without ever
+walking to (or seeing) the goal. If a future mentor panel needs a progression action, route
+it through `showGatePanel`, not by reaching for `renderShopFooter` directly.
 
 **Enter-key pause menu** (`OverworldScene.togglePauseMenu`/`showPauseMenu`/`showInfoPanel`):
 follows the existing `dialogueContainer`/`dialogueActive`/`closeDialogue()` overlay convention,
@@ -173,13 +213,14 @@ hand-placed buttons specifically so the debug-only "Warp" row (see below) can be
 without recomputing every other button's y position -- follow that pattern for any future
 conditional row rather than reverting to fixed positions.
 
-**Save schema** (`data/save.ts`'s `SaveData`) gained six fields alongside the pre-existing
+**Save schema** (`data/save.ts`'s `SaveData`) gained seven fields alongside the pre-existing
 ones: `playerStats: Stats`, `visitedWorlds: number[]`, `defeatedMaterials: DiscoveredMaterial[]`
 (written by `BattleScene.endBattle` on an ordinary wild win, same "not for rivals" rule as
 `discoveredMaterials`), `playerForm: Material | null`, `tutorialSeen: boolean`, `debugMode:
-boolean`. `defaultSave()`/`persistFromRegistry()` are still the two places that need touching
-together for any future field, and `loadSave()`'s `{ ...defaultSave(), ...saved }` spread keeps
-old localStorage saves compatible for free.
+boolean`, `encounterDensity: number` (one of `data/settings.ts`'s `DENSITY_PRESETS`, set via
+the Enter-menu's Settings panel). `defaultSave()`/`persistFromRegistry()` are still the two
+places that need touching together for any future field, and `loadSave()`'s
+`{ ...defaultSave(), ...saved }` spread keeps old localStorage saves compatible for free.
 
 **Tutorial popups** (`data/tutorial.ts`'s `TUTORIAL_PAGES`, `OverworldScene.showTutorial`/
 `renderTutorialPage`/`maybeShowFirstTimeTutorial`): a paged overlay using the same

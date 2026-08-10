@@ -1,5 +1,6 @@
 import type { Material, MaterialType, Stats } from './types';
 import { PLAYER_MATERIAL, DEFAULT_STATS, MOVES } from './materials';
+import { DEFAULT_ENCOUNTER_DENSITY } from './settings';
 
 // Single localStorage-backed save slot (v1: one profile, no cloud sync --
 // matches DESIGN.md §7). TitleScene reads this once at boot into the Phaser
@@ -43,6 +44,12 @@ export interface SaveData {
   // rivalDefeated progress -- a testing/exploration aid, not part of the
   // normal progression.
   debugMode: boolean;
+  // Enter-menu Settings panel (OverworldScene.showSettingsPanel): the
+  // per-corridor-row chance a wild crystal spawns, one of data/settings.ts's
+  // DENSITY_PRESETS. Only affects maps generated after the change (a fresh
+  // world entry/regenerate), not the map the player is currently standing
+  // on.
+  encounterDensity: number;
 }
 
 export function defaultSave(): SaveData {
@@ -59,6 +66,7 @@ export function defaultSave(): SaveData {
     metMentors: [],
     tutorialSeen: false,
     debugMode: false,
+    encounterDensity: DEFAULT_ENCOUNTER_DENSITY,
   };
 }
 
@@ -107,6 +115,7 @@ export function persistFromRegistry(registry: RegistryLike) {
     metMentors: (registry.get('metMentors') as string[]) ?? [],
     tutorialSeen: (registry.get('tutorialSeen') as boolean) ?? false,
     debugMode: (registry.get('debugMode') as boolean) ?? false,
+    encounterDensity: (registry.get('encounterDensity') as number) ?? DEFAULT_ENCOUNTER_DENSITY,
   };
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));

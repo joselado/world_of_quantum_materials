@@ -1,10 +1,12 @@
 import Phaser from 'phaser';
 import { makeCrystal } from '../art/crystals';
+import { makeBossCrystal } from '../art/boss';
 import { shade } from '../art/colors';
 import { playAttackEffect } from '../art/attackEffects';
 import {
   MOVES,
   effectiveness,
+  canHost,
   BASE_STAT,
   getPlayerMaterial,
   getPlayerStats,
@@ -23,6 +25,13 @@ const HORIZON_Y = 262;
 const BATTLE_TOKEN_STAKE = 50; // won on a win, lost (floored at 0) on a loss
 const RIVAL_TOKEN_STAKE = 100; // the gating rival fight pays out double, win or lose
 const OPPONENT_POS = { x: 460, y: 150 };
+// A rival/boss fight's opponent sits a bit further left and renders bigger
+// (see BOSS_CRYSTAL_SIZE below) than an ordinary wild encounter's 50 --
+// shifted off OPPONENT_POS's x so the wider, multi-shard boss silhouette
+// (art/boss.ts's makeBossCrystal) has room before the move menu (MENU_X)
+// starts, rather than overlapping it.
+const BOSS_OPPONENT_POS = { x: 430, y: 155 };
+const BOSS_CRYSTAL_SIZE = 64;
 const PLAYER_POS = { x: 180, y: 345 };
 // Gap before the next turn fires -- long enough for the fuller attack beat
 // (windup + travel + impact shockwave, up to ~810ms for a ring move) in
@@ -56,6 +65,7 @@ export class BattleScene extends Phaser.Scene {
   private opponentHpBar!: Phaser.GameObjects.Rectangle;
   private playerHpBar!: Phaser.GameObjects.Rectangle;
   private opponentCrystal!: Phaser.GameObjects.Container;
+  private opponentPos: { x: number; y: number } = OPPONENT_POS;
   private playerCrystal!: Phaser.GameObjects.Container;
   private logText!: Phaser.GameObjects.Text;
   private moveMenu?: Phaser.GameObjects.Container;
@@ -94,9 +104,16 @@ export class BattleScene extends Phaser.Scene {
     this.add.rectangle(400, 70, 104, 12, 0x222222, 0.55).setOrigin(0, 0.5);
     this.opponentHpBar = this.add.rectangle(400, 70, 100, 8, 0x33cc33).setOrigin(0, 0.5);
 
-    this.opponentCrystal = makeCrystal(this, 50, this.wild.color, this.wild.variant);
-    this.opponentCrystal.setPosition(OPPONENT_POS.x, OPPONENT_POS.y);
-    this.bobCrystal(this.opponentCrystal, OPPONENT_POS.y);
+    // A rival fight's opponent is that world's boss -- render it with the
+    // same gigantic, multi-shard look it has standing at the goal tile in
+    // the overworld (art/boss.ts's makeBossCrystal), not the plain shared
+    // makeCrystal() every ordinary wild encounter uses.
+    this.opponentPos = this.isRival ? BOSS_OPPONENT_POS : OPPONENT_POS;
+    this.opponentCrystal = this.isRival
+      ? makeBossCrystal(this, BOSS_CRYSTAL_SIZE, this.wild.color, this.wild.variant)
+      : makeCrystal(this, 50, this.wild.color, this.wild.variant);
+    this.opponentCrystal.setPosition(this.opponentPos.x, this.opponentPos.y);
+    this.bobCrystal(this.opponentCrystal, this.opponentPos.y);
 
     // Player (bottom-left)
     this.playerCrystal = makeCrystal(this, 55, this.playerMaterial.color, this.playerMaterial.variant);
@@ -429,17 +446,28 @@ export class BattleScene extends Phaser.Scene {
     const defenderStats = isPlayer ? this.enemyStats : this.playerStats;
     const defenderType = isPlayer ? this.wild.type : this.playerMaterial.type;
     const mult = effectiveness(move.class, defenderType);
+    // A defender whose own physics can't host this quasiparticle at all (no
+    // magnetic order to carry a magnon pulse, no gauge structure for an
+    // anyon braid, ...) has no natural way to dampen it -- it lands at
+    // double force, stacked on top of whatever the type chart already says.
+    const mismatch = !canHost(defenderType, move.class);
 
     const critChance = Phaser.Math.Clamp((attackerStats.quantumness - BASE_STAT) * 0.02, 0, 0.5);
     const crit = Math.random() < critChance;
     const attackMult = isPlayer ? this.attackMultiplier : 1;
     const defenseFactor = BASE_STAT / defenderStats.correlation;
     const dmg = Math.round(
-      move.power * mult * attackMult * defenseFactor * (crit ? 1.5 : 1) * Phaser.Math.FloatBetween(0.85, 1.15)
+      move.power *
+        mult *
+        (mismatch ? 2 : 1) *
+        attackMult *
+        defenseFactor *
+        (crit ? 1.5 : 1) *
+        Phaser.Math.FloatBetween(0.85, 1.15)
     );
 
-    const from = isPlayer ? PLAYER_POS : OPPONENT_POS;
-    const to = isPlayer ? OPPONENT_POS : PLAYER_POS;
+    const from = isPlayer ? PLAYER_POS : this.opponentPos;
+    const to = isPlayer ? this.opponentPos : PLAYER_POS;
     const targetCrystal = isPlayer ? this.opponentCrystal : this.playerCrystal;
     playAttackEffect(this, move.class, from, to, () => this.impactPunch(targetCrystal), mult);
 
@@ -453,9 +481,10 @@ export class BattleScene extends Phaser.Scene {
     this.updateBars();
 
     const effText = mult > 1 ? ' It was super effective!' : mult < 1 ? ' It was not very effective...' : '';
+    const mismatchText = mismatch ? ' No natural defense against this!' : '';
     const critText = crit ? ' A coherent critical hit!' : '';
     const who = isPlayer ? 'You' : `Wild ${this.wild.name}`;
-    this.logText.setText(`${who} used ${move.name}! (${dmg} dmg)${effText}${critText}`);
+    this.logText.setText(`${who} used ${move.name}! (${dmg} dmg)${effText}${mismatchText}${critText}`);
 
     if (this.opponentHp <= 0) {
       this.endBattle(true);

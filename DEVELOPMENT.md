@@ -97,13 +97,15 @@ then visit `http://localhost:8000`.
 ## Current status
 
 Per `DESIGN.md`'s roadmap, the "full build-out" pass is done: all 10 worlds
-have a walkable map, biome, wild-encounter pool, rival gate, and a mentor at
-each world's goal/start tile (Noether, Bloch, and Bohr have real mechanics;
-Dirac through Feynman are lore-only pending a subtype system, see
-`DESIGN.md` §10). The first-run tutorial popup sequence and the Debug Mode
+have a walkable map, biome, wild-encounter pool, rival gate, and a mentor
+standing mid-corridor (Noether, Bloch, and Bohr have real mechanics; Dirac
+through Feynman are lore-only pending a subtype system, see `DESIGN.md`
+§10), with that world's boss now standing at the goal tile as a gigantic
+visual landmark. The first-run tutorial popup sequence, the Debug Mode
 title-screen toggle (instant world warp + auto-leveling, for testing any
-world without grinding) were added most recently. `demo/` remains frozen at
-the much earlier prototype stage described in its own commit history --
+world without grinding), and the Enter-menu's Settings panel (wild-encounter
+density) were added most recently. `demo/` remains frozen at the much
+earlier prototype stage described in its own commit history --
 don't treat it as reflecting current mechanics.
 
 ## Verifying UI changes

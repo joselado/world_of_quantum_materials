@@ -9,11 +9,21 @@ than appending a changelog, so this always reflects current reality.
 
 ## Title screen (`scenes/TitleScene.ts`)
 
-- Dark indigo gradient (`0x0c1030` → `0x241a44`), the player's own crystal (`makeCrystal`,
-  size `60`) bobbing above the title text, no biome/perspective machinery involved -- this
-  screen exists to load the save (see DESIGN.md §7) and hand off to the Hub, not to be a
-  world of its own. Button label reads "Continue" if a save exists (`data/save.ts`'s
-  `hasSave`) or "New Game" otherwise; both SPACE and a click on the button start the Hub.
+- Dark indigo gradient (`0x0c1030` → `0x241a44`), no biome/perspective machinery involved --
+  this screen exists to load the save (see DESIGN.md §7) and hand off to the Hub, not to be a
+  world of its own. Title text reads "WORLD OF QUANTUM MATERIALS" (`26px` bold) over "a
+  crystal RPG" in muted italic blue-grey. Button label reads "Continue" if a save exists
+  (`data/save.ts`'s `hasSave`) or "New Game" otherwise; both SPACE and a click on the button
+  start the Hub.
+- Above the title text, a small showcase cluster of five crystals (`drawShowcaseCrystals`,
+  the module-level `SHOWCASE` array) rather than a single crystal -- a curated handful of
+  `data/materials.ts`'s `TYPE_LOOK` entries (trivial, tensornet, magnet, supercon,
+  topological), not tied to the player's own save/current form, since this is a "world full
+  of different materials" branding image rather than a "welcome back" one (the Hub is where
+  the player's own crystal gets its own moment). One centered "hero" crystal (biggest,
+  drawn last so it renders on top) flanked by two nearer and two further/smaller ones, each
+  bobbing on its own independent duration/delay so the cluster reads as alive rather than a
+  single synchronized animation.
 - Below the "Press SPACE..." hint, a small **Debug Mode** toggle (`addDebugToggle`) -- a single
   text button reading `Debug Mode: OFF`/`ON`, dim blue-grey (`#8fa0c9`) when off and a warning
   pink (`#ff8fa0`) when on so it's visually obvious debug mode is active. Deliberately placed on
@@ -120,18 +130,22 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
   `BattleScene`; "Let me pass" just closes the panel with no scene change and no
   win/loss consequence.
 
-## Noether in the overworld (`OverworldScene.spawnNoetherSprite`)
+## Mentors in the overworld (`OverworldScene.spawnMentorSprite`)
 
-- World 1 only: her avatar (`art/mentor.ts`'s `makeNoetherAvatar`, scaled up slightly to
-  `1.1`) stands floating at the map's goal tile (`goal.x`/`goal.y` from `world/mapgen.ts`),
-  a `Noether` name label beneath her in the same gold-on-black treatment wild-encounter/
-  token labels use. Reuses the crystal/token `WorldSprite` projection/wander/bob machinery
-  (`updateWorldSprites`) rather than a bespoke sprite path, so she scrolls, fades with
-  distance, and idly wanders exactly like every other world sprite -- the player sees and
-  walks up to her instead of her only materializing once the goal-row dialogue fires.
-  Depth `20`/`21` (container/label), matching wild-encounter crystals. Permanent -- unlike
-  encounter/token sprites she's never removed, since reaching the goal row still opens her
-  shop dialogue on top of (not instead of) her standing there.
+- Every mentor (Noether included) stands floating at their world's *middle* tile
+  (`WORLD_MENTORS`' `tile: 'middle'`, `mid.x`/`mid.y` from `world/mapgen.ts` --
+  roughly the corridor's halfway row), not the goal -- the goal tile itself now
+  belongs to that world's boss avatar (see below). One shared `spawnMentorSprite`
+  builds all of them from the `WORLD_MENTORS` table (avatar builder, scale `1.1`,
+  name label in the mentor's own `labelColor`) rather than a bespoke function per
+  mentor. Reuses the crystal/token `WorldSprite` projection/wander/bob machinery
+  (`updateWorldSprites`) rather than a bespoke sprite path, so a mentor scrolls,
+  fades with distance, and idly wanders exactly like every other world sprite --
+  the player sees and walks up to them instead of them only materializing once
+  their dialogue fires. Depth `20`/`21` (container/label), matching wild-encounter
+  crystals. Permanent -- unlike encounter/token sprites a mentor is never removed,
+  since reaching their row still opens their panel on top of (not instead of) them
+  standing there.
 
 ## Noether's shop (`OverworldScene.showNoetherShop`)
 
@@ -150,11 +164,10 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
   (Bloch's, Bohr's) reuses -- each mentor still gets its own avatar builder in its own file
   (`art/bloch.ts`, `art/bohr.ts`, ...) even though the surrounding panel shape is shared.
   Appears automatically every time the Overworld scene is (re)created with this world's
-  goal already reached (`OverworldScene.maybeAutoOpenGoalDialogue`/`openGoalMentorPanel`) --
-  first on stepping onto the goal row, then again after every later round trip through
-  `BattleScene`, so the panel stays revisitable instead of a single one-shot popup. Panel
-  height `340` (taller than a wild encounter's `300`) to fit the fixed footer row below the
-  content.
+  middle row already reached (`OverworldScene.maybeAutoOpenMiddleDialogue`) -- first on
+  stepping onto that row, then again after every later round trip through `BattleScene`,
+  so the panel stays revisitable instead of a single one-shot popup. Panel height `340`
+  (taller than a wild encounter's `300`) to fit the fixed footer row below the content.
 - Below the intro line, two small tab buttons (`renderShopTabs`, `panelY - 42`) switch the
   panel between a **Moves** list and a **Stats** list (`OverworldScene.shopTab`, reset to
   `'moves'` on every scene create) -- the active tab is highlighted gold-on-slate, the
@@ -174,10 +187,11 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
   (after), side by side via `addDialogueButtonAt`. Bloch's and Bohr's panels (below) reuse
   this same footer/tab-content layout.
 
-## Bloch in the overworld (`OverworldScene.spawnBlochSprite`/`showBlochHub`)
+## Bloch in the overworld (`OverworldScene.showBlochHub`)
 
-- World 2 only, standing at the goal tile -- same landmark/wander/re-open pattern as
-  Noether (see above), just with `art/bloch.ts`'s `makeBlochAvatar` and a cyan
+- World 2 only, standing at the middle tile like every other mentor -- same
+  landmark/wander/re-open pattern as Noether (see above), just with `art/bloch.ts`'s
+  `makeBlochAvatar` and a cyan
   (`0x8fe8ff`) name label. His avatar swaps Noether's halo/head for a wireframe **Bloch
   sphere** (equator + two tilted meridian ellipses, additive-blended, slowly spinning) with
   a bright state-vector arrow pointing off-axis -- a superposition, not a pinned-down state,
@@ -189,11 +203,11 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
   current world, labeled `Travel to World N -- <name>`; clicking teleports there instantly
   (`advanceToWorld`, no battle). Empty state: "You haven't mapped anywhere else yet."
 
-## Bohr in the overworld (`OverworldScene.spawnBohrSprite`/`showBohrPanel`)
+## Bohr in the overworld (`OverworldScene.showBohrPanel`)
 
-- World 3 only, standing at the *start* tile (not the goal -- "the beginning of world 3"),
-  and his panel auto-opens on stepping into the scene rather than on reaching any tile
-  (`maybeAutoOpenStartDialogue`). Amber (`0xffa64a`) name label; his avatar
+- World 3 only, standing at the middle tile like every other mentor, and his panel
+  auto-opens on reaching that row (`maybeAutoOpenMiddleDialogue`), same as every
+  other mentor. Amber (`0xffa64a`) name label; his avatar
   (`art/bohr.ts`'s `makeBohrAvatar`) swaps the head for a small Bohr-model atom -- a bright
   additive nucleus with three tilted elliptical shells, each carrying one orbiting electron
   at its own speed.
@@ -205,6 +219,23 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
   (`redrawPlayerCrystal`). Empty state: "You haven't defeated any crystals yet -- there is
   nothing to become."
 
+## Boss avatars (`OverworldScene.spawnBossSprite`, `art/boss.ts`)
+
+- Every built world's rival/boss stands at the goal tile as a purely visual
+  landmark, sized `BOSS_CRYSTAL_SIZE = 70` -- roughly 2x a wild crystal (`22`) and
+  2x the player's own on-map size (`34`) -- and rendered by `makeBossCrystal`
+  rather than the shared `makeCrystal` every wild/rival crystal otherwise uses:
+  four smaller satellite shards (shaded siblings of the core's color, via `shade`)
+  fused around one oversized core, a two-layer additive aura that slowly pulses
+  scale/alpha, and six hot-orange embers orbiting the whole mass (same
+  orbiting-container-angle-tween trick as a mentor avatar's orbiting motes, just
+  warmer/redder to read as hostile rather than benevolent). Name label in a
+  bold, warning-toned pink-red (`#ff8f8f`), distinct from any mentor's own label
+  color. Reuses the `WorldSprite` projection/wander/bob machinery, so it scrolls
+  and fades with distance like everything else standing on the map -- it doesn't
+  add its own click handler, the fight is still only reached through the goal
+  panel's "Face the Rival" button.
+
 ## The rival gate (`OverworldScene.showRivalEncounter`)
 
 - Triggered by clicking "Face the Rival ->" in Noether's shop, not automatically on reaching
@@ -214,6 +245,20 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
   single mandatory "Battle!" button -- no "let me pass," since a gate that can be skipped
   isn't a gate. Losing doesn't set anything back except the token stake (see Stakes in
   DESIGN.md §4): the shop simply reopens and "Face the Rival ->" is still there to retry.
+
+## Boss opponent in battle (`scenes/BattleScene.ts`)
+
+- A rival fight's opponent renders with `art/boss.ts`'s `makeBossCrystal` at
+  `BOSS_CRYSTAL_SIZE = 64` -- bigger than an ordinary wild encounter's plain
+  `makeCrystal` at `50` -- positioned at `BOSS_OPPONENT_POS` (`{ x: 430, y: 155 }`,
+  shifted left and slightly down from the wild encounter's `OPPONENT_POS`) so the
+  wider multi-shard silhouette clears the move menu docked at `MENU_X = 456` instead
+  of overlapping it. Same look the boss already has standing at its world's goal
+  tile in the overworld (`OverworldScene.spawnBossSprite`), carried into the fight
+  itself rather than switching to the plain crystal look every wild battle uses.
+  Attack effects (`playAttackEffect`'s `from`/`to`) target this shifted position too
+  (`BattleScene.opponentPos`), not the wild encounter's fixed `OPPONENT_POS`, so
+  bolts/rings/bursts still travel to and from where the crystal actually is.
 
 ## Battle status effects (`scenes/BattleScene.ts`)
 
@@ -233,6 +278,10 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
   (`20, 440`) up to `20, 210` -- the summary runs several lines longer once the physics blurb
   (`data/materialdex.ts`'s `materialBlurb`) is appended after the flavor/token lines, and at
   the original position those extra lines would run off the bottom of the canvas.
+- Per-turn log text appends "It was super effective!"/"It was not very effective..." for the
+  type chart, then a separate "No natural defense against this!" when the quasiparticle
+  mismatch multiplier fires (`BattleScene.resolveHit`), then "A coherent critical hit!" for a
+  crit -- up to three clauses can stack on one line, in that fixed order.
 
 ## Battle move menu (`BattleScene.drawMoveMenu`)
 
@@ -253,15 +302,27 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
 
 - Same dark rounded-rectangle-with-stroke panel treatment as everywhere else, stroked
   blue-grey (`0x8fa0c9`, distinct from every mentor/encounter panel's own stroke color). Rows
-  are a data-driven list (`320` wide, height grows with row count) rather than fixed buttons:
-  Return to Lab (same destination as the `H` key), View Moves, View Stats, Advisors, Tutorial,
-  and -- only while Debug Mode is on -- Warp (Debug), then Close. Respects `dialogueActive`
-  (won't open over an already-open panel) and only exists in `OverworldScene`, not mid-battle.
+  are a data-driven list (`320` wide, height grows with row count, vertically centered on
+  the canvas rather than a fixed `panelY` now that the row count regularly reaches 7-8)
+  rather than fixed buttons: Return to Lab (same destination as the `H` key), View Moves,
+  View Stats, Advisors, Tutorial, Settings, and -- only while Debug Mode is on -- Warp
+  (Debug), then Close. Respects `dialogueActive` (won't open over an already-open panel)
+  and only exists in `OverworldScene`, not mid-battle.
 - "View Moves"/"View Stats" swap the pause menu for a second, generic info panel
   (`showInfoPanel`, `420x300`, same blue-grey stroke) listing the player's learned moves
   (each flagged "-- not compatible with your current form" if the current crystal form
   doesn't support it) or their Quantumness/Velocity/Correlation plus qumatokens and current
   form name, with a single "Close" button.
+
+## Settings panel (`OverworldScene.showSettingsPanel`)
+
+- Same blue-grey (`0x8fa0c9`) stroke as the pause menu it's opened from, sized
+  `380x220`. Just one row so far -- "Enemy Density: `<preset>`" -- that cycles
+  through `data/settings.ts`'s `DENSITY_PRESETS` (Low/Normal/High/Very High) on
+  click and rebuilds the panel in place, same click-to-rebuild pattern Noether's
+  shop tabs use, rather than a slider (only four discrete steps). A muted
+  blue-grey hint line beneath explains it only affects maps generated after the
+  change, then a single "Close" button.
 
 ## Tutorial popup (`OverworldScene.showTutorial`/`renderTutorialPage`)
 

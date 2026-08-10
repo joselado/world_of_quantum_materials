@@ -3,7 +3,24 @@ import { hasSave, loadSave, persistFromRegistry } from '../data/save';
 import { music } from '../audio/music';
 import { CANVAS_W, CANVAS_H } from '../art/perspective';
 import { makeCrystal } from '../art/crystals';
-import { PLAYER_MATERIAL } from '../data/materials';
+import { TYPE_LOOK } from '../data/materials';
+import type { MaterialType } from '../data/types';
+
+// A curated handful of main types (not all 10, to keep the cluster
+// readable) showing off the variety of looks TYPE_LOOK defines -- purely a
+// "world full of different materials" branding image for the title screen,
+// independent of the player's own save/current form (the Hub is where that
+// gets its own moment). One "hero" entry (biggest, drawn last so it's on
+// top and centered) plus two near and two far flanking crystals, each
+// bobbing on its own independent timing so the cluster reads as alive
+// rather than a single synchronized animation.
+const SHOWCASE: { type: MaterialType; size: number; x: number; y: number; duration: number; delay: number }[] = [
+  { type: 'trivial', size: 24, x: 150, y: 145, duration: 1300, delay: 0 },
+  { type: 'tensornet', size: 26, x: 495, y: 140, duration: 1450, delay: 120 },
+  { type: 'magnet', size: 34, x: 228, y: 172, duration: 1150, delay: 260 },
+  { type: 'supercon', size: 34, x: 415, y: 172, duration: 1250, delay: 60 },
+  { type: 'topological', size: 48, x: 320, y: 155, duration: 1100, delay: 0 },
+];
 
 // The game's actual boot scene (main.ts lists this first) -- also where the
 // one localStorage save slot (data/save.ts) gets loaded into the Phaser
@@ -30,6 +47,7 @@ export class TitleScene extends Phaser.Scene {
     registry.set('metMentors', save.metMentors);
     registry.set('tutorialSeen', save.tutorialSeen);
     registry.set('debugMode', save.debugMode);
+    registry.set('encounterDensity', save.encounterDensity);
 
     music.play('overworld:1');
 
@@ -37,13 +55,14 @@ export class TitleScene extends Phaser.Scene {
     g.fillGradientStyle(0x0c1030, 0x0c1030, 0x241a44, 0x241a44, 1);
     g.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
-    const playerMaterial = save.playerForm ?? PLAYER_MATERIAL;
-    const crystal = makeCrystal(this, 60, playerMaterial.color, playerMaterial.variant);
-    crystal.setPosition(CANVAS_W / 2, 170);
-    this.tweens.add({ targets: crystal, y: 160, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.drawShowcaseCrystals();
 
     this.add
-      .text(CANVAS_W / 2, 250, 'QUANTUM MATERIALS', { fontSize: '30px', fontStyle: 'bold', color: '#ffffff' })
+      .text(CANVAS_W / 2, 253, 'WORLD OF QUANTUM MATERIALS', {
+        fontSize: '26px',
+        fontStyle: 'bold',
+        color: '#ffffff',
+      })
       .setOrigin(0.5);
     this.add
       .text(CANVAS_W / 2, 288, 'a crystal RPG', { fontSize: '14px', fontStyle: 'italic', color: '#cfd8ff' })
@@ -95,6 +114,23 @@ export class TitleScene extends Phaser.Scene {
         persistFromRegistry(registry);
         toggle.setText(label()).setColor(colorFor());
       });
+  }
+
+  private drawShowcaseCrystals() {
+    SHOWCASE.forEach((entry) => {
+      const look = TYPE_LOOK[entry.type];
+      const crystal = makeCrystal(this, entry.size, look.color, look.variant);
+      crystal.setPosition(entry.x, entry.y);
+      this.tweens.add({
+        targets: crystal,
+        y: entry.y - 10,
+        duration: entry.duration,
+        delay: entry.delay,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+    });
   }
 
   private start() {

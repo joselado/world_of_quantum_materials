@@ -62,6 +62,18 @@ export function compatibleMoves(material: Material): string[] {
     .map((m) => m.id);
 }
 
+// Whether a defender's own type can physically host a given quasiparticle
+// class at all -- the same MOVE_COMPATIBILITY table compatibleMoves() reads
+// for the attacker's side, checked here for the defender's. Backs
+// BattleScene.resolveHit's "quasiparticle mismatch" damage rule: a defender
+// with no natural channel for a quasiparticle (e.g. a plain band insulator
+// hit by a magnon pulse, having no magnetic order to carry/damp it at all)
+// takes that hit at double force, on top of whatever TYPE_CHART's
+// effectiveness() already says for that class/type pair.
+export function canHost(type: MaterialType, moveClass: MoveClass): boolean {
+  return MOVE_COMPATIBILITY[type].includes(moveClass);
+}
+
 const TYPE_CHART: Partial<Record<MoveClass, Partial<Record<MaterialType, number>>>> = {
   magnetic: { trivial: 1.5, supercon: 1.5, topological: 0.5 },
   thermal: { magnet: 1.5, classicalmag: 1.5, spinliquid: 0.5 },
@@ -160,8 +172,10 @@ export const PLAYER_MATERIAL: Material = {
 
 // One base look per main type, shaded a little differently per compound
 // within that type so siblings (e.g. Iron vs. Cobalt) read as a family
-// rather than being indistinguishable.
-const TYPE_LOOK: Record<MaterialType, { color: number; variant: CrystalVariant }> = {
+// rather than being indistinguishable. Exported so a purely decorative
+// showcase (TitleScene's crystal cluster) can pull real per-type looks
+// instead of duplicating color literals that would drift out of sync.
+export const TYPE_LOOK: Record<MaterialType, { color: number; variant: CrystalVariant }> = {
   trivial: { color: 0x7a8a99, variant: 'shard' },
   magnet: { color: 0xd94a4a, variant: 'cluster' },
   topological: { color: 0x4ad9a0, variant: 'prism' },

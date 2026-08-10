@@ -25,6 +25,7 @@ export interface WorldMap {
   rows: CorridorRow[]; // corridor rows start-to-goal, for row-based encounter placement
   start: GridPoint;
   goal: GridPoint;
+  mid: GridPoint; // this world's mentor stands here (OverworldScene's WORLD_MENTORS, tile: 'middle')
 }
 
 const CORRIDOR_HALF_WIDTH = 3; // corridor is 2*half+1 = 7 tiles wide
@@ -162,5 +163,8 @@ export function generateWorldMap(gridW: number, gridH: number, start: GridPoint)
   const goalRow = rows[rows.length - 1];
   const goal = { x: Math.round((goalRow.left + goalRow.right) / 2), y: goalRow.y };
 
-  return { walkable, tokens, rows, start, goal };
+  const midRow = rows[Math.floor(rows.length / 2)];
+  const mid = { x: Math.round((midRow.left + midRow.right) / 2), y: midRow.y };
+
+  return { walkable, tokens, rows, start, goal, mid };
 }
