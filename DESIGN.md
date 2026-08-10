@@ -476,7 +476,8 @@ world 7's boss fights as an entangled pair where damaging one damages both.
 - Tools: Aseprite (sprites/tiles), Tiled (maps, exports to Phaser-compatible
   formats).
 - Materialdex entries and post-battle explanations can be adapted from
-  `../lecture_notes/tex_extended/sessions/sessionNN.tex` rather than written fresh.
+  `lecture_notes/tex_extended/sessions/sessionNN.tex` (symlinked into this repo's
+  root, see CLAUDE.md) rather than written fresh.
 
 ## 9. Current build status
 
