@@ -99,14 +99,20 @@ export class BattleScene extends Phaser.Scene {
     this.turnLock = false;
 
     // Opponent (top-right)
-    this.add.text(400, 48, this.wild.name, {
+    // The bar sits a fixed gap below the *measured* name label rather than a
+    // hardcoded y -- the name's font size (and so its rendered height) scales
+    // with the text-size setting (data/settings.ts's FONT_SCALE_PRESETS, up
+    // to 2x), and a fixed gap tuned for the 1x label overlapped the bar once
+    // a taller label was in play.
+    const opponentName = this.add.text(400, 48, this.wild.name, {
       fontSize: fontPx(this, 14),
       color: '#ffffff',
       backgroundColor: 'rgba(0,0,0,0.35)',
       padding: { x: 4, y: 2 },
     });
-    this.add.rectangle(400, 70, 104, 12, 0x222222, 0.55).setOrigin(0, 0.5);
-    this.opponentHpBar = this.add.rectangle(400, 70, 100, 8, 0x33cc33).setOrigin(0, 0.5);
+    const opponentBarY = opponentName.y + opponentName.height + 8;
+    this.add.rectangle(400, opponentBarY, 104, 12, 0x222222, 0.55).setOrigin(0, 0.5);
+    this.opponentHpBar = this.add.rectangle(400, opponentBarY, 100, 8, 0x33cc33).setOrigin(0, 0.5);
 
     // A rival fight's opponent is that world's boss -- render it with the
     // same gigantic, multi-shard look it has standing at the goal tile in
@@ -124,27 +130,39 @@ export class BattleScene extends Phaser.Scene {
     this.playerCrystal.setPosition(PLAYER_POS.x, PLAYER_POS.y);
     this.bobCrystal(this.playerCrystal, PLAYER_POS.y);
 
-    this.add.text(130, 403, this.playerMaterial.name, {
-      fontSize: fontPx(this, 14),
-      color: '#ffffff',
-      backgroundColor: 'rgba(0,0,0,0.35)',
-      padding: { x: 4, y: 2 },
-    });
-    this.add.rectangle(130, 425, 104, 12, 0x222222, 0.55).setOrigin(0, 0.5);
-    this.playerHpBar = this.add.rectangle(130, 425, 100, 8, 0x33cc33).setOrigin(0, 0.5);
+    // Everything below the crystal (the optional boost/fail note, the name,
+    // the bar) is stacked from a running y rather than fixed pixel offsets --
+    // same reasoning as the opponent bar above: label height scales with the
+    // text-size setting (up to 2x, data/settings.ts), and fixed offsets tuned
+    // for the smallest size let a taller label collide with whatever sits
+    // below it (the name used to overlap the HP bar; with the boost/fail
+    // note also fixed at a nearby y, moving one without the other just
+    // shifts the collision).
+    let playerY = PLAYER_POS.y + 30;
 
     if (this.attackMultiplier !== 1) {
       const boosted = this.attackMultiplier > 1;
       if (boosted) this.addBoostHalo(this.playerCrystal);
       else this.addFailCloud(this.playerCrystal);
 
-      this.add.text(130, 385, boosted ? 'Attack boosted!' : 'Attack weakened...', {
+      const boostText = this.add.text(130, playerY, boosted ? 'Attack boosted!' : 'Attack weakened...', {
         fontSize: fontPx(this, 12),
         color: boosted ? '#88ff88' : '#ff8888',
         backgroundColor: 'rgba(0,0,0,0.35)',
         padding: { x: 4, y: 2 },
       });
+      playerY += boostText.height + 4;
     }
+
+    const playerName = this.add.text(130, playerY, this.playerMaterial.name, {
+      fontSize: fontPx(this, 14),
+      color: '#ffffff',
+      backgroundColor: 'rgba(0,0,0,0.35)',
+      padding: { x: 4, y: 2 },
+    });
+    const playerBarY = playerName.y + playerName.height + 8;
+    this.add.rectangle(130, playerBarY, 104, 12, 0x222222, 0.55).setOrigin(0, 0.5);
+    this.playerHpBar = this.add.rectangle(130, playerBarY, 100, 8, 0x33cc33).setOrigin(0, 0.5);
 
     const openingLine = this.isRival ? `${this.wild.name} blocks the way onward!` : `A wild ${this.wild.name} appeared!`;
     this.logText = this.add.text(20, LOG_Y, '', {
