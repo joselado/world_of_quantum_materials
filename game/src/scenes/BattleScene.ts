@@ -2,7 +2,10 @@ import Phaser from 'phaser';
 import { makeCrystal } from '../art/crystals';
 import { makeBossCrystal } from '../art/boss';
 import { shade } from '../art/colors';
+import { getBiome } from '../art/biomes';
+import type { Biome } from '../art/biomes';
 import { playAttackEffect } from '../art/attackEffects';
+import { fontPx, fontScale } from '../ui/text';
 import {
   MOVES,
   effectiveness,
@@ -21,6 +24,7 @@ import type { Material, Stats } from '../data/types';
 import { music } from '../audio/music';
 
 const FIELD_W = 640;
+const FIELD_H = 480;
 const HORIZON_Y = 262;
 const BATTLE_TOKEN_STAKE = 50; // won on a win, lost (floored at 0) on a loss
 const RIVAL_TOKEN_STAKE = 100; // the gating rival fight pays out double, win or lose
@@ -40,9 +44,9 @@ const TURN_GAP_MS = 850;
 // Docked to the right of the field, clear of the opponent's crystal/HP bar
 // above it and the log text below.
 const MENU_X = 456;
-const MENU_TOP = 190;
-const MENU_ROW_H = 34;
+const MENU_TOP = 178;
 const MENU_WIDTH = 176;
+const MENU_BOTTOM_MARGIN = 16;
 
 interface BattleInitData {
   wild: Material;
@@ -96,7 +100,7 @@ export class BattleScene extends Phaser.Scene {
 
     // Opponent (top-right)
     this.add.text(400, 48, this.wild.name, {
-      fontSize: '14px',
+      fontSize: fontPx(this, 14),
       color: '#ffffff',
       backgroundColor: 'rgba(0,0,0,0.35)',
       padding: { x: 4, y: 2 },
@@ -121,7 +125,7 @@ export class BattleScene extends Phaser.Scene {
     this.bobCrystal(this.playerCrystal, PLAYER_POS.y);
 
     this.add.text(130, 403, this.playerMaterial.name, {
-      fontSize: '14px',
+      fontSize: fontPx(this, 14),
       color: '#ffffff',
       backgroundColor: 'rgba(0,0,0,0.35)',
       padding: { x: 4, y: 2 },
@@ -135,7 +139,7 @@ export class BattleScene extends Phaser.Scene {
       else this.addFailCloud(this.playerCrystal);
 
       this.add.text(130, 385, boosted ? 'Attack boosted!' : 'Attack weakened...', {
-        fontSize: '12px',
+        fontSize: fontPx(this, 12),
         color: boosted ? '#88ff88' : '#ff8888',
         backgroundColor: 'rgba(0,0,0,0.35)',
         padding: { x: 4, y: 2 },
@@ -144,7 +148,7 @@ export class BattleScene extends Phaser.Scene {
 
     const openingLine = this.isRival ? `${this.wild.name} blocks the way onward!` : `A wild ${this.wild.name} appeared!`;
     this.logText = this.add.text(20, 440, openingLine, {
-      fontSize: '14px',
+      fontSize: fontPx(this, 14),
       color: '#ffffff',
       backgroundColor: 'rgba(0,0,0,0.45)',
       padding: { x: 8, y: 6 },
@@ -161,49 +165,120 @@ export class BattleScene extends Phaser.Scene {
   // player's learned moves intersected with what their current crystal
   // form's physics supports), instead of scattering individually
   // positioned buttons across the field.
+  //
+  // Move menu matchup info (DESIGN.md §4): each button also shows the
+  // move's power and, against *this* opponent, whether the type chart
+  // favors it (^ strong / v weak) and whether the opponent has no natural
+  // way to host it at all (the "quasiparticle mismatch" double-damage rule,
+  // marked !! 2x) -- both were previously only visible after the hit landed
+  // in the battle log, so a first-time player had no way to plan a move
+  // before swinging.
   private drawMoveMenu(moveIds: string[]) {
     const rowCount = Math.max(moveIds.length, 1);
-    const height = 34 + rowCount * MENU_ROW_H;
+    const scale = fontScale(this);
 
     const container = this.add.container(0, 0).setDepth(30);
     this.moveMenu = container;
 
-    const bg = this.add
-      .rectangle(MENU_X, MENU_TOP, MENU_WIDTH, height, 0x10101c, 0.9)
-      .setOrigin(0, 0)
-      .setStrokeStyle(2, 0xffe066);
-    container.add(bg);
-
+    // Title/legend built top-down first (running `y`, each line's own
+    // wordWrap-driven height advancing it) so a long opponent name doesn't
+    // wrap the legend into more lines than the old fixed legendH assumed
+    // and run into row 1. The panel background is sized/inserted behind
+    // everything once the real content height is known.
+    let y = MENU_TOP + 8;
     const title = this.add
-      .text(MENU_X + MENU_WIDTH / 2, MENU_TOP + 8, 'MOVES', {
-        fontSize: '12px',
+      .text(MENU_X + MENU_WIDTH / 2, y, 'MOVES', {
+        fontSize: fontPx(this, 12),
         color: '#ffe066',
         fontStyle: 'bold',
       })
       .setOrigin(0.5, 0);
     container.add(title);
+    y += title.height + 4;
+
+    const legend = this.add
+      .text(MENU_X + MENU_WIDTH / 2, y, `vs ${this.wild.name}: ^ strong  v weak  !! no defense (2x)`, {
+        fontSize: fontPx(this, 10),
+        color: '#8fa0c9',
+        align: 'center',
+        wordWrap: { width: MENU_WIDTH - 12 },
+        lineSpacing: 2,
+      })
+      .setOrigin(0.5, 0);
+    container.add(legend);
+    y += legend.height + 8;
+
+    const rowsTop = y;
 
     if (moveIds.length === 0) {
       const empty = this.add
-        .text(MENU_X + MENU_WIDTH / 2, MENU_TOP + 30, 'No usable moves', {
-          fontSize: '11px',
+        .text(MENU_X + MENU_WIDTH / 2, rowsTop, 'No usable moves', {
+          fontSize: fontPx(this, 11),
           color: '#cfd8ff',
           align: 'center',
           wordWrap: { width: MENU_WIDTH - 16 },
         })
         .setOrigin(0.5, 0);
       container.add(empty);
+      const bg = this.add
+        .rectangle(MENU_X, MENU_TOP, MENU_WIDTH, rowsTop + empty.height + 12 - MENU_TOP, 0x10101c, 0.9)
+        .setOrigin(0, 0)
+        .setStrokeStyle(2, 0xffe066);
+      container.addAt(bg, 0);
       return;
     }
 
+    // Row height is a hard geometric budget -- whatever vertical space is
+    // left in the field below the title/legend, divided across however
+    // many moves are usable -- not something the text-size setting can
+    // just grow past. An 'adaptive'-type crystal (world 10's boss and its
+    // wild echoes, MOVE_COMPATIBILITY's broadest entry) can host all 7
+    // MOVES at once, and 7 two-line buttons at the setting's largest
+    // preset would never fit no matter the row height. So each button's
+    // font size is derived from its own row's actual height (fitPx) and
+    // clamped against the setting-scaled desired size (desiredPx) --
+    // growing with the setting wherever the box has slack (few moves), but
+    // never past what the box can physically hold.
+    const avail = FIELD_H - rowsTop - MENU_BOTTOM_MARGIN;
+    const naturalRowH = Math.floor(avail / rowCount);
+    const maxRowH = Math.round(46 * Math.min(scale, 1.35));
+    const rowH = Phaser.Math.Clamp(naturalRowH, 30, Math.max(maxRowH, 30));
+    const compact = rowH < 40;
+    const height = rowsTop - MENU_TOP + rowCount * rowH + 8;
+
+    const bg = this.add
+      .rectangle(MENU_X, MENU_TOP, MENU_WIDTH, height, 0x10101c, 0.9)
+      .setOrigin(0, 0)
+      .setStrokeStyle(2, 0xffe066);
+    container.addAt(bg, 0);
+
+    const padY = compact ? 3 : 5;
+    const fitPx = Math.max(9, Math.floor((rowH - padY * 2) / 2.4));
+    const desiredPx = Math.round((compact ? 10 : 12) * scale);
+    const btnPx = Math.min(desiredPx, fitPx);
+
     moveIds.forEach((moveId, i) => {
       const move = MOVES[moveId];
+      const mult = effectiveness(move.class, this.wild.type);
+      const mismatch = !canHost(this.wild.type, move.class);
+      let tag = '';
+      let color = '#ffff88';
+      if (mismatch) {
+        tag = ' !!2x';
+        color = '#ffaa44';
+      } else if (mult > 1) {
+        tag = ' ^';
+        color = '#88ff88';
+      } else if (mult < 1) {
+        tag = ' v';
+        color = '#ff8888';
+      }
       const btn = this.add
-        .text(MENU_X + MENU_WIDTH / 2, MENU_TOP + 30 + i * MENU_ROW_H, move.name, {
-          fontSize: '12px',
-          color: '#ffff88',
+        .text(MENU_X + MENU_WIDTH / 2, rowsTop + i * rowH, `${move.name}\nPwr ${move.power}${tag}`, {
+          fontSize: `${btnPx}px`,
+          color,
           backgroundColor: '#222244',
-          padding: { x: 8, y: 5 },
+          padding: { x: 8, y: padY },
           align: 'center',
         })
         .setOrigin(0.5, 0)
@@ -213,34 +288,50 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
+  // Colored from that world's own biome (art/biomes.ts, the same table
+  // OverworldScene's corridor uses) instead of a fixed pastoral meadow --
+  // every world's battles used to render the same green-hills-and-blue-sky
+  // arena regardless of whether the fight was in a frozen cavern or a
+  // cracked, glitching world.
   private drawBackground() {
+    const biome = getBiome(this.world);
     const g = this.add.graphics();
 
-    // Sky, brightest near the horizon where it meets the mountains.
-    g.fillGradientStyle(0x8fc7ea, 0x8fc7ea, 0xdff3ff, 0xdff3ff, 1);
+    // Sky, brightest near the horizon where it meets the ridgeline.
+    g.fillGradientStyle(biome.skyTop, biome.skyTop, biome.skyBottom, biome.skyBottom, 1);
     g.fillRect(0, 0, FIELD_W, HORIZON_Y);
-    this.drawSun(560, 55);
 
-    this.drawCloud(90, 40);
-    this.drawCloud(230, 70);
-    this.drawCloud(540, 40);
+    if (biome.clouds) {
+      this.drawSun(560, 55);
+      this.drawCloud(90, 40);
+      this.drawCloud(230, 70);
+      this.drawCloud(540, 40);
+    }
 
     // Layered ridgelines behind the field, hazier and bluer the further
     // back they sit, giving the field actual depth instead of a flat
-    // two-tone sky/ground split.
-    this.drawRidge(g, HORIZON_Y - 20, 0xa9c2dc, 0.85, [40, 150, 40, 170, 30, 140, 20, 160, 40]);
-    this.drawRidge(g, HORIZON_Y - 4, 0x7fa88f, 0.9, [10, 70, 25, 95, 15, 60, 30, 80, 10]);
-    this.drawRidge(g, HORIZON_Y + 6, 0x5c9c6a, 1, [5, 30, 10, 40, 6, 28, 12, 34, 5]);
+    // two-tone sky/ground split -- shaded off the biome's own hill/ground
+    // colors so the layering effect survives across every palette.
+    this.drawRidge(g, HORIZON_Y - 20, shade(biome.hillColor, 25), biome.hillAlpha * 0.85, [40, 150, 40, 170, 30, 140, 20, 160, 40]);
+    this.drawRidge(g, HORIZON_Y - 4, biome.hillColor, biome.hillAlpha, [10, 70, 25, 95, 15, 60, 30, 80, 10]);
+    this.drawRidge(g, HORIZON_Y + 6, shade(biome.ground, 22), 1, [5, 30, 10, 40, 6, 28, 12, 34, 5]);
 
     // Ground.
-    g.fillGradientStyle(0x9fd88a, 0x9fd88a, 0x5c9040, 0x5c9040, 1);
-    g.fillRect(0, HORIZON_Y, FIELD_W, 480 - HORIZON_Y);
+    g.fillGradientStyle(
+      shade(biome.ground, 25),
+      shade(biome.ground, 25),
+      shade(biome.ground, -15),
+      shade(biome.ground, -15),
+      1
+    );
+    g.fillRect(0, HORIZON_Y, FIELD_W, FIELD_H - HORIZON_Y);
 
-    this.drawBackgroundCrystals();
-    this.drawGroundDetail();
+    this.drawBackgroundCrystals(biome);
+    this.drawGroundDetail(biome);
 
-    this.add.ellipse(460, 195, 120, 28, 0x2f5a26, 0.35);
-    this.add.ellipse(180, 392, 130, 30, 0x2f5a26, 0.35);
+    const shadowColor = shade(biome.ground, -40);
+    this.add.ellipse(460, 195, 120, 28, shadowColor, 0.35);
+    this.add.ellipse(180, 392, 130, 30, shadowColor, 0.35);
   }
 
   // A jagged ridge silhouette spanning the field width, from a flat
@@ -281,24 +372,28 @@ export class BattleScene extends Phaser.Scene {
 
   // A couple of small crystal outcrops jutting from the field itself --
   // purely decorative (no gameplay meaning), giving the arena a "quantum
-  // materials" identity instead of a generic pastoral RPG field.
-  private drawBackgroundCrystals() {
-    const outcrop = makeCrystal(this, 16, 0x8fb0c9, 'prism');
+  // materials" identity instead of a generic pastoral RPG field. Tinted off
+  // the biome's own path color so they still read as an accent rather than
+  // clashing with a world whose palette isn't blue/green.
+  private drawBackgroundCrystals(biome: Biome) {
+    const outcrop = makeCrystal(this, 16, shade(biome.path, 10), 'prism');
     outcrop.setPosition(70, 250);
     outcrop.setAlpha(0.8);
 
-    const outcrop2 = makeCrystal(this, 11, 0x8fb0c9, 'shard');
+    const outcrop2 = makeCrystal(this, 11, shade(biome.path, -10), 'shard');
     outcrop2.setPosition(95, 258);
     outcrop2.setAlpha(0.75);
 
-    const outcrop3 = makeCrystal(this, 13, 0x9ac9b0, 'shard');
+    const outcrop3 = makeCrystal(this, 13, shade(biome.hillColor, 25), 'shard');
     outcrop3.setPosition(600, 252);
     outcrop3.setAlpha(0.8);
   }
 
-  // Scattered pebbles and grass tufts across the field so the ground
-  // reads as textured turf rather than a flat gradient fill.
-  private drawGroundDetail() {
+  // Scattered pebbles and ground tufts across the field so the ground
+  // reads as textured, not a flat gradient fill -- tufts tint off the
+  // biome's path color (grass green in the meadow, icy blue in the frozen
+  // caverns, ...) rather than a hardcoded grass green everywhere.
+  private drawGroundDetail(biome: Biome) {
     const g = this.add.graphics();
     const spots: [number, number][] = [
       [40, 300], [590, 290], [520, 340], [110, 380], [30, 420],
@@ -306,13 +401,13 @@ export class BattleScene extends Phaser.Scene {
       [150, 300], [560, 220],
     ];
     spots.forEach(([x, y], i) => {
-      const groundColor = shade(0x7cbf6a, -10 - (y - HORIZON_Y) * 0.15);
+      const tuftColor = shade(biome.path, -10 - (y - HORIZON_Y) * 0.15);
       if (i % 3 === 0) {
-        g.fillStyle(0x6b5a45, 0.55);
+        g.fillStyle(shade(biome.ground, -30), 0.55);
         g.fillEllipse(x, y, 10, 4);
         g.fillEllipse(x + 5, y + 2, 6, 3);
       } else {
-        g.fillStyle(groundColor, 0.6);
+        g.fillStyle(tuftColor, 0.6);
         [0, 1, 2].forEach((j) => {
           const ang = -Math.PI / 2 + (j - 1) * 0.5;
           g.fillTriangle(x, y, x + Math.cos(ang) * 3, y + Math.sin(ang) * 9, x + 3, y);
@@ -550,9 +645,13 @@ export class BattleScene extends Phaser.Scene {
     // The end-of-battle summary runs several lines longer than an
     // in-combat log line (flavor + token delta + the physics blurb) --
     // moved up from the combat log's usual bottom-anchored position so the
-    // extra lines don't run off the bottom of the canvas.
-    this.logText.setPosition(20, 210);
+    // extra lines don't run off the bottom of the canvas. setText first so
+    // .height reflects the actual wrapped line count at the current text
+    // size setting, then clamp upward (never down past 210) so a big text
+    // size or a long blurb can't push the bottom off-canvas.
     this.logText.setText(`${flavor}\n${tokenText}\n\n${blurb}\n\nPress SPACE to return.`);
+    const y = Math.max(8, Math.min(210, FIELD_H - this.logText.height - 16));
+    this.logText.setPosition(20, y);
 
     this.input.keyboard!.once('keydown-SPACE', () => this.scene.start('Overworld', { world: this.world }));
   }

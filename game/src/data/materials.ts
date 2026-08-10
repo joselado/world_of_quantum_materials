@@ -74,13 +74,18 @@ export function canHost(type: MaterialType, moveClass: MoveClass): boolean {
   return MOVE_COMPATIBILITY[type].includes(moveClass);
 }
 
+// DESIGN.md §3's table also lists Majorana Split (decoherence) as strong
+// against "Majorana/entangled pairs" -- tensornet is the entangled-state
+// main type, so that half of the row was simply missing here (decoherence
+// previously had a "weak against" entry but no "strong against" at all,
+// unlike every other move class).
 const TYPE_CHART: Partial<Record<MoveClass, Partial<Record<MaterialType, number>>>> = {
   magnetic: { trivial: 1.5, supercon: 1.5, topological: 0.5 },
   thermal: { magnet: 1.5, classicalmag: 1.5, spinliquid: 0.5 },
   localization: { spinliquid: 1.5, supercon: 0.5, topological: 0.5 },
   gauge: { qhe: 1.5 },
   entanglement: { tensornet: 1.5, trivial: 0.5 },
-  decoherence: { classicalmag: 0.5 },
+  decoherence: { tensornet: 1.5, classicalmag: 0.5 },
 };
 
 export function effectiveness(moveClass: MoveClass, defenderType: MaterialType): number {
@@ -209,7 +214,10 @@ function crystal(
 // database" section. Each scene pulls its own world's pool via
 // `getWildPool()` rather than sharing one global list, so later worlds can
 // each have their own specials without touching the encounter logic.
-// World 10 has no entry: its only encounter is the adaptive final boss.
+// World 10 is the one exception to "named after a real compound" (see the
+// 'Echo of ...' pool below it): its wilds are deliberately not real
+// materials, matching the meta-world's own "reflects the player's journey
+// back at them" theme, same reasoning as the world-10 boss itself.
 // Every moveset below is drawn only from MOVE_COMPATIBILITY[type] -- e.g.
 // trivial crystals (Si, GaN, MgO, Graphene) only ever get Electron Pulse and
 // Phonon Beam, never Magnon Pulse, since a plain band insulator has no
@@ -264,6 +272,17 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     crystal('Fe(Te,Se)', 'defect', 22, ['localizationPin', 'decoherenceWave'], 1),
     crystal('Niobium Diselenide', 'defect', 21, ['localizationPin', 'thermalFluctuation'], 2),
   ],
+  // The meta-world's wilds are echoes of earlier phases of matter rather
+  // than new real compounds -- 'adaptive' type, same as the world-10 boss,
+  // each one recalling a different earlier world's moveset so the corridor
+  // itself reads as "your own journey played back at you" before the boss
+  // at the goal does the same thing at full scale.
+  10: [
+    crystal('Echo of the Meadow', 'adaptive', 30, ['tunnelStrike', 'thermalFluctuation']),
+    crystal('Echo of the Islands', 'adaptive', 32, ['fluxTwist', 'decoherenceWave'], 1),
+    crystal('Echo of the Caverns', 'adaptive', 31, ['localizationPin', 'decoherenceWave'], 2),
+    crystal('Echo of the Network', 'adaptive', 30, ['entanglementSwap', 'magneticField'], 3),
+  ],
 };
 
 // The single "beat this to unlock the mentor and the way onward" gate per
@@ -273,7 +292,10 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
 // falls back gracefully for a world with no entry here).
 export const WORLD_RIVALS: Partial<Record<number, Material>> = {
   1: crystal('Rival Silicon', 'trivial', 34, ['thermalFluctuation', 'tunnelStrike'], 3),
-  2: crystal('Rival Lattice Defect', 'trivial', 38, ['thermalFluctuation', 'tunnelStrike'], 4),
+  // Renamed from 'Rival Lattice Defect' -- defects are world 9's topic, not
+  // world 2's (symmetries, Bloch's theorem, tight-binding). A Bloch wave is
+  // the actual object world 2's lecture builds toward.
+  2: crystal('Rival Bloch Wave', 'trivial', 38, ['thermalFluctuation', 'tunnelStrike'], 4),
   3: crystal('Rival Edge State', 'topological', 42, ['fluxTwist', 'decoherenceWave'], 5),
   4: crystal('Rival Landau Level', 'qhe', 46, ['fluxTwist', 'tunnelStrike'], 6),
   5: crystal('Rival Cooper Pair', 'supercon', 50, ['localizationPin', 'decoherenceWave'], 7),
@@ -304,17 +326,21 @@ export function findMaterialByName(name: string): Material | undefined {
   return undefined;
 }
 
+// Named after the lecture topic each world actually teaches (the numbered
+// table in the repo's top-level CLAUDE.md), not generic fantasy-RPG
+// terrain -- a player should be able to tell which course topic a world
+// covers just from its name.
 export const WORLD_NAMES: Partial<Record<number, string>> = {
-  1: 'Tutorial Meadow',
-  2: 'Crystalline Caves',
-  3: 'Floating Islands',
-  4: 'Landau Terrain',
+  1: 'Mean-Field Meadow',
+  2: 'Bloch Caverns',
+  3: 'Topological Islands',
+  4: 'Landau Level Terrain',
   5: 'Frozen Zero-Resistance Caverns',
-  6: 'Windswept Plains',
-  7: 'Network-Graph World',
-  8: 'Foggy Forest',
-  9: 'Cracked World',
-  10: 'The Meta-World',
+  6: 'Magnon Plains',
+  7: 'Tensor-Network World',
+  8: 'Spinon Forest',
+  9: 'Defect Wastes',
+  10: 'The Adaptive Meta-World',
 };
 
 export function getWildPool(world: number): Material[] {

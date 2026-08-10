@@ -240,7 +240,7 @@ function makeOverworldScore(cfg: OverworldScoreConfig): Score {
   return { bpm: cfg.bpm, loopBeats: chords.length * 4, tracks };
 }
 
-// World 2, Crystalline Caves (symmetries/tight-binding): echoing minor
+// World 2, Bloch Caverns (symmetries/tight-binding): echoing minor
 // arpeggios, moderate tempo -- A minor.
 const OVERWORLD_SCORE_2 = makeOverworldScore({
   bpm: 100,
@@ -251,7 +251,7 @@ const OVERWORLD_SCORE_2 = makeOverworldScore({
   leadWave: 'triangle',
 });
 
-// World 3, Floating Islands (topological band theory): airy and major,
+// World 3, Topological Islands (topological band theory): airy and major,
 // slower -- D major.
 const OVERWORLD_SCORE_3 = makeOverworldScore({
   bpm: 96,
@@ -262,7 +262,7 @@ const OVERWORLD_SCORE_3 = makeOverworldScore({
   leadGain: 0.17,
 });
 
-// World 4, Landau Terrain (QHE/Landau levels): a circular, repeating
+// World 4, Landau Level Terrain (QHE/Landau levels): a circular, repeating
 // arpeggiated motif for quantized orbits -- E minor, driving.
 const OVERWORLD_SCORE_4 = makeOverworldScore({
   bpm: 132,
@@ -287,7 +287,7 @@ const OVERWORLD_SCORE_5 = makeOverworldScore({
   padWave: 'triangle',
 });
 
-// World 6, Windswept Plains (classical magnetism/magnons): bright,
+// World 6, Magnon Plains (classical magnetism/magnons): bright,
 // pentatonic-leaning skips -- G major, a little faster than world 1.
 const OVERWORLD_SCORE_6 = makeOverworldScore({
   bpm: 116,
@@ -297,7 +297,7 @@ const OVERWORLD_SCORE_6 = makeOverworldScore({
   bridgeShapes: ['zigzag', 'skipUp'],
 });
 
-// World 7, Network-Graph World (entanglement/tensor networks): two
+// World 7, Tensor-Network World (entanglement/tensor networks): two
 // interlocking voices (lead + a quieter counter-melody in a different
 // register/shape), matching "bonds as paths" -- B minor.
 const OVERWORLD_SCORE_7 = makeOverworldScore({
@@ -310,7 +310,7 @@ const OVERWORLD_SCORE_7 = makeOverworldScore({
   leadWave: 'triangle',
 });
 
-// World 8, Foggy Forest (quantum magnetism/spinons/Kondo): hazy and low-
+// World 8, Spinon Forest (quantum magnetism/spinons/Kondo): hazy and low-
 // contrast -- C minor, sparse phrasing, low gains.
 const OVERWORLD_SCORE_8 = makeOverworldScore({
   bpm: 88,
@@ -322,7 +322,7 @@ const OVERWORLD_SCORE_8 = makeOverworldScore({
   padWave: 'triangle',
 });
 
-// World 9, Cracked World (excitations and defects): glitchy, irregular
+// World 9, Defect Wastes (excitations and defects): glitchy, irregular
 // subdivisions -- D minor, quick tempo that never quite settles.
 const OVERWORLD_SCORE_9 = makeOverworldScore({
   bpm: 140,
@@ -334,7 +334,7 @@ const OVERWORLD_SCORE_9 = makeOverworldScore({
   leadGain: 0.12,
 });
 
-// World 10, The Meta-World (finale): a shimmering reprise mixing an earlier
+// World 10, The Adaptive Meta-World (finale): a shimmering reprise mixing an earlier
 // arpeggiated shape with an earlier arching one -- A major, unison-detuned
 // lead for a "reflection" shimmer.
 const OVERWORLD_SCORE_10 = makeOverworldScore({

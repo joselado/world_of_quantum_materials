@@ -24,19 +24,23 @@ battle.
 
 One world per course topic (see the topic table in the repo's top-level `CLAUDE.md`).
 
-| World | Course topic | Biome theme | Wild material archetypes | Gate to next world |
+| World | Course topic | In-game name (`WORLD_NAMES`) / biome theme | Wild material archetypes | Gate to next world |
 |---|---|---|---|---|
 | 0 (Hub) | — | "The Lab" — mentor's house, save point, Materialdex | — | Start world 1 |
-| 1 | Second quantization, mean-field, SSB | Tutorial meadow | Free fermion, broken-symmetry magnet | Beat first rival crystal |
-| 2 | Symmetries, tight-binding, effective models | Crystalline caves, repeating tile patterns | Bloch-wave critters, lattice defect variants | Learn "symmetry sense" from mentor |
-| 3 | Topological band theory | Floating islands, one-way edge paths | Chern insulators, trivial insulators | Cross a gap only an edge-mode move can bridge |
-| 4 | Magnetic field, QHE, Landau levels | Visible field lines, quantized-orbit terrain | Landau-level materials, composite fermions | Solve a Landau-level maze |
-| 5 | Superconductivity, Nambu, Majorana | Frozen zero-resistance caverns | s-wave SC, triplet SC, Majorana pairs (split in two) | Pair two Majorana halves |
-| 6 | Classical magnetism, magnons | Windswept plains, spin-wave ripples | Ferro/antiferromagnets, magnon wave-riders | Ride a magnon wave across a canyon |
-| 7 | Entanglement, tensor networks | Network-graph world, bonds as paths | Entangled pairs (fought as a bonded duo) | Compress a tangled area into a walkable MPS path |
-| 8 | Quantum magnetism, spinons, Kondo | Foggy forest, fractionalizes on contact | Spin liquids, Kondo-screened critters | Screen a "local moment" boss mechanic |
-| 9 | Excitations and defects | Cracked/glitching world | Defect-bound states, impurity resonances | Repair/exploit N defects to stabilize a bridge |
-| 10 | ML for quantum materials | Meta-world reflecting the player's own team | Adaptive final boss only, no ordinary wilds | Final battle |
+| 1 | Second quantization, mean-field, SSB | **Mean-Field Meadow** — tutorial meadow | Free fermion, broken-symmetry magnet | Beat first rival crystal |
+| 2 | Symmetries, tight-binding, effective models | **Bloch Caverns** — crystalline caves, repeating tile patterns | Bloch-wave critters, lattice defect variants | Learn "symmetry sense" from mentor |
+| 3 | Topological band theory | **Topological Islands** — floating islands, one-way edge paths | Chern insulators, trivial insulators | Cross a gap only an edge-mode move can bridge |
+| 4 | Magnetic field, QHE, Landau levels | **Landau Level Terrain** — visible field lines, quantized-orbit terrain | Landau-level materials, composite fermions | Solve a Landau-level maze |
+| 5 | Superconductivity, Nambu, Majorana | **Frozen Zero-Resistance Caverns** | s-wave SC, triplet SC, Majorana pairs (split in two) | Pair two Majorana halves |
+| 6 | Classical magnetism, magnons | **Magnon Plains** — windswept plains, spin-wave ripples | Ferro/antiferromagnets, magnon wave-riders | Ride a magnon wave across a canyon |
+| 7 | Entanglement, tensor networks | **Tensor-Network World** — bonds as paths | Entangled pairs (fought as a bonded duo) | Compress a tangled area into a walkable MPS path |
+| 8 | Quantum magnetism, spinons, Kondo | **Spinon Forest** — foggy forest, fractionalizes on contact | Spin liquids, Kondo-screened critters | Screen a "local moment" boss mechanic |
+| 9 | Excitations and defects | **Defect Wastes** — cracked/glitching world | Defect-bound states, impurity resonances | Repair/exploit N defects to stabilize a bridge |
+| 10 | ML for quantum materials | **The Adaptive Meta-World** — reflects the player's own team | Echoes of earlier phases of matter, plus the adaptive final boss | Final battle |
+
+World and rival names are meant to read as the lecture topic, not generic RPG terrain/monster
+names -- e.g. world 2's rival was originally "Rival Lattice Defect", which is actually world 9's
+topic (defects), not world 2's (symmetries/Bloch's theorem); renamed to "Rival Bloch Wave".
 
 World 10 has no course notebook, which fits it being the finale rather than a taught
 topic: the boss is "a model of you," which is an honest metaphor for an ML surrogate.
@@ -103,13 +107,11 @@ keyed by world number rather than one global list — each world's `OverworldSce
 pulls its own wild-encounter pool via `getWildPool(world)`, drawing 2-4 rows from the
 matching type/topic section of the table below (topic 2 has no dedicated main type of
 its own, so it reuses trivial-type compounds with "lattice" flavor instead of world
-1's tutorial picks; world 10 has no pool at all, since its only encounter is the
-adaptive final boss). Worlds 1 and 2 have a built overworld map so far (see roadmap
-§9); the remaining worlds' rows are ready for when their maps are built, without
-needing changes to the encounter/battle logic itself, since the map generator and
-biome skin are already shared/data-driven per world (§7). `PLAYER_MATERIAL` (the player's own
-crystal, currently Silicon) is a fixed pick from this same table, not part of any
-world's wild pool.
+1's tutorial picks; world 10's pool is the one exception to "named after a real
+compound" — see the 'Echo of ...' rows and note just below the table). All ten worlds
+have a built overworld map (roadmap §9). `PLAYER_MATERIAL` (the player's own crystal,
+currently Silicon) is a fixed pick from this same table, not part of any world's wild
+pool.
 
 | Type (topic) | Crystal (compound) | Why it has that type |
 |---|---|---|
@@ -149,12 +151,18 @@ world's wild pool.
 | defect (9, textbook fill-in) | Iron Telluride/Selenide (Fe(Te,Se)) | Hosts Yu-Shiba-Rusinov and vortex-bound (Majorana) defect states in a superconductor |
 | defect (9, textbook fill-in) | Niobium Diselenide (NbSe$_2$), STM-imaged impurities | Friedel oscillations / impurity-resonance textbook platform |
 | defect (9, textbook fill-in) | Silicon vacancy in silicon carbide (SiC) | Another well-known solid-state defect qubit |
-| adaptive (10) | — (no compound, by design) | Endgame-only boss, "a model of you" — deliberately not a real material, per the plot hook in §5 |
+| adaptive (10) | — (no compound, by design) | Boss ("a model of you") and ordinary wilds alike — deliberately not real materials, per the plot hook in §5 |
 
 Session files for topics 9 and 10 name no concrete real compounds at all (they stay at
 the level of "a metal," "a superconductor," generic ML methods), so those two rows lean
 entirely on textbook fill-ins rather than course-sourced examples — worth flagging if
 a stricter "must appear in the course material" rule is later adopted.
+
+World 10's wild pool (`WORLD_CRYSTALS[10]` in `data/materials.ts`) is "Echo of ..."
+crystals — 'adaptive' type, no real compound behind them, each one's moveset recalling
+an earlier world (e.g. Echo of the Islands carries the same Anyon Braid/Majorana Split
+pair world 3's topological wilds do) — so the meta-world's corridor itself plays back
+the player's own journey before the boss at the goal does the same thing at full scale.
 
 **Subtype combination flavor (real-compound tie-ins):** the same mechanic from §3
 (main type + subtype → new material) has ready real-world flavor text once crystals are
@@ -199,6 +207,12 @@ actually carry — see the transmutation mechanic in §5).
 | Spinon Swap | Tensor-network states (mirrors damage) | Trivial/product states (no effect) |
 | Majorana Split | Majorana/entangled pairs (splits their bonus) | Classical magnet (already decohered) |
 
+This table's "strong against" column is now fully implemented in `data/materials.ts`'s
+`TYPE_CHART` — Majorana Split's `tensornet: 1.5` entry (its "Majorana/entangled pairs" match)
+was missing until a 2026-08 pass added it; every other row already had both its strong and weak
+entries. Shown to the player directly in the battle move menu now too (see §4's "Move menu
+matchup info"), not just documented here.
+
 Electron Pulse (the trivial-class move) has no dedicated row — trivial-type moves deal
 neutral damage everywhere, matching ordinary (non-topological, non-correlated) electrons
 having no special matchup of their own.
@@ -219,6 +233,25 @@ order to damp a magnon pulse with, so it lands unmitigated, stacked multiplicati
 whatever `effectiveness()` already says for that class/type pair. Applies symmetrically
 to both sides, same as every other `resolveHit` term. Surfaced in the battle log as "No
 natural defense against this!".
+
+**Move menu matchup info.** Both of the above used to be visible only after a hit
+landed, in the battle log text — a first-time player had no way to plan a move against
+a given opponent before swinging. `BattleScene.drawMoveMenu` now labels each move
+button with its power and, computed against the current opponent's type, a `^` (type
+chart favors it), `v` (type chart disfavors it), or `!!2x` (quasiparticle mismatch, the
+double-damage rule above) tag, plus a one-line legend at the top of the panel spelling
+out what those symbols mean. The panel's row height is computed from how many moves are
+currently listed (`drawMoveMenu`'s `rowH`) rather than fixed, since an 'adaptive'-type
+crystal (world 10, see §3) can host every move class at once and a fixed row height
+sized for the usual 2-4 moves would push the panel off the bottom of the canvas once
+all 7 are unlocked.
+
+**Battle background per world.** `BattleScene.drawBackground` now reads the same
+`art/biomes.ts` table the overworld corridor uses (`getBiome(this.world)`) instead of
+a single hardcoded pastoral-meadow arena — sky, ridgelines, ground, and the decorative
+crystal outcrops/ground tufts are all shaded off that world's biome colors, so a fight
+in the frozen caverns or the cracked world actually looks like it, not like every other
+world's battle.
 
 **Wild encounter dialogue.** Bumping into a wild crystal opens a single in-map dialogue
 screen (`OverworldScene.showEncounter`, not a separate scene): a greeting line tied to
@@ -269,7 +302,9 @@ sentence tying the fight to the real physics of the material just fought
 encountered (not per-battle, and not for rival crystals, which aren't real compounds), it's
 recorded into the Phaser registry's `discoveredMaterials` list
 (`OverworldScene.recordDiscovery`); the Hub's Materialdex hotspot (§2) lists every
-discovered material together with its blurb.
+discovered material together with its blurb, paginated two entries per page
+(`HubScene.renderMaterialdexPage`) rather than one long block of text — a long-run save
+with 20+ discoveries used to overflow both the panel and the canvas itself.
 
 ## 5. Mentors, economy, and story arc
 
@@ -334,6 +369,14 @@ materials to lose their protected properties. The player masters each phase of
 matter to stabilize it. World 10's adaptive boss is revealed as the source — an
 entity that models and exploits whatever strategy the player has been using.
 
+**Story beats between worlds.** The plot isn't only the tutorial's first page and
+the ending — beating each world's rival now shows a short Decoherence-arc line
+(`data/story.ts`'s `STORY_BEATS`, keyed by the world just beaten) before
+`OverworldScene.showStoryBeat`/`advanceToWorld` moves the player into the next
+world, previewing that world's biome and nudging the plot forward one step at a
+time. Falls straight through to `advanceToWorld` if a world has no entry, so a
+missing beat is never a dead end.
+
 ## 6. Boss design
 
 Each world boss requires the ability that world specifically teaches, not just
@@ -373,8 +416,7 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   The pre-battle encounter dialogue itself never leaves the overworld scene.
   Per-world visuals (sky/ceiling, wall vs. path color,
   decoration style) live in `src/art/biomes.ts`, keyed by world number,
-  independent of the shared layout generator. For testing, Space cycles
-  between the worlds that have a built overworld map.
+  independent of the shared layout generator.
 - **Hosting:** static site (GitHub Pages / Netlify) — client-side only, no backend
   needed unless cross-device save sync or trading is added later. `npm run build`
   in `game/` produces the deployable static output.
@@ -386,6 +428,12 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   sync rather than only saving at fixed checkpoints. The Hub's save-point hotspot (§2) also
   triggers it explicitly, mostly for the player's own reassurance since autosave already
   covers it.
+- **Starting a new game.** Once a save exists, the title screen's main button always reads
+  "Continue" -- `TitleScene`'s "New Game (erase save)" link is the only way to discard that
+  progress, gated behind an inline yes/no confirm (`TitleScene.confirmNewGame`) since it's
+  destructive and irreversible. Confirming calls `data/save.ts`'s `clearSave()` then
+  `this.scene.restart()`, so the Title's existing `loadSave()`-into-registry block re-seeds
+  every registry key from `defaultSave()` rather than needing a second seeding path.
 - **Data-driven content:** materials, moves, and the type chart live in
   `game/src/data/materials.ts` (the subset the running game uses, including the
   per-world `WORLD_CRYSTALS` database) with `data/materials.json` at the repo

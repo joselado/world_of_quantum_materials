@@ -1,6 +1,6 @@
 import type { Material, MaterialType, Stats } from './types';
 import { PLAYER_MATERIAL, DEFAULT_STATS, MOVES } from './materials';
-import { DEFAULT_ENCOUNTER_DENSITY } from './settings';
+import { DEFAULT_ENCOUNTER_DENSITY, DEFAULT_FONT_SCALE } from './settings';
 
 // Single localStorage-backed save slot (v1: one profile, no cloud sync --
 // matches DESIGN.md §7). TitleScene reads this once at boot into the Phaser
@@ -50,6 +50,11 @@ export interface SaveData {
   // world entry/regenerate), not the map the player is currently standing
   // on.
   encounterDensity: number;
+  // Same Settings panel, second row: the multiplier ui/text.ts's fontPx()
+  // applies to every scene's authored base px size, one of data/settings.ts's
+  // FONT_SCALE_PRESETS. Unlike encounterDensity this takes effect immediately
+  // (read live on every fontPx() call), not just on the next map generation.
+  fontScale: number;
 }
 
 export function defaultSave(): SaveData {
@@ -67,7 +72,19 @@ export function defaultSave(): SaveData {
     tutorialSeen: false,
     debugMode: false,
     encounterDensity: DEFAULT_ENCOUNTER_DENSITY,
+    fontScale: DEFAULT_FONT_SCALE,
   };
+}
+
+// Wipes the save slot so the next loadSave() starts a fresh run --
+// TitleScene's "New Game" reset button. Callers must also re-seed the
+// registry (e.g. via scene.restart()) since this only clears localStorage.
+export function clearSave() {
+  try {
+    localStorage.removeItem(SAVE_KEY);
+  } catch {
+    // localStorage unavailable -- nothing to clear.
+  }
 }
 
 export function hasSave(): boolean {
@@ -116,6 +133,7 @@ export function persistFromRegistry(registry: RegistryLike) {
     tutorialSeen: (registry.get('tutorialSeen') as boolean) ?? false,
     debugMode: (registry.get('debugMode') as boolean) ?? false,
     encounterDensity: (registry.get('encounterDensity') as number) ?? DEFAULT_ENCOUNTER_DENSITY,
+    fontScale: (registry.get('fontScale') as number) ?? DEFAULT_FONT_SCALE,
   };
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));

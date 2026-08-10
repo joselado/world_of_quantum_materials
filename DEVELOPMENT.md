@@ -22,9 +22,6 @@ mechanics/content decisions see `DESIGN.md`, for visual conventions see
   type-checked subset the running game actually imports.
 - `game/` -- **active development happens here.** A Vite + TypeScript +
   Phaser 3 project (see "Running the game" below).
-- `demo/` -- a frozen, no-install snapshot of the game from before the move
-  to `game/`. Kept only as a zero-setup fallback; not maintained going
-  forward, so it will drift from `game/` over time.
 - `screenshots/` -- the images embedded in `README.md`. Regenerate rather
   than hand-edit if the UI they show changes materially.
 
@@ -81,19 +78,6 @@ generated with the Web Audio API, so there's nothing to load/bundle besides
 code. See `DESIGN.md` §8 for the art pipeline if real sprites are ever
 wanted.
 
-## Running the old demo (no Node required)
-
-Easiest: open `demo/index.html` directly in a browser.
-
-If your browser blocks local scripts from `file://`, serve it instead:
-
-```
-cd video_game/demo
-python3 -m http.server 8000
-```
-
-then visit `http://localhost:8000`.
-
 ## Current status
 
 Per `DESIGN.md`'s roadmap, the "full build-out" pass is done: all 10 worlds
@@ -104,7 +88,8 @@ through Feynman are lore-only pending a subtype system, see `DESIGN.md`
 visual landmark. The first-run tutorial popup sequence, the Debug Mode
 title-screen toggle (instant world warp + auto-leveling, for testing any
 world without grinding), and the Enter-menu's Settings panel (wild-encounter
-density) were added most recently. `demo/` remains frozen at the much
+density, and a Text Size preset applied via `ui/text.ts`'s `fontPx`/`fontScale`
+helpers) were added most recently. `demo/` remains frozen at the much
 earlier prototype stage described in its own commit history --
 don't treat it as reflecting current mechanics.
 
@@ -117,3 +102,15 @@ browser (or driving a headless Chromium via Puppeteer/Playwright and
 screenshotting, if no display is available) before calling the work done.
 `npx tsc --noEmit -p .` catches type errors but not broken layouts or dead
 click targets.
+
+`main.ts` exposes the live `Phaser.Game` instance as `window.__game` in dev
+builds (`import.meta.env.DEV`), which lets a headless script drive scenes
+directly without clicking through the UI: `window.__game.scene.getScene('Overworld')`
+returns the running scene instance, and its otherwise-private panel methods
+(`showSettingsPanel`, `showEncounter(material)`, etc.) are still callable via
+bracket notation (`ow['showSettingsPanel']()`) since TypeScript's `private`
+is compile-time only. Combined with `page.evaluate` measuring
+`GameObjects.getBounds()` on a panel's container, this is enough to check
+every panel for text overflow/overlap at every font-scale preset
+(`localStorage.setItem('qm-rpg-save-v1', JSON.stringify({ fontScale: 2 }))`
+before reload) without a display or manual playtesting.

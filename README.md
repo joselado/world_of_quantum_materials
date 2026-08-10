@@ -1,25 +1,26 @@
 # World of Quantum Materials
 
-A browser-based, Pokemon-style RPG built to teach the concepts from Aalto
-University's *Advanced Quantum Materials* course. Ten worlds, one per course
-topic -- walk around, get ambushed by real compounds, answer a physics
-question mid-fight, and battle your way to mastering every phase of matter.
+A browser-based RPG with overworld exploration and turn-based battles, built
+to teach the concepts from Aalto University's *Advanced Quantum Materials*
+course a different way. Ten worlds, one per course topic -- walk around, get
+ambushed by real compounds, answer a physics question mid-fight, and battle
+your way to mastering every phase of matter.
 
 ![Title screen](screenshots/title.png)
 
 ## The premise
 
-You are not a trainer catching creatures. **You are a crystal yourself** --
-the same kind of material the wild encounters are drawn from, currently
-Silicon. A "Decoherence" is spreading through the material worlds, causing
+**You are a crystal yourself** -- the same kind of material the wild
+encounters are drawn from, currently Silicon. A "Decoherence" is spreading through the material worlds, causing
 them to lose their protected properties, and you're the one walking through
 each phase of matter to stabilize it again.
 
 ## How it plays
 
 **Explore.** Each world is a walkable corridor rendered in an
-over-the-shoulder pseudo-3D view (think *World of Final Fantasy*): Up/Down
-walk the path forward and back, Left/Right step sideways. The corridor bends
+over-the-shoulder pseudo-3D view, the world redrawn from a smoothly moving
+camera as you walk: Up/Down walk the path forward and back, Left/Right step
+sideways. The corridor bends
 as it climbs, so reaching the far end takes actually tracking the bend, not
 just holding one direction. Short dead-end side paths branch off with a
 qumatoken (the in-game currency) waiting at the end. Every world has its own
@@ -44,12 +45,12 @@ on with no consequence either way.
 
 <table>
 <tr>
-<td><img src="screenshots/encounter.png" width="300" alt="A wild Nickel Oxide asks about the Ising ferromagnet"></td>
+<td><img src="screenshots/encounter.png" width="300" alt="A wild Nickel Oxide asks a physics question mid-encounter"></td>
 <td><img src="screenshots/encounter-topological.png" width="300" alt="A topological crystal asks about the quantum anomalous Hall effect"></td>
 </tr>
 <tr>
 <td><img src="screenshots/encounter-supercon.png" width="300" alt="Aluminum asks about its Chern number"></td>
-<td><img src="screenshots/encounter-tensornet.png" width="300" alt="Herbertsmithite asks about DMRG"></td>
+<td><img src="screenshots/encounter-tensornet.png" width="300" alt="Herbertsmithite asks about a quantum spin liquid's mean-field self-consistency"></td>
 </tr>
 </table>
 
@@ -116,19 +117,20 @@ archetypes, and a rival crystal gating the way to the next world.
 
 | # | World | Biome |
 |---|---|---|
-| 1 | Second quantization, mean-field, symmetry breaking | Tutorial Meadow |
-| 2 | Symmetries, tight-binding band structure | Crystalline Caves |
-| 3 | Topological band theory | Floating Islands |
-| 4 | Magnetic field, quantum Hall effect, Landau levels | Landau Terrain |
+| 1 | Second quantization, mean-field, symmetry breaking | Mean-Field Meadow |
+| 2 | Symmetries, tight-binding band structure | Bloch Caverns |
+| 3 | Topological band theory | Topological Islands |
+| 4 | Magnetic field, quantum Hall effect, Landau levels | Landau Level Terrain |
 | 5 | Superconductivity, Nambu representation, Majoranas | Frozen Zero-Resistance Caverns |
-| 6 | Classical magnetism and magnons | Windswept Plains |
-| 7 | Quantum entanglement and tensor networks | Network-Graph World |
-| 8 | Quantum magnetism, spinons, Kondo physics | Foggy Forest |
-| 9 | Excitations and defects | Cracked World |
-| 10 | Machine learning for quantum materials | The Meta-World |
+| 6 | Classical magnetism and magnons | Magnon Plains |
+| 7 | Quantum entanglement and tensor networks | Tensor-Network World |
+| 8 | Quantum magnetism, spinons, Kondo physics | Spinon Forest |
+| 9 | Excitations and defects | Defect Wastes |
+| 10 | Machine learning for quantum materials | The Adaptive Meta-World |
 
-World 10 has no ordinary wild encounters -- just a final boss built as "a
-model of you," drawing from whatever moves you've collected by then.
+World 10's wilds are "echoes" of earlier phases of matter rather than new
+real compounds, and its rival is a final boss built as "a model of you,"
+drawing from whatever moves you've collected by then.
 
 ## Controls
 
@@ -138,14 +140,18 @@ model of you," drawing from whatever moves you've collected by then.
 | Enter | Open the menu (moves, stats, advisors, tutorial, settings) |
 | H | Return to the Lab (World 0) |
 | M | Mute/unmute music |
-| Space | *(testing shortcut)* jump to the next built world, skipping its gate |
 
 ## Settings
 
-Open the Enter-key menu and click **Settings** to adjust **Enemy Density** --
-Low, Normal, High, or Very High -- if wild crystals feel too sparse (or too
-frequent) along the path. Takes effect the next time you enter or re-enter a
-world.
+Open the Enter-key menu and click **Settings** to adjust:
+
+- **Enemy Density** -- Low, Normal, High, or Very High, if wild crystals feel
+  too sparse (or too frequent) along the path. Takes effect the next time you
+  enter or re-enter a world.
+- **Text Size** -- Compact, Normal, or Large. Applies immediately to every
+  menu and dialogue in the game.
+
+![Settings panel](screenshots/settings.png)
 
 ## Tutorial
 

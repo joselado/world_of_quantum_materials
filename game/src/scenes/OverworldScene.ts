@@ -36,19 +36,22 @@ import { tokenColorForValue } from '../data/tokens';
 import { getMaterialQuestion } from '../data/quiz';
 import { encounterGreeting } from '../data/greetings';
 import { TUTORIAL_PAGES } from '../data/tutorial';
-import { DENSITY_PRESETS, DEFAULT_ENCOUNTER_DENSITY } from '../data/settings';
+import { STORY_BEATS } from '../data/story';
+import { DENSITY_PRESETS, DEFAULT_ENCOUNTER_DENSITY, FONT_SCALE_PRESETS, DEFAULT_FONT_SCALE } from '../data/settings';
 import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
 import type { Material, Move, Stats } from '../data/types';
 import { generateWorldMap } from '../world/mapgen';
 import type { GridPoint } from '../world/mapgen';
+import { fontPx, fontScale } from '../ui/text';
 import { music } from '../audio/music';
 
 // Snapshot of an in-progress map, stashed in the game registry so a round
 // trip through BattleScene resumes exactly where the player left off instead
-// of generating (and spawning onto) a brand new random map. Only cleared by
-// an explicit world switch (Space), which is the one action meant to
-// generate a fresh layout.
+// of generating (and spawning onto) a brand new random map. Only cleared
+// when the scene is (re)created with `regenerate: true` -- an explicit
+// world change via the Hub door, Bloch's teleport, or a debug warp -- which
+// is the one situation meant to generate a fresh layout.
 interface SavedMapState {
   world: number;
   playerTile: GridPoint;
@@ -86,11 +89,11 @@ const QUIZ_CORRECT_MULTIPLIER = 1.5;
 const QUIZ_WRONG_MULTIPLIER = 0.6;
 
 // Worlds with a built overworld map (biome + rival, where applicable) --
-// Space cycles between these for testing, and it's also what bounds Bloch's
-// teleport offers (a "visited" world the player can't actually walk isn't a
-// real destination). All 10 worlds are built as of DESIGN.md's "full
-// build-out" pass. Exported so data/integrity.ts can assert every entry here
-// actually has a biome and a rival.
+// bounds Bloch's teleport offers (a "visited" world the player can't
+// actually walk isn't a real destination) and Debug Mode's warp panels. All
+// 10 worlds are built as of DESIGN.md's "full build-out" pass. Exported so
+// data/integrity.ts can assert every entry here actually has a biome and a
+// rival.
 export const BUILT_WORLDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 function shopCost(move: Move): number {
@@ -293,8 +296,8 @@ export class OverworldScene extends Phaser.Scene {
     this.moving = false;
     // Phaser reuses the same Scene instance across scene.start()/restart()
     // calls -- only init()/create() rerun, class field initializers don't --
-    // so a dialogue left open when the player switches away (Space to
-    // dev-cycle worlds, H to return to the Lab; both skip straight to
+    // so a dialogue left open when the player switches away (H to return to
+    // the Lab, a debug warp, Bloch's teleport -- all skip straight to
     // scene.start without closing whatever's open first) would otherwise
     // leave dialogueActive stuck true forever on this instance, freezing
     // movement (update()'s dialogueActive guard) and the pause menu on
@@ -328,39 +331,31 @@ export class OverworldScene extends Phaser.Scene {
     this.shopTab = 'moves';
     this.recordVisit();
 
+    // Corner HUD block: world name stacked above the token counter (running
+    // `y`, the name's own wordWrap-driven height advancing it) rather than
+    // sharing one row, since a long world name (e.g. world 5's "Frozen
+    // Zero-Resistance Caverns") or a big text-size setting can each push it
+    // to wrap onto two lines and collide with a fixed-position counter. The
+    // key-hint lines that used to live here (movement, M/H/Enter) were
+    // dropped in favor of the Enter-menu's Tutorial pages, which already
+    // cover all of it (data/tutorial.ts) -- a permanent on-screen reminder
+    // was redundant with a replayable one, and doubled the overflow risk
+    // every long world name or big text size already put on this corner.
     const worldName = WORLD_NAMES[this.world] ?? `World ${this.world}`;
-    this.add
-      .text(8, 8, `World ${this.world} -- ${worldName}`, {
-        fontSize: '16px',
+    let hudY = 8;
+    const worldNameText = this.add
+      .text(8, hudY, `World ${this.world} -- ${worldName}`, {
+        fontSize: fontPx(this, 16),
         color: '#ffffff',
         backgroundColor: 'rgba(0,0,0,0.35)',
         padding: { x: 4, y: 2 },
+        wordWrap: { width: CANVAS_W - 16 },
       })
       .setDepth(50);
-    this.add
-      .text(8, 30, 'Up/Down: walk the path forward/back. Left/Right: step sideways.', {
-        fontSize: '12px',
-        color: '#eeeeee',
-        backgroundColor: 'rgba(0,0,0,0.35)',
-        padding: { x: 4, y: 2 },
-      })
-      .setDepth(50);
-    this.add
-      .text(
-        8,
-        52,
-        'M: mute/unmute music. H: return to the Lab. Enter: menu. Space: switch world (testing, skips gates).',
-        {
-          fontSize: '12px',
-          color: '#eeeeee',
-          backgroundColor: 'rgba(0,0,0,0.35)',
-          padding: { x: 4, y: 2 },
-        }
-      )
-      .setDepth(50);
+    hudY += worldNameText.height + 4;
     this.tokenText = this.add
-      .text(CANVAS_W - 8, 8, `Qumatokens: ${this.qumatokens}`, {
-        fontSize: '14px',
+      .text(CANVAS_W - 8, hudY, `Qumatokens: ${this.qumatokens}`, {
+        fontSize: fontPx(this, 14),
         color: '#ffe066',
         backgroundColor: 'rgba(0,0,0,0.35)',
         padding: { x: 4, y: 2 },
@@ -369,7 +364,7 @@ export class OverworldScene extends Phaser.Scene {
       .setDepth(50);
     this.goalText = this.add
       .text(CANVAS_W / 2, 90, 'You reached the far edge of this world!', {
-        fontSize: '14px',
+        fontSize: fontPx(this, 14),
         color: '#ffffff',
         backgroundColor: 'rgba(0,0,0,0.5)',
         padding: { x: 6, y: 4 },
@@ -392,7 +387,6 @@ export class OverworldScene extends Phaser.Scene {
 
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.input.keyboard!.on('keydown-M', () => music.toggleMute());
-    this.input.keyboard!.on('keydown-SPACE', () => this.switchWorld());
     this.input.keyboard!.on('keydown-H', () => this.scene.start('Hub'));
     this.input.keyboard!.on('keydown-ENTER', () => this.togglePauseMenu());
 
@@ -424,8 +418,8 @@ export class OverworldScene extends Phaser.Scene {
   // Debug mode (Title screen toggle, data/save.ts's `debugMode`): re-levels
   // the player to a fair footing for whatever world this scene just entered,
   // on every entry -- not just an explicit debug warp, so Continue-to-next-
-  // world, Bloch's teleport, and the dev Space-cycle shortcut all stay
-  // competitive too. A flat +2 over enemyStatsForWorld keeps the player
+  // world and Bloch's teleport stay competitive too. A flat +2 over
+  // enemyStatsForWorld keeps the player
   // slightly ahead rather than exactly even. Also grants every move (so
   // there's always something to fight with regardless of what's been
   // bought) and a full heal.
@@ -467,69 +461,109 @@ export class OverworldScene extends Phaser.Scene {
     this.renderTutorialPage();
   }
 
+  // Content is laid out top-down first (running `y`, each line's own
+  // wordWrap-driven height advancing it), and the backing panel sized/
+  // inserted behind everything afterward -- same pattern as
+  // showSettingsPanel, needed here for the same reason: page title/body
+  // length varies, and so does the text-size setting they're rendered at.
   private renderTutorialPage() {
     this.dialogueContainer?.destroy(true);
 
-    const panelY = 300;
+    const panelWidth = 560;
+    const top = 34;
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
 
-    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 560, 300, 0x10101c, 0.95).setStrokeStyle(2, 0x5ad9ff);
-    container.add(panel);
+    let y = top;
 
     const page = TUTORIAL_PAGES[this.tutorialIndex];
     const counter = this.add
-      .text(CANVAS_W / 2, panelY - 140, `TUTORIAL -- ${this.tutorialIndex + 1} / ${TUTORIAL_PAGES.length}`, {
-        fontSize: '11px',
+      .text(CANVAS_W / 2, y, `TUTORIAL -- ${this.tutorialIndex + 1} / ${TUTORIAL_PAGES.length}`, {
+        fontSize: fontPx(this, 11),
         color: '#5ad9ff',
       })
       .setOrigin(0.5, 0);
     container.add(counter);
+    y += counter.height + 8;
 
     const title = this.add
-      .text(CANVAS_W / 2, panelY - 116, page.title, { fontSize: '16px', color: '#ffffff', fontStyle: 'bold', align: 'center', wordWrap: { width: 500 } })
+      .text(CANVAS_W / 2, y, page.title, {
+        fontSize: fontPx(this, 16),
+        color: '#ffffff',
+        fontStyle: 'bold',
+        align: 'center',
+        wordWrap: { width: panelWidth - 60 },
+      })
       .setOrigin(0.5, 0);
     container.add(title);
+    y += title.height + 12;
 
     const body = this.add
-      .text(CANVAS_W / 2, panelY - 76, page.body, {
-        fontSize: '12px',
+      .text(CANVAS_W / 2, y, page.body, {
+        fontSize: fontPx(this, 12),
         color: '#cfd8ff',
         align: 'center',
-        wordWrap: { width: 500 },
+        wordWrap: { width: panelWidth - 60 },
         lineSpacing: 5,
       })
       .setOrigin(0.5, 0);
     container.add(body);
+    y += body.height + 18;
 
-    const footerY = panelY + 110;
+    const footerY = y;
     const isFirst = this.tutorialIndex === 0;
     const isLast = this.tutorialIndex === TUTORIAL_PAGES.length - 1;
 
+    let footerHeight = 0;
     if (!isFirst) {
-      this.addDialogueButtonAt(container, CANVAS_W / 2 - 170, footerY, '<- Back', () => {
-        this.tutorialIndex -= 1;
-        this.renderTutorialPage();
-      }, 130);
+      const back = this.addDialogueButtonAt(
+        container,
+        CANVAS_W / 2 - 170,
+        footerY,
+        '<- Back',
+        () => {
+          this.tutorialIndex -= 1;
+          this.renderTutorialPage();
+        },
+        130
+      );
+      footerHeight = Math.max(footerHeight, back.height);
     }
-    this.addDialogueButtonAt(container, CANVAS_W / 2, footerY, isLast ? 'Done' : 'Skip', () => this.closeDialogue(), 100);
+    const mid = this.addDialogueButtonAt(
+      container,
+      CANVAS_W / 2,
+      footerY,
+      isLast ? 'Done' : 'Skip',
+      () => this.closeDialogue(),
+      100
+    );
+    footerHeight = Math.max(footerHeight, mid.height);
     if (!isLast) {
-      this.addDialogueButtonAt(container, CANVAS_W / 2 + 170, footerY, 'Next ->', () => {
-        this.tutorialIndex += 1;
-        this.renderTutorialPage();
-      }, 130);
+      const next = this.addDialogueButtonAt(
+        container,
+        CANVAS_W / 2 + 170,
+        footerY,
+        'Next ->',
+        () => {
+          this.tutorialIndex += 1;
+          this.renderTutorialPage();
+        },
+        130
+      );
+      footerHeight = Math.max(footerHeight, next.height);
     }
-  }
+    y = footerY + footerHeight + 14;
 
-  private switchWorld() {
-    const idx = BUILT_WORLDS.indexOf(this.world);
-    const next = BUILT_WORLDS[(idx + 1) % BUILT_WORLDS.length];
-    this.scene.restart({ world: next, regenerate: true });
+    const panelHeight = y - top;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.95)
+      .setStrokeStyle(2, 0x5ad9ff);
+    container.addAt(panel, 0);
   }
 
   // Fresh random layout -- used on first load and whenever the player
-  // explicitly switches worlds (Space), which is the one action meant to
-  // reshuffle the map.
+  // explicitly changes worlds (Hub door, Bloch's teleport, a debug warp),
+  // which is the one action meant to reshuffle the map.
   private generateMap() {
     this.reachedGoal = false;
     this.reachedMiddle = false;
@@ -928,7 +962,7 @@ export class OverworldScene extends Phaser.Scene {
 
         const label = this.add
           .text(0, 0, material.name, {
-            fontSize: '11px',
+            fontSize: fontPx(this, 11),
             color: '#ffffff',
             backgroundColor: 'rgba(0,0,0,0.45)',
             padding: { x: 3, y: 1 },
@@ -963,7 +997,7 @@ export class OverworldScene extends Phaser.Scene {
 
         const label = this.add
           .text(0, 0, `+${value}`, {
-            fontSize: '12px',
+            fontSize: fontPx(this, 12),
             color: '#ffffff',
             backgroundColor: 'rgba(0,0,0,0.45)',
             padding: { x: 3, y: 1 },
@@ -995,7 +1029,7 @@ export class OverworldScene extends Phaser.Scene {
 
     const label = this.add
       .text(0, 0, mentor.name, {
-        fontSize: '11px',
+        fontSize: fontPx(this, 11),
         color: mentor.labelColor,
         backgroundColor: 'rgba(0,0,0,0.45)',
         padding: { x: 3, y: 1 },
@@ -1023,7 +1057,7 @@ export class OverworldScene extends Phaser.Scene {
 
     const label = this.add
       .text(0, 0, boss.name, {
-        fontSize: '12px',
+        fontSize: fontPx(this, 12),
         fontStyle: 'bold',
         color: '#ff8f8f',
         backgroundColor: 'rgba(0,0,0,0.5)',
@@ -1112,60 +1146,80 @@ export class OverworldScene extends Phaser.Scene {
   // straight to a fight/pass choice if there's no question yet. Deliberately
   // an overlay inside this scene rather than a separate scene -- asking a
   // question shouldn't feel like leaving the map.
+  // Content laid out top-down first (running `y`, each element's own height
+  // advancing it), panel sized/inserted behind everything afterward -- same
+  // pattern as showSettingsPanel/renderTutorialPage, needed here because
+  // this is the single most-seen dialogue in the game and both the
+  // greeting and the physics question vary in length per material.
   private showEncounter(material: Material) {
     this.dialogueActive = true;
 
-    const panelY = 300;
+    const panelWidth = 600;
+    const contentWidth = panelWidth - 60;
+    const top = 20;
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
 
-    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 600, 300, 0x10101c, 0.94).setStrokeStyle(2, 0x444466);
-    container.add(panel);
-
+    const crystalY = top + 34;
     const crystal = makeCrystal(this, 30, material.color, material.variant);
-    crystal.setPosition(CANVAS_W / 2, panelY - 128);
+    crystal.setPosition(CANVAS_W / 2, crystalY);
     container.add(crystal);
-    this.tweens.add({ targets: crystal, y: panelY - 120, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.tweens.add({ targets: crystal, y: crystalY + 8, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    let y = crystalY + 40;
 
     const greeting = this.add
-      .text(CANVAS_W / 2, panelY - 92, encounterGreeting(material), {
-        fontSize: '12px',
+      .text(CANVAS_W / 2, y, encounterGreeting(material), {
+        fontSize: fontPx(this, 12),
         fontStyle: 'italic',
         color: '#cfd8ff',
         align: 'center',
-        wordWrap: { width: 520 },
+        wordWrap: { width: contentWidth },
       })
       .setOrigin(0.5, 0);
     container.add(greeting);
+    y += greeting.height + 14;
 
     const question = getMaterialQuestion(material.name);
     if (question) {
       const prompt = this.add
-        .text(CANVAS_W / 2, panelY - 52, question.prompt, {
-          fontSize: '13px',
+        .text(CANVAS_W / 2, y, question.prompt, {
+          fontSize: fontPx(this, 13),
           color: '#ffe066',
           align: 'center',
-          wordWrap: { width: 520 },
+          wordWrap: { width: contentWidth },
         })
         .setOrigin(0.5, 0);
       container.add(prompt);
+      y += prompt.height + 14;
 
       const options = Phaser.Utils.Array.Shuffle([
         { text: question.correct, correct: true },
         { text: question.incorrect, correct: false },
       ]);
 
-      this.addDialogueButton(container, panelY + 4, options[0].text, () =>
+      const btn1 = this.addDialogueButton(container, y, options[0].text, () =>
         this.startBattle(material, options[0].correct ? QUIZ_CORRECT_MULTIPLIER : QUIZ_WRONG_MULTIPLIER)
       );
-      this.addDialogueButton(container, panelY + 48, options[1].text, () =>
+      y += btn1.height + 8;
+      const btn2 = this.addDialogueButton(container, y, options[1].text, () =>
         this.startBattle(material, options[1].correct ? QUIZ_CORRECT_MULTIPLIER : QUIZ_WRONG_MULTIPLIER)
       );
-      this.addDialogueButton(container, panelY + 100, 'Let me pass', () => this.closeDialogue());
+      y += btn2.height + 8;
+      const btn3 = this.addDialogueButton(container, y, 'Let me pass', () => this.closeDialogue());
+      y += btn3.height;
     } else {
-      this.addDialogueButton(container, panelY - 20, 'Fight!', () => this.startBattle(material, 1));
-      this.addDialogueButton(container, panelY + 24, 'Let me pass', () => this.closeDialogue());
+      const btn1 = this.addDialogueButton(container, y, 'Fight!', () => this.startBattle(material, 1));
+      y += btn1.height + 8;
+      const btn2 = this.addDialogueButton(container, y, 'Let me pass', () => this.closeDialogue());
+      y += btn2.height;
     }
+    y += top;
+
+    const panelHeight = y - top;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+      .setStrokeStyle(2, 0x444466);
+    container.addAt(panel, 0);
   }
 
   private addDialogueButton(container: Phaser.GameObjects.Container, y: number, label: string, onClick: () => void) {
@@ -1182,11 +1236,12 @@ export class OverworldScene extends Phaser.Scene {
     y: number,
     label: string,
     onClick: () => void,
-    wrapWidth = 230
+    wrapWidth = 230,
+    fontSizePxOverride?: string
   ) {
     const btn = this.add
       .text(x, y, label, {
-        fontSize: '13px',
+        fontSize: fontSizePxOverride ?? fontPx(this, 13),
         color: '#ffff88',
         backgroundColor: '#222244',
         padding: { x: 10, y: 5 },
@@ -1274,23 +1329,32 @@ export class OverworldScene extends Phaser.Scene {
   private showGatePanel() {
     this.dialogueActive = true;
 
-    const panelY = 300;
+    const panelWidth = 500;
+    const top = 40;
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
 
-    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 500, 200, 0x10101c, 0.94).setStrokeStyle(2, 0x8fa0c9);
-    container.add(panel);
+    let y = top;
 
     const text = this.add
-      .text(CANVAS_W / 2, panelY - 60, 'The path onward is still guarded.', {
-        fontSize: '14px',
+      .text(CANVAS_W / 2, y, 'The path onward is still guarded.', {
+        fontSize: fontPx(this, 14),
         color: '#ffffff',
         align: 'center',
+        wordWrap: { width: panelWidth - 60 },
       })
       .setOrigin(0.5, 0);
     container.add(text);
+    y += text.height + 24;
 
-    this.renderShopFooter(container, panelY - 60);
+    y = this.renderShopFooter(container, y);
+    y += 16;
+
+    const panelHeight = y - top;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+      .setStrokeStyle(2, 0x8fa0c9);
+    container.addAt(panel, 0);
   }
 
   // Every built world (1-10) can be advanced past once its rival is
@@ -1303,11 +1367,56 @@ export class OverworldScene extends Phaser.Scene {
         this.showFinalePanel();
         return;
       }
-      this.advanceToWorld(this.world + 1);
+      this.closeDialogue();
+      this.showStoryBeat(this.world);
       return;
     }
     this.closeDialogue();
     this.showRivalEncounter();
+  }
+
+  // Decoherence-arc flavor shown once per world, between beating that
+  // world's rival and actually stepping into the next one -- the connective
+  // tissue DESIGN.md's plot hook otherwise only surfaces at the very start
+  // (the tutorial's first page) and the very end (showFinalePanel). Falls
+  // straight through to advanceToWorld if a world has no STORY_BEATS entry,
+  // so a missing beat is never a dead end.
+  private showStoryBeat(completedWorld: number) {
+    const line = STORY_BEATS[completedWorld];
+    if (!line) {
+      this.advanceToWorld(completedWorld + 1);
+      return;
+    }
+
+    this.dialogueActive = true;
+    const panelY = 260;
+    const container = this.add.container(0, 0).setDepth(100);
+    this.dialogueContainer = container;
+
+    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 560, 200, 0x10101c, 0.96).setStrokeStyle(2, 0xd9a5ff);
+    container.add(panel);
+
+    const text = this.add
+      .text(CANVAS_W / 2, panelY - 70, line, {
+        fontSize: fontPx(this, 13),
+        color: '#e6d9ff',
+        align: 'center',
+        wordWrap: { width: 500 },
+      })
+      .setOrigin(0.5, 0);
+    container.add(text);
+
+    this.addDialogueButtonAt(
+      container,
+      CANVAS_W / 2,
+      panelY + 60,
+      'Onward',
+      () => {
+        this.closeDialogue();
+        this.advanceToWorld(completedWorld + 1);
+      },
+      200
+    );
   }
 
   // Shown once the last built world's rival is beaten -- a real ending
@@ -1325,7 +1434,7 @@ export class OverworldScene extends Phaser.Scene {
 
     const title = this.add
       .text(CANVAS_W / 2, panelY - 80, 'The Decoherence is stabilized.', {
-        fontSize: '18px',
+        fontSize: fontPx(this, 16),
         color: '#ffe066',
         fontStyle: 'bold',
         align: 'center',
@@ -1338,7 +1447,7 @@ export class OverworldScene extends Phaser.Scene {
         CANVAS_W / 2,
         panelY - 44,
         "You mastered every phase of matter the model could throw at you. Thanks for playing.",
-        { fontSize: '13px', color: '#cfd8ff', align: 'center', wordWrap: { width: 480 } }
+        { fontSize: fontPx(this, 13), color: '#cfd8ff', align: 'center', wordWrap: { width: 480 } }
       )
       .setOrigin(0.5, 0);
     container.add(body);
@@ -1373,74 +1482,104 @@ export class OverworldScene extends Phaser.Scene {
 
     this.dialogueActive = true;
 
-    const panelY = 300;
+    const panelWidth = 600;
+    const top = 20;
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
 
-    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 600, 260, 0x10101c, 0.94).setStrokeStyle(2, 0xff6666);
-    container.add(panel);
+    let y = top;
 
+    const crystalY = y + 34;
     const crystal = makeCrystal(this, 34, rival.color, rival.variant);
-    crystal.setPosition(CANVAS_W / 2, panelY - 96);
+    crystal.setPosition(CANVAS_W / 2, crystalY);
     container.add(crystal);
-    this.tweens.add({ targets: crystal, y: panelY - 86, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.tweens.add({ targets: crystal, y: crystalY + 10, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    y = crystalY + 44;
 
     const line = this.add
-      .text(CANVAS_W / 2, panelY - 56, `${rival.name} blocks the path onward. "You don't get past me that easily."`, {
-        fontSize: '12px',
+      .text(CANVAS_W / 2, y, `${rival.name} blocks the path onward. "You don't get past me that easily."`, {
+        fontSize: fontPx(this, 12),
         fontStyle: 'italic',
         color: '#ffb3b3',
         align: 'center',
-        wordWrap: { width: 520 },
+        wordWrap: { width: panelWidth - 80 },
       })
       .setOrigin(0.5, 0);
     container.add(line);
+    y += line.height + 16;
 
-    this.addDialogueButton(container, panelY - 4, 'Battle!', () => this.startBattle(rival, 1, true));
+    const battleBtn = this.addDialogueButton(container, y, 'Battle!', () => this.startBattle(rival, 1, true));
+    y += battleBtn.height;
+    y += 20;
+
+    const panelHeight = y - top;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+      .setStrokeStyle(2, 0xff6666);
+    container.addAt(panel, 0);
   }
 
   // Noether appears once the player reaches world 1's middle tile, selling
   // the other early moves and stat upgrades for qumatokens, in two tabs of
   // the same panel. Same in-map dialogue pattern as a wild encounter, but
   // with a mentor avatar and a shop list instead of a fight.
+  // Content laid out top-down first (running `y`, each element's own
+  // height advancing it), panel sized/inserted behind everything
+  // afterward -- same pattern as showSettingsPanel. The intro quote used
+  // to sit at a fixed offset from the avatar that assumed a short 1-line
+  // render; at a bigger text-size setting it wraps to 3-4 lines and would
+  // otherwise run straight into the tabs/rows below it.
   private showNoetherShop() {
     this.dialogueActive = true;
 
-    const panelY = 300;
+    const panelWidth = 600;
+    const top = 20;
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
 
-    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 600, 340, 0x10101c, 0.94).setStrokeStyle(2, 0xffe066);
-    container.add(panel);
+    let y = top;
 
+    const avatarY = y + 42;
     const avatar = makeNoetherAvatar(this);
-    avatar.setPosition(CANVAS_W / 2, panelY - 105);
+    avatar.setPosition(CANVAS_W / 2, avatarY);
     container.add(avatar);
-    this.tweens.add({ targets: avatar, y: panelY - 97, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     playMentorChime();
+    y = avatarY + 48;
 
     const intro = this.add
       .text(
         CANVAS_W / 2,
-        panelY - 68,
+        y,
         '"I am Noether. Every symmetry hides a conservation law -- spend your qumatokens on a new attack, or a sharper stat."',
-        { fontSize: '12px', fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: 520 } }
+        { fontSize: fontPx(this, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
       )
       .setOrigin(0.5, 0);
     container.add(intro);
+    y += intro.height + 10;
 
-    this.renderShopTabs(container, panelY);
-    if (this.shopTab === 'moves') this.renderShopMoves(container, panelY);
-    else this.renderShopStats(container, panelY);
+    y = this.renderShopTabs(container, y);
+    y += 6;
+
+    y = this.shopTab === 'moves' ? this.renderShopMoves(container, y) : this.renderShopStats(container, y);
+    y += 8;
+    y = this.renderFarewellFooter(container, y);
+    y += 8;
+
+    const panelHeight = y - top;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+      .setStrokeStyle(2, 0xffe066);
+    container.addAt(panel, 0);
   }
 
-  private renderShopTabs(container: Phaser.GameObjects.Container, panelY: number) {
-    const y = panelY - 24;
+  private renderShopTabs(container: Phaser.GameObjects.Container, y: number): number {
+    let maxHeight = 0;
     (['moves', 'stats'] as const).forEach((tab, i) => {
       const active = this.shopTab === tab;
       const btn = this.add
         .text(CANVAS_W / 2 + (i === 0 ? -45 : 45), y, tab === 'moves' ? 'Moves' : 'Stats', {
-          fontSize: '11px',
+          fontSize: fontPx(this, 11),
           color: active ? '#ffe066' : '#8fa0c9',
           backgroundColor: active ? '#333355' : '#1a1a2e',
           padding: { x: 8, y: 3 },
@@ -1454,10 +1593,12 @@ export class OverworldScene extends Phaser.Scene {
           this.showNoetherShop();
         });
       container.add(btn);
+      maxHeight = Math.max(maxHeight, btn.height);
     });
+    return y + maxHeight;
   }
 
-  private renderShopMoves(container: Phaser.GameObjects.Container, panelY: number) {
+  private renderShopMoves(container: Phaser.GameObjects.Container, y: number): number {
     const unlocked = this.getUnlockedMoves();
     const compatible = new Set(compatibleMoves(this.playerMaterial));
     const forSale = SHOP_MOVE_IDS.filter((id) => !unlocked.includes(id) && compatible.has(id));
@@ -1465,39 +1606,40 @@ export class OverworldScene extends Phaser.Scene {
 
     if (forSale.length === 0) {
       const text = this.add
-        .text(CANVAS_W / 2, panelY + 8, "Nothing your current form can carry is left to teach.", {
-          fontSize: '13px',
+        .text(CANVAS_W / 2, y, "Nothing your current form can carry is left to teach.", {
+          fontSize: fontPx(this, 13),
           color: '#ffffff',
           align: 'center',
           wordWrap: { width: 480 },
         })
         .setOrigin(0.5, 0);
       container.add(text);
-    } else {
-      forSale.forEach((id, i) => {
-        const move = MOVES[id];
-        const cost = shopCost(move);
-        const affordable = tokens >= cost;
-        const btn = this.addDialogueButton(container, panelY + 8 + i * 36, `${move.name} -- ${cost} qumatokens`, () => {
-          if ((this.game.registry.get('qumatokens') as number) < cost) return;
-          this.qumatokens -= cost;
-          this.game.registry.set('qumatokens', this.qumatokens);
-          this.tokenText.setText(`Qumatokens: ${this.qumatokens}`);
-          this.game.registry.set('unlockedMoves', [...this.getUnlockedMoves(), id]);
-          persistFromRegistry(this.game.registry);
-          // Rebuild the whole panel so the purchased move disappears from
-          // the list and the token total on display stays correct.
-          this.dialogueContainer?.destroy(true);
-          this.showNoetherShop();
-        });
-        if (!affordable) btn.setAlpha(0.5);
-      });
+      return y + text.height;
     }
 
-    this.renderFarewellFooter(container, panelY);
+    forSale.forEach((id) => {
+      const move = MOVES[id];
+      const cost = shopCost(move);
+      const affordable = tokens >= cost;
+      const btn = this.addDialogueButton(container, y, `${move.name} -- ${cost} qumatokens`, () => {
+        if ((this.game.registry.get('qumatokens') as number) < cost) return;
+        this.qumatokens -= cost;
+        this.game.registry.set('qumatokens', this.qumatokens);
+        this.tokenText.setText(`Qumatokens: ${this.qumatokens}`);
+        this.game.registry.set('unlockedMoves', [...this.getUnlockedMoves(), id]);
+        persistFromRegistry(this.game.registry);
+        // Rebuild the whole panel so the purchased move disappears from
+        // the list and the token total on display stays correct.
+        this.dialogueContainer?.destroy(true);
+        this.showNoetherShop();
+      });
+      if (!affordable) btn.setAlpha(0.5);
+      y += btn.height + 3;
+    });
+    return y;
   }
 
-  private renderShopStats(container: Phaser.GameObjects.Container, panelY: number) {
+  private renderShopStats(container: Phaser.GameObjects.Container, y: number): number {
     const stats = getPlayerStats(this.game.registry);
     const tokens = (this.game.registry.get('qumatokens') as number) || 0;
     const rows: { key: keyof Stats; label: string }[] = [
@@ -1506,13 +1648,13 @@ export class OverworldScene extends Phaser.Scene {
       { key: 'correlation', label: 'Correlation (defense)' },
     ];
 
-    rows.forEach((row, i) => {
+    rows.forEach((row) => {
       const value = stats[row.key];
       const cost = statUpgradeCost(value);
       const affordable = tokens >= cost;
       const btn = this.addDialogueButton(
         container,
-        panelY + 8 + i * 36,
+        y,
         `${row.label}: ${value} -> ${value + 1} -- ${cost} qumatokens`,
         () => {
           const current = (this.game.registry.get('qumatokens') as number) || 0;
@@ -1528,9 +1670,9 @@ export class OverworldScene extends Phaser.Scene {
         }
       );
       if (!affordable) btn.setAlpha(0.5);
+      y += btn.height + 3;
     });
-
-    this.renderFarewellFooter(container, panelY);
+    return y;
   }
 
   // Fixed footer row (not stacked below the variable-length content above
@@ -1540,9 +1682,14 @@ export class OverworldScene extends Phaser.Scene {
   // deliberately the *only* place "Face the Rival"/"Continue" appears, so
   // reaching it requires actually walking to the goal where that world's
   // boss is waiting (spawnBossSprite), not just meeting the mid-corridor
-  // mentor. Space is a dev-only shortcut that skips the rival gate entirely.
-  private renderShopFooter(container: Phaser.GameObjects.Container, panelY: number) {
-    const footerY = panelY + 120;
+  // mentor. Debug Mode's warp panels are the one path that still bypasses
+  // this gate entirely (see applyDebugLeveling/rivalDefeated above).
+  // Takes/returns the actual y the footer should render at (and ends at)
+  // rather than deriving it from a fixed offset off a panel-center constant
+  // -- callers now build their content top-down with a running `y` and
+  // hand that straight in, so a footer never lands on top of whatever
+  // variable-length content is above it.
+  private renderShopFooter(container: Phaser.GameObjects.Container, footerY: number): number {
     const rivalDefeated = this.isRivalDefeated();
     const isLastWorld = this.world >= Math.max(...BUILT_WORLDS);
     const nextLabel = !rivalDefeated
@@ -1550,15 +1697,17 @@ export class OverworldScene extends Phaser.Scene {
       : isLastWorld
       ? 'The Decoherence is stabilized ->'
       : `Continue to World ${this.world + 1} ->`;
-    this.addDialogueButtonAt(container, CANVAS_W / 2 - 118, footerY, 'Farewell', () => this.closeDialogue());
-    this.addDialogueButtonAt(container, CANVAS_W / 2 + 118, footerY, nextLabel, () => this.tryAdvanceToNextWorld());
+    const a = this.addDialogueButtonAt(container, CANVAS_W / 2 - 118, footerY, 'Farewell', () => this.closeDialogue());
+    const b = this.addDialogueButtonAt(container, CANVAS_W / 2 + 118, footerY, nextLabel, () => this.tryAdvanceToNextWorld());
+    return footerY + Math.max(a.height, b.height);
   }
 
   // Mid-corridor mentor panels (every one but the goal's showGatePanel) only
   // need a way to close -- see renderShopFooter's comment for why the
   // Face-the-Rival/Continue action doesn't belong here anymore.
-  private renderFarewellFooter(container: Phaser.GameObjects.Container, panelY: number) {
-    this.addDialogueButtonAt(container, CANVAS_W / 2, panelY + 120, 'Farewell', () => this.closeDialogue(), 260);
+  private renderFarewellFooter(container: Phaser.GameObjects.Container, footerY: number): number {
+    const btn = this.addDialogueButtonAt(container, CANVAS_W / 2, footerY, 'Farewell', () => this.closeDialogue(), 260);
+    return footerY + btn.height;
   }
 
   private advanceToWorld(world: number) {
@@ -1595,71 +1744,77 @@ export class OverworldScene extends Phaser.Scene {
   // on. Ends in the plain "Farewell"-only renderFarewellFooter, not the
   // Face-the-Rival/Continue footer -- that stays exclusive to the goal
   // panel now that Bloch stands mid-corridor rather than at the goal.
+  // Content laid out top-down first (running `y`), panel sized/inserted
+  // behind everything afterward -- same pattern as showSettingsPanel.
   private showBlochHub() {
     this.dialogueActive = true;
 
     const destinations = this.getVisitedWorlds().filter((w) => BUILT_WORLDS.includes(w) && w !== this.world);
-    // With only 3 built worlds this list could show at most 2 destinations,
-    // comfortably fitting the avatar, full quote, rows, and footer inside a
-    // fixed 340-tall panel. Now that all 10 are built, a well-traveled
-    // player can see up to 9 -- which doesn't fit alongside the avatar
-    // within the 480px canvas at any row spacing safely above a button's
-    // own rendered height (~26px). Past a handful of destinations, drop the
-    // avatar and shrink the intro instead of shrinking row spacing below
-    // what's clickable (which would let adjacent rows overlap and misroute
-    // a click to the wrong world).
+    // With only 3 built worlds this list could show at most 2 destinations.
+    // Now that all 10 are built, a well-traveled player can see up to 9 --
+    // avatar + full quote + 9 rows + footer doesn't fit inside the 480px
+    // canvas even with an adaptive layout, so past a handful of
+    // destinations this still drops the avatar and shrinks the intro
+    // rather than shrinking rows below a clickable size.
     const compact = destinations.length > 5;
 
-    const panelY = 240;
-    const panelHeight = 440;
-    const footerPanelY = panelY + 200 - 120; // renderFarewellFooter adds +120 back
+    const panelWidth = 600;
+    const top = 20;
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
 
-    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 600, panelHeight, 0x10101c, 0.94).setStrokeStyle(2, 0x4adde0);
-    container.add(panel);
+    let y = top;
 
-    let introY: number;
-    let rowsTop: number;
     if (!compact) {
+      const avatarY = y + 55;
       const avatar = makeBlochAvatar(this);
-      avatar.setPosition(CANVAS_W / 2, panelY - 105);
+      avatar.setPosition(CANVAS_W / 2, avatarY);
       container.add(avatar);
-      this.tweens.add({ targets: avatar, y: panelY - 97, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-      introY = panelY - 68;
-      rowsTop = panelY - 8;
-    } else {
-      introY = panelY - 195;
-      rowsTop = panelY - 150;
+      this.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      y = avatarY + 65;
     }
     playMentorChime();
 
     const intro = this.add
       .text(
         CANVAS_W / 2,
-        introY,
+        y,
         '"I am Bloch. Every crystal is a superposition of the worlds it has touched -- name one you have visited, and I will fold you there."',
-        { fontSize: '12px', fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: 520 } }
+        {
+          fontSize: fontPx(this, compact ? 11 : 12),
+          fontStyle: 'italic',
+          color: '#cfd8ff',
+          align: 'center',
+          wordWrap: { width: panelWidth - 80 },
+        }
       )
       .setOrigin(0.5, 0);
     container.add(intro);
+    y += intro.height + 14;
 
     if (destinations.length === 0) {
       const text = this.add
-        .text(CANVAS_W / 2, rowsTop, "You haven't mapped anywhere else yet.", { fontSize: '13px', color: '#ffffff' })
+        .text(CANVAS_W / 2, y, "You haven't mapped anywhere else yet.", { fontSize: fontPx(this, 13), color: '#ffffff' })
         .setOrigin(0.5, 0);
       container.add(text);
+      y += text.height;
     } else {
-      const spacing = compact ? 30 : 36;
-      destinations.forEach((w, i) => {
+      destinations.forEach((w) => {
         const name = WORLD_NAMES[w] ?? `World ${w}`;
-        this.addDialogueButton(container, rowsTop + i * spacing, `Travel to World ${w} -- ${name}`, () =>
-          this.advanceToWorld(w)
-        );
+        const btn = this.addDialogueButton(container, y, `Travel to World ${w} -- ${name}`, () => this.advanceToWorld(w));
+        y += btn.height + (compact ? 4 : 6);
       });
     }
+    y += 8;
 
-    this.renderFarewellFooter(container, footerPanelY);
+    y = this.renderFarewellFooter(container, y);
+    y += 12;
+
+    const panelHeight = y - top;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+      .setStrokeStyle(2, 0x4adde0);
+    container.addAt(panel, 0);
   }
 
   // Bohr stands at world 3's middle tile like every other mentor now (see
@@ -1667,56 +1822,71 @@ export class OverworldScene extends Phaser.Scene {
   // (maybeAutoOpenMiddleDialogue). Lets the player transmute into any
   // crystal they've defeated -- the physics rationale being that beating
   // something is understanding it well enough to become it for a while.
+  // Content laid out top-down first (running `y`), panel sized/inserted
+  // behind everything afterward -- same pattern as showSettingsPanel.
   private showBohrPanel() {
     this.dialogueActive = true;
 
-    const panelY = 300;
+    const panelWidth = 600;
+    const top = 20;
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
 
-    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 600, 340, 0x10101c, 0.94).setStrokeStyle(2, 0xffa64a);
-    container.add(panel);
+    let y = top;
 
+    const avatarY = y + 55;
     const avatar = makeBohrAvatar(this);
-    avatar.setPosition(CANVAS_W / 2, panelY - 105);
+    avatar.setPosition(CANVAS_W / 2, avatarY);
     container.add(avatar);
-    this.tweens.add({ targets: avatar, y: panelY - 97, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     playMentorChime();
+    y = avatarY + 65;
 
     const intro = this.add
       .text(
         CANVAS_W / 2,
-        panelY - 68,
+        y,
         '"I am Bohr. Every crystal you have defeated is a state you now understand well enough to become, for a while."',
-        { fontSize: '12px', fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: 520 } }
+        { fontSize: fontPx(this, 12), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
       )
       .setOrigin(0.5, 0);
     container.add(intro);
+    y += intro.height + 14;
 
     const defeated = this.getDefeatedMaterials().slice(-3);
     if (defeated.length === 0) {
       const text = this.add
-        .text(CANVAS_W / 2, panelY - 8, "You haven't defeated any crystals yet -- there is nothing to become.", {
-          fontSize: '13px',
+        .text(CANVAS_W / 2, y, "You haven't defeated any crystals yet -- there is nothing to become.", {
+          fontSize: fontPx(this, 13),
           color: '#ffffff',
           align: 'center',
           wordWrap: { width: 480 },
         })
         .setOrigin(0.5, 0);
       container.add(text);
+      y += text.height;
     } else {
-      defeated.forEach((m, i) => {
+      defeated.forEach((m) => {
         const isCurrent = this.playerMaterial.name === m.name;
         const label = isCurrent ? `${m.name} (current form)` : `Become ${m.name}`;
-        const btn = this.addDialogueButton(container, panelY - 8 + i * 36, label, () => {
+        const btn = this.addDialogueButton(container, y, label, () => {
           if (isCurrent) return;
           this.transmuteInto(m.name);
         });
         if (isCurrent) btn.setAlpha(0.5);
+        y += btn.height + 6;
       });
     }
+    y += 8;
 
-    this.addDialogueButtonAt(container, CANVAS_W / 2, panelY + 120, 'Farewell', () => this.closeDialogue(), 300);
+    const closeBtn = this.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Farewell', () => this.closeDialogue(), 300);
+    y += closeBtn.height + 12;
+
+    const panelHeight = y - top;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+      .setStrokeStyle(2, 0xffa64a);
+    container.addAt(panel, 0);
   }
 
   private transmuteInto(name: string) {
@@ -1751,44 +1921,57 @@ export class OverworldScene extends Phaser.Scene {
   // Face-the-Rival/Continue progression action stays exclusive to the goal
   // panel (showGatePanel), reached only once the player actually walks the
   // rest of the way to the boss waiting there.
+  // Content laid out top-down first (running `y`), panel sized/inserted
+  // behind everything afterward -- same pattern as showSettingsPanel.
   private showMentorLore(mentor: MentorDef) {
     this.dialogueActive = true;
 
-    const panelY = 300;
+    const panelWidth = 600;
+    const top = 20;
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
 
-    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 600, 280, 0x10101c, 0.94).setStrokeStyle(2, mentor.strokeColor);
-    container.add(panel);
+    let y = top;
 
+    const avatarY = y + 40;
     const avatar = mentor.avatar(this);
-    avatar.setPosition(CANVAS_W / 2, panelY - 90);
+    avatar.setPosition(CANVAS_W / 2, avatarY);
     container.add(avatar);
-    this.tweens.add({ targets: avatar, y: panelY - 82, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     playMentorChime();
+    y = avatarY + 50;
 
     const intro = this.add
-      .text(CANVAS_W / 2, panelY - 44, `"${mentor.quote}"`, {
-        fontSize: '12px',
+      .text(CANVAS_W / 2, y, `"${mentor.quote}"`, {
+        fontSize: fontPx(this, 12),
         fontStyle: 'italic',
         color: '#cfd8ff',
         align: 'center',
-        wordWrap: { width: 520 },
+        wordWrap: { width: panelWidth - 80 },
       })
       .setOrigin(0.5, 0);
     container.add(intro);
+    y += intro.height + 14;
 
     const note = this.add
-      .text(CANVAS_W / 2, panelY + 26, `${mentor.name} has nothing to teach you yet -- more to come.`, {
-        fontSize: '11px',
+      .text(CANVAS_W / 2, y, `${mentor.name} has nothing to teach you yet -- more to come.`, {
+        fontSize: fontPx(this, 11),
         color: '#8fa0c9',
         align: 'center',
         wordWrap: { width: 480 },
       })
       .setOrigin(0.5, 0);
     container.add(note);
+    y += note.height + 16;
 
-    this.renderFarewellFooter(container, panelY);
+    y = this.renderFarewellFooter(container, y);
+    y += 12;
+
+    const panelHeight = y - top;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+      .setStrokeStyle(2, mentor.strokeColor);
+    container.addAt(panel, 0);
   }
 
   // Mirrors maybeAutoOpenGoalDialogue for the middle row every mentor now
@@ -1835,79 +2018,140 @@ export class OverworldScene extends Phaser.Scene {
     }
     rows.push({ label: 'Close', onClick: () => this.closeDialogue() });
 
-    // Vertically centered on the canvas (rather than a fixed panelY like
-    // most other panels) and a tighter row spacing than the earlier
-    // 5-6-row version needed, since the row count now regularly reaches 7-8
-    // (Settings, and the debug-only Warp row) and a fixed low panelY would
-    // otherwise push the panel's bottom edge past the canvas.
-    const rowSpacing = 34;
-    const panelY = CANVAS_H / 2;
-    const panelHeight = 80 + rows.length * rowSpacing;
+    // Content built top-down at local y (running `y`, each row's own
+    // height advancing it -- row count regularly reaches 7-8 with Settings
+    // and the debug-only Warp row, and a fixed per-row spacing tuned for
+    // one font size either overlapped rows or ran short at another), then
+    // the whole container shifted so the result lands vertically centered
+    // on the canvas -- simpler than pre-computing a height to center
+    // around when that height depends on live button measurements.
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
 
-    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 320, panelHeight, 0x10101c, 0.95).setStrokeStyle(2, 0x8fa0c9);
-    container.add(panel);
+    const top = 20;
+    let y = top;
 
+    const panelWidth = 320;
     const title = this.add
-      .text(CANVAS_W / 2, panelY - panelHeight / 2 + 18, 'Menu', { fontSize: '15px', color: '#ffffff', fontStyle: 'bold' })
+      .text(CANVAS_W / 2, y, 'Menu', { fontSize: fontPx(this, 15), color: '#ffffff', fontStyle: 'bold' })
       .setOrigin(0.5, 0);
     container.add(title);
+    y += title.height + 16;
 
-    const rowsTop = panelY - panelHeight / 2 + 54;
-    rows.forEach((row, i) => {
-      this.addDialogueButtonAt(container, CANVAS_W / 2, rowsTop + i * rowSpacing, row.label, row.onClick, 260);
+    rows.forEach((row) => {
+      const btn = this.addDialogueButtonAt(container, CANVAS_W / 2, y, row.label, row.onClick, 260);
+      y += btn.height + 6;
     });
+    y += top;
+
+    const panelHeight = y - top;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.95)
+      .setStrokeStyle(2, 0x8fa0c9);
+    container.addAt(panel, 0);
+
+    container.y = Math.max(0, Math.round((CANVAS_H - panelHeight) / 2)) - top;
   }
 
-  // Enter-menu "Settings" panel: currently just the one knob, wild-encounter
-  // density (data/settings.ts's DENSITY_PRESETS, read by generateMap via
-  // encounterChance()). One button cycles through the presets in place
-  // (same rebuild-the-panel-on-click pattern as Noether's shop), rather than
-  // a slider, since there are only four discrete steps.
+  // Enter-menu "Settings" panel: wild-encounter density (data/settings.ts's
+  // DENSITY_PRESETS, read by generateMap via encounterChance()) and text
+  // size (FONT_SCALE_PRESETS, read live by every fontPx() call). Each is a
+  // button that cycles through its presets in place (same rebuild-the-panel
+  // pattern as Noether's shop), rather than a slider, since both have only
+  // a handful of discrete steps. Content is laid out top-down first, each
+  // element's own (font-scale-dependent) height advancing a running `y`,
+  // and the backing panel rectangle is sized/inserted behind everything
+  // afterward -- a fixed panel height would either clip or float away from
+  // the content once text size itself is one of the settings being edited.
   private showSettingsPanel() {
     this.dialogueContainer?.destroy(true);
     this.dialogueActive = true;
 
-    const panelY = 300;
+    // As wide as the canvas comfortably allows and hint copy kept to a
+    // single short clause each -- both settings rows plus their hints plus
+    // title/close still have to fit inside CANVAS_H (480) even at the
+    // Extra Large text-size preset (3x base), which leaves very little
+    // vertical slack once every line is ~3x taller than it used to be.
+    const panelWidth = CANVAS_W - 60;
+    const contentWidth = panelWidth - 60;
+    const top = 14;
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
 
-    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 380, 220, 0x10101c, 0.95).setStrokeStyle(2, 0x8fa0c9);
-    container.add(panel);
+    let y = top;
 
     const title = this.add
-      .text(CANVAS_W / 2, panelY - 90, 'Settings', { fontSize: '15px', color: '#ffffff', fontStyle: 'bold' })
+      .text(CANVAS_W / 2, y, 'Settings', { fontSize: fontPx(this, 15), color: '#ffffff', fontStyle: 'bold' })
       .setOrigin(0.5, 0);
     container.add(title);
+    y += title.height + 8;
 
-    const currentIndex = this.encounterDensityIndex();
-    const preset = DENSITY_PRESETS[currentIndex];
-    this.addDialogueButtonAt(
+    const densityIndex = this.encounterDensityIndex();
+    const densityPreset = DENSITY_PRESETS[densityIndex];
+    const densityBtn = this.addDialogueButtonAt(
       container,
       CANVAS_W / 2,
-      panelY - 40,
-      `Enemy Density: ${preset.label}`,
+      y,
+      `Enemy Density: ${densityPreset.label}`,
       () => {
-        const next = DENSITY_PRESETS[(currentIndex + 1) % DENSITY_PRESETS.length];
+        const next = DENSITY_PRESETS[(densityIndex + 1) % DENSITY_PRESETS.length];
         this.game.registry.set('encounterDensity', next.value);
         persistFromRegistry(this.game.registry);
         this.showSettingsPanel();
       },
-      280
+      contentWidth
     );
+    y += densityBtn.height + 4;
 
-    const hint = this.add
-      .text(
-        CANVAS_W / 2,
-        panelY,
-        'How often wild crystals appear along the path. Takes effect the next time a world map is generated (a fresh world entry or a rematch of one).',
-        { fontSize: '11px', color: '#8fa0c9', align: 'center', wordWrap: { width: 330 }, lineSpacing: 4 }
-      )
+    const densityHint = this.add
+      .text(CANVAS_W / 2, y, 'Takes effect on the next map.', {
+        fontSize: fontPx(this, 11),
+        color: '#8fa0c9',
+        align: 'center',
+        wordWrap: { width: contentWidth },
+        lineSpacing: 4,
+      })
       .setOrigin(0.5, 0);
-    container.add(hint);
+    container.add(densityHint);
+    y += densityHint.height + 10;
 
-    this.addDialogueButtonAt(container, CANVAS_W / 2, panelY + 70, 'Close', () => this.closeDialogue(), 260);
+    const fontIndex = this.fontScaleIndex();
+    const fontPreset = FONT_SCALE_PRESETS[fontIndex];
+    const fontBtn = this.addDialogueButtonAt(
+      container,
+      CANVAS_W / 2,
+      y,
+      `Text Size: ${fontPreset.label}`,
+      () => {
+        const next = FONT_SCALE_PRESETS[(fontIndex + 1) % FONT_SCALE_PRESETS.length];
+        this.game.registry.set('fontScale', next.value);
+        persistFromRegistry(this.game.registry);
+        this.showSettingsPanel();
+      },
+      contentWidth
+    );
+    y += fontBtn.height + 4;
+
+    const fontHint = this.add
+      .text(CANVAS_W / 2, y, 'Applies immediately.', {
+        fontSize: fontPx(this, 11),
+        color: '#8fa0c9',
+        align: 'center',
+        wordWrap: { width: contentWidth },
+        lineSpacing: 4,
+      })
+      .setOrigin(0.5, 0);
+    container.add(fontHint);
+    y += fontHint.height + 10;
+
+    const closeBtn = this.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Close', () => this.closeDialogue(), 260);
+    y += closeBtn.height + 8;
+
+    const panelHeight = y - top;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.95)
+      .setStrokeStyle(2, 0x8fa0c9);
+    container.addAt(panel, 0);
   }
 
   private encounterDensityIndex(): number {
@@ -1915,6 +2159,13 @@ export class OverworldScene extends Phaser.Scene {
     const idx = DENSITY_PRESETS.findIndex((p) => p.value === value);
     if (idx !== -1) return idx;
     return DENSITY_PRESETS.findIndex((p) => p.value === DEFAULT_ENCOUNTER_DENSITY);
+  }
+
+  private fontScaleIndex(): number {
+    const value = (this.game.registry.get('fontScale') as number) ?? DEFAULT_FONT_SCALE;
+    const idx = FONT_SCALE_PRESETS.findIndex((p) => p.value === value);
+    if (idx !== -1) return idx;
+    return FONT_SCALE_PRESETS.findIndex((p) => p.value === DEFAULT_FONT_SCALE);
   }
 
   // Debug-mode-only (see applyDebugLeveling): jumps straight to any of the
@@ -1927,37 +2178,82 @@ export class OverworldScene extends Phaser.Scene {
     this.dialogueActive = true;
 
     const rowCount = 10;
-    const panelHeight = 90 + rowCount * 30;
-    const panelY = CANVAS_H / 2;
+    const panelWidth = 360;
+    const top = 10;
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
 
-    const panel = this.add
-      .rectangle(CANVAS_W / 2, panelY, 360, panelHeight, 0x10101c, 0.96)
-      .setStrokeStyle(2, 0xff4fd8);
-    container.add(panel);
+    let y = top;
 
     const title = this.add
-      .text(CANVAS_W / 2, panelY - panelHeight / 2 + 14, 'Debug: Warp to World', {
-        fontSize: '14px',
+      .text(CANVAS_W / 2, y, 'Debug: Warp to World', {
+        fontSize: fontPx(this, 14),
         color: '#ff8fe0',
         fontStyle: 'bold',
       })
       .setOrigin(0.5, 0);
     container.add(title);
+    y += title.height + 6;
 
-    const rowsTop = panelY - panelHeight / 2 + 46;
+    // 10 rows is a fixed count regardless of world-count growth -- measure
+    // one sample row at the desired size and shrink in whole-px steps
+    // (floor 7 -- still legible, and the row label is redundant with the
+    // panel's own title so it doesn't need to carry much weight on its
+    // own) until all 10 rows plus Close actually fit the canvas, rather
+    // than letting row 10 run off the bottom at a big text-size setting.
+    const scale = fontScale(this);
+    let rowBase = 13;
+    const rowGap = 2;
+    const longestLabel = Array.from({ length: rowCount }, (_, i) => i + 1)
+      .map((w) => `World ${w} -- ${WORLD_NAMES[w] ?? `World ${w}`}`)
+      .reduce((a, b) => (b.length > a.length ? b : a));
+    const sample = this.add.text(-1000, -1000, longestLabel, {
+      fontSize: `${Math.round(rowBase * scale)}px`,
+      padding: { x: 10, y: 5 },
+      align: 'center',
+      wordWrap: { width: 320 },
+    });
+    while (rowBase > 7) {
+      const rowH = sample.height + rowGap;
+      const estTotal = y + rowCount * rowH + 6 + sample.height + top;
+      if (estTotal <= CANVAS_H) break;
+      rowBase -= 1;
+      sample.setFontSize(`${Math.round(rowBase * scale)}px`);
+    }
+    const rowFontPx = `${Math.round(rowBase * scale)}px`;
+    sample.destroy();
+
     for (let w = 1; w <= rowCount; w++) {
       const name = WORLD_NAMES[w] ?? `World ${w}`;
       const label = w === this.world ? `World ${w} -- ${name} (current)` : `World ${w} -- ${name}`;
-      const btn = this.addDialogueButtonAt(container, CANVAS_W / 2, rowsTop + (w - 1) * 30, label, () => {
-        if (w === this.world) return;
-        this.advanceToWorld(w);
-      }, 320);
+      const btn = this.addDialogueButtonAt(
+        container,
+        CANVAS_W / 2,
+        y,
+        label,
+        () => {
+          if (w === this.world) return;
+          this.advanceToWorld(w);
+        },
+        320,
+        rowFontPx
+      );
       if (w === this.world) btn.setAlpha(0.5);
+      y += btn.height + rowGap;
     }
+    y += 6;
 
-    this.addDialogueButtonAt(container, CANVAS_W / 2, rowsTop + rowCount * 30 + 8, 'Close', () => this.closeDialogue(), 260);
+    const closeBtn = this.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Close', () => this.closeDialogue(), 260, rowFontPx);
+    y += closeBtn.height;
+    y += top;
+
+    const panelHeight = y - top;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.96)
+      .setStrokeStyle(2, 0xff4fd8);
+    container.addAt(panel, 0);
+
+    container.y = Math.max(0, Math.round((CANVAS_H - panelHeight) / 2)) - top;
   }
 
   // Lists every mentor the player has met so far (registry `metMentors`,
@@ -1965,21 +2261,27 @@ export class OverworldScene extends Phaser.Scene {
   // reopening that mentor's own panel -- works from any world's scene, not
   // just the mentor's own, which is the whole point of putting this in the
   // Enter menu rather than only at their home tile.
+  // Content laid out top-down first (running `y`), panel sized/inserted
+  // behind everything afterward -- same pattern as showSettingsPanel. Row
+  // count grows with how many of up to 10 mentors have been met, so a
+  // fixed per-row spacing (tuned for the old single font size) either
+  // overlapped rows or ran the panel past the canvas once text got bigger.
   private showAdvisorsPanel() {
     this.dialogueContainer?.destroy(true);
     this.dialogueActive = true;
 
-    const panelY = 300;
+    const panelWidth = 340;
+    const top = 20;
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
 
-    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 320, 460, 0x10101c, 0.95).setStrokeStyle(2, 0xb98fea);
-    container.add(panel);
+    let y = top;
 
     const title = this.add
-      .text(CANVAS_W / 2, panelY - 210, 'Advisors', { fontSize: '15px', color: '#ffffff', fontStyle: 'bold' })
+      .text(CANVAS_W / 2, y, 'Advisors', { fontSize: fontPx(this, 15), color: '#ffffff', fontStyle: 'bold' })
       .setOrigin(0.5, 0);
     container.add(title);
+    y += title.height + 14;
 
     const met = (this.game.registry.get('metMentors') as string[]) ?? [];
     const mentors = Object.values(OverworldScene.WORLD_MENTORS).filter(
@@ -1988,20 +2290,21 @@ export class OverworldScene extends Phaser.Scene {
 
     if (mentors.length === 0) {
       const text = this.add
-        .text(CANVAS_W / 2, panelY - 20, "You haven't met any advisors yet.", {
-          fontSize: '13px',
+        .text(CANVAS_W / 2, y, "You haven't met any advisors yet.", {
+          fontSize: fontPx(this, 13),
           color: '#ffffff',
           align: 'center',
-          wordWrap: { width: 260 },
+          wordWrap: { width: panelWidth - 60 },
         })
         .setOrigin(0.5, 0);
       container.add(text);
+      y += text.height + 14;
     } else {
-      mentors.forEach((mentor, i) => {
-        this.addDialogueButtonAt(
+      mentors.forEach((mentor) => {
+        const btn = this.addDialogueButtonAt(
           container,
           CANVAS_W / 2,
-          panelY - 170 + i * 32,
+          y,
           mentor.name,
           () => {
             this.closeDialogue();
@@ -2009,10 +2312,18 @@ export class OverworldScene extends Phaser.Scene {
           },
           260
         );
+        y += btn.height + 6;
       });
     }
 
-    this.addDialogueButtonAt(container, CANVAS_W / 2, panelY + 200, 'Close', () => this.closeDialogue(), 260);
+    const closeBtn = this.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Close', () => this.closeDialogue(), 260);
+    y += closeBtn.height + 12;
+
+    const panelHeight = y - top;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.95)
+      .setStrokeStyle(2, 0xb98fea);
+    container.addAt(panel, 0);
   }
 
   private showMovesPanel() {
@@ -2021,7 +2332,7 @@ export class OverworldScene extends Phaser.Scene {
     const lines = this.getUnlockedMoves().map((id) => {
       const move = MOVES[id];
       const usable = battleMoves.has(id);
-      return `${move.name} (${move.class})${usable ? '' : ' -- not compatible with your current form'}`;
+      return `${move.name} -- Pwr ${move.power}, ${move.class}${usable ? '' : ' (incompatible with current form)'}`;
     });
     this.showInfoPanel('Your Moves', lines.join('\n'));
   }
@@ -2030,38 +2341,66 @@ export class OverworldScene extends Phaser.Scene {
     this.dialogueContainer?.destroy(true);
     const stats = getPlayerStats(this.game.registry);
     const body =
-      `Quantumness: ${stats.quantumness}\nVelocity: ${stats.velocity}\nCorrelation: ${stats.correlation}\n\n` +
-      `Qumatokens: ${this.qumatokens}\nCurrent form: ${this.playerMaterial.name}`;
+      `Quantumness: ${stats.quantumness} -- raises your crit chance\n` +
+      `Velocity: ${stats.velocity} -- higher goes first each round\n` +
+      `Correlation: ${stats.correlation} -- higher takes less damage\n\n` +
+      `Qumatokens: ${this.qumatokens}\nCurrent form: ${this.playerMaterial.name}\n\n` +
+      'Raise any of these with qumatokens at Noether\'s shop.';
     this.showInfoPanel('Your Stats', body);
   }
 
+  // Content laid out top-down first (running `y`), panel sized/inserted
+  // behind everything afterward -- same pattern as showSettingsPanel. Body
+  // length varies (View Moves grows with how many the player has unlocked,
+  // up to all of MOVES), so a fixed panel height either clipped it or left
+  // a lot of empty space depending on text-size setting and move count.
   private showInfoPanel(title: string, body: string) {
     this.dialogueActive = true;
 
-    const panelY = 300;
+    const panelWidth = 440;
+    const top = 20;
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
 
-    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 420, 300, 0x10101c, 0.95).setStrokeStyle(2, 0x8fa0c9);
-    container.add(panel);
+    let y = top;
 
     const titleText = this.add
-      .text(CANVAS_W / 2, panelY - 130, title, { fontSize: '15px', color: '#ffe066', fontStyle: 'bold' })
+      .text(CANVAS_W / 2, y, title, { fontSize: fontPx(this, 15), color: '#ffe066', fontStyle: 'bold' })
       .setOrigin(0.5, 0);
     container.add(titleText);
+    y += titleText.height + 14;
 
+    // View Moves' body grows with how many of MOVES' 7 the player has
+    // unlocked (each line possibly tagged "incompatible", making it wrap
+    // to 2 lines) -- shrink the font in whole-px steps, floor 9, rather
+    // than letting a long body push the Close button off the canvas.
+    const scale = fontScale(this);
+    let bodyBase = 13;
     const bodyText = this.add
-      .text(CANVAS_W / 2, panelY - 95, body, {
-        fontSize: '13px',
+      .text(CANVAS_W / 2, y, body, {
+        fontSize: `${Math.round(bodyBase * scale)}px`,
         color: '#cfd8ff',
         align: 'center',
-        wordWrap: { width: 380 },
+        wordWrap: { width: panelWidth - 60 },
         lineSpacing: 6,
       })
       .setOrigin(0.5, 0);
     container.add(bodyText);
+    const reservedBelow = 18 + 46 + 12; // gap + close-button estimate + bottom margin
+    while (y + bodyText.height + reservedBelow > CANVAS_H - 10 && bodyBase > 9) {
+      bodyBase -= 1;
+      bodyText.setFontSize(`${Math.round(bodyBase * scale)}px`);
+    }
+    y += bodyText.height + 18;
 
-    this.addDialogueButtonAt(container, CANVAS_W / 2, panelY + 110, 'Close', () => this.closeDialogue(), 260);
+    const closeBtn = this.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Close', () => this.closeDialogue(), 260);
+    y += closeBtn.height + 12;
+
+    const panelHeight = y - top;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.95)
+      .setStrokeStyle(2, 0x8fa0c9);
+    container.addAt(panel, 0);
   }
 
   private maybeCollectToken(x: number, y: number) {

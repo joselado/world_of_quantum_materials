@@ -69,8 +69,9 @@ than appending a changelog, so this always reflects current reality.
   walkable tiles -- those are reserved for wild encounters (on the corridor) and
   qumatoken pickups (at branch dead ends).
 - Map regenerates fresh (new `Math.random` layout) on first load and on an explicit world
-  switch (Space). A round trip through a battle restores the exact same layout and player
-  position instead of regenerating (`OverworldScene.saveMapState`/`restoreMap`); the
+  change (Hub door, Bloch's teleport, a debug warp). A round trip through a battle restores
+  the exact same layout and player position instead of regenerating
+  (`OverworldScene.saveMapState`/`restoreMap`); the
   pre-battle encounter dialogue itself never leaves the overworld scene, so passing on it
   needs no round trip at all.
 

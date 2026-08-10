@@ -38,7 +38,12 @@ export const TUTORIAL_PAGES: TutorialPage[] = [
   {
     title: 'Mentors',
     body:
-      "Each world's mentor waits at its goal or start tile: Noether sells moves and stat upgrades, Bloch teleports you between worlds you've visited, Bohr lets you transmute into any crystal you've defeated. Once met, revisit any of them from the Advisors panel.",
+      "Each world's mentor waits partway along the corridor: Noether sells moves and stat upgrades, Bloch teleports you between worlds you've visited, Bohr lets you transmute into any crystal you've defeated. Once met, revisit any of them from the Advisors panel.",
+  },
+  {
+    title: 'Reaching the Goal',
+    body:
+      "A gigantic boss crystal guards the far end of every world -- you can shop with that world's mentor first, but the only way onward is to beat the boss in the goal panel. Win, and the next world opens up.",
   },
   {
     title: 'The Lab',
@@ -48,6 +53,6 @@ export const TUTORIAL_PAGES: TutorialPage[] = [
   {
     title: 'The Menu',
     body:
-      'Press Enter any time to open the menu -- check your moves and stats, revisit your advisors, or replay this tutorial from the Tutorial button.',
+      'Press Enter any time to open the menu -- check your moves and stats, revisit your advisors, or replay this tutorial from the Tutorial button. Press M any time to mute or unmute the music.',
   },
 ];

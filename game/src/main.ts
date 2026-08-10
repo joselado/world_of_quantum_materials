@@ -21,4 +21,11 @@ const config: Phaser.Types.Core.GameConfig = {
   scene: [TitleScene, HubScene, OverworldScene, BattleScene],
 };
 
-new Phaser.Game(config);
+const game = new Phaser.Game(config);
+
+// Dev-only: lets a headless script drive scenes directly (open a specific
+// panel, read back its layout) without hand-scripting clicks through the
+// UI to reach it -- see DEVELOPMENT.md's "Verifying UI changes".
+if (import.meta.env.DEV) {
+  (window as unknown as { __game: Phaser.Game }).__game = game;
+}
