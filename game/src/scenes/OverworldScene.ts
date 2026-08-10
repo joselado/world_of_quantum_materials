@@ -8,10 +8,10 @@ import { makeNoetherAvatar } from '../art/mentor';
 import { makeBossCrystal } from '../art/boss';
 import { makeBlochAvatar } from '../art/bloch';
 import { makeBohrAvatar } from '../art/bohr';
+import { makeDresselhausAvatar } from '../art/dresselhaus';
 import { makeLaughlinAvatar } from '../art/laughlin';
 import { makeMajoranaAvatar } from '../art/majorana';
 import { makeCurieAvatar } from '../art/curie';
-import { makeBellAvatar } from '../art/bell';
 import { makeKondoAvatar } from '../art/kondo';
 import { makeAndersonAvatar } from '../art/anderson';
 import { playMentorChime } from '../audio/sfx';
@@ -30,6 +30,7 @@ import {
   getBattleMoves,
   findMaterialByName,
   allCrystals,
+  isCompositeMaterial,
   combineMaterials,
   hybridRecipeResult,
   statUpgradeCost,
@@ -125,9 +126,9 @@ interface WorldSprite {
 // dispatch (spawnMentorSprite/openMentor), the same "reusable rather than
 // per-world bespoke" approach the map generator and biome table already
 // use. Five mentors have bespoke panels and set `open` explicitly: Noether
-// (shop), Bloch (teleport hub), Bohr (transmutation), Majorana (hybrid
-// materials), Curie (analytic moves). Laughlin, Bell, Kondo, and Feynman
-// leave `open` unset and fall through to the shared showMentorLore panel
+// (shop), Bloch (teleport hub), Dresselhaus (transmutation), Majorana (hybrid
+// materials), Curie (analytic moves), Anderson (impurity doping). Laughlin,
+// Bohr, and Kondo leave `open` unset and fall through to the shared showMentorLore panel
 // instead (see DESIGN.md §5 -- their own mechanics are still an open design
 // question). Leaving `open` unset rather than hand-writing
 // `(s) => s.showMentorLore(WORLD_MENTORS[N]!)` per lore entry means there's
@@ -201,12 +202,12 @@ export class OverworldScene extends Phaser.Scene {
   // show the initial pick list." Reset on every fresh scene create and every
   // closeDialogue() so a stale first pick can't survive a cancel-and-reopen.
   private majoranaSelection: string | null = null;
-  // Bohr's transmute list and Majorana's per-step combine list both paginate
-  // (Superposition Mode's candidate pool is every crystal in the game, far
-  // more than one panel can show at once) -- same reset rules as
+  // Dresselhaus's transmute list and Majorana's per-step combine list both
+  // paginate (Superposition Mode's candidate pool is every crystal in the
+  // game, far more than one panel can show at once) -- same reset rules as
   // majoranaSelection above, plus a reset whenever majoranaSelection itself
   // changes (see showMajoranaPanel) so switching steps starts back on page 0.
-  private bohrPage = 0;
+  private dresselhausPage = 0;
   private majoranaPage = 0;
   // Anderson's impurity-doping panel (§5, World 9): the host crystal picked
   // to "dope in," while the panel rebuilds to ask which one of its moves to
@@ -215,7 +216,7 @@ export class OverworldScene extends Phaser.Scene {
   private andersonSelection: string | null = null;
   private andersonPage = 0;
   // Bloch's teleport hub (§5, World 2): paginated for the same reason as
-  // Bohr/Majorana/Anderson above -- Superposition Mode pre-seeds every
+  // Dresselhaus/Majorana/Anderson above -- Superposition Mode pre-seeds every
   // built world as visited, so a well-traveled player is no longer the rare
   // case Bloch's own destination list has to handle, it's the common one
   // (up to 9 destinations at once). Same reset rules.
@@ -247,14 +248,14 @@ export class OverworldScene extends Phaser.Scene {
       open: (s) => s.showBlochHub(),
     },
     3: {
-      id: 'bohr',
-      name: 'Bohr',
-      labelColor: '#ffa64a',
-      strokeColor: 0xffa64a,
-      quote: 'Every crystal you have defeated is a state you now understand well enough to become.',
-      avatar: makeBohrAvatar,
+      id: 'dresselhaus',
+      name: 'Dresselhaus',
+      labelColor: '#6ee8ba',
+      strokeColor: 0x4ad9a0,
+      quote: 'Every crystal you have defeated is a spin-orbit texture you now understand well enough to wear.',
+      avatar: makeDresselhausAvatar,
       tile: 'middle',
-      open: (s) => s.showBohrPanel(),
+      open: (s) => s.showDresselhausPanel(),
     },
     4: {
       id: 'laughlin',
@@ -287,12 +288,12 @@ export class OverworldScene extends Phaser.Scene {
       open: (s) => s.showCuriePanel(),
     },
     7: {
-      id: 'bell',
-      name: 'Bell',
-      labelColor: '#dfe6ec',
-      strokeColor: 0xaeb8c4,
-      quote: 'Write down what any local, pre-agreed strategy could achieve -- then measure a pair of crystals and watch the number climb past it.',
-      avatar: makeBellAvatar,
+      id: 'bohr',
+      name: 'Bohr',
+      labelColor: '#ffa64a',
+      strokeColor: 0xffa64a,
+      quote: 'Measure one half of an entangled pair and the other answers instantly -- not by any signal crossing the distance, but because the two were never separately real to begin with.',
+      avatar: makeBohrAvatar,
       tile: 'middle',
     },
     8: {
@@ -340,7 +341,7 @@ export class OverworldScene extends Phaser.Scene {
     this.dialogueActive = false;
     this.dialogueContainer = undefined;
     this.majoranaSelection = null;
-    this.bohrPage = 0;
+    this.dresselhausPage = 0;
     this.majoranaPage = 0;
     this.andersonSelection = null;
     this.andersonPage = 0;
@@ -415,7 +416,7 @@ export class OverworldScene extends Phaser.Scene {
 
     // The player is a crystal too, not a trainer commanding one -- the
     // overworld avatar is just the player's current form (playerMaterial,
-    // Silicon by default or whatever Bohr transmuted them into) rendered
+    // Silicon by default or whatever Dresselhaus transmuted them into) rendered
     // the same way a wild crystal is, floating and bobbing rather than
     // walking.
     this.player = this.add.container(CANVAS_W / 2, 400);
@@ -1530,7 +1531,7 @@ export class OverworldScene extends Phaser.Scene {
     this.dialogueContainer = undefined;
     this.dialogueActive = false;
     this.majoranaSelection = null;
-    this.bohrPage = 0;
+    this.dresselhausPage = 0;
     this.majoranaPage = 0;
     this.andersonSelection = null;
     this.andersonPage = 0;
@@ -1578,7 +1579,7 @@ export class OverworldScene extends Phaser.Scene {
   // so the Advisors pause-menu list (showAdvisorsPanel) grows as the player
   // reaches each world's middle tile -- regardless of which panel that
   // mentor actually shows (shop, teleport hub, transmutation, or lore).
-  // `open` is only set on Noether/Bloch/Bohr, whose panels are bespoke;
+  // `open` is only set on Noether/Bloch/Dresselhaus, whose panels are bespoke;
   // every other mentor falls through to the shared lore panel.
   private openMentor(mentor: MentorDef) {
     const met = (this.game.registry.get('metMentors') as string[]) ?? [];
@@ -2099,7 +2100,7 @@ export class OverworldScene extends Phaser.Scene {
   // on. Ends in the plain "Farewell"-only renderFarewellFooter, not the
   // Face-the-Rival/Continue footer -- that stays exclusive to the goal
   // panel now that Bloch stands mid-corridor rather than at the goal.
-  // Destinations paginate via renderPagedButtons (same helper Bohr/
+  // Destinations paginate via renderPagedButtons (same helper Dresselhaus/
   // Majorana/Anderson use) -- with only a handful of built worlds this used
   // to just shrink the row font/drop the avatar past 5 destinations, but
   // Superposition Mode pre-seeding every world as visited made a 9-
@@ -2181,7 +2182,7 @@ export class OverworldScene extends Phaser.Scene {
     container.addAt(panel, 0);
   }
 
-  // Shared pager for candidate-crystal lists (Bohr's transmute list,
+  // Shared pager for candidate-crystal lists (Dresselhaus's transmute list,
   // Majorana's two combine-pick steps, Anderson's host list, Bloch's
   // destination list) -- Superposition Mode's candidate pool (or, for
   // Bloch, every world pre-marked visited) is far bigger than one panel can
@@ -2267,7 +2268,7 @@ export class OverworldScene extends Phaser.Scene {
     return y;
   }
 
-  // Bohr stands at world 3's middle tile like every other mentor now (see
+  // Dresselhaus stands at world 3's middle tile like every other mentor (see
   // spawnMentorSprite/WORLD_MENTORS), triggered on reaching that row
   // (maybeAutoOpenMiddleDialogue). Lets the player transmute into any
   // crystal they've defeated -- the physics rationale being that beating
@@ -2277,7 +2278,7 @@ export class OverworldScene extends Phaser.Scene {
   // far bigger than the normal handful of recent defeats.
   // Content laid out top-down first (running `y`), panel sized/inserted
   // behind everything afterward -- same pattern as showSettingsPanel.
-  private showBohrPanel() {
+  private showDresselhausPanel() {
     this.dialogueActive = true;
 
     const panelWidth = 600;
@@ -2288,7 +2289,7 @@ export class OverworldScene extends Phaser.Scene {
     let y = top;
 
     const avatarY = y + 55;
-    const avatar = makeBohrAvatar(this);
+    const avatar = makeDresselhausAvatar(this);
     avatar.setPosition(CANVAS_W / 2, avatarY);
     container.add(avatar);
     this.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
@@ -2301,17 +2302,25 @@ export class OverworldScene extends Phaser.Scene {
         CANVAS_W / 2,
         y,
         superposition
-          ? '"I am Bohr. In superposition every state is within reach at once -- become anything that exists, not only what you have already beaten."'
-          : '"I am Bohr. Every crystal you have defeated is a state you now understand well enough to become, for a while."',
+          ? '"I am Dresselhaus. In superposition every spin texture is within reach at once -- become anything that exists, not only what you have already beaten."'
+          : '"I am Dresselhaus. Every crystal you have defeated is a spin-orbit texture you now understand well enough to wear, for a while."',
         { fontSize: fontPx(this, 12), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
       )
       .setOrigin(0.5, 0);
     container.add(intro);
     y += intro.height + 14;
 
+    // Excludes hybrid-recipe results and inherently doped/alloyed compounds
+    // (isCompositeMaterial) either way -- becoming a mixed/fused state is
+    // Majorana's mechanic, not this one, even for the ones that are also
+    // ordinary wild encounters.
     const candidates: { name: string }[] = superposition
-      ? allCrystals().slice().sort((a, b) => a.name.localeCompare(b.name))
-      : this.getDefeatedMaterials().slice(-3);
+      ? allCrystals()
+          .filter((m) => !isCompositeMaterial(m.name))
+          .sort((a, b) => a.name.localeCompare(b.name))
+      : this.getDefeatedMaterials()
+          .filter((m) => !isCompositeMaterial(m.name))
+          .slice(-3);
     if (candidates.length === 0) {
       const text = this.add
         .text(CANVAS_W / 2, y, "You haven't defeated any crystals yet -- there is nothing to become.", {
@@ -2328,7 +2337,7 @@ export class OverworldScene extends Phaser.Scene {
         container,
         y,
         candidates,
-        this.bohrPage,
+        this.dresselhausPage,
         4,
         (m) => (this.playerMaterial.name === m.name ? `${m.name} (current form)` : `Become ${m.name}`),
         (m) => {
@@ -2336,9 +2345,9 @@ export class OverworldScene extends Phaser.Scene {
           this.transmuteInto(m.name);
         },
         (page) => {
-          this.bohrPage = page;
+          this.dresselhausPage = page;
           this.dialogueContainer?.destroy(true);
-          this.showBohrPanel();
+          this.showDresselhausPanel();
         },
         (m) => this.playerMaterial.name === m.name
       );
@@ -2351,16 +2360,16 @@ export class OverworldScene extends Phaser.Scene {
     const panelHeight = y - top;
     const panel = this.add
       .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
-      .setStrokeStyle(2, 0xffa64a);
+      .setStrokeStyle(2, 0x4ad9a0);
     container.addAt(panel, 0);
   }
 
   // Sets the player's current crystal form to `material` and persists it --
-  // shared by Bohr's ordinary transmutation (transmuteInto, looks the form
-  // up by name in WORLD_CRYSTALS) and Majorana's hybrid panel (becomeHybrid,
-  // whose synthesized Material was never in WORLD_CRYSTALS to look up by
-  // name in the first place). Doesn't heal -- HP is only clamped down to the
-  // new form's maxHp if it's lower, same as it always has been.
+  // shared by Dresselhaus's ordinary transmutation (transmuteInto, looks the
+  // form up by name in WORLD_CRYSTALS) and Majorana's hybrid panel
+  // (becomeHybrid, whose synthesized Material was never in WORLD_CRYSTALS to
+  // look up by name in the first place). Doesn't heal -- HP is only clamped
+  // down to the new form's maxHp if it's lower, same as it always has been.
   private applyPlayerForm(material: Material) {
     this.game.registry.set('playerForm', material);
     const clampedHp = Math.min((this.game.registry.get('playerHp') as number) ?? material.maxHp, material.maxHp);
@@ -2377,9 +2386,9 @@ export class OverworldScene extends Phaser.Scene {
     this.applyPlayerForm(material);
 
     // Rebuild the panel in place (dialogueActive already true from the open
-    // showBohrPanel call) so the new form's "(current form)" tag updates.
+    // showDresselhausPanel call) so the new form's "(current form)" tag updates.
     this.dialogueContainer?.destroy(true);
-    this.showBohrPanel();
+    this.showDresselhausPanel();
   }
 
   private redrawPlayerCrystal() {
@@ -2398,7 +2407,7 @@ export class OverworldScene extends Phaser.Scene {
   // Majorana stands at world 5's middle tile (WORLD_MENTORS) and lets the
   // player fuse two crystals they've already defeated into a new
   // topological hybrid (data/materials.ts's combineMaterials), becoming it
-  // immediately via the same applyPlayerForm helper Bohr's transmutation
+  // immediately via the same applyPlayerForm helper Dresselhaus's transmutation
   // uses. A two-step pick (this.majoranaSelection holds the first choice
   // while the panel rebuilds for the second) rather than one list of every
   // pair, since the pair count grows quadratically with how many crystals
@@ -2459,7 +2468,7 @@ export class OverworldScene extends Phaser.Scene {
 
     // Every world's wild pool is a single main type (world 5 is all
     // 'supercon', world 6 all 'classicalmag', ...), so a same-world-only
-    // recency window (Bohr's `slice(-3)`, fine there since any single
+    // recency window (Dresselhaus's `slice(-3)`, fine there since any single
     // defeated crystal is a valid transmute target) would make Majorana's
     // paired requirement nearly unreachable -- the player's last few
     // defeats right before reaching him are almost always all the same
@@ -2594,7 +2603,7 @@ export class OverworldScene extends Phaser.Scene {
   // player "dope in" a crystal they've encountered (or, in Superposition
   // Mode, any crystal in the game) as an impurity, then learn one specific
   // move from its moveset -- an Anderson-impurity take on the same idea
-  // Bohr/Majorana explore differently: Bohr becomes the whole state,
+  // Dresselhaus/Majorana explore differently: Dresselhaus becomes the whole state,
   // Majorana fuses two states together, Anderson borrows just one
   // excitation channel from a state without becoming it. The learned move
   // is a completely ordinary entry in `unlockedMoves` -- MOVE_COMPATIBILITY
@@ -2753,7 +2762,7 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   // Shared panel for every mentor left without a bespoke `open` handler
-  // (Laughlin, Bell, Kondo -- see WORLD_MENTORS): avatar + a topic-tied
+  // (Laughlin, Bohr, Kondo -- see WORLD_MENTORS): avatar + a topic-tied
   // quote, no shop tabs (DESIGN.md §5 records their lack of a mechanic as a
   // deliberate, temporary state, not a finished design). Ends
   // in renderFarewellFooter,

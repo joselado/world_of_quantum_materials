@@ -36,7 +36,7 @@ One world per course topic (see the topic table in the repo's top-level `CLAUDE.
 | 7 | Entanglement, tensor networks | **Tensor-Network World** — bonds as paths | Entangled pairs (fought as a bonded duo) | Compress a tangled area into a walkable MPS path |
 | 8 | Quantum magnetism, spinons, Kondo | **Spinon Forest** — foggy forest, fractionalizes on contact | Spin liquids, Kondo-screened critters | Screen a "local moment" boss mechanic |
 | 9 | Excitations and defects | **Defect Wastes** — cracked/glitching world | Defect-bound states, impurity resonances | Repair/exploit N defects to stabilize a bridge |
-| 10 | ML for quantum materials | **The Adaptive Meta-World** — reflects the player's own team | Echoes of earlier phases of matter, plus the adaptive final boss | Final battle |
+| 10 | ML for quantum materials | **The Adaptive Meta-World** — reflects the player's own team | Hybrid-recipe crystals and standalone Chern/multiferroic compounds, plus the adaptive final boss | Final battle |
 
 World and rival names are meant to read as the lecture topic, not generic RPG terrain/monster
 names (check `WORLD_NAMES` and `WORLD_RIVALS` together when naming a world -- a mismatched
@@ -107,8 +107,9 @@ keyed by world number rather than one global list — each world's `OverworldSce
 pulls its own wild-encounter pool via `getWildPool(world)`, drawing 2-4 rows from the
 matching type/topic section of the table below (topic 2 has no dedicated main type of
 its own, so it reuses trivial-type compounds with "lattice" flavor instead of world
-1's tutorial picks; world 10's pool is the one exception to "named after a real
-compound" — see the 'Echo of ...' rows and note just below the table). All ten worlds
+1's tutorial picks; world 10's pool draws from §5's hybrid-recipe results plus two
+cross-topic standalone compounds instead of one topic section, see the note just below
+the table). All ten worlds
 have a built overworld map (roadmap §9). `PLAYER_MATERIAL` (the player's own crystal,
 currently Silicon) is a fixed pick from this same table, not part of any world's wild
 pool.
@@ -150,7 +151,7 @@ pool.
 | spinliquid (8) | Herbertsmithite (ZnCu$_3$(OH)$_6$Cl$_2$) | Flagship kagome quantum-spin-liquid candidate |
 | spinliquid (8) | α-Ruthenium Trichloride (RuCl$_3$) | Candidate Kitaev spin liquid |
 | spinliquid (8) | Ytterbium Magnesium Gallium Oxide (YbMgGaO$_4$) | Triangular-lattice spin-liquid candidate |
-| spinliquid (8, engineered) | 1T-TaS$_2$ on 1H-TaS$_2$ | Engineered 2D Kondo-insulator heterostructure — now wired in as §5's 1T/1H-TaS₂ heterostructure hybrid recipe, fusing the two standalone phase entries below |
+| spinliquid (8, engineered) | 1T-TaS$_2$ on 1H-TaS$_2$ | Engineered 2D Kondo-insulator heterostructure — wired in as §5's 1T/1H-TaS₂ heterostructure hybrid recipe, fusing the two standalone phase entries below |
 | spinliquid (8) | Tantalum Disulfide, 1T phase (TaS$_2$) | Star-of-David CDW Mott insulator / quantum-spin-liquid candidate (Law & Lee 2017) — the other half of the 1T/1H heterostructure above |
 | defect (9, textbook fill-in) | Nitrogen-vacancy center in diamond (NV-diamond) | Canonical atomic-scale defect-bound state / solid-state qubit |
 | defect (9, textbook fill-in) | Iron Telluride/Selenide (Fe(Te,Se)) | Hosts Yu-Shiba-Rusinov and vortex-bound (Majorana) defect states in a superconductor |
@@ -159,7 +160,7 @@ pool.
 | multiferroic (6, new type) | Nickel Diiodide (NiI$_2$), monolayer | Type-II multiferroic from noncollinear/helimagnetic order down to the monolayer limit (Song et al., Nature 2022) — hosts genuine electromagnons, the type's flagship. Same session (classical magnetism/magnons) as classicalmag, not its own world -- lives as a World 10 wild (§5) alongside the game's hybrid recipe results |
 | multiferroic (6, new type, hybrid) | Twisted CrI₃ | §5 hybrid recipe (CrI₃ + CrI₃) — noncollinear moiré spin textures theoretically predicted (not yet confirmed) to induce magnetoelectric coupling; untwisted CrI₃ itself is only classicalmag |
 | chernInsulator (4, new type) | Manganese Bismuth Telluride (MnBi$_2$Te$_4$) | Real intrinsic magnetic topological insulator — the actual zero-field QAHE/Chern-insulator material, standalone (not a hybrid recipe result). Same session (quantum Hall effect) as qhe, not its own world -- lives as a World 10 wild (§5) alongside the game's hybrid recipe results |
-| adaptive (10) | — (no compound, by design) | `WORLD_RIVALS[10]`'s finale boss ("a model of you") only now — World 10's ordinary wilds are no longer 'adaptive', see the note above the crystal-database table |
+| adaptive (10) | — (no compound, by design) | Only `WORLD_RIVALS[10]`'s finale boss ("a model of you") — World 10's ordinary wilds are not 'adaptive', see the note above the crystal-database table |
 
 Session files for topics 9 and 10 name no concrete real compounds at all (they stay at
 the level of "a metal," "a superconductor," generic ML methods), so those two rows lean
@@ -190,16 +191,16 @@ overworld's own non-black sky) so the overlap region genuinely mixes both colors
 a glowing seam. See `data/materials.ts`'s `combineMaterials`/`hybridParents` and
 STYLE.md's "Crystal sprites" section.
 
-World 10's wild pool (`WORLD_CRYSTALS[10]` in `data/materials.ts`) used to be "Echo of
-..." crystals — 'adaptive' type, no real compound behind them, each one's moveset
-recalling an earlier world. It now hosts the game's actual named hybrid-recipe results
-(§5's `HYBRID_RECIPES`) plus two standalone compounds whose own type belongs to an
-existing topic's session (chernInsulator → topic 4, quantum Hall; multiferroic → topic 6,
-classical magnetism/magnons) but has no dedicated world of its own (MnBi₂Te₄, the real
-intrinsic QAHE/Chern-insulator material; Monolayer NiI₂, the multiferroic type's flagship,
-Song et al., Nature 2022) — so the meta-world's corridor plays back the player's own
-fusions/discoveries literally rather than as echo flavor text. `WORLD_RIVALS[10]` ("The
-Adapted") keeps the "no real compound, a model of you" finale-boss role unchanged.
+World 10's wild pool (`WORLD_CRYSTALS[10]` in `data/materials.ts`) hosts the game's
+actual named hybrid-recipe results (§5's `HYBRID_RECIPES`) plus two standalone compounds
+whose own type belongs to an existing topic's session (chernInsulator → topic 4, quantum
+Hall; multiferroic → topic 6, classical magnetism/magnons) but has no dedicated world of
+its own (MnBi₂Te₄, the real intrinsic QAHE/Chern-insulator material; Monolayer NiI₂, the
+multiferroic type's flagship, Song et al., Nature 2022) — so the meta-world's corridor
+plays back the player's own fusions/discoveries literally rather than as echo flavor
+text. `WORLD_RIVALS[10]` ("The Adapted"), a separate table from the wild pool, is the
+one 'adaptive'-type entry in the game — a "no real compound, a model of you" finale
+boss.
 
 **Subtype combination flavor (real-compound tie-ins):** the same mechanic from §3
 (main type + subtype → new material) has ready real-world flavor text once crystals are
@@ -217,8 +218,7 @@ renders as its own particle-effect animation in battle (`game/src/art/attackEffe
 a fast bolt for Phonon Beam/Electron Pulse/Spinon Swap, an expanding ring pulse for
 Magnon Pulse/Polaron Drag, a converging/scattering particle burst for Anyon Braid/Majorana
 Split. There is deliberately no "impurity scattering" move — disorder isn't a particle a
-crystal emits, so it was dropped from the roster entirely rather than kept as an abstract
-attack.
+crystal emits, so it has no place in the move roster as an abstract attack.
 
 **A crystal can only use moves its own physics supports** — `game/src/data/materials.ts`'s
 `MOVE_COMPATIBILITY` table fixes, per main type, which quasiparticle classes it can host
@@ -243,13 +243,12 @@ below. Their real risk/reward instead comes from the question
 answer doubles the damage, wrong answer halves it.
 
 **Battle dynamics are deliberately simple: one type-interaction rule, not a chart.**
-An earlier draft strong/weak type-effectiveness chart (per attack, per defender main type)
-was removed — it stacked a second, untested multiplier on top of the quasiparticle-mismatch
-rule below for no real gain in clarity, and DESIGN.md §10 had already flagged it as an
-unplaytested hypothesis. The single rule that remains is §4's "quasiparticle mismatch":
-double damage when the defender's own physics can't host the attacking move's quasiparticle
-class at all. See `data/materials.ts`'s `canHost()`/`MOVE_COMPATIBILITY` and
-`BattleScene.resolveHit`.
+A per-attack, per-defender-main-type strong/weak effectiveness chart would stack a
+second, untested multiplier on top of the quasiparticle-mismatch rule below for no real
+gain in clarity, so there is no such chart. The single rule that governs type
+interactions is §4's "quasiparticle mismatch": double damage when the defender's own
+physics can't host the attacking move's quasiparticle class at all. See
+`data/materials.ts`'s `canHost()`/`MOVE_COMPATIBILITY` and `BattleScene.resolveHit`.
 
 **Move power scales with how unconventional the quasiparticle is.** An ordinary lattice
 vibration or band electron is weak; a topological or non-Abelian excitation is strong — so
@@ -329,7 +328,7 @@ Noether's shop panel also carries a second tab for spending qumatokens on the pl
 Quantumness/Velocity/Correlation stats (§3). The actual "leave this world" action -- a
 footer button that fights the world's rival crystal the first time it's clicked (see §2),
 then becomes "Continue to World N+1" once that rival is beaten
-(`OverworldScene.tryAdvanceToNextWorld`) -- lives only in the goal panel now, not Noether's
+(`OverworldScene.tryAdvanceToNextWorld`) -- lives only in the goal panel, not Noether's
 (or any mentor's) own panel, since the goal is where that world's boss actually stands (§2).
 
 **Stakes.** Winning a battle earns 50 qumatokens; losing costs 50, floored at 0 (a rival
@@ -353,12 +352,12 @@ discovered material together with its blurb, paginated two entries per page
 
 Every world 1-9 has its own mentor, waiting mid-corridor (`OverworldScene`'s
 `WORLD_MENTORS` table, every entry's `tile: 'middle'`) rather than at the goal --
-the goal tile itself is now occupied by that world's boss (see below), so a mentor
+the goal tile is occupied by that world's boss (see below), so a mentor
 is someone the player meets partway through the journey, not a gate to it. Every
 mentor stays reachable from anywhere afterward via the Enter-menu's Advisors panel
 once met (`showAdvisorsPanel`, `data/save.ts`'s `metMentors`). **Current state
 (deliberately not the final design -- see §10):** six mentors have a real
-mechanic (Noether, Bloch, Bohr, Majorana, Curie, Anderson); Laughlin, Bell, and
+mechanic (Noether, Bloch, Dresselhaus, Majorana, Curie, Anderson); Laughlin, Bohr, and
 Kondo are still topic-tied lore stops with an avatar and a quote but no
 mechanic of its own yet (`OverworldScene.showMentorLore`) -- what each of them
 should actually unlock is still an open design question, not implemented.
@@ -372,14 +371,23 @@ World 10 has no mentor; its only encounter is the finale.
   Bloch state is a superposition spread across every unit cell, not pinned to one.
   The destination list paginates (`renderPagedButtons`, see below) once it grows past
   a page -- routine in Superposition Mode (see §7), which pre-seeds every built world
-  as visited, making Bloch's hub the *sole* way to move between worlds now that the
-  separate Warp panels are gone
-- **Bohr** → world 3 middle → lets the player transmute into any crystal they've already
-  defeated (`OverworldScene.showBohrPanel`/`transmuteInto`) -- beating a crystal means
-  understanding its physics well enough to become it for a while; transmuting changes the
-  player's look, HP cap, and which moves are currently usable (§3), without erasing any
-  move already learned. In Superposition Mode the candidate list is every crystal in the
-  game (`data/materials.ts`'s `allCrystals()`) rather than only ones actually defeated
+  as visited, making Bloch's hub the *sole* way to move between worlds, since there
+  is no separate Warp panel
+- **Dresselhaus** → world 3 middle → lets the player transmute into any *single* crystal
+  they've already defeated (`OverworldScene.showDresselhausPanel`/`transmuteInto`) -- fitting,
+  since the Dresselhaus effect (bulk-inversion-asymmetry spin-orbit coupling) is the real
+  ingredient that locks spin to momentum in models like BHZ, the route an ordinary band
+  structure actually takes into a topological one, and beating a crystal means understanding
+  its own band structure well enough to wear it for a while. Transmuting changes the player's
+  look, HP cap, and which moves are currently usable (§3), without erasing any move already
+  learned. **Excludes every hybrid-recipe result and every inherently doped/alloyed compound**
+  (`data/materials.ts`'s `isCompositeMaterial`) -- Fe/Pb Majorana Chain and Twisted Bilayer
+  MoTe₂ (recipe results also encountered wild), and Cr-doped (Bi,Sb)₂Te₃, Fe(Te,Se), and
+  NV-Diamond (real compounds that are themselves a mixture of two named ingredients baked
+  in, even with no fusion recipe behind them) -- becoming a mixed/fused state is specifically Majorana's
+  mechanic below, not this one. In Superposition Mode the candidate list is every
+  non-composite crystal in the game (`data/materials.ts`'s `allCrystals()`, filtered) rather
+  than only ones actually defeated
 - **Laughlin** → world 4 middle → lore only for now; flavor ties in via the fractional
   quantum Hall wavefunction (world 4's own topic)
 - **Majorana** → world 5 middle → lets the player fuse two crystals they've already
@@ -387,19 +395,20 @@ World 10 has no mentor; its only encounter is the finale.
   (`OverworldScene.showMajoranaPanel`/`combineMaterials`) -- but only a curated
   catalog of named parent pairs (`data/materials.ts`'s `HYBRID_RECIPES`/
   `hybridRecipeResult`), keyed by parent *name* rather than main type, not any two
-  defeated crystals. This used to be a generic "these two main types always produce
-  that main type" rule that forbade same-type pairs on the reasoning that "fusing two
-  superconductors isn't a new phase" -- but real platforms include exactly that
-  (Twisted Bilayer Graphene from two graphene sheets), so it's now a closed catalog:
-  a pair with no named recipe simply can't be fused, same-type or not. Every recipe
-  mirrors a real (or credibly engineered) platform -- an InAs/Al Majorana nanowire; two
-  Graphenes → Twisted Bilayer Graphene (magic-angle superconductivity); CrI₃ + NbSe₂
-  or NbSe₂ + CrBr₃ → topological-superconductor heterostructures (the latter is
-  Kezilebieke et al., Nature 2020); Iron + Lead → the Fe/Pb Majorana chain, literalizing
-  the mechanic's own original worked example; CrI₃ + CrI₃ → Twisted CrI₃, a
-  *theoretically proposed* (not yet confirmed) multiferroic from noncollinear moiré
-  spin textures; two 2H-phase MoTe₂ monolayers → the existing Twisted Bilayer MoTe₂
-  entry (its own "zero-field fractional quantum Hall from topological flat bands" already
+  defeated crystals. The catalog is closed by name rather than governed by a generic
+  "these two main types always produce that main type" rule, because such a rule would
+  have to forbid same-type pairs on the reasoning that "fusing two superconductors isn't
+  a new phase" -- but real platforms include exactly that (Twisted Bilayer Graphene from
+  two graphene sheets) -- so a pair with no named recipe simply can't be fused, same-type
+  or not. Every recipe mirrors a real (or credibly engineered) platform -- an InAs/Al
+  Majorana nanowire; two Graphenes → Twisted Bilayer Graphene (magic-angle
+  superconductivity); CrI₃ + NbSe₂ or NbSe₂ + CrBr₃ → topological-superconductor
+  heterostructures (the latter is Kezilebieke et al., Nature 2020); Iron + Lead → the
+  Fe/Pb Majorana chain, literalizing the mechanic's own worked example; CrI₃ + CrI₃ →
+  Twisted CrI₃, a *theoretically proposed* (not yet confirmed) multiferroic from
+  noncollinear moiré spin textures; two 2H-phase MoTe₂ monolayers → the existing
+  Twisted Bilayer MoTe₂ entry (its own "zero-field fractional quantum Hall from
+  topological flat bands" already
   *is* the fractional Chern-insulator result, so the recipe resolves to that entry rather
   than a duplicate); 1T-phase + 1H-phase Tantalum Disulfide → a Kondo-screened
   heterostructure. Recipe results are ordinary `WORLD_CRYSTALS` entries (mostly World
@@ -408,8 +417,10 @@ World 10 has no mentor; its only encounter is the finale.
   additionally attaches `hybridParents` so the fused form still renders as an actual
   visual mixture of both parents. Every hybrid ever created is remembered
   (`hybridMaterials` save field) so the panel also offers "become again" for an earlier
-  one without recombining. In Superposition Mode the ingredient pool is every crystal
-  in the game, same as Bohr above
+  one without recombining. In Superposition Mode the ingredient pool is every crystal in
+  the game, unfiltered (unlike Dresselhaus above) -- a hybrid's own defeated-material entry,
+  if any, simply won't match any `HYBRID_RECIPES` pairing as a further parent, so no extra
+  filtering is needed here
 - **Curie** → world 6 middle → sells "analytic" moves (currently Skyfall Beam, Ground
   Eruption -- `OverworldScene.showCuriePanel`) -- using one asks a physics-equation
   question first (`data/quiz.ts`'s `ANALYTIC_QUESTIONS`, `BattleScene
@@ -421,8 +432,10 @@ World 10 has no mentor; its only encounter is the finale.
   core, two swirling side-rays, a trail of falling sparks, and a radiant sun expanding
   at the point of origin; Ground Eruption bursts a wide double shockwave ring and a
   bright geyser core up through nearly twice the shard count of an ordinary burst.
-- **Bell** → world 7 middle → lore only for now; flavor ties in via Bell's inequality
-  (measured entanglement correlations exceeding any local, pre-agreed strategy)
+- **Bohr** → world 7 middle → lore only for now; flavor ties in via Bohr's own historical
+  role defending quantum mechanics' completeness against the EPR paradox -- measure one
+  half of an entangled pair and the other answers instantly, not through any signal
+  crossing the distance
 - **Kondo** → world 8 middle → lore only for now; flavor ties in via the Kondo effect
 - **Anderson** → world 9 middle → "dopes in" a crystal the player has encountered as an
   impurity, then teaches one specific move from that crystal's own moveset
@@ -431,9 +444,9 @@ World 10 has no mentor; its only encounter is the finale.
   list, no special-casing needed: `MOVE_COMPATIBILITY` (§3) already gates whether the
   learned move actually shows up in the battle menu, which is the whole point -- an
   impurity's channel only manifests once the player's *own* current form can physically
-  host it. Distinct from Bohr (become the whole state) and Majorana (fuse two states
+  host it. Distinct from Dresselhaus (become the whole state) and Majorana (fuse two states
   together): Anderson borrows a single excitation channel without becoming anything. In
-  Superposition Mode the host pool is every crystal in the game, same as Bohr/Majorana
+  Superposition Mode the host pool is every crystal in the game, same as Majorana
 
 **Boss avatars.** Every built world's rival/boss (`WORLD_RIVALS`/`getRival`)
 stands visibly at the goal tile as a gigantic landmark (`OverworldScene
@@ -462,7 +475,7 @@ matter to stabilize it. World 10's adaptive boss is revealed as the source — a
 entity that models and exploits whatever strategy the player has been using.
 
 **Story beats between worlds.** The plot isn't only the tutorial's first page and
-the ending — beating each world's rival now shows a short Decoherence-arc line
+the ending — beating each world's rival shows a short Decoherence-arc line
 (`data/story.ts`'s `STORY_BEATS`, keyed by the world just beaten) before
 `OverworldScene.showStoryBeat`/`advanceToWorld` moves the player into the next
 world, previewing that world's biome and nudging the plot forward one step at a
@@ -482,8 +495,8 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   run dev` gets hot-reload, ES modules split by concern (`data/`, `art/`,
   `scenes/`, `world/`), and type-checking on the material/move data model,
   which is exactly the kind of many-interacting-fields data that silently
-  breaks without it. `game/` is the only build; the earlier no-install
-  single-file `demo/` prototype has been removed.
+  breaks without it. `game/` is the only build; there is no separate no-install
+  single-file `demo/` prototype.
 - **Overworld camera:** over-the-shoulder pseudo-3D (`src/art/perspective.ts`)
   — the player's crystal floats in place at the bottom of the screen while the
   world is redrawn every frame from a smoothly-tweened camera position, giving
@@ -529,11 +542,9 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   `this.scene.restart()`, so the Title's existing `loadSave()`-into-registry block re-seeds
   every registry key from `defaultSave()` rather than needing a second seeding path.
 - **Data-driven content:** materials and moves live in `game/src/data/materials.ts`
-  (including the per-world `WORLD_CRYSTALS` database) — the sole source of truth now;
-  the repo-root `data/materials.json` draft it used to shadow has been removed, since
-  it had drifted out of sync (a type-effectiveness chart and an "Impurity Scatter"
-  move both later deliberately dropped from the real implementation, per this file's
-  own §3/§4) — so balance/content can be tuned without touching engine/rendering code.
+  (including the per-world `WORLD_CRYSTALS` database), the sole source of truth —
+  there is no separate `data/materials.json` draft to keep in sync — so balance/content
+  can be tuned without touching engine/rendering code.
 - **Onboarding is contextual, not one paged popup up front.** Seven short tips
   (`game/src/data/tutorial.ts`'s `TUTORIAL_TIPS`, keyed by `TutorialTipId`) each
   fire once per save, right as their own feature actually becomes relevant
@@ -562,9 +573,9 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   `enemyStatsForWorld`, full move unlock, full heal) instead of requiring the
   normal qumatoken grind, every built world is pre-marked visited so Bloch's
   teleport hub (§5) alone provides full world-to-world movement -- there is no
-  separate "Warp" UI, that was removed in favor of just leaning on Bloch's
-  existing mechanic -- and Bohr/Majorana/Anderson's panels (§5) offer every
-  crystal in the game as a candidate rather than only ones actually defeated.
+  separate "Warp" UI -- and Dresselhaus/Majorana/Anderson's panels (§5) offer every
+  crystal in the game as a candidate rather than only ones actually defeated
+  (Dresselhaus's list still excludes hybrid-recipe results, same as normal play).
   Toggled once at the title screen rather than mid-run, so it's a deliberate
   choice made before starting, not something stumbled into during play.
 
@@ -583,14 +594,14 @@ world 7's boss fights as an entangled pair where damaging one damages both.
 Built and playable end to end: all 10 worlds have an overworld map, biome, wild-encounter
 pool, rival, and mentor slot; the Hub, title screen, localStorage save, Materialdex, the
 contextual tutorial tips, and the Story Mode/Superposition Mode picker are all in place
-(§2, §4, §5, §7). `game/` is the only build; the earlier no-install single-file `demo/`
-prototype (world 1 only, placeholder rectangle graphics) has been removed.
+(§2, §4, §5, §7). `game/` is the only build; there is no separate no-install
+single-file `demo/` prototype.
 
 Not yet built:
 - Bespoke per-world boss puzzles (§6) — every world currently uses the same reach-goal →
   beat-rival → continue gate instead.
-- Real mentor mechanics for Laughlin, Bell, and Kondo, beyond
-  Noether/Bloch/Bohr/Majorana/Curie/Anderson (§5, §10).
+- Real mentor mechanics for Laughlin, Bohr, and Kondo, beyond
+  Noether/Bloch/Dresselhaus/Majorana/Curie/Anderson (§5, §10).
 - Battle music variants per world (only overworld tracks are per-world so far).
 - A mobile wrapper (Capacitor) and playtesting with students.
 
@@ -598,8 +609,8 @@ Not yet built:
 
 - **Subtype combination rules** — which main+subtype pairs are physically/
   narratively sensible needs a full compatibility table, not just one example.
-- **What Laughlin/Bell/Kondo actually unlock** — they're currently
-  lore-only stops (§5; Majorana, Curie, and Anderson now have real mechanics:
+- **What Laughlin/Bohr/Kondo actually unlock** — they're currently
+  lore-only stops (§5; Majorana, Curie, and Anderson have real mechanics:
   hybrid materials, analytic moves, and impurity doping); their real
   mechanics (fractional-charge moves, entanglement moves, screening) may or
   may not depend on the subtype system above existing first.

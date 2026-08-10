@@ -78,18 +78,17 @@ wanted.
 
 Per `DESIGN.md`'s roadmap, the "full build-out" pass is done: all 10 worlds
 have a walkable map, biome, wild-encounter pool, rival gate, and a mentor
-standing mid-corridor (Noether, Bloch, Bohr, Majorana, Curie, and Anderson
-have real mechanics; Laughlin, Bell, and Kondo are lore-only pending a
-subtype system, see `DESIGN.md` §10), with that world's boss now standing
+standing mid-corridor (Noether, Bloch, Dresselhaus, Majorana, Curie, and Anderson
+have real mechanics; Laughlin, Bohr, and Kondo are lore-only pending a
+subtype system, see `DESIGN.md` §10), with that world's boss standing
 at the goal tile as a gigantic
-visual landmark. The contextual tutorial tips, the Story Mode / Superposition
-Mode title-screen picker (Superposition Mode auto-levels the player and
-pre-marks every world visited so Bloch's teleport hub gives instant access to
-any world/mentor, for testing without grinding), and the Enter-menu's
-Settings panel (wild-encounter density, and a Text Size preset applied via
-`ui/text.ts`'s `fontPx`/`fontScale` helpers) were added most recently.
-`game/` is the only build now -- the earlier no-install single-file `demo/`
-prototype has been removed.
+visual landmark. Contextual tutorial tips guide new players, a Story Mode /
+Superposition Mode title-screen picker lets you choose between them
+(Superposition Mode auto-levels the player and pre-marks every world visited
+so Bloch's teleport hub gives instant access to any world/mentor, for testing
+without grinding), and the Enter-menu's Settings panel offers wild-encounter
+density and a Text Size preset applied via `ui/text.ts`'s
+`fontPx`/`fontScale` helpers. `game/` is the only build.
 
 ## Verifying UI changes
 

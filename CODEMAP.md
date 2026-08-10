@@ -29,11 +29,11 @@ game/src/
                                   hybrid look (drawHybridCrystal)
     mentor.ts                   makeNoetherAvatar()
     bloch.ts                    makeBlochAvatar()
-    bohr.ts                     makeBohrAvatar()
+    dresselhaus.ts               makeDresselhausAvatar()
     laughlin.ts                  makeLaughlinAvatar()
     majorana.ts                  makeMajoranaAvatar()
     curie.ts                     makeCurieAvatar()
-    bell.ts                      makeBellAvatar()
+    bohr.ts                     makeBohrAvatar()
     kondo.ts                     makeKondoAvatar()
     anderson.ts                   makeAndersonAvatar() -- disordered-lattice head motif, world 9
     boss.ts                      makeBossCrystal() -- gigantic multi-shard boss avatar at a world's goal
@@ -54,7 +54,7 @@ game/src/
                                   canHost(), getPlayerMaterial(), getPlayerStats(), getBattleMoves(),
                                   enemyStatsForWorld(), statUpgradeCost(), findMaterialByName(),
                                   allCrystals() -- every WORLD_CRYSTALS entry deduped by name, feeds
-                                  Bohr/Majorana/Anderson's Superposition Mode candidate pools,
+                                  Dresselhaus/Majorana/Anderson's Superposition Mode candidate pools,
                                   hybridRecipeResult()/HYBRID_RECIPES -- Majorana's named parent-pair
                                   recipe catalog, combineMaterials() -- Majorana's hybrid-material fuser
     tokens.ts                    Qumatoken value tiers + weights
@@ -88,10 +88,10 @@ game/src/
   tuning in isolation.
 - `canHost(defenderType, moveClass)` -- does the defender's own `MOVE_COMPATIBILITY` list
   include this class at all; the sole type-interaction check battle damage uses (DESIGN.md
-  §4's "quasiparticle mismatch" 2x). There used to be a separate strong/weak `TYPE_CHART` +
-  `effectiveness()` stacked on top of this -- removed as an unplaytested second system; don't
-  reintroduce it without updating DESIGN.md §3/§4 and STYLE.md's battle-log/move-menu
-  sections together.
+  §4's "quasiparticle mismatch" 2x). There is deliberately no separate strong/weak
+  `TYPE_CHART` + `effectiveness()` stacked on top of this -- don't add one (it would be an
+  unplaytested second system) without updating DESIGN.md §3/§4 and STYLE.md's
+  battle-log/move-menu sections together.
 - **`MOVE_COMPATIBILITY` gates both offense *and* defense at once -- a gotcha worth
   remembering before adding a new `MoveClass`.** The same table backs `compatibleMoves`
   (what the attacker can use) and `canHost` (whether the defender takes the mismatch 2x), so
@@ -119,8 +119,8 @@ game/src/
   fixed on its `WORLD_CRYSTALS` entry, not computed here), adding only `hybridParents` (both
   inputs' own `color`/`variant`, sorted the same way the lookup itself is order-independent) so
   `makeCrystal()`'s `opts.hybrid` can render an actual fused mixture on top of the recipe's own
-  base look (see STYLE.md). Optional field, so a hybrid `playerForm` loaded from a save written
-  before it existed just renders the ordinary single-shape look instead of throwing.
+  base look (see STYLE.md). Optional field, so a save whose `playerForm` predates
+  `hybridParents` just renders the ordinary single-shape look instead of throwing.
 
 ## Cross-cutting patterns (reuse these, don't reinvent)
 
@@ -132,26 +132,27 @@ game/src/
   state should follow this same registry-first, persist-on-mutation shape and get added to
   `data/save.ts`'s `SaveData`/`defaultSave()`/`persistFromRegistry()` together.
 - **World sprites.** Wild-encounter crystals, qumatoken pickups, and every mentor's overworld
-  avatar (Noether, Bloch, Bohr) all share one `WorldSprite` projection/wander/bob system in
-  `OverworldScene` (`updateWorldSprites`) rather than bespoke per-kind code -- a new NPC should
-  spawn through the same system (see `spawnNoetherSprite`/`spawnBlochSprite`/`spawnBohrSprite`
-  as templates), not a new one-off.
+  avatar (Noether, Bloch, Dresselhaus, and every other mentor alike) all share one `WorldSprite`
+  projection/wander/bob system in `OverworldScene` (`updateWorldSprites`) rather than bespoke
+  per-kind code -- a new NPC should spawn through the single unified
+  `OverworldScene.spawnMentorSprite` (looked up from `WORLD_MENTORS`), not a bespoke
+  `spawnXSprite` per mentor.
 - **Panel/dialogue UI.** Every overlay (wild encounter, mentor panels, rival gate, Hub's
   Materialdex/Save panels, the Enter-key menu) is the same dark rounded-rectangle-with-stroke
   treatment, with the stroke color signaling the panel's kind: blue-grey `0x444466` = wild
   encounter (`OverworldScene.showEncounter`) and the Enter-key menu/info panels (`0x8fa0c9`,
   a distinct blue-grey so it doesn't collide), gold `0xffe066` = Noether (and its analytic-move
-  counterpart, Curie's `showCuriePanel`, at olive `0xc9d84a`), teal `0x4adde0` = Bloch, amber
-  `0xffa64a` = Bohr, green `0x4fd97a` = Majorana's hybrid panel, rust `0xc9884a` = Anderson's
-  impurity-doping panel, red `0xff6666` = rival gate,
+  counterpart, Curie's `showCuriePanel`, at olive `0xc9d84a`), teal `0x4adde0` = Bloch,
+  teal-green `0x4ad9a0` = Dresselhaus's transmutation panel, green `0x4fd97a` = Majorana's
+  hybrid panel, rust `0xc9884a` = Anderson's impurity-doping panel, red `0xff6666` = rival gate,
   purple `0x9a6ad9` = Hub's `showPanel` (Materialdex/Save), lavender `0xd9a5ff` =
   `OverworldScene.showStoryBeat`'s between-worlds panel, and gold `0xffe066` again (matching
   Curie) for `BattleScene.showAnalyticQuestion`'s in-battle question panel, the one dialogue-style
   overlay that lives in `BattleScene` rather than `OverworldScene`. A new panel should pick a
   stroke color that doesn't collide with these.
 - **Mentor avatars.** One builder per mentor in its own file: `art/mentor.ts`'s
-  `makeNoetherAvatar()`, `art/bloch.ts`'s `makeBlochAvatar()`, `art/bohr.ts`'s
-  `makeBohrAvatar()`. Never a shared parameterized builder -- each mentor needs to read as
+  `makeNoetherAvatar()`, `art/bloch.ts`'s `makeBlochAvatar()`, `art/dresselhaus.ts`'s
+  `makeDresselhausAvatar()`. Never a shared parameterized builder -- each mentor needs to read as
   visually distinct.
 - **Attack effects keyed by MoveClass**, not by move id -- adding/removing a move never touches
   `attackEffects.ts`, only adding/removing a whole `MoveClass` does (update `EFFECT_STYLE` in
@@ -166,7 +167,7 @@ game/src/
 - **Discovery vs. defeat tracking.** Two separate registry/save lists, both excluding rivals
   (not real compounds): `discoveredMaterials` (`OverworldScene.recordDiscovery`, written on
   first wild *encounter*, feeds the Hub's Materialdex) and `defeatedMaterials`
-  (`BattleScene.endBattle`, written on an ordinary wild *win*, feeds Bohr's transmutation
+  (`BattleScene.endBattle`, written on an ordinary wild *win*, feeds Dresselhaus's transmutation
   panel). Don't conflate them -- a material can be encountered without being defeated.
 
 ## Player form and moves
@@ -178,13 +179,13 @@ types the player goes through this rather than `PLAYER_MATERIAL` directly: `Batt
 .playerMaterial`, `OverworldScene.playerMaterial`, `HubScene`'s crystal. Two mentors write it,
 both through the shared `OverworldScene.applyPlayerForm(material)` (sets `playerForm`, clamps
 HP down to the new form's `maxHp` if lower, persists, redraws the crystal -- never a full
-heal): Bohr's `transmuteInto(name)` looks the target up by name across `WORLD_CRYSTALS` via
+heal): Dresselhaus's `transmuteInto(name)` looks the target up by name across `WORLD_CRYSTALS` via
 `findMaterialByName` (never `WORLD_RIVALS` -- rivals aren't real compounds). Since
 `HYBRID_RECIPES`' results are themselves ordinary `WORLD_CRYSTALS` entries (mostly World 10's
-pool) rather than synthesized on the fly, a hybrid's name is now findable there too -- the one
-exception is a `hybridMaterials` save entry written before this change, back when
-`combineMaterials` still synthesized a `"A × B"` placeholder name with no matching
-`WORLD_CRYSTALS` row. Majorana's `becomeHybrid(material)` is still called with an
+pool) rather than synthesized on the fly, a hybrid's name is findable there too -- the one
+exception is a `hybridMaterials` save entry from a save file old enough to predate
+`HYBRID_RECIPES`, whose name may be a synthesized `"A × B"` placeholder with no matching
+`WORLD_CRYSTALS` row. Majorana's `becomeHybrid(material)` is called with an
 already-resolved `Material` object rather than a name (either freshly built by
 `combineMaterials`, which additionally attaches `hybridParents` for the fused-visual render, or
 pulled straight from the `hybridMaterials` save list).
@@ -266,7 +267,7 @@ uses it), so it always falls through to `showGatePanel()`, which is what renders
 **Progression (Face the Rival/Continue) is exclusive to the goal panel.** `renderShopFooter`
 (Farewell + Face-the-Rival/Continue, `showGatePanel`'s only caller) and `renderFarewellFooter`
 (Farewell only) are siblings -- every mid-corridor mentor panel (`showNoetherShop`'s two tabs,
-`showBlochHub`, `showMentorLore`, `showBohrPanel`) calls `renderFarewellFooter`, never
+`showBlochHub`, `showMentorLore`, `showDresselhausPanel`) calls `renderFarewellFooter`, never
 `renderShopFooter`, so no mentor panel can trigger that world's boss fight without the player
 walking to (or seeing) the goal. If a future mentor panel needs a progression action, route it
 through `showGatePanel`, not by reaching for `renderShopFooter` directly.
@@ -291,11 +292,11 @@ world, since a mismatched rival name is easy to miss if only `WORLD_NAMES` is up
 ## Mentors
 
 Every mentor has its own avatar builder in its own file: `art/mentor.ts`'s `makeNoetherAvatar`,
-`art/bloch.ts`'s `makeBlochAvatar` (wireframe Bloch-sphere head, teal), `art/bohr.ts`'s
-`makeBohrAvatar` (Bohr-model-atom head, amber), and one file per remaining mentor
-(`art/laughlin.ts`, `art/majorana.ts`, `art/curie.ts`, `art/bell.ts`, `art/kondo.ts`,
-`art/anderson.ts` -- disordered-lattice head motif, world 9, formerly `feynman.ts`/
-`makeFeynmanAvatar` before the Feynman→Anderson rename). Every mentor spawns through one
+`art/bloch.ts`'s `makeBlochAvatar` (wireframe Bloch-sphere head, teal),
+`art/dresselhaus.ts`'s `makeDresselhausAvatar` (spin-momentum-locked arrow ring, teal-green),
+and one file per remaining mentor (`art/laughlin.ts`, `art/majorana.ts`, `art/curie.ts`,
+`art/bohr.ts` -- Bohr-model-atom head, amber, `art/kondo.ts`,
+`art/anderson.ts` -- disordered-lattice head motif, world 9). Every mentor spawns through one
 unified `OverworldScene.spawnMentorSprite` (looked up from the `WORLD_MENTORS` table), not a
 bespoke `spawnXSprite` per mentor, and all share one chime, `playMentorChime()` in
 `audio/sfx.ts`.
@@ -309,12 +310,12 @@ though this is a style convention, not something the code enforces), the `WORLD_
 every doc that names the mentor by name (DESIGN.md §5, this file, DEVELOPMENT.md, README.md --
 `grep -rn` the old name across the repo, not just `game/src/`, since course-content
 cross-references in DESIGN.md's crystal database can share a physicist's name with a mentor
-without being about the mentor at all -- e.g. "Dirac point"/"Dirac fermion" physics terminology
-stays untouched by a Dirac→Laughlin mentor rename, and "Feynman diagram" terminology elsewhere
-in the repo stays untouched by the later Feynman→Anderson rename).
+without being about the mentor at all -- e.g. "Anderson localization"/"Anderson's theorem"
+physics terminology (DESIGN.md, `quiz.ts`) has nothing to do with the mentor named Anderson, so
+a blind find-and-replace on a name is unsafe).
 
 **Majorana (world 5), Curie (world 6), and Anderson (world 9) all have real mechanics**,
-following the same `open: (s) => s.showXPanel()` pattern as Noether/Bloch/Bohr:
+following the same `open: (s) => s.showXPanel()` pattern as Noether/Bloch/Dresselhaus:
 - **Majorana's hybrid-material panel** (`OverworldScene.showMajoranaPanel`) lets the player fuse
   two `defeatedMaterials` into a new `Material` via `data/materials.ts`'s `combineMaterials(a,
   b)`, which spreads whatever `Material` the matching `HYBRID_RECIPES` entry authored
@@ -345,7 +346,7 @@ following the same `open: (s) => s.showXPanel()` pattern as Noether/Bloch/Bohr:
 - **Anderson's impurity-doping panel** (`OverworldScene.showAndersonPanel`/
   `learnImpurityMove`) is a two-step pick like Majorana's, but the *result* is different: step
   one picks a host crystal (`defeatedMaterials`, or every crystal in Superposition Mode -- same
-  pool source as Bohr/Majorana), step two looks the host up via `findMaterialByName` and lists
+  pool source as Dresselhaus/Majorana), step two looks the host up via `findMaterialByName` and lists
   whichever of its `.moves` the player hasn't already learned (`!unlockedMoves.includes(id)`);
   picking one just does `unlockedMoves.push(id)` + persist. No `applyPlayerForm` call at all --
   see "Player form" above. `this.andersonSelection: string | null` mirrors
@@ -369,10 +370,10 @@ follows the `dialogueContainer`/`dialogueActive`/`closeDialogue()` overlay conve
 it can't open over another panel. Lives only in `OverworldScene`, not `BattleScene` or
 `HubScene`. `showPauseMenu`'s rows are a data-driven array (label + onClick) rather than
 hand-placed buttons -- a fixed six rows (Return to Lab, View Moves, View Stats, Advisors,
-Tutorial, Settings, Close) now that the old debug-only "Warp" row is gone; keep the
-data-driven-array shape for any future conditional row rather than reverting to fixed
-positions. `showMovesPanel` lists `getBattleMoves(registry)` (learned ∩ currently
-form-compatible, not the raw `unlockedMoves` list) as plain `<name> -- Pwr N` lines -- no
+Tutorial, Settings, Close); keep the data-driven-array shape for any future conditional row
+rather than switching to fixed positions. `showMovesPanel` lists `getBattleMoves(registry)`
+(learned ∩ currently form-compatible, not the raw `unlockedMoves` list) as plain
+`<name> -- Pwr N` lines -- no
 move-class label, no "incompatible" entries; a move the player has learned but can't currently
 use just doesn't show up until they transmute into a form that supports it.
 
@@ -387,13 +388,12 @@ testing/exploration aid, not part of normal progression. Three things key off
   fully heals, and merges every `BUILT_WORLDS` entry into `visitedWorlds` so Bloch's teleport
   hub (gated on `visitedWorlds`, see "Mentors" above) offers every world immediately -- this is
   what makes Bloch alone sufficient for world-to-world movement in this mode; there is no
-  separate warp panel anymore (removed along with `HubScene.showWorldSelectPanel`/
-  `OverworldScene.showDebugWarpPanel`).
+  separate warp panel.
 - `HubScene.enterWorld()`/`doorLabel()` branch on `isSuperpositionMode()` to jump straight to
   World 2 (`{ world: 2, regenerate: true }`) instead of `highestUnlockedWorld()`, bypassing
   `rivalDefeated` entirely -- reaching Bloch (who stands at World 2's own middle tile) is what
   then unlocks every other world via the point above.
-- `showBohrPanel`/`showMajoranaPanel`/`showAndersonPanel` each swap their candidate pool from
+- `showDresselhausPanel`/`showMajoranaPanel`/`showAndersonPanel` each swap their candidate pool from
   `getDefeatedMaterials()` to `data/materials.ts`'s `allCrystals()` when `isSuperpositionMode()`
   is true, per their own sections above.
 
@@ -415,7 +415,7 @@ before an Overworld scene has ever been created. Both trigger sites persist thro
 same tips in a fixed order -- `OverworldScene.showTutorial`/`renderTutorialPage`): a paged
 overlay using the same `dialogueContainer`/`addDialogueButtonAt` overlay convention as every
 other panel, stroked cyan (`0x5ad9ff`, see `STYLE.md`). Only reachable from the Enter-menu's
-"Tutorial" button now, not auto-triggered. `showTutorial(startIndex)` always resets
+"Tutorial" button, not auto-triggered. `showTutorial(startIndex)` always resets
 `tutorialIndex` and re-renders; Back/Next mutate `tutorialIndex` and call `renderTutorialPage()`
 again rather than rebuilding the whole scene. To add/edit a tip, only `data/tutorial.ts` needs
 touching -- both this and the contextual popups above read it generically.
@@ -425,7 +425,7 @@ touching -- both this and the contextual popups above read it generically.
 `OverworldScene`'s tutorial paging.
 
 **Candidate-crystal lists share one pager: `OverworldScene.renderPagedButtons<T>`.** Used by
-Bohr's transmute list, both steps of Majorana's and Anderson's combine/dope flows, and Bloch's
+Dresselhaus's transmute list, both steps of Majorana's and Anderson's combine/dope flows, and Bloch's
 destination list -- anywhere Superposition Mode's "every crystal"/"every world" pool can
 outgrow one panel. Takes the container/running-`y`/item array/current page/a `maxPerPage`
 ceiling/label+onPick callbacks/an `onPageChange` callback (expected to rebuild the whole panel:

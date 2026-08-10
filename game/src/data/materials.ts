@@ -488,6 +488,32 @@ export function hybridRecipeResult(nameA: string, nameB: string): Material | und
   return recipe?.result;
 }
 
+// Every name any HYBRID_RECIPES entry produces, plus real compounds that are
+// inherently a doped/alloyed mixture of two named ingredients (a magnetic
+// dopant in a host insulator, an alloy of two chalcogens) even though no
+// recipe produces them by fusing two separate WORLD_CRYSTALS entries --
+// Dresselhaus's transmutation panel excludes all of these (his gift is a
+// single crystal's own spin-orbit texture, not a mixed/doped state), even
+// for the ones that are also ordinary wild encounters.
+const HYBRID_RESULT_NAMES = new Set(HYBRID_RECIPES.map((r) => r.result.name));
+
+const COMPOSITE_MATERIAL_NAMES = new Set([
+  // Chromium dopant in a (Bi,Sb)₂Te₃ host, inducing the quantum anomalous
+  // Hall effect -- a mixture of two named ingredients baked into the
+  // compound itself, not a single-element/single-compound crystal.
+  'Cr-doped (Bi,Sb)₂Te₃',
+  // An alloy of two chalcogens (Te, Se) on the same lattice site, not one
+  // pure compound.
+  'Fe(Te,Se)',
+  // A nitrogen dopant substituted into a diamond host lattice -- two named
+  // ingredients (N, C) again, not a pure single-element crystal.
+  'NV-Diamond',
+]);
+
+export function isCompositeMaterial(name: string): boolean {
+  return HYBRID_RESULT_NAMES.has(name) || COMPOSITE_MATERIAL_NAMES.has(name);
+}
+
 // Fuses two materials with an authored recipe (checked via
 // `hybridRecipeResult` -- callers must not call this for an unrecognized
 // pair, this doesn't re-validate) into that recipe's named result. Unlike

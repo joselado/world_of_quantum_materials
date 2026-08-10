@@ -11,7 +11,7 @@ your way to mastering every phase of matter.
 ## The premise
 
 **You are a crystal yourself** -- the same kind of material the wild
-encounters are drawn from, currently Silicon. A "Decoherence" is spreading through the material worlds, causing
+encounters are drawn from, starting out as Silicon. A "Decoherence" is spreading through the material worlds, causing
 them to lose their protected properties, and you're the one walking through
 each phase of matter to stabilize it again.
 
@@ -46,8 +46,8 @@ course material -- answer correctly and you go into battle with a power
 boost, answer wrong and you're weakened, or just say "let me pass" and walk
 on with no consequence either way. Every compound has its own look, too --
 same main type, same base silhouette family, but each one gets its own tilt,
-proportions, and tint, so a wild Manganese Oxide doesn't read as a recolored
-copy of the Nickel Oxide standing next to it.
+proportions, and tint, so a wild Manganese Oxide reads as its own crystal
+standing next to the Nickel Oxide beside it.
 
 <table>
 <tr>
@@ -84,17 +84,16 @@ deliberately simple rather than a separate strong/weak chart on top of it.
 
 **Grow.** Winning battles and grabbing qumatoken pickups funds the mentors
 waiting partway through each world -- Noether sells new moves and sharper
-stats, Bloch teleports you between worlds you've already visited, Bohr lets
-you *transmute* into any crystal you've defeated, Majorana lets you fuse two
-defeated crystals into a brand-new hybrid state and become it -- rendered as
-an actual mixture of both parents' own colors and shapes, not just a single
-blended-together crystal -- Curie sells
-"analytic" moves that ask you a physics-equation question before they land
-(get it right for double damage, wrong for half) with dramatically flashier
-effects than an ordinary move -- a multi-layer beam of light falling from the
-sky, a shockwave-ringed eruption bursting from the ground -- Anderson lets
-you "dope in" a crystal you've encountered as an impurity and learn one
-specific move from it, and Laughlin, Bell, and Kondo share the physics
+stats, Bloch teleports you between worlds you've already visited, Dresselhaus
+lets you *transmute* into any single crystal you've defeated, Majorana lets
+you fuse two defeated crystals into a brand-new hybrid state and become it --
+rendered as an actual mixture of both parents' own colors and shapes -- Curie
+sells "analytic" moves that ask you a physics-equation question before they
+land (get it right for double damage, wrong for half) with dramatically
+flashier effects than an ordinary move -- a multi-layer beam of light falling
+from the sky, a shockwave-ringed eruption bursting from the ground -- Anderson
+lets you "dope in" a crystal you've encountered as an impurity and learn one
+specific move from it, and Laughlin, Bohr, and Kondo share the physics
 behind their own world's topic. Every mentor you've met stays reachable from
 the Advisors panel, from anywhere.
 
@@ -104,7 +103,7 @@ the Advisors panel, from anywhere.
 <td><img src="screenshots/mentor-bloch.png" width="300" alt="Bloch's teleport hub"></td>
 </tr>
 <tr>
-<td><img src="screenshots/mentor.png" width="300" alt="Bohr's transmutation panel"></td>
+<td><img src="screenshots/mentor-dresselhaus.png" width="300" alt="Dresselhaus's transmutation panel"></td>
 <td><img src="screenshots/mentor-majorana.png" width="300" alt="Majorana's hybrid-material panel"></td>
 </tr>
 <tr>
@@ -113,7 +112,7 @@ the Advisors panel, from anywhere.
 </tr>
 <tr>
 <td><img src="screenshots/mentor-laughlin.png" width="300" alt="Laughlin's lore panel"></td>
-<td><img src="screenshots/mentor-bell.png" width="300" alt="Bell's lore panel"></td>
+<td><img src="screenshots/mentor-bohr.png" width="300" alt="Bohr's lore panel"></td>
 </tr>
 <tr>
 <td><img src="screenshots/mentor-anderson.png" width="300" alt="Anderson's impurity-doping panel"></td>
@@ -123,7 +122,7 @@ the Advisors panel, from anywhere.
 **Face the boss.** Keep going past the mentor and you'll see it looming
 before you even reach it: a gigantic, multi-shard boss crystal wrapped in
 its own pulsing aura, standing at the far end of every world -- and it keeps
-that same imposing look once the fight actually starts. Beating it is what
+that same imposing look once the fight starts. Beating it is what
 opens the way to the next world.
 
 **Return to the Lab.** World 0 is a static hub room: a Save Point, and the
@@ -206,8 +205,7 @@ Open the Enter-key menu and click **Settings** to adjust:
 Short tips appear one at a time, right as each feature comes up for the
 first time -- entering the Lab, taking your first steps, your first wild
 encounter, your first battle, your first qumatoken, your first mentor,
-reaching your first goal -- instead of one long popup dumped on you up
-front. Want the whole thing again as a refresher? Open the Enter-key menu
+reaching your first goal. Want the whole thing again as a refresher? Open the Enter-key menu
 and click **Tutorial** to replay every tip in order.
 
 ## Story Mode vs. Superposition Mode
@@ -220,7 +218,7 @@ Before you start, the title screen asks you to pick a mode:
   time you enter a world your stats, moves, and HP are automatically brought
   up to a level competitive with that world's opponents, every world is
   already marked visited so Bloch's teleport hub (see above) can fold you to
-  any of them immediately, and Bohr/Majorana/Anderson offer every crystal in
+  any of them immediately, and Dresselhaus/Majorana/Anderson offer every crystal in
   the game rather than only ones you've actually defeated.
 
 ![Title screen's Story Mode / Superposition Mode picker](screenshots/title.png)

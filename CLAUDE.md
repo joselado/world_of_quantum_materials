@@ -58,5 +58,15 @@ checkout; that's gone now that this repo *is* the standalone checkout). Commit a
 - For code changes: check `CODEMAP.md` first so new code follows existing patterns
   (avatar builders, persisted-state plumbing, etc.) instead of introducing a
   parallel convention.
-- Keep `DESIGN.md`/`STYLE.md`/`CODEMAP.md`/`DEVELOPMENT.md` in sync with the code as
-  you go — they're meant to reflect current state, not history.
+- Keep `DESIGN.md`/`STYLE.md`/`CODEMAP.md`/`DEVELOPMENT.md`/`README.md` in sync with
+  the code as you go, and **write every edit to them as current state, not as a
+  change log.** A reader with no history should be able to read any of these files
+  cold and get a correct, uncluttered picture of how the game works *right now*.
+  Concretely: don't write "X used to be Y," "no longer," "replaced the old Z,"
+  "instead of the earlier W" — just state how it works. This applies on *every*
+  edit, not as an occasional cleanup pass; check your own diff for this framing
+  before finishing a task that touches these files. The one thing worth keeping
+  from "why it changed" is genuine *rationale* that's still load-bearing for future
+  decisions (e.g. "same-type pairs are still forbidden in general because fusing
+  two of the same phase isn't a new state") — cut the narration of the change
+  itself, keep the reasoning behind the current rule.

@@ -31,7 +31,7 @@ than appending a changelog, so this always reflects current reality.
   each with a lighter `#33335a` background) while the inactive one dims to `#8fa0c9`/`#1a1a2e`.
   A one-line dim caption underneath spells out what each mode actually does (start at World 1
   in order, vs. every advisor/transmutation/hybrid available immediately). Deliberately placed
-  on the title screen (a deliberate choice made before starting) rather than toggleable mid-run.
+  on the title screen, as a choice made before starting a run, rather than toggleable mid-run.
 
 ## The Hub (`scenes/HubScene.ts`, world 0)
 
@@ -45,8 +45,8 @@ than appending a changelog, so this always reflects current reality.
   Point", and a green cluster for the door, whose label switches between "Enter World 1" and
   "Enter World N+1" depending on how far `rivalDefeated` has progressed -- or, in Superposition
   Mode, reads "Enter World 2 (Bloch)" and drops the player straight into World 2, where Bloch's
-  own teleport hub (already pre-seeded with every world as visited) takes over as the sole way
-  to reach any other world -- there is no separate warp/world-select panel anymore. Clicking a
+  own teleport hub (already pre-seeded with every world as visited) is the sole way
+  to reach any other world -- there is no separate warp/world-select panel. Clicking a
   hotspot while another panel is already open is a no-op (one panel at a time).
 - Materialdex/Save Point panels reuse the same dark rounded-rectangle-with-stroke treatment
   as overworld dialogues (`showPanel`), stroked in purple (`0x9a6ad9`) to match the
@@ -66,7 +66,7 @@ than appending a changelog, so this always reflects current reality.
 - Off-path tiles read as unambiguously "you cannot walk here," but not always the same way --
   `OverworldScene.drawOffPathTile` dispatches on the current biome's `wallTheme`
   (`art/biomes.ts`, see the Biomes table below):
-  - **'rock'** (most biomes, the original look): a raised, solid-looking wall block, not just
+  - **'rock'** (most biomes): a raised, solid-looking wall block, not just
     differently-colored flat ground -- every edge a non-walkable tile shares with a walkable
     neighbor gets an extruded vertical face (`OverworldScene.drawWallFaces`, `WALL_HEIGHT_PX =
     30`), shaded darker than the tile's own top color and shaded differently per facing (near/
@@ -87,9 +87,9 @@ than appending a changelog, so this always reflects current reality.
     (`OverworldScene.drawVoidTile`). Only the edge shared with a walkable neighbor gets a
     glowing rail marking the drop-off; a void tile with no walkable neighbor draws nothing at
     all, which is also why this is the cheapest theme per frame, not the most expensive.
-  A ground-tile fill itself (walkable or 'rock' off-path) is a single flat color per tile --
-  a per-tile diagonal-facet/gradient shading was tried and reverted at the user's request
-  (floors read better flat); don't reintroduce it without asking first.
+  A ground-tile fill itself (walkable or 'rock' off-path) is a single flat color per tile,
+  not a per-tile diagonal-facet/gradient shading -- floors read better flat; don't add such
+  shading without asking first.
 - Decoration (flowers / crystal glints) is placed in the off-path terrain only, not on
   walkable tiles -- those are reserved for wild encounters (on the corridor) and
   qumatoken pickups (at branch dead ends).
@@ -152,10 +152,11 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   doesn't track its main type.
 - Sizes: player `PLAYER_CRYSTAL_SIZE = 34` (largest, always on-screen), wild encounters
   `CRYSTAL_SIZE = 22`.
-- **Per-compound identity.** `TYPE_LOOK` still fixes one shard/cluster/prism/layer/twisted
-  silhouette + base color per `MaterialType`, but individual compounds of the same type no
-  longer render as that same silhouette in only a different brightness. Every call site that
-  has an actual `Material` passes `makeCrystal()`'s `opts.seed` (the material's own name);
+- **Per-compound identity.** `TYPE_LOOK` fixes one shard/cluster/prism/layer/twisted
+  silhouette + base color per `MaterialType`, but individual compounds of the same type each
+  get their own visual variation rather than rendering as that same silhouette in only a
+  different brightness. Every call site that has an actual `Material` passes `makeCrystal()`'s
+  `opts.seed` (the material's own name);
   `art/crystals.ts`'s `jitterFor` hashes that name into a small deterministic PRNG
   (`hashSeed`/`seededRandom`, `art/colors.ts`) and derives a hue shift (`hueShift`, ±35°), a
   shape rotation (±18°), a non-uniform x/y stretch (0.76-1.28, applied inside the shape-drawing
@@ -175,7 +176,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   space with a second parent's own shape) render off-center at a slight opposing tilt, the
   second layered on top at less than full opacity so the overlap region genuinely blends both
   parent colors via normal alpha compositing -- **not** `Phaser.BlendModes.ADD` on the shapes
-  themselves, which was tried first and washed out to solid white against anything but a black
+  themselves, since that washes out to solid white against anything but a black
   background (the overworld sky never is). A soft additive-blended glow (their averaged color)
   and a jagged white-gold seam down the middle *do* use `ADD`, since those are meant to read as
   light/energy rather than solid material. Finished with sparkles tinted in both parents' own
@@ -208,7 +209,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 
 - Every mentor (Noether included) stands floating at their world's *middle* tile
   (`WORLD_MENTORS`' `tile: 'middle'`, `mid.x`/`mid.y` from `world/mapgen.ts` --
-  roughly the corridor's halfway row), not the goal -- the goal tile itself now
+  roughly the corridor's halfway row), not the goal -- the goal tile
   belongs to that world's boss avatar (see below). One shared `spawnMentorSprite`
   builds all of them from the `WORLD_MENTORS` table (avatar builder, scale `1.1`,
   name label in the mentor's own `labelColor`) rather than a bespoke function per
@@ -278,8 +279,8 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   (`advanceToWorld`, no battle). Empty state: "You haven't mapped anywhere else yet."
   Destinations paginate (see "Paginated candidate lists" below) once there are more than
   fit on one page -- routine in Superposition Mode, which pre-seeds every built world as
-  visited and makes Bloch's hub the *sole* way to move between worlds (there's no separate
-  warp panel anymore).
+  visited and makes Bloch's hub the *sole* way to move between worlds (there is no separate
+  warp panel).
 
 ## Bohr in the overworld (`OverworldScene.showBohrPanel`)
 
@@ -366,11 +367,11 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   list is longer than one page.
 - The actual row count per page isn't a fixed number: it's computed from one sample row
   measured at the current Settings-panel text-size preset (`ui/text.ts`'s `fontScale`),
-  shrunk to whatever still fits above the panel's own trailing Farewell/Close button. This
-  replaced an earlier fixed 4-per-page cap after the *default* text-size preset (1.5x, not
-  1x) overflowed Bloch's hub once Superposition Mode made a 9-destination list the common
-  case -- verified with no overflow at every font-scale preset via the headless-Chromium
-  harness (see DEVELOPMENT.md's "Verifying UI changes" section).
+  shrunk to whatever still fits above the panel's own trailing Farewell/Close button --
+  a fixed per-page cap would overflow Bloch's hub at the *default* text-size preset (1.5x,
+  not 1x) once Superposition Mode made a 9-destination list the common case -- verified with
+  no overflow at every font-scale preset via the headless-Chromium harness (see
+  DEVELOPMENT.md's "Verifying UI changes" section).
 
 ## Boss avatars (`OverworldScene.spawnBossSprite`, `art/boss.ts`)
 
@@ -459,7 +460,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   since that line's wrapped height eats directly into the space every row gets.
 - Row height is a hard geometric budget (whatever vertical space is left below the
   title/legend, divided across however many moves are usable), with a minimum floor so rows
-  never shrink to illegible -- `30`px for up to 7 moves (the original roster's max), `17`px
+  never shrink to illegible -- `30`px for up to 7 moves (the base move roster's max), `17`px
   for 8-9 (reachable once an 'adaptive'-type form, e.g. a defeated world-10 Echo via Bohr,
   has learned everything including both analytic moves). Below `rowH < 40` the row switches
   to smaller font/padding rather than clipping. Verified to fit within the field's 480px
@@ -489,8 +490,8 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   are a data-driven list (`320` wide, height grows with row count, vertically centered on
   the canvas rather than a fixed `panelY`) rather than fixed buttons: Return to Lab (same
   destination as the `H` key), View Moves, View Stats, Advisors, Tutorial, Settings, then
-  Close -- a fixed six rows now that the old debug-only Warp row is gone (world-to-world
-  movement goes through Bloch's own panel instead, see above). Respects `dialogueActive`
+  Close -- a fixed six rows (world-to-world movement goes through Bloch's own panel
+  instead, see above). Respects `dialogueActive`
   (won't open over an already-open panel) and only exists in `OverworldScene`, not mid-battle.
 - "View Moves"/"View Stats" swap the pause menu for a second, generic info panel
   (`showInfoPanel`, `420x300`, same blue-grey stroke). View Moves lists only the moves
@@ -513,8 +514,8 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 ## Contextual tutorial tips (`OverworldScene.showTutorialTip`/`renderTutorialTipPopup`, `HubScene.maybeShowLabTip`)
 
 - Same dark rounded-rectangle-with-stroke panel family as everywhere else (`520` wide, height
-  grown to fit), stroked the same cyan (`0x5ad9ff`) the old paged tutorial used -- title (bold
-  white) above body text (muted blue-grey `#cfd8ff`, center-aligned, matching the
+  grown to fit), stroked the same cyan (`0x5ad9ff`) the full tutorial recap panel below also
+  uses -- title (bold white) above body text (muted blue-grey `#cfd8ff`, center-aligned, matching the
   wild-encounter greeting's tone), a single "Got it" button beneath. No page counter or
   Back/Next -- each popup is one tip, not a sequence, so paging chrome would be pure noise.
   The Lab's version (`HubScene.maybeShowLabTip`) reuses `HubScene.showPanel` instead (purple
@@ -523,7 +524,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 - Fires automatically the first time its own feature becomes relevant (`tutorialTipsSeen`,
   data/tutorial.ts's `TutorialTipId`) -- walking into the Lab, taking your first steps in a
   world, bumping into your first wild crystal, and so on -- never more than one on screen at a
-  time, and never all of them in a row the way the old single first-run sequence did.
+  time, and never several shown in a row.
 
 ## Full tutorial recap (`OverworldScene.showTutorial`/`renderTutorialPage`)
 
@@ -535,7 +536,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   flank a center button that reads "Skip" on every page except the last, where it becomes
   "Done" -- both close the panel either way, "Skip"/"Done" is just the honest label for what
   happens at that point in the sequence.
-- No longer triggers automatically on its own -- see "Contextual tutorial tips" above for what
+- Doesn't trigger automatically -- see "Contextual tutorial tips" above for what
   a new save actually sees; this is opt-in only, always restarting from page 1.
 
 ## Attack effects (`art/attackEffects.ts`, `audio/sfx.ts`, `scenes/BattleScene.ts`)
@@ -550,7 +551,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 - Curie's two analytic moves break the "one shape per class" rule on purpose -- gold
   (`0xffe066`), but each with its own silhouette rather than sharing the `'analytic'`
   class's one default (`art/attackEffects.ts`'s `ANALYTIC_SHAPES`, keyed by move id, not
-  class), and each substantially more elaborate than the original three shapes -- Curie's
+  class), and each substantially more elaborate than the three base bolt/ring/burst shapes -- Curie's
   own request was moves that clearly read as stronger than an ordinary hit, not just a
   bigger bolt/ring/burst. **Skyfall Beam** (`playBeam`) drops a multi-layer column of light
   from off the top of the screen straight down onto the target: a wide pulsing telegraph
