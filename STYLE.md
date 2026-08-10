@@ -2,10 +2,10 @@
 
 Living record of current visual/style decisions for the game (`game/src/art/`,
 `game/src/world/`, `game/src/scenes/OverworldScene.ts`, `game/src/scenes/BattleScene.ts`).
-Companion to `DESIGN.md`, which
-covers mechanics/content; this file covers "how things currently look" -- sizes, colors,
-shapes. Edit in place as choices change; when a new decision replaces an old one, remove
-the old entry rather than appending a changelog, so this always reflects current reality.
+Companion to `DESIGN.md` (mechanics/content) and `CODEMAP.md` (where things live in the
+code); this file covers "how things currently look" -- sizes, colors, shapes. Edit in place
+as choices change; when a new decision replaces an old one, remove the old entry rather
+than appending a changelog, so this always reflects current reality.
 
 ## Title screen (`scenes/TitleScene.ts`)
 
@@ -14,6 +14,10 @@ the old entry rather than appending a changelog, so this always reflects current
   screen exists to load the save (see DESIGN.md §7) and hand off to the Hub, not to be a
   world of its own. Button label reads "Continue" if a save exists (`data/save.ts`'s
   `hasSave`) or "New Game" otherwise; both SPACE and a click on the button start the Hub.
+- Below the "Press SPACE..." hint, a small **Debug Mode** toggle (`addDebugToggle`) -- a single
+  text button reading `Debug Mode: OFF`/`ON`, dim blue-grey (`#8fa0c9`) when off and a warning
+  pink (`#ff8fa0`) when on so it's visually obvious debug mode is active. Deliberately placed on
+  the title screen (a deliberate choice made before starting) rather than toggleable mid-run.
 
 ## The Hub (`scenes/HubScene.ts`, world 0)
 
@@ -25,8 +29,9 @@ the old entry rather than appending a changelog, so this always reflects current
   bobbing in place with a label underneath, in the same gold-on-black label treatment as
   overworld encounters/tokens: a purple prism for "Materialdex", a gold shard for "Save
   Point", and a green cluster for the door, whose label switches between "Enter World 1" and
-  "Enter World N+1" depending on how far `rivalDefeated` has progressed. Clicking a hotspot
-  while another panel is already open is a no-op (one panel at a time).
+  "Enter World N+1" depending on how far `rivalDefeated` has progressed -- or, while Debug Mode
+  is on, reads "Debug: Warp" and opens a world-select panel instead (see below). Clicking a
+  hotspot while another panel is already open is a no-op (one panel at a time).
 - Materialdex/Save Point panels reuse the same dark rounded-rectangle-with-stroke treatment
   as overworld dialogues (`showPanel`), stroked in purple (`0x9a6ad9`) to match the
   Materialdex icon, with a single "Close" button -- no per-material navigation yet, just a
@@ -68,6 +73,7 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
 |---|---|---|---|---|---|---|
 | 1 | Tutorial Meadow | pale blue gradient (`0x8fd0ff`→`0xe8f6ff`) | grass `0x2e7d32` | dirt `0xb08d57` | flowers | yes |
 | 2 | Crystalline Caves | dark purple gradient (`0x1a1730`→`0x362f5c`) | stone `0x2b2b3a` | cave floor `0x585073` | crystal glints (cyan) | no |
+| 3 | Floating Islands | deep-to-pale blue gradient (`0x2a3d6b`→`0x8fb8e8`) | slate blue `0x35507a` | pale sky-blue walkway `0x9ac0e0` | crystal glints (cyan) | yes |
 
 ## Qumatoken pickups (`art/tokens.ts`, `data/tokens.ts`)
 
@@ -137,26 +143,67 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
   than a wild encounter. An inner container sways gently on its own (independent of the
   panel's own bob tween on the outer container) so she reads as adrift rather than fixed in
   place; a soft additive glow behind her pulses slowly for a "presence" that a flat
-  silhouette wouldn't give. A short layered-bell chime (`audio/sfx.ts`'s `playNoetherChime`)
-  plays whenever the shop opens. Sized and positioned (`panelY - 105`, avatar top edge
-  landing a few px inside the panel's own top edge, intro text pushed down to `panelY - 68`)
-  to fit the same panel that a future mentor-specific builder would need to budget for too --
-  future mentors (Bloch, Dirac, ...) should get their own builders in their own files rather
-  than reusing this one. Appears automatically every time the Overworld scene is (re)created
-  with world 1's goal already reached (`OverworldScene.maybeAutoOpenGoalDialogue`) -- first
-  on stepping onto the goal row, then again after every later round trip through
-  `BattleScene`, so the shop stays revisitable as the player earns more qumatokens instead
-  of a single one-shot popup. Panel height `340` (taller than a wild encounter's `300`) to
-  fit the fixed footer row below the shop list.
-- Below the intro line, one button per still-unbought move (`data/materials.ts`'s
-  `SHOP_MOVE_IDS`), labeled `<move name> -- <cost> qumatokens`; a button for a move the
-  player can't yet afford is dimmed to 50% alpha rather than hidden, so the shop still
-  previews what's coming. Buying rebuilds the whole panel so the bought move drops off the
-  list. Below the (variable-length) shop list, a fixed footer row at `panelY + 120` -- not
-  stacked beneath the list, so it can't run off the panel regardless of how many moves are
-  still for sale -- holds "Farewell" and a second button reading "Face the Rival ->" (before
-  that world's rival is beaten) or "Continue to World N+1 ->" (after), side by side via
-  `addDialogueButtonAt`.
+  silhouette wouldn't give. A short layered-bell chime (`audio/sfx.ts`'s `playMentorChime`,
+  shared by every mentor panel) plays whenever the shop opens. Sized and positioned
+  (`panelY - 105`, avatar top edge landing a few px inside the panel's own top edge, intro
+  text pushed down to `panelY - 68`) to fit the same panel every later mentor panel
+  (Bloch's, Bohr's) reuses -- each mentor still gets its own avatar builder in its own file
+  (`art/bloch.ts`, `art/bohr.ts`, ...) even though the surrounding panel shape is shared.
+  Appears automatically every time the Overworld scene is (re)created with this world's
+  goal already reached (`OverworldScene.maybeAutoOpenGoalDialogue`/`openGoalMentorPanel`) --
+  first on stepping onto the goal row, then again after every later round trip through
+  `BattleScene`, so the panel stays revisitable instead of a single one-shot popup. Panel
+  height `340` (taller than a wild encounter's `300`) to fit the fixed footer row below the
+  content.
+- Below the intro line, two small tab buttons (`renderShopTabs`, `panelY - 42`) switch the
+  panel between a **Moves** list and a **Stats** list (`OverworldScene.shopTab`, reset to
+  `'moves'` on every scene create) -- the active tab is highlighted gold-on-slate, the
+  inactive one dim blue-grey, same click-to-rebuild-the-panel pattern as buying itself.
+  - **Moves**: one button per still-unbought move the player's *current crystal form* can
+    physically carry (`data/materials.ts`'s `SHOP_MOVE_IDS` filtered through
+    `compatibleMoves`), labeled `<move name> -- <cost> qumatokens`; unaffordable buttons dim
+    to 50% alpha rather than hide, so the shop still previews what's coming.
+  - **Stats**: one button per stat (Quantumness/Velocity/Correlation), labeled
+    `<stat> (<role>): <value> -> <value+1> -- <cost> qumatokens`, same afford/dim treatment.
+  - Both tabs' rows start at `panelY - 8`, spaced `36`px apart, buying/upgrading rebuilds
+    the whole panel so the list updates and the token total on display stays correct.
+- Below the (variable-length) tab content, a fixed footer row at `panelY + 120`
+  (`renderShopFooter`) -- not stacked beneath the content, so it can't run off the panel
+  regardless of how many rows are showing -- holds "Farewell" and a second button reading
+  "Face the Rival ->" (before that world's rival is beaten) or "Continue to World N+1 ->"
+  (after), side by side via `addDialogueButtonAt`. Bloch's and Bohr's panels (below) reuse
+  this same footer/tab-content layout.
+
+## Bloch in the overworld (`OverworldScene.spawnBlochSprite`/`showBlochHub`)
+
+- World 2 only, standing at the goal tile -- same landmark/wander/re-open pattern as
+  Noether (see above), just with `art/bloch.ts`'s `makeBlochAvatar` and a cyan
+  (`0x8fe8ff`) name label. His avatar swaps Noether's halo/head for a wireframe **Bloch
+  sphere** (equator + two tilted meridian ellipses, additive-blended, slowly spinning) with
+  a bright state-vector arrow pointing off-axis -- a superposition, not a pinned-down state,
+  matching his teleport ability -- plus three small orbiting `◇` waypoint marks instead of
+  Noether's `✦` motes.
+- His panel (`showBlochHub`) is stroked teal (`0x4adde0`) and reuses the same tab-content/
+  footer shape as Noether's shop, minus the tabs -- one button per world the player has
+  visited (`visitedWorlds`) that also has a built map (`BUILT_WORLDS`), excluding the
+  current world, labeled `Travel to World N -- <name>`; clicking teleports there instantly
+  (`advanceToWorld`, no battle). Empty state: "You haven't mapped anywhere else yet."
+
+## Bohr in the overworld (`OverworldScene.spawnBohrSprite`/`showBohrPanel`)
+
+- World 3 only, standing at the *start* tile (not the goal -- "the beginning of world 3"),
+  and his panel auto-opens on stepping into the scene rather than on reaching any tile
+  (`maybeAutoOpenStartDialogue`). Amber (`0xffa64a`) name label; his avatar
+  (`art/bohr.ts`'s `makeBohrAvatar`) swaps the head for a small Bohr-model atom -- a bright
+  additive nucleus with three tilted elliptical shells, each carrying one orbiting electron
+  at its own speed.
+- His panel is stroked amber (`0xffa64a`); up to the 3 most recently defeated wild
+  materials (`defeatedMaterials`) each get a button (`Become <name>`, or a dimmed
+  `<name> (current form)` for whichever the player is already wearing) that transmutes the
+  player's own crystal into that form (`transmuteInto`) -- swaps color/variant/max HP and
+  clamps current HP down if needed, and immediately redraws the overworld avatar
+  (`redrawPlayerCrystal`). Empty state: "You haven't defeated any crystals yet -- there is
+  nothing to become."
 
 ## The rival gate (`OverworldScene.showRivalEncounter`)
 
@@ -187,16 +234,69 @@ on-path trail color, ambient decoration style, fog blend target, and whether clo
   (`data/materialdex.ts`'s `materialBlurb`) is appended after the flavor/token lines, and at
   the original position those extra lines would run off the bottom of the canvas.
 
+## Battle move menu (`BattleScene.drawMoveMenu`)
+
+- A docked panel on the right of the field (`x = 456`, `y = 190`, width `176`), same dark
+  rounded-rectangle-with-stroke treatment as the overworld's dialogue panels, stroked gold
+  (`0xffe066`) to match Noether's own panel color, titled "MOVES" in bold gold. Height grows
+  with however many moves are currently usable (`34 + rowCount * 34`) rather than a fixed
+  size, since that count changes as the player learns moves or transmutes into a form with
+  a different physics-compatible set (§3 of DESIGN.md). Replaces the old scattered
+  individually-positioned buttons that used to run off the field past ~4 moves.
+- Each move is a `[ #222244 background / #ffff88 text ]` button, same treatment used
+  everywhere else (overworld dialogue buttons, the old scattered layout) for visual
+  continuity, stacked vertically inside the panel rather than spread horizontally. A form
+  with zero currently-usable moves (shouldn't normally happen, since Phonon Beam is
+  universal) shows "No usable moves" instead of an empty panel.
+
+## Enter-key pause menu (`OverworldScene.showPauseMenu`/`showInfoPanel`)
+
+- Same dark rounded-rectangle-with-stroke panel treatment as everywhere else, stroked
+  blue-grey (`0x8fa0c9`, distinct from every mentor/encounter panel's own stroke color). Rows
+  are a data-driven list (`320` wide, height grows with row count) rather than fixed buttons:
+  Return to Lab (same destination as the `H` key), View Moves, View Stats, Advisors, Tutorial,
+  and -- only while Debug Mode is on -- Warp (Debug), then Close. Respects `dialogueActive`
+  (won't open over an already-open panel) and only exists in `OverworldScene`, not mid-battle.
+- "View Moves"/"View Stats" swap the pause menu for a second, generic info panel
+  (`showInfoPanel`, `420x300`, same blue-grey stroke) listing the player's learned moves
+  (each flagged "-- not compatible with your current form" if the current crystal form
+  doesn't support it) or their Quantumness/Velocity/Correlation plus qumatokens and current
+  form name, with a single "Close" button.
+
+## Tutorial popup (`OverworldScene.showTutorial`/`renderTutorialPage`)
+
+- Same dark rounded-rectangle-with-stroke panel as everywhere else (`560x300`), stroked a
+  fresh cyan (`0x5ad9ff`) not used by any other panel. A small `TUTORIAL -- n / N` counter in
+  that same cyan sits above the page title (bold white) and body text (muted blue-grey
+  `#cfd8ff`, center-aligned, matching the wild-encounter greeting's tone).
+- Footer row: `<- Back` (hidden on the first page) and `Next ->` (hidden on the last page)
+  flank a center button that reads "Skip" on every page except the last, where it becomes
+  "Done" -- both close the panel either way, "Skip"/"Done" is just the honest label for what
+  happens at that point in the sequence.
+- Triggers automatically once, the first time an Overworld scene is ever created for a save
+  (`tutorialSeen`); afterward only opens on request via the Enter-menu's "Tutorial" button,
+  always restarting from page 1.
+
+## Debug warp panels (`HubScene.showWorldSelectPanel`, `OverworldScene.showDebugWarpPanel`)
+
+- Both replace the normal way to change world with a plain scrollable-feeling list of all 10
+  worlds (`World N -- <name>`, one button per row) when Debug Mode is on -- the Hub's version
+  in place of the door's usual "Enter World N" action, the Overworld's as an extra pause-menu
+  row for warping mid-run without backtracking to the Hub. Deliberately stroked magenta
+  (`0xff4fd8` panel border, `#ff8fe0` title text) -- distinct from every diegetic mentor/
+  dialogue panel color on purpose, so a debug-only panel never reads as part of the story.
+  The Overworld version dims (50% alpha) and disables the row matching the world already
+  entered, labeled "(current)".
+
 ## Attack effects (`art/attackEffects.ts`, `audio/sfx.ts`, `scenes/BattleScene.ts`)
 
 - Every move renders a distinct particle effect keyed by its move class, not just a color
   swap: a fast focused **bolt** with a glowing double-width trailing line (Phonon Beam,
   Electron Pulse, Spinon Swap), an **expanding ring** pulse with a bright inner rim (Magnon
   Pulse, Polaron Drag), or a cluster of small particles that **converge/scatter** near the
-  target (Impurity Scatter, Anyon Braid, Majorana Split). Each class also has its own color
-  (e.g. orange for Phonon Beam, red for Magnon Pulse, grey for Impurity Scatter). All three
-  shapes render additive-blended (`Phaser.BlendModes.ADD`) so they glow instead of reading
-  as flat shapes.
+  target (Anyon Braid, Majorana Split). Each class also has its own color (e.g. orange for
+  Phonon Beam, red for Magnon Pulse). All three shapes render additive-blended
+  (`Phaser.BlendModes.ADD`) so they glow instead of reading as flat shapes.
 - The full beat, in order: a ~90ms additive windup flash at the attacker's own position, the
   travelling effect itself (~340-460ms depending on shape), then a fire-and-forget impact
   shockwave (a white flash plus 8 radiating shards, ~260ms) at the target -- on top of which

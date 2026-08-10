@@ -5,15 +5,39 @@ import type { Biome } from '../art/biomes';
 import { makeCrystal } from '../art/crystals';
 import { makeToken } from '../art/tokens';
 import { makeNoetherAvatar } from '../art/mentor';
-import { playNoetherChime } from '../audio/sfx';
+import { makeBlochAvatar } from '../art/bloch';
+import { makeBohrAvatar } from '../art/bohr';
+import { makeDiracAvatar } from '../art/dirac';
+import { makeMajoranaAvatar } from '../art/majorana';
+import { makeCurieAvatar } from '../art/curie';
+import { makeEinsteinAvatar } from '../art/einstein';
+import { makeKondoAvatar } from '../art/kondo';
+import { makeFeynmanAvatar } from '../art/feynman';
+import { playMentorChime } from '../audio/sfx';
 import { project, fogColor, HORIZON_Y, CANVAS_W, CANVAS_H, ProjectedPoint } from '../art/perspective';
-import { PLAYER_MATERIAL, WORLD_NAMES, getWildPool, getRival, MOVES, SHOP_MOVE_IDS } from '../data/materials';
+import {
+  PLAYER_MATERIAL,
+  WORLD_NAMES,
+  getWildPool,
+  getRival,
+  MOVES,
+  SHOP_MOVE_IDS,
+  compatibleMoves,
+  getPlayerMaterial,
+  getPlayerStats,
+  getBattleMoves,
+  findMaterialByName,
+  statUpgradeCost,
+  enemyStatsForWorld,
+  DEFAULT_STATS,
+} from '../data/materials';
 import { tokenColorForValue } from '../data/tokens';
 import { getMaterialQuestion } from '../data/quiz';
 import { encounterGreeting } from '../data/greetings';
+import { TUTORIAL_PAGES } from '../data/tutorial';
 import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
-import type { Material, Move } from '../data/types';
+import type { Material, Move, Stats } from '../data/types';
 import { generateWorldMap } from '../world/mapgen';
 import type { GridPoint } from '../world/mapgen';
 import { music } from '../audio/music';
@@ -31,6 +55,7 @@ interface SavedMapState {
   encounterTiles: (Material | null)[][];
   flowerMap: boolean[][];
   goalTile: GridPoint;
+  startTile: GridPoint;
   reachedGoal: boolean;
 }
 
@@ -52,9 +77,13 @@ const WALL_HEIGHT_PX = 30;
 const QUIZ_CORRECT_MULTIPLIER = 1.5;
 const QUIZ_WRONG_MULTIPLIER = 0.6;
 
-// Worlds with a built overworld map -- Space cycles between these for
-// testing, since only worlds 1 and 2 exist so far (see DESIGN.md roadmap).
-const TESTABLE_WORLDS = [1, 2];
+// Worlds with a built overworld map (biome + rival, where applicable) --
+// Space cycles between these for testing, and it's also what bounds Bloch's
+// teleport offers (a "visited" world the player can't actually walk isn't a
+// real destination). All 10 worlds are built as of DESIGN.md's "full
+// build-out" pass. Exported so data/integrity.ts can assert every entry here
+// actually has a biome and a rival.
+export const BUILT_WORLDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
 function shopCost(move: Move): number {
   return move.power * 5;
@@ -74,6 +103,29 @@ interface WorldSprite {
   seed: number;
 }
 
+// One entry per world with a mentor -- replaces the old per-mentor
+// `spawnXSprite`/`this.world === N` branches with a single data-driven
+// dispatch (spawnMentorSprite/openMentor), the same "reusable rather than
+// per-world bespoke" approach the map generator and biome table already
+// use. Noether/Bloch/Bohr keep their own bespoke panels (shop, teleport hub,
+// transmutation) and set `open` explicitly; every mentor from Dirac onward
+// leaves `open` unset and falls through to the shared showMentorLore panel
+// instead (see DESIGN.md §5 -- their own mechanics are still an open design
+// question, Noether stays the sole moves/stats seller). Leaving `open`
+// unset rather than hand-writing `(s) => s.showMentorLore(WORLD_MENTORS[N]!)`
+// per lore entry means there's no self-referencing world-number literal to
+// forget updating if a world ever gets renumbered.
+interface MentorDef {
+  id: string;
+  name: string;
+  labelColor: string;
+  strokeColor: number;
+  quote: string;
+  avatar: (scene: Phaser.Scene, scale?: number) => Phaser.GameObjects.Container;
+  tile: 'goal' | 'start';
+  open?: (scene: OverworldScene) => void;
+}
+
 export class OverworldScene extends Phaser.Scene {
   private world = 1;
   private regenerate = false;
@@ -89,22 +141,126 @@ export class OverworldScene extends Phaser.Scene {
   private tokenTiles: number[][] = [];
   private flowerMap: boolean[][] = [];
   private goalTile: GridPoint = { x: 0, y: 0 };
+  private startTile: GridPoint = { x: 0, y: 0 };
   private reachedGoal = false;
   private qumatokens = 0;
   private crystalSprites: (WorldSprite & { material: Material })[] = [];
   private tokenSprites: WorldSprite[] = [];
   // 0 or 1 entries -- reuses the same WorldSprite projection/wander/bob
-  // machinery as crystals and tokens (spawnNoetherSprite) so she's a visible,
-  // wandering landmark standing at the goal tile rather than only appearing
-  // once the player triggers her shop dialogue.
-  private noetherSprites: WorldSprite[] = [];
+  // machinery as crystals and tokens (spawnMentorSprite) so a mentor is a
+  // visible, wandering landmark standing on the map rather than only
+  // appearing once their dialogue triggers.
+  private mentorSprites: WorldSprite[] = [];
   private worldGfx!: Phaser.GameObjects.Graphics;
   private player!: Phaser.GameObjects.Container;
+  private playerCrystalGfx!: Phaser.GameObjects.Container;
+  private playerMaterial!: Material;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private tokenText!: Phaser.GameObjects.Text;
   private goalText!: Phaser.GameObjects.Text;
   private dialogueActive = false;
   private dialogueContainer?: Phaser.GameObjects.Container;
+  // Which section of Noether's panel is showing -- reset to 'moves' on
+  // every fresh scene create so re-entering the world doesn't strand the
+  // player on the stats tab.
+  private shopTab: 'moves' | 'stats' = 'moves';
+  // Which tutorial page (data/tutorial.ts's TUTORIAL_PAGES) is showing --
+  // reset to 0 every time the tutorial is (re)opened, whether that's the
+  // automatic first-run play or a manual replay from the Enter-menu.
+  private tutorialIndex = 0;
+
+  // One entry per world with a mentor (see MentorDef above). A static field
+  // initializer is still lexically inside the class body, so `s.showX()`
+  // below can call other private methods even though `s` is just a
+  // same-typed parameter, not `this`.
+  private static readonly WORLD_MENTORS: Partial<Record<number, MentorDef>> = {
+    1: {
+      id: 'noether',
+      name: 'Noether',
+      labelColor: '#ffe066',
+      strokeColor: 0xffe066,
+      quote: 'Every symmetry hides a conservation law.',
+      avatar: makeNoetherAvatar,
+      tile: 'goal',
+      open: (s) => s.showNoetherShop(),
+    },
+    2: {
+      id: 'bloch',
+      name: 'Bloch',
+      labelColor: '#8fe8ff',
+      strokeColor: 0x4adde0,
+      quote: 'Every crystal is a superposition of the worlds it has touched.',
+      avatar: makeBlochAvatar,
+      tile: 'goal',
+      open: (s) => s.showBlochHub(),
+    },
+    3: {
+      id: 'bohr',
+      name: 'Bohr',
+      labelColor: '#ffa64a',
+      strokeColor: 0xffa64a,
+      quote: 'Every crystal you have defeated is a state you now understand well enough to become.',
+      avatar: makeBohrAvatar,
+      tile: 'start',
+      open: (s) => s.showBohrPanel(),
+    },
+    4: {
+      id: 'dirac',
+      name: 'Dirac',
+      labelColor: '#8fa0ff',
+      strokeColor: 0x6a7fff,
+      quote:
+        "Put a Dirac fermion in a strong field and its Landau levels crowd toward zero energy differently than an ordinary electron's would -- graphene remembers its own relativity.",
+      avatar: makeDiracAvatar,
+      tile: 'goal',
+    },
+    5: {
+      id: 'majorana',
+      name: 'Majorana',
+      labelColor: '#9fffb0',
+      strokeColor: 0x4fd97a,
+      quote: 'Split one fermion into two halves, each its own antiparticle, and see what a superconductor can hide at its edge.',
+      avatar: makeMajoranaAvatar,
+      tile: 'goal',
+    },
+    6: {
+      id: 'curie',
+      name: 'Curie',
+      labelColor: '#d9e86a',
+      strokeColor: 0xc9d84a,
+      quote: 'Every magnet has a temperature where its order gives up -- above it, the same atoms, no memory of which way is up.',
+      avatar: makeCurieAvatar,
+      tile: 'goal',
+    },
+    7: {
+      id: 'einstein',
+      name: 'Einstein',
+      labelColor: '#dfe6ec',
+      strokeColor: 0xaeb8c4,
+      quote: "I called it spooky at a distance. I was wrong to doubt it, but I was right that it deserved doubting.",
+      avatar: makeEinsteinAvatar,
+      tile: 'goal',
+    },
+    8: {
+      id: 'kondo',
+      name: 'Kondo',
+      labelColor: '#ff8f6a',
+      strokeColor: 0xe86a44,
+      quote: 'A single stray spin, screened by a sea of conduction electrons until it all but disappears at low temperature.',
+      avatar: makeKondoAvatar,
+      tile: 'goal',
+    },
+    9: {
+      id: 'feynman',
+      name: 'Feynman',
+      labelColor: '#ffb24a',
+      strokeColor: 0xe89a3a,
+      quote: 'Draw the diagram. Every defect is just an excitation that forgot how to propagate freely.',
+      avatar: makeFeynmanAvatar,
+      tile: 'goal',
+    },
+    // 10: none -- the finale is the final boss only, no mentor waiting there.
+  };
 
   constructor() {
     super('Overworld');
@@ -117,6 +273,17 @@ export class OverworldScene extends Phaser.Scene {
 
   create() {
     this.moving = false;
+    // Phaser reuses the same Scene instance across scene.start()/restart()
+    // calls -- only init()/create() rerun, class field initializers don't --
+    // so a dialogue left open when the player switches away (Space to
+    // dev-cycle worlds, H to return to the Lab; both skip straight to
+    // scene.start without closing whatever's open first) would otherwise
+    // leave dialogueActive stuck true forever on this instance, freezing
+    // movement (update()'s dialogueActive guard) and the pause menu on
+    // every future visit. Any stale reference to the old (now-destroyed)
+    // panel container needs clearing too.
+    this.dialogueActive = false;
+    this.dialogueContainer = undefined;
     this.biome = getBiome(this.world);
 
     const state = this.game.registry;
@@ -133,10 +300,14 @@ export class OverworldScene extends Phaser.Scene {
     this.worldGfx = this.add.graphics();
     this.spawnCrystalSprites();
     this.spawnTokenSprites();
-    this.spawnNoetherSprite();
-    music.play('overworld');
+    this.spawnMentorSprite();
+    music.play(`overworld:${this.world}`);
 
     this.qumatokens = (state.get('qumatokens') as number) || 0;
+    this.playerMaterial = getPlayerMaterial(state);
+    this.applyDebugLeveling();
+    this.shopTab = 'moves';
+    this.recordVisit();
 
     const worldName = WORLD_NAMES[this.world] ?? `World ${this.world}`;
     this.add
@@ -156,12 +327,17 @@ export class OverworldScene extends Phaser.Scene {
       })
       .setDepth(50);
     this.add
-      .text(8, 52, 'M: mute/unmute music. H: return to the Lab. Space: switch world (testing, skips gates).', {
-        fontSize: '12px',
-        color: '#eeeeee',
-        backgroundColor: 'rgba(0,0,0,0.35)',
-        padding: { x: 4, y: 2 },
-      })
+      .text(
+        8,
+        52,
+        'M: mute/unmute music. H: return to the Lab. Enter: menu. Space: switch world (testing, skips gates).',
+        {
+          fontSize: '12px',
+          color: '#eeeeee',
+          backgroundColor: 'rgba(0,0,0,0.35)',
+          padding: { x: 4, y: 2 },
+        }
+      )
       .setDepth(50);
     this.tokenText = this.add
       .text(CANVAS_W - 8, 8, `Qumatokens: ${this.qumatokens}`, {
@@ -184,12 +360,14 @@ export class OverworldScene extends Phaser.Scene {
       .setVisible(this.reachedGoal);
 
     // The player is a crystal too, not a trainer commanding one -- the
-    // overworld avatar is just PLAYER_MATERIAL rendered the same way a wild
-    // crystal is, floating and bobbing rather than walking.
+    // overworld avatar is just the player's current form (playerMaterial,
+    // Silicon by default or whatever Bohr transmuted them into) rendered
+    // the same way a wild crystal is, floating and bobbing rather than
+    // walking.
     this.player = this.add.container(CANVAS_W / 2, 400);
     const playerShadow = this.add.ellipse(0, 34, 34, 11, 0x000000, 0.28);
-    const playerCrystal = makeCrystal(this, PLAYER_CRYSTAL_SIZE, PLAYER_MATERIAL.color, PLAYER_MATERIAL.variant);
-    this.player.add([playerShadow, playerCrystal]);
+    this.playerCrystalGfx = makeCrystal(this, PLAYER_CRYSTAL_SIZE, this.playerMaterial.color, this.playerMaterial.variant);
+    this.player.add([playerShadow, this.playerCrystalGfx]);
     this.player.setDepth(40);
     this.idleBob();
 
@@ -197,6 +375,7 @@ export class OverworldScene extends Phaser.Scene {
     this.input.keyboard!.on('keydown-M', () => music.toggleMute());
     this.input.keyboard!.on('keydown-SPACE', () => this.switchWorld());
     this.input.keyboard!.on('keydown-H', () => this.scene.start('Hub'));
+    this.input.keyboard!.on('keydown-ENTER', () => this.togglePauseMenu());
 
     // Defensive fallback only -- TitleScene normally seeds all of these
     // from localStorage (data/save.ts) before Overworld ever runs. Only
@@ -207,14 +386,125 @@ export class OverworldScene extends Phaser.Scene {
       state.set('playerHp', PLAYER_MATERIAL.maxHp);
       state.set('rivalDefeated', {});
       state.set('discoveredMaterials', []);
+      state.set('playerStats', { ...DEFAULT_STATS });
+      state.set('visitedWorlds', []);
+      state.set('defeatedMaterials', []);
+      state.set('playerForm', null);
+      state.set('metMentors', []);
     }
 
     this.maybeAutoOpenGoalDialogue();
+    this.maybeAutoOpenStartDialogue();
+    this.maybeShowFirstTimeTutorial();
+  }
+
+  private isDebugMode(): boolean {
+    return !!this.game.registry.get('debugMode');
+  }
+
+  // Debug mode (Title screen toggle, data/save.ts's `debugMode`): re-levels
+  // the player to a fair footing for whatever world this scene just entered,
+  // on every entry -- not just an explicit debug warp, so Continue-to-next-
+  // world, Bloch's teleport, and the dev Space-cycle shortcut all stay
+  // competitive too. A flat +2 over enemyStatsForWorld keeps the player
+  // slightly ahead rather than exactly even. Also grants every move (so
+  // there's always something to fight with regardless of what's been
+  // bought) and a full heal.
+  private applyDebugLeveling() {
+    if (!this.isDebugMode()) return;
+    const target = enemyStatsForWorld(this.world);
+    const stats: Stats = {
+      quantumness: target.quantumness + 2,
+      velocity: target.velocity + 2,
+      correlation: target.correlation + 2,
+    };
+    this.game.registry.set('playerStats', stats);
+    this.game.registry.set('unlockedMoves', Object.keys(MOVES));
+    this.game.registry.set('playerHp', this.playerMaterial.maxHp);
+    persistFromRegistry(this.game.registry);
+  }
+
+  // First-run onboarding (data/tutorial.ts's TUTORIAL_PAGES): plays once,
+  // the first time an Overworld scene is ever created for this save, then
+  // never auto-triggers again -- the Enter-menu's "Tutorial" button is the
+  // way to replay it after that. Guarded by dialogueActive so it never
+  // stacks on top of a goal/start-tile mentor panel that just opened.
+  private maybeShowFirstTimeTutorial() {
+    if (this.dialogueActive) return;
+    if (this.game.registry.get('tutorialSeen')) return;
+    this.game.registry.set('tutorialSeen', true);
+    persistFromRegistry(this.game.registry);
+    this.showTutorial(0);
+  }
+
+  // Renders data/tutorial.ts's TUTORIAL_PAGES as a paged overlay -- Back/
+  // Next to move between pages, Skip/Done to close early or at the last
+  // page. Called both by the first-run auto-trigger above and by the
+  // Enter-menu's "Tutorial" button, always starting over from page 0.
+  private showTutorial(startIndex: number) {
+    this.dialogueContainer?.destroy(true);
+    this.dialogueActive = true;
+    this.tutorialIndex = Phaser.Math.Clamp(startIndex, 0, TUTORIAL_PAGES.length - 1);
+    this.renderTutorialPage();
+  }
+
+  private renderTutorialPage() {
+    this.dialogueContainer?.destroy(true);
+
+    const panelY = 300;
+    const container = this.add.container(0, 0).setDepth(100);
+    this.dialogueContainer = container;
+
+    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 560, 300, 0x10101c, 0.95).setStrokeStyle(2, 0x5ad9ff);
+    container.add(panel);
+
+    const page = TUTORIAL_PAGES[this.tutorialIndex];
+    const counter = this.add
+      .text(CANVAS_W / 2, panelY - 140, `TUTORIAL -- ${this.tutorialIndex + 1} / ${TUTORIAL_PAGES.length}`, {
+        fontSize: '11px',
+        color: '#5ad9ff',
+      })
+      .setOrigin(0.5, 0);
+    container.add(counter);
+
+    const title = this.add
+      .text(CANVAS_W / 2, panelY - 116, page.title, { fontSize: '16px', color: '#ffffff', fontStyle: 'bold', align: 'center', wordWrap: { width: 500 } })
+      .setOrigin(0.5, 0);
+    container.add(title);
+
+    const body = this.add
+      .text(CANVAS_W / 2, panelY - 76, page.body, {
+        fontSize: '12px',
+        color: '#cfd8ff',
+        align: 'center',
+        wordWrap: { width: 500 },
+        lineSpacing: 5,
+      })
+      .setOrigin(0.5, 0);
+    container.add(body);
+
+    const footerY = panelY + 110;
+    const isFirst = this.tutorialIndex === 0;
+    const isLast = this.tutorialIndex === TUTORIAL_PAGES.length - 1;
+
+    if (!isFirst) {
+      this.addDialogueButtonAt(container, CANVAS_W / 2 - 170, footerY, '<- Back', () => {
+        this.tutorialIndex -= 1;
+        this.renderTutorialPage();
+      }, 130);
+    }
+    this.addDialogueButtonAt(container, CANVAS_W / 2, footerY, isLast ? 'Done' : 'Skip', () => this.closeDialogue(), 100);
+    if (!isLast) {
+      this.addDialogueButtonAt(container, CANVAS_W / 2 + 170, footerY, 'Next ->', () => {
+        this.tutorialIndex += 1;
+        this.renderTutorialPage();
+      }, 130);
+    }
   }
 
   private switchWorld() {
-    const idx = TESTABLE_WORLDS.indexOf(this.world);
-    const next = TESTABLE_WORLDS[(idx + 1) % TESTABLE_WORLDS.length];
+    const idx = BUILT_WORLDS.indexOf(this.world);
+    const next = BUILT_WORLDS[(idx + 1) % BUILT_WORLDS.length];
     this.scene.restart({ world: next, regenerate: true });
   }
 
@@ -230,6 +520,7 @@ export class OverworldScene extends Phaser.Scene {
     this.walkable = map.walkable;
     this.tokenTiles = map.tokens;
     this.goalTile = map.goal;
+    this.startTile = map.start;
 
     this.encounterTiles = Array.from({ length: GRID_H }, () => Array(GRID_W).fill(null));
     this.flowerMap = Array.from({ length: GRID_H }, () => Array(GRID_W).fill(false));
@@ -268,6 +559,7 @@ export class OverworldScene extends Phaser.Scene {
     this.encounterTiles = saved.encounterTiles;
     this.flowerMap = saved.flowerMap;
     this.goalTile = saved.goalTile;
+    this.startTile = saved.startTile;
     this.reachedGoal = saved.reachedGoal;
     this.crystalSprites = [];
     this.tokenSprites = [];
@@ -282,6 +574,7 @@ export class OverworldScene extends Phaser.Scene {
       encounterTiles: this.encounterTiles,
       flowerMap: this.flowerMap,
       goalTile: this.goalTile,
+      startTile: this.startTile,
       reachedGoal: this.reachedGoal,
     };
     this.game.registry.set('mapState', saved);
@@ -341,7 +634,7 @@ export class OverworldScene extends Phaser.Scene {
     this.drawWorld();
     this.updateWorldSprites(this.crystalSprites);
     this.updateWorldSprites(this.tokenSprites);
-    this.updateWorldSprites(this.noetherSprites);
+    this.updateWorldSprites(this.mentorSprites);
 
     if (this.moving || this.dialogueActive) return;
 
@@ -511,6 +804,69 @@ export class OverworldScene extends Phaser.Scene {
       return;
     }
 
+    // World 4 (QHE/Landau levels): short parallel field-line strokes with a
+    // small quantized-orbit ring, evoking magnetic field lines threading the
+    // terrain.
+    if (this.biome.decoration === 'fieldLines') {
+      g.lineStyle(1, 0x9fd8ff, 0.8);
+      [-2.4, 0, 2.4].forEach((off) => {
+        g.lineBetween(cx - 2.2 * s + off * s, cy - 1.6 * s, cx - 2.2 * s + off * s, cy + 1.6 * s);
+      });
+      g.lineStyle(1, 0xffffff, 0.7);
+      g.strokeCircle(cx, cy, 1.6 * s);
+      return;
+    }
+
+    // World 7 (entanglement/tensor networks): a small graph -- a few nodes
+    // joined by bond lines, matching the biome's "bonds as paths" theme.
+    if (this.biome.decoration === 'networkNodes') {
+      const pts = [
+        { x: cx - 2 * s, y: cy + 1 * s },
+        { x: cx, y: cy - 1.8 * s },
+        { x: cx + 2 * s, y: cy + 1 * s },
+      ];
+      g.lineStyle(1, 0xc9a8f0, 0.75);
+      g.lineBetween(pts[0].x, pts[0].y, pts[1].x, pts[1].y);
+      g.lineBetween(pts[1].x, pts[1].y, pts[2].x, pts[2].y);
+      g.lineBetween(pts[0].x, pts[0].y, pts[2].x, pts[2].y);
+      g.fillStyle(0xffffff, 0.9);
+      pts.forEach((p) => g.fillCircle(p.x, p.y, 1.1 * s));
+      return;
+    }
+
+    // World 6 (classical magnetism/magnons): concentric ripple rings, as if
+    // a magnon wave just passed through the grass.
+    if (this.biome.decoration === 'ripples') {
+      g.lineStyle(1, 0xfff3c9, 0.75);
+      [1.2, 2.2].forEach((r) => g.strokeCircle(cx, cy, r * s));
+      return;
+    }
+
+    // World 9 (excitations/defects): a jagged crack in the ground, the
+    // world's "cracked/glitching" theme made literal.
+    if (this.biome.decoration === 'cracks') {
+      g.lineStyle(1.4, 0xff8a5a, 0.85);
+      g.beginPath();
+      g.moveTo(cx - 2.4 * s, cy - 1.4 * s);
+      g.lineTo(cx - 0.6 * s, cy - 0.2 * s);
+      g.lineTo(cx + 0.8 * s, cy - 1 * s);
+      g.lineTo(cx + 2.4 * s, cy + 1.4 * s);
+      g.strokePath();
+      return;
+    }
+
+    // World 8 (spin liquid/Kondo): soft overlapping fog wisps rather than a
+    // sharp shape, matching the "fractionalizes on contact" foggy theme.
+    if (this.biome.decoration === 'mistMotes') {
+      g.fillStyle(0xdfe6df, 0.28);
+      [
+        [-1.6, 0],
+        [1.6, 0.4],
+        [0, -0.6],
+      ].forEach(([ox, oy]) => g.fillEllipse(cx + ox * s, cy + oy * s, 3.2 * s, 1.6 * s));
+      return;
+    }
+
     g.fillStyle(0xffffff, 0.9);
     [0, 1, 2, 3].forEach((i) => {
       const ang = (i * Math.PI) / 2;
@@ -584,38 +940,34 @@ export class OverworldScene extends Phaser.Scene {
     }
   }
 
-  // Noether stands (floats) at world 1's goal tile as a visible landmark,
-  // not just something that materializes once the shop dialogue opens --
-  // the player sees and walks up to her, the same way a wild encounter is
-  // seen coming rather than sprung from nowhere. Reuses the crystal/token
-  // WorldSprite machinery (projection, wander, bob) so she scrolls and
-  // fades with the rest of the world for free. World 1 only, matching
-  // showNoetherShop's own "only world 1 has a mentor waiting" scope.
-  private spawnNoetherSprite() {
-    this.noetherSprites = [];
-    if (this.world !== 1) return;
+  // This world's mentor (if any) stands (floats) at its goal or start tile
+  // as a visible landmark, not just something that materializes once its
+  // dialogue opens -- the player sees and walks up to them, the same way a
+  // wild encounter is seen coming rather than sprung from nowhere. Reuses
+  // the crystal/token WorldSprite machinery (projection, wander, bob) so
+  // they scroll and fade with the rest of the world for free. Replaces the
+  // old spawnNoetherSprite/spawnBlochSprite/spawnBohrSprite trio -- one
+  // lookup into WORLD_MENTORS instead of three `this.world === N` guards.
+  private spawnMentorSprite() {
+    this.mentorSprites = [];
+    const mentor = OverworldScene.WORLD_MENTORS[this.world];
+    if (!mentor) return;
 
-    const avatar = makeNoetherAvatar(this, 1.1);
+    const avatar = mentor.avatar(this, 1.1);
     avatar.setDepth(20);
 
     const label = this.add
-      .text(0, 0, 'Noether', {
+      .text(0, 0, mentor.name, {
         fontSize: '11px',
-        color: '#ffe066',
+        color: mentor.labelColor,
         backgroundColor: 'rgba(0,0,0,0.45)',
         padding: { x: 3, y: 1 },
       })
       .setOrigin(0.5, 1)
       .setDepth(21);
 
-    this.noetherSprites.push({
-      x: this.goalTile.x,
-      y: this.goalTile.y,
-      size: 42,
-      container: avatar,
-      label,
-      seed: Math.random() * Math.PI * 2,
-    });
+    const tile = mentor.tile === 'start' ? this.startTile : this.goalTile;
+    this.mentorSprites.push({ x: tile.x, y: tile.y, size: 42, container: avatar, label, seed: Math.random() * Math.PI * 2 });
   }
 
   // Wanders each sprite a little around its home tile (small sinusoidal
@@ -795,43 +1147,151 @@ export class OverworldScene extends Phaser.Scene {
     return !!rivalDefeated[this.world];
   }
 
-  // Reopens Noether's shop every time this scene is (re)created with the
-  // goal already reached -- both right after first stepping onto the goal
-  // row and after any later round trip through BattleScene (a wild fight
-  // fought near the goal, or the rival fight itself resolving). Keeps the
-  // shop revisitable across multiple battles instead of a single one-shot
-  // popup. Noether is reachable regardless of the rival gate -- gating her
-  // shop behind the rival fight would strand the player needing bought
-  // moves to beat a rival they can't reach Noether to prepare for; instead
-  // the rival fight is what "Continue to World 2" triggers (see
-  // tryAdvanceToWorld2), so the player can shop first, then fight, on their
-  // own schedule.
+  // Reopens this world's goal-tile mentor panel every time this scene is
+  // (re)created with the goal already reached -- both right after first
+  // stepping onto the goal row and after any later round trip through
+  // BattleScene (a wild fight fought near the goal, or the rival fight
+  // itself resolving). Keeps the panel revisitable across multiple battles
+  // instead of a single one-shot popup. The mentor is reachable regardless
+  // of the rival gate -- gating them behind the rival fight would strand
+  // the player needing bought moves/prep for a rival they can't reach the
+  // mentor to prepare for; instead the rival fight is what "Continue to
+  // World N+1" triggers (see tryAdvanceToNextWorld), so the player can
+  // prepare first, then fight, on their own schedule.
   private maybeAutoOpenGoalDialogue() {
-    if (this.world !== 1 || !this.reachedGoal || this.dialogueActive) return;
-    this.showNoetherShop();
+    if (!this.reachedGoal || this.dialogueActive) return;
+    this.openGoalMentorPanel();
   }
 
-  private tryAdvanceToWorld2() {
+  // Looks up this world's goal-tile mentor (if any) in WORLD_MENTORS and
+  // opens their panel. A world with no goal-tile mentor (world 3, whose
+  // mentor Bohr stands at the *start* instead -- and world 10, the finale,
+  // which has no mentor at all) still needs a way to trigger its rival gate
+  // from the goal, or reaching it would be a dead end with no way onward.
+  private openGoalMentorPanel() {
+    const mentor = OverworldScene.WORLD_MENTORS[this.world];
+    if (mentor?.tile === 'goal') {
+      this.openMentor(mentor);
+      return;
+    }
+    this.showGatePanel();
+  }
+
+  // Opens a mentor's panel and records the first time this mentor is met,
+  // so the Advisors pause-menu list (showAdvisorsPanel) grows as the player
+  // reaches each world's goal/start tile -- regardless of which panel that
+  // mentor actually shows (shop, teleport hub, transmutation, or lore).
+  // `open` is only set on Noether/Bloch/Bohr, whose panels are bespoke;
+  // every other mentor falls through to the shared lore panel.
+  private openMentor(mentor: MentorDef) {
+    const met = (this.game.registry.get('metMentors') as string[]) ?? [];
+    if (!met.includes(mentor.id)) {
+      this.game.registry.set('metMentors', [...met, mentor.id]);
+      persistFromRegistry(this.game.registry);
+    }
+    (mentor.open ?? ((s: OverworldScene) => s.showMentorLore(mentor)))(this);
+  }
+
+  // A minimal panel for a goal tile with no mentor waiting there (world 3,
+  // whose mentor stands at the start instead) -- just enough to reach the
+  // rival gate via the shared footer, so no built world is ever a dead end.
+  private showGatePanel() {
+    this.dialogueActive = true;
+
+    const panelY = 300;
+    const container = this.add.container(0, 0).setDepth(100);
+    this.dialogueContainer = container;
+
+    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 500, 200, 0x10101c, 0.94).setStrokeStyle(2, 0x8fa0c9);
+    container.add(panel);
+
+    const text = this.add
+      .text(CANVAS_W / 2, panelY - 60, 'The path onward is still guarded.', {
+        fontSize: '14px',
+        color: '#ffffff',
+        align: 'center',
+      })
+      .setOrigin(0.5, 0);
+    container.add(text);
+
+    this.renderShopFooter(container, panelY - 60);
+  }
+
+  // Every built world (1-10) can be advanced past once its rival is
+  // defeated, except the last one -- there's no World 11 to start, so
+  // beating world 10's rival shows the finale instead of trying to.
+  private tryAdvanceToNextWorld() {
     if (this.isRivalDefeated()) {
-      this.advanceToWorld(2);
+      if (this.world >= Math.max(...BUILT_WORLDS)) {
+        this.closeDialogue();
+        this.showFinalePanel();
+        return;
+      }
+      this.advanceToWorld(this.world + 1);
       return;
     }
     this.closeDialogue();
     this.showRivalEncounter();
   }
 
-  // The "beat the first rival crystal" gate DESIGN.md's world table lists
-  // for world 1 -- triggered by "Continue to World 2" rather than
-  // automatically on reaching the goal, so the player can shop with
-  // Noether first. Same in-map dialogue pattern as a wild encounter, but
-  // with no "let me pass" option, since a gate that can be skipped isn't
-  // a gate.
+  // Shown once the last built world's rival is beaten -- a real ending
+  // rather than a dead "Continue to World 11" button pointing at a world
+  // that doesn't exist.
+  private showFinalePanel() {
+    this.dialogueActive = true;
+
+    const panelY = 240;
+    const container = this.add.container(0, 0).setDepth(100);
+    this.dialogueContainer = container;
+
+    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 600, 220, 0x10101c, 0.96).setStrokeStyle(2, 0xffe066);
+    container.add(panel);
+
+    const title = this.add
+      .text(CANVAS_W / 2, panelY - 80, 'The Decoherence is stabilized.', {
+        fontSize: '18px',
+        color: '#ffe066',
+        fontStyle: 'bold',
+        align: 'center',
+      })
+      .setOrigin(0.5, 0);
+    container.add(title);
+
+    const body = this.add
+      .text(
+        CANVAS_W / 2,
+        panelY - 44,
+        "You mastered every phase of matter the model could throw at you. Thanks for playing.",
+        { fontSize: '13px', color: '#cfd8ff', align: 'center', wordWrap: { width: 480 } }
+      )
+      .setOrigin(0.5, 0);
+    container.add(body);
+
+    this.addDialogueButtonAt(
+      container,
+      CANVAS_W / 2,
+      panelY + 60,
+      'Return to the Lab',
+      () => {
+        this.closeDialogue();
+        this.scene.start('Hub');
+      },
+      260
+    );
+  }
+
+  // The "beat the world's rival crystal" gate DESIGN.md's world table lists
+  // per world -- triggered by "Continue to World N+1" rather than
+  // automatically on reaching the goal, so the player can prepare with the
+  // goal mentor first. Same in-map dialogue pattern as a wild encounter,
+  // but with no "let me pass" option, since a gate that can be skipped
+  // isn't a gate.
   private showRivalEncounter() {
     const rival = getRival(this.world);
     if (!rival) {
       // Safety net for a world with no WORLD_RIVALS entry yet -- don't
       // strand the player behind a gate that can't open.
-      this.showNoetherShop();
+      this.openGoalMentorPanel();
       return;
     }
 
@@ -864,8 +1324,9 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   // Noether appears once the player beats world 1's rival, selling the
-  // other early moves for qumatokens. Same in-map dialogue pattern as a wild
-  // encounter, but with a mentor avatar and a shop list instead of a fight.
+  // other early moves and (new) stat upgrades for qumatokens, in two tabs
+  // of the same panel. Same in-map dialogue pattern as a wild encounter,
+  // but with a mentor avatar and a shop list instead of a fight.
   private showNoetherShop() {
     this.dialogueActive = true;
 
@@ -880,31 +1341,59 @@ export class OverworldScene extends Phaser.Scene {
     avatar.setPosition(CANVAS_W / 2, panelY - 105);
     container.add(avatar);
     this.tweens.add({ targets: avatar, y: panelY - 97, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    playNoetherChime();
+    playMentorChime();
 
     const intro = this.add
       .text(
         CANVAS_W / 2,
         panelY - 68,
-        '"I am Noether. Every symmetry hides a conservation law -- and your qumatokens conserve rather well spent on new attacks."',
+        '"I am Noether. Every symmetry hides a conservation law -- spend your qumatokens on a new attack, or a sharper stat."',
         { fontSize: '12px', fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: 520 } }
       )
       .setOrigin(0.5, 0);
     container.add(intro);
 
-    this.renderShopMoves(container, panelY);
+    this.renderShopTabs(container, panelY);
+    if (this.shopTab === 'moves') this.renderShopMoves(container, panelY);
+    else this.renderShopStats(container, panelY);
+  }
+
+  private renderShopTabs(container: Phaser.GameObjects.Container, panelY: number) {
+    const y = panelY - 24;
+    (['moves', 'stats'] as const).forEach((tab, i) => {
+      const active = this.shopTab === tab;
+      const btn = this.add
+        .text(CANVAS_W / 2 + (i === 0 ? -45 : 45), y, tab === 'moves' ? 'Moves' : 'Stats', {
+          fontSize: '11px',
+          color: active ? '#ffe066' : '#8fa0c9',
+          backgroundColor: active ? '#333355' : '#1a1a2e',
+          padding: { x: 8, y: 3 },
+        })
+        .setOrigin(0.5, 0)
+        .setInteractive({ useHandCursor: true })
+        .on('pointerdown', () => {
+          if (this.shopTab === tab) return;
+          this.shopTab = tab;
+          this.dialogueContainer?.destroy(true);
+          this.showNoetherShop();
+        });
+      container.add(btn);
+    });
   }
 
   private renderShopMoves(container: Phaser.GameObjects.Container, panelY: number) {
     const unlocked = this.getUnlockedMoves();
-    const forSale = SHOP_MOVE_IDS.filter((id) => !unlocked.includes(id));
+    const compatible = new Set(compatibleMoves(this.playerMaterial));
+    const forSale = SHOP_MOVE_IDS.filter((id) => !unlocked.includes(id) && compatible.has(id));
     const tokens = (this.game.registry.get('qumatokens') as number) || 0;
 
     if (forSale.length === 0) {
       const text = this.add
-        .text(CANVAS_W / 2, panelY - 20, "You've learned everything I can teach you here.", {
+        .text(CANVAS_W / 2, panelY + 8, "Nothing your current form can carry is left to teach.", {
           fontSize: '13px',
           color: '#ffffff',
+          align: 'center',
+          wordWrap: { width: 480 },
         })
         .setOrigin(0.5, 0);
       container.add(text);
@@ -913,7 +1402,7 @@ export class OverworldScene extends Phaser.Scene {
         const move = MOVES[id];
         const cost = shopCost(move);
         const affordable = tokens >= cost;
-        const btn = this.addDialogueButton(container, panelY - 20 + i * 44, `${move.name} -- ${cost} qumatokens`, () => {
+        const btn = this.addDialogueButton(container, panelY + 8 + i * 36, `${move.name} -- ${cost} qumatokens`, () => {
           if ((this.game.registry.get('qumatokens') as number) < cost) return;
           this.qumatokens -= cost;
           this.game.registry.set('qumatokens', this.qumatokens);
@@ -929,16 +1418,62 @@ export class OverworldScene extends Phaser.Scene {
       });
     }
 
-    // Fixed footer row (not stacked below the variable-length shop list) so
-    // it never runs off the panel/canvas regardless of how many moves are
-    // still for sale. This is the real, discoverable way to advance -- Space
-    // is a dev-only shortcut that skips the rival gate entirely. The label
-    // itself tells the player what will happen: fight the rival first, then
-    // (once it's beaten) actually leave for world 2.
+    this.renderShopFooter(container, panelY);
+  }
+
+  private renderShopStats(container: Phaser.GameObjects.Container, panelY: number) {
+    const stats = getPlayerStats(this.game.registry);
+    const tokens = (this.game.registry.get('qumatokens') as number) || 0;
+    const rows: { key: keyof Stats; label: string }[] = [
+      { key: 'quantumness', label: 'Quantumness (crit chance)' },
+      { key: 'velocity', label: 'Velocity (turn order)' },
+      { key: 'correlation', label: 'Correlation (defense)' },
+    ];
+
+    rows.forEach((row, i) => {
+      const value = stats[row.key];
+      const cost = statUpgradeCost(value);
+      const affordable = tokens >= cost;
+      const btn = this.addDialogueButton(
+        container,
+        panelY + 8 + i * 36,
+        `${row.label}: ${value} -> ${value + 1} -- ${cost} qumatokens`,
+        () => {
+          const current = (this.game.registry.get('qumatokens') as number) || 0;
+          if (current < cost) return;
+          const updated = { ...getPlayerStats(this.game.registry), [row.key]: value + 1 };
+          this.qumatokens = current - cost;
+          this.game.registry.set('qumatokens', this.qumatokens);
+          this.game.registry.set('playerStats', updated);
+          this.tokenText.setText(`Qumatokens: ${this.qumatokens}`);
+          persistFromRegistry(this.game.registry);
+          this.dialogueContainer?.destroy(true);
+          this.showNoetherShop();
+        }
+      );
+      if (!affordable) btn.setAlpha(0.5);
+    });
+
+    this.renderShopFooter(container, panelY);
+  }
+
+  // Fixed footer row (not stacked below the variable-length shop list) so
+  // it never runs off the panel/canvas regardless of how many moves/stats
+  // are shown above it. This is the real, discoverable way to advance --
+  // Space is a dev-only shortcut that skips the rival gate entirely. The
+  // label itself tells the player what will happen: fight the rival first,
+  // then (once it's beaten) actually leave for the next world.
+  private renderShopFooter(container: Phaser.GameObjects.Container, panelY: number) {
     const footerY = panelY + 120;
-    const nextLabel = this.isRivalDefeated() ? 'Continue to World 2 ->' : 'Face the Rival ->';
+    const rivalDefeated = this.isRivalDefeated();
+    const isLastWorld = this.world >= Math.max(...BUILT_WORLDS);
+    const nextLabel = !rivalDefeated
+      ? 'Face the Rival ->'
+      : isLastWorld
+      ? 'The Decoherence is stabilized ->'
+      : `Continue to World ${this.world + 1} ->`;
     this.addDialogueButtonAt(container, CANVAS_W / 2 - 118, footerY, 'Farewell', () => this.closeDialogue());
-    this.addDialogueButtonAt(container, CANVAS_W / 2 + 118, footerY, nextLabel, () => this.tryAdvanceToWorld2());
+    this.addDialogueButtonAt(container, CANVAS_W / 2 + 118, footerY, nextLabel, () => this.tryAdvanceToNextWorld());
   }
 
   private advanceToWorld(world: number) {
@@ -948,6 +1483,435 @@ export class OverworldScene extends Phaser.Scene {
 
   private getUnlockedMoves(): string[] {
     return (this.game.registry.get('unlockedMoves') as string[]) ?? [...PLAYER_MATERIAL.moves];
+  }
+
+  private getVisitedWorlds(): number[] {
+    return (this.game.registry.get('visitedWorlds') as number[]) ?? [];
+  }
+
+  // Records the current world as visited the moment this scene is created
+  // in it -- distinct from `rivalDefeated`, since Bloch's teleport should
+  // offer anywhere the player has set foot, not just worlds they've beaten.
+  private recordVisit() {
+    const visited = this.getVisitedWorlds();
+    if (visited.includes(this.world)) return;
+    this.game.registry.set('visitedWorlds', [...visited, this.world]);
+    persistFromRegistry(this.game.registry);
+  }
+
+  private getDefeatedMaterials(): DiscoveredMaterial[] {
+    return (this.game.registry.get('defeatedMaterials') as DiscoveredMaterial[]) ?? [];
+  }
+
+  // Bloch stands at world 2's goal (see spawnBlochSprite) and folds the
+  // player to any other world they've already visited and that actually has
+  // a built map (BUILT_WORLDS) -- offering an unbuilt world would teleport
+  // the player somewhere with no map to stand on. Shares the same "Farewell
+  // / Face the Rival / Continue" footer as Noether's panel, since Bloch
+  // stands at the same kind of goal-tile gate.
+  private showBlochHub() {
+    this.dialogueActive = true;
+
+    const destinations = this.getVisitedWorlds().filter((w) => BUILT_WORLDS.includes(w) && w !== this.world);
+    // With only 3 built worlds this list could show at most 2 destinations,
+    // comfortably fitting the avatar, full quote, rows, and footer inside a
+    // fixed 340-tall panel. Now that all 10 are built, a well-traveled
+    // player can see up to 9 -- which doesn't fit alongside the avatar
+    // within the 480px canvas at any row spacing safely above a button's
+    // own rendered height (~26px). Past a handful of destinations, drop the
+    // avatar and shrink the intro instead of shrinking row spacing below
+    // what's clickable (which would let adjacent rows overlap and misroute
+    // a click to the wrong world).
+    const compact = destinations.length > 5;
+
+    const panelY = 240;
+    const panelHeight = 440;
+    const footerPanelY = panelY + 200 - 120; // renderShopFooter adds +120 back
+    const container = this.add.container(0, 0).setDepth(100);
+    this.dialogueContainer = container;
+
+    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 600, panelHeight, 0x10101c, 0.94).setStrokeStyle(2, 0x4adde0);
+    container.add(panel);
+
+    let introY: number;
+    let rowsTop: number;
+    if (!compact) {
+      const avatar = makeBlochAvatar(this);
+      avatar.setPosition(CANVAS_W / 2, panelY - 105);
+      container.add(avatar);
+      this.tweens.add({ targets: avatar, y: panelY - 97, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      introY = panelY - 68;
+      rowsTop = panelY - 8;
+    } else {
+      introY = panelY - 195;
+      rowsTop = panelY - 150;
+    }
+    playMentorChime();
+
+    const intro = this.add
+      .text(
+        CANVAS_W / 2,
+        introY,
+        '"I am Bloch. Every crystal is a superposition of the worlds it has touched -- name one you have visited, and I will fold you there."',
+        { fontSize: '12px', fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: 520 } }
+      )
+      .setOrigin(0.5, 0);
+    container.add(intro);
+
+    if (destinations.length === 0) {
+      const text = this.add
+        .text(CANVAS_W / 2, rowsTop, "You haven't mapped anywhere else yet.", { fontSize: '13px', color: '#ffffff' })
+        .setOrigin(0.5, 0);
+      container.add(text);
+    } else {
+      const spacing = compact ? 30 : 36;
+      destinations.forEach((w, i) => {
+        const name = WORLD_NAMES[w] ?? `World ${w}`;
+        this.addDialogueButton(container, rowsTop + i * spacing, `Travel to World ${w} -- ${name}`, () =>
+          this.advanceToWorld(w)
+        );
+      });
+    }
+
+    this.renderShopFooter(container, footerPanelY);
+  }
+
+  // Bohr stands at world 3's start (see spawnBohrSprite), triggered on
+  // entering the scene rather than on reaching a goal (maybeAutoOpenStartDialogue).
+  // Lets the player transmute into any crystal they've defeated -- the
+  // physics rationale being that beating something is understanding it well
+  // enough to become it for a while.
+  private showBohrPanel() {
+    this.dialogueActive = true;
+
+    const panelY = 300;
+    const container = this.add.container(0, 0).setDepth(100);
+    this.dialogueContainer = container;
+
+    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 600, 340, 0x10101c, 0.94).setStrokeStyle(2, 0xffa64a);
+    container.add(panel);
+
+    const avatar = makeBohrAvatar(this);
+    avatar.setPosition(CANVAS_W / 2, panelY - 105);
+    container.add(avatar);
+    this.tweens.add({ targets: avatar, y: panelY - 97, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    playMentorChime();
+
+    const intro = this.add
+      .text(
+        CANVAS_W / 2,
+        panelY - 68,
+        '"I am Bohr. Every crystal you have defeated is a state you now understand well enough to become, for a while."',
+        { fontSize: '12px', fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: 520 } }
+      )
+      .setOrigin(0.5, 0);
+    container.add(intro);
+
+    const defeated = this.getDefeatedMaterials().slice(-3);
+    if (defeated.length === 0) {
+      const text = this.add
+        .text(CANVAS_W / 2, panelY - 8, "You haven't defeated any crystals yet -- there is nothing to become.", {
+          fontSize: '13px',
+          color: '#ffffff',
+          align: 'center',
+          wordWrap: { width: 480 },
+        })
+        .setOrigin(0.5, 0);
+      container.add(text);
+    } else {
+      defeated.forEach((m, i) => {
+        const isCurrent = this.playerMaterial.name === m.name;
+        const label = isCurrent ? `${m.name} (current form)` : `Become ${m.name}`;
+        const btn = this.addDialogueButton(container, panelY - 8 + i * 36, label, () => {
+          if (isCurrent) return;
+          this.transmuteInto(m.name);
+        });
+        if (isCurrent) btn.setAlpha(0.5);
+      });
+    }
+
+    this.addDialogueButtonAt(container, CANVAS_W / 2, panelY + 120, 'Farewell', () => this.closeDialogue(), 300);
+  }
+
+  private transmuteInto(name: string) {
+    const material = findMaterialByName(name);
+    if (!material) return;
+
+    this.game.registry.set('playerForm', material);
+    const clampedHp = Math.min((this.game.registry.get('playerHp') as number) ?? material.maxHp, material.maxHp);
+    this.game.registry.set('playerHp', clampedHp);
+    persistFromRegistry(this.game.registry);
+
+    this.playerMaterial = material;
+    this.redrawPlayerCrystal();
+
+    // Rebuild the panel in place (dialogueActive already true from the open
+    // showBohrPanel call) so the new form's "(current form)" tag updates.
+    this.dialogueContainer?.destroy(true);
+    this.showBohrPanel();
+  }
+
+  private redrawPlayerCrystal() {
+    this.playerCrystalGfx.destroy();
+    this.playerCrystalGfx = makeCrystal(this, PLAYER_CRYSTAL_SIZE, this.playerMaterial.color, this.playerMaterial.variant);
+    this.player.add(this.playerCrystalGfx);
+  }
+
+  // Shared panel for every mentor from Dirac onward (see WORLD_MENTORS):
+  // avatar + a topic-tied quote, no shop tabs -- Noether stays the sole
+  // seller of moves/stats (DESIGN.md §5 records this as a deliberate,
+  // temporary state, not a finished design). Still ends in the same
+  // renderShopFooter every goal-tile panel uses, though -- these mentors
+  // stand at their world's goal, so this panel is also that world's only
+  // way to reach its rival gate; a lore-only mentor still needs to hand off
+  // to "Face the Rival"/"Continue," not just a dead-end "Farewell."
+  private showMentorLore(mentor: MentorDef) {
+    this.dialogueActive = true;
+
+    const panelY = 300;
+    const container = this.add.container(0, 0).setDepth(100);
+    this.dialogueContainer = container;
+
+    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 600, 280, 0x10101c, 0.94).setStrokeStyle(2, mentor.strokeColor);
+    container.add(panel);
+
+    const avatar = mentor.avatar(this);
+    avatar.setPosition(CANVAS_W / 2, panelY - 90);
+    container.add(avatar);
+    this.tweens.add({ targets: avatar, y: panelY - 82, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    playMentorChime();
+
+    const intro = this.add
+      .text(CANVAS_W / 2, panelY - 44, `"${mentor.quote}"`, {
+        fontSize: '12px',
+        fontStyle: 'italic',
+        color: '#cfd8ff',
+        align: 'center',
+        wordWrap: { width: 520 },
+      })
+      .setOrigin(0.5, 0);
+    container.add(intro);
+
+    const note = this.add
+      .text(CANVAS_W / 2, panelY + 26, `${mentor.name} has nothing to teach you yet -- more to come.`, {
+        fontSize: '11px',
+        color: '#8fa0c9',
+        align: 'center',
+        wordWrap: { width: 480 },
+      })
+      .setOrigin(0.5, 0);
+    container.add(note);
+
+    this.renderShopFooter(container, panelY);
+  }
+
+  // A start-tile mentor (Bohr, at world 3) appears "at the beginning of"
+  // their world -- fires on stepping into the scene (like the goal-tile
+  // mentors' own re-entry behavior) rather than on reaching any tile, since
+  // the player starts right next to them.
+  private maybeAutoOpenStartDialogue() {
+    if (this.dialogueActive) return;
+    const mentor = OverworldScene.WORLD_MENTORS[this.world];
+    if (mentor?.tile === 'start') this.openMentor(mentor);
+  }
+
+  // The Enter-key menu (DESIGN.md §4/§7 territory: quick access without
+  // leaving the field) -- respects dialogueActive so it can't stack on top
+  // of an encounter/shop panel already open, and only exists in the
+  // overworld, not mid-battle.
+  private togglePauseMenu() {
+    if (this.dialogueActive) return;
+    this.showPauseMenu();
+  }
+
+  private showPauseMenu() {
+    this.dialogueActive = true;
+
+    // Data-driven row list (rather than fixed hand-placed buttons) so an
+    // optional row -- the debug-only "Warp" -- can be spliced in without
+    // hand-recomputing every other button's y position.
+    const rows: { label: string; onClick: () => void }[] = [
+      {
+        label: 'Return to Lab',
+        onClick: () => {
+          this.closeDialogue();
+          this.scene.start('Hub');
+        },
+      },
+      { label: 'View Moves', onClick: () => this.showMovesPanel() },
+      { label: 'View Stats', onClick: () => this.showStatsPanel() },
+      { label: 'Advisors', onClick: () => this.showAdvisorsPanel() },
+      { label: 'Tutorial', onClick: () => this.showTutorial(0) },
+    ];
+    if (this.isDebugMode()) {
+      rows.push({ label: 'Warp (Debug)', onClick: () => this.showDebugWarpPanel() });
+    }
+    rows.push({ label: 'Close', onClick: () => this.closeDialogue() });
+
+    const panelY = 300;
+    const panelHeight = 90 + rows.length * 38;
+    const container = this.add.container(0, 0).setDepth(100);
+    this.dialogueContainer = container;
+
+    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 320, panelHeight, 0x10101c, 0.95).setStrokeStyle(2, 0x8fa0c9);
+    container.add(panel);
+
+    const title = this.add
+      .text(CANVAS_W / 2, panelY - panelHeight / 2 + 18, 'Menu', { fontSize: '15px', color: '#ffffff', fontStyle: 'bold' })
+      .setOrigin(0.5, 0);
+    container.add(title);
+
+    const rowsTop = panelY - panelHeight / 2 + 56;
+    rows.forEach((row, i) => {
+      this.addDialogueButtonAt(container, CANVAS_W / 2, rowsTop + i * 38, row.label, row.onClick, 260);
+    });
+  }
+
+  // Debug-mode-only (see applyDebugLeveling): jumps straight to any of the
+  // 10 worlds from wherever the player currently is, regardless of
+  // rivalDefeated progress -- the in-run counterpart to the Hub door's own
+  // debug warp panel (HubScene.showWorldSelectPanel), for players who don't
+  // want to backtrack to World 0 first.
+  private showDebugWarpPanel() {
+    this.dialogueContainer?.destroy(true);
+    this.dialogueActive = true;
+
+    const rowCount = 10;
+    const panelHeight = 90 + rowCount * 30;
+    const panelY = CANVAS_H / 2;
+    const container = this.add.container(0, 0).setDepth(100);
+    this.dialogueContainer = container;
+
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, panelY, 360, panelHeight, 0x10101c, 0.96)
+      .setStrokeStyle(2, 0xff4fd8);
+    container.add(panel);
+
+    const title = this.add
+      .text(CANVAS_W / 2, panelY - panelHeight / 2 + 14, 'Debug: Warp to World', {
+        fontSize: '14px',
+        color: '#ff8fe0',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5, 0);
+    container.add(title);
+
+    const rowsTop = panelY - panelHeight / 2 + 46;
+    for (let w = 1; w <= rowCount; w++) {
+      const name = WORLD_NAMES[w] ?? `World ${w}`;
+      const label = w === this.world ? `World ${w} -- ${name} (current)` : `World ${w} -- ${name}`;
+      const btn = this.addDialogueButtonAt(container, CANVAS_W / 2, rowsTop + (w - 1) * 30, label, () => {
+        if (w === this.world) return;
+        this.advanceToWorld(w);
+      }, 320);
+      if (w === this.world) btn.setAlpha(0.5);
+    }
+
+    this.addDialogueButtonAt(container, CANVAS_W / 2, rowsTop + rowCount * 30 + 8, 'Close', () => this.closeDialogue(), 260);
+  }
+
+  // Lists every mentor the player has met so far (registry `metMentors`,
+  // grown by openMentor as goal/start tiles are reached), each row
+  // reopening that mentor's own panel -- works from any world's scene, not
+  // just the mentor's own, which is the whole point of putting this in the
+  // Enter menu rather than only at their home tile.
+  private showAdvisorsPanel() {
+    this.dialogueContainer?.destroy(true);
+    this.dialogueActive = true;
+
+    const panelY = 300;
+    const container = this.add.container(0, 0).setDepth(100);
+    this.dialogueContainer = container;
+
+    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 320, 460, 0x10101c, 0.95).setStrokeStyle(2, 0xb98fea);
+    container.add(panel);
+
+    const title = this.add
+      .text(CANVAS_W / 2, panelY - 210, 'Advisors', { fontSize: '15px', color: '#ffffff', fontStyle: 'bold' })
+      .setOrigin(0.5, 0);
+    container.add(title);
+
+    const met = (this.game.registry.get('metMentors') as string[]) ?? [];
+    const mentors = Object.values(OverworldScene.WORLD_MENTORS).filter(
+      (m): m is MentorDef => !!m && met.includes(m.id)
+    );
+
+    if (mentors.length === 0) {
+      const text = this.add
+        .text(CANVAS_W / 2, panelY - 20, "You haven't met any advisors yet.", {
+          fontSize: '13px',
+          color: '#ffffff',
+          align: 'center',
+          wordWrap: { width: 260 },
+        })
+        .setOrigin(0.5, 0);
+      container.add(text);
+    } else {
+      mentors.forEach((mentor, i) => {
+        this.addDialogueButtonAt(
+          container,
+          CANVAS_W / 2,
+          panelY - 170 + i * 32,
+          mentor.name,
+          () => {
+            this.closeDialogue();
+            this.openMentor(mentor);
+          },
+          260
+        );
+      });
+    }
+
+    this.addDialogueButtonAt(container, CANVAS_W / 2, panelY + 200, 'Close', () => this.closeDialogue(), 260);
+  }
+
+  private showMovesPanel() {
+    this.dialogueContainer?.destroy(true);
+    const battleMoves = new Set(getBattleMoves(this.game.registry));
+    const lines = this.getUnlockedMoves().map((id) => {
+      const move = MOVES[id];
+      const usable = battleMoves.has(id);
+      return `${move.name} (${move.class})${usable ? '' : ' -- not compatible with your current form'}`;
+    });
+    this.showInfoPanel('Your Moves', lines.join('\n'));
+  }
+
+  private showStatsPanel() {
+    this.dialogueContainer?.destroy(true);
+    const stats = getPlayerStats(this.game.registry);
+    const body =
+      `Quantumness: ${stats.quantumness}\nVelocity: ${stats.velocity}\nCorrelation: ${stats.correlation}\n\n` +
+      `Qumatokens: ${this.qumatokens}\nCurrent form: ${this.playerMaterial.name}`;
+    this.showInfoPanel('Your Stats', body);
+  }
+
+  private showInfoPanel(title: string, body: string) {
+    this.dialogueActive = true;
+
+    const panelY = 300;
+    const container = this.add.container(0, 0).setDepth(100);
+    this.dialogueContainer = container;
+
+    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 420, 300, 0x10101c, 0.95).setStrokeStyle(2, 0x8fa0c9);
+    container.add(panel);
+
+    const titleText = this.add
+      .text(CANVAS_W / 2, panelY - 130, title, { fontSize: '15px', color: '#ffe066', fontStyle: 'bold' })
+      .setOrigin(0.5, 0);
+    container.add(titleText);
+
+    const bodyText = this.add
+      .text(CANVAS_W / 2, panelY - 95, body, {
+        fontSize: '13px',
+        color: '#cfd8ff',
+        align: 'center',
+        wordWrap: { width: 380 },
+        lineSpacing: 6,
+      })
+      .setOrigin(0.5, 0);
+    container.add(bodyText);
+
+    this.addDialogueButtonAt(container, CANVAS_W / 2, panelY + 110, 'Close', () => this.closeDialogue(), 260);
   }
 
   private maybeCollectToken(x: number, y: number) {

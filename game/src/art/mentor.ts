@@ -7,8 +7,9 @@ import { shade } from './colors';
 // (unlike the generic faceted crystal look shared by every wild material)
 // so a mentor reads as a distinct, benevolent presence rather than another
 // encounter.
-// Future mentors (Bloch, Dirac, ... -- see DESIGN.md §5) should get their
-// own builders in their own files rather than reusing this one.
+// Later mentors follow the same rule: their own builder in their own file
+// (art/bloch.ts's makeBlochAvatar, art/bohr.ts's makeBohrAvatar, and any
+// future ones per DESIGN.md §5) rather than reusing this one.
 //
 // Drawn in local space centered on the chest/torso (0,0); the returned
 // container also wraps a slow rotation sway internally, so callers are free

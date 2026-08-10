@@ -3,7 +3,6 @@
 // imports and type-checks against.
 
 export type MoveClass =
-  | 'disorder'
   | 'trivial'
   | 'magnetic'
   | 'thermal'
@@ -40,4 +39,16 @@ export interface Material {
   variant: CrystalVariant;
   maxHp: number;
   moves: string[];
+}
+
+// Quantumness -> crit ("coherent hit") chance; Velocity -> which side acts
+// first each round; Correlation -> defense (per DESIGN.md §3's attribute
+// table). Only the player and the current world's opponent carry a live
+// Stats block (see data/materials.ts's DEFAULT_STATS/enemyStatsForWorld) --
+// ordinary wild/rival Material rows don't need their own, since opponent
+// stats scale off the world number rather than the species.
+export interface Stats {
+  quantumness: number;
+  velocity: number;
+  correlation: number;
 }

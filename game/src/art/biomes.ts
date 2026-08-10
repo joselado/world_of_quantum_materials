@@ -4,7 +4,7 @@
 // generic across worlds -- only this table changes per world, matching
 // DESIGN.md's per-world biome themes.
 
-export type DecorationKind = 'flowers' | 'crystalGlints';
+export type DecorationKind = 'flowers' | 'crystalGlints' | 'fieldLines' | 'networkNodes' | 'ripples' | 'cracks' | 'mistMotes';
 
 export interface Biome {
   name: string;
@@ -45,9 +45,136 @@ const CRYSTAL_CAVE: Biome = {
   decoration: 'crystalGlints',
 };
 
+const FLOATING_ISLANDS: Biome = {
+  name: 'floatingIslands',
+  skyTop: 0x2a3d6b,
+  skyBottom: 0x8fb8e8,
+  hillColor: 0x4a6a9a,
+  hillAlpha: 0.75,
+  ground: 0x35507a,
+  path: 0x9ac0e0,
+  fogTarget: 0x6888c0,
+  clouds: true,
+  decoration: 'crystalGlints',
+};
+
+// Topic 4 (QHE/Landau levels): a terrain of visible, glowing field lines and
+// quantized-orbit rings -- cold electric blue rather than the caves' violet.
+const LANDAU_TERRAIN: Biome = {
+  name: 'landauTerrain',
+  skyTop: 0x081428,
+  skyBottom: 0x1f4d8f,
+  hillColor: 0x2a5ca8,
+  hillAlpha: 0.8,
+  ground: 0x122544,
+  path: 0x3a7fd4,
+  fogTarget: 0x1b3868,
+  clouds: false,
+  decoration: 'fieldLines',
+};
+
+// Topic 5 (superconductivity/Majorana): a frozen, zero-resistance cavern --
+// icy blue-white, glinting rather than glowing.
+const FROZEN_CAVERNS: Biome = {
+  name: 'frozenCaverns',
+  skyTop: 0x0d1b2a,
+  skyBottom: 0x2a4858,
+  hillColor: 0x24404f,
+  hillAlpha: 0.85,
+  ground: 0x0f2430,
+  path: 0x8fdcff,
+  fogTarget: 0x14313e,
+  clouds: false,
+  decoration: 'crystalGlints',
+};
+
+// Topic 6 (classical magnetism/magnons): windswept plains with spin-wave
+// ripples in the grass -- a warmer, wilder green/gold than world 1's meadow.
+const WINDSWEPT_PLAINS: Biome = {
+  name: 'windsweptPlains',
+  skyTop: 0x9fd8ff,
+  skyBottom: 0xdff3ff,
+  hillColor: 0x8fae5c,
+  hillAlpha: 0.8,
+  ground: 0x5f8536,
+  path: 0xd4c07a,
+  fogTarget: 0xcbe8ff,
+  clouds: true,
+  decoration: 'ripples',
+};
+
+// Topic 7 (entanglement/tensor networks): a dark network-graph world, bonds
+// between sites rendered as the walkable paths themselves.
+const NETWORK_GRAPH_WORLD: Biome = {
+  name: 'networkGraphWorld',
+  skyTop: 0x120a24,
+  skyBottom: 0x2c1a4a,
+  hillColor: 0x3a2560,
+  hillAlpha: 0.8,
+  ground: 0x1c1030,
+  path: 0x8a5cd9,
+  fogTarget: 0x201238,
+  clouds: false,
+  decoration: 'networkNodes',
+};
+
+// Topic 8 (quantum magnetism/spinons/Kondo): a foggy forest that
+// fractionalizes on contact -- muted, low-contrast greys and greens.
+const FOGGY_FOREST: Biome = {
+  name: 'foggyForest',
+  skyTop: 0x2a2f28,
+  skyBottom: 0x4a5248,
+  hillColor: 0x3a4238,
+  hillAlpha: 0.9,
+  ground: 0x28302a,
+  path: 0x5a6a58,
+  fogTarget: 0x454e46,
+  clouds: false,
+  decoration: 'mistMotes',
+};
+
+// Topic 9 (excitations and defects): a cracked, glitching world -- scorched
+// reds and blacks, terrain that reads as damaged rather than merely dark.
+const CRACKED_WORLD: Biome = {
+  name: 'crackedWorld',
+  skyTop: 0x1a0808,
+  skyBottom: 0x3a1414,
+  hillColor: 0x4a1c1c,
+  hillAlpha: 0.85,
+  ground: 0x220c0c,
+  path: 0x8a2a2a,
+  fogTarget: 0x2e1010,
+  clouds: false,
+  decoration: 'cracks',
+};
+
+// Topic 10 (finale, ML/adaptive boss): a meta-world reflecting the player's
+// own team back at them -- shimmering silver-violet, distinct from every
+// earlier biome's palette.
+const META_WORLD: Biome = {
+  name: 'metaWorld',
+  skyTop: 0x2a1a3a,
+  skyBottom: 0x6a4a8a,
+  hillColor: 0x5a3a7a,
+  hillAlpha: 0.75,
+  ground: 0x3a2450,
+  path: 0xc9a8f0,
+  fogTarget: 0x4a3068,
+  clouds: true,
+  decoration: 'crystalGlints',
+};
+
 export const BIOMES: Partial<Record<number, Biome>> = {
   1: MEADOW,
   2: CRYSTAL_CAVE,
+  3: FLOATING_ISLANDS,
+  4: LANDAU_TERRAIN,
+  5: FROZEN_CAVERNS,
+  6: WINDSWEPT_PLAINS,
+  7: NETWORK_GRAPH_WORLD,
+  8: FOGGY_FOREST,
+  9: CRACKED_WORLD,
+  10: META_WORLD,
 };
 
 export function getBiome(world: number): Biome {

@@ -135,6 +135,218 @@ const OVERWORLD_SCORE: Score = {
   ],
 };
 
+// --- Worlds 2-10's overworld themes -----------------------------------
+//
+// World 1 keeps its own hand-written OVERWORLD_SCORE above untouched. Worlds
+// 2-10 are built from a small shape-based melody generator instead of
+// hand-placing every note a second time -- the same spirit as vampBar/
+// stabBar above (derive a bar's notes from a chord root+quality), just with
+// a choice of melodic contour ("shape") so different worlds still sound
+// distinct rather than sharing one generated line. Each world gets its own
+// key/mode, tempo, chord progression, shape sequence, and lead timbre to
+// match its biome's mood (see DESIGN.md §2's biome column).
+
+type MelodyShape = 'skipUp' | 'skipDown' | 'arpUpDown' | 'arch' | 'zigzag' | 'sparse' | 'glitch';
+
+// One bar (always 4 beats) of melody derived purely from a chord's root +
+// quality, the same "no per-note hand authoring" idea as vampBar/stabBar --
+// `shape` picks which chord tones it visits and in what order/rhythm.
+function melodyBar(rootName: string, quality: 'maj' | 'min', shape: MelodyShape, octave = 12): ToneNote[] {
+  const root = n(rootName) + octave;
+  const third = root + (quality === 'maj' ? 4 : 3);
+  const fifth = root + 7;
+  const sixth = root + (quality === 'maj' ? 9 : 8);
+  const second = root + 2;
+  const seventh = root + (quality === 'maj' ? 11 : 10);
+
+  switch (shape) {
+    case 'skipUp':
+      return [
+        { midi: third, beats: 0.5 }, { midi: fifth, beats: 0.5 }, { midi: sixth, beats: 1 },
+        { midi: fifth, beats: 0.5 }, { midi: third, beats: 0.5 }, { midi: second, beats: 1 },
+      ];
+    case 'skipDown':
+      return [
+        { midi: sixth, beats: 0.5 }, { midi: fifth, beats: 0.5 }, { midi: third, beats: 1 },
+        { midi: root, beats: 0.5 }, { midi: second, beats: 0.5 }, { midi: root, beats: 1 },
+      ];
+    case 'arpUpDown':
+      return [
+        { midi: root, beats: 0.5 }, { midi: third, beats: 0.5 }, { midi: fifth, beats: 1 },
+        { midi: third, beats: 0.5 }, { midi: root, beats: 0.5 }, { midi: root - 12, beats: 1 },
+      ];
+    case 'arch':
+      return [
+        { midi: fifth, beats: 0.5 }, { midi: seventh, beats: 0.5 }, { midi: root + 12, beats: 1 },
+        { midi: seventh, beats: 0.5 }, { midi: fifth, beats: 0.5 }, { midi: third, beats: 1 },
+      ];
+    case 'zigzag':
+      return [
+        { midi: root, beats: 0.5 }, { midi: fifth, beats: 0.5 }, { midi: third, beats: 0.5 }, { midi: sixth, beats: 0.5 },
+        { midi: second, beats: 1 }, { midi: root, beats: 1 },
+      ];
+    case 'sparse':
+      // Long held tones with real silence between them -- a cold, unhurried
+      // line for a "drone" world rather than a running melody.
+      return [
+        { midi: root, beats: 2 }, { midi: null, beats: 1 }, { midi: fifth, beats: 1 },
+      ];
+    case 'glitch':
+      // Irregular subdivisions and mid-bar rests -- a line that stumbles
+      // rather than runs, for a world whose whole terrain is glitching.
+      return [
+        { midi: root, beats: 0.25 }, { midi: null, beats: 0.25 }, { midi: third, beats: 0.5 },
+        { midi: fifth, beats: 0.25 }, { midi: null, beats: 0.25 }, { midi: root + 12, beats: 0.5 },
+        { midi: sixth, beats: 0.5 }, { midi: null, beats: 0.5 }, { midi: third, beats: 1 },
+      ];
+  }
+}
+
+type ChordStep = [string, 'maj' | 'min'];
+
+interface OverworldScoreConfig {
+  bpm: number;
+  verse: ChordStep[];
+  bridge: ChordStep[];
+  verseShapes: MelodyShape[];
+  bridgeShapes: MelodyShape[];
+  leadWave?: Wave;
+  leadGain?: number;
+  leadUnison?: boolean;
+  padWave?: Wave;
+  bassWave?: Wave;
+  counterShapes?: MelodyShape[]; // an optional second, quieter interlocking voice
+}
+
+function makeOverworldScore(cfg: OverworldScoreConfig): Score {
+  const chords = [...cfg.verse, ...cfg.bridge];
+  const bassRoots = chords.map(([r]) => r);
+  const lead = [
+    ...cfg.verse.flatMap(([r, q], i) => melodyBar(r, q, cfg.verseShapes[i % cfg.verseShapes.length])),
+    ...cfg.bridge.flatMap(([r, q], i) => melodyBar(r, q, cfg.bridgeShapes[i % cfg.bridgeShapes.length])),
+  ];
+  const tracks: Track[] = [
+    { kind: 'tone', wave: cfg.bassWave ?? 'triangle', gain: 0.15, notes: bassRoots.flatMap(padBassBar) },
+    { kind: 'tone', wave: cfg.padWave ?? 'sine', gain: 0.07, notes: bassRoots.flatMap(padFifthBar) },
+    { kind: 'tone', wave: cfg.leadWave ?? 'sine', gain: cfg.leadGain ?? 0.19, unison: cfg.leadUnison, notes: lead },
+  ];
+  if (cfg.counterShapes) {
+    const counter = [
+      ...cfg.verse.flatMap(([r, q], i) => melodyBar(r, q, cfg.counterShapes![i % cfg.counterShapes!.length], 0)),
+      ...cfg.bridge.flatMap(([r, q], i) => melodyBar(r, q, cfg.counterShapes![i % cfg.counterShapes!.length], 0)),
+    ];
+    tracks.push({ kind: 'tone', wave: cfg.leadWave ?? 'sine', gain: (cfg.leadGain ?? 0.19) * 0.5, notes: counter });
+  }
+  return { bpm: cfg.bpm, loopBeats: chords.length * 4, tracks };
+}
+
+// World 2, Crystalline Caves (symmetries/tight-binding): echoing minor
+// arpeggios, moderate tempo -- A minor.
+const OVERWORLD_SCORE_2 = makeOverworldScore({
+  bpm: 100,
+  verse: [['A2', 'min'], ['F2', 'maj'], ['C3', 'maj'], ['G2', 'maj']],
+  bridge: [['D2', 'min'], ['E2', 'min'], ['A2', 'min'], ['F2', 'maj']],
+  verseShapes: ['arpUpDown', 'skipDown'],
+  bridgeShapes: ['skipDown', 'arpUpDown'],
+  leadWave: 'triangle',
+});
+
+// World 3, Floating Islands (topological band theory): airy and major,
+// slower -- D major.
+const OVERWORLD_SCORE_3 = makeOverworldScore({
+  bpm: 96,
+  verse: [['D3', 'maj'], ['A2', 'maj'], ['B2', 'min'], ['G2', 'maj']],
+  bridge: [['E2', 'min'], ['A2', 'maj'], ['D3', 'maj'], ['G2', 'maj']],
+  verseShapes: ['arch', 'skipUp'],
+  bridgeShapes: ['skipUp', 'arch'],
+  leadGain: 0.17,
+});
+
+// World 4, Landau Terrain (QHE/Landau levels): a circular, repeating
+// arpeggiated motif for quantized orbits -- E minor, driving.
+const OVERWORLD_SCORE_4 = makeOverworldScore({
+  bpm: 132,
+  verse: [['E2', 'min'], ['C3', 'maj'], ['D3', 'maj'], ['B2', 'min']],
+  bridge: [['A2', 'min'], ['E2', 'min'], ['C3', 'maj'], ['D3', 'maj']],
+  verseShapes: ['arpUpDown'],
+  bridgeShapes: ['arpUpDown'],
+  leadWave: 'triangle',
+  leadGain: 0.16,
+});
+
+// World 5, Frozen Zero-Resistance Caverns (superconductivity/Majorana): a
+// sparse, cold drone rather than a running line -- F minor, slow.
+const OVERWORLD_SCORE_5 = makeOverworldScore({
+  bpm: 84,
+  verse: [['F2', 'min'], ['D#2', 'maj'], ['C3', 'min'], ['G#2', 'maj']],
+  bridge: [['A#2', 'min'], ['F2', 'min'], ['D#2', 'maj'], ['C3', 'min']],
+  verseShapes: ['sparse'],
+  bridgeShapes: ['sparse'],
+  leadWave: 'sine',
+  leadGain: 0.14,
+  padWave: 'triangle',
+});
+
+// World 6, Windswept Plains (classical magnetism/magnons): bright,
+// pentatonic-leaning skips -- G major, a little faster than world 1.
+const OVERWORLD_SCORE_6 = makeOverworldScore({
+  bpm: 116,
+  verse: [['G2', 'maj'], ['D3', 'maj'], ['E2', 'min'], ['C3', 'maj']],
+  bridge: [['A2', 'min'], ['D3', 'maj'], ['G2', 'maj'], ['C3', 'maj']],
+  verseShapes: ['skipUp', 'zigzag'],
+  bridgeShapes: ['zigzag', 'skipUp'],
+});
+
+// World 7, Network-Graph World (entanglement/tensor networks): two
+// interlocking voices (lead + a quieter counter-melody in a different
+// register/shape), matching "bonds as paths" -- B minor.
+const OVERWORLD_SCORE_7 = makeOverworldScore({
+  bpm: 120,
+  verse: [['B2', 'min'], ['G2', 'maj'], ['A2', 'maj'], ['F#2', 'min']],
+  bridge: [['E2', 'min'], ['B2', 'min'], ['G2', 'maj'], ['A2', 'maj']],
+  verseShapes: ['zigzag', 'arch'],
+  bridgeShapes: ['arch', 'zigzag'],
+  counterShapes: ['arpUpDown', 'skipDown'],
+  leadWave: 'triangle',
+});
+
+// World 8, Foggy Forest (quantum magnetism/spinons/Kondo): hazy and low-
+// contrast -- C minor, sparse phrasing, low gains.
+const OVERWORLD_SCORE_8 = makeOverworldScore({
+  bpm: 88,
+  verse: [['C3', 'min'], ['G#2', 'maj'], ['A#2', 'maj'], ['F2', 'min']],
+  bridge: [['D#2', 'maj'], ['C3', 'min'], ['G#2', 'maj'], ['F2', 'min']],
+  verseShapes: ['sparse', 'skipDown'],
+  bridgeShapes: ['skipDown', 'sparse'],
+  leadGain: 0.13,
+  padWave: 'triangle',
+});
+
+// World 9, Cracked World (excitations and defects): glitchy, irregular
+// subdivisions -- D minor, quick tempo that never quite settles.
+const OVERWORLD_SCORE_9 = makeOverworldScore({
+  bpm: 140,
+  verse: [['D2', 'min'], ['A#2', 'maj'], ['C3', 'maj'], ['A2', 'min']],
+  bridge: [['G2', 'min'], ['D2', 'min'], ['A#2', 'maj'], ['C3', 'maj']],
+  verseShapes: ['glitch'],
+  bridgeShapes: ['glitch'],
+  leadWave: 'square',
+  leadGain: 0.12,
+});
+
+// World 10, The Meta-World (finale): a shimmering reprise mixing an earlier
+// arpeggiated shape with an earlier arching one -- A major, unison-detuned
+// lead for a "reflection" shimmer.
+const OVERWORLD_SCORE_10 = makeOverworldScore({
+  bpm: 112,
+  verse: [['A2', 'maj'], ['E2', 'maj'], ['F#2', 'min'], ['D2', 'maj']],
+  bridge: [['B2', 'min'], ['E2', 'maj'], ['A2', 'maj'], ['D2', 'maj']],
+  verseShapes: ['arpUpDown', 'arch'],
+  bridgeShapes: ['arch', 'arpUpDown'],
+  leadUnison: true,
+  leadGain: 0.16,
+});
+
 // A "root,root,3rd,5th" x2 eighth-note vamp -- the driving ostinato shape
 // used for every bar of the battle bassline.
 function vampBar(rootName: string, quality: 'maj' | 'min'): ToneNote[] {
@@ -311,8 +523,21 @@ const BATTLE_SCORE: Score = {
   ],
 };
 
-const SCORES: Record<'overworld' | 'battle', Score> = {
-  overworld: OVERWORLD_SCORE,
+// Keyed by scene kind for 'battle', by world number for the overworld so
+// each of the 10 worlds gets its own theme (OverworldScene passes
+// `overworld:${world}`; Hub/Title -- which aren't tied to a specific world
+// number -- use world 1's theme as the game's "home" key).
+const SCORES: Record<string, Score> = {
+  'overworld:1': OVERWORLD_SCORE,
+  'overworld:2': OVERWORLD_SCORE_2,
+  'overworld:3': OVERWORLD_SCORE_3,
+  'overworld:4': OVERWORLD_SCORE_4,
+  'overworld:5': OVERWORLD_SCORE_5,
+  'overworld:6': OVERWORLD_SCORE_6,
+  'overworld:7': OVERWORLD_SCORE_7,
+  'overworld:8': OVERWORLD_SCORE_8,
+  'overworld:9': OVERWORLD_SCORE_9,
+  'overworld:10': OVERWORLD_SCORE_10,
   battle: BATTLE_SCORE,
 };
 
@@ -326,7 +551,7 @@ class MusicEngine {
   private noiseBuffer: AudioBuffer | null = null;
   private driveCurve: Float32Array<ArrayBuffer> | null = null;
   private activeGain: GainNode | null = null;
-  private current: 'overworld' | 'battle' | null = null;
+  private current: string | null = null;
   private stopToken = 0;
   private timer: number | null = null;
   private muted = false;
@@ -377,8 +602,18 @@ class MusicEngine {
     return this.driveCurve;
   }
 
-  play(which: 'overworld' | 'battle') {
+  play(which: string) {
     if (this.current === which) return;
+    if (!SCORES[which]) {
+      // Whatever's currently playing (if anything) is deliberately left
+      // running rather than cut to silence -- an unknown key is a bug
+      // elsewhere (e.g. a scene passing a world number with no score), and
+      // silently keeping the old track audible is a smaller surprise than
+      // silently killing the music entirely. Warn so the bug doesn't go
+      // unnoticed.
+      console.warn(`music.play: no score for "${which}", leaving current track playing`);
+      return;
+    }
     const ctx = this.ensureCtx();
     const now = ctx.currentTime;
 
@@ -649,3 +884,9 @@ export const music = new MusicEngine();
 // resume() there is a no-op. Retry on the first keypress/click anywhere.
 window.addEventListener('keydown', () => music.resume(), { once: true });
 window.addEventListener('pointerdown', () => music.resume(), { once: true });
+
+// No scene ever calls music.stop() -- switching tracks crossfades via
+// play() instead, which is right for scene transitions but leaves nothing
+// that silences the score on teardown. pagehide covers tab close, reload,
+// and navigating away (including cases the page survives in bfcache).
+window.addEventListener('pagehide', () => music.stop());

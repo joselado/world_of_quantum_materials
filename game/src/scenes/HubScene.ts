@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { makeCrystal } from '../art/crystals';
 import { CANVAS_W, CANVAS_H } from '../art/perspective';
-import { PLAYER_MATERIAL } from '../data/materials';
+import { getPlayerMaterial, WORLD_NAMES } from '../data/materials';
 import { materialBlurb } from '../data/materialdex';
 import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
@@ -22,7 +22,7 @@ export class HubScene extends Phaser.Scene {
   }
 
   create() {
-    music.play('overworld');
+    music.play('overworld:1');
     this.dialogueContainer = undefined;
     this.drawRoom();
 
@@ -44,7 +44,8 @@ export class HubScene extends Phaser.Scene {
       )
       .setOrigin(0.5, 0);
 
-    const player = makeCrystal(this, 46, PLAYER_MATERIAL.color, PLAYER_MATERIAL.variant);
+    const playerMaterial = getPlayerMaterial(this.game.registry);
+    const player = makeCrystal(this, 46, playerMaterial.color, playerMaterial.variant);
     player.setPosition(CANVAS_W / 2, 230);
     this.tweens.add({ targets: player, y: 220, duration: 1000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
@@ -98,13 +99,84 @@ export class HubScene extends Phaser.Scene {
     return (this.game.registry.get('rivalDefeated') as Record<number, boolean>) ?? {};
   }
 
+  // The furthest world the player has unlocked: world 1 until its rival
+  // falls, then world 2, and so on -- each world's own rival being beaten is
+  // what opens the next one, so this just walks the chain rather than
+  // hardcoding a fixed handful of worlds.
+  private highestUnlockedWorld(): number {
+    const defeated = this.rivalDefeated();
+    let world = 1;
+    while (defeated[world]) world += 1;
+    return world;
+  }
+
+  private isDebugMode(): boolean {
+    return !!this.game.registry.get('debugMode');
+  }
+
   private doorLabel(): string {
-    return this.rivalDefeated()[1] ? 'Enter World 2' : 'Enter World 1';
+    return this.isDebugMode() ? 'Debug: Warp' : `Enter World ${this.highestUnlockedWorld()}`;
   }
 
   private enterWorld() {
-    const world = this.rivalDefeated()[1] ? 2 : 1;
-    this.scene.start('Overworld', { world });
+    if (this.isDebugMode()) {
+      this.showWorldSelectPanel();
+      return;
+    }
+    this.scene.start('Overworld', { world: this.highestUnlockedWorld() });
+  }
+
+  // Debug-mode-only alternative to the normal door: jumps straight to any of
+  // the 10 worlds regardless of rivalDefeated progress, since debug mode is
+  // about testing/exploring every world rather than earning access to it.
+  // OverworldScene.create() re-levels the player's stats/moves/HP for
+  // whichever world is entered (see its applyDebugLeveling).
+  private showWorldSelectPanel() {
+    if (this.dialogueContainer) return;
+    const container = this.add.container(0, 0).setDepth(100);
+    this.dialogueContainer = container;
+
+    const rowCount = 10;
+    const panelHeight = 90 + rowCount * 30;
+    const panelY = CANVAS_H / 2;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, panelY, 360, panelHeight, 0x10101c, 0.96)
+      .setStrokeStyle(2, 0xff4fd8);
+    container.add(panel);
+
+    const title = this.add
+      .text(CANVAS_W / 2, panelY - panelHeight / 2 + 14, 'Debug: Warp to World', {
+        fontSize: '14px',
+        color: '#ff8fe0',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5, 0);
+    container.add(title);
+
+    const rowsTop = panelY - panelHeight / 2 + 46;
+    for (let w = 1; w <= rowCount; w++) {
+      const name = WORLD_NAMES[w] ?? `World ${w}`;
+      const row = this.addButton(CANVAS_W / 2, rowsTop + (w - 1) * 30, `World ${w} -- ${name}`, () => {
+        this.scene.start('Overworld', { world: w, regenerate: true });
+      });
+      container.add(row);
+    }
+
+    const close = this.addButton(CANVAS_W / 2, rowsTop + rowCount * 30 + 8, '[ Close ]', () => this.closeDialogue());
+    container.add(close);
+  }
+
+  private addButton(x: number, y: number, label: string, onClick: () => void): Phaser.GameObjects.Text {
+    return this.add
+      .text(x, y, label, {
+        fontSize: '12px',
+        color: '#ffff88',
+        backgroundColor: '#222244',
+        padding: { x: 8, y: 4 },
+      })
+      .setOrigin(0.5, 0)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', onClick);
   }
 
   private showSavePoint() {

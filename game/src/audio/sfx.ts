@@ -68,8 +68,8 @@ function playRingSfx(ctx: AudioContext, dest: GainNode, noiseBuffer: AudioBuffer
 }
 
 // A scatter of short bandpassed noise clicks at randomized pitches/offsets
-// -- burst moves (particles converging/scattering: Impurity Scatter, Anyon
-// Braid, Majorana Split).
+// -- burst moves (particles converging/scattering: Anyon Braid, Majorana
+// Split).
 function playBurstSfx(ctx: AudioContext, dest: GainNode, noiseBuffer: AudioBuffer, t: number) {
   const hits = 6;
   for (let i = 0; i < hits; i++) {
@@ -139,9 +139,9 @@ export function playImpactSfx(power = 1) {
 }
 
 // A warm layered bell (three detuned sines decaying at slightly different
-// rates) for Noether's entrance -- a small "divine" flourish to go with her
-// floating, god-like avatar.
-export function playNoetherChime() {
+// rates) for a mentor's shop/panel opening -- a small "divine" flourish to
+// go with their floating, god-like avatars (Noether, Bloch, Bohr, ...).
+export function playMentorChime() {
   const { ctx, dest } = music.getSfxBus();
   const t = ctx.currentTime;
   const partials = [660, 990, 1320];

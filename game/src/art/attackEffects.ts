@@ -12,10 +12,8 @@ interface Point {
 // color swap) so different quasiparticles read differently in battle:
 // bolt = a fast, focused shot (Phonon Beam, Electron Pulse, Spinon Swap);
 // ring = an expanding wave pulse (Magnon Pulse, Polaron Drag); burst = many
-// small particles converging/scattering (Impurity Scatter, Anyon Braid,
-// Majorana Split).
+// small particles converging/scattering (Anyon Braid, Majorana Split).
 const EFFECT_STYLE: Record<MoveClass, { color: number; shape: AttackShape }> = {
-  disorder: { color: 0xaaaaaa, shape: 'burst' },
   trivial: { color: 0x4a90d9, shape: 'bolt' },
   magnetic: { color: 0xd94a4a, shape: 'ring' },
   thermal: { color: 0xff8844, shape: 'bolt' },

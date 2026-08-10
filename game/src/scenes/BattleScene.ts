@@ -2,11 +2,20 @@ import Phaser from 'phaser';
 import { makeCrystal } from '../art/crystals';
 import { shade } from '../art/colors';
 import { playAttackEffect } from '../art/attackEffects';
-import { MOVES, effectiveness, PLAYER_MATERIAL } from '../data/materials';
+import {
+  MOVES,
+  effectiveness,
+  BASE_STAT,
+  getPlayerMaterial,
+  getPlayerStats,
+  getBattleMoves,
+  enemyStatsForWorld,
+} from '../data/materials';
 import { victoryLine, defeatLine } from '../data/greetings';
 import { materialBlurb } from '../data/materialdex';
 import { persistFromRegistry } from '../data/save';
-import type { Material } from '../data/types';
+import type { DiscoveredMaterial } from '../data/save';
+import type { Material, Stats } from '../data/types';
 import { music } from '../audio/music';
 
 const FIELD_W = 640;
@@ -19,6 +28,12 @@ const PLAYER_POS = { x: 180, y: 345 };
 // (windup + travel + impact shockwave, up to ~810ms for a ring move) in
 // art/attackEffects.ts to land and read clearly before the screen moves on.
 const TURN_GAP_MS = 850;
+// Docked to the right of the field, clear of the opponent's crystal/HP bar
+// above it and the log text below.
+const MENU_X = 456;
+const MENU_TOP = 190;
+const MENU_ROW_H = 34;
+const MENU_WIDTH = 176;
 
 interface BattleInitData {
   wild: Material;
@@ -32,6 +47,9 @@ export class BattleScene extends Phaser.Scene {
   private world = 1;
   private attackMultiplier = 1;
   private isRival = false;
+  private playerMaterial!: Material;
+  private playerStats!: Stats;
+  private enemyStats!: Stats;
   private playerHp = 0;
   private opponentHp = 0;
   private turnLock = false;
@@ -40,7 +58,7 @@ export class BattleScene extends Phaser.Scene {
   private opponentCrystal!: Phaser.GameObjects.Container;
   private playerCrystal!: Phaser.GameObjects.Container;
   private logText!: Phaser.GameObjects.Text;
-  private buttons: Phaser.GameObjects.Text[] = [];
+  private moveMenu?: Phaser.GameObjects.Container;
 
   constructor() {
     super('Battle');
@@ -57,7 +75,12 @@ export class BattleScene extends Phaser.Scene {
     music.play('battle');
     this.drawBackground();
 
-    this.playerHp = (this.game.registry.get('playerHp') as number) || PLAYER_MATERIAL.maxHp;
+    this.playerMaterial = getPlayerMaterial(this.game.registry);
+    this.playerStats = getPlayerStats(this.game.registry);
+    this.enemyStats = enemyStatsForWorld(this.world);
+
+    const savedHp = (this.game.registry.get('playerHp') as number) || this.playerMaterial.maxHp;
+    this.playerHp = Math.min(savedHp, this.playerMaterial.maxHp);
     this.opponentHp = this.wild.maxHp;
     this.turnLock = false;
 
@@ -76,11 +99,11 @@ export class BattleScene extends Phaser.Scene {
     this.bobCrystal(this.opponentCrystal, OPPONENT_POS.y);
 
     // Player (bottom-left)
-    this.playerCrystal = makeCrystal(this, 55, PLAYER_MATERIAL.color, PLAYER_MATERIAL.variant);
+    this.playerCrystal = makeCrystal(this, 55, this.playerMaterial.color, this.playerMaterial.variant);
     this.playerCrystal.setPosition(PLAYER_POS.x, PLAYER_POS.y);
     this.bobCrystal(this.playerCrystal, PLAYER_POS.y);
 
-    this.add.text(130, 403, PLAYER_MATERIAL.name, {
+    this.add.text(130, 403, this.playerMaterial.name, {
       fontSize: '14px',
       color: '#ffffff',
       backgroundColor: 'rgba(0,0,0,0.35)',
@@ -111,23 +134,66 @@ export class BattleScene extends Phaser.Scene {
       wordWrap: { width: 600 },
     });
 
-    this.buttons = [];
-    const unlockedMoves = (this.game.registry.get('unlockedMoves') as string[]) ?? PLAYER_MATERIAL.moves;
-    unlockedMoves.forEach((moveId, i) => {
+    this.drawMoveMenu(getBattleMoves(this.game.registry));
+
+    this.updateBars();
+  }
+
+  // A dedicated docked panel on the right of the field, sized to fit
+  // however many moves are currently usable (getBattleMoves -- the
+  // player's learned moves intersected with what their current crystal
+  // form's physics supports), instead of scattering individually
+  // positioned buttons across the field.
+  private drawMoveMenu(moveIds: string[]) {
+    const rowCount = Math.max(moveIds.length, 1);
+    const height = 34 + rowCount * MENU_ROW_H;
+
+    const container = this.add.container(0, 0).setDepth(30);
+    this.moveMenu = container;
+
+    const bg = this.add
+      .rectangle(MENU_X, MENU_TOP, MENU_WIDTH, height, 0x10101c, 0.9)
+      .setOrigin(0, 0)
+      .setStrokeStyle(2, 0xffe066);
+    container.add(bg);
+
+    const title = this.add
+      .text(MENU_X + MENU_WIDTH / 2, MENU_TOP + 8, 'MOVES', {
+        fontSize: '12px',
+        color: '#ffe066',
+        fontStyle: 'bold',
+      })
+      .setOrigin(0.5, 0);
+    container.add(title);
+
+    if (moveIds.length === 0) {
+      const empty = this.add
+        .text(MENU_X + MENU_WIDTH / 2, MENU_TOP + 30, 'No usable moves', {
+          fontSize: '11px',
+          color: '#cfd8ff',
+          align: 'center',
+          wordWrap: { width: MENU_WIDTH - 16 },
+        })
+        .setOrigin(0.5, 0);
+      container.add(empty);
+      return;
+    }
+
+    moveIds.forEach((moveId, i) => {
       const move = MOVES[moveId];
       const btn = this.add
-        .text(10 + i * 150, 210, `[ ${move.name} ]`, {
+        .text(MENU_X + MENU_WIDTH / 2, MENU_TOP + 30 + i * MENU_ROW_H, move.name, {
           fontSize: '12px',
           color: '#ffff88',
           backgroundColor: '#222244',
-          padding: { x: 6, y: 4 },
+          padding: { x: 8, y: 5 },
+          align: 'center',
         })
+        .setOrigin(0.5, 0)
         .setInteractive({ useHandCursor: true })
         .on('pointerdown', () => this.playerAttack(moveId));
-      this.buttons.push(btn);
+      container.add(btn);
     });
-
-    this.updateBars();
   }
 
   private drawBackground() {
@@ -325,54 +391,81 @@ export class BattleScene extends Phaser.Scene {
 
   private updateBars() {
     this.opponentHpBar.width = Math.max(0, (this.opponentHp / this.wild.maxHp) * 100);
-    this.playerHpBar.width = Math.max(0, (this.playerHp / PLAYER_MATERIAL.maxHp) * 100);
+    this.playerHpBar.width = Math.max(0, (this.playerHp / this.playerMaterial.maxHp) * 100);
   }
 
+  // Velocity decides who swings first each round (DESIGN.md §3); ties keep
+  // the original player-first behavior.
   private playerAttack(moveId: string) {
     if (this.turnLock) return;
     this.turnLock = true;
 
+    const playerFirst = this.playerStats.velocity >= this.enemyStats.velocity;
+    const opponentMoveId = () => Phaser.Utils.Array.GetRandom(this.wild.moves);
+
+    const releaseLock = () => {
+      this.turnLock = false;
+    };
+
+    if (playerFirst) {
+      this.resolveHit(true, moveId, () => {
+        if (this.opponentHp <= 0 || this.playerHp <= 0) return;
+        this.time.delayedCall(TURN_GAP_MS, () => this.resolveHit(false, opponentMoveId(), releaseLock));
+      });
+    } else {
+      this.resolveHit(false, opponentMoveId(), () => {
+        if (this.opponentHp <= 0 || this.playerHp <= 0) return;
+        this.time.delayedCall(TURN_GAP_MS, () => this.resolveHit(true, moveId, releaseLock));
+      });
+    }
+  }
+
+  // Shared by both the player's and the opponent's swings -- the only
+  // difference is which side is attacking, so the damage/crit/log/effect
+  // logic lives here once instead of duplicated per side.
+  private resolveHit(isPlayer: boolean, moveId: string, onDone: () => void) {
     const move = MOVES[moveId];
-    const mult = effectiveness(move.class, this.wild.type);
-    const dmg = Math.round(move.power * mult * this.attackMultiplier * Phaser.Math.FloatBetween(0.85, 1.15));
+    const attackerStats = isPlayer ? this.playerStats : this.enemyStats;
+    const defenderStats = isPlayer ? this.enemyStats : this.playerStats;
+    const defenderType = isPlayer ? this.wild.type : this.playerMaterial.type;
+    const mult = effectiveness(move.class, defenderType);
 
-    playAttackEffect(this, move.class, PLAYER_POS, OPPONENT_POS, () => this.impactPunch(this.opponentCrystal), mult);
+    const critChance = Phaser.Math.Clamp((attackerStats.quantumness - BASE_STAT) * 0.02, 0, 0.5);
+    const crit = Math.random() < critChance;
+    const attackMult = isPlayer ? this.attackMultiplier : 1;
+    const defenseFactor = BASE_STAT / defenderStats.correlation;
+    const dmg = Math.round(
+      move.power * mult * attackMult * defenseFactor * (crit ? 1.5 : 1) * Phaser.Math.FloatBetween(0.85, 1.15)
+    );
 
-    this.opponentHp = Math.max(0, this.opponentHp - dmg);
+    const from = isPlayer ? PLAYER_POS : OPPONENT_POS;
+    const to = isPlayer ? OPPONENT_POS : PLAYER_POS;
+    const targetCrystal = isPlayer ? this.opponentCrystal : this.playerCrystal;
+    playAttackEffect(this, move.class, from, to, () => this.impactPunch(targetCrystal), mult);
+
+    if (isPlayer) {
+      this.opponentHp = Math.max(0, this.opponentHp - dmg);
+    } else {
+      this.playerHp = Math.max(0, this.playerHp - dmg);
+      this.game.registry.set('playerHp', this.playerHp);
+      persistFromRegistry(this.game.registry);
+    }
     this.updateBars();
 
     const effText = mult > 1 ? ' It was super effective!' : mult < 1 ? ' It was not very effective...' : '';
-    this.logText.setText(`You used ${move.name}! (${dmg} dmg)${effText}`);
+    const critText = crit ? ' A coherent critical hit!' : '';
+    const who = isPlayer ? 'You' : `Wild ${this.wild.name}`;
+    this.logText.setText(`${who} used ${move.name}! (${dmg} dmg)${effText}${critText}`);
 
     if (this.opponentHp <= 0) {
       this.endBattle(true);
       return;
     }
-
-    this.time.delayedCall(TURN_GAP_MS, () => this.opponentAttack());
-  }
-
-  private opponentAttack() {
-    const moveId = Phaser.Utils.Array.GetRandom(this.wild.moves);
-    const move = MOVES[moveId];
-    const mult = effectiveness(move.class, PLAYER_MATERIAL.type);
-    const dmg = Math.round(move.power * mult * Phaser.Math.FloatBetween(0.85, 1.15));
-
-    playAttackEffect(this, move.class, OPPONENT_POS, PLAYER_POS, () => this.impactPunch(this.playerCrystal), mult);
-
-    this.playerHp = Math.max(0, this.playerHp - dmg);
-    this.updateBars();
-
-    this.logText.setText(`Wild ${this.wild.name} used ${move.name}! (${dmg} dmg)`);
-    this.game.registry.set('playerHp', this.playerHp);
-    persistFromRegistry(this.game.registry);
-
     if (this.playerHp <= 0) {
       this.endBattle(false);
       return;
     }
-
-    this.turnLock = false;
+    onDone();
   }
 
   // Quick punchy scale-squash on the target crystal when a projectile
@@ -392,7 +485,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private endBattle(won: boolean) {
-    this.buttons.forEach((b) => b.destroy());
+    this.moveMenu?.destroy(true);
 
     const stake = this.isRival ? RIVAL_TOKEN_STAKE : BATTLE_TOKEN_STAKE;
     const tokens = (this.game.registry.get('qumatokens') as number) || 0;
@@ -401,14 +494,24 @@ export class BattleScene extends Phaser.Scene {
 
     // Win or lose, the player crystal is fully healed afterward -- only the
     // qumatoken stake is on the line, not attrition into the next fight.
-    this.game.registry.set('playerHp', PLAYER_MATERIAL.maxHp);
+    this.game.registry.set('playerHp', this.playerMaterial.maxHp);
 
     // Beating the world's gating rival crystal is what actually unlocks
-    // Noether's shop and the way to the next world -- see
+    // the mentor's shop/panel and the way to the next world -- see
     // OverworldScene.showRivalEncounter/maybeAutoOpenGoalDialogue.
     if (won && this.isRival) {
       const rivalDefeated = (this.game.registry.get('rivalDefeated') as Record<number, boolean>) ?? {};
       this.game.registry.set('rivalDefeated', { ...rivalDefeated, [this.world]: true });
+    }
+
+    // Rivals aren't real compounds (same rule as OverworldScene's
+    // discoveredMaterials), so only an ordinary wild win is ever offered to
+    // Bohr's transmutation panel.
+    if (won && !this.isRival) {
+      const defeated = (this.game.registry.get('defeatedMaterials') as DiscoveredMaterial[]) ?? [];
+      if (!defeated.some((m) => m.name === this.wild.name)) {
+        this.game.registry.set('defeatedMaterials', [...defeated, { name: this.wild.name, type: this.wild.type }]);
+      }
     }
     persistFromRegistry(this.game.registry);
 

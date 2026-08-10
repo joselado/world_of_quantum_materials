@@ -1,7 +1,9 @@
 # Quantum Materials RPG — Design Document
 
 Living document, the single current source of truth for the game. Edit this directly
-as the game evolves instead of writing a new plan elsewhere.
+as the game evolves instead of writing a new plan elsewhere. Companion to `STYLE.md`
+(how things look) and `CODEMAP.md` (where things live in the code -- function names,
+patterns, exact file locations to check before making changes).
 
 ## 1. Core loop
 
@@ -46,13 +48,20 @@ next unbeaten world), since none of its jobs need overworld movement of their ow
 handing off to the Hub; pressing `H` from any Overworld scene returns to it.
 
 Each world's "Gate to next world" fight is a distinct **rival crystal**
-(`game/src/data/materials.ts`'s `WORLD_RIVALS`, only world 1 built so far), separate from
+(`game/src/data/materials.ts`'s `WORLD_RIVALS`, all 10 worlds built) separate from
 that world's ordinary wild encounters (`WORLD_CRYSTALS`) -- beating a rival is what the
 world's "Continue to World N+1" action actually triggers. The rival fight is deliberately
-*not* a precondition for reaching that world's mentor: Noether is always reachable once the
-goal is reached, so the player can shop for moves before ever facing the rival, rather than
-being stuck needing bought moves to beat a rival they can't reach the shop to prepare for
-(`OverworldScene.tryAdvanceToWorld2`).
+*not* a precondition for reaching that world's mentor: the goal mentor is always reachable
+once the goal is reached, so the player can shop/prep before ever facing the rival, rather
+than being stuck needing bought moves to beat a rival they can't reach the mentor to
+prepare for (`OverworldScene.tryAdvanceToNextWorld`).
+
+**Every world uses this same reach-goal → beat-rival → continue gate, not a bespoke
+per-world puzzle.** §6 below sketches a more ambitious per-world boss mechanic (a
+Landau-level maze, pairing a Majorana boss, riding a magnon wave, etc.); building those
+as one-off minigames for every world was scoped out of the initial full build-out pass
+as too large for one person (§10) in favor of the reusable gate every world already had.
+§6 stays as a record of that future direction, not a description of current behavior.
 
 ## 3. Type system
 
@@ -67,12 +76,19 @@ magnet subtype → spin-triplet superconductor, matching the example in the sour
 notes). Not all main+subtype pairs are physical/interesting — needs a full
 compatibility table before implementation (see open questions).
 
-**Attributes** map to stats:
-- **Quantumness** → crit chance / coherent-move power multiplier
-- **Velocity** → turn order (speed stat)
-- **Correlation** → defense against "many-body" move types
+**Attributes map to stats** (implemented: `game/src/data/types.ts`'s `Stats`, `game/src/data/materials.ts`):
+- **Quantumness** → crit chance ("a coherent critical hit"): `clamp((quantumness - 10) * 0.02, 0, 0.5)`
+- **Velocity** → turn order: whichever side has the higher Velocity swings first each round
+  (`BattleScene.playerAttack`), ties keep the player going first
+- **Correlation** → defense: incoming damage is scaled by `10 / correlation`
 
-They scale with battles won, weighted by current type.
+Every crystal starts at `10/10/10` (`BASE_STAT`/`DEFAULT_STATS`), which is deliberately a
+no-op multiplier so the pre-stats damage numbers are unchanged at parity. The player's own
+stats live in the save (`playerStats`) and only grow by spending qumatokens with Noether
+(`OverworldScene.renderShopStats`, cost `(current - 10 + 1) * 50` per point); an opponent's
+stats are computed fresh from the world number at battle start
+(`enemyStatsForWorld(world)`, `+2` per stat per world past world 1) rather than hand-tuned
+per species, so difficulty climbs with the world.
 
 **Crystal database.** Each wild "crystal" is named after a real compound rather than
 an invented species name, and inherits its main type (and therefore its look and its
@@ -154,14 +170,28 @@ named after compounds:
 excitation that actually carries it (`game/src/data/materials.ts`'s `MOVES`), and each
 renders as its own particle-effect animation in battle (`game/src/art/attackEffects.ts`):
 a fast bolt for Phonon Beam/Electron Pulse/Spinon Swap, an expanding ring pulse for
-Magnon Pulse/Polaron Drag, a converging/scattering particle burst for Impurity
-Scatter/Anyon Braid/Majorana Split.
+Magnon Pulse/Polaron Drag, a converging/scattering particle burst for Anyon Braid/Majorana
+Split. There is deliberately no "impurity scattering" move — disorder isn't a particle a
+crystal emits, so it was dropped from the roster entirely rather than kept as an abstract
+attack.
+
+**A crystal can only use moves its own physics supports** — `game/src/data/materials.ts`'s
+`MOVE_COMPATIBILITY` table fixes, per main type, which quasiparticle classes it can host
+(e.g. a plain band insulator/semiconductor like Silicon only ever gets Electron Pulse and
+Phonon Beam, never Magnon Pulse, since it has no magnetic order to carry one). Phonon Beam
+(thermal) is on every type's list, since every crystal has a lattice; every other class is
+gated to the types whose actual physics motivates it (Magnon Pulse → magnetically ordered
+types; Anyon Braid → quantum Hall/topological; Majorana Split → superconducting/topological;
+Spinon Swap → spin-liquid/tensor-network; Polaron Drag → superconducting/defect/strongly
+correlated). This is enforced everywhere the player's moveset shows up: the battle move
+menu (`getBattleMoves` = learned moves ∩ compatible moves) and Noether's shop (same
+intersection, so she only ever offers what the player's *current* crystal form can
+actually carry — see the transmutation mechanic in §5).
 
 **Type-effectiveness chart** (draft — see `data/materials.json`, needs playtesting):
 
 | Attack (quasiparticle) | Strong against | Weak against |
 |---|---|---|
-| Impurity Scatter | Trivial insulator, classical magnet | Chern insulator (topological protection) |
 | Magnon Pulse | Free fermion, s-wave SC (pair-breaking) | Chern insulator, triplet SC |
 | Phonon Beam | Any symmetry-broken/ordered type | Quantum spin liquid (no order to melt) |
 | Polaron Drag | Spinon/holon states | Superconductor (phase rigidity), topological edge states |
@@ -200,13 +230,20 @@ crystal/biome tables already use.
 
 **Starting loadout and unlocking moves.** The player's crystal starts knowing only Phonon
 Beam. Reaching the goal of world 1 for the first time introduces the mentor Noether (§5),
-who sells the other early moves -- Impurity Scatter, Electron Pulse, Magnon Pulse -- for
-qumatokens, priced by move power (`OverworldScene.shopCost`, currently power × 5).
-Unlocked moves persist in the Phaser registry's `unlockedMoves` entry and immediately
-become available as attack buttons in `BattleScene`. Noether's shop panel also carries the
-actual "leave this world" action -- a footer button that fights the world's rival crystal
-the first time it's clicked (see §2), then becomes "Continue to World N+1" once that rival
-is beaten (`OverworldScene.tryAdvanceToWorld2`).
+who sells every other move (`SHOP_MOVE_IDS`) for qumatokens, priced by move power
+(`OverworldScene.shopCost`, currently power × 5) -- filtered down to whatever the player's
+*current* crystal form can physically carry (§3's `MOVE_COMPATIBILITY`), so a trivial-type
+player is only ever offered Electron Pulse until they transmute into a form that supports
+more. Unlocked moves persist in the Phaser registry's `unlockedMoves` entry (a global
+"moves learned," never erased by transmuting) and become available as battle buttons in
+`BattleScene` once filtered through that same compatibility check
+(`getBattleMoves` = learned ∩ compatible). The move list now renders as a docked panel on
+the right of the field rather than individually positioned buttons (`BattleScene.drawMoveMenu`).
+Noether's shop panel also carries a second tab for spending qumatokens on the player's own
+Quantumness/Velocity/Correlation stats (§3), and the actual "leave this world" action -- a
+footer button that fights the world's rival crystal the first time it's clicked (see §2),
+then becomes "Continue to World N+1" once that rival is beaten
+(`OverworldScene.tryAdvanceToNextWorld`).
 
 **Stakes.** Winning a battle earns 50 qumatokens; losing costs 50, floored at 0 (a rival
 fight doubles both to 100, `BattleScene`'s `RIVAL_TOKEN_STAKE`). Either way the player's
@@ -226,19 +263,37 @@ discovered material together with its blurb.
 
 ## 5. Mentors, economy, and story arc
 
-Mentors appear every ~2 worlds and sell abilities for qumatokens (subtype unlock,
-promotion, "relativistic" special moves):
+Every world 1-9 has its own mentor, waiting at that world's goal tile (or, for Bohr,
+its start tile) and reachable from anywhere afterward via the Enter-menu's Advisors
+panel once met (`OverworldScene`'s `WORLD_MENTORS` table, `showAdvisorsPanel`,
+`data/save.ts`'s `metMentors`). **Current state (deliberately not the final design --
+see §10):** Noether is the sole seller of moves/stat upgrades; every mentor from
+Dirac onward is a topic-tied lore stop with an avatar and a quote but no mechanic of
+its own yet (`OverworldScene.showMentorLore`) -- what each of them should actually
+unlock (subtype system, pairing/screening mechanics, etc.) is still an open design
+question, not implemented. World 10 has no mentor; its only encounter is the finale.
 
-- **Noether** → end of world 1 → sells the player's first extra attack moves (fitting,
-  since Noether's theorem is literally "symmetry implies a conservation law" -- here,
-  conserving enough qumatokens gets you a new move)
-- **Bloch** → world 2 → unlocks "symmetry sense"
-- **Dirac** → world 3/4 → unlocks topological promotion
-- **Majorana** → world 5 → unlocks Majorana pairing mechanic
-- **Curie** → world 6 → unlocks magnet subtype
-- **Einstein** → world 7 → unlocks entanglement moves
-- **Kondo / Anderson** → world 8 → unlocks screening mechanic
-- **Feynman** → world 9/10 → unlocks defect exploitation, previews the ML finale
+- **Noether** → world 1 goal → sells every extra attack move and stat upgrade in the
+  game (fitting, since Noether's theorem is literally "symmetry implies a conservation
+  law" -- here, conserving enough qumatokens gets you a new move or a sharper stat)
+- **Bloch** → world 2 goal → folds space between worlds: teleports the player to any
+  world they've already visited (`OverworldScene.showBlochHub`) -- fitting, since a
+  Bloch state is a superposition spread across every unit cell, not pinned to one
+- **Bohr** → world 3 start → lets the player transmute into any crystal they've already
+  defeated (`OverworldScene.showBohrPanel`/`transmuteInto`) -- beating a crystal means
+  understanding its physics well enough to become it for a while; transmuting changes the
+  player's look, HP cap, and which moves are currently usable (§3), without erasing any
+  move already learned
+- **Dirac** → world 4 goal → lore only for now; flavor ties in via relativistic
+  Landau-level quantization of Dirac fermions (world 4's own topic)
+- **Majorana** → world 5 goal → lore only for now; flavor ties in via Majorana pairing
+- **Curie** → world 6 goal → lore only for now; flavor ties in via Curie-temperature
+  magnetic ordering
+- **Einstein** → world 7 goal → lore only for now; flavor ties in via the EPR paradox
+  (his own objection to entanglement)
+- **Kondo** → world 8 goal → lore only for now; flavor ties in via the Kondo effect
+- **Feynman** → world 9 goal → lore only for now; flavor ties in via Feynman diagrams
+  for excitations
 
 **Plot hook:** a "Decoherence" is spreading through the material worlds, causing wild
 materials to lose their protected properties. The player masters each phase of
@@ -302,6 +357,22 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   per-world `WORLD_CRYSTALS` database) with `data/materials.json` at the repo
   root as the fuller design-time reference — so balance/content can be tuned
   without touching engine/rendering code.
+- **Onboarding.** A first-run tutorial (`game/src/data/tutorial.ts`'s
+  `TUTORIAL_PAGES`, a paged popup covering movement/encounters/battles/
+  qumatokens/mentors/the Lab/the menu) plays automatically the first time an
+  Overworld scene is ever created for a save (`OverworldScene
+  .maybeShowFirstTimeTutorial`, gated by save/registry `tutorialSeen`), and
+  can be replayed any time after from the Enter-menu's "Tutorial" button
+  (`OverworldScene.showTutorial`).
+- **Debug Mode.** A Title-screen toggle (save/registry `debugMode`,
+  `TitleScene.addDebugToggle`) meant for testing/exploring the game rather
+  than the intended first playthrough: while on, the Hub's door and the
+  Enter-menu both gain a "Warp" option that jumps straight to any of the 10
+  worlds regardless of `rivalDefeated` progress (`HubScene
+  .showWorldSelectPanel`, `OverworldScene.showDebugWarpPanel`), and every
+  world entry re-levels the player's stats/moves/HP to stay competitive with
+  that world's opponents (`OverworldScene.applyDebugLeveling`, a flat +2 over
+  `enemyStatsForWorld`) instead of requiring the normal qumatoken grind.
 
 ## 8. Art & content pipeline
 
@@ -316,15 +387,24 @@ world 7's boss fights as an entangled pair where damaging one damages both.
 
 1. **Prototype** (done, frozen at `demo/`): core battle loop + minimal type chart for
    world 1 only, placeholder rectangle graphics — validated the core loop is fun.
-2. **Vertical slice** (in progress, in `game/`): worlds 1–3, full overworld/battle/
-   Materialdex loop. World 0 (the Hub), the title screen, localStorage saving, world 1's
-   rival gate, and a first-pass Materialdex are all built (§2, §4, §7). Worlds 1–2 have
-   built overworld maps, with Noether (the world 1 mentor) selling starter attack unlocks
-   at the goal; world 3 and Bloch (world 2's mentor) are still open, and world 2 has no
-   rival crystal yet (`WORLD_RIVALS` only covers world 1).
-3. **Full build-out:** remaining worlds 4–9, mentor roster, boss puzzles.
-4. **Finale + polish:** world 10 adaptive boss, audio, mobile wrapper (Capacitor),
-   playtesting with students.
+2. **Vertical slice** (done, in `game/`): worlds 1–3, full overworld/battle/
+   Materialdex loop. World 0 (the Hub), the title screen, localStorage saving, a rival
+   gate for both worlds 1 and 2, and a first-pass Materialdex are all built (§2, §4, §7).
+   Worlds 1–3 have built overworld maps; Noether (world 1's mentor) sells attack unlocks
+   and stat upgrades, Bloch (world 2's mentor) teleports between visited worlds, and Bohr
+   (waiting at the start of world 3) lets the player transmute into a defeated crystal.
+3. **Full build-out** (done): worlds 4–9 built (biomes, wild pools, rivals, quiz
+   content), a mentor at every world 1-9 goal/start tile (`WORLD_MENTORS`), the
+   Advisors pause-menu panel so any met mentor is reachable from anywhere
+   (`metMentors`), and a distinct overworld music track per world. No bespoke
+   per-world boss puzzles (see §2's note under the world table) -- every world uses
+   the same reach-goal → beat-rival → continue gate. Mentors past Bohr are lore-only
+   (§5) pending a real subtype/unlock system (§10).
+4. **Finale + polish:** world 10 adaptive boss is built as a rival-style fight (no
+   mentor there by design); still open: real mentor mechanics beyond Noether, battle
+   music variants per world, mobile wrapper (Capacitor), playtesting with students.
+5. **Onboarding + testing aids** (done): the first-run tutorial popup sequence and
+   the Title-screen Debug Mode toggle (§7's "Onboarding"/"Debug Mode" bullets).
 
 ## 10. Open design questions
 
@@ -332,6 +412,10 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   playtest pass or simple simulator before locking move numbers.
 - **Subtype combination rules** — which main+subtype pairs are physically/
   narratively sensible needs a full compatibility table, not just one example.
+- **What Dirac/Majorana/Curie/Einstein/Kondo/Feynman actually unlock** — they're
+  currently lore-only stops (§5); their real mechanics (topological promotion,
+  Majorana pairing, subtype unlocks, entanglement moves, screening, defect
+  exploitation) all depend on the subtype system above not existing yet.
 - **Scope vs. solo-dev reality** — 10 worlds + full art + mentor roster is large for
   one person; consider cutting to 3–4 flagship worlds for a v1 before building all 10.
 - **Course integration** — supplementary/optional tool, or tied into assessment?
