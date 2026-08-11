@@ -421,7 +421,7 @@ does. World 10 has no guardian; its only encounter is the finale.
   its own band structure well enough to wear it for a while. Transmuting changes the player's
   look, HP cap, and which moves are currently usable (§3), without erasing any move already
   learned. **Excludes every hybrid-recipe result and every inherently doped/alloyed compound**
-  (`data/materials.ts`'s `isCompositeMaterial`) -- Fe/Pb Majorana Chain and Twisted Bilayer
+  (`data/materials.ts`'s `isHybridMaterial`) -- Fe/Pb Majorana Chain and Twisted Bilayer
   MoTe₂ (recipe results also encountered wild), and Cr-doped (Bi,Sb)₂Te₃, Fe(Te,Se), and
   NV-Diamond (real compounds that are themselves a mixture of two named ingredients baked
   in, even with no fusion recipe behind them) -- becoming a mixed/fused state is specifically Majorana's
@@ -470,9 +470,10 @@ does. World 10 has no guardian; its only encounter is the finale.
   10's pool, see §2/§7 below) rather than synthesized on the fly, so a hybrid
   encountered wild and one fused by hand are the exact same crystal; `combineMaterials`
   additionally attaches `hybridParents` so the fused form still renders as an actual
-  visual mixture of both parents. Every hybrid ever created is remembered
-  (`hybridMaterials` save field) so the panel also offers "become again" for an earlier
-  one without recombining. In Superposition Mode the ingredient pool is every crystal in
+  visual mixture of both parents. Deliberately no memory of earlier fusions to instantly
+  re-become -- every visit picks a fresh pair the same as any other combine; the player's
+  *current* form (which may already be a hybrid) still persists on its own via `playerForm`
+  regardless. In Superposition Mode the ingredient pool is every crystal in
   the game, unfiltered (unlike Dresselhaus above) -- a hybrid's own defeated-material entry,
   if any, simply won't match any `HYBRID_RECIPES` pairing as a further parent, so no extra
   filtering is needed here
@@ -489,18 +490,41 @@ does. World 10 has no guardian; its only encounter is the finale.
   bright geyser core up through nearly twice the shard count of an ordinary burst.
   Buying a move (or later revisiting Curie) also opens a quasiparticle-picker
   sub-panel (`showCurieClassPicker`, offering `CURIE_TUNABLE_CLASSES` --
-  every ordinary Attacks-section class) that assigns the move's registry/save
-  `curieMoveClass[moveId]` entry, labeled with whichever ordinary move already
-  carries that class (`quasiparticleLabel`, e.g. "Magnon Pulse" for
-  `'magnetic'`) rather than the class id itself. The move's own `class` stays
-  `'analytic'` either way -- still purchasable/usable from any form, still
-  asks its question -- this choice only feeds `getCurieMoveClass`, which
-  `BattleScene`'s quasiparticle-mismatch check reads in place of `move.class`
-  for these two ids (see §3/§4). An unbought move has no assignment yet; an
-  already-bought one shows "tuned to `<name>`" with a free "Retune" click
-  back into the same picker, or "untuned" if never assigned (an older save,
-  or a purchase made before this picker existed) -- untuned simply means the
-  mismatch check keeps reading the move's own always-safe `'analytic'` class.
+  every ordinary Attacks-section class -- filtered down to only the ones the
+  player's *current* form can actually host, `canHost(playerMaterial.type,
+  cls)`: a class as narrow as `'magnetoelectric'` (only the `multiferroic`
+  type hosts it) only ever shows up while the player is wearing a
+  multiferroic form, rather than being a free "always mismatch nearly every
+  opponent" pick regardless of form. `'thermal'` is on every
+  `MOVE_COMPATIBILITY` list, so the filtered list is never empty) that
+  assigns the move's registry/save `curieMoveClass[moveId]` entry, labeled
+  with whichever ordinary move already carries that class
+  (`quasiparticleLabel`, e.g. "Magnon Pulse" for `'magnetic'`) rather than
+  the class id itself. The move's own `class` stays `'analytic'` either way
+  -- still purchasable/usable from any form, still asks its question -- this
+  choice only feeds `getCurieMoveClass`, which `BattleScene`'s
+  quasiparticle-mismatch check reads in place of `move.class` for these two
+  ids (see §3/§4). A tuned move's own displayed name folds the quasiparticle
+  in too (`curieMoveDisplayName`, e.g. "Skyfall Beam" tuned to `'magnetic'`
+  reads as "Skyfall Magnon" everywhere -- the move menu, the analytic
+  question panel, the battle log), built from each name's own first word
+  rather than a second hand-authored word list. An unbought move has no
+  assignment yet; an already-bought one shows "tuned to `<name>`" with a
+  free "Retune" click back into the same picker (re-opening the same
+  current-form filter, so retuning after a transmute only offers what the
+  *new* form can host), or "untuned" if never assigned (an older save, or a
+  purchase made before this picker existed) -- untuned simply means the
+  mismatch check keeps reading the move's own always-safe `'analytic'`
+  class. The picker only filters at *pick* time, though, so a tuned
+  assignment can still outlive a later transmute into a form that can't
+  host it; `getCurieMoveClass` guards that case by falling back to
+  `'thermal'` (Phonon Beam, the one class every form hosts) whenever the
+  player's *current* form can't host the saved assignment, and
+  `curieMoveDisplayName`/the shop label follow the same fallback so the
+  name and the mismatch math never disagree -- the shop label reads "tuned
+  to `<name>`, reverted to Phonon Beam (this form can't host it -- retune)"
+  in that state.
+- **Bohr** → world 7 middle → teaches three passive abilities, same "learn several,
   equip one" shape as Laughlin above (`data/passives.ts`'s `BOHR_PASSIVE_IDS`,
   `OverworldScene.showBohrPanel`, registry/save `bohrActivePassive`) -- fitting Bohr's
   own historical role defending quantum mechanics' completeness against the EPR paradox:
@@ -552,8 +576,12 @@ does. World 10 has no guardian; its only encounter is the finale.
   learned move actually shows up in the battle menu, which is the whole point -- an
   impurity's channel only manifests once the player's *own* current form can physically
   host it. Distinct from Dresselhaus (become the whole state) and Majorana (fuse two states
-  together): Anderson borrows a single excitation channel without becoming anything. In
-  Superposition Mode the host pool is every crystal in the game, same as Majorana
+  together): Anderson borrows a single excitation channel without becoming anything. Host
+  pool excludes any `isHybridMaterial` (a Majorana fusion, or one of world 10's own
+  named recipe-result wilds) -- doping in an impurity is meant to be one real compound's
+  own excitation, not a channel a fusion already borrowed from two others. In
+  Superposition Mode the host pool is every (non-composite) crystal in the game, same as
+  Majorana's own ingredient pool
 
 **Boss avatars.** Every built world's rival/boss (`WORLD_RIVALS`/`getRival`)
 stands visibly at the goal tile as a gigantic landmark (`OverworldScene

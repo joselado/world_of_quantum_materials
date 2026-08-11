@@ -18,6 +18,10 @@ mechanics/content decisions see `DESIGN.md`, for visual conventions see
   `game/src/` so you're not re-exploring the tree from scratch.
 - `game/` -- **active development happens here.** A Vite + TypeScript +
   Phaser 3 project (see "Running the game" below).
+- `docs/` -- player-facing reference docs `README.md` links out to
+  (quasiparticles/moves, crystals, hybrid materials, guardians). Their
+  tables are generated from `game/src/data/materials.ts`/`passives.ts` --
+  see "Regenerating docs/ tables" below.
 - `screenshots/` -- the images embedded in `README.md`. Regenerate rather
   than hand-edit if the UI they show changes materially.
 
@@ -47,6 +51,28 @@ Type-check without building:
 ```
 npx tsc --noEmit -p .
 ```
+
+## Regenerating `docs/` tables
+
+`docs/quasiparticles.md`, `docs/crystals.md`, `docs/hybrids.md`, and
+`docs/guardians.md` each hold hand-written prose plus one or more tables
+inside `<!-- GENERATED:NAME START -->`/`END` marker comments. Those tables
+are parsed straight out of `src/data/materials.ts` (`MOVES`, `WORLD_CRYSTALS`,
+`WORLD_RIVALS`, `HYBRID_RECIPES`, `COMPOSITE_MATERIAL_NAMES`,
+`MOVE_COMPATIBILITY`) and `src/data/passives.ts` (`PASSIVES`) by
+`game/scripts/gen-docs.mjs`, using the TypeScript compiler API to read the
+literal values rather than importing the modules (`materials.ts` pulls in
+Phaser via `art/colors.ts`, which needs browser globals Node doesn't have).
+After changing any of those data structures:
+
+```
+cd game
+npm run docs
+```
+
+Never hand-edit the text between a `<!-- GENERATED -->` marker pair -- the
+next run overwrites it. Anything outside those markers is ordinary prose,
+maintained the same way as any other doc.
 
 ### `game/` project layout
 

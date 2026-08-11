@@ -82,14 +82,19 @@ export const ANALYTIC_MOVE_IDS = Object.values(MOVES)
   .filter((m) => m.class === 'analytic')
   .map((m) => m.id);
 
-// The ordinary quasiparticle classes Curie's shop lets the player assign to
-// an analytic move (OverworldScene.showCurieClassPicker) -- excludes
-// 'analytic'/'screening' themselves (self-referential) and 'trivial'/
-// 'thermal'/'gauge'/etc. is really just "every ordinary Attacks-section
-// class." An analytic move's own MoveClass stays 'analytic' always (so it
-// keeps being usable from any form and keeps asking its question) -- this
-// choice only feeds getCurieMoveClass below, which the quasiparticle-
-// mismatch check reads instead.
+// The full roster of ordinary quasiparticle classes Curie's shop can ever
+// offer to assign to an analytic move (OverworldScene.showCurieClassPicker)
+// -- every ordinary Attacks-section class, i.e. everything except
+// 'analytic'/'screening' themselves (self-referential). The picker itself
+// filters this down further, to only the classes the player's *current*
+// form can actually host (`canHost(playerMaterial.type, cls)`) -- so a
+// class as narrow as 'magnetoelectric' (only the 'multiferroic' type hosts
+// it) only ever shows up while the player is wearing a multiferroic form,
+// rather than being freely pickable as an easy "always mismatch nearly
+// every opponent" choice. An analytic move's own MoveClass stays
+// 'analytic' always (so it keeps being usable from any form and keeps
+// asking its question) -- this choice only feeds getCurieMoveClass below,
+// which the quasiparticle-mismatch check reads instead.
 export const CURIE_TUNABLE_CLASSES: MoveClass[] = [
   'trivial',
   'magnetic',
@@ -297,9 +302,45 @@ export function getBattleMoves(registry: RegistryLike): string[] {
 // picker, or an older save from before this existed) falls back to its own
 // 'analytic' class, the same "never mismatches" behavior analytic moves
 // always had.
+function assignedCurieClass(registry: RegistryLike, moveId: string): MoveClass | undefined {
+  return (registry.get('curieMoveClass') as Partial<Record<string, MoveClass>> | undefined)?.[moveId];
+}
+
+// A tuned assignment is picked against whatever form the player was
+// wearing at Curie's shop, but the player can transmute afterward -- if the
+// form they're wearing *now* can no longer host that class (e.g. tuned to
+// 'magnetoelectric' as a multiferroic, then transmuted into Silicon), this
+// falls back to 'thermal' (Phonon Beam) rather than keeping an assignment
+// the current form can't actually carry: 'thermal' is on every
+// MOVE_COMPATIBILITY list, so it's always a safe, always-hostable landing
+// spot. An untuned move (never visited Curie's picker) falls back to its
+// own static 'analytic' class instead, the same "never mismatches"
+// behavior analytic moves always had.
 export function getCurieMoveClass(registry: RegistryLike, moveId: string): MoveClass {
-  const assigned = (registry.get('curieMoveClass') as Partial<Record<string, MoveClass>> | undefined)?.[moveId];
-  return assigned ?? MOVES[moveId].class;
+  const assigned = assignedCurieClass(registry, moveId);
+  if (!assigned) return MOVES[moveId].class;
+  const currentType = getPlayerMaterial(registry).type;
+  return canHost(currentType, assigned) ? assigned : 'thermal';
+}
+
+// A tuned analytic move's displayed name folds in whichever quasiparticle
+// it's currently carrying (e.g. "Skyfall Beam" tuned to 'magnetic' reads as
+// "Skyfall Magnon") rather than staying a generic name that no longer says
+// what the move actually does -- everywhere else a move's name already
+// names its quasiparticle (MOVES' own header comment). Built from each
+// name's own first word (Skyfall/Ground, Magnon/Phonon/...) rather than a
+// second hand-authored word list, so a future MOVES rename stays in sync
+// automatically. Reads getCurieMoveClass rather than the raw assignment, so
+// if the current form can't host the tuned class anymore the name reverts
+// to its Phonon form too, matching what the mismatch check actually uses.
+// The move's own `class` never changes (still 'analytic' underneath), so
+// this is purely a label -- untuned falls back to the static name every
+// analytic move already had.
+export function curieMoveDisplayName(registry: RegistryLike, moveId: string): string {
+  const assigned = assignedCurieClass(registry, moveId);
+  if (!assigned) return MOVES[moveId].name;
+  const active = getCurieMoveClass(registry, moveId);
+  return `${MOVES[moveId].name.split(' ')[0]} ${quasiparticleLabel(active).split(' ')[0]}`;
 }
 
 // The player is a crystal too -- just one entry out of this same roster, not a
@@ -620,7 +661,12 @@ const COMPOSITE_MATERIAL_NAMES = new Set([
   'NV-Diamond',
 ]);
 
-export function isCompositeMaterial(name: string): boolean {
+// True for a HYBRID_RECIPES fusion result, or a real compound that's
+// inherently a doped/alloyed mixture of two named ingredients
+// (COMPOSITE_MATERIAL_NAMES) -- both count as "hybrid" the same way:
+// neither is a single, un-mixed crystal, so Dresselhaus, Majorana, and
+// Anderson all exclude them identically.
+export function isHybridMaterial(name: string): boolean {
   return HYBRID_RESULT_NAMES.has(name) || COMPOSITE_MATERIAL_NAMES.has(name);
 }
 

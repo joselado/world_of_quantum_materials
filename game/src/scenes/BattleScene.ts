@@ -14,6 +14,7 @@ import {
   getPlayerStats,
   getBattleMoves,
   getCurieMoveClass,
+  curieMoveDisplayName,
   enemyStatsForWorld,
 } from '../data/materials';
 import { victoryLine, defeatLine } from '../data/greetings';
@@ -614,8 +615,9 @@ export class BattleScene extends Phaser.Scene {
       tag += ' !!2x';
       color = '#ffaa44';
     }
+    const displayName = curieMoveDisplayName(this.game.registry, moveId);
     const btn = this.add
-      .text(MENU_X + MENU_WIDTH / 2, y, `${move.name}\nPwr ${move.power}${tag}`, {
+      .text(MENU_X + MENU_WIDTH / 2, y, `${displayName}\nPwr ${move.power}${tag}`, {
         fontSize: `${btnPx}px`,
         color,
         backgroundColor: '#222244',
@@ -657,7 +659,11 @@ export class BattleScene extends Phaser.Scene {
     let y = top + 16;
 
     const title = this.add
-      .text(FIELD_W / 2, y, move.name, { fontSize: fontPx(this, 15), color: '#ffe066', fontStyle: 'bold' })
+      .text(FIELD_W / 2, y, curieMoveDisplayName(this.game.registry, move.id), {
+        fontSize: fontPx(this, 15),
+        color: '#ffe066',
+        fontStyle: 'bold',
+      })
       .setOrigin(0.5, 0);
     container.add(title);
     y += title.height + 8;
@@ -1106,7 +1112,8 @@ export class BattleScene extends Phaser.Scene {
       }
     }
 
-    this.setLogText(`${who} used ${move.name}! (${dmg} dmg)${mismatchText}${critText}${statusText}${echoText}${healText}`);
+    const displayName = curieMoveDisplayName(this.game.registry, moveId);
+    this.setLogText(`${who} used ${displayName}! (${dmg} dmg)${mismatchText}${critText}${statusText}${echoText}${healText}`);
 
     if (this.opponentHp <= 0) {
       this.endBattle(true);
@@ -1234,7 +1241,15 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private endBattle(won: boolean) {
+    // Nulled, not just destroyed -- switchMoveSection's `!this.moveMenu`
+    // guard checks the field itself, and a destroy()ed Container is still a
+    // truthy JS reference, so leaving this set would make that guard clause
+    // permanently inert instead of the real second line of defense it's
+    // meant to be (turnLock alone already blocks it today, see that guard's
+    // own comment, but this is the one that has to keep working if that
+    // ever changes).
     this.moveMenu?.destroy(true);
+    this.moveMenu = undefined;
 
     const stake = this.isRival ? RIVAL_TOKEN_STAKE : BATTLE_TOKEN_STAKE;
     const tokens = (this.game.registry.get('qumatokens') as number) || 0;

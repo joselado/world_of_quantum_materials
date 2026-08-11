@@ -26,8 +26,18 @@ to read than re-deriving the same context from the code:
   adding something new.
 - `DEVELOPMENT.md` — build/run instructions, folder contents, where active
   development happens (`game/`).
-- `README.md` — player-facing description of the game, for when you need the
-  outside view rather than the dev view.
+- `README.md` — short player-facing description of the game (premise, how it
+  plays, controls); deliberately light on mechanics detail, linking out to
+  `docs/` for anything a player would need to look up rather than explaining
+  it inline.
+- `docs/quasiparticles.md`, `docs/crystals.md`, `docs/hybrids.md`,
+  `docs/guardians.md` — player-facing reference docs `README.md` links to:
+  the full move list, per-world crystal roster, hybrid recipes, and what
+  each guardian teaches. Each one's tables (marked with `<!-- GENERATED -->`
+  comments) are generated from the actual game data
+  (`game/src/data/materials.ts`/`passives.ts`) by `game/scripts/gen-docs.mjs`
+  — run `npm run docs` from `game/` rather than hand-editing a table, so the
+  docs can't drift from the code that defines the content.
 
 ## Course-content cross-reference
 
@@ -58,15 +68,22 @@ checkout; that's gone now that this repo *is* the standalone checkout). Commit a
 - For code changes: check `CODEMAP.md` first so new code follows existing patterns
   (avatar builders, persisted-state plumbing, etc.) instead of introducing a
   parallel convention.
-- Keep `DESIGN.md`/`STYLE.md`/`CODEMAP.md`/`DEVELOPMENT.md`/`README.md` in sync with
-  the code as you go, and **write every edit to them as current state, not as a
-  change log.** A reader with no history should be able to read any of these files
-  cold and get a correct, uncluttered picture of how the game works *right now*.
-  Concretely: don't write "X used to be Y," "no longer," "replaced the old Z,"
-  "instead of the earlier W" — just state how it works. This applies on *every*
-  edit, not as an occasional cleanup pass; check your own diff for this framing
-  before finishing a task that touches these files. The one thing worth keeping
-  from "why it changed" is genuine *rationale* that's still load-bearing for future
-  decisions (e.g. "same-type pairs are still forbidden in general because fusing
-  two of the same phase isn't a new state") — cut the narration of the change
-  itself, keep the reasoning behind the current rule.
+- Keep `DESIGN.md`/`STYLE.md`/`CODEMAP.md`/`DEVELOPMENT.md`/`README.md`/`docs/*.md`
+  in sync with the code as you go — whenever a change touches something one of
+  them describes, update that doc in the same change, not as a follow-up. **Write
+  every edit to them as current state, not as a change log.** A reader with no
+  history should be able to read any of these files cold and get a correct,
+  uncluttered picture of how the game works *right now*. Concretely: don't write
+  "X used to be Y," "no longer," "replaced the old Z," "instead of the earlier W"
+  — just state how it works. This applies on *every* edit, not as an occasional
+  cleanup pass; check your own diff for this framing before finishing a task that
+  touches these files. The one thing worth keeping from "why it changed" is
+  genuine *rationale* that's still load-bearing for future decisions (e.g.
+  "same-type pairs are still forbidden in general because fusing two of the same
+  phase isn't a new state") — cut the narration of the change itself, keep the
+  reasoning behind the current rule.
+- For `docs/*.md` specifically: never hand-edit inside a `<!-- GENERATED -->`
+  block — change the underlying data in `game/src/data/materials.ts`/`passives.ts`
+  and run `npm run docs` from `game/` instead, so the table stays derived from a
+  single source of truth. The prose around those blocks is still hand-maintained
+  like any other doc.

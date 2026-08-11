@@ -74,6 +74,11 @@ game/src/
     story.ts                       STORY_BEATS -- per-world Decoherence-arc line shown on advancing worlds
 ```
 
+`game/scripts/gen-docs.mjs` (run via `npm run docs`) is outside `src/` -- it reads
+`materials.ts`/`passives.ts` with the TypeScript compiler API (not a normal import,
+since `materials.ts` pulls in Phaser at module scope) and regenerates the
+`<!-- GENERATED -->` table blocks in the top-level `docs/*.md` files.
+
 ## Data model (`data/types.ts`, `data/materials.ts`)
 
 - A **Material** is a crystal: `name`, `type` (`MaterialType`), `color`, `variant`
@@ -185,15 +190,11 @@ types the player goes through this rather than `PLAYER_MATERIAL` directly: `Batt
 both through the shared `OverworldScene.applyPlayerForm(material)` (sets `playerForm`, clamps
 HP down to the new form's `maxHp` if lower, persists, redraws the crystal -- never a full
 heal): Dresselhaus's `transmuteInto(name)` looks the target up by name across `WORLD_CRYSTALS` via
-`findMaterialByName` (never `WORLD_RIVALS` -- rivals aren't real compounds). Since
-`HYBRID_RECIPES`' results are themselves ordinary `WORLD_CRYSTALS` entries (mostly World 10's
-pool) rather than synthesized on the fly, a hybrid's name is findable there too -- the one
-exception is a `hybridMaterials` save entry from a save file old enough to predate
-`HYBRID_RECIPES`, whose name may be a synthesized `"A × B"` placeholder with no matching
-`WORLD_CRYSTALS` row. Majorana's `becomeHybrid(material)` is called with an
-already-resolved `Material` object rather than a name (either freshly built by
-`combineMaterials`, which additionally attaches `hybridParents` for the fused-visual render, or
-pulled straight from the `hybridMaterials` save list).
+`findMaterialByName` (never `WORLD_RIVALS` -- rivals aren't real compounds). Majorana's
+`becomeHybrid(material)` is called with an already-resolved `Material` object rather than a
+name -- freshly built each time by `combineMaterials`, which additionally attaches
+`hybridParents` for the fused-visual render; there's no memory of earlier fusions to pull a
+past one back from, every visit to Majorana rebuilds the pair from scratch.
 Anderson's `learnImpurityMove` is a third guardian that touches player state but deliberately
 *doesn't* go through `applyPlayerForm` at all -- it only appends a move id to `unlockedMoves`,
 leaving `playerForm` untouched, since the whole point of the impurity-doping mechanic is
@@ -446,26 +447,33 @@ s.showXPanel()` pattern as Noether/Bloch/Dresselhaus:
   never one click away -- `createHybrid` doesn't re-validate, it trusts the panel already
   filtered. A two-step pick (`this.majoranaSelection: string | null`, the first choice, while the
   panel rebuilds for the second) rather than one screen of every valid pair -- reset in both
-  `create()` and `closeDialogue()` so a stale first pick can't survive a cancel-and-reopen. Every
-  hybrid ever created is appended to the `hybridMaterials` save list (deduped by name -- a
-  recipe's result name is fixed regardless of parent pick order, so fusing the same pair twice
-  would otherwise list the same hybrid twice) so the panel's own "become again" section can offer
-  an earlier one without recombining -- deliberately sourced separately from
-  `defeatedMaterials`, so a hybrid can never be fed back in as a combine ingredient (no recipe
-  takes another hybrid as a parent, by construction of `HYBRID_RECIPES`).
+  `create()` and `closeDialogue()` so a stale first pick can't survive a cancel-and-reopen.
+  Deliberately no memory of earlier fusions to re-become without recombining -- every visit
+  starts the two-step pick fresh; `createHybrid` doesn't persist anything beyond calling
+  `becomeHybrid`, which just runs `applyPlayerForm` (the player's *current* form, hybrid or
+  not, already survives a reload on its own via `playerForm`).
 - **Curie's analytic-move shop** (`OverworldScene.showCuriePanel`/`renderCurieMoves`) mirrors
   `showNoetherShop`/`renderShopMoves` but sells only `data/materials.ts`'s `ANALYTIC_MOVE_IDS`
   (currently `skyfallBeam`/`groundEruption`), which `SHOP_MOVE_IDS` deliberately excludes so
   Noether never also offers them. Two rendered sections: still-unbought moves, then every
-  already-bought one showing which quasiparticle it's tuned to. Buying (or later retuning) a
-  move opens `showCurieClassPicker` -- a sub-panel offering `CURIE_TUNABLE_CLASSES`, each
-  labeled via `quasiparticleLabel` -- which writes registry/save `curieMoveClass[moveId]`,
-  read by `data/materials.ts`'s `getCurieMoveClass` in place of the move's own fixed
-  `'analytic'` class wherever `BattleScene` checks quasiparticle-mismatch (both
-  `addMoveButton`'s `!!2x` tag and `resolveHit`'s actual damage multiplier); the move's own
-  `class` never changes, so it stays purchasable/usable from any form and still asks its
-  question regardless of tuning. See `BattleScene.showAnalyticQuestion` (Stats and battle
-  resolution, above) for how a purchased analytic move actually plays out in a fight.
+  already-bought one showing which quasiparticle it's tuned to (its row label is
+  `curieMoveDisplayName`, e.g. "Skyfall Magnon -- tuned to Magnon Pulse (retune)"). Buying
+  (or later retuning) a move opens `showCurieClassPicker` -- a sub-panel offering
+  `CURIE_TUNABLE_CLASSES` filtered through `canHost(playerMaterial.type, cls)` (so only
+  classes the player's *current* form can host are ever pickable), each labeled via
+  `quasiparticleLabel` -- which writes registry/save `curieMoveClass[moveId]`, read by
+  `data/materials.ts`'s `getCurieMoveClass` in place of the move's own fixed `'analytic'`
+  class wherever `BattleScene` checks quasiparticle-mismatch (both `addMoveButton`'s `!!2x`
+  tag and `resolveHit`'s actual damage multiplier) and by `curieMoveDisplayName` for the
+  label; the move's own `class` never changes, so it stays purchasable/usable from any form
+  and still asks its question regardless of tuning. The picker only filters at pick time, so
+  a saved assignment can outlive a later transmute into a form that can't host it --
+  `getCurieMoveClass` re-checks `canHost` against the player's *current* form every call and
+  falls back to `'thermal'` (Phonon Beam, universal) when it fails, and
+  `curieMoveDisplayName`/the shop row label read that same fallback rather than the raw
+  saved value, so name and mismatch math can't disagree. See `BattleScene.showAnalyticQuestion`
+  (Stats and battle resolution, above) for how a purchased analytic move actually plays out
+  in a fight.
 - **Kondo's screening-move shop** (`OverworldScene.showKondoPanel`/`renderKondoMoves`)
   mirrors Curie's shop shape but sells `data/materials.ts`'s `KONDO_MOVE_IDS` (three moves:
   `screeningCloud`/`heavyFermionDrag`/`kondoBreakdown`, each tied to one of `types.ts`'s
@@ -475,7 +483,7 @@ s.showXPanel()` pattern as Noether/Bloch/Dresselhaus:
   same afford/dim buy-button treatment as every shop) followed by every already-bought Kondo
   move as its own row -- a bought-and-inactive move gets a "Make `<name>` active" button, the currently active one (registry/
   save `kondoActiveMove: string | null`) shows a dimmed "`<name>` (active)" tag instead (no
-  click handler), the same dimmed-current convention Dresselhaus's/Majorana's "(current
+  click handler), the same dimmed-current convention Dresselhaus's own "(current
   form)" rows already use. Buying the first Kondo move auto-activates it (so a purchase is
   never silently unusable); buying a second or third on top of an already-active one doesn't
   -- switching between already-bought moves is always its own explicit click either way, and
@@ -493,7 +501,10 @@ s.showXPanel()` pattern as Noether/Bloch/Dresselhaus:
 - **Anderson's impurity-doping panel** (`OverworldScene.showAndersonPanel`/
   `learnImpurityMove`) is a two-step pick like Majorana's, but the *result* is different: step
   one picks a host crystal (`defeatedMaterials`, or every crystal in Superposition Mode -- same
-  pool source as Dresselhaus/Majorana), step two looks the host up via `findMaterialByName` and lists
+  pool source as Dresselhaus/Majorana), filtered to exclude any `isHybridMaterial` (a
+  Majorana fusion, or one of world 10's own named recipe-result wilds) -- doping in an
+  impurity is meant to be one real compound's own excitation, not a channel a fusion already
+  borrowed from two others. Step two looks the host up via `findMaterialByName` and lists
   whichever of its `.moves` the player hasn't already learned (`!unlockedMoves.includes(id)`);
   picking one just does `unlockedMoves.push(id)` + persist. No `applyPlayerForm` call at all --
   see "Player form" above. `this.andersonSelection: string | null` mirrors
@@ -512,22 +523,24 @@ future guardian could choose them; nothing currently does.
 
 ## Overworld menus and settings
 
-**Enter-key pause menu** (`OverworldScene.togglePauseMenu`/`showPauseMenu`/`showInfoPanel`):
-follows the `dialogueContainer`/`dialogueActive`/`closeDialogue()` overlay convention, gated so
-it can't open over another panel. Lives only in `OverworldScene`, not `BattleScene` or
-`HubScene`. `showPauseMenu`'s rows are a data-driven array (label + onClick) rather than
-hand-placed buttons -- a fixed six rows (Return to Lab, View Moves, View Stats, Guardians,
-Tutorial, Settings, Close); keep the data-driven-array shape for any future conditional row
-rather than switching to fixed positions. `showMovesPanel` lists `getBattleMoves(registry)`
+**Enter-key pause menu** (`OverworldScene.togglePauseMenu`/`showPauseMenu`/`showInfoPanel`/
+`showAbilitiesPanel`): follows the `dialogueContainer`/`dialogueActive`/`closeDialogue()`
+overlay convention, gated so it can't open over another panel. Lives only in
+`OverworldScene`, not `BattleScene` or `HubScene`. `showPauseMenu`'s rows are a data-driven
+array (label + onClick) rather than hand-placed buttons -- a fixed eight rows (Return to
+Lab, View Moves, View Stats, View Abilities, Guardians, Tutorial, Settings, Close); keep the
+data-driven-array shape for any future conditional row rather than switching to fixed
+positions. `showMovesPanel` lists `getBattleMoves(registry)`
 (learned ∩ currently form-compatible, not the raw `unlockedMoves` list) as plain
 `<name> -- Pwr N` lines -- no
 move-class label, no "incompatible" entries; a move the player has learned but can't currently
-use just doesn't show up until they transmute into a form that supports it. `showStatsPanel`
-is also the "check anytime" surface for Laughlin's/Bohr's current passive loadout -- two
-terse `Laughlin passive: <name or None>` / `Bohr passive: <name or None>` lines read
-straight from registry `laughlinActivePassive`/`bohrActivePassive`, alongside the existing
-stat/qumatoken/form lines, so a player doesn't have to walk back to either guardian's own
-panel just to remember which passive is running.
+use just doesn't show up until they transmute into a form that supports it. `showAbilitiesPanel`
+is the "check anytime" surface for Laughlin's/Bohr's current passive loadout -- its own
+dedicated panel (not folded into `showStatsPanel`/`showInfoPanel`) with one name+description
+block per guardian, read straight from registry `laughlinActivePassive`/`bohrActivePassive`,
+so a player doesn't have to walk back to either guardian's own panel just to remember which
+passive is running (and doesn't have to remember what that passive actually does either, since
+the full description shows here too).
 
 **Story Mode vs. Superposition Mode** (save/registry `superpositionMode`, picked on
 `TitleScene`'s title screen via `addModeSelector` -- a two-button picker, not a toggle; Story
@@ -599,11 +612,11 @@ any future candidate list that can grow unboundedly.
 
 `data/save.ts`'s `SaveData`: `playerStats: Stats`, `visitedWorlds: number[]`,
 `defeatedMaterials: DiscoveredMaterial[]` (written by `BattleScene.endBattle` on an ordinary
-wild win, same "not for rivals" rule as `discoveredMaterials`), `playerForm: Material | null`,
-`hybridMaterials: Material[]` (every hybrid Majorana's panel has ever created, for its "become
-again" list -- note `playerForm` already round-trips a *whole* `Material` object through
-`JSON.stringify`/`localStorage`, so the player's *current* hybrid form survives a reload for
-free even without this list; this field only exists for the history), `tutorialTipsSeen:
+wild win, same "not for rivals" rule as `discoveredMaterials`), `playerForm: Material | null`
+(round-trips a *whole* `Material` object through `JSON.stringify`/`localStorage`, so the
+player's *current* form -- hybrid or not -- survives a reload for free; there's no separate
+history list of past Majorana fusions, every visit to his panel picks a fresh pair),
+`tutorialTipsSeen:
 string[]`, `superpositionMode: boolean` (Story Mode is just its `false` state -- see "Story
 Mode vs. Superposition Mode" above), `encounterDensity: number` (one of
 `data/settings.ts`'s `DENSITY_PRESETS`, set via the Enter-menu's Settings panel),
@@ -614,7 +627,10 @@ ordinary `unlockedMoves` list, this field only tracks which one currently passes
 `getBattleMoves`' extra filter), `laughlinPassivesUnlocked: string[]`/`laughlinActivePassive:
 string | null` and the same pair for `bohr` (`data/passives.ts`'s `LAUGHLIN_PASSIVE_IDS`/
 `BOHR_PASSIVE_IDS`, same "several unlocked, one active" shape as `kondoActiveMove`, see
-"Guardians" above), plus the
+"Guardians" above), `curieMoveClass: Partial<Record<string, MoveClass>>` (which quasiparticle
+each of Curie's analytic moves is tuned to, by move id -- an id missing from this map is
+"untuned," `data/materials.ts`'s `getCurieMoveClass` falls back to the move's own always-safe
+`'analytic'` class), plus the
 earlier fields covered under Registry-then-persist above. `defaultSave()`/
 `persistFromRegistry()` are the two places that need touching together for any future field, and
 `loadSave()`'s `{ ...defaultSave(), ...saved }` spread keeps old localStorage saves compatible

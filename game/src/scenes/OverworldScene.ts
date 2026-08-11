@@ -27,13 +27,16 @@ import {
   KONDO_MOVE_IDS,
   CURIE_TUNABLE_CLASSES,
   quasiparticleLabel,
+  curieMoveDisplayName,
+  getCurieMoveClass,
+  canHost,
   compatibleMoves,
   getPlayerMaterial,
   getPlayerStats,
   getBattleMoves,
   findMaterialByName,
   allCrystals,
-  isCompositeMaterial,
+  isHybridMaterial,
   combineMaterials,
   hybridRecipeResult,
   statUpgradeCost,
@@ -451,7 +454,6 @@ export class OverworldScene extends Phaser.Scene {
       state.set('visitedWorlds', []);
       state.set('defeatedMaterials', []);
       state.set('playerForm', null);
-      state.set('hybridMaterials', []);
       state.set('metGuardians', []);
       state.set('kondoActiveMove', null);
       state.set('laughlinPassivesUnlocked', []);
@@ -2123,11 +2125,14 @@ export class OverworldScene extends Phaser.Scene {
     if (learned.length > 0) {
       if (forSale.length > 0) y += 6;
       learned.forEach((id) => {
-        const move = MOVES[id];
-        const currentClass = assigned[id];
-        const label = currentClass
-          ? `${move.name} -- tuned to ${quasiparticleLabel(currentClass)} (retune)`
-          : `${move.name} -- untuned (pick a quasiparticle)`;
+        const assignedClass = assigned[id];
+        const activeClass = getCurieMoveClass(this.game.registry, id);
+        const displayName = curieMoveDisplayName(this.game.registry, id);
+        const label = !assignedClass
+          ? `${displayName} -- untuned (pick a quasiparticle)`
+          : activeClass === assignedClass
+          ? `${displayName} -- tuned to ${quasiparticleLabel(assignedClass)} (retune)`
+          : `${displayName} -- tuned to ${quasiparticleLabel(assignedClass)}, reverted to ${quasiparticleLabel(activeClass)} (this form can't host it -- retune)`;
         const btn = this.addDialogueButton(container, y, label, () => {
           this.showCurieClassPicker(id, (chosenClass) => {
             this.game.registry.set('curieMoveClass', { ...assigned, [id]: chosenClass });
@@ -2146,9 +2151,17 @@ export class OverworldScene extends Phaser.Scene {
   // analytic move, both on first purchase and on a later "Retune" click
   // (renderCurieMoves above) -- the move's own MoveClass stays 'analytic'
   // either way (see getCurieMoveClass), this only decides which ordinary
-  // class the quasiparticle-mismatch check treats it as. `onChosen` runs
-  // the caller's own save/persist/redraw, this panel just presents the
-  // pick.
+  // class the quasiparticle-mismatch check treats it as. Only offers
+  // classes the player's *current* form can actually host
+  // (CURIE_TUNABLE_CLASSES filtered through canHost) -- "which quasiparticle
+  // should this carry" is meant to be a real physics choice grounded in
+  // what the player's own crystal can host right now, not a free pick from
+  // every class in the game regardless of how little sense it makes for the
+  // current form; re-tuning later (after transmuting into a different form)
+  // just reopens this same filtered list. 'thermal' is on every
+  // MOVE_COMPATIBILITY list, so the filtered list is never empty.
+  // `onChosen` runs the caller's own save/persist/redraw, this panel just
+  // presents the pick.
   private showCurieClassPicker(moveId: string, onChosen: (chosenClass: MoveClass) => void) {
     this.dialogueContainer?.destroy(true);
     this.dialogueActive = true;
@@ -2172,7 +2185,8 @@ export class OverworldScene extends Phaser.Scene {
     container.add(title);
     y += title.height + 10;
 
-    CURIE_TUNABLE_CLASSES.forEach((cls) => {
+    const hostable = CURIE_TUNABLE_CLASSES.filter((cls) => canHost(this.playerMaterial.type, cls));
+    hostable.forEach((cls) => {
       const btn = this.addDialogueButton(container, y, quasiparticleLabel(cls), () => onChosen(cls));
       y += btn.height + 3;
     });
@@ -2460,14 +2474,17 @@ export class OverworldScene extends Phaser.Scene {
     const active = (this.game.registry.get(activeKey) as string | null) ?? null;
     const tokens = (this.game.registry.get('qumatokens') as number) || 0;
 
-    // The buy row's font size is capped well below the text-size setting's
-    // full range (same reasoning as BattleScene's move-menu section headers,
-    // STYLE.md's "Battle move menu") -- this panel has no shrink-to-fit
-    // safety net the way showInfoPanel does, and a passive's name+cost label
-    // at the setting's uncapped 'Large' preset wraps to two lines, which
-    // combined with three buy rows and their own description line each was
-    // enough to push the whole panel's Farewell button off the bottom of the
-    // canvas the first time this was tried at the default preset already.
+    // Every row's font size -- buy rows and already-bought/active rows alike
+    // -- is capped well below the text-size setting's full range (same
+    // reasoning as BattleScene's move-menu section headers, STYLE.md's
+    // "Battle move menu") -- this panel has no shrink-to-fit safety net the
+    // way showInfoPanel does, and an uncapped label at the setting's
+    // 'Large' preset wraps to two lines, which combined with three rows and
+    // their own description line each was enough to push the whole panel's
+    // Farewell button off the bottom of the canvas the first time this was
+    // tried at the default preset already. Both sections pass `buttonPx`
+    // explicitly (addDialogueButtonAt, not the uncapped addDialogueButton
+    // convenience wrapper) for exactly this reason.
     const buttonScale = Math.min(fontScale(this), 1.3);
     const buttonPx = `${Math.round(12 * buttonScale)}px`;
     const descScale = Math.min(fontScale(this), 1.2);
@@ -2517,13 +2534,21 @@ export class OverworldScene extends Phaser.Scene {
         const passive = PASSIVES[id];
         const isActive = id === active;
         const label = isActive ? `${passive.name} (active)` : `Make ${passive.name} active`;
-        const btn = this.addDialogueButton(container, y, label, () => {
-          if (isActive) return;
-          this.game.registry.set(activeKey, id);
-          persistFromRegistry(this.game.registry);
-          this.dialogueContainer?.destroy(true);
-          reopen();
-        });
+        const btn = this.addDialogueButtonAt(
+          container,
+          CANVAS_W / 2,
+          y,
+          label,
+          () => {
+            if (isActive) return;
+            this.game.registry.set(activeKey, id);
+            persistFromRegistry(this.game.registry);
+            this.dialogueContainer?.destroy(true);
+            reopen();
+          },
+          480,
+          buttonPx
+        );
         if (isActive) btn.setAlpha(0.5);
         y += btn.height + 2;
         // Same one-line description a still-unbought passive shows above --
@@ -2763,15 +2788,15 @@ export class OverworldScene extends Phaser.Scene {
     y += intro.height + 14;
 
     // Excludes hybrid-recipe results and inherently doped/alloyed compounds
-    // (isCompositeMaterial) either way -- becoming a mixed/fused state is
+    // (isHybridMaterial) either way -- becoming a mixed/fused state is
     // Majorana's mechanic, not this one, even for the ones that are also
     // ordinary wild encounters.
     const candidates: { name: string }[] = superposition
       ? allCrystals()
-          .filter((m) => !isCompositeMaterial(m.name))
+          .filter((m) => !isHybridMaterial(m.name))
           .sort((a, b) => a.name.localeCompare(b.name))
       : this.getDefeatedMaterials()
-          .filter((m) => !isCompositeMaterial(m.name))
+          .filter((m) => !isHybridMaterial(m.name))
           .slice(-3);
     if (candidates.length === 0) {
       const text = this.add
@@ -2852,10 +2877,6 @@ export class OverworldScene extends Phaser.Scene {
     this.player.add(this.playerCrystalGfx);
   }
 
-  private getHybridMaterials(): Material[] {
-    return (this.game.registry.get('hybridMaterials') as Material[]) ?? [];
-  }
-
   // Majorana stands at world 5's middle tile (WORLD_GUARDIANS) and lets the
   // player fuse two crystals they've already defeated into a new
   // topological hybrid (data/materials.ts's combineMaterials), becoming it
@@ -2864,13 +2885,14 @@ export class OverworldScene extends Phaser.Scene {
   // while the panel rebuilds for the second) rather than one list of every
   // pair, since the pair count grows quadratically with how many crystals
   // are shown and a two-step flow reads more like an actual choice anyway.
-  // Earlier hybrids get their own "become again" section sourced from the
-  // separate `hybridMaterials` list -- kept apart from the defeated-crystal
-  // list used to *create* new ones so a hybrid can never be fed back in as
-  // an ingredient (that would compound the 1.5x multiplier every time).
-  // Superposition Mode replaces "defeated" with every crystal in the game
-  // (allCrystals()) as the ingredient pool, paginated (renderPagedButtons)
-  // at both steps since that pool is far bigger than a normal defeat count.
+  // Deliberately no memory of earlier fusions to instantly re-become --
+  // every visit picks a fresh pair, the same as any other combine; the
+  // player's *current* form (which may already be an earlier hybrid) still
+  // persists on its own via `playerForm`, this only concerns re-selecting a
+  // past one without redoing the two-step pick. Superposition Mode replaces
+  // "defeated" with every crystal in the game (allCrystals()) as the
+  // ingredient pool, paginated (renderPagedButtons) at both steps since
+  // that pool is far bigger than a normal defeat count.
   private showMajoranaPanel() {
     this.dialogueActive = true;
 
@@ -2902,21 +2924,6 @@ export class OverworldScene extends Phaser.Scene {
       .setOrigin(0.5, 0);
     container.add(intro);
     y += intro.height + 14;
-
-    const hybrids = this.getHybridMaterials().slice(-3);
-    if (hybrids.length > 0) {
-      hybrids.forEach((h) => {
-        const isCurrent = this.playerMaterial.name === h.name;
-        const label = isCurrent ? `${h.name} (current form)` : `Become ${h.name} again`;
-        const btn = this.addDialogueButton(container, y, label, () => {
-          if (isCurrent) return;
-          this.becomeHybrid(h);
-        });
-        if (isCurrent) btn.setAlpha(0.5);
-        y += btn.height + 6;
-      });
-      y += 8;
-    }
 
     // Every world's wild pool is a single main type (world 5 is all
     // 'supercon', world 6 all 'classicalmag', ...), so a same-world-only
@@ -3043,12 +3050,7 @@ export class OverworldScene extends Phaser.Scene {
       return;
     }
 
-    const hybrid = combineMaterials(a, b);
-    const existing = this.getHybridMaterials();
-    if (!existing.some((m) => m.name === hybrid.name)) {
-      this.game.registry.set('hybridMaterials', [...existing, hybrid]);
-    }
-    this.becomeHybrid(hybrid);
+    this.becomeHybrid(combineMaterials(a, b));
   }
 
   // Anderson stands at world 9's middle tile (WORLD_GUARDIANS) and lets the
@@ -3062,11 +3064,16 @@ export class OverworldScene extends Phaser.Scene {
   // still gates whether it actually shows up in the battle move menu
   // (getBattleMoves), which is the point: an impurity's channel only
   // manifests in combat once the player's own current form can physically
-  // host it. Two-step pick (this.andersonSelection holds the host while the
-  // panel rebuilds to ask which of its moves to learn), paginated at the
-  // host-pick step via renderPagedButtons -- same shape as Majorana's
-  // combine flow, minus a second pagination pass since a host's moveset is
-  // always small (crystal() only ever assigns two).
+  // host it. Host pool excludes any `isHybridMaterial` (a Majorana fusion,
+  // one of world 10's own named recipe-result wilds, or a standalone
+  // doped/alloyed compound like NV-Diamond) -- doping in an impurity is
+  // meant to be one real, single-crystal excitation, not a channel a fusion
+  // or an already-doped compound has borrowed from elsewhere. Two-step pick
+  // (this.andersonSelection holds the host while the panel rebuilds to ask
+  // which of its moves to learn), paginated at the host-pick step via
+  // renderPagedButtons -- same shape as Majorana's combine flow, minus a
+  // second pagination pass since a host's moveset is always small
+  // (crystal() only ever assigns two).
   private showAndersonPanel() {
     this.dialogueActive = true;
 
@@ -3099,12 +3106,19 @@ export class OverworldScene extends Phaser.Scene {
     container.add(intro);
     y += intro.height + 14;
 
-    const pool: { name: string }[] = superposition ? allCrystals() : this.getDefeatedMaterials();
+    // Doping in a hybrid (isHybridMaterial -- a Majorana fusion, one of
+    // world 10's own named recipe-result wilds, or a standalone
+    // doped/alloyed compound like NV-Diamond) isn't offered here: an
+    // impurity is meant to be one real, single-crystal excitation, not a
+    // channel already borrowed or built in from elsewhere.
+    const pool: { name: string }[] = (superposition ? allCrystals() : this.getDefeatedMaterials()).filter(
+      (m) => !isHybridMaterial(m.name)
+    );
 
     if (this.andersonSelection === null) {
       if (pool.length === 0) {
         const text = this.add
-          .text(CANVAS_W / 2, y, "You haven't encountered any crystals yet -- there is nothing to dope in.", {
+          .text(CANVAS_W / 2, y, "You haven't defeated any original crystals yet -- there is nothing to dope in.", {
             fontSize: fontPx(this, 13),
             color: '#ffffff',
             align: 'center',
@@ -3308,6 +3322,7 @@ export class OverworldScene extends Phaser.Scene {
       },
       { label: 'View Moves', onClick: () => this.showMovesPanel() },
       { label: 'View Stats', onClick: () => this.showStatsPanel() },
+      { label: 'View Abilities', onClick: () => this.showAbilitiesPanel() },
       { label: 'Guardians', onClick: () => this.showGuardiansPanel() },
       { label: 'Tutorial', onClick: () => this.showTutorial(0) },
       { label: 'Settings', onClick: () => this.showSettingsPanel() },
@@ -3549,29 +3564,100 @@ export class OverworldScene extends Phaser.Scene {
     this.showInfoPanel('Your Moves', lines.join('\n'));
   }
 
-  // Also the "checkable anytime" surface for Laughlin's/Bohr's current
-  // passive loadout (data/passives.ts, DESIGN.md §5) -- their own panels
-  // already tag locked/unlocked/active, but a player shouldn't have to walk
-  // back to either guardian just to remember which passive is running.
   private showStatsPanel() {
     this.dialogueContainer?.destroy(true);
     const stats = getPlayerStats(this.game.registry);
-    const laughlinActive = this.game.registry.get('laughlinActivePassive') as string | null;
-    const bohrActive = this.game.registry.get('bohrActivePassive') as string | null;
-    const laughlinLine = laughlinActive
-      ? `Laughlin passive: ${PASSIVES[laughlinActive].name} -- ${PASSIVES[laughlinActive].description}`
-      : 'Laughlin passive: None';
-    const bohrLine = bohrActive
-      ? `Bohr passive: ${PASSIVES[bohrActive].name} -- ${PASSIVES[bohrActive].description}`
-      : 'Bohr passive: None';
     const body =
       `Quantumness: ${stats.quantumness} -- raises your crit chance\n` +
       `Velocity: ${stats.velocity} -- higher goes first each round\n` +
       `Correlation: ${stats.correlation} -- higher takes less damage\n\n` +
       `Qumatokens: ${this.qumatokens}\nCurrent form: ${this.playerMaterial.name}\n\n` +
-      `${laughlinLine}\n${bohrLine}\n\n` +
       'Raise any of these with qumatokens at Noether\'s shop.';
     this.showInfoPanel('Your Stats', body);
+  }
+
+  // The "checkable anytime" surface for Laughlin's/Bohr's current passive
+  // loadout (data/passives.ts, DESIGN.md §5) -- their own panels already
+  // tag locked/unlocked/active, but a player shouldn't have to walk back to
+  // either guardian just to remember which passive is running. A dedicated
+  // panel rather than folding this into showStatsPanel/showInfoPanel: two
+  // full passive descriptions (data/passives.ts's longest entries run well
+  // past 70 characters each) pushed showInfoPanel's single shrink-to-fit
+  // pass past its own floor once tried, since that pass only shrinks font,
+  // never truncates text -- explicit per-row capped fonts here (same
+  // nameScale/descScale capping renderPassiveList already uses for exactly
+  // this reason) avoid relying on that floor at all.
+  private showAbilitiesPanel() {
+    this.dialogueContainer?.destroy(true);
+    this.dialogueActive = true;
+
+    const panelWidth = 440;
+    const top = 20;
+    const container = this.add.container(0, 0).setDepth(100);
+    this.dialogueContainer = container;
+
+    let y = top;
+    const title = this.add
+      .text(CANVAS_W / 2, y, 'Your Abilities', { fontSize: fontPx(this, 15), color: '#ffe066', fontStyle: 'bold' })
+      .setOrigin(0.5, 0);
+    container.add(title);
+    y += title.height + 14;
+
+    const nameScale = Math.min(fontScale(this), 1.3);
+    const namePx = `${Math.round(13 * nameScale)}px`;
+    const descScale = Math.min(fontScale(this), 1.2);
+    const descPx = `${Math.round(10 * descScale)}px`;
+
+    const loadout: { guardian: string; activeId: string | null }[] = [
+      { guardian: 'Laughlin', activeId: (this.game.registry.get('laughlinActivePassive') as string | null) ?? null },
+      { guardian: 'Bohr', activeId: (this.game.registry.get('bohrActivePassive') as string | null) ?? null },
+    ];
+    loadout.forEach(({ guardian, activeId }) => {
+      const nameLine = this.add
+        .text(CANVAS_W / 2, y, `${guardian}: ${activeId ? PASSIVES[activeId].name : 'None equipped'}`, {
+          fontSize: namePx,
+          color: '#ffffff',
+          fontStyle: 'bold',
+          align: 'center',
+          wordWrap: { width: panelWidth - 60 },
+        })
+        .setOrigin(0.5, 0);
+      container.add(nameLine);
+      y += nameLine.height + 3;
+      if (activeId) {
+        const descLine = this.add
+          .text(CANVAS_W / 2, y, PASSIVES[activeId].description, {
+            fontSize: descPx,
+            color: '#8fa0c9',
+            align: 'center',
+            wordWrap: { width: panelWidth - 60 },
+          })
+          .setOrigin(0.5, 0);
+        container.add(descLine);
+        y += descLine.height;
+      }
+      y += 14;
+    });
+
+    const footer = this.add
+      .text(CANVAS_W / 2, y, "Switch which one's active by revisiting Laughlin/Bohr.", {
+        fontSize: fontPx(this, 11),
+        color: '#8fa0c9',
+        align: 'center',
+        wordWrap: { width: panelWidth - 60 },
+      })
+      .setOrigin(0.5, 0);
+    container.add(footer);
+    y += footer.height + 18;
+
+    const closeBtn = this.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Close', () => this.closeDialogue(), 260);
+    y += closeBtn.height + 12;
+
+    const panelHeight = y - top;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.95)
+      .setStrokeStyle(2, 0x8fa0c9);
+    container.addAt(panel, 0);
   }
 
   // Content laid out top-down first (running `y`), panel sized/inserted

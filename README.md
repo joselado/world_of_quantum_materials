@@ -61,15 +61,13 @@ standing next to the Nickel Oxide beside it.
 </table>
 
 **Battle.** Turn-based, speed-ordered by your crystal's Velocity stat. Every
-move is a real quasiparticle -- Phonon Beam, Magnon Pulse, Anyon Braid,
-Majorana Split -- and every material can only ever learn the moves its
-actual physics supports (a plain band insulator never gets a magnon move,
-since it has no magnetic order to carry one). Move power itself climbs with
-how unconventional the quasiparticle is, from an ordinary Phonon Beam up to
-a topological Anyon Braid or a non-Abelian Majorana Split. If a defender's
+move is a real quasiparticle, and every material can only ever learn the
+moves its actual physics supports -- a plain band insulator never gets a
+magnon move, since it has no magnetic order to carry one. If a defender's
 own physics can't host your move's quasiparticle at all, it lands at
-**double damage** -- the one type-interaction rule in battle, kept
-deliberately simple rather than a separate strong/weak chart on top of it.
+**double damage**, the one type-interaction rule in battle. See
+[Quasiparticles & moves](docs/quasiparticles.md) for the full move list and
+which crystal types can use each one.
 
 <table>
 <tr>
@@ -83,31 +81,14 @@ deliberately simple rather than a separate strong/weak chart on top of it.
 </table>
 
 **Grow.** Winning battles and grabbing qumatoken pickups funds the guardians
-waiting partway through each world -- Noether sells new moves and sharper
-stats, Bloch teleports you between worlds you've already visited, Dresselhaus
-lets you *transmute* into any single crystal you've defeated, Laughlin teaches
-three passive abilities that stay on for the whole battle rather than moves
-you pick each turn (soften every hit you take, echo a bonus tick after a
-critical hit, or blunt the double-damage penalty for a mismatched hit --
-you've learned several, but only one is equipped at a time, so switching
-means talking to him again), Majorana lets you fuse two defeated crystals
-into a brand-new hybrid state and become it -- rendered as an actual mixture
-of both parents' own colors and shapes -- Curie sells "analytic" moves that
-ask you a physics-equation question before they land (get it right for
-double damage, wrong for half) with dramatically flashier effects than an
-ordinary move -- a multi-layer beam of light falling from the sky, a
-shockwave-ringed eruption bursting from the ground -- Bohr teaches three more
-passive abilities in the same "learn several, equip one" shape as Laughlin's
-(guarantee your next hit crits after the opponent lands one on you, borrow
-some of your opponent's own Quantumness as extra Correlation, or heal off a
-share of the damage you deal), Kondo sells three moves that each weaken your
-target for a few turns instead of hitting hard (drop its own damage output,
-slow it down, or crack its defenses -- you pick which by picking the move,
-and only one can be tuned in at a time, so switching means talking to him
-again), and Anderson lets you "dope in" a crystal you've encountered as an
-impurity and learn one specific move from it. Every guardian you've met stays
-reachable from the Guardians panel, from anywhere, and your current passive
-loadout is always checkable from the Enter-menu's "View Stats" panel too.
+waiting partway through each world -- nine of them in all, each teaching a
+different way of bending the game's usual rules: new moves and stats,
+teleportation, transmuting into a crystal you've defeated, always-on passive
+abilities, fusing two crystals into a hybrid, quiz-gated power moves, and
+more. Every guardian you've met stays reachable from the Guardians panel,
+from anywhere, and your current passive loadout is always checkable from the
+Enter-menu's "View Abilities" panel too. See [Guardians](docs/guardians.md)
+for what each one does.
 
 <table>
 <tr>
@@ -168,37 +149,27 @@ archetypes, and a rival crystal gating the way to the next world.
 
 World 10's wilds are "echoes" of earlier phases of matter rather than new
 real compounds, and its rival is a final boss built as "a model of you,"
-drawing from whatever moves you've collected by then.
+drawing from whatever moves you've collected by then. See
+[Crystals](docs/crystals.md) for every world's full wild-material list.
 
-## Battle mechanics, quick reference
+## Battle basics
 
-- **Turn order** is speed-ordered by your crystal's Velocity stat; Quantumness
-  raises your crit ("coherent hit") chance, Correlation raises your defense.
-  Every crystal also carries HP, fully healed after each battle -- qumatokens,
-  not HP attrition, are what's actually on the line from one fight to the next.
-- **Every move is a real quasiparticle**, never an abstract "attack type" --
-  Phonon Beam, Electron Pulse, Magnon Pulse, Polaron Drag, Spinon Swap, Anyon
-  Braid, Majorana Split, and a couple more that unlock later. A crystal can
-  only ever learn the moves its own physics actually supports.
-- **One type-interaction rule, on purpose:** if a defender's own physics can't
-  host the attacking move's quasiparticle at all, the hit lands at double
-  force -- no separate strong/weak chart stacked on top of it.
-- **Hybrid materials.** Some crystals aren't single compounds at all, but
-  named real (or credibly engineered) combinations of two others -- one
-  guardian partway through the game lets you fuse two crystals you've already
-  defeated into one of these, if the pairing is a known one.
-- **A rarer class of move exists beyond the ordinary quasiparticle roster** --
-  taught by a guardian of its own, it trades a physics gamble for a much bigger
-  payoff (or a real cost if you get it wrong). You'll know it when you see it.
-- **Passive abilities** are a different kind of thing entirely from a move --
-  no button to press each turn, just an always-on effect for the whole battle,
-  taught by two of the guardians. You can learn several from each, but only
-  one per guardian is ever equipped at a time.
-- **The move menu shows one kind of move at a time** (ordinary attacks, the
-  answer-gated class above, or any active status-inflicting move) rather than
-  one flat list, with ◀/▶ arrows (or the Left/Right keys) to page between
-  kinds when you have more than one, so it's clear at a glance which buttons
-  work differently and every button gets room to breathe.
+Turn order is speed-ordered by your crystal's Velocity stat; Quantumness
+raises your crit ("coherent hit") chance, Correlation raises your defense.
+Every crystal carries HP, fully healed after each battle -- qumatokens, not
+HP attrition, are what's actually on the line from one fight to the next.
+The move menu shows one kind of move at a time (ordinary attacks, quiz-gated
+moves, or status-inflicting moves) rather than one flat list, with ◀/▶
+arrows (or the Left/Right keys) to page between kinds when you have more
+than one.
+
+For the full mechanics -- every move and which crystals can use it, hybrid
+materials, and what each guardian teaches -- see:
+
+- [Quasiparticles & moves](docs/quasiparticles.md)
+- [Crystals](docs/crystals.md)
+- [Hybrid materials](docs/hybrids.md)
+- [Guardians](docs/guardians.md)
 
 ## Controls
 

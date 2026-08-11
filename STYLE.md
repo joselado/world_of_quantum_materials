@@ -294,7 +294,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 - His panel is a single paginated list, not the tab-content/footer shop shape -- every
   defeated wild material (`defeatedMaterials`, sliced to the most recent 3, or in
   Superposition Mode every non-composite crystal in the game -- `data/materials.ts`'s
-  `allCrystals()` filtered through `isCompositeMaterial`) gets a button (`Become <name>`,
+  `allCrystals()` filtered through `isHybridMaterial`) gets a button (`Become <name>`,
   or a dimmed `<name> (current form)` for whichever the player is already wearing) that
   transmutes the player's own crystal into that form (`transmuteInto`) -- swaps
   color/variant/max HP and clamps current HP down if needed, and immediately redraws the
@@ -346,9 +346,8 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   longer than one page. Picking the second immediately transmutes the player into the
   recipe's own named result (`data/materials.ts`'s `combineMaterials` -- name/type/maxHp all
   fixed on the recipe, not computed at combine time) the same way Dresselhaus's
-  transmutation does -- no separate "confirm" step. Above the combine flow, up to 3
-  previously created hybrids (`hybridMaterials` save list) get their own "Become `<name>`
-  again" buttons, same dimmed-when-current treatment as Dresselhaus's list. Empty state (no
+  transmutation does -- no separate "confirm" step, and no memory of earlier fusions to
+  instantly re-become either -- every visit starts the two-step pick fresh. Empty state (no
   valid pairing among the
   candidates -- including having fewer than 2 total): "None of the crystals you've defeated
   pair into a known hybrid recipe yet -- Majorana only knows specific real pairings (e.g.
@@ -364,16 +363,28 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   (`data/materials.ts`'s `ANALYTIC_MOVE_IDS`, currently Skyfall Beam and Ground Eruption),
   same `<move name> -- <cost> qumatokens` label and afford/dim treatment as Noether's Moves
   tab (reusing `shopCost`), followed by one row per already-bought move showing which
-  quasiparticle it's tuned to: "`<name>` -- tuned to `<quasiparticle>` (retune)" or
-  "`<name>` -- untuned (pick a quasiparticle)" if never assigned. Empty state once both are
-  bought: "You already carry every analytic technique I can teach." Clicking either an
-  unbought move's buy row or a learned move's tune/retune row opens `showCurieClassPicker`,
-  a sub-panel titled "Which quasiparticle should `<name>` carry?" listing
-  `CURIE_TUNABLE_CLASSES` as its own column of buttons (same button styling as the shop
-  list, just a different button set) -- each labeled with the ordinary move name that class
-  already carries (`quasiparticleLabel`, e.g. "Magnon Pulse" for `'magnetic'`) rather than
-  the class id. Picking one on an unbought move completes the purchase; on an already-bought
-  move it just re-saves the assignment, free.
+  quasiparticle it's tuned to: "`<name>` -- tuned to `<quasiparticle>` (retune)", or if the
+  player has since transmuted into a form that can no longer host the saved assignment,
+  "`<name>` -- tuned to `<quasiparticle>`, reverted to Phonon Beam (this form can't host it --
+  retune)", or "`<name>` -- untuned (pick a quasiparticle)" if never assigned -- `<name>` here
+  is `curieMoveDisplayName`, so a tuned move's own row already reads like "Skyfall Magnon --
+  tuned to Magnon Pulse (retune)" rather than the static "Skyfall Beam." Empty state once
+  both are bought: "You already carry every analytic technique I can teach." Clicking either
+  an unbought move's buy row or a learned move's tune/retune row opens
+  `showCurieClassPicker`, a sub-panel titled "Which quasiparticle should `<name>` carry?"
+  listing `CURIE_TUNABLE_CLASSES` filtered down to whatever the player's *current* form can
+  host (`canHost`) as its own column of buttons (same button styling as the shop list, just
+  a different button set) -- each labeled with the ordinary move name that class already
+  carries (`quasiparticleLabel`, e.g. "Magnon Pulse" for `'magnetic'`) rather than the class
+  id. Picking one on an unbought move completes the purchase; on an already-bought move it
+  just re-saves the assignment, free.
+- **The move's own displayed name folds in its tuned quasiparticle**
+  (`data/materials.ts`'s `curieMoveDisplayName`) everywhere a move name shows up in battle
+  too -- the move-menu button, the analytic-question panel's title, the battle log's "X used
+  `<name>`!" line -- built from each name's own first word (`"Skyfall Beam"` → `Skyfall`,
+  `"Magnon Pulse"` → `Magnon`) rather than a second hand-authored word list, so a tuned
+  Skyfall Beam reads as "Skyfall Magnon," a tuned Ground Eruption as "Ground Anyon," and so
+  on. An untuned move just falls back to its static name.
 
 ## Bohr in the overworld (`OverworldScene.showBohrPanel`)
 
@@ -415,14 +426,15 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   trapped by disorder instead of spreading freely -- rather than any other guardian's motif,
   plus four orbiting `×` glyphs instead of Noether's `✦` or Bloch's `◇`.
 - Two-step flow like Majorana's: every defeated wild material (or, in Superposition Mode,
-  every crystal in the game) gets a button under "Dope in which crystal?" (paginated, see
-  below); picking one asks "Learn which move from `<host>`?" and lists whichever of that
-  host's own moves the player hasn't already learned (`<move name> (Pwr N)`), plus a "Never
-  mind" to back out. Picking a move just appends it to the ordinary `unlockedMoves` list
-  (`learnImpurityMove`) -- no form change, no HP change, unlike Dresselhaus/Majorana. Empty states:
-  "You haven't encountered any crystals yet -- there is nothing to dope in" (no host
-  candidates) or "You already carry every move `<host>` has to offer" (host picked, but
-  every one of its moves is already learned).
+  every crystal in the game) that isn't a hybrid/composite (`isHybridMaterial`) gets a
+  button under "Dope in which crystal?" (paginated, see below); picking one asks "Learn
+  which move from `<host>`?" and lists whichever of that host's own moves the player hasn't
+  already learned (`<move name> (Pwr N)`), plus a "Never mind" to back out. Picking a move
+  just appends it to the ordinary `unlockedMoves` list (`learnImpurityMove`) -- no form
+  change, no HP change, unlike Dresselhaus/Majorana. Empty states: "You haven't defeated any
+  original crystals yet -- there is nothing to dope in" (no host candidates) or "You already
+  carry every move `<host>` has to offer" (host picked, but every one of its moves is
+  already learned).
 
 ## Paginated candidate lists (`OverworldScene.renderPagedButtons`)
 
@@ -581,15 +593,15 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   be queued underneath it, released the instant an answer is picked -- the panel itself has
   no other exit.
 
-## Enter-key pause menu (`OverworldScene.showPauseMenu`/`showInfoPanel`)
+## Enter-key pause menu (`OverworldScene.showPauseMenu`/`showInfoPanel`/`showAbilitiesPanel`)
 
 - Same dark rounded-rectangle-with-stroke panel treatment as everywhere else, stroked
   blue-grey (`0x8fa0c9`, distinct from every guardian/encounter panel's own stroke color). Rows
   are a data-driven list (`320` wide, height grows with row count, vertically centered on
   the canvas rather than a fixed `panelY`) rather than fixed buttons: Return to Lab (same
-  destination as the `H` key), View Moves, View Stats, Guardians, Tutorial, Settings, then
-  Close -- a fixed six rows (world-to-world movement goes through Bloch's own panel
-  instead, see above). Respects `dialogueActive`
+  destination as the `H` key), View Moves, View Stats, View Abilities, Guardians, Tutorial,
+  Settings, then Close -- a fixed eight rows (world-to-world movement goes through Bloch's
+  own panel instead, see above). Respects `dialogueActive`
   (won't open over an already-open panel) and only exists in `OverworldScene`, not mid-battle.
 - "View Moves"/"View Stats" swap the pause menu for a second, generic info panel
   (`showInfoPanel`, `420x300`, same blue-grey stroke). View Moves lists only the moves
@@ -598,6 +610,14 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   label and no "incompatible" entries cluttering the list; View Stats lists
   Quantumness/Velocity/Correlation plus qumatokens and current form name. Both end in a
   single "Close" button.
+- "View Abilities" is its own dedicated panel (`showAbilitiesPanel`, `440` wide, same
+  blue-grey stroke) rather than a third `showInfoPanel` body -- one name+description block
+  per guardian (Laughlin, Bohr), each its own pair of `Text` objects with explicitly capped
+  font sizes (`nameScale`/`descScale`, same capping `renderPassiveList` already uses) rather
+  than folding both full descriptions into `showInfoPanel`'s single wrapped body, since that
+  body's shrink-to-fit only lowers font size and never truncates -- two full passive
+  descriptions back to back could still overflow the canvas at that panel's largest text-size
+  preset even at the shrink loop's own floor.
 
 ## Settings panel (`OverworldScene.showSettingsPanel`)
 
