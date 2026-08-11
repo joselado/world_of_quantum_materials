@@ -48,10 +48,30 @@ than appending a changelog, so this always reflects current reality.
   own teleport hub (already pre-seeded with every world as visited) is the sole way
   to reach any other world -- there is no separate warp/world-select panel. Clicking a
   hotspot while another panel is already open is a no-op (one panel at a time).
-- Materialdex/Save Point panels reuse the same dark rounded-rectangle-with-stroke treatment
-  as overworld dialogues (`showPanel`), stroked in purple (`0x9a6ad9`) to match the
-  Materialdex icon, with a single "Close" button -- no per-material navigation yet, just a
-  scrolled list of `name -- blurb` lines (`data/materialdex.ts`).
+- Save Point reuses the same dark rounded-rectangle-with-stroke treatment as overworld
+  dialogues (`showPanel`), stroked in purple (`0x9a6ad9`) to match the Materialdex icon,
+  with a single "Close" button.
+- **Materialdex** (`HubScene.renderMaterialdexPage`) is a one-entry-per-page index over
+  every real compound in the game (`data/materials.ts`'s `allCrystals()`, alphabetical by
+  name), not just ones the player has found -- an undiscovered entry still gets a slot,
+  masked to a "???" name, a generic "Not yet discovered" blurb, and a flat dim-grey
+  (`0x33394a`) silhouette in place of the compound's own rendered look, rather than the
+  index only ever growing as the player finds things. Panel stroked purple (`0x9a6ad9`,
+  matching the Materialdex icon) same as Save Point's. Each page shows the compound's own
+  crystal render (`makeCrystal`, size `36`), name, and physics blurb (`materialdex.ts`'s
+  `materialBlurb`) together, with an `Entry i/N` counter and `<- Back`/`Next ->` (also
+  Left/Right keys) to step one entry at a time. A **search box** (`Search: <query>_`, type
+  to filter -- captured by a scene-wide keydown handler gated on `materialdexOpen` so
+  typing elsewhere in the Hub is unaffected) narrows the index to compounds whose name
+  contains the query, case-insensitive and regardless of discovery state; a **type
+  filter** button (`Type: <MaterialType | All> ▸`) cycles through every `MaterialType`
+  plus "All". Both reset the page to the first match and persist until the panel is
+  reopened. Content is laid out top-down with each element's own measured height
+  advancing a running `y` (same pattern as `OverworldScene.showInfoPanel`), and the
+  blurb's font shrinks in whole-px steps (floor `9`) if a long entry would otherwise push
+  the counter/footer off the panel -- the panel's own background rectangle is sized and
+  inserted behind everything only once the real content height is known, rather than a
+  fixed panel size, since blurb length varies a lot from one compound to the next.
 
 ## Overworld path
 

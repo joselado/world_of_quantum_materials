@@ -119,8 +119,9 @@ that same imposing look once the fight starts. Beating it is what
 opens the way to the next world.
 
 **Return to the Lab.** World 0 is a static hub room: a Save Point, and the
-Materialdex, a running catalog of every crystal you've discovered with a
-one-line note on the real physics behind it.
+Materialdex, a searchable, filterable index of every crystal in the game --
+each with a note on the real physics behind it, and a "???" placeholder
+silhouette for anything you haven't found yet.
 
 <table>
 <tr>

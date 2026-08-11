@@ -502,9 +502,12 @@ sentence tying the fight to the real physics of the material just fought
 `MaterialType` for a compound without its own entry yet). The first time a wild material is
 encountered (not per-battle, and not for rival crystals, which aren't real compounds), it's
 recorded into the Phaser registry's `discoveredMaterials` list
-(`OverworldScene.recordDiscovery`); the Hub's Materialdex hotspot (§2) lists every
-discovered material together with its blurb, paginated two entries per page
-(`HubScene.renderMaterialdexPage`).
+(`OverworldScene.recordDiscovery`); the Hub's Materialdex hotspot (§2) indexes every real
+compound in the game (`data/materials.ts`'s `allCrystals()`), not just discovered ones --
+an entry not yet found shows as "???" with a masked crystal render rather than being
+absent from the list entirely, so the index reads as a checklist of the whole game.
+Searchable by name and filterable by type, one entry (name, blurb, and the compound's own
+rendered crystal) shown per page (`HubScene.renderMaterialdexPage`).
 
 ## 5. Guardians, economy, and story arc
 
@@ -877,5 +880,13 @@ Not yet built:
   one person; consider cutting to 3–4 flagship worlds for a v1 before building all 10.
 - **Course integration** — supplementary/optional tool, or tied into assessment?
   Affects how rigorous the Materialdex needs to be.
+- **Quiz-text subscript notation** — physics questions/answers (`game/src/data/quiz.ts`)
+  write subscripts as plain ASCII underscores (`U_c`, `k_B`, `E_F`, ~70 instances) since
+  Phaser's `Text` has no native rich-text/subscript rendering, and Unicode's subscript
+  Latin-letter block doesn't cover every needed letter (no subscript `b`, `c`, or `f`, so
+  `k_B`/`U_c`/`E_F` themselves couldn't round-trip through it). Readable as-is to this
+  course's audience, but true subscript rendering would need a custom multi-`Text`-object
+  layout (split each string on `_`, offset the trailing run smaller/lower) built once and
+  reused everywhere quiz/move text renders, not a quick fix.
 - **Multiplayer/trading** — in scope or not? Changes hosting/save-system
   requirements significantly if yes.

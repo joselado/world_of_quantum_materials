@@ -677,9 +677,20 @@ other panel, stroked cyan (`0x5ad9ff`, see `STYLE.md`). Only reachable from the 
 again rather than rebuilding the whole scene. To add/edit a tip, only `data/tutorial.ts` needs
 touching -- both this and the contextual popups above read it generically.
 
-**Materialdex is paginated.** `HubScene.renderMaterialdexPage` -- `MATERIALDEX_ENTRIES_PER_PAGE
-= 2`, `materialdexPage` field reset to 0 on open, Back/Next re-render in place, same shape as
-`OverworldScene`'s tutorial paging.
+**Materialdex indexes every crystal, not just discovered ones, one entry per page.**
+`HubScene.materialdexIndex()` maps `data/materials.ts`'s `allCrystals()` against registry
+`discoveredMaterials`; `filteredMaterialdexIndex()` narrows that by `materialdexQuery`
+(substring match on name) and `materialdexTypeFilter` (a `MaterialType` or `'all'`).
+`renderMaterialdexPage()` renders `entries[materialdexPage]` -- masked to "???" plus a flat
+dim-grey crystal render when undiscovered -- with Back/Next/Left-Right stepping one entry
+at a time (`stepMaterialdexPage`), same shape as `OverworldScene`'s tutorial paging. Search
+typing is captured by a scene-wide `keydown` listener registered once in `create()`, gated
+on the `materialdexOpen` field (set/cleared by `showMaterialdex`/`closeDialogue`) so it's a
+no-op whenever the Materialdex isn't the open panel. Panel height is computed top-down from
+each element's actual measured height (`renderMaterialdexPage`'s running `y`, same pattern
+as `OverworldScene.showInfoPanel`) rather than fixed, with the blurb's own font shrinking in
+whole-px steps (floor `9`) if a long entry would otherwise overflow -- a fixed panel size
+here previously let long blurbs push the footer off-panel at larger text-size presets.
 
 **Candidate-crystal lists share one pager: `OverworldScene.renderPagedButtons<T>`.** Used by
 Dresselhaus's transmute list, both steps of Majorana's and Anderson's combine/dope flows, and Bloch's
