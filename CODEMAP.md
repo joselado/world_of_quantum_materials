@@ -193,12 +193,12 @@ since `materials.ts` pulls in Phaser at module scope) and regenerates the
   `TitleScene` is the only place that loads localStorage *into* the registry. Any new persistent
   state should follow this same registry-first, persist-on-mutation shape and get added to
   `data/save.ts`'s `SaveData`/`defaultSave()`/`persistFromRegistry()` together.
-- **World sprites.** Wild-encounter crystals, qumatessence pickups, and every guardian's overworld
-  avatar (Noether, Bloch, Dresselhaus, and every other guardian alike) all share one `WorldSprite`
-  projection/wander/bob system in `OverworldScene` (`updateWorldSprites`) rather than bespoke
-  per-kind code -- a new NPC should spawn through the single unified
-  `OverworldScene.spawnGuardianSprite` (looked up from `WORLD_GUARDIANS`), not a bespoke
-  `spawnXSprite` per guardian.
+- **World sprites.** Wild-encounter crystals, qumatessence pickups, every guardian's overworld
+  avatar (Noether, Bloch, Dresselhaus, and every other guardian alike), the goal-tile boss, and
+  the two world-door landmarks all share one `WorldSprite` projection/wander/bob system in
+  `OverworldScene` (`updateWorldSprites`) rather than bespoke per-kind code -- a new NPC or
+  landmark should spawn through the single unified `OverworldScene.spawnGuardianSprite` (looked
+  up from `WORLD_GUARDIANS`) pattern, not a bespoke `spawnXSprite` per guardian.
 - **Panel/dialogue UI.** Every overlay (wild encounter, guardian panels, rival gate, Hub's
   Materialdex/Save panels, the Enter-key menu) is the same dark rounded-rectangle-with-stroke
   treatment, with the stroke color signaling the panel's kind: blue-grey `0x444466` = wild
@@ -495,10 +495,27 @@ directly, so bolts/rings/bursts still travel to the crystal's real (possibly shi
 **The goal tile belongs to that world's boss, not a guardian.** `OverworldScene.spawnBossSprite`
 spawns `art/boss.ts`'s `makeBossCrystal` (a fused multi-shard cluster + pulsing aura + orbiting
 embers, `BOSS_CRYSTAL_SIZE = 70`) at `goalTile` for every built world's `getRival()` (via
-`OverworldScene.getWorldRival()`, see below) -- purely a visual landmark via the same
-`WorldSprite` machinery, no click handler of its own. `openGoalGuardianPanel()`'s branch on
-`guardian?.tile === 'goal'` is a permanent no-op (no entry uses it), so it always falls through
-to `showGatePanel()`, which is what renders at the goal.
+`OverworldScene.getWorldRival()`, see below), for as long as that world's rival is undefeated --
+purely a visual landmark via the same `WorldSprite` machinery, no click handler of its own.
+`openGoalGuardianPanel()`'s branch on `guardian?.tile === 'goal'` is a permanent no-op (no entry
+uses it), so it always falls through to `showGatePanel()`, which is what renders at the goal.
+
+**World doors.** `OverworldScene.spawnDoorSprites` puts a doorway landmark (`art/door.ts`'s
+`makeDoorSprite`, `DOOR_SPRITE_SIZE = 46`) at every built world's `startTile`, and a second one at
+`goalTile` once `isRivalDefeated()` is true for that world -- `spawnBossSprite` stops spawning its
+own avatar there once the rival is beaten, so the two never share the tile. Walking onto the
+start-tile door is tile-exact (`OverworldScene.maybeReachStartDoor`, checked against `startTile.x`
+*and* `.y`, unlike the row-only `maybeReachGoal`/`maybeReachMiddle`) and opens
+`showStartDoorPanel`, a confirm panel offering to step back into World N-1 (or the Hub for World
+1) via `returnToPreviousWorld`, which calls `advanceToWorld(world, 'goal')` -- the second param
+threads through `OverworldInitData.enterFrom` and `Overworld`'s own `create()`/`generateMap()` so
+the destination scene overrides its freshly generated `playerTile` to that map's own `goalTile`
+and marks `reachedGoal = true` immediately, landing the player as if they'd walked in from the far
+end rather than restarting that world's corridor. The goal-tile door doesn't need its own confirm
+panel -- walking onto it (also tile-exact, checked in `tryMove`'s `onComplete` alongside
+`maybeReachGoal`) just reopens the same `showGatePanel` the boss's "Face the Rival" button already
+lived in, now offering "Continue to World N+1" via the existing `renderShopFooter`/
+`tryAdvanceToNextWorld` path -- no separate door-specific advance logic.
 
 **World 9's rival has no fixed type, unlike every other world's.** `data/materials.ts`'s
 `getRival(world, rival9Type?)` takes an optional second param that only world 9 reads --
@@ -526,7 +543,11 @@ through `showGatePanel`, not by reaching for `renderShopFooter` directly.
 
 `HubScene.highestUnlockedWorld()` walks `rivalDefeated` from world 1 until it finds a world not
 yet beaten. `OverworldScene.tryAdvanceToNextWorld()`/`advanceToWorld(this.world + 1)` likewise
-compute the next world rather than hardcoding it. `BUILT_WORLDS = [1, 2, 3, 4, 5, 6, 7, 8, 9,
+compute the next world rather than hardcoding it. `advanceToWorld`'s second param, `enterFrom:
+'start' | 'goal'` (default `'start'`), is what the world-door feature (above) uses to land the
+player on the destination's `goalTile` instead of its `startTile` -- every other caller
+(`showBlochHub`'s destination buttons, `showStoryBeat`'s "Onward") omits it and gets the ordinary
+south-edge spawn. `BUILT_WORLDS = [1, 2, 3, 4, 5, 6, 7, 8, 9,
 10]` is the single source of truth for "worlds with a walkable map," used by Bloch's
 teleport destination filter (and, in Superposition Mode, the list every world gets
 pre-marked visited against -- `OverworldScene.applySuperpositionLeveling`); extend it (plus

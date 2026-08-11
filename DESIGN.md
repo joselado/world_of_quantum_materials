@@ -561,8 +561,9 @@ state can mark her met before the player has actually reached her.
   Bloch state is a superposition spread across every unit cell, not pinned to one.
   The destination list paginates (`renderPagedButtons`, see below) once it grows past
   a page -- routine in Superposition Mode (see §7), which pre-seeds every built world
-  as visited, making Bloch's hub the *sole* way to move between worlds, since there
-  is no separate Warp panel
+  as visited, making Bloch's hub able to jump to any of them immediately; walking
+  through a world door (below) is the other way to move between worlds, one step at
+  a time rather than a jump to an arbitrary destination
 - **Dresselhaus** → world 3 middle → lets the player transmute into any *single* crystal
   they've already defeated (`OverworldScene.showDresselhausPanel`/`transmuteInto`) -- fitting,
   since the Dresselhaus effect (bulk-inversion-asymmetry spin-orbit coupling) is the real
@@ -791,18 +792,33 @@ state can mark her met before the player has actually reached her.
   run under a second), fitting a move that's meant to read as the game's actual finale
   attack.
 
-**Boss avatars.** Every built world's rival/boss (`WORLD_RIVALS`/`getRival`)
-stands visibly at the goal tile as a gigantic landmark (`OverworldScene
-.spawnBossSprite`, `art/boss.ts`'s `makeBossCrystal`) -- a fused mass of several
-shards around an oversized core, a pulsing danger aura, and orbiting embers, so it
-reads as unmistakably more dangerous than an ordinary wild crystal from a distance,
-before the player ever opens the goal panel. It's a pure visual landmark: the fight
-itself is only reached through "Face the Rival" in the goal gate panel. The same
-`makeBossCrystal` look carries into the fight
-itself -- `BattleScene` renders a rival's opponent crystal at `BOSS_CRYSTAL_SIZE`
-(bigger than an ordinary wild encounter's), shifted a bit left of the usual
-opponent spot so the wider silhouette clears the move menu, instead of the plain
-`makeCrystal` every wild battle uses.
+**Boss avatars.** Every built world's rival/boss (`WORLD_RIVALS`/`getRival`), while
+still undefeated, stands visibly at the goal tile as a gigantic landmark
+(`OverworldScene.spawnBossSprite`, `art/boss.ts`'s `makeBossCrystal`) -- a fused mass
+of several shards around an oversized core, a pulsing danger aura, and orbiting
+embers, so it reads as unmistakably more dangerous than an ordinary wild crystal
+from a distance, before the player ever opens the goal panel. It's a pure visual
+landmark: the fight itself is only reached through "Face the Rival" in the goal gate
+panel. The same `makeBossCrystal` look carries into the fight itself -- `BattleScene`
+renders a rival's opponent crystal at `BOSS_CRYSTAL_SIZE` (bigger than an ordinary
+wild encounter's), shifted a bit left of the usual opponent spot so the wider
+silhouette clears the move menu, instead of the plain `makeCrystal` every wild
+battle uses.
+
+**World doors.** Every built world has a doorway landmark standing at its
+`startTile` (`OverworldScene.spawnDoorSprites`, `art/door.ts`'s `makeDoorSprite`) --
+walking onto it opens a confirm panel offering to step back into World N-1, or into
+the Hub for World 1 (`OverworldScene.showStartDoorPanel`/`returnToPreviousWorld`).
+Landing in the earlier world this way puts the player on *its* goal tile with that
+world's goal already marked reached, so arriving reads as walking in from the far
+end rather than restarting that world's whole corridor. Once a world's rival is
+beaten, a second door appears at its goal tile in place of the boss avatar, and
+walking onto it reopens the same goal gate panel the boss's "Face the Rival" button
+lived in, now offering "Continue to World N+1" -- so both directions between worlds
+are ordinary walking, not just a menu action, alongside Bloch's teleport hub (§5)
+for jumping to an arbitrary already-visited world. Both doors regenerate the
+destination world's map fresh, the same "walking between worlds always lays out a
+new corridor" rule §7 describes for every other transition.
 
 **Wild-encounter density.** The Enter-menu's Settings panel
 (`OverworldScene.showSettingsPanel`) lets the player choose how often ordinary wild
@@ -860,7 +876,8 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   (per-biome `wallTheme`, see `STYLE.md`) a molten lava crust, a frozen lake, or open
   sky/chasm you'd fall through -- so blocked terrain reads unambiguously either way. The
   layout is regenerated (fresh `Math.random` calls) on
-  first load and whenever the player switches worlds; a round trip through
+  first load and whenever the player switches worlds -- the Hub door, Bloch's
+  teleport, a world door (§5), or a debug warp alike; a round trip through
   battle instead restores the exact layout and player position it started
   from (`OverworldScene.saveMapState`/`restoreMap`, via the Phaser registry).
   The pre-battle encounter dialogue itself never leaves the overworld scene.
@@ -915,8 +932,9 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   opponents (`OverworldScene.applySuperpositionLeveling`, a flat +2 over
   `enemyStatsForWorld`, full move unlock, full heal) instead of requiring the
   normal qumatessence grind, every built world is pre-marked visited so Bloch's
-  teleport hub (§5) alone provides full world-to-world movement -- there is no
-  separate "Warp" UI -- and Dresselhaus/Majorana/Anderson's panels (§5) offer every
+  teleport hub (§5) can jump to any of them immediately on top of the world
+  doors (§5) every world already has -- there is no separate "Warp" UI -- and
+  Dresselhaus/Majorana/Anderson's panels (§5) offer every
   crystal in the game as a candidate rather than only ones actually defeated
   (Dresselhaus's list still excludes hybrid-recipe results, same as normal play).
   Toggled once at the title screen rather than mid-run, so it's a deliberate
