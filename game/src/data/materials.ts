@@ -902,7 +902,7 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     crystal('CrI₃/NbSe₂ Topological-SC Heterostructure', 'chernSuperconductor', 33, ['chiralCurrent', 'decoherenceWave'], 0, 'layer'),
     crystal('NbSe₂/CrBr₃ Topological-SC Heterostructure', 'chernSuperconductor', 33, ['chiralCurrent', 'decoherenceWave'], 1, 'layer'),
     crystal('Twisted CrI₃', 'multiferroic', 32, ['electromagnonPulse', 'magneticField'], 0, 'twisted'),
-    crystal('1T/1H-TaS₂ Heterostructure', 'quantumSpinLiquid', 30, ['entanglementSwap', 'visonLoop'], 4, 'layer'),
+    crystal('1T/1H-TaS₂ Heterostructure', 'kondoHeavyFermion', 30, ['entanglementSwap', 'heavyFermionPulse'], 4, 'layer'),
     // Quantum anomalous Hall effect -- zero-field Chern insulator, from
     // doping magnetism into Bi₂Te₃ (world 3) -- 'chernInsulator', not
     // 'quantumSpinHall', since the Cr doping is specifically what breaks
