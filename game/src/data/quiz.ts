@@ -1989,6 +1989,18 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
     correct: 'A gapless mode -- zero energy as k → 0',
     incorrect: 'A gapped mode, with gap set by the order parameter',
   },
+  {
+    prompt: "The two-site half-filled Hubbard dimer's mean-field antiferromagnetic order parameter m turns on...",
+    correct: 'Only above a critical interaction U_c = 2t -- m=0 below it, then m=√(1−4t²/U²) above',
+    incorrect: 'Immediately at any U>0, growing smoothly from zero with no threshold',
+  },
+  {
+    prompt:
+      "Unlike the perfectly-nested 1D chain, the Hubbard antiferromagnet on graphene's honeycomb lattice orders only above a finite threshold U_c because...",
+    correct:
+      'Its density of states vanishes linearly at the Dirac point, D(E)∝|E|, suppressing the low-energy contribution that would otherwise drive an infinitesimal instability',
+    incorrect: 'Its density of states diverges logarithmically at the Dirac point, the same nesting singularity the 1D chain has',
+  },
   // -- World 2: symmetries, tight binding, Bloch, Dirac cones --
   {
     prompt: 'The total bandwidth of the 2D square-lattice nearest-neighbor tight-binding band, with hopping t, is...',
@@ -2004,6 +2016,16 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
     prompt: "Kramers' theorem guarantees every level is doubly degenerate when the time-reversal operator satisfies...",
     correct: 'T² = −1 -- half-integer spin',
     incorrect: 'T² = +1 -- integer spin',
+  },
+  {
+    prompt: 'The 1D nearest-neighbor tight-binding chain H = t Σ_n (c_n†c_{n+1} + h.c.) has Bloch dispersion...',
+    correct: 'ε_φ = 2t cos φ, ranging over [−2t, 2t]',
+    incorrect: 'ε_φ = 4t cos φ, ranging over [−4t, 4t]',
+  },
+  {
+    prompt: 'The effective mass tensor (1/m*)ᵢⱼ = (1/ħ²) ∂²E/∂kᵢ∂kⱼ, built from the curvature of the dispersion, matters because...',
+    correct: 'It is the mass actually measured in transport and cyclotron-resonance experiments -- the bare electron mass is not directly observable inside a solid',
+    incorrect: 'It equals the bare electron mass measured directly by cyclotron resonance, since band curvature only renormalizes the group velocity, not the mass',
   },
   // -- World 3: topological band theory --
   {
@@ -2021,6 +2043,19 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
     correct: 'Intercell hopping exceeds intracell hopping, |w| > |v|',
     incorrect: 'Intracell hopping exceeds intercell hopping, |v| > |w|',
   },
+  {
+    prompt: 'For the two-band model H(k) = k_xσ_x + λk_yσ_y + mσ_z near a single gapped Dirac cone, the Chern number contributed by that one cone is...',
+    correct:
+      'C_Dirac = (1/2) sgn(m) sgn(λ) -- a half-integer, since a physical lattice always sums an even number of time-reversal-partnered cones to get an integer',
+    incorrect: 'C_Dirac = sgn(m) sgn(λ), always an integer ±1 from a single cone alone',
+  },
+  {
+    prompt:
+      "Gapping graphene's Dirac points with an ordinary staggered sublattice potential, versus with the Haldane second-neighbor imaginary hopping, gives...",
+    correct:
+      "Sublattice potential: same-sign mass at K and K′ so the two points' Chern contributions cancel (C=0, trivial); Haldane coupling: mass flips sign between K and K′ relative to λ, so contributions add (C=±1, a Chern insulator)",
+    incorrect: 'Sublattice potential: contributions add, giving a Chern insulator C=±1; Haldane coupling: contributions cancel, giving trivial C=0',
+  },
   // -- World 4: quantum Hall, Landau levels, FQHE --
   {
     prompt: 'The Landau-level filling factor of a 2D electron gas with areal density n in field B is...',
@@ -2036,6 +2071,11 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
     prompt: 'Exchanging two Laughlin quasiparticles at ν = 1/m produces the anyonic statistical phase...',
     correct: 'θ = π/m',
     incorrect: 'θ = 2π/m',
+  },
+  {
+    prompt: 'Compared to an ordinary parabolic (Schrödinger) 2D electron gas, the Landau levels of Dirac (graphene-like) electrons in field B are...',
+    correct: 'E_n = sgn(n)·v_F√(2ħB|n|), n=0,±1,±2,… -- unequally spaced, growing as √B, with a genuine zero-energy level pinned at n=0',
+    incorrect: 'E_n = ħω_c(n+1/2), just as in the parabolic case -- equally spaced and growing linearly in B',
   },
   // -- World 5: BCS, Nambu, Majoranas --
   {
@@ -2074,6 +2114,16 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
     correct: 'An inversion center sits at the bond midpoint',
     incorrect: 'The two spins are exactly antiparallel',
   },
+  {
+    prompt: 'By the Stoner criterion for the Hubbard model, a mean-field magnetic solution with m≠0 first appears once...',
+    correct: 'U·D(E_F) ≥ 1 -- the interaction times the density of states at the Fermi level clears one',
+    incorrect: 'U > t -- the interaction strength exceeds the bare hopping amplitude',
+  },
+  {
+    prompt: 'The superexchange coupling derived from a single-orbital Hubbard model at U≫t, J_ij = 4t_ij²/U...',
+    correct: 'Is always positive (antiferromagnetic), regardless of the sign or geometry of t_ij',
+    incorrect: 'Flips sign with t_ij, giving ferromagnetic coupling whenever the hopping t_ij is negative',
+  },
   // -- World 7: entanglement, tensor networks, MPS --
   {
     prompt: 'A block of length ℓ in an infinite critical (gapless) 1D chain has entanglement entropy...',
@@ -2089,6 +2139,18 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
     prompt: 'Tracing out half of an entangled pure state leaves a reduced density matrix that is...',
     correct: 'Mixed -- Tr ρ² < 1',
     incorrect: 'Still pure -- Tr ρ² = 1',
+  },
+  {
+    prompt:
+      'In the Jordan-Wigner map S_i⁺=c_i†K_i, S_i⁻=c_iK_i, S_i^z=n_i−1/2, K_i=exp(iπΣ_{j<i}n_j), the string operator K_i is required because...',
+    correct:
+      'Fermionic many-body wavefunctions are antisymmetric under exchange while spin wavefunctions are symmetric, so the string supplies the missing relative sign between sites',
+    incorrect: 'It enforces the Pauli exclusion principle on the spin operators, which would otherwise allow double occupation of a site',
+  },
+  {
+    prompt: 'Given a large enough bond dimension, a matrix product state can represent...',
+    correct: 'Any L-site state exactly -- successive SVDs with no truncation need at most M = d^(L/2) at the central cut',
+    incorrect: 'Only area-law states -- a volume-law state escapes the ansatz at any finite bond dimension',
   },
   // -- World 8: quantum magnetism, spinons, Kondo, heavy fermions --
   {
@@ -2127,6 +2189,51 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
     correct: 'Insensitive to nonmagnetic impurities, but suppressed by magnetic ones',
     incorrect: 'Suppressed equally by any impurity, magnetic or not',
   },
+  {
+    prompt:
+      'In the RPA (Bohm-Pines) treatment of the 3D electron gas, the plasmon dispersion at long wavelength, ω_pl(q)² = ω_p² + (3/5)v_F²q² + O(q⁴)...',
+    correct: 'Survives at q=0 with ω_pl=ω_p, since the plasmon is a genuinely collective mode of the whole charge density',
+    incorrect: 'Vanishes at q=0, exactly like the particle-hole continuum it is built out of',
+  },
+  {
+    prompt: 'For the 2D square-lattice dispersion ε(k) = −2t(cos k_x + cos k_y) at half filling, the static Lindhard function χ₀(q,0)...',
+    correct: 'Develops a massive divergence exactly at Q=(π,π), the perfect-nesting wavevector where ε(k+Q)=−ε(k) for every k',
+    incorrect: 'Stays smooth and featureless in q, since a genuinely 2D Fermi surface cannot nest the way a 1D one does',
+  },
+  // -- Session 10: Machine Learning Quantum Materials -- like the Methods
+  // block below, this session has no dedicated game world of its own
+  // (worlds 1-9 each map to one session, 1-1; World 10 is the hybrid/finale
+  // world with no course topic, not this session's game counterpart), so its
+  // questions sit in this any-topic pool rather than a per-world block.
+  {
+    prompt:
+      'Training a neural-network quantum state by minimizing the variational energy E[θ]=⟨ψ_θ|H|ψ_θ⟩/⟨ψ_θ|ψ_θ⟩ guarantees that E[θ]...',
+    correct: 'Never undershoots the true ground-state energy E₀, hitting it exactly only if |ψ_θ⟩ reaches the true ground state',
+    incorrect: 'Can undershoot E₀ if the network is expressive enough, since gradient descent has no lower bound',
+  },
+  {
+    prompt:
+      'In the variational hierarchy of many-body ansätze this course used (NNQS, PEPS, matrix product states), a neural-network quantum state (NNQS) of a given architecture is...',
+    correct: 'The most expressive of the three -- PEPS states sit inside the states that NNQS can reach, and MPS inside PEPS in turn',
+    incorrect: 'The least expressive of the three -- MPS and PEPS can both reach states no NNQS of comparable size can represent',
+  },
+  {
+    prompt:
+      "Classifying the classical Ising gauge theory's low-T and high-T configurations by summing the spins (an ordinary magnetization order parameter)...",
+    correct: 'Fails -- the phases are topologically distinct with no local order parameter, whereas a CNN trained on labeled low-T/high-T configurations succeeds',
+    incorrect: 'Works exactly as well as it does for the ordinary Ising model, since both are classical spin models on the same lattice',
+  },
+  {
+    prompt:
+      'Hamiltonian learning trains a neural network on synthetic (Hamiltonian → observable) pairs from many known models, then applies the trained network to...',
+    correct: 'A real experimental observable, to infer the physical Hamiltonian parameters λ that produced it',
+    incorrect: 'A known Hamiltonian, to predict the observable it would produce -- the forward direction the course already computes',
+  },
+  {
+    prompt: 'Replacing the exchange-correlation functional in the Kohn-Sham loop with a machine-learned v_xc...',
+    correct: "Still requires diagonalizing H_KS self-consistently at every iteration -- learning v_xc doesn't remove the self-consistency loop",
+    incorrect: 'Removes the need for the self-consistency loop entirely, since the learned v_xc is now exact',
+  },
   // -- Methods & experimental probes: exact diagonalization, mean-field/DFT
   // self-consistency, ARPES, STM -- cross-cutting the numerical and
   // experimental toolkit itself rather than any one world's course topic,
@@ -2138,21 +2245,9 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
     incorrect: 'd = L^2 -- only quadratically with system size',
   },
   {
-    prompt:
-      'The practical ceiling on exact diagonalization of a spin chain, reached around L=30-40 sites on an ordinary machine, is set fundamentally by...',
-    correct: 'The cost of storing the 2^L ground-state coefficients, not the cost of diagonalizing the Hamiltonian',
-    incorrect: 'The cost of diagonalizing the Hamiltonian matrix itself, which dominates the storage cost',
-  },
-  {
     prompt: 'A mean-field or Kohn-Sham calculation is solved self-consistently by...',
     correct: 'Guessing a density/order parameter, building the Hamiltonian, diagonalizing it, and repeating until the guess stops changing',
     incorrect: 'Diagonalizing the full interacting Hamiltonian once, with no iteration needed',
-  },
-  {
-    prompt:
-      'The Hohenberg-Kohn theorem justifies density functional theory by proving that, for a given external potential, the ground-state electron density n(r)...',
-    correct: 'Determines the external potential uniquely (up to a constant), and hence the full many-body wavefunction',
-    incorrect: 'Only ever provides a variational upper bound on the ground-state energy, never the wavefunction',
   },
   {
     prompt: 'The Kohn-Sham construction makes DFT usable in practice by replacing the interacting many-body problem with...',
@@ -2160,25 +2255,9 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
     incorrect: 'The same interacting Hamiltonian diagonalized exactly, just in a smaller basis set',
   },
   {
-    prompt: 'In the Kohn-Sham effective potential v_eff = v_ext + Hartree + v_xc, the exchange-correlation piece v_xc is...',
-    correct: 'Defined to absorb everything the mean-field Hartree term misses, and its exact form is unknown',
-    incorrect: 'Known exactly in closed form -- the one term in v_eff that requires no approximation',
-  },
-  {
     prompt: "Angle-resolved photoemission spectroscopy (ARPES) maps a material's band dispersion E(k) by...",
     correct: 'Ejecting electrons with photons and using energy/momentum conservation on the emitted electron',
     incorrect: 'Scanning a fine metal tip across the surface and recording the tunneling current, as in STM',
-  },
-  {
-    prompt: "Graphene's ARPES-measured band structure near the K point confirms the tight-binding Dirac-cone prediction...",
-    correct: 'E±(q) = ±ħ v_F |q| -- linear in momentum away from the Dirac point',
-    incorrect: 'E±(q) = ±ħ²q²/2m -- quadratic in momentum, like an ordinary parabolic band',
-  },
-  {
-    prompt:
-      'Scanning tunneling microscopy signatures of a spinon Fermi surface on a triangular-lattice quantum-spin-liquid candidate make the gapless mean-field spinon picture...',
-    correct: "More than a theorist's construction -- in principle, an observable band structure",
-    incorrect: 'Definitively ruled out -- no gapless spinon signature has ever been observed',
   },
   {
     prompt: "Scanning tunneling microscopy (STM) measures a material's local electronic structure via...",
