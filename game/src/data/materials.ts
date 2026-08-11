@@ -550,12 +550,10 @@ function crystal(
 // database" section. Each scene pulls its own world's pool via
 // `getWildPool()` rather than sharing one global list, so later worlds can
 // each have their own specials without touching the encounter logic.
-// World 10's own pool (below) hosts the game's named hybrid-recipe results
-// (HYBRID_RECIPES further down) plus a couple of standalone single compounds
-// whose own type belongs to an existing topic's session (chernInsulator ->
-// topic 4, quantum Hall; multiferroic -> topic 6, classical
-// magnetism/magnons; ferroelectric -> no topic of its own) but has no
-// dedicated world of its own.
+// World 10's own pool (below) hosts exactly the game's named hybrid-recipe
+// results (HYBRID_RECIPES further down) and nothing else -- worlds 1-9 never
+// spawn a hybrid-recipe result as an ordinary wild, so a compound reachable
+// by fusion is reachable only by fusion until World 10.
 // WORLD_RIVALS[10] (the finale boss "The Adapted") is the one entity that's
 // still deliberately not a real material -- see that table's own comment.
 export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
@@ -598,7 +596,7 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     crystal('Monolayer MoTe₂ (2H)', 'semiconductor', 22, ['tunnelStrike', 'thermalFluctuation'], 3, 'layer'),
     // Individually just an ordinary gapped band compound each -- only once
     // thinned into a quantum well together do they host a protected edge
-    // state (see world 3's HgTe/CdTe Quantum Well, the HYBRID_RECIPES result
+    // state (see World 10's HgTe/CdTe Quantum Well, the HYBRID_RECIPES result
     // of fusing this pair).
     crystal('HgTe', 'semiconductor', 22, ['tunnelStrike', 'thermalFluctuation'], 4),
     crystal('CdTe', 'semiconductor', 22, ['tunnelStrike', 'thermalFluctuation'], 5),
@@ -615,40 +613,29 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // types.ts's comment on that type).
     crystal('Bi₂Te₃', 'quantumSpinHall', 24, ['helicalCurrent', 'tunnelStrike'], 0, 'prism'),
     // A bulk-derived monolayer's own quantum spin Hall state, same helical
-    // boundary physics as Bi₂Te₃ above and the engineered HgTe/CdTe well
-    // below.
+    // boundary physics as Bi₂Te₃ above and the engineered HgTe/CdTe Quantum
+    // Well (world 2's HgTe + CdTe fused, a World 10 wild -- see that pool's
+    // own comment).
     crystal('Monolayer WTe₂', 'quantumSpinHall', 23, ['helicalCurrent', 'thermalFluctuation'], 1, 'layer'),
-    // The original 2D topological insulator (Bernevig-Hughes-Zhang model,
-    // Konig et al. 2007), an engineered quantum-well heterostructure rather
-    // than a single bulk compound's own band topology -- but the same
-    // helical edge physics either way. HYBRID_RECIPES result (world 2's HgTe
-    // + CdTe below) rather than a standalone wild encounter, the same "fused
-    // parents, real WORLD_CRYSTALS row" shape Fe/Pb Majorana Chain (world 5)
-    // already uses.
-    crystal('HgTe/CdTe Quantum Well', 'quantumSpinHall', 25, ['helicalCurrent', 'tunnelStrike'], 2, 'layer'),
   ],
   // 'chernInsulator' rather than a dedicated field-driven-only type -- the
   // ordinary quantum Hall effect's quantized conductance is itself a Chern
-  // number (the TKNN invariant), the same topological invariant world 10's
-  // zero-field Chern insulators carry, so both live under one type (see
-  // types.ts's comment on it). Twisted Bilayer MoTe₂'s zero-field
-  // *fractional* quantum Hall state genuinely fractionalizes into charged
-  // anyons, unlike GaAs/Graphene's ordinary integer Landau levels, so it
-  // lives under 'fractionalChern' instead.
+  // number (the TKNN invariant), the same topological invariant this
+  // world's own zero-field members carry, so both live under one type (see
+  // types.ts's comment on it).
   4: [
     crystal('Gallium Arsenide', 'chernInsulator', 25, ['chiralCurrent', 'tunnelStrike']),
     crystal('Graphene (strong field)', 'chernInsulator', 24, ['chiralCurrent', 'thermalFluctuation'], 1, 'layer'),
-    crystal('Twisted Bilayer MoTe₂', 'fractionalChern', 26, ['fluxTwist', 'thermalFluctuation'], 2, 'twisted'),
+    // Real intrinsic magnetic topological insulator -- the actual zero-field
+    // QAHE/Chern-insulator material, its magnetism built into the crystal
+    // itself rather than doped in (contrast Cr-doped (Bi,Sb)₂Te₃, a World 10
+    // hybrid-recipe result of doping Chromium into world 3's Bi₂Te₃).
+    crystal('MnBi₂Te₄', 'chernInsulator', 30, ['chiralCurrent', 'tunnelStrike'], 2, 'layer'),
   ],
   5: [
     crystal('Aluminum', 'superconductor', 28, ['higgsOscillation', 'thermalFluctuation']),
     crystal('Lead', 'superconductor', 30, ['higgsOscillation', 'thermalFluctuation'], 1),
     crystal('YBCO', 'superconductor', 27, ['higgsOscillation', 'thermalFluctuation'], 2),
-    // Fe chains on Pb (Nadj-Perge et al. 2014) -- topological superconductivity
-    // from a magnetic chain on an s-wave SC, genuinely 'chernSuperconductor'
-    // rather than plain 'superconductor': the whole point is the Majorana
-    // zero modes at the chain's ends.
-    crystal('Fe/Pb Majorana Chain', 'chernSuperconductor', 29, ['decoherenceWave', 'chiralCurrent'], 3),
     // Niobium: the highest-Tc elemental BCS superconductor at ambient
     // pressure, same conventional family as Aluminum/Lead above. Tantalum
     // Disulfide's 1H phase is a standalone metallic/superconducting TMD
@@ -664,6 +651,13 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // Same van der Waals ferromagnet family as Chromium Triiodide above, the
     // other half of the NbSe₂/CrBr₃ topological-superconductor recipe.
     crystal('Chromium Tribromide', 'classicalMagnet', 25, ['thermalFluctuation', 'magneticField'], 3, 'layer'),
+    // Type-II multiferroic from noncollinear/helimagnetic order down to the
+    // monolayer limit (Song et al., Nature 2022) -- hosts genuine
+    // electromagnons, 'multiferroic''s flagship. Same session (classical
+    // magnetism/magnons) as the classicalMagnet compounds above, just a
+    // distinct type once the noncollinear order starts coupling to electric
+    // polarization.
+    crystal('Monolayer NiI₂', 'multiferroic', 28, ['electromagnonPulse', 'magneticField'], 1, 'layer'),
   ],
   7: [
     crystal('Herbertsmithite', 'quantumSpinLiquid', 23, ['entanglementSwap', 'thermalFluctuation']),
@@ -701,27 +695,37 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
   // vortex-core Majorana bound states (Zhang et al., Science 2018), so it's
   // 'chernSuperconductor' rather than plain 'superconductor'; Niobium
   // Diselenide's Friedel oscillations are ordinary (non-topological)
-  // impurity-resonance physics, so it stays plain 'superconductor'.
+  // impurity-resonance physics, so it stays plain 'superconductor'. Barium
+  // Titanate/GeTe below aren't defect physics at all -- they're here because
+  // ferroelectric has no course topic of its own, and this "any type" world
+  // is where every homeless type ends up (see WORLD_CRYSTALS' own top
+  // comment).
   9: [
     crystal('Fe(Te,Se)', 'chernSuperconductor', 22, ['decoherenceWave', 'higgsOscillation'], 1),
     crystal('Niobium Diselenide', 'superconductor', 21, ['higgsOscillation', 'thermalFluctuation'], 2),
     // Elemental Mn's own complex itinerant antiferromagnetism (same
     // "classicalMagnet" liberty already taken with Chromium) is beside the
     // point here -- its role is HYBRID_RECIPES' magnetic-impurity parent for
-    // Mn/Nb Shiba Chain below (Yazdani et al., Science 275, 1767 (1997), the
-    // original single-impurity Yu-Shiba-Rusinov STM observation).
+    // Mn/Nb Shiba Chain (World 10; Yazdani et al., Science 275, 1767 (1997),
+    // the original single-impurity Yu-Shiba-Rusinov STM observation).
     crystal('Manganese', 'classicalMagnet', 23, ['thermalFluctuation', 'magneticField'], 3),
-    // The single-impurity precursor to world 5/9's chernSuperconductor
-    // chains -- an isolated magnetic adatom on an *ordinary* (non-
-    // topological) s-wave superconductor hosts an ordinary, non-Majorana
-    // Yu-Shiba-Rusinov bound state, so unlike Fe(Te,Se)/Fe/Pb Chain this
-    // stays plain 'superconductor', no Majorana Split.
-    crystal('Mn/Nb Shiba Chain', 'superconductor', 24, ['tunnelStrike', 'thermalFluctuation'], 4),
+    // The textbook ferroelectric -- its Ti⁴⁺ ion sits off-center below
+    // ~120°C, giving the lattice a spontaneous switchable polarization. No
+    // course topic covers ferroelectricity specifically, so like every other
+    // type without a session of its own, it lives in this "any type" world
+    // rather than being shoehorned into a topic that doesn't teach it.
+    crystal('Barium Titanate', 'ferroelectric', 27, ['ferronPulse', 'thermalFluctuation'], 0),
+    // Robust room-temperature ferroelectric Rashba semiconductor -- a
+    // stronger, more switchable ferroelectric than BaTiO₃'s own ~120°C
+    // transition, same type.
+    crystal('GeTe', 'ferroelectric', 26, ['ferronPulse', 'thermalFluctuation'], 1),
   ],
-  // The meta-world's wilds are the game's actual named hybrid materials (see
-  // HYBRID_RECIPES below) plus standalone compounds whose own type isn't
-  // tied to any of course topics 1-9 -- so the corridor plays back the
-  // player's own fusions/discoveries literally, not just as flavor text.
+  // The meta-world's wilds are exactly the game's named hybrid materials --
+  // every HYBRID_RECIPES result and nothing else -- so the corridor plays
+  // back the player's own fusions/discoveries literally, not just as flavor
+  // text. Worlds 1-9 never spawn a hybrid-recipe result as an ordinary wild
+  // (see isHybridMaterial/getWildPool below); a compound reachable by fusion
+  // is reachable *only* by fusion until the player reaches here.
   // WORLD_RIVALS[10] ("The Adapted") is the one entity that's deliberately
   // not a real material -- see that table's own comment.
   10: [
@@ -735,34 +739,43 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     crystal('NbSe₂/CrBr₃ Topological-SC Heterostructure', 'chernSuperconductor', 33, ['chiralCurrent', 'decoherenceWave'], 1, 'layer'),
     crystal('Twisted CrI₃', 'multiferroic', 32, ['electromagnonPulse', 'magneticField'], 0, 'twisted'),
     crystal('1T/1H-TaS₂ Heterostructure', 'quantumSpinLiquid', 30, ['entanglementSwap', 'visonLoop'], 4, 'layer'),
-    // Real intrinsic magnetic topological insulator -- the actual zero-field
-    // QAHE/Chern-insulator material, standalone (not a hybrid recipe
-    // result).
-    crystal('MnBi₂Te₄', 'chernInsulator', 30, ['chiralCurrent', 'tunnelStrike'], 0, 'layer'),
-    crystal('Monolayer NiI₂', 'multiferroic', 28, ['electromagnonPulse', 'magneticField'], 1, 'layer'),
     // Quantum anomalous Hall effect -- zero-field Chern insulator, from
     // doping magnetism into Bi₂Te₃ (world 3) -- 'chernInsulator', not
     // 'quantumSpinHall', since the Cr doping is specifically what breaks
     // time-reversal symmetry and turns the helical surface state into a
     // single chiral edge channel.
     crystal('Cr-doped (Bi,Sb)₂Te₃', 'chernInsulator', 29, ['chiralCurrent', 'tunnelStrike'], 2),
-    // The textbook ferroelectric -- no dedicated world of its own (no
-    // course topic covers ferroelectricity specifically), same "bonus
-    // World 10 standalone" treatment MnBi₂Te₄/NiI₂ already get.
-    crystal('Barium Titanate', 'ferroelectric', 27, ['ferronPulse', 'thermalFluctuation'], 0),
-    // Robust room-temperature ferroelectric Rashba semiconductor -- a
-    // stronger, more switchable ferroelectric than BaTiO₃'s own ~120°C
-    // transition, same type.
-    crystal('GeTe', 'ferroelectric', 26, ['ferronPulse', 'thermalFluctuation'], 1),
+    // The original 2D topological insulator (Bernevig-Hughes-Zhang model,
+    // König et al., Science 2007) -- only the engineered quantum well is
+    // topological, not either bulk parent (world 2's HgTe + CdTe) alone.
+    crystal('HgTe/CdTe Quantum Well', 'quantumSpinHall', 25, ['helicalCurrent', 'tunnelStrike'], 2, 'layer'),
+    // Twisted Bilayer MoTe₂'s zero-field *fractional* quantum Hall state
+    // genuinely fractionalizes into charged anyons, unlike world 4's
+    // ordinary integer-Landau-level members, so it lives under
+    // 'fractionalChern' instead of 'chernInsulator' -- world 4's own
+    // untwisted 2H monolayer parent fuses with itself to make this.
+    crystal('Twisted Bilayer MoTe₂', 'fractionalChern', 26, ['fluxTwist', 'thermalFluctuation'], 2, 'twisted'),
+    // Fe chains on Pb (Nadj-Perge et al. 2014) -- topological
+    // superconductivity from a magnetic chain on an s-wave SC, genuinely
+    // 'chernSuperconductor' rather than plain 'superconductor': the whole
+    // point is the Majorana zero modes at the chain's ends.
+    crystal('Fe/Pb Majorana Chain', 'chernSuperconductor', 29, ['decoherenceWave', 'chiralCurrent'], 2),
+    // The single-impurity precursor to Fe(Te,Se)/Fe-Pb Chain's Majorana
+    // physics above -- an isolated magnetic adatom (world 9's Manganese) on
+    // an *ordinary* (non-topological) s-wave superconductor (world 5's
+    // Niobium) hosts an ordinary, non-Majorana Yu-Shiba-Rusinov bound state,
+    // so unlike those it stays plain 'superconductor', no Majorana Split.
+    crystal('Mn/Nb Shiba Chain', 'superconductor', 24, ['tunnelStrike', 'thermalFluctuation'], 4),
   ],
 };
 
 // World 9's rival, "Rival Impurity Resonance," has no single fixed type the
 // way every other rival does -- an impurity/defect-bound resonance can form
 // in any host crystal, so its type is rolled at random rather than
-// authored. OverworldScene rolls it once per playthrough and caches the
-// result in the registry/save (`rival9Type`) so the goal-tile boss preview
-// and the actual battle always agree on which crystal it turned out to be.
+// authored. OverworldScene re-rolls it every time the player reaches World 9
+// and caches the result in the registry/save (`rival9Type`) for the rest of
+// that visit, so the goal-tile boss preview and the actual battle still
+// agree on which crystal it turned out to be.
 export const RIVAL_9_TYPES: MaterialType[] = [
   'metal',
   'quantumSpinHall',
@@ -864,9 +877,9 @@ export function allCrystals(): Material[] {
 // exhaustive over every possible pair on purpose, same reasoning as the
 // table's predecessor -- inventing an arbitrary result for a pair with no
 // real-world grounding isn't the goal. Every `result` is a real
-// WORLD_CRYSTALS entry (most live in World 10, see that pool's own comment),
-// reused as-is rather than duplicated, so a hybrid a player fuses and the
-// same hybrid encountered wild are the exact same crystal.
+// WORLD_CRYSTALS entry -- all of them live in World 10, see that pool's own
+// comment -- reused as-is rather than duplicated, so a hybrid a player fuses
+// and the same hybrid encountered wild are the exact same crystal.
 function namedResult(name: string): Material {
   const found = findMaterialByName(name);
   if (!found) throw new Error(`HYBRID_RECIPES: no WORLD_CRYSTALS entry named "${name}"`);
@@ -985,12 +998,15 @@ export const WORLD_NAMES: Partial<Record<number, string>> = {
 // material from worlds 1-8 on top of its own dedicated defect compounds --
 // the same "an impurity/defect-bound resonance can form in any host
 // crystal" reasoning RIVAL_9_TYPES/rollRival9Type already use for its rival,
-// literalized for its ordinary wild encounters too. Hybrid-recipe results
-// (e.g. Fe/Pb Majorana Chain, itself a world 5 wild) are excluded -- a
-// fused state isn't "a defect in an earlier crystal," it's a different
-// mechanic (Majorana's own panel, §5). Deduped by name so a compound that
-// already repeats across worlds (Graphene, Herbertsmithite, ...) doesn't
-// show up twice in world 9's own pool.
+// literalized for its ordinary wild encounters too, and the reason World 9
+// can host any type rather than a single course-topic type the way worlds
+// 1-8 do. Hybrid-recipe results are excluded -- a fused state isn't "a
+// defect in an earlier crystal," it's a different mechanic (Majorana's own
+// panel, §5), and every one of them already lives only in World 10 (see
+// WORLD_CRYSTALS[10]'s own comment), so none can appear in worlds 1-8 for
+// this loop to inherit in the first place. Deduped by name so a compound
+// that already repeats across worlds (Graphene, Herbertsmithite, ...)
+// doesn't show up twice in world 9's own pool.
 export function getWildPool(world: number): Material[] {
   const own = WORLD_CRYSTALS[world] ?? [];
   if (world !== 9) return own;

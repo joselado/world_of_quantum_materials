@@ -334,6 +334,13 @@ export class OverworldScene extends Phaser.Scene {
 
   create() {
     this.moving = false;
+    // World 9's rival re-rolls every time the player reaches this world
+    // (Hub door, Bloch's teleport, "Continue to World N+1," a debug warp --
+    // every path that lands here goes through this same create()) --
+    // clearing the cached value here forces resolveRival9Type()'s first
+    // read this visit to roll fresh; it then stays cached (so the goal-tile
+    // preview and the actual battle still agree) for the rest of this visit.
+    if (this.world === 9) this.game.registry.remove('rival9Type');
     // Phaser reuses the same Scene instance across scene.start()/restart()
     // calls -- only init()/create() rerun, class field initializers don't --
     // so a dialogue left open when the player switches away (H to return to
@@ -1336,11 +1343,12 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   // World 9's rival ("Rival Impurity Resonance") has no fixed type -- it's
-  // rolled once per playthrough (data/materials.ts's rollRival9Type) and
-  // cached in the registry/save (`rival9Type`) so the goal-tile boss
-  // preview (spawnBossSprite) and the actual battle (showRivalEncounter)
-  // always agree on which crystal it turned out to be, and a reload doesn't
-  // re-roll it.
+  // re-rolled (data/materials.ts's rollRival9Type) every time the player
+  // reaches World 9 (create()'s own `rival9Type` registry clear above forces
+  // the first read below each visit to roll fresh) and then cached in the
+  // registry/save for the rest of that visit, so the goal-tile boss preview
+  // (spawnBossSprite) and the actual battle (showRivalEncounter) still agree
+  // on which crystal it turned out to be within a single visit.
   private resolveRival9Type(): MaterialType {
     const cached = this.game.registry.get('rival9Type') as MaterialType | undefined;
     if (cached) return cached;

@@ -3,7 +3,8 @@
 Some crystals in the game aren't a single, un-mixed compound -- Majorana
 (World 5) lets you fuse two crystals you've already defeated into a new
 state, if the pairing is one of the named recipes below. Every result is a
-real `WORLD_CRYSTALS` entry (mostly found wild in World 10), so a hybrid you
+real crystal, and every one of them is also found wild in World 10 --
+worlds 1-9 never have one as an ordinary wild encounter -- so a hybrid you
 fuse and the same hybrid encountered wild are the exact same crystal.
 Dresselhaus's transmute list and Anderson's impurity-host list both exclude
 every hybrid, since both mechanics are about one real, standalone crystal's

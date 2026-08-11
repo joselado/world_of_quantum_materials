@@ -16,10 +16,12 @@
 // theory, Mott insulators, Hubbard U, spontaneous symmetry breaking) and
 // session02.tex (Bloch's theorem, tight-binding bands, graphene's Dirac
 // cone). World 10's wilds (data/materials.ts's WORLD_CRYSTALS[10]) are real
-// named hybrids/standalones rather than a session topic of their own, so
-// each one draws from whichever session its own type/recipe anchors to
-// (DESIGN.md's crystal-database table names each anchor) -- MnBi₂Te₄'s pool
-// below draws from session04.tex (Chern insulators/QHE) for this reason.
+// named hybrid-recipe results rather than a session topic of their own, so
+// each one draws from whichever session its own recipe anchors to
+// (DESIGN.md's crystal-database table names each anchor) -- Cr-doped
+// (Bi,Sb)₂Te₃'s pool below draws from session03.tex (topological band
+// theory) for this reason, since doping magnetism into world 3's Bi₂Te₃ is
+// what makes it.
 // Materials without an entry here go straight to battle (see
 // getMaterialQuestion). Not every question below
 // is literally a property of the named compound's own crystal structure
@@ -1292,10 +1294,9 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
     },
   ],
 
-  // World 10 (session04.tex: quantum Hall effect, Chern insulators,
-  // Haldane model) -- MnBi₂Te₄ anchors to this session's own real-material
-  // discussion of zero-field Chern insulators (DESIGN.md's crystal table),
-  // not to a session of its own.
+  // World 4 (session04.tex: quantum Hall effect, Chern insulators, Haldane
+  // model) continued -- MnBi₂Te₄ is this session's own real-material
+  // discussion of zero-field Chern insulators (DESIGN.md's crystal table).
   'MnBi₂Te₄': [
     {
       prompt: 'Unlike Cr-doped (Bi,Sb)₂Te₃, where magnetism has to be doped in, MnBi₂Te₄ realizes the same zero-field quantized Hall conductance because its magnetism is...',

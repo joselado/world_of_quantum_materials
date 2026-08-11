@@ -29,14 +29,14 @@ One world per course topic (see the topic table in the repo's top-level `CLAUDE.
 | 0 (Hub) | — | "The Lab" — guardian's house, save point, Materialdex | — | Start world 1 |
 | 1 | Second quantization, mean-field, SSB | **Mean-Field Meadow** — tutorial meadow | Free fermion, broken-symmetry magnet | Beat first rival crystal |
 | 2 | Symmetries, tight-binding, effective models | **Bloch Caverns** — crystalline caves, repeating tile patterns | Bloch-wave critters, lattice defect variants | Beat that world's rival crystal |
-| 3 | Topological band theory | **Topological Islands** — floating islands, one-way edge paths | Quantum spin Hall insulators, bulk and engineered alike | Cross a gap only an edge-mode move can bridge |
-| 4 | Magnetic field, QHE, Landau levels | **Landau Level Terrain** — visible field lines, quantized-orbit terrain | Landau-level materials, composite fermions | Solve a Landau-level maze |
-| 5 | Superconductivity, Nambu, Majorana | **Frozen Zero-Resistance Caverns** | s-wave SC, triplet SC, Majorana pairs (split in two) | Pair two Majorana halves |
-| 6 | Classical magnetism, magnons | **Magnon Plains** — windswept plains, spin-wave ripples | Ferro/antiferromagnets, magnon wave-riders | Ride a magnon wave across a canyon |
+| 3 | Topological band theory | **Topological Islands** — floating islands, one-way edge paths | Quantum spin Hall insulators, bulk and monolayer alike | Cross a gap only an edge-mode move can bridge |
+| 4 | Magnetic field, QHE, Landau levels | **Landau Level Terrain** — visible field lines, quantized-orbit terrain | Landau-level materials, an intrinsic zero-field Chern insulator | Solve a Landau-level maze |
+| 5 | Superconductivity, Nambu, Majorana | **Frozen Zero-Resistance Caverns** | s-wave SC, triplet SC | Pair two Majorana halves |
+| 6 | Classical magnetism, magnons | **Magnon Plains** — windswept plains, spin-wave ripples | Ferro/antiferromagnets, magnon wave-riders, a multiferroic | Ride a magnon wave across a canyon |
 | 7 | Entanglement, tensor networks | **Tensor-Network World** — bonds as paths | Entangled pairs (fought as a bonded duo) | Compress a tangled area into a walkable MPS path |
 | 8 | Quantum magnetism, spinons, Kondo | **Spinon Forest** — foggy forest, fractionalizes on contact | Spin liquids, Kondo-screened critters, a genuine Kondo-lattice heavy-fermion compound | Screen a "local moment" boss mechanic |
-| 9 | Excitations and defects | **Defect Wastes** — cracked/glitching world | Defect-bound states, impurity resonances, plus every non-hybrid material from worlds 1-8 | Repair/exploit N defects to stabilize a bridge |
-| 10 | ML for quantum materials | **The Adaptive Meta-World** — reflects the player's own team | Hybrid-recipe crystals and standalone Chern/multiferroic/ferroelectric compounds, plus the adaptive final boss | Final battle |
+| 9 | Excitations and defects | **Defect Wastes** — cracked/glitching world | Defect-bound states, impurity resonances, a couple of ferroelectrics with no course topic of their own, plus every non-hybrid material from worlds 1-8 | Repair/exploit N defects to stabilize a bridge |
+| 10 | ML for quantum materials | **The Adaptive Meta-World** — reflects the player's own team | Every hybrid-recipe crystal, and only hybrid-recipe crystals, plus the adaptive final boss | Final battle |
 
 World and rival names are meant to read as the lecture topic, not generic RPG terrain/monster
 names (check `WORLD_NAMES` and `WORLD_RIVALS` together when naming a world -- a mismatched
@@ -61,10 +61,11 @@ once the goal is reached, so the player can shop/prep before ever facing the riv
 than being stuck needing bought moves to beat a rival they can't reach the guardian to
 prepare for (`OverworldScene.tryAdvanceToNextWorld`). Every rival has a fixed main type
 except World 9's ("Rival Impurity Resonance," an impurity/defect-bound resonance that can
-form in any host crystal) -- its type is rolled at random the first time the player reaches
-World 9 (`data/materials.ts`'s `RIVAL_9_TYPES`/`rollRival9Type`) and cached in the save
-(`rival9Type`, `OverworldScene.resolveRival9Type`) for the rest of that playthrough, so the
-goal-tile boss preview and the actual battle always agree on which type it turned out to be.
+form in any host crystal) -- its type is rolled at random every time the player reaches
+World 9 (`data/materials.ts`'s `RIVAL_9_TYPES`/`rollRival9Type`, cleared and re-rolled by
+`OverworldScene.create()` on every visit) and cached in the save (`rival9Type`,
+`OverworldScene.resolveRival9Type`) for the rest of that visit, so the goal-tile boss
+preview and the actual battle still agree on which type it turned out to be.
 
 **Every world uses this same reach-goal → beat-rival → continue gate, not a bespoke
 per-world puzzle.** §6 below sketches a more ambitious per-world boss mechanic (a
@@ -170,8 +171,8 @@ keyed by world number rather than one global list — each world's `OverworldSce
 pulls its own wild-encounter pool via `getWildPool(world)`, drawing 2-4 rows from the
 matching type/topic section of the table below (topic 2 has no dedicated main type of
 its own, so it mixes metal/semiconductor/insulator compounds with "lattice" flavor
-instead of world 1's tutorial picks; world 10's pool draws from §5's hybrid-recipe results plus two
-cross-topic standalone compounds instead of one topic section, see the note just below
+instead of world 1's tutorial picks; world 10's pool draws exclusively from §5's
+hybrid-recipe results instead of one topic section, see the note just below
 the table). All ten worlds
 have a built overworld map (roadmap §9). `PLAYER_MATERIAL` (the player's own crystal,
 currently Silicon) is a fixed pick from this same table, not part of any world's wild
@@ -187,7 +188,7 @@ pool.
 | semiconductor (2) | Monolayer Molybdenum Ditelluride, 2H phase (MoTe$_2$) | The untwisted, semiconducting monolayer phase — distinct from the already-topological 1T′ phase below — that becomes Twisted Bilayer MoTe₂ once fused with itself (§5) |
 | semiconductor (2) | Mercury Telluride (HgTe) | Individually just an ordinary (inverted-gap) semiconductor — §5's hybrid-recipe parent for HgTe/CdTe Quantum Well below |
 | semiconductor (2) | Cadmium Telluride (CdTe) | Individually an ordinary wide-gap semiconductor — the barrier layer in the same HgTe/CdTe quantum-well recipe |
-| quantumSpinHall (3, hybrid) | HgTe/CdTe Quantum Well | The original 2D topological insulator (Bernevig-Hughes-Zhang model, König et al., Science 2007) — only the *engineered heterostructure* is topological, not either bulk parent above; §5 hybrid recipe result |
+| quantumSpinHall (3, hybrid) | HgTe/CdTe Quantum Well | The original 2D topological insulator (Bernevig-Hughes-Zhang model, König et al., Science 2007) — only the *engineered heterostructure* is topological, not either bulk parent above; §5 hybrid recipe result, lives as a World 10 wild rather than a World 3 one |
 | classicalMagnet (1) | Manganese Oxide (MnO) | Mott-insulating antiferromagnet — canonical mean-field/Hubbard-$U$ SSB example |
 | classicalMagnet (1) | Nickel Oxide (NiO) | Same family, another textbook mean-field SSB magnet |
 | classicalMagnet (1, rare/special) | Graphene at strong coupling | Session 1 notes a finite $U_c$ opens a Mott/antiferromagnetic gap at the Dirac point — same base crystal as the metal entry above, but pushed past its symmetry-breaking threshold |
@@ -199,18 +200,18 @@ pool.
 | chernInsulator (3→10, hybrid) | Cr-doped (Bi,Sb)$_2$Te$_3$ | Quantum anomalous Hall effect — the Cr doping breaks time-reversal symmetry and turns Bi₂Te₃'s helical surface state into a single chiral edge channel, a zero-field integer Chern insulator; §5 hybrid recipe result, lives as a World 10 wild rather than a World 3 one |
 | chernInsulator (4) | Gallium Arsenide (GaAs) | The original 2DEG platform for the integer quantum Hall effect — field-driven Landau levels, the same (integer) Chern-number invariant as the zero-field entries above |
 | chernInsulator (4) | Graphene, in strong field | Dirac-electron Landau levels, plateaus observable up to ~room temperature |
-| fractionalChern (4) | Twisted bilayer Molybdenum Ditelluride (MoTe$_2$) | Zero-field *fractional* quantum Hall from topological flat bands — genuinely fractionalizes into charged anyons, unlike GaAs/Graphene's ordinary integer Landau levels above, so it gets its own type rather than sharing `chernInsulator` |
-| chernInsulator (4, new type) | Manganese Bismuth Telluride (MnBi$_2$Te$_4$) | Real intrinsic magnetic topological insulator — the actual zero-field QAHE/Chern-insulator material, standalone (not a hybrid recipe result); lives as a World 10 wild (§5) alongside the game's hybrid recipe results |
+| fractionalChern (4, hybrid) | Twisted bilayer Molybdenum Ditelluride (MoTe$_2$) | Zero-field *fractional* quantum Hall from topological flat bands — genuinely fractionalizes into charged anyons, unlike GaAs/Graphene's ordinary integer Landau levels above, so it gets its own type rather than sharing `chernInsulator`; §5 hybrid recipe result (the 2H monolayer above fused with itself), lives as a World 10 wild rather than a World 4 one |
+| chernInsulator (4, new type) | Manganese Bismuth Telluride (MnBi$_2$Te$_4$) | Real intrinsic magnetic topological insulator — the actual zero-field QAHE/Chern-insulator material, standalone (not a hybrid recipe result) |
 | superconductor (5) | Aluminum (Al) | Conventional phonon-mediated BCS s-wave superconductor |
 | superconductor (5) | Lead (Pb) | Same family, higher $T_c$ |
 | superconductor (5) | YBCO / cuprates | Unconventional nodal d-wave high-$T_c$ superconductor, still ordinary (non-topological) pairing |
 | chernSuperconductor (5, engineered) | NbSe$_2$/CrBr$_3$ heterostructure | s-wave SC + spin-orbit + exchange field engineered into a topological superconductor — genuine topological pairing, so it (and its Majorana Split move) live here rather than plain `superconductor` |
-| chernSuperconductor (5, engineered) | Iron chains on lead (Fe/Pb) | Majorana-chain platform — topological superconductivity from a magnetic chain on an s-wave SC |
+| chernSuperconductor (5, engineered, hybrid) | Iron chains on lead (Fe/Pb) | Majorana-chain platform — topological superconductivity from a magnetic chain on an s-wave SC; §5 hybrid recipe result (world 6's Iron + this world's Lead), lives as a World 10 wild rather than a World 5 one |
 | superconductor (5) | Niobium (Nb) | Highest-$T_c$ elemental BCS superconductor at ambient pressure, same conventional family as Aluminum/Lead; also §5's non-magnetic parent for Mn/Nb Shiba Chain below |
 | superconductor (5) | Tantalum Disulfide, 1H phase (TaS$_2$) | Metallic/superconducting TMD monolayer in its own right — distinct from the 1T phase below, and the other half of §5's 1T/1H-TaS₂ heterostructure hybrid recipe |
 | chernSuperconductor (9) | Iron Telluride/Selenide (Fe(Te,Se)) | Hosts Yu-Shiba-Rusinov *and* vortex-bound Majorana defect states (Zhang et al., Science 2018) — the vortex Majorana observation is genuine topological superconductivity, so this is `chernSuperconductor` rather than plain `superconductor` |
 | superconductor (9, textbook fill-in) | Niobium Diselenide (NbSe$_2$), STM-imaged impurities | Friedel oscillations / impurity-resonance textbook platform, ordinary (non-topological) disorder physics; also pairs with CrI₃/CrBr₃ in §5's topological-SC heterostructure recipes |
-| superconductor (9, hybrid) | Mn/Nb Shiba Chain | A single Mn adatom on ordinary (non-topological) Niobium hosts an ordinary Yu-Shiba-Rusinov bound state (Yazdani et al., Science 1997) — the single-impurity precursor to Fe(Te,Se)/Fe/Pb Chain above; §5 hybrid recipe result, stays plain `superconductor`, no Majorana Split the way those genuinely topological cases get |
+| superconductor (9, hybrid) | Mn/Nb Shiba Chain | A single Mn adatom on ordinary (non-topological) Niobium hosts an ordinary Yu-Shiba-Rusinov bound state (Yazdani et al., Science 1997) — the single-impurity precursor to Fe(Te,Se)/Fe/Pb Chain above; §5 hybrid recipe result, stays plain `superconductor`, no Majorana Split the way those genuinely topological cases get, lives as a World 10 wild rather than a World 9 one |
 | classicalMagnet (6) | Iron (Fe) | Classic itinerant ferromagnet, magnon carrier |
 | classicalMagnet (6) | Cobalt (Co) | Same family |
 | classicalMagnet (6) | Chromium Triiodide (CrI$_3$) | Van der Waals ferromagnet with an observed topological magnon gap |
@@ -225,10 +226,10 @@ pool.
 | quantumSpinLiquid (8, engineered) | 1T-TaS$_2$ on 1H-TaS$_2$ | Engineered 2D Kondo-insulator heterostructure — wired in as §5's 1T/1H-TaS₂ heterostructure hybrid recipe, fusing the two standalone phase entries below |
 | quantumSpinLiquid (8) | Tantalum Disulfide, 1T phase (TaS$_2$) | Star-of-David CDW Mott insulator / quantum-spin-liquid candidate (Law & Lee 2017) — the other half of the 1T/1H heterostructure above |
 | kondoHeavyFermion (8, new type) | Ytterbium Rhodium Silicide (YbRh$_2$Si$_2$) | The flagship heavy-fermion/Kondo-lattice quantum-critical-point material — gives Kondo's own world a genuine Kondo-lattice compound, distinct from the frustrated-magnet spin-liquid candidates above |
-| multiferroic (6, new type) | Nickel Diiodide (NiI$_2$), monolayer | Type-II multiferroic from noncollinear/helimagnetic order down to the monolayer limit (Song et al., Nature 2022) — hosts genuine electromagnons, the type's flagship. Same session (classical magnetism/magnons) as classicalMagnet, not its own world -- lives as a World 10 wild (§5) alongside the game's hybrid recipe results |
+| multiferroic (6, new type) | Nickel Diiodide (NiI$_2$), monolayer | Type-II multiferroic from noncollinear/helimagnetic order down to the monolayer limit (Song et al., Nature 2022) — hosts genuine electromagnons, the type's flagship. Same session (classical magnetism/magnons) as classicalMagnet above, so it's a World 6 wild too rather than its own world |
 | multiferroic (6, new type, hybrid) | Twisted CrI₃ | §5 hybrid recipe (CrI₃ + CrI₃) — noncollinear moiré spin textures theoretically predicted (not yet confirmed) to induce magnetoelectric coupling; untwisted CrI₃ itself is only classicalMagnet |
-| ferroelectric (new type) | Barium Titanate (BaTiO$_3$) | The textbook ferroelectric — its Ti⁴⁺ ion sits off-center below ~120°C, giving the lattice a spontaneous switchable polarization; no course topic covers ferroelectricity specifically, so it's a World 10 standalone like MnBi₂Te₄/NiI₂ |
-| ferroelectric (new type) | Germanium Telluride (GeTe) | Robust room-temperature ferroelectric Rashba semiconductor — a stronger, more switchable ferroelectric than BaTiO₃'s own ~120°C transition, same type |
+| ferroelectric (new type) | Barium Titanate (BaTiO$_3$) | The textbook ferroelectric — its Ti⁴⁺ ion sits off-center below ~120°C, giving the lattice a spontaneous switchable polarization; no course topic covers ferroelectricity specifically, so like every other type without a session of its own it lives in World 9, which can host any type |
+| ferroelectric (new type) | Germanium Telluride (GeTe) | Robust room-temperature ferroelectric Rashba semiconductor — a stronger, more switchable ferroelectric than BaTiO₃'s own ~120°C transition, same type, also a World 9 wild |
 | chernSuperconductor (10, hybrid) | InAs/Al Majorana Wire | Engineered from an ordinary s-wave superconductor (Aluminum) proximitizing a strong-spin-orbit semiconductor (InAs) — genuine topological pairing, so `chernSuperconductor` rather than plain `superconductor`; §5 hybrid recipe result |
 | adaptive (10) | — (no compound, by design) | Only `WORLD_RIVALS[10]`'s finale boss ("a model of you") — World 10's ordinary wilds are not 'adaptive', see the note above the crystal-database table |
 
@@ -276,17 +277,17 @@ overworld's own non-black sky) so the overlap region genuinely mixes both colors
 a glowing seam. See `data/materials.ts`'s `combineMaterials`/`hybridParents` and
 STYLE.md's "Crystal sprites" section.
 
-World 10's wild pool (`WORLD_CRYSTALS[10]` in `data/materials.ts`) hosts the game's
-actual named hybrid-recipe results (§5's `HYBRID_RECIPES`) plus standalone compounds
-whose own type either belongs to an existing topic's session (chernInsulator → topic 4,
-quantum Hall; multiferroic → topic 6, classical magnetism/magnons) or has no course topic
-of its own at all (ferroelectric) but has no dedicated world either way (MnBi₂Te₄, the
-real intrinsic QAHE/Chern-insulator material; Monolayer NiI₂, the multiferroic type's
-flagship, Song et al., Nature 2022; Barium Titanate and GeTe, the ferroelectric type's
-flagships) — so the meta-world's corridor plays back the player's own fusions/discoveries
-literally rather than as echo flavor text. `WORLD_RIVALS[10]` ("The Adapted"), a separate
-table from the wild pool, is the one 'adaptive'-type entry in the game — a "no real
-compound, a model of you" finale boss.
+World 10's wild pool (`WORLD_CRYSTALS[10]` in `data/materials.ts`) hosts exactly the
+game's actual named hybrid-recipe results (§5's `HYBRID_RECIPES`) and nothing else —
+worlds 1-9 never spawn a hybrid-recipe result as an ordinary wild, so the meta-world's
+corridor plays back the player's own fusions/discoveries literally rather than as echo
+flavor text. Standalone compounds whose own type has no dedicated world of its own
+(MnBi₂Te₄ and Monolayer NiI₂, whose types tie to existing topics' sessions; Barium
+Titanate and GeTe, whose ferroelectric type ties to none) instead live in the earlier
+world their topic anchors to, or in World 9 (which can host any type) if it anchors to
+none — see the crystal-database table above. `WORLD_RIVALS[10]` ("The Adapted"), a
+separate table from the wild pool, is the one 'adaptive'-type entry in the game — a "no
+real compound, a model of you" finale boss.
 
 **Subtype combination flavor (real-compound tie-ins):** the same mechanic from §3
 (main type + subtype → new material) has ready real-world flavor text once crystals are
@@ -535,10 +536,9 @@ does. World 10 has no guardian; its only encounter is the finale.
   structure actually takes into a topological one, and beating a crystal means understanding
   its own band structure well enough to wear it for a while. Transmuting changes the player's
   look, HP cap, and which moves are currently usable (§3), without erasing any move already
-  learned. **Excludes every hybrid-recipe result** (`data/materials.ts`'s `isHybridMaterial`)
-  -- Fe/Pb Majorana Chain and Twisted Bilayer MoTe₂ (recipe results also encountered wild),
-  and Cr-doped (Bi,Sb)₂Te₃ (recipe-only, not encountered wild) -- becoming a fused state is
-  specifically Majorana's mechanic below, not this one. In Superposition Mode the candidate
+  learned. **Excludes every hybrid-recipe result** (`data/materials.ts`'s `isHybridMaterial`,
+  every one of which lives only as a World 10 wild, never an earlier one) -- becoming a
+  fused state is specifically Majorana's mechanic below, not this one. In Superposition Mode the candidate
   list is every non-hybrid crystal in the game (`data/materials.ts`'s `allCrystals()`, filtered) rather
   than only ones actually defeated
 - **Laughlin** → world 4 middle → teaches three passive abilities
@@ -584,7 +584,7 @@ does. World 10 has no guardian; its only encounter is the finale.
   many-impurity Majorana case; HgTe + CdTe → HgTe/CdTe Quantum Well, the original
   Bernevig-Hughes-Zhang quantum spin Hall platform (König et al., Science 2007) --
   neither parent is topological on its own, only the engineered quantum well is.
-  Recipe results are ordinary `WORLD_CRYSTALS` entries (mostly World
+  Recipe results are ordinary `WORLD_CRYSTALS` entries (all of them World
   10's pool, see §2/§7 below) rather than synthesized on the fly, so a hybrid
   encountered wild and one fused by hand are the exact same crystal; `combineMaterials`
   additionally attaches `hybridParents` so the fused form still renders as an actual

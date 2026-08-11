@@ -39,7 +39,6 @@ don't hand-edit the `<!-- GENERATED -->` blocks.*
 | --- | --- | --- |
 | Bi₂Te₃ | `quantumSpinHall` | 24 |
 | Monolayer WTe₂ | `quantumSpinHall` | 23 |
-| HgTe/CdTe Quantum Well | `quantumSpinHall` | 25 |
 
 ### World 4 -- Magnetic field, quantum Hall effect, Landau levels
 
@@ -47,7 +46,7 @@ don't hand-edit the `<!-- GENERATED -->` blocks.*
 | --- | --- | --- |
 | Gallium Arsenide | `chernInsulator` | 25 |
 | Graphene (strong field) | `chernInsulator` | 24 |
-| Twisted Bilayer MoTe₂ | `fractionalChern` | 26 |
+| MnBi₂Te₄ | `chernInsulator` | 30 |
 
 ### World 5 -- Superconductivity, Nambu representation, Majoranas
 
@@ -56,7 +55,6 @@ don't hand-edit the `<!-- GENERATED -->` blocks.*
 | Aluminum | `superconductor` | 28 |
 | Lead | `superconductor` | 30 |
 | YBCO | `superconductor` | 27 |
-| Fe/Pb Majorana Chain | `chernSuperconductor` | 29 |
 | Niobium | `superconductor` | 29 |
 | Tantalum Disulfide (1H) | `superconductor` | 26 |
 
@@ -68,6 +66,7 @@ don't hand-edit the `<!-- GENERATED -->` blocks.*
 | Cobalt | `classicalMagnet` | 27 |
 | Chromium Triiodide | `classicalMagnet` | 25 |
 | Chromium Tribromide | `classicalMagnet` | 25 |
+| Monolayer NiI₂ | `multiferroic` | 28 |
 
 ### World 7 -- Quantum entanglement and tensor networks
 
@@ -95,7 +94,8 @@ don't hand-edit the `<!-- GENERATED -->` blocks.*
 | Fe(Te,Se) | `chernSuperconductor` | 22 |
 | Niobium Diselenide | `superconductor` | 21 |
 | Manganese | `classicalMagnet` | 23 |
-| Mn/Nb Shiba Chain | `superconductor` | 24 |
+| Barium Titanate | `ferroelectric` | 27 |
+| GeTe | `ferroelectric` | 26 |
 
 ### World 10 -- Machine learning for quantum materials
 
@@ -107,11 +107,11 @@ don't hand-edit the `<!-- GENERATED -->` blocks.*
 | NbSe₂/CrBr₃ Topological-SC Heterostructure | `chernSuperconductor` | 33 |
 | Twisted CrI₃ | `multiferroic` | 32 |
 | 1T/1H-TaS₂ Heterostructure | `quantumSpinLiquid` | 30 |
-| MnBi₂Te₄ | `chernInsulator` | 30 |
-| Monolayer NiI₂ | `multiferroic` | 28 |
 | Cr-doped (Bi,Sb)₂Te₃ | `chernInsulator` | 29 |
-| Barium Titanate | `ferroelectric` | 27 |
-| GeTe | `ferroelectric` | 26 |
+| HgTe/CdTe Quantum Well | `quantumSpinHall` | 25 |
+| Twisted Bilayer MoTe₂ | `fractionalChern` | 26 |
+| Fe/Pb Majorana Chain | `chernSuperconductor` | 29 |
+| Mn/Nb Shiba Chain | `superconductor` | 24 |
 <!-- GENERATED:WORLDS END -->
 
 ## World rivals
@@ -122,9 +122,9 @@ Adapted, is the one entity in the game with no real compound behind it: a
 "model of you," able to host every quasiparticle class, drawing from
 whatever moves you've collected by then. World 9's rival, Rival Impurity
 Resonance, has no fixed type either -- an impurity/defect-bound resonance
-can form in any host crystal, so its type is rolled at random the first time
-you reach World 9 and stays fixed for the rest of that playthrough, which is
-why it's absent from the generated table below.
+can form in any host crystal, so its type is rolled at random every time you
+reach World 9 and stays fixed only for that visit, which is why it's absent
+from the generated table below.
 
 <!-- GENERATED:RIVALS_TABLE START -->
 | World | Rival | Type | Max HP |

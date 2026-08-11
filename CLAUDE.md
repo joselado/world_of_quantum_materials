@@ -38,6 +38,8 @@ to read than re-deriving the same context from the code:
   — run `npm run docs` from `game/` rather than hand-editing a table, so the
   docs can't drift from the code that defines the content.
 
+Some of those files may sound contradictory with CLAUDE.md. If so, ask me for clarification.
+
 ## Course-content cross-reference
 
 `lecture_notes/` at the repo root is a **local-only symlink** (gitignored, not
@@ -95,3 +97,37 @@ checkout; that's gone now that this repo *is* the standalone checkout). Commit a
   week's becomes actively misleading, not just clutter. As with the docs, keep
   genuine load-bearing rationale (the *why* behind a current rule) — cut only
   the narration of the change itself.
+
+
+## Enemies in short
+### Ordinary wild encounters
+Worlds 1-8 each draw their wild encounters from a curated, dedicated set of types (their
+course topic's own materials). World 9 can spawn any type (it inherits every non-hybrid
+material from worlds 1-8). World 10
+spawns only hybrid-recipe results — every material reachable by fusing two crystals (Majorana,
+§5) also spawns there as an ordinary wild, and nowhere else. Worlds 1-9 never spawn a
+hybrid-recipe result as an ordinary wild.
+
+### Boss (end of world)
+Worlds 1-8 each have a rival with a fixed type. World 9's rival has a type rolled at random
+every time the player reaches it. World 10's rival is "The Adapted," an adaptive AI boss
+with no fixed type — a model of the player's own crystal.
+
+## Development hierarchy
+What is written in CLAUDE.md overrides anything said anywhere else. If I give an instruction
+that seems contradictory to it, ask me how to proceed — that's the only case where you may
+act against something in CLAUDE.md.
+
+
+## General
+README.md and the files it refers to for details (moves, Guardians, etc..) should be focused on the player,
+meaning that they are about how the game is played, not about internal technical organization of the code.
+
+## Dealing with contradictions
+Sometimes during editing you may find contradictory instructions from different files. When
+it is not clear which rule should be followed, please just ask me.
+
+
+## Physics comes first
+When adding the features or modifying them, physical correctness comes first. If there are unclear cases,
+ask me directly. 
