@@ -779,20 +779,22 @@ other panel, stroked cyan (`0x5ad9ff`, see `STYLE.md`). Only reachable from the 
 again rather than rebuilding the whole scene. To add/edit a tip, only `data/tutorial.ts` needs
 touching -- both this and the contextual popups above read it generically.
 
-**Materialdex indexes every crystal, not just discovered ones, one entry per page.**
-`HubScene.materialdexIndex()` maps `data/materials.ts`'s `allCrystals()` against registry
-`discoveredMaterials`; `filteredMaterialdexIndex()` narrows that by `materialdexQuery`
-(substring match on name) and `materialdexTypeFilter` (a `MaterialType` or `'all'`).
-`renderMaterialdexPage()` renders `entries[materialdexPage]` -- masked to "???" plus a flat
-dim-grey crystal render when undiscovered -- with Back/Next/Left-Right stepping one entry
-at a time (`stepMaterialdexPage`), same shape as `OverworldScene`'s tutorial paging. Search
-typing is captured by a scene-wide `keydown` listener registered once in `create()`, gated
-on the `materialdexOpen` field (set/cleared by `showMaterialdex`/`closeDialogue`) so it's a
-no-op whenever the Materialdex isn't the open panel. Panel height is computed top-down from
-each element's actual measured height (`renderMaterialdexPage`'s running `y`, same pattern
-as `OverworldScene.showInfoPanel`) rather than fixed, with the blurb's own font shrinking in
-whole-px steps (floor `9`) if a long entry would otherwise overflow -- a fixed panel size
-here previously let long blurbs push the footer off-panel at larger text-size presets.
+**Materialdex indexes every crystal, not just discovered ones, as a two-column list+detail
+panel.** `HubScene.materialdexIndex()` maps `data/materials.ts`'s `allCrystals()` against
+registry `discoveredMaterials`; `filteredMaterialdexIndex()` narrows that by
+`materialdexTypeFilter` (a `MaterialType` or `'all'`). `renderMaterialdexPanel()` renders the
+left column as one clickable row per (filtered) entry -- masked to "???" when undiscovered,
+long labels trimmed to an ellipsis against their own measured width (`fitListLabel`) rather
+than wrapped -- paginated via `materialdexListPage` once the list outgrows one screen, same
+sample-row-measurement technique `OverworldScene.renderPagedButtons` uses. The right column
+renders whichever entry `materialdexSelectedName` points at (looked up by name in the
+*unfiltered* index, so it stays valid across a list-page flip and only gets reassigned to the
+new filtered list's first entry on a type-filter change) -- crystal render, name, physics
+blurb, masked the same way when undiscovered. Panel height is computed top-down from each
+element's actual measured height (`renderMaterialdexPanel`'s running `y`, same pattern as
+`OverworldScene.showInfoPanel`), taking the taller of the two columns before placing the
+shared "Close" footer, with the blurb's own font shrinking in whole-px steps (floor `9`) if a
+long entry would otherwise overflow.
 
 **Candidate-crystal lists share one pager: `OverworldScene.renderPagedButtons<T>`.** Used by
 Dresselhaus's transmute list, both steps of Majorana's and Anderson's combine/dope flows, and Bloch's

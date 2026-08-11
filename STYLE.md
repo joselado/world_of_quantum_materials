@@ -35,10 +35,21 @@ than appending a changelog, so this always reflects current reality.
 
 ## The Hub (`scenes/HubScene.ts`, world 0)
 
-- A single static room, not a walkable map: dark blue-purple gradient background with a
-  lighter "floor" band (from y=340 down) ruled into vertical panel lines for a bit of
-  architectural texture. No perspective/camera machinery -- everything is laid out at fixed
-  canvas coordinates.
+- A single static room, not a walkable map, built entirely from `drawRoom()`'s one-time
+  Graphics calls (no `update()` on this scene, so the extra detail below costs nothing per
+  frame): a dark band ceiling (`y` 0-46) with three recessed light-panel glows and a seam line
+  marking where it meets the back wall; the wall itself the same dark blue-purple gradient the
+  room always had (`0x1a1a2e` → `0x242440`), now confined between that ceiling seam and the
+  floor rather than spanning the whole canvas, carrying a pair of conduit pipes with rivets, a
+  shelf ledge holding five small glowing `makeCrystal` specimens (lab samples, in the same
+  faceted-crystal visual language as every other crystal in the game), and two dark
+  wall-mounted instrument panels with a faint glow and scanlines; a workbench/counter band
+  along the wall's base (cabinet-door seams, a lit top edge) that the hotspots stand in front
+  of; and a tiled/grating floor (alternating flat-color tiles plus a full grid of seam lines --
+  each tile still a single flat color, no per-tile diagonal shading, same "floors read better
+  flat" rule as the overworld's own ground tiles). A soft additive-blended glow pools on the
+  floor beneath where the player's crystal floats, so the room isn't uniformly flat-lit. No
+  perspective/camera machinery -- everything is laid out at fixed canvas coordinates.
 - Three hotspots in a row on the floor band (`addHotspot`), each a small `makeCrystal` icon
   bobbing in place with a label underneath, in the same gold-on-black label treatment as
   overworld encounters/tokens: a purple prism for "Materialdex", a gold shard for "Save
@@ -51,27 +62,29 @@ than appending a changelog, so this always reflects current reality.
 - Save Point reuses the same dark rounded-rectangle-with-stroke treatment as overworld
   dialogues (`showPanel`), stroked in purple (`0x9a6ad9`) to match the Materialdex icon,
   with a single "Close" button.
-- **Materialdex** (`HubScene.renderMaterialdexPage`) is a one-entry-per-page index over
-  every real compound in the game (`data/materials.ts`'s `allCrystals()`, alphabetical by
-  name), not just ones the player has found -- an undiscovered entry still gets a slot,
-  masked to a "???" name, a generic "Not yet discovered" blurb, and a flat dim-grey
-  (`0x33394a`) silhouette in place of the compound's own rendered look, rather than the
-  index only ever growing as the player finds things. Panel stroked purple (`0x9a6ad9`,
-  matching the Materialdex icon) same as Save Point's. Each page shows the compound's own
-  crystal render (`makeCrystal`, size `36`), name, and physics blurb (`materialdex.ts`'s
-  `materialBlurb`) together, with an `Entry i/N` counter and `<- Back`/`Next ->` (also
-  Left/Right keys) to step one entry at a time. A **search box** (`Search: <query>_`, type
-  to filter -- captured by a scene-wide keydown handler gated on `materialdexOpen` so
-  typing elsewhere in the Hub is unaffected) narrows the index to compounds whose name
-  contains the query, case-insensitive and regardless of discovery state; a **type
-  filter** button (`Type: <MaterialType | All> ▸`) cycles through every `MaterialType`
-  plus "All". Both reset the page to the first match and persist until the panel is
-  reopened. Content is laid out top-down with each element's own measured height
-  advancing a running `y` (same pattern as `OverworldScene.showInfoPanel`), and the
-  blurb's font shrinks in whole-px steps (floor `9`) if a long entry would otherwise push
-  the counter/footer off the panel -- the panel's own background rectangle is sized and
-  inserted behind everything only once the real content height is known, rather than a
-  fixed panel size, since blurb length varies a lot from one compound to the next.
+- **Materialdex** (`HubScene.renderMaterialdexPanel`) is a two-column index over every real
+  compound in the game (`data/materials.ts`'s `allCrystals()`, alphabetical by name), not just
+  ones the player has found -- an undiscovered entry still gets a slot, masked to a "???" name
+  in both columns, a generic "Not yet discovered" blurb, and a flat dim-grey (`0x33394a`)
+  silhouette in place of the compound's own rendered look, rather than the index only ever
+  growing as the player finds things. Panel (`620` wide) stroked purple (`0x9a6ad9`, matching
+  the Materialdex icon) same as Save Point's. The **left column** lists every (filtered) entry's
+  own name as its own clickable row -- as many as fit on one screen at the current text-size
+  preset (same sample-row-measurement technique as "Paginated candidate lists" below), a
+  selected row highlighted gold-on-purple, with `<- Prev`/`Next ->` and a `Page N/M` label
+  appearing only once the full list outgrows one page. A row whose own label would run past
+  the column's width is trimmed to an ellipsis (measured against the text's actual rendered
+  width at the current font-scale preset) rather than wrapped, since wrapping would make row
+  heights uneven and break the page-fit math. The **right column** shows whichever row is
+  currently selected: the compound's own crystal render (`makeCrystal`, size `36`), name, and
+  physics blurb (`materialdex.ts`'s `materialBlurb`) -- the blurb's font shrinks in whole-px
+  steps (floor `9`) if a long entry would otherwise push the panel's footer off the canvas. A
+  **type filter** button (`Type: <MaterialType | All> ▸`) cycles through every `MaterialType`
+  plus "All," narrowing which rows appear in the left column and resetting the list to its
+  first page and first matching row. A single "Close" button sits below both columns. Every
+  element is laid out top-down with its own measured height advancing a running `y` (same
+  pattern as `OverworldScene.showInfoPanel`), the panel's own background rectangle sized and
+  inserted behind everything only once the taller of the two columns' real height is known.
 
 ## Overworld path
 

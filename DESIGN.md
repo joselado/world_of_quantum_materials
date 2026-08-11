@@ -528,8 +528,9 @@ recorded into the Phaser registry's `discoveredMaterials` list
 compound in the game (`data/materials.ts`'s `allCrystals()`), not just discovered ones --
 an entry not yet found shows as "???" with a masked crystal render rather than being
 absent from the list entirely, so the index reads as a checklist of the whole game.
-Searchable by name and filterable by type, one entry (name, blurb, and the compound's own
-rendered crystal) shown per page (`HubScene.renderMaterialdexPage`). A compound that also
+Filterable by type, laid out as a scannable left-column list of every (matching) compound's
+name alongside a right-hand detail pane (name, blurb, and the compound's own rendered
+crystal) for whichever one is selected (`HubScene.renderMaterialdexPanel`). A compound that also
 carries a short chemical-formula/acronym form (`data/types.ts`'s `Material.shortName`, e.g.
 "Manganese Oxide (MnO)", "Yttrium Iron Garnet (YIG)") shows it in parentheses right after the
 full name (`data/materials.ts`'s `materialDisplayName`) -- optional, only set where a
