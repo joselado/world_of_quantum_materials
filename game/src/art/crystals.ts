@@ -13,9 +13,18 @@ const NO_STRETCH: Stretch = { x: 1, y: 1 };
 
 // A single faceted gem, drawn centered on (0,0) in the Graphics object's own
 // local space -- callers position/rotate it via the Graphics object's own
-// transform rather than doing point-rotation math by hand.
-function drawShardShape(g: Phaser.GameObjects.Graphics, size: number, color: number, stretch: Stretch = NO_STRETCH) {
-  const P = (x: number, y: number) => ({ x: x * stretch.x, y: y * stretch.y });
+// transform rather than doing point-rotation math by hand. `widthScale`
+// narrows the whole silhouette without touching its height, turning the same
+// formula into an elongated "prismatic" needle (see the cluster branch of
+// `makeCrystal`) instead of a wide gem.
+function drawShardShape(
+  g: Phaser.GameObjects.Graphics,
+  size: number,
+  color: number,
+  stretch: Stretch = NO_STRETCH,
+  widthScale = 1
+) {
+  const P = (x: number, y: number) => ({ x: x * widthScale * stretch.x, y: y * stretch.y });
   const top = P(0, -size);
   const upperLeft = P(-size * 0.55, -size * 0.25);
   const upperRight = P(size * 0.55, -size * 0.25);
@@ -38,6 +47,39 @@ function drawShardShape(g: Phaser.GameObjects.Graphics, size: number, color: num
 
   g.lineStyle(2, shade(color, -55), 1);
   g.strokePoints([top, upperRight, lowerRight, bottom, lowerLeft, upperLeft], true);
+}
+
+// A blocky isometric cube -- top rhombus + two shaded side faces -- the
+// "cubic" habit (pyrite, galena, fluorite) alongside `drawShardShape`'s
+// elongated "prismatic" needle and `drawPrismShape`'s hexagonal column, used
+// together for the cluster variant's three-different-habits look.
+function drawCubicShape(g: Phaser.GameObjects.Graphics, size: number, color: number, stretch: Stretch = NO_STRETCH) {
+  const P = (x: number, y: number) => ({ x: x * stretch.x, y: y * stretch.y });
+  const top = P(0, -size * 0.85);
+  const left = P(-size * 0.55, -size * 0.45);
+  const right = P(size * 0.55, -size * 0.45);
+  const center = P(0, -size * 0.05);
+  const bottomLeft = P(-size * 0.55, size * 0.25);
+  const bottomRight = P(size * 0.55, size * 0.25);
+  const bottom = P(0, size * 0.65);
+
+  const topFace = [top, right, center, left];
+  g.fillStyle(shade(color, 35), 1);
+  g.fillPoints(topFace, true);
+  g.lineStyle(2, shade(color, -45), 1);
+  g.strokePoints(topFace, true);
+
+  const leftFace = [left, center, bottom, bottomLeft];
+  g.fillStyle(shade(color, -15), 1);
+  g.fillPoints(leftFace, true);
+  g.lineStyle(2, shade(color, -55), 1);
+  g.strokePoints(leftFace, true);
+
+  const rightFace = [center, right, bottomRight, bottom];
+  g.fillStyle(shade(color, -35), 1);
+  g.fillPoints(rightFace, true);
+  g.lineStyle(2, shade(color, -55), 1);
+  g.strokePoints(rightFace, true);
 }
 
 // A layered hexagonal prism -- hex top face + two shaded side faces -- meant to
@@ -195,22 +237,27 @@ export function makeCrystal(
   const rot = jitter?.rotationRad ?? 0;
 
   if (variant === 'cluster') {
-    const left = scene.add.graphics();
-    drawShardShape(left, size * 0.55, drawColor, stretch);
-    left.setPosition(-size * 0.4, size * 0.3);
-    left.setRotation(Phaser.Math.DegToRad(-18) + rot);
-    container.add(left);
+    // Three genuinely different crystal habits intergrown together -- a
+    // narrow prismatic needle, a blocky cube, and a hexagonal column --
+    // rather than the same shard silhouette repeated at three sizes, so a
+    // "resting cluster of crystals" actually reads as a mineral specimen
+    // instead of one gem split into copies.
+    const prismatic = scene.add.graphics();
+    drawShardShape(prismatic, size * 0.6, drawColor, stretch, 0.4);
+    prismatic.setPosition(-size * 0.42, size * 0.3);
+    prismatic.setRotation(Phaser.Math.DegToRad(-20) + rot);
+    container.add(prismatic);
 
-    const right = scene.add.graphics();
-    drawShardShape(right, size * 0.55, drawColor, stretch);
-    right.setPosition(size * 0.4, size * 0.32);
-    right.setRotation(Phaser.Math.DegToRad(16) - rot);
-    container.add(right);
+    const cubic = scene.add.graphics();
+    drawCubicShape(cubic, size * 0.5, drawColor, stretch);
+    cubic.setPosition(size * 0.4, size * 0.34);
+    cubic.setRotation(Phaser.Math.DegToRad(14) - rot);
+    container.add(cubic);
 
-    const main = scene.add.graphics();
-    drawShardShape(main, size * 0.8, drawColor, stretch);
-    main.setRotation(rot * 0.5);
-    container.add(main);
+    const hexagonal = scene.add.graphics();
+    drawPrismShape(hexagonal, size * 0.8, drawColor, stretch);
+    hexagonal.setRotation(rot * 0.5);
+    container.add(hexagonal);
   } else if (variant === 'prism') {
     const g = scene.add.graphics();
     drawPrismShape(g, size, drawColor, stretch);

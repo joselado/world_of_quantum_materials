@@ -159,7 +159,12 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 
 - Shared `makeCrystal()` builder (`art/crystals.ts`): faceted `shard` / `cluster` / `prism`
   silhouette per material, colored per its main type (`TYPE_LOOK` in `data/materials.ts`),
-  plus a highlight and twinkling sparkles.
+  plus a highlight and twinkling sparkles. `cluster` (classicalMagnet, quantumSpinLiquid,
+  kondoHeavyFermion) draws three genuinely different real crystal habits intergrown
+  together rather than one shape repeated at three sizes: a narrow prismatic needle
+  (`drawShardShape` with its `widthScale` param narrowed), a blocky isometric cube
+  (`drawCubicShape`), and a hexagonal column (`drawPrismShape`, reused directly) -- so a
+  "resting cluster" reads as an actual mineral specimen rather than duplicated gems.
 - Two more variants exist for compounds whose actual dimensionality/stacking doesn't read
   as a solid gem: `layer` is a single thin, flattened hexagonal sheet with a soft
   *detached* shadow underneath it (not touching the sheet) so it reads as floating rather
