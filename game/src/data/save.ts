@@ -90,6 +90,16 @@ export interface SaveData {
   // fixed for the rest of the playthrough so the goal-tile boss preview and
   // the actual battle always agree on which crystal it turned out to be.
   rival9Type: MaterialType | null;
+  // The crystal name currently doped in as an impurity via Anderson's panel
+  // (scenes/panels/anderson.ts) -- null until the player picks a host there
+  // for the first time. getBattleMoves unions this host's own
+  // MOVE_COMPATIBILITY classes into the player's for as long as it stays set,
+  // so a move learned from the dopant is battle-usable even if the player's
+  // own type can't host it. Picking a different host in Anderson overwrites
+  // this rather than adding to it -- only one impurity species is doped in at
+  // a time, so switching dopants drops whichever classes only the old one
+  // granted.
+  andersonDopant: string | null;
 }
 
 export function defaultSave(): SaveData {
@@ -115,6 +125,7 @@ export function defaultSave(): SaveData {
     bohrActivePassive: null,
     curieMoveClass: {},
     rival9Type: null,
+    andersonDopant: null,
   };
 }
 
@@ -194,6 +205,7 @@ export function persistFromRegistry(registry: RegistryLike) {
     bohrActivePassive: (registry.get('bohrActivePassive') as string | null) ?? null,
     curieMoveClass: (registry.get('curieMoveClass') as Partial<Record<string, MoveClass>>) ?? {},
     rival9Type: (registry.get('rival9Type') as MaterialType | null) ?? null,
+    andersonDopant: (registry.get('andersonDopant') as string | null) ?? null,
   };
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));

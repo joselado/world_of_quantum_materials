@@ -106,7 +106,8 @@ time; switching means talking to Kondo again.
 
 Lets you "dope in" a crystal you've defeated as an impurity and learn one
 specific move from it -- borrowing a single excitation channel without
-becoming that crystal the way Dresselhaus does. Whether the move ever fires
-in battle still depends on whether your *current* form can host it. Only
-original, standalone crystals are valid hosts, never a
-[hybrid](hybrids.md).
+becoming that crystal the way Dresselhaus does. The move fires in battle for
+as long as you stay doped with that crystal, even if your own current form
+can't otherwise host it -- dope in a different crystal later and you lose
+the channels only the old one gave you. Only original, standalone crystals
+are valid hosts, never a [hybrid](hybrids.md).

@@ -56,6 +56,7 @@ export class TitleScene extends Phaser.Scene {
     registry.set('bohrPassivesUnlocked', save.bohrPassivesUnlocked);
     registry.set('bohrActivePassive', save.bohrActivePassive);
     registry.set('curieMoveClass', save.curieMoveClass);
+    registry.set('andersonDopant', save.andersonDopant);
 
     music.play('overworld:1');
 

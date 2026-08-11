@@ -396,9 +396,14 @@ export function getPlayerMaterial(registry: RegistryLike): Material {
 // The moves the player can actually use in battle right now: the ones
 // they've learned (registry `unlockedMoves`, grown via Noether's shop)
 // intersected with what their current form's physics supports
-// (compatibleMoves). Transmuting into a new form doesn't erase anything
-// learned -- it just changes which of those learned moves are currently
-// usable, so switching back later restores the rest for free.
+// (compatibleMoves), plus whatever classes their currently doped-in impurity
+// (registry `andersonDopant`, set via Anderson's panel) additionally hosts --
+// an impurity's excitation channel is real for as long as the impurity
+// itself is doped in, not just while the player's own bare form happens to
+// carry it. Transmuting into a new form (or doping in a different impurity)
+// doesn't erase anything learned -- it just changes which of those learned
+// moves are currently usable, so switching back later restores the rest for
+// free.
 //
 // One narrow special case: Kondo's three screening-class moves
 // (KONDO_MOVE_IDS) can all be *learned* independently, but only one is ever
@@ -411,6 +416,11 @@ export function getPlayerMaterial(registry: RegistryLike): Material {
 export function getBattleMoves(registry: RegistryLike): string[] {
   const unlocked = (registry.get('unlockedMoves') as string[]) ?? [...PLAYER_MATERIAL.moves];
   const allowed = new Set(compatibleMoves(getPlayerMaterial(registry)));
+  const dopantName = (registry.get('andersonDopant') as string | null) ?? null;
+  const dopant = dopantName ? findMaterialByName(dopantName) : null;
+  if (dopant) {
+    for (const id of compatibleMoves(dopant)) allowed.add(id);
+  }
   const activeKondoMove = (registry.get('kondoActiveMove') as string | null) ?? null;
   return unlocked.filter((id) => {
     if (!allowed.has(id)) return false;

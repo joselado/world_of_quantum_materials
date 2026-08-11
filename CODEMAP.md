@@ -242,15 +242,20 @@ past one back from, every visit to Majorana rebuilds the pair from scratch.
 Anderson's `learnImpurityMove` is a third guardian that touches player state but deliberately
 *doesn't* go through `applyPlayerForm` at all -- it only appends a move id to `unlockedMoves`,
 leaving `playerForm` untouched, since the whole point of the impurity-doping mechanic is
-borrowing one move without becoming (or fusing into) anything.
+borrowing one move without becoming (or fusing into) anything. Picking the host to dope in
+also sets registry/save key `andersonDopant` to that host's name (`scenes/panels/anderson.ts`),
+replacing whatever was doped in before -- only one impurity at a time.
 
 **Move availability is an intersection, not a flat list.** `unlockedMoves` (registry/save) is
 a global "moves learned," unaffected by transmuting. What's actually offered in the battle
 menu or Noether's shop is `getBattleMoves(registry)`/an inline `compatibleMoves(...)` filter --
 learned ∩ `compatibleMoves(currentForm)`, where `compatibleMoves` derives from
-`MOVE_COMPATIBILITY: Record<MaterialType, MoveClass[]>` (`data/materials.ts`). Phonon Beam
-(`phonon`) is the one class every type allows, so it's always available regardless of form.
-Every move maps to a real quasiparticle; there is no abstract "disorder" move or class.
+`MOVE_COMPATIBILITY: Record<MaterialType, MoveClass[]>` (`data/materials.ts`). `getBattleMoves`
+additionally unions in `compatibleMoves(dopant)` when `andersonDopant` is set, so a move
+Anderson taught from a doped-in impurity is usable for as long as that impurity stays doped in,
+even if the player's own current form can't otherwise host it. Phonon Beam (`phonon`) is the
+one class every type allows, so it's always available regardless of form. Every move maps to a
+real quasiparticle; there is no abstract "disorder" move or class.
 
 ## Stats and battle resolution
 

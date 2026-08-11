@@ -692,12 +692,17 @@ does. World 10 has no guardian; its only encounter is the finale.
 - **Anderson** → world 9 middle → "dopes in" a crystal the player has defeated as an
   impurity, then teaches one specific move from that crystal's own moveset
   (`OverworldScene.showAndersonPanel`/`learnImpurityMove`) -- a two-step pick (host,
-  then which of its moves to learn) that just appends to the ordinary `unlockedMoves`
-  list, no special-casing needed: `MOVE_COMPATIBILITY` (§3) already gates whether the
-  learned move actually shows up in the battle menu, which is the whole point -- an
-  impurity's channel only manifests once the player's *own* current form can physically
-  host it. Distinct from Dresselhaus (become the whole state) and Majorana (fuse two states
-  together): Anderson borrows a single excitation channel without becoming anything. Host
+  then which of its moves to learn). Picking a host sets it as the persisted
+  `andersonDopant` (save.ts), replacing whatever was doped in before -- only one
+  impurity species at a time. The learned move is an ordinary append to
+  `unlockedMoves`; whether it actually shows up in the battle menu is gated by
+  `MOVE_COMPATIBILITY` (§3) checked against the *union* of the player's own current
+  form and the currently doped-in impurity's type (`getBattleMoves`) -- an impurity's
+  channel is real for as long as the impurity stays doped in, and disappears the
+  moment a different crystal is doped in instead, the same way a real dopant atom's
+  bound states vanish if you swap in a different dopant species. Distinct from
+  Dresselhaus (become the whole state) and Majorana (fuse two states together):
+  Anderson borrows a single excitation channel without becoming anything. Host
   pool excludes any `isHybridMaterial` (a Majorana fusion, or one of world 10's own
   named recipe-result wilds) -- doping in an impurity is meant to be one real compound's
   own excitation, not a channel a fusion already borrowed from two others. In

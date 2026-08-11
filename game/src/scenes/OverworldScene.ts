@@ -465,6 +465,7 @@ export class OverworldScene extends Phaser.Scene {
       state.set('laughlinActivePassive', null);
       state.set('bohrPassivesUnlocked', []);
       state.set('bohrActivePassive', null);
+      state.set('andersonDopant', null);
     }
 
     this.maybeAutoOpenGoalDialogue();
