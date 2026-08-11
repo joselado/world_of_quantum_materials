@@ -162,32 +162,65 @@ export function hasSave(): boolean {
   }
 }
 
+// A save-shape change that isn't just "a new field with a sensible default"
+// (already free via loadSave()'s `{ ...defaultSave(), ...parsed }` merge
+// below) -- specifically, a field holding real player progress (currency,
+// an unlock list, stats) getting renamed or restructured, where resetting
+// to default would erase actual play rather than just a cheap-to-redo
+// selection -- gets one entry appended here instead of an ad hoc check
+// bolted onto loadSave(). MIGRATIONS[i] patches a raw parsed save forward
+// from schema version i to i+1; loadSave() runs every migration from the
+// save's own stored version up to the current one. Append a new function
+// when such a change ships; never edit an already-shipped one, since a save
+// sitting in someone's browser could be at any past version and still needs
+// to replay it as originally written. CURRENT_SCHEMA_VERSION is just
+// MIGRATIONS.length, so there's nothing separate to remember to bump.
+//
+// This is deliberately not the same mechanism as loadSave()'s two
+// unlockedMoves/playerForm/rival9Type safety nets further down -- those
+// guard against a *reference* going stale (a move id, a MaterialType)
+// inside an otherwise current-shape field, which can happen in any version
+// whenever content is renamed, not just at a save-format change, so they
+// stay permanent and unversioned rather than becoming one more migration
+// step.
+type SaveMigration = (raw: Record<string, unknown>) => Record<string, unknown>;
+
+const MIGRATIONS: SaveMigration[] = [
+  // v0 -> v1: the currency field was renamed qumatokens -> qumatessence.
+  // Carry an old save's accumulated value across rather than losing it.
+  (raw) => {
+    if (typeof raw.qumatessence !== 'number' && typeof raw.qumatokens === 'number') {
+      raw.qumatessence = raw.qumatokens;
+    }
+    delete raw.qumatokens;
+    return raw;
+  },
+];
+
+const CURRENT_SCHEMA_VERSION = MIGRATIONS.length;
+
 export function loadSave(): SaveData {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return defaultSave();
-    const parsed = JSON.parse(raw) as Partial<SaveData> & { qumatokens?: number };
-    const data: SaveData = { ...defaultSave(), ...parsed };
-    // Saves written before this field was named `qumatessence` store the
-    // value under the old key `qumatokens` -- read that as a fallback so
-    // existing currency carries over instead of silently resetting to 0.
-    if (typeof parsed.qumatessence !== 'number' && typeof parsed.qumatokens === 'number') {
-      data.qumatessence = parsed.qumatokens;
+    let parsed = JSON.parse(raw) as Record<string, unknown>;
+    let version = typeof parsed.schemaVersion === 'number' ? (parsed.schemaVersion as number) : 0;
+    while (version < MIGRATIONS.length) {
+      parsed = MIGRATIONS[version](parsed);
+      version += 1;
     }
-    // Drop moves a prior version of the game unlocked but this version no
-    // longer defines (e.g. a renamed/retired move id) -- otherwise every
-    // panel that looks up MOVES[id] for an unlocked move crashes on an
-    // old save.
+    const data: SaveData = { ...defaultSave(), ...(parsed as Partial<SaveData>) };
+    // Permanent safety nets, not migrations (see the comment above
+    // MIGRATIONS) -- drop moves/types a prior version of the game defined
+    // but this version renamed/retired (e.g. a retired move id, or the old
+    // 'trivial'/'magnet'/'qhe' types later renamed
+    // 'classicalmag'/'spinliquid'/'supercon'). MOVES/TYPE_LOOK are plain
+    // object lookups with no fallback of their own, so an unrecognized
+    // reference would otherwise crash the next panel render/battle rather
+    // than degrade gracefully. `playerForm: null` already means "still the
+    // default PLAYER_MATERIAL," so resetting to that is the same safe
+    // fallback a save predating the field itself already uses.
     data.unlockedMoves = data.unlockedMoves.filter((id) => id in MOVES);
-    // Same guard for a MaterialType a prior version of the game defined but
-    // this version renamed/retired (e.g. the old 'trivial'/'magnet'/'qhe',
-    // later 'classicalmag'/'spinliquid'/'supercon') --
-    // TYPE_LOOK[type] and MOVE_COMPATIBILITY[type] are both plain object
-    // lookups with no fallback of their own, so an unrecognized type would
-    // otherwise crash the very next battle/render rather than degrade
-    // gracefully. `playerForm: null` already means "still the default
-    // PLAYER_MATERIAL," so resetting to that is the same safe fallback a
-    // save predating this field already uses.
     if (data.playerForm && !(data.playerForm.type in TYPE_LOOK)) data.playerForm = null;
     if (data.rival9Type && !(data.rival9Type in TYPE_LOOK)) data.rival9Type = null;
     return data;
@@ -229,7 +262,10 @@ export function persistFromRegistry(registry: RegistryLike) {
     andersonDopant: (registry.get('andersonDopant') as string | null) ?? null,
   };
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+    // schemaVersion is a wire-format-only stamp read by loadSave() to know
+    // which MIGRATIONS have already applied -- it's never part of SaveData
+    // itself/the registry, only added here at serialize time.
+    localStorage.setItem(SAVE_KEY, JSON.stringify({ ...data, schemaVersion: CURRENT_SCHEMA_VERSION }));
   } catch {
     // localStorage unavailable (private browsing, quota) -- progress just
     // won't survive a reload this session.

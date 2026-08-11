@@ -848,8 +848,23 @@ caches it via `data/materials.ts`'s `rollRival9Type`, see "Rival/boss fights" be
 until first picked -- see "Guardians" above), plus the
 earlier fields covered under Registry-then-persist above. `defaultSave()`/
 `persistFromRegistry()` are the two places that need touching together for any future field, and
-`loadSave()`'s `{ ...defaultSave(), ...saved }` spread keeps old localStorage saves compatible
-for free.
+`loadSave()`'s `{ ...defaultSave(), ...saved }` spread keeps a save predating that field
+compatible for free -- it just gets the default.
+
+**Renaming or restructuring a field that holds real progress is a different case** from adding
+a new one -- the spread above can't carry an old value across to a new key on its own, and
+resetting it to default would erase actual play (currency, an unlock list, stats), not just a
+cheap-to-redo selection. `loadSave()`'s `MIGRATIONS` array (`data/save.ts`) handles this: each
+entry patches a raw parsed save forward by one schema version (`MIGRATIONS[i]`: version `i` ->
+`i+1`), run in order from whatever version the save was last written at up to
+`CURRENT_SCHEMA_VERSION` (just `MIGRATIONS.length`, so nothing separate needs bumping);
+`persistFromRegistry()` stamps that current version onto every save it writes. A migration is
+appended, never edited in place, once shipped -- a save could be sitting at any past version.
+This is separate from `loadSave()`'s other two safety nets (filtering `unlockedMoves` to ids
+still in `MOVES`, resetting `playerForm`/`rival9Type` if their `type` isn't in `TYPE_LOOK`),
+which guard against a *reference* going stale inside an otherwise current-shape field -- that
+can happen in any version whenever content is renamed, not just at a save-format change, so
+those stay permanent and unversioned rather than living in `MIGRATIONS`.
 
 **Gotcha: `TitleScene.create()` copies `SaveData` into the registry field-by-field, not by
 looping over the object.** `defaultSave()`/`persistFromRegistry()` being updated for a new
