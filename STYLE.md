@@ -45,9 +45,11 @@ than appending a changelog, so this always reflects current reality.
   Point", and a green cluster for the door, whose label switches between "Enter World 1" and
   "Enter World N+1" depending on how far `rivalDefeated` has progressed -- or, in Superposition
   Mode, reads "Enter World 2 (Bloch)" and drops the player straight into World 2, where Bloch's
-  own teleport hub (already pre-seeded with every world as visited) is the sole way
-  to reach any other world -- there is no separate warp/world-select panel. Clicking a
-  hotspot while another panel is already open is a no-op (one panel at a time).
+  own teleport hub (already pre-seeded with every world as visited) can jump to any other world
+  immediately -- there is no separate warp/world-select panel, though every world also has its
+  own walkable doors back to the Hub/previous world and onward to the next one (see "World
+  doors" below). Clicking a hotspot while another panel is already open is a no-op (one panel
+  at a time).
 - Save Point reuses the same dark rounded-rectangle-with-stroke treatment as overworld
   dialogues (`showPanel`), stroked in purple (`0x9a6ad9`) to match the Materialdex icon,
   with a single "Close" button.
@@ -114,7 +116,7 @@ than appending a changelog, so this always reflects current reality.
   walkable tiles -- those are reserved for wild encounters (on the corridor) and
   qumatoken pickups (at branch dead ends).
 - Map regenerates fresh (new `Math.random` layout) on first load and on an explicit world
-  change (Hub door, Bloch's teleport, a debug warp). A round trip through a battle restores
+  change (Hub door, Bloch's teleport, a world door, a debug warp). A round trip through a battle restores
   the exact same layout and player position instead of regenerating
   (`OverworldScene.saveMapState`/`restoreMap`); the
   pre-battle encounter dialogue itself never leaves the overworld scene, so passing on it
@@ -518,24 +520,75 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 
 ## Boss avatars (`OverworldScene.spawnBossSprite`, `art/boss.ts`)
 
-- Every built world's rival/boss stands at the goal tile as a purely visual
-  landmark, sized `BOSS_CRYSTAL_SIZE = 70` -- roughly 2x a wild crystal (`22`) and
-  2x the player's own on-map size (`34`) -- and rendered by `makeBossCrystal`
-  rather than the shared `makeCrystal` every wild/rival crystal otherwise uses:
-  four smaller satellite shards (shaded siblings of the core's color, via `shade`)
-  fused around one oversized core, a two-layer additive aura that slowly pulses
-  scale/alpha, and six hot-orange embers orbiting the whole mass (same
-  orbiting-container-angle-tween trick as a guardian avatar's orbiting motes, just
-  warmer/redder to read as hostile rather than benevolent). Name label in a
-  bold, warning-toned pink-red (`#ff8f8f`), distinct from any guardian's own label
-  color. Reuses the `WorldSprite` projection/wander/bob machinery, so it scrolls
-  and fades with distance like everything else standing on the map -- it doesn't
-  add its own click handler, the fight is still only reached through the goal
-  panel's "Face the Rival" button. `makeBossCrystal`'s core/satellite color and
-  variant come from the boss `Material`'s own `color`/`variant` (`TYPE_LOOK[type]`),
-  so World 9's boss -- the one rival with no fixed type, DESIGN.md §2 -- looks
+- Every built world's rival/boss, while still undefeated, stands at the goal
+  tile as a purely visual landmark, sized `BOSS_CRYSTAL_SIZE = 70` -- roughly 2x
+  a wild crystal (`22`) and 2x the player's own on-map size (`34`) -- and
+  rendered by `makeBossCrystal` rather than the shared `makeCrystal` every
+  wild/rival crystal otherwise uses: four smaller satellite shards (shaded
+  siblings of the core's color, via `shade`) fused around one oversized core, a
+  two-layer additive aura that slowly pulses scale/alpha, and six hot-orange
+  embers orbiting the whole mass (same orbiting-container-angle-tween trick as
+  a guardian avatar's orbiting motes, just warmer/redder to read as hostile
+  rather than benevolent). Name label in a bold, warning-toned pink-red
+  (`#ff8f8f`), distinct from any guardian's own label color. Reuses the
+  `WorldSprite` projection/wander/bob machinery, so it scrolls and fades with
+  distance like everything else standing on the map -- it doesn't add its own
+  click handler, the fight is still only reached through the goal panel's
+  "Face the Rival" button. `makeBossCrystal`'s core/satellite color and variant
+  come from the boss `Material`'s own `color`/`variant` (`TYPE_LOOK[type]`), so
+  World 9's boss -- the one rival with no fixed type, DESIGN.md §2 -- looks
   different depending on which `MaterialType` got rolled for that playthrough,
-  same as every other world's boss reads off its own fixed type.
+  same as every other world's boss reads off its own fixed type. Once that
+  world's rival is beaten, this avatar stops spawning and a world door (below)
+  takes over the goal tile instead.
+
+## World doors (`OverworldScene.spawnDoorSprites`, `art/door.ts`)
+
+- Every built world has a doorway landmark at its `startTile`, sized
+  `DOOR_SPRITE_SIZE = 46` -- bigger than the player (`34`) so it reads as a real
+  structure, well under the boss (`70`) it can share a world with. Rendered by
+  `makeDoorSprite`: a genuinely rectangular stone archway (a small corner
+  radius, not one close to the shape's own half-width, so it doesn't collapse
+  into a pill/gem silhouette), a darker inset "opening" void, a lavender
+  (`0xd9a5ff`) glowing portal filling that opening with a couple of orbiting
+  white motes (the same "something is happening here" cue a guardian avatar's
+  orbiting motes give), and a wide, faint additive halo behind the whole thing
+  so it still reads as a colored beacon once shrunk small by distance -- the
+  same trick the boss's own aura uses. Lavender matches `showStoryBeat`'s own
+  between-worlds panel stroke, the color already established for "connective
+  tissue between worlds." Once that world's rival is beaten, a second door of
+  the same look spawns at `goalTile` too, replacing the boss avatar there.
+  Reuses the `WorldSprite` machinery like every other landmark -- no click
+  handler of its own; walking onto either tile is what opens the actual
+  confirm/gate panel (`OverworldScene.showStartDoorPanel`/`showGatePanel`).
+  Name label underneath reads "Door to the Lab" or "Door to World N" (start
+  door) and "Door to World N" or "The way is open" for World 10 (goal door,
+  matching `renderShopFooter`'s own last-world label), same small
+  dark-background label treatment every other landmark uses, text in the same
+  lavender (`#e6d9ff`) family as the portal glow rather than a guardian's own
+  label color or the boss's warning pink-red. The start-door sprite itself
+  stands one row north of its own trigger tile (`startTile`), not on top of
+  it -- the forward-facing camera never renders anything behind the player's
+  current row, so drawing it exactly on `startTile` would only ever be
+  visible stacked under the player's own crystal; a row ahead puts it
+  visibly in front of the player at spawn and again on every walk back down
+  to the start row.
+
+## The start-door confirm panel (`OverworldScene.showStartDoorPanel`)
+
+- Walking onto the start-door tile (tile-exact, not "anywhere on that row" --
+  `OverworldScene.maybeReachStartDoor`) opens a small panel rather than
+  switching worlds immediately, so brushing the tile while exploring a
+  dead-end branch near the south edge can't backtrack the player by accident.
+  Same dark rounded-rectangle-with-stroke treatment as every other overworld
+  dialogue (`480×`variable, sized to content), stroked lavender (`0xd9a5ff`) to
+  match the door sprite and `showStoryBeat`'s panel. One line of flavor text
+  ("A doorway leads back to World N-1"/"...to the Lab"), then two buttons side
+  by side: "Not yet" (closes with no scene change, same as `closeDialogue`
+  everywhere else) and "Return to World N-1"/"Return to the Lab", which calls
+  `returnToPreviousWorld`. Never a one-shot -- walking onto the door always
+  reopens this panel, since the confirm step itself (not a "seen it once"
+  flag) is what keeps an accidental brush from becoming a real backtrack.
 
 ## The rival gate (`OverworldScene.showRivalEncounter`)
 
