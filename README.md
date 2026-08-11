@@ -60,8 +60,10 @@ standing next to the Nickel Oxide beside it.
 </tr>
 </table>
 
-**Battle.** Turn-based, speed-ordered by your crystal's Velocity stat. Every
-move is a real quasiparticle, and every material can only ever learn the
+**Battle.** Turn-based, speed-ordered by your crystal's Velocity stat -- and
+the faster side doesn't just go first, it swings more than once a round if
+it's fast enough. Every move is a real quasiparticle, and every material can
+only ever learn the
 moves its actual physics supports -- a plain band insulator never gets a
 magnon move, since it has no magnetic order to carry one. If a defender's
 own physics can't host your move's quasiparticle at all, it lands at
@@ -163,8 +165,11 @@ drawing from whatever moves you've collected by then. See
 
 ## Battle basics
 
-Turn order is speed-ordered by your crystal's Velocity stat; Quantumness
-raises your crit ("coherent hit") chance, Correlation raises your defense.
+Turn order is speed-ordered by your crystal's Velocity stat: the faster side
+swings first, and swings again -- up to 3 times a round -- the more its
+Velocity outpaces the other side's, while the slower side always still gets
+its own hit. Quantumness raises your crit ("coherent hit") chance,
+Correlation raises your defense.
 Every crystal carries HP, fully healed after each battle -- qumatessence, not
 HP attrition, are what's actually on the line from one fight to the next.
 The move menu shows one kind of move at a time (ordinary attacks, quiz-gated

@@ -118,6 +118,12 @@ function renderUltimateMoves(scene: OverworldScene, container: Phaser.GameObject
 // clearing button, no `renderFarewellFooter`, nothing at all to click, and
 // dialogueActive (set true above) stays stuck, freezing movement and the
 // pause menu for the rest of the session.
+// In Superposition Mode every class reads and behaves as already unlocked
+// (matches OverworldScene.applySuperpositionLeveling's blanket-grant
+// treatment of every other guardian's gated content) -- retuning either
+// Ultimate move to any hostable quasiparticle is free, with no qumatessence
+// deducted and no dependence on `ultimateClassesUnlocked` actually holding
+// the class.
 function showUltimateClassPicker(scene: OverworldScene, moveId: string, onDone: () => void) {
   scene.dialogueContainer?.destroy(true);
   scene.dialogueActive = true;
@@ -141,10 +147,12 @@ function showUltimateClassPicker(scene: OverworldScene, moveId: string, onDone: 
   container.add(title);
   y += title.height + 10;
 
-  const unlockedForMove =
-    ((scene.game.registry.get('ultimateClassesUnlocked') as Partial<Record<string, MoveClass[]>>) ?? {})[moveId] ?? [];
-  const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
+  const superposition = scene.isSuperpositionMode();
   const hostable = TUNABLE_MOVE_CLASSES.filter((cls) => canHost(scene.playerMaterial.type, cls));
+  const unlockedForMove = superposition
+    ? hostable
+    : ((scene.game.registry.get('ultimateClassesUnlocked') as Partial<Record<string, MoveClass[]>>) ?? {})[moveId] ?? [];
+  const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
 
   hostable.forEach((cls) => {
     const isUnlocked = unlockedForMove.includes(cls);
@@ -154,7 +162,7 @@ function showUltimateClassPicker(scene: OverworldScene, moveId: string, onDone: 
       const allUnlocked = (scene.game.registry.get('ultimateClassesUnlocked') as Partial<Record<string, MoveClass[]>>) ?? {};
       const forThisMove = allUnlocked[moveId] ?? [];
       const assigned = (scene.game.registry.get('moveClassTuning') as Partial<Record<string, MoveClass>>) ?? {};
-      if (forThisMove.includes(cls)) {
+      if (superposition || forThisMove.includes(cls)) {
         scene.game.registry.set('moveClassTuning', { ...assigned, [moveId]: cls });
       } else {
         const tokensNow = (scene.game.registry.get('qumatessence') as number) || 0;

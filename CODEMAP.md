@@ -15,8 +15,9 @@ game/src/
   scenes/
     TitleScene.ts             Loads save -> registry, title showcase crystals, "Continue"/"New Game" -> Hub,
                                  Story Mode / Superposition Mode picker
-    HubScene.ts                World 0, static room, 3 hotspots (Materialdex/Save/Door, door reads
-                                 "Enter World 2 (Bloch)" and drops straight into World 2 in Superposition Mode)
+    HubScene.ts                World 0, static room, 3 hotspots (Materialdex/Save/Door, door label
+                                 tracks rivalDefeated progress in Story Mode, pinned to "Enter World 1"
+                                 in Superposition Mode)
     OverworldScene.ts          Per-world walkable map: movement, encounters, rival gate, shared
                                  dialogue/panel infrastructure (addDialogueButton(At),
                                  renderPagedButtons, renderFarewellFooter) every panels/ file uses
@@ -306,20 +307,20 @@ real quasiparticle; there is no abstract "disorder" move or class.
 key `playerStats`, grown via `OverworldScene.renderShopStats` (Noether's "Stats" tab, cost
 `statUpgradeCost(current)` per +1 point). Opponent stats are never stored per-material --
 `enemyStatsForWorld(world)` computes them fresh at battle start (`BattleScene.create`), scaling
-`+2` per stat per world past world 1.
+by `STAT_GROWTH_PER_WORLD` (`+3` quantumness, `+3` velocity, `+2` correlation) per world past
+world 1.
 
 `BattleScene.resolveHit` is the single damage-resolution function both sides' attacks go
-through: crit chance from the attacker's Quantumness, turn order each round from comparing both
-sides' Velocity, incoming damage divided by the defender's Correlation (`BASE_STAT /
-correlation`), and a `2x` "quasiparticle mismatch" multiplier from `data/materials.ts`'s
-`canHost(defenderType, move.class)` -- a defender whose own `MOVE_COMPATIBILITY` list doesn't
-include the attacking move's class takes it at double force. This is the only type-interaction
-term in the damage formula (DESIGN.md §3/§4) -- there is no separate type-chart multiplier.
-`resolveHit` also takes a `bonusMultiplier` param (default `1`, a no-op) -- `playerAttack`
-forwards one of Laughlin's Analytic moves' answer-gated 2x/0.5x, or one of Skłodowska-Curie's
-Ultimate moves' all-or-nothing 1x/0x, through to the one `resolveHit` call for that specific
-move id; the opponent's follow-up hit in the same exchange is never affected. The question(s)
-are always answered *before* `resolveHit` runs (`BattleScene.showAnalyticQuestion`/
+through: crit chance from the attacker's Quantumness, incoming damage divided by the defender's
+Correlation (`BASE_STAT / correlation`), and a `2x` "quasiparticle mismatch" multiplier from
+`data/materials.ts`'s `canHost(defenderType, move.class)` -- a defender whose own
+`MOVE_COMPATIBILITY` list doesn't include the attacking move's class takes it at double force.
+This is the only type-interaction term in the damage formula (DESIGN.md §3/§4) -- there is no
+separate type-chart multiplier. `resolveHit` also takes a `bonusMultiplier` param (default `1`,
+a no-op) -- `playerAttack` forwards one of Laughlin's Analytic moves' answer-gated 2x/0.5x, or
+one of Skłodowska-Curie's Ultimate moves' all-or-nothing 1x/0x, through to the one `resolveHit`
+call for that specific move id; the opponent's hit(s) in the same round are never affected. The
+question(s) are always answered *before* `resolveHit` runs (`BattleScene.showAnalyticQuestion`/
 `showUltimateQuestions`, called from the move button's own click handler, not from inside
 `playerAttack`/`resolveHit`) -- keeping `resolveHit` itself synchronous rather than teaching it
 to await something was a deliberate call, since it already inline-calls `endBattle` and chains
@@ -327,6 +328,26 @@ via `time.delayedCall` for ordinary moves. An Ultimate move is the one exception
 synchronicity, deferring its own damage-application/log and win-lose-check/turn-release into
 `playAttackEffect`'s `onImpact`/`onComplete` callbacks instead of running them inline -- see the
 Ultimate-specific paragraph below.
+
+**Turn order and multi-attack (`BattleScene.playerAttack`).** Velocity (each side's own
+`statusVelocityMultiplier`-adjusted effective value) decides both who swings first each round
+and how many times the faster side swings: `ratio` is the faster side's effective Velocity
+divided by the slower side's, and the faster side's hit count is
+`Phaser.Math.Clamp(Math.floor(ratio), 1, 3)` -- the slower side always gets exactly one hit. A
+tie keeps the player going first, one hit each, same as the ratio-1 case. `playerAttack` builds
+an explicit `hits: { isPlayer, moveId }[]` array for the round (the faster side's entries first,
+reusing the same player-chosen `moveId` each time or re-rolling `opponentMoveId()` each time on
+the enemy's side, then the slower side's single entry) and walks it with a small recursive
+`runHit(index)` helper chained through `time.delayedCall(TURN_GAP_MS, ...)`, the same gap every
+hit has always used. Because `resolveHit`'s own `checkEndOrContinue` only calls its `onDone`
+callback when neither side's HP has hit 0 (it calls `endBattle` directly otherwise), `runHit`
+never needs its own extra KO check beyond mirroring that guard -- a KO partway through the
+faster side's hit sequence simply never schedules the remaining queued hits. `turnLock` is
+released exactly once, when the round's actual last hit's `onDone` fires. `ANALYTIC_MOVE_IDS`/
+`ULTIMATE_MOVE_IDS` moves are exempt from this queue entirely -- `playerAttack` short-circuits to
+the plain one-hit-each alternation for those, since Analytic/Ultimate's own quiz-gating and (for
+Ultimates) multi-phase animation timing are tuned around exactly one `resolveHit` call per side
+per round.
 
 **Status effects (Kondo's three moves).** `this.playerStatus`/`this.opponentStatus`
 (`ActiveStatus | null`, `{ kind: 'screened' | 'slowed' | 'weakened'; turnsLeft: number }`)
@@ -338,15 +359,21 @@ small per-side multiplier lookups (`statusDamageMultiplier`/`statusVelocityMulti
 parallel damage path: `playerAttack`'s turn-order comparison multiplies each side's Velocity by
 its own `statusVelocityMultiplier` before comparing, and `resolveHit`'s `dmg` gains a
 `screenedMult` term (attacker's own `statusDamageMultiplier`) alongside a `defenseFactor`
-denominator now also scaled by the defender's `statusCorrelationMultiplier`. `resolveHit`'s
-`applyOrTickStatus(move, defenderIsPlayer)`, called once near the end of every hit (same spot
-`mismatchText`/`critText` are built), does one of two things: if the landing move is one of
-Kondo's three (`KONDO_MOVE_STATUS: Record<moveId, StatusKind>`, a fixed lookup -- no
+denominator now also scaled by the defender's `statusCorrelationMultiplier`. `resolveHit` takes
+a `tickStatus` param (default `true`) gating whether it's allowed to call
+`applyOrTickStatus(move, defenderIsPlayer)` near the end of the hit (same spot
+`mismatchText`/`critText` are built) at all -- `playerAttack`'s `runHit` only passes `true` for
+the *last* hit of the round landed against a given defender (`index === fasterHits - 1 ||
+index === hits.length - 1`, since the faster side's hits are contiguous and share one defender),
+`false` for every earlier hit against that same defender within the round. Ticking on the last
+hit rather than the first matters: an existing status (e.g. a Weakened side on its final
+`turnsLeft`) has to keep applying to every one of the faster side's hits that round before it
+expires, and a status a Kondo move inflicts this round shouldn't retroactively buff/debuff the
+very hits that inflicted it. `applyOrTickStatus` itself does one of two things: if the landing
+move is one of Kondo's three (`KONDO_MOVE_STATUS: Record<moveId, StatusKind>`, a fixed lookup -- no
 randomness), it replaces the defender's status outright via `setStatus` (one status per side,
 never stacked); otherwise it ticks the defender's *existing* status down by one and clears it
-once `turnsLeft` hits 0. Since each side is the defender of exactly one `resolveHit` call per
-round, this ticks (or applies) exactly once per side per round without any separate
-round-boundary bookkeeping. Either branch returns a log-line clause (`STATUS_INFO[kind]
+once `turnsLeft` hits 0. Either branch returns a log-line clause (`STATUS_INFO[kind]
 .applyText`/`.expireText`) appended to that hit's own message, the same "stack a clause onto
 the existing line" pattern `mismatchText`/`critText` already use. `setStatus` also calls
 `renderStatusLabel`, which updates a small always-present-but-usually-empty `Text` pill
@@ -764,20 +791,25 @@ Mode is just `superpositionMode: false`, no separate field): Superposition Mode 
 testing/exploration aid, not part of normal progression. Three things key off
 `isSuperpositionMode()`:
 - `OverworldScene.applySuperpositionLeveling()` runs on every `create()` (covers Continue,
-  Bloch teleport, and the Hub door's World-2 jump alike) -- re-levels `playerStats` to
+  Bloch teleport, and the Hub door's World-1 jump alike) -- re-levels `playerStats` to
   `enemyStatsForWorld(this.world)` plus a flat `+2`, grants every move (`Object.keys(MOVES)`),
-  fully heals, and merges every `BUILT_WORLDS` entry into `visitedWorlds` so Bloch's teleport
+  fully heals, merges every `BUILT_WORLDS` entry into `visitedWorlds` so Bloch's teleport
   hub (gated on `visitedWorlds`, see "Guardians" above) offers every world immediately -- this is
   what makes Bloch alone sufficient for world-to-world movement in this mode; there is no
-  separate warp panel. Also seeds registry `kondoActiveMove` to `KONDO_MOVE_IDS[0]` if it's
+  separate warp panel -- and unconditionally overwrites registry `discoveredMaterials` with one
+  entry per `data/materials.ts`'s `allCrystals()` result, so the Hub's Materialdex (see
+  "Materialdex" below) reads as fully discovered. That grant is unconditional rather than
+  seed-once like `kondoActiveMove`/`activePassiveByOwner` below, because `discoveredMaterials` is
+  a passive discovery log, not a player choice, so there is no prior pick an overwrite could
+  clobber. Also seeds registry `kondoActiveMove` to `KONDO_MOVE_IDS[0]` if it's
   still `null` -- granting every move id (including all three Kondo ones) into `unlockedMoves`
   wouldn't otherwise make any of them usable, since `getBattleMoves` filters Kondo's moves down
   to whichever one is active regardless of what's learned (only seeded once, so a deliberate
   pick made via `showKondoPanel` survives every later re-level).
 - `HubScene.enterWorld()`/`doorLabel()` branch on `isSuperpositionMode()` to jump straight to
-  World 2 (`{ world: 2, regenerate: true }`) instead of `highestUnlockedWorld()`, bypassing
-  `rivalDefeated` entirely -- reaching Bloch (who stands at World 2's own middle tile) is what
-  then unlocks every other world via the point above.
+  World 1 (`{ world: 1, regenerate: true }`) instead of `highestUnlockedWorld()`, bypassing
+  `rivalDefeated` entirely -- reaching Bloch (who stands at World 2's own middle tile, reachable
+  via the walkable world doors) is what then unlocks every other world via the point above.
 - `showDresselhausPanel`/`showMajoranaPanel`/`showAndersonPanel` each swap their candidate pool from
   `getDefeatedMaterials()` to `data/materials.ts`'s `allCrystals()` when `isSuperpositionMode()`
   is true, per their own sections above.

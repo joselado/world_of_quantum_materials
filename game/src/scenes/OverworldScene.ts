@@ -31,6 +31,7 @@ import {
   getBattleMoves,
   enemyStatsForWorld,
   DEFAULT_STATS,
+  allCrystals,
 } from '../data/materials';
 import { PASSIVES, PASSIVE_OWNERS, PASSIVE_OWNER_LABELS } from '../data/passives';
 import type { PassiveOwner } from '../data/passives';
@@ -535,11 +536,13 @@ export class OverworldScene extends Phaser.Scene {
   // Continue-to-next-world and Bloch's teleport stay competitive too. A flat
   // +2 over enemyStatsForWorld keeps the player slightly ahead rather than
   // exactly even. Also grants every move (so there's always something to
-  // fight with regardless of what's been bought), a full heal, and marks
-  // every built world visited so Bloch's teleport hub (showBlochHub, gated
-  // on `visitedWorlds`) offers all of them immediately -- this is what makes
+  // fight with regardless of what's been bought), a full heal, marks every
+  // built world visited so Bloch's teleport hub (showBlochHub, gated on
+  // `visitedWorlds`) offers all of them immediately -- this is what makes
   // Bloch alone sufficient for world-to-world movement in this mode, with no
-  // separate warp panel needed.
+  // separate warp panel needed -- and pre-fills the Hub's Materialdex with
+  // every real compound in the game (`allCrystals()`) so it reads as fully
+  // discovered rather than reflecting only what's actually been encountered.
   private applySuperpositionLeveling() {
     if (!this.isSuperpositionMode()) return;
     const target = enemyStatsForWorld(this.world);
@@ -554,6 +557,14 @@ export class OverworldScene extends Phaser.Scene {
     const visited = this.getVisitedWorlds();
     const merged = Array.from(new Set([...visited, ...BUILT_WORLDS]));
     this.game.registry.set('visitedWorlds', merged);
+    // Materialdex entries are a passive discovery log, not a player choice
+    // (unlike kondoActiveMove/activePassiveByOwner below, there's no prior
+    // pick here an overwrite could clobber), so this is unconditional and
+    // re-set every re-level, same as unlockedMoves above.
+    this.game.registry.set(
+      'discoveredMaterials',
+      allCrystals().map((material) => ({ name: material.name, type: material.type }))
+    );
     // Granting every move (above) would otherwise leave Kondo's three stuck
     // invisible in battle -- getBattleMoves only ever surfaces whichever one
     // is `kondoActiveMove`, and that field isn't touched by the "learn

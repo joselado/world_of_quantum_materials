@@ -55,8 +55,9 @@ than appending a changelog, so this always reflects current reality.
   overworld encounters/tokens: a purple prism for "Materialdex", a gold shard for "Save
   Point", and a green cluster for the door, whose label switches between "Enter World 1" and
   "Enter World N+1" depending on how far `rivalDefeated` has progressed -- or, in Superposition
-  Mode, reads "Enter World 2 (Bloch)" and drops the player straight into World 2, where Bloch's
-  own teleport hub (already pre-seeded with every world as visited) can jump to any other world
+  Mode, always reads "Enter World 1" and drops the player straight into World 1, same as Story
+  Mode's own first entry. From there the player can walk to World 2 to reach Bloch, whose
+  teleport hub (already pre-seeded with every world as visited) can jump to any other world
   immediately -- there is no separate warp/world-select panel, though every world also has its
   own walkable doors back to the Hub/previous world and onward to the next one (see "World
   doors" below). Clicking a hotspot while another panel is already open is a no-op (one panel

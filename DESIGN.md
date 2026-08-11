@@ -146,8 +146,10 @@ compatibility table before implementation (see open questions).
 
 **Attributes map to stats** (implemented: `game/src/data/types.ts`'s `Stats`, `game/src/data/materials.ts`):
 - **Quantumness** → crit chance ("a coherent critical hit"): `clamp((quantumness - 10) * 0.02, 0, 0.5)`
-- **Velocity** → turn order: whichever side has the higher Velocity swings first each round
-  (`BattleScene.playerAttack`), ties keep the player going first
+- **Velocity** → turn order and hit count each round: whichever side has the higher effective
+  Velocity swings first, and swings `clamp(floor(ratio), 1, 3)` times that round, where `ratio`
+  is its Velocity divided by the slower side's (`BattleScene.playerAttack`); the slower side
+  always still gets exactly one swing. Ties keep the player going first, one swing each
 - **Correlation** → defense: incoming damage is scaled by `10 / correlation`
 
 Every crystal starts at `10/10/10` (`BASE_STAT`/`DEFAULT_STATS`), which is deliberately a
@@ -155,8 +157,12 @@ no-op multiplier so the pre-stats damage numbers are unchanged at parity. The pl
 stats live in the save (`playerStats`) and only grow by spending qumatessence with Noether
 (`OverworldScene.renderShopStats`, cost `(current - 10 + 1) * 50` per point); an opponent's
 stats are computed fresh from the world number at battle start
-(`enemyStatsForWorld(world)`, `+2` per stat per world past world 1) rather than hand-tuned
-per species, so difficulty climbs with the world.
+(`enemyStatsForWorld(world)`, `+3` Quantumness, `+3` Velocity, `+2` Correlation per world past
+world 1) rather than hand-tuned per species, so difficulty climbs with the world. Because the
+player's own Velocity only grows by spending qumatessence with Noether while the opponent's
+grows automatically every world, a player who never buys Velocity falls further behind the
+opponent's effective Velocity every world — raising both how often the opponent goes first and,
+per the multi-attack rule above, how many times it swings each round.
 
 **Crystal database.** Each wild "crystal" is named after a real compound rather than
 an invented species name, and inherits its main type (and therefore its look and its
@@ -406,7 +412,17 @@ cleared.
 
 ## 4. Battle system
 
-Turn-based, speed-ordered by Velocity.
+Turn-based, speed-ordered by Velocity. The faster side doesn't just swing first each round —
+it swings more often, scaling with how much faster it is: its hit count is its effective
+Velocity divided by the slower side's, floored and capped at 3 (`clamp(floor(ratio), 1, 3)`).
+The cap keeps an extreme Velocity gap from producing an unbounded hit sequence; the slower side
+always still gets exactly one hit. All of the faster side's hits resolve first, consecutively,
+before the slower side's single hit — and the round stops immediately if either side's HP hits
+0 partway through, rather than firing the rest of the queued hits. Skłodowska-Curie's two
+quiz-gated Ultimate moves and Laughlin's two quiz-gated Analytic moves (§5) are exempt from this
+scaling — picking one of those keeps the plain one-hit-each behavior regardless of the Velocity
+ratio, since their own answer-gating and (for Ultimates) multi-phase animation timing are
+already tuned around exactly one hit per side per round.
 
 **Status effects (Kondo's three moves, §5).** Kondo teaches three moves that each
 deterministically inflict one 3-turn status effect on the defender — never randomly rolled,
@@ -414,7 +430,8 @@ the player picks the effect by picking the move:
 - **Screened** (Screening Pulse) — the defender's own outgoing damage is multiplied down
   (×0.7) for 3 turns.
 - **Slowed** (Scattering Drag) — the defender's effective Velocity is reduced (×0.7)
-  for 3 turns, changing whether that side still swings first each round.
+  for 3 turns, changing whether that side still swings first each round and how many
+  times the other side swings against it.
 - **Weakened** (Breakdown Cascade) — the defender's effective Correlation is reduced
   (×0.7) for 3 turns, raising the damage it takes (Correlation scales incoming damage via
   `10 / correlation`, above).
@@ -430,10 +447,12 @@ rule, not a chart" philosophy above. Implemented generically per-side in
 `BattleScene.resolveHit` (the same multiplier-term shape every other `resolveHit` factor
 already uses) rather than hardcoded to "opponent only," even though only the player can
 currently learn the moves that inflict them — no `WORLD_CRYSTALS` entry knows them yet. Ticks
-down once per round (each side is the defender of exactly one hit per round) and expires with
-its own battle-log line appended the same way a mismatch/crit clause stacks onto a hit's log
-line. Status effects are battle-only and reset at the start of every fight — never persisted
-to the save. A small pill under each side's HP bar in battle shows which status (if any) is
+down once per round per defending side regardless of how many hits that side took this round
+(the faster side's multiple hits above all still count as a single round for the defender's
+status) and expires with its own battle-log line appended the same way a mismatch/crit clause
+stacks onto a hit's log line. Status effects are battle-only and reset at the start of every
+fight — never persisted to the save. A small pill under each side's HP bar in battle shows
+which status (if any) is
 active and how many turns remain.
 
 **Quasiparticle mismatch.** The sole type-interaction rule in battle (§3): a defender
@@ -511,12 +530,16 @@ then becomes "Continue to World N+1" once that rival is beaten
 (`OverworldScene.tryAdvanceToNextWorld`) -- lives only in the goal panel, not Noether's
 (or any guardian's) own panel, since the goal is where that world's boss actually stands (§2).
 
-**Stakes.** Winning a battle earns 50 qumatessence; losing costs 50, floored at 0 (a rival
-fight doubles both to 100, `BattleScene`'s `RIVAL_TOKEN_STAKE`). Either way the player's
-crystal is fully healed afterward (`scenes/BattleScene.ts`) -- the qumatessence stake, not HP
-attrition, is what's on the line from one battle to the next. The battle's opening line and
-its win/lose closing line are both flavor text from `game/src/data/greetings.ts`, likewise
-keyed by the wild material's type.
+**Stakes.** An ordinary battle's qumatessence stake scales with the current world's
+difficulty: winning earns it, losing costs it, floored at 0. It rises linearly from 50 in
+World 1 to 200 in World 10, rounded to the nearest 10 (`BattleScene`'s
+`battleStakeForWorld`), so the late game pays out meaningfully more than the early game
+without inflating World 1. A rival fight always pays out double that same world's ordinary
+stake, win or lose, since beating the world's gating rival is the harder, rarer fight.
+Either way the player's crystal is fully healed afterward (`scenes/BattleScene.ts`) -- the
+qumatessence stake, not HP attrition, is what's on the line from one battle to the next. The
+battle's opening line and its win/lose closing line are both flavor text from
+`game/src/data/greetings.ts`, likewise keyed by the wild material's type.
 
 **Post-battle screen and the Materialdex.** Every battle's end screen also shows one
 sentence tying the fight to the real physics of the material just fought
@@ -933,10 +956,12 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   `enemyStatsForWorld`, full move unlock, full heal) instead of requiring the
   normal qumatessence grind, every built world is pre-marked visited so Bloch's
   teleport hub (§5) can jump to any of them immediately on top of the world
-  doors (§5) every world already has -- there is no separate "Warp" UI -- and
-  Dresselhaus/Majorana/Anderson's panels (§5) offer every
-  crystal in the game as a candidate rather than only ones actually defeated
-  (Dresselhaus's list still excludes hybrid-recipe results, same as normal play).
+  doors (§5) every world already has -- there is no separate "Warp" UI --
+  the Hub's Materialdex (§4) is pre-filled with every real compound in the
+  game so it reads as fully discovered, and Dresselhaus/Majorana/Anderson's
+  panels (§5) offer every crystal in the game as a candidate rather than only
+  ones actually defeated (Dresselhaus's list still excludes hybrid-recipe
+  results, same as normal play).
   Toggled once at the title screen rather than mid-run, so it's a deliberate
   choice made before starting, not something stumbled into during play.
 

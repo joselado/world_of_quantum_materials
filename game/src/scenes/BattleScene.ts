@@ -140,8 +140,17 @@ const FIELD_W = 640;
 const FIELD_H = 480;
 const HORIZON_Y = 262;
 const LOG_Y = 440; // combat log's usual bottom-anchored resting position
-const BATTLE_TOKEN_STAKE = 50; // won on a win, lost (floored at 0) on a loss
-const RIVAL_TOKEN_STAKE = 100; // the gating rival fight pays out double, win or lose
+// Ordinary-battle qumatessence stake for a given world (1-10): won on a win,
+// lost (floored at 0) on a loss. Scales linearly from 50 at world 1 to 200 at
+// world 10 so the late game pays out meaningfully more than the early game,
+// rounded to the nearest 10 for a clean progression. A rival fight pays out
+// double this, win or lose -- see the call site, which derives it from this
+// same function rather than a separate table, so the two can't drift apart.
+function battleStakeForWorld(world: number): number {
+  const clamped = Math.min(10, Math.max(1, world));
+  const raw = 50 + ((200 - 50) * (clamped - 1)) / 9;
+  return Math.round(raw / 10) * 10;
+}
 const OPPONENT_POS = { x: 460, y: 150 };
 // A rival/boss fight's opponent sits a bit further left and renders bigger
 // (see BOSS_CRYSTAL_SIZE below) than an ordinary wild encounter's 50 --
@@ -1153,15 +1162,27 @@ export class BattleScene extends Phaser.Scene {
     this.playerHpBar.width = Math.max(0, (this.playerHp / this.playerMaterial.maxHp) * 100);
   }
 
-  // Velocity decides who swings first each round (DESIGN.md §3); ties keep
-  // the original player-first behavior. `bonusMultiplier` only ever applies
-  // to the player's own hit with this specific moveId (an analytic move
-  // already answered via showAnalyticQuestion) -- the opponent's follow-up
-  // hit in the same exchange always resolves at the default 1. A Slowed
-  // side's own effective Velocity is dragged down for the comparison too
-  // (Kondo's Scattering Drag, §5) -- symmetric, same as every other
-  // resolveHit-adjacent term, even though only the player can currently
-  // inflict it.
+  // Velocity decides who swings first each round, and by how much faster it
+  // is, how many extra times it swings (DESIGN.md §4): `ratio` is the faster
+  // side's effective Velocity divided by the slower side's, and the faster
+  // side gets `clamp(floor(ratio), 1, 3)` hits this round -- the cap keeps an
+  // extreme velocity gap from producing an unbounded hit sequence. The slower
+  // side always still gets exactly one hit. Ties (ratio exactly 1) keep the
+  // original player-first, one-hit-each behavior. A Slowed side's own
+  // effective Velocity is dragged down for the comparison too (Kondo's
+  // Scattering Drag, §5) -- symmetric, same as every other resolveHit-
+  // adjacent term, even though only the player can currently inflict it.
+  // `bonusMultiplier` only ever applies to the player's own hit(s) with this
+  // specific moveId (an analytic move already answered via
+  // showAnalyticQuestion) -- the opponent's hit(s) in the same round always
+  // resolve at the default 1.
+  //
+  // Skłodowska-Curie's two Ultimate moves and Laughlin's two Analytic moves
+  // are exempt from the multi-hit scaling above -- their quiz-gating and
+  // (for Ultimates) multi-phase animation timing are already tuned around
+  // exactly one resolveHit call per side per round, so picking one of those
+  // moves keeps the plain strict-alternation, one-hit-each behavior
+  // regardless of the velocity ratio.
   private playerAttack(moveId: string, bonusMultiplier = 1) {
     if (this.turnLock) return;
     this.turnLock = true;
@@ -1175,22 +1196,76 @@ export class BattleScene extends Phaser.Scene {
       this.turnLock = false;
     };
 
-    if (playerFirst) {
+    const exempt = ANALYTIC_MOVE_IDS.includes(moveId) || ULTIMATE_MOVE_IDS.includes(moveId);
+    if (exempt) {
+      if (playerFirst) {
+        this.resolveHit(
+          true,
+          moveId,
+          () => {
+            if (this.opponentHp <= 0 || this.playerHp <= 0) return;
+            this.time.delayedCall(TURN_GAP_MS, () => this.resolveHit(false, opponentMoveId(), releaseLock));
+          },
+          bonusMultiplier
+        );
+      } else {
+        this.resolveHit(false, opponentMoveId(), () => {
+          if (this.opponentHp <= 0 || this.playerHp <= 0) return;
+          this.time.delayedCall(TURN_GAP_MS, () => this.resolveHit(true, moveId, releaseLock, bonusMultiplier));
+        });
+      }
+      return;
+    }
+
+    const playerVelocity = this.playerStats.velocity * this.statusVelocityMultiplier(true);
+    const enemyVelocity = this.enemyStats.velocity * this.statusVelocityMultiplier(false);
+    const fasterIsPlayer = playerVelocity >= enemyVelocity; // tie keeps player-first, same as playerFirst above
+    const ratio = fasterIsPlayer ? playerVelocity / enemyVelocity : enemyVelocity / playerVelocity;
+    const fasterHits = Phaser.Math.Clamp(Math.floor(ratio), 1, 3);
+
+    // The round's full hit order: the faster side swings `fasterHits` times
+    // (reusing the same moveId each time on the player's side; re-rolled
+    // fresh from the wild's own moveset each time on the enemy's side, same
+    // as its single hit always was), then the slower side swings once.
+    const hits: { isPlayer: boolean; moveId: string }[] = [];
+    for (let i = 0; i < fasterHits; i++) {
+      hits.push({ isPlayer: fasterIsPlayer, moveId: fasterIsPlayer ? moveId : opponentMoveId() });
+    }
+    hits.push({ isPlayer: !fasterIsPlayer, moveId: fasterIsPlayer ? opponentMoveId() : moveId });
+
+    // Kondo's status effects (§5) must still apply/tick down at most once per
+    // round per defending side, even though the faster side's repeated hits
+    // all land on the same defender -- and it has to be the *last* hit
+    // against that defender this round, not the first: an existing status
+    // (e.g. a Weakened side on its final turnsLeft) has to keep applying to
+    // every one of the faster side's hits this round before it expires, and
+    // a status freshly inflicted by a Kondo move shouldn't retroactively
+    // buff/debuff the very hits that inflicted it, only the round after.
+    // Hits 0..fasterHits-1 all share the same defender (the slower side), so
+    // only the last of those (index fasterHits-1) ticks; the slower side's
+    // own single hit (the last entry overall) always ticks, same as it
+    // always has.
+    const runHit = (index: number) => {
+      const hit = hits[index];
+      const tickStatus = index === fasterHits - 1 || index === hits.length - 1;
+      const isLastHit = index === hits.length - 1;
       this.resolveHit(
-        true,
-        moveId,
+        hit.isPlayer,
+        hit.moveId,
         () => {
           if (this.opponentHp <= 0 || this.playerHp <= 0) return;
-          this.time.delayedCall(TURN_GAP_MS, () => this.resolveHit(false, opponentMoveId(), releaseLock));
+          if (isLastHit) {
+            releaseLock();
+          } else {
+            this.time.delayedCall(TURN_GAP_MS, () => runHit(index + 1));
+          }
         },
-        bonusMultiplier
+        hit.isPlayer ? bonusMultiplier : 1,
+        tickStatus
       );
-    } else {
-      this.resolveHit(false, opponentMoveId(), () => {
-        if (this.opponentHp <= 0 || this.playerHp <= 0) return;
-        this.time.delayedCall(TURN_GAP_MS, () => this.resolveHit(true, moveId, releaseLock, bonusMultiplier));
-      });
-    }
+    };
+
+    runHit(0);
   }
 
   // Sets the combat-log text and repositions it upward just enough to keep
@@ -1222,8 +1297,13 @@ export class BattleScene extends Phaser.Scene {
   // the win/lose check + onDone (which schedules the opponent's counter-
   // swing) to wait until the full animation has actually finished playing --
   // see applyResult/checkEndOrContinue and the isUltimate branch at the
-  // bottom of this method.
-  private resolveHit(isPlayer: boolean, moveId: string, onDone: () => void, bonusMultiplier = 1) {
+  // bottom of this method. `tickStatus` (default true) gates whether this
+  // call is allowed to apply/tick down the defender's Kondo status (§5) --
+  // playerAttack passes true only for the *last* hit landed against a given
+  // defender within the same round, so a defender hit multiple times by a
+  // faster attacker (the velocity-ratio multi-attack rule, DESIGN.md §4)
+  // still only has its status resolved once per round.
+  private resolveHit(isPlayer: boolean, moveId: string, onDone: () => void, bonusMultiplier = 1, tickStatus = true) {
     const move = MOVES[moveId];
     const attackerStats = isPlayer ? this.playerStats : this.enemyStats;
     const defenderStats = isPlayer ? this.enemyStats : this.playerStats;
@@ -1316,10 +1396,12 @@ export class BattleScene extends Phaser.Scene {
       const who = isPlayer ? 'You' : `Wild ${this.wild.name}`;
       // Kondo's move landing applies a fresh status to the defender (replacing
       // whatever was already there); an ordinary hit instead ticks down
-      // whatever status the defender already carries, one tick per round since
-      // each side is the defender of exactly one resolveHit call per round --
-      // see applyOrTickStatus.
-      const statusText = this.applyOrTickStatus(move, defenderIsPlayer);
+      // whatever status the defender already carries, once per round --
+      // gated by `tickStatus` (see resolveHit's own comment) rather than
+      // firing on every hit, since a faster attacker can land more than one
+      // hit against the same defender in a single round (DESIGN.md §4).
+      // See applyOrTickStatus.
+      const statusText = tickStatus ? this.applyOrTickStatus(move, defenderIsPlayer) : '';
 
       // Franklin's Satellite Reflection (§5): a crit from a side with it
       // active triggers a bonus follow-up tick against the same defender,
@@ -1459,17 +1541,22 @@ export class BattleScene extends Phaser.Scene {
     return this.getStatus(isPlayer)?.kind === 'screened' ? SCREENED_DAMAGE_MULT : 1;
   }
 
-  // Called once per resolveHit, after that hit's own damage is already
-  // computed (so a fresh application here never retroactively affects the
-  // hit that caused it). If the move landing is one of Kondo's three
-  // (KONDO_MOVE_STATUS), it replaces whatever status was already on the
-  // defender outright -- one status per side, never stacked. Otherwise it
-  // ticks down whatever status the defender already carries by one (each
-  // side is the defender of exactly one resolveHit call per round, so this
-  // fires once per round per side) and clears/announces it once it expires.
-  // Returns the log clause to append (empty string if nothing to report),
-  // same "stack a clause onto the existing line" pattern as
-  // mismatchText/critText above.
+  // Called from a resolveHit whose own `tickStatus` was true -- playerAttack
+  // only ever passes true for the *last* hit landed against a given defender
+  // in a round (so an existing status stays active for every one of the
+  // faster side's earlier hits that round, and a status a Kondo move
+  // inflicts this round doesn't retroactively affect the hits that inflicted
+  // it), so this always fires at most once per round per defending side,
+  // even when the faster side lands more than one hit on the same defender
+  // (DESIGN.md §4's velocity-ratio multi-attack). Runs after that
+  // hit's own damage is already computed (so a fresh application here never
+  // retroactively affects the hit that caused it). If the move landing is
+  // one of Kondo's three (KONDO_MOVE_STATUS), it replaces whatever status
+  // was already on the defender outright -- one status per side, never
+  // stacked. Otherwise it ticks down whatever status the defender already
+  // carries by one and clears/announces it once it expires. Returns the log
+  // clause to append (empty string if nothing to report), same "stack a
+  // clause onto the existing line" pattern as mismatchText/critText above.
   private applyOrTickStatus(move: Move, defenderIsPlayer: boolean): string {
     const defenderName = defenderIsPlayer ? this.playerMaterial.name : this.wild.name;
     const kondoStatus = KONDO_MOVE_STATUS[move.id];
@@ -1562,7 +1649,7 @@ export class BattleScene extends Phaser.Scene {
     this.moveMenu?.destroy(true);
     this.moveMenu = undefined;
 
-    const stake = this.isRival ? RIVAL_TOKEN_STAKE : BATTLE_TOKEN_STAKE;
+    const stake = this.isRival ? 2 * battleStakeForWorld(this.world) : battleStakeForWorld(this.world);
     const tokens = (this.game.registry.get('qumatessence') as number) || 0;
     const newTokens = won ? tokens + stake : Math.max(0, tokens - stake);
     this.game.registry.set('qumatessence', newTokens);

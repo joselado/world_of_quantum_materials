@@ -264,19 +264,20 @@ export class HubScene extends Phaser.Scene {
     return !!this.game.registry.get('superpositionMode');
   }
 
-  // Superposition Mode drops the player straight into World 2 -- Bloch's
-  // world -- rather than the normal `highestUnlockedWorld()` gate. Bloch's
-  // own teleport hub (OverworldScene.showBlochHub) then offers every world
-  // as a destination, since superposition mode also pre-seeds `visitedWorlds`
-  // with all of BUILT_WORLDS (see OverworldScene.create) -- no separate
-  // warp UI needed, Bloch already does that job.
+  // Superposition Mode drops the player into World 1, same as Story Mode's
+  // door, rather than gating on the normal `highestUnlockedWorld()` progress
+  // check. Superposition mode pre-seeds `visitedWorlds` with all of
+  // BUILT_WORLDS (see OverworldScene.create), so once the player reaches
+  // Bloch's world (World 2, reachable via the walkable world doors) his
+  // teleport hub (OverworldScene.showBlochHub) already offers every world as
+  // a destination -- no separate warp UI needed.
   private doorLabel(): string {
-    return this.isSuperpositionMode() ? 'Enter World 2 (Bloch)' : `Enter World ${this.highestUnlockedWorld()}`;
+    return this.isSuperpositionMode() ? 'Enter World 1' : `Enter World ${this.highestUnlockedWorld()}`;
   }
 
   private enterWorld() {
     if (this.isSuperpositionMode()) {
-      this.scene.start('Overworld', { world: 2, regenerate: true });
+      this.scene.start('Overworld', { world: 1, regenerate: true });
       return;
     }
     this.scene.start('Overworld', { world: this.highestUnlockedWorld() });
