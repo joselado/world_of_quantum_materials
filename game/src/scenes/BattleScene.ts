@@ -175,6 +175,13 @@ const MENU_X = 670;
 const MENU_TOP = 178;
 const MENU_WIDTH = 176;
 const MENU_BOTTOM_MARGIN = 16;
+// "Turns" preview widget (top-left corner, clear of both HP-bar columns and
+// the log text further down) -- see `BattleScene.drawTurnPreview`.
+const TURN_PREVIEW_X = 20;
+const TURN_PREVIEW_Y = 8;
+const TURN_PREVIEW_LENGTH = 5;
+const TURN_PREVIEW_ICON_SIZE = 18;
+const TURN_PREVIEW_ICON_SPACING = 22;
 
 interface BattleInitData {
   wild: Material;
@@ -206,6 +213,8 @@ export class BattleScene extends Phaser.Scene {
   private opponentPos: { x: number; y: number } = OPPONENT_POS;
   private playerCrystal!: Phaser.GameObjects.Container;
   private logText!: Phaser.GameObjects.Text;
+  private turnPreviewLabel!: Phaser.GameObjects.Text;
+  private turnPreviewRow?: Phaser.GameObjects.Container;
   private moveMenu?: Phaser.GameObjects.Container;
   // Which page drawMoveMenu is currently showing -- see drawMoveMenu's own
   // comment for why only one renders at a time now. A page is usually one
@@ -417,6 +426,19 @@ export class BattleScene extends Phaser.Scene {
       wordWrap: { width: 600 },
     });
     this.setLogText(openingLine);
+
+    // "Turns" preview widget (top-left corner) -- see drawTurnPreview's own
+    // comment. Label is static chrome for the whole battle (same treatment
+    // as the move menu's own section headers, `#8fa0c9`), so it's built once
+    // here rather than inside drawTurnPreview, which only rebuilds the icon
+    // row itself.
+    this.turnPreviewLabel = this.add.text(TURN_PREVIEW_X, TURN_PREVIEW_Y, 'Turns', {
+      fontSize: fontPx(this, 11),
+      color: '#8fa0c9',
+      backgroundColor: 'rgba(0,0,0,0.35)',
+      padding: { x: 4, y: 2 },
+    });
+    this.drawTurnPreview();
 
     this.currentMoveIds = getBattleMoves(this.game.registry);
     this.drawMoveMenu(this.currentMoveIds);
@@ -1174,32 +1196,67 @@ export class BattleScene extends Phaser.Scene {
   // side gets `clamp(floor(ratio), 1, 3)` hits this round -- the cap keeps an
   // extreme velocity gap from producing an unbounded hit sequence. The slower
   // side always still gets exactly one hit. Ties (ratio exactly 1) keep the
-  // original player-first, one-hit-each behavior. A Slowed side's own
-  // effective Velocity is dragged down for the comparison too (Kondo's
-  // Scattering Drag, §5) -- symmetric, same as every other resolveHit-
-  // adjacent term, even though only the player can currently inflict it.
-  // `bonusMultiplier` only ever applies to the player's own hit(s) with this
-  // specific moveId (an analytic move already answered via
-  // showAnalyticQuestion) -- the opponent's hit(s) in the same round always
-  // resolve at the default 1.
-  //
-  // Skłodowska-Curie's two Ultimate moves and Laughlin's two Analytic moves
-  // are exempt from the multi-hit scaling above -- their quiz-gating and
-  // (for Ultimates) multi-phase animation timing are already tuned around
-  // exactly one resolveHit call per side per round, so picking one of those
-  // moves keeps the plain strict-alternation, one-hit-each behavior
-  // regardless of the velocity ratio.
+  // player going first, one hit each. A Slowed side's own effective Velocity
+  // is dragged down for the comparison too (Kondo's Scattering Drag, §5) --
+  // symmetric, same as every other resolveHit-adjacent term, even though only
+  // the player can currently inflict it. Shared by `playerAttack` (which
+  // actually resolves the round's hits) and `drawTurnPreview` (which reads it
+  // to render the "Turns" widget) so the two can't drift apart.
+  private currentHitOrder(): { fasterIsPlayer: boolean; fasterHits: number } {
+    const playerVelocity = this.playerStats.velocity * this.statusVelocityMultiplier(true);
+    const enemyVelocity = this.enemyStats.velocity * this.statusVelocityMultiplier(false);
+    const fasterIsPlayer = playerVelocity >= enemyVelocity;
+    const ratio = fasterIsPlayer ? playerVelocity / enemyVelocity : enemyVelocity / playerVelocity;
+    const fasterHits = Phaser.Math.Clamp(Math.floor(ratio), 1, 3);
+    return { fasterIsPlayer, fasterHits };
+  }
+
+  // Redraws the small "Turns" preview row in the field's top-left corner
+  // (`TURN_PREVIEW_X/Y`): a best-effort look-ahead at the next
+  // `TURN_PREVIEW_LENGTH` hits, built by tiling `currentHitOrder`'s one-round
+  // pattern (the faster side's `fasterHits` icons, then the slower side's
+  // one) out to that length. It's only exactly right if the player keeps
+  // picking ordinary moves and neither side's stats change mid-sequence --
+  // an Ultimate/Analytic pick (exempt from the multi-hit scaling, see
+  // `playerAttack`) or a status effect landing makes the *next* round deviate
+  // from the current preview, not a bug, just the approximation this widget
+  // is meant to be. Called once from `create()` and again every time a round
+  // actually finishes (`playerAttack`'s `releaseLock`), since Kondo's Slowed
+  // status (§5) can change `statusVelocityMultiplier` and so flip
+  // `fasterIsPlayer`/`fasterHits` for the next round.
+  private drawTurnPreview() {
+    this.turnPreviewRow?.destroy(true);
+
+    const { fasterIsPlayer, fasterHits } = this.currentHitOrder();
+    const roundPattern: boolean[] = [];
+    for (let i = 0; i < fasterHits; i++) roundPattern.push(fasterIsPlayer);
+    roundPattern.push(!fasterIsPlayer);
+    const sequence = Array.from({ length: TURN_PREVIEW_LENGTH }, (_, i) => roundPattern[i % roundPattern.length]);
+
+    const container = this.add.container(TURN_PREVIEW_X, this.turnPreviewLabel.y + this.turnPreviewLabel.height + 4);
+    sequence.forEach((isPlayer, i) => {
+      const material = isPlayer ? this.playerMaterial : this.wild;
+      const icon = makeCrystal(this, TURN_PREVIEW_ICON_SIZE, material.color, material.variant, {
+        seed: material.name,
+        hybrid: material.hybridParents,
+      });
+      icon.setPosition(i * TURN_PREVIEW_ICON_SPACING + TURN_PREVIEW_ICON_SIZE / 2, TURN_PREVIEW_ICON_SIZE / 2);
+      container.add(icon);
+    });
+    this.turnPreviewRow = container;
+  }
+
   private playerAttack(moveId: string, bonusMultiplier = 1) {
     if (this.turnLock) return;
     this.turnLock = true;
 
-    const playerFirst =
-      this.playerStats.velocity * this.statusVelocityMultiplier(true) >=
-      this.enemyStats.velocity * this.statusVelocityMultiplier(false);
+    const { fasterIsPlayer, fasterHits } = this.currentHitOrder();
+    const playerFirst = fasterIsPlayer; // tie keeps player-first, same as currentHitOrder's own tie rule
     const opponentMoveId = () => Phaser.Utils.Array.GetRandom(this.wild.moves);
 
     const releaseLock = () => {
       this.turnLock = false;
+      this.drawTurnPreview();
     };
 
     const exempt = ANALYTIC_MOVE_IDS.includes(moveId) || ULTIMATE_MOVE_IDS.includes(moveId);
@@ -1222,12 +1279,6 @@ export class BattleScene extends Phaser.Scene {
       }
       return;
     }
-
-    const playerVelocity = this.playerStats.velocity * this.statusVelocityMultiplier(true);
-    const enemyVelocity = this.enemyStats.velocity * this.statusVelocityMultiplier(false);
-    const fasterIsPlayer = playerVelocity >= enemyVelocity; // tie keeps player-first, same as playerFirst above
-    const ratio = fasterIsPlayer ? playerVelocity / enemyVelocity : enemyVelocity / playerVelocity;
-    const fasterHits = Phaser.Math.Clamp(Math.floor(ratio), 1, 3);
 
     // The round's full hit order: the faster side swings `fasterHits` times
     // (reusing the same moveId each time on the player's side; re-rolled

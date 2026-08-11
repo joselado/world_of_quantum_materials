@@ -677,6 +677,26 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   battle -- see DESIGN.md §3/§4), then "A coherent critical hit!" for a crit -- up to two
   clauses can stack on one line, in that fixed order.
 
+## Turn-order preview (`BattleScene.drawTurnPreview`)
+
+- A small "Turns" widget docked in the field's top-left corner (`x = 20, y = 8`), clear of
+  both HP-bar columns and the log text further down: a dim blue-grey (`#8fa0c9`, matching
+  the move menu's own section-header color) "Turns" label over the usual translucent-black
+  tag background, with a row of five 18px crystal icons (`makeCrystal`, 22px spacing) below
+  it -- one for the player's own current crystal, one for the wild opponent's, each using
+  that side's real `color`/`variant`/`seed`/`hybridParents` so the two are visibly distinct
+  and match how that crystal actually looks elsewhere in the fight.
+- The row previews the next five hits in order (DESIGN.md §4's velocity multi-hit rule):
+  the faster side's icons repeated `fasterHits` times, then the slower side's icon once,
+  tiled out to five. It's a best-effort look-ahead, not a guarantee -- it assumes ordinary
+  moves keep getting picked and neither side's stats change mid-sequence, so a Kondo status
+  landing or an Ultimate/Analytic pick (exempt from the multi-hit scaling) can make the
+  actual next round diverge from what it showed; the widget carries no disclaimer text for
+  this, since it's still an accurate read of "if nothing changes."
+- Redrawn once in `create()` and again every time a round actually finishes (right where
+  `turnLock` releases), so a mid-battle Slowed status changes the preview for future rounds
+  as soon as it lands rather than staying frozen from turn 1.
+
 ## Battle move menu (`BattleScene.drawMoveMenu`)
 
 - A docked panel on the right of the field (`x = 670`, `y = 178`, width `176`), same dark
