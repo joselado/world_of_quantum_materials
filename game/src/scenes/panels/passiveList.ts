@@ -43,7 +43,7 @@ export function renderPassiveList(
   const learned = passiveIds.filter((id) => unlocked.includes(id));
   const activeByOwner = (scene.game.registry.get('activePassiveByOwner') as Partial<Record<PassiveOwner, string>>) ?? {};
   const active = activeByOwner[owner] ?? null;
-  const tokens = (scene.game.registry.get('qumatokens') as number) || 0;
+  const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
 
   // Every row's font size -- buy rows and already-bought/active rows alike
   // -- is capped well below the text-size setting's full range (same
@@ -68,12 +68,12 @@ export function renderPassiveList(
       container,
       CANVAS_W / 2,
       y,
-      `${passive.name} -- ${passive.cost} qumatokens`,
+      `${passive.name} -- ${passive.cost} qumatessence`,
       () => {
-        if ((scene.game.registry.get('qumatokens') as number) < passive.cost) return;
-        scene.qumatokens -= passive.cost;
-        scene.game.registry.set('qumatokens', scene.qumatokens);
-        scene.tokenText.setText(`Qumatokens: ${scene.qumatokens}`);
+        if ((scene.game.registry.get('qumatessence') as number) < passive.cost) return;
+        scene.qumatessence -= passive.cost;
+        scene.game.registry.set('qumatessence', scene.qumatessence);
+        scene.tokenText.setText(`Qumatessence: ${scene.qumatessence}`);
         scene.game.registry.set('passivesUnlocked', [...unlocked, id]);
         if (!activeByOwner[owner]) {
           scene.game.registry.set('activePassiveByOwner', { ...activeByOwner, [owner]: id });

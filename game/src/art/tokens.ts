@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { shade } from './colors';
 
 // A shiny little cloud rather than a faceted gem -- a cluster of soft
-// overlapping lobes plus a bright core, halo and sparkles -- so a qumatoken
+// overlapping lobes plus a bright core, halo and sparkles -- so a qumatessence
 // pickup reads as distinct from the faceted wild-encounter/player crystals
 // at a glance, in addition to its tier color.
 export function makeToken(scene: Phaser.Scene, size: number, color: number): Phaser.GameObjects.Container {

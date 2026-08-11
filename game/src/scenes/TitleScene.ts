@@ -36,7 +36,7 @@ export class TitleScene extends Phaser.Scene {
   create() {
     const save = loadSave();
     const registry = this.game.registry;
-    registry.set('qumatokens', save.qumatokens);
+    registry.set('qumatessence', save.qumatessence);
     registry.set('unlockedMoves', save.unlockedMoves);
     registry.set('playerHp', save.playerHp);
     registry.set('rivalDefeated', save.rivalDefeated);

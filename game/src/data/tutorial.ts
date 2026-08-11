@@ -1,7 +1,7 @@
 // Tutorial content (DESIGN.md's onboarding pass). Each tip is shown once per
 // save, the first time its own feature actually becomes relevant -- entering
 // the Lab, taking your first steps, bumping into your first wild crystal,
-// committing to your first fight, picking up your first qumatoken, meeting
+// committing to your first fight, picking up your first qumatessence, meeting
 // your first guardian, reaching your first goal (OverworldScene/HubScene's
 // `showTutorialTip`/`maybeShowLabTip`) -- rather than one long paged popup
 // dumped on the player before they've done anything. `TUTORIAL_PAGES` is the
@@ -14,7 +14,7 @@ export interface TutorialPage {
   body: string;
 }
 
-export type TutorialTipId = 'lab' | 'controls' | 'encounter' | 'battle' | 'qumatoken' | 'guardian' | 'goal';
+export type TutorialTipId = 'lab' | 'controls' | 'encounter' | 'battle' | 'qumatessence' | 'guardian' | 'goal';
 
 export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
   lab: {
@@ -37,10 +37,10 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     body:
       'Battles are turn-based -- whichever side has higher Velocity swings first each round. Pick a move from the panel on the right; every move is a real quasiparticle, and a defender with no natural way to host it takes double damage.',
   },
-  qumatoken: {
-    title: 'Qumatokens',
+  qumatessence: {
+    title: 'Qumatessence',
     body:
-      'Winning battles and finding qumatoken pickups (the shiny clouds waiting at the dead ends of side paths) earns you qumatokens -- the currency guardians use to sell you new moves and sharper stats.',
+      'Winning battles and finding qumatessence pickups (the shiny clouds waiting at the dead ends of side paths) earns you qumatessence -- the currency guardians use to sell you new moves and sharper stats.',
   },
   guardian: {
     title: 'Guardians',

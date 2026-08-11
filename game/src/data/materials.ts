@@ -108,7 +108,7 @@ export const MOVES: Record<string, Move> = {
   // multiplier. Never listed in any material's `moves` array, same reasoning
   // as skyfallBeam/groundEruption above -- only the player can ever use one.
   // Priced completely differently from every other move too: not via
-  // shopCost, but a flat 1000-qumatoken unlock per (move, quasiparticle
+  // shopCost, but a flat 1000-qumatessence unlock per (move, quasiparticle
   // class) pair (ULTIMATE_CLASS_UNLOCK_COST, Skłodowska-Curie's own panel).
   // 'phonon' as the default class for the same always-hostable reason as
   // skyfallBeam/groundEruption above.
@@ -177,7 +177,7 @@ export const ANALYTIC_MOVE_IDS = ['skyfallBeam', 'groundEruption'];
 // `moves` array either.
 export const ULTIMATE_MOVE_IDS = ['ultimateMeteor', 'ultimateNova'];
 
-// Qumatoken cost to unlock one quasiparticle class for one Ultimate move
+// Qumatessence cost to unlock one quasiparticle class for one Ultimate move
 // (Skłodowska-Curie's panel, registry/save `ultimateClassesUnlocked`) --
 // paid once per (move, class) pair, not per purchase like shopCost; once
 // paid, retuning back to that class is free forever.
@@ -377,7 +377,7 @@ export function canHost(type: MaterialType, moveClass: MoveClass): boolean {
 
 // Battle stats (DESIGN.md §3): every crystal starts at the same baseline:
 // the player's own stats live in the save/registry (`playerStats`, grown by
-// spending qumatokens with Noether -- OverworldScene.renderShopStats), while
+// spending qumatessence with Noether -- OverworldScene.renderShopStats), while
 // an opponent's stats are computed fresh from the world number at battle
 // start (enemyStatsForWorld) rather than baked per-species, so difficulty
 // climbs with the world rather than needing 30 hand-tuned stat blocks.
@@ -388,7 +388,7 @@ export const DEFAULT_STATS: Stats = { quantumness: BASE_STAT, velocity: BASE_STA
 // Total enemy-stat growth per world is now a budget of 8 (3/3/2), up from
 // the previous flat 2/2/2 (a total of 6) -- a deliberate ~33% difficulty
 // increase, not a neutral redistribution of the old total, sized so staying
-// competitive into the next world costs roughly 8 qumatoken-funded stat
+// competitive into the next world costs roughly 8 qumatessence-funded stat
 // purchases (statUpgradeCost), matching the pace guardians sell stat upgrades
 // at. Correlation gets the smaller share since its effect (defense =
 // BASE_STAT / correlation) is already nonlinear, so each point there goes
@@ -411,10 +411,10 @@ export function statUpgradeCost(currentValue: number): number {
   return (currentValue - BASE_STAT + 1) * 50;
 }
 
-// Qumatoken price for a shop move, scaled off its own power -- the stronger
+// Qumatessence price for a shop move, scaled off its own power -- the stronger
 // the quasiparticle, the more it costs, the same "priced to keep buying
 // meaningful" shape as statUpgradeCost. Shared by every guardian who sells
-// moves for qumatokens (Noether, Laughlin, Kondo) -- Skłodowska-Curie's
+// moves for qumatessence (Noether, Laughlin, Kondo) -- Skłodowska-Curie's
 // Ultimate moves are the one exception, priced via ULTIMATE_CLASS_UNLOCK_COST
 // instead (see her own panel).
 export function shopCost(move: Move): number {

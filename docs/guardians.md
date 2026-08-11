@@ -128,7 +128,7 @@ everything the course has covered rather than any one world's topic. Missing
 even one question makes the move whiff for zero damage, though the turn is
 still spent. Unlike every other tunable move in the game, picking which
 quasiparticle an Ultimate move should carry isn't a flat purchase: each
-quasiparticle class costs 1000 qumatokens to unlock *per move*, after which
+quasiparticle class costs 1000 qumatessence to unlock *per move*, after which
 retuning back to that class is free forever. Landing a 3-for-3 hit
 plays a dramatically longer, multi-phase summoning animation than any other
 move in the game.

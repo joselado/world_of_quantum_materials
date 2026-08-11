@@ -82,7 +82,7 @@ topic. Missing even one question makes the move whiff for zero damage,
 though the turn is still spent. Like Laughlin's Analytic moves, each one can
 be tuned to any quasiparticle class your current form can host and always
 reads "<quasiparticle> Meteor"/"<quasiparticle> Nova" -- but tuning isn't a
-flat purchase here: each quasiparticle class costs 1000 qumatokens to unlock
+flat purchase here: each quasiparticle class costs 1000 qumatessence to unlock
 per move, the first time it's picked, after which retuning back to it is
 free forever. See [Guardians](guardians.md#skłodowska-curie) for how the
 shop and the per-class unlock pricing work.

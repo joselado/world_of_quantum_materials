@@ -23,7 +23,7 @@ import type { MoveClass } from '../../data/types';
 // move). Her pricing model is deliberately NOT the standard `shopCost`
 // flow every other tunable-move shop uses (panels/tunableMoveShop.ts) --
 // there is no separate "buy the move" step; instead each quasiparticle
-// class costs `ULTIMATE_CLASS_UNLOCK_COST` qumatokens to unlock per move,
+// class costs `ULTIMATE_CLASS_UNLOCK_COST` qumatessence to unlock per move,
 // the first time it's picked for that move, after which retuning back to
 // an already-unlocked class is free forever (see
 // showUltimateClassPicker below). The move's own battle-side 3-question
@@ -103,7 +103,7 @@ function renderUltimateMoves(scene: OverworldScene, container: Phaser.GameObject
 // tunableMoveShop.ts's showMoveClassPicker does, but each row's cost is
 // per-class instead of a flat move purchase: "Free (already unlocked)" for
 // any class already in registry/save `ultimateClassesUnlocked[moveId]`,
-// else `ULTIMATE_CLASS_UNLOCK_COST` qumatokens. Picking an unlocked class is
+// else `ULTIMATE_CLASS_UNLOCK_COST` qumatessence. Picking an unlocked class is
 // free and just retunes; picking a not-yet-unlocked one deducts the cost,
 // records the unlock, retunes, and -- on this move's very first-ever
 // unlock -- adds the move id to `unlockedMoves` so it appears in the battle
@@ -133,12 +133,12 @@ function showUltimateClassPicker(scene: OverworldScene, moveId: string, onDone: 
 
   const unlockedForMove =
     ((scene.game.registry.get('ultimateClassesUnlocked') as Partial<Record<string, MoveClass[]>>) ?? {})[moveId] ?? [];
-  const tokens = (scene.game.registry.get('qumatokens') as number) || 0;
+  const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
   const hostable = TUNABLE_MOVE_CLASSES.filter((cls) => canHost(scene.playerMaterial.type, cls));
 
   hostable.forEach((cls) => {
     const isUnlocked = unlockedForMove.includes(cls);
-    const costLabel = isUnlocked ? 'Free (already unlocked)' : `${ULTIMATE_CLASS_UNLOCK_COST} qumatokens`;
+    const costLabel = isUnlocked ? 'Free (already unlocked)' : `${ULTIMATE_CLASS_UNLOCK_COST} qumatessence`;
     const affordable = isUnlocked || tokens >= ULTIMATE_CLASS_UNLOCK_COST;
     const btn = scene.addDialogueButton(container, y, `${quasiparticleLabel(cls)} -- ${costLabel}`, () => {
       const allUnlocked = (scene.game.registry.get('ultimateClassesUnlocked') as Partial<Record<string, MoveClass[]>>) ?? {};
@@ -147,11 +147,11 @@ function showUltimateClassPicker(scene: OverworldScene, moveId: string, onDone: 
       if (forThisMove.includes(cls)) {
         scene.game.registry.set('moveClassTuning', { ...assigned, [moveId]: cls });
       } else {
-        const tokensNow = (scene.game.registry.get('qumatokens') as number) || 0;
+        const tokensNow = (scene.game.registry.get('qumatessence') as number) || 0;
         if (tokensNow < ULTIMATE_CLASS_UNLOCK_COST) return;
-        scene.qumatokens -= ULTIMATE_CLASS_UNLOCK_COST;
-        scene.game.registry.set('qumatokens', scene.qumatokens);
-        scene.tokenText.setText(`Qumatokens: ${scene.qumatokens}`);
+        scene.qumatessence -= ULTIMATE_CLASS_UNLOCK_COST;
+        scene.game.registry.set('qumatessence', scene.qumatessence);
+        scene.tokenText.setText(`Qumatessence: ${scene.qumatessence}`);
         scene.game.registry.set('ultimateClassesUnlocked', { ...allUnlocked, [moveId]: [...forThisMove, cls] });
         scene.game.registry.set('moveClassTuning', { ...assigned, [moveId]: cls });
         const unlockedMoves = scene.getUnlockedMoves();

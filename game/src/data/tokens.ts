@@ -1,4 +1,4 @@
-// Qumatoken economy: each pickup is worth 1, 5, or 10, colored per tier so
+// Qumatessence economy: each pickup is worth 1, 5, or 10, colored per tier so
 // the value reads at a glance before the player even reaches it. Higher
 // values are rarer, rewarding the longer/deeper dead-end branches without
 // guaranteeing a big payout on every one.

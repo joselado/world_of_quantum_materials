@@ -17,7 +17,7 @@ export interface DiscoveredMaterial {
 }
 
 export interface SaveData {
-  qumatokens: number;
+  qumatessence: number;
   unlockedMoves: string[];
   playerHp: number;
   rivalDefeated: Record<number, boolean>;
@@ -91,7 +91,7 @@ export interface SaveData {
   // this map is "untuned," falling back to the move's own always-safe
   // default 'phonon' class for the quasiparticle-mismatch check.
   moveClassTuning: Partial<Record<string, MoveClass>>;
-  // Which quasiparticle classes have been paid for (1000 qumatokens each)
+  // Which quasiparticle classes have been paid for (1000 qumatessence each)
   // for each of Skłodowska-Curie's two Ultimate moves (data/materials.ts's
   // ULTIMATE_MOVE_IDS/ULTIMATE_CLASS_UNLOCK_COST) -- once a (move, class)
   // pair appears here, retuning back to it via her panel is free forever,
@@ -118,7 +118,7 @@ export interface SaveData {
 
 export function defaultSave(): SaveData {
   return {
-    qumatokens: 0,
+    qumatessence: 0,
     unlockedMoves: [...PLAYER_MATERIAL.moves],
     playerHp: PLAYER_MATERIAL.maxHp,
     rivalDefeated: {},
@@ -166,7 +166,14 @@ export function loadSave(): SaveData {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return defaultSave();
-    const data: SaveData = { ...defaultSave(), ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw) as Partial<SaveData> & { qumatokens?: number };
+    const data: SaveData = { ...defaultSave(), ...parsed };
+    // Saves written before this field was named `qumatessence` store the
+    // value under the old key `qumatokens` -- read that as a fallback so
+    // existing currency carries over instead of silently resetting to 0.
+    if (typeof parsed.qumatessence !== 'number' && typeof parsed.qumatokens === 'number') {
+      data.qumatessence = parsed.qumatokens;
+    }
     // Drop moves a prior version of the game unlocked but this version no
     // longer defines (e.g. a renamed/retired move id) -- otherwise every
     // panel that looks up MOVES[id] for an unlocked move crashes on an
@@ -198,7 +205,7 @@ interface RegistryLike {
 
 export function persistFromRegistry(registry: RegistryLike) {
   const data: SaveData = {
-    qumatokens: (registry.get('qumatokens') as number) ?? 0,
+    qumatessence: (registry.get('qumatessence') as number) ?? 0,
     unlockedMoves: (registry.get('unlockedMoves') as string[]) ?? [...PLAYER_MATERIAL.moves],
     playerHp: (registry.get('playerHp') as number) ?? PLAYER_MATERIAL.maxHp,
     rivalDefeated: (registry.get('rivalDefeated') as Record<number, boolean>) ?? {},

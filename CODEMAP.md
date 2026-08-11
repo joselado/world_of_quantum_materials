@@ -49,7 +49,7 @@ game/src/
     franklin.ts                   makeFranklinAvatar() -- diffraction/lattice-defect motif, world 9
     sklodowskaCurie.ts            makeSklodowskaCurieAvatar(), world 10
     boss.ts                      makeBossCrystal() -- gigantic multi-shard boss avatar at a world's goal
-    tokens.ts                   makeToken() -- qumatoken pickup sprite
+    tokens.ts                   makeToken() -- qumatessence pickup sprite
     attackEffects.ts            playAttackEffect() -- bolt/ring/burst/beam/eruption/meteor/nova
                                   particle effect; beam/eruption are ANALYTIC_SHAPES' per-move-id
                                   overrides (Laughlin's skyfallBeam/groundEruption), meteor/nova are
@@ -91,7 +91,7 @@ game/src/
     passives.ts                   PASSIVES/FRANKLIN_PASSIVE_IDS/BOHR_PASSIVE_IDS/PASSIVE_OWNERS/
                                   PASSIVE_OWNER_LABELS -- Franklin's and Bohr's whole-battle passive
                                   abilities (id/name/owner/description/cost)
-    tokens.ts                    Qumatoken value tiers + weights
+    tokens.ts                    Qumatessence value tiers + weights
     quiz.ts                      Per-material physics question pools (>=6 each) via
                                   getMaterialQuestion(), plus the world-tagged ANALYTIC_QUESTIONS pool
                                   (AnalyticQuestion carries worlds: number[]) via
@@ -193,7 +193,7 @@ since `materials.ts` pulls in Phaser at module scope) and regenerates the
   `TitleScene` is the only place that loads localStorage *into* the registry. Any new persistent
   state should follow this same registry-first, persist-on-mutation shape and get added to
   `data/save.ts`'s `SaveData`/`defaultSave()`/`persistFromRegistry()` together.
-- **World sprites.** Wild-encounter crystals, qumatoken pickups, and every guardian's overworld
+- **World sprites.** Wild-encounter crystals, qumatessence pickups, and every guardian's overworld
   avatar (Noether, Bloch, Dresselhaus, and every other guardian alike) all share one `WorldSprite`
   projection/wander/bob system in `OverworldScene` (`updateWorldSprites`) rather than bespoke
   per-kind code -- a new NPC should spawn through the single unified
@@ -653,7 +653,7 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   `showUltimateClassPicker` offers the same `TUNABLE_MOVE_CLASSES`-filtered-by-`canHost` list
   `showMoveClassPicker` does, but each row's cost is per-class rather than a flat move price:
   "Free (already unlocked)" for a class already in registry/save
-  `ultimateClassesUnlocked[moveId]`, else `ULTIMATE_CLASS_UNLOCK_COST` (1000) qumatokens.
+  `ultimateClassesUnlocked[moveId]`, else `ULTIMATE_CLASS_UNLOCK_COST` (1000) qumatessence.
   Picking an already-unlocked class just retunes (writes `moveClassTuning[moveId]`); picking a
   new one deducts the cost, appends the class to `ultimateClassesUnlocked[moveId]`, retunes, and
   -- only on that move's very first-ever unlock -- appends the move id to `unlockedMoves` so it
@@ -760,7 +760,7 @@ testing/exploration aid, not part of normal progression. Three things key off
 `hasSeenTip`/`markTipSeen`): each tip fires once per save, right at the trigger site for its
 own feature, not as one first-run sequence. `OverworldScene.showTutorialTip(id, onClose)` is
 the shared entry point for six of the seven (`controls` on Overworld create, `encounter` in
-`maybeTriggerEncounter`, `battle` in `startBattle`, `qumatoken` in `maybeCollectToken`,
+`maybeTriggerEncounter`, `battle` in `startBattle`, `qumatessence` in `maybeCollectToken`,
 `guardian` in `openGuardian`, `goal` in `maybeAutoOpenGoalDialogue`) -- it checks `hasSeenTip`,
 and either calls `onClose` straight away (already seen) or renders the tip via
 `renderTutorialTipPopup` and calls `onClose` once the player dismisses it, so callers just

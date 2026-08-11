@@ -75,18 +75,18 @@ function renderKondoMoves(scene: OverworldScene, container: Phaser.GameObjects.C
   const unlocked = scene.getUnlockedMoves();
   const forSale = KONDO_MOVE_IDS.filter((id) => !unlocked.includes(id));
   const learned = KONDO_MOVE_IDS.filter((id) => unlocked.includes(id));
-  const tokens = (scene.game.registry.get('qumatokens') as number) || 0;
+  const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
   const activeMove = (scene.game.registry.get('kondoActiveMove') as string | null) ?? null;
 
   forSale.forEach((id) => {
     const move = MOVES[id];
     const cost = shopCost(move);
     const affordable = tokens >= cost;
-    const btn = scene.addDialogueButton(container, y, `${move.name} -- ${cost} qumatokens`, () => {
-      if ((scene.game.registry.get('qumatokens') as number) < cost) return;
-      scene.qumatokens -= cost;
-      scene.game.registry.set('qumatokens', scene.qumatokens);
-      scene.tokenText.setText(`Qumatokens: ${scene.qumatokens}`);
+    const btn = scene.addDialogueButton(container, y, `${move.name} -- ${cost} qumatessence`, () => {
+      if ((scene.game.registry.get('qumatessence') as number) < cost) return;
+      scene.qumatessence -= cost;
+      scene.game.registry.set('qumatessence', scene.qumatessence);
+      scene.tokenText.setText(`Qumatessence: ${scene.qumatessence}`);
       scene.game.registry.set('unlockedMoves', [...scene.getUnlockedMoves(), id]);
       // The very first Kondo move bought becomes active automatically --
       // "picked for the first time" happens right here, in this same

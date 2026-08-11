@@ -46,7 +46,7 @@ export function renderTunableMoveShop(
   const unlocked = scene.getUnlockedMoves();
   const forSale = moveIds.filter((id) => !unlocked.includes(id));
   const learned = moveIds.filter((id) => unlocked.includes(id));
-  const tokens = (scene.game.registry.get('qumatokens') as number) || 0;
+  const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
   const assigned = (scene.game.registry.get('moveClassTuning') as Partial<Record<string, MoveClass>>) ?? {};
 
   if (forSale.length === 0) {
@@ -67,12 +67,12 @@ export function renderTunableMoveShop(
     const cost = shopCost(move);
     const affordable = tokens >= cost;
     const displayName = tunedMoveDisplayName(scene.game.registry, id);
-    const btn = scene.addDialogueButton(container, y, `${displayName} -- ${cost} qumatokens`, () => {
-      if ((scene.game.registry.get('qumatokens') as number) < cost) return;
+    const btn = scene.addDialogueButton(container, y, `${displayName} -- ${cost} qumatessence`, () => {
+      if ((scene.game.registry.get('qumatessence') as number) < cost) return;
       showMoveClassPicker(scene, id, (chosenClass) => {
-        scene.qumatokens -= cost;
-        scene.game.registry.set('qumatokens', scene.qumatokens);
-        scene.tokenText.setText(`Qumatokens: ${scene.qumatokens}`);
+        scene.qumatessence -= cost;
+        scene.game.registry.set('qumatessence', scene.qumatessence);
+        scene.tokenText.setText(`Qumatessence: ${scene.qumatessence}`);
         scene.game.registry.set('unlockedMoves', [...scene.getUnlockedMoves(), id]);
         scene.game.registry.set('moveClassTuning', { ...assigned, [id]: chosenClass });
         persistFromRegistry(scene.game.registry);

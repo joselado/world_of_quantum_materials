@@ -23,7 +23,7 @@ camera as you walk: Up/Down walk the path forward and back, Left/Right step
 sideways. The corridor bends
 as it climbs, so reaching the far end takes actually tracking the bend, not
 just holding one direction. Short dead-end side paths branch off with a
-qumatoken (the in-game currency) waiting at the end. Every world has its own
+qumatessence (the in-game currency) waiting at the end. Every world has its own
 biome, matching that topic's flavor -- and stepping off the path doesn't
 always mean a wall: the Floating Islands drop away into open sky, the Frozen
 Caverns are a rippling frozen lake, and the Defect Wastes are a glowing
@@ -80,7 +80,7 @@ which crystal types can use each one.
 </tr>
 </table>
 
-**Grow.** Winning battles and grabbing qumatoken pickups funds the guardians
+**Grow.** Winning battles and grabbing qumatessence pickups funds the guardians
 waiting partway through each world -- ten of them in all, each teaching a
 different way of bending the game's usual rules: new moves and stats,
 teleportation, transmuting into a crystal you've defeated, always-on passive
@@ -158,7 +158,7 @@ drawing from whatever moves you've collected by then. See
 
 Turn order is speed-ordered by your crystal's Velocity stat; Quantumness
 raises your crit ("coherent hit") chance, Correlation raises your defense.
-Every crystal carries HP, fully healed after each battle -- qumatokens, not
+Every crystal carries HP, fully healed after each battle -- qumatessence, not
 HP attrition, are what's actually on the line from one fight to the next.
 The move menu shows one kind of move at a time (ordinary attacks, quiz-gated
 moves, or status-inflicting moves) rather than one flat list, with ◀/▶
@@ -200,7 +200,7 @@ Open the Enter-key menu and click **Settings** to adjust:
 
 Short tips appear one at a time, right as each feature comes up for the
 first time -- entering the Lab, taking your first steps, your first wild
-encounter, your first battle, your first qumatoken, your first guardian,
+encounter, your first battle, your first qumatessence, your first guardian,
 reaching your first goal. Want the whole thing again as a refresher? Open the Enter-key menu
 and click **Tutorial** to replay every tip in order.
 

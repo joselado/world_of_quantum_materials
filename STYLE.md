@@ -112,7 +112,7 @@ than appending a changelog, so this always reflects current reality.
   shading without asking first.
 - Decoration (flowers / crystal glints) is placed in the off-path terrain only, not on
   walkable tiles -- those are reserved for wild encounters (on the corridor) and
-  qumatoken pickups (at branch dead ends).
+  qumatessence pickups (at branch dead ends).
 - Map regenerates fresh (new `Math.random` layout) on first load and on an explicit world
   change (Hub door, Bloch's teleport, a debug warp). A round trip through a battle restores
   the exact same layout and player position instead of regenerating
@@ -139,7 +139,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 | 9 | Defect Wastes | scorched red-black gradient (`0x1a0808`→`0x3a1414`) | charred red `0x4a1c1c` | cracked red `0x8a2a2a` | cracks | no | **lava** -- the world's own "scorched" theme made literal |
 | 10 | Adaptive Meta-World | shimmering violet gradient (`0x2a1a3a`→`0x6a4a8a`) | violet `0x5a3a7a` | lavender `0xc9a8f0` | crystal glints (cyan) | yes | rock |
 
-## Qumatoken pickups (`art/tokens.ts`, `data/tokens.ts`)
+## Qumatessence pickups (`art/tokens.ts`, `data/tokens.ts`)
 
 - One token sits at the dead end of each branch (not scattered along it).
 - Rendered as a "shiny cloud" (cluster of soft overlapping circles + bright core + halo +
@@ -274,10 +274,10 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   inactive one dim blue-grey, same click-to-rebuild-the-panel pattern as buying itself.
   - **Moves**: one button per still-unbought move the player's *current crystal form* can
     physically carry (`data/materials.ts`'s `SHOP_MOVE_IDS` filtered through
-    `compatibleMoves`), labeled `<move name> -- <cost> qumatokens`; unaffordable buttons dim
+    `compatibleMoves`), labeled `<move name> -- <cost> qumatessence`; unaffordable buttons dim
     to 50% alpha rather than hide, so the shop still previews what's coming.
   - **Stats**: one button per stat (Quantumness/Velocity/Correlation), labeled
-    `<stat> (<role>): <value> -> <value+1> -- <cost> qumatokens`, same afford/dim treatment.
+    `<stat> (<role>): <value> -> <value+1> -- <cost> qumatessence`, same afford/dim treatment.
   - Both tabs' rows start at `panelY - 8`, spaced `36`px apart, buying/upgrading rebuilds
     the whole panel so the list updates and the token total on display stays correct.
 - Below the (variable-length) tab content, a single "Farewell" button
@@ -338,7 +338,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   per-class-unlock pricing is different enough that her panel is bespoke) -- still-unbought
   quiz-gated moves
   (`data/materials.ts`'s `ANALYTIC_MOVE_IDS`, a hardcoded pair, `skyfallBeam`/`groundEruption`),
-  same `<move name> -- <cost> qumatokens` label and afford/dim treatment as Noether's Moves
+  same `<move name> -- <cost> qumatessence` label and afford/dim treatment as Noether's Moves
   tab (reusing `shopCost`), followed by one row per already-bought move showing which
   quasiparticle it's tuned to: "`<name>` -- tuned to `<quasiparticle>` (retune)", or if the
   player has since transmuted into a form that can no longer host the saved assignment,
@@ -415,7 +415,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 - Same buy-list-plus-switch shape as Kondo's panel below (`renderPassiveList`, shared with
   Franklin's panel below him): a still-unbought passive (`data/passives.ts`'s
   `BOHR_PASSIVE_IDS` -- Correlated Response, Nonlocal Correlation, Shared State) gets a
-  `<name> -- <cost> qumatokens` buy button plus a one-line description underneath in a
+  `<name> -- <cost> qumatessence` buy button plus a one-line description underneath in a
   dimmer, smaller blue-grey; an already-bought passive gets a clickable "Make `<name>`
   active" button, or a dimmed "`<name>` (active)" tag with no click handler for whichever
   one currently is -- same dimmed-current convention every other guardian panel uses.
@@ -443,7 +443,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 - Same two-runs-of-rows shape as Laughlin's panel above: still-
   unbought moves from `data/materials.ts`'s `KONDO_MOVE_IDS` (Screening Pulse, Scattering
   Drag, Breakdown Cascade), usable from any form, same `<move name> -- <cost>
-  qumatokens` label and afford/dim treatment as Laughlin's/Noether's shops (reusing `shopCost`),
+  qumatessence` label and afford/dim treatment as Laughlin's/Noether's shops (reusing `shopCost`),
   followed by one row per already-bought Kondo move -- a bought-and-inactive move reads
   "Make `<name>` active" as a clickable button, the currently active one (registry/save
   `kondoActiveMove`) reads "`<name>` (active)" dimmed to 50% alpha with no click handler,
@@ -466,7 +466,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 - Same buy-list-plus-switch shape as Bohr's panel above (`renderPassiveList`, shared
   between them): a still-unbought passive (`data/passives.ts`'s `FRANKLIN_PASSIVE_IDS` --
   Diffraction Shadow, Satellite Reflection, Amorphous Halo) gets a `<name> -- <cost>
-  qumatokens` buy button plus a one-line description underneath, same capped-font-scale
+  qumatessence` buy button plus a one-line description underneath, same capped-font-scale
   treatment Bohr's panel uses; an already-bought passive gets a clickable "Make `<name>`
   active" button, or a dimmed "`<name>` (active)" tag for whichever one currently is. Same
   "buying the first activates it, no wrong-form empty state" behavior as Bohr's panel.
@@ -487,7 +487,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   quasiparticle)" if the move isn't in `unlockedMoves` yet. Clicking a row opens the same
   "Which quasiparticle should `<name>` carry?" sub-panel Laughlin's shop uses, but each row's
   cost reads "Free (already unlocked)" for a class already paid for on that move, else
-  "1000 qumatokens" for one that isn't -- unlike Laughlin's flat one-time move purchase, the
+  "1000 qumatessence" for one that isn't -- unlike Laughlin's flat one-time move purchase, the
   cost here is per (move, quasiparticle class) pair.
 - Using an Ultimate move in battle opens `BattleScene.showUltimateQuestions` instead of
   `showAnalyticQuestion` -- up to three sequential question panels, same visual family as
@@ -705,7 +705,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   actually usable right now (`getBattleMoves` -- learned moves intersected with what the
   current crystal form's physics can host, §3) as plain `<name> -- Pwr N` lines, no move-class
   label and no "incompatible" entries cluttering the list; View Stats lists
-  Quantumness/Velocity/Correlation plus qumatokens and current form name. Both end in a
+  Quantumness/Velocity/Correlation plus qumatessence and current form name. Both end in a
   single "Close" button.
 - "View Abilities" is its own dedicated panel (`showAbilitiesPanel`, `440` wide, same
   blue-grey stroke) rather than a third `showInfoPanel` body -- one name+description block

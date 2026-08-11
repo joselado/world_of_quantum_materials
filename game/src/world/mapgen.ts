@@ -21,7 +21,7 @@ export interface CorridorRow {
 
 export interface WorldMap {
   walkable: boolean[][]; // [y][x] -- corridor tiles and branch tiles
-  tokens: number[][]; // [y][x] -- qumatoken value at the dead end of each branch, 0 = none
+  tokens: number[][]; // [y][x] -- qumatessence value at the dead end of each branch, 0 = none
   rows: CorridorRow[]; // corridor rows start-to-goal, for row-based encounter placement
   start: GridPoint;
   goal: GridPoint;
@@ -152,7 +152,7 @@ export function generateWorldMap(gridW: number, gridH: number, start: GridPoint)
       branch.forEach((b) => {
         walkable[b.y][b.x] = true;
       });
-      // The qumatoken sits at the dead end, not scattered along the branch --
+      // The qumatessence sits at the dead end, not scattered along the branch --
       // an explicit reason to walk all the way to the end rather than turning
       // back partway.
       const tip = branch[branch.length - 1];

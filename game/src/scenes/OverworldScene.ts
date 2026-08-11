@@ -178,10 +178,10 @@ export class OverworldScene extends Phaser.Scene {
   private reachedMiddle = false;
   // Public rather than private: read/written directly by the extracted
   // scenes/panels/*.ts guardian-panel modules (Noether/Laughlin/Kondo/
-  // Skłodowska-Curie sell moves and stats for qumatokens), which live outside
+  // Skłodowska-Curie sell moves and stats for qumatessence), which live outside
   // this class and so can't reach a `private` field. Same reasoning applies
   // to every other field/method below marked public instead of private.
-  qumatokens = 0;
+  qumatessence = 0;
   private crystalSprites: (WorldSprite & { material: Material })[] = [];
   private tokenSprites: WorldSprite[] = [];
   // 0 or 1 entries -- reuses the same WorldSprite projection/wander/bob
@@ -401,7 +401,7 @@ export class OverworldScene extends Phaser.Scene {
     this.spawnBossSprite();
     music.play(`overworld:${this.world}`);
 
-    this.qumatokens = (state.get('qumatokens') as number) || 0;
+    this.qumatessence = (state.get('qumatessence') as number) || 0;
     this.playerMaterial = getPlayerMaterial(state);
     this.applySuperpositionLeveling();
     this.shopTab = 'moves';
@@ -430,7 +430,7 @@ export class OverworldScene extends Phaser.Scene {
       .setDepth(50);
     hudY += worldNameText.height + 4;
     this.tokenText = this.add
-      .text(CANVAS_W - 8, hudY, `Qumatokens: ${this.qumatokens}`, {
+      .text(CANVAS_W - 8, hudY, `Qumatessence: ${this.qumatessence}`, {
         fontSize: fontPx(this, 14),
         color: '#ffe066',
         backgroundColor: 'rgba(0,0,0,0.35)',
@@ -472,8 +472,8 @@ export class OverworldScene extends Phaser.Scene {
     // Defensive fallback only -- TitleScene normally seeds all of these
     // from localStorage (data/save.ts) before Overworld ever runs. Only
     // relevant if this scene is ever launched directly (ad hoc dev testing).
-    if (state.get('qumatokens') === undefined) {
-      state.set('qumatokens', 0);
+    if (state.get('qumatessence') === undefined) {
+      state.set('qumatessence', 0);
       state.set('unlockedMoves', [...PLAYER_MATERIAL.moves]);
       state.set('playerHp', PLAYER_MATERIAL.maxHp);
       state.set('rivalDefeated', {});
@@ -568,7 +568,7 @@ export class OverworldScene extends Phaser.Scene {
   // Contextual onboarding (data/tutorial.ts's TUTORIAL_TIPS): each tip fires
   // once per save, the moment its own feature actually becomes relevant --
   // see the call sites in maybeTriggerEncounter (encounter), startBattle
-  // (battle), maybeCollectToken (qumatoken), openGuardian (guardian), and
+  // (battle), maybeCollectToken (qumatessence), openGuardian (guardian), and
   // maybeAutoOpenGoalDialogue (goal), plus the 'controls' call right above
   // this method. `onClose` is whatever the caller was about to do next (open
   // the encounter panel, launch the battle, ...) -- it always still runs,
@@ -1314,7 +1314,7 @@ export class OverworldScene extends Phaser.Scene {
     }
   }
 
-  // Qumatoken pickups live only at the dead end of branches -- shiny little
+  // Qumatessence pickups live only at the dead end of branches -- shiny little
   // clouds (see art/tokens.ts), colored and labeled by value (1/5/10) so the
   // payout reads at a glance before the player walks all the way out there.
   private spawnTokenSprites() {
@@ -1430,7 +1430,7 @@ export class OverworldScene extends Phaser.Scene {
   // Wanders each sprite a little around its home tile (small sinusoidal
   // drift + bob) rather than leaving it pinned dead-center, so tiles read as
   // living/glinting things instead of static map decoration. Shared by both
-  // wild-encounter crystals and qumatoken pickups.
+  // wild-encounter crystals and qumatessence pickups.
   private updateWorldSprites(sprites: WorldSprite[]) {
     const camX = this.camPos.x;
     const camY = this.camPos.y;
@@ -2438,8 +2438,8 @@ export class OverworldScene extends Phaser.Scene {
       `Quantumness: ${stats.quantumness} -- raises your crit chance\n` +
       `Velocity: ${stats.velocity} -- higher goes first each round\n` +
       `Correlation: ${stats.correlation} -- higher takes less damage\n\n` +
-      `Qumatokens: ${this.qumatokens}\nCurrent form: ${this.playerMaterial.name}\n\n` +
-      'Raise any of these with qumatokens at Noether\'s shop.';
+      `Qumatessence: ${this.qumatessence}\nCurrent form: ${this.playerMaterial.name}\n\n` +
+      'Raise any of these with qumatessence at Noether\'s shop.';
     this.showInfoPanel('Your Stats', body);
   }
 
@@ -2594,11 +2594,11 @@ export class OverworldScene extends Phaser.Scene {
       sprite.label?.destroy();
     }
 
-    this.qumatokens += value;
-    this.game.registry.set('qumatokens', this.qumatokens);
-    this.tokenText.setText(`Qumatokens: ${this.qumatokens}`);
+    this.qumatessence += value;
+    this.game.registry.set('qumatessence', this.qumatessence);
+    this.tokenText.setText(`Qumatessence: ${this.qumatessence}`);
     persistFromRegistry(this.game.registry);
-    this.showTutorialTip('qumatoken');
+    this.showTutorialTip('qumatessence');
   }
 
   // The goal is a whole finish row (the corridor is wide), not a single

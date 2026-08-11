@@ -9,7 +9,7 @@ import { persistFromRegistry } from '../../data/save';
 import type { Stats } from '../../data/types';
 
 // Noether appears once the player reaches world 1's middle tile, selling
-// the other early moves and stat upgrades for qumatokens, in two tabs of
+// the other early moves and stat upgrades for qumatessence, in two tabs of
 // the same panel. Same in-map dialogue pattern as a wild encounter, but
 // with a guardian avatar and a shop list instead of a fight.
 // Content laid out top-down first (running `y`, each element's own
@@ -40,7 +40,7 @@ export function showNoetherShop(scene: OverworldScene) {
     .text(
       CANVAS_W / 2,
       y,
-      '"I am Noether. Every symmetry hides a conservation law -- spend your qumatokens on a new attack, or a sharper stat."',
+      '"I am Noether. Every symmetry hides a conservation law -- spend your qumatessence on a new attack, or a sharper stat."',
       { fontSize: fontPx(scene, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
     )
     .setOrigin(0.5, 0);
@@ -91,7 +91,7 @@ function renderShopMoves(scene: OverworldScene, container: Phaser.GameObjects.Co
   const unlocked = scene.getUnlockedMoves();
   const compatible = new Set(compatibleMoves(scene.playerMaterial));
   const forSale = SHOP_MOVE_IDS.filter((id) => !unlocked.includes(id) && compatible.has(id));
-  const tokens = (scene.game.registry.get('qumatokens') as number) || 0;
+  const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
 
   if (forSale.length === 0) {
     const text = scene.add
@@ -110,11 +110,11 @@ function renderShopMoves(scene: OverworldScene, container: Phaser.GameObjects.Co
     const move = MOVES[id];
     const cost = shopCost(move);
     const affordable = tokens >= cost;
-    const btn = scene.addDialogueButton(container, y, `${move.name} -- ${cost} qumatokens`, () => {
-      if ((scene.game.registry.get('qumatokens') as number) < cost) return;
-      scene.qumatokens -= cost;
-      scene.game.registry.set('qumatokens', scene.qumatokens);
-      scene.tokenText.setText(`Qumatokens: ${scene.qumatokens}`);
+    const btn = scene.addDialogueButton(container, y, `${move.name} -- ${cost} qumatessence`, () => {
+      if ((scene.game.registry.get('qumatessence') as number) < cost) return;
+      scene.qumatessence -= cost;
+      scene.game.registry.set('qumatessence', scene.qumatessence);
+      scene.tokenText.setText(`Qumatessence: ${scene.qumatessence}`);
       scene.game.registry.set('unlockedMoves', [...scene.getUnlockedMoves(), id]);
       persistFromRegistry(scene.game.registry);
       // Rebuild the whole panel so the purchased move disappears from
@@ -130,7 +130,7 @@ function renderShopMoves(scene: OverworldScene, container: Phaser.GameObjects.Co
 
 function renderShopStats(scene: OverworldScene, container: Phaser.GameObjects.Container, y: number): number {
   const stats = getPlayerStats(scene.game.registry);
-  const tokens = (scene.game.registry.get('qumatokens') as number) || 0;
+  const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
   const rows: { key: keyof Stats; label: string }[] = [
     { key: 'quantumness', label: 'Quantumness (crit chance)' },
     { key: 'velocity', label: 'Velocity (turn order)' },
@@ -144,15 +144,15 @@ function renderShopStats(scene: OverworldScene, container: Phaser.GameObjects.Co
     const btn = scene.addDialogueButton(
       container,
       y,
-      `${row.label}: ${value} -> ${value + 1} -- ${cost} qumatokens`,
+      `${row.label}: ${value} -> ${value + 1} -- ${cost} qumatessence`,
       () => {
-        const current = (scene.game.registry.get('qumatokens') as number) || 0;
+        const current = (scene.game.registry.get('qumatessence') as number) || 0;
         if (current < cost) return;
         const updated = { ...getPlayerStats(scene.game.registry), [row.key]: value + 1 };
-        scene.qumatokens = current - cost;
-        scene.game.registry.set('qumatokens', scene.qumatokens);
+        scene.qumatessence = current - cost;
+        scene.game.registry.set('qumatessence', scene.qumatessence);
         scene.game.registry.set('playerStats', updated);
-        scene.tokenText.setText(`Qumatokens: ${scene.qumatokens}`);
+        scene.tokenText.setText(`Qumatessence: ${scene.qumatessence}`);
         persistFromRegistry(scene.game.registry);
         scene.dialogueContainer?.destroy(true);
         showNoetherShop(scene);

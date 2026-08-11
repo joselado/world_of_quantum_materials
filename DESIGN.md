@@ -8,7 +8,7 @@ patterns, exact file locations to check before making changes).
 ## 1. Core loop
 
 Overworld exploration (walk around, talk to NPCs, find wild encounters) → turn-based
-battle → earn qumatokens + attribute growth → return to overworld to progress, pay
+battle → earn qumatessence + attribute growth → return to overworld to progress, pay
 guardians for new abilities, or advance to the next world.
 
 **The game is about the crystals, not a trainer who catches them.** There is no
@@ -152,7 +152,7 @@ compatibility table before implementation (see open questions).
 
 Every crystal starts at `10/10/10` (`BASE_STAT`/`DEFAULT_STATS`), which is deliberately a
 no-op multiplier so the pre-stats damage numbers are unchanged at parity. The player's own
-stats live in the save (`playerStats`) and only grow by spending qumatokens with Noether
+stats live in the save (`playerStats`) and only grow by spending qumatessence with Noether
 (`OverworldScene.renderShopStats`, cost `(current - 10 + 1) * 50` per point); an opponent's
 stats are computed fresh from the world number at battle start
 (`enemyStatsForWorld(world)`, `+2` per stat per world past world 1) rather than hand-tuned
@@ -495,7 +495,7 @@ crystal/biome tables already use.
 
 **Starting loadout and unlocking moves.** The player's crystal starts knowing only Phonon
 Beam. Reaching world 1's middle tile for the first time introduces the guardian Noether (§5),
-who sells every other move (`SHOP_MOVE_IDS`) for qumatokens, priced by move power
+who sells every other move (`SHOP_MOVE_IDS`) for qumatessence, priced by move power
 (`OverworldScene.shopCost`, currently power × 5) -- filtered down to whatever the player's
 *current* crystal form can physically carry (§3's `MOVE_COMPATIBILITY`), so a
 semiconductor-type player (Silicon, by default) is only ever offered Electron Pulse until
@@ -504,16 +504,16 @@ they transmute into a form that supports more. Unlocked moves persist in the Pha
 `BattleScene` once filtered through that same compatibility check
 (`getBattleMoves` = learned ∩ compatible). The move list renders as a docked panel on
 the right of the field (`BattleScene.drawMoveMenu`).
-Noether's shop panel also carries a second tab for spending qumatokens on the player's own
+Noether's shop panel also carries a second tab for spending qumatessence on the player's own
 Quantumness/Velocity/Correlation stats (§3). The actual "leave this world" action -- a
 footer button that fights the world's rival crystal the first time it's clicked (see §2),
 then becomes "Continue to World N+1" once that rival is beaten
 (`OverworldScene.tryAdvanceToNextWorld`) -- lives only in the goal panel, not Noether's
 (or any guardian's) own panel, since the goal is where that world's boss actually stands (§2).
 
-**Stakes.** Winning a battle earns 50 qumatokens; losing costs 50, floored at 0 (a rival
+**Stakes.** Winning a battle earns 50 qumatessence; losing costs 50, floored at 0 (a rival
 fight doubles both to 100, `BattleScene`'s `RIVAL_TOKEN_STAKE`). Either way the player's
-crystal is fully healed afterward (`scenes/BattleScene.ts`) -- the qumatoken stake, not HP
+crystal is fully healed afterward (`scenes/BattleScene.ts`) -- the qumatessence stake, not HP
 attrition, is what's on the line from one battle to the next. The battle's opening line and
 its win/lose closing line are both flavor text from `game/src/data/greetings.ts`, likewise
 keyed by the wild material's type.
@@ -554,7 +554,7 @@ state can mark her met before the player has actually reached her.
 
 - **Noether** → world 1 middle → sells every extra attack move and stat upgrade in the
   game (fitting, since Noether's theorem is literally "symmetry implies a conservation
-  law" -- here, conserving enough qumatokens gets you a new move or a sharper stat)
+  law" -- here, conserving enough qumatessence gets you a new move or a sharper stat)
 - **Bloch** → world 2 middle → folds space between worlds: teleports the player to any
   world they've already visited (`OverworldScene.showBlochHub`) -- fitting, since a
   Bloch state is a superposition spread across every unit cell, not pinned to one.
@@ -775,7 +775,7 @@ state can mark her met before the player has actually reached her.
   and the turn is still spent either way. Her pricing model is deliberately not the flat
   per-move purchase every other tunable-move shop uses: instead of buying the move
   outright, each quasiparticle class costs `ULTIMATE_CLASS_UNLOCK_COST` (1000)
-  qumatokens to unlock *per move*, the first time it's picked for that move -- after
+  qumatessence to unlock *per move*, the first time it's picked for that move -- after
   which retuning back to an already-unlocked class is free forever, mirroring how
   ordinary retuning is already free once a move is owned, except the unlock is
   per-class here rather than per-move. The first unlock of either move also adds it to
@@ -853,7 +853,7 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   goal takes actually tracking the bend sideways rather than holding one
   direction. Short dead-end branches fork off the corridor's edges at random
   rows; exactly one route (the corridor) reaches the goal, and each branch
-  ends in a single qumatoken pickup worth 1, 5, or 10 (`src/data/tokens.ts`),
+  ends in a single qumatessence pickup worth 1, 5, or 10 (`src/data/tokens.ts`),
   rarer at higher value. Off-path tiles render as terrain you can plausibly see is
   impassable, not just differently-colored ground -- a raised wall block by default, or
   (per-biome `wallTheme`, see `STYLE.md`) a molten lava crust, a frozen lake, or open
@@ -893,7 +893,7 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   rather than all at once before the player has done anything: `lab` on first
   entering the Lab (`HubScene.maybeShowLabTip`); `controls` on first entering
   an Overworld world; `encounter` on the first wild-crystal bump; `battle` on
-  first committing to a fight; `qumatoken` on first collecting a pickup;
+  first committing to a fight; `qumatessence` on first collecting a pickup;
   `guardian` on first meeting any guardian; `goal` on first reaching a world's
   goal row (all six of the latter via `OverworldScene.showTutorialTip`, gated
   by save/registry `tutorialTipsSeen`). Each trigger site passes whatever it
@@ -913,7 +913,7 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   re-levels the player's stats/moves/HP to stay competitive with that world's
   opponents (`OverworldScene.applySuperpositionLeveling`, a flat +2 over
   `enemyStatsForWorld`, full move unlock, full heal) instead of requiring the
-  normal qumatoken grind, every built world is pre-marked visited so Bloch's
+  normal qumatessence grind, every built world is pre-marked visited so Bloch's
   teleport hub (§5) alone provides full world-to-world movement -- there is no
   separate "Warp" UI -- and Dresselhaus/Majorana/Anderson's panels (§5) offer every
   crystal in the game as a candidate rather than only ones actually defeated

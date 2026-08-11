@@ -1556,12 +1556,12 @@ export class BattleScene extends Phaser.Scene {
     this.moveMenu = undefined;
 
     const stake = this.isRival ? RIVAL_TOKEN_STAKE : BATTLE_TOKEN_STAKE;
-    const tokens = (this.game.registry.get('qumatokens') as number) || 0;
+    const tokens = (this.game.registry.get('qumatessence') as number) || 0;
     const newTokens = won ? tokens + stake : Math.max(0, tokens - stake);
-    this.game.registry.set('qumatokens', newTokens);
+    this.game.registry.set('qumatessence', newTokens);
 
     // Win or lose, the player crystal is fully healed afterward -- only the
-    // qumatoken stake is on the line, not attrition into the next fight.
+    // qumatessence stake is on the line, not attrition into the next fight.
     this.game.registry.set('playerHp', this.playerMaterial.maxHp);
 
     // Beating the world's gating rival crystal is what actually unlocks
@@ -1583,7 +1583,7 @@ export class BattleScene extends Phaser.Scene {
     }
     persistFromRegistry(this.game.registry);
 
-    const tokenText = won ? `+${stake} qumatokens!` : `-${tokens - newTokens} qumatokens...`;
+    const tokenText = won ? `+${stake} qumatessence!` : `-${tokens - newTokens} qumatessence...`;
     const flavor = won ? victoryLine(this.wild) : defeatLine(this.wild);
     const blurb = materialBlurb(this.wild);
     // The end-of-battle summary runs several lines longer than an in-combat
