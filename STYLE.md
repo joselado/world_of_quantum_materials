@@ -558,24 +558,29 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   with however many moves are on the current page rather than a fixed size, since that
   changes as the player learns moves, buys an analytic/screening kit, or transmutes into a
   form with a different physics-compatible set (§3 of DESIGN.md).
-- **Grouped into up to three sections, shown one page at a time** (DESIGN.md §4): a small
-  bold blue-grey (`#8fa0c9`) header line reading `ATTACKS`, `ANALYTIC`, or `SCREENING` sits
-  above that page's own rows, with a `(i/N)` page count appended once there's more than one
-  page. A section that has no usable move in it never becomes a page at all (a player with
-  no analytic moves bought, or no Kondo move active, never sees an empty one). Each move is
-  still a `[ #222244 background / #ffff88 text ]` button, same treatment used everywhere else
-  (overworld dialogue buttons), stacked vertically under the header. A form with zero
-  currently-usable moves (shouldn't normally happen, since Phonon Beam is universal) shows
-  "No usable moves" instead of an empty panel. One of Curie's two moves (`skyfallBeam`/
-  `groundEruption`) still gets a gold `★` tag appended to its own label, but its
-  "right=2x wrong=½x" legend lives as its own dim sub-line directly under the `ANALYTIC`
-  header instead of in the panel's top legend -- that top legend (`!! no natural defense
-  (2x)`) only ever has the one mismatch symbol to explain, kept deliberately terse since its
-  wrapped height eats directly into the space every row gets.
+- **Grouped into up to three move-kind sections (`ATTACKS`/`ANALYTIC`/`SCREENING`), shown one
+  page at a time** (DESIGN.md §4): a small bold blue-grey (`#8fa0c9`) header line reading the
+  section's label sits above that page's own rows, with a `(i/N)` page count appended once
+  there's more than one page. A section that has no usable move in it never becomes a page at
+  all (a player with no analytic moves bought, or no Kondo move active, never sees an empty
+  one). A section with more moves than one page can hold at the row-height floor below
+  (`BattleScene.moveMenuPages`) splits into several same-label pages instead of shrinking
+  further or growing past the field's own bottom edge -- `ATTACKS` for an 'adaptive'-type form
+  that's learned every attack class (14 moves) is the only section that currently gets this
+  large, splitting into evenly-sized pages (e.g. two pages of 7) rather than one lopsided page
+  and a near-empty second one. Each move is still a `[ #222244 background / #ffff88 text ]`
+  button, same treatment used everywhere else (overworld dialogue buttons), stacked vertically
+  under the header. A form with zero currently-usable moves (shouldn't normally happen, since
+  Phonon Beam is universal) shows "No usable moves" instead of an empty panel. One of Curie's
+  two moves (`skyfallBeam`/`groundEruption`) still gets a gold `★` tag appended to its own
+  label, but its "right=2x wrong=½x" legend lives as its own dim sub-line directly under the
+  `ANALYTIC` header instead of in the panel's top legend -- that top legend (`!! no natural
+  defense (2x)`) only ever has the one mismatch symbol to explain, kept deliberately terse
+  since its wrapped height eats directly into the space every row gets.
 - **Pager**: when more than one page exists, a bold gold `◀` and `▶` (`Text`, hand cursor,
   same `#ffe066` as the panel stroke/title) flank the header, at the panel's left/right inner
   edges (`x = MENU_X + 14` / `MENU_X + MENU_WIDTH - 14`) -- clicking either, or pressing the
-  Left/Right keys anywhere in the scene, advances/retreats `moveSectionIndex` and redraws.
+  Left/Right keys anywhere in the scene, advances/retreats `movePageIndex` and redraws.
   Hidden entirely (no arrows, no `(i/N)`) once there's only one page, so a player who never
   bought an analytic/screening move sees a plain `ATTACKS` header with nothing to switch to.
 - Header text is deliberately capped at a lower text-size ceiling than the panel's own
@@ -588,12 +593,17 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 - Row height is a hard geometric budget (whatever vertical space is left below the
   title/legend/header, divided across however many moves the *current page* has -- not
   every section's total, since only one page renders at a time), with a minimum floor so
-  rows never shrink to illegible -- `20`px for up to 7 moves on a page, `15`px for 8-9 (the
-  Attacks page for an 'adaptive'-type form that's learned every attack class). Below
-  `rowH < 40` the row switches to smaller font/padding rather than clipping. This hasn't been
-  checked against a live browser render yet (no headless-Chromium harness was available when
-  it was built, DEVELOPMENT.md) -- worth an actual visual pass before trusting the arithmetic
-  alone, particularly the 8-9 row Attacks-page floor.
+  rows never shrink to illegible -- `20`px for up to 7 moves on a page, `15`px for 8-9. A
+  page can never have more rows than that floor allows without running the panel off the
+  bottom of the field -- `BattleScene.maxMoveRowsPerPage` measures the actual title/legend/
+  header height at the current text-size setting to compute the true row ceiling, and
+  `moveMenuPages` (above) splits any oversized section down to that ceiling before a page
+  ever reaches this row-height math, so the floor is a legibility limit here, not something
+  this code also has to keep on screen. Below `rowH < 40` the row switches to smaller
+  font/padding rather than clipping. Verified against a live browser render (headless-Chromium
+  harness, DEVELOPMENT.md) at every text-size preset with an 'adaptive'-type form carrying
+  every attack class at once, the worst case across every `MaterialType`'s
+  `MOVE_COMPATIBILITY` entry -- no page overflows the field at any preset.
 
 ## Analytic question panel (`BattleScene.showAnalyticQuestion`)
 

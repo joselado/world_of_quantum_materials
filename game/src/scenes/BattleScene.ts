@@ -190,12 +190,15 @@ export class BattleScene extends Phaser.Scene {
   private playerCrystal!: Phaser.GameObjects.Container;
   private logText!: Phaser.GameObjects.Text;
   private moveMenu?: Phaser.GameObjects.Container;
-  // Which move-kind section (ATTACKS/ANALYTIC/SCREENING) drawMoveMenu is
-  // currently showing -- see drawMoveMenu's own comment for why only one
-  // renders at a time now. Reset fresh in create() below, same reasoning as
-  // every other battle-ephemeral field here (Phaser reuses the Scene
-  // instance across scene.start() calls).
-  private moveSectionIndex = 0;
+  // Which page drawMoveMenu is currently showing -- see drawMoveMenu's own
+  // comment for why only one renders at a time now. A page is usually one
+  // move-kind section (ATTACKS/ANALYTIC/SCREENING) in full, but a section
+  // with more moves than one page can hold at the row-height floor splits
+  // into several same-label pages (moveMenuPages), so this indexes the
+  // flattened page list, not the section list directly. Reset fresh in
+  // create() below, same reasoning as every other battle-ephemeral field
+  // here (Phaser reuses the Scene instance across scene.start() calls).
+  private movePageIndex = 0;
   private currentMoveIds: string[] = [];
   // Kondo's status effects (§5) -- battle-ephemeral only, reset fresh in
   // create() below (Phaser reuses the same Scene instance across
@@ -261,7 +264,7 @@ export class BattleScene extends Phaser.Scene {
     this.playerHp = Math.min(savedHp, this.playerMaterial.maxHp);
     this.opponentHp = this.wild.maxHp;
     this.turnLock = false;
-    this.moveSectionIndex = 0;
+    this.movePageIndex = 0;
     this.playerStatus = null;
     this.opponentStatus = null;
 
@@ -393,41 +396,39 @@ export class BattleScene extends Phaser.Scene {
 
     this.currentMoveIds = getBattleMoves(this.game.registry);
     this.drawMoveMenu(this.currentMoveIds);
-    // Left/Right cycle which move-kind section is showing (drawMoveMenu's
-    // own comment) -- mirrors the on-screen ◀/▶ arrows for a keyboard-only
-    // player, same "no-op if there's nothing to switch to" guard as those.
-    this.input.keyboard!.on('keydown-LEFT', () => this.switchMoveSection(-1));
-    this.input.keyboard!.on('keydown-RIGHT', () => this.switchMoveSection(1));
+    // Left/Right cycle which page is showing (drawMoveMenu's own comment) --
+    // mirrors the on-screen ◀/▶ arrows for a keyboard-only player, same
+    // "no-op if there's nothing to switch to" guard as those.
+    this.input.keyboard!.on('keydown-LEFT', () => this.switchMovePage(-1));
+    this.input.keyboard!.on('keydown-RIGHT', () => this.switchMovePage(1));
 
     this.updateBars();
   }
 
-  // Rebuilds the currently-usable sections from currentMoveIds and steps
-  // moveSectionIndex by `delta`, wrapping around -- the actual redraw
-  // happens inside drawMoveMenu, called fresh each time so a mid-battle
-  // change to currentMoveIds (there isn't one today, but drawMoveMenu
-  // already takes moveIds as a parameter rather than assuming it's static)
-  // is picked up automatically. A no-op while turnLock is held (mid-swing,
-  // and also true for the rest of the scene's life once a KO ends the
-  // battle -- resolveHit's win/lose branch returns before ever releasing
-  // it, see playerAttack's own comment) or if there's only one section to
-  // begin with, same guard `addMoveButton` already applies to clicks.
-  // `!this.moveMenu` is a second, explicit belt-and-suspenders check --
-  // endBattle destroys it -- so a Left/Right press after the results screen
-  // is up can never resurrect the panel even if the turnLock invariant
-  // above is ever refactored away.
-  private switchMoveSection(delta: number) {
+  // Rebuilds the current page list from currentMoveIds and steps
+  // movePageIndex by `delta`, wrapping around -- the actual redraw happens
+  // inside drawMoveMenu, called fresh each time so a mid-battle change to
+  // currentMoveIds (there isn't one today, but drawMoveMenu already takes
+  // moveIds as a parameter rather than assuming it's static) is picked up
+  // automatically. A no-op while turnLock is held (mid-swing, and also true
+  // for the rest of the scene's life once a KO ends the battle --
+  // resolveHit's win/lose branch returns before ever releasing it, see
+  // playerAttack's own comment) or if there's only one page to begin with,
+  // same guard `addMoveButton` already applies to clicks. `!this.moveMenu`
+  // is a second, explicit belt-and-suspenders check -- endBattle destroys
+  // it -- so a Left/Right press after the results screen is up can never
+  // resurrect the panel even if the turnLock invariant above is ever
+  // refactored away.
+  private switchMovePage(delta: number) {
     if (this.turnLock || !this.moveMenu) return;
-    const sectionCount = this.moveSections(this.currentMoveIds).length;
-    if (sectionCount <= 1) return;
-    this.moveSectionIndex = (this.moveSectionIndex + delta + sectionCount) % sectionCount;
+    const pageCount = this.moveMenuPages(this.currentMoveIds).length;
+    if (pageCount <= 1) return;
+    this.movePageIndex = (this.movePageIndex + delta + pageCount) % pageCount;
     this.drawMoveMenu(this.currentMoveIds);
   }
 
   // The three possible move-kind sections (DESIGN.md §4's "group moves by
-  // kind"), filtered down to whichever ones actually have a usable move --
-  // shared by drawMoveMenu and switchMoveSection so the two always agree on
-  // how many sections/pages exist.
+  // kind"), filtered down to whichever ones actually have a usable move.
   private moveSections(moveIds: string[]): MoveSection[] {
     return [
       {
@@ -443,6 +444,73 @@ export class BattleScene extends Phaser.Scene {
     ].filter((s) => s.ids.length > 0);
   }
 
+  // How many move rows can ever fit on one move-menu page without running
+  // the panel off the bottom of the field -- the row-height floor
+  // (drawMoveMenu's rowFloor) means a section with enough moves can't just
+  // keep shrinking to fit, unlike everywhere else row height flexes to the
+  // available space. Measured with throwaway Text objects at the *current*
+  // text-size setting (rather than a hand-derived constant) so it keeps
+  // tracking the real title/legend/header height the same way drawMoveMenu's
+  // own rowsTop does, and deliberately assumes the worst case for chrome
+  // that varies by section (pager arrows shown, a section legend line
+  // present) so one shared number is safe to use for every section, not
+  // just whichever one happens to be showing.
+  private maxMoveRowsPerPage(): number {
+    const scale = fontScale(this);
+    const title = this.add.text(0, 0, 'MOVES', { fontSize: fontPx(this, 12), fontStyle: 'bold' });
+    const legend = this.add.text(0, 0, '!! no natural defense (2x)', {
+      fontSize: fontPx(this, 10),
+      wordWrap: { width: MENU_WIDTH - 12 },
+      lineSpacing: 2,
+    });
+    const rowsTop = MENU_TOP + 8 + title.height + 4 + legend.height + 8;
+    title.destroy();
+    legend.destroy();
+
+    const headerScale = Math.min(scale, 1.15);
+    const header = this.add.text(0, 0, 'SCREENING (9/9)', {
+      fontSize: `${Math.round(10 * headerScale)}px`,
+      fontStyle: 'bold',
+    });
+    const arrow = this.add.text(0, 0, '◀', { fontSize: `${Math.round(13 * headerScale)}px`, fontStyle: 'bold' });
+    const sectionLegend = this.add.text(0, 0, '★ right=2x wrong=½x', {
+      fontSize: `${Math.round(8 * headerScale)}px`,
+    });
+    const headerTotalH = Math.max(header.height, arrow.height) + sectionLegend.height + 1 + 1;
+    header.destroy();
+    arrow.destroy();
+    sectionLegend.destroy();
+
+    const rowFloor = 15; // the smaller of drawMoveMenu's two floors -- conservative on purpose
+    const avail = FIELD_H - rowsTop - MENU_BOTTOM_MARGIN - headerTotalH;
+    return Math.max(1, Math.floor(avail / rowFloor));
+  }
+
+  // moveSections() grouped by kind, further split so no single page ever
+  // asks drawMoveMenu's row-height floor to cram in more rows than the
+  // field actually has room for (this is what actually fixes the overflow
+  // -- see maxMoveRowsPerPage's own comment). A section within the limit
+  // stays one page, unchanged. An oversized one (ATTACKS for an
+  // 'adaptive'-type crystal with every attack class learned is the only
+  // section that currently gets this large) splits into evenly-sized pages
+  // sharing the section's own label -- the header's own "(i/N)" page count
+  // already disambiguates "ATTACKS" page 1 from page 2, the same way a
+  // paginated candidate list elsewhere in the game numbers its pages,
+  // rather than needing a second label scheme of its own.
+  private moveMenuPages(moveIds: string[]): MoveSection[] {
+    const maxRows = this.maxMoveRowsPerPage();
+    return this.moveSections(moveIds).flatMap((section) => {
+      if (section.ids.length <= maxRows) return [section];
+      const pageCount = Math.ceil(section.ids.length / maxRows);
+      const perPage = Math.ceil(section.ids.length / pageCount);
+      const pages: MoveSection[] = [];
+      for (let i = 0; i < section.ids.length; i += perPage) {
+        pages.push({ label: section.label, ids: section.ids.slice(i, i + perPage), legend: section.legend });
+      }
+      return pages;
+    });
+  }
+
   // A dedicated docked panel on the right of the field, sized to fit
   // however many moves are currently usable (getBattleMoves -- the
   // player's learned moves intersected with what their current crystal
@@ -456,20 +524,22 @@ export class BattleScene extends Phaser.Scene {
   // !! 2x -- previously only visible after the hit landed in the battle
   // log, so a first-time player had no way to plan a move before swinging.
   //
-  // Shows exactly one move-kind section at a time (DESIGN.md §4's "group
-  // moves by kind" -- physics-gated attacks, Curie's two answer-gated
-  // moves, and Kondo's currently-active screening move work differently
-  // enough that a flat list blurred the distinction), paged with on-screen
-  // ◀/▶ arrows and the Left/Right keys (moveSectionIndex/
-  // switchMoveSection) -- a section only counts as a page if it has at
-  // least one usable move, so a player with none of Curie's moves bought or
-  // no Kondo move active never sees an empty page, and the pager itself is
-  // hidden entirely if there's only one page to begin with. Showing one
-  // section instead of all of them stacked means each page's row height is
-  // budgeted only against that section's own move count, not the
-  // worst-case total across every section at once -- an 'adaptive'-type
-  // crystal with every attack class learned no longer has to share
-  // vertical space with Analytic/Screening rows it isn't even showing.
+  // Shows exactly one page at a time (DESIGN.md §4's "group moves by kind"
+  // -- physics-gated attacks, Curie's two answer-gated moves, and Kondo's
+  // currently-active screening move work differently enough that a flat
+  // list blurred the distinction), paged with on-screen ◀/▶ arrows and the
+  // Left/Right keys (movePageIndex/switchMovePage) -- a move-kind section
+  // only produces a page at all if it has at least one usable move, so a
+  // player with none of Curie's moves bought or no Kondo move active never
+  // sees an empty page, and the pager itself is hidden entirely if there's
+  // only one page to begin with. Showing one page instead of every section
+  // stacked means each page's row height is budgeted only against that
+  // page's own move count, not the worst-case total across every section at
+  // once -- and moveMenuPages further splits any section too large for the
+  // row-height floor to hold on one page (ATTACKS for an 'adaptive'-type
+  // crystal with every attack class learned is the only one that currently
+  // gets this large) into several same-label pages, so that floor is a
+  // legibility limit, not a silent overflow off the bottom of the field.
   // Called again (destroying the old container first) on every page
   // switch, not just once at battle start.
   private drawMoveMenu(moveIds: string[]) {
@@ -537,10 +607,10 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    const sections = this.moveSections(moveIds);
-    if (this.moveSectionIndex >= sections.length) this.moveSectionIndex = 0;
-    const section = sections[this.moveSectionIndex];
-    const showPager = sections.length > 1;
+    const pages = this.moveMenuPages(moveIds);
+    if (this.movePageIndex >= pages.length) this.movePageIndex = 0;
+    const section = pages[this.movePageIndex];
+    const showPager = pages.length > 1;
     const rowCount = Math.max(section.ids.length, 1);
 
     // Header is deliberately capped well below the text-size setting's full
@@ -561,18 +631,18 @@ export class BattleScene extends Phaser.Scene {
         .text(MENU_X + 14, rowY, '◀', { fontSize: arrowPx, color: '#ffe066', fontStyle: 'bold' })
         .setOrigin(0.5, 0)
         .setInteractive({ useHandCursor: true })
-        .on('pointerdown', () => this.switchMoveSection(-1));
+        .on('pointerdown', () => this.switchMovePage(-1));
       const rightArrow = this.add
         .text(MENU_X + MENU_WIDTH - 14, rowY, '▶', { fontSize: arrowPx, color: '#ffe066', fontStyle: 'bold' })
         .setOrigin(0.5, 0)
         .setInteractive({ useHandCursor: true })
-        .on('pointerdown', () => this.switchMoveSection(1));
+        .on('pointerdown', () => this.switchMovePage(1));
       container.add(leftArrow);
       container.add(rightArrow);
       pagerRowH = Math.max(leftArrow.height, rightArrow.height);
     }
     const headerLabelText = showPager
-      ? `${section.label} (${this.moveSectionIndex + 1}/${sections.length})`
+      ? `${section.label} (${this.movePageIndex + 1}/${pages.length})`
       : section.label;
     const headerLabel = this.add
       .text(MENU_X + MENU_WIDTH / 2, rowY, headerLabelText, {
@@ -607,12 +677,15 @@ export class BattleScene extends Phaser.Scene {
     // its own row's actual height (fitPx) and clamped against the
     // setting-scaled desired size (desiredPx) -- growing with the setting
     // wherever the box has slack (few moves), but never past what the box
-    // can physically hold. Since only one section renders at a time now,
-    // the worst case is the single largest section across every
-    // MaterialType's MOVE_COMPATIBILITY entry (Attacks for 'adaptive', the
-    // broadest one) rather than every section's total stacked together --
-    // still worth an actual browser check (headless-Chromium harness,
-    // DEVELOPMENT.md) rather than trusting this arithmetic alone.
+    // can physically hold. `rowCount` here can never exceed
+    // maxMoveRowsPerPage's own limit -- moveMenuPages already split anything
+    // larger into further pages -- so this floor is what sets the smallest
+    // legible row size, not a bound this code has to also keep the panel on
+    // screen against; that's moveMenuPages's job, verified against a live
+    // browser render (headless-Chromium harness, DEVELOPMENT.md) at every
+    // text-size preset with an 'adaptive'-type crystal carrying every
+    // attack class at once, the worst case across every MaterialType's
+    // MOVE_COMPATIBILITY entry.
     const rowFloor = rowCount <= 7 ? 20 : 15;
     const avail = FIELD_H - rowsTop - MENU_BOTTOM_MARGIN - headerTotalH;
     const naturalRowH = Math.floor(avail / rowCount);
@@ -1319,7 +1392,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private endBattle(won: boolean) {
-    // Nulled, not just destroyed -- switchMoveSection's `!this.moveMenu`
+    // Nulled, not just destroyed -- switchMovePage's `!this.moveMenu`
     // guard checks the field itself, and a destroy()ed Container is still a
     // truthy JS reference, so leaving this set would make that guard clause
     // permanently inert instead of the real second line of defense it's
