@@ -1,9 +1,4 @@
-// The type system's sole source of truth -- there used to be a fuller
-// repo-root data/materials.json "design-time reference" this mirrored, but it
-// had drifted out of sync with real implementation decisions (a
-// type-effectiveness chart and an "Impurity Scatter" move, both later
-// deliberately dropped -- see materials.ts) and was removed rather than kept
-// in sync by hand.
+// The type system's sole source of truth.
 
 export type MoveClass =
   | 'trivial'

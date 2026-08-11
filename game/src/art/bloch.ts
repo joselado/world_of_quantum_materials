@@ -4,7 +4,7 @@ import { shade } from './colors';
 // Bloch's own avatar -- a hooded traveler whose whole upper body is a
 // Bloch sphere (a wireframe globe with a state vector arrow), since Bloch's
 // gift is folding space between the worlds the player has already mapped.
-// Own file/builder per the convention set by art/mentor.ts's
+// Own file/builder per the convention set by art/noether.ts's
 // makeNoetherAvatar -- not a shared parameterized guardian builder.
 //
 // Drawn in local space centered on the chest/torso (0,0), same convention

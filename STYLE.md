@@ -225,7 +225,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 ## Noether's shop (`OverworldScene.showNoetherShop`)
 
 - Same panel treatment as a wild encounter, but stroked in gold (`0xffe066`) instead of
-  blue-grey, and fronted by Noether's own avatar (`art/mentor.ts`'s `makeNoetherAvatar`)
+  blue-grey, and fronted by Noether's own avatar (`art/noether.ts`'s `makeNoetherAvatar`)
   instead of a crystal -- a small cartoon deity floating in a flowing golden robe with wide
   welcoming sleeves, a haloed head, and four motes orbiting the whole figure, deliberately
   not another faceted crystal so a guardian reads as a distinct, benevolent presence rather

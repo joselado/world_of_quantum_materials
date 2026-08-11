@@ -5,7 +5,7 @@ import { shade } from './colors';
 // (a nucleus with electrons on tilted elliptical shells) instead of a head,
 // fitting his own historical role: defending quantum mechanics' completeness
 // against the EPR paradox, world 7's own topic (entanglement). Own file/
-// builder per the convention set by art/mentor.ts's makeNoetherAvatar.
+// builder per the convention set by art/noether.ts's makeNoetherAvatar.
 //
 // Drawn in local space centered on the chest/torso (0,0), same convention
 // as makeNoetherAvatar/makeBlochAvatar: an internal sway tween is baked in,

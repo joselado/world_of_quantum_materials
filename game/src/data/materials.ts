@@ -395,12 +395,11 @@ function crystal(
 // database" section. Each scene pulls its own world's pool via
 // `getWildPool()` rather than sharing one global list, so later worlds can
 // each have their own specials without touching the encounter logic.
-// World 10's own pool (below) is no longer an exception to "named after a
-// real compound" the way it once was -- it now hosts the game's named
-// hybrid-recipe results (HYBRID_RECIPES further down) plus a couple of
-// standalone single compounds whose own type belongs to an existing topic's
-// session (chernInsulator -> topic 4, quantum Hall; multiferroic -> topic 6,
-// classical magnetism/magnons) but has no dedicated world of its own.
+// World 10's own pool (below) hosts the game's named hybrid-recipe results
+// (HYBRID_RECIPES further down) plus a couple of standalone single compounds
+// whose own type belongs to an existing topic's session (chernInsulator ->
+// topic 4, quantum Hall; multiferroic -> topic 6, classical
+// magnetism/magnons) but has no dedicated world of its own.
 // WORLD_RIVALS[10] (the finale boss "The Adapted") is the one entity that's
 // still deliberately not a real material -- see that table's own comment.
 // Every moveset below is drawn only from MOVE_COMPATIBILITY[type] -- e.g.
@@ -482,14 +481,12 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     crystal('Fe(Te,Se)', 'supercon', 22, ['localizationPin', 'decoherenceWave'], 1),
     crystal('Niobium Diselenide', 'supercon', 21, ['localizationPin', 'thermalFluctuation'], 2),
   ],
-  // The meta-world's wilds used to be 'adaptive'-type "Echo of ..." crystals
-  // with no real compound behind them, flavor-echoing an earlier world's
-  // moveset. Replaced with the game's actual named hybrid materials (see
+  // The meta-world's wilds are the game's actual named hybrid materials (see
   // HYBRID_RECIPES below) plus two standalone compounds whose own type isn't
-  // tied to any of course topics 1-9 -- so the corridor now plays back the
+  // tied to any of course topics 1-9 -- so the corridor plays back the
   // player's own fusions/discoveries literally, not just as flavor text.
-  // WORLD_RIVALS[10] ("The Adapted") keeps the old "not a real material"
-  // meta-boss role on its own.
+  // WORLD_RIVALS[10] ("The Adapted") is the one entity that's deliberately
+  // not a real material -- see that table's own comment.
   10: [
     crystal('Twisted Bilayer Graphene', 'supercon', 32, ['localizationPin', 'decoherenceWave'], 0, 'twisted'),
     crystal('InAs/Al Majorana Wire', 'supercon', 31, ['localizationPin', 'decoherenceWave'], 1),

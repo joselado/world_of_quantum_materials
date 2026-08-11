@@ -6,7 +6,7 @@ import { shade } from './colors';
 // where the excitations carry a fraction of an electron's charge, world 4's
 // own topic). Same structural convention as every other guardian (its own
 // file, glow -> sway -> cloak -> head-motif -> orbit ring -- see
-// art/mentor.ts), never a shared parameterized builder. Head motif: a row of
+// art/noether.ts), never a shared parameterized builder. Head motif: a row of
 // filled Landau-level dots either side of a horizontal "filling" line, with
 // one dot excited above it and a hollow gap left behind -- a fractionally
 // charged quasihole, made literal (repurposed from an earlier Dirac-sea

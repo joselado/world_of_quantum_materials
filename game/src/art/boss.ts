@@ -59,7 +59,7 @@ export function makeBossCrystal(
   container.add(core);
 
   // A ring of hot embers orbiting the whole mass -- the same "orbiting
-  // motes" trick every guardian avatar uses (art/mentor.ts), but warmer/redder
+  // motes" trick every guardian avatar uses (art/noether.ts), but warmer/redder
   // to read as hostile rather than benevolent, and orbiting the much larger
   // radius a boss-sized crystal needs.
   const orbit = scene.add.container(0, 0);

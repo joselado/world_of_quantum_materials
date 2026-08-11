@@ -27,7 +27,7 @@ game/src/
     crystals.ts                 makeCrystal() -- shared shard/cluster/prism sprite builder, opts.seed
                                   for per-compound jitter (jitterFor) and opts.hybrid for a fused
                                   hybrid look (drawHybridCrystal)
-    guardian.ts                   makeNoetherAvatar()
+    noether.ts                    makeNoetherAvatar()
     bloch.ts                    makeBlochAvatar()
     dresselhaus.ts               makeDresselhausAvatar()
     laughlin.ts                  makeLaughlinAvatar()
@@ -173,7 +173,7 @@ since `materials.ts` pulls in Phaser at module scope) and regenerates the
   Curie) for `BattleScene.showAnalyticQuestion`'s in-battle question panel, the one dialogue-style
   overlay that lives in `BattleScene` rather than `OverworldScene`. A new panel should pick a
   stroke color that doesn't collide with these.
-- **Guardian avatars.** One builder per guardian in its own file: `art/mentor.ts`'s
+- **Guardian avatars.** One builder per guardian in its own file: `art/noether.ts`'s
   `makeNoetherAvatar()`, `art/bloch.ts`'s `makeBlochAvatar()`, `art/dresselhaus.ts`'s
   `makeDresselhausAvatar()`. Never a shared parameterized builder -- each guardian needs to read as
   visually distinct.
@@ -415,7 +415,7 @@ world, since a mismatched rival name is easy to miss if only `WORLD_NAMES` is up
 
 ## Guardians
 
-Every guardian has its own avatar builder in its own file: `art/mentor.ts`'s `makeNoetherAvatar`,
+Every guardian has its own avatar builder in its own file: `art/noether.ts`'s `makeNoetherAvatar`,
 `art/bloch.ts`'s `makeBlochAvatar` (wireframe Bloch-sphere head, teal),
 `art/dresselhaus.ts`'s `makeDresselhausAvatar` (spin-momentum-locked arrow ring, teal-green),
 and one file per remaining guardian (`art/laughlin.ts`, `art/majorana.ts`, `art/curie.ts`,
