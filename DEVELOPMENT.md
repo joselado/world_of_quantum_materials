@@ -58,8 +58,8 @@ npx tsc --noEmit -p .
 `docs/guardians.md` each hold hand-written prose plus one or more tables
 inside `<!-- GENERATED:NAME START -->`/`END` marker comments. Those tables
 are parsed straight out of `src/data/materials.ts` (`MOVES`, `WORLD_CRYSTALS`,
-`WORLD_RIVALS`, `HYBRID_RECIPES`, `COMPOSITE_MATERIAL_NAMES`,
-`MOVE_COMPATIBILITY`) and `src/data/passives.ts` (`PASSIVES`) by
+`WORLD_RIVALS`, `HYBRID_RECIPES`, `MOVE_COMPATIBILITY`) and
+`src/data/passives.ts` (`PASSIVES`) by
 `game/scripts/gen-docs.mjs`, using the TypeScript compiler API to read the
 literal values rather than importing the modules (`materials.ts` pulls in
 Phaser via `art/colors.ts`, which needs browser globals Node doesn't have).

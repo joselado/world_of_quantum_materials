@@ -19,6 +19,7 @@ don't hand-edit the `<!-- GENERATED -->` blocks.*
 | Graphene | `trivial` | 22 |
 | Manganese Oxide | `magnet` | 26 |
 | Nickel Oxide | `magnet` | 25 |
+| Chromium | `magnet` | 24 |
 
 ### World 2 -- Symmetries, tight-binding band structure
 
@@ -34,7 +35,7 @@ don't hand-edit the `<!-- GENERATED -->` blocks.*
 
 | Crystal | Type | Max HP |
 | --- | --- | --- |
-| Cr-doped (Bi,Sb)₂Te₃ | `topological` | 24 |
+| Bi₂Te₃ | `topological` | 24 |
 | Tantalum Arsenide | `topological` | 26 |
 | Monolayer WTe₂ | `topological` | 23 |
 
@@ -102,6 +103,7 @@ don't hand-edit the `<!-- GENERATED -->` blocks.*
 | 1T/1H-TaS₂ Heterostructure | `spinliquid` | 30 |
 | MnBi₂Te₄ | `chernInsulator` | 30 |
 | Monolayer NiI₂ | `multiferroic` | 28 |
+| Cr-doped (Bi,Sb)₂Te₃ | `topological` | 29 |
 <!-- GENERATED:WORLDS END -->
 
 ## World rivals

@@ -4,7 +4,7 @@ import { getBiome } from '../art/biomes';
 import type { Biome } from '../art/biomes';
 import { makeCrystal } from '../art/crystals';
 import { makeToken } from '../art/tokens';
-import { makeNoetherAvatar } from '../art/mentor';
+import { makeNoetherAvatar } from '../art/noether';
 import { makeBossCrystal } from '../art/boss';
 import { makeBlochAvatar } from '../art/bloch';
 import { makeBohrAvatar } from '../art/bohr';
@@ -2805,10 +2805,9 @@ export class OverworldScene extends Phaser.Scene {
     container.add(intro);
     y += intro.height + 14;
 
-    // Excludes hybrid-recipe results and inherently doped/alloyed compounds
-    // (isHybridMaterial) either way -- becoming a mixed/fused state is
-    // Majorana's mechanic, not this one, even for the ones that are also
-    // ordinary wild encounters.
+    // Excludes every hybrid-recipe result (isHybridMaterial) -- becoming a
+    // fused state is Majorana's mechanic, not this one, even for the ones
+    // that are also ordinary wild encounters.
     const candidates: { name: string }[] = superposition
       ? allCrystals()
           .filter((m) => !isHybridMaterial(m.name))
@@ -3083,10 +3082,9 @@ export class OverworldScene extends Phaser.Scene {
   // (getBattleMoves), which is the point: an impurity's channel only
   // manifests in combat once the player's own current form can physically
   // host it. Host pool excludes any `isHybridMaterial` (a Majorana fusion,
-  // one of world 10's own named recipe-result wilds, or a standalone
-  // doped/alloyed compound like NV-Diamond) -- doping in an impurity is
-  // meant to be one real, single-crystal excitation, not a channel a fusion
-  // or an already-doped compound has borrowed from elsewhere. Two-step pick
+  // or one of world 10's own named recipe-result wilds) -- doping in an
+  // impurity is meant to be one real, single-crystal excitation, not a
+  // channel a fusion has borrowed from elsewhere. Two-step pick
   // (this.andersonSelection holds the host while the panel rebuilds to ask
   // which of its moves to learn), paginated at the host-pick step via
   // renderPagedButtons -- same shape as Majorana's combine flow, minus a
@@ -3124,11 +3122,10 @@ export class OverworldScene extends Phaser.Scene {
     container.add(intro);
     y += intro.height + 14;
 
-    // Doping in a hybrid (isHybridMaterial -- a Majorana fusion, one of
-    // world 10's own named recipe-result wilds, or a standalone
-    // doped/alloyed compound like NV-Diamond) isn't offered here: an
+    // Doping in a hybrid (isHybridMaterial -- a Majorana fusion, or one of
+    // world 10's own named recipe-result wilds) isn't offered here: an
     // impurity is meant to be one real, single-crystal excitation, not a
-    // channel already borrowed or built in from elsewhere.
+    // channel already borrowed from elsewhere.
     const pool: { name: string }[] = (superposition ? allCrystals() : this.getDefeatedMaterials()).filter(
       (m) => !isHybridMaterial(m.name)
     );

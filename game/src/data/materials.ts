@@ -411,6 +411,11 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     crystal('Graphene', 'trivial', 22, ['tunnelStrike', 'thermalFluctuation'], 0, 'layer'),
     crystal('Manganese Oxide', 'magnet', 26, ['thermalFluctuation', 'magneticField']),
     crystal('Nickel Oxide', 'magnet', 25, ['thermalFluctuation', 'magneticField'], 1),
+    // Elemental Cr is an itinerant (metallic) antiferromagnet -- the SDW
+    // mean-field/Stoner-criterion counterpart to MnO/NiO's Mott-insulating
+    // picture above. Also HYBRID_RECIPES' magnetic-dopant parent for Cr-doped
+    // (Bi,Sb)₂Te₃ (world 3's Bi₂Te₃ + this).
+    crystal('Chromium', 'magnet', 24, ['thermalFluctuation', 'magneticField'], 2),
   ],
   // Topic 2 (symmetries, tight-binding) has no dedicated main type of its
   // own in the type system -- it stays at the trivial baseline, just with
@@ -429,7 +434,10 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     crystal('Monolayer MoTe₂ (2H)', 'trivial', 22, ['tunnelStrike', 'thermalFluctuation'], 4, 'layer'),
   ],
   3: [
-    crystal('Cr-doped (Bi,Sb)₂Te₃', 'topological', 24, ['fluxTwist', 'decoherenceWave']),
+    // Undoped host -- world 1's Chromium fuses into this to make Cr-doped
+    // (Bi,Sb)₂Te₃ (HYBRID_RECIPES below), the quantum-anomalous-Hall state
+    // that only appears once magnetism is doped in.
+    crystal('Bi₂Te₃', 'topological', 24, ['fluxTwist', 'decoherenceWave']),
     crystal('Tantalum Arsenide', 'topological', 26, ['fluxTwist', 'tunnelStrike'], 1),
     crystal('Monolayer WTe₂', 'topological', 23, ['fluxTwist', 'thermalFluctuation'], 2, 'layer'),
   ],
@@ -496,6 +504,7 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     crystal('1T/1H-TaS₂ Heterostructure', 'spinliquid', 30, ['entanglementSwap', 'localizationPin'], 4, 'layer'),
     crystal('MnBi₂Te₄', 'chernInsulator', 30, ['fluxTwist', 'tunnelStrike'], 0, 'layer'),
     crystal('Monolayer NiI₂', 'multiferroic', 28, ['electromagnonPulse', 'magneticField'], 1, 'layer'),
+    crystal('Cr-doped (Bi,Sb)₂Te₃', 'topological', 29, ['fluxTwist', 'decoherenceWave'], 2),
   ],
 };
 
@@ -622,6 +631,11 @@ const HYBRID_RECIPES: { parents: [string, string]; result: Material }[] = [
   // fusion, deliberately allowed here since a named recipe covers it.
   { parents: ['Graphene', 'Graphene'], result: namedResult('Twisted Bilayer Graphene') },
   { parents: ['Chromium Triiodide', 'Niobium Diselenide'], result: namedResult('CrI₃/NbSe₂ Topological-SC Heterostructure') },
+  // Cr doped into an undoped topological-insulator host breaks time-reversal
+  // symmetry and induces the quantum anomalous Hall effect -- the actual
+  // mechanism the compound's own name describes, unlike MnBi₂Te₄'s intrinsic
+  // (undoped) magnetism above.
+  { parents: ['Chromium', 'Bi₂Te₃'], result: namedResult('Cr-doped (Bi,Sb)₂Te₃') },
   // Literalizes the mechanic's own original worked example -- Fe chains on
   // Pb (Nadj-Perge et al. 2014) already exists as an ordinary world-5 wild;
   // this just makes it reachable by fusion too.
@@ -652,32 +666,17 @@ export function hybridRecipeResult(nameA: string, nameB: string): Material | und
   return recipe?.result;
 }
 
-// Every name any HYBRID_RECIPES entry produces, plus real compounds that are
-// inherently a doped/alloyed mixture of two named ingredients (a magnetic
-// dopant in a host insulator, an alloy of two chalcogens) even though no
-// recipe produces them by fusing two separate WORLD_CRYSTALS entries --
-// Dresselhaus's transmutation panel excludes all of these (his gift is a
-// single crystal's own spin-orbit texture, not a mixed/doped state), even
-// for the ones that are also ordinary wild encounters.
+// Every name any HYBRID_RECIPES entry produces -- Dresselhaus's
+// transmutation panel excludes all of these (his gift is a single crystal's
+// own spin-orbit texture, not a fused state), even for the ones that are
+// also ordinary wild encounters.
 const HYBRID_RESULT_NAMES = new Set(HYBRID_RECIPES.map((r) => r.result.name));
 
-const COMPOSITE_MATERIAL_NAMES = new Set([
-  // Chromium dopant in a (Bi,Sb)₂Te₃ host, inducing the quantum anomalous
-  // Hall effect -- a mixture of two named ingredients baked into the
-  // compound itself, not a single-element/single-compound crystal.
-  'Cr-doped (Bi,Sb)₂Te₃',
-  // An alloy of two chalcogens (Te, Se) on the same lattice site, not one
-  // pure compound.
-  'Fe(Te,Se)',
-]);
-
-// True for a HYBRID_RECIPES fusion result, or a real compound that's
-// inherently a doped/alloyed mixture of two named ingredients
-// (COMPOSITE_MATERIAL_NAMES) -- both count as "hybrid" the same way:
-// neither is a single, un-mixed crystal, so Dresselhaus, Majorana, and
-// Anderson all exclude them identically.
+// True for a HYBRID_RECIPES fusion result -- Dresselhaus, Majorana, and
+// Anderson all exclude these identically: none of the three mechanics is
+// about becoming/reusing an already-fused state.
 export function isHybridMaterial(name: string): boolean {
-  return HYBRID_RESULT_NAMES.has(name) || COMPOSITE_MATERIAL_NAMES.has(name);
+  return HYBRID_RESULT_NAMES.has(name);
 }
 
 // Fuses two materials with an authored recipe (checked via

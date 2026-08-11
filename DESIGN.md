@@ -138,8 +138,10 @@ pool.
 | magnet (1) | Manganese Oxide (MnO) | Mott-insulating antiferromagnet — canonical mean-field/Hubbard-$U$ SSB example |
 | magnet (1) | Nickel Oxide (NiO) | Same family, another textbook mean-field SSB magnet |
 | magnet (1, rare/special) | Graphene at strong coupling | Session 1 notes a finite $U_c$ opens a Mott/antiferromagnetic gap at the Dirac point — same base crystal as the trivial entry above, but pushed past its symmetry-breaking threshold |
+| magnet (1) | Chromium (Cr) | Itinerant (metallic) antiferromagnet — the SDW mean-field/Stoner-criterion counterpart to MnO/NiO's Mott-insulating picture; also §5's magnetic-dopant parent for Cr-doped (Bi,Sb)₂Te₃ below |
 | topological (3) | Bismuth Selenide (Bi$_2$Se$_3$), magnetically doped | Quantum spin Hall / quantum anomalous Hall via added magnetism + spin-orbit coupling |
-| topological (3) | Cr-doped (Bi,Sb)$_2$Te$_3$ | Quantum anomalous Hall effect — zero-field Chern insulator |
+| topological (3) | Bismuth Telluride (Bi₂Te₃) | Undoped topological-insulator host — §5's Chromium + Bi₂Te₃ hybrid recipe dopes magnetism in to make Cr-doped (Bi,Sb)₂Te₃ below |
+| topological (3, hybrid) | Cr-doped (Bi,Sb)$_2$Te$_3$ | Quantum anomalous Hall effect — zero-field Chern insulator, from doping magnetism into Bi₂Te₃ above; §5 hybrid recipe result, lives as a World 10 wild rather than a World 3 one |
 | topological (3) | Tantalum Arsenide (TaAs) | Weyl semimetal — topological semimetal, not an insulator |
 | topological (3) | Monolayer Tungsten Ditelluride (1T′-WTe$_2$) | Quantum spin Hall insulator, survives up to ~100 K |
 | topological (3, rare) | Samarium Hexaboride (SmB$_6$) | Topological Kondo insulator — many-body topology; also bridges to the spinliquid family below |
@@ -436,13 +438,11 @@ does. World 10 has no guardian; its only encounter is the finale.
   structure actually takes into a topological one, and beating a crystal means understanding
   its own band structure well enough to wear it for a while. Transmuting changes the player's
   look, HP cap, and which moves are currently usable (§3), without erasing any move already
-  learned. **Excludes every hybrid-recipe result and every inherently doped/alloyed compound**
-  (`data/materials.ts`'s `isHybridMaterial`) -- Fe/Pb Majorana Chain and Twisted Bilayer
-  MoTe₂ (recipe results also encountered wild), and Cr-doped (Bi,Sb)₂Te₃ and Fe(Te,Se)
-  (real compounds that are themselves a mixture of two named ingredients baked
-  in, even with no fusion recipe behind them) -- becoming a mixed/fused state is specifically Majorana's
-  mechanic below, not this one. In Superposition Mode the candidate list is every
-  non-composite crystal in the game (`data/materials.ts`'s `allCrystals()`, filtered) rather
+  learned. **Excludes every hybrid-recipe result** (`data/materials.ts`'s `isHybridMaterial`)
+  -- Fe/Pb Majorana Chain and Twisted Bilayer MoTe₂ (recipe results also encountered wild),
+  and Cr-doped (Bi,Sb)₂Te₃ (recipe-only, not encountered wild) -- becoming a fused state is
+  specifically Majorana's mechanic below, not this one. In Superposition Mode the candidate
+  list is every non-hybrid crystal in the game (`data/materials.ts`'s `allCrystals()`, filtered) rather
   than only ones actually defeated
 - **Laughlin** → world 4 middle → teaches three passive abilities
   (`data/passives.ts`'s `LAUGHLIN_PASSIVE_IDS`, `OverworldScene.showLaughlinPanel`) --
@@ -596,7 +596,7 @@ does. World 10 has no guardian; its only encounter is the finale.
   pool excludes any `isHybridMaterial` (a Majorana fusion, or one of world 10's own
   named recipe-result wilds) -- doping in an impurity is meant to be one real compound's
   own excitation, not a channel a fusion already borrowed from two others. In
-  Superposition Mode the host pool is every (non-composite) crystal in the game, same as
+  Superposition Mode the host pool is every non-hybrid crystal in the game, same as
   Majorana's own ingredient pool
 
 **Boss avatars.** Every built world's rival/boss (`WORLD_RIVALS`/`getRival`)

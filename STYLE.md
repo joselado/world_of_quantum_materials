@@ -293,7 +293,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   traces in momentum space) rather than a face, slowly rotating.
 - His panel is a single paginated list, not the tab-content/footer shop shape -- every
   defeated wild material (`defeatedMaterials`, sliced to the most recent 3, or in
-  Superposition Mode every non-composite crystal in the game -- `data/materials.ts`'s
+  Superposition Mode every non-hybrid crystal in the game -- `data/materials.ts`'s
   `allCrystals()` filtered through `isHybridMaterial`) gets a button (`Become <name>`,
   or a dimmed `<name> (current form)` for whichever the player is already wearing) that
   transmutes the player's own crystal into that form (`transmuteInto`) -- swaps
@@ -427,7 +427,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   trapped by disorder instead of spreading freely -- rather than any other guardian's motif,
   plus four orbiting `×` glyphs instead of Noether's `✦` or Bloch's `◇`.
 - Two-step flow like Majorana's: every defeated wild material (or, in Superposition Mode,
-  every crystal in the game) that isn't a hybrid/composite (`isHybridMaterial`) gets a
+  every crystal in the game) that isn't a hybrid (`isHybridMaterial`) gets a
   button under "Dope in which crystal?" (paginated, see below); picking one asks "Learn
   which move from `<host>`?" and lists whichever of that host's own moves the player hasn't
   already learned (`<move name> (Pwr N)`), plus a "Never mind" to back out. Picking a move

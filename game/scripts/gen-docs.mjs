@@ -12,9 +12,9 @@
 // marker pairs; this script only ever replaces the text between a matching
 // pair, so prose around the tables survives untouched. Run via `npm run
 // docs` (or `node scripts/gen-docs.mjs` directly) after any change to
-// MOVES/WORLD_CRYSTALS/WORLD_RIVALS/HYBRID_RECIPES/COMPOSITE_MATERIAL_NAMES/
-// MOVE_COMPATIBILITY/PASSIVES -- CLAUDE.md asks for this to be re-run
-// whenever one of those changes.
+// MOVES/WORLD_CRYSTALS/WORLD_RIVALS/HYBRID_RECIPES/MOVE_COMPATIBILITY/
+// PASSIVES -- CLAUDE.md asks for this to be re-run whenever one of those
+// changes.
 
 import ts from 'typescript';
 import fs from 'node:fs';
@@ -98,11 +98,6 @@ const WORLD_RIVALS = Object.fromEntries(
 const HYBRID_RECIPES_RAW = evalNode(findTopLevelConst(materialsSf, 'HYBRID_RECIPES'), materialsSf);
 const HYBRID_RECIPES = HYBRID_RECIPES_RAW.map((r) => ({ parents: r.parents, result: r.result.args[0] }));
 
-const COMPOSITE_MATERIAL_NAMES = evalNode(
-  findTopLevelConst(materialsSf, 'COMPOSITE_MATERIAL_NAMES'),
-  materialsSf
-).args[0];
-
 const MOVE_COMPATIBILITY = evalNode(findTopLevelConst(materialsSf, 'MOVE_COMPATIBILITY'), materialsSf);
 
 // --- passives.ts --------------------------------------------------------
@@ -171,9 +166,7 @@ function genCrystals() {
 function genHybrids() {
   const recipeRows = HYBRID_RECIPES.map((r) => [r.parents[0], r.parents[1], r.result]);
   const recipesTable = table(['Parent A', 'Parent B', 'Result'], recipeRows);
-  const compositeRows = COMPOSITE_MATERIAL_NAMES.map((n) => [n]);
-  const compositeTable = table(['Compound'], compositeRows);
-  return { recipesTable, compositeTable };
+  return { recipesTable };
 }
 
 function genGuardianPassives() {
@@ -209,8 +202,8 @@ applyGenerated('quasiparticles.md', { MOVES_TABLE: movesTable, COMPATIBILITY_TAB
 const { worldsBlock, rivalsTable } = genCrystals();
 applyGenerated('crystals.md', { WORLDS: worldsBlock, RIVALS_TABLE: rivalsTable });
 
-const { recipesTable, compositeTable } = genHybrids();
-applyGenerated('hybrids.md', { RECIPES_TABLE: recipesTable, COMPOSITE_TABLE: compositeTable });
+const { recipesTable } = genHybrids();
+applyGenerated('hybrids.md', { RECIPES_TABLE: recipesTable });
 
 const { laughlinTable, bohrTable } = genGuardianPassives();
 applyGenerated('guardians.md', { LAUGHLIN_PASSIVES_TABLE: laughlinTable, BOHR_PASSIVES_TABLE: bohrTable });
