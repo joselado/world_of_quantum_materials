@@ -879,6 +879,17 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   which is exactly the kind of many-interacting-fields data that silently
   breaks without it. `game/` is the only build; there is no separate no-install
   single-file `demo/` prototype.
+- **Canvas size:** `854x480`, a 16:9 "laptop window" aspect ratio -- also the
+  aspect ratio a phone held sideways renders at, so this layout carries into
+  a future phone-landscape touch pass without a separate aspect ratio to
+  maintain. The single source of truth is `src/config/screen.ts`'s
+  `CANVAS_W`/`CANVAS_H`,
+  read directly by `main.ts`'s Phaser `GameConfig` and re-exported from
+  `src/art/perspective.ts` for every scene/panel that already imports its
+  canvas size from there. `main.ts`'s `scale` config (`Phaser.Scale.FIT` +
+  `CENTER_BOTH`) letterboxes/centers that fixed-aspect canvas to fill
+  whatever browser window it's actually running in, rather than rendering at
+  a literal 854x480 pixel size.
 - **Overworld camera:** over-the-shoulder pseudo-3D (`src/art/perspective.ts`)
   — the player's crystal floats in place at the bottom of the screen while the
   world is redrawn every frame from a smoothly-tweened camera position, giving

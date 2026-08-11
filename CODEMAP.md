@@ -12,6 +12,12 @@ stale, fix it rather than leaving it wrong.
 ```
 game/src/
   main.ts                    Phaser game config, scene list, boot order
+  config/
+    screen.ts                 CANVAS_W/CANVAS_H (854x480, 16:9) -- single source of truth for
+                                 the game's canvas size, read directly by main.ts's GameConfig
+                                 and BattleScene.ts's FIELD_W/FIELD_H alias, re-exported from
+                                 art/perspective.ts for every scene/panel that already imports
+                                 its canvas size from there
   scenes/
     TitleScene.ts             Loads save -> registry, title showcase crystals, "Continue"/"New Game" -> Hub,
                                  Story Mode / Superposition Mode picker
@@ -34,7 +40,10 @@ game/src/
   world/
     mapgen.ts                  Per-world corridor layout generator (walkable grid, branches)
   art/
-    perspective.ts             Pseudo-3D projection (grid coord -> screen point)
+    perspective.ts             Pseudo-3D projection (grid coord -> screen point); re-exports
+                                  CANVAS_W/CANVAS_H from config/screen.ts since every
+                                  scene/panel that needs the canvas size already imports it
+                                  from here
     biomes.ts                  Per-world visual skin (sky, walls, path, decoration, fog, wallTheme)
     crystals.ts                 makeCrystal() -- shared shard/cluster/prism sprite builder, opts.seed
                                   for per-compound jitter (jitterFor) and opts.hybrid for a fused

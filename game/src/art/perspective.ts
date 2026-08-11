@@ -1,12 +1,15 @@
 import Phaser from 'phaser';
+import { CANVAS_W, CANVAS_H } from '../config/screen';
 
 // Over-the-shoulder pseudo-3D projection for the overworld: the camera sits
 // behind and slightly above the player, always looking toward -y ("forward"
 // on the path). Movement logic itself stays a plain 2D integer grid (see
 // OverworldScene) -- this module only turns (lane offset, depth) into a
 // screen point, the same trick classic pseudo-3D racing games use for roads.
-export const CANVAS_W = 640;
-export const CANVAS_H = 480;
+// CANVAS_W/CANVAS_H themselves live in config/screen.ts (the single source
+// of truth for the game's canvas size); re-exported here since every other
+// scene/panel already imports its canvas size from this module.
+export { CANVAS_W, CANVAS_H };
 export const HORIZON_Y = 190;
 export const FOCAL = 2.2;
 export const LANE_PX = 150;

@@ -4,6 +4,7 @@ import { HubScene } from './scenes/HubScene';
 import { OverworldScene, BUILT_WORLDS } from './scenes/OverworldScene';
 import { BattleScene } from './scenes/BattleScene';
 import { checkDataIntegrity } from './data/integrity';
+import { CANVAS_W, CANVAS_H } from './config/screen';
 
 // Dev-only: catches a renamed/removed move id or a built world missing its
 // biome before the game even boots, rather than a specific save/player
@@ -14,10 +15,14 @@ if (import.meta.env.DEV) {
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
-  width: 640,
-  height: 480,
+  width: CANVAS_W,
+  height: CANVAS_H,
   parent: 'game',
   backgroundColor: '#111111',
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+  },
   scene: [TitleScene, HubScene, OverworldScene, BattleScene],
 };
 
