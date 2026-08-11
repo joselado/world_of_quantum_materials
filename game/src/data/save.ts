@@ -1,5 +1,5 @@
 import type { Material, MaterialType, MoveClass, Stats } from './types';
-import { PLAYER_MATERIAL, DEFAULT_STATS, MOVES } from './materials';
+import { PLAYER_MATERIAL, DEFAULT_STATS, MOVES, TYPE_LOOK } from './materials';
 import { DEFAULT_ENCOUNTER_DENSITY, DEFAULT_FONT_SCALE } from './settings';
 
 // Single localStorage-backed save slot (v1: one profile, no cloud sync --
@@ -147,6 +147,17 @@ export function loadSave(): SaveData {
     // panel that looks up MOVES[id] for an unlocked move crashes on an
     // old save.
     data.unlockedMoves = data.unlockedMoves.filter((id) => id in MOVES);
+    // Same guard for a MaterialType a prior version of the game defined but
+    // this version renamed/retired (e.g. the old 'trivial'/'magnet'/'qhe',
+    // later 'classicalmag'/'spinliquid'/'supercon') --
+    // TYPE_LOOK[type] and MOVE_COMPATIBILITY[type] are both plain object
+    // lookups with no fallback of their own, so an unrecognized type would
+    // otherwise crash the very next battle/render rather than degrade
+    // gracefully. `playerForm: null` already means "still the default
+    // PLAYER_MATERIAL," so resetting to that is the same safe fallback a
+    // save predating this field already uses.
+    if (data.playerForm && !(data.playerForm.type in TYPE_LOOK)) data.playerForm = null;
+    if (data.rival9Type && !(data.rival9Type in TYPE_LOOK)) data.rival9Type = null;
     return data;
   } catch {
     return defaultSave();

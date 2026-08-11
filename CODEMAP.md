@@ -99,7 +99,7 @@ since `materials.ts` pulls in Phaser at module scope) and regenerates the
   optional `hybridParents` (both parents' own `color`/`variant`, set only by
   `combineMaterials` -- see below and STYLE.md's "Crystal sprites" section).
 - The player is not a separate class -- `PLAYER_MATERIAL` is just one `Material` row (currently
-  Silicon, `type: 'trivial'`). Its starting `moves` is the tutorial loadout; moves actually
+  Silicon, `type: 'semiconductor'`). Its starting `moves` is the tutorial loadout; moves actually
   available in battle also depend on the registry's `unlockedMoves` (grows via Noether's shop).
 - `WORLD_CRYSTALS: Record<world, Material[]>` -- wild-encounter pool per world, pulled via
   `getWildPool(world)`. `WORLD_RIVALS: Partial<Record<world, Material>>` -- the one gating

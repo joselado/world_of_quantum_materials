@@ -26,9 +26,9 @@ anywhere in the game.
 Sells every ordinary attack move and stat upgrade in the game, priced by raw
 power. What actually shows up in her shop is filtered down to whatever your
 *current* crystal form can physically host (see
-[Quasiparticles & moves](quasiparticles.md)) -- a trivial-type player only
-ever sees Electron Pulse until transmuting into a form whose physics
-supports the rest.
+[Quasiparticles & moves](quasiparticles.md)) -- a semiconductor-type player
+(Silicon, by default) only ever sees Electron Pulse until transmuting into a
+form whose physics supports the rest.
 
 ## Bloch
 

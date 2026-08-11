@@ -15,7 +15,7 @@ guardians for new abilities, or advance to the next world.
 separate human protagonist commanding a roster of creatures Pokemon-style — the
 player-controlled overworld avatar *is* a crystal, one entry out of the same
 material roster the wild encounters are drawn from (currently Silicon, the
-trivial/tutorial-baseline type). Guardians (§5) remain NPC characters the player
+semiconductor/tutorial-baseline type). Guardians (§5) remain NPC characters the player
 talks to, but the thing you walk around the world and fight battles as is a
 material, matching the crystal already used for the player's side of every
 battle.
@@ -29,14 +29,14 @@ One world per course topic (see the topic table in the repo's top-level `CLAUDE.
 | 0 (Hub) | — | "The Lab" — guardian's house, save point, Materialdex | — | Start world 1 |
 | 1 | Second quantization, mean-field, SSB | **Mean-Field Meadow** — tutorial meadow | Free fermion, broken-symmetry magnet | Beat first rival crystal |
 | 2 | Symmetries, tight-binding, effective models | **Bloch Caverns** — crystalline caves, repeating tile patterns | Bloch-wave critters, lattice defect variants | Beat that world's rival crystal |
-| 3 | Topological band theory | **Topological Islands** — floating islands, one-way edge paths | Chern insulators, trivial insulators | Cross a gap only an edge-mode move can bridge |
+| 3 | Topological band theory | **Topological Islands** — floating islands, one-way edge paths | Quantum spin Hall insulators, bulk and engineered alike | Cross a gap only an edge-mode move can bridge |
 | 4 | Magnetic field, QHE, Landau levels | **Landau Level Terrain** — visible field lines, quantized-orbit terrain | Landau-level materials, composite fermions | Solve a Landau-level maze |
 | 5 | Superconductivity, Nambu, Majorana | **Frozen Zero-Resistance Caverns** | s-wave SC, triplet SC, Majorana pairs (split in two) | Pair two Majorana halves |
 | 6 | Classical magnetism, magnons | **Magnon Plains** — windswept plains, spin-wave ripples | Ferro/antiferromagnets, magnon wave-riders | Ride a magnon wave across a canyon |
 | 7 | Entanglement, tensor networks | **Tensor-Network World** — bonds as paths | Entangled pairs (fought as a bonded duo) | Compress a tangled area into a walkable MPS path |
-| 8 | Quantum magnetism, spinons, Kondo | **Spinon Forest** — foggy forest, fractionalizes on contact | Spin liquids, Kondo-screened critters | Screen a "local moment" boss mechanic |
-| 9 | Excitations and defects | **Defect Wastes** — cracked/glitching world | Defect-bound states, impurity resonances | Repair/exploit N defects to stabilize a bridge |
-| 10 | ML for quantum materials | **The Adaptive Meta-World** — reflects the player's own team | Hybrid-recipe crystals and standalone Chern/multiferroic compounds, plus the adaptive final boss | Final battle |
+| 8 | Quantum magnetism, spinons, Kondo | **Spinon Forest** — foggy forest, fractionalizes on contact | Spin liquids, Kondo-screened critters, a genuine Kondo-lattice heavy-fermion compound | Screen a "local moment" boss mechanic |
+| 9 | Excitations and defects | **Defect Wastes** — cracked/glitching world | Defect-bound states, impurity resonances, plus every non-hybrid material from worlds 1-8 | Repair/exploit N defects to stabilize a bridge |
+| 10 | ML for quantum materials | **The Adaptive Meta-World** — reflects the player's own team | Hybrid-recipe crystals and standalone Chern/multiferroic/ferroelectric compounds, plus the adaptive final boss | Final battle |
 
 World and rival names are meant to read as the lecture topic, not generic RPG terrain/monster
 names (check `WORLD_NAMES` and `WORLD_RIVALS` together when naming a world -- a mismatched
@@ -75,22 +75,72 @@ as too large for one person (§10) in favor of the reusable gate every world alr
 
 ## 3. Type system
 
-**Main types** (one per topic's central phase of matter, except topics 7 and 9, which
-share a type with another topic rather than getting their own): trivial/free-fermion
-(tutorial baseline), symmetry-broken magnet, topological insulator (Chern), quantum
-Hall state, superconductor, classical magnet, quantum spin liquid, adaptive/ML state
-(endgame only, not obtainable until postgame). Topic 7's entangled/tensor-network
-states and topic 8's spin liquids are physically the same quasiparticle family (Spinon
-Swap), so World 7 and World 8 share the `spinliquid` type while staying visually and
+**`game/src/data/TAXONOMY.txt` is the hand-edited design source for the type system**
+— every main type and every quasiparticle class below, and which classes host which
+quasiparticles, is meant to match that file exactly; `types.ts`'s `MaterialType`/
+`MoveClass` unions and `materials.ts`'s `MOVE_COMPATIBILITY` are its implementation.
+Edit that file first when changing the taxonomy itself, then reconcile the `.ts`
+files (and this section) to match, rather than editing the three places
+independently.
+
+**Main types (13).** Ordinary, non-exotic band physics splits three ways by how far a
+carrier gets: `metal` (a partially filled band — the only tier that carries a
+plasmon), `semiconductor` (gapped, but narrow enough to dope/thermally excite across
+— an ordinary band electron still gets through), and `insulator` (gapped too wide for
+even that — only the lattice itself, a phonon, gets through, though a self-trapped
+polaron is actually a *stronger* excitation there than in a bare metal or
+semiconductor). Magnetically/electrically ordered baselines: `classicalMagnet`
+(magnetically ordered, magnon-carrying — covers both the mean-field/Hubbard-U route
+into symmetry-broken order and the classical itinerant-ferromagnet route, since both
+are the same ordered-moment phase reached via a different derivation),
+`quantumSpinLiquid` (frustrated, never orders — hosts spinon, its Z2 topological-order
+companion vison, and triplon, a dimer/valence-bond quantum paramagnet's own confined
+mode, grouped in here as a deliberate simplification even though a triplon is
+conceptually the *opposite* of spinon's fractionalization), `ferroelectric` (electric
+polarization order with no magnetic order at all, hosting ferron — the polarization
+order's own quantum, the non-magnetic analog of a magnon), and `multiferroic`
+(magnetically ordered *and* magnetoelectrically coupled, hosting an ordinary magnon,
+ferron, *and* electromagnon — all three distinct, not redundant). Strongly correlated
+baselines: `kondoHeavyFermion` (a hybridized f-electron/conduction-electron compound,
+the Kondo-lattice physics topic 8's own guardian is named for) and `superconductor`
+(ordinary, non-topological Cooper pairing — hosts `higgs`, the condensate's own
+amplitude mode, not Majorana). Topological baselines: `quantumSpinHall` (a protected,
+spin-momentum-locked *helical* boundary state — covers a bulk 3D compound's own
+surface Dirac cone (Bi₂Te₃), a bulk-derived monolayer's own quantum spin Hall state
+(Monolayer WTe₂), *and* the engineered-heterostructure route into that same physics
+(HgTe/CdTe Quantum Well, a quantum well whose *inverted* band ordering, not any bulk
+crystal symmetry, opens the gap) under one type — the boundary physics the move roster
+actually cares about is the same helical channel regardless of bulk dimensionality, so
+there's no separate "3D bulk topological insulator" type; hosts no Majorana mode on
+its own either way, no superconducting proximity in the picture), `chernInsulator`
+(quantized Hall conductance from a nonzero *integer* Chern number and one *chiral*
+edge channel, whether via real Landau levels in a field or a zero-field
+anomalous-Hall state — both the same topological invariant, so field-driven and
+zero-field integer Chern states share one type rather than two), `fractionalChern`
+(unlike `chernInsulator`, a fractional Chern insulator's edge is itself a
+fractionalized chiral mode whose quanta are `chargedAnyon`s with genuine braiding
+statistics, not free chiral fermions), and `chernSuperconductor` (a
+chiral/topological superconductor — genuine topological *pairing*, vortices/edges of
+a chiral SC or a superconductor-proximitized topological surface, which is what
+actually hosts a Majorana zero mode; kept distinct from plain `superconductor` since
+an ordinary s-wave condensate's pairing alone does not host one, and from
+`quantumSpinHall` since a helical boundary state alone, with no superconductivity in
+the picture, doesn't either). Finally `adaptive` (endgame only,
+not obtainable until postgame, hosts nearly every quasiparticle above — see
+`MOVE_COMPATIBILITY.adaptive`). Topic 7's entangled/tensor-network states and topic
+8's spin liquids are physically the same quasiparticle family (Spinon Swap), so World
+7 and World 8 share the `quantumSpinLiquid` type while staying visually and
 narratively distinct worlds (different biome, guardian, music, name) — the crystal
 database below still tags each compound with the topic it illustrates even though the
 type column reads the same for both. Topic 9's defect-bound states (Yu-Shiba-Rusinov
-states, impurity resonances) are real disorder physics hosted inside an ordinary
-superconductor, so World 9's crystals are `supercon` type rather than a dedicated one.
+states, impurity resonances, vortex-bound Majorana states) are real disorder physics
+hosted inside a superconductor, so most of World 9's crystals are `superconductor` or
+`chernSuperconductor` type rather than a dedicated one — its one magnetic-impurity
+precursor compound (Manganese) is `classicalMagnet`.
 
 **Subtypes**, unlocked via guardians, cross with main types (e.g. superconductor +
-magnet subtype → spin-triplet superconductor, matching the example in the source
-notes). Not all main+subtype pairs are physical/interesting — needs a full
+classicalMagnet subtype → spin-triplet superconductor, matching the example in the
+source notes). Not all main+subtype pairs are physical/interesting — needs a full
 compatibility table before implementation (see open questions).
 
 **Attributes map to stats** (implemented: `game/src/data/types.ts`'s `Stats`, `game/src/data/materials.ts`):
@@ -119,8 +169,8 @@ Wired into `game/src/data/materials.ts` as `WORLD_CRYSTALS`, a **per-world datab
 keyed by world number rather than one global list — each world's `OverworldScene`
 pulls its own wild-encounter pool via `getWildPool(world)`, drawing 2-4 rows from the
 matching type/topic section of the table below (topic 2 has no dedicated main type of
-its own, so it reuses trivial-type compounds with "lattice" flavor instead of world
-1's tutorial picks; world 10's pool draws from §5's hybrid-recipe results plus two
+its own, so it mixes metal/semiconductor/insulator compounds with "lattice" flavor
+instead of world 1's tutorial picks; world 10's pool draws from §5's hybrid-recipe results plus two
 cross-topic standalone compounds instead of one topic section, see the note just below
 the table). All ten worlds
 have a built overworld map (roadmap §9). `PLAYER_MATERIAL` (the player's own crystal,
@@ -129,51 +179,73 @@ pool.
 
 | Type (topic) | Crystal (compound) | Why it has that type |
 |---|---|---|
-| trivial (1) | Silicon (Si) | Conventional band insulator/semiconductor, no protected structure |
-| trivial (1) | Gallium Nitride (GaN) | Doped semiconductor, plain single-particle band picture |
-| trivial (1) | Magnesium Oxide (MgO) | Simple ionic band insulator, textbook baseline contrast to topological insulators |
-| trivial (1→2 bridge) | Graphene (pristine, half-filled) | Gapless Dirac semimetal — the throughline example of session 2 (Bloch's theorem, tight-binding); precursor before symmetry-breaking (→ magnet) or band-topology (→ topological) sets in |
-| trivial (2) | Indium Arsenide (InAs) | Ordinary band semiconductor whose real role is strong spin-orbit coupling — the actual second ingredient (alongside Aluminum) in a real Majorana-nanowire platform, §5's InAs/Al Majorana Wire hybrid recipe |
-| trivial (2) | Monolayer Molybdenum Ditelluride, 2H phase (MoTe$_2$) | The untwisted, semiconducting monolayer phase — distinct from the already-topological 1T′ phase below — that becomes Twisted Bilayer MoTe₂ once fused with itself (§5) |
-| magnet (1) | Manganese Oxide (MnO) | Mott-insulating antiferromagnet — canonical mean-field/Hubbard-$U$ SSB example |
-| magnet (1) | Nickel Oxide (NiO) | Same family, another textbook mean-field SSB magnet |
-| magnet (1, rare/special) | Graphene at strong coupling | Session 1 notes a finite $U_c$ opens a Mott/antiferromagnetic gap at the Dirac point — same base crystal as the trivial entry above, but pushed past its symmetry-breaking threshold |
-| magnet (1) | Chromium (Cr) | Itinerant (metallic) antiferromagnet — the SDW mean-field/Stoner-criterion counterpart to MnO/NiO's Mott-insulating picture; also §5's magnetic-dopant parent for Cr-doped (Bi,Sb)₂Te₃ below |
-| topological (3) | Bismuth Selenide (Bi$_2$Se$_3$), magnetically doped | Quantum spin Hall / quantum anomalous Hall via added magnetism + spin-orbit coupling |
-| topological (3) | Bismuth Telluride (Bi₂Te₃) | Undoped topological-insulator host — §5's Chromium + Bi₂Te₃ hybrid recipe dopes magnetism in to make Cr-doped (Bi,Sb)₂Te₃ below |
-| topological (3, hybrid) | Cr-doped (Bi,Sb)$_2$Te$_3$ | Quantum anomalous Hall effect — zero-field Chern insulator, from doping magnetism into Bi₂Te₃ above; §5 hybrid recipe result, lives as a World 10 wild rather than a World 3 one |
-| topological (3) | Tantalum Arsenide (TaAs) | Weyl semimetal — topological semimetal, not an insulator |
-| topological (3) | Monolayer Tungsten Ditelluride (1T′-WTe$_2$) | Quantum spin Hall insulator, survives up to ~100 K |
-| topological (3, rare) | Samarium Hexaboride (SmB$_6$) | Topological Kondo insulator — many-body topology; also bridges to the spinliquid family below |
-| qhe (4) | Gallium Arsenide (GaAs) | The original 2DEG platform for the integer/fractional quantum Hall effect |
-| qhe (4) | Graphene, in strong field | Dirac-electron Landau levels, plateaus observable up to ~room temperature |
-| qhe (4) | Twisted bilayer Molybdenum Ditelluride (MoTe$_2$) | Zero-field fractional quantum Hall from topological flat bands |
-| qhe (4) | Cr-doped (Bi,Sb)$_2$Te$_3$ | Zero-field quantized Hall conductance (QAHE) — same compound as a topological-type entry above, showing up again in its field-quantized regime |
-| supercon (5) | Aluminum (Al) | Conventional phonon-mediated BCS s-wave superconductor |
-| supercon (5) | Lead (Pb) | Same family, higher $T_c$ |
-| supercon (5) | YBCO / cuprates | Unconventional nodal d-wave high-$T_c$ superconductor |
-| supercon (5, engineered) | NbSe$_2$/CrBr$_3$ heterostructure | s-wave SC + spin-orbit + exchange field engineered into a topological superconductor |
-| supercon (5, engineered) | Iron chains on lead (Fe/Pb) | Majorana-chain platform — topological superconductivity from a magnetic chain on an s-wave SC |
-| supercon (5) | Niobium (Nb) | Highest-$T_c$ elemental BCS superconductor at ambient pressure, same conventional family as Aluminum/Lead |
-| supercon (5) | Tantalum Disulfide, 1H phase (TaS$_2$) | Metallic/superconducting TMD monolayer in its own right — distinct from the 1T phase below, and the other half of §5's 1T/1H-TaS₂ heterostructure hybrid recipe |
-| supercon (9, textbook fill-in) | Iron Telluride/Selenide (Fe(Te,Se)) | Hosts Yu-Shiba-Rusinov and vortex-bound (Majorana) defect states in a superconductor |
-| supercon (9, textbook fill-in) | Niobium Diselenide (NbSe$_2$), STM-imaged impurities | Friedel oscillations / impurity-resonance textbook platform; also pairs with CrI₃/CrBr₃ in §5's topological-SC heterostructure recipes |
-| classicalmag (6) | Iron (Fe) | Classic itinerant ferromagnet, magnon carrier |
-| classicalmag (6) | Cobalt (Co) | Same family |
-| classicalmag (6) | Chromium Triiodide (CrI$_3$) | Van der Waals ferromagnet with an observed topological magnon gap |
-| classicalmag (6) | Chromium Tribromide (CrBr$_3$) | Same van der Waals ferromagnet family as CrI₃ — pairs with Niobium Diselenide in Kezilebieke et al., Nature 588, 424 (2020)'s topological-superconductor heterostructure, §5 |
-| spinliquid (7, textbook fill-in) | Strontium Copper Borate (SrCu$_2$(BO$_3$)$_2$) | Shastry–Sutherland lattice — exactly-solvable dimerized/entangled ground state, a standard tensor-network benchmark material |
-| spinliquid (7, textbook fill-in) | Thallium Copper Chloride (TlCuCl$_3$) | Quantum spin-dimer compound — textbook entangled-singlet-pair example |
-| spinliquid (7) | Herbertsmithite | The one real compound session 7 itself names, motivating MPS/tensor-network methods (kagome local moments) |
-| spinliquid (8) | Herbertsmithite (ZnCu$_3$(OH)$_6$Cl$_2$) | Flagship kagome quantum-spin-liquid candidate |
-| spinliquid (8) | α-Ruthenium Trichloride (RuCl$_3$) | Candidate Kitaev spin liquid |
-| spinliquid (8) | Ytterbium Magnesium Gallium Oxide (YbMgGaO$_4$) | Triangular-lattice spin-liquid candidate |
-| spinliquid (8, engineered) | 1T-TaS$_2$ on 1H-TaS$_2$ | Engineered 2D Kondo-insulator heterostructure — wired in as §5's 1T/1H-TaS₂ heterostructure hybrid recipe, fusing the two standalone phase entries below |
-| spinliquid (8) | Tantalum Disulfide, 1T phase (TaS$_2$) | Star-of-David CDW Mott insulator / quantum-spin-liquid candidate (Law & Lee 2017) — the other half of the 1T/1H heterostructure above |
-| multiferroic (6, new type) | Nickel Diiodide (NiI$_2$), monolayer | Type-II multiferroic from noncollinear/helimagnetic order down to the monolayer limit (Song et al., Nature 2022) — hosts genuine electromagnons, the type's flagship. Same session (classical magnetism/magnons) as classicalmag, not its own world -- lives as a World 10 wild (§5) alongside the game's hybrid recipe results |
-| multiferroic (6, new type, hybrid) | Twisted CrI₃ | §5 hybrid recipe (CrI₃ + CrI₃) — noncollinear moiré spin textures theoretically predicted (not yet confirmed) to induce magnetoelectric coupling; untwisted CrI₃ itself is only classicalmag |
-| chernInsulator (4, new type) | Manganese Bismuth Telluride (MnBi$_2$Te$_4$) | Real intrinsic magnetic topological insulator — the actual zero-field QAHE/Chern-insulator material, standalone (not a hybrid recipe result). Same session (quantum Hall effect) as qhe, not its own world -- lives as a World 10 wild (§5) alongside the game's hybrid recipe results |
+| semiconductor (1) | Silicon (Si) | Conventional band semiconductor, narrow enough a gap to dope, no protected structure |
+| semiconductor (1) | Gallium Nitride (GaN) | Doped semiconductor, plain single-particle band picture |
+| insulator (1) | Magnesium Oxide (MgO) | Simple ionic band insulator, gap too wide to dope/excite across — textbook baseline contrast to topological insulators; the ionic lattice also self-traps a stronger polaron than a bare semiconductor would |
+| metal (1→2 bridge) | Graphene (pristine, half-filled) | Gapless Dirac semimetal — the throughline example of session 2 (Bloch's theorem, tight-binding); precursor before symmetry-breaking (→ classicalMagnet) or band-topology (→ topological) sets in; real graphene plasmonics is its own well-known field |
+| semiconductor (2) | Indium Arsenide (InAs) | Ordinary band semiconductor whose real role is strong spin-orbit coupling — the actual second ingredient (alongside Aluminum) in a real Majorana-nanowire platform, §5's InAs/Al Majorana Wire hybrid recipe |
+| semiconductor (2) | Monolayer Molybdenum Ditelluride, 2H phase (MoTe$_2$) | The untwisted, semiconducting monolayer phase — distinct from the already-topological 1T′ phase below — that becomes Twisted Bilayer MoTe₂ once fused with itself (§5) |
+| semiconductor (2) | Mercury Telluride (HgTe) | Individually just an ordinary (inverted-gap) semiconductor — §5's hybrid-recipe parent for HgTe/CdTe Quantum Well below |
+| semiconductor (2) | Cadmium Telluride (CdTe) | Individually an ordinary wide-gap semiconductor — the barrier layer in the same HgTe/CdTe quantum-well recipe |
+| quantumSpinHall (3, hybrid) | HgTe/CdTe Quantum Well | The original 2D topological insulator (Bernevig-Hughes-Zhang model, König et al., Science 2007) — only the *engineered heterostructure* is topological, not either bulk parent above; §5 hybrid recipe result |
+| classicalMagnet (1) | Manganese Oxide (MnO) | Mott-insulating antiferromagnet — canonical mean-field/Hubbard-$U$ SSB example |
+| classicalMagnet (1) | Nickel Oxide (NiO) | Same family, another textbook mean-field SSB magnet |
+| classicalMagnet (1, rare/special) | Graphene at strong coupling | Session 1 notes a finite $U_c$ opens a Mott/antiferromagnetic gap at the Dirac point — same base crystal as the metal entry above, but pushed past its symmetry-breaking threshold |
+| classicalMagnet (1) | Chromium (Cr) | Itinerant (metallic) antiferromagnet — the SDW mean-field/Stoner-criterion counterpart to MnO/NiO's Mott-insulating picture; also §5's magnetic-dopant parent for Cr-doped (Bi,Sb)₂Te₃ below |
+| chernInsulator (3, magnetically doped) | Bismuth Selenide (Bi$_2$Se$_3$), magnetically doped | The added magnetism breaks time-reversal symmetry, turning the helical surface state chiral — quantum anomalous Hall, same doping-breaks-TRS mechanism as Cr-doped (Bi,Sb)₂Te₃ below |
+| quantumSpinHall (3) | Bismuth Telluride (Bi₂Te₃) | Undoped topological-insulator host, its bulk gap hiding a spin-momentum-locked helical surface state — §5's Chromium + Bi₂Te₃ hybrid recipe dopes magnetism in to make Cr-doped (Bi,Sb)₂Te₃ below |
+| quantumSpinHall (3, rare) | Samarium Hexaboride (SmB$_6$) | Topological Kondo insulator — many-body topology, a protected helical surface state hosted inside a Kondo-insulating bulk; also bridges to the kondoHeavyFermion/quantumSpinLiquid family below |
+| quantumSpinHall (3) | Monolayer Tungsten Ditelluride (1T′-WTe$_2$) | A genuine quantum spin Hall insulator in its own right, survives up to ~100 K — a single bulk-derived monolayer's own band topology rather than an engineered quantum well, but the same helical boundary physics as Bi₂Te₃/HgTe-CdTe above, so it shares this type rather than needing a separate 3D-only one |
+| chernInsulator (3→10, hybrid) | Cr-doped (Bi,Sb)$_2$Te$_3$ | Quantum anomalous Hall effect — the Cr doping breaks time-reversal symmetry and turns Bi₂Te₃'s helical surface state into a single chiral edge channel, a zero-field integer Chern insulator; §5 hybrid recipe result, lives as a World 10 wild rather than a World 3 one |
+| chernInsulator (4) | Gallium Arsenide (GaAs) | The original 2DEG platform for the integer quantum Hall effect — field-driven Landau levels, the same (integer) Chern-number invariant as the zero-field entries above |
+| chernInsulator (4) | Graphene, in strong field | Dirac-electron Landau levels, plateaus observable up to ~room temperature |
+| fractionalChern (4) | Twisted bilayer Molybdenum Ditelluride (MoTe$_2$) | Zero-field *fractional* quantum Hall from topological flat bands — genuinely fractionalizes into charged anyons, unlike GaAs/Graphene's ordinary integer Landau levels above, so it gets its own type rather than sharing `chernInsulator` |
+| chernInsulator (4, new type) | Manganese Bismuth Telluride (MnBi$_2$Te$_4$) | Real intrinsic magnetic topological insulator — the actual zero-field QAHE/Chern-insulator material, standalone (not a hybrid recipe result); lives as a World 10 wild (§5) alongside the game's hybrid recipe results |
+| superconductor (5) | Aluminum (Al) | Conventional phonon-mediated BCS s-wave superconductor |
+| superconductor (5) | Lead (Pb) | Same family, higher $T_c$ |
+| superconductor (5) | YBCO / cuprates | Unconventional nodal d-wave high-$T_c$ superconductor, still ordinary (non-topological) pairing |
+| chernSuperconductor (5, engineered) | NbSe$_2$/CrBr$_3$ heterostructure | s-wave SC + spin-orbit + exchange field engineered into a topological superconductor — genuine topological pairing, so it (and its Majorana Split move) live here rather than plain `superconductor` |
+| chernSuperconductor (5, engineered) | Iron chains on lead (Fe/Pb) | Majorana-chain platform — topological superconductivity from a magnetic chain on an s-wave SC |
+| superconductor (5) | Niobium (Nb) | Highest-$T_c$ elemental BCS superconductor at ambient pressure, same conventional family as Aluminum/Lead; also §5's non-magnetic parent for Mn/Nb Shiba Chain below |
+| superconductor (5) | Tantalum Disulfide, 1H phase (TaS$_2$) | Metallic/superconducting TMD monolayer in its own right — distinct from the 1T phase below, and the other half of §5's 1T/1H-TaS₂ heterostructure hybrid recipe |
+| chernSuperconductor (9) | Iron Telluride/Selenide (Fe(Te,Se)) | Hosts Yu-Shiba-Rusinov *and* vortex-bound Majorana defect states (Zhang et al., Science 2018) — the vortex Majorana observation is genuine topological superconductivity, so this is `chernSuperconductor` rather than plain `superconductor` |
+| superconductor (9, textbook fill-in) | Niobium Diselenide (NbSe$_2$), STM-imaged impurities | Friedel oscillations / impurity-resonance textbook platform, ordinary (non-topological) disorder physics; also pairs with CrI₃/CrBr₃ in §5's topological-SC heterostructure recipes |
+| superconductor (9, hybrid) | Mn/Nb Shiba Chain | A single Mn adatom on ordinary (non-topological) Niobium hosts an ordinary Yu-Shiba-Rusinov bound state (Yazdani et al., Science 1997) — the single-impurity precursor to Fe(Te,Se)/Fe/Pb Chain above; §5 hybrid recipe result, stays plain `superconductor`, no Majorana Split the way those genuinely topological cases get |
+| classicalMagnet (6) | Iron (Fe) | Classic itinerant ferromagnet, magnon carrier |
+| classicalMagnet (6) | Cobalt (Co) | Same family |
+| classicalMagnet (6) | Chromium Triiodide (CrI$_3$) | Van der Waals ferromagnet with an observed topological magnon gap |
+| classicalMagnet (6) | Chromium Tribromide (CrBr$_3$) | Same van der Waals ferromagnet family as CrI₃ — pairs with Niobium Diselenide in Kezilebieke et al., Nature 588, 424 (2020)'s topological-superconductor heterostructure, §5 |
+| classicalMagnet (9, hybrid parent) | Manganese (Mn) | Elemental Mn's own complex itinerant antiferromagnetism is beside the point — its role is §5's magnetic-impurity parent for Mn/Nb Shiba Chain above |
+| quantumSpinLiquid (7, textbook fill-in) | Strontium Copper Borate (SrCu$_2$(BO$_3$)$_2$) | Shastry–Sutherland lattice — exactly-solvable dimerized/entangled ground state, a standard tensor-network benchmark material and a textbook triplon host |
+| quantumSpinLiquid (7, textbook fill-in) | Thallium Copper Chloride (TlCuCl$_3$) | Quantum spin-dimer compound — another textbook triplon example |
+| quantumSpinLiquid (7) | Herbertsmithite | The one real compound session 7 itself names, motivating MPS/tensor-network methods (kagome local moments); a Z2-spin-liquid candidate, a genuine vison host |
+| quantumSpinLiquid (7, textbook fill-in) | Yttrium Barium Nickel Oxide (Y$_2$BaNiO$_5$) | S=1 Haldane spin chain — its ground state is closely related to the AKLT state, the exactly-solvable valence-bond-solid wavefunction matrix product states were introduced to describe in the first place |
+| quantumSpinLiquid (8) | α-Ruthenium Trichloride (RuCl$_3$) | Candidate Kitaev spin liquid — Z2 topological order, a genuine vison host |
+| quantumSpinLiquid (8) | Ytterbium Magnesium Gallium Oxide (YbMgGaO$_4$) | Triangular-lattice spin-liquid candidate |
+| quantumSpinLiquid (8, engineered) | 1T-TaS$_2$ on 1H-TaS$_2$ | Engineered 2D Kondo-insulator heterostructure — wired in as §5's 1T/1H-TaS₂ heterostructure hybrid recipe, fusing the two standalone phase entries below |
+| quantumSpinLiquid (8) | Tantalum Disulfide, 1T phase (TaS$_2$) | Star-of-David CDW Mott insulator / quantum-spin-liquid candidate (Law & Lee 2017) — the other half of the 1T/1H heterostructure above |
+| kondoHeavyFermion (8, new type) | Ytterbium Rhodium Silicide (YbRh$_2$Si$_2$) | The flagship heavy-fermion/Kondo-lattice quantum-critical-point material — gives Kondo's own world a genuine Kondo-lattice compound, distinct from the frustrated-magnet spin-liquid candidates above |
+| multiferroic (6, new type) | Nickel Diiodide (NiI$_2$), monolayer | Type-II multiferroic from noncollinear/helimagnetic order down to the monolayer limit (Song et al., Nature 2022) — hosts genuine electromagnons, the type's flagship. Same session (classical magnetism/magnons) as classicalMagnet, not its own world -- lives as a World 10 wild (§5) alongside the game's hybrid recipe results |
+| multiferroic (6, new type, hybrid) | Twisted CrI₃ | §5 hybrid recipe (CrI₃ + CrI₃) — noncollinear moiré spin textures theoretically predicted (not yet confirmed) to induce magnetoelectric coupling; untwisted CrI₃ itself is only classicalMagnet |
+| ferroelectric (new type) | Barium Titanate (BaTiO$_3$) | The textbook ferroelectric — its Ti⁴⁺ ion sits off-center below ~120°C, giving the lattice a spontaneous switchable polarization; no course topic covers ferroelectricity specifically, so it's a World 10 standalone like MnBi₂Te₄/NiI₂ |
+| ferroelectric (new type) | Germanium Telluride (GeTe) | Robust room-temperature ferroelectric Rashba semiconductor — a stronger, more switchable ferroelectric than BaTiO₃'s own ~120°C transition, same type |
+| chernSuperconductor (10, hybrid) | InAs/Al Majorana Wire | Engineered from an ordinary s-wave superconductor (Aluminum) proximitizing a strong-spin-orbit semiconductor (InAs) — genuine topological pairing, so `chernSuperconductor` rather than plain `superconductor`; §5 hybrid recipe result |
 | adaptive (10) | — (no compound, by design) | Only `WORLD_RIVALS[10]`'s finale boss ("a model of you") — World 10's ordinary wilds are not 'adaptive', see the note above the crystal-database table |
+
+Bismuth Selenide (magnetically doped) and Samarium Hexaboride are documented candidates
+not yet wired into `WORLD_CRYSTALS` — every other row above is live in the code. Weyl
+semimetals (Tantalum Arsenide) were considered and dropped from the roster entirely
+(`TAXONOMY.txt`'s own open-questions note): a Weyl semimetal's chiral Fermi arcs and
+chiral anomaly are genuinely distinct 3D gapless physics, not a `chernInsulator`
+variant, so folding TaAs into that type would have been a physics error rather than a
+simplification — it's absent rather than miscategorized.
+
+World 9's actual wild-encounter pool (`getWildPool`) is wider than its own table rows
+above: on top of its own dedicated defect compounds, it also spawns every non-hybrid
+material from worlds 1-8 (deduped by name), the same "a defect/impurity resonance can
+form in any host crystal" reasoning `RIVAL_9_TYPES`/`rollRival9Type` already use for its
+rival, literalized for ordinary encounters too. Hybrid-recipe results are excluded from
+that borrowed set — a fused state isn't "a defect in an earlier crystal."
 
 Session files for topics 9 and 10 name no concrete real compounds at all (they stay at
 the level of "a metal," "a superconductor," generic ML methods), so those two rows lean
@@ -193,7 +265,7 @@ reflects the actual dimensionality/stacking of the compound, not just its main t
 above, every crystal built with `data/materials.ts`'s `crystal()` gets a small,
 deterministic per-compound hue/rotation/stretch/sparkle variation (`art/crystals.ts`'s
 `jitterFor`, keyed off the compound's own name) layered on top of its `TYPE_LOOK`
-silhouette/color, so e.g. Manganese Oxide and Nickel Oxide (both `magnet`-type clusters)
+silhouette/color, so e.g. Manganese Oxide and Nickel Oxide (both `classicalMagnet`-type clusters)
 read as individuals rather than one recolored shape reused twice. See STYLE.md's "Crystal
 sprites" section for the mechanism.
 
@@ -205,46 +277,59 @@ a glowing seam. See `data/materials.ts`'s `combineMaterials`/`hybridParents` and
 STYLE.md's "Crystal sprites" section.
 
 World 10's wild pool (`WORLD_CRYSTALS[10]` in `data/materials.ts`) hosts the game's
-actual named hybrid-recipe results (§5's `HYBRID_RECIPES`) plus two standalone compounds
-whose own type belongs to an existing topic's session (chernInsulator → topic 4, quantum
-Hall; multiferroic → topic 6, classical magnetism/magnons) but has no dedicated world of
-its own (MnBi₂Te₄, the real intrinsic QAHE/Chern-insulator material; Monolayer NiI₂, the
-multiferroic type's flagship, Song et al., Nature 2022) — so the meta-world's corridor
-plays back the player's own fusions/discoveries literally rather than as echo flavor
-text. `WORLD_RIVALS[10]` ("The Adapted"), a separate table from the wild pool, is the
-one 'adaptive'-type entry in the game — a "no real compound, a model of you" finale
-boss.
+actual named hybrid-recipe results (§5's `HYBRID_RECIPES`) plus standalone compounds
+whose own type either belongs to an existing topic's session (chernInsulator → topic 4,
+quantum Hall; multiferroic → topic 6, classical magnetism/magnons) or has no course topic
+of its own at all (ferroelectric) but has no dedicated world either way (MnBi₂Te₄, the
+real intrinsic QAHE/Chern-insulator material; Monolayer NiI₂, the multiferroic type's
+flagship, Song et al., Nature 2022; Barium Titanate and GeTe, the ferroelectric type's
+flagships) — so the meta-world's corridor plays back the player's own fusions/discoveries
+literally rather than as echo flavor text. `WORLD_RIVALS[10]` ("The Adapted"), a separate
+table from the wild pool, is the one 'adaptive'-type entry in the game — a "no real
+compound, a model of you" finale boss.
 
 **Subtype combination flavor (real-compound tie-ins):** the same mechanic from §3
 (main type + subtype → new material) has ready real-world flavor text once crystals are
 named after compounds:
-- superconductor + magnet subtype → spin-triplet superconductor: Strontium Ruthenate
+- superconductor + classicalMagnet subtype → spin-triplet superconductor: Strontium Ruthenate
   (Sr$_2$RuO$_4$, historic triplet-SC candidate) or twisted graphene trilayers (observed
   spin-triplet SC under applied field, per session 5).
-- superconductor + topological subtype → topological superconductor: same engineered
-  platforms as the supercon row above (WTe$_2$ base + NbSe$_2$/CrBr$_3$ heterostructure,
-  or the Fe-chains-on-Pb Majorana platform).
+- superconductor + topological subtype → chernSuperconductor: same engineered platforms
+  the chernSuperconductor row above already implements (a quantumSpinHall base +
+  NbSe$_2$/CrBr$_3$ heterostructure, or the Fe-chains-on-Pb Majorana platform).
 
 **Attacks are quasiparticles, not abstract labels.** Every move is named after the
 excitation that actually carries it (`game/src/data/materials.ts`'s `MOVES`), and each
 renders as its own particle-effect animation in battle (`game/src/art/attackEffects.ts`):
-a fast bolt for Phonon Beam/Electron Pulse/Spinon Swap, an expanding ring pulse for
-Magnon Pulse/Polaron Drag, a converging/scattering particle burst for Anyon Braid/Majorana
-Split. There is deliberately no "impurity scattering" move — disorder isn't a particle a
-crystal emits, so it has no place in the move roster as an abstract attack.
+a fast bolt for Phonon Beam/Electron Pulse/Spinon Swap/Triplon Surge/Chiral Current, an
+expanding ring pulse for Magnon Pulse/Polaron Drag/Electromagnon Pulse/Plasmon Pulse/Ferron
+Pulse/Higgs Oscillation/Helical Current, a converging/scattering particle burst for Anyon
+Braid/Majorana Split/Heavy Fermion Pulse/Vison Loop. There is deliberately no "impurity
+scattering" move — disorder isn't a particle a crystal emits, so it has no place in the
+move roster as an abstract attack.
 
 **A crystal can only use moves its own physics supports** — `game/src/data/materials.ts`'s
 `MOVE_COMPATIBILITY` table fixes, per main type, which quasiparticle classes it can host
-(e.g. a plain band insulator/semiconductor like Silicon only ever gets Electron Pulse and
-Phonon Beam, never Magnon Pulse, since it has no magnetic order to carry one). Phonon Beam
-(`phonon`) is on every type's list, since every crystal has a lattice; every other class is
-gated to the types whose actual physics motivates it (Magnon Pulse → magnetically ordered
-types; Anyon Braid → quantum Hall/topological; Majorana Split → superconducting/topological;
-Spinon Swap → spin-liquid; Polaron Drag → superconducting/spin-liquid/strongly correlated).
-This is enforced everywhere the player's moveset shows up: the battle move
-menu (`getBattleMoves` = learned moves ∩ compatible moves) and Noether's shop (same
-intersection, so she only ever offers what the player's *current* crystal form can
-actually carry — see the transmutation mechanic in §5).
+(`game/src/data/TAXONOMY.txt` is this table's hand-edited design source, see above). The
+three ordinary band types split three ways by how far a carrier gets: `metal` (e.g.
+Graphene) gets Electron Pulse, Phonon Beam, *and* Plasmon Pulse (only a partially filled
+band carries a plasmon); `semiconductor` (Silicon) gets Electron Pulse and Phonon Beam,
+its gap narrow enough for an ordinary band electron but not a free electron gas;
+`insulator` (Magnesium Oxide) gets Phonon Beam *and* Polaron Drag but not Electron Pulse,
+its gap too wide for an ordinary band electron to get through even though the ionic
+lattice self-traps a polaron more readily than a metal or semiconductor would. None of the
+three gets Magnon Pulse, since none has magnetic order to carry one. Every other class is
+gated the same way to whichever types the actual physics motivates it for (Magnon Pulse →
+magnetically ordered types; Chiral Current → integer-Chern types; Helical Current →
+time-reversal-protected edge/surface types; Anyon Braid → fractional-Chern only; Majorana
+Split → `chernSuperconductor` only, genuine topological pairing required; Higgs
+Oscillation → any superconducting type; Spinon Swap/Vison Loop/Triplon Surge →
+quantum-spin-liquid; Heavy Fermion Pulse → Kondo-lattice only; Ferron Pulse →
+ferroelectric/multiferroic; Electromagnon Pulse → multiferroic only). This is enforced
+everywhere the player's moveset shows up: the battle move menu (`getBattleMoves` = learned
+moves ∩ compatible moves) and Noether's shop (same intersection, so she only ever offers
+what the player's *current* crystal form can actually carry — see the transmutation
+mechanic in §5).
 
 **One deliberate exception: Kondo's screening moves aren't gated by a crystal's
 physics at all.** `screening` (Screening Pulse, Scattering Drag, Breakdown
@@ -275,13 +360,20 @@ physics can't host the attacking move's quasiparticle class at all. See
 
 **Move power scales with how unconventional the quasiparticle is.** An ordinary lattice
 vibration or band electron is weak; a topological or non-Abelian excitation is strong — so
-every move the player can buy from Noether outpowers the free starting Phonon Beam. Ordered,
-low to high (`data/materials.ts`'s `MOVES`): Phonon Beam (`phonon`, every crystal has a
-lattice) < Electron Pulse (trivial, an ordinary band electron) < Magnon Pulse (magnetic, a
-broken-symmetry collective mode) < Polaron Drag (localization, a correlated lattice-bound
-distortion) < Spinon Swap (entanglement, a fractionalized spin-liquid excitation) <
-Anyon Braid / Majorana Split (gauge / decoherence, topological and non-Abelian — tied for
-the most exotic tier the course covers). Because Phonon Beam (`phonon`) is on every type's
+every move the player can buy from Noether outpowers the free starting Phonon Beam. Six
+tiers, low to high (`data/materials.ts`'s `MOVES`): Phonon Beam (`phonon`, every crystal
+has a lattice) < Electron Pulse (`electron`, an ordinary band electron) < Magnon Pulse /
+Plasmon Pulse / Ferron Pulse (`magnon`/`plasmon`/`ferron`, tied — an ordinary collective
+mode of a magnet, a metal, or a ferroelectric, none more exotic than the others; session
+9's own RPA treatment names "the plasmon" as a quasiparticle in exactly those words) <
+Polaron Drag / Electromagnon Pulse / Triplon Surge (`polaron`/`electromagnon`/`triplon`,
+tied — a lattice-dressed carrier, a magnon-phonon hybrid, and a dimer magnet's own confined
+triplet mode) < Spinon Swap / Vison Loop / Chiral Current / Helical Current / Higgs
+Oscillation / Heavy Fermion Pulse (`spinon`/`vison`/`chiral`/`helical`/`higgs`/
+`heavyFermion`, tied — fractionalized or topologically protected, but none of them
+non-Abelian) < Anyon Braid / Majorana Split (`chargedAnyon`/`majorana`, tied for the most
+exotic tier the course covers: fractional braiding statistics and non-Abelian zero modes).
+Because Phonon Beam (`phonon`) is on every type's
 `MOVE_COMPATIBILITY` list, it can never trigger the quasiparticle-mismatch double-damage
 rule above — the one universal move is also the one that never gets the mismatch bonus, by
 design. Curie's two moves (`skyfallBeam`/`groundEruption`) sit at a middling base power
@@ -306,8 +398,8 @@ the player picks the effect by picking the move:
   (×0.7) for 3 turns, raising the damage it takes (Correlation scales incoming damage via
   `10 / correlation`, above).
 
-None of the three status names double as a `MoveClass` — `decoherence` and
-`localization` are separately Majorana Split's and Polaron Drag's classes, unrelated
+None of the three status names double as a `MoveClass` — `majorana` and
+`polaron` are separately Majorana Split's and Polaron Drag's classes, unrelated
 quasiparticle physics, so a status name matching one of those would read as if this
 generic scattering process were tied to that specific move instead.
 
@@ -348,9 +440,9 @@ other) that a flat stacked list blurred the distinction -- and paging instead of
 means a page's own row height (`drawMoveMenu`'s `rowH`) is budgeted only against that one
 section's move count, not the worst case across every section at once, so an 'adaptive'-type
 crystal (world 10, see §3) hosting the broadest set of `MoveClass`es of any type -- every
-class except the multiferroic-only `'magnetoelectric'`, deliberately left off its
-`MOVE_COMPATIBILITY` list the same way `'phonon'`/`'screening'` are on every
-list -- no longer has to squeeze Analytic/Screening rows into the same panel it isn't even
+class except the multiferroic/ferroelectric-only `'electromagnon'`/`'ferron'`,
+deliberately left off its `MOVE_COMPATIBILITY` list the same way `'phonon'`/`'screening'`
+are on every list -- no longer has to squeeze Analytic/Screening rows into the same panel it isn't even
 showing right now. Each button also shows its power and, computed against the current
 opponent's type, a `!!2x` tag when the quasiparticle-mismatch double-damage rule above
 applies, plus a one-line top-of-panel legend spelling out that symbol.
@@ -382,9 +474,9 @@ crystal/biome tables already use.
 Beam. Reaching world 1's middle tile for the first time introduces the guardian Noether (§5),
 who sells every other move (`SHOP_MOVE_IDS`) for qumatokens, priced by move power
 (`OverworldScene.shopCost`, currently power × 5) -- filtered down to whatever the player's
-*current* crystal form can physically carry (§3's `MOVE_COMPATIBILITY`), so a trivial-type
-player is only ever offered Electron Pulse until they transmute into a form that supports
-more. Unlocked moves persist in the Phaser registry's `unlockedMoves` entry (a global
+*current* crystal form can physically carry (§3's `MOVE_COMPATIBILITY`), so a
+semiconductor-type player (Silicon, by default) is only ever offered Electron Pulse until
+they transmute into a form that supports more. Unlocked moves persist in the Phaser registry's `unlockedMoves` entry (a global
 "moves learned," never erased by transmuting) and become available as battle buttons in
 `BattleScene` once filtered through that same compatibility check
 (`getBattleMoves` = learned ∩ compatible). The move list renders as a docked panel on
@@ -487,7 +579,12 @@ does. World 10 has no guardian; its only encounter is the finale.
   topological flat bands" already
   *is* the fractional Chern-insulator result, so the recipe resolves to that entry rather
   than a duplicate); 1T-phase + 1H-phase Tantalum Disulfide → a Kondo-screened
-  heterostructure. Recipe results are ordinary `WORLD_CRYSTALS` entries (mostly World
+  heterostructure; Manganese + Niobium → Mn/Nb Shiba Chain, the single-impurity
+  Yu-Shiba-Rusinov precursor (Yazdani et al., Science 1997) to the Fe/Pb chain's
+  many-impurity Majorana case; HgTe + CdTe → HgTe/CdTe Quantum Well, the original
+  Bernevig-Hughes-Zhang quantum spin Hall platform (König et al., Science 2007) --
+  neither parent is topological on its own, only the engineered quantum well is.
+  Recipe results are ordinary `WORLD_CRYSTALS` entries (mostly World
   10's pool, see §2/§7 below) rather than synthesized on the fly, so a hybrid
   encountered wild and one fused by hand are the exact same crystal; `combineMaterials`
   additionally attaches `hybridParents` so the fused form still renders as an actual
@@ -521,18 +618,18 @@ does. World 10 has no guardian; its only encounter is the finale.
   `CURIE_TUNABLE_CLASSES` -- every ordinary Attacks-section class (i.e. every class
   except Kondo's `'screening'`) -- filtered down to only the ones the player's
   *current* form can actually host, `canHost(playerMaterial.type, cls)`: a class as
-  narrow as `'magnetoelectric'` (only the `multiferroic` type hosts it) only ever
+  narrow as `'electromagnon'` (only the `multiferroic` type hosts it) only ever
   shows up while the player is wearing a multiferroic form, rather than being a free
   "always mismatch nearly every opponent" pick regardless of form. `'phonon'` is on
   every `MOVE_COMPATIBILITY` list, so the filtered list is never empty) that assigns
   the move's registry/save `curieMoveClass[moveId]` entry, labeled with whichever
   ordinary move already carries that class (`quasiparticleLabel`, e.g. "Magnon
-  Pulse" for `'magnetic'`) rather than the class id itself. This choice only feeds
+  Pulse" for `'magnon'`) rather than the class id itself. This choice only feeds
   `getCurieMoveClass`, which `BattleScene`'s quasiparticle-mismatch check reads in
   place of `move.class` for these two ids (see §3/§4) -- still purchasable/usable
   from any form and still asks its question regardless of tuning. The displayed name
   always folds in the current quasiparticle (`curieMoveDisplayName`, e.g. `skyfallBeam`
-  tuned to `'magnetic'` reads as "Magnon Beam" everywhere -- the move menu, the
+  tuned to `'magnon'` reads as "Magnon Beam" everywhere -- the move menu, the
   question panel, the battle log), built from the quasiparticle's own label plus each
   move's fixed shape word ("Beam"/"Eruption") rather than a second hand-authored word
   list. An unbought move has no

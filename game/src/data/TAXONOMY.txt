@@ -1,0 +1,75 @@
+Material class -> quasiparticle taxonomy -- HAND-MAINTAINED DESIGN SOURCE.
+
+Lives here (not repo root) so it's next to types.ts/materials.ts, the code
+that implements it. Edit this file by hand with any plain editor, then ask
+Claude to reconcile MaterialType/MoveClass/MOVE_COMPATIBILITY/WORLD_CRYSTALS
+in types.ts/materials.ts to match -- this file is the spec, the .ts files
+are the implementation, they are edited separately, on purpose, so a design
+change can be sketched here first without touching working code.
+
+Format: one class per line, "class: quasiparticle, quasiparticle, ..." in
+display order (weakest/most common first). Trailing "# ..." is a flagship
+example material, comment only, ignore when editing quasiparticle sets.
+Class names here use snake_case for readability; the .ts implementation uses
+the camelCase spelling of the same name (e.g. `quantum_spin_liquid` here is
+`quantumSpinLiquid` in types.ts/materials.ts) -- that's a spelling
+convention difference only, not two different things to keep in sync.
+
+"screening" is a universal special case (Kondo's mechanic) -- every class
+hosts it regardless of physics, so it is deliberately left off every line
+below rather than repeated on every class.
+
+This file's last resolved state: Weyl semimetals (TaAs) are dropped from the
+roster entirely, not given their own class. Triplon lives on
+quantum_spin_liquid despite the physics tension noted below (a confined
+dimer mode sitting alongside a fractionalized one) -- a deliberate
+simplification, not an oversight. `topological` (the bulk-3D-only class) has
+been removed and folded into `quantum_spin_hall`, which now covers every
+helical (time-reversal-protected) boundary state regardless of
+dimensionality -- 3D bulk (Bi2Te3), bulk-derived monolayer (Monolayer
+WTe2), and engineered heterostructure (HgTe/CdTe Quantum Well) alike.
+
+--- QUASIPARTICLES (16) ---
+
+phonon         lattice vibration -- universal, every class hosts it
+electron       ordinary band electron ("trivial")
+plasmon        collective charge oscillation -- free-electron-gas only
+magnon         collective spin wave
+polaron        lattice-dressed/self-trapped charge carrier
+spinon         fractionalized spin excitation
+triplon        propagating S=1 excitation of a singlet/dimer (valence-bond) ground state -- a *confined* mode, conceptually the opposite of spinon's fractionalization; lives on quantum_spin_liquid anyway, a deliberate simplification
+electromagnon  magnon-phonon hybrid with electric-dipole activity
+chiral         one-way edge/surface mode of a Chern band -- no backscattering channel
+helical        counter-propagating, spin-momentum-locked edge pair, protected by time reversal
+Higgs          amplitude oscillation of the order parameter -- condensate/pairing required
+charged anyon  fractional-statistics excitation (bulk and edge) carrying fractional charge -- fractional states only
+majorana       non-Abelian zero mode -- superconducting pairing required
+heavy fermion  mass-renormalized conduction-electron/local-moment composite
+ferron         quantized excitation of the polarization order parameter
+vison          Z2 gauge-flux (vortex) excitation of a Z2 spin liquid
+
+--- CLASSES (13) ---
+
+metal:                phonon, electron, plasmon                    # Aluminum, Graphene
+insulator:             phonon, polaron                              # Magnesium Oxide -- polaron lives here, not metal/semiconductor: self-trapped polarons are strongest in ionic insulators/oxides
+semiconductor:         phonon, electron                             # Silicon
+classical_magnet:      phonon, magnon                               # Iron, Manganese Oxide
+quantum_spin_liquid:   phonon, spinon, vison, triplon               # Herbertsmithite, Strontium Copper Borate (triplon), alpha-RuCl3 (vison)
+kondo_heavy_fermion:   phonon, electron, heavy fermion, spinon      # YbRh2Si2
+superconductor:        phonon, electron, Higgs                      # Aluminum, Lead, Niobium -- ordinary (non-topological) pairing only, no majorana here
+chern_superconductor:  phonon, electron, Higgs, chiral, majorana    # Fe/Pb Majorana Chain, CrI3/NbSe2 and NbSe2/CrBr3 heterostructures, Fe(Te,Se) -- genuine topological pairing, this is the only class majorana lives on
+chern_insulator:       phonon, electron, chiral                     # Gallium Arsenide (integer QHE), MnBi2Te4, Cr-doped (Bi,Sb)2Te3 (zero-field QAHE)
+quantum_spin_hall:     phonon, electron, helical                    # Bi2Te3 (bulk 3D TI), Monolayer WTe2 (bulk-derived monolayer), HgTe/CdTe Quantum Well (engineered heterostructure) -- no separate "topological" (3D bulk) class: the boundary physics (helical, time-reversal-protected) is what the move roster cares about, not bulk dimensionality, so 2D and 3D helical hosts share this one class
+fractional_chern:      phonon, electron, charged anyon              # Twisted Bilayer MoTe2 -- no separate chiral entry: the FCI edge is itself a fractionalized chiral mode whose quanta are the charged anyons, so charged anyon already carries that
+ferroelectric:         phonon, ferron                               # Barium Titanate, GeTe
+multiferroic:          phonon, magnon, electromagnon, ferron        # Monolayer NiI2, Twisted CrI3 -- both electromagnon (the ME-hybridized magnon) and ferron (the polarization's own quantum) on purpose, distinct modes, not redundant
+
+Not a real material, kept outside this taxonomy:
+adaptive: hosts every quasiparticle above except electromagnon and ferron -- "The Adapted" endgame boss, models whatever the player has collected. Multiferroic/ferroelectric are the two "no dedicated course topic" bonus types, so they're deliberately excluded from what an ordinary playthrough's endgame boss can mirror.
+
+Weyl semimetals (TaAs) were considered for their own class (chiral Fermi
+arcs, the chiral anomaly -- genuinely distinct 3D gapless physics, not a
+chern_insulator variant, which would wrongly conflate a gapped 2D phase with
+a gapless 3D semimetal) but dropped from the roster instead, to hold the
+class count at 14. Revisit if 3D Weyl/Dirac semimetal physics earns its own
+world/topic later.

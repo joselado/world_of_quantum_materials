@@ -16,94 +16,102 @@ don't hand-edit the `<!-- GENERATED -->` blocks.*
 
 | Crystal | Type | Max HP |
 | --- | --- | --- |
-| Graphene | `trivial` | 22 |
-| Manganese Oxide | `magnet` | 26 |
-| Nickel Oxide | `magnet` | 25 |
-| Chromium | `magnet` | 24 |
+| Graphene | `metal` | 22 |
+| Manganese Oxide | `classicalMagnet` | 26 |
+| Nickel Oxide | `classicalMagnet` | 25 |
+| Chromium | `classicalMagnet` | 24 |
 
 ### World 2 -- Symmetries, tight-binding band structure
 
 | Crystal | Type | Max HP |
 | --- | --- | --- |
-| Graphene | `trivial` | 22 |
-| Gallium Nitride | `trivial` | 23 |
-| Magnesium Oxide | `trivial` | 21 |
-| Indium Arsenide | `trivial` | 24 |
-| Monolayer MoTe₂ (2H) | `trivial` | 22 |
+| Graphene | `metal` | 22 |
+| Gallium Nitride | `semiconductor` | 23 |
+| Magnesium Oxide | `insulator` | 21 |
+| Indium Arsenide | `semiconductor` | 24 |
+| Monolayer MoTe₂ (2H) | `semiconductor` | 22 |
+| HgTe | `semiconductor` | 22 |
+| CdTe | `semiconductor` | 22 |
 
 ### World 3 -- Topological band theory
 
 | Crystal | Type | Max HP |
 | --- | --- | --- |
-| Bi₂Te₃ | `topological` | 24 |
-| Tantalum Arsenide | `topological` | 26 |
-| Monolayer WTe₂ | `topological` | 23 |
+| Bi₂Te₃ | `quantumSpinHall` | 24 |
+| Monolayer WTe₂ | `quantumSpinHall` | 23 |
+| HgTe/CdTe Quantum Well | `quantumSpinHall` | 25 |
 
 ### World 4 -- Magnetic field, quantum Hall effect, Landau levels
 
 | Crystal | Type | Max HP |
 | --- | --- | --- |
-| Gallium Arsenide | `qhe` | 25 |
-| Graphene (strong field) | `qhe` | 24 |
-| Twisted Bilayer MoTe₂ | `qhe` | 26 |
+| Gallium Arsenide | `chernInsulator` | 25 |
+| Graphene (strong field) | `chernInsulator` | 24 |
+| Twisted Bilayer MoTe₂ | `fractionalChern` | 26 |
 
 ### World 5 -- Superconductivity, Nambu representation, Majoranas
 
 | Crystal | Type | Max HP |
 | --- | --- | --- |
-| Aluminum | `supercon` | 28 |
-| Lead | `supercon` | 30 |
-| YBCO | `supercon` | 27 |
-| Fe/Pb Majorana Chain | `supercon` | 29 |
-| Niobium | `supercon` | 29 |
-| Tantalum Disulfide (1H) | `supercon` | 26 |
+| Aluminum | `superconductor` | 28 |
+| Lead | `superconductor` | 30 |
+| YBCO | `superconductor` | 27 |
+| Fe/Pb Majorana Chain | `chernSuperconductor` | 29 |
+| Niobium | `superconductor` | 29 |
+| Tantalum Disulfide (1H) | `superconductor` | 26 |
 
 ### World 6 -- Classical magnetism and magnons
 
 | Crystal | Type | Max HP |
 | --- | --- | --- |
-| Iron | `classicalmag` | 27 |
-| Cobalt | `classicalmag` | 27 |
-| Chromium Triiodide | `classicalmag` | 25 |
-| Chromium Tribromide | `classicalmag` | 25 |
+| Iron | `classicalMagnet` | 27 |
+| Cobalt | `classicalMagnet` | 27 |
+| Chromium Triiodide | `classicalMagnet` | 25 |
+| Chromium Tribromide | `classicalMagnet` | 25 |
 
 ### World 7 -- Quantum entanglement and tensor networks
 
 | Crystal | Type | Max HP |
 | --- | --- | --- |
-| Herbertsmithite | `spinliquid` | 23 |
-| Strontium Copper Borate | `spinliquid` | 24 |
-| Thallium Copper Chloride | `spinliquid` | 22 |
+| Herbertsmithite | `quantumSpinLiquid` | 23 |
+| Strontium Copper Borate | `quantumSpinLiquid` | 24 |
+| Thallium Copper Chloride | `quantumSpinLiquid` | 22 |
+| Y₂BaNiO₅ | `quantumSpinLiquid` | 23 |
 
 ### World 8 -- Quantum magnetism, spinons, Kondo physics
 
 | Crystal | Type | Max HP |
 | --- | --- | --- |
-| α-Ruthenium Trichloride | `spinliquid` | 24 |
-| Herbertsmithite | `spinliquid` | 23 |
-| YbMgGaO₄ | `spinliquid` | 22 |
-| Tantalum Disulfide (1T) | `spinliquid` | 24 |
+| α-Ruthenium Trichloride | `quantumSpinLiquid` | 24 |
+| Herbertsmithite | `quantumSpinLiquid` | 23 |
+| YbMgGaO₄ | `quantumSpinLiquid` | 22 |
+| Tantalum Disulfide (1T) | `quantumSpinLiquid` | 24 |
+| YbRh₂Si₂ | `kondoHeavyFermion` | 22 |
 
 ### World 9 -- Excitations and defects
 
 | Crystal | Type | Max HP |
 | --- | --- | --- |
-| Fe(Te,Se) | `supercon` | 22 |
-| Niobium Diselenide | `supercon` | 21 |
+| Fe(Te,Se) | `chernSuperconductor` | 22 |
+| Niobium Diselenide | `superconductor` | 21 |
+| Manganese | `classicalMagnet` | 23 |
+| Mn/Nb Shiba Chain | `superconductor` | 24 |
 
 ### World 10 -- Machine learning for quantum materials
 
 | Crystal | Type | Max HP |
 | --- | --- | --- |
-| Twisted Bilayer Graphene | `supercon` | 32 |
-| InAs/Al Majorana Wire | `supercon` | 31 |
-| CrI₃/NbSe₂ Topological-SC Heterostructure | `topological` | 33 |
-| NbSe₂/CrBr₃ Topological-SC Heterostructure | `topological` | 33 |
+| Twisted Bilayer Graphene | `superconductor` | 32 |
+| InAs/Al Majorana Wire | `chernSuperconductor` | 31 |
+| CrI₃/NbSe₂ Topological-SC Heterostructure | `chernSuperconductor` | 33 |
+| NbSe₂/CrBr₃ Topological-SC Heterostructure | `chernSuperconductor` | 33 |
 | Twisted CrI₃ | `multiferroic` | 32 |
-| 1T/1H-TaS₂ Heterostructure | `spinliquid` | 30 |
+| 1T/1H-TaS₂ Heterostructure | `quantumSpinLiquid` | 30 |
 | MnBi₂Te₄ | `chernInsulator` | 30 |
 | Monolayer NiI₂ | `multiferroic` | 28 |
-| Cr-doped (Bi,Sb)₂Te₃ | `topological` | 29 |
+| Cr-doped (Bi,Sb)₂Te₃ | `chernInsulator` | 29 |
+| Barium Titanate | `ferroelectric` | 27 |
+| GeTe | `ferroelectric` | 26 |
 <!-- GENERATED:WORLDS END -->
 
 ## World rivals
@@ -121,14 +129,14 @@ why it's absent from the generated table below.
 <!-- GENERATED:RIVALS_TABLE START -->
 | World | Rival | Type | Max HP |
 | --- | --- | --- | --- |
-| 1 | Rival Silicon | `trivial` | 34 |
-| 2 | Rival Bloch Wave | `trivial` | 38 |
-| 3 | Rival Edge State | `topological` | 42 |
-| 4 | Rival Landau Level | `qhe` | 46 |
-| 5 | Rival Cooper Pair | `supercon` | 50 |
-| 6 | Rival Domain Wall | `classicalmag` | 54 |
-| 7 | Rival Entangled Pair | `spinliquid` | 58 |
-| 8 | Rival Spinon | `spinliquid` | 62 |
+| 1 | Rival Silicon | `semiconductor` | 34 |
+| 2 | Rival Bloch Wave | `metal` | 38 |
+| 3 | Rival Edge State | `quantumSpinHall` | 42 |
+| 4 | Rival Landau Level | `chernInsulator` | 46 |
+| 5 | Rival Cooper Pair | `superconductor` | 50 |
+| 6 | Rival Domain Wall | `classicalMagnet` | 54 |
+| 7 | Rival Entangled Pair | `quantumSpinLiquid` | 58 |
+| 8 | Rival Spinon | `quantumSpinLiquid` | 62 |
 | 10 | The Adapted | `adaptive` | 80 |
 <!-- GENERATED:RIVALS_TABLE END -->
 

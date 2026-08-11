@@ -17,8 +17,8 @@ than appending a changelog, so this always reflects current reality.
   start the Hub.
 - Above the title text, a small showcase cluster of five crystals (`drawShowcaseCrystals`,
   the module-level `SHOWCASE` array) rather than a single crystal -- a curated handful of
-  `data/materials.ts`'s `TYPE_LOOK` entries (trivial, spinliquid, magnet, supercon,
-  topological), not tied to the player's own save/current form, since this is a "world full
+  `data/materials.ts`'s `TYPE_LOOK` entries (metal, quantumSpinLiquid, classicalMagnet,
+  superconductor, topological), not tied to the player's own save/current form, since this is a "world full
   of different materials" branding image rather than a "welcome back" one (the Hub is where
   the player's own crystal gets its own moment). One centered "hero" crystal (biggest,
   drawn last so it renders on top) flanked by two nearer and two further/smaller ones, each
@@ -376,7 +376,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   listing `CURIE_TUNABLE_CLASSES` filtered down to whatever the player's *current* form can
   host (`canHost`) as its own column of buttons (same button styling as the shop list, just
   a different button set) -- each labeled with the ordinary move name that class already
-  carries (`quasiparticleLabel`, e.g. "Magnon Pulse" for `'magnetic'`) rather than the class
+  carries (`quasiparticleLabel`, e.g. "Magnon Pulse" for `'magnon'`) rather than the class
   id. Picking one on an unbought move completes the purchase; on an already-bought move it
   just re-saves the assignment, free.
 - **The move's displayed name always leads with its current quasiparticle**
@@ -384,8 +384,8 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   too -- the move-menu button, the analytic-question panel's title, the battle log's "X used
   `<name>`!" line -- built from the quasiparticle's own label (`quasiparticleLabel`, e.g.
   `"Magnon Pulse"` → `Magnon`) plus each move's fixed shape word ("Beam"/"Eruption") rather
-  than a second hand-authored word list, so `skyfallBeam` tuned to `'magnetic'` reads as
-  "Magnon Beam," `groundEruption` tuned to `'gauge'` as "Anyon Eruption," and so on. An
+  than a second hand-authored word list, so `skyfallBeam` tuned to `'magnon'` reads as
+  "Magnon Beam," `groundEruption` tuned to `'chargedAnyon'` as "Anyon Eruption," and so on. An
   untuned move defaults to `'phonon'`, reading as "Phonon Beam"/"Phonon Eruption."
 
 ## Bohr in the overworld (`OverworldScene.showBohrPanel`)

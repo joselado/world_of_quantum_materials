@@ -140,7 +140,7 @@ function drawTwistedShape(g: Phaser.GameObjects.Graphics, size: number, color: n
 // A compound's own per-instance look, derived once from a hash of its name
 // (not re-rolled per render) -- a hue tint plus a rotation/stretch on the
 // shape itself, so materials sharing one MaterialType's variant/base color
-// (e.g. every 'magnet'-type cluster) still read as visually distinct
+// (e.g. every 'classicalMagnet'-type cluster) still read as visually distinct
 // individuals rather than the same silhouette in a different brightness.
 // Applied to the inner Graphics object(s), never the outer Container, so it
 // survives whatever a caller does to the returned container afterward

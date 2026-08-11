@@ -4,10 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working in this
 
 ## What this repository is
 
-`world_of_quantum_materials` is a Phaser 3 + TypeScript browser RPG (GBA-era
-Pokemon/Golden Sun style) that teaches the material from Aalto's *Advanced Quantum
-Materials* course. It used to live as a `video_game/` sub-directory inside the
-course-materials repo; it now lives here as its own standalone project with its own
+`world_of_quantum_materials` is a Phaser 3 + TypeScript browser RPG
+that teaches the material from Aalto's *Advanced Quantum
+Materials* course. It now lives with its own
 git history, pushed to `github.com/joselado/world_of_quantum_materials`.
 
 ## Where to start

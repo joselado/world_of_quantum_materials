@@ -54,8 +54,8 @@ export function showMajoranaPanel(scene: OverworldScene) {
   container.add(intro);
   y += intro.height + 14;
 
-  // Every world's wild pool is a single main type (world 5 is all
-  // 'supercon', world 6 all 'classicalmag', ...), so a same-world-only
+  // Every world's wild pool is often a single main type (world 6 is all
+  // 'classicalMagnet', world 7 all 'quantumSpinLiquid', ...), so a same-world-only
   // recency window (Dresselhaus's `slice(-3)`, fine there since any single
   // defeated crystal is a valid transmute target) would make Majorana's
   // paired requirement nearly unreachable -- the player's last few

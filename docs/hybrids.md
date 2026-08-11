@@ -32,6 +32,8 @@ fused, same-type pairs included.
 | Monolayer MoTe₂ (2H) | Monolayer MoTe₂ (2H) | Twisted Bilayer MoTe₂ |
 | Niobium Diselenide | Chromium Tribromide | NbSe₂/CrBr₃ Topological-SC Heterostructure |
 | Tantalum Disulfide (1T) | Tantalum Disulfide (1H) | 1T/1H-TaS₂ Heterostructure |
+| Manganese | Niobium | Mn/Nb Shiba Chain |
+| HgTe | CdTe | HgTe/CdTe Quantum Well |
 <!-- GENERATED:RECIPES_TABLE END -->
 
 See [Guardians](guardians.md#majorana) for how the fuse mechanic itself

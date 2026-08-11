@@ -238,38 +238,6 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
       incorrect: 'A real, uniform magnetic field threading every unit cell',
     },
   ],
-  'Tantalum Arsenide': [
-    {
-      prompt: 'What class of topological material is tantalum arsenide, whose low-energy quasiparticles are Weyl fermions?',
-      correct: 'A topological semimetal',
-      incorrect: 'A quantum spin Hall insulator',
-    },
-    {
-      prompt: "Unlike a Chern insulator, a topological semimetal's bulk is...",
-      correct: 'Gapless, not fully gapped',
-      incorrect: 'Gapped everywhere, just like an insulator',
-    },
-    {
-      prompt: "A filled band's contribution to the Hall conductivity is fixed by integrating which quantity over the Brillouin zone?",
-      correct: 'The Berry curvature',
-      incorrect: 'The density of states',
-    },
-    {
-      prompt: "Why is a filled band's contribution to the Hall conductivity always quantized to an integer?",
-      correct: 'The Brillouin zone is a closed, compact surface (a torus)',
-      incorrect: "The band's dispersion is always linear near the Fermi level",
-    },
-    {
-      prompt: 'What does the bulk-boundary correspondence say happens at an interface between two gapped phases with different Chern numbers?',
-      correct: 'The bulk gap must close somewhere at the interface',
-      incorrect: 'The interface stays gapped, just with a shifted Fermi level',
-    },
-    {
-      prompt: 'In linear response theory, an observable is Taylor-expanded in which quantity?',
-      correct: 'The perturbation strength λ',
-      incorrect: "The system's temperature",
-    },
-  ],
   'Monolayer WTe₂': [
     {
       prompt: 'What is the key experimental fact about the quantum spin Hall effect in monolayer 1T′-WTe₂?',
