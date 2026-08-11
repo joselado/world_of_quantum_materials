@@ -1637,17 +1637,22 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   // Reopens this world's goal gate panel (showGatePanel -- no guardian stands
-  // here anymore, see WORLD_GUARDIANS' `tile: 'middle'`) every time this scene
-  // is (re)created with the goal already reached -- both right after first
-  // stepping onto the goal row and after any later round trip through
-  // BattleScene (a wild fight fought near the goal, or the rival fight
-  // itself resolving). Keeps the panel revisitable across multiple battles
-  // instead of a single one-shot popup. Since the guardian is mid-corridor,
-  // reached well before the goal, the player always has a chance to shop/
-  // prep before ever facing the boss waiting here; the rival fight is what
-  // "Continue to World N+1" triggers (see tryAdvanceToNextWorld).
+  // here anymore, see WORLD_GUARDIANS' `tile: 'middle'`) when this scene is
+  // (re)created with the player standing on the already-reached goal row --
+  // both right after first stepping onto it and after a later round trip
+  // through BattleScene for a wild fight fought right there, or the rival
+  // fight itself resolving. Gated on the player's *current* restored tile,
+  // not just the historical reachedGoal flag, so a battle fought anywhere
+  // else in the world (after the goal was reached once) doesn't pop this
+  // open out of nowhere on return -- the Guardians pause-menu list
+  // (showGuardiansPanel) already covers deliberately revisiting from afar.
+  // Since the guardian is mid-corridor, reached well before the goal, the
+  // player always has a chance to shop/prep before ever facing the boss
+  // waiting here; the rival fight is what "Continue to World N+1" triggers
+  // (see tryAdvanceToNextWorld).
   private maybeAutoOpenGoalDialogue() {
     if (!this.reachedGoal || this.dialogueActive) return;
+    if (this.playerTile.y !== this.goalTile.y) return;
     this.showTutorialTip('goal', () => this.openGoalGuardianPanel());
   }
 
@@ -2117,11 +2122,13 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   // Mirrors maybeAutoOpenGoalDialogue for the middle row every guardian now
-  // stands on: reopens their panel both the first time the player reaches
-  // the middle and again after every later round trip through BattleScene,
-  // so it stays revisitable rather than a one-shot popup.
+  // stands on: reopens their panel when the player is currently standing on
+  // the middle row and it's already been reached -- the first time the
+  // player arrives there, and again after a battle fought right on that row
+  // -- rather than on every battle fought anywhere in the world.
   private maybeAutoOpenMiddleDialogue() {
     if (!this.reachedMiddle || this.dialogueActive) return;
+    if (this.playerTile.y !== this.midTile.y) return;
     const guardian = OverworldScene.WORLD_GUARDIANS[this.world];
     if (guardian?.tile === 'middle') this.openGuardian(guardian);
   }
