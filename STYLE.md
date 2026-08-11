@@ -360,11 +360,20 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   name label; panel stroked gold (`0xffe066`, matching Noether's shop rather than getting
   its own color, since it's the same "buy a move" interaction). Her avatar
   (`art/curie.ts`'s `makeCurieAvatar`) is unchanged by this mechanic.
-- Single list, no tabs -- one button per still-unbought analytic move
+- No tabs, two runs of rows instead of one flat list -- still-unbought analytic moves
   (`data/materials.ts`'s `ANALYTIC_MOVE_IDS`, currently Skyfall Beam and Ground Eruption),
   same `<move name> -- <cost> qumatokens` label and afford/dim treatment as Noether's Moves
-  tab, reusing `shopCost`. Empty state once both are bought: "You already carry every
-  analytic technique I can teach."
+  tab (reusing `shopCost`), followed by one row per already-bought move showing which
+  quasiparticle it's tuned to: "`<name>` -- tuned to `<quasiparticle>` (retune)" or
+  "`<name>` -- untuned (pick a quasiparticle)" if never assigned. Empty state once both are
+  bought: "You already carry every analytic technique I can teach." Clicking either an
+  unbought move's buy row or a learned move's tune/retune row opens `showCurieClassPicker`,
+  a sub-panel titled "Which quasiparticle should `<name>` carry?" listing
+  `CURIE_TUNABLE_CLASSES` as its own column of buttons (same button styling as the shop
+  list, just a different button set) -- each labeled with the ordinary move name that class
+  already carries (`quasiparticleLabel`, e.g. "Magnon Pulse" for `'magnetic'`) rather than
+  the class id. Picking one on an unbought move completes the purchase; on an already-bought
+  move it just re-saves the assignment, free.
 
 ## Bohr in the overworld (`OverworldScene.showBohrPanel`)
 
@@ -382,9 +391,9 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   (`0xe86a44`) name label and panel stroke -- distinct from Anderson's own rust/amber
   (`0xc9884a`) below; his avatar (`art/kondo.ts`'s `makeKondoAvatar`) is unchanged by this
   mechanic.
-- Single list like Curie's, but split into two runs of rows instead of one flat one: still-
-  unbought moves from `data/materials.ts`'s `KONDO_MOVE_IDS` (Screening Cloud, Heavy Fermion
-  Drag, Kondo Breakdown) the player's current form can host, same `<move name> -- <cost>
+- Same two-runs-of-rows shape as Curie's panel above: still-
+  unbought moves from `data/materials.ts`'s `KONDO_MOVE_IDS` (Screening Pulse, Scattering
+  Drag, Decoherence Cascade), usable from any form, same `<move name> -- <cost>
   qumatokens` label and afford/dim treatment as Curie's/Noether's shops (reusing `shopCost`),
   followed by one row per already-bought Kondo move -- a bought-and-inactive move reads
   "Make `<name>` active" as a clickable button, the currently active one (registry/save
@@ -393,10 +402,9 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   the first Kondo move activates it immediately (still shows the dimmed "(active)" tag right
   away, no separate click needed); buying a second or third afterward doesn't, and switching
   which one is active always requires reopening this panel and clicking "Make active," not a
-  per-turn choice in the battle move menu. Empty state (nothing bought and the current form
-  can't carry any of the three): "Your current form has no local moment for me to screen --
-  come back wearing a spin liquid or a defect state," naming the actual unlock condition
-  rather than reusing Noether's generic "nothing left to teach" line.
+  per-turn choice in the battle move menu. `'screening'` sits on every type's
+  `MOVE_COMPATIBILITY` list, so all three are always for sale until bought -- no empty/
+  wrong-form state to render here, unlike Noether's shop.
 
 ## Anderson in the overworld (`OverworldScene.showAndersonPanel`)
 
@@ -518,43 +526,45 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 - A docked panel on the right of the field (`x = 456`, `y = 190`, width `176`), same dark
   rounded-rectangle-with-stroke treatment as the overworld's dialogue panels, stroked gold
   (`0xffe066`) to match Noether's own panel color, titled "MOVES" in bold gold. Height grows
-  with however many moves/sections are currently in play rather than a fixed size, since
-  both change as the player learns moves, buys an analytic/screening kit, or transmutes
-  into a form with a different physics-compatible set (§3 of DESIGN.md).
-- **Grouped into up to three sections, not one flat stack** (DESIGN.md §4): a small bold
-  blue-grey (`#8fa0c9`) header line reading `ATTACKS`, `ANALYTIC`, or `SCREENING` sits above
-  each group's own rows, and a section is skipped entirely if it has no usable move in it
-  (a player with no analytic moves bought, or no Kondo move active, never sees an empty
-  header). Each move is still a `[ #222244 background / #ffff88 text ]` button, same
-  treatment used everywhere else (overworld dialogue buttons), stacked vertically under its
-  own section's header rather than spread horizontally. A form
-  with zero currently-usable moves (shouldn't normally happen, since Phonon Beam is
-  universal) shows "No usable moves" instead of an empty panel. An analytic-class move
-  (Curie's Skyfall Beam/Ground Eruption) still gets a gold `★` tag appended to its own
-  label, but its "right=2x wrong=½x" legend now lives as its own dim sub-line directly under
-  the `ANALYTIC` header instead of in the panel's top legend -- that top legend (`!! no
-  natural defense (2x)`) now only ever has the one mismatch symbol to explain, kept
-  deliberately terse since its wrapped height eats directly into the space every row gets,
-  same reasoning as before.
-- Section headers are deliberately capped at a lower text-size ceiling than the panel's own
+  with however many moves are on the current page rather than a fixed size, since that
+  changes as the player learns moves, buys an analytic/screening kit, or transmutes into a
+  form with a different physics-compatible set (§3 of DESIGN.md).
+- **Grouped into up to three sections, shown one page at a time** (DESIGN.md §4): a small
+  bold blue-grey (`#8fa0c9`) header line reading `ATTACKS`, `ANALYTIC`, or `SCREENING` sits
+  above that page's own rows, with a `(i/N)` page count appended once there's more than one
+  page. A section that has no usable move in it never becomes a page at all (a player with
+  no analytic moves bought, or no Kondo move active, never sees an empty one). Each move is
+  still a `[ #222244 background / #ffff88 text ]` button, same treatment used everywhere else
+  (overworld dialogue buttons), stacked vertically under the header. A form with zero
+  currently-usable moves (shouldn't normally happen, since Phonon Beam is universal) shows
+  "No usable moves" instead of an empty panel. An analytic-class move (Curie's Skyfall
+  Beam/Ground Eruption) still gets a gold `★` tag appended to its own label, but its
+  "right=2x wrong=½x" legend lives as its own dim sub-line directly under the `ANALYTIC`
+  header instead of in the panel's top legend -- that top legend (`!! no natural defense
+  (2x)`) only ever has the one mismatch symbol to explain, kept deliberately terse since its
+  wrapped height eats directly into the space every row gets.
+- **Pager**: when more than one page exists, a bold gold `◀` and `▶` (`Text`, hand cursor,
+  same `#ffe066` as the panel stroke/title) flank the header, at the panel's left/right inner
+  edges (`x = MENU_X + 14` / `MENU_X + MENU_WIDTH - 14`) -- clicking either, or pressing the
+  Left/Right keys anywhere in the scene, advances/retreats `moveSectionIndex` and redraws.
+  Hidden entirely (no arrows, no `(i/N)`) once there's only one page, so a player who never
+  bought an analytic/screening move sees a plain `ATTACKS` header with nothing to switch to.
+- Header text is deliberately capped at a lower text-size ceiling than the panel's own
   title/legend (`headerScale = Math.min(fontScale, 1.15)`, 10px label / 8px legend sub-line
-  at that scale) -- up to three headers now share the same fixed 480px field height 9 move
-  rows already had to fit into on their own, and letting them scale all the way to the
-  Enter-menu Settings panel's uncapped 'Large' preset the way the title does would eat
-  directly into the row budget below.
+  at that scale), and the pager arrows render a size above that (`13 * headerScale`) --
+  letting either scale all the way to the Enter-menu Settings panel's uncapped 'Large' preset
+  the way the title does would eat directly into the row budget below, and the header row's
+  own height is taken from whichever of the label/arrows is actually taller so the arrows
+  never bleed into the first move row.
 - Row height is a hard geometric budget (whatever vertical space is left below the
-  title/legend/section headers, divided across however many moves are usable), with a
-  minimum floor so rows never shrink to illegible -- `20`px for up to 7 moves (down from an
-  earlier `30`px once section headers started eating into the same budget), `15`px for 8-9
-  (reachable once an 'adaptive'-type form, e.g. a defeated world-10 Echo via Dresselhaus,
-  has learned everything including both analytic moves). Below `rowH < 40` the row switches
-  to smaller font/padding rather than clipping. Verified to fit within the field's 480px
-  height at every text-size preset (`fontScale` 1, 1.5, and 2, `data/settings.ts`) for every
-  `MaterialType`'s own worst-case move/section combination via a live headless-Chromium run
-  (DEVELOPMENT.md) -- the tightest real-measured case was a 6-move `supercon`/`topological`
-  form at `fontScale` 1, landing 8px above the field's bottom edge; the 9-move `adaptive`
-  case (2 sections, no `SCREENING`) and the 6-move `spinliquid`/`defect` case (3 sections)
-  both fit with more room to spare.
+  title/legend/header, divided across however many moves the *current page* has -- not
+  every section's total, since only one page renders at a time), with a minimum floor so
+  rows never shrink to illegible -- `20`px for up to 7 moves on a page, `15`px for 8-9 (the
+  Attacks page for an 'adaptive'-type form that's learned every attack class). Below
+  `rowH < 40` the row switches to smaller font/padding rather than clipping. This hasn't been
+  checked against a live browser render yet (no headless-Chromium harness was available when
+  it was built, DEVELOPMENT.md) -- worth an actual visual pass before trusting the arithmetic
+  alone, particularly the 8-9 row Attacks-page floor.
 
 ## Analytic question panel (`BattleScene.showAnalyticQuestion`)
 
@@ -636,7 +646,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   target (Anyon Braid, Majorana Split). Each class also has its own color (e.g. orange for
   Phonon Beam, red for Magnon Pulse). All shapes render additive-blended
   (`Phaser.BlendModes.ADD`) so they glow instead of reading as flat shapes.
-- Kondo's three moves (Screening Cloud, Heavy Fermion Drag, Kondo Breakdown) share the
+- Kondo's three moves (Screening Pulse, Scattering Drag, Decoherence Cascade) share the
   `'screening'` class's one look, unlike Curie's -- an expanding ring (the same silhouette
   Magnon Pulse/Polaron Drag use, reading as a screening cloud enveloping the target) tinted
   Kondo's own rust-orange (`0xe86a44`). Distinct move names and the status-effect log line

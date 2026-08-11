@@ -13,6 +13,7 @@ import {
   getPlayerMaterial,
   getPlayerStats,
   getBattleMoves,
+  getCurieMoveClass,
   enemyStatsForWorld,
 } from '../data/materials';
 import { victoryLine, defeatLine } from '../data/greetings';
@@ -140,6 +141,12 @@ interface BattleInitData {
   isRival?: boolean;
 }
 
+interface MoveSection {
+  label: string;
+  ids: string[];
+  legend?: string;
+}
+
 export class BattleScene extends Phaser.Scene {
   private wild!: Material;
   private world = 1;
@@ -158,6 +165,13 @@ export class BattleScene extends Phaser.Scene {
   private playerCrystal!: Phaser.GameObjects.Container;
   private logText!: Phaser.GameObjects.Text;
   private moveMenu?: Phaser.GameObjects.Container;
+  // Which move-kind section (ATTACKS/ANALYTIC/SCREENING) drawMoveMenu is
+  // currently showing -- see drawMoveMenu's own comment for why only one
+  // renders at a time now. Reset fresh in create() below, same reasoning as
+  // every other battle-ephemeral field here (Phaser reuses the Scene
+  // instance across scene.start() calls).
+  private moveSectionIndex = 0;
+  private currentMoveIds: string[] = [];
   // Kondo's status effects (§5) -- battle-ephemeral only, reset fresh in
   // create() below (Phaser reuses the same Scene instance across
   // scene.start() calls, so a field initializer alone wouldn't reset this
@@ -222,6 +236,7 @@ export class BattleScene extends Phaser.Scene {
     this.playerHp = Math.min(savedHp, this.playerMaterial.maxHp);
     this.opponentHp = this.wild.maxHp;
     this.turnLock = false;
+    this.moveSectionIndex = 0;
     this.playerStatus = null;
     this.opponentStatus = null;
 
@@ -333,9 +348,59 @@ export class BattleScene extends Phaser.Scene {
     });
     this.setLogText(openingLine);
 
-    this.drawMoveMenu(getBattleMoves(this.game.registry));
+    this.currentMoveIds = getBattleMoves(this.game.registry);
+    this.drawMoveMenu(this.currentMoveIds);
+    // Left/Right cycle which move-kind section is showing (drawMoveMenu's
+    // own comment) -- mirrors the on-screen ◀/▶ arrows for a keyboard-only
+    // player, same "no-op if there's nothing to switch to" guard as those.
+    this.input.keyboard!.on('keydown-LEFT', () => this.switchMoveSection(-1));
+    this.input.keyboard!.on('keydown-RIGHT', () => this.switchMoveSection(1));
 
     this.updateBars();
+  }
+
+  // Rebuilds the currently-usable sections from currentMoveIds and steps
+  // moveSectionIndex by `delta`, wrapping around -- the actual redraw
+  // happens inside drawMoveMenu, called fresh each time so a mid-battle
+  // change to currentMoveIds (there isn't one today, but drawMoveMenu
+  // already takes moveIds as a parameter rather than assuming it's static)
+  // is picked up automatically. A no-op while turnLock is held (mid-swing,
+  // and also true for the rest of the scene's life once a KO ends the
+  // battle -- resolveHit's win/lose branch returns before ever releasing
+  // it, see playerAttack's own comment) or if there's only one section to
+  // begin with, same guard `addMoveButton` already applies to clicks.
+  // `!this.moveMenu` is a second, explicit belt-and-suspenders check --
+  // endBattle destroys it -- so a Left/Right press after the results screen
+  // is up can never resurrect the panel even if the turnLock invariant
+  // above is ever refactored away.
+  private switchMoveSection(delta: number) {
+    if (this.turnLock || !this.moveMenu) return;
+    const sectionCount = this.moveSections(this.currentMoveIds).length;
+    if (sectionCount <= 1) return;
+    this.moveSectionIndex = (this.moveSectionIndex + delta + sectionCount) % sectionCount;
+    this.drawMoveMenu(this.currentMoveIds);
+  }
+
+  // The three possible move-kind sections (DESIGN.md §4's "group moves by
+  // kind"), filtered down to whichever ones actually have a usable move --
+  // shared by drawMoveMenu and switchMoveSection so the two always agree on
+  // how many sections/pages exist.
+  private moveSections(moveIds: string[]): MoveSection[] {
+    return [
+      {
+        label: 'ATTACKS',
+        ids: moveIds.filter((id) => {
+          const cls = MOVES[id].class;
+          return cls !== 'analytic' && cls !== 'screening';
+        }),
+      },
+      {
+        label: 'ANALYTIC',
+        ids: moveIds.filter((id) => MOVES[id].class === 'analytic'),
+        legend: '★ right=2x wrong=½x',
+      },
+      { label: 'SCREENING', ids: moveIds.filter((id) => MOVES[id].class === 'screening') },
+    ].filter((s) => s.ids.length > 0);
   }
 
   // A dedicated docked panel on the right of the field, sized to fit
@@ -350,8 +415,25 @@ export class BattleScene extends Phaser.Scene {
   // double-damage rule, the sole type-interaction term in battle, marked
   // !! 2x -- previously only visible after the hit landed in the battle
   // log, so a first-time player had no way to plan a move before swinging.
+  //
+  // Shows exactly one move-kind section at a time (DESIGN.md §4's "group
+  // moves by kind" -- physics-gated attacks, Curie's answer-gated analytic
+  // moves, and Kondo's currently-active screening move work differently
+  // enough that a flat list blurred the distinction), paged with on-screen
+  // ◀/▶ arrows and the Left/Right keys (moveSectionIndex/
+  // switchMoveSection) -- a section only counts as a page if it has at
+  // least one usable move, so a player with no analytic moves bought or no
+  // Kondo move active never sees an empty page, and the pager itself is
+  // hidden entirely if there's only one page to begin with. Showing one
+  // section instead of all of them stacked means each page's row height is
+  // budgeted only against that section's own move count, not the
+  // worst-case total across every section at once -- an 'adaptive'-type
+  // crystal with every attack class learned no longer has to share
+  // vertical space with Analytic/Screening rows it isn't even showing.
+  // Called again (destroying the old container first) on every page
+  // switch, not just once at battle start.
   private drawMoveMenu(moveIds: string[]) {
-    const rowCount = Math.max(moveIds.length, 1);
+    this.moveMenu?.destroy(true);
     const scale = fontScale(this);
 
     const container = this.add.container(0, 0).setDepth(30);
@@ -415,98 +497,82 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    // Three sections, not one flat stack (DESIGN.md §4's "group moves by
-    // kind" -- physics-gated attacks, Curie's answer-gated analytic moves,
-    // and Kondo's currently-active screening move work differently enough
-    // that a flat list blurred the distinction). A section only renders if
-    // it has at least one usable move, so a player with no analytic moves
-    // bought or no Kondo move active never sees an empty header.
-    interface MoveSection {
-      label: string;
-      ids: string[];
-      legend?: string;
-    }
-    const sections: MoveSection[] = [
-      {
-        label: 'ATTACKS',
-        ids: moveIds.filter((id) => {
-          const cls = MOVES[id].class;
-          return cls !== 'analytic' && cls !== 'screening';
-        }),
-      },
-      {
-        label: 'ANALYTIC',
-        ids: moveIds.filter((id) => MOVES[id].class === 'analytic'),
-        legend: '★ right=2x wrong=½x',
-      },
-      { label: 'SCREENING', ids: moveIds.filter((id) => MOVES[id].class === 'screening') },
-    ].filter((s) => s.ids.length > 0);
+    const sections = this.moveSections(moveIds);
+    if (this.moveSectionIndex >= sections.length) this.moveSectionIndex = 0;
+    const section = sections[this.moveSectionIndex];
+    const showPager = sections.length > 1;
+    const rowCount = Math.max(section.ids.length, 1);
 
-    // Section headers are deliberately capped well below the text-size
-    // setting's full range (headerScale, vs. the title/legend above which
-    // still scale with it uncapped) -- up to 3 headers now share the same
-    // fixed 480px field height 9 move rows already had to fit into on their
-    // own, so letting header text grow all the way to the 2x 'Large' preset
-    // the way the title does would eat directly into the row budget below
-    // and reintroduce the exact overflow the row-height floor exists to
-    // prevent. First pass: build (but don't yet position) every section's
-    // header so its *real* rendered height can be measured -- header font
-    // size only depends on headerScale, never on rowH, so there's no
-    // circular dependency the way row height itself has against move count,
-    // but rowH still needs to know the total header space up front to
-    // divide the field's remaining budget fairly across every move row.
+    // Header is deliberately capped well below the text-size setting's full
+    // range (headerScale, vs. the title/legend above which still scale
+    // with it uncapped), same reasoning the row-height budget below has --
+    // a header that grew all the way to the 2x 'Large' preset would eat
+    // directly into the row budget and reintroduce the exact overflow the
+    // row-height floor exists to prevent.
     const headerScale = Math.min(scale, 1.15);
-    const SECTION_GAP = 4; // above every header after the first
-    const HEADER_LEGEND_GAP = 1; // between a header's label and its own legend sub-line
-    const HEADER_ROWS_GAP = 1; // from a header (or its legend) down to its first move row
-    let headerTotalH = 0;
-    const headers = sections.map((section, i) => {
-      if (i > 0) headerTotalH += SECTION_GAP;
-      const label = this.add.text(0, 0, section.label, {
+    const HEADER_LEGEND_GAP = 1; // between the header's label and its own legend sub-line
+    const HEADER_ROWS_GAP = 1; // from the header (or its legend) down to the first move row
+
+    let rowY = rowsTop;
+    let pagerRowH = 0;
+    if (showPager) {
+      const arrowPx = `${Math.round(13 * headerScale)}px`;
+      const leftArrow = this.add
+        .text(MENU_X + 14, rowY, '◀', { fontSize: arrowPx, color: '#ffe066', fontStyle: 'bold' })
+        .setOrigin(0.5, 0)
+        .setInteractive({ useHandCursor: true })
+        .on('pointerdown', () => this.switchMoveSection(-1));
+      const rightArrow = this.add
+        .text(MENU_X + MENU_WIDTH - 14, rowY, '▶', { fontSize: arrowPx, color: '#ffe066', fontStyle: 'bold' })
+        .setOrigin(0.5, 0)
+        .setInteractive({ useHandCursor: true })
+        .on('pointerdown', () => this.switchMoveSection(1));
+      container.add(leftArrow);
+      container.add(rightArrow);
+      pagerRowH = Math.max(leftArrow.height, rightArrow.height);
+    }
+    const headerLabelText = showPager
+      ? `${section.label} (${this.moveSectionIndex + 1}/${sections.length})`
+      : section.label;
+    const headerLabel = this.add
+      .text(MENU_X + MENU_WIDTH / 2, rowY, headerLabelText, {
         fontSize: `${Math.round(10 * headerScale)}px`,
         color: '#8fa0c9',
         fontStyle: 'bold',
-      });
-      headerTotalH += label.height;
-      let legendLine: Phaser.GameObjects.Text | undefined;
-      if (section.legend) {
-        legendLine = this.add.text(0, 0, section.legend, {
+      })
+      .setOrigin(0.5, 0);
+    container.add(headerLabel);
+    // The arrow glyphs render at a larger px than the header label
+    // (arrowPx vs 10*headerScale), so advancing by the label's own height
+    // alone would let the taller arrows bleed into the first move row --
+    // advance by whichever of the two is actually taller.
+    rowY += Math.max(headerLabel.height, pagerRowH);
+    if (section.legend) {
+      const legendLine = this.add
+        .text(MENU_X + MENU_WIDTH / 2, rowY, section.legend, {
           fontSize: `${Math.round(8 * headerScale)}px`,
           color: '#8fa0c9',
-        });
-        headerTotalH += legendLine.height + HEADER_LEGEND_GAP;
-      }
-      headerTotalH += HEADER_ROWS_GAP;
-      return { label, legendLine, ids: section.ids };
-    });
+        })
+        .setOrigin(0.5, 0);
+      container.add(legendLine);
+      rowY += legendLine.height + HEADER_LEGEND_GAP;
+    }
+    rowY += HEADER_ROWS_GAP;
+    const headerTotalH = rowY - rowsTop;
 
     // Row height is a hard geometric budget -- whatever vertical space is
-    // left in the field below the title/legend/section headers, divided
-    // across however many moves are usable -- not something the text-size
-    // setting can just grow past. An 'adaptive'-type crystal (world 10's
-    // boss and its wild echoes, MOVE_COMPATIBILITY's broadest entry) can
-    // host every attack MoveClass plus 'analytic' at once (9 moves total),
-    // and 9 two-line buttons at the setting's largest preset would never
-    // fit no matter the row height. So each button's font size is derived
-    // from its own row's actual height (fitPx) and clamped against the
+    // left in the field below the title/legend/header, divided across
+    // however many moves this one page has -- not something the text-size
+    // setting can just grow past. Each button's font size is derived from
+    // its own row's actual height (fitPx) and clamped against the
     // setting-scaled desired size (desiredPx) -- growing with the setting
     // wherever the box has slack (few moves), but never past what the box
-    // can physically hold.
-    //
-    // The minimum row height also has to shrink once rowCount can exceed 7,
-    // or a fixed floor stops being a floor and becomes an overflow -- and,
-    // now that every section header eats into the same budget, the <=7
-    // floor itself had to come down too (30 -> 20): a 6-move spinliquid/
-    // defect form (3 sections: Attacks/Analytic/Screening) or a 6-move
-    // supercon form (2 sections) both have well under 7 rows but still lose
-    // ~50-80px of the field's height to header space the original
-    // headerless budget never had to account for, so the old 30px floor
-    // would clamp rowH *up* past what's actually left and overflow the
-    // canvas rather than protect legibility. Checked by hand at fontScale 2
-    // (the tightest preset) for every MaterialType's worst-case section/row
-    // combination -- see STYLE.md's "Battle move menu" section for the
-    // worked numbers; browser verification is still worth doing if the
-    // headless-Chromium harness (DEVELOPMENT.md) becomes available.
+    // can physically hold. Since only one section renders at a time now,
+    // the worst case is the single largest section across every
+    // MaterialType's MOVE_COMPATIBILITY entry (Attacks for 'adaptive', the
+    // broadest one) rather than every section's total stacked together --
+    // still worth an actual browser check (headless-Chromium harness,
+    // DEVELOPMENT.md) rather than trusting this arithmetic alone.
     const rowFloor = rowCount <= 7 ? 20 : 15;
     const avail = FIELD_H - rowsTop - MENU_BOTTOM_MARGIN - headerTotalH;
     const naturalRowH = Math.floor(avail / rowCount);
@@ -526,26 +592,9 @@ export class BattleScene extends Phaser.Scene {
     const desiredPx = Math.round((compact ? 10 : 12) * scale);
     const btnPx = Math.min(desiredPx, fitPx);
 
-    // Second pass: place every header at its final y (now that rowH is
-    // known), then its own section's move rows right below it -- same
-    // running-`y` shape the measurement pass above used, so the two stay in
-    // lockstep with no drift between measured and actual layout.
-    let rowY = rowsTop;
-    headers.forEach((header, i) => {
-      if (i > 0) rowY += SECTION_GAP;
-      header.label.setPosition(MENU_X + MENU_WIDTH / 2, rowY).setOrigin(0.5, 0);
-      container.add(header.label);
-      rowY += header.label.height;
-      if (header.legendLine) {
-        header.legendLine.setPosition(MENU_X + MENU_WIDTH / 2, rowY).setOrigin(0.5, 0);
-        container.add(header.legendLine);
-        rowY += header.legendLine.height + HEADER_LEGEND_GAP;
-      }
-      rowY += HEADER_ROWS_GAP;
-      header.ids.forEach((moveId) => {
-        this.addMoveButton(container, moveId, rowY, btnPx, padY);
-        rowY += rowH;
-      });
+    section.ids.forEach((moveId) => {
+      this.addMoveButton(container, moveId, rowY, btnPx, padY);
+      rowY += rowH;
     });
   }
 
@@ -554,7 +603,7 @@ export class BattleScene extends Phaser.Scene {
   // times over.
   private addMoveButton(container: Phaser.GameObjects.Container, moveId: string, y: number, btnPx: number, padY: number) {
     const move = MOVES[moveId];
-    const mismatch = !canHost(this.wild.type, move.class);
+    const mismatch = !canHost(this.wild.type, getCurieMoveClass(this.game.registry, moveId));
     let tag = '';
     let color = '#ffff88';
     if (move.class === 'analytic') {
@@ -887,7 +936,7 @@ export class BattleScene extends Phaser.Scene {
   // already answered via showAnalyticQuestion) -- the opponent's follow-up
   // hit in the same exchange always resolves at the default 1. A Localized
   // side's own effective Velocity is dragged down for the comparison too
-  // (Kondo's Heavy Fermion Drag, §5) -- symmetric, same as every other
+  // (Kondo's Scattering Drag, §5) -- symmetric, same as every other
   // resolveHit-adjacent term, even though only the player can currently
   // inflict it.
   private playerAttack(moveId: string, bonusMultiplier = 1) {
@@ -952,14 +1001,16 @@ export class BattleScene extends Phaser.Scene {
     // anyon braid, ...) has no natural way to dampen it -- it lands at
     // double force. This is the only type-interaction term battle damage
     // has (DESIGN.md §4) -- there is no separate strong/weak type chart on
-    // top of it. 'analytic' is on every type's MOVE_COMPATIBILITY list, so
-    // this can never fire for Curie's moves -- their own multiplier is
-    // bonusMultiplier, decided by the question, not by the defender's type.
-    // Laughlin's Edge Current (§5) softens this to a smaller multiplier for
-    // whichever side has it active as the defender -- topological edge
-    // states partially shrugging off a hit that would otherwise land
-    // unmitigated.
-    const mismatch = !canHost(defenderType, move.class);
+    // top of it. An analytic move's own `class` stays 'analytic' (on every
+    // type's MOVE_COMPATIBILITY list, so it's never mismatched by default),
+    // but getCurieMoveClass swaps in whatever quasiparticle the player
+    // tuned it to via Curie's picker, so a tuned analytic move mismatches
+    // like an ordinary attack of that class would -- on top of, not instead
+    // of, bonusMultiplier from the question. Laughlin's Edge Current (§5)
+    // softens this to a smaller multiplier for whichever side has it active
+    // as the defender -- topological edge states partially shrugging off a
+    // hit that would otherwise land unmitigated.
+    const mismatch = !canHost(defenderType, getCurieMoveClass(this.game.registry, moveId));
     const mismatchMult = mismatch
       ? this.activePassives(defenderIsPlayer).has('edgeCurrent')
         ? EDGE_CURRENT_MISMATCH_MULT

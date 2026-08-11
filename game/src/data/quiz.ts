@@ -15,9 +15,13 @@
 // see CLAUDE.md's topic table). World 1/2 draw from session01.tex (mean-field
 // theory, Mott insulators, Hubbard U, spontaneous symmetry breaking) and
 // session02.tex (Bloch's theorem, tight-binding bands, graphene's Dirac
-// cone). Materials without an entry here go straight to battle (see
-// getMaterialQuestion) -- world 10 has no wild pool at all (adaptive final
-// boss only), so it needs no entries here either. Not every question below
+// cone). World 10's wilds (data/materials.ts's WORLD_CRYSTALS[10]) are real
+// named hybrids/standalones rather than a session topic of their own, so
+// each one draws from whichever session its own type/recipe anchors to
+// (DESIGN.md's crystal-database table names each anchor) -- MnBi₂Te₄'s pool
+// below draws from session04.tex (Chern insulators/QHE) for this reason.
+// Materials without an entry here go straight to battle (see
+// getMaterialQuestion). Not every question below
 // is literally a property of the named compound's own crystal structure
 // (e.g. the honeycomb-lattice or Ising-ferromagnet questions in Nickel
 // Oxide's pool) -- some are the general physics that world's session file
@@ -887,6 +891,473 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
       incorrect: 'Angle-resolved photoemission (ARPES)',
     },
   ],
+
+  // World 2 (session02.tex: symmetries, Bloch's theorem, tight-binding).
+  'Indium Arsenide': [
+    {
+      prompt: 'A unitary symmetry operator in quantum mechanics always has eigenvalues with...',
+      correct: 'Unit modulus -- a pure phase e^{iφ}',
+      incorrect: 'An arbitrary, unconstrained real magnitude',
+    },
+    {
+      prompt: "The Bloch phase φ, the translation operator's eigenvalue, is directly identified with...",
+      correct: 'The crystal momentum k times the lattice constant a',
+      incorrect: "The electron's total energy divided by ħ",
+    },
+    {
+      prompt: "Because φ=0 and φ=2π label the same translation eigenvalue in each direction, a 2D crystal's Brillouin zone is topologically a...",
+      correct: 'Torus',
+      incorrect: 'Sphere',
+    },
+    {
+      prompt: 'For a unit cell with several orbitals, the size of the Bloch Hamiltonian matrix H(φ) equals...',
+      correct: 'The number of orbitals per unit cell',
+      incorrect: 'The total number of unit cells in the crystal',
+    },
+    {
+      prompt: "A band's group velocity v(k) = (1/ħ)∇_k E(k) physically tells you...",
+      correct: 'How fast an electron at that k actually propagates',
+      incorrect: 'How strongly interactions affect that k-state',
+    },
+    {
+      prompt: 'The effective mass actually measured in transport or cyclotron-resonance experiments in a solid is set by...',
+      correct: 'The curvature (second derivative) of the band dispersion',
+      incorrect: 'The bare electron mass, unaffected by the crystal',
+    },
+  ],
+  'Monolayer MoTe₂ (2H)': [
+    {
+      prompt: 'The density of states g(ω) of a band counts...',
+      correct: 'How many electronic states sit at energy ω',
+      incorrect: 'How fast electrons at energy ω are moving',
+    },
+    {
+      prompt: "A material's Fermi surface is defined as...",
+      correct: 'The set of k-points at the energy of the highest occupied state',
+      incorrect: 'The single k-point where the dispersion is steepest',
+    },
+    {
+      prompt: "Angle-resolved photoemission spectroscopy (ARPES) directly maps out a material's...",
+      correct: "Band dispersion E(k), from ejected electrons' angle and energy",
+      incorrect: 'Density of point-defect impurities',
+    },
+    {
+      prompt: 'Re-describing a crystal with an artificially enlarged unit cell (band folding) turns one band into...',
+      correct: 'Several bands, folded copies of the original',
+      incorrect: 'A single flat, dispersionless band',
+    },
+    {
+      prompt: 'Band unfolding computes a spectral function A(k,E) that tracks...',
+      correct: "How much of a supercell eigenstate's weight sits at each original-cell momentum",
+      incorrect: 'How many electrons occupy the unit cell at each energy',
+    },
+    {
+      prompt: "Before writing a clean tight-binding Hamiltonian, a material's non-orthogonal atomic orbitals are first passed through...",
+      correct: 'Löwdin orthogonalization, giving one Wannier-like orbital per site',
+      incorrect: "A simple renormalization of the raw atomic orbitals' amplitude",
+    },
+  ],
+
+  // World 5 (session05.tex: superconductivity, BCS, Nambu/BdG, Majoranas).
+  Niobium: [
+    {
+      prompt: 'What exchange (Zeeman) field strength closes the gap of an s-wave superconductor like niobium?',
+      correct: 'J_c = Δ, equal to the gap itself',
+      incorrect: 'J_c = 2Δ',
+    },
+    {
+      prompt: "How does niobium's resistance behave right at T_c, compared to an ordinary metal cooling down?",
+      correct: 'It drops suddenly to exactly zero',
+      incorrect: 'It falls smoothly toward zero, same as a normal metal',
+    },
+    {
+      prompt: 'In a type-II superconductor like niobium, where does the surviving magnetic field live once flux gets in?',
+      correct: 'Confined to quantized vortices',
+      incorrect: 'Spread uniformly through the bulk',
+    },
+    {
+      prompt: "A uniform s-wave gap opens in niobium's spectrum precisely at momenta where...",
+      correct: 'ε(k) = 0, the original normal-state Fermi surface',
+      incorrect: 'k = 0, the center of the Brillouin zone',
+    },
+    {
+      prompt: "In niobium's superconducting state, what's the energy cost to add or remove one whole Cooper pair, versus one lone unpaired electron?",
+      correct: 'Zero for a pair; at least Δ for a lone electron',
+      incorrect: 'The same cost, set by Δ, either way',
+    },
+    {
+      prompt: 'Unlike ordinary non-magnetic disorder, magnetic disorder in a niobium sample...',
+      correct: 'Pair-breaks locally, producing Yu-Shiba-Rusinov-like bound states',
+      incorrect: 'Is screened out harmlessly, exactly like non-magnetic disorder',
+    },
+  ],
+  'Tantalum Disulfide (1H)': [
+    {
+      prompt: 'Given one Fermi surface, unconventional nodal pairing (unlike a full s-wave gap) leaves the system...',
+      correct: 'Gapped almost everywhere, but gapless at isolated nodal momenta',
+      incorrect: 'Fully gapped everywhere, exactly like s-wave',
+    },
+    {
+      prompt: "On a triangular lattice like 1H-TaS₂'s, nodal order shows six alternating-sign lobes around the Fermi surface. What angular-momentum channel is that?",
+      correct: 'L = 3 (f-wave)',
+      incorrect: 'L = 2 (d-wave)',
+    },
+    {
+      prompt: 'Extended s-wave order is still L = 0, same symmetry as plain s-wave, but differs how?',
+      correct: "It's nodal radially -- positive near Γ, negative farther out",
+      incorrect: "It's nodal angularly, alternating sign around the Fermi surface",
+    },
+    {
+      prompt: 'Does a uniform pairing Δ still fully gap the Fermi surface on a triangular lattice, whatever the chemical potential?',
+      correct: 'Yes -- a constant Δ gaps it at any chemical potential',
+      incorrect: 'No -- uniform gapping only works on the square lattice',
+    },
+    {
+      prompt: 'The superconducting gap Δ(k) can be expanded in an angular-momentum basis on the Fermi surface, directly analogous to...',
+      correct: 'The spherical-harmonic expansion of an atomic orbital',
+      incorrect: 'The Fourier expansion of a periodic lattice potential',
+    },
+    {
+      prompt: 'In that same angular-momentum classification, which channel is spin-triplet pairing?',
+      correct: 'L = 1 (p-wave)',
+      incorrect: 'L = 2 (d-wave)',
+    },
+  ],
+  // Both real-material citations behind this pool are twisted graphene
+  // TRILAYER experiments (Cao et al. and Kim et al., see the ★ Analytic
+  // pool's Bethe-ansatz-adjacent citations note above), not magic-angle
+  // bilayer physics -- Q1 is framed definitionally (what "unconventional"
+  // means in this course) rather than as a claim about this material
+  // specifically, and Q3 names the trilayer explicitly, so this pool never
+  // asserts something only true of the trilayer platform as if it were this
+  // (bilayer) crystal's own property.
+  'Twisted Bilayer Graphene': [
+    {
+      prompt: "In this course's classification, a superconductor's pairing is called 'unconventional' when the attractive channel is mediated by...",
+      correct: 'Anything other than phonons',
+      incorrect: 'Phonons, same as niobium or aluminum',
+    },
+    {
+      prompt: 'For most unconventional superconductors, including twisted graphene, which quasiparticle mediates the pairing is...',
+      correct: 'Still often an open research question',
+      incorrect: 'Fully settled: it is always magnons',
+    },
+    {
+      prompt: 'Twisted graphene trilayers have been observed to realize which two flavors of unconventional pairing, in different regimes?',
+      correct: 'Field-induced spin-triplet order and nodal order',
+      incorrect: 'Conventional s-wave and d-wave order, only',
+    },
+    {
+      prompt: "Twisted graphene's field-induced triplet superconducting state requires simultaneously breaking...",
+      correct: 'Time-reversal symmetry (magnetic) and gauge symmetry (SC)',
+      incorrect: 'Only gauge symmetry, same as an ordinary s-wave SC',
+    },
+    {
+      prompt: 'In that triplet state, why does pairing pick the triplet channel over the usual leading singlet channel?',
+      correct: 'The exchange field splits the ↑/↓ Fermi surfaces, suppressing singlet pairing',
+      incorrect: 'Triplet pairing always beats singlet pairing, field or no field',
+    },
+    {
+      prompt: "In twisted graphene's nodal superconducting regime, where does the spectrum stay gapless?",
+      correct: 'Wherever the Fermi surface crosses the nodal lines of the gap',
+      incorrect: 'Nowhere -- nodal order is still fully gapped',
+    },
+  ],
+  'InAs/Al Majorana Wire': [
+    {
+      prompt: 'In the InAs/Al platform, what does the Zeeman field do to the Rashba-split bands at k = 0?',
+      correct: 'Opens a gap there, leaving one effectively spinless Fermi surface',
+      incorrect: 'Closes any existing gap, restoring two spin-degenerate Fermi surfaces',
+    },
+    {
+      prompt: 'Any ordinary electron operator c can always be written as two Majorana operators via...',
+      correct: 'γ_A = c + c†, γ_B = −i(c − c†)',
+      incorrect: 'γ_A = c·c†, γ_B = c† − c·c†',
+    },
+    {
+      prompt: 'Inverting that decomposition, the ordinary electron operator c is recovered as...',
+      correct: 'c = ½(γ_A + iγ_B)',
+      incorrect: 'c = ½(γ_A − iγ_B)',
+    },
+    {
+      prompt: 'The effective wire pairing Δ(k) = 2iΔ sin k is manifestly odd in k, identifying it as...',
+      correct: 'Effectively spinless p-wave (triplet-type) pairing',
+      incorrect: 'Effectively spinless s-wave (singlet-type) pairing',
+    },
+    {
+      prompt: 'Four well-separated Majorana zero modes recombine into how many ordinary fermionic modes, and what ground-state degeneracy?',
+      correct: 'Two fermionic modes; a four-fold degenerate manifold',
+      incorrect: 'Four fermionic modes; a sixteen-fold degenerate manifold',
+    },
+    {
+      prompt: 'A Majorana-based qubit resists local decoherence because the encoded information is...',
+      correct: 'Stored non-locally, split between spatially separated Majoranas',
+      incorrect: "Stored locally, in a single Majorana's spin state",
+    },
+  ],
+  'CrI₃/NbSe₂ Topological-SC Heterostructure': [
+    {
+      prompt: 'In the CrI₃/NbSe₂ heterostructure, which layer supplies the s-wave pairing, and which supplies the exchange field?',
+      correct: 'NbSe₂ pairs; CrI₃ (van der Waals magnet) supplies the exchange field',
+      incorrect: 'CrI₃ pairs; NbSe₂ supplies the exchange field',
+    },
+    {
+      prompt: 'Engineering a topological superconductor this way requires breaking which two symmetries at once?',
+      correct: 'Time-reversal symmetry (magnetism) and gauge symmetry (superconductivity)',
+      incorrect: 'Only gauge symmetry -- time-reversal must stay intact',
+    },
+    {
+      prompt: "A trivial s-wave gap and this heterostructure's topological gap can look nearly identical in bulk spectroscopy. What actually tells them apart?",
+      correct: 'Only the topological one hosts gapless boundary/edge modes',
+      incorrect: 'Nothing -- matching bulk spectra means matching topology',
+    },
+    {
+      prompt: 'Chiral and p-wave superconductors needed for Majorana physics are rare in naturally occurring crystals, so platforms like this one are...',
+      correct: 'Deliberately engineered heterostructures',
+      incorrect: 'Naturally occurring bulk crystals, unmodified',
+    },
+    {
+      prompt: 'An alternative recipe for the same physics starts from a quantum spin Hall edge (e.g. WTe₂) with ferromagnets on two segments. What do the ferromagnets do?',
+      correct: 'Locally gap the helical edge modes by breaking time-reversal symmetry',
+      incorrect: 'Locally enhance the edge conduction, doubling its velocity',
+    },
+    {
+      prompt: 'In that QSH-edge recipe, the ungapped segment left between the two ferromagnets behaves as...',
+      correct: 'An effectively spinless 1D channel',
+      incorrect: 'An ordinary spin-degenerate 1D channel, unchanged',
+    },
+  ],
+  'NbSe₂/CrBr₃ Topological-SC Heterostructure': [
+    {
+      prompt: 'Artificial topological superconductivity from s-wave pairing + spin-orbit coupling + an exchange field was experimentally realized in which real heterostructure?',
+      correct: 'NbSe₂/CrBr₃ (Kezilebieke et al., Nature 588, 424, 2020)',
+      incorrect: 'Twisted bilayer graphene, at the magic angle',
+    },
+    {
+      prompt: 'As the exchange field J is dialed up across the topological transition, the small gap at k = 0...',
+      correct: 'Closes near a critical J, then reopens with a different spin texture',
+      incorrect: 'Grows monotonically larger and never closes',
+    },
+    {
+      prompt: 'The effective chiral-p-wave-like order here emerges without needing which ingredient anywhere in the microscopic Hamiltonian?',
+      correct: 'Any intrinsically unconventional pairing symmetry',
+      incorrect: 'Any spin-orbit coupling at all',
+    },
+    {
+      prompt: 'What specific role does Rashba spin-orbit coupling play in this recipe?',
+      correct: 'Spin-momentum locking, splitting the bands in momentum',
+      incorrect: 'Directly mediating the attractive pairing interaction',
+    },
+    {
+      prompt: "Unlike the non-magnetic disorder protected by Anderson's theorem, the exchange field engineering this state...",
+      correct: 'Deliberately breaks time-reversal symmetry',
+      incorrect: 'Deliberately preserves time-reversal symmetry, like disorder does',
+    },
+  ],
+
+  // World 6 (session06.tex: classical magnetism, magnons, DM interaction,
+  // multiferroics) -- not every question below is literally a property of
+  // the named compound's own crystal structure, same allowance this file's
+  // header comment already establishes for Nickel Oxide's pool.
+  'Chromium Tribromide': [
+    {
+      prompt: 'A magnet like CrBr₃ that breaks time-reversal symmetry hosts which emergent excitation, as opposed to a quantum spin liquid?',
+      correct: 'Magnons -- spin-1, charge-neutral excitations',
+      incorrect: 'Spinons -- spin-1/2, charge-neutral excitations',
+    },
+    {
+      prompt: 'What two quantities does the Stoner criterion multiply together to test for spontaneous magnetism?',
+      correct: 'The interaction U and the density of states at the Fermi level D(E_F)',
+      incorrect: 'The temperature T and the applied magnetic field B',
+    },
+    {
+      prompt: 'At half filling, as U→∞ in a strongly-correlated self-consistent Hubbard chain, the magnetic moment per site saturates at...',
+      correct: 'Exactly one Bohr magneton -- a full localized spin-1/2',
+      incorrect: 'It grows without bound as U increases',
+    },
+    {
+      prompt: "Near k=0, how does an antiferromagnet's magnon dispersion behave, in contrast to a ferromagnet's quadratic E(k)∝k²?",
+      correct: 'E(k) ∝ |k| -- linear, Dirac-cone-like',
+      incorrect: 'E(k) ∝ k² -- also quadratic, same as the ferromagnet',
+    },
+    {
+      prompt: 'The direct superexchange mechanism (J=4t²/U, from a single-orbital Hubbard model) always produces coupling that is...',
+      correct: 'Antiferromagnetic, regardless of the sign of the hopping t',
+      incorrect: 'Ferromagnetic, if the hopping t happens to be negative',
+    },
+    {
+      prompt: 'CrBr₃ has been paired with the 2D superconductor NbSe₂ in a real heterostructure studied for...',
+      correct: 'Proximity-induced exchange coupling relevant to topological superconductivity',
+      incorrect: 'Making NbSe₂ itself ferromagnetic in bulk',
+    },
+  ],
+  'Twisted CrI₃': [
+    {
+      prompt: 'Twisting a CrI₃ bilayer creates a moiré pattern of spatially varying exchange coupling. What kind of magnetic ground state does spatially competing coupling favor?',
+      correct: 'A noncollinear, spatially winding spin texture',
+      incorrect: 'A uniform collinear Néel state, unaffected by the moiré pattern',
+    },
+    {
+      prompt: 'The Dzyaloshinskii-Moriya interaction -- the spin-orbit term proposed to underlie moiré-induced multiferroicity in twisted CrI₃ -- favors neighboring spins rotated by roughly...',
+      correct: '90°, promoting spiral order',
+      incorrect: '180°, i.e. perfectly antiparallel',
+    },
+    {
+      prompt: "Twisted CrI₃'s moiré-induced multiferroicity, per the mechanism proposed for it, is best described as...",
+      correct: 'A theoretical prediction driven by the twist-induced DM interaction',
+      incorrect: "A direct consequence of CrI₃'s ordinary bulk (untwisted) magnetic order",
+    },
+    {
+      prompt: 'On a frustrated triangular lattice, where no spin assignment satisfies every antiferromagnetic bond, the mean-field compromise ground state is typically...',
+      correct: 'A noncollinear 120° arrangement',
+      incorrect: 'A collinear, fully antiparallel arrangement',
+    },
+    {
+      prompt: 'Besides frustrated lattice geometry (triangular, kagome), what other mechanism can produce a spiral, noncollinear ground state?',
+      correct: 'Competing first- and second-neighbor exchange (J1-J2 frustration)',
+      incorrect: 'A single, uniform nearest-neighbor exchange J alone',
+    },
+    {
+      prompt: "In a J1-J2 spiral magnet, the spiral's pitch angle is set by...",
+      correct: 'The ratio J2/J1 of second- to first-neighbor coupling',
+      incorrect: 'The total number of lattice sites in the sample',
+    },
+  ],
+  'Monolayer NiI₂': [
+    {
+      prompt: 'Which real 2D material does the session cite as an experimentally observed case of noncollinear order from competing exchange interactions?',
+      correct: 'Monolayer NiI₂',
+      incorrect: 'Monolayer CrI₃',
+    },
+    {
+      prompt: 'In NiI₂, the noncollinear helical spin order arises from...',
+      correct: 'Competing (J1-J2-type) exchange interactions, not lattice frustration',
+      incorrect: 'Purely geometric frustration on a non-bipartite lattice',
+    },
+    {
+      prompt: 'Real-world, monolayer NiI₂ is classified as a...',
+      correct: "Type-II multiferroic -- its ferroelectricity is magnetically induced",
+      incorrect: 'Type-I multiferroic -- independent magnetic and electric order',
+    },
+    {
+      prompt: 'The J1-J2 spiral mechanism behind NiI₂-type noncollinear order can occur even on a lattice that is...',
+      correct: 'Perfectly bipartite, such as a simple chain -- no geometric frustration needed',
+      incorrect: 'Only a non-bipartite lattice like triangular or kagome',
+    },
+    {
+      prompt: 'An electromagnon, the kind of excitation hosted by NiI₂, is a spin wave that additionally...',
+      correct: "Couples to an electric field via the material's magnetically-induced polarization",
+      incorrect: 'Carries a net electric charge, unlike an ordinary magnon',
+    },
+    {
+      prompt: 'Because NiI₂ is a magnetic (Mott) insulator, an electromagnon can still propagate through it carrying...',
+      correct: 'Spin and energy, but no charge current',
+      incorrect: 'Charge current, since it is still an electron-based excitation',
+    },
+  ],
+
+  // World 8 (session08.tex: frustrated magnetism, partons, RVB, Kondo lattice).
+  'Tantalum Disulfide (1T)': [
+    {
+      prompt: 'Classical magnets (ferro-, antiferromagnets) break time-reversal symmetry and yield to mean-field theory. What makes a quantum spin liquid categorically different?',
+      correct: 'No mean-field description in terms of the original spins exists; the ground state carries long-range entanglement',
+      incorrect: 'It just orders at a lower critical temperature',
+    },
+    {
+      prompt: 'On a triangular plaquette with antiferromagnetic coupling on all three bonds, why can no single classical spin configuration satisfy every bond at once?',
+      correct: 'Any two spins can anti-align, but the third bond is left frustrated between two spins already antiparallel to each other',
+      incorrect: 'One of the three bonds is secretly ferromagnetic',
+    },
+    {
+      prompt: 'Fractionalizing an electron in a quantum spin liquid splits it into a charge-carrying piece and a spin-carrying piece. What are these two pieces called?',
+      correct: 'A chargon and a spinon',
+      incorrect: 'A polaron and a magnon',
+    },
+    {
+      prompt: 'A valence bond solid -- a fixed, static covering of the lattice by singlets -- is not yet a genuine quantum spin liquid. Why not?',
+      correct: 'Its excitations (triplons) are still spin-1, structurally the same as an ordinary magnon',
+      incorrect: "It doesn't have a time-reversal-symmetric ground state",
+    },
+    {
+      prompt: 'The RVB variational wavefunction is motivated by treating singlets on a frustrated lattice as analogous to which other well-known paired state?',
+      correct: 'Cooper pairs in a BCS superconductor',
+      incorrect: 'Landau levels in the quantum Hall effect',
+    },
+    {
+      prompt: 'Diagonalizing the mean-field spinon Hamiltonian can produce three qualitatively different band structures. Which three?',
+      correct: 'Gapless (spinon Fermi surface), gapped, or Dirac spinons',
+      incorrect: 'Ferromagnetic, antiferromagnetic, or spiral spinons',
+    },
+  ],
+  '1T/1H-TaS₂ Heterostructure': [
+    {
+      prompt: 'In the Kondo lattice, many local moments compete to be screened by the same conduction-electron sea. What is the result?',
+      correct: 'Screening electrons are shared fractionally between impurities, producing massive lattice-wide entanglement at total spin zero',
+      incorrect: 'Each impurity independently forms its own isolated singlet, unaffected by the others',
+    },
+    {
+      prompt: 'At zero Kondo hybridization (γ_K = 0), what does the auxiliary f-fermion band in the Kondo-lattice model look like?',
+      correct: 'Perfectly flat at zero energy -- these auxiliary fermions carry no hopping of their own',
+      incorrect: 'Dispersive, with the same bandwidth as the conduction band',
+    },
+    {
+      prompt: 'Turning on the Kondo hybridization γ_K where the flat localized-moment band would otherwise cross the dispersive conduction band produces...',
+      correct: 'An anti-crossing: a gap that grows larger as the hybridization strength increases',
+      incorrect: 'A sharper crossing point that stays exactly gapless',
+    },
+    {
+      prompt: 'Beyond bulk SmB₆, the Kondo-insulator mechanism has been observed in an engineered two-dimensional van der Waals heterostructure stacking which two TaS₂ polytypes together?',
+      correct: '1T-TaS₂ on 1H-TaS₂',
+      incorrect: '1T-TaS₂ on 2H-MoS₂',
+    },
+    {
+      prompt: 'In the Doniach picture, the Kondo coupling J_K favors a locally screened singlet. What does the competing direct exchange J between local moments favor instead?',
+      correct: 'Magnetic correlations between the local moments',
+      incorrect: 'An even larger Kondo hybridization gap',
+    },
+    {
+      prompt: "The way the Kondo-insulator gap turns on with increasing Kondo coupling strength is described as qualitatively resembling the coupling-dependence of which other system's gap?",
+      correct: "A superconductor's gap, as a function of the pairing interaction",
+      incorrect: "An ordinary band insulator's gap, which is coupling-independent",
+    },
+  ],
+
+  // World 10 (session04.tex: quantum Hall effect, Chern insulators,
+  // Haldane model) -- MnBi₂Te₄ anchors to this session's own real-material
+  // discussion of zero-field Chern insulators (DESIGN.md's crystal table),
+  // not to a session of its own.
+  'MnBi₂Te₄': [
+    {
+      prompt: 'Unlike Cr-doped (Bi,Sb)₂Te₃, where magnetism has to be doped in, MnBi₂Te₄ realizes the same zero-field quantized Hall conductance because its magnetism is...',
+      correct: 'Intrinsic to its own crystal structure',
+      incorrect: 'Induced only by an externally applied magnetic field',
+    },
+    {
+      prompt: 'In a Haldane-type zero-field Chern insulator, what physically stands in for a magnetic field when the field is literally zero everywhere in the sample?',
+      correct: 'A staggered flux pattern that averages to zero in space',
+      incorrect: 'A weak but genuinely nonzero uniform field',
+    },
+    {
+      prompt: "In the Haldane model, why does the imaginary second-neighbor (Haldane) hopping term open a topologically nontrivial gap while a simple staggered sublattice potential alone does not?",
+      correct: "The Haldane term's Berry-curvature contributions from the two valleys add; the staggered potential's cancel",
+      incorrect: "Both terms' valley contributions add the same way -- the staggered potential is topological too",
+    },
+    {
+      prompt: 'If a Chern-3 material borders ordinary vacuum (C=0), how many protected chiral edge modes appear at that interface?',
+      correct: 'Exactly three',
+      incorrect: 'Exactly one, regardless of the bulk Chern number',
+    },
+    {
+      prompt: 'For a Haldane-type Chern insulator and the ordinary field-driven quantum Hall state to count as the same topological phase, what must hold true along the path connecting them?',
+      correct: 'The bulk gap must stay open the whole way',
+      incorrect: 'The magnetic field must pass through exactly zero at the midpoint',
+    },
+    {
+      prompt: "Graphene bilayers twisted and aligned to a boron-nitride substrate reach zero-field quantized Hall conductance through a mechanism distinct from MnBi₂Te₄'s intrinsic magnetism -- namely...",
+      correct: 'Orbital magnetism (circulating currents), rather than spin/local-moment magnetism',
+      incorrect: 'Doped-in paramagnetic impurities',
+    },
+  ],
 };
 
 export function getMaterialQuestion(materialName: string): MaterialQuestion | undefined {
@@ -952,6 +1423,56 @@ export const ANALYTIC_QUESTIONS: MaterialQuestion[] = [
     prompt: 'The Kondo temperature T_K depends on the exchange coupling J roughly as...',
     correct: 'T_K ∝ exp(-1/(J·D(E_F))) -- exponentially small',
     incorrect: 'T_K ∝ J² -- a simple power law',
+  },
+  {
+    prompt: 'In mean-field Hubbard theory, the order parameter m = ⟨n↑⟩ − ⟨n↓⟩ describes...',
+    correct: 'The magnetization',
+    incorrect: 'The charge-density-wave amplitude',
+  },
+  {
+    prompt: "Graphene's Fermi velocity, in terms of hopping t and bond length a, is...",
+    correct: 'v_F = 3ta / (2ħ)',
+    incorrect: 'v_F = ta / ħ',
+  },
+  {
+    prompt: 'In a Chern insulator, the quantized Hall conductivity σ_xy is given by...',
+    correct: 'C e²/h, with C the Chern number',
+    incorrect: '(e²/h) times the bulk band gap',
+  },
+  {
+    prompt: "In a strong field, graphene's Dirac Landau level energies scale with level index n and field B as...",
+    correct: 'E_n ∝ √(nB)',
+    incorrect: 'E_n ∝ nB',
+  },
+  {
+    prompt: 'The Laughlin wavefunction, built by raising the filled-Landau-level Vandermonde factor to an odd power m, has filling factor...',
+    correct: 'ν = 1/m',
+    incorrect: 'ν = m',
+  },
+  {
+    prompt: 'The superconducting flux quantum Φ₀ equals...',
+    correct: 'h/2e',
+    incorrect: 'h/e',
+  },
+  {
+    prompt: 'The Dzyaloshinskii-Moriya interaction couples neighboring spins via...',
+    correct: 'A cross product, D·(S_i × S_j)',
+    incorrect: 'A dot product, S_i · S_j',
+  },
+  {
+    prompt: 'For a matrix product state of bond dimension M, the maximum entanglement entropy it can represent across a bond is...',
+    correct: 'log M',
+    incorrect: 'M itself',
+  },
+  {
+    prompt: "The 1D Heisenberg chain's exact ground-state energy per site in the thermodynamic limit, from the Bethe ansatz, is...",
+    correct: 'J(1/4 − ln 2) ≈ −0.443 J',
+    incorrect: '−1/4 J exactly',
+  },
+  {
+    prompt: "A magnetic impurity's Yu-Shiba-Rusinov in-gap bound state in an s-wave superconductor crosses zero energy exactly when α = πν₀JS equals...",
+    correct: '1',
+    incorrect: '0',
   },
 ];
 

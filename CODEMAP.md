@@ -289,34 +289,36 @@ the registry. Each hook's own log clause (`echoText`/`healText`) stacks onto the
 after `statusText`, same "stack a clause onto the existing line" pattern `mismatchText`/
 `critText`/`statusText` already use, in that fixed order.
 
-**Battle move menu is sectioned, not one flat list.** `BattleScene.drawMoveMenu(moveIds)`
-builds a docked `Container` (field `moveMenu`) on the right of the field from
-`getBattleMoves`, split into up to three sections (a local `MoveSection[]`, filtered to only
-the ones with at least one usable move) rendered in order: **Attacks** (every `MoveClass`
-other than `'analytic'`/`'screening'`), **Analytic** (Curie's moves, `★` tag, own
-"right=2x wrong=½x" legend sub-line under its own header), **Screening** (Kondo's
-currently-active move, at most one). `addMoveButton(container, moveId, y, btnPx, padY)` is
-the shared per-move-button builder (mismatch tag/color/click-handler) both the section loop
-and any future caller should reuse rather than duplicating.
+**Battle move menu is sectioned, paged one section at a time.**
+`BattleScene.moveSections(moveIds)` splits `getBattleMoves`'s result into up to three
+sections (a module-level `MoveSection[]`, filtered to only the ones with at least one usable
+move): **Attacks** (every `MoveClass` other than `'analytic'`/`'screening'`), **Analytic**
+(Curie's moves, `★` tag, own "right=2x wrong=½x" legend sub-line under its own header),
+**Screening** (Kondo's currently-active move, at most one). `drawMoveMenu(moveIds)` builds a
+docked `Container` (field `moveMenu`, destroyed and rebuilt from scratch on every call, not
+just once at battle start) on the right of the field, but renders only
+`sections[moveSectionIndex]` -- one page, not every section stacked. `addMoveButton(container,
+moveId, y, btnPx, padY)` is the shared per-move-button builder (mismatch tag/color/click-
+handler) both the row loop and any future caller should reuse rather than duplicating.
 
-Sizing is a two-pass layout: pass one builds every section's header `Text` (label + optional
-legend) *unpositioned* purely to measure its real height (`headerTotalH`) -- header font size
-is capped well below the text-size setting's own range (`headerScale = Math.min(scale,
-1.15)`, base 10px label / 8px legend) rather than scaling all the way to the 2x 'Large'
-preset the way the panel title does, since up to three headers now share the same fixed
-480px field height 9 move rows already had to fit into on their own. Row height (`rowH`) is
-then computed from `rowCount` via `Phaser.Math.Clamp` against `avail` (the field's remaining
-height *after* subtracting `headerTotalH`) rather than a fixed constant, since world 10's
-'adaptive' type can host every attack `MoveClass` plus `'analytic'` at once (9 moves,
-`MOVE_COMPATIBILITY`); the `rowCount <= 7` floor came down from 30 to 20px once headers
-started eating into the same budget (a 6-move spinliquid/defect form's 3 headers, or a
-6-move supercon/topological form's 2, both used to clamp `rowH` *up* past what was actually
-left and overflow the canvas -- see STYLE.md's "Battle move menu" section for the worked
-numbers, verified against a live headless-Chromium run at `fontScale` 1/1.5/2). Below
-`rowH < 40` the row switches to a smaller font/padding (`compact`) rather than clipping.
-Pass two places each header at its final y (now that `rowH` is known) and its own section's
-buttons right below it, in lockstep with pass one's own running-`y` shape so there's no
-drift between measured and actual layout.
+Paging: `switchMoveSection(delta)` (fields `moveSectionIndex`/`currentMoveIds`) recomputes
+`moveSections`, wraps `moveSectionIndex` by `delta`, and calls `drawMoveMenu` again -- wired
+to on-screen ◀/▶ `Text` buttons flanking the header (rendered only when
+`moveSections(...).length > 1`) and to `create()`'s `keydown-LEFT`/`keydown-RIGHT` listeners.
+Guarded by `turnLock` (mid-swing) and `!this.moveMenu` (already destroyed by `endBattle`) so a
+keypress can never act mid-resolution or resurrect the panel after the battle ends.
+
+Sizing: the header `Text` (label + page indicator + optional legend) is measured by its own
+running `rowY`, capped well below the text-size setting's own range (`headerScale =
+Math.min(scale, 1.15)`, base 10px label / 8px legend) rather than scaling all the way to the
+2x 'Large' preset the way the panel title does; the pager arrows render at a larger px than
+the label (`arrowPx`), so `rowY` advances by `Math.max(headerLabel.height, pagerRowH)`, not
+the label's height alone, or the taller arrows would bleed into the first move row. Row
+height (`rowH`) is then computed from the *current page's own* `rowCount` via
+`Phaser.Math.Clamp` against `avail` (the field's remaining height after subtracting
+`headerTotalH`) -- since only one section renders at a time, this budget is no longer shared
+across sections the way it was before paging existed. Below `rowH < 40` the row switches to a
+smaller font/padding (`compact`) rather than clipping.
 
 A move whose `class` is `'analytic'` still gets its `★` tag on the button itself (the
 2x/0.5x legend text now lives under the Analytic section header instead, see above); its
@@ -454,26 +456,33 @@ s.showXPanel()` pattern as Noether/Bloch/Dresselhaus:
 - **Curie's analytic-move shop** (`OverworldScene.showCuriePanel`/`renderCurieMoves`) mirrors
   `showNoetherShop`/`renderShopMoves` but sells only `data/materials.ts`'s `ANALYTIC_MOVE_IDS`
   (currently `skyfallBeam`/`groundEruption`), which `SHOP_MOVE_IDS` deliberately excludes so
-  Noether never also offers them. See `BattleScene.showAnalyticQuestion` (Stats and battle
+  Noether never also offers them. Two rendered sections: still-unbought moves, then every
+  already-bought one showing which quasiparticle it's tuned to. Buying (or later retuning) a
+  move opens `showCurieClassPicker` -- a sub-panel offering `CURIE_TUNABLE_CLASSES`, each
+  labeled via `quasiparticleLabel` -- which writes registry/save `curieMoveClass[moveId]`,
+  read by `data/materials.ts`'s `getCurieMoveClass` in place of the move's own fixed
+  `'analytic'` class wherever `BattleScene` checks quasiparticle-mismatch (both
+  `addMoveButton`'s `!!2x` tag and `resolveHit`'s actual damage multiplier); the move's own
+  `class` never changes, so it stays purchasable/usable from any form and still asks its
+  question regardless of tuning. See `BattleScene.showAnalyticQuestion` (Stats and battle
   resolution, above) for how a purchased analytic move actually plays out in a fight.
 - **Kondo's screening-move shop** (`OverworldScene.showKondoPanel`/`renderKondoMoves`)
   mirrors Curie's shop shape but sells `data/materials.ts`'s `KONDO_MOVE_IDS` (three moves:
   `screeningCloud`/`heavyFermionDrag`/`kondoBreakdown`, each tied to one of `types.ts`'s
   `'screening'`-class `MOVES` entries, deliberately excluded from `SHOP_MOVE_IDS`/
-  `ANALYTIC_MOVE_IDS`). Two rendered sections instead of Curie's flat list: still-unbought
-  moves the player's current form can host (`compatibleMoves`, same afford/dim buy-button
-  treatment as every shop) followed by every already-bought Kondo move as its own row -- a
-  bought-and-inactive move gets a "Make `<name>` active" button, the currently active one (registry/
+  `ANALYTIC_MOVE_IDS`). Same two-section shape as Curie's shop: still-unbought
+  moves (usable from any form, `'screening'` is on every type's `MOVE_COMPATIBILITY` list,
+  same afford/dim buy-button treatment as every shop) followed by every already-bought Kondo
+  move as its own row -- a bought-and-inactive move gets a "Make `<name>` active" button, the currently active one (registry/
   save `kondoActiveMove: string | null`) shows a dimmed "`<name>` (active)" tag instead (no
   click handler), the same dimmed-current convention Dresselhaus's/Majorana's "(current
   form)" rows already use. Buying the first Kondo move auto-activates it (so a purchase is
   never silently unusable); buying a second or third on top of an already-active one doesn't
   -- switching between already-bought moves is always its own explicit click either way, and
-  only one can ever be active at a time. The empty state (nothing bought, current form can't
-  host `'screening'` at all) names the actual unlock condition ("...come back wearing a spin
-  liquid or a defect state") rather than reusing Noether's generic "nothing left to teach"
-  line, since for Kondo the gate is almost always "wrong form," not "already bought
-  everything." This active/inactive split is a narrow, Kondo-specific special case in
+  only one can ever be active at a time. `'screening'` sits on every type's
+  `MOVE_COMPATIBILITY` list, so every one of the three is always for sale until bought --
+  there's no empty/wrong-form state to render here, unlike Noether's shop. This
+  active/inactive split is a narrow, Kondo-specific special case in
   `getBattleMoves` (`data/materials.ts`): the normal learned-∩-`compatibleMoves` filter runs
   first, then any `KONDO_MOVE_IDS` entry that isn't `kondoActiveMove` is filtered back out
   even though it's still in `unlockedMoves` -- no other move class has (or needs) an

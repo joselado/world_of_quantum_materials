@@ -194,9 +194,11 @@ drawing from whatever moves you've collected by then.
   no button to press each turn, just an always-on effect for the whole battle,
   taught by two of the guardians. You can learn several from each, but only
   one per guardian is ever equipped at a time.
-- **The move menu groups what you can use by kind** (ordinary attacks, the
-  answer-gated class above, and any active status-inflicting move), not one
-  flat list, so it's clear at a glance which buttons work differently.
+- **The move menu shows one kind of move at a time** (ordinary attacks, the
+  answer-gated class above, or any active status-inflicting move) rather than
+  one flat list, with ◀/▶ arrows (or the Left/Right keys) to page between
+  kinds when you have more than one, so it's clear at a glance which buttons
+  work differently and every button gets room to breathe.
 
 ## Controls
 

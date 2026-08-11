@@ -26,14 +26,14 @@ export type MoveClass =
   // a crystal's own physics has to host, so they're usable/purchasable from
   // any form.
   | 'analytic'
-  // Kondo's three moves (§5, World 8): Screening Cloud, Heavy Fermion Drag,
-  // Kondo Breakdown -- each deterministically inflicts one of three 3-turn
-  // status effects on the defender (Screened/Localized/Decohered,
+  // Kondo's three moves (§5, World 8): Screening Pulse, Scattering Drag,
+  // Decoherence Cascade -- each deterministically inflicts one of three
+  // 3-turn status effects on the defender (Screened/Localized/Decohered,
   // BattleScene's resolveHit) rather than dealing much raw damage itself.
-  // Unlike 'analytic', this class *is* gated by MOVE_COMPATIBILITY (an
-  // ordinary quasiparticle a crystal's own physics has to host, not a
-  // player-learned technique) -- see materials.ts's MOVE_COMPATIBILITY for
-  // which types can carry it.
+  // Like 'analytic', this class is on every type's MOVE_COMPATIBILITY list
+  // (see materials.ts) -- usable from any form, never mismatched, since
+  // these deal in a generic scattering/decoherence process rather than a
+  // quasiparticle tied to one specific type's band structure.
   | 'screening';
 
 export type MaterialType =

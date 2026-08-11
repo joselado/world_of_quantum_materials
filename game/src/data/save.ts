@@ -1,4 +1,4 @@
-import type { Material, MaterialType, Stats } from './types';
+import type { Material, MaterialType, MoveClass, Stats } from './types';
 import { PLAYER_MATERIAL, DEFAULT_STATS, MOVES } from './materials';
 import { DEFAULT_ENCOUNTER_DENSITY, DEFAULT_FONT_SCALE } from './settings';
 
@@ -84,6 +84,12 @@ export interface SaveData {
   laughlinActivePassive: string | null;
   bohrPassivesUnlocked: string[];
   bohrActivePassive: string | null;
+  // Which quasiparticle class each of Curie's analytic moves (by move id)
+  // is currently tuned to (data/materials.ts's getCurieMoveClass,
+  // OverworldScene.showCurieClassPicker) -- an id missing from this map is
+  // "untuned," falling back to the move's own always-safe 'analytic' class
+  // for the quasiparticle-mismatch check.
+  curieMoveClass: Partial<Record<string, MoveClass>>;
 }
 
 export function defaultSave(): SaveData {
@@ -108,6 +114,7 @@ export function defaultSave(): SaveData {
     laughlinActivePassive: null,
     bohrPassivesUnlocked: [],
     bohrActivePassive: null,
+    curieMoveClass: {},
   };
 }
 
@@ -175,6 +182,7 @@ export function persistFromRegistry(registry: RegistryLike) {
     laughlinActivePassive: (registry.get('laughlinActivePassive') as string | null) ?? null,
     bohrPassivesUnlocked: (registry.get('bohrPassivesUnlocked') as string[]) ?? [],
     bohrActivePassive: (registry.get('bohrActivePassive') as string | null) ?? null,
+    curieMoveClass: (registry.get('curieMoveClass') as Partial<Record<string, MoveClass>>) ?? {},
   };
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));

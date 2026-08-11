@@ -236,11 +236,17 @@ actually carry — see the transmutation mechanic in §5).
 **One deliberate exception: analytic moves aren't gated by a crystal's physics
 at all.** Curie's moves (§5) are on every main type's `MOVE_COMPATIBILITY`
 list, purchasable and usable from any form — they're a technique the player
-themselves learned, not a quasiparticle a crystal has to host, so unlike
-every other class they can never trigger the quasiparticle-mismatch rule
-below. Their real risk/reward instead comes from the question
-`BattleScene.showAnalyticQuestion` asks before the hit resolves: right
-answer doubles the damage, wrong answer halves it.
+themselves learned, not a quasiparticle a crystal has to host. Their real
+risk/reward comes from the question `BattleScene.showAnalyticQuestion` asks
+before the hit resolves: right answer doubles the damage, wrong answer
+halves it. Separately, Curie also lets the player tell her which
+quasiparticle each analytic move should carry (§5's `getCurieMoveClass`) —
+that choice feeds back into the quasiparticle-mismatch rule below on top of
+the question's own multiplier, so a tuned analytic move mismatches a
+defender exactly like an ordinary attack of that class would; an untuned
+one simply never mismatches, the same default every analytic move keeps
+regardless of how it's tuned for *host*-ability above (still purchasable
+and usable from any form either way).
 
 **Battle dynamics are deliberately simple: one type-interaction rule, not a chart.**
 A per-attack, per-defender-main-type strong/weak effectiveness chart would stack a
@@ -263,8 +269,8 @@ the most exotic tier the course covers). Because Phonon Beam (thermal) is on eve
 rule above — the one universal move is also the one that never gets the mismatch bonus, by
 design. Curie's analytic moves (Skyfall Beam, Ground Eruption) sit at a middling base power
 below this ordering on purpose — their real payoff is the answer-gated 2x/0.5x multiplier
-above, not raw power. Kondo's three moves (Screening Cloud, Heavy Fermion Drag, Kondo
-Breakdown, §5) sit at the very bottom of the ordering instead, on par with Electron Pulse —
+above, not raw power. Kondo's three moves (Screening Pulse, Scattering Drag, Decoherence
+Cascade, §5) sit at the very bottom of the ordering instead, on par with Electron Pulse —
 their real payoff is the 3-turn status effect each one deterministically inflicts (§4), not
 raw power either.
 
@@ -275,12 +281,12 @@ Turn-based, speed-ordered by Velocity.
 **Status effects (Kondo's three moves, §5).** Kondo teaches three moves that each
 deterministically inflict one 3-turn status effect on the defender — never randomly rolled,
 the player picks the effect by picking the move:
-- **Screened** (Screening Cloud) — the defender's own outgoing damage is multiplied down
+- **Screened** (Screening Pulse) — the defender's own outgoing damage is multiplied down
   (×0.7) for 3 turns.
-- **Localized** (Heavy Fermion Drag) — the defender's effective Velocity is reduced (×0.7)
+- **Localized** (Scattering Drag) — the defender's effective Velocity is reduced (×0.7)
   for 3 turns, changing whether that side still swings first each round.
-- **Decohered** (Kondo Breakdown) — the defender's effective Correlation is reduced (×0.7)
-  for 3 turns, raising the damage it takes (Correlation scales incoming damage via
+- **Decohered** (Decoherence Cascade) — the defender's effective Correlation is reduced
+  (×0.7) for 3 turns, raising the damage it takes (Correlation scales incoming damage via
   `10 / correlation`, above).
 
 Only one status can be active per side at a time — a fresh application replaces whatever was
@@ -303,27 +309,28 @@ order to damp a magnon pulse with, so it lands unmitigated. Applies symmetricall
 to both sides, same as every other `resolveHit` term. Surfaced in the battle log as "No
 natural defense against this!".
 
-**Move menu is grouped by kind, not one flat list.** `BattleScene.drawMoveMenu` splits
-the currently usable moves (`getBattleMoves`) into up to three sections, each rendering
-only if it has at least one usable move: **Attacks** (every ordinary physics-gated move --
-any `MoveClass` other than `'analytic'` and `'screening'`), **Analytic** (Curie's
-answer-gated moves, still tagged `★` with their own "right=2x wrong=½x" legend line under
-the section header), and **Screening** (Kondo's currently-active move, at most one, since
-`getBattleMoves` only ever surfaces whichever one is `kondoActiveMove`, §5) -- these three
-classes work differently enough from an ordinary attack (and from each other) that a flat
-stacked list blurred the distinction. Each button also shows its power and, computed
-against the current opponent's type, a `!!2x` tag when the quasiparticle-mismatch
-double-damage rule above applies, plus a one-line top-of-panel legend spelling out that
-symbol. The panel's row height (and now also its section-header height) is computed from
-how many moves/sections are currently listed (`drawMoveMenu`'s `rowH`/`headerTotalH`)
-rather than fixed, since an 'adaptive'-type crystal (world 10, see §3) can host the
-broadest set of move classes of any type (every class except Kondo's `'screening'` and the
-multiferroic-only `'magnetoelectric'`, both deliberately left off its `MOVE_COMPATIBILITY`
-list the same way `'thermal'` is on every list) and a fixed row height sized for the usual
-2-4 moves would push the panel off the bottom of the canvas once all 9 are unlocked;
-section headers are capped at a lower text-size ceiling than the panel's title/legend so up
-to three of them sharing the same fixed-height panel never eats into the row budget enough
-to overflow it (see STYLE.md's "Battle move menu" section for the worked numbers).
+**Move menu is grouped by kind and paged one kind at a time, not one flat list.**
+`BattleScene.drawMoveMenu` splits the currently usable moves (`getBattleMoves`) into up to
+three sections -- **Attacks** (every ordinary physics-gated move -- any `MoveClass` other
+than `'analytic'` and `'screening'`), **Analytic** (Curie's answer-gated moves, still tagged
+`★` with their own "right=2x wrong=½x" legend line under the header), and **Screening**
+(Kondo's currently-active move, at most one, since `getBattleMoves` only ever surfaces
+whichever one is `kondoActiveMove`, §5) -- but renders only the section the player is
+currently paged to (`moveSectionIndex`), not all of them stacked. A section only counts as a
+page at all if it has at least one usable move, so a player with no analytic moves bought or
+no Kondo move active never sees an empty page, and the pager (◀/▶ buttons plus the Left/
+Right keys, `switchMoveSection`) is hidden entirely once there's only one page to switch
+between. These three classes work differently enough from an ordinary attack (and from each
+other) that a flat stacked list blurred the distinction -- and paging instead of stacking
+means a page's own row height (`drawMoveMenu`'s `rowH`) is budgeted only against that one
+section's move count, not the worst case across every section at once, so an 'adaptive'-type
+crystal (world 10, see §3) hosting the broadest set of `MoveClass`es of any type -- every
+class except the multiferroic-only `'magnetoelectric'`, deliberately left off its
+`MOVE_COMPATIBILITY` list the same way `'thermal'`/`'analytic'`/`'screening'` are on every
+list -- no longer has to squeeze Analytic/Screening rows into the same panel it isn't even
+showing right now. Each button also shows its power and, computed against the current
+opponent's type, a `!!2x` tag when the quasiparticle-mismatch double-damage rule above
+applies, plus a one-line top-of-panel legend spelling out that symbol.
 
 **Battle background per world.** `BattleScene.drawBackground` reads the same
 `art/biomes.ts` table the overworld corridor uses (`getBiome(this.world)`) —
@@ -480,7 +487,20 @@ does. World 10 has no guardian; its only encounter is the finale.
   core, two swirling side-rays, a trail of falling sparks, and a radiant sun expanding
   at the point of origin; Ground Eruption bursts a wide double shockwave ring and a
   bright geyser core up through nearly twice the shard count of an ordinary burst.
-- **Bohr** → world 7 middle → teaches three passive abilities, same "learn several,
+  Buying a move (or later revisiting Curie) also opens a quasiparticle-picker
+  sub-panel (`showCurieClassPicker`, offering `CURIE_TUNABLE_CLASSES` --
+  every ordinary Attacks-section class) that assigns the move's registry/save
+  `curieMoveClass[moveId]` entry, labeled with whichever ordinary move already
+  carries that class (`quasiparticleLabel`, e.g. "Magnon Pulse" for
+  `'magnetic'`) rather than the class id itself. The move's own `class` stays
+  `'analytic'` either way -- still purchasable/usable from any form, still
+  asks its question -- this choice only feeds `getCurieMoveClass`, which
+  `BattleScene`'s quasiparticle-mismatch check reads in place of `move.class`
+  for these two ids (see §3/§4). An unbought move has no assignment yet; an
+  already-bought one shows "tuned to `<name>`" with a free "Retune" click
+  back into the same picker, or "untuned" if never assigned (an older save,
+  or a purchase made before this picker existed) -- untuned simply means the
+  mismatch check keeps reading the move's own always-safe `'analytic'` class.
   equip one" shape as Laughlin above (`data/passives.ts`'s `BOHR_PASSIVE_IDS`,
   `OverworldScene.showBohrPanel`, registry/save `bohrActivePassive`) -- fitting Bohr's
   own historical role defending quantum mechanics' completeness against the EPR paradox:
@@ -495,19 +515,19 @@ does. World 10 has no guardian; its only encounter is the finale.
   - **Shared State** -- ~22% of damage the player deals is returned as healing, capped at
     the player's own max HP -- the entangled pair shares its fate.
 - **Kondo** → world 8 middle → sells three moves (`OverworldScene.showKondoPanel`,
-  `data/materials.ts`'s `KONDO_MOVE_IDS`) -- Screening Cloud, Heavy Fermion Drag, Kondo
-  Breakdown -- each of which deterministically inflicts one of §4's three status effects
+  `data/materials.ts`'s `KONDO_MOVE_IDS`) -- Screening Pulse, Scattering Drag, Decoherence
+  Cascade -- each of which deterministically inflicts one of §4's three status effects
   (Screened, Localized, Decohered respectively) on a successful hit rather than dealing much
-  raw damage itself, gated by `MOVE_COMPATIBILITY` like an ordinary quasiparticle (currently
-  `spinliquid`/`defect`) rather than usable from any form the way Curie's analytic moves are.
-  Fitting for all three: the real Kondo effect is a single magnetic impurity's moment screened
-  by a sea of conduction electrons until it "disappears" at low temperature (Screening Cloud);
-  a Kondo lattice's conduction electrons hybridize with the local moments into heavy, slow
-  quasiparticles (Heavy Fermion Drag, dragging the target's own effective Velocity down); and
-  in the real heavy-fermion "Kondo breakdown"/"Kondo destruction" phenomenon the screening
-  cloud itself can collapse, stripping the local moment of its protection (Kondo Breakdown,
-  dropping the target's own effective Correlation). The player can buy all three independently,
-  but only one is ever usable in battle at a time -- registry/save `kondoActiveMove`, switched
+  raw damage itself. `'screening'` sits on every type's `MOVE_COMPATIBILITY` list, the same
+  "usable from any form" treatment Curie's analytic moves get -- these deal in a generic
+  scattering/decoherence process any crystal's own disorder or environment can carry, not a
+  quasiparticle tied to one type's specific band structure, so they're named generically
+  rather than after the heavy-fermion/Kondo-lattice physics that inspired them: Screening
+  Pulse damps whatever local moment or correlated state the target has, weakening its own
+  outgoing damage; Scattering Drag disorder-scatters the target's carriers, dragging its
+  effective Velocity down; Decoherence Cascade collapses whatever protection the target's
+  state has, raising the damage it takes. The player can buy all three independently, but
+  only one is ever usable in battle at a time -- registry/save `kondoActiveMove`, switched
   only by returning to Kondo's own panel (a bought-but-inactive move stays in `unlockedMoves`,
   it just fails `getBattleMoves`' own extra check on top of the ordinary
   learned-∩-compatible one), since Kondo screening physically resolves one scattering channel
@@ -521,7 +541,7 @@ does. World 10 has no guardian; its only encounter is the finale.
   click as the purchase) so a fresh purchase is never invisible in battle with no explanation;
   buying a second or third on top of an already-active one doesn't, and switching between
   already-bought moves is always its own explicit click either way. Superposition Mode
-  (`applySuperpositionLeveling`) seeds `kondoActiveMove` to Screening Cloud if it's still
+  (`applySuperpositionLeveling`) seeds `kondoActiveMove` to Screening Pulse if it's still
   unset, for the same reason -- granting every move id doesn't help if none of Kondo's three
   actually pass `getBattleMoves`' extra check.
 - **Anderson** → world 9 middle → "dopes in" a crystal the player has encountered as an

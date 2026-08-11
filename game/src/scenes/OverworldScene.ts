@@ -25,6 +25,8 @@ import {
   SHOP_MOVE_IDS,
   ANALYTIC_MOVE_IDS,
   KONDO_MOVE_IDS,
+  CURIE_TUNABLE_CLASSES,
+  quasiparticleLabel,
   compatibleMoves,
   getPlayerMaterial,
   getPlayerStats,
@@ -48,7 +50,7 @@ import { STORY_BEATS } from '../data/story';
 import { DENSITY_PRESETS, DEFAULT_ENCOUNTER_DENSITY, FONT_SCALE_PRESETS, DEFAULT_FONT_SCALE } from '../data/settings';
 import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
-import type { Material, MaterialType, Move, Stats } from '../data/types';
+import type { Material, MaterialType, Move, MoveClass, Stats } from '../data/types';
 import { generateWorldMap } from '../world/mapgen';
 import type { GridPoint } from '../world/mapgen';
 import { fontPx, fontScale } from '../ui/text';
@@ -501,7 +503,11 @@ export class OverworldScene extends Phaser.Scene {
     // is `kondoActiveMove`, and that field isn't touched by the "learn
     // everything" grant above. Only seed it if nothing's active yet, so a
     // player who already picked one via showKondoPanel keeps that choice
-    // across re-levels.
+    // across re-levels. Curie's two moves need no equivalent seeding --
+    // unlike an unset `kondoActiveMove` (which hides a move from battle
+    // entirely), an unset `curieMoveClass` entry just leaves that move
+    // untuned (getCurieMoveClass falls back to its own always-safe
+    // 'analytic' class), which is already a normal, fully-usable state.
     if (!this.game.registry.get('kondoActiveMove')) {
       this.game.registry.set('kondoActiveMove', KONDO_MOVE_IDS[0]);
     }
@@ -2015,7 +2021,9 @@ export class OverworldScene extends Phaser.Scene {
   // Skyfall Beam/Ground Eruption) -- kept out of Noether's own shop
   // (SHOP_MOVE_IDS excludes them, see materials.ts's comment) so Curie is
   // their one source. Mirrors showNoetherShop's layout/structure, minus the
-  // Moves/Stats tabs since she only ever has one thing to sell.
+  // Moves/Stats tabs since she only ever has one thing to sell. Buying (or
+  // later revisiting) a move also opens showCurieClassPicker to assign it a
+  // quasiparticle -- see renderCurieMoves.
   private showCuriePanel() {
     this.dialogueActive = true;
 
@@ -2038,7 +2046,7 @@ export class OverworldScene extends Phaser.Scene {
       .text(
         CANVAS_W / 2,
         y,
-        '"I am Curie. Learn the analytic side of the physics and I will teach you to strike by it -- answer right and the hit lands twice as hard, answer wrong and it barely lands at all."',
+        '"I am Curie. Learn the analytic side of the physics and I will teach you to strike by it -- answer right and the hit lands twice as hard, answer wrong and it barely lands at all. Tell me which quasiparticle to carry it with, too -- a defender with no natural channel for it takes the hit even harder."',
         { fontSize: fontPx(this, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
       )
       .setOrigin(0.5, 0);
@@ -2057,11 +2065,26 @@ export class OverworldScene extends Phaser.Scene {
     container.addAt(panel, 0);
   }
 
+  // Two sections, same shape as Kondo's own panel: still-unbought analytic
+  // moves (buying opens showCurieClassPicker first, so a purchase always
+  // comes with a quasiparticle chosen) followed by every already-bought
+  // analytic move showing which quasiparticle it's currently tuned to, with
+  // a free "Retune" click back into the same picker -- unlike Kondo's
+  // single active-move switch, both of Curie's moves can be tuned (and
+  // usable) at once, this only ever changes which quasiparticle each one's
+  // mismatch check reads (materials.ts's getCurieMoveClass). Unlike Kondo's
+  // shop, `forSale`/`learned` don't always partition every id between them
+  // -- 'analytic' sits on every type's MOVE_COMPATIBILITY list, same as
+  // 'screening', but ANALYTIC_MOVE_IDS is fixed at 2 with no third state,
+  // so `forSale` alone (not both being empty) is the real "nothing left to
+  // buy" signal, shown as its own line above the learned rows rather than
+  // replacing them.
   private renderCurieMoves(container: Phaser.GameObjects.Container, y: number): number {
     const unlocked = this.getUnlockedMoves();
-    const compatible = new Set(compatibleMoves(this.playerMaterial));
-    const forSale = ANALYTIC_MOVE_IDS.filter((id) => !unlocked.includes(id) && compatible.has(id));
+    const forSale = ANALYTIC_MOVE_IDS.filter((id) => !unlocked.includes(id));
+    const learned = ANALYTIC_MOVE_IDS.filter((id) => unlocked.includes(id));
     const tokens = (this.game.registry.get('qumatokens') as number) || 0;
+    const assigned = (this.game.registry.get('curieMoveClass') as Partial<Record<string, MoveClass>>) ?? {};
 
     if (forSale.length === 0) {
       const text = this.add
@@ -2073,7 +2096,7 @@ export class OverworldScene extends Phaser.Scene {
         })
         .setOrigin(0.5, 0);
       container.add(text);
-      return y + text.height;
+      y += text.height + 6;
     }
 
     forSale.forEach((id) => {
@@ -2082,24 +2105,91 @@ export class OverworldScene extends Phaser.Scene {
       const affordable = tokens >= cost;
       const btn = this.addDialogueButton(container, y, `${move.name} -- ${cost} qumatokens`, () => {
         if ((this.game.registry.get('qumatokens') as number) < cost) return;
-        this.qumatokens -= cost;
-        this.game.registry.set('qumatokens', this.qumatokens);
-        this.tokenText.setText(`Qumatokens: ${this.qumatokens}`);
-        this.game.registry.set('unlockedMoves', [...this.getUnlockedMoves(), id]);
-        persistFromRegistry(this.game.registry);
-        this.dialogueContainer?.destroy(true);
-        this.showCuriePanel();
+        this.showCurieClassPicker(id, (chosenClass) => {
+          this.qumatokens -= cost;
+          this.game.registry.set('qumatokens', this.qumatokens);
+          this.tokenText.setText(`Qumatokens: ${this.qumatokens}`);
+          this.game.registry.set('unlockedMoves', [...this.getUnlockedMoves(), id]);
+          this.game.registry.set('curieMoveClass', { ...assigned, [id]: chosenClass });
+          persistFromRegistry(this.game.registry);
+          this.dialogueContainer?.destroy(true);
+          this.showCuriePanel();
+        });
       });
       if (!affordable) btn.setAlpha(0.5);
       y += btn.height + 3;
     });
+
+    if (learned.length > 0) {
+      if (forSale.length > 0) y += 6;
+      learned.forEach((id) => {
+        const move = MOVES[id];
+        const currentClass = assigned[id];
+        const label = currentClass
+          ? `${move.name} -- tuned to ${quasiparticleLabel(currentClass)} (retune)`
+          : `${move.name} -- untuned (pick a quasiparticle)`;
+        const btn = this.addDialogueButton(container, y, label, () => {
+          this.showCurieClassPicker(id, (chosenClass) => {
+            this.game.registry.set('curieMoveClass', { ...assigned, [id]: chosenClass });
+            persistFromRegistry(this.game.registry);
+            this.dialogueContainer?.destroy(true);
+            this.showCuriePanel();
+          });
+        });
+        y += btn.height + 3;
+      });
+    }
     return y;
+  }
+
+  // The quasiparticle-choice sub-panel Curie's shop opens for a given
+  // analytic move, both on first purchase and on a later "Retune" click
+  // (renderCurieMoves above) -- the move's own MoveClass stays 'analytic'
+  // either way (see getCurieMoveClass), this only decides which ordinary
+  // class the quasiparticle-mismatch check treats it as. `onChosen` runs
+  // the caller's own save/persist/redraw, this panel just presents the
+  // pick.
+  private showCurieClassPicker(moveId: string, onChosen: (chosenClass: MoveClass) => void) {
+    this.dialogueContainer?.destroy(true);
+    this.dialogueActive = true;
+
+    const panelWidth = 600;
+    const top = 20;
+    const container = this.add.container(0, 0).setDepth(100);
+    this.dialogueContainer = container;
+
+    let y = top;
+    const move = MOVES[moveId];
+    const title = this.add
+      .text(CANVAS_W / 2, y, `Which quasiparticle should ${move.name} carry?`, {
+        fontSize: fontPx(this, 13),
+        color: '#ffffff',
+        fontStyle: 'bold',
+        align: 'center',
+        wordWrap: { width: panelWidth - 60 },
+      })
+      .setOrigin(0.5, 0);
+    container.add(title);
+    y += title.height + 10;
+
+    CURIE_TUNABLE_CLASSES.forEach((cls) => {
+      const btn = this.addDialogueButton(container, y, quasiparticleLabel(cls), () => onChosen(cls));
+      y += btn.height + 3;
+    });
+    y += top;
+
+    const panelHeight = y - top;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+      .setStrokeStyle(2, 0xc9d84a);
+    container.addAt(panel, 0);
   }
 
   // Kondo stands at world 8's middle tile (WORLD_GUARDIANS) and sells the
   // three screening-class moves (data/materials.ts's KONDO_MOVE_IDS --
-  // Screening Cloud/Heavy Fermion Drag/Kondo Breakdown, kept out of
-  // Noether's and Curie's own lists so Kondo is their one source). Mirrors
+  // Screening Pulse/Scattering Drag/Decoherence Cascade, kept out of
+  // Noether's and Curie's own lists so Kondo is their one source), usable
+  // from any crystal form the player is currently wearing. Mirrors
   // showCuriePanel's layout, but with a 3-entry list where each bought move
   // gets its own "buy" or "switch active" row instead of Curie's flat
   // buy-only list -- see renderKondoMoves below for why: only one of the
@@ -2128,7 +2218,7 @@ export class OverworldScene extends Phaser.Scene {
       .text(
         CANVAS_W / 2,
         y,
-        '"I am Kondo. A stray spin resolves into one of several scattering channels once conduction electrons screen it -- learn a channel, then tell me which one to tune. Only one can be tuned at a time; come back if you want a different one."',
+        '"I am Kondo. Any crystal has disorder and decoherence to exploit -- screening, scattering, collapse. Learn a channel, then tell me which one to tune. Only one can be tuned at a time; come back if you want a different one."',
         { fontSize: fontPx(this, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
       )
       .setOrigin(0.5, 0);
@@ -2148,44 +2238,23 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   // Two sections, not Curie's flat buy-only list: still-unbought Kondo
-  // moves the player's current form can host (same shopCost/afford/dim
-  // treatment as every other shop) followed by every already-bought Kondo
-  // move with a "make active"/dimmed-"(active)" row -- same dimmed-current
-  // convention Dresselhaus/Majorana's "(current form)"/"(current form) again"
-  // rows already use. Buying the very first Kondo move auto-activates it
-  // (see the buy handler below) so a purchase is never immediately invisible
-  // in battle; buying a second or third on top of an already-active one does
-  // not -- switching between two-or-more already-bought moves is always its
-  // own explicit "Make active" click.
+  // moves (same shopCost/afford/dim treatment as every other shop, usable
+  // from any form since MOVE_COMPATIBILITY grants 'screening' to every
+  // type) followed by every already-bought Kondo move with a "make active"/
+  // dimmed-"(active)" row -- same dimmed-current convention Dresselhaus/
+  // Majorana's "(current form)"/"(current form) again" rows already use.
+  // Buying the very first Kondo move auto-activates it (see the buy handler
+  // below) so a purchase is never immediately invisible in battle; buying a
+  // second or third on top of an already-active one does not -- switching
+  // between two-or-more already-bought moves is always its own explicit
+  // "Make active" click. forSale/learned always partition all three
+  // KONDO_MOVE_IDS between them, so there's no empty state to render here.
   private renderKondoMoves(container: Phaser.GameObjects.Container, y: number): number {
     const unlocked = this.getUnlockedMoves();
-    const compatible = new Set(compatibleMoves(this.playerMaterial));
-    const forSale = KONDO_MOVE_IDS.filter((id) => !unlocked.includes(id) && compatible.has(id));
+    const forSale = KONDO_MOVE_IDS.filter((id) => !unlocked.includes(id));
     const learned = KONDO_MOVE_IDS.filter((id) => unlocked.includes(id));
     const tokens = (this.game.registry.get('qumatokens') as number) || 0;
     const activeMove = (this.game.registry.get('kondoActiveMove') as string | null) ?? null;
-
-    if (forSale.length === 0 && learned.length === 0) {
-      // Names the actual unlock condition (a spin-liquid/defect form) rather
-      // than reusing Noether's generic "nothing left to teach" line -- for
-      // Kondo the gate is almost always "wrong current form," not "already
-      // bought everything," so the empty state should say so.
-      const text = this.add
-        .text(
-          CANVAS_W / 2,
-          y,
-          'Your current form has no local moment for me to screen -- come back wearing a spin liquid or a defect state.',
-          {
-            fontSize: fontPx(this, 13),
-            color: '#ffffff',
-            align: 'center',
-            wordWrap: { width: 480 },
-          }
-        )
-        .setOrigin(0.5, 0);
-      container.add(text);
-      return y + text.height;
-    }
 
     forSale.forEach((id) => {
       const move = MOVES[id];
@@ -2363,12 +2432,14 @@ export class OverworldScene extends Phaser.Scene {
   // three-passive kit with the same "buy several, only one active, switch
   // by a click" shape Kondo's three moves already use (renderKondoMoves),
   // just for a whole-battle passive instead of a move usable from the
-  // battle menu: still-unbought passives (with a one-line description, since
-  // a passive's effect isn't spelled out anywhere else the way a move's
-  // physics-flavored name usually implies it) get a buy button, every
+  // battle menu: still-unbought passives get a buy button, every
   // already-bought passive gets its own "Make `<name>` active" button or a
   // dimmed "`<name>` (active)" tag -- same dimmed-current convention every
-  // other guardian panel uses. Unlike Kondo's moves, a passive is never
+  // other guardian panel uses. Every row, bought or not, prints the
+  // passive's one-line description underneath (a passive's effect isn't
+  // spelled out anywhere else the way a move's physics-flavored name
+  // usually implies it) -- otherwise it was only ever visible during the
+  // single visit that purchased it. Unlike Kondo's moves, a passive is never
   // gated by MOVE_COMPATIBILITY (the same "player-learned technique, not a
   // quasiparticle a crystal has to host" reasoning as Curie's analytic
   // moves) -- every passive is always purchasable regardless of current
@@ -2454,7 +2525,20 @@ export class OverworldScene extends Phaser.Scene {
           reopen();
         });
         if (isActive) btn.setAlpha(0.5);
-        y += btn.height + 3;
+        y += btn.height + 2;
+        // Same one-line description a still-unbought passive shows above --
+        // once bought, a passive's effect was otherwise only ever spelled
+        // out during the single visit that purchased it.
+        const desc = this.add
+          .text(CANVAS_W / 2, y, passive.description, {
+            fontSize: descPx,
+            color: '#8fa0c9',
+            align: 'center',
+            wordWrap: { width: 480 },
+          })
+          .setOrigin(0.5, 0);
+        container.add(desc);
+        y += desc.height + 4;
       });
     }
 
@@ -3474,13 +3558,18 @@ export class OverworldScene extends Phaser.Scene {
     const stats = getPlayerStats(this.game.registry);
     const laughlinActive = this.game.registry.get('laughlinActivePassive') as string | null;
     const bohrActive = this.game.registry.get('bohrActivePassive') as string | null;
+    const laughlinLine = laughlinActive
+      ? `Laughlin passive: ${PASSIVES[laughlinActive].name} -- ${PASSIVES[laughlinActive].description}`
+      : 'Laughlin passive: None';
+    const bohrLine = bohrActive
+      ? `Bohr passive: ${PASSIVES[bohrActive].name} -- ${PASSIVES[bohrActive].description}`
+      : 'Bohr passive: None';
     const body =
       `Quantumness: ${stats.quantumness} -- raises your crit chance\n` +
       `Velocity: ${stats.velocity} -- higher goes first each round\n` +
       `Correlation: ${stats.correlation} -- higher takes less damage\n\n` +
       `Qumatokens: ${this.qumatokens}\nCurrent form: ${this.playerMaterial.name}\n\n` +
-      `Laughlin passive: ${laughlinActive ? PASSIVES[laughlinActive].name : 'None'}\n` +
-      `Bohr passive: ${bohrActive ? PASSIVES[bohrActive].name : 'None'}\n\n` +
+      `${laughlinLine}\n${bohrLine}\n\n` +
       'Raise any of these with qumatokens at Noether\'s shop.';
     this.showInfoPanel('Your Stats', body);
   }

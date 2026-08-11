@@ -1,14 +1,19 @@
 import { shade } from '../art/colors';
 import type { Material, Move, MoveClass, MaterialType, CrystalVariant, Stats } from './types';
 
-// Every move is named after the quasiparticle/excitation that actually
-// carries it, not an abstract "class" label -- Phonon Beam is a beam of
-// phonons, Magnon Pulse a pulse of magnons, and so on; only the display
-// `name` is quasiparticle-themed, `id`/`class` stay plain. Every entry here
-// is a real quasiparticle --
-// there's deliberately no "impurity scattering" move, since disorder/
-// impurities aren't a particle a crystal emits (see MOVE_COMPATIBILITY below
-// for which of these each material can actually host).
+// Every ordinary attack is named after the quasiparticle/excitation that
+// actually carries it, not an abstract "class" label -- Phonon Beam is a
+// beam of phonons, Magnon Pulse a pulse of magnons, and so on; only the
+// display `name` is quasiparticle-themed, `id`/`class` stay plain. There's
+// deliberately no single move just called "Impurity Scattering," since
+// disorder/impurities aren't one particle a crystal emits (see
+// MOVE_COMPATIBILITY below for which of these each material can actually
+// host). Curie's 'analytic' moves and Kondo's 'screening' moves are the two
+// exceptions to the quasiparticle-naming rule -- both are a technique/
+// process the player applies (an equation-gated attack, a scattering
+// channel deliberately tuned) rather than a particle a crystal itself
+// emits, so their names describe the process instead (see each class's own
+// comment below).
 //
 // Power climbs with how unconventional the underlying physics is -- an
 // ordinary lattice vibration or band electron is weak, a topological/
@@ -56,17 +61,18 @@ export const MOVES: Record<string, Move> = {
   // array -- only the player can currently learn them, and only one of the
   // three is ever active in battle at a time (registry/save
   // `kondoActiveMove`, switched only by talking to Kondo again --
-  // OverworldScene.showKondoPanel/getBattleMoves). Screening Cloud screens
-  // the defender's own moment, weakening its outgoing damage (Screened);
-  // Heavy Fermion Drag mirrors how a Kondo lattice's conduction electrons
-  // hybridize into heavy, slow quasiparticles, dragging the defender's
-  // effective Velocity down (Localized); Kondo Breakdown mirrors the real
-  // heavy-fermion phenomenon where the screening cloud itself collapses,
-  // stripping the defender's own protection and raising the damage it takes
-  // (Decohered).
-  screeningCloud: { id: 'screeningCloud', name: 'Screening Cloud', class: 'screening', power: 7 },
-  heavyFermionDrag: { id: 'heavyFermionDrag', name: 'Heavy Fermion Drag', class: 'screening', power: 7 },
-  kondoBreakdown: { id: 'kondoBreakdown', name: 'Kondo Breakdown', class: 'screening', power: 7 },
+  // OverworldScene.showKondoPanel/getBattleMoves). Named generically rather
+  // than after the specific heavy-fermion/Kondo-lattice physics that
+  // inspired them, since MOVE_COMPATIBILITY grants every material type
+  // 'screening' -- these are usable from any form, not just a spin liquid or
+  // defect state. Screening Pulse screens the defender's own moment,
+  // weakening its outgoing damage (Screened); Scattering Drag disorder-
+  // scatters the defender's own carriers, dragging its effective Velocity
+  // down (Localized); Decoherence Cascade collapses whatever protection the
+  // defender's state has, raising the damage it takes (Decohered).
+  screeningCloud: { id: 'screeningCloud', name: 'Screening Pulse', class: 'screening', power: 7 },
+  heavyFermionDrag: { id: 'heavyFermionDrag', name: 'Scattering Drag', class: 'screening', power: 7 },
+  kondoBreakdown: { id: 'kondoBreakdown', name: 'Decoherence Cascade', class: 'screening', power: 7 },
 };
 
 // Curie is the sole seller of analytic moves (OverworldScene.showCuriePanel,
@@ -75,6 +81,34 @@ export const MOVES: Record<string, Move> = {
 export const ANALYTIC_MOVE_IDS = Object.values(MOVES)
   .filter((m) => m.class === 'analytic')
   .map((m) => m.id);
+
+// The ordinary quasiparticle classes Curie's shop lets the player assign to
+// an analytic move (OverworldScene.showCurieClassPicker) -- excludes
+// 'analytic'/'screening' themselves (self-referential) and 'trivial'/
+// 'thermal'/'gauge'/etc. is really just "every ordinary Attacks-section
+// class." An analytic move's own MoveClass stays 'analytic' always (so it
+// keeps being usable from any form and keeps asking its question) -- this
+// choice only feeds getCurieMoveClass below, which the quasiparticle-
+// mismatch check reads instead.
+export const CURIE_TUNABLE_CLASSES: MoveClass[] = [
+  'trivial',
+  'magnetic',
+  'thermal',
+  'localization',
+  'gauge',
+  'entanglement',
+  'decoherence',
+  'magnetoelectric',
+];
+
+// Reuses the display name the matching ordinary move already carries
+// (Electron Pulse for 'trivial', Magnon Pulse for 'magnetic', ...) as the
+// label Curie's picker shows for that class, rather than inventing a
+// second naming scheme -- each of CURIE_TUNABLE_CLASSES maps to exactly one
+// MOVES entry today.
+export function quasiparticleLabel(moveClass: MoveClass): string {
+  return Object.values(MOVES).find((m) => m.class === moveClass)?.name ?? moveClass;
+}
 
 // Kondo is the sole seller of the three screening-class moves
 // (OverworldScene.showKondoPanel, mirroring Curie's showCuriePanel with a
@@ -105,43 +139,46 @@ export const SHOP_MOVE_IDS = Object.keys(MOVES).filter(
 // (magnet, classicalmag), never for a plain band insulator/semiconductor
 // like Silicon. This is what makes "Si doesn't have magnons" a rule the
 // game enforces, not just flavor text -- both the battle move list
-// (getBattleMoves) and Noether's shop filter through this. 'analytic' is the
-// one exception, on every list -- it's not a quasiparticle a crystal's own
-// physics has to host, it's a technique the player themselves learned from
-// Curie, so it's never mismatched and never gated by current form. Adding a
+// (getBattleMoves) and Noether's shop filter through this. 'analytic' and
+// 'screening' are the two exceptions, on every list -- 'analytic' because
+// it's not a quasiparticle a crystal's own physics has to host at all, it's
+// a technique the player themselves learned from Curie; 'screening' because
+// Kondo's three moves deal in a generic scattering/decoherence process any
+// crystal's own disorder/environment can carry, not a mode tied to one
+// specific type's band structure (their real payoff is the 3-turn status
+// effect they inflict, not raw power, so they don't need the mismatch bonus
+// to matter). Neither is ever mismatched or gated by current form. Adding a
 // new MoveClass here always means deciding this on purpose, not by
-// omission: an analytic-style class left off every list would make its
-// moves *always* mismatch (canHost) against every defender -- a silent 2x
-// on top of whatever bonus BattleScene itself applies for that class, not a
-// neutral default.
+// omission: a class left off every list would make its moves *always*
+// mismatch (canHost) against every defender -- a silent 2x on top of
+// whatever bonus BattleScene itself applies for that class, not a neutral
+// default.
 const MOVE_COMPATIBILITY: Record<MaterialType, MoveClass[]> = {
-  trivial: ['trivial', 'thermal', 'analytic'],
-  magnet: ['magnetic', 'thermal', 'analytic'],
-  topological: ['gauge', 'trivial', 'thermal', 'decoherence', 'analytic'],
-  qhe: ['gauge', 'trivial', 'thermal', 'analytic'],
-  supercon: ['localization', 'decoherence', 'thermal', 'trivial', 'analytic'],
-  classicalmag: ['magnetic', 'thermal', 'analytic'],
-  tensornet: ['entanglement', 'thermal', 'localization', 'analytic'],
-  // Kondo's screening moves ('screening') need an actual local-moment/
-  // screening excitation to carry them -- granted here and to 'defect'
-  // below (a local moment is literally what those two types' own physics
-  // is), deliberately left off every other type (e.g. 'magnet''s Mott
-  // insulators have no itinerant conduction sea to screen a moment with,
-  // and 'classicalmag''s itinerant ferromagnets are already long-range
-  // ordered rather than hosting a dilute, screenable local moment).
+  trivial: ['trivial', 'thermal', 'analytic', 'screening'],
+  magnet: ['magnetic', 'thermal', 'analytic', 'screening'],
+  topological: ['gauge', 'trivial', 'thermal', 'decoherence', 'analytic', 'screening'],
+  qhe: ['gauge', 'trivial', 'thermal', 'analytic', 'screening'],
+  supercon: ['localization', 'decoherence', 'thermal', 'trivial', 'analytic', 'screening'],
+  classicalmag: ['magnetic', 'thermal', 'analytic', 'screening'],
+  tensornet: ['entanglement', 'thermal', 'localization', 'analytic', 'screening'],
   spinliquid: ['entanglement', 'thermal', 'localization', 'analytic', 'screening'],
   defect: ['localization', 'decoherence', 'thermal', 'analytic', 'screening'],
-  // Deliberately missing 'screening' (and 'magnetoelectric', added earlier
-  // for the same reason) -- an 'adaptive' echo has no local moment of its
-  // own to screen either, so it mismatches against Kondo's moves like any
-  // other non-spinliquid/defect type rather than being special-cased to
-  // host literally every class that exists.
-  adaptive: ['trivial', 'magnetic', 'thermal', 'localization', 'gauge', 'entanglement', 'decoherence', 'analytic'],
-  multiferroic: ['magnetoelectric', 'magnetic', 'thermal', 'analytic'],
+  adaptive: [
+    'trivial',
+    'magnetic',
+    'thermal',
+    'localization',
+    'gauge',
+    'entanglement',
+    'decoherence',
+    'analytic',
+    'screening',
+  ],
+  multiferroic: ['magnetoelectric', 'magnetic', 'thermal', 'analytic', 'screening'],
   // Shares 'gauge' with topological/qhe rather than getting its own class --
   // a Chern insulator's edge modes (and, for a fractional state, its anyons)
   // are the same quasiparticle family those two types already host.
-  chernInsulator: ['gauge', 'trivial', 'thermal', 'analytic'],
+  chernInsulator: ['gauge', 'trivial', 'thermal', 'analytic', 'screening'],
 };
 
 export function compatibleMoves(material: Material): string[] {
@@ -247,6 +284,22 @@ export function getBattleMoves(registry: RegistryLike): string[] {
     if (KONDO_MOVE_IDS.includes(id) && id !== activeKondoMove) return false;
     return true;
   });
+}
+
+// The quasiparticle class BattleScene's mismatch check should use for a
+// given move -- ordinarily just that move's own fixed `class`, except for
+// an analytic move the player has tuned via Curie's picker
+// (OverworldScene.showCurieClassPicker, registry/save `curieMoveClass`):
+// its `class` stays 'analytic' (still usable from any form, still asks its
+// question), but the mismatch check reads the player-assigned quasiparticle
+// instead, so a tuned analytic move can mismatch a defender like any
+// ordinary attack would. An untuned analytic move (never visited Curie's
+// picker, or an older save from before this existed) falls back to its own
+// 'analytic' class, the same "never mismatches" behavior analytic moves
+// always had.
+export function getCurieMoveClass(registry: RegistryLike, moveId: string): MoveClass {
+  const assigned = (registry.get('curieMoveClass') as Partial<Record<string, MoveClass>> | undefined)?.[moveId];
+  return assigned ?? MOVES[moveId].class;
 }
 
 // The player is a crystal too -- just one entry out of this same roster, not a
