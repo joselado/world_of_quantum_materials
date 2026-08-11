@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { MoveClass } from '../data/types';
-import { playAttackSfx, playImpactSfx, type AttackShape } from '../audio/sfx';
+import { playAttackSfx, playImpactSfx, playFizzleSfx, type AttackShape } from '../audio/sfx';
 import { music } from '../audio/music';
 
 interface Point {
@@ -17,7 +17,7 @@ interface Point {
 // particles converging/scattering (Anyon Braid, Majorana Split, Heavy
 // Fermion Pulse, Vison Loop). 'beam'/'eruption' are never picked from here
 // -- they're only ever reached via ANALYTIC_SHAPES' per-move-id override
-// below (BattleScene's resolveHit always supplies one for Curie's two
+// below (BattleScene's resolveHit always supplies one for Laughlin's two
 // moves), so no class needs its own `shape: 'beam' | 'eruption'` entry.
 const EFFECT_STYLE: Record<MoveClass, { color: number; shape: AttackShape }> = {
   electron: { color: 0x4a90d9, shape: 'bolt' },
@@ -61,12 +61,12 @@ const EFFECT_STYLE: Record<MoveClass, { color: number; shape: AttackShape }> = {
   // cloud enveloping the target, tinted Kondo's own rust-orange
   // (WORLD_GUARDIANS[8].strokeColor). Three distinct move names and
   // status-effect log lines already read as three different moves without
-  // three different silhouettes too, so unlike Curie's moves they need no
-  // per-move-id shape override.
+  // three different silhouettes too, so unlike Laughlin's/Skłodowska-Curie's
+  // moves they need no per-move-id shape override.
   screening: { color: 0xe86a44, shape: 'ring' },
 };
 
-// Per-move-id shape overrides for Curie's two moves -- the one pair where
+// Per-move-id shape overrides for Laughlin's two Analytic moves -- the one pair where
 // both moves (`skyfallBeam`, `groundEruption`) want two distinct silhouettes
 // (a falling beam, a ground eruption) rather than sharing whichever
 // ordinary EFFECT_STYLE shape their currently-tuned quasiparticle carries.
@@ -75,8 +75,33 @@ export const ANALYTIC_SHAPES: Record<string, AttackShape> = {
   groundEruption: 'eruption',
 };
 
+// Per-move-id shape overrides for Skłodowska-Curie's two Ultimate moves
+// (§5, World 10) -- same pattern as ANALYTIC_SHAPES above, one entry per
+// move id rather than per quasiparticle class, since `ultimateMeteor`/
+// `ultimateNova` want their own multi-phase "summon" silhouettes (playMeteor/
+// playNova below) regardless of whichever class each is currently tuned to.
+export const ULTIMATE_SHAPES: Record<string, AttackShape> = {
+  ultimateMeteor: 'meteor',
+  ultimateNova: 'nova',
+};
+
 const WINDUP_MS = 90;
-const TRAVEL_MS: Record<AttackShape, number> = { bolt: 340, ring: 460, burst: 400, beam: 520, eruption: 480 };
+// meteor/nova entries exist here purely so this Record type-checks against
+// AttackShape (TypeScript forces every shape to have an entry) -- neither
+// value is actually read: playMeteor/playNova (below) manage their own
+// internal multi-phase timeline (summon -> charge -> impact -> aftermath,
+// see METEOR_TOTAL_MS/NOVA_TOTAL_MS) rather than the flat
+// WINDUP_MS + TRAVEL_MS[shape] + IMPACT_MS formula every other shape uses,
+// since that formula doesn't scale to a multi-second sequence.
+const TRAVEL_MS: Record<AttackShape, number> = {
+  bolt: 340,
+  ring: 460,
+  burst: 400,
+  beam: 520,
+  eruption: 480,
+  meteor: 5200,
+  nova: 4800,
+};
 const IMPACT_MS = 260;
 
 // Plays the full attack beat: a quick windup flash at the attacker, the
@@ -87,9 +112,13 @@ const IMPACT_MS = 260;
 // for BattleScene's HP-bar update/flashHit), not after the shockwave finishes
 // decaying -- the shockwave itself is fire-and-forget. `shapeOverride` lets a
 // caller pick a specific silhouette regardless of moveClass's usual one
-// (BattleScene passes ANALYTIC_SHAPES[move.id] for Curie's two moves so
-// `skyfallBeam` and `groundEruption` read differently regardless of whichever
-// quasiparticle each is currently tuned to).
+// (BattleScene passes ANALYTIC_SHAPES[move.id] for Laughlin's two moves, or
+// ULTIMATE_SHAPES[move.id] for Skłodowska-Curie's two, so those four read
+// differently regardless of whichever quasiparticle each is currently tuned
+// to). `onComplete`/`whiff` only matter for the meteor/nova shapes below --
+// every other shape ignores them, since its tail (win/lose check, opponent's
+// turn) is already synchronous with resolveHit's own caller rather than
+// needing a completion callback of its own.
 export function playAttackEffect(
   scene: Phaser.Scene,
   moveClass: MoveClass,
@@ -97,10 +126,45 @@ export function playAttackEffect(
   to: Point,
   onImpact?: () => void,
   powerRatio = 1,
-  shapeOverride?: AttackShape
+  shapeOverride?: AttackShape,
+  onComplete?: () => void,
+  whiff = false
 ) {
   const style = EFFECT_STYLE[moveClass];
   const shape = shapeOverride ?? style.shape;
+
+  // The Ultimate tier (Skłodowska-Curie's two moves, §5) runs its own
+  // multi-phase summon->charge->impact->aftermath sequence (playMeteor/
+  // playNova below) instead of the shared windup/travel/impact beat every
+  // other shape uses -- `onImpact` fires mid-sequence (at the impact phase's
+  // own strike beat) and `onComplete` only once the full sequence (including
+  // the aftermath decay) has finished, which is what lets BattleScene defer
+  // the win/lose check and the opponent's turn until the animation is
+  // actually done rather than seconds early.
+  if (shape === 'meteor' || shape === 'nova') {
+    const play = shape === 'meteor' ? playMeteor : playNova;
+    const totalMs = shape === 'meteor' ? METEOR_TOTAL_MS : NOVA_TOTAL_MS;
+    music.duck(totalMs);
+    playAttackSfx(shape);
+    play(
+      scene,
+      style.color,
+      to,
+      whiff,
+      () => {
+        if (whiff) {
+          playFizzleSfx();
+        } else {
+          playImpactShockwave(scene, style.color, to);
+          playImpactSfx(powerRatio);
+        }
+        onImpact?.();
+      },
+      () => onComplete?.()
+    );
+    return;
+  }
+
   const totalMs = WINDUP_MS + TRAVEL_MS[shape] + IMPACT_MS;
   music.duck(totalMs);
   playAttackSfx(shape);
@@ -241,7 +305,7 @@ function playBurst(scene: Phaser.Scene, color: number, from: Point, to: Point, o
 // Telegraphs first (a faint, full-height column fades in before the bright
 // head starts falling) so the "incoming" beat reads clearly, then the head
 // travels the height of the field to land. Substantially flashier than the
-// other move classes on purpose -- Curie's own request was "a beam falling
+// other move classes on purpose -- Laughlin's own request was "a beam falling
 // from the sky," clearly reading as stronger than an ordinary hit: a pair of
 // swirling side-rays orbit the main column, a radiant sun expands at the
 // point of origin as the beam charges, and a trail of falling sparks chases
@@ -300,7 +364,7 @@ function playBeam(scene: Phaser.Scene, color: number, to: Point, onImpact?: () =
 // Shards bursting up and outward from a crack in the ground under the
 // target -- also ignores `from`, since the eruption comes up from beneath
 // the defender rather than travelling from the attacker. Substantially
-// flashier than the other move classes on purpose (Curie's own request):
+// flashier than the other move classes on purpose (Laughlin's own request):
 // an expanding double shockwave ring on the ground, a bright geyser core
 // punching straight up through the shards, and nearly double the shard
 // count spread wider than an ordinary burst.
@@ -344,6 +408,423 @@ function playEruption(scene: Phaser.Scene, color: number, to: Point, onImpact?: 
       g.destroy();
       onImpact?.();
     },
+  });
+}
+
+// Skłodowska-Curie's Ultimate pair (§5, World 10, ULTIMATE_SHAPES) -- the
+// flashiest tier, a 4-6s "Final-Fantasy-style summon" sequence rather than a
+// single travelling effect: a runic summon circle (Summon) builds up,
+// something gathers/intensifies at the target (Charge), the actual strike
+// lands (Impact -- fires `onImpact` right as this phase *begins*, not at its
+// end, mirroring every other shape's `land()`), then decays away (Aftermath
+// -- fires `onComplete` once, at the very end). Each phase is its own
+// `scene.tweens.addCounter`, chained via onComplete rather than one long
+// tween, and each phase creates and destroys its own Graphics objects rather
+// than reusing one across phases -- unlike every other shape here, which
+// only ever needs one short tween and so never has to worry about that
+// cleanup. `whiff` (set when an Ultimate move fails its 3-question gate,
+// BattleScene's resolveHit) swaps the Impact/Aftermath phases for a smaller,
+// desaturated, shrinking version that reads as "it didn't work" rather than
+// as a weaker hit -- the Summon/Charge phases play identically either way, so
+// the 3-question tension pays off the same regardless of the outcome.
+const METEOR_SUMMON_MS = 1300;
+const METEOR_CHARGE_MS = 2000;
+const METEOR_IMPACT_MS = 900;
+const METEOR_AFTERMATH_MS = 900;
+export const METEOR_TOTAL_MS = METEOR_SUMMON_MS + METEOR_CHARGE_MS + METEOR_IMPACT_MS + METEOR_AFTERMATH_MS; // 5100ms
+
+const NOVA_SUMMON_MS = 1200;
+const NOVA_CHARGE_MS = 1900;
+const NOVA_IMPACT_MS = 850;
+const NOVA_AFTERMATH_MS = 850;
+export const NOVA_TOTAL_MS = NOVA_SUMMON_MS + NOVA_CHARGE_MS + NOVA_IMPACT_MS + NOVA_AFTERMATH_MS; // 4800ms
+
+// Summon (`ultimateMeteor`): an expanding runic/lattice circle on the ground
+// under the target -- a rotating hexagonal lattice ring inside an outer
+// glow ring, plus radiating spokes, all flattened to an ellipse for ground
+// perspective (matching playEruption's own groundY/fillEllipse convention).
+function playMeteorSummon(scene: Phaser.Scene, color: number, to: Point, onDone: () => void) {
+  const g = scene.add.graphics().setDepth(58).setBlendMode(Phaser.BlendModes.ADD);
+  const groundY = to.y + 18;
+  scene.tweens.addCounter({
+    from: 0,
+    to: 1,
+    duration: METEOR_SUMMON_MS,
+    ease: 'Cubic.easeOut',
+    onUpdate: (tw) => {
+      const t = tw.getValue() ?? 0;
+      const r = 10 + t * 66;
+      g.clear();
+      g.lineStyle(3, color, 0.2 + t * 0.55);
+      g.strokeEllipse(to.x, groundY, r * 2, r * 0.8);
+      const rot = t * Math.PI * 1.3;
+      g.lineStyle(2, 0xffffff, 0.15 + t * 0.5);
+      g.beginPath();
+      for (let i = 0; i <= 6; i++) {
+        const ang = rot + (i / 6) * Math.PI * 2;
+        const px = to.x + Math.cos(ang) * r * 0.7;
+        const py = groundY + Math.sin(ang) * r * 0.7 * 0.4;
+        if (i === 0) g.moveTo(px, py);
+        else g.lineTo(px, py);
+      }
+      g.strokePath();
+      for (let i = 0; i < 10; i++) {
+        const ang = rot * 0.6 + (i / 10) * Math.PI * 2;
+        g.lineStyle(1.5, color, 0.15 + t * 0.35);
+        g.lineBetween(to.x, groundY, to.x + Math.cos(ang) * r * 0.85, groundY + Math.sin(ang) * r * 0.85 * 0.4);
+      }
+    },
+    onComplete: () => {
+      g.destroy();
+      onDone();
+    },
+  });
+}
+
+// Charge (`ultimateMeteor`): a heavy glowing mass, ringed by orbiting debris
+// chunks and a fire trail, descending from off the top of the screen to hang
+// just above the target -- a bigger, heavier silhouette than playBeam's thin
+// falling column (a meteor reads as a mass, not a shot), with the summon
+// circle from the prior phase redrawn underneath, still pulsing.
+function playMeteorCharge(scene: Phaser.Scene, color: number, to: Point, onDone: () => void) {
+  const mass = scene.add.graphics().setDepth(60).setBlendMode(Phaser.BlendModes.ADD);
+  const circle = scene.add.graphics().setDepth(58).setBlendMode(Phaser.BlendModes.ADD);
+  const groundY = to.y + 18;
+  const originY = -60;
+  scene.tweens.addCounter({
+    from: 0,
+    to: 1,
+    duration: METEOR_CHARGE_MS,
+    ease: 'Cubic.easeIn',
+    onUpdate: (tw) => {
+      const t = tw.getValue() ?? 0;
+      const massY = Phaser.Math.Linear(originY, to.y - 34, t);
+      const massR = 14 + t * 34;
+      mass.clear();
+      for (let i = 0; i < 8; i++) {
+        const ty = massY - i * 14;
+        if (ty < originY) continue;
+        mass.fillStyle(i % 2 === 0 ? 0xffffff : color, Math.max(0, 0.5 - i * 0.06));
+        mass.fillCircle(to.x + Math.sin(t * 22 + i) * (6 - i * 0.4), ty, Math.max(2, massR * 0.5 - i * 2));
+      }
+      for (let i = 0; i < 5; i++) {
+        const ang = t * 9 + (i / 5) * Math.PI * 2;
+        const orbR = massR * 1.6;
+        mass.fillStyle(0x8a5a3a, 0.9);
+        mass.fillCircle(to.x + Math.cos(ang) * orbR, massY + Math.sin(ang) * orbR * 0.6, 4);
+      }
+      mass.fillStyle(color, 0.85);
+      mass.fillCircle(to.x, massY, massR);
+      mass.fillStyle(0xffffff, 0.7);
+      mass.fillCircle(to.x, massY, massR * 0.45);
+
+      circle.clear();
+      const pulse = 0.6 + 0.4 * Math.sin(t * 28);
+      circle.lineStyle(3, color, 0.4 * pulse);
+      circle.strokeEllipse(to.x, groundY, (58 + Math.sin(t * 10) * 4) * 2, (58 + Math.sin(t * 10) * 4) * 0.8);
+      circle.lineStyle(2, 0xffffff, 0.3 * pulse);
+      circle.strokeEllipse(to.x, groundY, 76, 30);
+    },
+    onComplete: () => {
+      mass.destroy();
+      circle.destroy();
+      onDone();
+    },
+  });
+}
+
+// Impact (`ultimateMeteor`): calls `onImpact()` immediately, then plays
+// either the full heavy slam (a blinding core flash, a wide shockwave ring,
+// and radial ground cracks) or, on a whiff, a small desaturated version that
+// just deflates in place without ever landing.
+function playMeteorImpact(
+  scene: Phaser.Scene,
+  color: number,
+  to: Point,
+  whiff: boolean,
+  onImpact: () => void,
+  onDone: () => void
+) {
+  onImpact();
+  const g = scene.add.graphics().setDepth(60).setBlendMode(Phaser.BlendModes.ADD);
+  const groundY = to.y + 18;
+  const drawColor = whiff ? 0x777777 : color;
+  scene.tweens.addCounter({
+    from: 0,
+    to: 1,
+    duration: METEOR_IMPACT_MS,
+    ease: whiff ? 'Sine.easeOut' : 'Cubic.easeOut',
+    onUpdate: (tw) => {
+      const t = tw.getValue() ?? 0;
+      g.clear();
+      if (whiff) {
+        const r = Math.max(0, 34 * (1 - t));
+        g.fillStyle(drawColor, 0.35 * (1 - t));
+        g.fillCircle(to.x, to.y - 18 * (1 - t), r);
+        g.lineStyle(2, 0x999999, 0.35 * (1 - t));
+        g.strokeEllipse(to.x, groundY, 40 * (1 - t), 14 * (1 - t));
+        return;
+      }
+      g.fillStyle(0xffffff, 0.9 * (1 - t));
+      g.fillCircle(to.x, groundY, 20 + t * 42);
+      g.lineStyle(5, color, 0.85 * (1 - t));
+      g.strokeEllipse(to.x, groundY, (10 + t * 110) * 2, (10 + t * 110) * 0.5);
+      g.fillStyle(color, 0.55 * (1 - t));
+      g.fillEllipse(to.x, groundY, 90 + t * 60, 26);
+      for (let i = 0; i < 10; i++) {
+        const ang = (i / 10) * Math.PI * 2;
+        const len = 20 + t * 72;
+        g.lineStyle(3, color, 0.7 * (1 - t));
+        g.lineBetween(to.x, groundY, to.x + Math.cos(ang) * len, groundY + Math.sin(ang) * len * 0.5);
+      }
+    },
+    onComplete: () => {
+      g.destroy();
+      onDone();
+    },
+  });
+}
+
+// Aftermath (`ultimateMeteor`): residual glow and rising embers/dissipating
+// shards, ending by tearing down every Graphics object this phase created
+// and firing `onComplete` exactly once.
+function playMeteorAftermath(scene: Phaser.Scene, color: number, to: Point, whiff: boolean, onComplete: () => void) {
+  const g = scene.add.graphics().setDepth(58).setBlendMode(Phaser.BlendModes.ADD);
+  const groundY = to.y + 18;
+  const emberColor = whiff ? 0x888888 : color;
+  const spread = whiff ? 14 : 44;
+  scene.tweens.addCounter({
+    from: 0,
+    to: 1,
+    duration: METEOR_AFTERMATH_MS,
+    ease: 'Sine.easeOut',
+    onUpdate: (tw) => {
+      const t = tw.getValue() ?? 0;
+      g.clear();
+      g.fillStyle(emberColor, 0.35 * (1 - t));
+      g.fillCircle(to.x, groundY, (whiff ? 10 : 30) * (1 - t));
+      for (let i = 0; i < 6; i++) {
+        const ang = -Math.PI / 2 + (i - 2.5) * 0.35;
+        const dist = t * spread;
+        g.fillStyle(i % 2 === 0 ? 0xffffff : emberColor, (1 - t) * 0.75);
+        g.fillCircle(to.x + Math.cos(ang) * dist, groundY - t * 26 + Math.sin(ang) * dist * 0.3, 2.5 * (1 - t * 0.6));
+      }
+    },
+    onComplete: () => {
+      g.destroy();
+      onComplete();
+    },
+  });
+}
+
+// `ultimateMeteor` -- see the shared Ultimate-tier comment above for the
+// phase/callback contract. Reads as a heavy mass falling from above and
+// slamming the target, distinct from playNova's outward-building blast.
+function playMeteor(
+  scene: Phaser.Scene,
+  color: number,
+  to: Point,
+  whiff: boolean,
+  onImpact: () => void,
+  onComplete: () => void
+) {
+  playMeteorSummon(scene, color, to, () => {
+    playMeteorCharge(scene, color, to, () => {
+      playMeteorImpact(scene, color, to, whiff, onImpact, () => {
+        playMeteorAftermath(scene, color, to, whiff, onComplete);
+      });
+    });
+  });
+}
+
+// Summon (`ultimateNova`): the same FF-style runic circle idea as
+// playMeteorSummon, but centered on the target itself rather than
+// ground-flattened -- two counter-rotating mandala rings (an octagon plus
+// radiating spokes) building up around `to`, reading as a vertical mandala
+// rather than a ground rune.
+function playNovaSummon(scene: Phaser.Scene, color: number, to: Point, onDone: () => void) {
+  const g = scene.add.graphics().setDepth(60).setBlendMode(Phaser.BlendModes.ADD);
+  scene.tweens.addCounter({
+    from: 0,
+    to: 1,
+    duration: NOVA_SUMMON_MS,
+    ease: 'Cubic.easeOut',
+    onUpdate: (tw) => {
+      const t = tw.getValue() ?? 0;
+      const r = 8 + t * 52;
+      g.clear();
+      g.lineStyle(3, color, 0.3 + t * 0.5);
+      g.strokeCircle(to.x, to.y, r);
+      const rot1 = t * Math.PI * 1.6;
+      g.lineStyle(2, 0xffffff, 0.2 + t * 0.5);
+      g.beginPath();
+      for (let i = 0; i <= 8; i++) {
+        const ang = rot1 + (i / 8) * Math.PI * 2;
+        const px = to.x + Math.cos(ang) * r * 0.75;
+        const py = to.y + Math.sin(ang) * r * 0.75;
+        if (i === 0) g.moveTo(px, py);
+        else g.lineTo(px, py);
+      }
+      g.strokePath();
+      const rot2 = -t * Math.PI * 1.1;
+      for (let i = 0; i < 10; i++) {
+        const ang = rot2 + (i / 10) * Math.PI * 2;
+        g.lineStyle(1.5, color, 0.2 + t * 0.4);
+        g.lineBetween(
+          to.x + Math.cos(ang) * r * 0.4,
+          to.y + Math.sin(ang) * r * 0.4,
+          to.x + Math.cos(ang) * r,
+          to.y + Math.sin(ang) * r
+        );
+      }
+    },
+    onComplete: () => {
+      g.destroy();
+      onDone();
+    },
+  });
+}
+
+// Charge (`ultimateNova`): particles converging INWARD toward a brightening,
+// pulsing core -- the inverse motion of playMeteorCharge's falling mass, so
+// the two moves read as opposites (something arriving from outside vs.
+// something collapsing inward before it blows back out) rather than variants
+// of the same idea.
+function playNovaCharge(scene: Phaser.Scene, color: number, to: Point, onDone: () => void) {
+  const g = scene.add.graphics().setDepth(60).setBlendMode(Phaser.BlendModes.ADD);
+  scene.tweens.addCounter({
+    from: 0,
+    to: 1,
+    duration: NOVA_CHARGE_MS,
+    ease: 'Cubic.easeIn',
+    onUpdate: (tw) => {
+      const t = tw.getValue() ?? 0;
+      const coreR = 6 + t * 20;
+      g.clear();
+      const n = 14;
+      for (let i = 0; i < n; i++) {
+        const ang = (i / n) * Math.PI * 2 + t * 6;
+        const dist = (1 - t) * 70 + 10;
+        g.fillStyle(i % 2 === 0 ? 0xffffff : color, 0.35 + t * 0.5);
+        g.fillCircle(to.x + Math.cos(ang) * dist, to.y + Math.sin(ang) * dist, 3 + t * 2);
+      }
+      const pulse = 0.7 + 0.3 * Math.sin(t * 36);
+      g.fillStyle(color, 0.45 + t * 0.4);
+      g.fillCircle(to.x, to.y, coreR * pulse);
+      g.fillStyle(0xffffff, 0.55 + t * 0.35);
+      g.fillCircle(to.x, to.y, coreR * 0.5 * pulse);
+      g.lineStyle(2 + t * 3, color, 0.25 + t * 0.5);
+      g.strokeCircle(to.x, to.y, coreR * 2.4);
+    },
+    onComplete: () => {
+      g.destroy();
+      onDone();
+    },
+  });
+}
+
+// Impact (`ultimateNova`): calls `onImpact()` immediately, then either a full
+// outward energy-nova blast (bright core flash, a double expanding ring, and
+// radiating rays punching outward in every direction) or, on a whiff, a small
+// desaturated core that just deflates without ever blowing outward.
+function playNovaImpact(
+  scene: Phaser.Scene,
+  color: number,
+  to: Point,
+  whiff: boolean,
+  onImpact: () => void,
+  onDone: () => void
+) {
+  onImpact();
+  const g = scene.add.graphics().setDepth(61).setBlendMode(Phaser.BlendModes.ADD);
+  const drawColor = whiff ? 0x777777 : color;
+  scene.tweens.addCounter({
+    from: 0,
+    to: 1,
+    duration: NOVA_IMPACT_MS,
+    ease: whiff ? 'Sine.easeOut' : 'Cubic.easeOut',
+    onUpdate: (tw) => {
+      const t = tw.getValue() ?? 0;
+      g.clear();
+      if (whiff) {
+        const r = Math.max(0, 26 * (1 - t));
+        g.fillStyle(drawColor, 0.4 * (1 - t));
+        g.fillCircle(to.x, to.y, r);
+        g.lineStyle(2, 0x999999, 0.35 * (1 - t));
+        g.strokeCircle(to.x, to.y, 14 * (1 - t));
+        return;
+      }
+      g.fillStyle(0xffffff, 0.95 * (1 - t));
+      g.fillCircle(to.x, to.y, 16 + t * 30);
+      g.lineStyle(5, color, 0.85 * (1 - t));
+      g.strokeCircle(to.x, to.y, 20 + t * 90);
+      g.lineStyle(3, 0xffffff, 0.5 * (1 - t));
+      g.strokeCircle(to.x, to.y, 10 + t * 60);
+      const rays = 16;
+      for (let i = 0; i < rays; i++) {
+        const ang = (i / rays) * Math.PI * 2;
+        const len = 24 + t * 80;
+        g.lineStyle(3, color, 0.75 * (1 - t));
+        g.lineBetween(to.x + Math.cos(ang) * 14, to.y + Math.sin(ang) * 14, to.x + Math.cos(ang) * len, to.y + Math.sin(ang) * len);
+      }
+    },
+    onComplete: () => {
+      g.destroy();
+      onDone();
+    },
+  });
+}
+
+// Aftermath (`ultimateNova`): dissipating shards radiating outward from the
+// center plus a fading core glow, ending by tearing down every Graphics
+// object this phase created and firing `onComplete` exactly once.
+function playNovaAftermath(scene: Phaser.Scene, color: number, to: Point, whiff: boolean, onComplete: () => void) {
+  const g = scene.add.graphics().setDepth(58).setBlendMode(Phaser.BlendModes.ADD);
+  const emberColor = whiff ? 0x888888 : color;
+  const spread = whiff ? 16 : 50;
+  scene.tweens.addCounter({
+    from: 0,
+    to: 1,
+    duration: NOVA_AFTERMATH_MS,
+    ease: 'Sine.easeOut',
+    onUpdate: (tw) => {
+      const t = tw.getValue() ?? 0;
+      g.clear();
+      g.fillStyle(emberColor, 0.35 * (1 - t));
+      g.fillCircle(to.x, to.y, (whiff ? 8 : 26) * (1 - t));
+      const shards = 8;
+      for (let i = 0; i < shards; i++) {
+        const ang = (i / shards) * Math.PI * 2;
+        const dist = t * spread;
+        g.fillStyle(i % 2 === 0 ? 0xffffff : emberColor, (1 - t) * 0.75);
+        g.fillCircle(to.x + Math.cos(ang) * dist, to.y + Math.sin(ang) * dist, 2.5 * (1 - t * 0.7));
+      }
+    },
+    onComplete: () => {
+      g.destroy();
+      onComplete();
+    },
+  });
+}
+
+// `ultimateNova` -- see the shared Ultimate-tier comment above for the
+// phase/callback contract. Reads as something collapsing inward then
+// blowing back outward from the target's own position, distinct from
+// playMeteor's mass falling in from above.
+function playNova(
+  scene: Phaser.Scene,
+  color: number,
+  to: Point,
+  whiff: boolean,
+  onImpact: () => void,
+  onComplete: () => void
+) {
+  playNovaSummon(scene, color, to, () => {
+    playNovaCharge(scene, color, to, () => {
+      playNovaImpact(scene, color, to, whiff, onImpact, () => {
+        playNovaAftermath(scene, color, to, whiff, onComplete);
+      });
+    });
   });
 }
 

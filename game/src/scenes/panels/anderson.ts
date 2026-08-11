@@ -6,7 +6,7 @@ import { fontPx } from '../../ui/text';
 import { MOVES, allCrystals, isHybridMaterial, findMaterialByName } from '../../data/materials';
 import { persistFromRegistry } from '../../data/save';
 
-// Anderson stands at world 9's middle tile (WORLD_GUARDIANS) and lets the
+// Anderson stands at world 6's middle tile (WORLD_GUARDIANS) and lets the
 // player "dope in" a crystal they've encountered (or, in Superposition
 // Mode, any crystal in the game) as an impurity, then learn one specific
 // move from its moveset -- an Anderson-impurity take on the same idea

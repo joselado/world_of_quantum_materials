@@ -1,13 +1,14 @@
 import Phaser from 'phaser';
 import { shade } from './colors';
 
-// Curie's avatar -- world 6's guardian (classical magnetism/magnons). Own
-// file, same convention as every other guardian (glow -> sway -> cloak ->
-// head-motif -> orbit ring). Head motif: a faint glow ring pulsing around a
-// small crystal shard in place of a face -- Curie temperature/
-// susceptibility made visual, a warm yellow-green rather than any other
-// guardian's palette.
-export function makeCurieAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameObjects.Container {
+// Skłodowska-Curie's avatar -- world 10's guardian, the finale's own
+// capstone (the Ultimate Move mechanic, §5). Carries the Curie identity's
+// own warm yellow-green palette and crystal-shard-with-a-pulsing-ring head
+// motif (a Curie-temperature transition made visual), but with an added
+// outer halo ring and a denser four-point starburst orbit befitting a
+// finale guardian rather than a mid-game one. Own file, same convention as
+// every other guardian (glow -> sway -> cloak -> head-motif -> orbit ring).
+export function makeSklodowskaCurieAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameObjects.Container {
   const S = 30 * scale;
   const yellowGreen = 0xd9e86a;
   const cloakColor = 0x33361a;
@@ -26,6 +27,25 @@ export function makeCurieAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameObje
     scaleX: { from: 0.88, to: 1.12 },
     scaleY: { from: 0.88, to: 1.12 },
     duration: 1700,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut',
+  });
+
+  // A finale-only outer halo, wider and slower than the inner glow above --
+  // a second layer of light marking her as the guardians' capstone rather
+  // than a mid-game stop.
+  const halo = scene.add.graphics();
+  halo.setBlendMode(Phaser.BlendModes.ADD);
+  halo.lineStyle(2, yellowGreen, 0.35);
+  halo.strokeCircle(0, -S * 0.15, S * 1.15);
+  outer.add(halo);
+  scene.tweens.add({
+    targets: halo,
+    alpha: { from: 0.2, to: 0.6 },
+    scaleX: { from: 0.95, to: 1.08 },
+    scaleY: { from: 0.95, to: 1.08 },
+    duration: 2600,
     yoyo: true,
     repeat: -1,
     ease: 'Sine.easeInOut',
@@ -99,19 +119,21 @@ export function makeCurieAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameObje
     ease: 'Sine.easeInOut',
   });
 
+  // Eight-point starburst orbit (double the usual four) -- a denser halo of
+  // sparks befitting the guardians' own capstone.
   const orbit = scene.add.container(0, 0);
-  for (let i = 0; i < 4; i++) {
-    const ang = (i * Math.PI) / 2;
+  for (let i = 0; i < 8; i++) {
+    const ang = (i * Math.PI) / 4;
     const spark = scene.add
-      .text(Math.cos(ang) * S * 0.95, Math.sin(ang) * S * 0.95 - S * 0.1, '↑↓', {
-        fontSize: `${Math.round(S * 0.24)}px`,
+      .text(Math.cos(ang) * S * 0.95, Math.sin(ang) * S * 0.95 - S * 0.1, '✦', {
+        fontSize: `${Math.round(S * 0.2)}px`,
         color: '#d9e86a',
       })
       .setOrigin(0.5);
     orbit.add(spark);
   }
   sway.add(orbit);
-  scene.tweens.add({ targets: orbit, angle: 360, duration: 4800, repeat: -1, ease: 'Linear' });
+  scene.tweens.add({ targets: orbit, angle: 360, duration: 5400, repeat: -1, ease: 'Linear' });
 
   return outer;
 }

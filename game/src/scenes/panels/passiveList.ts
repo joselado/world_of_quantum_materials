@@ -3,9 +3,10 @@ import type { OverworldScene } from '../OverworldScene';
 import { CANVAS_W } from '../../art/perspective';
 import { fontScale } from '../../ui/text';
 import { PASSIVES } from '../../data/passives';
+import type { PassiveOwner } from '../../data/passives';
 import { persistFromRegistry } from '../../data/save';
 
-// Shared by panels/laughlin.ts's showLaughlinPanel and panels/bohr.ts's
+// Shared by panels/franklin.ts's showFranklinPanel and panels/bohr.ts's
 // showBohrPanel -- both guardians sell a three-passive kit with the same
 // "buy several, only one active, switch by a click" shape Kondo's three
 // moves already use (panels/kondo.ts's renderKondoMoves), just for a
@@ -22,21 +23,26 @@ import { persistFromRegistry } from '../../data/save';
 // reasoning as Kondo's screening moves) -- every passive is always
 // purchasable regardless of current form, so there's no "wrong form" empty
 // state to special-case here. Buying the very first passive for a given
-// guardian activates it automatically, same reasoning as Kondo's first
-// move.
+// owner activates it automatically, same reasoning as Kondo's first move.
+//
+// `passiveIds` is filtered against the flat registry/save `passivesUnlocked`
+// list (globally unique across PASSIVES, not parameterized per owner --
+// only which ids this call passes in decides which owner's kit is being
+// shown), while the active pick is read/written per `owner` from
+// `activePassiveByOwner`.
 export function renderPassiveList(
   scene: OverworldScene,
   container: Phaser.GameObjects.Container,
   y: number,
   passiveIds: string[],
-  unlockedKey: string,
-  activeKey: string,
+  owner: PassiveOwner,
   reopen: () => void
 ): number {
-  const unlocked = (scene.game.registry.get(unlockedKey) as string[]) ?? [];
+  const unlocked = (scene.game.registry.get('passivesUnlocked') as string[]) ?? [];
   const forSale = passiveIds.filter((id) => !unlocked.includes(id));
   const learned = passiveIds.filter((id) => unlocked.includes(id));
-  const active = (scene.game.registry.get(activeKey) as string | null) ?? null;
+  const activeByOwner = (scene.game.registry.get('activePassiveByOwner') as Partial<Record<PassiveOwner, string>>) ?? {};
+  const active = activeByOwner[owner] ?? null;
   const tokens = (scene.game.registry.get('qumatokens') as number) || 0;
 
   // Every row's font size -- buy rows and already-bought/active rows alike
@@ -68,9 +74,9 @@ export function renderPassiveList(
         scene.qumatokens -= passive.cost;
         scene.game.registry.set('qumatokens', scene.qumatokens);
         scene.tokenText.setText(`Qumatokens: ${scene.qumatokens}`);
-        scene.game.registry.set(unlockedKey, [...unlocked, id]);
-        if (!scene.game.registry.get(activeKey)) {
-          scene.game.registry.set(activeKey, id);
+        scene.game.registry.set('passivesUnlocked', [...unlocked, id]);
+        if (!activeByOwner[owner]) {
+          scene.game.registry.set('activePassiveByOwner', { ...activeByOwner, [owner]: id });
         }
         persistFromRegistry(scene.game.registry);
         scene.dialogueContainer?.destroy(true);
@@ -106,7 +112,7 @@ export function renderPassiveList(
         label,
         () => {
           if (isActive) return;
-          scene.game.registry.set(activeKey, id);
+          scene.game.registry.set('activePassiveByOwner', { ...activeByOwner, [owner]: id });
           persistFromRegistry(scene.game.registry);
           scene.dialogueContainer?.destroy(true);
           reopen();

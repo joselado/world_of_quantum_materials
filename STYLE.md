@@ -333,27 +333,36 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 - World 4 only, standing at the middle tile like every other guardian. Blue-violet
   (`#8fa0ff` label / `0x6a7fff` stroke and avatar accents) name label; his avatar
   (`art/laughlin.ts`'s `makeLaughlinAvatar`) is unchanged by this mechanic.
-- Same buy-list-plus-switch shape as Kondo's panel (`renderPassiveList`, shared with
-  Bohr's panel below): a still-unbought passive (`data/passives.ts`'s
-  `LAUGHLIN_PASSIVE_IDS` -- Fractional Guard, Anyon Echo, Edge Current) gets a
-  `<name> -- <cost> qumatokens` buy button plus a one-line description underneath in a
-  dimmer, smaller blue-grey; an already-bought passive gets a clickable "Make `<name>`
-  active" button, or a dimmed "`<name>` (active)" tag with no click handler for whichever
-  one currently is -- same dimmed-current convention every other guardian panel uses.
-  Buying the first passive for this guardian activates it immediately, same reasoning as
-  Kondo's first move; buying a second or third doesn't, and switching which one is active
-  always requires reopening this panel. No "wrong form" empty state -- unlike Kondo's
-  moves, a passive is never gated by a crystal's own physics (the same "player-learned
-  technique, not physics a crystal has to host" reasoning that puts `'screening'` on
-  every type's list), so all three are always purchasable.
-- The buy button's label and its description line are both capped at a lower font-scale
-  ceiling than every other guardian panel's buttons (`Math.min(fontScale(this), 1.3)` for
-  the label, `1.2` for the description) rather than scaling all the way to the Enter-menu
-  Settings panel's uncapped 'Large' text-size preset -- this panel has no shrink-to-fit
-  safety net the way the Enter-menu's info panels do, and three buy rows each carrying
-  their own description, on top of the avatar/intro/Farewell footer every guardian panel
-  already has, pushed the Farewell button off the bottom of the canvas at the default
-  text-size preset the first time this was tried uncapped.
+- No tabs, two runs of rows instead of one flat list (`panels/tunableMoveShop.ts`'s
+  `renderTunableMoveShop` -- Skłodowska-Curie's shop below does *not* reuse this, her
+  per-class-unlock pricing is different enough that her panel is bespoke) -- still-unbought
+  quiz-gated moves
+  (`data/materials.ts`'s `ANALYTIC_MOVE_IDS`, a hardcoded pair, `skyfallBeam`/`groundEruption`),
+  same `<move name> -- <cost> qumatokens` label and afford/dim treatment as Noether's Moves
+  tab (reusing `shopCost`), followed by one row per already-bought move showing which
+  quasiparticle it's tuned to: "`<name>` -- tuned to `<quasiparticle>` (retune)", or if the
+  player has since transmuted into a form that can no longer host the saved assignment,
+  "`<name>` -- tuned to `<quasiparticle>`, reverted to Phonon Beam (this form can't host it --
+  retune)", or "`<name>` -- untuned (pick a quasiparticle)" if never assigned -- `<name>` here
+  is `tunedMoveDisplayName`, so a tuned move's own row already reads like "Magnon Beam --
+  tuned to Magnon Pulse (retune)" rather than the untuned default "Phonon Beam." Empty state once
+  both are bought: "You already carry every analytic technique I can teach." Clicking either
+  an unbought move's buy row or a learned move's tune/retune row opens
+  `showMoveClassPicker`, a sub-panel titled "Which quasiparticle should `<name>` carry?"
+  listing `TUNABLE_MOVE_CLASSES` filtered down to whatever the player's *current* form can
+  host (`canHost`) as its own column of buttons (same button styling as the shop list, just
+  a different button set) -- each labeled with the ordinary move name that class already
+  carries (`quasiparticleLabel`, e.g. "Magnon Pulse" for `'magnon'`) rather than the class
+  id. Picking one on an unbought move completes the purchase; on an already-bought move it
+  just re-saves the assignment, free.
+- **The move's displayed name always leads with its current quasiparticle**
+  (`data/materials.ts`'s `tunedMoveDisplayName`) everywhere a move name shows up in battle
+  too -- the move-menu button, the analytic-question panel's title, the battle log's "X used
+  `<name>`!" line -- built from the quasiparticle's own label (`quasiparticleLabel`, e.g.
+  `"Magnon Pulse"` → `Magnon`) plus each move's fixed shape word ("Beam"/"Eruption") rather
+  than a second hand-authored word list, so `skyfallBeam` tuned to `'magnon'` reads as
+  "Magnon Beam," `groundEruption` tuned to `'chargedAnyon'` as "Anyon Eruption," and so on. An
+  untuned move defaults to `'phonon'`, reading as "Phonon Beam"/"Phonon Eruption."
 
 ## Majorana in the overworld (`OverworldScene.showMajoranaPanel`)
 
@@ -379,74 +388,9 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   pair into a known hybrid recipe yet -- Majorana only knows specific real pairings (e.g.
   Aluminum + Indium Arsenide, or two Graphenes together)."
 
-## Curie in the overworld (`OverworldScene.showCuriePanel`)
-
-- World 6 only, standing at the middle tile like every other guardian. Olive (`0xc9d84a`)
-  name label; panel stroked gold (`0xffe066`, matching Noether's shop rather than getting
-  its own color, since it's the same "buy a move" interaction). Her avatar
-  (`art/curie.ts`'s `makeCurieAvatar`) is unchanged by this mechanic.
-- No tabs, two runs of rows instead of one flat list -- still-unbought quiz-gated moves
-  (`data/materials.ts`'s `ANALYTIC_MOVE_IDS`, a hardcoded pair, `skyfallBeam`/`groundEruption`),
-  same `<move name> -- <cost> qumatokens` label and afford/dim treatment as Noether's Moves
-  tab (reusing `shopCost`), followed by one row per already-bought move showing which
-  quasiparticle it's tuned to: "`<name>` -- tuned to `<quasiparticle>` (retune)", or if the
-  player has since transmuted into a form that can no longer host the saved assignment,
-  "`<name>` -- tuned to `<quasiparticle>`, reverted to Phonon Beam (this form can't host it --
-  retune)", or "`<name>` -- untuned (pick a quasiparticle)" if never assigned -- `<name>` here
-  is `curieMoveDisplayName`, so a tuned move's own row already reads like "Magnon Beam --
-  tuned to Magnon Pulse (retune)" rather than the untuned default "Phonon Beam." Empty state once
-  both are bought: "You already carry every analytic technique I can teach." Clicking either
-  an unbought move's buy row or a learned move's tune/retune row opens
-  `showCurieClassPicker`, a sub-panel titled "Which quasiparticle should `<name>` carry?"
-  listing `CURIE_TUNABLE_CLASSES` filtered down to whatever the player's *current* form can
-  host (`canHost`) as its own column of buttons (same button styling as the shop list, just
-  a different button set) -- each labeled with the ordinary move name that class already
-  carries (`quasiparticleLabel`, e.g. "Magnon Pulse" for `'magnon'`) rather than the class
-  id. Picking one on an unbought move completes the purchase; on an already-bought move it
-  just re-saves the assignment, free.
-- **The move's displayed name always leads with its current quasiparticle**
-  (`data/materials.ts`'s `curieMoveDisplayName`) everywhere a move name shows up in battle
-  too -- the move-menu button, the analytic-question panel's title, the battle log's "X used
-  `<name>`!" line -- built from the quasiparticle's own label (`quasiparticleLabel`, e.g.
-  `"Magnon Pulse"` → `Magnon`) plus each move's fixed shape word ("Beam"/"Eruption") rather
-  than a second hand-authored word list, so `skyfallBeam` tuned to `'magnon'` reads as
-  "Magnon Beam," `groundEruption` tuned to `'chargedAnyon'` as "Anyon Eruption," and so on. An
-  untuned move defaults to `'phonon'`, reading as "Phonon Beam"/"Phonon Eruption."
-
-## Bohr in the overworld (`OverworldScene.showBohrPanel`)
-
-- World 7 only, standing at the middle tile like every other guardian. Amber (`#ffa64a`
-  label / `0xffa64a` stroke) name label; his avatar (`art/bohr.ts`'s `makeBohrAvatar`) is
-  unchanged by this mechanic.
-- Identical shape to Laughlin's panel above (world 4) -- both share `renderPassiveList`,
-  including the same capped-font-scale buy rows -- three passives instead
-  (`data/passives.ts`'s `BOHR_PASSIVE_IDS` -- Correlated Response, Nonlocal Correlation,
-  Shared State), same buy/activate/switch behavior.
-
-## Kondo in the overworld (`OverworldScene.showKondoPanel`)
-
-- World 8 only, standing at the middle tile like every other guardian. Rust-orange
-  (`0xe86a44`) name label and panel stroke -- distinct from Anderson's own rust/amber
-  (`0xc9884a`) below; his avatar (`art/kondo.ts`'s `makeKondoAvatar`) is unchanged by this
-  mechanic.
-- Same two-runs-of-rows shape as Curie's panel above: still-
-  unbought moves from `data/materials.ts`'s `KONDO_MOVE_IDS` (Screening Pulse, Scattering
-  Drag, Breakdown Cascade), usable from any form, same `<move name> -- <cost>
-  qumatokens` label and afford/dim treatment as Curie's/Noether's shops (reusing `shopCost`),
-  followed by one row per already-bought Kondo move -- a bought-and-inactive move reads
-  "Make `<name>` active" as a clickable button, the currently active one (registry/save
-  `kondoActiveMove`) reads "`<name>` (active)" dimmed to 50% alpha with no click handler,
-  the same dimmed-current treatment Dresselhaus's "`<name>` (current form)" row uses. Buying
-  the first Kondo move activates it immediately (still shows the dimmed "(active)" tag right
-  away, no separate click needed); buying a second or third afterward doesn't, and switching
-  which one is active always requires reopening this panel and clicking "Make active," not a
-  per-turn choice in the battle move menu. `'screening'` sits on every type's
-  `MOVE_COMPATIBILITY` list, so all three are always for sale until bought -- no empty/
-  wrong-form state to render here, unlike Noether's shop.
-
 ## Anderson in the overworld (`OverworldScene.showAndersonPanel`)
 
-- World 9 only, standing at the middle tile like every other guardian. Rust/amber
+- World 6 only, standing at the middle tile like every other guardian. Rust/amber
   (`0xc9884a`) name label and panel stroke; his avatar (`art/anderson.ts`'s
   `makeAndersonAvatar`) swaps the head for a scattered, irregular lattice of dim dots with
   one bright point pulsing at the center -- Anderson localization's own picture, a wave
@@ -462,6 +406,96 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   original crystals yet -- there is nothing to dope in" (no host candidates) or "You already
   carry every move `<host>` has to offer" (host picked, but every one of its moves is
   already learned).
+
+## Bohr in the overworld (`OverworldScene.showBohrPanel`)
+
+- World 7 only, standing at the middle tile like every other guardian. Amber (`#ffa64a`
+  label / `0xffa64a` stroke) name label; his avatar (`art/bohr.ts`'s `makeBohrAvatar`) is
+  unchanged by this mechanic.
+- Same buy-list-plus-switch shape as Kondo's panel below (`renderPassiveList`, shared with
+  Franklin's panel below him): a still-unbought passive (`data/passives.ts`'s
+  `BOHR_PASSIVE_IDS` -- Correlated Response, Nonlocal Correlation, Shared State) gets a
+  `<name> -- <cost> qumatokens` buy button plus a one-line description underneath in a
+  dimmer, smaller blue-grey; an already-bought passive gets a clickable "Make `<name>`
+  active" button, or a dimmed "`<name>` (active)" tag with no click handler for whichever
+  one currently is -- same dimmed-current convention every other guardian panel uses.
+  Buying the first passive for this guardian activates it immediately, same reasoning as
+  Kondo's first move; buying a second or third doesn't, and switching which one is active
+  always requires reopening this panel. No "wrong form" empty state -- unlike Kondo's
+  moves, a passive is never gated by a crystal's own physics (the same "player-learned
+  technique, not physics a crystal has to host" reasoning that puts `'screening'` on
+  every type's list), so all three are always purchasable.
+- The buy button's label and its description line are both capped at a lower font-scale
+  ceiling than every other guardian panel's buttons (`Math.min(fontScale(this), 1.3)` for
+  the label, `1.2` for the description) rather than scaling all the way to the Enter-menu
+  Settings panel's uncapped 'Large' text-size preset -- this panel has no shrink-to-fit
+  safety net the way the Enter-menu's info panels do, and three buy rows each carrying
+  their own description, on top of the avatar/intro/Farewell footer every guardian panel
+  already has, pushed the Farewell button off the bottom of the canvas at the default
+  text-size preset the first time this was tried uncapped.
+
+## Kondo in the overworld (`OverworldScene.showKondoPanel`)
+
+- World 8 only, standing at the middle tile like every other guardian. Rust-orange
+  (`0xe86a44`) name label and panel stroke -- distinct from Anderson's own rust/amber
+  (`0xc9884a`) above; his avatar (`art/kondo.ts`'s `makeKondoAvatar`) is unchanged by this
+  mechanic.
+- Same two-runs-of-rows shape as Laughlin's panel above: still-
+  unbought moves from `data/materials.ts`'s `KONDO_MOVE_IDS` (Screening Pulse, Scattering
+  Drag, Breakdown Cascade), usable from any form, same `<move name> -- <cost>
+  qumatokens` label and afford/dim treatment as Laughlin's/Noether's shops (reusing `shopCost`),
+  followed by one row per already-bought Kondo move -- a bought-and-inactive move reads
+  "Make `<name>` active" as a clickable button, the currently active one (registry/save
+  `kondoActiveMove`) reads "`<name>` (active)" dimmed to 50% alpha with no click handler,
+  the same dimmed-current treatment Dresselhaus's "`<name>` (current form)" row uses. Buying
+  the first Kondo move activates it immediately (still shows the dimmed "(active)" tag right
+  away, no separate click needed); buying a second or third afterward doesn't, and switching
+  which one is active always requires reopening this panel and clicking "Make active," not a
+  per-turn choice in the battle move menu. `'screening'` sits on every type's
+  `MOVE_COMPATIBILITY` list, so all three are always for sale until bought -- no empty/
+  wrong-form state to render here, unlike Noether's shop.
+
+## Franklin in the overworld (`OverworldScene.showFranklinPanel`)
+
+- World 9 only, standing at the middle tile like every other guardian. Lavender
+  (`#c9a8e0` label / `0xa878c9` stroke and avatar accents) name label; her avatar
+  (`art/franklin.ts`'s `makeFranklinAvatar`) swaps the head for a disordered lattice of
+  scattered sites surrounded by concentric diffraction rings -- porous/amorphous carbon's
+  own X-ray diffraction pattern made literal -- in a dusty amethyst/lavender palette
+  distinct from Anderson's rust/amber despite the shared defect/disorder theme.
+- Same buy-list-plus-switch shape as Bohr's panel above (`renderPassiveList`, shared
+  between them): a still-unbought passive (`data/passives.ts`'s `FRANKLIN_PASSIVE_IDS` --
+  Diffraction Shadow, Satellite Reflection, Amorphous Halo) gets a `<name> -- <cost>
+  qumatokens` buy button plus a one-line description underneath, same capped-font-scale
+  treatment Bohr's panel uses; an already-bought passive gets a clickable "Make `<name>`
+  active" button, or a dimmed "`<name>` (active)" tag for whichever one currently is. Same
+  "buying the first activates it, no wrong-form empty state" behavior as Bohr's panel.
+
+## Skłodowska-Curie in the overworld (`OverworldScene.showSklodowskaCuriePanel`)
+
+- World 10 only, standing at the middle tile like every other guardian -- the last one the
+  player reaches. Olive (`0xc9d84a`) name label and panel stroke, carried over from the
+  Curie identity's own palette; her avatar (`art/sklodowskaCurie.ts`'s
+  `makeSklodowskaCurieAvatar`) keeps that identity's crystal-shard-with-a-pulsing-ring head
+  motif but adds an outer halo ring and a denser eight-point starburst orbit (double the
+  usual four) befitting the guardians' own capstone rather than a mid-game stop.
+- One row always shown per Ultimate move (`data/materials.ts`'s `ULTIMATE_MOVE_IDS` --
+  `ultimateMeteor`/`ultimateNova`), not a forSale/learned split the way Laughlin's shop
+  renders -- there's no separate "buy the move" step here, since opening the class picker
+  and paying for a class is itself what first unlocks the move. Each row names the move's
+  current quasiparticle (`tunedMoveDisplayName`) or reads "not yet unlocked (pick a
+  quasiparticle)" if the move isn't in `unlockedMoves` yet. Clicking a row opens the same
+  "Which quasiparticle should `<name>` carry?" sub-panel Laughlin's shop uses, but each row's
+  cost reads "Free (already unlocked)" for a class already paid for on that move, else
+  "1000 qumatokens" for one that isn't -- unlike Laughlin's flat one-time move purchase, the
+  cost here is per (move, quasiparticle class) pair.
+- Using an Ultimate move in battle opens `BattleScene.showUltimateQuestions` instead of
+  `showAnalyticQuestion` -- up to three sequential question panels, same visual family as
+  the Analytic question panel below, tagged `★★★` in the move menu instead of `★`, with
+  its own "3/3 correct or it whiffs" legend line. Landing a 3-for-3 hit plays a
+  multi-phase "summon" animation dramatically longer than any other move's effect (see
+  "Attack effects" below) rather than the shared windup/travel/impact beat every other
+  move uses.
 
 ## Paginated candidate lists (`OverworldScene.renderPagedButtons`)
 
@@ -547,12 +581,13 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   color below) over the same translucent-black tag background every HP-bar name label
   already uses. Empty (no active status) by default on both sides -- the pill only ever
   reads as chrome that appears when relevant, not a permanent fixture of the HP-bar area.
-- Laughlin's/Bohr's active passives (DESIGN.md §5) get their own pill directly below that
+- Franklin's/Bohr's active passives (DESIGN.md §5) get their own pill directly below that
   side's status pill, same size/background/depth as the status pill but in a muted
-  blue-violet (`#8fa0ff`, Laughlin's own guardian label color) rather than Kondo's
+  blue-violet (`PASSIVE_PILL_COLOR`, `#8fa0ff` -- its own fixed constant, not derived from
+  either guardian's own label color) rather than Kondo's
   rust-orange, so an always-on passive reads as visually distinct from a ticking status at a
   glance. Reads as the joined name(s) of whichever passive(s) are active (`·`-separated when
-  both a Laughlin and a Bohr passive are active at once), empty by default the same way the
+  both a Franklin and a Bohr passive are active at once), empty by default the same way the
   status pill is. Its horizontal position is clamped back onto the field if the joined text
   would otherwise run past the canvas edge at the largest text-size setting; if the stack of
   rows above it (boost/fail note, name, bar, status pill) leaves no vertical room left for it
@@ -583,11 +618,13 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   with however many moves are on the current page rather than a fixed size, since that
   changes as the player learns moves, buys an analytic/screening kit, or transmutes into a
   form with a different physics-compatible set (§3 of DESIGN.md).
-- **Grouped into up to three move-kind sections (`ATTACKS`/`ANALYTIC`/`SCREENING`), shown one
+- **Grouped into up to four move-kind sections (`ATTACKS`/`ANALYTIC`/`ULTIMATE`/`SCREENING`),
+  shown one
   page at a time** (DESIGN.md §4): a small bold blue-grey (`#8fa0c9`) header line reading the
   section's label sits above that page's own rows, with a `(i/N)` page count appended once
   there's more than one page. A section that has no usable move in it never becomes a page at
-  all (a player with no analytic moves bought, or no Kondo move active, never sees an empty
+  all (a player with no analytic/ultimate moves bought, or no Kondo move active, never sees an
+  empty
   one). A section with more moves than one page can hold at the row-height floor below
   (`BattleScene.moveMenuPages`) splits into several same-label pages instead of shrinking
   further or growing past the field's own bottom edge -- `ATTACKS` for an 'adaptive'-type form
@@ -596,10 +633,12 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   and a near-empty second one. Each move is still a `[ #222244 background / #ffff88 text ]`
   button, same treatment used everywhere else (overworld dialogue buttons), stacked vertically
   under the header. A form with zero currently-usable moves (shouldn't normally happen, since
-  Phonon Beam is universal) shows "No usable moves" instead of an empty panel. One of Curie's
-  two moves (`skyfallBeam`/`groundEruption`) still gets a gold `★` tag appended to its own
-  label, but its "right=2x wrong=½x" legend lives as its own dim sub-line directly under the
-  `ANALYTIC` header instead of in the panel's top legend -- that top legend (`!! no natural
+  Phonon Beam is universal) shows "No usable moves" instead of an empty panel. Laughlin's two
+  Analytic moves (`skyfallBeam`/`groundEruption`) get a gold `★` tag appended to their own
+  label, with a "right=2x wrong=½x" legend living as its own dim sub-line directly under the
+  `ANALYTIC` header instead of in the panel's top legend; Skłodowska-Curie's two Ultimate
+  moves (`ultimateMeteor`/`ultimateNova`) get a `★★★` tag the same way, with a "3/3 correct
+  or it whiffs" legend under the `ULTIMATE` header -- that top legend (`!! no natural
   defense (2x)`) only ever has the one mismatch symbol to explain, kept deliberately terse
   since its wrapped height eats directly into the space every row gets.
 - **Pager**: when more than one page exists, a bold gold `◀` and `▶` (`Text`, hand cursor,
@@ -635,7 +674,8 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 - The one dialogue-style overlay that lives in `BattleScene` rather than `OverworldScene` --
   opened by clicking an analytic move's button, before that move resolves. Same dark
   rounded-rectangle-with-stroke family as every overworld panel (520 wide, height grown to
-  fit), stroked gold (`0xffe066`) to match Curie's own shop and the `★` tag. Move name in
+  fit), stroked gold (`0xffe066`, matching the move menu's own border and the `★` tag rather
+  than Laughlin's own blue-violet shop stroke). Move name in
   bold gold above the question prompt (white, center-aligned, matching the wild-encounter
   quiz's tone), then two shuffled answer buttons in the same `[ #222244 / #ffff88 ]`
   treatment every other button uses. No "let me pass" -- picking an analytic move already
@@ -644,6 +684,11 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 - Locks the move menu (`BattleScene.turnLock`) for the panel's duration so no other move can
   be queued underneath it, released the instant an answer is picked -- the panel itself has
   no other exit.
+- Skłodowska-Curie's Ultimate moves reuse this same panel shape via
+  `BattleScene.showUltimateQuestions`, stroked magenta (`0xff66ff`) instead of gold to read
+  as its own distinct tier, and titled with a `question <i>/3` counter -- up to three of
+  these appear in sequence, stopping at the first wrong answer since a miss already decides
+  the outcome (a whiff).
 
 ## Enter-key pause menu (`OverworldScene.showPauseMenu`/`showInfoPanel`/`showAbilitiesPanel`)
 
@@ -664,7 +709,8 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   single "Close" button.
 - "View Abilities" is its own dedicated panel (`showAbilitiesPanel`, `440` wide, same
   blue-grey stroke) rather than a third `showInfoPanel` body -- one name+description block
-  per guardian (Laughlin, Bohr), each its own pair of `Text` objects with explicitly capped
+  per passive owner (`data/passives.ts`'s `PASSIVE_OWNERS`, currently Franklin and Bohr),
+  each its own pair of `Text` objects with explicitly capped
   font sizes (`nameScale`/`descScale`, same capping `renderPassiveList` already uses) rather
   than folding both full descriptions into `showInfoPanel`'s single wrapped body, since that
   body's shrink-to-fit only lowers font size and never truncates -- two full passive
@@ -719,17 +765,18 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   Phonon Beam, red for Magnon Pulse). All shapes render additive-blended
   (`Phaser.BlendModes.ADD`) so they glow instead of reading as flat shapes.
 - Kondo's three moves (Screening Pulse, Scattering Drag, Breakdown Cascade) share the
-  `'screening'` class's one look, unlike Curie's -- an expanding ring (the same silhouette
+  `'screening'` class's one look, unlike Laughlin's/Skłodowska-Curie's moves below -- an
+  expanding ring (the same silhouette
   Magnon Pulse/Polaron Drag use, reading as a screening cloud enveloping the target) tinted
   Kondo's own rust-orange (`0xe86a44`). Distinct move names and the status-effect log line
   each one produces already read as three different moves without three different
   silhouettes too, so there's no `ANALYTIC_SHAPES`-style per-move override for this class.
-- Curie's two moves break the "one shape per class" rule on purpose -- gold
-  (`0xffe066`), but each with its own silhouette rather than sharing whichever ordinary
+- Laughlin's two Analytic moves break the "one shape per class" rule on purpose, each with
+  its own silhouette rather than sharing whichever ordinary
   `EFFECT_STYLE` shape their currently-tuned quasiparticle carries (`art/attackEffects.ts`'s
   `ANALYTIC_SHAPES`, keyed by move id, not class), and each substantially more elaborate than
-  the three base bolt/ring/burst shapes -- Curie's
-  own request was moves that clearly read as stronger than an ordinary hit, not just a
+  the three base bolt/ring/burst shapes -- deliberately reading as clearly stronger than an
+  ordinary hit, not just a
   bigger bolt/ring/burst. **The beam move** (`skyfallBeam`, `playBeam`) drops a multi-layer
   column of light from off the top of the screen straight down onto the target: a wide pulsing
   telegraph halo fades in first, then a white-hot core inside a brighter/wider outer column
@@ -740,7 +787,19 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   plus a bright vertical geyser
   core straight up through nearly twice the shard count (18 vs. the ordinary burst's 12),
   spread wider than a normal burst. Both deliberately ignore the attacker's own position --
-  a beam falling from the sky and a crack opening in the ground don't originate there.
+  a beam falling from the sky and a crack opening in the ground don't originate there. Each
+  still renders in whichever color its own currently-tuned quasiparticle class carries
+  (`EFFECT_STYLE`), same as an ordinary move -- only the silhouette is overridden.
+- Skłodowska-Curie's two Ultimate moves (`ultimateMeteor`/`ultimateNova`) get the same
+  per-move-id shape-override treatment (`ULTIMATE_SHAPES`), but run their own multi-phase
+  summon→charge→impact→aftermath sequence (`playMeteor`/`playNova`) rather than the shared
+  windup/travel/impact beat every other shape (including Laughlin's beam/eruption) uses --
+  4-6 seconds total, dramatically longer than any other move's effect, with `onImpact` firing
+  at the sequence's own strike beat and `onComplete` only once the full aftermath decay
+  finishes (see `BattleScene`'s "Ultimate moves defer damage/turn-handoff" in `CODEMAP.md`).
+  A whiff (any wrong answer in `showUltimateQuestions`) still plays the same windup/charge
+  phases, but swaps the final impact/aftermath beat for a distinct fizzle cue instead of a
+  hit.
 - The full beat, in order: a ~90ms additive windup flash at the attacker's own position, the
   travelling effect itself (`art/attackEffects.ts`'s `TRAVEL_MS`, 340-520ms depending on
   shape -- beam is the longest at 520ms), then a fire-and-forget impact shockwave (a white

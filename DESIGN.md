@@ -347,15 +347,20 @@ physics at all.** `screening` (Screening Pulse, Scattering Drag, Breakdown
 Cascade, §5) is on every main type's `MOVE_COMPATIBILITY` list, purchasable and
 usable from any form — they deal in a generic scattering/decoherence process any
 crystal's own disorder or environment can carry, not a quasiparticle tied to one
-type's specific band structure. Curie's two moves (`skyfallBeam`/`groundEruption`,
-§5) reach the same "usable from any form, never mismatches" result a different
-way: their static `class` simply defaults to `phonon`, the same universal,
+type's specific band structure. Laughlin's two Analytic moves (`skyfallBeam`/
+`groundEruption`, §5) and Skłodowska-Curie's two Ultimate moves (`ultimateMeteor`/
+`ultimateNova`, §5) reach the same "usable from any form, never mismatches" result a
+different way: their static `class` simply defaults to `phonon`, the same universal,
 physics-motivated class Phonon Beam itself carries, rather than needing a class
-of their own. Their real risk/reward comes from the question
+of their own. An Analytic move's real risk/reward comes from the question
 `BattleScene.showAnalyticQuestion` asks before the hit resolves: right answer
-doubles the damage, wrong answer halves it. Separately, Curie also lets the
-player tell her which quasiparticle each of her moves should carry instead
-(§5's `getCurieMoveClass`) — that choice feeds back into the
+doubles the damage, wrong answer halves it. An Ultimate move instead asks three
+questions in a row (`BattleScene.showUltimateQuestions`) and is all-or-nothing:
+every answer correct lands the hit at full (already very high, see below) power,
+any wrong answer whiffs it for zero. Separately, both Laughlin and Skłodowska-Curie
+let the player tell them which quasiparticle each of their moves should carry
+instead (§5's `getTunedMoveClass`, shared by both guardians' shops via the same
+registry/save `moveClassTuning` map) — that choice feeds back into the
 quasiparticle-mismatch rule below on top of the question's own multiplier, so a
 tuned move mismatches a defender exactly like an ordinary attack of that class
 would; an untuned one simply keeps the default `phonon` class's never-mismatches
@@ -383,16 +388,21 @@ triplet mode) < Spinon Swap / Vison Loop / Chiral Current / Helical Current / Hi
 Oscillation / Heavy Fermion Pulse (`spinon`/`vison`/`chiral`/`helical`/`higgs`/
 `heavyFermion`, tied — fractionalized or topologically protected, but none of them
 non-Abelian) < Anyon Braid / Majorana Split (`chargedAnyon`/`majorana`, tied for the most
-exotic tier the course covers: fractional braiding statistics and non-Abelian zero modes).
+exotic tier the ordinary Attacks roster covers: fractional braiding statistics and
+non-Abelian zero modes).
 Because Phonon Beam (`phonon`) is on every type's
 `MOVE_COMPATIBILITY` list, it can never trigger the quasiparticle-mismatch double-damage
 rule above — the one universal move is also the one that never gets the mismatch bonus, by
-design. Curie's two moves (`skyfallBeam`/`groundEruption`) sit at a middling base power
-below this ordering on purpose — their real payoff is the answer-gated 2x/0.5x multiplier
-above, not raw power. Kondo's three moves (Screening Pulse, Scattering Drag, Breakdown
-Cascade, §5) sit at the very bottom of the ordering instead, on par with Electron Pulse —
-their real payoff is the 3-turn status effect each one deterministically inflicts (§4), not
-raw power either.
+design. Laughlin's two Analytic moves (`skyfallBeam`/`groundEruption`) sit at a middling
+base power below the ordinary tiers on purpose — their real payoff is the answer-gated
+2x/0.5x multiplier above, not raw power. Kondo's three moves (Screening Pulse, Scattering
+Drag, Breakdown Cascade, §5) sit at the very bottom of the ordering instead, on par with
+Electron Pulse — their real payoff is the 3-turn status effect each one deterministically
+inflicts (§4), not raw power either. Skłodowska-Curie's two Ultimate moves (power 100, ten
+times an Analytic move's power — above even Anyon Braid/Majorana Split, the ordinary
+roster's own most exotic tier) are the exception to "power isn't the point": the
+3-questions-all-correct gate is steep enough that raw power *is* the payoff once it's
+cleared.
 
 ## 4. Battle system
 
@@ -436,26 +446,28 @@ natural defense against this!".
 
 **Move menu is grouped by kind and paged one kind at a time, not one flat list.**
 `BattleScene.drawMoveMenu` splits the currently usable moves (`getBattleMoves`) into up to
-three sections -- **Attacks** (every ordinary physics-gated move -- any move that isn't one
-of Curie's two, `ANALYTIC_MOVE_IDS`, and whose `class` isn't `'screening'`), **Analytic**
-(Curie's two answer-gated moves, identified by move id rather than by any shared class,
-still tagged `★` with their own "right=2x wrong=½x" legend line under the header), and
-**Screening** (Kondo's currently-active move, at most one, since `getBattleMoves` only ever
-surfaces whichever one is `kondoActiveMove`, §5) -- but renders only the section the player is
-currently paged to (`moveSectionIndex`), not all of them stacked. A section only counts as a
-page at all if it has at least one usable move, so a player with no Curie moves bought or
-no Kondo move active never sees an empty page, and the pager (◀/▶ buttons plus the Left/
-Right keys, `switchMoveSection`) is hidden entirely once there's only one page to switch
-between. These three groups work differently enough from an ordinary attack (and from each
-other) that a flat stacked list blurred the distinction -- and paging instead of stacking
-means a page's own row height (`drawMoveMenu`'s `rowH`) is budgeted only against that one
-section's move count, not the worst case across every section at once, so an 'adaptive'-type
+four sections -- **Attacks** (every ordinary physics-gated move -- any move that isn't in
+`ANALYTIC_MOVE_IDS` or `ULTIMATE_MOVE_IDS` and whose `class` isn't `'screening'`),
+**Analytic** (Laughlin's two answer-gated moves, identified by move id rather than by any
+shared class, tagged `★` with their own "right=2x wrong=½x" legend line under the header),
+**Ultimate** (Skłodowska-Curie's two answer-gated moves, tagged `★★★` with their own
+"3/3 correct or it whiffs" legend line), and **Screening** (Kondo's currently-active move, at
+most one, since `getBattleMoves` only ever surfaces whichever one is `kondoActiveMove`, §5)
+-- but renders only the section the player is currently paged to (`moveSectionIndex`), not
+all of them stacked. A section only counts as a page at all if it has at least one usable
+move, so a player with no Laughlin/Skłodowska-Curie moves bought or no Kondo move active
+never sees an empty page, and the pager (◀/▶ buttons plus the Left/Right keys,
+`switchMoveSection`) is hidden entirely once there's only one page to switch between. These
+groups work differently enough from an ordinary attack (and from each other) that a flat
+stacked list blurred the distinction -- and paging instead of stacking means a page's own row
+height (`drawMoveMenu`'s `rowH`) is budgeted only against that one section's move count, not
+the worst case across every section at once, so an 'adaptive'-type
 crystal (world 10, see §3) hosting the broadest set of `MoveClass`es of any type -- every
 class except the multiferroic/ferroelectric-only `'electromagnon'`/`'ferron'`,
 deliberately left off its `MOVE_COMPATIBILITY` list the same way `'phonon'`/`'screening'`
-are on every list -- no longer has to squeeze Analytic/Screening rows into the same panel it isn't even
-showing right now. Each button also shows its power and, computed against the current
-opponent's type, a `!!2x` tag when the quasiparticle-mismatch double-damage rule above
+are on every list -- no longer has to squeeze Analytic/Ultimate/Screening rows into the same
+panel it isn't even showing right now. Each button also shows its power and, computed against
+the current opponent's type, a `!!2x` tag when the quasiparticle-mismatch double-damage rule above
 applies, plus a one-line top-of-panel legend spelling out that symbol.
 
 **Battle background per world.** `BattleScene.drawBackground` reads the same
@@ -526,16 +538,19 @@ short form (e.g. "YBCO", "Bi₂Te₃") doesn't carry one.
 
 ## 5. Guardians, economy, and story arc
 
-Every world 1-9 has its own guardian, waiting mid-corridor (`OverworldScene`'s
-`WORLD_GUARDIANS` table, every entry's `tile: 'middle'`) rather than at the goal --
-the goal tile is occupied by that world's boss (see below), so a guardian
+Every one of the ten worlds has its own guardian, waiting mid-corridor
+(`OverworldScene`'s `WORLD_GUARDIANS` table, every entry's `tile: 'middle'`) rather than
+at the goal -- the goal tile is occupied by that world's boss (see below), so a guardian
 is someone the player meets partway through the journey, not a gate to it. Every
 guardian stays reachable from anywhere afterward via the Enter-menu's Guardians panel
-once met (`showGuardiansPanel`, `data/save.ts`'s `metGuardians`). Every guardian
-1-9 has a real mechanic (Noether, Bloch, Dresselhaus, Laughlin, Majorana, Curie, Bohr,
-Kondo, Anderson) -- a guardian without one yet would fall through to the shared
-`OverworldScene.showGuardianLore` panel (avatar + quote only), but nothing currently
-does. World 10 has no guardian; its only encounter is the finale.
+once met (`showGuardiansPanel`, `data/save.ts`'s `metGuardians`). Every guardian has a
+real mechanic (Noether, Bloch, Dresselhaus, Laughlin, Majorana, Anderson, Bohr, Kondo,
+Franklin, Skłodowska-Curie) -- a guardian without one yet would fall through to the
+shared `OverworldScene.showGuardianLore` panel (avatar + quote only), but nothing
+currently does. World 10's guardian (Skłodowska-Curie) is gated behind actually walking
+to World 10 rather than any earlier "met" save state -- her id, `sklodowskaCurie`, is
+deliberately distinct from any id used earlier in the game, so no pre-existing save
+state can mark her met before the player has actually reached her.
 
 - **Noether** → world 1 middle → sells every extra attack move and stat upgrade in the
   game (fitting, since Noether's theorem is literally "symmetry implies a conservation
@@ -559,23 +574,64 @@ does. World 10 has no guardian; its only encounter is the finale.
   fused state is specifically Majorana's mechanic below, not this one. In Superposition Mode the candidate
   list is every non-hybrid crystal in the game (`data/materials.ts`'s `allCrystals()`, filtered) rather
   than only ones actually defeated
-- **Laughlin** → world 4 middle → teaches three passive abilities
-  (`data/passives.ts`'s `LAUGHLIN_PASSIVE_IDS`, `OverworldScene.showLaughlinPanel`) --
-  an always-on, whole-battle modifier rather than a move picked from the battle menu
-  each turn. All three can be bought independently, but only one is ever active in
-  battle at a time (registry/save `laughlinActivePassive`, switched only by revisiting
-  Laughlin's panel), the same "learn several, equip one" shape Kondo's three screening
-  moves already use (below) -- fitting, since Laughlin's own physics (the fractional
-  quantum Hall wavefunction) is world 4's topic, and a passive with no per-turn choice
-  and no duration/tick-down is itself a clean fit for "always on for this battle," unlike
-  Kondo's 3-turn status effects:
-  - **Fractional Guard** -- incoming damage is multiplied down (×0.85) for the whole
-    battle. A hit never lands as a whole electron's worth against a fractionalized state.
-  - **Anyon Echo** -- landing a critical hit triggers a bonus follow-up damage tick
-    (~30% of that hit's damage) immediately after.
-  - **Edge Current** -- softens the quasiparticle-mismatch double-damage rule (2x → 1.5x,
-    `canHost`/`BattleScene.resolveHit`) -- topological edge states partially shrugging off
-    a hit that would otherwise land unmitigated.
+- **Laughlin** → world 4 middle → sells two quiz-gated moves (`skyfallBeam`,
+  `groundEruption` -- `OverworldScene.showLaughlinPanel`, `data/materials.ts`'s
+  `ANALYTIC_MOVE_IDS`, a hardcoded pair of move ids rather than a shared class --
+  neither move has a class of its own to be identified by, see below) -- fitting,
+  since Laughlin's own physics (the fractional quantum Hall wavefunction) is world 4's
+  topic. Using one asks a physics-equation question first (`data/quiz.ts`'s
+  `ANALYTIC_QUESTIONS`, `BattleScene.showAnalyticQuestion`): answer right and the hit
+  lands at 2x, answer wrong and it lands at 0.5x. Each question is tagged with the
+  world number(s) whose course topic it belongs to, and `getAnalyticQuestion(visitedWorlds)`
+  draws only from questions tagged with a world the player has already visited (falling
+  back to the full unfiltered pool if that intersection is ever empty) -- an early
+  player is quizzed on early-world physics, not topics they haven't reached. Each move
+  also gets its own dramatically flashier, per-move (not per-class) visual, deliberately
+  reading as stronger than every other move class (`art/attackEffects.ts`'s
+  `ANALYTIC_SHAPES`/`playBeam`/`playEruption`):
+  `skyfallBeam` drops a multi-layer column of light from off the top of the screen --
+  a white-hot core, two swirling side-rays, a trail of falling sparks, and a radiant
+  sun expanding at the point of origin; `groundEruption` bursts a wide double
+  shockwave ring and a bright geyser core up through nearly twice the shard count of
+  an ordinary burst. Each move's static `class` simply defaults to `'phonon'` --
+  the same universal, always-hostable class Phonon Beam itself carries -- so an
+  untuned move is purchasable/usable from any form and never mismatches, without
+  needing a class of its own. Their displayed name is always "`<quasiparticle>` Beam"/
+  "`<quasiparticle>` Eruption" (`tunedMoveDisplayName`), defaulting to "Phonon Beam"/
+  "Phonon Eruption" while untuned. Buying a move (or later revisiting Laughlin) also opens a
+  quasiparticle-picker sub-panel (`showMoveClassPicker`, offering
+  `TUNABLE_MOVE_CLASSES` -- every ordinary Attacks-section class (i.e. every class
+  except Kondo's `'screening'`) -- filtered down to only the ones the player's
+  *current* form can actually host, `canHost(playerMaterial.type, cls)`: a class as
+  narrow as `'electromagnon'` (only the `multiferroic` type hosts it) only ever
+  shows up while the player is wearing a multiferroic form, rather than being a free
+  "always mismatch nearly every opponent" pick regardless of form. `'phonon'` is on
+  every `MOVE_COMPATIBILITY` list, so the filtered list is never empty) that assigns
+  the move's registry/save `moveClassTuning[moveId]` entry (a map shared with
+  Skłodowska-Curie's Ultimate moves below, since both guardians' shops read and write
+  the same generic tuning helpers), labeled with whichever
+  ordinary move already carries that class (`quasiparticleLabel`, e.g. "Magnon
+  Pulse" for `'magnon'`) rather than the class id itself. This choice only feeds
+  `getTunedMoveClass`, which `BattleScene`'s quasiparticle-mismatch check reads in
+  place of `move.class` for these two ids (see §3/§4) -- still purchasable/usable
+  from any form and still asks its question regardless of tuning. The displayed name
+  always folds in the current quasiparticle (`tunedMoveDisplayName`, e.g. `skyfallBeam`
+  tuned to `'magnon'` reads as "Magnon Beam" everywhere -- the move menu, the
+  question panel, the battle log), built from the quasiparticle's own label plus each
+  move's fixed shape word ("Beam"/"Eruption") rather than a second hand-authored word
+  list. An unbought move has no
+  assignment yet; an already-bought one shows "tuned to `<name>`" with a free
+  "Retune" click back into the same picker (re-opening the same current-form
+  filter, so retuning after a transmute only offers what the *new* form can host),
+  or "untuned" if never assigned -- untuned simply means the mismatch check keeps
+  reading the move's own default `'phonon'` class. The picker only filters at *pick*
+  time, though, so a tuned assignment can still outlive a later transmute into a
+  form that can't host it; `getTunedMoveClass` guards that case by falling back to
+  `'phonon'` (Phonon Beam, the one class every form hosts) whenever the player's
+  *current* form can't host the saved assignment, and `tunedMoveDisplayName`/the
+  shop label follow the same fallback so the name and the mismatch math never
+  disagree -- the shop label reads "tuned to `<name>`, reverted to Phonon Beam (this
+  form can't host it -- retune)" in that state.
 - **Majorana** → world 5 middle → lets the player fuse two crystals they've already
   defeated into a new hybrid material and become it immediately
   (`OverworldScene.showMajoranaPanel`/`combineMaterials`) -- but only a curated
@@ -616,59 +672,33 @@ does. World 10 has no guardian; its only encounter is the finale.
   the game, unfiltered (unlike Dresselhaus above) -- a hybrid's own defeated-material entry,
   if any, simply won't match any `HYBRID_RECIPES` pairing as a further parent, so no extra
   filtering is needed here
-- **Curie** → world 6 middle → sells two quiz-gated moves (`skyfallBeam`,
-  `groundEruption` -- `OverworldScene.showCuriePanel`, `data/materials.ts`'s
-  `ANALYTIC_MOVE_IDS`, a hardcoded pair of move ids rather than a shared class --
-  neither move has a class of its own to be identified by, see below) -- using one
-  asks a physics-equation question first (`data/quiz.ts`'s `ANALYTIC_QUESTIONS`,
-  `BattleScene.showAnalyticQuestion`): answer right and the hit lands at 2x, answer
-  wrong and it lands at 0.5x. Each move also gets its own dramatically flashier,
-  per-move (not per-class) visual, deliberately reading as stronger than every other
-  move class (`art/attackEffects.ts`'s `ANALYTIC_SHAPES`/`playBeam`/`playEruption`):
-  `skyfallBeam` drops a multi-layer column of light from off the top of the screen --
-  a white-hot core, two swirling side-rays, a trail of falling sparks, and a radiant
-  sun expanding at the point of origin; `groundEruption` bursts a wide double
-  shockwave ring and a bright geyser core up through nearly twice the shard count of
-  an ordinary burst. Each move's static `class` simply defaults to `'phonon'` --
-  the same universal, always-hostable class Phonon Beam itself carries -- so an
-  untuned move is purchasable/usable from any form and never mismatches, without
-  needing a class of its own. Their displayed name is always "`<quasiparticle>` Beam"/
-  "`<quasiparticle>` Eruption" (`curieMoveDisplayName`), defaulting to "Phonon Beam"/
-  "Phonon Eruption" while untuned. Buying a move (or later revisiting Curie) also opens a
-  quasiparticle-picker sub-panel (`showCurieClassPicker`, offering
-  `CURIE_TUNABLE_CLASSES` -- every ordinary Attacks-section class (i.e. every class
-  except Kondo's `'screening'`) -- filtered down to only the ones the player's
-  *current* form can actually host, `canHost(playerMaterial.type, cls)`: a class as
-  narrow as `'electromagnon'` (only the `multiferroic` type hosts it) only ever
-  shows up while the player is wearing a multiferroic form, rather than being a free
-  "always mismatch nearly every opponent" pick regardless of form. `'phonon'` is on
-  every `MOVE_COMPATIBILITY` list, so the filtered list is never empty) that assigns
-  the move's registry/save `curieMoveClass[moveId]` entry, labeled with whichever
-  ordinary move already carries that class (`quasiparticleLabel`, e.g. "Magnon
-  Pulse" for `'magnon'`) rather than the class id itself. This choice only feeds
-  `getCurieMoveClass`, which `BattleScene`'s quasiparticle-mismatch check reads in
-  place of `move.class` for these two ids (see §3/§4) -- still purchasable/usable
-  from any form and still asks its question regardless of tuning. The displayed name
-  always folds in the current quasiparticle (`curieMoveDisplayName`, e.g. `skyfallBeam`
-  tuned to `'magnon'` reads as "Magnon Beam" everywhere -- the move menu, the
-  question panel, the battle log), built from the quasiparticle's own label plus each
-  move's fixed shape word ("Beam"/"Eruption") rather than a second hand-authored word
-  list. An unbought move has no
-  assignment yet; an already-bought one shows "tuned to `<name>`" with a free
-  "Retune" click back into the same picker (re-opening the same current-form
-  filter, so retuning after a transmute only offers what the *new* form can host),
-  or "untuned" if never assigned -- untuned simply means the mismatch check keeps
-  reading the move's own default `'phonon'` class. The picker only filters at *pick*
-  time, though, so a tuned assignment can still outlive a later transmute into a
-  form that can't host it; `getCurieMoveClass` guards that case by falling back to
-  `'phonon'` (Phonon Beam, the one class every form hosts) whenever the player's
-  *current* form can't host the saved assignment, and `curieMoveDisplayName`/the
-  shop label follow the same fallback so the name and the mismatch math never
-  disagree -- the shop label reads "tuned to `<name>`, reverted to Phonon Beam (this
-  form can't host it -- retune)" in that state.
-- **Bohr** → world 7 middle → teaches three passive abilities, same "learn several,
-  equip one" shape as Laughlin above (`data/passives.ts`'s `BOHR_PASSIVE_IDS`,
-  `OverworldScene.showBohrPanel`, registry/save `bohrActivePassive`) -- fitting Bohr's
+- **Anderson** → world 6 middle → "dopes in" a crystal the player has defeated as an
+  impurity, then teaches one specific move from that crystal's own moveset
+  (`OverworldScene.showAndersonPanel`/`learnImpurityMove`) -- a two-step pick (host,
+  then which of its moves to learn). Picking a host sets it as the persisted
+  `andersonDopant` (save.ts), replacing whatever was doped in before -- only one
+  impurity species at a time. The learned move is an ordinary append to
+  `unlockedMoves`; whether it actually shows up in the battle menu is gated by
+  `MOVE_COMPATIBILITY` (§3) checked against the *union* of the player's own current
+  form and the currently doped-in impurity's type (`getBattleMoves`) -- an impurity's
+  channel is real for as long as the impurity stays doped in, and disappears the
+  moment a different crystal is doped in instead, the same way a real dopant atom's
+  bound states vanish if you swap in a different dopant species. Distinct from
+  Dresselhaus (become the whole state) and Majorana (fuse two states together):
+  Anderson borrows a single excitation channel without becoming anything. Host
+  pool excludes any `isHybridMaterial` (a Majorana fusion, or one of world 10's own
+  named recipe-result wilds) -- doping in an impurity is meant to be one real compound's
+  own excitation, not a channel a fusion already borrowed from two others. In
+  Superposition Mode the host pool is every non-hybrid crystal in the game, same as
+  Majorana's own ingredient pool
+- **Bohr** → world 7 middle → teaches three passive abilities
+  (`data/passives.ts`'s `BOHR_PASSIVE_IDS`, `OverworldScene.showBohrPanel`) --
+  an always-on, whole-battle modifier rather than a move picked from the battle menu
+  each turn. All three can be bought independently, but only one is ever active in
+  battle at a time (registry/save `activePassiveByOwner`, keyed by owner and switched
+  only by revisiting Bohr's panel), the same "learn several, equip one" shape Kondo's
+  three screening moves already use (below) and Franklin's own passive kit shares
+  (below) -- fitting Bohr's
   own historical role defending quantum mechanics' completeness against the EPR paradox:
   measure one half of an entangled pair and the other answers instantly, not through any
   signal crossing the distance:
@@ -685,7 +715,7 @@ does. World 10 has no guardian; its only encounter is the finale.
   Cascade -- each of which deterministically inflicts one of §4's three status effects
   (Screened, Slowed, Weakened respectively) on a successful hit rather than dealing much
   raw damage itself. `'screening'` sits on every type's `MOVE_COMPATIBILITY` list, the same
-  "usable from any form" treatment Curie's moves get -- these deal in a generic
+  "usable from any form" treatment Laughlin's and Skłodowska-Curie's moves get -- these deal in a generic
   scattering/decoherence process any crystal's own disorder or environment can carry, not a
   quasiparticle tied to one type's specific band structure, so they're named generically
   rather than after the heavy-fermion/Kondo-lattice physics that inspired them: Screening
@@ -710,25 +740,55 @@ does. World 10 has no guardian; its only encounter is the finale.
   (`applySuperpositionLeveling`) seeds `kondoActiveMove` to Screening Pulse if it's still
   unset, for the same reason -- granting every move id doesn't help if none of Kondo's three
   actually pass `getBattleMoves`' extra check.
-- **Anderson** → world 9 middle → "dopes in" a crystal the player has defeated as an
-  impurity, then teaches one specific move from that crystal's own moveset
-  (`OverworldScene.showAndersonPanel`/`learnImpurityMove`) -- a two-step pick (host,
-  then which of its moves to learn). Picking a host sets it as the persisted
-  `andersonDopant` (save.ts), replacing whatever was doped in before -- only one
-  impurity species at a time. The learned move is an ordinary append to
-  `unlockedMoves`; whether it actually shows up in the battle menu is gated by
-  `MOVE_COMPATIBILITY` (§3) checked against the *union* of the player's own current
-  form and the currently doped-in impurity's type (`getBattleMoves`) -- an impurity's
-  channel is real for as long as the impurity stays doped in, and disappears the
-  moment a different crystal is doped in instead, the same way a real dopant atom's
-  bound states vanish if you swap in a different dopant species. Distinct from
-  Dresselhaus (become the whole state) and Majorana (fuse two states together):
-  Anderson borrows a single excitation channel without becoming anything. Host
-  pool excludes any `isHybridMaterial` (a Majorana fusion, or one of world 10's own
-  named recipe-result wilds) -- doping in an impurity is meant to be one real compound's
-  own excitation, not a channel a fusion already borrowed from two others. In
-  Superposition Mode the host pool is every non-hybrid crystal in the game, same as
-  Majorana's own ingredient pool
+- **Franklin** → world 9 middle → teaches three passive abilities
+  (`data/passives.ts`'s `FRANKLIN_PASSIVE_IDS`, `OverworldScene.showFranklinPanel`) --
+  an always-on, whole-battle modifier rather than a move picked from the battle menu
+  each turn. All three can be bought independently, but only one is ever active in
+  battle at a time (registry/save `activePassiveByOwner`, switched only by revisiting
+  Franklin's panel), the same "learn several, equip one" shape Bohr's own passive kit
+  and Kondo's three screening moves already use -- fitting, since Franklin's own
+  physics (X-ray diffraction of a defect-riddled or porous crystal -- a real,
+  if lesser-known, tie between Rosalind Franklin's characterization work and
+  world 9's "excitations and defects" topic) is world 9's topic, and a passive with no
+  per-turn choice and no duration/tick-down is itself a clean fit for "always on for
+  this battle," unlike Kondo's 3-turn status effects:
+  - **Diffraction Shadow** -- incoming damage is multiplied down (×0.85) for the whole
+    battle, the way porous carbon attenuates and scatters an X-ray beam.
+  - **Satellite Reflection** -- landing a critical hit throws off a secondary
+    diffraction peak: a bonus follow-up damage tick (~30% of that hit's damage)
+    immediately after.
+  - **Amorphous Halo** -- softens the quasiparticle-mismatch double-damage rule
+    (2x → 1.5x, `canHost`/`BattleScene.resolveHit`) -- a diffuse, defect-broadened halo
+    partially shrugging off a hit that would otherwise land unmitigated.
+- **Skłodowska-Curie** → world 10 middle → the guardian of the finale world, regarded
+  as the leader of the guardians' circle, teaching the game's one capstone mechanic:
+  two "Ultimate Move" moves, `ultimateMeteor`/`ultimateNova` (`data/materials.ts`'s
+  `ULTIMATE_MOVE_IDS`, displayed as "`<quasiparticle>` Meteor"/"`<quasiparticle>` Nova"
+  via the same `tunedMoveDisplayName` Laughlin's Analytic moves use), each at power 100 --
+  ten times an Analytic move's power, and the highest of any move in the game (§3).
+  Landing one requires answering three quiz questions in a row, all correct
+  (`data/quiz.ts`'s `ULTIMATE_QUESTIONS`/`getUltimateQuestions`, drawn from a broad,
+  any-topic pool rather than restricted to visited worlds the way Laughlin's Analytic
+  pool is -- fitting a finale that asks the player to show mastery of everything, not
+  one world's own topic); `BattleScene.showUltimateQuestions` stops at the first wrong
+  answer, since the outcome (a whiff for zero damage) is already decided at that point,
+  and the turn is still spent either way. Her pricing model is deliberately not the flat
+  per-move purchase every other tunable-move shop uses: instead of buying the move
+  outright, each quasiparticle class costs `ULTIMATE_CLASS_UNLOCK_COST` (1000)
+  qumatokens to unlock *per move*, the first time it's picked for that move -- after
+  which retuning back to an already-unlocked class is free forever, mirroring how
+  ordinary retuning is already free once a move is owned, except the unlock is
+  per-class here rather than per-move. The first unlock of either move also adds it to
+  `unlockedMoves` so it appears in the battle menu. Once tuned, an Ultimate move's
+  battle-side quasiparticle-mismatch math reads exactly like Laughlin's Analytic moves
+  (`getTunedMoveClass`, the same shared `moveClassTuning` map both guardians' shops
+  write to) -- no battle-side special-casing beyond the 3-question gate above. A
+  successful 3-for-3 hit plays a multi-phase "Final-Fantasy-style summon" animation
+  (windup/summon-circle → charge → impact → aftermath, 4-6 seconds total,
+  `art/attackEffects.ts`'s `playMeteor`/`playNova`) -- dramatically longer and flashier
+  than any other move's effect in the game (`playBeam`/`playEruption`, by comparison,
+  run under a second), fitting a move that's meant to read as the game's actual finale
+  attack.
 
 **Boss avatars.** Every built world's rival/boss (`WORLD_RIVALS`/`getRival`)
 stands visibly at the goal tile as a gigantic landmark (`OverworldScene

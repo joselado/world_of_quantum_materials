@@ -89,6 +89,7 @@ const materialsSf = parseFile('src/data/materials.ts');
 
 const MOVES = evalNode(findTopLevelConst(materialsSf, 'MOVES'), materialsSf);
 const ANALYTIC_MOVE_IDS = evalNode(findTopLevelConst(materialsSf, 'ANALYTIC_MOVE_IDS'), materialsSf);
+const ULTIMATE_MOVE_IDS = evalNode(findTopLevelConst(materialsSf, 'ULTIMATE_MOVE_IDS'), materialsSf);
 
 const WORLD_CRYSTALS_RAW = evalNode(findTopLevelConst(materialsSf, 'WORLD_CRYSTALS'), materialsSf);
 const WORLD_CRYSTALS = Object.fromEntries(
@@ -140,7 +141,7 @@ function genQuasiparticles() {
     for (const cls of classes) (classToTypes[cls] ??= []).push(type);
   }
   const moveRows = Object.values(MOVES)
-    .filter((m) => !ANALYTIC_MOVE_IDS.includes(m.id) && m.class !== 'screening')
+    .filter((m) => !ANALYTIC_MOVE_IDS.includes(m.id) && !ULTIMATE_MOVE_IDS.includes(m.id) && m.class !== 'screening')
     .sort((a, b) => a.power - b.power)
     .map((m) => [m.name, `\`${m.class}\``, String(m.power), (classToTypes[m.class] ?? []).join(', ')]);
   const movesTable = table(['Move', 'Quasiparticle class', 'Power', 'Crystal types that can use it'], moveRows);
@@ -182,7 +183,7 @@ function genGuardianPassives() {
     return `#### ${title}\n\n${table(['Passive', 'Effect', 'Cost'], rows)}`;
   };
   return {
-    laughlinTable: section('laughlin', "Laughlin's passives"),
+    franklinTable: section('franklin', "Franklin's passives"),
     bohrTable: section('bohr', "Bohr's passives"),
   };
 }
@@ -210,5 +211,5 @@ applyGenerated('crystals.md', { WORLDS: worldsBlock, RIVALS_TABLE: rivalsTable }
 const { recipesTable } = genHybrids();
 applyGenerated('hybrids.md', { RECIPES_TABLE: recipesTable });
 
-const { laughlinTable, bohrTable } = genGuardianPassives();
-applyGenerated('guardians.md', { LAUGHLIN_PASSIVES_TABLE: laughlinTable, BOHR_PASSIVES_TABLE: bohrTable });
+const { franklinTable, bohrTable } = genGuardianPassives();
+applyGenerated('guardians.md', { FRANKLIN_PASSIVES_TABLE: franklinTable, BOHR_PASSIVES_TABLE: bohrTable });

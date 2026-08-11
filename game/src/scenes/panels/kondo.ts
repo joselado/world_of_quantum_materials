@@ -10,10 +10,10 @@ import { persistFromRegistry } from '../../data/save';
 // Kondo stands at world 8's middle tile (WORLD_GUARDIANS) and sells the
 // three screening-class moves (data/materials.ts's KONDO_MOVE_IDS --
 // Screening Pulse/Scattering Drag/Breakdown Cascade, kept out of
-// Noether's and Curie's own lists so Kondo is their one source), usable
+// Noether's and Laughlin's own lists so Kondo is their one source), usable
 // from any crystal form the player is currently wearing. Mirrors
-// showCuriePanel's layout, but with a 3-entry list where each bought move
-// gets its own "buy" or "switch active" row instead of Curie's flat
+// showLaughlinPanel's Analytic-shop layout, but with a 3-entry list where each bought move
+// gets its own "buy" or "switch active" row instead of Laughlin's flat
 // buy-only list -- see renderKondoMoves below for why: only one of the
 // three can ever be usable in battle at a time (registry/save
 // `kondoActiveMove`), so this panel is also the only place that switches
@@ -59,7 +59,7 @@ export function showKondoPanel(scene: OverworldScene) {
   container.addAt(panel, 0);
 }
 
-// Two sections, not Curie's flat buy-only list: still-unbought Kondo
+// Two sections, not Laughlin's flat buy-only list: still-unbought Kondo
 // moves (same shopCost/afford/dim treatment as every other shop, usable
 // from any form since MOVE_COMPATIBILITY grants 'screening' to every
 // type) followed by every already-bought Kondo move with a "make active"/

@@ -51,11 +51,10 @@ export class TitleScene extends Phaser.Scene {
     registry.set('encounterDensity', save.encounterDensity);
     registry.set('fontScale', save.fontScale);
     registry.set('kondoActiveMove', save.kondoActiveMove);
-    registry.set('laughlinPassivesUnlocked', save.laughlinPassivesUnlocked);
-    registry.set('laughlinActivePassive', save.laughlinActivePassive);
-    registry.set('bohrPassivesUnlocked', save.bohrPassivesUnlocked);
-    registry.set('bohrActivePassive', save.bohrActivePassive);
-    registry.set('curieMoveClass', save.curieMoveClass);
+    registry.set('passivesUnlocked', save.passivesUnlocked);
+    registry.set('activePassiveByOwner', save.activePassiveByOwner);
+    registry.set('moveClassTuning', save.moveClassTuning);
+    registry.set('ultimateClassesUnlocked', save.ultimateClassesUnlocked);
     registry.set('andersonDopant', save.andersonDopant);
     registry.set('musicStyle', save.musicStyle);
 

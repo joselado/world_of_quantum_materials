@@ -104,7 +104,7 @@ wanted.
 
 Per `DESIGN.md`'s roadmap, the "full build-out" pass is done: all 10 worlds
 have a walkable map, biome, wild-encounter pool, rival gate, and a guardian
-standing mid-corridor, every one of them (Noether through Anderson) with a
+standing mid-corridor, every one of them (Noether through Skłodowska-Curie) with a
 real mechanic, with that world's boss standing
 at the goal tile as a gigantic
 visual landmark. Contextual tutorial tips guide new players, a Story Mode /

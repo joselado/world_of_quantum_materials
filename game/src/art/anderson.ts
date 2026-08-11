@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { shade } from './colors';
 
-// Anderson's avatar -- world 9's guardian (disorder and localization). Own
+// Anderson's avatar -- world 6's guardian (disorder and localization). Own
 // file, same convention as every other guardian (glow -> sway -> cloak ->
 // head-motif -> orbit ring). Head motif: a scattered, irregular lattice of
 // dim sites with one bright point pulsing at the center in place of a face --

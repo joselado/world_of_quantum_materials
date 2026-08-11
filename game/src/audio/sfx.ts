@@ -7,10 +7,13 @@
 import { music } from './music';
 
 // Same silhouettes art/attackEffects.ts uses per move class -- bolt/ring/
-// burst for the original seven classes, plus beam/eruption for Curie's
-// analytic moves (a flashier, per-move rather than per-class pair: `skyfallBeam`
-// gets 'beam', `groundEruption` gets 'eruption').
-export type AttackShape = 'bolt' | 'ring' | 'burst' | 'beam' | 'eruption';
+// burst for the original seven classes, beam/eruption for Laughlin's
+// Analytic moves (a flashier, per-move rather than per-class pair:
+// `skyfallBeam` gets 'beam', `groundEruption` gets 'eruption'), and
+// meteor/nova for Skłodowska-Curie's Ultimate pair (`ultimateMeteor`/
+// `ultimateNova`) -- the flashiest tier, a multi-second "summon" sequence
+// well above beam/eruption's ~830-870ms.
+export type AttackShape = 'bolt' | 'ring' | 'burst' | 'beam' | 'eruption' | 'meteor' | 'nova';
 
 // A fast upward-sweeping, high-passed sawtooth "zap" -- bolt moves (a
 // focused shot: Phonon Beam, Electron Pulse, Spinon Swap).
@@ -169,6 +172,115 @@ function playEruptionSfx(ctx: AudioContext, dest: GainNode, noiseBuffer: AudioBu
   }
 }
 
+// A layered rising tone (two detuned sawtooths sweeping up together) plus a
+// sub-bass rumble underneath -- the launch cue for `ultimateMeteor`'s
+// multi-second summon-circle buildup (art/attackEffects.ts's playMeteor).
+// Deliberately bigger and slower-building than playBeamSfx: this plays once,
+// up front, the instant the whole sequence starts (same convention every
+// other shape's launch sfx follows), so it has to carry the "something huge
+// is charging" feeling on its own well before the visual payoff lands.
+function playMeteorSfx(ctx: AudioContext, dest: GainNode, noiseBuffer: AudioBuffer, t: number) {
+  [0, 6].forEach((detune) => {
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.detune.value = detune;
+    osc.frequency.setValueAtTime(70, t);
+    osc.frequency.exponentialRampToValueAtTime(680, t + 1.3);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.001, t);
+    g.gain.exponentialRampToValueAtTime(0.2, t + 0.7);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 1.4);
+    osc.connect(g);
+    g.connect(dest);
+    osc.start(t);
+    osc.stop(t + 1.42);
+  });
+
+  const sub = ctx.createOscillator();
+  sub.type = 'sine';
+  sub.frequency.setValueAtTime(36, t);
+  sub.frequency.linearRampToValueAtTime(58, t + 1.5);
+  const subGain = ctx.createGain();
+  subGain.gain.setValueAtTime(0.001, t);
+  subGain.gain.exponentialRampToValueAtTime(0.42, t + 0.35);
+  subGain.gain.exponentialRampToValueAtTime(0.06, t + 1.5);
+  sub.connect(subGain);
+  subGain.connect(dest);
+  sub.start(t);
+  sub.stop(t + 1.55);
+
+  const src = ctx.createBufferSource();
+  src.buffer = noiseBuffer;
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.setValueAtTime(180, t);
+  lp.frequency.exponentialRampToValueAtTime(2600, t + 1.1);
+  const ng = ctx.createGain();
+  ng.gain.setValueAtTime(0.001, t);
+  ng.gain.exponentialRampToValueAtTime(0.16, t + 0.8);
+  ng.gain.exponentialRampToValueAtTime(0.001, t + 1.35);
+  src.connect(lp);
+  lp.connect(ng);
+  ng.connect(dest);
+  src.start(t);
+  src.stop(t + 1.4);
+}
+
+// A shimmering, slowly widening cluster of tones (a chord blooming outward
+// rather than meteor's single sweeping line) plus the same sub-bass rumble --
+// the launch cue for `ultimateNova`'s outward-building summon sequence.
+// Voiced as a spreading interval (root/fifth/octave staggered in) rather than
+// meteor's unison-detuned pair, so the two moves' cues are distinguishable by
+// ear alone.
+function playNovaSfx(ctx: AudioContext, dest: GainNode, noiseBuffer: AudioBuffer, t: number) {
+  const partials = [220, 330, 440];
+  partials.forEach((freq, i) => {
+    const start = t + i * 0.18;
+    const osc = ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, start);
+    osc.frequency.exponentialRampToValueAtTime(freq * 2.1, start + 1.1);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.001, start);
+    g.gain.exponentialRampToValueAtTime(0.16, start + 0.5);
+    g.gain.exponentialRampToValueAtTime(0.001, start + 1.3);
+    osc.connect(g);
+    g.connect(dest);
+    osc.start(start);
+    osc.stop(start + 1.35);
+  });
+
+  const sub = ctx.createOscillator();
+  sub.type = 'sine';
+  sub.frequency.setValueAtTime(40, t);
+  sub.frequency.linearRampToValueAtTime(64, t + 1.5);
+  const subGain = ctx.createGain();
+  subGain.gain.setValueAtTime(0.001, t);
+  subGain.gain.exponentialRampToValueAtTime(0.4, t + 0.4);
+  subGain.gain.exponentialRampToValueAtTime(0.06, t + 1.5);
+  sub.connect(subGain);
+  subGain.connect(dest);
+  sub.start(t);
+  sub.stop(t + 1.55);
+
+  const src = ctx.createBufferSource();
+  src.buffer = noiseBuffer;
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.setValueAtTime(600, t);
+  bp.frequency.exponentialRampToValueAtTime(3400, t + 1.2);
+  bp.Q.value = 0.8;
+  const ng = ctx.createGain();
+  ng.gain.setValueAtTime(0.001, t);
+  ng.gain.exponentialRampToValueAtTime(0.15, t + 0.9);
+  ng.gain.exponentialRampToValueAtTime(0.001, t + 1.4);
+  src.connect(bp);
+  bp.connect(ng);
+  ng.connect(dest);
+  src.start(t);
+  src.stop(t + 1.45);
+}
+
 export function playAttackSfx(shape: AttackShape) {
   const { ctx, dest, noiseBuffer } = music.getSfxBus();
   const t = ctx.currentTime;
@@ -176,7 +288,48 @@ export function playAttackSfx(shape: AttackShape) {
   else if (shape === 'burst') playBurstSfx(ctx, dest, noiseBuffer, t);
   else if (shape === 'beam') playBeamSfx(ctx, dest, noiseBuffer, t);
   else if (shape === 'eruption') playEruptionSfx(ctx, dest, noiseBuffer, t);
+  else if (shape === 'meteor') playMeteorSfx(ctx, dest, noiseBuffer, t);
+  else if (shape === 'nova') playNovaSfx(ctx, dest, noiseBuffer, t);
   else playBoltSfx(ctx, dest, t);
+}
+
+// A short descending noise/tone cue, clearly reading as "failed" rather than
+// "landed" -- plays instead of the normal impact thud (playImpactSfx) when an
+// Ultimate move whiffs (all 3 questions weren't answered correctly), since
+// playImpactSfx's power param floors at 0.6 and would otherwise still play a
+// minimum-strength hit even for a 0-damage whiff.
+export function playFizzleSfx() {
+  const { ctx, dest, noiseBuffer } = music.getSfxBus();
+  const t = ctx.currentTime;
+
+  const osc = ctx.createOscillator();
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(320, t);
+  osc.frequency.exponentialRampToValueAtTime(70, t + 0.35);
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.001, t);
+  g.gain.exponentialRampToValueAtTime(0.24, t + 0.03);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+  osc.connect(g);
+  g.connect(dest);
+  osc.start(t);
+  osc.stop(t + 0.42);
+
+  const src = ctx.createBufferSource();
+  src.buffer = noiseBuffer;
+  const lp = ctx.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.setValueAtTime(1800, t);
+  lp.frequency.exponentialRampToValueAtTime(200, t + 0.35);
+  const ng = ctx.createGain();
+  ng.gain.setValueAtTime(0.001, t);
+  ng.gain.exponentialRampToValueAtTime(0.14, t + 0.02);
+  ng.gain.exponentialRampToValueAtTime(0.001, t + 0.32);
+  src.connect(lp);
+  lp.connect(ng);
+  ng.connect(dest);
+  src.start(t);
+  src.stop(t + 0.34);
 }
 
 // A punchy pitch-dropping thump plus a short high-passed noise crack, on

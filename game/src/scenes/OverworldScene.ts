@@ -11,9 +11,10 @@ import { makeBohrAvatar } from '../art/bohr';
 import { makeDresselhausAvatar } from '../art/dresselhaus';
 import { makeLaughlinAvatar } from '../art/laughlin';
 import { makeMajoranaAvatar } from '../art/majorana';
-import { makeCurieAvatar } from '../art/curie';
+import { makeSklodowskaCurieAvatar } from '../art/sklodowskaCurie';
 import { makeKondoAvatar } from '../art/kondo';
 import { makeAndersonAvatar } from '../art/anderson';
+import { makeFranklinAvatar } from '../art/franklin';
 import { playGuardianChime } from '../audio/sfx';
 import { project, fogColor, HORIZON_Y, CANVAS_W, CANVAS_H, ProjectedPoint } from '../art/perspective';
 import {
@@ -30,7 +31,8 @@ import {
   enemyStatsForWorld,
   DEFAULT_STATS,
 } from '../data/materials';
-import { PASSIVES, LAUGHLIN_PASSIVE_IDS, BOHR_PASSIVE_IDS } from '../data/passives';
+import { PASSIVES, PASSIVE_OWNERS, PASSIVE_OWNER_LABELS } from '../data/passives';
+import type { PassiveOwner } from '../data/passives';
 import { tokenColorForValue } from '../data/tokens';
 import { getMaterialQuestion } from '../data/quiz';
 import { encounterGreeting } from '../data/greetings';
@@ -53,7 +55,7 @@ import type { GridPoint } from '../world/mapgen';
 import { fontPx, fontScale } from '../ui/text';
 import { music } from '../audio/music';
 import { showNoetherShop } from './panels/noether';
-import { showCuriePanel } from './panels/curie';
+import { showSklodowskaCuriePanel } from './panels/sklodowskaCurie';
 import { showKondoPanel } from './panels/kondo';
 import { showLaughlinPanel } from './panels/laughlin';
 import { showBohrPanel } from './panels/bohr';
@@ -61,6 +63,7 @@ import { showBlochHub } from './panels/bloch';
 import { showDresselhausPanel } from './panels/dresselhaus';
 import { showMajoranaPanel } from './panels/majorana';
 import { showAndersonPanel } from './panels/anderson';
+import { showFranklinPanel } from './panels/franklin';
 
 // Snapshot of an in-progress map, stashed in the game registry so a round
 // trip through BattleScene resumes exactly where the player left off instead
@@ -132,11 +135,13 @@ interface WorldSprite {
 // dispatch (spawnGuardianSprite/openGuardian), the same "reusable rather than
 // per-world bespoke" approach the map generator and biome table already
 // use. Every guardian sets `open` explicitly: Noether (shop), Bloch
-// (teleport hub), Dresselhaus (transmutation), Laughlin (passive abilities),
-// Majorana (hybrid materials), Curie (analytic moves), Bohr (passive
-// abilities), Kondo (screening moves), Anderson (impurity doping). A future
-// guardian added with no mechanic yet can still leave `open` unset and fall
-// through to the shared showGuardianLore panel below.
+// (teleport hub), Dresselhaus (transmutation), Laughlin (analytic moves),
+// Majorana (hybrid materials), Anderson (impurity doping, World 6), Bohr
+// (passive abilities), Kondo (screening moves), Franklin (passive
+// abilities, World 9). World 10 hosts Skłodowska-Curie (Ultimate moves), the
+// guardians' own capstone. A future guardian added with no mechanic yet can
+// still leave `open` unset and fall through to the shared showGuardianLore
+// panel below.
 interface GuardianDef {
   id: string;
   name: string;
@@ -172,10 +177,10 @@ export class OverworldScene extends Phaser.Scene {
   private reachedGoal = false;
   private reachedMiddle = false;
   // Public rather than private: read/written directly by the extracted
-  // scenes/panels/*.ts guardian-panel modules (Noether/Curie/Kondo sell
-  // moves and stats for qumatokens), which live outside this class and so
-  // can't reach a `private` field. Same reasoning applies to every other
-  // field/method below marked public instead of private.
+  // scenes/panels/*.ts guardian-panel modules (Noether/Laughlin/Kondo/
+  // Skłodowska-Curie sell moves and stats for qumatokens), which live outside
+  // this class and so can't reach a `private` field. Same reasoning applies
+  // to every other field/method below marked public instead of private.
   qumatokens = 0;
   private crystalSprites: (WorldSprite & { material: Material })[] = [];
   private tokenSprites: WorldSprite[] = [];
@@ -272,7 +277,7 @@ export class OverworldScene extends Phaser.Scene {
       labelColor: '#8fa0ff',
       strokeColor: 0x6a7fff,
       quote:
-        'Take an electron liquid in a strong enough field and it condenses into something new -- excite it, and the charge that peels off is a fraction of an electron, not a whole one.',
+        'Take an electron liquid in a strong enough field and it condenses into something new -- excite it, and the charge that peels off is a fraction of an electron, not a whole one. Answer my questions right and I will teach your crystal to strike by that same physics.',
       avatar: makeLaughlinAvatar,
       tile: 'middle',
       open: (s) => showLaughlinPanel(s),
@@ -288,14 +293,14 @@ export class OverworldScene extends Phaser.Scene {
       open: (s) => showMajoranaPanel(s),
     },
     6: {
-      id: 'curie',
-      name: 'Curie',
-      labelColor: '#d9e86a',
-      strokeColor: 0xc9d84a,
-      quote: 'Every magnet has a temperature where its order gives up -- above it, the same atoms, no memory of which way is up.',
-      avatar: makeCurieAvatar,
+      id: 'anderson',
+      name: 'Anderson',
+      labelColor: '#e8b27a',
+      strokeColor: 0xc9884a,
+      quote: 'Enough disorder and a wave stops spreading at all -- it localizes, trapped by the very randomness that surrounds it.',
+      avatar: makeAndersonAvatar,
       tile: 'middle',
-      open: (s) => showCuriePanel(s),
+      open: (s) => showAndersonPanel(s),
     },
     7: {
       id: 'bohr',
@@ -318,16 +323,27 @@ export class OverworldScene extends Phaser.Scene {
       open: (s) => showKondoPanel(s),
     },
     9: {
-      id: 'anderson',
-      name: 'Anderson',
-      labelColor: '#e8b27a',
-      strokeColor: 0xc9884a,
-      quote: 'Enough disorder and a wave stops spreading at all -- it localizes, trapped by the very randomness that surrounds it.',
-      avatar: makeAndersonAvatar,
+      id: 'franklin',
+      name: 'Franklin',
+      labelColor: '#c9a8e0',
+      strokeColor: 0xa878c9,
+      quote:
+        'Fire X-rays through a defect-riddled crystal and the sharp spots blur into diffuse rings -- every pore and dislocation leaves its own signature in how the beam scatters. I can teach your crystal to scatter a blow the same way.',
+      avatar: makeFranklinAvatar,
       tile: 'middle',
-      open: (s) => showAndersonPanel(s),
+      open: (s) => showFranklinPanel(s),
     },
-    // 10: none -- the finale is the final boss only, no guardian waiting there.
+    10: {
+      id: 'sklodowskaCurie',
+      name: 'Skłodowska-Curie',
+      labelColor: '#d9e86a',
+      strokeColor: 0xc9d84a,
+      quote:
+        'I lead this circle of guardians, and here is our last lesson: answer three questions in a row on everything you have learned, and your crystal will strike with a force none of the others can match.',
+      avatar: makeSklodowskaCurieAvatar,
+      tile: 'middle',
+      open: (s) => showSklodowskaCuriePanel(s),
+    },
   };
 
   constructor() {
@@ -468,10 +484,10 @@ export class OverworldScene extends Phaser.Scene {
       state.set('playerForm', null);
       state.set('metGuardians', []);
       state.set('kondoActiveMove', null);
-      state.set('laughlinPassivesUnlocked', []);
-      state.set('laughlinActivePassive', null);
-      state.set('bohrPassivesUnlocked', []);
-      state.set('bohrActivePassive', null);
+      state.set('passivesUnlocked', []);
+      state.set('activePassiveByOwner', {});
+      state.set('moveClassTuning', {});
+      state.set('ultimateClassesUnlocked', {});
       state.set('andersonDopant', null);
     }
 
@@ -518,28 +534,34 @@ export class OverworldScene extends Phaser.Scene {
     // is `kondoActiveMove`, and that field isn't touched by the "learn
     // everything" grant above. Only seed it if nothing's active yet, so a
     // player who already picked one via showKondoPanel keeps that choice
-    // across re-levels. Curie's two moves need no equivalent seeding --
-    // unlike an unset `kondoActiveMove` (which hides a move from battle
-    // entirely), an unset `curieMoveClass` entry just leaves that move
-    // untuned (getCurieMoveClass falls back to the move's own always-safe
-    // default 'phonon' class), which is already a normal, fully-usable state.
+    // across re-levels. Laughlin's and Skłodowska-Curie's tunable moves need
+    // no equivalent seeding -- unlike an unset `kondoActiveMove` (which hides
+    // a move from battle entirely), an unset `moveClassTuning` entry just
+    // leaves that move untuned (getTunedMoveClass falls back to the move's
+    // own always-safe default 'phonon' class), which is already a normal,
+    // fully-usable state; and `unlockedMoves` above already grants both of
+    // Skłodowska-Curie's Ultimate move ids directly (Object.keys(MOVES)), so
+    // an unseeded `ultimateClassesUnlocked` doesn't block them either --
+    // Superposition Mode's blanket grant bypasses her shop/unlock-cost path
+    // entirely.
     if (!this.game.registry.get('kondoActiveMove')) {
       this.game.registry.set('kondoActiveMove', KONDO_MOVE_IDS[0]);
     }
-    // Laughlin/Bohr's passives (data/passives.ts): unlock every passive
-    // outright (mirrors the unconditional unlockedMoves grant above -- there's
-    // no per-form gate to respect the way ordinary moves have), but only seed
-    // an active pick if nothing's chosen yet, same reasoning as
-    // kondoActiveMove just above -- a deliberate pick made via
-    // showLaughlinPanel/showBohrPanel should survive every later re-level.
-    this.game.registry.set('laughlinPassivesUnlocked', [...LAUGHLIN_PASSIVE_IDS]);
-    if (!this.game.registry.get('laughlinActivePassive')) {
-      this.game.registry.set('laughlinActivePassive', LAUGHLIN_PASSIVE_IDS[0]);
+    // Every passive owner's kit (data/passives.ts's PASSIVE_OWNERS): unlock
+    // every passive outright (mirrors the unconditional unlockedMoves grant
+    // above -- there's no per-form gate to respect the way ordinary moves
+    // have), but only seed an active pick per owner if nothing's chosen yet
+    // for that owner, same reasoning as kondoActiveMove just above -- a
+    // deliberate pick made via showFranklinPanel/showBohrPanel should
+    // survive every later re-level.
+    this.game.registry.set('passivesUnlocked', Object.keys(PASSIVES));
+    const activeByOwner = { ...((this.game.registry.get('activePassiveByOwner') as Partial<Record<PassiveOwner, string>>) ?? {}) };
+    for (const owner of PASSIVE_OWNERS) {
+      if (!activeByOwner[owner]) {
+        activeByOwner[owner] = Object.values(PASSIVES).find((p) => p.owner === owner)?.id;
+      }
     }
-    this.game.registry.set('bohrPassivesUnlocked', [...BOHR_PASSIVE_IDS]);
-    if (!this.game.registry.get('bohrActivePassive')) {
-      this.game.registry.set('bohrActivePassive', BOHR_PASSIVE_IDS[0]);
-    }
+    this.game.registry.set('activePassiveByOwner', activeByOwner);
     persistFromRegistry(this.game.registry);
   }
 
@@ -2421,7 +2443,7 @@ export class OverworldScene extends Phaser.Scene {
     this.showInfoPanel('Your Stats', body);
   }
 
-  // The "checkable anytime" surface for Laughlin's/Bohr's current passive
+  // The "checkable anytime" surface for Franklin's/Bohr's current passive
   // loadout (data/passives.ts, DESIGN.md §5) -- their own panels already
   // tag locked/unlocked/active, but a player shouldn't have to walk back to
   // either guardian just to remember which passive is running. A dedicated
@@ -2453,10 +2475,11 @@ export class OverworldScene extends Phaser.Scene {
     const descScale = Math.min(fontScale(this), 1.2);
     const descPx = `${Math.round(10 * descScale)}px`;
 
-    const loadout: { guardian: string; activeId: string | null }[] = [
-      { guardian: 'Laughlin', activeId: (this.game.registry.get('laughlinActivePassive') as string | null) ?? null },
-      { guardian: 'Bohr', activeId: (this.game.registry.get('bohrActivePassive') as string | null) ?? null },
-    ];
+    const activeByOwner = (this.game.registry.get('activePassiveByOwner') as Partial<Record<PassiveOwner, string>>) ?? {};
+    const loadout: { guardian: string; activeId: string | null }[] = PASSIVE_OWNERS.map((owner) => ({
+      guardian: PASSIVE_OWNER_LABELS[owner],
+      activeId: activeByOwner[owner] ?? null,
+    }));
     loadout.forEach(({ guardian, activeId }) => {
       const nameLine = this.add
         .text(CANVAS_W / 2, y, `${guardian}: ${activeId ? PASSIVES[activeId].name : 'None equipped'}`, {
@@ -2485,7 +2508,7 @@ export class OverworldScene extends Phaser.Scene {
     });
 
     const footer = this.add
-      .text(CANVAS_W / 2, y, "Switch which one's active by revisiting Laughlin/Bohr.", {
+      .text(CANVAS_W / 2, y, `Switch which one's active by revisiting ${PASSIVE_OWNERS.map((o) => PASSIVE_OWNER_LABELS[o]).join('/')}.`, {
         fontSize: fontPx(this, 11),
         color: '#8fa0c9',
         align: 'center',

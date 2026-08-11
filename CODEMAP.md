@@ -21,10 +21,14 @@ game/src/
                                  dialogue/panel infrastructure (addDialogueButton(At),
                                  renderPagedButtons, renderFarewellFooter) every panels/ file uses
     panels/                    One file per guardian's panel UI (see "Guardian panels" below),
-                                 e.g. noether.ts's showNoetherShop(), curie.ts's showCuriePanel(),
-                                 anderson.ts's showAndersonPanel() -- passiveList.ts's
-                                 renderPassiveList() is the one helper shared across two files
-                                 (laughlin.ts/bohr.ts) rather than living in either
+                                 e.g. noether.ts's showNoetherShop(), sklodowskaCurie.ts's
+                                 showSklodowskaCuriePanel(), anderson.ts's showAndersonPanel() --
+                                 passiveList.ts's renderPassiveList() is the one helper shared
+                                 across two files (franklin.ts/bohr.ts) rather than living in
+                                 either, and tunableMoveShop.ts's renderTunableMoveShop()/
+                                 showMoveClassPicker() is the one shared by laughlin.ts's Analytic
+                                 shop (Skłodowska-Curie's Ultimate shop is priced too differently
+                                 to reuse it, see "Guardians" below)
     BattleScene.ts             Turn-based battle: move buttons, HP bars, attack effects, log
   world/
     mapgen.ts                  Per-world corridor layout generator (walkable grid, branches)
@@ -39,15 +43,19 @@ game/src/
     dresselhaus.ts               makeDresselhausAvatar()
     laughlin.ts                  makeLaughlinAvatar()
     majorana.ts                  makeMajoranaAvatar()
-    curie.ts                     makeCurieAvatar()
+    anderson.ts                   makeAndersonAvatar() -- disordered-lattice head motif, world 6
     bohr.ts                     makeBohrAvatar()
     kondo.ts                     makeKondoAvatar()
-    anderson.ts                   makeAndersonAvatar() -- disordered-lattice head motif, world 9
+    franklin.ts                   makeFranklinAvatar() -- diffraction/lattice-defect motif, world 9
+    sklodowskaCurie.ts            makeSklodowskaCurieAvatar(), world 10
     boss.ts                      makeBossCrystal() -- gigantic multi-shard boss avatar at a world's goal
     tokens.ts                   makeToken() -- qumatoken pickup sprite
-    attackEffects.ts            playAttackEffect() -- bolt/ring/burst/beam/eruption particle effect;
-                                  beam/eruption are ANALYTIC_SHAPES' per-move-id overrides (Curie's
-                                  skyfallBeam/groundEruption), every other shape is per-MoveClass
+    attackEffects.ts            playAttackEffect() -- bolt/ring/burst/beam/eruption/meteor/nova
+                                  particle effect; beam/eruption are ANALYTIC_SHAPES' per-move-id
+                                  overrides (Laughlin's skyfallBeam/groundEruption), meteor/nova are
+                                  ULTIMATE_SHAPES' overrides (Skłodowska-Curie's ultimateMeteor/
+                                  ultimateNova, a 4-6s multi-phase sequence -- see "Stats and battle
+                                  resolution" below), every other shape is per-MoveClass
     colors.ts                   shade(), hueShift(), hashSeed()/seededRandom() -- the deterministic
                                   per-compound PRNG jitterFor() (crystals.ts) is built from
   audio/
@@ -63,25 +71,37 @@ game/src/
     types.ts                    Move, Material, MoveClass, MaterialType, CrystalVariant, Stats
     materials.ts                 MOVES, TYPE_LOOK, WORLD_CRYSTALS, WORLD_RIVALS,
                                   PLAYER_MATERIAL, SHOP_MOVE_IDS, ANALYTIC_MOVE_IDS,
-                                  CURIE_TUNABLE_CLASSES, RIVAL_9_TYPES, WORLD_NAMES,
+                                  ULTIMATE_MOVE_IDS, ULTIMATE_CLASS_UNLOCK_COST,
+                                  TUNABLE_MOVE_CLASSES, RIVAL_9_TYPES, WORLD_NAMES,
                                   DEFAULT_STATS, getWildPool(), getRival(world, rival9Type?),
                                   compatibleMoves(),
                                   canHost(), getPlayerMaterial(), getPlayerStats(), getBattleMoves(),
                                   enemyStatsForWorld(), statUpgradeCost(), shopCost(), findMaterialByName(),
                                   rollRival9Type() -- rolls World 9's rival's random MaterialType,
                                   fed into getRival() (see "Rival/boss fights" below),
-                                  getCurieMoveClass()/curieMoveDisplayName() -- read a Curie move's
+                                  getTunedMoveClass()/tunedMoveDisplayName() -- read a tunable move's
                                   tuned quasiparticle (falling back to its default 'phonon' class),
+                                  shared by Laughlin's Analytic moves and Skłodowska-Curie's Ultimate
+                                  moves alike since both read/write the same registry/save
+                                  moveClassTuning map,
                                   allCrystals() -- every WORLD_CRYSTALS entry deduped by name, feeds
                                   Dresselhaus/Majorana/Anderson's Superposition Mode candidate pools,
                                   hybridRecipeResult()/HYBRID_RECIPES -- Majorana's named parent-pair
                                   recipe catalog, combineMaterials() -- Majorana's hybrid-material fuser
-    passives.ts                   PASSIVES/LAUGHLIN_PASSIVE_IDS/BOHR_PASSIVE_IDS -- Laughlin's and
-                                  Bohr's whole-battle passive abilities (id/name/owner/description/cost)
+    passives.ts                   PASSIVES/FRANKLIN_PASSIVE_IDS/BOHR_PASSIVE_IDS/PASSIVE_OWNERS/
+                                  PASSIVE_OWNER_LABELS -- Franklin's and Bohr's whole-battle passive
+                                  abilities (id/name/owner/description/cost)
     tokens.ts                    Qumatoken value tiers + weights
     quiz.ts                      Per-material physics question pools (>=6 each) via
-                                  getMaterialQuestion(), plus one flat ANALYTIC_QUESTIONS pool via
-                                  getAnalyticQuestion() for Curie's two quiz-gated moves (not per-material)
+                                  getMaterialQuestion(), plus the world-tagged ANALYTIC_QUESTIONS pool
+                                  (AnalyticQuestion carries worlds: number[]) via
+                                  getAnalyticQuestion(visitedWorlds) for Laughlin's two quiz-gated
+                                  Analytic moves -- draws only questions tagged with a visited
+                                  world's topic (falling back to the full pool if that intersection
+                                  is ever empty), and the broad, any-topic ULTIMATE_QUESTIONS pool
+                                  via getUltimateQuestions(n) for Skłodowska-Curie's two Ultimate
+                                  moves -- no visited-world filtering, since the finale is meant to
+                                  test everything the course covered, not one world's own topic
     greetings.ts                 Per-MaterialType flavor lines (encounter/victory/defeat)
     materialdex.ts               Per-material (fallback per-type) physics blurb for Materialdex
     save.ts                      localStorage schema + persistFromRegistry()/load()
@@ -137,12 +157,13 @@ since `materials.ts` pulls in Phaser at module scope) and regenerates the
   deliberately on *every* type's list rather than scoped like every other class: they deal in
   a generic scattering/decoherence process the player applies, not physics a crystal has to
   host, so the intent is "always usable, never mismatched," and the 3-turn status effect each
-  one inflicts (DESIGN.md §4) is the payoff instead of a mismatch bonus. Curie's two moves
-  (`skyfallBeam`, `groundEruption`) reach the same "usable from any form, never mismatches"
+  one inflicts (DESIGN.md §4) is the payoff instead of a mismatch bonus. Laughlin's two Analytic
+  moves (`skyfallBeam`, `groundEruption`) and Skłodowska-Curie's two Ultimate moves
+  (`ultimateMeteor`, `ultimateNova`) reach the same "usable from any form, never mismatches"
   result without needing a class of their own -- their static `class` defaults to `'phonon'`,
   the same universal class every crystal's own lattice already grants Phonon Beam, and stays
-  there until the player tunes it via her picker (`getCurieMoveClass`, see "Guardians" below).
-  Decide any new class's `MOVE_COMPATIBILITY` membership on purpose, not by omission.
+  there until the player tunes it via the relevant guardian's picker (`getTunedMoveClass`, see
+  "Guardians" below). Decide any new class's `MOVE_COMPATIBILITY` membership on purpose, not by omission.
 - Per-type look lives in `TYPE_LOOK` (base color + variant, exported); individual compounds
   of the same type get `shade(color, shadeStep * 18)` so siblings (Iron vs. Cobalt) read as a
   family, *and* (rendering-side, not stored on the `Material` itself) `art/crystals.ts`'s
@@ -182,25 +203,34 @@ since `materials.ts` pulls in Phaser at module scope) and regenerates the
   Materialdex/Save panels, the Enter-key menu) is the same dark rounded-rectangle-with-stroke
   treatment, with the stroke color signaling the panel's kind: blue-grey `0x444466` = wild
   encounter (`OverworldScene.showEncounter`) and the Enter-key menu/info panels (`0x8fa0c9`,
-  a distinct blue-grey so it doesn't collide), gold `0xffe066` = Noether (and its quiz-gated-move
-  counterpart, Curie's `showCuriePanel`, at olive `0xc9d84a`), teal `0x4adde0` = Bloch,
-  teal-green `0x4ad9a0` = Dresselhaus's transmutation panel, green `0x4fd97a` = Majorana's
-  hybrid panel, rust `0xc9884a` = Anderson's impurity-doping panel, red `0xff6666` = rival gate,
-  purple `0x9a6ad9` = Hub's `showPanel` (Materialdex/Save), lavender `0xd9a5ff` =
-  `OverworldScene.showStoryBeat`'s between-worlds panel, and gold `0xffe066` again (matching
-  Curie) for `BattleScene.showAnalyticQuestion`'s in-battle question panel, the one dialogue-style
-  overlay that lives in `BattleScene` rather than `OverworldScene`. A new panel should pick a
-  stroke color that doesn't collide with these.
+  a distinct blue-grey so it doesn't collide), gold `0xffe066` = Noether, teal `0x4adde0` =
+  Bloch, teal-green `0x4ad9a0` = Dresselhaus's transmutation panel, blue-violet `0x6a7fff` =
+  Laughlin's Analytic shop (`panels/tunableMoveShop.ts`'s `renderTunableMoveShop`, shared
+  chrome), green `0x4fd97a` = Majorana's hybrid panel, rust `0xc9884a` = Anderson's
+  impurity-doping panel, amber `0xffa64a` = Bohr's passive panel, red `0xe86a44` = Kondo's
+  screening-move shop, purple `0xa878c9` = Franklin's passive panel, olive `0xc9d84a` =
+  Skłodowska-Curie's Ultimate shop, red `0xff6666` = rival gate, purple `0x9a6ad9` = Hub's
+  `showPanel` (Materialdex/Save), lavender `0xd9a5ff` = `OverworldScene.showStoryBeat`'s
+  between-worlds panel, and (in `BattleScene`, the one place dialogue-style overlays live outside
+  `OverworldScene`) gold `0xffe066` again for `showAnalyticQuestion`'s in-battle question panel
+  (matching the move menu's own border) and magenta `0xff66ff` for `showUltimateQuestions`'s.
+  A new panel should pick a stroke color that doesn't collide with these.
 - **Guardian panels live in `scenes/panels/<guardian>.ts`, one file per guardian, not as
   methods on `OverworldScene`.** Each exports a `show<Guardian>Panel(scene: OverworldScene)`
-  (or, for Bloch/Curie, `showBlochHub`/`showCuriePanel`) that the `WORLD_GUARDIANS` table's
+  (or, for Bloch, `showBlochHub`) that the `WORLD_GUARDIANS` table's
   `open` field calls directly (`open: (s) => showDresselhausPanel(s)`), replacing the older
   `open: (s) => s.showXPanel()` shape from when every panel body lived on the class itself.
   A panel-specific helper only that one guardian calls (e.g. Noether's `renderShopTabs`) moves
   into the same file as a plain (non-exported) function taking `scene` as its first param; a
-  helper more than one guardian calls (`renderPassiveList`, shared by Laughlin/Bohr) gets its
-  own file under `scenes/panels/` instead (`passiveList.ts`) rather than living in either
-  guardian's file. Genuinely cross-cutting dialogue infrastructure -- `addDialogueButton(At)`,
+  helper more than one guardian calls gets its own file under `scenes/panels/` instead rather
+  than living in either guardian's file -- `passiveList.ts`'s `renderPassiveList` (shared by
+  Franklin/Bohr) is the current example. `tunableMoveShop.ts`'s `renderTunableMoveShop`/
+  `showMoveClassPicker` currently has only one caller (Laughlin's Analytic shop) -- it still
+  lives in its own file rather than `laughlin.ts` since it's written generically (any move-id
+  list, any `shopCost`-flow purchase), the same shape a future flat-purchase tunable-move
+  guardian could reuse; Skłodowska-Curie's Ultimate shop deliberately does *not* reuse it (see
+  "Guardians" below), since her per-class-unlock pricing is fundamentally different from a flat
+  purchase. Genuinely cross-cutting dialogue infrastructure -- `addDialogueButton(At)`,
   `renderPagedButtons`, `renderFarewellFooter`, `closeDialogue`, state accessors like
   `getUnlockedMoves`/`getDefeatedMaterials`/`getVisitedWorlds`/`isSuperpositionMode`, and the
   player-form mutator `applyPlayerForm` (shared by Dresselhaus's `transmuteInto` and Majorana's
@@ -220,15 +250,16 @@ since `materials.ts` pulls in Phaser at module scope) and regenerates the
   wandering overworld landmark).
 - **Attack effects keyed by MoveClass**, not by move id -- adding/removing a move never touches
   `attackEffects.ts`, only adding/removing a whole `MoveClass` does (update `EFFECT_STYLE` in
-  `art/attackEffects.ts` and `MOVE_COMPATIBILITY` in `data/materials.ts` together). One
-  deliberate exception: `ANALYTIC_SHAPES: Record<moveId, AttackShape>` overrides the shape
-  per move id for Curie's two moves specifically (`skyfallBeam`, `groundEruption`), since they
-  want two different silhouettes regardless of whichever ordinary quasiparticle class each is
-  currently tuned to -- `BattleScene.resolveHit` looks a move up in `ANALYTIC_SHAPES` and
-  passes it as `playAttackEffect`'s `shapeOverride` param, falling back to `EFFECT_STYLE`'s
-  per-class shape
-  when a move isn't in that map. A future class wanting the same per-move variety should reuse
-  this pattern rather than inventing a second override mechanism.
+  `art/attackEffects.ts` and `MOVE_COMPATIBILITY` in `data/materials.ts` together). Two
+  deliberate exceptions, both `Record<moveId, AttackShape>` lookups consulted in the same order
+  (`ANALYTIC_SHAPES[move.id] ?? ULTIMATE_SHAPES[move.id]`) before falling back to
+  `EFFECT_STYLE`'s per-class shape: `ANALYTIC_SHAPES` overrides the shape for Laughlin's two
+  moves (`skyfallBeam`, `groundEruption`), and `ULTIMATE_SHAPES` overrides it for
+  Skłodowska-Curie's two (`ultimateMeteor`, `ultimateNova`) -- both since these moves want their
+  own silhouette regardless of whichever ordinary quasiparticle class each is currently tuned
+  to. `BattleScene.resolveHit` passes the resolved override as `playAttackEffect`'s
+  `shapeOverride` param. A future class wanting the same per-move variety should reuse this
+  pattern rather than inventing a second override mechanism.
 - **Discovery vs. defeat tracking.** Two separate registry/save lists, both excluding rivals
   (not real compounds): `discoveredMaterials` (`OverworldScene.recordDiscovery`, written on
   first wild *encounter*, feeds the Hub's Materialdex) and `defeatedMaterials`
@@ -284,14 +315,18 @@ correlation`), and a `2x` "quasiparticle mismatch" multiplier from `data/materia
 `canHost(defenderType, move.class)` -- a defender whose own `MOVE_COMPATIBILITY` list doesn't
 include the attacking move's class takes it at double force. This is the only type-interaction
 term in the damage formula (DESIGN.md §3/§4) -- there is no separate type-chart multiplier.
-`resolveHit` also takes a `bonusMultiplier` param (default `1`, a no-op) -- the only current
-caller that passes anything else is `playerAttack` forwarding one of Curie's moves' answer-gated
-2x/0.5x through to the one `resolveHit` call for that specific move id; the opponent's
-follow-up hit in the same exchange is never affected. The question itself is always answered
-*before* `resolveHit` runs (`BattleScene.showAnalyticQuestion`, called from the move button's
-own handler, not from inside `playerAttack`/`resolveHit`) -- keeping `resolveHit` synchronous
-rather than teaching it to await something was a deliberate call, since it already inline-calls
-`endBattle` and chains via `time.delayedCall`.
+`resolveHit` also takes a `bonusMultiplier` param (default `1`, a no-op) -- `playerAttack`
+forwards one of Laughlin's Analytic moves' answer-gated 2x/0.5x, or one of Skłodowska-Curie's
+Ultimate moves' all-or-nothing 1x/0x, through to the one `resolveHit` call for that specific
+move id; the opponent's follow-up hit in the same exchange is never affected. The question(s)
+are always answered *before* `resolveHit` runs (`BattleScene.showAnalyticQuestion`/
+`showUltimateQuestions`, called from the move button's own click handler, not from inside
+`playerAttack`/`resolveHit`) -- keeping `resolveHit` itself synchronous rather than teaching it
+to await something was a deliberate call, since it already inline-calls `endBattle` and chains
+via `time.delayedCall` for ordinary moves. An Ultimate move is the one exception to that
+synchronicity, deferring its own damage-application/log and win-lose-check/turn-release into
+`playAttackEffect`'s `onImpact`/`onComplete` callbacks instead of running them inline -- see the
+Ultimate-specific paragraph below.
 
 **Status effects (Kondo's three moves).** `this.playerStatus`/`this.opponentStatus`
 (`ActiveStatus | null`, `{ kind: 'screened' | 'slowed' | 'weakened'; turnsLeft: number }`)
@@ -318,10 +353,10 @@ the existing line" pattern `mismatchText`/`critText` already use. `setStatus` al
 (`playerStatusLabel`/`opponentStatusLabel`, positioned just under each side's HP bar) to
 `"<Label> (<turnsLeft>)"` or clears it to `''` when there's no active status.
 
-**Passives (Laughlin's/Bohr's abilities).** `this.playerActivePassives`/
+**Passives (Franklin's/Bohr's abilities).** `this.playerActivePassives`/
 `this.opponentActivePassives` (`Set<string>` of `data/passives.ts` ids) are read once in
-`create()` from registry/save `laughlinActivePassive`/`bohrActivePassive` and held for the
-whole battle -- unlike Kondo's status effects above, a passive has no `turnsLeft`/tick-down
+`create()` from registry/save `activePassiveByOwner` (keyed by `PassiveOwner`, `data/
+passives.ts`) and held for the whole battle -- unlike Kondo's status effects above, a passive has no `turnsLeft`/tick-down
 machinery at all, it's just on or off for the battle. Each side's active passives get their
 own pill too, built by `addPassivePill(x, naturalY, text, statusBottom)` and stacked directly
 below that side's status pill (`naturalY` offset from the status pill's own measured
@@ -343,18 +378,22 @@ an always-on passive reads as visually distinct from a ticking status at a glanc
 generic per-side lookup every hook below reads (`opponentActivePassives` stays empty today,
 kept as its own field rather than hardcoding "player only" so the hooks read symmetrically
 off either side, same reasoning `statusDamageMultiplier` etc. already follow). Five of the
-six hook directly into `resolveHit`: **Edge Current** softens the mismatch multiplier
-(`mismatchMult`, 2x → `EDGE_CURRENT_MISMATCH_MULT` 1.5x) when the *defender* has it active;
-**Fractional Guard** adds a `fractionalGuardMult` (0.85) term to the `dmg` formula, also
-keyed off the defender; **Correlated Response** arms `this.guaranteedCritNext[isPlayer ?
-'player' : 'opponent']` on the defender's side whenever they're crit against while it's
-active, consumed (before the ordinary `Math.random() < critChance` roll, not after -- a
-natural crit shouldn't burn a guaranteed one) on that side's own very next `resolveHit` call
-regardless of which move it is; **Anyon Echo** and **Shared State** both fire after the
+six hook directly into `resolveHit`, identified by id (`data/passives.ts`'s
+`fractionalGuard`/`anyonEcho`/`edgeCurrent`/`correlatedResponse`/`sharedState` -- ids kept as
+originally minted, only the guardian-facing display name changed with the Laughlin→Franklin
+retheme, see "Guardians" below): **Amorphous Halo** (`edgeCurrent`) softens the mismatch
+multiplier (`mismatchMult`, 2x → `EDGE_CURRENT_MISMATCH_MULT` 1.5x) when the *defender* has it
+active; **Diffraction Shadow** (`fractionalGuard`) adds a `fractionalGuardMult` (0.85) term to
+the `dmg` formula, also keyed off the defender; **Correlated Response** arms
+`this.guaranteedCritNext[isPlayer ? 'player' : 'opponent']` on the defender's side whenever
+they're crit against while it's active, consumed (before the ordinary `Math.random() <
+critChance` roll, not after -- a natural crit shouldn't burn a guaranteed one) on that side's
+own very next `resolveHit` call regardless of which move it is; **Satellite Reflection**
+(`anyonEcho`) and **Shared State** both fire after the
 primary hit's damage/heal already landed, sharing two small helpers with the ordinary
 damage-application code path: `applyDamage(toPlayer, amount)` and `applyHeal(toPlayer,
 amount, maxHp)` (both mirror the registry-write/persist-only-for-the-player rule the
-original inline branch used, and both call `updateBars()`) -- Anyon Echo re-calls
+original inline branch used, and both call `updateBars()`) -- Satellite Reflection re-calls
 `applyDamage` for a bonus `Math.round(dmg * ANYON_ECHO_FRACTION)` tick against the same
 defender when the attacker's own crit lands with it active, Shared State re-calls
 `applyHeal` for `Math.round(dmg * SHARED_STATE_HEAL_FRACTION)` back onto the attacker's own
@@ -367,13 +406,34 @@ the registry. Each hook's own log clause (`echoText`/`healText`) stacks onto the
 after `statusText`, same "stack a clause onto the existing line" pattern `mismatchText`/
 `critText`/`statusText` already use, in that fixed order.
 
+**Ultimate moves defer damage/turn-handoff to match their multi-second animation.**
+`resolveHit`'s tail is fully synchronous for every ordinary move: `playAttackEffect` fires
+(fire-and-forget), `applyResult()` (damage/log/passive hooks) and `checkEndOrContinue()`
+(win-lose check + `onDone()`/turn-release) run immediately afterward, all before the
+~830ms-or-shorter animation even finishes -- fine at that duration, but a 4-6s Ultimate summon
+would desync badly (HP dropping and the opponent's counter-swing scheduled while the summon is
+still playing). `playAttackEffect` takes an additional optional `onComplete?: () => void`
+alongside its existing `onImpact?: () => void` (`art/attackEffects.ts`) -- for
+`ULTIMATE_MOVE_IDS` only, `resolveHit` folds `applyResult()` into `onImpact` (so it lands at the
+sequence's own impact beat, not five seconds early) and defers `checkEndOrContinue()` into
+`onComplete` (so it only fires once the full windup→charge→impact→aftermath sequence finishes).
+Every other move's call to `playAttackEffect` omits `onComplete` and keeps calling
+`applyResult()`/`checkEndOrContinue()` inline right after, so this is zero-regression for the
+~25 non-Ultimate moves. `turnLock` (set before the move fires, cleared in `onDone`) already
+blocks all input for however long it stays `true`, so no separate locking logic was needed for
+the longer window. A whiff (`bonusMultiplier === 0`, only reachable for an Ultimate move --
+`showUltimateQuestions`' any-wrong-answer path) still plays through `onImpact`/`onComplete` the
+same way, just with `dmg` resolving to (near-)zero and the log line reading a distinct fizzle
+message rather than the ordinary "used `<move>`! (N dmg)" line.
+
 **Battle move menu is sectioned, paged one section at a time.**
-`BattleScene.moveSections(moveIds)` splits `getBattleMoves`'s result into up to three
+`BattleScene.moveSections(moveIds)` splits `getBattleMoves`'s result into up to four
 sections (a module-level `MoveSection[]`, filtered to only the ones with at least one usable
-move): **Attacks** (every move whose id isn't one of Curie's two, `ANALYTIC_MOVE_IDS`, and
-whose `class` isn't `'screening'`), **Analytic** (Curie's two moves, identified by id rather
+move): **Attacks** (every move whose id isn't in `ANALYTIC_MOVE_IDS` or `ULTIMATE_MOVE_IDS`, and
+whose `class` isn't `'screening'`), **Analytic** (Laughlin's two moves, identified by id rather
 than by a shared class, `★` tag, own "right=2x wrong=½x" legend sub-line under its own header),
-**Screening** (Kondo's currently-active move, at most one). `drawMoveMenu(moveIds)` builds a
+**Ultimate** (Skłodowska-Curie's two moves, `★★★` tag, own "3/3 correct or it whiffs" legend
+sub-line), **Screening** (Kondo's currently-active move, at most one). `drawMoveMenu(moveIds)` builds a
 docked `Container` (field `moveMenu`, destroyed and rebuilt from scratch on every call, not
 just once at battle start) on the right of the field, but renders only
 `sections[moveSectionIndex]` -- one page, not every section stacked. `addMoveButton(container,
@@ -404,7 +464,10 @@ A move whose id is one of `ANALYTIC_MOVE_IDS` still gets its `★` tag on the bu
 button's `pointerdown` handler branches before `playerAttack` -- it opens
 `BattleScene.showAnalyticQuestion` first (locking `turnLock` for the duration) and only calls
 `playerAttack(moveId, bonusMultiplier)` once answered, rather than calling `playerAttack`
-directly the way every other move button does.
+directly the way every other move button does. A move in `ULTIMATE_MOVE_IDS` follows the same
+shape but with `showUltimateQuestions` (up to 3 sequential questions, stopping at the first
+wrong answer since the outcome is already decided) in place of `showAnalyticQuestion`, and
+`playerAttack(moveId, allCorrect ? 1 : 0)` instead of a continuous multiplier.
 
 **BattleScene reads the world's biome.** `drawBackground` calls `getBiome(this.world)` (the
 same `art/biomes.ts` table `OverworldScene`'s corridor uses) -- sky/ridge/ground gradients, the
@@ -481,9 +544,10 @@ world, since a mismatched rival name is easy to miss if only `WORLD_NAMES` is up
 Every guardian has its own avatar builder in its own file: `art/noether.ts`'s `makeNoetherAvatar`,
 `art/bloch.ts`'s `makeBlochAvatar` (wireframe Bloch-sphere head, teal),
 `art/dresselhaus.ts`'s `makeDresselhausAvatar` (spin-momentum-locked arrow ring, teal-green),
-and one file per remaining guardian (`art/laughlin.ts`, `art/majorana.ts`, `art/curie.ts`,
-`art/bohr.ts` -- Bohr-model-atom head, amber, `art/kondo.ts`,
-`art/anderson.ts` -- disordered-lattice head motif, world 9). Every guardian spawns through one
+and one file per remaining guardian (`art/laughlin.ts`, `art/majorana.ts`, `art/anderson.ts` --
+disordered-lattice head motif, world 6, `art/bohr.ts` -- Bohr-model-atom head, amber,
+`art/kondo.ts`, `art/franklin.ts` -- diffraction/lattice-defect motif, world 9,
+`art/sklodowskaCurie.ts`, world 10). Every guardian spawns through one
 unified `OverworldScene.spawnGuardianSprite` (looked up from the `WORLD_GUARDIANS` table), not a
 bespoke `spawnXSprite` per guardian, and all share one chime, `playGuardianChime()` in
 `audio/sfx.ts`.
@@ -501,19 +565,20 @@ without being about the guardian at all -- e.g. "Anderson localization"/"Anderso
 physics terminology (DESIGN.md, `quiz.ts`) has nothing to do with the guardian named Anderson, so
 a blind find-and-replace on a name is unsafe).
 
-**Laughlin (world 4), Majorana (world 5), Curie (world 6), Bohr (world 7), Kondo (world 8),
-and Anderson (world 9) all have real mechanics**, following the same `open: (s) =>
-showXPanel(s)` pattern as Noether/Bloch/Dresselhaus (see "Guardian panels" above for the
-`scenes/panels/` file-per-guardian convention all nine follow):
-- **Laughlin's and Bohr's passive panels** (`scenes/panels/laughlin.ts`'s `showLaughlinPanel`/
+**Laughlin (world 4), Majorana (world 5), Anderson (world 6), Bohr (world 7), Kondo (world 8),
+Franklin (world 9), and Skłodowska-Curie (world 10) all have real mechanics**, following the
+same `open: (s) => showXPanel(s)` pattern as Noether/Bloch/Dresselhaus (see "Guardian panels"
+above for the `scenes/panels/` file-per-guardian convention every one of them follows):
+- **Franklin's and Bohr's passive panels** (`scenes/panels/franklin.ts`'s `showFranklinPanel`/
   `scenes/panels/bohr.ts`'s `showBohrPanel`) both share one helper, `scenes/panels/
   passiveList.ts`'s `renderPassiveList(scene, container, y, passiveIds,
-  unlockedKey, activeKey, reopen)`, parameterized over which guardian's registry keys
-  (`laughlinPassivesUnlocked`/`laughlinActivePassive` or `bohrPassivesUnlocked`/
-  `bohrActivePassive`) and `data/passives.ts` id list (`LAUGHLIN_PASSIVE_IDS`/
-  `BOHR_PASSIVE_IDS`) it's rendering for -- the exact same "still-unbought get a buy
+  owner: PassiveOwner, reopen)`, parameterized over which `data/passives.ts` `PassiveOwner`
+  it's rendering for -- it reads/writes the two fixed generic registry/save keys
+  (`passivesUnlocked`, a flat list shared across both owners since passive ids are globally
+  unique, and `activePassiveByOwner`, keyed by owner) internally rather than taking them as
+  params, filtering/writing by the `owner` param. Same "still-unbought get a buy
   button, already-bought get a 'Make `<name>` active' button or a dimmed '`<name>`
-  (active)' tag" shape `renderKondoMoves` already established, right down to "buying the
+  (active)' tag" shape `renderKondoMoves` established, right down to "buying the
   very first one for this guardian auto-activates it, buying a second or third doesn't."
   Unlike Kondo's moves, a passive is never gated by `MOVE_COMPATIBILITY` (the same
   "player-learned technique, not a quasiparticle a crystal has to host" reasoning
@@ -527,7 +592,7 @@ showXPanel(s)` pattern as Noether/Bloch/Dresselhaus (see "Guardian panels" above
   preset (like every other guardian panel's buttons do) pushed the whole panel's Farewell
   button off the bottom of the canvas the first time this was tried, verified via a live
   headless-Chromium run at every `fontScale` preset. See "Stats and battle resolution"
-  below for exactly how each of the six passives hooks into `BattleScene`.
+  above for exactly how each of the six passives hooks into `BattleScene`.
 - **Majorana's hybrid-material panel** (`scenes/panels/majorana.ts`'s `showMajoranaPanel`) lets the player fuse
   two `defeatedMaterials` into a new `Material` via `data/materials.ts`'s `combineMaterials(a,
   b)`, which spreads whatever `Material` the matching `HYBRID_RECIPES` entry authored
@@ -548,36 +613,61 @@ showXPanel(s)` pattern as Noether/Bloch/Dresselhaus (see "Guardian panels" above
   starts the two-step pick fresh; `createHybrid` doesn't persist anything beyond calling
   `becomeHybrid`, which just runs `applyPlayerForm` (the player's *current* form, hybrid or
   not, already survives a reload on its own via `playerForm`).
-- **Curie's quiz-gated-move shop** (`scenes/panels/curie.ts`'s `showCuriePanel`/`renderCurieMoves`) mirrors
-  `scenes/panels/noether.ts`'s `showNoetherShop`/`renderShopMoves` but sells only `data/materials.ts`'s `ANALYTIC_MOVE_IDS`
+- **Laughlin's Analytic-move shop** (`scenes/panels/laughlin.ts`'s `showLaughlinPanel`, calling
+  `scenes/panels/tunableMoveShop.ts`'s shared `renderTunableMoveShop(scene, container, y,
+  moveIds, reopen)`) mirrors `scenes/panels/noether.ts`'s `showNoetherShop`/`renderShopMoves`'s
+  standard `shopCost` purchase flow but sells only `data/materials.ts`'s `ANALYTIC_MOVE_IDS`
   (a hardcoded pair, `skyfallBeam`/`groundEruption` -- identity by id, since neither move has a
   distinguishing class of its own to filter on), which `SHOP_MOVE_IDS` deliberately excludes so
   Noether never also offers them. Two rendered sections: still-unbought moves, then every
   already-bought one showing which quasiparticle it's tuned to (its row label is
-  `curieMoveDisplayName`, e.g. "Magnon Beam -- tuned to Magnon Pulse (retune)"). Buying
-  (or later retuning) a move opens `showCurieClassPicker` -- a sub-panel offering
-  `CURIE_TUNABLE_CLASSES` (every ordinary Attacks-section class, i.e. everything except
+  `tunedMoveDisplayName`, e.g. "Magnon Beam -- tuned to Magnon Pulse (retune)"). Buying
+  (or later retuning) a move opens `tunableMoveShop.ts`'s `showMoveClassPicker` -- a sub-panel
+  offering `TUNABLE_MOVE_CLASSES` (every ordinary Attacks-section class, i.e. everything except
   Kondo's `'screening'`) filtered through `canHost(playerMaterial.type, cls)` (so only
   classes the player's *current* form can host are ever pickable), each labeled via
-  `quasiparticleLabel` -- which writes registry/save `curieMoveClass[moveId]`, read by
-  `data/materials.ts`'s `getCurieMoveClass` in place of the move's own static `class`
+  `quasiparticleLabel` -- which writes registry/save `moveClassTuning[moveId]` (a map shared
+  with Skłodowska-Curie's Ultimate moves below, since it's keyed by move id, not owner), read by
+  `data/materials.ts`'s `getTunedMoveClass` in place of the move's own static `class`
   (which defaults to `'phonon'`, the same universal class Phonon Beam carries) wherever
   `BattleScene` checks quasiparticle-mismatch (both `addMoveButton`'s `!!2x`
-  tag and `resolveHit`'s actual damage multiplier) and by `curieMoveDisplayName` for the
+  tag and `resolveHit`'s actual damage multiplier) and by `tunedMoveDisplayName` for the
   label; the move's own static `class` never changes, so an untuned move stays
   purchasable/usable from any form and still asks its question regardless of tuning. The
   picker only filters at pick time, so a saved assignment can outlive a later transmute into
-  a form that can't host it -- `getCurieMoveClass` re-checks `canHost` against the player's
+  a form that can't host it -- `getTunedMoveClass` re-checks `canHost` against the player's
   *current* form every call and falls back to `'phonon'` (Phonon Beam, universal) when it
-  fails, and `curieMoveDisplayName`/the shop row label read that same fallback rather than the
+  fails, and `tunedMoveDisplayName`/the shop row label read that same fallback rather than the
   raw saved value, so name and mismatch math can't disagree. See
   `BattleScene.showAnalyticQuestion` (Stats and battle resolution, above) for how a purchased
-  Curie move actually plays out in a fight.
+  Analytic move actually plays out in a fight.
+- **Skłodowska-Curie's Ultimate-move shop** (`scenes/panels/sklodowskaCurie.ts`'s
+  `showSklodowskaCuriePanel`/`renderUltimateMoves`/`showUltimateClassPicker`) sells
+  `data/materials.ts`'s `ULTIMATE_MOVE_IDS` (`ultimateMeteor`/`ultimateNova`), and is deliberately
+  **not** built on `tunableMoveShop.ts` -- her pricing model has no separate "buy the move" step
+  at all. `renderUltimateMoves` shows one row per Ultimate move, always (there's no
+  forSale/learned split the way `renderTunableMoveShop`'s does, since opening the class picker
+  and paying for a class *is* what first unlocks the move): the row names the move's current
+  quasiparticle (`tunedMoveDisplayName`/`getTunedMoveClass`, the same helpers Laughlin's shop
+  reads/writes) or says "not yet unlocked" if the move isn't in `unlockedMoves` yet.
+  `showUltimateClassPicker` offers the same `TUNABLE_MOVE_CLASSES`-filtered-by-`canHost` list
+  `showMoveClassPicker` does, but each row's cost is per-class rather than a flat move price:
+  "Free (already unlocked)" for a class already in registry/save
+  `ultimateClassesUnlocked[moveId]`, else `ULTIMATE_CLASS_UNLOCK_COST` (1000) qumatokens.
+  Picking an already-unlocked class just retunes (writes `moveClassTuning[moveId]`); picking a
+  new one deducts the cost, appends the class to `ultimateClassesUnlocked[moveId]`, retunes, and
+  -- only on that move's very first-ever unlock -- appends the move id to `unlockedMoves` so it
+  appears in the battle menu. Once tuned, an Ultimate move's battle-side quasiparticle-mismatch
+  math reads exactly like an Analytic move's (`getTunedMoveClass`) -- no special-casing beyond
+  the 3-question gate, which lives entirely in `BattleScene` (see "Ultimate moves defer
+  damage/turn-handoff," above, and `showUltimateQuestions` in "Battle move menu is sectioned,"
+  above).
 - **Kondo's screening-move shop** (`scenes/panels/kondo.ts`'s `showKondoPanel`/`renderKondoMoves`)
-  mirrors Curie's shop shape but sells `data/materials.ts`'s `KONDO_MOVE_IDS` (three moves:
+  sells `data/materials.ts`'s `KONDO_MOVE_IDS` (three moves:
   `screeningCloud`/`heavyFermionDrag`/`kondoBreakdown`, each tied to one of `types.ts`'s
   `'screening'`-class `MOVES` entries, deliberately excluded from `SHOP_MOVE_IDS`/
-  `ANALYTIC_MOVE_IDS`). Same two-section shape as Curie's shop: still-unbought
+  `ANALYTIC_MOVE_IDS`/`ULTIMATE_MOVE_IDS`). Same two-section shape as Laughlin's shop:
+  still-unbought
   moves (usable from any form, `'screening'` is on every type's `MOVE_COMPATIBILITY` list,
   same afford/dim buy-button treatment as every shop) followed by every already-bought Kondo
   move as its own row -- a bought-and-inactive move gets a "Make `<name>` active" button, the currently active one (registry/
@@ -594,7 +684,7 @@ showXPanel(s)` pattern as Noether/Bloch/Dresselhaus (see "Guardian panels" above
   first, then any `KONDO_MOVE_IDS` entry that isn't `kondoActiveMove` is filtered back out
   even though it's still in `unlockedMoves` -- no other move class has (or needs) an
   equip-slot-style mechanic like this. In battle, a screening move landing calls
-  `BattleScene`'s `applyOrTickStatus` (see "Stats and battle resolution" below) to inflict its
+  `BattleScene`'s `applyOrTickStatus` (see "Stats and battle resolution" above) to inflict its
   one fixed status effect (`KONDO_MOVE_STATUS`, no randomness -- the move id decides the
   effect).
 - **Anderson's impurity-doping panel** (`scenes/panels/anderson.ts`'s `showAndersonPanel`/
@@ -634,12 +724,13 @@ positions. `showMovesPanel` lists `getBattleMoves(registry)`
 `<name> -- Pwr N` lines -- no
 move-class label, no "incompatible" entries; a move the player has learned but can't currently
 use just doesn't show up until they transmute into a form that supports it. `showAbilitiesPanel`
-is the "check anytime" surface for Laughlin's/Bohr's current passive loadout -- its own
-dedicated panel (not folded into `showStatsPanel`/`showInfoPanel`) with one name+description
-block per guardian, read straight from registry `laughlinActivePassive`/`bohrActivePassive`,
-so a player doesn't have to walk back to either guardian's own panel just to remember which
-passive is running (and doesn't have to remember what that passive actually does either, since
-the full description shows here too).
+is the "check anytime" surface for Franklin's/Bohr's current passive loadout -- its own
+dedicated panel (not folded into `showStatsPanel`/`showInfoPanel`), looping over `data/
+passives.ts`'s `PASSIVE_OWNERS` (rather than two hand-written blocks) to build one
+name+description row per owner, labeled via `PASSIVE_OWNER_LABELS` and read from registry
+`activePassiveByOwner[owner]`, so a player doesn't have to walk back to either guardian's own
+panel just to remember which passive is running (and doesn't have to remember what that passive
+actually does either, since the full description shows here too).
 
 **Story Mode vs. Superposition Mode** (save/registry `superpositionMode`, picked on
 `TitleScene`'s title screen via `addModeSelector` -- a two-button picker, not a toggle; Story
@@ -733,19 +824,28 @@ Mode vs. Superposition Mode" above), `encounterDensity: number` (one of
 `musicStyle: 'classic' | 'modern'` (same panel's third row, one of `data/settings.ts`'s
 `MUSIC_STYLE_PRESETS` -- which of `audio/music.ts`'s `SCORES`/`SCORES_MODERN` tables
 `MusicEngine` draws from, applied immediately via `music.setStyle()`),
-`kondoActiveMove: string | null` (which of `data/materials.ts`'s `KONDO_MOVE_IDS` is currently
+`kondoActiveMove: string | null` (which of
+`data/materials.ts`'s `KONDO_MOVE_IDS` is currently
 usable in battle, `null` until the player picks one via `scenes/panels/kondo.ts`'s `showKondoPanel` -- see
 "Guardians" above; the other two bought-but-inactive Kondo moves, if any, still live in the
 ordinary `unlockedMoves` list, this field only tracks which one currently passes
-`getBattleMoves`' extra filter), `laughlinPassivesUnlocked: string[]`/`laughlinActivePassive:
-string | null` and the same pair for `bohr` (`data/passives.ts`'s `LAUGHLIN_PASSIVE_IDS`/
-`BOHR_PASSIVE_IDS`, same "several unlocked, one active" shape as `kondoActiveMove`, see
-"Guardians" above), `curieMoveClass: Partial<Record<string, MoveClass>>` (which quasiparticle
-each of Curie's two moves is tuned to, by move id -- an id missing from this map is
-"untuned," `data/materials.ts`'s `getCurieMoveClass` falls back to the move's own default
-`'phonon'` class), `rival9Type: MaterialType | null` (World 9's rival's randomly-rolled type,
-`null` until the player first reaches World 9 -- `OverworldScene.resolveRival9Type` rolls and
-caches it via `data/materials.ts`'s `rollRival9Type`, see "Rival/boss fights" below), plus the
+`getBattleMoves`' extra filter), `passivesUnlocked: string[]` (every passive ever bought, flat
+across both current owners since passive ids are globally unique across `PASSIVES`) and
+`activePassiveByOwner: Partial<Record<PassiveOwner, string>>` (which passive is currently
+equipped, per owner -- `data/passives.ts`'s `PassiveOwner`/`PASSIVE_OWNERS`, same "several
+unlocked, one active per owner" shape as `kondoActiveMove`, see "Guardians" above),
+`moveClassTuning: Partial<Record<string, MoveClass>>` (which quasiparticle a given tunable move
+is tuned to, by move id -- shared by Laughlin's two Analytic moves and Skłodowska-Curie's two
+Ultimate moves alike, since it's keyed by move id, not owner; an id missing from this map is
+"untuned," `data/materials.ts`'s `getTunedMoveClass` falls back to the move's own default
+`'phonon'` class), `ultimateClassesUnlocked: Partial<Record<string, MoveClass[]>>` (which
+quasiparticle classes have been paid for, per Ultimate move id -- `data/materials.ts`'s
+`ULTIMATE_CLASS_UNLOCK_COST`, see "Guardians" above), `rival9Type: MaterialType | null` (World
+9's rival's randomly-rolled type, `null` until the player first reaches World 9 --
+`OverworldScene.resolveRival9Type` rolls and
+caches it via `data/materials.ts`'s `rollRival9Type`, see "Rival/boss fights" below),
+`andersonDopant: string | null` (the crystal name currently doped in via Anderson's panel, `null`
+until first picked -- see "Guardians" above), plus the
 earlier fields covered under Registry-then-persist above. `defaultSave()`/
 `persistFromRegistry()` are the two places that need touching together for any future field, and
 `loadSave()`'s `{ ...defaultSave(), ...saved }` spread keeps old localStorage saves compatible
@@ -758,7 +858,7 @@ a third, separate hand-written list that has to gain the same new field too, or 
 silently stays `undefined` in the registry on every fresh load (a save file itself would still
 have the right value, since `loadSave()`'s `{ ...defaultSave(), ...saved }` spread is generic
 -- only the registry-seeding step in `TitleScene` is the hand-listed one). Caught the hard way
-while wiring up `laughlinActivePassive`/`bohrActivePassive`: `OverworldScene`/`BattleScene`
+while wiring up `activePassiveByOwner`: `OverworldScene`/`BattleScene`
 both read the *registry*, not `loadSave()` directly, so a field missing from this list reads as
 permanently unset in every scene despite `data/save.ts` being fully correct.
 

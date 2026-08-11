@@ -12,12 +12,15 @@ import type { Material, Move, MoveClass, MaterialType, CrystalVariant, Stats } f
 // quasiparticle-naming rule -- a technique/process the player applies (a
 // scattering channel deliberately tuned) rather than a particle a crystal
 // itself emits, so their names describe the process instead (see that
-// class's own comment below). Curie's moves (skyfallBeam/groundEruption
-// below) name a quasiparticle like any other move too, but a dynamic one --
-// `curieMoveDisplayName` renders each as "<quasiparticle> Beam"/"<quasiparticle>
-// Eruption", the quasiparticle word being whichever class the player has
-// tuned it to via her picker (default 'phonon', so "Phonon Beam"/"Phonon
-// Eruption" until tuned). Their static `name` below is just that default.
+// class's own comment below). Laughlin's Analytic moves (skyfallBeam/
+// groundEruption below) and Skłodowska-Curie's Ultimate moves
+// (ultimateMeteor/ultimateNova) each name a quasiparticle like any other
+// move too, but a dynamic one -- `tunedMoveDisplayName` renders each as
+// "<quasiparticle> Beam"/"<quasiparticle> Eruption"/"<quasiparticle>
+// Meteor"/"<quasiparticle> Nova", the quasiparticle word being whichever
+// class the player has tuned it to via the owning guardian's picker
+// (default 'phonon', so e.g. "Phonon Beam" until tuned). Their static `name`
+// below is just that default.
 //
 // Power climbs with how unconventional the underlying physics is -- an
 // ordinary lattice vibration or band electron is weak, a topological/
@@ -84,17 +87,33 @@ export const MOVES: Record<string, Move> = {
   // A Z2 gauge-flux (vortex) excitation -- spinon's topological-order
   // companion in a Z2 quantum spin liquid.
   visonLoop: { id: 'visonLoop', name: 'Vison Loop', class: 'vison', power: 10 },
-  // Curie's quiz-gated moves (§5, World 6, ANALYTIC_MOVE_IDS below) -- power
-  // sits below the other exotic-tier moves since their real payoff is the
-  // answer-gated 2x/0.5x multiplier BattleScene applies, not raw power.
-  // Never listed in any material's `moves` array (wild/rival movesets) --
-  // only the player can ever be asked one of these questions. Each starts
-  // at the universal 'phonon' class (so it's usable/never-mismatched before
-  // the player ever tunes it) -- Curie's picker (CURIE_TUNABLE_CLASSES,
-  // getCurieMoveClass) lets the player assign it any quasiparticle their
-  // current form hosts instead.
+  // Laughlin's quiz-gated Analytic moves (§5, World 4, ANALYTIC_MOVE_IDS
+  // below) -- power sits below the other exotic-tier moves since their real
+  // payoff is the answer-gated 2x/0.5x multiplier BattleScene applies, not
+  // raw power. Never listed in any material's `moves` array (wild/rival
+  // movesets) -- only the player can ever be asked one of these questions,
+  // and an opponent using one would bypass the quiz gate entirely (it lives
+  // in the player-only move-menu click handler, not the damage formula).
+  // Each starts at the universal 'phonon' class (so it's usable/
+  // never-mismatched before the player ever tunes it) -- Laughlin's picker
+  // (TUNABLE_MOVE_CLASSES, getTunedMoveClass) lets the player assign it any
+  // quasiparticle their current form hosts instead.
   skyfallBeam: { id: 'skyfallBeam', name: 'Phonon Beam', class: 'phonon', power: 10 },
   groundEruption: { id: 'groundEruption', name: 'Phonon Eruption', class: 'phonon', power: 10 },
+  // Skłodowska-Curie's Ultimate moves (§5, World 10, ULTIMATE_MOVE_IDS
+  // below) -- power is 10x an Analytic move's (100 vs 10), well above every
+  // other move in the game, matching the "ultimate" framing; the payoff for
+  // that power is a binary 3-questions-in-a-row gate (any wrong answer
+  // whiffs for 0 damage) rather than Analytic's continuous 2x/0.5x
+  // multiplier. Never listed in any material's `moves` array, same reasoning
+  // as skyfallBeam/groundEruption above -- only the player can ever use one.
+  // Priced completely differently from every other move too: not via
+  // shopCost, but a flat 1000-qumatoken unlock per (move, quasiparticle
+  // class) pair (ULTIMATE_CLASS_UNLOCK_COST, Skłodowska-Curie's own panel).
+  // 'phonon' as the default class for the same always-hostable reason as
+  // skyfallBeam/groundEruption above.
+  ultimateMeteor: { id: 'ultimateMeteor', name: 'Phonon Meteor', class: 'phonon', power: 100 },
+  ultimateNova: { id: 'ultimateNova', name: 'Phonon Nova', class: 'phonon', power: 100 },
   // The multiferroic type's signature quasiparticle -- a spin wave that
   // picks up electric-dipole activity through magnon-phonon hybridization
   // (the magnetoelectric coupling itself), sitting alongside ordinary
@@ -105,8 +124,8 @@ export const MOVES: Record<string, Move> = {
   // ordering, on par with Electron Pulse, since their real payoff is the
   // 3-turn status effect each deterministically inflicts on the defender
   // (BattleScene.resolveHit), not raw power, the same "low power, real
-  // payoff elsewhere" shape Curie's two moves already use for a different
-  // payoff. Never listed in any wild/rival material's `moves`
+  // payoff elsewhere" shape Laughlin's/Skłodowska-Curie's tunable moves
+  // already use for a different payoff. Never listed in any wild/rival material's `moves`
   // array -- only the player can currently learn them, and only one of the
   // three is ever active in battle at a time (registry/save
   // `kondoActiveMove`, switched only by talking to Kondo again --
@@ -133,27 +152,49 @@ export const MOVES: Record<string, Move> = {
   kondoBreakdown: { id: 'kondoBreakdown', name: 'Breakdown Cascade', class: 'screening', power: 7 },
 };
 
-// Curie is the sole seller of these two quiz-gated moves
-// (OverworldScene.showCuriePanel, mirroring Noether's showNoetherShop) --
-// kept out of SHOP_MOVE_IDS so Noether's own shop never offers them too.
-// Named explicitly by id rather than filtered by class -- unlike Kondo's
-// screening moves, these don't share a distinguishing class of their own
-// (each carries whatever ordinary quasiparticle class the player has tuned
-// it to, see getCurieMoveClass below), so "is this one of Curie's moves" is
-// a fact about the move's identity, not something derivable from `class`.
+// Laughlin is the sole seller of these two quiz-gated Analytic moves
+// (scenes/panels/laughlin.ts, panels/tunableMoveShop.ts, mirroring
+// Noether's showNoetherShop) -- kept out of SHOP_MOVE_IDS so Noether's own
+// shop never offers them too. Named explicitly by id rather than filtered
+// by class -- unlike Kondo's screening moves, these don't share a
+// distinguishing class of their own (each carries whatever ordinary
+// quasiparticle class the player has tuned it to, see getTunedMoveClass
+// below), so "is this one of Laughlin's moves" is a fact about the move's
+// identity, not something derivable from `class`.
+//
+// Never add these ids (or ULTIMATE_MOVE_IDS below) to any material's
+// `moves` array in WORLD_CRYSTALS/WORLD_RIVALS -- an opponent using one
+// would bypass the quiz gate entirely, since that gate lives in the
+// player-only move-menu click handler (BattleScene.ts's addMoveButton), not
+// in the damage formula itself.
 export const ANALYTIC_MOVE_IDS = ['skyfallBeam', 'groundEruption'];
 
-// The full roster of ordinary quasiparticle classes Curie's shop can ever
-// offer to assign to a quiz-gated move (OverworldScene.showCurieClassPicker)
-// -- every ordinary Attacks-section class, i.e. everything except
-// 'screening' itself (Kondo's, not an assignable quasiparticle). The picker
-// itself filters this down further, to only the classes the player's
-// *current* form can actually host (`canHost(playerMaterial.type, cls)`) --
-// so a class as narrow as 'ferron' (only 'ferroelectric'/'multiferroic' host
-// it) only ever shows up while the player is wearing one of those forms,
-// rather than being freely pickable as an easy "always mismatch nearly
-// every opponent" choice.
-export const CURIE_TUNABLE_CLASSES: MoveClass[] = [
+// Skłodowska-Curie is the sole seller of these two quiz-gated Ultimate
+// moves (scenes/panels/sklodowskaCurie.ts) -- kept out of SHOP_MOVE_IDS
+// same as ANALYTIC_MOVE_IDS above. See MOVES.ultimateMeteor/ultimateNova's
+// own comment for the power/pricing rationale, and ANALYTIC_MOVE_IDS's
+// comment just above for why these can never appear in an opponent's
+// `moves` array either.
+export const ULTIMATE_MOVE_IDS = ['ultimateMeteor', 'ultimateNova'];
+
+// Qumatoken cost to unlock one quasiparticle class for one Ultimate move
+// (Skłodowska-Curie's panel, registry/save `ultimateClassesUnlocked`) --
+// paid once per (move, class) pair, not per purchase like shopCost; once
+// paid, retuning back to that class is free forever.
+export const ULTIMATE_CLASS_UNLOCK_COST = 1000;
+
+// The full roster of ordinary quasiparticle classes a tunable move's
+// picker can ever offer (scenes/panels/tunableMoveShop.ts's
+// showMoveClassPicker, scenes/panels/sklodowskaCurie.ts's own picker) --
+// every ordinary Attacks-section class, i.e. everything except 'screening'
+// itself (Kondo's, not an assignable quasiparticle). Each picker filters
+// this down further, to only the classes the player's *current* form can
+// actually host (`canHost(playerMaterial.type, cls)`) -- so a class as
+// narrow as 'ferron' (only 'ferroelectric'/'multiferroic' host it) only
+// ever shows up while the player is wearing one of those forms, rather than
+// being freely pickable as an easy "always mismatch nearly every opponent"
+// choice.
+export const TUNABLE_MOVE_CLASSES: MoveClass[] = [
   'electron',
   'magnon',
   'phonon',
@@ -174,18 +215,17 @@ export const CURIE_TUNABLE_CLASSES: MoveClass[] = [
 
 // Reuses the display name the matching ordinary move already carries
 // (Electron Pulse for 'electron', Magnon Pulse for 'magnon', ...) as the
-// label Curie's picker shows for that class, rather than inventing a
-// second naming scheme -- each of CURIE_TUNABLE_CLASSES maps to exactly one
+// label a tunable move's picker shows for that class, rather than inventing
+// a second naming scheme -- each of TUNABLE_MOVE_CLASSES maps to exactly one
 // MOVES entry today.
 export function quasiparticleLabel(moveClass: MoveClass): string {
   return Object.values(MOVES).find((m) => m.class === moveClass)?.name ?? moveClass;
 }
 
 // Kondo is the sole seller of the three screening-class moves
-// (OverworldScene.showKondoPanel, mirroring Curie's showCuriePanel with a
-// 3-entry list instead of 2) -- kept out of SHOP_MOVE_IDS so Noether never
-// also offers them. Unlike ANALYTIC_MOVE_IDS, buying one of these doesn't
-// make it usable on its own -- see getBattleMoves below for the
+// (OverworldScene.showKondoPanel) -- kept out of SHOP_MOVE_IDS so Noether
+// never also offers them. Unlike ANALYTIC_MOVE_IDS, buying one of these
+// doesn't make it usable on its own -- see getBattleMoves below for the
 // only-one-active-at-a-time special case (registry/save `kondoActiveMove`).
 export const KONDO_MOVE_IDS = Object.values(MOVES)
   .filter((m) => m.class === 'screening')
@@ -193,15 +233,21 @@ export const KONDO_MOVE_IDS = Object.values(MOVES)
 
 // Every move Noether can eventually teach, priced by raw power
 // (`OverworldScene.shopCost`) -- everything except the player's starting
-// Phonon Beam, Curie's quiz-gated moves (ANALYTIC_MOVE_IDS, sold only by
-// her), and Kondo's screening moves (KONDO_MOVE_IDS, sold only by him). What
-// actually shows up in her shop (and what actually appears as a battle
-// button) is this list filtered down to `compatibleMoves(currentPlayerForm)`,
-// so a semiconductor-type player is only ever offered Electron Pulse until
-// they transmute into a form whose physics supports the rest (see
-// MOVE_COMPATIBILITY/compatibleMoves).
+// Phonon Beam, Laughlin's quiz-gated Analytic moves (ANALYTIC_MOVE_IDS,
+// sold only by him), Skłodowska-Curie's quiz-gated Ultimate moves
+// (ULTIMATE_MOVE_IDS, sold only by her, and priced completely differently
+// besides -- see her panel), and Kondo's screening moves (KONDO_MOVE_IDS,
+// sold only by him). What actually shows up in her shop (and what actually
+// appears as a battle button) is this list filtered down to
+// `compatibleMoves(currentPlayerForm)`, so a semiconductor-type player is
+// only ever offered Electron Pulse until they transmute into a form whose
+// physics supports the rest (see MOVE_COMPATIBILITY/compatibleMoves).
 export const SHOP_MOVE_IDS = Object.keys(MOVES).filter(
-  (id) => id !== 'thermalFluctuation' && !ANALYTIC_MOVE_IDS.includes(id) && !KONDO_MOVE_IDS.includes(id)
+  (id) =>
+    id !== 'thermalFluctuation' &&
+    !ANALYTIC_MOVE_IDS.includes(id) &&
+    !ULTIMATE_MOVE_IDS.includes(id) &&
+    !KONDO_MOVE_IDS.includes(id)
 );
 
 // Which quasiparticle classes a given main type can physically host --
@@ -368,7 +414,9 @@ export function statUpgradeCost(currentValue: number): number {
 // Qumatoken price for a shop move, scaled off its own power -- the stronger
 // the quasiparticle, the more it costs, the same "priced to keep buying
 // meaningful" shape as statUpgradeCost. Shared by every guardian who sells
-// moves for qumatokens (Noether, Curie, Kondo).
+// moves for qumatokens (Noether, Laughlin, Kondo) -- Skłodowska-Curie's
+// Ultimate moves are the one exception, priced via ULTIMATE_CLASS_UNLOCK_COST
+// instead (see her own panel).
 export function shopCost(move: Move): number {
   return move.power * 5;
 }
@@ -430,47 +478,49 @@ export function getBattleMoves(registry: RegistryLike): string[] {
 }
 
 // The quasiparticle class BattleScene's mismatch check should use for a
-// given move -- ordinarily just that move's own fixed `class`, except for
-// one of Curie's two moves once the player has tuned it via her picker
-// (OverworldScene.showCurieClassPicker, registry/save `curieMoveClass`):
-// the mismatch check reads the player-assigned quasiparticle instead of the
-// move's default 'phonon', so a tuned move can mismatch a defender like any
-// ordinary attack would. An untuned move (never visited Curie's picker, or
-// an older save from before this existed) falls back to its own default
-// 'phonon' class, the same "never mismatches" behavior it starts with.
-function assignedCurieClass(registry: RegistryLike, moveId: string): MoveClass | undefined {
-  return (registry.get('curieMoveClass') as Partial<Record<string, MoveClass>> | undefined)?.[moveId];
+// given move -- ordinarily just that move's own fixed `class`, except for a
+// tunable move (Laughlin's two Analytic moves, Skłodowska-Curie's two
+// Ultimate moves) once the player has tuned it via the owning guardian's
+// picker (registry/save `moveClassTuning`): the mismatch check reads the
+// player-assigned quasiparticle instead of the move's default 'phonon', so a
+// tuned move can mismatch a defender like any ordinary attack would. An
+// untuned move (never visited the picker, or an older save from before this
+// existed) falls back to its own default 'phonon' class, the same "never
+// mismatches" behavior it starts with.
+function assignedMoveClass(registry: RegistryLike, moveId: string): MoveClass | undefined {
+  return (registry.get('moveClassTuning') as Partial<Record<string, MoveClass>> | undefined)?.[moveId];
 }
 
 // A tuned assignment is picked against whatever form the player was
-// wearing at Curie's shop, but the player can transmute afterward -- if the
-// form they're wearing *now* can no longer host that class (e.g. tuned to
-// 'ferron' as a multiferroic, then transmuted into Silicon), this falls
-// back to 'phonon' (Phonon Beam) rather than keeping an assignment the
+// wearing at the guardian's shop, but the player can transmute afterward --
+// if the form they're wearing *now* can no longer host that class (e.g.
+// tuned to 'ferron' as a multiferroic, then transmuted into Silicon), this
+// falls back to 'phonon' (Phonon Beam) rather than keeping an assignment the
 // current form can't actually carry: 'phonon' is on every
 // MOVE_COMPATIBILITY list, so it's always a safe, always-hostable landing
-// spot. An untuned move (never visited Curie's picker) falls back to its
-// own default 'phonon' class instead, the same "never mismatches" behavior.
-export function getCurieMoveClass(registry: RegistryLike, moveId: string): MoveClass {
-  const assigned = assignedCurieClass(registry, moveId);
+// spot. An untuned move (never visited the picker) falls back to its own
+// default 'phonon' class instead, the same "never mismatches" behavior.
+export function getTunedMoveClass(registry: RegistryLike, moveId: string): MoveClass {
+  const assigned = assignedMoveClass(registry, moveId);
   if (!assigned) return MOVES[moveId].class;
   const currentType = getPlayerMaterial(registry).type;
   return canHost(currentType, assigned) ? assigned : 'phonon';
 }
 
-// Curie's moves always display whichever quasiparticle they're currently
-// carrying, tuned or not (e.g. tuned to 'magnon' reads as "Magnon Beam";
-// untuned reads as "Phonon Beam", the same default `getCurieMoveClass`
-// falls back to) -- so unlike a static move name, this one never goes stale
-// relative to what the move actually mismatches with. The move's own fixed
-// shape (Beam vs. Eruption) is read off its static `name`'s own second word
-// rather than a second hand-authored word list, so a future MOVES rename
-// stays in sync automatically; only the quasiparticle word in front of it
-// changes. Reads getCurieMoveClass rather than the raw assignment, so if the
-// current form can't host the tuned class anymore the name reverts to its
-// Phonon form too, matching what the mismatch check actually uses.
-export function curieMoveDisplayName(registry: RegistryLike, moveId: string): string {
-  const active = getCurieMoveClass(registry, moveId);
+// A tunable move (Laughlin's Analytic pair, Skłodowska-Curie's Ultimate
+// pair) always displays whichever quasiparticle it's currently carrying,
+// tuned or not (e.g. tuned to 'magnon' reads as "Magnon Beam"; untuned reads
+// as "Phonon Beam", the same default `getTunedMoveClass` falls back to) --
+// so unlike a static move name, this one never goes stale relative to what
+// the move actually mismatches with. The move's own fixed shape (Beam vs.
+// Eruption vs. Meteor vs. Nova) is read off its static `name`'s own second
+// word rather than a second hand-authored word list, so a future MOVES
+// rename stays in sync automatically; only the quasiparticle word in front
+// of it changes. Reads getTunedMoveClass rather than the raw assignment, so
+// if the current form can't host the tuned class anymore the name reverts
+// to its Phonon form too, matching what the mismatch check actually uses.
+export function tunedMoveDisplayName(registry: RegistryLike, moveId: string): string {
+  const active = getTunedMoveClass(registry, moveId);
   const shape = MOVES[moveId].name.split(' ').slice(1).join(' ');
   return `${quasiparticleLabel(active).split(' ')[0]} ${shape}`;
 }

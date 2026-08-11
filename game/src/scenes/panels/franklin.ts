@@ -1,16 +1,19 @@
 import type { OverworldScene } from '../OverworldScene';
-import { makeBohrAvatar } from '../../art/bohr';
+import { makeFranklinAvatar } from '../../art/franklin';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
 import { fontPx } from '../../ui/text';
-import { BOHR_PASSIVE_IDS } from '../../data/passives';
+import { FRANKLIN_PASSIVE_IDS } from '../../data/passives';
 import { renderPassiveList } from './passiveList';
 
-// Bohr stands at world 7's middle tile (WORLD_GUARDIANS) and sells three
-// passive abilities (data/passives.ts's BOHR_PASSIVE_IDS -- Correlated
-// Response, Nonlocal Correlation, Shared State), same shape as
-// showFranklinPanel -- see renderPassiveList's own comment.
-export function showBohrPanel(scene: OverworldScene) {
+// Franklin stands at world 9's middle tile (WORLD_GUARDIANS) and sells
+// three passive abilities (data/passives.ts's FRANKLIN_PASSIVE_IDS --
+// Diffraction Shadow, Satellite Reflection, Amorphous Halo) instead of
+// moves: a whole-battle always-on modifier picked once by visiting Franklin,
+// not something chosen from the move menu each turn. Shares renderPassiveList
+// below with showBohrPanel -- see that method's own comment for why it
+// mirrors showKondoPanel's shape rather than a flat buy-only list.
+export function showFranklinPanel(scene: OverworldScene) {
   scene.dialogueActive = true;
 
   const panelWidth = 600;
@@ -21,7 +24,7 @@ export function showBohrPanel(scene: OverworldScene) {
   let y = top;
 
   const avatarY = y + 42;
-  const avatar = makeBohrAvatar(scene);
+  const avatar = makeFranklinAvatar(scene);
   avatar.setPosition(CANVAS_W / 2, avatarY);
   container.add(avatar);
   scene.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
@@ -32,14 +35,14 @@ export function showBohrPanel(scene: OverworldScene) {
     .text(
       CANVAS_W / 2,
       y,
-      '"Measure one half of an entangled pair and the other answers instantly. I can teach your crystal to answer that way too -- only one bond holds at a time."',
+      '"Fire X-rays through a defect-riddled crystal and the sharp spots blur into rings -- every pore and dislocation leaves its signature in how the beam scatters. I can teach your crystal to scatter a blow the same way -- only one lesson holds at a time."',
       { fontSize: fontPx(scene, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
     )
     .setOrigin(0.5, 0);
   container.add(intro);
   y += intro.height + 14;
 
-  y = renderPassiveList(scene, container, y, BOHR_PASSIVE_IDS, 'bohr', () => showBohrPanel(scene));
+  y = renderPassiveList(scene, container, y, FRANKLIN_PASSIVE_IDS, 'franklin', () => showFranklinPanel(scene));
   y += 8;
   y = scene.renderFarewellFooter(container, y);
   y += 8;
@@ -47,6 +50,6 @@ export function showBohrPanel(scene: OverworldScene) {
   const panelHeight = y - top;
   const panel = scene.add
     .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
-    .setStrokeStyle(2, 0xffa64a);
+    .setStrokeStyle(2, 0xa878c9);
   container.addAt(panel, 0);
 }

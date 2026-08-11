@@ -81,11 +81,12 @@ which crystal types can use each one.
 </table>
 
 **Grow.** Winning battles and grabbing qumatoken pickups funds the guardians
-waiting partway through each world -- nine of them in all, each teaching a
+waiting partway through each world -- ten of them in all, each teaching a
 different way of bending the game's usual rules: new moves and stats,
 teleportation, transmuting into a crystal you've defeated, always-on passive
-abilities, fusing two crystals into a hybrid, quiz-gated power moves, and
-more. Every guardian you've met stays reachable from the Guardians panel,
+abilities, fusing two crystals into a hybrid, quiz-gated power moves, and a
+capstone quiz-gated ultimate move. Every guardian you've met stays reachable
+from the Guardians panel,
 from anywhere, and your current passive loadout is always checkable from the
 Enter-menu's "View Abilities" panel too. See [Guardians](docs/guardians.md)
 for what each one does.
@@ -100,11 +101,11 @@ for what each one does.
 <td><img src="screenshots/mentor-majorana.png" width="300" alt="Majorana's hybrid-material panel"></td>
 </tr>
 <tr>
-<td><img src="screenshots/mentor-curie.png" width="300" alt="Curie's quiz-gated move shop"></td>
-<td><img src="screenshots/battle-analytic-move.png" width="300" alt="One of Curie's moves asking a physics question mid-battle"></td>
+<td><img src="screenshots/mentor-curie.png" width="300" alt="Laughlin's quiz-gated Analytic move shop"></td>
+<td><img src="screenshots/battle-analytic-move.png" width="300" alt="One of Laughlin's Analytic moves asking a physics question mid-battle"></td>
 </tr>
 <tr>
-<td><img src="screenshots/mentor-laughlin.png" width="300" alt="Laughlin's passive-ability panel"></td>
+<td><img src="screenshots/mentor-laughlin.png" width="300" alt="An early tutorial tip introducing the guardians"></td>
 <td><img src="screenshots/mentor-bohr.png" width="300" alt="Bohr's passive-ability panel"></td>
 </tr>
 <tr>

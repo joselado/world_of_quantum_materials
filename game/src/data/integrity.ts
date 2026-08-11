@@ -1,4 +1,4 @@
-import { MOVES, PLAYER_MATERIAL, WORLD_CRYSTALS, WORLD_RIVALS, getRival } from './materials';
+import { ANALYTIC_MOVE_IDS, MOVES, PLAYER_MATERIAL, ULTIMATE_MOVE_IDS, WORLD_CRYSTALS, WORLD_RIVALS, getRival } from './materials';
 import { BIOMES } from '../art/biomes';
 
 // Dev-only cross-reference checks, run once from main.ts. The database
@@ -21,6 +21,16 @@ export function checkDataIntegrity(builtWorlds: number[]): void {
     for (const moveId of material.moves) {
       if (!(moveId in MOVES)) {
         problems.push(`Material "${material.name}" lists unknown move id "${moveId}" (not in MOVES)`);
+      }
+      // Analytic (Laughlin, World 4) and Ultimate (Skłodowska-Curie, World 10)
+      // moves are player-only -- their quiz gate lives in BattleScene's move-menu
+      // click handler, not in the damage formula, so an opponent rolling one of
+      // these ids would bypass the gate entirely and hit at full power for free.
+      if (ANALYTIC_MOVE_IDS.includes(moveId)) {
+        problems.push(`Material "${material.name}" lists Analytic move "${moveId}" -- Analytic moves are player-only (quiz-gated in BattleScene, not in the damage formula)`);
+      }
+      if (ULTIMATE_MOVE_IDS.includes(moveId)) {
+        problems.push(`Material "${material.name}" lists Ultimate move "${moveId}" -- Ultimate moves are player-only (quiz-gated in BattleScene, not in the damage formula)`);
       }
     }
   }

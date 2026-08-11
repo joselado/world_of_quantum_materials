@@ -36,6 +36,13 @@ export interface MaterialQuestion {
   incorrect: string;
 }
 
+// Analytic-move questions additionally carry the world number(s) whose course
+// topic they belong to, so getAnalyticQuestion can restrict its pool to worlds
+// the player has already visited (see the ANALYTIC_QUESTIONS comment below).
+export interface AnalyticQuestion extends MaterialQuestion {
+  worlds: number[];
+}
+
 export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
   Graphene: [
     {
@@ -1705,116 +1712,427 @@ export function getMaterialQuestion(materialName: string): MaterialQuestion | un
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-// Curie's analytic moves (§5, World 6, BattleScene.showAnalyticQuestion):
+// Laughlin's analytic moves (§5, World 4, BattleScene.showAnalyticQuestion):
 // using `skyfallBeam` or `groundEruption` asks one of these before the hit
-// resolves -- correct doubles the damage, wrong halves it. One shared pool
-// rather than per-world/per-material (unlike MATERIAL_QUESTIONS above),
-// since an analytic move is usable from any crystal form, not tied to a
-// single world's topic -- each question instead names the equation/law it's
-// asking about directly. Same {prompt, correct, incorrect} shape.
-export const ANALYTIC_QUESTIONS: MaterialQuestion[] = [
+// resolves -- correct doubles the damage, wrong halves it. Unlike
+// MATERIAL_QUESTIONS above these aren't per-material trivia: each question
+// names the specific equation/law it's asking about, since an analytic move
+// is usable from any crystal form. Each entry's `worlds` tag lists the world
+// number(s) whose course topic it belongs to (most fit one world; a few
+// genuinely span two, e.g. graphene Landau levels sit in both world 2 and
+// world 4), and getAnalyticQuestion draws only from questions tagged with a
+// world the player has already visited -- so an early player is quizzed on
+// early-world physics, not topics they haven't reached yet.
+export const ANALYTIC_QUESTIONS: AnalyticQuestion[] = [
   {
     prompt: "Bloch's theorem writes a crystal electron's wavefunction as a plane wave times...",
     correct: 'A lattice-periodic function, u_k(r + R) = u_k(r)',
     incorrect: 'A second, independent plane wave',
+    worlds: [2],
   },
   {
     prompt: 'For a 1D tight-binding chain with hopping t, the band dispersion E(k) is proportional to...',
     correct: '-2t cos(ka)',
     incorrect: '-2t sin(ka)',
+    worlds: [2],
   },
   {
     prompt: 'The Stoner criterion for a spontaneous ferromagnetic instability is...',
     correct: 'U·D(E_F) ≥ 1',
     incorrect: 'U·D(E_F) ≤ 1',
+    worlds: [1, 6],
   },
   {
     prompt: 'The energy of the n-th Landau level in a magnetic field B is...',
     correct: 'E_n = ħω_c(n + 1/2)',
     incorrect: 'E_n = ħω_c·n²',
+    worlds: [4],
   },
   {
     prompt: "At zero temperature, the BCS gap Δ(0) relates to T_c as...",
     correct: 'Δ(0) ≈ 1.76 k_B T_c',
     incorrect: 'Δ(0) ≈ 0.5 k_B T_c',
+    worlds: [5],
   },
   {
     prompt: 'The London equation relates a superconductor’s current density J to the magnetic field B via...',
     correct: '∇×J = -(n_s e² / m) B',
     incorrect: '∇·J = -(n_s e² / m) B',
+    worlds: [5],
   },
   {
     prompt: 'A band’s Chern number is the integral, over the Brillouin zone, of...',
     correct: 'The Berry curvature, divided by 2π',
     incorrect: 'The band energy itself',
+    worlds: [3],
   },
   {
     prompt: "Near k=0, a ferromagnet's magnon dispersion behaves as...",
     correct: 'E(k) ∝ k² (quadratic)',
     incorrect: 'E(k) ∝ |k| (linear)',
+    worlds: [6],
   },
   {
     prompt: 'The von Neumann entanglement entropy of a density matrix ρ is defined as...',
     correct: 'S = -Tr(ρ log ρ)',
     incorrect: 'S = Tr(ρ²)',
+    worlds: [7],
   },
   {
     prompt: 'The Kondo temperature T_K depends on the exchange coupling J roughly as...',
     correct: 'T_K ∝ exp(-1/(J·D(E_F))) -- exponentially small',
     incorrect: 'T_K ∝ J² -- a simple power law',
+    worlds: [8],
   },
   {
     prompt: 'In mean-field Hubbard theory, the order parameter m = ⟨n↑⟩ − ⟨n↓⟩ describes...',
     correct: 'The magnetization',
     incorrect: 'The charge-density-wave amplitude',
+    worlds: [1],
   },
   {
     prompt: "Graphene's Fermi velocity, in terms of hopping t and bond length a, is...",
     correct: 'v_F = 3ta / (2ħ)',
     incorrect: 'v_F = ta / ħ',
+    worlds: [2],
   },
   {
     prompt: 'In a Chern insulator, the quantized Hall conductivity σ_xy is given by...',
     correct: 'C e²/h, with C the Chern number',
     incorrect: '(e²/h) times the bulk band gap',
+    worlds: [3],
   },
   {
     prompt: "In a strong field, graphene's Dirac Landau level energies scale with level index n and field B as...",
     correct: 'E_n ∝ √(nB)',
     incorrect: 'E_n ∝ nB',
+    worlds: [2, 4],
   },
   {
     prompt: 'The Laughlin wavefunction, built by raising the filled-Landau-level Vandermonde factor to an odd power m, has filling factor...',
     correct: 'ν = 1/m',
     incorrect: 'ν = m',
+    worlds: [4],
   },
   {
     prompt: 'The superconducting flux quantum Φ₀ equals...',
     correct: 'h/2e',
     incorrect: 'h/e',
+    worlds: [5],
   },
   {
     prompt: 'The Dzyaloshinskii-Moriya interaction couples neighboring spins via...',
     correct: 'A cross product, D·(S_i × S_j)',
     incorrect: 'A dot product, S_i · S_j',
+    worlds: [6],
   },
   {
     prompt: 'For a matrix product state of bond dimension M, the maximum entanglement entropy it can represent across a bond is...',
     correct: 'log M',
     incorrect: 'M itself',
+    worlds: [7],
   },
   {
     prompt: "The 1D Heisenberg chain's exact ground-state energy per site in the thermodynamic limit, from the Bethe ansatz, is...",
     correct: 'J(1/4 − ln 2) ≈ −0.443 J',
     incorrect: '−1/4 J exactly',
+    worlds: [8],
   },
   {
     prompt: "A magnetic impurity's Yu-Shiba-Rusinov in-gap bound state in an s-wave superconductor crosses zero energy exactly when α = πν₀JS equals...",
     correct: '1',
     incorrect: '0',
+    worlds: [9, 5],
+  },
+  {
+    prompt: 'Fermionic creation and annihilation operators obey the anticommutation relation...',
+    correct: '{c_i, c_j†} = δ_ij',
+    incorrect: '[c_i, c_j†] = δ_ij (a commutator)',
+    worlds: [1],
+  },
+  {
+    prompt: "The Hubbard model's interaction term is...",
+    correct: 'U Σ_i n_i↑ n_i↓ -- an energy cost per doubly occupied site',
+    incorrect: 'U Σ_i (n_i↑ + n_i↓) -- an energy cost per electron',
+    worlds: [1],
+  },
+  {
+    prompt: 'A half-filled band becomes a Mott insulator when...',
+    correct: 'U is much larger than the bandwidth W',
+    incorrect: 'U is much smaller than the bandwidth W',
+    worlds: [1],
+  },
+  {
+    prompt: 'The total bandwidth of a 1D nearest-neighbor tight-binding chain with hopping t is...',
+    correct: '4t -- the band runs from −2t to +2t',
+    incorrect: '2t -- the band runs from −t to +t',
+    worlds: [2],
+  },
+  {
+    prompt: "A band's Chern number can take values...",
+    correct: 'Any integer -- it is a topological invariant',
+    incorrect: 'Any real number -- it varies continuously',
+    worlds: [3],
+  },
+  {
+    prompt: 'By the bulk-boundary correspondence, the number of chiral edge modes of a Chern insulator equals...',
+    correct: '|C|, the magnitude of the Chern number',
+    incorrect: 'The number of filled bulk bands',
+    worlds: [3],
+  },
+  {
+    prompt: 'The degeneracy of a Landau level per unit area is...',
+    correct: 'n_B = eB/h -- one state per flux quantum h/e',
+    incorrect: 'Independent of the magnetic field B',
+    worlds: [4],
+  },
+  {
+    prompt: 'The magnetic length l_B in a field B is...',
+    correct: 'l_B = √(ħ/eB)',
+    incorrect: 'l_B = √(eB/ħ)',
+    worlds: [4],
+  },
+  {
+    prompt: 'In terms of the normal-state dispersion ξ_k and gap Δ, the BCS quasiparticle energy is...',
+    correct: 'E_k = √(ξ_k² + Δ²)',
+    incorrect: 'E_k = ξ_k + Δ',
+    worlds: [5],
+  },
+  {
+    prompt: 'A Majorana operator γ is defined by the property...',
+    correct: 'γ† = γ -- it is its own antiparticle',
+    incorrect: 'γ† = −γ',
+    worlds: [5],
+  },
+  {
+    prompt: 'Above T_C, the Curie-Weiss susceptibility of a ferromagnet behaves as...',
+    correct: 'χ ∝ 1/(T − T_C)',
+    incorrect: 'χ ∝ (T − T_C)',
+    worlds: [6],
+  },
+  {
+    prompt: "Near k=0, an antiferromagnet's magnon dispersion behaves as...",
+    correct: 'E(k) ∝ |k| (linear)',
+    incorrect: 'E(k) ∝ k² (quadratic)',
+    worlds: [6],
+  },
+  {
+    prompt: 'The ground state of a gapped 1D Hamiltonian has entanglement entropy that...',
+    correct: 'Saturates to a constant -- an area law',
+    incorrect: 'Grows linearly with subsystem size -- a volume law',
+    worlds: [7],
+  },
+  {
+    prompt: 'In terms of the Schmidt coefficients λ_i of a bipartition, the entanglement entropy is...',
+    correct: 'S = −Σ_i λ_i² log λ_i²',
+    incorrect: 'S = −Σ_i λ_i log λ_i',
+    worlds: [7],
+  },
+  {
+    prompt: 'A spinon, the fractionalized excitation of a 1D quantum magnet, carries...',
+    correct: 'Spin 1/2 and no electric charge',
+    incorrect: 'Spin 1/2 and charge e, like an electron',
+    worlds: [8],
+  },
+  {
+    prompt: 'Dilute magnetic impurities in a metal make the low-temperature resistivity...',
+    correct: 'Rise logarithmically as T decreases -- the Kondo effect',
+    incorrect: 'Keep dropping monotonically toward zero',
+    worlds: [8],
+  },
+  {
+    prompt: 'In a 1D disordered chain, Anderson localization sets in...',
+    correct: 'For arbitrarily weak disorder -- all states localize',
+    incorrect: 'Only above a critical disorder strength',
+    worlds: [9],
+  },
+  {
+    prompt: 'An Anderson-localized wavefunction decays away from its center r₀ as...',
+    correct: 'exp(−|r − r₀|/ξ), with ξ the localization length',
+    incorrect: 'A power law, 1/|r − r₀|²',
+    worlds: [9],
+  },
+  {
+    prompt: 'With α = πν₀JS, a classical magnetic impurity’s Yu-Shiba-Rusinov state in an s-wave gap Δ sits at energy...',
+    correct: 'E = ±Δ(1 − α²)/(1 + α²)',
+    incorrect: 'E = ±Δ(1 + α²)/(1 − α²)',
+    worlds: [9, 5],
   },
 ];
 
-export function getAnalyticQuestion(): MaterialQuestion {
-  return ANALYTIC_QUESTIONS[Math.floor(Math.random() * ANALYTIC_QUESTIONS.length)];
+export function getAnalyticQuestion(visitedWorlds: number[]): MaterialQuestion {
+  const eligible = ANALYTIC_QUESTIONS.filter((q) => q.worlds.some((w) => visitedWorlds.includes(w)));
+  const pool = eligible.length > 0 ? eligible : ANALYTIC_QUESTIONS;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+// Skłodowska-Curie's two "Ultimate" moves (§5, World 10) -- using one asks
+// 3 of these in a row, ALL must be correct or the move whiffs entirely (no
+// partial-credit multiplier the way Analytic moves have). Full breadth, no
+// visited-world restriction (unlike ANALYTIC_QUESTIONS) -- World 10 has no
+// course topic of its own, so its guardian's own gate draws on everything
+// the player has learned across every world, not one topic's worth.
+export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
+  // -- World 1: second quantization, mean-field theory, Mott physics --
+  {
+    prompt: 'The mean-field decoupling of the Hubbard interaction U n↑n↓ reads...',
+    correct: 'U(n↑⟨n↓⟩ + ⟨n↑⟩n↓ − ⟨n↑⟩⟨n↓⟩)',
+    incorrect: 'U(n↑⟨n↓⟩ + ⟨n↑⟩n↓ + ⟨n↑⟩⟨n↓⟩)',
+  },
+  {
+    prompt: 'At half filling and large U, the Hubbard model reduces to a Heisenberg antiferromagnet with superexchange...',
+    correct: 'J = 4t²/U',
+    incorrect: 'J = 2t²/U',
+  },
+  {
+    prompt: "Spontaneously breaking a continuous symmetry guarantees, by Goldstone's theorem...",
+    correct: 'A gapless mode -- zero energy as k → 0',
+    incorrect: 'A gapped mode, with gap set by the order parameter',
+  },
+  // -- World 2: symmetries, tight binding, Bloch, Dirac cones --
+  {
+    prompt: 'The total bandwidth of the 2D square-lattice nearest-neighbor tight-binding band, with hopping t, is...',
+    correct: '8t -- the band runs from −4t to +4t',
+    incorrect: '4t -- the band runs from −2t to +2t',
+  },
+  {
+    prompt: 'Adding a staggered sublattice potential ±m to graphene...',
+    correct: 'Opens a gap of 2m at both Dirac points',
+    incorrect: 'Shifts the Dirac points in momentum but leaves them gapless',
+  },
+  {
+    prompt: "Kramers' theorem guarantees every level is doubly degenerate when the time-reversal operator satisfies...",
+    correct: 'T² = −1 -- half-integer spin',
+    incorrect: 'T² = +1 -- integer spin',
+  },
+  // -- World 3: topological band theory --
+  {
+    prompt: "Encircling one of graphene's Dirac points, the Bloch state picks up a Berry phase of...",
+    correct: 'π',
+    incorrect: '2π',
+  },
+  {
+    prompt: 'Time reversal forces Ω(−k) = −Ω(k) on the Berry curvature, so a time-reversal-symmetric band has Chern number...',
+    correct: 'Exactly zero, always',
+    incorrect: 'Any even integer',
+  },
+  {
+    prompt: 'The SSH chain hosts zero-energy edge states when...',
+    correct: 'Intercell hopping exceeds intracell hopping, |w| > |v|',
+    incorrect: 'Intracell hopping exceeds intercell hopping, |v| > |w|',
+  },
+  // -- World 4: quantum Hall, Landau levels, FQHE --
+  {
+    prompt: 'The Landau-level filling factor of a 2D electron gas with areal density n in field B is...',
+    correct: 'ν = nh/(eB)',
+    incorrect: 'ν = eB/(nh)',
+  },
+  {
+    prompt: 'A quasiparticle of the ν = 1/m Laughlin state carries electric charge...',
+    correct: 'e* = e/m',
+    incorrect: 'e* = m·e',
+  },
+  {
+    prompt: 'Exchanging two Laughlin quasiparticles at ν = 1/m produces the anyonic statistical phase...',
+    correct: 'θ = π/m',
+    incorrect: 'θ = 2π/m',
+  },
+  // -- World 5: BCS, Nambu, Majoranas --
+  {
+    prompt: 'BCS theory gives the critical temperature, in terms of the Debye frequency ω_D and coupling N₀V, as...',
+    correct: 'k_B T_c ≈ 1.13 ħω_D exp(−1/(N₀V)) -- non-perturbative in V',
+    incorrect: 'k_B T_c ∝ ħω_D (N₀V)² -- second-order perturbation theory',
+  },
+  {
+    prompt: 'The BCS ground state pairs electrons in the states...',
+    correct: '(k↑, −k↓) -- zero total momentum, opposite spins',
+    incorrect: '(k↑, k↓) -- equal momenta, opposite spins',
+  },
+  {
+    prompt: "The two Majorana end modes of a topological Kitaev chain together encode...",
+    correct: 'One ordinary fermion, delocalized between the two ends',
+    incorrect: 'Two independent fermions, one bound to each end',
+  },
+  {
+    prompt: 'In Andreev reflection at a normal-superconductor interface, a sub-gap electron comes back as...',
+    correct: 'A hole retracing its path, with charge 2e entering the condensate',
+    incorrect: 'A spin-flipped electron, with no charge crossing the interface',
+  },
+  // -- World 6: classical magnetism, magnons, DM --
+  {
+    prompt: "Thermal magnons deplete a 3D ferromagnet's magnetization at low T as...",
+    correct: 'M(0) − M(T) ∝ T^(3/2) -- the Bloch law',
+    incorrect: 'M(0) − M(T) ∝ T²',
+  },
+  {
+    prompt: 'By the Mermin-Wagner theorem, a 2D Heisenberg ferromagnet with short-range interactions...',
+    correct: 'Has no long-range order at any T > 0',
+    incorrect: 'Orders below a finite T_C, like its 3D counterpart',
+  },
+  {
+    prompt: "By Moriya's rules, the Dzyaloshinskii-Moriya vector D between two spins vanishes whenever...",
+    correct: 'An inversion center sits at the bond midpoint',
+    incorrect: 'The two spins are exactly antiparallel',
+  },
+  // -- World 7: entanglement, tensor networks, MPS --
+  {
+    prompt: 'A block of length ℓ in an infinite critical (gapless) 1D chain has entanglement entropy...',
+    correct: 'S = (c/3) log ℓ -- logarithmic, with c the central charge',
+    incorrect: 'S ∝ ℓ -- a volume law',
+  },
+  {
+    prompt: 'The number of parameters in a matrix product state of N sites, local dimension d, bond dimension M, scales...',
+    correct: 'Linearly in N -- roughly N·d·M²',
+    incorrect: 'Exponentially in N, like the full d^N Hilbert space',
+  },
+  {
+    prompt: 'Tracing out half of an entangled pure state leaves a reduced density matrix that is...',
+    correct: 'Mixed -- Tr ρ² < 1',
+    incorrect: 'Still pure -- Tr ρ² = 1',
+  },
+  // -- World 8: quantum magnetism, spinons, Kondo, heavy fermions --
+  {
+    prompt: "By Haldane's conjecture, the spin-1 Heisenberg antiferromagnetic chain is...",
+    correct: 'Gapped -- unlike the gapless spin-1/2 chain',
+    incorrect: 'Gapless -- just like the spin-1/2 chain',
+  },
+  {
+    prompt: "Below the Kondo temperature, a magnetic impurity's spin is...",
+    correct: 'Screened into a singlet by the conduction electrons',
+    incorrect: 'Polarized ferromagnetically by the conduction sea',
+  },
+  {
+    prompt: 'Neutron scattering on a spin-1/2 Heisenberg chain sees, instead of one sharp magnon...',
+    correct: 'A broad two-spinon continuum -- each spin flip fractionalizes',
+    incorrect: 'A single sharp mode at twice the magnon energy',
+  },
+  {
+    prompt: "A heavy-fermion metal's enormous quasiparticle mass shows up in the specific heat C = γT as...",
+    correct: 'A Sommerfeld coefficient γ hundreds of times larger than in ordinary metals',
+    incorrect: 'A vanishing Sommerfeld coefficient γ -- the heavy carriers cannot respond',
+  },
+  // -- World 9: disorder, localization, impurities --
+  {
+    prompt: 'By the scaling theory of localization, a 3D disordered metal...',
+    correct: 'Has a mobility edge -- a genuine metal-insulator transition at finite disorder',
+    incorrect: 'Localizes at arbitrarily weak disorder, like 1D and 2D',
+  },
+  {
+    prompt: 'Friedel oscillations of the electron density around an impurity in a metal have wavevector...',
+    correct: '2k_F -- set by the sharp Fermi surface',
+    incorrect: 'k_F',
+  },
+  {
+    prompt: "By Anderson's theorem, the T_c of a conventional s-wave superconductor is...",
+    correct: 'Insensitive to nonmagnetic impurities, but suppressed by magnetic ones',
+    incorrect: 'Suppressed equally by any impurity, magnetic or not',
+  },
+];
+
+// Returns `count` distinct random questions (no repeats within one draw) --
+// BattleScene.showUltimateQuestions asks all of them in sequence, stopping
+// early at the first wrong answer.
+export function getUltimateQuestions(count: number): MaterialQuestion[] {
+  const shuffled = [...ULTIMATE_QUESTIONS].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
 }

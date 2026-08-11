@@ -1,23 +1,24 @@
 # Guardians
 
-One guardian waits partway through each of the first nine worlds, each
-teaching a different way of bending the game's usual rules. Every guardian
-you've met stays reachable from the Guardians panel (Enter-key menu), from
-anywhere in the game.
+One guardian waits partway through each of the ten worlds, each teaching a
+different way of bending the game's usual rules. Every guardian you've met
+stays reachable from the Guardians panel (Enter-key menu), from anywhere in
+the game.
 
 | Guardian | World | What they do |
 |---|---|---|
 | [Noether](#noether) | 1 | Sells ordinary moves and stat upgrades |
 | [Bloch](#bloch) | 2 | Teleports you between worlds you've visited |
 | [Dresselhaus](#dresselhaus) | 3 | Lets you transmute into a defeated crystal |
-| [Laughlin](#laughlin) | 4 | Teaches always-on passive abilities |
+| [Laughlin](#laughlin) | 4 | Sells two quiz-gated Analytic moves |
 | [Majorana](#majorana) | 5 | Fuses two crystals into a hybrid state |
-| [Curie](#curie) | 6 | Sells two quiz-gated moves |
-| [Bohr](#bohr) | 7 | Teaches more passive abilities |
+| [Anderson](#anderson) | 6 | Lets you dope in an impurity move |
+| [Bohr](#bohr) | 7 | Teaches always-on passive abilities |
 | [Kondo](#kondo) | 8 | Sells status-inflicting moves |
-| [Anderson](#anderson) | 9 | Lets you dope in an impurity move |
+| [Franklin](#franklin) | 9 | Teaches always-on passive abilities |
+| [Skłodowska-Curie](#skłodowska-curie) | 10 | Teaches two quiz-gated Ultimate moves |
 
-*Laughlin's/Bohr's passive tables below are generated from
+*Franklin's/Bohr's passive tables below are generated from
 `game/src/data/passives.ts` -- run `npm run docs` in `game/` after changing
 `PASSIVES`, don't hand-edit the `<!-- GENERATED -->` blocks.*
 
@@ -45,19 +46,18 @@ rest for free. Only offers standalone crystals, never a
 
 ## Laughlin
 
-Teaches three passive abilities -- an always-on effect for the whole battle,
-not a move you pick each turn. You can learn all three, but only one is ever
-equipped at a time; switching means talking to Laughlin again.
-
-<!-- GENERATED:LAUGHLIN_PASSIVES_TABLE START -->
-#### Laughlin's passives
-
-| Passive | Effect | Cost |
-| --- | --- | --- |
-| Fractional Guard | Incoming damage is multiplied down for the whole battle. | 40 |
-| Anyon Echo | A critical hit triggers a bonus follow-up damage tick. | 45 |
-| Edge Current | Softens the quasiparticle-mismatch double damage to a smaller multiplier. | 45 |
-<!-- GENERATED:LAUGHLIN_PASSIVES_TABLE END -->
+Sells two quiz-gated Analytic moves that ask a physics-equation question
+before they land -- answer right for double damage, wrong for half -- with a
+dramatically flashier effect than an ordinary move. The question pool is
+restricted to worlds you've already visited, so early on Laughlin only draws
+from what you could plausibly already know. Buying (or later revisiting
+Laughlin) also lets you pick which quasiparticle the move should carry,
+filtered to only the classes your *current* form can host; the move itself
+stays usable from any form and always asks its question, but that choice
+decides whether it can land a quasiparticle-mismatch hit like an ordinary
+attack. If you later transmute into a form that can't host the quasiparticle
+you picked, the move falls back to Phonon Beam (the one class every form
+hosts) until you retune it.
 
 ## Majorana
 
@@ -67,23 +67,21 @@ state and become it, if the pairing is one of the game's named recipes (see
 colors and shapes. Recipes don't accumulate: every visit starts the pick
 fresh rather than remembering past fusions.
 
-## Curie
+## Anderson
 
-Sells two quiz-gated moves that ask a physics-equation question before they
-land -- answer right for double damage, wrong for half -- with a
-dramatically flashier effect than an ordinary move. Buying (or later
-revisiting Curie) also lets you pick which quasiparticle the move should
-carry, filtered to only the classes your *current* form can host; the move
-itself stays usable from any form and always asks its question, but that
-choice decides whether it can land a quasiparticle-mismatch hit like an
-ordinary attack. If you later transmute into a form that can't host the
-quasiparticle you picked, the move falls back to Phonon Beam (the one class
-every form hosts) until you retune it.
+Lets you "dope in" a crystal you've defeated as an impurity and learn one
+specific move from it -- borrowing a single excitation channel without
+becoming that crystal the way Dresselhaus does. The move fires in battle for
+as long as you stay doped with that crystal, even if your own current form
+can't otherwise host it -- dope in a different crystal later and you lose
+the channels only the old one gave you. Only original, standalone crystals
+are valid hosts, never a [hybrid](hybrids.md).
 
 ## Bohr
 
-Teaches three more passive abilities, the same "learn several, equip one"
-shape as Laughlin's.
+Teaches three passive abilities -- an always-on effect for the whole battle,
+not a move you pick each turn. You can learn all three, but only one is ever
+equipped at a time; switching means talking to Bohr again.
 
 <!-- GENERATED:BOHR_PASSIVES_TABLE START -->
 #### Bohr's passives
@@ -102,12 +100,35 @@ hitting hard -- drop its damage output, slow it down, or crack its defenses.
 You pick which effect by picking the move, and only one can be active at a
 time; switching means talking to Kondo again.
 
-## Anderson
+## Franklin
 
-Lets you "dope in" a crystal you've defeated as an impurity and learn one
-specific move from it -- borrowing a single excitation channel without
-becoming that crystal the way Dresselhaus does. The move fires in battle for
-as long as you stay doped with that crystal, even if your own current form
-can't otherwise host it -- dope in a different crystal later and you lose
-the channels only the old one gave you. Only original, standalone crystals
-are valid hosts, never a [hybrid](hybrids.md).
+Teaches three passive abilities, the same "learn several, equip one" shape
+as Bohr's -- themed around X-ray diffraction of a defect-riddled or porous
+crystal, the way a real diffraction pattern blurs from sharp spots into
+diffuse rings as a sample's disorder increases.
+
+<!-- GENERATED:FRANKLIN_PASSIVES_TABLE START -->
+#### Franklin's passives
+
+| Passive | Effect | Cost |
+| --- | --- | --- |
+| Diffraction Shadow | A defect-riddled lattice scatters and attenuates an incoming blow, the way porous carbon attenuates an X-ray beam. | 40 |
+| Satellite Reflection | A critical hit throws off a secondary diffraction peak -- a bonus follow-up damage tick. | 45 |
+| Amorphous Halo | A diffuse, defect-broadened halo softens the quasiparticle-mismatch double damage to a smaller multiplier. | 45 |
+<!-- GENERATED:FRANKLIN_PASSIVES_TABLE END -->
+
+## Skłodowska-Curie
+
+The guardian of World 10, regarded as the leader of the guardians' circle.
+Sells two quiz-gated Ultimate moves, "[Quasiparticle] Meteor" and
+"[Quasiparticle] Nova" -- each far more powerful than any ordinary move in
+the game, and gated accordingly: landing one requires answering three
+physics questions in a row, all correct, drawn from a broad pool spanning
+everything the course has covered rather than any one world's topic. Missing
+even one question makes the move whiff for zero damage, though the turn is
+still spent. Unlike every other tunable move in the game, picking which
+quasiparticle an Ultimate move should carry isn't a flat purchase: each
+quasiparticle class costs 1000 qumatokens to unlock *per move*, after which
+retuning back to that class is free forever. Landing a 3-for-3 hit
+plays a dramatically longer, multi-phase summoning animation than any other
+move in the game.

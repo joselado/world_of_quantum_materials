@@ -4,7 +4,7 @@ import { makeBossCrystal } from '../art/boss';
 import { shade } from '../art/colors';
 import { getBiome } from '../art/biomes';
 import type { Biome } from '../art/biomes';
-import { playAttackEffect, ANALYTIC_SHAPES } from '../art/attackEffects';
+import { playAttackEffect, ANALYTIC_SHAPES, ULTIMATE_SHAPES } from '../art/attackEffects';
 import { fontPx, fontScale } from '../ui/text';
 import {
   MOVES,
@@ -13,21 +13,23 @@ import {
   getPlayerMaterial,
   getPlayerStats,
   getBattleMoves,
-  getCurieMoveClass,
-  curieMoveDisplayName,
+  getTunedMoveClass,
+  tunedMoveDisplayName,
   enemyStatsForWorld,
   ANALYTIC_MOVE_IDS,
+  ULTIMATE_MOVE_IDS,
 } from '../data/materials';
 import { victoryLine, defeatLine } from '../data/greetings';
 import { PASSIVES } from '../data/passives';
+import type { PassiveOwner } from '../data/passives';
 import { materialBlurb } from '../data/materialdex';
-import { getAnalyticQuestion } from '../data/quiz';
+import { getAnalyticQuestion, getUltimateQuestions } from '../data/quiz';
 import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
 import type { Material, Move, Stats } from '../data/types';
 import { music } from '../audio/music';
 
-// Correct/wrong multipliers for Curie's two quiz-gated moves (§5) --
+// Correct/wrong multipliers for Laughlin's two quiz-gated Analytic moves (§5) --
 // deliberately steeper than the pre-battle quiz's QUIZ_CORRECT_MULTIPLIER/
 // QUIZ_WRONG_MULTIPLIER (OverworldScene.ts, 1.5/0.6): those apply to every
 // attack for a whole fight as a one-time roll, these are a per-use gamble
@@ -95,22 +97,23 @@ const STATUS_INFO: Record<
 // the label text itself already names which status is active.
 const STATUS_PILL_COLOR = '#ff8f6a';
 
-// Passive pill color -- Laughlin's own blue-violet (WORLD_GUARDIANS[4]
-// .labelColor), deliberately far from STATUS_PILL_COLOR's rust-orange so an
-// always-on passive reads as visually distinct from a ticking status at a
-// glance (Bohr's own guardian color is itself a near-match for rust-orange,
-// so it wouldn't have served that purpose).
+// Passive pill color -- a fixed blue-violet, deliberately far from
+// STATUS_PILL_COLOR's rust-orange so an always-on passive reads as visually
+// distinct from a ticking status at a glance (Bohr's own guardian color is
+// itself a near-match for rust-orange, so it wouldn't have served that
+// purpose).
 const PASSIVE_PILL_COLOR = '#8fa0ff';
 
-// A side can hold one Laughlin passive and one Bohr passive at once
-// (independent slots) -- joined onto a single pill line rather than one pill
-// per passive, same '' when empty convention STATUS_INFO's pill uses.
-// PASSIVES[id]? rather than a direct index -- every other read of
-// playerActivePassives/opponentActivePassives (activePassives() below) only
-// ever calls .has(id), so this is the first spot that actually dereferences
-// one; guarding it means a stale id left over from a since-renamed passive
-// in an old save degrades to "that name just doesn't show" instead of
-// throwing out of create().
+// A side can hold one Franklin passive and one Bohr passive at once
+// (independent slots, one per data/passives.ts's PassiveOwner) -- joined
+// onto a single pill line rather than one pill per passive, same '' when
+// empty convention STATUS_INFO's pill uses. PASSIVES[id]? rather than a
+// direct index -- every other read of playerActivePassives/
+// opponentActivePassives (activePassives() below) only ever calls .has(id),
+// so this is the first spot that actually dereferences one; guarding it
+// means a stale id left over from a since-renamed passive in an old save
+// degrades to "that name just doesn't show" instead of throwing out of
+// create().
 function passivePillText(ids: Set<string>): string {
   return [...ids]
     .map((id) => PASSIVES[id]?.name)
@@ -118,18 +121,18 @@ function passivePillText(ids: Set<string>): string {
     .join(' · ');
 }
 
-// Laughlin's and Bohr's passive abilities (§5, data/passives.ts) -- unlike
+// Franklin's and Bohr's passive abilities (§5, data/passives.ts) -- unlike
 // Kondo's status effects above, a passive has no duration/tick-down: it's
 // simply on for the whole battle it's active for, so each one is just a
 // flat multiplier/flag term read directly off whichever side currently has
 // it active (this.activePassives(isPlayer), populated once in create() from
-// registry/save laughlinActivePassive/bohrActivePassive and never touched
-// again mid-battle). Only the player can ever have one today, but every hook
-// below reads generically off `isPlayer`/`defenderIsPlayer` the same way
-// every other resolveHit term does, in case a future enemy ever has one.
-const FRACTIONAL_GUARD_DAMAGE_MULT = 0.85; // Fractional Guard: incoming damage taken by the holder
-const ANYON_ECHO_FRACTION = 0.3; // Anyon Echo: bonus follow-up tick, as a fraction of the crit that triggered it
-const EDGE_CURRENT_MISMATCH_MULT = 1.5; // Edge Current: softened quasiparticle-mismatch multiplier (normally 2x)
+// registry/save activePassiveByOwner and never touched again mid-battle).
+// Only the player can ever have one today, but every hook below reads
+// generically off `isPlayer`/`defenderIsPlayer` the same way every other
+// resolveHit term does, in case a future enemy ever has one.
+const FRACTIONAL_GUARD_DAMAGE_MULT = 0.85; // Diffraction Shadow (id fractionalGuard): incoming damage taken by the holder
+const ANYON_ECHO_FRACTION = 0.3; // Satellite Reflection (id anyonEcho): bonus follow-up tick, as a fraction of the crit that triggered it
+const EDGE_CURRENT_MISMATCH_MULT = 1.5; // Amorphous Halo (id edgeCurrent): softened quasiparticle-mismatch multiplier (normally 2x)
 const NONLOCAL_CORRELATION_FRACTION = 0.5; // Nonlocal Correlation: share of the opponent's own Quantumness added to Correlation
 const SHARED_STATE_HEAL_FRACTION = 0.22; // Shared State: share of dealt damage returned as healing
 
@@ -208,9 +211,9 @@ export class BattleScene extends Phaser.Scene {
   private opponentStatus: ActiveStatus | null = null;
   private playerStatusLabel!: Phaser.GameObjects.Text;
   private opponentStatusLabel!: Phaser.GameObjects.Text;
-  // Laughlin's/Bohr's passives (§5) -- computed once in create() from
-  // registry/save laughlinActivePassive/bohrActivePassive and held for the
-  // whole battle (no tick-down, unlike playerStatus/opponentStatus above).
+  // Franklin's/Bohr's passives (§5) -- computed once in create() from
+  // registry/save activePassiveByOwner and held for the whole battle (no
+  // tick-down, unlike playerStatus/opponentStatus above).
   // opponentActivePassives stays empty today (no WORLD_CRYSTALS entry has
   // one), kept as its own field rather than hardcoding "player only" so
   // activePassives() below reads symmetrically off either side.
@@ -240,7 +243,7 @@ export class BattleScene extends Phaser.Scene {
     this.playerStats = getPlayerStats(this.game.registry);
     this.enemyStats = enemyStatsForWorld(this.world);
 
-    // Laughlin's/Bohr's active passives (§5) -- read once here, held for the
+    // Franklin's/Bohr's active passives (§5) -- read once here, held for the
     // whole battle. Nonlocal Correlation needs recomputing fresh every battle
     // (rather than once at save time) since enemyStats.quantumness above is
     // itself recomputed fresh per battle -- spread into a *new* object rather
@@ -248,9 +251,8 @@ export class BattleScene extends Phaser.Scene {
     // the same object getPlayerStats(registry) returned: mutating it would
     // permanently ratchet the save's own Correlation value the next time
     // anything persists the registry.
-    const laughlinActive = this.game.registry.get('laughlinActivePassive') as string | null;
-    const bohrActive = this.game.registry.get('bohrActivePassive') as string | null;
-    this.playerActivePassives = new Set([laughlinActive, bohrActive].filter((id): id is string => !!id));
+    const activeByOwner = (this.game.registry.get('activePassiveByOwner') as Partial<Record<PassiveOwner, string>>) ?? {};
+    this.playerActivePassives = new Set(Object.values(activeByOwner).filter((id): id is string => !!id));
     this.opponentActivePassives = new Set();
     if (this.playerActivePassives.has('nonlocalCorrelation')) {
       this.playerStats = {
@@ -299,7 +301,7 @@ export class BattleScene extends Phaser.Scene {
       })
       .setOrigin(0, 0)
       .setDepth(5);
-    // Passive pill (Laughlin's/Bohr's abilities, §5) sits below the status
+    // Passive pill (Franklin's/Bohr's abilities, §5) sits below the status
     // pill, offset from its *measured* height rather than a further
     // hardcoded gap -- same text-size-scaling reasoning as opponentBarY
     // above, and the status pill's own height still varies with the
@@ -427,18 +429,25 @@ export class BattleScene extends Phaser.Scene {
     this.drawMoveMenu(this.currentMoveIds);
   }
 
-  // The three possible move-kind sections (DESIGN.md §4's "group moves by
+  // The four possible move-kind sections (DESIGN.md §4's "group moves by
   // kind"), filtered down to whichever ones actually have a usable move.
   private moveSections(moveIds: string[]): MoveSection[] {
     return [
       {
         label: 'ATTACKS',
-        ids: moveIds.filter((id) => !ANALYTIC_MOVE_IDS.includes(id) && MOVES[id].class !== 'screening'),
+        ids: moveIds.filter(
+          (id) => !ANALYTIC_MOVE_IDS.includes(id) && !ULTIMATE_MOVE_IDS.includes(id) && MOVES[id].class !== 'screening'
+        ),
       },
       {
         label: 'ANALYTIC',
         ids: moveIds.filter((id) => ANALYTIC_MOVE_IDS.includes(id)),
         legend: '★ right=2x wrong=½x',
+      },
+      {
+        label: 'ULTIMATE',
+        ids: moveIds.filter((id) => ULTIMATE_MOVE_IDS.includes(id)),
+        legend: '★★★ 3/3 correct or it whiffs',
       },
       { label: 'SCREENING', ids: moveIds.filter((id) => MOVES[id].class === 'screening') },
     ].filter((s) => s.ids.length > 0);
@@ -525,13 +534,13 @@ export class BattleScene extends Phaser.Scene {
   // log, so a first-time player had no way to plan a move before swinging.
   //
   // Shows exactly one page at a time (DESIGN.md §4's "group moves by kind"
-  // -- physics-gated attacks, Curie's two answer-gated moves, and Kondo's
-  // currently-active screening move work differently enough that a flat
-  // list blurred the distinction), paged with on-screen ◀/▶ arrows and the
-  // Left/Right keys (movePageIndex/switchMovePage) -- a move-kind section
-  // only produces a page at all if it has at least one usable move, so a
-  // player with none of Curie's moves bought or no Kondo move active never
-  // sees an empty page, and the pager itself is hidden entirely if there's
+  // -- physics-gated attacks, Laughlin's two answer-gated Analytic moves,
+  // and Kondo's currently-active screening move work differently enough
+  // that a flat list blurred the distinction), paged with on-screen ◀/▶
+  // arrows and the Left/Right keys (movePageIndex/switchMovePage) -- a
+  // move-kind section only produces a page at all if it has at least one
+  // usable move, so a player with none of Laughlin's moves bought or no
+  // Kondo move active never sees an empty page, and the pager itself is hidden entirely if there's
   // only one page to begin with. Showing one page instead of every section
   // stacked means each page's row height is budgeted only against that
   // page's own move count, not the worst-case total across every section at
@@ -716,18 +725,22 @@ export class BattleScene extends Phaser.Scene {
   // times over.
   private addMoveButton(container: Phaser.GameObjects.Container, moveId: string, y: number, btnPx: number, padY: number) {
     const move = MOVES[moveId];
-    const mismatch = !canHost(this.wild.type, getCurieMoveClass(this.game.registry, moveId));
+    const mismatch = !canHost(this.wild.type, getTunedMoveClass(this.game.registry, moveId));
     let tag = '';
     let color = '#ffff88';
     if (ANALYTIC_MOVE_IDS.includes(moveId)) {
       tag += ' ★';
       color = '#ffe066';
     }
+    if (ULTIMATE_MOVE_IDS.includes(moveId)) {
+      tag += ' ★★★';
+      color = '#ff66ff';
+    }
     if (mismatch) {
       tag += ' !!2x';
       color = '#ffaa44';
     }
-    const displayName = curieMoveDisplayName(this.game.registry, moveId);
+    const displayName = tunedMoveDisplayName(this.game.registry, moveId);
     const btn = this.add
       .text(MENU_X + MENU_WIDTH / 2, y, `${displayName}\nPwr ${move.power}${tag}`, {
         fontSize: `${btnPx}px`,
@@ -746,6 +759,12 @@ export class BattleScene extends Phaser.Scene {
             this.turnLock = false;
             this.playerAttack(moveId, bonusMultiplier);
           });
+        } else if (ULTIMATE_MOVE_IDS.includes(moveId)) {
+          this.turnLock = true;
+          this.showUltimateQuestions(move, (allCorrect) => {
+            this.turnLock = false;
+            this.playerAttack(moveId, allCorrect ? 1 : 0);
+          });
         } else {
           this.playerAttack(moveId);
         }
@@ -753,7 +772,7 @@ export class BattleScene extends Phaser.Scene {
     container.add(btn);
   }
 
-  // The question panel an analytic move (Curie's `skyfallBeam`/`groundEruption`,
+  // The question panel an analytic move (Laughlin's `skyfallBeam`/`groundEruption`,
   // §5) opens before it resolves -- turnLock is already true by
   // the time this is called (the move button handler sets it before
   // calling this), so no other move/menu interaction can happen underneath
@@ -763,7 +782,7 @@ export class BattleScene extends Phaser.Scene {
   // ends in the lock being released, same invariant playerAttack/resolveHit
   // already rely on.
   private showAnalyticQuestion(move: Move, onAnswered: (bonusMultiplier: number) => void) {
-    const question = getAnalyticQuestion();
+    const question = getAnalyticQuestion(this.game.registry.get('visitedWorlds') as number[]);
     const container = this.add.container(0, 0).setDepth(100);
 
     const panelWidth = 520;
@@ -771,7 +790,7 @@ export class BattleScene extends Phaser.Scene {
     let y = top + 16;
 
     const title = this.add
-      .text(FIELD_W / 2, y, curieMoveDisplayName(this.game.registry, move.id), {
+      .text(FIELD_W / 2, y, tunedMoveDisplayName(this.game.registry, move.id), {
         fontSize: fontPx(this, 15),
         color: '#ffe066',
         fontStyle: 'bold',
@@ -828,6 +847,85 @@ export class BattleScene extends Phaser.Scene {
       .on('pointerdown', onClick);
     container.add(btn);
     return btn;
+  }
+
+  // The three-question gate an Ultimate move (Skłodowska-Curie's two moves,
+  // §5) opens before it resolves -- turnLock is already true by the time
+  // this is called (the move button handler sets it before calling this),
+  // same invariant showAnalyticQuestion relies on. Unlike Analytic's single
+  // question, ALL 3 must be answered correctly for the move to land at all --
+  // stops at the first wrong answer rather than forcing the player through
+  // all 3 regardless, since the outcome (whiff) is already decided at that
+  // point. Every path through this panel ends in onAnswered being called
+  // exactly once, which the caller uses to release turnLock and re-enter the
+  // normal attack flow via playerAttack (bonusMultiplier 1 or 0) -- same
+  // "no third way out" invariant showAnalyticQuestion already relies on.
+  private showUltimateQuestions(move: Move, onAnswered: (allCorrect: boolean) => void) {
+    const questions = getUltimateQuestions(3);
+    let index = 0;
+
+    const askNext = () => {
+      if (index >= questions.length) {
+        onAnswered(true);
+        return;
+      }
+      const question = questions[index];
+      index += 1;
+      const container = this.add.container(0, 0).setDepth(100);
+
+      const panelWidth = 520;
+      const top = 90;
+      let y = top + 16;
+
+      const title = this.add
+        .text(
+          FIELD_W / 2,
+          y,
+          `${tunedMoveDisplayName(this.game.registry, move.id)} -- question ${index}/${questions.length}`,
+          { fontSize: fontPx(this, 15), color: '#ff66ff', fontStyle: 'bold' }
+        )
+        .setOrigin(0.5, 0);
+      container.add(title);
+      y += title.height + 8;
+
+      const prompt = this.add
+        .text(FIELD_W / 2, y, question.prompt, {
+          fontSize: fontPx(this, 12),
+          color: '#ffffff',
+          align: 'center',
+          wordWrap: { width: panelWidth - 60 },
+        })
+        .setOrigin(0.5, 0);
+      container.add(prompt);
+      y += prompt.height + 14;
+
+      const options = Phaser.Utils.Array.Shuffle([
+        { text: question.correct, correct: true },
+        { text: question.incorrect, correct: false },
+      ]);
+
+      const finish = (correct: boolean) => {
+        container.destroy(true);
+        if (!correct) {
+          onAnswered(false);
+          return;
+        }
+        askNext();
+      };
+
+      options.forEach((opt) => {
+        const btn = this.addAnswerButton(container, y, opt.text, () => finish(opt.correct));
+        y += btn.height + 8;
+      });
+
+      const panelHeight = y - top + 10;
+      const panel = this.add
+        .rectangle(FIELD_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+        .setStrokeStyle(2, 0xff66ff);
+      container.addAt(panel, 0);
+    };
+
+    askNext();
   }
 
   // Colored from that world's own biome (art/biomes.ts, the same table
@@ -1104,10 +1202,20 @@ export class BattleScene extends Phaser.Scene {
   // Shared by both the player's and the opponent's swings -- the only
   // difference is which side is attacking, so the damage/crit/log/effect
   // logic lives here once instead of duplicated per side. `bonusMultiplier`
-  // is the analytic-move correct/wrong multiplier (default 1, a no-op for
-  // every ordinary move) -- always already decided by the time this runs
-  // (showAnalyticQuestion resolves before playerAttack ever calls this), so
-  // resolveHit itself stays synchronous.
+  // is the Analytic-move correct/wrong multiplier or the Ultimate-move
+  // all-correct/whiff multiplier (default 1, a no-op for every ordinary
+  // move) -- always already decided by the time this runs
+  // (showAnalyticQuestion/showUltimateQuestions resolve before playerAttack
+  // ever calls this). For every non-Ultimate move the tail below (damage/log/
+  // win-lose/onDone) still runs synchronously right after the animation
+  // fires, same as ever. For Skłodowska-Curie's two Ultimate moves (§5,
+  // World 10) it doesn't: their 4-6s multi-phase animation
+  // (art/attackEffects.ts's playMeteor/playNova) needs the damage/log to
+  // land in sync with the animation's own impact beat (not ~5s early) and
+  // the win/lose check + onDone (which schedules the opponent's counter-
+  // swing) to wait until the full animation has actually finished playing --
+  // see applyResult/checkEndOrContinue and the isUltimate branch at the
+  // bottom of this method.
   private resolveHit(isPlayer: boolean, moveId: string, onDone: () => void, bonusMultiplier = 1) {
     const move = MOVES[moveId];
     const attackerStats = isPlayer ? this.playerStats : this.enemyStats;
@@ -1119,16 +1227,17 @@ export class BattleScene extends Phaser.Scene {
     // anyon braid, ...) has no natural way to dampen it -- it lands at
     // double force. This is the only type-interaction term battle damage
     // has (DESIGN.md §4) -- there is no separate strong/weak type chart on
-    // top of it. Every move's own fixed `class` decides this, except for
-    // one of Curie's two moves once tuned via her picker: getCurieMoveClass
+    // top of it. Every move's own fixed `class` decides this, except for a
+    // tunable move (Laughlin's Analytic pair, Skłodowska-Curie's Ultimate
+    // pair) once tuned via the owning guardian's picker: getTunedMoveClass
     // swaps in whatever quasiparticle the player assigned instead of the
     // move's default 'phonon', so a tuned move mismatches like an ordinary
     // attack of that class would -- on top of, not instead of,
-    // bonusMultiplier from the question. Laughlin's Edge Current (§5)
+    // bonusMultiplier from the question. Franklin's Amorphous Halo (§5)
     // softens this to a smaller multiplier for whichever side has it active
-    // as the defender -- topological edge states partially shrugging off a
-    // hit that would otherwise land unmitigated.
-    const effectiveClass = getCurieMoveClass(this.game.registry, moveId);
+    // as the defender -- a defect-broadened diffraction halo partially
+    // shrugging off a hit that would otherwise land unmitigated.
+    const effectiveClass = getTunedMoveClass(this.game.registry, moveId);
     const mismatch = !canHost(defenderType, effectiveClass);
     const mismatchMult = mismatch
       ? this.activePassives(defenderIsPlayer).has('edgeCurrent')
@@ -1160,9 +1269,10 @@ export class BattleScene extends Phaser.Scene {
     // resolveHit term, not hardcoded to "opponent only".
     const screenedMult = this.statusDamageMultiplier(isPlayer);
     const defenseFactor = BASE_STAT / (defenderStats.correlation * this.statusCorrelationMultiplier(!isPlayer));
-    // Laughlin's Fractional Guard (§5): incoming damage to whichever side
-    // has it active is multiplied down for the whole battle -- a hit never
-    // lands as a whole electron's worth against a fractionalized state.
+    // Franklin's Diffraction Shadow (§5): incoming damage to whichever side
+    // has it active is multiplied down for the whole battle -- a defect-
+    // riddled lattice scatters and attenuates the blow, the way porous
+    // carbon attenuates an X-ray beam.
     const fractionalGuardMult = this.activePassives(defenderIsPlayer).has('fractionalGuard')
       ? FRACTIONAL_GUARD_DAMAGE_MULT
       : 1;
@@ -1181,65 +1291,108 @@ export class BattleScene extends Phaser.Scene {
     const from = isPlayer ? PLAYER_POS : this.opponentPos;
     const to = isPlayer ? this.opponentPos : PLAYER_POS;
     const targetCrystal = isPlayer ? this.opponentCrystal : this.playerCrystal;
-    const shapeOverride = ANALYTIC_SHAPES[move.id];
+    const shapeOverride = ANALYTIC_SHAPES[move.id] ?? ULTIMATE_SHAPES[move.id];
+    const isUltimate = ULTIMATE_MOVE_IDS.includes(moveId);
+    const whiff = isUltimate && bonusMultiplier === 0;
+
+    // Applies the hit's damage/log/echo/heal. For an ordinary move this runs
+    // synchronously right below (near-instant animation, no desync risk). For
+    // an Ultimate move it's deferred until the multi-second animation's own
+    // impact beat instead (see the branch at the bottom of this method), so
+    // the HP bar/log line land in sync with what's on screen rather than
+    // seconds ahead of it.
+    const applyResult = () => {
+      this.applyDamage(defenderIsPlayer, dmg);
+
+      const mismatchText = mismatch ? ' No natural defense against this!' : '';
+      const critText = crit ? ' A coherent critical hit!' : '';
+      const who = isPlayer ? 'You' : `Wild ${this.wild.name}`;
+      // Kondo's move landing applies a fresh status to the defender (replacing
+      // whatever was already there); an ordinary hit instead ticks down
+      // whatever status the defender already carries, one tick per round since
+      // each side is the defender of exactly one resolveHit call per round --
+      // see applyOrTickStatus.
+      const statusText = this.applyOrTickStatus(move, defenderIsPlayer);
+
+      // Franklin's Satellite Reflection (§5): a crit from a side with it
+      // active triggers a bonus follow-up tick against the same defender,
+      // computed after the status clause above so it still reads as part of
+      // the same hit's log line -- fixed order (mismatch, crit, status, echo,
+      // heal), same "stack a clause onto the existing line" pattern every
+      // other term here uses.
+      let echoText = '';
+      if (crit && this.activePassives(isPlayer).has('anyonEcho')) {
+        const echoDmg = Math.round(dmg * ANYON_ECHO_FRACTION);
+        if (echoDmg > 0) {
+          this.applyDamage(defenderIsPlayer, echoDmg);
+          this.impactPunch(targetCrystal);
+          echoText = ` ${PASSIVES.anyonEcho.name} strikes again for ${echoDmg}!`;
+        }
+      }
+
+      // Bohr's Shared State (§5): a share of the damage the attacker just
+      // dealt (the primary hit only, not Anyon Echo's own bonus tick above)
+      // comes back to them as healing, capped at their own max HP.
+      let healText = '';
+      if (this.activePassives(isPlayer).has('sharedState')) {
+        const healAmount = Math.round(dmg * SHARED_STATE_HEAL_FRACTION);
+        const maxHp = isPlayer ? this.playerMaterial.maxHp : this.wild.maxHp;
+        const currentHp = isPlayer ? this.playerHp : this.opponentHp;
+        if (healAmount > 0 && currentHp < maxHp) {
+          this.applyHeal(isPlayer, healAmount, maxHp);
+          healText = ` ${PASSIVES.sharedState.name} heals ${who} for ${healAmount}!`;
+        }
+      }
+
+      const displayName = tunedMoveDisplayName(this.game.registry, moveId);
+      this.setLogText(
+        whiff
+          ? `${who}'s ${displayName} fizzles out -- the pattern never locked!`
+          : `${who} used ${displayName}! (${dmg} dmg)${mismatchText}${critText}${statusText}${echoText}${healText}`
+      );
+    };
+
+    // Win/lose check + turn handoff. For an ordinary move this runs right
+    // after applyResult, synchronously below. For an Ultimate move it's
+    // deferred to the animation's onComplete instead, so the opponent's
+    // counter-swing can't be scheduled (and the battle can't end) until the
+    // full summon animation has actually finished playing.
+    const checkEndOrContinue = () => {
+      if (this.opponentHp <= 0) {
+        this.endBattle(true);
+        return;
+      }
+      if (this.playerHp <= 0) {
+        this.endBattle(false);
+        return;
+      }
+      onDone();
+    };
+
+    if (isUltimate) {
+      playAttackEffect(
+        this,
+        effectiveClass,
+        from,
+        to,
+        () => {
+          this.impactPunch(targetCrystal);
+          applyResult();
+        },
+        mismatchMult * bonusMultiplier,
+        shapeOverride,
+        () => checkEndOrContinue(),
+        whiff
+      );
+      return;
+    }
+
     playAttackEffect(this, effectiveClass, from, to, () => this.impactPunch(targetCrystal), mismatchMult * bonusMultiplier, shapeOverride);
-
-    this.applyDamage(defenderIsPlayer, dmg);
-
-    const mismatchText = mismatch ? ' No natural defense against this!' : '';
-    const critText = crit ? ' A coherent critical hit!' : '';
-    const who = isPlayer ? 'You' : `Wild ${this.wild.name}`;
-    // Kondo's move landing applies a fresh status to the defender (replacing
-    // whatever was already there); an ordinary hit instead ticks down
-    // whatever status the defender already carries, one tick per round since
-    // each side is the defender of exactly one resolveHit call per round --
-    // see applyOrTickStatus.
-    const statusText = this.applyOrTickStatus(move, defenderIsPlayer);
-
-    // Laughlin's Anyon Echo (§5): a crit from a side with it active triggers
-    // a bonus follow-up tick against the same defender, computed after the
-    // status clause above so it still reads as part of the same hit's log
-    // line -- fixed order (mismatch, crit, status, echo, heal), same "stack
-    // a clause onto the existing line" pattern every other term here uses.
-    let echoText = '';
-    if (crit && this.activePassives(isPlayer).has('anyonEcho')) {
-      const echoDmg = Math.round(dmg * ANYON_ECHO_FRACTION);
-      if (echoDmg > 0) {
-        this.applyDamage(defenderIsPlayer, echoDmg);
-        this.impactPunch(targetCrystal);
-        echoText = ` ${PASSIVES.anyonEcho.name} strikes again for ${echoDmg}!`;
-      }
-    }
-
-    // Bohr's Shared State (§5): a share of the damage the attacker just
-    // dealt (the primary hit only, not Anyon Echo's own bonus tick above)
-    // comes back to them as healing, capped at their own max HP.
-    let healText = '';
-    if (this.activePassives(isPlayer).has('sharedState')) {
-      const healAmount = Math.round(dmg * SHARED_STATE_HEAL_FRACTION);
-      const maxHp = isPlayer ? this.playerMaterial.maxHp : this.wild.maxHp;
-      const currentHp = isPlayer ? this.playerHp : this.opponentHp;
-      if (healAmount > 0 && currentHp < maxHp) {
-        this.applyHeal(isPlayer, healAmount, maxHp);
-        healText = ` ${PASSIVES.sharedState.name} heals ${who} for ${healAmount}!`;
-      }
-    }
-
-    const displayName = curieMoveDisplayName(this.game.registry, moveId);
-    this.setLogText(`${who} used ${displayName}! (${dmg} dmg)${mismatchText}${critText}${statusText}${echoText}${healText}`);
-
-    if (this.opponentHp <= 0) {
-      this.endBattle(true);
-      return;
-    }
-    if (this.playerHp <= 0) {
-      this.endBattle(false);
-      return;
-    }
-    onDone();
+    applyResult();
+    checkEndOrContinue();
   }
 
-  // Which of Laughlin's/Bohr's passives (data/passives.ts) are currently
+  // Which of Franklin's/Bohr's passives (data/passives.ts) are currently
   // active for a given side -- read once per battle in create(), see that
   // field's own comment. Generic over `isPlayer` the same way
   // getStatus/statusDamageMultiplier below are, even though only the player
@@ -1337,7 +1490,7 @@ export class BattleScene extends Phaser.Scene {
     label.setText(status ? `${STATUS_INFO[status.kind].label} (${status.turnsLeft})` : '');
   }
 
-  // Creates the passive pill (Laughlin's/Bohr's abilities, §5) stacked below
+  // Creates the passive pill (Franklin's/Bohr's abilities, §5) stacked below
   // that side's status pill at (x, naturalY), then measures its actual
   // rendered size and corrects position/existence rather than trusting
   // naturalY/x directly -- up to two joined passive names (passivePillText)

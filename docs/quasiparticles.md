@@ -59,17 +59,33 @@ host the attacking move's quasiparticle class at all, the hit lands at
 | `adaptive` | `electron`, `magnon`, `phonon`, `screening`, `plasmon`, `polaron`, `spinon`, `triplon`, `chiral`, `helical`, `higgs`, `chargedAnyon`, `majorana`, `heavyFermion`, `vison` |
 <!-- GENERATED:COMPATIBILITY_TABLE END -->
 
-## Curie's quiz-gated moves
+## Laughlin's Analytic moves
 
-Curie (World 6) sells a beam move and an eruption move, not listed in the
+Laughlin (World 4) sells a beam move and an eruption move, not listed in the
 table above since they're quiz-gated separately: using either one asks a
 physics-equation question first, and answering right doubles the hit while
-answering wrong halves it. Curie's shop also lets you tune each move to any
+answering wrong halves it. Laughlin's shop also lets you tune each move to any
 quasiparticle class your current form can host, the same choice an ordinary
 move's fixed class already makes for you -- each move's name always reads
 "<quasiparticle> Beam"/"<quasiparticle> Eruption," defaulting to Phonon
 Beam/Phonon Eruption until tuned, so they're always usable. See
-[Guardians](guardians.md#curie) for how the shop and the tuning picker work.
+[Guardians](guardians.md#laughlin) for how the shop and the tuning picker work.
+
+## Skłodowska-Curie's Ultimate moves
+
+Skłodowska-Curie (World 10) sells a meteor move and a nova move, also not
+listed in the table above -- each far more powerful than any ordinary move
+(power 100, ten times an Analytic move's), and gated much more steeply:
+landing one takes three physics questions answered correctly in a row, drawn
+from a broad pool spanning the whole course rather than one world's own
+topic. Missing even one question makes the move whiff for zero damage,
+though the turn is still spent. Like Laughlin's Analytic moves, each one can
+be tuned to any quasiparticle class your current form can host and always
+reads "<quasiparticle> Meteor"/"<quasiparticle> Nova" -- but tuning isn't a
+flat purchase here: each quasiparticle class costs 1000 qumatokens to unlock
+per move, the first time it's picked, after which retuning back to it is
+free forever. See [Guardians](guardians.md#skłodowska-curie) for how the
+shop and the per-class unlock pricing work.
 
 ## Screening
 

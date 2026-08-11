@@ -1,6 +1,7 @@
 import type { Material, MaterialType, MoveClass, Stats } from './types';
 import { PLAYER_MATERIAL, DEFAULT_STATS, MOVES, TYPE_LOOK } from './materials';
 import { DEFAULT_ENCOUNTER_DENSITY, DEFAULT_FONT_SCALE, DEFAULT_MUSIC_STYLE } from './settings';
+import type { PassiveOwner } from './passives';
 
 // Single localStorage-backed save slot (v1: one profile, no cloud sync --
 // matches DESIGN.md §7). TitleScene reads this once at boot into the Phaser
@@ -71,24 +72,32 @@ export interface SaveData {
   // All three can be bought independently (they stay in unlockedMoves
   // regardless), but getBattleMoves only ever surfaces this one.
   kondoActiveMove: string | null;
-  // Laughlin's and Bohr's passive abilities (data/passives.ts's
-  // LAUGHLIN_PASSIVE_IDS/BOHR_PASSIVE_IDS) -- same "buy several, only one
-  // active, switch by revisiting the guardian" shape as Kondo's moves above,
-  // but a passive is a whole-battle always-on modifier rather than a move
-  // picked from the battle menu each turn (BattleScene reads
-  // laughlinActivePassive/bohrActivePassive once at battle start, see its
-  // own comments), so there's no battle-move equivalent of getBattleMoves'
-  // extra filter to worry about here.
-  laughlinPassivesUnlocked: string[];
-  laughlinActivePassive: string | null;
-  bohrPassivesUnlocked: string[];
-  bohrActivePassive: string | null;
-  // Which quasiparticle class each of Curie's two moves (by move id) is
-  // currently tuned to (data/materials.ts's getCurieMoveClass,
-  // OverworldScene.showCurieClassPicker) -- an id missing from this map is
-  // "untuned," falling back to the move's own always-safe default 'phonon'
-  // class for the quasiparticle-mismatch check.
-  curieMoveClass: Partial<Record<string, MoveClass>>;
+  // Every passive ability the player has ever bought, flat across both
+  // current owners (data/passives.ts's PassiveOwner) since passive ids are
+  // globally unique across PASSIVES -- same "buy several, only one active,
+  // switch by revisiting the guardian" shape as Kondo's moves above, but a
+  // passive is a whole-battle always-on modifier rather than a move picked
+  // from the battle menu each turn.
+  passivesUnlocked: string[];
+  // Which passive is currently active for each owner (BattleScene reads
+  // this once at battle start, see its own comments) -- an owner missing
+  // from this map has nothing equipped yet.
+  activePassiveByOwner: Partial<Record<PassiveOwner, string>>;
+  // Which quasiparticle class a given tunable move (by move id) is
+  // currently tuned to (data/materials.ts's getTunedMoveClass,
+  // scenes/panels/tunableMoveShop.ts's showMoveClassPicker) -- shared by
+  // Laughlin's two Analytic moves and Skłodowska-Curie's two Ultimate moves
+  // alike, since it's keyed by move id, not by owner. An id missing from
+  // this map is "untuned," falling back to the move's own always-safe
+  // default 'phonon' class for the quasiparticle-mismatch check.
+  moveClassTuning: Partial<Record<string, MoveClass>>;
+  // Which quasiparticle classes have been paid for (1000 qumatokens each)
+  // for each of Skłodowska-Curie's two Ultimate moves (data/materials.ts's
+  // ULTIMATE_MOVE_IDS/ULTIMATE_CLASS_UNLOCK_COST) -- once a (move, class)
+  // pair appears here, retuning back to it via her panel is free forever,
+  // mirroring how ordinary move retuning is already free once a move is
+  // owned; the difference is the unlock is per-class here, not per-move.
+  ultimateClassesUnlocked: Partial<Record<string, MoveClass[]>>;
   // World 9's rival's randomly rolled type (data/materials.ts's
   // rollRival9Type/RIVAL_9_TYPES) -- null until first rolled
   // (OverworldScene.resolveRival9Type, on first reaching world 9), then
@@ -125,11 +134,10 @@ export function defaultSave(): SaveData {
     fontScale: DEFAULT_FONT_SCALE,
     musicStyle: DEFAULT_MUSIC_STYLE,
     kondoActiveMove: null,
-    laughlinPassivesUnlocked: [],
-    laughlinActivePassive: null,
-    bohrPassivesUnlocked: [],
-    bohrActivePassive: null,
-    curieMoveClass: {},
+    passivesUnlocked: [],
+    activePassiveByOwner: {},
+    moveClassTuning: {},
+    ultimateClassesUnlocked: {},
     rival9Type: null,
     andersonDopant: null,
   };
@@ -206,11 +214,10 @@ export function persistFromRegistry(registry: RegistryLike) {
     fontScale: (registry.get('fontScale') as number) ?? DEFAULT_FONT_SCALE,
     musicStyle: (registry.get('musicStyle') as 'classic' | 'modern') ?? DEFAULT_MUSIC_STYLE,
     kondoActiveMove: (registry.get('kondoActiveMove') as string | null) ?? null,
-    laughlinPassivesUnlocked: (registry.get('laughlinPassivesUnlocked') as string[]) ?? [],
-    laughlinActivePassive: (registry.get('laughlinActivePassive') as string | null) ?? null,
-    bohrPassivesUnlocked: (registry.get('bohrPassivesUnlocked') as string[]) ?? [],
-    bohrActivePassive: (registry.get('bohrActivePassive') as string | null) ?? null,
-    curieMoveClass: (registry.get('curieMoveClass') as Partial<Record<string, MoveClass>>) ?? {},
+    passivesUnlocked: (registry.get('passivesUnlocked') as string[]) ?? [],
+    activePassiveByOwner: (registry.get('activePassiveByOwner') as Partial<Record<PassiveOwner, string>>) ?? {},
+    moveClassTuning: (registry.get('moveClassTuning') as Partial<Record<string, MoveClass>>) ?? {},
+    ultimateClassesUnlocked: (registry.get('ultimateClassesUnlocked') as Partial<Record<string, MoveClass[]>>) ?? {},
     rival9Type: (registry.get('rival9Type') as MaterialType | null) ?? null,
     andersonDopant: (registry.get('andersonDopant') as string | null) ?? null,
   };
