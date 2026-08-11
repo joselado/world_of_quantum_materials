@@ -116,7 +116,7 @@ don't hand-edit the `<!-- GENERATED -->` blocks.*
 | CrI₃/NbSe₂ Topological-SC Heterostructure | `chernSuperconductor` | 33 |
 | NbSe₂/CrBr₃ Topological-SC Heterostructure | `chernSuperconductor` | 33 |
 | Twisted CrI₃ | `multiferroic` | 32 |
-| 1T/1H-TaS₂ Heterostructure | `quantumSpinLiquid` | 30 |
+| 1T/1H-TaS₂ Heterostructure | `kondoHeavyFermion` | 30 |
 | Cr-doped (Bi,Sb)₂Te₃ | `chernInsulator` | 29 |
 | HgTe/CdTe Quantum Well | `quantumSpinHall` | 25 |
 | Twisted Bilayer MoTe₂ | `fractionalChern` | 26 |
