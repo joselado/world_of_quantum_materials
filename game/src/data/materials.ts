@@ -788,9 +788,8 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     crystal('Niobium Diselenide', 'superconductor', 21, ['higgsOscillation', 'thermalFluctuation'], 2, undefined, 'NbSe₂'),
     // Elemental Mn's own complex itinerant antiferromagnetism (same
     // "classicalMagnet" liberty already taken with Chromium) is beside the
-    // point here -- its role is HYBRID_RECIPES' magnetic-impurity parent for
-    // Mn/Nb Shiba Chain (World 10; Yazdani et al., Science 275, 1767 (1997),
-    // the original single-impurity Yu-Shiba-Rusinov STM observation).
+    // point here -- it's the textbook itinerant local-moment magnet for this
+    // topic.
     crystal('Manganese', 'classicalMagnet', 23, ['thermalFluctuation', 'magneticField'], 3, undefined, 'Mn'),
     // The textbook ferroelectric -- its Ti⁴⁺ ion sits off-center below
     // ~120°C, giving the lattice a spontaneous switchable polarization. No
@@ -860,12 +859,6 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // 'chernSuperconductor' rather than plain 'superconductor': the whole
     // point is the Majorana zero modes at the chain's ends.
     crystal('Fe/Pb Majorana Chain', 'chernSuperconductor', 29, ['decoherenceWave', 'chiralCurrent'], 2),
-    // The single-impurity precursor to Fe(Te,Se)/Fe-Pb Chain's Majorana
-    // physics above -- an isolated magnetic adatom (world 9's Manganese) on
-    // an *ordinary* (non-topological) s-wave superconductor (world 5's
-    // Niobium) hosts an ordinary, non-Majorana Yu-Shiba-Rusinov bound state,
-    // so unlike those it stays plain 'superconductor', no Majorana Split.
-    crystal('Mn/Nb Shiba Chain', 'superconductor', 24, ['tunnelStrike', 'thermalFluctuation'], 4),
   ],
 };
 
@@ -1019,10 +1012,6 @@ const HYBRID_RECIPES: { parents: [string, string]; result: Material }[] = [
   // superconductivity with chiral Majorana edge modes.
   { parents: ['Niobium Diselenide', 'Chromium Tribromide'], result: namedResult('NbSe₂/CrBr₃ Topological-SC Heterostructure') },
   { parents: ['Tantalum Disulfide (1T)', 'Tantalum Disulfide (1H)'], result: namedResult('1T/1H-TaS₂ Heterostructure') },
-  // Yazdani et al., Science 275, 1767 (1997) -- the original single-impurity
-  // Yu-Shiba-Rusinov STM observation, literalized the same way Iron + Lead
-  // literalizes Fe/Pb Majorana Chain above.
-  { parents: ['Manganese', 'Niobium'], result: namedResult('Mn/Nb Shiba Chain') },
   // König et al., Science 318, 766 (2007) -- neither parent is topological on
   // its own; only the thinned HgTe/CdTe quantum well is.
   { parents: ['HgTe', 'CdTe'], result: namedResult('HgTe/CdTe Quantum Well') },

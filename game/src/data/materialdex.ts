@@ -31,8 +31,6 @@ export const MATERIAL_BLURBS: Record<string, string> = {
     'Untwisted CrI₃ is only an ordinary van der Waals ferromagnet -- stacking two layers at a twist angle is predicted to create noncollinear moiré spin textures whose magnetoelectric coupling would host genuine electromagnons.',
   'HgTe/CdTe Quantum Well':
     'Neither HgTe nor CdTe is topological on its own -- but thin a layer of (inverted-gap) HgTe between CdTe barriers to the right thickness and the bands invert, opening a gap that hides a protected helical edge state: the original Bernevig-Hughes-Zhang quantum spin Hall insulator (König et al., Science 2007).',
-  'Mn/Nb Shiba Chain':
-    "A single magnetic Mn adatom on an ordinary s-wave superconductor like Nb binds a Yu-Shiba-Rusinov state inside the gap (Yazdani et al., Science 1997) -- the single-impurity precursor to the engineered many-impurity chains (like Fe/Pb) that host actual Majorana zero modes.",
   'Y₂BaNiO₅':
     "This S=1 Heisenberg chain opens a Haldane gap rather than ordering -- its ground state is adiabatically connected to the AKLT state, the exactly solvable valence-bond-solid wavefunction matrix product states were introduced to describe in the first place.",
   'YbRh₂Si₂':

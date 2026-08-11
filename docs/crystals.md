@@ -122,7 +122,6 @@ don't hand-edit the `<!-- GENERATED -->` blocks.*
 | Twisted Bilayer MoTe₂ | `fractionalChern` | 26 |
 | Rhombohedral Pentalayer Graphene/hBN Moiré | `fractionalChern` | 27 |
 | Fe/Pb Majorana Chain | `chernSuperconductor` | 29 |
-| Mn/Nb Shiba Chain | `superconductor` | 24 |
 <!-- GENERATED:WORLDS END -->
 
 ## World rivals

@@ -213,17 +213,16 @@ pool.
 | chernSuperconductor (5) | Uranium Ditelluride (UTe$_2$) | Leading spin-triplet/chiral superconductor candidate — critical fields far beyond the Pauli limit and contested reports of time-reversal-symmetry breaking and chiral in-gap surface states; standalone (not a hybrid recipe result), the same "real intrinsic compound anchors its own topic's world" treatment MnBi₂Te₄ gets above; genuinely still a *candidate*, not settled, unlike this world's other (engineered/hybrid) chernSuperconductor members |
 | chernSuperconductor (5, engineered) | NbSe$_2$/CrBr$_3$ heterostructure | s-wave SC + spin-orbit + exchange field engineered into a topological superconductor — genuine topological pairing, so it (and its Majorana Split move) live here rather than plain `superconductor` |
 | chernSuperconductor (5, engineered, hybrid) | Iron chains on lead (Fe/Pb) | Majorana-chain platform — topological superconductivity from a magnetic chain on an s-wave SC; §5 hybrid recipe result (world 6's Iron + this world's Lead), lives as a World 10 wild rather than a World 5 one |
-| superconductor (5) | Niobium (Nb) | Highest-$T_c$ elemental BCS superconductor at ambient pressure, same conventional family as Aluminum/Lead; also §5's non-magnetic parent for Mn/Nb Shiba Chain below |
+| superconductor (5) | Niobium (Nb) | Highest-$T_c$ elemental BCS superconductor at ambient pressure, same conventional family as Aluminum/Lead |
 | superconductor (5) | Tantalum Disulfide, 1H phase (TaS$_2$) | Metallic/superconducting TMD monolayer in its own right — distinct from the 1T phase below, and the other half of §5's 1T/1H-TaS₂ heterostructure hybrid recipe |
 | chernSuperconductor (9) | Iron Telluride/Selenide (Fe(Te,Se)) | Hosts Yu-Shiba-Rusinov *and* vortex-bound Majorana defect states (Zhang et al., Science 2018) — the vortex Majorana observation is genuine topological superconductivity, so this is `chernSuperconductor` rather than plain `superconductor` |
 | superconductor (9, textbook fill-in) | Niobium Diselenide (NbSe$_2$), STM-imaged impurities | Friedel oscillations / impurity-resonance textbook platform, ordinary (non-topological) disorder physics; also pairs with CrI₃/CrBr₃ in §5's topological-SC heterostructure recipes |
-| superconductor (9, hybrid) | Mn/Nb Shiba Chain | A single Mn adatom on ordinary (non-topological) Niobium hosts an ordinary Yu-Shiba-Rusinov bound state (Yazdani et al., Science 1997) — the single-impurity precursor to Fe(Te,Se)/Fe/Pb Chain above; §5 hybrid recipe result, stays plain `superconductor`, no Majorana Split the way those genuinely topological cases get, lives as a World 10 wild rather than a World 9 one |
 | classicalMagnet (6) | Iron (Fe) | Classic itinerant ferromagnet, magnon carrier |
 | classicalMagnet (6) | Cobalt (Co) | Same family |
 | classicalMagnet (6) | Chromium Triiodide (CrI$_3$) | Van der Waals ferromagnet with an observed topological magnon gap |
 | classicalMagnet (6) | Chromium Tribromide (CrBr$_3$) | Same van der Waals ferromagnet family as CrI₃ — pairs with Niobium Diselenide in Kezilebieke et al., Nature 588, 424 (2020)'s topological-superconductor heterostructure, §5 |
 | classicalMagnet (6) | Yttrium Iron Garnet (YIG, Y$_3$Fe$_5$O$_{12}$) | Ferrimagnetic (two antiparallel sublattices, unequal moment), with the lowest known magnon damping of any material — the real substrate nearly every magnon-transport/magnon-BEC experiment actually runs on; not from the course, added as `classicalMagnet`'s magnonics flagship |
-| classicalMagnet (9, hybrid parent) | Manganese (Mn) | Elemental Mn's own complex itinerant antiferromagnetism is beside the point — its role is §5's magnetic-impurity parent for Mn/Nb Shiba Chain above |
+| classicalMagnet (9) | Manganese (Mn) | Elemental Mn's own complex itinerant antiferromagnetism is beside the point — it's the textbook itinerant local-moment magnet for this topic |
 | quantumSpinLiquid (7, textbook fill-in) | Strontium Copper Borate (SrCu$_2$(BO$_3$)$_2$) | Shastry–Sutherland lattice — exactly-solvable dimerized/entangled ground state, a standard tensor-network benchmark material and a textbook triplon host |
 | quantumSpinLiquid (7, textbook fill-in) | Thallium Copper Chloride (TlCuCl$_3$) | Quantum spin-dimer compound — another textbook triplon example |
 | quantumSpinLiquid (7) | Herbertsmithite | The one real compound session 7 itself names, motivating MPS/tensor-network methods (kagome local moments); a Z2-spin-liquid candidate, a genuine vison host |
@@ -598,9 +597,7 @@ does. World 10 has no guardian; its only encounter is the finale.
   topological flat bands" already
   *is* the fractional Chern-insulator result, so the recipe resolves to that entry rather
   than a duplicate); 1T-phase + 1H-phase Tantalum Disulfide → a Kondo-screened
-  heterostructure; Manganese + Niobium → Mn/Nb Shiba Chain, the single-impurity
-  Yu-Shiba-Rusinov precursor (Yazdani et al., Science 1997) to the Fe/Pb chain's
-  many-impurity Majorana case; HgTe + CdTe → HgTe/CdTe Quantum Well, the original
+  heterostructure; HgTe + CdTe → HgTe/CdTe Quantum Well, the original
   Bernevig-Hughes-Zhang quantum spin Hall platform (König et al., Science 2007) --
   neither parent is topological on its own, only the engineered quantum well is;
   Graphene + Monolayer Boron Nitride → Rhombohedral Pentalayer Graphene/hBN Moiré, the
