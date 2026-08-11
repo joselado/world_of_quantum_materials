@@ -1224,8 +1224,23 @@ export class BattleScene extends Phaser.Scene {
   // actually finishes (`playerAttack`'s `releaseLock`), since Kondo's Slowed
   // status (§5) can change `statusVelocityMultiplier` and so flip
   // `fasterIsPlayer`/`fasterHits` for the next round.
+  //
+  // Each icon's sparkles (`makeCrystal`/`addHighlightAndSparkles`) carry an
+  // infinitely-repeating tween -- `Container.destroy(true)` destroys the
+  // sparkle Text objects themselves but doesn't stop tweens still targeting
+  // them, so a plain destroy-and-rebuild every round would leak a handful of
+  // dead-but-still-ticking tweens per round for the rest of the battle.
+  // Killing tweens of every descendant of the old row before destroying it
+  // keeps this redraw actually cheap to call every round.
   private drawTurnPreview() {
-    this.turnPreviewRow?.destroy(true);
+    if (this.turnPreviewRow) {
+      this.turnPreviewRow.each((icon: Phaser.GameObjects.GameObject) => {
+        if (icon instanceof Phaser.GameObjects.Container) {
+          icon.each((child: Phaser.GameObjects.GameObject) => this.tweens.killTweensOf(child));
+        }
+      });
+      this.turnPreviewRow.destroy(true);
+    }
 
     const { fasterIsPlayer, fasterHits } = this.currentHitOrder();
     const roundPattern: boolean[] = [];

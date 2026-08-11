@@ -683,9 +683,12 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   both HP-bar columns and the log text further down: a dim blue-grey (`#8fa0c9`, matching
   the move menu's own section-header color) "Turns" label over the usual translucent-black
   tag background, with a row of five 18px crystal icons (`makeCrystal`, 22px spacing) below
-  it -- one for the player's own current crystal, one for the wild opponent's, each using
-  that side's real `color`/`variant`/`seed`/`hybridParents` so the two are visibly distinct
-  and match how that crystal actually looks elsewhere in the fight.
+  it, one per predicted hit: the player's own current crystal or the opponent's, each using
+  that side's real `color`/`variant`/`seed`/`hybridParents` so the two are visibly distinct.
+  Always the plain `makeCrystal` look on the opponent's side, even in a rival fight where the
+  on-field opponent itself renders bigger via `makeBossCrystal` (see "Boss opponent in
+  battle" below) -- a boss's wider multi-shard silhouette wouldn't read at 18px, so the icon
+  stays the ordinary single-shape crystal look rather than trying to match the boss art.
 - The row previews the next five hits in order (DESIGN.md §4's velocity multi-hit rule):
   the faster side's icons repeated `fasterHits` times, then the slower side's icon once,
   tiled out to five. It's a best-effort look-ahead, not a guarantee -- it assumes ordinary
