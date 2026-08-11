@@ -16,6 +16,7 @@ import {
   getCurieMoveClass,
   curieMoveDisplayName,
   enemyStatsForWorld,
+  ANALYTIC_MOVE_IDS,
 } from '../data/materials';
 import { victoryLine, defeatLine } from '../data/greetings';
 import { PASSIVES } from '../data/passives';
@@ -26,8 +27,8 @@ import type { DiscoveredMaterial } from '../data/save';
 import type { Material, Move, Stats } from '../data/types';
 import { music } from '../audio/music';
 
-// Correct/wrong multipliers for Curie's analytic moves (§5) -- deliberately
-// steeper than the pre-battle quiz's QUIZ_CORRECT_MULTIPLIER/
+// Correct/wrong multipliers for Curie's two quiz-gated moves (§5) --
+// deliberately steeper than the pre-battle quiz's QUIZ_CORRECT_MULTIPLIER/
 // QUIZ_WRONG_MULTIPLIER (OverworldScene.ts, 1.5/0.6): those apply to every
 // attack for a whole fight as a one-time roll, these are a per-use gamble
 // the player opts into by picking one of these two moves specifically.
@@ -390,14 +391,11 @@ export class BattleScene extends Phaser.Scene {
     return [
       {
         label: 'ATTACKS',
-        ids: moveIds.filter((id) => {
-          const cls = MOVES[id].class;
-          return cls !== 'analytic' && cls !== 'screening';
-        }),
+        ids: moveIds.filter((id) => !ANALYTIC_MOVE_IDS.includes(id) && MOVES[id].class !== 'screening'),
       },
       {
         label: 'ANALYTIC',
-        ids: moveIds.filter((id) => MOVES[id].class === 'analytic'),
+        ids: moveIds.filter((id) => ANALYTIC_MOVE_IDS.includes(id)),
         legend: '★ right=2x wrong=½x',
       },
       { label: 'SCREENING', ids: moveIds.filter((id) => MOVES[id].class === 'screening') },
@@ -418,13 +416,13 @@ export class BattleScene extends Phaser.Scene {
   // log, so a first-time player had no way to plan a move before swinging.
   //
   // Shows exactly one move-kind section at a time (DESIGN.md §4's "group
-  // moves by kind" -- physics-gated attacks, Curie's answer-gated analytic
+  // moves by kind" -- physics-gated attacks, Curie's two answer-gated
   // moves, and Kondo's currently-active screening move work differently
   // enough that a flat list blurred the distinction), paged with on-screen
   // ◀/▶ arrows and the Left/Right keys (moveSectionIndex/
   // switchMoveSection) -- a section only counts as a page if it has at
-  // least one usable move, so a player with no analytic moves bought or no
-  // Kondo move active never sees an empty page, and the pager itself is
+  // least one usable move, so a player with none of Curie's moves bought or
+  // no Kondo move active never sees an empty page, and the pager itself is
   // hidden entirely if there's only one page to begin with. Showing one
   // section instead of all of them stacked means each page's row height is
   // budgeted only against that section's own move count, not the
@@ -607,7 +605,7 @@ export class BattleScene extends Phaser.Scene {
     const mismatch = !canHost(this.wild.type, getCurieMoveClass(this.game.registry, moveId));
     let tag = '';
     let color = '#ffff88';
-    if (move.class === 'analytic') {
+    if (ANALYTIC_MOVE_IDS.includes(moveId)) {
       tag += ' ★';
       color = '#ffe066';
     }
@@ -628,7 +626,7 @@ export class BattleScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => {
         if (this.turnLock) return;
-        if (move.class === 'analytic') {
+        if (ANALYTIC_MOVE_IDS.includes(moveId)) {
           this.turnLock = true;
           this.showAnalyticQuestion(move, (bonusMultiplier) => {
             this.turnLock = false;
@@ -1007,16 +1005,17 @@ export class BattleScene extends Phaser.Scene {
     // anyon braid, ...) has no natural way to dampen it -- it lands at
     // double force. This is the only type-interaction term battle damage
     // has (DESIGN.md §4) -- there is no separate strong/weak type chart on
-    // top of it. An analytic move's own `class` stays 'analytic' (on every
-    // type's MOVE_COMPATIBILITY list, so it's never mismatched by default),
-    // but getCurieMoveClass swaps in whatever quasiparticle the player
-    // tuned it to via Curie's picker, so a tuned analytic move mismatches
-    // like an ordinary attack of that class would -- on top of, not instead
-    // of, bonusMultiplier from the question. Laughlin's Edge Current (§5)
+    // top of it. Every move's own fixed `class` decides this, except for
+    // one of Curie's two moves once tuned via her picker: getCurieMoveClass
+    // swaps in whatever quasiparticle the player assigned instead of the
+    // move's default 'phonon', so a tuned move mismatches like an ordinary
+    // attack of that class would -- on top of, not instead of,
+    // bonusMultiplier from the question. Laughlin's Edge Current (§5)
     // softens this to a smaller multiplier for whichever side has it active
     // as the defender -- topological edge states partially shrugging off a
     // hit that would otherwise land unmitigated.
-    const mismatch = !canHost(defenderType, getCurieMoveClass(this.game.registry, moveId));
+    const effectiveClass = getCurieMoveClass(this.game.registry, moveId);
+    const mismatch = !canHost(defenderType, effectiveClass);
     const mismatchMult = mismatch
       ? this.activePassives(defenderIsPlayer).has('edgeCurrent')
         ? EDGE_CURRENT_MISMATCH_MULT
@@ -1069,7 +1068,7 @@ export class BattleScene extends Phaser.Scene {
     const to = isPlayer ? this.opponentPos : PLAYER_POS;
     const targetCrystal = isPlayer ? this.opponentCrystal : this.playerCrystal;
     const shapeOverride = ANALYTIC_SHAPES[move.id];
-    playAttackEffect(this, move.class, from, to, () => this.impactPunch(targetCrystal), mismatchMult * bonusMultiplier, shapeOverride);
+    playAttackEffect(this, effectiveClass, from, to, () => this.impactPunch(targetCrystal), mismatchMult * bonusMultiplier, shapeOverride);
 
     this.applyDamage(defenderIsPlayer, dmg);
 

@@ -8,7 +8,11 @@
 export type MoveClass =
   | 'trivial'
   | 'magnetic'
-  | 'thermal'
+  // Phonon Beam's class -- lattice vibrations, the one quasiparticle every
+  // crystal hosts regardless of type, so it's on every type's
+  // MOVE_COMPATIBILITY list and never triggers the quasiparticle-mismatch
+  // bonus.
+  | 'phonon'
   | 'localization'
   | 'gauge'
   | 'entanglement'
@@ -18,21 +22,13 @@ export type MoveClass =
   // picks up electric-dipole activity through magnon-phonon hybridization
   // (the magnetoelectric coupling itself).
   | 'magnetoelectric'
-  // Curie's moves (§5, World 6): using one asks an analytic-equation
-  // question first (data/quiz.ts's ANALYTIC_QUESTIONS) -- answering right
-  // doubles the hit, answering wrong halves it. Not gated by
-  // MOVE_COMPATIBILITY the way every other class is (see that table's own
-  // comment) -- these are a technique the player learned, not a quasiparticle
-  // a crystal's own physics has to host, so they're usable/purchasable from
-  // any form.
-  | 'analytic'
   // Kondo's three moves (§5, World 8): Screening Pulse, Scattering Drag,
   // Decoherence Cascade -- each deterministically inflicts one of three
   // 3-turn status effects on the defender (Screened/Localized/Decohered,
   // BattleScene's resolveHit) rather than dealing much raw damage itself.
-  // Like 'analytic', this class is on every type's MOVE_COMPATIBILITY list
-  // (see materials.ts) -- usable from any form, never mismatched, since
-  // these deal in a generic scattering/decoherence process rather than a
+  // This class is on every type's MOVE_COMPATIBILITY list (see
+  // materials.ts) -- usable from any form, never mismatched, since these
+  // deal in a generic scattering/decoherence process rather than a
   // quasiparticle tied to one specific type's band structure.
   | 'screening';
 
@@ -43,9 +39,12 @@ export type MaterialType =
   | 'qhe'
   | 'supercon'
   | 'classicalmag'
-  | 'tensornet'
+  // Entangled/fractionalized ground states -- covers both the exactly-
+  // solvable dimerized/entangled textbook compounds (World 7) and the
+  // spin-liquid candidates that never settle on a conventional order (World
+  // 8); both worlds' crystals are physically the same quasiparticle family
+  // (Spinon Swap), just at different points along that topic's teaching arc.
   | 'spinliquid'
-  | 'defect'
   | 'adaptive'
   // Magnetically ordered with an additional electric polarization coupled to
   // it (electromagnon-hosting) -- distinct from a plain classicalmag/magnet,

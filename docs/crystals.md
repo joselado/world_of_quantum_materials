@@ -70,9 +70,9 @@ don't hand-edit the `<!-- GENERATED -->` blocks.*
 
 | Crystal | Type | Max HP |
 | --- | --- | --- |
-| Herbertsmithite | `tensornet` | 23 |
-| Strontium Copper Borate | `tensornet` | 24 |
-| Thallium Copper Chloride | `tensornet` | 22 |
+| Herbertsmithite | `spinliquid` | 23 |
+| Strontium Copper Borate | `spinliquid` | 24 |
+| Thallium Copper Chloride | `spinliquid` | 22 |
 
 ### World 8 -- Quantum magnetism, spinons, Kondo physics
 
@@ -87,9 +87,8 @@ don't hand-edit the `<!-- GENERATED -->` blocks.*
 
 | Crystal | Type | Max HP |
 | --- | --- | --- |
-| NV-Diamond | `defect` | 20 |
-| Fe(Te,Se) | `defect` | 22 |
-| Niobium Diselenide | `defect` | 21 |
+| Fe(Te,Se) | `supercon` | 22 |
+| Niobium Diselenide | `supercon` | 21 |
 
 ### World 10 -- Machine learning for quantum materials
 
@@ -111,7 +110,11 @@ Each world's rival is the one encounter that actually gates progress --
 beating it is what opens the way to the next world. World 10's rival, The
 Adapted, is the one entity in the game with no real compound behind it: a
 "model of you," able to host every quasiparticle class, drawing from
-whatever moves you've collected by then.
+whatever moves you've collected by then. World 9's rival, Rival Impurity
+Resonance, has no fixed type either -- an impurity/defect-bound resonance
+can form in any host crystal, so its type is rolled at random the first time
+you reach World 9 and stays fixed for the rest of that playthrough, which is
+why it's absent from the generated table below.
 
 <!-- GENERATED:RIVALS_TABLE START -->
 | World | Rival | Type | Max HP |
@@ -122,9 +125,8 @@ whatever moves you've collected by then.
 | 4 | Rival Landau Level | `qhe` | 46 |
 | 5 | Rival Cooper Pair | `supercon` | 50 |
 | 6 | Rival Domain Wall | `classicalmag` | 54 |
-| 7 | Rival Entangled Pair | `tensornet` | 58 |
+| 7 | Rival Entangled Pair | `spinliquid` | 58 |
 | 8 | Rival Spinon | `spinliquid` | 62 |
-| 9 | Rival Impurity Resonance | `defect` | 66 |
 | 10 | The Adapted | `adaptive` | 80 |
 <!-- GENERATED:RIVALS_TABLE END -->
 

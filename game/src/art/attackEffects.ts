@@ -13,20 +13,18 @@ interface Point {
 // bolt = a fast, focused shot (Phonon Beam, Electron Pulse, Spinon Swap);
 // ring = an expanding wave pulse (Magnon Pulse, Polaron Drag); burst = many
 // small particles converging/scattering (Anyon Braid, Majorana Split).
-// 'analytic' (Curie's moves) is the one class with two different moves in
-// it (Skyfall Beam, Ground Eruption) that deliberately don't share a look --
-// this entry is just the fallback if playAttackEffect is ever called for an
-// analytic move without an explicit shape override (see ANALYTIC_SHAPES
-// below, and BattleScene's resolveHit which always supplies one).
+// 'beam'/'eruption' are never picked from here -- they're only ever reached
+// via ANALYTIC_SHAPES' per-move-id override below (BattleScene's resolveHit
+// always supplies one for Curie's two moves), so no class needs its own
+// `shape: 'beam' | 'eruption'` entry.
 const EFFECT_STYLE: Record<MoveClass, { color: number; shape: AttackShape }> = {
   trivial: { color: 0x4a90d9, shape: 'bolt' },
   magnetic: { color: 0xd94a4a, shape: 'ring' },
-  thermal: { color: 0xff8844, shape: 'bolt' },
+  phonon: { color: 0xff8844, shape: 'bolt' },
   localization: { color: 0x8a6ad9, shape: 'ring' },
   gauge: { color: 0xd9a24a, shape: 'burst' },
   entanglement: { color: 0x5ad9c9, shape: 'bolt' },
   decoherence: { color: 0x333333, shape: 'burst' },
-  analytic: { color: 0xffe066, shape: 'beam' },
   // Electromagnon Pulse -- a magnon-family excitation, so it shares
   // Magnon Pulse's expanding-ring silhouette, tinted the multiferroic
   // type's own magenta rather than magnetic's red.
@@ -34,16 +32,17 @@ const EFFECT_STYLE: Record<MoveClass, { color: number; shape: AttackShape }> = {
   // Kondo's three moves (Screening Pulse, Scattering Drag, Decoherence
   // Cascade) share one look -- an expanding ring reads as a screening
   // cloud enveloping the target, tinted Kondo's own rust-orange
-  // (WORLD_GUARDIANS[8].strokeColor). Unlike 'analytic' they don't need
-  // per-move-id shape overrides (ANALYTIC_SHAPES below) -- three distinct
-  // move names and status-effect log lines already read as three different
-  // moves without three different silhouettes too.
+  // (WORLD_GUARDIANS[8].strokeColor). Three distinct move names and
+  // status-effect log lines already read as three different moves without
+  // three different silhouettes too, so unlike Curie's moves they need no
+  // per-move-id shape override.
   screening: { color: 0xe86a44, shape: 'ring' },
 };
 
-// Per-move-id shape overrides for 'analytic' -- the one class where two
-// distinct moves (Skyfall Beam, Ground Eruption) want two distinct
-// silhouettes rather than sharing EFFECT_STYLE's one shape per class.
+// Per-move-id shape overrides for Curie's two moves -- the one pair where
+// both moves (Skyfall Beam, Ground Eruption) want two distinct silhouettes
+// (a falling beam, a ground eruption) rather than sharing whichever
+// ordinary EFFECT_STYLE shape their currently-tuned quasiparticle carries.
 export const ANALYTIC_SHAPES: Record<string, AttackShape> = {
   skyfallBeam: 'beam',
   groundEruption: 'eruption',
@@ -61,8 +60,9 @@ const IMPACT_MS = 260;
 // for BattleScene's HP-bar update/flashHit), not after the shockwave finishes
 // decaying -- the shockwave itself is fire-and-forget. `shapeOverride` lets a
 // caller pick a specific silhouette regardless of moveClass's usual one
-// (BattleScene passes ANALYTIC_SHAPES[move.id] for analytic moves so Skyfall
-// Beam and Ground Eruption read differently despite sharing a class).
+// (BattleScene passes ANALYTIC_SHAPES[move.id] for Curie's two moves so
+// Skyfall Beam and Ground Eruption read differently regardless of whichever
+// quasiparticle each is currently tuned to).
 export function playAttackEffect(
   scene: Phaser.Scene,
   moveClass: MoveClass,

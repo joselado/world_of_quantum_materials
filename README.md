@@ -100,8 +100,8 @@ for what each one does.
 <td><img src="screenshots/mentor-majorana.png" width="300" alt="Majorana's hybrid-material panel"></td>
 </tr>
 <tr>
-<td><img src="screenshots/mentor-curie.png" width="300" alt="Curie's analytic-move shop"></td>
-<td><img src="screenshots/battle-analytic-move.png" width="300" alt="An analytic move asking a physics question mid-battle"></td>
+<td><img src="screenshots/mentor-curie.png" width="300" alt="Curie's quiz-gated move shop"></td>
+<td><img src="screenshots/battle-analytic-move.png" width="300" alt="One of Curie's moves asking a physics question mid-battle"></td>
 </tr>
 <tr>
 <td><img src="screenshots/mentor-laughlin.png" width="300" alt="Laughlin's passive-ability panel"></td>

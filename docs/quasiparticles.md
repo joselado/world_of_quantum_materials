@@ -16,14 +16,14 @@ up to a topological or non-Abelian excitation.
 <!-- GENERATED:MOVES_TABLE START -->
 | Move | Quasiparticle class | Power | Crystal types that can use it |
 | --- | --- | --- | --- |
-| Phonon Beam | `thermal` | 6 | trivial, magnet, topological, qhe, supercon, classicalmag, tensornet, spinliquid, defect, adaptive, multiferroic, chernInsulator |
+| Phonon Beam | `phonon` | 6 | trivial, magnet, topological, qhe, supercon, classicalmag, spinliquid, adaptive, multiferroic, chernInsulator |
 | Electron Pulse | `trivial` | 7 | trivial, topological, qhe, supercon, adaptive, chernInsulator |
 | Magnon Pulse | `magnetic` | 8 | magnet, classicalmag, adaptive, multiferroic |
-| Polaron Drag | `localization` | 9 | supercon, tensornet, spinliquid, defect, adaptive |
+| Polaron Drag | `localization` | 9 | supercon, spinliquid, adaptive |
 | Electromagnon Pulse | `magnetoelectric` | 9 | multiferroic |
-| Spinon Swap | `entanglement` | 10 | tensornet, spinliquid, adaptive |
+| Spinon Swap | `entanglement` | 10 | spinliquid, adaptive |
 | Anyon Braid | `gauge` | 11 | topological, qhe, adaptive, chernInsulator |
-| Majorana Split | `decoherence` | 11 | topological, supercon, defect, adaptive |
+| Majorana Split | `decoherence` | 11 | topological, supercon, adaptive |
 <!-- GENERATED:MOVES_TABLE END -->
 
 ## Which crystal types can host which quasiparticles
@@ -35,33 +35,36 @@ host the attacking move's quasiparticle class at all, the hit lands at
 <!-- GENERATED:COMPATIBILITY_TABLE START -->
 | Crystal type | Quasiparticle classes it can host |
 | --- | --- |
-| `trivial` | `trivial`, `thermal`, `analytic`, `screening` |
-| `magnet` | `magnetic`, `thermal`, `analytic`, `screening` |
-| `topological` | `gauge`, `trivial`, `thermal`, `decoherence`, `analytic`, `screening` |
-| `qhe` | `gauge`, `trivial`, `thermal`, `analytic`, `screening` |
-| `supercon` | `localization`, `decoherence`, `thermal`, `trivial`, `analytic`, `screening` |
-| `classicalmag` | `magnetic`, `thermal`, `analytic`, `screening` |
-| `tensornet` | `entanglement`, `thermal`, `localization`, `analytic`, `screening` |
-| `spinliquid` | `entanglement`, `thermal`, `localization`, `analytic`, `screening` |
-| `defect` | `localization`, `decoherence`, `thermal`, `analytic`, `screening` |
-| `adaptive` | `trivial`, `magnetic`, `thermal`, `localization`, `gauge`, `entanglement`, `decoherence`, `analytic`, `screening` |
-| `multiferroic` | `magnetoelectric`, `magnetic`, `thermal`, `analytic`, `screening` |
-| `chernInsulator` | `gauge`, `trivial`, `thermal`, `analytic`, `screening` |
+| `trivial` | `trivial`, `phonon`, `screening` |
+| `magnet` | `magnetic`, `phonon`, `screening` |
+| `topological` | `gauge`, `trivial`, `phonon`, `decoherence`, `screening` |
+| `qhe` | `gauge`, `trivial`, `phonon`, `screening` |
+| `supercon` | `localization`, `decoherence`, `phonon`, `trivial`, `screening` |
+| `classicalmag` | `magnetic`, `phonon`, `screening` |
+| `spinliquid` | `entanglement`, `phonon`, `localization`, `screening` |
+| `adaptive` | `trivial`, `magnetic`, `phonon`, `localization`, `gauge`, `entanglement`, `decoherence`, `screening` |
+| `multiferroic` | `magnetoelectric`, `magnetic`, `phonon`, `screening` |
+| `chernInsulator` | `gauge`, `trivial`, `phonon`, `screening` |
 <!-- GENERATED:COMPATIBILITY_TABLE END -->
 
-## Special classes
+## Curie's quiz-gated moves
 
-Two move classes sit outside the ordinary quasiparticle roster and the table
-above -- every crystal type can host both, so neither is ever mismatched:
+Skyfall Beam and Ground Eruption (Curie, World 6, in the table above at
+`phonon`) work like any ordinary move, plus one extra step: using either one
+asks a physics-equation question first, and answering right doubles the hit
+while answering wrong halves it. Curie's shop also lets you tune each move
+to any quasiparticle class your current form can host, the same choice an
+ordinary move's fixed class already makes for you -- until tuned, both
+default to `phonon`, so they're always usable. See
+[Guardians](guardians.md#curie) for how the shop and the tuning picker work.
 
-- **Analytic** (Curie, World 6) -- a physics-equation question gates the hit:
-  answer right for double damage, wrong for half. The class the mismatch
-  check actually uses for one of these moves is whichever quasiparticle
-  Curie's shop tuned it to (see [Guardians](guardians.md#curie)), not
-  `analytic` itself.
-- **Screening** (Kondo, World 8) -- three moves that each inflict a status
-  effect (weaken the target's own damage, slow it down, or crack its
-  defenses) rather than hitting hard; only one is ever tuned in at a time.
+## Screening
 
-See [Guardians](guardians.md) for how Curie's and Kondo's shops work, and
-[Crystals](crystals.md) for which crystal types appear in which world.
+Sits outside the ordinary quasiparticle roster and the table above --
+`screening` is on every crystal type's compatibility list, so it's never
+mismatched. Kondo (World 8) sells three screening moves, each inflicting a
+status effect (weaken the target's own damage, slow it down, or crack its
+defenses) rather than hitting hard; only one is ever active at a time. See
+[Guardians](guardians.md#kondo) for details.
+
+See [Crystals](crystals.md) for which crystal types appear in which world.

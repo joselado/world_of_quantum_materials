@@ -51,14 +51,20 @@ next unbeaten world), since none of its jobs need overworld movement of their ow
 `TitleScene` boots the game and loads the one localStorage save slot (see §7) before
 handing off to the Hub; pressing `H` from any Overworld scene returns to it.
 
-Each world's "Gate to next world" fight is a distinct **rival crystal**
-(`game/src/data/materials.ts`'s `WORLD_RIVALS`, all 10 worlds built) separate from
+Each world's "Gate to next world" fight is a distinct **rival crystal** -- worlds 1-8 and
+10 have a fixed entry in `game/src/data/materials.ts`'s `WORLD_RIVALS`, world 9's is built
+per-playthrough instead (see below); all ten worlds have a rival either way. Separate from
 that world's ordinary wild encounters (`WORLD_CRYSTALS`) -- beating a rival is what the
 world's "Continue to World N+1" action actually triggers. The rival fight is deliberately
 *not* a precondition for reaching that world's guardian: the goal guardian is always reachable
 once the goal is reached, so the player can shop/prep before ever facing the rival, rather
 than being stuck needing bought moves to beat a rival they can't reach the guardian to
-prepare for (`OverworldScene.tryAdvanceToNextWorld`).
+prepare for (`OverworldScene.tryAdvanceToNextWorld`). Every rival has a fixed main type
+except World 9's ("Rival Impurity Resonance," an impurity/defect-bound resonance that can
+form in any host crystal) -- its type is rolled at random the first time the player reaches
+World 9 (`data/materials.ts`'s `RIVAL_9_TYPES`/`rollRival9Type`) and cached in the save
+(`rival9Type`, `OverworldScene.resolveRival9Type`) for the rest of that playthrough, so the
+goal-tile boss preview and the actual battle always agree on which type it turned out to be.
 
 **Every world uses this same reach-goal → beat-rival → continue gate, not a bespoke
 per-world puzzle.** §6 below sketches a more ambitious per-world boss mechanic (a
@@ -69,11 +75,18 @@ as too large for one person (§10) in favor of the reusable gate every world alr
 
 ## 3. Type system
 
-**Main types** (one per topic's central phase of matter): trivial/free-fermion
+**Main types** (one per topic's central phase of matter, except topics 7 and 9, which
+share a type with another topic rather than getting their own): trivial/free-fermion
 (tutorial baseline), symmetry-broken magnet, topological insulator (Chern), quantum
-Hall state, superconductor, classical magnet, tensor-network/entangled state, quantum
-spin liquid, defect-bound state, adaptive/ML state (endgame only, not obtainable
-until postgame).
+Hall state, superconductor, classical magnet, quantum spin liquid, adaptive/ML state
+(endgame only, not obtainable until postgame). Topic 7's entangled/tensor-network
+states and topic 8's spin liquids are physically the same quasiparticle family (Spinon
+Swap), so World 7 and World 8 share the `spinliquid` type while staying visually and
+narratively distinct worlds (different biome, guardian, music, name) — the crystal
+database below still tags each compound with the topic it illustrates even though the
+type column reads the same for both. Topic 9's defect-bound states (Yu-Shiba-Rusinov
+states, impurity resonances) are real disorder physics hosted inside an ordinary
+superconductor, so World 9's crystals are `supercon` type rather than a dedicated one.
 
 **Subtypes**, unlocked via guardians, cross with main types (e.g. superconductor +
 magnet subtype → spin-triplet superconductor, matching the example in the source
@@ -141,22 +154,20 @@ pool.
 | supercon (5, engineered) | Iron chains on lead (Fe/Pb) | Majorana-chain platform — topological superconductivity from a magnetic chain on an s-wave SC |
 | supercon (5) | Niobium (Nb) | Highest-$T_c$ elemental BCS superconductor at ambient pressure, same conventional family as Aluminum/Lead |
 | supercon (5) | Tantalum Disulfide, 1H phase (TaS$_2$) | Metallic/superconducting TMD monolayer in its own right — distinct from the 1T phase below, and the other half of §5's 1T/1H-TaS₂ heterostructure hybrid recipe |
+| supercon (9, textbook fill-in) | Iron Telluride/Selenide (Fe(Te,Se)) | Hosts Yu-Shiba-Rusinov and vortex-bound (Majorana) defect states in a superconductor |
+| supercon (9, textbook fill-in) | Niobium Diselenide (NbSe$_2$), STM-imaged impurities | Friedel oscillations / impurity-resonance textbook platform; also pairs with CrI₃/CrBr₃ in §5's topological-SC heterostructure recipes |
 | classicalmag (6) | Iron (Fe) | Classic itinerant ferromagnet, magnon carrier |
 | classicalmag (6) | Cobalt (Co) | Same family |
 | classicalmag (6) | Chromium Triiodide (CrI$_3$) | Van der Waals ferromagnet with an observed topological magnon gap |
 | classicalmag (6) | Chromium Tribromide (CrBr$_3$) | Same van der Waals ferromagnet family as CrI₃ — pairs with Niobium Diselenide in Kezilebieke et al., Nature 588, 424 (2020)'s topological-superconductor heterostructure, §5 |
-| tensornet (7, textbook fill-in) | Strontium Copper Borate (SrCu$_2$(BO$_3$)$_2$) | Shastry–Sutherland lattice — exactly-solvable dimerized/entangled ground state, a standard tensor-network benchmark material |
-| tensornet (7, textbook fill-in) | Thallium Copper Chloride (TlCuCl$_3$) | Quantum spin-dimer compound — textbook entangled-singlet-pair example |
-| tensornet (7) | Herbertsmithite | The one real compound session 7 itself names, motivating MPS/tensor-network methods (kagome local moments) |
+| spinliquid (7, textbook fill-in) | Strontium Copper Borate (SrCu$_2$(BO$_3$)$_2$) | Shastry–Sutherland lattice — exactly-solvable dimerized/entangled ground state, a standard tensor-network benchmark material |
+| spinliquid (7, textbook fill-in) | Thallium Copper Chloride (TlCuCl$_3$) | Quantum spin-dimer compound — textbook entangled-singlet-pair example |
+| spinliquid (7) | Herbertsmithite | The one real compound session 7 itself names, motivating MPS/tensor-network methods (kagome local moments) |
 | spinliquid (8) | Herbertsmithite (ZnCu$_3$(OH)$_6$Cl$_2$) | Flagship kagome quantum-spin-liquid candidate |
 | spinliquid (8) | α-Ruthenium Trichloride (RuCl$_3$) | Candidate Kitaev spin liquid |
 | spinliquid (8) | Ytterbium Magnesium Gallium Oxide (YbMgGaO$_4$) | Triangular-lattice spin-liquid candidate |
 | spinliquid (8, engineered) | 1T-TaS$_2$ on 1H-TaS$_2$ | Engineered 2D Kondo-insulator heterostructure — wired in as §5's 1T/1H-TaS₂ heterostructure hybrid recipe, fusing the two standalone phase entries below |
 | spinliquid (8) | Tantalum Disulfide, 1T phase (TaS$_2$) | Star-of-David CDW Mott insulator / quantum-spin-liquid candidate (Law & Lee 2017) — the other half of the 1T/1H heterostructure above |
-| defect (9, textbook fill-in) | Nitrogen-vacancy center in diamond (NV-diamond) | Canonical atomic-scale defect-bound state / solid-state qubit |
-| defect (9, textbook fill-in) | Iron Telluride/Selenide (Fe(Te,Se)) | Hosts Yu-Shiba-Rusinov and vortex-bound (Majorana) defect states in a superconductor |
-| defect (9, textbook fill-in) | Niobium Diselenide (NbSe$_2$), STM-imaged impurities | Friedel oscillations / impurity-resonance textbook platform; also pairs with CrI₃/CrBr₃ in §5's topological-SC heterostructure recipes |
-| defect (9, textbook fill-in) | Silicon vacancy in silicon carbide (SiC) | Another well-known solid-state defect qubit |
 | multiferroic (6, new type) | Nickel Diiodide (NiI$_2$), monolayer | Type-II multiferroic from noncollinear/helimagnetic order down to the monolayer limit (Song et al., Nature 2022) — hosts genuine electromagnons, the type's flagship. Same session (classical magnetism/magnons) as classicalmag, not its own world -- lives as a World 10 wild (§5) alongside the game's hybrid recipe results |
 | multiferroic (6, new type, hybrid) | Twisted CrI₃ | §5 hybrid recipe (CrI₃ + CrI₃) — noncollinear moiré spin textures theoretically predicted (not yet confirmed) to induce magnetoelectric coupling; untwisted CrI₃ itself is only classicalmag |
 | chernInsulator (4, new type) | Manganese Bismuth Telluride (MnBi$_2$Te$_4$) | Real intrinsic magnetic topological insulator — the actual zero-field QAHE/Chern-insulator material, standalone (not a hybrid recipe result). Same session (quantum Hall effect) as qhe, not its own world -- lives as a World 10 wild (§5) alongside the game's hybrid recipe results |
@@ -224,29 +235,33 @@ crystal emits, so it has no place in the move roster as an abstract attack.
 `MOVE_COMPATIBILITY` table fixes, per main type, which quasiparticle classes it can host
 (e.g. a plain band insulator/semiconductor like Silicon only ever gets Electron Pulse and
 Phonon Beam, never Magnon Pulse, since it has no magnetic order to carry one). Phonon Beam
-(thermal) is on every type's list, since every crystal has a lattice; every other class is
+(`phonon`) is on every type's list, since every crystal has a lattice; every other class is
 gated to the types whose actual physics motivates it (Magnon Pulse → magnetically ordered
 types; Anyon Braid → quantum Hall/topological; Majorana Split → superconducting/topological;
-Spinon Swap → spin-liquid/tensor-network; Polaron Drag → superconducting/defect/strongly
-correlated). This is enforced everywhere the player's moveset shows up: the battle move
+Spinon Swap → spin-liquid; Polaron Drag → superconducting/spin-liquid/strongly correlated).
+This is enforced everywhere the player's moveset shows up: the battle move
 menu (`getBattleMoves` = learned moves ∩ compatible moves) and Noether's shop (same
 intersection, so she only ever offers what the player's *current* crystal form can
 actually carry — see the transmutation mechanic in §5).
 
-**One deliberate exception: analytic moves aren't gated by a crystal's physics
-at all.** Curie's moves (§5) are on every main type's `MOVE_COMPATIBILITY`
-list, purchasable and usable from any form — they're a technique the player
-themselves learned, not a quasiparticle a crystal has to host. Their real
-risk/reward comes from the question `BattleScene.showAnalyticQuestion` asks
-before the hit resolves: right answer doubles the damage, wrong answer
-halves it. Separately, Curie also lets the player tell her which
-quasiparticle each analytic move should carry (§5's `getCurieMoveClass`) —
-that choice feeds back into the quasiparticle-mismatch rule below on top of
-the question's own multiplier, so a tuned analytic move mismatches a
-defender exactly like an ordinary attack of that class would; an untuned
-one simply never mismatches, the same default every analytic move keeps
-regardless of how it's tuned for *host*-ability above (still purchasable
-and usable from any form either way).
+**One deliberate exception: Kondo's screening moves aren't gated by a crystal's
+physics at all.** `screening` (Screening Pulse, Scattering Drag, Decoherence
+Cascade, §5) is on every main type's `MOVE_COMPATIBILITY` list, purchasable and
+usable from any form — they deal in a generic scattering/decoherence process any
+crystal's own disorder or environment can carry, not a quasiparticle tied to one
+type's specific band structure. Curie's two moves (Skyfall Beam, Ground Eruption,
+§5) reach the same "usable from any form, never mismatches" result a different
+way: their static `class` simply defaults to `phonon`, the same universal,
+physics-motivated class Phonon Beam itself carries, rather than needing a class
+of their own. Their real risk/reward comes from the question
+`BattleScene.showAnalyticQuestion` asks before the hit resolves: right answer
+doubles the damage, wrong answer halves it. Separately, Curie also lets the
+player tell her which quasiparticle each of her moves should carry instead
+(§5's `getCurieMoveClass`) — that choice feeds back into the
+quasiparticle-mismatch rule below on top of the question's own multiplier, so a
+tuned move mismatches a defender exactly like an ordinary attack of that class
+would; an untuned one simply keeps the default `phonon` class's never-mismatches
+behavior (still purchasable and usable from any form either way).
 
 **Battle dynamics are deliberately simple: one type-interaction rule, not a chart.**
 A per-attack, per-defender-main-type strong/weak effectiveness chart would stack a
@@ -259,15 +274,15 @@ physics can't host the attacking move's quasiparticle class at all. See
 **Move power scales with how unconventional the quasiparticle is.** An ordinary lattice
 vibration or band electron is weak; a topological or non-Abelian excitation is strong — so
 every move the player can buy from Noether outpowers the free starting Phonon Beam. Ordered,
-low to high (`data/materials.ts`'s `MOVES`): Phonon Beam (thermal, every crystal has a
+low to high (`data/materials.ts`'s `MOVES`): Phonon Beam (`phonon`, every crystal has a
 lattice) < Electron Pulse (trivial, an ordinary band electron) < Magnon Pulse (magnetic, a
 broken-symmetry collective mode) < Polaron Drag (localization, a correlated lattice-bound
 distortion) < Spinon Swap (entanglement, a fractionalized spin-liquid excitation) <
 Anyon Braid / Majorana Split (gauge / decoherence, topological and non-Abelian — tied for
-the most exotic tier the course covers). Because Phonon Beam (thermal) is on every type's
+the most exotic tier the course covers). Because Phonon Beam (`phonon`) is on every type's
 `MOVE_COMPATIBILITY` list, it can never trigger the quasiparticle-mismatch double-damage
 rule above — the one universal move is also the one that never gets the mismatch bonus, by
-design. Curie's analytic moves (Skyfall Beam, Ground Eruption) sit at a middling base power
+design. Curie's two moves (Skyfall Beam, Ground Eruption) sit at a middling base power
 below this ordering on purpose — their real payoff is the answer-gated 2x/0.5x multiplier
 above, not raw power. Kondo's three moves (Screening Pulse, Scattering Drag, Decoherence
 Cascade, §5) sit at the very bottom of the ordering instead, on par with Electron Pulse —
@@ -311,22 +326,23 @@ natural defense against this!".
 
 **Move menu is grouped by kind and paged one kind at a time, not one flat list.**
 `BattleScene.drawMoveMenu` splits the currently usable moves (`getBattleMoves`) into up to
-three sections -- **Attacks** (every ordinary physics-gated move -- any `MoveClass` other
-than `'analytic'` and `'screening'`), **Analytic** (Curie's answer-gated moves, still tagged
-`★` with their own "right=2x wrong=½x" legend line under the header), and **Screening**
-(Kondo's currently-active move, at most one, since `getBattleMoves` only ever surfaces
-whichever one is `kondoActiveMove`, §5) -- but renders only the section the player is
+three sections -- **Attacks** (every ordinary physics-gated move -- any move that isn't one
+of Curie's two, `ANALYTIC_MOVE_IDS`, and whose `class` isn't `'screening'`), **Analytic**
+(Curie's two answer-gated moves, identified by move id rather than by any shared class,
+still tagged `★` with their own "right=2x wrong=½x" legend line under the header), and
+**Screening** (Kondo's currently-active move, at most one, since `getBattleMoves` only ever
+surfaces whichever one is `kondoActiveMove`, §5) -- but renders only the section the player is
 currently paged to (`moveSectionIndex`), not all of them stacked. A section only counts as a
-page at all if it has at least one usable move, so a player with no analytic moves bought or
+page at all if it has at least one usable move, so a player with no Curie moves bought or
 no Kondo move active never sees an empty page, and the pager (◀/▶ buttons plus the Left/
 Right keys, `switchMoveSection`) is hidden entirely once there's only one page to switch
-between. These three classes work differently enough from an ordinary attack (and from each
+between. These three groups work differently enough from an ordinary attack (and from each
 other) that a flat stacked list blurred the distinction -- and paging instead of stacking
 means a page's own row height (`drawMoveMenu`'s `rowH`) is budgeted only against that one
 section's move count, not the worst case across every section at once, so an 'adaptive'-type
 crystal (world 10, see §3) hosting the broadest set of `MoveClass`es of any type -- every
 class except the multiferroic-only `'magnetoelectric'`, deliberately left off its
-`MOVE_COMPATIBILITY` list the same way `'thermal'`/`'analytic'`/`'screening'` are on every
+`MOVE_COMPATIBILITY` list the same way `'phonon'`/`'screening'` are on every
 list -- no longer has to squeeze Analytic/Screening rows into the same panel it isn't even
 showing right now. Each button also shows its power and, computed against the current
 opponent's type, a `!!2x` tag when the quasiparticle-mismatch double-damage rule above
@@ -422,8 +438,8 @@ does. World 10 has no guardian; its only encounter is the finale.
   look, HP cap, and which moves are currently usable (§3), without erasing any move already
   learned. **Excludes every hybrid-recipe result and every inherently doped/alloyed compound**
   (`data/materials.ts`'s `isHybridMaterial`) -- Fe/Pb Majorana Chain and Twisted Bilayer
-  MoTe₂ (recipe results also encountered wild), and Cr-doped (Bi,Sb)₂Te₃, Fe(Te,Se), and
-  NV-Diamond (real compounds that are themselves a mixture of two named ingredients baked
+  MoTe₂ (recipe results also encountered wild), and Cr-doped (Bi,Sb)₂Te₃ and Fe(Te,Se)
+  (real compounds that are themselves a mixture of two named ingredients baked
   in, even with no fusion recipe behind them) -- becoming a mixed/fused state is specifically Majorana's
   mechanic below, not this one. In Superposition Mode the candidate list is every
   non-composite crystal in the game (`data/materials.ts`'s `allCrystals()`, filtered) rather
@@ -477,53 +493,53 @@ does. World 10 has no guardian; its only encounter is the finale.
   the game, unfiltered (unlike Dresselhaus above) -- a hybrid's own defeated-material entry,
   if any, simply won't match any `HYBRID_RECIPES` pairing as a further parent, so no extra
   filtering is needed here
-- **Curie** → world 6 middle → sells "analytic" moves (currently Skyfall Beam, Ground
-  Eruption -- `OverworldScene.showCuriePanel`) -- using one asks a physics-equation
-  question first (`data/quiz.ts`'s `ANALYTIC_QUESTIONS`, `BattleScene
-  .showAnalyticQuestion`): answer right and the hit lands at 2x, answer wrong and it
-  lands at 0.5x. Each analytic move also gets its own dramatically flashier, per-move
-  (not per-class) visual, deliberately reading as stronger than every other move class
-  (`art/attackEffects.ts`'s `ANALYTIC_SHAPES`/`playBeam`/`playEruption`): Skyfall Beam
-  drops a multi-layer column of light from off the top of the screen -- a white-hot
-  core, two swirling side-rays, a trail of falling sparks, and a radiant sun expanding
-  at the point of origin; Ground Eruption bursts a wide double shockwave ring and a
-  bright geyser core up through nearly twice the shard count of an ordinary burst.
-  Buying a move (or later revisiting Curie) also opens a quasiparticle-picker
-  sub-panel (`showCurieClassPicker`, offering `CURIE_TUNABLE_CLASSES` --
-  every ordinary Attacks-section class -- filtered down to only the ones the
-  player's *current* form can actually host, `canHost(playerMaterial.type,
-  cls)`: a class as narrow as `'magnetoelectric'` (only the `multiferroic`
-  type hosts it) only ever shows up while the player is wearing a
-  multiferroic form, rather than being a free "always mismatch nearly every
-  opponent" pick regardless of form. `'thermal'` is on every
-  `MOVE_COMPATIBILITY` list, so the filtered list is never empty) that
-  assigns the move's registry/save `curieMoveClass[moveId]` entry, labeled
-  with whichever ordinary move already carries that class
-  (`quasiparticleLabel`, e.g. "Magnon Pulse" for `'magnetic'`) rather than
-  the class id itself. The move's own `class` stays `'analytic'` either way
-  -- still purchasable/usable from any form, still asks its question -- this
-  choice only feeds `getCurieMoveClass`, which `BattleScene`'s
-  quasiparticle-mismatch check reads in place of `move.class` for these two
-  ids (see §3/§4). A tuned move's own displayed name folds the quasiparticle
-  in too (`curieMoveDisplayName`, e.g. "Skyfall Beam" tuned to `'magnetic'`
-  reads as "Skyfall Magnon" everywhere -- the move menu, the analytic
-  question panel, the battle log), built from each name's own first word
-  rather than a second hand-authored word list. An unbought move has no
-  assignment yet; an already-bought one shows "tuned to `<name>`" with a
-  free "Retune" click back into the same picker (re-opening the same
-  current-form filter, so retuning after a transmute only offers what the
-  *new* form can host), or "untuned" if never assigned (an older save, or a
-  purchase made before this picker existed) -- untuned simply means the
-  mismatch check keeps reading the move's own always-safe `'analytic'`
-  class. The picker only filters at *pick* time, though, so a tuned
-  assignment can still outlive a later transmute into a form that can't
-  host it; `getCurieMoveClass` guards that case by falling back to
-  `'thermal'` (Phonon Beam, the one class every form hosts) whenever the
-  player's *current* form can't host the saved assignment, and
-  `curieMoveDisplayName`/the shop label follow the same fallback so the
-  name and the mismatch math never disagree -- the shop label reads "tuned
-  to `<name>`, reverted to Phonon Beam (this form can't host it -- retune)"
-  in that state.
+- **Curie** → world 6 middle → sells two quiz-gated moves (Skyfall Beam, Ground
+  Eruption -- `OverworldScene.showCuriePanel`, `data/materials.ts`'s
+  `ANALYTIC_MOVE_IDS`, a hardcoded pair of move ids rather than a shared class --
+  neither move has a class of its own to be identified by, see below) -- using one
+  asks a physics-equation question first (`data/quiz.ts`'s `ANALYTIC_QUESTIONS`,
+  `BattleScene.showAnalyticQuestion`): answer right and the hit lands at 2x, answer
+  wrong and it lands at 0.5x. Each move also gets its own dramatically flashier,
+  per-move (not per-class) visual, deliberately reading as stronger than every other
+  move class (`art/attackEffects.ts`'s `ANALYTIC_SHAPES`/`playBeam`/`playEruption`):
+  Skyfall Beam drops a multi-layer column of light from off the top of the screen --
+  a white-hot core, two swirling side-rays, a trail of falling sparks, and a radiant
+  sun expanding at the point of origin; Ground Eruption bursts a wide double
+  shockwave ring and a bright geyser core up through nearly twice the shard count of
+  an ordinary burst. Each move's static `class` simply defaults to `'phonon'` --
+  the same universal, always-hostable class Phonon Beam itself carries -- so an
+  untuned move is purchasable/usable from any form and never mismatches, without
+  needing a class of its own. Buying a move (or later revisiting Curie) also opens a
+  quasiparticle-picker sub-panel (`showCurieClassPicker`, offering
+  `CURIE_TUNABLE_CLASSES` -- every ordinary Attacks-section class (i.e. every class
+  except Kondo's `'screening'`) -- filtered down to only the ones the player's
+  *current* form can actually host, `canHost(playerMaterial.type, cls)`: a class as
+  narrow as `'magnetoelectric'` (only the `multiferroic` type hosts it) only ever
+  shows up while the player is wearing a multiferroic form, rather than being a free
+  "always mismatch nearly every opponent" pick regardless of form. `'phonon'` is on
+  every `MOVE_COMPATIBILITY` list, so the filtered list is never empty) that assigns
+  the move's registry/save `curieMoveClass[moveId]` entry, labeled with whichever
+  ordinary move already carries that class (`quasiparticleLabel`, e.g. "Magnon
+  Pulse" for `'magnetic'`) rather than the class id itself. This choice only feeds
+  `getCurieMoveClass`, which `BattleScene`'s quasiparticle-mismatch check reads in
+  place of `move.class` for these two ids (see §3/§4) -- still purchasable/usable
+  from any form and still asks its question regardless of tuning. A tuned move's
+  own displayed name folds the quasiparticle in too (`curieMoveDisplayName`, e.g.
+  "Skyfall Beam" tuned to `'magnetic'` reads as "Skyfall Magnon" everywhere -- the
+  move menu, the question panel, the battle log), built from each name's own first
+  word rather than a second hand-authored word list. An unbought move has no
+  assignment yet; an already-bought one shows "tuned to `<name>`" with a free
+  "Retune" click back into the same picker (re-opening the same current-form
+  filter, so retuning after a transmute only offers what the *new* form can host),
+  or "untuned" if never assigned -- untuned simply means the mismatch check keeps
+  reading the move's own default `'phonon'` class. The picker only filters at *pick*
+  time, though, so a tuned assignment can still outlive a later transmute into a
+  form that can't host it; `getCurieMoveClass` guards that case by falling back to
+  `'phonon'` (Phonon Beam, the one class every form hosts) whenever the player's
+  *current* form can't host the saved assignment, and `curieMoveDisplayName`/the
+  shop label follow the same fallback so the name and the mismatch math never
+  disagree -- the shop label reads "tuned to `<name>`, reverted to Phonon Beam (this
+  form can't host it -- retune)" in that state.
 - **Bohr** → world 7 middle → teaches three passive abilities, same "learn several,
   equip one" shape as Laughlin above (`data/passives.ts`'s `BOHR_PASSIVE_IDS`,
   `OverworldScene.showBohrPanel`, registry/save `bohrActivePassive`) -- fitting Bohr's
@@ -543,7 +559,7 @@ does. World 10 has no guardian; its only encounter is the finale.
   Cascade -- each of which deterministically inflicts one of §4's three status effects
   (Screened, Localized, Decohered respectively) on a successful hit rather than dealing much
   raw damage itself. `'screening'` sits on every type's `MOVE_COMPATIBILITY` list, the same
-  "usable from any form" treatment Curie's analytic moves get -- these deal in a generic
+  "usable from any form" treatment Curie's moves get -- these deal in a generic
   scattering/decoherence process any crystal's own disorder or environment can carry, not a
   quasiparticle tied to one type's specific band structure, so they're named generically
   rather than after the heavy-fermion/Kondo-lattice physics that inspired them: Screening

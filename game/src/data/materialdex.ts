@@ -43,11 +43,8 @@ const TYPE_FALLBACK_BLURBS: Record<MaterialType, string> = {
     'Below its critical temperature, electrons pair into Cooper pairs and condense into a single phase-coherent state with zero DC resistance.',
   classicalmag:
     'Its magnetic moments order classically (ferro- or antiferromagnetically); its low-energy excitations are spin waves -- magnons.',
-  tensornet:
-    'Its ground state is highly entangled, resisting any simple product-state description -- exactly what tensor-network methods like MPS are built to represent.',
   spinliquid:
     'Frustration keeps its spins from ever ordering, even at zero temperature -- it stays in a highly entangled, fractionalized state instead.',
-  defect: 'A localized defect or impurity binds its own resonance or bound state, distinct from the clean bulk around it.',
   adaptive: 'Not a real material -- an adaptive model that learns and exploits whatever strategy is thrown at it.',
   multiferroic:
     'Magnetically ordered with an electric polarization coupled to that order -- its spin waves (electromagnons) carry an electric-dipole activity an ordinary magnon never does.',

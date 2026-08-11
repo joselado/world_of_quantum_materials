@@ -626,13 +626,13 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
     },
   ],
   // World 7 (entanglement/tensor networks), sourced from session07.tex.
-  // Herbertsmithite is also a world-8 (spinliquid) wild crystal
-  // (materials.ts's WORLD_CRYSTALS[8]) -- getMaterialQuestion keys purely by
-  // name, so this single pool is shared by both encounters rather than
-  // duplicated. Intentional, not a gap: it's genuinely the same real
-  // compound in both worlds, and this pool is already kagome/quantum-spin-
-  // liquid content generically relevant to world 8's own topic, not
-  // narrowly tensor-network-specific.
+  // Herbertsmithite is also a world-8 wild crystal (materials.ts's
+  // WORLD_CRYSTALS[8]) -- getMaterialQuestion keys purely by name, so this
+  // single pool is shared by both encounters rather than duplicated.
+  // Intentional, not a gap: it's genuinely the same real compound in both
+  // worlds, and this pool is already kagome/quantum-spin-liquid content
+  // generically relevant to world 8's own topic, not narrowly tensor-
+  // network-specific.
   Herbertsmithite: [
     {
       prompt: "Why does mean-field theory fail for a quantum spin liquid like herbertsmithite's kagome moments?",
@@ -795,38 +795,6 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
     },
   ],
   // World 9 (excitations and defects), sourced from session09.tex.
-  'NV-Diamond': [
-    {
-      prompt: 'Rayleigh-Schrödinger perturbation theory, as used to build response functions, is valid to first order under which condition?',
-      correct: 'The unperturbed state is analytic in the coupling, away from degeneracies',
-      incorrect: 'The unperturbed state must be exactly degenerate with another state',
-    },
-    {
-      prompt: 'Switching on an arbitrarily weak impurity in a metal rotates the many-body ground state exactly orthogonal to the pristine one, in the thermodynamic limit. This effect is called...',
-      correct: 'The orthogonality catastrophe',
-      incorrect: 'The Kondo effect',
-    },
-    {
-      prompt: 'In the bulk-boundary correspondence argument, a single vacancy (missing lattice site) can be thought of as...',
-      correct: 'A boundary shrunk down to zero size',
-      incorrect: 'A perturbation that only acts in momentum space',
-    },
-    {
-      prompt: 'Whether a local defect preserves or breaks time-reversal symmetry is decided by...',
-      correct: 'Whether it distinguishes spin up from spin down',
-      incorrect: "Whether it breaks the lattice's translational symmetry",
-    },
-    {
-      prompt: 'A localized defect level sitting deep inside a large insulating gap shows what spatial decay in its induced density change?',
-      correct: 'A quick, non-oscillatory convergence to the bulk value',
-      incorrect: 'A slow power-law oscillatory tail, as in a metal',
-    },
-    {
-      prompt: 'The general object relating a perturbation applied at one point in a quantum material to what is measured elsewhere is called...',
-      correct: 'The response function',
-      incorrect: 'The partition function',
-    },
-  ],
   'Fe(Te,Se)': [
     {
       prompt: 'In a conventional s-wave superconductor, which type of point impurity pulls a genuine bound state into the gap?',
@@ -889,6 +857,40 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
       prompt: 'STM imaging of the standing-wave ripples around surface impurities, used to map the Fermi surface indirectly, is called...',
       correct: 'Quasiparticle interference (QPI)',
       incorrect: 'Angle-resolved photoemission (ARPES)',
+    },
+    // General defect-physics content from session09.tex, not specific to
+    // Friedel oscillations/QPI -- grouped into this pool rather than a
+    // separate one since Niobium Diselenide is world 9's other impurity-
+    // physics compound.
+    {
+      prompt: 'Rayleigh-Schrödinger perturbation theory, as used to build response functions, is valid to first order under which condition?',
+      correct: 'The unperturbed state is analytic in the coupling, away from degeneracies',
+      incorrect: 'The unperturbed state must be exactly degenerate with another state',
+    },
+    {
+      prompt: 'Switching on an arbitrarily weak impurity in a metal rotates the many-body ground state exactly orthogonal to the pristine one, in the thermodynamic limit. This effect is called...',
+      correct: 'The orthogonality catastrophe',
+      incorrect: 'The Kondo effect',
+    },
+    {
+      prompt: 'In the bulk-boundary correspondence argument, a single vacancy (missing lattice site) can be thought of as...',
+      correct: 'A boundary shrunk down to zero size',
+      incorrect: 'A perturbation that only acts in momentum space',
+    },
+    {
+      prompt: 'Whether a local defect preserves or breaks time-reversal symmetry is decided by...',
+      correct: 'Whether it distinguishes spin up from spin down',
+      incorrect: "Whether it breaks the lattice's translational symmetry",
+    },
+    {
+      prompt: 'A localized defect level sitting deep inside a large insulating gap shows what spatial decay in its induced density change?',
+      correct: 'A quick, non-oscillatory convergence to the bulk value',
+      incorrect: 'A slow power-law oscillatory tail, as in a metal',
+    },
+    {
+      prompt: 'The general object relating a perturbation applied at one point in a quantum material to what is measured elsewhere is called...',
+      correct: 'The response function',
+      incorrect: 'The partition function',
     },
   ],
 

@@ -17,7 +17,7 @@ import { fontPx } from '../ui/text';
 // rather than a single synchronized animation.
 const SHOWCASE: { type: MaterialType; size: number; x: number; y: number; duration: number; delay: number }[] = [
   { type: 'trivial', size: 24, x: 150, y: 120, duration: 1300, delay: 0 },
-  { type: 'tensornet', size: 26, x: 495, y: 115, duration: 1450, delay: 120 },
+  { type: 'spinliquid', size: 26, x: 495, y: 115, duration: 1450, delay: 120 },
   { type: 'magnet', size: 34, x: 228, y: 147, duration: 1150, delay: 260 },
   { type: 'supercon', size: 34, x: 415, y: 147, duration: 1250, delay: 60 },
   { type: 'topological', size: 48, x: 320, y: 130, duration: 1100, delay: 0 },

@@ -8,18 +8,19 @@ import type { Material, Move, MoveClass, MaterialType, CrystalVariant, Stats } f
 // deliberately no single move just called "Impurity Scattering," since
 // disorder/impurities aren't one particle a crystal emits (see
 // MOVE_COMPATIBILITY below for which of these each material can actually
-// host). Curie's 'analytic' moves and Kondo's 'screening' moves are the two
-// exceptions to the quasiparticle-naming rule -- both are a technique/
-// process the player applies (an equation-gated attack, a scattering
-// channel deliberately tuned) rather than a particle a crystal itself
-// emits, so their names describe the process instead (see each class's own
-// comment below).
+// host). Kondo's 'screening' moves are the one exception to the
+// quasiparticle-naming rule -- a technique/process the player applies (a
+// scattering channel deliberately tuned) rather than a particle a crystal
+// itself emits, so their names describe the process instead (see that
+// class's own comment below). Curie's moves (skyfallBeam/groundEruption
+// below) name a quasiparticle like any other move -- their own `class` is
+// just whichever one the player has tuned it to via her picker.
 //
 // Power climbs with how unconventional the underlying physics is -- an
 // ordinary lattice vibration or band electron is weak, a topological/
 // non-Abelian excitation is strong -- so every move a player buys from
 // Noether outpowers the free starting Phonon Beam:
-//   thermal (Phonon Beam, every crystal has a lattice) < trivial (Electron
+//   phonon (Phonon Beam, every crystal has a lattice) < trivial (Electron
 //   Pulse, ordinary band electron) < magnetic (Magnon Pulse, a broken-
 //   symmetry collective mode) < localization (Polaron Drag, a correlated
 //   lattice-bound distortion) < entanglement (Spinon Swap, a fractionalized
@@ -32,20 +33,24 @@ export const MOVES: Record<string, Move> = {
   thermalFluctuation: {
     id: 'thermalFluctuation',
     name: 'Phonon Beam',
-    class: 'thermal',
+    class: 'phonon',
     power: 6,
   },
   localizationPin: { id: 'localizationPin', name: 'Polaron Drag', class: 'localization', power: 9 },
   fluxTwist: { id: 'fluxTwist', name: 'Anyon Braid', class: 'gauge', power: 11 },
   entanglementSwap: { id: 'entanglementSwap', name: 'Spinon Swap', class: 'entanglement', power: 10 },
   decoherenceWave: { id: 'decoherenceWave', name: 'Majorana Split', class: 'decoherence', power: 11 },
-  // Curie's analytic moves (§5, World 6) -- power sits below the other
-  // exotic-tier moves since their real payoff is the answer-gated 2x/0.5x
-  // multiplier BattleScene applies, not raw power. Never listed in any
-  // material's `moves` array (wild/rival movesets) -- only the player can
-  // ever be asked one of these questions.
-  skyfallBeam: { id: 'skyfallBeam', name: 'Skyfall Beam', class: 'analytic', power: 10 },
-  groundEruption: { id: 'groundEruption', name: 'Ground Eruption', class: 'analytic', power: 10 },
+  // Curie's quiz-gated moves (§5, World 6, ANALYTIC_MOVE_IDS below) -- power
+  // sits below the other exotic-tier moves since their real payoff is the
+  // answer-gated 2x/0.5x multiplier BattleScene applies, not raw power.
+  // Never listed in any material's `moves` array (wild/rival movesets) --
+  // only the player can ever be asked one of these questions. Each starts
+  // at the universal 'phonon' class (so it's usable/never-mismatched before
+  // the player ever tunes it) -- Curie's picker (CURIE_TUNABLE_CLASSES,
+  // getCurieMoveClass) lets the player assign it any quasiparticle their
+  // current form hosts instead.
+  skyfallBeam: { id: 'skyfallBeam', name: 'Skyfall Beam', class: 'phonon', power: 10 },
+  groundEruption: { id: 'groundEruption', name: 'Ground Eruption', class: 'phonon', power: 10 },
   // The multiferroic type's signature quasiparticle -- a spin wave that
   // picks up electric-dipole activity through magnon-phonon hybridization
   // (the magnetoelectric coupling itself), sitting alongside ordinary
@@ -56,8 +61,8 @@ export const MOVES: Record<string, Move> = {
   // ordering, on par with Electron Pulse, since their real payoff is the
   // 3-turn status effect each deterministically inflicts on the defender
   // (BattleScene.resolveHit), not raw power, the same "low power, real
-  // payoff elsewhere" shape Curie's analytic moves already use for a
-  // different payoff. Never listed in any wild/rival material's `moves`
+  // payoff elsewhere" shape Curie's two moves already use for a different
+  // payoff. Never listed in any wild/rival material's `moves`
   // array -- only the player can currently learn them, and only one of the
   // three is ever active in battle at a time (registry/save
   // `kondoActiveMove`, switched only by talking to Kondo again --
@@ -75,30 +80,30 @@ export const MOVES: Record<string, Move> = {
   kondoBreakdown: { id: 'kondoBreakdown', name: 'Decoherence Cascade', class: 'screening', power: 7 },
 };
 
-// Curie is the sole seller of analytic moves (OverworldScene.showCuriePanel,
-// mirroring Noether's showNoetherShop) -- kept out of SHOP_MOVE_IDS so
-// Noether's own shop never offers them too.
-export const ANALYTIC_MOVE_IDS = Object.values(MOVES)
-  .filter((m) => m.class === 'analytic')
-  .map((m) => m.id);
+// Curie is the sole seller of these two quiz-gated moves
+// (OverworldScene.showCuriePanel, mirroring Noether's showNoetherShop) --
+// kept out of SHOP_MOVE_IDS so Noether's own shop never offers them too.
+// Named explicitly by id rather than filtered by class -- unlike Kondo's
+// screening moves, these don't share a distinguishing class of their own
+// (each carries whatever ordinary quasiparticle class the player has tuned
+// it to, see getCurieMoveClass below), so "is this one of Curie's moves" is
+// a fact about the move's identity, not something derivable from `class`.
+export const ANALYTIC_MOVE_IDS = ['skyfallBeam', 'groundEruption'];
 
 // The full roster of ordinary quasiparticle classes Curie's shop can ever
-// offer to assign to an analytic move (OverworldScene.showCurieClassPicker)
+// offer to assign to a quiz-gated move (OverworldScene.showCurieClassPicker)
 // -- every ordinary Attacks-section class, i.e. everything except
-// 'analytic'/'screening' themselves (self-referential). The picker itself
-// filters this down further, to only the classes the player's *current*
-// form can actually host (`canHost(playerMaterial.type, cls)`) -- so a
-// class as narrow as 'magnetoelectric' (only the 'multiferroic' type hosts
-// it) only ever shows up while the player is wearing a multiferroic form,
-// rather than being freely pickable as an easy "always mismatch nearly
-// every opponent" choice. An analytic move's own MoveClass stays
-// 'analytic' always (so it keeps being usable from any form and keeps
-// asking its question) -- this choice only feeds getCurieMoveClass below,
-// which the quasiparticle-mismatch check reads instead.
+// 'screening' itself (Kondo's, not an assignable quasiparticle). The picker
+// itself filters this down further, to only the classes the player's
+// *current* form can actually host (`canHost(playerMaterial.type, cls)`) --
+// so a class as narrow as 'magnetoelectric' (only the 'multiferroic' type
+// hosts it) only ever shows up while the player is wearing a multiferroic
+// form, rather than being freely pickable as an easy "always mismatch
+// nearly every opponent" choice.
 export const CURIE_TUNABLE_CLASSES: MoveClass[] = [
   'trivial',
   'magnetic',
-  'thermal',
+  'phonon',
   'localization',
   'gauge',
   'entanglement',
@@ -127,8 +132,8 @@ export const KONDO_MOVE_IDS = Object.values(MOVES)
 
 // Every move Noether can eventually teach, priced by raw power
 // (`OverworldScene.shopCost`) -- everything except the player's starting
-// Phonon Beam, Curie's analytic moves (ANALYTIC_MOVE_IDS, sold only by her),
-// and Kondo's screening moves (KONDO_MOVE_IDS, sold only by him). What
+// Phonon Beam, Curie's quiz-gated moves (ANALYTIC_MOVE_IDS, sold only by
+// her), and Kondo's screening moves (KONDO_MOVE_IDS, sold only by him). What
 // actually shows up in her shop (and what actually appears as a battle
 // button) is this list filtered down to `compatibleMoves(currentPlayerForm)`,
 // so a trivial-type player is only ever offered Electron Pulse until they
@@ -139,51 +144,36 @@ export const SHOP_MOVE_IDS = Object.keys(MOVES).filter(
 );
 
 // Which quasiparticle classes a given main type can physically host --
-// Phonon Beam (thermal) is on every list since every crystal has a lattice,
-// but e.g. Magnon Pulse only appears for types with actual magnetic order
-// (magnet, classicalmag), never for a plain band insulator/semiconductor
-// like Silicon. This is what makes "Si doesn't have magnons" a rule the
-// game enforces, not just flavor text -- both the battle move list
-// (getBattleMoves) and Noether's shop filter through this. 'analytic' and
-// 'screening' are the two exceptions, on every list -- 'analytic' because
-// it's not a quasiparticle a crystal's own physics has to host at all, it's
-// a technique the player themselves learned from Curie; 'screening' because
-// Kondo's three moves deal in a generic scattering/decoherence process any
-// crystal's own disorder/environment can carry, not a mode tied to one
-// specific type's band structure (their real payoff is the 3-turn status
-// effect they inflict, not raw power, so they don't need the mismatch bonus
-// to matter). Neither is ever mismatched or gated by current form. Adding a
-// new MoveClass here always means deciding this on purpose, not by
-// omission: a class left off every list would make its moves *always*
-// mismatch (canHost) against every defender -- a silent 2x on top of
-// whatever bonus BattleScene itself applies for that class, not a neutral
-// default.
+// Phonon Beam ('phonon') is on every list since every crystal has a
+// lattice, but e.g. Magnon Pulse only appears for types with actual
+// magnetic order (magnet, classicalmag), never for a plain band
+// insulator/semiconductor like Silicon. This is what makes "Si doesn't have
+// magnons" a rule the game enforces, not just flavor text -- both the
+// battle move list (getBattleMoves) and Noether's shop filter through this.
+// 'screening' is the one exception, on every list, since Kondo's three
+// moves deal in a generic scattering/decoherence process any crystal's own
+// disorder/environment can carry, not a mode tied to one specific type's
+// band structure (their real payoff is the 3-turn status effect they
+// inflict, not raw power, so it doesn't need the mismatch bonus to matter)
+// -- never mismatched or gated by current form. Adding a new MoveClass here
+// always means deciding this on purpose, not by omission: a class left off
+// every list would make its moves *always* mismatch (canHost) against every
+// defender -- a silent 2x on top of whatever bonus BattleScene itself
+// applies for that class, not a neutral default.
 const MOVE_COMPATIBILITY: Record<MaterialType, MoveClass[]> = {
-  trivial: ['trivial', 'thermal', 'analytic', 'screening'],
-  magnet: ['magnetic', 'thermal', 'analytic', 'screening'],
-  topological: ['gauge', 'trivial', 'thermal', 'decoherence', 'analytic', 'screening'],
-  qhe: ['gauge', 'trivial', 'thermal', 'analytic', 'screening'],
-  supercon: ['localization', 'decoherence', 'thermal', 'trivial', 'analytic', 'screening'],
-  classicalmag: ['magnetic', 'thermal', 'analytic', 'screening'],
-  tensornet: ['entanglement', 'thermal', 'localization', 'analytic', 'screening'],
-  spinliquid: ['entanglement', 'thermal', 'localization', 'analytic', 'screening'],
-  defect: ['localization', 'decoherence', 'thermal', 'analytic', 'screening'],
-  adaptive: [
-    'trivial',
-    'magnetic',
-    'thermal',
-    'localization',
-    'gauge',
-    'entanglement',
-    'decoherence',
-    'analytic',
-    'screening',
-  ],
-  multiferroic: ['magnetoelectric', 'magnetic', 'thermal', 'analytic', 'screening'],
+  trivial: ['trivial', 'phonon', 'screening'],
+  magnet: ['magnetic', 'phonon', 'screening'],
+  topological: ['gauge', 'trivial', 'phonon', 'decoherence', 'screening'],
+  qhe: ['gauge', 'trivial', 'phonon', 'screening'],
+  supercon: ['localization', 'decoherence', 'phonon', 'trivial', 'screening'],
+  classicalmag: ['magnetic', 'phonon', 'screening'],
+  spinliquid: ['entanglement', 'phonon', 'localization', 'screening'],
+  adaptive: ['trivial', 'magnetic', 'phonon', 'localization', 'gauge', 'entanglement', 'decoherence', 'screening'],
+  multiferroic: ['magnetoelectric', 'magnetic', 'phonon', 'screening'],
   // Shares 'gauge' with topological/qhe rather than getting its own class --
   // a Chern insulator's edge modes (and, for a fractional state, its anyons)
   // are the same quasiparticle family those two types already host.
-  chernInsulator: ['gauge', 'trivial', 'thermal', 'analytic', 'screening'],
+  chernInsulator: ['gauge', 'trivial', 'phonon', 'screening'],
 };
 
 export function compatibleMoves(material: Material): string[] {
@@ -201,7 +191,7 @@ export function compatibleMoves(material: Material): string[] {
 // was dropped as an unnecessary second system on top of it -- see DESIGN.md
 // §4): a defender with no natural channel for a quasiparticle (e.g. a plain
 // band insulator hit by a magnon pulse, having no magnetic order to carry/
-// damp it at all) takes that hit at double force. Thermal (Phonon Beam) is
+// damp it at all) takes that hit at double force. Phonon Beam ('phonon') is
 // on every type's MOVE_COMPATIBILITY list, so it can never trigger this --
 // the one universal move is also the one that never gets the mismatch bonus,
 // by design, not an oversight.
@@ -293,15 +283,13 @@ export function getBattleMoves(registry: RegistryLike): string[] {
 
 // The quasiparticle class BattleScene's mismatch check should use for a
 // given move -- ordinarily just that move's own fixed `class`, except for
-// an analytic move the player has tuned via Curie's picker
+// one of Curie's two moves once the player has tuned it via her picker
 // (OverworldScene.showCurieClassPicker, registry/save `curieMoveClass`):
-// its `class` stays 'analytic' (still usable from any form, still asks its
-// question), but the mismatch check reads the player-assigned quasiparticle
-// instead, so a tuned analytic move can mismatch a defender like any
-// ordinary attack would. An untuned analytic move (never visited Curie's
-// picker, or an older save from before this existed) falls back to its own
-// 'analytic' class, the same "never mismatches" behavior analytic moves
-// always had.
+// the mismatch check reads the player-assigned quasiparticle instead of the
+// move's default 'phonon', so a tuned move can mismatch a defender like any
+// ordinary attack would. An untuned move (never visited Curie's picker, or
+// an older save from before this existed) falls back to its own default
+// 'phonon' class, the same "never mismatches" behavior it starts with.
 function assignedCurieClass(registry: RegistryLike, moveId: string): MoveClass | undefined {
   return (registry.get('curieMoveClass') as Partial<Record<string, MoveClass>> | undefined)?.[moveId];
 }
@@ -310,32 +298,29 @@ function assignedCurieClass(registry: RegistryLike, moveId: string): MoveClass |
 // wearing at Curie's shop, but the player can transmute afterward -- if the
 // form they're wearing *now* can no longer host that class (e.g. tuned to
 // 'magnetoelectric' as a multiferroic, then transmuted into Silicon), this
-// falls back to 'thermal' (Phonon Beam) rather than keeping an assignment
-// the current form can't actually carry: 'thermal' is on every
+// falls back to 'phonon' (Phonon Beam) rather than keeping an assignment
+// the current form can't actually carry: 'phonon' is on every
 // MOVE_COMPATIBILITY list, so it's always a safe, always-hostable landing
 // spot. An untuned move (never visited Curie's picker) falls back to its
-// own static 'analytic' class instead, the same "never mismatches"
-// behavior analytic moves always had.
+// own default 'phonon' class instead, the same "never mismatches" behavior.
 export function getCurieMoveClass(registry: RegistryLike, moveId: string): MoveClass {
   const assigned = assignedCurieClass(registry, moveId);
   if (!assigned) return MOVES[moveId].class;
   const currentType = getPlayerMaterial(registry).type;
-  return canHost(currentType, assigned) ? assigned : 'thermal';
+  return canHost(currentType, assigned) ? assigned : 'phonon';
 }
 
-// A tuned analytic move's displayed name folds in whichever quasiparticle
-// it's currently carrying (e.g. "Skyfall Beam" tuned to 'magnetic' reads as
-// "Skyfall Magnon") rather than staying a generic name that no longer says
-// what the move actually does -- everywhere else a move's name already
-// names its quasiparticle (MOVES' own header comment). Built from each
-// name's own first word (Skyfall/Ground, Magnon/Phonon/...) rather than a
-// second hand-authored word list, so a future MOVES rename stays in sync
-// automatically. Reads getCurieMoveClass rather than the raw assignment, so
-// if the current form can't host the tuned class anymore the name reverts
-// to its Phonon form too, matching what the mismatch check actually uses.
-// The move's own `class` never changes (still 'analytic' underneath), so
-// this is purely a label -- untuned falls back to the static name every
-// analytic move already had.
+// One of Curie's moves, once tuned, displays whichever quasiparticle it's
+// currently carrying folded into its name (e.g. "Skyfall Beam" tuned to
+// 'magnetic' reads as "Skyfall Magnon") rather than staying a generic name
+// that no longer says what the move actually does -- everywhere else a
+// move's name already names its quasiparticle (MOVES' own header comment).
+// Built from each name's own first word (Skyfall/Ground, Magnon/Phonon/...)
+// rather than a second hand-authored word list, so a future MOVES rename
+// stays in sync automatically. Reads getCurieMoveClass rather than the raw
+// assignment, so if the current form can't host the tuned class anymore the
+// name reverts to its Phonon form too, matching what the mismatch check
+// actually uses. Untuned falls back to the move's own static name.
 export function curieMoveDisplayName(registry: RegistryLike, moveId: string): string {
   const assigned = assignedCurieClass(registry, moveId);
   if (!assigned) return MOVES[moveId].name;
@@ -370,9 +355,7 @@ export const TYPE_LOOK: Record<MaterialType, { color: number; variant: CrystalVa
   qhe: { color: 0xd9a24a, variant: 'prism' },
   supercon: { color: 0x7fd1e8, variant: 'shard' },
   classicalmag: { color: 0xc97a3a, variant: 'cluster' },
-  tensornet: { color: 0x9a6ad9, variant: 'prism' },
   spinliquid: { color: 0x5ad9c9, variant: 'cluster' },
-  defect: { color: 0xe0527a, variant: 'shard' },
   adaptive: { color: 0x333333, variant: 'prism' },
   multiferroic: { color: 0xc94ac0, variant: 'layer' },
   chernInsulator: { color: 0xc9d94a, variant: 'twisted' },
@@ -478,9 +461,9 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     crystal('Chromium Tribromide', 'classicalmag', 25, ['thermalFluctuation', 'magneticField'], 3, 'layer'),
   ],
   7: [
-    crystal('Herbertsmithite', 'tensornet', 23, ['entanglementSwap', 'thermalFluctuation']),
-    crystal('Strontium Copper Borate', 'tensornet', 24, ['entanglementSwap', 'localizationPin'], 1),
-    crystal('Thallium Copper Chloride', 'tensornet', 22, ['entanglementSwap', 'thermalFluctuation'], 2),
+    crystal('Herbertsmithite', 'spinliquid', 23, ['entanglementSwap', 'thermalFluctuation']),
+    crystal('Strontium Copper Borate', 'spinliquid', 24, ['entanglementSwap', 'localizationPin'], 1),
+    crystal('Thallium Copper Chloride', 'spinliquid', 22, ['entanglementSwap', 'thermalFluctuation'], 2),
   ],
   8: [
     crystal('α-Ruthenium Trichloride', 'spinliquid', 24, ['entanglementSwap', 'localizationPin']),
@@ -491,10 +474,13 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // 5's 1H phase above).
     crystal('Tantalum Disulfide (1T)', 'spinliquid', 24, ['entanglementSwap', 'localizationPin'], 3),
   ],
+  // World 9 hosts Yu-Shiba-Rusinov/vortex-bound (Majorana) defect states and
+  // Friedel-oscillation impurity resonances -- both textbook phenomena of a
+  // superconductor's own disorder physics, so both compounds are 'supercon'
+  // type rather than a dedicated defect type.
   9: [
-    crystal('NV-Diamond', 'defect', 20, ['localizationPin', 'thermalFluctuation']),
-    crystal('Fe(Te,Se)', 'defect', 22, ['localizationPin', 'decoherenceWave'], 1),
-    crystal('Niobium Diselenide', 'defect', 21, ['localizationPin', 'thermalFluctuation'], 2),
+    crystal('Fe(Te,Se)', 'supercon', 22, ['localizationPin', 'decoherenceWave'], 1),
+    crystal('Niobium Diselenide', 'supercon', 21, ['localizationPin', 'thermalFluctuation'], 2),
   ],
   // The meta-world's wilds used to be 'adaptive'-type "Echo of ..." crystals
   // with no real compound behind them, flavor-echoing an earlier world's
@@ -516,24 +502,48 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
   ],
 };
 
+// World 9's rival, "Rival Impurity Resonance," has no single fixed type the
+// way every other rival does -- an impurity/defect-bound resonance can form
+// in any host crystal, so its type is rolled at random rather than
+// authored. OverworldScene rolls it once per playthrough and caches the
+// result in the registry/save (`rival9Type`) so the goal-tile boss preview
+// and the actual battle always agree on which crystal it turned out to be.
+export const RIVAL_9_TYPES: MaterialType[] = [
+  'trivial',
+  'magnet',
+  'topological',
+  'qhe',
+  'supercon',
+  'classicalmag',
+  'spinliquid',
+  'multiferroic',
+  'chernInsulator',
+];
+
+export function rollRival9Type(): MaterialType {
+  return RIVAL_9_TYPES[Math.floor(Math.random() * RIVAL_9_TYPES.length)];
+}
+
+function rivalImpurityResonance(type: MaterialType): Material {
+  return crystal('Rival Impurity Resonance', type, 66, ['localizationPin', 'decoherenceWave'], 11);
+}
+
 // The single "beat this to unlock the guardian and the way onward" gate per
 // world (DESIGN.md's world table, "Gate to next world" column) -- distinct
 // from WORLD_CRYSTALS' ordinary wild encounters, which never block
-// progress. Worlds 1-2 are built so far (OverworldScene.showRivalEncounter
-// falls back gracefully for a world with no entry here).
+// progress. World 9 has no static entry here -- see rivalImpurityResonance/
+// getRival above and below.
 export const WORLD_RIVALS: Partial<Record<number, Material>> = {
   1: crystal('Rival Silicon', 'trivial', 34, ['thermalFluctuation', 'tunnelStrike'], 3),
-  // Renamed from 'Rival Lattice Defect' -- defects are world 9's topic, not
-  // world 2's (symmetries, Bloch's theorem, tight-binding). A Bloch wave is
-  // the actual object world 2's lecture builds toward.
+  // A Bloch wave is the actual object world 2's lecture (symmetries,
+  // Bloch's theorem, tight-binding) builds toward.
   2: crystal('Rival Bloch Wave', 'trivial', 38, ['thermalFluctuation', 'tunnelStrike'], 4),
   3: crystal('Rival Edge State', 'topological', 42, ['fluxTwist', 'decoherenceWave'], 5),
   4: crystal('Rival Landau Level', 'qhe', 46, ['fluxTwist', 'tunnelStrike'], 6),
   5: crystal('Rival Cooper Pair', 'supercon', 50, ['localizationPin', 'decoherenceWave'], 7),
   6: crystal('Rival Domain Wall', 'classicalmag', 54, ['magneticField', 'thermalFluctuation'], 8),
-  7: crystal('Rival Entangled Pair', 'tensornet', 58, ['entanglementSwap', 'localizationPin'], 9),
+  7: crystal('Rival Entangled Pair', 'spinliquid', 58, ['entanglementSwap', 'localizationPin'], 9),
   8: crystal('Rival Spinon', 'spinliquid', 62, ['entanglementSwap', 'localizationPin'], 10),
-  9: crystal('Rival Impurity Resonance', 'defect', 66, ['localizationPin', 'decoherenceWave'], 11),
   // The finale: no real compound (see DESIGN.md §5's plot hook), an
   // "adaptive" type that can host every quasiparticle class -- "a model of
   // you," drawing from the same move roster the player themselves has
@@ -541,7 +551,13 @@ export const WORLD_RIVALS: Partial<Record<number, Material>> = {
   10: crystal('The Adapted', 'adaptive', 80, ['tunnelStrike', 'magneticField', 'fluxTwist', 'decoherenceWave'], 12),
 };
 
-export function getRival(world: number): Material | undefined {
+// `rival9Type` is only meaningful for world 9 -- every other world's rival
+// is the fixed WORLD_RIVALS entry, so the caller doesn't need to resolve
+// anything before calling this. For world 9, the caller should already have
+// rolled and cached a type (OverworldScene, so the preview and the battle
+// agree); an unresolved call still rolls a fresh one rather than crashing.
+export function getRival(world: number, rival9Type?: MaterialType): Material | undefined {
+  if (world === 9) return rivalImpurityResonance(rival9Type ?? rollRival9Type());
   return WORLD_RIVALS[world];
 }
 
@@ -656,9 +672,6 @@ const COMPOSITE_MATERIAL_NAMES = new Set([
   // An alloy of two chalcogens (Te, Se) on the same lattice site, not one
   // pure compound.
   'Fe(Te,Se)',
-  // A nitrogen dopant substituted into a diamond host lattice -- two named
-  // ingredients (N, C) again, not a pure single-element crystal.
-  'NV-Diamond',
 ]);
 
 // True for a HYBRID_RECIPES fusion result, or a real compound that's

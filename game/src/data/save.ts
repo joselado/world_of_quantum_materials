@@ -78,12 +78,18 @@ export interface SaveData {
   laughlinActivePassive: string | null;
   bohrPassivesUnlocked: string[];
   bohrActivePassive: string | null;
-  // Which quasiparticle class each of Curie's analytic moves (by move id)
-  // is currently tuned to (data/materials.ts's getCurieMoveClass,
+  // Which quasiparticle class each of Curie's two moves (by move id) is
+  // currently tuned to (data/materials.ts's getCurieMoveClass,
   // OverworldScene.showCurieClassPicker) -- an id missing from this map is
-  // "untuned," falling back to the move's own always-safe 'analytic' class
-  // for the quasiparticle-mismatch check.
+  // "untuned," falling back to the move's own always-safe default 'phonon'
+  // class for the quasiparticle-mismatch check.
   curieMoveClass: Partial<Record<string, MoveClass>>;
+  // World 9's rival's randomly rolled type (data/materials.ts's
+  // rollRival9Type/RIVAL_9_TYPES) -- null until first rolled
+  // (OverworldScene.resolveRival9Type, on first reaching world 9), then
+  // fixed for the rest of the playthrough so the goal-tile boss preview and
+  // the actual battle always agree on which crystal it turned out to be.
+  rival9Type: MaterialType | null;
 }
 
 export function defaultSave(): SaveData {
@@ -108,6 +114,7 @@ export function defaultSave(): SaveData {
     bohrPassivesUnlocked: [],
     bohrActivePassive: null,
     curieMoveClass: {},
+    rival9Type: null,
   };
 }
 
@@ -175,6 +182,7 @@ export function persistFromRegistry(registry: RegistryLike) {
     bohrPassivesUnlocked: (registry.get('bohrPassivesUnlocked') as string[]) ?? [],
     bohrActivePassive: (registry.get('bohrActivePassive') as string | null) ?? null,
     curieMoveClass: (registry.get('curieMoveClass') as Partial<Record<string, MoveClass>>) ?? {},
+    rival9Type: (registry.get('rival9Type') as MaterialType | null) ?? null,
   };
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));

@@ -83,6 +83,7 @@ function crystalFromCall(call) {
 const materialsSf = parseFile('src/data/materials.ts');
 
 const MOVES = evalNode(findTopLevelConst(materialsSf, 'MOVES'), materialsSf);
+const ANALYTIC_MOVE_IDS = evalNode(findTopLevelConst(materialsSf, 'ANALYTIC_MOVE_IDS'), materialsSf);
 
 const WORLD_CRYSTALS_RAW = evalNode(findTopLevelConst(materialsSf, 'WORLD_CRYSTALS'), materialsSf);
 const WORLD_CRYSTALS = Object.fromEntries(
@@ -139,7 +140,7 @@ function genQuasiparticles() {
     for (const cls of classes) (classToTypes[cls] ??= []).push(type);
   }
   const moveRows = Object.values(MOVES)
-    .filter((m) => m.class !== 'analytic' && m.class !== 'screening')
+    .filter((m) => !ANALYTIC_MOVE_IDS.includes(m.id) && m.class !== 'screening')
     .sort((a, b) => a.power - b.power)
     .map((m) => [m.name, `\`${m.class}\``, String(m.power), (classToTypes[m.class] ?? []).join(', ')]);
   const movesTable = table(['Move', 'Quasiparticle class', 'Power', 'Crystal types that can use it'], moveRows);

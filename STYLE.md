@@ -17,7 +17,7 @@ than appending a changelog, so this always reflects current reality.
   start the Hub.
 - Above the title text, a small showcase cluster of five crystals (`drawShowcaseCrystals`,
   the module-level `SHOWCASE` array) rather than a single crystal -- a curated handful of
-  `data/materials.ts`'s `TYPE_LOOK` entries (trivial, tensornet, magnet, supercon,
+  `data/materials.ts`'s `TYPE_LOOK` entries (trivial, spinliquid, magnet, supercon,
   topological), not tied to the player's own save/current form, since this is a "world full
   of different materials" branding image rather than a "welcome back" one (the Hub is where
   the player's own crystal gets its own moment). One centered "hero" crystal (biggest,
@@ -318,8 +318,9 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   Buying the first passive for this guardian activates it immediately, same reasoning as
   Kondo's first move; buying a second or third doesn't, and switching which one is active
   always requires reopening this panel. No "wrong form" empty state -- unlike Kondo's
-  moves, a passive is never gated by a crystal's own physics (same "player-learned
-  technique" reasoning as Curie's analytic moves), so all three are always purchasable.
+  moves, a passive is never gated by a crystal's own physics (the same "player-learned
+  technique, not physics a crystal has to host" reasoning that puts `'screening'` on
+  every type's list), so all three are always purchasable.
 - The buy button's label and its description line are both capped at a lower font-scale
   ceiling than every other guardian panel's buttons (`Math.min(fontScale(this), 1.3)` for
   the label, `1.2` for the description) rather than scaling all the way to the Enter-menu
@@ -359,8 +360,8 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   name label; panel stroked gold (`0xffe066`, matching Noether's shop rather than getting
   its own color, since it's the same "buy a move" interaction). Her avatar
   (`art/curie.ts`'s `makeCurieAvatar`) is unchanged by this mechanic.
-- No tabs, two runs of rows instead of one flat list -- still-unbought analytic moves
-  (`data/materials.ts`'s `ANALYTIC_MOVE_IDS`, currently Skyfall Beam and Ground Eruption),
+- No tabs, two runs of rows instead of one flat list -- still-unbought quiz-gated moves
+  (`data/materials.ts`'s `ANALYTIC_MOVE_IDS`, a hardcoded pair: Skyfall Beam and Ground Eruption),
   same `<move name> -- <cost> qumatokens` label and afford/dim treatment as Noether's Moves
   tab (reusing `shopCost`), followed by one row per already-bought move showing which
   quasiparticle it's tuned to: "`<name>` -- tuned to `<quasiparticle>` (retune)", or if the
@@ -470,7 +471,11 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   color. Reuses the `WorldSprite` projection/wander/bob machinery, so it scrolls
   and fades with distance like everything else standing on the map -- it doesn't
   add its own click handler, the fight is still only reached through the goal
-  panel's "Face the Rival" button.
+  panel's "Face the Rival" button. `makeBossCrystal`'s core/satellite color and
+  variant come from the boss `Material`'s own `color`/`variant` (`TYPE_LOOK[type]`),
+  so World 9's boss -- the one rival with no fixed type, DESIGN.md §2 -- looks
+  different depending on which `MaterialType` got rolled for that playthrough,
+  same as every other world's boss reads off its own fixed type.
 
 ## The rival gate (`OverworldScene.showRivalEncounter`)
 
@@ -549,7 +554,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   still a `[ #222244 background / #ffff88 text ]` button, same treatment used everywhere else
   (overworld dialogue buttons), stacked vertically under the header. A form with zero
   currently-usable moves (shouldn't normally happen, since Phonon Beam is universal) shows
-  "No usable moves" instead of an empty panel. An analytic-class move (Curie's Skyfall
+  "No usable moves" instead of an empty panel. One of Curie's two moves (Skyfall
   Beam/Ground Eruption) still gets a gold `★` tag appended to its own label, but its
   "right=2x wrong=½x" legend lives as its own dim sub-line directly under the `ANALYTIC`
   header instead of in the panel's top legend -- that top legend (`!! no natural defense
@@ -672,10 +677,11 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   Kondo's own rust-orange (`0xe86a44`). Distinct move names and the status-effect log line
   each one produces already read as three different moves without three different
   silhouettes too, so there's no `ANALYTIC_SHAPES`-style per-move override for this class.
-- Curie's two analytic moves break the "one shape per class" rule on purpose -- gold
-  (`0xffe066`), but each with its own silhouette rather than sharing the `'analytic'`
-  class's one default (`art/attackEffects.ts`'s `ANALYTIC_SHAPES`, keyed by move id, not
-  class), and each substantially more elaborate than the three base bolt/ring/burst shapes -- Curie's
+- Curie's two moves break the "one shape per class" rule on purpose -- gold
+  (`0xffe066`), but each with its own silhouette rather than sharing whichever ordinary
+  `EFFECT_STYLE` shape their currently-tuned quasiparticle carries (`art/attackEffects.ts`'s
+  `ANALYTIC_SHAPES`, keyed by move id, not class), and each substantially more elaborate than
+  the three base bolt/ring/burst shapes -- Curie's
   own request was moves that clearly read as stronger than an ordinary hit, not just a
   bigger bolt/ring/burst. **Skyfall Beam** (`playBeam`) drops a multi-layer column of light
   from off the top of the screen straight down onto the target: a wide pulsing telegraph

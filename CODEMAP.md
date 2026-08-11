@@ -52,10 +52,16 @@ game/src/
   data/
     types.ts                    Move, Material, MoveClass, MaterialType, CrystalVariant, Stats
     materials.ts                 MOVES, TYPE_LOOK, WORLD_CRYSTALS, WORLD_RIVALS,
-                                  PLAYER_MATERIAL, SHOP_MOVE_IDS, ANALYTIC_MOVE_IDS, WORLD_NAMES,
-                                  DEFAULT_STATS, getWildPool(), getRival(), compatibleMoves(),
+                                  PLAYER_MATERIAL, SHOP_MOVE_IDS, ANALYTIC_MOVE_IDS,
+                                  CURIE_TUNABLE_CLASSES, RIVAL_9_TYPES, WORLD_NAMES,
+                                  DEFAULT_STATS, getWildPool(), getRival(world, rival9Type?),
+                                  compatibleMoves(),
                                   canHost(), getPlayerMaterial(), getPlayerStats(), getBattleMoves(),
                                   enemyStatsForWorld(), statUpgradeCost(), findMaterialByName(),
+                                  rollRival9Type() -- rolls World 9's rival's random MaterialType,
+                                  fed into getRival() (see "Rival/boss fights" below),
+                                  getCurieMoveClass()/curieMoveDisplayName() -- read a Curie move's
+                                  tuned quasiparticle (falling back to its default 'phonon' class),
                                   allCrystals() -- every WORLD_CRYSTALS entry deduped by name, feeds
                                   Dresselhaus/Majorana/Anderson's Superposition Mode candidate pools,
                                   hybridRecipeResult()/HYBRID_RECIPES -- Majorana's named parent-pair
@@ -65,7 +71,7 @@ game/src/
     tokens.ts                    Qumatoken value tiers + weights
     quiz.ts                      Per-material physics question pools (>=6 each) via
                                   getMaterialQuestion(), plus one flat ANALYTIC_QUESTIONS pool via
-                                  getAnalyticQuestion() for Curie's analytic moves (not per-material)
+                                  getAnalyticQuestion() for Curie's two quiz-gated moves (not per-material)
     greetings.ts                 Per-MaterialType flavor lines (encounter/victory/defeat)
     materialdex.ts               Per-material (fallback per-type) physics blurb for Materialdex
     save.ts                      localStorage schema + persistFromRegistry()/load()
@@ -89,8 +95,10 @@ since `materials.ts` pulls in Phaser at module scope) and regenerates the
   Silicon, `type: 'trivial'`). Its starting `moves` is the tutorial loadout; moves actually
   available in battle also depend on the registry's `unlockedMoves` (grows via Noether's shop).
 - `WORLD_CRYSTALS: Record<world, Material[]>` -- wild-encounter pool per world, pulled via
-  `getWildPool(world)`. `WORLD_RIVALS: Record<world, Material>` -- the one gating fight per
-  world, pulled via `getRival(world)`.
+  `getWildPool(world)`. `WORLD_RIVALS: Partial<Record<world, Material>>` -- the one gating
+  fight per world, pulled via `getRival(world, rival9Type?)`; it has a fixed entry for every
+  world except 9, whose rival is built on the fly instead (see "Rival/boss fights" below) --
+  `getRival` still returns a `Material` for all ten worlds either way.
 - `MOVES: Record<id, Move>` -- every move is named after the quasiparticle that carries it
   (Phonon Beam, not "Thermal Attack"). `class: MoveClass` drives the attack-effect
   shape/color (`art/attackEffects.ts`'s `EFFECT_STYLE`) and `MOVE_COMPATIBILITY`; `power`
@@ -107,11 +115,16 @@ since `materials.ts` pulls in Phaser at module scope) and regenerates the
   (what the attacker can use) and `canHost` (whether the defender takes the mismatch 2x), so
   leaving a new class off every type's list doesn't make it "unavailable," it makes every
   defender mismatch against it -- a silent, permanent 2x stacked on top of whatever bonus the
-  move's own mechanic already applies. This is why `'analytic'` (Curie's moves) is
-  deliberately on *every* type's list rather than scoped like every other class: they're a
-  technique the player learned, not physics a crystal has to host, so the intent is "always
-  usable, never mismatched," and the 2x/0.5x answer-gated multiplier is the class's only
-  risk/reward term. Decide this on purpose for any future class, not by omission.
+  move's own mechanic already applies. This is why `'screening'` (Kondo's three moves) is
+  deliberately on *every* type's list rather than scoped like every other class: they deal in
+  a generic scattering/decoherence process the player applies, not physics a crystal has to
+  host, so the intent is "always usable, never mismatched," and the 3-turn status effect each
+  one inflicts (DESIGN.md §4) is the payoff instead of a mismatch bonus. Curie's two moves
+  (Skyfall Beam, Ground Eruption) reach the same "usable from any form, never mismatches"
+  result without needing a class of their own -- their static `class` defaults to `'phonon'`,
+  the same universal class every crystal's own lattice already grants Phonon Beam, and stays
+  there until the player tunes it via her picker (`getCurieMoveClass`, see "Guardians" below).
+  Decide any new class's `MOVE_COMPATIBILITY` membership on purpose, not by omission.
 - Per-type look lives in `TYPE_LOOK` (base color + variant, exported); individual compounds
   of the same type get `shade(color, shadeStep * 18)` so siblings (Iron vs. Cobalt) read as a
   family, *and* (rendering-side, not stored on the `Material` itself) `art/crystals.ts`'s
@@ -151,7 +164,7 @@ since `materials.ts` pulls in Phaser at module scope) and regenerates the
   Materialdex/Save panels, the Enter-key menu) is the same dark rounded-rectangle-with-stroke
   treatment, with the stroke color signaling the panel's kind: blue-grey `0x444466` = wild
   encounter (`OverworldScene.showEncounter`) and the Enter-key menu/info panels (`0x8fa0c9`,
-  a distinct blue-grey so it doesn't collide), gold `0xffe066` = Noether (and its analytic-move
+  a distinct blue-grey so it doesn't collide), gold `0xffe066` = Noether (and its quiz-gated-move
   counterpart, Curie's `showCuriePanel`, at olive `0xc9d84a`), teal `0x4adde0` = Bloch,
   teal-green `0x4ad9a0` = Dresselhaus's transmutation panel, green `0x4fd97a` = Majorana's
   hybrid panel, rust `0xc9884a` = Anderson's impurity-doping panel, red `0xff6666` = rival gate,
@@ -168,10 +181,11 @@ since `materials.ts` pulls in Phaser at module scope) and regenerates the
   `attackEffects.ts`, only adding/removing a whole `MoveClass` does (update `EFFECT_STYLE` in
   `art/attackEffects.ts` and `MOVE_COMPATIBILITY` in `data/materials.ts` together). One
   deliberate exception: `ANALYTIC_SHAPES: Record<moveId, AttackShape>` overrides the shape
-  per move id for the `'analytic'` class specifically, since Curie's two moves (Skyfall Beam,
-  Ground Eruption) want two different silhouettes despite sharing one class --
-  `BattleScene.resolveHit` looks a move up in `ANALYTIC_SHAPES` and passes it as
-  `playAttackEffect`'s `shapeOverride` param, falling back to `EFFECT_STYLE`'s per-class shape
+  per move id for Curie's two moves specifically (Skyfall Beam, Ground Eruption), since they
+  want two different silhouettes regardless of whichever ordinary quasiparticle class each is
+  currently tuned to -- `BattleScene.resolveHit` looks a move up in `ANALYTIC_SHAPES` and
+  passes it as `playAttackEffect`'s `shapeOverride` param, falling back to `EFFECT_STYLE`'s
+  per-class shape
   when a move isn't in that map. A future class wanting the same per-move variety should reuse
   this pattern rather than inventing a second override mechanism.
 - **Discovery vs. defeat tracking.** Two separate registry/save lists, both excluding rivals
@@ -205,7 +219,7 @@ a global "moves learned," unaffected by transmuting. What's actually offered in 
 menu or Noether's shop is `getBattleMoves(registry)`/an inline `compatibleMoves(...)` filter --
 learned ∩ `compatibleMoves(currentForm)`, where `compatibleMoves` derives from
 `MOVE_COMPATIBILITY: Record<MaterialType, MoveClass[]>` (`data/materials.ts`). Phonon Beam
-(`thermal`) is the one class every type allows, so it's always available regardless of form.
+(`phonon`) is the one class every type allows, so it's always available regardless of form.
 Every move maps to a real quasiparticle; there is no abstract "disorder" move or class.
 
 ## Stats and battle resolution
@@ -225,7 +239,7 @@ correlation`), and a `2x` "quasiparticle mismatch" multiplier from `data/materia
 include the attacking move's class takes it at double force. This is the only type-interaction
 term in the damage formula (DESIGN.md §3/§4) -- there is no separate type-chart multiplier.
 `resolveHit` also takes a `bonusMultiplier` param (default `1`, a no-op) -- the only current
-caller that passes anything else is `playerAttack` forwarding an analytic move's answer-gated
+caller that passes anything else is `playerAttack` forwarding one of Curie's moves' answer-gated
 2x/0.5x through to the one `resolveHit` call for that specific move id; the opponent's
 follow-up hit in the same exchange is never affected. The question itself is always answered
 *before* `resolveHit` runs (`BattleScene.showAnalyticQuestion`, called from the move button's
@@ -293,8 +307,9 @@ after `statusText`, same "stack a clause onto the existing line" pattern `mismat
 **Battle move menu is sectioned, paged one section at a time.**
 `BattleScene.moveSections(moveIds)` splits `getBattleMoves`'s result into up to three
 sections (a module-level `MoveSection[]`, filtered to only the ones with at least one usable
-move): **Attacks** (every `MoveClass` other than `'analytic'`/`'screening'`), **Analytic**
-(Curie's moves, `★` tag, own "right=2x wrong=½x" legend sub-line under its own header),
+move): **Attacks** (every move whose id isn't one of Curie's two, `ANALYTIC_MOVE_IDS`, and
+whose `class` isn't `'screening'`), **Analytic** (Curie's two moves, identified by id rather
+than by a shared class, `★` tag, own "right=2x wrong=½x" legend sub-line under its own header),
 **Screening** (Kondo's currently-active move, at most one). `drawMoveMenu(moveIds)` builds a
 docked `Container` (field `moveMenu`, destroyed and rebuilt from scratch on every call, not
 just once at battle start) on the right of the field, but renders only
@@ -321,7 +336,7 @@ height (`rowH`) is then computed from the *current page's own* `rowCount` via
 across sections the way it was before paging existed. Below `rowH < 40` the row switches to a
 smaller font/padding (`compact`) rather than clipping.
 
-A move whose `class` is `'analytic'` still gets its `★` tag on the button itself (the
+A move whose id is one of `ANALYTIC_MOVE_IDS` still gets its `★` tag on the button itself (the
 2x/0.5x legend text now lives under the Analytic section header instead, see above); its
 button's `pointerdown` handler branches before `playerAttack` -- it opens
 `BattleScene.showAnalyticQuestion` first (locking `turnLock` for the duration) and only calls
@@ -353,10 +368,25 @@ directly, so bolts/rings/bursts still travel to the crystal's real (possibly shi
 
 **The goal tile belongs to that world's boss, not a guardian.** `OverworldScene.spawnBossSprite`
 spawns `art/boss.ts`'s `makeBossCrystal` (a fused multi-shard cluster + pulsing aura + orbiting
-embers, `BOSS_CRYSTAL_SIZE = 70`) at `goalTile` for every built world's `getRival()` -- purely a
-visual landmark via the same `WorldSprite` machinery, no click handler of its own.
-`openGoalGuardianPanel()`'s branch on `guardian?.tile === 'goal'` is a permanent no-op (no entry
-uses it), so it always falls through to `showGatePanel()`, which is what renders at the goal.
+embers, `BOSS_CRYSTAL_SIZE = 70`) at `goalTile` for every built world's `getRival()` (via
+`OverworldScene.getWorldRival()`, see below) -- purely a visual landmark via the same
+`WorldSprite` machinery, no click handler of its own. `openGoalGuardianPanel()`'s branch on
+`guardian?.tile === 'goal'` is a permanent no-op (no entry uses it), so it always falls through
+to `showGatePanel()`, which is what renders at the goal.
+
+**World 9's rival has no fixed type, unlike every other world's.** `data/materials.ts`'s
+`getRival(world, rival9Type?)` takes an optional second param that only world 9 reads --
+`getRival(9, t)` builds `rivalImpurityResonance(t)`, a `Material` named "Rival Impurity
+Resonance" whose `type` is whatever's passed in; every other world ignores the param and
+returns its fixed `WORLD_RIVALS[world]` entry. `RIVAL_9_TYPES` (every non-adaptive
+`MaterialType`) and `rollRival9Type()` (a uniform pick from it) live in `data/materials.ts`
+too. `OverworldScene.resolveRival9Type()` is the one caller that actually rolls: it reads
+registry/save `rival9Type`, rolling and caching a fresh one via `rollRival9Type()` +
+`persistFromRegistry` the first time it's ever called for that save, so every later call
+(the goal-tile boss preview, the rival battle itself) returns the same cached type instead of
+re-rolling. `OverworldScene.getWorldRival()` is the shared wrapper both `spawnBossSprite` and
+the rival-battle code path call -- it passes `resolveRival9Type()` for world 9 and `undefined`
+for every other world, so callers never need their own `this.world === 9` branch.
 
 **Progression (Face the Rival/Continue) is exclusive to the goal panel.** `renderShopFooter`
 (Farewell + Face-the-Rival/Continue, `showGatePanel`'s only caller) and `renderFarewellFooter`
@@ -421,8 +451,9 @@ s.showXPanel()` pattern as Noether/Bloch/Dresselhaus:
   (active)' tag" shape `renderKondoMoves` already established, right down to "buying the
   very first one for this guardian auto-activates it, buying a second or third doesn't."
   Unlike Kondo's moves, a passive is never gated by `MOVE_COMPATIBILITY` (the same
-  "player-learned technique, not a quasiparticle a crystal has to host" reasoning as
-  Curie's analytic moves) -- every passive is always purchasable regardless of current
+  "player-learned technique, not a quasiparticle a crystal has to host" reasoning
+  `'screening'` itself is on every type's list for) -- every passive is always purchasable
+  regardless of current
   form, so neither panel has a "wrong form" empty state to special-case. Each still-unbought
   row also prints the passive's own `description` underneath in a smaller, capped-scale
   font (`Math.min(fontScale(this), 1.3)` for the buy button itself, `1.2` for the
@@ -452,28 +483,31 @@ s.showXPanel()` pattern as Noether/Bloch/Dresselhaus:
   starts the two-step pick fresh; `createHybrid` doesn't persist anything beyond calling
   `becomeHybrid`, which just runs `applyPlayerForm` (the player's *current* form, hybrid or
   not, already survives a reload on its own via `playerForm`).
-- **Curie's analytic-move shop** (`OverworldScene.showCuriePanel`/`renderCurieMoves`) mirrors
+- **Curie's quiz-gated-move shop** (`OverworldScene.showCuriePanel`/`renderCurieMoves`) mirrors
   `showNoetherShop`/`renderShopMoves` but sells only `data/materials.ts`'s `ANALYTIC_MOVE_IDS`
-  (currently `skyfallBeam`/`groundEruption`), which `SHOP_MOVE_IDS` deliberately excludes so
+  (a hardcoded pair, `skyfallBeam`/`groundEruption` -- identity by id, since neither move has a
+  distinguishing class of its own to filter on), which `SHOP_MOVE_IDS` deliberately excludes so
   Noether never also offers them. Two rendered sections: still-unbought moves, then every
   already-bought one showing which quasiparticle it's tuned to (its row label is
   `curieMoveDisplayName`, e.g. "Skyfall Magnon -- tuned to Magnon Pulse (retune)"). Buying
   (or later retuning) a move opens `showCurieClassPicker` -- a sub-panel offering
-  `CURIE_TUNABLE_CLASSES` filtered through `canHost(playerMaterial.type, cls)` (so only
+  `CURIE_TUNABLE_CLASSES` (every ordinary Attacks-section class, i.e. everything except
+  Kondo's `'screening'`) filtered through `canHost(playerMaterial.type, cls)` (so only
   classes the player's *current* form can host are ever pickable), each labeled via
   `quasiparticleLabel` -- which writes registry/save `curieMoveClass[moveId]`, read by
-  `data/materials.ts`'s `getCurieMoveClass` in place of the move's own fixed `'analytic'`
-  class wherever `BattleScene` checks quasiparticle-mismatch (both `addMoveButton`'s `!!2x`
+  `data/materials.ts`'s `getCurieMoveClass` in place of the move's own static `class`
+  (which defaults to `'phonon'`, the same universal class Phonon Beam carries) wherever
+  `BattleScene` checks quasiparticle-mismatch (both `addMoveButton`'s `!!2x`
   tag and `resolveHit`'s actual damage multiplier) and by `curieMoveDisplayName` for the
-  label; the move's own `class` never changes, so it stays purchasable/usable from any form
-  and still asks its question regardless of tuning. The picker only filters at pick time, so
-  a saved assignment can outlive a later transmute into a form that can't host it --
-  `getCurieMoveClass` re-checks `canHost` against the player's *current* form every call and
-  falls back to `'thermal'` (Phonon Beam, universal) when it fails, and
-  `curieMoveDisplayName`/the shop row label read that same fallback rather than the raw
-  saved value, so name and mismatch math can't disagree. See `BattleScene.showAnalyticQuestion`
-  (Stats and battle resolution, above) for how a purchased analytic move actually plays out
-  in a fight.
+  label; the move's own static `class` never changes, so an untuned move stays
+  purchasable/usable from any form and still asks its question regardless of tuning. The
+  picker only filters at pick time, so a saved assignment can outlive a later transmute into
+  a form that can't host it -- `getCurieMoveClass` re-checks `canHost` against the player's
+  *current* form every call and falls back to `'phonon'` (Phonon Beam, universal) when it
+  fails, and `curieMoveDisplayName`/the shop row label read that same fallback rather than the
+  raw saved value, so name and mismatch math can't disagree. See
+  `BattleScene.showAnalyticQuestion` (Stats and battle resolution, above) for how a purchased
+  Curie move actually plays out in a fight.
 - **Kondo's screening-move shop** (`OverworldScene.showKondoPanel`/`renderKondoMoves`)
   mirrors Curie's shop shape but sells `data/materials.ts`'s `KONDO_MOVE_IDS` (three moves:
   `screeningCloud`/`heavyFermionDrag`/`kondoBreakdown`, each tied to one of `types.ts`'s
@@ -628,9 +662,11 @@ ordinary `unlockedMoves` list, this field only tracks which one currently passes
 string | null` and the same pair for `bohr` (`data/passives.ts`'s `LAUGHLIN_PASSIVE_IDS`/
 `BOHR_PASSIVE_IDS`, same "several unlocked, one active" shape as `kondoActiveMove`, see
 "Guardians" above), `curieMoveClass: Partial<Record<string, MoveClass>>` (which quasiparticle
-each of Curie's analytic moves is tuned to, by move id -- an id missing from this map is
-"untuned," `data/materials.ts`'s `getCurieMoveClass` falls back to the move's own always-safe
-`'analytic'` class), plus the
+each of Curie's two moves is tuned to, by move id -- an id missing from this map is
+"untuned," `data/materials.ts`'s `getCurieMoveClass` falls back to the move's own default
+`'phonon'` class), `rival9Type: MaterialType | null` (World 9's rival's randomly-rolled type,
+`null` until the player first reaches World 9 -- `OverworldScene.resolveRival9Type` rolls and
+caches it via `data/materials.ts`'s `rollRival9Type`, see "Rival/boss fights" below), plus the
 earlier fields covered under Registry-then-persist above. `defaultSave()`/
 `persistFromRegistry()` are the two places that need touching together for any future field, and
 `loadSave()`'s `{ ...defaultSave(), ...saved }` spread keeps old localStorage saves compatible

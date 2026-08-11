@@ -12,7 +12,7 @@ anywhere in the game.
 | [Dresselhaus](#dresselhaus) | 3 | Lets you transmute into a defeated crystal |
 | [Laughlin](#laughlin) | 4 | Teaches always-on passive abilities |
 | [Majorana](#majorana) | 5 | Fuses two crystals into a hybrid state |
-| [Curie](#curie) | 6 | Sells quiz-gated "analytic" moves |
+| [Curie](#curie) | 6 | Sells two quiz-gated moves |
 | [Bohr](#bohr) | 7 | Teaches more passive abilities |
 | [Kondo](#kondo) | 8 | Sells status-inflicting moves |
 | [Anderson](#anderson) | 9 | Lets you dope in an impurity move |
@@ -69,7 +69,7 @@ fresh rather than remembering past fusions.
 
 ## Curie
 
-Sells "analytic" moves that ask a physics-equation question before they
+Sells two quiz-gated moves that ask a physics-equation question before they
 land -- answer right for double damage, wrong for half -- with a
 dramatically flashier effect than an ordinary move. Buying (or later
 revisiting Curie) also lets you pick which quasiparticle the move should

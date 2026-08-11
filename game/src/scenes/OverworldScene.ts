@@ -21,6 +21,7 @@ import {
   WORLD_NAMES,
   getWildPool,
   getRival,
+  rollRival9Type,
   MOVES,
   SHOP_MOVE_IDS,
   ANALYTIC_MOVE_IDS,
@@ -508,8 +509,8 @@ export class OverworldScene extends Phaser.Scene {
     // across re-levels. Curie's two moves need no equivalent seeding --
     // unlike an unset `kondoActiveMove` (which hides a move from battle
     // entirely), an unset `curieMoveClass` entry just leaves that move
-    // untuned (getCurieMoveClass falls back to its own always-safe
-    // 'analytic' class), which is already a normal, fully-usable state.
+    // untuned (getCurieMoveClass falls back to the move's own always-safe
+    // default 'phonon' class), which is already a normal, fully-usable state.
     if (!this.game.registry.get('kondoActiveMove')) {
       this.game.registry.set('kondoActiveMove', KONDO_MOVE_IDS[0]);
     }
@@ -1337,7 +1338,26 @@ export class OverworldScene extends Phaser.Scene {
     this.guardianSprites.push({ x: tile.x, y: tile.y, size: 42, container: avatar, label, seed: Math.random() * Math.PI * 2 });
   }
 
-  // This world's rival/boss (getRival), standing at the goal tile as a
+  // World 9's rival ("Rival Impurity Resonance") has no fixed type -- it's
+  // rolled once per playthrough (data/materials.ts's rollRival9Type) and
+  // cached in the registry/save (`rival9Type`) so the goal-tile boss
+  // preview (spawnBossSprite) and the actual battle (showRivalEncounter)
+  // always agree on which crystal it turned out to be, and a reload doesn't
+  // re-roll it.
+  private resolveRival9Type(): MaterialType {
+    const cached = this.game.registry.get('rival9Type') as MaterialType | undefined;
+    if (cached) return cached;
+    const rolled = rollRival9Type();
+    this.game.registry.set('rival9Type', rolled);
+    persistFromRegistry(this.game.registry);
+    return rolled;
+  }
+
+  private getWorldRival(): Material | undefined {
+    return getRival(this.world, this.world === 9 ? this.resolveRival9Type() : undefined);
+  }
+
+  // This world's rival/boss (getWorldRival), standing at the goal tile as a
   // gigantic, unmissable-from-a-distance landmark -- purely visual (no
   // world has a WORLD_RIVALS gap, so this always finds one for a built
   // world). The actual fight still only starts from "Face the Rival" in the
@@ -1345,7 +1365,7 @@ export class OverworldScene extends Phaser.Scene {
   // sprite doesn't trigger anything on its own, same as a guardian sprite.
   private spawnBossSprite() {
     this.bossSprites = [];
-    const boss = getRival(this.world);
+    const boss = this.getWorldRival();
     if (!boss) return;
 
     const avatar = makeBossCrystal(this, BOSS_CRYSTAL_SIZE, boss.color, boss.variant);
@@ -1779,7 +1799,7 @@ export class OverworldScene extends Phaser.Scene {
   // but with no "let me pass" option, since a gate that can be skipped
   // isn't a gate.
   private showRivalEncounter() {
-    const rival = getRival(this.world);
+    const rival = this.getWorldRival();
     if (!rival) {
       // Safety net for a world with no WORLD_RIVALS entry yet -- don't
       // strand the player behind a gate that can't open.
@@ -2018,8 +2038,8 @@ export class OverworldScene extends Phaser.Scene {
     return footerY + btn.height;
   }
 
-  // Curie stands at world 6's middle tile (WORLD_GUARDIANS) and sells the
-  // analytic-class moves (data/materials.ts's ANALYTIC_MOVE_IDS, currently
+  // Curie stands at world 6's middle tile (WORLD_GUARDIANS) and sells her
+  // two quiz-gated moves (data/materials.ts's ANALYTIC_MOVE_IDS, currently
   // Skyfall Beam/Ground Eruption) -- kept out of Noether's own shop
   // (SHOP_MOVE_IDS excludes them, see materials.ts's comment) so Curie is
   // their one source. Mirrors showNoetherShop's layout/structure, minus the
@@ -2067,20 +2087,18 @@ export class OverworldScene extends Phaser.Scene {
     container.addAt(panel, 0);
   }
 
-  // Two sections, same shape as Kondo's own panel: still-unbought analytic
-  // moves (buying opens showCurieClassPicker first, so a purchase always
-  // comes with a quasiparticle chosen) followed by every already-bought
-  // analytic move showing which quasiparticle it's currently tuned to, with
-  // a free "Retune" click back into the same picker -- unlike Kondo's
-  // single active-move switch, both of Curie's moves can be tuned (and
-  // usable) at once, this only ever changes which quasiparticle each one's
-  // mismatch check reads (materials.ts's getCurieMoveClass). Unlike Kondo's
-  // shop, `forSale`/`learned` don't always partition every id between them
-  // -- 'analytic' sits on every type's MOVE_COMPATIBILITY list, same as
-  // 'screening', but ANALYTIC_MOVE_IDS is fixed at 2 with no third state,
-  // so `forSale` alone (not both being empty) is the real "nothing left to
-  // buy" signal, shown as its own line above the learned rows rather than
-  // replacing them.
+  // Two sections, same shape as Kondo's own panel: still-unbought moves
+  // (buying opens showCurieClassPicker first, so a purchase always comes
+  // with a quasiparticle chosen) followed by every already-bought move
+  // showing which quasiparticle it's currently tuned to, with a free
+  // "Retune" click back into the same picker -- unlike Kondo's single
+  // active-move switch, both of Curie's moves can be tuned (and usable) at
+  // once, this only ever changes which quasiparticle each one's mismatch
+  // check reads (materials.ts's getCurieMoveClass). Unlike Kondo's shop,
+  // `forSale`/`learned` don't always partition every id between them --
+  // ANALYTIC_MOVE_IDS is fixed at 2 with no third state, so `forSale` alone
+  // (not both being empty) is the real "nothing left to buy" signal, shown
+  // as its own line above the learned rows rather than replacing them.
   private renderCurieMoves(container: Phaser.GameObjects.Container, y: number): number {
     const unlocked = this.getUnlockedMoves();
     const forSale = ANALYTIC_MOVE_IDS.filter((id) => !unlocked.includes(id));
@@ -2147,10 +2165,10 @@ export class OverworldScene extends Phaser.Scene {
     return y;
   }
 
-  // The quasiparticle-choice sub-panel Curie's shop opens for a given
-  // analytic move, both on first purchase and on a later "Retune" click
-  // (renderCurieMoves above) -- the move's own MoveClass stays 'analytic'
-  // either way (see getCurieMoveClass), this only decides which ordinary
+  // The quasiparticle-choice sub-panel Curie's shop opens for one of her two
+  // moves, both on first purchase and on a later "Retune" click
+  // (renderCurieMoves above) -- the move's own default MoveClass ('phonon')
+  // never changes (see getCurieMoveClass), this only decides which ordinary
   // class the quasiparticle-mismatch check treats it as. Only offers
   // classes the player's *current* form can actually host
   // (CURIE_TUNABLE_CLASSES filtered through canHost) -- "which quasiparticle
@@ -2158,7 +2176,7 @@ export class OverworldScene extends Phaser.Scene {
   // what the player's own crystal can host right now, not a free pick from
   // every class in the game regardless of how little sense it makes for the
   // current form; re-tuning later (after transmuting into a different form)
-  // just reopens this same filtered list. 'thermal' is on every
+  // just reopens this same filtered list. 'phonon' is on every
   // MOVE_COMPATIBILITY list, so the filtered list is never empty.
   // `onChosen` runs the caller's own save/persist/redraw, this panel just
   // presents the pick.
@@ -2455,7 +2473,7 @@ export class OverworldScene extends Phaser.Scene {
   // usually implies it) -- otherwise it was only ever visible during the
   // single visit that purchased it. Unlike Kondo's moves, a passive is never
   // gated by MOVE_COMPATIBILITY (the same "player-learned technique, not a
-  // quasiparticle a crystal has to host" reasoning as Curie's analytic
+  // quasiparticle a crystal has to host" reasoning as Kondo's screening
   // moves) -- every passive is always purchasable regardless of current
   // form, so there's no "wrong form" empty state to special-case here.
   // Buying the very first passive for a given guardian activates it

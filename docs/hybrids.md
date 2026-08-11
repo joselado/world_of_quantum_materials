@@ -48,7 +48,6 @@ fused, same-type pairs included.
 | --- |
 | Cr-doped (Bi,Sb)₂Te₃ |
 | Fe(Te,Se) |
-| NV-Diamond |
 <!-- GENERATED:COMPOSITE_TABLE END -->
 
 See [Guardians](guardians.md#majorana) for how the fuse mechanic itself

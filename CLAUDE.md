@@ -87,3 +87,12 @@ checkout; that's gone now that this repo *is* the standalone checkout). Commit a
   and run `npm run docs` from `game/` instead, so the table stays derived from a
   single source of truth. The prose around those blocks is still hand-maintained
   like any other doc.
+- The same "current state, not a change log" rule applies to comments inside
+  `game/src/` itself, not just the doc files above. When a change swaps out a
+  mechanic, write the surrounding comment to describe the mechanic as it now
+  works — don't leave "used to be X," "no longer Y," "replaced the old Z,"
+  "instead of the earlier W" narration in the code. The mechanics are still
+  evolving, so a comment that explains last week's design instead of this
+  week's becomes actively misleading, not just clutter. As with the docs, keep
+  genuine load-bearing rationale (the *why* behind a current rule) — cut only
+  the narration of the change itself.
