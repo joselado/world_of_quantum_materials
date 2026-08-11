@@ -28,6 +28,7 @@ import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
 import type { Material, Move, Stats } from '../data/types';
 import { music } from '../audio/music';
+import { CANVAS_W, CANVAS_H } from '../config/screen';
 
 // Correct/wrong multipliers for Laughlin's two quiz-gated Analytic moves (§5) --
 // deliberately steeper than the pre-battle quiz's QUIZ_CORRECT_MULTIPLIER/
@@ -136,28 +137,32 @@ const EDGE_CURRENT_MISMATCH_MULT = 1.5; // Amorphous Halo (id edgeCurrent): soft
 const NONLOCAL_CORRELATION_FRACTION = 0.5; // Nonlocal Correlation: share of the opponent's own Quantumness added to Correlation
 const SHARED_STATE_HEAL_FRACTION = 0.22; // Shared State: share of dealt damage returned as healing
 
-const FIELD_W = 640;
-const FIELD_H = 480;
+// Field size is the shared canvas size (config/screen.ts) -- aliased to
+// FIELD_W/FIELD_H here since every layout constant below reads as "a
+// distance across the battle field" rather than "a distance across the
+// canvas."
+const FIELD_W = CANVAS_W;
+const FIELD_H = CANVAS_H;
 const HORIZON_Y = 262;
 const LOG_Y = 440; // combat log's usual bottom-anchored resting position
 const BATTLE_TOKEN_STAKE = 50; // won on a win, lost (floored at 0) on a loss
 const RIVAL_TOKEN_STAKE = 100; // the gating rival fight pays out double, win or lose
-const OPPONENT_POS = { x: 460, y: 150 };
+const OPPONENT_POS = { x: 674, y: 150 };
 // A rival/boss fight's opponent sits a bit further left and renders bigger
 // (see BOSS_CRYSTAL_SIZE below) than an ordinary wild encounter's 50 --
 // shifted off OPPONENT_POS's x so the wider, multi-shard boss silhouette
 // (art/boss.ts's makeBossCrystal) has room before the move menu (MENU_X)
 // starts, rather than overlapping it.
-const BOSS_OPPONENT_POS = { x: 430, y: 155 };
+const BOSS_OPPONENT_POS = { x: 644, y: 155 };
 const BOSS_CRYSTAL_SIZE = 64;
-const PLAYER_POS = { x: 180, y: 345 };
+const PLAYER_POS = { x: 240, y: 345 };
 // Gap before the next turn fires -- long enough for the fuller attack beat
 // (windup + travel + impact shockwave, up to ~810ms for a ring move) in
 // art/attackEffects.ts to land and read clearly before the screen moves on.
 const TURN_GAP_MS = 850;
 // Docked to the right of the field, clear of the opponent's crystal/HP bar
 // above it and the log text below.
-const MENU_X = 456;
+const MENU_X = 670;
 const MENU_TOP = 178;
 const MENU_WIDTH = 176;
 const MENU_BOTTOM_MARGIN = 16;
@@ -277,20 +282,21 @@ export class BattleScene extends Phaser.Scene {
     // to 2x), and a fixed gap tuned for the 1x label overlapped the bar once
     // a taller label was in play. wordWrap for the same reason a long
     // material name (e.g. "Twisted Bilayer MoTe₂") needs it: starting this
-    // far right (x=400) leaves too little room before the canvas edge to
-    // trust an unbounded single line -- wrapping to a second line grows
+    // far right (x=614, 60px left of OPPONENT_POS.x so the label/bar sit
+    // just under the crystal) leaves too little room before the canvas edge
+    // to trust an unbounded single line -- wrapping to a second line grows
     // `opponentName.height`, which opponentBarY below already reads live, so
     // the bar/pills still land in the right place either way.
-    const opponentName = this.add.text(400, 48, this.wild.name, {
+    const opponentName = this.add.text(614, 48, this.wild.name, {
       fontSize: fontPx(this, 14),
       color: '#ffffff',
       backgroundColor: 'rgba(0,0,0,0.35)',
       padding: { x: 4, y: 2 },
-      wordWrap: { width: FIELD_W - 400 - 12 },
+      wordWrap: { width: FIELD_W - 614 - 12 },
     });
     const opponentBarY = opponentName.y + opponentName.height + 8;
-    this.add.rectangle(400, opponentBarY, 104, 12, 0x222222, 0.55).setOrigin(0, 0.5);
-    this.opponentHpBar = this.add.rectangle(400, opponentBarY, 100, 8, 0x33cc33).setOrigin(0, 0.5);
+    this.add.rectangle(614, opponentBarY, 104, 12, 0x222222, 0.55).setOrigin(0, 0.5);
+    this.opponentHpBar = this.add.rectangle(614, opponentBarY, 100, 8, 0x33cc33).setOrigin(0, 0.5);
     // Status pill (Kondo's moves, §5) -- empty/invisible until a status is
     // actually active (renderStatusLabel), so it costs nothing to lay out
     // for the common case where no status is in play.
@@ -299,7 +305,7 @@ export class BattleScene extends Phaser.Scene {
     // far up as this row at a big text-size setting; a higher depth keeps
     // the pill legibly on top rather than getting visually buried under it.
     this.opponentStatusLabel = this.add
-      .text(400, opponentBarY + 9, '', {
+      .text(614, opponentBarY + 9, '', {
         fontSize: fontPx(this, 11),
         color: STATUS_PILL_COLOR,
         backgroundColor: 'rgba(0,0,0,0.35)',
@@ -318,7 +324,7 @@ export class BattleScene extends Phaser.Scene {
     // since nothing needs to read it back afterward, same as
     // opponentName/playerName above.
     const opponentStatusBottom = this.opponentStatusLabel.y + this.opponentStatusLabel.height;
-    this.addPassivePill(400, opponentStatusBottom + 4, passivePillText(this.opponentActivePassives), opponentStatusBottom);
+    this.addPassivePill(614, opponentStatusBottom + 4, passivePillText(this.opponentActivePassives), opponentStatusBottom);
 
     // A rival fight's opponent is that world's boss -- render it with the
     // same gigantic, multi-shard look it has standing at the goal tile in
@@ -354,7 +360,7 @@ export class BattleScene extends Phaser.Scene {
       if (boosted) this.addBoostHalo(this.playerCrystal);
       else this.addFailCloud(this.playerCrystal);
 
-      const boostText = this.add.text(130, playerY, boosted ? 'Attack boosted!' : 'Attack weakened...', {
+      const boostText = this.add.text(190, playerY, boosted ? 'Attack boosted!' : 'Attack weakened...', {
         fontSize: fontPx(this, 12),
         color: boosted ? '#88ff88' : '#ff8888',
         backgroundColor: 'rgba(0,0,0,0.35)',
@@ -363,22 +369,22 @@ export class BattleScene extends Phaser.Scene {
       playerY += boostText.height + 4;
     }
 
-    const playerName = this.add.text(130, playerY, this.playerMaterial.name, {
+    const playerName = this.add.text(190, playerY, this.playerMaterial.name, {
       fontSize: fontPx(this, 14),
       color: '#ffffff',
       backgroundColor: 'rgba(0,0,0,0.35)',
       padding: { x: 4, y: 2 },
-      wordWrap: { width: FIELD_W - 130 - 12 },
+      wordWrap: { width: FIELD_W - 190 - 12 },
     });
     const playerBarY = playerName.y + playerName.height + 8;
-    this.add.rectangle(130, playerBarY, 104, 12, 0x222222, 0.55).setOrigin(0, 0.5);
-    this.playerHpBar = this.add.rectangle(130, playerBarY, 100, 8, 0x33cc33).setOrigin(0, 0.5);
+    this.add.rectangle(190, playerBarY, 104, 12, 0x222222, 0.55).setOrigin(0, 0.5);
+    this.playerHpBar = this.add.rectangle(190, playerBarY, 100, 8, 0x33cc33).setOrigin(0, 0.5);
     // Same depth-above-the-log reasoning as the opponent's pill above -- the
     // player's own bar sits closer to the log's usual bottom-anchored
     // resting spot, so this is the side actually at risk of the log's box
     // climbing up over it on a long wrapped line.
     this.playerStatusLabel = this.add
-      .text(130, playerBarY + 9, '', {
+      .text(190, playerBarY + 9, '', {
         fontSize: fontPx(this, 11),
         color: STATUS_PILL_COLOR,
         backgroundColor: 'rgba(0,0,0,0.35)',
@@ -391,7 +397,7 @@ export class BattleScene extends Phaser.Scene {
     // it, since the boost/fail note and the crystal itself already eat into
     // the room below PLAYER_POS.y that this pill is the last row in.
     const playerStatusBottom = this.playerStatusLabel.y + this.playerStatusLabel.height;
-    this.addPassivePill(130, playerStatusBottom + 4, passivePillText(this.playerActivePassives), playerStatusBottom);
+    this.addPassivePill(190, playerStatusBottom + 4, passivePillText(this.playerActivePassives), playerStatusBottom);
 
     const openingLine = this.isRival ? `${this.wild.name} blocks the way onward!` : `A wild ${this.wild.name} appeared!`;
     this.logText = this.add.text(20, LOG_Y, '', {
@@ -977,8 +983,8 @@ export class BattleScene extends Phaser.Scene {
     this.drawGroundDetail(biome);
 
     const shadowColor = shade(biome.ground, -40);
-    this.add.ellipse(460, 195, 120, 28, shadowColor, 0.35);
-    this.add.ellipse(180, 392, 130, 30, shadowColor, 0.35);
+    this.add.ellipse(OPPONENT_POS.x, 195, 120, 28, shadowColor, 0.35);
+    this.add.ellipse(PLAYER_POS.x, 392, 130, 30, shadowColor, 0.35);
   }
 
   // A jagged ridge silhouette spanning the field width, from a flat

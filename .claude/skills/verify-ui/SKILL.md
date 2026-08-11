@@ -52,13 +52,21 @@ localStorage.setItem('qm-rpg-save-v1', JSON.stringify({ fontScale: 2 }));
 then reload the page.
 
 To measure a panel for overflow, grab its container's real rendered bounds
-and compare against the canvas (`CANVAS_W = 640`, `CANVAS_H = 480`,
-`game/src/art/perspective.ts`):
+and compare against the canvas (`CANVAS_W = 854`, `CANVAS_H = 480`,
+`game/src/config/screen.ts`, re-exported from `game/src/art/perspective.ts`):
 
 ```js
 const bounds = scene['dialogueContainer'].getBounds();
-// bounds.right > 640 || bounds.bottom > 480 || bounds.left < 0 || bounds.top < 0  => overflow
+// bounds.right > 854 || bounds.bottom > 480 || bounds.left < 0 || bounds.top < 0  => overflow
 ```
+
+**Gotcha:** set the headless browser's viewport to exactly `854x480` before
+loading the page. `main.ts`'s Phaser config uses `Phaser.Scale.FIT`, so a
+viewport of any other size letterboxes/scales the canvas -- game-space pixel
+bounds (like the overflow check above) stay correct either way since Phaser's
+own coordinate system is unaffected by the CSS-level scaling, but a
+screenshot taken at a mismatched viewport will show letterboxing bars rather
+than the game filling the frame.
 
 ## 4. Check every font-scale preset -- not just the extremes
 

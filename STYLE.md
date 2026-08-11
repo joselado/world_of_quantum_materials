@@ -619,9 +619,9 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 
 - A rival fight's opponent renders with `art/boss.ts`'s `makeBossCrystal` at
   `BOSS_CRYSTAL_SIZE = 64` -- bigger than an ordinary wild encounter's plain
-  `makeCrystal` at `50` -- positioned at `BOSS_OPPONENT_POS` (`{ x: 430, y: 155 }`,
+  `makeCrystal` at `50` -- positioned at `BOSS_OPPONENT_POS` (`{ x: 644, y: 155 }`,
   shifted left and slightly down from the wild encounter's `OPPONENT_POS`) so the
-  wider multi-shard silhouette clears the move menu docked at `MENU_X = 456` instead
+  wider multi-shard silhouette clears the move menu docked at `MENU_X = 670` instead
   of overlapping it. Same look the boss already has standing at its world's goal
   tile in the overworld (`OverworldScene.spawnBossSprite`), carried into the fight
   itself rather than switching to the plain crystal look every wild battle uses.
@@ -678,7 +678,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 
 ## Battle move menu (`BattleScene.drawMoveMenu`)
 
-- A docked panel on the right of the field (`x = 456`, `y = 190`, width `176`), same dark
+- A docked panel on the right of the field (`x = 670`, `y = 178`, width `176`), same dark
   rounded-rectangle-with-stroke treatment as the overworld's dialogue panels, stroked gold
   (`0xffe066`) to match Noether's own panel color, titled "MOVES" in bold gold. Height grows
   with however many moves are on the current page rather than a fixed size, since that
