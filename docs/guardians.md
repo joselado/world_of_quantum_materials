@@ -41,7 +41,7 @@ Lets you *transmute* into any single crystal you've already defeated,
 swapping your own look, stat spread, and which moves are currently usable
 without erasing anything you've learned -- switching back later restores the
 rest for free. Only offers standalone crystals, never a
-[hybrid or doped compound](hybrids.md).
+[hybrid](hybrids.md).
 
 ## Laughlin
 
@@ -99,14 +99,14 @@ shape as Laughlin's.
 
 Sells three moves that each weaken the target for a few turns instead of
 hitting hard -- drop its damage output, slow it down, or crack its defenses.
-You pick which effect by picking the move, and only one can be tuned in at a
+You pick which effect by picking the move, and only one can be active at a
 time; switching means talking to Kondo again.
 
 ## Anderson
 
-Lets you "dope in" a crystal you've encountered as an impurity and learn one
+Lets you "dope in" a crystal you've defeated as an impurity and learn one
 specific move from it -- borrowing a single excitation channel without
 becoming that crystal the way Dresselhaus does. Whether the move ever fires
 in battle still depends on whether your *current* form can host it. Only
 original, standalone crystals are valid hosts, never a
-[hybrid or doped compound](hybrids.md).
+[hybrid](hybrids.md).

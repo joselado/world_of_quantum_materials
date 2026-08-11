@@ -13,8 +13,11 @@ import type { Material, Move, MoveClass, MaterialType, CrystalVariant, Stats } f
 // scattering channel deliberately tuned) rather than a particle a crystal
 // itself emits, so their names describe the process instead (see that
 // class's own comment below). Curie's moves (skyfallBeam/groundEruption
-// below) name a quasiparticle like any other move -- their own `class` is
-// just whichever one the player has tuned it to via her picker.
+// below) name a quasiparticle like any other move too, but a dynamic one --
+// `curieMoveDisplayName` renders each as "<quasiparticle> Beam"/"<quasiparticle>
+// Eruption", the quasiparticle word being whichever class the player has
+// tuned it to via her picker (default 'phonon', so "Phonon Beam"/"Phonon
+// Eruption" until tuned). Their static `name` below is just that default.
 //
 // Power climbs with how unconventional the underlying physics is -- an
 // ordinary lattice vibration or band electron is weak, a topological/
@@ -49,8 +52,8 @@ export const MOVES: Record<string, Move> = {
   // the player ever tunes it) -- Curie's picker (CURIE_TUNABLE_CLASSES,
   // getCurieMoveClass) lets the player assign it any quasiparticle their
   // current form hosts instead.
-  skyfallBeam: { id: 'skyfallBeam', name: 'Skyfall Beam', class: 'phonon', power: 10 },
-  groundEruption: { id: 'groundEruption', name: 'Ground Eruption', class: 'phonon', power: 10 },
+  skyfallBeam: { id: 'skyfallBeam', name: 'Phonon Beam', class: 'phonon', power: 10 },
+  groundEruption: { id: 'groundEruption', name: 'Phonon Eruption', class: 'phonon', power: 10 },
   // The multiferroic type's signature quasiparticle -- a spin wave that
   // picks up electric-dipole activity through magnon-phonon hybridization
   // (the magnetoelectric coupling itself), sitting alongside ordinary
@@ -73,11 +76,16 @@ export const MOVES: Record<string, Move> = {
   // defect state. Screening Pulse screens the defender's own moment,
   // weakening its outgoing damage (Screened); Scattering Drag disorder-
   // scatters the defender's own carriers, dragging its effective Velocity
-  // down (Localized); Decoherence Cascade collapses whatever protection the
-  // defender's state has, raising the damage it takes (Decohered).
+  // down (Slowed); Breakdown Cascade collapses whatever protection the
+  // defender's state has, raising the damage it takes (Weakened). None of
+  // the three status names double as a MoveClass -- 'decoherence' and
+  // 'localization' are separately Majorana Split's and Polaron Drag's
+  // classes, unrelated quasiparticle physics, so a status name matching one
+  // of those would read as if this generic scattering process were tied to
+  // that specific move instead.
   screeningCloud: { id: 'screeningCloud', name: 'Screening Pulse', class: 'screening', power: 7 },
   heavyFermionDrag: { id: 'heavyFermionDrag', name: 'Scattering Drag', class: 'screening', power: 7 },
-  kondoBreakdown: { id: 'kondoBreakdown', name: 'Decoherence Cascade', class: 'screening', power: 7 },
+  kondoBreakdown: { id: 'kondoBreakdown', name: 'Breakdown Cascade', class: 'screening', power: 7 },
 };
 
 // Curie is the sole seller of these two quiz-gated moves
@@ -318,22 +326,21 @@ export function getCurieMoveClass(registry: RegistryLike, moveId: string): MoveC
   return canHost(currentType, assigned) ? assigned : 'phonon';
 }
 
-// One of Curie's moves, once tuned, displays whichever quasiparticle it's
-// currently carrying folded into its name (e.g. "Skyfall Beam" tuned to
-// 'magnetic' reads as "Skyfall Magnon") rather than staying a generic name
-// that no longer says what the move actually does -- everywhere else a
-// move's name already names its quasiparticle (MOVES' own header comment).
-// Built from each name's own first word (Skyfall/Ground, Magnon/Phonon/...)
+// Curie's moves always display whichever quasiparticle they're currently
+// carrying, tuned or not (e.g. tuned to 'magnetic' reads as "Magnon Beam";
+// untuned reads as "Phonon Beam", the same default `getCurieMoveClass`
+// falls back to) -- so unlike a static move name, this one never goes stale
+// relative to what the move actually mismatches with. The move's own fixed
+// shape (Beam vs. Eruption) is read off its static `name`'s own second word
 // rather than a second hand-authored word list, so a future MOVES rename
-// stays in sync automatically. Reads getCurieMoveClass rather than the raw
-// assignment, so if the current form can't host the tuned class anymore the
-// name reverts to its Phonon form too, matching what the mismatch check
-// actually uses. Untuned falls back to the move's own static name.
+// stays in sync automatically; only the quasiparticle word in front of it
+// changes. Reads getCurieMoveClass rather than the raw assignment, so if the
+// current form can't host the tuned class anymore the name reverts to its
+// Phonon form too, matching what the mismatch check actually uses.
 export function curieMoveDisplayName(registry: RegistryLike, moveId: string): string {
-  const assigned = assignedCurieClass(registry, moveId);
-  if (!assigned) return MOVES[moveId].name;
   const active = getCurieMoveClass(registry, moveId);
-  return `${MOVES[moveId].name.split(' ')[0]} ${quasiparticleLabel(active).split(' ')[0]}`;
+  const shape = MOVES[moveId].name.split(' ').slice(1).join(' ');
+  return `${quasiparticleLabel(active).split(' ')[0]} ${shape}`;
 }
 
 // The player is a crystal too -- just one entry out of this same roster, not a

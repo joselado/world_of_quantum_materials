@@ -18,8 +18,8 @@ export type MoveClass =
   // (the magnetoelectric coupling itself).
   | 'magnetoelectric'
   // Kondo's three moves (§5, World 8): Screening Pulse, Scattering Drag,
-  // Decoherence Cascade -- each deterministically inflicts one of three
-  // 3-turn status effects on the defender (Screened/Localized/Decohered,
+  // Breakdown Cascade -- each deterministically inflicts one of three
+  // 3-turn status effects on the defender (Screened/Slowed/Weakened,
   // BattleScene's resolveHit) rather than dealing much raw damage itself.
   // This class is on every type's MOVE_COMPATIBILITY list (see
   // materials.ts) -- usable from any form, never mismatched, since these

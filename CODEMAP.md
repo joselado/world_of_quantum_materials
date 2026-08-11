@@ -47,7 +47,7 @@ game/src/
     tokens.ts                   makeToken() -- qumatoken pickup sprite
     attackEffects.ts            playAttackEffect() -- bolt/ring/burst/beam/eruption particle effect;
                                   beam/eruption are ANALYTIC_SHAPES' per-move-id overrides (Curie's
-                                  Skyfall Beam/Ground Eruption), every other shape is per-MoveClass
+                                  skyfallBeam/groundEruption), every other shape is per-MoveClass
     colors.ts                   shade(), hueShift(), hashSeed()/seededRandom() -- the deterministic
                                   per-compound PRNG jitterFor() (crystals.ts) is built from
   audio/
@@ -127,7 +127,7 @@ since `materials.ts` pulls in Phaser at module scope) and regenerates the
   a generic scattering/decoherence process the player applies, not physics a crystal has to
   host, so the intent is "always usable, never mismatched," and the 3-turn status effect each
   one inflicts (DESIGN.md §4) is the payoff instead of a mismatch bonus. Curie's two moves
-  (Skyfall Beam, Ground Eruption) reach the same "usable from any form, never mismatches"
+  (`skyfallBeam`, `groundEruption`) reach the same "usable from any form, never mismatches"
   result without needing a class of their own -- their static `class` defaults to `'phonon'`,
   the same universal class every crystal's own lattice already grants Phonon Beam, and stays
   there until the player tunes it via her picker (`getCurieMoveClass`, see "Guardians" below).
@@ -211,7 +211,7 @@ since `materials.ts` pulls in Phaser at module scope) and regenerates the
   `attackEffects.ts`, only adding/removing a whole `MoveClass` does (update `EFFECT_STYLE` in
   `art/attackEffects.ts` and `MOVE_COMPATIBILITY` in `data/materials.ts` together). One
   deliberate exception: `ANALYTIC_SHAPES: Record<moveId, AttackShape>` overrides the shape
-  per move id for Curie's two moves specifically (Skyfall Beam, Ground Eruption), since they
+  per move id for Curie's two moves specifically (`skyfallBeam`, `groundEruption`), since they
   want two different silhouettes regardless of whichever ordinary quasiparticle class each is
   currently tuned to -- `BattleScene.resolveHit` looks a move up in `ANALYTIC_SHAPES` and
   passes it as `playAttackEffect`'s `shapeOverride` param, falling back to `EFFECT_STYLE`'s
@@ -278,7 +278,7 @@ rather than teaching it to await something was a deliberate call, since it alrea
 `endBattle` and chains via `time.delayedCall`.
 
 **Status effects (Kondo's three moves).** `this.playerStatus`/`this.opponentStatus`
-(`ActiveStatus | null`, `{ kind: 'screened' | 'localized' | 'decohered'; turnsLeft: number }`)
+(`ActiveStatus | null`, `{ kind: 'screened' | 'slowed' | 'weakened'; turnsLeft: number }`)
 are battle-only fields, explicitly reset to `null` in `create()` (Phaser reuses the same Scene
 instance across `scene.start()` calls, so a field initializer alone doesn't reset them between
 battles -- same gotcha `OverworldScene`'s own dialogue-state fields already call out). Three
@@ -306,7 +306,24 @@ the existing line" pattern `mismatchText`/`critText` already use. `setStatus` al
 `this.opponentActivePassives` (`Set<string>` of `data/passives.ts` ids) are read once in
 `create()` from registry/save `laughlinActivePassive`/`bohrActivePassive` and held for the
 whole battle -- unlike Kondo's status effects above, a passive has no `turnsLeft`/tick-down
-machinery at all, it's just on or off for the battle. `activePassives(isPlayer)` is the
+machinery at all, it's just on or off for the battle. Each side's active passives get their
+own pill too, built by `addPassivePill(x, naturalY, text, statusBottom)` and stacked directly
+below that side's status pill (`naturalY` offset from the status pill's own measured
+`y`/`height`, same text-size-scaling reasoning `opponentBarY` uses) -- since the set never
+changes mid-battle there's no tick-down render function like `renderStatusLabel`, the pill's
+text (`passivePillText`, `PASSIVES[id]?.name` joined with `·` for the 0-2 entries a side can
+hold, `?.` guarding against a stale id from an old save) is built once at creation and the
+`Text` object isn't kept as a field, matching `opponentName`/`playerName` above rather than
+`playerStatusLabel`/`opponentStatusLabel` (those are fields because `renderStatusLabel` reads
+them back later; nothing reads the passive pill back). `addPassivePill` clamps the pill's `x`
+back onto the field if the joined text runs past `FIELD_W` at the largest text-size setting,
+and if the vertical stack above it (boost/fail note + name + bar + status pill, on the player
+side) leaves no room left under `FIELD_H` at that same setting, destroys the pill outright
+rather than let it land back on top of the status pill above it -- the status pill's own
+readability takes priority over showing the passive pill in that narrow combo. It uses
+`PASSIVE_PILL_COLOR` (a muted blue-violet) rather than `STATUS_PILL_COLOR`'s rust-orange, so
+an always-on passive reads as visually distinct from a ticking status at a glance.
+`activePassives(isPlayer)` is the
 generic per-side lookup every hook below reads (`opponentActivePassives` stays empty today,
 kept as its own field rather than hardcoding "player only" so the hooks read symmetrically
 off either side, same reasoning `statusDamageMultiplier` etc. already follow). Five of the
@@ -521,7 +538,7 @@ showXPanel(s)` pattern as Noether/Bloch/Dresselhaus (see "Guardian panels" above
   distinguishing class of its own to filter on), which `SHOP_MOVE_IDS` deliberately excludes so
   Noether never also offers them. Two rendered sections: still-unbought moves, then every
   already-bought one showing which quasiparticle it's tuned to (its row label is
-  `curieMoveDisplayName`, e.g. "Skyfall Magnon -- tuned to Magnon Pulse (retune)"). Buying
+  `curieMoveDisplayName`, e.g. "Magnon Beam -- tuned to Magnon Pulse (retune)"). Buying
   (or later retuning) a move opens `showCurieClassPicker` -- a sub-panel offering
   `CURIE_TUNABLE_CLASSES` (every ordinary Attacks-section class, i.e. everything except
   Kondo's `'screening'`) filtered through `canHost(playerMaterial.type, cls)` (so only

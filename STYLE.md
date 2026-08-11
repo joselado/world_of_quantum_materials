@@ -361,15 +361,15 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   its own color, since it's the same "buy a move" interaction). Her avatar
   (`art/curie.ts`'s `makeCurieAvatar`) is unchanged by this mechanic.
 - No tabs, two runs of rows instead of one flat list -- still-unbought quiz-gated moves
-  (`data/materials.ts`'s `ANALYTIC_MOVE_IDS`, a hardcoded pair: Skyfall Beam and Ground Eruption),
+  (`data/materials.ts`'s `ANALYTIC_MOVE_IDS`, a hardcoded pair, `skyfallBeam`/`groundEruption`),
   same `<move name> -- <cost> qumatokens` label and afford/dim treatment as Noether's Moves
   tab (reusing `shopCost`), followed by one row per already-bought move showing which
   quasiparticle it's tuned to: "`<name>` -- tuned to `<quasiparticle>` (retune)", or if the
   player has since transmuted into a form that can no longer host the saved assignment,
   "`<name>` -- tuned to `<quasiparticle>`, reverted to Phonon Beam (this form can't host it --
   retune)", or "`<name>` -- untuned (pick a quasiparticle)" if never assigned -- `<name>` here
-  is `curieMoveDisplayName`, so a tuned move's own row already reads like "Skyfall Magnon --
-  tuned to Magnon Pulse (retune)" rather than the static "Skyfall Beam." Empty state once
+  is `curieMoveDisplayName`, so a tuned move's own row already reads like "Magnon Beam --
+  tuned to Magnon Pulse (retune)" rather than the untuned default "Phonon Beam." Empty state once
   both are bought: "You already carry every analytic technique I can teach." Clicking either
   an unbought move's buy row or a learned move's tune/retune row opens
   `showCurieClassPicker`, a sub-panel titled "Which quasiparticle should `<name>` carry?"
@@ -379,13 +379,14 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   carries (`quasiparticleLabel`, e.g. "Magnon Pulse" for `'magnetic'`) rather than the class
   id. Picking one on an unbought move completes the purchase; on an already-bought move it
   just re-saves the assignment, free.
-- **The move's own displayed name folds in its tuned quasiparticle**
+- **The move's displayed name always leads with its current quasiparticle**
   (`data/materials.ts`'s `curieMoveDisplayName`) everywhere a move name shows up in battle
   too -- the move-menu button, the analytic-question panel's title, the battle log's "X used
-  `<name>`!" line -- built from each name's own first word (`"Skyfall Beam"` → `Skyfall`,
-  `"Magnon Pulse"` → `Magnon`) rather than a second hand-authored word list, so a tuned
-  Skyfall Beam reads as "Skyfall Magnon," a tuned Ground Eruption as "Ground Anyon," and so
-  on. An untuned move just falls back to its static name.
+  `<name>`!" line -- built from the quasiparticle's own label (`quasiparticleLabel`, e.g.
+  `"Magnon Pulse"` → `Magnon`) plus each move's fixed shape word ("Beam"/"Eruption") rather
+  than a second hand-authored word list, so `skyfallBeam` tuned to `'magnetic'` reads as
+  "Magnon Beam," `groundEruption` tuned to `'gauge'` as "Anyon Eruption," and so on. An
+  untuned move defaults to `'phonon'`, reading as "Phonon Beam"/"Phonon Eruption."
 
 ## Bohr in the overworld (`OverworldScene.showBohrPanel`)
 
@@ -405,7 +406,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   mechanic.
 - Same two-runs-of-rows shape as Curie's panel above: still-
   unbought moves from `data/materials.ts`'s `KONDO_MOVE_IDS` (Screening Pulse, Scattering
-  Drag, Decoherence Cascade), usable from any form, same `<move name> -- <cost>
+  Drag, Breakdown Cascade), usable from any form, same `<move name> -- <cost>
   qumatokens` label and afford/dim treatment as Curie's/Noether's shops (reusing `shopCost`),
   followed by one row per already-bought Kondo move -- a bought-and-inactive move reads
   "Make `<name>` active" as a clickable button, the currently active one (registry/save
@@ -513,7 +514,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   small grey raincloud (`addFailCloud`) just above the crystal, bobbing gently. Everything
   is added directly to the player crystal's container so it moves with the existing
   idle-bob tween for free.
-- Kondo's Screened/Localized/Decohered status effects (DESIGN.md §4) get a much smaller
+- Kondo's Screened/Slowed/Weakened status effects (DESIGN.md §4) get a much smaller
   treatment than the quiz aura/raincloud above -- a plain text pill (`playerStatusLabel`/
   `opponentStatusLabel`) docked just under that side's HP bar rather than anything layered
   onto the crystal itself, reading `"<Status> (<turns left>)"` in Kondo's own rust-orange
@@ -521,6 +522,17 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   color below) over the same translucent-black tag background every HP-bar name label
   already uses. Empty (no active status) by default on both sides -- the pill only ever
   reads as chrome that appears when relevant, not a permanent fixture of the HP-bar area.
+- Laughlin's/Bohr's active passives (DESIGN.md §5) get their own pill directly below that
+  side's status pill, same size/background/depth as the status pill but in a muted
+  blue-violet (`#8fa0ff`, Laughlin's own guardian label color) rather than Kondo's
+  rust-orange, so an always-on passive reads as visually distinct from a ticking status at a
+  glance. Reads as the joined name(s) of whichever passive(s) are active (`·`-separated when
+  both a Laughlin and a Bohr passive are active at once), empty by default the same way the
+  status pill is. Its horizontal position is clamped back onto the field if the joined text
+  would otherwise run past the canvas edge at the largest text-size setting; if the stack of
+  rows above it (boost/fail note, name, bar, status pill) leaves no vertical room left for it
+  at that same setting, it's simply omitted for that battle rather than drawn overlapping the
+  status pill above it -- the status pill's own readability takes priority.
 - The "A wild X appeared!" opener and the win/lose closing line are flavor text from
   `data/greetings.ts` (`victoryLine`/`defeatLine`), keyed to the wild material's type the
   same way the overworld encounter greeting is. A rival fight swaps the opener for "X blocks
@@ -554,8 +566,8 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   still a `[ #222244 background / #ffff88 text ]` button, same treatment used everywhere else
   (overworld dialogue buttons), stacked vertically under the header. A form with zero
   currently-usable moves (shouldn't normally happen, since Phonon Beam is universal) shows
-  "No usable moves" instead of an empty panel. One of Curie's two moves (Skyfall
-  Beam/Ground Eruption) still gets a gold `★` tag appended to its own label, but its
+  "No usable moves" instead of an empty panel. One of Curie's two moves (`skyfallBeam`/
+  `groundEruption`) still gets a gold `★` tag appended to its own label, but its
   "right=2x wrong=½x" legend lives as its own dim sub-line directly under the `ANALYTIC`
   header instead of in the panel's top legend -- that top legend (`!! no natural defense
   (2x)`) only ever has the one mismatch symbol to explain, kept deliberately terse since its
@@ -671,7 +683,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   target (Anyon Braid, Majorana Split). Each class also has its own color (e.g. orange for
   Phonon Beam, red for Magnon Pulse). All shapes render additive-blended
   (`Phaser.BlendModes.ADD`) so they glow instead of reading as flat shapes.
-- Kondo's three moves (Screening Pulse, Scattering Drag, Decoherence Cascade) share the
+- Kondo's three moves (Screening Pulse, Scattering Drag, Breakdown Cascade) share the
   `'screening'` class's one look, unlike Curie's -- an expanding ring (the same silhouette
   Magnon Pulse/Polaron Drag use, reading as a screening cloud enveloping the target) tinted
   Kondo's own rust-orange (`0xe86a44`). Distinct move names and the status-effect log line
@@ -683,13 +695,14 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   `ANALYTIC_SHAPES`, keyed by move id, not class), and each substantially more elaborate than
   the three base bolt/ring/burst shapes -- Curie's
   own request was moves that clearly read as stronger than an ordinary hit, not just a
-  bigger bolt/ring/burst. **Skyfall Beam** (`playBeam`) drops a multi-layer column of light
-  from off the top of the screen straight down onto the target: a wide pulsing telegraph
-  halo fades in first, then a white-hot core inside a brighter/wider outer column falls the
-  rest of the way, flanked by two side-rays that swirl around it and trailed by a chain of
-  falling sparks, while a radiant sun (a bright circle plus an expanding ring) grows at the
-  point of origin as the beam charges. **Ground Eruption** (`playEruption`) bursts a wide
-  double shockwave ring (white inner rim, colored outer rim) plus a bright vertical geyser
+  bigger bolt/ring/burst. **The beam move** (`skyfallBeam`, `playBeam`) drops a multi-layer
+  column of light from off the top of the screen straight down onto the target: a wide pulsing
+  telegraph halo fades in first, then a white-hot core inside a brighter/wider outer column
+  falls the rest of the way, flanked by two side-rays that swirl around it and trailed by a
+  chain of falling sparks, while a radiant sun (a bright circle plus an expanding ring) grows
+  at the point of origin as the beam charges. **The eruption move** (`groundEruption`,
+  `playEruption`) bursts a wide double shockwave ring (white inner rim, colored outer rim)
+  plus a bright vertical geyser
   core straight up through nearly twice the shard count (18 vs. the ordinary burst's 12),
   spread wider than a normal burst. Both deliberately ignore the attacker's own position --
   a beam falling from the sky and a crack opening in the ground don't originate there.
@@ -700,7 +713,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   `BattleScene.impactPunch` layers the target crystal's scale-squash (`flashHit`), a small
   camera shake (`0.006`, kept subtle since the field's background is solid black right up to
   the canvas edge), and a brief camera flash. `BattleScene`'s `TURN_GAP_MS` (850ms) covers
-  every other shape's ~810-830ms worst case comfortably but sits ~20ms under Skyfall Beam's
+  every other shape's ~810-830ms worst case comfortably but sits ~20ms under the beam move's
   own 870ms total -- in practice an imperceptible overlap with the very start of the next
   turn's own windup flash, not worth chasing given how minor it is, but worth knowing if
   `TRAVEL_MS`/`TURN_GAP_MS` are ever retuned together.

@@ -9,7 +9,7 @@ import { persistFromRegistry } from '../../data/save';
 
 // Kondo stands at world 8's middle tile (WORLD_GUARDIANS) and sells the
 // three screening-class moves (data/materials.ts's KONDO_MOVE_IDS --
-// Screening Pulse/Scattering Drag/Decoherence Cascade, kept out of
+// Screening Pulse/Scattering Drag/Breakdown Cascade, kept out of
 // Noether's and Curie's own lists so Kondo is their one source), usable
 // from any crystal form the player is currently wearing. Mirrors
 // showCuriePanel's layout, but with a 3-entry list where each bought move

@@ -18,8 +18,9 @@ import { persistFromRegistry } from '../../data/save';
 import type { MoveClass } from '../../data/types';
 
 // Curie stands at world 6's middle tile (WORLD_GUARDIANS) and sells her
-// two quiz-gated moves (data/materials.ts's ANALYTIC_MOVE_IDS, currently
-// Skyfall Beam/Ground Eruption) -- kept out of Noether's own shop
+// two quiz-gated moves (data/materials.ts's ANALYTIC_MOVE_IDS, a beam move
+// and an eruption move, each displayed as "<quasiparticle> Beam"/
+// "<quasiparticle> Eruption" via curieMoveDisplayName) -- kept out of Noether's own shop
 // (SHOP_MOVE_IDS excludes them, see materials.ts's comment) so Curie is
 // their one source. Mirrors showNoetherShop's layout/structure, minus the
 // Moves/Stats tabs since she only ever has one thing to sell. Buying (or
@@ -102,7 +103,8 @@ function renderCurieMoves(scene: OverworldScene, container: Phaser.GameObjects.C
     const move = MOVES[id];
     const cost = shopCost(move);
     const affordable = tokens >= cost;
-    const btn = scene.addDialogueButton(container, y, `${move.name} -- ${cost} qumatokens`, () => {
+    const displayName = curieMoveDisplayName(scene.game.registry, id);
+    const btn = scene.addDialogueButton(container, y, `${displayName} -- ${cost} qumatokens`, () => {
       if ((scene.game.registry.get('qumatokens') as number) < cost) return;
       showCurieClassPicker(scene, id, (chosenClass) => {
         scene.qumatokens -= cost;
@@ -169,9 +171,9 @@ function showCurieClassPicker(scene: OverworldScene, moveId: string, onChosen: (
   scene.dialogueContainer = container;
 
   let y = top;
-  const move = MOVES[moveId];
+  const displayName = curieMoveDisplayName(scene.game.registry, moveId);
   const title = scene.add
-    .text(CANVAS_W / 2, y, `Which quasiparticle should ${move.name} carry?`, {
+    .text(CANVAS_W / 2, y, `Which quasiparticle should ${displayName} carry?`, {
       fontSize: fontPx(scene, 13),
       color: '#ffffff',
       fontStyle: 'bold',

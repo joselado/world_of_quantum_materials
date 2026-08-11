@@ -42,7 +42,7 @@ const ANALYTIC_WRONG_MULTIPLIER = 0.5;
 // type-interaction rule, on purpose" simplicity DESIGN.md §4 already commits
 // to elsewhere. Battle-ephemeral only (never persisted -- data/save.ts's
 // SaveData has no field for this), reset fresh at the start of every battle.
-type StatusKind = 'screened' | 'localized' | 'decohered';
+type StatusKind = 'screened' | 'slowed' | 'weakened';
 
 interface ActiveStatus {
   kind: StatusKind;
@@ -51,8 +51,8 @@ interface ActiveStatus {
 
 const STATUS_DURATION = 3;
 const SCREENED_DAMAGE_MULT = 0.7; // Screened: the afflicted side's own outgoing damage
-const LOCALIZED_VELOCITY_MULT = 0.7; // Localized: the afflicted side's own effective Velocity
-const DECOHERED_CORRELATION_MULT = 0.7; // Decohered: the afflicted side's own effective Correlation
+const SLOWED_VELOCITY_MULT = 0.7; // Slowed: the afflicted side's own effective Velocity
+const WEAKENED_CORRELATION_MULT = 0.7; // Weakened: the afflicted side's own effective Correlation
 
 // Which status a given Kondo move id deterministically applies -- no
 // randomness, the player picks the effect by picking the move (and, since
@@ -60,8 +60,8 @@ const DECOHERED_CORRELATION_MULT = 0.7; // Decohered: the afflicted side's own e
 // they set active with OverworldScene.showKondoPanel).
 const KONDO_MOVE_STATUS: Record<string, StatusKind> = {
   screeningCloud: 'screened',
-  heavyFermionDrag: 'localized',
-  kondoBreakdown: 'decohered',
+  heavyFermionDrag: 'slowed',
+  kondoBreakdown: 'weakened',
 };
 
 // Deliberately terse (one short clause, no second sentence) -- the log line
@@ -79,21 +79,44 @@ const STATUS_INFO: Record<
     applyText: (name) => `${name} is Screened!`,
     expireText: (name) => `${name}'s screening fades.`,
   },
-  localized: {
-    label: 'Localized',
-    applyText: (name) => `${name} is Localized!`,
-    expireText: (name) => `${name}'s localization fades.`,
+  slowed: {
+    label: 'Slowed',
+    applyText: (name) => `${name} is Slowed!`,
+    expireText: (name) => `${name}'s slowdown fades.`,
   },
-  decohered: {
-    label: 'Decohered',
-    applyText: (name) => `${name} is Decohered!`,
-    expireText: (name) => `${name}'s decoherence fades.`,
+  weakened: {
+    label: 'Weakened',
+    applyText: (name) => `${name} is Weakened!`,
+    expireText: (name) => `${name}'s weakening fades.`,
   },
 };
 // Single status-pill color for all three (Kondo's own rust-orange, matching
 // WORLD_GUARDIANS[8].strokeColor/art/attackEffects.ts's 'screening' entry) --
 // the label text itself already names which status is active.
 const STATUS_PILL_COLOR = '#ff8f6a';
+
+// Passive pill color -- Laughlin's own blue-violet (WORLD_GUARDIANS[4]
+// .labelColor), deliberately far from STATUS_PILL_COLOR's rust-orange so an
+// always-on passive reads as visually distinct from a ticking status at a
+// glance (Bohr's own guardian color is itself a near-match for rust-orange,
+// so it wouldn't have served that purpose).
+const PASSIVE_PILL_COLOR = '#8fa0ff';
+
+// A side can hold one Laughlin passive and one Bohr passive at once
+// (independent slots) -- joined onto a single pill line rather than one pill
+// per passive, same '' when empty convention STATUS_INFO's pill uses.
+// PASSIVES[id]? rather than a direct index -- every other read of
+// playerActivePassives/opponentActivePassives (activePassives() below) only
+// ever calls .has(id), so this is the first spot that actually dereferences
+// one; guarding it means a stale id left over from a since-renamed passive
+// in an old save degrades to "that name just doesn't show" instead of
+// throwing out of create().
+function passivePillText(ids: Set<string>): string {
+  return [...ids]
+    .map((id) => PASSIVES[id]?.name)
+    .filter((name): name is string => !!name)
+    .join(' · ');
+}
 
 // Laughlin's and Bohr's passive abilities (§5, data/passives.ts) -- unlike
 // Kondo's status effects above, a passive has no duration/tick-down: it's
@@ -273,6 +296,18 @@ export class BattleScene extends Phaser.Scene {
       })
       .setOrigin(0, 0)
       .setDepth(5);
+    // Passive pill (Laughlin's/Bohr's abilities, §5) sits below the status
+    // pill, offset from its *measured* height rather than a further
+    // hardcoded gap -- same text-size-scaling reasoning as opponentBarY
+    // above, and the status pill's own height still varies with the
+    // text-size setting even while empty. Static for the whole battle
+    // (playerActivePassives/opponentActivePassives never change mid-battle),
+    // so its text is set once here (addPassivePill) rather than through a
+    // render function like renderStatusLabel, and isn't kept as a field
+    // since nothing needs to read it back afterward, same as
+    // opponentName/playerName above.
+    const opponentStatusBottom = this.opponentStatusLabel.y + this.opponentStatusLabel.height;
+    this.addPassivePill(400, opponentStatusBottom + 4, passivePillText(this.opponentActivePassives), opponentStatusBottom);
 
     // A rival fight's opponent is that world's boss -- render it with the
     // same gigantic, multi-shard look it has standing at the goal tile in
@@ -339,6 +374,12 @@ export class BattleScene extends Phaser.Scene {
       })
       .setOrigin(0, 0)
       .setDepth(5);
+    // Same measured-height stacking (and off-canvas clamp) as the
+    // opponent's passive pill above -- this is the side actually at risk of
+    // it, since the boost/fail note and the crystal itself already eat into
+    // the room below PLAYER_POS.y that this pill is the last row in.
+    const playerStatusBottom = this.playerStatusLabel.y + this.playerStatusLabel.height;
+    this.addPassivePill(130, playerStatusBottom + 4, passivePillText(this.playerActivePassives), playerStatusBottom);
 
     const openingLine = this.isRival ? `${this.wild.name} blocks the way onward!` : `A wild ${this.wild.name} appeared!`;
     this.logText = this.add.text(20, LOG_Y, '', {
@@ -639,8 +680,8 @@ export class BattleScene extends Phaser.Scene {
     container.add(btn);
   }
 
-  // The question panel an analytic move (Curie's Skyfall Beam/Ground
-  // Eruption, §5) opens before it resolves -- turnLock is already true by
+  // The question panel an analytic move (Curie's `skyfallBeam`/`groundEruption`,
+  // §5) opens before it resolves -- turnLock is already true by
   // the time this is called (the move button handler sets it before
   // calling this), so no other move/menu interaction can happen underneath
   // it. Both options lead to `onAnswered`, which the caller uses to release
@@ -938,7 +979,7 @@ export class BattleScene extends Phaser.Scene {
   // the original player-first behavior. `bonusMultiplier` only ever applies
   // to the player's own hit with this specific moveId (an analytic move
   // already answered via showAnalyticQuestion) -- the opponent's follow-up
-  // hit in the same exchange always resolves at the default 1. A Localized
+  // hit in the same exchange always resolves at the default 1. A Slowed
   // side's own effective Velocity is dragged down for the comparison too
   // (Kondo's Scattering Drag, §5) -- symmetric, same as every other
   // resolveHit-adjacent term, even though only the player can currently
@@ -1039,7 +1080,7 @@ export class BattleScene extends Phaser.Scene {
 
     const attackMult = isPlayer ? this.attackMultiplier : 1;
     // Kondo's status effects (§5): a Screened attacker's own outgoing
-    // damage is multiplied down; a Decohered defender's own Correlation is
+    // damage is multiplied down; a Weakened defender's own Correlation is
     // multiplied down (raising the damage it takes via the same
     // BASE_STAT/correlation defense term every hit already uses). Both read
     // off whichever side is currently afflicted, symmetric like every other
@@ -1174,11 +1215,11 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private statusVelocityMultiplier(isPlayer: boolean): number {
-    return this.getStatus(isPlayer)?.kind === 'localized' ? LOCALIZED_VELOCITY_MULT : 1;
+    return this.getStatus(isPlayer)?.kind === 'slowed' ? SLOWED_VELOCITY_MULT : 1;
   }
 
   private statusCorrelationMultiplier(isPlayer: boolean): number {
-    return this.getStatus(isPlayer)?.kind === 'decohered' ? DECOHERED_CORRELATION_MULT : 1;
+    return this.getStatus(isPlayer)?.kind === 'weakened' ? WEAKENED_CORRELATION_MULT : 1;
   }
 
   private statusDamageMultiplier(isPlayer: boolean): number {
@@ -1221,6 +1262,44 @@ export class BattleScene extends Phaser.Scene {
     const label = isPlayer ? this.playerStatusLabel : this.opponentStatusLabel;
     const status = this.getStatus(isPlayer);
     label.setText(status ? `${STATUS_INFO[status.kind].label} (${status.turnsLeft})` : '');
+  }
+
+  // Creates the passive pill (Laughlin's/Bohr's abilities, §5) stacked below
+  // that side's status pill at (x, naturalY), then measures its actual
+  // rendered size and corrects position/existence rather than trusting
+  // naturalY/x directly -- up to two joined passive names (passivePillText)
+  // can run wide enough at the largest text-size setting to push past
+  // FIELD_W if left-anchored at the same x as the column above it (fixed
+  // below by an x clamp), and that same setting can leave the whole stack
+  // above it (boost/fail note + name + bar + status pill, on the player
+  // side) taller than the room actually left under FIELD_H (fixed below by
+  // dropping the pill rather than drawing it back on top of the status pill
+  // it's stacked below).
+  private addPassivePill(x: number, naturalY: number, text: string, statusBottom: number) {
+    const label = this.add
+      .text(x, naturalY, text, {
+        fontSize: fontPx(this, 11),
+        color: PASSIVE_PILL_COLOR,
+        backgroundColor: 'rgba(0,0,0,0.35)',
+        padding: { x: 4, y: 1 },
+      })
+      .setOrigin(0, 0)
+      .setDepth(5);
+    const cappedY = Math.min(naturalY, FIELD_H - label.height - 4);
+    // Vertical clamp only ever pulls the pill *up* off the canvas floor, never
+    // down -- if pulling it up that far would land it back on top of the
+    // status pill above it (the row it's stacked below in the first place),
+    // that would trade "passive pill clipped" for "status pill unreadable,"
+    // which is worse: the status pill already existed and already worked.
+    // Drop the passive pill instead of showing it garbled -- this only
+    // happens in the narrow combo of a boosted/weakened attack plus the
+    // largest text-size setting, where there simply isn't room for a fifth
+    // stacked row under the player crystal.
+    if (cappedY < statusBottom) {
+      label.destroy();
+      return;
+    }
+    label.setPosition(Math.min(x, FIELD_W - label.width - 8), cappedY);
   }
 
   // Quick punchy scale-squash on the target crystal when a projectile

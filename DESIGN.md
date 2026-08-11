@@ -28,7 +28,7 @@ One world per course topic (see the topic table in the repo's top-level `CLAUDE.
 |---|---|---|---|---|
 | 0 (Hub) | — | "The Lab" — guardian's house, save point, Materialdex | — | Start world 1 |
 | 1 | Second quantization, mean-field, SSB | **Mean-Field Meadow** — tutorial meadow | Free fermion, broken-symmetry magnet | Beat first rival crystal |
-| 2 | Symmetries, tight-binding, effective models | **Bloch Caverns** — crystalline caves, repeating tile patterns | Bloch-wave critters, lattice defect variants | Learn "symmetry sense" from guardian |
+| 2 | Symmetries, tight-binding, effective models | **Bloch Caverns** — crystalline caves, repeating tile patterns | Bloch-wave critters, lattice defect variants | Beat that world's rival crystal |
 | 3 | Topological band theory | **Topological Islands** — floating islands, one-way edge paths | Chern insulators, trivial insulators | Cross a gap only an edge-mode move can bridge |
 | 4 | Magnetic field, QHE, Landau levels | **Landau Level Terrain** — visible field lines, quantized-orbit terrain | Landau-level materials, composite fermions | Solve a Landau-level maze |
 | 5 | Superconductivity, Nambu, Majorana | **Frozen Zero-Resistance Caverns** | s-wave SC, triplet SC, Majorana pairs (split in two) | Pair two Majorana halves |
@@ -247,11 +247,11 @@ intersection, so she only ever offers what the player's *current* crystal form c
 actually carry — see the transmutation mechanic in §5).
 
 **One deliberate exception: Kondo's screening moves aren't gated by a crystal's
-physics at all.** `screening` (Screening Pulse, Scattering Drag, Decoherence
+physics at all.** `screening` (Screening Pulse, Scattering Drag, Breakdown
 Cascade, §5) is on every main type's `MOVE_COMPATIBILITY` list, purchasable and
 usable from any form — they deal in a generic scattering/decoherence process any
 crystal's own disorder or environment can carry, not a quasiparticle tied to one
-type's specific band structure. Curie's two moves (Skyfall Beam, Ground Eruption,
+type's specific band structure. Curie's two moves (`skyfallBeam`/`groundEruption`,
 §5) reach the same "usable from any form, never mismatches" result a different
 way: their static `class` simply defaults to `phonon`, the same universal,
 physics-motivated class Phonon Beam itself carries, rather than needing a class
@@ -284,9 +284,9 @@ Anyon Braid / Majorana Split (gauge / decoherence, topological and non-Abelian �
 the most exotic tier the course covers). Because Phonon Beam (`phonon`) is on every type's
 `MOVE_COMPATIBILITY` list, it can never trigger the quasiparticle-mismatch double-damage
 rule above — the one universal move is also the one that never gets the mismatch bonus, by
-design. Curie's two moves (Skyfall Beam, Ground Eruption) sit at a middling base power
+design. Curie's two moves (`skyfallBeam`/`groundEruption`) sit at a middling base power
 below this ordering on purpose — their real payoff is the answer-gated 2x/0.5x multiplier
-above, not raw power. Kondo's three moves (Screening Pulse, Scattering Drag, Decoherence
+above, not raw power. Kondo's three moves (Screening Pulse, Scattering Drag, Breakdown
 Cascade, §5) sit at the very bottom of the ordering instead, on par with Electron Pulse —
 their real payoff is the 3-turn status effect each one deterministically inflicts (§4), not
 raw power either.
@@ -300,11 +300,16 @@ deterministically inflict one 3-turn status effect on the defender — never ran
 the player picks the effect by picking the move:
 - **Screened** (Screening Pulse) — the defender's own outgoing damage is multiplied down
   (×0.7) for 3 turns.
-- **Localized** (Scattering Drag) — the defender's effective Velocity is reduced (×0.7)
+- **Slowed** (Scattering Drag) — the defender's effective Velocity is reduced (×0.7)
   for 3 turns, changing whether that side still swings first each round.
-- **Decohered** (Decoherence Cascade) — the defender's effective Correlation is reduced
+- **Weakened** (Breakdown Cascade) — the defender's effective Correlation is reduced
   (×0.7) for 3 turns, raising the damage it takes (Correlation scales incoming damage via
   `10 / correlation`, above).
+
+None of the three status names double as a `MoveClass` — `decoherence` and
+`localization` are separately Majorana Split's and Polaron Drag's classes, unrelated
+quasiparticle physics, so a status name matching one of those would read as if this
+generic scattering process were tied to that specific move instead.
 
 Only one status can be active per side at a time — a fresh application replaces whatever was
 already there rather than stacking, matching the deliberately simple "one type-interaction
@@ -493,8 +498,8 @@ does. World 10 has no guardian; its only encounter is the finale.
   the game, unfiltered (unlike Dresselhaus above) -- a hybrid's own defeated-material entry,
   if any, simply won't match any `HYBRID_RECIPES` pairing as a further parent, so no extra
   filtering is needed here
-- **Curie** → world 6 middle → sells two quiz-gated moves (Skyfall Beam, Ground
-  Eruption -- `OverworldScene.showCuriePanel`, `data/materials.ts`'s
+- **Curie** → world 6 middle → sells two quiz-gated moves (`skyfallBeam`,
+  `groundEruption` -- `OverworldScene.showCuriePanel`, `data/materials.ts`'s
   `ANALYTIC_MOVE_IDS`, a hardcoded pair of move ids rather than a shared class --
   neither move has a class of its own to be identified by, see below) -- using one
   asks a physics-equation question first (`data/quiz.ts`'s `ANALYTIC_QUESTIONS`,
@@ -502,14 +507,16 @@ does. World 10 has no guardian; its only encounter is the finale.
   wrong and it lands at 0.5x. Each move also gets its own dramatically flashier,
   per-move (not per-class) visual, deliberately reading as stronger than every other
   move class (`art/attackEffects.ts`'s `ANALYTIC_SHAPES`/`playBeam`/`playEruption`):
-  Skyfall Beam drops a multi-layer column of light from off the top of the screen --
+  `skyfallBeam` drops a multi-layer column of light from off the top of the screen --
   a white-hot core, two swirling side-rays, a trail of falling sparks, and a radiant
-  sun expanding at the point of origin; Ground Eruption bursts a wide double
+  sun expanding at the point of origin; `groundEruption` bursts a wide double
   shockwave ring and a bright geyser core up through nearly twice the shard count of
   an ordinary burst. Each move's static `class` simply defaults to `'phonon'` --
   the same universal, always-hostable class Phonon Beam itself carries -- so an
   untuned move is purchasable/usable from any form and never mismatches, without
-  needing a class of its own. Buying a move (or later revisiting Curie) also opens a
+  needing a class of its own. Their displayed name is always "`<quasiparticle>` Beam"/
+  "`<quasiparticle>` Eruption" (`curieMoveDisplayName`), defaulting to "Phonon Beam"/
+  "Phonon Eruption" while untuned. Buying a move (or later revisiting Curie) also opens a
   quasiparticle-picker sub-panel (`showCurieClassPicker`, offering
   `CURIE_TUNABLE_CLASSES` -- every ordinary Attacks-section class (i.e. every class
   except Kondo's `'screening'`) -- filtered down to only the ones the player's
@@ -523,11 +530,12 @@ does. World 10 has no guardian; its only encounter is the finale.
   Pulse" for `'magnetic'`) rather than the class id itself. This choice only feeds
   `getCurieMoveClass`, which `BattleScene`'s quasiparticle-mismatch check reads in
   place of `move.class` for these two ids (see §3/§4) -- still purchasable/usable
-  from any form and still asks its question regardless of tuning. A tuned move's
-  own displayed name folds the quasiparticle in too (`curieMoveDisplayName`, e.g.
-  "Skyfall Beam" tuned to `'magnetic'` reads as "Skyfall Magnon" everywhere -- the
-  move menu, the question panel, the battle log), built from each name's own first
-  word rather than a second hand-authored word list. An unbought move has no
+  from any form and still asks its question regardless of tuning. The displayed name
+  always folds in the current quasiparticle (`curieMoveDisplayName`, e.g. `skyfallBeam`
+  tuned to `'magnetic'` reads as "Magnon Beam" everywhere -- the move menu, the
+  question panel, the battle log), built from the quasiparticle's own label plus each
+  move's fixed shape word ("Beam"/"Eruption") rather than a second hand-authored word
+  list. An unbought move has no
   assignment yet; an already-bought one shows "tuned to `<name>`" with a free
   "Retune" click back into the same picker (re-opening the same current-form
   filter, so retuning after a transmute only offers what the *new* form can host),
@@ -555,9 +563,9 @@ does. World 10 has no guardian; its only encounter is the finale.
   - **Shared State** -- ~22% of damage the player deals is returned as healing, capped at
     the player's own max HP -- the entangled pair shares its fate.
 - **Kondo** → world 8 middle → sells three moves (`OverworldScene.showKondoPanel`,
-  `data/materials.ts`'s `KONDO_MOVE_IDS`) -- Screening Pulse, Scattering Drag, Decoherence
+  `data/materials.ts`'s `KONDO_MOVE_IDS`) -- Screening Pulse, Scattering Drag, Breakdown
   Cascade -- each of which deterministically inflicts one of §4's three status effects
-  (Screened, Localized, Decohered respectively) on a successful hit rather than dealing much
+  (Screened, Slowed, Weakened respectively) on a successful hit rather than dealing much
   raw damage itself. `'screening'` sits on every type's `MOVE_COMPATIBILITY` list, the same
   "usable from any form" treatment Curie's moves get -- these deal in a generic
   scattering/decoherence process any crystal's own disorder or environment can carry, not a
@@ -565,7 +573,7 @@ does. World 10 has no guardian; its only encounter is the finale.
   rather than after the heavy-fermion/Kondo-lattice physics that inspired them: Screening
   Pulse damps whatever local moment or correlated state the target has, weakening its own
   outgoing damage; Scattering Drag disorder-scatters the target's carriers, dragging its
-  effective Velocity down; Decoherence Cascade collapses whatever protection the target's
+  effective Velocity down; Breakdown Cascade collapses whatever protection the target's
   state has, raising the damage it takes. The player can buy all three independently, but
   only one is ever usable in battle at a time -- registry/save `kondoActiveMove`, switched
   only by returning to Kondo's own panel (a bought-but-inactive move stays in `unlockedMoves`,
@@ -584,7 +592,7 @@ does. World 10 has no guardian; its only encounter is the finale.
   (`applySuperpositionLeveling`) seeds `kondoActiveMove` to Screening Pulse if it's still
   unset, for the same reason -- granting every move id doesn't help if none of Kondo's three
   actually pass `getBattleMoves`' extra check.
-- **Anderson** → world 9 middle → "dopes in" a crystal the player has encountered as an
+- **Anderson** → world 9 middle → "dopes in" a crystal the player has defeated as an
   impurity, then teaches one specific move from that crystal's own moveset
   (`OverworldScene.showAndersonPanel`/`learnImpurityMove`) -- a two-step pick (host,
   then which of its moves to learn) that just appends to the ordinary `unlockedMoves`

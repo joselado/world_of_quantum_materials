@@ -1369,7 +1369,7 @@ export function getMaterialQuestion(materialName: string): MaterialQuestion | un
 }
 
 // Curie's analytic moves (§5, World 6, BattleScene.showAnalyticQuestion):
-// using Skyfall Beam or Ground Eruption asks one of these before the hit
+// using `skyfallBeam` or `groundEruption` asks one of these before the hit
 // resolves -- correct doubles the damage, wrong halves it. One shared pool
 // rather than per-world/per-material (unlike MATERIAL_QUESTIONS above),
 // since an analytic move is usable from any crystal form, not tied to a

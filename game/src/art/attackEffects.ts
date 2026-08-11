@@ -40,7 +40,7 @@ const EFFECT_STYLE: Record<MoveClass, { color: number; shape: AttackShape }> = {
 };
 
 // Per-move-id shape overrides for Curie's two moves -- the one pair where
-// both moves (Skyfall Beam, Ground Eruption) want two distinct silhouettes
+// both moves (`skyfallBeam`, `groundEruption`) want two distinct silhouettes
 // (a falling beam, a ground eruption) rather than sharing whichever
 // ordinary EFFECT_STYLE shape their currently-tuned quasiparticle carries.
 export const ANALYTIC_SHAPES: Record<string, AttackShape> = {
@@ -61,7 +61,7 @@ const IMPACT_MS = 260;
 // decaying -- the shockwave itself is fire-and-forget. `shapeOverride` lets a
 // caller pick a specific silhouette regardless of moveClass's usual one
 // (BattleScene passes ANALYTIC_SHAPES[move.id] for Curie's two moves so
-// Skyfall Beam and Ground Eruption read differently regardless of whichever
+// `skyfallBeam` and `groundEruption` read differently regardless of whichever
 // quasiparticle each is currently tuned to).
 export function playAttackEffect(
   scene: Phaser.Scene,

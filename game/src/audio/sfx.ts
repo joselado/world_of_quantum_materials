@@ -8,8 +8,8 @@ import { music } from './music';
 
 // Same silhouettes art/attackEffects.ts uses per move class -- bolt/ring/
 // burst for the original seven classes, plus beam/eruption for Curie's
-// analytic moves (a flashier, per-move rather than per-class pair: Skyfall
-// Beam gets 'beam', Ground Eruption gets 'eruption').
+// analytic moves (a flashier, per-move rather than per-class pair: `skyfallBeam`
+// gets 'beam', `groundEruption` gets 'eruption').
 export type AttackShape = 'bolt' | 'ring' | 'burst' | 'beam' | 'eruption';
 
 // A fast upward-sweeping, high-passed sawtooth "zap" -- bolt moves (a
@@ -96,7 +96,7 @@ function playBurstSfx(ctx: AudioContext, dest: GainNode, noiseBuffer: AudioBuffe
 }
 
 // A descending high whistle (something falling from a height) plus a
-// high-passed noise trail -- Skyfall Beam.
+// high-passed noise trail -- the beam move (`skyfallBeam`).
 function playBeamSfx(ctx: AudioContext, dest: GainNode, noiseBuffer: AudioBuffer, t: number) {
   const osc = ctx.createOscillator();
   osc.type = 'sine';
@@ -128,7 +128,8 @@ function playBeamSfx(ctx: AudioContext, dest: GainNode, noiseBuffer: AudioBuffer
 }
 
 // A rising, low-passed rumble (the ground itself building up) followed by a
-// scatter of noise cracks (shards bursting up out of it) -- Ground Eruption.
+// scatter of noise cracks (shards bursting up out of it) -- the eruption move
+// (`groundEruption`).
 function playEruptionSfx(ctx: AudioContext, dest: GainNode, noiseBuffer: AudioBuffer, t: number) {
   const osc = ctx.createOscillator();
   osc.type = 'sawtooth';

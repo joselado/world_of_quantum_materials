@@ -49,13 +49,14 @@ host the attacking move's quasiparticle class at all, the hit lands at
 
 ## Curie's quiz-gated moves
 
-Skyfall Beam and Ground Eruption (Curie, World 6, in the table above at
-`phonon`) work like any ordinary move, plus one extra step: using either one
-asks a physics-equation question first, and answering right doubles the hit
-while answering wrong halves it. Curie's shop also lets you tune each move
-to any quasiparticle class your current form can host, the same choice an
-ordinary move's fixed class already makes for you -- until tuned, both
-default to `phonon`, so they're always usable. See
+Curie (World 6) sells a beam move and an eruption move, not listed in the
+table above since they're quiz-gated separately: using either one asks a
+physics-equation question first, and answering right doubles the hit while
+answering wrong halves it. Curie's shop also lets you tune each move to any
+quasiparticle class your current form can host, the same choice an ordinary
+move's fixed class already makes for you -- each move's name always reads
+"<quasiparticle> Beam"/"<quasiparticle> Eruption," defaulting to Phonon
+Beam/Phonon Eruption until tuned, so they're always usable. See
 [Guardians](guardians.md#curie) for how the shop and the tuning picker work.
 
 ## Screening
