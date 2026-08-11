@@ -16,12 +16,12 @@ Read these before touching `game/src/` — they're kept current and are much che
 to read than re-deriving the same context from the code:
 
 - `DESIGN.md` — the living design doc: world map, type system, battle rules,
-  mentors/story, tech stack, roadmap, open questions. Source of truth for game
+  guardians/story, tech stack, roadmap, open questions. Source of truth for game
   content/mechanics; edit it in place as the game evolves rather than starting a
   new doc.
 - `STYLE.md` — visual conventions (sizes, colors, shapes, panel/motion rules).
 - `CODEMAP.md` — where things live in the code: function names, file locations, and
-  established patterns (e.g. "one avatar builder file per mentor," "new persisted
+  established patterns (e.g. "one avatar builder file per guardian," "new persisted
   state touches `defaultSave`+`persistFromRegistry` together") to follow before
   adding something new.
 - `DEVELOPMENT.md` — build/run instructions, folder contents, where active

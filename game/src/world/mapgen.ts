@@ -25,7 +25,7 @@ export interface WorldMap {
   rows: CorridorRow[]; // corridor rows start-to-goal, for row-based encounter placement
   start: GridPoint;
   goal: GridPoint;
-  mid: GridPoint; // this world's mentor stands here (OverworldScene's WORLD_MENTORS, tile: 'middle')
+  mid: GridPoint; // this world's guardian stands here (OverworldScene's WORLD_GUARDIANS, tile: 'middle')
 }
 
 const CORRIDOR_HALF_WIDTH = 3; // corridor is 2*half+1 = 7 tiles wide

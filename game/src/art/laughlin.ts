@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
 import { shade } from './colors';
 
-// Laughlin's avatar -- world 4's mentor (the fractional quantum Hall
+// Laughlin's avatar -- world 4's guardian (the fractional quantum Hall
 // wavefunction: a strong-field electron liquid that condenses into a state
 // where the excitations carry a fraction of an electron's charge, world 4's
-// own topic). Same structural convention as every other mentor (its own
+// own topic). Same structural convention as every other guardian (its own
 // file, glow -> sway -> cloak -> head-motif -> orbit ring -- see
 // art/mentor.ts), never a shared parameterized builder. Head motif: a row of
 // filled Landau-level dots either side of a horizontal "filling" line, with

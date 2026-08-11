@@ -1,12 +1,12 @@
 import Phaser from 'phaser';
 import { shade } from './colors';
 
-// Anderson's avatar -- world 9's mentor (disorder and localization). Own
-// file, same convention as every other mentor (glow -> sway -> cloak ->
+// Anderson's avatar -- world 9's guardian (disorder and localization). Own
+// file, same convention as every other guardian (glow -> sway -> cloak ->
 // head-motif -> orbit ring). Head motif: a scattered, irregular lattice of
 // dim sites with one bright point pulsing at the center in place of a face --
 // Anderson localization's own picture, a wave trapped by disorder instead of
-// spreading freely -- rust/amber rather than any other mentor's palette.
+// spreading freely -- rust/amber rather than any other guardian's palette.
 export function makeAndersonAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameObjects.Container {
   const S = 30 * scale;
   const rust = 0xc9884a;

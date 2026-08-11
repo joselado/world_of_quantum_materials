@@ -45,11 +45,16 @@ export class TitleScene extends Phaser.Scene {
     registry.set('visitedWorlds', save.visitedWorlds);
     registry.set('defeatedMaterials', save.defeatedMaterials);
     registry.set('playerForm', save.playerForm);
-    registry.set('metMentors', save.metMentors);
+    registry.set('metGuardians', save.metGuardians);
     registry.set('tutorialTipsSeen', save.tutorialTipsSeen);
     registry.set('superpositionMode', save.superpositionMode);
     registry.set('encounterDensity', save.encounterDensity);
     registry.set('fontScale', save.fontScale);
+    registry.set('kondoActiveMove', save.kondoActiveMove);
+    registry.set('laughlinPassivesUnlocked', save.laughlinPassivesUnlocked);
+    registry.set('laughlinActivePassive', save.laughlinActivePassive);
+    registry.set('bohrPassivesUnlocked', save.bohrPassivesUnlocked);
+    registry.set('bohrActivePassive', save.bohrActivePassive);
 
     music.play('overworld:1');
 
@@ -197,12 +202,12 @@ export class TitleScene extends Phaser.Scene {
   // data/save.ts `superpositionMode` boolean (Story Mode is just its
   // `false` state, not a separate field). Story Mode is the normal
   // progression: start at World 1, defeat each world's rival to open the
-  // next one, meet each mentor in turn. Superposition Mode is a testing/
+  // next one, meet each guardian in turn. Superposition Mode is a testing/
   // exploration mode: OverworldScene re-levels the player to match every
   // world it enters, every world counts as already visited so Bloch's
   // teleport hub can fold the player to any of them immediately (no
   // separate warp UI needed -- Bloch already does that job), and
-  // Bohr/Majorana's panels offer every crystal/hybrid pairing rather than
+  // Dresselhaus/Majorana/Anderson's panels offer every crystal/hybrid pairing rather than
   // only ones actually defeated. Picked here rather than mid-run so it's a
   // deliberate choice made before starting, not something stumbled into
   // during play. Returns the y position just past the whole control (label,
@@ -263,7 +268,7 @@ export class TitleScene extends Phaser.Scene {
       .text(
         CANVAS_W / 2,
         y,
-        'Story Mode: start at World 1 and progress in order. Superposition Mode: every advisor, transmutation, and hybrid material is available right away.',
+        'Story Mode: start at World 1 and progress in order. Superposition Mode: every guardian, transmutation, and hybrid material is available right away.',
         { fontSize: fontPx(this, 10), color: '#6f7ea8', align: 'center', wordWrap: { width: CANVAS_W - 60 } }
       )
       .setOrigin(0.5, 0);

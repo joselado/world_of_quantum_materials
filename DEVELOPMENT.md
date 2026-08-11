@@ -9,7 +9,7 @@ mechanics/content decisions see `DESIGN.md`, for visual conventions see
 ## Folder contents
 
 - `DESIGN.md` -- the living design document (world map, type system, battle
-  rules, mentors/story, tech stack, roadmap, open questions). Edit it
+  rules, guardians/story, tech stack, roadmap, open questions). Edit it
   directly as the game evolves rather than starting a new doc.
 - `STYLE.md` -- current visual/style decisions (sizes, colors, shapes, panel
   conventions). Edit in place as choices change.
@@ -55,7 +55,7 @@ game/
   src/
     main.ts            entry point, creates the Phaser.Game, scene list
     data/               Material/Move/type-chart/save-schema/tutorial-copy data
-    art/                 procedural sprite/tile drawing (crystals, biomes, mentors)
+    art/                 procedural sprite/tile drawing (crystals, biomes, guardians)
     audio/                procedural sfx + per-scene music tracks
     scenes/
       TitleScene.ts       loads the save, Story Mode / Superposition Mode picker, "Continue"/"New Game"
@@ -68,7 +68,7 @@ game/
 
 See `CODEMAP.md` for the full tree with every file annotated.
 
-No external image/audio assets -- all visuals (crystals, tiles, mentor
+No external image/audio assets -- all visuals (crystals, tiles, guardian
 avatars) are drawn procedurally with Phaser's Graphics API and all sound is
 generated with the Web Audio API, so there's nothing to load/bundle besides
 code. See `DESIGN.md` §8 for the art pipeline if real sprites are ever
@@ -77,15 +77,14 @@ wanted.
 ## Current status
 
 Per `DESIGN.md`'s roadmap, the "full build-out" pass is done: all 10 worlds
-have a walkable map, biome, wild-encounter pool, rival gate, and a mentor
-standing mid-corridor (Noether, Bloch, Dresselhaus, Majorana, Curie, and Anderson
-have real mechanics; Laughlin, Bohr, and Kondo are lore-only pending a
-subtype system, see `DESIGN.md` §10), with that world's boss standing
+have a walkable map, biome, wild-encounter pool, rival gate, and a guardian
+standing mid-corridor, every one of them (Noether through Anderson) with a
+real mechanic, with that world's boss standing
 at the goal tile as a gigantic
 visual landmark. Contextual tutorial tips guide new players, a Story Mode /
 Superposition Mode title-screen picker lets you choose between them
 (Superposition Mode auto-levels the player and pre-marks every world visited
-so Bloch's teleport hub gives instant access to any world/mentor, for testing
+so Bloch's teleport hub gives instant access to any world/guardian, for testing
 without grinding), and the Enter-menu's Settings panel offers wild-encounter
 density and a Text Size preset applied via `ui/text.ts`'s
 `fontPx`/`fontScale` helpers. `game/` is the only build.

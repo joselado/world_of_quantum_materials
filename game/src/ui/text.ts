@@ -7,7 +7,7 @@ import { DEFAULT_FONT_SCALE } from '../data/settings';
 // panel (OverworldScene.showSettingsPanel/data/settings.ts's
 // FONT_SCALE_PRESETS) can scale all of it consistently by multiplying the
 // current registry setting in. Decorative glyph sizes that scale off an art
-// asset's own size (crystal/token sparkles, mentor-avatar orbiting motes)
+// asset's own size (crystal/token sparkles, guardian-avatar orbiting motes)
 // deliberately do NOT go through this -- those aren't reading text, and
 // scaling them independently of the art around them would look broken.
 export function fontPx(scene: Phaser.Scene, basePx: number): string {

@@ -30,7 +30,7 @@ than appending a changelog, so this always reflects current reality.
   active one highlights (`#ffff88` yellow for Story, `#ff8fa0` warning pink for Superposition,
   each with a lighter `#33335a` background) while the inactive one dims to `#8fa0c9`/`#1a1a2e`.
   A one-line dim caption underneath spells out what each mode actually does (start at World 1
-  in order, vs. every advisor/transmutation/hybrid available immediately). Deliberately placed
+  in order, vs. every guardian/transmutation/hybrid available immediately). Deliberately placed
   on the title screen, as a choice made before starting a run, rather than toggleable mid-run.
 
 ## The Hub (`scenes/HubScene.ts`, world 0)
@@ -205,20 +205,20 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   `BattleScene`; "Let me pass" just closes the panel with no scene change and no
   win/loss consequence.
 
-## Mentors in the overworld (`OverworldScene.spawnMentorSprite`)
+## Guardians in the overworld (`OverworldScene.spawnGuardianSprite`)
 
-- Every mentor (Noether included) stands floating at their world's *middle* tile
-  (`WORLD_MENTORS`' `tile: 'middle'`, `mid.x`/`mid.y` from `world/mapgen.ts` --
+- Every guardian (Noether included) stands floating at their world's *middle* tile
+  (`WORLD_GUARDIANS`' `tile: 'middle'`, `mid.x`/`mid.y` from `world/mapgen.ts` --
   roughly the corridor's halfway row), not the goal -- the goal tile
-  belongs to that world's boss avatar (see below). One shared `spawnMentorSprite`
-  builds all of them from the `WORLD_MENTORS` table (avatar builder, scale `1.1`,
-  name label in the mentor's own `labelColor`) rather than a bespoke function per
-  mentor. Reuses the crystal/token `WorldSprite` projection/wander/bob machinery
-  (`updateWorldSprites`) rather than a bespoke sprite path, so a mentor scrolls,
+  belongs to that world's boss avatar (see below). One shared `spawnGuardianSprite`
+  builds all of them from the `WORLD_GUARDIANS` table (avatar builder, scale `1.1`,
+  name label in the guardian's own `labelColor`) rather than a bespoke function per
+  guardian. Reuses the crystal/token `WorldSprite` projection/wander/bob machinery
+  (`updateWorldSprites`) rather than a bespoke sprite path, so a guardian scrolls,
   fades with distance, and idly wanders exactly like every other world sprite --
   the player sees and walks up to them instead of them only materializing once
   their dialogue fires. Depth `20`/`21` (container/label), matching wild-encounter
-  crystals. Permanent -- unlike encounter/token sprites a mentor is never removed,
+  crystals. Permanent -- unlike encounter/token sprites a guardian is never removed,
   since reaching their row still opens their panel on top of (not instead of) them
   standing there.
 
@@ -228,15 +228,15 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   blue-grey, and fronted by Noether's own avatar (`art/mentor.ts`'s `makeNoetherAvatar`)
   instead of a crystal -- a small cartoon deity floating in a flowing golden robe with wide
   welcoming sleeves, a haloed head, and four motes orbiting the whole figure, deliberately
-  not another faceted crystal so a mentor reads as a distinct, benevolent presence rather
+  not another faceted crystal so a guardian reads as a distinct, benevolent presence rather
   than a wild encounter. An inner container sways gently on its own (independent of the
   panel's own bob tween on the outer container) so she reads as adrift rather than fixed in
   place; a soft additive glow behind her pulses slowly for a "presence" that a flat
-  silhouette wouldn't give. A short layered-bell chime (`audio/sfx.ts`'s `playMentorChime`,
-  shared by every mentor panel) plays whenever the shop opens. Sized and positioned
+  silhouette wouldn't give. A short layered-bell chime (`audio/sfx.ts`'s `playGuardianChime`,
+  shared by every guardian panel) plays whenever the shop opens. Sized and positioned
   (`panelY - 105`, avatar top edge landing a few px inside the panel's own top edge, intro
-  text pushed down to `panelY - 68`) to fit the same panel every later mentor panel
-  (Bloch's, Bohr's) reuses -- each mentor still gets its own avatar builder in its own file
+  text pushed down to `panelY - 68`) to fit the same panel every later guardian panel
+  (Bloch's) reuses -- each guardian still gets its own avatar builder in its own file
   (`art/bloch.ts`, `art/bohr.ts`, ...) even though the surrounding panel shape is shared.
   Appears automatically every time the Overworld scene is (re)created with this world's
   middle row already reached (`OverworldScene.maybeAutoOpenMiddleDialogue`) -- first on
@@ -255,16 +255,16 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
     `<stat> (<role>): <value> -> <value+1> -- <cost> qumatokens`, same afford/dim treatment.
   - Both tabs' rows start at `panelY - 8`, spaced `36`px apart, buying/upgrading rebuilds
     the whole panel so the list updates and the token total on display stays correct.
-- Below the (variable-length) tab content, a fixed footer row at `panelY + 120`
-  (`renderShopFooter`) -- not stacked beneath the content, so it can't run off the panel
-  regardless of how many rows are showing -- holds "Farewell" and a second button reading
-  "Face the Rival ->" (before that world's rival is beaten) or "Continue to World N+1 ->"
-  (after), side by side via `addDialogueButtonAt`. Bloch's and Bohr's panels (below) reuse
-  this same footer/tab-content layout.
+- Below the (variable-length) tab content, a single "Farewell" button
+  (`renderFarewellFooter`) flowing right after the content rather than pinned to a fixed
+  y -- Noether's own panel never offers "Face the Rival"/"Continue to World N+1"; that
+  action lives only in the goal panel (see "The rival gate" below), since the goal tile is
+  where that world's boss actually stands. Bloch's panel (below) reuses this same
+  tab-content/single-footer layout.
 
 ## Bloch in the overworld (`OverworldScene.showBlochHub`)
 
-- World 2 only, standing at the middle tile like every other mentor -- same
+- World 2 only, standing at the middle tile like every other guardian -- same
   landmark/wander/re-open pattern as Noether (see above), just with `art/bloch.ts`'s
   `makeBlochAvatar` and a cyan
   (`0x8fe8ff`) name label. His avatar swaps Noether's halo/head for a wireframe **Bloch
@@ -282,30 +282,59 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   visited and makes Bloch's hub the *sole* way to move between worlds (there is no separate
   warp panel).
 
-## Bohr in the overworld (`OverworldScene.showBohrPanel`)
+## Dresselhaus in the overworld (`OverworldScene.showDresselhausPanel`)
 
-- World 3 only, standing at the middle tile like every other mentor, and his panel
+- World 3 only, standing at the middle tile like every other guardian, and his panel
   auto-opens on reaching that row (`maybeAutoOpenMiddleDialogue`), same as every
-  other mentor. Amber (`0xffa64a`) name label; his avatar
-  (`art/bohr.ts`'s `makeBohrAvatar`) swaps the head for a small Bohr-model atom -- a bright
-  additive nucleus with three tilted elliptical shells, each carrying one orbiting electron
-  at its own speed.
-- His panel is stroked amber (`0xffa64a`); every defeated wild material
-  (`defeatedMaterials`, or in Superposition Mode every crystal in the game --
-  `data/materials.ts`'s `allCrystals()`) gets a button (`Become <name>`, or a dimmed
-  `<name> (current form)` for whichever the player is already wearing) that transmutes the
-  player's own crystal into that form (`transmuteInto`) -- swaps color/variant/max HP and
-  clamps current HP down if needed, and immediately redraws the overworld avatar
-  (`redrawPlayerCrystal`). Empty state: "You haven't defeated any crystals yet -- there is
-  nothing to become." Paginates once the list is longer than one page (see "Paginated
-  candidate lists" below) -- the common case in Superposition Mode.
+  other guardian. Teal-green (`#6ee8ba` label / `0x4ad9a0` stroke and avatar accents) name
+  label; his avatar (`art/dresselhaus.ts`'s `makeDresselhausAvatar`) swaps the head motif
+  for a ring of six small spin arrows, each rotated tangent to its own position on the
+  ring (a hedgehog-like winding, the spin texture a Dresselhaus/Rashba-split band actually
+  traces in momentum space) rather than a face, slowly rotating.
+- His panel is a single paginated list, not the tab-content/footer shop shape -- every
+  defeated wild material (`defeatedMaterials`, sliced to the most recent 3, or in
+  Superposition Mode every non-composite crystal in the game -- `data/materials.ts`'s
+  `allCrystals()` filtered through `isCompositeMaterial`) gets a button (`Become <name>`,
+  or a dimmed `<name> (current form)` for whichever the player is already wearing) that
+  transmutes the player's own crystal into that form (`transmuteInto`) -- swaps
+  color/variant/max HP and clamps current HP down if needed, and immediately redraws the
+  overworld avatar (`redrawPlayerCrystal`). Empty state: "You haven't defeated any
+  crystals yet -- there is nothing to become." Paginates once the list is longer than one
+  page (see "Paginated candidate lists" below) -- the common case in Superposition Mode --
+  ending in a single "Farewell" button, no separate footer row.
+
+## Laughlin in the overworld (`OverworldScene.showLaughlinPanel`)
+
+- World 4 only, standing at the middle tile like every other guardian. Blue-violet
+  (`#8fa0ff` label / `0x6a7fff` stroke and avatar accents) name label; his avatar
+  (`art/laughlin.ts`'s `makeLaughlinAvatar`) is unchanged by this mechanic.
+- Same buy-list-plus-switch shape as Kondo's panel (`renderPassiveList`, shared with
+  Bohr's panel below): a still-unbought passive (`data/passives.ts`'s
+  `LAUGHLIN_PASSIVE_IDS` -- Fractional Guard, Anyon Echo, Edge Current) gets a
+  `<name> -- <cost> qumatokens` buy button plus a one-line description underneath in a
+  dimmer, smaller blue-grey; an already-bought passive gets a clickable "Make `<name>`
+  active" button, or a dimmed "`<name>` (active)" tag with no click handler for whichever
+  one currently is -- same dimmed-current convention every other guardian panel uses.
+  Buying the first passive for this guardian activates it immediately, same reasoning as
+  Kondo's first move; buying a second or third doesn't, and switching which one is active
+  always requires reopening this panel. No "wrong form" empty state -- unlike Kondo's
+  moves, a passive is never gated by a crystal's own physics (same "player-learned
+  technique" reasoning as Curie's analytic moves), so all three are always purchasable.
+- The buy button's label and its description line are both capped at a lower font-scale
+  ceiling than every other guardian panel's buttons (`Math.min(fontScale(this), 1.3)` for
+  the label, `1.2` for the description) rather than scaling all the way to the Enter-menu
+  Settings panel's uncapped 'Large' text-size preset -- this panel has no shrink-to-fit
+  safety net the way the Enter-menu's info panels do, and three buy rows each carrying
+  their own description, on top of the avatar/intro/Farewell footer every guardian panel
+  already has, pushed the Farewell button off the bottom of the canvas at the default
+  text-size preset the first time this was tried uncapped.
 
 ## Majorana in the overworld (`OverworldScene.showMajoranaPanel`)
 
-- World 5 only, standing at the middle tile like every other mentor. Green (`0x4fd97a`)
+- World 5 only, standing at the middle tile like every other guardian. Green (`0x4fd97a`)
   name label and panel stroke; his avatar (`art/majorana.ts`'s `makeMajoranaAvatar`) is
   unchanged by this mechanic.
-- His panel reuses the tab-content/footer shape Noether/Bloch/Bohr share, but with a
+- His panel reuses the paginated-list shape Dresselhaus's panel uses, but with a
   two-step flow instead of one screen: every defeated wild material (or, in Superposition
   Mode, every crystal in the game) *that pairs with at least one of the others* gets a
   button (any pairing with no matching entry in `data/materials.ts`'s `HYBRID_RECIPES` --
@@ -316,17 +345,18 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   once. Both steps paginate (see "Paginated candidate lists" below) once the filtered list is
   longer than one page. Picking the second immediately transmutes the player into the
   recipe's own named result (`data/materials.ts`'s `combineMaterials` -- name/type/maxHp all
-  fixed on the recipe, not computed at combine time) the same way Bohr's transmutation does --
-  no separate "confirm" step. Above the combine flow, up to 3 previously created hybrids
-  (`hybridMaterials` save list) get their own "Become `<name>` again" buttons, same
-  dimmed-when-current treatment as Bohr's list. Empty state (no valid pairing among the
+  fixed on the recipe, not computed at combine time) the same way Dresselhaus's
+  transmutation does -- no separate "confirm" step. Above the combine flow, up to 3
+  previously created hybrids (`hybridMaterials` save list) get their own "Become `<name>`
+  again" buttons, same dimmed-when-current treatment as Dresselhaus's list. Empty state (no
+  valid pairing among the
   candidates -- including having fewer than 2 total): "None of the crystals you've defeated
   pair into a known hybrid recipe yet -- Majorana only knows specific real pairings (e.g.
   Aluminum + Indium Arsenide, or two Graphenes together)."
 
 ## Curie in the overworld (`OverworldScene.showCuriePanel`)
 
-- World 6 only, standing at the middle tile like every other mentor. Olive (`0xc9d84a`)
+- World 6 only, standing at the middle tile like every other guardian. Olive (`0xc9d84a`)
   name label; panel stroked gold (`0xffe066`, matching Noether's shop rather than getting
   its own color, since it's the same "buy a move" interaction). Her avatar
   (`art/curie.ts`'s `makeCurieAvatar`) is unchanged by this mechanic.
@@ -336,27 +366,59 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   tab, reusing `shopCost`. Empty state once both are bought: "You already carry every
   analytic technique I can teach."
 
+## Bohr in the overworld (`OverworldScene.showBohrPanel`)
+
+- World 7 only, standing at the middle tile like every other guardian. Amber (`#ffa64a`
+  label / `0xffa64a` stroke) name label; his avatar (`art/bohr.ts`'s `makeBohrAvatar`) is
+  unchanged by this mechanic.
+- Identical shape to Laughlin's panel above (world 4) -- both share `renderPassiveList`,
+  including the same capped-font-scale buy rows -- three passives instead
+  (`data/passives.ts`'s `BOHR_PASSIVE_IDS` -- Correlated Response, Nonlocal Correlation,
+  Shared State), same buy/activate/switch behavior.
+
+## Kondo in the overworld (`OverworldScene.showKondoPanel`)
+
+- World 8 only, standing at the middle tile like every other guardian. Rust-orange
+  (`0xe86a44`) name label and panel stroke -- distinct from Anderson's own rust/amber
+  (`0xc9884a`) below; his avatar (`art/kondo.ts`'s `makeKondoAvatar`) is unchanged by this
+  mechanic.
+- Single list like Curie's, but split into two runs of rows instead of one flat one: still-
+  unbought moves from `data/materials.ts`'s `KONDO_MOVE_IDS` (Screening Cloud, Heavy Fermion
+  Drag, Kondo Breakdown) the player's current form can host, same `<move name> -- <cost>
+  qumatokens` label and afford/dim treatment as Curie's/Noether's shops (reusing `shopCost`),
+  followed by one row per already-bought Kondo move -- a bought-and-inactive move reads
+  "Make `<name>` active" as a clickable button, the currently active one (registry/save
+  `kondoActiveMove`) reads "`<name>` (active)" dimmed to 50% alpha with no click handler,
+  the same dimmed-current treatment Dresselhaus's "`<name>` (current form)" row uses. Buying
+  the first Kondo move activates it immediately (still shows the dimmed "(active)" tag right
+  away, no separate click needed); buying a second or third afterward doesn't, and switching
+  which one is active always requires reopening this panel and clicking "Make active," not a
+  per-turn choice in the battle move menu. Empty state (nothing bought and the current form
+  can't carry any of the three): "Your current form has no local moment for me to screen --
+  come back wearing a spin liquid or a defect state," naming the actual unlock condition
+  rather than reusing Noether's generic "nothing left to teach" line.
+
 ## Anderson in the overworld (`OverworldScene.showAndersonPanel`)
 
-- World 9 only, standing at the middle tile like every other mentor. Rust/amber
+- World 9 only, standing at the middle tile like every other guardian. Rust/amber
   (`0xc9884a`) name label and panel stroke; his avatar (`art/anderson.ts`'s
   `makeAndersonAvatar`) swaps the head for a scattered, irregular lattice of dim dots with
   one bright point pulsing at the center -- Anderson localization's own picture, a wave
-  trapped by disorder instead of spreading freely -- rather than any other mentor's motif,
+  trapped by disorder instead of spreading freely -- rather than any other guardian's motif,
   plus four orbiting `×` glyphs instead of Noether's `✦` or Bloch's `◇`.
 - Two-step flow like Majorana's: every defeated wild material (or, in Superposition Mode,
   every crystal in the game) gets a button under "Dope in which crystal?" (paginated, see
   below); picking one asks "Learn which move from `<host>`?" and lists whichever of that
   host's own moves the player hasn't already learned (`<move name> (Pwr N)`), plus a "Never
   mind" to back out. Picking a move just appends it to the ordinary `unlockedMoves` list
-  (`learnImpurityMove`) -- no form change, no HP change, unlike Bohr/Majorana. Empty states:
+  (`learnImpurityMove`) -- no form change, no HP change, unlike Dresselhaus/Majorana. Empty states:
   "You haven't encountered any crystals yet -- there is nothing to dope in" (no host
   candidates) or "You already carry every move `<host>` has to offer" (host picked, but
   every one of its moves is already learned).
 
 ## Paginated candidate lists (`OverworldScene.renderPagedButtons`)
 
-- Shared by every panel whose candidate pool can outgrow one screen -- Bohr's transmute
+- Shared by every panel whose candidate pool can outgrow one screen -- Dresselhaus's transmute
   list, both steps of Majorana's and Anderson's combine/dope flows, and Bloch's destination
   list. Superposition Mode is what makes this routine rather than a rare edge case: its
   candidate pool is every crystal in the game (or, for Bloch, every built world pre-marked
@@ -382,9 +444,9 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   four smaller satellite shards (shaded siblings of the core's color, via `shade`)
   fused around one oversized core, a two-layer additive aura that slowly pulses
   scale/alpha, and six hot-orange embers orbiting the whole mass (same
-  orbiting-container-angle-tween trick as a mentor avatar's orbiting motes, just
+  orbiting-container-angle-tween trick as a guardian avatar's orbiting motes, just
   warmer/redder to read as hostile rather than benevolent). Name label in a
-  bold, warning-toned pink-red (`#ff8f8f`), distinct from any mentor's own label
+  bold, warning-toned pink-red (`#ff8f8f`), distinct from any guardian's own label
   color. Reuses the `WorldSprite` projection/wander/bob machinery, so it scrolls
   and fades with distance like everything else standing on the map -- it doesn't
   add its own click handler, the fight is still only reached through the goal
@@ -392,13 +454,15 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 
 ## The rival gate (`OverworldScene.showRivalEncounter`)
 
-- Triggered by clicking "Face the Rival ->" in Noether's shop, not automatically on reaching
-  the goal -- so the player can shop for moves before ever facing the fight they're being
-  gated on. Same panel treatment as a wild encounter (600×260, centered crystal, italic
-  line beneath), but stroked in red (`0xff6666`) instead of blue-grey or gold, and with a
-  single mandatory "Battle!" button -- no "let me pass," since a gate that can be skipped
-  isn't a gate. Losing doesn't set anything back except the token stake (see Stakes in
-  DESIGN.md §4): the shop simply reopens and "Face the Rival ->" is still there to retry.
+- Triggered by clicking "Face the Rival ->" in the goal panel (`showGatePanel`), not
+  automatically on reaching the goal and not from any guardian's own panel -- so the player
+  can walk past the goal to shop with Noether or any other guardian before ever facing the
+  fight they're being gated on. Same panel treatment as a wild encounter (600×260,
+  centered crystal, italic line beneath), but stroked in red (`0xff6666`) instead of
+  blue-grey or gold, and with a single mandatory "Battle!" button -- no "let me pass,"
+  since a gate that can be skipped isn't a gate. Losing doesn't set anything back except
+  the token stake (see Stakes in DESIGN.md §4): the goal panel simply reopens and "Face
+  the Rival ->" is still there to retry.
 
 ## Boss opponent in battle (`scenes/BattleScene.ts`)
 
@@ -424,6 +488,14 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   small grey raincloud (`addFailCloud`) just above the crystal, bobbing gently. Everything
   is added directly to the player crystal's container so it moves with the existing
   idle-bob tween for free.
+- Kondo's Screened/Localized/Decohered status effects (DESIGN.md §4) get a much smaller
+  treatment than the quiz aura/raincloud above -- a plain text pill (`playerStatusLabel`/
+  `opponentStatusLabel`) docked just under that side's HP bar rather than anything layered
+  onto the crystal itself, reading `"<Status> (<turns left>)"` in Kondo's own rust-orange
+  (`#ff8f6a`, matching his guardian label/panel stroke and the `'screening'` attack-effect
+  color below) over the same translucent-black tag background every HP-bar name label
+  already uses. Empty (no active status) by default on both sides -- the pill only ever
+  reads as chrome that appears when relevant, not a permanent fixture of the HP-bar area.
 - The "A wild X appeared!" opener and the win/lose closing line are flavor text from
   `data/greetings.ts` (`victoryLine`/`defeatLine`), keyed to the wild material's type the
   same way the overworld encounter greeting is. A rival fight swaps the opener for "X blocks
@@ -446,27 +518,43 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 - A docked panel on the right of the field (`x = 456`, `y = 190`, width `176`), same dark
   rounded-rectangle-with-stroke treatment as the overworld's dialogue panels, stroked gold
   (`0xffe066`) to match Noether's own panel color, titled "MOVES" in bold gold. Height grows
-  with however many moves are currently usable rather than a fixed size, since that count
-  changes as the player learns moves or transmutes into a form with a different
-  physics-compatible set (§3 of DESIGN.md).
-- Each move is a `[ #222244 background / #ffff88 text ]` button, same treatment used
-  everywhere else (overworld dialogue buttons) for visual continuity, stacked vertically
-  inside the panel rather than spread horizontally. A form
+  with however many moves/sections are currently in play rather than a fixed size, since
+  both change as the player learns moves, buys an analytic/screening kit, or transmutes
+  into a form with a different physics-compatible set (§3 of DESIGN.md).
+- **Grouped into up to three sections, not one flat stack** (DESIGN.md §4): a small bold
+  blue-grey (`#8fa0c9`) header line reading `ATTACKS`, `ANALYTIC`, or `SCREENING` sits above
+  each group's own rows, and a section is skipped entirely if it has no usable move in it
+  (a player with no analytic moves bought, or no Kondo move active, never sees an empty
+  header). Each move is still a `[ #222244 background / #ffff88 text ]` button, same
+  treatment used everywhere else (overworld dialogue buttons), stacked vertically under its
+  own section's header rather than spread horizontally. A form
   with zero currently-usable moves (shouldn't normally happen, since Phonon Beam is
   universal) shows "No usable moves" instead of an empty panel. An analytic-class move
-  (Curie's Skyfall Beam/Ground Eruption) gets a gold `★` tag appended to its label, and the
-  legend line above the rows grows a short `★2x/½x` reminder when at least one is usable --
-  kept deliberately terse (not the full "answer right for 2x, wrong for half" sentence),
-  since that line's wrapped height eats directly into the space every row gets.
+  (Curie's Skyfall Beam/Ground Eruption) still gets a gold `★` tag appended to its own
+  label, but its "right=2x wrong=½x" legend now lives as its own dim sub-line directly under
+  the `ANALYTIC` header instead of in the panel's top legend -- that top legend (`!! no
+  natural defense (2x)`) now only ever has the one mismatch symbol to explain, kept
+  deliberately terse since its wrapped height eats directly into the space every row gets,
+  same reasoning as before.
+- Section headers are deliberately capped at a lower text-size ceiling than the panel's own
+  title/legend (`headerScale = Math.min(fontScale, 1.15)`, 10px label / 8px legend sub-line
+  at that scale) -- up to three headers now share the same fixed 480px field height 9 move
+  rows already had to fit into on their own, and letting them scale all the way to the
+  Enter-menu Settings panel's uncapped 'Large' preset the way the title does would eat
+  directly into the row budget below.
 - Row height is a hard geometric budget (whatever vertical space is left below the
-  title/legend, divided across however many moves are usable), with a minimum floor so rows
-  never shrink to illegible -- `30`px for up to 7 moves (the base move roster's max), `17`px
-  for 8-9 (reachable once an 'adaptive'-type form, e.g. a defeated world-10 Echo via Bohr,
+  title/legend/section headers, divided across however many moves are usable), with a
+  minimum floor so rows never shrink to illegible -- `20`px for up to 7 moves (down from an
+  earlier `30`px once section headers started eating into the same budget), `15`px for 8-9
+  (reachable once an 'adaptive'-type form, e.g. a defeated world-10 Echo via Dresselhaus,
   has learned everything including both analytic moves). Below `rowH < 40` the row switches
   to smaller font/padding rather than clipping. Verified to fit within the field's 480px
-  height at both text-size presets (`fontScale` 1 and 2, `data/settings.ts`) for the 9-move
-  worst case via the headless-Chromium harness described in DEVELOPMENT.md, not just
-  eyeballed at the default preset.
+  height at every text-size preset (`fontScale` 1, 1.5, and 2, `data/settings.ts`) for every
+  `MaterialType`'s own worst-case move/section combination via a live headless-Chromium run
+  (DEVELOPMENT.md) -- the tightest real-measured case was a 6-move `supercon`/`topological`
+  form at `fontScale` 1, landing 8px above the field's bottom edge; the 9-move `adaptive`
+  case (2 sections, no `SCREENING`) and the 6-move `spinliquid`/`defect` case (3 sections)
+  both fit with more room to spare.
 
 ## Analytic question panel (`BattleScene.showAnalyticQuestion`)
 
@@ -486,10 +574,10 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 ## Enter-key pause menu (`OverworldScene.showPauseMenu`/`showInfoPanel`)
 
 - Same dark rounded-rectangle-with-stroke panel treatment as everywhere else, stroked
-  blue-grey (`0x8fa0c9`, distinct from every mentor/encounter panel's own stroke color). Rows
+  blue-grey (`0x8fa0c9`, distinct from every guardian/encounter panel's own stroke color). Rows
   are a data-driven list (`320` wide, height grows with row count, vertically centered on
   the canvas rather than a fixed `panelY`) rather than fixed buttons: Return to Lab (same
-  destination as the `H` key), View Moves, View Stats, Advisors, Tutorial, Settings, then
+  destination as the `H` key), View Moves, View Stats, Guardians, Tutorial, Settings, then
   Close -- a fixed six rows (world-to-world movement goes through Bloch's own panel
   instead, see above). Respects `dialogueActive`
   (won't open over an already-open panel) and only exists in `OverworldScene`, not mid-battle.
@@ -548,6 +636,12 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   target (Anyon Braid, Majorana Split). Each class also has its own color (e.g. orange for
   Phonon Beam, red for Magnon Pulse). All shapes render additive-blended
   (`Phaser.BlendModes.ADD`) so they glow instead of reading as flat shapes.
+- Kondo's three moves (Screening Cloud, Heavy Fermion Drag, Kondo Breakdown) share the
+  `'screening'` class's one look, unlike Curie's -- an expanding ring (the same silhouette
+  Magnon Pulse/Polaron Drag use, reading as a screening cloud enveloping the target) tinted
+  Kondo's own rust-orange (`0xe86a44`). Distinct move names and the status-effect log line
+  each one produces already read as three different moves without three different
+  silhouettes too, so there's no `ANALYTIC_SHAPES`-style per-move override for this class.
 - Curie's two analytic moves break the "one shape per class" rule on purpose -- gold
   (`0xffe066`), but each with its own silhouette rather than sharing the `'analytic'`
   class's one default (`art/attackEffects.ts`'s `ANALYTIC_SHAPES`, keyed by move id, not

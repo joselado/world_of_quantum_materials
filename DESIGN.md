@@ -9,13 +9,13 @@ patterns, exact file locations to check before making changes).
 
 Overworld exploration (walk around, talk to NPCs, find wild encounters) → turn-based
 battle → earn qumatokens + attribute growth → return to overworld to progress, pay
-mentors for new abilities, or advance to the next world.
+guardians for new abilities, or advance to the next world.
 
 **The game is about the crystals, not a trainer who catches them.** There is no
 separate human protagonist commanding a roster of creatures Pokemon-style — the
 player-controlled overworld avatar *is* a crystal, one entry out of the same
 material roster the wild encounters are drawn from (currently Silicon, the
-trivial/tutorial-baseline type). Mentors (§5) remain NPC characters the player
+trivial/tutorial-baseline type). Guardians (§5) remain NPC characters the player
 talks to, but the thing you walk around the world and fight battles as is a
 material, matching the crystal already used for the player's side of every
 battle.
@@ -26,9 +26,9 @@ One world per course topic (see the topic table in the repo's top-level `CLAUDE.
 
 | World | Course topic | In-game name (`WORLD_NAMES`) / biome theme | Wild material archetypes | Gate to next world |
 |---|---|---|---|---|
-| 0 (Hub) | — | "The Lab" — mentor's house, save point, Materialdex | — | Start world 1 |
+| 0 (Hub) | — | "The Lab" — guardian's house, save point, Materialdex | — | Start world 1 |
 | 1 | Second quantization, mean-field, SSB | **Mean-Field Meadow** — tutorial meadow | Free fermion, broken-symmetry magnet | Beat first rival crystal |
-| 2 | Symmetries, tight-binding, effective models | **Bloch Caverns** — crystalline caves, repeating tile patterns | Bloch-wave critters, lattice defect variants | Learn "symmetry sense" from mentor |
+| 2 | Symmetries, tight-binding, effective models | **Bloch Caverns** — crystalline caves, repeating tile patterns | Bloch-wave critters, lattice defect variants | Learn "symmetry sense" from guardian |
 | 3 | Topological band theory | **Topological Islands** — floating islands, one-way edge paths | Chern insulators, trivial insulators | Cross a gap only an edge-mode move can bridge |
 | 4 | Magnetic field, QHE, Landau levels | **Landau Level Terrain** — visible field lines, quantized-orbit terrain | Landau-level materials, composite fermions | Solve a Landau-level maze |
 | 5 | Superconductivity, Nambu, Majorana | **Frozen Zero-Resistance Caverns** | s-wave SC, triplet SC, Majorana pairs (split in two) | Pair two Majorana halves |
@@ -55,9 +55,9 @@ Each world's "Gate to next world" fight is a distinct **rival crystal**
 (`game/src/data/materials.ts`'s `WORLD_RIVALS`, all 10 worlds built) separate from
 that world's ordinary wild encounters (`WORLD_CRYSTALS`) -- beating a rival is what the
 world's "Continue to World N+1" action actually triggers. The rival fight is deliberately
-*not* a precondition for reaching that world's mentor: the goal mentor is always reachable
+*not* a precondition for reaching that world's guardian: the goal guardian is always reachable
 once the goal is reached, so the player can shop/prep before ever facing the rival, rather
-than being stuck needing bought moves to beat a rival they can't reach the mentor to
+than being stuck needing bought moves to beat a rival they can't reach the guardian to
 prepare for (`OverworldScene.tryAdvanceToNextWorld`).
 
 **Every world uses this same reach-goal → beat-rival → continue gate, not a bespoke
@@ -75,7 +75,7 @@ Hall state, superconductor, classical magnet, tensor-network/entangled state, qu
 spin liquid, defect-bound state, adaptive/ML state (endgame only, not obtainable
 until postgame).
 
-**Subtypes**, unlocked via mentors, cross with main types (e.g. superconductor +
+**Subtypes**, unlocked via guardians, cross with main types (e.g. superconductor +
 magnet subtype → spin-triplet superconductor, matching the example in the source
 notes). Not all main+subtype pairs are physical/interesting — needs a full
 compatibility table before implementation (see open questions).
@@ -263,15 +263,37 @@ the most exotic tier the course covers). Because Phonon Beam (thermal) is on eve
 rule above — the one universal move is also the one that never gets the mismatch bonus, by
 design. Curie's analytic moves (Skyfall Beam, Ground Eruption) sit at a middling base power
 below this ordering on purpose — their real payoff is the answer-gated 2x/0.5x multiplier
-above, not raw power.
+above, not raw power. Kondo's three moves (Screening Cloud, Heavy Fermion Drag, Kondo
+Breakdown, §5) sit at the very bottom of the ordering instead, on par with Electron Pulse —
+their real payoff is the 3-turn status effect each one deterministically inflicts (§4), not
+raw power either.
 
 ## 4. Battle system
 
-Turn-based, speed-ordered by Velocity. Status effects mirror real phenomena:
-- **Localized** — can't act (mirrors Anderson localization)
-- **Decohered** — random move miss chance
-- **Gapped down** — defense drops (mirrors gap closing)
-- **Symmetry-broken** — forced type shift for N turns
+Turn-based, speed-ordered by Velocity.
+
+**Status effects (Kondo's three moves, §5).** Kondo teaches three moves that each
+deterministically inflict one 3-turn status effect on the defender — never randomly rolled,
+the player picks the effect by picking the move:
+- **Screened** (Screening Cloud) — the defender's own outgoing damage is multiplied down
+  (×0.7) for 3 turns.
+- **Localized** (Heavy Fermion Drag) — the defender's effective Velocity is reduced (×0.7)
+  for 3 turns, changing whether that side still swings first each round.
+- **Decohered** (Kondo Breakdown) — the defender's effective Correlation is reduced (×0.7)
+  for 3 turns, raising the damage it takes (Correlation scales incoming damage via
+  `10 / correlation`, above).
+
+Only one status can be active per side at a time — a fresh application replaces whatever was
+already there rather than stacking, matching the deliberately simple "one type-interaction
+rule, not a chart" philosophy above. Implemented generically per-side in
+`BattleScene.resolveHit` (the same multiplier-term shape every other `resolveHit` factor
+already uses) rather than hardcoded to "opponent only," even though only the player can
+currently learn the moves that inflict them — no `WORLD_CRYSTALS` entry knows them yet. Ticks
+down once per round (each side is the defender of exactly one hit per round) and expires with
+its own battle-log line appended the same way a mismatch/crit clause stacks onto a hit's log
+line. Status effects are battle-only and reset at the start of every fight — never persisted
+to the save. A small pill under each side's HP bar in battle shows which status (if any) is
+active and how many turns remain.
 
 **Quasiparticle mismatch.** The sole type-interaction rule in battle (§3): a defender
 whose own type can't physically host the attacking move's quasiparticle class at all
@@ -281,14 +303,27 @@ order to damp a magnon pulse with, so it lands unmitigated. Applies symmetricall
 to both sides, same as every other `resolveHit` term. Surfaced in the battle log as "No
 natural defense against this!".
 
-**Move menu matchup info.** `BattleScene.drawMoveMenu` labels each move
-button with its power and, computed against the current opponent's type, a `!!2x` tag
-when the quasiparticle-mismatch double-damage rule above applies, plus a one-line legend
-at the top of the panel spelling out what that symbol means. The panel's row height is computed from how many moves are
-currently listed (`drawMoveMenu`'s `rowH`) rather than fixed, since an 'adaptive'-type
-crystal (world 10, see §3) can host every move class at once and a fixed row height
-sized for the usual 2-4 moves would push the panel off the bottom of the canvas once
-all 7 are unlocked.
+**Move menu is grouped by kind, not one flat list.** `BattleScene.drawMoveMenu` splits
+the currently usable moves (`getBattleMoves`) into up to three sections, each rendering
+only if it has at least one usable move: **Attacks** (every ordinary physics-gated move --
+any `MoveClass` other than `'analytic'` and `'screening'`), **Analytic** (Curie's
+answer-gated moves, still tagged `★` with their own "right=2x wrong=½x" legend line under
+the section header), and **Screening** (Kondo's currently-active move, at most one, since
+`getBattleMoves` only ever surfaces whichever one is `kondoActiveMove`, §5) -- these three
+classes work differently enough from an ordinary attack (and from each other) that a flat
+stacked list blurred the distinction. Each button also shows its power and, computed
+against the current opponent's type, a `!!2x` tag when the quasiparticle-mismatch
+double-damage rule above applies, plus a one-line top-of-panel legend spelling out that
+symbol. The panel's row height (and now also its section-header height) is computed from
+how many moves/sections are currently listed (`drawMoveMenu`'s `rowH`/`headerTotalH`)
+rather than fixed, since an 'adaptive'-type crystal (world 10, see §3) can host the
+broadest set of move classes of any type (every class except Kondo's `'screening'` and the
+multiferroic-only `'magnetoelectric'`, both deliberately left off its `MOVE_COMPATIBILITY`
+list the same way `'thermal'` is on every list) and a fixed row height sized for the usual
+2-4 moves would push the panel off the bottom of the canvas once all 9 are unlocked;
+section headers are capped at a lower text-size ceiling than the panel's title/legend so up
+to three of them sharing the same fixed-height panel never eats into the row budget enough
+to overflow it (see STYLE.md's "Battle move menu" section for the worked numbers).
 
 **Battle background per world.** `BattleScene.drawBackground` reads the same
 `art/biomes.ts` table the overworld corridor uses (`getBiome(this.world)`) —
@@ -314,7 +349,7 @@ greeting screen -- the same "not every world is filled in yet" pattern the per-w
 crystal/biome tables already use.
 
 **Starting loadout and unlocking moves.** The player's crystal starts knowing only Phonon
-Beam. Reaching world 1's middle tile for the first time introduces the mentor Noether (§5),
+Beam. Reaching world 1's middle tile for the first time introduces the guardian Noether (§5),
 who sells every other move (`SHOP_MOVE_IDS`) for qumatokens, priced by move power
 (`OverworldScene.shopCost`, currently power × 5) -- filtered down to whatever the player's
 *current* crystal form can physically carry (§3's `MOVE_COMPATIBILITY`), so a trivial-type
@@ -329,7 +364,7 @@ Quantumness/Velocity/Correlation stats (§3). The actual "leave this world" acti
 footer button that fights the world's rival crystal the first time it's clicked (see §2),
 then becomes "Continue to World N+1" once that rival is beaten
 (`OverworldScene.tryAdvanceToNextWorld`) -- lives only in the goal panel, not Noether's
-(or any mentor's) own panel, since the goal is where that world's boss actually stands (§2).
+(or any guardian's) own panel, since the goal is where that world's boss actually stands (§2).
 
 **Stakes.** Winning a battle earns 50 qumatokens; losing costs 50, floored at 0 (a rival
 fight doubles both to 100, `BattleScene`'s `RIVAL_TOKEN_STAKE`). Either way the player's
@@ -348,20 +383,18 @@ recorded into the Phaser registry's `discoveredMaterials` list
 discovered material together with its blurb, paginated two entries per page
 (`HubScene.renderMaterialdexPage`).
 
-## 5. Mentors, economy, and story arc
+## 5. Guardians, economy, and story arc
 
-Every world 1-9 has its own mentor, waiting mid-corridor (`OverworldScene`'s
-`WORLD_MENTORS` table, every entry's `tile: 'middle'`) rather than at the goal --
-the goal tile is occupied by that world's boss (see below), so a mentor
+Every world 1-9 has its own guardian, waiting mid-corridor (`OverworldScene`'s
+`WORLD_GUARDIANS` table, every entry's `tile: 'middle'`) rather than at the goal --
+the goal tile is occupied by that world's boss (see below), so a guardian
 is someone the player meets partway through the journey, not a gate to it. Every
-mentor stays reachable from anywhere afterward via the Enter-menu's Advisors panel
-once met (`showAdvisorsPanel`, `data/save.ts`'s `metMentors`). **Current state
-(deliberately not the final design -- see §10):** six mentors have a real
-mechanic (Noether, Bloch, Dresselhaus, Majorana, Curie, Anderson); Laughlin, Bohr, and
-Kondo are still topic-tied lore stops with an avatar and a quote but no
-mechanic of its own yet (`OverworldScene.showMentorLore`) -- what each of them
-should actually unlock is still an open design question, not implemented.
-World 10 has no mentor; its only encounter is the finale.
+guardian stays reachable from anywhere afterward via the Enter-menu's Guardians panel
+once met (`showGuardiansPanel`, `data/save.ts`'s `metGuardians`). Every guardian
+1-9 has a real mechanic (Noether, Bloch, Dresselhaus, Laughlin, Majorana, Curie, Bohr,
+Kondo, Anderson) -- a guardian without one yet would fall through to the shared
+`OverworldScene.showGuardianLore` panel (avatar + quote only), but nothing currently
+does. World 10 has no guardian; its only encounter is the finale.
 
 - **Noether** → world 1 middle → sells every extra attack move and stat upgrade in the
   game (fitting, since Noether's theorem is literally "symmetry implies a conservation
@@ -388,8 +421,23 @@ World 10 has no mentor; its only encounter is the finale.
   mechanic below, not this one. In Superposition Mode the candidate list is every
   non-composite crystal in the game (`data/materials.ts`'s `allCrystals()`, filtered) rather
   than only ones actually defeated
-- **Laughlin** → world 4 middle → lore only for now; flavor ties in via the fractional
-  quantum Hall wavefunction (world 4's own topic)
+- **Laughlin** → world 4 middle → teaches three passive abilities
+  (`data/passives.ts`'s `LAUGHLIN_PASSIVE_IDS`, `OverworldScene.showLaughlinPanel`) --
+  an always-on, whole-battle modifier rather than a move picked from the battle menu
+  each turn. All three can be bought independently, but only one is ever active in
+  battle at a time (registry/save `laughlinActivePassive`, switched only by revisiting
+  Laughlin's panel), the same "learn several, equip one" shape Kondo's three screening
+  moves already use (below) -- fitting, since Laughlin's own physics (the fractional
+  quantum Hall wavefunction) is world 4's topic, and a passive with no per-turn choice
+  and no duration/tick-down is itself a clean fit for "always on for this battle," unlike
+  Kondo's 3-turn status effects:
+  - **Fractional Guard** -- incoming damage is multiplied down (×0.85) for the whole
+    battle. A hit never lands as a whole electron's worth against a fractionalized state.
+  - **Anyon Echo** -- landing a critical hit triggers a bonus follow-up damage tick
+    (~30% of that hit's damage) immediately after.
+  - **Edge Current** -- softens the quasiparticle-mismatch double-damage rule (2x → 1.5x,
+    `canHost`/`BattleScene.resolveHit`) -- topological edge states partially shrugging off
+    a hit that would otherwise land unmitigated.
 - **Majorana** → world 5 middle → lets the player fuse two crystals they've already
   defeated into a new hybrid material and become it immediately
   (`OverworldScene.showMajoranaPanel`/`combineMaterials`) -- but only a curated
@@ -432,11 +480,50 @@ World 10 has no mentor; its only encounter is the finale.
   core, two swirling side-rays, a trail of falling sparks, and a radiant sun expanding
   at the point of origin; Ground Eruption bursts a wide double shockwave ring and a
   bright geyser core up through nearly twice the shard count of an ordinary burst.
-- **Bohr** → world 7 middle → lore only for now; flavor ties in via Bohr's own historical
-  role defending quantum mechanics' completeness against the EPR paradox -- measure one
-  half of an entangled pair and the other answers instantly, not through any signal
-  crossing the distance
-- **Kondo** → world 8 middle → lore only for now; flavor ties in via the Kondo effect
+- **Bohr** → world 7 middle → teaches three passive abilities, same "learn several,
+  equip one" shape as Laughlin above (`data/passives.ts`'s `BOHR_PASSIVE_IDS`,
+  `OverworldScene.showBohrPanel`, registry/save `bohrActivePassive`) -- fitting Bohr's
+  own historical role defending quantum mechanics' completeness against the EPR paradox:
+  measure one half of an entangled pair and the other answers instantly, not through any
+  signal crossing the distance:
+  - **Correlated Response** -- whenever the opponent lands a critical hit against the
+    player, the player's own very next move is guaranteed to crit.
+  - **Nonlocal Correlation** -- the player's effective Correlation stat is boosted by half
+    the opponent's own Quantumness stat, recomputed fresh at the start of each battle
+    (`BattleScene.create`, since opponent stats are themselves computed fresh per battle
+    via `enemyStatsForWorld`).
+  - **Shared State** -- ~22% of damage the player deals is returned as healing, capped at
+    the player's own max HP -- the entangled pair shares its fate.
+- **Kondo** → world 8 middle → sells three moves (`OverworldScene.showKondoPanel`,
+  `data/materials.ts`'s `KONDO_MOVE_IDS`) -- Screening Cloud, Heavy Fermion Drag, Kondo
+  Breakdown -- each of which deterministically inflicts one of §4's three status effects
+  (Screened, Localized, Decohered respectively) on a successful hit rather than dealing much
+  raw damage itself, gated by `MOVE_COMPATIBILITY` like an ordinary quasiparticle (currently
+  `spinliquid`/`defect`) rather than usable from any form the way Curie's analytic moves are.
+  Fitting for all three: the real Kondo effect is a single magnetic impurity's moment screened
+  by a sea of conduction electrons until it "disappears" at low temperature (Screening Cloud);
+  a Kondo lattice's conduction electrons hybridize with the local moments into heavy, slow
+  quasiparticles (Heavy Fermion Drag, dragging the target's own effective Velocity down); and
+  in the real heavy-fermion "Kondo breakdown"/"Kondo destruction" phenomenon the screening
+  cloud itself can collapse, stripping the local moment of its protection (Kondo Breakdown,
+  dropping the target's own effective Correlation). The player can buy all three independently,
+  but only one is ever usable in battle at a time -- registry/save `kondoActiveMove`, switched
+  only by returning to Kondo's own panel (a bought-but-inactive move stays in `unlockedMoves`,
+  it just fails `getBattleMoves`' own extra check on top of the ordinary
+  learned-∩-compatible one), since Kondo screening physically resolves one scattering channel
+  at a time, not every channel at once -- the same reasoning DESIGN.md gives for excluding a
+  generic "impurity scattering" damage move in §3 applies here too: this isn't free-form
+  disorder, it's one specific screening process the player has to choose and commit to. The
+  shop panel itself doubles as the switch -- a bought-and-inactive move gets a "Make `<name>`
+  active" button, the active one shows a dimmed "`<name>` (active)" tag instead, the same
+  dimmed-current convention Dresselhaus's transmute panel already uses. Buying the *first*
+  Kondo move activates it automatically (still "picked by talking to Kondo," just in the same
+  click as the purchase) so a fresh purchase is never invisible in battle with no explanation;
+  buying a second or third on top of an already-active one doesn't, and switching between
+  already-bought moves is always its own explicit click either way. Superposition Mode
+  (`applySuperpositionLeveling`) seeds `kondoActiveMove` to Screening Cloud if it's still
+  unset, for the same reason -- granting every move id doesn't help if none of Kondo's three
+  actually pass `getBattleMoves`' extra check.
 - **Anderson** → world 9 middle → "dopes in" a crystal the player has encountered as an
   impurity, then teaches one specific move from that crystal's own moveset
   (`OverworldScene.showAndersonPanel`/`learnImpurityMove`) -- a two-step pick (host,
@@ -552,7 +639,7 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   entering the Lab (`HubScene.maybeShowLabTip`); `controls` on first entering
   an Overworld world; `encounter` on the first wild-crystal bump; `battle` on
   first committing to a fight; `qumatoken` on first collecting a pickup;
-  `mentor` on first meeting any mentor; `goal` on first reaching a world's
+  `guardian` on first meeting any guardian; `goal` on first reaching a world's
   goal row (all six of the latter via `OverworldScene.showTutorialTip`, gated
   by save/registry `tutorialTipsSeen`). Each trigger site passes whatever it
   was about to do next as the tip's close callback (open the encounter panel,
@@ -566,7 +653,7 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   Game -- both back the same save/registry `superpositionMode` boolean (Story
   Mode is just its `false` state, not a separate field). **Story Mode** is the
   normal playthrough: start at World 1, defeat each world's rival to open the
-  next one, meet each mentor in turn. **Superposition Mode** is a testing/
+  next one, meet each guardian in turn. **Superposition Mode** is a testing/
   exploration mode, not the intended first playthrough: every world entry
   re-levels the player's stats/moves/HP to stay competitive with that world's
   opponents (`OverworldScene.applySuperpositionLeveling`, a flat +2 over
@@ -592,29 +679,27 @@ world 7's boss fights as an entangled pair where damaging one damages both.
 ## 9. Current build status
 
 Built and playable end to end: all 10 worlds have an overworld map, biome, wild-encounter
-pool, rival, and mentor slot; the Hub, title screen, localStorage save, Materialdex, the
+pool, rival, and guardian slot; the Hub, title screen, localStorage save, Materialdex, the
 contextual tutorial tips, and the Story Mode/Superposition Mode picker are all in place
 (§2, §4, §5, §7). `game/` is the only build; there is no separate no-install
-single-file `demo/` prototype.
+single-file `demo/` prototype. All audio is a procedural Web Audio score with no external
+assets, with both an overworld track and a battle track per world (`game/src/audio/music.ts`).
 
 Not yet built:
 - Bespoke per-world boss puzzles (§6) — every world currently uses the same reach-goal →
   beat-rival → continue gate instead.
-- Real mentor mechanics for Laughlin, Bohr, and Kondo, beyond
-  Noether/Bloch/Dresselhaus/Majorana/Curie/Anderson (§5, §10).
-- Battle music variants per world (only overworld tracks are per-world so far).
 - A mobile wrapper (Capacitor) and playtesting with students.
 
 ## 10. Open design questions
 
 - **Subtype combination rules** — which main+subtype pairs are physically/
   narratively sensible needs a full compatibility table, not just one example.
-- **What Laughlin/Bohr/Kondo actually unlock** — they're currently
-  lore-only stops (§5; Majorana, Curie, and Anderson have real mechanics:
-  hybrid materials, analytic moves, and impurity doping); their real
-  mechanics (fractional-charge moves, entanglement moves, screening) may or
-  may not depend on the subtype system above existing first.
-- **Scope vs. solo-dev reality** — 10 worlds + full art + mentor roster is large for
+- **A fuller status-effect roster** — an earlier design sketch also described
+  a "Gapped down" (defense drops, mirroring gap closing) and a
+  "Symmetry-broken" (forced type shift for N turns) status alongside Kondo's
+  three (§4); neither is implemented, and no guardian is currently slated to
+  teach them.
+- **Scope vs. solo-dev reality** — 10 worlds + full art + guardian roster is large for
   one person; consider cutting to 3–4 flagship worlds for a v1 before building all 10.
 - **Course integration** — supplementary/optional tool, or tied into assessment?
   Affects how rigorous the Materialdex needs to be.

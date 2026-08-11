@@ -2,7 +2,7 @@
 // save, the first time its own feature actually becomes relevant -- entering
 // the Lab, taking your first steps, bumping into your first wild crystal,
 // committing to your first fight, picking up your first qumatoken, meeting
-// your first mentor, reaching your first goal (OverworldScene/HubScene's
+// your first guardian, reaching your first goal (OverworldScene/HubScene's
 // `showTutorialTip`/`maybeShowLabTip`) -- rather than one long paged popup
 // dumped on the player before they've done anything. `TUTORIAL_PAGES` is the
 // same content in a fixed order, still used for the Enter-menu's "Tutorial"
@@ -14,7 +14,7 @@ export interface TutorialPage {
   body: string;
 }
 
-export type TutorialTipId = 'lab' | 'controls' | 'encounter' | 'battle' | 'qumatoken' | 'mentor' | 'goal';
+export type TutorialTipId = 'lab' | 'controls' | 'encounter' | 'battle' | 'qumatoken' | 'guardian' | 'goal';
 
 export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
   lab: {
@@ -25,7 +25,7 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
   controls: {
     title: 'Walking the Path',
     body:
-      'Use the arrow keys to move: Up/Down walk the corridor forward and back, Left/Right step sideways. Off-path tiles are solid walls, so track the corridor as it bends instead of holding one direction. Press H any time to return to the Lab, Enter to open the menu (moves, stats, advisors), and M to mute or unmute the music.',
+      'Use the arrow keys to move: Up/Down walk the corridor forward and back, Left/Right step sideways. Off-path tiles are solid walls, so track the corridor as it bends instead of holding one direction. Press H any time to return to the Lab, Enter to open the menu (moves, stats, guardians), and M to mute or unmute the music.',
   },
   encounter: {
     title: 'Wild Encounters',
@@ -40,17 +40,17 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
   qumatoken: {
     title: 'Qumatokens',
     body:
-      'Winning battles and finding qumatoken pickups (the shiny clouds waiting at the dead ends of side paths) earns you qumatokens -- the currency mentors use to sell you new moves and sharper stats.',
+      'Winning battles and finding qumatoken pickups (the shiny clouds waiting at the dead ends of side paths) earns you qumatokens -- the currency guardians use to sell you new moves and sharper stats.',
   },
-  mentor: {
-    title: 'Mentors',
+  guardian: {
+    title: 'Guardians',
     body:
-      "Each world's mentor waits partway along the corridor: Noether sells moves and stat upgrades, Bloch teleports you between worlds you've visited, Bohr lets you transmute into any crystal you've defeated. Once met, revisit any of them from the Advisors panel.",
+      "Each world's guardian waits partway along the corridor: Noether sells moves and stat upgrades, Bloch teleports you between worlds you've visited, Dresselhaus lets you transmute into any crystal you've defeated. Once met, revisit any of them from the Guardians panel.",
   },
   goal: {
     title: 'Reaching the Goal',
     body:
-      "A gigantic boss crystal guards the far end of every world -- you can shop with that world's mentor first, but the only way onward is to beat the boss in the goal panel. Win, and the next world opens up.",
+      "A gigantic boss crystal guards the far end of every world -- you can shop with that world's guardian first, but the only way onward is to beat the boss in the goal panel. Win, and the next world opens up.",
   },
 };
 

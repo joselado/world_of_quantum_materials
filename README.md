@@ -82,20 +82,32 @@ deliberately simple rather than a separate strong/weak chart on top of it.
 </tr>
 </table>
 
-**Grow.** Winning battles and grabbing qumatoken pickups funds the mentors
+**Grow.** Winning battles and grabbing qumatoken pickups funds the guardians
 waiting partway through each world -- Noether sells new moves and sharper
 stats, Bloch teleports you between worlds you've already visited, Dresselhaus
-lets you *transmute* into any single crystal you've defeated, Majorana lets
-you fuse two defeated crystals into a brand-new hybrid state and become it --
-rendered as an actual mixture of both parents' own colors and shapes -- Curie
-sells "analytic" moves that ask you a physics-equation question before they
-land (get it right for double damage, wrong for half) with dramatically
-flashier effects than an ordinary move -- a multi-layer beam of light falling
-from the sky, a shockwave-ringed eruption bursting from the ground -- Anderson
-lets you "dope in" a crystal you've encountered as an impurity and learn one
-specific move from it, and Laughlin, Bohr, and Kondo share the physics
-behind their own world's topic. Every mentor you've met stays reachable from
-the Advisors panel, from anywhere.
+lets you *transmute* into any single crystal you've defeated, Laughlin teaches
+three passive abilities that stay on for the whole battle rather than moves
+you pick each turn (soften every hit you take, echo a bonus tick after a
+critical hit, or blunt the double-damage penalty for a mismatched hit --
+you've learned several, but only one is equipped at a time, so switching
+means talking to him again), Majorana lets you fuse two defeated crystals
+into a brand-new hybrid state and become it -- rendered as an actual mixture
+of both parents' own colors and shapes -- Curie sells "analytic" moves that
+ask you a physics-equation question before they land (get it right for
+double damage, wrong for half) with dramatically flashier effects than an
+ordinary move -- a multi-layer beam of light falling from the sky, a
+shockwave-ringed eruption bursting from the ground -- Bohr teaches three more
+passive abilities in the same "learn several, equip one" shape as Laughlin's
+(guarantee your next hit crits after the opponent lands one on you, borrow
+some of your opponent's own Quantumness as extra Correlation, or heal off a
+share of the damage you deal), Kondo sells three moves that each weaken your
+target for a few turns instead of hitting hard (drop its own damage output,
+slow it down, or crack its defenses -- you pick which by picking the move,
+and only one can be tuned in at a time, so switching means talking to him
+again), and Anderson lets you "dope in" a crystal you've encountered as an
+impurity and learn one specific move from it. Every guardian you've met stays
+reachable from the Guardians panel, from anywhere, and your current passive
+loadout is always checkable from the Enter-menu's "View Stats" panel too.
 
 <table>
 <tr>
@@ -111,15 +123,15 @@ the Advisors panel, from anywhere.
 <td><img src="screenshots/battle-analytic-move.png" width="300" alt="An analytic move asking a physics question mid-battle"></td>
 </tr>
 <tr>
-<td><img src="screenshots/mentor-laughlin.png" width="300" alt="Laughlin's lore panel"></td>
-<td><img src="screenshots/mentor-bohr.png" width="300" alt="Bohr's lore panel"></td>
+<td><img src="screenshots/mentor-laughlin.png" width="300" alt="Laughlin's passive-ability panel"></td>
+<td><img src="screenshots/mentor-bohr.png" width="300" alt="Bohr's passive-ability panel"></td>
 </tr>
 <tr>
 <td><img src="screenshots/mentor-anderson.png" width="300" alt="Anderson's impurity-doping panel"></td>
 </tr>
 </table>
 
-**Face the boss.** Keep going past the mentor and you'll see it looming
+**Face the boss.** Keep going past the guardian and you'll see it looming
 before you even reach it: a gigantic, multi-shard boss crystal wrapped in
 its own pulsing aura, standing at the far end of every world -- and it keeps
 that same imposing look once the fight starts. Beating it is what
@@ -173,18 +185,25 @@ drawing from whatever moves you've collected by then.
   force -- no separate strong/weak chart stacked on top of it.
 - **Hybrid materials.** Some crystals aren't single compounds at all, but
   named real (or credibly engineered) combinations of two others -- one
-  mentor partway through the game lets you fuse two crystals you've already
+  guardian partway through the game lets you fuse two crystals you've already
   defeated into one of these, if the pairing is a known one.
 - **A rarer class of move exists beyond the ordinary quasiparticle roster** --
-  taught by a mentor of its own, it trades a physics gamble for a much bigger
+  taught by a guardian of its own, it trades a physics gamble for a much bigger
   payoff (or a real cost if you get it wrong). You'll know it when you see it.
+- **Passive abilities** are a different kind of thing entirely from a move --
+  no button to press each turn, just an always-on effect for the whole battle,
+  taught by two of the guardians. You can learn several from each, but only
+  one per guardian is ever equipped at a time.
+- **The move menu groups what you can use by kind** (ordinary attacks, the
+  answer-gated class above, and any active status-inflicting move), not one
+  flat list, so it's clear at a glance which buttons work differently.
 
 ## Controls
 
 | Key | Action |
 |---|---|
 | Arrow keys | Move (Up/Down forward-back, Left/Right sideways) |
-| Enter | Open the menu (moves, stats, advisors, tutorial, settings) |
+| Enter | Open the menu (moves, stats, guardians, tutorial, settings) |
 | H | Return to the Lab (World 0) |
 | M | Mute/unmute music |
 
@@ -204,7 +223,7 @@ Open the Enter-key menu and click **Settings** to adjust:
 
 Short tips appear one at a time, right as each feature comes up for the
 first time -- entering the Lab, taking your first steps, your first wild
-encounter, your first battle, your first qumatoken, your first mentor,
+encounter, your first battle, your first qumatoken, your first guardian,
 reaching your first goal. Want the whole thing again as a refresher? Open the Enter-key menu
 and click **Tutorial** to replay every tip in order.
 
@@ -213,7 +232,7 @@ and click **Tutorial** to replay every tip in order.
 Before you start, the title screen asks you to pick a mode:
 
 - **Story Mode** is the normal playthrough -- start at World 1, defeat each
-  world's rival to open the next one, meet each mentor in turn.
+  world's rival to open the next one, meet each guardian in turn.
 - **Superposition Mode** is for exploring/testing without grinding: every
   time you enter a world your stats, moves, and HP are automatically brought
   up to a level competitive with that world's opponents, every world is
@@ -225,7 +244,7 @@ Before you start, the title screen asks you to pick a mode:
 ![Bloch's teleport hub with every world unlocked in Superposition Mode](screenshots/superposition-bloch.png)
 
 Superposition Mode isn't the intended way to play through the story the
-first time -- it's there for seeing later worlds/mentors without earning
+first time -- it's there for seeing later worlds/guardians without earning
 your way there first.
 
 ## Playing it

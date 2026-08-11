@@ -1,11 +1,11 @@
 import Phaser from 'phaser';
 import { shade } from './colors';
 
-// Kondo's avatar -- world 8's mentor (quantum magnetism/spinons/Kondo
+// Kondo's avatar -- world 8's guardian (quantum magnetism/spinons/Kondo
 // physics, a direct namesake match). Own file, same convention as every
-// other mentor (glow -> sway -> cloak -> head-motif -> orbit ring). Head
+// other guardian (glow -> sway -> cloak -> head-motif -> orbit ring). Head
 // motif: a screening cloud swirling around a single central spin arrow --
-// the Kondo effect itself -- deep red rather than any other mentor's
+// the Kondo effect itself -- deep red rather than any other guardian's
 // palette.
 export function makeKondoAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameObjects.Container {
   const S = 30 * scale;

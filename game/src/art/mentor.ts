@@ -5,9 +5,9 @@ import { shade } from './colors';
 // golden robe with no visible feet, haloed, with wide welcoming sleeves and
 // a ring of conserved-quantity motes orbiting her. Specific to Noether
 // (unlike the generic faceted crystal look shared by every wild material)
-// so a mentor reads as a distinct, benevolent presence rather than another
+// so a guardian reads as a distinct, benevolent presence rather than another
 // encounter.
-// Later mentors follow the same rule: their own builder in their own file
+// Later guardians follow the same rule: their own builder in their own file
 // (art/bloch.ts's makeBlochAvatar, art/bohr.ts's makeBohrAvatar, and any
 // future ones per DESIGN.md §5) rather than reusing this one.
 //

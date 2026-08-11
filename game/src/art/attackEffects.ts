@@ -31,6 +31,14 @@ const EFFECT_STYLE: Record<MoveClass, { color: number; shape: AttackShape }> = {
   // Magnon Pulse's expanding-ring silhouette, tinted the multiferroic
   // type's own magenta rather than magnetic's red.
   magnetoelectric: { color: 0xc94ac0, shape: 'ring' },
+  // Kondo's three moves (Screening Cloud, Heavy Fermion Drag, Kondo
+  // Breakdown) share one look -- an expanding ring reads as a screening
+  // cloud enveloping the target, tinted Kondo's own rust-orange
+  // (WORLD_GUARDIANS[8].strokeColor). Unlike 'analytic' they don't need
+  // per-move-id shape overrides (ANALYTIC_SHAPES below) -- three distinct
+  // move names and status-effect log lines already read as three different
+  // moves without three different silhouettes too.
+  screening: { color: 0xe86a44, shape: 'ring' },
 };
 
 // Per-move-id shape overrides for 'analytic' -- the one class where two

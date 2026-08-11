@@ -1,15 +1,15 @@
 import Phaser from 'phaser';
 import { shade } from './colors';
 
-// Dresselhaus's avatar -- world 3's mentor (topological band theory: the
+// Dresselhaus's avatar -- world 3's guardian (topological band theory: the
 // Dresselhaus effect -- bulk-inversion-asymmetry spin-orbit coupling -- is
 // the real ingredient that locks spin to momentum in models like BHZ, the
 // route an ordinary band structure actually takes into a topological one).
-// Own file, same convention as every other mentor (glow -> sway -> cloak ->
+// Own file, same convention as every other guardian (glow -> sway -> cloak ->
 // head-motif -> orbit ring). Head motif: a ring of small spin arrows, each
 // locked tangent to its own position on the ring rather than all pointing
 // the same way -- a spin-momentum-locked texture in place of a face, fitting
-// the mentor whose gift lets the player lock onto (become) any crystal
+// the guardian whose gift lets the player lock onto (become) any crystal
 // they've understood well enough to defeat.
 export function makeDresselhausAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameObjects.Container {
   const S = 30 * scale;

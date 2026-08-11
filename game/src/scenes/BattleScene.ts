@@ -16,6 +16,7 @@ import {
   enemyStatsForWorld,
 } from '../data/materials';
 import { victoryLine, defeatLine } from '../data/greetings';
+import { PASSIVES } from '../data/passives';
 import { materialBlurb } from '../data/materialdex';
 import { getAnalyticQuestion } from '../data/quiz';
 import { persistFromRegistry } from '../data/save';
@@ -30,6 +31,81 @@ import { music } from '../audio/music';
 // the player opts into by picking one of these two moves specifically.
 const ANALYTIC_CORRECT_MULTIPLIER = 2;
 const ANALYTIC_WRONG_MULTIPLIER = 0.5;
+
+// Kondo's three screening-class moves (§5, World 8) each deterministically
+// inflict one of these three status effects on the defender, replacing
+// whatever status (if any) was already on that side rather than stacking --
+// exactly one active status per side at a time, matching the "one
+// type-interaction rule, on purpose" simplicity DESIGN.md §4 already commits
+// to elsewhere. Battle-ephemeral only (never persisted -- data/save.ts's
+// SaveData has no field for this), reset fresh at the start of every battle.
+type StatusKind = 'screened' | 'localized' | 'decohered';
+
+interface ActiveStatus {
+  kind: StatusKind;
+  turnsLeft: number;
+}
+
+const STATUS_DURATION = 3;
+const SCREENED_DAMAGE_MULT = 0.7; // Screened: the afflicted side's own outgoing damage
+const LOCALIZED_VELOCITY_MULT = 0.7; // Localized: the afflicted side's own effective Velocity
+const DECOHERED_CORRELATION_MULT = 0.7; // Decohered: the afflicted side's own effective Correlation
+
+// Which status a given Kondo move id deterministically applies -- no
+// randomness, the player picks the effect by picking the move (and, since
+// only one of the three can be active in battle at a time, by which one
+// they set active with OverworldScene.showKondoPanel).
+const KONDO_MOVE_STATUS: Record<string, StatusKind> = {
+  screeningCloud: 'screened',
+  heavyFermionDrag: 'localized',
+  kondoBreakdown: 'decohered',
+};
+
+// Deliberately terse (one short clause, no second sentence) -- the log line
+// this appends to can already carry a mismatch clause and a crit clause
+// (setLogText's clamp was sized/verified against that two-clause worst case,
+// see STYLE.md), and the status pill under the HP bar already spells out the
+// ongoing effect ("Screened (3)") for as long as it's active, so the log
+// line itself only needs to announce the moment, not re-explain the effect.
+const STATUS_INFO: Record<
+  StatusKind,
+  { label: string; applyText: (name: string) => string; expireText: (name: string) => string }
+> = {
+  screened: {
+    label: 'Screened',
+    applyText: (name) => `${name} is Screened!`,
+    expireText: (name) => `${name}'s screening fades.`,
+  },
+  localized: {
+    label: 'Localized',
+    applyText: (name) => `${name} is Localized!`,
+    expireText: (name) => `${name}'s localization fades.`,
+  },
+  decohered: {
+    label: 'Decohered',
+    applyText: (name) => `${name} is Decohered!`,
+    expireText: (name) => `${name}'s decoherence fades.`,
+  },
+};
+// Single status-pill color for all three (Kondo's own rust-orange, matching
+// WORLD_GUARDIANS[8].strokeColor/art/attackEffects.ts's 'screening' entry) --
+// the label text itself already names which status is active.
+const STATUS_PILL_COLOR = '#ff8f6a';
+
+// Laughlin's and Bohr's passive abilities (§5, data/passives.ts) -- unlike
+// Kondo's status effects above, a passive has no duration/tick-down: it's
+// simply on for the whole battle it's active for, so each one is just a
+// flat multiplier/flag term read directly off whichever side currently has
+// it active (this.activePassives(isPlayer), populated once in create() from
+// registry/save laughlinActivePassive/bohrActivePassive and never touched
+// again mid-battle). Only the player can ever have one today, but every hook
+// below reads generically off `isPlayer`/`defenderIsPlayer` the same way
+// every other resolveHit term does, in case a future enemy ever has one.
+const FRACTIONAL_GUARD_DAMAGE_MULT = 0.85; // Fractional Guard: incoming damage taken by the holder
+const ANYON_ECHO_FRACTION = 0.3; // Anyon Echo: bonus follow-up tick, as a fraction of the crit that triggered it
+const EDGE_CURRENT_MISMATCH_MULT = 1.5; // Edge Current: softened quasiparticle-mismatch multiplier (normally 2x)
+const NONLOCAL_CORRELATION_FRACTION = 0.5; // Nonlocal Correlation: share of the opponent's own Quantumness added to Correlation
+const SHARED_STATE_HEAL_FRACTION = 0.22; // Shared State: share of dealt damage returned as healing
 
 const FIELD_W = 640;
 const FIELD_H = 480;
@@ -82,6 +158,26 @@ export class BattleScene extends Phaser.Scene {
   private playerCrystal!: Phaser.GameObjects.Container;
   private logText!: Phaser.GameObjects.Text;
   private moveMenu?: Phaser.GameObjects.Container;
+  // Kondo's status effects (§5) -- battle-ephemeral only, reset fresh in
+  // create() below (Phaser reuses the same Scene instance across
+  // scene.start() calls, so a field initializer alone wouldn't reset this
+  // between battles -- see OverworldScene's own comment on the same gotcha).
+  private playerStatus: ActiveStatus | null = null;
+  private opponentStatus: ActiveStatus | null = null;
+  private playerStatusLabel!: Phaser.GameObjects.Text;
+  private opponentStatusLabel!: Phaser.GameObjects.Text;
+  // Laughlin's/Bohr's passives (§5) -- computed once in create() from
+  // registry/save laughlinActivePassive/bohrActivePassive and held for the
+  // whole battle (no tick-down, unlike playerStatus/opponentStatus above).
+  // opponentActivePassives stays empty today (no WORLD_CRYSTALS entry has
+  // one), kept as its own field rather than hardcoding "player only" so
+  // activePassives() below reads symmetrically off either side.
+  private playerActivePassives = new Set<string>();
+  private opponentActivePassives = new Set<string>();
+  // Bohr's Correlated Response (§5): set on the defender's side the instant
+  // the opponent lands a crit against them, consumed by that side's own very
+  // next resolveHit call regardless of which move it is.
+  private guaranteedCritNext = { player: false, opponent: false };
 
   constructor() {
     super('Battle');
@@ -95,17 +191,39 @@ export class BattleScene extends Phaser.Scene {
   }
 
   create() {
-    music.play('battle');
+    music.play(`battle:${this.world}`);
     this.drawBackground();
 
     this.playerMaterial = getPlayerMaterial(this.game.registry);
     this.playerStats = getPlayerStats(this.game.registry);
     this.enemyStats = enemyStatsForWorld(this.world);
 
+    // Laughlin's/Bohr's active passives (§5) -- read once here, held for the
+    // whole battle. Nonlocal Correlation needs recomputing fresh every battle
+    // (rather than once at save time) since enemyStats.quantumness above is
+    // itself recomputed fresh per battle -- spread into a *new* object rather
+    // than mutating playerStats.correlation in place, since playerStats is
+    // the same object getPlayerStats(registry) returned: mutating it would
+    // permanently ratchet the save's own Correlation value the next time
+    // anything persists the registry.
+    const laughlinActive = this.game.registry.get('laughlinActivePassive') as string | null;
+    const bohrActive = this.game.registry.get('bohrActivePassive') as string | null;
+    this.playerActivePassives = new Set([laughlinActive, bohrActive].filter((id): id is string => !!id));
+    this.opponentActivePassives = new Set();
+    if (this.playerActivePassives.has('nonlocalCorrelation')) {
+      this.playerStats = {
+        ...this.playerStats,
+        correlation: this.playerStats.correlation + Math.round(this.enemyStats.quantumness * NONLOCAL_CORRELATION_FRACTION),
+      };
+    }
+    this.guaranteedCritNext = { player: false, opponent: false };
+
     const savedHp = (this.game.registry.get('playerHp') as number) || this.playerMaterial.maxHp;
     this.playerHp = Math.min(savedHp, this.playerMaterial.maxHp);
     this.opponentHp = this.wild.maxHp;
     this.turnLock = false;
+    this.playerStatus = null;
+    this.opponentStatus = null;
 
     // Opponent (top-right)
     // The bar sits a fixed gap below the *measured* name label rather than a
@@ -122,6 +240,22 @@ export class BattleScene extends Phaser.Scene {
     const opponentBarY = opponentName.y + opponentName.height + 8;
     this.add.rectangle(400, opponentBarY, 104, 12, 0x222222, 0.55).setOrigin(0, 0.5);
     this.opponentHpBar = this.add.rectangle(400, opponentBarY, 100, 8, 0x33cc33).setOrigin(0, 0.5);
+    // Status pill (Kondo's moves, §5) -- empty/invisible until a status is
+    // actually active (renderStatusLabel), so it costs nothing to lay out
+    // for the common case where no status is in play.
+    // Depth above the combat log (default depth 0, below) -- the log's own
+    // box grows upward on a long wrapped line (setLogText) and can reach as
+    // far up as this row at a big text-size setting; a higher depth keeps
+    // the pill legibly on top rather than getting visually buried under it.
+    this.opponentStatusLabel = this.add
+      .text(400, opponentBarY + 9, '', {
+        fontSize: fontPx(this, 11),
+        color: STATUS_PILL_COLOR,
+        backgroundColor: 'rgba(0,0,0,0.35)',
+        padding: { x: 4, y: 1 },
+      })
+      .setOrigin(0, 0)
+      .setDepth(5);
 
     // A rival fight's opponent is that world's boss -- render it with the
     // same gigantic, multi-shard look it has standing at the goal tile in
@@ -175,6 +309,19 @@ export class BattleScene extends Phaser.Scene {
     const playerBarY = playerName.y + playerName.height + 8;
     this.add.rectangle(130, playerBarY, 104, 12, 0x222222, 0.55).setOrigin(0, 0.5);
     this.playerHpBar = this.add.rectangle(130, playerBarY, 100, 8, 0x33cc33).setOrigin(0, 0.5);
+    // Same depth-above-the-log reasoning as the opponent's pill above -- the
+    // player's own bar sits closer to the log's usual bottom-anchored
+    // resting spot, so this is the side actually at risk of the log's box
+    // climbing up over it on a long wrapped line.
+    this.playerStatusLabel = this.add
+      .text(130, playerBarY + 9, '', {
+        fontSize: fontPx(this, 11),
+        color: STATUS_PILL_COLOR,
+        backgroundColor: 'rgba(0,0,0,0.35)',
+        padding: { x: 4, y: 1 },
+      })
+      .setOrigin(0, 0)
+      .setDepth(5);
 
     const openingLine = this.isRival ? `${this.wild.name} blocks the way onward!` : `A wild ${this.wild.name} appeared!`;
     this.logText = this.add.text(20, LOG_Y, '', {
@@ -232,13 +379,12 @@ export class BattleScene extends Phaser.Scene {
     // can't scale with the current opponent's name (an early version read
     // "vs <wild.name>: ...", which overflowed the panel off-canvas against
     // a long name like "Thallium Copper Chloride" or "Rival Impurity
-    // Resonance" at the largest text-size preset). The full explanation of
-    // both mechanics lives in Bohr/Curie's own panels and each move
-    // button's own `!!2x`/`★` tag; this is just a reminder.
-    const hasAnalytic = moveIds.some((id) => MOVES[id].class === 'analytic');
-    const legendText = hasAnalytic ? '!! mismatch =2x, ★ right=2x wrong=½x' : '!! no natural defense (2x)';
+    // Resonance" at the largest text-size preset). Only the mismatch symbol
+    // needs explaining up here now -- the analytic ★2x/½x explanation moved
+    // to its own section header below (DESIGN.md §4), so this line no
+    // longer has a longer conditional variant to worry about.
     const legend = this.add
-      .text(MENU_X + MENU_WIDTH / 2, y, legendText, {
+      .text(MENU_X + MENU_WIDTH / 2, y, '!! no natural defense (2x)', {
         fontSize: fontPx(this, 10),
         color: '#8fa0c9',
         align: 'center',
@@ -269,36 +415,105 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    // Three sections, not one flat stack (DESIGN.md §4's "group moves by
+    // kind" -- physics-gated attacks, Curie's answer-gated analytic moves,
+    // and Kondo's currently-active screening move work differently enough
+    // that a flat list blurred the distinction). A section only renders if
+    // it has at least one usable move, so a player with no analytic moves
+    // bought or no Kondo move active never sees an empty header.
+    interface MoveSection {
+      label: string;
+      ids: string[];
+      legend?: string;
+    }
+    const sections: MoveSection[] = [
+      {
+        label: 'ATTACKS',
+        ids: moveIds.filter((id) => {
+          const cls = MOVES[id].class;
+          return cls !== 'analytic' && cls !== 'screening';
+        }),
+      },
+      {
+        label: 'ANALYTIC',
+        ids: moveIds.filter((id) => MOVES[id].class === 'analytic'),
+        legend: '★ right=2x wrong=½x',
+      },
+      { label: 'SCREENING', ids: moveIds.filter((id) => MOVES[id].class === 'screening') },
+    ].filter((s) => s.ids.length > 0);
+
+    // Section headers are deliberately capped well below the text-size
+    // setting's full range (headerScale, vs. the title/legend above which
+    // still scale with it uncapped) -- up to 3 headers now share the same
+    // fixed 480px field height 9 move rows already had to fit into on their
+    // own, so letting header text grow all the way to the 2x 'Large' preset
+    // the way the title does would eat directly into the row budget below
+    // and reintroduce the exact overflow the row-height floor exists to
+    // prevent. First pass: build (but don't yet position) every section's
+    // header so its *real* rendered height can be measured -- header font
+    // size only depends on headerScale, never on rowH, so there's no
+    // circular dependency the way row height itself has against move count,
+    // but rowH still needs to know the total header space up front to
+    // divide the field's remaining budget fairly across every move row.
+    const headerScale = Math.min(scale, 1.15);
+    const SECTION_GAP = 4; // above every header after the first
+    const HEADER_LEGEND_GAP = 1; // between a header's label and its own legend sub-line
+    const HEADER_ROWS_GAP = 1; // from a header (or its legend) down to its first move row
+    let headerTotalH = 0;
+    const headers = sections.map((section, i) => {
+      if (i > 0) headerTotalH += SECTION_GAP;
+      const label = this.add.text(0, 0, section.label, {
+        fontSize: `${Math.round(10 * headerScale)}px`,
+        color: '#8fa0c9',
+        fontStyle: 'bold',
+      });
+      headerTotalH += label.height;
+      let legendLine: Phaser.GameObjects.Text | undefined;
+      if (section.legend) {
+        legendLine = this.add.text(0, 0, section.legend, {
+          fontSize: `${Math.round(8 * headerScale)}px`,
+          color: '#8fa0c9',
+        });
+        headerTotalH += legendLine.height + HEADER_LEGEND_GAP;
+      }
+      headerTotalH += HEADER_ROWS_GAP;
+      return { label, legendLine, ids: section.ids };
+    });
+
     // Row height is a hard geometric budget -- whatever vertical space is
-    // left in the field below the title/legend, divided across however
-    // many moves are usable -- not something the text-size setting can
-    // just grow past. An 'adaptive'-type crystal (world 10's boss and its
-    // wild echoes, MOVE_COMPATIBILITY's broadest entry) can host every
-    // MoveClass at once (9 as of Curie's analytic moves), and 9 two-line
-    // buttons at the setting's largest preset would never fit no matter the
-    // row height. So each button's font size is derived from its own row's
-    // actual height (fitPx) and clamped against the setting-scaled desired
-    // size (desiredPx) -- growing with the setting wherever the box has
-    // slack (few moves), but never past what the box can physically hold.
+    // left in the field below the title/legend/section headers, divided
+    // across however many moves are usable -- not something the text-size
+    // setting can just grow past. An 'adaptive'-type crystal (world 10's
+    // boss and its wild echoes, MOVE_COMPATIBILITY's broadest entry) can
+    // host every attack MoveClass plus 'analytic' at once (9 moves total),
+    // and 9 two-line buttons at the setting's largest preset would never
+    // fit no matter the row height. So each button's font size is derived
+    // from its own row's actual height (fitPx) and clamped against the
+    // setting-scaled desired size (desiredPx) -- growing with the setting
+    // wherever the box has slack (few moves), but never past what the box
+    // can physically hold.
     //
     // The minimum row height also has to shrink once rowCount can exceed 7,
-    // or a fixed floor stops being a floor and becomes an overflow:
-    // MOVES.length grew 7 -> 9 (Curie's analytic moves) without this once,
-    // and the panel ran ~60-165px past the bottom of the canvas (worse at
-    // larger text-size settings) for any 'adaptive'-form player with every
-    // move unlocked -- reachable in normal play via Bohr transmuting into a
-    // defeated world-10 Echo, not just Superposition Mode. Unchanged (30) for
-    // rowCount <= 7, the original tuning; only the 8-9 case needs a lower
-    // floor, verified against both text-size presets (fontScale 1 and 2)
-    // via the headless-Chromium harness in DEVELOPMENT.md's "Verifying UI
-    // changes" section, not just eyeballed.
-    const rowFloor = rowCount <= 7 ? 30 : 17;
-    const avail = FIELD_H - rowsTop - MENU_BOTTOM_MARGIN;
+    // or a fixed floor stops being a floor and becomes an overflow -- and,
+    // now that every section header eats into the same budget, the <=7
+    // floor itself had to come down too (30 -> 20): a 6-move spinliquid/
+    // defect form (3 sections: Attacks/Analytic/Screening) or a 6-move
+    // supercon form (2 sections) both have well under 7 rows but still lose
+    // ~50-80px of the field's height to header space the original
+    // headerless budget never had to account for, so the old 30px floor
+    // would clamp rowH *up* past what's actually left and overflow the
+    // canvas rather than protect legibility. Checked by hand at fontScale 2
+    // (the tightest preset) for every MaterialType's worst-case section/row
+    // combination -- see STYLE.md's "Battle move menu" section for the
+    // worked numbers; browser verification is still worth doing if the
+    // headless-Chromium harness (DEVELOPMENT.md) becomes available.
+    const rowFloor = rowCount <= 7 ? 20 : 15;
+    const avail = FIELD_H - rowsTop - MENU_BOTTOM_MARGIN - headerTotalH;
     const naturalRowH = Math.floor(avail / rowCount);
     const maxRowH = Math.round(46 * Math.min(scale, 1.35));
     const rowH = Phaser.Math.Clamp(naturalRowH, rowFloor, Math.max(maxRowH, rowFloor));
     const compact = rowH < 40;
-    const height = rowsTop - MENU_TOP + rowCount * rowH + 8;
+    const height = rowsTop - MENU_TOP + headerTotalH + rowCount * rowH + 8;
 
     const bg = this.add
       .rectangle(MENU_X, MENU_TOP, MENU_WIDTH, height, 0x10101c, 0.9)
@@ -311,43 +526,68 @@ export class BattleScene extends Phaser.Scene {
     const desiredPx = Math.round((compact ? 10 : 12) * scale);
     const btnPx = Math.min(desiredPx, fitPx);
 
-    moveIds.forEach((moveId, i) => {
-      const move = MOVES[moveId];
-      const mismatch = !canHost(this.wild.type, move.class);
-      let tag = '';
-      let color = '#ffff88';
-      if (move.class === 'analytic') {
-        tag += ' ★';
-        color = '#ffe066';
+    // Second pass: place every header at its final y (now that rowH is
+    // known), then its own section's move rows right below it -- same
+    // running-`y` shape the measurement pass above used, so the two stay in
+    // lockstep with no drift between measured and actual layout.
+    let rowY = rowsTop;
+    headers.forEach((header, i) => {
+      if (i > 0) rowY += SECTION_GAP;
+      header.label.setPosition(MENU_X + MENU_WIDTH / 2, rowY).setOrigin(0.5, 0);
+      container.add(header.label);
+      rowY += header.label.height;
+      if (header.legendLine) {
+        header.legendLine.setPosition(MENU_X + MENU_WIDTH / 2, rowY).setOrigin(0.5, 0);
+        container.add(header.legendLine);
+        rowY += header.legendLine.height + HEADER_LEGEND_GAP;
       }
-      if (mismatch) {
-        tag += ' !!2x';
-        color = '#ffaa44';
-      }
-      const btn = this.add
-        .text(MENU_X + MENU_WIDTH / 2, rowsTop + i * rowH, `${move.name}\nPwr ${move.power}${tag}`, {
-          fontSize: `${btnPx}px`,
-          color,
-          backgroundColor: '#222244',
-          padding: { x: 8, y: padY },
-          align: 'center',
-        })
-        .setOrigin(0.5, 0)
-        .setInteractive({ useHandCursor: true })
-        .on('pointerdown', () => {
-          if (this.turnLock) return;
-          if (move.class === 'analytic') {
-            this.turnLock = true;
-            this.showAnalyticQuestion(move, (bonusMultiplier) => {
-              this.turnLock = false;
-              this.playerAttack(moveId, bonusMultiplier);
-            });
-          } else {
-            this.playerAttack(moveId);
-          }
-        });
-      container.add(btn);
+      rowY += HEADER_ROWS_GAP;
+      header.ids.forEach((moveId) => {
+        this.addMoveButton(container, moveId, rowY, btnPx, padY);
+        rowY += rowH;
+      });
     });
+  }
+
+  // One move button -- factored out of drawMoveMenu so the per-section loop
+  // above doesn't duplicate the mismatch/tag/click-handler logic three
+  // times over.
+  private addMoveButton(container: Phaser.GameObjects.Container, moveId: string, y: number, btnPx: number, padY: number) {
+    const move = MOVES[moveId];
+    const mismatch = !canHost(this.wild.type, move.class);
+    let tag = '';
+    let color = '#ffff88';
+    if (move.class === 'analytic') {
+      tag += ' ★';
+      color = '#ffe066';
+    }
+    if (mismatch) {
+      tag += ' !!2x';
+      color = '#ffaa44';
+    }
+    const btn = this.add
+      .text(MENU_X + MENU_WIDTH / 2, y, `${move.name}\nPwr ${move.power}${tag}`, {
+        fontSize: `${btnPx}px`,
+        color,
+        backgroundColor: '#222244',
+        padding: { x: 8, y: padY },
+        align: 'center',
+      })
+      .setOrigin(0.5, 0)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => {
+        if (this.turnLock) return;
+        if (move.class === 'analytic') {
+          this.turnLock = true;
+          this.showAnalyticQuestion(move, (bonusMultiplier) => {
+            this.turnLock = false;
+            this.playerAttack(moveId, bonusMultiplier);
+          });
+        } else {
+          this.playerAttack(moveId);
+        }
+      });
+    container.add(btn);
   }
 
   // The question panel an analytic move (Curie's Skyfall Beam/Ground
@@ -645,12 +885,18 @@ export class BattleScene extends Phaser.Scene {
   // the original player-first behavior. `bonusMultiplier` only ever applies
   // to the player's own hit with this specific moveId (an analytic move
   // already answered via showAnalyticQuestion) -- the opponent's follow-up
-  // hit in the same exchange always resolves at the default 1.
+  // hit in the same exchange always resolves at the default 1. A Localized
+  // side's own effective Velocity is dragged down for the comparison too
+  // (Kondo's Heavy Fermion Drag, §5) -- symmetric, same as every other
+  // resolveHit-adjacent term, even though only the player can currently
+  // inflict it.
   private playerAttack(moveId: string, bonusMultiplier = 1) {
     if (this.turnLock) return;
     this.turnLock = true;
 
-    const playerFirst = this.playerStats.velocity >= this.enemyStats.velocity;
+    const playerFirst =
+      this.playerStats.velocity * this.statusVelocityMultiplier(true) >=
+      this.enemyStats.velocity * this.statusVelocityMultiplier(false);
     const opponentMoveId = () => Phaser.Utils.Array.GetRandom(this.wild.moves);
 
     const releaseLock = () => {
@@ -700,6 +946,7 @@ export class BattleScene extends Phaser.Scene {
     const attackerStats = isPlayer ? this.playerStats : this.enemyStats;
     const defenderStats = isPlayer ? this.enemyStats : this.playerStats;
     const defenderType = isPlayer ? this.wild.type : this.playerMaterial.type;
+    const defenderIsPlayer = !isPlayer;
     // A defender whose own physics can't host this quasiparticle at all (no
     // magnetic order to carry a magnon pulse, no gauge structure for an
     // anyon braid, ...) has no natural way to dampen it -- it lands at
@@ -708,17 +955,54 @@ export class BattleScene extends Phaser.Scene {
     // top of it. 'analytic' is on every type's MOVE_COMPATIBILITY list, so
     // this can never fire for Curie's moves -- their own multiplier is
     // bonusMultiplier, decided by the question, not by the defender's type.
+    // Laughlin's Edge Current (§5) softens this to a smaller multiplier for
+    // whichever side has it active as the defender -- topological edge
+    // states partially shrugging off a hit that would otherwise land
+    // unmitigated.
     const mismatch = !canHost(defenderType, move.class);
+    const mismatchMult = mismatch
+      ? this.activePassives(defenderIsPlayer).has('edgeCurrent')
+        ? EDGE_CURRENT_MISMATCH_MULT
+        : 2
+      : 1;
 
+    // Bohr's Correlated Response (§5): a guaranteed crit set by the
+    // defender's own previous turn (they were crit against while it was
+    // active) is consumed here, before the ordinary roll, rather than after
+    // -- a natural crit shouldn't burn a guaranteed one that would have
+    // landed anyway.
+    const guaranteed = this.guaranteedCritNext[isPlayer ? 'player' : 'opponent'];
+    if (guaranteed) this.guaranteedCritNext[isPlayer ? 'player' : 'opponent'] = false;
     const critChance = Phaser.Math.Clamp((attackerStats.quantumness - BASE_STAT) * 0.02, 0, 0.5);
-    const crit = Math.random() < critChance;
+    const crit = guaranteed || Math.random() < critChance;
+    // Landing a crit against a side with Correlated Response active arms
+    // *their* own next move to guarantee a crit in return.
+    if (crit && this.activePassives(defenderIsPlayer).has('correlatedResponse')) {
+      this.guaranteedCritNext[defenderIsPlayer ? 'player' : 'opponent'] = true;
+    }
+
     const attackMult = isPlayer ? this.attackMultiplier : 1;
-    const defenseFactor = BASE_STAT / defenderStats.correlation;
+    // Kondo's status effects (§5): a Screened attacker's own outgoing
+    // damage is multiplied down; a Decohered defender's own Correlation is
+    // multiplied down (raising the damage it takes via the same
+    // BASE_STAT/correlation defense term every hit already uses). Both read
+    // off whichever side is currently afflicted, symmetric like every other
+    // resolveHit term, not hardcoded to "opponent only".
+    const screenedMult = this.statusDamageMultiplier(isPlayer);
+    const defenseFactor = BASE_STAT / (defenderStats.correlation * this.statusCorrelationMultiplier(!isPlayer));
+    // Laughlin's Fractional Guard (§5): incoming damage to whichever side
+    // has it active is multiplied down for the whole battle -- a hit never
+    // lands as a whole electron's worth against a fractionalized state.
+    const fractionalGuardMult = this.activePassives(defenderIsPlayer).has('fractionalGuard')
+      ? FRACTIONAL_GUARD_DAMAGE_MULT
+      : 1;
     const dmg = Math.round(
       move.power *
-        (mismatch ? 2 : 1) *
+        mismatchMult *
         attackMult *
         bonusMultiplier *
+        screenedMult *
+        fractionalGuardMult *
         defenseFactor *
         (crit ? 1.5 : 1) *
         Phaser.Math.FloatBetween(0.85, 1.15)
@@ -728,29 +1012,50 @@ export class BattleScene extends Phaser.Scene {
     const to = isPlayer ? this.opponentPos : PLAYER_POS;
     const targetCrystal = isPlayer ? this.opponentCrystal : this.playerCrystal;
     const shapeOverride = ANALYTIC_SHAPES[move.id];
-    playAttackEffect(
-      this,
-      move.class,
-      from,
-      to,
-      () => this.impactPunch(targetCrystal),
-      (mismatch ? 2 : 1) * bonusMultiplier,
-      shapeOverride
-    );
+    playAttackEffect(this, move.class, from, to, () => this.impactPunch(targetCrystal), mismatchMult * bonusMultiplier, shapeOverride);
 
-    if (isPlayer) {
-      this.opponentHp = Math.max(0, this.opponentHp - dmg);
-    } else {
-      this.playerHp = Math.max(0, this.playerHp - dmg);
-      this.game.registry.set('playerHp', this.playerHp);
-      persistFromRegistry(this.game.registry);
-    }
-    this.updateBars();
+    this.applyDamage(defenderIsPlayer, dmg);
 
     const mismatchText = mismatch ? ' No natural defense against this!' : '';
     const critText = crit ? ' A coherent critical hit!' : '';
     const who = isPlayer ? 'You' : `Wild ${this.wild.name}`;
-    this.setLogText(`${who} used ${move.name}! (${dmg} dmg)${mismatchText}${critText}`);
+    // Kondo's move landing applies a fresh status to the defender (replacing
+    // whatever was already there); an ordinary hit instead ticks down
+    // whatever status the defender already carries, one tick per round since
+    // each side is the defender of exactly one resolveHit call per round --
+    // see applyOrTickStatus.
+    const statusText = this.applyOrTickStatus(move, defenderIsPlayer);
+
+    // Laughlin's Anyon Echo (§5): a crit from a side with it active triggers
+    // a bonus follow-up tick against the same defender, computed after the
+    // status clause above so it still reads as part of the same hit's log
+    // line -- fixed order (mismatch, crit, status, echo, heal), same "stack
+    // a clause onto the existing line" pattern every other term here uses.
+    let echoText = '';
+    if (crit && this.activePassives(isPlayer).has('anyonEcho')) {
+      const echoDmg = Math.round(dmg * ANYON_ECHO_FRACTION);
+      if (echoDmg > 0) {
+        this.applyDamage(defenderIsPlayer, echoDmg);
+        this.impactPunch(targetCrystal);
+        echoText = ` ${PASSIVES.anyonEcho.name} strikes again for ${echoDmg}!`;
+      }
+    }
+
+    // Bohr's Shared State (§5): a share of the damage the attacker just
+    // dealt (the primary hit only, not Anyon Echo's own bonus tick above)
+    // comes back to them as healing, capped at their own max HP.
+    let healText = '';
+    if (this.activePassives(isPlayer).has('sharedState')) {
+      const healAmount = Math.round(dmg * SHARED_STATE_HEAL_FRACTION);
+      const maxHp = isPlayer ? this.playerMaterial.maxHp : this.wild.maxHp;
+      const currentHp = isPlayer ? this.playerHp : this.opponentHp;
+      if (healAmount > 0 && currentHp < maxHp) {
+        this.applyHeal(isPlayer, healAmount, maxHp);
+        healText = ` ${PASSIVES.sharedState.name} heals ${who} for ${healAmount}!`;
+      }
+    }
+
+    this.setLogText(`${who} used ${move.name}! (${dmg} dmg)${mismatchText}${critText}${statusText}${echoText}${healText}`);
 
     if (this.opponentHp <= 0) {
       this.endBattle(true);
@@ -761,6 +1066,104 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     onDone();
+  }
+
+  // Which of Laughlin's/Bohr's passives (data/passives.ts) are currently
+  // active for a given side -- read once per battle in create(), see that
+  // field's own comment. Generic over `isPlayer` the same way
+  // getStatus/statusDamageMultiplier below are, even though only the player
+  // can currently have one.
+  private activePassives(isPlayer: boolean): Set<string> {
+    return isPlayer ? this.playerActivePassives : this.opponentActivePassives;
+  }
+
+  // Applies damage to whichever side is the defender, mirroring the
+  // registry-write/persist rule the original inline branch used: only the
+  // player's HP needs to survive a reload, so only that branch touches the
+  // registry. Shared by resolveHit's primary hit and Anyon Echo's bonus tick
+  // so both go through the exact same bookkeeping.
+  private applyDamage(toPlayer: boolean, amount: number) {
+    if (toPlayer) {
+      this.playerHp = Math.max(0, this.playerHp - amount);
+      this.game.registry.set('playerHp', this.playerHp);
+      persistFromRegistry(this.game.registry);
+    } else {
+      this.opponentHp = Math.max(0, this.opponentHp - amount);
+    }
+    this.updateBars();
+  }
+
+  // Bohr's Shared State (§5) -- the healing counterpart to applyDamage
+  // above, capped at `maxHp` rather than clamped at 0.
+  private applyHeal(toPlayer: boolean, amount: number, maxHp: number) {
+    if (toPlayer) {
+      this.playerHp = Math.min(maxHp, this.playerHp + amount);
+      this.game.registry.set('playerHp', this.playerHp);
+      persistFromRegistry(this.game.registry);
+    } else {
+      this.opponentHp = Math.min(maxHp, this.opponentHp + amount);
+    }
+    this.updateBars();
+  }
+
+  private getStatus(isPlayer: boolean): ActiveStatus | null {
+    return isPlayer ? this.playerStatus : this.opponentStatus;
+  }
+
+  private setStatus(isPlayer: boolean, status: ActiveStatus | null) {
+    if (isPlayer) this.playerStatus = status;
+    else this.opponentStatus = status;
+    this.renderStatusLabel(isPlayer);
+  }
+
+  private statusVelocityMultiplier(isPlayer: boolean): number {
+    return this.getStatus(isPlayer)?.kind === 'localized' ? LOCALIZED_VELOCITY_MULT : 1;
+  }
+
+  private statusCorrelationMultiplier(isPlayer: boolean): number {
+    return this.getStatus(isPlayer)?.kind === 'decohered' ? DECOHERED_CORRELATION_MULT : 1;
+  }
+
+  private statusDamageMultiplier(isPlayer: boolean): number {
+    return this.getStatus(isPlayer)?.kind === 'screened' ? SCREENED_DAMAGE_MULT : 1;
+  }
+
+  // Called once per resolveHit, after that hit's own damage is already
+  // computed (so a fresh application here never retroactively affects the
+  // hit that caused it). If the move landing is one of Kondo's three
+  // (KONDO_MOVE_STATUS), it replaces whatever status was already on the
+  // defender outright -- one status per side, never stacked. Otherwise it
+  // ticks down whatever status the defender already carries by one (each
+  // side is the defender of exactly one resolveHit call per round, so this
+  // fires once per round per side) and clears/announces it once it expires.
+  // Returns the log clause to append (empty string if nothing to report),
+  // same "stack a clause onto the existing line" pattern as
+  // mismatchText/critText above.
+  private applyOrTickStatus(move: Move, defenderIsPlayer: boolean): string {
+    const defenderName = defenderIsPlayer ? this.playerMaterial.name : this.wild.name;
+    const kondoStatus = KONDO_MOVE_STATUS[move.id];
+    if (kondoStatus) {
+      this.setStatus(defenderIsPlayer, { kind: kondoStatus, turnsLeft: STATUS_DURATION });
+      return ' ' + STATUS_INFO[kondoStatus].applyText(defenderName);
+    }
+    const status = this.getStatus(defenderIsPlayer);
+    if (!status) return '';
+    status.turnsLeft -= 1;
+    if (status.turnsLeft <= 0) {
+      this.setStatus(defenderIsPlayer, null);
+      return ' ' + STATUS_INFO[status.kind].expireText(defenderName);
+    }
+    this.renderStatusLabel(defenderIsPlayer);
+    return '';
+  }
+
+  // Updates (or clears) the small status pill under that side's HP bar --
+  // called from setStatus (apply/expire) and from applyOrTickStatus's plain
+  // tick-down path (turnsLeft changed but the status is still active).
+  private renderStatusLabel(isPlayer: boolean) {
+    const label = isPlayer ? this.playerStatusLabel : this.opponentStatusLabel;
+    const status = this.getStatus(isPlayer);
+    label.setText(status ? `${STATUS_INFO[status.kind].label} (${status.turnsLeft})` : '');
   }
 
   // Quick punchy scale-squash on the target crystal when a projectile
@@ -792,7 +1195,7 @@ export class BattleScene extends Phaser.Scene {
     this.game.registry.set('playerHp', this.playerMaterial.maxHp);
 
     // Beating the world's gating rival crystal is what actually unlocks
-    // the mentor's shop/panel and the way to the next world -- see
+    // the guardian's shop/panel and the way to the next world -- see
     // OverworldScene.showRivalEncounter/maybeAutoOpenGoalDialogue.
     if (won && this.isRival) {
       const rivalDefeated = (this.game.registry.get('rivalDefeated') as Record<number, boolean>) ?? {};
@@ -801,7 +1204,7 @@ export class BattleScene extends Phaser.Scene {
 
     // Rivals aren't real compounds (same rule as OverworldScene's
     // discoveredMaterials), so only an ordinary wild win is ever offered to
-    // Bohr's transmutation panel.
+    // Dresselhaus's transmutation panel.
     if (won && !this.isRival) {
       const defeated = (this.game.registry.get('defeatedMaterials') as DiscoveredMaterial[]) ?? [];
       if (!defeated.some((m) => m.name === this.wild.name)) {

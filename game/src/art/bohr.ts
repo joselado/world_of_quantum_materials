@@ -3,9 +3,8 @@ import { shade } from './colors';
 
 // Bohr's own avatar -- a robed figure crowned by a small Bohr-model atom
 // (a nucleus with electrons on tilted elliptical shells) instead of a head,
-// fitting his gift: since every element/compound is just a different
-// arrangement of the same shells, he can let the player transmute into any
-// crystal they've already understood well enough to defeat. Own file/
+// fitting his own historical role: defending quantum mechanics' completeness
+// against the EPR paradox, world 7's own topic (entanglement). Own file/
 // builder per the convention set by art/mentor.ts's makeNoetherAvatar.
 //
 // Drawn in local space centered on the chest/torso (0,0), same convention
@@ -39,7 +38,7 @@ export function makeBohrAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameObjec
   scene.tweens.add({ targets: sway, angle: { from: -2.5, to: 2.5 }, duration: 2500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
   // A tapered robe with no visible feet, same "floats" silhouette as the
-  // other mentors.
+  // other guardians.
   const robe = scene.add.graphics();
   robe.fillStyle(shade(robeColor, 12), 1);
   robe.fillPoints(

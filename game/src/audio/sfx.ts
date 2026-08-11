@@ -217,9 +217,9 @@ export function playImpactSfx(power = 1) {
 }
 
 // A warm layered bell (three detuned sines decaying at slightly different
-// rates) for a mentor's shop/panel opening -- a small "divine" flourish to
+// rates) for a guardian's shop/panel opening -- a small "divine" flourish to
 // go with their floating, god-like avatars (Noether, Bloch, Bohr, ...).
-export function playMentorChime() {
+export function playGuardianChime() {
   const { ctx, dest } = music.getSfxBus();
   const t = ctx.currentTime;
   const partials = [660, 990, 1320];

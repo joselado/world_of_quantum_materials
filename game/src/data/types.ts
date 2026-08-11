@@ -25,7 +25,16 @@ export type MoveClass =
   // comment) -- these are a technique the player learned, not a quasiparticle
   // a crystal's own physics has to host, so they're usable/purchasable from
   // any form.
-  | 'analytic';
+  | 'analytic'
+  // Kondo's three moves (§5, World 8): Screening Cloud, Heavy Fermion Drag,
+  // Kondo Breakdown -- each deterministically inflicts one of three 3-turn
+  // status effects on the defender (Screened/Localized/Decohered,
+  // BattleScene's resolveHit) rather than dealing much raw damage itself.
+  // Unlike 'analytic', this class *is* gated by MOVE_COMPATIBILITY (an
+  // ordinary quasiparticle a crystal's own physics has to host, not a
+  // player-learned technique) -- see materials.ts's MOVE_COMPATIBILITY for
+  // which types can carry it.
+  | 'screening';
 
 export type MaterialType =
   | 'trivial'

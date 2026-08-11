@@ -47,6 +47,26 @@ export const MOVES: Record<string, Move> = {
   // magnons rather than replacing them (MOVE_COMPATIBILITY still grants
   // multiferroics 'magnetic' too).
   electromagnonPulse: { id: 'electromagnonPulse', name: 'Electromagnon Pulse', class: 'magnetoelectric', power: 9 },
+  // Kondo's three moves (§5, World 8) -- power sits at the bottom of the
+  // ordering, on par with Electron Pulse, since their real payoff is the
+  // 3-turn status effect each deterministically inflicts on the defender
+  // (BattleScene.resolveHit), not raw power, the same "low power, real
+  // payoff elsewhere" shape Curie's analytic moves already use for a
+  // different payoff. Never listed in any wild/rival material's `moves`
+  // array -- only the player can currently learn them, and only one of the
+  // three is ever active in battle at a time (registry/save
+  // `kondoActiveMove`, switched only by talking to Kondo again --
+  // OverworldScene.showKondoPanel/getBattleMoves). Screening Cloud screens
+  // the defender's own moment, weakening its outgoing damage (Screened);
+  // Heavy Fermion Drag mirrors how a Kondo lattice's conduction electrons
+  // hybridize into heavy, slow quasiparticles, dragging the defender's
+  // effective Velocity down (Localized); Kondo Breakdown mirrors the real
+  // heavy-fermion phenomenon where the screening cloud itself collapses,
+  // stripping the defender's own protection and raising the damage it takes
+  // (Decohered).
+  screeningCloud: { id: 'screeningCloud', name: 'Screening Cloud', class: 'screening', power: 7 },
+  heavyFermionDrag: { id: 'heavyFermionDrag', name: 'Heavy Fermion Drag', class: 'screening', power: 7 },
+  kondoBreakdown: { id: 'kondoBreakdown', name: 'Kondo Breakdown', class: 'screening', power: 7 },
 };
 
 // Curie is the sole seller of analytic moves (OverworldScene.showCuriePanel,
@@ -56,16 +76,27 @@ export const ANALYTIC_MOVE_IDS = Object.values(MOVES)
   .filter((m) => m.class === 'analytic')
   .map((m) => m.id);
 
+// Kondo is the sole seller of the three screening-class moves
+// (OverworldScene.showKondoPanel, mirroring Curie's showCuriePanel with a
+// 3-entry list instead of 2) -- kept out of SHOP_MOVE_IDS so Noether never
+// also offers them. Unlike ANALYTIC_MOVE_IDS, buying one of these doesn't
+// make it usable on its own -- see getBattleMoves below for the
+// only-one-active-at-a-time special case (registry/save `kondoActiveMove`).
+export const KONDO_MOVE_IDS = Object.values(MOVES)
+  .filter((m) => m.class === 'screening')
+  .map((m) => m.id);
+
 // Every move Noether can eventually teach, priced by raw power
 // (`OverworldScene.shopCost`) -- everything except the player's starting
-// Phonon Beam and Curie's analytic moves (ANALYTIC_MOVE_IDS, sold only by
-// her). What actually shows up in her shop (and what actually appears as a
-// battle button) is this list filtered down to
-// `compatibleMoves(currentPlayerForm)`, so a trivial-type player is only
-// ever offered Electron Pulse until they transmute into a form whose
-// physics supports the rest (see MOVE_COMPATIBILITY/compatibleMoves).
+// Phonon Beam, Curie's analytic moves (ANALYTIC_MOVE_IDS, sold only by her),
+// and Kondo's screening moves (KONDO_MOVE_IDS, sold only by him). What
+// actually shows up in her shop (and what actually appears as a battle
+// button) is this list filtered down to `compatibleMoves(currentPlayerForm)`,
+// so a trivial-type player is only ever offered Electron Pulse until they
+// transmute into a form whose physics supports the rest (see
+// MOVE_COMPATIBILITY/compatibleMoves).
 export const SHOP_MOVE_IDS = Object.keys(MOVES).filter(
-  (id) => id !== 'thermalFluctuation' && !ANALYTIC_MOVE_IDS.includes(id)
+  (id) => id !== 'thermalFluctuation' && !ANALYTIC_MOVE_IDS.includes(id) && !KONDO_MOVE_IDS.includes(id)
 );
 
 // Which quasiparticle classes a given main type can physically host --
@@ -91,8 +122,20 @@ const MOVE_COMPATIBILITY: Record<MaterialType, MoveClass[]> = {
   supercon: ['localization', 'decoherence', 'thermal', 'trivial', 'analytic'],
   classicalmag: ['magnetic', 'thermal', 'analytic'],
   tensornet: ['entanglement', 'thermal', 'localization', 'analytic'],
-  spinliquid: ['entanglement', 'thermal', 'localization', 'analytic'],
-  defect: ['localization', 'decoherence', 'thermal', 'analytic'],
+  // Kondo's screening moves ('screening') need an actual local-moment/
+  // screening excitation to carry them -- granted here and to 'defect'
+  // below (a local moment is literally what those two types' own physics
+  // is), deliberately left off every other type (e.g. 'magnet''s Mott
+  // insulators have no itinerant conduction sea to screen a moment with,
+  // and 'classicalmag''s itinerant ferromagnets are already long-range
+  // ordered rather than hosting a dilute, screenable local moment).
+  spinliquid: ['entanglement', 'thermal', 'localization', 'analytic', 'screening'],
+  defect: ['localization', 'decoherence', 'thermal', 'analytic', 'screening'],
+  // Deliberately missing 'screening' (and 'magnetoelectric', added earlier
+  // for the same reason) -- an 'adaptive' echo has no local moment of its
+  // own to screen either, so it mismatches against Kondo's moves like any
+  // other non-spinliquid/defect type rather than being special-cased to
+  // host literally every class that exists.
   adaptive: ['trivial', 'magnetic', 'thermal', 'localization', 'gauge', 'entanglement', 'decoherence', 'analytic'],
   multiferroic: ['magnetoelectric', 'magnetic', 'thermal', 'analytic'],
   // Shares 'gauge' with topological/qhe rather than getting its own class --
@@ -138,7 +181,7 @@ export const DEFAULT_STATS: Stats = { quantumness: BASE_STAT, velocity: BASE_STA
 // the previous flat 2/2/2 (a total of 6) -- a deliberate ~33% difficulty
 // increase, not a neutral redistribution of the old total, sized so staying
 // competitive into the next world costs roughly 8 qumatoken-funded stat
-// purchases (statUpgradeCost), matching the pace mentors sell stat upgrades
+// purchases (statUpgradeCost), matching the pace guardians sell stat upgrades
 // at. Correlation gets the smaller share since its effect (defense =
 // BASE_STAT / correlation) is already nonlinear, so each point there goes
 // further than a flat point of quantumness/velocity.
@@ -171,8 +214,8 @@ export function getPlayerStats(registry: RegistryLike): Stats {
   return (registry.get('playerStats') as Stats) ?? DEFAULT_STATS;
 }
 
-// The player's current crystal form -- Silicon by default, or whatever Bohr
-// transmuted them into (§5, `OverworldScene.transmuteInto`). Every scene
+// The player's current crystal form -- Silicon by default, or whatever
+// Dresselhaus transmuted them into (§5, `OverworldScene.transmuteInto`). Every scene
 // that used to read PLAYER_MATERIAL directly for the player's own look/
 // stats/moves should read this instead, since transmutation changes all of
 // them together.
@@ -186,10 +229,24 @@ export function getPlayerMaterial(registry: RegistryLike): Material {
 // (compatibleMoves). Transmuting into a new form doesn't erase anything
 // learned -- it just changes which of those learned moves are currently
 // usable, so switching back later restores the rest for free.
+//
+// One narrow special case: Kondo's three screening-class moves
+// (KONDO_MOVE_IDS) can all be *learned* independently, but only one is ever
+// *usable* at a time -- the registry/save `kondoActiveMove` id, switched
+// only by talking to Kondo again (OverworldScene.showKondoPanel), not
+// per-turn like every other learned move (Kondo screening resolves one
+// scattering channel at a time, not all three at once). A bought-but-
+// inactive Kondo move stays in `unlockedMoves` (still "learned") -- it just
+// never passes this filter until it's made active.
 export function getBattleMoves(registry: RegistryLike): string[] {
   const unlocked = (registry.get('unlockedMoves') as string[]) ?? [...PLAYER_MATERIAL.moves];
   const allowed = new Set(compatibleMoves(getPlayerMaterial(registry)));
-  return unlocked.filter((id) => allowed.has(id));
+  const activeKondoMove = (registry.get('kondoActiveMove') as string | null) ?? null;
+  return unlocked.filter((id) => {
+    if (!allowed.has(id)) return false;
+    if (KONDO_MOVE_IDS.includes(id) && id !== activeKondoMove) return false;
+    return true;
+  });
 }
 
 // The player is a crystal too -- just one entry out of this same roster, not a
@@ -365,7 +422,7 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
   ],
 };
 
-// The single "beat this to unlock the mentor and the way onward" gate per
+// The single "beat this to unlock the guardian and the way onward" gate per
 // world (DESIGN.md's world table, "Gate to next world" column) -- distinct
 // from WORLD_CRYSTALS' ordinary wild encounters, which never block
 // progress. Worlds 1-2 are built so far (OverworldScene.showRivalEncounter
@@ -394,7 +451,7 @@ export function getRival(world: number): Material | undefined {
   return WORLD_RIVALS[world];
 }
 
-// Looked up by name for Bohr's transmutation panel (§5) -- searches every
+// Looked up by name for Dresselhaus's transmutation panel (§5) -- searches every
 // world's wild pool, not WORLD_RIVALS, since rival crystals aren't real
 // compounds (matches OverworldScene.recordDiscovery's own rule) and so are
 // never offered as a form to become.
@@ -409,7 +466,7 @@ export function findMaterialByName(name: string): Material | undefined {
 // Every real compound across every world's wild pool, deduped by name (a
 // few names repeat across worlds, e.g. Graphene and Herbertsmithite) --
 // Superposition Mode's "every transmutation/hybrid available from the start"
-// behavior (Bohr/Majorana's panels) draws candidates from this instead of
+// behavior (Dresselhaus/Majorana/Anderson's panels) draws candidates from this instead of
 // the player's actual `defeatedMaterials` history.
 export function allCrystals(): Material[] {
   const seen = new Set<string>();

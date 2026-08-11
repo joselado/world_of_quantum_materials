@@ -1,12 +1,12 @@
 import Phaser from 'phaser';
 import { shade } from './colors';
 
-// Curie's avatar -- world 6's mentor (classical magnetism/magnons). Own
-// file, same convention as every other mentor (glow -> sway -> cloak ->
+// Curie's avatar -- world 6's guardian (classical magnetism/magnons). Own
+// file, same convention as every other guardian (glow -> sway -> cloak ->
 // head-motif -> orbit ring). Head motif: a faint glow ring pulsing around a
 // small crystal shard in place of a face -- Curie temperature/
 // susceptibility made visual, a warm yellow-green rather than any other
-// mentor's palette.
+// guardian's palette.
 export function makeCurieAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameObjects.Container {
   const S = 30 * scale;
   const yellowGreen = 0xd9e86a;

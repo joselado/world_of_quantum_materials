@@ -14,7 +14,7 @@ import { makeMajoranaAvatar } from '../art/majorana';
 import { makeCurieAvatar } from '../art/curie';
 import { makeKondoAvatar } from '../art/kondo';
 import { makeAndersonAvatar } from '../art/anderson';
-import { playMentorChime } from '../audio/sfx';
+import { playGuardianChime } from '../audio/sfx';
 import { project, fogColor, HORIZON_Y, CANVAS_W, CANVAS_H, ProjectedPoint } from '../art/perspective';
 import {
   PLAYER_MATERIAL,
@@ -24,6 +24,7 @@ import {
   MOVES,
   SHOP_MOVE_IDS,
   ANALYTIC_MOVE_IDS,
+  KONDO_MOVE_IDS,
   compatibleMoves,
   getPlayerMaterial,
   getPlayerStats,
@@ -37,6 +38,7 @@ import {
   enemyStatsForWorld,
   DEFAULT_STATS,
 } from '../data/materials';
+import { PASSIVES, LAUGHLIN_PASSIVE_IDS, BOHR_PASSIVE_IDS } from '../data/passives';
 import { tokenColorForValue } from '../data/tokens';
 import { getMaterialQuestion } from '../data/quiz';
 import { encounterGreeting } from '../data/greetings';
@@ -121,29 +123,26 @@ interface WorldSprite {
   seed: number;
 }
 
-// One entry per world with a mentor -- replaces the old per-mentor
+// One entry per world with a guardian -- replaces the old per-guardian
 // `spawnXSprite`/`this.world === N` branches with a single data-driven
-// dispatch (spawnMentorSprite/openMentor), the same "reusable rather than
+// dispatch (spawnGuardianSprite/openGuardian), the same "reusable rather than
 // per-world bespoke" approach the map generator and biome table already
-// use. Five mentors have bespoke panels and set `open` explicitly: Noether
-// (shop), Bloch (teleport hub), Dresselhaus (transmutation), Majorana (hybrid
-// materials), Curie (analytic moves), Anderson (impurity doping). Laughlin,
-// Bohr, and Kondo leave `open` unset and fall through to the shared showMentorLore panel
-// instead (see DESIGN.md §5 -- their own mechanics are still an open design
-// question). Leaving `open` unset rather than hand-writing
-// `(s) => s.showMentorLore(WORLD_MENTORS[N]!)` per lore entry means there's
-// no self-referencing world-number literal to forget updating if a world
-// ever gets renumbered.
-interface MentorDef {
+// use. Every guardian sets `open` explicitly: Noether (shop), Bloch
+// (teleport hub), Dresselhaus (transmutation), Laughlin (passive abilities),
+// Majorana (hybrid materials), Curie (analytic moves), Bohr (passive
+// abilities), Kondo (screening moves), Anderson (impurity doping). A future
+// guardian added with no mechanic yet can still leave `open` unset and fall
+// through to the shared showGuardianLore panel below.
+interface GuardianDef {
   id: string;
   name: string;
   labelColor: string;
   strokeColor: number;
   quote: string;
   avatar: (scene: Phaser.Scene, scale?: number) => Phaser.GameObjects.Container;
-  // Every mentor now stands mid-corridor ('middle', see DESIGN.md §5) so the
+  // Every guardian now stands mid-corridor ('middle', see DESIGN.md §5) so the
   // goal tile is free for that world's boss avatar (spawnBossSprite) --
-  // 'start'/'goal' stay valid tile choices for a future mentor, but nothing
+  // 'start'/'goal' stay valid tile choices for a future guardian, but nothing
   // currently uses them.
   tile: 'goal' | 'start' | 'middle';
   open?: (scene: OverworldScene) => void;
@@ -172,12 +171,12 @@ export class OverworldScene extends Phaser.Scene {
   private crystalSprites: (WorldSprite & { material: Material })[] = [];
   private tokenSprites: WorldSprite[] = [];
   // 0 or 1 entries -- reuses the same WorldSprite projection/wander/bob
-  // machinery as crystals and tokens (spawnMentorSprite) so a mentor is a
+  // machinery as crystals and tokens (spawnGuardianSprite) so a guardian is a
   // visible, wandering landmark standing on the map rather than only
   // appearing once their dialogue triggers.
-  private mentorSprites: WorldSprite[] = [];
+  private guardianSprites: WorldSprite[] = [];
   // 0 or 1 entries -- this world's rival/boss (if built), a purely visual
-  // landmark standing at the goal tile now that mentors have moved to the
+  // landmark standing at the goal tile now that guardians have moved to the
   // corridor's middle (see spawnBossSprite/art/boss.ts's makeBossCrystal).
   private bossSprites: WorldSprite[] = [];
   private worldGfx!: Phaser.GameObjects.Graphics;
@@ -222,11 +221,11 @@ export class OverworldScene extends Phaser.Scene {
   // (up to 9 destinations at once). Same reset rules.
   private blochPage = 0;
 
-  // One entry per world with a mentor (see MentorDef above). A static field
+  // One entry per world with a guardian (see GuardianDef above). A static field
   // initializer is still lexically inside the class body, so `s.showX()`
   // below can call other private methods even though `s` is just a
   // same-typed parameter, not `this`.
-  private static readonly WORLD_MENTORS: Partial<Record<number, MentorDef>> = {
+  private static readonly WORLD_GUARDIANS: Partial<Record<number, GuardianDef>> = {
     1: {
       id: 'noether',
       name: 'Noether',
@@ -266,6 +265,7 @@ export class OverworldScene extends Phaser.Scene {
         'Take an electron liquid in a strong enough field and it condenses into something new -- excite it, and the charge that peels off is a fraction of an electron, not a whole one.',
       avatar: makeLaughlinAvatar,
       tile: 'middle',
+      open: (s) => s.showLaughlinPanel(),
     },
     5: {
       id: 'majorana',
@@ -295,6 +295,7 @@ export class OverworldScene extends Phaser.Scene {
       quote: 'Measure one half of an entangled pair and the other answers instantly -- not by any signal crossing the distance, but because the two were never separately real to begin with.',
       avatar: makeBohrAvatar,
       tile: 'middle',
+      open: (s) => s.showBohrPanel(),
     },
     8: {
       id: 'kondo',
@@ -304,6 +305,7 @@ export class OverworldScene extends Phaser.Scene {
       quote: 'A single stray spin, screened by a sea of conduction electrons until it all but disappears at low temperature.',
       avatar: makeKondoAvatar,
       tile: 'middle',
+      open: (s) => s.showKondoPanel(),
     },
     9: {
       id: 'anderson',
@@ -315,7 +317,7 @@ export class OverworldScene extends Phaser.Scene {
       tile: 'middle',
       open: (s) => s.showAndersonPanel(),
     },
-    // 10: none -- the finale is the final boss only, no mentor waiting there.
+    // 10: none -- the finale is the final boss only, no guardian waiting there.
   };
 
   constructor() {
@@ -362,7 +364,7 @@ export class OverworldScene extends Phaser.Scene {
     this.worldGfx = this.add.graphics();
     this.spawnCrystalSprites();
     this.spawnTokenSprites();
-    this.spawnMentorSprite();
+    this.spawnGuardianSprite();
     this.spawnBossSprite();
     music.play(`overworld:${this.world}`);
 
@@ -448,7 +450,12 @@ export class OverworldScene extends Phaser.Scene {
       state.set('defeatedMaterials', []);
       state.set('playerForm', null);
       state.set('hybridMaterials', []);
-      state.set('metMentors', []);
+      state.set('metGuardians', []);
+      state.set('kondoActiveMove', null);
+      state.set('laughlinPassivesUnlocked', []);
+      state.set('laughlinActivePassive', null);
+      state.set('bohrPassivesUnlocked', []);
+      state.set('bohrActivePassive', null);
     }
 
     this.maybeAutoOpenGoalDialogue();
@@ -489,13 +496,36 @@ export class OverworldScene extends Phaser.Scene {
     const visited = this.getVisitedWorlds();
     const merged = Array.from(new Set([...visited, ...BUILT_WORLDS]));
     this.game.registry.set('visitedWorlds', merged);
+    // Granting every move (above) would otherwise leave Kondo's three stuck
+    // invisible in battle -- getBattleMoves only ever surfaces whichever one
+    // is `kondoActiveMove`, and that field isn't touched by the "learn
+    // everything" grant above. Only seed it if nothing's active yet, so a
+    // player who already picked one via showKondoPanel keeps that choice
+    // across re-levels.
+    if (!this.game.registry.get('kondoActiveMove')) {
+      this.game.registry.set('kondoActiveMove', KONDO_MOVE_IDS[0]);
+    }
+    // Laughlin/Bohr's passives (data/passives.ts): unlock every passive
+    // outright (mirrors the unconditional unlockedMoves grant above -- there's
+    // no per-form gate to respect the way ordinary moves have), but only seed
+    // an active pick if nothing's chosen yet, same reasoning as
+    // kondoActiveMove just above -- a deliberate pick made via
+    // showLaughlinPanel/showBohrPanel should survive every later re-level.
+    this.game.registry.set('laughlinPassivesUnlocked', [...LAUGHLIN_PASSIVE_IDS]);
+    if (!this.game.registry.get('laughlinActivePassive')) {
+      this.game.registry.set('laughlinActivePassive', LAUGHLIN_PASSIVE_IDS[0]);
+    }
+    this.game.registry.set('bohrPassivesUnlocked', [...BOHR_PASSIVE_IDS]);
+    if (!this.game.registry.get('bohrActivePassive')) {
+      this.game.registry.set('bohrActivePassive', BOHR_PASSIVE_IDS[0]);
+    }
     persistFromRegistry(this.game.registry);
   }
 
   // Contextual onboarding (data/tutorial.ts's TUTORIAL_TIPS): each tip fires
   // once per save, the moment its own feature actually becomes relevant --
   // see the call sites in maybeTriggerEncounter (encounter), startBattle
-  // (battle), maybeCollectToken (qumatoken), openMentor (mentor), and
+  // (battle), maybeCollectToken (qumatoken), openGuardian (guardian), and
   // maybeAutoOpenGoalDialogue (goal), plus the 'controls' call right above
   // this method. `onClose` is whatever the caller was about to do next (open
   // the encounter panel, launch the battle, ...) -- it always still runs,
@@ -820,7 +850,7 @@ export class OverworldScene extends Phaser.Scene {
     this.drawWorld();
     this.updateWorldSprites(this.crystalSprites);
     this.updateWorldSprites(this.tokenSprites);
-    this.updateWorldSprites(this.mentorSprites);
+    this.updateWorldSprites(this.guardianSprites);
     this.updateWorldSprites(this.bossSprites);
 
     if (this.moving || this.dialogueActive) return;
@@ -1268,35 +1298,35 @@ export class OverworldScene extends Phaser.Scene {
     }
   }
 
-  // This world's mentor (if any) stands (floats) mid-corridor as a visible
+  // This world's guardian (if any) stands (floats) mid-corridor as a visible
   // landmark, not just something that materializes once its dialogue opens
   // -- the player sees and walks up to them, the same way a wild encounter
-  // is seen coming rather than sprung from nowhere. Every mentor uses
-  // `tile: 'middle'` now (see WORLD_MENTORS/DESIGN.md §5), freeing the goal
+  // is seen coming rather than sprung from nowhere. Every guardian uses
+  // `tile: 'middle'` now (see WORLD_GUARDIANS/DESIGN.md §5), freeing the goal
   // tile for that world's boss (spawnBossSprite below); 'start'/'goal'
-  // remain valid lookups here for any future mentor that wants them. Reuses
+  // remain valid lookups here for any future guardian that wants them. Reuses
   // the crystal/token WorldSprite machinery (projection, wander, bob) so
   // they scroll and fade with the rest of the world for free.
-  private spawnMentorSprite() {
-    this.mentorSprites = [];
-    const mentor = OverworldScene.WORLD_MENTORS[this.world];
-    if (!mentor) return;
+  private spawnGuardianSprite() {
+    this.guardianSprites = [];
+    const guardian = OverworldScene.WORLD_GUARDIANS[this.world];
+    if (!guardian) return;
 
-    const avatar = mentor.avatar(this, 1.1);
+    const avatar = guardian.avatar(this, 1.1);
     avatar.setDepth(20);
 
     const label = this.add
-      .text(0, 0, mentor.name, {
+      .text(0, 0, guardian.name, {
         fontSize: fontPx(this, 11),
-        color: mentor.labelColor,
+        color: guardian.labelColor,
         backgroundColor: 'rgba(0,0,0,0.45)',
         padding: { x: 3, y: 1 },
       })
       .setOrigin(0.5, 1)
       .setDepth(21);
 
-    const tile = mentor.tile === 'start' ? this.startTile : mentor.tile === 'middle' ? this.midTile : this.goalTile;
-    this.mentorSprites.push({ x: tile.x, y: tile.y, size: 42, container: avatar, label, seed: Math.random() * Math.PI * 2 });
+    const tile = guardian.tile === 'start' ? this.startTile : guardian.tile === 'middle' ? this.midTile : this.goalTile;
+    this.guardianSprites.push({ x: tile.x, y: tile.y, size: 42, container: avatar, label, seed: Math.random() * Math.PI * 2 });
   }
 
   // This world's rival/boss (getRival), standing at the goal tile as a
@@ -1304,7 +1334,7 @@ export class OverworldScene extends Phaser.Scene {
   // world has a WORLD_RIVALS gap, so this always finds one for a built
   // world). The actual fight still only starts from "Face the Rival" in the
   // goal gate panel (showGatePanel/showRivalEncounter); walking up to this
-  // sprite doesn't trigger anything on its own, same as a mentor sprite.
+  // sprite doesn't trigger anything on its own, same as a guardian sprite.
   private spawnBossSprite() {
     this.bossSprites = [];
     const boss = getRival(this.world);
@@ -1543,54 +1573,54 @@ export class OverworldScene extends Phaser.Scene {
     return !!rivalDefeated[this.world];
   }
 
-  // Reopens this world's goal gate panel (showGatePanel -- no mentor stands
-  // here anymore, see WORLD_MENTORS' `tile: 'middle'`) every time this scene
+  // Reopens this world's goal gate panel (showGatePanel -- no guardian stands
+  // here anymore, see WORLD_GUARDIANS' `tile: 'middle'`) every time this scene
   // is (re)created with the goal already reached -- both right after first
   // stepping onto the goal row and after any later round trip through
   // BattleScene (a wild fight fought near the goal, or the rival fight
   // itself resolving). Keeps the panel revisitable across multiple battles
-  // instead of a single one-shot popup. Since the mentor is mid-corridor,
+  // instead of a single one-shot popup. Since the guardian is mid-corridor,
   // reached well before the goal, the player always has a chance to shop/
   // prep before ever facing the boss waiting here; the rival fight is what
   // "Continue to World N+1" triggers (see tryAdvanceToNextWorld).
   private maybeAutoOpenGoalDialogue() {
     if (!this.reachedGoal || this.dialogueActive) return;
-    this.showTutorialTip('goal', () => this.openGoalMentorPanel());
+    this.showTutorialTip('goal', () => this.openGoalGuardianPanel());
   }
 
-  // Looks up this world's goal-tile mentor (if any) in WORLD_MENTORS and
-  // opens their panel. No mentor currently uses `tile: 'goal'` -- every
-  // mentor stands mid-corridor now (see WORLD_MENTORS) -- so this always
+  // Looks up this world's goal-tile guardian (if any) in WORLD_GUARDIANS and
+  // opens their panel. No guardian currently uses `tile: 'goal'` -- every
+  // guardian stands mid-corridor now (see WORLD_GUARDIANS) -- so this always
   // falls through to showGatePanel() in practice, which is exactly what a
   // world needs at its goal: a way to trigger the rival gate, or reaching
   // the goal would be a dead end with no way onward. Left branching on
   // `tile === 'goal'` rather than calling showGatePanel() directly so a
-  // future mentor can still choose to stand at the goal instead.
-  private openGoalMentorPanel() {
-    const mentor = OverworldScene.WORLD_MENTORS[this.world];
-    if (mentor?.tile === 'goal') {
-      this.openMentor(mentor);
+  // future guardian can still choose to stand at the goal instead.
+  private openGoalGuardianPanel() {
+    const guardian = OverworldScene.WORLD_GUARDIANS[this.world];
+    if (guardian?.tile === 'goal') {
+      this.openGuardian(guardian);
       return;
     }
     this.showGatePanel();
   }
 
-  // Opens a mentor's panel and records the first time this mentor is met,
-  // so the Advisors pause-menu list (showAdvisorsPanel) grows as the player
+  // Opens a guardian's panel and records the first time this guardian is met,
+  // so the Guardians pause-menu list (showGuardiansPanel) grows as the player
   // reaches each world's middle tile -- regardless of which panel that
-  // mentor actually shows (shop, teleport hub, transmutation, or lore).
+  // guardian actually shows (shop, teleport hub, transmutation, or lore).
   // `open` is only set on Noether/Bloch/Dresselhaus, whose panels are bespoke;
-  // every other mentor falls through to the shared lore panel.
-  private openMentor(mentor: MentorDef) {
-    const met = (this.game.registry.get('metMentors') as string[]) ?? [];
-    if (!met.includes(mentor.id)) {
-      this.game.registry.set('metMentors', [...met, mentor.id]);
+  // every other guardian falls through to the shared lore panel.
+  private openGuardian(guardian: GuardianDef) {
+    const met = (this.game.registry.get('metGuardians') as string[]) ?? [];
+    if (!met.includes(guardian.id)) {
+      this.game.registry.set('metGuardians', [...met, guardian.id]);
       persistFromRegistry(this.game.registry);
     }
-    this.showTutorialTip('mentor', () => (mentor.open ?? ((s: OverworldScene) => s.showMentorLore(mentor)))(this));
+    this.showTutorialTip('guardian', () => (guardian.open ?? ((s: OverworldScene) => s.showGuardianLore(guardian)))(this));
   }
 
-  // Every world's goal panel now that no mentor stands there (they've all
+  // Every world's goal panel now that no guardian stands there (they've all
   // moved mid-corridor) -- the boss looming at this same tile (spawnBossSprite)
   // is what's actually guarding the way, this panel is just enough text plus
   // the shared footer to reach the rival gate, so no built world is ever a
@@ -1737,7 +1767,7 @@ export class OverworldScene extends Phaser.Scene {
   // The "beat the world's rival crystal" gate DESIGN.md's world table lists
   // per world -- triggered by "Continue to World N+1" rather than
   // automatically on reaching the goal, so the player can prepare with the
-  // goal mentor first. Same in-map dialogue pattern as a wild encounter,
+  // goal guardian first. Same in-map dialogue pattern as a wild encounter,
   // but with no "let me pass" option, since a gate that can be skipped
   // isn't a gate.
   private showRivalEncounter() {
@@ -1745,7 +1775,7 @@ export class OverworldScene extends Phaser.Scene {
     if (!rival) {
       // Safety net for a world with no WORLD_RIVALS entry yet -- don't
       // strand the player behind a gate that can't open.
-      this.openGoalMentorPanel();
+      this.openGoalGuardianPanel();
       return;
     }
 
@@ -1791,7 +1821,7 @@ export class OverworldScene extends Phaser.Scene {
   // Noether appears once the player reaches world 1's middle tile, selling
   // the other early moves and stat upgrades for qumatokens, in two tabs of
   // the same panel. Same in-map dialogue pattern as a wild encounter, but
-  // with a mentor avatar and a shop list instead of a fight.
+  // with a guardian avatar and a shop list instead of a fight.
   // Content laid out top-down first (running `y`, each element's own
   // height advancing it), panel sized/inserted behind everything
   // afterward -- same pattern as showSettingsPanel. The intro quote used
@@ -1813,7 +1843,7 @@ export class OverworldScene extends Phaser.Scene {
     avatar.setPosition(CANVAS_W / 2, avatarY);
     container.add(avatar);
     this.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    playMentorChime();
+    playGuardianChime();
     y = avatarY + 48;
 
     const intro = this.add
@@ -1946,12 +1976,12 @@ export class OverworldScene extends Phaser.Scene {
 
   // Fixed footer row (not stacked below the variable-length content above
   // it) so it never runs off the panel/canvas. showGatePanel's only caller
-  // now that mentors stand mid-corridor instead of at the goal (see
-  // renderFarewellFooter below for the mentor-panel equivalent) -- this is
+  // now that guardians stand mid-corridor instead of at the goal (see
+  // renderFarewellFooter below for the guardian-panel equivalent) -- this is
   // deliberately the *only* place "Face the Rival"/"Continue" appears, so
   // reaching it requires actually walking to the goal where that world's
   // boss is waiting (spawnBossSprite), not just meeting the mid-corridor
-  // mentor. Bloch's teleport, once Superposition Mode has pre-seeded every
+  // guardian. Bloch's teleport, once Superposition Mode has pre-seeded every
   // world as visited, is the one path that still bypasses this gate
   // entirely (see applySuperpositionLeveling/rivalDefeated above).
   // Takes/returns the actual y the footer should render at (and ends at)
@@ -1972,7 +2002,7 @@ export class OverworldScene extends Phaser.Scene {
     return footerY + Math.max(a.height, b.height);
   }
 
-  // Mid-corridor mentor panels (every one but the goal's showGatePanel) only
+  // Mid-corridor guardian panels (every one but the goal's showGatePanel) only
   // need a way to close -- see renderShopFooter's comment for why the
   // Face-the-Rival/Continue action doesn't belong here anymore.
   private renderFarewellFooter(container: Phaser.GameObjects.Container, footerY: number): number {
@@ -1980,7 +2010,7 @@ export class OverworldScene extends Phaser.Scene {
     return footerY + btn.height;
   }
 
-  // Curie stands at world 6's middle tile (WORLD_MENTORS) and sells the
+  // Curie stands at world 6's middle tile (WORLD_GUARDIANS) and sells the
   // analytic-class moves (data/materials.ts's ANALYTIC_MOVE_IDS, currently
   // Skyfall Beam/Ground Eruption) -- kept out of Noether's own shop
   // (SHOP_MOVE_IDS excludes them, see materials.ts's comment) so Curie is
@@ -2001,7 +2031,7 @@ export class OverworldScene extends Phaser.Scene {
     avatar.setPosition(CANVAS_W / 2, avatarY);
     container.add(avatar);
     this.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    playMentorChime();
+    playGuardianChime();
     y = avatarY + 55;
 
     const intro = this.add
@@ -2066,6 +2096,145 @@ export class OverworldScene extends Phaser.Scene {
     return y;
   }
 
+  // Kondo stands at world 8's middle tile (WORLD_GUARDIANS) and sells the
+  // three screening-class moves (data/materials.ts's KONDO_MOVE_IDS --
+  // Screening Cloud/Heavy Fermion Drag/Kondo Breakdown, kept out of
+  // Noether's and Curie's own lists so Kondo is their one source). Mirrors
+  // showCuriePanel's layout, but with a 3-entry list where each bought move
+  // gets its own "buy" or "switch active" row instead of Curie's flat
+  // buy-only list -- see renderKondoMoves below for why: only one of the
+  // three can ever be usable in battle at a time (registry/save
+  // `kondoActiveMove`), so this panel is also the only place that switches
+  // it, not just the one that sells them.
+  private showKondoPanel() {
+    this.dialogueActive = true;
+
+    const panelWidth = 600;
+    const top = 20;
+    const container = this.add.container(0, 0).setDepth(100);
+    this.dialogueContainer = container;
+
+    let y = top;
+
+    const avatarY = y + 42;
+    const avatar = makeKondoAvatar(this);
+    avatar.setPosition(CANVAS_W / 2, avatarY);
+    container.add(avatar);
+    this.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    playGuardianChime();
+    y = avatarY + 48;
+
+    const intro = this.add
+      .text(
+        CANVAS_W / 2,
+        y,
+        '"I am Kondo. A stray spin resolves into one of several scattering channels once conduction electrons screen it -- learn a channel, then tell me which one to tune. Only one can be tuned at a time; come back if you want a different one."',
+        { fontSize: fontPx(this, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
+      )
+      .setOrigin(0.5, 0);
+    container.add(intro);
+    y += intro.height + 14;
+
+    y = this.renderKondoMoves(container, y);
+    y += 8;
+    y = this.renderFarewellFooter(container, y);
+    y += 8;
+
+    const panelHeight = y - top;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+      .setStrokeStyle(2, 0xe86a44);
+    container.addAt(panel, 0);
+  }
+
+  // Two sections, not Curie's flat buy-only list: still-unbought Kondo
+  // moves the player's current form can host (same shopCost/afford/dim
+  // treatment as every other shop) followed by every already-bought Kondo
+  // move with a "make active"/dimmed-"(active)" row -- same dimmed-current
+  // convention Dresselhaus/Majorana's "(current form)"/"(current form) again"
+  // rows already use. Buying the very first Kondo move auto-activates it
+  // (see the buy handler below) so a purchase is never immediately invisible
+  // in battle; buying a second or third on top of an already-active one does
+  // not -- switching between two-or-more already-bought moves is always its
+  // own explicit "Make active" click.
+  private renderKondoMoves(container: Phaser.GameObjects.Container, y: number): number {
+    const unlocked = this.getUnlockedMoves();
+    const compatible = new Set(compatibleMoves(this.playerMaterial));
+    const forSale = KONDO_MOVE_IDS.filter((id) => !unlocked.includes(id) && compatible.has(id));
+    const learned = KONDO_MOVE_IDS.filter((id) => unlocked.includes(id));
+    const tokens = (this.game.registry.get('qumatokens') as number) || 0;
+    const activeMove = (this.game.registry.get('kondoActiveMove') as string | null) ?? null;
+
+    if (forSale.length === 0 && learned.length === 0) {
+      // Names the actual unlock condition (a spin-liquid/defect form) rather
+      // than reusing Noether's generic "nothing left to teach" line -- for
+      // Kondo the gate is almost always "wrong current form," not "already
+      // bought everything," so the empty state should say so.
+      const text = this.add
+        .text(
+          CANVAS_W / 2,
+          y,
+          'Your current form has no local moment for me to screen -- come back wearing a spin liquid or a defect state.',
+          {
+            fontSize: fontPx(this, 13),
+            color: '#ffffff',
+            align: 'center',
+            wordWrap: { width: 480 },
+          }
+        )
+        .setOrigin(0.5, 0);
+      container.add(text);
+      return y + text.height;
+    }
+
+    forSale.forEach((id) => {
+      const move = MOVES[id];
+      const cost = shopCost(move);
+      const affordable = tokens >= cost;
+      const btn = this.addDialogueButton(container, y, `${move.name} -- ${cost} qumatokens`, () => {
+        if ((this.game.registry.get('qumatokens') as number) < cost) return;
+        this.qumatokens -= cost;
+        this.game.registry.set('qumatokens', this.qumatokens);
+        this.tokenText.setText(`Qumatokens: ${this.qumatokens}`);
+        this.game.registry.set('unlockedMoves', [...this.getUnlockedMoves(), id]);
+        // The very first Kondo move bought becomes active automatically --
+        // "picked for the first time" happens right here, in this same
+        // conversation with Kondo, so there's no dead-purchase state where a
+        // freshly bought move shows up nowhere in battle. Switching between
+        // two-or-more already-bought moves still always requires its own
+        // explicit "Make active" click below.
+        if (!this.game.registry.get('kondoActiveMove')) {
+          this.game.registry.set('kondoActiveMove', id);
+        }
+        persistFromRegistry(this.game.registry);
+        this.dialogueContainer?.destroy(true);
+        this.showKondoPanel();
+      });
+      if (!affordable) btn.setAlpha(0.5);
+      y += btn.height + 3;
+    });
+
+    if (learned.length > 0) {
+      if (forSale.length > 0) y += 6;
+      learned.forEach((id) => {
+        const move = MOVES[id];
+        const isActive = id === activeMove;
+        const label = isActive ? `${move.name} (active)` : `Make ${move.name} active`;
+        const btn = this.addDialogueButton(container, y, label, () => {
+          if (isActive) return;
+          this.game.registry.set('kondoActiveMove', id);
+          persistFromRegistry(this.game.registry);
+          this.dialogueContainer?.destroy(true);
+          this.showKondoPanel();
+        });
+        if (isActive) btn.setAlpha(0.5);
+        y += btn.height + 3;
+      });
+    }
+
+    return y;
+  }
+
   private advanceToWorld(world: number) {
     this.closeDialogue();
     this.scene.start('Overworld', { world, regenerate: true });
@@ -2093,8 +2262,207 @@ export class OverworldScene extends Phaser.Scene {
     return (this.game.registry.get('defeatedMaterials') as DiscoveredMaterial[]) ?? [];
   }
 
-  // Bloch stands at world 2's middle tile (see spawnMentorSprite/
-  // WORLD_MENTORS) and folds the player to any other world they've already
+  // Laughlin stands at world 4's middle tile (WORLD_GUARDIANS) and sells
+  // three passive abilities (data/passives.ts's LAUGHLIN_PASSIVE_IDS --
+  // Fractional Guard, Anyon Echo, Edge Current) instead of moves: a
+  // whole-battle always-on modifier picked once by visiting Laughlin, not
+  // something chosen from the move menu each turn. Shares renderPassiveList
+  // below with showBohrPanel -- see that method's own comment for why it
+  // mirrors showKondoPanel's shape rather than Curie's flat buy-only list.
+  private showLaughlinPanel() {
+    this.dialogueActive = true;
+
+    const panelWidth = 600;
+    const top = 20;
+    const container = this.add.container(0, 0).setDepth(100);
+    this.dialogueContainer = container;
+
+    let y = top;
+
+    const avatarY = y + 42;
+    const avatar = makeLaughlinAvatar(this);
+    avatar.setPosition(CANVAS_W / 2, avatarY);
+    container.add(avatar);
+    this.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    playGuardianChime();
+    y = avatarY + 48;
+
+    const intro = this.add
+      .text(
+        CANVAS_W / 2,
+        y,
+        '"An excited fractional quantum Hall state answers a blow with only a fraction of its force. I can teach your crystal the same trick -- only one lesson holds at a time."',
+        { fontSize: fontPx(this, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
+      )
+      .setOrigin(0.5, 0);
+    container.add(intro);
+    y += intro.height + 14;
+
+    y = this.renderPassiveList(container, y, LAUGHLIN_PASSIVE_IDS, 'laughlinPassivesUnlocked', 'laughlinActivePassive', () =>
+      this.showLaughlinPanel()
+    );
+    y += 8;
+    y = this.renderFarewellFooter(container, y);
+    y += 8;
+
+    const panelHeight = y - top;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+      .setStrokeStyle(2, 0x6a7fff);
+    container.addAt(panel, 0);
+  }
+
+  // Bohr stands at world 7's middle tile (WORLD_GUARDIANS) and sells three
+  // passive abilities (data/passives.ts's BOHR_PASSIVE_IDS -- Correlated
+  // Response, Nonlocal Correlation, Shared State), same shape as
+  // showLaughlinPanel above -- see renderPassiveList's own comment.
+  private showBohrPanel() {
+    this.dialogueActive = true;
+
+    const panelWidth = 600;
+    const top = 20;
+    const container = this.add.container(0, 0).setDepth(100);
+    this.dialogueContainer = container;
+
+    let y = top;
+
+    const avatarY = y + 42;
+    const avatar = makeBohrAvatar(this);
+    avatar.setPosition(CANVAS_W / 2, avatarY);
+    container.add(avatar);
+    this.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    playGuardianChime();
+    y = avatarY + 48;
+
+    const intro = this.add
+      .text(
+        CANVAS_W / 2,
+        y,
+        '"Measure one half of an entangled pair and the other answers instantly. I can teach your crystal to answer that way too -- only one bond holds at a time."',
+        { fontSize: fontPx(this, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
+      )
+      .setOrigin(0.5, 0);
+    container.add(intro);
+    y += intro.height + 14;
+
+    y = this.renderPassiveList(container, y, BOHR_PASSIVE_IDS, 'bohrPassivesUnlocked', 'bohrActivePassive', () =>
+      this.showBohrPanel()
+    );
+    y += 8;
+    y = this.renderFarewellFooter(container, y);
+    y += 8;
+
+    const panelHeight = y - top;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+      .setStrokeStyle(2, 0xffa64a);
+    container.addAt(panel, 0);
+  }
+
+  // Shared by showLaughlinPanel/showBohrPanel -- both guardians sell a
+  // three-passive kit with the same "buy several, only one active, switch
+  // by a click" shape Kondo's three moves already use (renderKondoMoves),
+  // just for a whole-battle passive instead of a move usable from the
+  // battle menu: still-unbought passives (with a one-line description, since
+  // a passive's effect isn't spelled out anywhere else the way a move's
+  // physics-flavored name usually implies it) get a buy button, every
+  // already-bought passive gets its own "Make `<name>` active" button or a
+  // dimmed "`<name>` (active)" tag -- same dimmed-current convention every
+  // other guardian panel uses. Unlike Kondo's moves, a passive is never
+  // gated by MOVE_COMPATIBILITY (the same "player-learned technique, not a
+  // quasiparticle a crystal has to host" reasoning as Curie's analytic
+  // moves) -- every passive is always purchasable regardless of current
+  // form, so there's no "wrong form" empty state to special-case here.
+  // Buying the very first passive for a given guardian activates it
+  // automatically, same reasoning as Kondo's first move.
+  private renderPassiveList(
+    container: Phaser.GameObjects.Container,
+    y: number,
+    passiveIds: string[],
+    unlockedKey: string,
+    activeKey: string,
+    reopen: () => void
+  ): number {
+    const unlocked = (this.game.registry.get(unlockedKey) as string[]) ?? [];
+    const forSale = passiveIds.filter((id) => !unlocked.includes(id));
+    const learned = passiveIds.filter((id) => unlocked.includes(id));
+    const active = (this.game.registry.get(activeKey) as string | null) ?? null;
+    const tokens = (this.game.registry.get('qumatokens') as number) || 0;
+
+    // The buy row's font size is capped well below the text-size setting's
+    // full range (same reasoning as BattleScene's move-menu section headers,
+    // STYLE.md's "Battle move menu") -- this panel has no shrink-to-fit
+    // safety net the way showInfoPanel does, and a passive's name+cost label
+    // at the setting's uncapped 'Large' preset wraps to two lines, which
+    // combined with three buy rows and their own description line each was
+    // enough to push the whole panel's Farewell button off the bottom of the
+    // canvas the first time this was tried at the default preset already.
+    const buttonScale = Math.min(fontScale(this), 1.3);
+    const buttonPx = `${Math.round(12 * buttonScale)}px`;
+    const descScale = Math.min(fontScale(this), 1.2);
+    const descPx = `${Math.round(9 * descScale)}px`;
+
+    forSale.forEach((id) => {
+      const passive = PASSIVES[id];
+      const affordable = tokens >= passive.cost;
+      const btn = this.addDialogueButtonAt(
+        container,
+        CANVAS_W / 2,
+        y,
+        `${passive.name} -- ${passive.cost} qumatokens`,
+        () => {
+          if ((this.game.registry.get('qumatokens') as number) < passive.cost) return;
+          this.qumatokens -= passive.cost;
+          this.game.registry.set('qumatokens', this.qumatokens);
+          this.tokenText.setText(`Qumatokens: ${this.qumatokens}`);
+          this.game.registry.set(unlockedKey, [...unlocked, id]);
+          if (!this.game.registry.get(activeKey)) {
+            this.game.registry.set(activeKey, id);
+          }
+          persistFromRegistry(this.game.registry);
+          this.dialogueContainer?.destroy(true);
+          reopen();
+        },
+        480,
+        buttonPx
+      );
+      if (!affordable) btn.setAlpha(0.5);
+      y += btn.height + 2;
+      const desc = this.add
+        .text(CANVAS_W / 2, y, passive.description, {
+          fontSize: descPx,
+          color: '#8fa0c9',
+          align: 'center',
+          wordWrap: { width: 480 },
+        })
+        .setOrigin(0.5, 0);
+      container.add(desc);
+      y += desc.height + 4;
+    });
+
+    if (learned.length > 0) {
+      if (forSale.length > 0) y += 6;
+      learned.forEach((id) => {
+        const passive = PASSIVES[id];
+        const isActive = id === active;
+        const label = isActive ? `${passive.name} (active)` : `Make ${passive.name} active`;
+        const btn = this.addDialogueButton(container, y, label, () => {
+          if (isActive) return;
+          this.game.registry.set(activeKey, id);
+          persistFromRegistry(this.game.registry);
+          this.dialogueContainer?.destroy(true);
+          reopen();
+        });
+        if (isActive) btn.setAlpha(0.5);
+        y += btn.height + 3;
+      });
+    }
+
+    return y;
+  }
+
+  // Bloch stands at world 2's middle tile (see spawnGuardianSprite/
+  // WORLD_GUARDIANS) and folds the player to any other world they've already
   // visited and that actually has a built map (BUILT_WORLDS) -- offering an
   // unbuilt world would teleport the player somewhere with no map to stand
   // on. Ends in the plain "Farewell"-only renderFarewellFooter, not the
@@ -2128,7 +2496,7 @@ export class OverworldScene extends Phaser.Scene {
     container.add(avatar);
     this.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     y = avatarY + 65;
-    playMentorChime();
+    playGuardianChime();
 
     const intro = this.add
       .text(
@@ -2268,8 +2636,8 @@ export class OverworldScene extends Phaser.Scene {
     return y;
   }
 
-  // Dresselhaus stands at world 3's middle tile like every other mentor (see
-  // spawnMentorSprite/WORLD_MENTORS), triggered on reaching that row
+  // Dresselhaus stands at world 3's middle tile like every other guardian (see
+  // spawnGuardianSprite/WORLD_GUARDIANS), triggered on reaching that row
   // (maybeAutoOpenMiddleDialogue). Lets the player transmute into any
   // crystal they've defeated -- the physics rationale being that beating
   // something is understanding it well enough to become it for a while.
@@ -2293,7 +2661,7 @@ export class OverworldScene extends Phaser.Scene {
     avatar.setPosition(CANVAS_W / 2, avatarY);
     container.add(avatar);
     this.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    playMentorChime();
+    playGuardianChime();
     y = avatarY + 65;
 
     const superposition = this.isSuperpositionMode();
@@ -2404,7 +2772,7 @@ export class OverworldScene extends Phaser.Scene {
     return (this.game.registry.get('hybridMaterials') as Material[]) ?? [];
   }
 
-  // Majorana stands at world 5's middle tile (WORLD_MENTORS) and lets the
+  // Majorana stands at world 5's middle tile (WORLD_GUARDIANS) and lets the
   // player fuse two crystals they've already defeated into a new
   // topological hybrid (data/materials.ts's combineMaterials), becoming it
   // immediately via the same applyPlayerForm helper Dresselhaus's transmutation
@@ -2434,7 +2802,7 @@ export class OverworldScene extends Phaser.Scene {
     avatar.setPosition(CANVAS_W / 2, avatarY);
     container.add(avatar);
     this.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    playMentorChime();
+    playGuardianChime();
     y = avatarY + 65;
 
     const superposition = this.isSuperpositionMode();
@@ -2599,7 +2967,7 @@ export class OverworldScene extends Phaser.Scene {
     this.becomeHybrid(hybrid);
   }
 
-  // Anderson stands at world 9's middle tile (WORLD_MENTORS) and lets the
+  // Anderson stands at world 9's middle tile (WORLD_GUARDIANS) and lets the
   // player "dope in" a crystal they've encountered (or, in Superposition
   // Mode, any crystal in the game) as an impurity, then learn one specific
   // move from its moveset -- an Anderson-impurity take on the same idea
@@ -2630,7 +2998,7 @@ export class OverworldScene extends Phaser.Scene {
     avatar.setPosition(CANVAS_W / 2, avatarY);
     container.add(avatar);
     this.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    playMentorChime();
+    playGuardianChime();
     y = avatarY + 65;
 
     const superposition = this.isSuperpositionMode();
@@ -2761,18 +3129,17 @@ export class OverworldScene extends Phaser.Scene {
     this.showAndersonPanel();
   }
 
-  // Shared panel for every mentor left without a bespoke `open` handler
-  // (Laughlin, Bohr, Kondo -- see WORLD_MENTORS): avatar + a topic-tied
-  // quote, no shop tabs (DESIGN.md §5 records their lack of a mechanic as a
-  // deliberate, temporary state, not a finished design). Ends
-  // in renderFarewellFooter,
-  // not renderShopFooter -- these mentors stand mid-corridor now, so the
-  // Face-the-Rival/Continue progression action stays exclusive to the goal
-  // panel (showGatePanel), reached only once the player actually walks the
-  // rest of the way to the boss waiting there.
+  // Fallback panel for a guardian left without a bespoke `open` handler
+  // (see WORLD_GUARDIANS -- every current guardian sets one, but a future
+  // guardian added before its own mechanic is built can leave `open` unset
+  // and land here instead): avatar + a topic-tied quote, no shop tabs. Ends
+  // in renderFarewellFooter, not renderShopFooter -- every guardian stands
+  // mid-corridor, so the Face-the-Rival/Continue progression action stays
+  // exclusive to the goal panel (showGatePanel), reached only once the
+  // player actually walks the rest of the way to the boss waiting there.
   // Content laid out top-down first (running `y`), panel sized/inserted
   // behind everything afterward -- same pattern as showSettingsPanel.
-  private showMentorLore(mentor: MentorDef) {
+  private showGuardianLore(guardian: GuardianDef) {
     this.dialogueActive = true;
 
     const panelWidth = 600;
@@ -2783,15 +3150,15 @@ export class OverworldScene extends Phaser.Scene {
     let y = top;
 
     const avatarY = y + 40;
-    const avatar = mentor.avatar(this);
+    const avatar = guardian.avatar(this);
     avatar.setPosition(CANVAS_W / 2, avatarY);
     container.add(avatar);
     this.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    playMentorChime();
+    playGuardianChime();
     y = avatarY + 50;
 
     const intro = this.add
-      .text(CANVAS_W / 2, y, `"${mentor.quote}"`, {
+      .text(CANVAS_W / 2, y, `"${guardian.quote}"`, {
         fontSize: fontPx(this, 12),
         fontStyle: 'italic',
         color: '#cfd8ff',
@@ -2803,7 +3170,7 @@ export class OverworldScene extends Phaser.Scene {
     y += intro.height + 14;
 
     const note = this.add
-      .text(CANVAS_W / 2, y, `${mentor.name} has nothing to teach you yet -- more to come.`, {
+      .text(CANVAS_W / 2, y, `${guardian.name} has nothing to teach you yet -- more to come.`, {
         fontSize: fontPx(this, 11),
         color: '#8fa0c9',
         align: 'center',
@@ -2819,18 +3186,18 @@ export class OverworldScene extends Phaser.Scene {
     const panelHeight = y - top;
     const panel = this.add
       .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
-      .setStrokeStyle(2, mentor.strokeColor);
+      .setStrokeStyle(2, guardian.strokeColor);
     container.addAt(panel, 0);
   }
 
-  // Mirrors maybeAutoOpenGoalDialogue for the middle row every mentor now
+  // Mirrors maybeAutoOpenGoalDialogue for the middle row every guardian now
   // stands on: reopens their panel both the first time the player reaches
   // the middle and again after every later round trip through BattleScene,
   // so it stays revisitable rather than a one-shot popup.
   private maybeAutoOpenMiddleDialogue() {
     if (!this.reachedMiddle || this.dialogueActive) return;
-    const mentor = OverworldScene.WORLD_MENTORS[this.world];
-    if (mentor?.tile === 'middle') this.openMentor(mentor);
+    const guardian = OverworldScene.WORLD_GUARDIANS[this.world];
+    if (guardian?.tile === 'middle') this.openGuardian(guardian);
   }
 
   // The Enter-key menu (DESIGN.md §4/§7 territory: quick access without
@@ -2857,7 +3224,7 @@ export class OverworldScene extends Phaser.Scene {
       },
       { label: 'View Moves', onClick: () => this.showMovesPanel() },
       { label: 'View Stats', onClick: () => this.showStatsPanel() },
-      { label: 'Advisors', onClick: () => this.showAdvisorsPanel() },
+      { label: 'Guardians', onClick: () => this.showGuardiansPanel() },
       { label: 'Tutorial', onClick: () => this.showTutorial(0) },
       { label: 'Settings', onClick: () => this.showSettingsPanel() },
       { label: 'Close', onClick: () => this.closeDialogue() },
@@ -3013,22 +3380,22 @@ export class OverworldScene extends Phaser.Scene {
     return FONT_SCALE_PRESETS.findIndex((p) => p.value === DEFAULT_FONT_SCALE);
   }
 
-  // Lists every mentor the player has met so far (registry `metMentors`,
-  // grown by openMentor as middle tiles are reached), each row
-  // reopening that mentor's own panel -- works from any world's scene, not
-  // just the mentor's own, which is the whole point of putting this in the
+  // Lists every guardian the player has met so far (registry `metGuardians`,
+  // grown by openGuardian as middle tiles are reached), each row
+  // reopening that guardian's own panel -- works from any world's scene, not
+  // just the guardian's own, which is the whole point of putting this in the
   // Enter menu rather than only at their home tile. In Superposition Mode
-  // every mentor lists immediately regardless of `metMentors` -- "access to
-  // every advisor from the beginning" (the whole point of the mode) would
+  // every guardian lists immediately regardless of `metGuardians` -- "access to
+  // every guardian from the beginning" (the whole point of the mode) would
   // otherwise still be gated behind physically walking up to each one first,
-  // even though every mentor's own panel already works correctly when
-  // opened from anywhere (openMentor doesn't touch `this.world`).
+  // even though every guardian's own panel already works correctly when
+  // opened from anywhere (openGuardian doesn't touch `this.world`).
   // Content laid out top-down first (running `y`), panel sized/inserted
   // behind everything afterward -- same pattern as showSettingsPanel. Row
-  // count grows with how many of up to 10 mentors have been met, so a
+  // count grows with how many of up to 10 guardians have been met, so a
   // fixed per-row spacing (tuned for the old single font size) either
   // overlapped rows or ran the panel past the canvas once text got bigger.
-  private showAdvisorsPanel() {
+  private showGuardiansPanel() {
     this.dialogueContainer?.destroy(true);
     this.dialogueActive = true;
 
@@ -3040,20 +3407,20 @@ export class OverworldScene extends Phaser.Scene {
     let y = top;
 
     const title = this.add
-      .text(CANVAS_W / 2, y, 'Advisors', { fontSize: fontPx(this, 15), color: '#ffffff', fontStyle: 'bold' })
+      .text(CANVAS_W / 2, y, 'Guardians', { fontSize: fontPx(this, 15), color: '#ffffff', fontStyle: 'bold' })
       .setOrigin(0.5, 0);
     container.add(title);
     y += title.height + 14;
 
-    const met = (this.game.registry.get('metMentors') as string[]) ?? [];
+    const met = (this.game.registry.get('metGuardians') as string[]) ?? [];
     const superposition = this.isSuperpositionMode();
-    const mentors = Object.values(OverworldScene.WORLD_MENTORS).filter(
-      (m): m is MentorDef => !!m && (superposition || met.includes(m.id))
+    const guardians = Object.values(OverworldScene.WORLD_GUARDIANS).filter(
+      (m): m is GuardianDef => !!m && (superposition || met.includes(m.id))
     );
 
-    if (mentors.length === 0) {
+    if (guardians.length === 0) {
       const text = this.add
-        .text(CANVAS_W / 2, y, "You haven't met any advisors yet.", {
+        .text(CANVAS_W / 2, y, "You haven't met any guardians yet.", {
           fontSize: fontPx(this, 13),
           color: '#ffffff',
           align: 'center',
@@ -3063,15 +3430,15 @@ export class OverworldScene extends Phaser.Scene {
       container.add(text);
       y += text.height + 14;
     } else {
-      mentors.forEach((mentor) => {
+      guardians.forEach((guardian) => {
         const btn = this.addDialogueButtonAt(
           container,
           CANVAS_W / 2,
           y,
-          mentor.name,
+          guardian.name,
           () => {
             this.closeDialogue();
-            this.openMentor(mentor);
+            this.openGuardian(guardian);
           },
           260
         );
@@ -3098,14 +3465,22 @@ export class OverworldScene extends Phaser.Scene {
     this.showInfoPanel('Your Moves', lines.join('\n'));
   }
 
+  // Also the "checkable anytime" surface for Laughlin's/Bohr's current
+  // passive loadout (data/passives.ts, DESIGN.md §5) -- their own panels
+  // already tag locked/unlocked/active, but a player shouldn't have to walk
+  // back to either guardian just to remember which passive is running.
   private showStatsPanel() {
     this.dialogueContainer?.destroy(true);
     const stats = getPlayerStats(this.game.registry);
+    const laughlinActive = this.game.registry.get('laughlinActivePassive') as string | null;
+    const bohrActive = this.game.registry.get('bohrActivePassive') as string | null;
     const body =
       `Quantumness: ${stats.quantumness} -- raises your crit chance\n` +
       `Velocity: ${stats.velocity} -- higher goes first each round\n` +
       `Correlation: ${stats.correlation} -- higher takes less damage\n\n` +
       `Qumatokens: ${this.qumatokens}\nCurrent form: ${this.playerMaterial.name}\n\n` +
+      `Laughlin passive: ${laughlinActive ? PASSIVES[laughlinActive].name : 'None'}\n` +
+      `Bohr passive: ${bohrActive ? PASSIVES[bohrActive].name : 'None'}\n\n` +
       'Raise any of these with qumatokens at Noether\'s shop.';
     this.showInfoPanel('Your Stats', body);
   }
@@ -3194,7 +3569,7 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   // Same "whole row counts, not a single tile" rule as maybeReachGoal,
-  // applied to the mentor's mid-corridor row instead.
+  // applied to the guardian's mid-corridor row instead.
   private maybeReachMiddle(_x: number, y: number) {
     if (this.reachedMiddle || y !== this.midTile.y) return;
     this.reachedMiddle = true;

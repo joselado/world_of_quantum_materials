@@ -1,8 +1,8 @@
 import Phaser from 'phaser';
 import { shade } from './colors';
 
-// Majorana's avatar -- world 5's mentor (superconductivity/Majorana pairs).
-// Own file, same convention as every other mentor (glow -> sway -> cloak ->
+// Majorana's avatar -- world 5's guardian (superconductivity/Majorana pairs).
+// Own file, same convention as every other guardian (glow -> sway -> cloak ->
 // head-motif -> orbit ring). Head motif: two pale half-particle glyphs
 // orbiting each other in place of a face -- a fermion that is its own
 // antiparticle, split into a pair.
