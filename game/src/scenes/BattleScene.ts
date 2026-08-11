@@ -182,6 +182,10 @@ const TURN_PREVIEW_Y = 8;
 const TURN_PREVIEW_LENGTH = 5;
 const TURN_PREVIEW_ICON_SIZE = 18;
 const TURN_PREVIEW_ICON_SPACING = 22;
+// Whose-turn ring drawn behind each icon (see `drawTurnPreview`) -- radius
+// matches half the icon spacing so adjacent rings meet edge-to-edge without
+// overlapping.
+const TURN_PREVIEW_RING_RADIUS = TURN_PREVIEW_ICON_SPACING / 2;
 
 interface BattleInitData {
   wild: Material;
@@ -1231,7 +1235,11 @@ export class BattleScene extends Phaser.Scene {
   // them, so a plain destroy-and-rebuild every round would leak a handful of
   // dead-but-still-ticking tweens per round for the rest of the battle.
   // Killing tweens of every descendant of the old row before destroying it
-  // keeps this redraw actually cheap to call every round.
+  // keeps this redraw actually cheap to call every round. The whose-turn
+  // ring added behind each icon (below) is a plain static Arc with no tween
+  // of its own, so it needs no special handling here -- killTweensOf on it
+  // is just a harmless no-op, and `destroy(true)` still reclaims it along
+  // with everything else in the row.
   private drawTurnPreview() {
     if (this.turnPreviewRow) {
       this.turnPreviewRow.each((icon: Phaser.GameObjects.GameObject) => {
@@ -1248,13 +1256,37 @@ export class BattleScene extends Phaser.Scene {
     roundPattern.push(!fasterIsPlayer);
     const sequence = Array.from({ length: TURN_PREVIEW_LENGTH }, (_, i) => roundPattern[i % roundPattern.length]);
 
-    const container = this.add.container(TURN_PREVIEW_X, this.turnPreviewLabel.y + this.turnPreviewLabel.height + 4);
+    // Gap below the label padded out by how far the ring extends past the
+    // icon's own half-size, so the ring never touches the label tag above
+    // it at any font-scale preset (the ring is the widest thing in each
+    // icon's footprint, wider than the crystal art itself).
+    const previewRowY =
+      this.turnPreviewLabel.y +
+      this.turnPreviewLabel.height +
+      4 +
+      Math.max(0, TURN_PREVIEW_RING_RADIUS - TURN_PREVIEW_ICON_SIZE / 2);
+    const container = this.add.container(TURN_PREVIEW_X, previewRowY);
     sequence.forEach((isPlayer, i) => {
       const material = isPlayer ? this.playerMaterial : this.wild;
       const icon = makeCrystal(this, TURN_PREVIEW_ICON_SIZE, material.color, material.variant, {
         seed: material.name,
         hybrid: material.hybridParents,
       });
+      // Whose-turn ring behind the crystal shapes (`addAt(..., 0)`): a bold
+      // full-opacity gold ring for the player's hits, matching this
+      // project's established active/highlighted accent color, versus a
+      // thinner, dimmer blue-grey ring (the same "inactive" tone used
+      // elsewhere, e.g. the shop's inactive tab) for the opponent's --
+      // keeps the row legible on whose turn is whose even when the two
+      // sides happen to share the exact same crystal color (same-material
+      // matchups, routine from world 9 onward).
+      const ring = this.add.circle(0, 0, TURN_PREVIEW_RING_RADIUS);
+      if (isPlayer) {
+        ring.setStrokeStyle(3, 0xffe066, 1);
+      } else {
+        ring.setStrokeStyle(1.5, 0x8fa0c9, 0.45);
+      }
+      icon.addAt(ring, 0);
       icon.setPosition(i * TURN_PREVIEW_ICON_SPACING + TURN_PREVIEW_ICON_SIZE / 2, TURN_PREVIEW_ICON_SIZE / 2);
       container.add(icon);
     });
