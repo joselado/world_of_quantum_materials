@@ -184,10 +184,13 @@ pool.
 | semiconductor (1) | Gallium Nitride (GaN) | Doped semiconductor, plain single-particle band picture |
 | insulator (1) | Magnesium Oxide (MgO) | Simple ionic band insulator, gap too wide to dope/excite across — textbook baseline contrast to topological insulators; the ionic lattice also self-traps a stronger polaron than a bare semiconductor would |
 | metal (1→2 bridge) | Graphene (pristine, half-filled) | Gapless Dirac semimetal — the throughline example of session 2 (Bloch's theorem, tight-binding); precursor before symmetry-breaking (→ classicalMagnet) or band-topology (→ topological) sets in; real graphene plasmonics is its own well-known field |
+| metal (2) | Silver (Ag) | Half-filled 5s conduction band gives it the sharpest free-electron plasmon of any elemental metal — real plasmonics/nanophotonics runs on silver (and gold), not graphene; not from the course, added to give `metal`'s Plasmon Pulse a second, more flagship host |
 | semiconductor (2) | Indium Arsenide (InAs) | Ordinary band semiconductor whose real role is strong spin-orbit coupling — the actual second ingredient (alongside Aluminum) in a real Majorana-nanowire platform, §5's InAs/Al Majorana Wire hybrid recipe |
 | semiconductor (2) | Monolayer Molybdenum Ditelluride, 2H phase (MoTe$_2$) | The untwisted, semiconducting monolayer phase — distinct from the already-topological 1T′ phase below — that becomes Twisted Bilayer MoTe₂ once fused with itself (§5) |
 | semiconductor (2) | Mercury Telluride (HgTe) | Individually just an ordinary (inverted-gap) semiconductor — §5's hybrid-recipe parent for HgTe/CdTe Quantum Well below |
 | semiconductor (2) | Cadmium Telluride (CdTe) | Individually an ordinary wide-gap semiconductor — the barrier layer in the same HgTe/CdTe quantum-well recipe |
+| insulator (2) | Diamond (C) | ~5.5 eV gap, textbook wide-gap covalent insulator — pristine, no defect (e.g. nitrogen-vacancy) dressing; not from the course, added as `insulator`'s second member alongside Magnesium Oxide |
+| insulator (2, hybrid parent) | Monolayer Boron Nitride (hBN) | ~5.9 eV gap insulator whose honeycomb lattice is nearly commensurate with graphene's — real graphene devices are built on or encapsulated in it; §5 hybrid recipe parent (with Graphene) for Rhombohedral Pentalayer Graphene/hBN Moiré below |
 | quantumSpinHall (3, hybrid) | HgTe/CdTe Quantum Well | The original 2D topological insulator (Bernevig-Hughes-Zhang model, König et al., Science 2007) — only the *engineered heterostructure* is topological, not either bulk parent above; §5 hybrid recipe result, lives as a World 10 wild rather than a World 3 one |
 | classicalMagnet (1) | Manganese Oxide (MnO) | Mott-insulating antiferromagnet — canonical mean-field/Hubbard-$U$ SSB example |
 | classicalMagnet (1) | Nickel Oxide (NiO) | Same family, another textbook mean-field SSB magnet |
@@ -201,10 +204,13 @@ pool.
 | chernInsulator (4) | Gallium Arsenide (GaAs) | The original 2DEG platform for the integer quantum Hall effect — field-driven Landau levels, the same (integer) Chern-number invariant as the zero-field entries above |
 | chernInsulator (4) | Graphene, in strong field | Dirac-electron Landau levels, plateaus observable up to ~room temperature |
 | fractionalChern (4, hybrid) | Twisted bilayer Molybdenum Ditelluride (MoTe$_2$) | Zero-field *fractional* quantum Hall from topological flat bands — genuinely fractionalizes into charged anyons, unlike GaAs/Graphene's ordinary integer Landau levels above, so it gets its own type rather than sharing `chernInsulator`; §5 hybrid recipe result (the 2H monolayer above fused with itself), lives as a World 10 wild rather than a World 4 one |
+| fractionalChern (4, hybrid) | Rhombohedral Pentalayer Graphene/hBN Moiré | Zero-field fractional quantum anomalous Hall (2023–2024 experiments) — five rhombohedrally-stacked graphene layers aligned to a hBN substrate, the same charged-anyon edge physics as Twisted Bilayer MoTe₂ above by an aligned-heterostructure route instead of a twist angle; not from the course, §5 hybrid recipe result (Graphene + Monolayer Boron Nitride), lives as a World 10 wild rather than a World 4 one |
 | chernInsulator (4, new type) | Manganese Bismuth Telluride (MnBi$_2$Te$_4$) | Real intrinsic magnetic topological insulator — the actual zero-field QAHE/Chern-insulator material, standalone (not a hybrid recipe result) |
 | superconductor (5) | Aluminum (Al) | Conventional phonon-mediated BCS s-wave superconductor |
 | superconductor (5) | Lead (Pb) | Same family, higher $T_c$ |
 | superconductor (5) | YBCO / cuprates | Unconventional nodal d-wave high-$T_c$ superconductor, still ordinary (non-topological) pairing |
+| superconductor (5) | Lanthanum Decahydride (LaH$_{10}$) | Record near-room-temperature $T_c$ (~250–260 K at ~170 GPa) — still ordinary phonon-mediated BCS pairing, just driven to extremes by hydrogen's own light, strongly-coupled phonons in the hydride's clathrate cage; not from the course, added as a modern high-pressure-superconductivity flagship |
+| chernSuperconductor (5) | Uranium Ditelluride (UTe$_2$) | Leading spin-triplet/chiral superconductor candidate — critical fields far beyond the Pauli limit and contested reports of time-reversal-symmetry breaking and chiral in-gap surface states; standalone (not a hybrid recipe result), the same "real intrinsic compound anchors its own topic's world" treatment MnBi₂Te₄ gets above; genuinely still a *candidate*, not settled, unlike this world's other (engineered/hybrid) chernSuperconductor members |
 | chernSuperconductor (5, engineered) | NbSe$_2$/CrBr$_3$ heterostructure | s-wave SC + spin-orbit + exchange field engineered into a topological superconductor — genuine topological pairing, so it (and its Majorana Split move) live here rather than plain `superconductor` |
 | chernSuperconductor (5, engineered, hybrid) | Iron chains on lead (Fe/Pb) | Majorana-chain platform — topological superconductivity from a magnetic chain on an s-wave SC; §5 hybrid recipe result (world 6's Iron + this world's Lead), lives as a World 10 wild rather than a World 5 one |
 | superconductor (5) | Niobium (Nb) | Highest-$T_c$ elemental BCS superconductor at ambient pressure, same conventional family as Aluminum/Lead; also §5's non-magnetic parent for Mn/Nb Shiba Chain below |
@@ -216,6 +222,7 @@ pool.
 | classicalMagnet (6) | Cobalt (Co) | Same family |
 | classicalMagnet (6) | Chromium Triiodide (CrI$_3$) | Van der Waals ferromagnet with an observed topological magnon gap |
 | classicalMagnet (6) | Chromium Tribromide (CrBr$_3$) | Same van der Waals ferromagnet family as CrI₃ — pairs with Niobium Diselenide in Kezilebieke et al., Nature 588, 424 (2020)'s topological-superconductor heterostructure, §5 |
+| classicalMagnet (6) | Yttrium Iron Garnet (YIG, Y$_3$Fe$_5$O$_{12}$) | Ferrimagnetic (two antiparallel sublattices, unequal moment), with the lowest known magnon damping of any material — the real substrate nearly every magnon-transport/magnon-BEC experiment actually runs on; not from the course, added as `classicalMagnet`'s magnonics flagship |
 | classicalMagnet (9, hybrid parent) | Manganese (Mn) | Elemental Mn's own complex itinerant antiferromagnetism is beside the point — its role is §5's magnetic-impurity parent for Mn/Nb Shiba Chain above |
 | quantumSpinLiquid (7, textbook fill-in) | Strontium Copper Borate (SrCu$_2$(BO$_3$)$_2$) | Shastry–Sutherland lattice — exactly-solvable dimerized/entangled ground state, a standard tensor-network benchmark material and a textbook triplon host |
 | quantumSpinLiquid (7, textbook fill-in) | Thallium Copper Chloride (TlCuCl$_3$) | Quantum spin-dimer compound — another textbook triplon example |
@@ -225,11 +232,15 @@ pool.
 | quantumSpinLiquid (8) | Ytterbium Magnesium Gallium Oxide (YbMgGaO$_4$) | Triangular-lattice spin-liquid candidate |
 | quantumSpinLiquid (8, engineered) | 1T-TaS$_2$ on 1H-TaS$_2$ | Engineered 2D Kondo-insulator heterostructure — wired in as §5's 1T/1H-TaS₂ heterostructure hybrid recipe, fusing the two standalone phase entries below |
 | quantumSpinLiquid (8) | Tantalum Disulfide, 1T phase (TaS$_2$) | Star-of-David CDW Mott insulator / quantum-spin-liquid candidate (Law & Lee 2017) — the other half of the 1T/1H heterostructure above |
+| quantumSpinLiquid (8) | Cerium Zirconate Pyrochlore (Ce$_2$Zr$_2$O$_7$) | Quantum-spin-ice candidate — no magnetic order or freezing down to ~20 mK, a continuum read as evidence for a U(1) quantum spin liquid (emergent photon, gapped spinons); its gauge structure is U(1), not the type's nominal Z2 vison, grouped in here anyway the same way triplon already is, a deliberate simplification; not from the course |
 | kondoHeavyFermion (8, new type) | Ytterbium Rhodium Silicide (YbRh$_2$Si$_2$) | The flagship heavy-fermion/Kondo-lattice quantum-critical-point material — gives Kondo's own world a genuine Kondo-lattice compound, distinct from the frustrated-magnet spin-liquid candidates above |
+| kondoHeavyFermion (8) | Cerium Cobalt Indide (CeCoIn$_5$) | A second Kondo-lattice flagship — Ce 4f moments hybridize into ~100-electron-mass quasiparticles right next to an antiferromagnetic quantum critical point; its own T→0 ground state is actually a d-wave superconductor built from those heavy quasiparticles, but the Kondo-lattice physics is what defines the compound, so it stays `kondoHeavyFermion` rather than `superconductor`; not from the course |
 | multiferroic (6, new type) | Nickel Diiodide (NiI$_2$), monolayer | Type-II multiferroic from noncollinear/helimagnetic order down to the monolayer limit (Song et al., Nature 2022) — hosts genuine electromagnons, the type's flagship. Same session (classical magnetism/magnons) as classicalMagnet above, so it's a World 6 wild too rather than its own world |
 | multiferroic (6, new type, hybrid) | Twisted CrI₃ | §5 hybrid recipe (CrI₃ + CrI₃) — noncollinear moiré spin textures theoretically predicted (not yet confirmed) to induce magnetoelectric coupling; untwisted CrI₃ itself is only classicalMagnet |
+| multiferroic (6, new type) | Bismuth Ferrite (BiFeO$_3$) | The flagship room-temperature single-phase multiferroic — large switchable polarization (from the Bi³⁺ lone pair) coexisting with G-type antiferromagnetic order carrying a spin cycloid, with electromagnons actually observed (not just predicted, unlike Twisted CrI₃ above); not from the course |
 | ferroelectric (new type) | Barium Titanate (BaTiO$_3$) | The textbook ferroelectric — its Ti⁴⁺ ion sits off-center below ~120°C, giving the lattice a spontaneous switchable polarization; no course topic covers ferroelectricity specifically, so like every other type without a session of its own it lives in World 9, which can host any type |
 | ferroelectric (new type) | Germanium Telluride (GeTe) | Robust room-temperature ferroelectric Rashba semiconductor — a stronger, more switchable ferroelectric than BaTiO₃'s own ~120°C transition, same type, also a World 9 wild |
+| ferroelectric (new type) | Hafnium Oxide (HfO$_2$), ferroelectric phase | CMOS-compatible ferroelectric behind real FeRAM/FeFET devices — pristine, undoped epitaxial thin films switch too (Cheema et al., Nature 2020; strain rather than a dopant stabilizes the polar orthorhombic phase); bulk, unstrained HfO₂ is the ordinary centrosymmetric phase and not ferroelectric at all, so this specifically means the thin-film phase; not from the course, also a World 9 wild |
 | chernSuperconductor (10, hybrid) | InAs/Al Majorana Wire | Engineered from an ordinary s-wave superconductor (Aluminum) proximitizing a strong-spin-orbit semiconductor (InAs) — genuine topological pairing, so `chernSuperconductor` rather than plain `superconductor`; §5 hybrid recipe result |
 | adaptive (10) | — (no compound, by design) | Only `WORLD_RIVALS[10]`'s finale boss ("a model of you") — World 10's ordinary wilds are not 'adaptive', see the note above the crystal-database table |
 
@@ -507,7 +518,12 @@ compound in the game (`data/materials.ts`'s `allCrystals()`), not just discovere
 an entry not yet found shows as "???" with a masked crystal render rather than being
 absent from the list entirely, so the index reads as a checklist of the whole game.
 Searchable by name and filterable by type, one entry (name, blurb, and the compound's own
-rendered crystal) shown per page (`HubScene.renderMaterialdexPage`).
+rendered crystal) shown per page (`HubScene.renderMaterialdexPage`). A compound that also
+carries a short chemical-formula/acronym form (`data/types.ts`'s `Material.shortName`, e.g.
+"Manganese Oxide (MnO)", "Yttrium Iron Garnet (YIG)") shows it in parentheses right after the
+full name (`data/materials.ts`'s `materialDisplayName`) -- optional, only set where a
+genuinely shorter, recognizable form exists; a compound whose own `name` already is that
+short form (e.g. "YBCO", "Bi₂Te₃") doesn't carry one.
 
 ## 5. Guardians, economy, and story arc
 
@@ -586,7 +602,12 @@ does. World 10 has no guardian; its only encounter is the finale.
   Yu-Shiba-Rusinov precursor (Yazdani et al., Science 1997) to the Fe/Pb chain's
   many-impurity Majorana case; HgTe + CdTe → HgTe/CdTe Quantum Well, the original
   Bernevig-Hughes-Zhang quantum spin Hall platform (König et al., Science 2007) --
-  neither parent is topological on its own, only the engineered quantum well is.
+  neither parent is topological on its own, only the engineered quantum well is;
+  Graphene + Monolayer Boron Nitride → Rhombohedral Pentalayer Graphene/hBN Moiré, the
+  2023-2024 zero-field fractional quantum anomalous Hall result -- real graphene/hBN
+  devices are aligned for exactly this reason, though the recipe (like every other one
+  here) is narrative rather than literal 1:1 stoichiometry, since the real result is five
+  graphene layers, not one.
   Recipe results are ordinary `WORLD_CRYSTALS` entries (all of them World
   10's pool, see §2/§7 below) rather than synthesized on the fly, so a hybrid
   encountered wild and one fused by hand are the exact same crystal; `combineMaterials`
@@ -859,8 +880,11 @@ Built and playable end to end: all 10 worlds have an overworld map, biome, wild-
 pool, rival, and guardian slot; the Hub, title screen, localStorage save, Materialdex, the
 contextual tutorial tips, and the Story Mode/Superposition Mode picker are all in place
 (§2, §4, §5, §7). `game/` is the only build; there is no separate no-install
-single-file `demo/` prototype. All audio is a procedural Web Audio score with no external
-assets, with both an overworld track and a battle track per world (`game/src/audio/music.ts`).
+single-file `demo/` prototype. All audio is procedural Web Audio with no external assets
+(`game/src/audio/music.ts`), with both an overworld track and a battle track per world in
+two selectable arrangements — "Classic" (chiptune-leaning arpeggios) and "Modern" (a
+symphonic string-pad/legato-melody arrangement of the same per-world keys/tempos) — toggled
+live from the Enter-menu Settings panel.
 
 Not yet built:
 - Bespoke per-world boss puzzles (§6) — every world currently uses the same reach-goal →

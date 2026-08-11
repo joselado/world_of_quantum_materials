@@ -190,6 +190,8 @@ Open the Enter-key menu and click **Settings** to adjust:
   enter or re-enter a world.
 - **Text Size** -- Compact, Normal, or Large. Applies immediately to every
   menu and dialogue in the game.
+- **Music Style** -- Classic or Modern, two different arrangements of every
+  world's soundtrack. Applies immediately.
 
 ![Settings panel](screenshots/settings.png)
 

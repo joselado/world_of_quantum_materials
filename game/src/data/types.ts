@@ -173,6 +173,14 @@ export interface Move {
 
 export interface Material {
   name: string;
+  // A short chemical-formula/acronym form (e.g. "MnO", "YIG"), for a spot
+  // where the full descriptive `name` is too long -- optional, since it's
+  // only worth authoring where a genuinely shorter, recognizable form
+  // exists (data/materials.ts's `materialDisplayName` is the one place
+  // that reads it today, for the Materialdex's "Name (ShortName)" line).
+  // Not set for a compound where `name` already is that short form (e.g.
+  // "YBCO", "Bi₂Te₃").
+  shortName?: string;
   type: MaterialType;
   color: number;
   variant: CrystalVariant;

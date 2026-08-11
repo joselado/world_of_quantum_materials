@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { makeCrystal } from '../art/crystals';
 import { CANVAS_W, CANVAS_H } from '../art/perspective';
-import { getPlayerMaterial, allCrystals, TYPE_LOOK } from '../data/materials';
+import { getPlayerMaterial, allCrystals, TYPE_LOOK, materialDisplayName } from '../data/materials';
 import { materialBlurb } from '../data/materialdex';
 import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
@@ -402,7 +402,7 @@ export class HubScene extends Phaser.Scene {
     y += crystalBlockH;
 
     const nameText = this.add
-      .text(CANVAS_W / 2, y, discovered ? material.name : '???', {
+      .text(CANVAS_W / 2, y, discovered ? materialDisplayName(material) : '???', {
         fontSize: fontPx(this, 14),
         color: '#ffffff',
         fontStyle: 'bold',

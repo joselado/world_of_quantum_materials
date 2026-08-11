@@ -37,7 +37,14 @@ import { encounterGreeting } from '../data/greetings';
 import { TUTORIAL_PAGES, TUTORIAL_TIPS, hasSeenTip, markTipSeen } from '../data/tutorial';
 import type { TutorialTipId } from '../data/tutorial';
 import { STORY_BEATS } from '../data/story';
-import { DENSITY_PRESETS, DEFAULT_ENCOUNTER_DENSITY, FONT_SCALE_PRESETS, DEFAULT_FONT_SCALE } from '../data/settings';
+import {
+  DENSITY_PRESETS,
+  DEFAULT_ENCOUNTER_DENSITY,
+  FONT_SCALE_PRESETS,
+  DEFAULT_FONT_SCALE,
+  MUSIC_STYLE_PRESETS,
+  DEFAULT_MUSIC_STYLE,
+} from '../data/settings';
 import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
 import type { Material, MaterialType, Stats } from '../data/types';
@@ -2164,15 +2171,17 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   // Enter-menu "Settings" panel: wild-encounter density (data/settings.ts's
-  // DENSITY_PRESETS, read by generateMap via encounterChance()) and text
-  // size (FONT_SCALE_PRESETS, read live by every fontPx() call). Each is a
-  // button that cycles through its presets in place (same rebuild-the-panel
-  // pattern as Noether's shop), rather than a slider, since both have only
-  // a handful of discrete steps. Content is laid out top-down first, each
-  // element's own (font-scale-dependent) height advancing a running `y`,
-  // and the backing panel rectangle is sized/inserted behind everything
-  // afterward -- a fixed panel height would either clip or float away from
-  // the content once text size itself is one of the settings being edited.
+  // DENSITY_PRESETS, read by generateMap via encounterChance()), text size
+  // (FONT_SCALE_PRESETS, read live by every fontPx() call), and music style
+  // (MUSIC_STYLE_PRESETS, which of audio/music.ts's SCORES/SCORES_MODERN
+  // tables MusicEngine draws from). Each is a button that cycles through its
+  // presets in place (same rebuild-the-panel pattern as Noether's shop),
+  // rather than a slider, since all three have only a handful of discrete
+  // steps. Content is laid out top-down first, each element's own
+  // (font-scale-dependent) height advancing a running `y`, and the backing
+  // panel rectangle is sized/inserted behind everything afterward -- a fixed
+  // panel height would either clip or float away from the content once text
+  // size itself is one of the settings being edited.
   private showSettingsPanel() {
     this.dialogueContainer?.destroy(true);
     this.dialogueActive = true;
@@ -2254,6 +2263,36 @@ export class OverworldScene extends Phaser.Scene {
     container.add(fontHint);
     y += fontHint.height + 10;
 
+    const styleIndex = this.musicStyleIndex();
+    const stylePreset = MUSIC_STYLE_PRESETS[styleIndex];
+    const styleBtn = this.addDialogueButtonAt(
+      container,
+      CANVAS_W / 2,
+      y,
+      `Music Style: ${stylePreset.label}`,
+      () => {
+        const next = MUSIC_STYLE_PRESETS[(styleIndex + 1) % MUSIC_STYLE_PRESETS.length];
+        this.game.registry.set('musicStyle', next.value);
+        persistFromRegistry(this.game.registry);
+        music.setStyle(next.value);
+        this.showSettingsPanel();
+      },
+      contentWidth
+    );
+    y += styleBtn.height + 4;
+
+    const styleHint = this.add
+      .text(CANVAS_W / 2, y, 'Applies immediately.', {
+        fontSize: fontPx(this, 11),
+        color: '#8fa0c9',
+        align: 'center',
+        wordWrap: { width: contentWidth },
+        lineSpacing: 4,
+      })
+      .setOrigin(0.5, 0);
+    container.add(styleHint);
+    y += styleHint.height + 10;
+
     const closeBtn = this.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Close', () => this.closeDialogue(), 260);
     y += closeBtn.height + 8;
 
@@ -2276,6 +2315,13 @@ export class OverworldScene extends Phaser.Scene {
     const idx = FONT_SCALE_PRESETS.findIndex((p) => p.value === value);
     if (idx !== -1) return idx;
     return FONT_SCALE_PRESETS.findIndex((p) => p.value === DEFAULT_FONT_SCALE);
+  }
+
+  private musicStyleIndex(): number {
+    const value = (this.game.registry.get('musicStyle') as 'classic' | 'modern') ?? DEFAULT_MUSIC_STYLE;
+    const idx = MUSIC_STYLE_PRESETS.findIndex((p) => p.value === value);
+    if (idx !== -1) return idx;
+    return MUSIC_STYLE_PRESETS.findIndex((p) => p.value === DEFAULT_MUSIC_STYLE);
   }
 
   // Lists every guardian the player has met so far (registry `metGuardians`,

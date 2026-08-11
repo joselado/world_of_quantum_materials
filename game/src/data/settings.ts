@@ -43,3 +43,20 @@ export const FONT_SCALE_PRESETS: FontScalePreset[] = [
 ];
 
 export const DEFAULT_FONT_SCALE = FONT_SCALE_PRESETS[1].value; // Normal -- the new 1.5x default
+
+// Same Settings panel, third row: which of audio/music.ts's two score tables
+// (SCORES/"Classic", SCORES_MODERN/"Modern") MusicEngine.play() draws from.
+// Unlike density/font scale this takes effect immediately -- picking a new
+// value calls music.setStyle(), which restarts whatever's currently playing
+// under the new table.
+export interface MusicStylePreset {
+  label: string;
+  value: 'classic' | 'modern';
+}
+
+export const MUSIC_STYLE_PRESETS: MusicStylePreset[] = [
+  { label: 'Classic', value: 'classic' },
+  { label: 'Modern', value: 'modern' },
+];
+
+export const DEFAULT_MUSIC_STYLE = MUSIC_STYLE_PRESETS[0].value; // Classic -- the original soundtrack stays the default

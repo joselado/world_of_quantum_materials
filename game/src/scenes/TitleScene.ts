@@ -57,7 +57,9 @@ export class TitleScene extends Phaser.Scene {
     registry.set('bohrActivePassive', save.bohrActivePassive);
     registry.set('curieMoveClass', save.curieMoveClass);
     registry.set('andersonDopant', save.andersonDopant);
+    registry.set('musicStyle', save.musicStyle);
 
+    music.setStyle(save.musicStyle);
     music.play('overworld:1');
 
     const g = this.add.graphics();

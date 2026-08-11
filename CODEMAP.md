@@ -52,10 +52,13 @@ game/src/
                                   per-compound PRNG jitterFor() (crystals.ts) is built from
   audio/
     sfx.ts                      Procedural sound effects (attack/impact/playGuardianChime)
-    music.ts                    MusicEngine, per-scene/per-world tracks (SCORES, keyed
-                                  `overworld:${world}`/`battle:${world}`), makeBattleScore()
-                                  generates worlds 2-10's battle themes (world 1 is hand-
-                                  written), duck() for attack beats
+    music.ts                    MusicEngine, per-scene/per-world tracks in two selectable
+                                  styles (SCORES/"Classic", SCORES_MODERN/"Modern", both
+                                  keyed `overworld:${world}`/`battle:${world}`),
+                                  setStyle('classic'|'modern') picks the table + restarts
+                                  the current track, makeBattleScore()/makeModernBattleScore()
+                                  generate worlds 2-10's (resp. all 10 modern) battle themes
+                                  (classic world 1 is hand-written), duck() for attack beats
   data/
     types.ts                    Move, Material, MoveClass, MaterialType, CrystalVariant, Stats
     materials.ts                 MOVES, TYPE_LOOK, WORLD_CRYSTALS, WORLD_RIVALS,
@@ -83,7 +86,8 @@ game/src/
     materialdex.ts               Per-material (fallback per-type) physics blurb for Materialdex
     save.ts                      localStorage schema + persistFromRegistry()/load()
     tutorial.ts                    TUTORIAL_TIPS/TUTORIAL_PAGES -- contextual + replayable tutorial copy
-    settings.ts                    DENSITY_PRESETS/DEFAULT_ENCOUNTER_DENSITY -- wild-encounter density presets
+    settings.ts                    DENSITY_PRESETS/DEFAULT_ENCOUNTER_DENSITY -- wild-encounter density presets,
+                                    FONT_SCALE_PRESETS, MUSIC_STYLE_PRESETS/DEFAULT_MUSIC_STYLE
     story.ts                       STORY_BEATS -- per-world Decoherence-arc line shown on advancing worlds
 ```
 
@@ -95,9 +99,16 @@ since `materials.ts` pulls in Phaser at module scope) and regenerates the
 ## Data model (`data/types.ts`, `data/materials.ts`)
 
 - A **Material** is a crystal: `name`, `type` (`MaterialType`), `color`, `variant`
-  (shard/cluster/prism/layer/twisted), `maxHp`, `moves` (string ids into `MOVES`), and an
-  optional `hybridParents` (both parents' own `color`/`variant`, set only by
-  `combineMaterials` -- see below and STYLE.md's "Crystal sprites" section).
+  (shard/cluster/prism/layer/twisted), `maxHp`, `moves` (string ids into `MOVES`), an optional
+  `shortName` (a short chemical-formula/acronym form, e.g. "MnO", "YIG" -- only set where one's
+  genuinely worth authoring; `materials.ts`'s `materialDisplayName()` is the one consumer today,
+  the Materialdex's "Name (ShortName)" line), and an optional `hybridParents` (both parents' own
+  `color`/`variant`, set only by `combineMaterials` -- see below and STYLE.md's "Crystal
+  sprites" section).
+- `crystal(name, type, maxHp, moves, shadeStep?, variantOverride?, shortName?)` is the
+  `WORLD_CRYSTALS`/`WORLD_RIVALS` row builder -- adding a `shortName` to an existing call while
+  leaving `shadeStep`/`variantOverride` at their defaults means passing `undefined` for those
+  positionally rather than omitting them (matches the existing pattern for `shadeStep` alone).
 - The player is not a separate class -- `PLAYER_MATERIAL` is just one `Material` row (currently
   Silicon, `type: 'semiconductor'`). Its starting `moves` is the tutorial loadout; moves actually
   available in battle also depend on the registry's `unlockedMoves` (grows via Noether's shop).
@@ -719,6 +730,9 @@ history list of past Majorana fusions, every visit to his panel picks a fresh pa
 string[]`, `superpositionMode: boolean` (Story Mode is just its `false` state -- see "Story
 Mode vs. Superposition Mode" above), `encounterDensity: number` (one of
 `data/settings.ts`'s `DENSITY_PRESETS`, set via the Enter-menu's Settings panel),
+`musicStyle: 'classic' | 'modern'` (same panel's third row, one of `data/settings.ts`'s
+`MUSIC_STYLE_PRESETS` -- which of `audio/music.ts`'s `SCORES`/`SCORES_MODERN` tables
+`MusicEngine` draws from, applied immediately via `music.setStyle()`),
 `kondoActiveMove: string | null` (which of `data/materials.ts`'s `KONDO_MOVE_IDS` is currently
 usable in battle, `null` until the player picks one via `scenes/panels/kondo.ts`'s `showKondoPanel` -- see
 "Guardians" above; the other two bought-but-inactive Kondo moves, if any, still live in the

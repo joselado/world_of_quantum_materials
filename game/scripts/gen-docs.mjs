@@ -70,6 +70,11 @@ function evalNode(node, sf) {
     return { __new: node.expression.getText(sf), args: (node.arguments ?? []).map((a) => evalNode(a, sf)) };
   }
   if (ts.isParenthesizedExpression(node) || ts.isAsExpression(node)) return evalNode(node.expression, sf);
+  // `crystal()`'s optional trailing params (variantOverride, shortName) are
+  // sometimes skipped positionally via an explicit `undefined` literal
+  // rather than omitted -- read as plain JS `undefined`, same as omitting
+  // the argument entirely would.
+  if (ts.isIdentifier(node) && node.text === 'undefined') return undefined;
   throw new Error(`gen-docs: don't know how to read a ${ts.SyntaxKind[node.kind]} node: ${node.getText(sf)}`);
 }
 

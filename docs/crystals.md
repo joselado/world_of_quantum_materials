@@ -26,8 +26,11 @@ don't hand-edit the `<!-- GENERATED -->` blocks.*
 | Crystal | Type | Max HP |
 | --- | --- | --- |
 | Graphene | `metal` | 22 |
+| Silver | `metal` | 23 |
 | Gallium Nitride | `semiconductor` | 23 |
 | Magnesium Oxide | `insulator` | 21 |
+| Diamond | `insulator` | 24 |
+| Monolayer Boron Nitride | `insulator` | 21 |
 | Indium Arsenide | `semiconductor` | 24 |
 | Monolayer MoTe₂ (2H) | `semiconductor` | 22 |
 | HgTe | `semiconductor` | 22 |
@@ -55,8 +58,10 @@ don't hand-edit the `<!-- GENERATED -->` blocks.*
 | Aluminum | `superconductor` | 28 |
 | Lead | `superconductor` | 30 |
 | YBCO | `superconductor` | 27 |
+| Lanthanum Decahydride | `superconductor` | 28 |
 | Niobium | `superconductor` | 29 |
 | Tantalum Disulfide (1H) | `superconductor` | 26 |
+| Uranium Ditelluride | `chernSuperconductor` | 29 |
 
 ### World 6 -- Classical magnetism and magnons
 
@@ -66,7 +71,9 @@ don't hand-edit the `<!-- GENERATED -->` blocks.*
 | Cobalt | `classicalMagnet` | 27 |
 | Chromium Triiodide | `classicalMagnet` | 25 |
 | Chromium Tribromide | `classicalMagnet` | 25 |
+| Yttrium Iron Garnet | `classicalMagnet` | 26 |
 | Monolayer NiI₂ | `multiferroic` | 28 |
+| Bismuth Ferrite | `multiferroic` | 27 |
 
 ### World 7 -- Quantum entanglement and tensor networks
 
@@ -85,7 +92,9 @@ don't hand-edit the `<!-- GENERATED -->` blocks.*
 | Herbertsmithite | `quantumSpinLiquid` | 23 |
 | YbMgGaO₄ | `quantumSpinLiquid` | 22 |
 | Tantalum Disulfide (1T) | `quantumSpinLiquid` | 24 |
+| Cerium Zirconate Pyrochlore | `quantumSpinLiquid` | 22 |
 | YbRh₂Si₂ | `kondoHeavyFermion` | 22 |
+| Cerium Cobalt Indide | `kondoHeavyFermion` | 23 |
 
 ### World 9 -- Excitations and defects
 
@@ -96,6 +105,7 @@ don't hand-edit the `<!-- GENERATED -->` blocks.*
 | Manganese | `classicalMagnet` | 23 |
 | Barium Titanate | `ferroelectric` | 27 |
 | GeTe | `ferroelectric` | 26 |
+| Hafnium Oxide | `ferroelectric` | 25 |
 
 ### World 10 -- Machine learning for quantum materials
 
@@ -110,6 +120,7 @@ don't hand-edit the `<!-- GENERATED -->` blocks.*
 | Cr-doped (Bi,Sb)₂Te₃ | `chernInsulator` | 29 |
 | HgTe/CdTe Quantum Well | `quantumSpinHall` | 25 |
 | Twisted Bilayer MoTe₂ | `fractionalChern` | 26 |
+| Rhombohedral Pentalayer Graphene/hBN Moiré | `fractionalChern` | 27 |
 | Fe/Pb Majorana Chain | `chernSuperconductor` | 29 |
 | Mn/Nb Shiba Chain | `superconductor` | 24 |
 <!-- GENERATED:WORLDS END -->

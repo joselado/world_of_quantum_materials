@@ -485,6 +485,7 @@ export function curieMoveDisplayName(registry: RegistryLike, moveId: string): st
 // Noether.
 export const PLAYER_MATERIAL: Material = {
   name: 'Silicon',
+  shortName: 'Si',
   type: 'semiconductor',
   color: 0x4a90d9,
   variant: 'shard',
@@ -541,17 +542,27 @@ function crystal(
   maxHp: number,
   moves: string[],
   shadeStep = 0,
-  variantOverride?: CrystalVariant
+  variantOverride?: CrystalVariant,
+  shortName?: string
 ): Material {
   const look = TYPE_LOOK[type];
   return {
     name,
+    shortName,
     type,
     color: shade(look.color, shadeStep * 18),
     variant: variantOverride ?? look.variant,
     maxHp,
     moves,
   };
+}
+
+// The Materialdex's "Name (ShortName)" display -- the one place
+// `Material.shortName` is read today. Falls back to the plain name for the
+// majority of compounds that don't carry one (types.ts's own comment on the
+// field explains why not every entry has one).
+export function materialDisplayName(material: Material): string {
+  return material.shortName ? `${material.name} (${material.shortName})` : material.name;
 }
 
 // Per-world (course-topic) wild-crystal pools, keyed by world number --
@@ -573,36 +584,52 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // move is actually reachable by fighting/discovering a wild crystal, not
     // just buyable in the abstract.
     crystal('Graphene', 'metal', 22, ['plasmonPulse', 'thermalFluctuation'], 0, 'layer'),
-    crystal('Manganese Oxide', 'classicalMagnet', 26, ['thermalFluctuation', 'magneticField']),
-    crystal('Nickel Oxide', 'classicalMagnet', 25, ['thermalFluctuation', 'magneticField'], 1),
+    crystal('Manganese Oxide', 'classicalMagnet', 26, ['thermalFluctuation', 'magneticField'], 0, undefined, 'MnO'),
+    crystal('Nickel Oxide', 'classicalMagnet', 25, ['thermalFluctuation', 'magneticField'], 1, undefined, 'NiO'),
     // Elemental Cr is an itinerant (metallic) antiferromagnet -- the SDW
     // mean-field/Stoner-criterion counterpart to MnO/NiO's Mott-insulating
     // picture above. Also HYBRID_RECIPES' magnetic-dopant parent for Cr-doped
     // (Bi,Sb)₂Te₃ (world 3's Bi₂Te₃ + this).
-    crystal('Chromium', 'classicalMagnet', 24, ['thermalFluctuation', 'magneticField'], 2),
+    crystal('Chromium', 'classicalMagnet', 24, ['thermalFluctuation', 'magneticField'], 2, undefined, 'Cr'),
   ],
   // Topic 2 (symmetries, tight-binding) has no dedicated main type of its
   // own in the type system -- it mixes the metal/semiconductor/insulator
   // baselines, just with "lattice" flavor compounds instead of world 1's
-  // tutorial picks. Graphene stays 'metal' (a zero-gap semimetal, real
-  // graphene plasmonics is its own well-known field); Gallium Nitride,
-  // Indium Arsenide, and the semiconducting MoTe₂ phase are narrow-gap
-  // dopable semiconductors, same category as Silicon; Magnesium Oxide's gap
-  // is wide enough to be a true insulator instead (and, as an ionic oxide,
-  // an actually stronger polaron host than a bare semiconductor -- see
+  // tutorial picks. Graphene and Silver stay 'metal' (a zero-gap semimetal
+  // and the archetypal plasmonic conductor); Gallium Nitride, Indium
+  // Arsenide, and the semiconducting MoTe₂ phase are narrow-gap dopable
+  // semiconductors, same category as Silicon; Magnesium Oxide, Diamond, and
+  // Monolayer Boron Nitride are gapped too wide for that instead, true
+  // insulators (and, as ionic/heteropolar lattices, actually stronger
+  // polaron hosts than a bare semiconductor -- see
   // MOVE_COMPATIBILITY.insulator).
   2: [
     // Plasmon Pulse moveset -- see world 1's Graphene entry above.
     crystal('Graphene', 'metal', 22, ['plasmonPulse', 'thermalFluctuation'], 0, 'layer'),
-    crystal('Gallium Nitride', 'semiconductor', 23, ['tunnelStrike', 'thermalFluctuation'], 2),
-    crystal('Magnesium Oxide', 'insulator', 21, ['thermalFluctuation', 'localizationPin']),
+    // Ag's half-filled 5s conduction band gives it the sharpest free-electron
+    // plasmon of any elemental metal -- real plasmonics/nanophotonics
+    // overwhelmingly runs on silver (and gold) rather than graphene.
+    crystal('Silver', 'metal', 23, ['plasmonPulse', 'thermalFluctuation'], 1, undefined, 'Ag'),
+    crystal('Gallium Nitride', 'semiconductor', 23, ['tunnelStrike', 'thermalFluctuation'], 2, undefined, 'GaN'),
+    crystal('Magnesium Oxide', 'insulator', 21, ['thermalFluctuation', 'localizationPin'], 0, undefined, 'MgO'),
+    // Diamond's ~5.5 eV indirect gap is far too wide for doping or thermal
+    // excitation to put a carrier in the conduction band -- the textbook
+    // wide-gap covalent insulator, pristine (no nitrogen-vacancy or other
+    // defect dressing).
+    crystal('Diamond', 'insulator', 24, ['thermalFluctuation', 'localizationPin'], 1, undefined, 'C'),
+    // ~5.9 eV gap, the other half (with Graphene) of the HYBRID_RECIPES
+    // pairing below -- real graphene devices are almost always built on or
+    // encapsulated in hBN specifically because its own lattice is nearly
+    // commensurate with graphene's, letting an aligned stack open a moiré
+    // superlattice rather than just inert dielectric support.
+    crystal('Monolayer Boron Nitride', 'insulator', 21, ['thermalFluctuation', 'localizationPin'], 2, 'layer', 'hBN'),
     // HYBRID_RECIPES parents (below) -- InAs's own role is providing the
     // strong spin-orbit coupling a Majorana wire needs; the 2H
     // (semiconducting) MoTe₂ monolayer is the untwisted parent that becomes
     // Twisted Bilayer MoTe₂ once fused with itself -- distinct from the
     // already-topological 1T′ monolayer phase (world 3's Monolayer WTe₂
     // sibling).
-    crystal('Indium Arsenide', 'semiconductor', 24, ['tunnelStrike', 'thermalFluctuation'], 1),
+    crystal('Indium Arsenide', 'semiconductor', 24, ['tunnelStrike', 'thermalFluctuation'], 1, undefined, 'InAs'),
     crystal('Monolayer MoTe₂ (2H)', 'semiconductor', 22, ['tunnelStrike', 'thermalFluctuation'], 3, 'layer'),
     // Individually just an ordinary gapped band compound each -- only once
     // thinned into a quantum well together do they host a protected edge
@@ -634,7 +661,7 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
   // world's own zero-field members carry, so both live under one type (see
   // types.ts's comment on it).
   4: [
-    crystal('Gallium Arsenide', 'chernInsulator', 25, ['chiralCurrent', 'tunnelStrike']),
+    crystal('Gallium Arsenide', 'chernInsulator', 25, ['chiralCurrent', 'tunnelStrike'], 0, undefined, 'GaAs'),
     crystal('Graphene (strong field)', 'chernInsulator', 24, ['chiralCurrent', 'thermalFluctuation'], 1, 'layer'),
     // Real intrinsic magnetic topological insulator -- the actual zero-field
     // QAHE/Chern-insulator material, its magnetism built into the crystal
@@ -643,24 +670,45 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     crystal('MnBi₂Te₄', 'chernInsulator', 30, ['chiralCurrent', 'tunnelStrike'], 2, 'layer'),
   ],
   5: [
-    crystal('Aluminum', 'superconductor', 28, ['higgsOscillation', 'thermalFluctuation']),
-    crystal('Lead', 'superconductor', 30, ['higgsOscillation', 'thermalFluctuation'], 1),
+    crystal('Aluminum', 'superconductor', 28, ['higgsOscillation', 'thermalFluctuation'], 0, undefined, 'Al'),
+    crystal('Lead', 'superconductor', 30, ['higgsOscillation', 'thermalFluctuation'], 1, undefined, 'Pb'),
     crystal('YBCO', 'superconductor', 27, ['higgsOscillation', 'thermalFluctuation'], 2),
+    // Record near-room-temperature Tc (~250 K at ~170 GPa) -- still ordinary
+    // (if spectacular) phonon-mediated BCS pairing, extreme electron-phonon
+    // coupling from light hydrogen phonons in the hydride's clathrate cage,
+    // not any topological mechanism.
+    crystal('Lanthanum Decahydride', 'superconductor', 28, ['higgsOscillation', 'thermalFluctuation'], 3, undefined, 'LaH₁₀'),
     // Niobium: the highest-Tc elemental BCS superconductor at ambient
     // pressure, same conventional family as Aluminum/Lead above. Tantalum
     // Disulfide's 1H phase is a standalone metallic/superconducting TMD
     // monolayer in its own right -- distinct from the 1T phase (world 8),
     // and the other half of the 1T/1H-TaS₂ heterostructure hybrid recipe.
-    crystal('Niobium', 'superconductor', 29, ['higgsOscillation', 'thermalFluctuation'], 4),
-    crystal('Tantalum Disulfide (1H)', 'superconductor', 26, ['higgsOscillation', 'thermalFluctuation'], 5, 'layer'),
+    crystal('Niobium', 'superconductor', 29, ['higgsOscillation', 'thermalFluctuation'], 4, undefined, 'Nb'),
+    crystal('Tantalum Disulfide (1H)', 'superconductor', 26, ['higgsOscillation', 'thermalFluctuation'], 5, 'layer', 'TaS₂ (1H)'),
+    // Leading spin-triplet/chiral superconductor candidate -- huge
+    // beyond-Pauli-limit critical fields and (contested) reports of
+    // time-reversal-symmetry-breaking, chiral in-gap surface states.
+    // Standalone (not a HYBRID_RECIPES result, unlike this world's other
+    // chernSuperconductor members), the same "real intrinsic compound gets
+    // its topic's own world" treatment world 4's MnBi₂Te₄ gets -- kept
+    // 'chernSuperconductor' rather than plain 'superconductor' since that
+    // candidate topological pairing (not settled) is the entire reason it's
+    // a research flagship, but honestly still a candidate, not confirmed.
+    crystal('Uranium Ditelluride', 'chernSuperconductor', 29, ['decoherenceWave', 'higgsOscillation'], 0, undefined, 'UTe₂'),
   ],
   6: [
-    crystal('Iron', 'classicalMagnet', 27, ['thermalFluctuation', 'magneticField']),
-    crystal('Cobalt', 'classicalMagnet', 27, ['thermalFluctuation', 'magneticField'], 1),
-    crystal('Chromium Triiodide', 'classicalMagnet', 25, ['thermalFluctuation', 'magneticField'], 2, 'layer'),
+    crystal('Iron', 'classicalMagnet', 27, ['thermalFluctuation', 'magneticField'], 0, undefined, 'Fe'),
+    crystal('Cobalt', 'classicalMagnet', 27, ['thermalFluctuation', 'magneticField'], 1, undefined, 'Co'),
+    crystal('Chromium Triiodide', 'classicalMagnet', 25, ['thermalFluctuation', 'magneticField'], 2, 'layer', 'CrI₃'),
     // Same van der Waals ferromagnet family as Chromium Triiodide above, the
     // other half of the NbSe₂/CrBr₃ topological-superconductor recipe.
-    crystal('Chromium Tribromide', 'classicalMagnet', 25, ['thermalFluctuation', 'magneticField'], 3, 'layer'),
+    crystal('Chromium Tribromide', 'classicalMagnet', 25, ['thermalFluctuation', 'magneticField'], 3, 'layer', 'CrBr₃'),
+    // The magnonics workhorse -- lowest known magnon damping of any material,
+    // the substrate real spin-wave-transport/magnon-BEC experiments actually
+    // run on. Ferrimagnetic (two antiparallel sublattices with unequal
+    // moment), but that's still magnon-carrying magnetic order, the same
+    // 'classicalMagnet' slot Iron/Cobalt's itinerant ferromagnetism fills.
+    crystal('Yttrium Iron Garnet', 'classicalMagnet', 26, ['thermalFluctuation', 'magneticField'], 4, undefined, 'YIG'),
     // Type-II multiferroic from noncollinear/helimagnetic order down to the
     // monolayer limit (Song et al., Nature 2022) -- hosts genuine
     // electromagnons, 'multiferroic''s flagship. Same session (classical
@@ -668,14 +716,22 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // distinct type once the noncollinear order starts coupling to electric
     // polarization.
     crystal('Monolayer NiI₂', 'multiferroic', 28, ['electromagnonPulse', 'magneticField'], 1, 'layer'),
+    // The flagship room-temperature single-phase multiferroic -- large
+    // switchable polarization (Ti⁴⁺-analog off-centering, but from the Bi³⁺
+    // lone pair) coexisting with G-type antiferromagnetic order carrying a
+    // spin cycloid, with electromagnons directly observed in its THz/Raman
+    // response (unlike Twisted CrI₃'s still-theoretical coupling below). A
+    // bulk perovskite, not a 2D sheet, so it overrides back to 'prism' the
+    // same way Bi₂Te₃ overrides quantumSpinHall's own 'layer' default.
+    crystal('Bismuth Ferrite', 'multiferroic', 27, ['electromagnonPulse', 'magneticField'], 0, 'prism', 'BiFeO₃'),
   ],
   7: [
     crystal('Herbertsmithite', 'quantumSpinLiquid', 23, ['entanglementSwap', 'thermalFluctuation']),
     // Shastry-Sutherland dimerized/entangled ground state -- a textbook
     // triplon host, not just a generic spinon-carrying spin liquid.
-    crystal('Strontium Copper Borate', 'quantumSpinLiquid', 24, ['entanglementSwap', 'triplonSurge'], 1),
+    crystal('Strontium Copper Borate', 'quantumSpinLiquid', 24, ['entanglementSwap', 'triplonSurge'], 1, undefined, 'SrCu₂(BO₃)₂'),
     // Quantum spin-dimer compound -- another textbook triplon example.
-    crystal('Thallium Copper Chloride', 'quantumSpinLiquid', 22, ['entanglementSwap', 'triplonSurge'], 2),
+    crystal('Thallium Copper Chloride', 'quantumSpinLiquid', 22, ['entanglementSwap', 'triplonSurge'], 2, undefined, 'TlCuCl₃'),
     // S=1 Haldane spin chain -- its ground state is closely related to the
     // AKLT state, the textbook exactly-solvable example matrix product
     // states/tensor networks are introduced with in the first place.
@@ -684,7 +740,7 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
   8: [
     // A Kitaev spin liquid candidate -- α-RuCl₃'s Z2 topological order makes
     // it a genuine vison host, not just a generic spinon carrier.
-    crystal('α-Ruthenium Trichloride', 'quantumSpinLiquid', 24, ['entanglementSwap', 'visonLoop']),
+    crystal('α-Ruthenium Trichloride', 'quantumSpinLiquid', 24, ['entanglementSwap', 'visonLoop'], 0, undefined, 'RuCl₃'),
     // A Z2-spin-liquid candidate in its own right -- same vison flavor as
     // RuCl₃ above.
     crystal('Herbertsmithite', 'quantumSpinLiquid', 23, ['entanglementSwap', 'visonLoop'], 1),
@@ -692,12 +748,29 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // The star-of-David CDW Mott insulator / spin-liquid candidate phase --
     // the other half of the 1T/1H-TaS₂ heterostructure hybrid recipe (world
     // 5's 1H phase above).
-    crystal('Tantalum Disulfide (1T)', 'quantumSpinLiquid', 24, ['entanglementSwap', 'visonLoop'], 3),
+    crystal('Tantalum Disulfide (1T)', 'quantumSpinLiquid', 24, ['entanglementSwap', 'visonLoop'], 3, undefined, 'TaS₂ (1T)'),
+    // Pyrochlore quantum-spin-ice candidate -- no magnetic order or freezing
+    // down to ~20 mK, with a continuum interpreted as evidence for a U(1)
+    // quantum spin liquid (emergent photon, gapped spinons). Its gauge
+    // structure is U(1), not the Z2 the type's vison nominally models --
+    // grouped in here anyway as spinon-carrying and never-ordering, the same
+    // kind of deliberate simplification the taxonomy already makes for
+    // triplon.
+    crystal('Cerium Zirconate Pyrochlore', 'quantumSpinLiquid', 22, ['entanglementSwap', 'thermalFluctuation'], 4, undefined, 'Ce₂Zr₂O₇'),
     // The flagship heavy-fermion/Kondo-lattice quantum-critical-point
     // material -- gives Kondo's own world a genuine Kondo-lattice compound
     // (none of the frustrated-magnet spin-liquid candidates above actually
     // are one).
     crystal('YbRh₂Si₂', 'kondoHeavyFermion', 22, ['heavyFermionPulse', 'tunnelStrike'], 0),
+    // A second Kondo-lattice flagship -- Ce 4f moments hybridizing with
+    // conduction electrons into ~100-electron-mass quasiparticles, heavy-
+    // fermion coherence right next to an antiferromagnetic quantum critical
+    // point. (Its own T→0 ground state is actually a d-wave superconductor
+    // built from those heavy quasiparticles -- kept 'kondoHeavyFermion'
+    // rather than 'superconductor' since the Kondo-lattice physics is what
+    // defines the compound, the same call YbRh₂Si₂ above already makes for
+    // this type.)
+    crystal('Cerium Cobalt Indide', 'kondoHeavyFermion', 23, ['heavyFermionPulse', 'tunnelStrike'], 1, undefined, 'CeCoIn₅'),
   ],
   // World 9 hosts Yu-Shiba-Rusinov/vortex-bound (Majorana) defect states and
   // Friedel-oscillation impurity resonances, both textbook phenomena of a
@@ -712,23 +785,30 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
   // comment).
   9: [
     crystal('Fe(Te,Se)', 'chernSuperconductor', 22, ['decoherenceWave', 'higgsOscillation'], 1),
-    crystal('Niobium Diselenide', 'superconductor', 21, ['higgsOscillation', 'thermalFluctuation'], 2),
+    crystal('Niobium Diselenide', 'superconductor', 21, ['higgsOscillation', 'thermalFluctuation'], 2, undefined, 'NbSe₂'),
     // Elemental Mn's own complex itinerant antiferromagnetism (same
     // "classicalMagnet" liberty already taken with Chromium) is beside the
     // point here -- its role is HYBRID_RECIPES' magnetic-impurity parent for
     // Mn/Nb Shiba Chain (World 10; Yazdani et al., Science 275, 1767 (1997),
     // the original single-impurity Yu-Shiba-Rusinov STM observation).
-    crystal('Manganese', 'classicalMagnet', 23, ['thermalFluctuation', 'magneticField'], 3),
+    crystal('Manganese', 'classicalMagnet', 23, ['thermalFluctuation', 'magneticField'], 3, undefined, 'Mn'),
     // The textbook ferroelectric -- its Ti⁴⁺ ion sits off-center below
     // ~120°C, giving the lattice a spontaneous switchable polarization. No
     // course topic covers ferroelectricity specifically, so like every other
     // type without a session of its own, it lives in this "any type" world
     // rather than being shoehorned into a topic that doesn't teach it.
-    crystal('Barium Titanate', 'ferroelectric', 27, ['ferronPulse', 'thermalFluctuation'], 0),
+    crystal('Barium Titanate', 'ferroelectric', 27, ['ferronPulse', 'thermalFluctuation'], 0, undefined, 'BaTiO₃'),
     // Robust room-temperature ferroelectric Rashba semiconductor -- a
     // stronger, more switchable ferroelectric than BaTiO₃'s own ~120°C
     // transition, same type.
     crystal('GeTe', 'ferroelectric', 26, ['ferronPulse', 'thermalFluctuation'], 1),
+    // The CMOS-compatible ferroelectric behind real FeRAM/FeFET devices --
+    // pristine, undoped epitaxial thin films switch too (Cheema et al.,
+    // Nature 2020, strain rather than a dopant stabilizing the polar
+    // orthorhombic Pca2₁ phase); bulk, un-strained HfO₂ is the ordinary
+    // centrosymmetric monoclinic phase and not ferroelectric at all, so this
+    // entry specifically means the thin-film phase.
+    crystal('Hafnium Oxide', 'ferroelectric', 25, ['ferronPulse', 'thermalFluctuation'], 2, undefined, 'HfO₂'),
   ],
   // The meta-world's wilds are exactly the game's named hybrid materials --
   // every HYBRID_RECIPES result and nothing else -- so the corridor plays
@@ -765,6 +845,16 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // 'fractionalChern' instead of 'chernInsulator' -- world 4's own
     // untwisted 2H monolayer parent fuses with itself to make this.
     crystal('Twisted Bilayer MoTe₂', 'fractionalChern', 26, ['fluxTwist', 'thermalFluctuation'], 2, 'twisted'),
+    // Zero-field fractional quantum anomalous Hall (2023-2024), from
+    // rhombohedral-stacked pentalayer graphene aligned to a hBN substrate --
+    // fractionally quantized Hall plateaus at moiré filling, no applied
+    // field needed, the same fractionalized-anyon-edge physics as Twisted
+    // Bilayer MoTe₂ above by a different route (an aligned heterostructure
+    // rather than a twist angle). HYBRID_RECIPES result of world 2's
+    // Graphene + Monolayer Boron Nitride -- like every other recipe here,
+    // narrative rather than literal 1:1 stoichiometry (this is five
+    // graphene layers, not one).
+    crystal('Rhombohedral Pentalayer Graphene/hBN Moiré', 'fractionalChern', 27, ['fluxTwist', 'thermalFluctuation'], 4),
     // Fe chains on Pb (Nadj-Perge et al. 2014) -- topological
     // superconductivity from a magnetic chain on an s-wave SC, genuinely
     // 'chernSuperconductor' rather than plain 'superconductor': the whole
@@ -936,7 +1026,31 @@ const HYBRID_RECIPES: { parents: [string, string]; result: Material }[] = [
   // König et al., Science 318, 766 (2007) -- neither parent is topological on
   // its own; only the thinned HgTe/CdTe quantum well is.
   { parents: ['HgTe', 'CdTe'], result: namedResult('HgTe/CdTe Quantum Well') },
+  // Real graphene/hBN moiré devices are built by aligning graphene to a hBN
+  // substrate specifically because their lattices are nearly commensurate --
+  // the 2023-2024 zero-field FQAH result literalizes that same pairing, just
+  // with pentalayer rhombohedral graphene rather than a single sheet.
+  { parents: ['Graphene', 'Monolayer Boron Nitride'], result: namedResult('Rhombohedral Pentalayer Graphene/hBN Moiré') },
 ];
+
+// Every HYBRID_RECIPES result also spawns as an ordinary wild in World 10
+// (see WORLD_CRYSTALS[10]'s own comment) -- give it the same fused
+// two-parent look a player gets from combineMaterials *before* any player
+// ever fuses it, sorted the same order-independent way, so a wild encounter
+// and a player-made hybrid of the same name render identically. Mutates the
+// shared WORLD_CRYSTALS entry `namedResult` returned (not a copy), so every
+// other reference to it -- Materialdex, world-10 spawns -- picks this up
+// too; combineMaterials's own spread just recomputes the same values.
+for (const { parents, result } of HYBRID_RECIPES) {
+  const [a, b] = parents.map((n) => findMaterialByName(n)!);
+  const [first, second] = [a, b].sort((x, y) => x.name.localeCompare(y.name));
+  result.hybridParents = {
+    colorA: first.color,
+    variantA: first.variant,
+    colorB: second.color,
+    variantB: second.variant,
+  };
+}
 
 // The recipe result for fusing two named materials, or `undefined` if that
 // pair (in either order, same-name pairs included) has no authored recipe --

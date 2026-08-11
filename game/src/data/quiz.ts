@@ -1329,6 +1329,374 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
       incorrect: 'Doped-in paramagnetic impurities',
     },
   ],
+
+  // The materials below have no session file at all (they're off-syllabus --
+  // real compounds chosen to match the taxonomy's spirit, not sourced from
+  // lecture_notes/), so unlike every pool above, these questions are written
+  // straight from the compound's own real physics rather than adapted from a
+  // sessionNN.tex file.
+  Silver: [
+    {
+      prompt: "What feature of silver's electronic structure gives it such a sharp plasmon resonance?",
+      correct: 'A single, nearly free 5s conduction electron per atom with weak damping',
+      incorrect: 'A half-filled d-band pinned near the Fermi level',
+    },
+    {
+      prompt: "A metal's bulk plasma frequency scales with which quantity?",
+      correct: 'The square root of its free-electron density',
+      incorrect: 'The size of its band gap',
+    },
+    {
+      prompt: 'Why do real plasmonic/nanophotonic devices favor silver (and gold) over an ordinary semiconductor?',
+      correct: 'Their free carriers respond collectively at optical frequencies with low loss',
+      incorrect: "Their band gap happens to match visible-light photon energies",
+    },
+    {
+      prompt: "Which move class does a plasmon correspond to in this game's taxonomy?",
+      correct: "Plasmon Pulse, hosted only by the 'metal' type",
+      incorrect: 'Electron Pulse, hosted by every conducting type',
+    },
+    {
+      prompt: 'Above its own bulk plasma frequency, how does a metal like silver behave toward light?',
+      correct: 'It becomes transparent -- the free-electron gas can no longer screen the field',
+      incorrect: 'It becomes a perfect reflector',
+    },
+    {
+      prompt: "What structurally distinguishes a 'metal' from a 'semiconductor' in this game's taxonomy?",
+      correct: "A metal's band is only partially filled, so it can carry a plasmon a gapped semiconductor cannot",
+      incorrect: 'A metal simply has a wider band gap than a semiconductor',
+    },
+  ],
+
+  Diamond: [
+    {
+      prompt: "Diamond's ~5.5 eV gap is too wide for doping or thermal excitation to cross practically -- which type does that make it?",
+      correct: 'Insulator',
+      incorrect: 'Semiconductor',
+    },
+    {
+      prompt: 'What move can an insulator like Diamond carry that a metal cannot?',
+      correct: 'Polaron Drag -- a self-trapped, lattice-dressed carrier',
+      incorrect: 'Plasmon Pulse -- a free-electron-gas collective mode',
+    },
+    {
+      prompt: "Diamond's stiff sp³ covalent lattice gives it an unusually high...",
+      correct: 'Thermal conductivity, carried by phonons',
+      incorrect: 'Electrical conductivity, carried by free electrons',
+    },
+    {
+      prompt: "Why can't an insulator like Diamond carry Electron Pulse in this game?",
+      correct: 'Its gap is too wide for a band electron to be thermally or dopant-excited across',
+      incorrect: 'It has no electrons in its valence band at all',
+    },
+    {
+      prompt: "What kind of bonding holds Diamond's carbon lattice together?",
+      correct: 'Covalent sp³ bonds, each carbon bonded to four neighbors',
+      incorrect: 'Metallic bonding with delocalized electrons',
+    },
+    {
+      prompt: 'Which type most strongly self-traps a polaron, relative to a metal or an ordinary semiconductor?',
+      correct: 'A wide-gap insulator, especially an ionic/heteropolar one',
+      incorrect: 'A metal, since it has the most free carriers available',
+    },
+  ],
+
+  'Monolayer Boron Nitride': [
+    {
+      prompt: 'Why is hBN specifically the material real graphene devices are stacked on or encapsulated in?',
+      correct: "Its own honeycomb lattice is nearly commensurate with graphene's",
+      incorrect: "It's a metal, so it screens unwanted charge noise",
+    },
+    {
+      prompt: "hBN's own ~5.9 eV gap rules out which move?",
+      correct: 'Electron Pulse -- too wide a gap for an ordinary band electron',
+      incorrect: 'Phonon Beam -- lattice vibrations need a narrower gap',
+    },
+    {
+      prompt: 'What turns a Graphene + hBN pairing into a fractional Chern insulator instead of leaving both as ordinary compounds?',
+      correct: 'Aligning them at the right stacking/moiré angle opens flat, topologically nontrivial bands',
+      incorrect: 'Simply placing them in contact at any angle, no alignment required',
+    },
+    {
+      prompt: 'hBN and graphite share the same layered honeycomb structure -- what is the key electronic difference?',
+      correct: "hBN's two sublattices are inequivalent (B vs. N), opening a large gap graphene's identical-atom sublattices don't have",
+      incorrect: "hBN's layers are held together by covalent bonds instead of van der Waals forces",
+    },
+    {
+      prompt: 'Which quasiparticle can a wide-gap insulator like hBN still host despite its gap?',
+      correct: 'A phonon, and a self-trapped polaron',
+      incorrect: 'A plasmon, since a wide gap still permits free carriers',
+    },
+    {
+      prompt: 'What does "rhombohedral" pentalayer graphene stacking refer to in the hBN-aligned hybrid recipe?',
+      correct: 'An ABCCA-type stacking sequence of five graphene sheets',
+      incorrect: 'A single graphene sheet twisted by exactly 60 degrees',
+    },
+  ],
+
+  'Yttrium Iron Garnet': [
+    {
+      prompt: "Is YIG's magnetic order ferromagnetic or ferrimagnetic?",
+      correct: 'Ferrimagnetic -- two sublattices order antiparallel with unequal moment',
+      incorrect: 'Ferromagnetic -- all moments align exactly parallel',
+    },
+    {
+      prompt: 'What property makes YIG the material of choice for real magnon-transport experiments?',
+      correct: 'Exceptionally low magnon damping compared to any other known material',
+      incorrect: 'An unusually large magnon energy gap',
+    },
+    {
+      prompt: "What quasiparticle does YIG's magnetic order carry as its low-energy excitation?",
+      correct: 'A magnon, a quantized spin wave',
+      incorrect: 'A polaron, a self-trapped charge carrier',
+    },
+    {
+      prompt: 'Why is YIG electrically insulating despite being magnetically ordered?',
+      correct: 'Its Fe³⁺ ions are locally moment-bearing but the material has no itinerant conduction electrons',
+      incorrect: 'Its magnon damping suppresses all electronic transport',
+    },
+    {
+      prompt: 'A "magnon BEC" experiment, as done in YIG, refers to...',
+      correct: 'A macroscopic population of magnons condensing into a single coherent quantum state',
+      incorrect: 'Individual magnons decaying into ordinary phonons at low temperature',
+    },
+    {
+      prompt: "How many chemically distinct magnetic sublattices does YIG's garnet structure carry?",
+      correct: "Two, with unequal magnetic moment that don't cancel",
+      incorrect: 'One, all Fe ions equivalent',
+    },
+  ],
+
+  'Bismuth Ferrite': [
+    {
+      prompt: 'What two orders coexist in BiFeO₃, making it a multiferroic?',
+      correct: 'Ferroelectric polarization and antiferromagnetic order',
+      incorrect: 'Superconductivity and ferromagnetism',
+    },
+    {
+      prompt: "What ion's lone pair drives BiFeO₃'s ferroelectric polarization, unlike BaTiO₃'s Ti⁴⁺ off-centering?",
+      correct: 'The Bi³⁺ 6s² lone pair',
+      incorrect: 'The Fe³⁺ 3d⁵ configuration',
+    },
+    {
+      prompt: "What quasiparticle, unique to multiferroics in this game's taxonomy, has actually been observed in BiFeO₃'s spectrum?",
+      correct: 'The electromagnon, a magnon-phonon hybrid with electric-dipole activity',
+      incorrect: 'The ferron alone, with no magnon-phonon hybridization',
+    },
+    {
+      prompt: "What is BiFeO₃'s magnetic order specifically called?",
+      correct: 'G-type antiferromagnetic order with a superimposed spin cycloid',
+      incorrect: 'Simple collinear ferromagnetic order',
+    },
+    {
+      prompt: 'Why is BiFeO₃ called a room-temperature multiferroic, unlike many other multiferroics?',
+      correct: 'Both its ferroelectric and magnetic transitions sit far above room temperature',
+      incorrect: 'It only shows multiferroic coupling below liquid-helium temperature',
+    },
+    {
+      prompt: "Compared to Twisted CrI₃'s predicted multiferroic coupling, BiFeO₃'s coupling is...",
+      correct: 'An established experimental result, not just a theoretical prediction',
+      incorrect: 'Also only theoretically predicted, never observed',
+    },
+  ],
+
+  'Hafnium Oxide': [
+    {
+      prompt: 'Is bulk, unstrained HfO₂ ferroelectric?',
+      correct: 'No -- its ordinary monoclinic phase is centrosymmetric and not ferroelectric',
+      incorrect: 'Yes, ferroelectricity is intrinsic to HfO₂ in any form',
+    },
+    {
+      prompt: "What stabilizes HfO₂'s ferroelectric polar orthorhombic phase in a pristine (undoped) sample?",
+      correct: 'Strain from a thin, epitaxial film geometry',
+      incorrect: 'A permanent applied electric field left on during growth',
+    },
+    {
+      prompt: "Why is HfO₂'s ferroelectricity such a big deal for real electronics, unlike BaTiO₃'s?",
+      correct: "It's compatible with standard CMOS silicon fabrication at nanometer thickness",
+      incorrect: 'It has a much higher transition temperature than any oxide ferroelectric',
+    },
+    {
+      prompt: "What quasiparticle does a ferroelectric like HfO₂ carry that an ordinary insulator's phonon spectrum doesn't host on its own?",
+      correct: "A ferron, the polarization order's own quantized excitation",
+      incorrect: 'A magnon, since ferroelectric order is magnetic in origin',
+    },
+    {
+      prompt: "Does HfO₂'s ferroelectric phase require any magnetic order to be present?",
+      correct: "No -- ferroelectric order carries no magnetic order at all in this game's taxonomy",
+      incorrect: 'Yes, magnetism is what couples to and stabilizes the polarization',
+    },
+    {
+      prompt: "What technology is HfO₂'s ferroelectric phase the real basis for?",
+      correct: 'FeRAM/FeFET nonvolatile memory devices',
+      incorrect: 'High-Tc superconducting qubit junctions',
+    },
+  ],
+
+  'Lanthanum Decahydride': [
+    {
+      prompt: 'What is unusual about the conditions LaH₁₀ needs to superconduct near room temperature?',
+      correct: "It requires roughly 170 GPa of pressure, comparable to Earth's core",
+      incorrect: 'It requires no special pressure, just standard laboratory conditions',
+    },
+    {
+      prompt: "Is LaH₁₀'s superconducting mechanism conventional or unconventional?",
+      correct: 'Conventional -- ordinary phonon-mediated BCS (Migdal-Eliashberg) pairing',
+      incorrect: 'Unconventional -- d-wave pairing mediated by spin fluctuations',
+    },
+    {
+      prompt: 'Why does hydrogen make such an effective phonon-mediated superconductor?',
+      correct: 'Its light mass gives very high-frequency phonons, boosting the electron-phonon coupling',
+      incorrect: 'Its heavy mass slows phonons enough to strengthen pairing',
+    },
+    {
+      prompt: "What structural feature of LaH₁₀ hosts its hydrogen atoms?",
+      correct: 'A clathrate-like cage of hydrogen surrounding each lanthanum atom',
+      incorrect: 'A simple substitutional alloy with no distinct hydrogen sublattice',
+    },
+    {
+      prompt: 'Does LaH₁₀ host a Majorana zero mode the way a chernSuperconductor does?',
+      correct: "No -- its pairing is ordinary and non-topological, so it stays plain 'superconductor'",
+      incorrect: 'Yes, its extreme Tc implies topological pairing',
+    },
+    {
+      prompt: "What quasiparticle is a superconducting condensate's own amplitude mode called?",
+      correct: 'The Higgs mode',
+      incorrect: 'The magnon',
+    },
+  ],
+
+  'Uranium Ditelluride': [
+    {
+      prompt: 'What pairing symmetry is UTe₂ the leading real-material candidate for?',
+      correct: 'Spin-triplet pairing',
+      incorrect: 'Ordinary s-wave singlet pairing',
+    },
+    {
+      prompt: 'What kind of evidence points toward UTe₂ having genuinely topological (chiral) pairing?',
+      correct: 'Contested reports of broken time-reversal symmetry and chiral in-gap surface states',
+      incorrect: 'A universally agreed-upon, unambiguous vortex Majorana observation',
+    },
+    {
+      prompt: "Why does this game classify UTe₂ as 'chernSuperconductor' rather than plain 'superconductor'?",
+      correct: "As the leading candidate topological/triplet superconductor, it's the real material closest to that genuine topological-pairing physics",
+      incorrect: 'Because its critical temperature is the highest of any known superconductor',
+    },
+    {
+      prompt: "What is unusual about UTe₂'s upper critical field for an ordinary spin-singlet superconductor?",
+      correct: 'It exceeds the ordinary Pauli paramagnetic limit by a wide margin',
+      incorrect: 'It is suppressed to nearly zero by any applied field',
+    },
+    {
+      prompt: "Is UTe₂'s topological/chiral nature experimentally settled?",
+      correct: 'No -- newer high-quality crystals have complicated the earlier time-reversal-breaking evidence',
+      incorrect: 'Yes, it has been unambiguously confirmed by multiple independent groups',
+    },
+    {
+      prompt: 'Which move class is unique to chernSuperconductor among every type in this game?',
+      correct: 'Majorana Split, requiring genuine topological pairing',
+      incorrect: 'Higgs Oscillation, since only chernSuperconductor hosts a condensate amplitude mode',
+    },
+  ],
+
+  'Cerium Cobalt Indide': [
+    {
+      prompt: "What renormalizes a conduction electron into CeCoIn₅'s \"heavy\" quasiparticle?",
+      correct: 'Hybridization with a local Ce 4f moment',
+      incorrect: 'Ordinary phonon scattering at low temperature',
+    },
+    {
+      prompt: "Roughly how much heavier is CeCoIn₅'s renormalized quasiparticle mass than a bare electron's?",
+      correct: 'On the order of a hundred times',
+      incorrect: 'Roughly twice',
+    },
+    {
+      prompt: "What is CeCoIn₅'s own T→0 ground state?",
+      correct: 'An unconventional (d-wave) superconductor built from its heavy quasiparticles',
+      incorrect: 'A conventional band insulator',
+    },
+    {
+      prompt: "Why does this game classify CeCoIn₅ as 'kondoHeavyFermion' rather than 'superconductor', despite its superconducting ground state?",
+      correct: 'The Kondo-lattice heavy-fermion physics is what defines the compound; the pairing is a low-energy instability built on top of it',
+      incorrect: "Because 'superconductor' is reserved only for elemental metals like Aluminum and Lead",
+    },
+    {
+      prompt: 'What kind of phase transition is CeCoIn₅ famous for sitting right next to?',
+      correct: 'An antiferromagnetic quantum critical point',
+      incorrect: 'A structural (crystallographic) phase transition',
+    },
+    {
+      prompt: 'Which quasiparticle, unique to the kondoHeavyFermion type, does CeCoIn₅ carry?',
+      correct: 'A heavy fermion, the mass-renormalized conduction-electron/local-moment composite',
+      incorrect: "A Higgs mode, the condensate's own amplitude oscillation",
+    },
+  ],
+
+  'Cerium Zirconate Pyrochlore': [
+    {
+      prompt: 'Down to what temperature scale has Ce₂Zr₂O₇ shown no magnetic order or spin freezing?',
+      correct: 'Tens of millikelvin',
+      incorrect: 'Only down to about 100 K',
+    },
+    {
+      prompt: "What lattice geometry hosts Ce₂Zr₂O₇'s frustrated magnetism?",
+      correct: 'The pyrochlore lattice, a network of corner-sharing tetrahedra',
+      incorrect: 'A simple square lattice',
+    },
+    {
+      prompt: 'What gauge structure characterizes the "quantum spin ice" state Ce₂Zr₂O₇ is a candidate for?',
+      correct: 'An emergent U(1) gauge field, with an emergent photon and gapped spinons',
+      incorrect: "A Z2 gauge field, the same as α-RuCl₃'s Kitaev spin liquid",
+    },
+    {
+      prompt: "Why does the game still group Ce₂Zr₂O₇ under quantumSpinLiquid despite its U(1) (not Z2) gauge structure?",
+      correct: "It's a deliberate simplification, the same kind already made for triplon's confined-mode physics on this type",
+      incorrect: 'Because U(1) and Z2 quantum spin liquids are physically identical',
+    },
+    {
+      prompt: 'What effective magnetic degrees of freedom do Ce³⁺ ions carry in Ce₂Zr₂O₇?',
+      correct: 'Dipole-octupole doublets',
+      incorrect: 'Simple classical Ising spins',
+    },
+    {
+      prompt: 'What move does a frustrated, never-ordering compound like Ce₂Zr₂O₇ carry that an ordinary classicalMagnet cannot?',
+      correct: 'Spinon Swap, a fractionalized spin excitation',
+      incorrect: 'Magnon Pulse, an ordinary collective spin wave',
+    },
+  ],
+
+  'Rhombohedral Pentalayer Graphene/hBN Moiré': [
+    {
+      prompt: 'What made the 2023-2024 pentalayer graphene/hBN result significant compared to earlier fractional quantum Hall observations?',
+      correct: 'It showed fractionally quantized Hall plateaus with no applied magnetic field at all',
+      incorrect: 'It required the strongest magnetic field ever applied in a lab',
+    },
+    {
+      prompt: "How many graphene layers, stacked in what sequence, make up this hybrid's flat band?",
+      correct: 'Five layers in rhombohedral (ABCCA-type) stacking',
+      incorrect: 'Two layers twisted at the magic angle',
+    },
+    {
+      prompt: "What role does the hBN substrate play in this hybrid's physics?",
+      correct: 'Alignment with hBN opens the moiré superlattice that flattens the graphene bands',
+      incorrect: 'hBN dopes free carriers directly into the graphene layers',
+    },
+    {
+      prompt: "What are this compound's fractionally charged edge excitations called?",
+      correct: 'Charged anyons, carrying genuine fractional braiding statistics',
+      incorrect: 'Ordinary chiral fermions, just like an integer Chern insulator’s edge',
+    },
+    {
+      prompt: "How does this compound's route to a fractional Chern insulator differ from Twisted Bilayer MoTe₂'s?",
+      correct: 'An aligned heterostructure with a substrate, rather than a twist angle between two identical layers',
+      incorrect: 'They reach the exact same physics through the exact same mechanism',
+    },
+    {
+      prompt: 'Why does this compound only appear as a World 10 wild rather than an earlier world’s?',
+      correct: "It's a HYBRID_RECIPES fusion result (Graphene + Monolayer Boron Nitride), and hybrid results live only in World 10",
+      incorrect: 'Its main type has no earlier-world anchor of its own',
+    },
+  ],
 };
 
 export function getMaterialQuestion(materialName: string): MaterialQuestion | undefined {

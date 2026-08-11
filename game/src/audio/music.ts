@@ -1,8 +1,15 @@
-// Small procedural chiptune player -- no external audio assets, just
+// Small procedural music player -- no external audio assets, just
 // oscillators/noise scheduled through the Web Audio API. Both the overworld
 // and battle scenes get one looping score per world (relaxed major/minor-key
 // town themes; driving Golden Sun-style boss riffs), all 20 built from the
-// same handful of chord/pattern generators below.
+// same handful of chord/pattern generators below. A second, symphonic
+// "Modern" style (SCORES_MODERN, further down this file) reuses each world's
+// key/tempo through a different pair of generators -- sustained
+// extended-chord string pads, a melodic phrase generator that spans whole
+// sections instead of repeating a single bar, and a thirds-below harmony
+// voice. MusicEngine.setStyle() picks which table play() reads from; the
+// Enter-menu Settings panel (OverworldScene.showSettingsPanel) is the
+// player-facing toggle, backed by data/settings.ts's MUSIC_STYLE_PRESETS.
 
 type Wave = OscillatorType;
 
@@ -17,7 +24,11 @@ interface ToneTrack {
   gain: number;
   notes: ToneNote[];
   unison?: boolean; // two detuned voices instead of one, for a bigger/wider "brass" sound
+  unisonSpread?: number; // detune cents for the unison pair; defaults to 7
   drive?: boolean; // route through a soft-clip waveshaper for grit
+  attack?: number; // seconds; overrides the default fast min(0.02, dur*0.3) attack for a slow string-pad swell
+  release?: number; // seconds; overrides the default fast min(0.05, dur*0.3) release
+  wet?: number; // 0-1, portion of this voice sent to the session's ambience/delay bus (see createAmbienceBus)
 }
 
 interface PercNote {
@@ -948,6 +959,422 @@ const BATTLE_SCORE_10 = makeBattleScore({
   crashGain: 0.3,
 });
 
+// --- The "Modern" style: a symphonic second arrangement of all 20 worlds -
+//
+// Reuses each world's own key and tempo (the same ChordStep progressions the
+// classic scores above use, given again as literals here rather than
+// exported/shared, so nothing above this point is touched) through a
+// different pair of generators: a sustained, swelling extended-chord pad
+// standing in for a string section instead of a single arpeggiated
+// bass+fifth; a lead that's one composed phrase spanning a whole 4-bar
+// section (modernPhraseCell's four distinct cells: rise, reach a 9th, peak
+// and turn, resolve) instead of a single shape repeating bar after bar; and
+// a genuine harmony voice a third below the lead (harmonizeThird) instead of
+// classic's octave-doubling. A handful of tracks lean on the shared
+// ambience/delay bus (ToneTrack.wet) for a soft, hall-like tail.
+
+interface ChordToneSet {
+  root: number;
+  second: number;
+  third: number;
+  fourth: number;
+  fifth: number;
+  sixth: number;
+  seventh: number;
+  ninth: number;
+  octave: number;
+}
+
+// Every scale-degree/extension modernPhraseCell and padVoiceBar draw from,
+// computed once per chord the same way melodyBar/vampBar compute their own
+// root/third/fifth locally -- `octave` is a semitone offset applied to the
+// bare root (0 = the root name's own register, 12/24 = one/two octaves up),
+// matching the convention the classic generators already use.
+function chordTones(rootName: string, quality: 'maj' | 'min', octave: number): ChordToneSet {
+  const root = n(rootName) + octave;
+  return {
+    root,
+    second: root + 2,
+    third: root + (quality === 'maj' ? 4 : 3),
+    fourth: root + 5,
+    fifth: root + 7,
+    sixth: root + (quality === 'maj' ? 9 : 8),
+    seventh: root + (quality === 'maj' ? 11 : 10),
+    ninth: root + 14,
+    octave: root + 12,
+  };
+}
+
+// Three phrase characters, echoing the classic style's shape variety
+// (skip/arch vs. sparse-drone vs. wide-and-shimmering) but each spanning a
+// whole bar with longer note values and passing/extended tones rather than
+// six eighth-notes of chord-tone skips. Every branch's four cases still sum
+// to exactly 4 beats, the same per-bar discipline melodyBar/vampBar keep, so
+// a section built from them always lands on the section's own loopBeats.
+type PhraseVariant = 'lyrical' | 'sparse' | 'soaring';
+
+function modernPhraseCell(
+  rootName: string,
+  quality: 'maj' | 'min',
+  cell: 0 | 1 | 2 | 3,
+  variant: PhraseVariant,
+  octave: number
+): ToneNote[] {
+  const c = chordTones(rootName, quality, octave);
+  if (variant === 'sparse') {
+    // Long held tones with real silence -- the cold/hazy worlds' phrasing,
+    // still one composed arc (reach the 9th in cell 1, resolve in cell 3)
+    // rather than a repeating shape.
+    switch (cell) {
+      case 0: return [{ midi: c.third, beats: 3 }, { midi: null, beats: 1 }];
+      case 1: return [{ midi: c.ninth, beats: 3 }, { midi: null, beats: 1 }];
+      case 2: return [{ midi: c.sixth, beats: 3 }, { midi: null, beats: 1 }];
+      case 3: return [{ midi: c.root, beats: 4 }];
+    }
+  }
+  if (variant === 'soaring') {
+    // Wider register jumps and an octave-plus peak -- the airy/major and
+    // shimmering-finale worlds.
+    switch (cell) {
+      case 0: return [{ midi: c.fifth, beats: 1 }, { midi: c.octave, beats: 1.5 }, { midi: c.seventh, beats: 1.5 }];
+      case 1: return [{ midi: c.ninth, beats: 2 }, { midi: c.octave, beats: 1 }, { midi: c.seventh, beats: 1 }];
+      case 2: return [{ midi: c.octave + 5, beats: 1.5 }, { midi: c.octave, beats: 1 }, { midi: c.fifth, beats: 1.5 }];
+      case 3: return [{ midi: c.third, beats: 2 }, { midi: c.second, beats: 1 }, { midi: c.root, beats: 1 }];
+    }
+  }
+  // 'lyrical' (the default): rise, reach the 9th, peak and turn, resolve.
+  switch (cell) {
+    case 0: return [{ midi: c.third, beats: 1.5 }, { midi: c.fifth, beats: 1 }, { midi: c.sixth, beats: 1.5 }];
+    case 1: return [{ midi: c.seventh, beats: 1 }, { midi: c.ninth, beats: 2 }, { midi: c.seventh, beats: 1 }];
+    case 2: return [{ midi: c.octave, beats: 1.5 }, { midi: c.sixth, beats: 1 }, { midi: c.fifth, beats: 1.5 }];
+    case 3: return [{ midi: c.third, beats: 2 }, { midi: c.second, beats: 1 }, { midi: c.root, beats: 1 }];
+  }
+}
+
+// A quiet second voice a third below the lead, derived from the lead's own
+// resolved pitches (rather than a second pass over the chord) so it always
+// lands correctly against whichever cell/variant produced the lead line.
+function harmonizeThird(notes: ToneNote[], quality: 'maj' | 'min'): ToneNote[] {
+  const interval = quality === 'maj' ? 4 : 3;
+  return notes.map((note) => (note.midi === null ? note : { midi: note.midi - interval, beats: note.beats }));
+}
+
+// A whole-note chord tone held for the full bar -- one voice of a
+// multi-voice sustained pad "section" (paired with attack/release swell
+// overrides at the call site), the modern style's stand-in for classic's
+// single arpeggiated bass + bare fifth.
+function padVoiceBar(
+  rootName: string,
+  quality: 'maj' | 'min',
+  voice: 'root' | 'third' | 'fifth' | 'seventh',
+  octave: number
+): ToneNote[] {
+  const c = chordTones(rootName, quality, octave);
+  return [{ midi: c[voice], beats: 4 }];
+}
+
+// vampBar's eighth-note ostinato, but touching the 7th on the "and" of beat
+// 4 instead of repeating the 5th -- the same driving rhythm-section energy,
+// just with the modern style's harmonic color.
+function modernVampBar(rootName: string, quality: 'maj' | 'min'): ToneNote[] {
+  const c = chordTones(rootName, quality, 0);
+  return [
+    { midi: c.root, beats: 0.5 }, { midi: c.root, beats: 0.5 }, { midi: c.third, beats: 0.5 }, { midi: c.fifth, beats: 0.5 },
+    { midi: c.root, beats: 0.5 }, { midi: c.root, beats: 0.5 }, { midi: c.fifth, beats: 0.5 }, { midi: c.seventh, beats: 0.5 },
+  ];
+}
+
+interface ModernOverworldScoreConfig {
+  bpm: number;
+  verse: ChordStep[];
+  bridge: ChordStep[];
+  variant?: PhraseVariant;
+  leadWave?: Wave;
+  leadGain?: number;
+}
+
+function makeModernOverworldScore(cfg: ModernOverworldScoreConfig): Score {
+  const chords = [...cfg.verse, ...cfg.bridge];
+  const loopBeats = chords.length * 4;
+  const variant = cfg.variant ?? 'lyrical';
+  const leadGain = cfg.leadGain ?? 0.14;
+  const leadWave = cfg.leadWave ?? 'triangle';
+
+  const lead = chords.flatMap(([r, q], i) => modernPhraseCell(r, q, (i % 4) as 0 | 1 | 2 | 3, variant, 12));
+  const harmony = chords.flatMap(([r, q], i) =>
+    harmonizeThird(modernPhraseCell(r, q, (i % 4) as 0 | 1 | 2 | 3, variant, 12), q)
+  );
+
+  const bass = chords.flatMap(([r, q]) => padVoiceBar(r, q, 'root', 0));
+  const padThird = chords.flatMap(([r, q]) => padVoiceBar(r, q, 'third', 0));
+  const padFifth = chords.flatMap(([r, q]) => padVoiceBar(r, q, 'fifth', 0));
+  const padSeventh = chords.flatMap(([r, q]) => padVoiceBar(r, q, 'seventh', 0));
+
+  return {
+    bpm: cfg.bpm,
+    loopBeats,
+    tracks: [
+      { kind: 'tone', wave: 'triangle', gain: 0.09, attack: 0.25, release: 0.4, notes: bass },
+      { kind: 'tone', wave: 'sine', gain: 0.03, unison: true, unisonSpread: 5, attack: 0.35, release: 0.5, wet: 0.12, notes: padThird },
+      { kind: 'tone', wave: 'sine', gain: 0.03, unison: true, unisonSpread: 5, attack: 0.35, release: 0.5, wet: 0.12, notes: padFifth },
+      { kind: 'tone', wave: 'triangle', gain: 0.025, attack: 0.4, release: 0.55, wet: 0.12, notes: padSeventh },
+      { kind: 'tone', wave: leadWave, gain: leadGain, unison: true, unisonSpread: 6, wet: 0.08, notes: lead },
+      { kind: 'tone', wave: leadWave, gain: leadGain * 0.42, wet: 0.08, notes: harmony },
+    ],
+  };
+}
+
+interface ModernBattleScoreConfig {
+  bpm: number;
+  mainA: ChordStep[];
+  mainB: ChordStep[];
+  bProgression: ChordStep[];
+  variant?: PhraseVariant;
+  subBassMode?: 'followChords' | 'holdTonic';
+  kickGen?: (bars: number) => PercNote[];
+  snareGen?: (bars: number) => PercNote[];
+  hatGen?: (bars: number) => PercNote[];
+}
+
+function makeModernBattleScore(cfg: ModernBattleScoreConfig): Score {
+  const aProgression = [...cfg.mainA, ...cfg.mainB];
+  const bProgression = cfg.bProgression;
+  const reprise = cfg.mainA;
+  const fullProgression = [...aProgression, ...bProgression, ...reprise];
+  const loopBeats = fullProgression.length * 4;
+  const variant = cfg.variant ?? 'lyrical';
+
+  const lead = fullProgression.flatMap(([r, q], i) => modernPhraseCell(r, q, (i % 4) as 0 | 1 | 2 | 3, variant, 24));
+  const harmony = fullProgression.flatMap(([r, q], i) =>
+    harmonizeThird(modernPhraseCell(r, q, (i % 4) as 0 | 1 | 2 | 3, variant, 24), q)
+  );
+
+  const subBassNotes = cfg.subBassMode === 'holdTonic'
+    ? fullProgression.flatMap(() => subBassBar(cfg.mainA[0][0]))
+    : fullProgression.flatMap(([root]) => subBassBar(root));
+
+  const padFifth = fullProgression.flatMap(([r, q]) => padVoiceBar(r, q, 'fifth', 12));
+  const padSeventh = fullProgression.flatMap(([r, q]) => padVoiceBar(r, q, 'seventh', 12));
+
+  const kickGen = cfg.kickGen ?? kickPulse;
+  const snareGen = cfg.snareGen ?? snarePulse;
+  const hatGen = cfg.hatGen ?? hatPulse;
+
+  return {
+    bpm: cfg.bpm,
+    loopBeats,
+    tracks: [
+      { kind: 'tone', wave: 'sawtooth', gain: 0.1, drive: true, notes: fullProgression.flatMap(([r, q]) => modernVampBar(r, q)) },
+      { kind: 'tone', wave: 'sine', gain: 0.1, notes: subBassNotes },
+      { kind: 'tone', wave: 'triangle', gain: 0.03, attack: 0.3, release: 0.4, wet: 0.15, notes: padFifth },
+      { kind: 'tone', wave: 'triangle', gain: 0.025, attack: 0.35, release: 0.45, wet: 0.15, notes: padSeventh },
+      { kind: 'tone', wave: 'triangle', gain: 0.14, unison: true, unisonSpread: 6, wet: 0.1, notes: lead },
+      { kind: 'tone', wave: 'triangle', gain: 0.063, wet: 0.1, notes: harmony },
+      { kind: 'tone', wave: 'sawtooth', gain: 0.16, drive: true, notes: battleIntroSting(loopBeats, cfg.mainA[0][0], cfg.mainA[0][1]) },
+      { kind: 'kick', gain: 0.85, notes: kickGen(fullProgression.length) },
+      { kind: 'snare', gain: 0.45, notes: snareGen(fullProgression.length) },
+      { kind: 'hat', gain: 0.2, notes: hatGen(fullProgression.length) },
+      {
+        kind: 'crash',
+        gain: 0.3,
+        notes: [
+          { hit: true, beats: 4 },
+          { hit: false, beats: (aProgression.length + bProgression.length) * 4 - 4 },
+          { hit: true, beats: 4 },
+          { hit: false, beats: reprise.length * 4 - 4 },
+        ],
+      },
+    ],
+  };
+}
+
+// One modern config per world, reusing that world's own key/tempo (the same
+// progressions/bpm the classic scores above use, given again as literals)
+// so a world's identity carries across styles while the arrangement itself
+// -- pad texture, phrase shape, harmonization -- differs.
+const MODERN_OVERWORLD_SCORE_1 = makeModernOverworldScore({
+  bpm: 108,
+  verse: [['C3', 'maj'], ['G2', 'maj'], ['A2', 'min'], ['F2', 'maj']],
+  bridge: [['D2', 'min'], ['G2', 'maj'], ['C3', 'maj'], ['A2', 'min']],
+});
+const MODERN_OVERWORLD_SCORE_2 = makeModernOverworldScore({
+  bpm: 100,
+  verse: [['A2', 'min'], ['F2', 'maj'], ['C3', 'maj'], ['G2', 'maj']],
+  bridge: [['D2', 'min'], ['E2', 'min'], ['A2', 'min'], ['F2', 'maj']],
+});
+const MODERN_OVERWORLD_SCORE_3 = makeModernOverworldScore({
+  bpm: 96,
+  verse: [['D3', 'maj'], ['A2', 'maj'], ['B2', 'min'], ['G2', 'maj']],
+  bridge: [['E2', 'min'], ['A2', 'maj'], ['D3', 'maj'], ['G2', 'maj']],
+  variant: 'soaring',
+});
+const MODERN_OVERWORLD_SCORE_4 = makeModernOverworldScore({
+  bpm: 132,
+  verse: [['E2', 'min'], ['C3', 'maj'], ['D3', 'maj'], ['B2', 'min']],
+  bridge: [['A2', 'min'], ['E2', 'min'], ['C3', 'maj'], ['D3', 'maj']],
+});
+const MODERN_OVERWORLD_SCORE_5 = makeModernOverworldScore({
+  bpm: 84,
+  verse: [['F2', 'min'], ['D#2', 'maj'], ['C3', 'min'], ['G#2', 'maj']],
+  bridge: [['A#2', 'min'], ['F2', 'min'], ['D#2', 'maj'], ['C3', 'min']],
+  variant: 'sparse',
+});
+const MODERN_OVERWORLD_SCORE_6 = makeModernOverworldScore({
+  bpm: 116,
+  verse: [['G2', 'maj'], ['D3', 'maj'], ['E2', 'min'], ['C3', 'maj']],
+  bridge: [['A2', 'min'], ['D3', 'maj'], ['G2', 'maj'], ['C3', 'maj']],
+});
+const MODERN_OVERWORLD_SCORE_7 = makeModernOverworldScore({
+  bpm: 120,
+  verse: [['B2', 'min'], ['G2', 'maj'], ['A2', 'maj'], ['F#2', 'min']],
+  bridge: [['E2', 'min'], ['B2', 'min'], ['G2', 'maj'], ['A2', 'maj']],
+});
+const MODERN_OVERWORLD_SCORE_8 = makeModernOverworldScore({
+  bpm: 88,
+  verse: [['C3', 'min'], ['G#2', 'maj'], ['A#2', 'maj'], ['F2', 'min']],
+  bridge: [['D#2', 'maj'], ['C3', 'min'], ['G#2', 'maj'], ['F2', 'min']],
+  variant: 'sparse',
+});
+const MODERN_OVERWORLD_SCORE_9 = makeModernOverworldScore({
+  bpm: 140,
+  verse: [['D2', 'min'], ['A#2', 'maj'], ['C3', 'maj'], ['A2', 'min']],
+  bridge: [['G2', 'min'], ['D2', 'min'], ['A#2', 'maj'], ['C3', 'maj']],
+});
+const MODERN_OVERWORLD_SCORE_10 = makeModernOverworldScore({
+  bpm: 112,
+  verse: [['A2', 'maj'], ['E2', 'maj'], ['F#2', 'min'], ['D2', 'maj']],
+  bridge: [['B2', 'min'], ['E2', 'maj'], ['A2', 'maj'], ['D2', 'maj']],
+  variant: 'soaring',
+});
+
+const MODERN_BATTLE_SCORE_1 = makeModernBattleScore({
+  bpm: 160,
+  mainA: [['D2', 'min'], ['C2', 'maj'], ['D2', 'min'], ['C2', 'maj']],
+  mainB: [['A#2', 'maj'], ['C2', 'maj'], ['A#2', 'maj'], ['C2', 'maj']],
+  bProgression: [
+    ['G2', 'min'], ['D#2', 'maj'], ['A#2', 'maj'], ['F2', 'maj'],
+    ['G2', 'min'], ['D#2', 'maj'], ['A#2', 'maj'], ['F2', 'maj'],
+  ],
+});
+const MODERN_BATTLE_SCORE_2 = makeModernBattleScore({
+  bpm: 150,
+  mainA: [['A2', 'min'], ['G2', 'maj'], ['A2', 'min'], ['G2', 'maj']],
+  mainB: [['F2', 'maj'], ['G2', 'maj'], ['F2', 'maj'], ['G2', 'maj']],
+  bProgression: [
+    ['D2', 'min'], ['A#2', 'maj'], ['F2', 'maj'], ['C2', 'maj'],
+    ['D2', 'min'], ['A#2', 'maj'], ['F2', 'maj'], ['C2', 'maj'],
+  ],
+});
+const MODERN_BATTLE_SCORE_3 = makeModernBattleScore({
+  bpm: 148,
+  mainA: [['C#2', 'min'], ['B2', 'maj'], ['C#2', 'min'], ['B2', 'maj']],
+  mainB: [['A2', 'maj'], ['B2', 'maj'], ['A2', 'maj'], ['B2', 'maj']],
+  bProgression: [
+    ['F#2', 'min'], ['D2', 'maj'], ['A2', 'maj'], ['E2', 'maj'],
+    ['F#2', 'min'], ['D2', 'maj'], ['A2', 'maj'], ['E2', 'maj'],
+  ],
+  variant: 'soaring',
+});
+const MODERN_BATTLE_SCORE_4 = makeModernBattleScore({
+  bpm: 172,
+  mainA: [['E2', 'min'], ['D2', 'maj'], ['E2', 'min'], ['D2', 'maj']],
+  mainB: [['C2', 'maj'], ['D2', 'maj'], ['C2', 'maj'], ['D2', 'maj']],
+  bProgression: [
+    ['A2', 'min'], ['F2', 'maj'], ['C2', 'maj'], ['G2', 'maj'],
+    ['A2', 'min'], ['F2', 'maj'], ['C2', 'maj'], ['G2', 'maj'],
+  ],
+});
+const MODERN_BATTLE_SCORE_5 = makeModernBattleScore({
+  bpm: 110,
+  mainA: [['F2', 'min'], ['D#2', 'maj'], ['F2', 'min'], ['D#2', 'maj']],
+  mainB: [['C#2', 'maj'], ['D#2', 'maj'], ['C#2', 'maj'], ['D#2', 'maj']],
+  bProgression: [
+    ['A#2', 'min'], ['F#2', 'maj'], ['C#2', 'maj'], ['G#2', 'maj'],
+    ['A#2', 'min'], ['F#2', 'maj'], ['C#2', 'maj'], ['G#2', 'maj'],
+  ],
+  // Lead stays 'lyrical' (unlike this world's overworld theme) -- the cold,
+  // sparse feel already comes from the half-time kick/snare/hat below, and
+  // a battle needs the lead's full phrase rather than the overworld's rests
+  // to still read as a fight rather than a pause.
+  kickGen: kickPulseSparse,
+  snareGen: snarePulseSparse,
+  hatGen: hatPulseSparse,
+});
+const MODERN_BATTLE_SCORE_6 = makeModernBattleScore({
+  bpm: 164,
+  mainA: [['G2', 'min'], ['F2', 'maj'], ['G2', 'min'], ['F2', 'maj']],
+  mainB: [['D#2', 'maj'], ['F2', 'maj'], ['D#2', 'maj'], ['F2', 'maj']],
+  bProgression: [
+    ['C2', 'min'], ['G#2', 'maj'], ['D#2', 'maj'], ['A#2', 'maj'],
+    ['C2', 'min'], ['G#2', 'maj'], ['D#2', 'maj'], ['A#2', 'maj'],
+  ],
+});
+const MODERN_BATTLE_SCORE_7 = makeModernBattleScore({
+  bpm: 158,
+  mainA: [['B2', 'min'], ['A2', 'maj'], ['B2', 'min'], ['A2', 'maj']],
+  mainB: [['G2', 'maj'], ['A2', 'maj'], ['G2', 'maj'], ['A2', 'maj']],
+  bProgression: [
+    ['E2', 'min'], ['C2', 'maj'], ['G2', 'maj'], ['D2', 'maj'],
+    ['E2', 'min'], ['C2', 'maj'], ['G2', 'maj'], ['D2', 'maj'],
+  ],
+});
+const MODERN_BATTLE_SCORE_8 = makeModernBattleScore({
+  bpm: 108,
+  mainA: [['C2', 'min'], ['A#2', 'maj'], ['C2', 'min'], ['A#2', 'maj']],
+  mainB: [['G#2', 'maj'], ['A#2', 'maj'], ['G#2', 'maj'], ['A#2', 'maj']],
+  bProgression: [
+    ['F2', 'min'], ['C#2', 'maj'], ['G#2', 'maj'], ['D#2', 'maj'],
+    ['F2', 'min'], ['C#2', 'maj'], ['G#2', 'maj'], ['D#2', 'maj'],
+  ],
+  // Lead stays 'lyrical', same reasoning as world 5's battle above.
+  kickGen: kickPulseSparse,
+  snareGen: snarePulseSparse,
+  hatGen: hatPulseSparse,
+});
+const MODERN_BATTLE_SCORE_9 = makeModernBattleScore({
+  bpm: 176,
+  mainA: [['D2', 'min'], ['D#2', 'maj'], ['D2', 'min'], ['D#2', 'maj']],
+  mainB: [['A2', 'maj'], ['A#2', 'maj'], ['A2', 'maj'], ['A#2', 'maj']],
+  bProgression: [
+    ['G2', 'min'], ['G#2', 'maj'], ['D2', 'min'], ['D#2', 'maj'],
+    ['G2', 'min'], ['G#2', 'maj'], ['D2', 'min'], ['D#2', 'maj'],
+  ],
+  subBassMode: 'holdTonic',
+});
+const MODERN_BATTLE_SCORE_10 = makeModernBattleScore({
+  bpm: 150,
+  mainA: [['F#2', 'min'], ['E2', 'maj'], ['F#2', 'min'], ['E2', 'maj']],
+  mainB: [['D2', 'maj'], ['E2', 'maj'], ['D2', 'maj'], ['E2', 'maj']],
+  bProgression: [
+    ['B2', 'min'], ['G2', 'maj'], ['D2', 'maj'], ['A2', 'maj'],
+    ['B2', 'min'], ['G2', 'maj'], ['D2', 'maj'], ['A2', 'maj'],
+  ],
+  variant: 'soaring',
+});
+
+const SCORES_MODERN: Record<string, Score> = {
+  'overworld:1': MODERN_OVERWORLD_SCORE_1,
+  'overworld:2': MODERN_OVERWORLD_SCORE_2,
+  'overworld:3': MODERN_OVERWORLD_SCORE_3,
+  'overworld:4': MODERN_OVERWORLD_SCORE_4,
+  'overworld:5': MODERN_OVERWORLD_SCORE_5,
+  'overworld:6': MODERN_OVERWORLD_SCORE_6,
+  'overworld:7': MODERN_OVERWORLD_SCORE_7,
+  'overworld:8': MODERN_OVERWORLD_SCORE_8,
+  'overworld:9': MODERN_OVERWORLD_SCORE_9,
+  'overworld:10': MODERN_OVERWORLD_SCORE_10,
+  'battle:1': MODERN_BATTLE_SCORE_1,
+  'battle:2': MODERN_BATTLE_SCORE_2,
+  'battle:3': MODERN_BATTLE_SCORE_3,
+  'battle:4': MODERN_BATTLE_SCORE_4,
+  'battle:5': MODERN_BATTLE_SCORE_5,
+  'battle:6': MODERN_BATTLE_SCORE_6,
+  'battle:7': MODERN_BATTLE_SCORE_7,
+  'battle:8': MODERN_BATTLE_SCORE_8,
+  'battle:9': MODERN_BATTLE_SCORE_9,
+  'battle:10': MODERN_BATTLE_SCORE_10,
+};
+
 // Keyed by world number for both scene kinds ('overworld:N'/'battle:N') so
 // each of the 10 worlds gets its own theme for each scene; Hub/Title --
 // which aren't tied to a specific world number -- use world 1's overworld
@@ -975,6 +1402,23 @@ const SCORES: Record<string, Score> = {
   'battle:10': BATTLE_SCORE_10,
 };
 
+// A track's notes must sum to exactly its score's loopBeats -- scheduleLoop
+// re-anchors to wall-clock time each iteration (see MusicEngine.play), so a
+// mismatch isn't cumulative drift, it's a voice that cuts out early or
+// overlaps itself at every loop seam. Checked once at module load over every
+// score in both tables, since this is the one class of bug that typechecks
+// clean and can't be caught by ear from a description of the notes.
+function assertLoopBeats(key: string, score: Score) {
+  for (const track of score.tracks) {
+    const sum = track.notes.reduce((total, note) => total + note.beats, 0);
+    if (Math.abs(sum - score.loopBeats) > 1e-6) {
+      console.error(`music: "${key}" ${track.kind} track sums to ${sum} beats, expected loopBeats=${score.loopBeats}`);
+    }
+  }
+}
+for (const [key, score] of Object.entries(SCORES)) assertLoopBeats(key, score);
+for (const [key, score] of Object.entries(SCORES_MODERN)) assertLoopBeats(`${key} (modern)`, score);
+
 // Fades between the previous track's session gain and a new one instead of
 // hard-cutting, so a long pad note doesn't ring on top of the next scene's
 // track and switching tracks never clicks.
@@ -986,6 +1430,7 @@ class MusicEngine {
   private driveCurve: Float32Array<ArrayBuffer> | null = null;
   private activeGain: GainNode | null = null;
   private current: string | null = null;
+  private style: 'classic' | 'modern' = 'classic';
   private stopToken = 0;
   private timer: number | null = null;
   private muted = false;
@@ -1036,9 +1481,62 @@ class MusicEngine {
     return this.driveCurve;
   }
 
+  // A short slapback delay with a darkened feedback loop -- the modern
+  // style's "hall" send (ToneTrack.wet routes a fraction of a voice's
+  // signal here) for a soft reverb-like tail on its pads/lead without a
+  // full convolution reverb. Built fresh per play() call and its wet output
+  // routed into that same call's own `sessionGain` (`dest` here) rather
+  // than straight to master -- crossfading away from a track (play() on a
+  // new key, or setStyle() restarting the current one) ramps sessionGain to
+  // 0, and since the delay's feedback loop only ever reaches the speakers
+  // through that same gain, the outgoing track's echo tail is silenced
+  // along with everything else instead of ringing on into the next track.
+  // The same routing means duck() (which also only touches sessionGain)
+  // ducks the wet tail along with the dry signal, as the player expects.
+  private createAmbienceBus(ctx: AudioContext, dest: GainNode): GainNode {
+    const input = ctx.createGain();
+    input.gain.value = 1;
+    const delay = ctx.createDelay(1);
+    delay.delayTime.value = 0.19;
+    const feedback = ctx.createGain();
+    feedback.gain.value = 0.28;
+    const darken = ctx.createBiquadFilter();
+    darken.type = 'lowpass';
+    darken.frequency.value = 3200;
+    const wetOut = ctx.createGain();
+    wetOut.gain.value = 0.5;
+
+    input.connect(delay);
+    delay.connect(darken);
+    darken.connect(feedback);
+    feedback.connect(delay);
+    darken.connect(wetOut);
+    wetOut.connect(dest);
+
+    return input;
+  }
+
+  // Which score table play() reads from -- 'classic' (SCORES) or 'modern'
+  // (SCORES_MODERN). Restarts whatever's currently playing under the new
+  // table (bypassing play()'s own no-op guard, which otherwise treats a
+  // style change on the *same* key as nothing happening) so the Enter-menu
+  // Settings toggle takes effect immediately rather than on the next scene
+  // transition.
+  setStyle(style: 'classic' | 'modern') {
+    if (this.style === style) return;
+    this.style = style;
+    if (this.current) {
+      const key = this.current;
+      this.current = null;
+      this.play(key);
+    }
+  }
+
   play(which: string) {
     if (this.current === which) return;
-    if (!SCORES[which]) {
+    const table = this.style === 'modern' ? SCORES_MODERN : SCORES;
+    const score = table[which] ?? SCORES[which];
+    if (!score) {
       // Whatever's currently playing (if anything) is deliberately left
       // running rather than cut to silence -- an unknown key is a bug
       // elsewhere (e.g. a scene passing a world number with no score), and
@@ -1064,8 +1562,8 @@ class MusicEngine {
     sessionGain.gain.linearRampToValueAtTime(1, now + 0.15);
     this.activeGain = sessionGain;
     this.current = which;
+    const ambience = this.createAmbienceBus(ctx, sessionGain);
 
-    const score = SCORES[which];
     const secPerBeat = 60 / score.bpm;
     const loopMs = score.loopBeats * secPerBeat * 1000;
     const token = ++this.stopToken;
@@ -1074,7 +1572,7 @@ class MusicEngine {
       if (token !== this.stopToken) return;
       const startAt = ctx.currentTime + 0.05;
       for (const track of score.tracks) {
-        this.scheduleTrack(ctx, track, startAt, secPerBeat, sessionGain);
+        this.scheduleTrack(ctx, track, startAt, secPerBeat, sessionGain, ambience);
       }
       this.timer = window.setTimeout(scheduleLoop, loopMs);
     };
@@ -1146,17 +1644,19 @@ class MusicEngine {
     return this.muted;
   }
 
-  private scheduleTrack(ctx: AudioContext, track: Track, startAt: number, secPerBeat: number, dest: GainNode) {
+  private scheduleTrack(ctx: AudioContext, track: Track, startAt: number, secPerBeat: number, dest: GainNode, ambience: GainNode) {
     let t = startAt;
     if (track.kind === 'tone') {
+      const envelope = { attack: track.attack, release: track.release, wet: track.wet };
       for (const note of track.notes) {
         const dur = note.beats * secPerBeat;
         if (note.midi !== null) {
           if (track.unison) {
-            this.scheduleTone(ctx, track.wave, track.gain * 0.6, note.midi, t, dur, dest, -7, !!track.drive);
-            this.scheduleTone(ctx, track.wave, track.gain * 0.6, note.midi, t, dur, dest, 7, !!track.drive);
+            const spread = track.unisonSpread ?? 7;
+            this.scheduleTone(ctx, track.wave, track.gain * 0.6, note.midi, t, dur, dest, -spread, !!track.drive, envelope, ambience);
+            this.scheduleTone(ctx, track.wave, track.gain * 0.6, note.midi, t, dur, dest, spread, !!track.drive, envelope, ambience);
           } else {
-            this.scheduleTone(ctx, track.wave, track.gain, note.midi, t, dur, dest, 0, !!track.drive);
+            this.scheduleTone(ctx, track.wave, track.gain, note.midi, t, dur, dest, 0, !!track.drive, envelope, ambience);
           }
         }
         t += dur;
@@ -1197,7 +1697,9 @@ class MusicEngine {
     dur: number,
     dest: GainNode,
     detuneCents: number,
-    drive: boolean
+    drive: boolean,
+    envelope?: { attack?: number; release?: number; wet?: number },
+    ambience?: GainNode
   ) {
     const osc = ctx.createOscillator();
     osc.type = wave;
@@ -1205,22 +1707,32 @@ class MusicEngine {
     osc.detune.value = detuneCents;
 
     const g = ctx.createGain();
-    const attack = Math.min(0.02, dur * 0.3);
-    const release = Math.min(0.05, dur * 0.3);
+    // A ToneTrack's own attack/release (e.g. a modern-style string pad's
+    // slow swell) overrides the default fast synth envelope, clamped so a
+    // long override can never eat the whole note on an unexpectedly short
+    // beat.
+    const attack = Math.min(envelope?.attack ?? Math.min(0.02, dur * 0.3), dur * 0.45);
+    const release = Math.min(envelope?.release ?? Math.min(0.05, dur * 0.3), dur * 0.45);
     g.gain.setValueAtTime(0, time);
     g.gain.linearRampToValueAtTime(vol, time + attack);
     g.gain.setValueAtTime(vol, Math.max(time + attack, time + dur - release));
     g.gain.linearRampToValueAtTime(0, time + dur);
 
     osc.connect(g);
+    let outNode: AudioNode = g;
     if (drive) {
       const shaper = ctx.createWaveShaper();
       shaper.curve = this.getDriveCurve();
       shaper.oversample = '2x';
       g.connect(shaper);
-      shaper.connect(dest);
-    } else {
-      g.connect(dest);
+      outNode = shaper;
+    }
+    outNode.connect(dest);
+    if (envelope?.wet && ambience) {
+      const send = ctx.createGain();
+      send.gain.value = envelope.wet;
+      outNode.connect(send);
+      send.connect(ambience);
     }
     osc.start(time);
     osc.stop(time + dur + 0.02);

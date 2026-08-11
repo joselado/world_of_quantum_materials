@@ -41,6 +41,28 @@ export const MATERIAL_BLURBS: Record<string, string> = {
     "BaTiO₃'s Ti⁴⁺ ion sits off-center in its oxygen cage below ~120°C, giving the whole lattice a spontaneous, switchable electric polarization -- the textbook ferroelectric, the electric analog of a ferromagnet's spontaneous moment.",
   GeTe:
     'A IV-VI semiconductor whose rhombohedral distortion gives it a robust, switchable polarization well above room temperature -- unlike BaTiO₃, its own strong spin-orbit coupling also locks that polarization to a Rashba-split spin texture.',
+  Silver:
+    "Silver's half-filled 5s conduction band gives it the sharpest, most tightly bound free-electron plasmon of any metal -- the reason real plasmonic/nanophotonic devices are built on silver (and gold) rather than graphene, even though both share the same ordinary partially-filled-band physics.",
+  Diamond:
+    "Diamond's ~5.5 eV indirect gap is wide enough that no realistic doping or thermal excitation puts a carrier in the conduction band -- the textbook covalent insulator, its own stiff sp³ lattice making it an exceptional phonon conductor even while it blocks charge transport entirely.",
+  'Monolayer Boron Nitride':
+    "hBN's own honeycomb lattice is nearly commensurate with graphene's, which is why real graphene devices are built on or encapsulated in it -- individually just a wide-gap (~5.9 eV) insulator, but aligning it with graphene at a moiré angle is what opens the exotic flat-band physics of Rhombohedral Pentalayer Graphene/hBN Moiré.",
+  'Yttrium Iron Garnet':
+    'YIG is ferrimagnetic, not ferromagnetic -- two magnetic sublattices order antiparallel with unequal moment -- but its defining feature is having the lowest magnon damping of any known material, which is why nearly every real spin-wave-transport and magnon-BEC experiment is actually done in YIG.',
+  'Bismuth Ferrite':
+    "BiFeO₃ is the flagship room-temperature single-phase multiferroic: a large, switchable polarization (from the Bi³⁺ lone pair, not a Ti⁴⁺-style off-centering) coexists with G-type antiferromagnetic order carrying a spin cycloid, and their magnetoelectric coupling produces electromagnons actually observed in its THz/Raman spectrum -- unlike Twisted CrI₃'s still-theoretical coupling.",
+  'Hafnium Oxide':
+    'Bulk HfO₂ is an ordinary centrosymmetric insulator, not ferroelectric at all -- but a thin, strained film locks into a polar orthorhombic phase that switches, and Cheema et al. (Nature, 2020) showed this works in pristine, undoped epitaxial HfO₂, not just the more common dopant-stabilized version, which is what makes it the CMOS-compatible ferroelectric behind real FeRAM/FeFET devices.',
+  'Lanthanum Decahydride':
+    "LaH₁₀ superconducts up to roughly 250-260 K -- but only under ~170 GPa of pressure, and its mechanism is still ordinary phonon-mediated BCS pairing, just driven to extremes by how light and strongly coupled hydrogen's own phonons are inside the hydride's clathrate cage.",
+  'Uranium Ditelluride':
+    'UTe₂ is the leading candidate spin-triplet superconductor: critical fields far beyond the ordinary Pauli limit and contested reports of broken time-reversal symmetry and chiral in-gap surface states point toward genuine topological pairing, though newer high-quality crystals have complicated that picture -- a real, still-open research question rather than settled physics.',
+  'Cerium Cobalt Indide':
+    "CeCoIn₅'s Ce 4f moments hybridize with its conduction electrons into quasiparticles roughly a hundred times an electron's bare mass -- a heavy-fermion compound sitting right next to an antiferromagnetic quantum critical point, whose own T→0 ground state is actually an unconventional d-wave superconductor built from those heavy quasiparticles.",
+  'Cerium Zirconate Pyrochlore':
+    "Ce₂Zr₂O₇ shows no magnetic order or spin freezing down to tens of millikelvin -- its Ce³⁺ dipole-octupole doublets on the pyrochlore lattice are read as evidence for a U(1) quantum spin ice, a quantum spin liquid with an emergent photon and gapped spinons rather than the Z2 gauge structure a vison-hosting spin liquid carries.",
+  'Rhombohedral Pentalayer Graphene/hBN Moiré':
+    'Five rhombohedrally-stacked graphene layers aligned to a hBN substrate host a flat, topologically nontrivial moiré band -- at the right filling and displacement field, that band fractionalizes into a genuine fractional quantum anomalous Hall state at zero magnetic field (2023-2024 experiments), the same charged-anyon edge physics as Twisted Bilayer MoTe₂ by an entirely different route.',
 };
 
 const TYPE_FALLBACK_BLURBS: Record<MaterialType, string> = {

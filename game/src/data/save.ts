@@ -1,6 +1,6 @@
 import type { Material, MaterialType, MoveClass, Stats } from './types';
 import { PLAYER_MATERIAL, DEFAULT_STATS, MOVES, TYPE_LOOK } from './materials';
-import { DEFAULT_ENCOUNTER_DENSITY, DEFAULT_FONT_SCALE } from './settings';
+import { DEFAULT_ENCOUNTER_DENSITY, DEFAULT_FONT_SCALE, DEFAULT_MUSIC_STYLE } from './settings';
 
 // Single localStorage-backed save slot (v1: one profile, no cloud sync --
 // matches DESIGN.md §7). TitleScene reads this once at boot into the Phaser
@@ -60,6 +60,11 @@ export interface SaveData {
   // FONT_SCALE_PRESETS. Unlike encounterDensity this takes effect immediately
   // (read live on every fontPx() call), not just on the next map generation.
   fontScale: number;
+  // Same Settings panel, third row: which of data/settings.ts's
+  // MUSIC_STYLE_PRESETS (audio/music.ts's SCORES vs SCORES_MODERN) the
+  // MusicEngine draws from. Applies immediately (MusicEngine.setStyle
+  // restarts whatever's currently playing under the new table).
+  musicStyle: 'classic' | 'modern';
   // Which of Kondo's three screening-class moves (data/materials.ts's
   // KONDO_MOVE_IDS) is currently the active/usable one -- null until the
   // player picks one for the first time in OverworldScene.showKondoPanel.
@@ -118,6 +123,7 @@ export function defaultSave(): SaveData {
     superpositionMode: false,
     encounterDensity: DEFAULT_ENCOUNTER_DENSITY,
     fontScale: DEFAULT_FONT_SCALE,
+    musicStyle: DEFAULT_MUSIC_STYLE,
     kondoActiveMove: null,
     laughlinPassivesUnlocked: [],
     laughlinActivePassive: null,
@@ -198,6 +204,7 @@ export function persistFromRegistry(registry: RegistryLike) {
     superpositionMode: (registry.get('superpositionMode') as boolean) ?? false,
     encounterDensity: (registry.get('encounterDensity') as number) ?? DEFAULT_ENCOUNTER_DENSITY,
     fontScale: (registry.get('fontScale') as number) ?? DEFAULT_FONT_SCALE,
+    musicStyle: (registry.get('musicStyle') as 'classic' | 'modern') ?? DEFAULT_MUSIC_STYLE,
     kondoActiveMove: (registry.get('kondoActiveMove') as string | null) ?? null,
     laughlinPassivesUnlocked: (registry.get('laughlinPassivesUnlocked') as string[]) ?? [],
     laughlinActivePassive: (registry.get('laughlinActivePassive') as string | null) ?? null,

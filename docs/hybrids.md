@@ -35,6 +35,7 @@ fused, same-type pairs included.
 | Tantalum Disulfide (1T) | Tantalum Disulfide (1H) | 1T/1H-TaS₂ Heterostructure |
 | Manganese | Niobium | Mn/Nb Shiba Chain |
 | HgTe | CdTe | HgTe/CdTe Quantum Well |
+| Graphene | Monolayer Boron Nitride | Rhombohedral Pentalayer Graphene/hBN Moiré |
 <!-- GENERATED:RECIPES_TABLE END -->
 
 See [Guardians](guardians.md#majorana) for how the fuse mechanic itself
