@@ -108,6 +108,16 @@ function renderUltimateMoves(scene: OverworldScene, container: Phaser.GameObject
 // records the unlock, retunes, and -- on this move's very first-ever
 // unlock -- adds the move id to `unlockedMoves` so it appears in the battle
 // menu (mirrors how buying unlocks a move in every other guardian shop).
+// Unlike showMoveClassPicker (Laughlin's equivalent, panels/
+// tunableMoveShop.ts), a row here can be genuinely unaffordable rather than
+// always immediately actionable -- with no class yet unlocked for this move
+// and fewer than ULTIMATE_CLASS_UNLOCK_COST qumatessence, every row is a
+// no-op. A `<- Back` footer (same wording OverworldScene's tutorial pager
+// uses for a mid-flow step back) is therefore required, not optional the way
+// it might be elsewhere: without it a too-poor player has no unlockedMoves-
+// clearing button, no `renderFarewellFooter`, nothing at all to click, and
+// dialogueActive (set true above) stays stuck, freezing movement and the
+// pause menu for the rest of the session.
 function showUltimateClassPicker(scene: OverworldScene, moveId: string, onDone: () => void) {
   scene.dialogueContainer?.destroy(true);
   scene.dialogueActive = true;
@@ -165,6 +175,9 @@ function showUltimateClassPicker(scene: OverworldScene, moveId: string, onDone: 
     if (!affordable) btn.setAlpha(0.5);
     y += btn.height + 3;
   });
+  y += 5;
+  const back = scene.addDialogueButtonAt(container, CANVAS_W / 2, y, '<- Back', () => onDone(), 260);
+  y += back.height;
   y += top;
 
   const panelHeight = y - top;

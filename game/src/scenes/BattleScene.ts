@@ -275,12 +275,18 @@ export class BattleScene extends Phaser.Scene {
     // hardcoded y -- the name's font size (and so its rendered height) scales
     // with the text-size setting (data/settings.ts's FONT_SCALE_PRESETS, up
     // to 2x), and a fixed gap tuned for the 1x label overlapped the bar once
-    // a taller label was in play.
+    // a taller label was in play. wordWrap for the same reason a long
+    // material name (e.g. "Twisted Bilayer MoTe₂") needs it: starting this
+    // far right (x=400) leaves too little room before the canvas edge to
+    // trust an unbounded single line -- wrapping to a second line grows
+    // `opponentName.height`, which opponentBarY below already reads live, so
+    // the bar/pills still land in the right place either way.
     const opponentName = this.add.text(400, 48, this.wild.name, {
       fontSize: fontPx(this, 14),
       color: '#ffffff',
       backgroundColor: 'rgba(0,0,0,0.35)',
       padding: { x: 4, y: 2 },
+      wordWrap: { width: FIELD_W - 400 - 12 },
     });
     const opponentBarY = opponentName.y + opponentName.height + 8;
     this.add.rectangle(400, opponentBarY, 104, 12, 0x222222, 0.55).setOrigin(0, 0.5);
@@ -362,6 +368,7 @@ export class BattleScene extends Phaser.Scene {
       color: '#ffffff',
       backgroundColor: 'rgba(0,0,0,0.35)',
       padding: { x: 4, y: 2 },
+      wordWrap: { width: FIELD_W - 130 - 12 },
     });
     const playerBarY = playerName.y + playerName.height + 8;
     this.add.rectangle(130, playerBarY, 104, 12, 0x222222, 0.55).setOrigin(0, 0.5);

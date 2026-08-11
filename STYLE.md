@@ -360,21 +360,21 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   "`<name>` -- tuned to `<quasiparticle>`, reverted to Phonon Beam (this form can't host it --
   retune)", or "`<name>` -- untuned (pick a quasiparticle)" if never assigned -- `<name>` here
   is `tunedMoveDisplayName`, so a tuned move's own row already reads like "Magnon Beam --
-  tuned to Magnon Pulse (retune)" rather than the untuned default "Phonon Beam." Empty state once
+  tuned to Magnon (retune)" rather than the untuned default "Phonon Beam." Empty state once
   both are bought: "You already carry every analytic technique I can teach." Clicking either
   an unbought move's buy row or a learned move's tune/retune row opens
   `showMoveClassPicker`, a sub-panel titled "Which quasiparticle should `<name>` carry?"
   listing `TUNABLE_MOVE_CLASSES` filtered down to whatever the player's *current* form can
   host (`canHost`) as its own column of buttons (same button styling as the shop list, just
-  a different button set) -- each labeled with the ordinary move name that class already
-  carries (`quasiparticleLabel`, e.g. "Magnon Pulse" for `'magnon'`) rather than the class
-  id. Picking one on an unbought move completes the purchase; on an already-bought move it
-  just re-saves the assignment, free.
+  a different button set) -- each labeled with the quasiparticle's own bare name
+  (`quasiparticleLabel`, e.g. "Magnon" for `'magnon'`) rather than the class id or the
+  matching ordinary move's own full name. Picking one on an unbought move completes the
+  purchase; on an already-bought move it just re-saves the assignment, free.
 - **The move's displayed name always leads with its current quasiparticle**
   (`data/materials.ts`'s `tunedMoveDisplayName`) everywhere a move name shows up in battle
   too -- the move-menu button, the analytic-question panel's title, the battle log's "X used
-  `<name>`!" line -- built from the quasiparticle's own label (`quasiparticleLabel`, e.g.
-  `"Magnon Pulse"` → `Magnon`) plus each move's fixed shape word ("Beam"/"Eruption") rather
+  `<name>`!" line -- built from the quasiparticle's own bare label (`quasiparticleLabel`, e.g.
+  `Magnon` for `'magnon'`) plus each move's fixed shape word ("Beam"/"Eruption") rather
   than a second hand-authored word list, so `skyfallBeam` tuned to `'magnon'` reads as
   "Magnon Beam," `groundEruption` tuned to `'chargedAnyon'` as "Anyon Eruption," and so on. An
   untuned move defaults to `'phonon'`, reading as "Phonon Beam"/"Phonon Eruption."

@@ -430,14 +430,14 @@ function playEruption(scene: Phaser.Scene, color: number, to: Point, onImpact?: 
 const METEOR_SUMMON_MS = 1300;
 const METEOR_CHARGE_MS = 2000;
 const METEOR_IMPACT_MS = 900;
-const METEOR_AFTERMATH_MS = 900;
-export const METEOR_TOTAL_MS = METEOR_SUMMON_MS + METEOR_CHARGE_MS + METEOR_IMPACT_MS + METEOR_AFTERMATH_MS; // 5100ms
+const METEOR_AFTERMATH_MS = 1000;
+export const METEOR_TOTAL_MS = METEOR_SUMMON_MS + METEOR_CHARGE_MS + METEOR_IMPACT_MS + METEOR_AFTERMATH_MS; // 5200ms
 
 const NOVA_SUMMON_MS = 1200;
 const NOVA_CHARGE_MS = 1900;
 const NOVA_IMPACT_MS = 850;
-const NOVA_AFTERMATH_MS = 850;
-export const NOVA_TOTAL_MS = NOVA_SUMMON_MS + NOVA_CHARGE_MS + NOVA_IMPACT_MS + NOVA_AFTERMATH_MS; // 4800ms
+const NOVA_AFTERMATH_MS = 950;
+export const NOVA_TOTAL_MS = NOVA_SUMMON_MS + NOVA_CHARGE_MS + NOVA_IMPACT_MS + NOVA_AFTERMATH_MS; // 4900ms
 
 // Summon (`ultimateMeteor`): an expanding runic/lattice circle on the ground
 // under the target -- a rotating hexagonal lattice ring inside an outer
@@ -485,7 +485,15 @@ function playMeteorSummon(scene: Phaser.Scene, color: number, to: Point, onDone:
 // chunks and a fire trail, descending from off the top of the screen to hang
 // just above the target -- a bigger, heavier silhouette than playBeam's thin
 // falling column (a meteor reads as a mass, not a shot), with the summon
-// circle from the prior phase redrawn underneath, still pulsing.
+// circle from the prior phase redrawn underneath, still pulsing. Its
+// arrival/growth is driven by `growT`, not the raw tween `t` -- reaching full
+// size and position by 82% of the phase and holding there for the rest (mass
+// still shimmering/orbiting on raw `t`, just no longer growing or falling)
+// reads as "reared back and straining, about to blow" for that last stretch,
+// the held-breath beat right before Impact's onImpact fires. onImpact itself
+// stays at frame 0 of the Impact phase (mirrors every other shape's land()),
+// so this hold -- not a delayed onImpact -- is what sells "suddenly explode"
+// rather than "still visibly growing when it detonates".
 function playMeteorCharge(scene: Phaser.Scene, color: number, to: Point, onDone: () => void) {
   const mass = scene.add.graphics().setDepth(60).setBlendMode(Phaser.BlendModes.ADD);
   const circle = scene.add.graphics().setDepth(58).setBlendMode(Phaser.BlendModes.ADD);
@@ -498,8 +506,9 @@ function playMeteorCharge(scene: Phaser.Scene, color: number, to: Point, onDone:
     ease: 'Cubic.easeIn',
     onUpdate: (tw) => {
       const t = tw.getValue() ?? 0;
-      const massY = Phaser.Math.Linear(originY, to.y - 34, t);
-      const massR = 14 + t * 34;
+      const growT = Math.min(t / 0.82, 1);
+      const massY = Phaser.Math.Linear(originY, to.y - 34, growT);
+      const massR = 14 + growT * 44;
       mass.clear();
       for (let i = 0; i < 8; i++) {
         const ty = massY - i * 14;
@@ -534,9 +543,16 @@ function playMeteorCharge(scene: Phaser.Scene, color: number, to: Point, onDone:
 }
 
 // Impact (`ultimateMeteor`): calls `onImpact()` immediately, then plays
-// either the full heavy slam (a blinding core flash, a wide shockwave ring,
-// and radial ground cracks) or, on a whiff, a small desaturated version that
-// just deflates in place without ever landing.
+// either the full heavy slam -- a blinding core flash, a shockwave ring and
+// ground-crack rays big enough to reach most of the 640x480 field (FIELD_W/
+// FIELD_H, BattleScene.ts) rather than staying pocket-sized, the "explosion
+// fills the screen" beat the small-then-big charge above was building toward
+// -- or, on a whiff, the same small desaturated deflate as always (untouched
+// below; a whiff reads as "it didn't work", not as a weaker version of the
+// same boom, so it doesn't scale with it). Every shape here stays ADD-blend
+// and alpha-fades with `t` like the rest of the file rather than an opaque
+// fill, so the log text/HP bars (BattleScene, depth 0) still read through it
+// even at this size, just brightened for a beat.
 function playMeteorImpact(
   scene: Phaser.Scene,
   color: number,
@@ -565,15 +581,15 @@ function playMeteorImpact(
         g.strokeEllipse(to.x, groundY, 40 * (1 - t), 14 * (1 - t));
         return;
       }
-      g.fillStyle(0xffffff, 0.9 * (1 - t));
-      g.fillCircle(to.x, groundY, 20 + t * 42);
+      g.fillStyle(0xffffff, 0.92 * (1 - t));
+      g.fillCircle(to.x, groundY, 26 + t * 130);
       g.lineStyle(5, color, 0.85 * (1 - t));
-      g.strokeEllipse(to.x, groundY, (10 + t * 110) * 2, (10 + t * 110) * 0.5);
-      g.fillStyle(color, 0.55 * (1 - t));
-      g.fillEllipse(to.x, groundY, 90 + t * 60, 26);
-      for (let i = 0; i < 10; i++) {
-        const ang = (i / 10) * Math.PI * 2;
-        const len = 20 + t * 72;
+      g.strokeEllipse(to.x, groundY, (14 + t * 260) * 2, (14 + t * 260) * 0.5);
+      g.fillStyle(color, 0.5 * (1 - t));
+      g.fillEllipse(to.x, groundY, 140 + t * 320, 26 + t * 50);
+      for (let i = 0; i < 12; i++) {
+        const ang = (i / 12) * Math.PI * 2;
+        const len = 24 + t * 230;
         g.lineStyle(3, color, 0.7 * (1 - t));
         g.lineBetween(to.x, groundY, to.x + Math.cos(ang) * len, groundY + Math.sin(ang) * len * 0.5);
       }
@@ -592,7 +608,8 @@ function playMeteorAftermath(scene: Phaser.Scene, color: number, to: Point, whif
   const g = scene.add.graphics().setDepth(58).setBlendMode(Phaser.BlendModes.ADD);
   const groundY = to.y + 18;
   const emberColor = whiff ? 0x888888 : color;
-  const spread = whiff ? 14 : 44;
+  const spread = whiff ? 14 : 60;
+  const emberCount = whiff ? 6 : 9;
   scene.tweens.addCounter({
     from: 0,
     to: 1,
@@ -602,9 +619,9 @@ function playMeteorAftermath(scene: Phaser.Scene, color: number, to: Point, whif
       const t = tw.getValue() ?? 0;
       g.clear();
       g.fillStyle(emberColor, 0.35 * (1 - t));
-      g.fillCircle(to.x, groundY, (whiff ? 10 : 30) * (1 - t));
-      for (let i = 0; i < 6; i++) {
-        const ang = -Math.PI / 2 + (i - 2.5) * 0.35;
+      g.fillCircle(to.x, groundY, (whiff ? 10 : 48) * (1 - t));
+      for (let i = 0; i < emberCount; i++) {
+        const ang = -Math.PI / 2 + (i - (emberCount - 1) / 2) * 0.32;
         const dist = t * spread;
         g.fillStyle(i % 2 === 0 ? 0xffffff : emberColor, (1 - t) * 0.75);
         g.fillCircle(to.x + Math.cos(ang) * dist, groundY - t * 26 + Math.sin(ang) * dist * 0.3, 2.5 * (1 - t * 0.6));
@@ -689,7 +706,12 @@ function playNovaSummon(scene: Phaser.Scene, color: number, to: Point, onDone: (
 // pulsing core -- the inverse motion of playMeteorCharge's falling mass, so
 // the two moves read as opposites (something arriving from outside vs.
 // something collapsing inward before it blows back out) rather than variants
-// of the same idea.
+// of the same idea. The core's own growth (not the converging particles or
+// its pulse, both still driven by raw `t`) saturates at 82% of the phase and
+// holds -- same "small -> big -> held, straining" beat playMeteorCharge's
+// growT gives the falling mass, so the last stretch before Impact reads as a
+// core visibly full and under pressure rather than one still visibly
+// swelling right up to the cut.
 function playNovaCharge(scene: Phaser.Scene, color: number, to: Point, onDone: () => void) {
   const g = scene.add.graphics().setDepth(60).setBlendMode(Phaser.BlendModes.ADD);
   scene.tweens.addCounter({
@@ -699,7 +721,8 @@ function playNovaCharge(scene: Phaser.Scene, color: number, to: Point, onDone: (
     ease: 'Cubic.easeIn',
     onUpdate: (tw) => {
       const t = tw.getValue() ?? 0;
-      const coreR = 6 + t * 20;
+      const growT = Math.min(t / 0.82, 1);
+      const coreR = 6 + growT * 26;
       g.clear();
       const n = 14;
       for (let i = 0; i < n; i++) {
@@ -724,9 +747,15 @@ function playNovaCharge(scene: Phaser.Scene, color: number, to: Point, onDone: (
 }
 
 // Impact (`ultimateNova`): calls `onImpact()` immediately, then either a full
-// outward energy-nova blast (bright core flash, a double expanding ring, and
-// radiating rays punching outward in every direction) or, on a whiff, a small
-// desaturated core that just deflates without ever blowing outward.
+// outward energy-nova blast -- bright core flash, double expanding ring, and
+// radiating rays reaching close to the field's own half-height (FIELD_H/2 =
+// 240, BattleScene.ts) in every direction, big enough to read as filling most
+// of the screen rather than a pocket-sized burst -- or, on a whiff, the same
+// small desaturated core that just deflates without ever blowing outward
+// (untouched below, deliberately not scaled the same way the hit case is).
+// ADD-blend and alpha-faded with `t` throughout, same reasoning as
+// playMeteorImpact's own comment: brightens what's underneath for a beat
+// rather than opaquely hiding it.
 function playNovaImpact(
   scene: Phaser.Scene,
   color: number,
@@ -754,16 +783,16 @@ function playNovaImpact(
         g.strokeCircle(to.x, to.y, 14 * (1 - t));
         return;
       }
-      g.fillStyle(0xffffff, 0.95 * (1 - t));
-      g.fillCircle(to.x, to.y, 16 + t * 30);
+      g.fillStyle(0xffffff, 0.96 * (1 - t));
+      g.fillCircle(to.x, to.y, 22 + t * 110);
       g.lineStyle(5, color, 0.85 * (1 - t));
-      g.strokeCircle(to.x, to.y, 20 + t * 90);
+      g.strokeCircle(to.x, to.y, 26 + t * 260);
       g.lineStyle(3, 0xffffff, 0.5 * (1 - t));
-      g.strokeCircle(to.x, to.y, 10 + t * 60);
-      const rays = 16;
+      g.strokeCircle(to.x, to.y, 14 + t * 190);
+      const rays = 18;
       for (let i = 0; i < rays; i++) {
         const ang = (i / rays) * Math.PI * 2;
-        const len = 24 + t * 80;
+        const len = 28 + t * 230;
         g.lineStyle(3, color, 0.75 * (1 - t));
         g.lineBetween(to.x + Math.cos(ang) * 14, to.y + Math.sin(ang) * 14, to.x + Math.cos(ang) * len, to.y + Math.sin(ang) * len);
       }
@@ -781,7 +810,7 @@ function playNovaImpact(
 function playNovaAftermath(scene: Phaser.Scene, color: number, to: Point, whiff: boolean, onComplete: () => void) {
   const g = scene.add.graphics().setDepth(58).setBlendMode(Phaser.BlendModes.ADD);
   const emberColor = whiff ? 0x888888 : color;
-  const spread = whiff ? 16 : 50;
+  const spread = whiff ? 16 : 65;
   scene.tweens.addCounter({
     from: 0,
     to: 1,
@@ -791,8 +820,8 @@ function playNovaAftermath(scene: Phaser.Scene, color: number, to: Point, whiff:
       const t = tw.getValue() ?? 0;
       g.clear();
       g.fillStyle(emberColor, 0.35 * (1 - t));
-      g.fillCircle(to.x, to.y, (whiff ? 8 : 26) * (1 - t));
-      const shards = 8;
+      g.fillCircle(to.x, to.y, (whiff ? 8 : 40) * (1 - t));
+      const shards = whiff ? 8 : 10;
       for (let i = 0; i < shards; i++) {
         const ang = (i / shards) * Math.PI * 2;
         const dist = t * spread;

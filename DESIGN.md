@@ -611,9 +611,9 @@ state can mark her met before the player has actually reached her.
   every `MOVE_COMPATIBILITY` list, so the filtered list is never empty) that assigns
   the move's registry/save `moveClassTuning[moveId]` entry (a map shared with
   Skłodowska-Curie's Ultimate moves below, since both guardians' shops read and write
-  the same generic tuning helpers), labeled with whichever
-  ordinary move already carries that class (`quasiparticleLabel`, e.g. "Magnon
-  Pulse" for `'magnon'`) rather than the class id itself. This choice only feeds
+  the same generic tuning helpers), labeled with the quasiparticle's own bare
+  name (`quasiparticleLabel`, e.g. "Magnon" for `'magnon'`) rather than the
+  class id itself or the matching ordinary move's own full name. This choice only feeds
   `getTunedMoveClass`, which `BattleScene`'s quasiparticle-mismatch check reads in
   place of `move.class` for these two ids (see §3/§4) -- still purchasable/usable
   from any form and still asks its question regardless of tuning. The displayed name

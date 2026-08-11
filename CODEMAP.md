@@ -642,7 +642,7 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   distinguishing class of its own to filter on), which `SHOP_MOVE_IDS` deliberately excludes so
   Noether never also offers them. Two rendered sections: still-unbought moves, then every
   already-bought one showing which quasiparticle it's tuned to (its row label is
-  `tunedMoveDisplayName`, e.g. "Magnon Beam -- tuned to Magnon Pulse (retune)"). Buying
+  `tunedMoveDisplayName`, e.g. "Magnon Beam -- tuned to Magnon (retune)"). Buying
   (or later retuning) a move opens `tunableMoveShop.ts`'s `showMoveClassPicker` -- a sub-panel
   offering `TUNABLE_MOVE_CLASSES` (every ordinary Attacks-section class, i.e. everything except
   Kondo's `'screening'`) filtered through `canHost(playerMaterial.type, cls)` (so only
@@ -682,7 +682,12 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   math reads exactly like an Analytic move's (`getTunedMoveClass`) -- no special-casing beyond
   the 3-question gate, which lives entirely in `BattleScene` (see "Ultimate moves defer
   damage/turn-handoff," above, and `showUltimateQuestions` in "Battle move menu is sectioned,"
-  above).
+  above). Unlike `showMoveClassPicker` (every row there is always immediately actionable, so it
+  needs no separate exit), a row here can be genuinely unaffordable -- with no class yet
+  unlocked for that move and too little qumatessence, every row is a no-op click. A `<- Back`
+  footer button (calling the same `onDone` a successful pick would) is therefore required:
+  any sub-panel where every row *can* be a dead end needs an explicit way out that doesn't
+  depend on one of those rows succeeding.
 - **Kondo's screening-move shop** (`scenes/panels/kondo.ts`'s `showKondoPanel`/`renderKondoMoves`)
   sells `data/materials.ts`'s `KONDO_MOVE_IDS` (three moves:
   `screeningCloud`/`heavyFermionDrag`/`kondoBreakdown`, each tied to one of `types.ts`'s

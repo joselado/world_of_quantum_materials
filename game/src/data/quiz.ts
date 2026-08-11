@@ -2127,6 +2127,70 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
     correct: 'Insensitive to nonmagnetic impurities, but suppressed by magnetic ones',
     incorrect: 'Suppressed equally by any impurity, magnetic or not',
   },
+  // -- Methods & experimental probes: exact diagonalization, mean-field/DFT
+  // self-consistency, ARPES, STM -- cross-cutting the numerical and
+  // experimental toolkit itself rather than any one world's course topic,
+  // fitting an any-topic pool the same way the questions above do.
+  {
+    prompt:
+      'The dimension of the many-body Hilbert space for a chain of L spin-1/2 sites -- and hence the number of coefficients needed to store its ground state exactly -- grows as...',
+    correct: 'd = 2^L -- exponentially with system size',
+    incorrect: 'd = L^2 -- only quadratically with system size',
+  },
+  {
+    prompt:
+      'The practical ceiling on exact diagonalization of a spin chain, reached around L=30-40 sites on an ordinary machine, is set fundamentally by...',
+    correct: 'The cost of storing the 2^L ground-state coefficients, not the cost of diagonalizing the Hamiltonian',
+    incorrect: 'The cost of diagonalizing the Hamiltonian matrix itself, which dominates the storage cost',
+  },
+  {
+    prompt: 'A mean-field or Kohn-Sham calculation is solved self-consistently by...',
+    correct: 'Guessing a density/order parameter, building the Hamiltonian, diagonalizing it, and repeating until the guess stops changing',
+    incorrect: 'Diagonalizing the full interacting Hamiltonian once, with no iteration needed',
+  },
+  {
+    prompt:
+      'The Hohenberg-Kohn theorem justifies density functional theory by proving that, for a given external potential, the ground-state electron density n(r)...',
+    correct: 'Determines the external potential uniquely (up to a constant), and hence the full many-body wavefunction',
+    incorrect: 'Only ever provides a variational upper bound on the ground-state energy, never the wavefunction',
+  },
+  {
+    prompt: 'The Kohn-Sham construction makes DFT usable in practice by replacing the interacting many-body problem with...',
+    correct: 'A fictitious system of non-interacting electrons chosen to reproduce the same ground-state density',
+    incorrect: 'The same interacting Hamiltonian diagonalized exactly, just in a smaller basis set',
+  },
+  {
+    prompt: 'In the Kohn-Sham effective potential v_eff = v_ext + Hartree + v_xc, the exchange-correlation piece v_xc is...',
+    correct: 'Defined to absorb everything the mean-field Hartree term misses, and its exact form is unknown',
+    incorrect: 'Known exactly in closed form -- the one term in v_eff that requires no approximation',
+  },
+  {
+    prompt: "Angle-resolved photoemission spectroscopy (ARPES) maps a material's band dispersion E(k) by...",
+    correct: 'Ejecting electrons with photons and using energy/momentum conservation on the emitted electron',
+    incorrect: 'Scanning a fine metal tip across the surface and recording the tunneling current, as in STM',
+  },
+  {
+    prompt: "Graphene's ARPES-measured band structure near the K point confirms the tight-binding Dirac-cone prediction...",
+    correct: 'E±(q) = ±ħ v_F |q| -- linear in momentum away from the Dirac point',
+    incorrect: 'E±(q) = ±ħ²q²/2m -- quadratic in momentum, like an ordinary parabolic band',
+  },
+  {
+    prompt:
+      'Scanning tunneling microscopy signatures of a spinon Fermi surface on a triangular-lattice quantum-spin-liquid candidate make the gapless mean-field spinon picture...',
+    correct: "More than a theorist's construction -- in principle, an observable band structure",
+    incorrect: 'Definitively ruled out -- no gapless spinon signature has ever been observed',
+  },
+  {
+    prompt: "Scanning tunneling microscopy (STM) measures a material's local electronic structure via...",
+    correct: 'A tunneling current between a sharp metal tip and the sample surface, sensitive to the local density of states',
+    incorrect: 'Energy and momentum conservation on a photon-ejected electron, as in ARPES',
+  },
+  {
+    prompt:
+      'Mean-field theory, the Kohn-Sham construction of DFT, and a variational tensor-network ansatz are all instances of the same underlying strategy:...',
+    correct: 'Restricting the search for the ground state to a tractable family of trial states and minimizing the energy over that family',
+    incorrect: 'Diagonalizing the exact many-body Hamiltonian in the full Hilbert space, just with a faster algorithm',
+  },
 ];
 
 // Returns `count` distinct random questions (no repeats within one draw) --

@@ -213,13 +213,35 @@ export const TUNABLE_MOVE_CLASSES: MoveClass[] = [
   'plasmon',
 ];
 
-// Reuses the display name the matching ordinary move already carries
-// (Electron Pulse for 'electron', Magnon Pulse for 'magnon', ...) as the
-// label a tunable move's picker shows for that class, rather than inventing
-// a second naming scheme -- each of TUNABLE_MOVE_CLASSES maps to exactly one
-// MOVES entry today.
+// The bare quasiparticle noun a tunable move's picker shows for each class
+// ('Electron', 'Heavy Fermion', 'Anyon' for 'chargedAnyon', ...) -- not the
+// matching ordinary move's own display name ('Electron Pulse'), so a picker
+// row reads "Electron -- 1000 qumatessence" rather than "Electron Pulse --
+// 1000 qumatessence", and tunedMoveDisplayName below can prefix it straight
+// onto a move's shape word ('Meteor', 'Nova', ...) to get "Electron Meteor"/
+// "Heavy Fermion Meteor" without needing to parse it back out of a move
+// name's first word(s).
+const QUASIPARTICLE_NAMES: Partial<Record<MoveClass, string>> = {
+  electron: 'Electron',
+  magnon: 'Magnon',
+  phonon: 'Phonon',
+  polaron: 'Polaron',
+  spinon: 'Spinon',
+  triplon: 'Triplon',
+  electromagnon: 'Electromagnon',
+  chiral: 'Chiral',
+  helical: 'Helical',
+  higgs: 'Higgs',
+  chargedAnyon: 'Anyon',
+  majorana: 'Majorana',
+  heavyFermion: 'Heavy Fermion',
+  ferron: 'Ferron',
+  vison: 'Vison',
+  plasmon: 'Plasmon',
+};
+
 export function quasiparticleLabel(moveClass: MoveClass): string {
-  return Object.values(MOVES).find((m) => m.class === moveClass)?.name ?? moveClass;
+  return QUASIPARTICLE_NAMES[moveClass] ?? moveClass;
 }
 
 // Kondo is the sole seller of the three screening-class moves
@@ -516,13 +538,16 @@ export function getTunedMoveClass(registry: RegistryLike, moveId: string): MoveC
 // Eruption vs. Meteor vs. Nova) is read off its static `name`'s own second
 // word rather than a second hand-authored word list, so a future MOVES
 // rename stays in sync automatically; only the quasiparticle word in front
-// of it changes. Reads getTunedMoveClass rather than the raw assignment, so
-// if the current form can't host the tuned class anymore the name reverts
-// to its Phonon form too, matching what the mismatch check actually uses.
+// of it changes -- QUASIPARTICLE_NAMES's bare noun (not the raw move name)
+// so a multi-word quasiparticle like 'heavyFermion' still reads as "Heavy
+// Fermion Meteor", not a truncated "Heavy Meteor". Reads getTunedMoveClass
+// rather than the raw assignment, so if the current form can't host the
+// tuned class anymore the name reverts to its Phonon form too, matching what
+// the mismatch check actually uses.
 export function tunedMoveDisplayName(registry: RegistryLike, moveId: string): string {
   const active = getTunedMoveClass(registry, moveId);
   const shape = MOVES[moveId].name.split(' ').slice(1).join(' ');
-  return `${quasiparticleLabel(active).split(' ')[0]} ${shape}`;
+  return `${quasiparticleLabel(active)} ${shape}`;
 }
 
 // The player is a crystal too -- just one entry out of this same roster, not a
