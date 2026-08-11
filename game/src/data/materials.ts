@@ -235,6 +235,14 @@ export function statUpgradeCost(currentValue: number): number {
   return (currentValue - BASE_STAT + 1) * 50;
 }
 
+// Qumatoken price for a shop move, scaled off its own power -- the stronger
+// the quasiparticle, the more it costs, the same "priced to keep buying
+// meaningful" shape as statUpgradeCost. Shared by every guardian who sells
+// moves for qumatokens (Noether, Curie, Kondo).
+export function shopCost(move: Move): number {
+  return move.power * 5;
+}
+
 // Minimal structural type (mirrors data/save.ts's RegistryLike) so this
 // stays a plain data module -- any object with `.get` works, in practice
 // the real Phaser registry.

@@ -17,7 +17,14 @@ game/src/
                                  Story Mode / Superposition Mode picker
     HubScene.ts                World 0, static room, 3 hotspots (Materialdex/Save/Door, door reads
                                  "Enter World 2 (Bloch)" and drops straight into World 2 in Superposition Mode)
-    OverworldScene.ts          Per-world walkable map: movement, encounters, shop, rival gate
+    OverworldScene.ts          Per-world walkable map: movement, encounters, rival gate, shared
+                                 dialogue/panel infrastructure (addDialogueButton(At),
+                                 renderPagedButtons, renderFarewellFooter) every panels/ file uses
+    panels/                    One file per guardian's panel UI (see "Guardian panels" below),
+                                 e.g. noether.ts's showNoetherShop(), curie.ts's showCuriePanel(),
+                                 anderson.ts's showAndersonPanel() -- passiveList.ts's
+                                 renderPassiveList() is the one helper shared across two files
+                                 (laughlin.ts/bohr.ts) rather than living in either
     BattleScene.ts             Turn-based battle: move buttons, HP bars, attack effects, log
   world/
     mapgen.ts                  Per-world corridor layout generator (walkable grid, branches)
@@ -57,7 +64,7 @@ game/src/
                                   DEFAULT_STATS, getWildPool(), getRival(world, rival9Type?),
                                   compatibleMoves(),
                                   canHost(), getPlayerMaterial(), getPlayerStats(), getBattleMoves(),
-                                  enemyStatsForWorld(), statUpgradeCost(), findMaterialByName(),
+                                  enemyStatsForWorld(), statUpgradeCost(), shopCost(), findMaterialByName(),
                                   rollRival9Type() -- rolls World 9's rival's random MaterialType,
                                   fed into getRival() (see "Rival/boss fights" below),
                                   getCurieMoveClass()/curieMoveDisplayName() -- read a Curie move's
@@ -173,10 +180,33 @@ since `materials.ts` pulls in Phaser at module scope) and regenerates the
   Curie) for `BattleScene.showAnalyticQuestion`'s in-battle question panel, the one dialogue-style
   overlay that lives in `BattleScene` rather than `OverworldScene`. A new panel should pick a
   stroke color that doesn't collide with these.
+- **Guardian panels live in `scenes/panels/<guardian>.ts`, one file per guardian, not as
+  methods on `OverworldScene`.** Each exports a `show<Guardian>Panel(scene: OverworldScene)`
+  (or, for Bloch/Curie, `showBlochHub`/`showCuriePanel`) that the `WORLD_GUARDIANS` table's
+  `open` field calls directly (`open: (s) => showDresselhausPanel(s)`), replacing the older
+  `open: (s) => s.showXPanel()` shape from when every panel body lived on the class itself.
+  A panel-specific helper only that one guardian calls (e.g. Noether's `renderShopTabs`) moves
+  into the same file as a plain (non-exported) function taking `scene` as its first param; a
+  helper more than one guardian calls (`renderPassiveList`, shared by Laughlin/Bohr) gets its
+  own file under `scenes/panels/` instead (`passiveList.ts`) rather than living in either
+  guardian's file. Genuinely cross-cutting dialogue infrastructure -- `addDialogueButton(At)`,
+  `renderPagedButtons`, `renderFarewellFooter`, `closeDialogue`, state accessors like
+  `getUnlockedMoves`/`getDefeatedMaterials`/`getVisitedWorlds`/`isSuperpositionMode`, and the
+  player-form mutator `applyPlayerForm` (shared by Dresselhaus's `transmuteInto` and Majorana's
+  `becomeHybrid`, both of which moved into their own panel file as plain functions) -- stays as
+  public (not `private`) methods/fields on `OverworldScene` itself, since panel modules living
+  outside the class can't reach a `private` member. This public-instead-of-private tradeoff is
+  deliberate: it's the cost of splitting a god-object scene into per-guardian files without a
+  much larger interface-based redesign, not an invitation to reach into `OverworldScene`'s
+  internals from unrelated code. A new panel-only helper should default to `private` and only
+  widen to public if a panel file genuinely needs to call it from outside the class.
 - **Guardian avatars.** One builder per guardian in its own file: `art/noether.ts`'s
   `makeNoetherAvatar()`, `art/bloch.ts`'s `makeBlochAvatar()`, `art/dresselhaus.ts`'s
   `makeDresselhausAvatar()`. Never a shared parameterized builder -- each guardian needs to read as
-  visually distinct.
+  visually distinct. Distinct from the guardian *panel* files above (`scenes/panels/`, the
+  shop/dialogue UI) -- the avatar builder only draws the little floating figure, used both by
+  the panel (for its header portrait) and by `OverworldScene.spawnGuardianSprite` (the
+  wandering overworld landmark).
 - **Attack effects keyed by MoveClass**, not by move id -- adding/removing a move never touches
   `attackEffects.ts`, only adding/removing a whole `MoveClass` does (update `EFFECT_STYLE` in
   `art/attackEffects.ts` and `MOVE_COMPATIBILITY` in `data/materials.ts` together). One
@@ -440,9 +470,11 @@ a blind find-and-replace on a name is unsafe).
 
 **Laughlin (world 4), Majorana (world 5), Curie (world 6), Bohr (world 7), Kondo (world 8),
 and Anderson (world 9) all have real mechanics**, following the same `open: (s) =>
-s.showXPanel()` pattern as Noether/Bloch/Dresselhaus:
-- **Laughlin's and Bohr's passive panels** (`OverworldScene.showLaughlinPanel`/
-  `showBohrPanel`) both share one helper, `renderPassiveList(container, y, passiveIds,
+showXPanel(s)` pattern as Noether/Bloch/Dresselhaus (see "Guardian panels" above for the
+`scenes/panels/` file-per-guardian convention all nine follow):
+- **Laughlin's and Bohr's passive panels** (`scenes/panels/laughlin.ts`'s `showLaughlinPanel`/
+  `scenes/panels/bohr.ts`'s `showBohrPanel`) both share one helper, `scenes/panels/
+  passiveList.ts`'s `renderPassiveList(scene, container, y, passiveIds,
   unlockedKey, activeKey, reopen)`, parameterized over which guardian's registry keys
   (`laughlinPassivesUnlocked`/`laughlinActivePassive` or `bohrPassivesUnlocked`/
   `bohrActivePassive`) and `data/passives.ts` id list (`LAUGHLIN_PASSIVE_IDS`/
@@ -463,7 +495,7 @@ s.showXPanel()` pattern as Noether/Bloch/Dresselhaus:
   button off the bottom of the canvas the first time this was tried, verified via a live
   headless-Chromium run at every `fontScale` preset. See "Stats and battle resolution"
   below for exactly how each of the six passives hooks into `BattleScene`.
-- **Majorana's hybrid-material panel** (`OverworldScene.showMajoranaPanel`) lets the player fuse
+- **Majorana's hybrid-material panel** (`scenes/panels/majorana.ts`'s `showMajoranaPanel`) lets the player fuse
   two `defeatedMaterials` into a new `Material` via `data/materials.ts`'s `combineMaterials(a,
   b)`, which spreads whatever `Material` the matching `HYBRID_RECIPES` entry authored
   (name/type/maxHp/moves all fixed there, not computed at combine time) and adds only
@@ -476,15 +508,15 @@ s.showXPanel()` pattern as Noether/Bloch/Dresselhaus:
   other recently-defeated ones) and the second-pick list (only crystals that pair with whichever
   was picked first) through this before ever rendering a button, so an invalid combination is
   never one click away -- `createHybrid` doesn't re-validate, it trusts the panel already
-  filtered. A two-step pick (`this.majoranaSelection: string | null`, the first choice, while the
+  filtered. A two-step pick (`scene.majoranaSelection: string | null`, the first choice, while the
   panel rebuilds for the second) rather than one screen of every valid pair -- reset in both
   `create()` and `closeDialogue()` so a stale first pick can't survive a cancel-and-reopen.
   Deliberately no memory of earlier fusions to re-become without recombining -- every visit
   starts the two-step pick fresh; `createHybrid` doesn't persist anything beyond calling
   `becomeHybrid`, which just runs `applyPlayerForm` (the player's *current* form, hybrid or
   not, already survives a reload on its own via `playerForm`).
-- **Curie's quiz-gated-move shop** (`OverworldScene.showCuriePanel`/`renderCurieMoves`) mirrors
-  `showNoetherShop`/`renderShopMoves` but sells only `data/materials.ts`'s `ANALYTIC_MOVE_IDS`
+- **Curie's quiz-gated-move shop** (`scenes/panels/curie.ts`'s `showCuriePanel`/`renderCurieMoves`) mirrors
+  `scenes/panels/noether.ts`'s `showNoetherShop`/`renderShopMoves` but sells only `data/materials.ts`'s `ANALYTIC_MOVE_IDS`
   (a hardcoded pair, `skyfallBeam`/`groundEruption` -- identity by id, since neither move has a
   distinguishing class of its own to filter on), which `SHOP_MOVE_IDS` deliberately excludes so
   Noether never also offers them. Two rendered sections: still-unbought moves, then every
@@ -508,7 +540,7 @@ s.showXPanel()` pattern as Noether/Bloch/Dresselhaus:
   raw saved value, so name and mismatch math can't disagree. See
   `BattleScene.showAnalyticQuestion` (Stats and battle resolution, above) for how a purchased
   Curie move actually plays out in a fight.
-- **Kondo's screening-move shop** (`OverworldScene.showKondoPanel`/`renderKondoMoves`)
+- **Kondo's screening-move shop** (`scenes/panels/kondo.ts`'s `showKondoPanel`/`renderKondoMoves`)
   mirrors Curie's shop shape but sells `data/materials.ts`'s `KONDO_MOVE_IDS` (three moves:
   `screeningCloud`/`heavyFermionDrag`/`kondoBreakdown`, each tied to one of `types.ts`'s
   `'screening'`-class `MOVES` entries, deliberately excluded from `SHOP_MOVE_IDS`/
@@ -532,7 +564,7 @@ s.showXPanel()` pattern as Noether/Bloch/Dresselhaus:
   `BattleScene`'s `applyOrTickStatus` (see "Stats and battle resolution" below) to inflict its
   one fixed status effect (`KONDO_MOVE_STATUS`, no randomness -- the move id decides the
   effect).
-- **Anderson's impurity-doping panel** (`OverworldScene.showAndersonPanel`/
+- **Anderson's impurity-doping panel** (`scenes/panels/anderson.ts`'s `showAndersonPanel`/
   `learnImpurityMove`) is a two-step pick like Majorana's, but the *result* is different: step
   one picks a host crystal (`defeatedMaterials`, or every crystal in Superposition Mode -- same
   pool source as Dresselhaus/Majorana), filtered to exclude any `isHybridMaterial` (a
@@ -541,7 +573,7 @@ s.showXPanel()` pattern as Noether/Bloch/Dresselhaus:
   borrowed from two others. Step two looks the host up via `findMaterialByName` and lists
   whichever of its `.moves` the player hasn't already learned (`!unlockedMoves.includes(id)`);
   picking one just does `unlockedMoves.push(id)` + persist. No `applyPlayerForm` call at all --
-  see "Player form" above. `this.andersonSelection: string | null` mirrors
+  see "Player form" above. `scene.andersonSelection: string | null` mirrors
   `majoranaSelection`'s reset rules (`create()`/`closeDialogue()`).
 
 **Every guardian stands mid-corridor, not at the goal or start.** `GuardianDef.tile` is `'goal' |
@@ -655,7 +687,7 @@ string[]`, `superpositionMode: boolean` (Story Mode is just its `false` state --
 Mode vs. Superposition Mode" above), `encounterDensity: number` (one of
 `data/settings.ts`'s `DENSITY_PRESETS`, set via the Enter-menu's Settings panel),
 `kondoActiveMove: string | null` (which of `data/materials.ts`'s `KONDO_MOVE_IDS` is currently
-usable in battle, `null` until the player picks one via `OverworldScene.showKondoPanel` -- see
+usable in battle, `null` until the player picks one via `scenes/panels/kondo.ts`'s `showKondoPanel` -- see
 "Guardians" above; the other two bought-but-inactive Kondo moves, if any, still live in the
 ordinary `unlockedMoves` list, this field only tracks which one currently passes
 `getBattleMoves`' extra filter), `laughlinPassivesUnlocked: string[]`/`laughlinActivePassive:
