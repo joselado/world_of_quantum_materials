@@ -706,11 +706,16 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // sibling).
     crystal('Indium Arsenide', 'semiconductor', 24, ['tunnelStrike', 'thermalFluctuation'], 1, undefined, 'InAs'),
     crystal('Monolayer MoTe₂ (2H)', 'semiconductor', 22, ['tunnelStrike', 'thermalFluctuation'], 3, 'layer'),
-    // Individually just an ordinary gapped band compound each -- only once
-    // thinned into a quantum well together do they host a protected edge
-    // state (see World 10's HgTe/CdTe Quantum Well, the HYBRID_RECIPES result
-    // of fusing this pair).
-    crystal('HgTe', 'semiconductor', 22, ['tunnelStrike', 'thermalFluctuation'], 4),
+    // HgTe's own bulk band structure is inverted -- Γ8/Γ6 touch at zero gap,
+    // the same gapless character Graphene's own 'metal' entry above already
+    // uses this type for, not an "ordinary gapped semiconductor" the way
+    // CdTe genuinely is. That inversion is exactly why sandwiching HgTe
+    // between CdTe barriers into a thin quantum well produces a protected
+    // edge state (see World 10's HgTe/CdTe Quantum Well, the HYBRID_RECIPES
+    // result of fusing this pair) -- the well's topology comes from HgTe's
+    // own inverted bulk order, not from two ordinary semiconductors somehow
+    // becoming special only once thinned.
+    crystal('HgTe', 'metal', 22, ['tunnelStrike', 'thermalFluctuation'], 4),
     crystal('CdTe', 'semiconductor', 22, ['tunnelStrike', 'thermalFluctuation'], 5),
   ],
   3: [
@@ -736,7 +741,13 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
   // world's own zero-field members carry, so both live under one type (see
   // types.ts's comment on it).
   4: [
-    crystal('Gallium Arsenide', 'chernInsulator', 25, ['chiralCurrent', 'tunnelStrike'], 0, undefined, 'GaAs'),
+    // Plain bulk Gallium Arsenide is an ordinary direct-gap III-V
+    // semiconductor -- the integer quantum Hall effect this world's
+    // zero-field chernInsulator members carry needs a clean 2D electron gas
+    // confined at a GaAs/AlGaAs heterostructure interface under strong
+    // field, a specific engineered device, not a property of bulk GaAs
+    // itself, so it doesn't carry that type here.
+    crystal('Gallium Arsenide', 'semiconductor', 25, ['tunnelStrike', 'thermalFluctuation'], 0, undefined, 'GaAs'),
     crystal('Graphene (strong field)', 'chernInsulator', 24, ['chiralCurrent', 'thermalFluctuation'], 1, 'layer'),
     // Real intrinsic magnetic topological insulator -- the actual zero-field
     // QAHE/Chern-insulator material, its magnetism built into the crystal

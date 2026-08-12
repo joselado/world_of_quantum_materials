@@ -21,7 +21,17 @@
 // (DESIGN.md's crystal-database table names each anchor) -- Cr-doped
 // (Bi,Sb)₂Te₃'s pool below draws from session03.tex (topological band
 // theory) for this reason, since doping magnetism into world 3's Bi₂Te₃ is
-// what makes it.
+// what makes it. When a hybrid's own defining physics has no session
+// coverage at all (e.g. HgTe/CdTe Quantum Well's band-inversion mechanism,
+// or the Rhombohedral Pentalayer Graphene/hBN Moiré's fractional-anyon
+// physics), its pool lives in the off-syllabus block below instead, the
+// same as any other homeless-topic material. The same block also holds a
+// plain (non-hybrid) material whose own defining physics doesn't match its
+// spawn world's session topic -- Gallium Arsenide spawns in World 4
+// (session04.tex's QHE/Landau-level topic) but is an ordinary bulk
+// semiconductor, and session01.tex names it only in passing as a
+// semiconductor-family example with no compound-specific materials science
+// to draw on, so its pool lives off-syllabus too.
 // Materials without an entry here go straight to battle (see
 // getMaterialQuestion). Not every question below
 // is literally a property of the named compound's own crystal structure
@@ -280,38 +290,6 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
     },
   ],
   // World 4 (QHE/Landau levels), sourced from session04.tex.
-  'Gallium Arsenide': [
-    {
-      prompt: 'In a GaAs two-dimensional electron gas, the Landau level energies E_n = ħω_c(n+1/2) grow with magnetic field B as...',
-      correct: 'Linearly in B',
-      incorrect: 'As the square root of B',
-    },
-    {
-      prompt: 'Why does the quantum Hall effect in GaAs typically need temperatures around 1 K rather than room temperature?',
-      correct: 'Its Landau level spacing is only about a millielectronvolt',
-      incorrect: 'GaAs has strong spin-orbit coupling that washes out the plateaus',
-    },
-    {
-      prompt: 'Sweeping the magnetic field across a GaAs 2DEG once the quantum regime sets in, the Hall resistance...',
-      correct: 'Steps through a staircase of sharp quantized plateaus',
-      incorrect: 'Rises smoothly and continuously with B',
-    },
-    {
-      prompt: 'If the chemical potential in a GaAs 2DEG sits between the n=1 and n=2 Landau levels, the Hall conductance locks onto...',
-      correct: 'σ_xy = 2 e²/h',
-      incorrect: 'σ_xy = 3 e²/h',
-    },
-    {
-      prompt: 'In the Landau gauge A = (0, Bx, 0) used to solve the GaAs Landau problem, which momentum stays a good quantum number?',
-      correct: 'p_y -- translations along y survive',
-      incorrect: 'p_x -- translations along x survive',
-    },
-    {
-      prompt: 'Despite being completely flat and dispersionless, each filled Landau level in a GaAs 2DEG carries what Chern number?',
-      correct: 'C = 1',
-      incorrect: 'C = 0',
-    },
-  ],
   'Graphene (strong field)': [
     {
       prompt: "In a strong magnetic field, graphene's Landau level energies scale as...",
@@ -1337,6 +1315,261 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
     },
   ],
 
+  // World 1 (session01.tex: mean-field Hubbard theory) continued.
+  Chromium: [
+    {
+      prompt: "Elemental chromium's spin-density-wave antiferromagnetism comes from Fermi-surface nesting. In this session's toy nested chain, what does that same mechanism do to the ordering threshold?",
+      correct: 'It removes the threshold entirely -- order turns on for any U > 0',
+      incorrect: 'It raises the threshold to U_c = 4t, twice the dimer value',
+    },
+    {
+      prompt: 'Why does the two-site Hubbard dimer need a finite threshold U_c = 2t before magnetization turns on, unlike the extended, perfectly nested chain?',
+      correct: "Its small system lacks the chain's extensive, near-degenerate low-energy states",
+      incorrect: 'Two sites are simply too few to ever support magnetism at all',
+    },
+    {
+      prompt: 'In mean-field Hubbard theory, what symmetry does a nonzero magnetization m = ⟨n↑⟩ − ⟨n↓⟩ spontaneously break?',
+      correct: 'Time-reversal symmetry',
+      incorrect: 'Translational symmetry',
+    },
+    {
+      prompt: 'The perfect-nesting argument that removes the ordering threshold for the extended chain was first introduced this session for a different order. Which one?',
+      correct: 'The charge density wave, from nearest-neighbor repulsion V',
+      incorrect: 'Superconducting pairing, from an attractive U < 0',
+    },
+    {
+      prompt: "Right at the nested chain's ordering threshold, how does its order parameter actually turn on as U grows from zero?",
+      correct: 'Exponentially slowly, ~e^(-const/U), not linearly',
+      incorrect: 'Discontinuously, jumping straight to its full value',
+    },
+    {
+      prompt: "Elemental chromium is an itinerant (metallic) antiferromagnet, unlike MnO/NiO's Mott-insulating picture. What's the key mean-field difference between the two roads to magnetism?",
+      correct: 'Nesting of an already-metallic Fermi surface, not a Mott gap from strong on-site U',
+      incorrect: "Chromium's magnetism comes from strong on-site U, identical to MnO/NiO's mechanism",
+    },
+  ],
+
+  // World 2 (session02.tex: symmetry operators, Bloch's theorem) continued.
+  HgTe: [
+    {
+      prompt: "A Hamiltonian invariant under a symmetry operator S satisfies [H,S] = 0. What does that guarantee about H's eigenstates?",
+      correct: 'They can always be chosen to simultaneously be eigenstates of S',
+      incorrect: 'They must all share exactly the same eigenvalue of S',
+    },
+    {
+      prompt: 'In the two-site mirror-symmetric hopping model, why do the bonding (c₁†+c₂†) and antibonding (c₁†−c₂†) states pick up mirror eigenvalues +1 and −1, without ever diagonalizing H?',
+      correct: "It follows directly from the mirror's site-swap definition alone, no hopping amplitude needed",
+      incorrect: "It requires first computing each state's hopping-amplitude-dependent energy",
+    },
+    {
+      prompt: "A band's effective mass m* is defined via the curvature of its dispersion. What mass does a real transport or cyclotron-resonance experiment on a semiconductor like HgTe actually measure?",
+      correct: 'That same curvature-defined effective mass, not the bare electron mass',
+      incorrect: 'Always the literal bare electron mass, unaffected by the crystal',
+    },
+    {
+      prompt: 'Which of the three archetypal dispersions -- parabolic, Dirac, or flat -- describes most ordinary semiconductors, before any band-inversion physics is added?',
+      correct: 'Parabolic, E ∝ k²',
+      incorrect: 'Dirac, E ∝ |k|',
+    },
+    {
+      prompt: 'For an infinite chain, why does the translation operator T share an eigenbasis with the Hamiltonian?',
+      correct: 'Because [H,T] = 0 -- they commute',
+      incorrect: 'Because T is Hermitian, and every Hermitian operator commutes with H',
+    },
+    {
+      prompt: 'On an N-site ring with full rotational symmetry, why can every eigenstate be chosen to carry exactly the same weight, 1/N, on each site, regardless of the hopping amplitudes chosen?',
+      correct: 'Each such eigenstate is a uniform-modulus discrete Fourier mode fixed by the rotation symmetry alone',
+      incorrect: 'Because hopping amplitudes always end up numerically equal in any real lattice',
+    },
+  ],
+  CdTe: [
+    {
+      prompt: "On a 3-site ring with 120° rotational symmetry R (so R³ = 1), what values can the rotation eigenvalue's phase φ take?",
+      correct: 'φ_n = 2πn/3, for n = 0, 1, 2',
+      incorrect: "Any real value of φ, unconstrained by the ring's periodicity",
+    },
+    {
+      prompt: 'Applying a 90° rotation to a p_x orbital produces a p_y orbital. What does that tell you about whether p_x is an eigenstate of that rotation?',
+      correct: 'It is not an eigenstate -- the rotation maps it to a genuinely different state',
+      incorrect: 'It is automatically an eigenstate, since orbitals are eigenstates of every symmetry',
+    },
+    {
+      prompt: "Few-site tight-binding rings, the toy models used to build up Bloch's theorem, have actually been realized in the lab. How?",
+      correct: 'By positioning individual atoms with scanning tunnelling microscopy',
+      incorrect: 'Only ever as abstract theoretical constructs, never built experimentally',
+    },
+    {
+      prompt: "Near a tight-binding chain's two band extrema (φ = 0 and φ = π), the effective mass at the two extrema is...",
+      correct: 'Opposite in sign at the two extrema',
+      incorrect: 'The same sign and magnitude at both',
+    },
+    {
+      prompt: "The statement [H,T] = 0 for a translation operator T requires the lattice's hoppings to depend only on...",
+      correct: 'The distance between sites, not on absolute position',
+      incorrect: 'The specific site index, which would break translational symmetry',
+    },
+    {
+      prompt: 'A symmetry operator S being unitary follows from requiring that relabelling the reference frame preserve...',
+      correct: 'The norm of every quantum state',
+      incorrect: 'The total energy of the system, regardless of basis',
+    },
+  ],
+
+  // World 3 (session03.tex: topological band theory) continued -- Bi₂Te₃ is
+  // a genuine 3D bulk topological insulator, unlike this world's 2D monolayer
+  // members above, so its own pool leans on the bulk-boundary correspondence
+  // (which the session states needs no translational symmetry or particular
+  // dimensionality to hold) rather than repeating their helical-edge content.
+  'Bi₂Te₃': [
+    {
+      prompt: 'Bi₂Te₃ is a genuine 3D bulk crystal, not a 2D monolayer like Monolayer WTe₂. Why does its surface still host the same kind of protected boundary state?',
+      correct: "The bulk-boundary correspondence is a general topological argument, independent of the bulk's dimensionality",
+      incorrect: '3D crystals are automatically given protected boundary states, regardless of band topology',
+    },
+    {
+      prompt: "What robustness argument protects Bi₂Te₃'s helical surface state against generic disorder?",
+      correct: 'Disorder that preserves time-reversal symmetry cannot gap the Kramers-protected crossing',
+      incorrect: "Local disorder is simply screened out by the bulk's large dielectric constant",
+    },
+    {
+      prompt: 'A nonzero ℤ₂ invariant (ν = 1) guarantees what about the number of protected Kramers pairs of edge/surface states?',
+      correct: 'An odd number of Kramers pairs per edge',
+      incorrect: 'An even number, which can always be gapped out in pairs',
+    },
+    {
+      prompt: 'What happens if time-reversal-symmetry-breaking disorder (e.g. magnetic impurities) is added at a topological-insulator surface like Bi₂Te₃\'s?',
+      correct: 'It opens a genuine gap in the surface spectrum, destroying the protection',
+      incorrect: 'Nothing -- the Kramers protection survives any perturbation whatsoever',
+    },
+    {
+      prompt: "Kramers' theorem forces two time-reversed partner states at the same time-reversal-invariant momentum to be linearly independent. Why?",
+      correct: 'Assuming they were proportional leads to |c|² = -1, impossible since T² = -1',
+      incorrect: 'Because the Pauli exclusion principle forbids two electrons at the same momentum',
+    },
+    {
+      prompt: "Why is Bi₂Te₃'s topological surface state called 'spin-momentum locked'?",
+      correct: "An electron's spin direction is rigidly tied to its momentum direction on the surface Dirac cone",
+      incorrect: 'Its spin flips randomly and independently of momentum, averaged over the surface',
+    },
+  ],
+
+  // World 7 (session07.tex: entanglement entropy, tensor networks) continued
+  // -- Y₂BaNiO₅ is a real, gapped 1D S=1 Haldane-chain antiferromagnet, so
+  // this session's 1D area-law/MPS content applies to it directly rather
+  // than only as flavor.
+  'Y₂BaNiO₅': [
+    {
+      prompt: "As a real gapped, one-dimensional S=1 antiferromagnetic chain, Y₂BaNiO₅'s ground-state entanglement entropy across a bipartition does what as the subsystem grows?",
+      correct: 'Saturates at a fixed, subsystem-size-independent value (the area law)',
+      incorrect: 'Grows linearly with subsystem size (a volume law)',
+    },
+    {
+      prompt: "Because it's a gapped 1D chain, how large a matrix-product-state bond dimension is needed to represent Y₂BaNiO₅'s ground state well?",
+      correct: 'A modest, fixed bond dimension, since S ≤ log M matches what the area law needs',
+      incorrect: 'An exponentially large bond dimension, since 1D gapped states violate the area law',
+    },
+    {
+      prompt: 'In tensor-network diagram notation, joining two legs between neighboring MPS tensors represents...',
+      correct: 'Contracting (summing over) that shared index',
+      incorrect: "Multiplying the two tensors' overall magnitudes together",
+    },
+    {
+      prompt: 'DMRG optimizes an MPS ground state by treating each tensor as a variational parameter. At each step, what kind of problem does it solve for one tensor while holding the rest fixed?',
+      correct: 'An ordinary linear eigenvalue problem',
+      incorrect: 'A nonlinear optimization over all tensors simultaneously',
+    },
+    {
+      prompt: "Right at a quantum critical point -- unlike a gapped chain such as Y₂BaNiO₅'s own Haldane phase -- how does entanglement entropy scale with subsystem size?",
+      correct: 'Logarithmically, S(ℓ) = (c/3) log ℓ + const.',
+      incorrect: 'It stays exactly constant, the same as the gapped case',
+    },
+    {
+      prompt: 'PEPS, the natural 2D generalization of the MPS ansatz used for 1D chains like this one, is harder to optimize because...',
+      correct: 'Contracting a general 2D tensor network is itself computationally hard, unlike 1D',
+      incorrect: 'PEPS require exponentially many tensors as the system grows, unlike MPS',
+    },
+  ],
+
+  // World 8 (session08.tex: Kondo lattice model) continued -- the session's
+  // own worked example (SmB₆, the 1T/1H-TaS₂ heterostructure above) is the
+  // Kondo *insulator* regime, where the Fermi level sits inside the
+  // anti-crossing gap. YbRh₂Si₂ is instead the flagship Kondo *metal*: its
+  // Fermi level sits away from that gap, so it stays metallic but with
+  // strongly mass-renormalized quasiparticles, sitting almost exactly at the
+  // Doniach balance point between magnetic order and Kondo screening.
+  'YbRh₂Si₂': [
+    {
+      prompt: 'Unlike a Kondo insulator (SmB₆, or the 1T/1H-TaS₂ heterostructure), why does YbRh₂Si₂ remain a metal despite the same Kondo hybridization mechanism?',
+      correct: 'Its Fermi level sits away from the hybridization gap, cutting through the heavy, renormalized bands',
+      incorrect: 'Its Kondo coupling γ_K is exactly zero, so no hybridization occurs at all',
+    },
+    {
+      prompt: "In the mean-field Kondo-lattice Hamiltonian, what does the flat, zero-energy f-fermion band represent physically for YbRh₂Si₂'s own local moments?",
+      correct: 'The localized Yb 4f moments, auxiliary fermions carrying no hopping of their own',
+      incorrect: "The itinerant conduction electrons' own unrenormalized band",
+    },
+    {
+      prompt: "What happens to a conduction electron's effective mass as it hybridizes with YbRh₂Si₂'s flat, localized f-band, forming its heavy quasiparticles?",
+      correct: 'It becomes strongly renormalized, effectively far heavier than a bare electron',
+      incorrect: 'It stays exactly the bare electron mass, unaffected by hybridization',
+    },
+    {
+      prompt: 'Growing the Kondo hybridization γ_K in the mean-field lattice Hamiltonian does what to the gap at the anti-crossing?',
+      correct: 'Opens/grows it monotonically -- the larger γ_K, the larger the gap',
+      incorrect: 'Shrinks it, since stronger coupling favors a gapless metal',
+    },
+    {
+      prompt: 'YbRh₂Si₂ is the flagship material for sitting almost exactly at the balance point of the Doniach competition. Between which two tendencies?',
+      correct: 'A magnetically ordered heavy-fermion phase and a paramagnetic, Kondo-screened heavy-fermion phase',
+      incorrect: 'A superconducting phase and an ordinary band-insulating phase',
+    },
+    {
+      prompt: "Why does the game classify YbRh₂Si₂ as 'kondoHeavyFermion' rather than 'classicalMagnet', even though it eventually orders magnetically at very low temperature?",
+      correct: 'Its heavy, Kondo-hybridized quasiparticles -- not simple localized spins -- carry that order and define the compound',
+      incorrect: 'Because antiferromagnetism is impossible in any classicalMagnet-type material',
+    },
+  ],
+
+  // World 9 (session09.tex: linear response theory, RPA) continued --
+  // Manganese's pool asks the same magnetism this course already covers via
+  // mean-field theory (worlds 1/6), but from this session's own angle: the
+  // Stoner instability read off a diverging disordered-state response
+  // function, rather than a self-consistent ordered ansatz. None of these
+  // questions claim anything about elemental manganese's own (considerably
+  // more complicated, noncollinear) real magnetic structure.
+  Manganese: [
+    {
+      prompt: "A classical mean-field magnet's susceptibility χ(T) diverges as 1/(T−T_c) approaching a ferromagnetic transition. What is the analogous form for an antiferromagnetic transition?",
+      correct: '1/(T+T_c) -- an apparent divergence at a negative temperature',
+      incorrect: '1/(T−T_c), identical to the ferromagnetic case',
+    },
+    {
+      prompt: 'What does a diverging susceptibility actually tell you about a system?',
+      correct: 'That an instability is coming, and which direction to push -- not the full ordered state',
+      incorrect: 'The complete microscopic structure of the ordered state that will form',
+    },
+    {
+      prompt: "How does this session's RPA treatment locate the Stoner magnetic instability?",
+      correct: 'By watching when the disordered (paramagnetic) response function itself diverges',
+      incorrect: 'By writing down an ordered magnetic ansatz and solving it self-consistently',
+    },
+    {
+      prompt: 'In the RPA response χ(q,ω) = χ₀/(1 − Uχ₀), what condition marks the actual magnetic instability?',
+      correct: 'Uχ₀(q,0) = 1 -- the denominator vanishing',
+      incorrect: 'χ₀(q,0) = 0 -- the numerator vanishing',
+    },
+    {
+      prompt: 'For a Fermi surface with strong nesting, where does the bare spin response χ₀(q,0) actually peak, shifting the instability away from simple ferromagnetism?',
+      correct: 'At the nesting wavevector Q, not at q = 0',
+      incorrect: 'Always exactly at q = 0, regardless of nesting',
+    },
+    {
+      prompt: 'RPA is described as a controlled approximation with a specific regime of validity. Which regime is that?',
+      correct: 'Weakly to moderately correlated metals',
+      incorrect: 'Strongly correlated Mott insulators, its primary intended regime',
+    },
+  ],
+
   // The materials below have no session file at all (they're off-syllabus --
   // real compounds chosen to match the taxonomy's spirit, not sourced from
   // lecture_notes/), so unlike every pool above, these questions are written
@@ -1504,6 +1737,72 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
       prompt: "Compared to Twisted CrI₃'s predicted multiferroic coupling, BiFeO₃'s coupling is...",
       correct: 'An established experimental result, not just a theoretical prediction',
       incorrect: 'Also only theoretically predicted, never observed',
+    },
+  ],
+
+  'Barium Titanate': [
+    {
+      prompt: "What ionic displacement inside BaTiO₃'s perovskite unit cell produces its spontaneous electric polarization?",
+      correct: 'The Ti⁴⁺ ion shifting off-center relative to its surrounding oxygen octahedron',
+      incorrect: 'The Ba²⁺ ion migrating entirely out of the unit cell',
+    },
+    {
+      prompt: 'Above roughly 120°C, BaTiO₃ loses its ferroelectric order and returns to its high-symmetry cubic phase. What kind of transition is this?',
+      correct: 'A displacive ferroelectric (structural) phase transition',
+      incorrect: 'A superconducting phase transition',
+    },
+    {
+      prompt: 'What experimental signature distinguishes a ferroelectric like BaTiO₃ from an ordinary polar (but non-switchable) insulator?',
+      correct: 'Its polarization can be reversed by an external electric field, tracing a hysteresis loop',
+      incorrect: 'It conducts electricity freely once polarized',
+    },
+    {
+      prompt: 'Cooling further below its cubic-to-tetragonal transition, how many more structural phase transitions does BaTiO₃ undergo?',
+      correct: 'Two more -- into orthorhombic, then rhombohedral phases',
+      incorrect: 'None -- the tetragonal phase persists all the way to absolute zero',
+    },
+    {
+      prompt: 'BaTiO₃ is piezoelectric as well as ferroelectric. What does that mean?',
+      correct: 'Applying mechanical stress to it generates an electric polarization, and vice versa',
+      incorrect: 'It becomes ferromagnetic under mechanical stress',
+    },
+    {
+      prompt: 'Real capacitors and piezoelectric transducers use BaTiO₃ specifically because of...',
+      correct: 'Its very large dielectric permittivity and switchable polarization near its transition',
+      incorrect: 'Its unusually high superconducting critical temperature',
+    },
+  ],
+
+  GeTe: [
+    {
+      prompt: "What real-world property makes GeTe a 'ferroelectric Rashba semiconductor,' a combination BaTiO₃ doesn't have?",
+      correct: 'Its polarization breaks inversion symmetry, Rashba-splitting its bands with a spin texture locked to the polarization direction',
+      incorrect: 'Its ferroelectric polarization is carried entirely by magnetic Ge spins',
+    },
+    {
+      prompt: "Compared to BaTiO₃'s ~120°C ferroelectric transition, GeTe's own transition temperature is...",
+      correct: 'Much higher, roughly 700 K',
+      incorrect: 'Much lower, only a few kelvin',
+    },
+    {
+      prompt: "What structural distortion produces GeTe's ferroelectric polarization?",
+      correct: 'Ge atoms displacing off-center within its rhombohedral, rocksalt-derived lattice',
+      incorrect: 'An entirely disordered, amorphous atomic arrangement',
+    },
+    {
+      prompt: "Reversing GeTe's ferroelectric polarization direction does what to its Rashba-split spin texture?",
+      correct: 'Reverses it too -- the two are locked together',
+      incorrect: 'Nothing -- the spin texture is fixed independent of polarization',
+    },
+    {
+      prompt: "Why does the game classify GeTe as 'ferroelectric' rather than 'semiconductor', despite it being a genuine narrow-gap semiconductor?",
+      correct: 'Its switchable spontaneous polarization is the more specific, defining property being taxonomized',
+      incorrect: 'GeTe carries no band gap at all, ruling out semiconductor',
+    },
+    {
+      prompt: 'What move can GeTe carry that a non-ferroelectric semiconductor like HgTe cannot?',
+      correct: 'Ferron Pulse, tied to its switchable polarization order',
+      incorrect: 'Plasmon Pulse, tied to a free electron gas',
     },
   ],
 
@@ -1702,6 +2001,87 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
       prompt: 'Why does this compound only appear as a World 10 wild rather than an earlier world’s?',
       correct: "It's a HYBRID_RECIPES fusion result (Graphene + Monolayer Boron Nitride), and hybrid results live only in World 10",
       incorrect: 'Its main type has no earlier-world anchor of its own',
+    },
+  ],
+
+  // Another World-10 hybrid of two World-2 parents (HgTe + CdTe, like the
+  // pentalayer graphene/hBN moiré above is Graphene + Monolayer Boron
+  // Nitride), grouped here rather than anchored to session02.tex: the
+  // quantum well's own defining physics (band inversion, the
+  // Bernevig-Hughes-Zhang model) has no coverage in that session, which only
+  // covers Bloch's theorem and tight-binding basics, so this pool is written
+  // straight from the real physics instead, the same as every other pool in
+  // this off-syllabus block.
+  'HgTe/CdTe Quantum Well': [
+    {
+      prompt: 'The HgTe/CdTe quantum well was the first experimentally confirmed 2D topological insulator. Which theoretical model predicted it?',
+      correct: 'The Bernevig-Hughes-Zhang (BHZ) model',
+      incorrect: 'The Haldane model, using complex second-neighbor hopping',
+    },
+    {
+      prompt: 'What structural change makes an HgTe/CdTe quantum well topological, inverting its band ordering?',
+      correct: 'Growing the HgTe layer thicker than a critical thickness (~6.3 nm)',
+      incorrect: 'Doping the well with magnetic chromium ions',
+    },
+    {
+      prompt: "König et al.'s 2007 experiment confirmed the quantum spin Hall state in short HgTe/CdTe wells by measuring what?",
+      correct: 'A conductance close to the quantized value 2e²/h from helical edge transport',
+      incorrect: 'A quantized Hall conductance under a strong external magnetic field',
+    },
+    {
+      prompt: 'Bulk CdTe is an ordinary gapped semiconductor, but bulk HgTe is a zero-gap semimetal with inverted band ordering. What does quantum-well confinement add that neither bulk parent has alone?',
+      correct: "Above a critical thickness, confinement opens a gap while keeping HgTe's inverted band ordering",
+      incorrect: 'Nothing changes electronically -- the well is topological simply because it is thin',
+    },
+    {
+      prompt: "What symmetry protects the HgTe/CdTe quantum well's helical edge states from backscattering off ordinary, non-magnetic disorder?",
+      correct: "Time-reversal symmetry, via Kramers' theorem",
+      incorrect: 'Charge conservation alone, regardless of time-reversal symmetry',
+    },
+    {
+      prompt: 'Why does the game place HgTe/CdTe Quantum Well only in World 10 rather than in an earlier world?',
+      correct: "It's a HYBRID_RECIPES fusion result of World 2's HgTe + CdTe, and hybrid results live only in World 10",
+      incorrect: 'Because quantum wells are never considered real quantumSpinHall materials',
+    },
+  ],
+
+  // Gallium Arsenide spawns in World 4, but as an ordinary bulk
+  // semiconductor its own physics doesn't match that world's QHE/Landau-level
+  // session topic (session01.tex names GaAs only in passing as a
+  // semiconductor-family example, with no compound-specific materials
+  // science to draw on), so this pool is written from real bulk-GaAs
+  // physics instead, the same as every other pool in this off-syllabus
+  // block.
+  'Gallium Arsenide': [
+    {
+      prompt: 'In GaAs, the conduction-band minimum and valence-band maximum sit at...',
+      correct: 'The same crystal momentum (Γ) -- a direct gap',
+      incorrect: 'Different momenta, as in silicon -- an indirect gap',
+    },
+    {
+      prompt: "Why does GaAs's direct gap make it useful for LEDs and laser diodes in a way silicon isn't?",
+      correct: 'An electron can recombine with a hole and emit a photon directly, without needing a phonon to conserve crystal momentum',
+      incorrect: "GaAs's gap size happens to fall in the infrared range, which silicon's does not",
+    },
+    {
+      prompt: 'What crystal structure does bulk GaAs adopt?',
+      correct: 'Zinc blende -- Ga and As each forming an FCC sublattice, offset by a quarter of the body diagonal',
+      incorrect: 'Diamond structure, with every lattice site occupied by the same atom, like silicon',
+    },
+    {
+      prompt: 'GaAs is classified as a III-V compound semiconductor because...',
+      correct: "Gallium (group III) and arsenic (group V) atoms alternate on the lattice, averaging four valence electrons per atom, like silicon's own group IV",
+      incorrect: "It's silicon doped with group III and group V dopant atoms",
+    },
+    {
+      prompt: "GaAs's conduction-band electrons have a much smaller effective mass than silicon's. What real-world consequence does this have?",
+      correct: 'Higher electron mobility, exploited in high-speed transistors for RF and microwave electronics',
+      incorrect: 'Higher thermal conductivity, letting GaAs devices run hotter without heat spreaders',
+    },
+    {
+      prompt: "Why does silicon dominate mainstream integrated-circuit manufacturing despite GaAs's higher electron mobility?",
+      correct: 'Silicon has a stable native oxide (SiO₂) that makes an excellent MOSFET gate dielectric; GaAs has no comparable native oxide',
+      incorrect: "GaAs's band gap is too small to suppress leakage current at room temperature",
     },
   ],
 };

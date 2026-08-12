@@ -33,7 +33,7 @@ don't hand-edit the `<!-- GENERATED -->` blocks.*
 | Monolayer Boron Nitride | `insulator` | 21 |
 | Indium Arsenide | `semiconductor` | 24 |
 | Monolayer MoTe₂ (2H) | `semiconductor` | 22 |
-| HgTe | `semiconductor` | 22 |
+| HgTe | `metal` | 22 |
 | CdTe | `semiconductor` | 22 |
 
 ### World 3 -- Topological band theory
@@ -47,7 +47,7 @@ don't hand-edit the `<!-- GENERATED -->` blocks.*
 
 | Crystal | Type | Max HP |
 | --- | --- | --- |
-| Gallium Arsenide | `chernInsulator` | 25 |
+| Gallium Arsenide | `semiconductor` | 25 |
 | Graphene (strong field) | `chernInsulator` | 24 |
 | MnBi₂Te₄ | `chernInsulator` | 30 |
 

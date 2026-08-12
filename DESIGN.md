@@ -191,10 +191,11 @@ pool.
 | insulator (1) | Magnesium Oxide (MgO) | Simple ionic band insulator, gap too wide to dope/excite across — textbook baseline contrast to topological insulators; the ionic lattice also self-traps a stronger polaron than a bare semiconductor would |
 | metal (1→2 bridge) | Graphene (pristine, half-filled) | Gapless Dirac semimetal — the throughline example of session 2 (Bloch's theorem, tight-binding); precursor before symmetry-breaking (→ classicalMagnet) or band-topology (→ topological) sets in; real graphene plasmonics is its own well-known field |
 | metal (2) | Silver (Ag) | Half-filled 5s conduction band gives it the sharpest free-electron plasmon of any elemental metal — real plasmonics/nanophotonics runs on silver (and gold), not graphene; not from the course, added to give `metal`'s Plasmon Pulse a second, more flagship host |
+| metal (2) | Mercury Telluride (HgTe) | Inverted-gap bulk band structure — Γ8/Γ6 touch at zero gap, the same gapless character Graphene's own `metal` entry above already carries, not an ordinary gapped semiconductor; §5's hybrid-recipe parent for HgTe/CdTe Quantum Well below, whose topology comes from this inversion |
 | semiconductor (2) | Indium Arsenide (InAs) | Ordinary band semiconductor whose real role is strong spin-orbit coupling — the actual second ingredient (alongside Aluminum) in a real Majorana-nanowire platform, §5's InAs/Al Majorana Wire hybrid recipe |
 | semiconductor (2) | Monolayer Molybdenum Ditelluride, 2H phase (MoTe$_2$) | The untwisted, semiconducting monolayer phase — distinct from the already-topological 1T′ phase below — that becomes Twisted Bilayer MoTe₂ once fused with itself (§5) |
-| semiconductor (2) | Mercury Telluride (HgTe) | Individually just an ordinary (inverted-gap) semiconductor — §5's hybrid-recipe parent for HgTe/CdTe Quantum Well below |
-| semiconductor (2) | Cadmium Telluride (CdTe) | Individually an ordinary wide-gap semiconductor — the barrier layer in the same HgTe/CdTe quantum-well recipe |
+| semiconductor (2) | Cadmium Telluride (CdTe) | Individually an ordinary wide-gap semiconductor — the barrier layer in the HgTe/CdTe quantum-well recipe above |
+| semiconductor (4) | Gallium Arsenide (GaAs) | Ordinary direct-gap III-V semiconductor in its own right — the integer quantum Hall effect this world's `chernInsulator` members carry needs a clean 2D electron gas confined at a GaAs/AlGaAs heterostructure interface under strong field, not the bulk compound itself, so plain Gallium Arsenide doesn't carry that type here |
 | insulator (2) | Diamond (C) | ~5.5 eV gap, textbook wide-gap covalent insulator — pristine, no defect (e.g. nitrogen-vacancy) dressing; not from the course, added as `insulator`'s second member alongside Magnesium Oxide |
 | insulator (2, hybrid parent) | Monolayer Boron Nitride (hBN) | ~5.9 eV gap insulator whose honeycomb lattice is nearly commensurate with graphene's — real graphene devices are built on or encapsulated in it; §5 hybrid recipe parent (with Graphene) for Rhombohedral Pentalayer Graphene/hBN Moiré below |
 | quantumSpinHall (3, hybrid) | HgTe/CdTe Quantum Well | The original 2D topological insulator (Bernevig-Hughes-Zhang model, König et al., Science 2007) — only the *engineered heterostructure* is topological, not either bulk parent above; §5 hybrid recipe result, lives as a World 10 wild rather than a World 3 one |
@@ -207,7 +208,6 @@ pool.
 | quantumSpinHall (3, rare) | Samarium Hexaboride (SmB$_6$) | Topological Kondo insulator — many-body topology, a protected helical surface state hosted inside a Kondo-insulating bulk; also bridges to the kondoHeavyFermion/quantumSpinLiquid family below |
 | quantumSpinHall (3) | Monolayer Tungsten Ditelluride (1T′-WTe$_2$) | A genuine quantum spin Hall insulator in its own right, survives up to ~100 K — a single bulk-derived monolayer's own band topology rather than an engineered quantum well, but the same helical boundary physics as Bi₂Te₃/HgTe-CdTe above, so it shares this type rather than needing a separate 3D-only one |
 | chernInsulator (3→10, hybrid) | Cr-doped (Bi,Sb)$_2$Te$_3$ | Quantum anomalous Hall effect — the Cr doping breaks time-reversal symmetry and turns Bi₂Te₃'s helical surface state into a single chiral edge channel, a zero-field integer Chern insulator; §5 hybrid recipe result, lives as a World 10 wild rather than a World 3 one |
-| chernInsulator (4) | Gallium Arsenide (GaAs) | The original 2DEG platform for the integer quantum Hall effect — field-driven Landau levels, the same (integer) Chern-number invariant as the zero-field entries above |
 | chernInsulator (4) | Graphene, in strong field | Dirac-electron Landau levels, plateaus observable up to ~room temperature |
 | fractionalChern (4, hybrid) | Twisted bilayer Molybdenum Ditelluride (MoTe$_2$) | Zero-field *fractional* quantum Hall from topological flat bands — genuinely fractionalizes into charged anyons, unlike GaAs/Graphene's ordinary integer Landau levels above, so it gets its own type rather than sharing `chernInsulator`; §5 hybrid recipe result (the 2H monolayer above fused with itself), lives as a World 10 wild rather than a World 4 one |
 | fractionalChern (4, hybrid) | Rhombohedral Pentalayer Graphene/hBN Moiré | Zero-field fractional quantum anomalous Hall (2023–2024 experiments) — five rhombohedrally-stacked graphene layers aligned to a hBN substrate, the same charged-anyon edge physics as Twisted Bilayer MoTe₂ above by an aligned-heterostructure route instead of a twist angle; not from the course, §5 hybrid recipe result (Graphene + Monolayer Boron Nitride), lives as a World 10 wild rather than a World 4 one |
@@ -472,22 +472,26 @@ shared class, tagged `★` with their own "right=2x wrong=½x" legend line under
 **Ultimate** (Skłodowska-Curie's two answer-gated moves, tagged `★★★` with their own
 "3/3 correct or it whiffs" legend line), and **Screening** (Kondo's currently-active move, at
 most one, since `getBattleMoves` only ever surfaces whichever one is `kondoActiveMove`, §5)
--- but renders only the section the player is currently paged to (`moveSectionIndex`), not
-all of them stacked. A section only counts as a page at all if it has at least one usable
-move, so a player with no Laughlin/Skłodowska-Curie moves bought or no Kondo move active
-never sees an empty page, and the pager (◀/▶ buttons plus the Left/Right keys,
-`switchMoveSection`) is hidden entirely once there's only one page to switch between. These
-groups work differently enough from an ordinary attack (and from each other) that a flat
-stacked list blurred the distinction -- and paging instead of stacking means a page's own row
-height (`drawMoveMenu`'s `rowH`) is budgeted only against that one section's move count, not
-the worst case across every section at once, so an 'adaptive'-type
-crystal (world 10, see §3) hosting the broadest set of `MoveClass`es of any type -- every
-class except the multiferroic/ferroelectric-only `'electromagnon'`/`'ferron'`,
-deliberately left off its `MOVE_COMPATIBILITY` list the same way `'phonon'`/`'screening'`
-are on every list -- no longer has to squeeze Analytic/Ultimate/Screening rows into the same
-panel it isn't even showing right now. Each button also shows its power and, computed against
-the current opponent's type, a `!!2x` tag when the quasiparticle-mismatch double-damage rule above
-applies, plus a one-line top-of-panel legend spelling out that symbol.
+-- but renders only the page the player is currently on (`movePageIndex`), not all of them
+stacked. A section only counts as a page at all if it has at least one usable move, so a
+player with no Laughlin/Skłodowska-Curie moves bought or no Kondo move active never sees an
+empty page, and the pager (◀/▶ buttons plus the Left/Right keys, `switchMovePage`) is hidden
+entirely once there's only one page to switch between. A section with more moves than one
+page can legibly hold (`moveMenuPages`, checked against `maxMoveRowsPerPage`'s row-count
+ceiling) splits into several same-label pages instead -- an 'adaptive'-type crystal (world
+10, see §3) hosting the broadest set of `MoveClass`es of any type (every class except the
+multiferroic/ferroelectric-only `'electromagnon'`/`'ferron'`, deliberately left off its
+`MOVE_COMPATIBILITY` list the same way `'phonon'`/`'screening'` are on every list) is the one
+form whose **Attacks** section currently needs this. These groups work differently enough
+from an ordinary attack (and from each other) that a flat stacked list blurred the
+distinction -- and paging instead of stacking means a page's own row height (`drawMoveMenu`'s
+`rowH`) is budgeted only against that one page's move count, not the worst case across every
+section at once. Each button also shows its power and, computed against the current
+opponent's type, a `!!2x` tag when the quasiparticle-mismatch double-damage rule above
+applies, plus a one-line top-of-panel legend spelling out that symbol; a button whose label
+(move name plus any `★`/`★★★`/`!!2x` tag) would render wider than the panel at the current
+text-size setting shrinks its own page's font size to fit, rather than clipping or wrapping
+onto a third line.
 
 **Battle background per world.** `BattleScene.drawBackground` reads the same
 `art/biomes.ts` table the overworld corridor uses (`getBiome(this.world)`) —
@@ -498,19 +502,19 @@ world actually looks like it, not like every other world's battle.
 **Wild encounter dialogue.** Bumping into a wild crystal opens a single in-map dialogue
 screen (`OverworldScene.showEncounter`, not a separate scene): a greeting line tied to
 that material's main type (`game/src/data/greetings.ts` -- a magnet's greeting reads
-differently from a superconductor's, since it's keyed by `MaterialType`, not generic) and,
-for a material with an entry in `game/src/data/quiz.ts`, one physics question drawn at
-random from that material's question pool (at least 6 per material) together on that same
-screen -- one correct answer, one incorrect answer (order shuffled), plus "let me pass," so
-re-fighting the same material doesn't always ask the same thing. Quiz content is sourced
-from the matching session's lecture notes. Answering
+differently from a superconductor's, since it's keyed by `MaterialType`, not generic) and
+one physics question drawn at random from that material's question pool in
+`game/src/data/quiz.ts` (at least 6 questions per material; every wild material has a pool)
+together on that same screen -- one correct answer, one incorrect answer (order shuffled),
+plus "let me pass," so re-fighting the same material doesn't always ask the same thing. Quiz
+content is sourced from the matching session's lecture notes, or, for materials whose topic
+has no session of its own, written directly from the compound's real physics. Answering
 correctly multiplies the player's attack power for that battle (1.5×, shown in battle as a
 glowing golden aura -- pulsing rings, radiant rotating spikes, rising embers -- around the
 player's crystal); answering wrong weakens it (0.6×, shown as a small grey raincloud);
 passing skips the battle entirely with no bonus or penalty and no scene change. A material
-without a quiz entry yet skips straight to a "Fight!" / "Let me pass" choice on the same
-greeting screen -- the same "not every world is filled in yet" pattern the per-world
-crystal/biome tables already use.
+with no quiz pool at all would fall back to a plain "Fight!" / "Let me pass" choice on the
+same greeting screen, though every wild material currently has one.
 
 **Starting loadout and unlocking moves.** The player's crystal starts knowing only Phonon
 Beam. Reaching world 1's middle tile for the first time introduces the guardian Noether (§5),
@@ -700,14 +704,16 @@ state can mark her met before the player has actually reached her.
 - **Anderson** → world 6 middle → "dopes in" a crystal the player has defeated as an
   impurity, then teaches one specific move from that crystal's own moveset
   (`OverworldScene.showAndersonPanel`/`learnImpurityMove`) -- a two-step pick (host,
-  then which of its moves to learn). Picking a host sets it as the persisted
-  `andersonDopant` (save.ts), replacing whatever was doped in before -- only one
-  impurity species at a time. The learned move is an ordinary append to
-  `unlockedMoves`; whether it actually shows up in the battle menu is gated by
-  `MOVE_COMPATIBILITY` (§3) checked against the *union* of the player's own current
-  form and the currently doped-in impurity's type (`getBattleMoves`) -- an impurity's
-  channel is real for as long as the impurity stays doped in, and disappears the
-  moment a different crystal is doped in instead, the same way a real dopant atom's
+  then which of its moves to learn). Picking a host only records which one the player
+  is browsing; the persisted `andersonDopant` (save.ts) is written only once a move is
+  actually learned, replacing whatever was doped in before -- only one impurity species
+  at a time, and previewing a candidate's moveset and backing out without learning
+  anything leaves the previous impurity's channel untouched. The learned move is an
+  ordinary append to `unlockedMoves`; whether it actually shows up in the battle menu is
+  gated by `MOVE_COMPATIBILITY` (§3) checked against the *union* of the player's own
+  current form and the currently doped-in impurity's type (`getBattleMoves`) -- an
+  impurity's channel is real for as long as the impurity stays doped in, and disappears
+  the moment a different crystal is doped in instead, the same way a real dopant atom's
   bound states vanish if you swap in a different dopant species. Distinct from
   Dresselhaus (become the whole state) and Majorana (fuse two states together):
   Anderson borrows a single excitation channel without becoming anything. Host
@@ -715,7 +721,12 @@ state can mark her met before the player has actually reached her.
   named recipe-result wilds) -- doping in an impurity is meant to be one real compound's
   own excitation, not a channel a fusion already borrowed from two others. In
   Superposition Mode the host pool is every non-hybrid crystal in the game, same as
-  Majorana's own ingredient pool
+  Majorana's own ingredient pool -- and since Superposition Mode also auto-grants every
+  move id to `unlockedMoves` on every world entry, the "which move to learn" step offers
+  a host's moves by comparing against what's currently *usable* (`getBattleMoves`), not
+  against raw `unlockedMoves`, so a host whose classes the player's current form/impurity
+  can't already reach still offers something to pick even though its move ids were
+  already technically known
 - **Bohr** → world 7 middle → teaches three passive abilities
   (`data/passives.ts`'s `BOHR_PASSIVE_IDS`, `OverworldScene.showBohrPanel`) --
   an always-on, whole-battle modifier rather than a move picked from the battle menu
@@ -904,8 +915,15 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   goal takes actually tracking the bend sideways rather than holding one
   direction. Short dead-end branches fork off the corridor's edges at random
   rows; exactly one route (the corridor) reaches the goal, and each branch
-  ends in a single qumatessence pickup worth 1, 5, or 10 (`src/data/tokens.ts`),
-  rarer at higher value. Off-path tiles render as terrain you can plausibly see is
+  ends in a single qumatessence pickup drawn from a ten-tier value ladder
+  (`src/data/tokens.ts`), 1 at the bottom up to 50 at the top, each tier with
+  its own distinct color so a pickup's rough size reads before the player
+  even reaches it. Which tiers a branch can roll is a window of tiers
+  centered on the current world -- World 1 only ever rolls the ladder's two
+  lowest tiers, World 10 only its two highest, and worlds in between roll a
+  three-tier window that slides up the ladder as the player advances (World
+  5 rolls tiers 4-6) -- weighted toward the window's lower tier so a high
+  roll stays a treat rather than the norm. Off-path tiles render as terrain you can plausibly see is
   impassable, not just differently-colored ground -- a raised wall block by default, or
   (per-biome `wallTheme`, see `STYLE.md`) a molten lava crust, a frozen lake, or open
   sky/chasm you'd fall through -- so blocked terrain reads unambiguously either way. The

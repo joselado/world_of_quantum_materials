@@ -9,6 +9,7 @@ import type { CrystalVariant, Material, MaterialType } from '../data/types';
 import { TUTORIAL_TIPS, hasSeenTip, markTipSeen } from '../data/tutorial';
 import { music } from '../audio/music';
 import { fontPx, fontScale } from '../ui/text';
+import { BUILT_WORLDS } from './OverworldScene';
 
 // World 0, "The Lab" (DESIGN.md's world table) -- boot destination from
 // TitleScene and the return point from Overworld (press H). Unlike the
@@ -252,11 +253,16 @@ export class HubScene extends Phaser.Scene {
   // The furthest world the player has unlocked: world 1 until its rival
   // falls, then world 2, and so on -- each world's own rival being beaten is
   // what opens the next one, so this just walks the chain rather than
-  // hardcoding a fixed handful of worlds.
+  // hardcoding a fixed handful of worlds. Capped at the last built world
+  // (BUILT_WORLDS's own max) so a player who beats World 10's rival and
+  // returns to the Hub before the finale panel fires lands back in World 10
+  // itself, rather than a nonexistent World 11 no world data/wild pool/rival/
+  // guardian is ever defined for.
   private highestUnlockedWorld(): number {
     const defeated = this.rivalDefeated();
+    const maxWorld = Math.max(...BUILT_WORLDS);
     let world = 1;
-    while (defeated[world]) world += 1;
+    while (defeated[world] && world < maxWorld) world += 1;
     return world;
   }
 

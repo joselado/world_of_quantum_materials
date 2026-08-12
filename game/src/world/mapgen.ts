@@ -127,7 +127,7 @@ function buildBranch(root: GridPoint, gridW: number, gridH: number, occupied: Se
   return cells;
 }
 
-export function generateWorldMap(gridW: number, gridH: number, start: GridPoint): WorldMap {
+export function generateWorldMap(gridW: number, gridH: number, start: GridPoint, world: number): WorldMap {
   const goalY = 1;
   const rows = buildCorridor(start, gridW, goalY);
 
@@ -156,7 +156,7 @@ export function generateWorldMap(gridW: number, gridH: number, start: GridPoint)
       // an explicit reason to walk all the way to the end rather than turning
       // back partway.
       const tip = branch[branch.length - 1];
-      tokens[tip.y][tip.x] = pickTokenValue();
+      tokens[tip.y][tip.x] = pickTokenValue(world);
     });
   });
 

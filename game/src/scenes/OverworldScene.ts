@@ -797,7 +797,7 @@ export class OverworldScene extends Phaser.Scene {
     this.playerTile = { x: Math.floor(GRID_W / 2), y: GRID_H - 5 };
 
     const wildPool = getWildPool(this.world);
-    const map = generateWorldMap(GRID_W, GRID_H, this.playerTile);
+    const map = generateWorldMap(GRID_W, GRID_H, this.playerTile, this.world);
     this.walkable = map.walkable;
     this.tokenTiles = map.tokens;
     this.goalTile = map.goal;
@@ -1381,8 +1381,9 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   // Qumatessence pickups live only at the dead end of branches -- shiny little
-  // clouds (see art/tokens.ts), colored and labeled by value (1/5/10) so the
-  // payout reads at a glance before the player walks all the way out there.
+  // clouds (see art/tokens.ts), colored by value tier (data/tokens.ts) and
+  // labeled with the exact value so the payout reads at a glance before the
+  // player walks all the way out there.
   private spawnTokenSprites() {
     for (let y = 0; y < GRID_H; y++) {
       for (let x = 0; x < GRID_W; x++) {

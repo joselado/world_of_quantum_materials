@@ -734,7 +734,30 @@ export class BattleScene extends Phaser.Scene {
     const padY = compact ? 3 : 5;
     const fitPx = Math.max(9, Math.floor((rowH - padY * 2) / 2.4));
     const desiredPx = Math.round((compact ? 10 : 12) * scale);
-    const btnPx = Math.min(desiredPx, fitPx);
+    let btnPx = Math.min(desiredPx, fitPx);
+
+    // fitPx above only budgets vertical space (rowH) -- it says nothing
+    // about how wide a button's own two-line label renders, so a long tuned
+    // move name (e.g. "Heavy Fermion Eruption", or any move's own name once
+    // an Analytic/Ultimate/mismatch tag is appended) can still render wider
+    // than MENU_WIDTH at a large text-size setting even though its height
+    // fits fine. Measured (not wrapped) for the same reason maxMoveRowsPerPage
+    // measures with throwaway Text objects rather than assuming a width --
+    // wrapping the label onto a 3rd line would run into the row below it,
+    // since rowH's vertical budget already assumes exactly two lines.
+    // Shrunk once, uniformly across the whole page (every row on a page
+    // shares one btnPx already) rather than per-button, so mismatched row
+    // heights never appear.
+    const measure = this.add.text(0, 0, '', { fontStyle: 'bold', padding: { x: 8, y: padY } });
+    let widestLabelPx = 0;
+    section.ids.forEach((moveId) => {
+      measure.setFontSize(`${btnPx}px`).setText(this.moveButtonContent(moveId).text);
+      widestLabelPx = Math.max(widestLabelPx, measure.width);
+    });
+    measure.destroy();
+    if (widestLabelPx > MENU_WIDTH) {
+      btnPx = Math.max(9, Math.floor(btnPx * (MENU_WIDTH / widestLabelPx)));
+    }
 
     section.ids.forEach((moveId) => {
       this.addMoveButton(container, moveId, rowY, btnPx, padY);
@@ -742,10 +765,11 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
-  // One move button -- factored out of drawMoveMenu so the per-section loop
-  // above doesn't duplicate the mismatch/tag/click-handler logic three
-  // times over.
-  private addMoveButton(container: Phaser.GameObjects.Container, moveId: string, y: number, btnPx: number, padY: number) {
+  // The button label text and its color -- shared by addMoveButton (the
+  // real interactive button) and drawMoveMenu's own width-fit measurement
+  // pass above, so the two can never drift apart on what a button's label
+  // actually says.
+  private moveButtonContent(moveId: string): { text: string; color: string } {
     const move = MOVES[moveId];
     const mismatch = !canHost(this.wild.type, getTunedMoveClass(this.game.registry, moveId));
     let tag = '';
@@ -763,8 +787,16 @@ export class BattleScene extends Phaser.Scene {
       color = '#ffaa44';
     }
     const displayName = tunedMoveDisplayName(this.game.registry, moveId);
+    return { text: `${displayName}\nPwr ${move.power}${tag}`, color };
+  }
+
+  // One move button -- factored out of drawMoveMenu so the per-section loop
+  // above doesn't duplicate the click-handler logic three times over.
+  private addMoveButton(container: Phaser.GameObjects.Container, moveId: string, y: number, btnPx: number, padY: number) {
+    const move = MOVES[moveId];
+    const { text, color } = this.moveButtonContent(moveId);
     const btn = this.add
-      .text(MENU_X + MENU_WIDTH / 2, y, `${displayName}\nPwr ${move.power}${tag}`, {
+      .text(MENU_X + MENU_WIDTH / 2, y, text, {
         fontSize: `${btnPx}px`,
         color,
         backgroundColor: '#222244',

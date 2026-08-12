@@ -164,10 +164,27 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   collectibles rather than creatures at a glance.
 - Size: `TOKEN_SIZE = 26` in `OverworldScene.ts` (bigger than the `CRYSTAL_SIZE = 22` wild
   encounters, since a pickup should stand out).
-- Value tiers, color-coded, weighted toward the common tier (`data/tokens.ts`):
-  - `1` -- cyan `0x8fe8ff`, weight 0.6 (common)
-  - `5` -- gold `0xffe066`, weight 0.3 (uncommon)
-  - `10` -- pink `0xff7ce0`, weight 0.1 (rare)
+- Color-coded by value tier, ten tiers ascending a cool-blue-to-violet hue sweep through
+  green/yellow/orange/magenta (`data/tokens.ts`) -- violet at the top echoes World 10's own
+  violet biome palette and Skłodowska-Curie's lavender rather than running the ramp into a
+  literal hot red/white -- saturation/lightness stepping alongside hue so adjacent tiers
+  (the only ones a world's window can ever put side by side) stay visually distinct at the
+  small on-screen sprite size, not just hue-distinct on paper:
+  - `1` sky blue `0x84d1eb`
+  - `2` teal `0x54dea5`
+  - `3` green `0x3cdd3c`
+  - `5` lime `0x8ce633`
+  - `8` yellow `0xf2e236`
+  - `12` orange `0xf68f28`
+  - `18` red-orange `0xf44434`
+  - `25` rose `0xef3976`
+  - `35` magenta `0xea2ec5`
+  - `50` violet `0xdb8bee`
+- Each tier's value is unique across the whole ladder, so its color is a fixed value-to-color
+  lookup regardless of world. Which tiers actually spawn is world-dependent (a sliding
+  three-tier window, two at the ladder's ends -- see DESIGN.md's overworld map generation
+  section), weighted toward the window's lower tier; the `+<value>` label is what tells the
+  player the exact payout.
 - Each pickup shows a `+<value>` label underneath, same treatment as wild-encounter name
   labels.
 
@@ -731,10 +748,21 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   `moveMenuPages` (above) splits any oversized section down to that ceiling before a page
   ever reaches this row-height math, so the floor is a legibility limit here, not something
   this code also has to keep on screen. Below `rowH < 40` the row switches to smaller
-  font/padding rather than clipping. Verified against a live browser render (headless-Chromium
-  harness, DEVELOPMENT.md) at every text-size preset with an 'adaptive'-type form carrying
-  every attack class at once, the worst case across every `MaterialType`'s
-  `MOVE_COMPATIBILITY` entry -- no page overflows the field at any preset.
+  font/padding rather than clipping.
+- The row-height budget above only bounds each button's font size *vertically* -- it says
+  nothing about how wide the resulting two-line label (move name, tuned quasiparticle name for
+  Laughlin's/Skłodowska-Curie's moves, plus any `★`/`★★★`/`!!2x` tag) actually renders.
+  `drawMoveMenu` measures every button label on the current page at that vertical-fit size with
+  a throwaway `Text` object and, if the widest one would render past `MENU_WIDTH`, shrinks the
+  whole page's `btnPx` by that overflow ratio (floored at the same `9`px minimum `fitPx` uses) --
+  once, uniformly across the page, so every row on it still shares one size. Shrinking rather
+  than wrapping the label onto a third line, since the row-height math already assumes exactly
+  two lines and a third would run into the row below it. Verified against a live browser render
+  (headless-Chromium harness, DEVELOPMENT.md) at every text-size preset with an 'adaptive'-type
+  form carrying every attack class at once (the worst case across every `MaterialType`'s
+  `MOVE_COMPATIBILITY` entry) and with Laughlin's/Skłodowska-Curie's moves tuned to their
+  longest quasiparticle name (`heavyFermion`, "Heavy Fermion") while mismatched against the
+  opponent -- no page overflows the field at any preset.
 
 ## Analytic question panel (`BattleScene.showAnalyticQuestion`)
 

@@ -294,9 +294,11 @@ past one back from, every visit to Majorana rebuilds the pair from scratch.
 Anderson's `learnImpurityMove` is a third guardian that touches player state but deliberately
 *doesn't* go through `applyPlayerForm` at all -- it only appends a move id to `unlockedMoves`,
 leaving `playerForm` untouched, since the whole point of the impurity-doping mechanic is
-borrowing one move without becoming (or fusing into) anything. Picking the host to dope in
-also sets registry/save key `andersonDopant` to that host's name (`scenes/panels/anderson.ts`),
-replacing whatever was doped in before -- only one impurity at a time.
+borrowing one move without becoming (or fusing into) anything. `learnImpurityMove` is also the
+only place that writes registry/save key `andersonDopant` (`scenes/panels/anderson.ts`),
+replacing whatever was doped in before -- only one impurity at a time; merely picking a host to
+browse its moveset (`scene.andersonSelection`) doesn't touch it, so previewing a candidate and
+backing out without learning a move leaves the previous impurity's channel firing.
 
 **Move availability is an intersection, not a flat list.** `unlockedMoves` (registry/save) is
 a global "moves learned," unaffected by transmuting. What's actually offered in the battle
@@ -462,24 +464,30 @@ the longer window. A whiff (`bonusMultiplier === 0`, only reachable for an Ultim
 same way, just with `dmg` resolving to (near-)zero and the log line reading a distinct fizzle
 message rather than the ordinary "used `<move>`! (N dmg)" line.
 
-**Battle move menu is sectioned, paged one section at a time.**
+**Battle move menu is sectioned, paged one section (or one section-fragment) at a time.**
 `BattleScene.moveSections(moveIds)` splits `getBattleMoves`'s result into up to four
 sections (a module-level `MoveSection[]`, filtered to only the ones with at least one usable
 move): **Attacks** (every move whose id isn't in `ANALYTIC_MOVE_IDS` or `ULTIMATE_MOVE_IDS`, and
 whose `class` isn't `'screening'`), **Analytic** (Laughlin's two moves, identified by id rather
 than by a shared class, `★` tag, own "right=2x wrong=½x" legend sub-line under its own header),
 **Ultimate** (Skłodowska-Curie's two moves, `★★★` tag, own "3/3 correct or it whiffs" legend
-sub-line), **Screening** (Kondo's currently-active move, at most one). `drawMoveMenu(moveIds)` builds a
-docked `Container` (field `moveMenu`, destroyed and rebuilt from scratch on every call, not
-just once at battle start) on the right of the field, but renders only
-`sections[moveSectionIndex]` -- one page, not every section stacked. `addMoveButton(container,
-moveId, y, btnPx, padY)` is the shared per-move-button builder (mismatch tag/color/click-
-handler) both the row loop and any future caller should reuse rather than duplicating.
+sub-line), **Screening** (Kondo's currently-active move, at most one). `moveMenuPages(moveIds)`
+further splits any section larger than `maxMoveRowsPerPage()`'s row-count ceiling into several
+same-label pages (e.g. an 'adaptive' form's full **Attacks** list becomes "ATTACKS (1/2)"/
+"ATTACKS (2/2)") -- `maxMoveRowsPerPage` measures the real title/legend/header height at the
+current text-size setting with throwaway `Text` objects to compute that ceiling, rather than a
+hand-derived constant. `drawMoveMenu(moveIds)` builds a docked `Container` (field `moveMenu`,
+destroyed and rebuilt from scratch on every call, not just once at battle start) on the right of
+the field, but renders only `moveMenuPages(moveIds)[movePageIndex]` -- one page, not every
+section stacked. `moveButtonContent(moveId)` returns the shared `{ text, color }` label a page's
+width-fit pass (below) measures and `addMoveButton(container, moveId, y, btnPx, padY)` (the
+per-move-button builder: click-handler, interactivity) both read, so the two can't drift on what
+a button actually says.
 
-Paging: `switchMoveSection(delta)` (fields `moveSectionIndex`/`currentMoveIds`) recomputes
-`moveSections`, wraps `moveSectionIndex` by `delta`, and calls `drawMoveMenu` again -- wired
+Paging: `switchMovePage(delta)` (fields `movePageIndex`/`currentMoveIds`) recomputes
+`moveMenuPages`, wraps `movePageIndex` by `delta`, and calls `drawMoveMenu` again -- wired
 to on-screen ◀/▶ `Text` buttons flanking the header (rendered only when
-`moveSections(...).length > 1`) and to `create()`'s `keydown-LEFT`/`keydown-RIGHT` listeners.
+`moveMenuPages(...).length > 1`) and to `create()`'s `keydown-LEFT`/`keydown-RIGHT` listeners.
 Guarded by `turnLock` (mid-swing) and `!this.moveMenu` (already destroyed by `endBattle`) so a
 keypress can never act mid-resolution or resurrect the panel after the battle ends.
 
@@ -488,12 +496,18 @@ running `rowY`, capped well below the text-size setting's own range (`headerScal
 Math.min(scale, 1.15)`, base 10px label / 8px legend) rather than scaling all the way to the
 2x 'Large' preset the way the panel title does; the pager arrows render at a larger px than
 the label (`arrowPx`), so `rowY` advances by `Math.max(headerLabel.height, pagerRowH)`, not
-the label's height alone, or the taller arrows would bleed into the first move row. Row
-height (`rowH`) is then computed from the *current page's own* `rowCount` via
+the label's height alone, or the taller arrows would bleed into the first move row. Row height
+(`rowH`) is computed from the *current page's own* `rowCount` (never more than
+`maxMoveRowsPerPage`'s ceiling, `moveMenuPages` already split anything larger) via
 `Phaser.Math.Clamp` against `avail` (the field's remaining height after subtracting
-`headerTotalH`) -- since only one section renders at a time, this budget is no longer shared
-across sections the way it was before paging existed. Below `rowH < 40` the row switches to a
-smaller font/padding (`compact`) rather than clipping.
+`headerTotalH`). Below `rowH < 40` the row switches to a smaller font/padding (`compact`)
+rather than clipping. That clamp only bounds each button's font size (`btnPx`) vertically --
+`drawMoveMenu` then measures every button label on the page at that size with a throwaway
+`Text` object and, if the widest one would render past `MENU_WIDTH`, shrinks `btnPx` once
+(uniformly across the whole page) by the overflow ratio, floored at the same `9`px `fitPx`
+uses -- catches a long tuned quasiparticle name (e.g. "Heavy Fermion Eruption") or a stacked
+`★★★ !!2x` tag that fits the row's height but not its width, without wrapping the label onto
+a third line the row-height math has no room for.
 
 A move whose id is one of `ANALYTIC_MOVE_IDS` still gets its `★` tag on the button itself (the
 2x/0.5x legend text now lives under the Analytic section header instead, see above); its
@@ -578,7 +592,9 @@ through `showGatePanel`, not by reaching for `renderShopFooter` directly.
 ## World progression
 
 `HubScene.highestUnlockedWorld()` walks `rivalDefeated` from world 1 until it finds a world not
-yet beaten. `OverworldScene.tryAdvanceToNextWorld()`/`advanceToWorld(this.world + 1)` likewise
+yet beaten, capped at `BUILT_WORLDS`'s own max (10) so beating World 10's rival and returning to
+the Hub before the finale panel fires re-enters World 10 rather than a nonexistent World 11.
+`OverworldScene.tryAdvanceToNextWorld()`/`advanceToWorld(this.world + 1)` likewise
 compute the next world rather than hardcoding it. `advanceToWorld`'s second param, `enterFrom:
 'start' | 'goal'` (default `'start'`), is what the world-door feature (above) uses to land the
 player on the destination's `goalTile` instead of its `startTile` -- every other caller
@@ -755,11 +771,17 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   pool source as Dresselhaus/Majorana), filtered to exclude any `isHybridMaterial` (a
   Majorana fusion, or one of world 10's own named recipe-result wilds) -- doping in an
   impurity is meant to be one real compound's own excitation, not a channel a fusion already
-  borrowed from two others. Step two looks the host up via `findMaterialByName` and lists
-  whichever of its `.moves` the player hasn't already learned (`!unlockedMoves.includes(id)`);
-  picking one just does `unlockedMoves.push(id)` + persist. No `applyPlayerForm` call at all --
-  see "Player form" above. `scene.andersonSelection: string | null` mirrors
-  `majoranaSelection`'s reset rules (`create()`/`closeDialogue()`).
+  borrowed from two others. Picking a host only sets `scene.andersonSelection` -- it does not
+  touch `andersonDopant`, so browsing a candidate's moveset and backing out doesn't disturb
+  whatever's already doped in. Step two looks the host up via `findMaterialByName` and lists
+  whichever of its `.moves` aren't already *usable* (`!getBattleMoves(registry).includes(id)`,
+  checked before this host becomes the dopant) rather than merely unlearned -- Superposition
+  Mode auto-grants every move id to `unlockedMoves` on every world entry, so comparing against
+  raw `unlockedMoves` would report every host as teaching nothing there. Picking a move is what
+  actually commits: `unlockedMoves.push(id)` (if not already present) and `andersonDopant` are
+  set together, then persisted. No `applyPlayerForm` call at all -- see "Player form" above.
+  `scene.andersonSelection: string | null` mirrors `majoranaSelection`'s reset rules
+  (`create()`/`closeDialogue()`).
 
 **Every guardian stands mid-corridor, not at the goal or start.** `GuardianDef.tile` is `'goal' |
 'start' | 'middle'`, but every current `WORLD_GUARDIANS` entry uses `'middle'` -- `world/mapgen

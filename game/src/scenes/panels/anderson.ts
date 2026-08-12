@@ -3,7 +3,7 @@ import { makeAndersonAvatar } from '../../art/anderson';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
 import { fontPx } from '../../ui/text';
-import { MOVES, allCrystals, isHybridMaterial, findMaterialByName } from '../../data/materials';
+import { MOVES, allCrystals, isHybridMaterial, findMaterialByName, getBattleMoves } from '../../data/materials';
 import { persistFromRegistry } from '../../data/save';
 
 // Anderson stands at world 6's middle tile (WORLD_GUARDIANS) and lets the
@@ -12,25 +12,37 @@ import { persistFromRegistry } from '../../data/save';
 // move from its moveset -- an Anderson-impurity take on the same idea
 // Dresselhaus/Majorana explore differently: Dresselhaus becomes the whole
 // state, Majorana fuses two states together, Anderson borrows just one
-// excitation channel from a state without becoming it. Picking a host sets
-// it as the registry/save `andersonDopant` (persists across battles and
-// reloads, replacing whatever was doped in before -- only one impurity
-// species at a time), and the learned move is a completely ordinary entry
-// in `unlockedMoves`. MOVE_COMPATIBILITY still gates whether a move
-// actually shows up in the battle move menu (getBattleMoves), but that
-// gate checks the player's own current form *or* the currently doped-in
-// impurity's type -- an impurity state is a real, local excitation for as
-// long as the impurity itself stays doped in, and it goes away the moment
-// a different crystal is doped in instead, the same way a real dopant
-// atom's bound states vanish if you swap in a different dopant species.
-// Host pool excludes any `isHybridMaterial` (a Majorana fusion, or one of
-// world 10's own named recipe-result wilds) -- doping in an impurity is
-// meant to be one real, single-crystal excitation, not a channel a fusion
-// has borrowed from elsewhere. Two-step pick (scene.andersonSelection holds
-// the host while the panel rebuilds to ask which of its moves to learn),
-// paginated at the host-pick step via renderPagedButtons -- same shape as
-// Majorana's combine flow, minus a second pagination pass since a host's
-// moveset is always small (crystal() only ever assigns two).
+// excitation channel from a state without becoming it. Picking a host only
+// records which one the player is browsing (`scene.andersonSelection`) --
+// it does *not* touch the active impurity, so looking at a candidate's
+// moveset and backing out without learning anything leaves whatever was
+// doped in before untouched. The registry/save `andersonDopant` (persists
+// across battles and reloads, replacing whatever was doped in before --
+// only one impurity species at a time) is written by learnImpurityMove
+// below, at the same moment the chosen move becomes a completely ordinary
+// entry in `unlockedMoves` -- picking a host and committing to one of its
+// moves is a single action, not two. MOVE_COMPATIBILITY still gates whether
+// a move actually shows up in the battle move menu (getBattleMoves), but
+// that gate checks the player's own current form *or* the currently
+// doped-in impurity's type -- an impurity state is a real, local excitation
+// for as long as the impurity itself stays doped in, and it goes away the
+// moment a different crystal is doped in instead, the same way a real
+// dopant atom's bound states vanish if you swap in a different dopant
+// species. Host pool excludes any `isHybridMaterial` (a Majorana fusion, or
+// one of world 10's own named recipe-result wilds) -- doping in an impurity
+// is meant to be one real, single-crystal excitation, not a channel a
+// fusion has borrowed from elsewhere. Two-step pick (scene.andersonSelection
+// holds the host while the panel rebuilds to ask which of its moves to
+// learn), paginated at the host-pick step via renderPagedButtons -- same
+// shape as Majorana's combine flow, minus a second pagination pass since a
+// host's moveset is always small (crystal() only ever assigns two). The
+// "which move" step offers only moves that would newly become usable by
+// doping this host in (compares the host's moveset against
+// `getBattleMoves` computed with whatever's doped in *right now*, not
+// against raw `unlockedMoves`) -- Superposition Mode auto-grants every move
+// id to `unlockedMoves` on every world entry, so comparing against raw
+// `unlockedMoves` would report every host as teaching nothing there, making
+// the whole learn step permanently unreachable.
 export function showAndersonPanel(scene: OverworldScene) {
   scene.dialogueActive = true;
 
@@ -115,10 +127,14 @@ export function showAndersonPanel(scene: OverworldScene) {
         4,
         (m) => m.name,
         (m) => {
+          // Only records which host the player is *looking at* -- picking a
+          // candidate to browse its moveset must not itself touch the active
+          // `andersonDopant` (see learnImpurityMove, the only place that
+          // actually writes it), so browsing a host and backing out via
+          // "Never mind"/"Farewell" without learning anything leaves
+          // whatever impurity was already doped in still firing.
           scene.andersonSelection = m.name;
           scene.andersonPage = 0;
-          scene.game.registry.set('andersonDopant', m.name);
-          persistFromRegistry(scene.game.registry);
           scene.dialogueContainer?.destroy(true);
           showAndersonPanel(scene);
         },
@@ -131,8 +147,18 @@ export function showAndersonPanel(scene: OverworldScene) {
     }
   } else {
     const host = findMaterialByName(scene.andersonSelection);
-    const unlocked = scene.getUnlockedMoves();
-    const learnable = host ? host.moves.filter((id) => !unlocked.includes(id)) : [];
+    // What this host would actually add if doped in, not just what's absent
+    // from `unlockedMoves` -- Superposition Mode auto-grants every move id
+    // to `unlockedMoves` on every world entry (OverworldScene's
+    // applySuperpositionLeveling), so "not yet unlocked" is never true there
+    // and this step would otherwise always report every host as teaching
+    // nothing. `getBattleMoves` is read here *before* this host becomes the
+    // active dopant (that only happens in learnImpurityMove below), so it
+    // reflects what's usable under the player's current form and whichever
+    // impurity is doped in right now -- exactly the baseline a host's own
+    // moves should be compared against to find what's genuinely new.
+    const currentlyUsable = new Set(getBattleMoves(scene.game.registry));
+    const learnable = host ? host.moves.filter((id) => !currentlyUsable.has(id)) : [];
     const label = scene.add
       .text(CANVAS_W / 2, y, `Learn which move from ${scene.andersonSelection}?`, {
         fontSize: fontPx(scene, 12),
@@ -182,17 +208,21 @@ export function showAndersonPanel(scene: OverworldScene) {
   container.addAt(panel, 0);
 }
 
-// Learns one move from the doped-in host's moveset -- just an ordinary
-// append to `unlockedMoves` (see showAndersonPanel's comment: the host was
-// already set as `andersonDopant` when it was picked, and getBattleMoves
-// unions that dopant's MOVE_COMPATIBILITY classes into the player's own to
-// decide whether the learned move is actually usable).
+// Learning a move is the one action that actually commits to a new
+// impurity: this is the only place `andersonDopant` gets written (the
+// host-pick step in showAndersonPanel only records which host the player is
+// browsing, so looking at a candidate's moves and backing out via "Never
+// mind"/"Farewell" leaves whatever was doped in before untouched). Once
+// committed, `unlockedMoves` gets the ordinary append and getBattleMoves
+// unions this dopant's MOVE_COMPATIBILITY classes into the player's own to
+// decide what's actually usable in battle.
 function learnImpurityMove(scene: OverworldScene, moveId: string) {
   const unlocked = scene.getUnlockedMoves();
   if (!unlocked.includes(moveId)) {
     scene.game.registry.set('unlockedMoves', [...unlocked, moveId]);
-    persistFromRegistry(scene.game.registry);
   }
+  scene.game.registry.set('andersonDopant', scene.andersonSelection);
+  persistFromRegistry(scene.game.registry);
   scene.andersonSelection = null;
   scene.andersonPage = 0;
   scene.dialogueContainer?.destroy(true);
