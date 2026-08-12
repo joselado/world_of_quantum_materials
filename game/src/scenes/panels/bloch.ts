@@ -4,7 +4,8 @@ import { makeBlochAvatar } from '../../art/bloch';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
 import { fontPx } from '../../ui/text';
-import { WORLD_NAMES } from '../../data/materials';
+import { WORLD_NAMES, BLOCH_DESTINATION_COST } from '../../data/materials';
+import { persistFromRegistry } from '../../data/save';
 
 // Bloch stands at world 2's middle tile (see spawnGuardianSprite/
 // WORLD_GUARDIANS) and folds the player to any other world they've already
@@ -21,12 +22,30 @@ import { WORLD_NAMES } from '../../data/materials';
 // of font shrinking keeps 9 full rows plus avatar/quote/footer inside the
 // 480px canvas -- capping the row *count* per page is the only fix that
 // actually bounds the height.
+// Each individual destination is its own one-time BLOCH_DESTINATION_COST
+// qumatessence unlock (registry/save `blochUnlockedWorlds`, a list of
+// world numbers already paid for), not a single flat unlock for the whole
+// hub: traveling to a world for the first time costs qumatessence and
+// records that world as unlocked in the same click, every later trip to
+// that same world is free. A destination not yet unlocked shows its cost
+// in the row label and dims if unaffordable (like every other guardian's
+// buy row), the same "check tokens, deduct, persist" flow those rows use --
+// there's no separate "unlock, then travel later" step since clicking a
+// destination is itself the only thing there is to do with it. Superposition
+// Mode bypasses this per-destination cost entirely (`isSuperpositionMode()`,
+// not the persisted list) -- that mode pre-seeds every built world as
+// visited and relies on Bloch's hub being the *sole* way to move between
+// worlds (there is no separate warp panel), so a fresh Superposition save
+// with no qumatessence must still be able to teleport anywhere immediately.
 // Content laid out top-down first (running `y`), panel sized/inserted
 // behind everything afterward -- same pattern as showSettingsPanel.
 export function showBlochHub(scene: OverworldScene) {
   scene.dialogueActive = true;
 
   const destinations = scene.getVisitedWorlds().filter((w) => BUILT_WORLDS.includes(w) && w !== scene.world);
+  const superposition = scene.isSuperpositionMode();
+  const unlockedWorlds = (scene.game.registry.get('blochUnlockedWorlds') as number[]) ?? [];
+  const isUnlocked = (world: number) => superposition || unlockedWorlds.includes(world);
 
   const panelWidth = 600;
   const top = 20;
@@ -67,6 +86,7 @@ export function showBlochHub(scene: OverworldScene) {
     container.add(text);
     y += text.height;
   } else {
+    const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
     const items = destinations.map((w) => ({ world: w, name: WORLD_NAMES[w] ?? `World ${w}` }));
     y = scene.renderPagedButtons(
       container,
@@ -74,13 +94,29 @@ export function showBlochHub(scene: OverworldScene) {
       items,
       scene.blochPage,
       4,
-      (d) => `Travel to World ${d.world} -- ${d.name}`,
-      (d) => scene.advanceToWorld(d.world),
+      (d) =>
+        isUnlocked(d.world)
+          ? `Travel to World ${d.world} -- ${d.name}`
+          : `Travel to World ${d.world} -- ${d.name} (${BLOCH_DESTINATION_COST} qumatessence)`,
+      (d) => {
+        if (isUnlocked(d.world)) {
+          scene.advanceToWorld(d.world);
+          return;
+        }
+        if ((scene.game.registry.get('qumatessence') as number) < BLOCH_DESTINATION_COST) return;
+        scene.qumatessence -= BLOCH_DESTINATION_COST;
+        scene.game.registry.set('qumatessence', scene.qumatessence);
+        scene.tokenText.setText(`Qumatessence: ${scene.qumatessence}`);
+        scene.game.registry.set('blochUnlockedWorlds', [...unlockedWorlds, d.world]);
+        persistFromRegistry(scene.game.registry);
+        scene.advanceToWorld(d.world);
+      },
       (page) => {
         scene.blochPage = page;
         scene.dialogueContainer?.destroy(true);
         showBlochHub(scene);
-      }
+      },
+      (d) => !isUnlocked(d.world) && tokens < BLOCH_DESTINATION_COST
     );
   }
   y += 8;

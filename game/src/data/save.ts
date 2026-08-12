@@ -114,6 +114,28 @@ export interface SaveData {
   // a time, so switching dopants drops whichever classes only the old one
   // granted.
   andersonDopant: string | null;
+  // Which individual *options* of each of the four repeatable-action
+  // guardians' abilities have been paid for at least once (data/
+  // materials.ts's BLOCH_DESTINATION_COST/DRESSELHAUS_TRANSMUTE_COST/
+  // ANDERSON_DOPE_COST/MAJORANA_FUSE_COST) -- every option is its own
+  // separate one-time purchase, not a single whole-ability flag, so each of
+  // these is a list of option keys rather than a boolean: a Bloch world
+  // number once traveled to for the first time, a Dresselhaus crystal name
+  // once transmuted into, an Anderson host crystal name once doped in, a
+  // Majorana hybrid *result* name once fused into. A key present in the
+  // matching list means that specific option is free forever after; a key
+  // absent means picking it again costs qumatessence. Majorana keys by the
+  // hybrid *result*'s own name rather than by parent pair, since
+  // HYBRID_RECIPES currently has no two different pairs producing the same
+  // result -- paying to become a given hybrid is what stays free, however
+  // it was first reached. Superposition Mode bypasses all four by checking
+  // `OverworldScene.isSuperpositionMode()` directly in each panel rather
+  // than writing these lists, so toggling the mode back off doesn't leave a
+  // permanent free unlock behind.
+  blochUnlockedWorlds: number[];
+  dresselhausUnlockedCrystals: string[];
+  andersonUnlockedHosts: string[];
+  majoranaUnlockedResults: string[];
 }
 
 export function defaultSave(): SaveData {
@@ -140,6 +162,10 @@ export function defaultSave(): SaveData {
     ultimateClassesUnlocked: {},
     rival9Type: null,
     andersonDopant: null,
+    blochUnlockedWorlds: [],
+    dresselhausUnlockedCrystals: [],
+    andersonUnlockedHosts: [],
+    majoranaUnlockedResults: [],
   };
 }
 
@@ -260,6 +286,10 @@ export function persistFromRegistry(registry: RegistryLike) {
     ultimateClassesUnlocked: (registry.get('ultimateClassesUnlocked') as Partial<Record<string, MoveClass[]>>) ?? {},
     rival9Type: (registry.get('rival9Type') as MaterialType | null) ?? null,
     andersonDopant: (registry.get('andersonDopant') as string | null) ?? null,
+    blochUnlockedWorlds: (registry.get('blochUnlockedWorlds') as number[]) ?? [],
+    dresselhausUnlockedCrystals: (registry.get('dresselhausUnlockedCrystals') as string[]) ?? [],
+    andersonUnlockedHosts: (registry.get('andersonUnlockedHosts') as string[]) ?? [],
+    majoranaUnlockedResults: (registry.get('majoranaUnlockedResults') as string[]) ?? [],
   };
   try {
     // schemaVersion is a wire-format-only stamp read by loadSave() to know

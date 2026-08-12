@@ -3,7 +3,8 @@ import { makeDresselhausAvatar } from '../../art/dresselhaus';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
 import { fontPx } from '../../ui/text';
-import { findMaterialByName, allCrystals, isHybridMaterial } from '../../data/materials';
+import { findMaterialByName, allCrystals, isHybridMaterial, DRESSELHAUS_TRANSMUTE_COST } from '../../data/materials';
+import { persistFromRegistry } from '../../data/save';
 
 // Dresselhaus stands at world 3's middle tile like every other guardian (see
 // spawnGuardianSprite/WORLD_GUARDIANS), triggered on reaching that row
@@ -15,6 +16,17 @@ import { findMaterialByName, allCrystals, isHybridMaterial } from '../../data/ma
 // Superposition Mode replaces "defeated" with every crystal in the game
 // (allCrystals()), paginated via renderPagedButtons since that pool is
 // far bigger than the normal handful of recent defeats.
+// Each individual crystal is its own one-time DRESSELHAUS_TRANSMUTE_COST
+// qumatessence unlock (registry/save `dresselhausUnlockedCrystals`, a list
+// of crystal names already paid for), not a single flat unlock for the
+// whole ability: becoming a given crystal for the first time costs
+// qumatessence and records that crystal as unlocked in the same click,
+// every later transmutation back into it is free. A not-yet-unlocked
+// candidate shows its cost in the row label and dims if unaffordable (like
+// every other guardian's buy row); clicking is itself both the purchase and
+// the use, there's no separate "unlock, then transmute later" step.
+// Superposition Mode bypasses this per-crystal cost entirely
+// (`isSuperpositionMode()`, not the persisted list).
 // Content laid out top-down first (running `y`), panel sized/inserted
 // behind everything afterward -- same pattern as showSettingsPanel.
 export function showDresselhausPanel(scene: OverworldScene) {
@@ -60,6 +72,7 @@ export function showDresselhausPanel(scene: OverworldScene) {
         .getDefeatedMaterials()
         .filter((m) => !isHybridMaterial(m.name))
         .slice(-3);
+
   if (candidates.length === 0) {
     const text = scene.add
       .text(CANVAS_W / 2, y, "You haven't defeated any crystals yet -- there is nothing to become.", {
@@ -72,15 +85,33 @@ export function showDresselhausPanel(scene: OverworldScene) {
     container.add(text);
     y += text.height;
   } else {
+    const unlockedCrystals = (scene.game.registry.get('dresselhausUnlockedCrystals') as string[]) ?? [];
+    const isUnlocked = (name: string) => superposition || unlockedCrystals.includes(name);
+    const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
     y = scene.renderPagedButtons(
       container,
       y,
       candidates,
       scene.dresselhausPage,
       4,
-      (m) => (scene.playerMaterial.name === m.name ? `${m.name} (current form)` : `Become ${m.name}`),
+      (m) =>
+        scene.playerMaterial.name === m.name
+          ? `${m.name} (current form)`
+          : isUnlocked(m.name)
+          ? `Become ${m.name}`
+          : `Become ${m.name} (${DRESSELHAUS_TRANSMUTE_COST} qumatessence)`,
       (m) => {
         if (scene.playerMaterial.name === m.name) return;
+        if (isUnlocked(m.name)) {
+          transmuteInto(scene, m.name);
+          return;
+        }
+        if ((scene.game.registry.get('qumatessence') as number) < DRESSELHAUS_TRANSMUTE_COST) return;
+        scene.qumatessence -= DRESSELHAUS_TRANSMUTE_COST;
+        scene.game.registry.set('qumatessence', scene.qumatessence);
+        scene.tokenText.setText(`Qumatessence: ${scene.qumatessence}`);
+        scene.game.registry.set('dresselhausUnlockedCrystals', [...unlockedCrystals, m.name]);
+        persistFromRegistry(scene.game.registry);
         transmuteInto(scene, m.name);
       },
       (page) => {
@@ -88,7 +119,7 @@ export function showDresselhausPanel(scene: OverworldScene) {
         scene.dialogueContainer?.destroy(true);
         showDresselhausPanel(scene);
       },
-      (m) => scene.playerMaterial.name === m.name
+      (m) => scene.playerMaterial.name === m.name || (!isUnlocked(m.name) && tokens < DRESSELHAUS_TRANSMUTE_COST)
     );
   }
   y += 8;

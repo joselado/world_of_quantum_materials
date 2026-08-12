@@ -714,7 +714,12 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   Deliberately no memory of earlier fusions to re-become without recombining -- every visit
   starts the two-step pick fresh; `createHybrid` doesn't persist anything beyond calling
   `becomeHybrid`, which just runs `applyPlayerForm` (the player's *current* form, hybrid or
-  not, already survives a reload on its own via `playerForm`).
+  not, already survives a reload on its own via `playerForm`). Each individual result is its
+  own one-time `MAJORANA_FUSE_COST` (60) qumatessence unlock (registry/save
+  `majoranaUnlockedResults`, a list of result names), charged and recorded inside
+  `createHybrid` at the moment a specific partner is picked (the point the result is first
+  known) rather than at the first-crystal-browse step -- see the Superposition Mode bullets
+  above and DESIGN.md §5 for the pricing rationale.
 - **Laughlin's Analytic-move shop** (`scenes/panels/laughlin.ts`'s `showLaughlinPanel`, calling
   `scenes/panels/tunableMoveShop.ts`'s shared `renderTunableMoveShop(scene, container, y,
   moveIds, reopen)`) mirrors `scenes/panels/noether.ts`'s `showNoetherShop`/`renderShopMoves`'s
@@ -813,7 +818,14 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   actually commits: `unlockedMoves.push(id)` (if not already present) and `andersonDopant` are
   set together, then persisted. No `applyPlayerForm` call at all -- see "Player form" above.
   `scene.andersonSelection: string | null` mirrors `majoranaSelection`'s reset rules
-  (`create()`/`closeDialogue()`).
+  (`create()`/`closeDialogue()`), and `scene.andersonMovePage` (the second step's own pager)
+  resets alongside it at every one of those same reset points. Each individual host is its own
+  one-time `ANDERSON_DOPE_COST` (35) qumatessence unlock (registry/save
+  `andersonUnlockedHosts`, a list of host names), charged and recorded inside
+  `learnImpurityMove` -- the same place that already commits `andersonDopant` and the
+  `unlockedMoves` append -- rather than at the host-browsing step, so browsing a host's
+  moveset and backing out still costs nothing. See the Superposition Mode bullets above and
+  DESIGN.md §5 for the pricing rationale.
 
 **Every guardian stands mid-corridor, not at the goal or start.** `GuardianDef.tile` is `'goal' |
 'start' | 'middle'`, but every current `WORLD_GUARDIANS` entry uses `'middle'` -- `world/mapgen
@@ -876,6 +888,13 @@ testing/exploration aid, not part of normal progression. Three things key off
 - `showDresselhausPanel`/`showMajoranaPanel`/`showAndersonPanel` each swap their candidate pool from
   `getDefeatedMaterials()` to `data/materials.ts`'s `allCrystals()` when `isSuperpositionMode()`
   is true, per their own sections above.
+- `showBlochHub`/`showDresselhausPanel`/`showMajoranaPanel`/`showAndersonPanel` each check
+  `isSuperpositionMode()` directly (not the persisted `blochUnlockedWorlds`/
+  `dresselhausUnlockedCrystals`/`majoranaUnlockedResults`/`andersonUnlockedHosts` lists) to
+  treat every individual option -- every world, crystal, hybrid result, or host -- as already
+  unlocked, the same way Skłodowska-Curie's `showUltimateClassPicker` treats every
+  quasiparticle class as already unlocked in this mode -- so toggling the mode back off doesn't
+  leave any option permanently free sitting in the save.
 
 **Contextual tutorial tips** (`data/tutorial.ts`'s `TUTORIAL_TIPS`/`TutorialTipId`/
 `hasSeenTip`/`markTipSeen`): each tip fires once per save, right at the trigger site for its
@@ -924,10 +943,18 @@ outgrow one panel. Takes the container/running-`y`/item array/current page/a `ma
 ceiling/label+onPick callbacks/an `onPageChange` callback (expected to rebuild the whole panel:
 set the field, destroy `dialogueContainer`, re-call `showXPanel()` -- same pattern as every
 other in-panel action) and returns the advanced `y`. **The actual per-page row count isn't
-`maxPerPage` verbatim** -- it measures one sample button at the current `fontScale` (`ui/text
-.ts`) and shrinks to whatever still fits above the panel's own trailing footer, because a fixed
+`maxPerPage` verbatim** -- it measures every candidate's own label for real at the current
+`fontScale` (`ui/text.ts`), off-canvas and destroyed immediately after, and packs each page
+until the next label wouldn't fit above the panel's own trailing footer, because a fixed
 row count overflowed the canvas once the *default* text-size preset (1.5x, not 1x) met a
-9-destination Bloch list. Each caller owns its own page field (`bohrPage`, `majoranaPage`,
+9-destination Bloch list, and a uniform single-line estimate under-counts a page's real
+height once a long, multi-word label (a crystal name, or a guardian-shop row with a cost
+suffix) word-wraps to two lines rather than staying on one. The trailing `<- Prev`/
+`Next ->`/`Page N/M` row (only rendered once the list needs more than one page) is a single
+shared row, not a button row with the page label stacked underneath it -- reclaiming that
+row's worth of height is what keeps a guardian whose avatar/intro text already leaves little
+slack (Majorana, Anderson) inside the canvas at the largest text-size preset. Each caller owns
+its own page field (`bohrPage`, `majoranaPage`,
 `andersonPage`, `blochPage`), all reset in both `create()` and `closeDialogue()` the same way
 `majoranaSelection` is. Reuse this rather than a bespoke row-count/shrink-to-fit calculation for
 any future candidate list that can grow unboundedly.
@@ -968,7 +995,15 @@ quasiparticle classes have been paid for, per Ultimate move id -- `data/material
 `OverworldScene.resolveRival9Type` rolls and
 caches it via `data/materials.ts`'s `rollRival9Type`, see "Rival/boss fights" below),
 `andersonDopant: string | null` (the crystal name currently doped in via Anderson's panel, `null`
-until first picked -- see "Guardians" above), plus the
+until first picked -- see "Guardians" above), `blochUnlockedWorlds: number[]`/
+`dresselhausUnlockedCrystals: string[]`/`andersonUnlockedHosts: string[]`/
+`majoranaUnlockedResults: string[]` (which individual *options* of each of those four
+guardians' abilities have been paid for at least once -- `data/materials.ts`'s
+`BLOCH_DESTINATION_COST`/`DRESSELHAUS_TRANSMUTE_COST`/`ANDERSON_DOPE_COST`/
+`MAJORANA_FUSE_COST` -- a world number/crystal name/host name/hybrid-result name present in
+the matching list is free from then on, one absent still costs qumatessence to pick again; see
+"Guardians" above and "Story Mode vs. Superposition Mode" for how Superposition Mode bypasses
+these without ever setting them), plus the
 earlier fields covered under Registry-then-persist above. `defaultSave()`/
 `persistFromRegistry()` are the two places that need touching together for any future field, and
 `loadSave()`'s `{ ...defaultSave(), ...saved }` spread keeps a save predating that field

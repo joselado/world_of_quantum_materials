@@ -3,7 +3,7 @@ import { makeAndersonAvatar } from '../../art/anderson';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
 import { fontPx } from '../../ui/text';
-import { MOVES, allCrystals, isHybridMaterial, findMaterialByName, getBattleMoves } from '../../data/materials';
+import { MOVES, allCrystals, isHybridMaterial, findMaterialByName, getBattleMoves, ANDERSON_DOPE_COST } from '../../data/materials';
 import { persistFromRegistry } from '../../data/save';
 
 // Anderson stands at world 6's middle tile (WORLD_GUARDIANS) and lets the
@@ -33,16 +33,32 @@ import { persistFromRegistry } from '../../data/save';
 // is meant to be one real, single-crystal excitation, not a channel a
 // fusion has borrowed from elsewhere. Two-step pick (scene.andersonSelection
 // holds the host while the panel rebuilds to ask which of its moves to
-// learn), paginated at the host-pick step via renderPagedButtons -- same
-// shape as Majorana's combine flow, minus a second pagination pass since a
-// host's moveset is always small (crystal() only ever assigns two). The
-// "which move" step offers only moves that would newly become usable by
+// learn), paginated at both steps via renderPagedButtons (scene.andersonPage/
+// scene.andersonMovePage) -- same shape as Majorana's combine flow. A host's
+// moveset is always small in practice (crystal() only ever assigns two), but
+// the second step still routes through the shared pager rather than a fixed
+// render, since a not-yet-unlocked host's cost suffix on each row needs the
+// same measured shrink-to-fit protection every other candidate list gets.
+// The "which move" step offers only moves that would newly become usable by
 // doping this host in (compares the host's moveset against
 // `getBattleMoves` computed with whatever's doped in *right now*, not
 // against raw `unlockedMoves`) -- Superposition Mode auto-grants every move
 // id to `unlockedMoves` on every world entry, so comparing against raw
 // `unlockedMoves` would report every host as teaching nothing there, making
 // the whole learn step permanently unreachable.
+// Each individual host is its own one-time ANDERSON_DOPE_COST qumatessence
+// unlock (registry/save `andersonUnlockedHosts`, a list of host crystal
+// names already paid for), keyed by host rather than by which move was
+// learned -- once a host is unlocked, doping into it and learning *any* of
+// its moves (now or later) is free. The cost shows up at the second step
+// (picking which move to learn), since that's the point doping in this
+// host actually commits (learnImpurityMove); the first step (browsing
+// which host to look at) stays a free preview, same as it already was
+// before any of this -- picking a host to browse its moveset and backing
+// out via "Never mind"/"Farewell" still costs nothing, only actually
+// learning a move from a not-yet-unlocked host does. Superposition Mode
+// bypasses this per-host cost entirely (`isSuperpositionMode()`, not the
+// persisted list).
 export function showAndersonPanel(scene: OverworldScene) {
   scene.dialogueActive = true;
 
@@ -67,8 +83,8 @@ export function showAndersonPanel(scene: OverworldScene) {
       CANVAS_W / 2,
       y,
       superposition
-        ? '"I am Anderson. In superposition every crystal is available to dope in as an impurity -- pick one, and I will teach you the single channel it opens. That channel stays usable for as long as the impurity stays doped in; dope in another crystal and it replaces this one."'
-        : '"I am Anderson. Dope in a crystal you have encountered as an impurity, and I will teach you the one channel it opens in your own lattice. It fires in battle for as long as that impurity stays doped in -- dope in a different crystal later and you lose the channels only the old one gave you."',
+        ? '"I am Anderson. In superposition any crystal can be doped in as an impurity -- pick one, and I\'ll teach you the channel it opens, active for as long as that impurity stays doped in; a new one replaces it."'
+        : '"I am Anderson. Dope in a defeated crystal as an impurity, and I\'ll teach you the one channel it opens -- active only while that impurity stays doped in; a new dopant replaces it."',
       { fontSize: fontPx(scene, 12), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
     )
     .setOrigin(0.5, 0);
@@ -96,6 +112,10 @@ export function showAndersonPanel(scene: OverworldScene) {
     (m) => !isHybridMaterial(m.name)
   );
 
+  // Set true only when the "Never mind"+Farewell combined row below
+  // renders, so the generic single-Farewell footer at the very end of this
+  // function is skipped in that case rather than adding a second one.
+  let footerRendered = false;
   if (scene.andersonSelection === null) {
     if (pool.length === 0) {
       const text = scene.add
@@ -132,9 +152,12 @@ export function showAndersonPanel(scene: OverworldScene) {
           // `andersonDopant` (see learnImpurityMove, the only place that
           // actually writes it), so browsing a host and backing out via
           // "Never mind"/"Farewell" without learning anything leaves
-          // whatever impurity was already doped in still firing.
+          // whatever impurity was already doped in still firing -- and
+          // browsing itself costs nothing, only committing to a move below
+          // does.
           scene.andersonSelection = m.name;
           scene.andersonPage = 0;
+          scene.andersonMovePage = 0;
           scene.dialogueContainer?.destroy(true);
           showAndersonPanel(scene);
         },
@@ -182,24 +205,61 @@ export function showAndersonPanel(scene: OverworldScene) {
       container.add(text);
       y += text.height + 6;
     } else {
-      learnable.forEach((id) => {
-        const move = MOVES[id];
-        const btn = scene.addDialogueButton(container, y, `${move.name} (Pwr ${move.power})`, () => learnImpurityMove(scene, id));
-        y += btn.height + 6;
-      });
+      const unlockedHosts = (scene.game.registry.get('andersonUnlockedHosts') as string[]) ?? [];
+      const hostUnlocked = superposition || unlockedHosts.includes(scene.andersonSelection);
+      const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
+      const affordable = hostUnlocked || tokens >= ANDERSON_DOPE_COST;
+      // Paginated (renderPagedButtons) even though a host only ever offers
+      // 1-2 moves in practice (crystal() never assigns more) -- a
+      // not-yet-unlocked host's cost suffix on each row still needs the
+      // same measured shrink-to-fit protection every other candidate list
+      // gets, rather than an unprotected fixed render.
+      const learnableItems = learnable.map((id) => ({ id, name: MOVES[id].name, power: MOVES[id].power }));
+      y = scene.renderPagedButtons(
+        container,
+        y,
+        learnableItems,
+        scene.andersonMovePage,
+        4,
+        (m) => (hostUnlocked ? `${m.name} (Pwr ${m.power})` : `${m.name} (Pwr ${m.power}) -- ${ANDERSON_DOPE_COST} qumatessence`),
+        (m) => learnImpurityMove(scene, m.id, hostUnlocked, unlockedHosts),
+        (page) => {
+          scene.andersonMovePage = page;
+          scene.dialogueContainer?.destroy(true);
+          showAndersonPanel(scene);
+        },
+        () => !affordable
+      );
     }
-    const cancelBtn = scene.addDialogueButton(container, y, 'Never mind', () => {
-      scene.andersonSelection = null;
-      scene.andersonPage = 0;
-      scene.dialogueContainer?.destroy(true);
-      showAndersonPanel(scene);
-    });
-    y += cancelBtn.height + 6;
+    // Shares one row with Farewell (side by side, same convention the goal
+    // panel's own Farewell/Continue footer uses) rather than stacking two
+    // separate footer rows -- this step already carries the most chrome of
+    // any state in the panel (avatar, intro, "Learn which move" label, the
+    // move list itself), so reclaiming a full row's height here is what
+    // keeps it inside the canvas at the largest text-size preset.
+    const cancelBtn = scene.addDialogueButtonAt(
+      container,
+      CANVAS_W / 2 - 118,
+      y,
+      'Never mind',
+      () => {
+        scene.andersonSelection = null;
+        scene.andersonPage = 0;
+        scene.andersonMovePage = 0;
+        scene.dialogueContainer?.destroy(true);
+        showAndersonPanel(scene);
+      },
+      210
+    );
+    const farewellBtn = scene.addDialogueButtonAt(container, CANVAS_W / 2 + 118, y, 'Farewell', () => scene.closeDialogue(), 210);
+    y += Math.max(cancelBtn.height, farewellBtn.height) + 12;
+    footerRendered = true;
   }
-  y += 8;
-
-  const closeBtn = scene.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Farewell', () => scene.closeDialogue(), 300);
-  y += closeBtn.height + 12;
+  if (!footerRendered) {
+    y += 8;
+    const closeBtn = scene.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Farewell', () => scene.closeDialogue(), 300);
+    y += closeBtn.height + 12;
+  }
 
   const panelHeight = y - top;
   const panel = scene.add
@@ -215,8 +275,20 @@ export function showAndersonPanel(scene: OverworldScene) {
 // mind"/"Farewell" leaves whatever was doped in before untouched). Once
 // committed, `unlockedMoves` gets the ordinary append and getBattleMoves
 // unions this dopant's MOVE_COMPATIBILITY classes into the player's own to
-// decide what's actually usable in battle.
-function learnImpurityMove(scene: OverworldScene, moveId: string) {
+// decide what's actually usable in battle. `hostUnlocked`/`unlockedHosts`
+// are the panel's own snapshot from just before this was called -- if the
+// host isn't unlocked yet, this is also where the ANDERSON_DOPE_COST
+// purchase happens (guarded by an affordability check, same as any other
+// paid row's click handler); once paid, this host stays free to dope into
+// and learn from for the rest of the save.
+function learnImpurityMove(scene: OverworldScene, moveId: string, hostUnlocked: boolean, unlockedHosts: string[]) {
+  if (!hostUnlocked) {
+    if ((scene.game.registry.get('qumatessence') as number) < ANDERSON_DOPE_COST) return;
+    scene.qumatessence -= ANDERSON_DOPE_COST;
+    scene.game.registry.set('qumatessence', scene.qumatessence);
+    scene.tokenText.setText(`Qumatessence: ${scene.qumatessence}`);
+    scene.game.registry.set('andersonUnlockedHosts', [...unlockedHosts, scene.andersonSelection]);
+  }
   const unlocked = scene.getUnlockedMoves();
   if (!unlocked.includes(moveId)) {
     scene.game.registry.set('unlockedMoves', [...unlocked, moveId]);
@@ -225,6 +297,7 @@ function learnImpurityMove(scene: OverworldScene, moveId: string) {
   persistFromRegistry(scene.game.registry);
   scene.andersonSelection = null;
   scene.andersonPage = 0;
+  scene.andersonMovePage = 0;
   scene.dialogueContainer?.destroy(true);
   showAndersonPanel(scene);
 }

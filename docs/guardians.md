@@ -34,7 +34,11 @@ form whose physics supports the rest.
 ## Bloch
 
 Folds space between worlds: teleports you to any world you've already
-visited, so backtracking never means re-walking a whole corridor.
+visited, so backtracking never means re-walking a whole corridor. The first
+trip to a given world costs 15 qumatessence to unlock; every later trip to
+that same world is free. Each world you haven't unlocked yet is priced
+separately -- there's no single purchase that opens every destination at
+once.
 
 ## Dresselhaus
 
@@ -44,7 +48,9 @@ without erasing anything you've learned -- switching back later restores the
 rest for free. The idea: the same atoms built into a different nanostructure
 become a different material entirely, so understanding a defeated crystal's
 structure well enough lets you rebuild yourself into it, for a while. Only
-offers standalone crystals, never a [hybrid](hybrids.md).
+offers standalone crystals, never a [hybrid](hybrids.md). The first time you
+become a given crystal costs 25 qumatessence to unlock; every later
+transmutation back into that same crystal is free.
 
 ## Laughlin
 
@@ -67,7 +73,11 @@ Lets you fuse two crystals you've already defeated into a brand-new hybrid
 state and become it, if the pairing is one of the game's named recipes (see
 [Hybrids](hybrids.md)) -- rendered as an actual mixture of both parents' own
 colors and shapes. Recipes don't accumulate: every visit starts the pick
-fresh rather than remembering past fusions.
+fresh rather than remembering past fusions. Picking a first crystal to
+combine is always free to browse; the first time you actually fuse into a
+given hybrid result costs 60 qumatessence to unlock, shown once you pick a
+specific partner -- every later fusion into that same result is free,
+however you reach it.
 
 ## Anderson
 
@@ -77,7 +87,10 @@ becoming that crystal the way Dresselhaus does. The move fires in battle for
 as long as you stay doped with that crystal, even if your own current form
 can't otherwise host it -- dope in a different crystal later and you lose
 the channels only the old one gave you. Only original, standalone crystals
-are valid hosts, never a [hybrid](hybrids.md).
+are valid hosts, never a [hybrid](hybrids.md). Browsing which crystal to dope
+in is always free; the first time you actually learn a move from a given
+host costs 35 qumatessence to unlock -- every later visit to that same host
+(learning any of its moves, then or later) is free.
 
 ## Bohr
 
