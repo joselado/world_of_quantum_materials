@@ -199,6 +199,42 @@ export const ULTIMATE_MOVE_IDS = ['ultimateMeteor', 'ultimateNova'];
 // paid, retuning back to that class is free forever.
 export const ULTIMATE_CLASS_UNLOCK_COST = 1000;
 
+// Qumatessence cost to unlock one specific *option* of each of the four
+// repeatable-action guardians' signature abilities -- one Bloch
+// destination world, one Dresselhaus crystal to transmute into, one
+// Anderson host to dope in, one Majorana fusion result -- paid the first
+// time that specific option is picked, free forever after (registry/save
+// `blochUnlockedWorlds`/`dresselhausUnlockedCrystals`/
+// `andersonUnlockedHosts`/`majoranaUnlockedResults`, each a list of
+// already-paid-for option keys rather than a single whole-ability flag,
+// since every option is its own separate purchase). The same
+// pay-once-then-free-forever shape Bohr's/Franklin's flat per-passive
+// `cost` and Skłodowska-Curie's `ULTIMATE_CLASS_UNLOCK_COST` already use,
+// just keyed per candidate rather than per passive/class. Priced well
+// below Bohr's/Franklin's 40-50 whole-passive band and Noether's/
+// Laughlin's/Kondo's ~35-55 `shopCost` moves, since a single option here is
+// a narrower purchase than a whole passive or move -- unlocking every
+// option of an ability (e.g. every world Bloch can reach) costs
+// meaningfully more in total than the old flat per-ability price did, by
+// design, since the player is now paying per destination/crystal/host/
+// result rather than once for unlimited access. Same relative ordering as
+// before: Bloch (world 2) is pure convenience -- it grants no new battle
+// power, only skips walking to one already-reachable world -- so it's
+// priced lowest; Dresselhaus (world 3) commits to becoming one specific
+// crystal (its own stat spread/HP cap/moveset), a bigger capability swing
+// per option than pure travel; Anderson (world 6) permanently opens one
+// specific dopant's move channel and sits later in the world progression,
+// so it costs more still; Majorana (world 5) is priced highest of the
+// four -- above even Noether's/Laughlin's/Kondo's ordinary `shopCost` top
+// end (~55) -- despite sitting earlier than Anderson, since unlocking one
+// specific hybrid result is comparable in value to learning a whole new
+// move, and fusing at all only reaches HYBRID_RECIPES' curated results, an
+// additional content category rather than a reshaping of an existing one.
+export const BLOCH_DESTINATION_COST = 15;
+export const DRESSELHAUS_TRANSMUTE_COST = 25;
+export const ANDERSON_DOPE_COST = 35;
+export const MAJORANA_FUSE_COST = 60;
+
 // The full roster of ordinary quasiparticle classes a tunable move's
 // picker can ever offer (scenes/panels/tunableMoveShop.ts's
 // showMoveClassPicker, scenes/panels/sklodowskaCurie.ts's own picker) --

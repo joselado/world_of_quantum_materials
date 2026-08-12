@@ -333,12 +333,18 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 - His panel (`showBlochHub`) is stroked teal (`0x4adde0`) and reuses the same tab-content/
   footer shape as Noether's shop, minus the tabs -- one button per world the player has
   visited (`visitedWorlds`) that also has a built map (`BUILT_WORLDS`), excluding the
-  current world, labeled `Travel to World N -- <name>`; clicking teleports there instantly
-  (`advanceToWorld`, no battle). Empty state: "You haven't mapped anywhere else yet."
-  Destinations paginate (see "Paginated candidate lists" below) once there are more than
-  fit on one page -- routine in Superposition Mode, which pre-seeds every built world as
-  visited and makes Bloch's hub the *sole* way to move between worlds (there is no separate
-  warp panel).
+  current world. Each destination is its own one-time unlock: a world not yet in
+  `registry`/save `blochUnlockedWorlds` is labeled `Travel to World N -- <name> (15
+  qumatessence)`, dimmed if unaffordable (same afford/dim treatment as every other
+  guardian shop); clicking it while affordable deducts the cost, adds that world number
+  to `blochUnlockedWorlds`, and teleports there in the same click (`advanceToWorld`, no
+  battle). A world already in that list drops the cost suffix entirely -- `Travel to
+  World N -- <name>` -- and teleports for free. Empty state: "You haven't mapped
+  anywhere else yet." Destinations paginate (see "Paginated candidate lists" below) once
+  there are more than fit on one page -- routine in Superposition Mode, which pre-seeds
+  every built world as visited, makes Bloch's hub the *sole* way to move between worlds
+  (there is no separate warp panel), and treats every destination as already unlocked so
+  a fresh Superposition save can still teleport anywhere with zero qumatessence.
 
 ## Dresselhaus in the overworld (`OverworldScene.showDresselhausPanel`)
 
@@ -352,14 +358,19 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 - His panel is a single paginated list, not the tab-content/footer shop shape -- every
   defeated wild material (`defeatedMaterials`, sliced to the most recent 3, or in
   Superposition Mode every non-hybrid crystal in the game -- `data/materials.ts`'s
-  `allCrystals()` filtered through `isHybridMaterial`) gets a button (`Become <name>`,
-  or a dimmed `<name> (current form)` for whichever the player is already wearing) that
-  transmutes the player's own crystal into that form (`transmuteInto`) -- swaps
+  `allCrystals()` filtered through `isHybridMaterial`) gets a button. Each crystal is its
+  own one-time unlock: one not yet in `registry`/save `dresselhausUnlockedCrystals` reads
+  `Become <name> (25 qumatessence)`, dimmed if unaffordable; clicking it while affordable
+  deducts the cost, adds that crystal's name to the list, and transmutes in the same
+  click (`transmuteInto`). An already-unlocked crystal drops the cost suffix -- `Become
+  <name>` -- and transmutes for free; whichever crystal the player is already wearing
+  shows as a dimmed `<name> (current form)` instead, same as before. Transmuting swaps
   color/variant/max HP and clamps current HP down if needed, and immediately redraws the
-  overworld avatar (`redrawPlayerCrystal`). Empty state: "You haven't defeated any
-  crystals yet -- there is nothing to become." Paginates once the list is longer than one
-  page (see "Paginated candidate lists" below) -- the common case in Superposition Mode --
-  ending in a single "Farewell" button, no separate footer row.
+  overworld avatar (`redrawPlayerCrystal`). Empty state: "You haven't
+  defeated any crystals yet -- there is nothing to become." Paginates once the list is
+  longer than one page (see "Paginated candidate lists" below) -- the common case in
+  Superposition Mode, which also treats every crystal as already unlocked -- ending in a
+  single "Farewell" button, no separate footer row.
 
 ## Laughlin in the overworld (`OverworldScene.showLaughlinPanel`)
 
@@ -405,13 +416,21 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 - His panel reuses the paginated-list shape Dresselhaus's panel uses, but with a
   two-step flow instead of one screen: every defeated wild material (or, in Superposition
   Mode, every crystal in the game) *that pairs with at least one of the others* gets a
-  button (any pairing with no matching entry in `data/materials.ts`'s `HYBRID_RECIPES` --
-  keyed by parent name, not main type, so a same-type pair can still be valid if a named
-  recipe covers it -- is filtered out before it ever renders), picking one asks "Combine
-  `<first>` with..." and re-lists only the remaining candidates that pair with it
-  specifically (plus a "Never mind" to back out) rather than showing every possible pair at
-  once. Both steps paginate (see "Paginated candidate lists" below) once the filtered list is
-  longer than one page. Picking the second immediately transmutes the player into the
+  button at the first step (any pairing with no matching entry in `data/materials.ts`'s
+  `HYBRID_RECIPES` -- keyed by parent name, not main type, so a same-type pair can still
+  be valid if a named recipe covers it -- is filtered out before it ever renders); picking
+  one is always free (just a browse) and asks "Combine `<first>` with..." at the second
+  step, re-listing only the remaining candidates that pair with it specifically. Each
+  partner at this second step is its own one-time unlock, keyed by the *result* the pair
+  would produce: a result not yet in `registry`/save `majoranaUnlockedResults` labels its
+  row `<partner> (60 qumatessence)`, dimmed if unaffordable; picking it while affordable
+  deducts the cost, adds the result's name to the list, and fuses in the same click. An
+  already-unlocked result drops the cost suffix -- just `<partner>` -- and fuses for
+  free. A "Never mind" (to back out to the first step) shares one row with the panel's
+  own Farewell button at this second step (side by side, the same convention the goal
+  panel's Farewell/Continue footer uses) rather than stacking two separate footer rows.
+  Both steps paginate (see "Paginated candidate lists" below) once the filtered list is
+  longer than one page. Picking a partner immediately transmutes the player into the
   recipe's own named result (`data/materials.ts`'s `combineMaterials` -- name/type/maxHp all
   fixed on the recipe, not computed at combine time) the same way Dresselhaus's
   transmutation does -- no separate "confirm" step, and no memory of earlier fusions to
@@ -419,7 +438,8 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   valid pairing among the
   candidates -- including having fewer than 2 total): "None of the crystals you've defeated
   pair into a known hybrid recipe yet -- Majorana only knows specific real pairings (e.g.
-  Aluminum + Indium Arsenide, or two Graphenes together)."
+  Aluminum + Indium Arsenide, or two Graphenes together)." Superposition Mode treats every
+  result as already unlocked.
 
 ## Anderson in the overworld (`OverworldScene.showAndersonPanel`)
 
@@ -429,16 +449,27 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   one bright point pulsing at the center -- Anderson localization's own picture, a wave
   trapped by disorder instead of spreading freely -- rather than any other guardian's motif,
   plus four orbiting `×` glyphs instead of Noether's `✦` or Bloch's `◇`.
-- Two-step flow like Majorana's: every defeated wild material (or, in Superposition Mode,
+- The panel follows the same two-step flow as Majorana's: every defeated
+  wild material (or, in Superposition Mode,
   every crystal in the game) that isn't a hybrid (`isHybridMaterial`) gets a
-  button under "Dope in which crystal?" (paginated, see below); picking one asks "Learn
-  which move from `<host>`?" and lists whichever of that host's own moves the player hasn't
-  already learned (`<move name> (Pwr N)`), plus a "Never mind" to back out. Picking a move
-  just appends it to the ordinary `unlockedMoves` list (`learnImpurityMove`) -- no form
-  change, no HP change, unlike Dresselhaus/Majorana. Empty states: "You haven't defeated any
-  original crystals yet -- there is nothing to dope in" (no host candidates) or "You already
+  button under "Dope in which crystal?" (paginated, see below); picking one is always
+  free (just a browse) and asks "Learn
+  which move from `<host>`?" at the second step. Each learnable move here is priced by
+  whether the *host* is unlocked, not the move: while `<host>` isn't yet in
+  `registry`/save `andersonUnlockedHosts`, every one of its rows reads `<move name> (Pwr
+  N) (35 qumatessence)`, dimmed if unaffordable; picking one while affordable deducts the
+  cost, adds the host's name to the list, and learns that move in the same click. Once a
+  host is unlocked, its rows drop the cost suffix -- `<move name> (Pwr N)` -- and learning
+  any of its moves (now or later) is free. A "Never mind" (to back out to the first step)
+  shares one row with the panel's own Farewell button at this second step (side by side,
+  the same convention the goal panel's Farewell/Continue footer uses) rather than
+  stacking two separate footer rows. Picking a move
+  appends it to the ordinary `unlockedMoves` list (`learnImpurityMove`) -- no form
+  change, no HP change, unlike Dresselhaus/Majorana. Empty states: "You
+  haven't defeated any original crystals yet -- there is nothing to dope in" (no host
+  candidates) or "You already
   carry every move `<host>` has to offer" (host picked, but every one of its moves is
-  already learned).
+  already learned). Superposition Mode treats every host as already unlocked.
 
 ## Bohr in the overworld (`OverworldScene.showBohrPanel`)
 
@@ -538,17 +569,35 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   list. Superposition Mode is what makes this routine rather than a rare edge case: its
   candidate pool is every crystal in the game (or, for Bloch, every built world pre-marked
   visited), commonly 8-30+ entries where the equivalent Story Mode list is a handful.
-- One button per row, same treatment as every other dialogue button, followed by a
-  `<- Prev` / `Next ->` row (each dimmed to 35% alpha and inert at the start/end of the
-  list) and a small blue-grey `Page N/M` label beneath -- only rendered at all once the
-  list is longer than one page.
-- The actual row count per page isn't a fixed number: it's computed from one sample row
-  measured at the current Settings-panel text-size preset (`ui/text.ts`'s `fontScale`),
-  shrunk to whatever still fits above the panel's own trailing Farewell/Close button --
-  a fixed per-page cap would overflow Bloch's hub at the *default* text-size preset (1.5x,
-  not 1x) once Superposition Mode made a 9-destination list the common case -- verified with
-  no overflow at every font-scale preset via the headless-Chromium harness (see
+- One button per row, same treatment as every other dialogue button, followed -- only
+  once the list is longer than one page -- by a single shared row holding `<- Prev`
+  (left), a small blue-grey `Page N/M` label (centered, vertically centered against the
+  buttons' own height), and `Next ->` (right), rather than a button row with the page
+  label on a separate line beneath it: `<- Prev`/`Next ->` each dim to 35% alpha and go
+  inert at the start/end of the list.
+- The actual row count per page isn't a fixed number: each candidate's own label is
+  measured for real at the current Settings-panel text-size preset (`ui/text.ts`'s
+  `fontScale`) -- not assumed to be a single line -- and a page fills only as many rows as
+  actually fit above the panel's own trailing Farewell/Close button, since a long,
+  multi-word label (a crystal name, or a guardian-shop label with a cost suffix) can
+  word-wrap to two lines at a large preset while a short one stays on one. A fixed
+  per-page cap would overflow Bloch's hub at the *default* text-size preset (1.5x, not
+  1x) once Superposition Mode made a 9-destination list the common case; sharing one row
+  for Prev/Next/the page label (above) reclaims the vertical room a two-row layout spent
+  on chrome rather than content, margin that matters most for a guardian whose avatar/
+  intro text already leaves little slack at the largest preset. Packing itself runs
+  twice: once assuming the whole list fits on a single page (no Prev/Next row needed at
+  all), and only if that doesn't hold does a second pass reserve room for that row too --
+  a short candidate list that genuinely fits together on one page shouldn't be split in
+  two just because a reservation assumed controls it turns out not to need -- verified
+  with no overflow at every font-scale preset via the headless-Chromium harness (see
   DEVELOPMENT.md's "Verifying UI changes" section).
+- Majorana's and Anderson's second step (partner/move pick) also renders a "Never mind"
+  cancel row to back out to the first step -- this shares one row with the panel's own
+  Farewell button (side by side, the same left/right convention the goal panel's own
+  Farewell/Continue footer uses) rather than stacking as two separate rows, since this
+  step already carries more chrome (avatar, intro, a second-step label, the paginated
+  list itself) than any single-step panel does.
 
 ## Boss avatars (`OverworldScene.spawnBossSprite`, `art/boss.ts`)
 

@@ -259,6 +259,12 @@ export class OverworldScene extends Phaser.Scene {
   // Same reset/pagination rules as majoranaSelection/majoranaPage above.
   andersonSelection: string | null = null;
   andersonPage = 0;
+  // Paginates the second step's own learnable-move list (renderPagedButtons)
+  // -- a host only ever offers 1-2 moves in practice, but a cost-suffixed
+  // label at a large text-size preset still needs the same measured
+  // shrink-to-fit protection every other candidate list gets, rather than
+  // an unprotected fixed render. Same reset rules as andersonPage above.
+  andersonMovePage = 0;
   // Bloch's teleport hub (§5, World 2): paginated for the same reason as
   // Dresselhaus/Majorana/Anderson above -- Superposition Mode pre-seeds every
   // built world as visited, so a well-traveled player is no longer the rare
@@ -412,6 +418,7 @@ export class OverworldScene extends Phaser.Scene {
     this.majoranaPage = 0;
     this.andersonSelection = null;
     this.andersonPage = 0;
+    this.andersonMovePage = 0;
     this.blochPage = 0;
     this.biome = getBiome(this.world);
 
@@ -1789,6 +1796,7 @@ export class OverworldScene extends Phaser.Scene {
     this.majoranaPage = 0;
     this.andersonSelection = null;
     this.andersonPage = 0;
+    this.andersonMovePage = 0;
     this.blochPage = 0;
   }
 
@@ -2208,14 +2216,32 @@ export class OverworldScene extends Phaser.Scene {
   // (ui/text.ts's fontScale) -- the *default* preset is already 1.5x, not
   // 1x, and a fixed 4-row page overflowed the canvas at that default once
   // Bloch's destination list started routinely hitting 9 entries
-  // (Superposition Mode pre-seeding every world as visited). So this
-  // measures one sample row at the current scale first and shrinks the
-  // actual per-page row count to whatever still fits above both this
-  // function's own Prev/Next/page-label row and the caller's own trailing
-  // content (its Farewell/Close button) -- reserved space, not exact
-  // measurement, but conservative enough that no caller has overflowed
-  // since (verified via headless-Chromium bounds checks at every font-scale
-  // preset, see DEVELOPMENT.md's "Verifying UI changes" section).
+  // (Superposition Mode pre-seeding every world as visited). Row height
+  // also isn't uniform across a page: a long, multi-word candidate label (a
+  // crystal name like "Rhombohedral Pentalayer Graphene/hBN Moiré", or a
+  // guardian-shop label with a cost suffix) can word-wrap to two lines at a
+  // large text-size preset while a short one stays on one, so a fixed
+  // per-row estimate can under-count how much vertical space a page
+  // actually needs once it holds a realistic mix of long and short labels.
+  // This measures every candidate's own label height for real (off-canvas,
+  // destroyed immediately after) and packs each page until the next label
+  // wouldn't fit -- reserving space above the caller's own trailing content
+  // (its Farewell/Close button, and for Majorana's/Anderson's second step,
+  // an extra "Never mind" cancel row above that) the same way a uniform
+  // estimate did, but sizing each row from its actual rendered height
+  // rather than a single short sample string. Packing runs twice: once
+  // without reserving room for this function's own Prev/Next-and-page-label
+  // row (a single shared row, not two stacked ones -- see below), and if
+  // every item already fits on that one page, that's the real answer -- no
+  // point reserving space for controls that will never actually render.
+  // Only when the whole list doesn't fit on one page does a second pass
+  // reserve that row's height too, since now it genuinely will show. This
+  // matters most for a guardian whose avatar/intro text already leaves
+  // little slack at the largest text-size preset (Majorana, Anderson): a
+  // short candidate list that would fit together on one page must not be
+  // needlessly split into two by a reservation for controls it doesn't
+  // need. Verified via headless-Chromium bounds checks at every font-scale
+  // preset, see DEVELOPMENT.md's "Verifying UI changes" section.
   renderPagedButtons<T extends { name: string }>(
     container: Phaser.GameObjects.Container,
     y: number,
@@ -2231,48 +2257,87 @@ export class OverworldScene extends Phaser.Scene {
     const rowH = sample.height + 6;
     sample.destroy();
     const reservedTail = rowH * 2; // caller's own footer button + margin below this function's return
-    const reservedControls = rowH * 2; // this function's own Prev/Next row + page label, reserved whether or not they end up showing
-    const available = CANVAS_H - y - reservedTail - reservedControls;
-    const fitPerPage = Math.max(1, Math.floor(available / rowH));
-    const perPage = Math.min(maxPerPage, fitPerPage);
+    const reservedControls = rowH; // this function's own Prev/Next-and-page-label row (a single shared row, see below), reserved only once a second pass confirms it's actually needed
 
-    const totalPages = Math.max(1, Math.ceil(items.length / perPage));
+    // addDialogueButton's own default wrap width (480) -- matched here so
+    // this measurement wraps exactly the way the real button below will.
+    const measureRowHeight = (label: string) => {
+      const t = this.add.text(-2000, -2000, label, {
+        fontSize: fontPx(this, 13),
+        padding: { x: 10, y: 5 },
+        align: 'center',
+        wordWrap: { width: 480 },
+      });
+      const h = t.height + 6;
+      t.destroy();
+      return h;
+    };
+    const rowHeights = items.map((item) => measureRowHeight(labelFor(item)));
+    const pack = (available: number): T[][] => {
+      const result: T[][] = [];
+      let current: T[] = [];
+      let used = 0;
+      items.forEach((item, i) => {
+        const h = rowHeights[i];
+        if (current.length > 0 && (current.length >= maxPerPage || used + h > available)) {
+          result.push(current);
+          current = [];
+          used = 0;
+        }
+        current.push(item);
+        used += h;
+      });
+      result.push(current); // always at least one page, even for a short/empty list
+      return result;
+    };
+    const withoutControls = pack(CANVAS_H - y - reservedTail);
+    const pages = withoutControls.length <= 1 ? withoutControls : pack(CANVAS_H - y - reservedTail - reservedControls);
+
+    const totalPages = pages.length;
     const clampedPage = Phaser.Math.Clamp(page, 0, totalPages - 1);
-    const pageItems = items.slice(clampedPage * perPage, clampedPage * perPage + perPage);
+    const pageItems = pages[clampedPage];
     pageItems.forEach((item) => {
       const btn = this.addDialogueButton(container, y, labelFor(item), () => onPick(item));
       if (isDim?.(item)) btn.setAlpha(0.5);
       y += btn.height + 6;
     });
     if (totalPages > 1) {
+      // Prev/Next and the "Page N/M" label share one row (rather than a
+      // button row followed by a separate label row below it) -- this
+      // alone reclaims a full row's height plus its trailing gap on every
+      // paginated list, real margin a two-row layout was spending on
+      // chrome rather than actual content, which matters most for a
+      // guardian whose avatar/intro text already leaves little slack
+      // before the canvas bottom at the largest text-size preset.
       const prev = this.addDialogueButtonAt(
         container,
-        CANVAS_W / 2 - 90,
+        CANVAS_W / 2 - 170,
         y,
         '<- Prev',
         () => {
           if (clampedPage > 0) onPageChange(clampedPage - 1);
         },
-        140
+        120
       );
       if (clampedPage === 0) prev.setAlpha(0.35);
       const next = this.addDialogueButtonAt(
         container,
-        CANVAS_W / 2 + 90,
+        CANVAS_W / 2 + 170,
         y,
         'Next ->',
         () => {
           if (clampedPage < totalPages - 1) onPageChange(clampedPage + 1);
         },
-        140
+        120
       );
       if (clampedPage === totalPages - 1) next.setAlpha(0.35);
-      y += Math.max(prev.height, next.height) + 6;
+      const controlsRowH = Math.max(prev.height, next.height);
       const pageLabel = this.add
         .text(CANVAS_W / 2, y, `Page ${clampedPage + 1}/${totalPages}`, { fontSize: fontPx(this, 11), color: '#8fa0c9' })
         .setOrigin(0.5, 0);
+      pageLabel.setY(y + (controlsRowH - pageLabel.height) / 2);
       container.add(pageLabel);
-      y += pageLabel.height + 4;
+      y += controlsRowH + 6;
     }
     return y;
   }

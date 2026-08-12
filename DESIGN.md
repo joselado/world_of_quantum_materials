@@ -605,7 +605,19 @@ state can mark her met before the player has actually reached her.
   a page -- routine in Superposition Mode (see §7), which pre-seeds every built world
   as visited, making Bloch's hub able to jump to any of them immediately; walking
   through a world door (below) is the other way to move between worlds, one step at
-  a time rather than a jump to an arbitrary destination
+  a time rather than a jump to an arbitrary destination. Each individual destination is
+  its own one-time `BLOCH_DESTINATION_COST` (15) qumatessence unlock (registry/save
+  `blochUnlockedWorlds`, a list of world numbers already paid for) -- traveling to a
+  world for the first time costs qumatessence and unlocks that destination in the same
+  click, every later trip there is free, the same one-time-unlock-then-free-forever
+  shape Bohr's/Franklin's passives and Skłodowska-Curie's Ultimate-class unlocks already
+  use, just keyed per destination rather than per passive/class since teleporting isn't
+  a purchasable move or passive of its own. Priced lowest of the four repeatable-action
+  guardians (Bloch/Dresselhaus/Anderson/Majorana) since a single destination is pure
+  convenience -- it grants no new battle power, only skips walking to one
+  already-reachable world. Superposition Mode bypasses this per-destination cost
+  entirely (`isSuperpositionMode()`, not the persisted list), since that mode relies on
+  Bloch's hub being the *sole* way to move between worlds with no separate warp panel
 - **Dresselhaus** → world 3 middle → lets the player transmute into any *single* crystal
   they've already defeated (`OverworldScene.showDresselhausPanel`/`transmuteInto`) -- fitting,
   since the Dresselhaus effect (bulk-inversion-asymmetry spin-orbit coupling) is the real
@@ -617,7 +629,15 @@ state can mark her met before the player has actually reached her.
   every one of which lives only as a World 10 wild, never an earlier one) -- becoming a
   fused state is specifically Majorana's mechanic below, not this one. In Superposition Mode the candidate
   list is every non-hybrid crystal in the game (`data/materials.ts`'s `allCrystals()`, filtered) rather
-  than only ones actually defeated
+  than only ones actually defeated. Each individual crystal is its own one-time
+  `DRESSELHAUS_TRANSMUTE_COST` (25) qumatessence unlock (registry/save
+  `dresselhausUnlockedCrystals`, a list of crystal names already paid for) -- becoming a
+  given crystal for the first time costs qumatessence and unlocks it in the same click,
+  every later transmutation back into it is free, the same shape Bloch's per-destination
+  gate above uses -- priced above Bloch's since committing to become one specific
+  crystal (stats, HP cap, and moveset all at once) is a bigger capability swing per
+  option than pure travel convenience. Superposition Mode bypasses this per-crystal cost
+  entirely the same way Bloch's does
 - **Laughlin** → world 4 middle → sells two quiz-gated moves (`skyfallBeam`,
   `groundEruption` -- `OverworldScene.showLaughlinPanel`, `data/materials.ts`'s
   `ANALYTIC_MOVE_IDS`, a hardcoded pair of move ids rather than a shared class --
@@ -715,7 +735,23 @@ state can mark her met before the player has actually reached her.
   regardless. In Superposition Mode the ingredient pool is every crystal in
   the game, unfiltered (unlike Dresselhaus above) -- a hybrid's own defeated-material entry,
   if any, simply won't match any `HYBRID_RECIPES` pairing as a further parent, so no extra
-  filtering is needed here
+  filtering is needed here. Each individual hybrid *result* is its own one-time
+  `MAJORANA_FUSE_COST` (60) qumatessence unlock (registry/save
+  `majoranaUnlockedResults`, a list of result names already paid for) -- keyed by the
+  fused result's own name rather than by parent pair, since no two different pairs in
+  `HYBRID_RECIPES` currently produce the same result, so "have I paid to become this
+  hybrid" is the same question regardless of which pair first reaches it. The cost only
+  shows up (and is only charged) at the second step of the pick, once a specific partner
+  -- and so a specific result -- is actually chosen; browsing which crystal to start
+  from at the first step costs nothing, the same "browsing is free, only committing
+  costs" shape Anderson's host pick uses below. Priced highest of the four
+  repeatable-action guardians (Bloch/Dresselhaus/Anderson/Majorana) -- above even
+  Noether's/Laughlin's/Kondo's ordinary `shopCost` top end (~55) -- since unlocking one
+  specific hybrid result is comparable in value to learning a whole new move, and
+  reaches only `HYBRID_RECIPES`' curated results, an additional content category rather
+  than a reshaping of an existing one, even though Majorana sits earlier in the world
+  progression than Anderson below. Superposition Mode bypasses this per-result cost
+  entirely the same way Bloch's/Dresselhaus's do
 - **Anderson** → world 6 middle → "dopes in" a crystal the player has defeated as an
   impurity, then teaches one specific move from that crystal's own moveset
   (`OverworldScene.showAndersonPanel`/`learnImpurityMove`) -- a two-step pick (host,
@@ -741,7 +777,19 @@ state can mark her met before the player has actually reached her.
   a host's moves by comparing against what's currently *usable* (`getBattleMoves`), not
   against raw `unlockedMoves`, so a host whose classes the player's current form/impurity
   can't already reach still offers something to pick even though its move ids were
-  already technically known
+  already technically known. Each individual host is its own one-time
+  `ANDERSON_DOPE_COST` (35) qumatessence unlock (registry/save `andersonUnlockedHosts`,
+  a list of host crystal names already paid for) -- keyed by host rather than by which
+  move was learned, so once a host is unlocked, doping into it and learning *any* of its
+  moves (now or later) is free. The cost shows up (and is only charged) at the second
+  step, picking which move to learn -- that's the point doping into this host actually
+  commits (`learnImpurityMove`); the first step (browsing which host to look at) stays a
+  free preview, so picking a host to browse its moveset and backing out without learning
+  anything still costs nothing, mirroring how it already left the previously doped-in
+  impurity untouched. Priced between Dresselhaus's and Majorana's: a persistent extra
+  move-class channel is a smaller swing than fusing into a whole new content category,
+  but Anderson also sits later in the world 1-10 progression than either. Superposition
+  Mode bypasses this per-host cost entirely the same way the other three do
 - **Bohr** → world 7 middle → teaches three passive abilities
   (`data/passives.ts`'s `BOHR_PASSIVE_IDS`, `OverworldScene.showBohrPanel`) --
   an always-on, whole-battle modifier rather than a move picked from the battle menu
@@ -1009,10 +1057,14 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   teleport hub (§5) can jump to any of them immediately on top of the world
   doors (§5) every world already has -- there is no separate "Warp" UI --
   the Hub's Materialdex (§4) is pre-filled with every real compound in the
-  game so it reads as fully discovered, and Dresselhaus/Majorana/Anderson's
+  game so it reads as fully discovered, Dresselhaus/Majorana/Anderson's
   panels (§5) offer every crystal in the game as a candidate rather than only
   ones actually defeated (Dresselhaus's list still excludes hybrid-recipe
-  results, same as normal play).
+  results, same as normal play), and Bloch's/Dresselhaus's/Anderson's/
+  Majorana's per-option unlock costs (§5) are bypassed outright rather than
+  paid -- each panel checks `isSuperpositionMode()` directly instead of the
+  persisted unlocked-option list, so toggling the mode back off doesn't
+  leave any option permanently free on the save.
   Toggled once at the title screen rather than mid-run, so it's a deliberate
   choice made before starting, not something stumbled into during play.
 

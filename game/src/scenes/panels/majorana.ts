@@ -3,7 +3,8 @@ import { makeMajoranaAvatar } from '../../art/majorana';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
 import { fontPx } from '../../ui/text';
-import { allCrystals, findMaterialByName, combineMaterials, hybridRecipeResult } from '../../data/materials';
+import { allCrystals, findMaterialByName, combineMaterials, hybridRecipeResult, MAJORANA_FUSE_COST } from '../../data/materials';
+import { persistFromRegistry } from '../../data/save';
 import type { Material, MaterialType } from '../../data/types';
 
 // Majorana stands at world 5's middle tile (WORLD_GUARDIANS) and lets the
@@ -22,6 +23,22 @@ import type { Material, MaterialType } from '../../data/types';
 // "defeated" with every crystal in the game (allCrystals()) as the
 // ingredient pool, paginated (renderPagedButtons) at both steps since
 // that pool is far bigger than a normal defeat count.
+// Each individual hybrid *result* is its own one-time MAJORANA_FUSE_COST
+// qumatessence unlock (registry/save `majoranaUnlockedResults`, a list of
+// result names already paid for), not a single flat unlock for the whole
+// mechanic -- keyed by the fused result's own name (not the parent pair)
+// since HYBRID_RECIPES currently has no two different pairs producing the
+// same result, so "have I paid to become this hybrid" is the same question
+// regardless of which pair first reaches it. The cost only shows up at the
+// second step (picking a specific partner), since that's the point a
+// specific result is actually known and about to be committed to -- the
+// first step (picking which crystal to start from) stays a free browse,
+// same as ever, so backing out via "Never mind" after only choosing a
+// first crystal never costs anything. A not-yet-unlocked partner shows the
+// cost in its row label and dims if unaffordable; picking it is itself
+// both the purchase and the fuse, there's no separate "unlock, then fuse
+// later" step. Superposition Mode bypasses this per-result cost entirely
+// (`isSuperpositionMode()`, not the persisted list).
 export function showMajoranaPanel(scene: OverworldScene) {
   scene.dialogueActive = true;
 
@@ -68,6 +85,11 @@ export function showMajoranaPanel(scene: OverworldScene) {
   const isCombinable = (m: { name: string; type: MaterialType }) =>
     pool.some((other) => other.name !== m.name && hybridRecipeResult(m.name, other.name));
   const combinable = pool.filter(isCombinable).sort((a, b) => a.name.localeCompare(b.name));
+
+  // Set true only when the "Never mind"+Farewell combined row below
+  // renders, so the generic single-Farewell footer further down is skipped
+  // in that case rather than adding a second one.
+  let footerRendered = false;
   if (scene.majoranaSelection === null) {
     if (combinable.length < 2) {
       const text = scene.add
@@ -125,32 +147,58 @@ export function showMajoranaPanel(scene: OverworldScene) {
     const partners = pool
       .filter((m) => m.name !== first && hybridRecipeResult(first, m.name))
       .sort((a, b) => a.name.localeCompare(b.name));
+    const unlockedResults = (scene.game.registry.get('majoranaUnlockedResults') as string[]) ?? [];
+    const isUnlocked = (resultName: string) => superposition || unlockedResults.includes(resultName);
+    const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
     y = scene.renderPagedButtons(
       container,
       y,
       partners,
       scene.majoranaPage,
       4,
-      (m) => m.name,
-      (m) => createHybrid(scene, first, m.name),
+      (m) => {
+        const result = hybridRecipeResult(first, m.name)!;
+        return isUnlocked(result.name) ? m.name : `${m.name} (${MAJORANA_FUSE_COST} qumatessence)`;
+      },
+      (m) => createHybrid(scene, first, m.name, unlockedResults),
       (page) => {
         scene.majoranaPage = page;
         scene.dialogueContainer?.destroy(true);
         showMajoranaPanel(scene);
+      },
+      (m) => {
+        const result = hybridRecipeResult(first, m.name)!;
+        return !isUnlocked(result.name) && tokens < MAJORANA_FUSE_COST;
       }
     );
-    const cancelBtn = scene.addDialogueButton(container, y, 'Never mind', () => {
-      scene.majoranaSelection = null;
-      scene.majoranaPage = 0;
-      scene.dialogueContainer?.destroy(true);
-      showMajoranaPanel(scene);
-    });
-    y += cancelBtn.height + 6;
+    // Shares one row with Farewell (side by side, same convention the goal
+    // panel's own Farewell/Continue footer uses) rather than stacking two
+    // separate footer rows -- this step already carries the most chrome of
+    // any state in the panel (avatar, intro, "Combine X with..." label, the
+    // partner list itself), so reclaiming a full row's height here is what
+    // keeps it inside the canvas at the largest text-size preset.
+    const cancelBtn = scene.addDialogueButtonAt(
+      container,
+      CANVAS_W / 2 - 118,
+      y,
+      'Never mind',
+      () => {
+        scene.majoranaSelection = null;
+        scene.majoranaPage = 0;
+        scene.dialogueContainer?.destroy(true);
+        showMajoranaPanel(scene);
+      },
+      210
+    );
+    const farewellBtn = scene.addDialogueButtonAt(container, CANVAS_W / 2 + 118, y, 'Farewell', () => scene.closeDialogue(), 210);
+    y += Math.max(cancelBtn.height, farewellBtn.height) + 12;
+    footerRendered = true;
   }
-  y += 8;
-
-  const closeBtn = scene.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Farewell', () => scene.closeDialogue(), 300);
-  y += closeBtn.height + 12;
+  if (!footerRendered) {
+    y += 8;
+    const closeBtn = scene.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Farewell', () => scene.closeDialogue(), 300);
+    y += closeBtn.height + 12;
+  }
 
   const panelHeight = y - top;
   const panel = scene.add
@@ -169,7 +217,12 @@ function becomeHybrid(scene: OverworldScene, hybrid: Material) {
 // here always come from getDefeatedMaterials(), which only ever records
 // real wild crystals (never a rival, never an earlier hybrid), so this
 // should never actually miss; the early return is just defensive.
-function createHybrid(scene: OverworldScene, nameA: string, nameB: string) {
+// `unlockedResults` is the registry snapshot read by the panel just before
+// this was called -- if the result isn't unlocked yet, this is also where
+// the MAJORANA_FUSE_COST purchase actually happens (Superposition Mode
+// never reaches the paid branch, since the panel's own isUnlocked check
+// already treats every result as unlocked there).
+function createHybrid(scene: OverworldScene, nameA: string, nameB: string, unlockedResults: string[]) {
   scene.majoranaSelection = null;
   const a = findMaterialByName(nameA);
   const b = findMaterialByName(nameB);
@@ -179,5 +232,14 @@ function createHybrid(scene: OverworldScene, nameA: string, nameB: string) {
     return;
   }
 
-  becomeHybrid(scene, combineMaterials(a, b));
+  const hybrid = combineMaterials(a, b);
+  if (!scene.isSuperpositionMode() && !unlockedResults.includes(hybrid.name)) {
+    if ((scene.game.registry.get('qumatessence') as number) < MAJORANA_FUSE_COST) return;
+    scene.qumatessence -= MAJORANA_FUSE_COST;
+    scene.game.registry.set('qumatessence', scene.qumatessence);
+    scene.tokenText.setText(`Qumatessence: ${scene.qumatessence}`);
+    scene.game.registry.set('majoranaUnlockedResults', [...unlockedResults, hybrid.name]);
+    persistFromRegistry(scene.game.registry);
+  }
+  becomeHybrid(scene, hybrid);
 }

@@ -58,6 +58,10 @@ export class TitleScene extends Phaser.Scene {
     registry.set('ultimateClassesUnlocked', save.ultimateClassesUnlocked);
     registry.set('andersonDopant', save.andersonDopant);
     registry.set('musicStyle', save.musicStyle);
+    registry.set('blochUnlockedWorlds', save.blochUnlockedWorlds);
+    registry.set('dresselhausUnlockedCrystals', save.dresselhausUnlockedCrystals);
+    registry.set('andersonUnlockedHosts', save.andersonUnlockedHosts);
+    registry.set('majoranaUnlockedResults', save.majoranaUnlockedResults);
 
     music.setStyle(save.musicStyle);
     music.play('overworld:1');
