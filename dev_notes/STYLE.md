@@ -796,7 +796,12 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   rival already renders as standing at the goal tile (`spawnBossSprite`) and as the battle
   opponent (`scenes/BattleScene.ts`'s own `BOSS_CRYSTAL_SIZE`) -- not the plain faceted
   `makeCrystal` an ordinary wild encounter uses, so the rival never reverts to looking like an
-  ordinary crystal just because this dialogue is open. Losing doesn't set anything back except
+  ordinary crystal just because this dialogue is open. The crystal's vertical position is set
+  with enough headroom below the panel's top edge for `makeBossCrystal`'s translucent danger
+  aura (which pulses out to `size*1.4*1.18`, well past the bare `BOSS_CRYSTAL_SIZE` footprint)
+  to stay inside the panel through its full pulse, the same "decorative aura outgrows the
+  crystal's own footprint" fact `BattleScene`'s boss placement below already accounts for.
+  Losing doesn't set anything back except
   the token stake (see Stakes in DESIGN.md §4): the goal panel simply reopens and "Face
   the Rival ->" is still there to retry.
 

@@ -1906,8 +1906,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // so the Guardians pause-menu list (showGuardiansPanel) grows as the player
   // reaches each world's middle tile -- regardless of which panel that
   // guardian actually shows (shop, teleport hub, transmutation, or lore).
-  // `open` is only set on Noether/Bloch/Dresselhaus, whose panels are bespoke;
-  // every other guardian falls through to the shared lore panel.
+  // Every guardian in WORLD_GUARDIANS sets `open`, pointing at that
+  // guardian's own panel.
   private openGuardian(guardian: GuardianDef) {
     const met = (this.game.registry.get('metGuardians') as string[]) ?? [];
     if (!met.includes(guardian.id)) {
@@ -2089,7 +2089,12 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // tile (and BattleScene renders as the opponent once the fight starts) --
     // the rival shouldn't revert to an ordinary plain-crystal look just
     // because this "Face the Rival" dialogue is up.
-    const crystalY = y + BOSS_CRYSTAL_SIZE + 10;
+    // makeBossCrystal's translucent danger aura (art/boss.ts:28-33) draws at
+    // radius size*1.4 and tweens up to scale 1.18 (art/boss.ts:35-44), so its
+    // peak reaches size*1.4*1.18 out from the crystal's center -- give it
+    // enough headroom below `top` (plus a margin) that the peak stays inside
+    // the panel instead of poking through its top border.
+    const crystalY = y + BOSS_CRYSTAL_SIZE * 1.4 * 1.18 + 20;
     const crystal = makeBossCrystal(this, BOSS_CRYSTAL_SIZE, rival.color, rival.variant);
     crystal.setPosition(CANVAS_W / 2, crystalY);
     container.add(crystal);
