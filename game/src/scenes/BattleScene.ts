@@ -1113,8 +1113,9 @@ export class BattleScene extends Phaser.Scene {
     outcrop2.setPosition(95, 258);
     outcrop2.setAlpha(0.75);
 
+    // Sits just inside the move menu's left edge (MENU_X = 670).
     const outcrop3 = makeCrystal(this, 13, shade(biome.hillColor, 25), 'shard');
-    outcrop3.setPosition(600, 252);
+    outcrop3.setPosition(630, 252);
     outcrop3.setAlpha(0.8);
   }
 
@@ -1124,10 +1125,12 @@ export class BattleScene extends Phaser.Scene {
   // caverns, ...) rather than a hardcoded grass green everywhere.
   private drawGroundDetail(biome: Biome) {
     const g = this.add.graphics();
+    // Spread across the field's visible width -- up to ~645, just inside
+    // the move menu's left edge (MENU_X = 670).
     const spots: [number, number][] = [
-      [40, 300], [590, 290], [520, 340], [110, 380], [30, 420],
-      [610, 400], [340, 300], [260, 440], [430, 420], [500, 460],
-      [150, 300], [560, 220],
+      [36, 300], [624, 290], [549, 340], [111, 380], [25, 420],
+      [645, 400], [356, 300], [271, 440], [453, 420], [527, 460],
+      [153, 300], [592, 220],
     ];
     spots.forEach(([x, y], i) => {
       const tuftColor = shade(biome.path, -10 - (y - HORIZON_Y) * 0.15);
