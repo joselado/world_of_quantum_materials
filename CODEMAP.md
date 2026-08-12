@@ -58,7 +58,7 @@ game/src/
     kondo.ts                     makeKondoAvatar()
     franklin.ts                   makeFranklinAvatar() -- diffraction/lattice-defect motif, world 9
     sklodowskaCurie.ts            makeSklodowskaCurieAvatar(), world 10
-    boss.ts                      makeBossCrystal() -- gigantic multi-shard boss avatar at a world's goal
+    boss.ts                      makeBossCrystal() -- gigantic multi-shard golem boss avatar at a world's goal
     tokens.ts                   makeToken() -- qumatessence pickup sprite
     attackEffects.ts            playAttackEffect() -- bolt/ring/burst/beam/eruption/meteor/nova
                                   particle effect; beam/eruption are ANALYTIC_SHAPES' per-move-id
@@ -271,7 +271,7 @@ since `materials.ts` pulls in Phaser at module scope) and regenerates the
   `shapeOverride` param. A future class wanting the same per-move variety should reuse this
   pattern rather than inventing a second override mechanism.
 - **Discovery vs. defeat tracking.** Two separate registry/save lists, both excluding rivals
-  (not real compounds): `discoveredMaterials` (`OverworldScene.recordDiscovery`, written on
+  (gate encounters, not collectible materials): `discoveredMaterials` (`OverworldScene.recordDiscovery`, written on
   first wild *encounter*, feeds the Hub's Materialdex) and `defeatedMaterials`
   (`BattleScene.endBattle`, written on an ordinary wild *win*, feeds Dresselhaus's transmutation
   panel). Don't conflate them -- a material can be encountered without being defeated.
@@ -286,7 +286,8 @@ types the player goes through this rather than `PLAYER_MATERIAL` directly: `Batt
 both through the shared `OverworldScene.applyPlayerForm(material)` (sets `playerForm`, clamps
 HP down to the new form's `maxHp` if lower, persists, redraws the crystal -- never a full
 heal): Dresselhaus's `transmuteInto(name)` looks the target up by name across `WORLD_CRYSTALS` via
-`findMaterialByName` (never `WORLD_RIVALS` -- rivals aren't real compounds). Majorana's
+`findMaterialByName` (never `WORLD_RIVALS` -- rivals are gate encounters, not a form to
+transmute into). Majorana's
 `becomeHybrid(material)` is called with an already-resolved `Material` object rather than a
 name -- freshly built each time by `combineMaterials`, which additionally attaches
 `hybridParents` for the fused-visual render; there's no memory of earlier fusions to pull a
@@ -546,8 +547,8 @@ and positioned at `BOSS_OPPONENT_POS` (both module constants) instead of the wil
 directly, so bolts/rings/bursts still travel to the crystal's real (possibly shifted) position.
 
 **The goal tile belongs to that world's boss, not a guardian.** `OverworldScene.spawnBossSprite`
-spawns `art/boss.ts`'s `makeBossCrystal` (a fused multi-shard cluster + pulsing aura + orbiting
-embers, `BOSS_CRYSTAL_SIZE = 70`) at `goalTile` for every built world's `getRival()` (via
+spawns `art/boss.ts`'s `makeBossCrystal` (a golem silhouette fused from multiple shards + pulsing
+aura + orbiting embers, `BOSS_CRYSTAL_SIZE = 70`) at `goalTile` for every built world's `getRival()` (via
 `OverworldScene.getWorldRival()`, see below), for as long as that world's rival is undefeated --
 purely a visual landmark via the same `WorldSprite` machinery, no click handler of its own.
 `openGoalGuardianPanel()`'s branch on `guardian?.tile === 'goal'` is a permanent no-op (no entry
@@ -572,10 +573,13 @@ lived in, now offering "Continue to World N+1" via the existing `renderShopFoote
 
 **World 9's rival has no fixed type, unlike every other world's.** `data/materials.ts`'s
 `getRival(world, rival9Type?)` takes an optional second param that only world 9 reads --
-`getRival(9, t)` builds `rivalImpurityResonance(t)`, a `Material` named "Rival Impurity
-Resonance" whose `type` is whatever's passed in; every other world ignores the param and
-returns its fixed `WORLD_RIVALS[world]` entry. `RIVAL_9_TYPES` (every non-adaptive
-`MaterialType`) and `rollRival9Type()` (a uniform pick from it) live in `data/materials.ts`
+`getRival(9, t)` builds `rivalImpurityResonance(t)`, a `Material` whose `type` is whatever's
+passed in and whose name is looked up per-type from `RIVAL_9_NAMES` (a polycrystalline-golem
+name for each of `RIVAL_9_TYPES`' 7 members, same "real compound's polycrystalline form"
+naming `WORLD_RIVALS[1-8]` uses); every other world ignores the param and returns its fixed
+`WORLD_RIVALS[world]` entry. `RIVAL_9_TYPES` (7 of the 13 `MaterialType` values -- metal,
+quantumSpinHall, superconductor, classicalMagnet, quantumSpinLiquid, multiferroic,
+chernInsulator) and `rollRival9Type()` (a uniform pick from it) live in `data/materials.ts`
 too. `OverworldScene.resolveRival9Type()` is the one caller that actually rolls: it reads
 registry/save `rival9Type`, rolling and caching a fresh one via `rollRival9Type()` +
 `persistFromRegistry` the first time it's ever called for that save, so every later call
@@ -611,9 +615,11 @@ a biome entry in `art/biomes.ts`) together if a future world is ever added past 
 (distinct from `rivalDefeated` -- you can visit a world without beating its rival), written
 once per world the first time that world's scene is created.
 
-`WORLD_NAMES` (and `WORLD_RIVALS`' own names) are meant to be readable as "which course topic
-is this," not generic RPG terrain/monster names -- check both tables together when renaming a
-world, since a mismatched rival name is easy to miss if only `WORLD_NAMES` is updated.
+`WORLD_NAMES` is meant to be readable as "which course topic is this," not a generic RPG
+terrain name. `WORLD_RIVALS`' own names (and, per-type, `RIVAL_9_NAMES`) instead follow
+"Polycrystalline `<real compound>` Golem" -- the world's own topic anchors which compound
+(see DESIGN.md §2) -- so check both tables together when renaming a world, since a mismatched
+rival name is easy to miss if only `WORLD_NAMES` is updated.
 
 ## Guardians
 

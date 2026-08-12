@@ -116,11 +116,14 @@ for what each one does.
 </table>
 
 **Face the boss.** Keep going past the guardian and you'll see it looming
-before you even reach it: a gigantic, multi-shard boss crystal wrapped in
-its own pulsing aura, standing at the far end of every world -- and it keeps
-that same imposing look once the fight starts. Beating it opens a glowing
-doorway right where the boss stood, letting you walk straight on to the
-next world.
+before you even reach it: a gigantic golem, built from many crystal shards
+fused into one mass and wrapped in its own pulsing aura, standing at the
+far end of every world -- and it keeps that same imposing look once the
+fight starts. Its name is always a real compound in *polycrystalline*
+form (many grains fused into one, the same idea the golem's own body
+literalizes) -- Polycrystalline Silicon Golem guards World 1, for
+instance. Beating it opens a glowing doorway right where the boss stood,
+letting you walk straight on to the next world.
 
 **Walk back anytime.** The near end of every world -- right where you first
 walked in -- has its own doorway too, leading back to the world before it

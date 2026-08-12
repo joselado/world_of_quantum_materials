@@ -19,7 +19,7 @@ export const MATERIAL_BLURBS: Record<string, string> = {
     "GaN is an ordinary doped semiconductor -- its transport is governed by a single-particle band picture, with no symmetry breaking or topological structure involved.",
   'Magnesium Oxide':
     'MgO is a simple ionic band insulator, the textbook baseline against which topological insulators (a gapped spectrum for a very different reason) are usually contrasted.',
-  'Rival Silicon':
+  'Polycrystalline Silicon Golem':
     "Silicon's electrons fill a conventional band structure right up to a gap -- an ordinary semiconductor, no protected states or broken symmetry needed to explain it.",
   // CrI3 itself is "just" a van der Waals ferromagnet, not multiferroic --
   // twisting two layers together is what's new, and even then this is a

@@ -38,9 +38,13 @@ One world per course topic (see the topic table in the repo's top-level `CLAUDE.
 | 9 | Excitations and defects | **Defect Wastes** — cracked/glitching world | Defect-bound states, impurity resonances, a couple of ferroelectrics with no course topic of their own, plus every non-hybrid material from worlds 1-8 | Repair/exploit N defects to stabilize a bridge |
 | 10 | ML for quantum materials | **The Adaptive Meta-World** — reflects the player's own team | Every hybrid-recipe crystal, and only hybrid-recipe crystals, plus the adaptive final boss | Final battle |
 
-World and rival names are meant to read as the lecture topic, not generic RPG terrain/monster
-names (check `WORLD_NAMES` and `WORLD_RIVALS` together when naming a world -- a mismatched
-rival name is easy to miss if only one table is updated).
+World names are meant to read as the lecture topic, not generic RPG terrain names (check
+`WORLD_NAMES` and `WORLD_RIVALS` together when naming a world -- a mismatched rival name is
+easy to miss if only one table is updated). Every rival 1-8's own name (and, per-type, World
+9's `RIVAL_9_NAMES`) instead follows "Polycrystalline `<real compound>` Golem" -- the world's
+own topic anchors which compound, and "Golem" earns its place by literalizing that compound's
+*polycrystalline* form as a humanoid mass of fused shards (`art/boss.ts`'s `makeBossCrystal`),
+not as a generic monster suffix.
 
 World 10 has no course notebook, which fits it being the finale rather than a taught
 topic: the boss is "a model of you," which is an honest metaphor for an ML surrogate.
@@ -60,12 +64,16 @@ world's "Continue to World N+1" action actually triggers. The rival fight is del
 once the goal is reached, so the player can shop/prep before ever facing the rival, rather
 than being stuck needing bought moves to beat a rival they can't reach the guardian to
 prepare for (`OverworldScene.tryAdvanceToNextWorld`). Every rival has a fixed main type
-except World 9's ("Rival Impurity Resonance," an impurity/defect-bound resonance that can
-form in any host crystal) -- its type is rolled at random every time the player reaches
-World 9 (`data/materials.ts`'s `RIVAL_9_TYPES`/`rollRival9Type`, cleared and re-rolled by
+except World 9's -- an impurity/defect-bound resonance that can form in any host
+crystal, so its type is rolled at random every time the player reaches World 9
+(`data/materials.ts`'s `RIVAL_9_TYPES`/`rollRival9Type`, cleared and re-rolled by
 `OverworldScene.create()` on every visit) and cached in the save (`rival9Type`,
 `OverworldScene.resolveRival9Type`) for the rest of that visit, so the goal-tile boss
-preview and the actual battle still agree on which type it turned out to be.
+preview and the actual battle still agree on which type it turned out to be. Its name
+still follows the same "real compound, polycrystalline form" convention every other
+rival's does, looked up per rolled type (`data/materials.ts`'s `RIVAL_9_NAMES`) rather
+than fixed, since which real compound the resonance is haunting depends on which type
+got rolled.
 
 **Every world uses this same reach-goal → beat-rival → continue gate, not a bespoke
 per-world puzzle.** §6 below sketches a more ambitious per-world boss mechanic (a
@@ -549,7 +557,8 @@ battle's opening line and its win/lose closing line are both flavor text from
 sentence tying the fight to the real physics of the material just fought
 (`game/src/data/materialdex.ts`'s `materialBlurb`, falling back to a generic blurb per
 `MaterialType` for a compound without its own entry yet). The first time a wild material is
-encountered (not per-battle, and not for rival crystals, which aren't real compounds), it's
+encountered (not per-battle, and not for rival crystals, which are gate encounters rather
+than collectible materials), it's
 recorded into the Phaser registry's `discoveredMaterials` list
 (`OverworldScene.recordDiscovery`); the Hub's Materialdex hotspot (§2) indexes every real
 compound in the game (`data/materials.ts`'s `allCrystals()`), not just discovered ones --
@@ -826,11 +835,14 @@ state can mark her met before the player has actually reached her.
   run under a second), fitting a move that's meant to read as the game's actual finale
   attack.
 
-**Boss avatars.** Every built world's rival/boss (`WORLD_RIVALS`/`getRival`), while
-still undefeated, stands visibly at the goal tile as a gigantic landmark
-(`OverworldScene.spawnBossSprite`, `art/boss.ts`'s `makeBossCrystal`) -- a fused mass
-of several shards around an oversized core, a pulsing danger aura, and orbiting
-embers, so it reads as unmistakably more dangerous than an ordinary wild crystal
+**Boss avatars.** Every built world's rival/boss (`WORLD_RIVALS`/`getRival`) is named
+for a real compound's *polycrystalline* form (e.g. World 1's Polycrystalline Silicon
+Golem) rather than a generic RPG monster name, and, while still undefeated, stands
+visibly at the goal tile as a gigantic landmark (`OverworldScene.spawnBossSprite`,
+`art/boss.ts`'s `makeBossCrystal`) that literalizes that name -- a golem silhouette
+(head, torso, arms, legs) built from several shards fused around an oversized torso
+core, a pulsing danger aura, and orbiting embers, so "many grains fused into one
+mass" reads at a glance, unmistakably more dangerous than an ordinary wild crystal
 from a distance, before the player ever opens the goal panel. It's a pure visual
 landmark: the fight itself is only reached through "Face the Rival" in the goal gate
 panel. The same `makeBossCrystal` look carries into the fight itself -- `BattleScene`

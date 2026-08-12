@@ -223,7 +223,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   glyph/count pick -- all baked into the inner `Graphics` object(s), not the container, and
   stable across reloads since it's re-derived from the same name every time, not re-rolled per
   render. Purely decorative, non-`Material` crystals (UI hotspot icons, background outcrops,
-  `boss.ts`'s own satellite shards, the title screen's `TYPE_LOOK`-only showcase) omit `seed`
+  `boss.ts`'s own limb shards, the title screen's `TYPE_LOOK`-only showcase) omit `seed`
   and keep their exact hand-tuned look.
 - **Hybrid materials** (Majorana's fuse mechanic, DESIGN.md §5) render as an actual mixture of
   both parents, not one flat blended color. `data/materials.ts`'s `combineMaterials` carries
@@ -555,17 +555,23 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   tile as a purely visual landmark, sized `BOSS_CRYSTAL_SIZE = 70` -- roughly 2x
   a wild crystal (`22`) and 2x the player's own on-map size (`34`) -- and
   rendered by `makeBossCrystal` rather than the shared `makeCrystal` every
-  wild/rival crystal otherwise uses: four smaller satellite shards (shaded
-  siblings of the core's color, via `shade`) fused around one oversized core, a
-  two-layer additive aura that slowly pulses scale/alpha, and six hot-orange
-  embers orbiting the whole mass (same orbiting-container-angle-tween trick as
-  a guardian avatar's orbiting motes, just warmer/redder to read as hostile
-  rather than benevolent). Name label in a bold, warning-toned pink-red
-  (`#ff8f8f`), distinct from any guardian's own label color. Reuses the
+  wild/rival crystal otherwise uses: a golem silhouette that literalizes each
+  rival's own name (rivals 1-8 and World 9's per-type lookup, `WORLD_RIVALS`/
+  `RIVAL_9_NAMES` in `data/materials.ts`, each name a real compound's
+  *polycrystalline* form -- "many grains fused into one mass") built from
+  seven smaller limb shards (shaded siblings of the core's
+  color, via `shade`) -- a head, two shoulder/arm shards, two smaller fist
+  shards past them, and two planted leg shards -- fused around one oversized
+  torso core, a two-layer additive aura that slowly pulses scale/alpha, and
+  six hot-orange embers tracing a tall ring around the whole body (same
+  orbiting-container-angle-tween trick as a guardian avatar's orbiting motes,
+  just warmer/redder to read as hostile rather than benevolent). Name label in
+  a bold, warning-toned pink-red (`#ff8f8f`), distinct from any guardian's own
+  label color. Reuses the
   `WorldSprite` projection/wander/bob machinery, so it scrolls and fades with
   distance like everything else standing on the map -- it doesn't add its own
   click handler, the fight is still only reached through the goal panel's
-  "Face the Rival" button. `makeBossCrystal`'s core/satellite color and variant
+  "Face the Rival" button. `makeBossCrystal`'s core/limb color and variant
   come from the boss `Material`'s own `color`/`variant` (`TYPE_LOOK[type]`), so
   World 9's boss -- the one rival with no fixed type, DESIGN.md §2 -- looks
   different depending on which `MaterialType` got rolled for that playthrough,

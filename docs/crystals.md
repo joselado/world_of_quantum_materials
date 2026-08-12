@@ -127,26 +127,29 @@ don't hand-edit the `<!-- GENERATED -->` blocks.*
 ## World rivals
 
 Each world's rival is the one encounter that actually gates progress --
-beating it is what opens the way to the next world. World 10's rival, The
-Adapted, is the one entity in the game with no real compound behind it: a
-"model of you," able to host every quasiparticle class, drawing from
-whatever moves you've collected by then. World 9's rival, Rival Impurity
-Resonance, has no fixed type either -- an impurity/defect-bound resonance
-can form in any host crystal, so its type is rolled at random every time you
-reach World 9 and stays fixed only for that visit, which is why it's absent
-from the generated table below.
+beating it is what opens the way to the next world. Every rival except World
+10's is named for a real compound's *polycrystalline* form -- many crystal
+grains fused into one mass, which its avatar renders as an actual golem
+built from fused shards. World 10's rival, The Adapted, is the one entity in
+the game with no real compound behind it: a "model of you," able to host
+every quasiparticle class, drawing from whatever moves you've collected by
+then. World 9's rival has no fixed type either -- an impurity/defect-bound
+resonance can form in any host crystal, so its type (and, with it, which
+compound's name and golem it takes) is rolled at random every time you reach
+World 9 and stays fixed only for that visit, which is why it's absent from
+the generated table below.
 
 <!-- GENERATED:RIVALS_TABLE START -->
 | World | Rival | Type | Max HP |
 | --- | --- | --- | --- |
-| 1 | Rival Silicon | `semiconductor` | 34 |
-| 2 | Rival Bloch Wave | `metal` | 38 |
-| 3 | Rival Edge State | `quantumSpinHall` | 42 |
-| 4 | Rival Landau Level | `chernInsulator` | 46 |
-| 5 | Rival Cooper Pair | `superconductor` | 50 |
-| 6 | Rival Domain Wall | `classicalMagnet` | 54 |
-| 7 | Rival Entangled Pair | `quantumSpinLiquid` | 58 |
-| 8 | Rival Spinon | `quantumSpinLiquid` | 62 |
+| 1 | Polycrystalline Silicon Golem | `semiconductor` | 34 |
+| 2 | Polycrystalline Graphene Golem | `metal` | 38 |
+| 3 | Polycrystalline Bismuth Telluride Golem | `quantumSpinHall` | 42 |
+| 4 | Polycrystalline Manganese Bismuth Telluride Golem | `chernInsulator` | 46 |
+| 5 | Polycrystalline YBCO Golem | `superconductor` | 50 |
+| 6 | Polycrystalline Iron Golem | `classicalMagnet` | 54 |
+| 7 | Polycrystalline Herbertsmithite Golem | `quantumSpinLiquid` | 58 |
+| 8 | Polycrystalline Ruthenium Trichloride Golem | `quantumSpinLiquid` | 62 |
 | 10 | The Adapted | `adaptive` | 80 |
 <!-- GENERATED:RIVALS_TABLE END -->
 
