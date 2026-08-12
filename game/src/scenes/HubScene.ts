@@ -390,36 +390,41 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // resumeWorld() below (keyed on whatever world `mapState` actually holds,
   // the Enter *key*'s own "go back to exactly where I was" affordance) --
   // see resumeWorld()'s own comment for why those two aren't the same thing.
-  // Superposition Mode never resumes in place through either of them.
+  // Superposition Mode resumes in place through both of them too, same as
+  // Story Mode -- it pre-seeds `visitedWorlds` with all of BUILT_WORLDS (see
+  // OverworldScene.create), so this reduces to just the `mapState` check.
   private canResumeWorld(world: number): boolean {
-    if (this.isSuperpositionMode()) return false;
     const visited = (this.game.registry.get('visitedWorlds') as number[]) ?? [];
     if (!visited.includes(world)) return false;
     const mapState = this.game.registry.get('mapState') as { world: number } | undefined;
     return mapState?.world === world;
   }
 
-  // Superposition Mode drops the player into World 1, same as Story Mode's
-  // door, rather than gating on the normal `highestUnlockedWorld()` progress
-  // check. Superposition mode pre-seeds `visitedWorlds` with all of
-  // BUILT_WORLDS (see OverworldScene.create), so once the player reaches
-  // Bloch's world (World 2, reachable via the walkable world doors) his
-  // teleport hub (OverworldScene.showBlochHub) already offers every world as
-  // a destination -- no separate warp UI needed.
+  // Superposition Mode has no fixed frontier world to fall back on the way
+  // Story Mode's `highestUnlockedWorld()` does (every world unlocks at once),
+  // so its own affordance is "back to wherever I was" (resumeWorld() below),
+  // falling back to a fresh World 1 only when there's genuinely nowhere to
+  // resume yet -- a fresh save that has never left the Lab in this mode.
   private doorLabel(): string {
-    if (this.isSuperpositionMode()) return 'Enter World 1';
+    if (this.isSuperpositionMode()) {
+      const world = this.resumeWorld();
+      return world !== undefined ? `Back to World ${world}` : 'Enter World 1';
+    }
     const world = this.highestUnlockedWorld();
     return this.canResumeWorld(world) ? `Back to World ${world}` : `Enter World ${world}`;
   }
 
-  // The door station's own affordance: always the player's frontier world
-  // (`highestUnlockedWorld()`), resuming in place there if it's genuinely
-  // in progress or generating a fresh map otherwise -- deliberately distinct
-  // from resumeWorld() below (see its comment); this is "take me to my
-  // furthest world," not "take me back to exactly where I was."
+  // The door station's own affordance: in Story Mode, always the player's
+  // frontier world (`highestUnlockedWorld()`), resuming in place there if
+  // it's genuinely in progress or generating a fresh map otherwise -- "take
+  // me to my furthest world." Superposition Mode has no such frontier, so it
+  // mirrors resumeWorld()'s own "take me back to exactly where I was"
+  // instead, only falling back to a fresh World 1 when there's nothing to
+  // resume.
   private enterWorld() {
     if (this.isSuperpositionMode()) {
-      this.scene.start('Overworld', { world: 1, regenerate: true });
+      const world = this.resumeWorld();
+      this.scene.start('Overworld', { world: world ?? 1, regenerate: world === undefined });
       return;
     }
     const world = this.highestUnlockedWorld();
