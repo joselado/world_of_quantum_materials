@@ -274,7 +274,7 @@ export class OverworldScene extends Phaser.Scene {
   private static readonly WORLD_GUARDIANS: Partial<Record<number, GuardianDef>> = {
     1: {
       id: 'noether',
-      name: 'Noether',
+      name: "Noether's Currents",
       labelColor: '#ffe066',
       strokeColor: 0xffe066,
       quote: 'Every symmetry hides a conservation law.',
@@ -284,7 +284,7 @@ export class OverworldScene extends Phaser.Scene {
     },
     2: {
       id: 'bloch',
-      name: 'Bloch',
+      name: "Bloch's States",
       labelColor: '#8fe8ff',
       strokeColor: 0x4adde0,
       quote: 'Every crystal is a superposition of the worlds it has touched.',
@@ -294,17 +294,17 @@ export class OverworldScene extends Phaser.Scene {
     },
     3: {
       id: 'dresselhaus',
-      name: 'Dresselhaus',
+      name: "Dresselhaus's Nanostructures",
       labelColor: '#6ee8ba',
       strokeColor: 0x4ad9a0,
-      quote: 'Every crystal you have defeated is a spin-orbit texture you now understand well enough to wear.',
+      quote: 'Build the same atoms into a different nanostructure and you get a different material entirely.',
       avatar: makeDresselhausAvatar,
       tile: 'middle',
       open: (s) => showDresselhausPanel(s),
     },
     4: {
       id: 'laughlin',
-      name: 'Laughlin',
+      name: "Laughlin's Analytics",
       labelColor: '#8fa0ff',
       strokeColor: 0x6a7fff,
       quote:
@@ -315,7 +315,7 @@ export class OverworldScene extends Phaser.Scene {
     },
     5: {
       id: 'majorana',
-      name: 'Majorana',
+      name: "Majorana's Fusion",
       labelColor: '#9fffb0',
       strokeColor: 0x4fd97a,
       quote: 'Split one fermion into two halves, each its own antiparticle, and see what a superconductor can hide at its edge.',
@@ -325,7 +325,7 @@ export class OverworldScene extends Phaser.Scene {
     },
     6: {
       id: 'anderson',
-      name: 'Anderson',
+      name: "Anderson's Impurities",
       labelColor: '#e8b27a',
       strokeColor: 0xc9884a,
       quote: 'Enough disorder and a wave stops spreading at all -- it localizes, trapped by the very randomness that surrounds it.',
@@ -335,7 +335,7 @@ export class OverworldScene extends Phaser.Scene {
     },
     7: {
       id: 'bohr',
-      name: 'Bohr',
+      name: "Bohr's Entanglements",
       labelColor: '#ffa64a',
       strokeColor: 0xffa64a,
       quote: 'Measure one half of an entangled pair and the other answers instantly -- not by any signal crossing the distance, but because the two were never separately real to begin with.',
@@ -345,7 +345,7 @@ export class OverworldScene extends Phaser.Scene {
     },
     8: {
       id: 'kondo',
-      name: 'Kondo',
+      name: "Kondo's Clouds",
       labelColor: '#ff8f6a',
       strokeColor: 0xe86a44,
       quote: 'A single stray spin, screened by a sea of conduction electrons until it all but disappears at low temperature.',
@@ -355,7 +355,7 @@ export class OverworldScene extends Phaser.Scene {
     },
     9: {
       id: 'franklin',
-      name: 'Franklin',
+      name: "Franklin's Scatterings",
       labelColor: '#c9a8e0',
       strokeColor: 0xa878c9,
       quote:
@@ -366,7 +366,7 @@ export class OverworldScene extends Phaser.Scene {
     },
     10: {
       id: 'sklodowskaCurie',
-      name: 'Skłodowska-Curie',
+      name: "Skłodowska-Curie's Experiments",
       labelColor: '#d9e86a',
       strokeColor: 0xc9d84a,
       quote:
@@ -2614,7 +2614,7 @@ export class OverworldScene extends Phaser.Scene {
     this.dialogueContainer?.destroy(true);
     this.dialogueActive = true;
 
-    const panelWidth = 340;
+    const panelWidth = 520;
     const top = 20;
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
@@ -2655,13 +2655,13 @@ export class OverworldScene extends Phaser.Scene {
             this.closeDialogue();
             this.openGuardian(guardian);
           },
-          260
+          440
         );
         y += btn.height + 6;
       });
     }
 
-    const closeBtn = this.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Close', () => this.closeDialogue(), 260);
+    const closeBtn = this.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Close', () => this.closeDialogue(), 440);
     y += closeBtn.height + 12;
 
     const panelHeight = y - top;

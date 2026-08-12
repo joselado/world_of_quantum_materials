@@ -8,8 +8,10 @@ import { findMaterialByName, allCrystals, isHybridMaterial } from '../../data/ma
 // Dresselhaus stands at world 3's middle tile like every other guardian (see
 // spawnGuardianSprite/WORLD_GUARDIANS), triggered on reaching that row
 // (maybeAutoOpenMiddleDialogue). Lets the player transmute into any
-// crystal they've defeated -- the physics rationale being that beating
-// something is understanding it well enough to become it for a while.
+// crystal they've defeated -- the physics rationale being that a material's
+// properties come from how its atoms are structured, not just which atoms
+// they are, so understanding a defeated crystal's structure well enough is
+// what lets the player rebuild themselves into it for a while.
 // Superposition Mode replaces "defeated" with every crystal in the game
 // (allCrystals()), paginated via renderPagedButtons since that pool is
 // far bigger than the normal handful of recent defeats.
@@ -39,8 +41,8 @@ export function showDresselhausPanel(scene: OverworldScene) {
       CANVAS_W / 2,
       y,
       superposition
-        ? '"I am Dresselhaus. In superposition every spin texture is within reach at once -- become anything that exists, not only what you have already beaten."'
-        : '"I am Dresselhaus. Every crystal you have defeated is a spin-orbit texture you now understand well enough to wear, for a while."',
+        ? '"I am Dresselhaus. In superposition every nanostructure is within reach at once -- become anything that exists, not only what you have already beaten."'
+        : '"I am Dresselhaus. Build the same atoms into a different nanostructure and you get a different material entirely -- new electrons, new phonons, no new chemistry required. Study a defeated crystal\'s structure closely enough, and you can rebuild yourself into it, for a while."',
       { fontSize: fontPx(scene, 12), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
     )
     .setOrigin(0.5, 0);

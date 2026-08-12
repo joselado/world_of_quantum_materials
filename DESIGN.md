@@ -608,16 +608,19 @@ state can mark her met before the player has actually reached her.
   a time rather than a jump to an arbitrary destination
 - **Dresselhaus** → world 3 middle → lets the player transmute into any *single* crystal
   they've already defeated (`OverworldScene.showDresselhausPanel`/`transmuteInto`) -- fitting,
-  since the Dresselhaus effect (bulk-inversion-asymmetry spin-orbit coupling) is the real
-  ingredient that locks spin to momentum in models like BHZ, the route an ordinary band
-  structure actually takes into a topological one, and beating a crystal means understanding
-  its own band structure well enough to wear it for a while. Transmuting changes the player's
-  look, HP cap, and which moves are currently usable (§3), without erasing any move already
-  learned. **Excludes every hybrid-recipe result** (`data/materials.ts`'s `isHybridMaterial`,
-  every one of which lives only as a World 10 wild, never an earlier one) -- becoming a
-  fused state is specifically Majorana's mechanic below, not this one. In Superposition Mode the candidate
-  list is every non-hybrid crystal in the game (`data/materials.ts`'s `allCrystals()`, filtered) rather
-  than only ones actually defeated
+  since her real physics is that a material's properties come from how its atoms are
+  *structured* (its nanostructure and phonon spectrum), not just which atoms they are, so
+  understanding a defeated crystal's structure well enough is what lets the player rebuild
+  themselves into it for a while. She still belongs at world 3 despite the topic there being
+  topological band structure: her own early work characterizing bismuth's band structure is
+  a real historical precursor to the Bi-Sb/Bi₂Se₃ family that became the first 3D topological
+  insulators. Transmuting changes the player's look, HP cap, and which moves are currently
+  usable (§3), without erasing any move already learned. **Excludes every hybrid-recipe
+  result** (`data/materials.ts`'s `isHybridMaterial`, every one of which lives only as a
+  World 10 wild, never an earlier one) -- becoming a fused state is specifically Majorana's
+  mechanic below, not this one. In Superposition Mode the candidate list is every non-hybrid
+  crystal in the game (`data/materials.ts`'s `allCrystals()`, filtered) rather than only ones
+  actually defeated
 - **Laughlin** → world 4 middle → sells two quiz-gated moves (`skyfallBeam`,
   `groundEruption` -- `OverworldScene.showLaughlinPanel`, `data/materials.ts`'s
   `ANALYTIC_MOVE_IDS`, a hardcoded pair of move ids rather than a shared class --

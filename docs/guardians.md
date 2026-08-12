@@ -41,8 +41,10 @@ visited, so backtracking never means re-walking a whole corridor.
 Lets you *transmute* into any single crystal you've already defeated,
 swapping your own look, stat spread, and which moves are currently usable
 without erasing anything you've learned -- switching back later restores the
-rest for free. Only offers standalone crystals, never a
-[hybrid](hybrids.md).
+rest for free. The idea: the same atoms built into a different nanostructure
+become a different material entirely, so understanding a defeated crystal's
+structure well enough lets you rebuild yourself into it, for a while. Only
+offers standalone crystals, never a [hybrid](hybrids.md).
 
 ## Laughlin
 
