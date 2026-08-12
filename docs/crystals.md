@@ -1,15 +1,11 @@
 # Crystals
 
-Every wild encounter is named after a real compound (or a credibly engineered
-one, for World 10's heterostructures) rather than a generic monster --
-each one's main type fixes its look and which quasiparticles it can host (see
-[Quasiparticles & moves](quasiparticles.md)). One world per course topic; a
-few compounds reappear across worlds when the same real material is relevant
-to more than one topic.
-
-*The tables below are generated from `game/src/data/materials.ts` -- run
-`npm run docs` in `game/` after changing `WORLD_CRYSTALS`/`WORLD_RIVALS`,
-don't hand-edit the `<!-- GENERATED -->` blocks.*
+Every wild encounter is named after a real compound — or, for World 10's
+heterostructures, a credibly engineered one — rather than a generic
+monster. A crystal's type fixes its look and which quasiparticles it can
+host (see [Quasiparticles & moves](quasiparticles.md)). Each world draws
+from its own course topic, though a few compounds show up in more than one
+world when the same real material is relevant to both.
 
 <!-- GENERATED:WORLDS START -->
 ### World 1 -- Second quantization, mean-field, symmetry breaking
@@ -126,18 +122,21 @@ don't hand-edit the `<!-- GENERATED -->` blocks.*
 
 ## World rivals
 
-Each world's rival is the one encounter that actually gates progress --
-beating it is what opens the way to the next world. Every rival except World
-10's is named for a real compound's *polycrystalline* form -- many crystal
-grains fused into one mass, which its avatar renders as an actual golem
-built from fused shards. World 10's rival, The Adapted, is the one entity in
-the game with no real compound behind it: a "model of you," able to host
-every quasiparticle class, drawing from whatever moves you've collected by
-then. World 9's rival has no fixed type either -- an impurity/defect-bound
-resonance can form in any host crystal, so its type (and, with it, which
-compound's name and golem it takes) is rolled at random every time you reach
-World 9 and stays fixed only for that visit, which is why it's absent from
-the generated table below.
+Each world's rival is the one encounter that actually gates progress — beat
+it, and the way to the next world opens.
+
+Every rival except World 10's is named for a real compound's
+*polycrystalline* form: many crystal grains fused into one mass, rendered as
+an actual golem built from fused shards. World 10's rival, The Adapted, is
+the one entity with no real compound behind it — a "model of you," able to
+host every quasiparticle class and drawing from whatever moves you've
+collected by then.
+
+World 9's rival has no fixed type either. An impurity/defect-bound resonance
+can form in any host crystal, so its type — and with it, which compound's
+name and golem it takes — is rolled at random every time you reach World 9,
+and stays fixed only for that visit. That's why it's missing from the table
+below.
 
 <!-- GENERATED:RIVALS_TABLE START -->
 | World | Rival | Type | Max HP |
@@ -153,6 +152,6 @@ the generated table below.
 | 10 | The Adapted | `adaptive` | 80 |
 <!-- GENERATED:RIVALS_TABLE END -->
 
-See [Hybrids](hybrids.md) for the fused/doped materials that sit alongside
-these, and [Guardians](guardians.md) for how Dresselhaus, Majorana, and
-Anderson each let you borrow another crystal's physics.
+See [Hybrids](hybrids.md) for the fused materials that sit alongside these,
+and [Guardians](guardians.md) for how Dresselhaus, Majorana, and Anderson
+each let you borrow another crystal's physics.

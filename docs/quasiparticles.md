@@ -1,15 +1,11 @@
 # Quasiparticles & moves
 
-Every move in the game is named after a real quasiparticle or excitation --
-never an abstract "attack type." A crystal can only ever learn the moves its
-own physics actually supports: a plain band insulator has no magnetic order,
-so it never gets a magnon move, and so on. Move power climbs with how
-unconventional the underlying physics is, from an ordinary lattice vibration
-up to a topological or non-Abelian excitation.
-
-*The tables below are generated from `game/src/data/materials.ts` -- run
-`npm run docs` in `game/` after changing move/type data, don't hand-edit the
-`<!-- GENERATED -->` blocks.*
+Every move is named after a real quasiparticle or excitation, never a
+generic "attack type." A crystal can only ever learn moves its own physics
+actually supports — a plain band insulator has no magnetic order, so it
+never gets a magnon move. Move power climbs with how exotic the underlying
+physics is: an ordinary lattice vibration sits at the bottom, a topological
+or non-Abelian excitation at the top.
 
 ## Ordinary moves
 
@@ -36,9 +32,10 @@ up to a topological or non-Abelian excitation.
 
 ## Which crystal types can host which quasiparticles
 
-This is the game's one type-interaction rule: if a defender's own type can't
-host the attacking move's quasiparticle class at all, the hit lands at
-**double damage**. No separate strong/weak chart stacked on top of it.
+This is the game's only type-interaction rule: if the defender's own type
+can't host the attacking move's quasiparticle class at all, the hit lands at
+**double damage**. That's it — no separate strong/weak chart stacked on top
+of it.
 
 <!-- GENERATED:COMPATIBILITY_TABLE START -->
 | Crystal type | Quasiparticle classes it can host |
@@ -61,40 +58,45 @@ host the attacking move's quasiparticle class at all, the hit lands at
 
 ## Laughlin's Analytic moves
 
-Laughlin (World 4) sells a beam move and an eruption move, not listed in the
-table above since they're quiz-gated separately: using either one asks a
-physics-equation question first, and answering right doubles the hit while
-answering wrong halves it. Laughlin's shop also lets you tune each move to any
-quasiparticle class your current form can host, the same choice an ordinary
-move's fixed class already makes for you -- each move's name always reads
-"<quasiparticle> Beam"/"<quasiparticle> Eruption," defaulting to Phonon
-Beam/Phonon Eruption until tuned, so they're always usable. See
-[Guardians](guardians.md#laughlin) for how the shop and the tuning picker work.
+Laughlin (World 4) sells two moves that aren't in the table above, since
+they're quiz-gated separately: a beam and an eruption. Using either one asks
+a physics-equation question first — answer right and it hits for double
+damage, answer wrong and it's halved.
+
+Laughlin's shop also lets you tune each move to any quasiparticle class your
+*current* form can host, the same choice an ordinary move's fixed class
+already makes for you. Each move's name always reads "<quasiparticle>
+Beam"/"<quasiparticle> Eruption," defaulting to Phonon Beam/Phonon Eruption
+until tuned, so they're always usable. See
+[Guardians](guardians.md#laughlins-analytics) for how the shop and tuning
+picker work.
 
 ## Skłodowska-Curie's Ultimate moves
 
-Skłodowska-Curie (World 10) sells a meteor move and a nova move, also not
-listed in the table above -- each far more powerful than any ordinary move
-(power 100, ten times an Analytic move's), and gated much more steeply:
-landing one takes three physics questions answered correctly in a row, drawn
-from a broad pool spanning the whole course rather than one world's own
-topic. Missing even one question makes the move whiff for zero damage,
-though the turn is still spent. Like Laughlin's Analytic moves, each one can
-be tuned to any quasiparticle class your current form can host and always
-reads "<quasiparticle> Meteor"/"<quasiparticle> Nova" -- but tuning isn't a
-flat purchase here: each quasiparticle class costs 1000 qumatessence to unlock
-per move, the first time it's picked, after which retuning back to it is
-free forever. See [Guardians](guardians.md#skłodowska-curie) for how the
-shop and the per-class unlock pricing work.
+Skłodowska-Curie (World 10) sells two more moves outside the table above: a
+meteor and a nova. Each is far more powerful than any ordinary move — power
+100, ten times an Analytic move's — and gated to match: landing one takes
+three physics questions in a row, all correct, drawn from a broad pool
+spanning the whole course rather than one world's topic. Miss even one
+question and the move whiffs for zero damage, though the turn is still
+spent.
+
+Like Laughlin's Analytic moves, each one can be tuned to any quasiparticle
+class your *current* form can host, and always reads "<quasiparticle>
+Meteor"/"<quasiparticle> Nova." Tuning isn't a flat purchase here, though:
+each quasiparticle class costs 1000 qumatessence to unlock per move, the
+first time you pick it — after that, retuning back to it is free forever.
+See [Guardians](guardians.md#skłodowska-curies-experiments) for how the shop
+and per-class pricing work.
 
 ## Kondo's self-buffs
 
-Sits outside the ordinary quasiparticle roster and the table above entirely --
-Kondo's three moves are self-buffs, not attacks: they deal no damage and never
-trigger the quasiparticle-mismatch rule, so there's no compatibility list to
-check. Casting one buffs the caster's own side for 3 turns instead of hitting
-the opponent (reduce incoming damage, a chance to dodge a hit outright, or
-heal over time); only one of the three is ever active at a time. See
-[Guardians](guardians.md#kondo) for details.
+Kondo's three moves sit outside the roster above entirely: they're
+self-buffs, not attacks. They deal no damage and never trigger the
+quasiparticle-mismatch rule, so there's no compatibility list to check.
+Casting one buffs you for 3 turns instead of hitting the opponent — reduced
+incoming damage, a chance to dodge outright, or healing over time — and only
+one can be active at a time. See [Guardians](guardians.md#kondos-clouds) for
+details.
 
 See [Crystals](crystals.md) for which crystal types appear in which world.
