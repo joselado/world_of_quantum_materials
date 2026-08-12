@@ -810,6 +810,57 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // becoming special only once thinned.
     crystal('HgTe', 'metal', 22, ['tunnelStrike', 'thermalFluctuation'], 4),
     crystal('CdTe', 'semiconductor', 22, ['tunnelStrike', 'thermalFluctuation'], 5),
+    // Ordinary elemental metals -- partially filled bands, single-particle
+    // conduction, no symmetry breaking or topological structure. Gold and
+    // Copper join Silver above as genuinely plasmonic (Plasmon Pulse);
+    // Magnesium and Zinc are the two elemental UV-plasmonic metals (their
+    // plasma frequency reaches into the UV, unlike the noble metals' visible
+    // range); Platinum, Tungsten, and Titanium are ordinary d-band
+    // conductors whose own interband transitions damp a plasmon response, so
+    // they carry Electron Pulse instead.
+    crystal('Gold', 'metal', 22, ['plasmonPulse', 'thermalFluctuation'], 2, undefined, 'Au'),
+    crystal('Platinum', 'metal', 25, ['tunnelStrike', 'thermalFluctuation'], 3, undefined, 'Pt'),
+    crystal('Copper', 'metal', 23, ['plasmonPulse', 'thermalFluctuation'], 5, undefined, 'Cu'),
+    crystal('Magnesium', 'metal', 20, ['plasmonPulse', 'thermalFluctuation'], 6, undefined, 'Mg'),
+    // Highest melting point of any elemental metal -- the standout of this
+    // batch, HP set above this world's usual band to reflect it.
+    crystal('Tungsten', 'metal', 27, ['tunnelStrike', 'thermalFluctuation'], 7, undefined, 'W'),
+    crystal('Titanium', 'metal', 24, ['tunnelStrike', 'thermalFluctuation'], 8, undefined, 'Ti'),
+    crystal('Zinc', 'metal', 21, ['plasmonPulse', 'thermalFluctuation'], 9, undefined, 'Zn'),
+    // Ordinary wide-gap ionic/covalent insulators -- same Phonon
+    // Beam/Polaron Drag moveset as Magnesium Oxide/Diamond/Monolayer Boron
+    // Nitride above, gaps too wide for any realistic doping to cross.
+    // Sodium Chloride is session1's own named conventional-insulator
+    // example (alongside MgO and boron nitride).
+    crystal('Sodium Chloride', 'insulator', 19, ['thermalFluctuation', 'localizationPin'], 3, undefined, 'NaCl'),
+    // ~8.8 eV gap corundum -- one of the hardest, most chemically inert
+    // insulating crystals known, HP set above this world's usual band to
+    // reflect it (mirrors Tungsten's own standout treatment above).
+    crystal('Sapphire', 'insulator', 27, ['thermalFluctuation', 'localizationPin'], 4, undefined, 'Al₂O₃'),
+    // ~13.6 eV gap, the widest-gap alkali halide -- an even stronger
+    // textbook polaron host than Sodium Chloride.
+    crystal('Lithium Fluoride', 'insulator', 20, ['thermalFluctuation', 'localizationPin'], 5, undefined, 'LiF'),
+    crystal('Calcium Fluoride', 'insulator', 22, ['thermalFluctuation', 'localizationPin'], 6, undefined, 'CaF₂'),
+    // ~6.2 eV gap, wider than GaN's ~3.4 eV -- too wide to dope the way GaN
+    // is, a true insulator rather than a semiconductor.
+    crystal('Aluminum Nitride', 'insulator', 24, ['thermalFluctuation', 'localizationPin'], 7, undefined, 'AlN'),
+    // Ordinary gapped semiconductors -- same Electron Pulse/Phonon Beam
+    // moveset as Gallium Nitride/Indium Arsenide/Cadmium Telluride above,
+    // single-particle band picture, no symmetry breaking or topology.
+    crystal('Germanium', 'semiconductor', 23, ['tunnelStrike', 'thermalFluctuation'], 4, undefined, 'Ge'),
+    crystal('Indium Phosphide', 'semiconductor', 24, ['tunnelStrike', 'thermalFluctuation'], 6, undefined, 'InP'),
+    crystal('Zinc Oxide', 'semiconductor', 22, ['tunnelStrike', 'thermalFluctuation'], 7, undefined, 'ZnO'),
+    // Narrowest gap of the common III-V semiconductors (~0.17 eV).
+    crystal('Indium Antimonide', 'semiconductor', 19, ['tunnelStrike', 'thermalFluctuation'], 8, undefined, 'InSb'),
+    crystal('Lead Sulfide', 'semiconductor', 20, ['tunnelStrike', 'thermalFluctuation'], 9, undefined, 'PbS'),
+    // Wide (~3.2 eV) indirect-gap polytype, exceptionally hard and thermally
+    // conductive -- the power-electronics workhorse alongside GaN, HP set
+    // above this world's usual band the same way Tungsten/Sapphire are.
+    crystal('Silicon Carbide, 4H phase', 'semiconductor', 27, ['tunnelStrike', 'thermalFluctuation'], 10, undefined, 'SiC'),
+    crystal('Titanium Dioxide, rutile phase', 'semiconductor', 25, ['tunnelStrike', 'thermalFluctuation'], 11, undefined, 'TiO₂'),
+    // Moderate (~1.46 eV) indirect gap III-V, otherwise ordinary -- famous
+    // instead for record-high thermal conductivity, comparable to diamond.
+    crystal('Boron Arsenide', 'semiconductor', 24, ['tunnelStrike', 'thermalFluctuation'], 12, undefined, 'BAs'),
   ],
   3: [
     // Undoped host -- world 1's Chromium fuses into this to make Cr-doped

@@ -264,6 +264,26 @@ pool.
 | semiconductor (4) | Gallium Arsenide (GaAs) | Ordinary direct-gap III-V semiconductor in its own right — the integer quantum Hall effect this world's `chernInsulator` members carry needs a clean 2D electron gas confined at a GaAs/AlGaAs heterostructure interface under strong field, not the bulk compound itself, so plain Gallium Arsenide doesn't carry that type here |
 | insulator (2) | Diamond (C) | ~5.5 eV gap, textbook wide-gap covalent insulator — pristine, no defect (e.g. nitrogen-vacancy) dressing; not from the course, added as `insulator`'s second member alongside Magnesium Oxide |
 | insulator (2, hybrid parent) | Monolayer Boron Nitride (hBN) | ~5.9 eV gap insulator whose honeycomb lattice is nearly commensurate with graphene's — real graphene devices are built on or encapsulated in it; §5 hybrid recipe parent (with Graphene) for Rhombohedral Pentalayer Graphene/hBN Moiré below |
+| metal (2) | Gold (Au) | Filled 5d shell, half-filled 6s conduction band — the other flagship (with Silver) of visible-range plasmonics; not from the course |
+| metal (2) | Platinum (Pt) | Partially filled 5d bands, an ordinary d-band conductor/catalyst — its own interband transitions damp a plasmon response, so it carries Electron Pulse rather than Silver/Gold's Plasmon Pulse; not from the course |
+| metal (2) | Copper (Cu) | Half-filled 4s conduction band, the highest electrical conductivity of any non-precious metal — still genuinely plasmonic, just lossier than Ag/Au; not from the course |
+| metal (2) | Magnesium (Mg) | Nearly-free-electron divalent metal whose plasma frequency reaches into the UV — an elemental UV-plasmonic metal, unlike the noble metals' visible-range plasmons; not from the course |
+| metal (2) | Tungsten (W) | Partially filled 5d bands, ordinary band conductor — highest melting point of any elemental metal; not from the course |
+| metal (2) | Titanium (Ti) | Partially filled 3d bands, ordinary transition-metal conductor whose own interband transitions damp any plasmon response; not from the course |
+| metal (2) | Zinc (Zn) | Filled 3d shell below a nearly-free 4s conduction band, another elemental UV-plasmonic metal alongside Magnesium; not from the course |
+| insulator (1) | Sodium Chloride (NaCl) | Session1's own named conventional-insulator example (alongside MgO and boron nitride) — a wide ionic gap simply blocks electron propagation |
+| insulator (2) | Sapphire (Al$_2$O$_3$) | ~8.8 eV gap corundum, one of the hardest and most chemically inert insulating crystals known; not from the course |
+| insulator (2) | Lithium Fluoride (LiF) | ~13.6 eV gap, the widest-gap alkali halide — an even stronger textbook polaron host than NaCl; not from the course |
+| insulator (2) | Calcium Fluoride (CaF$_2$) | ~12 eV gap fluorite-structure ionic insulator, another textbook polaron host; not from the course |
+| insulator (2) | Aluminum Nitride (AlN) | ~6.2 eV gap, wider than GaN's own ~3.4 eV — too wide to dope the way GaN is, a true insulator rather than a semiconductor; not from the course |
+| semiconductor (2) | Germanium (Ge) | Narrow ~0.67 eV indirect-gap group-IV semiconductor, Silicon's own group-IV sibling and the original transistor material; not from the course |
+| semiconductor (2) | Indium Phosphide (InP) | Direct-gap (~1.35 eV) III-V semiconductor, a workhorse of high-speed electronics/photonics alongside GaAs; not from the course |
+| semiconductor (2) | Zinc Oxide (ZnO) | Wide direct-gap (~3.4 eV) II-VI semiconductor, easily doped n-type, ordinary single-particle band picture; not from the course |
+| semiconductor (2) | Indium Antimonide (InSb) | Narrowest gap (~0.17 eV) of the common III-V semiconductors, extreme electron mobility, still a plain band picture; not from the course |
+| semiconductor (2) | Lead Sulfide (PbS) | Narrow-gap (~0.41 eV) IV-VI semiconductor, the natural mineral galena, ordinary band picture in bulk; not from the course |
+| semiconductor (2) | Silicon Carbide, 4H phase (4H-SiC) | Wide (~3.2 eV) indirect-gap polytype, the power-electronics workhorse alongside GaN — exceptionally hard and thermally conductive, still an ordinary band semiconductor; not from the course |
+| semiconductor (2) | Titanium Dioxide, rutile phase (TiO$_2$) | ~3.0 eV gap wide-gap oxide semiconductor, famous for photocatalysis but an ordinary single-particle band picture underneath; not from the course |
+| semiconductor (2) | Boron Arsenide (BAs) | Moderate (~1.46 eV) indirect-gap III-V semiconductor, otherwise ordinary — famous instead for record-high thermal conductivity rivaling diamond; not from the course |
 | quantumSpinHall (3, hybrid) | HgTe/CdTe Quantum Well | The original 2D topological insulator (Bernevig-Hughes-Zhang model, König et al., Science 2007) — only the *engineered heterostructure* is topological, not either bulk parent above; §5 hybrid recipe result, lives as a World 10 wild rather than a World 3 one |
 | classicalMagnet (1) | Manganese Oxide (MnO) | Mott-insulating antiferromagnet — canonical mean-field/Hubbard-$U$ SSB example |
 | classicalMagnet (1) | Nickel Oxide (NiO) | Same family, another textbook mean-field SSB magnet |

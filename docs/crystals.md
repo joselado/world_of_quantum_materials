@@ -34,6 +34,26 @@ world when the same real material is relevant to both.
 | Monolayer MoTe₂ (2H) | `semiconductor` | 22 |
 | HgTe | `metal` | 22 |
 | CdTe | `semiconductor` | 22 |
+| Gold | `metal` | 22 |
+| Platinum | `metal` | 25 |
+| Copper | `metal` | 23 |
+| Magnesium | `metal` | 20 |
+| Tungsten | `metal` | 27 |
+| Titanium | `metal` | 24 |
+| Zinc | `metal` | 21 |
+| Sodium Chloride | `insulator` | 19 |
+| Sapphire | `insulator` | 27 |
+| Lithium Fluoride | `insulator` | 20 |
+| Calcium Fluoride | `insulator` | 22 |
+| Aluminum Nitride | `insulator` | 24 |
+| Germanium | `semiconductor` | 23 |
+| Indium Phosphide | `semiconductor` | 24 |
+| Zinc Oxide | `semiconductor` | 22 |
+| Indium Antimonide | `semiconductor` | 19 |
+| Lead Sulfide | `semiconductor` | 20 |
+| Silicon Carbide, 4H phase | `semiconductor` | 27 |
+| Titanium Dioxide, rutile phase | `semiconductor` | 25 |
+| Boron Arsenide | `semiconductor` | 24 |
 
 ### World 3 -- Topological band theory
 
