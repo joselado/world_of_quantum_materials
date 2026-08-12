@@ -17,13 +17,18 @@ each phase of matter to stabilize it again.
 
 ## How it plays
 
-**Explore.** Each world is a walkable corridor rendered in an
+**Explore.** Each world is a walkable path rendered in an
 over-the-shoulder pseudo-3D view, the world redrawn from a smoothly moving
-camera as you walk: Up/Down walk the path forward and back, Left/Right step
-sideways. The corridor bends
-as it climbs, so reaching the far end takes actually tracking the bend, not
-just holding one direction. Short dead-end side paths branch off with a
-qumatessence (the in-game currency) waiting at the end. Every world has its own
+camera as you walk: Up/Down walk forward and back, Left/Right step
+sideways. Every world's own layout echoes its own physics, not just its
+scenery -- a corridor that splits into two colored branches and remerges in
+the mean-field world, a network of colored domains you trace the boundary
+of in the topological world, a corridor that spirals around a frozen vortex
+in the superconductivity world, a real ladder of linked lanes in the
+tensor-network world, and so on -- so reaching the far end takes actually
+reading that world's own shape, not just holding one direction. A handful of
+qumatessence (the in-game currency) pickups are tucked along the way,
+often at a dead end worth the detour. Every world has its own
 biome, matching that topic's flavor -- and stepping off the path doesn't
 always mean a wall: the Floating Islands drop away into open sky, the Frozen
 Caverns are a rippling frozen lake, and the Defect Wastes are a glowing
@@ -88,10 +93,10 @@ different way of bending the game's usual rules: new moves and stats,
 teleportation, transmuting into a crystal you've defeated, always-on passive
 abilities, fusing two crystals into a hybrid, quiz-gated power moves, and a
 capstone quiz-gated ultimate move. Every guardian you've met stays reachable
-from the Guardians panel,
-from anywhere, and your current passive loadout is always checkable from the
-Enter-menu's "View Abilities" panel too. See [Guardians](docs/guardians.md)
-for what each one does.
+from the Lab's Guardians station (which appears once you've met your first
+one), and your current passive loadout is always checkable from its
+Abilities station too (appears once you've learned your first passive). See
+[Guardians](docs/guardians.md) for what each one does.
 
 <table>
 <tr>
@@ -131,15 +136,18 @@ walked in -- has its own doorway too, leading back to the world before it
 required; you'll land back in that earlier world right at its own far end,
 ready to walk forward through it again whenever you like.
 
-**Return to the Lab.** World 0 is a static hub room: a Save Point, and the
-Materialdex, a filterable index of every crystal in the game listed by name
-alongside a note on the real physics behind it -- each with a "???"
-placeholder name and silhouette for anything you haven't found yet.
+**Return to the Lab.** World 0 is a static hub room, each of its jobs its
+own physical station: a Save Point; Qumatex, a filterable index of every
+crystal in the game listed by name alongside a note on the real physics
+behind it -- each with a "???" placeholder name and silhouette for anything
+you haven't found yet; a door back out to whichever world you're mid-way
+through; and stations to check your moves, your stats, revisit any
+guardian you've met, replay the tutorial, and adjust settings.
 
 <table>
 <tr>
 <td><img src="screenshots/hub.png" width="300" alt="World 0, the Lab"></td>
-<td><img src="screenshots/hub-materialdex.png" width="300" alt="The Materialdex"></td>
+<td><img src="screenshots/hub-materialdex.png" width="300" alt="Qumatex"></td>
 </tr>
 </table>
 
@@ -161,9 +169,13 @@ archetypes, and a rival crystal gating the way to the next world.
 | 9 | Excitations and defects | Defect Wastes |
 | 10 | Machine learning for quantum materials | The Adaptive Meta-World |
 
-World 10's wilds are "echoes" of earlier phases of matter rather than new
-real compounds, and its rival is a final boss built as "a model of you,"
-drawing from whatever moves you've collected by then. See
+World 10's wilds are every hybrid crystal fusable at Majorana's station (see
+[Hybrids](docs/hybrids.md)) — real compounds in their own right, just ones
+reached by fusing two parents rather than found unmixed anywhere else. Its
+rival, The Adapted, is a final boss built as "a model of you": it starts the
+fight mirroring whichever type you're currently wearing, then reshapes
+itself every time you land a hit, transmuting live into a real compound
+that hosts whatever quasiparticle class you just attacked with. See
 [Crystals](docs/crystals.md) for every world's full wild-material list.
 
 ## Battle basics
@@ -193,13 +205,18 @@ materials, and what each guardian teaches -- see:
 | Key | Action |
 |---|---|
 | Arrow keys | Move (Up/Down forward-back, Left/Right sideways) |
-| Enter | Open the menu (moves, stats, guardians, tutorial, settings) |
-| H | Return to the Lab (World 0) |
+| Enter or H | Return to the Lab (World 0) |
+| Enter, while in the Lab | Head back out to whichever world you're in the middle of (once you've entered one) |
 | M | Mute/unmute music |
+
+The Lab is where you check your moves and stats, revisit any guardian you've
+met, replay the tutorial, and adjust settings -- each is its own station in
+the room. Abilities and Guardians only show up once you've actually learned
+a passive or met a guardian to check.
 
 ## Settings
 
-Open the Enter-key menu and click **Settings** to adjust:
+In the Lab, click the **Settings** station to adjust:
 
 - **Enemy Density** -- Low, Normal, High, or Very High, if wild crystals feel
   too sparse (or too frequent) along the path. Takes effect the next time you
@@ -216,8 +233,8 @@ Open the Enter-key menu and click **Settings** to adjust:
 Short tips appear one at a time, right as each feature comes up for the
 first time -- entering the Lab, taking your first steps, your first wild
 encounter, your first battle, your first qumatessence, your first guardian,
-reaching your first goal. Want the whole thing again as a refresher? Open the Enter-key menu
-and click **Tutorial** to replay every tip in order.
+reaching your first goal. Want to revisit one? In the Lab, click
+**Tutorial** for a menu of every topic -- pick one to reread it.
 
 ## Story Mode vs. Superposition Mode
 

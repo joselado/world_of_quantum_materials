@@ -1,6 +1,7 @@
 import type { Material, MaterialType, MoveClass, Stats } from './types';
 import { PLAYER_MATERIAL, DEFAULT_STATS, MOVES, TYPE_LOOK } from './materials';
-import { DEFAULT_ENCOUNTER_DENSITY, DEFAULT_FONT_SCALE, DEFAULT_MUSIC_STYLE } from './settings';
+import { DEFAULT_ENCOUNTER_DENSITY, DEFAULT_FONT_SCALE, DEFAULT_MUSIC_STYLE, MUSIC_STYLE_PRESETS } from './settings';
+import type { MusicStyle } from './settings';
 import type { PassiveOwner } from './passives';
 
 // Single localStorage-backed save slot (v1: one profile, no cloud sync --
@@ -28,8 +29,8 @@ export interface SaveData {
   defeatedMaterials: DiscoveredMaterial[];
   playerForm: Material | null; // null = still the default PLAYER_MATERIAL (Silicon)
   // Guardian ids (WORLD_GUARDIANS' `id` field) the player has opened the panel
-  // of at least once -- drives the Guardians pause-menu list
-  // (OverworldScene.showGuardiansPanel), which should only offer guardians
+  // of at least once -- drives the Lab's Guardians station list
+  // (scenes/panels/hubStations.ts's showGuardiansPanel), which should only offer guardians
   // actually met rather than every guardian in the game. No migration shim
   // for older saves' `metMentors` key (solo hobby project, no save-compatibility
   // guarantee): a save predating this field just starts its Guardians list empty.
@@ -38,8 +39,8 @@ export interface SaveData {
   // already fired -- each one plays once, the first time its own feature
   // becomes relevant (HubScene.maybeShowLabTip, OverworldScene
   // .showTutorialTip), rather than one paged sequence up front. The
-  // Enter-menu's "Tutorial" button replays the full set as a paged recap on
-  // demand regardless of this list.
+  // Lab's Tutorial station replays the full set as a topic menu on demand
+  // regardless of this list.
   tutorialTipsSeen: string[];
   // Title-screen toggle (TitleScene), "Superposition Mode" -- a testing/
   // exploration aid, not part of the normal progression. While on,
@@ -50,7 +51,7 @@ export interface SaveData {
   // and Dresselhaus/Majorana/Anderson's panels offer every crystal/hybrid
   // pairing rather than only ones actually defeated.
   superpositionMode: boolean;
-  // Enter-menu Settings panel (OverworldScene.showSettingsPanel): the
+  // The Lab's Settings station (scenes/panels/hubStations.ts's showSettingsPanel): the
   // per-corridor-row chance a wild crystal spawns, one of data/settings.ts's
   // DENSITY_PRESETS. Only affects maps generated after the change (a fresh
   // world entry/regenerate), not the map the player is currently standing
@@ -62,10 +63,10 @@ export interface SaveData {
   // (read live on every fontPx() call), not just on the next map generation.
   fontScale: number;
   // Same Settings panel, third row: which of data/settings.ts's
-  // MUSIC_STYLE_PRESETS (audio/music.ts's SCORES vs SCORES_MODERN) the
+  // MUSIC_STYLE_PRESETS (audio/music.ts's SCORES/SCORES_MODERN) the
   // MusicEngine draws from. Applies immediately (MusicEngine.setStyle
   // restarts whatever's currently playing under the new table).
-  musicStyle: 'classic' | 'modern';
+  musicStyle: MusicStyle;
   // Which of Kondo's three screening-class moves (data/materials.ts's
   // KONDO_MOVE_IDS) is currently the active/usable one -- null until the
   // player picks one for the first time in OverworldScene.showKondoPanel.
@@ -256,6 +257,7 @@ export function loadSave(): SaveData {
     data.unlockedMoves = data.unlockedMoves.filter((id) => id in MOVES);
     if (data.playerForm && !(data.playerForm.type in TYPE_LOOK)) data.playerForm = null;
     if (data.rival9Type && !(data.rival9Type in TYPE_LOOK)) data.rival9Type = null;
+    if (!MUSIC_STYLE_PRESETS.some((p) => p.value === data.musicStyle)) data.musicStyle = DEFAULT_MUSIC_STYLE;
     return data;
   } catch {
     return defaultSave();
@@ -285,7 +287,7 @@ export function persistFromRegistry(registry: RegistryLike) {
     superpositionMode: (registry.get('superpositionMode') as boolean) ?? false,
     encounterDensity: (registry.get('encounterDensity') as number) ?? DEFAULT_ENCOUNTER_DENSITY,
     fontScale: (registry.get('fontScale') as number) ?? DEFAULT_FONT_SCALE,
-    musicStyle: (registry.get('musicStyle') as 'classic' | 'modern') ?? DEFAULT_MUSIC_STYLE,
+    musicStyle: (registry.get('musicStyle') as MusicStyle) ?? DEFAULT_MUSIC_STYLE,
     kondoActiveMove: (registry.get('kondoActiveMove') as string | null) ?? null,
     passivesUnlocked: (registry.get('passivesUnlocked') as string[]) ?? [],
     activePassiveByOwner: (registry.get('activePassiveByOwner') as Partial<Record<PassiveOwner, string>>) ?? {},

@@ -9,7 +9,6 @@ import { fontPx, fontScale } from '../ui/text';
 import {
   MOVES,
   canHost,
-  BASE_STAT,
   getPlayerMaterial,
   getPlayerStats,
   getBattleMoves,
@@ -23,7 +22,18 @@ import {
   ANALYTIC_MOVE_IDS,
   ULTIMATE_MOVE_IDS,
   KONDO_MOVE_IDS,
+  typesHosting,
+  allCrystals,
 } from '../data/materials';
+import {
+  battleStakeForWorld,
+  mitigationFraction,
+  resolveHitDamage,
+  MISMATCH_MULTIPLIER,
+  FRACTIONAL_GUARD_DAMAGE_MULT,
+  ANYON_ECHO_FRACTION,
+  EDGE_CURRENT_MISMATCH_MULT,
+} from '../data/balance';
 import { victoryLine, defeatLine } from '../data/greetings';
 import { PASSIVES } from '../data/passives';
 import type { PassiveOwner } from '../data/passives';
@@ -31,7 +41,7 @@ import { materialBlurb } from '../data/materialdex';
 import { getAnalyticQuestion, getUltimateQuestions } from '../data/quiz';
 import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
-import type { Material, Move, Stats } from '../data/types';
+import type { Material, Move, MoveClass, Stats } from '../data/types';
 import { music } from '../audio/music';
 import { CANVAS_W, CANVAS_H } from '../config/screen';
 
@@ -144,9 +154,9 @@ function passivePillText(ids: Set<string>): string {
 // Only the player can ever have one today, but every hook below reads
 // generically off `isPlayer`/`defenderIsPlayer` the same way every other
 // resolveHit term does, in case a future enemy ever has one.
-const FRACTIONAL_GUARD_DAMAGE_MULT = 0.85; // Diffraction Shadow (id fractionalGuard): incoming damage taken by the holder
-const ANYON_ECHO_FRACTION = 0.3; // Satellite Reflection (id anyonEcho): bonus follow-up tick, as a fraction of the crit that triggered it
-const EDGE_CURRENT_MISMATCH_MULT = 1.5; // Amorphous Halo (id edgeCurrent): softened quasiparticle-mismatch multiplier (normally 2x)
+// FRACTIONAL_GUARD_DAMAGE_MULT/ANYON_ECHO_FRACTION/EDGE_CURRENT_MISMATCH_MULT
+// live in data/balance.ts, imported above (Phaser-free so the balance
+// simulator script can load them too).
 
 // Field size is the shared canvas size (config/screen.ts) -- aliased to
 // FIELD_W/FIELD_H here since every layout constant below reads as "a
@@ -156,17 +166,9 @@ const FIELD_W = CANVAS_W;
 const FIELD_H = CANVAS_H;
 const HORIZON_Y = 262;
 const LOG_Y = 440; // combat log's usual bottom-anchored resting position
-// Ordinary-battle qumatessence stake for a given world (1-10): won on a win,
-// lost (floored at 0) on a loss. Scales linearly from 50 at world 1 to 200 at
-// world 10 so the late game pays out meaningfully more than the early game,
-// rounded to the nearest 10 for a clean progression. A rival fight pays out
-// double this, win or lose -- see the call site, which derives it from this
-// same function rather than a separate table, so the two can't drift apart.
-function battleStakeForWorld(world: number): number {
-  const clamped = Math.min(10, Math.max(1, world));
-  const raw = 50 + ((200 - 50) * (clamped - 1)) / 9;
-  return Math.round(raw / 10) * 10;
-}
+// battleStakeForWorld lives in data/balance.ts, imported above -- a rival
+// fight's stake is double this same world's ordinary stake, win or lose, see
+// the call site below.
 // A rival/boss fight's opponent renders bigger (see BOSS_CRYSTAL_SIZE below)
 // than an ordinary wild encounter's 50, and sits a bit further left/down so
 // its wider multi-shard silhouette (art/boss.ts's makeBossCrystal) stays
@@ -276,7 +278,18 @@ export class BattleScene extends Phaser.Scene {
   private opponentHpBar!: Phaser.GameObjects.Rectangle;
   private playerHpBar!: Phaser.GameObjects.Rectangle;
   private opponentCrystal!: Phaser.GameObjects.Container;
+  private opponentNameText!: Phaser.GameObjects.Text;
   private opponentPos: { x: number; y: number } = OPPONENT_POS;
+  // World 10's rival ("The Adapted") has no fixed type/look/name of its own
+  // -- see data/materials.ts's WORLD_RIVALS[10] comment. Set in create()
+  // (mirroring the player's own current type) only for that one fight, then
+  // replaced wholesale every time transmuteAdapted() fires; `null` for every
+  // other fight, in which case opponentView() below falls back to the plain
+  // static `this.wild` the same way every read here always did. Only its
+  // type/name/color/variant are ever read off this -- `this.wild.moves`/
+  // `.maxHp` (its actual attack moveset and HP) stay fixed throughout, see
+  // transmuteAdapted's own comment.
+  private adaptedForm: Material | null = null;
   private playerCrystal!: Phaser.GameObjects.Container;
   private logText!: Phaser.GameObjects.Text;
   private turnPreviewLabel!: Phaser.GameObjects.Text;
@@ -313,6 +326,16 @@ export class BattleScene extends Phaser.Scene {
     super('Battle');
   }
 
+  // The opponent's currently-displayed identity -- `adaptedForm` (World 10's
+  // rival only, see that field's own comment) if set, otherwise the plain
+  // static `this.wild` every other fight always reads. Every read of the
+  // opponent's own type/name/color/variant for a mismatch check or a render
+  // goes through this rather than `this.wild` directly, so a live
+  // transmutation is reflected everywhere the opponent's identity shows up.
+  private opponentView(): Material {
+    return this.adaptedForm ?? this.wild;
+  }
+
   init(data: BattleInitData) {
     this.wild = data.wild;
     this.world = data.world ?? 1;
@@ -333,6 +356,15 @@ export class BattleScene extends Phaser.Scene {
     this.playerMaterial = getPlayerMaterial(this.game.registry);
     this.playerStats = getPlayerStats(this.game.registry);
     this.enemyStats = enemyStatsForWorld(this.world);
+
+    // World 10's rival mirrors the player's own current type from turn one
+    // (literalizing "a model of you" immediately, not just once it first
+    // reacts) -- its look/name stay "The Adapted"'s own until the first
+    // transmutation actually fires (checkEndOrContinue, resolveHit below).
+    this.adaptedForm =
+      this.isRival && this.world === 10
+        ? { ...this.wild, type: this.playerMaterial.type }
+        : null;
 
     // Franklin's active passives (§5) -- read once here, held for the whole
     // battle.
@@ -370,8 +402,8 @@ export class BattleScene extends Phaser.Scene {
       .rectangle(opponentBarLeftX + (HP_BAR_W - HP_BAR_FILL_W) / 2, OPPONENT_ROW_Y, HP_BAR_FILL_W, HP_BAR_FILL_H, 0x33cc33)
       .setOrigin(0, 0.5);
     const opponentNameRightX = opponentBarLeftX - HP_BAR_NAME_GAP;
-    const opponentName = this.add
-      .text(opponentNameRightX, OPPONENT_ROW_Y, this.wild.name, {
+    this.opponentNameText = this.add
+      .text(opponentNameRightX, OPPONENT_ROW_Y, this.opponentView().name, {
         fontSize: fontPx(this, this.isRival ? 11 : 14),
         color: '#ffffff',
         backgroundColor: 'rgba(0,0,0,0.35)',
@@ -387,7 +419,7 @@ export class BattleScene extends Phaser.Scene {
     // box grows upward on a long wrapped line (setLogText) and can reach as
     // far up as this row at a big text-size setting; a higher depth keeps
     // the pill legibly on top rather than getting visually buried under it.
-    const opponentRowBottom = OPPONENT_ROW_Y + Math.max(HP_BAR_H, opponentName.height) / 2;
+    const opponentRowBottom = OPPONENT_ROW_Y + Math.max(HP_BAR_H, this.opponentNameText.height) / 2;
     this.opponentStatusLabel = this.add
       .text(opponentBarLeftX, opponentRowBottom + 6, '', {
         fontSize: fontPx(this, 11),
@@ -421,7 +453,7 @@ export class BattleScene extends Phaser.Scene {
     // the overworld (art/boss.ts's makeBossCrystal), not the plain shared
     // makeCrystal() every ordinary wild encounter uses.
     this.opponentCrystal = this.isRival
-      ? makeBossCrystal(this, BOSS_CRYSTAL_SIZE, this.wild.color, this.wild.variant)
+      ? makeBossCrystal(this, BOSS_CRYSTAL_SIZE, this.opponentView().color, this.opponentView().variant)
       : makeCrystal(this, 50, this.wild.color, this.wild.variant, { seed: this.wild.name, hybrid: this.wild.hybridParents });
     this.opponentCrystal.setPosition(this.opponentPos.x, this.opponentPos.y);
     this.bobCrystal(this.opponentCrystal, this.opponentPos.y);
@@ -593,10 +625,12 @@ export class BattleScene extends Phaser.Scene {
 
   // moveSections() split so no single page ever holds more than
   // MOVE_MENU_MAX_ROWS moves -- a section within the cap stays one page,
-  // unchanged. An oversized one (ATTACKS for an 'adaptive'-type crystal with
-  // every attack class learned is the only section that currently gets this
-  // large) splits into evenly-sized pages sharing the section's own label --
-  // the header's own "(i/N)" page count already disambiguates "ATTACKS" page
+  // unchanged. An oversized one splits into evenly-sized pages sharing the
+  // section's own label -- `chernSuperconductor` (electron/phonon/higgs/
+  // chiral/majorana, the broadest single main type's own MOVE_COMPATIBILITY
+  // list) is the one form whose ATTACKS section needs this today, once every
+  // matching move is unlocked, splitting its 5 moves into two pages (3 + 2).
+  // The header's own "(i/N)" page count already disambiguates "ATTACKS" page
   // 1 from page 2, the same way a paginated candidate list elsewhere in the
   // game numbers its pages, rather than needing a second label scheme of its
   // own.
@@ -760,9 +794,10 @@ export class BattleScene extends Phaser.Scene {
     // `btnPx` close to its `desiredPx` ceiling on every page rather than
     // collapsing on whichever ones happen to have more moves. Verified
     // against a live browser render (headless-Chromium harness,
-    // DEVELOPMENT.md) at every text-size preset with an 'adaptive'-type
-    // crystal carrying every attack class at once, the worst case across
-    // every MaterialType's MOVE_COMPATIBILITY entry.
+    // DEVELOPMENT.md) at every text-size preset with a form carrying every
+    // attack class at once (the worst case any MOVE_COMPATIBILITY entry can
+    // reach) -- no page overflows the field, and no label reaches a 3rd
+    // line, at any preset.
     const rowFloor = 20;
     const maxRowH = Math.round(46 * Math.min(scale, 1.35));
     const budget = FIELD_H - MENU_BOTTOM_MARGIN - MENU_MIN_TOP;
@@ -893,7 +928,7 @@ export class BattleScene extends Phaser.Scene {
     if (KONDO_MOVE_IDS.includes(moveId)) {
       return { text: `${moveDisplayName(this.game.registry, moveId)} — ${STATUS_DURATION}-turn buff`, color: STATUS_PILL_COLOR };
     }
-    const mismatch = !canHost(this.wild.type, getTunedMoveClass(this.game.registry, moveId));
+    const mismatch = !canHost(this.opponentView().type, getTunedMoveClass(this.game.registry, moveId));
     let tag = '';
     let color = '#ffff88';
     if (ANALYTIC_MOVE_IDS.includes(moveId)) {
@@ -1331,6 +1366,134 @@ export class BattleScene extends Phaser.Scene {
     this.playerHpBar.width = Math.max(0, (this.playerHp / this.playerMaterial.maxHp) * HP_BAR_FILL_W);
   }
 
+  // Recursively kills every tween targeting a Container or any descendant of
+  // it -- reused by transmuteAdapted below (World 10's rival) whenever it
+  // destroys-and-rebuilds the opponent's makeBossCrystal() subtree mid-battle.
+  // Plain `destroy(true)` reclaims the GameObjects but leaves any tween still
+  // targeting them (the aura/orbit tweens inside makeBossCrystal, or the
+  // sparkle tweens inside each shard's own makeCrystal(), see
+  // drawTurnPreview's own comment on the same issue) ticking forever against
+  // a dead object otherwise.
+  private killTweensDeep(obj: Phaser.GameObjects.GameObject) {
+    this.tweens.killTweensOf(obj);
+    if (obj instanceof Phaser.GameObjects.Container) {
+      obj.each((child: Phaser.GameObjects.GameObject) => this.killTweensDeep(child));
+    }
+  }
+
+  // World 10's rival transmutation (§5/§6, DESIGN.md) -- called from
+  // resolveHit's checkEndOrContinue once per player attack that resolves
+  // against a still-living Adapted. Picks a new type at random from among
+  // every MaterialType that genuinely hosts `moveClass` (typesHosting,
+  // data/materials.ts's reverse MOVE_COMPATIBILITY lookup), then a real,
+  // already-defined compound of that type from the full roster (allCrystals())
+  // to become -- so the opponent reacts by taking on a type it can actually
+  // host the class the player just used, the same "Polycrystalline
+  // <compound> Golem" naming every other world's rival already follows. The
+  // swap plays out as an in-field glow/dissolve/reform effect directly on
+  // the boss's own sprite (playTransmuteGlow below), the same way an ordinary
+  // attack effect or impactPunch's crit flash already renders in the field
+  // rather than a separate panel/overlay. `this.wild.moves`/`.maxHp` (its
+  // real attack moveset and HP) are never touched by any of this, so it
+  // keeps fighting at the same power it was authored with, just under a new
+  // disguise. `onDone` fires after a fixed TURN_GAP_MS beat (the same gap
+  // every other turn transition uses), independent of the glow effect's own
+  // exact runtime, the same "don't gate the game's own flow on a purely
+  // decorative animation" pattern an ordinary non-Ultimate move's
+  // playAttackEffect call already follows.
+  private transmuteAdapted(moveClass: MoveClass, onDone: () => void) {
+    const hostTypes = typesHosting(moveClass);
+    const candidates = allCrystals().filter((m) => hostTypes.includes(m.type));
+    if (candidates.length === 0) {
+      onDone();
+      return;
+    }
+    const picked = Phaser.Utils.Array.GetRandom(candidates);
+    const newForm: Material = { ...picked, name: `Polycrystalline ${picked.name} Golem` };
+
+    this.playTransmuteGlow(() => {
+      this.adaptedForm = newForm;
+
+      this.killTweensDeep(this.opponentCrystal);
+      this.opponentCrystal.destroy(true);
+      this.opponentCrystal = makeBossCrystal(this, BOSS_CRYSTAL_SIZE, newForm.color, newForm.variant);
+      this.opponentCrystal.setPosition(this.opponentPos.x, this.opponentPos.y);
+      this.bobCrystal(this.opponentCrystal, this.opponentPos.y);
+      this.flashHit(this.opponentCrystal);
+
+      this.opponentNameText.setText(newForm.name);
+      this.setLogText(`${this.wild.name} reshapes into ${newForm.name}!`);
+    });
+
+    this.time.delayedCall(TURN_GAP_MS, onDone);
+  }
+
+  // The transmutation's own light effect, playing directly on/around the
+  // boss's current sprite -- a bright glow rises in place (the "dissolve"
+  // beat; `onSwap` fires right at its peak, hidden inside the flash, which
+  // is where transmuteAdapted actually destroys the old crystal and builds
+  // the new one), then fades back out scattering a handful of sparks
+  // outward (the "reform" beat, now revealing the new crystal already
+  // sitting underneath). Teal-green (`0x4ad9a0`) throughout, plus a matching
+  // camera flash at the swap -- the same accent color Dresselhaus's own
+  // transmutation panel uses (art/dresselhaus.ts), a stylistic nod tying
+  // this to the game's one other "become a different crystal" moment,
+  // distinct from any ordinary attack's own EFFECT_STYLE color.
+  private playTransmuteGlow(onSwap: () => void) {
+    const { x, y } = this.opponentPos;
+    const RISE_MS = 360;
+    const FALL_MS = 320;
+    const g = this.add.graphics().setDepth(59).setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration: RISE_MS,
+      ease: 'Cubic.easeIn',
+      onUpdate: (tw) => {
+        const t = tw.getValue() ?? 0;
+        g.clear();
+        g.fillStyle(0x4ad9a0, 0.6 * t);
+        g.fillCircle(x, y, 12 + t * 84);
+        g.lineStyle(3, 0xffffff, 0.85 * t);
+        g.strokeCircle(x, y, 16 + t * 66);
+      },
+      onComplete: () => {
+        onSwap();
+        this.cameras.main.flash(180, 0x4a, 0xd9, 0xa0, false);
+
+        for (let i = 0; i < 8; i++) {
+          const ang = (i / 8) * Math.PI * 2;
+          const spark = this.add.circle(x, y, 3, 0xbdffe8, 0.95).setBlendMode(Phaser.BlendModes.ADD);
+          this.tweens.add({
+            targets: spark,
+            x: x + Math.cos(ang) * 60,
+            y: y + Math.sin(ang) * 60,
+            alpha: 0,
+            duration: FALL_MS,
+            ease: 'Cubic.easeOut',
+            onComplete: () => spark.destroy(),
+          });
+        }
+
+        this.tweens.addCounter({
+          from: 1,
+          to: 0,
+          duration: FALL_MS,
+          ease: 'Cubic.easeOut',
+          onUpdate: (tw) => {
+            const t = tw.getValue() ?? 0;
+            g.clear();
+            g.fillStyle(0x4ad9a0, 0.6 * t);
+            g.fillCircle(x, y, 12 + t * 96);
+            g.lineStyle(3, 0xffffff, 0.85 * t);
+            g.strokeCircle(x, y, 16 + t * 82);
+          },
+          onComplete: () => g.destroy(),
+        });
+      },
+    });
+  }
+
   // Velocity decides who swings first each round, and by how much faster it
   // is, how many extra times it swings (DESIGN.md §4): `ratio` is the faster
   // side's effective Velocity divided by the slower side's, and the faster
@@ -1401,7 +1564,7 @@ export class BattleScene extends Phaser.Scene {
       Math.max(0, TURN_PREVIEW_RING_RADIUS - TURN_PREVIEW_ICON_SIZE / 2);
     const container = this.add.container(TURN_PREVIEW_X, previewRowY);
     sequence.forEach((isPlayer, i) => {
-      const material = isPlayer ? this.playerMaterial : this.wild;
+      const material = isPlayer ? this.playerMaterial : this.opponentView();
       const icon = makeCrystal(this, TURN_PREVIEW_ICON_SIZE, material.color, material.variant, {
         seed: material.name,
         hybrid: material.hybridParents,
@@ -1579,7 +1742,7 @@ export class BattleScene extends Phaser.Scene {
     }
     const attackerStats = isPlayer ? this.playerStats : this.enemyStats;
     const defenderStats = isPlayer ? this.enemyStats : this.playerStats;
-    const defenderType = isPlayer ? this.wild.type : this.playerMaterial.type;
+    const defenderType = isPlayer ? this.opponentView().type : this.playerMaterial.type;
     const defenderIsPlayer = !isPlayer;
     // A defender whose own physics can't host this quasiparticle at all (no
     // magnetic order to carry a magnon pulse, no gauge structure for an
@@ -1598,21 +1761,16 @@ export class BattleScene extends Phaser.Scene {
     // shrugging off a hit that would otherwise land unmitigated.
     const effectiveClass = getTunedMoveClass(this.game.registry, moveId);
     const mismatch = !canHost(defenderType, effectiveClass);
-    const mismatchMult = mismatch
-      ? this.activePassives(defenderIsPlayer).has('edgeCurrent')
-        ? EDGE_CURRENT_MISMATCH_MULT
-        : 2
-      : 1;
-
-    const critChance = Phaser.Math.Clamp((attackerStats.quantumness - BASE_STAT) * 0.02, 0, 0.5);
-    const crit = Math.random() < critChance;
+    const mismatchMultiplier = this.activePassives(defenderIsPlayer).has('edgeCurrent')
+      ? EDGE_CURRENT_MISMATCH_MULT
+      : MISMATCH_MULTIPLIER;
+    const mismatchMult = mismatch ? mismatchMultiplier : 1;
 
     const attackMult = isPlayer ? this.attackMultiplier : 1;
     // Kondo's Screening Pulse buff (§5): incoming damage to whichever side
     // currently has Shielded active is multiplied down, symmetric like
     // every other resolveHit term, not hardcoded to "opponent only".
     const shieldedMult = this.statusShieldMultiplier(defenderIsPlayer);
-    const defenseFactor = BASE_STAT / defenderStats.correlation;
     // Franklin's Diffraction Shadow (§5): incoming damage to whichever side
     // has it active is multiplied down for the whole battle -- a defect-
     // riddled lattice scatters and attenuates the blow, the way porous
@@ -1625,17 +1783,21 @@ export class BattleScene extends Phaser.Scene {
     // state only, so an opponent's copy of the same move id is never
     // affected by it.
     const power = isPlayer ? effectiveMovePower(this.game.registry, moveId) : move.power;
-    const dmg = Math.round(
-      power *
-        mismatchMult *
-        attackMult *
-        bonusMultiplier *
-        shieldedMult *
-        fractionalGuardMult *
-        defenseFactor *
-        (crit ? 1.5 : 1) *
-        Phaser.Math.FloatBetween(0.85, 1.15)
-    );
+    // The crit-chance/defense-factor/final-product math lives in
+    // data/balance.ts's resolveHitDamage (Phaser-free, shared with the
+    // balance simulator script) -- this just assembles this hit's own
+    // per-term multipliers and reads back the damage + whether it crit.
+    const { damage: dmg, crit } = resolveHitDamage({
+      attackerStats,
+      defenderStats,
+      power,
+      mismatch,
+      mismatchMultiplier,
+      attackMult,
+      bonusMultiplier,
+      shieldedMult,
+      fractionalGuardMult,
+    });
     // Kondo's Scattering Drag buff (§5): a defender with Evasive active has
     // a chance (statusEvasionChance -- 0 when not evasive) to dodge this hit
     // entirely regardless of the damage just computed above -- checked once
@@ -1657,8 +1819,8 @@ export class BattleScene extends Phaser.Scene {
     // the HP bar/log line land in sync with what's on screen rather than
     // seconds ahead of it.
     const applyResult = () => {
-      const who = isPlayer ? 'You' : `Wild ${this.wild.name}`;
-      const defenderName = defenderIsPlayer ? this.playerMaterial.name : this.wild.name;
+      const who = isPlayer ? 'You' : `Wild ${this.opponentView().name}`;
+      const defenderName = defenderIsPlayer ? this.playerMaterial.name : this.opponentView().name;
       // Feynman's level prefix (§5) is the player's own save state -- an
       // opponent's own use of the same move id never carries it.
       const displayName = isPlayer
@@ -1710,6 +1872,17 @@ export class BattleScene extends Phaser.Scene {
     // deferred to the animation's onComplete instead, so the opponent's
     // counter-swing can't be scheduled (and the battle can't end) until the
     // full summon animation has actually finished playing.
+    //
+    // World 10's rival transmutation (adaptedForm, transmuteAdapted below)
+    // fires from here rather than from applyResult -- `isPlayer` already
+    // excludes the opponent's own swings, the two win/lose branches above
+    // already return before it, and Kondo's self-buff moves never reach this
+    // function at all (resolveHit's own early return above), so this is
+    // exactly "every player Attack/Analytic/Ultimate move that resolves
+    // against a living Adapted," with no separate condition needed. The
+    // *current* hit already checked its own mismatch above against whatever
+    // type the opponent was *before* this -- the adaptation is a reaction to
+    // the class just used, not a precognitive dodge of this hit.
     const checkEndOrContinue = () => {
       if (this.opponentHp <= 0) {
         this.endBattle(true);
@@ -1717,6 +1890,10 @@ export class BattleScene extends Phaser.Scene {
       }
       if (this.playerHp <= 0) {
         this.endBattle(false);
+        return;
+      }
+      if (isPlayer && this.adaptedForm) {
+        this.transmuteAdapted(effectiveClass, onDone);
         return;
       }
       onDone();
@@ -1814,7 +1991,7 @@ export class BattleScene extends Phaser.Scene {
   private kondoMitigationFraction(isPlayer: boolean, moveId: string, base: number, cap: number): number {
     if (!isPlayer) return base;
     const multiplier = MOVE_LEVEL_MULTIPLIERS[getMoveLevel(this.game.registry, moveId)];
-    return Math.min(base * multiplier, cap);
+    return mitigationFraction(multiplier, base, cap);
   }
 
   // Resolves one of Kondo's three self-buff moves (§5, KONDO_MOVE_IDS) --
@@ -1831,7 +2008,7 @@ export class BattleScene extends Phaser.Scene {
   // applyOrTickBuff/applyRegenTick), so there is no win/lose check to make
   // here the way resolveHit's own tail has to.
   private resolveSelfBuff(isPlayer: boolean, move: Move, tickStatus: boolean, onDone: () => void) {
-    const who = isPlayer ? 'You' : `Wild ${this.wild.name}`;
+    const who = isPlayer ? 'You' : `Wild ${this.opponentView().name}`;
     const pos = isPlayer ? PLAYER_POS : this.opponentPos;
     const targetCrystal = isPlayer ? this.playerCrystal : this.opponentCrystal;
 
@@ -1862,7 +2039,7 @@ export class BattleScene extends Phaser.Scene {
   // same "stack a clause onto the existing line" pattern as
   // mismatchText/critText use elsewhere.
   private applyOrTickBuff(move: Move, isPlayer: boolean): string {
-    const casterName = isPlayer ? this.playerMaterial.name : this.wild.name;
+    const casterName = isPlayer ? this.playerMaterial.name : this.opponentView().name;
     const kondoBuff = KONDO_MOVE_BUFF[move.id];
     if (kondoBuff) {
       this.setStatus(isPlayer, { kind: kondoBuff, turnsLeft: STATUS_DURATION });
@@ -2006,8 +2183,13 @@ export class BattleScene extends Phaser.Scene {
     persistFromRegistry(this.game.registry);
 
     const tokenText = won ? `+${stake} qumatessence!` : `-${tokens - newTokens} qumatessence...`;
-    const flavor = won ? victoryLine(this.wild) : defeatLine(this.wild);
-    const blurb = materialBlurb(this.wild);
+    // opponentView() rather than this.wild -- for World 10's rival, this
+    // reads whatever real compound it was last disguised as (or the player's
+    // own mirrored type, if the fight ended before its first transmutation),
+    // so the closing flavor/blurb actually matches whichever form was just
+    // beaten instead of a placeholder type that was never meant to be shown.
+    const flavor = won ? victoryLine(this.opponentView()) : defeatLine(this.opponentView());
+    const blurb = materialBlurb(this.opponentView());
     // The end-of-battle summary runs several lines longer than an in-combat
     // log line (flavor + token delta + the physics blurb), so it needs a
     // much higher clamp ceiling than setLogText's default LOG_Y -- a big

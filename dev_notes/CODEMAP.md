@@ -21,25 +21,72 @@ game/src/
   scenes/
     TitleScene.ts             Loads save -> registry, title showcase crystals, "Continue"/"New Game" -> Hub,
                                  Story Mode / Superposition Mode picker
-    HubScene.ts                World 0, static room, 3 hotspots (Materialdex/Save/Door, door label
-                                 tracks rivalDefeated progress in Story Mode, pinned to "Enter World 1"
-                                 in Superposition Mode)
+    HubScene.ts                World 0, static room, up to 9 stations: 3 that always exist
+                                 (Qumatex/Save/Door, door label/Enter-key resume-in-place
+                                 via canResumeWorld(), tracks rivalDefeated progress in Story
+                                 Mode, pinned to "Enter World 1" in Superposition Mode)
+                                 plus up to 6 reference/settings stations (Moves/Stats/Abilities/
+                                 Guardians/Tutorial/Settings, panels/hubStations.ts's
+                                 LAB_STATIONS -- Abilities/Guardians filtered out until a first
+                                 passive/guardian is unlocked/met). No crystal render anywhere in
+                                 the room except the player's own (addStationRow builds every
+                                 station as a plain text button with an optional small
+                                 art/labMotifs.ts icon beside it)
     OverworldScene.ts          Per-world walkable map: movement, encounters, rival gate, shared
                                  dialogue/panel infrastructure (addDialogueButton(At),
-                                 renderPagedButtons, renderFarewellFooter) every panels/ file uses
+                                 renderPagedButtons, renderFarewellFooter) every panels/ file uses.
+                                 H and Enter both warp straight to the Hub (scene.start('Hub')) --
+                                 no in-world menu
     panels/                    One file per guardian's panel UI (see "Guardian panels" below),
                                  e.g. noether.ts's showNoetherShop(), sklodowskaCurie.ts's
                                  showSklodowskaCuriePanel(), anderson.ts's showAndersonPanel() --
                                  passiveList.ts's renderPassiveList() is franklin.ts's own
                                  buy-list-plus-switch helper, kept in its own file rather than
                                  folded into franklin.ts directly (see "Guardian panels" below),
-                                 and tunableMoveShop.ts's renderTunableMoveShop()/
+                                 tunableMoveShop.ts's renderTunableMoveShop()/
                                  showMoveClassPicker() is the one shared by laughlin.ts's Analytic
                                  shop (Skłodowska-Curie's Ultimate shop is priced too differently
-                                 to reuse it, see "Guardians" below)
+                                 to reuse it, see "Guardians" below), and hubStations.ts holds the
+                                 Lab's own six reference/settings stations (see "Lab stations and
+                                 settings" below) -- taking scene: HubScene instead of
+                                 scene: OverworldScene, since HubScene is their only caller
     BattleScene.ts             Turn-based battle: move buttons, HP bars, attack effects, log
   world/
-    mapgen.ts                  Per-world corridor layout generator (walkable grid, branches)
+    mapgen.ts                  generateWorldMap(gridW, gridH, start, world, playerType?) -- dispatches
+                                  to generators/world<N>.ts by world number (world 10 additionally by
+                                  playerType, see generators/world10.ts), then runs two passes common
+                                  to all ten: forceChokepoint (walls off the guardian's row except a
+                                  small gap, so the returned `mid` is a true articulation point --
+                                  invariant B) and deriveRows/scatterTokens (encounter-row sampling +
+                                  qumatessence placement, computed from the final walkable grid rather
+                                  than something each generator handles itself). Retries a failing
+                                  generator (reachability or chokepoint check fails) with fresh
+                                  randomness up to 10 times before falling back to generators/fallback.ts's
+                                  plain corridor, console.error-ing rather than throwing -- generation
+                                  is randomized and runs on every world entry, so a bad roll shouldn't
+                                  crash the scene
+    generators/
+      shared.ts                 GridPoint/WorldMap-adjacent types (GeneratedMap, NullableNumberGrid),
+                                  grid helpers (makeGrid/makeColorGrid/shuffled/clamp/inBounds), the
+                                  wandering-band painter every corridor-like generator builds on
+                                  (wanderBands/paintBand/paintBands, parameterized on width so a 7-wide
+                                  main corridor and a 2-wide lane share one implementation),
+                                  paintSplitMerge (world1.ts's/world8.ts's split-then-remerge stretch,
+                                  optionally regionColor-tinted), paintColumnBand (paintBand's vertical
+                                  mirror, world4.ts's horizontal branches), carveThickPath/nearestWalkable
+                                  (splicing a fixed point into a network-shaped layout that doesn't
+                                  already touch it, world3.ts/world5.ts), and the invariant-B primitives
+                                  (forceChokepoint/reachable/verifyChokepoint) mapgen.ts runs centrally
+      fallback.ts                generateFallbackMap() -- the plain wide wandering corridor with no
+                                  per-world motif of its own; mapgen.ts's retry-exhausted fallback, also
+                                  the base shape world6.ts/world9.ts build their own motif on top of
+      world1.ts .. world10.ts    One file per world's own generator (GeneratedMap: walkable/start/goal/
+                                  mid/regionColor/biomeOverride), each implementing that world's own
+                                  course-topic motif -- see DESIGN.md §2's per-world table for what each
+                                  one is. world10.ts dispatches to whichever of world1-8's own generator
+                                  matches the player's current Material.type (data/materials.ts's
+                                  getPlayerMaterial), re-triggered live by OverworldScene.applyPlayerForm
+                                  whenever the player transmutes/fuses while standing in World 10
   art/
     perspective.ts             Pseudo-3D projection (grid coord -> screen point); re-exports
                                   CANVAS_W/CANVAS_H from config/screen.ts since every
@@ -61,6 +108,12 @@ game/src/
     sklodowskaCurie.ts            makeSklodowskaCurieAvatar(), world 10
     boss.ts                      makeBossCrystal() -- gigantic multi-shard golem boss avatar at a world's goal
     tokens.ts                   makeToken() -- qumatessence pickup sprite
+    labMotifs.ts                 One small icon builder per Lab station (Save Point/
+                                  Moves/Stats/Abilities/Guardians/Tutorial/Settings -- see "Lab
+                                  stations and settings" below), planted beside that station's
+                                  own button in the room (HubScene.addStationRow), fixed-px art
+                                  like every other builder in this directory, never run through
+                                  ui/text.ts's fontPx()/fontScale()
     attackEffects.ts            playAttackEffect() -- bolt/ring/burst/beam/eruption/meteor/nova
                                   particle effect; beam/eruption are ANALYTIC_SHAPES' per-move-id
                                   overrides (Laughlin's skyfallBeam/groundEruption), meteor/nova are
@@ -72,22 +125,40 @@ game/src/
   audio/
     sfx.ts                      Procedural sound effects (attack/impact/playGuardianChime)
     music.ts                    MusicEngine, per-scene/per-world tracks in two selectable
-                                  styles (SCORES/"Classic", SCORES_MODERN/"Modern", both
-                                  keyed `overworld:${world}`/`battle:${world}`),
-                                  setStyle('classic'|'modern') picks the table + restarts
-                                  the current track, makeBattleScore()/makeModernBattleScore()
-                                  generate worlds 2-10's (resp. all 10 modern) battle themes
-                                  (classic world 1 is hand-written), duck() for attack beats
+                                  styles (SCORES/"Classic", SCORES_MODERN/"Modern", all keyed
+                                  `overworld:${world}`/`battle:${world}`), setStyle(MusicStyle)
+                                  picks the table + restarts the current track,
+                                  makeBattleScore()/makeModernBattleScore() generate worlds
+                                  2-10's (resp. all 10 modern) battle themes (classic world 1 is
+                                  hand-written), duck() for attack beats
   data/
     types.ts                    Move, Material, MoveClass, MaterialType, CrystalVariant, Stats
+    balance.ts                   Every pure battle/economy formula, deliberately free of any
+                                  Phaser import (unlike materials.ts, which pulls in Phaser via
+                                  art/colors.ts at module scope) so game/scripts/balance-sim.mjs
+                                  can transpile and import it directly at runtime: BASE_STAT,
+                                  DEFAULT_STATS, enemyStatsForWorld(), statUpgradeCost(),
+                                  shopCost(), MOVE_LEVEL_MULTIPLIERS, MOVE_LEVEL_STREAKS,
+                                  feynmanLevelCost(), battleStakeForWorld(),
+                                  FRACTIONAL_GUARD_DAMAGE_MULT/ANYON_ECHO_FRACTION/
+                                  EDGE_CURRENT_MISMATCH_MULT (Franklin's passives, §5),
+                                  MISMATCH_MULTIPLIER, mitigationFraction() (Kondo's buff-cap
+                                  math, §4/§5), critChance(), and resolveHitDamage() -- the exact
+                                  crit-chance/defense-factor/mismatch/final-product math
+                                  BattleScene.resolveHit calls into rather than computing inline,
+                                  so the battle scene and the balance simulator can never
+                                  disagree on what a hit deals. materials.ts imports the
+                                  stat/economy exports from here and re-exports them, so every
+                                  existing `import { shopCost, ... } from '../data/materials'`
+                                  call site is unaffected.
     materials.ts                 MOVES, TYPE_LOOK, WORLD_CRYSTALS, WORLD_RIVALS,
                                   PLAYER_MATERIAL, SHOP_MOVE_IDS, ANALYTIC_MOVE_IDS,
                                   ULTIMATE_MOVE_IDS, ULTIMATE_CLASS_UNLOCK_COST,
                                   TUNABLE_MOVE_CLASSES, RIVAL_9_TYPES, WORLD_NAMES,
-                                  DEFAULT_STATS, getWildPool(), getRival(world, rival9Type?),
+                                  getWildPool(), getRival(world, rival9Type?),
                                   compatibleMoves(),
                                   canHost(), getPlayerMaterial(), getPlayerStats(), getBattleMoves(),
-                                  enemyStatsForWorld(), statUpgradeCost(), shopCost(), findMaterialByName(),
+                                  findMaterialByName(),
                                   rollRival9Type() -- rolls World 9's rival's random MaterialType,
                                   fed into getRival() (see "Rival/boss fights" below),
                                   getTunedMoveClass()/tunedMoveDisplayName() -- read a tunable move's
@@ -111,8 +182,12 @@ game/src/
                                   PASSIVE_OWNER_LABELS -- Franklin's whole-battle passive
                                   abilities (id/name/owner/description/cost)
     tokens.ts                    Qumatessence value tiers + weights
-    quiz.ts                      Per-material physics question pools (>=6 each) via
-                                  getMaterialQuestion(), plus the world-tagged ANALYTIC_QUESTIONS pool
+    quiz.ts                      Per-material physics question pools (>=6 each, MATERIAL_QUESTIONS)
+                                  aggregated per-world (union of a world's own WORLD_CRYSTALS
+                                  materials' pools, World 10 exempted to the union of worlds 1-9's
+                                  own pools) via getWorldQuestion(world) -- the wild-encounter quiz
+                                  draws by world, not by which specific material was fought -- plus
+                                  the world-tagged ANALYTIC_QUESTIONS pool
                                   (AnalyticQuestion carries worlds: number[]) via
                                   getAnalyticQuestion(visitedWorlds) for Laughlin's two quiz-gated
                                   Analytic moves -- draws only questions tagged with a visited
@@ -125,7 +200,7 @@ game/src/
                                   filtering, since the finale is meant to test everything the course
                                   covered, not one world's own topic
     greetings.ts                 Per-MaterialType flavor lines (encounter/victory/defeat)
-    materialdex.ts               Per-material (fallback per-type) physics blurb for Materialdex
+    materialdex.ts               Per-material (fallback per-type) physics blurb for Qumatex
     save.ts                      localStorage schema + persistFromRegistry()/load()
     tutorial.ts                    TUTORIAL_TIPS/TUTORIAL_PAGES -- contextual + replayable tutorial copy
     settings.ts                    DENSITY_PRESETS/DEFAULT_ENCOUNTER_DENSITY -- wild-encounter density presets,
@@ -138,13 +213,20 @@ game/src/
 since `materials.ts` pulls in Phaser at module scope) and regenerates the
 `<!-- GENERATED -->` table blocks in the top-level `docs/*.md` files.
 
+`game/scripts/balance-sim.mjs` (run via `npm run balance-sim`, see
+DEVELOPMENT.md's "Balance simulator") is also outside `src/` -- it reads the
+same static tables the same AST way, but transpiles and actually imports
+`data/balance.ts` (Phaser-free, unlike `materials.ts`) to run the real damage/
+economy formulas against three reference player builds across worlds 1-10, a
+difficulty-curve sanity check rather than a docs generator.
+
 ## Data model (`data/types.ts`, `data/materials.ts`)
 
 - A **Material** is a crystal: `name`, `type` (`MaterialType`), `color`, `variant`
   (shard/cluster/prism/layer/twisted), `maxHp`, `moves` (string ids into `MOVES`), an optional
   `shortName` (a short chemical-formula/acronym form, e.g. "MnO", "YIG" -- only set where one's
   genuinely worth authoring; `materials.ts`'s `materialDisplayName()` is the one consumer today,
-  the Materialdex's "Name (ShortName)" line), and an optional `hybridParents` (both parents' own
+  Qumatex's "Name (ShortName)" line), and an optional `hybridParents` (both parents' own
   `color`/`variant`, set only by `combineMaterials` -- see below and STYLE.md's "Crystal
   sprites" section).
 - `crystal(name, type, maxHp, moves, shadeStep?, variantOverride?, shortName?)` is the
@@ -225,10 +307,10 @@ since `materials.ts` pulls in Phaser at module scope) and regenerates the
   landmark should spawn through the single unified `OverworldScene.spawnGuardianSprite` (looked
   up from `WORLD_GUARDIANS`) pattern, not a bespoke `spawnXSprite` per guardian.
 - **Panel/dialogue UI.** Every overlay (wild encounter, guardian panels, rival gate, Hub's
-  Materialdex/Save panels, the Enter-key menu) is the same dark rounded-rectangle-with-stroke
+  Qumatex/Save panels, the Lab's own six stations) is the same dark rounded-rectangle-with-stroke
   treatment, with the stroke color signaling the panel's kind: blue-grey `0x444466` = wild
-  encounter (`OverworldScene.showEncounter`) and the Enter-key menu/info panels (`0x8fa0c9`,
-  a distinct blue-grey so it doesn't collide), gold `0xffe066` = Noether, teal `0x4adde0` =
+  encounter (`OverworldScene.showEncounter`) and the Lab's Moves/Stats/Abilities/Settings
+  stations (`0x8fa0c9`, a distinct blue-grey so it doesn't collide), gold `0xffe066` = Noether, teal `0x4adde0` =
   Bloch, teal-green `0x4ad9a0` = Dresselhaus's transmutation panel, blue-violet `0x6a7fff` =
   Laughlin's Analytic shop (`panels/tunableMoveShop.ts`'s `renderTunableMoveShop`, shared
   chrome), green `0x4fd97a` = Majorana's hybrid panel, rust `0xc9884a` = Anderson's
@@ -236,7 +318,7 @@ since `materials.ts` pulls in Phaser at module scope) and regenerates the
   question-streak sub-panel), red `0xe86a44` = Kondo's
   self-buff shop, purple `0xa878c9` = Franklin's passive panel, olive `0xc9d84a` =
   Skłodowska-Curie's Ultimate shop, red `0xff6666` = rival gate, purple `0x9a6ad9` = Hub's
-  `showPanel` (Materialdex/Save), lavender `0xd9a5ff` = `OverworldScene.showStoryBeat`'s
+  `showPanel` (Qumatex/Save), lavender `0xd9a5ff` = `OverworldScene.showStoryBeat`'s
   between-worlds panel, and (in `BattleScene`, the one place dialogue-style overlays live outside
   `OverworldScene`) gold `0xffe066` again for `showAnalyticQuestion`'s in-battle question panel
   (matching the move menu's own border) and magenta `0xff66ff` for `showUltimateQuestions`'s.
@@ -289,7 +371,7 @@ since `materials.ts` pulls in Phaser at module scope) and regenerates the
   pattern rather than inventing a second override mechanism.
 - **Discovery vs. defeat tracking.** Two separate registry/save lists, both excluding rivals
   (gate encounters, not collectible materials): `discoveredMaterials` (`OverworldScene.recordDiscovery`, written on
-  first wild *encounter*, feeds the Hub's Materialdex) and `defeatedMaterials`
+  first wild *encounter*, feeds the Hub's Qumatex) and `defeatedMaterials`
   (`BattleScene.endBattle`, written on an ordinary wild *win*, feeds Dresselhaus's transmutation
   panel). Don't conflate them -- a material can be encountered without being defeated.
 
@@ -335,15 +417,21 @@ real quasiparticle; there is no abstract "disorder" move or class.
 `correlation`, base `10` each (`BASE_STAT`/`DEFAULT_STATS`). Player stats live in registry/save
 key `playerStats`, grown via `OverworldScene.renderShopStats` (Noether's "Stats" tab, cost
 `statUpgradeCost(current)` per +1 point). Opponent stats are never stored per-material --
-`enemyStatsForWorld(world)` computes them fresh at battle start (`BattleScene.create`), scaling
-by `STAT_GROWTH_PER_WORLD` (`+3` quantumness, `+3` velocity, `+2` correlation) per world past
-world 1.
+`enemyStatsForWorld(world)` (`data/balance.ts`) computes them fresh at battle start
+(`BattleScene.create`), scaling by a two-phase curve, gentle through worlds 1-3 and steeper from
+world 4 on (`EARLY_GROWTH_PER_STEP`/`LATE_GROWTH_PER_STEP`, see that function's own comment for
+the exact rates and the reasoning behind the two phases), rounded to whole numbers.
 
 `BattleScene.resolveHit` is the single damage-resolution function both sides' attacks go
 through: crit chance from the attacker's Quantumness, incoming damage divided by the defender's
 Correlation (`BASE_STAT / correlation`), and a `2x` "quasiparticle mismatch" multiplier from
 `data/materials.ts`'s `canHost(defenderType, move.class)` -- a defender whose own
 `MOVE_COMPATIBILITY` list doesn't include the attacking move's class takes it at double force.
+The crit-chance/defense-factor/mismatch/final-product arithmetic itself lives in `data/
+balance.ts`'s `resolveHitDamage` (Phaser-free, so `game/scripts/balance-sim.mjs` can run the
+same math outside the browser) -- `resolveHit` assembles that hit's own per-term multipliers
+(mismatch bool + which multiplier applies, quiz/Analytic/Ultimate bonus, Kondo/Franklin
+defensive terms) and calls into it rather than computing the product inline.
 This is the only type-interaction term in the damage formula (DESIGN.md §3/§4) -- there is no
 separate type-chart multiplier. The move's own `power` feeding that formula is `move.power`
 verbatim for the defender's side, but for the *attacker's* side only when `isPlayer` is false --
@@ -508,10 +596,11 @@ damage, 3 turns" legend sub-line -- `moveButtonContent` special-cases `KONDO_MOV
 the mismatch check and `Pwr <n>` label entirely, showing "`<n>`-turn buff" instead).
 `moveMenuPages(moveIds)`
 further splits any section larger than the fixed `MOVE_MENU_MAX_ROWS` (3) into several
-same-label pages (e.g. an 'adaptive' form's full **Attacks** list becomes "ATTACKS (1/5)"
-through "ATTACKS (5/5)", four pages of 3 plus one of 2) rather than measuring available
-field space to decide how many rows fit -- the cap is a plain constant, so every page's row
-budget stays close to identical regardless of how many moves a section has in total.
+same-label pages (e.g. a `chernSuperconductor`-type form's full **Attacks** list -- the
+broadest single main type's own `MOVE_COMPATIBILITY` list, 5 classes -- becomes "ATTACKS (1/2)"
+then "ATTACKS (2/2)", 3 moves plus 2) rather than measuring available field space to decide how
+many rows fit -- the cap is a plain constant, so every page's row budget stays close to
+identical regardless of how many moves a section has in total.
 `drawMoveMenu(moveIds)` builds a docked `Container` (field `moveMenu`, destroyed and rebuilt
 from scratch on every call, not just once at battle start) at the field's bottom-right, but
 renders only `moveMenuPages(moveIds)[movePageIndex]` -- one page, not every
@@ -627,6 +716,26 @@ re-rolling. `OverworldScene.getWorldRival()` is the shared wrapper both `spawnBo
 the rival-battle code path call -- it passes `resolveRival9Type()` for world 9 and `undefined`
 for every other world, so callers never need their own `this.world === 9` branch.
 
+**World 10's rival has no fixed type either, unlike World 9's, decided live in `BattleScene`
+rather than rolled once per visit.** `data/materials.ts`'s `WORLD_RIVALS[10]` ("The Adapted")
+carries a placeholder `type` (never read once a battle starts) used only for the pre-battle
+overworld/dialogue preview -- `BattleScene`'s own `adaptedForm` field (`Material | null`,
+non-null only for `this.isRival && this.world === 10`) is this fight's actual live
+type/look/name, read through the `opponentView()` helper everywhere the opponent's identity
+matters (`resolveHit`'s mismatch check, `moveButtonContent`'s `!!2x` preview, `drawTurnPreview`,
+every opponent-identity log line, `endBattle`'s flavor/blurb) instead of `this.wild` directly.
+Set in `create()` to mirror `getPlayerMaterial`'s own current type (visuals/name stay "The
+Adapted"'s own until the first transmutation). `resolveHit`'s `checkEndOrContinue` calls
+`transmuteAdapted(effectiveClass)` once per player Attack/Analytic/Ultimate move that resolves
+against a still-living Adapted (Kondo's self-buff moves never reach that function at all, see
+`resolveHit`'s own early return) -- it reverse-looks-up `data/materials.ts`'s
+`typesHosting(moveClass)` (every `MaterialType` whose `MOVE_COMPATIBILITY` list actually
+includes that class), picks a real compound of one of those types at random from `allCrystals()`,
+and becomes a "Polycrystalline `<compound>` Golem" of it (same naming `WORLD_RIVALS[1-8]` uses),
+rebuilding `opponentCrystal`/`opponentNameText` and logging the change. `this.wild.moves`/
+`.maxHp` (its actual attack moveset and HP) are never touched by this -- only its defensive
+identity is dynamic.
+
 **Progression (Face the Rival/Continue) is exclusive to the goal panel.** `renderShopFooter`
 (Farewell + Face-the-Rival/Continue, `showGatePanel`'s only caller) and `renderFarewellFooter`
 (Farewell only) are siblings -- every mid-corridor guardian panel (`showNoetherShop`'s two tabs,
@@ -653,6 +762,22 @@ a biome entry in `art/biomes.ts`) together if a future world is ever added past 
 `OverworldScene.recordVisit()`/`getVisitedWorlds()` track registry/save key `visitedWorlds`
 (distinct from `rivalDefeated` -- you can visit a world without beating its rival), written
 once per world the first time that world's scene is created.
+
+**Returning to the Hub always snapshots the in-progress world first.**
+`OverworldScene.returnToHub()` (H/Enter, the World 10 finale's "Return to the Lab", and
+`returnToPreviousWorld()`'s World-1 case -- every path from a world back to the Hub) calls
+`saveMapState()` before `scene.start('Hub')`, so the registry's `mapState` key always reflects
+wherever the player actually stood, not just wherever a wild encounter/goal/middle-row event
+last happened to fire (`saveMapState`'s other call sites). `HubScene.canResumeWorld(world)`
+reads that same `mapState` key (`.world === world`) together with `visitedWorlds` to decide
+whether the Hub door (and the Lab's own Enter key, `HubScene.create()`'s `keydown-ENTER`
+listener -- the reverse direction of `OverworldScene`'s own H/Enter, guarded by the same
+one-panel-at-a-time `dialogueContainer` check every Lab station already uses) can promise a
+resume-in-place; `mapState` is registry-only and doesn't survive a page reload the way
+`visitedWorlds` does, so checking both is what keeps a reloaded session's door label from
+promising a resume it can no longer deliver. `HubScene.doorLabel()`/`enterWorld()` and the Lab's
+`keydown-ENTER` handler all read this one predicate rather than three separate checks that could
+drift apart.
 
 `WORLD_NAMES` is meant to be readable as "which course topic is this," not a generic RPG
 terrain name. `WORLD_RIVALS`' own names (and, per-type, `RIVAL_9_NAMES`) instead follow
@@ -866,7 +991,9 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
 
 **Every guardian stands mid-corridor, not at the goal or start.** `GuardianDef.tile` is `'goal' |
 'start' | 'middle'`, but every current `WORLD_GUARDIANS` entry uses `'middle'` -- `world/mapgen
-.ts`'s `generateWorldMap` computes a `mid: GridPoint` (roughly the corridor's halfway row)
+.ts`'s `generateWorldMap` computes a `mid: GridPoint` (a forced, verified chokepoint every route
+from `start` to `goal` is routed through, not just a point near the geometric middle of one of
+several possible routes -- see the `world/` file-tree entry above and DESIGN.md §2)
 alongside `start`/`goal`, threaded through `OverworldScene.midTile` and `SavedMapState` the same
 way `goalTile`/`startTile` are. Reaching that row (`OverworldScene.maybeReachMiddle`, mirroring
 `maybeReachGoal`'s "whole row counts, not one tile" rule) sets `reachedMiddle` and calls
@@ -875,28 +1002,67 @@ way `goalTile`/`startTile` are. Reaching that row (`OverworldScene.maybeReachMid
 `tile` values (and `spawnGuardianSprite`'s tile-lookup still branches on all three) purely so a
 future guardian could choose them; nothing currently does.
 
-## Overworld menus and settings
+## Lab stations and settings
 
-**Enter-key pause menu** (`OverworldScene.togglePauseMenu`/`showPauseMenu`/`showInfoPanel`/
-`showAbilitiesPanel`): follows the `dialogueContainer`/`dialogueActive`/`closeDialogue()`
-overlay convention, gated so it can't open over another panel. Lives only in
-`OverworldScene`, not `BattleScene` or `HubScene`. `showPauseMenu`'s rows are a data-driven
-array (label + onClick) rather than hand-placed buttons -- a fixed eight rows (Return to
-Lab, View Moves, View Stats, View Abilities, Guardians, Tutorial, Settings, Close); keep the
-data-driven-array shape for any future conditional row rather than switching to fixed
-positions. `showMovesPanel` lists `getBattleMoves(registry)`
+**The Lab's six reference/settings stations** (`scenes/panels/hubStations.ts`'s
+`LAB_STATIONS` array -- `showMovesPanel`/`showStatsPanel`/`showAbilitiesPanel`/
+`showGuardiansPanel`/`showTutorialTopics`/`showSettingsPanel`, each taking `scene: HubScene`):
+built the same way a guardian panel file takes `scene: OverworldScene` (see "Guardian panels"
+above) -- these six only ever run from `HubScene`, since pressing `H` or `Enter` from any
+Overworld scene warps straight there (`this.scene.start('Hub')`, no menu/overlay of choices in
+between) rather than opening anything mid-world. Each is a pure function of registry/save
+state (player stats/moves/passives, `metGuardians`, game settings), not of anything tied to
+being mid-world, which is what makes moving them out of `OverworldScene` safe. They follow
+`HubScene`'s own `dialogueContainer`/`closeDialogue()` overlay convention (both made public,
+not private, on `HubScene` for the same "panel modules living outside the class can't reach a
+`private` member" reason `OverworldScene` widens its own dialogue infrastructure), gated so a
+station can't open over another already-open panel (`HubScene.addStationRow`'s
+`dialogueContainer` check). Each `LAB_STATIONS` entry also carries a `visible(scene)` predicate
+-- true unconditionally for Moves/Stats/Tutorial/Settings, and for Abilities/Guardians only
+once `passivesUnlocked`/`metGuardians` is non-empty (or `isSuperpositionMode()` is true, matching
+`showGuardiansPanel`'s own "list every guardian regardless" treatment in that mode) --
+`HubScene.create()` filters `LAB_STATIONS` by this before laying out the room's station rows,
+so Abilities/Guardians simply don't appear until there's something to check/revisit there.
+`showMovesPanel` lists `getBattleMoves(registry)`
 (learned ∩ currently form-compatible, not the raw `unlockedMoves` list) as plain
 `<name> -- Pwr N` lines (`moveDisplayName`/`effectiveMovePower`, so a Feynman-leveled move's
 name/power both show up here too) -- no
 move-class label, no "incompatible" entries; a move the player has learned but can't currently
 use just doesn't show up until they transmute into a form that supports it. `showAbilitiesPanel`
 is the "check anytime" surface for Franklin's current passive loadout -- its own
-dedicated panel (not folded into `showStatsPanel`/`showInfoPanel`), looping over `data/
+dedicated panel (not folded into `showStatsPanel`/its shared `showInfoPanel` body), looping over `data/
 passives.ts`'s `PASSIVE_OWNERS` (rather than a hand-written block) to build one
 name+description row per owner, labeled via `PASSIVE_OWNER_LABELS` and read from registry
 `activePassiveByOwner[owner]`, so a player doesn't have to walk back to either guardian's own
 panel just to remember which passive is running (and doesn't have to remember what that passive
-actually does either, since the full description shows here too).
+actually does either, since the full description shows here too). `showGuardiansPanel` lists
+every met guardian (`OverworldScene.guardianRoster()`, a public static id/name/world list
+derived from the private `WORLD_GUARDIANS` table) and, on a row click, warps into that
+guardian's world (`scene.start('Overworld', { world, regenerate: true, openGuardian: true })`)
+rather than trying to render their bespoke shop UI inside the Lab -- a guardian's own panel
+(Noether's shop, Bloch's teleport hub, ...) depends on overworld-only state (the qumatessence
+HUD, `applyPlayerForm`, `advanceToWorld`, per-guardian pagination fields) that stays private to
+`OverworldScene` by design (see "Guardian panels" above), so reopening it has to happen inside
+that scene. `OverworldScene.create()` reads the `openGuardian` init flag once, after the
+(freshly regenerated) map is built, and calls the same `openGuardian()` a guardian's own
+mid-corridor tile would.
+
+**All eight of the Lab's non-door panels** (the six stations above, plus `HubScene`'s own
+`showSavePoint`/`renderMaterialdexPanel`) share one heading color -- `hubStations.ts`'s exported
+`LAB_TITLE_COLOR` (`#ffe066`) -- and one centered-content geometry: `hubStations.ts`'s
+`labPanelColumns(panelWidth)` returns a fixed `contentCenterX`/`contentWrapW` margined in from
+both edges of the panel. A panel's own themed motif (`art/labMotifs.ts`'s `makeMovesMotif`/
+`makeStatsMotif`/`makeAbilitiesMotif`/`makeGuardiansMotif`/`makeTutorialMotif`/
+`makeSettingsMotif`/`makeSavePointMotif` -- fixed-px art, never run through `ui/text.ts`'s
+`fontPx()`/`fontScale()`) is never drawn inside the panel; each `LAB_STATIONS` entry (and
+`HubScene`'s own hardcoded Save Point row) instead carries its motif builder for
+`HubScene.addStationRow` to plant beside that station's own button in the room, at a much
+smaller fixed size (`STATION_MOTIF_SIZE = 22`) than a motif drawn inside a full panel would
+use. A panel whose own row list can grow long (Guardians, up to every guardian in
+Superposition Mode) caps its row font scale (`Math.min(fontScale(scene), 1.3)`) rather than
+adding a shrink-to-fit loop, the same tradeoff `renderPassiveList`/`showAbilitiesPanel` already
+make; `showInfoPanel`/`showTutorialTopic`/`HubScene.showPanel` keep their own shrink-to-fit
+loops (floor `9`px) since their body length varies more per instance.
 
 **Story Mode vs. Superposition Mode** (save/registry `superpositionMode`, picked on
 `TitleScene`'s title screen via `addModeSelector` -- a two-button picker, not a toggle; Story
@@ -910,8 +1076,8 @@ testing/exploration aid, not part of normal progression. Three things key off
   hub (gated on `visitedWorlds`, see "Guardians" above) offers every world immediately -- this is
   what makes Bloch alone sufficient for world-to-world movement in this mode; there is no
   separate warp panel -- and unconditionally overwrites registry `discoveredMaterials` with one
-  entry per `data/materials.ts`'s `allCrystals()` result, so the Hub's Materialdex (see
-  "Materialdex" below) reads as fully discovered. That grant is unconditional rather than
+  entry per `data/materials.ts`'s `allCrystals()` result, so the Hub's Qumatex (see
+  "Qumatex" below) reads as fully discovered. That grant is unconditional rather than
   seed-once like `kondoActiveMove`/`activePassiveByOwner` below, because `discoveredMaterials` is
   a passive discovery log, not a player choice, so there is no prior pick an overwrite could
   clobber. Also seeds registry `kondoActiveMove` to `KONDO_MOVE_IDS[0]` if it's
@@ -949,15 +1115,19 @@ before an Overworld scene has ever been created. Both trigger sites persist thro
 `markTipSeen` + `persistFromRegistry` pair.
 
 **Full tutorial recap** (`data/tutorial.ts`'s `TUTORIAL_PAGES` -- `Object.values(TUTORIAL_TIPS)`,
-same tips in a fixed order -- `OverworldScene.showTutorial`/`renderTutorialPage`): a paged
-overlay using the same `dialogueContainer`/`addDialogueButtonAt` overlay convention as every
-other panel, stroked cyan (`0x5ad9ff`, see `STYLE.md`). Only reachable from the Enter-menu's
-"Tutorial" button, not auto-triggered. `showTutorial(startIndex)` always resets
-`tutorialIndex` and re-renders; Back/Next mutate `tutorialIndex` and call `renderTutorialPage()`
-again rather than rebuilding the whole scene. To add/edit a tip, only `data/tutorial.ts` needs
-touching -- both this and the contextual popups above read it generically.
+same tips in a fixed order -- `scenes/panels/hubStations.ts`'s `showTutorialTopics`/
+`showTutorialTopic`): a topic menu, not a linear pager -- `showTutorialTopics` lists every
+`TUTORIAL_PAGES` entry's own `title` as its own clickable row (same
+`dialogueContainer`/`addDialogueButtonAt` overlay convention as every other panel, stroked
+cyan `0x5ad9ff`, see `STYLE.md`), so every topic is visible up front rather than reachable only
+by paging through the rest. Picking a row calls `showTutorialTopic(scene, index)`, which
+renders just that topic's title/body plus a `<- Topics` button back to the menu and a Close
+button -- no Back/Next between topics, no `tutorialIndex` state on `HubScene` to track a
+current page (each row's click handler closes over its own `index` directly). Only reachable
+from the Lab's Tutorial station, not auto-triggered. To add/edit a tip, only `data/tutorial.ts`
+needs touching -- both this and the contextual popups above read it generically.
 
-**Materialdex indexes every crystal, not just discovered ones, as a two-column list+detail
+**Qumatex indexes every crystal, not just discovered ones, as a two-column list+detail
 panel.** `HubScene.materialdexIndex()` maps `data/materials.ts`'s `allCrystals()` against
 registry `discoveredMaterials`; `filteredMaterialdexIndex()` narrows that by
 `materialdexTypeFilter` (a `MaterialType` or `'all'`). `renderMaterialdexPanel()` renders the
@@ -968,9 +1138,14 @@ sample-row-measurement technique `OverworldScene.renderPagedButtons` uses. The r
 renders whichever entry `materialdexSelectedName` points at (looked up by name in the
 *unfiltered* index, so it stays valid across a list-page flip and only gets reassigned to the
 new filtered list's first entry on a type-filter change) -- crystal render, name, physics
-blurb, masked the same way when undiscovered. Panel height is computed top-down from each
+blurb, masked the same way when undiscovered. This panel skips the `labPanelColumns` treatment
+the other seven Lab panels use (above) in favor of its own two-column list/detail layout; its
+own right-column crystal render already is a themed motif, so instead of a station-side icon
+(art/labMotifs.ts has no builder for Qumatex, same reason) the title line gets a small purple
+prism icon of its own (`makeCrystal(this, 16, 0x9a6ad9, 'prism')`) planted just to its left.
+Panel height is computed top-down from each
 element's actual measured height (`renderMaterialdexPanel`'s running `y`, same pattern as
-`OverworldScene.showInfoPanel`), taking the taller of the two columns before placing the
+`hubStations.ts`'s `showInfoPanel`), taking the taller of the two columns before placing the
 shared "Close" footer, with the blurb's own font shrinking in whole-px steps (floor `9`) if a
 long entry would otherwise overflow.
 
@@ -1008,10 +1183,10 @@ history list of past Majorana fusions, every visit to his panel picks a fresh pa
 `tutorialTipsSeen:
 string[]`, `superpositionMode: boolean` (Story Mode is just its `false` state -- see "Story
 Mode vs. Superposition Mode" above), `encounterDensity: number` (one of
-`data/settings.ts`'s `DENSITY_PRESETS`, set via the Enter-menu's Settings panel),
-`musicStyle: 'classic' | 'modern'` (same panel's third row, one of `data/settings.ts`'s
-`MUSIC_STYLE_PRESETS` -- which of `audio/music.ts`'s `SCORES`/`SCORES_MODERN` tables
-`MusicEngine` draws from, applied immediately via `music.setStyle()`),
+`data/settings.ts`'s `DENSITY_PRESETS`, set via the Lab's Settings station),
+`musicStyle: MusicStyle` (same station's third row, one of `data/settings.ts`'s
+`MUSIC_STYLE_PRESETS` -- which of `audio/music.ts`'s `SCORES`/`SCORES_MODERN`
+tables `MusicEngine` draws from, applied immediately via `music.setStyle()`),
 `kondoActiveMove: string | null` (which of
 `data/materials.ts`'s `KONDO_MOVE_IDS` is currently
 usable in battle, `null` until the player picks one via `scenes/panels/kondo.ts`'s `showKondoPanel` -- see

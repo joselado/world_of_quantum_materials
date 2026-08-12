@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { shade } from '../art/colors';
+import { blend, shade } from '../art/colors';
 import { getBiome } from '../art/biomes';
 import type { Biome } from '../art/biomes';
 import { makeCrystal } from '../art/crystals';
@@ -27,36 +27,25 @@ import {
   MOVES,
   KONDO_MOVE_IDS,
   getPlayerMaterial,
-  getPlayerStats,
-  getBattleMoves,
   enemyStatsForWorld,
   DEFAULT_STATS,
   allCrystals,
-  moveDisplayName,
-  effectiveMovePower,
 } from '../data/materials';
-import { PASSIVES, PASSIVE_OWNERS, PASSIVE_OWNER_LABELS } from '../data/passives';
+import { PASSIVES, PASSIVE_OWNERS } from '../data/passives';
 import type { PassiveOwner } from '../data/passives';
 import { tokenColorForValue } from '../data/tokens';
-import { getMaterialQuestion } from '../data/quiz';
+import { getWorldQuestion } from '../data/quiz';
 import { encounterGreeting } from '../data/greetings';
-import { TUTORIAL_PAGES, TUTORIAL_TIPS, hasSeenTip, markTipSeen } from '../data/tutorial';
+import { TUTORIAL_TIPS, hasSeenTip, markTipSeen } from '../data/tutorial';
 import type { TutorialTipId } from '../data/tutorial';
 import { STORY_BEATS } from '../data/story';
-import {
-  DENSITY_PRESETS,
-  DEFAULT_ENCOUNTER_DENSITY,
-  FONT_SCALE_PRESETS,
-  DEFAULT_FONT_SCALE,
-  MUSIC_STYLE_PRESETS,
-  DEFAULT_MUSIC_STYLE,
-} from '../data/settings';
+import { DEFAULT_ENCOUNTER_DENSITY } from '../data/settings';
 import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
 import type { Material, MaterialType, Stats } from '../data/types';
 import { generateWorldMap } from '../world/mapgen';
 import type { GridPoint } from '../world/mapgen';
-import { fontPx, fontScale } from '../ui/text';
+import { fontPx } from '../ui/text';
 import { music } from '../audio/music';
 import { showNoetherShop } from './panels/noether';
 import { showSklodowskaCuriePanel } from './panels/sklodowskaCurie';
@@ -85,6 +74,8 @@ interface SavedMapState {
   goalTile: GridPoint;
   startTile: GridPoint;
   midTile: GridPoint;
+  regionColor: (number | null)[][];
+  biomeOverride: (number | null)[][];
   reachedGoal: boolean;
   reachedMiddle: boolean;
 }
@@ -133,6 +124,12 @@ interface OverworldInitData {
   // caller that sets this, so walking back into an earlier world arrives
   // from its far end (already at the reached goal) rather than its near one.
   enterFrom?: 'start' | 'goal';
+  // Set by the Lab's Guardians station (scenes/panels/hubStations.ts) when
+  // the player picks an already-met guardian from anywhere but that
+  // guardian's own world -- opens that guardian's panel once this scene's
+  // own create() finishes building the (freshly regenerated) map, the same
+  // panel `openGuardian` would show if the player had walked up to them.
+  openGuardian?: boolean;
 }
 
 interface WorldSprite {
@@ -186,6 +183,9 @@ export class OverworldScene extends Phaser.Scene {
   // (returnToPreviousWorld/advanceToWorld) so the player instead lands on
   // goalTile, arriving from that world's far end.
   private enterFrom: 'start' | 'goal' = 'start';
+  // Consumed once at the end of the create() that follows -- see
+  // OverworldInitData.openGuardian.
+  private openGuardianOnEntry = false;
   private biome: Biome = getBiome(1);
   private moving = false;
   private playerTile = { x: 0, y: 0 };
@@ -200,6 +200,13 @@ export class OverworldScene extends Phaser.Scene {
   private goalTile: GridPoint = { x: 0, y: 0 };
   private startTile: GridPoint = { x: 0, y: 0 };
   private midTile: GridPoint = { x: 0, y: 0 };
+  // Per-tile mapgen decoration (world/mapgen.ts's WorldMap) -- `regionColor`
+  // tints a tile (world 1's/3's/8's colored branches/domains), `biomeOverride`
+  // swaps which world's whole biome table a tile renders with (world 9's
+  // borrowed-look defect patches). Both null-filled (no override) for a world
+  // whose generator doesn't use them.
+  private regionColor: (number | null)[][] = [];
+  private biomeOverride: (number | null)[][] = [];
   private reachedGoal = false;
   private reachedMiddle = false;
   // Public rather than private: read/written directly by the extracted
@@ -239,10 +246,6 @@ export class OverworldScene extends Phaser.Scene {
   // every fresh scene create so re-entering the world doesn't strand the
   // player on the stats tab.
   shopTab: 'moves' | 'stats' = 'moves';
-  // Which tutorial page (data/tutorial.ts's TUTORIAL_PAGES) is showing --
-  // reset to 0 every time the tutorial is (re)opened, whether that's the
-  // automatic first-run play or a manual replay from the Enter-menu.
-  private tutorialIndex = 0;
   // Majorana's combine panel (§5): the first crystal picked, while the panel
   // rebuilds to ask for the second -- null means "no combine in progress,
   // show the initial pick list." Reset on every fresh scene create and every
@@ -392,6 +395,16 @@ export class OverworldScene extends Phaser.Scene {
     },
   };
 
+  // The id/name/world triplet the Lab's Guardians station (HubScene, via
+  // scenes/panels/hubStations.ts) needs to list a met guardian and warp to
+  // their world -- everything else on GuardianDef (avatar builder, colors,
+  // `open` callback) stays private to this class.
+  static guardianRoster(): { id: string; name: string; world: number }[] {
+    return Object.entries(OverworldScene.WORLD_GUARDIANS)
+      .filter((entry): entry is [string, GuardianDef] => !!entry[1])
+      .map(([world, guardian]) => ({ id: guardian.id, name: guardian.name, world: Number(world) }));
+  }
+
   constructor() {
     super('Overworld');
   }
@@ -400,6 +413,7 @@ export class OverworldScene extends Phaser.Scene {
     this.world = data?.world ?? 1;
     this.regenerate = data?.regenerate ?? false;
     this.enterFrom = data?.enterFrom ?? 'start';
+    this.openGuardianOnEntry = data?.openGuardian ?? false;
   }
 
   create() {
@@ -413,13 +427,13 @@ export class OverworldScene extends Phaser.Scene {
     if (this.world === 9) this.game.registry.remove('rival9Type');
     // Phaser reuses the same Scene instance across scene.start()/restart()
     // calls -- only init()/create() rerun, class field initializers don't --
-    // so a dialogue left open when the player switches away (H to return to
-    // the Lab, a debug warp, Bloch's teleport -- all skip straight to
-    // scene.start without closing whatever's open first) would otherwise
+    // so a dialogue left open when the player switches away (H or Enter to
+    // return to the Lab, a debug warp, Bloch's teleport -- all skip straight
+    // to scene.start without closing whatever's open first) would otherwise
     // leave dialogueActive stuck true forever on this instance, freezing
-    // movement (update()'s dialogueActive guard) and the pause menu on
-    // every future visit. Any stale reference to the old (now-destroyed)
-    // panel container needs clearing too.
+    // movement (update()'s dialogueActive guard) on every future visit. Any
+    // stale reference to the old (now-destroyed) panel container needs
+    // clearing too.
     this.dialogueActive = false;
     this.dialogueContainer = undefined;
     this.majoranaSelection = null;
@@ -461,12 +475,12 @@ export class OverworldScene extends Phaser.Scene {
     // `y`, the name's own wordWrap-driven height advancing it) rather than
     // sharing one row, since a long world name (e.g. world 5's "Frozen
     // Zero-Resistance Caverns") or a big text-size setting can each push it
-    // to wrap onto two lines and collide with a fixed-position counter. The
-    // key-hint lines that used to live here (movement, M/H/Enter) were
-    // dropped in favor of the Enter-menu's Tutorial pages, which already
-    // cover all of it (data/tutorial.ts) -- a permanent on-screen reminder
-    // was redundant with a replayable one, and doubled the overflow risk
-    // every long world name or big text size already put on this corner.
+    // to wrap onto two lines and collide with a fixed-position counter. No
+    // permanent key-hint lines (movement, M/H/Enter) live here -- the Lab's
+    // Tutorial station already covers all of it (data/tutorial.ts) as a
+    // replayable recap, which a fixed on-screen reminder would only
+    // duplicate while adding to the overflow risk every long world name or
+    // big text size already puts on this corner.
     const worldName = WORLD_NAMES[this.world] ?? `World ${this.world}`;
     let hudY = 8;
     const worldNameText = this.add
@@ -516,8 +530,8 @@ export class OverworldScene extends Phaser.Scene {
 
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.input.keyboard!.on('keydown-M', () => music.toggleMute());
-    this.input.keyboard!.on('keydown-H', () => this.scene.start('Hub'));
-    this.input.keyboard!.on('keydown-ENTER', () => this.togglePauseMenu());
+    this.input.keyboard!.on('keydown-H', () => this.returnToHub());
+    this.input.keyboard!.on('keydown-ENTER', () => this.returnToHub());
 
     // Defensive fallback only -- TitleScene normally seeds all of these
     // from localStorage (data/save.ts) before Overworld ever runs. Only
@@ -548,6 +562,15 @@ export class OverworldScene extends Phaser.Scene {
     // goal/middle row, so this only actually skips in practice if a future
     // change moves the start closer to either.
     if (!this.dialogueActive) this.showTutorialTip('controls');
+
+    // Lab Guardians-station warp (OverworldInitData.openGuardian): reopen
+    // this world's guardian once their world has finished (re)generating,
+    // same panel `openGuardian` shows when walked up to directly.
+    if (this.openGuardianOnEntry) {
+      this.openGuardianOnEntry = false;
+      const guardian = OverworldScene.WORLD_GUARDIANS[this.world];
+      if (guardian) this.openGuardian(guardian);
+    }
   }
 
   isSuperpositionMode(): boolean {
@@ -701,117 +724,6 @@ export class OverworldScene extends Phaser.Scene {
     container.addAt(panel, 0);
   }
 
-  // Renders data/tutorial.ts's TUTORIAL_PAGES as a paged overlay -- Back/
-  // Next to move between pages, Skip/Done to close early or at the last
-  // page. Called both by the first-run auto-trigger above and by the
-  // Enter-menu's "Tutorial" button, always starting over from page 0.
-  private showTutorial(startIndex: number) {
-    this.dialogueContainer?.destroy(true);
-    this.dialogueActive = true;
-    this.tutorialIndex = Phaser.Math.Clamp(startIndex, 0, TUTORIAL_PAGES.length - 1);
-    this.renderTutorialPage();
-  }
-
-  // Content is laid out top-down first (running `y`, each line's own
-  // wordWrap-driven height advancing it), and the backing panel sized/
-  // inserted behind everything afterward -- same pattern as
-  // showSettingsPanel, needed here for the same reason: page title/body
-  // length varies, and so does the text-size setting they're rendered at.
-  private renderTutorialPage() {
-    this.dialogueContainer?.destroy(true);
-
-    const panelWidth = 560;
-    const top = 34;
-    const container = this.add.container(0, 0).setDepth(100);
-    this.dialogueContainer = container;
-
-    let y = top;
-
-    const page = TUTORIAL_PAGES[this.tutorialIndex];
-    const counter = this.add
-      .text(CANVAS_W / 2, y, `TUTORIAL -- ${this.tutorialIndex + 1} / ${TUTORIAL_PAGES.length}`, {
-        fontSize: fontPx(this, 11),
-        color: '#5ad9ff',
-      })
-      .setOrigin(0.5, 0);
-    container.add(counter);
-    y += counter.height + 8;
-
-    const title = this.add
-      .text(CANVAS_W / 2, y, page.title, {
-        fontSize: fontPx(this, 16),
-        color: '#ffffff',
-        fontStyle: 'bold',
-        align: 'center',
-        wordWrap: { width: panelWidth - 60 },
-      })
-      .setOrigin(0.5, 0);
-    container.add(title);
-    y += title.height + 12;
-
-    const body = this.add
-      .text(CANVAS_W / 2, y, page.body, {
-        fontSize: fontPx(this, 12),
-        color: '#cfd8ff',
-        align: 'center',
-        wordWrap: { width: panelWidth - 60 },
-        lineSpacing: 5,
-      })
-      .setOrigin(0.5, 0);
-    container.add(body);
-    y += body.height + 18;
-
-    const footerY = y;
-    const isFirst = this.tutorialIndex === 0;
-    const isLast = this.tutorialIndex === TUTORIAL_PAGES.length - 1;
-
-    let footerHeight = 0;
-    if (!isFirst) {
-      const back = this.addDialogueButtonAt(
-        container,
-        CANVAS_W / 2 - 170,
-        footerY,
-        '<- Back',
-        () => {
-          this.tutorialIndex -= 1;
-          this.renderTutorialPage();
-        },
-        130
-      );
-      footerHeight = Math.max(footerHeight, back.height);
-    }
-    const mid = this.addDialogueButtonAt(
-      container,
-      CANVAS_W / 2,
-      footerY,
-      isLast ? 'Done' : 'Skip',
-      () => this.closeDialogue(),
-      100
-    );
-    footerHeight = Math.max(footerHeight, mid.height);
-    if (!isLast) {
-      const next = this.addDialogueButtonAt(
-        container,
-        CANVAS_W / 2 + 170,
-        footerY,
-        'Next ->',
-        () => {
-          this.tutorialIndex += 1;
-          this.renderTutorialPage();
-        },
-        130
-      );
-      footerHeight = Math.max(footerHeight, next.height);
-    }
-    y = footerY + footerHeight + 14;
-
-    const panelHeight = y - top;
-    const panel = this.add
-      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.95)
-      .setStrokeStyle(2, 0x5ad9ff);
-    container.addAt(panel, 0);
-  }
-
   // Fresh random layout -- used on first load and whenever the player
   // explicitly changes worlds (Hub door, Bloch's teleport, a debug warp),
   // which is the one action meant to reshuffle the map.
@@ -821,12 +733,18 @@ export class OverworldScene extends Phaser.Scene {
     this.playerTile = { x: Math.floor(GRID_W / 2), y: GRID_H - 5 };
 
     const wildPool = getWildPool(this.world);
-    const map = generateWorldMap(GRID_W, GRID_H, this.playerTile, this.world);
+    // World 10's own shape is dispatched by the player's current material
+    // type (world/generators/world10.ts) -- every other world ignores this
+    // param.
+    const playerType = this.world === 10 ? getPlayerMaterial(this.game.registry).type : undefined;
+    const map = generateWorldMap(GRID_W, GRID_H, this.playerTile, this.world, playerType);
     this.walkable = map.walkable;
     this.tokenTiles = map.tokens;
     this.goalTile = map.goal;
     this.startTile = map.start;
     this.midTile = map.mid;
+    this.regionColor = map.regionColor;
+    this.biomeOverride = map.biomeOverride;
 
     // The backward door (returnToPreviousWorld) lands the player on this
     // freshly generated map's goalTile instead of the corridor's south-edge
@@ -878,10 +796,11 @@ export class OverworldScene extends Phaser.Scene {
     if (this.enterFrom === 'goal') this.saveMapState();
   }
 
-  // Enter-menu Settings panel (showSettingsPanel) knob: the per-corridor-row
-  // chance a wild crystal spawns, one of data/settings.ts's DENSITY_PRESETS.
-  // Read fresh at map-generation time rather than cached, so a mid-run
-  // Settings change takes effect the next time a map is (re)generated.
+  // The Lab's Settings station (panels/hubStations.ts's showSettingsPanel)
+  // knob: the per-corridor-row chance a wild crystal spawns, one of
+  // data/settings.ts's DENSITY_PRESETS. Read fresh at map-generation time
+  // rather than cached, so a mid-run Settings change takes effect the next
+  // time a map is (re)generated.
   private encounterChance(): number {
     return (this.game.registry.get('encounterDensity') as number) ?? DEFAULT_ENCOUNTER_DENSITY;
   }
@@ -898,6 +817,8 @@ export class OverworldScene extends Phaser.Scene {
     this.goalTile = saved.goalTile;
     this.startTile = saved.startTile;
     this.midTile = saved.midTile;
+    this.regionColor = saved.regionColor;
+    this.biomeOverride = saved.biomeOverride;
     this.reachedGoal = saved.reachedGoal;
     this.reachedMiddle = saved.reachedMiddle;
     this.crystalSprites = [];
@@ -915,10 +836,26 @@ export class OverworldScene extends Phaser.Scene {
       goalTile: this.goalTile,
       startTile: this.startTile,
       midTile: this.midTile,
+      regionColor: this.regionColor,
+      biomeOverride: this.biomeOverride,
       reachedGoal: this.reachedGoal,
       reachedMiddle: this.reachedMiddle,
     };
     this.game.registry.set('mapState', saved);
+  }
+
+  // Every path back to the Hub (H/Enter, the World 10 finale, stepping back
+  // through World 1's own start door) goes through this rather than calling
+  // `scene.start('Hub')` directly -- saveMapState() only fires at specific
+  // event tiles (encounter/goal/middle) otherwise, so a player who simply
+  // walks around and leaves without hitting one of those would find `mapState`
+  // stale or (on a world visited for the first time) entirely absent, and the
+  // Hub door's next "resume in place" attempt would silently regenerate a
+  // fresh map instead (HubScene.canResumeWorld() checks this same `mapState`
+  // key to decide whether its door/Enter-key promise a resume at all).
+  private returnToHub() {
+    this.saveMapState();
+    this.scene.start('Hub');
   }
 
   private drawSky() {
@@ -1070,9 +1007,16 @@ export class OverworldScene extends Phaser.Scene {
 
         const depthRatio = Phaser.Math.Clamp(depthFar / DRAW_DISTANCE_TILES, 0, 1);
         const walkable = !!this.walkable[y]?.[x];
+        // World 9's defect patches (world/generators/world9.ts) tag a tile
+        // with which world's biome table it should render with instead of
+        // this scene's own -- every other world leaves this null.
+        const overrideWorld = this.biomeOverride[y]?.[x];
+        const tileBiome = overrideWorld != null ? getBiome(overrideWorld) : this.biome;
+        const regionTint = this.regionColor[y]?.[x] ?? null;
 
         if (walkable) {
-          const color = fogColor(this.biome.path, depthRatio, this.biome.fogTarget);
+          let color = fogColor(tileBiome.path, depthRatio, tileBiome.fogTarget);
+          if (regionTint != null) color = blend(color, regionTint, 0.55);
           g.fillStyle(color, 1);
           g.fillPoints([pFL, pFR, pNR, pNL], true);
           g.lineStyle(1, shade(color, -20), 0.3);
@@ -1080,21 +1024,57 @@ export class OverworldScene extends Phaser.Scene {
           if (depthRatio < 0.75 && this.flowerMap[y]?.[x]) {
             this.decorateTile(g, pFL, pFR, pNR, pNL);
           }
+          if (Math.abs(x - this.midTile.x) <= 1 && Math.abs(y - this.midTile.y) <= 1) {
+            this.drawMidHighlight(g, pFL, pFR, pNR, pNL, depthRatio);
+          }
         } else {
-          this.drawOffPathTile(g, x, y, pFL, pFR, pNR, pNL, depthRatio);
+          this.drawOffPathTile(g, x, y, pFL, pFR, pNR, pNL, depthRatio, tileBiome, regionTint);
         }
       }
     }
   }
 
-  // Dispatches an off-path tile's look by the current biome's `wallTheme`
-  // (art/biomes.ts) -- most biomes stay 'rock' (raised stacked-stone block,
-  // the original look), but a few render terrain you can plausibly see is
-  // impassable instead of a uniformly-colored wall: 'lava' (a flat glowing
-  // molten crust), 'water' (a dark rippling frozen lake), 'void' (open sky
-  // you'd fall through). Only 'rock' extrudes a solid block; the other three
-  // are flush with the ground plane, since a wall of lava/water/open air
-  // isn't a raised stone block.
+  // The guardian chokepoint (invariant B, world/mapgen.ts's forceChokepoint)
+  // gets its own floor treatment -- a soft pulsing glow over the same path
+  // fill, in that world's own guardian color (WORLD_GUARDIANS' strokeColor,
+  // the same per-guardian color coding every panel/pill already uses) --
+  // covering `midTile` and its immediate neighbors so the forced pinch reads
+  // as a deliberate gate the player is walking through, not an arbitrary
+  // narrow spot.
+  private drawMidHighlight(
+    g: Phaser.GameObjects.Graphics,
+    pFL: ProjectedPoint,
+    pFR: ProjectedPoint,
+    pNR: ProjectedPoint,
+    pNL: ProjectedPoint,
+    depthRatio: number
+  ) {
+    if (depthRatio > 0.9) return;
+    const glowColor = OverworldScene.WORLD_GUARDIANS[this.world]?.strokeColor ?? 0xffe066;
+    const pulse = 0.5 + 0.5 * Math.sin(this.time.now / 320);
+    g.fillStyle(glowColor, 0.28 * pulse * (1 - depthRatio));
+    g.fillPoints([pFL, pFR, pNR, pNL], true);
+    g.lineStyle(1.5, glowColor, 0.6 * (1 - depthRatio));
+    g.strokePoints([pFL, pFR, pNR, pNL], true);
+  }
+
+  // Dispatches an off-path tile's look by its own biome's `wallTheme`
+  // (art/biomes.ts, resolved per-tile by `biomeOverride` -- see drawWorld)
+  // -- most biomes stay 'rock' (raised stacked-stone block, the original
+  // look), but a few render terrain you can plausibly see is impassable
+  // instead of a uniformly-colored wall: 'lava' (a flat glowing molten
+  // crust), 'water' (a dark rippling frozen lake), 'void' (open sky you'd
+  // fall through). Only 'rock' extrudes a solid block; the other three are
+  // flush with the ground plane, since a wall of lava/water/open air isn't
+  // a raised stone block.
+  //
+  // A tile carrying a `regionColor` (world/mapgen.ts's Voronoi domains,
+  // world3.ts) always renders as solid extruded ground tinted with that
+  // color instead, regardless of `wallTheme` -- a domain interior is meant
+  // to read as a distinct solid zone the player walks around, not whatever
+  // hazard that biome's own off-path terrain happens to use (world 3's own
+  // biome is `wallTheme: 'void'`, which would otherwise render every domain
+  // as empty sky rather than a colored region).
   private drawOffPathTile(
     g: Phaser.GameObjects.Graphics,
     x: number,
@@ -1103,15 +1083,27 @@ export class OverworldScene extends Phaser.Scene {
     pFR: ProjectedPoint,
     pNR: ProjectedPoint,
     pNL: ProjectedPoint,
-    depthRatio: number
+    depthRatio: number,
+    biome: Biome,
+    regionTint: number | null
   ) {
-    const theme = this.biome.wallTheme;
+    if (regionTint != null) {
+      const color = blend(fogColor(biome.ground, depthRatio, biome.fogTarget), regionTint, 0.6);
+      g.fillStyle(color, 1);
+      g.fillPoints([pFL, pFR, pNR, pNL], true);
+      g.lineStyle(1, shade(color, -20), 0.3);
+      g.strokePoints([pFL, pFR, pNR, pNL], true);
+      this.drawWallFaces(g, x, y, pFL, pFR, pNR, pNL, color);
+      return;
+    }
+
+    const theme = biome.wallTheme;
     if (theme === 'lava') {
-      this.drawLavaTile(g, pFL, pFR, pNR, pNL, depthRatio);
+      this.drawLavaTile(g, pFL, pFR, pNR, pNL, depthRatio, biome);
       return;
     }
     if (theme === 'water') {
-      this.drawWaterTile(g, pFL, pFR, pNR, pNL, depthRatio);
+      this.drawWaterTile(g, pFL, pFR, pNR, pNL, depthRatio, biome);
       return;
     }
     if (theme === 'void') {
@@ -1119,7 +1111,7 @@ export class OverworldScene extends Phaser.Scene {
       return;
     }
 
-    const color = fogColor(this.biome.ground, depthRatio, this.biome.fogTarget);
+    const color = fogColor(biome.ground, depthRatio, biome.fogTarget);
     g.fillStyle(color, 1);
     g.fillPoints([pFL, pFR, pNR, pNL], true);
     g.lineStyle(1, shade(color, -20), 0.3);
@@ -1139,9 +1131,10 @@ export class OverworldScene extends Phaser.Scene {
     pFR: ProjectedPoint,
     pNR: ProjectedPoint,
     pNL: ProjectedPoint,
-    depthRatio: number
+    depthRatio: number,
+    biome: Biome
   ) {
-    const crust = fogColor(this.biome.ground, depthRatio, this.biome.fogTarget);
+    const crust = fogColor(biome.ground, depthRatio, biome.fogTarget);
     g.fillStyle(crust, 1);
     g.fillPoints([pFL, pFR, pNR, pNL], true);
     if (depthRatio > 0.75) return;
@@ -1173,9 +1166,10 @@ export class OverworldScene extends Phaser.Scene {
     pFR: ProjectedPoint,
     pNR: ProjectedPoint,
     pNL: ProjectedPoint,
-    depthRatio: number
+    depthRatio: number,
+    biome: Biome
   ) {
-    const base = fogColor(this.biome.ground, depthRatio, this.biome.fogTarget);
+    const base = fogColor(biome.ground, depthRatio, biome.fogTarget);
     g.fillStyle(base, 1);
     g.fillPoints([pFL, pFR, pNR, pNL], true);
     if (depthRatio > 0.75) return;
@@ -1711,7 +1705,7 @@ export class OverworldScene extends Phaser.Scene {
     container.add(greeting);
     y += greeting.height + 14;
 
-    const question = getMaterialQuestion(material.name);
+    const question = getWorldQuestion(this.world);
     if (question) {
       const prompt = this.add
         .text(CANVAS_W / 2, y, question.prompt, {
@@ -2008,7 +2002,7 @@ export class OverworldScene extends Phaser.Scene {
       'Return to the Lab',
       () => {
         this.closeDialogue();
-        this.scene.start('Hub');
+        this.returnToHub();
       },
       260
     );
@@ -2168,7 +2162,7 @@ export class OverworldScene extends Phaser.Scene {
   private returnToPreviousWorld() {
     this.closeDialogue();
     if (this.world === 1) {
-      this.scene.start('Hub');
+      this.returnToHub();
       return;
     }
     this.advanceToWorld(this.world - 1, 'goal');
@@ -2367,6 +2361,18 @@ export class OverworldScene extends Phaser.Scene {
 
     this.playerMaterial = material;
     this.redrawPlayerCrystal();
+
+    // World 10's map shape is dispatched by the player's own material type
+    // (world/generators/world10.ts) -- transmuting (Dresselhaus) or fusing
+    // (Majorana) while standing there needs the map regenerated immediately
+    // to reflect the new form, via the same regenerate-map path the Hub
+    // door/Bloch's teleport/the world doors already use. Anderson's dope
+    // deliberately doesn't call applyPlayerForm at all (it only unlocks a
+    // move, leaving playerForm/type untouched -- see CODEMAP.md), so it has
+    // nothing to trigger here either.
+    if (this.world === 10) {
+      this.advanceToWorld(10, 'start');
+    }
   }
 
   private redrawPlayerCrystal() {
@@ -2449,462 +2455,6 @@ export class OverworldScene extends Phaser.Scene {
     if (this.playerTile.y !== this.midTile.y) return;
     const guardian = OverworldScene.WORLD_GUARDIANS[this.world];
     if (guardian?.tile === 'middle') this.openGuardian(guardian);
-  }
-
-  // The Enter-key menu (DESIGN.md §4/§7 territory: quick access without
-  // leaving the field) -- respects dialogueActive so it can't stack on top
-  // of an encounter/shop panel already open, and only exists in the
-  // overworld, not mid-battle.
-  private togglePauseMenu() {
-    if (this.dialogueActive) return;
-    this.showPauseMenu();
-  }
-
-  private showPauseMenu() {
-    this.dialogueActive = true;
-
-    // Data-driven row list (rather than fixed hand-placed buttons) so rows
-    // can be added without hand-recomputing every other button's y position.
-    const rows: { label: string; onClick: () => void }[] = [
-      {
-        label: 'Return to Lab',
-        onClick: () => {
-          this.closeDialogue();
-          this.scene.start('Hub');
-        },
-      },
-      { label: 'View Moves', onClick: () => this.showMovesPanel() },
-      { label: 'View Stats', onClick: () => this.showStatsPanel() },
-      { label: 'View Abilities', onClick: () => this.showAbilitiesPanel() },
-      { label: 'Guardians', onClick: () => this.showGuardiansPanel() },
-      { label: 'Tutorial', onClick: () => this.showTutorial(0) },
-      { label: 'Settings', onClick: () => this.showSettingsPanel() },
-      { label: 'Close', onClick: () => this.closeDialogue() },
-    ];
-
-    // Content built top-down at local y (running `y`, each row's own
-    // height advancing it -- row count regularly reaches 7-8 with Settings
-    // and the debug-only Warp row, and a fixed per-row spacing tuned for
-    // one font size either overlapped rows or ran short at another), then
-    // the whole container shifted so the result lands vertically centered
-    // on the canvas -- simpler than pre-computing a height to center
-    // around when that height depends on live button measurements.
-    const container = this.add.container(0, 0).setDepth(100);
-    this.dialogueContainer = container;
-
-    const top = 20;
-    let y = top;
-
-    const panelWidth = 320;
-    const title = this.add
-      .text(CANVAS_W / 2, y, 'Menu', { fontSize: fontPx(this, 15), color: '#ffffff', fontStyle: 'bold' })
-      .setOrigin(0.5, 0);
-    container.add(title);
-    y += title.height + 16;
-
-    rows.forEach((row) => {
-      const btn = this.addDialogueButtonAt(container, CANVAS_W / 2, y, row.label, row.onClick, 260);
-      y += btn.height + 6;
-    });
-    y += top;
-
-    const panelHeight = y - top;
-    const panel = this.add
-      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.95)
-      .setStrokeStyle(2, 0x8fa0c9);
-    container.addAt(panel, 0);
-
-    container.y = Math.max(0, Math.round((CANVAS_H - panelHeight) / 2)) - top;
-  }
-
-  // Enter-menu "Settings" panel: wild-encounter density (data/settings.ts's
-  // DENSITY_PRESETS, read by generateMap via encounterChance()), text size
-  // (FONT_SCALE_PRESETS, read live by every fontPx() call), and music style
-  // (MUSIC_STYLE_PRESETS, which of audio/music.ts's SCORES/SCORES_MODERN
-  // tables MusicEngine draws from). Each is a button that cycles through its
-  // presets in place (same rebuild-the-panel pattern as Noether's shop),
-  // rather than a slider, since all three have only a handful of discrete
-  // steps. Content is laid out top-down first, each element's own
-  // (font-scale-dependent) height advancing a running `y`, and the backing
-  // panel rectangle is sized/inserted behind everything afterward -- a fixed
-  // panel height would either clip or float away from the content once text
-  // size itself is one of the settings being edited.
-  private showSettingsPanel() {
-    this.dialogueContainer?.destroy(true);
-    this.dialogueActive = true;
-
-    // As wide as the canvas comfortably allows and hint copy kept to a
-    // single short clause each -- both settings rows plus their hints plus
-    // title/close still have to fit inside CANVAS_H (480) even at the
-    // Extra Large text-size preset (3x base), which leaves very little
-    // vertical slack once every line is ~3x taller than it used to be.
-    const panelWidth = CANVAS_W - 60;
-    const contentWidth = panelWidth - 60;
-    const top = 14;
-    const container = this.add.container(0, 0).setDepth(100);
-    this.dialogueContainer = container;
-
-    let y = top;
-
-    const title = this.add
-      .text(CANVAS_W / 2, y, 'Settings', { fontSize: fontPx(this, 15), color: '#ffffff', fontStyle: 'bold' })
-      .setOrigin(0.5, 0);
-    container.add(title);
-    y += title.height + 8;
-
-    const densityIndex = this.encounterDensityIndex();
-    const densityPreset = DENSITY_PRESETS[densityIndex];
-    const densityBtn = this.addDialogueButtonAt(
-      container,
-      CANVAS_W / 2,
-      y,
-      `Enemy Density: ${densityPreset.label}`,
-      () => {
-        const next = DENSITY_PRESETS[(densityIndex + 1) % DENSITY_PRESETS.length];
-        this.game.registry.set('encounterDensity', next.value);
-        persistFromRegistry(this.game.registry);
-        this.showSettingsPanel();
-      },
-      contentWidth
-    );
-    y += densityBtn.height + 4;
-
-    const densityHint = this.add
-      .text(CANVAS_W / 2, y, 'Takes effect on the next map.', {
-        fontSize: fontPx(this, 11),
-        color: '#8fa0c9',
-        align: 'center',
-        wordWrap: { width: contentWidth },
-        lineSpacing: 4,
-      })
-      .setOrigin(0.5, 0);
-    container.add(densityHint);
-    y += densityHint.height + 10;
-
-    const fontIndex = this.fontScaleIndex();
-    const fontPreset = FONT_SCALE_PRESETS[fontIndex];
-    const fontBtn = this.addDialogueButtonAt(
-      container,
-      CANVAS_W / 2,
-      y,
-      `Text Size: ${fontPreset.label}`,
-      () => {
-        const next = FONT_SCALE_PRESETS[(fontIndex + 1) % FONT_SCALE_PRESETS.length];
-        this.game.registry.set('fontScale', next.value);
-        persistFromRegistry(this.game.registry);
-        this.showSettingsPanel();
-      },
-      contentWidth
-    );
-    y += fontBtn.height + 4;
-
-    const fontHint = this.add
-      .text(CANVAS_W / 2, y, 'Applies immediately.', {
-        fontSize: fontPx(this, 11),
-        color: '#8fa0c9',
-        align: 'center',
-        wordWrap: { width: contentWidth },
-        lineSpacing: 4,
-      })
-      .setOrigin(0.5, 0);
-    container.add(fontHint);
-    y += fontHint.height + 10;
-
-    const styleIndex = this.musicStyleIndex();
-    const stylePreset = MUSIC_STYLE_PRESETS[styleIndex];
-    const styleBtn = this.addDialogueButtonAt(
-      container,
-      CANVAS_W / 2,
-      y,
-      `Music Style: ${stylePreset.label}`,
-      () => {
-        const next = MUSIC_STYLE_PRESETS[(styleIndex + 1) % MUSIC_STYLE_PRESETS.length];
-        this.game.registry.set('musicStyle', next.value);
-        persistFromRegistry(this.game.registry);
-        music.setStyle(next.value);
-        this.showSettingsPanel();
-      },
-      contentWidth
-    );
-    y += styleBtn.height + 4;
-
-    const styleHint = this.add
-      .text(CANVAS_W / 2, y, 'Applies immediately.', {
-        fontSize: fontPx(this, 11),
-        color: '#8fa0c9',
-        align: 'center',
-        wordWrap: { width: contentWidth },
-        lineSpacing: 4,
-      })
-      .setOrigin(0.5, 0);
-    container.add(styleHint);
-    y += styleHint.height + 10;
-
-    const closeBtn = this.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Close', () => this.closeDialogue(), 260);
-    y += closeBtn.height + 8;
-
-    const panelHeight = y - top;
-    const panel = this.add
-      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.95)
-      .setStrokeStyle(2, 0x8fa0c9);
-    container.addAt(panel, 0);
-  }
-
-  private encounterDensityIndex(): number {
-    const value = this.encounterChance();
-    const idx = DENSITY_PRESETS.findIndex((p) => p.value === value);
-    if (idx !== -1) return idx;
-    return DENSITY_PRESETS.findIndex((p) => p.value === DEFAULT_ENCOUNTER_DENSITY);
-  }
-
-  private fontScaleIndex(): number {
-    const value = (this.game.registry.get('fontScale') as number) ?? DEFAULT_FONT_SCALE;
-    const idx = FONT_SCALE_PRESETS.findIndex((p) => p.value === value);
-    if (idx !== -1) return idx;
-    return FONT_SCALE_PRESETS.findIndex((p) => p.value === DEFAULT_FONT_SCALE);
-  }
-
-  private musicStyleIndex(): number {
-    const value = (this.game.registry.get('musicStyle') as 'classic' | 'modern') ?? DEFAULT_MUSIC_STYLE;
-    const idx = MUSIC_STYLE_PRESETS.findIndex((p) => p.value === value);
-    if (idx !== -1) return idx;
-    return MUSIC_STYLE_PRESETS.findIndex((p) => p.value === DEFAULT_MUSIC_STYLE);
-  }
-
-  // Lists every guardian the player has met so far (registry `metGuardians`,
-  // grown by openGuardian as middle tiles are reached), each row
-  // reopening that guardian's own panel -- works from any world's scene, not
-  // just the guardian's own, which is the whole point of putting this in the
-  // Enter menu rather than only at their home tile. In Superposition Mode
-  // every guardian lists immediately regardless of `metGuardians` -- "access to
-  // every guardian from the beginning" (the whole point of the mode) would
-  // otherwise still be gated behind physically walking up to each one first,
-  // even though every guardian's own panel already works correctly when
-  // opened from anywhere (openGuardian doesn't touch `this.world`).
-  // Content laid out top-down first (running `y`), panel sized/inserted
-  // behind everything afterward -- same pattern as showSettingsPanel. Row
-  // count grows with how many of up to 10 guardians have been met, so a
-  // fixed per-row spacing (tuned for the old single font size) either
-  // overlapped rows or ran the panel past the canvas once text got bigger.
-  private showGuardiansPanel() {
-    this.dialogueContainer?.destroy(true);
-    this.dialogueActive = true;
-
-    const panelWidth = 520;
-    const top = 20;
-    const container = this.add.container(0, 0).setDepth(100);
-    this.dialogueContainer = container;
-
-    let y = top;
-
-    const title = this.add
-      .text(CANVAS_W / 2, y, 'Guardians', { fontSize: fontPx(this, 15), color: '#ffffff', fontStyle: 'bold' })
-      .setOrigin(0.5, 0);
-    container.add(title);
-    y += title.height + 14;
-
-    const met = (this.game.registry.get('metGuardians') as string[]) ?? [];
-    const superposition = this.isSuperpositionMode();
-    const guardians = Object.values(OverworldScene.WORLD_GUARDIANS).filter(
-      (m): m is GuardianDef => !!m && (superposition || met.includes(m.id))
-    );
-
-    if (guardians.length === 0) {
-      const text = this.add
-        .text(CANVAS_W / 2, y, "You haven't met any guardians yet.", {
-          fontSize: fontPx(this, 13),
-          color: '#ffffff',
-          align: 'center',
-          wordWrap: { width: panelWidth - 60 },
-        })
-        .setOrigin(0.5, 0);
-      container.add(text);
-      y += text.height + 14;
-    } else {
-      guardians.forEach((guardian) => {
-        const btn = this.addDialogueButtonAt(
-          container,
-          CANVAS_W / 2,
-          y,
-          guardian.name,
-          () => {
-            this.closeDialogue();
-            this.openGuardian(guardian);
-          },
-          440
-        );
-        y += btn.height + 6;
-      });
-    }
-
-    const closeBtn = this.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Close', () => this.closeDialogue(), 440);
-    y += closeBtn.height + 12;
-
-    const panelHeight = y - top;
-    const panel = this.add
-      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.95)
-      .setStrokeStyle(2, 0xb98fea);
-    container.addAt(panel, 0);
-  }
-
-  private showMovesPanel() {
-    this.dialogueContainer?.destroy(true);
-    const lines = getBattleMoves(this.game.registry).map((id) => {
-      const power = Math.round(effectiveMovePower(this.game.registry, id));
-      return `${moveDisplayName(this.game.registry, id)} -- Pwr ${power}`;
-    });
-    this.showInfoPanel('Your Moves', lines.join('\n'));
-  }
-
-  private showStatsPanel() {
-    this.dialogueContainer?.destroy(true);
-    const stats = getPlayerStats(this.game.registry);
-    const body =
-      `Quantumness: ${stats.quantumness} -- raises your crit chance\n` +
-      `Velocity: ${stats.velocity} -- higher goes first each round\n` +
-      `Correlation: ${stats.correlation} -- higher takes less damage\n\n` +
-      `Qumatessence: ${this.qumatessence}\nCurrent form: ${this.playerMaterial.name}\n\n` +
-      'Raise any of these with qumatessence at Noether\'s shop.';
-    this.showInfoPanel('Your Stats', body);
-  }
-
-  // The "checkable anytime" surface for Franklin's current passive
-  // loadout (data/passives.ts, DESIGN.md §5) -- her own panel already
-  // tags locked/unlocked/active, but a player shouldn't have to walk back to
-  // the guardian just to remember which passive is running. A dedicated
-  // panel rather than folding this into showStatsPanel/showInfoPanel: two
-  // full passive descriptions (data/passives.ts's longest entries run well
-  // past 70 characters each) pushed showInfoPanel's single shrink-to-fit
-  // pass past its own floor once tried, since that pass only shrinks font,
-  // never truncates text -- explicit per-row capped fonts here (same
-  // nameScale/descScale capping renderPassiveList already uses for exactly
-  // this reason) avoid relying on that floor at all.
-  private showAbilitiesPanel() {
-    this.dialogueContainer?.destroy(true);
-    this.dialogueActive = true;
-
-    const panelWidth = 440;
-    const top = 20;
-    const container = this.add.container(0, 0).setDepth(100);
-    this.dialogueContainer = container;
-
-    let y = top;
-    const title = this.add
-      .text(CANVAS_W / 2, y, 'Your Abilities', { fontSize: fontPx(this, 15), color: '#ffe066', fontStyle: 'bold' })
-      .setOrigin(0.5, 0);
-    container.add(title);
-    y += title.height + 14;
-
-    const nameScale = Math.min(fontScale(this), 1.3);
-    const namePx = `${Math.round(13 * nameScale)}px`;
-    const descScale = Math.min(fontScale(this), 1.2);
-    const descPx = `${Math.round(10 * descScale)}px`;
-
-    const activeByOwner = (this.game.registry.get('activePassiveByOwner') as Partial<Record<PassiveOwner, string>>) ?? {};
-    const loadout: { guardian: string; activeId: string | null }[] = PASSIVE_OWNERS.map((owner) => ({
-      guardian: PASSIVE_OWNER_LABELS[owner],
-      activeId: activeByOwner[owner] ?? null,
-    }));
-    loadout.forEach(({ guardian, activeId }) => {
-      const nameLine = this.add
-        .text(CANVAS_W / 2, y, `${guardian}: ${activeId ? PASSIVES[activeId].name : 'None equipped'}`, {
-          fontSize: namePx,
-          color: '#ffffff',
-          fontStyle: 'bold',
-          align: 'center',
-          wordWrap: { width: panelWidth - 60 },
-        })
-        .setOrigin(0.5, 0);
-      container.add(nameLine);
-      y += nameLine.height + 3;
-      if (activeId) {
-        const descLine = this.add
-          .text(CANVAS_W / 2, y, PASSIVES[activeId].description, {
-            fontSize: descPx,
-            color: '#8fa0c9',
-            align: 'center',
-            wordWrap: { width: panelWidth - 60 },
-          })
-          .setOrigin(0.5, 0);
-        container.add(descLine);
-        y += descLine.height;
-      }
-      y += 14;
-    });
-
-    const footer = this.add
-      .text(CANVAS_W / 2, y, `Switch which one's active by revisiting ${PASSIVE_OWNERS.map((o) => PASSIVE_OWNER_LABELS[o]).join('/')}.`, {
-        fontSize: fontPx(this, 11),
-        color: '#8fa0c9',
-        align: 'center',
-        wordWrap: { width: panelWidth - 60 },
-      })
-      .setOrigin(0.5, 0);
-    container.add(footer);
-    y += footer.height + 18;
-
-    const closeBtn = this.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Close', () => this.closeDialogue(), 260);
-    y += closeBtn.height + 12;
-
-    const panelHeight = y - top;
-    const panel = this.add
-      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.95)
-      .setStrokeStyle(2, 0x8fa0c9);
-    container.addAt(panel, 0);
-  }
-
-  // Content laid out top-down first (running `y`), panel sized/inserted
-  // behind everything afterward -- same pattern as showSettingsPanel. Body
-  // length varies (View Moves grows with how many the player has unlocked,
-  // up to all of MOVES), so a fixed panel height either clipped it or left
-  // a lot of empty space depending on text-size setting and move count.
-  private showInfoPanel(title: string, body: string) {
-    this.dialogueActive = true;
-
-    const panelWidth = 440;
-    const top = 20;
-    const container = this.add.container(0, 0).setDepth(100);
-    this.dialogueContainer = container;
-
-    let y = top;
-
-    const titleText = this.add
-      .text(CANVAS_W / 2, y, title, { fontSize: fontPx(this, 15), color: '#ffe066', fontStyle: 'bold' })
-      .setOrigin(0.5, 0);
-    container.add(titleText);
-    y += titleText.height + 14;
-
-    // View Moves' body grows with how many of MOVES' 7 the player has
-    // unlocked (each line possibly tagged "incompatible", making it wrap
-    // to 2 lines) -- shrink the font in whole-px steps, floor 9, rather
-    // than letting a long body push the Close button off the canvas.
-    const scale = fontScale(this);
-    let bodyBase = 13;
-    const bodyText = this.add
-      .text(CANVAS_W / 2, y, body, {
-        fontSize: `${Math.round(bodyBase * scale)}px`,
-        color: '#cfd8ff',
-        align: 'center',
-        wordWrap: { width: panelWidth - 60 },
-        lineSpacing: 6,
-      })
-      .setOrigin(0.5, 0);
-    container.add(bodyText);
-    const reservedBelow = 18 + 46 + 12; // gap + close-button estimate + bottom margin
-    while (y + bodyText.height + reservedBelow > CANVAS_H - 10 && bodyBase > 9) {
-      bodyBase -= 1;
-      bodyText.setFontSize(`${Math.round(bodyBase * scale)}px`);
-    }
-    y += bodyText.height + 18;
-
-    const closeBtn = this.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Close', () => this.closeDialogue(), 260);
-    y += closeBtn.height + 12;
-
-    const panelHeight = y - top;
-    const panel = this.add
-      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.95)
-      .setStrokeStyle(2, 0x8fa0c9);
-    container.addAt(panel, 0);
   }
 
   private maybeCollectToken(x: number, y: number) {

@@ -40,68 +40,139 @@ than appending a changelog, so this always reflects current reality.
   frame): a dark band ceiling (`y` 0-46) with three recessed light-panel glows and a seam line
   marking where it meets the back wall; the wall itself the same dark blue-purple gradient the
   room always had (`0x1a1a2e` → `0x242440`), now confined between that ceiling seam and the
-  floor rather than spanning the whole canvas, carrying a pair of conduit pipes with rivets, a
-  shelf ledge holding five small glowing `makeCrystal` specimens (lab samples, in the same
-  faceted-crystal visual language as every other crystal in the game), and two dark
-  wall-mounted instrument panels with a faint glow and scanlines; a workbench/counter band
-  along the wall's base (cabinet-door seams, a lit top edge) that the hotspots stand in front
-  of; and a tiled/grating floor (alternating flat-color tiles plus a full grid of seam lines --
-  each tile still a single flat color, no per-tile diagonal shading, same "floors read better
-  flat" rule as the overworld's own ground tiles). A soft additive-blended glow pools on the
-  floor beneath where the player's crystal floats, so the room isn't uniformly flat-lit. No
+  floor rather than spanning the whole canvas, carrying a pair of conduit pipes with rivets and
+  two dark wall-mounted instrument panels with a faint glow and scanlines (purely decorative --
+  neither is a station); a workbench/counter band along the wall's base (cabinet-door seams, a
+  lit top edge) that the stations stand in front of; and a tiled/grating floor (alternating
+  flat-color tiles plus a full grid of seam lines -- each tile still a single flat color, no
+  per-tile diagonal shading, same "floors read better flat" rule as the overworld's own ground
+  tiles). A soft additive-blended glow pools on the floor beneath where the player's own
+  floating crystal (`makeCrystal`) sits -- the only crystal render drawn anywhere in the room
+  itself, so the room reads as *the player's* space rather than a shelf of specimens. No
   perspective/camera machinery -- everything is laid out at fixed canvas coordinates.
-- Three hotspots in a row on the floor band (`addHotspot`), each a small `makeCrystal` icon
-  bobbing in place with a label underneath, in the same gold-on-black label treatment as
-  overworld encounters/tokens: a purple prism for "Materialdex", a gold shard for "Save
-  Point", and a green cluster for the door, whose label switches between "Enter World 1" and
-  "Enter World N+1" depending on how far `rivalDefeated` has progressed -- or, in Superposition
-  Mode, always reads "Enter World 1" and drops the player straight into World 1, same as Story
-  Mode's own first entry. From there the player can walk to World 2 to reach Bloch, whose
-  teleport hub (already pre-seeded with every world as visited) can jump to any other world
-  immediately -- there is no separate warp/world-select panel, though every world also has its
-  own walkable doors back to the Hub/previous world and onward to the next one (see "World
-  doors" below). Clicking a hotspot while another panel is already open is a no-op (one panel
-  at a time).
-- Save Point reuses the same dark rounded-rectangle-with-stroke treatment as overworld
-  dialogues (`showPanel`), stroked in purple (`0x9a6ad9`) to match the Materialdex icon,
-  with a single "Close" button.
-- **Materialdex** (`HubScene.renderMaterialdexPanel`) is a two-column index over every real
+- **Up to nine stations, one row at a time, no crystal icons.** Every station is a plain
+  gold-on-dark-blue text button (`HubScene.addStationRow`, same look every dialogue button in
+  the game uses), not an icon a player clicks -- there is no `makeCrystal` render anywhere in
+  the station rows. Row 1 always shows all three of Qumatex, Save Point, and the door onward,
+  in that column order. Its label reads "Enter World N" for `HubScene.highestUnlockedWorld()`
+  (walking `rivalDefeated` from world 1 until it finds one not yet beaten) the first time that
+  world is ever stepped into, or "Back to World N" once it is -- `HubScene.canResumeWorld()` is
+  the single predicate both the label and the door's own click/Enter-key navigation read,
+  checking that the world is in the persisted `visitedWorlds` *and* that the registry's own
+  `mapState` (`OverworldScene`'s in-progress map/position snapshot, written by
+  `saveMapState()`/`returnToHub()` -- see "Overworld path" below) still belongs to that exact
+  world, since `mapState` is registry-only and doesn't survive a page reload the way
+  `visitedWorlds` does; sharing one predicate is what keeps the label and the actual
+  resume-or-regenerate outcome from ever disagreeing. "Back to World N" always resumes the
+  player's exact saved position in that world; "Enter World N" always generates a fresh map. In
+  Superposition Mode the door always reads "Enter World 1" and always drops the player straight
+  into a fresh World 1, same as Story Mode's own first entry -- `canResumeWorld()` never
+  returns true in this mode, since the mode's own teleport-anywhere design (below) makes a
+  single "resume where I left off" door meaningless once Bloch's hub can jump to any visited
+  world instead. Pressing Enter while standing in the Lab is the reverse of `OverworldScene`'s
+  own Enter/H (which send the player *to* the Hub, saving `mapState` as they leave): it's a
+  no-op unless `canResumeWorld()` is true for the currently-offered world (a fresh save with
+  nothing in progress yet has nothing to send Enter back to), and never fires while a Lab panel
+  is open, matching every station's own one-panel-at-a-time guard. From there the player can
+  walk to World 2 to reach Bloch, whose teleport hub (already pre-seeded with every world as
+  visited) can jump to any other world immediately -- there is no separate warp/world-select
+  panel, though every world also has its own walkable doors back to the Hub/previous world and
+  onward to the next one (see "World doors" below). Below row 1, the six reference/settings
+  stations (`scenes/panels/hubStations.ts`'s `LAB_STATIONS` -- Moves, Stats, Abilities,
+  Guardians, Tutorial, Settings) are filtered down to whichever the player has actually
+  unlocked and packed into rows of three with no gaps: Abilities only appears once the player
+  has learned a first passive (`passivesUnlocked` non-empty), Guardians only once they've met a
+  first guardian (`metGuardians` non-empty) -- Superposition Mode treats both as unlocked from
+  the start, since it already grants every passive and lists every guardian regardless. Moves,
+  Stats, Tutorial, and Settings are never gated, so a fresh save always shows at least those
+  four (two rows of up to three) even with neither gated station visible yet. Every station
+  that has a motif (Save Point plus all six `LAB_STATIONS` entries) gets its own small
+  `art/labMotifs.ts` icon planted just to the left of its button label (`HubScene.addStationRow`,
+  `STATION_MOTIF_SIZE = 22`, fixed-px, never scaled by the Text Size setting) -- much smaller
+  than the same builder would draw inside a full panel, since here it sits inline with a
+  compact button; Qumatex and the door have no motif of their own (Qumatex's own panel already
+  renders the selected compound's real crystal; the door just needs to read as an exit), so
+  those two stay plain text like every button had before motifs existed. Every station is a
+  no-op while another panel is already open (one panel at a time).
+- **Every one of the Lab's eight non-door panels reads as one coherent design** -- dark
+  rounded-rectangle-with-stroke chrome and a bold gold (`#ffe066`) heading -- rather than
+  several visually separate eras bolted together. Panel content is always laid out top-down
+  first (a running `y`, each element's own measured height advancing it) and centered within
+  the panel's own width, margined in from both edges (`scenes/panels/hubStations.ts`'s
+  `labPanelColumns`), with the background rectangle sized and inserted behind everything
+  (`container.addAt(..., 0)`) only once the real final height is known, the same pattern this
+  file's own "Paginated candidate lists" section documents for row-based panels. A panel's own
+  themed motif (Save Point's glowing gold spire with an etched rune ring, Moves' jagged orange
+  energy bolt, Stats' small ascending bar chart, Abilities' shield with a white emblem,
+  Guardians' small haloed robed figure, Tutorial's small open book, Settings' meshed pair of
+  gears -- all in `art/labMotifs.ts`) is never drawn inside the panel itself; it sits beside
+  that station's own button out in the room instead (previous bullet), so panel content gets
+  the panel's full width rather than sharing it with a left-side icon column.
+- **Save Point** (`HubScene.showSavePoint`) is its own panel (not folded into a generic helper)
+  so it can carry its own gold heading distinctly from a Close button below a single centered
+  message.
+- **Qumatex** (`HubScene.renderMaterialdexPanel`) is a two-column index over every real
   compound in the game (`data/materials.ts`'s `allCrystals()`, alphabetical by name), not just
   ones the player has found -- an undiscovered entry still gets a slot, masked to a "???" name
   in both columns, a generic "Not yet discovered" blurb, and a flat dim-grey (`0x33394a`)
   silhouette in place of the compound's own rendered look, rather than the index only ever
-  growing as the player finds things. Panel (`620` wide) stroked purple (`0x9a6ad9`, matching
-  the Materialdex icon) same as Save Point's. The **left column** lists every (filtered) entry's
-  own name as its own clickable row -- as many as fit on one screen at the current text-size
-  preset (same sample-row-measurement technique as "Paginated candidate lists" below), a
-  selected row highlighted gold-on-purple, with `<- Prev`/`Next ->` and a `Page N/M` label
-  appearing only once the full list outgrows one page. A row whose own label would run past
-  the column's width is trimmed to an ellipsis (measured against the text's actual rendered
-  width at the current font-scale preset) rather than wrapped, since wrapping would make row
-  heights uneven and break the page-fit math. The **right column** shows whichever row is
-  currently selected: the compound's own crystal render (`makeCrystal`, size `36`), name, and
-  physics blurb (`materialdex.ts`'s `materialBlurb`) -- the blurb's font shrinks in whole-px
-  steps (floor `9`) if a long entry would otherwise push the panel's footer off the canvas. A
-  **type filter** button (`Type: <MaterialType | All> ▸`) cycles through every `MaterialType`
-  plus "All," narrowing which rows appear in the left column and resetting the list to its
-  first page and first matching row. A single "Close" button sits below both columns. Every
-  element is laid out top-down with its own measured height advancing a running `y` (same
-  pattern as `OverworldScene.showInfoPanel`), the panel's own background rectangle sized and
-  inserted behind everything only once the taller of the two columns' real height is known.
+  growing as the player finds things. Panel (`620` wide) stroked purple (`0x9a6ad9`). Its title
+  line carries a small purple prism icon of its own (`makeCrystal(this, 16, 0x9a6ad9, 'prism')`)
+  since its two-column list/detail layout has no room for a full left-side motif column and its
+  right-column crystal render (below) already reads as a themed motif in its own right. The
+  **left column** lists every (filtered) entry's own name as its own clickable row -- as many
+  as fit on one screen at the current text-size preset (same sample-row-measurement technique
+  as "Paginated candidate lists" below), a selected row highlighted gold-on-purple, with `<-
+  Prev`/`Next ->` and a `Page N/M` label appearing only once the full list outgrows one page. A
+  row whose own label would run past the column's width is trimmed to an ellipsis (measured
+  against the text's actual rendered width at the current font-scale preset) rather than
+  wrapped, since wrapping would make row heights uneven and break the page-fit math. The
+  **right column** shows whichever row is currently selected: the compound's own crystal render
+  (`makeCrystal`, size `36`), name, and physics blurb (`materialdex.ts`'s `materialBlurb`) --
+  the blurb's font shrinks in whole-px steps (floor `9`) if a long entry would otherwise push
+  the panel's footer off the canvas. A **type filter** button (`Type: <MaterialType | All> ▸`)
+  cycles through every `MaterialType` plus "All," narrowing which rows appear in the left
+  column and resetting the list to its first page and first matching row. A single "Close"
+  button sits below both columns. Every element is laid out top-down with its own measured
+  height advancing a running `y` (same pattern as `hubStations.ts`'s `showInfoPanel`), the
+  panel's own background rectangle sized and inserted behind everything only once the taller of
+  the two columns' real height is known.
+- **Tutorial** (`scenes/panels/hubStations.ts`'s `showTutorialTopics`/`showTutorialTopic`,
+  stroked cyan `0x5ad9ff`) opens to a menu listing every topic by its own title
+  (`data/tutorial.ts`'s `TUTORIAL_PAGES`) rather than paging through them linearly -- the whole
+  set is visible up front. Picking a row opens that topic's own single page (title, body, a
+  `<- Topics` button back to the menu, and Close), rather than stepping through every other
+  topic to reach it.
 
 ## Overworld path
 
-- The grid is `GRID_W = 27` columns wide (`OverworldScene.ts`), but the walkable corridor
-  itself is narrow relative to that -- `CORRIDOR_HALF_WIDTH = 3` in `world/mapgen.ts`, so
-  7 tiles wide. The corridor's center drifts left/right (by 1, occasionally 2, tiles at a
-  time) as it climbs toward the goal row, and drifts often/far enough that walking straight
-  (holding one direction) runs off the edge of the corridor -- reaching the goal requires
-  actually tracking the bend sideways, not just holding "forward."
-- Short (3-6 tile) dead-end branches fork off the corridor's edges at random rows. Exactly
-  one route (the corridor itself) reaches the goal row; branches never reconnect to it.
+- The grid is `GRID_W = 27` columns wide (`OverworldScene.ts`, `GRID_H = 50` tall). Each of
+  the 10 worlds has its own map *shape* (`world/mapgen.ts` dispatching to
+  `world/generators/world1.ts` .. `world10.ts`, see CODEMAP.md) -- a wandering corridor is
+  only world 2/6/9's own base motif now, not a look shared by all ten. Every shape still
+  obeys the same two rules regardless: no walkable segment is ever narrower than 2 tiles (so
+  a wild-encounter tile spawned on the path can never fully block it), and the world's
+  guardian tile (`mid`) is a forced, verified articulation point -- every route from the
+  start tile to the goal is provably routed through it (`world/generators/shared.ts`'s
+  `forceChokepoint`/`verifyChokepoint`), not just placed near the geometric middle of one of
+  several possible routes.
+- Two per-tile overlays a generator can paint on top of its own shape, both consumed
+  generically by `OverworldScene.drawWorld`: `regionColor` tints a tile toward a fixed hex
+  color (world 1's two broken-symmetry branches, world 3's Voronoi domains, both blended into
+  the tile's ordinary fill via `art/colors.ts`'s `blend`) and `biomeOverride` swaps which
+  world's whole `art/biomes.ts` entry a tile renders with instead of the current world's own
+  (world 9's patches, each independently borrowing one of worlds 1-8's look). A `regionColor`
+  tile always renders as solid extruded ground in that tint regardless of `wallTheme` --
+  world 3's own biome is `wallTheme: 'void'` (see below), which would otherwise paint every
+  domain interior as empty sky rather than a colored region.
+- The guardian's own tile (and its immediate neighbors) gets a soft pulsing glow overlaid on
+  the ordinary path fill, in that world's own guardian color (`WORLD_GUARDIANS`'
+  `strokeColor` -- the same per-guardian color coding panels/pills already use,
+  `OverworldScene.drawMidHighlight`) -- the forced chokepoint reads as a deliberate gate the
+  player is walking through, not an arbitrary narrow spot.
 - Off-path tiles read as unambiguously "you cannot walk here," but not always the same way --
-  `OverworldScene.drawOffPathTile` dispatches on the current biome's `wallTheme`
-  (`art/biomes.ts`, see the Biomes table below):
+  `OverworldScene.drawOffPathTile` dispatches on that tile's own biome's `wallTheme`
+  (`art/biomes.ts`, resolved per-tile via `biomeOverride` above; see the Biomes table below):
   - **'rock'** (most biomes): a raised, solid-looking wall block, not just
     differently-colored flat ground -- every edge a non-walkable tile shares with a walkable
     neighbor gets an extruded vertical face (`OverworldScene.drawWallFaces`, `WALL_HEIGHT_PX =
@@ -117,22 +188,37 @@ than appending a changelog, so this always reflects current reality.
   - **'water'** (Frozen Caverns, world 5): a dark, rippling frozen lake, likewise flush with
     the ground (`OverworldScene.drawWaterTile`) -- animated shimmer streaks rather than a
     crack/glow overlay, same depth gate as lava.
-  - **'void'** (Floating Islands, world 3): no ground fill at all -- the static sky/hill
-    gradient `drawSky()` paints once behind `worldGfx` shows through, so stepping off the
-    island reads as open air rather than a solid tile in a different color
-    (`OverworldScene.drawVoidTile`). Only the edge shared with a walkable neighbor gets a
-    glowing rail marking the drop-off; a void tile with no walkable neighbor draws nothing at
-    all, which is also why this is the cheapest theme per frame, not the most expensive.
-  A ground-tile fill itself (walkable or 'rock' off-path) is a single flat color per tile,
-  not a per-tile diagonal-facet/gradient shading -- floors read better flat; don't add such
-  shading without asking first.
+  - **'void'** (Floating Islands, world 3's own biome): no ground fill at all -- the static
+    sky/hill gradient `drawSky()` paints once behind `worldGfx` shows through, so a tile reads
+    as open air rather than solid ground in a different color (`OverworldScene.drawVoidTile`).
+    Only the edge shared with a walkable neighbor gets a glowing rail marking the drop-off; a
+    void tile with no walkable neighbor draws nothing at all. World 3's own off-path tiles are
+    almost always covered by a `regionColor` domain tint instead (see above), which always
+    wins over this theme -- this path mainly renders now when a world 9 patch borrows world
+    3's biome look for a tile that has no `regionColor` of its own.
+  A ground-tile fill itself (walkable, 'rock' off-path, or a `regionColor`-tinted tile) is a
+  single flat color per tile, not a per-tile diagonal-facet/gradient shading -- floors read
+  better flat; don't add such shading without asking first.
 - Decoration (flowers / crystal glints) is placed in the off-path terrain only, not on
-  walkable tiles -- those are reserved for wild encounters (on the corridor) and
-  qumatessence pickups (at branch dead ends).
-- Map regenerates fresh (new `Math.random` layout) on first load and on an explicit world
-  change (Hub door, Bloch's teleport, a world door, a debug warp). A round trip through a battle restores
-  the exact same layout and player position instead of regenerating
-  (`OverworldScene.saveMapState`/`restoreMap`); the
+  walkable tiles -- those are reserved for wild encounters and qumatessence pickups.
+- Qumatessence tokens are scattered across a handful of walkable tiles per map
+  (`world/generators/shared.ts`'s `scatterTokens`), preferring an actual dead-end tile (a
+  branch/spur tip, degree 1 in the walkable graph) when that world's shape has any, falling
+  back to any walkable tile otherwise -- so the original "reward sits at the end of a detour"
+  read survives for the worlds that still build literal dead ends, without requiring every
+  shape to have one.
+- Map regenerates fresh (new `Math.random` layout, retried internally up to 10 times against
+  the two invariants above before falling back to a plain wide corridor) on first load and on
+  an explicit world change that's genuinely new ground -- Bloch's teleport, a world door, a
+  debug warp, the Hub door/Lab Enter-key into a world never yet visited, or (World 10 only)
+  transmuting/fusing into a new form while standing there, since World 10's shape is keyed off
+  the player's own current type. A round trip through a battle, or leaving to the Hub and
+  coming back (H/Enter from the world, the Hub door, or the Lab's own Enter key), instead
+  restores the exact same layout and player position (`OverworldScene.saveMapState`/
+  `restoreMap`) -- every path back to the Hub goes through `OverworldScene.returnToHub()`,
+  which snapshots the current map/position into the registry's `mapState` first, so the next
+  entry into that same world (`HubScene.canResumeWorld()`, above) resumes exactly where the
+  player left off rather than regenerating; the
   pre-battle encounter dialogue itself never leaves the overworld scene, so passing on it
   needs no round trip at all.
 
@@ -222,9 +308,9 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   returned *container* afterward -- world-sprite depth scaling, etc.), and a sparkle
   glyph/count pick -- all baked into the inner `Graphics` object(s), not the container, and
   stable across reloads since it's re-derived from the same name every time, not re-rolled per
-  render. Purely decorative, non-`Material` crystals (UI hotspot icons, background outcrops,
-  `boss.ts`'s own limb shards, the title screen's `TYPE_LOOK`-only showcase) omit `seed`
-  and keep their exact hand-tuned look.
+  render. Purely decorative, non-`Material` crystals (background outcrops, `boss.ts`'s own limb
+  shards, the title screen's `TYPE_LOOK`-only showcase) omit `seed` and keep their exact
+  hand-tuned look.
 - **Hybrid materials** (Majorana's fuse mechanic, DESIGN.md §5) render as an actual mixture of
   both parents, not one flat blended color. `data/materials.ts`'s `combineMaterials` carries
   each parent's own `color`/`variant` forward as the new `Material`'s `hybridParents`; when
@@ -252,10 +338,10 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   30), directly below it an italic greeting line keyed to the material's main type
   (`data/greetings.ts`'s `encounterGreeting`, in muted blue-grey `#cfd8ff`), and directly
   below that -- already visible, no "Continue" step -- either the physics question (gold
-  `#ffe066`, if the material has a `data/quiz.ts` entry -- one question drawn at random
-  from that material's pool of at least 6, via `getMaterialQuestion`, so the same material
-  doesn't always ask the same thing) with two shuffled answer buttons plus "Let me pass," or
-  a plain "Fight!" / "Let me pass" choice if it doesn't. Buttons use
+  `#ffe066`, if the current world has a `data/quiz.ts` pool -- one question drawn at random
+  from that world's combined pool of at least 6, via `getWorldQuestion`, so the same
+  encounter doesn't always ask the same thing) with two shuffled answer buttons plus "Let me
+  pass," or a plain "Fight!" / "Let me pass" choice if it doesn't. Buttons use
   the same `[ #222244 background / #ffff88 text ]` treatment `BattleScene`'s move buttons
   use, for visual continuity between the map and the battle screen. Question, answer, and
   greeting text are all kept short (one line each) so the panel reads at a glance.
@@ -266,8 +352,9 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 ## Guardians in the overworld (`OverworldScene.spawnGuardianSprite`)
 
 - Every guardian (Noether included) stands floating at their world's *middle* tile
-  (`WORLD_GUARDIANS`' `tile: 'middle'`, `mid.x`/`mid.y` from `world/mapgen.ts` --
-  roughly the corridor's halfway row), not the goal -- the goal tile
+  (`WORLD_GUARDIANS`' `tile: 'middle'`, `mid.x`/`mid.y` from `world/mapgen.ts` -- a forced,
+  verified chokepoint every route is routed through, not just a point near the geometric
+  middle of one of several possible routes; see "Overworld path" above), not the goal -- the goal tile
   belongs to that world's boss avatar (see below). One shared `spawnGuardianSprite`
   builds all of them from the `WORLD_GUARDIANS` table (avatar builder, scale `1.1`,
   name label in the guardian's own `labelColor`) rather than a bespoke function per
@@ -537,9 +624,9 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   gets a `<name> -- <cost> qumatessence` buy button plus a one-line description
   underneath, both capped at a lower font-scale ceiling than every other guardian
   panel's buttons (`Math.min(fontScale(this), 1.3)` for the label, `1.2` for the
-  description) rather than scaling all the way to the Enter-menu Settings panel's
+  description) rather than scaling all the way to the Lab's Settings station's
   uncapped 'Large' text-size preset -- this panel has no shrink-to-fit safety net the
-  way the Enter-menu's info panels do, and three buy rows each carrying their own
+  way the Lab's info panels do, and three buy rows each carrying their own
   description, on top of the avatar/intro/Farewell footer every guardian panel already
   has, pushed the Farewell button off the bottom of the canvas at the default
   text-size preset the first time this was tried uncapped. An already-bought passive
@@ -828,10 +915,11 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   one). Every page holds at most `MOVE_MENU_MAX_ROWS` (3) moves -- a section with more than
   that (`BattleScene.moveMenuPages`) splits into several same-label pages instead of
   cramming more rows onto one page, so every page's row budget (and so its font size) stays
-  close to identical regardless of how many moves a section has in total. `ATTACKS` for an
-  'adaptive'-type form that's learned every attack class (14 moves) is the only section that
-  currently gets this large, splitting into five pages (four of 3, one of 2) rather than one
-  page carrying all of them at illegibly small text. Each move is still a `#222244`-background
+  close to identical regardless of how many moves a section has in total. `ATTACKS` for a
+  `chernSuperconductor`-type form (`electron`/`phonon`/`higgs`/`chiral`/`majorana`, the broadest
+  single main type's own `MOVE_COMPATIBILITY` list) that's learned every one of its 5 attack
+  classes is the section that needs this today, splitting into two pages (3 + 2) rather than
+  one page carrying all of them at illegibly small text. Each move is still a `#222244`-background
   button, same
   treatment used everywhere else (overworld dialogue buttons), stacked vertically
   under the header -- text is the usual `#ffff88`, except a `BUFFS`-section button (Kondo's
@@ -856,7 +944,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 - Header text is deliberately capped at a lower text-size ceiling than the panel's own
   title/legend (`headerScale = Math.min(fontScale, 1.15)`, 10px label / 8px legend sub-line
   at that scale), and the pager arrows render a size above that (`13 * headerScale`) --
-  letting either scale all the way to the Enter-menu Settings panel's uncapped 'Large' preset
+  letting either scale all the way to the Lab's Settings station's uncapped 'Large' preset
   the way the title does would eat directly into the row budget below, and the header row's
   own height is taken from whichever of the label/arrows is actually taller so the arrows
   never bleed into the first move row. The panel's own title/legend are capped the same way
@@ -879,11 +967,10 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   whole-pixel steps, uniformly across the page, until none of them wrap past 2 lines -- the
   row-height budget above only ever assumes 2 lines, so a 3rd would run into the row below it.
   Verified against a live browser render (headless-Chromium harness, DEVELOPMENT.md) at every
-  text-size preset with an 'adaptive'-type form carrying every attack class at once (the worst
-  case across every `MaterialType`'s `MOVE_COMPATIBILITY` entry) and with Skłodowska-Curie's
-  Ultimate moves tuned to their longest quasiparticle name (`heavyFermion`, "Heavy Fermion")
-  while mismatched against the opponent -- no page overflows the field, and no label reaches
-  a 3rd line, at any preset.
+  text-size preset with a form carrying every attack class at once (the worst case any
+  `MOVE_COMPATIBILITY` entry can reach) and with Skłodowska-Curie's Ultimate moves tuned to
+  their longest quasiparticle name (`heavyFermion`, "Heavy Fermion") while mismatched against
+  the opponent -- no page overflows the field, and no label reaches a 3rd line, at any preset.
 
 ## Analytic question panel (`BattleScene.showAnalyticQuestion`)
 
@@ -906,26 +993,22 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   these appear in sequence, stopping at the first wrong answer since a miss already decides
   the outcome (a whiff).
 
-## Enter-key pause menu (`OverworldScene.showPauseMenu`/`showInfoPanel`/`showAbilitiesPanel`)
+## The Lab's Moves/Stats/Abilities/Guardians stations (`scenes/panels/hubStations.ts`'s `showMovesPanel`/`showStatsPanel`/`showAbilitiesPanel`/`showGuardiansPanel`)
 
-- Same dark rounded-rectangle-with-stroke panel treatment as everywhere else, stroked
-  blue-grey (`0x8fa0c9`, distinct from every guardian/encounter panel's own stroke color). Rows
-  are a data-driven list (`320` wide, height grows with row count, vertically centered on
-  the canvas rather than a fixed `panelY`) rather than fixed buttons: Return to Lab (same
-  destination as the `H` key), View Moves, View Stats, View Abilities, Guardians, Tutorial,
-  Settings, then Close -- a fixed eight rows (world-to-world movement goes through Bloch's
-  own panel instead, see above). Respects `dialogueActive`
-  (won't open over an already-open panel) and only exists in `OverworldScene`, not mid-battle.
-- "View Moves"/"View Stats" swap the pause menu for a second, generic info panel
-  (`showInfoPanel`, `420x300`, same blue-grey stroke). View Moves lists only the moves
-  actually usable right now (`getBattleMoves` -- learned moves intersected with what the
-  current crystal form's physics can host, §3) as plain `<name> -- Pwr N` lines (name and
-  power both reflecting any Feynman level via `moveDisplayName`/`effectiveMovePower`), no
-  move-class label and no "incompatible" entries cluttering the list; View Stats lists
-  Quantumness/Velocity/Correlation plus qumatessence and current form name. Both end in a
-  single "Close" button.
-- "View Abilities" is its own dedicated panel (`showAbilitiesPanel`, `440` wide, same
-  blue-grey stroke) rather than a third `showInfoPanel` body -- one name+description block
+- All four use the same dark rounded-rectangle-with-stroke panel treatment as everywhere else,
+  stroked blue-grey (`0x8fa0c9`, distinct from every guardian/encounter panel's own stroke
+  color) except Guardians (see below). Each is its own station button on the Lab floor (see
+  "The Hub" above), not a row in a shared menu -- clicking one is a no-op while another panel
+  is already open.
+- "Moves"/"Stats" share a generic info panel (`showInfoPanel`, `440` wide, same blue-grey
+  stroke). Moves lists only the moves actually usable right now (`getBattleMoves` -- learned
+  moves intersected with what the current crystal form's physics can host, §3) as plain
+  `<name> -- Pwr N` lines (name and power both reflecting any Feynman level via
+  `moveDisplayName`/`effectiveMovePower`), no move-class label and no "incompatible" entries
+  cluttering the list; Stats lists Quantumness/Velocity/Correlation plus qumatessence and
+  current form name. Both end in a single "Close" button.
+- "Abilities" is its own dedicated panel (`showAbilitiesPanel`, `440` wide, same blue-grey
+  stroke) rather than a third `showInfoPanel` body -- one name+description block
   per passive owner (`data/passives.ts`'s `PASSIVE_OWNERS`, currently just Franklin),
   each its own pair of `Text` objects with explicitly capped
   font sizes (`nameScale`/`descScale`, same capping `renderPassiveList` already uses) rather
@@ -933,16 +1016,23 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   body's shrink-to-fit only lowers font size and never truncates -- two full passive
   descriptions back to back could still overflow the canvas at that panel's largest text-size
   preset even at the shrink loop's own floor.
+- "Guardians" (`showGuardiansPanel`, `520` wide, stroked lavender `0xb98fea`) lists every met
+  guardian as its own row (`OverworldScene.guardianRoster()`, filtered by registry
+  `metGuardians`, or every guardian at once in Superposition Mode); a row click warps into
+  that guardian's world and reopens their own panel there (see "Guardians, economy, and story
+  arc" in DESIGN.md §5) rather than rendering their shop UI inside the Lab.
 
-## Settings panel (`OverworldScene.showSettingsPanel`)
+## Settings station (`scenes/panels/hubStations.ts`'s `showSettingsPanel`)
 
-- Same blue-grey (`0x8fa0c9`) stroke as the pause menu it's opened from, sized
-  `380x220`. Just one row so far -- "Enemy Density: `<preset>`" -- that cycles
-  through `data/settings.ts`'s `DENSITY_PRESETS` (Low/Normal/High/Very High) on
-  click and rebuilds the panel in place, same click-to-rebuild pattern Noether's
-  shop tabs use, rather than a slider (only four discrete steps). A muted
-  blue-grey hint line beneath explains it only affects maps generated after the
-  change, then a single "Close" button.
+- Same blue-grey (`0x8fa0c9`) stroke as the Lab's other reference stations, sized
+  `(CANVAS_W - 60)` wide with height grown to fit. Three rows -- "Enemy Density: `<preset>`"
+  (`data/settings.ts`'s `DENSITY_PRESETS`, Low/Normal/High/Very High), "Text Size: `<preset>`"
+  (`FONT_SCALE_PRESETS`, Compact/Normal/Large), and "Music Style: `<preset>`"
+  (`MUSIC_STYLE_PRESETS`) -- each cycling through its own presets on click and rebuilding the
+  panel in place, same click-to-rebuild pattern Noether's shop tabs use, rather than a slider
+  (each has only a handful of discrete steps). A muted blue-grey hint line sits beneath each
+  row ("Takes effect on the next map"/"Applies immediately"/"Applies immediately"), then a
+  single "Close" button.
 
 ## Contextual tutorial tips (`OverworldScene.showTutorialTip`/`renderTutorialTipPopup`, `HubScene.maybeShowLabTip`)
 
@@ -952,17 +1042,19 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   wild-encounter greeting's tone), a single "Got it" button beneath. No page counter or
   Back/Next -- each popup is one tip, not a sequence, so paging chrome would be pure noise.
   The Lab's version (`HubScene.maybeShowLabTip`) reuses `HubScene.showPanel` instead (purple
-  `0x9a6ad9` stroke, that scene's own panel treatment) rather than duplicating this one, since
-  it's a single one-off popup there too.
+  `0x9a6ad9` stroke, the same gold-title/measured-top-down-layout convention "The Hub" above
+  describes for the Lab's other eight panels, just without a left motif of its own -- it's a
+  one-off popup, not one of those eight stations) rather than duplicating this one, since it's a
+  single one-off popup there too.
 - Fires automatically the first time its own feature becomes relevant (`tutorialTipsSeen`,
   data/tutorial.ts's `TutorialTipId`) -- walking into the Lab, taking your first steps in a
   world, bumping into your first wild crystal, and so on -- never more than one on screen at a
   time, and never several shown in a row.
 
-## Full tutorial recap (`OverworldScene.showTutorial`/`renderTutorialPage`)
+## Full tutorial recap (`scenes/panels/hubStations.ts`'s `showTutorial`/`renderTutorialPage`)
 
 - Same panel family, `560x300`, same cyan stroke -- this is the paged, multi-tip version, kept
-  only for the Enter-menu's "Tutorial" button (replays every tip in `data/tutorial.ts`'s
+  only for the Lab's Tutorial station (replays every tip in `data/tutorial.ts`'s
   `TUTORIAL_PAGES`, in order, on demand). A small `TUTORIAL -- n / N` counter sits above the
   page title.
 - Footer row: `<- Back` (hidden on the first page) and `Next ->` (hidden on the last page)

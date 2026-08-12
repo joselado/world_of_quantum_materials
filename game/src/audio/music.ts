@@ -2,14 +2,17 @@
 // oscillators/noise scheduled through the Web Audio API. Both the overworld
 // and battle scenes get one looping score per world (relaxed major/minor-key
 // town themes; driving Golden Sun-style boss riffs), all 20 built from the
-// same handful of chord/pattern generators below. A second, symphonic
-// "Modern" style (SCORES_MODERN, further down this file) reuses each world's
-// key/tempo through a different pair of generators -- sustained
-// extended-chord string pads, a melodic phrase generator that spans whole
-// sections instead of repeating a single bar, and a thirds-below harmony
-// voice. MusicEngine.setStyle() picks which table play() reads from; the
-// Enter-menu Settings panel (OverworldScene.showSettingsPanel) is the
-// player-facing toggle, backed by data/settings.ts's MUSIC_STYLE_PRESETS.
+// same handful of chord/pattern generators below. A second arrangement
+// reuses each world's own key/tempo through its own pair of generators
+// instead of retuning anything: "Modern" (SCORES_MODERN) is an ambient
+// orchestral-pad style -- sustained extended-chord string pads, a melodic
+// phrase generator that spans whole sections instead of repeating a single
+// bar, and a thirds-below harmony voice, with no percussion at all.
+// MusicEngine.setStyle() picks which table play() reads from; the Settings
+// panel is the player-facing toggle, backed by data/settings.ts's
+// MUSIC_STYLE_PRESETS.
+
+import type { MusicStyle } from '../data/settings';
 
 type Wave = OscillatorType;
 
@@ -959,7 +962,8 @@ const BATTLE_SCORE_10 = makeBattleScore({
   crashGain: 0.3,
 });
 
-// --- The "Modern" style: a symphonic second arrangement of all 20 worlds -
+// --- The "Modern" style: an ambient orchestral-pad second arrangement of
+// all 20 worlds ---------------------------------------------------------
 //
 // Reuses each world's own key and tempo (the same ChordStep progressions the
 // classic scores above use, given again as literals here rather than
@@ -971,7 +975,8 @@ const BATTLE_SCORE_10 = makeBattleScore({
 // and turn, resolve) instead of a single shape repeating bar after bar; and
 // a genuine harmony voice a third below the lead (harmonizeThird) instead of
 // classic's octave-doubling. A handful of tracks lean on the shared
-// ambience/delay bus (ToneTrack.wet) for a soft, hall-like tail.
+// ambience/delay bus (ToneTrack.wet) for a soft, hall-like tail. There is no
+// percussion at all in either scene kind -- pure melodic pads.
 
 interface ChordToneSet {
   root: number;
@@ -1430,7 +1435,7 @@ class MusicEngine {
   private driveCurve: Float32Array<ArrayBuffer> | null = null;
   private activeGain: GainNode | null = null;
   private current: string | null = null;
-  private style: 'classic' | 'modern' = 'classic';
+  private style: MusicStyle = 'classic';
   private stopToken = 0;
   private timer: number | null = null;
   private muted = false;
@@ -1519,10 +1524,9 @@ class MusicEngine {
   // Which score table play() reads from -- 'classic' (SCORES) or 'modern'
   // (SCORES_MODERN). Restarts whatever's currently playing under the new
   // table (bypassing play()'s own no-op guard, which otherwise treats a
-  // style change on the *same* key as nothing happening) so the Enter-menu
-  // Settings toggle takes effect immediately rather than on the next scene
-  // transition.
-  setStyle(style: 'classic' | 'modern') {
+  // style change on the *same* key as nothing happening) so the Settings
+  // toggle takes effect immediately rather than on the next scene transition.
+  setStyle(style: MusicStyle) {
     if (this.style === style) return;
     this.style = style;
     if (this.current) {

@@ -5,34 +5,55 @@ import { getPlayerMaterial, allCrystals, TYPE_LOOK, materialDisplayName } from '
 import { materialBlurb } from '../data/materialdex';
 import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
-import type { CrystalVariant, Material, MaterialType } from '../data/types';
+import type { Material, MaterialType } from '../data/types';
 import { TUTORIAL_TIPS, hasSeenTip, markTipSeen } from '../data/tutorial';
 import { music } from '../audio/music';
 import { fontPx, fontScale } from '../ui/text';
 import { BUILT_WORLDS } from './OverworldScene';
+import { labPanelColumns, LAB_TITLE_COLOR, LAB_STATIONS } from './panels/hubStations';
+import { makeSavePointMotif } from '../art/labMotifs';
 
 // World 0, "The Lab" (DESIGN.md's world table) -- boot destination from
-// TitleScene and the return point from Overworld (press H). Unlike the
-// numbered worlds it isn't a walkable procedural map: it's a single static
-// room with three fixed hotspots (Materialdex, a save point, the door
-// onward), since none of the hub's jobs -- catalog, save, launch -- need
-// overworld movement or wild encounters of their own.
+// TitleScene and the return point from Overworld (press H or Enter). Unlike
+// the numbered worlds it isn't a walkable procedural map: it's a single
+// static room with up to nine stations -- three that always exist (Qumatex,
+// a save point, the door onward) plus six reference/settings stations
+// (Moves, Stats, Abilities, Guardians, Tutorial, Settings, built in
+// scenes/panels/hubStations.ts's `LAB_STATIONS`) -- since none of the hub's
+// jobs need overworld movement or wild encounters of their own, and none of
+// those six stations' own content is tied to being mid-world. Abilities and
+// Guardians only actually appear once the player has learned a first
+// passive or met a first guardian (`LAB_STATIONS`' own `visible` checks) --
+// a fresh save has nothing to check or revisit there yet.
 
 // Every real compound in the game (`allCrystals()`), not just discovered
 // ones -- an undiscovered entry still occupies a slot in the index, masked
-// down to "???" (renderMaterialdexList), so the Materialdex reads as a
-// checklist of the whole game rather than only growing entries a player has
-// already found.
+// down to "???" (renderMaterialdexList), so Qumatex reads as a checklist of
+// the whole game rather than only growing entries a player has already
+// found.
 interface MaterialdexEntry {
   material: Material;
   discovered: boolean;
 }
 
+// Fixed-px art for the small motif every station plants beside its own
+// button in the room (see art/labMotifs.ts) -- small enough to sit inline
+// with a compact text button rather than the much larger scale a motif
+// drawn inside a full panel would use. Never scaled by the Text Size
+// setting, same "art, not text" reasoning as every other motif builder.
+const STATION_MOTIF_SIZE = 22;
+const STATION_MOTIF_GAP = 8;
+
 export class HubScene extends Phaser.Scene {
-  private dialogueContainer?: Phaser.GameObjects.Container;
+  // Public, not private -- scenes/panels/hubStations.ts's Moves/Stats/
+  // Abilities/Guardians/Tutorial/Settings stations live outside this class
+  // and need to read/replace the currently-open panel, same tradeoff
+  // OverworldScene's own dialogue plumbing makes for its guardian panel
+  // files (see CODEMAP.md's "Guardian panels").
+  dialogueContainer?: Phaser.GameObjects.Container;
   private materialdexTypeFilter: MaterialType | 'all' = 'all';
   // Which page of the left-column name list is showing (renderMaterialdexPanel),
-  // reset to 0 whenever the hotspot is (re)opened or the type filter changes.
+  // reset to 0 whenever the station is (re)opened or the type filter changes.
   private materialdexListPage = 0;
   // The currently-selected compound's own name (not a list/page index) --
   // stable across a type-filter change or list-page flip since it identifies
@@ -77,19 +98,91 @@ export class HubScene extends Phaser.Scene {
     player.setPosition(CANVAS_W / 2, 230);
     this.tweens.add({ targets: player, y: 220, duration: 1000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
-    // Margin is a fraction of CANVAS_W, not a flat pixel count, so the two
-    // side hotspots stay proportionally inset from the walls at any canvas
-    // width. Rounded so the icon and its centered label land on whole pixels.
-    const hotspotMargin = Math.round(CANVAS_W * 0.18);
-    this.addHotspot(hotspotMargin, 300, 0x9a6ad9, 'prism', 'Materialdex', () => this.showMaterialdex());
-    this.addHotspot(CANVAS_W / 2, 300, 0xffe066, 'shard', 'Save Point', () => this.showSavePoint());
-    this.addHotspot(CANVAS_W - hotspotMargin, 300, 0x4ad9a0, 'cluster', this.doorLabel(), () => this.enterWorld());
+    // Margin is a fraction of CANVAS_W, not a flat pixel count, so the three
+    // station columns stay proportionally inset from the walls at any canvas
+    // width. Rounded so a station's motif+label pair lands on whole pixels.
+    const stationMargin = Math.round(CANVAS_W * 0.18);
+    const stationX = [stationMargin, CANVAS_W / 2, CANVAS_W - stationMargin];
 
-    this.add
-      .text(CANVAS_W / 2, 410, 'Click a station to interact.', { fontSize: fontPx(this, 12), color: '#8fa0c9' })
-      .setOrigin(0.5);
+    // Row 1: the three stations that exist regardless of progress --
+    // cataloguing, saving, leaving. Plain text buttons like every other
+    // station's; Save Point carries its own gold spire/rune motif
+    // (`makeSavePointMotif`) beside its label, while Qumatex and the door
+    // have no `art/labMotifs.ts` builder of their own (Qumatex's detail pane
+    // already renders the selected compound's own crystal; the door just
+    // needs to read as an exit).
+    const row1Y = 300;
+    const row1Buttons = [
+      this.addStationRow(stationX[0], row1Y, 'Qumatex', () => this.showMaterialdex()),
+      this.addStationRow(stationX[1], row1Y, 'Save Point', () => this.showSavePoint(), makeSavePointMotif),
+      this.addStationRow(stationX[2], row1Y, this.doorLabel(), () => this.enterWorld()),
+    ];
+    const row1Height = Math.max(...row1Buttons.map((b) => b.height));
+
+    // Rows 2+: the reference/settings stations (scenes/panels/hubStations.ts's
+    // LAB_STATIONS), filtered down to whichever the player has actually
+    // unlocked -- Abilities needs a first passive learned, Guardians a first
+    // guardian met (LAB_STATIONS' own `visible` checks) -- and packed into
+    // rows of three with no gaps, rather than reserving a fixed grid slot
+    // for a station that isn't visible yet. Always at least Moves/Stats/
+    // Tutorial/Settings (4), so this is always exactly two rows regardless
+    // of how many of the two gated stations have unlocked.
+    const visibleStations = LAB_STATIONS.filter((station) => station.visible(this));
+    let y = row1Y + row1Height + 8;
+    for (let i = 0; i < visibleStations.length; i += 3) {
+      const rowStations = visibleStations.slice(i, i + 3);
+      let rowHeight = 0;
+      rowStations.forEach((station, col) => {
+        const btn = this.addStationRow(stationX[col], y, station.label, () => station.onClick(this), station.motif);
+        rowHeight = Math.max(rowHeight, btn.height);
+      });
+      y += rowHeight + 8;
+    }
+
+    // Reverse direction of OverworldScene's own keydown-ENTER (which sends
+    // the player *to* the Hub) -- pressing Enter while standing in the Lab
+    // sends them back *out*, to whichever world the door itself would
+    // resume into. Same one-panel-at-a-time guard the door station's own
+    // click handler uses, and the same canResumeWorld() eligibility the
+    // door's label is built from, so a fresh save with nothing in progress
+    // yet (no built `mapState` to resume) leaves Enter a no-op here rather
+    // than launching a world the player never actually chose to start.
+    this.input.keyboard!.on('keydown-ENTER', () => {
+      if (this.dialogueContainer) return;
+      if (!this.canResumeWorld(this.highestUnlockedWorld())) return;
+      this.enterWorld();
+    });
 
     this.maybeShowLabTip();
+  }
+
+  // Shared row builder for every Lab station -- a button in the same
+  // gold-on-dark-blue look every dialogue button in the game uses
+  // (`addButton`, gated by the shared "one panel at a time"
+  // `dialogueContainer` check), with an optional small fixed-px motif
+  // (`art/labMotifs.ts`) planted just to its left so the pair reads as
+  // centered at `x` -- the motif is a decorative echo of the station's own
+  // panel, not a second interactive target, so only the button text itself
+  // is interactive.
+  private addStationRow(
+    x: number,
+    y: number,
+    label: string,
+    onClick: () => void,
+    makeMotif?: (scene: Phaser.Scene, size: number) => Phaser.GameObjects.Container
+  ): Phaser.GameObjects.Text {
+    const btn = this.addButton(x, y, label, () => {
+      if (this.dialogueContainer) return;
+      onClick();
+    });
+    if (makeMotif) {
+      const pairWidth = STATION_MOTIF_SIZE + STATION_MOTIF_GAP + btn.width;
+      const pairLeft = x - pairWidth / 2;
+      btn.setX(pairLeft + STATION_MOTIF_SIZE + STATION_MOTIF_GAP + btn.width / 2);
+      const motif = makeMotif(this, STATION_MOTIF_SIZE);
+      motif.setPosition(pairLeft + STATION_MOTIF_SIZE / 2, y + btn.height / 2);
+    }
+    return btn;
   }
 
   // First contextual tutorial tip (data/tutorial.ts): the Lab is always the
@@ -111,7 +204,7 @@ export class HubScene extends Phaser.Scene {
   // gradient from top to bottom. Static (drawn once here, never redrawn in an
   // `update()` -- this scene has none), so the extra shape count is free.
   private drawRoom() {
-    const floorTop = 340; // matches the hotspot row (y=300) and its labels underneath
+    const floorTop = 340; // matches the station row (y=300) and its labels underneath
     const g = this.add.graphics();
     const glow = this.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
 
@@ -150,35 +243,6 @@ export class HubScene extends Phaser.Scene {
       g.fillCircle(x, 100, 2.4);
     }
 
-    // A shelf ledge carrying a handful of small glowing specimen crystals --
-    // this game already draws faceted glowing crystal shapes everywhere
-    // (`art/crystals.ts`), so a few tiny background ones read as lab
-    // equipment (samples on a shelf) rather than introducing a new motif.
-    const shelfY = 130;
-    g.fillStyle(0x24243e, 1);
-    g.fillRect(50, shelfY, CANVAS_W - 100, 6);
-    g.lineStyle(1, 0x4a4a7c, 0.6);
-    g.lineBetween(50, shelfY, CANVAS_W - 50, shelfY);
-    // Spread evenly across the shelf's own span (50 to CANVAS_W-50 above),
-    // inset from each end.
-    const shelfSpecimenLooks: [number, CrystalVariant][] = [
-      [0x9a6ad9, 'prism'],
-      [0x5ad9c9, 'shard'],
-      [0xffe066, 'cluster'],
-      [0x6a4ad9, 'layer'],
-      [0x4ad9a0, 'prism'],
-    ];
-    const shelfInset = 45;
-    const shelfLeft = 50 + shelfInset;
-    const shelfRight = CANVAS_W - 50 - shelfInset;
-    shelfSpecimenLooks.forEach(([color, variant], i) => {
-      const sx = shelfLeft + ((shelfRight - shelfLeft) * i) / (shelfSpecimenLooks.length - 1);
-      const specimen = makeCrystal(this, 11, color, variant);
-      specimen.setPosition(sx, shelfY - 10);
-      glow.fillStyle(color, 0.18);
-      glow.fillCircle(sx, shelfY - 10, 15);
-    });
-
     // Two wall-mounted instrument panels, dark screens with a faint glow and
     // a couple of scanlines -- readable as lab monitors without drawing an
     // actual UI on them. Symmetric about the room's center.
@@ -195,7 +259,7 @@ export class HubScene extends Phaser.Scene {
     }
 
     // Workbench/counter along the base of the wall, with cabinet-door seams
-    // and a lit countertop edge -- the hotspots (added after this, in
+    // and a lit countertop edge -- the stations (added after this, in
     // `create()`) stand in front of it rather than floating in empty space.
     const counterY = 272;
     g.fillStyle(0x14142a, 1);
@@ -231,33 +295,6 @@ export class HubScene extends Phaser.Scene {
     }
   }
 
-  private addHotspot(
-    x: number,
-    y: number,
-    color: number,
-    variant: CrystalVariant,
-    label: string,
-    onClick: () => void
-  ) {
-    const icon = makeCrystal(this, 30, color, variant);
-    icon.setPosition(x, y);
-    icon.setInteractive(new Phaser.Geom.Circle(0, 0, 30), Phaser.Geom.Circle.Contains);
-    icon.on('pointerdown', () => {
-      if (this.dialogueContainer) return; // one panel at a time
-      onClick();
-    });
-    this.tweens.add({ targets: icon, y: y - 6, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-
-    this.add
-      .text(x, y + 44, label, {
-        fontSize: fontPx(this, 12),
-        color: '#ffffff',
-        backgroundColor: 'rgba(0,0,0,0.45)',
-        padding: { x: 4, y: 2 },
-      })
-      .setOrigin(0.5, 0);
-  }
-
   private rivalDefeated(): Record<number, boolean> {
     return (this.game.registry.get('rivalDefeated') as Record<number, boolean>) ?? {};
   }
@@ -282,6 +319,27 @@ export class HubScene extends Phaser.Scene {
     return !!this.game.registry.get('superpositionMode');
   }
 
+  // Whether stepping through the door (or pressing Enter, see create()) into
+  // `world` actually resumes the player's in-progress position there rather
+  // than generating a fresh map. `visitedWorlds` alone isn't enough to
+  // promise that -- it's part of the persisted save (data/save.ts), but the
+  // map snapshot it would resume from (OverworldScene's `mapState` registry
+  // key, written by its own saveMapState()/returnToHub()) is deliberately
+  // registry-only and does not survive a page reload -- so this checks both,
+  // the same two facts OverworldScene.create() itself checks
+  // (`saved.world === this.world && !this.regenerate`) before deciding
+  // whether to restoreMap() or generateMap(). One shared predicate for
+  // doorLabel()/enterWorld()/the Enter-key handler so the label shown and
+  // the navigation that actually happens can never disagree. Superposition
+  // Mode never resumes in place through this door at all (below).
+  private canResumeWorld(world: number): boolean {
+    if (this.isSuperpositionMode()) return false;
+    const visited = (this.game.registry.get('visitedWorlds') as number[]) ?? [];
+    if (!visited.includes(world)) return false;
+    const mapState = this.game.registry.get('mapState') as { world: number } | undefined;
+    return mapState?.world === world;
+  }
+
   // Superposition Mode drops the player into World 1, same as Story Mode's
   // door, rather than gating on the normal `highestUnlockedWorld()` progress
   // check. Superposition mode pre-seeds `visitedWorlds` with all of
@@ -290,7 +348,9 @@ export class HubScene extends Phaser.Scene {
   // teleport hub (OverworldScene.showBlochHub) already offers every world as
   // a destination -- no separate warp UI needed.
   private doorLabel(): string {
-    return this.isSuperpositionMode() ? 'Enter World 1' : `Enter World ${this.highestUnlockedWorld()}`;
+    if (this.isSuperpositionMode()) return 'Enter World 1';
+    const world = this.highestUnlockedWorld();
+    return this.canResumeWorld(world) ? `Back to World ${world}` : `Enter World ${world}`;
   }
 
   private enterWorld() {
@@ -298,7 +358,8 @@ export class HubScene extends Phaser.Scene {
       this.scene.start('Overworld', { world: 1, regenerate: true });
       return;
     }
-    this.scene.start('Overworld', { world: this.highestUnlockedWorld() });
+    const world = this.highestUnlockedWorld();
+    this.scene.start('Overworld', { world, regenerate: !this.canResumeWorld(world) });
   }
 
   private addButton(x: number, y: number, label: string, onClick: () => void, fontSizePxOverride?: string): Phaser.GameObjects.Text {
@@ -316,9 +377,80 @@ export class HubScene extends Phaser.Scene {
       .on('pointerdown', onClick);
   }
 
+  // Same button look as addButton above, but taking an explicit container
+  // (so a panel's content can be built top-down, each button appended to
+  // that panel's own container) and wrap width -- the shape
+  // scenes/panels/hubStations.ts's ported panels need, mirroring
+  // OverworldScene's own addDialogueButtonAt exactly (same cross-cutting
+  // dialogue-infrastructure tradeoff CODEMAP.md's "Guardian panels" section
+  // documents for that scene).
+  addDialogueButtonAt(
+    container: Phaser.GameObjects.Container,
+    x: number,
+    y: number,
+    label: string,
+    onClick: () => void,
+    wrapWidth = 230,
+    fontSizePxOverride?: string
+  ): Phaser.GameObjects.Text {
+    const btn = this.add
+      .text(x, y, label, {
+        fontSize: fontSizePxOverride ?? fontPx(this, 13),
+        color: '#ffff88',
+        backgroundColor: '#222244',
+        padding: { x: 10, y: 5 },
+        align: 'center',
+        wordWrap: { width: wrapWidth },
+      })
+      .setOrigin(0.5, 0)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', onClick);
+    container.add(btn);
+    return btn;
+  }
+
+  // Its own panel (not a generic showPanel() call) so it can carry the same
+  // gold ("panel name") heading and centered-content layout the Lab's other
+  // seven panels use -- its own rune/beacon motif (makeSavePointMotif) sits
+  // beside its station button out in the room, not inside this panel.
   private showSavePoint() {
     persistFromRegistry(this.game.registry);
-    this.showPanel('Save Point', "Your progress hums into the Lab's memory. Game saved.");
+    this.closeDialogue();
+
+    const panelWidth = 440;
+    const top = 20;
+    const container = this.add.container(0, 0).setDepth(100);
+    this.dialogueContainer = container;
+
+    let y = top;
+    const titleText = this.add
+      .text(CANVAS_W / 2, y, 'Save Point', { fontSize: fontPx(this, 15), color: LAB_TITLE_COLOR, fontStyle: 'bold' })
+      .setOrigin(0.5, 0);
+    container.add(titleText);
+    y += titleText.height + 14;
+
+    const columns = labPanelColumns(panelWidth);
+
+    const bodyText = this.add
+      .text(columns.contentCenterX, y, "Your progress hums into the Lab's memory. Game saved.", {
+        fontSize: fontPx(this, 13),
+        color: '#cfd8ff',
+        align: 'center',
+        wordWrap: { width: columns.contentWrapW },
+        lineSpacing: 6,
+      })
+      .setOrigin(0.5, 0);
+    container.add(bodyText);
+    y += bodyText.height + 18;
+
+    const closeBtn = this.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Close', () => this.closeDialogue(), 260);
+    y += closeBtn.height + 12;
+
+    const panelHeight = y - top;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.95)
+      .setStrokeStyle(2, 0x9a6ad9);
+    container.addAt(panel, 0);
   }
 
   // Every real compound in the game (allCrystals()), each paired with
@@ -392,13 +524,23 @@ export class HubScene extends Phaser.Scene {
     let y = top;
 
     const titleText = this.add
-      .text(CANVAS_W / 2, y, `Materialdex -- ${discoveredAll}/${totalAll} discovered`, {
+      .text(CANVAS_W / 2, y, `Qumatex -- ${discoveredAll}/${totalAll} discovered`, {
         fontSize: fontPx(this, 14),
         color: '#ffe066',
         fontStyle: 'bold',
       })
       .setOrigin(0.5, 0);
     container.add(titleText);
+    // A small purple prism by the title -- this panel's detail pane already
+    // renders the selected compound's own real crystal (below), which
+    // already carries the "themed motif" STYLE.md's Lab-panels section asks
+    // for, so the title only gets this flourish rather than a second full
+    // left-side motif column competing with the two-column list/detail
+    // layout. The Qumatex station's own room button has no motif of its
+    // own to echo (art/labMotifs.ts has no builder for it, same reason).
+    const titleIcon = makeCrystal(this, 16, 0x9a6ad9, 'prism');
+    titleIcon.setPosition(titleText.x - titleText.width / 2 - 16, titleText.y + titleText.height / 2);
+    container.add(titleIcon);
     y += titleText.height + 8;
 
     // Type filter -- cycles through every MaterialType (TYPE_LOOK's own
@@ -534,8 +676,7 @@ export class HubScene extends Phaser.Scene {
     divider.lineStyle(1, 0x3a3a5c, 0.6);
 
     // Right column: the selected compound's crystal render, name, and
-    // physics blurb -- everything a single Materialdex page used to show,
-    // now driven by materialdexSelectedName instead of a page index.
+    // physics blurb, driven by materialdexSelectedName.
     const selectedEntry =
       this.materialdexIndex().find((e) => e.material.name === this.materialdexSelectedName) ?? entries[0] ?? null;
 
@@ -569,7 +710,7 @@ export class HubScene extends Phaser.Scene {
       // Blurb length varies a lot (one line for a short entry, half a dozen
       // for a longer one) -- shrink the font in whole-px steps, floor 9,
       // rather than letting a long blurb push the panel's shared footer off
-      // the bottom of the canvas (OverworldScene.showInfoPanel's own body
+      // the bottom of the canvas (hubStations.ts's showInfoPanel's own body
       // uses this same loop).
       const blurb = discovered
         ? materialBlurb(material)
@@ -606,7 +747,7 @@ export class HubScene extends Phaser.Scene {
     this.insertMaterialdexPanelBg(container, panelW, top, y - top);
   }
 
-  // Background rectangle for the Materialdex panel, inserted behind
+  // Background rectangle for the Qumatex panel, inserted behind
   // everything once renderMaterialdexPanel above knows the real content
   // height.
   private insertMaterialdexPanelBg(container: Phaser.GameObjects.Container, panelW: number, top: number, height: number) {
@@ -616,48 +757,69 @@ export class HubScene extends Phaser.Scene {
     container.addAt(panel, 0);
   }
 
+  // The Lab's one-off welcome tip (maybeShowLabTip) is this method's only
+  // caller now -- Save Point and Qumatex build their own panels
+  // (showSavePoint/renderMaterialdexPanel) since neither is one of
+  // scenes/panels/hubStations.ts's six stations. Kept on the same
+  // measured-top-down-layout/shrink-to-fit pattern as those anyway, so a
+  // one-off popup doesn't look like a different panel era.
   private showPanel(title: string, body: string) {
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
 
-    const panel = this.add.rectangle(CANVAS_W / 2, CANVAS_H / 2, 560, 340, 0x10101c, 0.95).setStrokeStyle(2, 0x9a6ad9);
-    container.add(panel);
+    const panelWidth = 440;
+    const top = 20;
+    let y = top;
 
     const titleText = this.add
-      .text(CANVAS_W / 2, CANVAS_H / 2 - 155, title, { fontSize: fontPx(this, 15), color: '#ffe066', fontStyle: 'bold' })
+      .text(CANVAS_W / 2, y, title, {
+        fontSize: fontPx(this, 15),
+        color: LAB_TITLE_COLOR,
+        fontStyle: 'bold',
+        align: 'center',
+        wordWrap: { width: panelWidth - 60 },
+      })
       .setOrigin(0.5, 0);
     container.add(titleText);
+    y += titleText.height + 14;
 
+    const scale = fontScale(this);
+    let bodyBase = 12;
     const bodyText = this.add
-      .text(CANVAS_W / 2, CANVAS_H / 2 - 120, body, {
-        fontSize: fontPx(this, 12),
+      .text(CANVAS_W / 2, y, body, {
+        fontSize: `${Math.round(bodyBase * scale)}px`,
         color: '#cfd8ff',
-        align: 'left',
-        wordWrap: { width: 500 },
+        align: 'center',
+        wordWrap: { width: panelWidth - 60 },
         lineSpacing: 6,
       })
       .setOrigin(0.5, 0);
     container.add(bodyText);
+    const reservedBelow = 18 + 46 + 12; // gap + close-button estimate + bottom margin
+    while (y + bodyText.height + reservedBelow > CANVAS_H - 10 && bodyBase > 9) {
+      bodyBase -= 1;
+      bodyText.setFontSize(`${Math.round(bodyBase * scale)}px`);
+    }
+    y += bodyText.height + 18;
 
-    const closeBtn = this.add
-      .text(CANVAS_W / 2, CANVAS_H / 2 + 130, '[ Close ]', {
-        fontSize: fontPx(this, 13),
-        color: '#ffff88',
-        backgroundColor: '#222244',
-        padding: { x: 10, y: 5 },
-      })
-      .setOrigin(0.5, 0)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => this.closeDialogue());
-    container.add(closeBtn);
+    const closeBtn = this.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Close', () => this.closeDialogue(), 260);
+    y += closeBtn.height + 12;
+
+    const panelHeight = y - top;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.95)
+      .setStrokeStyle(2, 0x9a6ad9);
+    container.addAt(panel, 0);
   }
 
-  private closeDialogue() {
+  // Public, not private -- see the dialogueContainer field comment above.
+  // Shared by every panel this scene opens -- Save Point, the Lab tip,
+  // Qumatex, and scenes/panels/hubStations.ts's six stations --
+  // renderMaterialdexPanel/hubStations.ts's own panels call this first to
+  // clear their own previous container on a redraw (filter change, row
+  // pick, list paging, settings change) before rebuilding.
+  closeDialogue() {
     this.dialogueContainer?.destroy(true);
     this.dialogueContainer = undefined;
-    // Shared by every panel this scene opens -- Save Point, the Lab tip, the
-    // Materialdex -- renderMaterialdexPanel calls this first to clear its
-    // own previous container on a redraw (filter change, row pick, list
-    // paging) before rebuilding.
   }
 }

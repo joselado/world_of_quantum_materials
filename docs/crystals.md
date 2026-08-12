@@ -16,6 +16,9 @@ world when the same real material is relevant to both.
 | Manganese Oxide | `classicalMagnet` | 26 |
 | Nickel Oxide | `classicalMagnet` | 25 |
 | Chromium | `classicalMagnet` | 24 |
+| Iron | `classicalMagnet` | 27 |
+| Cobalt | `classicalMagnet` | 27 |
+| Barium Titanate | `ferroelectric` | 27 |
 
 ### World 2 -- Symmetries, tight-binding band structure
 
@@ -125,23 +128,28 @@ world when the same real material is relevant to both.
 Each world's rival is the one encounter that actually gates progress — beat
 it, and the way to the next world opens.
 
-Every rival except World 10's is named for a real compound's
-*polycrystalline* form: many crystal grains fused into one mass, rendered as
-an actual golem built from fused shards. World 10's rival, The Adapted, is
-the one entity with no real compound behind it — a "model of you," able to
-host every quasiparticle class and drawing from whatever moves you've
-collected by then.
+World 9 and World 10's rivals are both missing from the table below — neither
+has a fixed type.
 
-World 9's rival has no fixed type either. An impurity/defect-bound resonance
-can form in any host crystal, so its type — and with it, which compound's
-name and golem it takes — is rolled at random every time you reach World 9,
-and stays fixed only for that visit. That's why it's missing from the table
-below.
+World 9's rival is an impurity/defect-bound resonance that can form in any
+host crystal, so its type — and with it, which compound's name and golem it
+takes — is rolled at random every time you reach World 9, and stays fixed
+only for that visit.
+
+World 10's rival, The Adapted, is "a model of you": it starts the fight
+mirroring whichever type you're currently wearing, then reshapes itself
+every time you land a hit, always taking on a real compound's disguise that
+hosts whatever quasiparticle class you just attacked with — so repeating the
+same attack loses its edge, while varying your moves keeps it guessing. Every
+other rival is named for a real compound's *polycrystalline* form: many
+crystal grains fused into one mass, rendered as an actual golem built from
+fused shards — The Adapted's own disguises follow that same naming
+convention once it reshapes.
 
 <!-- GENERATED:RIVALS_TABLE START -->
 | World | Rival | Type | Max HP |
 | --- | --- | --- | --- |
-| 1 | Polycrystalline Silicon Golem | `semiconductor` | 34 |
+| 1 | Polycrystalline Silicon Golem | `semiconductor` | 30 |
 | 2 | Polycrystalline Graphene Golem | `metal` | 38 |
 | 3 | Polycrystalline Bismuth Telluride Golem | `quantumSpinHall` | 42 |
 | 4 | Polycrystalline Manganese Bismuth Telluride Golem | `chernInsulator` | 46 |
@@ -149,7 +157,6 @@ below.
 | 6 | Polycrystalline Iron Golem | `classicalMagnet` | 54 |
 | 7 | Polycrystalline Herbertsmithite Golem | `quantumSpinLiquid` | 58 |
 | 8 | Polycrystalline Ruthenium Trichloride Golem | `quantumSpinLiquid` | 62 |
-| 10 | The Adapted | `adaptive` | 80 |
 <!-- GENERATED:RIVALS_TABLE END -->
 
 See [Hybrids](hybrids.md) for the fused materials that sit alongside these,

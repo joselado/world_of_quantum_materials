@@ -88,6 +88,34 @@ Never hand-edit the text between a `<!-- GENERATED -->` marker pair -- the
 next run overwrites it. Anything outside those markers is ordinary prose,
 maintained the same way as any other doc.
 
+## Balance simulator
+
+`src/data/balance.ts` holds every pure battle/economy formula (stat growth,
+shop/leveling costs, battle stakes, the core damage formula) with no Phaser
+import, so it can be loaded straight into a plain Node script instead of only
+running inside the browser build. `game/scripts/balance-sim.mjs` (`npm run
+balance-sim` from `game/`) walks three reference player builds through worlds
+1-10 and reports, per world, their qumatessence economy and expected
+rounds-to-kill/rounds-to-die against that world's ordinary wilds and rival --
+a difficulty-curve sanity check for whether move/guardian progression keeps
+pace with `enemyStatsForWorld`'s per-world stat growth. It reads
+`materials.ts`/`passives.ts` the same AST-parsing way `gen-docs.mjs` does (for
+the same Phaser-import reason), but transpiles and actually imports
+`balance.ts` (via `ts.transpileModule` and a temp file) rather than
+re-deriving its formulas, so the simulator can never drift from the real
+damage math. The M.Sc. and Ph.D. builds both use Dresselhaus's transmutation
+together with Noether's form-gated shop -- transmuting into a crystal form
+that hosts a class a world's opponents don't, then buying that class's move,
+is treated as ordinary expected-tier play, not something only Ph.D.-level
+optimization would bother with; B.Sc. stays in its starting Silicon form the
+whole run. Each build's own "wins needed" per world is solved for by grinding ordinary
+wilds until that build's purchase logic makes its rival fight beatable
+(capped, not unbounded), rather than a fixed input. Every modeling
+assumption (each build's purchase ruleset, the transmutation search, the
+Monte-Carlo sample count/seed, the ±15%-variance robustness check behind a
+row's WIN/LOSE/INCONCLUSIVE verdict) is documented in that script's own
+header comment -- read it before trusting a number out of its output.
+
 ### `game/` project layout
 
 ```
@@ -99,11 +127,13 @@ game/
     audio/                procedural sfx + per-scene music tracks
     scenes/
       TitleScene.ts       loads the save, Story Mode / Superposition Mode picker, "Continue"/"New Game"
-      HubScene.ts          World 0, static room, hotspots (door jumps to World 2 in Superposition Mode)
-      OverworldScene.ts    per-world walkable map, encounters, shop, tutorial, pause menu
+      HubScene.ts          World 0, static room, 9 stations (door jumps to World 2 in Superposition Mode)
+      OverworldScene.ts    per-world walkable map, encounters, shop, rival gate; H/Enter warp to the Hub
+      panels/               guardian panel UIs plus hubStations.ts's Lab stations
       BattleScene.ts        turn-based battle loop
     world/
-      mapgen.ts             per-world corridor layout generator
+      mapgen.ts             dispatches to generators/world<N>.ts by world number
+      generators/            one map-shape generator per world, plus shared helpers
 ```
 
 See `CODEMAP.md` for the full tree with every file annotated.
@@ -125,7 +155,7 @@ visual landmark. Contextual tutorial tips guide new players, a Story Mode /
 Superposition Mode title-screen picker lets you choose between them
 (Superposition Mode auto-levels the player and pre-marks every world visited
 so Bloch's teleport hub gives instant access to any world/guardian, for testing
-without grinding), and the Enter-menu's Settings panel offers wild-encounter
+without grinding), and the Lab's Settings station offers wild-encounter
 density and a Text Size preset applied via `ui/text.ts`'s
 `fontPx`/`fontScale` helpers. `game/` is the only build.
 

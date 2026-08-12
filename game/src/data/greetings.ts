@@ -20,7 +20,6 @@ const ENCOUNTER_GREETINGS: Record<MaterialType, string> = {
   fractionalChern: '{name} splits its own charge into pieces you cannot recombine.',
   ferroelectric: '{name} points the same way no matter how you look at it.',
   multiferroic: '{name} hums with a polarization that shouldn\'t line up with its spins -- and does anyway.',
-  adaptive: '{name} has already seen your last three moves.',
 };
 
 const VICTORY_LINES: Record<MaterialType, string> = {
@@ -37,7 +36,6 @@ const VICTORY_LINES: Record<MaterialType, string> = {
   fractionalChern: "The {name}'s fractional pieces finally recombine. Victory!",
   ferroelectric: "The {name}'s polarization finally flips out of your favor. Victory!",
   multiferroic: "The {name}'s polarization and spins fall out of lock. Victory!",
-  adaptive: 'The {name} runs out of counter-strategies. Victory!',
 };
 
 const DEFEAT_LINES: Record<MaterialType, string> = {
@@ -54,7 +52,6 @@ const DEFEAT_LINES: Record<MaterialType, string> = {
   fractionalChern: "The {name}'s fractional pieces slip through every hit. Defeat.",
   ferroelectric: "The {name} never wavers from its own polarization. Defeat.",
   multiferroic: 'The {name} locks its polarization to your every move. Defeat.',
-  adaptive: 'The {name} adapts faster than you can. Defeat.',
 };
 
 function fill(template: string, name: string): string {

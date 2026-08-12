@@ -90,7 +90,6 @@ const TYPE_FALLBACK_BLURBS: Record<MaterialType, string> = {
     "Electric dipoles order into a spontaneous, switchable polarization with no magnetic order involved at all -- the electric analog of a ferromagnet, its own low-energy excitation (a ferron) the analog of a magnon.",
   multiferroic:
     'Magnetically ordered with an electric polarization coupled to that order -- its spin waves (electromagnons) carry an electric-dipole activity an ordinary magnon never does.',
-  adaptive: 'Not a real material -- an adaptive model that learns and exploits whatever strategy is thrown at it.',
 };
 
 export function materialBlurb(material: { name: string; type: MaterialType }): string {

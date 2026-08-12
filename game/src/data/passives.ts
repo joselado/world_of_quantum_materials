@@ -18,13 +18,13 @@ export type PassiveOwner = 'franklin';
 
 // Every current owner of a passive kit, in guardian order -- consumed by
 // OverworldScene.applySuperpositionLeveling (one loop instead of one
-// duplicated block per owner) and by showAbilitiesPanel (the "View
-// Abilities" pause-menu list).
+// duplicated block per owner) and by the Lab's Abilities station
+// (scenes/panels/hubStations.ts's showAbilitiesPanel).
 export const PASSIVE_OWNERS: PassiveOwner[] = ['franklin'];
 
 // Display name for each owner, used anywhere a passive's owner needs a
 // human-readable label instead of a literal guardian name hardcoded at the
-// call site (OverworldScene.showAbilitiesPanel).
+// call site (scenes/panels/hubStations.ts's showAbilitiesPanel).
 export const PASSIVE_OWNER_LABELS: Record<PassiveOwner, string> = {
   franklin: 'Franklin',
 };

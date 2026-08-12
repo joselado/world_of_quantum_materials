@@ -1,5 +1,5 @@
-// Wild-encounter density presets for the Enter-menu's Settings panel
-// (OverworldScene.showSettingsPanel) -- the player-facing knob on the
+// Wild-encounter density presets for the Lab's Settings station
+// (scenes/panels/hubStations.ts's showSettingsPanel) -- the player-facing knob on the
 // per-corridor-row encounter roll generateMap() does at map-generation time.
 // Kept as plain data (rather than living in OverworldScene itself) so
 // data/save.ts's default and OverworldScene's generation logic both read the
@@ -28,7 +28,7 @@ export const DEFAULT_ENCOUNTER_DENSITY = DENSITY_PRESETS[1].value; // Normal -- 
 // geometric box -- could actually hold without overlapping text). 2x is
 // still offered as the top 'Large' preset for players who want it, since
 // by then every panel has been made to adapt its own size to the content
-// (see e.g. OverworldScene.showSettingsPanel's own comment) rather than
+// (see e.g. hubStations.ts's showSettingsPanel own comment) rather than
 // assume a fixed pixel size -- verify layout-sensitive screens by
 // screenshot after touching either this list or a panel's layout.
 export interface FontScalePreset {
@@ -44,14 +44,18 @@ export const FONT_SCALE_PRESETS: FontScalePreset[] = [
 
 export const DEFAULT_FONT_SCALE = FONT_SCALE_PRESETS[1].value; // Normal -- the new 1.5x default
 
-// Same Settings panel, third row: which of audio/music.ts's two score tables
-// (SCORES/"Classic", SCORES_MODERN/"Modern") MusicEngine.play() draws from.
-// Unlike density/font scale this takes effect immediately -- picking a new
-// value calls music.setStyle(), which restarts whatever's currently playing
-// under the new table.
+// Same Settings panel, third row: which of audio/music.ts's two score
+// tables (SCORES/"Classic", SCORES_MODERN/"Modern") MusicEngine.play() draws
+// from. Unlike density/font scale this takes effect immediately -- picking a
+// new value calls music.setStyle(), which restarts whatever's currently
+// playing under the new table. Exported here (rather than repeated as a
+// literal union in music.ts/save.ts) so all three files stay in sync from
+// one source.
+export type MusicStyle = 'classic' | 'modern';
+
 export interface MusicStylePreset {
   label: string;
-  value: 'classic' | 'modern';
+  value: MusicStyle;
 }
 
 export const MUSIC_STYLE_PRESETS: MusicStylePreset[] = [

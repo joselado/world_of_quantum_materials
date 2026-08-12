@@ -116,8 +116,8 @@ function renderUltimateMoves(scene: OverworldScene, container: Phaser.GameObject
 // uses for a mid-flow step back) is therefore required, not optional the way
 // it might be elsewhere: without it a too-poor player has no unlockedMoves-
 // clearing button, no `renderFarewellFooter`, nothing at all to click, and
-// dialogueActive (set true above) stays stuck, freezing movement and the
-// pause menu for the rest of the session.
+// dialogueActive (set true above) stays stuck, freezing movement
+// (update()'s dialogueActive guard) for the rest of the session.
 // In Superposition Mode every class reads and behaves as already unlocked
 // (matches OverworldScene.applySuperpositionLeveling's blanket-grant
 // treatment of every other guardian's gated content) -- retuning either

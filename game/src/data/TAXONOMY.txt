@@ -64,8 +64,11 @@ fractional_chern:      phonon, electron, charged anyon              # Twisted Bi
 ferroelectric:         phonon, ferron                               # Barium Titanate, GeTe
 multiferroic:          phonon, magnon, electromagnon, ferron        # Monolayer NiI2, Twisted CrI3 -- both electromagnon (the ME-hybridized magnon) and ferron (the polarization's own quantum) on purpose, distinct modes, not redundant
 
-Not a real material, kept outside this taxonomy:
-adaptive: hosts every quasiparticle above except electromagnon and ferron -- "The Adapted" endgame boss, models whatever the player has collected. Multiferroic/ferroelectric are the two "no dedicated course topic" bonus types, so they're deliberately excluded from what an ordinary playthrough's endgame boss can mirror.
+World 10's rival ("The Adapted") has no class of its own here -- it has no
+fixed type at all. It mirrors the player's own current type at the start of
+the fight, then transmutes live into a real compound's type every time the
+player lands an attack, reactively taking on whichever class was just used
+against it (game/src/scenes/BattleScene.ts's own transmutation mechanic).
 
 Weyl semimetals (TaAs) were considered for their own class (chiral Fermi
 arcs, the chiral anomaly -- genuinely distinct 3D gapless physics, not a

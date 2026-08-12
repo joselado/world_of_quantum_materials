@@ -155,12 +155,7 @@ export type MaterialType =
   // Magnetically ordered *and* magnetoelectrically coupled -- hosts both an
   // ordinary magnon, 'ferron' (the polarization order's own excitation),
   // and 'electromagnon' (the two hybridized together), all three distinct.
-  | 'multiferroic'
-  // Endgame only, not obtainable until postgame -- "The Adapted," not a real
-  // material, hosts nearly every quasiparticle above (see
-  // MOVE_COMPATIBILITY.adaptive) rather than being gated by any one type's
-  // actual physics.
-  | 'adaptive';
+  | 'multiferroic';
 
 export type CrystalVariant = 'shard' | 'cluster' | 'prism' | 'layer' | 'twisted';
 

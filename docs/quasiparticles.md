@@ -12,22 +12,22 @@ or non-Abelian excitation at the top.
 <!-- GENERATED:MOVES_TABLE START -->
 | Move | Quasiparticle class | Power | Crystal types that can use it |
 | --- | --- | --- | --- |
-| Phonon Beam | `phonon` | 6 | metal, insulator, semiconductor, classicalMagnet, quantumSpinLiquid, kondoHeavyFermion, superconductor, chernSuperconductor, chernInsulator, quantumSpinHall, fractionalChern, ferroelectric, multiferroic, adaptive |
-| Electron Pulse | `electron` | 7 | metal, semiconductor, kondoHeavyFermion, superconductor, chernSuperconductor, chernInsulator, quantumSpinHall, fractionalChern, adaptive |
-| Magnon Pulse | `magnon` | 8 | classicalMagnet, multiferroic, adaptive |
-| Plasmon Pulse | `plasmon` | 8 | metal, adaptive |
+| Phonon Beam | `phonon` | 6 | metal, insulator, semiconductor, classicalMagnet, quantumSpinLiquid, kondoHeavyFermion, superconductor, chernSuperconductor, chernInsulator, quantumSpinHall, fractionalChern, ferroelectric, multiferroic |
+| Electron Pulse | `electron` | 7 | metal, semiconductor, kondoHeavyFermion, superconductor, chernSuperconductor, chernInsulator, quantumSpinHall, fractionalChern |
+| Magnon Pulse | `magnon` | 8 | classicalMagnet, multiferroic |
+| Plasmon Pulse | `plasmon` | 8 | metal |
 | Ferron Pulse | `ferron` | 8 | ferroelectric, multiferroic |
-| Polaron Drag | `polaron` | 9 | insulator, adaptive |
-| Triplon Surge | `triplon` | 9 | quantumSpinLiquid, adaptive |
+| Polaron Drag | `polaron` | 9 | insulator |
+| Triplon Surge | `triplon` | 9 | quantumSpinLiquid |
 | Electromagnon Pulse | `electromagnon` | 9 | multiferroic |
-| Spinon Swap | `spinon` | 10 | quantumSpinLiquid, kondoHeavyFermion, adaptive |
-| Chiral Current | `chiral` | 10 | chernSuperconductor, chernInsulator, adaptive |
-| Helical Current | `helical` | 10 | quantumSpinHall, adaptive |
-| Higgs Oscillation | `higgs` | 10 | superconductor, chernSuperconductor, adaptive |
-| Heavy Fermion Pulse | `heavyFermion` | 10 | kondoHeavyFermion, adaptive |
-| Vison Loop | `vison` | 10 | quantumSpinLiquid, adaptive |
-| Anyon Braid | `chargedAnyon` | 11 | fractionalChern, adaptive |
-| Majorana Split | `majorana` | 11 | chernSuperconductor, adaptive |
+| Spinon Swap | `spinon` | 10 | quantumSpinLiquid, kondoHeavyFermion |
+| Chiral Current | `chiral` | 10 | chernSuperconductor, chernInsulator |
+| Helical Current | `helical` | 10 | quantumSpinHall |
+| Higgs Oscillation | `higgs` | 10 | superconductor, chernSuperconductor |
+| Heavy Fermion Pulse | `heavyFermion` | 10 | kondoHeavyFermion |
+| Vison Loop | `vison` | 10 | quantumSpinLiquid |
+| Anyon Braid | `chargedAnyon` | 11 | fractionalChern |
+| Majorana Split | `majorana` | 11 | chernSuperconductor |
 <!-- GENERATED:MOVES_TABLE END -->
 
 ## Which crystal types can host which quasiparticles
@@ -53,7 +53,6 @@ of it.
 | `fractionalChern` | `electron`, `phonon`, `chargedAnyon` |
 | `ferroelectric` | `phonon`, `ferron` |
 | `multiferroic` | `magnon`, `phonon`, `electromagnon`, `ferron` |
-| `adaptive` | `electron`, `magnon`, `phonon`, `plasmon`, `polaron`, `spinon`, `triplon`, `chiral`, `helical`, `higgs`, `chargedAnyon`, `majorana`, `heavyFermion`, `vison` |
 <!-- GENERATED:COMPATIBILITY_TABLE END -->
 
 ## Laughlin's Analytic moves

@@ -2,8 +2,9 @@
 
 One guardian waits partway through each of the ten worlds, each teaching you
 a different way to bend the game's usual rules. Every guardian you've met
-stays reachable from the Guardians panel (Enter-key menu), from anywhere in
-the game.
+stays reachable from the Lab's Guardians station (which appears once you've
+met your first one) -- pick one from the list and you're warped straight to
+their world.
 
 | Guardian | World | What they do |
 |---|---|---|

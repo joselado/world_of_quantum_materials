@@ -107,9 +107,16 @@ checkout; that's gone now that this repo *is* the standalone checkout). Commit a
 
 ## Enemies in short
 ### Ordinary wild encounters
-Worlds 1-8 each draw their wild encounters from a curated, dedicated set of types (their
-course topic's own materials). World 9 can spawn any type (it inherits every non-hybrid
-material from worlds 1-8). World 10
+Worlds 1-8 each draw their wild encounters primarily from a curated, dedicated set of types
+(their course topic's own materials). A specific compound can also spawn in another world's
+pool, beyond its primary topic, when its physics genuinely fits that other world's topic too —
+not a blanket "any type" rule (that's World 9's own exception, below), but a per-compound call:
+e.g. Iron/Cobalt (itinerant ferromagnets, primarily World 6/magnons) also spawn in World 1
+(mean-field SSB) since itinerant ferromagnetism is a mean-field-broken-symmetry example in its
+own right; Barium Titanate (primarily World 9, ferroelectric having no course topic of its own)
+also spawns in World 1 since a switchable polarization is spontaneous symmetry breaking too,
+just with a different order parameter than a magnet's. World 9 can spawn any type (it inherits
+every non-hybrid material from worlds 1-8). World 10
 spawns only hybrid-recipe results — every material reachable by fusing two crystals (Majorana,
 §5) also spawns there as an ordinary wild, and nowhere else. Worlds 1-9 never spawn a
 hybrid-recipe result as an ordinary wild.

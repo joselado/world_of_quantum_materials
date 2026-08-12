@@ -5,10 +5,10 @@
 // your first guardian, reaching your first goal (OverworldScene/HubScene's
 // `showTutorialTip`/`maybeShowLabTip`) -- rather than one long paged popup
 // dumped on the player before they've done anything. `TUTORIAL_PAGES` is the
-// same content in a fixed order, still used for the Enter-menu's "Tutorial"
-// button, which replays the whole set as one paged recap on demand
-// (OverworldScene.showTutorial). Kept as plain data so the copy can be
-// edited without touching the panel/paging/trigger code.
+// same content in a fixed order, used for the Lab's Tutorial station, which
+// replays the whole set as one paged recap on demand
+// (scenes/panels/hubStations.ts's showTutorial). Kept as plain data so the
+// copy can be edited without touching the panel/paging/trigger code.
 export interface TutorialPage {
   title: string;
   body: string;
@@ -20,12 +20,12 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
   lab: {
     title: 'Welcome to the Quantum Materials RPG',
     body:
-      'A Decoherence is spreading through the material worlds. You are not a trainer catching creatures -- you are a crystal yourself, walking these worlds to master every phase of matter and stabilize it. This room is the Lab: the Materialdex catalogs every crystal you discover, the Save Point locks in your progress, and the door leads to your first world.',
+      'A Decoherence is spreading through the material worlds. You are not a trainer catching creatures -- you are a crystal yourself, walking these worlds to master every phase of matter and stabilize it. This room is the Lab: Qumatex catalogs every crystal you discover, the Save Point locks in your progress, and the door leads to your first world.',
   },
   controls: {
     title: 'Walking the Path',
     body:
-      'Use the arrow keys to move: Up/Down walk the corridor forward and back, Left/Right step sideways. Off-path tiles are solid walls, so track the corridor as it bends instead of holding one direction. Press H any time to return to the Lab, Enter to open the menu (moves, stats, guardians), and M to mute or unmute the music.',
+      'Use the arrow keys to move: Up/Down walk the corridor forward and back, Left/Right step sideways. Off-path tiles are solid walls, so track the corridor as it bends instead of holding one direction. Press H or Enter any time to return to the Lab -- your moves, stats, guardians, tutorial, and settings all live as stations there -- and M to mute or unmute the music.',
   },
   encounter: {
     title: 'Wild Encounters',
@@ -45,7 +45,7 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
   guardian: {
     title: 'Guardians',
     body:
-      "Each world's guardian waits partway along the corridor: Noether sells moves and stat upgrades, Bloch teleports you between worlds you've visited, Dresselhaus lets you transmute into any crystal you've defeated. Once met, revisit any of them from the Guardians panel.",
+      "Each world's guardian waits partway along the corridor: Noether sells moves and stat upgrades, Bloch teleports you between worlds you've visited, Dresselhaus lets you transmute into any crystal you've defeated. Once met, revisit any of them from the Lab's Guardians station.",
   },
   goal: {
     title: 'Reaching the Goal',
@@ -54,7 +54,7 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
   },
 };
 
-// Same tips, fixed display order, for the Enter-menu's "Tutorial" button --
+// Same tips, fixed display order, for the Lab's Tutorial station --
 // object key order is insertion order for string keys, so this just mirrors
 // how TUTORIAL_TIPS was written above.
 export const TUTORIAL_PAGES: TutorialPage[] = Object.values(TUTORIAL_TIPS);

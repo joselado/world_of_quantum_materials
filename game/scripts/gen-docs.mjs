@@ -98,7 +98,18 @@ const WORLD_CRYSTALS = Object.fromEntries(
 
 const WORLD_RIVALS_RAW = evalNode(findTopLevelConst(materialsSf, 'WORLD_RIVALS'), materialsSf);
 const WORLD_RIVALS = Object.fromEntries(
-  Object.entries(WORLD_RIVALS_RAW).map(([world, call]) => [world, crystalFromCall(call)])
+  Object.entries(WORLD_RIVALS_RAW)
+    // World 10's rival ("The Adapted") has no fixed type -- its `type` field
+    // in the source is only a placeholder for the pre-battle overworld/
+    // dialogue preview (BattleScene decides its type live, see that file's
+    // own comment), so it's excluded here the same way World 9's rival
+    // already is by having no WORLD_RIVALS entry at all (see docs/crystals.md's
+    // own prose). It's also not a `crystal(...)` call like every other entry
+    // here (a plain object literal instead, since its look isn't derived
+    // from any real type), so it wouldn't survive crystalFromCall() below
+    // anyway.
+    .filter(([world]) => world !== '10')
+    .map(([world, call]) => [world, crystalFromCall(call)])
 );
 
 const HYBRID_RECIPES_RAW = evalNode(findTopLevelConst(materialsSf, 'HYBRID_RECIPES'), materialsSf);

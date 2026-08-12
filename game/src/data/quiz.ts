@@ -1,13 +1,30 @@
+import { WORLD_CRYSTALS } from './materials';
+
 // Pre-battle physics questions, keyed by material name (matches the `name`
 // field crystal() rows carry in data/materials.ts). Each wild encounter can
 // quiz the player before the fight: answering correctly boosts the player's
 // attack for that battle, answering wrong weakens it, and "let me pass"
 // skips the fight entirely with no bonus/penalty (see
 // OverworldScene.showEncounter). Kept short -- these render as buttons in a
-// small in-map dialogue, not a full page of text. Each material carries a
-// pool of several questions (not just one), and getMaterialQuestion picks a
-// random one per encounter, so re-fighting the same material doesn't always
-// ask the same thing.
+// small in-map dialogue, not a full page of text.
+//
+// A wild encounter's question is drawn from *that world's* combined pool --
+// the union of every one of that world's own WORLD_CRYSTALS materials' own
+// question pools below -- regardless of which specific material was fought,
+// via getWorldQuestion(world). Worlds 1-9 only ever draw from their own
+// materials' pools; World 10 is the sole exception and draws from the
+// combined pool of worlds 1-9 only (not its own WORLD_CRYSTALS[10] pools),
+// since its wilds are hybrid-recipe results rather than a course topic of
+// their own and the goal is any-of-the-course's-topics breadth, not
+// hybrid-specific trivia. This means a material's own pool below only
+// matters for *which world's aggregate it feeds into* (i.e. which world
+// WORLD_CRYSTALS files it under) -- not for topic-matching that specific
+// material, since the question is never looked up by material name at
+// battle time. One consequence: a material that spawns *only* in
+// WORLD_CRYSTALS[10] (every named hybrid recipe result) has a question
+// pool below that's never actually drawn in play -- kept anyway as the
+// authored, session-anchored record for that compound's physics (see the
+// sourcing paragraph below), not dead weight to delete.
 //
 // Content is sourced from lecture_notes/tex_extended/sessions/sessionNN.tex,
 // matching each material's world to that world's course topic (world 1 ->
@@ -17,7 +34,7 @@
 // session02.tex (Bloch's theorem, tight-binding bands, graphene's Dirac
 // cone). World 10's wilds (data/materials.ts's WORLD_CRYSTALS[10]) are real
 // named hybrid-recipe results rather than a session topic of their own, so
-// each one draws from whichever session its own recipe anchors to
+// each one's own pool draws from whichever session its own recipe anchors to
 // (DESIGN.md's crystal-database table names each anchor) -- Cr-doped
 // (Bi,Sb)₂Te₃'s pool below draws from session03.tex (topological band
 // theory) for this reason, since doping magnetism into world 3's Bi₂Te₃ is
@@ -25,20 +42,15 @@
 // coverage at all (e.g. HgTe/CdTe Quantum Well's band-inversion mechanism,
 // or the Rhombohedral Pentalayer Graphene/hBN Moiré's fractional-anyon
 // physics), its pool lives in the off-syllabus block below instead, the
-// same as any other homeless-topic material. The same block also holds a
-// plain (non-hybrid) material whose own defining physics doesn't match its
-// spawn world's session topic -- Gallium Arsenide spawns in World 4
-// (session04.tex's QHE/Landau-level topic) but is an ordinary bulk
-// semiconductor, and session01.tex names it only in passing as a
-// semiconductor-family example with no compound-specific materials science
-// to draw on, so its pool lives off-syllabus too.
-// Materials without an entry here go straight to battle (see
-// getMaterialQuestion). Not every question below
-// is literally a property of the named compound's own crystal structure
-// (e.g. the honeycomb-lattice or Ising-ferromagnet questions in Nickel
-// Oxide's pool) -- some are the general physics that world's session file
-// covers, used as flavor for the topic/type the material represents, the
-// same way the original single-question versions already did.
+// same as any other homeless-topic material.
+// Materials without an entry here contribute nothing to their world's
+// aggregate pool (see getWorldQuestion); a world whose materials all lack
+// pools falls back to a plain "Fight!" / "Let me pass" choice. Not every
+// question below is literally a property of the named compound's own
+// crystal structure (e.g. the honeycomb-lattice or Ising-ferromagnet
+// questions in Nickel Oxide's pool) -- some are the general physics that
+// world's session file covers, used as flavor for the topic/type the
+// material represents.
 
 export interface MaterialQuestion {
   prompt: string;
@@ -582,12 +594,12 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
   ],
   // World 7 (entanglement/tensor networks), sourced from session07.tex.
   // Herbertsmithite is also a world-8 wild crystal (materials.ts's
-  // WORLD_CRYSTALS[8]) -- getMaterialQuestion keys purely by name, so this
-  // single pool is shared by both encounters rather than duplicated.
-  // Intentional, not a gap: it's genuinely the same real compound in both
-  // worlds, and this pool is already kagome/quantum-spin-liquid content
-  // generically relevant to world 8's own topic, not narrowly tensor-
-  // network-specific.
+  // WORLD_CRYSTALS[8]), so this single pool feeds both world 7's and world
+  // 8's own aggregate question pool (getWorldQuestion) rather than being
+  // duplicated. Intentional, not a gap: it's genuinely the same real
+  // compound in both worlds, and this pool is already kagome/quantum-spin-
+  // liquid content generically relevant to world 8's own topic, not
+  // narrowly tensor-network-specific.
   Herbertsmithite: [
     {
       prompt: "Why does mean-field theory fail for a quantum spin liquid like herbertsmithite's kagome moments?",
@@ -2086,9 +2098,31 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
   ],
 };
 
-export function getMaterialQuestion(materialName: string): MaterialQuestion | undefined {
-  const pool = MATERIAL_QUESTIONS[materialName];
-  if (!pool || pool.length === 0) return undefined;
+// Builds world `w`'s combined question pool: the union of every material in
+// WORLD_CRYSTALS[w]'s own MATERIAL_QUESTIONS entry (materials with no entry
+// contribute nothing). Deliberately reads WORLD_CRYSTALS directly rather
+// than materials.ts's getWildPool(w) -- getWildPool(9) additionally borrows
+// materials from worlds 1-8, which would leak other worlds' questions into
+// world 9's own pool.
+function worldQuestionPool(w: number): MaterialQuestion[] {
+  const materials = WORLD_CRYSTALS[w] ?? [];
+  const pool: MaterialQuestion[] = [];
+  for (const m of materials) {
+    const own = MATERIAL_QUESTIONS[m.name];
+    if (own) pool.push(...own);
+  }
+  return pool;
+}
+
+export function getWorldQuestion(world: number): MaterialQuestion | undefined {
+  // World 10 draws from every world 1-9 pool combined rather than its own
+  // (narrow) hybrid-recipe-result materials -- its wilds are fusions, not a
+  // course topic of their own.
+  const pool =
+    world === 10
+      ? Array.from({ length: 9 }, (_, i) => worldQuestionPool(i + 1)).flat()
+      : worldQuestionPool(world);
+  if (pool.length === 0) return undefined;
   return pool[Math.floor(Math.random() * pool.length)];
 }
 

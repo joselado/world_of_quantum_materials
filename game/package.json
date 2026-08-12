@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "docs": "node scripts/gen-docs.mjs"
+    "docs": "node scripts/gen-docs.mjs",
+    "balance-sim": "node scripts/balance-sim.mjs",
+    "mapgen:check": "node scripts/mapgen-check.mjs"
   },
   "dependencies": {
     "phaser": "^3.70.0"

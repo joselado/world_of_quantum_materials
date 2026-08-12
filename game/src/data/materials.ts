@@ -1,5 +1,22 @@
 import { shade } from '../art/colors';
 import type { Material, Move, MoveClass, MaterialType, CrystalVariant, Stats } from './types';
+// Every pure stat/economy formula (BASE_STAT, enemyStatsForWorld,
+// statUpgradeCost, shopCost, Feynman's move-leveling multipliers/cost) lives
+// in balance.ts, kept Phaser-free so game/scripts/balance-sim.mjs can load it
+// directly -- imported here for this file's own internal use, then
+// re-exported below so every existing `import { shopCost, ... } from
+// '../data/materials'` call site keeps working unchanged.
+import {
+  BASE_STAT,
+  DEFAULT_STATS,
+  enemyStatsForWorld,
+  statUpgradeCost,
+  shopCost,
+  MOVE_LEVEL_MULTIPLIERS,
+  MOVE_LEVEL_STREAKS,
+  feynmanLevelCost,
+} from './balance';
+export { BASE_STAT, DEFAULT_STATS, enemyStatsForWorld, statUpgradeCost, shopCost, MOVE_LEVEL_MULTIPLIERS, MOVE_LEVEL_STREAKS, feynmanLevelCost };
 
 // Every ordinary attack is named after the quasiparticle/excitation that
 // actually carries it, not an abstract "class" label -- Phonon Beam is a
@@ -403,26 +420,6 @@ const MOVE_COMPATIBILITY: Record<MaterialType, MoveClass[]> = {
   // polarization order's own excitation) on top of an ordinary 'magnon' --
   // distinct modes, not redundant: a multiferroic genuinely has all three.
   multiferroic: ['magnon', 'phonon', 'electromagnon', 'ferron'],
-  // Hosts every class except the multiferroic/ferroelectric-only
-  // 'electromagnon'/'ferron' -- "The Adapted" models whatever moves the
-  // player has collected by then, so it needs everything else, the same
-  // reasoning already covers every other ordinary class here.
-  adaptive: [
-    'electron',
-    'magnon',
-    'phonon',
-    'plasmon',
-    'polaron',
-    'spinon',
-    'triplon',
-    'chiral',
-    'helical',
-    'higgs',
-    'chargedAnyon',
-    'majorana',
-    'heavyFermion',
-    'vison',
-  ],
 };
 
 export function compatibleMoves(material: Material): string[] {
@@ -448,51 +445,23 @@ export function canHost(type: MaterialType, moveClass: MoveClass): boolean {
   return MOVE_COMPATIBILITY[type].includes(moveClass);
 }
 
-// Battle stats (DESIGN.md §3): every crystal starts at the same baseline:
-// the player's own stats live in the save/registry (`playerStats`, grown by
-// spending qumatessence with Noether -- OverworldScene.renderShopStats), while
-// an opponent's stats are computed fresh from the world number at battle
-// start (enemyStatsForWorld) rather than baked per-species, so difficulty
-// climbs with the world rather than needing 30 hand-tuned stat blocks.
-export const BASE_STAT = 10;
-
-export const DEFAULT_STATS: Stats = { quantumness: BASE_STAT, velocity: BASE_STAT, correlation: BASE_STAT };
-
-// Total enemy-stat growth per world is now a budget of 8 (3/3/2), up from
-// the previous flat 2/2/2 (a total of 6) -- a deliberate ~33% difficulty
-// increase, not a neutral redistribution of the old total, sized so staying
-// competitive into the next world costs roughly 8 qumatessence-funded stat
-// purchases (statUpgradeCost), matching the pace guardians sell stat upgrades
-// at. Correlation gets the smaller share since its effect (defense =
-// BASE_STAT / correlation) is already nonlinear, so each point there goes
-// further than a flat point of quantumness/velocity.
-const STAT_GROWTH_PER_WORLD: Stats = { quantumness: 3, velocity: 3, correlation: 2 };
-
-export function enemyStatsForWorld(world: number): Stats {
-  const steps = Math.max(0, world - 1);
-  return {
-    quantumness: BASE_STAT + steps * STAT_GROWTH_PER_WORLD.quantumness,
-    velocity: BASE_STAT + steps * STAT_GROWTH_PER_WORLD.velocity,
-    correlation: BASE_STAT + steps * STAT_GROWTH_PER_WORLD.correlation,
-  };
+// Reverse lookup of MOVE_COMPATIBILITY -- every MaterialType that genuinely
+// hosts a given quasiparticle class. Backs World 10 rival's live
+// transmutation mechanic (BattleScene's own comment on `adaptedForm`/
+// `transmuteAdapted`): after a hit, it picks a new type at random from among
+// the types that actually host the class the player just attacked with,
+// rather than an arbitrary one.
+export function typesHosting(moveClass: MoveClass): MaterialType[] {
+  return (Object.keys(MOVE_COMPATIBILITY) as MaterialType[]).filter((type) => MOVE_COMPATIBILITY[type].includes(moveClass));
 }
 
-// Cost to raise a stat by 1 point from its current value, steepening as the
-// player buys more (the same "priced to keep buying meaningful" shape as
-// shopCost for moves).
-export function statUpgradeCost(currentValue: number): number {
-  return (currentValue - BASE_STAT + 1) * 50;
-}
-
-// Qumatessence price for a shop move, scaled off its own power -- the stronger
-// the quasiparticle, the more it costs, the same "priced to keep buying
-// meaningful" shape as statUpgradeCost. Shared by every guardian who sells
-// moves for qumatessence (Noether, Laughlin, Kondo) -- Skłodowska-Curie's
-// Ultimate moves are the one exception, priced via ULTIMATE_CLASS_UNLOCK_COST
-// instead (see her own panel).
-export function shopCost(move: Move): number {
-  return move.power * 5;
-}
+// Battle stats (DESIGN.md §3): every crystal starts at the same baseline
+// (BASE_STAT/DEFAULT_STATS, balance.ts) -- the player's own stats live in
+// the save/registry (`playerStats`, grown by spending qumatessence with
+// Noether -- OverworldScene.renderShopStats), while an opponent's stats are
+// computed fresh from the world number at battle start (enemyStatsForWorld,
+// balance.ts) rather than baked per-species, so difficulty climbs with the
+// world rather than needing 30 hand-tuned stat blocks.
 
 // Minimal structural type (mirrors data/save.ts's RegistryLike) so this
 // stays a plain data module -- any object with `.get` works, in practice
@@ -609,24 +578,21 @@ export function tunedMoveDisplayName(registry: RegistryLike, moveId: string): st
 // streak to clear); indices 1-3 are Double/Triple/Infinite. The tier names
 // are escalating-power flavor labels -- "Infinite" is hyperbole, not a
 // claim the move's power is actually unbounded: the real bump is
-// MOVE_LEVEL_MULTIPLIERS, a flat 1.5x/2x/3x, read by effectiveMovePower
-// below for an ordinary attack move and, separately, by
+// MOVE_LEVEL_MULTIPLIERS (balance.ts), a flat 1.5x/2x/3x, read by
+// effectiveMovePower below for an ordinary attack move and, separately, by
 // BattleScene.kondoMitigationFraction for one of Kondo's three self-buffs
 // (whose own `power` is never read as damage in the first place, see
 // KONDO_MOVE_IDS' own comment) -- there it scales that buff's own
 // mitigation strength instead, capped well under 100% so even an
-// Infinite-tier buff leaves real risk on the table. MOVE_LEVEL_STREAKS is how
-// many of Feynman's own quiz questions (data/quiz.ts's
+// Infinite-tier buff leaves real risk on the table. MOVE_LEVEL_STREAKS
+// (balance.ts) is how many of Feynman's own quiz questions (data/quiz.ts's
 // getAnalyticQuestions) the player must answer correctly in a row to land
 // that tier -- missing even one loses the attempt (the qumatessence
-// already spent per feynmanLevelCost below included) without changing the
-// move's level, same no-partial-credit shape Skłodowska-Curie's
-// Ultimate-move gate uses, generalized to a variable streak length instead
-// of a fixed 3.
+// already spent per feynmanLevelCost included) without changing the move's
+// level, same no-partial-credit shape Skłodowska-Curie's Ultimate-move gate
+// uses, generalized to a variable streak length instead of a fixed 3.
 export type MoveLevel = 0 | 1 | 2 | 3;
 export const MOVE_LEVEL_NAMES: readonly string[] = ['', 'Double', 'Triple', 'Infinite'];
-export const MOVE_LEVEL_MULTIPLIERS: readonly number[] = [1, 1.5, 2, 3];
-export const MOVE_LEVEL_STREAKS: readonly number[] = [0, 2, 4, 8];
 
 // Which level a given move is currently leveled to -- registry/save
 // `moveLevels` (moveId -> level), missing entry defaults to 0 (never
@@ -646,17 +612,6 @@ export function getMoveLevel(registry: RegistryLike, moveId: string): MoveLevel 
 // property of the move itself).
 export function effectiveMovePower(registry: RegistryLike, moveId: string): number {
   return MOVES[moveId].power * MOVE_LEVEL_MULTIPLIERS[getMoveLevel(registry, moveId)];
-}
-
-// Qumatessence cost to attempt leveling a move up to `level` (1, 2, or 3) --
-// follows the same "priced off the move's own raw power" shape shopCost
-// uses for an ordinary purchase (power x5), scaled again by the tier being
-// attempted so a deeper tier costs proportionally more: level 1 costs
-// power x5, level 2 costs power x10, level 3 costs power x15. Paid whether
-// the attempt lands or not (see MOVE_LEVEL_STREAKS above) -- there is no
-// refund on a miss.
-export function feynmanLevelCost(move: Move, level: 1 | 2 | 3): number {
-  return move.power * 5 * level;
 }
 
 // The display name every rendering site (battle move buttons/log, every
@@ -724,7 +679,6 @@ export const TYPE_LOOK: Record<MaterialType, { color: number; variant: CrystalVa
   // rather than magnetism.
   ferroelectric: { color: 0xd96a8a, variant: 'shard' },
   multiferroic: { color: 0xc94ac0, variant: 'layer' },
-  adaptive: { color: 0x333333, variant: 'prism' },
 };
 
 // A crystal database row: real compound name + main type (which fixes its
@@ -775,8 +729,8 @@ export function materialDisplayName(material: Material): string {
 // results (HYBRID_RECIPES further down) and nothing else -- worlds 1-9 never
 // spawn a hybrid-recipe result as an ordinary wild, so a compound reachable
 // by fusion is reachable only by fusion until World 10.
-// WORLD_RIVALS[10] (the finale boss "The Adapted") is the one entity that's
-// still deliberately not a real material -- see that table's own comment.
+// WORLD_RIVALS[10] (the finale boss "The Adapted") has no fixed type/look of
+// its own at all -- see that table's own comment.
 export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
   1: [
     // Real graphene plasmonics (tunable, mid-IR) is its own well-known field
@@ -791,6 +745,20 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // picture above. Also HYBRID_RECIPES' magnetic-dopant parent for Cr-doped
     // (Bi,Sb)₂Te₃ (world 3's Bi₂Te₃ + this).
     crystal('Chromium', 'classicalMagnet', 24, ['thermalFluctuation', 'magneticField'], 2, undefined, 'Cr'),
+    // Same classicalMagnet SSB family as MnO/NiO/Chromium above, not a new
+    // type for this world -- Iron and Cobalt are itinerant ferromagnets,
+    // textbook mean-field-broken-symmetry examples in their own right, also
+    // spawning in World 6 (magnons) since a compound isn't pinned to a
+    // single world once more than one topic legitimately motivates it.
+    crystal('Iron', 'classicalMagnet', 27, ['thermalFluctuation', 'magneticField'], 3, undefined, 'Fe'),
+    crystal('Cobalt', 'classicalMagnet', 27, ['thermalFluctuation', 'magneticField'], 4, undefined, 'Co'),
+    // Spontaneous symmetry breaking isn't only magnetic -- Barium Titanate's
+    // off-center Ti⁴⁺ ion breaking inversion symmetry into a switchable
+    // polarization is the same SSB physics this world teaches, just a
+    // ferroelectric order parameter instead of a magnetic one. Also spawns
+    // in World 9 (see that pool's own comment on types without a session of
+    // their own).
+    crystal('Barium Titanate', 'ferroelectric', 27, ['ferronPulse', 'thermalFluctuation'], 5, undefined, 'BaTiO₃'),
   ],
   // Topic 2 (symmetries, tight-binding) has no dedicated main type of its
   // own in the type system -- it mixes the metal/semiconductor/insulator
@@ -1026,8 +994,8 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
   // text. Worlds 1-9 never spawn a hybrid-recipe result as an ordinary wild
   // (see isHybridMaterial/getWildPool below); a compound reachable by fusion
   // is reachable *only* by fusion until the player reaches here.
-  // WORLD_RIVALS[10] ("The Adapted") is the one entity that's deliberately
-  // not a real material -- see that table's own comment.
+  // WORLD_RIVALS[10] ("The Adapted") has no fixed type/look of its own at
+  // all -- see that table's own comment.
   10: [
     crystal('Twisted Bilayer Graphene', 'superconductor', 32, ['higgsOscillation', 'thermalFluctuation'], 0, 'twisted'),
     // Majorana-nanowire platform -- engineered from an ordinary s-wave
@@ -1159,7 +1127,7 @@ export const WORLD_RIVALS: Partial<Record<number, Material>> = {
   // rather than an unrelated label. Poly-Si is the textbook baseline: one of
   // the most common real polycrystalline materials (solar cells,
   // semiconductor manufacturing).
-  1: crystal('Polycrystalline Silicon Golem', 'semiconductor', 34, ['thermalFluctuation', 'tunnelStrike'], 3),
+  1: crystal('Polycrystalline Silicon Golem', 'semiconductor', 30, ['thermalFluctuation', 'tunnelStrike'], 3),
   // Polycrystalline graphene -- CVD-grown graphene grows as stitched-together
   // single-crystal grains with visible grain boundaries (Huang et al.,
   // Nature 2011), the defining "many grains fused into one sheet" example
@@ -1191,11 +1159,31 @@ export const WORLD_RIVALS: Partial<Record<number, Material>> = {
   // characterized via polycrystalline powder susceptibility/specific-heat
   // measurements alongside single crystals.
   8: crystal('Polycrystalline Ruthenium Trichloride Golem', 'quantumSpinLiquid', 62, ['entanglementSwap', 'triplonSurge'], 10),
-  // The finale: no real compound (see DESIGN.md §5's plot hook), an
-  // "adaptive" type that can host nearly every quasiparticle class -- "a
-  // model of you," drawing from the same move roster the player themselves
-  // has access to by this point.
-  10: crystal('The Adapted', 'adaptive', 80, ['tunnelStrike', 'magneticField', 'fluxTwist', 'decoherenceWave'], 12),
+  // The finale: no real compound (see DESIGN.md §5's plot hook), and no
+  // fixed type either -- "a model of you," decided live every fight
+  // (BattleScene's own `adaptedForm`/`transmuteAdapted`): it starts the
+  // battle mirroring the player's own current type, then transmutes into a
+  // real compound's disguise every time the player lands a hit, reactively
+  // taking on whichever quasiparticle class was just used against it. `type`
+  // below is only a placeholder to satisfy Material's shape for the
+  // pre-battle overworld/dialogue preview (OverworldScene's
+  // spawnBossSprite/showRivalEncounter, both purely visual before the fight
+  // actually starts) -- BattleScene never reads it once a battle begins.
+  // Not built with crystal() (unlike every other entry here) since that
+  // derives color/variant from TYPE_LOOK[type], which would tie this
+  // placeholder type to a look that means something for every other
+  // material; color/variant are set directly instead, preserving the
+  // original featureless dark-prism look a "no fixed identity" entity
+  // should have at rest. Excluded from gen-docs.mjs's generated rivals
+  // table the same way World 9's rival already is (see docs/crystals.md).
+  10: {
+    name: 'The Adapted',
+    type: 'metal',
+    color: shade(0x333333, 216),
+    variant: 'prism',
+    maxHp: 80,
+    moves: ['tunnelStrike', 'magneticField', 'fluxTwist', 'decoherenceWave'],
+  },
 };
 
 // `rival9Type` is only meaningful for world 9 -- every other world's rival

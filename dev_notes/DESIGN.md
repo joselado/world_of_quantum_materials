@@ -26,7 +26,7 @@ One world per course topic (see the topic table in the repo's top-level `CLAUDE.
 
 | World | Course topic | In-game name (`WORLD_NAMES`) / biome theme | Wild material archetypes | Gate to next world |
 |---|---|---|---|---|
-| 0 (Hub) | — | "The Lab" — guardian's house, save point, Materialdex | — | Start world 1 |
+| 0 (Hub) | — | "The Lab" — guardian's house, save point, Qumatex | — | Start world 1 |
 | 1 | Second quantization, mean-field, SSB | **Mean-Field Meadow** — tutorial meadow | Free fermion, broken-symmetry magnet | Beat first rival crystal |
 | 2 | Symmetries, tight-binding, effective models | **Bloch Caverns** — crystalline caves, repeating tile patterns | Bloch-wave critters, lattice defect variants | Beat that world's rival crystal |
 | 3 | Topological band theory | **Topological Islands** — floating islands, one-way edge paths | Quantum spin Hall insulators, bulk and monolayer alike | Cross a gap only an edge-mode move can bridge |
@@ -36,7 +36,33 @@ One world per course topic (see the topic table in the repo's top-level `CLAUDE.
 | 7 | Entanglement, tensor networks | **Tensor-Network World** — bonds as paths | Entangled pairs (fought as a bonded duo) | Compress a tangled area into a walkable MPS path |
 | 8 | Quantum magnetism, spinons, Kondo | **Spinon Forest** — foggy forest, fractionalizes on contact | Spin liquids, Kondo-screened critters, a genuine Kondo-lattice heavy-fermion compound | Screen a "local moment" boss mechanic |
 | 9 | Excitations and defects | **Defect Wastes** — cracked/glitching world | Defect-bound states, impurity resonances, a couple of ferroelectrics with no course topic of their own, plus every non-hybrid material from worlds 1-8 | Repair/exploit N defects to stabilize a bridge |
-| 10 | ML for quantum materials | **The Adaptive Meta-World** — reflects the player's own team | Every hybrid-recipe crystal, and only hybrid-recipe crystals, plus the adaptive final boss | Final battle |
+| 10 | ML for quantum materials | **The Adaptive Meta-World** — reflects the player's own team | Every hybrid-recipe crystal, and only hybrid-recipe crystals, plus the final boss, which transmutes live in battle to mirror the player | Final battle |
+
+Each world's overworld *map shape* (not just its biome skin) is its own physics motif too,
+generated fresh every visit by `game/src/world/generators/world<N>.ts` (dispatched from
+`game/src/world/mapgen.ts`'s `generateWorldMap`, see CODEMAP.md):
+
+| World | Map shape |
+|---|---|
+| 1 | A wide corridor splits into two thin, distinctly colored parallel branches -- the two degenerate symmetry-broken ground states -- then remerges into one wide corridor |
+| 2 | A periodic corridor: a short motif repeats via translation, alternating between two offset copies of it every row (a two-atom unit cell) |
+| 3 | The grid is partitioned into several colored Voronoi domains (distinct bulk topological phases); the only walkable ground is the boundary strip between two differently-colored domains |
+| 4 | A wide trunk sprouts a mirrored pair of branches at intervals, each sprouting a smaller mirrored pair perpendicular to it, self-similar across a few scales (Hofstadter-butterfly-inspired) |
+| 5 | The main corridor spirals briefly around one or two fixed, permanently-blocked vortex-core points before straightening back out |
+| 6 | A mostly steady-width corridor whose width periodically bulges wider and narrows back -- a train of propagating wave packets along its length |
+| 7 | 3-4 parallel lanes (a tensor network's own sites/legs) linked by periodic cross-link rungs (bonds) -- a real ladder, not one path with spurs |
+| 8 | The corridor occasionally splits into two thin parallel paths for a stretch (fractionalization) before recombining, possibly more than once |
+| 9 | An ordinary wide corridor with several small patches embedded along it, each patch independently rendered using one of worlds 1-8's own biome look (a borrowed defect "type") |
+| 10 | Reuses whichever of worlds 1-8's own generator matches the player's *current* material's main type (e.g. a superconductor-type player gets world 5's spiral); a player whose type doesn't resolve to one of the eight falls back to a fresh random pick among all eight every visit |
+
+Every shape still obeys the same two rules regardless of its own motif: no walkable segment
+is ever narrower than 2 tiles (so a wild encounter spawned on the path can never fully block
+it), and that world's guardian tile is a forced, verified chokepoint -- every route from the
+entry point to the goal is provably routed through it (`generators/shared.ts`'s
+`forceChokepoint`/`verifyChokepoint`), not just placed near the geometric middle of one of
+several possible routes. World 10's shape is re-rolled immediately, without leaving the
+world, whenever the player transmutes (Dresselhaus) or fuses (Majorana) into a new form while
+standing there, since its whole shape is keyed off that form's type.
 
 World names are meant to read as the lecture topic, not generic RPG terrain names (check
 `WORLD_NAMES` and `WORLD_RIVALS` together when naming a world -- a mismatched rival name is
@@ -50,10 +76,25 @@ World 10 has no course notebook, which fits it being the finale rather than a ta
 topic: the boss is "a model of you," which is an honest metaphor for an ML surrogate.
 
 World 0 ("The Lab") is built as a static single-room hub (`game/src/scenes/HubScene.ts`),
-not a walkable map -- three fixed hotspots (Materialdex, a save point, the door to the
-next unbeaten world), since none of its jobs need overworld movement of their own.
-`TitleScene` boots the game and loads the one localStorage save slot (see §7) before
-handing off to the Hub; pressing `H` from any Overworld scene returns to it.
+not a walkable map -- up to nine stations, since none of its jobs need overworld movement
+of their own. Three always exist (Qumatex, a save point, the door to the
+next unbeaten world); six are reference/settings stations (Moves, Stats, Abilities,
+Guardians, Tutorial, Settings, built in `game/src/scenes/panels/hubStations.ts`'s
+`LAB_STATIONS`) -- everything a player might want to check or adjust between worlds,
+reachable only by physically returning to the Lab rather than from an in-world menu,
+since none of that
+content (player stats/moves/passives, which guardians have been met, game settings) is
+tied to being mid-world. Abilities and Guardians only actually appear in the room once
+there's something to check there -- Abilities behind a first passive learned
+(save/registry `passivesUnlocked`), Guardians behind a first guardian met
+(`metGuardians`) -- rather than on a fresh save with nothing yet to show; Superposition
+Mode (below) treats both as unlocked from the start, matching how its own guardian/passive
+grants already work. `TitleScene` boots the game and loads the one localStorage save
+slot (see §7) before handing off to the Hub; pressing `H` or `Enter` from any Overworld
+scene returns to it, resuming that world's own map and player position exactly rather than
+generating a fresh one. The door station (and, in the Lab itself, pressing `Enter` again) mirrors
+this: it reads "Back to World N" and resumes in place once that world has genuinely been started,
+or "Enter World N" (always a fresh map) the first time it's ever reached.
 
 Each world's "Gate to next world" fight is a distinct **rival crystal** -- worlds 1-8 and
 10 have a fixed entry in `game/src/data/materials.ts`'s `WORLD_RIVALS`, world 9's is built
@@ -80,7 +121,12 @@ per-world puzzle.** §6 below sketches a more ambitious per-world boss mechanic 
 Landau-level maze, pairing a Majorana boss, riding a magnon wave, etc.); building those
 as one-off minigames for every world was scoped out of the initial full build-out pass
 as too large for one person (§10) in favor of the reusable gate every world already had.
-§6 stays as a record of that future direction, not a description of current behavior.
+§6 stays as a record of that future direction, not a description of current behavior. The
+per-world *map shape* above (each world's own generator, `generators/world<N>.ts`) is a
+scoped-down version of that same ambition -- the journey to the guardian and the goal now
+reads as that world's own physics (a Voronoi domain network, a tensor-network ladder, a
+vortex spiral...) even though the gate mechanic waiting at the end of it is still the shared
+reach-goal → beat-rival → continue one, not a bespoke puzzle.
 
 ## 3. Type system
 
@@ -134,9 +180,9 @@ a chiral SC or a superconductor-proximitized topological surface, which is what
 actually hosts a Majorana zero mode; kept distinct from plain `superconductor` since
 an ordinary s-wave condensate's pairing alone does not host one, and from
 `quantumSpinHall` since a helical boundary state alone, with no superconductivity in
-the picture, doesn't either). Finally `adaptive` (endgame only,
-not obtainable until postgame, hosts nearly every quasiparticle above — see
-`MOVE_COMPATIBILITY.adaptive`). Topic 7's entangled/tensor-network states and topic
+the picture, doesn't either). World 10's finale boss ("The Adapted") has no main type of
+its own at all — its type is decided live in battle instead (§5, `BattleScene`'s
+`adaptedForm`/`transmuteAdapted`), not a 14th entry in this list. Topic 7's entangled/tensor-network states and topic
 8's spin liquids are physically the same quasiparticle family (Spinon Swap), so World
 7 and World 8 share the `quantumSpinLiquid` type while staying visually and
 narratively distinct worlds (different biome, guardian, music, name) — the crystal
@@ -165,12 +211,20 @@ no-op multiplier so the pre-stats damage numbers are unchanged at parity. The pl
 stats live in the save (`playerStats`) and only grow by spending qumatessence with Noether
 (`OverworldScene.renderShopStats`, cost `(current - 10 + 1) * 50` per point); an opponent's
 stats are computed fresh from the world number at battle start
-(`enemyStatsForWorld(world)`, `+3` Quantumness, `+3` Velocity, `+2` Correlation per world past
-world 1) rather than hand-tuned per species, so difficulty climbs with the world. Because the
-player's own Velocity only grows by spending qumatessence with Noether while the opponent's
-grows automatically every world, a player who never buys Velocity falls further behind the
-opponent's effective Velocity every world — raising both how often the opponent goes first and,
-per the multi-attack rule above, how many times it swings each round.
+(`enemyStatsForWorld(world)`, `data/balance.ts`) rather than hand-tuned per species, so
+difficulty climbs with the world. Growth follows a two-phase curve rather than one flat
+per-world rate: worlds 1-3 (the tutorial stretch, before the player has had a real chance to
+shop/transmute/level up) grow slowly, `+1` Quantumness/Velocity and `+0.5` Correlation per world
+past world 1; worlds 4-10 assume a player who has met the early guardians and can draw on their
+systems (Dresselhaus's transmutation, Laughlin's Analytic moves, Feynman's leveling, ...), so
+growth steepens to `+3.5` Quantumness/Velocity and `+2.2` Correlation per world from there,
+rounded to whole numbers at the end. Correlation grows slower than Quantumness/Velocity in both
+phases since its effect (defense = `BASE_STAT / correlation`) is already nonlinear, so each
+point there goes further than a flat point of Quantumness/Velocity. Because the player's own
+Velocity only grows by spending qumatessence with Noether while the opponent's grows
+automatically every world, a player who never buys Velocity falls further behind the opponent's
+effective Velocity every world — raising both how often the opponent goes first and, per the
+multi-attack rule above, how many times it swings each round.
 
 **Crystal database.** Each wild "crystal" is named after a real compound rather than
 an invented species name, and inherits its main type (and therefore its look and its
@@ -187,7 +241,11 @@ matching type/topic section of the table below (topic 2 has no dedicated main ty
 its own, so it mixes metal/semiconductor/insulator compounds with "lattice" flavor
 instead of world 1's tutorial picks; world 10's pool draws exclusively from §5's
 hybrid-recipe results instead of one topic section, see the note just below
-the table). All ten worlds
+the table). A compound isn't pinned to a single world's pool when more than one topic
+legitimately motivates it — Iron and Cobalt spawn in both World 1 (mean-field
+itinerant-ferromagnet SSB examples, alongside MnO/NiO/Chromium) and World 6 (magnons),
+the same "one compound, more than one home" shape World 9's any-type borrowing already
+uses at a whole-world scale, just applied to two specific compounds instead. All ten worlds
 have a built overworld map (roadmap §9). `PLAYER_MATERIAL` (the player's own crystal,
 currently Silicon) is a fixed pick from this same table, not part of any world's wild
 pool.
@@ -251,11 +309,14 @@ pool.
 | multiferroic (6, new type) | Nickel Diiodide (NiI$_2$), monolayer | Type-II multiferroic from noncollinear/helimagnetic order down to the monolayer limit (Song et al., Nature 2022) — hosts genuine electromagnons, the type's flagship. Same session (classical magnetism/magnons) as classicalMagnet above, so it's a World 6 wild too rather than its own world |
 | multiferroic (6, new type, hybrid) | Twisted CrI₃ | §5 hybrid recipe (CrI₃ + CrI₃) — noncollinear moiré spin textures theoretically predicted (not yet confirmed) to induce magnetoelectric coupling; untwisted CrI₃ itself is only classicalMagnet |
 | multiferroic (6, new type) | Bismuth Ferrite (BiFeO$_3$) | The flagship room-temperature single-phase multiferroic — large switchable polarization (from the Bi³⁺ lone pair) coexisting with G-type antiferromagnetic order carrying a spin cycloid, with electromagnons actually observed (not just predicted, unlike Twisted CrI₃ above); not from the course |
-| ferroelectric (new type) | Barium Titanate (BaTiO$_3$) | The textbook ferroelectric — its Ti⁴⁺ ion sits off-center below ~120°C, giving the lattice a spontaneous switchable polarization; no course topic covers ferroelectricity specifically, so like every other type without a session of its own it lives in World 9, which can host any type |
+| ferroelectric (new type) | Barium Titanate (BaTiO$_3$) | The textbook ferroelectric — its Ti⁴⁺ ion sits off-center below ~120°C, giving the lattice a spontaneous switchable polarization; no course topic covers ferroelectricity specifically, so like every other type without a session of its own it lives in World 9, which can host any type — also spawns in World 1, since spontaneous symmetry breaking covers a polarization order parameter just as much as a magnetic one (CLAUDE.md's ordinary-wild-encounters note) |
 | ferroelectric (new type) | Germanium Telluride (GeTe) | Robust room-temperature ferroelectric Rashba semiconductor — a stronger, more switchable ferroelectric than BaTiO₃'s own ~120°C transition, same type, also a World 9 wild |
 | ferroelectric (new type) | Hafnium Oxide (HfO$_2$), ferroelectric phase | CMOS-compatible ferroelectric behind real FeRAM/FeFET devices — pristine, undoped epitaxial thin films switch too (Cheema et al., Nature 2020; strain rather than a dopant stabilizes the polar orthorhombic phase); bulk, unstrained HfO₂ is the ordinary centrosymmetric phase and not ferroelectric at all, so this specifically means the thin-film phase; not from the course, also a World 9 wild |
 | chernSuperconductor (10, hybrid) | InAs/Al Majorana Wire | Engineered from an ordinary s-wave superconductor (Aluminum) proximitizing a strong-spin-orbit semiconductor (InAs) — genuine topological pairing, so `chernSuperconductor` rather than plain `superconductor`; §5 hybrid recipe result |
-| adaptive (10) | — (no compound, by design) | Only `WORLD_RIVALS[10]`'s finale boss ("a model of you") — World 10's ordinary wilds are not 'adaptive', see the note above the crystal-database table |
+
+`WORLD_RIVALS[10]`'s finale boss ("The Adapted," "a model of you") has no row above —
+unlike every other entry in this table, it has no main type or real compound of its own at
+all, since its type is decided live in battle instead (see the note just below the table).
 
 Bismuth Selenide (magnetically doped) and Samarium Hexaboride are documented candidates
 not yet wired into `WORLD_CRYSTALS` — every other row above is live in the code. Weyl
@@ -306,12 +367,28 @@ game's actual named hybrid-recipe results (§5's `HYBRID_RECIPES`) and nothing e
 worlds 1-9 never spawn a hybrid-recipe result as an ordinary wild, so the meta-world's
 corridor plays back the player's own fusions/discoveries literally rather than as echo
 flavor text. Standalone compounds whose own type has no dedicated world of its own
-(MnBi₂Te₄ and Monolayer NiI₂, whose types tie to existing topics' sessions; Barium
-Titanate and GeTe, whose ferroelectric type ties to none) instead live in the earlier
-world their topic anchors to, or in World 9 (which can host any type) if it anchors to
-none — see the crystal-database table above. `WORLD_RIVALS[10]` ("The Adapted"), a
-separate table from the wild pool, is the one 'adaptive'-type entry in the game — a "no
-real compound, a model of you" finale boss.
+(MnBi₂Te₄ and Monolayer NiI₂, whose types tie to existing topics' sessions; GeTe, whose
+ferroelectric type ties to none) instead live in the earlier world their topic anchors
+to, or in World 9 (which can host any type) if it anchors to none — see the
+crystal-database table above. Barium Titanate, also ferroelectric, spawns in both World 1
+(its polarization order is spontaneous symmetry breaking, that world's own topic) and
+World 9 rather than World 9 alone, per that same table's note. `WORLD_RIVALS[10]` ("The Adapted"), a
+separate table from the wild pool, is the one entity in the game with no fixed main type at
+all — a "no real compound, a model of you" finale boss whose type is decided live every
+fight instead. It starts each battle mirroring the player's own current type
+(`getPlayerMaterial`), then transmutes — type, look, and display name together — every time
+the player's attack resolves against it, reactively taking on a real, already-defined
+compound's disguise (a "Polycrystalline `<compound>` Golem," the same naming every other
+world's rival already follows) that hosts whichever quasiparticle class was just used against
+it (`data/materials.ts`'s `typesHosting`, a reverse `MOVE_COMPATIBILITY` lookup, feeds
+`allCrystals()` to pick a real compound of a genuinely matching type). The net effect
+rewards varying attack classes rather than repeating one: having just adapted to host a
+class, the *next* hit of that same class no longer gets the quasiparticle-mismatch bonus
+against it. Implemented entirely in `BattleScene` (`adaptedForm`, `transmuteAdapted`,
+`opponentView()`) as this one fight's own live state, not a change to the static
+`WORLD_RIVALS[10]` entry itself (whose `type` field is only a placeholder for the pre-battle
+overworld/dialogue preview) — its `moves`/`maxHp` (attack moveset and HP) stay fixed
+throughout, only its defensive identity is dynamic.
 
 **Subtype combination flavor (real-compound tie-ins):** the same mechanic from §3
 (main type + subtype → new material) has ready real-world flavor text once crystals are
@@ -500,12 +577,10 @@ player with no Laughlin/Skłodowska-Curie moves bought or no Kondo move active n
 empty page, and the pager (◀/▶ buttons plus the Left/Right keys, `switchMovePage`) is hidden
 entirely once there's only one page to switch between. A section with more moves than one
 page can hold (`moveMenuPages`, capped at `MOVE_MENU_MAX_ROWS` -- 3 moves per page, always)
-splits into several same-label pages instead -- an 'adaptive'-type crystal (world 10, see §3)
-hosting the broadest set of
-`MoveClass`es of any type (every class except the multiferroic/ferroelectric-only
-`'electromagnon'`/`'ferron'`, deliberately left off its `MOVE_COMPATIBILITY` list the same
-way `'phonon'` is on every list) is the one form whose **Attacks** section currently needs
-this, splitting its 14 moves into five pages (four of 3, one of 2). These groups work
+splits into several same-label pages instead -- `chernSuperconductor` (`electron`/`phonon`/
+`higgs`/`chiral`/`majorana`, the broadest single main type's own `MOVE_COMPATIBILITY` list)
+is the one form whose **Attacks** section needs this today, once every matching move is
+unlocked, splitting its 5 moves into two pages (3 + 2). These groups work
 differently enough from an ordinary attack (and from each other) that a flat stacked list
 blurred the distinction -- and paging instead of stacking means a page's own row height
 (`drawMoveMenu`'s `rowH`) is budgeted only against that one page's move count, not the worst
@@ -528,18 +603,29 @@ world actually looks like it, not like every other world's battle.
 screen (`OverworldScene.showEncounter`, not a separate scene): a greeting line tied to
 that material's main type (`game/src/data/greetings.ts` -- a magnet's greeting reads
 differently from a superconductor's, since it's keyed by `MaterialType`, not generic) and
-one physics question drawn at random from that material's question pool in
-`game/src/data/quiz.ts` (at least 6 questions per material; every wild material has a pool)
-together on that same screen -- one correct answer, one incorrect answer (order shuffled),
-plus "let me pass," so re-fighting the same material doesn't always ask the same thing. Quiz
-content is sourced from the matching session's lecture notes, or, for materials whose topic
-has no session of its own, written directly from the compound's real physics. Answering
-correctly multiplies the player's attack power for that battle (1.5×, shown in battle as a
-glowing golden aura -- pulsing rings, radiant rotating spikes, rising embers -- around the
-player's crystal); answering wrong weakens it (0.6×, shown as a small grey raincloud);
-passing skips the battle entirely with no bonus or penalty and no scene change. A material
-with no quiz pool at all would fall back to a plain "Fight!" / "Let me pass" choice on the
-same greeting screen, though every wild material currently has one.
+one physics question drawn at random from that *world's* combined question pool
+(`game/src/data/quiz.ts`'s `getWorldQuestion(world)` -- the union of every one of that
+world's own `WORLD_CRYSTALS[world]` materials' individual question pools, at least 6
+questions per material that has one) together on that same screen -- one correct answer,
+one incorrect answer (order shuffled), plus "let me pass," so re-fighting the same material
+doesn't always ask the same thing, and which material was actually fought doesn't affect
+which question shows. Worlds 1-9 only draw from their own world's pool; World 10 draws from
+the combined pool of worlds 1-9 only (not its own `WORLD_CRYSTALS[10]` materials' pools),
+since its wilds are hybrid-recipe results rather than a course topic of their own and the
+goal is breadth across the course's own topics, not hybrid-specific trivia -- so a material
+borrowed into another world's spawn table (e.g. World 9's borrowing from worlds 1-8) is
+quizzed on that world's own topic, not the material's origin world. A material that spawns
+only in World 10 (every named hybrid recipe result) has an authored question pool that's
+never actually drawn in play under this rule, kept in `quiz.ts` as the session-anchored
+physics record for that compound rather than deleted. Quiz content is sourced from the
+matching session's lecture notes, or, for materials whose topic has no session of its own,
+written directly from the compound's real physics. Answering correctly multiplies the
+player's attack power for that battle (1.5×, shown in battle as a glowing golden aura --
+pulsing rings, radiant rotating spikes, rising embers -- around the player's crystal);
+answering wrong weakens it (0.6×, shown as a small grey raincloud); passing skips the battle
+entirely with no bonus or penalty and no scene change. A world whose materials all lack a
+quiz pool would fall back to a plain "Fight!" / "Let me pass" choice on the same greeting
+screen, though every world currently has at least one pool-bearing material.
 
 **Starting loadout and unlocking moves.** The player's crystal starts knowing only Phonon
 Beam. Reaching world 1's middle tile for the first time introduces the guardian Noether (§5),
@@ -570,14 +656,14 @@ qumatessence stake, not HP attrition, is what's on the line from one battle to t
 battle's opening line and its win/lose closing line are both flavor text from
 `game/src/data/greetings.ts`, likewise keyed by the wild material's type.
 
-**Post-battle screen and the Materialdex.** Every battle's end screen also shows one
+**Post-battle screen and Qumatex.** Every battle's end screen also shows one
 sentence tying the fight to the real physics of the material just fought
 (`game/src/data/materialdex.ts`'s `materialBlurb`, falling back to a generic blurb per
 `MaterialType` for a compound without its own entry yet). The first time a wild material is
 encountered (not per-battle, and not for rival crystals, which are gate encounters rather
 than collectible materials), it's
 recorded into the Phaser registry's `discoveredMaterials` list
-(`OverworldScene.recordDiscovery`); the Hub's Materialdex hotspot (§2) indexes every real
+(`OverworldScene.recordDiscovery`); the Hub's Qumatex station (§2) indexes every real
 compound in the game (`data/materials.ts`'s `allCrystals()`), not just discovered ones --
 an entry not yet found shows as "???" with a masked crystal render rather than being
 absent from the list entirely, so the index reads as a checklist of the whole game.
@@ -596,8 +682,11 @@ Every one of the ten worlds has its own guardian, waiting mid-corridor
 (`OverworldScene`'s `WORLD_GUARDIANS` table, every entry's `tile: 'middle'`) rather than
 at the goal -- the goal tile is occupied by that world's boss (see below), so a guardian
 is someone the player meets partway through the journey, not a gate to it. Every
-guardian stays reachable from anywhere afterward via the Enter-menu's Guardians panel
-once met (`showGuardiansPanel`, `data/save.ts`'s `metGuardians`). Every guardian has a
+guardian stays reachable once met from the Lab's Guardians station
+(`scenes/panels/hubStations.ts`'s `showGuardiansPanel`, `data/save.ts`'s `metGuardians`)
+-- picking one from that station's list warps into their world (a fresh map, same as
+Bloch's own teleport) and reopens their panel there, since a guardian's own panel (shop,
+teleport hub, transmutation) depends on state tied to that world visit. Every guardian has a
 real mechanic (Noether, Bloch, Dresselhaus, Laughlin, Majorana, Anderson, Feynman, Kondo,
 Franklin, Skłodowska-Curie) -- a guardian without one yet would fall through to the
 shared `OverworldScene.showGuardianLore` panel (avatar + quote only), but nothing
@@ -984,8 +1073,8 @@ for jumping to an arbitrary already-visited world. Both doors regenerate the
 destination world's map fresh, the same "walking between worlds always lays out a
 new corridor" rule §7 describes for every other transition.
 
-**Wild-encounter density.** The Enter-menu's Settings panel
-(`OverworldScene.showSettingsPanel`) lets the player choose how often ordinary wild
+**Wild-encounter density.** The Lab's Settings station
+(`scenes/panels/hubStations.ts`'s `showSettingsPanel`) lets the player choose how often ordinary wild
 crystals spawn per corridor row -- Low/Normal/High/Very High
 (`data/settings.ts`'s `DENSITY_PRESETS`), persisted like every other save field.
 Takes effect the next time a world map is generated (a fresh world entry or an
@@ -994,8 +1083,9 @@ standing on.
 
 **Plot hook:** a "Decoherence" is spreading through the material worlds, causing wild
 materials to lose their protected properties. The player masters each phase of
-matter to stabilize it. World 10's adaptive boss is revealed as the source — an
-entity that models and exploits whatever strategy the player has been using.
+matter to stabilize it. World 10's boss is revealed as the source — an entity
+that reshapes itself live in battle to counter whatever quasiparticle class the
+player just attacked with.
 
 **Story beats between worlds.** The plot isn't only the tutorial's first page and
 the ending — beating each world's rival shows a short Decoherence-arc line
@@ -1038,17 +1128,28 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   field view. Movement/encounter logic runs on a plain 2D grid; only the tile
   rendering is projected (lane offset, depth) → screen point, with distance
   fog blending tiles toward a biome-specific haze color near the horizon.
-- **Overworld map generation** (`src/world/mapgen.ts`): each world's walkable
-  area is a corridor, narrow relative to the grid, whose center drifts left/
-  right as it climbs toward a goal row -- narrow and frequent enough that
-  walking straight eventually runs off the corridor's edge, so reaching the
-  goal takes actually tracking the bend sideways rather than holding one
-  direction. Short dead-end branches fork off the corridor's edges at random
-  rows; exactly one route (the corridor) reaches the goal, and each branch
-  ends in a single qumatessence pickup drawn from a ten-tier value ladder
+- **Overworld map generation** (`src/world/mapgen.ts`, `src/world/generators/`): each of the
+  10 worlds has its own generator (`generators/world1.ts` .. `world10.ts`, see §2's map-shape
+  table and CODEMAP.md for the file layout), producing that world's own physics motif rather
+  than one shape shared by all ten -- a wandering corridor whose center drifts left/right as
+  it climbs toward a goal row is only world 2/6/9's own base shape now, not the default every
+  world falls back to. `mapgen.ts`'s `generateWorldMap` dispatches to the right generator by
+  world number (world 10 additionally by the player's current material type) and then runs
+  two passes common to all ten: forcing the guardian's tile into a real chokepoint (walling
+  off its whole row except a small gap, so every route from the entry point to the goal is
+  provably routed through it -- verified by flood fill with that tile removed, not just
+  placed near the geometric middle of one of several possible routes) and deriving
+  encounter-row sampling/qumatessence placement from the final walkable shape. Every
+  generator's own walkable segments stay at least 2 tiles wide throughout, so a wild
+  encounter spawned on the path can never fully block it. A generator whose output fails
+  either check is retried with fresh randomness (up to 10 times) before falling back to a
+  plain wide corridor, logged rather than thrown -- generation is randomized and runs on
+  every world entry, so a bad roll shouldn't crash the scene. A handful of qumatessence
+  pickups are scattered across each map (preferring an actual dead-end tile when that
+  generator's shape has one), each drawn from a ten-tier value ladder
   (`src/data/tokens.ts`), 1 at the bottom up to 50 at the top, each tier with
   its own distinct color so a pickup's rough size reads before the player
-  even reaches it. Which tiers a branch can roll is a window of tiers
+  even reaches it. Which tiers a map can roll is a window of tiers
   centered on the current world -- World 1 only ever rolls the ladder's two
   lowest tiers, World 10 only its two highest, and worlds in between roll a
   three-tier window that slides up the ladder as the player advances (World
@@ -1056,16 +1157,22 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   roll stays a treat rather than the norm. Off-path tiles render as terrain you can plausibly see is
   impassable, not just differently-colored ground -- a raised wall block by default, or
   (per-biome `wallTheme`, see `STYLE.md`) a molten lava crust, a frozen lake, or open
-  sky/chasm you'd fall through -- so blocked terrain reads unambiguously either way. The
+  sky/chasm you'd fall through -- so blocked terrain reads unambiguously either way, unless
+  the tile carries its own `regionColor` tint (world 1's/3's/8's colored branches/domains),
+  which always renders as solid colored ground regardless of `wallTheme`. A tile can also
+  carry a `biomeOverride` (world 9's patches, each independently borrowing one of worlds
+  1-8's whole biome look) that swaps which world's `art/biomes.ts` entry it renders with. The
   layout is regenerated (fresh `Math.random` calls) on
   first load and whenever the player switches worlds -- the Hub door, Bloch's
-  teleport, a world door (§5), or a debug warp alike; a round trip through
+  teleport, a world door (§5), a debug warp, or (World 10 only) transmuting/fusing into a new
+  form while already standing there, since World 10's shape is keyed off the player's own
+  current type; a round trip through
   battle instead restores the exact layout and player position it started
   from (`OverworldScene.saveMapState`/`restoreMap`, via the Phaser registry).
   The pre-battle encounter dialogue itself never leaves the overworld scene.
   Per-world visuals (sky/ceiling, wall vs. path color,
   decoration style) live in `src/art/biomes.ts`, keyed by world number,
-  independent of the shared layout generator.
+  independent of the per-world shape generators.
 - **Hosting:** static site (GitHub Pages / Netlify) — client-side only, no backend
   needed unless cross-device save sync or trading is added later. `npm run build`
   in `game/` produces the deployable static output.
@@ -1074,7 +1181,7 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   every scene reads/writes -- before the Hub or any world can run; `persistFromRegistry()`
   is then called after every registry mutation that should survive a reload (token pickup,
   move purchase, rival defeat, battle outcome), so the registry and localStorage stay in
-  sync rather than only saving at fixed checkpoints. The Hub's save-point hotspot (§2) also
+  sync rather than only saving at fixed checkpoints. The Hub's Save Point station (§2) also
   triggers it explicitly, mostly for the player's own reassurance since autosave already
   covers it.
 - **Starting a new game.** Once a save exists, the title screen's main button always reads
@@ -1099,10 +1206,12 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   by save/registry `tutorialTipsSeen`). Each trigger site passes whatever it
   was about to do next as the tip's close callback (open the encounter panel,
   launch the battle, ...), so the tip is a one-time detour in front of that
-  action rather than a separate step callers have to branch on. The full set,
-  in the same order, can still be replayed as one paged recap any time from
-  the Enter-menu's "Tutorial" button (`OverworldScene.showTutorial`, reading
-  `TUTORIAL_PAGES`, the same tips in a fixed array).
+  action rather than a separate step callers have to branch on. The full set
+  can still be revisited any time from the Lab's Tutorial station
+  (`scenes/panels/hubStations.ts`'s `showTutorialTopics`, reading
+  `TUTORIAL_PAGES`) as a menu listing every topic by name -- picking one opens
+  just that topic's own page, with a button back to the topic menu, rather
+  than paging linearly through all seven.
 - **Story Mode vs. Superposition Mode.** The Title screen has the player pick
   one of two starting modes (`TitleScene.addModeSelector`) before Continue/New
   Game -- both back the same save/registry `superpositionMode` boolean (Story
@@ -1116,7 +1225,7 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   normal qumatessence grind, every built world is pre-marked visited so Bloch's
   teleport hub (§5) can jump to any of them immediately on top of the world
   doors (§5) every world already has -- there is no separate "Warp" UI --
-  the Hub's Materialdex (§4) is pre-filled with every real compound in the
+  the Hub's Qumatex (§4) is pre-filled with every real compound in the
   game so it reads as fully discovered, Dresselhaus/Majorana/Anderson's
   panels (§5) offer every crystal in the game as a candidate rather than only
   ones actually defeated (Dresselhaus's list still excludes hybrid-recipe
@@ -1141,14 +1250,14 @@ world 7's boss fights as an entangled pair where damaging one damages both.
 ## 9. Current build status
 
 Built and playable end to end: all 10 worlds have an overworld map, biome, wild-encounter
-pool, rival, and guardian slot; the Hub, title screen, localStorage save, Materialdex, the
+pool, rival, and guardian slot; the Hub, title screen, localStorage save, Qumatex, the
 contextual tutorial tips, and the Story Mode/Superposition Mode picker are all in place
 (§2, §4, §5, §7). `game/` is the only build; there is no separate no-install
 single-file `demo/` prototype. All audio is procedural Web Audio with no external assets
 (`game/src/audio/music.ts`), with both an overworld track and a battle track per world in
-two selectable arrangements — "Classic" (chiptune-leaning arpeggios) and "Modern" (a
-symphonic string-pad/legato-melody arrangement of the same per-world keys/tempos) — toggled
-live from the Enter-menu Settings panel.
+two selectable arrangements — "Classic" (chiptune-leaning arpeggios) and "Modern" (an
+ambient orchestral string-pad/legato-melody arrangement) of the same per-world
+keys/tempos — toggled live from the Lab's Settings station.
 
 Not yet built:
 - Bespoke per-world boss puzzles (§6) — every world currently uses the same reach-goal →
