@@ -340,12 +340,15 @@ synchronicity, deferring its own damage-application/log and win-lose-check/turn-
 `playAttackEffect`'s `onImpact`/`onComplete` callbacks instead of running them inline -- see the
 Ultimate-specific paragraph below.
 
-**Turn order and multi-attack (`BattleScene.playerAttack`).** Velocity (each side's own
-`statusVelocityMultiplier`-adjusted effective value) decides both who swings first each round
-and how many times the faster side swings: `ratio` is the faster side's effective Velocity
-divided by the slower side's, and the faster side's hit count is
-`Phaser.Math.Clamp(Math.floor(ratio), 1, 3)` -- the slower side always gets exactly one hit. A
-tie keeps the player going first, one hit each, same as the ratio-1 case. `playerAttack` builds
+**Turn order and multi-attack (`BattleScene.playerAttack`, `BattleScene.currentHitOrder`).**
+Velocity (each side's own `statusVelocityMultiplier`-adjusted effective value) decides both who
+swings first each round and how many times the faster side swings: `currentHitOrder()` returns
+`{ fasterIsPlayer, fasterHits }`, where `ratio` is the faster side's effective Velocity divided
+by the slower side's, and `fasterHits` is `Phaser.Math.Clamp(Math.floor(ratio), 1, 3)` -- the
+slower side always gets exactly one hit. A tie keeps the player going first, one hit each, same
+as the ratio-1 case. Both `playerAttack` (which resolves the round's actual hits) and
+`drawTurnPreview` (the "Turns" widget, STYLE.md's "Turn-order preview") call this same helper
+so their two views of "who's faster this round" can't drift apart. `playerAttack` builds
 an explicit `hits: { isPlayer, moveId }[]` array for the round (the faster side's entries first,
 reusing the same player-chosen `moveId` each time or re-rolling `opponentMoveId()` each time on
 the enemy's side, then the slower side's single entry) and walks it with a small recursive

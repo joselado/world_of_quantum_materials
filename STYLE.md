@@ -694,6 +694,35 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   battle -- see DESIGN.md §3/§4), then "A coherent critical hit!" for a crit -- up to two
   clauses can stack on one line, in that fixed order.
 
+## Turn-order preview (`BattleScene.drawTurnPreview`)
+
+- A small "Turns" widget docked in the field's top-left corner (`x = 20, y = 8`), clear of
+  both HP-bar columns and the log text further down: a dim blue-grey (`#8fa0c9`, matching
+  the move menu's own section-header color) "Turns" label over the usual translucent-black
+  tag background, with a row of five 18px crystal icons (`makeCrystal`, 22px spacing) below
+  it, one per predicted hit: the player's own current crystal or the opponent's, each using
+  that side's real `color`/`variant`/`seed`/`hybridParents`. Each icon also carries a ring
+  behind the crystal shapes marking whose hit it is, independent of crystal color -- a bold
+  full-opacity gold ring (`0xffe066`, 3px stroke, this project's established active/highlighted
+  accent color) for the player's hits, a faint blue-grey ring (`0x8fa0c9`, 1.5px stroke, 45%
+  alpha -- the same dim "inactive" tone the shop's inactive tab uses) for the opponent's, so the
+  row still reads at a glance in a same-material matchup (routine from world 9 onward) where
+  the crystal colors themselves are identical. Always the plain `makeCrystal` look on the
+  opponent's side, even in a rival fight where the on-field opponent itself renders bigger via
+  `makeBossCrystal` (see "Boss opponent in battle" below) -- a boss's wider multi-shard
+  silhouette wouldn't read at 18px, so the icon
+  stays the ordinary single-shape crystal look rather than trying to match the boss art.
+- The row previews the next five hits in order (DESIGN.md §4's velocity multi-hit rule):
+  the faster side's icons repeated `fasterHits` times, then the slower side's icon once,
+  tiled out to five. It's a best-effort look-ahead, not a guarantee -- it assumes ordinary
+  moves keep getting picked and neither side's stats change mid-sequence, so a Kondo status
+  landing or an Ultimate/Analytic pick (exempt from the multi-hit scaling) can make the
+  actual next round diverge from what it showed; the widget carries no disclaimer text for
+  this, since it's still an accurate read of "if nothing changes."
+- Redrawn once in `create()` and again every time a round actually finishes (right where
+  `turnLock` releases), so a mid-battle Slowed status changes the preview for future rounds
+  as soon as it lands rather than staying frozen from turn 1.
+
 ## Battle move menu (`BattleScene.drawMoveMenu`)
 
 - A docked panel on the right of the field (`x = 670`, `y = 178`, width `176`), same dark
