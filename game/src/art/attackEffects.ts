@@ -56,13 +56,15 @@ const EFFECT_STYLE: Record<MoveClass, { color: number; shape: AttackShape }> = {
   // A collective charge oscillation reads as an expanding wave like Magnon
   // Pulse's ring, tinted an electric cyan instead of magnon's red.
   plasmon: { color: 0x4ad9ff, shape: 'ring' },
-  // Kondo's three moves (Screening Pulse, Scattering Drag, Breakdown
-  // Cascade) share one look -- an expanding ring reads as a screening
-  // cloud enveloping the target, tinted Kondo's own rust-orange
-  // (WORLD_GUARDIANS[8].strokeColor). Three distinct move names and
-  // status-effect log lines already read as three different moves without
-  // three different silhouettes too, so unlike Laughlin's/Skłodowska-Curie's
-  // moves they need no per-move-id shape override.
+  // Kondo's three self-buff moves (Screening Pulse, Scattering Drag,
+  // Coherence Cascade) share one look -- an expanding ring reads as an
+  // effect enveloping the caster, tinted Kondo's own rust-orange
+  // (WORLD_GUARDIANS[8].strokeColor). BattleScene.resolveSelfBuff passes the
+  // same position as both `from` and `to`, so the ring centers on the
+  // caster instead of traveling to the opponent. Three distinct move names
+  // and buff log lines already read as three different moves without three
+  // different silhouettes too, so unlike Laughlin's/Skłodowska-Curie's moves
+  // they need no per-move-id shape override.
   screening: { color: 0xe86a44, shape: 'ring' },
 };
 

@@ -14,7 +14,7 @@ the game.
 | [Majorana](#majorana) | 5 | Fuses two crystals into a hybrid state |
 | [Anderson](#anderson) | 6 | Lets you dope in an impurity move |
 | [Bohr](#bohr) | 7 | Teaches always-on passive abilities |
-| [Kondo](#kondo) | 8 | Sells status-inflicting moves |
+| [Kondo](#kondo) | 8 | Sells self-buff moves |
 | [Franklin](#franklin) | 9 | Teaches always-on passive abilities |
 | [Skłodowska-Curie](#skłodowska-curie) | 10 | Teaches two quiz-gated Ultimate moves |
 
@@ -95,10 +95,12 @@ equipped at a time; switching means talking to Bohr again.
 
 ## Kondo
 
-Sells three moves that each weaken the target for a few turns instead of
-hitting hard -- drop its damage output, slow it down, or crack its defenses.
-You pick which effect by picking the move, and only one can be active at a
-time; switching means talking to Kondo again.
+Sells three self-buff moves -- cast on yourself, not the opponent, and no
+damage dealt. Screening Pulse shields you, reducing incoming damage for a
+few turns; Scattering Drag makes you evasive, giving incoming hits a chance
+to miss entirely; Coherence Cascade sets you regenerating, healing you a
+little each turn. You pick which buff by picking the move, and only one can
+be active at a time; switching means talking to Kondo again.
 
 ## Franklin
 

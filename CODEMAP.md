@@ -161,13 +161,16 @@ since `materials.ts` pulls in Phaser at module scope) and regenerates the
 - **`MOVE_COMPATIBILITY` gates both offense *and* defense at once -- a gotcha worth
   remembering before adding a new `MoveClass`.** The same table backs `compatibleMoves`
   (what the attacker can use) and `canHost` (whether the defender takes the mismatch 2x), so
-  leaving a new class off every type's list doesn't make it "unavailable," it makes every
-  defender mismatch against it -- a silent, permanent 2x stacked on top of whatever bonus the
-  move's own mechanic already applies. This is why `'screening'` (Kondo's three moves) is
-  deliberately on *every* type's list rather than scoped like every other class: they deal in
-  a generic scattering/decoherence process the player applies, not physics a crystal has to
-  host, so the intent is "always usable, never mismatched," and the 3-turn status effect each
-  one inflicts (DESIGN.md §4) is the payoff instead of a mismatch bonus. Laughlin's two Analytic
+  leaving a new *attack* class off every type's list doesn't make it "unavailable," it makes
+  every defender mismatch against it -- a silent, permanent 2x stacked on top of whatever
+  bonus the move's own mechanic already applies. `'screening'` (Kondo's three self-buff
+  moves) is the one class this doesn't apply to at all: it's deliberately left off *every*
+  type's list, since a self-buff never attacks in the first place -- `BattleScene.resolveHit`
+  routes it to `resolveSelfBuff` before `canHost` is ever checked, so it's simply never
+  gated, not "always compatible" the way Phonon Beam's universal-but-still-checked class is.
+  `getBattleMoves` (`data/materials.ts`) mirrors this: a `KONDO_MOVE_IDS` entry is surfaced
+  purely by whether it's the active `kondoActiveMove`, never intersected with
+  `compatibleMoves`. Laughlin's two Analytic
   moves (`skyfallBeam`, `groundEruption`) and Skłodowska-Curie's two Ultimate moves
   (`ultimateMeteor`, `ultimateNova`) reach the same "usable from any form, never mismatches"
   result without needing a class of their own -- their static `class` defaults to `'phonon'`,
@@ -218,7 +221,7 @@ since `materials.ts` pulls in Phaser at module scope) and regenerates the
   Laughlin's Analytic shop (`panels/tunableMoveShop.ts`'s `renderTunableMoveShop`, shared
   chrome), green `0x4fd97a` = Majorana's hybrid panel, rust `0xc9884a` = Anderson's
   impurity-doping panel, amber `0xffa64a` = Bohr's passive panel, red `0xe86a44` = Kondo's
-  screening-move shop, purple `0xa878c9` = Franklin's passive panel, olive `0xc9d84a` =
+  self-buff shop, purple `0xa878c9` = Franklin's passive panel, olive `0xc9d84a` =
   Skłodowska-Curie's Ultimate shop, red `0xff6666` = rival gate, purple `0x9a6ad9` = Hub's
   `showPanel` (Materialdex/Save), lavender `0xd9a5ff` = `OverworldScene.showStoryBeat`'s
   between-worlds panel, and (in `BattleScene`, the one place dialogue-style overlays live outside
@@ -342,7 +345,7 @@ synchronicity, deferring its own damage-application/log and win-lose-check/turn-
 Ultimate-specific paragraph below.
 
 **Turn order and multi-attack (`BattleScene.playerAttack`, `BattleScene.currentHitOrder`).**
-Velocity (each side's own `statusVelocityMultiplier`-adjusted effective value) decides both who
+Velocity (each side's own raw effective value) decides both who
 swings first each round and how many times the faster side swings: `currentHitOrder()` returns
 `{ fasterIsPlayer, fasterHits }`, where `ratio` is the faster side's effective Velocity divided
 by the slower side's, and `fasterHits` is `Phaser.Math.Clamp(Math.floor(ratio), 1, 3)` -- the
@@ -364,41 +367,45 @@ the plain one-hit-each alternation for those, since Analytic/Ultimate's own quiz
 Ultimates) multi-phase animation timing are tuned around exactly one `resolveHit` call per side
 per round.
 
-**Status effects (Kondo's three moves).** `this.playerStatus`/`this.opponentStatus`
-(`ActiveStatus | null`, `{ kind: 'screened' | 'slowed' | 'weakened'; turnsLeft: number }`)
+**Self-buffs (Kondo's three moves).** `this.playerStatus`/`this.opponentStatus`
+(`ActiveStatus | null`, `{ kind: 'shielded' | 'evasive' | 'regenerating'; turnsLeft: number }`)
 are battle-only fields, explicitly reset to `null` in `create()` (Phaser reuses the same Scene
 instance across `scene.start()` calls, so a field initializer alone doesn't reset them between
-battles -- same gotcha `OverworldScene`'s own dialogue-state fields already call out). Three
-small per-side multiplier lookups (`statusDamageMultiplier`/`statusVelocityMultiplier`/
-`statusCorrelationMultiplier`) feed straight into the existing formulas rather than adding a
-parallel damage path: `playerAttack`'s turn-order comparison multiplies each side's Velocity by
-its own `statusVelocityMultiplier` before comparing, and `resolveHit`'s `dmg` gains a
-`screenedMult` term (attacker's own `statusDamageMultiplier`) alongside a `defenseFactor`
-denominator now also scaled by the defender's `statusCorrelationMultiplier`. `resolveHit` takes
-a `tickStatus` param (default `true`) gating whether it's allowed to call
-`applyOrTickStatus(move, defenderIsPlayer)` near the end of the hit (same spot
-`mismatchText`/`critText` are built) at all -- `playerAttack`'s `runHit` only passes `true` for
-the *last* hit of the round landed against a given defender (`index === fasterHits - 1 ||
-index === hits.length - 1`, since the faster side's hits are contiguous and share one defender),
-`false` for every earlier hit against that same defender within the round. Ticking on the last
-hit rather than the first matters: an existing status (e.g. a Weakened side on its final
-`turnsLeft`) has to keep applying to every one of the faster side's hits that round before it
-expires, and a status a Kondo move inflicts this round shouldn't retroactively buff/debuff the
-very hits that inflicted it. `applyOrTickStatus` itself does one of two things: if the landing
-move is one of Kondo's three (`KONDO_MOVE_STATUS: Record<moveId, StatusKind>`, a fixed lookup -- no
-randomness), it replaces the defender's status outright via `setStatus` (one status per side,
-never stacked); otherwise it ticks the defender's *existing* status down by one and clears it
-once `turnsLeft` hits 0. Either branch returns a log-line clause (`STATUS_INFO[kind]
-.applyText`/`.expireText`) appended to that hit's own message, the same "stack a clause onto
-the existing line" pattern `mismatchText`/`critText` already use. `setStatus` also calls
-`renderStatusLabel`, which updates a small always-present-but-usually-empty `Text` pill
-(`playerStatusLabel`/`opponentStatusLabel`, positioned just under each side's HP bar) to
-`"<Label> (<turnsLeft>)"` or clears it to `''` when there's no active status.
+battles -- same gotcha `OverworldScene`'s own dialogue-state fields already call out). A Kondo
+move (`KONDO_MOVE_IDS`) is never an attack -- `resolveHit` checks for one first thing and routes
+it to `resolveSelfBuff(isPlayer, move, tickStatus, onDone)` instead, which never touches
+`canHost`/`dmg`/`applyDamage` at all, applying the buff to the *caster's own* side
+(`isPlayer`, not `defenderIsPlayer`). Two small per-side lookups feed the buff's actual effect
+into the existing formulas rather than adding a parallel damage path: `statusShieldMultiplier`
+(`resolveHit`'s `dmg`, keyed by `defenderIsPlayer` -- Shielded reduces *incoming* damage to
+whoever holds it) and `statusEvasionActive` (checked once per hit against `defenderIsPlayer`;
+if it rolls under `EVASION_CHANCE` the hit deals zero damage and `applyResult` logs "evaded!"
+instead of the usual damage/mismatch/crit clauses). `resolveHit`/`resolveSelfBuff` both take a
+`tickStatus` param (default `true`) gating whether `applyOrTickBuff(move, isPlayer)` runs at
+all -- `playerAttack`'s `runHit` computes, per round, each side's own last index into `hits`
+(`lastIndexFor`, a scan rather than an arithmetic shortcut, since a self-buff move collapses its
+caster's own hit count to exactly 1 regardless of `fasterHits` -- see `playerAttack`'s own
+comment) and passes `true` only there. Ticking on a side's last action rather than its first
+matters: an existing buff (e.g. Regenerating on its final `turnsLeft`) has to keep applying
+through every one of that side's earlier hits that round before it expires, and a buff cast
+this round shouldn't retroactively apply to the actions that cast it. `applyOrTickBuff` itself
+does one of two things: if the move is one of Kondo's three (`KONDO_MOVE_BUFF: Record<moveId,
+StatusKind>`, a fixed lookup -- no randomness), it replaces the caster's buff outright via
+`setStatus` (one buff per side, never stacked); otherwise it ticks the caster's *existing* buff
+down by one, applying a Regenerating heal on every tick via `applyRegenTick` (a fraction
+`REGEN_HEAL_FRACTION` of the caster's own max HP, capped so it can't overheal), and clears the
+buff once `turnsLeft` hits 0. Either branch returns a log-line clause (`STATUS_INFO[kind]
+.applyText`/`.expireText`, plus the heal clause for Regenerating) appended to that hit's own
+message, the same "stack a clause onto the existing line" pattern `mismatchText`/`critText`
+already use. `setStatus` also calls `renderStatusLabel`, which updates a small
+always-present-but-usually-empty `Text` pill (`playerStatusLabel`/`opponentStatusLabel`,
+positioned just under each side's HP bar) to `"<Label> (<turnsLeft>)"` or clears it to `''` when
+there's no active buff.
 
 **Passives (Franklin's/Bohr's abilities).** `this.playerActivePassives`/
 `this.opponentActivePassives` (`Set<string>` of `data/passives.ts` ids) are read once in
 `create()` from registry/save `activePassiveByOwner` (keyed by `PassiveOwner`, `data/
-passives.ts`) and held for the whole battle -- unlike Kondo's status effects above, a passive has no `turnsLeft`/tick-down
+passives.ts`) and held for the whole battle -- unlike Kondo's self-buffs above, a passive has no `turnsLeft`/tick-down
 machinery at all, it's just on or off for the battle. Each side's active passives get their
 own pill too, built by `addPassivePill(x, naturalY, text, statusBottom)` and stacked directly
 below that side's status pill (`naturalY` offset from the status pill's own measured
@@ -419,7 +426,7 @@ an always-on passive reads as visually distinct from a ticking status at a glanc
 `activePassives(isPlayer)` is the
 generic per-side lookup every hook below reads (`opponentActivePassives` stays empty today,
 kept as its own field rather than hardcoding "player only" so the hooks read symmetrically
-off either side, same reasoning `statusDamageMultiplier` etc. already follow). Five of the
+off either side, same reasoning `statusShieldMultiplier` etc. already follow). Five of the
 six hook directly into `resolveHit`, identified by id (`data/passives.ts`'s
 `fractionalGuard`/`anyonEcho`/`edgeCurrent`/`correlatedResponse`/`sharedState` -- ids kept as
 originally minted, only the guardian-facing display name changed with the Laughlin→Franklin
@@ -475,7 +482,10 @@ move): **Attacks** (every move whose id isn't in `ANALYTIC_MOVE_IDS` or `ULTIMAT
 whose `class` isn't `'screening'`), **Analytic** (Laughlin's two moves, identified by id rather
 than by a shared class, `★` tag, own "right=2x wrong=½x" legend sub-line under its own header),
 **Ultimate** (Skłodowska-Curie's two moves, `★★★` tag, own "3/3 correct or it whiffs" legend
-sub-line), **Screening** (Kondo's currently-active move, at most one). `moveMenuPages(moveIds)`
+sub-line), **Buffs** (Kondo's currently-active self-buff move, at most one, own "self-buff, no
+damage, 3 turns" legend sub-line -- `moveButtonContent` special-cases `KONDO_MOVE_IDS` to skip
+the mismatch check and `Pwr <n>` label entirely, showing "`<n>`-turn buff" instead).
+`moveMenuPages(moveIds)`
 further splits any section larger than `maxMoveRowsPerPage()`'s row-count ceiling into several
 same-label pages (e.g. an 'adaptive' form's full **Attacks** list becomes "ATTACKS (1/2)"/
 "ATTACKS (2/2)") -- `maxMoveRowsPerPage` measures the real title/legend/header height at the
@@ -662,10 +672,9 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   button, already-bought get a 'Make `<name>` active' button or a dimmed '`<name>`
   (active)' tag" shape `renderKondoMoves` established, right down to "buying the
   very first one for this guardian auto-activates it, buying a second or third doesn't."
-  Unlike Kondo's moves, a passive is never gated by `MOVE_COMPATIBILITY` (the same
-  "player-learned technique, not a quasiparticle a crystal has to host" reasoning
-  `'screening'` itself is on every type's list for) -- every passive is always purchasable
-  regardless of current
+  Like Kondo's own self-buff moves, a passive is never gated by `MOVE_COMPATIBILITY` at all
+  (the same "player-learned technique, not a quasiparticle a crystal has to host" reasoning)
+  -- every passive is always purchasable regardless of current
   form, so neither panel has a "wrong form" empty state to special-case. Each still-unbought
   row also prints the passive's own `description` underneath in a smaller, capped-scale
   font (`Math.min(fontScale(this), 1.3)` for the buy button itself, `1.2` for the
@@ -749,31 +758,34 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   footer button (calling the same `onDone` a successful pick would) is therefore required:
   any sub-panel where every row *can* be a dead end needs an explicit way out that doesn't
   depend on one of those rows succeeding.
-- **Kondo's screening-move shop** (`scenes/panels/kondo.ts`'s `showKondoPanel`/`renderKondoMoves`)
+- **Kondo's self-buff shop** (`scenes/panels/kondo.ts`'s `showKondoPanel`/`renderKondoMoves`)
   sells `data/materials.ts`'s `KONDO_MOVE_IDS` (three moves:
-  `screeningCloud`/`heavyFermionDrag`/`kondoBreakdown`, each tied to one of `types.ts`'s
+  `screeningCloud`/`scatteringDrag`/`kondoBreakdown`, each tied to one of `types.ts`'s
   `'screening'`-class `MOVES` entries, deliberately excluded from `SHOP_MOVE_IDS`/
   `ANALYTIC_MOVE_IDS`/`ULTIMATE_MOVE_IDS`). Same two-section shape as Laughlin's shop:
-  still-unbought
-  moves (usable from any form, `'screening'` is on every type's `MOVE_COMPATIBILITY` list,
-  same afford/dim buy-button treatment as every shop) followed by every already-bought Kondo
-  move as its own row -- a bought-and-inactive move gets a "Make `<name>` active" button, the currently active one (registry/
+  still-unbought moves (usable from any form, since a self-buff isn't gated by
+  `MOVE_COMPATIBILITY` at all, same afford/dim buy-button treatment as every shop) followed by
+  every already-bought Kondo move as its own row -- a bought-and-inactive move gets a "Make
+  `<name>` active" button, the currently active one (registry/
   save `kondoActiveMove: string | null`) shows a dimmed "`<name>` (active)" tag instead (no
   click handler), the same dimmed-current convention Dresselhaus's own "(current
-  form)" rows already use. Buying the first Kondo move auto-activates it (so a purchase is
+  form)" rows already use. Every row, bought or not, also prints the move's own `description`
+  underneath (`data/materials.ts`'s `Move.description`, only Kondo's three moves carry one),
+  the same convention `renderPassiveList` established for Franklin's/Bohr's passives. Buying
+  the first Kondo move auto-activates it (so a purchase is
   never silently unusable); buying a second or third on top of an already-active one doesn't
   -- switching between already-bought moves is always its own explicit click either way, and
-  only one can ever be active at a time. `'screening'` sits on every type's
-  `MOVE_COMPATIBILITY` list, so every one of the three is always for sale until bought --
-  there's no empty/wrong-form state to render here, unlike Noether's shop. This
+  only one can ever be active at a time. None of the three is gated by `MOVE_COMPATIBILITY`,
+  so every one of them is always for sale until bought -- there's no empty/wrong-form state to
+  render here, unlike Noether's shop. This
   active/inactive split is a narrow, Kondo-specific special case in
-  `getBattleMoves` (`data/materials.ts`): the normal learned-∩-`compatibleMoves` filter runs
-  first, then any `KONDO_MOVE_IDS` entry that isn't `kondoActiveMove` is filtered back out
-  even though it's still in `unlockedMoves` -- no other move class has (or needs) an
-  equip-slot-style mechanic like this. In battle, a screening move landing calls
-  `BattleScene`'s `applyOrTickStatus` (see "Stats and battle resolution" above) to inflict its
-  one fixed status effect (`KONDO_MOVE_STATUS`, no randomness -- the move id decides the
-  effect).
+  `getBattleMoves` (`data/materials.ts`): a `KONDO_MOVE_IDS` entry is surfaced purely by
+  whether it equals `kondoActiveMove`, checked before (not intersected with) the ordinary
+  `compatibleMoves` filter every other learned move goes through -- no other move class has
+  (or needs) an equip-slot-style mechanic like this. In battle, casting one calls
+  `BattleScene`'s `resolveSelfBuff`/`applyOrTickBuff` (see "Self-buffs (Kondo's three moves)"
+  above) to apply its one fixed buff (`KONDO_MOVE_BUFF`, no randomness -- the move id decides
+  the buff) to the caster's own side, not the opponent.
 - **Anderson's impurity-doping panel** (`scenes/panels/anderson.ts`'s `showAndersonPanel`/
   `learnImpurityMove`) is a two-step pick like Majorana's, but the *result* is different: step
   one picks a host crystal (`defeatedMaterials`, or every crystal in Superposition Mode -- same

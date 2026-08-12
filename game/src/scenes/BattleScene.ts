@@ -18,6 +18,7 @@ import {
   enemyStatsForWorld,
   ANALYTIC_MOVE_IDS,
   ULTIMATE_MOVE_IDS,
+  KONDO_MOVE_IDS,
 } from '../data/materials';
 import { victoryLine, defeatLine } from '../data/greetings';
 import { PASSIVES } from '../data/passives';
@@ -38,14 +39,14 @@ import { CANVAS_W, CANVAS_H } from '../config/screen';
 const ANALYTIC_CORRECT_MULTIPLIER = 2;
 const ANALYTIC_WRONG_MULTIPLIER = 0.5;
 
-// Kondo's three screening-class moves (§5, World 8) each deterministically
-// inflict one of these three status effects on the defender, replacing
-// whatever status (if any) was already on that side rather than stacking --
-// exactly one active status per side at a time, matching the "one
-// type-interaction rule, on purpose" simplicity DESIGN.md §4 already commits
-// to elsewhere. Battle-ephemeral only (never persisted -- data/save.ts's
-// SaveData has no field for this), reset fresh at the start of every battle.
-type StatusKind = 'screened' | 'slowed' | 'weakened';
+// Kondo's three self-buff moves (§5, World 8) each deterministically apply
+// one of these three 3-turn buffs to the *caster's own* side, replacing
+// whatever buff (if any) was already there rather than stacking -- exactly
+// one active buff per side at a time, matching the "one type-interaction
+// rule, on purpose" simplicity DESIGN.md §4 already commits to elsewhere.
+// Battle-ephemeral only (never persisted -- data/save.ts's SaveData has no
+// field for this), reset fresh at the start of every battle.
+type StatusKind = 'shielded' | 'evasive' | 'regenerating';
 
 interface ActiveStatus {
   kind: StatusKind;
@@ -53,49 +54,49 @@ interface ActiveStatus {
 }
 
 const STATUS_DURATION = 3;
-const SCREENED_DAMAGE_MULT = 0.7; // Screened: the afflicted side's own outgoing damage
-const SLOWED_VELOCITY_MULT = 0.7; // Slowed: the afflicted side's own effective Velocity
-const WEAKENED_CORRELATION_MULT = 0.7; // Weakened: the afflicted side's own effective Correlation
+const SHIELD_DAMAGE_MULT = 0.7; // Shielded: incoming damage to the buffed side, multiplied down
+const EVASION_CHANCE = 0.3; // Evasive: chance an incoming hit against the buffed side deals zero damage instead -- same 30%-ish magnitude the other two buffs' 0.7 multiplier implies (a 30% mitigation budget), picked from the 30-35% range a meaningful-but-not-dominant dodge chance should sit in
+const REGEN_HEAL_FRACTION = 0.1; // Regenerating: fraction of the buffed side's own max HP healed on each tick (3 ticks over the buff's life -- roughly Bohr's Shared State ~22%-of-damage order of magnitude, spread out rather than landing in one hit)
 
-// Which status a given Kondo move id deterministically applies -- no
+// Which buff a given Kondo move id deterministically applies -- no
 // randomness, the player picks the effect by picking the move (and, since
 // only one of the three can be active in battle at a time, by which one
 // they set active with OverworldScene.showKondoPanel).
-const KONDO_MOVE_STATUS: Record<string, StatusKind> = {
-  screeningCloud: 'screened',
-  heavyFermionDrag: 'slowed',
-  kondoBreakdown: 'weakened',
+const KONDO_MOVE_BUFF: Record<string, StatusKind> = {
+  screeningCloud: 'shielded',
+  scatteringDrag: 'evasive',
+  kondoBreakdown: 'regenerating',
 };
 
 // Deliberately terse (one short clause, no second sentence) -- the log line
 // this appends to can already carry a mismatch clause and a crit clause
 // (setLogText's clamp was sized/verified against that two-clause worst case,
 // see STYLE.md), and the status pill under the HP bar already spells out the
-// ongoing effect ("Screened (3)") for as long as it's active, so the log
+// ongoing effect ("Shielded (3)") for as long as it's active, so the log
 // line itself only needs to announce the moment, not re-explain the effect.
 const STATUS_INFO: Record<
   StatusKind,
   { label: string; applyText: (name: string) => string; expireText: (name: string) => string }
 > = {
-  screened: {
-    label: 'Screened',
-    applyText: (name) => `${name} is Screened!`,
-    expireText: (name) => `${name}'s screening fades.`,
+  shielded: {
+    label: 'Shielded',
+    applyText: (name) => `${name} is Shielded!`,
+    expireText: (name) => `${name}'s shielding fades.`,
   },
-  slowed: {
-    label: 'Slowed',
-    applyText: (name) => `${name} is Slowed!`,
-    expireText: (name) => `${name}'s slowdown fades.`,
+  evasive: {
+    label: 'Evasive',
+    applyText: (name) => `${name} turns Evasive!`,
+    expireText: (name) => `${name}'s evasiveness fades.`,
   },
-  weakened: {
-    label: 'Weakened',
-    applyText: (name) => `${name} is Weakened!`,
-    expireText: (name) => `${name}'s weakening fades.`,
+  regenerating: {
+    label: 'Regenerating',
+    applyText: (name) => `${name} starts Regenerating!`,
+    expireText: (name) => `${name}'s regeneration fades.`,
   },
 };
 // Single status-pill color for all three (Kondo's own rust-orange, matching
 // WORLD_GUARDIANS[8].strokeColor/art/attackEffects.ts's 'screening' entry) --
-// the label text itself already names which status is active.
+// the label text itself already names which buff is active.
 const STATUS_PILL_COLOR = '#ff8f6a';
 
 // Passive pill color -- a fixed blue-violet, deliberately far from
@@ -222,7 +223,7 @@ export class BattleScene extends Phaser.Scene {
   private moveMenu?: Phaser.GameObjects.Container;
   // Which page drawMoveMenu is currently showing -- see drawMoveMenu's own
   // comment for why only one renders at a time now. A page is usually one
-  // move-kind section (ATTACKS/ANALYTIC/SCREENING) in full, but a section
+  // move-kind section (ATTACKS/ANALYTIC/BUFFS) in full, but a section
   // with more moves than one page can hold at the row-height floor splits
   // into several same-label pages (moveMenuPages), so this indexes the
   // flattened page list, not the section list directly. Reset fresh in
@@ -505,7 +506,11 @@ export class BattleScene extends Phaser.Scene {
         ids: moveIds.filter((id) => ULTIMATE_MOVE_IDS.includes(id)),
         legend: '★★★ 3/3 correct or it whiffs',
       },
-      { label: 'SCREENING', ids: moveIds.filter((id) => MOVES[id].class === 'screening') },
+      {
+        label: 'BUFFS',
+        ids: moveIds.filter((id) => MOVES[id].class === 'screening'),
+        legend: `self-buff, no damage, ${STATUS_DURATION} turns`,
+      },
     ].filter((s) => s.ids.length > 0);
   }
 
@@ -533,7 +538,7 @@ export class BattleScene extends Phaser.Scene {
     legend.destroy();
 
     const headerScale = Math.min(scale, 1.15);
-    const header = this.add.text(0, 0, 'SCREENING (9/9)', {
+    const header = this.add.text(0, 0, 'BUFFS (9/9)', {
       fontSize: `${Math.round(10 * headerScale)}px`,
       fontStyle: 'bold',
     });
@@ -582,16 +587,18 @@ export class BattleScene extends Phaser.Scene {
   // form's physics supports), instead of scattering individually
   // positioned buttons across the field.
   //
-  // Move menu matchup info (DESIGN.md §4): each button also shows the
-  // move's power and, against *this* opponent, whether the opponent has no
-  // natural way to host it at all -- the "quasiparticle mismatch"
-  // double-damage rule, the sole type-interaction term in battle, marked
-  // !! 2x -- previously only visible after the hit landed in the battle
-  // log, so a first-time player had no way to plan a move before swinging.
+  // Move menu matchup info (DESIGN.md §4): each ordinary attack button also
+  // shows the move's power and, against *this* opponent, whether the
+  // opponent has no natural way to host it at all -- the "quasiparticle
+  // mismatch" double-damage rule, the sole type-interaction term in battle,
+  // marked !! 2x -- previously only visible after the hit landed in the
+  // battle log, so a first-time player had no way to plan a move before
+  // swinging. Kondo's self-buff moves show neither (see moveButtonContent),
+  // since they never deal damage or mismatch at all.
   //
   // Shows exactly one page at a time (DESIGN.md §4's "group moves by kind"
   // -- physics-gated attacks, Laughlin's two answer-gated Analytic moves,
-  // and Kondo's currently-active screening move work differently enough
+  // and Kondo's currently-active self-buff move work differently enough
   // that a flat list blurred the distinction), paged with on-screen ◀/▶
   // arrows and the Left/Right keys (movePageIndex/switchMovePage) -- a
   // move-kind section only produces a page at all if it has at least one
@@ -803,9 +810,20 @@ export class BattleScene extends Phaser.Scene {
   // The button label text and its color -- shared by addMoveButton (the
   // real interactive button) and drawMoveMenu's own width-fit measurement
   // pass above, so the two can never drift apart on what a button's label
-  // actually says.
+  // actually says. Kondo's self-buff moves (KONDO_MOVE_IDS) get their own
+  // early return: no mismatch check (they never attack, so canHost doesn't
+  // apply -- calling it here would read every one of them as mismatched,
+  // since 'screening' is deliberately off every type's MOVE_COMPATIBILITY
+  // list) and no power number (never read as damage, see MOVES' own
+  // comment), just the move's own fixed `name` -- unlike a tunable move,
+  // none of Kondo's three are ever tuned, so `tunedMoveDisplayName` would
+  // just read back the untuned 'screening' class's own bare label instead
+  // of a real quasiparticle name.
   private moveButtonContent(moveId: string): { text: string; color: string } {
     const move = MOVES[moveId];
+    if (KONDO_MOVE_IDS.includes(moveId)) {
+      return { text: `${move.name}\n${STATUS_DURATION}-turn buff`, color: STATUS_PILL_COLOR };
+    }
     const mismatch = !canHost(this.wild.type, getTunedMoveClass(this.game.registry, moveId));
     let tag = '';
     let color = '#ffff88';
@@ -1244,15 +1262,12 @@ export class BattleScene extends Phaser.Scene {
   // side gets `clamp(floor(ratio), 1, 3)` hits this round -- the cap keeps an
   // extreme velocity gap from producing an unbounded hit sequence. The slower
   // side always still gets exactly one hit. Ties (ratio exactly 1) keep the
-  // player going first, one hit each. A Slowed side's own effective Velocity
-  // is dragged down for the comparison too (Kondo's Scattering Drag, §5) --
-  // symmetric, same as every other resolveHit-adjacent term, even though only
-  // the player can currently inflict it. Shared by `playerAttack` (which
+  // player going first, one hit each. Shared by `playerAttack` (which
   // actually resolves the round's hits) and `drawTurnPreview` (which reads it
   // to render the "Turns" widget) so the two can't drift apart.
   private currentHitOrder(): { fasterIsPlayer: boolean; fasterHits: number } {
-    const playerVelocity = this.playerStats.velocity * this.statusVelocityMultiplier(true);
-    const enemyVelocity = this.enemyStats.velocity * this.statusVelocityMultiplier(false);
+    const playerVelocity = this.playerStats.velocity;
+    const enemyVelocity = this.enemyStats.velocity;
     const fasterIsPlayer = playerVelocity >= enemyVelocity;
     const ratio = fasterIsPlayer ? playerVelocity / enemyVelocity : enemyVelocity / playerVelocity;
     const fasterHits = Phaser.Math.Clamp(Math.floor(ratio), 1, 3);
@@ -1265,13 +1280,13 @@ export class BattleScene extends Phaser.Scene {
   // pattern (the faster side's `fasterHits` icons, then the slower side's
   // one) out to that length. It's only exactly right if the player keeps
   // picking ordinary moves and neither side's stats change mid-sequence --
-  // an Ultimate/Analytic pick (exempt from the multi-hit scaling, see
-  // `playerAttack`) or a status effect landing makes the *next* round deviate
-  // from the current preview, not a bug, just the approximation this widget
-  // is meant to be. Called once from `create()` and again every time a round
-  // actually finishes (`playerAttack`'s `releaseLock`), since Kondo's Slowed
-  // status (§5) can change `statusVelocityMultiplier` and so flip
-  // `fasterIsPlayer`/`fasterHits` for the next round.
+  // an Ultimate/Analytic pick (exempt from the multi-hit scaling) or one of
+  // Kondo's self-buff moves (always resolves as the caster's own single
+  // action for the round regardless of Velocity, see `playerAttack`) makes
+  // that round's actual hit count deviate from the current preview, not a
+  // bug, just the approximation this widget is meant to be. Called once
+  // from `create()` and again every time a round actually finishes
+  // (`playerAttack`'s `releaseLock`).
   //
   // Each icon's sparkles (`makeCrystal`/`addHighlightAndSparkles`) carry an
   // infinitely-repeating tween -- `Container.destroy(true)` destroys the
@@ -1374,28 +1389,49 @@ export class BattleScene extends Phaser.Scene {
     // The round's full hit order: the faster side swings `fasterHits` times
     // (reusing the same moveId each time on the player's side; re-rolled
     // fresh from the wild's own moveset each time on the enemy's side, same
-    // as its single hit always was), then the slower side swings once.
+    // as its single hit always was), then the slower side swings once. One
+    // exception: a Kondo self-buff move is always exactly one action for its
+    // round, even if the caster is the faster side -- it isn't an attack
+    // landing repeatedly on a defender, just a single technique the caster
+    // applies to themselves, and repeating it would only refresh the same
+    // buff to the same 3 turns with nothing else observable. The other
+    // side's own `fasterHits` (if *they* are the faster side instead) is
+    // untouched by this -- only the self-buff caster's own contribution to
+    // `hits` collapses to one.
+    const playerIsSelfBuff = KONDO_MOVE_IDS.includes(moveId);
     const hits: { isPlayer: boolean; moveId: string }[] = [];
-    for (let i = 0; i < fasterHits; i++) {
-      hits.push({ isPlayer: fasterIsPlayer, moveId: fasterIsPlayer ? moveId : opponentMoveId() });
+    if (fasterIsPlayer) {
+      const playerHitCount = playerIsSelfBuff ? 1 : fasterHits;
+      for (let i = 0; i < playerHitCount; i++) hits.push({ isPlayer: true, moveId });
+      hits.push({ isPlayer: false, moveId: opponentMoveId() });
+    } else {
+      for (let i = 0; i < fasterHits; i++) hits.push({ isPlayer: false, moveId: opponentMoveId() });
+      hits.push({ isPlayer: true, moveId });
     }
-    hits.push({ isPlayer: !fasterIsPlayer, moveId: fasterIsPlayer ? opponentMoveId() : moveId });
 
-    // Kondo's status effects (§5) must still apply/tick down at most once per
-    // round per defending side, even though the faster side's repeated hits
-    // all land on the same defender -- and it has to be the *last* hit
-    // against that defender this round, not the first: an existing status
-    // (e.g. a Weakened side on its final turnsLeft) has to keep applying to
-    // every one of the faster side's hits this round before it expires, and
-    // a status freshly inflicted by a Kondo move shouldn't retroactively
-    // buff/debuff the very hits that inflicted it, only the round after.
-    // Hits 0..fasterHits-1 all share the same defender (the slower side), so
-    // only the last of those (index fasterHits-1) ticks; the slower side's
-    // own single hit (the last entry overall) always ticks, same as it
-    // always has.
+    // A side's own buff (Kondo's three moves, §5) must apply/tick down at
+    // most once per round, even when that side lands more than one hit this
+    // round -- and it has to be that side's *last* action this round, not
+    // its first: an existing buff (e.g. Regenerating on its final tick) has
+    // to keep applying through every one of that side's earlier hits before
+    // it expires, and a buff freshly cast this round shouldn't retroactively
+    // apply to the actions that cast it, only the round after. Found by
+    // scanning `hits` for each side's own last index, rather than assumed
+    // from position, since the self-buff collapse above means a side's
+    // block of hits isn't always exactly `fasterHits` long.
+    const lastIndexFor = (isPlayer: boolean) => {
+      let last = -1;
+      hits.forEach((h, i) => {
+        if (h.isPlayer === isPlayer) last = i;
+      });
+      return last;
+    };
+    const playerLastIndex = lastIndexFor(true);
+    const enemyLastIndex = lastIndexFor(false);
+
     const runHit = (index: number) => {
       const hit = hits[index];
-      const tickStatus = index === fasterHits - 1 || index === hits.length - 1;
+      const tickStatus = index === (hit.isPlayer ? playerLastIndex : enemyLastIndex);
       const isLastHit = index === hits.length - 1;
       this.resolveHit(
         hit.isPlayer,
@@ -1446,13 +1482,20 @@ export class BattleScene extends Phaser.Scene {
   // swing) to wait until the full animation has actually finished playing --
   // see applyResult/checkEndOrContinue and the isUltimate branch at the
   // bottom of this method. `tickStatus` (default true) gates whether this
-  // call is allowed to apply/tick down the defender's Kondo status (§5) --
-  // playerAttack passes true only for the *last* hit landed against a given
-  // defender within the same round, so a defender hit multiple times by a
-  // faster attacker (the velocity-ratio multi-attack rule, DESIGN.md §4)
-  // still only has its status resolved once per round.
+  // call is allowed to apply/tick down the *attacking* side's own Kondo buff
+  // (§5) -- playerAttack passes true only for that side's *last* action
+  // within the round, so a side that lands more than one hit this round
+  // (the velocity-ratio multi-attack rule, DESIGN.md §4) still only has its
+  // own buff resolved once per round. One of Kondo's three moves (§5) is a
+  // self-buff, not an attack -- routed to `resolveSelfBuff` below instead,
+  // before any of the attack-only terms (mismatch, crit, damage) are
+  // computed at all.
   private resolveHit(isPlayer: boolean, moveId: string, onDone: () => void, bonusMultiplier = 1, tickStatus = true) {
     const move = MOVES[moveId];
+    if (KONDO_MOVE_IDS.includes(moveId)) {
+      this.resolveSelfBuff(isPlayer, move, tickStatus, onDone);
+      return;
+    }
     const attackerStats = isPlayer ? this.playerStats : this.enemyStats;
     const defenderStats = isPlayer ? this.enemyStats : this.playerStats;
     const defenderType = isPlayer ? this.wild.type : this.playerMaterial.type;
@@ -1496,14 +1539,11 @@ export class BattleScene extends Phaser.Scene {
     }
 
     const attackMult = isPlayer ? this.attackMultiplier : 1;
-    // Kondo's status effects (§5): a Screened attacker's own outgoing
-    // damage is multiplied down; a Weakened defender's own Correlation is
-    // multiplied down (raising the damage it takes via the same
-    // BASE_STAT/correlation defense term every hit already uses). Both read
-    // off whichever side is currently afflicted, symmetric like every other
-    // resolveHit term, not hardcoded to "opponent only".
-    const screenedMult = this.statusDamageMultiplier(isPlayer);
-    const defenseFactor = BASE_STAT / (defenderStats.correlation * this.statusCorrelationMultiplier(!isPlayer));
+    // Kondo's Screening Pulse buff (§5): incoming damage to whichever side
+    // currently has Shielded active is multiplied down, symmetric like
+    // every other resolveHit term, not hardcoded to "opponent only".
+    const shieldedMult = this.statusShieldMultiplier(defenderIsPlayer);
+    const defenseFactor = BASE_STAT / defenderStats.correlation;
     // Franklin's Diffraction Shadow (§5): incoming damage to whichever side
     // has it active is multiplied down for the whole battle -- a defect-
     // riddled lattice scatters and attenuates the blow, the way porous
@@ -1516,12 +1556,18 @@ export class BattleScene extends Phaser.Scene {
         mismatchMult *
         attackMult *
         bonusMultiplier *
-        screenedMult *
+        shieldedMult *
         fractionalGuardMult *
         defenseFactor *
         (crit ? 1.5 : 1) *
         Phaser.Math.FloatBetween(0.85, 1.15)
     );
+    // Kondo's Scattering Drag buff (§5): a defender with Evasive active has
+    // a flat chance to dodge this hit entirely regardless of the damage just
+    // computed above -- checked once per hit, independent of mismatch/crit
+    // (a dodged hit never happened, it doesn't matter how hard it would have
+    // landed).
+    const evaded = this.statusEvasionActive(defenderIsPlayer) && Math.random() < EVASION_CHANCE;
 
     const from = isPlayer ? PLAYER_POS : this.opponentPos;
     const to = isPlayer ? this.opponentPos : PLAYER_POS;
@@ -1537,24 +1583,31 @@ export class BattleScene extends Phaser.Scene {
     // the HP bar/log line land in sync with what's on screen rather than
     // seconds ahead of it.
     const applyResult = () => {
+      const who = isPlayer ? 'You' : `Wild ${this.wild.name}`;
+      const defenderName = defenderIsPlayer ? this.playerMaterial.name : this.wild.name;
+      const displayName = tunedMoveDisplayName(this.game.registry, moveId);
+      // The attacker's own Kondo buff (§5) ticks/casts regardless of whether
+      // this particular hit lands -- it's the attacker's own technique, not
+      // something that depends on the defender. Gated by `tickStatus` (see
+      // resolveHit's own comment) rather than firing on every hit, since a
+      // faster side can land more than one hit in a single round. See
+      // applyOrTickBuff.
+      const buffText = tickStatus ? this.applyOrTickBuff(move, isPlayer) : '';
+
+      if (evaded) {
+        this.setLogText(`${who} used ${displayName}, but ${defenderName} evaded it!${buffText}`);
+        return;
+      }
+
       this.applyDamage(defenderIsPlayer, dmg);
 
       const mismatchText = mismatch ? ' No natural defense against this!' : '';
       const critText = crit ? ' A coherent critical hit!' : '';
-      const who = isPlayer ? 'You' : `Wild ${this.wild.name}`;
-      // Kondo's move landing applies a fresh status to the defender (replacing
-      // whatever was already there); an ordinary hit instead ticks down
-      // whatever status the defender already carries, once per round --
-      // gated by `tickStatus` (see resolveHit's own comment) rather than
-      // firing on every hit, since a faster attacker can land more than one
-      // hit against the same defender in a single round (DESIGN.md §4).
-      // See applyOrTickStatus.
-      const statusText = tickStatus ? this.applyOrTickStatus(move, defenderIsPlayer) : '';
 
       // Franklin's Satellite Reflection (§5): a crit from a side with it
       // active triggers a bonus follow-up tick against the same defender,
-      // computed after the status clause above so it still reads as part of
-      // the same hit's log line -- fixed order (mismatch, crit, status, echo,
+      // computed after the buff clause above so it still reads as part of
+      // the same hit's log line -- fixed order (mismatch, crit, buff, echo,
       // heal), same "stack a clause onto the existing line" pattern every
       // other term here uses.
       let echoText = '';
@@ -1581,11 +1634,10 @@ export class BattleScene extends Phaser.Scene {
         }
       }
 
-      const displayName = tunedMoveDisplayName(this.game.registry, moveId);
       this.setLogText(
         whiff
           ? `${who}'s ${displayName} fizzles out -- the pattern never locked!`
-          : `${who} used ${displayName}! (${dmg} dmg)${mismatchText}${critText}${statusText}${echoText}${healText}`
+          : `${who} used ${displayName}! (${dmg} dmg)${mismatchText}${critText}${buffText}${echoText}${healText}`
       );
     };
 
@@ -1632,7 +1684,7 @@ export class BattleScene extends Phaser.Scene {
   // Which of Franklin's/Bohr's passives (data/passives.ts) are currently
   // active for a given side -- read once per battle in create(), see that
   // field's own comment. Generic over `isPlayer` the same way
-  // getStatus/statusDamageMultiplier below are, even though only the player
+  // getStatus/statusShieldMultiplier below are, even though only the player
   // can currently have one.
   private activePassives(isPlayer: boolean): Set<string> {
     return isPlayer ? this.playerActivePassives : this.opponentActivePassives;
@@ -1677,55 +1729,96 @@ export class BattleScene extends Phaser.Scene {
     this.renderStatusLabel(isPlayer);
   }
 
-  private statusVelocityMultiplier(isPlayer: boolean): number {
-    return this.getStatus(isPlayer)?.kind === 'slowed' ? SLOWED_VELOCITY_MULT : 1;
+  private statusShieldMultiplier(isPlayer: boolean): number {
+    return this.getStatus(isPlayer)?.kind === 'shielded' ? SHIELD_DAMAGE_MULT : 1;
   }
 
-  private statusCorrelationMultiplier(isPlayer: boolean): number {
-    return this.getStatus(isPlayer)?.kind === 'weakened' ? WEAKENED_CORRELATION_MULT : 1;
+  private statusEvasionActive(isPlayer: boolean): boolean {
+    return this.getStatus(isPlayer)?.kind === 'evasive';
   }
 
-  private statusDamageMultiplier(isPlayer: boolean): number {
-    return this.getStatus(isPlayer)?.kind === 'screened' ? SCREENED_DAMAGE_MULT : 1;
+  // Resolves one of Kondo's three self-buff moves (§5, KONDO_MOVE_IDS) --
+  // routed here from resolveHit's own early branch, before any attack-only
+  // term (mismatch, crit, damage) is ever computed, since a self-buff never
+  // hits the opponent at all. Plays the same windup+ring beat an ordinary
+  // 'screening'-class hit would (art/attackEffects.ts's EFFECT_STYLE still
+  // has an entry for it), just centered on the caster's own position instead
+  // of traveling to the opponent's -- a squash bounce on the caster's own
+  // crystal reads as the buff taking hold without the camera shake/flash
+  // `impactPunch` gives an ordinary "hit landed" beat, which would read as
+  // the caster taking damage instead. Never changes either side's HP by
+  // itself (Regenerating only ever heals, on a later tick -- see
+  // applyOrTickBuff/applyRegenTick), so there is no win/lose check to make
+  // here the way resolveHit's own tail has to.
+  private resolveSelfBuff(isPlayer: boolean, move: Move, tickStatus: boolean, onDone: () => void) {
+    const who = isPlayer ? 'You' : `Wild ${this.wild.name}`;
+    const pos = isPlayer ? PLAYER_POS : this.opponentPos;
+    const targetCrystal = isPlayer ? this.playerCrystal : this.opponentCrystal;
+
+    playAttackEffect(this, move.class, pos, pos, () => this.flashHit(targetCrystal), 1);
+
+    const buffText = tickStatus ? this.applyOrTickBuff(move, isPlayer) : '';
+    this.setLogText(`${who} used ${move.name}!${buffText}`);
+
+    onDone();
   }
 
-  // Called from a resolveHit whose own `tickStatus` was true -- playerAttack
-  // only ever passes true for the *last* hit landed against a given defender
-  // in a round (so an existing status stays active for every one of the
-  // faster side's earlier hits that round, and a status a Kondo move
-  // inflicts this round doesn't retroactively affect the hits that inflicted
-  // it), so this always fires at most once per round per defending side,
-  // even when the faster side lands more than one hit on the same defender
-  // (DESIGN.md §4's velocity-ratio multi-attack). Runs after that
-  // hit's own damage is already computed (so a fresh application here never
-  // retroactively affects the hit that caused it). If the move landing is
-  // one of Kondo's three (KONDO_MOVE_STATUS), it replaces whatever status
-  // was already on the defender outright -- one status per side, never
-  // stacked. Otherwise it ticks down whatever status the defender already
-  // carries by one and clears/announces it once it expires. Returns the log
-  // clause to append (empty string if nothing to report), same "stack a
-  // clause onto the existing line" pattern as mismatchText/critText above.
-  private applyOrTickStatus(move: Move, defenderIsPlayer: boolean): string {
-    const defenderName = defenderIsPlayer ? this.playerMaterial.name : this.wild.name;
-    const kondoStatus = KONDO_MOVE_STATUS[move.id];
-    if (kondoStatus) {
-      this.setStatus(defenderIsPlayer, { kind: kondoStatus, turnsLeft: STATUS_DURATION });
-      return ' ' + STATUS_INFO[kondoStatus].applyText(defenderName);
+  // Called from a resolveHit/resolveSelfBuff whose own `tickStatus` was true
+  // -- playerAttack only ever passes true for a side's *last* action within
+  // the round (so an existing buff stays active through every one of that
+  // side's earlier hits that round, and a buff cast this round doesn't
+  // retroactively apply to the actions that cast it), so this always fires
+  // at most once per round per side, even when a side lands more than one
+  // hit (DESIGN.md §4's velocity-ratio multi-attack). If the move is one of
+  // Kondo's three (KONDO_MOVE_BUFF), it replaces whatever buff the caster
+  // already had outright -- one buff per side, never stacked. Otherwise it
+  // ticks down whatever buff that side already carries by one, applying a
+  // Regenerating heal on every tick (including the one that expires it --
+  // see applyRegenTick), and clears/announces the buff once it expires.
+  // Returns the log clause to append (empty string if nothing to report),
+  // same "stack a clause onto the existing line" pattern as
+  // mismatchText/critText use elsewhere.
+  private applyOrTickBuff(move: Move, isPlayer: boolean): string {
+    const casterName = isPlayer ? this.playerMaterial.name : this.wild.name;
+    const kondoBuff = KONDO_MOVE_BUFF[move.id];
+    if (kondoBuff) {
+      this.setStatus(isPlayer, { kind: kondoBuff, turnsLeft: STATUS_DURATION });
+      return ' ' + STATUS_INFO[kondoBuff].applyText(casterName);
     }
-    const status = this.getStatus(defenderIsPlayer);
+    const status = this.getStatus(isPlayer);
     if (!status) return '';
+    const clauses: string[] = [];
+    if (status.kind === 'regenerating') {
+      const healClause = this.applyRegenTick(isPlayer, casterName);
+      if (healClause) clauses.push(healClause);
+    }
     status.turnsLeft -= 1;
     if (status.turnsLeft <= 0) {
-      this.setStatus(defenderIsPlayer, null);
-      return ' ' + STATUS_INFO[status.kind].expireText(defenderName);
+      this.setStatus(isPlayer, null);
+      clauses.push(STATUS_INFO[status.kind].expireText(casterName));
+    } else {
+      this.renderStatusLabel(isPlayer);
     }
-    this.renderStatusLabel(defenderIsPlayer);
-    return '';
+    return clauses.length ? ' ' + clauses.join(' ') : '';
+  }
+
+  // Coherence Cascade's Regenerating buff (§5) -- heals the buffed side a
+  // fraction of its own max HP (REGEN_HEAL_FRACTION), called once per tick
+  // from applyOrTickBuff above, capped so it never overheals past `maxHp`.
+  // Returns '' (no log clause) once the side is already at full HP, the same
+  // "nothing to report" convention Bohr's Shared State heal uses.
+  private applyRegenTick(isPlayer: boolean, casterName: string): string {
+    const maxHp = isPlayer ? this.playerMaterial.maxHp : this.wild.maxHp;
+    const currentHp = isPlayer ? this.playerHp : this.opponentHp;
+    const healAmount = Math.min(maxHp - currentHp, Math.round(maxHp * REGEN_HEAL_FRACTION));
+    if (healAmount <= 0) return '';
+    this.applyHeal(isPlayer, healAmount, maxHp);
+    return `${casterName} regenerates ${healAmount} HP!`;
   }
 
   // Updates (or clears) the small status pill under that side's HP bar --
-  // called from setStatus (apply/expire) and from applyOrTickStatus's plain
-  // tick-down path (turnsLeft changed but the status is still active).
+  // called from setStatus (apply/expire) and from applyOrTickBuff's plain
+  // tick-down path (turnsLeft changed but the buff is still active).
   private renderStatusLabel(isPlayer: boolean) {
     const label = isPlayer ? this.playerStatusLabel : this.opponentStatusLabel;
     const status = this.getStatus(isPlayer);

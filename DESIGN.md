@@ -356,12 +356,13 @@ moves ∩ compatible moves) and Noether's shop (same intersection, so she only e
 what the player's *current* crystal form can actually carry — see the transmutation
 mechanic in §5).
 
-**One deliberate exception: Kondo's screening moves aren't gated by a crystal's
-physics at all.** `screening` (Screening Pulse, Scattering Drag, Breakdown
-Cascade, §5) is on every main type's `MOVE_COMPATIBILITY` list, purchasable and
-usable from any form — they deal in a generic scattering/decoherence process any
-crystal's own disorder or environment can carry, not a quasiparticle tied to one
-type's specific band structure. Laughlin's two Analytic moves (`skyfallBeam`/
+**One deliberate exception: Kondo's three moves aren't attacks at all, so
+`MOVE_COMPATIBILITY` doesn't apply to them.** Screening Pulse, Scattering Drag,
+and Coherence Cascade (`screening`, §5) are self-buffs — casting one applies a
+3-turn buff to the caster's own side instead of hitting the opponent, so there's
+no defender to mismatch against and no compatibility list to check. Left off
+every main type's `MOVE_COMPATIBILITY` list entirely rather than added to all of
+them, they're purchasable and usable from any form regardless. Laughlin's two Analytic moves (`skyfallBeam`/
 `groundEruption`, §5) and Skłodowska-Curie's two Ultimate moves (`ultimateMeteor`/
 `ultimateNova`, §5) reach the same "usable from any form, never mismatches" result a
 different way: their static `class` simply defaults to `phonon`, the same universal,
@@ -410,9 +411,10 @@ rule above — the one universal move is also the one that never gets the mismat
 design. Laughlin's two Analytic moves (`skyfallBeam`/`groundEruption`) sit at a middling
 base power below the ordinary tiers on purpose — their real payoff is the answer-gated
 2x/0.5x multiplier above, not raw power. Kondo's three moves (Screening Pulse, Scattering
-Drag, Breakdown Cascade, §5) sit at the very bottom of the ordering instead, on par with
-Electron Pulse — their real payoff is the 3-turn status effect each one deterministically
-inflicts (§4), not raw power either. Skłodowska-Curie's two Ultimate moves (power 100, ten
+Drag, Coherence Cascade, §5) carry the same low `power` value, on par with Electron Pulse,
+but it's never read as damage at all — they're self-buffs, not attacks, so `power` only
+feeds their qumatessence price (§5's shop-cost formula), the same role it plays for every
+other move. Skłodowska-Curie's two Ultimate moves (power 100, ten
 times an Analytic move's power — above even Anyon Braid/Majorana Split, the ordinary
 roster's own most exotic tier) are the exception to "power isn't the point": the
 3-questions-all-correct gate is steep enough that raw power *is* the payoff once it's
@@ -432,36 +434,37 @@ scaling — picking one of those keeps the plain one-hit-each behavior regardles
 ratio, since their own answer-gating and (for Ultimates) multi-phase animation timing are
 already tuned around exactly one hit per side per round.
 
-**Status effects (Kondo's three moves, §5).** Kondo teaches three moves that each
-deterministically inflict one 3-turn status effect on the defender — never randomly rolled,
-the player picks the effect by picking the move:
-- **Screened** (Screening Pulse) — the defender's own outgoing damage is multiplied down
+**Self-buffs (Kondo's three moves, §5).** Kondo teaches three moves that are self-buffs, not
+attacks — casting one applies a 3-turn buff to the *caster's own* side instead of hitting the
+opponent, dealing no damage and never triggering the quasiparticle-mismatch rule below. Never
+randomly rolled: the player picks the effect by picking the move.
+- **Shielded** (Screening Pulse) — incoming damage to the buffed side is multiplied down
   (×0.7) for 3 turns.
-- **Slowed** (Scattering Drag) — the defender's effective Velocity is reduced (×0.7)
-  for 3 turns, changing whether that side still swings first each round and how many
-  times the other side swings against it.
-- **Weakened** (Breakdown Cascade) — the defender's effective Correlation is reduced
-  (×0.7) for 3 turns, raising the damage it takes (Correlation scales incoming damage via
-  `10 / correlation`, above).
+- **Evasive** (Scattering Drag) — for 3 turns, each incoming hit against the buffed side has
+  a 30% chance to deal zero damage instead, logged as a distinct "evaded!" line rather than
+  the usual damage/mismatch/crit clauses.
+- **Regenerating** (Coherence Cascade) — the buffed side heals 10% of its own max HP on each
+  of 3 ticks (once per round, roughly Bohr's Shared State's own ~22%-of-damage-healed
+  order of magnitude, spread across the buff's life rather than landing in one hit).
 
-None of the three status names double as a `MoveClass` — `majorana` and
+None of the three buff names doubles as a `MoveClass` — `majorana` and
 `polaron` are separately Majorana Split's and Polaron Drag's classes, unrelated
-quasiparticle physics, so a status name matching one of those would read as if this
-generic scattering process were tied to that specific move instead.
+quasiparticle physics, so a buff name matching one of those would read as if this
+generic technique were tied to that specific move instead.
 
-Only one status can be active per side at a time — a fresh application replaces whatever was
-already there rather than stacking, matching the deliberately simple "one type-interaction
-rule, not a chart" philosophy above. Implemented generically per-side in
-`BattleScene.resolveHit` (the same multiplier-term shape every other `resolveHit` factor
-already uses) rather than hardcoded to "opponent only," even though only the player can
-currently learn the moves that inflict them — no `WORLD_CRYSTALS` entry knows them yet. Ticks
-down once per round per defending side regardless of how many hits that side took this round
-(the faster side's multiple hits above all still count as a single round for the defender's
-status) and expires with its own battle-log line appended the same way a mismatch/crit clause
-stacks onto a hit's log line. Status effects are battle-only and reset at the start of every
-fight — never persisted to the save. A small pill under each side's HP bar in battle shows
-which status (if any) is
-active and how many turns remain.
+Only one buff can be active per side at a time — a fresh cast replaces whatever was already
+there rather than stacking, matching the deliberately simple "one type-interaction rule, not a
+chart" philosophy above. Implemented generically per-side in `BattleScene.resolveSelfBuff`/
+`resolveHit` (the same multiplier-term shape every other `resolveHit` factor already uses)
+rather than hardcoded to "player only," even though only the player can currently learn the
+moves that apply them — no `WORLD_CRYSTALS` entry knows them yet. Ticks down once per round
+per side regardless of how many actions that side took this round (a Velocity advantage no
+longer repeats a self-buff cast — see §4's velocity-ratio paragraph above — so this only
+matters for a side continuing to hold an already-active buff while using ordinary moves) and
+expires with its own battle-log line appended the same way a mismatch/crit clause stacks onto
+a hit's log line. Buffs are battle-only and reset at the start of every fight — never
+persisted to the save. A small pill under each side's HP bar in battle shows which buff (if
+any) is active and how many turns remain.
 
 **Quasiparticle mismatch.** The sole type-interaction rule in battle (§3): a defender
 whose own type can't physically host the attacking move's quasiparticle class at all
@@ -469,7 +472,9 @@ whose own type can't physically host the attacking move's quasiparticle class at
 hit at double force (`BattleScene.resolveHit`) — a plain band insulator has no magnetic
 order to damp a magnon pulse with, so it lands unmitigated. Applies symmetrically
 to both sides, same as every other `resolveHit` term. Surfaced in the battle log as "No
-natural defense against this!".
+natural defense against this!". Evasive's dodge roll (above) is checked the same way, symmetrically per side, alongside this and every other `resolveHit` multiplier term — a hit that
+evades skips the mismatch/crit/damage clauses entirely rather than landing at a reduced
+amount, since a dodged hit never connected at all.
 
 **Move menu is grouped by kind and paged one kind at a time, not one flat list.**
 `BattleScene.drawMoveMenu` splits the currently usable moves (`getBattleMoves`) into up to
@@ -478,8 +483,9 @@ four sections -- **Attacks** (every ordinary physics-gated move -- any move that
 **Analytic** (Laughlin's two answer-gated moves, identified by move id rather than by any
 shared class, tagged `★` with their own "right=2x wrong=½x" legend line under the header),
 **Ultimate** (Skłodowska-Curie's two answer-gated moves, tagged `★★★` with their own
-"3/3 correct or it whiffs" legend line), and **Screening** (Kondo's currently-active move, at
-most one, since `getBattleMoves` only ever surfaces whichever one is `kondoActiveMove`, §5)
+"3/3 correct or it whiffs" legend line), and **Buffs** (Kondo's currently-active self-buff
+move, at most one, since `getBattleMoves` only ever surfaces whichever one is
+`kondoActiveMove`, §5, tagged with its own "self-buff, no damage, 3 turns" legend line)
 -- but renders only the page the player is currently on (`movePageIndex`), not all of them
 stacked. A section only counts as a page at all if it has at least one usable move, so a
 player with no Laughlin/Skłodowska-Curie moves bought or no Kondo move active never sees an
@@ -489,7 +495,7 @@ page can legibly hold (`moveMenuPages`, checked against `maxMoveRowsPerPage`'s r
 ceiling) splits into several same-label pages instead -- an 'adaptive'-type crystal (world
 10, see §3) hosting the broadest set of `MoveClass`es of any type (every class except the
 multiferroic/ferroelectric-only `'electromagnon'`/`'ferron'`, deliberately left off its
-`MOVE_COMPATIBILITY` list the same way `'phonon'`/`'screening'` are on every list) is the one
+`MOVE_COMPATIBILITY` list the same way `'phonon'` is on every list) is the one
 form whose **Attacks** section currently needs this. These groups work differently enough
 from an ordinary attack (and from each other) that a flat stacked list blurred the
 distinction -- and paging instead of stacking means a page's own row height (`drawMoveMenu`'s
@@ -742,7 +748,7 @@ state can mark her met before the player has actually reached her.
   each turn. All three can be bought independently, but only one is ever active in
   battle at a time (registry/save `activePassiveByOwner`, keyed by owner and switched
   only by revisiting Bohr's panel), the same "learn several, equip one" shape Kondo's
-  three screening moves already use (below) and Franklin's own passive kit shares
+  three self-buff moves already use (below) and Franklin's own passive kit shares
   (below) -- fitting Bohr's
   own historical role defending quantum mechanics' completeness against the EPR paradox:
   measure one half of an entangled pair and the other answers instantly, not through any
@@ -755,29 +761,33 @@ state can mark her met before the player has actually reached her.
     via `enemyStatsForWorld`).
   - **Shared State** -- ~22% of damage the player deals is returned as healing, capped at
     the player's own max HP -- the entangled pair shares its fate.
-- **Kondo** → world 8 middle → sells three moves (`OverworldScene.showKondoPanel`,
-  `data/materials.ts`'s `KONDO_MOVE_IDS`) -- Screening Pulse, Scattering Drag, Breakdown
-  Cascade -- each of which deterministically inflicts one of §4's three status effects
-  (Screened, Slowed, Weakened respectively) on a successful hit rather than dealing much
-  raw damage itself. `'screening'` sits on every type's `MOVE_COMPATIBILITY` list, the same
-  "usable from any form" treatment Laughlin's and Skłodowska-Curie's moves get -- these deal in a generic
-  scattering/decoherence process any crystal's own disorder or environment can carry, not a
-  quasiparticle tied to one type's specific band structure, so they're named generically
-  rather than after the heavy-fermion/Kondo-lattice physics that inspired them: Screening
-  Pulse damps whatever local moment or correlated state the target has, weakening its own
-  outgoing damage; Scattering Drag disorder-scatters the target's carriers, dragging its
-  effective Velocity down; Breakdown Cascade collapses whatever protection the target's
-  state has, raising the damage it takes. The player can buy all three independently, but
-  only one is ever usable in battle at a time -- registry/save `kondoActiveMove`, switched
-  only by returning to Kondo's own panel (a bought-but-inactive move stays in `unlockedMoves`,
-  it just fails `getBattleMoves`' own extra check on top of the ordinary
-  learned-∩-compatible one), since Kondo screening physically resolves one scattering channel
-  at a time, not every channel at once -- the same reasoning DESIGN.md gives for excluding a
-  generic "impurity scattering" damage move in §3 applies here too: this isn't free-form
-  disorder, it's one specific screening process the player has to choose and commit to. The
-  shop panel itself doubles as the switch -- a bought-and-inactive move gets a "Make `<name>`
+- **Kondo** → world 8 middle → sells three self-buff moves (`OverworldScene.showKondoPanel`,
+  `data/materials.ts`'s `KONDO_MOVE_IDS`) -- Screening Pulse, Scattering Drag, Coherence
+  Cascade -- each of which deterministically applies one of §4's three buffs (Shielded,
+  Evasive, Regenerating respectively) to the *caster's own* side instead of attacking the
+  opponent, dealing no damage and never checking `MOVE_COMPATIBILITY` at all. Named
+  generically rather than after the heavy-fermion/Kondo-lattice physics that inspired them,
+  since they deal in a generic scattering/decoherence process any crystal's own disorder or
+  environment can carry, not a quasiparticle tied to one type's specific band structure:
+  Screening Pulse re-forms the caster's own screening cloud, damping incoming damage;
+  Scattering Drag randomizes the caster's own scattering trajectory, giving incoming hits a
+  chance to miss entirely; Coherence Cascade re-forms the caster's own Kondo singlet turn by
+  turn, restoring coherence and healing it over time -- named for that coherence-building
+  process specifically so as not to invoke a literal Kondo breakdown, the opposite physics
+  (the heavy-fermion composite's own hybridization collapsing at a quantum critical point).
+  The player can buy all three
+  independently, but only one is ever usable in battle at a time -- registry/save
+  `kondoActiveMove`, switched only by returning to Kondo's own panel (a bought-but-inactive
+  move stays in `unlockedMoves`, it just fails `getBattleMoves`' own extra check), since
+  Kondo's own technique resolves one channel at a time, not every channel at once -- the same
+  reasoning DESIGN.md gives for excluding a generic "impurity scattering" damage move in §3
+  applies here too: this isn't free-form disorder, it's one specific technique the player has
+  to choose and commit to. The shop panel itself doubles as the switch -- a bought-and-inactive
+  move gets a "Make `<name>`
   active" button, the active one shows a dimmed "`<name>` (active)" tag instead, the same
-  dimmed-current convention Dresselhaus's transmute panel already uses. Buying the *first*
+  dimmed-current convention Dresselhaus's transmute panel already uses, and every row (bought
+  or not) prints the move's own one-line description underneath, the same convention
+  Franklin's/Bohr's passive rows use. Buying the *first*
   Kondo move activates it automatically (still "picked by talking to Kondo," just in the same
   click as the purchase) so a fresh purchase is never invisible in battle with no explanation;
   buying a second or third on top of an already-active one doesn't, and switching between
@@ -791,12 +801,12 @@ state can mark her met before the player has actually reached her.
   each turn. All three can be bought independently, but only one is ever active in
   battle at a time (registry/save `activePassiveByOwner`, switched only by revisiting
   Franklin's panel), the same "learn several, equip one" shape Bohr's own passive kit
-  and Kondo's three screening moves already use -- fitting, since Franklin's own
+  and Kondo's three self-buff moves already use -- fitting, since Franklin's own
   physics (X-ray diffraction of a defect-riddled or porous crystal -- a real,
   if lesser-known, tie between Rosalind Franklin's characterization work and
   world 9's "excitations and defects" topic) is world 9's topic, and a passive with no
   per-turn choice and no duration/tick-down is itself a clean fit for "always on for
-  this battle," unlike Kondo's 3-turn status effects:
+  this battle," unlike Kondo's 3-turn buffs:
   - **Diffraction Shadow** -- incoming damage is multiplied down (×0.85) for the whole
     battle, the way porous carbon attenuates and scatters an X-ray beam.
   - **Satellite Reflection** -- landing a critical hit throws off a secondary
@@ -1037,11 +1047,13 @@ Not yet built:
 
 - **Subtype combination rules** — which main+subtype pairs are physically/
   narratively sensible needs a full compatibility table, not just one example.
-- **A fuller status-effect roster** — an earlier design sketch also described
-  a "Gapped down" (defense drops, mirroring gap closing) and a
-  "Symmetry-broken" (forced type shift for N turns) status alongside Kondo's
-  three (§4); neither is implemented, and no guardian is currently slated to
-  teach them.
+- **Debuffs-on-the-opponent aren't implemented at all today** — no guardian teaches a move
+  that inflicts anything on the *defender*; Kondo's three (§4) are self-buffs instead. An
+  earlier design sketch described a "Gapped down" (defense drops, mirroring gap closing) and
+  a "Symmetry-broken" (forced type shift for N turns) debuff; neither is implemented, and no
+  guardian is currently slated to teach them -- if one ever is, it would need its own
+  MOVE_COMPATIBILITY treatment (a real debuff move is an attack, unlike Kondo's three), not
+  the "left off every list" self-buff shape.
 - **Scope vs. solo-dev reality** — 10 worlds + full art + guardian roster is large for
   one person; consider cutting to 3–4 flagship worlds for a v1 before building all 10.
 - **Course integration** — supplementary/optional tool, or tied into assessment?
