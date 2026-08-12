@@ -533,30 +533,42 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.shopTab = 'moves';
     this.recordVisit();
 
-    // Corner HUD block: world name stacked above the token counter (running
-    // `y`, the name's own wordWrap-driven height advancing it) rather than
-    // sharing one row, since a long world name (e.g. world 5's "Frozen
-    // Zero-Resistance Caverns") or a big text-size setting can each push it
-    // to wrap onto two lines and collide with a fixed-position counter. No
-    // permanent key-hint lines (movement, M/H/Enter) live here -- the Lab's
-    // Tutorial station already covers all of it (data/tutorial.ts) as a
-    // replayable recap, which a fixed on-screen reminder would only
-    // duplicate while adding to the overflow risk every long world name or
-    // big text size already puts on this corner.
+    // Corner HUD block: the world name (top-left) and the qumatessence
+    // counter (top-right) sit on the same row, at the same y the Lab uses
+    // for its own counter (HubScene.ts), so the overworld and the Lab put
+    // the counter in the same on-screen spot. The counter's column is
+    // reserved as a right-side gutter -- sized once from the widest
+    // qumatessence string this text style could ever show, not measured
+    // live off the current value -- and the world name's wrap width is
+    // narrowed to stop short of it, so a long world name (e.g. world 5's
+    // "Frozen Zero-Resistance Caverns") or a big text-size setting wraps
+    // downward onto a second line instead of running wide enough to
+    // collide with the counter. No permanent key-hint lines for movement,
+    // M, or H live in this corner -- the Lab's Tutorial station is the
+    // canonical replayable recap for those (data/tutorial.ts), and a fixed
+    // on-screen reminder here would just duplicate it while adding more
+    // overflow risk to a corner that's already tight. The one deliberate
+    // exception is the Enter hint in the opposite (bottom-right) corner --
+    // Enter's world<->Lab shuttle is used far more often than the other
+    // keys, so it stays visible on every screen rather than relying on the
+    // one-time tip/replayable recap alone.
     const worldName = WORLD_NAMES[this.world] ?? `World ${this.world}`;
-    let hudY = 8;
-    const worldNameText = this.add
-      .text(8, hudY, `World ${this.world} -- ${worldName}`, {
+    const essenceGutterProbe = this.add
+      .text(0, 0, 'Qumatessence: 99999', { fontSize: fontPx(this, 14), padding: { x: 4, y: 2 } })
+      .setVisible(false);
+    const essenceGutter = essenceGutterProbe.width + 8;
+    essenceGutterProbe.destroy();
+    this.add
+      .text(8, 8, `World ${this.world} -- ${worldName}`, {
         fontSize: fontPx(this, 16),
         color: '#ffffff',
         backgroundColor: 'rgba(0,0,0,0.35)',
         padding: { x: 4, y: 2 },
-        wordWrap: { width: CANVAS_W - 16 },
+        wordWrap: { width: CANVAS_W - 16 - essenceGutter },
       })
       .setDepth(50);
-    hudY += worldNameText.height + 4;
     this.tokenText = this.add
-      .text(CANVAS_W - 8, hudY, `Qumatessence: ${this.qumatessence}`, {
+      .text(CANVAS_W - 8, 8, `Qumatessence: ${this.qumatessence}`, {
         fontSize: fontPx(this, 14),
         color: '#ffe066',
         backgroundColor: 'rgba(0,0,0,0.35)',
@@ -574,6 +586,15 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       .setOrigin(0.5, 0)
       .setDepth(50)
       .setVisible(this.reachedGoal);
+    this.add
+      .text(CANVAS_W - 8, CANVAS_H - 8, 'Press Enter to go to the Lab', {
+        fontSize: fontPx(this, 12),
+        color: '#8fa0c9',
+        backgroundColor: 'rgba(0,0,0,0.35)',
+        padding: { x: 4, y: 2 },
+      })
+      .setOrigin(1, 1)
+      .setDepth(50);
 
     // The player is a crystal too, not a trainer commanding one -- the
     // overworld avatar is just the player's current form (playerMaterial,
@@ -1758,7 +1779,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     container.add(greeting);
     y += greeting.height + 14;
 
-    const question = getWorldQuestion(this.world);
+    const question = getWorldQuestion(this.world, material.name);
     if (question) {
       const prompt = this.add
         .text(CANVAS_W / 2, y, question.prompt, {

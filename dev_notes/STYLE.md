@@ -212,6 +212,20 @@ than appending a changelog, so this always reflects current reality.
   back to any walkable tile otherwise -- so the original "reward sits at the end of a detour"
   read survives for the worlds that still build literal dead ends, without requiring every
   shape to have one.
+- Corner HUD: the world name (top-left, white on translucent black) and the qumatessence
+  counter (top-right, gold `#ffe066` on translucent black) sit on the same row at `y = 8` --
+  the same spot `HubScene`'s own counter uses, so the Lab and the overworld put it in the same
+  corner. The counter's column is reserved as a right-side gutter, sized once from the widest
+  qumatessence string this text style could ever show rather than measured live off the
+  current value, and the world name's word-wrap width is narrowed to stop short of that
+  gutter -- a long name (e.g. world 5's "Frozen Zero-Resistance Caverns") or a large text-size
+  setting wraps down onto a second line instead of running wide enough to collide with the
+  counter. The bottom-right corner carries one small always-on hint, "Press Enter to go to the
+  Lab" (muted blue-grey `#8fa0c9` on translucent black, matching the Settings station's hint-line
+  color) -- the one persistent on-screen key reminder on this screen, since the world<->Lab
+  shuttle is used far more often than the other keys; movement/M/H aren't repeated here and
+  stay covered only by the Lab's Tutorial station, so a fixed line for every key wouldn't stack
+  up against this corner's overflow risk.
 - Map regenerates fresh (new `Math.random` layout, retried internally up to 10 times against
   the two invariants above before falling back to a plain wide corridor) on first load and on
   an explicit world change that's genuinely new ground -- Bloch's teleport, a world door, a
@@ -344,7 +358,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   (`data/greetings.ts`'s `encounterGreeting`, in muted blue-grey `#cfd8ff`), and directly
   below that -- already visible, no "Continue" step -- either the physics question (gold
   `#ffe066`, if the current world has a `data/quiz.ts` pool -- one question drawn at random
-  from that world's combined pool of at least 6, via `getWorldQuestion`, so the same
+  from that world's own pool via `getWorldQuestion`, so the same
   encounter doesn't always ask the same thing) with two shuffled answer buttons plus "Let me
   pass," or a plain "Fight!" / "Let me pass" choice if it doesn't. Buttons use
   the same `[ #222244 background / #ffff88 text ]` treatment `BattleScene`'s move buttons

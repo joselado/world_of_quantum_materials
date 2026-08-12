@@ -13,7 +13,6 @@ world when the same real material is relevant to both.
 | Crystal | Type | Max HP |
 | --- | --- | --- |
 | Graphene | `metal` | 22 |
-| Manganese Oxide | `classicalMagnet` | 26 |
 | Nickel Oxide | `classicalMagnet` | 25 |
 | Chromium | `classicalMagnet` | 24 |
 | Iron | `classicalMagnet` | 27 |
@@ -88,6 +87,7 @@ world when the same real material is relevant to both.
 | --- | --- | --- |
 | Iron | `classicalMagnet` | 27 |
 | Cobalt | `classicalMagnet` | 27 |
+| Manganese Oxide | `classicalMagnet` | 26 |
 | Chromium Triiodide | `classicalMagnet` | 25 |
 | Chromium Tribromide | `classicalMagnet` | 25 |
 | Yttrium Iron Garnet | `classicalMagnet` | 26 |

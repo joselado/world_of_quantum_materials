@@ -51,7 +51,7 @@ course material -- answer correctly and you go into battle with a power
 boost, answer wrong and you're weakened, or just say "let me pass" and walk
 on with no consequence either way. Every compound has its own look, too --
 same main type, same base silhouette family, but each one gets its own tilt,
-proportions, and tint, so a wild Manganese Oxide reads as its own crystal
+proportions, and tint, so a wild Chromium reads as its own crystal
 standing next to the Nickel Oxide beside it.
 
 <table>

@@ -247,7 +247,7 @@ instead of world 1's tutorial picks; world 10's pool draws exclusively from §5'
 hybrid-recipe results instead of one topic section, see the note just below
 the table). A compound isn't pinned to a single world's pool when more than one topic
 legitimately motivates it — Iron and Cobalt spawn in both World 1 (mean-field
-itinerant-ferromagnet SSB examples, alongside MnO/NiO/Chromium) and World 6 (magnons),
+itinerant-ferromagnet SSB examples, alongside NiO/Chromium) and World 6 (magnons),
 the same "one compound, more than one home" shape World 9's any-type borrowing already
 uses at a whole-world scale, just applied to two specific compounds instead. All ten worlds
 have a built overworld map (roadmap §9). `PLAYER_MATERIAL` (the player's own crystal,
@@ -289,10 +289,9 @@ pool.
 | semiconductor (2) | Titanium Dioxide, rutile phase (TiO$_2$) | ~3.0 eV gap wide-gap oxide semiconductor, famous for photocatalysis but an ordinary single-particle band picture underneath; not from the course |
 | semiconductor (2) | Boron Arsenide (BAs) | Moderate (~1.46 eV) indirect-gap III-V semiconductor, otherwise ordinary — famous instead for record-high thermal conductivity rivaling diamond; not from the course |
 | quantumSpinHall (3, hybrid) | HgTe/CdTe Quantum Well | The original 2D topological insulator (Bernevig-Hughes-Zhang model, König et al., Science 2007) — only the *engineered heterostructure* is topological, not either bulk parent above; §5 hybrid recipe result, lives as a World 10 wild rather than a World 3 one |
-| classicalMagnet (1) | Manganese Oxide (MnO) | Mott-insulating antiferromagnet — canonical mean-field/Hubbard-$U$ SSB example |
-| classicalMagnet (1) | Nickel Oxide (NiO) | Same family, another textbook mean-field SSB magnet |
+| classicalMagnet (1) | Nickel Oxide (NiO) | Mott-insulating antiferromagnet — canonical mean-field/Hubbard-$U$ SSB example |
 | classicalMagnet (1, rare/special) | Graphene at strong coupling | Session 1 notes a finite $U_c$ opens a Mott/antiferromagnetic gap at the Dirac point — same base crystal as the metal entry above, but pushed past its symmetry-breaking threshold |
-| classicalMagnet (1) | Chromium (Cr) | Itinerant (metallic) antiferromagnet — the SDW mean-field/Stoner-criterion counterpart to MnO/NiO's Mott-insulating picture; also §5's magnetic-dopant parent for Cr-doped (Bi,Sb)₂Te₃ below |
+| classicalMagnet (1) | Chromium (Cr) | Itinerant (metallic) antiferromagnet — the SDW mean-field/Stoner-criterion counterpart to NiO's Mott-insulating picture (Manganese Oxide, the same Mott-insulating family, is a World 6 wild); also §5's magnetic-dopant parent for Cr-doped (Bi,Sb)₂Te₃ below |
 | chernInsulator (3, magnetically doped) | Bismuth Selenide (Bi$_2$Se$_3$), magnetically doped | The added magnetism breaks time-reversal symmetry, turning the helical surface state chiral — quantum anomalous Hall, same doping-breaks-TRS mechanism as Cr-doped (Bi,Sb)₂Te₃ below |
 | quantumSpinHall (3) | Bismuth Telluride (Bi₂Te₃) | Undoped topological-insulator host, its bulk gap hiding a spin-momentum-locked helical surface state — §5's Chromium + Bi₂Te₃ hybrid recipe dopes magnetism in to make Cr-doped (Bi,Sb)₂Te₃ below |
 | quantumSpinHall (3, rare) | Samarium Hexaboride (SmB$_6$) | Topological Kondo insulator — many-body topology, a protected helical surface state hosted inside a Kondo-insulating bulk; also bridges to the kondoHeavyFermion/quantumSpinLiquid family below |
@@ -315,6 +314,7 @@ pool.
 | superconductor (9, textbook fill-in) | Niobium Diselenide (NbSe$_2$), STM-imaged impurities | Friedel oscillations / impurity-resonance textbook platform, ordinary (non-topological) disorder physics; also pairs with CrI₃/CrBr₃ in §5's topological-SC heterostructure recipes |
 | classicalMagnet (6) | Iron (Fe) | Classic itinerant ferromagnet, magnon carrier |
 | classicalMagnet (6) | Cobalt (Co) | Same family |
+| classicalMagnet (6) | Manganese Oxide (MnO) | Mott-insulating antiferromagnet — its magnetism comes from localized moments and Hubbard $U$ rather than Iron/Cobalt's itinerant band picture above, but still ordinary (non-topological) magnon-carrying classicalMagnet order, the same family as this world's other members |
 | classicalMagnet (6) | Chromium Triiodide (CrI$_3$) | Van der Waals ferromagnet with an observed topological magnon gap |
 | classicalMagnet (6) | Chromium Tribromide (CrBr$_3$) | Same van der Waals ferromagnet family as CrI₃ — pairs with Niobium Diselenide in Kezilebieke et al., Nature 588, 424 (2020)'s topological-superconductor heterostructure, §5 |
 | classicalMagnet (6) | Yttrium Iron Garnet (YIG, Y$_3$Fe$_5$O$_{12}$) | Ferrimagnetic (two antiparallel sublattices, unequal moment), with the lowest known magnon damping of any material — the real substrate nearly every magnon-transport/magnon-BEC experiment actually runs on; not from the course, added as `classicalMagnet`'s magnonics flagship |
@@ -627,29 +627,36 @@ world actually looks like it, not like every other world's battle.
 screen (`OverworldScene.showEncounter`, not a separate scene): a greeting line tied to
 that material's main type (`game/src/data/greetings.ts` -- a magnet's greeting reads
 differently from a superconductor's, since it's keyed by `MaterialType`, not generic) and
-one physics question drawn at random from that *world's* combined question pool
-(`game/src/data/quiz.ts`'s `getWorldQuestion(world)` -- the union of every one of that
-world's own `WORLD_CRYSTALS[world]` materials' individual question pools, at least 6
-questions per material that has one) together on that same screen -- one correct answer,
-one incorrect answer (order shuffled), plus "let me pass," so re-fighting the same material
-doesn't always ask the same thing, and which material was actually fought doesn't affect
-which question shows. Worlds 1-9 only draw from their own world's pool; World 10 draws from
-the combined pool of worlds 1-9 only (not its own `WORLD_CRYSTALS[10]` materials' pools),
-since its wilds are hybrid-recipe results rather than a course topic of their own and the
-goal is breadth across the course's own topics, not hybrid-specific trivia -- so a material
-borrowed into another world's spawn table (e.g. World 9's borrowing from worlds 1-8) is
-quizzed on that world's own topic, not the material's origin world. A material that spawns
-only in World 10 (every named hybrid recipe result) has an authored question pool that's
-never actually drawn in play under this rule, kept in `quiz.ts` as the session-anchored
-physics record for that compound rather than deleted. Quiz content is sourced from the
-matching session's lecture notes, or, for materials whose topic has no session of its own,
-written directly from the compound's real physics. Answering correctly multiplies the
-player's attack power for that battle (1.5×, shown in battle as a glowing golden aura --
-pulsing rings, radiant rotating spikes, rising embers -- around the player's crystal);
-answering wrong weakens it (0.6×, shown as a small grey raincloud); passing skips the battle
-entirely with no bonus or penalty and no scene change. A world whose materials all lack a
-quiz pool would fall back to a plain "Fight!" / "Let me pass" choice on the same greeting
-screen, though every world currently has at least one pool-bearing material.
+one physics question from `game/src/data/quiz.ts`'s `getWorldQuestion(world, materialName)`
+together on that same screen -- one correct answer, one incorrect answer (order shuffled),
+plus "let me pass." Worlds are the primary organizing unit for quiz content, not materials:
+`WORLD_QUESTIONS[world]` is each world's own pool, scoped to that world's own topic and
+difficulty (session NN.tex), and `getWorldQuestion` draws from it by default. A handful of
+materials additionally carry their own supplementary pool in `MATERIAL_QUESTIONS`, and
+whenever the material actually fought has one, `getWorldQuestion` coin-flips between the
+world's pool and that material's pool instead of always using the world's. This exists for
+two distinct reasons: a couple of materials that spawn in two worlds (Barium Titanate,
+Herbertsmithite) have authored content too topic-uniform to split cleanly between their two
+worlds' own pools, so it lives as a shared bonus layer instead; and every named hybrid-recipe
+result (`WORLD_CRYSTALS[10]`'s own wilds, spawning only in World 10) keeps its own pool so it
+has a "material" side to draw against in World 10's own picker, described next. Quiz content
+is sourced from the matching session's lecture notes, or, for materials whose topic has no
+session of its own, written directly from the compound's real physics.
+
+World 10 draws differently from worlds 1-9, since its wilds are hybrid-recipe results rather
+than a course topic of their own: `getWorldQuestion(10, materialName)` coin-flips between the
+fought hybrid's own `MATERIAL_QUESTIONS` pool and `ML_LECTURE_QUESTIONS`, a dedicated pool
+sourced from session10.tex (the course's machine-learning finale -- neural network quantum
+states, ML inside DFT, the Ising/Ising-gauge-theory "easy vs. hard" phase-classification
+example, Hamiltonian learning), fitting since World 10's rival ("The Adapted") is itself an
+adaptive AI.
+
+Answering correctly multiplies the player's attack power for that battle (1.5×, shown in
+battle as a glowing golden aura -- pulsing rings, radiant rotating spikes, rising embers --
+around the player's crystal); answering wrong weakens it (0.6×, shown as a small grey
+raincloud); passing skips the battle entirely with no bonus or penalty and no scene change. A
+world whose pool were empty would fall back to a plain "Fight!" / "Let me pass" choice on the
+same greeting screen, though every world currently has a populated pool.
 
 **Starting loadout and unlocking moves.** The player's crystal starts knowing only Phonon
 Beam. Reaching world 1's middle tile for the first time introduces the guardian Noether (§5),

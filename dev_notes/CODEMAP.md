@@ -185,12 +185,16 @@ game/src/
                                   PASSIVE_OWNER_LABELS -- Franklin's whole-battle passive
                                   abilities (id/name/owner/description/cost)
     tokens.ts                    Qumatessence value tiers + weights
-    quiz.ts                      Per-material physics question pools (>=6 each, MATERIAL_QUESTIONS)
-                                  aggregated per-world (union of a world's own WORLD_CRYSTALS
-                                  materials' pools, World 10 exempted to the union of worlds 1-9's
-                                  own pools) via getWorldQuestion(world) -- the wild-encounter quiz
-                                  draws by world, not by which specific material was fought -- plus
-                                  the world-tagged ANALYTIC_QUESTIONS pool
+    quiz.ts                      Per-world physics question pools (WORLD_QUESTIONS[1-9]) as the
+                                  primary wild-encounter quiz source; a few materials additionally
+                                  carry a supplementary pool in MATERIAL_QUESTIONS (multi-world
+                                  materials with topic-uniform content, plus every WORLD_CRYSTALS[10]
+                                  hybrid result), which getWorldQuestion(world, materialName)
+                                  coin-flips against the world's own pool whenever the fought
+                                  material has one. World 10 draws differently: getWorldQuestion(10,
+                                  materialName) coin-flips between the fought hybrid's own
+                                  MATERIAL_QUESTIONS pool and ML_LECTURE_QUESTIONS (session10.tex,
+                                  the course's ML finale) -- plus the world-tagged ANALYTIC_QUESTIONS pool
                                   (AnalyticQuestion carries worlds: number[]) via
                                   getAnalyticQuestion(visitedWorlds) for Laughlin's two quiz-gated
                                   Analytic moves -- draws only questions tagged with a visited

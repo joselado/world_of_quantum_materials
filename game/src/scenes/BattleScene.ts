@@ -424,7 +424,6 @@ export class BattleScene extends Phaser.Scene {
       .text(opponentBarLeftX, opponentRowBottom + 6, '', {
         fontSize: fontPx(this, 11),
         color: STATUS_PILL_COLOR,
-        backgroundColor: 'rgba(0,0,0,0.35)',
         padding: { x: 4, y: 1 },
       })
       .setOrigin(0, 0)
@@ -524,7 +523,6 @@ export class BattleScene extends Phaser.Scene {
       .text(playerBarLeftX, playerRowBottom + 6, '', {
         fontSize: fontPx(this, 11),
         color: STATUS_PILL_COLOR,
-        backgroundColor: 'rgba(0,0,0,0.35)',
         padding: { x: 4, y: 1 },
       })
       .setOrigin(0, 0)
@@ -2085,6 +2083,11 @@ export class BattleScene extends Phaser.Scene {
     const label = isPlayer ? this.playerStatusLabel : this.opponentStatusLabel;
     const status = this.getStatus(isPlayer);
     label.setText(status ? `${STATUS_INFO[status.kind].label} (${status.turnsLeft})` : '');
+    // Phaser fills a Text object's backgroundColor even when its string is
+    // empty (nonzero line-height + padding still gives it an area to fill),
+    // so the pill's background has to be toggled off explicitly rather than
+    // left set -- otherwise an inactive status still renders as a bare box.
+    label.setBackgroundColor(status ? 'rgba(0,0,0,0.35)' : '');
   }
 
   // Creates the passive pill (Franklin's abilities, §5) stacked below
@@ -2101,6 +2104,12 @@ export class BattleScene extends Phaser.Scene {
   // under FIELD_H (fixed below by dropping the pill rather than drawing it
   // back on top of the status pill it's stacked below).
   private addPassivePill(x: number, naturalY: number, text: string, statusBottom: number, maxRightX: number) {
+    // Static for the whole battle (see this method's own comment above), so
+    // unlike the status pill there's no later render pass to toggle a
+    // background back off -- skip creating the label at all when there's no
+    // passive to show, rather than drawing an empty box (Phaser fills a
+    // Text object's backgroundColor even for an empty string).
+    if (!text) return;
     const label = this.add
       .text(x, naturalY, text, {
         fontSize: fontPx(this, 11),

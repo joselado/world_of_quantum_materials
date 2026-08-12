@@ -99,11 +99,11 @@ export type MaterialType =
   // narrow enough for an ordinary band electron to still get through.
   | 'semiconductor'
   // Magnetically ordered, magnon-carrying -- covers both the mean-field/
-  // Mott-Hubbard route into symmetry-broken order (topic 1: MnO, NiO,
-  // Chromium) and the classical itinerant-ferromagnet route (topic 6: Iron,
-  // Cobalt, CrI₃), since both are the same ordered-moment phase of matter
-  // with the same low-energy excitation, just reached via a different
-  // derivation.
+  // Mott-Hubbard route into symmetry-broken order (NiO and Chromium in
+  // topic 1, MnO in topic 6) and the classical itinerant-ferromagnet route
+  // (Iron, Cobalt, CrI₃, all topic 6), since both are the same
+  // ordered-moment phase of matter with the same low-energy excitation,
+  // just reached via a different derivation.
   | 'classicalMagnet'
   // Frustrated/fractionalized -- never orders, even at zero temperature.
   // Hosts both spinon (the fractionalized excitation itself) and vison (its

@@ -738,20 +738,20 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // move is actually reachable by fighting/discovering a wild crystal, not
     // just buyable in the abstract.
     crystal('Graphene', 'metal', 22, ['plasmonPulse', 'thermalFluctuation'], 0, 'layer'),
-    crystal('Manganese Oxide', 'classicalMagnet', 26, ['thermalFluctuation', 'magneticField'], 0, undefined, 'MnO'),
-    crystal('Nickel Oxide', 'classicalMagnet', 25, ['thermalFluctuation', 'magneticField'], 1, undefined, 'NiO'),
+    crystal('Nickel Oxide', 'classicalMagnet', 25, ['thermalFluctuation', 'magneticField'], 0, undefined, 'NiO'),
     // Elemental Cr is an itinerant (metallic) antiferromagnet -- the SDW
-    // mean-field/Stoner-criterion counterpart to MnO/NiO's Mott-insulating
-    // picture above. Also HYBRID_RECIPES' magnetic-dopant parent for Cr-doped
-    // (Bi,Sb)₂Te₃ (world 3's Bi₂Te₃ + this).
-    crystal('Chromium', 'classicalMagnet', 24, ['thermalFluctuation', 'magneticField'], 2, undefined, 'Cr'),
-    // Same classicalMagnet SSB family as MnO/NiO/Chromium above, not a new
+    // mean-field/Stoner-criterion counterpart to NiO's Mott-insulating
+    // picture above (Manganese Oxide, the same Mott-insulating family, is a
+    // World 6 wild). Also HYBRID_RECIPES' magnetic-dopant parent for
+    // Cr-doped (Bi,Sb)₂Te₃ (world 3's Bi₂Te₃ + this).
+    crystal('Chromium', 'classicalMagnet', 24, ['thermalFluctuation', 'magneticField'], 1, undefined, 'Cr'),
+    // Same classicalMagnet SSB family as NiO/Chromium above, not a new
     // type for this world -- Iron and Cobalt are itinerant ferromagnets,
     // textbook mean-field-broken-symmetry examples in their own right, also
     // spawning in World 6 (magnons) since a compound isn't pinned to a
     // single world once more than one topic legitimately motivates it.
-    crystal('Iron', 'classicalMagnet', 27, ['thermalFluctuation', 'magneticField'], 3, undefined, 'Fe'),
-    crystal('Cobalt', 'classicalMagnet', 27, ['thermalFluctuation', 'magneticField'], 4, undefined, 'Co'),
+    crystal('Iron', 'classicalMagnet', 27, ['thermalFluctuation', 'magneticField'], 2, undefined, 'Fe'),
+    crystal('Cobalt', 'classicalMagnet', 27, ['thermalFluctuation', 'magneticField'], 3, undefined, 'Co'),
     // Spontaneous symmetry breaking isn't only magnetic -- Barium Titanate's
     // off-center Ti⁴⁺ ion breaking inversion symmetry into a switchable
     // polarization is the same SSB physics this world teaches, just a
@@ -929,16 +929,21 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
   6: [
     crystal('Iron', 'classicalMagnet', 27, ['thermalFluctuation', 'magneticField'], 0, undefined, 'Fe'),
     crystal('Cobalt', 'classicalMagnet', 27, ['thermalFluctuation', 'magneticField'], 1, undefined, 'Co'),
-    crystal('Chromium Triiodide', 'classicalMagnet', 25, ['thermalFluctuation', 'magneticField'], 2, 'layer', 'CrI₃'),
+    // Mott-insulating antiferromagnet -- its magnetism comes from localized
+    // moments and Hubbard U rather than Iron/Cobalt's itinerant band picture
+    // above, but it's still ordinary (non-topological) magnon-carrying
+    // classicalMagnet order, the same family as this world's other members.
+    crystal('Manganese Oxide', 'classicalMagnet', 26, ['thermalFluctuation', 'magneticField'], 2, undefined, 'MnO'),
+    crystal('Chromium Triiodide', 'classicalMagnet', 25, ['thermalFluctuation', 'magneticField'], 3, 'layer', 'CrI₃'),
     // Same van der Waals ferromagnet family as Chromium Triiodide above, the
     // other half of the NbSe₂/CrBr₃ topological-superconductor recipe.
-    crystal('Chromium Tribromide', 'classicalMagnet', 25, ['thermalFluctuation', 'magneticField'], 3, 'layer', 'CrBr₃'),
+    crystal('Chromium Tribromide', 'classicalMagnet', 25, ['thermalFluctuation', 'magneticField'], 4, 'layer', 'CrBr₃'),
     // The magnonics workhorse -- lowest known magnon damping of any material,
     // the substrate real spin-wave-transport/magnon-BEC experiments actually
     // run on. Ferrimagnetic (two antiparallel sublattices with unequal
     // moment), but that's still magnon-carrying magnetic order, the same
     // 'classicalMagnet' slot Iron/Cobalt's itinerant ferromagnetism fills.
-    crystal('Yttrium Iron Garnet', 'classicalMagnet', 26, ['thermalFluctuation', 'magneticField'], 4, undefined, 'YIG'),
+    crystal('Yttrium Iron Garnet', 'classicalMagnet', 26, ['thermalFluctuation', 'magneticField'], 5, undefined, 'YIG'),
     // Type-II multiferroic from noncollinear/helimagnetic order down to the
     // monolayer limit (Song et al., Nature 2022) -- hosts genuine
     // electromagnons, 'multiferroic''s flagship. Same session (classical
