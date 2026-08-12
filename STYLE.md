@@ -646,8 +646,12 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   `BOSS_CRYSTAL_SIZE = 64` -- bigger than an ordinary wild encounter's plain
   `makeCrystal` at `50` -- positioned at `BOSS_OPPONENT_POS` (`{ x: 644, y: 155 }`,
   shifted left and slightly down from the wild encounter's `OPPONENT_POS`) so the
-  wider multi-shard silhouette clears the move menu docked at `MENU_X = 670` instead
-  of overlapping it. Same look the boss already has standing at its world's goal
+  wider multi-shard silhouette (plus its decorative halo/shard art, which renders
+  well past the bare `BOSS_CRYSTAL_SIZE` footprint) sits comfortably inside the
+  field, clear of the "Turns" preview widget in the opposite corner. The move
+  menu (`MENU_MIN_TOP`, below) is floored well below this cluster regardless of
+  page/text-size, so the two can never collide even though both occupy the
+  field's right half. Same look the boss already has standing at its world's goal
   tile in the overworld (`OverworldScene.spawnBossSprite`), carried into the fight
   itself rather than switching to the plain crystal look every wild battle uses.
   Attack effects (`playAttackEffect`'s `from`/`to`) target this shifted position too
@@ -680,9 +684,12 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   glance. Reads as the joined name(s) of whichever passive(s) are active (`·`-separated when
   both a Franklin and a Bohr passive are active at once), empty by default the same way the
   status pill is. Its horizontal position is clamped back onto the field if the joined text
-  would otherwise run past the canvas edge at the largest text-size setting; if the stack of
-  rows above it (boost/fail note, name, bar, status pill) leaves no vertical room left for it
-  at that same setting, it's simply omitted for that battle rather than drawn overlapping the
+  would otherwise run past the canvas edge at the largest text-size setting -- clamped
+  against `MENU_X` rather than the canvas edge on the player's side, since the move menu is
+  bottom-anchored and shares that side's vertical band for the whole battle (`MENU_MIN_TOP`,
+  below); if the stack of rows above it (boost/fail note, the name+bar row, status pill)
+  leaves no vertical room left for it at that same setting, it's simply omitted for that
+  battle rather than drawn overlapping the
   status pill above it -- the status pill's own readability takes priority.
 - The "A wild X appeared!" opener and the win/lose closing line are flavor text from
   `data/greetings.ts` (`victoryLine`/`defeatLine`), keyed to the wild material's type the
@@ -706,7 +713,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 - A small "Turns" widget docked in the field's top-left corner (`x = 20, y = 8`), clear of
   both HP-bar columns and the log text further down: a dim blue-grey (`#8fa0c9`, matching
   the move menu's own section-header color) "Turns" label over the usual translucent-black
-  tag background, with a row of five 18px crystal icons (`makeCrystal`, 22px spacing) below
+  tag background, with a row of five 24px crystal icons (`makeCrystal`, 28px spacing) below
   it, one per predicted hit: the player's own current crystal or the opponent's, each using
   that side's real `color`/`variant`/`seed`/`hybridParents`. Each icon also carries a ring
   behind the crystal shapes marking whose hit it is, independent of crystal color -- a bold
@@ -717,7 +724,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   the crystal colors themselves are identical. Always the plain `makeCrystal` look on the
   opponent's side, even in a rival fight where the on-field opponent itself renders bigger via
   `makeBossCrystal` (see "Boss opponent in battle" below) -- a boss's wider multi-shard
-  silhouette wouldn't read at 18px, so the icon
+  silhouette wouldn't read at 24px, so the icon
   stays the ordinary single-shape crystal look rather than trying to match the boss art.
 - The row previews the next five hits in order (DESIGN.md §4's velocity multi-hit rule):
   the faster side's icons repeated `fasterHits` times, then the slower side's icon once,
@@ -731,12 +738,19 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 
 ## Battle move menu (`BattleScene.drawMoveMenu`)
 
-- A docked panel on the right of the field (`x = 670`, `y = 178`, width `176`), same dark
-  rounded-rectangle-with-stroke treatment as the overworld's dialogue panels, stroked gold
-  (`0xffe066`) to match Noether's own panel color, titled "MOVES" in bold gold. Height grows
-  with however many moves are on the current page rather than a fixed size, since that
-  changes as the player learns moves, buys an analytic move or a Kondo self-buff, or
-  transmutes into a form with a different physics-compatible set (§3 of DESIGN.md).
+- A docked panel at the field's bottom-right (`width = MENU_WIDTH = 226`, `x = MENU_X =
+  FIELD_W - 8 - MENU_WIDTH`), same dark rounded-rectangle-with-stroke treatment as the
+  overworld's dialogue panels, stroked gold (`0xffe066`) to match Noether's own panel color,
+  titled "MOVES" in bold gold. Its bottom edge is fixed (`FIELD_H - MENU_BOTTOM_MARGIN`) and
+  its top edge (`menuTop`) is derived fresh on every draw from however tall the current
+  page's content actually is, so the panel visibly grows *upward* from that fixed bottom
+  rather than down from a fixed top -- it reads as bottom-right-docked at every page/section
+  instead of just starting high and getting taller. `MENU_MIN_TOP` floors how far up that
+  growth is ever allowed to reach, comfortably below the opponent's crystal in every case
+  (including a rival fight's bigger, wider boss silhouette, whose rendered bounds reach a
+  measured ~223px including its decorative halo/shard art) so the panel and the opponent's
+  cluster can never collide regardless of how tall a page's content gets at the largest
+  text-size preset.
 - **Grouped into up to four move-kind sections (`ATTACKS`/`ANALYTIC`/`ULTIMATE`/`BUFFS`),
   shown one
   page at a time** (DESIGN.md §4): a small bold blue-grey (`#8fa0c9`) header line reading the
@@ -748,12 +762,14 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   that has no usable move in it never becomes a page at
   all (a player with no analytic/ultimate moves bought, or no Kondo move active, never sees an
   empty
-  one). A section with more moves than one page can hold at the row-height floor below
-  (`BattleScene.moveMenuPages`) splits into several same-label pages instead of shrinking
-  further or growing past the field's own bottom edge -- `ATTACKS` for an 'adaptive'-type form
-  that's learned every attack class (14 moves) is the only section that currently gets this
-  large, splitting into evenly-sized pages (e.g. two pages of 7) rather than one lopsided page
-  and a near-empty second one. Each move is still a `#222244`-background button, same
+  one). Every page holds at most `MOVE_MENU_MAX_ROWS` (3) moves -- a section with more than
+  that (`BattleScene.moveMenuPages`) splits into several same-label pages instead of
+  cramming more rows onto one page, so every page's row budget (and so its font size) stays
+  close to identical regardless of how many moves a section has in total. `ATTACKS` for an
+  'adaptive'-type form that's learned every attack class (14 moves) is the only section that
+  currently gets this large, splitting into five pages (four of 3, one of 2) rather than one
+  page carrying all of them at illegibly small text. Each move is still a `#222244`-background
+  button, same
   treatment used everywhere else (overworld dialogue buttons), stacked vertically
   under the header -- text is the usual `#ffff88`, except a `BUFFS`-section button (Kondo's
   currently-active self-buff move), which reads in `STATUS_PILL_COLOR` (`#ff8f6a`, Kondo's own
@@ -780,32 +796,31 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   letting either scale all the way to the Enter-menu Settings panel's uncapped 'Large' preset
   the way the title does would eat directly into the row budget below, and the header row's
   own height is taken from whichever of the label/arrows is actually taller so the arrows
-  never bleed into the first move row.
-- Row height is a hard geometric budget (whatever vertical space is left below the
-  title/legend/header, divided across however many moves the *current page* has -- not
-  every section's total, since only one page renders at a time), with a minimum floor so
-  rows never shrink to illegible -- `20`px for up to 7 moves on a page, `15`px for 8-9. A
-  page can never have more rows than that floor allows without running the panel off the
-  bottom of the field -- `BattleScene.maxMoveRowsPerPage` measures the actual title/legend/
-  header height at the current text-size setting to compute the true row ceiling, and
-  `moveMenuPages` (above) splits any oversized section down to that ceiling before a page
-  ever reaches this row-height math, so the floor is a legibility limit here, not something
-  this code also has to keep on screen. Below `rowH < 40` the row switches to smaller
-  font/padding rather than clipping.
-- The row-height budget above only bounds each button's font size *vertically* -- it says
-  nothing about how wide the resulting two-line label (move name, tuned quasiparticle name for
-  Laughlin's/Skłodowska-Curie's moves, plus any `★`/`★★★`/`!!2x` tag) actually renders.
-  `drawMoveMenu` measures every button label on the current page at that vertical-fit size with
-  a throwaway `Text` object and, if the widest one would render past `MENU_WIDTH`, shrinks the
-  whole page's `btnPx` by that overflow ratio (floored at the same `9`px minimum `fitPx` uses) --
-  once, uniformly across the page, so every row on it still shares one size. Shrinking rather
-  than wrapping the label onto a third line, since the row-height math already assumes exactly
-  two lines and a third would run into the row below it. Verified against a live browser render
-  (headless-Chromium harness, DEVELOPMENT.md) at every text-size preset with an 'adaptive'-type
-  form carrying every attack class at once (the worst case across every `MaterialType`'s
-  `MOVE_COMPATIBILITY` entry) and with Laughlin's/Skłodowska-Curie's moves tuned to their
-  longest quasiparticle name (`heavyFermion`, "Heavy Fermion") while mismatched against the
-  opponent -- no page overflows the field at any preset.
+  never bleed into the first move row. The panel's own title/legend are capped the same way
+  (`chromeScale = Math.min(fontScale, 1.35)`, matching the row-height budget's own cap below)
+  so neither eats into the row budget at the largest preset either.
+- Row height is a hard geometric budget: the fixed vertical band the panel is allowed to grow
+  into (`MENU_MIN_TOP` down to `FIELD_H - MENU_BOTTOM_MARGIN`), minus the title/legend/header
+  chrome above, divided across however many moves the *current page* has (never more than
+  `MOVE_MENU_MAX_ROWS`) -- with a `20`px minimum floor so rows never shrink to illegible, and
+  a scale-dependent ceiling (`maxRowH`) so a short page (e.g. a single-move `BUFFS` page)
+  doesn't grow rows past a sensible size just because the budget has slack. Because the page
+  cap is fixed at 3 rather than growing with content, every page's budget stays close to
+  identical, which is what keeps each button's font size (`btnPx`) close to its scale-scaled
+  ceiling on every page rather than collapsing on whichever ones happen to have more moves.
+- Move labels are a single wordWrap-friendly line ("`<name> — Pwr <n> ★★★ !!2x`") rather than
+  a forced two-line split, so a short label (e.g. "Phonon Beam — Pwr 6") renders on one line
+  and only a genuinely long one (a long tuned quasiparticle name plus an Ultimate's `★★★` and
+  a mismatch `!!2x` tag, all at once) wraps to a second. `btnPx` is checked against every
+  label on the current page with a throwaway `Text` object (`getWrappedText()`) and shrunk in
+  whole-pixel steps, uniformly across the page, until none of them wrap past 2 lines -- the
+  row-height budget above only ever assumes 2 lines, so a 3rd would run into the row below it.
+  Verified against a live browser render (headless-Chromium harness, DEVELOPMENT.md) at every
+  text-size preset with an 'adaptive'-type form carrying every attack class at once (the worst
+  case across every `MaterialType`'s `MOVE_COMPATIBILITY` entry) and with Skłodowska-Curie's
+  Ultimate moves tuned to their longest quasiparticle name (`heavyFermion`, "Heavy Fermion")
+  while mismatched against the opponent -- no page overflows the field, and no label reaches
+  a 3rd line, at any preset.
 
 ## Analytic question panel (`BattleScene.showAnalyticQuestion`)
 

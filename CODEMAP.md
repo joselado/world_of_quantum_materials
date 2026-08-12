@@ -407,20 +407,23 @@ there's no active buff.
 `create()` from registry/save `activePassiveByOwner` (keyed by `PassiveOwner`, `data/
 passives.ts`) and held for the whole battle -- unlike Kondo's self-buffs above, a passive has no `turnsLeft`/tick-down
 machinery at all, it's just on or off for the battle. Each side's active passives get their
-own pill too, built by `addPassivePill(x, naturalY, text, statusBottom)` and stacked directly
-below that side's status pill (`naturalY` offset from the status pill's own measured
-`y`/`height`, same text-size-scaling reasoning `opponentBarY` uses) -- since the set never
-changes mid-battle there's no tick-down render function like `renderStatusLabel`, the pill's
-text (`passivePillText`, `PASSIVES[id]?.name` joined with `·` for the 0-2 entries a side can
-hold, `?.` guarding against a stale id from an old save) is built once at creation and the
-`Text` object isn't kept as a field, matching `opponentName`/`playerName` above rather than
+own pill too, built by `addPassivePill(x, naturalY, text, statusBottom, maxRightX)` and stacked
+directly below that side's status pill (`naturalY` offset from the status pill's own measured
+`y`/`height`, same text-size-scaling reasoning the name/bar row's own layout uses) -- since the
+set never changes mid-battle there's no tick-down render function like `renderStatusLabel`,
+the pill's text (`passivePillText`, `PASSIVES[id]?.name` joined with `·` for the 0-2 entries a
+side can hold, `?.` guarding against a stale id from an old save) is built once at creation and
+the `Text` object isn't kept as a field, matching `opponentName`/`playerName` above rather than
 `playerStatusLabel`/`opponentStatusLabel` (those are fields because `renderStatusLabel` reads
 them back later; nothing reads the passive pill back). `addPassivePill` clamps the pill's `x`
-back onto the field if the joined text runs past `FIELD_W` at the largest text-size setting,
-and if the vertical stack above it (boost/fail note + name + bar + status pill, on the player
-side) leaves no room left under `FIELD_H` at that same setting, destroys the pill outright
-rather than let it land back on top of the status pill above it -- the status pill's own
-readability takes priority over showing the passive pill in that narrow combo. It uses
+back against its caller's own `maxRightX` if the joined text would otherwise run past it at the
+largest text-size setting -- `FIELD_W - 8` on the opponent's side, but `MENU_X - 12` on the
+player's, since the bottom-anchored move menu shares that side's vertical band for the whole
+battle (`MENU_MIN_TOP`, see "Battle move menu" below) -- and if the vertical stack above it
+(boost/fail note + the name/bar row + status pill, on the player side) leaves no room left
+under `FIELD_H` at that same setting, destroys the pill outright rather than let it land back
+on top of the status pill above it -- the status pill's own readability takes priority over
+showing the passive pill in that narrow combo. It uses
 `PASSIVE_PILL_COLOR` (a muted blue-violet) rather than `STATUS_PILL_COLOR`'s rust-orange, so
 an always-on passive reads as visually distinct from a ticking status at a glance.
 `activePassives(isPlayer)` is the
@@ -486,17 +489,18 @@ sub-line), **Buffs** (Kondo's currently-active self-buff move, at most one, own 
 damage, 3 turns" legend sub-line -- `moveButtonContent` special-cases `KONDO_MOVE_IDS` to skip
 the mismatch check and `Pwr <n>` label entirely, showing "`<n>`-turn buff" instead).
 `moveMenuPages(moveIds)`
-further splits any section larger than `maxMoveRowsPerPage()`'s row-count ceiling into several
-same-label pages (e.g. an 'adaptive' form's full **Attacks** list becomes "ATTACKS (1/2)"/
-"ATTACKS (2/2)") -- `maxMoveRowsPerPage` measures the real title/legend/header height at the
-current text-size setting with throwaway `Text` objects to compute that ceiling, rather than a
-hand-derived constant. `drawMoveMenu(moveIds)` builds a docked `Container` (field `moveMenu`,
-destroyed and rebuilt from scratch on every call, not just once at battle start) on the right of
-the field, but renders only `moveMenuPages(moveIds)[movePageIndex]` -- one page, not every
-section stacked. `moveButtonContent(moveId)` returns the shared `{ text, color }` label a page's
-width-fit pass (below) measures and `addMoveButton(container, moveId, y, btnPx, padY)` (the
-per-move-button builder: click-handler, interactivity) both read, so the two can't drift on what
-a button actually says.
+further splits any section larger than the fixed `MOVE_MENU_MAX_ROWS` (3) into several
+same-label pages (e.g. an 'adaptive' form's full **Attacks** list becomes "ATTACKS (1/5)"
+through "ATTACKS (5/5)", four pages of 3 plus one of 2) rather than measuring available
+field space to decide how many rows fit -- the cap is a plain constant, so every page's row
+budget stays close to identical regardless of how many moves a section has in total.
+`drawMoveMenu(moveIds)` builds a docked `Container` (field `moveMenu`, destroyed and rebuilt
+from scratch on every call, not just once at battle start) at the field's bottom-right, but
+renders only `moveMenuPages(moveIds)[movePageIndex]` -- one page, not every
+section stacked. `moveButtonContent(moveId)` returns the shared `{ text, color }` label both
+`addMoveButton(container, moveId, y, btnPx, padY)` (the per-move-button builder: click-handler,
+interactivity) and `drawMoveMenu`'s own line-count safety check (below) read, so the two can't
+drift on what a button actually says.
 
 Paging: `switchMovePage(delta)` (fields `movePageIndex`/`currentMoveIds`) recomputes
 `moveMenuPages`, wraps `movePageIndex` by `delta`, and calls `drawMoveMenu` again -- wired
@@ -505,23 +509,30 @@ to on-screen ◀/▶ `Text` buttons flanking the header (rendered only when
 Guarded by `turnLock` (mid-swing) and `!this.moveMenu` (already destroyed by `endBattle`) so a
 keypress can never act mid-resolution or resurrect the panel after the battle ends.
 
-Sizing: the header `Text` (label + page indicator + optional legend) is measured by its own
-running `rowY`, capped well below the text-size setting's own range (`headerScale =
-Math.min(scale, 1.15)`, base 10px label / 8px legend) rather than scaling all the way to the
-2x 'Large' preset the way the panel title does; the pager arrows render at a larger px than
-the label (`arrowPx`), so `rowY` advances by `Math.max(headerLabel.height, pagerRowH)`, not
-the label's height alone, or the taller arrows would bleed into the first move row. Row height
-(`rowH`) is computed from the *current page's own* `rowCount` (never more than
-`maxMoveRowsPerPage`'s ceiling, `moveMenuPages` already split anything larger) via
-`Phaser.Math.Clamp` against `avail` (the field's remaining height after subtracting
-`headerTotalH`). Below `rowH < 40` the row switches to a smaller font/padding (`compact`)
-rather than clipping. That clamp only bounds each button's font size (`btnPx`) vertically --
-`drawMoveMenu` then measures every button label on the page at that size with a throwaway
-`Text` object and, if the widest one would render past `MENU_WIDTH`, shrinks `btnPx` once
-(uniformly across the whole page) by the overflow ratio, floored at the same `9`px `fitPx`
-uses -- catches a long tuned quasiparticle name (e.g. "Heavy Fermion Eruption") or a stacked
-`★★★ !!2x` tag that fits the row's height but not its width, without wrapping the label onto
-a third line the row-height math has no room for.
+Sizing: `drawMoveMenu` runs its own title/legend/header/pager layout twice -- a throwaway
+measurement pass (destroyed immediately) that exists only to learn the current page's real
+content height, then the same layout again for the real, permanently-positioned elements --
+because the panel is bottom-anchored (`menuTop = FIELD_H - MENU_BOTTOM_MARGIN - height`,
+floored at `MENU_MIN_TOP` so it can never grow up into the opponent's cluster) rather than
+built down from a fixed top the way a top-anchored panel could measure and place in one pass.
+The header `Text` (label + page indicator + optional legend) is capped well below the
+text-size setting's own range (`headerScale = Math.min(scale, 1.15)`, base 10px label / 8px
+legend), and the panel's own title/legend are capped the same way (`chromeScale =
+Math.min(scale, 1.35)`, matching `rowH`'s own cap below) -- letting either scale all the way
+to the 2x 'Large' preset would eat directly into the row budget; the pager arrows render at a
+larger px than the header label (`arrowPx`), so the header's own row advances by
+`Math.max(headerLabel.height, pagerRowH)`, not the label's height alone, or the taller arrows
+would bleed into the first move row. Row height (`rowH`) is computed from the fixed vertical
+band the panel may occupy (`MENU_MIN_TOP` down to `FIELD_H - MENU_BOTTOM_MARGIN`) minus the
+chrome above, divided by the current page's `rowCount` (never more than `MOVE_MENU_MAX_ROWS`)
+via `Phaser.Math.Clamp` against a `20`px floor and a scale-scaled `maxRowH` ceiling. Each
+button's font size (`btnPx`) starts at `Math.min(desiredPx, fitPx)` (`fitPx` derived from
+`rowH`, assuming a label wraps to at most 2 lines), then `drawMoveMenu` measures every label
+on the page with a throwaway `Text` object's `getWrappedText()` and shrinks `btnPx` in
+whole-pixel steps, uniformly across the page, until none of them actually wrap past 2 lines --
+catches a long tuned quasiparticle name (e.g. "Heavy Fermion Meteor") stacked with a `★★★
+!!2x` tag, which `fitPx`'s purely-vertical budget alone doesn't account for, without ever
+letting a label reach a 3rd line the row-height math has no room for.
 
 A move whose id is one of `ANALYTIC_MOVE_IDS` still gets its `★` tag on the button itself (the
 2x/0.5x legend text now lives under the Analytic section header instead, see above); its

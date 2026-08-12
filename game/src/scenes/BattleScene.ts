@@ -157,36 +157,87 @@ function battleStakeForWorld(world: number): number {
   const raw = 50 + ((200 - 50) * (clamped - 1)) / 9;
   return Math.round(raw / 10) * 10;
 }
+// A rival/boss fight's opponent renders bigger (see BOSS_CRYSTAL_SIZE below)
+// than an ordinary wild encounter's 50, and sits a bit further left/down so
+// its wider multi-shard silhouette (art/boss.ts's makeBossCrystal) stays
+// clear of the "Turns" preview widget in the opposite corner. Both crystals
+// sit well above MENU_MIN_TOP (below), so the move menu -- bottom-anchored,
+// see MENU_MIN_TOP's own comment -- can never reach up into either one.
 const OPPONENT_POS = { x: 674, y: 150 };
-// A rival/boss fight's opponent sits a bit further left and renders bigger
-// (see BOSS_CRYSTAL_SIZE below) than an ordinary wild encounter's 50 --
-// shifted off OPPONENT_POS's x so the wider, multi-shard boss silhouette
-// (art/boss.ts's makeBossCrystal) has room before the move menu (MENU_X)
-// starts, rather than overlapping it.
 const BOSS_OPPONENT_POS = { x: 644, y: 155 };
 const BOSS_CRYSTAL_SIZE = 64;
 const PLAYER_POS = { x: 240, y: 345 };
+// Shared HP-bar dimensions -- both the background/fill creation rects in
+// create() and the fill-width math in updateBars() read these same
+// constants, so the two can't silently drift out of sync the way two
+// independent "100" literals once could. The fill sits inset from the
+// background by the same margin on every side (see the (HP_BAR_W -
+// HP_BAR_FILL_W)/2 math at each call site) rather than flush with it.
+const HP_BAR_W = 156;
+const HP_BAR_H = 18;
+const HP_BAR_FILL_W = 150;
+const HP_BAR_FILL_H = 12;
+// Gap between the HP bar and the name label sharing its row (see "Opponent/
+// player clusters" below).
+const HP_BAR_NAME_GAP = 10;
 // Gap before the next turn fires -- long enough for the fuller attack beat
 // (windup + travel + impact shockwave, up to ~810ms for a ring move) in
 // art/attackEffects.ts to land and read clearly before the screen moves on.
 const TURN_GAP_MS = 850;
-// Docked to the right of the field, clear of the opponent's crystal/HP bar
-// above it and the log text below.
-const MENU_X = 670;
-const MENU_TOP = 178;
-const MENU_WIDTH = 176;
+// Move menu: docked bottom-right, its bottom edge fixed at
+// FIELD_H - MENU_BOTTOM_MARGIN and its top edge derived fresh on every
+// drawMoveMenu call from however tall the current page's content actually
+// is (drawMoveMenu's own comment) -- the panel grows upward from that fixed
+// bottom rather than down from a fixed top, so it reads as bottom-right-
+// docked at every page/section instead of just starting high and getting
+// taller. MENU_MIN_TOP caps how far up that growth is ever allowed to
+// reach, below the opponent's crystal in every case, including a rival
+// fight's own bigger, wider boss silhouette -- whose rendered bounds
+// (including its decorative halo/shard art, not just BOSS_CRYSTAL_SIZE's
+// bare number) reach a measured ~223px, verified against a live
+// headless-Chromium render at the largest text-size preset -- so the two
+// can never collide regardless of how tall a page's content gets.
+const MENU_WIDTH = 226;
+const MENU_X = FIELD_W - 8 - MENU_WIDTH;
 const MENU_BOTTOM_MARGIN = 16;
+const MENU_MIN_TOP = 232;
+// Every move-menu page is capped at this many rows, however many moves its
+// section actually has (moveMenuPages splits a larger section into several
+// same-label pages instead) -- a fixed cap keeps every page's row budget
+// (and so its font size) close to identical regardless of content, rather
+// than a few-move page rendering tiny text just because some other section
+// happens to have many more moves.
+const MOVE_MENU_MAX_ROWS = 3;
 // "Turns" preview widget (top-left corner, clear of both HP-bar columns and
 // the log text further down) -- see `BattleScene.drawTurnPreview`.
 const TURN_PREVIEW_X = 20;
 const TURN_PREVIEW_Y = 8;
 const TURN_PREVIEW_LENGTH = 5;
-const TURN_PREVIEW_ICON_SIZE = 18;
-const TURN_PREVIEW_ICON_SPACING = 22;
+const TURN_PREVIEW_ICON_SIZE = 24;
+const TURN_PREVIEW_ICON_SPACING = 28;
 // Whose-turn ring drawn behind each icon (see `drawTurnPreview`) -- radius
 // matches half the icon spacing so adjacent rings meet edge-to-edge without
 // overlapping.
 const TURN_PREVIEW_RING_RADIUS = TURN_PREVIEW_ICON_SPACING / 2;
+// How far the opponent's name label (which grows leftward from the HP bar,
+// see "Opponent/player clusters" below) is kept from the field's left edge
+// at minimum, so a long rival name's wrapped block never reaches into the
+// "Turns" preview widget's own footprint (TURN_PREVIEW_X plus its row of
+// icons, ~158px wide with the sizes above).
+const OPPONENT_NAME_CLEAR_X = 180;
+// Fixed vertical center of the opponent's name+bar row -- unlike the
+// player's own row (which can be pushed down by the optional boost/fail
+// note stacked above it, see create()), nothing ever sits above the
+// opponent's row, so its y never needs to be computed at runtime.
+const OPPONENT_ROW_Y = 46;
+// Ordinary per-turn combat-log line width -- kept clear of the move menu's
+// left edge (MENU_X), which shares the log's own vertical band now that the
+// panel is bottom-anchored rather than confined to a column starting well
+// below the log. The end-of-battle summary (endBattle) uses a much wider
+// value instead: the move menu is already destroyed by the time it's shown
+// (endBattle's first line), so there's no panel left to stay clear of.
+const LOG_WRAP_WIDTH = MENU_X - 60;
+const LOG_WRAP_WIDTH_VICTORY = FIELD_W - 40;
 
 interface BattleInitData {
   wild: Material;
@@ -265,6 +316,12 @@ export class BattleScene extends Phaser.Scene {
 
   create() {
     music.play(`battle:${this.world}`);
+    // Resolved before drawBackground() (which anchors the opponent's ground
+    // shadow off this) and before the opponent's name/bar row below (which
+    // anchors off this.opponentPos.x) -- a rival fight's opponent is that
+    // world's boss, rendered bigger and at a different position than an
+    // ordinary wild encounter (see BOSS_OPPONENT_POS/BOSS_CRYSTAL_SIZE).
+    this.opponentPos = this.isRival ? BOSS_OPPONENT_POS : OPPONENT_POS;
     this.drawBackground();
 
     this.playerMaterial = getPlayerMaterial(this.game.registry);
@@ -298,36 +355,38 @@ export class BattleScene extends Phaser.Scene {
     this.playerStatus = null;
     this.opponentStatus = null;
 
-    // Opponent (top-right)
-    // The bar sits a fixed gap below the *measured* name label rather than a
-    // hardcoded y -- the name's font size (and so its rendered height) scales
-    // with the text-size setting (data/settings.ts's FONT_SCALE_PRESETS, up
-    // to 2x), and a fixed gap tuned for the 1x label overlapped the bar once
-    // a taller label was in play. wordWrap for the same reason a long
-    // material name (e.g. "Twisted Bilayer MoTe₂") needs it: starting this
-    // far right (x=614, 60px left of OPPONENT_POS.x so the label/bar sit
-    // just under the crystal) leaves too little room before the canvas edge
-    // to trust an unbounded single line -- wrapping to a second line grows
-    // `opponentName.height`, which opponentBarY below already reads live, so
-    // the bar/pills still land in the right place either way. `useAdvancedWrap`
-    // additionally lets Phaser break a single word mid-word when needed --
-    // without it, wordWrap only breaks at spaces, so a long single word
-    // (e.g. "Polycrystalline" in every WORLD_RIVALS/RIVAL_9_NAMES boss name)
-    // wouldn't wrap at all and would overflow the box instead. A rival's own
-    // name runs much longer on average than an ordinary wild's, so its label
-    // uses a smaller base size to keep the wrapped block short enough to
-    // clear MENU_TOP even at the largest text-size preset.
-    const opponentName = this.add.text(614, 48, this.wild.name, {
-      fontSize: fontPx(this, this.isRival ? 11 : 14),
-      color: '#ffffff',
-      backgroundColor: 'rgba(0,0,0,0.35)',
-      padding: { x: 4, y: 2 },
-      align: 'center',
-      wordWrap: { width: FIELD_W - 614 - 12, useAdvancedWrap: true },
-    });
-    const opponentBarY = opponentName.y + opponentName.height + 8;
-    this.add.rectangle(614, opponentBarY, 104, 12, 0x222222, 0.55).setOrigin(0, 0.5);
-    this.opponentHpBar = this.add.rectangle(614, opponentBarY, 100, 8, 0x33cc33).setOrigin(0, 0.5);
+    // Opponent (top-right) -- name and HP bar share one row, mirrored from
+    // the player's own row below (name after the bar there, name before the
+    // bar here), both derived from this.opponentPos.x (the same anchor the
+    // crystal itself renders at, OPPONENT_POS or the shifted
+    // BOSS_OPPONENT_POS for a rival fight) rather than an independent
+    // hardcoded x, so the two can never drift apart. The bar is horizontally
+    // centered under/above the crystal; the name is right-aligned
+    // (origin (1, 0.5)) immediately to its left and grows further left as it
+    // wraps, clamped (OPPONENT_NAME_CLEAR_X) well clear of the "Turns"
+    // preview widget in the opposite corner. `useAdvancedWrap` lets Phaser
+    // break a single word mid-word when needed -- without it, wordWrap only
+    // breaks at spaces, so a long single word (e.g. "Polycrystalline" in
+    // every WORLD_RIVALS/RIVAL_9_NAMES boss name) wouldn't wrap at all and
+    // would overflow the box instead. A rival's own name runs much longer on
+    // average than an ordinary wild's, so its label uses a smaller base size
+    // to keep the wrapped block from reaching too far across the field.
+    const opponentBarLeftX = this.opponentPos.x - HP_BAR_W / 2;
+    this.add.rectangle(opponentBarLeftX, OPPONENT_ROW_Y, HP_BAR_W, HP_BAR_H, 0x222222, 0.55).setOrigin(0, 0.5);
+    this.opponentHpBar = this.add
+      .rectangle(opponentBarLeftX + (HP_BAR_W - HP_BAR_FILL_W) / 2, OPPONENT_ROW_Y, HP_BAR_FILL_W, HP_BAR_FILL_H, 0x33cc33)
+      .setOrigin(0, 0.5);
+    const opponentNameRightX = opponentBarLeftX - HP_BAR_NAME_GAP;
+    const opponentName = this.add
+      .text(opponentNameRightX, OPPONENT_ROW_Y, this.wild.name, {
+        fontSize: fontPx(this, this.isRival ? 11 : 14),
+        color: '#ffffff',
+        backgroundColor: 'rgba(0,0,0,0.35)',
+        padding: { x: 4, y: 2 },
+        align: 'right',
+        wordWrap: { width: Math.max(80, opponentNameRightX - OPPONENT_NAME_CLEAR_X), useAdvancedWrap: true },
+      })
+      .setOrigin(1, 0.5);
     // Status pill (Kondo's moves, §5) -- empty/invisible until a status is
     // actually active (renderStatusLabel), so it costs nothing to lay out
     // for the common case where no status is in play.
@@ -335,8 +394,9 @@ export class BattleScene extends Phaser.Scene {
     // box grows upward on a long wrapped line (setLogText) and can reach as
     // far up as this row at a big text-size setting; a higher depth keeps
     // the pill legibly on top rather than getting visually buried under it.
+    const opponentRowBottom = OPPONENT_ROW_Y + Math.max(HP_BAR_H, opponentName.height) / 2;
     this.opponentStatusLabel = this.add
-      .text(614, opponentBarY + 9, '', {
+      .text(opponentBarLeftX, opponentRowBottom + 6, '', {
         fontSize: fontPx(this, 11),
         color: STATUS_PILL_COLOR,
         backgroundColor: 'rgba(0,0,0,0.35)',
@@ -346,22 +406,27 @@ export class BattleScene extends Phaser.Scene {
       .setDepth(5);
     // Passive pill (Franklin's/Bohr's abilities, §5) sits below the status
     // pill, offset from its *measured* height rather than a further
-    // hardcoded gap -- same text-size-scaling reasoning as opponentBarY
-    // above, and the status pill's own height still varies with the
-    // text-size setting even while empty. Static for the whole battle
+    // hardcoded gap -- same text-size-scaling reasoning as the row above,
+    // and the status pill's own height still varies with the text-size
+    // setting even while empty. Static for the whole battle
     // (playerActivePassives/opponentActivePassives never change mid-battle),
     // so its text is set once here (addPassivePill) rather than through a
     // render function like renderStatusLabel, and isn't kept as a field
     // since nothing needs to read it back afterward, same as
     // opponentName/playerName above.
     const opponentStatusBottom = this.opponentStatusLabel.y + this.opponentStatusLabel.height;
-    this.addPassivePill(614, opponentStatusBottom + 4, passivePillText(this.opponentActivePassives), opponentStatusBottom);
+    this.addPassivePill(
+      opponentBarLeftX,
+      opponentStatusBottom + 4,
+      passivePillText(this.opponentActivePassives),
+      opponentStatusBottom,
+      FIELD_W - 8
+    );
 
     // A rival fight's opponent is that world's boss -- render it with the
     // same gigantic, multi-shard look it has standing at the goal tile in
     // the overworld (art/boss.ts's makeBossCrystal), not the plain shared
     // makeCrystal() every ordinary wild encounter uses.
-    this.opponentPos = this.isRival ? BOSS_OPPONENT_POS : OPPONENT_POS;
     this.opponentCrystal = this.isRival
       ? makeBossCrystal(this, BOSS_CRYSTAL_SIZE, this.wild.color, this.wild.variant)
       : makeCrystal(this, 50, this.wild.color, this.wild.variant, { seed: this.wild.name, hybrid: this.wild.hybridParents });
@@ -376,46 +441,62 @@ export class BattleScene extends Phaser.Scene {
     this.playerCrystal.setPosition(PLAYER_POS.x, PLAYER_POS.y);
     this.bobCrystal(this.playerCrystal, PLAYER_POS.y);
 
-    // Everything below the crystal (the optional boost/fail note, the name,
-    // the bar) is stacked from a running y rather than fixed pixel offsets --
-    // same reasoning as the opponent bar above: label height scales with the
-    // text-size setting (up to 2x, data/settings.ts), and fixed offsets tuned
-    // for the smallest size let a taller label collide with whatever sits
-    // below it (the name used to overlap the HP bar; with the boost/fail
-    // note also fixed at a nearby y, moving one without the other just
-    // shifts the collision).
-    let playerY = PLAYER_POS.y + 30;
+    // Everything below the crystal (the optional boost/fail note, then the
+    // name+bar row) is stacked from a running y rather than fixed pixel
+    // offsets -- label height scales with the text-size setting (up to 2x,
+    // data/settings.ts), and a fixed offset tuned for the smallest size lets
+    // a taller note collide with the row below it.
+    let playerContentY = PLAYER_POS.y + 34;
 
     if (this.attackMultiplier !== 1) {
       const boosted = this.attackMultiplier > 1;
       if (boosted) this.addBoostHalo(this.playerCrystal);
       else this.addFailCloud(this.playerCrystal);
 
-      const boostText = this.add.text(190, playerY, boosted ? 'Attack boosted!' : 'Attack weakened...', {
-        fontSize: fontPx(this, 12),
-        color: boosted ? '#88ff88' : '#ff8888',
-        backgroundColor: 'rgba(0,0,0,0.35)',
-        padding: { x: 4, y: 2 },
-      });
-      playerY += boostText.height + 4;
+      const boostText = this.add
+        .text(PLAYER_POS.x, playerContentY, boosted ? 'Attack boosted!' : 'Attack weakened...', {
+          fontSize: fontPx(this, 12),
+          color: boosted ? '#88ff88' : '#ff8888',
+          backgroundColor: 'rgba(0,0,0,0.35)',
+          padding: { x: 4, y: 2 },
+        })
+        .setOrigin(0.5, 0);
+      playerContentY += boostText.height + 4;
     }
 
-    const playerName = this.add.text(190, playerY, this.playerMaterial.name, {
-      fontSize: fontPx(this, 14),
-      color: '#ffffff',
-      backgroundColor: 'rgba(0,0,0,0.35)',
-      padding: { x: 4, y: 2 },
-      wordWrap: { width: FIELD_W - 190 - 12 },
-    });
-    const playerBarY = playerName.y + playerName.height + 8;
-    this.add.rectangle(190, playerBarY, 104, 12, 0x222222, 0.55).setOrigin(0, 0.5);
-    this.playerHpBar = this.add.rectangle(190, playerBarY, 100, 8, 0x33cc33).setOrigin(0, 0.5);
+    // The bar and the name beside it are both vertically centered on this
+    // same row -- name and bar share one row (bar then name, left to
+    // right), mirrored from the opponent's row above, both derived from
+    // PLAYER_POS.x the same way the opponent's row derives from
+    // this.opponentPos.x.
+    const playerRowY = playerContentY + HP_BAR_H / 2;
+    const playerBarLeftX = PLAYER_POS.x - HP_BAR_W / 2;
+    this.add.rectangle(playerBarLeftX, playerRowY, HP_BAR_W, HP_BAR_H, 0x222222, 0.55).setOrigin(0, 0.5);
+    this.playerHpBar = this.add
+      .rectangle(playerBarLeftX + (HP_BAR_W - HP_BAR_FILL_W) / 2, playerRowY, HP_BAR_FILL_W, HP_BAR_FILL_H, 0x33cc33)
+      .setOrigin(0, 0.5);
+    const playerNameX = playerBarLeftX + HP_BAR_W + HP_BAR_NAME_GAP;
+    // Wrap width clamped to stop before MENU_X -- the move menu is
+    // bottom-anchored and shares this same vertical band now (see
+    // MENU_MIN_TOP's own comment), so unlike the top band above (clear of
+    // the panel for the whole battle), a long hybrid name growing rightward
+    // here has to stay clear of it explicitly.
+    const playerName = this.add
+      .text(playerNameX, playerRowY, this.playerMaterial.name, {
+        fontSize: fontPx(this, 14),
+        color: '#ffffff',
+        backgroundColor: 'rgba(0,0,0,0.35)',
+        padding: { x: 4, y: 2 },
+        wordWrap: { width: Math.max(80, MENU_X - playerNameX - 16) },
+      })
+      .setOrigin(0, 0.5);
     // Same depth-above-the-log reasoning as the opponent's pill above -- the
     // player's own bar sits closer to the log's usual bottom-anchored
     // resting spot, so this is the side actually at risk of the log's box
     // climbing up over it on a long wrapped line.
+    const playerRowBottom = playerRowY + Math.max(HP_BAR_H, playerName.height) / 2;
     this.playerStatusLabel = this.add
-      .text(190, playerBarY + 9, '', {
+      .text(playerBarLeftX, playerRowBottom + 6, '', {
         fontSize: fontPx(this, 11),
         color: STATUS_PILL_COLOR,
         backgroundColor: 'rgba(0,0,0,0.35)',
@@ -423,12 +504,15 @@ export class BattleScene extends Phaser.Scene {
       })
       .setOrigin(0, 0)
       .setDepth(5);
-    // Same measured-height stacking (and off-canvas clamp) as the
-    // opponent's passive pill above -- this is the side actually at risk of
-    // it, since the boost/fail note and the crystal itself already eat into
-    // the room below PLAYER_POS.y that this pill is the last row in.
+    // Same measured-height stacking as the opponent's passive pill above --
+    // this is the side actually at risk of it, since the boost/fail note and
+    // the crystal itself already eat into the room below PLAYER_POS.y that
+    // this pill is the last row in. Clamped against MENU_X rather than
+    // FIELD_W (addPassivePill's own maxRightX param) for the same
+    // shared-vertical-band reason the name's own wordWrap width is clamped
+    // above.
     const playerStatusBottom = this.playerStatusLabel.y + this.playerStatusLabel.height;
-    this.addPassivePill(190, playerStatusBottom + 4, passivePillText(this.playerActivePassives), playerStatusBottom);
+    this.addPassivePill(playerBarLeftX, playerStatusBottom + 4, passivePillText(this.playerActivePassives), playerStatusBottom, MENU_X - 12);
 
     const openingLine = this.isRival ? `${this.wild.name} blocks the way onward!` : `A wild ${this.wild.name} appeared!`;
     this.logText = this.add.text(20, LOG_Y, '', {
@@ -436,7 +520,7 @@ export class BattleScene extends Phaser.Scene {
       color: '#ffffff',
       backgroundColor: 'rgba(0,0,0,0.45)',
       padding: { x: 8, y: 6 },
-      wordWrap: { width: 600 },
+      wordWrap: { width: LOG_WRAP_WIDTH },
     });
     this.setLogText(openingLine);
 
@@ -514,64 +598,19 @@ export class BattleScene extends Phaser.Scene {
     ].filter((s) => s.ids.length > 0);
   }
 
-  // How many move rows can ever fit on one move-menu page without running
-  // the panel off the bottom of the field -- the row-height floor
-  // (drawMoveMenu's rowFloor) means a section with enough moves can't just
-  // keep shrinking to fit, unlike everywhere else row height flexes to the
-  // available space. Measured with throwaway Text objects at the *current*
-  // text-size setting (rather than a hand-derived constant) so it keeps
-  // tracking the real title/legend/header height the same way drawMoveMenu's
-  // own rowsTop does, and deliberately assumes the worst case for chrome
-  // that varies by section (pager arrows shown, a section legend line
-  // present) so one shared number is safe to use for every section, not
-  // just whichever one happens to be showing.
-  private maxMoveRowsPerPage(): number {
-    const scale = fontScale(this);
-    const title = this.add.text(0, 0, 'MOVES', { fontSize: fontPx(this, 12), fontStyle: 'bold' });
-    const legend = this.add.text(0, 0, '!! no natural defense (2x)', {
-      fontSize: fontPx(this, 10),
-      wordWrap: { width: MENU_WIDTH - 12 },
-      lineSpacing: 2,
-    });
-    const rowsTop = MENU_TOP + 8 + title.height + 4 + legend.height + 8;
-    title.destroy();
-    legend.destroy();
-
-    const headerScale = Math.min(scale, 1.15);
-    const header = this.add.text(0, 0, 'BUFFS (9/9)', {
-      fontSize: `${Math.round(10 * headerScale)}px`,
-      fontStyle: 'bold',
-    });
-    const arrow = this.add.text(0, 0, '◀', { fontSize: `${Math.round(13 * headerScale)}px`, fontStyle: 'bold' });
-    const sectionLegend = this.add.text(0, 0, '★ right=2x wrong=½x', {
-      fontSize: `${Math.round(8 * headerScale)}px`,
-    });
-    const headerTotalH = Math.max(header.height, arrow.height) + sectionLegend.height + 1 + 1;
-    header.destroy();
-    arrow.destroy();
-    sectionLegend.destroy();
-
-    const rowFloor = 15; // the smaller of drawMoveMenu's two floors -- conservative on purpose
-    const avail = FIELD_H - rowsTop - MENU_BOTTOM_MARGIN - headerTotalH;
-    return Math.max(1, Math.floor(avail / rowFloor));
-  }
-
-  // moveSections() grouped by kind, further split so no single page ever
-  // asks drawMoveMenu's row-height floor to cram in more rows than the
-  // field actually has room for (this is what actually fixes the overflow
-  // -- see maxMoveRowsPerPage's own comment). A section within the limit
-  // stays one page, unchanged. An oversized one (ATTACKS for an
-  // 'adaptive'-type crystal with every attack class learned is the only
-  // section that currently gets this large) splits into evenly-sized pages
-  // sharing the section's own label -- the header's own "(i/N)" page count
-  // already disambiguates "ATTACKS" page 1 from page 2, the same way a
-  // paginated candidate list elsewhere in the game numbers its pages,
-  // rather than needing a second label scheme of its own.
+  // moveSections() split so no single page ever holds more than
+  // MOVE_MENU_MAX_ROWS moves -- a section within the cap stays one page,
+  // unchanged. An oversized one (ATTACKS for an 'adaptive'-type crystal with
+  // every attack class learned is the only section that currently gets this
+  // large) splits into evenly-sized pages sharing the section's own label --
+  // the header's own "(i/N)" page count already disambiguates "ATTACKS" page
+  // 1 from page 2, the same way a paginated candidate list elsewhere in the
+  // game numbers its pages, rather than needing a second label scheme of its
+  // own.
   private moveMenuPages(moveIds: string[]): MoveSection[] {
-    const maxRows = this.maxMoveRowsPerPage();
     return this.moveSections(moveIds).flatMap((section) => {
-      if (section.ids.length <= maxRows) return [section];
-      const pageCount = Math.ceil(section.ids.length / maxRows);
+      if (section.ids.length <= MOVE_MENU_MAX_ROWS) return [section];
+      const pageCount = Math.ceil(section.ids.length / MOVE_MENU_MAX_ROWS);
       const perPage = Math.ceil(section.ids.length / pageCount);
       const pages: MoveSection[] = [];
       for (let i = 0; i < section.ids.length; i += perPage) {
@@ -581,11 +620,10 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
-  // A dedicated docked panel on the right of the field, sized to fit
-  // however many moves are currently usable (getBattleMoves -- the
-  // player's learned moves intersected with what their current crystal
-  // form's physics supports), instead of scattering individually
-  // positioned buttons across the field.
+  // A dedicated docked panel, bottom-right, sized to fit however many moves
+  // are on the current page (getBattleMoves -- the player's learned moves
+  // intersected with what their current crystal form's physics supports),
+  // instead of scattering individually positioned buttons across the field.
   //
   // Move menu matchup info (DESIGN.md §4): each ordinary attack button also
   // shows the move's power and, against *this* opponent, whether the
@@ -603,68 +641,69 @@ export class BattleScene extends Phaser.Scene {
   // arrows and the Left/Right keys (movePageIndex/switchMovePage) -- a
   // move-kind section only produces a page at all if it has at least one
   // usable move, so a player with none of Laughlin's moves bought or no
-  // Kondo move active never sees an empty page, and the pager itself is hidden entirely if there's
-  // only one page to begin with. Showing one page instead of every section
-  // stacked means each page's row height is budgeted only against that
-  // page's own move count, not the worst-case total across every section at
-  // once -- and moveMenuPages further splits any section too large for the
-  // row-height floor to hold on one page (ATTACKS for an 'adaptive'-type
-  // crystal with every attack class learned is the only one that currently
-  // gets this large) into several same-label pages, so that floor is a
-  // legibility limit, not a silent overflow off the bottom of the field.
-  // Called again (destroying the old container first) on every page
-  // switch, not just once at battle start.
+  // Kondo move active never sees an empty page, and the pager itself is
+  // hidden entirely if there's only one page to begin with. Every page holds
+  // at most MOVE_MENU_MAX_ROWS moves (moveMenuPages splits a larger section
+  // into several same-label pages instead), so every page's row budget is
+  // close to identical rather than a few-move page rendering tiny text just
+  // because some other section happens to have more moves in total. Called
+  // again (destroying the old container first) on every page switch, not
+  // just once at battle start.
+  //
+  // Bottom-anchored: the panel's bottom edge is fixed
+  // (FIELD_H - MENU_BOTTOM_MARGIN) and its top edge is derived from however
+  // tall the current page's content actually is, rather than a fixed top the
+  // panel only ever grows downward from. Since the real content height isn't
+  // known until every line/row has been laid out, and every line here is
+  // positioned in absolute field coordinates (not container-local, so a
+  // button's `pointerdown` handler keeps working exactly like every other
+  // interactive text in the scene), this runs the same title/legend/header
+  // layout twice: a throwaway measurement pass (destroyed immediately,
+  // mirroring the measurement pattern moveButtonContent's own width-fit used
+  // to use) that exists only to learn the real chrome/row height so
+  // MENU_TOP can be computed, then the real render pass at the now-known
+  // absolute y.
   private drawMoveMenu(moveIds: string[]) {
     this.moveMenu?.destroy(true);
     const scale = fontScale(this);
+    // Title/legend are capped the same way the section header below already
+    // is (headerScale) -- letting them scale all the way to the 2x 'Large'
+    // preset would eat directly into the row budget below, since both feed
+    // into the panel's own chrome height.
+    const chromeScale = Math.min(scale, 1.35);
+    const headerScale = Math.min(scale, 1.15);
 
     const container = this.add.container(0, 0).setDepth(30);
     this.moveMenu = container;
 
-    // Title/legend built top-down first (running `y`, each line's own
-    // wordWrap-driven height advancing it) so a long opponent name doesn't
-    // wrap the legend into more lines than the old fixed legendH assumed
-    // and run into row 1. The panel background is sized/inserted behind
-    // everything once the real content height is known.
-    let y = MENU_TOP + 8;
-    const title = this.add
-      .text(MENU_X + MENU_WIDTH / 2, y, 'MOVES', {
-        fontSize: fontPx(this, 12),
-        color: '#ffe066',
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5, 0);
-    container.add(title);
-    y += title.height + 4;
-
-    // Kept short and name-independent on purpose -- this line's wrapped
-    // height feeds directly into rowsTop, which shrinks every row's
-    // available space (see the row-height budget below), so its length
-    // can't scale with the current opponent's name (an early version read
-    // "vs <wild.name>: ...", which overflowed the panel off-canvas against
-    // a long name like "Thallium Copper Chloride" or "Polycrystalline
-    // Manganese Bismuth Telluride Golem" at the largest text-size preset).
-    // Only the mismatch symbol needs explaining up here now -- the analytic
-    // ★2x/½x explanation moved to its own section header below (DESIGN.md
-    // §4), so this line no longer has a longer conditional variant to worry
-    // about.
-    const legend = this.add
-      .text(MENU_X + MENU_WIDTH / 2, y, '!! no natural defense (2x)', {
-        fontSize: fontPx(this, 10),
-        color: '#8fa0c9',
-        align: 'center',
-        wordWrap: { width: MENU_WIDTH - 12 },
-        lineSpacing: 2,
-      })
-      .setOrigin(0.5, 0);
-    container.add(legend);
-    y += legend.height + 8;
-
-    const rowsTop = y;
+    const titleStyle = { fontSize: `${Math.round(12 * chromeScale)}px`, fontStyle: 'bold' as const };
+    const legendStyle = {
+      fontSize: `${Math.round(10 * chromeScale)}px`,
+      wordWrap: { width: MENU_WIDTH - 12 },
+      lineSpacing: 2,
+    };
 
     if (moveIds.length === 0) {
+      const measureTitle = this.add.text(0, 0, 'MOVES', titleStyle);
+      const measureLegend = this.add.text(0, 0, '!! no natural defense (2x)', legendStyle);
+      const measureEmpty = this.add.text(0, 0, 'No usable moves', { fontSize: fontPx(this, 11), wordWrap: { width: MENU_WIDTH - 16 } });
+      const height = 8 + measureTitle.height + 4 + measureLegend.height + 8 + measureEmpty.height + 12;
+      measureTitle.destroy();
+      measureLegend.destroy();
+      measureEmpty.destroy();
+      const menuTop = FIELD_H - MENU_BOTTOM_MARGIN - height;
+
+      let y = menuTop + 8;
+      const title = this.add.text(MENU_X + MENU_WIDTH / 2, y, 'MOVES', { ...titleStyle, color: '#ffe066' }).setOrigin(0.5, 0);
+      container.add(title);
+      y += title.height + 4;
+      const legend = this.add
+        .text(MENU_X + MENU_WIDTH / 2, y, '!! no natural defense (2x)', { ...legendStyle, color: '#8fa0c9', align: 'center' })
+        .setOrigin(0.5, 0);
+      container.add(legend);
+      y += legend.height + 8;
       const empty = this.add
-        .text(MENU_X + MENU_WIDTH / 2, rowsTop, 'No usable moves', {
+        .text(MENU_X + MENU_WIDTH / 2, y, 'No usable moves', {
           fontSize: fontPx(this, 11),
           color: '#cfd8ff',
           align: 'center',
@@ -673,7 +712,7 @@ export class BattleScene extends Phaser.Scene {
         .setOrigin(0.5, 0);
       container.add(empty);
       const bg = this.add
-        .rectangle(MENU_X, MENU_TOP, MENU_WIDTH, rowsTop + empty.height + 12 - MENU_TOP, 0x10101c, 0.9)
+        .rectangle(MENU_X, menuTop, MENU_WIDTH, height, 0x10101c, 0.9)
         .setOrigin(0, 0)
         .setStrokeStyle(2, 0xffe066);
       container.addAt(bg, 0);
@@ -685,28 +724,129 @@ export class BattleScene extends Phaser.Scene {
     const section = pages[this.movePageIndex];
     const showPager = pages.length > 1;
     const rowCount = Math.max(section.ids.length, 1);
+    const headerLabelText = showPager ? `${section.label} (${this.movePageIndex + 1}/${pages.length})` : section.label;
 
-    // Header is deliberately capped well below the text-size setting's full
-    // range (headerScale, vs. the title/legend above which still scale
-    // with it uncapped), same reasoning the row-height budget below has --
-    // a header that grew all the way to the 2x 'Large' preset would eat
-    // directly into the row budget and reintroduce the exact overflow the
-    // row-height floor exists to prevent.
-    const headerScale = Math.min(scale, 1.15);
     const HEADER_LEGEND_GAP = 1; // between the header's label and its own legend sub-line
     const HEADER_ROWS_GAP = 1; // from the header (or its legend) down to the first move row
+    const headerStyle = { fontSize: `${Math.round(10 * headerScale)}px`, fontStyle: 'bold' as const };
+    const arrowStyle = { fontSize: `${Math.round(13 * headerScale)}px`, fontStyle: 'bold' as const };
+    const sectionLegendStyle = { fontSize: `${Math.round(8 * headerScale)}px` };
 
-    let rowY = rowsTop;
+    // --- Measurement pass: throwaway Text objects, destroyed immediately,
+    // just to learn how tall this page's chrome (title/legend/header/pager/
+    // section-legend) and rows actually render at the current text-size
+    // setting -- see this method's own comment for why the panel being
+    // bottom-anchored means this has to happen before anything permanent
+    // can be positioned.
+    const measureTitle = this.add.text(0, 0, 'MOVES', titleStyle);
+    const measureLegend = this.add.text(0, 0, '!! no natural defense (2x)', legendStyle);
+    const rowsTop = 8 + measureTitle.height + 4 + measureLegend.height + 8;
+    measureTitle.destroy();
+    measureLegend.destroy();
+
+    const measureHeader = this.add.text(0, 0, headerLabelText, headerStyle);
+    const measureArrow = showPager ? this.add.text(0, 0, '◀', arrowStyle) : null;
+    const measureSectionLegend = section.legend ? this.add.text(0, 0, section.legend, sectionLegendStyle) : null;
+    let headerTotalH = Math.max(measureHeader.height, measureArrow?.height ?? 0) + HEADER_ROWS_GAP;
+    if (measureSectionLegend) headerTotalH += measureSectionLegend.height + HEADER_LEGEND_GAP;
+    measureHeader.destroy();
+    measureArrow?.destroy();
+    measureSectionLegend?.destroy();
+
+    // Row height is a hard geometric budget -- whatever vertical room is
+    // left in the panel's fixed bottom-anchored band (MENU_MIN_TOP down to
+    // FIELD_H - MENU_BOTTOM_MARGIN) after the chrome above, divided across
+    // however many moves this page has -- not something the text-size
+    // setting can just grow past. Each button's font size is derived from
+    // its own row's actual height (fitPx) and clamped against the
+    // setting-scaled desired size (desiredPx) -- growing with the setting
+    // wherever the row has slack, but never past what the row can
+    // physically hold. `rowCount` here can never exceed MOVE_MENU_MAX_ROWS
+    // -- moveMenuPages already split anything larger into further pages --
+    // so every page's budget is close to identical, which is what keeps
+    // `btnPx` close to its `desiredPx` ceiling on every page rather than
+    // collapsing on whichever ones happen to have more moves. Verified
+    // against a live browser render (headless-Chromium harness,
+    // DEVELOPMENT.md) at every text-size preset with an 'adaptive'-type
+    // crystal carrying every attack class at once, the worst case across
+    // every MaterialType's MOVE_COMPATIBILITY entry.
+    const rowFloor = 20;
+    const maxRowH = Math.round(46 * Math.min(scale, 1.35));
+    const budget = FIELD_H - MENU_BOTTOM_MARGIN - MENU_MIN_TOP;
+    const chromeH = rowsTop + headerTotalH + 8; // +8 matches the panel's own trailing bottom pad below
+    const avail = budget - chromeH;
+    const naturalRowH = Math.floor(avail / rowCount);
+    const rowH = Phaser.Math.Clamp(naturalRowH, rowFloor, Math.max(maxRowH, rowFloor));
+    const height = chromeH + rowCount * rowH;
+    const menuTop = FIELD_H - MENU_BOTTOM_MARGIN - height;
+
+    const padY = 5;
+    const fitPx = Math.max(9, Math.floor((rowH - padY * 2) / 2.4));
+    const desiredPx = Math.round(10 * scale);
+    let btnPx = Math.min(desiredPx, fitPx);
+
+    // fitPx above only budgets vertical space (rowH) on the assumption a
+    // label wraps to at most 2 lines -- it says nothing about whether a
+    // long tuned move name plus an Ultimate's ★★★ and a mismatch !!2x tag,
+    // all at once, actually wraps that short at this page's own generous
+    // font size (a 2-row ULTIMATE page has enough vertical room that fitPx
+    // alone can land well above what the panel's fixed width can wrap to 2
+    // lines). Checked with a throwaway Text object (destroyed immediately)
+    // rather than assumed, and shrunk in whole-pixel steps -- uniformly
+    // across the page, same as every row already sharing one btnPx -- until
+    // every label on this page actually wraps to 2 lines or fewer. Verified
+    // against a live browser render (headless-Chromium harness,
+    // DEVELOPMENT.md) at the largest text-size preset with Skłodowska-
+    // Curie's Ultimate moves tuned to 'heavyFermion' (the longest
+    // quasiparticle name) and mismatched against the opponent -- the worst
+    // case across every tunable move.
+    const measure = this.add.text(0, 0, '', { fontStyle: 'bold', wordWrap: { width: MENU_WIDTH - 16 } });
+    const widestLineCount = () => {
+      let lines = 1;
+      section.ids.forEach((moveId) => {
+        measure.setFontSize(`${btnPx}px`).setText(this.moveButtonContent(moveId).text);
+        lines = Math.max(lines, measure.getWrappedText().length);
+      });
+      return lines;
+    };
+    // Floored at the same 9px `fitPx` uses -- legibility wins over the
+    // 2-line guarantee below that floor, on the assumption a label long
+    // enough to still wrap 3 lines at 9px never actually occurs (verified
+    // for every current move/tag combination, see above). A future move
+    // whose tuned name is long enough to break that assumption would need
+    // this floor revisited, not just a bigger MENU_WIDTH.
+    while (btnPx > 9 && widestLineCount() > 2) btnPx -= 1;
+    measure.destroy();
+
+    // --- Render pass: identical layout math to the measurement pass above,
+    // now building the real, permanent, absolutely-positioned elements at
+    // the now-known menuTop.
+    const bg = this.add
+      .rectangle(MENU_X, menuTop, MENU_WIDTH, height, 0x10101c, 0.9)
+      .setOrigin(0, 0)
+      .setStrokeStyle(2, 0xffe066);
+    container.addAt(bg, 0);
+
+    let y = menuTop + 8;
+    const title = this.add.text(MENU_X + MENU_WIDTH / 2, y, 'MOVES', { ...titleStyle, color: '#ffe066' }).setOrigin(0.5, 0);
+    container.add(title);
+    y += title.height + 4;
+    const legend = this.add
+      .text(MENU_X + MENU_WIDTH / 2, y, '!! no natural defense (2x)', { ...legendStyle, color: '#8fa0c9', align: 'center' })
+      .setOrigin(0.5, 0);
+    container.add(legend);
+    y += legend.height + 8;
+
+    let rowY = y;
     let pagerRowH = 0;
     if (showPager) {
-      const arrowPx = `${Math.round(13 * headerScale)}px`;
       const leftArrow = this.add
-        .text(MENU_X + 14, rowY, '◀', { fontSize: arrowPx, color: '#ffe066', fontStyle: 'bold' })
+        .text(MENU_X + 14, rowY, '◀', { ...arrowStyle, color: '#ffe066' })
         .setOrigin(0.5, 0)
         .setInteractive({ useHandCursor: true })
         .on('pointerdown', () => this.switchMovePage(-1));
       const rightArrow = this.add
-        .text(MENU_X + MENU_WIDTH - 14, rowY, '▶', { fontSize: arrowPx, color: '#ffe066', fontStyle: 'bold' })
+        .text(MENU_X + MENU_WIDTH - 14, rowY, '▶', { ...arrowStyle, color: '#ffe066' })
         .setOrigin(0.5, 0)
         .setInteractive({ useHandCursor: true })
         .on('pointerdown', () => this.switchMovePage(1));
@@ -714,92 +854,22 @@ export class BattleScene extends Phaser.Scene {
       container.add(rightArrow);
       pagerRowH = Math.max(leftArrow.height, rightArrow.height);
     }
-    const headerLabelText = showPager
-      ? `${section.label} (${this.movePageIndex + 1}/${pages.length})`
-      : section.label;
     const headerLabel = this.add
-      .text(MENU_X + MENU_WIDTH / 2, rowY, headerLabelText, {
-        fontSize: `${Math.round(10 * headerScale)}px`,
-        color: '#8fa0c9',
-        fontStyle: 'bold',
-      })
+      .text(MENU_X + MENU_WIDTH / 2, rowY, headerLabelText, { ...headerStyle, color: '#8fa0c9' })
       .setOrigin(0.5, 0);
     container.add(headerLabel);
-    // The arrow glyphs render at a larger px than the header label
-    // (arrowPx vs 10*headerScale), so advancing by the label's own height
-    // alone would let the taller arrows bleed into the first move row --
-    // advance by whichever of the two is actually taller.
+    // The arrow glyphs render at a larger px than the header label, so
+    // advancing by the label's own height alone would let the taller arrows
+    // bleed into the first move row -- advance by whichever is taller.
     rowY += Math.max(headerLabel.height, pagerRowH);
     if (section.legend) {
       const legendLine = this.add
-        .text(MENU_X + MENU_WIDTH / 2, rowY, section.legend, {
-          fontSize: `${Math.round(8 * headerScale)}px`,
-          color: '#8fa0c9',
-        })
+        .text(MENU_X + MENU_WIDTH / 2, rowY, section.legend, { ...sectionLegendStyle, color: '#8fa0c9' })
         .setOrigin(0.5, 0);
       container.add(legendLine);
       rowY += legendLine.height + HEADER_LEGEND_GAP;
     }
     rowY += HEADER_ROWS_GAP;
-    const headerTotalH = rowY - rowsTop;
-
-    // Row height is a hard geometric budget -- whatever vertical space is
-    // left in the field below the title/legend/header, divided across
-    // however many moves this one page has -- not something the text-size
-    // setting can just grow past. Each button's font size is derived from
-    // its own row's actual height (fitPx) and clamped against the
-    // setting-scaled desired size (desiredPx) -- growing with the setting
-    // wherever the box has slack (few moves), but never past what the box
-    // can physically hold. `rowCount` here can never exceed
-    // maxMoveRowsPerPage's own limit -- moveMenuPages already split anything
-    // larger into further pages -- so this floor is what sets the smallest
-    // legible row size, not a bound this code has to also keep the panel on
-    // screen against; that's moveMenuPages's job, verified against a live
-    // browser render (headless-Chromium harness, DEVELOPMENT.md) at every
-    // text-size preset with an 'adaptive'-type crystal carrying every
-    // attack class at once, the worst case across every MaterialType's
-    // MOVE_COMPATIBILITY entry.
-    const rowFloor = rowCount <= 7 ? 20 : 15;
-    const avail = FIELD_H - rowsTop - MENU_BOTTOM_MARGIN - headerTotalH;
-    const naturalRowH = Math.floor(avail / rowCount);
-    const maxRowH = Math.round(46 * Math.min(scale, 1.35));
-    const rowH = Phaser.Math.Clamp(naturalRowH, rowFloor, Math.max(maxRowH, rowFloor));
-    const compact = rowH < 40;
-    const height = rowsTop - MENU_TOP + headerTotalH + rowCount * rowH + 8;
-
-    const bg = this.add
-      .rectangle(MENU_X, MENU_TOP, MENU_WIDTH, height, 0x10101c, 0.9)
-      .setOrigin(0, 0)
-      .setStrokeStyle(2, 0xffe066);
-    container.addAt(bg, 0);
-
-    const padY = compact ? 3 : 5;
-    const fitPx = Math.max(9, Math.floor((rowH - padY * 2) / 2.4));
-    const desiredPx = Math.round((compact ? 10 : 12) * scale);
-    let btnPx = Math.min(desiredPx, fitPx);
-
-    // fitPx above only budgets vertical space (rowH) -- it says nothing
-    // about how wide a button's own two-line label renders, so a long tuned
-    // move name (e.g. "Heavy Fermion Eruption", or any move's own name once
-    // an Analytic/Ultimate/mismatch tag is appended) can still render wider
-    // than MENU_WIDTH at a large text-size setting even though its height
-    // fits fine. Measured (not wrapped) for the same reason maxMoveRowsPerPage
-    // measures with throwaway Text objects rather than assuming a width --
-    // wrapping the label onto a 3rd line would run into the row below it,
-    // since rowH's vertical budget already assumes exactly two lines.
-    // Shrunk once, uniformly across the whole page (every row on a page
-    // shares one btnPx already) rather than per-button, so mismatched row
-    // heights never appear.
-    const measure = this.add.text(0, 0, '', { fontStyle: 'bold', padding: { x: 8, y: padY } });
-    let widestLabelPx = 0;
-    section.ids.forEach((moveId) => {
-      measure.setFontSize(`${btnPx}px`).setText(this.moveButtonContent(moveId).text);
-      widestLabelPx = Math.max(widestLabelPx, measure.width);
-    });
-    measure.destroy();
-    if (widestLabelPx > MENU_WIDTH) {
-      btnPx = Math.max(9, Math.floor(btnPx * (MENU_WIDTH / widestLabelPx)));
-    }
 
     section.ids.forEach((moveId) => {
       this.addMoveButton(container, moveId, rowY, btnPx, padY);
@@ -808,21 +878,26 @@ export class BattleScene extends Phaser.Scene {
   }
 
   // The button label text and its color -- shared by addMoveButton (the
-  // real interactive button) and drawMoveMenu's own width-fit measurement
-  // pass above, so the two can never drift apart on what a button's label
-  // actually says. Kondo's self-buff moves (KONDO_MOVE_IDS) get their own
-  // early return: no mismatch check (they never attack, so canHost doesn't
-  // apply -- calling it here would read every one of them as mismatched,
-  // since 'screening' is deliberately off every type's MOVE_COMPATIBILITY
-  // list) and no power number (never read as damage, see MOVES' own
-  // comment), just the move's own fixed `name` -- unlike a tunable move,
-  // none of Kondo's three are ever tuned, so `tunedMoveDisplayName` would
-  // just read back the untuned 'screening' class's own bare label instead
-  // of a real quasiparticle name.
+  // real interactive button) below. Kondo's self-buff moves (KONDO_MOVE_IDS)
+  // get their own early return: no mismatch check (they never attack, so
+  // canHost doesn't apply -- calling it here would read every one of them
+  // as mismatched, since 'screening' is deliberately off every type's
+  // MOVE_COMPATIBILITY list) and no power number (never read as damage, see
+  // MOVES' own comment), just the move's own fixed `name` -- unlike a
+  // tunable move, none of Kondo's three are ever tuned, so
+  // `tunedMoveDisplayName` would just read back the untuned 'screening'
+  // class's own bare label instead of a real quasiparticle name.
+  //
+  // A single "name — details" line rather than a forced two-line name/Pwr
+  // split -- addMoveButton's own wordWrap only breaks this onto a second
+  // line for a genuinely long label (a long tuned name plus an Ultimate's
+  // ★★★ and a mismatch !!2x tag all at once), so a short label like "Phonon
+  // Beam — Pwr 6" renders on one line instead of always reserving room for
+  // two.
   private moveButtonContent(moveId: string): { text: string; color: string } {
     const move = MOVES[moveId];
     if (KONDO_MOVE_IDS.includes(moveId)) {
-      return { text: `${move.name}\n${STATUS_DURATION}-turn buff`, color: STATUS_PILL_COLOR };
+      return { text: `${move.name} — ${STATUS_DURATION}-turn buff`, color: STATUS_PILL_COLOR };
     }
     const mismatch = !canHost(this.wild.type, getTunedMoveClass(this.game.registry, moveId));
     let tag = '';
@@ -840,7 +915,7 @@ export class BattleScene extends Phaser.Scene {
       color = '#ffaa44';
     }
     const displayName = tunedMoveDisplayName(this.game.registry, moveId);
-    return { text: `${displayName}\nPwr ${move.power}${tag}`, color };
+    return { text: `${displayName} — Pwr ${move.power}${tag}`, color };
   }
 
   // One move button -- factored out of drawMoveMenu so the per-section loop
@@ -855,6 +930,7 @@ export class BattleScene extends Phaser.Scene {
         backgroundColor: '#222244',
         padding: { x: 8, y: padY },
         align: 'center',
+        wordWrap: { width: MENU_WIDTH - 16 },
       })
       .setOrigin(0.5, 0)
       .setInteractive({ useHandCursor: true })
@@ -1077,7 +1153,11 @@ export class BattleScene extends Phaser.Scene {
     this.drawGroundDetail(biome);
 
     const shadowColor = shade(biome.ground, -40);
-    this.add.ellipse(OPPONENT_POS.x, 195, 120, 28, shadowColor, 0.35);
+    // Anchored to the live this.opponentPos (set before drawBackground() is
+    // called, see create()'s own comment) rather than the plain OPPONENT_POS
+    // constant, so the shadow still sits under the crystal in a rival fight,
+    // where the opponent actually renders at BOSS_OPPONENT_POS instead.
+    this.add.ellipse(this.opponentPos.x, 195, 120, 28, shadowColor, 0.35);
     this.add.ellipse(PLAYER_POS.x, 392, 130, 30, shadowColor, 0.35);
   }
 
@@ -1131,9 +1211,9 @@ export class BattleScene extends Phaser.Scene {
     outcrop2.setPosition(95, 258);
     outcrop2.setAlpha(0.75);
 
-    // Sits just inside the move menu's left edge (MENU_X = 670).
+    // Sits just inside the move menu's left edge (MENU_X).
     const outcrop3 = makeCrystal(this, 13, shade(biome.hillColor, 25), 'shard');
-    outcrop3.setPosition(630, 252);
+    outcrop3.setPosition(MENU_X - 40, 252);
     outcrop3.setAlpha(0.8);
   }
 
@@ -1143,12 +1223,12 @@ export class BattleScene extends Phaser.Scene {
   // caverns, ...) rather than a hardcoded grass green everywhere.
   private drawGroundDetail(biome: Biome) {
     const g = this.add.graphics();
-    // Spread across the field's visible width -- up to ~645, just inside
-    // the move menu's left edge (MENU_X = 670).
+    // Spread across the field's visible width, staying just inside the
+    // move menu's left edge (MENU_X).
     const spots: [number, number][] = [
-      [36, 300], [624, 290], [549, 340], [111, 380], [25, 420],
-      [645, 400], [356, 300], [271, 440], [453, 420], [527, 460],
-      [153, 300], [592, 220],
+      [36, 300], [590, 290], [549, 340], [111, 380], [25, 420],
+      [MENU_X - 25, 400], [356, 300], [271, 440], [453, 420], [527, 460],
+      [153, 300], [MENU_X - 44, 220],
     ];
     spots.forEach(([x, y], i) => {
       const tuftColor = shade(biome.path, -10 - (y - HORIZON_Y) * 0.15);
@@ -1252,8 +1332,8 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private updateBars() {
-    this.opponentHpBar.width = Math.max(0, (this.opponentHp / this.wild.maxHp) * 100);
-    this.playerHpBar.width = Math.max(0, (this.playerHp / this.playerMaterial.maxHp) * 100);
+    this.opponentHpBar.width = Math.max(0, (this.opponentHp / this.wild.maxHp) * HP_BAR_FILL_W);
+    this.playerHpBar.width = Math.max(0, (this.playerHp / this.playerMaterial.maxHp) * HP_BAR_FILL_W);
   }
 
   // Velocity decides who swings first each round, and by how much faster it
@@ -1458,8 +1538,14 @@ export class BattleScene extends Phaser.Scene {
   // quasiparticle-mismatch hit's "No natural defense against this!" suffix)
   // would otherwise run its second line off the bottom of the canvas at a
   // fixed y -- `restY` lets endBattle's much longer summary reuse the same
-  // clamp with a higher ceiling instead of duplicating it.
-  private setLogText(text: string, restY = LOG_Y) {
+  // clamp with a higher ceiling instead of duplicating it. `wrapWidth`
+  // defaults to the ordinary in-battle width (kept clear of the move menu,
+  // which shares this row's vertical band while a battle is still in
+  // progress) -- endBattle passes the much wider LOG_WRAP_WIDTH_VICTORY
+  // instead, since it destroys the move menu before ever calling this, so
+  // there's no panel left to stay clear of.
+  private setLogText(text: string, restY = LOG_Y, wrapWidth = LOG_WRAP_WIDTH) {
+    this.logText.setWordWrapWidth(wrapWidth);
     this.logText.setText(text);
     const y = Math.max(8, Math.min(restY, FIELD_H - this.logText.height - 16));
     this.logText.setPosition(20, y);
@@ -1830,13 +1916,15 @@ export class BattleScene extends Phaser.Scene {
   // rendered size and corrects position/existence rather than trusting
   // naturalY/x directly -- up to two joined passive names (passivePillText)
   // can run wide enough at the largest text-size setting to push past
-  // FIELD_W if left-anchored at the same x as the column above it (fixed
-  // below by an x clamp), and that same setting can leave the whole stack
-  // above it (boost/fail note + name + bar + status pill, on the player
-  // side) taller than the room actually left under FIELD_H (fixed below by
-  // dropping the pill rather than drawing it back on top of the status pill
-  // it's stacked below).
-  private addPassivePill(x: number, naturalY: number, text: string, statusBottom: number) {
+  // maxRightX if left-anchored at the same x as the column above it (fixed
+  // below by an x clamp; the player's own call site passes MENU_X rather
+  // than FIELD_W, since the bottom-anchored move menu shares that side's
+  // vertical band -- see MENU_MIN_TOP's own comment), and that same setting
+  // can leave the whole stack above it (boost/fail note + name/bar row +
+  // status pill, on the player side) taller than the room actually left
+  // under FIELD_H (fixed below by dropping the pill rather than drawing it
+  // back on top of the status pill it's stacked below).
+  private addPassivePill(x: number, naturalY: number, text: string, statusBottom: number, maxRightX: number) {
     const label = this.add
       .text(x, naturalY, text, {
         fontSize: fontPx(this, 11),
@@ -1860,7 +1948,7 @@ export class BattleScene extends Phaser.Scene {
       label.destroy();
       return;
     }
-    label.setPosition(Math.min(x, FIELD_W - label.width - 8), cappedY);
+    label.setPosition(Math.min(x, maxRightX - label.width), cappedY);
   }
 
   // Quick punchy scale-squash on the target crystal when a projectile
@@ -1924,8 +2012,12 @@ export class BattleScene extends Phaser.Scene {
     // The end-of-battle summary runs several lines longer than an in-combat
     // log line (flavor + token delta + the physics blurb), so it needs a
     // much higher clamp ceiling than setLogText's default LOG_Y -- a big
-    // text size or a long blurb still can't push the bottom off-canvas.
-    this.setLogText(`${flavor}\n${tokenText}\n\n${blurb}\n\nPress SPACE to return.`, 210);
+    // text size or a long blurb still can't push the bottom off-canvas. It
+    // also spreads across nearly the full field width (LOG_WRAP_WIDTH_VICTORY)
+    // rather than the narrower in-battle width -- the move menu (destroyed
+    // above, at the top of this method) is gone by now, so there's nothing
+    // left to dodge.
+    this.setLogText(`${flavor}\n${tokenText}\n\n${blurb}\n\nPress SPACE to return.`, 210, LOG_WRAP_WIDTH_VICTORY);
 
     this.input.keyboard!.once('keydown-SPACE', () => this.scene.start('Overworld', { world: this.world }));
   }

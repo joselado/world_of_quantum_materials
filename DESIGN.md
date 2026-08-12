@@ -491,21 +491,24 @@ stacked. A section only counts as a page at all if it has at least one usable mo
 player with no Laughlin/Skłodowska-Curie moves bought or no Kondo move active never sees an
 empty page, and the pager (◀/▶ buttons plus the Left/Right keys, `switchMovePage`) is hidden
 entirely once there's only one page to switch between. A section with more moves than one
-page can legibly hold (`moveMenuPages`, checked against `maxMoveRowsPerPage`'s row-count
-ceiling) splits into several same-label pages instead -- an 'adaptive'-type crystal (world
-10, see §3) hosting the broadest set of `MoveClass`es of any type (every class except the
-multiferroic/ferroelectric-only `'electromagnon'`/`'ferron'`, deliberately left off its
-`MOVE_COMPATIBILITY` list the same way `'phonon'` is on every list) is the one
-form whose **Attacks** section currently needs this. These groups work differently enough
-from an ordinary attack (and from each other) that a flat stacked list blurred the
-distinction -- and paging instead of stacking means a page's own row height (`drawMoveMenu`'s
-`rowH`) is budgeted only against that one page's move count, not the worst case across every
-section at once. Each button also shows its power and, computed against the current
-opponent's type, a `!!2x` tag when the quasiparticle-mismatch double-damage rule above
-applies, plus a one-line top-of-panel legend spelling out that symbol; a button whose label
-(move name plus any `★`/`★★★`/`!!2x` tag) would render wider than the panel at the current
-text-size setting shrinks its own page's font size to fit, rather than clipping or wrapping
-onto a third line.
+page can hold (`moveMenuPages`, capped at `MOVE_MENU_MAX_ROWS` -- 3 moves per page, always)
+splits into several same-label pages instead -- an 'adaptive'-type crystal (world 10, see §3)
+hosting the broadest set of
+`MoveClass`es of any type (every class except the multiferroic/ferroelectric-only
+`'electromagnon'`/`'ferron'`, deliberately left off its `MOVE_COMPATIBILITY` list the same
+way `'phonon'` is on every list) is the one form whose **Attacks** section currently needs
+this, splitting its 14 moves into five pages (four of 3, one of 2). These groups work
+differently enough from an ordinary attack (and from each other) that a flat stacked list
+blurred the distinction -- and paging instead of stacking means a page's own row height
+(`drawMoveMenu`'s `rowH`) is budgeted only against that one page's move count, not the worst
+case across every section at once; capping every page at the same 3-move limit also keeps
+that budget (and so each button's font size) close to identical from one page to the next.
+Each button also shows its power and, computed against the current opponent's type, a
+`!!2x` tag when the quasiparticle-mismatch double-damage rule above applies, plus a one-line
+top-of-panel legend spelling out that symbol; a button's label (move name plus any
+`★`/`★★★`/`!!2x` tag) wraps onto a second line if it doesn't fit the panel's width on one,
+with the whole page's font size shrunk uniformly, if needed, to keep every label on the
+page within that same 2-line limit rather than a 3rd.
 
 **Battle background per world.** `BattleScene.drawBackground` reads the same
 `art/biomes.ts` table the overworld corridor uses (`getBiome(this.world)`) —
