@@ -10,8 +10,8 @@ import { renderPassiveList } from './passiveList';
 // three passive abilities (data/passives.ts's FRANKLIN_PASSIVE_IDS --
 // Diffraction Shadow, Satellite Reflection, Amorphous Halo) instead of
 // moves: a whole-battle always-on modifier picked once by visiting Franklin,
-// not something chosen from the move menu each turn. Shares renderPassiveList
-// below with showBohrPanel -- see that method's own comment for why it
+// not something chosen from the move menu each turn. Uses the shared
+// renderPassiveList below -- see that function's own comment for why it
 // mirrors showKondoPanel's shape rather than a flat buy-only list.
 export function showFranklinPanel(scene: OverworldScene) {
   scene.dialogueActive = true;

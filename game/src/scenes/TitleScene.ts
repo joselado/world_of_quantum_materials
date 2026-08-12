@@ -62,6 +62,7 @@ export class TitleScene extends Phaser.Scene {
     registry.set('dresselhausUnlockedCrystals', save.dresselhausUnlockedCrystals);
     registry.set('andersonUnlockedHosts', save.andersonUnlockedHosts);
     registry.set('majoranaUnlockedResults', save.majoranaUnlockedResults);
+    registry.set('moveLevels', save.moveLevels);
 
     music.setStyle(save.musicStyle);
     music.play('overworld:1');

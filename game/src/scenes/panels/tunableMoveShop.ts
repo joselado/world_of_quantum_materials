@@ -6,7 +6,7 @@ import {
   MOVES,
   TUNABLE_MOVE_CLASSES,
   quasiparticleLabel,
-  tunedMoveDisplayName,
+  moveDisplayName,
   getTunedMoveClass,
   canHost,
   shopCost,
@@ -66,7 +66,7 @@ export function renderTunableMoveShop(
     const move = MOVES[id];
     const cost = shopCost(move);
     const affordable = tokens >= cost;
-    const displayName = tunedMoveDisplayName(scene.game.registry, id);
+    const displayName = moveDisplayName(scene.game.registry, id);
     const btn = scene.addDialogueButton(container, y, `${displayName} -- ${cost} qumatessence`, () => {
       if ((scene.game.registry.get('qumatessence') as number) < cost) return;
       showMoveClassPicker(scene, id, (chosenClass) => {
@@ -89,7 +89,7 @@ export function renderTunableMoveShop(
     learned.forEach((id) => {
       const assignedClass = assigned[id];
       const activeClass = getTunedMoveClass(scene.game.registry, id);
-      const displayName = tunedMoveDisplayName(scene.game.registry, id);
+      const displayName = moveDisplayName(scene.game.registry, id);
       const label = !assignedClass
         ? `${displayName} -- untuned (pick a quasiparticle)`
         : activeClass === assignedClass
@@ -136,7 +136,7 @@ export function showMoveClassPicker(scene: OverworldScene, moveId: string, onCho
   scene.dialogueContainer = container;
 
   let y = top;
-  const displayName = tunedMoveDisplayName(scene.game.registry, moveId);
+  const displayName = moveDisplayName(scene.game.registry, moveId);
   const title = scene.add
     .text(CANVAS_W / 2, y, `Which quasiparticle should ${displayName} carry?`, {
       fontSize: fontPx(scene, 13),

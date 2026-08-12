@@ -8,7 +8,7 @@ import { makeNoetherAvatar } from '../art/noether';
 import { makeBossCrystal } from '../art/boss';
 import { makeDoorSprite } from '../art/door';
 import { makeBlochAvatar } from '../art/bloch';
-import { makeBohrAvatar } from '../art/bohr';
+import { makeFeynmanAvatar } from '../art/feynman';
 import { makeDresselhausAvatar } from '../art/dresselhaus';
 import { makeLaughlinAvatar } from '../art/laughlin';
 import { makeMajoranaAvatar } from '../art/majorana';
@@ -32,6 +32,8 @@ import {
   enemyStatsForWorld,
   DEFAULT_STATS,
   allCrystals,
+  moveDisplayName,
+  effectiveMovePower,
 } from '../data/materials';
 import { PASSIVES, PASSIVE_OWNERS, PASSIVE_OWNER_LABELS } from '../data/passives';
 import type { PassiveOwner } from '../data/passives';
@@ -60,7 +62,7 @@ import { showNoetherShop } from './panels/noether';
 import { showSklodowskaCuriePanel } from './panels/sklodowskaCurie';
 import { showKondoPanel } from './panels/kondo';
 import { showLaughlinPanel } from './panels/laughlin';
-import { showBohrPanel } from './panels/bohr';
+import { showFeynmanPanel } from './panels/feynman';
 import { showBlochHub } from './panels/bloch';
 import { showDresselhausPanel } from './panels/dresselhaus';
 import { showMajoranaPanel } from './panels/majorana';
@@ -155,8 +157,8 @@ interface WorldSprite {
 // per-world bespoke" approach the map generator and biome table already
 // use. Every guardian sets `open` explicitly: Noether (shop), Bloch
 // (teleport hub), Dresselhaus (transmutation), Laughlin (analytic moves),
-// Majorana (hybrid materials), Anderson (impurity doping, World 6), Bohr
-// (passive abilities), Kondo (self-buff moves), Franklin (passive
+// Majorana (hybrid materials), Anderson (impurity doping, World 6), Feynman
+// (move-leveling, World 7), Kondo (self-buff moves), Franklin (passive
 // abilities, World 9). World 10 hosts Skłodowska-Curie (Ultimate moves), the
 // guardians' own capstone. A future guardian added with no mechanic yet can
 // still leave `open` unset and fall through to the shared showGuardianLore
@@ -271,6 +273,13 @@ export class OverworldScene extends Phaser.Scene {
   // case Bloch's own destination list has to handle, it's the common one
   // (up to 9 destinations at once). Same reset rules.
   blochPage = 0;
+  // Feynman's move-leveling list (§5, World 7): paginated for the same
+  // reason as Bloch/Dresselhaus/Majorana/Anderson above -- every move the
+  // player has ever unlocked across the whole game (SHOP_MOVE_IDS plus
+  // Laughlin's/Kondo's/Anderson's own) can outgrow one panel well before
+  // Superposition Mode's "every crystal" case even comes into it. Same
+  // reset rules.
+  feynmanPage = 0;
 
   // One entry per world with a guardian (see GuardianDef above). Most `open`
   // callbacks call an imported scenes/panels/<guardian>.ts function with `s`
@@ -340,14 +349,14 @@ export class OverworldScene extends Phaser.Scene {
       open: (s) => showAndersonPanel(s),
     },
     7: {
-      id: 'bohr',
-      name: "Bohr's Entanglements",
+      id: 'feynman',
+      name: "Feynman's Diagrammatics",
       labelColor: '#ffa64a',
       strokeColor: 0xffa64a,
-      quote: 'Measure one half of an entangled pair and the other answers instantly -- not by any signal crossing the distance, but because the two were never separately real to begin with.',
-      avatar: makeBohrAvatar,
+      quote: 'A tensor network and a Feynman diagram draw the same trick two ways -- a vertex for every point, a line for every leg.',
+      avatar: makeFeynmanAvatar,
       tile: 'middle',
-      open: (s) => showBohrPanel(s),
+      open: (s) => showFeynmanPanel(s),
     },
     8: {
       id: 'kondo',
@@ -420,6 +429,7 @@ export class OverworldScene extends Phaser.Scene {
     this.andersonPage = 0;
     this.andersonMovePage = 0;
     this.blochPage = 0;
+    this.feynmanPage = 0;
     this.biome = getBiome(this.world);
 
     const state = this.game.registry;
@@ -602,8 +612,8 @@ export class OverworldScene extends Phaser.Scene {
     // above -- there's no per-form gate to respect the way ordinary moves
     // have), but only seed an active pick per owner if nothing's chosen yet
     // for that owner, same reasoning as kondoActiveMove just above -- a
-    // deliberate pick made via showFranklinPanel/showBohrPanel should
-    // survive every later re-level.
+    // deliberate pick made via showFranklinPanel should survive every later
+    // re-level.
     this.game.registry.set('passivesUnlocked', Object.keys(PASSIVES));
     const activeByOwner = { ...((this.game.registry.get('activePassiveByOwner') as Partial<Record<PassiveOwner, string>>) ?? {}) };
     for (const owner of PASSIVE_OWNERS) {
@@ -1798,6 +1808,7 @@ export class OverworldScene extends Phaser.Scene {
     this.andersonPage = 0;
     this.andersonMovePage = 0;
     this.blochPage = 0;
+    this.feynmanPage = 0;
   }
 
   private isRivalDefeated(): boolean {
@@ -2739,8 +2750,8 @@ export class OverworldScene extends Phaser.Scene {
   private showMovesPanel() {
     this.dialogueContainer?.destroy(true);
     const lines = getBattleMoves(this.game.registry).map((id) => {
-      const move = MOVES[id];
-      return `${move.name} -- Pwr ${move.power}`;
+      const power = Math.round(effectiveMovePower(this.game.registry, id));
+      return `${moveDisplayName(this.game.registry, id)} -- Pwr ${power}`;
     });
     this.showInfoPanel('Your Moves', lines.join('\n'));
   }
@@ -2757,10 +2768,10 @@ export class OverworldScene extends Phaser.Scene {
     this.showInfoPanel('Your Stats', body);
   }
 
-  // The "checkable anytime" surface for Franklin's/Bohr's current passive
-  // loadout (data/passives.ts, DESIGN.md §5) -- their own panels already
-  // tag locked/unlocked/active, but a player shouldn't have to walk back to
-  // either guardian just to remember which passive is running. A dedicated
+  // The "checkable anytime" surface for Franklin's current passive
+  // loadout (data/passives.ts, DESIGN.md §5) -- her own panel already
+  // tags locked/unlocked/active, but a player shouldn't have to walk back to
+  // the guardian just to remember which passive is running. A dedicated
   // panel rather than folding this into showStatsPanel/showInfoPanel: two
   // full passive descriptions (data/passives.ts's longest entries run well
   // past 70 characters each) pushed showInfoPanel's single shrink-to-fit

@@ -136,6 +136,12 @@ export interface SaveData {
   dresselhausUnlockedCrystals: string[];
   andersonUnlockedHosts: string[];
   majoranaUnlockedResults: string[];
+  // Feynman's move-leveling (§5, World 7, data/materials.ts's
+  // MOVE_LEVEL_MULTIPLIERS/getMoveLevel/effectiveMovePower) -- moveId ->
+  // level (0-3), missing entry means never attempted (level 0). Permanent
+  // once a level is reached, the same "first time costs, permanent
+  // afterward" shape every other guardian's one-time unlock already uses.
+  moveLevels: Partial<Record<string, 0 | 1 | 2 | 3>>;
 }
 
 export function defaultSave(): SaveData {
@@ -166,6 +172,7 @@ export function defaultSave(): SaveData {
     dresselhausUnlockedCrystals: [],
     andersonUnlockedHosts: [],
     majoranaUnlockedResults: [],
+    moveLevels: {},
   };
 }
 
@@ -290,6 +297,7 @@ export function persistFromRegistry(registry: RegistryLike) {
     dresselhausUnlockedCrystals: (registry.get('dresselhausUnlockedCrystals') as string[]) ?? [],
     andersonUnlockedHosts: (registry.get('andersonUnlockedHosts') as string[]) ?? [],
     majoranaUnlockedResults: (registry.get('majoranaUnlockedResults') as string[]) ?? [],
+    moveLevels: (registry.get('moveLevels') as Partial<Record<string, 0 | 1 | 2 | 3>>) ?? {},
   };
   try {
     // schemaVersion is a wire-format-only stamp read by loadSave() to know

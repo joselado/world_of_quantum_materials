@@ -108,7 +108,7 @@ for what each one does.
 </tr>
 <tr>
 <td><img src="screenshots/mentor-laughlin.png" width="300" alt="An early tutorial tip introducing the guardians"></td>
-<td><img src="screenshots/mentor-bohr.png" width="300" alt="Bohr's passive-ability panel"></td>
+<td><img src="screenshots/mentor-feynman.png" width="300" alt="Feynman's move-leveling panel"></td>
 </tr>
 <tr>
 <td><img src="screenshots/mentor-anderson.png" width="300" alt="Anderson's impurity-doping panel"></td>

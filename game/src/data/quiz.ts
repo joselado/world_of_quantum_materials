@@ -2346,6 +2346,32 @@ export function getAnalyticQuestion(visitedWorlds: number[]): MaterialQuestion {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
+// Feynman's move-leveling streak (§5, World 7) draws from the same
+// visited-world-filtered ANALYTIC_QUESTIONS pool getAnalyticQuestion uses
+// above, rather than Skłodowska-Curie's unrestricted ULTIMATE_QUESTIONS --
+// World 7 has a course topic of its own (unlike World 10's topic-less
+// finale), so the same "only quiz what a player could plausibly already
+// know" restriction applies. Returns `count` questions in a row -- can run
+// as long as 8 (the Infinite tier's own streak length), well past the pool a
+// tight visited-world filter can leave early on, so unlike
+// getUltimateQuestions this allows the pool to repeat overall, just never
+// the same question twice back to back.
+export function getAnalyticQuestions(visitedWorlds: number[], count: number): MaterialQuestion[] {
+  const eligible = ANALYTIC_QUESTIONS.filter((q) => q.worlds.some((w) => visitedWorlds.includes(w)));
+  const pool = eligible.length > 0 ? eligible : ANALYTIC_QUESTIONS;
+  const questions: MaterialQuestion[] = [];
+  for (let i = 0; i < count; i++) {
+    let pick = pool[Math.floor(Math.random() * pool.length)];
+    if (pool.length > 1) {
+      while (pick === questions[questions.length - 1]) {
+        pick = pool[Math.floor(Math.random() * pool.length)];
+      }
+    }
+    questions.push(pick);
+  }
+  return questions;
+}
+
 // Skłodowska-Curie's two "Ultimate" moves (§5, World 10) -- using one asks
 // 3 of these in a row, ALL must be correct or the move whiffs entirely (no
 // partial-credit multiplier the way Analytic moves have). Full breadth, no

@@ -4,7 +4,7 @@ import { makeKondoAvatar } from '../../art/kondo';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
 import { fontPx, fontScale } from '../../ui/text';
-import { MOVES, KONDO_MOVE_IDS, shopCost } from '../../data/materials';
+import { MOVES, KONDO_MOVE_IDS, shopCost, moveDisplayName } from '../../data/materials';
 import { persistFromRegistry } from '../../data/save';
 
 // Kondo stands at world 8's middle tile (WORLD_GUARDIANS) and sells three
@@ -149,9 +149,9 @@ function renderKondoMoves(scene: OverworldScene, container: Phaser.GameObjects.C
   if (learned.length > 0) {
     if (forSale.length > 0) y += 6;
     learned.forEach((id) => {
-      const move = MOVES[id];
+      const name = moveDisplayName(scene.game.registry, id);
       const isActive = id === activeMove;
-      const label = isActive ? `${move.name} (active)` : `Make ${move.name} active`;
+      const label = isActive ? `${name} (active)` : `Make ${name} active`;
       const btn = scene.addDialogueButtonAt(
         container,
         CANVAS_W / 2,

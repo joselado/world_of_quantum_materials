@@ -184,7 +184,6 @@ function genGuardianPassives() {
   };
   return {
     franklinTable: section('franklin', "Franklin's passives"),
-    bohrTable: section('bohr', "Bohr's passives"),
   };
 }
 
@@ -211,5 +210,5 @@ applyGenerated('crystals.md', { WORLDS: worldsBlock, RIVALS_TABLE: rivalsTable }
 const { recipesTable } = genHybrids();
 applyGenerated('hybrids.md', { RECIPES_TABLE: recipesTable });
 
-const { franklinTable, bohrTable } = genGuardianPassives();
-applyGenerated('guardians.md', { FRANKLIN_PASSIVES_TABLE: franklinTable, BOHR_PASSIVES_TABLE: bohrTable });
+const { franklinTable } = genGuardianPassives();
+applyGenerated('guardians.md', { FRANKLIN_PASSIVES_TABLE: franklinTable });

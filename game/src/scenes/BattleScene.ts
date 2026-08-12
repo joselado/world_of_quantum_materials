@@ -15,6 +15,10 @@ import {
   getBattleMoves,
   getTunedMoveClass,
   tunedMoveDisplayName,
+  moveDisplayName,
+  effectiveMovePower,
+  getMoveLevel,
+  MOVE_LEVEL_MULTIPLIERS,
   enemyStatsForWorld,
   ANALYTIC_MOVE_IDS,
   ULTIMATE_MOVE_IDS,
@@ -54,9 +58,19 @@ interface ActiveStatus {
 }
 
 const STATUS_DURATION = 3;
-const SHIELD_DAMAGE_MULT = 0.7; // Shielded: incoming damage to the buffed side, multiplied down
-const EVASION_CHANCE = 0.3; // Evasive: chance an incoming hit against the buffed side deals zero damage instead -- same 30%-ish magnitude the other two buffs' 0.7 multiplier implies (a 30% mitigation budget), picked from the 30-35% range a meaningful-but-not-dominant dodge chance should sit in
-const REGEN_HEAL_FRACTION = 0.1; // Regenerating: fraction of the buffed side's own max HP healed on each tick (3 ticks over the buff's life -- roughly Bohr's Shared State ~22%-of-damage order of magnitude, spread out rather than landing in one hit)
+// Each of Kondo's three buffs has a base mitigation strength (at move level
+// 0, i.e. before Feynman's leveling, §5 World 7) and a hard cap it can never
+// reach/exceed regardless of level, so even an "Infinite"-tier buff leaves
+// real risk on the table rather than reaching full immunity/certainty --
+// see BattleScene.kondoMitigationFraction, which scales the base by the
+// caster's own MOVE_LEVEL_MULTIPLIERS the same way effectiveMovePower
+// scales an ordinary attack's power.
+const SHIELD_BASE_REDUCTION = 0.2; // Shielded: base fraction of incoming damage reduced
+const SHIELD_MAX_REDUCTION = 0.6; // level 3 (Infinite, 3x multiplier): 0.2 * 3 = 0.6 exactly, the cap doesn't actually bind
+const EVASION_BASE_CHANCE = 0.2; // Evasive: base chance an incoming hit against the buffed side deals zero damage instead -- same magnitude family as Shielded's own base reduction, deliberately modest so an unleveled buff is a meaningful-but-not-dominant mitigation
+const EVASION_MAX_CHANCE = 0.6; // same reasoning as SHIELD_MAX_REDUCTION
+const REGEN_BASE_HEAL_FRACTION = 0.1; // Regenerating: base fraction of the buffed side's own max HP healed on each tick (3 ticks over the buff's life, spread out rather than landing in one hit)
+const REGEN_MAX_HEAL_FRACTION = 0.3; // level 3: 0.1 * 3 = 0.3 exactly, the cap doesn't actually bind either -- kept defensively in case tiers/multipliers ever change
 
 // Which buff a given Kondo move id deterministically applies -- no
 // randomness, the player picks the effect by picking the move (and, since
@@ -101,16 +115,14 @@ const STATUS_PILL_COLOR = '#ff8f6a';
 
 // Passive pill color -- a fixed blue-violet, deliberately far from
 // STATUS_PILL_COLOR's rust-orange so an always-on passive reads as visually
-// distinct from a ticking status at a glance (Bohr's own guardian color is
-// itself a near-match for rust-orange, so it wouldn't have served that
-// purpose).
+// distinct from a ticking status at a glance.
 const PASSIVE_PILL_COLOR = '#8fa0ff';
 
-// A side can hold one Franklin passive and one Bohr passive at once
-// (independent slots, one per data/passives.ts's PassiveOwner) -- joined
-// onto a single pill line rather than one pill per passive, same '' when
-// empty convention STATUS_INFO's pill uses. PASSIVES[id]? rather than a
-// direct index -- every other read of playerActivePassives/
+// A side can hold one Franklin passive at a time (data/passives.ts's one
+// current PassiveOwner) -- joined onto a single pill line the same '' when
+// empty convention STATUS_INFO's pill uses, so a future second owner could
+// stack onto the same line without changing this function. PASSIVES[id]?
+// rather than a direct index -- every other read of playerActivePassives/
 // opponentActivePassives (activePassives() below) only ever calls .has(id),
 // so this is the first spot that actually dereferences one; guarding it
 // means a stale id left over from a since-renamed passive in an old save
@@ -123,11 +135,11 @@ function passivePillText(ids: Set<string>): string {
     .join(' · ');
 }
 
-// Franklin's and Bohr's passive abilities (§5, data/passives.ts) -- unlike
-// Kondo's status effects above, a passive has no duration/tick-down: it's
-// simply on for the whole battle it's active for, so each one is just a
-// flat multiplier/flag term read directly off whichever side currently has
-// it active (this.activePassives(isPlayer), populated once in create() from
+// Franklin's passive abilities (§5, data/passives.ts) -- unlike Kondo's
+// status effects above, a passive has no duration/tick-down: it's simply on
+// for the whole battle it's active for, so each one is just a flat
+// multiplier/flag term read directly off whichever side currently has it
+// active (this.activePassives(isPlayer), populated once in create() from
 // registry/save activePassiveByOwner and never touched again mid-battle).
 // Only the player can ever have one today, but every hook below reads
 // generically off `isPlayer`/`defenderIsPlayer` the same way every other
@@ -135,8 +147,6 @@ function passivePillText(ids: Set<string>): string {
 const FRACTIONAL_GUARD_DAMAGE_MULT = 0.85; // Diffraction Shadow (id fractionalGuard): incoming damage taken by the holder
 const ANYON_ECHO_FRACTION = 0.3; // Satellite Reflection (id anyonEcho): bonus follow-up tick, as a fraction of the crit that triggered it
 const EDGE_CURRENT_MISMATCH_MULT = 1.5; // Amorphous Halo (id edgeCurrent): softened quasiparticle-mismatch multiplier (normally 2x)
-const NONLOCAL_CORRELATION_FRACTION = 0.5; // Nonlocal Correlation: share of the opponent's own Quantumness added to Correlation
-const SHARED_STATE_HEAL_FRACTION = 0.22; // Shared State: share of dealt damage returned as healing
 
 // Field size is the shared canvas size (config/screen.ts) -- aliased to
 // FIELD_W/FIELD_H here since every layout constant below reads as "a
@@ -290,7 +300,7 @@ export class BattleScene extends Phaser.Scene {
   private opponentStatus: ActiveStatus | null = null;
   private playerStatusLabel!: Phaser.GameObjects.Text;
   private opponentStatusLabel!: Phaser.GameObjects.Text;
-  // Franklin's/Bohr's passives (§5) -- computed once in create() from
+  // Franklin's passives (§5) -- computed once in create() from
   // registry/save activePassiveByOwner and held for the whole battle (no
   // tick-down, unlike playerStatus/opponentStatus above).
   // opponentActivePassives stays empty today (no WORLD_CRYSTALS entry has
@@ -298,10 +308,6 @@ export class BattleScene extends Phaser.Scene {
   // activePassives() below reads symmetrically off either side.
   private playerActivePassives = new Set<string>();
   private opponentActivePassives = new Set<string>();
-  // Bohr's Correlated Response (§5): set on the defender's side the instant
-  // the opponent lands a crit against them, consumed by that side's own very
-  // next resolveHit call regardless of which move it is.
-  private guaranteedCritNext = { player: false, opponent: false };
 
   constructor() {
     super('Battle');
@@ -328,24 +334,11 @@ export class BattleScene extends Phaser.Scene {
     this.playerStats = getPlayerStats(this.game.registry);
     this.enemyStats = enemyStatsForWorld(this.world);
 
-    // Franklin's/Bohr's active passives (§5) -- read once here, held for the
-    // whole battle. Nonlocal Correlation needs recomputing fresh every battle
-    // (rather than once at save time) since enemyStats.quantumness above is
-    // itself recomputed fresh per battle -- spread into a *new* object rather
-    // than mutating playerStats.correlation in place, since playerStats is
-    // the same object getPlayerStats(registry) returned: mutating it would
-    // permanently ratchet the save's own Correlation value the next time
-    // anything persists the registry.
+    // Franklin's active passives (§5) -- read once here, held for the whole
+    // battle.
     const activeByOwner = (this.game.registry.get('activePassiveByOwner') as Partial<Record<PassiveOwner, string>>) ?? {};
     this.playerActivePassives = new Set(Object.values(activeByOwner).filter((id): id is string => !!id));
     this.opponentActivePassives = new Set();
-    if (this.playerActivePassives.has('nonlocalCorrelation')) {
-      this.playerStats = {
-        ...this.playerStats,
-        correlation: this.playerStats.correlation + Math.round(this.enemyStats.quantumness * NONLOCAL_CORRELATION_FRACTION),
-      };
-    }
-    this.guaranteedCritNext = { player: false, opponent: false };
 
     const savedHp = (this.game.registry.get('playerHp') as number) || this.playerMaterial.maxHp;
     this.playerHp = Math.min(savedHp, this.playerMaterial.maxHp);
@@ -404,7 +397,7 @@ export class BattleScene extends Phaser.Scene {
       })
       .setOrigin(0, 0)
       .setDepth(5);
-    // Passive pill (Franklin's/Bohr's abilities, §5) sits below the status
+    // Passive pill (Franklin's abilities, §5) sits below the status
     // pill, offset from its *measured* height rather than a further
     // hardcoded gap -- same text-size-scaling reasoning as the row above,
     // and the status pill's own height still varies with the text-size
@@ -883,21 +876,22 @@ export class BattleScene extends Phaser.Scene {
   // canHost doesn't apply -- calling it here would read every one of them
   // as mismatched, since 'screening' is deliberately off every type's
   // MOVE_COMPATIBILITY list) and no power number (never read as damage, see
-  // MOVES' own comment), just the move's own fixed `name` -- unlike a
-  // tunable move, none of Kondo's three are ever tuned, so
-  // `tunedMoveDisplayName` would just read back the untuned 'screening'
-  // class's own bare label instead of a real quasiparticle name.
+  // MOVES' own comment), just moveDisplayName's own fallback for a
+  // 'screening'-class move (its fixed name plus Feynman's level prefix, see
+  // that function's own comment for why it can't read tunedMoveDisplayName
+  // directly here).
   //
   // A single "name — details" line rather than a forced two-line name/Pwr
   // split -- addMoveButton's own wordWrap only breaks this onto a second
   // line for a genuinely long label (a long tuned name plus an Ultimate's
   // ★★★ and a mismatch !!2x tag all at once), so a short label like "Phonon
   // Beam — Pwr 6" renders on one line instead of always reserving room for
-  // two.
+  // two. Always the player's own move menu, so Feynman's level prefix/
+  // effective power apply unconditionally here (unlike resolveHit's own
+  // isPlayer-gated read, see that method's own comment).
   private moveButtonContent(moveId: string): { text: string; color: string } {
-    const move = MOVES[moveId];
     if (KONDO_MOVE_IDS.includes(moveId)) {
-      return { text: `${move.name} — ${STATUS_DURATION}-turn buff`, color: STATUS_PILL_COLOR };
+      return { text: `${moveDisplayName(this.game.registry, moveId)} — ${STATUS_DURATION}-turn buff`, color: STATUS_PILL_COLOR };
     }
     const mismatch = !canHost(this.wild.type, getTunedMoveClass(this.game.registry, moveId));
     let tag = '';
@@ -914,8 +908,9 @@ export class BattleScene extends Phaser.Scene {
       tag += ' !!2x';
       color = '#ffaa44';
     }
-    const displayName = tunedMoveDisplayName(this.game.registry, moveId);
-    return { text: `${displayName} — Pwr ${move.power}${tag}`, color };
+    const displayName = moveDisplayName(this.game.registry, moveId);
+    const power = Math.round(effectiveMovePower(this.game.registry, moveId));
+    return { text: `${displayName} — Pwr ${power}${tag}`, color };
   }
 
   // One move button -- factored out of drawMoveMenu so the per-section loop
@@ -973,7 +968,7 @@ export class BattleScene extends Phaser.Scene {
     let y = top + 16;
 
     const title = this.add
-      .text(FIELD_W / 2, y, tunedMoveDisplayName(this.game.registry, move.id), {
+      .text(FIELD_W / 2, y, moveDisplayName(this.game.registry, move.id), {
         fontSize: fontPx(this, 15),
         color: '#ffe066',
         fontStyle: 'bold',
@@ -1064,7 +1059,7 @@ export class BattleScene extends Phaser.Scene {
         .text(
           FIELD_W / 2,
           y,
-          `${tunedMoveDisplayName(this.game.registry, move.id)} -- question ${index}/${questions.length}`,
+          `${moveDisplayName(this.game.registry, move.id)} -- question ${index}/${questions.length}`,
           { fontSize: fontPx(this, 15), color: '#ff66ff', fontStyle: 'bold' }
         )
         .setOrigin(0.5, 0);
@@ -1609,20 +1604,8 @@ export class BattleScene extends Phaser.Scene {
         : 2
       : 1;
 
-    // Bohr's Correlated Response (§5): a guaranteed crit set by the
-    // defender's own previous turn (they were crit against while it was
-    // active) is consumed here, before the ordinary roll, rather than after
-    // -- a natural crit shouldn't burn a guaranteed one that would have
-    // landed anyway.
-    const guaranteed = this.guaranteedCritNext[isPlayer ? 'player' : 'opponent'];
-    if (guaranteed) this.guaranteedCritNext[isPlayer ? 'player' : 'opponent'] = false;
     const critChance = Phaser.Math.Clamp((attackerStats.quantumness - BASE_STAT) * 0.02, 0, 0.5);
-    const crit = guaranteed || Math.random() < critChance;
-    // Landing a crit against a side with Correlated Response active arms
-    // *their* own next move to guarantee a crit in return.
-    if (crit && this.activePassives(defenderIsPlayer).has('correlatedResponse')) {
-      this.guaranteedCritNext[defenderIsPlayer ? 'player' : 'opponent'] = true;
-    }
+    const crit = Math.random() < critChance;
 
     const attackMult = isPlayer ? this.attackMultiplier : 1;
     // Kondo's Screening Pulse buff (§5): incoming damage to whichever side
@@ -1637,8 +1620,13 @@ export class BattleScene extends Phaser.Scene {
     const fractionalGuardMult = this.activePassives(defenderIsPlayer).has('fractionalGuard')
       ? FRACTIONAL_GUARD_DAMAGE_MULT
       : 1;
+    // Feynman's move-leveling (§5): a leveled move's own base power is
+    // scaled up by its current tier's multiplier -- the player's own save
+    // state only, so an opponent's copy of the same move id is never
+    // affected by it.
+    const power = isPlayer ? effectiveMovePower(this.game.registry, moveId) : move.power;
     const dmg = Math.round(
-      move.power *
+      power *
         mismatchMult *
         attackMult *
         bonusMultiplier *
@@ -1649,11 +1637,11 @@ export class BattleScene extends Phaser.Scene {
         Phaser.Math.FloatBetween(0.85, 1.15)
     );
     // Kondo's Scattering Drag buff (§5): a defender with Evasive active has
-    // a flat chance to dodge this hit entirely regardless of the damage just
-    // computed above -- checked once per hit, independent of mismatch/crit
-    // (a dodged hit never happened, it doesn't matter how hard it would have
-    // landed).
-    const evaded = this.statusEvasionActive(defenderIsPlayer) && Math.random() < EVASION_CHANCE;
+    // a chance (statusEvasionChance -- 0 when not evasive) to dodge this hit
+    // entirely regardless of the damage just computed above -- checked once
+    // per hit, independent of mismatch/crit (a dodged hit never happened, it
+    // doesn't matter how hard it would have landed).
+    const evaded = Math.random() < this.statusEvasionChance(defenderIsPlayer);
 
     const from = isPlayer ? PLAYER_POS : this.opponentPos;
     const to = isPlayer ? this.opponentPos : PLAYER_POS;
@@ -1671,7 +1659,11 @@ export class BattleScene extends Phaser.Scene {
     const applyResult = () => {
       const who = isPlayer ? 'You' : `Wild ${this.wild.name}`;
       const defenderName = defenderIsPlayer ? this.playerMaterial.name : this.wild.name;
-      const displayName = tunedMoveDisplayName(this.game.registry, moveId);
+      // Feynman's level prefix (§5) is the player's own save state -- an
+      // opponent's own use of the same move id never carries it.
+      const displayName = isPlayer
+        ? moveDisplayName(this.game.registry, moveId)
+        : tunedMoveDisplayName(this.game.registry, moveId);
       // The attacker's own Kondo buff (§5) ticks/casts regardless of whether
       // this particular hit lands -- it's the attacker's own technique, not
       // something that depends on the defender. Gated by `tickStatus` (see
@@ -1706,24 +1698,10 @@ export class BattleScene extends Phaser.Scene {
         }
       }
 
-      // Bohr's Shared State (§5): a share of the damage the attacker just
-      // dealt (the primary hit only, not Anyon Echo's own bonus tick above)
-      // comes back to them as healing, capped at their own max HP.
-      let healText = '';
-      if (this.activePassives(isPlayer).has('sharedState')) {
-        const healAmount = Math.round(dmg * SHARED_STATE_HEAL_FRACTION);
-        const maxHp = isPlayer ? this.playerMaterial.maxHp : this.wild.maxHp;
-        const currentHp = isPlayer ? this.playerHp : this.opponentHp;
-        if (healAmount > 0 && currentHp < maxHp) {
-          this.applyHeal(isPlayer, healAmount, maxHp);
-          healText = ` ${PASSIVES.sharedState.name} heals ${who} for ${healAmount}!`;
-        }
-      }
-
       this.setLogText(
         whiff
           ? `${who}'s ${displayName} fizzles out -- the pattern never locked!`
-          : `${who} used ${displayName}! (${dmg} dmg)${mismatchText}${critText}${buffText}${echoText}${healText}`
+          : `${who} used ${displayName}! (${dmg} dmg)${mismatchText}${critText}${buffText}${echoText}`
       );
     };
 
@@ -1767,7 +1745,7 @@ export class BattleScene extends Phaser.Scene {
     checkEndOrContinue();
   }
 
-  // Which of Franklin's/Bohr's passives (data/passives.ts) are currently
+  // Which of Franklin's passives (data/passives.ts) are currently
   // active for a given side -- read once per battle in create(), see that
   // field's own comment. Generic over `isPlayer` the same way
   // getStatus/statusShieldMultiplier below are, even though only the player
@@ -1792,8 +1770,9 @@ export class BattleScene extends Phaser.Scene {
     this.updateBars();
   }
 
-  // Bohr's Shared State (§5) -- the healing counterpart to applyDamage
-  // above, capped at `maxHp` rather than clamped at 0.
+  // Regenerating's per-tick heal (applyRegenTick, §4/§5) -- the healing
+  // counterpart to applyDamage above, capped at `maxHp` rather than clamped
+  // at 0.
   private applyHeal(toPlayer: boolean, amount: number, maxHp: number) {
     if (toPlayer) {
       this.playerHp = Math.min(maxHp, this.playerHp + amount);
@@ -1816,11 +1795,26 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private statusShieldMultiplier(isPlayer: boolean): number {
-    return this.getStatus(isPlayer)?.kind === 'shielded' ? SHIELD_DAMAGE_MULT : 1;
+    if (this.getStatus(isPlayer)?.kind !== 'shielded') return 1;
+    return 1 - this.kondoMitigationFraction(isPlayer, 'screeningCloud', SHIELD_BASE_REDUCTION, SHIELD_MAX_REDUCTION);
   }
 
-  private statusEvasionActive(isPlayer: boolean): boolean {
-    return this.getStatus(isPlayer)?.kind === 'evasive';
+  private statusEvasionChance(isPlayer: boolean): number {
+    if (this.getStatus(isPlayer)?.kind !== 'evasive') return 0;
+    return this.kondoMitigationFraction(isPlayer, 'scatteringDrag', EVASION_BASE_CHANCE, EVASION_MAX_CHANCE);
+  }
+
+  // Scales one of Kondo's three buffs' base mitigation strength by the
+  // *caster's own* level of the specific move that cast it (Feynman's
+  // move-leveling, §5), capped at `cap` -- gated on `isPlayer` the same way
+  // `effectiveMovePower` is: `moveLevels` is the player's own save state,
+  // and no wild ever casts a Kondo move in the first place (see
+  // `KONDO_MOVE_IDS`' own comment in data/materials.ts), so an opponent's
+  // copy of the same buff always reads the flat, unleveled `base` instead.
+  private kondoMitigationFraction(isPlayer: boolean, moveId: string, base: number, cap: number): number {
+    if (!isPlayer) return base;
+    const multiplier = MOVE_LEVEL_MULTIPLIERS[getMoveLevel(this.game.registry, moveId)];
+    return Math.min(base * multiplier, cap);
   }
 
   // Resolves one of Kondo's three self-buff moves (§5, KONDO_MOVE_IDS) --
@@ -1844,7 +1838,10 @@ export class BattleScene extends Phaser.Scene {
     playAttackEffect(this, move.class, pos, pos, () => this.flashHit(targetCrystal), 1);
 
     const buffText = tickStatus ? this.applyOrTickBuff(move, isPlayer) : '';
-    this.setLogText(`${who} used ${move.name}!${buffText}`);
+    // Feynman's level prefix (§5) is the player's own save state -- see
+    // resolveHit's own applyResult for the same isPlayer-gated read.
+    const displayName = isPlayer ? moveDisplayName(this.game.registry, move.id) : move.name;
+    this.setLogText(`${who} used ${displayName}!${buffText}`);
 
     onDone();
   }
@@ -1889,14 +1886,16 @@ export class BattleScene extends Phaser.Scene {
   }
 
   // Coherence Cascade's Regenerating buff (§5) -- heals the buffed side a
-  // fraction of its own max HP (REGEN_HEAL_FRACTION), called once per tick
-  // from applyOrTickBuff above, capped so it never overheals past `maxHp`.
-  // Returns '' (no log clause) once the side is already at full HP, the same
-  // "nothing to report" convention Bohr's Shared State heal uses.
+  // fraction of its own max HP (REGEN_BASE_HEAL_FRACTION, scaled by the
+  // caster's own move level via kondoMitigationFraction), called once per
+  // tick from applyOrTickBuff above, capped so it never overheals past
+  // `maxHp`. Returns '' (no log clause) once the side is already at full
+  // HP -- there is nothing to report on a fully-healed side.
   private applyRegenTick(isPlayer: boolean, casterName: string): string {
     const maxHp = isPlayer ? this.playerMaterial.maxHp : this.wild.maxHp;
     const currentHp = isPlayer ? this.playerHp : this.opponentHp;
-    const healAmount = Math.min(maxHp - currentHp, Math.round(maxHp * REGEN_HEAL_FRACTION));
+    const healFraction = this.kondoMitigationFraction(isPlayer, 'kondoBreakdown', REGEN_BASE_HEAL_FRACTION, REGEN_MAX_HEAL_FRACTION);
+    const healAmount = Math.min(maxHp - currentHp, Math.round(maxHp * healFraction));
     if (healAmount <= 0) return '';
     this.applyHeal(isPlayer, healAmount, maxHp);
     return `${casterName} regenerates ${healAmount} HP!`;
@@ -1911,7 +1910,7 @@ export class BattleScene extends Phaser.Scene {
     label.setText(status ? `${STATUS_INFO[status.kind].label} (${status.turnsLeft})` : '');
   }
 
-  // Creates the passive pill (Franklin's/Bohr's abilities, §5) stacked below
+  // Creates the passive pill (Franklin's abilities, §5) stacked below
   // that side's status pill at (x, naturalY), then measures its actual
   // rendered size and corrects position/existence rather than trusting
   // naturalY/x directly -- up to two joined passive names (passivePillText)

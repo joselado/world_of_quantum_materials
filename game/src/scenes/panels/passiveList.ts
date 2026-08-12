@@ -6,11 +6,14 @@ import { PASSIVES } from '../../data/passives';
 import type { PassiveOwner } from '../../data/passives';
 import { persistFromRegistry } from '../../data/save';
 
-// Shared by panels/franklin.ts's showFranklinPanel and panels/bohr.ts's
-// showBohrPanel -- both guardians sell a three-passive kit with the same
-// "buy several, only one active, switch by a click" shape Kondo's three
-// moves already use (panels/kondo.ts's renderKondoMoves), just for a
-// whole-battle passive instead of a move usable from the battle menu:
+// Used by panels/franklin.ts's showFranklinPanel to sell her three-passive
+// kit, the same "buy several, only one active, switch by a click" shape
+// Kondo's three moves already use (panels/kondo.ts's renderKondoMoves),
+// just for a whole-battle passive instead of a move usable from the battle
+// menu -- kept parameterized over `owner`/`passiveIds` rather than folded
+// into franklin.ts directly, the same "a helper more than one guardian
+// could call gets its own file" convention every other cross-guardian
+// helper here follows, in case a future guardian teaches passives too:
 // still-unbought passives get a buy button, every already-bought passive
 // gets its own "Make `<name>` active" button or a dimmed "`<name>` (active)"
 // tag -- same dimmed-current convention every other guardian panel uses.

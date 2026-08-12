@@ -295,7 +295,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   (`panelY - 105`, avatar top edge landing a few px inside the panel's own top edge, intro
   text pushed down to `panelY - 68`) to fit the same panel every later guardian panel
   (Bloch's) reuses -- each guardian still gets its own avatar builder in its own file
-  (`art/bloch.ts`, `art/bohr.ts`, ...) even though the surrounding panel shape is shared.
+  (`art/bloch.ts`, `art/franklin.ts`, ...) even though the surrounding panel shape is shared.
   Appears automatically every time the Overworld scene is (re)created with this world's
   middle row already reached (`OverworldScene.maybeAutoOpenMiddleDialogue`) -- first on
   stepping onto that row, then again after every later round trip through `BattleScene`,
@@ -471,31 +471,34 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   carry every move `<host>` has to offer" (host picked, but every one of its moves is
   already learned). Superposition Mode treats every host as already unlocked.
 
-## Bohr in the overworld (`OverworldScene.showBohrPanel`)
+## Feynman in the overworld (`OverworldScene.showFeynmanPanel`)
 
 - World 7 only, standing at the middle tile like every other guardian. Amber (`#ffa64a`
-  label / `0xffa64a` stroke) name label; his avatar (`art/bohr.ts`'s `makeBohrAvatar`) is
-  unchanged by this mechanic.
-- Same buy-list-plus-switch shape as Kondo's panel below (`renderPassiveList`, shared with
-  Franklin's panel below him): a still-unbought passive (`data/passives.ts`'s
-  `BOHR_PASSIVE_IDS` -- Correlated Response, Nonlocal Correlation, Shared State) gets a
-  `<name> -- <cost> qumatessence` buy button plus a one-line description underneath in a
-  dimmer, smaller blue-grey; an already-bought passive gets a clickable "Make `<name>`
-  active" button, or a dimmed "`<name>` (active)" tag with no click handler for whichever
-  one currently is -- same dimmed-current convention every other guardian panel uses.
-  Buying the first passive for this guardian activates it immediately, same reasoning as
-  Kondo's first move; buying a second or third doesn't, and switching which one is active
-  always requires reopening this panel. No "wrong form" empty state -- like Kondo's own
-  self-buff moves, a passive is never gated by a crystal's own physics at all ("player-learned
-  technique, not physics a crystal has to host"), so all three are always purchasable.
-- The buy button's label and its description line are both capped at a lower font-scale
-  ceiling than every other guardian panel's buttons (`Math.min(fontScale(this), 1.3)` for
-  the label, `1.2` for the description) rather than scaling all the way to the Enter-menu
-  Settings panel's uncapped 'Large' text-size preset -- this panel has no shrink-to-fit
-  safety net the way the Enter-menu's info panels do, and three buy rows each carrying
-  their own description, on top of the avatar/intro/Farewell footer every guardian panel
-  already has, pushed the Farewell button off the bottom of the canvas at the default
-  text-size preset the first time this was tried uncapped.
+  label / `0xffa64a` stroke) name label -- the same amber the world's earlier guardian
+  used, free to reuse once nothing else in the roster claims it. His avatar
+  (`art/feynman.ts`'s `makeFeynmanAvatar`) breaks from every other guardian's
+  floating-robed-figure silhouette on purpose: no cloak/robe fill at all, just a loose
+  humanoid lattice of bright vertex points connected by straight propagator lines, two
+  small pulsing loop-insertion circles along the torso/hip lines (the diagrammatic mark
+  of a higher-order correction), and four small vertex dots orbiting in place of another
+  guardian's orbiting glyphs.
+- A single paginated move list (`renderPagedButtons`, `scene.feynmanPage`) rather than a
+  fixed-row shape -- every move the player has ever unlocked (`getUnlockedMoves`, not
+  `getBattleMoves`: a move currently unusable in the player's present form is still
+  worth leveling for later) gets its own row reading `<name> -- level to "<next tier>"
+  (streak <N>): <cost> qumatessence`, or `<name> -- max level` once already at
+  tier 3; a maxed or unaffordable row dims and is a no-op, the same convention every
+  other guardian's unaffordable/unusable row already uses.
+- Clicking an eligible row deducts `feynmanLevelCost` immediately (the qumatessence is
+  spent the instant the attempt starts, not on a successful outcome) and opens the
+  question streak in its own sub-panel -- same amber stroke as the main panel, one
+  question at a time (`data/quiz.ts`'s `getAnalyticQuestions`), two shuffled answer
+  buttons per question, the same shape `OverworldScene.showEncounter`'s pre-battle quiz
+  and BattleScene's own Analytic/Ultimate question panels use. Answering the whole
+  streak correctly writes the new level and returns to the main panel; missing any
+  single question also returns to the main panel, level unchanged -- the qumatessence
+  already spent is never refunded either way, so this sub-panel offers no "cancel": once
+  started, the payment is already made.
 
 ## Kondo in the overworld (`OverworldScene.showKondoPanel`)
 
@@ -508,7 +511,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   Drag, Coherence Cascade), usable from any form, same `<move name> -- <cost>
   qumatessence` label and afford/dim treatment as Laughlin's/Noether's shops (reusing `shopCost`),
   each followed by its own one-line `description` underneath in the same dimmer blue-grey
-  Bohr's/Franklin's passive rows use (`renderPassiveList`) -- then one row per already-bought
+  Franklin's own passive rows use (`renderPassiveList`) -- then one row per already-bought
   Kondo move, its own description printed the same way. A bought-and-inactive move reads
   "Make `<name>` active" as a clickable button, the currently active one (registry/save
   `kondoActiveMove`) reads "`<name>` (active)" dimmed to 50% alpha with no click handler,
@@ -528,13 +531,24 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   scattered sites surrounded by concentric diffraction rings -- porous/amorphous carbon's
   own X-ray diffraction pattern made literal -- in a dusty amethyst/lavender palette
   distinct from Anderson's rust/amber despite the shared defect/disorder theme.
-- Same buy-list-plus-switch shape as Bohr's panel above (`renderPassiveList`, shared
-  between them): a still-unbought passive (`data/passives.ts`'s `FRANKLIN_PASSIVE_IDS` --
-  Diffraction Shadow, Satellite Reflection, Amorphous Halo) gets a `<name> -- <cost>
-  qumatessence` buy button plus a one-line description underneath, same capped-font-scale
-  treatment Bohr's panel uses; an already-bought passive gets a clickable "Make `<name>`
-  active" button, or a dimmed "`<name>` (active)" tag for whichever one currently is. Same
-  "buying the first activates it, no wrong-form empty state" behavior as Bohr's panel.
+- Buy-list-plus-switch shape (`renderPassiveList`, shared with Kondo's own panel above's
+  buy/switch treatment): a still-unbought passive (`data/passives.ts`'s
+  `FRANKLIN_PASSIVE_IDS` -- Diffraction Shadow, Satellite Reflection, Amorphous Halo)
+  gets a `<name> -- <cost> qumatessence` buy button plus a one-line description
+  underneath, both capped at a lower font-scale ceiling than every other guardian
+  panel's buttons (`Math.min(fontScale(this), 1.3)` for the label, `1.2` for the
+  description) rather than scaling all the way to the Enter-menu Settings panel's
+  uncapped 'Large' text-size preset -- this panel has no shrink-to-fit safety net the
+  way the Enter-menu's info panels do, and three buy rows each carrying their own
+  description, on top of the avatar/intro/Farewell footer every guardian panel already
+  has, pushed the Farewell button off the bottom of the canvas at the default
+  text-size preset the first time this was tried uncapped. An already-bought passive
+  gets a clickable "Make `<name>` active" button, or a dimmed "`<name>` (active)" tag
+  for whichever one currently is. Buying the first passive activates it immediately,
+  same reasoning as Kondo's first move; buying a second or third doesn't, and switching
+  which one is active always requires reopening this panel. No "wrong form" empty
+  state -- like Kondo's own self-buff moves, a passive is never gated by a crystal's
+  own physics at all, so all three are always purchasable.
 
 ## Skłodowska-Curie in the overworld (`OverworldScene.showSklodowskaCuriePanel`)
 
@@ -725,13 +739,13 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   color below) over the same translucent-black tag background every HP-bar name label
   already uses. Empty (no active buff) by default on both sides -- the pill only ever
   reads as chrome that appears when relevant, not a permanent fixture of the HP-bar area.
-- Franklin's/Bohr's active passives (DESIGN.md §5) get their own pill directly below that
+- Franklin's active passive (DESIGN.md §5) gets its own pill directly below that
   side's status pill, same size/background/depth as the status pill but in a muted
   blue-violet (`PASSIVE_PILL_COLOR`, `#8fa0ff` -- its own fixed constant, not derived from
-  either guardian's own label color) rather than Kondo's
+  her own label color) rather than Kondo's
   rust-orange, so an always-on passive reads as visually distinct from a ticking status at a
-  glance. Reads as the joined name(s) of whichever passive(s) are active (`·`-separated when
-  both a Franklin and a Bohr passive are active at once), empty by default the same way the
+  glance. Reads as the joined name(s) of whichever passive(s) are active (`·`-separated,
+  ready for a future second passive owner to stack onto the same line), empty by default the same way the
   status pill is. Its horizontal position is clamped back onto the field if the joined text
   would otherwise run past the canvas edge at the largest text-size setting -- clamped
   against `MENU_X` rather than the canvas edge on the player's side, since the move menu is
@@ -905,13 +919,14 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 - "View Moves"/"View Stats" swap the pause menu for a second, generic info panel
   (`showInfoPanel`, `420x300`, same blue-grey stroke). View Moves lists only the moves
   actually usable right now (`getBattleMoves` -- learned moves intersected with what the
-  current crystal form's physics can host, §3) as plain `<name> -- Pwr N` lines, no move-class
-  label and no "incompatible" entries cluttering the list; View Stats lists
+  current crystal form's physics can host, §3) as plain `<name> -- Pwr N` lines (name and
+  power both reflecting any Feynman level via `moveDisplayName`/`effectiveMovePower`), no
+  move-class label and no "incompatible" entries cluttering the list; View Stats lists
   Quantumness/Velocity/Correlation plus qumatessence and current form name. Both end in a
   single "Close" button.
 - "View Abilities" is its own dedicated panel (`showAbilitiesPanel`, `440` wide, same
   blue-grey stroke) rather than a third `showInfoPanel` body -- one name+description block
-  per passive owner (`data/passives.ts`'s `PASSIVE_OWNERS`, currently Franklin and Bohr),
+  per passive owner (`data/passives.ts`'s `PASSIVE_OWNERS`, currently just Franklin),
   each its own pair of `Text` objects with explicitly capped
   font sizes (`nameScale`/`descScale`, same capping `renderPassiveList` already uses) rather
   than folding both full descriptions into `showInfoPanel`'s single wrapped body, since that

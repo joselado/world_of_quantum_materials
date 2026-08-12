@@ -8,8 +8,8 @@ import { shade } from './colors';
 // so a guardian reads as a distinct, benevolent presence rather than another
 // encounter.
 // Later guardians follow the same rule: their own builder in their own file
-// (art/bloch.ts's makeBlochAvatar, art/bohr.ts's makeBohrAvatar, and any
-// future ones per DESIGN.md §5) rather than reusing this one.
+// (art/bloch.ts's makeBlochAvatar, art/franklin.ts's makeFranklinAvatar, and
+// any future ones per DESIGN.md §5) rather than reusing this one.
 //
 // Drawn in local space centered on the chest/torso (0,0); the returned
 // container also wraps a slow rotation sway internally, so callers are free

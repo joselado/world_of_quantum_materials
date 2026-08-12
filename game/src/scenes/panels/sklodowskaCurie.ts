@@ -8,7 +8,7 @@ import {
   ULTIMATE_CLASS_UNLOCK_COST,
   TUNABLE_MOVE_CLASSES,
   quasiparticleLabel,
-  tunedMoveDisplayName,
+  moveDisplayName,
   getTunedMoveClass,
   canHost,
 } from '../../data/materials';
@@ -74,7 +74,7 @@ export function showSklodowskaCuriePanel(scene: OverworldScene) {
 // forSale/learned split -- there is no separate purchase step here, opening
 // the class picker and paying for a class is itself what first unlocks the
 // move, see showUltimateClassPicker) -- each row names which quasiparticle
-// it's currently carrying (tunedMoveDisplayName/getTunedMoveClass, same
+// it's currently carrying (moveDisplayName/getTunedMoveClass, same
 // helpers Laughlin's Analytic shop reads) and opens the picker to change it.
 // A move not yet in `unlockedMoves` says so explicitly rather than "carrying
 // Phonon Beam" -- that phrasing would otherwise read as already usable in
@@ -82,7 +82,7 @@ export function showSklodowskaCuriePanel(scene: OverworldScene) {
 function renderUltimateMoves(scene: OverworldScene, container: Phaser.GameObjects.Container, y: number): number {
   const unlocked = scene.getUnlockedMoves();
   ULTIMATE_MOVE_IDS.forEach((id) => {
-    const displayName = tunedMoveDisplayName(scene.game.registry, id);
+    const displayName = moveDisplayName(scene.game.registry, id);
     const activeClass = getTunedMoveClass(scene.game.registry, id);
     const label = unlocked.includes(id)
       ? `${displayName} -- carrying ${quasiparticleLabel(activeClass)} (tune)`
@@ -134,7 +134,7 @@ function showUltimateClassPicker(scene: OverworldScene, moveId: string, onDone: 
   scene.dialogueContainer = container;
 
   let y = top;
-  const displayName = tunedMoveDisplayName(scene.game.registry, moveId);
+  const displayName = moveDisplayName(scene.game.registry, moveId);
   const title = scene.add
     .text(CANVAS_W / 2, y, `Which quasiparticle should ${displayName} carry?`, {
       fontSize: fontPx(scene, 13),

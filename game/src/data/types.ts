@@ -171,7 +171,7 @@ export interface Move {
   power: number;
   // One-line effect description, shown under each row of Kondo's shop
   // (scenes/panels/kondo.ts) the same way data/passives.ts's own
-  // `description` field is shown under each of Franklin's/Bohr's rows.
+  // `description` field is shown under each of Franklin's own rows.
   // Optional -- only Kondo's three self-buff moves carry one, since every
   // other move's physics-flavored name plus its fixed power/class already
   // says what it does.

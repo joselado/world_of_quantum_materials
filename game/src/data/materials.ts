@@ -208,10 +208,10 @@ export const ULTIMATE_CLASS_UNLOCK_COST = 1000;
 // `andersonUnlockedHosts`/`majoranaUnlockedResults`, each a list of
 // already-paid-for option keys rather than a single whole-ability flag,
 // since every option is its own separate purchase). The same
-// pay-once-then-free-forever shape Bohr's/Franklin's flat per-passive
+// pay-once-then-free-forever shape Franklin's flat per-passive
 // `cost` and Skłodowska-Curie's `ULTIMATE_CLASS_UNLOCK_COST` already use,
 // just keyed per candidate rather than per passive/class. Priced well
-// below Bohr's/Franklin's 40-50 whole-passive band and Noether's/
+// below Franklin's 40-50 whole-passive band and Noether's/
 // Laughlin's/Kondo's ~35-55 `shopCost` moves, since a single option here is
 // a narrower purchase than a whole passive or move -- unlocking every
 // option of an ability (e.g. every world Bloch can reach) costs
@@ -600,6 +600,79 @@ export function tunedMoveDisplayName(registry: RegistryLike, moveId: string): st
   const active = getTunedMoveClass(registry, moveId);
   const shape = MOVES[moveId].name.split(' ').slice(1).join(' ');
   return `${quasiparticleLabel(active)} ${shape}`;
+}
+
+// Feynman's move-leveling ("Feynman Diagrammatics," §5, World 7) -- three
+// tiers above a move's own base level, unlocked one at a time in sequence
+// (a move must already hold tier N-1 before tier N can be attempted).
+// Index 0 is the unleveled base case (empty name prefix, 1x power, no
+// streak to clear); indices 1-3 are Double/Triple/Infinite. The tier names
+// are escalating-power flavor labels -- "Infinite" is hyperbole, not a
+// claim the move's power is actually unbounded: the real bump is
+// MOVE_LEVEL_MULTIPLIERS, a flat 1.5x/2x/3x, read by effectiveMovePower
+// below for an ordinary attack move and, separately, by
+// BattleScene.kondoMitigationFraction for one of Kondo's three self-buffs
+// (whose own `power` is never read as damage in the first place, see
+// KONDO_MOVE_IDS' own comment) -- there it scales that buff's own
+// mitigation strength instead, capped well under 100% so even an
+// Infinite-tier buff leaves real risk on the table. MOVE_LEVEL_STREAKS is how
+// many of Feynman's own quiz questions (data/quiz.ts's
+// getAnalyticQuestions) the player must answer correctly in a row to land
+// that tier -- missing even one loses the attempt (the qumatessence
+// already spent per feynmanLevelCost below included) without changing the
+// move's level, same no-partial-credit shape Skłodowska-Curie's
+// Ultimate-move gate uses, generalized to a variable streak length instead
+// of a fixed 3.
+export type MoveLevel = 0 | 1 | 2 | 3;
+export const MOVE_LEVEL_NAMES: readonly string[] = ['', 'Double', 'Triple', 'Infinite'];
+export const MOVE_LEVEL_MULTIPLIERS: readonly number[] = [1, 1.5, 2, 3];
+export const MOVE_LEVEL_STREAKS: readonly number[] = [0, 2, 4, 8];
+
+// Which level a given move is currently leveled to -- registry/save
+// `moveLevels` (moveId -> level), missing entry defaults to 0 (never
+// attempted). Leveling is per move id, not per-crystal-form or per-run --
+// once a move is leveled up it stays leveled up forever, the same
+// permanent "first time costs, permanent afterward" shape every other
+// guardian's one-time unlock already uses.
+export function getMoveLevel(registry: RegistryLike, moveId: string): MoveLevel {
+  const levels = (registry.get('moveLevels') as Partial<Record<string, MoveLevel>> | undefined) ?? {};
+  return levels[moveId] ?? 0;
+}
+
+// The move's own base `power`, scaled by its current level's multiplier --
+// what BattleScene's damage formula reads in place of a raw `move.power`
+// for the *player's* own moves only (an opponent's copy of the same move id
+// is never affected -- move levels are the player's own save state, not a
+// property of the move itself).
+export function effectiveMovePower(registry: RegistryLike, moveId: string): number {
+  return MOVES[moveId].power * MOVE_LEVEL_MULTIPLIERS[getMoveLevel(registry, moveId)];
+}
+
+// Qumatessence cost to attempt leveling a move up to `level` (1, 2, or 3) --
+// follows the same "priced off the move's own raw power" shape shopCost
+// uses for an ordinary purchase (power x5), scaled again by the tier being
+// attempted so a deeper tier costs proportionally more: level 1 costs
+// power x5, level 2 costs power x10, level 3 costs power x15. Paid whether
+// the attempt lands or not (see MOVE_LEVEL_STREAKS above) -- there is no
+// refund on a miss.
+export function feynmanLevelCost(move: Move, level: 1 | 2 | 3): number {
+  return move.power * 5 * level;
+}
+
+// The display name every rendering site (battle move buttons/log, every
+// guardian shop, Feynman's own panel) should show for a move -- folds in
+// both Feynman's level prefix (Double/Triple/Infinite, empty at level 0) and,
+// for an ordinary attack move, whichever quasiparticle it's currently tuned
+// to (tunedMoveDisplayName). Kondo's three 'screening'-class self-buffs are
+// the one exception: they have no quasiparticle to tune, so
+// tunedMoveDisplayName would read back the untuned 'screening' class's own
+// bare label instead of a real name (see that function's own comment) --
+// this falls back to the move's own static name for those instead, then
+// applies the same level prefix on top.
+export function moveDisplayName(registry: RegistryLike, moveId: string): string {
+  const base = MOVES[moveId].class === 'screening' ? MOVES[moveId].name : tunedMoveDisplayName(registry, moveId);
+  const prefix = MOVE_LEVEL_NAMES[getMoveLevel(registry, moveId)];
+  return prefix ? `${prefix} ${base}` : base;
 }
 
 // The player is a crystal too -- just one entry out of this same roster, not a

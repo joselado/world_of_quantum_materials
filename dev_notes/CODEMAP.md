@@ -30,9 +30,10 @@ game/src/
     panels/                    One file per guardian's panel UI (see "Guardian panels" below),
                                  e.g. noether.ts's showNoetherShop(), sklodowskaCurie.ts's
                                  showSklodowskaCuriePanel(), anderson.ts's showAndersonPanel() --
-                                 passiveList.ts's renderPassiveList() is the one helper shared
-                                 across two files (franklin.ts/bohr.ts) rather than living in
-                                 either, and tunableMoveShop.ts's renderTunableMoveShop()/
+                                 passiveList.ts's renderPassiveList() is franklin.ts's own
+                                 buy-list-plus-switch helper, kept in its own file rather than
+                                 folded into franklin.ts directly (see "Guardian panels" below),
+                                 and tunableMoveShop.ts's renderTunableMoveShop()/
                                  showMoveClassPicker() is the one shared by laughlin.ts's Analytic
                                  shop (Skłodowska-Curie's Ultimate shop is priced too differently
                                  to reuse it, see "Guardians" below)
@@ -54,7 +55,7 @@ game/src/
     laughlin.ts                  makeLaughlinAvatar()
     majorana.ts                  makeMajoranaAvatar()
     anderson.ts                   makeAndersonAvatar() -- disordered-lattice head motif, world 6
-    bohr.ts                     makeBohrAvatar()
+    feynman.ts                   makeFeynmanAvatar() -- vertex/propagator diagram-construct motif, world 7
     kondo.ts                     makeKondoAvatar()
     franklin.ts                   makeFranklinAvatar() -- diffraction/lattice-defect motif, world 9
     sklodowskaCurie.ts            makeSklodowskaCurieAvatar(), world 10
@@ -94,12 +95,20 @@ game/src/
                                   shared by Laughlin's Analytic moves and Skłodowska-Curie's Ultimate
                                   moves alike since both read/write the same registry/save
                                   moveClassTuning map,
+                                  MOVE_LEVEL_NAMES/MOVE_LEVEL_MULTIPLIERS/MOVE_LEVEL_STREAKS/
+                                  getMoveLevel()/effectiveMovePower()/feynmanLevelCost()/
+                                  moveDisplayName() -- Feynman's move-leveling (§5, World 7): a
+                                  move's level (registry/save moveLevels), its power scaled by that
+                                  level's multiplier, the qumatessence cost to attempt the next
+                                  tier, and the composed display name (level prefix plus
+                                  tunedMoveDisplayName, or a 'screening' move's own static name)
+                                  every rendering site reads,
                                   allCrystals() -- every WORLD_CRYSTALS entry deduped by name, feeds
                                   Dresselhaus/Majorana/Anderson's Superposition Mode candidate pools,
                                   hybridRecipeResult()/HYBRID_RECIPES -- Majorana's named parent-pair
                                   recipe catalog, combineMaterials() -- Majorana's hybrid-material fuser
-    passives.ts                   PASSIVES/FRANKLIN_PASSIVE_IDS/BOHR_PASSIVE_IDS/PASSIVE_OWNERS/
-                                  PASSIVE_OWNER_LABELS -- Franklin's and Bohr's whole-battle passive
+    passives.ts                   PASSIVES/FRANKLIN_PASSIVE_IDS/PASSIVE_OWNERS/
+                                  PASSIVE_OWNER_LABELS -- Franklin's whole-battle passive
                                   abilities (id/name/owner/description/cost)
     tokens.ts                    Qumatessence value tiers + weights
     quiz.ts                      Per-material physics question pools (>=6 each) via
@@ -108,10 +117,13 @@ game/src/
                                   getAnalyticQuestion(visitedWorlds) for Laughlin's two quiz-gated
                                   Analytic moves -- draws only questions tagged with a visited
                                   world's topic (falling back to the full pool if that intersection
-                                  is ever empty), and the broad, any-topic ULTIMATE_QUESTIONS pool
-                                  via getUltimateQuestions(n) for Skłodowska-Curie's two Ultimate
-                                  moves -- no visited-world filtering, since the finale is meant to
-                                  test everything the course covered, not one world's own topic
+                                  is ever empty) -- and getAnalyticQuestions(visitedWorlds, count) for
+                                  Feynman's move-leveling streak (§5, World 7), the same pool drawn
+                                  `count` times in a row with no immediate repeat -- and the broad,
+                                  any-topic ULTIMATE_QUESTIONS pool via getUltimateQuestions(n) for
+                                  Skłodowska-Curie's two Ultimate moves -- no visited-world
+                                  filtering, since the finale is meant to test everything the course
+                                  covered, not one world's own topic
     greetings.ts                 Per-MaterialType flavor lines (encounter/victory/defeat)
     materialdex.ts               Per-material (fallback per-type) physics blurb for Materialdex
     save.ts                      localStorage schema + persistFromRegistry()/load()
@@ -220,7 +232,8 @@ since `materials.ts` pulls in Phaser at module scope) and regenerates the
   Bloch, teal-green `0x4ad9a0` = Dresselhaus's transmutation panel, blue-violet `0x6a7fff` =
   Laughlin's Analytic shop (`panels/tunableMoveShop.ts`'s `renderTunableMoveShop`, shared
   chrome), green `0x4fd97a` = Majorana's hybrid panel, rust `0xc9884a` = Anderson's
-  impurity-doping panel, amber `0xffa64a` = Bohr's passive panel, red `0xe86a44` = Kondo's
+  impurity-doping panel, amber `0xffa64a` = Feynman's move-leveling panel (and its own
+  question-streak sub-panel), red `0xe86a44` = Kondo's
   self-buff shop, purple `0xa878c9` = Franklin's passive panel, olive `0xc9d84a` =
   Skłodowska-Curie's Ultimate shop, red `0xff6666` = rival gate, purple `0x9a6ad9` = Hub's
   `showPanel` (Materialdex/Save), lavender `0xd9a5ff` = `OverworldScene.showStoryBeat`'s
@@ -236,8 +249,9 @@ since `materials.ts` pulls in Phaser at module scope) and regenerates the
   A panel-specific helper only that one guardian calls (e.g. Noether's `renderShopTabs`) moves
   into the same file as a plain (non-exported) function taking `scene` as its first param; a
   helper more than one guardian calls gets its own file under `scenes/panels/` instead rather
-  than living in either guardian's file -- `passiveList.ts`'s `renderPassiveList` (shared by
-  Franklin/Bohr) is the current example. `tunableMoveShop.ts`'s `renderTunableMoveShop`/
+  than living in either guardian's file -- `passiveList.ts`'s `renderPassiveList` (Franklin's
+  own passive-kit shop today, written generically enough for a future second passive-owning
+  guardian to reuse without a rewrite) is the current example. `tunableMoveShop.ts`'s `renderTunableMoveShop`/
   `showMoveClassPicker` currently has only one caller (Laughlin's Analytic shop) -- it still
   lives in its own file rather than `laughlin.ts` since it's written generically (any move-id
   list, any `shopCost`-flow purchase), the same shape a future flat-purchase tunable-move
@@ -331,7 +345,15 @@ Correlation (`BASE_STAT / correlation`), and a `2x` "quasiparticle mismatch" mul
 `data/materials.ts`'s `canHost(defenderType, move.class)` -- a defender whose own
 `MOVE_COMPATIBILITY` list doesn't include the attacking move's class takes it at double force.
 This is the only type-interaction term in the damage formula (DESIGN.md §3/§4) -- there is no
-separate type-chart multiplier. `resolveHit` also takes a `bonusMultiplier` param (default `1`,
+separate type-chart multiplier. The move's own `power` feeding that formula is `move.power`
+verbatim for the defender's side, but for the *attacker's* side only when `isPlayer` is false --
+when `isPlayer` is true it reads `effectiveMovePower(registry, moveId)` instead (Feynman's
+move-leveling, §5, `data/materials.ts`), so a leveled move's power bump is the player's own
+save state and never leaks onto a wild's own copy of the same move id. Every rendering of a
+move's name in `BattleScene` (move buttons, the battle log) goes through the matching
+`moveDisplayName(registry, moveId)` on the player's own side (`tunedMoveDisplayName` otherwise)
+for the same isPlayer-gated reason -- see `moveButtonContent`/`resolveHit`'s `applyResult`/
+`resolveSelfBuff`. `resolveHit` also takes a `bonusMultiplier` param (default `1`,
 a no-op) -- `playerAttack` forwards one of Laughlin's Analytic moves' answer-gated 2x/0.5x, or
 one of Skłodowska-Curie's Ultimate moves' all-or-nothing 1x/0x, through to the one `resolveHit`
 call for that specific move id; the opponent's hit(s) in the same round are never affected. The
@@ -378,9 +400,17 @@ it to `resolveSelfBuff(isPlayer, move, tickStatus, onDone)` instead, which never
 (`isPlayer`, not `defenderIsPlayer`). Two small per-side lookups feed the buff's actual effect
 into the existing formulas rather than adding a parallel damage path: `statusShieldMultiplier`
 (`resolveHit`'s `dmg`, keyed by `defenderIsPlayer` -- Shielded reduces *incoming* damage to
-whoever holds it) and `statusEvasionActive` (checked once per hit against `defenderIsPlayer`;
-if it rolls under `EVASION_CHANCE` the hit deals zero damage and `applyResult` logs "evaded!"
-instead of the usual damage/mismatch/crit clauses). `resolveHit`/`resolveSelfBuff` both take a
+whoever holds it) and `statusEvasionChance` (returns 0 when not evasive; checked once per hit
+against `defenderIsPlayer`, and if `Math.random()` rolls under it the hit deals zero damage and
+`applyResult` logs "evaded!" instead of the usual damage/mismatch/crit clauses). All three of
+Kondo's buffs -- Shielded's damage reduction, Evasive's dodge chance, Regenerating's heal
+fraction -- scale with Feynman's own move-leveling (§5, World 7) via the shared
+`kondoMitigationFraction(isPlayer, moveId, base, cap)`: the *caster's own* level of the specific
+move that cast the buff (`screeningCloud`/`scatteringDrag`/`kondoBreakdown`) multiplies the base
+mitigation strength by `MOVE_LEVEL_MULTIPLIERS` the same way `effectiveMovePower` scales an
+ordinary attack, capped well under 100% so even an Infinite-tier buff leaves real risk on the
+table -- gated on `isPlayer` the same isPlayer-only way `effectiveMovePower` is, since no wild
+ever casts a Kondo move. `resolveHit`/`resolveSelfBuff` both take a
 `tickStatus` param (default `true`) gating whether `applyOrTickBuff(move, isPlayer)` runs at
 all -- `playerAttack`'s `runHit` computes, per round, each side's own last index into `hits`
 (`lastIndexFor`, a scan rather than an arithmetic shortcut, since a self-buff move collapses its
@@ -393,7 +423,8 @@ does one of two things: if the move is one of Kondo's three (`KONDO_MOVE_BUFF: R
 StatusKind>`, a fixed lookup -- no randomness), it replaces the caster's buff outright via
 `setStatus` (one buff per side, never stacked); otherwise it ticks the caster's *existing* buff
 down by one, applying a Regenerating heal on every tick via `applyRegenTick` (a fraction
-`REGEN_HEAL_FRACTION` of the caster's own max HP, capped so it can't overheal), and clears the
+(`REGEN_BASE_HEAL_FRACTION`, scaled by `kondoMitigationFraction` above) of the caster's own max
+HP, capped so it can't overheal), and clears the
 buff once `turnsLeft` hits 0. Either branch returns a log-line clause (`STATUS_INFO[kind]
 .applyText`/`.expireText`, plus the heal clause for Regenerating) appended to that hit's own
 message, the same "stack a clause onto the existing line" pattern `mismatchText`/`critText`
@@ -402,7 +433,7 @@ always-present-but-usually-empty `Text` pill (`playerStatusLabel`/`opponentStatu
 positioned just under each side's HP bar) to `"<Label> (<turnsLeft>)"` or clears it to `''` when
 there's no active buff.
 
-**Passives (Franklin's/Bohr's abilities).** `this.playerActivePassives`/
+**Passives (Franklin's abilities).** `this.playerActivePassives`/
 `this.opponentActivePassives` (`Set<string>` of `data/passives.ts` ids) are read once in
 `create()` from registry/save `activePassiveByOwner` (keyed by `PassiveOwner`, `data/
 passives.ts`) and held for the whole battle -- unlike Kondo's self-buffs above, a passive has no `turnsLeft`/tick-down
@@ -429,34 +460,21 @@ an always-on passive reads as visually distinct from a ticking status at a glanc
 `activePassives(isPlayer)` is the
 generic per-side lookup every hook below reads (`opponentActivePassives` stays empty today,
 kept as its own field rather than hardcoding "player only" so the hooks read symmetrically
-off either side, same reasoning `statusShieldMultiplier` etc. already follow). Five of the
-six hook directly into `resolveHit`, identified by id (`data/passives.ts`'s
-`fractionalGuard`/`anyonEcho`/`edgeCurrent`/`correlatedResponse`/`sharedState` -- ids kept as
-originally minted, only the guardian-facing display name changed with the Laughlin→Franklin
+off either side, same reasoning `statusShieldMultiplier` etc. already follow). All three of
+Franklin's own hook directly into `resolveHit`, identified by id (`data/passives.ts`'s
+`fractionalGuard`/`anyonEcho`/`edgeCurrent` -- ids kept as originally minted from an earlier
 retheme, see "Guardians" below): **Amorphous Halo** (`edgeCurrent`) softens the mismatch
 multiplier (`mismatchMult`, 2x → `EDGE_CURRENT_MISMATCH_MULT` 1.5x) when the *defender* has it
 active; **Diffraction Shadow** (`fractionalGuard`) adds a `fractionalGuardMult` (0.85) term to
-the `dmg` formula, also keyed off the defender; **Correlated Response** arms
-`this.guaranteedCritNext[isPlayer ? 'player' : 'opponent']` on the defender's side whenever
-they're crit against while it's active, consumed (before the ordinary `Math.random() <
-critChance` roll, not after -- a natural crit shouldn't burn a guaranteed one) on that side's
-own very next `resolveHit` call regardless of which move it is; **Satellite Reflection**
-(`anyonEcho`) and **Shared State** both fire after the
-primary hit's damage/heal already landed, sharing two small helpers with the ordinary
-damage-application code path: `applyDamage(toPlayer, amount)` and `applyHeal(toPlayer,
-amount, maxHp)` (both mirror the registry-write/persist-only-for-the-player rule the
-original inline branch used, and both call `updateBars()`) -- Satellite Reflection re-calls
-`applyDamage` for a bonus `Math.round(dmg * ANYON_ECHO_FRACTION)` tick against the same
-defender when the attacker's own crit lands with it active, Shared State re-calls
-`applyHeal` for `Math.round(dmg * SHARED_STATE_HEAL_FRACTION)` back onto the attacker's own
-side. **Nonlocal Correlation** is the one exception that doesn't touch `resolveHit` at all --
-it's applied once in `create()`, adding half of `enemyStats.quantumness` onto a *spread copy*
-of `playerStats` (`{ ...this.playerStats, correlation: ... }`, never `+=` in place) --
-`getPlayerStats(registry)` returns the registry's own live object, so mutating it directly
-would permanently ratchet the save's own Correlation stat the next time anything persists
-the registry. Each hook's own log clause (`echoText`/`healText`) stacks onto the hit's line
-after `statusText`, same "stack a clause onto the existing line" pattern `mismatchText`/
-`critText`/`statusText` already use, in that fixed order.
+the `dmg` formula, also keyed off the defender; **Satellite Reflection** (`anyonEcho`) fires
+after the primary hit's damage already landed, sharing a small helper with the ordinary
+damage-application code path -- `applyDamage(toPlayer, amount)` (mirrors the
+registry-write/persist-only-for-the-player rule the original inline branch used, and calls
+`updateBars()`) -- re-called for a bonus `Math.round(dmg * ANYON_ECHO_FRACTION)` tick against
+the same defender when the attacker's own crit lands with it active. Its own log clause
+(`echoText`) stacks onto the hit's line after `statusText`, same "stack a clause onto the
+existing line" pattern `mismatchText`/`critText`/`statusText` already use, in that fixed
+order.
 
 **Ultimate moves defer damage/turn-handoff to match their multi-second animation.**
 `resolveHit`'s tail is fully synchronous for every ordinary move: `playAttackEffect` fires
@@ -648,7 +666,8 @@ Every guardian has its own avatar builder in its own file: `art/noether.ts`'s `m
 `art/bloch.ts`'s `makeBlochAvatar` (wireframe Bloch-sphere head, teal),
 `art/dresselhaus.ts`'s `makeDresselhausAvatar` (spin-momentum-locked arrow ring, teal-green),
 and one file per remaining guardian (`art/laughlin.ts`, `art/majorana.ts`, `art/anderson.ts` --
-disordered-lattice head motif, world 6, `art/bohr.ts` -- Bohr-model-atom head, amber,
+disordered-lattice head motif, world 6, `art/feynman.ts` -- vertex/propagator diagram
+construct, no robe/cloak fill at all unlike every other guardian's avatar, amber, world 7,
 `art/kondo.ts`, `art/franklin.ts` -- diffraction/lattice-defect motif, world 9,
 `art/sklodowskaCurie.ts`, world 10). Every guardian spawns through one
 unified `OverworldScene.spawnGuardianSprite` (looked up from the `WORLD_GUARDIANS` table), not a
@@ -668,33 +687,51 @@ without being about the guardian at all -- e.g. "Anderson localization"/"Anderso
 physics terminology (DESIGN.md, `quiz.ts`) has nothing to do with the guardian named Anderson, so
 a blind find-and-replace on a name is unsafe).
 
-**Laughlin (world 4), Majorana (world 5), Anderson (world 6), Bohr (world 7), Kondo (world 8),
+**Laughlin (world 4), Majorana (world 5), Anderson (world 6), Feynman (world 7), Kondo (world 8),
 Franklin (world 9), and Skłodowska-Curie (world 10) all have real mechanics**, following the
 same `open: (s) => showXPanel(s)` pattern as Noether/Bloch/Dresselhaus (see "Guardian panels"
 above for the `scenes/panels/` file-per-guardian convention every one of them follows):
-- **Franklin's and Bohr's passive panels** (`scenes/panels/franklin.ts`'s `showFranklinPanel`/
-  `scenes/panels/bohr.ts`'s `showBohrPanel`) both share one helper, `scenes/panels/
-  passiveList.ts`'s `renderPassiveList(scene, container, y, passiveIds,
+- **Franklin's passive panel** (`scenes/panels/franklin.ts`'s `showFranklinPanel`) uses
+  `scenes/panels/passiveList.ts`'s `renderPassiveList(scene, container, y, passiveIds,
   owner: PassiveOwner, reopen)`, parameterized over which `data/passives.ts` `PassiveOwner`
-  it's rendering for -- it reads/writes the two fixed generic registry/save keys
-  (`passivesUnlocked`, a flat list shared across both owners since passive ids are globally
-  unique, and `activePassiveByOwner`, keyed by owner) internally rather than taking them as
-  params, filtering/writing by the `owner` param. Same "still-unbought get a buy
-  button, already-bought get a 'Make `<name>` active' button or a dimmed '`<name>`
-  (active)' tag" shape `renderKondoMoves` established, right down to "buying the
-  very first one for this guardian auto-activates it, buying a second or third doesn't."
-  Like Kondo's own self-buff moves, a passive is never gated by `MOVE_COMPATIBILITY` at all
-  (the same "player-learned technique, not a quasiparticle a crystal has to host" reasoning)
-  -- every passive is always purchasable regardless of current
-  form, so neither panel has a "wrong form" empty state to special-case. Each still-unbought
-  row also prints the passive's own `description` underneath in a smaller, capped-scale
-  font (`Math.min(fontScale(this), 1.3)` for the buy button itself, `1.2` for the
-  description) -- both panels have no shrink-to-fit safety net the way `showInfoPanel`
-  does, and letting either scale all the way to the text-size setting's uncapped 'Large'
-  preset (like every other guardian panel's buttons do) pushed the whole panel's Farewell
-  button off the bottom of the canvas the first time this was tried, verified via a live
-  headless-Chromium run at every `fontScale` preset. See "Stats and battle resolution"
-  above for exactly how each of the six passives hooks into `BattleScene`.
+  it's rendering for even though Franklin is the sole caller today -- it reads/writes the two
+  fixed generic registry/save keys (`passivesUnlocked` and `activePassiveByOwner`, keyed by
+  owner) internally rather than taking them as params, filtering/writing by the `owner` param.
+  Same "still-unbought get a buy button, already-bought get a 'Make `<name>` active' button or
+  a dimmed '`<name>` (active)' tag" shape `renderKondoMoves` established, right down to
+  "buying the very first one auto-activates it, buying a second or third doesn't." Like
+  Kondo's own self-buff moves, a passive is never gated by `MOVE_COMPATIBILITY` at all (the
+  same "player-learned technique, not a quasiparticle a crystal has to host" reasoning) --
+  every passive is always purchasable regardless of current form, so the panel has no "wrong
+  form" empty state to special-case. Each still-unbought row also prints the passive's own
+  `description` underneath in a smaller, capped-scale font (`Math.min(fontScale(this), 1.3)`
+  for the buy button itself, `1.2` for the description) -- the panel has no shrink-to-fit
+  safety net the way `showInfoPanel` does, and letting either scale all the way to the
+  text-size setting's uncapped 'Large' preset (like every other guardian panel's buttons do)
+  pushed the panel's Farewell button off the bottom of the canvas the first time this was
+  tried, verified via a live headless-Chromium run at every `fontScale` preset. See "Stats and
+  battle resolution" above for exactly how each of her three passives hooks into `BattleScene`.
+- **Feynman's move-leveling panel** (`scenes/panels/feynman.ts`'s `showFeynmanPanel`) is a
+  different mechanic shape entirely from every other guardian's -- not a purchase catalog, but
+  a leveling attempt against a move the player already owns. `renderMoveLevelList` builds one
+  row per `scene.getUnlockedMoves()` entry (deliberately not `getBattleMoves()` -- a move
+  currently unusable in the player's present form is still worth leveling), paginated via
+  `scene.renderPagedButtons`/`scene.feynmanPage` the same way Bloch's/Dresselhaus's/Majorana's/
+  Anderson's own candidate lists are (see "Overworld menus and settings" below), since the
+  full unlocked-move list can outgrow one panel well before Superposition Mode's "every
+  crystal" case even applies. Each row reads a move's current level (`data/materials.ts`'s
+  `getMoveLevel`) and, if not already at tier 3, the cost to attempt the next tier
+  (`feynmanLevelCost`) and that tier's own streak length (`MOVE_LEVEL_STREAKS`); a maxed or
+  unaffordable row dims via `renderPagedButtons`' own `isDim` param and is a no-op. Clicking an
+  eligible row deducts the cost immediately (before a single question is asked, and never
+  refunded) and calls `showLevelStreak`, a self-contained recursive question flow (`getAnalyticQuestions`
+  from `data/quiz.ts`, the same visited-world-filtered pool Laughlin's own single question
+  draws from) built the same way `OverworldScene.showEncounter`'s pre-battle quiz and
+  `BattleScene.showUltimateQuestions` are, just living in the overworld panel rather than
+  mid-battle -- stops at the first wrong answer (writing nothing) or, on a full streak, writes
+  the new tier to registry/save `moveLevels` before returning to `showFeynmanPanel`. See "Stats
+  and battle resolution" above for `effectiveMovePower`/`moveDisplayName`, the two places a
+  move's level actually surfaces in `BattleScene`.
 - **Majorana's hybrid-material panel** (`scenes/panels/majorana.ts`'s `showMajoranaPanel`) lets the player fuse
   two `defeatedMaterials` into a new `Material` via `data/materials.ts`'s `combineMaterials(a,
   b)`, which spreads whatever `Material` the matching `HYBRID_RECIPES` entry authored
@@ -787,7 +824,7 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   click handler), the same dimmed-current convention Dresselhaus's own "(current
   form)" rows already use. Every row, bought or not, also prints the move's own `description`
   underneath (`data/materials.ts`'s `Move.description`, only Kondo's three moves carry one),
-  the same convention `renderPassiveList` established for Franklin's/Bohr's passives. Buying
+  the same convention `renderPassiveList` established for Franklin's own passives. Buying
   the first Kondo move auto-activates it (so a purchase is
   never silently unusable); buying a second or third on top of an already-active one doesn't
   -- switching between already-bought moves is always its own explicit click either way, and
@@ -849,12 +886,13 @@ Lab, View Moves, View Stats, View Abilities, Guardians, Tutorial, Settings, Clos
 data-driven-array shape for any future conditional row rather than switching to fixed
 positions. `showMovesPanel` lists `getBattleMoves(registry)`
 (learned ∩ currently form-compatible, not the raw `unlockedMoves` list) as plain
-`<name> -- Pwr N` lines -- no
+`<name> -- Pwr N` lines (`moveDisplayName`/`effectiveMovePower`, so a Feynman-leveled move's
+name/power both show up here too) -- no
 move-class label, no "incompatible" entries; a move the player has learned but can't currently
 use just doesn't show up until they transmute into a form that supports it. `showAbilitiesPanel`
-is the "check anytime" surface for Franklin's/Bohr's current passive loadout -- its own
+is the "check anytime" surface for Franklin's current passive loadout -- its own
 dedicated panel (not folded into `showStatsPanel`/`showInfoPanel`), looping over `data/
-passives.ts`'s `PASSIVE_OWNERS` (rather than two hand-written blocks) to build one
+passives.ts`'s `PASSIVE_OWNERS` (rather than a hand-written block) to build one
 name+description row per owner, labeled via `PASSIVE_OWNER_LABELS` and read from registry
 `activePassiveByOwner[owner]`, so a player doesn't have to walk back to either guardian's own
 panel just to remember which passive is running (and doesn't have to remember what that passive
@@ -954,8 +992,8 @@ suffix) word-wraps to two lines rather than staying on one. The trailing `<- Pre
 shared row, not a button row with the page label stacked underneath it -- reclaiming that
 row's worth of height is what keeps a guardian whose avatar/intro text already leaves little
 slack (Majorana, Anderson) inside the canvas at the largest text-size preset. Each caller owns
-its own page field (`bohrPage`, `majoranaPage`,
-`andersonPage`, `blochPage`), all reset in both `create()` and `closeDialogue()` the same way
+its own page field (`dresselhausPage`, `majoranaPage`, `andersonPage`, `andersonMovePage`,
+`blochPage`, `feynmanPage`), all reset in both `create()` and `closeDialogue()` the same way
 `majoranaSelection` is. Reuse this rather than a bespoke row-count/shrink-to-fit calculation for
 any future candidate list that can grow unboundedly.
 
@@ -980,7 +1018,7 @@ usable in battle, `null` until the player picks one via `scenes/panels/kondo.ts`
 "Guardians" above; the other two bought-but-inactive Kondo moves, if any, still live in the
 ordinary `unlockedMoves` list, this field only tracks which one currently passes
 `getBattleMoves`' extra filter), `passivesUnlocked: string[]` (every passive ever bought, flat
-across both current owners since passive ids are globally unique across `PASSIVES`) and
+since passive ids are globally unique across `PASSIVES`) and
 `activePassiveByOwner: Partial<Record<PassiveOwner, string>>` (which passive is currently
 equipped, per owner -- `data/passives.ts`'s `PassiveOwner`/`PASSIVE_OWNERS`, same "several
 unlocked, one active per owner" shape as `kondoActiveMove`, see "Guardians" above),
@@ -1003,7 +1041,11 @@ guardians' abilities have been paid for at least once -- `data/materials.ts`'s
 `MAJORANA_FUSE_COST` -- a world number/crystal name/host name/hybrid-result name present in
 the matching list is free from then on, one absent still costs qumatessence to pick again; see
 "Guardians" above and "Story Mode vs. Superposition Mode" for how Superposition Mode bypasses
-these without ever setting them), plus the
+these without ever setting them), `moveLevels: Partial<Record<string, 0 | 1 | 2 | 3>>` (Feynman's
+move-leveling, §5 -- which level a given move id is currently at, missing entry means 0/never
+attempted; `data/materials.ts`'s `getMoveLevel`/`effectiveMovePower`/`feynmanLevelCost`, see
+"Guardians" above -- unlike the four one-time-unlock lists just above, Superposition Mode does
+*not* bypass this one, since leveling is a knowledge gate, not a currency gate), plus the
 earlier fields covered under Registry-then-persist above. `defaultSave()`/
 `persistFromRegistry()` are the two places that need touching together for any future field, and
 `loadSave()`'s `{ ...defaultSave(), ...saved }` spread keeps a save predating that field

@@ -438,14 +438,22 @@ already tuned around exactly one hit per side per round.
 attacks — casting one applies a 3-turn buff to the *caster's own* side instead of hitting the
 opponent, dealing no damage and never triggering the quasiparticle-mismatch rule below. Never
 randomly rolled: the player picks the effect by picking the move.
-- **Shielded** (Screening Pulse) — incoming damage to the buffed side is multiplied down
-  (×0.7) for 3 turns.
-- **Evasive** (Scattering Drag) — for 3 turns, each incoming hit against the buffed side has
-  a 30% chance to deal zero damage instead, logged as a distinct "evaded!" line rather than
-  the usual damage/mismatch/crit clauses.
-- **Regenerating** (Coherence Cascade) — the buffed side heals 10% of its own max HP on each
-  of 3 ticks (once per round, roughly Bohr's Shared State's own ~22%-of-damage-healed
-  order of magnitude, spread across the buff's life rather than landing in one hit).
+Each buff's mitigation strength scales with Feynman's own move-leveling (§5, World 7) applied
+to that specific Kondo move, the caster's own level only (`BattleScene.kondoMitigationFraction`,
+the same isPlayer-gated shape `effectiveMovePower` uses for an ordinary attack's power) — an
+unleveled cast uses the base figure below, a leveled one multiplies the base by
+`MOVE_LEVEL_MULTIPLIERS` (1.5x/2x/3x) up to a hard cap so even an Infinite-tier buff leaves real
+risk on the table rather than reaching full immunity/certainty:
+- **Shielded** (Screening Pulse) — incoming damage to the buffed side is multiplied down by
+  `1 - reduction` for 3 turns, `reduction` starting at 20% (base) and capped at 60% (Infinite
+  tier: `min(0.2 × 3, 0.6) = 0.6` exactly, the cap never actually binds).
+- **Evasive** (Scattering Drag) — for 3 turns, each incoming hit against the buffed side has a
+  chance to deal zero damage instead (20% base, capped at 60%, same formula as Shielded's
+  reduction), logged as a distinct "evaded!" line rather than the usual damage/mismatch/crit
+  clauses.
+- **Regenerating** (Coherence Cascade) — the buffed side heals a fraction of its own max HP on
+  each of 3 ticks (once per round, spread across the buff's life rather than landing in one hit),
+  10% base and capped at 30% (Infinite tier: `min(0.1 × 3, 0.3) = 0.3` exactly).
 
 None of the three buff names doubles as a `MoveClass` — `majorana` and
 `polaron` are separately Majorana Split's and Polaron Drag's classes, unrelated
@@ -590,7 +598,7 @@ at the goal -- the goal tile is occupied by that world's boss (see below), so a 
 is someone the player meets partway through the journey, not a gate to it. Every
 guardian stays reachable from anywhere afterward via the Enter-menu's Guardians panel
 once met (`showGuardiansPanel`, `data/save.ts`'s `metGuardians`). Every guardian has a
-real mechanic (Noether, Bloch, Dresselhaus, Laughlin, Majorana, Anderson, Bohr, Kondo,
+real mechanic (Noether, Bloch, Dresselhaus, Laughlin, Majorana, Anderson, Feynman, Kondo,
 Franklin, Skłodowska-Curie) -- a guardian without one yet would fall through to the
 shared `OverworldScene.showGuardianLore` panel (avatar + quote only), but nothing
 currently does. World 10's guardian (Skłodowska-Curie) is gated behind actually walking
@@ -613,7 +621,7 @@ state can mark her met before the player has actually reached her.
   `blochUnlockedWorlds`, a list of world numbers already paid for) -- traveling to a
   world for the first time costs qumatessence and unlocks that destination in the same
   click, every later trip there is free, the same one-time-unlock-then-free-forever
-  shape Bohr's/Franklin's passives and Skłodowska-Curie's Ultimate-class unlocks already
+  shape Franklin's passives and Skłodowska-Curie's Ultimate-class unlocks already
   use, just keyed per destination rather than per passive/class since teleporting isn't
   a purchasable move or passive of its own. Priced lowest of the four repeatable-action
   guardians (Bloch/Dresselhaus/Anderson/Majorana) since a single destination is pure
@@ -796,25 +804,65 @@ state can mark her met before the player has actually reached her.
   move-class channel is a smaller swing than fusing into a whole new content category,
   but Anderson also sits later in the world 1-10 progression than either. Superposition
   Mode bypasses this per-host cost entirely the same way the other three do
-- **Bohr** → world 7 middle → teaches three passive abilities
-  (`data/passives.ts`'s `BOHR_PASSIVE_IDS`, `OverworldScene.showBohrPanel`) --
-  an always-on, whole-battle modifier rather than a move picked from the battle menu
-  each turn. All three can be bought independently, but only one is ever active in
-  battle at a time (registry/save `activePassiveByOwner`, keyed by owner and switched
-  only by revisiting Bohr's panel), the same "learn several, equip one" shape Kondo's
-  three self-buff moves already use (below) and Franklin's own passive kit shares
-  (below) -- fitting Bohr's
-  own historical role defending quantum mechanics' completeness against the EPR paradox:
-  measure one half of an entangled pair and the other answers instantly, not through any
-  signal crossing the distance:
-  - **Correlated Response** -- whenever the opponent lands a critical hit against the
-    player, the player's own very next move is guaranteed to crit.
-  - **Nonlocal Correlation** -- the player's effective Correlation stat is boosted by half
-    the opponent's own Quantumness stat, recomputed fresh at the start of each battle
-    (`BattleScene.create`, since opponent stats are themselves computed fresh per battle
-    via `enemyStatsForWorld`).
-  - **Shared State** -- ~22% of damage the player deals is returned as healing, capped at
-    the player's own max HP -- the entangled pair shares its fate.
+- **Feynman** → world 7 middle → a different mechanic shape entirely from every other
+  guardian's: leveling up a move the player already owns (`data/materials.ts`'s
+  `MOVE_LEVEL_NAMES`/`MOVE_LEVEL_MULTIPLIERS`/`MOVE_LEVEL_STREAKS`,
+  `getMoveLevel`/`effectiveMovePower`/`feynmanLevelCost`/`moveDisplayName`,
+  `OverworldScene.showFeynmanPanel` via `scenes/panels/feynman.ts`) -- fitting, since
+  Feynman's own diagrammatic technique (expand a many-body calculation as a picture
+  built from vertices and propagator lines instead of writing it out term by term) is a
+  direct notational sibling to world 7's own course topic: session07.tex's "Tensor
+  diagrams" section draws a tensor as a point with legs, joining two legs meaning
+  summing over a shared index -- the same "represent a contraction as a picture" idea a
+  Feynman diagram's own vertices-and-propagators notation uses. Any move the player has
+  ever unlocked (`unlockedMoves`, regardless of which guardian originally sold it --
+  Noether's ordinary attacks, Laughlin's Analytic pair, Kondo's self-buffs, an
+  Anderson-doped move, even the starting Phonon Beam) can be leveled through three fixed
+  tiers, one at a time in sequence (a move must already hold tier N-1 before N can be
+  attempted): **Double** (1.5x, a 2-question streak), **Triple** (2x, a
+  4-question streak), **Infinite** (3x, an 8-question streak) -- "Infinite" is
+  hyperbole, not a literal unbounded-power claim; the real cap is the flat 3x.
+  For an ordinary attack move that multiplier scales its `power` (`effectiveMovePower`,
+  below); for Kondo's three self-buffs, whose own `power` is never read as damage in the
+  first place (§5 Kondo bullet, §3/§4), it instead scales that buff's own mitigation
+  strength (`BattleScene.kondoMitigationFraction`, capped well under 100% -- see §4's
+  Self-buffs paragraph for the exact base/cap figures), so leveling a Kondo move is a
+  real mechanical upgrade too, not a name-only one.
+  Registry/save `moveLevels` (moveId → 0-3, `data/save.ts`) is permanent once a tier is
+  reached, the same "first time costs, permanent afterward" shape every other
+  guardian's one-time unlock already uses. Cost to attempt a given tier is
+  `move.power * 5 * level` (`feynmanLevelCost`) -- the same "priced off the move's own
+  raw power" shape Noether's `shopCost` uses, scaled again by how deep a tier is being
+  attempted. Unlike every other guardian's gate, the payment and the gate are
+  decoupled: the qumatessence is spent the moment the attempt starts, before a single
+  question is asked, and is never refunded regardless of outcome -- landing the whole
+  streak (`data/quiz.ts`'s `getAnalyticQuestions`, the same visited-world-filtered
+  Analytic pool Laughlin's own single question draws from, since world 7 has a course
+  topic of its own unlike World 10's topic-less finale) writes the new level; missing
+  even one question anywhere in the streak (the same "stop at the first wrong answer,
+  no partial credit" shape Skłodowska-Curie's Ultimate-move gate uses, generalized to a
+  variable streak length instead of a fixed 3) leaves the move at its previous level
+  with the payment still gone. The streak plays out in the overworld panel itself, as
+  its own purchase-shaped flow (`scenes/panels/feynman.ts`'s own question UI, built the
+  same way `OverworldScene.showEncounter`'s pre-battle quiz is), not mid-battle the way
+  Laughlin's/Skłodowska-Curie's own quiz gates fire -- Feynman's leveling attempt is a
+  standalone decision made at his panel, not something triggered by using a move in a
+  fight. A leveled move's effective power (`effectiveMovePower`) -- or, for one of
+  Kondo's three, its effective mitigation strength (`kondoMitigationFraction`) -- only
+  applies to the *player's own* copy of that move id -- an opponent's own use of the
+  same move id (an ordinary wild's Electron Pulse, say) is never affected, since move
+  levels are the player's own save state, not a property of the move itself; the level prefix folds
+  into every rendering of a move's name (`moveDisplayName`, threaded through the battle
+  move menu/log, every guardian's own move-list panel, and Feynman's own) the same way
+  Laughlin's/Skłodowska-Curie's tuned-quasiparticle name already does
+  (`tunedMoveDisplayName`) -- `moveDisplayName` falls back to a move's own static name
+  for Kondo's three `'screening'`-class self-buffs specifically, since they have no
+  quasiparticle for `tunedMoveDisplayName` to read. Superposition Mode does not bypass
+  this gate the way it bypasses Bloch's/Dresselhaus's/Anderson's/Majorana's
+  per-option currency cost or Skłodowska-Curie's per-class unlock -- the streak is a
+  knowledge check, not a purchase, so there is nothing for that mode's blanket-unlock
+  treatment to short-circuit; a Superposition Mode playthrough still has to actually
+  answer the questions to level a move.
 - **Kondo** → world 8 middle → sells three self-buff moves (`OverworldScene.showKondoPanel`,
   `data/materials.ts`'s `KONDO_MOVE_IDS`) -- Screening Pulse, Scattering Drag, Coherence
   Cascade -- each of which deterministically applies one of §4's three buffs (Shielded,
@@ -829,6 +877,12 @@ state can mark her met before the player has actually reached her.
   turn, restoring coherence and healing it over time -- named for that coherence-building
   process specifically so as not to invoke a literal Kondo breakdown, the opposite physics
   (the heavy-fermion composite's own hybridization collapsing at a quantum critical point).
+  Each of the three, like every other move in the game, can be leveled up at Feynman's panel
+  (§5/§4 above) -- since Kondo's `power` is never read as damage, leveling one instead scales
+  its buff's own mitigation strength (`BattleScene.kondoMitigationFraction`), not a power
+  number: Screening Pulse's/Scattering Drag's damage-reduction/dodge-chance base climbs from
+  20% (unleveled) to 60% (Infinite tier), Coherence Cascade's per-tick heal from 10% to 30%,
+  both capped so even a maxed-out buff leaves real risk on the table.
   The player can buy all three
   independently, but only one is ever usable in battle at a time -- registry/save
   `kondoActiveMove`, switched only by returning to Kondo's own panel (a bought-but-inactive
@@ -841,7 +895,7 @@ state can mark her met before the player has actually reached her.
   active" button, the active one shows a dimmed "`<name>` (active)" tag instead, the same
   dimmed-current convention Dresselhaus's transmute panel already uses, and every row (bought
   or not) prints the move's own one-line description underneath, the same convention
-  Franklin's/Bohr's passive rows use. Buying the *first*
+  Franklin's own passive rows use. Buying the *first*
   Kondo move activates it automatically (still "picked by talking to Kondo," just in the same
   click as the purchase) so a fresh purchase is never invisible in battle with no explanation;
   buying a second or third on top of an already-active one doesn't, and switching between
@@ -854,8 +908,8 @@ state can mark her met before the player has actually reached her.
   an always-on, whole-battle modifier rather than a move picked from the battle menu
   each turn. All three can be bought independently, but only one is ever active in
   battle at a time (registry/save `activePassiveByOwner`, switched only by revisiting
-  Franklin's panel), the same "learn several, equip one" shape Bohr's own passive kit
-  and Kondo's three self-buff moves already use -- fitting, since Franklin's own
+  Franklin's panel), the same "learn several, equip one" shape Kondo's three self-buff
+  moves already use (above) -- fitting, since Franklin's own
   physics (X-ray diffraction of a defect-riddled or porous crystal -- a real,
   if lesser-known, tie between Rosalind Franklin's characterization work and
   world 9's "excitations and defects" topic) is world 9's topic, and a passive with no

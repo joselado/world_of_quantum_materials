@@ -371,8 +371,10 @@ export function playImpactSfx(power = 1) {
 }
 
 // A warm layered bell (three detuned sines decaying at slightly different
-// rates) for a guardian's shop/panel opening -- a small "divine" flourish to
-// go with their floating, god-like avatars (Noether, Bloch, Bohr, ...).
+// rates) for a guardian's shop/panel opening -- a small "divine" flourish
+// shared by every guardian's panel regardless of avatar style, from a
+// floating, god-like robed figure (Noether, Bloch, Franklin, ...) to
+// Feynman's own diagram-construct avatar (art/feynman.ts).
 export function playGuardianChime() {
   const { ctx, dest } = music.getSfxBus();
   const t = ctx.currentTime;
