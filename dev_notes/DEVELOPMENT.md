@@ -4,30 +4,44 @@ This file is for whoever is working *on* the game (Claude Code included) --
 build/run instructions and where things live. If you're looking for what the
 game actually is from a player's perspective, see `README.md` instead; for
 mechanics/content decisions see `DESIGN.md`, for visual conventions see
-`STYLE.md`, for exact function names and file locations see `CODEMAP.md`.
+`STYLE.md`, for exact function names and file locations see `CODEMAP.md`
+(all three live alongside this file in `dev_notes/`).
 
-## Folder contents
+## Repo layout
 
-- `DESIGN.md` -- the living design document (world map, type system, battle
-  rules, guardians/story, tech stack, roadmap, open questions). Edit it
-  directly as the game evolves rather than starting a new doc.
-- `STYLE.md` -- current visual/style decisions (sizes, colors, shapes, panel
-  conventions). Edit in place as choices change.
-- `CODEMAP.md` -- where things live in the code: function names, file
-  locations, established patterns to reuse. Read this before touching
-  `game/src/` so you're not re-exploring the tree from scratch.
+- `dev_notes/` -- this folder: `DESIGN.md` (the living design document --
+  world map, type system, battle rules, guardians/story, tech stack, roadmap,
+  open questions), `STYLE.md` (visual/style decisions), `CODEMAP.md` (where
+  things live in the code), and `DEVELOPMENT.md` (this file). Edit these
+  directly as the game evolves rather than starting new docs.
 - `game/` -- **active development happens here.** A Vite + TypeScript +
   Phaser 3 project (see "Running the game" below).
 - `docs/` -- player-facing reference docs `README.md` links out to
   (quasiparticles/moves, crystals, hybrid materials, guardians). Their
   tables are generated from `game/src/data/materials.ts`/`passives.ts` --
   see "Regenerating docs/ tables" below.
+- `bin/play.mjs` -- the cross-platform launcher behind `npm run play` (see
+  "Running the game" below); the root `package.json` exists only to give it
+  that command name, it has no dependencies of its own.
 - `screenshots/` -- the images embedded in `README.md`. Regenerate rather
   than hand-edit if the UI they show changes materially.
 
 ## Running the game
 
-`game/` needs Node.js (npm) installed.
+Needs Node.js 18+ (npm) installed. From the repo root:
+
+```
+npm run play
+```
+
+`bin/play.mjs` installs `game/`'s dependencies if `game/node_modules` is
+missing or older than `game/package-lock.json`, then starts the dev server
+with Vite's `--open` flag so it opens your default browser automatically --
+the same command on Windows/macOS/Linux. `--open` is passed by the wrapper
+rather than baked into `game/`'s `dev` script, so headless/automated runs of
+`npm run dev` (the `run-game`/`verify-ui` skills, CI) don't trigger a
+browser-launch attempt. To run `npm` commands directly instead of through the
+wrapper (no auto-open):
 
 ```
 cd game
@@ -35,7 +49,7 @@ npm install
 npm run dev
 ```
 
-This starts a local dev server (Vite prints the URL, typically
+Either way this starts a local dev server (Vite prints the URL, typically
 `http://localhost:5173`) with hot-reload -- edits to any file under
 `game/src/` apply instantly in the browser.
 

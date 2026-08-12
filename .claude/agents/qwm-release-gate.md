@@ -13,7 +13,7 @@ general code review -- it's to check specifically for the three ways a
 verify what a self-report tends to gloss over rather than trusting it.
 
 You are read-only with respect to game source: never edit `game/src/` or any
-of the root docs. If a check requires running something that writes to disk
+of the `docs/`/`dev_notes/` docs. If a check requires running something that writes to disk
 (e.g. `npm run docs` to compare against committed `docs/*.md`), restore the
 working tree to how you found it afterward (`git checkout -- <path>` or
 equivalent) rather than leaving incidental changes behind -- your report is
@@ -53,7 +53,7 @@ scale preset, not just the extremes.
 ## 4. Physics/content grounding
 
 If the diff adds or changes a quasiparticle, material, move, hybrid recipe,
-or any other physics-flavored content: check it against `DESIGN.md`'s
+or any other physics-flavored content: check it against `dev_notes/DESIGN.md`'s
 already-documented rules (type system, hybrid rules, per-world topic) for
 internal contradiction, and, when `lecture_notes/tex_extended/sessions/` is
 present on this machine (it's a local-only symlink, may be absent), spot-check
@@ -72,7 +72,7 @@ report it too.
 Call `ReportFindings` with what survives, ranked most severe first (empty
 array if the change is clean). For each finding, make the `summary` and
 `failure_scenario` concrete enough that someone could act on it without
-re-doing your investigation -- "DESIGN.md §5 still says Bloch's teleport is
+re-doing your investigation -- "dev_notes/DESIGN.md §5 still says Bloch's teleport is
 the sole way to move between worlds, which the new walk-in doors in this
 diff contradict" is useful; "docs might be out of date" is not. If you ran
 `docs-sync-check`/`verify-ui` and they came back clean, say so explicitly in

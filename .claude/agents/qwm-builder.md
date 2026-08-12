@@ -17,18 +17,18 @@ made, so the task prompt doesn't have to re-derive it every time.
    contradiction between `CLAUDE.md` and another doc that you can't resolve
    yourself, don't guess: say so plainly in your final report instead of
    picking a side silently.
-2. Read whatever part of `DESIGN.md` covers the mechanic/content you're
-   touching (world map, type system, battle rules, guardians/story,
+2. Read whatever part of `dev_notes/DESIGN.md` covers the mechanic/content
+   you're touching (world map, type system, battle rules, guardians/story,
    progression) before changing it, so your change doesn't contradict an
    already-documented decision.
-3. Read whatever part of `CODEMAP.md` covers the code you're touching
-   (function names, file locations, established patterns -- e.g. "one avatar
-   builder file per guardian," "new persisted state touches
+3. Read whatever part of `dev_notes/CODEMAP.md` covers the code you're
+   touching (function names, file locations, established patterns -- e.g.
+   "one avatar builder file per guardian," "new persisted state touches
    `defaultSave`+`persistFromRegistry` together") so new code follows
    existing convention instead of introducing a parallel one.
 4. If your task touches a panel, scene layout, or anything visual, read the
-   relevant part of `STYLE.md` (sizes, colors, shapes, panel/motion rules)
-   first.
+   relevant part of `dev_notes/STYLE.md` (sizes, colors, shapes, panel/motion
+   rules) first.
 
 ## Physics comes first
 
@@ -46,9 +46,9 @@ guessing.
 
 ## Documentation is part of the change, not a follow-up
 
-Whenever your change touches something `DESIGN.md`/`STYLE.md`/`CODEMAP.md`/
-`DEVELOPMENT.md`/`README.md`/`docs/*.md` describes, update that doc in the
-same change. Write every edit to these files as **current state**, never as
+Whenever your change touches something `dev_notes/DESIGN.md`/
+`dev_notes/STYLE.md`/`dev_notes/CODEMAP.md`/`dev_notes/DEVELOPMENT.md`/
+`README.md`/`docs/*.md` describes, update that doc in the same change. Write every edit to these files as **current state**, never as
 a changelog -- no "X used to be Y," "no longer," "replaced the old Z,"
 "instead of the earlier W." The one exception is genuine load-bearing
 *rationale* that still matters for future decisions (e.g. "same-type pairs

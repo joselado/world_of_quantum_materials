@@ -241,15 +241,15 @@ your way there first.
 
 ## Playing it
 
-The game isn't hosted yet -- to run it locally:
+The game isn't hosted yet -- to run it locally, you need
+[Node.js](https://nodejs.org) 18+ installed, then from the repo root:
 
 ```
-cd game
-npm install
-npm run dev
+npm run play
 ```
 
-then open the local URL Vite prints (typically `http://localhost:5173`).
+This installs dependencies on first run and opens the game in your browser.
+It works the same way on Windows, macOS, and Linux.
 
 For build instructions, the project's file layout, and design/contribution
-notes, see `DEVELOPMENT.md`.
+notes, see `dev_notes/DEVELOPMENT.md`.

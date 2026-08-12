@@ -11,20 +11,25 @@ git history, pushed to `github.com/joselado/world_of_quantum_materials`.
 
 ## Where to start
 
-Read these before touching `game/src/` — they're kept current and are much cheaper
-to read than re-deriving the same context from the code:
+Markdown docs in this repo split into two folders by audience: `docs/` is
+player-facing reference material (linked from `README.md`), and `dev_notes/`
+is internal design/development documentation for whoever (human or Claude) is
+working on the code. Read these before touching `game/src/` — they're kept
+current and are much cheaper to read than re-deriving the same context from
+the code:
 
-- `DESIGN.md` — the living design doc: world map, type system, battle rules,
-  guardians/story, tech stack, roadmap, open questions. Source of truth for game
-  content/mechanics; edit it in place as the game evolves rather than starting a
-  new doc.
-- `STYLE.md` — visual conventions (sizes, colors, shapes, panel/motion rules).
-- `CODEMAP.md` — where things live in the code: function names, file locations, and
-  established patterns (e.g. "one avatar builder file per guardian," "new persisted
-  state touches `defaultSave`+`persistFromRegistry` together") to follow before
-  adding something new.
-- `DEVELOPMENT.md` — build/run instructions, folder contents, where active
-  development happens (`game/`).
+- `dev_notes/DESIGN.md` — the living design doc: world map, type system,
+  battle rules, guardians/story, tech stack, roadmap, open questions. Source
+  of truth for game content/mechanics; edit it in place as the game evolves
+  rather than starting a new doc.
+- `dev_notes/STYLE.md` — visual conventions (sizes, colors, shapes,
+  panel/motion rules).
+- `dev_notes/CODEMAP.md` — where things live in the code: function names,
+  file locations, and established patterns (e.g. "one avatar builder file per
+  guardian," "new persisted state touches `defaultSave`+`persistFromRegistry`
+  together") to follow before adding something new.
+- `dev_notes/DEVELOPMENT.md` — build/run instructions, folder contents, where
+  active development happens (`game/`).
 - `README.md` — short player-facing description of the game (premise, how it
   plays, controls); deliberately light on mechanics detail, linking out to
   `docs/` for anything a player would need to look up rather than explaining
@@ -47,7 +52,7 @@ pushed to GitHub) into the course-materials repo's `lecture_notes/` directory �
 specifically machine-specific and not portable to another clone/machine. It exists
 so Materialdex entries, quiz questions, and post-battle explanations can be adapted
 from `lecture_notes/tex_extended/sessions/sessionNN.tex` rather than written fresh;
-see `DESIGN.md` §8 and `game/src/data/quiz.ts` for how session numbers map to game
+see `dev_notes/DESIGN.md` §8 and `game/src/data/quiz.ts` for how session numbers map to game
 worlds. If the symlink is missing (e.g. on a fresh clone or a different machine), it
 points at the Aalto Dropbox-synced course repo — recreate it locally, or skip that
 cross-referencing step if the course repo isn't present.
@@ -63,13 +68,14 @@ checkout; that's gone now that this repo *is* the standalone checkout). Commit a
 
 ## Editing workflow
 
-- For content/mechanics changes: check `DESIGN.md` first for the current rules
-  before changing battle/progression logic, so a change doesn't contradict a
+- For content/mechanics changes: check `dev_notes/DESIGN.md` first for the current
+  rules before changing battle/progression logic, so a change doesn't contradict a
   documented decision elsewhere.
-- For code changes: check `CODEMAP.md` first so new code follows existing patterns
-  (avatar builders, persisted-state plumbing, etc.) instead of introducing a
-  parallel convention.
-- Keep `DESIGN.md`/`STYLE.md`/`CODEMAP.md`/`DEVELOPMENT.md`/`README.md`/`docs/*.md`
+- For code changes: check `dev_notes/CODEMAP.md` first so new code follows existing
+  patterns (avatar builders, persisted-state plumbing, etc.) instead of introducing
+  a parallel convention.
+- Keep `dev_notes/DESIGN.md`/`dev_notes/STYLE.md`/`dev_notes/CODEMAP.md`/
+  `dev_notes/DEVELOPMENT.md`/`README.md`/`docs/*.md`
   in sync with the code as you go — whenever a change touches something one of
   them describes, update that doc in the same change, not as a follow-up. **Write
   every edit to them as current state, not as a change log.** A reader with no

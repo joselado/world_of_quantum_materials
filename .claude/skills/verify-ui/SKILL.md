@@ -5,8 +5,9 @@ description: Verify a Phaser UI/panel change in world_of_quantum_materials actua
 
 # Verify a Phaser UI change
 
-This game has no headless test suite for its Phaser scenes (`DEVELOPMENT.md`
-§"Verifying UI changes"). "I changed the layout and it typechecks" is not
+This game has no headless test suite for its Phaser scenes
+(`dev_notes/DEVELOPMENT.md` §"Verifying UI changes"). "I changed the layout
+and it typechecks" is not
 verification -- typecheck catches type errors, not broken layouts. This skill
 drives the actual running scene in a headless browser and measures real
 rendered bounds.

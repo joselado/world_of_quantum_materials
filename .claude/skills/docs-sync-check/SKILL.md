@@ -1,13 +1,14 @@
 ---
 name: docs-sync-check
-description: Check that a content/mechanics change in world_of_quantum_materials kept DESIGN.md/CODEMAP.md/STYLE.md/README.md/docs/*.md in sync, written as current state rather than a changelog, per CLAUDE.md's documentation rules. Use before reporting a change to game mechanics, progression, UI, or persisted state as finished -- not needed for a pure bugfix that changes no documented behavior.
+description: Check that a content/mechanics change in world_of_quantum_materials kept dev_notes/DESIGN.md/dev_notes/CODEMAP.md/dev_notes/STYLE.md/README.md/docs/*.md in sync, written as current state rather than a changelog, per CLAUDE.md's documentation rules. Use before reporting a change to game mechanics, progression, UI, or persisted state as finished -- not needed for a pure bugfix that changes no documented behavior.
 ---
 
 # Check doc sync before finishing a change
 
 `CLAUDE.md` states a hard rule for this repo: whenever a change touches
-something `DESIGN.md`/`STYLE.md`/`CODEMAP.md`/`DEVELOPMENT.md`/`README.md`/
-`docs/*.md` describes, that doc must be updated **in the same change**, not
+something `dev_notes/DESIGN.md`/`dev_notes/STYLE.md`/`dev_notes/CODEMAP.md`/
+`dev_notes/DEVELOPMENT.md`/`README.md`/`docs/*.md` describes, that doc must
+be updated **in the same change**, not
 as a follow-up -- and it must be written as **current state**, never as a
 changelog. Banned phrasing: "X used to be Y," "no longer," "replaced the old
 Z," "instead of the earlier W," "previously," "now supports" framed as a
@@ -39,21 +40,21 @@ For each changed file/function/scene under `game/src/`, grep the docs for
 existing mentions of it -- these are the sections at risk of going stale:
 
 ```
-grep -rn "<ChangedFunctionOrSceneName>" DESIGN.md CODEMAP.md STYLE.md README.md docs/*.md
+grep -rn "<ChangedFunctionOrSceneName>" dev_notes/DESIGN.md dev_notes/CODEMAP.md dev_notes/STYLE.md README.md docs/*.md
 ```
 
 Concretely:
 - Battle rules, world/progression mechanics, guardian mechanics, hybrid
-  recipes, type chart -> `DESIGN.md`.
+  recipes, type chart -> `dev_notes/DESIGN.md`.
 - Visual conventions (sizes, colors, panel layout, sprite behavior) for
-  whatever scene/panel you touched -> `STYLE.md`.
+  whatever scene/panel you touched -> `dev_notes/STYLE.md`.
 - Function names, file locations, established patterns (e.g. "one avatar
   builder file per guardian," "new persisted state touches
-  `defaultSave`+`persistFromRegistry` together") -> `CODEMAP.md`.
+  `defaultSave`+`persistFromRegistry` together") -> `dev_notes/CODEMAP.md`.
 - Anything player-facing (move list, crystal roster, hybrid recipes, what a
   guardian teaches) -> `docs/quasiparticles.md`/`crystals.md`/`hybrids.md`/
   `guardians.md`, and `README.md` if it's a premise/controls-level change.
-- Build/run/verification instructions -> `DEVELOPMENT.md`.
+- Build/run/verification instructions -> `dev_notes/DEVELOPMENT.md`.
 
 If a changed piece of code has a doc match above and the diff from step 1
 does **not** touch that doc, that's a stale-doc flag.
@@ -83,7 +84,7 @@ specifically (not the whole file -- old rationale predating this change is
 fine to keep):
 
 ```
-git diff master...HEAD -- DESIGN.md CODEMAP.md STYLE.md README.md docs/ DEVELOPMENT.md \
+git diff master...HEAD -- dev_notes/DESIGN.md dev_notes/CODEMAP.md dev_notes/STYLE.md README.md docs/ dev_notes/DEVELOPMENT.md \
   | grep -E '^\+' \
   | grep -inE "used to be|no longer|replaced the old|instead of the earlier|previously (was|had|used)|old version|the old (behavior|way|approach)"
 ```

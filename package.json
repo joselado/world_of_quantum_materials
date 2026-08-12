@@ -1,0 +1,7 @@
+{
+  "name": "world-of-quantum-materials",
+  "private": true,
+  "scripts": {
+    "play": "node bin/play.mjs"
+  }
+}
