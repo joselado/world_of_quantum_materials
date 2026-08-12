@@ -15,12 +15,13 @@ import { fontPx } from '../ui/text';
 // top and centered) plus two near and two far flanking crystals, each
 // bobbing on its own independent timing so the cluster reads as alive
 // rather than a single synchronized animation.
+const SHOWCASE_CENTER = CANVAS_W / 2;
 const SHOWCASE: { type: MaterialType; size: number; x: number; y: number; duration: number; delay: number }[] = [
-  { type: 'metal', size: 24, x: 150, y: 120, duration: 1300, delay: 0 },
-  { type: 'quantumSpinLiquid', size: 26, x: 495, y: 115, duration: 1450, delay: 120 },
-  { type: 'classicalMagnet', size: 34, x: 228, y: 147, duration: 1150, delay: 260 },
-  { type: 'superconductor', size: 34, x: 415, y: 147, duration: 1250, delay: 60 },
-  { type: 'quantumSpinHall', size: 48, x: 320, y: 130, duration: 1100, delay: 0 },
+  { type: 'metal', size: 24, x: SHOWCASE_CENTER - 221, y: 120, duration: 1300, delay: 0 },
+  { type: 'quantumSpinLiquid', size: 26, x: SHOWCASE_CENTER + 228, y: 115, duration: 1450, delay: 120 },
+  { type: 'classicalMagnet', size: 34, x: SHOWCASE_CENTER - 120, y: 147, duration: 1150, delay: 260 },
+  { type: 'superconductor', size: 34, x: SHOWCASE_CENTER + 124, y: 147, duration: 1250, delay: 60 },
+  { type: 'quantumSpinHall', size: 48, x: SHOWCASE_CENTER, y: 130, duration: 1100, delay: 0 },
 ];
 
 // The game's actual boot scene (main.ts lists this first) -- also where the

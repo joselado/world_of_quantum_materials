@@ -77,9 +77,13 @@ export class HubScene extends Phaser.Scene {
     player.setPosition(CANVAS_W / 2, 230);
     this.tweens.add({ targets: player, y: 220, duration: 1000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
-    this.addHotspot(115, 300, 0x9a6ad9, 'prism', 'Materialdex', () => this.showMaterialdex());
+    // Margin is a fraction of CANVAS_W, not a flat pixel count, so the two
+    // side hotspots stay proportionally inset from the walls at any canvas
+    // width. Rounded so the icon and its centered label land on whole pixels.
+    const hotspotMargin = Math.round(CANVAS_W * 0.18);
+    this.addHotspot(hotspotMargin, 300, 0x9a6ad9, 'prism', 'Materialdex', () => this.showMaterialdex());
     this.addHotspot(CANVAS_W / 2, 300, 0xffe066, 'shard', 'Save Point', () => this.showSavePoint());
-    this.addHotspot(CANVAS_W - 115, 300, 0x4ad9a0, 'cluster', this.doorLabel(), () => this.enterWorld());
+    this.addHotspot(CANVAS_W - hotspotMargin, 300, 0x4ad9a0, 'cluster', this.doorLabel(), () => this.enterWorld());
 
     this.add
       .text(CANVAS_W / 2, 410, 'Click a station to interact.', { fontSize: fontPx(this, 12), color: '#8fa0c9' })
@@ -118,7 +122,9 @@ export class HubScene extends Phaser.Scene {
     const ceilingH = 46;
     g.fillStyle(0x0d0d1f, 1);
     g.fillRect(0, 0, CANVAS_W, ceilingH);
-    for (const cx of [130, 320, 510]) {
+    // Evenly spaced across the ceiling as a fraction of CANVAS_W, so the
+    // light panels stay symmetric at any canvas width.
+    for (const cx of [CANVAS_W * 0.25, CANVAS_W * 0.5, CANVAS_W * 0.75]) {
       g.fillStyle(0x2a3a5c, 0.6);
       g.fillRect(cx - 40, 14, 80, 9);
       glow.fillStyle(0xcfe8ff, 0.35);
@@ -153,24 +159,30 @@ export class HubScene extends Phaser.Scene {
     g.fillRect(50, shelfY, CANVAS_W - 100, 6);
     g.lineStyle(1, 0x4a4a7c, 0.6);
     g.lineBetween(50, shelfY, CANVAS_W - 50, shelfY);
-    const shelfSpecimens: [number, number, CrystalVariant][] = [
-      [110, 0x9a6ad9, 'prism'],
-      [230, 0x5ad9c9, 'shard'],
-      [350, 0xffe066, 'cluster'],
-      [470, 0x6a4ad9, 'layer'],
-      [560, 0x4ad9a0, 'prism'],
+    // Spread evenly across the shelf's own span (50 to CANVAS_W-50 above),
+    // inset from each end.
+    const shelfSpecimenLooks: [number, CrystalVariant][] = [
+      [0x9a6ad9, 'prism'],
+      [0x5ad9c9, 'shard'],
+      [0xffe066, 'cluster'],
+      [0x6a4ad9, 'layer'],
+      [0x4ad9a0, 'prism'],
     ];
-    for (const [sx, color, variant] of shelfSpecimens) {
+    const shelfInset = 45;
+    const shelfLeft = 50 + shelfInset;
+    const shelfRight = CANVAS_W - 50 - shelfInset;
+    shelfSpecimenLooks.forEach(([color, variant], i) => {
+      const sx = shelfLeft + ((shelfRight - shelfLeft) * i) / (shelfSpecimenLooks.length - 1);
       const specimen = makeCrystal(this, 11, color, variant);
       specimen.setPosition(sx, shelfY - 10);
       glow.fillStyle(color, 0.18);
       glow.fillCircle(sx, shelfY - 10, 15);
-    }
+    });
 
     // Two wall-mounted instrument panels, dark screens with a faint glow and
     // a couple of scanlines -- readable as lab monitors without drawing an
-    // actual UI on them.
-    for (const px of [175, 465]) {
+    // actual UI on them. Symmetric about the room's center.
+    for (const px of [CANVAS_W / 2 - 145, CANVAS_W / 2 + 145]) {
       g.fillStyle(0x1c1c34, 1);
       g.fillRect(px - 45, 176, 90, 56);
       g.lineStyle(2, 0x3a3a5c, 0.8);
