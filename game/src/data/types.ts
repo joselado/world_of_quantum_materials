@@ -72,13 +72,13 @@ export type MoveClass =
   // lets a free electron gas support one at all).
   | 'plasmon'
   // Kondo's three moves (§5, World 8): Screening Pulse, Scattering Drag,
-  // Breakdown Cascade -- each deterministically inflicts one of three
-  // 3-turn status effects on the defender (Screened/Slowed/Weakened,
-  // BattleScene's resolveHit) rather than dealing much raw damage itself.
-  // This class is on every type's MOVE_COMPATIBILITY list (see
-  // materials.ts) -- usable from any form, never mismatched, since these
-  // deal in a generic scattering/decoherence process rather than a
-  // quasiparticle tied to one specific type's band structure.
+  // Coherence Cascade -- self-buffs, not attacks. Each deterministically
+  // applies one of three 3-turn buffs to the *caster's own* side
+  // (Shielded/Evasive/Regenerating, BattleScene's resolveHit/
+  // resolveSelfBuff) instead of dealing damage. Left out of every type's
+  // MOVE_COMPATIBILITY list entirely (see materials.ts) rather than gated
+  // by it -- a self-buff never hosts/mismatches, so it doesn't need a
+  // compatibility entry to be usable from any form.
   | 'screening';
 
 export type MaterialType =
@@ -169,6 +169,13 @@ export interface Move {
   name: string;
   class: MoveClass;
   power: number;
+  // One-line effect description, shown under each row of Kondo's shop
+  // (scenes/panels/kondo.ts) the same way data/passives.ts's own
+  // `description` field is shown under each of Franklin's/Bohr's rows.
+  // Optional -- only Kondo's three self-buff moves carry one, since every
+  // other move's physics-flavored name plus its fixed power/class already
+  // says what it does.
+  description?: string;
 }
 
 export interface Material {

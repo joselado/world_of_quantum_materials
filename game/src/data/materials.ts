@@ -120,36 +120,52 @@ export const MOVES: Record<string, Move> = {
   // magnons rather than replacing them (MOVE_COMPATIBILITY still grants
   // multiferroics 'magnon' too).
   electromagnonPulse: { id: 'electromagnonPulse', name: 'Electromagnon Pulse', class: 'electromagnon', power: 9 },
-  // Kondo's three moves (§5, World 8) -- power sits at the bottom of the
-  // ordering, on par with Electron Pulse, since their real payoff is the
-  // 3-turn status effect each deterministically inflicts on the defender
-  // (BattleScene.resolveHit), not raw power, the same "low power, real
-  // payoff elsewhere" shape Laughlin's/Skłodowska-Curie's tunable moves
-  // already use for a different payoff. Never listed in any wild/rival material's `moves`
-  // array -- only the player can currently learn them, and only one of the
-  // three is ever active in battle at a time (registry/save
+  // Kondo's three moves (§5, World 8) -- self-buffs, not attacks: casting
+  // one applies a 3-turn buff to the caster's own side (BattleScene's
+  // resolveSelfBuff) instead of dealing damage, so `power` here is never
+  // read as damage -- it only feeds shopCost, the same pricing role it
+  // plays for every other move. Never listed in any wild/rival material's
+  // `moves` array -- only the player can currently learn them, and only
+  // one of the three is ever active in battle at a time (registry/save
   // `kondoActiveMove`, switched only by talking to Kondo again --
   // OverworldScene.showKondoPanel/getBattleMoves). Named generically rather
   // than after the specific heavy-fermion/Kondo-lattice physics that
-  // inspired them, since MOVE_COMPATIBILITY grants every material type
-  // 'screening' -- these are usable from any form, not just a Kondo-lattice
-  // or defect state. Screening Pulse screens the defender's own moment,
-  // weakening its outgoing damage (Screened); Scattering Drag disorder-
-  // scatters the defender's own carriers, dragging its effective Velocity
-  // down (Slowed); Breakdown Cascade collapses whatever protection the
-  // defender's state has, raising the damage it takes (Weakened). None of
-  // the three status names double as a MoveClass -- 'majorana' and
-  // 'polaron' are separately Majorana Split's and Polaron Drag's classes,
-  // unrelated quasiparticle physics, so a status name matching one of those
-  // would read as if this generic scattering process were tied to that
-  // specific move instead.
-  screeningCloud: { id: 'screeningCloud', name: 'Screening Pulse', class: 'screening', power: 7 },
-  // Renamed from the id `heavyFermionDrag` -- that id predates the
-  // dedicated 'heavyFermion' quasiparticle class above and would now read as
-  // if this generic screening move were somehow that class, which it isn't
-  // (its class stays 'screening').
-  scatteringDrag: { id: 'scatteringDrag', name: 'Scattering Drag', class: 'screening', power: 7 },
-  kondoBreakdown: { id: 'kondoBreakdown', name: 'Breakdown Cascade', class: 'screening', power: 7 },
+  // inspired them, since a self-buff isn't gated by MOVE_COMPATIBILITY at
+  // all -- these are usable from any form, not just a Kondo-lattice or
+  // defect state. Screening Pulse re-forms the caster's own screening
+  // cloud, damping incoming damage (Shielded); Scattering Drag randomizes
+  // the caster's own scattering trajectory, giving incoming hits a chance
+  // to miss entirely (Evasive); Coherence Cascade re-forms the caster's own
+  // Kondo singlet turn by turn, restoring coherence and healing it over
+  // time (Regenerating) -- named for that coherence-building process, not
+  // "breakdown," since a literal Kondo breakdown is the opposite (the
+  // heavy-fermion composite's own hybridization collapsing at a quantum
+  // critical point). None of the three buff names doubles as a MoveClass --
+  // 'majorana' and 'polaron' are separately Majorana Split's and Polaron
+  // Drag's classes, unrelated quasiparticle physics, so a buff name
+  // matching one of those would read as if this generic technique were
+  // tied to that specific move instead.
+  screeningCloud: {
+    id: 'screeningCloud',
+    name: 'Screening Pulse',
+    class: 'screening',
+    power: 7,
+    description: 'Re-forms your own screening cloud -- reduces damage you take for 3 turns.',
+  },
+  scatteringDrag: {
+    id: 'scatteringDrag',
+    name: 'Scattering Drag',
+    class: 'screening',
+    power: 7,
+    description: 'Randomizes your own scattering trajectory -- a chance to evade an incoming hit entirely for 3 turns.',
+  },
+  kondoBreakdown: {
+    id: 'kondoBreakdown',
+    name: 'Coherence Cascade',
+    class: 'screening',
+    power: 7,
+    description: 'Re-forms your own Kondo singlet -- restores coherence and heals you each turn for 3 turns.',
+  },
 };
 
 // Laughlin is the sole seller of these two quiz-gated Analytic moves
@@ -279,59 +295,59 @@ export const SHOP_MOVE_IDS = Object.keys(MOVES).filter(
 // insulator/semiconductor like Silicon. This is what makes "Si doesn't have
 // magnons" a rule the game enforces, not just flavor text -- both the
 // battle move list (getBattleMoves) and Noether's shop filter through this.
-// 'screening' is the one exception, on every list, since Kondo's three
-// moves deal in a generic scattering/decoherence process any crystal's own
-// disorder/environment can carry, not a mode tied to one specific type's
-// band structure (their real payoff is the 3-turn status effect they
-// inflict, not raw power, so it doesn't need the mismatch bonus to matter)
-// -- never mismatched or gated by current form. Adding a new MoveClass here
-// always means deciding this on purpose, not by omission: a class left off
-// every list would make its moves *always* mismatch (canHost) against every
-// defender -- a silent 2x on top of whatever bonus BattleScene itself
-// applies for that class, not a neutral default.
+// Kondo's three self-buff moves (class 'screening', §5) are left off every
+// list here entirely rather than added to all of them -- they're not
+// attacks, so canHost/the quasiparticle-mismatch rule never applies to them
+// in the first place (BattleScene.resolveHit routes them to
+// resolveSelfBuff instead), and getBattleMoves surfaces the currently-active
+// one directly rather than through this table. Adding a new *attack*
+// MoveClass here always means deciding this on purpose, not by omission: a
+// class left off every list would make its moves *always* mismatch
+// (canHost) against every defender -- a silent 2x on top of whatever bonus
+// BattleScene itself applies for that class, not a neutral default.
 //
 // Mirrors `data/TAXONOMY.txt`'s CLASSES section exactly -- that file is the
 // hand-edited design spec, this table is its implementation; a mismatch
 // between the two is a bug, not a stylistic difference.
 const MOVE_COMPATIBILITY: Record<MaterialType, MoveClass[]> = {
   // 'plasmon' is 'metal''s own addition on top of the ordinary electron/
-  // phonon/screening baseline -- a partially filled band is what lets a
-  // free electron gas support a plasmon at all, so it's deliberately not
-  // shared with 'semiconductor'/'insulator' below.
-  metal: ['electron', 'phonon', 'screening', 'plasmon'],
+  // phonon baseline -- a partially filled band is what lets a free electron
+  // gas support a plasmon at all, so it's deliberately not shared with
+  // 'semiconductor'/'insulator' below.
+  metal: ['electron', 'phonon', 'plasmon'],
   // No 'electron' -- the gap is wide enough that even an ordinary band
   // electron doesn't propagate. 'polaron' instead: self-trapped polarons
   // are strongest in exactly this kind of ionic insulator/oxide, not a bare
   // metal or a narrow-gap semiconductor.
-  insulator: ['phonon', 'screening', 'polaron'],
-  semiconductor: ['electron', 'phonon', 'screening'],
-  classicalMagnet: ['magnon', 'phonon', 'screening'],
+  insulator: ['phonon', 'polaron'],
+  semiconductor: ['electron', 'phonon'],
+  classicalMagnet: ['magnon', 'phonon'],
   // Hosts spinon (the fractionalized excitation itself), vison (its
   // topological-order companion), and triplon (a dimer/valence-bond
   // quantum-paramagnet's own confined mode, grouped in here rather than a
   // separate class -- see types.ts's comment on this type).
-  quantumSpinLiquid: ['spinon', 'phonon', 'screening', 'vison', 'triplon'],
+  quantumSpinLiquid: ['spinon', 'phonon', 'vison', 'triplon'],
   // 'spinon' as well as 'heavyFermion' -- Kondo-breakdown/fractionalized-
   // Fermi-liquid physics at the quantum critical point YbRh₂Si₂ itself sits
   // at, on top of the class's own defining heavy-fermion composite.
-  kondoHeavyFermion: ['electron', 'phonon', 'screening', 'heavyFermion', 'spinon'],
+  kondoHeavyFermion: ['electron', 'phonon', 'heavyFermion', 'spinon'],
   // Ordinary (non-topological) Cooper pairing -- 'higgs' (the condensate's
   // own amplitude mode) rather than 'polaron'/'majorana': a plain s-wave
   // pairing alone doesn't host a Majorana zero mode, that needs genuine
   // topological pairing (see 'chernSuperconductor').
-  superconductor: ['electron', 'phonon', 'screening', 'higgs'],
+  superconductor: ['electron', 'phonon', 'higgs'],
   // A chiral/topological superconductor -- 'majorana' lives here, not on
   // plain 'superconductor' or a bare 'quantumSpinHall' surface: a Majorana
   // zero mode needs genuine topological pairing (vortices/edges of a chiral
   // SC, or a superconductor-proximitized topological surface), not just an
   // ordinary s-wave condensate or a helical boundary state with no pairing
   // in the picture at all.
-  chernSuperconductor: ['electron', 'phonon', 'screening', 'higgs', 'chiral', 'majorana'],
+  chernSuperconductor: ['electron', 'phonon', 'higgs', 'chiral', 'majorana'],
   // An (integer) Chern insulator's edge is a single chiral channel, whether
   // field-driven (world 4's Landau levels) or zero-field (world 10's
   // anomalous-Hall compounds) -- both the same topological invariant, see
   // types.ts's comment on this type.
-  chernInsulator: ['electron', 'phonon', 'screening', 'chiral'],
+  chernInsulator: ['electron', 'phonon', 'chiral'],
   // 'helical' (a Kramers pair, time-reversal-protected), not 'chiral' -- a
   // bulk 3D topological insulator's own surface Dirac cone (Bi₂Te₃), a
   // bulk-derived monolayer's own quantum spin Hall state (Monolayer WTe₂),
@@ -339,18 +355,18 @@ const MOVE_COMPATIBILITY: Record<MaterialType, MoveClass[]> = {
   // physics regardless of dimensionality, see types.ts's comment on this
   // type. No 'majorana', since none of them have superconducting proximity
   // in the picture.
-  quantumSpinHall: ['electron', 'phonon', 'screening', 'helical'],
+  quantumSpinHall: ['electron', 'phonon', 'helical'],
   // Unlike ordinary 'chernInsulator', a fractional Chern insulator's edge is
   // itself a fractionalized chiral mode whose quanta are charged anyons
   // with genuine braiding statistics -- 'chargedAnyon' rather than 'chiral'.
-  fractionalChern: ['electron', 'phonon', 'screening', 'chargedAnyon'],
+  fractionalChern: ['electron', 'phonon', 'chargedAnyon'],
   // No magnetic order at all -- 'ferron' (the polarization order's own
   // quantum) rather than 'magnon'/'electromagnon'.
-  ferroelectric: ['phonon', 'screening', 'ferron'],
+  ferroelectric: ['phonon', 'ferron'],
   // Both 'electromagnon' (the ME-hybridized magnon) and 'ferron' (the
   // polarization order's own excitation) on top of an ordinary 'magnon' --
   // distinct modes, not redundant: a multiferroic genuinely has all three.
-  multiferroic: ['magnon', 'phonon', 'screening', 'electromagnon', 'ferron'],
+  multiferroic: ['magnon', 'phonon', 'electromagnon', 'ferron'],
   // Hosts every class except the multiferroic/ferroelectric-only
   // 'electromagnon'/'ferron' -- "The Adapted" models whatever moves the
   // player has collected by then, so it needs everything else, the same
@@ -359,7 +375,6 @@ const MOVE_COMPATIBILITY: Record<MaterialType, MoveClass[]> = {
     'electron',
     'magnon',
     'phonon',
-    'screening',
     'plasmon',
     'polaron',
     'spinon',
@@ -475,14 +490,16 @@ export function getPlayerMaterial(registry: RegistryLike): Material {
 // moves are currently usable, so switching back later restores the rest for
 // free.
 //
-// One narrow special case: Kondo's three screening-class moves
-// (KONDO_MOVE_IDS) can all be *learned* independently, but only one is ever
-// *usable* at a time -- the registry/save `kondoActiveMove` id, switched
-// only by talking to Kondo again (OverworldScene.showKondoPanel), not
-// per-turn like every other learned move (Kondo screening resolves one
-// scattering channel at a time, not all three at once). A bought-but-
-// inactive Kondo move stays in `unlockedMoves` (still "learned") -- it just
-// never passes this filter until it's made active.
+// One narrow special case: Kondo's three self-buff moves (KONDO_MOVE_IDS)
+// can all be *learned* independently, but only one is ever *usable* at a
+// time -- the registry/save `kondoActiveMove` id, switched only by talking
+// to Kondo again (OverworldScene.showKondoPanel), not per-turn like every
+// other learned move (only one buff channel can be tuned at a time). A
+// bought-but-inactive Kondo move stays in `unlockedMoves` (still "learned")
+// -- it just never passes this filter until it's made active. Checked
+// before (not intersected with) `allowed` -- a self-buff isn't gated by
+// MOVE_COMPATIBILITY at all (see that table's own comment), so it's usable
+// regardless of the player's current form the moment it's the active one.
 export function getBattleMoves(registry: RegistryLike): string[] {
   const unlocked = (registry.get('unlockedMoves') as string[]) ?? [...PLAYER_MATERIAL.moves];
   const allowed = new Set(compatibleMoves(getPlayerMaterial(registry)));
@@ -493,9 +510,8 @@ export function getBattleMoves(registry: RegistryLike): string[] {
   }
   const activeKondoMove = (registry.get('kondoActiveMove') as string | null) ?? null;
   return unlocked.filter((id) => {
-    if (!allowed.has(id)) return false;
-    if (KONDO_MOVE_IDS.includes(id) && id !== activeKondoMove) return false;
-    return true;
+    if (KONDO_MOVE_IDS.includes(id)) return id === activeKondoMove;
+    return allowed.has(id);
   });
 }
 

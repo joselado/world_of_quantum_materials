@@ -17,10 +17,11 @@ import { persistFromRegistry } from '../../data/save';
 // Every row, bought or not, prints the passive's one-line description
 // underneath (a passive's effect isn't spelled out anywhere else the way a
 // move's physics-flavored name usually implies it) -- otherwise it was only
-// ever visible during the single visit that purchased it. Unlike Kondo's
-// moves, a passive is never gated by MOVE_COMPATIBILITY (the same
-// "player-learned technique, not a quasiparticle a crystal has to host"
-// reasoning as Kondo's screening moves) -- every passive is always
+// ever visible during the single visit that purchased it, the same reasoning
+// panels/kondo.ts's renderKondoMoves prints each of Kondo's own move
+// descriptions for. Like Kondo's self-buff moves, a passive is never gated
+// by MOVE_COMPATIBILITY (the same "player-learned technique, not a
+// quasiparticle a crystal has to host" reasoning) -- every passive is always
 // purchasable regardless of current form, so there's no "wrong form" empty
 // state to special-case here. Buying the very first passive for a given
 // owner activates it automatically, same reasoning as Kondo's first move.

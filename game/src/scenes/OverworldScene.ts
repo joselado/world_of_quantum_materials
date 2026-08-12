@@ -156,7 +156,7 @@ interface WorldSprite {
 // use. Every guardian sets `open` explicitly: Noether (shop), Bloch
 // (teleport hub), Dresselhaus (transmutation), Laughlin (analytic moves),
 // Majorana (hybrid materials), Anderson (impurity doping, World 6), Bohr
-// (passive abilities), Kondo (screening moves), Franklin (passive
+// (passive abilities), Kondo (self-buff moves), Franklin (passive
 // abilities, World 9). World 10 hosts Skłodowska-Curie (Ultimate moves), the
 // guardians' own capstone. A future guardian added with no mechanic yet can
 // still leave `open` unset and fall through to the shared showGuardianLore

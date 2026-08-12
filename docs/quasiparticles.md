@@ -43,20 +43,20 @@ host the attacking move's quasiparticle class at all, the hit lands at
 <!-- GENERATED:COMPATIBILITY_TABLE START -->
 | Crystal type | Quasiparticle classes it can host |
 | --- | --- |
-| `metal` | `electron`, `phonon`, `screening`, `plasmon` |
-| `insulator` | `phonon`, `screening`, `polaron` |
-| `semiconductor` | `electron`, `phonon`, `screening` |
-| `classicalMagnet` | `magnon`, `phonon`, `screening` |
-| `quantumSpinLiquid` | `spinon`, `phonon`, `screening`, `vison`, `triplon` |
-| `kondoHeavyFermion` | `electron`, `phonon`, `screening`, `heavyFermion`, `spinon` |
-| `superconductor` | `electron`, `phonon`, `screening`, `higgs` |
-| `chernSuperconductor` | `electron`, `phonon`, `screening`, `higgs`, `chiral`, `majorana` |
-| `chernInsulator` | `electron`, `phonon`, `screening`, `chiral` |
-| `quantumSpinHall` | `electron`, `phonon`, `screening`, `helical` |
-| `fractionalChern` | `electron`, `phonon`, `screening`, `chargedAnyon` |
-| `ferroelectric` | `phonon`, `screening`, `ferron` |
-| `multiferroic` | `magnon`, `phonon`, `screening`, `electromagnon`, `ferron` |
-| `adaptive` | `electron`, `magnon`, `phonon`, `screening`, `plasmon`, `polaron`, `spinon`, `triplon`, `chiral`, `helical`, `higgs`, `chargedAnyon`, `majorana`, `heavyFermion`, `vison` |
+| `metal` | `electron`, `phonon`, `plasmon` |
+| `insulator` | `phonon`, `polaron` |
+| `semiconductor` | `electron`, `phonon` |
+| `classicalMagnet` | `magnon`, `phonon` |
+| `quantumSpinLiquid` | `spinon`, `phonon`, `vison`, `triplon` |
+| `kondoHeavyFermion` | `electron`, `phonon`, `heavyFermion`, `spinon` |
+| `superconductor` | `electron`, `phonon`, `higgs` |
+| `chernSuperconductor` | `electron`, `phonon`, `higgs`, `chiral`, `majorana` |
+| `chernInsulator` | `electron`, `phonon`, `chiral` |
+| `quantumSpinHall` | `electron`, `phonon`, `helical` |
+| `fractionalChern` | `electron`, `phonon`, `chargedAnyon` |
+| `ferroelectric` | `phonon`, `ferron` |
+| `multiferroic` | `magnon`, `phonon`, `electromagnon`, `ferron` |
+| `adaptive` | `electron`, `magnon`, `phonon`, `plasmon`, `polaron`, `spinon`, `triplon`, `chiral`, `helical`, `higgs`, `chargedAnyon`, `majorana`, `heavyFermion`, `vison` |
 <!-- GENERATED:COMPATIBILITY_TABLE END -->
 
 ## Laughlin's Analytic moves
@@ -87,13 +87,14 @@ per move, the first time it's picked, after which retuning back to it is
 free forever. See [Guardians](guardians.md#skłodowska-curie) for how the
 shop and the per-class unlock pricing work.
 
-## Screening
+## Kondo's self-buffs
 
-Sits outside the ordinary quasiparticle roster and the table above --
-`screening` is on every crystal type's compatibility list, so it's never
-mismatched. Kondo (World 8) sells three screening moves, each inflicting a
-status effect (weaken the target's own damage, slow it down, or crack its
-defenses) rather than hitting hard; only one is ever active at a time. See
+Sits outside the ordinary quasiparticle roster and the table above entirely --
+Kondo's three moves are self-buffs, not attacks: they deal no damage and never
+trigger the quasiparticle-mismatch rule, so there's no compatibility list to
+check. Casting one buffs the caster's own side for 3 turns instead of hitting
+the opponent (reduce incoming damage, a chance to dodge a hit outright, or
+heal over time); only one of the three is ever active at a time. See
 [Guardians](guardians.md#kondo) for details.
 
 See [Crystals](crystals.md) for which crystal types appear in which world.

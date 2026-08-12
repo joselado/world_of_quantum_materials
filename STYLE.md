@@ -454,10 +454,9 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   one currently is -- same dimmed-current convention every other guardian panel uses.
   Buying the first passive for this guardian activates it immediately, same reasoning as
   Kondo's first move; buying a second or third doesn't, and switching which one is active
-  always requires reopening this panel. No "wrong form" empty state -- unlike Kondo's
-  moves, a passive is never gated by a crystal's own physics (the same "player-learned
-  technique, not physics a crystal has to host" reasoning that puts `'screening'` on
-  every type's list), so all three are always purchasable.
+  always requires reopening this panel. No "wrong form" empty state -- like Kondo's own
+  self-buff moves, a passive is never gated by a crystal's own physics at all ("player-learned
+  technique, not physics a crystal has to host"), so all three are always purchasable.
 - The buy button's label and its description line are both capped at a lower font-scale
   ceiling than every other guardian panel's buttons (`Math.min(fontScale(this), 1.3)` for
   the label, `1.2` for the description) rather than scaling all the way to the Enter-menu
@@ -475,17 +474,19 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   mechanic.
 - Same two-runs-of-rows shape as Laughlin's panel above: still-
   unbought moves from `data/materials.ts`'s `KONDO_MOVE_IDS` (Screening Pulse, Scattering
-  Drag, Breakdown Cascade), usable from any form, same `<move name> -- <cost>
+  Drag, Coherence Cascade), usable from any form, same `<move name> -- <cost>
   qumatessence` label and afford/dim treatment as Laughlin's/Noether's shops (reusing `shopCost`),
-  followed by one row per already-bought Kondo move -- a bought-and-inactive move reads
+  each followed by its own one-line `description` underneath in the same dimmer blue-grey
+  Bohr's/Franklin's passive rows use (`renderPassiveList`) -- then one row per already-bought
+  Kondo move, its own description printed the same way. A bought-and-inactive move reads
   "Make `<name>` active" as a clickable button, the currently active one (registry/save
   `kondoActiveMove`) reads "`<name>` (active)" dimmed to 50% alpha with no click handler,
   the same dimmed-current treatment Dresselhaus's "`<name>` (current form)" row uses. Buying
   the first Kondo move activates it immediately (still shows the dimmed "(active)" tag right
   away, no separate click needed); buying a second or third afterward doesn't, and switching
   which one is active always requires reopening this panel and clicking "Make active," not a
-  per-turn choice in the battle move menu. `'screening'` sits on every type's
-  `MOVE_COMPATIBILITY` list, so all three are always for sale until bought -- no empty/
+  per-turn choice in the battle move menu. None of the three self-buff moves is gated by a
+  crystal's own physics at all, so all three are always for sale until bought -- no empty/
   wrong-form state to render here, unlike Noether's shop.
 
 ## Franklin in the overworld (`OverworldScene.showFranklinPanel`)
@@ -663,13 +664,13 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   small grey raincloud (`addFailCloud`) just above the crystal, bobbing gently. Everything
   is added directly to the player crystal's container so it moves with the existing
   idle-bob tween for free.
-- Kondo's Screened/Slowed/Weakened status effects (DESIGN.md §4) get a much smaller
+- Kondo's Shielded/Evasive/Regenerating self-buffs (DESIGN.md §4) get a much smaller
   treatment than the quiz aura/raincloud above -- a plain text pill (`playerStatusLabel`/
   `opponentStatusLabel`) docked just under that side's HP bar rather than anything layered
-  onto the crystal itself, reading `"<Status> (<turns left>)"` in Kondo's own rust-orange
+  onto the crystal itself, reading `"<Buff> (<turns left>)"` in Kondo's own rust-orange
   (`#ff8f6a`, matching his guardian label/panel stroke and the `'screening'` attack-effect
   color below) over the same translucent-black tag background every HP-bar name label
-  already uses. Empty (no active status) by default on both sides -- the pill only ever
+  already uses. Empty (no active buff) by default on both sides -- the pill only ever
   reads as chrome that appears when relevant, not a permanent fixture of the HP-bar area.
 - Franklin's/Bohr's active passives (DESIGN.md §5) get their own pill directly below that
   side's status pill, same size/background/depth as the status pill but in a muted
@@ -721,13 +722,12 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 - The row previews the next five hits in order (DESIGN.md §4's velocity multi-hit rule):
   the faster side's icons repeated `fasterHits` times, then the slower side's icon once,
   tiled out to five. It's a best-effort look-ahead, not a guarantee -- it assumes ordinary
-  moves keep getting picked and neither side's stats change mid-sequence, so a Kondo status
-  landing or an Ultimate/Analytic pick (exempt from the multi-hit scaling) can make the
-  actual next round diverge from what it showed; the widget carries no disclaimer text for
-  this, since it's still an accurate read of "if nothing changes."
+  moves keep getting picked, so an Ultimate/Analytic pick (exempt from the multi-hit scaling)
+  or one of Kondo's self-buff moves (always resolves as a single action for its round, see
+  `playerAttack`) can make the actual round diverge from what it showed; the widget carries no
+  disclaimer text for this, since it's still an accurate read of "if nothing changes."
 - Redrawn once in `create()` and again every time a round actually finishes (right where
-  `turnLock` releases), so a mid-battle Slowed status changes the preview for future rounds
-  as soon as it lands rather than staying frozen from turn 1.
+  `turnLock` releases).
 
 ## Battle move menu (`BattleScene.drawMoveMenu`)
 
@@ -735,13 +735,17 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   rounded-rectangle-with-stroke treatment as the overworld's dialogue panels, stroked gold
   (`0xffe066`) to match Noether's own panel color, titled "MOVES" in bold gold. Height grows
   with however many moves are on the current page rather than a fixed size, since that
-  changes as the player learns moves, buys an analytic/screening kit, or transmutes into a
-  form with a different physics-compatible set (§3 of DESIGN.md).
-- **Grouped into up to four move-kind sections (`ATTACKS`/`ANALYTIC`/`ULTIMATE`/`SCREENING`),
+  changes as the player learns moves, buys an analytic move or a Kondo self-buff, or
+  transmutes into a form with a different physics-compatible set (§3 of DESIGN.md).
+- **Grouped into up to four move-kind sections (`ATTACKS`/`ANALYTIC`/`ULTIMATE`/`BUFFS`),
   shown one
   page at a time** (DESIGN.md §4): a small bold blue-grey (`#8fa0c9`) header line reading the
   section's label sits above that page's own rows, with a `(i/N)` page count appended once
-  there's more than one page. A section that has no usable move in it never becomes a page at
+  there's more than one page. `BUFFS` carries its own legend line under the header the same
+  way `ANALYTIC`/`ULTIMATE` do ("self-buff, no damage, 3 turns"), and each of its buttons
+  shows the move's own name plus "3-turn buff" instead of the `Pwr <n>`/`!!2x` chrome an
+  ordinary attack button shows, since a self-buff never deals damage or mismatches. A section
+  that has no usable move in it never becomes a page at
   all (a player with no analytic/ultimate moves bought, or no Kondo move active, never sees an
   empty
   one). A section with more moves than one page can hold at the row-height floor below
@@ -749,9 +753,12 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   further or growing past the field's own bottom edge -- `ATTACKS` for an 'adaptive'-type form
   that's learned every attack class (14 moves) is the only section that currently gets this
   large, splitting into evenly-sized pages (e.g. two pages of 7) rather than one lopsided page
-  and a near-empty second one. Each move is still a `[ #222244 background / #ffff88 text ]`
-  button, same treatment used everywhere else (overworld dialogue buttons), stacked vertically
-  under the header. A form with zero currently-usable moves (shouldn't normally happen, since
+  and a near-empty second one. Each move is still a `#222244`-background button, same
+  treatment used everywhere else (overworld dialogue buttons), stacked vertically
+  under the header -- text is the usual `#ffff88`, except a `BUFFS`-section button (Kondo's
+  currently-active self-buff move), which reads in `STATUS_PILL_COLOR` (`#ff8f6a`, Kondo's own
+  rust-orange) instead, tying the button back to the status pill the buff itself renders as
+  once cast. A form with zero currently-usable moves (shouldn't normally happen, since
   Phonon Beam is universal) shows "No usable moves" instead of an empty panel. Laughlin's two
   Analytic moves (`skyfallBeam`/`groundEruption`) get a gold `★` tag appended to their own
   label, with a "right=2x wrong=½x" legend living as its own dim sub-line directly under the
@@ -765,7 +772,8 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   edges (`x = MENU_X + 14` / `MENU_X + MENU_WIDTH - 14`) -- clicking either, or pressing the
   Left/Right keys anywhere in the scene, advances/retreats `movePageIndex` and redraws.
   Hidden entirely (no arrows, no `(i/N)`) once there's only one page, so a player who never
-  bought an analytic/screening move sees a plain `ATTACKS` header with nothing to switch to.
+  bought an analytic move or a Kondo self-buff sees a plain `ATTACKS` header with nothing to
+  switch to.
 - Header text is deliberately capped at a lower text-size ceiling than the panel's own
   title/legend (`headerScale = Math.min(fontScale, 1.15)`, 10px label / 8px legend sub-line
   at that scale), and the pager arrows render a size above that (`13 * headerScale`) --
@@ -894,12 +902,16 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   target (Anyon Braid, Majorana Split). Each class also has its own color (e.g. orange for
   Phonon Beam, red for Magnon Pulse). All shapes render additive-blended
   (`Phaser.BlendModes.ADD`) so they glow instead of reading as flat shapes.
-- Kondo's three moves (Screening Pulse, Scattering Drag, Breakdown Cascade) share the
-  `'screening'` class's one look, unlike Laughlin's/Skłodowska-Curie's moves below -- an
+- Kondo's three self-buff moves (Screening Pulse, Scattering Drag, Coherence Cascade) share
+  the `'screening'` class's one look, unlike Laughlin's/Skłodowska-Curie's moves below -- an
   expanding ring (the same silhouette
-  Magnon Pulse/Polaron Drag use, reading as a screening cloud enveloping the target) tinted
-  Kondo's own rust-orange (`0xe86a44`). Distinct move names and the status-effect log line
-  each one produces already read as three different moves without three different
+  Magnon Pulse/Polaron Drag use, reading as an effect enveloping the caster) tinted Kondo's
+  own rust-orange (`0xe86a44`), played with the caster's own position as both `from` and `to`
+  (`BattleScene.resolveSelfBuff`) so it centers on them instead of traveling toward the
+  opponent, and paired with a plain squash-bounce on the caster's own crystal
+  (`flashHit`) rather than the camera shake/flash an ordinary hit's `impactPunch` adds, so
+  casting a buff doesn't read as the caster taking damage. Distinct move names and the buff
+  log line each one produces already read as three different moves without three different
   silhouettes too, so there's no `ANALYTIC_SHAPES`-style per-move override for this class.
 - Laughlin's two Analytic moves break the "one shape per class" rule on purpose, each with
   its own silhouette rather than sharing whichever ordinary
