@@ -18,7 +18,7 @@ than appending a changelog, so this always reflects current reality.
 - Above the title text, a small showcase cluster of five crystals (`drawShowcaseCrystals`,
   the module-level `SHOWCASE` array) rather than a single crystal -- a curated handful of
   `data/materials.ts`'s `TYPE_LOOK` entries (metal, quantumSpinLiquid, classicalMagnet,
-  superconductor, topological), not tied to the player's own save/current form, since this is a "world full
+  superconductor, quantumSpinHall), not tied to the player's own save/current form, since this is a "world full
   of different materials" branding image rather than a "welcome back" one (the Hub is where
   the player's own crystal gets its own moment). One centered "hero" crystal (biggest,
   drawn last so it renders on top) flanked by two nearer and two further/smaller ones, each
