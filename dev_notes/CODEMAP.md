@@ -22,9 +22,12 @@ game/src/
     TitleScene.ts             Loads save -> registry, title showcase crystals, "Continue"/"New Game" -> Hub,
                                  Story Mode / Superposition Mode picker
     HubScene.ts                World 0, static room, up to 9 stations: 3 that always exist
-                                 (Qumatex/Save/Door, door label/Enter-key resume-in-place
-                                 via canResumeWorld(), tracks rivalDefeated progress in Story
-                                 Mode, pinned to "Enter World 1" in Superposition Mode)
+                                 (Qumatex/Save/Door -- door label/click resume-in-place to
+                                 highestUnlockedWorld() via canResumeWorld(), tracks
+                                 rivalDefeated progress in Story Mode, pinned to "Enter World 1"
+                                 in Superposition Mode; the Enter *key* instead resumes
+                                 resumeWorld() -- the exact world/position mapState holds,
+                                 not necessarily highestUnlockedWorld())
                                  plus up to 6 reference/settings stations (Moves/Stats/Abilities/
                                  Guardians/Tutorial/Settings, panels/hubStations.ts's
                                  LAB_STATIONS -- Abilities/Guardians filtered out until a first
@@ -49,7 +52,7 @@ game/src/
                                  to reuse it, see "Guardians" below), and hubStations.ts holds the
                                  Lab's own six reference/settings stations (see "Lab stations and
                                  settings" below) -- taking scene: HubScene instead of
-                                 scene: OverworldScene, since HubScene is their only caller
+                                 scene: GuardianPanelHost, since HubScene is their only caller
     BattleScene.ts             Turn-based battle: move buttons, HP bars, attack effects, log
   world/
     mapgen.ts                  generateWorldMap(gridW, gridH, start, world, playerType?) -- dispatches
@@ -324,11 +327,17 @@ difficulty-curve sanity check rather than a docs generator.
   (matching the move menu's own border) and magenta `0xff66ff` for `showUltimateQuestions`'s.
   A new panel should pick a stroke color that doesn't collide with these.
 - **Guardian panels live in `scenes/panels/<guardian>.ts`, one file per guardian, not as
-  methods on `OverworldScene`.** Each exports a `show<Guardian>Panel(scene: OverworldScene)`
+  methods on `OverworldScene`.** Each exports a `show<Guardian>Panel(scene: GuardianPanelHost)`
   (or, for Bloch, `showBlochHub`) that the `WORLD_GUARDIANS` table's
   `open` field calls directly (`open: (s) => showDresselhausPanel(s)`), replacing the older
   `open: (s) => s.showXPanel()` shape from when every panel body lived on the class itself.
-  A panel-specific helper only that one guardian calls (e.g. Noether's `renderShopTabs`) moves
+  `GuardianPanelHost` (`OverworldScene.ts`) is the interface every panel file is actually
+  written against, not the concrete `OverworldScene` class -- both `OverworldScene` (a
+  guardian met mid-walk) and `HubScene` (the same guardian reopened from the Lab's Guardians
+  station, `scenes/panels/hubStations.ts`'s `showGuardiansPanel`) implement it, so a guardian's
+  panel renders identically -- same shop, same state, no scene transition -- regardless of
+  which of the two scenes the player actually opened it from. A panel-specific helper only that
+  one guardian calls (e.g. Noether's `renderShopTabs`) moves
   into the same file as a plain (non-exported) function taking `scene` as its first param; a
   helper more than one guardian calls gets its own file under `scenes/panels/` instead rather
   than living in either guardian's file -- `passiveList.ts`'s `renderPassiveList` (Franklin's
@@ -341,15 +350,28 @@ difficulty-curve sanity check rather than a docs generator.
   "Guardians" below), since her per-class-unlock pricing is fundamentally different from a flat
   purchase. Genuinely cross-cutting dialogue infrastructure -- `addDialogueButton(At)`,
   `renderPagedButtons`, `renderFarewellFooter`, `closeDialogue`, state accessors like
-  `getUnlockedMoves`/`getDefeatedMaterials`/`getVisitedWorlds`/`isSuperpositionMode`, and the
-  player-form mutator `applyPlayerForm` (shared by Dresselhaus's `transmuteInto` and Majorana's
-  `becomeHybrid`, both of which moved into their own panel file as plain functions) -- stays as
-  public (not `private`) methods/fields on `OverworldScene` itself, since panel modules living
-  outside the class can't reach a `private` member. This public-instead-of-private tradeoff is
-  deliberate: it's the cost of splitting a god-object scene into per-guardian files without a
-  much larger interface-based redesign, not an invitation to reach into `OverworldScene`'s
-  internals from unrelated code. A new panel-only helper should default to `private` and only
-  widen to public if a panel file genuinely needs to call it from outside the class.
+  `getUnlockedMoves`/`getDefeatedMaterials`/`getVisitedWorlds`/`isSuperpositionMode`, `world`/
+  `advanceToWorld` (Bloch's own travel action), every guardian's per-panel pagination/selection
+  field (`shopTab`, `blochPage`, `dresselhausPage`, `majoranaPage`/`majoranaSelection`,
+  `andersonPage`/`andersonSelection`/`andersonMovePage`, `feynmanPage`), and the player-form
+  mutator `applyPlayerForm` (shared by Dresselhaus's `transmuteInto` and Majorana's
+  `becomeHybrid`, both of which moved into their own panel file as plain functions) -- is each
+  member of `GuardianPanelHost`, implemented as public (not `private`) methods/fields on both
+  `OverworldScene` and `HubScene` independently (not a shared base class), since panel modules
+  living outside either class can't reach a `private` member and Phaser scenes don't share a
+  common non-`Phaser.Scene` ancestor to hang shared state on. `HubScene`'s own copies of this
+  infrastructure (`world = 0`, never a real built world so Bloch's own "exclude the world I'm
+  in" filter excludes nothing; `qumatessence`/`playerMaterial` mirrored from the registry the
+  same way `OverworldScene.create()` does; `advanceToWorld` a genuine `scene.start('Overworld',
+  { world, regenerate: true, ... })`, since a guardian panel's own explicit travel action, e.g.
+  Bloch's destination rows, is still real travel) live next to `HubScene`'s existing duplicated
+  dialogue primitives (`addDialogueButtonAt`, `closeDialogue`, `addButton`). This
+  public-instead-of-private, duplicated-instead-of-shared tradeoff is deliberate: it's the cost
+  of splitting a god-object scene into per-guardian files, and of letting the Lab host the same
+  panels as the overworld, without a much larger shared-base-class redesign, not an invitation to
+  reach into either scene's internals from unrelated code. A new panel-only helper should default
+  to `private` and only widen to public (and join `GuardianPanelHost`, implemented on both
+  classes) if a panel file genuinely needs to call it from outside the class.
 - **Guardian avatars.** One builder per guardian in its own file: `art/noether.ts`'s
   `makeNoetherAvatar()`, `art/bloch.ts`'s `makeBlochAvatar()`, `art/dresselhaus.ts`'s
   `makeDresselhausAvatar()`. Never a shared parameterized builder -- each guardian needs to read as
@@ -1007,7 +1029,7 @@ future guardian could choose them; nothing currently does.
 **The Lab's six reference/settings stations** (`scenes/panels/hubStations.ts`'s
 `LAB_STATIONS` array -- `showMovesPanel`/`showStatsPanel`/`showAbilitiesPanel`/
 `showGuardiansPanel`/`showTutorialTopics`/`showSettingsPanel`, each taking `scene: HubScene`):
-built the same way a guardian panel file takes `scene: OverworldScene` (see "Guardian panels"
+built the same way a guardian panel file takes `scene: GuardianPanelHost` (see "Guardian panels"
 above) -- these six only ever run from `HubScene`, since pressing `H` or `Enter` from any
 Overworld scene warps straight there (`this.scene.start('Hub')`, no menu/overlay of choices in
 between) rather than opening anything mid-world. Each is a pure function of registry/save
@@ -1036,28 +1058,26 @@ name+description row per owner, labeled via `PASSIVE_OWNER_LABELS` and read from
 `activePassiveByOwner[owner]`, so a player doesn't have to walk back to either guardian's own
 panel just to remember which passive is running (and doesn't have to remember what that passive
 actually does either, since the full description shows here too). `showGuardiansPanel` lists
-every met guardian (`OverworldScene.guardianRoster()`, a public static id/name/world list
-derived from the private `WORLD_GUARDIANS` table) and, on a row click, warps into that
-guardian's world (`scene.start('Overworld', { world, regenerate: true, openGuardian: true })`)
-rather than trying to render their bespoke shop UI inside the Lab -- a guardian's own panel
-(Noether's shop, Bloch's teleport hub, ...) depends on overworld-only state (the qumatessence
-HUD, `applyPlayerForm`, `advanceToWorld`, per-guardian pagination fields) that stays private to
-`OverworldScene` by design (see "Guardian panels" above), so reopening it has to happen inside
-that scene. `OverworldScene.create()` reads the `openGuardian` init flag once, after the
-(freshly regenerated) map is built, and calls the same `openGuardian()` a guardian's own
-mid-corridor tile would.
+every met guardian (`OverworldScene.guardianRoster()`, a public static id/name/world/`open` list
+derived from the private `WORLD_GUARDIANS` table) and, on a row click, calls that guardian's own
+`open` callback with `scene` (the `HubScene` itself) directly -- the exact same callback
+`WORLD_GUARDIANS` dispatches to when the player walks up to that guardian mid-world -- rather
+than warping anywhere. This works because `HubScene` implements `GuardianPanelHost` (see
+"Guardian panels" above) with its own copies of the qumatessence readout, `applyPlayerForm`,
+`advanceToWorld`, and every per-guardian pagination field, so a guardian's panel has everything
+it needs without the player's world/scene/position ever changing just from opening it.
 
 **All eight of the Lab's non-door panels** (the six stations above, plus `HubScene`'s own
 `showSavePoint`/`renderMaterialdexPanel`) share one heading color -- `hubStations.ts`'s exported
 `LAB_TITLE_COLOR` (`#ffe066`) -- and one centered-content geometry: `hubStations.ts`'s
 `labPanelColumns(panelWidth)` returns a fixed `contentCenterX`/`contentWrapW` margined in from
-both edges of the panel. A panel's own themed motif (`art/labMotifs.ts`'s `makeMovesMotif`/
-`makeStatsMotif`/`makeAbilitiesMotif`/`makeGuardiansMotif`/`makeTutorialMotif`/
+both edges of the panel. A panel's own themed motif (`art/labMotifs.ts`'s `makeQumatexMotif`/
+`makeMovesMotif`/`makeStatsMotif`/`makeAbilitiesMotif`/`makeGuardiansMotif`/`makeTutorialMotif`/
 `makeSettingsMotif`/`makeSavePointMotif` -- fixed-px art, never run through `ui/text.ts`'s
 `fontPx()`/`fontScale()`) is never drawn inside the panel; each `LAB_STATIONS` entry (and
-`HubScene`'s own hardcoded Save Point row) instead carries its motif builder for
+`HubScene`'s own hardcoded Qumatex/Save Point rows) instead carries its motif builder for
 `HubScene.addStationRow` to plant beside that station's own button in the room, at a much
-smaller fixed size (`STATION_MOTIF_SIZE = 22`) than a motif drawn inside a full panel would
+smaller fixed size (`STATION_MOTIF_SIZE = 26`) than a motif drawn inside a full panel would
 use. A panel whose own row list can grow long (Guardians, up to every guardian in
 Superposition Mode) caps its row font scale (`Math.min(fontScale(scene), 1.3)`) rather than
 adding a shrink-to-fit loop, the same tradeoff `renderPassiveList`/`showAbilitiesPanel` already
@@ -1140,8 +1160,9 @@ renders whichever entry `materialdexSelectedName` points at (looked up by name i
 new filtered list's first entry on a type-filter change) -- crystal render, name, physics
 blurb, masked the same way when undiscovered. This panel skips the `labPanelColumns` treatment
 the other seven Lab panels use (above) in favor of its own two-column list/detail layout; its
-own right-column crystal render already is a themed motif, so instead of a station-side icon
-(art/labMotifs.ts has no builder for Qumatex, same reason) the title line gets a small purple
+own right-column crystal render already is a themed motif, so instead of reusing the station
+row's own `makeQumatexMotif` icon (`art/labMotifs.ts`, a small 2x2 grid of tiny faceted gems,
+planted beside the Qumatex button out in the room itself) the title line gets a small purple
 prism icon of its own (`makeCrystal(this, 16, 0x9a6ad9, 'prism')`) planted just to its left.
 Panel height is computed top-down from each
 element's actual measured height (`renderMaterialdexPanel`'s running `y`, same pattern as

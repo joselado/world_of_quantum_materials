@@ -1,4 +1,4 @@
-import type { OverworldScene } from '../OverworldScene';
+import type { GuardianPanelHost } from '../OverworldScene';
 import { BUILT_WORLDS } from '../OverworldScene';
 import { makeBlochAvatar } from '../../art/bloch';
 import { playGuardianChime } from '../../audio/sfx';
@@ -39,7 +39,7 @@ import { persistFromRegistry } from '../../data/save';
 // with no qumatessence must still be able to teleport anywhere immediately.
 // Content laid out top-down first (running `y`), panel sized/inserted
 // behind everything afterward -- same pattern as showSettingsPanel.
-export function showBlochHub(scene: OverworldScene) {
+export function showBlochHub(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
 
   const destinations = scene.getVisitedWorlds().filter((w) => BUILT_WORLDS.includes(w) && w !== scene.world);

@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import type { OverworldScene } from '../OverworldScene';
+import type { GuardianPanelHost } from '../OverworldScene';
 import { makeKondoAvatar } from '../../art/kondo';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
@@ -19,7 +19,7 @@ import { persistFromRegistry } from '../../data/save';
 // three can ever be usable in battle at a time (registry/save
 // `kondoActiveMove`), so this panel is also the only place that switches
 // it, not just the one that sells them.
-export function showKondoPanel(scene: OverworldScene) {
+export function showKondoPanel(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
 
   const panelWidth = 600;
@@ -86,7 +86,7 @@ export function showKondoPanel(scene: OverworldScene) {
 // already-bought moves is always its own explicit "Make active" click.
 // forSale/learned always partition all three KONDO_MOVE_IDS between them,
 // so there's no empty state to render here.
-function renderKondoMoves(scene: OverworldScene, container: Phaser.GameObjects.Container, y: number): number {
+function renderKondoMoves(scene: GuardianPanelHost, container: Phaser.GameObjects.Container, y: number): number {
   const unlocked = scene.getUnlockedMoves();
   const forSale = KONDO_MOVE_IDS.filter((id) => !unlocked.includes(id));
   const learned = KONDO_MOVE_IDS.filter((id) => unlocked.includes(id));

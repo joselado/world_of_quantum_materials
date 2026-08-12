@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import type { OverworldScene } from '../OverworldScene';
+import type { GuardianPanelHost } from '../OverworldScene';
 import { makeNoetherAvatar } from '../../art/noether';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
@@ -18,7 +18,7 @@ import type { Stats } from '../../data/types';
 // to sit at a fixed offset from the avatar that assumed a short 1-line
 // render; at a bigger text-size setting it wraps to 3-4 lines and would
 // otherwise run straight into the tabs/rows below it.
-export function showNoetherShop(scene: OverworldScene) {
+export function showNoetherShop(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
 
   const panelWidth = 600;
@@ -62,7 +62,7 @@ export function showNoetherShop(scene: OverworldScene) {
   container.addAt(panel, 0);
 }
 
-function renderShopTabs(scene: OverworldScene, container: Phaser.GameObjects.Container, y: number): number {
+function renderShopTabs(scene: GuardianPanelHost, container: Phaser.GameObjects.Container, y: number): number {
   let maxHeight = 0;
   (['moves', 'stats'] as const).forEach((tab, i) => {
     const active = scene.shopTab === tab;
@@ -87,7 +87,7 @@ function renderShopTabs(scene: OverworldScene, container: Phaser.GameObjects.Con
   return y + maxHeight;
 }
 
-function renderShopMoves(scene: OverworldScene, container: Phaser.GameObjects.Container, y: number): number {
+function renderShopMoves(scene: GuardianPanelHost, container: Phaser.GameObjects.Container, y: number): number {
   const unlocked = scene.getUnlockedMoves();
   const compatible = new Set(compatibleMoves(scene.playerMaterial));
   const forSale = SHOP_MOVE_IDS.filter((id) => !unlocked.includes(id) && compatible.has(id));
@@ -128,7 +128,7 @@ function renderShopMoves(scene: OverworldScene, container: Phaser.GameObjects.Co
   return y;
 }
 
-function renderShopStats(scene: OverworldScene, container: Phaser.GameObjects.Container, y: number): number {
+function renderShopStats(scene: GuardianPanelHost, container: Phaser.GameObjects.Container, y: number): number {
   const stats = getPlayerStats(scene.game.registry);
   const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
   const rows: { key: keyof Stats; label: string }[] = [

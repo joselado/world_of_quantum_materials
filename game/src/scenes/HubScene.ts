@@ -10,8 +10,9 @@ import { TUTORIAL_TIPS, hasSeenTip, markTipSeen } from '../data/tutorial';
 import { music } from '../audio/music';
 import { fontPx, fontScale } from '../ui/text';
 import { BUILT_WORLDS } from './OverworldScene';
+import type { GuardianPanelHost } from './OverworldScene';
 import { labPanelColumns, LAB_TITLE_COLOR, LAB_STATIONS } from './panels/hubStations';
-import { makeSavePointMotif } from '../art/labMotifs';
+import { makeQumatexMotif, makeSavePointMotif } from '../art/labMotifs';
 
 // World 0, "The Lab" (DESIGN.md's world table) -- boot destination from
 // TitleScene and the return point from Overworld (press H or Enter). Unlike
@@ -41,10 +42,10 @@ interface MaterialdexEntry {
 // with a compact text button rather than the much larger scale a motif
 // drawn inside a full panel would use. Never scaled by the Text Size
 // setting, same "art, not text" reasoning as every other motif builder.
-const STATION_MOTIF_SIZE = 22;
-const STATION_MOTIF_GAP = 8;
+const STATION_MOTIF_SIZE = 26;
+const STATION_MOTIF_GAP = 9;
 
-export class HubScene extends Phaser.Scene {
+export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // Public, not private -- scenes/panels/hubStations.ts's Moves/Stats/
   // Abilities/Guardians/Tutorial/Settings stations live outside this class
   // and need to read/replace the currently-open panel, same tradeoff
@@ -62,6 +63,39 @@ export class HubScene extends Phaser.Scene {
   // entry this points at, even if that entry isn't on the list's current
   // page or has been filtered out of it.
   private materialdexSelectedName: string | null = null;
+
+  // GuardianPanelHost implementation (see OverworldScene.ts's GuardianPanelHost
+  // and CODEMAP.md's "Guardian panels") -- lets any guardian's own panel
+  // (shop/teleport hub/transmutation) render directly in the Lab, opened from
+  // the Guardians station, with no scene transition. `world` is fixed at 0
+  // (World 0, the Lab itself, is never a BUILT_WORLDS entry) so Bloch's own
+  // "exclude the world I'm currently in" destination filter excludes nothing
+  // here, listing every visited world instead. `qumatessence`/`playerMaterial`
+  // mirror the registry the same way `OverworldScene.create()` does, kept in
+  // sync by the same guardian-panel code paths (buy/spend, transmute/fuse)
+  // that already write straight through to the registry.
+  world = 0;
+  dialogueActive = false;
+  qumatessence = 0;
+  playerMaterial!: Material;
+  tokenText!: Phaser.GameObjects.Text;
+  shopTab: 'moves' | 'stats' = 'moves';
+  blochPage = 0;
+  dresselhausPage = 0;
+  majoranaPage = 0;
+  majoranaSelection: string | null = null;
+  andersonPage = 0;
+  andersonSelection: string | null = null;
+  andersonMovePage = 0;
+  feynmanPage = 0;
+  // The room's one floating crystal preview (STYLE.md's "the only crystal
+  // render drawn anywhere in the room itself") -- `playerPreview` is the
+  // stable tween target (the continuous bob), `playerCrystalGfx` the
+  // swappable inner render `applyPlayerForm` destroys/rebuilds after a
+  // guardian panel transmutes or fuses the player's crystal, mirroring
+  // OverworldScene's own player/playerCrystalGfx split.
+  private playerPreview!: Phaser.GameObjects.Container;
+  private playerCrystalGfx!: Phaser.GameObjects.Container;
 
   constructor() {
     super('Hub');
@@ -90,13 +124,30 @@ export class HubScene extends Phaser.Scene {
       )
       .setOrigin(0.5, 0);
 
-    const playerMaterial = getPlayerMaterial(this.game.registry);
-    const player = makeCrystal(this, 46, playerMaterial.color, playerMaterial.variant, {
-      seed: playerMaterial.name,
-      hybrid: playerMaterial.hybridParents,
+    // Corner readout, same top-right placement/look as OverworldScene's own
+    // qumatessence HUD -- a guardian's shop panel (Noether/Laughlin/Majorana/
+    // Anderson/Kondo/Feynman/Skłodowska-Curie/Bloch's per-destination unlock)
+    // can now open and spend directly from the Lab, so the balance it reads
+    // and deducts from needs to be visible here too, not just mid-world.
+    this.qumatessence = (this.game.registry.get('qumatessence') as number) || 0;
+    this.tokenText = this.add
+      .text(CANVAS_W - 8, 8, `Qumatessence: ${this.qumatessence}`, {
+        fontSize: fontPx(this, 14),
+        color: '#ffe066',
+        backgroundColor: 'rgba(0,0,0,0.35)',
+        padding: { x: 4, y: 2 },
+      })
+      .setOrigin(1, 0)
+      .setDepth(50);
+
+    this.playerMaterial = getPlayerMaterial(this.game.registry);
+    this.playerPreview = this.add.container(CANVAS_W / 2, 230);
+    this.playerCrystalGfx = makeCrystal(this, 46, this.playerMaterial.color, this.playerMaterial.variant, {
+      seed: this.playerMaterial.name,
+      hybrid: this.playerMaterial.hybridParents,
     });
-    player.setPosition(CANVAS_W / 2, 230);
-    this.tweens.add({ targets: player, y: 220, duration: 1000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.playerPreview.add(this.playerCrystalGfx);
+    this.tweens.add({ targets: this.playerPreview, y: 220, duration: 1000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
     // Margin is a fraction of CANVAS_W, not a flat pixel count, so the three
     // station columns stay proportionally inset from the walls at any canvas
@@ -106,14 +157,14 @@ export class HubScene extends Phaser.Scene {
 
     // Row 1: the three stations that exist regardless of progress --
     // cataloguing, saving, leaving. Plain text buttons like every other
-    // station's; Save Point carries its own gold spire/rune motif
-    // (`makeSavePointMotif`) beside its label, while Qumatex and the door
-    // have no `art/labMotifs.ts` builder of their own (Qumatex's detail pane
-    // already renders the selected compound's own crystal; the door just
-    // needs to read as an exit).
+    // station's; Qumatex carries its own small crystal-grid motif
+    // (`makeQumatexMotif`) and Save Point its own gold spire/rune motif
+    // (`makeSavePointMotif`) beside their labels, same as every reference/
+    // settings station below -- the door has no `art/labMotifs.ts` builder
+    // of its own, plain text being enough to read as an exit.
     const row1Y = 300;
     const row1Buttons = [
-      this.addStationRow(stationX[0], row1Y, 'Qumatex', () => this.showMaterialdex()),
+      this.addStationRow(stationX[0], row1Y, 'Qumatex', () => this.showMaterialdex(), makeQumatexMotif),
       this.addStationRow(stationX[1], row1Y, 'Save Point', () => this.showSavePoint(), makeSavePointMotif),
       this.addStationRow(stationX[2], row1Y, this.doorLabel(), () => this.enterWorld()),
     ];
@@ -140,17 +191,20 @@ export class HubScene extends Phaser.Scene {
     }
 
     // Reverse direction of OverworldScene's own keydown-ENTER (which sends
-    // the player *to* the Hub) -- pressing Enter while standing in the Lab
-    // sends them back *out*, to whichever world the door itself would
-    // resume into. Same one-panel-at-a-time guard the door station's own
-    // click handler uses, and the same canResumeWorld() eligibility the
-    // door's label is built from, so a fresh save with nothing in progress
-    // yet (no built `mapState` to resume) leaves Enter a no-op here rather
-    // than launching a world the player never actually chose to start.
+    // the player *to* the Hub, always via returnToHub()'s saveMapState()) --
+    // pressing Enter while standing in the Lab sends them back *out*, to
+    // exactly the world and position they left (resumeWorld() above), not
+    // necessarily the door station's own frontier-world target -- so opening
+    // and closing the Lab from *any* world (not just the player's furthest
+    // one) always lands them back exactly where they were. Same one-panel-
+    // at-a-time guard the door station's own click handler uses. A fresh
+    // save with nothing in progress yet (no resumable `mapState`) leaves
+    // Enter a no-op here, same as before.
     this.input.keyboard!.on('keydown-ENTER', () => {
       if (this.dialogueContainer) return;
-      if (!this.canResumeWorld(this.highestUnlockedWorld())) return;
-      this.enterWorld();
+      const world = this.resumeWorld();
+      if (world === undefined) return;
+      this.scene.start('Overworld', { world, regenerate: false });
     });
 
     this.maybeShowLabTip();
@@ -315,23 +369,28 @@ export class HubScene extends Phaser.Scene {
     return world;
   }
 
-  private isSuperpositionMode(): boolean {
+  // Public, not private -- part of GuardianPanelHost (see the class-level
+  // comment above), read by guardian panel files the same way they read
+  // OverworldScene's own copy.
+  isSuperpositionMode(): boolean {
     return !!this.game.registry.get('superpositionMode');
   }
 
-  // Whether stepping through the door (or pressing Enter, see create()) into
-  // `world` actually resumes the player's in-progress position there rather
-  // than generating a fresh map. `visitedWorlds` alone isn't enough to
-  // promise that -- it's part of the persisted save (data/save.ts), but the
-  // map snapshot it would resume from (OverworldScene's `mapState` registry
-  // key, written by its own saveMapState()/returnToHub()) is deliberately
-  // registry-only and does not survive a page reload -- so this checks both,
-  // the same two facts OverworldScene.create() itself checks
-  // (`saved.world === this.world && !this.regenerate`) before deciding
-  // whether to restoreMap() or generateMap(). One shared predicate for
-  // doorLabel()/enterWorld()/the Enter-key handler so the label shown and
-  // the navigation that actually happens can never disagree. Superposition
-  // Mode never resumes in place through this door at all (below).
+  // Whether stepping through the door into `world` actually resumes the
+  // player's in-progress position there rather than generating a fresh map.
+  // `visitedWorlds` alone isn't enough to promise that -- it's part of the
+  // persisted save (data/save.ts), but the map snapshot it would resume from
+  // (OverworldScene's `mapState` registry key, written by its own
+  // saveMapState()/returnToHub()) is deliberately registry-only and does not
+  // survive a page reload -- so this checks both, the same two facts
+  // OverworldScene.create() itself checks (`saved.world === this.world &&
+  // !this.regenerate`) before deciding whether to restoreMap() or
+  // generateMap(). Shared by doorLabel()/enterWorld() (both keyed on
+  // `highestUnlockedWorld()`, the door's own frontier-world affordance) and
+  // resumeWorld() below (keyed on whatever world `mapState` actually holds,
+  // the Enter *key*'s own "go back to exactly where I was" affordance) --
+  // see resumeWorld()'s own comment for why those two aren't the same thing.
+  // Superposition Mode never resumes in place through either of them.
   private canResumeWorld(world: number): boolean {
     if (this.isSuperpositionMode()) return false;
     const visited = (this.game.registry.get('visitedWorlds') as number[]) ?? [];
@@ -353,6 +412,11 @@ export class HubScene extends Phaser.Scene {
     return this.canResumeWorld(world) ? `Back to World ${world}` : `Enter World ${world}`;
   }
 
+  // The door station's own affordance: always the player's frontier world
+  // (`highestUnlockedWorld()`), resuming in place there if it's genuinely
+  // in progress or generating a fresh map otherwise -- deliberately distinct
+  // from resumeWorld() below (see its comment); this is "take me to my
+  // furthest world," not "take me back to exactly where I was."
   private enterWorld() {
     if (this.isSuperpositionMode()) {
       this.scene.start('Overworld', { world: 1, regenerate: true });
@@ -362,10 +426,183 @@ export class HubScene extends Phaser.Scene {
     this.scene.start('Overworld', { world, regenerate: !this.canResumeWorld(world) });
   }
 
+  // The world (and, via canResumeWorld's own mapState check, exact
+  // position) the player actually left from when OverworldScene's own
+  // keydown-ENTER sent them here (returnToHub -- always saveMapState()
+  // first) -- not necessarily their highest-unlocked world. A player who
+  // opens the Lab from an earlier world (Bloch's teleport hub, or walking
+  // back through an earlier world's own door, both of which land somewhere
+  // other than the frontier) needs the Enter key to hand them back that
+  // exact world, not `highestUnlockedWorld()` -- using the door's own
+  // frontier-world target here would silently generate a fresh map on a
+  // world the player never actually chose to (re)start. Undefined only when
+  // there's genuinely nowhere to return to: a fresh save that has never left
+  // the Lab, or (mapState being registry-only) after a page reload.
+  private resumeWorld(): number | undefined {
+    const mapState = this.game.registry.get('mapState') as { world: number } | undefined;
+    return mapState && this.canResumeWorld(mapState.world) ? mapState.world : undefined;
+  }
+
+  // GuardianPanelHost state accessors -- identical bodies to OverworldScene's
+  // own (both just read the registry), duplicated rather than shared per
+  // CODEMAP.md's "Guardian panels" tradeoff.
+  getUnlockedMoves(): string[] {
+    return (this.game.registry.get('unlockedMoves') as string[]) ?? [];
+  }
+
+  getVisitedWorlds(): number[] {
+    return (this.game.registry.get('visitedWorlds') as number[]) ?? [];
+  }
+
+  getDefeatedMaterials(): DiscoveredMaterial[] {
+    return (this.game.registry.get('defeatedMaterials') as DiscoveredMaterial[]) ?? [];
+  }
+
+  // Bloch's own explicit travel action (his destination rows) -- the one
+  // deliberate way a guardian panel can move the player, whether opened by
+  // walking up to Bloch mid-world or from the Lab's Guardians station. Always
+  // a fresh map (`regenerate: true`), matching OverworldScene's own
+  // `advanceToWorld` -- picking a destination is a genuine, first-class trip
+  // there, not a "resume" the way the Hub door's own `enterWorld` is.
+  advanceToWorld(world: number, enterFrom: 'start' | 'goal' = 'start') {
+    this.closeDialogue();
+    this.scene.start('Overworld', { world, regenerate: true, enterFrom });
+  }
+
+  // Sets the player's current crystal form and persists it -- HubScene's
+  // counterpart to OverworldScene.applyPlayerForm, called by the same
+  // Dresselhaus/Majorana panel code (transmuteInto/becomeHybrid) regardless
+  // of which scene's Guardians station opened them. Redraws the Lab's own
+  // floating crystal preview in place rather than an overworld sprite; skips
+  // OverworldScene.applyPlayerForm's World 10 map-regeneration branch since
+  // the Lab is never World 10.
+  applyPlayerForm(material: Material) {
+    this.game.registry.set('playerForm', material);
+    const clampedHp = Math.min((this.game.registry.get('playerHp') as number) ?? material.maxHp, material.maxHp);
+    this.game.registry.set('playerHp', clampedHp);
+    persistFromRegistry(this.game.registry);
+
+    this.playerMaterial = material;
+    this.playerCrystalGfx.destroy();
+    this.playerCrystalGfx = makeCrystal(this, 46, material.color, material.variant, {
+      seed: material.name,
+      hybrid: material.hybridParents,
+    });
+    this.playerPreview.add(this.playerCrystalGfx);
+  }
+
+  // Farewell-only footer (no Face-the-Rival/Continue action) -- every
+  // guardian panel but the rival gate's own showGatePanel (OverworldScene-only,
+  // never opened from the Lab) uses this, so it's the only footer variant
+  // GuardianPanelHost needs to provide.
+  renderFarewellFooter(container: Phaser.GameObjects.Container, footerY: number): number {
+    const btn = this.addDialogueButtonAt(container, CANVAS_W / 2, footerY, 'Farewell', () => this.closeDialogue(), 260);
+    return footerY + btn.height;
+  }
+
+  addDialogueButton(container: Phaser.GameObjects.Container, y: number, label: string, onClick: () => void) {
+    return this.addDialogueButtonAt(container, CANVAS_W / 2, y, label, onClick, 480);
+  }
+
+  // Shared pager for candidate-crystal lists -- identical to OverworldScene's
+  // own renderPagedButtons (see that method's own comment for the
+  // measure-real-row-height-and-pack rationale), duplicated per
+  // CODEMAP.md's "Guardian panels" tradeoff rather than shared.
+  renderPagedButtons<T extends { name: string }>(
+    container: Phaser.GameObjects.Container,
+    y: number,
+    items: T[],
+    page: number,
+    maxPerPage: number,
+    labelFor: (item: T) => string,
+    onPick: (item: T) => void,
+    onPageChange: (page: number) => void,
+    isDim?: (item: T) => boolean
+  ): number {
+    const sample = this.add.text(-1000, -1000, 'Sample', { fontSize: fontPx(this, 13), padding: { x: 10, y: 5 } });
+    const rowH = sample.height + 6;
+    sample.destroy();
+    const reservedTail = rowH * 2;
+    const reservedControls = rowH;
+
+    const measureRowHeight = (label: string) => {
+      const t = this.add.text(-2000, -2000, label, {
+        fontSize: fontPx(this, 13),
+        padding: { x: 10, y: 5 },
+        align: 'center',
+        wordWrap: { width: 480 },
+      });
+      const h = t.height + 6;
+      t.destroy();
+      return h;
+    };
+    const rowHeights = items.map((item) => measureRowHeight(labelFor(item)));
+    const pack = (available: number): T[][] => {
+      const result: T[][] = [];
+      let current: T[] = [];
+      let used = 0;
+      items.forEach((item, i) => {
+        const h = rowHeights[i];
+        if (current.length > 0 && (current.length >= maxPerPage || used + h > available)) {
+          result.push(current);
+          current = [];
+          used = 0;
+        }
+        current.push(item);
+        used += h;
+      });
+      result.push(current);
+      return result;
+    };
+    const withoutControls = pack(CANVAS_H - y - reservedTail);
+    const pages = withoutControls.length <= 1 ? withoutControls : pack(CANVAS_H - y - reservedTail - reservedControls);
+
+    const totalPages = pages.length;
+    const clampedPage = Phaser.Math.Clamp(page, 0, totalPages - 1);
+    const pageItems = pages[clampedPage];
+    pageItems.forEach((item) => {
+      const btn = this.addDialogueButton(container, y, labelFor(item), () => onPick(item));
+      if (isDim?.(item)) btn.setAlpha(0.5);
+      y += btn.height + 6;
+    });
+    if (totalPages > 1) {
+      const prev = this.addDialogueButtonAt(
+        container,
+        CANVAS_W / 2 - 170,
+        y,
+        '<- Prev',
+        () => {
+          if (clampedPage > 0) onPageChange(clampedPage - 1);
+        },
+        120
+      );
+      if (clampedPage === 0) prev.setAlpha(0.35);
+      const next = this.addDialogueButtonAt(
+        container,
+        CANVAS_W / 2 + 170,
+        y,
+        'Next ->',
+        () => {
+          if (clampedPage < totalPages - 1) onPageChange(clampedPage + 1);
+        },
+        120
+      );
+      if (clampedPage === totalPages - 1) next.setAlpha(0.35);
+      const controlsRowH = Math.max(prev.height, next.height);
+      const pageLabel = this.add
+        .text(CANVAS_W / 2, y, `Page ${clampedPage + 1}/${totalPages}`, { fontSize: fontPx(this, 11), color: '#8fa0c9' })
+        .setOrigin(0.5, 0);
+      pageLabel.setY(y + (controlsRowH - pageLabel.height) / 2);
+      container.add(pageLabel);
+      y += controlsRowH + 6;
+    }
+    return y;
+  }
+
   private addButton(x: number, y: number, label: string, onClick: () => void, fontSizePxOverride?: string): Phaser.GameObjects.Text {
     return this.add
       .text(x, y, label, {
-        fontSize: fontSizePxOverride ?? fontPx(this, 12),
+        fontSize: fontSizePxOverride ?? fontPx(this, 14),
         color: '#ffff88',
         backgroundColor: '#222244',
         padding: { x: 8, y: 4 },
@@ -417,7 +654,7 @@ export class HubScene extends Phaser.Scene {
     persistFromRegistry(this.game.registry);
     this.closeDialogue();
 
-    const panelWidth = 440;
+    const panelWidth = 560;
     const top = 20;
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
@@ -517,7 +754,7 @@ export class HubScene extends Phaser.Scene {
     const discoveredAll = this.materialdexIndex().filter((e) => e.discovered).length;
     const entries = this.filteredMaterialdexIndex();
 
-    const panelW = 620;
+    const panelW = 720;
     const top = 16;
     const bottomMargin = 14;
     const panelLeft = CANVAS_W / 2 - panelW / 2;
@@ -767,7 +1004,7 @@ export class HubScene extends Phaser.Scene {
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
 
-    const panelWidth = 440;
+    const panelWidth = 560;
     const top = 20;
     let y = top;
 

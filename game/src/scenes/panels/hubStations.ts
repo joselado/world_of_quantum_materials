@@ -80,7 +80,7 @@ export function showStatsPanel(scene: HubScene) {
 function showInfoPanel(scene: HubScene, title: string, body: string) {
   scene.dialogueContainer?.destroy(true);
 
-  const panelWidth = 440;
+  const panelWidth = 560;
   const top = 20;
   const container = scene.add.container(0, 0).setDepth(100);
   scene.dialogueContainer = container;
@@ -133,7 +133,7 @@ function showInfoPanel(scene: HubScene, title: string, body: string) {
 export function showAbilitiesPanel(scene: HubScene) {
   scene.dialogueContainer?.destroy(true);
 
-  const panelWidth = 440;
+  const panelWidth = 560;
   const top = 20;
   const container = scene.add.container(0, 0).setDepth(100);
   scene.dialogueContainer = container;
@@ -214,17 +214,20 @@ export function showAbilitiesPanel(scene: HubScene) {
 // by OverworldScene.openGuardian as middle tiles are reached) -- in
 // Superposition Mode every guardian lists immediately regardless of
 // `metGuardians`, matching that mode's "access to every guardian from the
-// beginning." A guardian's own panel (shop/teleport hub/transmutation/lore)
-// only makes sense inside their own world -- Noether's shop needs the
-// overworld's qumatessence HUD, Bloch's teleport hub needs a world to
-// teleport *from*, and so on -- so a row here warps into that guardian's
-// world (a fresh map, same as Bloch's own teleport) and reopens their panel
-// once it's built (OverworldScene.create()'s `openGuardian` init flag)
-// rather than trying to render their bespoke shop UI inside the Lab itself.
+// beginning." Picking a row opens that guardian's own panel (the same
+// `open` callback WORLD_GUARDIANS uses when the player walks up to them
+// mid-world) directly in the Lab -- HubScene implements GuardianPanelHost
+// (OverworldScene.ts), the same interface every guardian-panel file is
+// written against, so the shop/teleport-hub/transmutation panel renders
+// identically here with no change to the player's world, scene, or map
+// position. Selecting a guardian is never itself a way to travel; Bloch's
+// panel still offers explicit "Travel to World N" rows (via
+// GuardianPanelHost.advanceToWorld), which are the one deliberate way this
+// station can move the player, same as walking through a world door.
 export function showGuardiansPanel(scene: HubScene) {
   scene.dialogueContainer?.destroy(true);
 
-  const panelWidth = 520;
+  const panelWidth = 600;
   const top = 20;
   const container = scene.add.container(0, 0).setDepth(100);
   scene.dialogueContainer = container;
@@ -270,7 +273,7 @@ export function showGuardiansPanel(scene: HubScene) {
         guardian.name,
         () => {
           scene.closeDialogue();
-          scene.scene.start('Overworld', { world: guardian.world, regenerate: true, openGuardian: true });
+          guardian.open?.(scene);
         },
         columns.contentWrapW,
         rowPx
@@ -301,7 +304,7 @@ export function showGuardiansPanel(scene: HubScene) {
 export function showTutorialTopics(scene: HubScene) {
   scene.dialogueContainer?.destroy(true);
 
-  const panelWidth = 460;
+  const panelWidth = 560;
   const top = 20;
   const container = scene.add.container(0, 0).setDepth(100);
   scene.dialogueContainer = container;
@@ -350,7 +353,7 @@ export function showTutorialTopics(scene: HubScene) {
 function showTutorialTopic(scene: HubScene, index: number) {
   scene.dialogueContainer?.destroy(true);
 
-  const panelWidth = 460;
+  const panelWidth = 560;
   const top = 24;
   const container = scene.add.container(0, 0).setDepth(100);
   scene.dialogueContainer = container;

@@ -1,4 +1,4 @@
-import type { OverworldScene } from '../OverworldScene';
+import type { GuardianPanelHost } from '../OverworldScene';
 import { makeSklodowskaCurieAvatar } from '../../art/sklodowskaCurie';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
@@ -29,7 +29,7 @@ import type { MoveClass } from '../../data/types';
 // showUltimateClassPicker below). The move's own battle-side 3-question
 // gate lives in BattleScene, not here -- this panel only ever sells the
 // quasiparticle tuning.
-export function showSklodowskaCuriePanel(scene: OverworldScene) {
+export function showSklodowskaCuriePanel(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
 
   const panelWidth = 600;
@@ -79,7 +79,7 @@ export function showSklodowskaCuriePanel(scene: OverworldScene) {
 // A move not yet in `unlockedMoves` says so explicitly rather than "carrying
 // Phonon Beam" -- that phrasing would otherwise read as already usable in
 // battle when it isn't yet.
-function renderUltimateMoves(scene: OverworldScene, container: Phaser.GameObjects.Container, y: number): number {
+function renderUltimateMoves(scene: GuardianPanelHost, container: Phaser.GameObjects.Container, y: number): number {
   const unlocked = scene.getUnlockedMoves();
   ULTIMATE_MOVE_IDS.forEach((id) => {
     const displayName = moveDisplayName(scene.game.registry, id);
@@ -124,7 +124,7 @@ function renderUltimateMoves(scene: OverworldScene, container: Phaser.GameObject
 // Ultimate move to any hostable quasiparticle is free, with no qumatessence
 // deducted and no dependence on `ultimateClassesUnlocked` actually holding
 // the class.
-function showUltimateClassPicker(scene: OverworldScene, moveId: string, onDone: () => void) {
+function showUltimateClassPicker(scene: GuardianPanelHost, moveId: string, onDone: () => void) {
   scene.dialogueContainer?.destroy(true);
   scene.dialogueActive = true;
 

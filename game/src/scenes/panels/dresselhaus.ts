@@ -1,4 +1,4 @@
-import type { OverworldScene } from '../OverworldScene';
+import type { GuardianPanelHost } from '../OverworldScene';
 import { makeDresselhausAvatar } from '../../art/dresselhaus';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
@@ -29,7 +29,7 @@ import { persistFromRegistry } from '../../data/save';
 // (`isSuperpositionMode()`, not the persisted list).
 // Content laid out top-down first (running `y`), panel sized/inserted
 // behind everything afterward -- same pattern as showSettingsPanel.
-export function showDresselhausPanel(scene: OverworldScene) {
+export function showDresselhausPanel(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
 
   const panelWidth = 600;
@@ -134,7 +134,7 @@ export function showDresselhausPanel(scene: OverworldScene) {
   container.addAt(panel, 0);
 }
 
-function transmuteInto(scene: OverworldScene, name: string) {
+function transmuteInto(scene: GuardianPanelHost, name: string) {
   const material = findMaterialByName(name);
   if (!material) return;
   scene.applyPlayerForm(material);

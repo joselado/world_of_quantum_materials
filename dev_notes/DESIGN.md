@@ -92,9 +92,13 @@ Mode (below) treats both as unlocked from the start, matching how its own guardi
 grants already work. `TitleScene` boots the game and loads the one localStorage save
 slot (see §7) before handing off to the Hub; pressing `H` or `Enter` from any Overworld
 scene returns to it, resuming that world's own map and player position exactly rather than
-generating a fresh one. The door station (and, in the Lab itself, pressing `Enter` again) mirrors
-this: it reads "Back to World N" and resumes in place once that world has genuinely been started,
-or "Enter World N" (always a fresh map) the first time it's ever reached.
+generating a fresh one. Pressing `Enter` again in the Lab is the exact reverse of that same
+trip: it sends the player back to precisely the world and position they left, regardless of
+how far their progress has otherwise advanced, so opening and closing the Lab from any world
+never moves the player. The door station is a separate, deliberately different affordance --
+always the player's furthest-reached world -- reading "Back to World N" and resuming in place
+once that world has genuinely been started, or "Enter World N" (always a fresh map) the first
+time it's ever reached.
 
 Each world's "Gate to next world" fight is a distinct **rival crystal** -- worlds 1-8 and
 10 have a fixed entry in `game/src/data/materials.ts`'s `WORLD_RIVALS`, world 9's is built
@@ -704,9 +708,14 @@ at the goal -- the goal tile is occupied by that world's boss (see below), so a 
 is someone the player meets partway through the journey, not a gate to it. Every
 guardian stays reachable once met from the Lab's Guardians station
 (`scenes/panels/hubStations.ts`'s `showGuardiansPanel`, `data/save.ts`'s `metGuardians`)
--- picking one from that station's list warps into their world (a fresh map, same as
-Bloch's own teleport) and reopens their panel there, since a guardian's own panel (shop,
-teleport hub, transmutation) depends on state tied to that world visit. Every guardian has a
+-- picking one from that station's list opens that guardian's own panel (shop, teleport
+hub, transmutation) directly in the Lab, the same panel `open` callback `WORLD_GUARDIANS`
+uses when the player walks up to them mid-world, with no change to the player's own
+world/scene/position (`HubScene` implements `GuardianPanelHost`, the interface every
+guardian-panel file is written against -- see CODEMAP.md's "Guardian panels"). Selecting a
+guardian is never itself a way to travel; Bloch's panel is the one guardian panel with an
+explicit travel action of its own (its destination rows), which still moves the player
+like any other deliberate warp. Every guardian has a
 real mechanic (Noether, Bloch, Dresselhaus, Laughlin, Majorana, Anderson, Feynman, Kondo,
 Franklin, Skłodowska-Curie) -- a guardian without one yet would fall through to the
 shared `OverworldScene.showGuardianLore` panel (avatar + quote only), but nothing
@@ -1072,11 +1081,13 @@ core, a pulsing danger aura, and orbiting embers, so "many grains fused into one
 mass" reads at a glance, unmistakably more dangerous than an ordinary wild crystal
 from a distance, before the player ever opens the goal panel. It's a pure visual
 landmark: the fight itself is only reached through "Face the Rival" in the goal gate
-panel. The same `makeBossCrystal` look carries into the fight itself -- `BattleScene`
-renders a rival's opponent crystal at `BOSS_CRYSTAL_SIZE` (bigger than an ordinary
-wild encounter's), shifted a bit left of the usual opponent spot so the wider
-silhouette clears the move menu, instead of the plain `makeCrystal` every wild
-battle uses.
+panel. The same `makeBossCrystal` look carries through every later view of that same
+rival -- its own "Face the Rival" dialogue (`OverworldScene.showRivalEncounter`) renders
+it too, rather than reverting to the plain `makeCrystal` an ordinary wild encounter's
+greeting uses, and the fight itself carries it on: `BattleScene` renders a rival's
+opponent crystal at `BOSS_CRYSTAL_SIZE` (bigger than an ordinary wild encounter's),
+shifted a bit left of the usual opponent spot so the wider silhouette clears the move
+menu, instead of the plain `makeCrystal` every wild battle uses.
 
 **World doors.** Every built world has a doorway landmark standing at its
 `startTile` (`OverworldScene.spawnDoorSprites`, `art/door.ts`'s `makeDoorSprite`) --

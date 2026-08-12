@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import type { OverworldScene } from '../OverworldScene';
+import type { GuardianPanelHost } from '../OverworldScene';
 import { CANVAS_W } from '../../art/perspective';
 import { fontScale } from '../../ui/text';
 import { PASSIVES } from '../../data/passives';
@@ -35,7 +35,7 @@ import { persistFromRegistry } from '../../data/save';
 // shown), while the active pick is read/written per `owner` from
 // `activePassiveByOwner`.
 export function renderPassiveList(
-  scene: OverworldScene,
+  scene: GuardianPanelHost,
   container: Phaser.GameObjects.Container,
   y: number,
   passiveIds: string[],

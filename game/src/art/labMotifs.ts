@@ -2,21 +2,54 @@ import Phaser from 'phaser';
 import { shade } from './colors';
 
 // One small hand-drawn icon per Lab station (scenes/panels/hubStations.ts's
-// six reference/settings stations, plus HubScene's own Save Point) -- the
-// motif STYLE.md's "Lab panels" section describes, planted beside that
-// station's own button out in the Lab room (HubScene.addStationRow) rather
-// than inside the panel the button opens. Built from the same
-// Phaser.GameObjects.Graphics primitive vocabulary as every other piece of
-// art in this game (no external image assets, per STYLE.md). Every builder
-// takes a fixed pixel `size` and returns a `Container` centered on its own
-// (0,0) local origin -- callers position it, and never run it through
-// ui/text.ts's fontPx()/fontScale(), since a decorative glyph's own size is
-// art, not text (see ui/text.ts's own comment, and Qumatex's
-// `crystalBlockH` in HubScene.ts for the established precedent). Qumatex
-// itself has no builder here -- its detail pane already renders the
-// selected compound's own real crystal via `makeCrystal`, which already
-// satisfies "a themed motif" for that one station; the door has none
-// either, plain text like Qumatex.
+// six reference/settings stations, plus HubScene's own Qumatex and Save
+// Point) -- the motif STYLE.md's "Lab panels" section describes, planted
+// beside that station's own button out in the Lab room
+// (HubScene.addStationRow) rather than inside the panel the button opens.
+// Built from the same Phaser.GameObjects.Graphics primitive vocabulary as
+// every other piece of art in this game (no external image assets, per
+// STYLE.md). Every builder takes a fixed pixel `size` and returns a
+// `Container` centered on its own (0,0) local origin -- callers position it,
+// and never run it through ui/text.ts's fontPx()/fontScale(), since a
+// decorative glyph's own size is art, not text (see ui/text.ts's own
+// comment, and Qumatex's `crystalBlockH` in HubScene.ts for the established
+// precedent). The door has no motif of its own -- plain text is enough to
+// read as an exit.
+
+export function makeQumatexMotif(scene: Phaser.Scene, size: number): Phaser.GameObjects.Container {
+  const container = scene.add.container(0, 0);
+  const color = 0x9a6ad9; // matches Qumatex's own panel stroke
+
+  // A small 2x2 grid of tiny faceted gems -- reads as "an indexed catalog of
+  // crystals" at a glance, distinct from the panel's own detail pane, which
+  // renders one full-size makeCrystal for whichever single compound is
+  // currently selected.
+  const g = scene.add.graphics();
+  const cellR = size * 0.22;
+  const cells = [
+    { dx: -0.3, dy: -0.3, shadeStep: 25 },
+    { dx: 0.3, dy: -0.3, shadeStep: -5 },
+    { dx: -0.3, dy: 0.3, shadeStep: -25 },
+    { dx: 0.3, dy: 0.3, shadeStep: 10 },
+  ];
+  cells.forEach(({ dx, dy, shadeStep }) => {
+    const cx = dx * size;
+    const cy = dy * size;
+    const pts = [
+      { x: cx, y: cy - cellR },
+      { x: cx + cellR * 0.8, y: cy },
+      { x: cx, y: cy + cellR },
+      { x: cx - cellR * 0.8, y: cy },
+    ];
+    g.fillStyle(shade(color, shadeStep), 1);
+    g.fillPoints(pts, true);
+    g.lineStyle(1, shade(color, shadeStep - 35), 0.9);
+    g.strokePoints(pts, true);
+  });
+  container.add(g);
+
+  return container;
+}
 
 export function makeSavePointMotif(scene: Phaser.Scene, size: number): Phaser.GameObjects.Container {
   const container = scene.add.container(0, 0);

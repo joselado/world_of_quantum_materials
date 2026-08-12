@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import type { OverworldScene } from '../OverworldScene';
+import type { GuardianPanelHost } from '../OverworldScene';
 import { CANVAS_W } from '../../art/perspective';
 import { fontPx } from '../../ui/text';
 import {
@@ -37,7 +37,7 @@ import type { MoveClass } from '../../data/types';
 // empty) is the real "nothing left to buy" signal, shown as its own line
 // above the learned rows rather than replacing them.
 export function renderTunableMoveShop(
-  scene: OverworldScene,
+  scene: GuardianPanelHost,
   container: Phaser.GameObjects.Container,
   y: number,
   moveIds: string[],
@@ -126,7 +126,7 @@ export function renderTunableMoveShop(
 // is a flat Laughlin-blue -- only Laughlin's Analytic shop calls into this
 // module today, Skłodowska-Curie's Ultimate shop is bespoke (see
 // panels/sklodowskaCurie.ts).
-export function showMoveClassPicker(scene: OverworldScene, moveId: string, onChosen: (chosenClass: MoveClass) => void) {
+export function showMoveClassPicker(scene: GuardianPanelHost, moveId: string, onChosen: (chosenClass: MoveClass) => void) {
   scene.dialogueContainer?.destroy(true);
   scene.dialogueActive = true;
 

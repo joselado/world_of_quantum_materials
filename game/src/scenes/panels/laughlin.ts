@@ -1,4 +1,4 @@
-import type { OverworldScene } from '../OverworldScene';
+import type { GuardianPanelHost } from '../OverworldScene';
 import { makeLaughlinAvatar } from '../../art/laughlin';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
@@ -15,7 +15,7 @@ import { renderTunableMoveShop } from './tunableMoveShop';
 // layout/structure, minus the Moves/Stats tabs since he only ever has one
 // thing to sell. Buying (or later revisiting) a move also opens a
 // quasiparticle picker to assign it a class -- see renderTunableMoveShop.
-export function showLaughlinPanel(scene: OverworldScene) {
+export function showLaughlinPanel(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
 
   const panelWidth = 600;

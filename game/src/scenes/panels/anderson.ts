@@ -1,4 +1,4 @@
-import type { OverworldScene } from '../OverworldScene';
+import type { GuardianPanelHost } from '../OverworldScene';
 import { makeAndersonAvatar } from '../../art/anderson';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
@@ -59,7 +59,7 @@ import { persistFromRegistry } from '../../data/save';
 // learning a move from a not-yet-unlocked host does. Superposition Mode
 // bypasses this per-host cost entirely (`isSuperpositionMode()`, not the
 // persisted list).
-export function showAndersonPanel(scene: OverworldScene) {
+export function showAndersonPanel(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
 
   const panelWidth = 600;
@@ -281,7 +281,7 @@ export function showAndersonPanel(scene: OverworldScene) {
 // purchase happens (guarded by an affordability check, same as any other
 // paid row's click handler); once paid, this host stays free to dope into
 // and learn from for the rest of the save.
-function learnImpurityMove(scene: OverworldScene, moveId: string, hostUnlocked: boolean, unlockedHosts: string[]) {
+function learnImpurityMove(scene: GuardianPanelHost, moveId: string, hostUnlocked: boolean, unlockedHosts: string[]) {
   if (!hostUnlocked) {
     if ((scene.game.registry.get('qumatessence') as number) < ANDERSON_DOPE_COST) return;
     scene.qumatessence -= ANDERSON_DOPE_COST;

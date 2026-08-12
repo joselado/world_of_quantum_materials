@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import type { OverworldScene } from '../OverworldScene';
+import type { GuardianPanelHost } from '../OverworldScene';
 import { makeFeynmanAvatar } from '../../art/feynman';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
@@ -28,7 +28,7 @@ import type { Move } from '../../data/types';
 // showLevelStreak below. Shaped closer to Franklin's/Kondo's own
 // already-bought-move lists than to a flat buy-list shop, since every row
 // here is already something the player owns.
-export function showFeynmanPanel(scene: OverworldScene) {
+export function showFeynmanPanel(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
 
   const panelWidth = 600;
@@ -78,7 +78,7 @@ export function showFeynmanPanel(scene: OverworldScene) {
 // Laughlin's/Kondo's/Anderson's moves start piling up over a playthrough.
 // A maxed-out (level 3) move's row dims and is a no-op, same as every other
 // panel's unaffordable/unusable row convention.
-function renderMoveLevelList(scene: OverworldScene, container: Phaser.GameObjects.Container, y: number): number {
+function renderMoveLevelList(scene: GuardianPanelHost, container: Phaser.GameObjects.Container, y: number): number {
   const moves = scene.getUnlockedMoves().map((id) => MOVES[id]);
   const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
 
@@ -141,7 +141,7 @@ function renderMoveLevelList(scene: OverworldScene, container: Phaser.GameObject
 // Every path through this panel ends by rebuilding showFeynmanPanel, same
 // "destroy container, re-show the guardian panel" convention every other
 // in-panel action already uses.
-function showLevelStreak(scene: OverworldScene, moveId: string, targetLevel: 1 | 2 | 3) {
+function showLevelStreak(scene: GuardianPanelHost, moveId: string, targetLevel: 1 | 2 | 3) {
   const questions = getAnalyticQuestions(scene.getVisitedWorlds(), MOVE_LEVEL_STREAKS[targetLevel]);
   let index = 0;
 

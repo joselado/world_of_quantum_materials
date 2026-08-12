@@ -124,12 +124,6 @@ interface OverworldInitData {
   // caller that sets this, so walking back into an earlier world arrives
   // from its far end (already at the reached goal) rather than its near one.
   enterFrom?: 'start' | 'goal';
-  // Set by the Lab's Guardians station (scenes/panels/hubStations.ts) when
-  // the player picks an already-met guardian from anywhere but that
-  // guardian's own world -- opens that guardian's panel once this scene's
-  // own create() finishes building the (freshly regenerated) map, the same
-  // panel `openGuardian` would show if the player had walked up to them.
-  openGuardian?: boolean;
 }
 
 interface WorldSprite {
@@ -146,6 +140,75 @@ interface WorldSprite {
   // position (which follows the camera like everything else on the map)
   // push it past either edge.
   clampLabelToCanvas?: boolean;
+}
+
+// The interface every guardian-panel file (scenes/panels/<guardian>.ts,
+// tunableMoveShop.ts, passiveList.ts) is written against instead of the
+// concrete `OverworldScene` class -- both `OverworldScene` (a guardian met
+// mid-walk) and `HubScene` (the same guardian reopened from the Lab's
+// Guardians station, see hubStations.ts's showGuardiansPanel) implement it,
+// so a panel opens identically -- same shop, same state -- regardless of
+// which scene the player is actually standing in when they open it. Genuinely
+// cross-cutting dialogue infrastructure (`addDialogueButton(At)`,
+// `renderPagedButtons`, `renderFarewellFooter`, `closeDialogue`, the state
+// accessors, `applyPlayerForm`) plus every guardian's own per-panel session
+// field (pagination/selection state) -- see CODEMAP.md's "Guardian panels"
+// section for the full duplication rationale between the two classes.
+// Extends Phaser.Scene (both implementers already are one -- `add`/`tweens`/
+// `game`/etc. come along for free) rather than redeclaring just the handful
+// of Scene members panel files happen to touch, since several also pass
+// `scene` straight through to Phaser.Scene-typed helpers (avatar builders,
+// `fontPx`).
+export interface GuardianPanelHost extends Phaser.Scene {
+  dialogueActive: boolean;
+  dialogueContainer?: Phaser.GameObjects.Container;
+  addDialogueButton(container: Phaser.GameObjects.Container, y: number, label: string, onClick: () => void): Phaser.GameObjects.Text;
+  addDialogueButtonAt(
+    container: Phaser.GameObjects.Container,
+    x: number,
+    y: number,
+    label: string,
+    onClick: () => void,
+    wrapWidth?: number,
+    fontSizePxOverride?: string
+  ): Phaser.GameObjects.Text;
+  closeDialogue(): void;
+  renderPagedButtons<T extends { name: string }>(
+    container: Phaser.GameObjects.Container,
+    y: number,
+    items: T[],
+    page: number,
+    maxPerPage: number,
+    labelFor: (item: T) => string,
+    onPick: (item: T) => void,
+    onPageChange: (page: number) => void,
+    isDim?: (item: T) => boolean
+  ): number;
+  renderFarewellFooter(container: Phaser.GameObjects.Container, footerY: number): number;
+  tokenText: Phaser.GameObjects.Text;
+  qumatessence: number;
+  playerMaterial: Material;
+  applyPlayerForm(material: Material): void;
+  getUnlockedMoves(): string[];
+  getVisitedWorlds(): number[];
+  getDefeatedMaterials(): DiscoveredMaterial[];
+  isSuperpositionMode(): boolean;
+  // Bloch-only: the world to exclude from (and, via advanceToWorld, travel
+  // from) the destination list -- 0 for HubScene, since the Lab isn't a
+  // built world and offering every visited world (never excluding one) is
+  // correct there.
+  world: number;
+  advanceToWorld(world: number, enterFrom?: 'start' | 'goal'): void;
+  // Noether-only.
+  shopTab: 'moves' | 'stats';
+  blochPage: number;
+  dresselhausPage: number;
+  majoranaPage: number;
+  majoranaSelection: string | null;
+  andersonPage: number;
+  andersonSelection: string | null;
+  andersonMovePage: number;
+  feynmanPage: number;
 }
 
 // One entry per world with a guardian -- replaces the old per-guardian
@@ -172,10 +235,10 @@ interface GuardianDef {
   // 'start'/'goal' stay valid tile choices for a future guardian, but nothing
   // currently uses them.
   tile: 'goal' | 'start' | 'middle';
-  open?: (scene: OverworldScene) => void;
+  open?: (scene: GuardianPanelHost) => void;
 }
 
-export class OverworldScene extends Phaser.Scene {
+export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   world = 1;
   private regenerate = false;
   // 'start' (the default) spawns the player at the freshly generated map's
@@ -183,9 +246,6 @@ export class OverworldScene extends Phaser.Scene {
   // (returnToPreviousWorld/advanceToWorld) so the player instead lands on
   // goalTile, arriving from that world's far end.
   private enterFrom: 'start' | 'goal' = 'start';
-  // Consumed once at the end of the create() that follows -- see
-  // OverworldInitData.openGuardian.
-  private openGuardianOnEntry = false;
   private biome: Biome = getBiome(1);
   private moving = false;
   private playerTile = { x: 0, y: 0 };
@@ -395,14 +455,17 @@ export class OverworldScene extends Phaser.Scene {
     },
   };
 
-  // The id/name/world triplet the Lab's Guardians station (HubScene, via
-  // scenes/panels/hubStations.ts) needs to list a met guardian and warp to
-  // their world -- everything else on GuardianDef (avatar builder, colors,
-  // `open` callback) stays private to this class.
-  static guardianRoster(): { id: string; name: string; world: number }[] {
+  // The id/name/world/`open` quadruplet the Lab's Guardians station
+  // (HubScene, via scenes/panels/hubStations.ts's showGuardiansPanel) needs
+  // to list a met guardian and open their panel directly -- everything else
+  // on GuardianDef (avatar builder, colors) stays private to this class.
+  // `open` is included so the Lab can call the exact same callback the
+  // walk-up path uses, rather than keeping a second dispatch table in sync
+  // with WORLD_GUARDIANS by hand.
+  static guardianRoster(): { id: string; name: string; world: number; open?: (scene: GuardianPanelHost) => void }[] {
     return Object.entries(OverworldScene.WORLD_GUARDIANS)
       .filter((entry): entry is [string, GuardianDef] => !!entry[1])
-      .map(([world, guardian]) => ({ id: guardian.id, name: guardian.name, world: Number(world) }));
+      .map(([world, guardian]) => ({ id: guardian.id, name: guardian.name, world: Number(world), open: guardian.open }));
   }
 
   constructor() {
@@ -413,7 +476,6 @@ export class OverworldScene extends Phaser.Scene {
     this.world = data?.world ?? 1;
     this.regenerate = data?.regenerate ?? false;
     this.enterFrom = data?.enterFrom ?? 'start';
-    this.openGuardianOnEntry = data?.openGuardian ?? false;
   }
 
   create() {
@@ -562,15 +624,6 @@ export class OverworldScene extends Phaser.Scene {
     // goal/middle row, so this only actually skips in practice if a future
     // change moves the start closer to either.
     if (!this.dialogueActive) this.showTutorialTip('controls');
-
-    // Lab Guardians-station warp (OverworldInitData.openGuardian): reopen
-    // this world's guardian once their world has finished (re)generating,
-    // same panel `openGuardian` shows when walked up to directly.
-    if (this.openGuardianOnEntry) {
-      this.openGuardianOnEntry = false;
-      const guardian = OverworldScene.WORLD_GUARDIANS[this.world];
-      if (guardian) this.openGuardian(guardian);
-    }
   }
 
   isSuperpositionMode(): boolean {
@@ -2032,12 +2085,16 @@ export class OverworldScene extends Phaser.Scene {
 
     let y = top;
 
-    const crystalY = y + 34;
-    const crystal = makeCrystal(this, 34, rival.color, rival.variant, { seed: rival.name });
+    // Same makeBossCrystal golem spawnBossSprite renders standing at the goal
+    // tile (and BattleScene renders as the opponent once the fight starts) --
+    // the rival shouldn't revert to an ordinary plain-crystal look just
+    // because this "Face the Rival" dialogue is up.
+    const crystalY = y + BOSS_CRYSTAL_SIZE + 10;
+    const crystal = makeBossCrystal(this, BOSS_CRYSTAL_SIZE, rival.color, rival.variant);
     crystal.setPosition(CANVAS_W / 2, crystalY);
     container.add(crystal);
     this.tweens.add({ targets: crystal, y: crystalY + 10, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    y = crystalY + 44;
+    y = crystalY + BOSS_CRYSTAL_SIZE + 20;
 
     const line = this.add
       .text(CANVAS_W / 2, y, `${rival.name} blocks the path onward. "You don't get past me that easily."`, {

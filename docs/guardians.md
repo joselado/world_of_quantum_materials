@@ -3,8 +3,10 @@
 One guardian waits partway through each of the ten worlds, each teaching you
 a different way to bend the game's usual rules. Every guardian you've met
 stays reachable from the Lab's Guardians station (which appears once you've
-met your first one) -- pick one from the list and you're warped straight to
-their world.
+met your first one) -- pick one from the list and their shop/panel opens
+right there in the Lab, no travel required. Bloch's own panel is the
+exception with a purpose: fast travel is literally what he offers, so his
+destination list is where a warp actually happens.
 
 | Guardian | World | What they do |
 |---|---|---|

@@ -1,4 +1,4 @@
-import type { OverworldScene } from '../OverworldScene';
+import type { GuardianPanelHost } from '../OverworldScene';
 import { makeMajoranaAvatar } from '../../art/majorana';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
@@ -39,7 +39,7 @@ import type { Material, MaterialType } from '../../data/types';
 // both the purchase and the fuse, there's no separate "unlock, then fuse
 // later" step. Superposition Mode bypasses this per-result cost entirely
 // (`isSuperpositionMode()`, not the persisted list).
-export function showMajoranaPanel(scene: OverworldScene) {
+export function showMajoranaPanel(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
 
   const panelWidth = 600;
@@ -207,7 +207,7 @@ export function showMajoranaPanel(scene: OverworldScene) {
   container.addAt(panel, 0);
 }
 
-function becomeHybrid(scene: OverworldScene, hybrid: Material) {
+function becomeHybrid(scene: GuardianPanelHost, hybrid: Material) {
   scene.applyPlayerForm(hybrid);
   scene.dialogueContainer?.destroy(true);
   showMajoranaPanel(scene);
@@ -222,7 +222,7 @@ function becomeHybrid(scene: OverworldScene, hybrid: Material) {
 // the MAJORANA_FUSE_COST purchase actually happens (Superposition Mode
 // never reaches the paid branch, since the panel's own isUnlocked check
 // already treats every result as unlocked there).
-function createHybrid(scene: OverworldScene, nameA: string, nameB: string, unlockedResults: string[]) {
+function createHybrid(scene: GuardianPanelHost, nameA: string, nameB: string, unlockedResults: string[]) {
   scene.majoranaSelection = null;
   const a = findMaterialByName(nameA);
   const b = findMaterialByName(nameB);

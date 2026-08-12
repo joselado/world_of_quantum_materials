@@ -1,4 +1,4 @@
-import type { OverworldScene } from '../OverworldScene';
+import type { GuardianPanelHost } from '../OverworldScene';
 import { makeFranklinAvatar } from '../../art/franklin';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
@@ -13,7 +13,7 @@ import { renderPassiveList } from './passiveList';
 // not something chosen from the move menu each turn. Uses the shared
 // renderPassiveList below -- see that function's own comment for why it
 // mirrors showKondoPanel's shape rather than a flat buy-only list.
-export function showFranklinPanel(scene: OverworldScene) {
+export function showFranklinPanel(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
 
   const panelWidth = 600;

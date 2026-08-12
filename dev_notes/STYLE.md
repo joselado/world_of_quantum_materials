@@ -70,10 +70,14 @@ than appending a changelog, so this always reflects current reality.
   returns true in this mode, since the mode's own teleport-anywhere design (below) makes a
   single "resume where I left off" door meaningless once Bloch's hub can jump to any visited
   world instead. Pressing Enter while standing in the Lab is the reverse of `OverworldScene`'s
-  own Enter/H (which send the player *to* the Hub, saving `mapState` as they leave): it's a
-  no-op unless `canResumeWorld()` is true for the currently-offered world (a fresh save with
-  nothing in progress yet has nothing to send Enter back to), and never fires while a Lab panel
-  is open, matching every station's own one-panel-at-a-time guard. From there the player can
+  own Enter/H (which send the player *to* the Hub, saving `mapState` as they leave): it sends
+  the player back to exactly the world and position `mapState` holds (`HubScene.resumeWorld()`),
+  which is not necessarily the door station's own frontier-world target -- opening the Lab from
+  an earlier world (Bloch's teleport hub, or walking back through an earlier world's own door)
+  and pressing Enter again lands the player back in that same earlier world, not the door's
+  "Back to World N." A no-op when there's nothing resumable (a fresh save with nothing in
+  progress yet has nothing to send Enter back to), and never fires while a Lab panel is open,
+  matching every station's own one-panel-at-a-time guard. From there the player can
   walk to World 2 to reach Bloch, whose teleport hub (already pre-seeded with every world as
   visited) can jump to any other world immediately -- there is no separate warp/world-select
   panel, though every world also has its own walkable doors back to the Hub/previous world and
@@ -86,13 +90,14 @@ than appending a changelog, so this always reflects current reality.
   the start, since it already grants every passive and lists every guardian regardless. Moves,
   Stats, Tutorial, and Settings are never gated, so a fresh save always shows at least those
   four (two rows of up to three) even with neither gated station visible yet. Every station
-  that has a motif (Save Point plus all six `LAB_STATIONS` entries) gets its own small
+  except the door (Qumatex, Save Point, and all six `LAB_STATIONS` entries) gets its own small
   `art/labMotifs.ts` icon planted just to the left of its button label (`HubScene.addStationRow`,
-  `STATION_MOTIF_SIZE = 22`, fixed-px, never scaled by the Text Size setting) -- much smaller
+  `STATION_MOTIF_SIZE = 26`, fixed-px, never scaled by the Text Size setting) -- much smaller
   than the same builder would draw inside a full panel, since here it sits inline with a
-  compact button; Qumatex and the door have no motif of their own (Qumatex's own panel already
-  renders the selected compound's real crystal; the door just needs to read as an exit), so
-  those two stay plain text like every button had before motifs existed. Every station is a
+  compact button; Qumatex's own icon (`makeQumatexMotif`, a small 2x2 grid of tiny faceted
+  gems reading as "an indexed catalog") is distinct from the panel's own detail pane, which
+  renders one full-size real crystal for whichever compound is currently selected. The door has
+  no motif of its own -- plain text is enough to read as an exit. Every station is a
   no-op while another panel is already open (one panel at a time).
 - **Every one of the Lab's eight non-door panels reads as one coherent design** -- dark
   rounded-rectangle-with-stroke chrome and a bold gold (`#ffe066`) heading -- rather than
@@ -116,7 +121,7 @@ than appending a changelog, so this always reflects current reality.
   ones the player has found -- an undiscovered entry still gets a slot, masked to a "???" name
   in both columns, a generic "Not yet discovered" blurb, and a flat dim-grey (`0x33394a`)
   silhouette in place of the compound's own rendered look, rather than the index only ever
-  growing as the player finds things. Panel (`620` wide) stroked purple (`0x9a6ad9`). Its title
+  growing as the player finds things. Panel (`720` wide) stroked purple (`0x9a6ad9`). Its title
   line carries a small purple prism icon of its own (`makeCrystal(this, 16, 0x9a6ad9, 'prism')`)
   since its two-column list/detail layout has no room for a full left-side motif column and its
   right-column crystal render (below) already reads as a themed motif in its own right. The
@@ -783,10 +788,15 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 - Triggered by clicking "Face the Rival ->" in the goal panel (`showGatePanel`), not
   automatically on reaching the goal and not from any guardian's own panel -- so the player
   can walk past the goal to shop with Noether or any other guardian before ever facing the
-  fight they're being gated on. Same panel treatment as a wild encounter (600×260,
-  centered crystal, italic line beneath), but stroked in red (`0xff6666`) instead of
-  blue-grey or gold, and with a single mandatory "Battle!" button -- no "let me pass,"
-  since a gate that can be skipped isn't a gate. Losing doesn't set anything back except
+  fight they're being gated on. Same 600-wide panel treatment as a wild encounter (centered
+  crystal, italic line beneath), but stroked in red (`0xff6666`) instead of blue-grey or
+  gold, with a single mandatory "Battle!" button -- no "let me pass," since a gate that can
+  be skipped isn't a gate -- and the portrait itself is `art/boss.ts`'s `makeBossCrystal` at
+  `BOSS_CRYSTAL_SIZE` (`OverworldScene.ts`'s own copy, `70`), the same golem silhouette the
+  rival already renders as standing at the goal tile (`spawnBossSprite`) and as the battle
+  opponent (`scenes/BattleScene.ts`'s own `BOSS_CRYSTAL_SIZE`) -- not the plain faceted
+  `makeCrystal` an ordinary wild encounter uses, so the rival never reverts to looking like an
+  ordinary crystal just because this dialogue is open. Losing doesn't set anything back except
   the token stake (see Stakes in DESIGN.md §4): the goal panel simply reopens and "Face
   the Rival ->" is still there to retry.
 
@@ -1000,14 +1010,14 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   color) except Guardians (see below). Each is its own station button on the Lab floor (see
   "The Hub" above), not a row in a shared menu -- clicking one is a no-op while another panel
   is already open.
-- "Moves"/"Stats" share a generic info panel (`showInfoPanel`, `440` wide, same blue-grey
+- "Moves"/"Stats" share a generic info panel (`showInfoPanel`, `560` wide, same blue-grey
   stroke). Moves lists only the moves actually usable right now (`getBattleMoves` -- learned
   moves intersected with what the current crystal form's physics can host, §3) as plain
   `<name> -- Pwr N` lines (name and power both reflecting any Feynman level via
   `moveDisplayName`/`effectiveMovePower`), no move-class label and no "incompatible" entries
   cluttering the list; Stats lists Quantumness/Velocity/Correlation plus qumatessence and
   current form name. Both end in a single "Close" button.
-- "Abilities" is its own dedicated panel (`showAbilitiesPanel`, `440` wide, same blue-grey
+- "Abilities" is its own dedicated panel (`showAbilitiesPanel`, `560` wide, same blue-grey
   stroke) rather than a third `showInfoPanel` body -- one name+description block
   per passive owner (`data/passives.ts`'s `PASSIVE_OWNERS`, currently just Franklin),
   each its own pair of `Text` objects with explicitly capped
@@ -1016,11 +1026,16 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   body's shrink-to-fit only lowers font size and never truncates -- two full passive
   descriptions back to back could still overflow the canvas at that panel's largest text-size
   preset even at the shrink loop's own floor.
-- "Guardians" (`showGuardiansPanel`, `520` wide, stroked lavender `0xb98fea`) lists every met
+- "Guardians" (`showGuardiansPanel`, `600` wide, stroked lavender `0xb98fea`) lists every met
   guardian as its own row (`OverworldScene.guardianRoster()`, filtered by registry
-  `metGuardians`, or every guardian at once in Superposition Mode); a row click warps into
-  that guardian's world and reopens their own panel there (see "Guardians, economy, and story
-  arc" in DESIGN.md §5) rather than rendering their shop UI inside the Lab.
+  `metGuardians`, or every guardian at once in Superposition Mode); a row click opens that
+  guardian's own bespoke panel (shop/teleport hub/transmutation, in that guardian's own stroke
+  color per CODEMAP.md's panel-color list, not the Guardians list's lavender) directly in the
+  Lab, replacing the lavender list panel in place -- the same panel the player would see by
+  walking up to that guardian mid-world (see "Guardians, economy, and story arc" in DESIGN.md
+  §5). The player's world/scene/position never changes just from opening a guardian's panel this
+  way; Bloch's own panel is the one guardian panel with an explicit travel action (its
+  destination rows), which still moves the player like any other deliberate warp.
 
 ## Settings station (`scenes/panels/hubStations.ts`'s `showSettingsPanel`)
 
@@ -1051,18 +1066,18 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   world, bumping into your first wild crystal, and so on -- never more than one on screen at a
   time, and never several shown in a row.
 
-## Full tutorial recap (`scenes/panels/hubStations.ts`'s `showTutorial`/`renderTutorialPage`)
+## Full tutorial recap (`scenes/panels/hubStations.ts`'s `showTutorialTopics`/`showTutorialTopic`)
 
-- Same panel family, `560x300`, same cyan stroke -- this is the paged, multi-tip version, kept
-  only for the Lab's Tutorial station (replays every tip in `data/tutorial.ts`'s
-  `TUTORIAL_PAGES`, in order, on demand). A small `TUTORIAL -- n / N` counter sits above the
-  page title.
-- Footer row: `<- Back` (hidden on the first page) and `Next ->` (hidden on the last page)
-  flank a center button that reads "Skip" on every page except the last, where it becomes
-  "Done" -- both close the panel either way, "Skip"/"Done" is just the honest label for what
-  happens at that point in the sequence.
+- A topic picker, not a linear pager: `showTutorialTopics` (`560` wide, same cyan `0x5ad9ff`
+  stroke) lists every tip in `data/tutorial.ts`'s `TUTORIAL_PAGES` as its own row (a "Pick a
+  topic to revisit" hint above the list), so the player sees what's covered before opening
+  anything and can jump straight to one topic instead of stepping through the rest to reach it.
+- Picking a row opens that topic's own single page (`showTutorialTopic`, `560` wide, same cyan
+  stroke) -- title, body (same floor-9px shrink-to-fit loop every other Lab panel's body text
+  uses), and a footer with `<- Topics` (back to the topic list) alongside `Close`, rather than a
+  Back/Next pager between topics.
 - Doesn't trigger automatically -- see "Contextual tutorial tips" above for what
-  a new save actually sees; this is opt-in only, always restarting from page 1.
+  a new save actually sees; this is opt-in only, always opening on the topic list.
 
 ## Attack effects (`art/attackEffects.ts`, `audio/sfx.ts`, `scenes/BattleScene.ts`)
 
