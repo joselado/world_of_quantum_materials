@@ -295,13 +295,21 @@ export class BattleScene extends Phaser.Scene {
     // just under the crystal) leaves too little room before the canvas edge
     // to trust an unbounded single line -- wrapping to a second line grows
     // `opponentName.height`, which opponentBarY below already reads live, so
-    // the bar/pills still land in the right place either way.
+    // the bar/pills still land in the right place either way. `useAdvancedWrap`
+    // additionally lets Phaser break a single word mid-word when needed --
+    // without it, wordWrap only breaks at spaces, so a long single word
+    // (e.g. "Polycrystalline" in every WORLD_RIVALS/RIVAL_9_NAMES boss name)
+    // wouldn't wrap at all and would overflow the box instead. A rival's own
+    // name runs much longer on average than an ordinary wild's, so its label
+    // uses a smaller base size to keep the wrapped block short enough to
+    // clear MENU_TOP even at the largest text-size preset.
     const opponentName = this.add.text(614, 48, this.wild.name, {
-      fontSize: fontPx(this, 14),
+      fontSize: fontPx(this, this.isRival ? 11 : 14),
       color: '#ffffff',
       backgroundColor: 'rgba(0,0,0,0.35)',
       padding: { x: 4, y: 2 },
-      wordWrap: { width: FIELD_W - 614 - 12 },
+      align: 'center',
+      wordWrap: { width: FIELD_W - 614 - 12, useAdvancedWrap: true },
     });
     const opponentBarY = opponentName.y + opponentName.height + 8;
     this.add.rectangle(614, opponentBarY, 104, 12, 0x222222, 0.55).setOrigin(0, 0.5);
@@ -601,11 +609,12 @@ export class BattleScene extends Phaser.Scene {
     // available space (see the row-height budget below), so its length
     // can't scale with the current opponent's name (an early version read
     // "vs <wild.name>: ...", which overflowed the panel off-canvas against
-    // a long name like "Thallium Copper Chloride" or "Rival Impurity
-    // Resonance" at the largest text-size preset). Only the mismatch symbol
-    // needs explaining up here now -- the analytic ★2x/½x explanation moved
-    // to its own section header below (DESIGN.md §4), so this line no
-    // longer has a longer conditional variant to worry about.
+    // a long name like "Thallium Copper Chloride" or "Polycrystalline
+    // Manganese Bismuth Telluride Golem" at the largest text-size preset).
+    // Only the mismatch symbol needs explaining up here now -- the analytic
+    // ★2x/½x explanation moved to its own section header below (DESIGN.md
+    // §4), so this line no longer has a longer conditional variant to worry
+    // about.
     const legend = this.add
       .text(MENU_X + MENU_WIDTH / 2, y, '!! no natural defense (2x)', {
         fontSize: fontPx(this, 10),
@@ -1672,9 +1681,9 @@ export class BattleScene extends Phaser.Scene {
       this.game.registry.set('rivalDefeated', { ...rivalDefeated, [this.world]: true });
     }
 
-    // Rivals aren't real compounds (same rule as OverworldScene's
-    // discoveredMaterials), so only an ordinary wild win is ever offered to
-    // Dresselhaus's transmutation panel.
+    // Rivals are gate encounters, not collectible materials (same rule as
+    // OverworldScene's discoveredMaterials), so only an ordinary wild win is
+    // ever offered to Dresselhaus's transmutation panel.
     if (won && !this.isRival) {
       const defeated = (this.game.registry.get('defeatedMaterials') as DiscoveredMaterial[]) ?? [];
       if (!defeated.some((m) => m.name === this.wild.name)) {

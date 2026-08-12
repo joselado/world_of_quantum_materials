@@ -140,6 +140,13 @@ interface WorldSprite {
   container: Phaser.GameObjects.Container;
   label?: Phaser.GameObjects.Text;
   seed: number;
+  // Boss names (WORLD_RIVALS/RIVAL_9_NAMES) run much longer than any
+  // ordinary wild/guardian/door name -- set on bossSprites only (see
+  // spawnBossSprite) so updateWorldSprites keeps a long wrapped label's
+  // rendered bounds fully on-canvas instead of letting its center-anchored
+  // position (which follows the camera like everything else on the map)
+  // push it past either edge.
+  clampLabelToCanvas?: boolean;
 }
 
 // One entry per world with a guardian -- replaces the old per-guardian
@@ -1438,8 +1445,8 @@ export class OverworldScene extends Phaser.Scene {
     this.guardianSprites.push({ x: tile.x, y: tile.y, size: 42, container: avatar, label, seed: Math.random() * Math.PI * 2 });
   }
 
-  // World 9's rival ("Rival Impurity Resonance") has no fixed type -- it's
-  // re-rolled (data/materials.ts's rollRival9Type) every time the player
+  // World 9's rival (an impurity/defect-bound resonance) has no fixed type --
+  // it's re-rolled (data/materials.ts's rollRival9Type) every time the player
   // reaches World 9 (create()'s own `rival9Type` registry clear above forces
   // the first read below each visit to roll fresh) and then cached in the
   // registry/save for the rest of that visit, so the goal-tile boss preview
@@ -1476,6 +1483,11 @@ export class OverworldScene extends Phaser.Scene {
     const avatar = makeBossCrystal(this, BOSS_CRYSTAL_SIZE, boss.color, boss.variant);
     avatar.setDepth(20);
 
+    // Wrapped and centered (not just single-line) since a polycrystalline-
+    // golem name (e.g. "Polycrystalline Manganese Bismuth Telluride Golem")
+    // runs far longer than any other landmark's label -- clampLabelToCanvas
+    // below (updateWorldSprites) keeps the wrapped block's own rendered
+    // bounds on-canvas regardless of where the camera puts this sprite.
     const label = this.add
       .text(0, 0, boss.name, {
         fontSize: fontPx(this, 12),
@@ -1483,6 +1495,8 @@ export class OverworldScene extends Phaser.Scene {
         color: '#ff8f8f',
         backgroundColor: 'rgba(0,0,0,0.5)',
         padding: { x: 4, y: 2 },
+        align: 'center',
+        wordWrap: { width: 220, useAdvancedWrap: true },
       })
       .setOrigin(0.5, 1)
       .setDepth(21);
@@ -1494,6 +1508,7 @@ export class OverworldScene extends Phaser.Scene {
       container: avatar,
       label,
       seed: Math.random() * Math.PI * 2,
+      clampLabelToCanvas: true,
     });
   }
 
@@ -1593,7 +1608,13 @@ export class OverworldScene extends Phaser.Scene {
 
       c.container.setPosition(p.x, p.y + bob);
       c.container.setScale(p.scale);
-      c.label?.setPosition(p.x, p.y + bob - c.size * p.scale - 4);
+      // A clamped label (currently just a boss's own, see spawnBossSprite)
+      // keeps its rendered half-width (label.width already reflects any
+      // wordWrap) from pushing past either canvas edge, rather than staying
+      // strictly centered on the sprite's own projected x like every other
+      // landmark's shorter label.
+      const labelX = c.clampLabelToCanvas && c.label ? Phaser.Math.Clamp(p.x, (c.label.width * p.scale) / 2, CANVAS_W - (c.label.width * p.scale) / 2) : p.x;
+      c.label?.setPosition(labelX, p.y + bob - c.size * p.scale - 4);
       c.label?.setScale(p.scale);
     }
   }
@@ -1621,8 +1642,9 @@ export class OverworldScene extends Phaser.Scene {
   }
 
   // Adds a wild material to the Materialdex the Hub scene reads from, the
-  // first time it's ever encountered (not per-battle) -- rival crystals
-  // aren't real compounds, so they're never recorded here.
+  // first time it's ever encountered (not per-battle) -- only called from
+  // maybeTriggerEncounter's ordinary wild-tile path, never from
+  // showRivalEncounter, so a world's rival/boss is never recorded here.
   private recordDiscovery(material: Material) {
     const discovered = (this.game.registry.get('discoveredMaterials') as DiscoveredMaterial[]) ?? [];
     if (discovered.some((m) => m.name === material.name)) return;

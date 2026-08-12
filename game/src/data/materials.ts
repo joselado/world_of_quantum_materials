@@ -937,13 +937,13 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
   ],
 };
 
-// World 9's rival, "Rival Impurity Resonance," has no single fixed type the
-// way every other rival does -- an impurity/defect-bound resonance can form
-// in any host crystal, so its type is rolled at random rather than
-// authored. OverworldScene re-rolls it every time the player reaches World 9
-// and caches the result in the registry/save (`rival9Type`) for the rest of
-// that visit, so the goal-tile boss preview and the actual battle still
-// agree on which crystal it turned out to be.
+// World 9's rival -- an impurity/defect-bound resonance that can form in any
+// host crystal -- has no single fixed type the way every other rival does,
+// so its type (and, via RIVAL_9_NAMES below, its name) is rolled at random
+// rather than authored. OverworldScene re-rolls it every time the player
+// reaches World 9 and caches the result in the registry/save (`rival9Type`)
+// for the rest of that visit, so the goal-tile boss preview and the actual
+// battle still agree on which crystal it turned out to be.
 export const RIVAL_9_TYPES: MaterialType[] = [
   'metal',
   'quantumSpinHall',
@@ -958,13 +958,56 @@ export function rollRival9Type(): MaterialType {
   return RIVAL_9_TYPES[Math.floor(Math.random() * RIVAL_9_TYPES.length)];
 }
 
+// A per-type polycrystalline-golem name (same "real compound, polycrystalline
+// form" naming WORLD_RIVALS[1-8] uses, since an impurity/defect-bound
+// resonance can form in any host crystal -- world 9's own rolled type just
+// picks which host). Each entry is grounded in a real compound genuinely
+// studied in polycrystalline form, matching the rolled MaterialType:
+// - metal: polycrystalline silver -- screen-printed Ag paste is the ordinary
+//   polycrystalline contact metal in real silicon solar cells.
+// - quantumSpinHall: polycrystalline Bi₂Te₃ again (see WORLD_RIVALS[3]'s own
+//   comment) -- the same host crystal defect physics can form in.
+// - superconductor: polycrystalline niobium -- the actual engineering
+//   superconductor (as Nb/NbTi) wound into MRI and accelerator magnets.
+// - classicalMagnet: polycrystalline manganese (world 9's own Mn wild).
+// - quantumSpinLiquid: polycrystalline Ce₂Zr₂O₇ -- inelastic neutron
+//   scattering on this pyrochlore spin-liquid candidate was done on a
+//   polycrystalline powder sample.
+// - multiferroic: polycrystalline bismuth ferrite -- sintered BiFeO₃ ceramic
+//   pellets are the standard bulk form multiferroics research runs on.
+// - chernInsulator: polycrystalline MnBi₂Te₄ again (see WORLD_RIVALS[4]'s own
+//   comment) -- deliberately not polycrystalline GaAs: GaAs only earns
+//   `chernInsulator` here as an ultra-high-mobility single-crystal 2DEG
+//   hosting field-driven Landau levels, so grain boundaries would broaden
+//   away the exact physics that makes it this type. MnBi₂Te₄'s own intrinsic
+//   magnetic order is what makes it a Chern insulator, and that's the same
+//   order its neutron-powder-diffraction structure solve measured, so the
+//   polycrystalline claim and the type-defining physics agree.
+// Only ever looked up for RIVAL_9_TYPES' 7 members (the only types
+// rivalImpurityResonance below is ever called with) -- covers those 7 and no
+// others on purpose, rather than a full Record<MaterialType, string>, since
+// the other 6 MaterialType members can never reach this lookup and inventing
+// placeholder names for them would just be dead weight.
+const RIVAL_9_NAMES: Partial<Record<MaterialType, string>> = {
+  metal: 'Polycrystalline Silver Golem',
+  quantumSpinHall: 'Polycrystalline Bismuth Telluride Golem',
+  superconductor: 'Polycrystalline Niobium Golem',
+  classicalMagnet: 'Polycrystalline Manganese Golem',
+  quantumSpinLiquid: 'Polycrystalline Cerium Zirconate Pyrochlore Golem',
+  multiferroic: 'Polycrystalline Bismuth Ferrite Golem',
+  chernInsulator: 'Polycrystalline Manganese Bismuth Telluride Golem',
+};
+
 // A fixed, broadly-compatible moveset (Electron Pulse + Phonon Beam) rather
 // than one tailored per rolled type -- no single 2-move set could match
 // every one of RIVAL_9_TYPES' seven very different classes anyway, and wild/
 // rival movesets were never validated against MOVE_COMPATIBILITY (only the
 // player's own moveset is, via getBattleMoves).
 function rivalImpurityResonance(type: MaterialType): Material {
-  return crystal('Rival Impurity Resonance', type, 66, ['tunnelStrike', 'thermalFluctuation'], 11);
+  // Every caller (rollRival9Type, and the cached rival9Type resolved from
+  // it) only ever produces a RIVAL_9_TYPES member, which RIVAL_9_NAMES
+  // covers completely -- see its own comment above.
+  return crystal(RIVAL_9_NAMES[type]!, type, 66, ['tunnelStrike', 'thermalFluctuation'], 11);
 }
 
 // The single "beat this to unlock the guardian and the way onward" gate per
@@ -973,16 +1016,45 @@ function rivalImpurityResonance(type: MaterialType): Material {
 // progress. World 9 has no static entry here -- see rivalImpurityResonance/
 // getRival above and below.
 export const WORLD_RIVALS: Partial<Record<number, Material>> = {
-  1: crystal('Rival Silicon', 'semiconductor', 34, ['thermalFluctuation', 'tunnelStrike'], 3),
-  // A Bloch wave is the actual object world 2's lecture (symmetries,
-  // Bloch's theorem, tight-binding) builds toward.
-  2: crystal('Rival Bloch Wave', 'metal', 38, ['thermalFluctuation', 'tunnelStrike'], 4),
-  3: crystal('Rival Edge State', 'quantumSpinHall', 42, ['helicalCurrent', 'tunnelStrike'], 5),
-  4: crystal('Rival Landau Level', 'chernInsulator', 46, ['chiralCurrent', 'tunnelStrike'], 6),
-  5: crystal('Rival Cooper Pair', 'superconductor', 50, ['higgsOscillation', 'tunnelStrike'], 7),
-  6: crystal('Rival Domain Wall', 'classicalMagnet', 54, ['magneticField', 'thermalFluctuation'], 8),
-  7: crystal('Rival Entangled Pair', 'quantumSpinLiquid', 58, ['entanglementSwap', 'visonLoop'], 9),
-  8: crystal('Rival Spinon', 'quantumSpinLiquid', 62, ['entanglementSwap', 'triplonSurge'], 10),
+  // Every rival 1-8 is named for a real compound's polycrystalline form --
+  // "many grains fused into one mass," the same theme art/boss.ts's golem
+  // silhouette literalizes -- rather than a generic RPG monster name, so the
+  // boss reads as an escalation of the physics the world already taught
+  // rather than an unrelated label. Poly-Si is the textbook baseline: one of
+  // the most common real polycrystalline materials (solar cells,
+  // semiconductor manufacturing).
+  1: crystal('Polycrystalline Silicon Golem', 'semiconductor', 34, ['thermalFluctuation', 'tunnelStrike'], 3),
+  // Polycrystalline graphene -- CVD-grown graphene grows as stitched-together
+  // single-crystal grains with visible grain boundaries (Huang et al.,
+  // Nature 2011), the defining "many grains fused into one sheet" example
+  // for a 'metal'-type 2D material.
+  2: crystal('Polycrystalline Graphene Golem', 'metal', 38, ['thermalFluctuation', 'tunnelStrike'], 4),
+  // Bi₂Te₃ (world 3's own Bi₂Te₃ wild) is engineered polycrystalline on
+  // purpose in real thermoelectric devices -- grain boundaries scatter
+  // phonons and suppress thermal conductivity while preserving electrical
+  // conductivity, boosting its thermoelectric figure of merit.
+  3: crystal('Polycrystalline Bismuth Telluride Golem', 'quantumSpinHall', 42, ['helicalCurrent', 'tunnelStrike'], 5),
+  // MnBi₂Te₄'s own magnetic structure was solved by neutron powder
+  // diffraction on a polycrystalline sample -- the real intrinsic
+  // zero-field Chern insulator world 4's own roster already hosts.
+  4: crystal('Polycrystalline Manganese Bismuth Telluride Golem', 'chernInsulator', 46, ['chiralCurrent', 'tunnelStrike'], 6),
+  // Polycrystalline YBCO's grain boundaries act as weak-link Josephson
+  // junctions that cap its critical current -- the textbook example of
+  // polycrystallinity mattering physically for a superconductor, not just
+  // cosmetically.
+  5: crystal('Polycrystalline YBCO Golem', 'superconductor', 50, ['higgsOscillation', 'tunnelStrike'], 7),
+  // Polycrystalline iron (grain-oriented electrical steel) is the classic
+  // engineering ferromagnet -- domain structure and Hall-Petch strengthening
+  // in bulk iron are both textbook polycrystalline-magnet topics.
+  6: crystal('Polycrystalline Iron Golem', 'classicalMagnet', 54, ['magneticField', 'thermalFluctuation'], 8),
+  // Herbertsmithite (world 7's own flagship, the one real compound its
+  // lecture names) was first characterized as a polycrystalline powder --
+  // large single crystals came only later.
+  7: crystal('Polycrystalline Herbertsmithite Golem', 'quantumSpinLiquid', 58, ['entanglementSwap', 'visonLoop'], 9),
+  // alpha-RuCl3 (world 8's own Kitaev-candidate wild) is routinely
+  // characterized via polycrystalline powder susceptibility/specific-heat
+  // measurements alongside single crystals.
+  8: crystal('Polycrystalline Ruthenium Trichloride Golem', 'quantumSpinLiquid', 62, ['entanglementSwap', 'triplonSurge'], 10),
   // The finale: no real compound (see DESIGN.md §5's plot hook), an
   // "adaptive" type that can host nearly every quasiparticle class -- "a
   // model of you," drawing from the same move roster the player themselves
@@ -1001,9 +1073,9 @@ export function getRival(world: number, rival9Type?: MaterialType): Material | u
 }
 
 // Looked up by name for Dresselhaus's transmutation panel (§5) -- searches every
-// world's wild pool, not WORLD_RIVALS, since rival crystals aren't real
-// compounds (matches OverworldScene.recordDiscovery's own rule) and so are
-// never offered as a form to become.
+// world's wild pool, not WORLD_RIVALS, since rivals are gate encounters, not
+// collectible materials (matches OverworldScene.recordDiscovery's own rule)
+// and so are never offered as a form to become.
 export function findMaterialByName(name: string): Material | undefined {
   for (const pool of Object.values(WORLD_CRYSTALS)) {
     const found = pool?.find((m) => m.name === name);
