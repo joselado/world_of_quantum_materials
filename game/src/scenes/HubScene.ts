@@ -65,6 +65,13 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // entry this points at, even if that entry isn't on the list's current
   // page or has been filtered out of it.
   private materialdexSelectedName: string | null = null;
+  // Which page of the Guardians station's roster list is showing
+  // (scenes/panels/hubStations.ts's showGuardiansPanel), reset to 0 whenever
+  // the panel is closed (see closeDialogue below) -- Lab-only, so it lives
+  // here rather than on GuardianPanelHost the way Bloch/Feynman's own paged
+  // lists do (showGuardiansPanel takes a concrete HubScene, never opened
+  // mid-walk from OverworldScene the way every guardian's own panel is).
+  guardiansPage = 0;
 
   // GuardianPanelHost implementation (see OverworldScene.ts's GuardianPanelHost
   // and CODEMAP.md's "Guardian panels") -- lets any guardian's own panel
@@ -515,6 +522,20 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   renderFarewellFooter(container: Phaser.GameObjects.Container, footerY: number): number {
     const btn = this.addDialogueButtonAt(container, CANVAS_W / 2, footerY, 'Farewell', () => this.closeDialogue(), 260);
     return footerY + btn.height;
+  }
+
+  // See OverworldScene.renderCancelFarewellFooter for the rationale --
+  // duplicated rather than shared, same tradeoff as every other cross-cutting
+  // dialogue helper both GuardianPanelHost implementers provide.
+  renderCancelFarewellFooter(
+    container: Phaser.GameObjects.Container,
+    footerY: number,
+    cancelLabel: string,
+    onCancel: () => void
+  ): number {
+    const a = this.addDialogueButtonAt(container, CANVAS_W / 2 - 118, footerY, cancelLabel, onCancel, 210);
+    const b = this.addDialogueButtonAt(container, CANVAS_W / 2 + 118, footerY, 'Farewell', () => this.closeDialogue(), 210);
+    return footerY + Math.max(a.height, b.height);
   }
 
   addDialogueButton(container: Phaser.GameObjects.Container, y: number, label: string, onClick: () => void) {
@@ -1075,5 +1096,19 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   closeDialogue() {
     this.dialogueContainer?.destroy(true);
     this.dialogueContainer = undefined;
+    // Same per-guardian session-field reset as OverworldScene.closeDialogue()
+    // -- without it, walking away mid-pick (Farewell rather than Never mind)
+    // from Majorana/Anderson's two-step panels left the stale first pick in
+    // place for the rest of the session, since this scene is long-lived and
+    // never re-runs its class field initializers.
+    this.majoranaSelection = null;
+    this.dresselhausPage = 0;
+    this.majoranaPage = 0;
+    this.andersonSelection = null;
+    this.andersonPage = 0;
+    this.andersonMovePage = 0;
+    this.blochPage = 0;
+    this.feynmanPage = 0;
+    this.guardiansPage = 0;
   }
 }

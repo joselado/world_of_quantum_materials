@@ -243,12 +243,7 @@ export function showGuardiansPanel(scene: HubScene) {
 
   const columns = labPanelColumns(panelWidth);
 
-  // Capped rather than a shrink-to-fit loop -- same "row list that can grow
-  // long (up to every guardian in Superposition Mode) doesn't get to eat the
-  // whole Large text-size preset" tradeoff renderPassiveList/showAbilitiesPanel
-  // already make.
-  const rowScale = Math.min(fontScale(scene), 1.3);
-  const rowPx = `${Math.round(13 * rowScale)}px`;
+  const rowPx = fontPx(scene, 13);
 
   const met = (scene.game.registry.get('metGuardians') as string[]) ?? [];
   const superposition = !!scene.game.registry.get('superpositionMode');
@@ -266,21 +261,32 @@ export function showGuardiansPanel(scene: HubScene) {
     container.add(text);
     y += text.height + 14;
   } else {
-    guardians.forEach((guardian) => {
-      const btn = scene.addDialogueButtonAt(
-        container,
-        columns.contentCenterX,
-        y,
-        guardian.name,
-        () => {
-          scene.closeDialogue();
-          guardian.open?.(scene);
-        },
-        columns.contentWrapW,
-        rowPx
-      );
-      y += btn.height + 6;
-    });
+    // Each row prints the guardian's name/world and their one-line blurb
+    // together as a single two-line button label -- same name-then-
+    // description pairing showAbilitiesPanel's own per-owner rows use two
+    // stations away, so this list stops being bare names with no way to
+    // tell them apart before opening one. Paginated (renderPagedButtons,
+    // maxPerPage 4, same convention Bloch's/Feynman's own candidate lists
+    // use) since ten two-line rows -- every guardian, in Superposition Mode
+    // or by the time the player has met them all -- doesn't fit one panel
+    // at any text-size preset.
+    y = scene.renderPagedButtons(
+      container,
+      y,
+      guardians,
+      scene.guardiansPage,
+      4,
+      (g) => `${g.name} (World ${g.world})\n${g.blurb}`,
+      (g) => {
+        scene.closeDialogue();
+        g.open?.(scene);
+      },
+      (page) => {
+        scene.guardiansPage = page;
+        scene.dialogueContainer?.destroy(true);
+        showGuardiansPanel(scene);
+      }
+    );
   }
 
   y += 12;

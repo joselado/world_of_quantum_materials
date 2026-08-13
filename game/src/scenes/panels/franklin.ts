@@ -11,9 +11,10 @@ import { renderPassiveList } from './passiveList';
 // three passive abilities (data/passives.ts's FRANKLIN_PASSIVE_IDS --
 // Diffraction Shadow, Satellite Reflection, Amorphous Halo) instead of
 // moves: a whole-battle always-on modifier picked once by visiting Franklin,
-// not something chosen from the move menu each turn. Uses the shared
-// renderPassiveList below -- see that function's own comment for why it
-// mirrors showKondoPanel's shape rather than a flat buy-only list.
+// not something chosen from the move menu each turn. Uses renderPassiveList
+// below, a thin wrapper around the same renderChoiceList engine
+// showKondoPanel's shop uses -- see renderChoiceList's own comment for the
+// shared "buy several, only one active" shape both guardians sell.
 export function showFranklinPanel(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
 

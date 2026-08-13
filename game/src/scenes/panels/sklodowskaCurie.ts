@@ -40,13 +40,13 @@ export function showSklodowskaCuriePanel(scene: GuardianPanelHost) {
 
   let y = top;
 
-  const avatarY = y + 45;
+  const avatarY = y + 42;
   const avatar = makeSklodowskaCurieAvatar(scene);
   avatar.setPosition(CANVAS_W / 2, avatarY);
   container.add(avatar);
   scene.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
   playGuardianChime();
-  y = avatarY + 55;
+  y = avatarY + 48;
 
   const intro = scene.add
     .text(

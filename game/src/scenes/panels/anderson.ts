@@ -70,13 +70,13 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
 
   let y = top;
 
-  const avatarY = y + 55;
+  const avatarY = y + 42;
   const avatar = makeAndersonAvatar(scene);
   avatar.setPosition(CANVAS_W / 2, avatarY);
   container.add(avatar);
   scene.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
   playGuardianChime();
-  y = avatarY + 65;
+  y = avatarY + 48;
 
   const superposition = scene.isSuperpositionMode();
   const intro = scene.add
@@ -86,7 +86,7 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
       superposition
         ? '"I am Anderson. In superposition any crystal can be doped in as an impurity -- pick one, and I\'ll teach you the channel it opens, active for as long as that impurity stays doped in; a new one replaces it."'
         : '"I am Anderson. Dope in a defeated crystal as an impurity, and I\'ll teach you the one channel it opens -- active only while that impurity stays doped in; a new dopant replaces it."',
-      { fontSize: fontPx(scene, 12), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
+      { fontSize: fontPx(scene, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
     )
     .setOrigin(0.5, 0);
   container.add(intro);
@@ -238,28 +238,19 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
     // any state in the panel (avatar, intro, "Learn which move" label, the
     // move list itself), so reclaiming a full row's height here is what
     // keeps it inside the canvas at the largest text-size preset.
-    const cancelBtn = scene.addDialogueButtonAt(
-      container,
-      CANVAS_W / 2 - 118,
-      y,
-      'Never mind',
-      () => {
+    y =
+      scene.renderCancelFarewellFooter(container, y, 'Never mind', () => {
         scene.andersonSelection = null;
         scene.andersonPage = 0;
         scene.andersonMovePage = 0;
         scene.dialogueContainer?.destroy(true);
         showAndersonPanel(scene);
-      },
-      210
-    );
-    const farewellBtn = scene.addDialogueButtonAt(container, CANVAS_W / 2 + 118, y, 'Farewell', () => scene.closeDialogue(), 210);
-    y += Math.max(cancelBtn.height, farewellBtn.height) + 12;
+      }) + 12;
     footerRendered = true;
   }
   if (!footerRendered) {
     y += 8;
-    const closeBtn = scene.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Farewell', () => scene.closeDialogue(), 300);
-    y += closeBtn.height + 12;
+    y = scene.renderFarewellFooter(container, y) + 12;
   }
 
   const panelHeight = y - top;

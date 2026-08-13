@@ -397,10 +397,13 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   panel's own bob tween on the outer container) so she reads as adrift rather than fixed in
   place; a soft additive glow behind her pulses slowly for a "presence" that a flat
   silhouette wouldn't give. A short layered-bell chime (`audio/sfx.ts`'s `playGuardianChime`,
-  shared by every guardian panel) plays whenever the shop opens. Sized and positioned
-  (`panelY - 105`, avatar top edge landing a few px inside the panel's own top edge, intro
-  text pushed down to `panelY - 68`) to fit the same panel every later guardian panel
-  (Bloch's) reuses -- each guardian still gets its own avatar builder in its own file
+  shared by every guardian panel) plays whenever the shop opens. Content is laid out top-down
+  from a running `y` starting at `top = 20`: avatar centered at `avatarY = y + 42` (top edge
+  landing a few px inside the panel's own top edge), intro quote text (11px italic) pushed down
+  to `y = avatarY + 48` -- the same two constants and font size every one of the other nine
+  guardian panels uses, including the fallback `showGuardianLore` a future guardian without a
+  bespoke panel lands on, so no panel needs its own avatar/quote-positioning tuning pass --
+  each guardian still gets its own avatar builder in its own file
   (`art/bloch.ts`, `art/franklin.ts`, ...) even though the surrounding panel shape is shared.
   Appears automatically every time the Overworld scene is (re)created with this world's
   middle row already reached (`OverworldScene.maybeAutoOpenMiddleDialogue`) -- first on
@@ -614,12 +617,13 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   (`0xe86a44`) name label and panel stroke -- distinct from Anderson's own rust/amber
   (`0xc9884a`) above; his avatar (`art/kondo.ts`'s `makeKondoAvatar`) is unchanged by this
   mechanic.
-- Same two-runs-of-rows shape as Laughlin's panel above: still-
-  unbought moves from `data/materials.ts`'s `KONDO_MOVE_IDS` (Screening Pulse, Scattering
-  Drag, Coherence Cascade), usable from any form, same `<move name> -- <cost>
+- Two runs of rows, not Laughlin's flat buy-only shape above -- the same shared
+  `renderChoiceList` engine (`scenes/panels/passiveList.ts`) Franklin's passive panel below
+  uses: still-unbought moves from `data/materials.ts`'s `KONDO_MOVE_IDS` (Screening Pulse,
+  Scattering Drag, Coherence Cascade), usable from any form, same `<move name> -- <cost>
   qumatessence` label and afford/dim treatment as Laughlin's/Noether's shops (reusing `shopCost`),
   each followed by its own one-line `description` underneath in the same dimmer blue-grey
-  Franklin's own passive rows use (`renderPassiveList`) -- then one row per already-bought
+  Franklin's own passive rows use -- then one row per already-bought
   Kondo move, its own description printed the same way. A bought-and-inactive move reads
   "Make `<name>` active" as a clickable button, the currently active one (registry/save
   `kondoActiveMove`) reads "`<name>` (active)" dimmed to 50% alpha with no click handler,
@@ -639,8 +643,9 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   scattered sites surrounded by concentric diffraction rings -- porous/amorphous carbon's
   own X-ray diffraction pattern made literal -- in a dusty amethyst/lavender palette
   distinct from Anderson's rust/amber despite the shared defect/disorder theme.
-- Buy-list-plus-switch shape (`renderPassiveList`, shared with Kondo's own panel above's
-  buy/switch treatment): a still-unbought passive (`data/passives.ts`'s
+- Buy-list-plus-switch shape (`renderPassiveList`, Franklin's own thin wrapper around the
+  same `renderChoiceList` engine Kondo's own panel above uses): a still-unbought passive
+  (`data/passives.ts`'s
   `FRANKLIN_PASSIVE_IDS` -- Diffraction Shadow, Satellite Reflection, Amorphous Halo)
   gets a `<name> -- <cost> qumatessence` buy button plus a one-line description
   underneath, both capped at a lower font-scale ceiling than every other guardian
@@ -1075,8 +1080,15 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   descriptions back to back could still overflow the canvas at that panel's largest text-size
   preset even at the shrink loop's own floor.
 - "Guardians" (`showGuardiansPanel`, `600` wide, stroked lavender `0xb98fea`) lists every met
-  guardian as its own row (`OverworldScene.guardianRoster()`, filtered by registry
-  `metGuardians`, or every guardian at once in Superposition Mode); a row click opens that
+  guardian (`OverworldScene.guardianRoster()`, filtered by registry `metGuardians`, or every
+  guardian at once in Superposition Mode), each row a two-line button label -- name and world
+  number on the first line, that guardian's own one-line `blurb` (`GuardianDef.blurb`, the same
+  copy docs/guardians.md's own roster table uses) on the second -- so the list isn't bare names
+  with no way to tell them apart before opening one, the same name-then-description pairing
+  "Abilities" above uses. Paginated (`renderPagedButtons`, `guardiansPage`, `HubScene`-only
+  since this station never opens mid-walk from `OverworldScene`) rather than a shrink-to-fit
+  loop -- ten two-line rows doesn't fit one panel at any text-size preset, same "list that can
+  outgrow the panel" tradeoff Bloch's/Feynman's own candidate lists make. A row click opens that
   guardian's own bespoke panel (shop/teleport hub/transmutation, in that guardian's own stroke
   color per CODEMAP.md's panel-color list, not the Guardians list's lavender) directly in the
   Lab, replacing the lavender list panel in place -- the same panel the player would see by

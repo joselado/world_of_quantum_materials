@@ -189,6 +189,12 @@ export interface GuardianPanelHost extends Phaser.Scene {
     isDim?: (item: T) => boolean
   ): number;
   renderFarewellFooter(container: Phaser.GameObjects.Container, footerY: number): number;
+  renderCancelFarewellFooter(
+    container: Phaser.GameObjects.Container,
+    footerY: number,
+    cancelLabel: string,
+    onCancel: () => void
+  ): number;
   tokenText: Phaser.GameObjects.Text;
   qumatessence: number;
   playerMaterial: Material;
@@ -233,6 +239,11 @@ interface GuardianDef {
   labelColor: string;
   strokeColor: number;
   quote: string;
+  // One-line "what they do" -- the same copy docs/guardians.md's own
+  // roster table uses, surfaced in-game by the Lab's Guardians station
+  // (scenes/panels/hubStations.ts's showGuardiansPanel) so that list isn't
+  // bare names with no way to tell them apart before opening one.
+  blurb: string;
   avatar: (scene: Phaser.Scene, scale?: number) => Phaser.GameObjects.Container;
   // Every guardian now stands mid-corridor ('middle', see DESIGN.md §5) so the
   // goal tile is free for that world's boss avatar (spawnBossSprite) --
@@ -360,6 +371,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       labelColor: '#ffe066',
       strokeColor: 0xffe066,
       quote: 'Every symmetry hides a conservation law.',
+      blurb: 'Sells ordinary moves and stat upgrades.',
       avatar: makeNoetherAvatar,
       tile: 'middle',
       open: (s) => showNoetherShop(s),
@@ -370,6 +382,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       labelColor: '#8fe8ff',
       strokeColor: 0x4adde0,
       quote: 'Every crystal is a superposition of the worlds it has touched.',
+      blurb: "Teleports you between worlds you've visited.",
       avatar: makeBlochAvatar,
       tile: 'middle',
       open: (s) => showBlochHub(s),
@@ -380,6 +393,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       labelColor: '#6ee8ba',
       strokeColor: 0x4ad9a0,
       quote: 'Build the same atoms into a different nanostructure and you get a different material entirely.',
+      blurb: 'Lets you transmute into a defeated crystal.',
       avatar: makeDresselhausAvatar,
       tile: 'middle',
       open: (s) => showDresselhausPanel(s),
@@ -391,6 +405,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       strokeColor: 0x6a7fff,
       quote:
         'Take an electron liquid in a strong enough field and it condenses into something new -- excite it, and the charge that peels off is a fraction of an electron, not a whole one. Answer my questions right and I will teach your crystal to strike by that same physics.',
+      blurb: 'Sells two quiz-gated Analytic moves.',
       avatar: makeLaughlinAvatar,
       tile: 'middle',
       open: (s) => showLaughlinPanel(s),
@@ -401,6 +416,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       labelColor: '#9fffb0',
       strokeColor: 0x4fd97a,
       quote: 'Split one fermion into two halves, each its own antiparticle, and see what a superconductor can hide at its edge.',
+      blurb: 'Fuses two crystals into a hybrid state.',
       avatar: makeMajoranaAvatar,
       tile: 'middle',
       open: (s) => showMajoranaPanel(s),
@@ -411,6 +427,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       labelColor: '#e8b27a',
       strokeColor: 0xc9884a,
       quote: 'Enough disorder and a wave stops spreading at all -- it localizes, trapped by the very randomness that surrounds it.',
+      blurb: 'Lets you dope in an impurity move.',
       avatar: makeAndersonAvatar,
       tile: 'middle',
       open: (s) => showAndersonPanel(s),
@@ -421,6 +438,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       labelColor: '#ffa64a',
       strokeColor: 0xffa64a,
       quote: 'A tensor network and a Feynman diagram draw the same trick two ways -- a vertex for every point, a line for every leg.',
+      blurb: 'Lets you level up a move you already know.',
       avatar: makeFeynmanAvatar,
       tile: 'middle',
       open: (s) => showFeynmanPanel(s),
@@ -431,6 +449,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       labelColor: '#ff8f6a',
       strokeColor: 0xe86a44,
       quote: 'A single stray spin, screened by a sea of conduction electrons until it all but disappears at low temperature.',
+      blurb: 'Sells self-buff moves.',
       avatar: makeKondoAvatar,
       tile: 'middle',
       open: (s) => showKondoPanel(s),
@@ -442,6 +461,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       strokeColor: 0xa878c9,
       quote:
         'Fire X-rays through a defect-riddled crystal and the sharp spots blur into diffuse rings -- every pore and dislocation leaves its own signature in how the beam scatters. I can teach your crystal to scatter a blow the same way.',
+      blurb: 'Teaches always-on passive abilities.',
       avatar: makeFranklinAvatar,
       tile: 'middle',
       open: (s) => showFranklinPanel(s),
@@ -453,23 +473,30 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       strokeColor: 0xc9d84a,
       quote:
         'I lead this circle of guardians, and here is our last lesson: answer three questions in a row on everything you have learned, and your crystal will strike with a force none of the others can match.',
+      blurb: 'Teaches two quiz-gated Ultimate moves.',
       avatar: makeSklodowskaCurieAvatar,
       tile: 'middle',
       open: (s) => showSklodowskaCuriePanel(s),
     },
   };
 
-  // The id/name/world/`open` quadruplet the Lab's Guardians station
+  // The id/name/world/blurb/`open` quintuplet the Lab's Guardians station
   // (HubScene, via scenes/panels/hubStations.ts's showGuardiansPanel) needs
-  // to list a met guardian and open their panel directly -- everything else
-  // on GuardianDef (avatar builder, colors) stays private to this class.
-  // `open` is included so the Lab can call the exact same callback the
-  // walk-up path uses, rather than keeping a second dispatch table in sync
-  // with WORLD_GUARDIANS by hand.
-  static guardianRoster(): { id: string; name: string; world: number; open?: (scene: GuardianPanelHost) => void }[] {
+  // to list a met guardian, show what they teach, and open their panel
+  // directly -- everything else on GuardianDef (avatar builder, colors,
+  // quote) stays private to this class. `open` is included so the Lab can
+  // call the exact same callback the walk-up path uses, rather than keeping
+  // a second dispatch table in sync with WORLD_GUARDIANS by hand.
+  static guardianRoster(): { id: string; name: string; world: number; blurb: string; open?: (scene: GuardianPanelHost) => void }[] {
     return Object.entries(OverworldScene.WORLD_GUARDIANS)
       .filter((entry): entry is [string, GuardianDef] => !!entry[1])
-      .map(([world, guardian]) => ({ id: guardian.id, name: guardian.name, world: Number(world), open: guardian.open }));
+      .map(([world, guardian]) => ({
+        id: guardian.id,
+        name: guardian.name,
+        world: Number(world),
+        blurb: guardian.blurb,
+        open: guardian.open,
+      }));
   }
 
   constructor() {
@@ -2356,6 +2383,23 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     return footerY + btn.height;
   }
 
+  // Two-button variant for a guardian panel with a pending two-step pick
+  // (Majorana's first-crystal choice, Anderson's dope-in choice) --
+  // `cancelLabel`'s handler backs out of just the pending pick, Farewell
+  // backs out of the whole panel, side by side in one row (same convention
+  // renderShopFooter's Farewell/Continue row uses) rather than stacking two
+  // separate footer rows.
+  renderCancelFarewellFooter(
+    container: Phaser.GameObjects.Container,
+    footerY: number,
+    cancelLabel: string,
+    onCancel: () => void
+  ): number {
+    const a = this.addDialogueButtonAt(container, CANVAS_W / 2 - 118, footerY, cancelLabel, onCancel, 210);
+    const b = this.addDialogueButtonAt(container, CANVAS_W / 2 + 118, footerY, 'Farewell', () => this.closeDialogue(), 210);
+    return footerY + Math.max(a.height, b.height);
+  }
+
   advanceToWorld(world: number, enterFrom: 'start' | 'goal' = 'start') {
     this.closeDialogue();
     this.scene.start('Overworld', { world, regenerate: true, enterFrom });
@@ -2666,17 +2710,17 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
 
     let y = top;
 
-    const avatarY = y + 40;
+    const avatarY = y + 42;
     const avatar = guardian.avatar(this);
     avatar.setPosition(CANVAS_W / 2, avatarY);
     container.add(avatar);
     this.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     playGuardianChime();
-    y = avatarY + 50;
+    y = avatarY + 48;
 
     const intro = this.add
       .text(CANVAS_W / 2, y, `"${guardian.quote}"`, {
-        fontSize: fontPx(this, 12),
+        fontSize: fontPx(this, 11),
         fontStyle: 'italic',
         color: '#cfd8ff',
         align: 'center',

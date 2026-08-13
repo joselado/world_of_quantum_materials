@@ -50,13 +50,13 @@ export function showMajoranaPanel(scene: GuardianPanelHost) {
 
   let y = top;
 
-  const avatarY = y + 55;
+  const avatarY = y + 42;
   const avatar = makeMajoranaAvatar(scene);
   avatar.setPosition(CANVAS_W / 2, avatarY);
   container.add(avatar);
   scene.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
   playGuardianChime();
-  y = avatarY + 65;
+  y = avatarY + 48;
 
   const superposition = scene.isSuperpositionMode();
   const intro = scene.add
@@ -66,7 +66,7 @@ export function showMajoranaPanel(scene: GuardianPanelHost) {
       superposition
         ? '"I am Majorana. In superposition every pairing is already possible -- fuse any two states that make physical sense together, defeated or not."'
         : '"I am Majorana. Fuse two states you already understand and see what phase they make together -- a magnet and a superconductor, say, become something with edges neither one had alone."',
-      { fontSize: fontPx(scene, 12), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
+      { fontSize: fontPx(scene, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
     )
     .setOrigin(0.5, 0);
   container.add(intro);
@@ -178,27 +178,18 @@ export function showMajoranaPanel(scene: GuardianPanelHost) {
     // any state in the panel (avatar, intro, "Combine X with..." label, the
     // partner list itself), so reclaiming a full row's height here is what
     // keeps it inside the canvas at the largest text-size preset.
-    const cancelBtn = scene.addDialogueButtonAt(
-      container,
-      CANVAS_W / 2 - 118,
-      y,
-      'Never mind',
-      () => {
+    y =
+      scene.renderCancelFarewellFooter(container, y, 'Never mind', () => {
         scene.majoranaSelection = null;
         scene.majoranaPage = 0;
         scene.dialogueContainer?.destroy(true);
         showMajoranaPanel(scene);
-      },
-      210
-    );
-    const farewellBtn = scene.addDialogueButtonAt(container, CANVAS_W / 2 + 118, y, 'Farewell', () => scene.closeDialogue(), 210);
-    y += Math.max(cancelBtn.height, farewellBtn.height) + 12;
+      }) + 12;
     footerRendered = true;
   }
   if (!footerRendered) {
     y += 8;
-    const closeBtn = scene.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Farewell', () => scene.closeDialogue(), 300);
-    y += closeBtn.height + 12;
+    y = scene.renderFarewellFooter(container, y) + 12;
   }
 
   const panelHeight = y - top;

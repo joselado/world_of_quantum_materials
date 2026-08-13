@@ -1360,3 +1360,10 @@ Not yet built:
   reused everywhere quiz/move text renders, not a quick fix.
 - **Multiplayer/trading** — in scope or not? Changes hosting/save-system
   requirements significantly if yes.
+- **Quiz-question-fetch functions aren't parallel** — `data/quiz.ts`'s
+  `getAnalyticQuestion(visitedWorlds)` (Laughlin, singular), `getAnalyticQuestions(visitedWorlds,
+  count)` (Feynman's streak, plural, same pool), and `getUltimateQuestions(count)`
+  (Skłodowska-Curie, plural, a broader pool, no `visitedWorlds` param at all) are three
+  differently-shaped call sites for what's conceptually one repeated "quiz-gate" need. Worth
+  reconciling onto one `getQuestions(pool, count, visitedWorlds?)`-style function, deferred for
+  now.

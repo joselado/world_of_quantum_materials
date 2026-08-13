@@ -34,6 +34,13 @@ import {
   FRACTIONAL_GUARD_DAMAGE_MULT,
   ANYON_ECHO_FRACTION,
   EDGE_CURRENT_MISMATCH_MULT,
+  STATUS_DURATION,
+  SHIELD_BASE_REDUCTION,
+  SHIELD_MAX_REDUCTION,
+  EVASION_BASE_CHANCE,
+  EVASION_MAX_CHANCE,
+  REGEN_BASE_HEAL_FRACTION,
+  REGEN_MAX_HEAL_FRACTION,
   wildHpForWorld,
   rivalHpForWorld,
   rollEncounterFactor,
@@ -70,21 +77,6 @@ interface ActiveStatus {
   kind: StatusKind;
   turnsLeft: number;
 }
-
-const STATUS_DURATION = 3;
-// Each of Kondo's three buffs has a base mitigation strength (at move level
-// 0, i.e. before Feynman's leveling, §5 World 7) and a hard cap it can never
-// reach/exceed regardless of level, so even an "Infinite"-tier buff leaves
-// real risk on the table rather than reaching full immunity/certainty --
-// see BattleScene.kondoMitigationFraction, which scales the base by the
-// caster's own MOVE_LEVEL_MULTIPLIERS the same way effectiveMovePower
-// scales an ordinary attack's power.
-const SHIELD_BASE_REDUCTION = 0.2; // Shielded: base fraction of incoming damage reduced
-const SHIELD_MAX_REDUCTION = 0.6; // level 3 (Infinite, 3x multiplier): 0.2 * 3 = 0.6 exactly, the cap doesn't actually bind
-const EVASION_BASE_CHANCE = 0.2; // Evasive: base chance an incoming hit against the buffed side deals zero damage instead -- same magnitude family as Shielded's own base reduction, deliberately modest so an unleveled buff is a meaningful-but-not-dominant mitigation
-const EVASION_MAX_CHANCE = 0.6; // same reasoning as SHIELD_MAX_REDUCTION
-const REGEN_BASE_HEAL_FRACTION = 0.1; // Regenerating: base fraction of the buffed side's own max HP healed on each tick (3 ticks over the buff's life, spread out rather than landing in one hit)
-const REGEN_MAX_HEAL_FRACTION = 0.3; // level 3: 0.1 * 3 = 0.3 exactly, the cap doesn't actually bind either -- kept defensively in case tiers/multipliers ever change
 
 // Which buff a given Kondo move id deterministically applies -- no
 // randomness, the player picks the effect by picking the move (and, since

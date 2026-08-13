@@ -40,13 +40,13 @@ export function showDresselhausPanel(scene: GuardianPanelHost) {
 
   let y = top;
 
-  const avatarY = y + 55;
+  const avatarY = y + 42;
   const avatar = makeDresselhausAvatar(scene);
   avatar.setPosition(CANVAS_W / 2, avatarY);
   container.add(avatar);
   scene.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
   playGuardianChime();
-  y = avatarY + 65;
+  y = avatarY + 48;
 
   const superposition = scene.isSuperpositionMode();
   const intro = scene.add
@@ -56,7 +56,7 @@ export function showDresselhausPanel(scene: GuardianPanelHost) {
       superposition
         ? '"I am Dresselhaus. In superposition every nanostructure is within reach at once -- become anything that exists, not only what you have already beaten."'
         : '"I am Dresselhaus. Build the same atoms into a different nanostructure and you get a different material entirely -- new electrons, new phonons, no new chemistry required. Study a defeated crystal\'s structure closely enough, and you can rebuild yourself into it, for a while."',
-      { fontSize: fontPx(scene, 12), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
+      { fontSize: fontPx(scene, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
     )
     .setOrigin(0.5, 0);
   container.add(intro);
@@ -125,8 +125,7 @@ export function showDresselhausPanel(scene: GuardianPanelHost) {
   }
   y += 8;
 
-  const closeBtn = scene.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Farewell', () => scene.closeDialogue(), 300);
-  y += closeBtn.height + 12;
+  y = scene.renderFarewellFooter(container, y) + 12;
 
   const panelHeight = y - top;
   const panel = scene.add

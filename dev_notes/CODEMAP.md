@@ -43,9 +43,11 @@ game/src/
     panels/                    One file per guardian's panel UI (see "Guardian panels" below),
                                  e.g. noether.ts's showNoetherShop(), sklodowskaCurie.ts's
                                  showSklodowskaCuriePanel(), anderson.ts's showAndersonPanel() --
-                                 passiveList.ts's renderPassiveList() is franklin.ts's own
-                                 buy-list-plus-switch helper, kept in its own file rather than
-                                 folded into franklin.ts directly (see "Guardian panels" below),
+                                 passiveList.ts's renderChoiceList() is the shared
+                                 buy-list-plus-switch engine franklin.ts (via its own
+                                 renderPassiveList() wrapper) and kondo.ts both call, kept in its
+                                 own file rather than folded into either guardian's own (see
+                                 "Guardian panels" below),
                                  tunableMoveShop.ts's renderTunableMoveShop()/
                                  showMoveClassPicker() is the one shared by laughlin.ts's Analytic
                                  shop (Skłodowska-Curie's Ultimate shop is priced too differently
@@ -364,16 +366,21 @@ difficulty-curve sanity check rather than a docs generator.
   one guardian calls (e.g. Noether's `renderShopTabs`) moves
   into the same file as a plain (non-exported) function taking `scene` as its first param; a
   helper more than one guardian calls gets its own file under `scenes/panels/` instead rather
-  than living in either guardian's file -- `passiveList.ts`'s `renderPassiveList` (Franklin's
-  own passive-kit shop today, written generically enough for a future second passive-owning
-  guardian to reuse without a rewrite) is the current example. `tunableMoveShop.ts`'s `renderTunableMoveShop`/
+  than living in either guardian's file -- `passiveList.ts`'s `renderChoiceList` (the shared
+  "buy several, only one active, switch by revisiting" engine both Franklin's passive kit and
+  Kondo's three self-buff moves sell, each through its own thin adapter over its own registry
+  keys -- Franklin's own `renderPassiveList` wrapper for `passivesUnlocked`/
+  `activePassiveByOwner`, Kondo's own `kondoChoiceItems`/`kondoChoiceState` for
+  `unlockedMoves`/`kondoActiveMove`) is the current example. `tunableMoveShop.ts`'s `renderTunableMoveShop`/
   `showMoveClassPicker` currently has only one caller (Laughlin's Analytic shop) -- it still
   lives in its own file rather than `laughlin.ts` since it's written generically (any move-id
   list, any `shopCost`-flow purchase), the same shape a future flat-purchase tunable-move
   guardian could reuse; Skłodowska-Curie's Ultimate shop deliberately does *not* reuse it (see
   "Guardians" below), since her per-class-unlock pricing is fundamentally different from a flat
   purchase. Genuinely cross-cutting dialogue infrastructure -- `addDialogueButton(At)`,
-  `renderPagedButtons`, `renderFarewellFooter`, `closeDialogue`, state accessors like
+  `renderPagedButtons`, `renderFarewellFooter`/`renderCancelFarewellFooter` (the latter's
+  two-button "Never mind"/"Farewell" row, for a guardian panel with a pending two-step pick --
+  Majorana's first-crystal choice, Anderson's dope-in choice), `closeDialogue`, state accessors like
   `getUnlockedMoves`/`getDefeatedMaterials`/`getVisitedWorlds`/`isSuperpositionMode`, `world`/
   `advanceToWorld` (Bloch's own travel action), every guardian's per-panel pagination/selection
   field (`shopTab`, `blochPage`, `dresselhausPage`, `majoranaPage`/`majoranaSelection`,
@@ -882,26 +889,31 @@ a blind find-and-replace on a name is unsafe).
 Franklin (world 9), and Skłodowska-Curie (world 10) all have real mechanics**, following the
 same `open: (s) => showXPanel(s)` pattern as Noether/Bloch/Dresselhaus (see "Guardian panels"
 above for the `scenes/panels/` file-per-guardian convention every one of them follows):
-- **Franklin's passive panel** (`scenes/panels/franklin.ts`'s `showFranklinPanel`) uses
-  `scenes/panels/passiveList.ts`'s `renderPassiveList(scene, container, y, passiveIds,
-  owner: PassiveOwner, reopen)`, parameterized over which `data/passives.ts` `PassiveOwner`
-  it's rendering for even though Franklin is the sole caller today -- it reads/writes the two
-  fixed generic registry/save keys (`passivesUnlocked` and `activePassiveByOwner`, keyed by
-  owner) internally rather than taking them as params, filtering/writing by the `owner` param.
-  Same "still-unbought get a buy button, already-bought get a 'Make `<name>` active' button or
-  a dimmed '`<name>` (active)' tag" shape `renderKondoMoves` established, right down to
-  "buying the very first one auto-activates it, buying a second or third doesn't." Like
-  Kondo's own self-buff moves, a passive is never gated by `MOVE_COMPATIBILITY` at all (the
-  same "player-learned technique, not a quasiparticle a crystal has to host" reasoning) --
-  every passive is always purchasable regardless of current form, so the panel has no "wrong
-  form" empty state to special-case. Each still-unbought row also prints the passive's own
-  `description` underneath in a smaller, capped-scale font (`Math.min(fontScale(this), 1.3)`
-  for the buy button itself, `1.2` for the description) -- the panel has no shrink-to-fit
-  safety net the way `showInfoPanel` does, and letting either scale all the way to the
-  text-size setting's uncapped 'Large' preset (like every other guardian panel's buttons do)
-  pushed the panel's Farewell button off the bottom of the canvas the first time this was
-  tried, verified via a live headless-Chromium run at every `fontScale` preset. See "Stats and
-  battle resolution" above for exactly how each of her three passives hooks into `BattleScene`.
+- **Franklin's passive panel** (`scenes/panels/franklin.ts`'s `showFranklinPanel`) and
+  **Kondo's self-buff-move panel** (`scenes/panels/kondo.ts`'s `showKondoPanel`) both sell the
+  same "still-unbought get a buy button, already-bought get a 'Make `<name>` active' button or a
+  dimmed '`<name>` (active)' tag" shape -- "buying the very first one auto-activates it, buying
+  a second or third doesn't" -- through one shared render engine,
+  `scenes/panels/passiveList.ts`'s `renderChoiceList(scene, container, y, items:
+  ChoiceListItem[], state: ChoiceListState, reopen)`. Each guardian supplies its own thin
+  adapter over its own registry keys rather than the two kits sharing a registry shape: Franklin
+  calls `renderPassiveList(scene, container, y, passiveIds, owner: PassiveOwner, reopen)`, a
+  wrapper that builds `items` from `data/passives.ts` and a `ChoiceListState` backed by
+  `passivesUnlocked`/`activePassiveByOwner` (keyed by `owner`, parameterized even though
+  Franklin is the sole `PassiveOwner` today); Kondo builds its own `items`/`state` (`kondo.ts`'s
+  `kondoChoiceItems`/`kondoChoiceState`) directly against `unlockedMoves` (a move, read by the
+  battle move menu itself, not a passives-only concept) and the flat `kondoActiveMove` key. Like
+  Kondo's self-buff moves, a passive is never gated by `MOVE_COMPATIBILITY` at all (the same
+  "player-learned technique, not a quasiparticle a crystal has to host" reasoning) -- every
+  passive is always purchasable regardless of current form, so neither panel has a "wrong form"
+  empty state to special-case. Each still-unbought row also prints its own `description`
+  underneath in a smaller, capped-scale font (`Math.min(fontScale(this), 1.3)` for the buy
+  button itself, `1.2` for the description) -- neither panel has a shrink-to-fit safety net the
+  way `showInfoPanel` does, and letting either scale all the way to the text-size setting's
+  uncapped 'Large' preset (like every other guardian panel's buttons do) pushed the Farewell
+  button off the bottom of the canvas the first time this was tried, verified via a live
+  headless-Chromium run at every `fontScale` preset. See "Stats and battle resolution" above for
+  exactly how each of Franklin's three passives hooks into `BattleScene`.
 - **Feynman's move-leveling panel** (`scenes/panels/feynman.ts`'s `showFeynmanPanel`) is a
   different mechanic shape entirely from every other guardian's -- not a purchase catalog, but
   a leveling attempt against a move the player already owns. `renderMoveLevelList` builds one
@@ -1004,20 +1016,21 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   footer button (calling the same `onDone` a successful pick would) is therefore required:
   any sub-panel where every row *can* be a dead end needs an explicit way out that doesn't
   depend on one of those rows succeeding.
-- **Kondo's self-buff shop** (`scenes/panels/kondo.ts`'s `showKondoPanel`/`renderKondoMoves`)
+- **Kondo's self-buff shop** (`scenes/panels/kondo.ts`'s `showKondoPanel`, via the shared
+  `renderChoiceList` engine described above under Franklin's passive panel)
   sells `data/materials.ts`'s `KONDO_MOVE_IDS` (three moves:
   `screeningCloud`/`scatteringDrag`/`kondoBreakdown`, each tied to one of `types.ts`'s
   `'screening'`-class `MOVES` entries, deliberately excluded from `SHOP_MOVE_IDS`/
-  `ANALYTIC_MOVE_IDS`/`ULTIMATE_MOVE_IDS`). Same two-section shape as Laughlin's shop:
-  still-unbought moves (usable from any form, since a self-buff isn't gated by
-  `MOVE_COMPATIBILITY` at all, same afford/dim buy-button treatment as every shop) followed by
-  every already-bought Kondo move as its own row -- a bought-and-inactive move gets a "Make
+  `ANALYTIC_MOVE_IDS`/`ULTIMATE_MOVE_IDS`). Not Laughlin's flat buy-only shop: still-unbought
+  moves (usable from any form, since a self-buff isn't gated by
+  `MOVE_COMPATIBILITY` at all, same afford/dim buy-button treatment as every shop) are followed
+  by every already-bought Kondo move as its own row -- a bought-and-inactive move gets a "Make
   `<name>` active" button, the currently active one (registry/
   save `kondoActiveMove: string | null`) shows a dimmed "`<name>` (active)" tag instead (no
   click handler), the same dimmed-current convention Dresselhaus's own "(current
   form)" rows already use. Every row, bought or not, also prints the move's own `description`
   underneath (`data/materials.ts`'s `Move.description`, only Kondo's three moves carry one),
-  the same convention `renderPassiveList` established for Franklin's own passives. Buying
+  the same convention `renderChoiceList` gives Franklin's own passives. Buying
   the first Kondo move auto-activates it (so a purchase is
   never silently unusable); buying a second or third on top of an already-active one doesn't
   -- switching between already-bought moves is always its own explicit click either way, and
@@ -1104,14 +1117,19 @@ name+description row per owner, labeled via `PASSIVE_OWNER_LABELS` and read from
 `activePassiveByOwner[owner]`, so a player doesn't have to walk back to either guardian's own
 panel just to remember which passive is running (and doesn't have to remember what that passive
 actually does either, since the full description shows here too). `showGuardiansPanel` lists
-every met guardian (`OverworldScene.guardianRoster()`, a public static id/name/world/`open` list
-derived from the private `WORLD_GUARDIANS` table) and, on a row click, calls that guardian's own
-`open` callback with `scene` (the `HubScene` itself) directly -- the exact same callback
-`WORLD_GUARDIANS` dispatches to when the player walks up to that guardian mid-world -- rather
-than warping anywhere. This works because `HubScene` implements `GuardianPanelHost` (see
-"Guardian panels" above) with its own copies of the qumatessence readout, `applyPlayerForm`,
-`advanceToWorld`, and every per-guardian pagination field, so a guardian's panel has everything
-it needs without the player's world/scene/position ever changing just from opening it.
+every met guardian (`OverworldScene.guardianRoster()`, a public static id/name/world/`blurb`/
+`open` list derived from the private `WORLD_GUARDIANS` table's own `GuardianDef.blurb` -- the
+same one-line "what they do" copy docs/guardians.md's own roster table uses) as a two-line
+`name (World N)` + `blurb` button per guardian, paginated (`renderPagedButtons`, `HubScene`'s
+own `guardiansPage`, reset in `closeDialogue` like every other per-guardian pagination field --
+see "Guardian panels" above) since ten two-line rows don't fit one panel at any text-size
+preset. On a row click it calls that guardian's own `open` callback with `scene` (the
+`HubScene` itself) directly -- the exact same callback `WORLD_GUARDIANS` dispatches to when the
+player walks up to that guardian mid-world -- rather than warping anywhere. This works because
+`HubScene` implements `GuardianPanelHost` (see "Guardian panels" above) with its own copies of
+the qumatessence readout, `applyPlayerForm`, `advanceToWorld`, and every per-guardian pagination
+field, so a guardian's panel has everything it needs without the player's world/scene/position
+ever changing just from opening it.
 
 **All eight of the Lab's non-door panels** (the six stations above, plus `HubScene`'s own
 `showSavePoint`/`renderMaterialdexPanel`) share one heading color -- `hubStations.ts`'s exported

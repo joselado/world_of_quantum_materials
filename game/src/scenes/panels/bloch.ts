@@ -55,12 +55,12 @@ export function showBlochHub(scene: GuardianPanelHost) {
 
   let y = top;
 
-  const avatarY = y + 55;
+  const avatarY = y + 42;
   const avatar = makeBlochAvatar(scene);
   avatar.setPosition(CANVAS_W / 2, avatarY);
   container.add(avatar);
   scene.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-  y = avatarY + 65;
+  y = avatarY + 48;
   playGuardianChime();
 
   const intro = scene.add
@@ -69,7 +69,7 @@ export function showBlochHub(scene: GuardianPanelHost) {
       y,
       '"I am Bloch. Every crystal is a superposition of the worlds it has touched -- name one you have visited, and I will fold you there."',
       {
-        fontSize: fontPx(scene, 12),
+        fontSize: fontPx(scene, 11),
         fontStyle: 'italic',
         color: '#cfd8ff',
         align: 'center',
