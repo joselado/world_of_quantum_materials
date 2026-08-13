@@ -11,7 +11,7 @@ import { TUTORIAL_TIPS, hasSeenTip, markTipSeen } from '../data/tutorial';
 import { music } from '../audio/music';
 import { fontPx, fontScale } from '../ui/text';
 import { PANEL_BG, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../ui/theme';
-import { BUILT_WORLDS } from './OverworldScene';
+import { BUILT_WORLDS, applySuperpositionUnlocks } from './OverworldScene';
 import type { GuardianPanelHost } from './OverworldScene';
 import { labPanelColumns, LAB_TITLE_COLOR, LAB_STATIONS } from './panels/hubStations';
 import { makeQumatexMotif, makeSavePointMotif } from '../art/labMotifs';
@@ -111,6 +111,14 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   }
 
   create() {
+    // Applied before `playerMaterial` is read a few lines down (and before
+    // any guardian panel can open from this scene) -- Superposition Mode's
+    // Guardians station (hubStations.ts's showGuardiansPanel) lists every
+    // guardian regardless of `metGuardians`, so a save that has never yet
+    // stepped through a world door still needs this same blanket "already
+    // unlocked" grant OverworldScene.applySuperpositionLeveling applies on
+    // world entry -- see applySuperpositionUnlocks's own comment.
+    applySuperpositionUnlocks(this.game.registry);
     music.play('overworld:1');
     this.dialogueContainer = undefined;
     this.drawRoom();

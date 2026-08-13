@@ -8,6 +8,7 @@ import type { Material, Move, MoveClass, MaterialType, CrystalVariant, Stats } f
 // '../data/materials'` call site keeps working unchanged.
 import {
   BASE_STAT,
+  MAX_STAT,
   DEFAULT_STATS,
   enemyStatsForWorld,
   statUpgradeCost,
@@ -16,7 +17,7 @@ import {
   MOVE_LEVEL_STREAKS,
   feynmanLevelCost,
 } from './balance';
-export { BASE_STAT, DEFAULT_STATS, enemyStatsForWorld, statUpgradeCost, shopCost, MOVE_LEVEL_MULTIPLIERS, MOVE_LEVEL_STREAKS, feynmanLevelCost };
+export { BASE_STAT, MAX_STAT, DEFAULT_STATS, enemyStatsForWorld, statUpgradeCost, shopCost, MOVE_LEVEL_MULTIPLIERS, MOVE_LEVEL_STREAKS, feynmanLevelCost };
 
 // Every ordinary attack is named after the quasiparticle/excitation that
 // actually carries it, not an abstract "class" label -- Phonon Beam is a

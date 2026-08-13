@@ -44,7 +44,11 @@ import {
   wildHpForWorld,
   rivalHpForWorld,
   rollEncounterFactor,
+  MAX_MULTI_HIT,
+  DIFFICULTY_MULTIPLIERS,
 } from '../data/balance';
+import { DEFAULT_DIFFICULTY_TIER } from '../data/settings';
+import type { DifficultyTier } from '../data/settings';
 import { victoryLine, defeatLine } from '../data/greetings';
 import { PASSIVES } from '../data/passives';
 import type { PassiveOwner } from '../data/passives';
@@ -373,9 +377,14 @@ export class BattleScene extends Phaser.Scene {
     // player's own max HP uses the same `wildHpForWorld` an ordinary wild's
     // base HP does (their own body isn't a specimen with variance, so no
     // roll), for whichever world they're currently in -- transmuting/fusing
-    // into a different form never changes it by itself.
+    // into a different form never changes it by itself. `enemyStatsForWorld`'s
+    // own multiplier comes from the Lab's Settings station (data/settings.ts's
+    // DifficultyTier, DIFFICULTY_MULTIPLIERS), read fresh here rather than
+    // cached, so a mid-playthrough difficulty change applies from the very
+    // next battle.
     const encounterFactor = this.isRival ? 1 : rollEncounterFactor();
-    const baseEnemyStats = enemyStatsForWorld(this.world);
+    const difficultyTier = (this.game.registry.get('difficultyTier') as DifficultyTier) ?? DEFAULT_DIFFICULTY_TIER;
+    const baseEnemyStats = enemyStatsForWorld(this.world, DIFFICULTY_MULTIPLIERS[difficultyTier]);
     this.enemyStats = this.isRival
       ? baseEnemyStats
       : {
@@ -1526,18 +1535,19 @@ export class BattleScene extends Phaser.Scene {
   // Velocity decides who swings first each round, and by how much faster it
   // is, how many extra times it swings (DESIGN.md §4): `ratio` is the faster
   // side's effective Velocity divided by the slower side's, and the faster
-  // side gets `clamp(floor(ratio), 1, 3)` hits this round -- the cap keeps an
-  // extreme velocity gap from producing an unbounded hit sequence. The slower
-  // side always still gets exactly one hit. Ties (ratio exactly 1) keep the
-  // player going first, one hit each. Shared by `playerAttack` (which
-  // actually resolves the round's hits) and `drawTurnPreview` (which reads it
-  // to render the "Turns" widget) so the two can't drift apart.
+  // side gets `clamp(floor(ratio), 1, MAX_MULTI_HIT)` hits this round -- the
+  // cap keeps an extreme velocity gap from producing an unbounded hit
+  // sequence. The slower side always still gets exactly one hit. Ties (ratio
+  // exactly 1) keep the player going first, one hit each. Shared by
+  // `playerAttack` (which actually resolves the round's hits) and
+  // `drawTurnPreview` (which reads it to render the "Turns" widget) so the
+  // two can't drift apart.
   private currentHitOrder(): { fasterIsPlayer: boolean; fasterHits: number } {
     const playerVelocity = this.playerStats.velocity;
     const enemyVelocity = this.enemyStats.velocity;
     const fasterIsPlayer = playerVelocity >= enemyVelocity;
     const ratio = fasterIsPlayer ? playerVelocity / enemyVelocity : enemyVelocity / playerVelocity;
-    const fasterHits = Phaser.Math.Clamp(Math.floor(ratio), 1, 3);
+    const fasterHits = Phaser.Math.Clamp(Math.floor(ratio), 1, MAX_MULTI_HIT);
     return { fasterIsPlayer, fasterHits };
   }
 

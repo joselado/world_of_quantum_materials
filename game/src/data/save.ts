@@ -1,8 +1,8 @@
 import type { Material, MaterialType, MoveClass, Stats } from './types';
 import { PLAYER_MATERIAL, DEFAULT_STATS, MOVES, TYPE_LOOK } from './materials';
 import { wildHpForWorld } from './balance';
-import { DEFAULT_ENCOUNTER_DENSITY, DEFAULT_FONT_SCALE, DEFAULT_MUSIC_STYLE, MUSIC_STYLE_PRESETS } from './settings';
-import type { MusicStyle } from './settings';
+import { DEFAULT_ENCOUNTER_DENSITY, DEFAULT_FONT_SCALE, DEFAULT_MUSIC_STYLE, MUSIC_STYLE_PRESETS, DEFAULT_DIFFICULTY_TIER, DIFFICULTY_TIER_PRESETS } from './settings';
+import type { MusicStyle, DifficultyTier } from './settings';
 import type { PassiveOwner } from './passives';
 
 // Single localStorage-backed save slot (v1: one profile, no cloud sync --
@@ -75,6 +75,13 @@ export interface SaveData {
   // MusicEngine draws from. Applies immediately (MusicEngine.setStyle
   // restarts whatever's currently playing under the new table).
   musicStyle: MusicStyle;
+  // Same Settings panel, fourth row: which of data/settings.ts's
+  // DIFFICULTY_TIER_PRESETS scales data/balance.ts's enemyStatsForWorld
+  // (DIFFICULTY_MULTIPLIERS). Unlike the three settings above, meant to be
+  // revisited mid-playthrough -- BattleScene/OverworldScene both read it
+  // live on every fight/re-level rather than caching it, so a change here
+  // applies to the player's very next battle.
+  difficultyTier: DifficultyTier;
   // Which of Kondo's three screening-class moves (data/materials.ts's
   // KONDO_MOVE_IDS) is currently the active/usable one -- null until the
   // player picks one for the first time in OverworldScene.showKondoPanel.
@@ -176,6 +183,7 @@ export function defaultSave(): SaveData {
     encounterDensity: DEFAULT_ENCOUNTER_DENSITY,
     fontScale: DEFAULT_FONT_SCALE,
     musicStyle: DEFAULT_MUSIC_STYLE,
+    difficultyTier: DEFAULT_DIFFICULTY_TIER,
     kondoActiveMove: null,
     passivesUnlocked: [],
     activePassiveByOwner: {},
@@ -272,6 +280,7 @@ export function loadSave(): SaveData {
     if (data.playerForm && !(data.playerForm.type in TYPE_LOOK)) data.playerForm = null;
     if (data.rival9Type && !(data.rival9Type in TYPE_LOOK)) data.rival9Type = null;
     if (!MUSIC_STYLE_PRESETS.some((p) => p.value === data.musicStyle)) data.musicStyle = DEFAULT_MUSIC_STYLE;
+    if (!DIFFICULTY_TIER_PRESETS.some((p) => p.value === data.difficultyTier)) data.difficultyTier = DEFAULT_DIFFICULTY_TIER;
     return data;
   } catch {
     return defaultSave();
@@ -305,6 +314,7 @@ export function persistFromRegistry(registry: RegistryLike) {
     encounterDensity: (registry.get('encounterDensity') as number) ?? DEFAULT_ENCOUNTER_DENSITY,
     fontScale: (registry.get('fontScale') as number) ?? DEFAULT_FONT_SCALE,
     musicStyle: (registry.get('musicStyle') as MusicStyle) ?? DEFAULT_MUSIC_STYLE,
+    difficultyTier: (registry.get('difficultyTier') as DifficultyTier) ?? DEFAULT_DIFFICULTY_TIER,
     kondoActiveMove: (registry.get('kondoActiveMove') as string | null) ?? null,
     passivesUnlocked: (registry.get('passivesUnlocked') as string[]) ?? [],
     activePassiveByOwner: (registry.get('activePassiveByOwner') as Partial<Record<PassiveOwner, string>>) ?? {},

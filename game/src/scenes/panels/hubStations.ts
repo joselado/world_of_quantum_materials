@@ -14,6 +14,8 @@ import {
   DEFAULT_FONT_SCALE,
   MUSIC_STYLE_PRESETS,
   DEFAULT_MUSIC_STYLE,
+  DIFFICULTY_TIER_PRESETS,
+  DEFAULT_DIFFICULTY_TIER,
 } from '../../data/settings';
 import { persistFromRegistry } from '../../data/save';
 import { music } from '../../audio/music';
@@ -414,12 +416,16 @@ function showTutorialTopic(scene: HubScene, index: number) {
 
 // Wild-encounter density (data/settings.ts's DENSITY_PRESETS, read by
 // OverworldScene.generateMap via encounterChance()), text size
-// (FONT_SCALE_PRESETS, read live by every fontPx() call), and music style
+// (FONT_SCALE_PRESETS, read live by every fontPx() call), music style
 // (MUSIC_STYLE_PRESETS, which of audio/music.ts's SCORES/SCORES_MODERN
-// tables MusicEngine draws from). Each is a button that cycles through its
-// presets in place (same rebuild-the-panel pattern as Noether's shop),
-// rather than a slider, since all three have only a handful of discrete
-// steps.
+// tables MusicEngine draws from), and difficulty tier (DIFFICULTY_TIER_PRESETS,
+// data/balance.ts's DIFFICULTY_MULTIPLIERS applied to enemyStatsForWorld).
+// Each is a button that cycles through its presets in place (same
+// rebuild-the-panel pattern as Noether's shop), rather than a slider, since
+// all four have only a handful of discrete steps. Difficulty is the one
+// meant to be revisited mid-playthrough rather than set once -- Battle/
+// OverworldScene both read it live, so a change here lands on the player's
+// very next fight, not just future maps/panels.
 export function showSettingsPanel(scene: HubScene) {
   scene.dialogueContainer?.destroy(true);
 
@@ -527,7 +533,36 @@ export function showSettingsPanel(scene: HubScene) {
     })
     .setOrigin(0.5, 0);
   container.add(styleHint);
-  y += styleHint.height + 14;
+  y += styleHint.height + 10;
+
+  const tierIndex = difficultyTierIndex(registry);
+  const tierPreset = DIFFICULTY_TIER_PRESETS[tierIndex];
+  const tierBtn = scene.addDialogueButtonAt(
+    container,
+    columns.contentCenterX,
+    y,
+    `Difficulty: ${tierPreset.label}`,
+    () => {
+      const next = DIFFICULTY_TIER_PRESETS[(tierIndex + 1) % DIFFICULTY_TIER_PRESETS.length];
+      registry.set('difficultyTier', next.value);
+      persistFromRegistry(registry);
+      showSettingsPanel(scene);
+    },
+    contentWidth
+  );
+  y += tierBtn.height + 4;
+
+  const tierHint = scene.add
+    .text(columns.contentCenterX, y, `"${tierPreset.blurb}" -- applies to your very next battle.`, {
+      fontSize: fontPx(scene, 11),
+      color: REFERENCE_BLUE_GREY_HEX,
+      align: 'center',
+      wordWrap: { width: contentWidth },
+      lineSpacing: 4,
+    })
+    .setOrigin(0.5, 0);
+  container.add(tierHint);
+  y += tierHint.height + 14;
 
   const closeBtn = scene.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Close', () => scene.closeDialogue(), 260);
   y += closeBtn.height + 8;
@@ -558,6 +593,13 @@ function musicStyleIndex(registry: Phaser.Data.DataManager): number {
   const idx = MUSIC_STYLE_PRESETS.findIndex((p) => p.value === value);
   if (idx !== -1) return idx;
   return MUSIC_STYLE_PRESETS.findIndex((p) => p.value === DEFAULT_MUSIC_STYLE);
+}
+
+function difficultyTierIndex(registry: Phaser.Data.DataManager): number {
+  const value = (registry.get('difficultyTier') as 'bsc' | 'msc' | 'phd') ?? DEFAULT_DIFFICULTY_TIER;
+  const idx = DIFFICULTY_TIER_PRESETS.findIndex((p) => p.value === value);
+  if (idx !== -1) return idx;
+  return DIFFICULTY_TIER_PRESETS.findIndex((p) => p.value === DEFAULT_DIFFICULTY_TIER);
 }
 
 function isSuperpositionMode(scene: HubScene): boolean {

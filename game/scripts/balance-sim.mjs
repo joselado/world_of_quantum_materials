@@ -90,9 +90,24 @@
 //   and a class-specific shop move bought while wearing one form (e.g.
 //   Magnon Pulse, bought as a classicalMagnet) goes the same way: usable
 //   only while the current form still hosts that class.
+// - Each build maps to its own real in-game Settings difficulty tier
+//   (`tier` on each BUILDS entry -- 'bsc'/'msc'/'phd', data/settings.ts's
+//   DifficultyTier), scaling `enemyStatsForWorld` by that tier's own
+//   `DIFFICULTY_MULTIPLIERS` entry (`activeDifficultyMultiplier`, set once
+//   per `simulateBuild` run) -- M.Sc.'s is 1, so it alone reproduces the raw
+//   unscaled curve; B.Sc./Ph.D. verify their own eased/tightened tiers, not
+//   just their own spend/accuracy strategy against the M.Sc. curve.
+// - When a build wants a purchase it can't currently afford while genuinely
+//   losing the world it's on (`farmIfStuck`, gated on the worse of that
+//   world's own wild-fight and rival-fight margin), it farms qumatessence
+//   from the highest earlier world it can still currently beat
+//   (`safestClearedWorld`) instead of just giving up -- the same thing a
+//   real player can do by walking back through an earlier world's own door,
+//   no guardian tools needed. Capped at GRIND_CAP wins per farm, same cap
+//   `findWinsNeeded` uses for the current-world grind below.
 // - Opponent Stats (Quantumness/Velocity/Correlation) come from
-//   `enemyStatsForWorld(world)` for both an ordinary wild and that world's
-//   rival, unmodeled roll aside: in the real game (BattleScene.create) an
+//   `enemyStatsForWorld(world, activeDifficultyMultiplier)` for both an
+//   ordinary wild and that world's rival, unmodeled roll aside: in the real game (BattleScene.create) an
 //   ordinary wild's stats (and its max HP) additionally get one shared
 //   +/-15% `rollEncounterFactor` roll per encounter, which this script
 //   doesn't simulate -- `enemyStatsForWorld`'s own unrolled value is that
@@ -136,7 +151,7 @@
 //   along the way.
 // - "Rounds-to-kill"/"rounds-to-die" come from each side's average
 //   per-hit damage times its hits-per-round (the Velocity-ratio rule,
-//   `floor(ratio)` capped at [1,3]), not a turn-by-turn battle log.
+//   `floor(ratio)` capped at [1, MAX_MULTI_HIT]), not a turn-by-turn battle log.
 //   "Margin" is roundsToDie - roundsToKill: positive means the model
 //   expects a win with that many rounds of slack, negative means the
 //   model expects the enemy to win first.
@@ -394,6 +409,8 @@ const {
   FRACTIONAL_GUARD_DAMAGE_MULT,
   wildHpForWorld,
   rivalHpForWorld,
+  MAX_MULTI_HIT,
+  DIFFICULTY_MULTIPLIERS,
 } = balance;
 
 // --- Seeded RNG (mulberry32) -- deterministic so re-running this script
@@ -469,15 +486,15 @@ function frozenHitDamage(attackerStats, defenderStats, power, mismatch, mismatch
 }
 
 // Velocity-ratio multi-attack rule (DESIGN.md §4/BattleScene.currentHitOrder):
-// the faster side swings floor(ratio) times, capped at 3; the slower side
-// always swings exactly once.
+// the faster side swings floor(ratio) times, capped at MAX_MULTI_HIT; the
+// slower side always swings exactly once.
 function roundHits(playerVelocity, enemyVelocity) {
   if (playerVelocity >= enemyVelocity) {
     const ratio = playerVelocity / enemyVelocity;
-    return { playerHits: Math.min(3, Math.max(1, Math.floor(ratio))), enemyHits: 1 };
+    return { playerHits: Math.min(MAX_MULTI_HIT, Math.max(1, Math.floor(ratio))), enemyHits: 1 };
   }
   const ratio = enemyVelocity / playerVelocity;
-  return { playerHits: 1, enemyHits: Math.min(3, Math.max(1, Math.floor(ratio))) };
+  return { playerHits: 1, enemyHits: Math.min(MAX_MULTI_HIT, Math.max(1, Math.floor(ratio))) };
 }
 
 // --- Quiz/Analytic/Ultimate accuracy-weighted expected multipliers --------
@@ -587,7 +604,7 @@ function ownedAttackMoves(state) {
 const STAT_ROTATION = ['quantumness', 'velocity', 'correlation'];
 function buyStatPoint(state) {
   const stat = STAT_ROTATION[state.statRotation % STAT_ROTATION.length];
-  const cost = statUpgradeCost(state.stats[stat]);
+  const cost = statUpgradeCost(state.stats[stat], stat);
   if (state.qumatessence < cost) return false;
   state.qumatessence -= cost;
   state.spentTotal += cost;
@@ -690,9 +707,17 @@ function avgEnemyHit(hitFn, state, playerStats, enemyStats, enemyMoves) {
 // max HP is always `wildHpForWorld(world)` for whichever world this fight is
 // in, regardless of which form they're currently wearing (state.playerMaxHp
 // is retired -- see newState's own comment).
+// Set once per simulateBuild() run, from that build's own `tier` field --
+// mirrors the real game reading data/settings.ts's DifficultyTier live off
+// the registry (data/balance.ts's DIFFICULTY_MULTIPLIERS), just as a
+// module-level value here since this script has no per-call state to thread
+// it through otherwise (evaluateFight/marginWithMultipliers are called from
+// many places, including from inside each build's own `spend()`).
+let activeDifficultyMultiplier = 1;
+
 function evaluateFight(hitFn, state, world, defender) {
   const playerStats = state.stats;
-  const enemyStats = enemyStatsForWorld(world);
+  const enemyStats = enemyStatsForWorld(world, activeDifficultyMultiplier);
   const playerHitDmg = bestPlayerHit(hitFn, state, playerStats, enemyStats, defender.type);
   const enemyHitDmg = avgEnemyHit(hitFn, state, playerStats, enemyStats, defender.moves);
   const { playerHits, enemyHits } = roundHits(playerStats.velocity, enemyStats.velocity);
@@ -747,7 +772,7 @@ function evaluateRivalFight(hitFn, state, world) {
 // reported figure, so it never touches the seeded RNG).
 function marginWithMultipliers(state, world, defenders, playerMult, enemyMult) {
   const playerStats = state.stats;
-  const enemyStats = enemyStatsForWorld(world);
+  const enemyStats = enemyStatsForWorld(world, activeDifficultyMultiplier);
   const { playerHits, enemyHits } = roundHits(playerStats.velocity, enemyStats.velocity);
   const fights = defenders.map((d) => {
     const playerDmgPerRound = bestPlayerHit(frozenHitDamage, state, playerStats, enemyStats, d.type) * playerMult * playerHits;
@@ -906,40 +931,59 @@ const BUILDS = [
   {
     id: 'B.Sc.',
     label: 'B.Sc. (low effort)',
+    tier: 'bsc', // data/settings.ts's DifficultyTier -- this archetype's own real in-game difficulty pick, DIFFICULTY_MULTIPLIERS applied via activeDifficultyMultiplier
     accuracy: 0.5, // not specified by the task brief for B.Sc.; modeled as chance-level guessing, consistent with "low effort"
     transmutes: false, // low effort: never visits Dresselhaus at all, let alone the "last 3 defeated" grinding this model's own transmutation search assumes -- see header comment
     // Reactive only: buys Tunnel Strike the first time it's needed and
     // affordable, otherwise only patches a losing matchup with the
     // cheapest available fix (one Correlation point), capped so a single
     // world can't spend unboundedly. Never touches Laughlin/Feynman/Kondo/
-    // Franklin/Skłodowska-Curie/Dresselhaus.
+    // Franklin/Skłodowska-Curie/Dresselhaus. Unlike `findWinsNeeded`'s own
+    // grind loop (which assumes the *current* world's wilds are freely
+    // farmable even when this build is actually losing there), a still-short
+    // build farms qumatessence from the highest earlier world it can
+    // currently still beat instead -- the same thing a real low-effort
+    // player can always do (walk back through an earlier world's own door,
+    // no guardian tools needed), and the realistic way this archetype
+    // affords a fix when the world it's stuck on genuinely isn't safe to
+    // grind directly.
     spend(state, world, hitFn) {
       for (let i = 0; i < 5; i++) {
-        const { margin } = evaluateWildFight(hitFn, state, world);
-        if (margin >= 0) break; // not currently losing -- B.Sc. stops touching the wallet
-        if (!state.ownedMoves.has('tunnelStrike') && state.qumatessence >= shopCost(MOVES.tunnelStrike)) {
-          state.qumatessence -= shopCost(MOVES.tunnelStrike);
-          state.spentTotal += shopCost(MOVES.tunnelStrike);
+        // Both margins, not just the wild one -- a comfortably positive wild
+        // margin doesn't mean this world is actually clear, since its own
+        // rival (the real gate to the next world) is a stronger, separate
+        // fight. See farmIfStuck's own comment on why this matters for it too.
+        const wildMargin = evaluateWildFight(hitFn, state, world).margin;
+        const rivalMargin = evaluateRivalFight(hitFn, state, world).margin;
+        const margin = Math.min(wildMargin, rivalMargin);
+        if (margin >= 0) break; // not currently losing anywhere -- B.Sc. stops touching the wallet
+        const tunnelCost = state.ownedMoves.has('tunnelStrike') ? Infinity : shopCost(MOVES.tunnelStrike);
+        const correlationCost = statUpgradeCost(state.stats.correlation, 'correlation');
+        const cheapestFix = Math.min(tunnelCost, correlationCost);
+        if (state.qumatessence < cheapestFix) farmIfStuck(hitFn, state, world, cheapestFix - state.qumatessence, margin);
+        if (!state.ownedMoves.has('tunnelStrike') && state.qumatessence >= tunnelCost) {
+          state.qumatessence -= tunnelCost;
+          state.spentTotal += tunnelCost;
           state.ownedMoves.add('tunnelStrike');
           continue;
         }
-        if (state.qumatessence >= statUpgradeCost(state.stats.correlation)) {
-          const cost = statUpgradeCost(state.stats.correlation);
-          state.qumatessence -= cost;
-          state.spentTotal += cost;
+        if (state.qumatessence >= correlationCost) {
+          state.qumatessence -= correlationCost;
+          state.spentTotal += correlationCost;
           state.stats.correlation += 1;
           continue;
         }
-        break; // losing and can't afford a fix -- B.Sc. just goes in anyway
+        break; // still can't afford a fix even after farming everywhere safe -- B.Sc. just goes in anyway
       }
     },
   },
   {
     id: 'M.Sc.',
     label: 'M.Sc. (intended default)',
+    tier: 'msc', // this archetype's own real in-game difficulty pick -- DIFFICULTY_MULTIPLIERS.msc is 1, so this reproduces the raw curve
     accuracy: 0.75, // "answers the pre-battle quiz correctly ~75% of the time"
     transmutes: true, // transmuting into a mismatch-hosting form (and buying whatever it newly unlocks from Noether) is treated as ordinary, expected-tier play, not Ph.D.-only optimization -- see maybeTransmuteAndShop
-    spend(state, world) {
+    spend(state, world, hitFn) {
       maybeTransmuteAndShop(state, world);
       let statsBoughtThisWorld = 0;
       for (let guard = 0; guard < 50; guard++) {
@@ -960,7 +1004,7 @@ const BUILDS = [
           }
         }
         // Balanced spend: up to 2 stat points per world, round-robin.
-        if (statsBoughtThisWorld < 2 && state.qumatessence >= statUpgradeCost(state.stats[STAT_ROTATION[state.statRotation % 3]])) {
+        if (statsBoughtThisWorld < 2 && state.qumatessence >= statUpgradeCost(state.stats[STAT_ROTATION[state.statRotation % 3]], STAT_ROTATION[state.statRotation % 3])) {
           if (buyStatPoint(state)) {
             statsBoughtThisWorld += 1;
             continue;
@@ -983,6 +1027,26 @@ const BUILDS = [
           markUltimateClassUnlocked(state, 'ultimateMeteor', cls);
           continue;
         }
+        // Nothing on the priority list above is currently affordable --
+        // before giving up, farm an earlier safe world (farmIfStuck) for
+        // whichever of the cheap, always-relevant options (Tunnel Strike, the
+        // next Laughlin move, one more stat point) is nearest, same as B.Sc.
+        // above. Skips Feynman/Franklin/Ultimate's own costs here -- those
+        // are optimizations this build takes when they fall into its lap,
+        // not what a stuck M.Sc. would specifically grind toward.
+        const wantCosts = [];
+        if (!state.ownedMoves.has('tunnelStrike')) wantCosts.push(shopCost(MOVES.tunnelStrike));
+        if (world >= 4) {
+          const laughlinMove = ANALYTIC_MOVE_IDS.find((id) => !state.ownedMoves.has(id));
+          if (laughlinMove) wantCosts.push(shopCost(MOVES[laughlinMove]));
+        }
+        if (statsBoughtThisWorld < 2) {
+          const statKey = STAT_ROTATION[state.statRotation % 3];
+          wantCosts.push(statUpgradeCost(state.stats[statKey], statKey));
+        }
+        const cheapestWant = wantCosts.length > 0 ? Math.min(...wantCosts) : null;
+        const margin = Math.min(evaluateWildFight(hitFn, state, world).margin, evaluateRivalFight(hitFn, state, world).margin);
+        if (cheapestWant !== null && farmIfStuck(hitFn, state, world, cheapestWant - state.qumatessence, margin) > 0) continue;
         break;
       }
     },
@@ -990,9 +1054,10 @@ const BUILDS = [
   {
     id: 'Ph.D.',
     label: 'Ph.D. (high optimization)',
+    tier: 'phd', // this archetype's own real in-game difficulty pick
     accuracy: 1.0, // "answers all quizzes correctly"
     transmutes: true, // near-optimal, aggressive: chases the same transmute-and-shop play as M.Sc. -- see maybeTransmuteAndShop -- plus everything else this build's own priority list below adds on top
-    spend(state, world) {
+    spend(state, world, hitFn) {
       maybeTransmuteAndShop(state, world);
       for (let guard = 0; guard < 100; guard++) {
         if (!state.ownedMoves.has('tunnelStrike') && state.qumatessence >= shopCost(MOVES.tunnelStrike)) {
@@ -1053,6 +1118,26 @@ const BUILDS = [
         // Near-optimal ordering exhausted -- anything left over goes into
         // stats rather than sitting idle.
         if (buyStatPoint(state)) continue;
+        // Not even a single stat point is affordable -- before giving up,
+        // farm an earlier safe world (farmIfStuck) for whichever of the
+        // cheap, always-relevant options is nearest, same fallback M.Sc.
+        // uses above. Skips Feynman/Ultimate's own costs here -- those are
+        // optimizations this build takes when they fall into its lap, not
+        // what a genuinely stuck Ph.D. would specifically grind toward.
+        const wantCosts = [statUpgradeCost(state.stats[STAT_ROTATION[state.statRotation % 3]], STAT_ROTATION[state.statRotation % 3])];
+        if (!state.ownedMoves.has('tunnelStrike')) wantCosts.push(shopCost(MOVES.tunnelStrike));
+        if (world >= 4) {
+          const laughlinMove = ANALYTIC_MOVE_IDS.find((id) => !state.ownedMoves.has(id));
+          if (laughlinMove) wantCosts.push(shopCost(MOVES[laughlinMove]));
+        }
+        if (world >= 8 && !state.kondoOwned) wantCosts.push(shopCost(MOVES.screeningCloud));
+        if (world >= 9) {
+          const nextPassive = Object.keys(PASSIVES).find((id) => !state.franklinOwned.has(id));
+          if (nextPassive) wantCosts.push(PASSIVES[nextPassive].cost);
+        }
+        const cheapestWant = Math.min(...wantCosts);
+        const margin = Math.min(evaluateWildFight(hitFn, state, world).margin, evaluateRivalFight(hitFn, state, world).margin);
+        if (farmIfStuck(hitFn, state, world, cheapestWant - state.qumatessence, margin) > 0) continue;
         break;
       }
     },
@@ -1061,15 +1146,17 @@ const BUILDS = [
 
 // --- Simulation ------------------------------------------------------------
 
+// Capped at GRIND_CAP everywhere below: a world that isn't beatable/farmable
+// even at the cap comes back with `capped: true` (findWinsNeeded) or however
+// much the cap actually bought (farmIfStuck) rather than an unbounded search.
+const GRIND_CAP = 50;
+
 // How many ordinary-wild wins (each worth battleStakeForWorld(world)
 // qumatessence) this build needs to grind in this world, on top of its
 // carryover balance, before its own purchase logic makes the rival's
 // expected margin non-negative -- solved for by trying 0, 1, 2, ... wins on
 // a disposable clone of `state` (never mutating the real run), using the
 // frozen hit function throughout (fast, and never touches the seeded RNG).
-// Capped at GRIND_CAP: a world that isn't beatable even at the cap comes
-// back with `capped: true` rather than an unbounded search.
-const GRIND_CAP = 50;
 function findWinsNeeded(build, state, world) {
   const stake = battleStakeForWorld(world);
   for (let wins = 0; wins <= GRIND_CAP; wins++) {
@@ -1081,7 +1168,56 @@ function findWinsNeeded(build, state, world) {
   return { winsNeeded: GRIND_CAP, capped: true };
 }
 
+// The highest-numbered earlier world (currentWorld-1 down to 1) the given
+// state can still currently beat outright (non-negative wild-fight margin,
+// using its stats/moves as they stand right now, not as they were when
+// first cleared) -- the safe farming target farmIfStuck below falls back to
+// when the world a build is actually stuck on isn't safe to grind directly.
+// Prefers the highest-paying safe option (`battleStakeForWorld` grows with
+// world number) over always defaulting to World 1. Returns null if nothing
+// earlier is currently winnable either (only possible before World 2, or for
+// a build so far behind even World 1 has stopped being safe).
+function safestClearedWorld(hitFn, state, currentWorld) {
+  for (let w = currentWorld - 1; w >= 1; w--) {
+    if (evaluateWildFight(hitFn, state, w).margin >= 0) return w;
+  }
+  return null;
+}
+
+// Shared by every build's own spend(): called right before it would
+// otherwise give up on a purchase it wants but can't currently afford.
+// `neededExtra` is that shortfall (the item's cost minus current
+// qumatessence) -- a no-op if already affordable (neededExtra <= 0).
+// `currentMargin` is the caller's own read of how much trouble this world is
+// -- the worse of its wild-fight and rival-fight margins, not just the wild
+// one alone: a build can sit on a comfortably positive wild margin while
+// still losing outright to that world's own (stronger) rival, and it's the
+// rival that actually gates progression, so a build stuck there needs to
+// farm too even though it isn't "currently losing" in the wild-only sense.
+// Only actually farms if `currentMargin` is negative, i.e. this build is
+// genuinely losing somewhere right now, which is exactly when
+// findWinsNeeded's own current-world grind assumption above stops being
+// realistic and a real player would go farm somewhere safer instead of
+// throwing themselves at a fight they're currently losing. Returns how much
+// was actually earned (0 if nothing needed farming, this build isn't
+// actually in trouble, or nowhere earlier is safe either) -- callers
+// `continue` their loop on a positive return so the purchase this was
+// raising funds for gets picked up on the next pass.
+function farmIfStuck(hitFn, state, world, neededExtra, currentMargin) {
+  if (neededExtra <= 0) return 0;
+  if (currentMargin >= 0) return 0;
+  const farmWorld = safestClearedWorld(hitFn, state, world);
+  if (farmWorld === null) return 0;
+  const grindStake = battleStakeForWorld(farmWorld);
+  const wins = Math.min(Math.ceil(neededExtra / grindStake), GRIND_CAP);
+  const income = wins * grindStake;
+  state.qumatessence += income;
+  state.earnedTotal += income;
+  return income;
+}
+
 function simulateBuild(build) {
+  activeDifficultyMultiplier = DIFFICULTY_MULTIPLIERS[build.tier];
   const rng = mulberry32(0xb0ba1a); // fixed seed -- same seed reused per world/build so the whole table is reproducible run to run
   const state = newState(build.accuracy);
   const rows = [];

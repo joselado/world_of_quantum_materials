@@ -64,3 +64,34 @@ export const MUSIC_STYLE_PRESETS: MusicStylePreset[] = [
 ];
 
 export const DEFAULT_MUSIC_STYLE = MUSIC_STYLE_PRESETS[0].value; // Classic -- the original soundtrack stays the default
+
+// Same Settings panel, fourth row: how hard the world curve hits, a
+// multiplier applied to every stat data/balance.ts's enemyStatsForWorld
+// returns (DIFFICULTY_MULTIPLIERS, that file). Named after
+// game/scripts/balance-sim.mjs's own three simulated playtest archetypes
+// rather than a plain Easy/Normal/Hard, since each tier's multiplier is
+// tuned and verified (`npm run balance-sim`) against that archetype's own
+// effort level -- M.Sc. ("the intended default") is what every other
+// constant in balance.ts is already written against, so it's the one tier
+// that leaves the curve unscaled. Unlike density/font/music above, this is
+// meant to be revisited mid-playthrough (a fight going worse or better than
+// expected), not just picked once -- BattleScene/OverworldScene both read it
+// live from the registry on every battle/re-level, nothing needs a restart.
+export type DifficultyTier = 'bsc' | 'msc' | 'phd';
+
+export interface DifficultyTierPreset {
+  label: string;
+  value: DifficultyTier;
+  // A one-line in-character gloss for the Settings panel -- flavor, not a
+  // mechanics explanation (the panel's own hint line covers what actually
+  // changes).
+  blurb: string;
+}
+
+export const DIFFICULTY_TIER_PRESETS: DifficultyTierPreset[] = [
+  { label: 'B.Sc.', value: 'bsc', blurb: "You handed in the problem set. Late. That's basically a pass." },
+  { label: 'M.Sc.', value: 'msc', blurb: 'You understood the problem set. Mostly.' },
+  { label: 'Ph.D.', value: 'phd', blurb: 'You ARE the problem set now.' },
+];
+
+export const DEFAULT_DIFFICULTY_TIER: DifficultyTier = DIFFICULTY_TIER_PRESETS[1].value; // M.Sc. -- the tuned default

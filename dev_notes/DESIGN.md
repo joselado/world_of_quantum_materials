@@ -202,33 +202,60 @@ classicalMagnet subtype → spin-triplet superconductor, matching the example in
 source notes). Not all main+subtype pairs are physical/interesting — needs a full
 compatibility table before implementation (see open questions).
 
-**Attributes map to stats** (implemented: `game/src/data/types.ts`'s `Stats`, `game/src/data/materials.ts`):
-- **Quantumness** → crit chance ("a coherent critical hit"): `clamp((quantumness - 10) * 0.02, 0, 0.5)`
+**Attributes map to stats** (implemented: `game/src/data/types.ts`'s `Stats`, `game/src/data/materials.ts`/`data/balance.ts`):
+- **Quantumness** → crit chance ("a coherent critical hit"): `clamp((quantumness - BASE_STAT) * (0.5 / (MAX_STAT - BASE_STAT)), 0, 0.5)` --
+  linear from 0 at `BASE_STAT` to a flat 50% right at `MAX_STAT`, so every purchasable point keeps
+  mattering instead of crit chance saturating partway through the sellable range
 - **Velocity** → turn order and hit count each round: whichever side has the higher effective
-  Velocity swings first, and swings `clamp(floor(ratio), 1, 3)` times that round, where `ratio`
-  is its Velocity divided by the slower side's (`BattleScene.playerAttack`); the slower side
-  always still gets exactly one swing. Ties keep the player going first, one swing each
-- **Correlation** → defense: incoming damage is scaled by `10 / correlation`
+  Velocity swings first, and swings `clamp(floor(ratio), 1, MAX_MULTI_HIT)` times that round, where
+  `ratio` is its Velocity divided by the slower side's (`BattleScene.currentHitOrder`); the slower
+  side always still gets exactly one swing. Ties keep the player going first, one swing each.
+  `MAX_MULTI_HIT` is 5
+- **Correlation** → defense: incoming damage is scaled by `BASE_STAT / correlation`, with no upper
+  plateau the way Quantumness/Velocity have (crit chance caps at 50%, the multi-hit bonus caps at
+  `MAX_MULTI_HIT`) -- every further point of Correlation keeps helping, which is why buying it
+  costs `CORRELATION_COST_MULTIPLIER` (10x) as much per point as Quantumness/Velocity do (below),
+  not the same flat rate
 
-Every crystal starts at `10/10/10` (`BASE_STAT`/`DEFAULT_STATS`), which is deliberately a
-no-op multiplier so the pre-stats damage numbers are unchanged at parity. The player's own
-stats live in the save (`playerStats`) and only grow by spending qumatessence with Noether
-(`OverworldScene.renderShopStats`, cost `(current - 10 + 1) * 50` per point); an opponent's
-stats are computed fresh from the world number at battle start
-(`enemyStatsForWorld(world)`, `data/balance.ts`) rather than hand-tuned per species, so
-difficulty climbs with the world. Growth follows a two-phase curve rather than one flat
-per-world rate: worlds 1-3 (the tutorial stretch, before the player has had a real chance to
-shop/transmute/level up) grow slowly, `+1` Quantumness/Velocity and `+0.5` Correlation per world
-past world 1; worlds 4-10 assume a player who has met the early guardians and can draw on their
-systems (Dresselhaus's transmutation, Laughlin's Analytic moves, Feynman's leveling, ...), so
-growth steepens to `+3.5` Quantumness/Velocity and `+2.2` Correlation per world from there,
-rounded to whole numbers at the end. Correlation grows slower than Quantumness/Velocity in both
-phases since its effect (defense = `BASE_STAT / correlation`) is already nonlinear, so each
-point there goes further than a flat point of Quantumness/Velocity. Because the player's own
-Velocity only grows by spending qumatessence with Noether while the opponent's grows
-automatically every world, a player who never buys Velocity falls further behind the opponent's
-effective Velocity every world — raising both how often the opponent goes first and, per the
-multi-attack rule above, how many times it swings each round.
+Every crystal starts at `1/1/1` (`BASE_STAT`/`DEFAULT_STATS`) and can be raised up to `100`
+(`MAX_STAT`) per stat at Noether's shop -- a stat already at `MAX_STAT` shows as maxed and stops
+selling. The player's own stats live in the save (`playerStats`) and only grow by spending
+qumatessence with Noether (`OverworldScene.renderShopStats`/`data/balance.ts`'s
+`statUpgradeCost`, `(current - BASE_STAT + 1) * 50` per point, `x10` for Correlation
+specifically); an opponent's stats are computed fresh from the world number (and the active
+difficulty tier, see below) at battle start (`enemyStatsForWorld(world, difficultyMultiplier)`,
+`data/balance.ts`) rather than hand-tuned per species, so difficulty climbs with the world.
+Growth follows a two-phase curve rather than one flat per-world rate: worlds 1-3 (the tutorial
+stretch, before the player has had a real chance to shop/transmute/level up) grow slowly, `+0.1`
+Quantumness/Velocity and `+0.05` Correlation per world past world 1; worlds 4-10 assume a player
+who has met the early guardians and can draw on their systems (Dresselhaus's transmutation,
+Laughlin's Analytic moves, Feynman's leveling, ...), so growth steepens to `+0.35`
+Quantumness/Velocity and `+0.22` Correlation per world from there. An opponent's own stats stay
+fractional internally (never rounded, since they're never shown to the player as a number, only
+felt through hit chance/damage/turn order) so this curve's own sub-1 per-step rate actually
+registers rather than vanishing under premature rounding -- only the player's own `playerStats`
+(always a whole number, since Noether's shop displays/sells them one point at a time) round, at
+the one place `enemyStatsForWorld`'s result gets copied into them (Superposition Mode's
+re-leveling). Correlation grows slower than Quantumness/Velocity in both phases since its effect
+(defense = `BASE_STAT / correlation`) is already nonlinear, so each point there goes further than
+a flat point of Quantumness/Velocity. Because the player's own Velocity only grows by spending
+qumatessence with Noether while the opponent's grows automatically every world, a player who
+never buys Velocity falls further behind the opponent's effective Velocity every world — raising
+both how often the opponent goes first and, per the multi-attack rule above, how many times it
+swings each round.
+
+**Difficulty tier** (the Lab's Settings station, `data/settings.ts`'s `DifficultyTier`/
+`DIFFICULTY_TIER_PRESETS`, `data/balance.ts`'s `DIFFICULTY_MULTIPLIERS`): a player-facing
+multiplier on the whole `enemyStatsForWorld` curve above, named B.Sc./M.Sc./Ph.D. after
+`game/scripts/balance-sim.mjs`'s own three simulated playtest archetypes rather than a plain
+Easy/Normal/Hard, since each tier's multiplier is tuned and `npm run balance-sim`-verified against
+that archetype's own effort level. M.Sc. ("the intended default") is what every constant above is
+written against, so it's the tier that leaves the curve unscaled (`1`); B.Sc. eases it (`0.6`) for
+a lower-effort playstyle and Ph.D. tightens it (`1.4`) for a playstyle that would otherwise clear
+every world too comfortably. Unlike the density/text-size/music-style rows beside it, meant to be
+revisited mid-playthrough rather than picked once -- `BattleScene`/`OverworldScene` both read it
+live off the registry on every fight/re-level, so a change lands on the player's very next battle,
+no restart needed.
 
 **Max HP is never intrinsic to a crystal** -- no `Material` (wild, rival, or the player's
 own current form) carries an HP number at all; it's purely a function of which world the
@@ -530,7 +557,7 @@ cleared.
 
 Turn-based, speed-ordered by Velocity. The faster side doesn't just swing first each round —
 it swings more often, scaling with how much faster it is: its hit count is its effective
-Velocity divided by the slower side's, floored and capped at 3 (`clamp(floor(ratio), 1, 3)`).
+Velocity divided by the slower side's, floored and capped at 5 (`clamp(floor(ratio), 1, MAX_MULTI_HIT)`).
 The cap keeps an extreme Velocity gap from producing an unbounded hit sequence; the slower side
 always still gets exactly one hit. All of the faster side's hits resolve first, consecutively,
 before the slower side's single hit — and the round stops immediately if either side's HP hits
@@ -772,7 +799,9 @@ state can mark her met before the player has actually reached her.
   a real historical precursor to the Bi-Sb/Bi₂Se₃ family that became the first 3D topological
   insulators. Transmuting changes the player's look, type, and which moves are currently
   usable (§3), without erasing any move already learned or touching their stats or max HP
-  (max HP is never tied to crystal form at all -- see §3's own note on it). **Excludes every hybrid-recipe
+  (max HP is never tied to crystal form at all -- see §3's own note on it). Superposition
+  Mode's blanket unlock grant (§7) also seeds the player's own starting `playerForm` --
+  see Majorana below, since the two guardians share that one slot. **Excludes every hybrid-recipe
   result** (`data/materials.ts`'s `isHybridMaterial`, every one of which lives only as a
   World 10 wild, never an earlier one) -- becoming a fused state is specifically Majorana's
   mechanic below, not this one. In Superposition Mode the candidate list is every non-hybrid
@@ -902,7 +931,13 @@ state can mark her met before the player has actually reached her.
   reaches only `HYBRID_RECIPES`' curated results, an additional content category rather
   than a reshaping of an existing one, even though Majorana sits earlier in the world
   progression than Anderson below. Superposition Mode bypasses this per-result cost
-  entirely the same way Bloch's/Dresselhaus's do
+  entirely the same way Bloch's/Dresselhaus's do. Majorana and Dresselhaus above also
+  share one further Superposition-only behavior: the mode's blanket unlock grant (§7)
+  seeds the player's own starting `playerForm` if the player hasn't transmuted/fused
+  for real yet, coin-flipped between Dresselhaus's plain-crystal pool and Majorana's own
+  hybrid-result pool, then a random pick within whichever pool wins -- so a fresh
+  Superposition save starts as a random ordinary crystal or an already-fused hybrid
+  rather than always the default starting form
 - **Anderson** → world 6 middle → "dopes in" a crystal the player has defeated as an
   impurity, then teaches one specific move from that crystal's own moveset
   (`OverworldScene.showAndersonPanel`/`learnImpurityMove`) -- a two-step pick (host,
@@ -940,7 +975,10 @@ state can mark her met before the player has actually reached her.
   impurity untouched. Priced between Dresselhaus's and Majorana's: a persistent extra
   move-class channel is a smaller swing than fusing into a whole new content category,
   but Anderson also sits later in the world 1-10 progression than either. Superposition
-  Mode bypasses this per-host cost entirely the same way the other three do
+  Mode bypasses this per-host cost entirely the same way the other three do, and its
+  blanket unlock grant (§7) also seeds `andersonDopant` to a random non-hybrid crystal if
+  nothing's doped in yet -- unlocking every host doesn't itself put anything in the single
+  active-impurity slot, the same reasoning behind Kondo's/Franklin's own seeded picks below
 - **Feynman** → world 7 middle → a different mechanic shape entirely from every other
   guardian's: leveling up a move the player already owns (`data/materials.ts`'s
   `MOVE_LEVEL_NAMES`/`MOVE_LEVEL_MULTIPLIERS`/`MOVE_LEVEL_STREAKS`,
@@ -994,12 +1032,15 @@ state can mark her met before the player has actually reached her.
   Laughlin's/Skłodowska-Curie's tuned-quasiparticle name already does
   (`tunedMoveDisplayName`) -- `moveDisplayName` falls back to a move's own static name
   for Kondo's three `'screening'`-class self-buffs specifically, since they have no
-  quasiparticle for `tunedMoveDisplayName` to read. Superposition Mode does not bypass
-  this gate the way it bypasses Bloch's/Dresselhaus's/Anderson's/Majorana's
-  per-option currency cost or Skłodowska-Curie's per-class unlock -- the streak is a
-  knowledge check, not a purchase, so there is nothing for that mode's blanket-unlock
-  treatment to short-circuit; a Superposition Mode playthrough still has to actually
-  answer the questions to level a move.
+  quasiparticle for `tunedMoveDisplayName` to read. Feynman has no single "active" slot
+  the way Kondo/Franklin/Anderson/Dresselhaus-Majorana do (§7) -- every move he levels
+  stands independently -- so Superposition Mode's blanket unlock grant treats
+  "everything already unlocked" for him as every move's `moveLevels` entry set straight
+  to 3 (max), unconditionally, every time the grant reapplies; there's no deliberate
+  lower-level pick worth preserving the way a seed-once check protects Kondo's/Franklin's/
+  Anderson's/Dresselhaus-or-Majorana's own picks. A Superposition Mode playthrough never
+  has to actually answer Feynman's own questions to reach max level -- his panel still
+  works exactly as in Story Mode if visited, each row already reading "max level."
 - **Kondo** → world 8 middle → sells three self-buff moves (`OverworldScene.showKondoPanel`,
   `data/materials.ts`'s `KONDO_MOVE_IDS`) -- Screening Pulse, Scattering Drag, Coherence
   Cascade -- each of which deterministically applies one of §4's three buffs (Shielded,
@@ -1036,10 +1077,13 @@ state can mark her met before the player has actually reached her.
   Kondo move activates it automatically (still "picked by talking to Kondo," just in the same
   click as the purchase) so a fresh purchase is never invisible in battle with no explanation;
   buying a second or third on top of an already-active one doesn't, and switching between
-  already-bought moves is always its own explicit click either way. Superposition Mode
-  (`applySuperpositionLeveling`) seeds `kondoActiveMove` to Screening Pulse if it's still
-  unset, for the same reason -- granting every move id doesn't help if none of Kondo's three
-  actually pass `getBattleMoves`' extra check.
+  already-bought moves is always its own explicit click either way. Superposition Mode's
+  blanket unlock grant (`OverworldScene.applySuperpositionUnlocks`, §7 -- shared by every
+  world entry and by the Lab itself) seeds `kondoActiveMove` to a random one of the three
+  moves if it's still unset, for the same reason -- granting every move id doesn't help if
+  none of Kondo's three actually pass `getBattleMoves`' extra check -- picked randomly
+  rather than always the same one so a fresh Superposition save doesn't always start on the
+  same move.
 - **Franklin** → world 9 middle → teaches three passive abilities
   (`data/passives.ts`'s `FRANKLIN_PASSIVE_IDS`, `OverworldScene.showFranklinPanel`) --
   an always-on, whole-battle modifier rather than a move picked from the battle menu
@@ -1060,6 +1104,10 @@ state can mark her met before the player has actually reached her.
   - **Amorphous Halo** -- softens the quasiparticle-mismatch double-damage rule
     (2x → 1.5x, `canHost`/`BattleScene.resolveHit`) -- a diffuse, defect-broadened halo
     partially shrugging off a hit that would otherwise land unmitigated.
+
+  Superposition Mode's blanket unlock grant (§7) seeds `activePassiveByOwner.franklin` to
+  a random one of the three if nothing's equipped yet, the same seed-only-if-unset shape
+  as Kondo's own `kondoActiveMove` pick above.
 - **Skłodowska-Curie** → world 10 middle → the guardian of the finale world, regarded
   as the leader of the guardians' circle, teaching the game's one capstone mechanic:
   two "Ultimate Move" moves, `ultimateMeteor`/`ultimateNova` (`data/materials.ts`'s
@@ -1151,9 +1199,10 @@ specifically manifests in that world's own physics rather than gesturing at it
 generically. `WORLD_LORE`'s two-page history of the world plays once per save the
 first time the player steps into it (`OverworldScene.showWorldLore`, gated by
 `hasSeenWorldLore`/`markWorldLoreSeen` against its own `worldLoreSeen` save field —
-kept separate from `visitedWorlds` because Superposition Mode's
-`applySuperpositionLeveling` pre-seeds `visitedWorlds` with every built world on
-entry, which would otherwise suppress every world's lore screen at once). It plays
+kept separate from `visitedWorlds` because Superposition Mode's blanket unlock grant
+(`applySuperpositionUnlocks`, §7) pre-seeds `visitedWorlds` with every built world --
+from the Lab itself, before the player has ever stepped through a world door -- which
+would otherwise suppress every world's lore screen at once). It plays
 before the goal/middle auto-dialogues and the `'controls'` tutorial tip if more
 than one of those is due on the same entry, since it's the more establishing
 content. `RIVAL_TAUNTS` gives each world's rival gate a two-part taunt
@@ -1292,22 +1341,43 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   Mode is just its `false` state, not a separate field). **Story Mode** is the
   normal playthrough: start at World 1, defeat each world's rival to open the
   next one, meet each guardian in turn. **Superposition Mode** is a testing/
-  exploration mode, not the intended first playthrough: every world entry
-  re-levels the player's stats/moves/HP to stay competitive with that world's
-  opponents (`OverworldScene.applySuperpositionLeveling`, a flat +2 over
-  `enemyStatsForWorld`, full move unlock, full heal) instead of requiring the
-  normal qumatessence grind, and Bloch's teleport hub (§5) offers every built
-  world as a destination outright so it can jump to any of them immediately, on
-  top of the world doors (§5) every world already has -- there is no separate
-  "Warp" UI -- the Hub's Qumatex (§4) is pre-filled with every real compound in the
-  game so it reads as fully discovered, Dresselhaus/Majorana/Anderson's
-  panels (§5) offer every crystal in the game as a candidate rather than only
-  ones actually defeated (Dresselhaus's list still excludes hybrid-recipe
-  results, same as normal play), and Bloch's/Dresselhaus's/Anderson's/
-  Majorana's per-option unlock costs (§5) are bypassed outright rather than
-  paid -- each panel checks `isSuperpositionMode()` directly instead of the
-  persisted unlocked-option list, so toggling the mode back off doesn't
-  leave any option permanently free on the save.
+  exploration mode, not the intended first playthrough: every guardian is
+  already met and fully unlocked from the moment the save exists, including
+  from the Lab itself before the player has ever stepped through a world door.
+  The blanket "everything unlocked" grant (`OverworldScene.applySuperpositionUnlocks`,
+  registry-only, no scene/world dependency of its own) is shared by two call sites:
+  `HubScene.create()` (so Kondo/Franklin/Noether/Laughlin/Feynman/Skłodowska-Curie/
+  Bloch's own Lab panels -- reachable from the Lab's Guardians station regardless of
+  `metGuardians` in this mode -- are already unlocked on a completely fresh save) and
+  `OverworldScene.applySuperpositionLeveling()` (re-applied on every world entry --
+  Continue, Bloch teleport, and the Hub door's World-1 jump alike -- alongside that
+  method's own world-specific `playerStats`/`playerHp` re-leveling to
+  `enemyStatsForWorld` plus a flat `+2`, which stays local to `OverworldScene` since
+  only that scene knows which world to re-level against). The grant unlocks every move
+  and passive, merges every built world into `visitedWorlds` (so Bloch's teleport hub,
+  §5, offers every world immediately, with no separate "Warp" UI, on top of the world
+  doors §5 every world already has), and pre-fills the Hub's Qumatex (§4) with every
+  real compound in the game so it reads as fully discovered. Dresselhaus/Majorana/
+  Anderson's panels (§5) offer every crystal in the game as a candidate rather than only
+  ones actually defeated (Dresselhaus's list still excludes hybrid-recipe results, same
+  as normal play), and Bloch's/Dresselhaus's/Anderson's/Majorana's per-option unlock
+  costs (§5) are bypassed outright rather than paid -- each panel checks
+  `isSuperpositionMode()` directly instead of the persisted unlocked-option list, so
+  toggling the mode back off doesn't leave any option permanently free on the save.
+  For the four guardians whose kit is "several unlocked, only one truly active," the
+  same grant also seeds that one active slot to a random pick among the unlocked
+  options, but only if it's still unset -- a deliberate pick made at that guardian's own
+  panel always survives every later re-application of the grant: `kondoActiveMove` to a
+  random one of Kondo's three self-buff moves, `activePassiveByOwner.franklin` to a
+  random one of Franklin's three passives, `andersonDopant` to a random non-hybrid
+  crystal, and `playerForm` to a random pick from a pool coin-flipped between
+  Dresselhaus's plain-crystal pool and Majorana's hybrid-result pool -- so a fresh
+  Superposition save starts as a random ordinary crystal or an already-fused hybrid
+  rather than always the same default starting form. Feynman has no such single-active
+  slot (every move he levels stands independently), so his own version of the grant is
+  unconditional rather than seed-once: every move id's `moveLevels` entry is set
+  straight to 3 (max) on every application, since there's no deliberate lower-level pick
+  worth preserving.
   Toggled once at the title screen rather than mid-run, so it's a deliberate
   choice made before starting, not something stumbled into during play.
 

@@ -5,7 +5,7 @@ import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
 import { fontPx } from '../../ui/text';
 import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
-import { MOVES, SHOP_MOVE_IDS, compatibleMoves, shopCost, getPlayerStats, statUpgradeCost } from '../../data/materials';
+import { MOVES, SHOP_MOVE_IDS, compatibleMoves, shopCost, getPlayerStats, statUpgradeCost, MAX_STAT } from '../../data/materials';
 import { persistFromRegistry } from '../../data/save';
 import type { Stats } from '../../data/types';
 
@@ -140,25 +140,23 @@ function renderShopStats(scene: GuardianPanelHost, container: Phaser.GameObjects
 
   rows.forEach((row) => {
     const value = stats[row.key];
-    const cost = statUpgradeCost(value);
-    const affordable = tokens >= cost;
-    const btn = scene.addDialogueButton(
-      container,
-      y,
-      `${row.label}: ${value} -> ${value + 1} -- ${cost} qumatessence`,
-      () => {
-        const current = (scene.game.registry.get('qumatessence') as number) || 0;
-        if (current < cost) return;
-        const updated = { ...getPlayerStats(scene.game.registry), [row.key]: value + 1 };
-        scene.qumatessence = current - cost;
-        scene.game.registry.set('qumatessence', scene.qumatessence);
-        scene.game.registry.set('playerStats', updated);
-        scene.tokenText.setText(`Qumatessence: ${scene.qumatessence}`);
-        persistFromRegistry(scene.game.registry);
-        scene.dialogueContainer?.destroy(true);
-        showNoetherShop(scene);
-      }
-    );
+    const maxed = value >= MAX_STAT;
+    const cost = statUpgradeCost(value, row.key);
+    const affordable = !maxed && tokens >= cost;
+    const label = maxed ? `${row.label}: ${value} -- maxed` : `${row.label}: ${value} -> ${value + 1} -- ${cost} qumatessence`;
+    const btn = scene.addDialogueButton(container, y, label, () => {
+      if (maxed) return;
+      const current = (scene.game.registry.get('qumatessence') as number) || 0;
+      if (current < cost) return;
+      const updated = { ...getPlayerStats(scene.game.registry), [row.key]: value + 1 };
+      scene.qumatessence = current - cost;
+      scene.game.registry.set('qumatessence', scene.qumatessence);
+      scene.game.registry.set('playerStats', updated);
+      scene.tokenText.setText(`Qumatessence: ${scene.qumatessence}`);
+      persistFromRegistry(scene.game.registry);
+      scene.dialogueContainer?.destroy(true);
+      showNoetherShop(scene);
+    });
     if (!affordable) btn.setAlpha(0.5);
     y += btn.height + 3;
   });

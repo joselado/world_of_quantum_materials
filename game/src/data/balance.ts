@@ -2,20 +2,27 @@
 // any Phaser import (or anything that transitively imports Phaser) so it can
 // be loaded straight into a plain Node script -- unlike materials.ts (which
 // pulls in Phaser via art/colors.ts at module scope, needing `navigator`/
-// `window` Node doesn't have), this module only ever imports plain types
-// from ./types. `game/scripts/balance-sim.mjs` transpiles this file with the
-// TypeScript compiler API and imports it directly, so the difficulty-curve
-// simulator always runs the exact same math the game does, never a
-// hand-copied duplicate. `data/materials.ts` and `scenes/BattleScene.ts`
-// import from here rather than defining any of this locally; materials.ts
-// re-exports the stat/economy exports so every existing call site
-// (`import { shopCost, ... } from '../data/materials'`) keeps working
-// unchanged.
+// `window` Node doesn't have), this module only imports plain types from
+// ./types and ./settings (also Phaser-free). `game/scripts/balance-sim.mjs`
+// transpiles this file with the TypeScript compiler API and imports it
+// directly, so the difficulty-curve simulator always runs the exact same
+// math the game does, never a hand-copied duplicate. `data/materials.ts` and
+// `scenes/BattleScene.ts` import from here rather than defining any of this
+// locally; materials.ts re-exports the stat/economy exports so every
+// existing call site (`import { shopCost, ... } from '../data/materials'`)
+// keeps working unchanged.
 import type { Move, Stats } from './types';
+import type { DifficultyTier } from './settings';
 
 // --- Stats (DESIGN.md §3) --------------------------------------------------
 
-export const BASE_STAT = 10;
+export const BASE_STAT = 1;
+
+// Noether's stat shop (panels/noether.ts's renderShopStats) refuses to sell
+// a stat past this -- the one hard ceiling in the stat system, everything
+// else (crit chance, the multi-hit ratio) is shaped to make full use of the
+// entire BASE_STAT-to-MAX_STAT range rather than plateauing early within it.
+export const MAX_STAT = 100;
 
 export const DEFAULT_STATS: Stats = { quantumness: BASE_STAT, velocity: BASE_STAT, correlation: BASE_STAT };
 
@@ -30,36 +37,84 @@ export const DEFAULT_STATS: Stats = { quantumness: BASE_STAT, velocity: BASE_STA
 // the way to world 10. Correlation still gets the smaller share in both
 // phases since its effect (defense = BASE_STAT / correlation) is already
 // nonlinear, so each point there goes further than a flat point of
-// Quantumness/Velocity.
+// Quantumness/Velocity. Scaled to a tenth of BASE_STAT itself (0.1/0.35 per
+// step rather than 1/3.5) so `defenseFactor`'s BASE_STAT/correlation ratio
+// climbs at the same relative rate it did before BASE_STAT moved to 1 --
+// unscaled, a whole-point-per-step growth would swing that ratio far more
+// violently against a BASE_STAT of 1 than it used to against 10 (see
+// enemyStatsForWorld's own comment on why the result stays fractional
+// rather than rounding here, which is what makes a sub-1 per-step rate
+// actually register instead of vanishing under Math.round).
 const EARLY_PHASE_MAX_STEP = 2; // worlds 2-3 (steps 1-2 past world 1) grow at EARLY_GROWTH_PER_STEP
-const EARLY_GROWTH_PER_STEP: Stats = { quantumness: 1, velocity: 1, correlation: 0.5 };
-const LATE_GROWTH_PER_STEP: Stats = { quantumness: 3.5, velocity: 3.5, correlation: 2.2 };
+const EARLY_GROWTH_PER_STEP: Stats = { quantumness: 0.1, velocity: 0.1, correlation: 0.05 };
+const LATE_GROWTH_PER_STEP: Stats = { quantumness: 0.35, velocity: 0.35, correlation: 0.22 };
 
-// An opponent's stats are computed fresh from the world number at battle
-// start rather than baked per-species, so difficulty climbs with the world
-// rather than needing 30 hand-tuned stat blocks. Rounded to whole numbers at
-// the end (the two growth rates above are fractional so the early/late slopes
-// land where they do) -- Superposition Mode (OverworldScene's
-// applySuperpositionLeveling) levels the player's own `playerStats` straight
-// off this function's return value, and that stat trio is rendered as plain
-// numbers in Noether's shop panel, so a fractional result would show up as a
-// decimal stat there.
-export function enemyStatsForWorld(world: number): Stats {
+// The Lab's Settings station (data/settings.ts's DifficultyTier/
+// DIFFICULTY_TIER_PRESETS) scales the whole curve above by one of these,
+// rather than offering a second hand-tuned curve -- M.Sc. is "the intended
+// default" every other constant in this file is written and `npm run
+// balance-sim`-verified against, so it's the one tier that leaves the curve
+// untouched. B.Sc. and Ph.D.'s own values are themselves balance-sim-
+// verified: B.Sc.'s simulated archetype (50% quiz accuracy, never
+// transmutes) can clear all 10 worlds at its own multiplier where it
+// couldn't at 1, and Ph.D.'s (always answers right, transmutes for type
+// advantage) stays under real pressure at its own multiplier where margins
+// at 1 had grown too comfortable by the late game.
+export const DIFFICULTY_MULTIPLIERS: Record<DifficultyTier, number> = {
+  bsc: 0.6,
+  msc: 1,
+  phd: 1.4,
+};
+
+// An opponent's stats are computed fresh from the world number (and the
+// active difficulty tier's multiplier, read live off the registry by every
+// caller so a mid-playthrough Settings change applies to the player's very
+// next fight) at battle start rather than baked per-species, so difficulty
+// climbs with the world rather than needing 30 hand-tuned stat blocks per
+// tier. Left fractional rather than rounded here -- unlike the player's own
+// `playerStats` (always a whole number, since Noether's shop displays and
+// sells them one point at a time), an opponent's stats are never shown to
+// the player as a number at all, only felt through hit chance/damage/turn
+// order, so there's nothing for fractional precision to look wrong in and
+// every bit of it stays available to the two-phase growth curve (and the
+// difficulty multiplier on top of it). BattleScene.create still rounds an
+// ordinary wild's own +/-15% `rollEncounterFactor` roll on top of this (a
+// specimen's HP bar-relative toughness has to be a whole number), and
+// Superposition Mode's `OverworldScene.applySuperpositionLeveling` rounds
+// separately when it copies this function's result into the player's own
+// `playerStats` -- this function itself is the one shared source both round
+// from, so neither rounding rule has to duplicate the other's math.
+export function enemyStatsForWorld(world: number, difficultyMultiplier = 1): Stats {
   const steps = Math.max(0, world - 1);
   const earlySteps = Math.min(steps, EARLY_PHASE_MAX_STEP);
   const lateSteps = Math.max(0, steps - EARLY_PHASE_MAX_STEP);
   return {
-    quantumness: Math.round(BASE_STAT + earlySteps * EARLY_GROWTH_PER_STEP.quantumness + lateSteps * LATE_GROWTH_PER_STEP.quantumness),
-    velocity: Math.round(BASE_STAT + earlySteps * EARLY_GROWTH_PER_STEP.velocity + lateSteps * LATE_GROWTH_PER_STEP.velocity),
-    correlation: Math.round(BASE_STAT + earlySteps * EARLY_GROWTH_PER_STEP.correlation + lateSteps * LATE_GROWTH_PER_STEP.correlation),
+    quantumness: (BASE_STAT + earlySteps * EARLY_GROWTH_PER_STEP.quantumness + lateSteps * LATE_GROWTH_PER_STEP.quantumness) * difficultyMultiplier,
+    velocity: (BASE_STAT + earlySteps * EARLY_GROWTH_PER_STEP.velocity + lateSteps * LATE_GROWTH_PER_STEP.velocity) * difficultyMultiplier,
+    correlation: (BASE_STAT + earlySteps * EARLY_GROWTH_PER_STEP.correlation + lateSteps * LATE_GROWTH_PER_STEP.correlation) * difficultyMultiplier,
   };
 }
 
+// Correlation buys more defense per point than Quantumness/Velocity buy crit
+// chance/multi-hit -- crit chance is linear over the whole BASE_STAT-to-
+// MAX_STAT range (critChance above) and the multi-hit ratio is capped at
+// MAX_MULTI_HIT regardless of how far past the opponent's own Velocity a
+// player gets, but `defenseFactor = BASE_STAT / correlation` (resolveHitDamage
+// below) never plateaus -- with BASE_STAT this small, a handful of points
+// already cuts incoming damage sharply. Priced steeper here to keep
+// qumatessence-per-point-of-power roughly even across all three stats
+// (checked against `npm run balance-sim`'s difficulty curve, not derived in
+// closed form -- see that script's own header for what it simulates).
+const CORRELATION_COST_MULTIPLIER = 10;
+
 // Cost to raise a stat by 1 point from its current value, steepening as the
 // player buys more (the same "priced to keep buying meaningful" shape as
-// shopCost for moves).
-export function statUpgradeCost(currentValue: number): number {
-  return (currentValue - BASE_STAT + 1) * 50;
+// shopCost for moves). `stat` is required, not defaulted -- Correlation's own
+// steeper price above means a call site that forgot which stat it was buying
+// would silently under- or over-charge rather than fail loudly.
+export function statUpgradeCost(currentValue: number, stat: keyof Stats): number {
+  const base = (currentValue - BASE_STAT + 1) * 50;
+  return stat === 'correlation' ? base * CORRELATION_COST_MULTIPLIER : base;
 }
 
 // --- Max HP (BattleScene.create, no material carries its own intrinsic HP) -
@@ -214,10 +269,21 @@ export function mitigationFraction(levelMultiplier: number, base: number, cap: n
 
 // --- Core damage resolution (BattleScene.resolveHit) ------------------------
 
-// Quantumness -> crit ("coherent hit") chance (DESIGN.md §3).
+// Quantumness -> crit ("coherent hit") chance (DESIGN.md §3): linear from 0
+// at BASE_STAT to a flat 50% right at MAX_STAT, so every point of
+// Quantumness in the sellable range keeps pulling its weight instead of
+// crit chance saturating partway through it. The clamp is defensive only --
+// Noether's shop never sells past MAX_STAT, so it never actually binds.
 export function critChance(attackerQuantumness: number): number {
-  return clamp((attackerQuantumness - BASE_STAT) * 0.02, 0, 0.5);
+  return clamp((attackerQuantumness - BASE_STAT) * (0.5 / (MAX_STAT - BASE_STAT)), 0, 0.5);
 }
+
+// Velocity's own ceiling (DESIGN.md §4, BattleScene.currentHitOrder): the
+// faster side's hit count this round is `clamp(floor(velocityRatio), 1,
+// MAX_MULTI_HIT)` -- Velocity has no standalone formula the way Quantumness/
+// Correlation do, since the multi-hit bonus is a ratio between both sides'
+// stats, not a function of one side's absolute value alone.
+export const MAX_MULTI_HIT = 5;
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));

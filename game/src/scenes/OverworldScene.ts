@@ -30,8 +30,11 @@ import {
   enemyStatsForWorld,
   DEFAULT_STATS,
   allCrystals,
+  isHybridMaterial,
 } from '../data/materials';
-import { wildHpForWorld } from '../data/balance';
+import { wildHpForWorld, DIFFICULTY_MULTIPLIERS } from '../data/balance';
+import { DEFAULT_DIFFICULTY_TIER } from '../data/settings';
+import type { DifficultyTier } from '../data/settings';
 import { PASSIVES, PASSIVE_OWNERS } from '../data/passives';
 import type { PassiveOwner } from '../data/passives';
 import { tokenColorForValue } from '../data/tokens';
@@ -118,6 +121,86 @@ const QUIZ_WRONG_MULTIPLIER = 0.6;
 // data/integrity.ts can assert every entry here actually has a biome and a
 // rival.
 export const BUILT_WORLDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+// Superposition Mode's blanket "every guardian is already unlocked" grant --
+// registry-only and world-independent, so it's shared by
+// OverworldScene.applySuperpositionLeveling (re-applied on every world
+// entry) and HubScene.create (so the Lab's Guardians station, which lists
+// every guardian regardless of `metGuardians` in this mode -- see
+// hubStations.ts's showGuardiansPanel -- is fully unlocked even on a save
+// that has never yet stepped through a world door; without this, Kondo/
+// Franklin/Noether/Laughlin/Feynman/Skłodowska-Curie/Bloch's Lab panels
+// would show their ordinary locked/empty state until the first world entry
+// applied this same grant). Call this before anything reads `playerForm`
+// back out (`getPlayerMaterial`, world 10's own map-shape dispatch) --
+// see both call sites' own placement, early in `create()`.
+export function applySuperpositionUnlocks(registry: Phaser.Data.DataManager) {
+  if (!registry.get('superpositionMode')) return;
+  registry.set('unlockedMoves', Object.keys(MOVES));
+  const visited = (registry.get('visitedWorlds') as number[]) ?? [];
+  registry.set('visitedWorlds', Array.from(new Set([...visited, ...BUILT_WORLDS])));
+  // Materialdex entries are a passive discovery log, not a player choice
+  // (unlike the seed-only-if-unset picks below), so this is unconditional
+  // and re-set every time this grant reapplies.
+  registry.set(
+    'discoveredMaterials',
+    allCrystals().map((material) => ({ name: material.name, type: material.type }))
+  );
+  // Kondo's three self-buff moves are all granted above, but only one is
+  // ever the active `kondoActiveMove` getBattleMoves actually surfaces --
+  // seeded to a random one of the three (not always the same one) so a
+  // fresh Superposition save doesn't always start on the same move. Only
+  // seeded if nothing's chosen yet, so a deliberate pick made via
+  // showKondoPanel survives every later re-application of this grant.
+  if (!registry.get('kondoActiveMove')) {
+    registry.set('kondoActiveMove', KONDO_MOVE_IDS[Math.floor(Math.random() * KONDO_MOVE_IDS.length)]);
+  }
+  // Same "unlock every item, seed one random active pick per owner" shape
+  // for every passive owner's kit (today just Franklin's three).
+  registry.set('passivesUnlocked', Object.keys(PASSIVES));
+  const activeByOwner = { ...((registry.get('activePassiveByOwner') as Partial<Record<PassiveOwner, string>>) ?? {}) };
+  for (const owner of PASSIVE_OWNERS) {
+    if (!activeByOwner[owner]) {
+      const ownerPassiveIds = Object.values(PASSIVES)
+        .filter((p) => p.owner === owner)
+        .map((p) => p.id);
+      activeByOwner[owner] = ownerPassiveIds[Math.floor(Math.random() * ownerPassiveIds.length)];
+    }
+  }
+  registry.set('activePassiveByOwner', activeByOwner);
+  // Anderson's impurity slot: a random non-hybrid crystal doped in, same
+  // seed-only-if-unset treatment as kondoActiveMove above.
+  if (!registry.get('andersonDopant')) {
+    const hostPool = allCrystals().filter((m) => !isHybridMaterial(m.name));
+    registry.set('andersonDopant', hostPool[Math.floor(Math.random() * hostPool.length)].name);
+  }
+  // Dresselhaus (transmute into a crystal outright) and Majorana (fuse into
+  // a hybrid) both drive the same single `playerForm` slot -- only one of
+  // the two can seed a starting form, so this coin-flips which mechanic's
+  // own candidate pool the seed comes from, then picks randomly within it.
+  // Seeded only if the player hasn't already transmuted/fused for real
+  // (`playerForm` still null).
+  if (!registry.get('playerForm')) {
+    const pool =
+      Math.random() < 0.5
+        ? allCrystals().filter((m) => !isHybridMaterial(m.name))
+        : allCrystals().filter((m) => isHybridMaterial(m.name));
+    registry.set('playerForm', pool[Math.floor(Math.random() * pool.length)]);
+  }
+  // Feynman: every move levels independently (`moveLevels`, keyed per move
+  // id), with no single-active slot to default the way Kondo/Franklin/
+  // Anderson/Dresselhaus-or-Majorana have -- "everything unlocked" for him
+  // means every move already at max level rather than one random pick
+  // among mutually-exclusive options. Unconditional, same as
+  // unlockedMoves/discoveredMaterials/passivesUnlocked above -- there's no
+  // deliberate lower-level pick here worth preserving.
+  const maxedLevels: Partial<Record<string, number>> = {};
+  Object.keys(MOVES).forEach((id) => {
+    maxedLevels[id] = 3;
+  });
+  registry.set('moveLevels', maxedLevels);
+  persistFromRegistry(registry);
+}
 
 interface OverworldInitData {
   world?: number;
@@ -540,6 +623,12 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.biome = getBiome(this.world);
 
     const state = this.game.registry;
+    // Applied before any map generation or playerForm read below -- world
+    // 10's own map-shape dispatch (generateMap) and `getPlayerMaterial` both
+    // read `playerForm` straight from the registry, so this grant (which can
+    // seed `playerForm` itself, see applySuperpositionUnlocks) has to land
+    // first, not after.
+    this.applySuperpositionLeveling();
     const saved = state.get('mapState') as SavedMapState | undefined;
 
     if (saved && saved.world === this.world && !this.regenerate) {
@@ -560,7 +649,6 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
 
     this.qumatessence = (state.get('qumatessence') as number) || 0;
     this.playerMaterial = getPlayerMaterial(state);
-    this.applySuperpositionLeveling();
     this.shopTab = 'moves';
     this.recordVisit();
 
@@ -700,69 +788,28 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // just entered, on every entry -- not just the Hub door's initial jump, so
   // Continue-to-next-world and Bloch's teleport stay competitive too. A flat
   // +2 over enemyStatsForWorld keeps the player slightly ahead rather than
-  // exactly even. Also grants every move (so there's always something to
-  // fight with regardless of what's been bought), a full heal, marks every
-  // built world visited so Bloch's teleport hub (showBlochHub, gated on
-  // `visitedWorlds`) offers all of them immediately -- this is what makes
-  // Bloch alone sufficient for world-to-world movement in this mode, with no
-  // separate warp panel needed -- and pre-fills the Hub's Materialdex with
-  // every real compound in the game (`allCrystals()`) so it reads as fully
-  // discovered rather than reflecting only what's actually been encountered.
+  // exactly even, plus a full heal. Every guardian's own blanket "already
+  // unlocked" grant (moves, passives, visited worlds, Materialdex, the
+  // random active picks for Kondo/Franklin/Anderson/Dresselhaus-or-Majorana,
+  // Feynman's moves all maxed) lives in the shared applySuperpositionUnlocks
+  // above BUILT_WORLDS -- world-independent, so HubScene.create applies it
+  // too, on the Lab itself.
   private applySuperpositionLeveling() {
     if (!this.isSuperpositionMode()) return;
-    const target = enemyStatsForWorld(this.world);
+    applySuperpositionUnlocks(this.game.registry);
+    const difficultyTier = (this.game.registry.get('difficultyTier') as DifficultyTier) ?? DEFAULT_DIFFICULTY_TIER;
+    const target = enemyStatsForWorld(this.world, DIFFICULTY_MULTIPLIERS[difficultyTier]);
+    // Rounded here, not inside enemyStatsForWorld itself -- these become the
+    // player's own `playerStats`, always a whole number since Noether's shop
+    // displays/sells them one point at a time (unlike an opponent's own
+    // stats, which stay fractional -- see that function's own comment).
     const stats: Stats = {
-      quantumness: target.quantumness + 2,
-      velocity: target.velocity + 2,
-      correlation: target.correlation + 2,
+      quantumness: Math.round(target.quantumness + 2),
+      velocity: Math.round(target.velocity + 2),
+      correlation: Math.round(target.correlation + 2),
     };
     this.game.registry.set('playerStats', stats);
-    this.game.registry.set('unlockedMoves', Object.keys(MOVES));
     this.game.registry.set('playerHp', wildHpForWorld(this.world));
-    const visited = this.getVisitedWorlds();
-    const merged = Array.from(new Set([...visited, ...BUILT_WORLDS]));
-    this.game.registry.set('visitedWorlds', merged);
-    // Materialdex entries are a passive discovery log, not a player choice
-    // (unlike kondoActiveMove/activePassiveByOwner below, there's no prior
-    // pick here an overwrite could clobber), so this is unconditional and
-    // re-set every re-level, same as unlockedMoves above.
-    this.game.registry.set(
-      'discoveredMaterials',
-      allCrystals().map((material) => ({ name: material.name, type: material.type }))
-    );
-    // Granting every move (above) would otherwise leave Kondo's three stuck
-    // invisible in battle -- getBattleMoves only ever surfaces whichever one
-    // is `kondoActiveMove`, and that field isn't touched by the "learn
-    // everything" grant above. Only seed it if nothing's active yet, so a
-    // player who already picked one via showKondoPanel keeps that choice
-    // across re-levels. Laughlin's and Skłodowska-Curie's tunable moves need
-    // no equivalent seeding -- unlike an unset `kondoActiveMove` (which hides
-    // a move from battle entirely), an unset `moveClassTuning` entry just
-    // leaves that move untuned (getTunedMoveClass falls back to the move's
-    // own always-safe default 'phonon' class), which is already a normal,
-    // fully-usable state; and `unlockedMoves` above already grants both of
-    // Skłodowska-Curie's Ultimate move ids directly (Object.keys(MOVES)), so
-    // an unseeded `ultimateClassesUnlocked` doesn't block them either --
-    // Superposition Mode's blanket grant bypasses her shop/unlock-cost path
-    // entirely.
-    if (!this.game.registry.get('kondoActiveMove')) {
-      this.game.registry.set('kondoActiveMove', KONDO_MOVE_IDS[0]);
-    }
-    // Every passive owner's kit (data/passives.ts's PASSIVE_OWNERS): unlock
-    // every passive outright (mirrors the unconditional unlockedMoves grant
-    // above -- there's no per-form gate to respect the way ordinary moves
-    // have), but only seed an active pick per owner if nothing's chosen yet
-    // for that owner, same reasoning as kondoActiveMove just above -- a
-    // deliberate pick made via showFranklinPanel should survive every later
-    // re-level.
-    this.game.registry.set('passivesUnlocked', Object.keys(PASSIVES));
-    const activeByOwner = { ...((this.game.registry.get('activePassiveByOwner') as Partial<Record<PassiveOwner, string>>) ?? {}) };
-    for (const owner of PASSIVE_OWNERS) {
-      if (!activeByOwner[owner]) {
-        activeByOwner[owner] = Object.values(PASSIVES).find((p) => p.owner === owner)?.id;
-      }
-    }
-    this.game.registry.set('activePassiveByOwner', activeByOwner);
     persistFromRegistry(this.game.registry);
   }
 

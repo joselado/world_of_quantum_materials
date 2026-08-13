@@ -181,10 +181,11 @@ that hosts whatever quasiparticle class you just attacked with. See
 ## Battle basics
 
 Turn order is speed-ordered by your crystal's Velocity stat: the faster side
-swings first, and swings again -- up to 3 times a round -- the more its
+swings first, and swings again -- up to 5 times a round -- the more its
 Velocity outpaces the other side's, while the slower side always still gets
 its own hit. Quantumness raises your crit ("coherent hit") chance,
-Correlation raises your defense.
+Correlation raises your defense -- every stat runs from 1 up to a cap of 100,
+raised one point at a time at Noether's shop.
 Every crystal carries HP, fully healed after each battle -- qumatessence, not
 HP attrition, are what's actually on the line from one fight to the next.
 The move menu shows one kind of move at a time (ordinary attacks, quiz-gated
@@ -225,6 +226,9 @@ In the Lab, click the **Settings** station to adjust:
   menu and dialogue in the game.
 - **Music Style** -- Classic or Modern, two different arrangements of every
   world's soundtrack. Applies immediately.
+- **Difficulty** -- B.Sc., M.Sc., or Ph.D., how hard every world's opponents
+  hit. Unlike the settings above, meant to be changed mid-playthrough, not
+  just once -- it applies to your very next battle.
 
 ![Settings panel](screenshots/settings.png)
 
@@ -245,11 +249,17 @@ Before you start, the title screen asks you to pick a mode:
 - **Story Mode** is the normal playthrough -- start at World 1, defeat each
   world's rival to open the next one, meet each guardian in turn.
 - **Superposition Mode** is for exploring/testing without grinding: every
-  time you enter a world your stats, moves, and HP are automatically brought
-  up to a level competitive with that world's opponents, Bloch's teleport hub
-  (see above) offers every world immediately -- even from the Lab, before
-  you've stepped into any of them -- and Dresselhaus/Majorana/Anderson offer
-  every crystal in the game rather than only ones you've actually defeated.
+  guardian is already met and everything they teach is unlocked from the
+  moment you start -- even from the Lab, before you've stepped into any
+  world. Every time you enter a world your stats, moves, and HP are
+  automatically brought up to a level competitive with that world's
+  opponents, Bloch's teleport hub (see above) offers every world immediately,
+  and Dresselhaus/Majorana/Anderson offer every crystal in the game rather
+  than only ones you've actually defeated. Kondo's active self-buff,
+  Franklin's active passive, Anderson's doped-in impurity, and your own
+  starting crystal (or hybrid, courtesy of Dresselhaus/Majorana) each start
+  on a randomly chosen pick rather than a fixed default, so a fresh
+  Superposition save rarely looks the same twice.
 
 ![Title screen's Story Mode / Superposition Mode picker](screenshots/title.png)
 ![Bloch's teleport hub with every world unlocked in Superposition Mode](screenshots/superposition-bloch.png)

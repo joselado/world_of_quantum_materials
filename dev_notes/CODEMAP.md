@@ -217,7 +217,10 @@ game/src/
     save.ts                      localStorage schema + persistFromRegistry()/load()
     tutorial.ts                    TUTORIAL_TIPS/TUTORIAL_PAGES -- contextual + replayable tutorial copy
     settings.ts                    DENSITY_PRESETS/DEFAULT_ENCOUNTER_DENSITY -- wild-encounter density presets,
-                                    FONT_SCALE_PRESETS, MUSIC_STYLE_PRESETS/DEFAULT_MUSIC_STYLE
+                                    FONT_SCALE_PRESETS, MUSIC_STYLE_PRESETS/DEFAULT_MUSIC_STYLE,
+                                    DIFFICULTY_TIER_PRESETS/DEFAULT_DIFFICULTY_TIER -- B.Sc./M.Sc./
+                                    Ph.D. difficulty tier, data/balance.ts's DIFFICULTY_MULTIPLIERS
+                                    applied to enemyStatsForWorld
     story.ts                       STORY_BEATS -- per-world Decoherence-arc line shown on advancing worlds --
                                     and WORLD_GOAL_TEXT -- per-world one-liner for the goal-tile banner,
                                     falling back to a generic line for a world with no entry
@@ -467,14 +470,22 @@ real quasiparticle; there is no abstract "disorder" move or class.
 
 ## Stats and battle resolution
 
-**Stats** (`data/types.ts`'s `Stats`, `data/materials.ts`): `quantumness`/`velocity`/
-`correlation`, base `10` each (`BASE_STAT`/`DEFAULT_STATS`). Player stats live in registry/save
-key `playerStats`, grown via `OverworldScene.renderShopStats` (Noether's "Stats" tab, cost
-`statUpgradeCost(current)` per +1 point). Opponent stats are never stored per-material --
-`enemyStatsForWorld(world)` (`data/balance.ts`) computes them fresh at battle start
-(`BattleScene.create`), scaling by a two-phase curve, gentle through worlds 1-3 and steeper from
-world 4 on (`EARLY_GROWTH_PER_STEP`/`LATE_GROWTH_PER_STEP`, see that function's own comment for
-the exact rates and the reasoning behind the two phases), rounded to whole numbers.
+**Stats** (`data/types.ts`'s `Stats`, `data/materials.ts`/`data/balance.ts`): `quantumness`/
+`velocity`/`correlation`, base `1` each (`BASE_STAT`/`DEFAULT_STATS`), capped at `100`
+(`MAX_STAT`) -- Noether's shop (`OverworldScene.renderShopStats`) refuses to sell a stat past
+that, showing it as maxed instead. Player stats live in registry/save key `playerStats`, grown
+via that same shop (cost `statUpgradeCost(current, stat)` per +1 point, `x10` for `correlation`
+specifically -- `CORRELATION_COST_MULTIPLIER`, see that function's own comment for why
+Correlation is priced steeper). Opponent stats are never stored per-material --
+`enemyStatsForWorld(world, difficultyMultiplier)` (`data/balance.ts`) computes them fresh at
+battle start (`BattleScene.create`), scaling by a two-phase curve, gentle through worlds 1-3 and
+steeper from world 4 on (`EARLY_GROWTH_PER_STEP`/`LATE_GROWTH_PER_STEP`, see that function's own
+comment for the exact rates and the reasoning behind the two phases), then by the active
+difficulty tier's own multiplier (`DIFFICULTY_MULTIPLIERS`, read live off registry
+`difficultyTier`, the Lab's Settings station). Left fractional (never rounded) here -- an
+opponent's stats are never shown to the player as a number, only felt through hit chance/damage/
+turn order -- only the player's own `playerStats` round, at the one place this function's result
+gets copied into them (`OverworldScene.applySuperpositionLeveling`).
 
 **Max HP** (`data/balance.ts`) is never intrinsic to a `Material` either (no `maxHp` field at
 all -- see "Data model" above) -- both sides' current-battle max HP are resolved fresh in
@@ -495,8 +506,10 @@ sample-to-sample variance. `OverworldScene.applyPlayerForm`/`HubScene.applyPlaye
 itself.
 
 `BattleScene.resolveHit` is the single damage-resolution function both sides' attacks go
-through: crit chance from the attacker's Quantumness, incoming damage divided by the defender's
-Correlation (`BASE_STAT / correlation`), and a `2x` "quasiparticle mismatch" multiplier from
+through: crit chance from the attacker's Quantumness (linear from 0 at `BASE_STAT` to 50% at
+`MAX_STAT`, `critChance`), incoming damage divided by the defender's Correlation (`BASE_STAT /
+correlation`, uncapped -- see "Stats" above for why Correlation costs more per point than
+Quantumness/Velocity), and a `2x` "quasiparticle mismatch" multiplier from
 `data/materials.ts`'s `canHost(defenderType, move.class)` -- a defender whose own
 `MOVE_COMPATIBILITY` list doesn't include the attacking move's class takes it at double force.
 The crit-chance/defense-factor/mismatch/final-product arithmetic itself lives in `data/
@@ -530,8 +543,8 @@ Ultimate-specific paragraph below.
 Velocity (each side's own raw effective value) decides both who
 swings first each round and how many times the faster side swings: `currentHitOrder()` returns
 `{ fasterIsPlayer, fasterHits }`, where `ratio` is the faster side's effective Velocity divided
-by the slower side's, and `fasterHits` is `Phaser.Math.Clamp(Math.floor(ratio), 1, 3)` -- the
-slower side always gets exactly one hit. A tie keeps the player going first, one hit each, same
+by the slower side's, and `fasterHits` is `Phaser.Math.Clamp(Math.floor(ratio), 1, MAX_MULTI_HIT)`
+(`data/balance.ts`, `5`) -- the slower side always gets exactly one hit. A tie keeps the player going first, one hit each, same
 as the ratio-1 case. Both `playerAttack` (which resolves the round's actual hits) and
 `drawTurnPreview` (the "Turns" widget, STYLE.md's "Turn-order preview") call this same helper
 so their two views of "who's faster this round" can't drift apart. `playerAttack` builds
@@ -1151,23 +1164,47 @@ loops (floor `9`px) since their body length varies more per instance.
 **Story Mode vs. Superposition Mode** (save/registry `superpositionMode`, picked on
 `TitleScene`'s title screen via `addModeSelector` -- a two-button picker, not a toggle; Story
 Mode is just `superpositionMode: false`, no separate field): Superposition Mode is a
-testing/exploration aid, not part of normal progression. Three things key off
+testing/exploration aid, not part of normal progression. Several things key off
 `isSuperpositionMode()`:
-- `OverworldScene.applySuperpositionLeveling()` runs on every `create()` (covers Continue,
-  Bloch teleport, and the Hub door's World-1 jump alike) -- re-levels `playerStats` to
-  `enemyStatsForWorld(this.world)` plus a flat `+2`, grants every move (`Object.keys(MOVES)`),
-  fully heals, merges every `BUILT_WORLDS` entry into `visitedWorlds` (read by Feynman's/
-  `BattleScene`'s Analytic-question eligibility and `HubScene.canResumeWorld`, not by Bloch --
-  see the candidate-pool point below), and unconditionally overwrites registry
-  `discoveredMaterials` with one entry per `data/materials.ts`'s `allCrystals()` result, so the
-  Hub's Qumatex (see "Qumatex" below) reads as fully discovered. That grant is unconditional
-  rather than seed-once like `kondoActiveMove`/`activePassiveByOwner` below, because
-  `discoveredMaterials` is a passive discovery log, not a player choice, so there is no prior
-  pick an overwrite could clobber. Also seeds registry `kondoActiveMove` to `KONDO_MOVE_IDS[0]`
-  if it's still `null` -- granting every move id (including all three Kondo ones) into
-  `unlockedMoves` wouldn't otherwise make any of them usable, since `getBattleMoves` filters
-  Kondo's moves down to whichever one is active regardless of what's learned (only seeded once,
-  so a deliberate pick made via `showKondoPanel` survives every later re-level).
+- `OverworldScene.applySuperpositionUnlocks(registry)` (exported right after `BUILT_WORLDS`,
+  registry-only with no scene/world dependency of its own) is the shared "everything is
+  already unlocked" grant, called from two places: `HubScene.create()` (so the Lab's own
+  Guardians station -- `hubStations.ts`'s `showGuardiansPanel`, which lists every guardian
+  regardless of `metGuardians` in this mode -- is already fully unlocked on a save that's
+  never stepped through a world door) and `OverworldScene.applySuperpositionLeveling()`
+  (re-applied on every `create()`, covering Continue, Bloch teleport, and the Hub door's
+  World-1 jump alike, alongside that method's own world-specific `playerStats`/`playerHp`
+  re-leveling to `enemyStatsForWorld(this.world)` plus a flat `+2`, which stays local to
+  `OverworldScene` since only that scene knows which world to re-level against).
+  `OverworldScene.create()` calls `applySuperpositionLeveling()` immediately after grabbing
+  `this.game.registry`, before any map-state read/generation and before
+  `getPlayerMaterial(state)` -- the grant can seed `playerForm` itself (below), and both
+  World 10's own map-shape dispatch and the player-material read need to see that seeded
+  value already in the registry.
+- `applySuperpositionUnlocks` grants every move (`unlockedMoves = Object.keys(MOVES)`) and
+  every passive (`passivesUnlocked = Object.keys(PASSIVES)`), merges every `BUILT_WORLDS`
+  entry into `visitedWorlds` (read by Feynman's/`BattleScene`'s Analytic-question eligibility
+  and `HubScene.canResumeWorld`, not by Bloch -- see the candidate-pool point below), and
+  unconditionally overwrites registry `discoveredMaterials` with one entry per
+  `data/materials.ts`'s `allCrystals()` result, so the Hub's Qumatex (see "Qumatex" below)
+  reads as fully discovered. That overwrite is unconditional rather than seed-once, because
+  `discoveredMaterials` is a passive discovery log, not a player choice, so there's no prior
+  pick it could clobber.
+- For the four guardians whose kit is "several unlocked, only one truly active,"
+  `applySuperpositionUnlocks` also seeds that one active slot to a random pick among the
+  unlocked options, but only if it's still unset -- so a deliberate pick made at that
+  guardian's own panel survives every later re-application of the grant: `kondoActiveMove`
+  to a random one of `KONDO_MOVE_IDS`; `activePassiveByOwner[owner]` (for each
+  `PASSIVE_OWNERS` entry, today just `'franklin'`) to a random passive id among that owner's
+  own `PASSIVES` entries; `andersonDopant` to a random non-hybrid crystal (`allCrystals()`
+  filtered through `isHybridMaterial`); and `playerForm` to a random pick from a pool
+  coin-flipped between Dresselhaus's plain-crystal pool (`allCrystals()` filtered to
+  non-hybrid) and Majorana's hybrid-result pool (`allCrystals()` filtered to hybrid) -- so a
+  fresh Superposition save starts as a random ordinary crystal or an already-fused hybrid,
+  not always the default starting `PLAYER_MATERIAL`. Feynman has no such single-active slot
+  (every move he levels stands independently), so his version of the grant is unconditional
+  rather than seed-once: every move id's `moveLevels` entry is set straight to `3` (max) on
+  every application, since there's no deliberate lower-level pick worth preserving.
 - `HubScene.enterWorld()`/`doorLabel()` branch on `isSuperpositionMode()` to jump straight to
   World 1 (`{ world: 1, regenerate: true }`) instead of `highestUnlockedWorld()`, bypassing
   `rivalDefeated` entirely -- Bloch (reachable at World 2's own middle tile via the walkable
@@ -1178,12 +1215,11 @@ testing/exploration aid, not part of normal progression. Three things key off
   candidate pool -- Bloch's persisted `getVisitedWorlds()` filtered to `BUILT_WORLDS`, the other
   three's `getDefeatedMaterials()` -- for the full pool (`BUILT_WORLDS`, `allCrystals()`) when
   `isSuperpositionMode()` is true, rather than reading whatever's actually been visited/defeated
-  so far. Bloch's swap deliberately does not lean on `visitedWorlds` being pre-seeded above --
-  `applySuperpositionLeveling` only runs from `OverworldScene.create()` (on world entry), while a
-  fresh Superposition save starts in the Lab (`TitleScene` always starts `'Hub'`), so a
-  destination list still gated on `visitedWorlds` would offer nothing until the player had
-  already stepped through a world door once; checking `isSuperpositionMode()` directly instead
-  makes Bloch's hub work immediately even from the Lab, on a completely fresh save.
+  so far. Bloch's swap does not lean on `visitedWorlds` being pre-seeded by the grant above --
+  even though `HubScene.create()`'s own call to `applySuperpositionUnlocks` already seeds
+  `visitedWorlds` before any panel can open, checking `isSuperpositionMode()` directly keeps
+  Bloch's hub decoupled from that seeding order, working immediately from the Lab on a
+  completely fresh save regardless of which call site happens to run first.
 - `showBlochHub`/`showDresselhausPanel`/`showMajoranaPanel`/`showAndersonPanel` each check
   `isSuperpositionMode()` directly (not the persisted `blochUnlockedWorlds`/
   `dresselhausUnlockedCrystals`/`majoranaUnlockedResults`/`andersonUnlockedHosts` lists) to
@@ -1280,6 +1316,10 @@ Mode vs. Superposition Mode" above), `encounterDensity: number` (one of
 `musicStyle: MusicStyle` (same station's third row, one of `data/settings.ts`'s
 `MUSIC_STYLE_PRESETS` -- which of `audio/music.ts`'s `SCORES`/`SCORES_MODERN`
 tables `MusicEngine` draws from, applied immediately via `music.setStyle()`),
+`difficultyTier: DifficultyTier` (same station's fourth row, one of `data/settings.ts`'s
+`DIFFICULTY_TIER_PRESETS` -- B.Sc./M.Sc./Ph.D., `data/balance.ts`'s `DIFFICULTY_MULTIPLIERS`
+scaling `enemyStatsForWorld` -- read live by `BattleScene`/`OverworldScene` on every
+fight/re-level rather than cached, so a change applies to the very next battle),
 `kondoActiveMove: string | null` (which of
 `data/materials.ts`'s `KONDO_MOVE_IDS` is currently
 usable in battle, `null` until the player picks one via `scenes/panels/kondo.ts`'s `showKondoPanel` -- see

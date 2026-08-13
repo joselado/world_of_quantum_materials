@@ -108,9 +108,17 @@ together with Noether's form-gated shop -- transmuting into a crystal form
 that hosts a class a world's opponents don't, then buying that class's move,
 is treated as ordinary expected-tier play, not something only Ph.D.-level
 optimization would bother with; B.Sc. stays in its starting Silicon form the
-whole run. Each build's own "wins needed" per world is solved for by grinding ordinary
+whole run. Each build maps to its own real in-game Settings difficulty tier
+(`data/settings.ts`'s `DifficultyTier` -- B.Sc./M.Sc./Ph.D., `data/balance.ts`'s
+`DIFFICULTY_MULTIPLIERS` applied to `enemyStatsForWorld`), so the simulator
+verifies each tier against the effort level it's actually named after, not
+just the raw unscaled curve. Each build's own "wins needed" per world is solved for by grinding ordinary
 wilds until that build's purchase logic makes its rival fight beatable
-(capped, not unbounded), rather than a fixed input. Every modeling
+(capped, not unbounded), rather than a fixed input -- and if a build is stuck
+on a purchase it can't afford while genuinely losing the world it's on
+(wild or rival), it farms qumatessence from the highest earlier world it can
+still safely clear instead of just giving up, the same thing a real player
+can do by walking back through an earlier world's own door. Every modeling
 assumption (each build's purchase ruleset, the transmutation search, the
 Monte-Carlo sample count/seed, the ±15%-variance robustness check behind a
 row's WIN/LOSE/INCONCLUSIVE verdict) is documented in that script's own
