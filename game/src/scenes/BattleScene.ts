@@ -6,6 +6,7 @@ import { getBiome } from '../art/biomes';
 import type { Biome } from '../art/biomes';
 import { playAttackEffect, ANALYTIC_SHAPES, ULTIMATE_SHAPES } from '../art/attackEffects';
 import { fontPx, fontScale } from '../ui/text';
+import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY, REFERENCE_BLUE_GREY_HEX } from '../ui/theme';
 import {
   MOVES,
   canHost,
@@ -590,7 +591,7 @@ export class BattleScene extends Phaser.Scene {
     // row itself.
     this.turnPreviewLabel = this.add.text(TURN_PREVIEW_X, TURN_PREVIEW_Y, 'Turns', {
       fontSize: fontPx(this, 11),
-      color: '#8fa0c9',
+      color: REFERENCE_BLUE_GREY_HEX,
       backgroundColor: 'rgba(0,0,0,0.35)',
       padding: { x: 4, y: 2 },
     });
@@ -755,11 +756,11 @@ export class BattleScene extends Phaser.Scene {
       const menuTop = FIELD_H - MENU_BOTTOM_MARGIN - height;
 
       let y = menuTop + 8;
-      const title = this.add.text(MENU_X + MENU_WIDTH / 2, y, 'MOVES', { ...titleStyle, color: '#ffe066' }).setOrigin(0.5, 0);
+      const title = this.add.text(MENU_X + MENU_WIDTH / 2, y, 'MOVES', { ...titleStyle, color: GOLD_ACCENT_HEX }).setOrigin(0.5, 0);
       container.add(title);
       y += title.height + 4;
       const legend = this.add
-        .text(MENU_X + MENU_WIDTH / 2, y, '!! no natural defense (2x)', { ...legendStyle, color: '#8fa0c9', align: 'center' })
+        .text(MENU_X + MENU_WIDTH / 2, y, '!! no natural defense (2x)', { ...legendStyle, color: REFERENCE_BLUE_GREY_HEX, align: 'center' })
         .setOrigin(0.5, 0);
       container.add(legend);
       y += legend.height + 8;
@@ -773,9 +774,9 @@ export class BattleScene extends Phaser.Scene {
         .setOrigin(0.5, 0);
       container.add(empty);
       const bg = this.add
-        .rectangle(MENU_X, menuTop, MENU_WIDTH, height, 0x10101c, 0.9)
+        .rectangle(MENU_X, menuTop, MENU_WIDTH, height, PANEL_BG, 0.9)
         .setOrigin(0, 0)
-        .setStrokeStyle(2, 0xffe066);
+        .setStrokeStyle(2, GOLD_ACCENT);
       container.addAt(bg, 0);
       return;
     }
@@ -884,17 +885,17 @@ export class BattleScene extends Phaser.Scene {
     // now building the real, permanent, absolutely-positioned elements at
     // the now-known menuTop.
     const bg = this.add
-      .rectangle(MENU_X, menuTop, MENU_WIDTH, height, 0x10101c, 0.9)
+      .rectangle(MENU_X, menuTop, MENU_WIDTH, height, PANEL_BG, 0.9)
       .setOrigin(0, 0)
-      .setStrokeStyle(2, 0xffe066);
+      .setStrokeStyle(2, GOLD_ACCENT);
     container.addAt(bg, 0);
 
     let y = menuTop + 8;
-    const title = this.add.text(MENU_X + MENU_WIDTH / 2, y, 'MOVES', { ...titleStyle, color: '#ffe066' }).setOrigin(0.5, 0);
+    const title = this.add.text(MENU_X + MENU_WIDTH / 2, y, 'MOVES', { ...titleStyle, color: GOLD_ACCENT_HEX }).setOrigin(0.5, 0);
     container.add(title);
     y += title.height + 4;
     const legend = this.add
-      .text(MENU_X + MENU_WIDTH / 2, y, '!! no natural defense (2x)', { ...legendStyle, color: '#8fa0c9', align: 'center' })
+      .text(MENU_X + MENU_WIDTH / 2, y, '!! no natural defense (2x)', { ...legendStyle, color: REFERENCE_BLUE_GREY_HEX, align: 'center' })
       .setOrigin(0.5, 0);
     container.add(legend);
     y += legend.height + 8;
@@ -903,12 +904,12 @@ export class BattleScene extends Phaser.Scene {
     let pagerRowH = 0;
     if (showPager) {
       const leftArrow = this.add
-        .text(MENU_X + 14, rowY, '◀', { ...arrowStyle, color: '#ffe066' })
+        .text(MENU_X + 14, rowY, '◀', { ...arrowStyle, color: GOLD_ACCENT_HEX })
         .setOrigin(0.5, 0)
         .setInteractive({ useHandCursor: true })
         .on('pointerdown', () => this.switchMovePage(-1));
       const rightArrow = this.add
-        .text(MENU_X + MENU_WIDTH - 14, rowY, '▶', { ...arrowStyle, color: '#ffe066' })
+        .text(MENU_X + MENU_WIDTH - 14, rowY, '▶', { ...arrowStyle, color: GOLD_ACCENT_HEX })
         .setOrigin(0.5, 0)
         .setInteractive({ useHandCursor: true })
         .on('pointerdown', () => this.switchMovePage(1));
@@ -917,7 +918,7 @@ export class BattleScene extends Phaser.Scene {
       pagerRowH = Math.max(leftArrow.height, rightArrow.height);
     }
     const headerLabel = this.add
-      .text(MENU_X + MENU_WIDTH / 2, rowY, headerLabelText, { ...headerStyle, color: '#8fa0c9' })
+      .text(MENU_X + MENU_WIDTH / 2, rowY, headerLabelText, { ...headerStyle, color: REFERENCE_BLUE_GREY_HEX })
       .setOrigin(0.5, 0);
     container.add(headerLabel);
     // The arrow glyphs render at a larger px than the header label, so
@@ -926,7 +927,7 @@ export class BattleScene extends Phaser.Scene {
     rowY += Math.max(headerLabel.height, pagerRowH);
     if (section.legend) {
       const legendLine = this.add
-        .text(MENU_X + MENU_WIDTH / 2, rowY, section.legend, { ...sectionLegendStyle, color: '#8fa0c9' })
+        .text(MENU_X + MENU_WIDTH / 2, rowY, section.legend, { ...sectionLegendStyle, color: REFERENCE_BLUE_GREY_HEX })
         .setOrigin(0.5, 0);
       container.add(legendLine);
       rowY += legendLine.height + HEADER_LEGEND_GAP;
@@ -967,7 +968,7 @@ export class BattleScene extends Phaser.Scene {
     let color = '#ffff88';
     if (ANALYTIC_MOVE_IDS.includes(moveId)) {
       tag += ' ★';
-      color = '#ffe066';
+      color = GOLD_ACCENT_HEX;
     }
     if (ULTIMATE_MOVE_IDS.includes(moveId)) {
       tag += ' ★★★';
@@ -1039,7 +1040,7 @@ export class BattleScene extends Phaser.Scene {
     const title = this.add
       .text(FIELD_W / 2, y, moveDisplayName(this.game.registry, move.id), {
         fontSize: fontPx(this, 15),
-        color: '#ffe066',
+        color: GOLD_ACCENT_HEX,
         fontStyle: 'bold',
       })
       .setOrigin(0.5, 0);
@@ -1074,8 +1075,8 @@ export class BattleScene extends Phaser.Scene {
 
     const panelHeight = y - top + 10;
     const panel = this.add
-      .rectangle(FIELD_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
-      .setStrokeStyle(2, 0xffe066);
+      .rectangle(FIELD_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
+      .setStrokeStyle(2, GOLD_ACCENT);
     container.addAt(panel, 0);
   }
 
@@ -1167,7 +1168,7 @@ export class BattleScene extends Phaser.Scene {
 
       const panelHeight = y - top + 10;
       const panel = this.add
-        .rectangle(FIELD_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+        .rectangle(FIELD_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
         .setStrokeStyle(2, 0xff66ff);
       container.addAt(panel, 0);
     };
@@ -1318,9 +1319,9 @@ export class BattleScene extends Phaser.Scene {
   private addBoostHalo(container: Phaser.GameObjects.Container) {
     const glow = this.add.graphics();
     glow.setBlendMode(Phaser.BlendModes.ADD);
-    glow.fillStyle(0xffe066, 0.18);
+    glow.fillStyle(GOLD_ACCENT, 0.18);
     glow.fillCircle(0, 0, 58);
-    glow.lineStyle(3, 0xffe066, 0.9);
+    glow.lineStyle(3, GOLD_ACCENT, 0.9);
     glow.strokeCircle(0, 0, 44);
     glow.lineStyle(6, 0xffcc33, 0.4);
     glow.strokeCircle(0, 0, 52);
@@ -1348,7 +1349,7 @@ export class BattleScene extends Phaser.Scene {
     this.tweens.add({ targets: spikes, angle: 360, duration: 2200, repeat: -1, ease: 'Linear' });
 
     for (let i = 0; i < 6; i++) {
-      const ember = this.add.circle(Phaser.Math.Between(-22, 22), 34, Phaser.Math.Between(2, 3), 0xffe066, 0.9);
+      const ember = this.add.circle(Phaser.Math.Between(-22, 22), 34, Phaser.Math.Between(2, 3), GOLD_ACCENT, 0.9);
       container.add(ember);
       this.tweens.add({
         targets: ember,
@@ -1615,9 +1616,9 @@ export class BattleScene extends Phaser.Scene {
       // matchups, routine from world 9 onward).
       const ring = this.add.circle(0, 0, TURN_PREVIEW_RING_RADIUS);
       if (isPlayer) {
-        ring.setStrokeStyle(3, 0xffe066, 1);
+        ring.setStrokeStyle(3, GOLD_ACCENT, 1);
       } else {
-        ring.setStrokeStyle(1.5, 0x8fa0c9, 0.45);
+        ring.setStrokeStyle(1.5, REFERENCE_BLUE_GREY, 0.45);
       }
       icon.addAt(ring, 0);
       icon.setPosition(i * TURN_PREVIEW_ICON_SPACING + TURN_PREVIEW_ICON_SIZE / 2, TURN_PREVIEW_ICON_SIZE / 2);

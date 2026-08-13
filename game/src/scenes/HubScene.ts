@@ -10,6 +10,7 @@ import type { Material, MaterialType } from '../data/types';
 import { TUTORIAL_TIPS, hasSeenTip, markTipSeen } from '../data/tutorial';
 import { music } from '../audio/music';
 import { fontPx, fontScale } from '../ui/text';
+import { PANEL_BG, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../ui/theme';
 import { BUILT_WORLDS } from './OverworldScene';
 import type { GuardianPanelHost } from './OverworldScene';
 import { labPanelColumns, LAB_TITLE_COLOR, LAB_STATIONS } from './panels/hubStations';
@@ -134,7 +135,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     this.tokenText = this.add
       .text(CANVAS_W - 8, 8, `Qumatessence: ${this.qumatessence}`, {
         fontSize: fontPx(this, 14),
-        color: '#ffe066',
+        color: GOLD_ACCENT_HEX,
         backgroundColor: 'rgba(0,0,0,0.35)',
         padding: { x: 4, y: 2 },
       })
@@ -606,7 +607,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
       if (clampedPage === totalPages - 1) next.setAlpha(0.35);
       const controlsRowH = Math.max(prev.height, next.height);
       const pageLabel = this.add
-        .text(CANVAS_W / 2, y, `Page ${clampedPage + 1}/${totalPages}`, { fontSize: fontPx(this, 11), color: '#8fa0c9' })
+        .text(CANVAS_W / 2, y, `Page ${clampedPage + 1}/${totalPages}`, { fontSize: fontPx(this, 11), color: REFERENCE_BLUE_GREY_HEX })
         .setOrigin(0.5, 0);
       pageLabel.setY(y + (controlsRowH - pageLabel.height) / 2);
       container.add(pageLabel);
@@ -701,7 +702,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
 
     const panelHeight = y - top;
     const panel = this.add
-      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.95)
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.95)
       .setStrokeStyle(2, 0x9a6ad9);
     container.addAt(panel, 0);
   }
@@ -779,7 +780,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     const titleText = this.add
       .text(CANVAS_W / 2, y, `Qumatex -- ${discoveredAll}/${totalAll} discovered`, {
         fontSize: fontPx(this, 14),
-        color: '#ffe066',
+        color: GOLD_ACCENT_HEX,
         fontStyle: 'bold',
       })
       .setOrigin(0.5, 0);
@@ -849,7 +850,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
       const empty = this.add
         .text(leftX, leftY, 'No crystals\nof this type.', {
           fontSize: fontPx(this, 11),
-          color: '#8fa0c9',
+          color: REFERENCE_BLUE_GREY_HEX,
         })
         .setOrigin(0, 0);
       container.add(empty);
@@ -861,7 +862,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
       const rowText = this.add
         .text(leftX, leftY, label, {
           fontSize: fontPx(this, 12),
-          color: selected ? '#ffe066' : discovered ? '#cfd8ff' : '#6a7396',
+          color: selected ? GOLD_ACCENT_HEX : discovered ? '#cfd8ff' : '#6a7396',
           backgroundColor: selected ? '#3a2a5c' : '#1c1c30',
           padding: { x: 8, y: 4 },
         })
@@ -914,7 +915,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
       const pageLabel = this.add
         .text(leftColCenterX, leftY, `Page ${listPage + 1}/${totalPages}`, {
           fontSize: fontPx(this, 10),
-          color: '#8fa0c9',
+          color: REFERENCE_BLUE_GREY_HEX,
         })
         .setOrigin(0.5, 0);
       container.add(pageLabel);
@@ -1005,7 +1006,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // height.
   private insertMaterialdexPanelBg(container: Phaser.GameObjects.Container, panelW: number, top: number, height: number) {
     const panel = this.add
-      .rectangle(CANVAS_W / 2, top + height / 2, panelW, height, 0x10101c, 0.95)
+      .rectangle(CANVAS_W / 2, top + height / 2, panelW, height, PANEL_BG, 0.95)
       .setStrokeStyle(2, 0x9a6ad9);
     container.addAt(panel, 0);
   }
@@ -1060,7 +1061,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
 
     const panelHeight = y - top;
     const panel = this.add
-      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.95)
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.95)
       .setStrokeStyle(2, 0x9a6ad9);
     container.addAt(panel, 0);
   }

@@ -3,6 +3,7 @@ import { makeLaughlinAvatar } from '../../art/laughlin';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
 import { fontPx } from '../../ui/text';
+import { PANEL_BG } from '../../ui/theme';
 import { ANALYTIC_MOVE_IDS } from '../../data/materials';
 import { renderTunableMoveShop } from './tunableMoveShop';
 
@@ -51,7 +52,7 @@ export function showLaughlinPanel(scene: GuardianPanelHost) {
 
   const panelHeight = y - top;
   const panel = scene.add
-    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
     .setStrokeStyle(2, 0x6a7fff);
   container.addAt(panel, 0);
 }

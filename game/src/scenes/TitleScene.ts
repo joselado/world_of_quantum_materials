@@ -6,6 +6,7 @@ import { makeCrystal } from '../art/crystals';
 import { TYPE_LOOK } from '../data/materials';
 import type { MaterialType } from '../data/types';
 import { fontPx } from '../ui/text';
+import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../ui/theme';
 
 // A curated handful of main types (not all 10, to keep the cluster
 // readable) showing off the variety of looks TYPE_LOOK defines -- purely a
@@ -130,7 +131,7 @@ export class TitleScene extends Phaser.Scene {
     this.add
       .text(CANVAS_W / 2, y, 'Press SPACE or click Continue to begin', {
         fontSize: fontPx(this, 12),
-        color: '#8fa0c9',
+        color: REFERENCE_BLUE_GREY_HEX,
       })
       .setOrigin(0.5, 0);
 
@@ -201,7 +202,7 @@ export class TitleScene extends Phaser.Scene {
 
     const panelHeight = y - top;
     const bg = this.add
-      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.96)
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.96)
       .setStrokeStyle(2, 0xff5a7a);
     container.addAt(bg, 0);
 
@@ -252,8 +253,8 @@ export class TitleScene extends Phaser.Scene {
 
     const refresh = () => {
       const superposition = isSuperposition();
-      storyBtn.setColor(superposition ? '#8fa0c9' : '#ffff88').setBackgroundColor(superposition ? '#1a1a2e' : '#33335a');
-      superBtn.setColor(superposition ? '#ff8fa0' : '#8fa0c9').setBackgroundColor(superposition ? '#33335a' : '#1a1a2e');
+      storyBtn.setColor(superposition ? REFERENCE_BLUE_GREY_HEX : '#ffff88').setBackgroundColor(superposition ? '#1a1a2e' : '#33335a');
+      superBtn.setColor(superposition ? '#ff8fa0' : REFERENCE_BLUE_GREY_HEX).setBackgroundColor(superposition ? '#33335a' : '#1a1a2e');
     };
     refresh();
 

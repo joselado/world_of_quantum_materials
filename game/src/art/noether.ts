@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { shade } from './colors';
+import { GOLD_ACCENT } from '../ui/theme';
 
 // Noether's own avatar -- a small cartoon deity floating in a flowing
 // golden robe with no visible feet, haloed, with wide welcoming sleeves and
@@ -17,7 +18,7 @@ import { shade } from './colors';
 // does for the panel-intro float) without the two tweens fighting.
 export function makeNoetherAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameObjects.Container {
   const S = 30 * scale;
-  const gold = 0xffe066;
+  const gold = GOLD_ACCENT;
   const robeColor = 0xfff3d0;
   const skin = 0xffe9c2;
 

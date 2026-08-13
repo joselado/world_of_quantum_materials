@@ -4,6 +4,7 @@ import { makeNoetherAvatar } from '../../art/noether';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
 import { fontPx } from '../../ui/text';
+import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 import { MOVES, SHOP_MOVE_IDS, compatibleMoves, shopCost, getPlayerStats, statUpgradeCost } from '../../data/materials';
 import { persistFromRegistry } from '../../data/save';
 import type { Stats } from '../../data/types';
@@ -57,8 +58,8 @@ export function showNoetherShop(scene: GuardianPanelHost) {
 
   const panelHeight = y - top;
   const panel = scene.add
-    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
-    .setStrokeStyle(2, 0xffe066);
+    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
+    .setStrokeStyle(2, GOLD_ACCENT);
   container.addAt(panel, 0);
 }
 
@@ -69,7 +70,7 @@ function renderShopTabs(scene: GuardianPanelHost, container: Phaser.GameObjects.
     const btn = scene.add
       .text(CANVAS_W / 2 + (i === 0 ? -45 : 45), y, tab === 'moves' ? 'Moves' : 'Stats', {
         fontSize: fontPx(scene, 11),
-        color: active ? '#ffe066' : '#8fa0c9',
+        color: active ? GOLD_ACCENT_HEX : REFERENCE_BLUE_GREY_HEX,
         backgroundColor: active ? '#333355' : '#1a1a2e',
         padding: { x: 8, y: 3 },
       })

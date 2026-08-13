@@ -3,6 +3,7 @@ import { makeSklodowskaCurieAvatar } from '../../art/sklodowskaCurie';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
 import { fontPx } from '../../ui/text';
+import { PANEL_BG } from '../../ui/theme';
 import {
   ULTIMATE_MOVE_IDS,
   ULTIMATE_CLASS_UNLOCK_COST,
@@ -65,7 +66,7 @@ export function showSklodowskaCuriePanel(scene: GuardianPanelHost) {
 
   const panelHeight = y - top;
   const panel = scene.add
-    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
     .setStrokeStyle(2, 0xc9d84a);
   container.addAt(panel, 0);
 }
@@ -190,7 +191,7 @@ function showUltimateClassPicker(scene: GuardianPanelHost, moveId: string, onDon
 
   const panelHeight = y - top;
   const panel = scene.add
-    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
     .setStrokeStyle(2, 0xc9d84a);
   container.addAt(panel, 0);
 }

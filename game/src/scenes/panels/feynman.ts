@@ -4,6 +4,7 @@ import { makeFeynmanAvatar } from '../../art/feynman';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
 import { fontPx } from '../../ui/text';
+import { PANEL_BG } from '../../ui/theme';
 import {
   MOVES,
   getMoveLevel,
@@ -64,7 +65,7 @@ export function showFeynmanPanel(scene: GuardianPanelHost) {
 
   const panelHeight = y - top;
   const panel = scene.add
-    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
     .setStrokeStyle(2, 0xffa64a);
   container.addAt(panel, 0);
 }
@@ -211,7 +212,7 @@ function showLevelStreak(scene: GuardianPanelHost, moveId: string, targetLevel: 
 
     const panelHeight = y - top;
     const panel = scene.add
-      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
       .setStrokeStyle(2, 0xffa64a);
     container.addAt(panel, 0);
   };

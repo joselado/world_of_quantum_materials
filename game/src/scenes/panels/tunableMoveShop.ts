@@ -2,6 +2,7 @@ import type Phaser from 'phaser';
 import type { GuardianPanelHost } from '../OverworldScene';
 import { CANVAS_W } from '../../art/perspective';
 import { fontPx } from '../../ui/text';
+import { PANEL_BG } from '../../ui/theme';
 import {
   MOVES,
   TUNABLE_MOVE_CLASSES,
@@ -158,7 +159,7 @@ export function showMoveClassPicker(scene: GuardianPanelHost, moveId: string, on
 
   const panelHeight = y - top;
   const panel = scene.add
-    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
     .setStrokeStyle(2, 0x6a7fff);
   container.addAt(panel, 0);
 }

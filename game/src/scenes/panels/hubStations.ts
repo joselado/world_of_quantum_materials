@@ -3,6 +3,7 @@ import type { HubScene } from '../HubScene';
 import { OverworldScene } from '../OverworldScene';
 import { CANVAS_W, CANVAS_H } from '../../art/perspective';
 import { fontPx, fontScale } from '../../ui/text';
+import { PANEL_BG, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY, REFERENCE_BLUE_GREY_HEX, TUTORIAL_CYAN, TUTORIAL_CYAN_HEX } from '../../ui/theme';
 import { TUTORIAL_PAGES } from '../../data/tutorial';
 import { PASSIVES, PASSIVE_OWNERS, PASSIVE_OWNER_LABELS } from '../../data/passives';
 import type { PassiveOwner } from '../../data/passives';
@@ -24,7 +25,7 @@ import { makeMovesMotif, makeStatsMotif, makeAbilitiesMotif, makeGuardiansMotif,
 // already used it; Guardians/Settings are brought in line with it here too.
 // Tutorial's own page heading is content-specific (a different topic's title
 // every time, not a fixed panel name) and keeps its own cyan stroke instead.
-export const LAB_TITLE_COLOR = '#ffe066';
+export const LAB_TITLE_COLOR = GOLD_ACCENT_HEX;
 
 // Every Lab panel's text/button content lays out centered within its own
 // panel width, margined in from both edges. A panel's themed motif
@@ -119,8 +120,8 @@ function showInfoPanel(scene: HubScene, title: string, body: string) {
 
   const panelHeight = y - top;
   const panel = scene.add
-    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.95)
-    .setStrokeStyle(2, 0x8fa0c9);
+    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.95)
+    .setStrokeStyle(2, REFERENCE_BLUE_GREY);
   container.addAt(panel, 0);
 }
 
@@ -173,7 +174,7 @@ export function showAbilitiesPanel(scene: HubScene) {
       const descLine = scene.add
         .text(columns.contentCenterX, y, PASSIVES[activeId].description, {
           fontSize: descPx,
-          color: '#8fa0c9',
+          color: REFERENCE_BLUE_GREY_HEX,
           align: 'center',
           wordWrap: { width: columns.contentWrapW },
         })
@@ -191,7 +192,7 @@ export function showAbilitiesPanel(scene: HubScene) {
       `Switch which one's active by revisiting ${PASSIVE_OWNERS.map((o) => PASSIVE_OWNER_LABELS[o]).join('/')}.`,
       {
         fontSize: fontPx(scene, 11),
-        color: '#8fa0c9',
+        color: REFERENCE_BLUE_GREY_HEX,
         align: 'center',
         wordWrap: { width: columns.contentWrapW },
       }
@@ -205,8 +206,8 @@ export function showAbilitiesPanel(scene: HubScene) {
 
   const panelHeight = y - top;
   const panel = scene.add
-    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.95)
-    .setStrokeStyle(2, 0x8fa0c9);
+    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.95)
+    .setStrokeStyle(2, REFERENCE_BLUE_GREY);
   container.addAt(panel, 0);
 }
 
@@ -289,7 +290,7 @@ export function showGuardiansPanel(scene: HubScene) {
 
   const panelHeight = y - top;
   const panel = scene.add
-    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.95)
+    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.95)
     .setStrokeStyle(2, 0xb98fea);
   container.addAt(panel, 0);
 }
@@ -311,13 +312,13 @@ export function showTutorialTopics(scene: HubScene) {
 
   let y = top;
   const title = scene.add
-    .text(CANVAS_W / 2, y, 'Tutorial', { fontSize: fontPx(scene, 15), color: '#5ad9ff', fontStyle: 'bold' })
+    .text(CANVAS_W / 2, y, 'Tutorial', { fontSize: fontPx(scene, 15), color: TUTORIAL_CYAN_HEX, fontStyle: 'bold' })
     .setOrigin(0.5, 0);
   container.add(title);
   y += title.height + 6;
 
   const hint = scene.add
-    .text(CANVAS_W / 2, y, 'Pick a topic to revisit.', { fontSize: fontPx(scene, 11), color: '#8fa0c9' })
+    .text(CANVAS_W / 2, y, 'Pick a topic to revisit.', { fontSize: fontPx(scene, 11), color: REFERENCE_BLUE_GREY_HEX })
     .setOrigin(0.5, 0);
   container.add(hint);
   y += hint.height + 12;
@@ -341,8 +342,8 @@ export function showTutorialTopics(scene: HubScene) {
 
   const panelHeight = y - top;
   const panel = scene.add
-    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.95)
-    .setStrokeStyle(2, 0x5ad9ff);
+    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.95)
+    .setStrokeStyle(2, TUTORIAL_CYAN);
   container.addAt(panel, 0);
 }
 
@@ -400,8 +401,8 @@ function showTutorialTopic(scene: HubScene, index: number) {
 
   const panelHeight = y - top;
   const panel = scene.add
-    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.95)
-    .setStrokeStyle(2, 0x5ad9ff);
+    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.95)
+    .setStrokeStyle(2, TUTORIAL_CYAN);
   container.addAt(panel, 0);
 }
 
@@ -454,7 +455,7 @@ export function showSettingsPanel(scene: HubScene) {
   const densityHint = scene.add
     .text(columns.contentCenterX, y, 'Takes effect on the next map.', {
       fontSize: fontPx(scene, 11),
-      color: '#8fa0c9',
+      color: REFERENCE_BLUE_GREY_HEX,
       align: 'center',
       wordWrap: { width: contentWidth },
       lineSpacing: 4,
@@ -483,7 +484,7 @@ export function showSettingsPanel(scene: HubScene) {
   const fontHint = scene.add
     .text(columns.contentCenterX, y, 'Applies immediately.', {
       fontSize: fontPx(scene, 11),
-      color: '#8fa0c9',
+      color: REFERENCE_BLUE_GREY_HEX,
       align: 'center',
       wordWrap: { width: contentWidth },
       lineSpacing: 4,
@@ -513,7 +514,7 @@ export function showSettingsPanel(scene: HubScene) {
   const styleHint = scene.add
     .text(columns.contentCenterX, y, 'Applies immediately.', {
       fontSize: fontPx(scene, 11),
-      color: '#8fa0c9',
+      color: REFERENCE_BLUE_GREY_HEX,
       align: 'center',
       wordWrap: { width: contentWidth },
       lineSpacing: 4,
@@ -527,8 +528,8 @@ export function showSettingsPanel(scene: HubScene) {
 
   const panelHeight = y - top;
   const panel = scene.add
-    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.95)
-    .setStrokeStyle(2, 0x8fa0c9);
+    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.95)
+    .setStrokeStyle(2, REFERENCE_BLUE_GREY);
   container.addAt(panel, 0);
 }
 

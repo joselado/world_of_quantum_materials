@@ -49,6 +49,7 @@ import type { Material, MaterialType, Stats } from '../data/types';
 import { generateWorldMap } from '../world/mapgen';
 import type { GridPoint } from '../world/mapgen';
 import { fontPx, fontScale } from '../ui/text';
+import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY, REFERENCE_BLUE_GREY_HEX, TUTORIAL_CYAN, STORY_LAVENDER } from '../ui/theme';
 import { music } from '../audio/music';
 import { showNoetherShop } from './panels/noether';
 import { showSklodowskaCuriePanel } from './panels/sklodowskaCurie';
@@ -573,7 +574,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.tokenText = this.add
       .text(CANVAS_W - 8, 8, `Qumatessence: ${this.qumatessence}`, {
         fontSize: fontPx(this, 14),
-        color: '#ffe066',
+        color: GOLD_ACCENT_HEX,
         backgroundColor: 'rgba(0,0,0,0.35)',
         padding: { x: 4, y: 2 },
       })
@@ -592,7 +593,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.add
       .text(CANVAS_W - 8, CANVAS_H - 8, 'Press Enter to go to the Lab', {
         fontSize: fontPx(this, 12),
-        color: '#8fa0c9',
+        color: REFERENCE_BLUE_GREY_HEX,
         backgroundColor: 'rgba(0,0,0,0.35)',
         padding: { x: 4, y: 2 },
       })
@@ -807,8 +808,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
 
     const panelHeight = y - top;
     const panel = this.add
-      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.95)
-      .setStrokeStyle(2, 0x5ad9ff);
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.95)
+      .setStrokeStyle(2, TUTORIAL_CYAN);
     container.addAt(panel, 0);
   }
 
@@ -1138,7 +1139,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     depthRatio: number
   ) {
     if (depthRatio > 0.9) return;
-    const glowColor = OverworldScene.WORLD_GUARDIANS[this.world]?.strokeColor ?? 0xffe066;
+    const glowColor = OverworldScene.WORLD_GUARDIANS[this.world]?.strokeColor ?? GOLD_ACCENT;
     const pulse = 0.5 + 0.5 * Math.sin(this.time.now / 320);
     g.fillStyle(glowColor, 0.28 * pulse * (1 - depthRatio));
     g.fillPoints([pFL, pFR, pNR, pNL], true);
@@ -1798,7 +1799,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       const prompt = this.add
         .text(CANVAS_W / 2, y, question.prompt, {
           fontSize: fontPx(this, 13),
-          color: '#ffe066',
+          color: GOLD_ACCENT_HEX,
           align: 'center',
           wordWrap: { width: contentWidth },
         })
@@ -1831,7 +1832,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
 
     const panelHeight = y - top;
     const panel = this.add
-      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
       .setStrokeStyle(2, 0x444466);
     container.addAt(panel, 0);
   }
@@ -1983,8 +1984,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
 
     const panelHeight = y - top;
     const panel = this.add
-      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
-      .setStrokeStyle(2, 0x8fa0c9);
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
+      .setStrokeStyle(2, REFERENCE_BLUE_GREY);
     container.addAt(panel, 0);
   }
 
@@ -2086,8 +2087,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
 
     const panelHeight = y - top;
     const panel = this.add
-      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.96)
-      .setStrokeStyle(2, 0xd9a5ff);
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.96)
+      .setStrokeStyle(2, STORY_LAVENDER);
     container.addAt(panel, 0);
   }
 
@@ -2109,7 +2110,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
 
-    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 560, 200, 0x10101c, 0.96).setStrokeStyle(2, 0xd9a5ff);
+    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 560, 200, PANEL_BG, 0.96).setStrokeStyle(2, STORY_LAVENDER);
     container.add(panel);
 
     const text = this.add
@@ -2145,13 +2146,13 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
 
-    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 600, 220, 0x10101c, 0.96).setStrokeStyle(2, 0xffe066);
+    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 600, 220, PANEL_BG, 0.96).setStrokeStyle(2, GOLD_ACCENT);
     container.add(panel);
 
     const title = this.add
       .text(CANVAS_W / 2, panelY - 80, 'The Decoherence is stabilized.', {
         fontSize: fontPx(this, 16),
-        color: '#ffe066',
+        color: GOLD_ACCENT_HEX,
         fontStyle: 'bold',
         align: 'center',
       })
@@ -2280,7 +2281,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
 
     const panelHeight = y - top;
     const panel = this.add
-      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
       .setStrokeStyle(2, 0xff6666);
     container.addAt(panel, 0);
   }
@@ -2370,8 +2371,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
 
     const panelHeight = y - top;
     const panel = this.add
-      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
-      .setStrokeStyle(2, 0xd9a5ff);
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
+      .setStrokeStyle(2, STORY_LAVENDER);
     container.addAt(panel, 0);
   }
 
@@ -2561,7 +2562,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       if (clampedPage === totalPages - 1) next.setAlpha(0.35);
       const controlsRowH = Math.max(prev.height, next.height);
       const pageLabel = this.add
-        .text(CANVAS_W / 2, y, `Page ${clampedPage + 1}/${totalPages}`, { fontSize: fontPx(this, 11), color: '#8fa0c9' })
+        .text(CANVAS_W / 2, y, `Page ${clampedPage + 1}/${totalPages}`, { fontSize: fontPx(this, 11), color: REFERENCE_BLUE_GREY_HEX })
         .setOrigin(0.5, 0);
       pageLabel.setY(y + (controlsRowH - pageLabel.height) / 2);
       container.add(pageLabel);
@@ -2654,7 +2655,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     const note = this.add
       .text(CANVAS_W / 2, y, `${guardian.name} has nothing to teach you yet -- more to come.`, {
         fontSize: fontPx(this, 11),
-        color: '#8fa0c9',
+        color: REFERENCE_BLUE_GREY_HEX,
         align: 'center',
         wordWrap: { width: 480 },
       })
@@ -2667,7 +2668,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
 
     const panelHeight = y - top;
     const panel = this.add
-      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
       .setStrokeStyle(2, guardian.strokeColor);
     container.addAt(panel, 0);
   }

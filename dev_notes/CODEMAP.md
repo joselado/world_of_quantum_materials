@@ -220,6 +220,15 @@ game/src/
     worldLore.ts                   WORLD_LORE (per-world 2-page history, shown once per save on first entry)/
                                     RIVAL_TAUNTS (per-world 2-part rival gate taunt) -- worldLoreSeen gating via
                                     hasSeenWorldLore/markWorldLoreSeen
+  ui/
+    text.ts                       fontPx()/fontScale() -- see "Lab stations and settings" below
+    theme.ts                      PANEL_BG/GOLD_ACCENT(_HEX)/REFERENCE_BLUE_GREY(_HEX)/
+                                   TUTORIAL_CYAN(_HEX)/STORY_LAVENDER -- colors reused for a shared
+                                   UI role (a panel background, an "active" accent, etc.) across
+                                   multiple scene/panel files. A guardian's own identity color
+                                   (their `art/<guardian>.ts` avatar plus their own
+                                   `scenes/panels/<guardian>.ts` panel) stays a literal in those two
+                                   files instead, since it never appears outside that pair.
 ```
 
 `game/scripts/gen-docs.mjs` (run via `npm run docs`) is outside `src/` -- it reads

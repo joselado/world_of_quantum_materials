@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { shade } from './colors';
+import { GOLD_ACCENT, REFERENCE_BLUE_GREY, TUTORIAL_CYAN } from '../ui/theme';
 
 // One small hand-drawn icon per Lab station (scenes/panels/hubStations.ts's
 // six reference/settings stations, plus HubScene's own Qumatex and Save
@@ -53,7 +54,7 @@ export function makeQumatexMotif(scene: Phaser.Scene, size: number): Phaser.Game
 
 export function makeSavePointMotif(scene: Phaser.Scene, size: number): Phaser.GameObjects.Container {
   const container = scene.add.container(0, 0);
-  const color = 0xffe066;
+  const color = GOLD_ACCENT;
 
   const halo = scene.add.ellipse(0, size * 0.38, size * 1.15, size * 0.42, color, 0.16);
   halo.setBlendMode(Phaser.BlendModes.ADD);
@@ -129,7 +130,7 @@ export function makeMovesMotif(scene: Phaser.Scene, size: number): Phaser.GameOb
 
 export function makeStatsMotif(scene: Phaser.Scene, size: number): Phaser.GameObjects.Container {
   const container = scene.add.container(0, 0);
-  const color = 0x8fa0c9;
+  const color = REFERENCE_BLUE_GREY;
 
   // A small ascending bar chart -- three bars, tallest last -- read as "your
   // stats climbing," rather than a literal dial (a dial's needle position
@@ -216,7 +217,7 @@ export function makeGuardiansMotif(scene: Phaser.Scene, size: number): Phaser.Ga
 
 export function makeTutorialMotif(scene: Phaser.Scene, size: number): Phaser.GameObjects.Container {
   const container = scene.add.container(0, 0);
-  const color = 0x5ad9ff; // matches the tutorial panels' own cyan stroke
+  const color = TUTORIAL_CYAN; // matches the tutorial panels' own cyan stroke
 
   // A small open book -- two pages splayed from a center spine.
   const g = scene.add.graphics();
@@ -257,7 +258,7 @@ export function makeTutorialMotif(scene: Phaser.Scene, size: number): Phaser.Gam
 
 export function makeSettingsMotif(scene: Phaser.Scene, size: number): Phaser.GameObjects.Container {
   const container = scene.add.container(0, 0);
-  const color = 0x8fa0c9;
+  const color = REFERENCE_BLUE_GREY;
 
   // A small gear -- a ring of teeth plus a hub -- with a second, smaller
   // gear meshed at its lower-right so it still reads as "settings/tuning"

@@ -4,6 +4,7 @@ import { makeKondoAvatar } from '../../art/kondo';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
 import { fontPx, fontScale } from '../../ui/text';
+import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 import { MOVES, KONDO_MOVE_IDS, shopCost, moveDisplayName } from '../../data/materials';
 import { persistFromRegistry } from '../../data/save';
 
@@ -55,7 +56,7 @@ export function showKondoPanel(scene: GuardianPanelHost) {
 
   const panelHeight = y - top;
   const panel = scene.add
-    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.94)
+    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
     .setStrokeStyle(2, 0xe86a44);
   container.addAt(panel, 0);
 }
@@ -101,7 +102,7 @@ function renderKondoMoves(scene: GuardianPanelHost, container: Phaser.GameObject
     const desc = scene.add
       .text(CANVAS_W / 2, y, MOVES[id].description ?? '', {
         fontSize: descPx,
-        color: '#8fa0c9',
+        color: REFERENCE_BLUE_GREY_HEX,
         align: 'center',
         wordWrap: { width: 480 },
       })

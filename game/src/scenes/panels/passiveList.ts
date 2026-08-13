@@ -2,6 +2,7 @@ import type Phaser from 'phaser';
 import type { GuardianPanelHost } from '../OverworldScene';
 import { CANVAS_W } from '../../art/perspective';
 import { fontScale } from '../../ui/text';
+import { REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 import { PASSIVES } from '../../data/passives';
 import type { PassiveOwner } from '../../data/passives';
 import { persistFromRegistry } from '../../data/save';
@@ -94,7 +95,7 @@ export function renderPassiveList(
     const desc = scene.add
       .text(CANVAS_W / 2, y, passive.description, {
         fontSize: descPx,
-        color: '#8fa0c9',
+        color: REFERENCE_BLUE_GREY_HEX,
         align: 'center',
         wordWrap: { width: 480 },
       })
@@ -132,7 +133,7 @@ export function renderPassiveList(
       const desc = scene.add
         .text(CANVAS_W / 2, y, passive.description, {
           fontSize: descPx,
-          color: '#8fa0c9',
+          color: REFERENCE_BLUE_GREY_HEX,
           align: 'center',
           wordWrap: { width: 480 },
         })

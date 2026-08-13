@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { STORY_LAVENDER } from '../ui/theme';
 
 // A doorway/cave-mouth landmark marking a walkable connection to an
 // adjacent world (OverworldScene.spawnDoorSprites) -- stands at every built
@@ -18,7 +19,7 @@ export function makeDoorSprite(scene: Phaser.Scene, size: number): Phaser.GameOb
   // rather than disappearing into the ground/wall colors around it.
   const halo = scene.add.graphics();
   halo.setBlendMode(Phaser.BlendModes.ADD);
-  halo.fillStyle(0xd9a5ff, 0.2);
+  halo.fillStyle(STORY_LAVENDER, 0.2);
   halo.fillCircle(0, -size * 0.3, size * 1.05);
   container.add(halo);
   scene.tweens.add({
@@ -52,11 +53,11 @@ export function makeDoorSprite(scene: Phaser.Scene, size: number): Phaser.GameOb
 
   // Glowing portal filling the opening, additive-blended so it reads as an
   // actual light source rather than a flat colored shape -- lavender to
-  // match showStoryBeat's own between-worlds panel stroke (0xd9a5ff), the
+  // match showStoryBeat's own between-worlds panel stroke (STORY_LAVENDER), the
   // same "connective tissue between worlds" color already established there.
   const portal = scene.add.graphics();
   portal.setBlendMode(Phaser.BlendModes.ADD);
-  portal.fillStyle(0xd9a5ff, 0.6);
+  portal.fillStyle(STORY_LAVENDER, 0.6);
   portal.fillEllipse(0, -size * 0.24, size * 0.52, size * 0.82);
   portal.fillStyle(0xffffff, 0.4);
   portal.fillEllipse(0, -size * 0.24, size * 0.26, size * 0.44);
