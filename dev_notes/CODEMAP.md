@@ -213,6 +213,9 @@ game/src/
     settings.ts                    DENSITY_PRESETS/DEFAULT_ENCOUNTER_DENSITY -- wild-encounter density presets,
                                     FONT_SCALE_PRESETS, MUSIC_STYLE_PRESETS/DEFAULT_MUSIC_STYLE
     story.ts                       STORY_BEATS -- per-world Decoherence-arc line shown on advancing worlds
+    worldLore.ts                   WORLD_LORE (per-world 2-page history, shown once per save on first entry)/
+                                    RIVAL_TAUNTS (per-world 2-part rival gate taunt) -- worldLoreSeen gating via
+                                    hasSeenWorldLore/markWorldLoreSeen
 ```
 
 `game/scripts/gen-docs.mjs` (run via `npm run docs`) is outside `src/` -- it reads
@@ -324,9 +327,11 @@ difficulty-curve sanity check rather than a docs generator.
   impurity-doping panel, amber `0xffa64a` = Feynman's move-leveling panel (and its own
   question-streak sub-panel), red `0xe86a44` = Kondo's
   self-buff shop, purple `0xa878c9` = Franklin's passive panel, olive `0xc9d84a` =
-  Skłodowska-Curie's Ultimate shop, red `0xff6666` = rival gate, purple `0x9a6ad9` = Hub's
+  Skłodowska-Curie's Ultimate shop, red `0xff6666` = rival gate (`showRivalEncounter`'s
+  two-part taunt), purple `0x9a6ad9` = Hub's
   `showPanel` (Qumatex/Save), lavender `0xd9a5ff` = `OverworldScene.showStoryBeat`'s
-  between-worlds panel, and (in `BattleScene`, the one place dialogue-style overlays live outside
+  between-worlds panel and `showWorldLore`'s once-per-save world-entry lore screen, and
+  (in `BattleScene`, the one place dialogue-style overlays live outside
   `OverworldScene`) gold `0xffe066` again for `showAnalyticQuestion`'s in-battle question panel
   (matching the move menu's own border) and magenta `0xff66ff` for `showUltimateQuestions`'s.
   A new panel should pick a stroke color that doesn't collide with these.

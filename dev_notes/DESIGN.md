@@ -1133,6 +1133,25 @@ world, previewing that world's biome and nudging the plot forward one step at a
 time. Falls straight through to `advanceToWorld` if a world has no entry, so a
 missing beat is never a dead end.
 
+**World-entry lore and the rival's taunt.** `data/worldLore.ts` holds two more
+pieces of per-world Decoherence-arc content, both explaining how the Decoherence
+specifically manifests in that world's own physics rather than gesturing at it
+generically. `WORLD_LORE`'s two-page history of the world plays once per save the
+first time the player steps into it (`OverworldScene.showWorldLore`, gated by
+`hasSeenWorldLore`/`markWorldLoreSeen` against its own `worldLoreSeen` save field —
+kept separate from `visitedWorlds` because Superposition Mode's
+`applySuperpositionLeveling` pre-seeds `visitedWorlds` with every built world on
+entry, which would otherwise suppress every world's lore screen at once). It plays
+before the goal/middle auto-dialogues and the `'controls'` tutorial tip if more
+than one of those is due on the same entry, since it's the more establishing
+content. `RIVAL_TAUNTS` gives each world's rival gate a two-part taunt
+(`OverworldScene.showRivalEncounter`) — a narration-plus-dialogue opener, then a
+second part that raises the stakes, chained as two pages before the "Battle!"
+button. World 9's taunt is written to hold for whichever of its seven
+randomly-rolled rival types actually shows up rather than naming one; world 10's is
+the story's climax reveal. A world with no matching entry shows no lore screen, and
+its rival gate shows a single generic line, so it's never a dead end.
+
 ## 6. Boss design
 
 Each world boss requires the ability that world specifically teaches, not just

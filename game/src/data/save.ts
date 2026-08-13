@@ -42,6 +42,13 @@ export interface SaveData {
   // Lab's Tutorial station replays the full set as a topic menu on demand
   // regardless of this list.
   tutorialTipsSeen: string[];
+  // Which worlds' entry lore screen (data/worldLore.ts's WORLD_LORE, shown
+  // by OverworldScene on first entering that world) has already played --
+  // deliberately its own field, not folded into `visitedWorlds`, because
+  // Superposition Mode's applySuperpositionLeveling pre-seeds
+  // `visitedWorlds` with every built world on entry, which would wrongly
+  // suppress every world's lore screen at once if this reused that list.
+  worldLoreSeen: number[];
   // Title-screen toggle (TitleScene), "Superposition Mode" -- a testing/
   // exploration aid, not part of the normal progression. While on,
   // OverworldScene.create() re-levels the player's stats/moves/HP to match
@@ -158,6 +165,7 @@ export function defaultSave(): SaveData {
     playerForm: null,
     metGuardians: [],
     tutorialTipsSeen: [],
+    worldLoreSeen: [],
     superpositionMode: false,
     encounterDensity: DEFAULT_ENCOUNTER_DENSITY,
     fontScale: DEFAULT_FONT_SCALE,
@@ -284,6 +292,7 @@ export function persistFromRegistry(registry: RegistryLike) {
     playerForm: (registry.get('playerForm') as Material | null) ?? null,
     metGuardians: (registry.get('metGuardians') as string[]) ?? [],
     tutorialTipsSeen: (registry.get('tutorialTipsSeen') as string[]) ?? [],
+    worldLoreSeen: (registry.get('worldLoreSeen') as number[]) ?? [],
     superpositionMode: (registry.get('superpositionMode') as boolean) ?? false,
     encounterDensity: (registry.get('encounterDensity') as number) ?? DEFAULT_ENCOUNTER_DENSITY,
     fontScale: (registry.get('fontScale') as number) ?? DEFAULT_FONT_SCALE,

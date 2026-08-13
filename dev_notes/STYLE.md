@@ -797,27 +797,54 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   reopens this panel, since the confirm step itself (not a "seen it once"
   flag) is what keeps an accidental brush from becoming a real backtrack.
 
-## The rival gate (`OverworldScene.showRivalEncounter`)
+## The world-entry lore screen (`OverworldScene.showWorldLore`/`renderWorldLorePage`)
+
+- The first time a save enters a world, before the player can otherwise interact with
+  it (right after `recordVisit` in `create()`, ahead of the goal/middle auto-dialogues
+  and the `'controls'` tutorial tip if more than one is due on the same entry -- it's
+  the more establishing content), a two-page history panel plays from
+  `data/worldLore.ts`'s `WORLD_LORE`, gated by `hasSeenWorldLore`/`markWorldLoreSeen`
+  against its own `worldLoreSeen` save field. Same dark rounded-rectangle-with-stroke
+  treatment as every other overworld dialogue, near-full-canvas width (`CANVAS_W - 40`),
+  stroked lavender (`0xd9a5ff`) to match `showStoryBeat`'s and the start-door panel's
+  own "connective tissue between worlds" convention. Heading is the world's name
+  (`WORLD_NAMES`); each page is laid out top-down (title, then body, then a button) with
+  the panel's background sized to the real content height afterward, the same idiom
+  `renderTutorialTipPopup` uses. Page 1 ends in a "Next ->" button that destroys and
+  rebuilds the panel showing page 2; page 2 ends in "Onward," which marks the world
+  seen, persists, and closes the dialogue. The title and body font sizes are capped at
+  `Math.min(fontScale(this), 1.5)` rather than scaling all the way to the Settings
+  panel's 2x "Large" preset -- the same fixed-budget problem `BattleScene.drawMoveMenu`'s
+  own `chromeScale`/`headerScale` caps solve, since this panel's multi-paragraph prose is
+  long enough that uncapped 2x text overflows the canvas's fixed height on the longer
+  entries (worlds 9/10).
+
+## The rival gate (`OverworldScene.showRivalEncounter`/`renderRivalTauntPage`)
 
 - Triggered by clicking "Face the Rival ->" in the goal panel (`showGatePanel`), not
   automatically on reaching the goal and not from any guardian's own panel -- so the player
   can walk past the goal to shop with Noether or any other guardian before ever facing the
   fight they're being gated on. Same 600-wide panel treatment as a wild encounter (centered
   crystal, italic line beneath), but stroked in red (`0xff6666`) instead of blue-grey or
-  gold, with a single mandatory "Battle!" button -- no "let me pass," since a gate that can
-  be skipped isn't a gate -- and the portrait itself is `art/boss.ts`'s `makeBossCrystal` at
-  `BOSS_CRYSTAL_SIZE` (`OverworldScene.ts`'s own copy, `70`), the same golem silhouette the
-  rival already renders as standing at the goal tile (`spawnBossSprite`) and as the battle
-  opponent (`scenes/BattleScene.ts`'s own `BOSS_CRYSTAL_SIZE`) -- not the plain faceted
-  `makeCrystal` an ordinary wild encounter uses, so the rival never reverts to looking like an
-  ordinary crystal just because this dialogue is open. The crystal's vertical position is set
-  with enough headroom below the panel's top edge for `makeBossCrystal`'s translucent danger
-  aura (which pulses out to `size*1.4*1.18`, well past the bare `BOSS_CRYSTAL_SIZE` footprint)
-  to stay inside the panel through its full pulse, the same "decorative aura outgrows the
-  crystal's own footprint" fact `BattleScene`'s boss placement below already accounts for.
-  Losing doesn't set anything back except
-  the token stake (see Stakes in DESIGN.md §4): the goal panel simply reopens and "Face
-  the Rival ->" is still there to retry.
+  gold. The taunt is two pages, chained the same destroy-and-rebuild way the world-entry
+  lore screen above is: `data/worldLore.ts`'s `RIVAL_TAUNTS` supplies `part1` (rendered with
+  a "Next ->" button) and `part2` (rendered with the mandatory "Battle!" button -- no "let me
+  pass," since a gate that can be skipped isn't a gate); a world with no `RIVAL_TAUNTS` entry
+  falls back to a single generic line instead. The boss crystal is redrawn on both pages
+  (`art/boss.ts`'s `makeBossCrystal` at `BOSS_CRYSTAL_SIZE`, `OverworldScene.ts`'s own copy
+  of `70`), the same golem silhouette the rival already renders as standing at the goal tile
+  (`spawnBossSprite`) and as the battle opponent (`scenes/BattleScene.ts`'s own
+  `BOSS_CRYSTAL_SIZE`) -- not the plain faceted `makeCrystal` an ordinary wild encounter uses,
+  so the rival never reverts to looking like an ordinary crystal just because this dialogue is
+  open. The crystal's vertical position is set with enough headroom below the panel's top edge
+  for `makeBossCrystal`'s translucent danger aura (which pulses out to `size*1.4*1.18`, well
+  past the bare `BOSS_CRYSTAL_SIZE` footprint) to stay inside the panel through its full pulse,
+  the same "decorative aura outgrows the crystal's own footprint" fact `BattleScene`'s boss
+  placement below already accounts for. The taunt text's own font size is capped the same way
+  the world-entry lore screen's is, for the same reason (worlds 9/10's longer taunts would
+  otherwise overflow the canvas at the Settings panel's 2x preset). Losing doesn't set anything
+  back except the token stake (see Stakes in DESIGN.md §4): the goal panel simply reopens and
+  "Face the Rival ->" is still there to retry.
 
 ## Boss opponent in battle (`scenes/BattleScene.ts`)
 

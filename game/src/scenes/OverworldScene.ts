@@ -39,13 +39,15 @@ import { encounterGreeting } from '../data/greetings';
 import { TUTORIAL_TIPS, hasSeenTip, markTipSeen } from '../data/tutorial';
 import type { TutorialTipId } from '../data/tutorial';
 import { STORY_BEATS } from '../data/story';
+import { WORLD_LORE, RIVAL_TAUNTS, hasSeenWorldLore, markWorldLoreSeen } from '../data/worldLore';
+import type { WorldLore } from '../data/worldLore';
 import { DEFAULT_ENCOUNTER_DENSITY } from '../data/settings';
 import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
 import type { Material, MaterialType, Stats } from '../data/types';
 import { generateWorldMap } from '../world/mapgen';
 import type { GridPoint } from '../world/mapgen';
-import { fontPx } from '../ui/text';
+import { fontPx, fontScale } from '../ui/text';
 import { music } from '../audio/music';
 import { showNoetherShop } from './panels/noether';
 import { showSklodowskaCuriePanel } from './panels/sklodowskaCurie';
@@ -638,13 +640,24 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       state.set('andersonDopant', null);
     }
 
-    this.maybeAutoOpenGoalDialogue();
-    this.maybeAutoOpenMiddleDialogue();
     // Same "don't stack on top of an already-open panel" guard the old
     // first-run tutorial used -- the player's starting tile is never on the
     // goal/middle row, so this only actually skips in practice if a future
     // change moves the start closer to either.
-    if (!this.dialogueActive) this.showTutorialTip('controls');
+    const finishEntry = () => {
+      this.maybeAutoOpenGoalDialogue();
+      this.maybeAutoOpenMiddleDialogue();
+      if (!this.dialogueActive) this.showTutorialTip('controls');
+    };
+    // World lore is the more "establishing" content when both are due on
+    // the same entry, so it plays first and finishEntry (the goal/middle
+    // auto-dialogues, then the controls tip) only runs once it's dismissed.
+    const lore = WORLD_LORE[this.world];
+    if (lore && !hasSeenWorldLore(this.game.registry, this.world)) {
+      this.showWorldLore(lore, finishEntry);
+    } else {
+      finishEntry();
+    }
   }
 
   isSuperpositionMode(): boolean {
@@ -1992,6 +2005,91 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.showRivalEncounter();
   }
 
+  // World-entry lore (data/worldLore.ts's WORLD_LORE) -- a two-page history
+  // of this world shown once per save the first time the player steps into
+  // it (gated by hasSeenWorldLore/markWorldLoreSeen, its own save field
+  // independent of visitedWorlds, see save.ts's worldLoreSeen comment).
+  // Chained single-page panels rather than one scrolling page, the same
+  // destroy-and-rebuild idiom renderTutorialTipPopup uses, since nothing
+  // else in this file paginates body text (renderPagedButtons only
+  // paginates candidate-list buttons). onDone runs once page 2 is
+  // dismissed, so create() doesn't need its own branch for "lore already
+  // seen" vs "lore just finished."
+  private showWorldLore(lore: WorldLore, onDone: () => void) {
+    this.renderWorldLorePage(lore.page1, 'Next ->', () =>
+      this.renderWorldLorePage(lore.page2, 'Onward', () => {
+        markWorldLoreSeen(this.game.registry, this.world);
+        persistFromRegistry(this.game.registry);
+        this.closeDialogue();
+        onDone();
+      })
+    );
+  }
+
+  private renderWorldLorePage(body: string, buttonLabel: string, onContinue: () => void) {
+    this.dialogueContainer?.destroy(true);
+    this.dialogueActive = true;
+
+    const panelWidth = CANVAS_W - 40;
+    const top = 16;
+    const container = this.add.container(0, 0).setDepth(100);
+    this.dialogueContainer = container;
+
+    // Capped like BattleScene.drawMoveMenu's own chromeScale/headerScale --
+    // this panel's multi-paragraph prose is long enough that letting it
+    // scale all the way to the Settings panel's 2x "Large" preset overflows
+    // the fixed CANVAS_H, the same fixed-budget problem that cap already
+    // solves for the move menu's title/legend.
+    const scale = Math.min(fontScale(this), 1.5);
+
+    let y = top;
+    const worldName = WORLD_NAMES[this.world] ?? `World ${this.world}`;
+    const title = this.add
+      .text(CANVAS_W / 2, y, worldName, {
+        fontSize: `${Math.round(15 * scale)}px`,
+        color: '#ffffff',
+        fontStyle: 'bold',
+        align: 'center',
+        wordWrap: { width: panelWidth - 60 },
+      })
+      .setOrigin(0.5, 0);
+    container.add(title);
+    y += title.height + 8;
+
+    const text = this.add
+      .text(CANVAS_W / 2, y, body, {
+        fontSize: `${Math.round(11 * scale)}px`,
+        color: '#e6d9ff',
+        align: 'center',
+        wordWrap: { width: panelWidth - 60 },
+        lineSpacing: 3,
+      })
+      .setOrigin(0.5, 0);
+    container.add(text);
+    y += text.height + 12;
+
+    // fontSizePxOverride capped the same way the body text above is --
+    // otherwise the button would fall through to addDialogueButtonAt's own
+    // uncapped default and eat into the margin the body-text cap exists to
+    // protect.
+    const btn = this.addDialogueButtonAt(
+      container,
+      CANVAS_W / 2,
+      y,
+      buttonLabel,
+      onContinue,
+      180,
+      `${Math.round(13 * scale)}px`
+    );
+    y += btn.height + 12;
+
+    const panelHeight = y - top;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, 0x10101c, 0.96)
+      .setStrokeStyle(2, 0xd9a5ff);
+    container.addAt(panel, 0);
+  }
+
   // Decoherence-arc flavor shown once per world, between beating that
   // world's rival and actually stepping into the next one -- the connective
   // tissue DESIGN.md's plot hook otherwise only surfaces at the very start
@@ -2097,6 +2195,29 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       return;
     }
 
+    // RIVAL_TAUNTS (data/worldLore.ts) gives most worlds a two-part taunt --
+    // a narration+dialogue line, then a second that raises the stakes --
+    // chained as two pages the same destroy-and-rebuild way showWorldLore
+    // chains its own two pages above. A world with no entry yet (a future/
+    // unbuilt world) falls back to the old single generic line so it's
+    // never a dead end.
+    const taunt = RIVAL_TAUNTS[this.world];
+    if (taunt) {
+      this.renderRivalTauntPage(rival, taunt.part1, 'Next ->', () =>
+        this.renderRivalTauntPage(rival, taunt.part2, 'Battle!', () => this.startBattle(rival, 1, true))
+      );
+    } else {
+      this.renderRivalTauntPage(
+        rival,
+        `${rival.name} blocks the path onward. "You don't get past me that easily."`,
+        'Battle!',
+        () => this.startBattle(rival, 1, true)
+      );
+    }
+  }
+
+  private renderRivalTauntPage(rival: Material, line: string, buttonLabel: string, onButton: () => void) {
+    this.dialogueContainer?.destroy(true);
     this.dialogueActive = true;
 
     const panelWidth = 600;
@@ -2109,7 +2230,9 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // Same makeBossCrystal golem spawnBossSprite renders standing at the goal
     // tile (and BattleScene renders as the opponent once the fight starts) --
     // the rival shouldn't revert to an ordinary plain-crystal look just
-    // because this "Face the Rival" dialogue is up.
+    // because this "Face the Rival" dialogue is up. Redrawn on every page
+    // (rather than kept across the destroy-and-rebuild) so it's on screen
+    // for both parts of the taunt, not just the first.
     // makeBossCrystal's translucent danger aura (art/boss.ts:28-33) draws at
     // radius size*1.4 and tweens up to scale 1.18 (art/boss.ts:35-44), so its
     // peak reaches size*1.4*1.18 out from the crystal's center -- give it
@@ -2122,20 +2245,36 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.tweens.add({ targets: crystal, y: crystalY + 10, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     y = crystalY + BOSS_CRYSTAL_SIZE + 20;
 
-    const line = this.add
-      .text(CANVAS_W / 2, y, `${rival.name} blocks the path onward. "You don't get past me that easily."`, {
-        fontSize: fontPx(this, 12),
+    // Capped the same way renderWorldLorePage's own body text is -- the
+    // longer taunts (worlds 9/10) are long enough that the Settings panel's
+    // 2x "Large" preset would push this text past the fixed CANVAS_H once
+    // added to the crystal's own fixed headroom above.
+    const scale = Math.min(fontScale(this), 1.5);
+    const text = this.add
+      .text(CANVAS_W / 2, y, line, {
+        fontSize: `${Math.round(12 * scale)}px`,
         fontStyle: 'italic',
         color: '#ffb3b3',
         align: 'center',
         wordWrap: { width: panelWidth - 80 },
       })
       .setOrigin(0.5, 0);
-    container.add(line);
-    y += line.height + 16;
+    container.add(text);
+    y += text.height + 16;
 
-    const battleBtn = this.addDialogueButton(container, y, 'Battle!', () => this.startBattle(rival, 1, true));
-    y += battleBtn.height;
+    // fontSizePxOverride capped the same way the taunt text above is (see
+    // that comment) -- addDialogueButton itself has no override parameter,
+    // so this goes through addDialogueButtonAt directly instead.
+    const btn = this.addDialogueButtonAt(
+      container,
+      CANVAS_W / 2,
+      y,
+      buttonLabel,
+      onButton,
+      480,
+      `${Math.round(13 * scale)}px`
+    );
+    y += btn.height;
     y += 20;
 
     const panelHeight = y - top;
