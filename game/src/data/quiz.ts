@@ -85,7 +85,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     // Chromium -- itinerant (nested-Fermi-surface) antiferromagnet, contrasted with MnO/NiO's Mott picture.
     {
-      prompt: "Elemental chromium's spin-density-wave antiferromagnetism comes from Fermi-surface nesting. In this session's toy nested chain, what does that same mechanism do to the ordering threshold?",
+      prompt: "Elemental chromium's spin-density-wave antiferromagnetism comes from Fermi-surface nesting. In this world's toy nested chain, what does that same mechanism do to the ordering threshold?",
       correct: 'It removes the threshold entirely -- order turns on for any U > 0',
       incorrect: 'It raises the threshold to U_c = 4t, twice the dimer value',
     },
@@ -100,7 +100,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'Translational symmetry',
     },
     {
-      prompt: 'The perfect-nesting argument that removes the ordering threshold for the extended chain was first introduced this session for a different order. Which one?',
+      prompt: 'The perfect-nesting argument that removes the ordering threshold for the extended chain was first introduced in this world for a different order. Which one?',
       correct: 'The charge density wave, from nearest-neighbor repulsion V',
       incorrect: 'Superconducting pairing, from an attractive U < 0',
     },
@@ -997,7 +997,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     // Monolayer NiI₂ -- real observed noncollinear multiferroic.
     {
-      prompt: 'Which real 2D material does the session cite as an experimentally observed case of noncollinear order from competing exchange interactions?',
+      prompt: 'Which real 2D material has been observed experimentally as a case of noncollinear order from competing exchange interactions?',
       correct: 'Monolayer NiI₂',
       incorrect: 'Monolayer CrI₃',
     },
@@ -1487,7 +1487,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'The complete microscopic structure of the ordered state that will form',
     },
     {
-      prompt: "How does this session's RPA treatment locate the Stoner magnetic instability?",
+      prompt: "How does this world's RPA treatment locate the Stoner magnetic instability?",
       correct: 'By watching when the disordered (paramagnetic) response function itself diverges',
       incorrect: 'By writing down an ordered magnetic ansatz and solving it self-consistently',
     },
@@ -1758,7 +1758,7 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
 
   'Twisted Bilayer Graphene': [
     {
-      prompt: "In this course's classification, a superconductor's pairing is called 'unconventional' when the attractive channel is mediated by...",
+      prompt: "A superconductor's pairing is called 'unconventional' when the attractive channel is mediated by...",
       correct: 'Anything other than phonons',
       incorrect: 'Phonons, same as niobium or aluminum',
     },
@@ -2039,7 +2039,7 @@ export const ML_LECTURE_QUESTIONS: MaterialQuestion[] = [
     incorrect: 'E[θ] ≤ E₀',
   },
   {
-    prompt: "Why is an NNQS's energy rewritten as a Monte Carlo average over configurations sampled from |C_θ(s)|², rather than computed directly from equation (10.3)?",
+    prompt: "Why is an NNQS's energy rewritten as a Monte Carlo average over configurations sampled from |C_θ(s)|², rather than evaluated directly as the exact ratio ⟨ψ_θ|H|ψ_θ⟩/⟨ψ_θ|ψ_θ⟩ in the spin-configuration basis?",
     correct: 'So it never requires summing over all 2^L configurations explicitly',
     incorrect: 'So the wavefunction no longer needs to be normalized',
   },
@@ -2084,12 +2084,12 @@ export const ML_LECTURE_QUESTIONS: MaterialQuestion[] = [
     incorrect: 'The Hartree approximation',
   },
   {
-    prompt: "In this session's 'easy' phase-classification example, the ferromagnetic Ising model, what makes the phase easy to read off even without a network?",
+    prompt: "In this world's 'easy' phase-classification example, the ferromagnetic Ising model, what makes the phase easy to read off even without a network?",
     correct: 'A simple local order parameter -- the total magnetization -- distinguishes the two phases',
     incorrect: 'The two phases always look visibly different in every snapshot',
   },
   {
-    prompt: 'The Ising gauge theory is the phase-classification session\'s "hard" example because its two phases are distinguished by...',
+    prompt: 'The Ising gauge theory is this world\'s "hard" phase-classification example because its two phases are distinguished by...',
     correct: 'No local order parameter at all -- only a nonlocal, topological distinction',
     incorrect: 'A local order parameter that is simply harder to compute',
   },
@@ -2114,9 +2114,9 @@ export const ML_LECTURE_QUESTIONS: MaterialQuestion[] = [
     incorrect: 'Randomly generated numbers with no physical basis',
   },
   {
-    prompt: "Hamiltonian learning is described as the literal inverse of which earlier move in the course?",
-    correct: "The opening move of session 1: given a Hamiltonian, integrate forward to get observables",
-    incorrect: "Session 5's BCS mean-field decoupling",
+    prompt: "Hamiltonian learning is described as the literal inverse of the ordinary forward problem in physics. What is that forward problem?",
+    correct: "Starting from a known Hamiltonian and computing observables from it",
+    incorrect: "BCS mean-field decoupling of an attractive interaction",
   },
 ];
 
@@ -2670,7 +2670,7 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   },
   {
     prompt:
-      'In the variational hierarchy of many-body ansätze this course used (NNQS, PEPS, matrix product states), a neural-network quantum state (NNQS) of a given architecture is...',
+      'In the variational hierarchy of many-body ansätze (NNQS, PEPS, matrix product states), a neural-network quantum state (NNQS) of a given architecture is...',
     correct: 'The most expressive of the three -- PEPS states sit inside the states that NNQS can reach, and MPS inside PEPS in turn',
     incorrect: 'The least expressive of the three -- MPS and PEPS can both reach states no NNQS of comparable size can represent',
   },
@@ -2684,7 +2684,7 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
     prompt:
       'Hamiltonian learning trains a neural network on synthetic (Hamiltonian → observable) pairs from many known models, then applies the trained network to...',
     correct: 'A real experimental observable, to infer the physical Hamiltonian parameters λ that produced it',
-    incorrect: 'A known Hamiltonian, to predict the observable it would produce -- the forward direction the course already computes',
+    incorrect: 'A known Hamiltonian, to predict the observable it would produce -- the ordinary forward direction of the same calculation',
   },
   {
     prompt: 'Replacing the exchange-correlation functional in the Kohn-Sham loop with a machine-learned v_xc...',

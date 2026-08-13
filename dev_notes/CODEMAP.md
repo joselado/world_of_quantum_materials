@@ -1156,26 +1156,34 @@ testing/exploration aid, not part of normal progression. Three things key off
 - `OverworldScene.applySuperpositionLeveling()` runs on every `create()` (covers Continue,
   Bloch teleport, and the Hub door's World-1 jump alike) -- re-levels `playerStats` to
   `enemyStatsForWorld(this.world)` plus a flat `+2`, grants every move (`Object.keys(MOVES)`),
-  fully heals, merges every `BUILT_WORLDS` entry into `visitedWorlds` so Bloch's teleport
-  hub (gated on `visitedWorlds`, see "Guardians" above) offers every world immediately -- this is
-  what makes Bloch alone sufficient for world-to-world movement in this mode; there is no
-  separate warp panel -- and unconditionally overwrites registry `discoveredMaterials` with one
-  entry per `data/materials.ts`'s `allCrystals()` result, so the Hub's Qumatex (see
-  "Qumatex" below) reads as fully discovered. That grant is unconditional rather than
-  seed-once like `kondoActiveMove`/`activePassiveByOwner` below, because `discoveredMaterials` is
-  a passive discovery log, not a player choice, so there is no prior pick an overwrite could
-  clobber. Also seeds registry `kondoActiveMove` to `KONDO_MOVE_IDS[0]` if it's
-  still `null` -- granting every move id (including all three Kondo ones) into `unlockedMoves`
-  wouldn't otherwise make any of them usable, since `getBattleMoves` filters Kondo's moves down
-  to whichever one is active regardless of what's learned (only seeded once, so a deliberate
-  pick made via `showKondoPanel` survives every later re-level).
+  fully heals, merges every `BUILT_WORLDS` entry into `visitedWorlds` (read by Feynman's/
+  `BattleScene`'s Analytic-question eligibility and `HubScene.canResumeWorld`, not by Bloch --
+  see the candidate-pool point below), and unconditionally overwrites registry
+  `discoveredMaterials` with one entry per `data/materials.ts`'s `allCrystals()` result, so the
+  Hub's Qumatex (see "Qumatex" below) reads as fully discovered. That grant is unconditional
+  rather than seed-once like `kondoActiveMove`/`activePassiveByOwner` below, because
+  `discoveredMaterials` is a passive discovery log, not a player choice, so there is no prior
+  pick an overwrite could clobber. Also seeds registry `kondoActiveMove` to `KONDO_MOVE_IDS[0]`
+  if it's still `null` -- granting every move id (including all three Kondo ones) into
+  `unlockedMoves` wouldn't otherwise make any of them usable, since `getBattleMoves` filters
+  Kondo's moves down to whichever one is active regardless of what's learned (only seeded once,
+  so a deliberate pick made via `showKondoPanel` survives every later re-level).
 - `HubScene.enterWorld()`/`doorLabel()` branch on `isSuperpositionMode()` to jump straight to
   World 1 (`{ world: 1, regenerate: true }`) instead of `highestUnlockedWorld()`, bypassing
-  `rivalDefeated` entirely -- reaching Bloch (who stands at World 2's own middle tile, reachable
-  via the walkable world doors) is what then unlocks every other world via the point above.
-- `showDresselhausPanel`/`showMajoranaPanel`/`showAndersonPanel` each swap their candidate pool from
-  `getDefeatedMaterials()` to `data/materials.ts`'s `allCrystals()` when `isSuperpositionMode()`
-  is true, per their own sections above.
+  `rivalDefeated` entirely -- Bloch (reachable at World 2's own middle tile via the walkable
+  world doors, or from the Lab's own Guardians station once met once) is sufficient for
+  world-to-world movement on its own regardless of whether this door has ever been used, per
+  the candidate-pool point below.
+- `showBlochHub`/`showDresselhausPanel`/`showMajoranaPanel`/`showAndersonPanel` each swap their
+  candidate pool -- Bloch's persisted `getVisitedWorlds()` filtered to `BUILT_WORLDS`, the other
+  three's `getDefeatedMaterials()` -- for the full pool (`BUILT_WORLDS`, `allCrystals()`) when
+  `isSuperpositionMode()` is true, rather than reading whatever's actually been visited/defeated
+  so far. Bloch's swap deliberately does not lean on `visitedWorlds` being pre-seeded above --
+  `applySuperpositionLeveling` only runs from `OverworldScene.create()` (on world entry), while a
+  fresh Superposition save starts in the Lab (`TitleScene` always starts `'Hub'`), so a
+  destination list still gated on `visitedWorlds` would offer nothing until the player had
+  already stepped through a world door once; checking `isSuperpositionMode()` directly instead
+  makes Bloch's hub work immediately even from the Lab, on a completely fresh save.
 - `showBlochHub`/`showDresselhausPanel`/`showMajoranaPanel`/`showAndersonPanel` each check
   `isSuperpositionMode()` directly (not the persisted `blochUnlockedWorlds`/
   `dresselhausUnlockedCrystals`/`majoranaUnlockedResults`/`andersonUnlockedHosts` lists) to

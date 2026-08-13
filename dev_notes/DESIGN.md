@@ -743,10 +743,13 @@ state can mark her met before the player has actually reached her.
   world they've already visited (`OverworldScene.showBlochHub`) -- fitting, since a
   Bloch state is a superposition spread across every unit cell, not pinned to one.
   The destination list paginates (`renderPagedButtons`, see below) once it grows past
-  a page -- routine in Superposition Mode (see §7), which pre-seeds every built world
-  as visited, making Bloch's hub able to jump to any of them immediately; walking
-  through a world door (below) is the other way to move between worlds, one step at
-  a time rather than a jump to an arbitrary destination. Each individual destination is
+  a page -- routine in Superposition Mode (see §7), whose destination list is every
+  built world outright (`isSuperpositionMode()`, the same short-circuit Dresselhaus/
+  Majorana/Anderson use for their own candidate pools, not the persisted
+  `visitedWorlds` list) so Bloch's hub can jump to any of them immediately even from
+  the Lab on a save that has never yet stepped through a world door; walking through a
+  world door (below) is the other way to move between worlds, one step at a time
+  rather than a jump to an arbitrary destination. Each individual destination is
   its own one-time `BLOCH_DESTINATION_COST` (15) qumatessence unlock (registry/save
   `blochUnlockedWorlds`, a list of world numbers already paid for) -- traveling to a
   world for the first time costs qumatessence and unlocks that destination in the same
@@ -1293,10 +1296,10 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   re-levels the player's stats/moves/HP to stay competitive with that world's
   opponents (`OverworldScene.applySuperpositionLeveling`, a flat +2 over
   `enemyStatsForWorld`, full move unlock, full heal) instead of requiring the
-  normal qumatessence grind, every built world is pre-marked visited so Bloch's
-  teleport hub (§5) can jump to any of them immediately on top of the world
-  doors (§5) every world already has -- there is no separate "Warp" UI --
-  the Hub's Qumatex (§4) is pre-filled with every real compound in the
+  normal qumatessence grind, and Bloch's teleport hub (§5) offers every built
+  world as a destination outright so it can jump to any of them immediately, on
+  top of the world doors (§5) every world already has -- there is no separate
+  "Warp" UI -- the Hub's Qumatex (§4) is pre-filled with every real compound in the
   game so it reads as fully discovered, Dresselhaus/Majorana/Anderson's
   panels (§5) offer every crystal in the game as a candidate rather than only
   ones actually defeated (Dresselhaus's list still excludes hybrid-recipe

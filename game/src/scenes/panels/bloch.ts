@@ -18,11 +18,11 @@ import { persistFromRegistry } from '../../data/save';
 // Destinations paginate via renderPagedButtons (same helper Dresselhaus/
 // Majorana/Anderson use) -- with only a handful of built worlds this used
 // to just shrink the row font/drop the avatar past 5 destinations, but
-// Superposition Mode pre-seeding every world as visited made a 9-
-// destination list the common case rather than a rare one, and no amount
-// of font shrinking keeps 9 full rows plus avatar/quote/footer inside the
-// 480px canvas -- capping the row *count* per page is the only fix that
-// actually bounds the height.
+// Superposition Mode offering every built world as a destination outright
+// made a 9-destination list the common case rather than a rare one, and no
+// amount of font shrinking keeps 9 full rows plus avatar/quote/footer
+// inside the 480px canvas -- capping the row *count* per page is the only
+// fix that actually bounds the height.
 // Each individual destination is its own one-time BLOCH_DESTINATION_COST
 // qumatessence unlock (registry/save `blochUnlockedWorlds`, a list of
 // world numbers already paid for), not a single flat unlock for the whole
@@ -33,18 +33,29 @@ import { persistFromRegistry } from '../../data/save';
 // buy row), the same "check tokens, deduct, persist" flow those rows use --
 // there's no separate "unlock, then travel later" step since clicking a
 // destination is itself the only thing there is to do with it. Superposition
-// Mode bypasses this per-destination cost entirely (`isSuperpositionMode()`,
-// not the persisted list) -- that mode pre-seeds every built world as
-// visited and relies on Bloch's hub being the *sole* way to move between
-// worlds (there is no separate warp panel), so a fresh Superposition save
-// with no qumatessence must still be able to teleport anywhere immediately.
+// Mode bypasses this per-destination cost entirely and relies on Bloch's hub
+// being the *sole* way to move between worlds (there is no separate warp
+// panel), so a fresh Superposition save with no qumatessence must still be
+// able to teleport anywhere immediately -- including from the Lab itself,
+// before ever stepping through a world door.
 // Content laid out top-down first (running `y`), panel sized/inserted
 // behind everything afterward -- same pattern as showSettingsPanel.
 export function showBlochHub(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
 
-  const destinations = scene.getVisitedWorlds().filter((w) => BUILT_WORLDS.includes(w) && w !== scene.world);
   const superposition = scene.isSuperpositionMode();
+  // Superposition Mode reads BUILT_WORLDS directly rather than the
+  // persisted `visitedWorlds` list -- same isSuperpositionMode() short-
+  // circuit Dresselhaus/Majorana/Anderson use for their own candidate
+  // pools. `visitedWorlds` only actually gets pre-seeded with every built
+  // world by OverworldScene's applySuperpositionLeveling, which runs on
+  // world entry, not on opening the Lab -- a fresh Superposition save
+  // still starts in the Lab (TitleScene always starts 'Hub'), so reading
+  // the persisted list here would offer nothing until the player had
+  // already stepped through a world door once.
+  const destinations = superposition
+    ? BUILT_WORLDS.filter((w) => w !== scene.world)
+    : scene.getVisitedWorlds().filter((w) => BUILT_WORLDS.includes(w) && w !== scene.world);
   const unlockedWorlds = (scene.game.registry.get('blochUnlockedWorlds') as number[]) ?? [];
   const isUnlocked = (world: number) => superposition || unlockedWorlds.includes(world);
 

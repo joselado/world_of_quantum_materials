@@ -70,7 +70,7 @@ export const MATERIAL_BLURBS: Record<string, string> = {
   'Potassium Dihydrogen Phosphate':
     "KH₂PO₄ is an order-disorder ferroelectric: protons hop between two off-center sites in each O-H...O bond, described by a pseudospin (Ising-like) mean-field model -- unlike Barium Titanate's displacive transition (an ion sliding continuously off-center). Same SSB, a different microscopic route.",
   'Titanium Diselenide':
-    "1T-TiSe₂'s charge density wave (~200 K) is session1's own broken-continuous-translational-symmetry example: a softened lattice/charge modulation opens a small gap, the textbook real-material CDW. Its low-energy mode is the ordinary lattice phonon -- unlike a magnon or Higgs mode, phonons stay gapless in every material, CDW included.",
+    "1T-TiSe₂'s charge density wave (~200 K) is World 1's own broken-continuous-translational-symmetry example: a softened lattice/charge modulation opens a small gap, the textbook real-material CDW. Its low-energy mode is the ordinary lattice phonon -- unlike a magnon or Higgs mode, phonons stay gapless in every material, CDW included.",
 };
 
 const TYPE_FALLBACK_BLURBS: Record<MaterialType, string> = {

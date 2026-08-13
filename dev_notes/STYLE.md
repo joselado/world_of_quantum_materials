@@ -78,9 +78,10 @@ than appending a changelog, so this always reflects current reality.
   "Back to World N." A no-op when there's nothing resumable (a fresh save with nothing in
   progress yet has nothing to send Enter back to), and never fires while a Lab panel is open,
   matching every station's own one-panel-at-a-time guard. From there the player can
-  walk to World 2 to reach Bloch, whose teleport hub (already pre-seeded with every world as
-  visited) can jump to any other world immediately -- there is no separate warp/world-select
-  panel, though every world also has its own walkable doors back to the Hub/previous world and
+  walk to World 2 to reach Bloch, or open Bloch directly from the Lab's own Guardians
+  station once he's been met once -- either way, in Superposition Mode his teleport hub
+  offers every built world immediately, with no separate warp/world-select panel, though
+  every world also has its own walkable doors back to the Hub/previous world and
   onward to the next one (see "World doors" below). Below row 1, the six reference/settings
   stations (`scenes/panels/hubStations.ts`'s `LAB_STATIONS` -- Moves, Stats, Abilities,
   Guardians, Tutorial, Settings) are filtered down to whichever the player has actually
@@ -450,10 +451,12 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   battle). A world already in that list drops the cost suffix entirely -- `Travel to
   World N -- <name>` -- and teleports for free. Empty state: "You haven't mapped
   anywhere else yet." Destinations paginate (see "Paginated candidate lists" below) once
-  there are more than fit on one page -- routine in Superposition Mode, which pre-seeds
-  every built world as visited, makes Bloch's hub the *sole* way to move between worlds
-  (there is no separate warp panel), and treats every destination as already unlocked so
-  a fresh Superposition save can still teleport anywhere with zero qumatessence.
+  there are more than fit on one page -- routine in Superposition Mode, whose destination
+  list is every built world outright rather than the persisted `visitedWorlds` list (so
+  Bloch's hub works from the Lab even on a save that hasn't stepped through a world door
+  yet), makes Bloch's hub the *sole* way to move between worlds (there is no separate
+  warp panel), and treats every destination as already unlocked so a fresh Superposition
+  save can still teleport anywhere with zero qumatessence.
 
 ## Dresselhaus in the overworld (`OverworldScene.showDresselhausPanel`)
 
@@ -694,8 +697,8 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 - Shared by every panel whose candidate pool can outgrow one screen -- Dresselhaus's transmute
   list, both steps of Majorana's and Anderson's combine/dope flows, and Bloch's destination
   list. Superposition Mode is what makes this routine rather than a rare edge case: its
-  candidate pool is every crystal in the game (or, for Bloch, every built world pre-marked
-  visited), commonly 8-30+ entries where the equivalent Story Mode list is a handful.
+  candidate pool is every crystal in the game (or, for Bloch, every built world outright),
+  commonly 8-30+ entries where the equivalent Story Mode list is a handful.
 - One button per row, same treatment as every other dialogue button, followed -- only
   once the list is longer than one page -- by a single shared row holding `<- Prev`
   (left), a small blue-grey `Page N/M` label (centered, vertically centered against the

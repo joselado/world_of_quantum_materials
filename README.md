@@ -246,10 +246,10 @@ Before you start, the title screen asks you to pick a mode:
   world's rival to open the next one, meet each guardian in turn.
 - **Superposition Mode** is for exploring/testing without grinding: every
   time you enter a world your stats, moves, and HP are automatically brought
-  up to a level competitive with that world's opponents, every world is
-  already marked visited so Bloch's teleport hub (see above) can fold you to
-  any of them immediately, and Dresselhaus/Majorana/Anderson offer every crystal in
-  the game rather than only ones you've actually defeated.
+  up to a level competitive with that world's opponents, Bloch's teleport hub
+  (see above) offers every world immediately -- even from the Lab, before
+  you've stepped into any of them -- and Dresselhaus/Majorana/Anderson offer
+  every crystal in the game rather than only ones you've actually defeated.
 
 ![Title screen's Story Mode / Superposition Mode picker](screenshots/title.png)
 ![Bloch's teleport hub with every world unlocked in Superposition Mode](screenshots/superposition-bloch.png)

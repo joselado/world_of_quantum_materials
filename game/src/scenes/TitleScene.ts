@@ -279,7 +279,7 @@ export class TitleScene extends Phaser.Scene {
       .text(
         CANVAS_W / 2,
         y,
-        "Story Mode: start at World 1 and progress in order. Superposition Mode: every guardian, transmutation, and hybrid material is available right away -- a crystal that hasn't committed to a world yet.",
+        'Story Mode: discover who is behind the Decoherence. Superposition Mode: everything and everywhere.',
         { fontSize: fontPx(this, 10), color: '#6f7ea8', align: 'center', wordWrap: { width: CANVAS_W - 60 } }
       )
       .setOrigin(0.5, 0);
