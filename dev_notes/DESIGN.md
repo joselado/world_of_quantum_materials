@@ -799,9 +799,11 @@ state can mark her met before the player has actually reached her.
   an ordinary burst. Each move's static `class` simply defaults to `'phonon'` --
   the same universal, always-hostable class Phonon Beam itself carries -- so an
   untuned move is purchasable/usable from any form and never mismatches, without
-  needing a class of its own. Their displayed name is always "`<quasiparticle>` Beam"/
-  "`<quasiparticle>` Eruption" (`tunedMoveDisplayName`), defaulting to "Phonon Beam"/
-  "Phonon Eruption" while untuned. Buying a move (or later revisiting Laughlin) also opens a
+  needing a class of its own. Their displayed name is always "`<quasiparticle>` Lance"/
+  "`<quasiparticle>` Eruption" (`tunedMoveDisplayName`), defaulting to "Phonon Lance"/
+  "Phonon Eruption" while untuned -- `skyfallBeam`'s own display name reads "Lance," not
+  "Beam," so it never collides with the free starting Phonon Beam move once both default
+  to `'phonon'`. Buying a move (or later revisiting Laughlin) also opens a
   quasiparticle-picker sub-panel (`showMoveClassPicker`, offering
   `TUNABLE_MOVE_CLASSES` -- every ordinary Attacks-section class (i.e. every class
   except Kondo's `'screening'`) -- filtered down to only the ones the player's
@@ -819,9 +821,9 @@ state can mark her met before the player has actually reached her.
   place of `move.class` for these two ids (see §3/§4) -- still purchasable/usable
   from any form and still asks its question regardless of tuning. The displayed name
   always folds in the current quasiparticle (`tunedMoveDisplayName`, e.g. `skyfallBeam`
-  tuned to `'magnon'` reads as "Magnon Beam" everywhere -- the move menu, the
+  tuned to `'magnon'` reads as "Magnon Lance" everywhere -- the move menu, the
   question panel, the battle log), built from the quasiparticle's own label plus each
-  move's fixed shape word ("Beam"/"Eruption") rather than a second hand-authored word
+  move's fixed shape word ("Lance"/"Eruption") rather than a second hand-authored word
   list. An unbought move has no
   assignment yet; an already-bought one shows "tuned to `<name>`" with a free
   "Retune" click back into the same picker (re-opening the same current-form
@@ -830,11 +832,12 @@ state can mark her met before the player has actually reached her.
   reading the move's own default `'phonon'` class. The picker only filters at *pick*
   time, though, so a tuned assignment can still outlive a later transmute into a
   form that can't host it; `getTunedMoveClass` guards that case by falling back to
-  `'phonon'` (Phonon Beam, the one class every form hosts) whenever the player's
+  `'phonon'` (the one class every form hosts) whenever the player's
   *current* form can't host the saved assignment, and `tunedMoveDisplayName`/the
   shop label follow the same fallback so the name and the mismatch math never
-  disagree -- the shop label reads "tuned to `<name>`, reverted to Phonon Beam (this
-  form can't host it -- retune)" in that state.
+  disagree -- the shop label reads "tuned to `<name>`, reverted to Phonon (this
+  form can't host it -- retune)" in that state (the bare quasiparticle noun,
+  `quasiparticleLabel`, not the move's own shape word).
 - **Majorana** → world 5 middle → lets the player fuse two crystals they've already
   defeated into a new hybrid material and become it immediately
   (`OverworldScene.showMajoranaPanel`/`combineMaterials`) -- but only a curated

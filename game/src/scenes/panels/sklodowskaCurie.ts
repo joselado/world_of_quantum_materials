@@ -77,7 +77,7 @@ export function showSklodowskaCuriePanel(scene: GuardianPanelHost) {
 // it's currently carrying (moveDisplayName/getTunedMoveClass, same
 // helpers Laughlin's Analytic shop reads) and opens the picker to change it.
 // A move not yet in `unlockedMoves` says so explicitly rather than "carrying
-// Phonon Beam" -- that phrasing would otherwise read as already usable in
+// Phonon" -- that phrasing would otherwise read as already usable in
 // battle when it isn't yet.
 function renderUltimateMoves(scene: GuardianPanelHost, container: Phaser.GameObjects.Container, y: number): number {
   const unlocked = scene.getUnlockedMoves();

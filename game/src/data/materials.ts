@@ -33,11 +33,13 @@ export { BASE_STAT, DEFAULT_STATS, enemyStatsForWorld, statUpgradeCost, shopCost
 // groundEruption below) and Skłodowska-Curie's Ultimate moves
 // (ultimateMeteor/ultimateNova) each name a quasiparticle like any other
 // move too, but a dynamic one -- `tunedMoveDisplayName` renders each as
-// "<quasiparticle> Beam"/"<quasiparticle> Eruption"/"<quasiparticle>
+// "<quasiparticle> Lance"/"<quasiparticle> Eruption"/"<quasiparticle>
 // Meteor"/"<quasiparticle> Nova", the quasiparticle word being whichever
 // class the player has tuned it to via the owning guardian's picker
-// (default 'phonon', so e.g. "Phonon Beam" until tuned). Their static `name`
-// below is just that default.
+// (default 'phonon', so e.g. "Phonon Lance" until tuned). Their static `name`
+// below is just that default. skyfallBeam's own display name reads "Lance,"
+// not "Beam," so it never collides with thermalFluctuation's own static
+// "Phonon Beam" (the free starting move) once both default to 'phonon'.
 //
 // Power climbs with how unconventional the underlying physics is -- an
 // ordinary lattice vibration or band electron is weak, a topological/
@@ -115,7 +117,7 @@ export const MOVES: Record<string, Move> = {
   // never-mismatched before the player ever tunes it) -- Laughlin's picker
   // (TUNABLE_MOVE_CLASSES, getTunedMoveClass) lets the player assign it any
   // quasiparticle their current form hosts instead.
-  skyfallBeam: { id: 'skyfallBeam', name: 'Phonon Beam', class: 'phonon', power: 10 },
+  skyfallBeam: { id: 'skyfallBeam', name: 'Phonon Lance', class: 'phonon', power: 10 },
   groundEruption: { id: 'groundEruption', name: 'Phonon Eruption', class: 'phonon', power: 10 },
   // Skłodowska-Curie's Ultimate moves (§5, World 10, ULTIMATE_MOVE_IDS
   // below) -- power is 10x an Analytic move's (100 vs 10), well above every
@@ -552,13 +554,13 @@ export function getTunedMoveClass(registry: RegistryLike, moveId: string): MoveC
 
 // A tunable move (Laughlin's Analytic pair, Skłodowska-Curie's Ultimate
 // pair) always displays whichever quasiparticle it's currently carrying,
-// tuned or not (e.g. tuned to 'magnon' reads as "Magnon Beam"; untuned reads
-// as "Phonon Beam", the same default `getTunedMoveClass` falls back to) --
-// so unlike a static move name, this one never goes stale relative to what
-// the move actually mismatches with. The move's own fixed shape (Beam vs.
-// Eruption vs. Meteor vs. Nova) is read off its static `name`'s own second
-// word rather than a second hand-authored word list, so a future MOVES
-// rename stays in sync automatically; only the quasiparticle word in front
+// tuned or not (e.g. skyfallBeam tuned to 'magnon' reads as "Magnon Lance";
+// untuned reads as "Phonon Lance", the same default `getTunedMoveClass`
+// falls back to) -- so unlike a static move name, this one never goes stale
+// relative to what the move actually mismatches with. The move's own fixed
+// shape (Lance vs. Eruption vs. Meteor vs. Nova) is read off its static
+// `name`'s own second word rather than a second hand-authored word list, so
+// a future MOVES rename stays in sync automatically; only the quasiparticle word in front
 // of it changes -- QUASIPARTICLE_NAMES's bare noun (not the raw move name)
 // so a multi-word quasiparticle like 'heavyFermion' still reads as "Heavy
 // Fermion Meteor", not a truncated "Heavy Meteor". Reads getTunedMoveClass
@@ -680,6 +682,30 @@ export const TYPE_LOOK: Record<MaterialType, { color: number; variant: CrystalVa
   ferroelectric: { color: 0xd96a8a, variant: 'shard' },
   multiferroic: { color: 0xc94ac0, variant: 'layer' },
 };
+
+// The player-facing name for each MaterialType -- its own identifier spaced
+// out into words, never shown as a raw camelCase string (Qumatex's type
+// filter, gen-docs.mjs's crystals.md/quasiparticles.md tables). Mirrors
+// QUASIPARTICLE_NAMES's role for MoveClass above.
+const MATERIAL_TYPE_NAMES: Record<MaterialType, string> = {
+  metal: 'Metal',
+  insulator: 'Insulator',
+  semiconductor: 'Semiconductor',
+  classicalMagnet: 'Classical Magnet',
+  quantumSpinLiquid: 'Quantum Spin Liquid',
+  kondoHeavyFermion: 'Kondo Heavy Fermion',
+  superconductor: 'Superconductor',
+  chernSuperconductor: 'Chern Superconductor',
+  chernInsulator: 'Chern Insulator',
+  quantumSpinHall: 'Quantum Spin Hall Insulator',
+  fractionalChern: 'Fractional Chern Insulator',
+  ferroelectric: 'Ferroelectric',
+  multiferroic: 'Multiferroic',
+};
+
+export function materialTypeLabel(type: MaterialType): string {
+  return MATERIAL_TYPE_NAMES[type] ?? type;
+}
 
 // A crystal database row: real compound name + main type (which fixes its
 // look and its move compatibility) + battle stats. `shadeStep` just

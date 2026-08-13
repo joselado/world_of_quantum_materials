@@ -8,7 +8,7 @@ import { renderTunableMoveShop } from './tunableMoveShop';
 
 // Laughlin stands at world 4's middle tile (WORLD_GUARDIANS) and sells his
 // two quiz-gated Analytic moves (data/materials.ts's ANALYTIC_MOVE_IDS, a
-// beam move and an eruption move, each displayed as "<quasiparticle> Beam"/
+// lance move and an eruption move, each displayed as "<quasiparticle> Lance"/
 // "<quasiparticle> Eruption" via tunedMoveDisplayName) -- kept out of
 // Noether's own shop (SHOP_MOVE_IDS excludes them, see materials.ts's
 // comment) so Laughlin is their one source. Mirrors showNoetherShop's

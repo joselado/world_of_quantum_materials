@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { makeCrystal } from '../art/crystals';
 import { CANVAS_W, CANVAS_H } from '../art/perspective';
-import { getPlayerMaterial, allCrystals, TYPE_LOOK, materialDisplayName } from '../data/materials';
+import { getPlayerMaterial, allCrystals, TYPE_LOOK, materialDisplayName, materialTypeLabel } from '../data/materials';
 import { materialBlurb } from '../data/materialdex';
 import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
@@ -790,7 +790,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     const filterBtn = this.addButton(
       CANVAS_W / 2,
       y,
-      `Type: ${this.materialdexTypeFilter === 'all' ? 'All' : this.materialdexTypeFilter} ▸`,
+      `Type: ${this.materialdexTypeFilter === 'all' ? 'All' : materialTypeLabel(this.materialdexTypeFilter)} ▸`,
       () => {
         const types = Object.keys(TYPE_LOOK) as MaterialType[];
         const options: (MaterialType | 'all')[] = ['all', ...types];

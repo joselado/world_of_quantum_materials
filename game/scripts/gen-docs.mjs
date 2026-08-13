@@ -116,6 +116,14 @@ const HYBRID_RECIPES_RAW = evalNode(findTopLevelConst(materialsSf, 'HYBRID_RECIP
 const HYBRID_RECIPES = HYBRID_RECIPES_RAW.map((r) => ({ parents: r.parents, result: r.result.args[0] }));
 
 const MOVE_COMPATIBILITY = evalNode(findTopLevelConst(materialsSf, 'MOVE_COMPATIBILITY'), materialsSf);
+const QUASIPARTICLE_NAMES = evalNode(findTopLevelConst(materialsSf, 'QUASIPARTICLE_NAMES'), materialsSf);
+const MATERIAL_TYPE_NAMES = evalNode(findTopLevelConst(materialsSf, 'MATERIAL_TYPE_NAMES'), materialsSf);
+
+// Player-facing labels, never a raw camelCase identifier -- same maps
+// materials.ts's own quasiparticleLabel()/materialTypeLabel() read from at
+// runtime, so a docs table and the in-game UI always agree on a name.
+const classLabel = (cls) => QUASIPARTICLE_NAMES[cls] ?? cls;
+const typeLabel = (type) => MATERIAL_TYPE_NAMES[type] ?? type;
 
 // --- passives.ts --------------------------------------------------------
 
@@ -151,17 +159,21 @@ function genQuasiparticles() {
   for (const [type, classes] of Object.entries(MOVE_COMPATIBILITY)) {
     for (const cls of classes) (classToTypes[cls] ??= []).push(type);
   }
+  const allTypeCount = Object.keys(MOVE_COMPATIBILITY).length;
   const moveRows = Object.values(MOVES)
     .filter((m) => !ANALYTIC_MOVE_IDS.includes(m.id) && !ULTIMATE_MOVE_IDS.includes(m.id) && m.class !== 'screening')
     .sort((a, b) => a.power - b.power)
-    .map((m) => [m.name, `\`${m.class}\``, String(m.power), (classToTypes[m.class] ?? []).join(', ')]);
-  const movesTable = table(['Move', 'Quasiparticle class', 'Power', 'Crystal types that can use it'], moveRows);
+    .map((m) => {
+      const types = classToTypes[m.class] ?? [];
+      const typesCell = types.length === allTypeCount ? 'Every type' : types.map(typeLabel).sort().join(', ');
+      return [m.name, classLabel(m.class), String(m.power), typesCell];
+    });
+  const movesTable = table(['Move', 'Quasiparticle', 'Power', 'Crystal types that can use it'], moveRows);
 
-  const compatRows = Object.entries(MOVE_COMPATIBILITY).map(([type, classes]) => [
-    `\`${type}\``,
-    classes.map((c) => `\`${c}\``).join(', '),
-  ]);
-  const compatTable = table(['Crystal type', 'Quasiparticle classes it can host'], compatRows);
+  const compatRows = Object.entries(MOVE_COMPATIBILITY)
+    .map(([type, classes]) => [typeLabel(type), classes.map(classLabel).sort().join(', ')])
+    .sort((a, b) => a[0].localeCompare(b[0]));
+  const compatTable = table(['Crystal type', 'Quasiparticles it can host'], compatRows);
 
   return { movesTable, compatTable };
 }
@@ -170,12 +182,14 @@ function genCrystals() {
   const worldSections = Object.entries(WORLD_CRYSTALS)
     .sort(([a], [b]) => Number(a) - Number(b))
     .map(([world, crystals]) => {
-      const rows = crystals.map((c) => [c.name, `\`${c.type}\``, String(c.maxHp)]);
+      const rows = [...crystals]
+        .sort((a, b) => typeLabel(a.type).localeCompare(typeLabel(b.type)) || a.name.localeCompare(b.name))
+        .map((c) => [c.name, typeLabel(c.type), String(c.maxHp)]);
       return `### World ${world} -- ${WORLD_TOPICS[world] ?? ''}\n\n${table(['Crystal', 'Type', 'Max HP'], rows)}`;
     });
   const rivalRows = Object.entries(WORLD_RIVALS)
     .sort(([a], [b]) => Number(a) - Number(b))
-    .map(([world, c]) => [world, c.name, `\`${c.type}\``, String(c.maxHp)]);
+    .map(([world, c]) => [world, c.name, typeLabel(c.type), String(c.maxHp)]);
   const rivalsTable = table(['World', 'Rival', 'Type', 'Max HP'], rivalRows);
   return { worldsBlock: worldSections.join('\n\n'), rivalsTable };
 }

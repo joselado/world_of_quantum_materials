@@ -12,135 +12,135 @@ world when the same real material is relevant to both.
 
 | Crystal | Type | Max HP |
 | --- | --- | --- |
-| Graphene | `metal` | 22 |
-| Nickel Oxide | `classicalMagnet` | 25 |
-| Chromium | `classicalMagnet` | 24 |
-| Iron | `classicalMagnet` | 27 |
-| Cobalt | `classicalMagnet` | 27 |
-| Barium Titanate | `ferroelectric` | 27 |
+| Chromium | Classical Magnet | 24 |
+| Cobalt | Classical Magnet | 27 |
+| Iron | Classical Magnet | 27 |
+| Nickel Oxide | Classical Magnet | 25 |
+| Barium Titanate | Ferroelectric | 27 |
+| Graphene | Metal | 22 |
 
 ### World 2 -- Symmetries, tight-binding band structure
 
 | Crystal | Type | Max HP |
 | --- | --- | --- |
-| Graphene | `metal` | 22 |
-| Silver | `metal` | 23 |
-| Gallium Nitride | `semiconductor` | 23 |
-| Magnesium Oxide | `insulator` | 21 |
-| Diamond | `insulator` | 24 |
-| Monolayer Boron Nitride | `insulator` | 21 |
-| Indium Arsenide | `semiconductor` | 24 |
-| Monolayer MoTe₂ (2H) | `semiconductor` | 22 |
-| HgTe | `metal` | 22 |
-| CdTe | `semiconductor` | 22 |
-| Gold | `metal` | 22 |
-| Platinum | `metal` | 25 |
-| Copper | `metal` | 23 |
-| Magnesium | `metal` | 20 |
-| Tungsten | `metal` | 27 |
-| Titanium | `metal` | 24 |
-| Zinc | `metal` | 21 |
-| Sodium Chloride | `insulator` | 19 |
-| Sapphire | `insulator` | 27 |
-| Lithium Fluoride | `insulator` | 20 |
-| Calcium Fluoride | `insulator` | 22 |
-| Aluminum Nitride | `insulator` | 24 |
-| Germanium | `semiconductor` | 23 |
-| Indium Phosphide | `semiconductor` | 24 |
-| Zinc Oxide | `semiconductor` | 22 |
-| Indium Antimonide | `semiconductor` | 19 |
-| Lead Sulfide | `semiconductor` | 20 |
-| Silicon Carbide, 4H phase | `semiconductor` | 27 |
-| Titanium Dioxide, rutile phase | `semiconductor` | 25 |
-| Boron Arsenide | `semiconductor` | 24 |
+| Aluminum Nitride | Insulator | 24 |
+| Calcium Fluoride | Insulator | 22 |
+| Diamond | Insulator | 24 |
+| Lithium Fluoride | Insulator | 20 |
+| Magnesium Oxide | Insulator | 21 |
+| Monolayer Boron Nitride | Insulator | 21 |
+| Sapphire | Insulator | 27 |
+| Sodium Chloride | Insulator | 19 |
+| Copper | Metal | 23 |
+| Gold | Metal | 22 |
+| Graphene | Metal | 22 |
+| HgTe | Metal | 22 |
+| Magnesium | Metal | 20 |
+| Platinum | Metal | 25 |
+| Silver | Metal | 23 |
+| Titanium | Metal | 24 |
+| Tungsten | Metal | 27 |
+| Zinc | Metal | 21 |
+| Boron Arsenide | Semiconductor | 24 |
+| CdTe | Semiconductor | 22 |
+| Gallium Nitride | Semiconductor | 23 |
+| Germanium | Semiconductor | 23 |
+| Indium Antimonide | Semiconductor | 19 |
+| Indium Arsenide | Semiconductor | 24 |
+| Indium Phosphide | Semiconductor | 24 |
+| Lead Sulfide | Semiconductor | 20 |
+| Monolayer MoTe₂ (2H) | Semiconductor | 22 |
+| Silicon Carbide, 4H phase | Semiconductor | 27 |
+| Titanium Dioxide, rutile phase | Semiconductor | 25 |
+| Zinc Oxide | Semiconductor | 22 |
 
 ### World 3 -- Topological band theory
 
 | Crystal | Type | Max HP |
 | --- | --- | --- |
-| Bi₂Te₃ | `quantumSpinHall` | 24 |
-| Monolayer WTe₂ | `quantumSpinHall` | 23 |
+| Bi₂Te₃ | Quantum Spin Hall Insulator | 24 |
+| Monolayer WTe₂ | Quantum Spin Hall Insulator | 23 |
 
 ### World 4 -- Magnetic field, quantum Hall effect, Landau levels
 
 | Crystal | Type | Max HP |
 | --- | --- | --- |
-| Gallium Arsenide | `semiconductor` | 25 |
-| Graphene (strong field) | `chernInsulator` | 24 |
-| MnBi₂Te₄ | `chernInsulator` | 30 |
+| Graphene (strong field) | Chern Insulator | 24 |
+| MnBi₂Te₄ | Chern Insulator | 30 |
+| Gallium Arsenide | Semiconductor | 25 |
 
 ### World 5 -- Superconductivity, Nambu representation, Majoranas
 
 | Crystal | Type | Max HP |
 | --- | --- | --- |
-| Aluminum | `superconductor` | 28 |
-| Lead | `superconductor` | 30 |
-| YBCO | `superconductor` | 27 |
-| Lanthanum Decahydride | `superconductor` | 28 |
-| Niobium | `superconductor` | 29 |
-| Tantalum Disulfide (1H) | `superconductor` | 26 |
-| Uranium Ditelluride | `chernSuperconductor` | 29 |
+| Uranium Ditelluride | Chern Superconductor | 29 |
+| Aluminum | Superconductor | 28 |
+| Lanthanum Decahydride | Superconductor | 28 |
+| Lead | Superconductor | 30 |
+| Niobium | Superconductor | 29 |
+| Tantalum Disulfide (1H) | Superconductor | 26 |
+| YBCO | Superconductor | 27 |
 
 ### World 6 -- Classical magnetism and magnons
 
 | Crystal | Type | Max HP |
 | --- | --- | --- |
-| Iron | `classicalMagnet` | 27 |
-| Cobalt | `classicalMagnet` | 27 |
-| Manganese Oxide | `classicalMagnet` | 26 |
-| Chromium Triiodide | `classicalMagnet` | 25 |
-| Chromium Tribromide | `classicalMagnet` | 25 |
-| Yttrium Iron Garnet | `classicalMagnet` | 26 |
-| Monolayer NiI₂ | `multiferroic` | 28 |
-| Bismuth Ferrite | `multiferroic` | 27 |
+| Chromium Tribromide | Classical Magnet | 25 |
+| Chromium Triiodide | Classical Magnet | 25 |
+| Cobalt | Classical Magnet | 27 |
+| Iron | Classical Magnet | 27 |
+| Manganese Oxide | Classical Magnet | 26 |
+| Yttrium Iron Garnet | Classical Magnet | 26 |
+| Bismuth Ferrite | Multiferroic | 27 |
+| Monolayer NiI₂ | Multiferroic | 28 |
 
 ### World 7 -- Quantum entanglement and tensor networks
 
 | Crystal | Type | Max HP |
 | --- | --- | --- |
-| Herbertsmithite | `quantumSpinLiquid` | 23 |
-| Strontium Copper Borate | `quantumSpinLiquid` | 24 |
-| Thallium Copper Chloride | `quantumSpinLiquid` | 22 |
-| Y₂BaNiO₅ | `quantumSpinLiquid` | 23 |
+| Herbertsmithite | Quantum Spin Liquid | 23 |
+| Strontium Copper Borate | Quantum Spin Liquid | 24 |
+| Thallium Copper Chloride | Quantum Spin Liquid | 22 |
+| Y₂BaNiO₅ | Quantum Spin Liquid | 23 |
 
 ### World 8 -- Quantum magnetism, spinons, Kondo physics
 
 | Crystal | Type | Max HP |
 | --- | --- | --- |
-| α-Ruthenium Trichloride | `quantumSpinLiquid` | 24 |
-| Herbertsmithite | `quantumSpinLiquid` | 23 |
-| YbMgGaO₄ | `quantumSpinLiquid` | 22 |
-| Tantalum Disulfide (1T) | `quantumSpinLiquid` | 24 |
-| Cerium Zirconate Pyrochlore | `quantumSpinLiquid` | 22 |
-| YbRh₂Si₂ | `kondoHeavyFermion` | 22 |
-| Cerium Cobalt Indide | `kondoHeavyFermion` | 23 |
+| Cerium Cobalt Indide | Kondo Heavy Fermion | 23 |
+| YbRh₂Si₂ | Kondo Heavy Fermion | 22 |
+| Cerium Zirconate Pyrochlore | Quantum Spin Liquid | 22 |
+| Herbertsmithite | Quantum Spin Liquid | 23 |
+| Tantalum Disulfide (1T) | Quantum Spin Liquid | 24 |
+| YbMgGaO₄ | Quantum Spin Liquid | 22 |
+| α-Ruthenium Trichloride | Quantum Spin Liquid | 24 |
 
 ### World 9 -- Excitations and defects
 
 | Crystal | Type | Max HP |
 | --- | --- | --- |
-| Fe(Te,Se) | `chernSuperconductor` | 22 |
-| Niobium Diselenide | `superconductor` | 21 |
-| Manganese | `classicalMagnet` | 23 |
-| Barium Titanate | `ferroelectric` | 27 |
-| GeTe | `ferroelectric` | 26 |
-| Hafnium Oxide | `ferroelectric` | 25 |
+| Fe(Te,Se) | Chern Superconductor | 22 |
+| Manganese | Classical Magnet | 23 |
+| Barium Titanate | Ferroelectric | 27 |
+| GeTe | Ferroelectric | 26 |
+| Hafnium Oxide | Ferroelectric | 25 |
+| Niobium Diselenide | Superconductor | 21 |
 
 ### World 10 -- Machine learning for quantum materials
 
 | Crystal | Type | Max HP |
 | --- | --- | --- |
-| Twisted Bilayer Graphene | `superconductor` | 32 |
-| InAs/Al Majorana Wire | `chernSuperconductor` | 31 |
-| CrI₃/NbSe₂ Topological-SC Heterostructure | `chernSuperconductor` | 33 |
-| NbSe₂/CrBr₃ Topological-SC Heterostructure | `chernSuperconductor` | 33 |
-| Twisted CrI₃ | `multiferroic` | 32 |
-| 1T/1H-TaS₂ Heterostructure | `kondoHeavyFermion` | 30 |
-| Cr-doped (Bi,Sb)₂Te₃ | `chernInsulator` | 29 |
-| HgTe/CdTe Quantum Well | `quantumSpinHall` | 25 |
-| Twisted Bilayer MoTe₂ | `fractionalChern` | 26 |
-| Rhombohedral Pentalayer Graphene/hBN Moiré | `fractionalChern` | 27 |
-| Fe/Pb Majorana Chain | `chernSuperconductor` | 29 |
+| Cr-doped (Bi,Sb)₂Te₃ | Chern Insulator | 29 |
+| CrI₃/NbSe₂ Topological-SC Heterostructure | Chern Superconductor | 33 |
+| Fe/Pb Majorana Chain | Chern Superconductor | 29 |
+| InAs/Al Majorana Wire | Chern Superconductor | 31 |
+| NbSe₂/CrBr₃ Topological-SC Heterostructure | Chern Superconductor | 33 |
+| Rhombohedral Pentalayer Graphene/hBN Moiré | Fractional Chern Insulator | 27 |
+| Twisted Bilayer MoTe₂ | Fractional Chern Insulator | 26 |
+| 1T/1H-TaS₂ Heterostructure | Kondo Heavy Fermion | 30 |
+| Twisted CrI₃ | Multiferroic | 32 |
+| HgTe/CdTe Quantum Well | Quantum Spin Hall Insulator | 25 |
+| Twisted Bilayer Graphene | Superconductor | 32 |
 <!-- GENERATED:WORLDS END -->
 
 ## World rivals
@@ -169,14 +169,14 @@ convention once it reshapes.
 <!-- GENERATED:RIVALS_TABLE START -->
 | World | Rival | Type | Max HP |
 | --- | --- | --- | --- |
-| 1 | Polycrystalline Silicon Golem | `semiconductor` | 30 |
-| 2 | Polycrystalline Graphene Golem | `metal` | 38 |
-| 3 | Polycrystalline Bismuth Telluride Golem | `quantumSpinHall` | 42 |
-| 4 | Polycrystalline Manganese Bismuth Telluride Golem | `chernInsulator` | 46 |
-| 5 | Polycrystalline YBCO Golem | `superconductor` | 50 |
-| 6 | Polycrystalline Iron Golem | `classicalMagnet` | 54 |
-| 7 | Polycrystalline Herbertsmithite Golem | `quantumSpinLiquid` | 58 |
-| 8 | Polycrystalline Ruthenium Trichloride Golem | `quantumSpinLiquid` | 62 |
+| 1 | Polycrystalline Silicon Golem | Semiconductor | 30 |
+| 2 | Polycrystalline Graphene Golem | Metal | 38 |
+| 3 | Polycrystalline Bismuth Telluride Golem | Quantum Spin Hall Insulator | 42 |
+| 4 | Polycrystalline Manganese Bismuth Telluride Golem | Chern Insulator | 46 |
+| 5 | Polycrystalline YBCO Golem | Superconductor | 50 |
+| 6 | Polycrystalline Iron Golem | Classical Magnet | 54 |
+| 7 | Polycrystalline Herbertsmithite Golem | Quantum Spin Liquid | 58 |
+| 8 | Polycrystalline Ruthenium Trichloride Golem | Quantum Spin Liquid | 62 |
 <!-- GENERATED:RIVALS_TABLE END -->
 
 See [Hybrids](hybrids.md) for the fused materials that sit alongside these,

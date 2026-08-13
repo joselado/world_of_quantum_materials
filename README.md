@@ -36,12 +36,12 @@ molten crust, alongside the more ordinary raised stone everywhere else.
 
 <table>
 <tr>
-<td><img src="screenshots/overworld.png" width="300" alt="World 1, the Tutorial Meadow"></td>
-<td><img src="screenshots/biome-landau.png" width="300" alt="World 4, Landau Terrain"></td>
+<td><img src="screenshots/overworld.png" width="300" alt="World 1, the Mean-Field Meadow"></td>
+<td><img src="screenshots/biome-landau.png" width="300" alt="World 4, Landau Level Terrain"></td>
 </tr>
 <tr>
-<td><img src="screenshots/biome-network.png" width="300" alt="World 7, the Network-Graph World"></td>
-<td><img src="screenshots/biome-cracked.png" width="300" alt="World 9, the Cracked World"></td>
+<td><img src="screenshots/biome-network.png" width="300" alt="World 7, the Tensor-Network World"></td>
+<td><img src="screenshots/biome-cracked.png" width="300" alt="World 9, the Defect Wastes"></td>
 </tr>
 </table>
 
@@ -156,18 +156,18 @@ guardian you've met, replay the tutorial, and adjust settings.
 One world per course topic -- each with its own biome, wild-material
 archetypes, and a rival crystal gating the way to the next world.
 
-| # | World | Biome |
+| # | World | Course topic |
 |---|---|---|
-| 1 | Second quantization, mean-field, symmetry breaking | Mean-Field Meadow |
-| 2 | Symmetries, tight-binding band structure | Bloch Caverns |
-| 3 | Topological band theory | Topological Islands |
-| 4 | Magnetic field, quantum Hall effect, Landau levels | Landau Level Terrain |
-| 5 | Superconductivity, Nambu representation, Majoranas | Frozen Zero-Resistance Caverns |
-| 6 | Classical magnetism and magnons | Magnon Plains |
-| 7 | Quantum entanglement and tensor networks | Tensor-Network World |
-| 8 | Quantum magnetism, spinons, Kondo physics | Spinon Forest |
-| 9 | Excitations and defects | Defect Wastes |
-| 10 | Machine learning for quantum materials | The Adaptive Meta-World |
+| 1 | Mean-Field Meadow | Second quantization, mean-field, symmetry breaking |
+| 2 | Bloch Caverns | Symmetries, tight-binding band structure |
+| 3 | Topological Islands | Topological band theory |
+| 4 | Landau Level Terrain | Magnetic field, quantum Hall effect, Landau levels |
+| 5 | Frozen Zero-Resistance Caverns | Superconductivity, Nambu representation, Majoranas |
+| 6 | Magnon Plains | Classical magnetism and magnons |
+| 7 | Tensor-Network World | Quantum entanglement and tensor networks |
+| 8 | Spinon Forest | Quantum magnetism, spinons, Kondo physics |
+| 9 | Defect Wastes | Excitations and defects |
+| 10 | The Adaptive Meta-World | Machine learning for quantum materials |
 
 World 10's wilds are every hybrid crystal fusable at Majorana's station (see
 [Hybrids](docs/hybrids.md)) — real compounds in their own right, just ones

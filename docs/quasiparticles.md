@@ -10,24 +10,24 @@ or non-Abelian excitation at the top.
 ## Ordinary moves
 
 <!-- GENERATED:MOVES_TABLE START -->
-| Move | Quasiparticle class | Power | Crystal types that can use it |
+| Move | Quasiparticle | Power | Crystal types that can use it |
 | --- | --- | --- | --- |
-| Phonon Beam | `phonon` | 6 | metal, insulator, semiconductor, classicalMagnet, quantumSpinLiquid, kondoHeavyFermion, superconductor, chernSuperconductor, chernInsulator, quantumSpinHall, fractionalChern, ferroelectric, multiferroic |
-| Electron Pulse | `electron` | 7 | metal, semiconductor, kondoHeavyFermion, superconductor, chernSuperconductor, chernInsulator, quantumSpinHall, fractionalChern |
-| Magnon Pulse | `magnon` | 8 | classicalMagnet, multiferroic |
-| Plasmon Pulse | `plasmon` | 8 | metal |
-| Ferron Pulse | `ferron` | 8 | ferroelectric, multiferroic |
-| Polaron Drag | `polaron` | 9 | insulator |
-| Triplon Surge | `triplon` | 9 | quantumSpinLiquid |
-| Electromagnon Pulse | `electromagnon` | 9 | multiferroic |
-| Spinon Swap | `spinon` | 10 | quantumSpinLiquid, kondoHeavyFermion |
-| Chiral Current | `chiral` | 10 | chernSuperconductor, chernInsulator |
-| Helical Current | `helical` | 10 | quantumSpinHall |
-| Higgs Oscillation | `higgs` | 10 | superconductor, chernSuperconductor |
-| Heavy Fermion Pulse | `heavyFermion` | 10 | kondoHeavyFermion |
-| Vison Loop | `vison` | 10 | quantumSpinLiquid |
-| Anyon Braid | `chargedAnyon` | 11 | fractionalChern |
-| Majorana Split | `majorana` | 11 | chernSuperconductor |
+| Phonon Beam | Phonon | 6 | Every type |
+| Electron Pulse | Electron | 7 | Chern Insulator, Chern Superconductor, Fractional Chern Insulator, Kondo Heavy Fermion, Metal, Quantum Spin Hall Insulator, Semiconductor, Superconductor |
+| Magnon Pulse | Magnon | 8 | Classical Magnet, Multiferroic |
+| Plasmon Pulse | Plasmon | 8 | Metal |
+| Ferron Pulse | Ferron | 8 | Ferroelectric, Multiferroic |
+| Polaron Drag | Polaron | 9 | Insulator |
+| Triplon Surge | Triplon | 9 | Quantum Spin Liquid |
+| Electromagnon Pulse | Electromagnon | 9 | Multiferroic |
+| Spinon Swap | Spinon | 10 | Kondo Heavy Fermion, Quantum Spin Liquid |
+| Chiral Current | Chiral | 10 | Chern Insulator, Chern Superconductor |
+| Helical Current | Helical | 10 | Quantum Spin Hall Insulator |
+| Higgs Oscillation | Higgs | 10 | Chern Superconductor, Superconductor |
+| Heavy Fermion Pulse | Heavy Fermion | 10 | Kondo Heavy Fermion |
+| Vison Loop | Vison | 10 | Quantum Spin Liquid |
+| Anyon Braid | Anyon | 11 | Fractional Chern Insulator |
+| Majorana Split | Majorana | 11 | Chern Superconductor |
 <!-- GENERATED:MOVES_TABLE END -->
 
 ## Which crystal types can host which quasiparticles
@@ -38,34 +38,34 @@ can't host the attacking move's quasiparticle class at all, the hit lands at
 of it.
 
 <!-- GENERATED:COMPATIBILITY_TABLE START -->
-| Crystal type | Quasiparticle classes it can host |
+| Crystal type | Quasiparticles it can host |
 | --- | --- |
-| `metal` | `electron`, `phonon`, `plasmon` |
-| `insulator` | `phonon`, `polaron` |
-| `semiconductor` | `electron`, `phonon` |
-| `classicalMagnet` | `magnon`, `phonon` |
-| `quantumSpinLiquid` | `spinon`, `phonon`, `vison`, `triplon` |
-| `kondoHeavyFermion` | `electron`, `phonon`, `heavyFermion`, `spinon` |
-| `superconductor` | `electron`, `phonon`, `higgs` |
-| `chernSuperconductor` | `electron`, `phonon`, `higgs`, `chiral`, `majorana` |
-| `chernInsulator` | `electron`, `phonon`, `chiral` |
-| `quantumSpinHall` | `electron`, `phonon`, `helical` |
-| `fractionalChern` | `electron`, `phonon`, `chargedAnyon` |
-| `ferroelectric` | `phonon`, `ferron` |
-| `multiferroic` | `magnon`, `phonon`, `electromagnon`, `ferron` |
+| Chern Insulator | Chiral, Electron, Phonon |
+| Chern Superconductor | Chiral, Electron, Higgs, Majorana, Phonon |
+| Classical Magnet | Magnon, Phonon |
+| Ferroelectric | Ferron, Phonon |
+| Fractional Chern Insulator | Anyon, Electron, Phonon |
+| Insulator | Phonon, Polaron |
+| Kondo Heavy Fermion | Electron, Heavy Fermion, Phonon, Spinon |
+| Metal | Electron, Phonon, Plasmon |
+| Multiferroic | Electromagnon, Ferron, Magnon, Phonon |
+| Quantum Spin Hall Insulator | Electron, Helical, Phonon |
+| Quantum Spin Liquid | Phonon, Spinon, Triplon, Vison |
+| Semiconductor | Electron, Phonon |
+| Superconductor | Electron, Higgs, Phonon |
 <!-- GENERATED:COMPATIBILITY_TABLE END -->
 
 ## Laughlin's Analytic moves
 
 Laughlin (World 4) sells two moves that aren't in the table above, since
-they're quiz-gated separately: a beam and an eruption. Using either one asks
+they're quiz-gated separately: a lance and an eruption. Using either one asks
 a physics-equation question first — answer right and it hits for double
 damage, answer wrong and it's halved.
 
 Laughlin's shop also lets you tune each move to any quasiparticle class your
 *current* form can host, the same choice an ordinary move's fixed class
 already makes for you. Each move's name always reads "<quasiparticle>
-Beam"/"<quasiparticle> Eruption," defaulting to Phonon Beam/Phonon Eruption
+Lance"/"<quasiparticle> Eruption," defaulting to Phonon Lance/Phonon Eruption
 until tuned, so they're always usable. See
 [Guardians](guardians.md#laughlins-analytics) for how the shop and tuning
 picker work.

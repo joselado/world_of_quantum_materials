@@ -154,7 +154,11 @@ game/src/
                                   stat/economy exports from here and re-exports them, so every
                                   existing `import { shopCost, ... } from '../data/materials'`
                                   call site is unaffected.
-    materials.ts                 MOVES, TYPE_LOOK, WORLD_CRYSTALS, WORLD_RIVALS,
+    materials.ts                 MOVES, TYPE_LOOK, materialTypeLabel() -- MaterialType's
+                                  player-facing name (e.g. 'classicalMagnet' -> "Classical
+                                  Magnet"), read by Qumatex's type filter and by
+                                  gen-docs.mjs so a raw camelCase identifier is never shown
+                                  to a player, WORLD_CRYSTALS, WORLD_RIVALS,
                                   PLAYER_MATERIAL, SHOP_MOVE_IDS, ANALYTIC_MOVE_IDS,
                                   ULTIMATE_MOVE_IDS, ULTIMATE_CLASS_UNLOCK_COST,
                                   TUNABLE_MOVE_CLASSES, RIVAL_9_TYPES, WORLD_NAMES,
@@ -921,7 +925,7 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   distinguishing class of its own to filter on), which `SHOP_MOVE_IDS` deliberately excludes so
   Noether never also offers them. Two rendered sections: still-unbought moves, then every
   already-bought one showing which quasiparticle it's tuned to (its row label is
-  `tunedMoveDisplayName`, e.g. "Magnon Beam -- tuned to Magnon (retune)"). Buying
+  `tunedMoveDisplayName`, e.g. "Magnon Lance -- tuned to Magnon (retune)"). Buying
   (or later retuning) a move opens `tunableMoveShop.ts`'s `showMoveClassPicker` -- a sub-panel
   offering `TUNABLE_MOVE_CLASSES` (every ordinary Attacks-section class, i.e. everything except
   Kondo's `'screening'`) filtered through `canHost(playerMaterial.type, cls)` (so only
@@ -936,9 +940,11 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   purchasable/usable from any form and still asks its question regardless of tuning. The
   picker only filters at pick time, so a saved assignment can outlive a later transmute into
   a form that can't host it -- `getTunedMoveClass` re-checks `canHost` against the player's
-  *current* form every call and falls back to `'phonon'` (Phonon Beam, universal) when it
+  *current* form every call and falls back to `'phonon'` (universal) when it
   fails, and `tunedMoveDisplayName`/the shop row label read that same fallback rather than the
-  raw saved value, so name and mismatch math can't disagree. See
+  raw saved value, so name and mismatch math can't disagree -- `tunedMoveDisplayName` reads as
+  "Phonon Lance"/"Phonon Eruption" in that state, the shop row's own fallback text reads the
+  bare noun instead ("reverted to Phonon", `quasiparticleLabel`). See
   `BattleScene.showAnalyticQuestion` (Stats and battle resolution, above) for how a purchased
   Analytic move actually plays out in a fight.
 - **Skłodowska-Curie's Ultimate-move shop** (`scenes/panels/sklodowskaCurie.ts`'s

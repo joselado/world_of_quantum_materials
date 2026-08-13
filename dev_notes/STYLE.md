@@ -492,10 +492,11 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   tab (reusing `shopCost`), followed by one row per already-bought move showing which
   quasiparticle it's tuned to: "`<name>` -- tuned to `<quasiparticle>` (retune)", or if the
   player has since transmuted into a form that can no longer host the saved assignment,
-  "`<name>` -- tuned to `<quasiparticle>`, reverted to Phonon Beam (this form can't host it --
-  retune)", or "`<name>` -- untuned (pick a quasiparticle)" if never assigned -- `<name>` here
-  is `tunedMoveDisplayName`, so a tuned move's own row already reads like "Magnon Beam --
-  tuned to Magnon (retune)" rather than the untuned default "Phonon Beam." Empty state once
+  "`<name>` -- tuned to `<quasiparticle>`, reverted to Phonon (this form can't host it --
+  retune)" -- the fallback reads the bare quasiparticle noun (`quasiparticleLabel`), not the
+  move's own shape word, or "`<name>` -- untuned (pick a quasiparticle)" if never assigned --
+  `<name>` here is `tunedMoveDisplayName`, so a tuned move's own row already reads like "Magnon
+  Lance -- tuned to Magnon (retune)" rather than the untuned default "Phonon Lance." Empty state once
   both are bought: "You already carry every analytic technique I can teach." Clicking either
   an unbought move's buy row or a learned move's tune/retune row opens
   `showMoveClassPicker`, a sub-panel titled "Which quasiparticle should `<name>` carry?"
@@ -509,10 +510,10 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   (`data/materials.ts`'s `tunedMoveDisplayName`) everywhere a move name shows up in battle
   too -- the move-menu button, the analytic-question panel's title, the battle log's "X used
   `<name>`!" line -- built from the quasiparticle's own bare label (`quasiparticleLabel`, e.g.
-  `Magnon` for `'magnon'`) plus each move's fixed shape word ("Beam"/"Eruption") rather
+  `Magnon` for `'magnon'`) plus each move's fixed shape word ("Lance"/"Eruption") rather
   than a second hand-authored word list, so `skyfallBeam` tuned to `'magnon'` reads as
-  "Magnon Beam," `groundEruption` tuned to `'chargedAnyon'` as "Anyon Eruption," and so on. An
-  untuned move defaults to `'phonon'`, reading as "Phonon Beam"/"Phonon Eruption."
+  "Magnon Lance," `groundEruption` tuned to `'chargedAnyon'` as "Anyon Eruption," and so on. An
+  untuned move defaults to `'phonon'`, reading as "Phonon Lance"/"Phonon Eruption."
 
 ## Majorana in the overworld (`OverworldScene.showMajoranaPanel`)
 

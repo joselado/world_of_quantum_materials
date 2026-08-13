@@ -67,8 +67,8 @@ the move should carry, filtered to whatever your *current* form can host.
 The move stays usable from any form and always asks its question, but this
 choice decides whether it can land a quasiparticle-mismatch hit like an
 ordinary attack. Transmute into a form that can't host your picked
-quasiparticle, and the move falls back to Phonon Beam — the one class every
-form hosts — until you retune it.
+quasiparticle, and the move falls back to its Phonon form — the one class
+every form hosts — until you retune it.
 
 ## Majorana's Fusion
 
