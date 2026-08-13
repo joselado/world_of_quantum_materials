@@ -7,6 +7,8 @@ host (see [Quasiparticles & moves](quasiparticles.md)). Each world draws
 from its own course topic, though a few compounds show up in more than one
 world when the same real material is relevant to both.
 
+<img src="../screenshots/docs-crystals-encounter.png" width="300" alt="A wild Yttrium Iron Garnet asks a magnon physics question mid-encounter">
+
 <!-- GENERATED:WORLDS START -->
 ### World 1 -- Second quantization, mean-field, symmetry breaking
 

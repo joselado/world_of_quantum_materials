@@ -7,6 +7,8 @@ never gets a magnon move. Move power climbs with how exotic the underlying
 physics is: an ordinary lattice vibration sits at the bottom, a topological
 or non-Abelian excitation at the top.
 
+<img src="../screenshots/docs-quasiparticles-movemenu.png" width="300" alt="The in-battle move menu, paged between ordinary attacks and other move kinds">
+
 ## Ordinary moves
 
 <!-- GENERATED:MOVES_TABLE START -->

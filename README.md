@@ -57,11 +57,11 @@ standing next to the Nickel Oxide beside it.
 <table>
 <tr>
 <td><img src="screenshots/encounter.png" width="300" alt="A wild Nickel Oxide asks a physics question mid-encounter"></td>
-<td><img src="screenshots/encounter-topological.png" width="300" alt="A topological crystal asks about the quantum anomalous Hall effect"></td>
+<td><img src="screenshots/encounter-topological.png" width="300" alt="Bi2Te3 asks why its topological surface state is spin-momentum locked"></td>
 </tr>
 <tr>
-<td><img src="screenshots/encounter-supercon.png" width="300" alt="Aluminum asks about its Chern number"></td>
-<td><img src="screenshots/encounter-tensornet.png" width="300" alt="Herbertsmithite asks about a quantum spin liquid's mean-field self-consistency"></td>
+<td><img src="screenshots/encounter-supercon.png" width="300" alt="Aluminum asks which move class is unique to a Chern superconductor"></td>
+<td><img src="screenshots/encounter-tensornet.png" width="300" alt="Herbertsmithite asks how a quantum spin liquid's ground state differs from a conventional antiferromagnet's"></td>
 </tr>
 </table>
 
@@ -108,11 +108,11 @@ Abilities station too (appears once you've learned your first passive). See
 <td><img src="screenshots/mentor-majorana.png" width="300" alt="Majorana's hybrid-material panel"></td>
 </tr>
 <tr>
-<td><img src="screenshots/mentor-curie.png" width="300" alt="Laughlin's quiz-gated Analytic move shop"></td>
+<td><img src="screenshots/mentor-laughlin.png" width="300" alt="Laughlin's quiz-gated Analytic move shop"></td>
 <td><img src="screenshots/battle-analytic-move.png" width="300" alt="One of Laughlin's Analytic moves asking a physics question mid-battle"></td>
 </tr>
 <tr>
-<td><img src="screenshots/mentor-laughlin.png" width="300" alt="An early tutorial tip introducing the guardians"></td>
+<td><img src="screenshots/mentor-curie.png" width="300" alt="Skłodowska-Curie's capstone Ultimate-move shop"></td>
 <td><img src="screenshots/mentor-feynman.png" width="300" alt="Feynman's move-leveling panel"></td>
 </tr>
 <tr>
@@ -235,6 +235,8 @@ first time -- entering the Lab, taking your first steps, your first wild
 encounter, your first battle, your first qumatessence, your first guardian,
 reaching your first goal. Want to revisit one? In the Lab, click
 **Tutorial** for a menu of every topic -- pick one to reread it.
+
+![A tutorial tip introducing the guardians](screenshots/tutorial-tip.png)
 
 ## Story Mode vs. Superposition Mode
 

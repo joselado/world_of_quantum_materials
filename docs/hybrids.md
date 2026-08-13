@@ -18,6 +18,8 @@ catalog of named parent pairs, not a generic "these two types always fuse
 into that type" rule. If a pairing isn't listed below, it can't be fused —
 even if both crystals share the same type.
 
+<img src="../screenshots/docs-hybrids-majorana.png" width="300" alt="Majorana's fusion panel, picking a second parent to combine with HgTe">
+
 <!-- GENERATED:RECIPES_TABLE START -->
 | Parent A | Parent B | Result |
 | --- | --- | --- |

@@ -8,6 +8,8 @@ right there in the Lab, no travel required. Bloch's own panel is the
 exception with a purpose: fast travel is literally what he offers, so his
 destination list is where a warp actually happens.
 
+<img src="../screenshots/docs-guardians-station.png" width="300" alt="The Lab's Guardians station, listing every guardian met so far">
+
 | Guardian | World | What they do |
 |---|---|---|
 | [Noether's Currents](#noethers-currents) | 1 | Sells ordinary moves and stat upgrades |
@@ -133,6 +135,8 @@ damage:
 
 Picking a move picks the buff. Only one can be active at a time; switching
 means talking to Kondo again.
+
+<img src="../screenshots/docs-guardians-kondo.png" width="300" alt="Kondo's self-buff shop, listing his three screening moves">
 
 Each of these three can also be leveled up at [Feynman's](#feynmans-diagrammatics),
 same as any other move — leveling one makes its buff itself stronger (more
