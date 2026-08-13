@@ -186,7 +186,11 @@ export interface Material {
   type: MaterialType;
   color: number;
   variant: CrystalVariant;
-  maxHp: number;
+  // No `maxHp` here -- HP is never intrinsic to a crystal form. An ordinary
+  // wild's and a rival's max HP are both computed live from the current
+  // world (`data/balance.ts`'s `wildHpForWorld`/`rivalHpForWorld`,
+  // `BattleScene.create`), and the player's own max HP follows the same
+  // `wildHpForWorld` reasoning off whichever world they're currently in.
   moves: string[];
   // Set only for a Majorana-fused hybrid (data/materials.ts's
   // combineMaterials) -- both parents' own look, carried forward so

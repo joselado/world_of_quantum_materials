@@ -471,7 +471,8 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   click (`transmuteInto`). An already-unlocked crystal drops the cost suffix -- `Become
   <name>` -- and transmutes for free; whichever crystal the player is already wearing
   shows as a dimmed `<name> (current form)` instead, same as before. Transmuting swaps
-  color/variant/max HP and clamps current HP down if needed, and immediately redraws the
+  color/variant/moveset only -- HP is never intrinsic to a crystal form, it's `wildHpForWorld`
+  for whichever world the player will actually resume into -- and immediately redraws the
   overworld avatar (`redrawPlayerCrystal`). Empty state: "You haven't
   defeated any crystals yet -- there is nothing to become." Paginates once the list is
   longer than one page (see "Paginated candidate lists" below) -- the common case in
@@ -538,7 +539,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   panel's Farewell/Continue footer uses) rather than stacking two separate footer rows.
   Both steps paginate (see "Paginated candidate lists" below) once the filtered list is
   longer than one page. Picking a partner immediately transmutes the player into the
-  recipe's own named result (`data/materials.ts`'s `combineMaterials` -- name/type/maxHp all
+  recipe's own named result (`data/materials.ts`'s `combineMaterials` -- name/type/moves all
   fixed on the recipe, not computed at combine time) the same way Dresselhaus's
   transmutation does -- no separate "confirm" step, and no memory of earlier fusions to
   instantly re-become either -- every visit starts the two-step pick fresh. Empty state (no

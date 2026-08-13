@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { makeCrystal } from '../art/crystals';
 import { CANVAS_W, CANVAS_H } from '../art/perspective';
 import { getPlayerMaterial, allCrystals, TYPE_LOOK, materialDisplayName, materialTypeLabel } from '../data/materials';
+import { wildHpForWorld } from '../data/balance';
 import { materialBlurb } from '../data/materialdex';
 import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
@@ -480,10 +481,20 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // of which scene's Guardians station opened them. Redraws the Lab's own
   // floating crystal preview in place rather than an overworld sprite; skips
   // OverworldScene.applyPlayerForm's World 10 map-regeneration branch since
-  // the Lab is never World 10.
+  // the Lab is never World 10. HP is never intrinsic to a crystal form (see
+  // that function's own comment) -- capped by `wildHpForWorld` for whichever
+  // world the player will actually land in when they next leave the Lab,
+  // mirroring enterWorld()'s own mode branching exactly (Story Mode always
+  // goes to the frontier `highestUnlockedWorld()`, not wherever `mapState`
+  // happens to hold; only Superposition Mode -- which has no frontier --
+  // resumes via `resumeWorld()`) so a player who transmutes after Bloch-
+  // teleporting or walking back to an earlier world doesn't get an HP cap
+  // for a world the door won't actually take them to.
   applyPlayerForm(material: Material) {
     this.game.registry.set('playerForm', material);
-    const clampedHp = Math.min((this.game.registry.get('playerHp') as number) ?? material.maxHp, material.maxHp);
+    const world = this.isSuperpositionMode() ? this.resumeWorld() ?? 1 : this.highestUnlockedWorld();
+    const worldMaxHp = wildHpForWorld(world);
+    const clampedHp = Math.min((this.game.registry.get('playerHp') as number) ?? worldMaxHp, worldMaxHp);
     this.game.registry.set('playerHp', clampedHp);
     persistFromRegistry(this.game.registry);
 

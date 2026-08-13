@@ -61,46 +61,16 @@ export const MATERIAL_BLURBS: Record<string, string> = {
     "Ce₂Zr₂O₇ shows no magnetic order or spin freezing down to tens of millikelvin -- its Ce³⁺ dipole-octupole doublets on the pyrochlore lattice are read as evidence for a U(1) quantum spin ice, a quantum spin liquid with an emergent photon and gapped spinons rather than the Z2 gauge structure a vison-hosting spin liquid carries.",
   'Rhombohedral Pentalayer Graphene/hBN Moiré':
     'Five rhombohedrally-stacked graphene layers aligned to a hBN substrate host a flat, topologically nontrivial moiré band -- at the right filling and displacement field, that band fractionalizes into a genuine fractional quantum anomalous Hall state at zero magnetic field (2023-2024 experiments), the same charged-anyon edge physics as Twisted Bilayer MoTe₂ by an entirely different route.',
-  Gold:
-    "Gold's filled 5d shell and half-filled 6s conduction band make it the other flagship (with Silver) of visible-range plasmonics -- an ordinary partially-filled-band metal whose sharp, chemically inert plasmon resonance is why nanophotonics runs on gold nanoparticles as much as silver ones.",
-  Platinum:
-    "Platinum's partially filled 5d bands give it a good Fermi-level density of states and make it an excellent ordinary conductor and catalyst -- but those same d-electron interband transitions damp any plasmon response, so it carries Electron Pulse rather than Silver or Gold's Plasmon Pulse.",
-  Copper:
-    "Copper's half-filled 4s conduction band gives it the highest electrical conductivity of any non-precious metal -- the archetypal room-temperature conductor, and still plasmonically active (just lossier than silver or gold, thanks to its own interband d-band transitions).",
-  Magnesium:
-    "Magnesium is a nearly-free-electron divalent metal whose plasma frequency reaches into the ultraviolet, unlike the noble metals' visible-range plasmons -- one of the few elemental metals genuinely useful for UV plasmonics.",
   Tungsten:
     "Tungsten's partially filled 5d bands make it an ordinary band conductor, but it holds the record: the highest melting point of any elemental metal, no exotic order needed to explain it.",
-  Titanium:
-    "Titanium's partially filled 3d bands make it an ordinary transition-metal conductor -- its own d-electron interband transitions damp any plasmon response, so it stays a plain Electron Pulse host rather than a plasmonic one.",
-  Zinc:
-    "Zinc's filled 3d shell sits below a nearly-free 4s conduction band whose plasma frequency, like Magnesium's, reaches into the ultraviolet -- another elemental UV-plasmonic metal, not visible-range like silver or gold.",
-  'Sodium Chloride':
-    "NaCl is the textbook conventional insulator -- a wide ionic gap simply blocks electron propagation, no protected edge structure involved, and its own ionic lattice self-traps a polaron the way any ionic insulator does.",
-  Sapphire:
-    "Al₂O₃'s ~8.8 eV gap is wide enough that no realistic doping crosses it -- one of the hardest, most chemically inert insulating crystals known, an even more extreme version of Diamond's own wide-gap-insulator story.",
-  'Lithium Fluoride':
-    "LiF has the widest gap (~13.6 eV) of any alkali halide -- an even more strongly ionic, more strongly self-trapping textbook polaron host than Sodium Chloride.",
-  'Calcium Fluoride':
-    'CaF₂ is a fluorite-structure ionic insulator with a ~12 eV gap -- another textbook polaron host, its two fluoride ions per calcium giving the same wide-gap, no-free-carrier band picture as the alkali halides.',
-  'Aluminum Nitride':
-    "AlN's ~6.2 eV gap is wider than Gallium Nitride's own ~3.4 eV -- too wide for the doping that turns GaN into a working semiconductor, so it stays a true insulator instead.",
-  Germanium:
-    "Germanium's narrow ~0.67 eV indirect gap makes it Silicon's own group-IV sibling -- the original transistor material, an ordinary single-particle band semiconductor through and through.",
-  'Indium Phosphide':
-    'InP is a direct-gap (~1.35 eV) III-V semiconductor, a workhorse of high-speed electronics and photonics alongside Gallium Arsenide -- same ordinary band picture, no symmetry breaking or topology involved.',
-  'Zinc Oxide':
-    'ZnO is a wide direct-gap (~3.4 eV) II-VI semiconductor, easily doped n-type -- an ordinary band compound, its wide gap making it transparent to visible light while still conducting once doped.',
-  'Indium Antimonide':
-    'InSb has the narrowest gap (~0.17 eV) of the common III-V semiconductors, giving it extreme electron mobility -- still a plain single-particle band picture, just with an unusually small gap to cross.',
-  'Lead Sulfide':
-    'PbS is a narrow-gap (~0.41 eV) IV-VI semiconductor -- the natural mineral galena, an ordinary band picture in bulk (its quantum-confined nanocrystal form is a separate story).',
-  'Silicon Carbide, 4H phase':
-    "4H-SiC's wide (~3.2 eV) indirect gap and exceptional hardness and thermal conductivity make it the power-electronics workhorse alongside GaN -- still an ordinary band semiconductor, its toughness a materials-engineering virtue rather than a sign of exotic physics.",
-  'Titanium Dioxide, rutile phase':
-    "Rutile TiO₂'s ~3.0 eV gap is wide enough to make it a wide-gap oxide semiconductor -- famous for photocatalysis, but an ordinary single-particle band picture underneath.",
-  'Boron Arsenide':
-    'BAs has a moderate (~1.46 eV) indirect gap -- an otherwise ordinary III-V semiconductor, famous instead for a record-high thermal conductivity rivaling diamond.',
+  'Europium Oxide':
+    "EuO's half-filled Eu²⁺ 4f⁷ shell gives it well-isolated localized moments -- its magnetization-vs-temperature curve is the textbook test of Weiss/mean-field theory's Brillouin-function prediction, a distinct localized-moment derivation from Iron/Cobalt's itinerant Stoner picture, though both reach the same ordered magnetic state.",
+  'Manganese Fluoride':
+    "MnF₂'s strong single-ion anisotropy and simple ionic (superexchange-mediated) local moments make it the real-material realization of the mean-field Ising antiferromagnet -- a third distinct route to classicalMagnet order, alongside Nickel Oxide's Mott-insulating Hubbard-U picture and Chromium's itinerant spin-density-wave picture.",
+  'Potassium Dihydrogen Phosphate':
+    "KH₂PO₄ is an order-disorder ferroelectric: protons hop between two off-center sites in each O-H...O bond, described by a pseudospin (Ising-like) mean-field model -- unlike Barium Titanate's displacive transition (an ion sliding continuously off-center). Same SSB, a different microscopic route.",
+  'Titanium Diselenide':
+    "1T-TiSe₂'s charge density wave (~200 K) is session1's own broken-continuous-translational-symmetry example: a softened lattice/charge modulation opens a small gap, the textbook real-material CDW. Its low-energy mode is the ordinary lattice phonon -- unlike a magnon or Higgs mode, phonons stay gapless in every material, CDW included.",
 };
 
 const TYPE_FALLBACK_BLURBS: Record<MaterialType, string> = {

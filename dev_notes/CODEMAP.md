@@ -237,13 +237,13 @@ difficulty-curve sanity check rather than a docs generator.
 ## Data model (`data/types.ts`, `data/materials.ts`)
 
 - A **Material** is a crystal: `name`, `type` (`MaterialType`), `color`, `variant`
-  (shard/cluster/prism/layer/twisted), `maxHp`, `moves` (string ids into `MOVES`), an optional
+  (shard/cluster/prism/layer/twisted), `moves` (string ids into `MOVES`), an optional
   `shortName` (a short chemical-formula/acronym form, e.g. "MnO", "YIG" -- only set where one's
   genuinely worth authoring; `materials.ts`'s `materialDisplayName()` is the one consumer today,
   Qumatex's "Name (ShortName)" line), and an optional `hybridParents` (both parents' own
   `color`/`variant`, set only by `combineMaterials` -- see below and STYLE.md's "Crystal
-  sprites" section).
-- `crystal(name, type, maxHp, moves, shadeStep?, variantOverride?, shortName?)` is the
+  sprites" section). No `maxHp` field -- HP is never intrinsic to a crystal, see "Max HP" below.
+- `crystal(name, type, moves, shadeStep?, variantOverride?, shortName?)` is the
   `WORLD_CRYSTALS`/`WORLD_RIVALS` row builder -- adding a `shortName` to an existing call while
   leaving `shadeStep`/`variantOverride` at their defaults means passing `undefined` for those
   positionally rather than omitting them (matches the existing pattern for `shadeStep` alone).
@@ -298,7 +298,7 @@ difficulty-curve sanity check rather than a docs generator.
   Twisted Bilayer MoTe₂ → `'twisted'`; see STYLE.md).
 - `combineMaterials(a, b)` (Majorana's hybrid fuser, §5) looks up `hybridRecipeResult(a.name,
   b.name)` -- a curated, named parent-pair catalog (`HYBRID_RECIPES`), not a type-derived
-  result -- and spreads that recipe's own authored `Material` (name/type/color/maxHp/moves all
+  result -- and spreads that recipe's own authored `Material` (name/type/color/moves all
   fixed on its `WORLD_CRYSTALS` entry, not computed here), adding only `hybridParents` (both
   inputs' own `color`/`variant`, sorted the same way the lookup itself is order-independent) so
   `makeCrystal()`'s `opts.hybrid` can render an actual fused mixture on top of the recipe's own
@@ -418,8 +418,9 @@ registry/save key `playerForm` (a full `Material` or `null`). Every scene that d
 types the player goes through this rather than `PLAYER_MATERIAL` directly: `BattleScene
 .playerMaterial`, `OverworldScene.playerMaterial`, `HubScene`'s crystal. Two guardians write it,
 both through the shared `OverworldScene.applyPlayerForm(material)` (sets `playerForm`, clamps
-HP down to the new form's `maxHp` if lower, persists, redraws the crystal -- never a full
-heal): Dresselhaus's `transmuteInto(name)` looks the target up by name across `WORLD_CRYSTALS` via
+HP down to the current world's own cap if above it (`wildHpForWorld`, `data/balance.ts` --
+HP is never intrinsic to the new form itself, see "Max HP" below), persists, redraws the
+crystal -- never a full heal): Dresselhaus's `transmuteInto(name)` looks the target up by name across `WORLD_CRYSTALS` via
 `findMaterialByName` (never `WORLD_RIVALS` -- rivals are gate encounters, not a form to
 transmute into). Majorana's
 `becomeHybrid(material)` is called with an already-resolved `Material` object rather than a
@@ -456,6 +457,24 @@ key `playerStats`, grown via `OverworldScene.renderShopStats` (Noether's "Stats"
 (`BattleScene.create`), scaling by a two-phase curve, gentle through worlds 1-3 and steeper from
 world 4 on (`EARLY_GROWTH_PER_STEP`/`LATE_GROWTH_PER_STEP`, see that function's own comment for
 the exact rates and the reasoning behind the two phases), rounded to whole numbers.
+
+**Max HP** (`data/balance.ts`) is never intrinsic to a `Material` either (no `maxHp` field at
+all -- see "Data model" above) -- both sides' current-battle max HP are resolved fresh in
+`BattleScene.create` and held in two scene fields, `playerMaxHp`/`opponentMaxHp`, read by
+every other HP-related spot in the file (`updateBars`, `applyHeal`/`applyRegenTick`, the
+registry reset in `endBattle`) instead of any `Material.maxHp`. `wildHpForWorld(world)` is a
+gentle linear base (23 at World 1 to 33 at World 10) shared by every ordinary wild
+in that world and by the player's own current max HP (no roll for the player, or for a
+rival -- see below); an ordinary wild's own battle HP additionally gets one
+`rollEncounterFactor()` roll (+/-15%, `data/balance.ts`, same range `resolveHitDamage`'s own
+damage variance uses) applied to it *and* that same battle's `enemyStats` together (one
+shared roll, not four independent ones) -- `this.isRival ? 1 : rollEncounterFactor()` in
+`create()`. A rival instead uses `rivalHpForWorld(world)` (steeper, no roll) and plain
+`enemyStatsForWorld(world)` -- a rival is a fixed, repeatable challenge, not a specimen with
+sample-to-sample variance. `OverworldScene.applyPlayerForm`/`HubScene.applyPlayerForm`
+(transmuting/fusing into a new form) clamp the player's saved HP down to
+`wildHpForWorld(<current world>)` if above it, rather than to anything about the new form
+itself.
 
 `BattleScene.resolveHit` is the single damage-resolution function both sides' attacks go
 through: crit chance from the attacker's Quantumness, incoming damage divided by the defender's
@@ -767,9 +786,10 @@ against a still-living Adapted (Kondo's self-buff moves never reach that functio
 `typesHosting(moveClass)` (every `MaterialType` whose `MOVE_COMPATIBILITY` list actually
 includes that class), picks a real compound of one of those types at random from `allCrystals()`,
 and becomes a "Polycrystalline `<compound>` Golem" of it (same naming `WORLD_RIVALS[1-8]` uses),
-rebuilding `opponentCrystal`/`opponentNameText` and logging the change. `this.wild.moves`/
-`.maxHp` (its actual attack moveset and HP) are never touched by this -- only its defensive
-identity is dynamic.
+rebuilding `opponentCrystal`/`opponentNameText` and logging the change. `this.wild.moves`
+(its actual attack moveset) is never touched by this -- only its defensive identity is
+dynamic; HP was never tied to its identity in the first place (`opponentMaxHp`, see "Max
+HP" below, stays fixed for the whole battle).
 
 **Progression (Face the Rival/Continue) is exclusive to the goal panel.** `renderShopFooter`
 (Farewell + Face-the-Rival/Continue, `showGatePanel`'s only caller) and `renderFarewellFooter`
@@ -895,7 +915,7 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
 - **Majorana's hybrid-material panel** (`scenes/panels/majorana.ts`'s `showMajoranaPanel`) lets the player fuse
   two `defeatedMaterials` into a new `Material` via `data/materials.ts`'s `combineMaterials(a,
   b)`, which spreads whatever `Material` the matching `HYBRID_RECIPES` entry authored
-  (name/type/maxHp/moves all fixed there, not computed at combine time) and adds only
+  (name/type/moves all fixed there, not computed at combine time) and adds only
   `hybridParents` for the fused-visual render, then becomes it immediately via `applyPlayerForm`
   (see "Player form" above). **Not any two defeated crystals** -- only pairs with a named entry
   in `HYBRID_RECIPES`, keyed by parent *name* rather than main type (`hybridRecipeResult(nameA,

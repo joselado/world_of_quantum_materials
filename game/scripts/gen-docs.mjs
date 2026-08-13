@@ -78,9 +78,13 @@ function evalNode(node, sf) {
   throw new Error(`gen-docs: don't know how to read a ${ts.SyntaxKind[node.kind]} node: ${node.getText(sf)}`);
 }
 
+// No `maxHp` here -- crystal() takes no HP argument at all (no Material
+// carries intrinsic HP; both an ordinary wild's and a rival's max HP are
+// computed live from the current world by BattleScene, data/balance.ts's
+// wildHpForWorld/rivalHpForWorld).
 function crystalFromCall(call) {
-  const [name, type, maxHp, moves, shadeStep, variant] = call.args;
-  return { name, type, maxHp, moves, shadeStep: shadeStep ?? 0, variant };
+  const [name, type, moves, shadeStep, variant] = call.args;
+  return { name, type, moves, shadeStep: shadeStep ?? 0, variant };
 }
 
 // --- materials.ts -----------------------------------------------------
@@ -178,19 +182,23 @@ function genQuasiparticles() {
   return { movesTable, compatTable };
 }
 
+// No Max HP column -- no Material carries intrinsic HP (data/types.ts's own
+// comment on Material); both an ordinary wild's and a rival's max HP in
+// battle are computed live from the current world, not per-species, so
+// there's no fixed per-crystal number left to show here.
 function genCrystals() {
   const worldSections = Object.entries(WORLD_CRYSTALS)
     .sort(([a], [b]) => Number(a) - Number(b))
     .map(([world, crystals]) => {
       const rows = [...crystals]
         .sort((a, b) => typeLabel(a.type).localeCompare(typeLabel(b.type)) || a.name.localeCompare(b.name))
-        .map((c) => [c.name, typeLabel(c.type), String(c.maxHp)]);
-      return `### World ${world} -- ${WORLD_TOPICS[world] ?? ''}\n\n${table(['Crystal', 'Type', 'Max HP'], rows)}`;
+        .map((c) => [c.name, typeLabel(c.type)]);
+      return `### World ${world} -- ${WORLD_TOPICS[world] ?? ''}\n\n${table(['Crystal', 'Type'], rows)}`;
     });
   const rivalRows = Object.entries(WORLD_RIVALS)
     .sort(([a], [b]) => Number(a) - Number(b))
-    .map(([world, c]) => [world, c.name, typeLabel(c.type), String(c.maxHp)]);
-  const rivalsTable = table(['World', 'Rival', 'Type', 'Max HP'], rivalRows);
+    .map(([world, c]) => [world, c.name, typeLabel(c.type)]);
+  const rivalsTable = table(['World', 'Rival', 'Type'], rivalRows);
   return { worldsBlock: worldSections.join('\n\n'), rivalsTable };
 }
 

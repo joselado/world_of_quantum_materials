@@ -31,6 +31,7 @@ import {
   DEFAULT_STATS,
   allCrystals,
 } from '../data/materials';
+import { wildHpForWorld } from '../data/balance';
 import { PASSIVES, PASSIVE_OWNERS } from '../data/passives';
 import type { PassiveOwner } from '../data/passives';
 import { tokenColorForValue } from '../data/tokens';
@@ -624,7 +625,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     if (state.get('qumatessence') === undefined) {
       state.set('qumatessence', 0);
       state.set('unlockedMoves', [...PLAYER_MATERIAL.moves]);
-      state.set('playerHp', PLAYER_MATERIAL.maxHp);
+      state.set('playerHp', wildHpForWorld(this.world));
       state.set('rivalDefeated', {});
       state.set('discoveredMaterials', []);
       state.set('playerStats', { ...DEFAULT_STATS });
@@ -687,7 +688,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     };
     this.game.registry.set('playerStats', stats);
     this.game.registry.set('unlockedMoves', Object.keys(MOVES));
-    this.game.registry.set('playerHp', this.playerMaterial.maxHp);
+    this.game.registry.set('playerHp', wildHpForWorld(this.world));
     const visited = this.getVisitedWorlds();
     const merged = Array.from(new Set([...visited, ...BUILT_WORLDS]));
     this.game.registry.set('visitedWorlds', merged);
@@ -2573,11 +2574,15 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // shared by Dresselhaus's ordinary transmutation (transmuteInto, looks the
   // form up by name in WORLD_CRYSTALS) and Majorana's hybrid panel
   // (becomeHybrid, whose synthesized Material was never in WORLD_CRYSTALS to
-  // look up by name in the first place). Doesn't heal -- HP is only clamped
-  // down to the new form's maxHp if it's lower, same as it always has been.
+  // look up by name in the first place). Doesn't heal -- HP is never
+  // intrinsic to a crystal form at all (`data/balance.ts`'s `wildHpForWorld`,
+  // driven purely by the player's current world), so transmuting/fusing only
+  // ever clamps HP down if it's above that world's own cap, same as it
+  // always has.
   applyPlayerForm(material: Material) {
     this.game.registry.set('playerForm', material);
-    const clampedHp = Math.min((this.game.registry.get('playerHp') as number) ?? material.maxHp, material.maxHp);
+    const worldMaxHp = wildHpForWorld(this.world);
+    const clampedHp = Math.min((this.game.registry.get('playerHp') as number) ?? worldMaxHp, worldMaxHp);
     this.game.registry.set('playerHp', clampedHp);
     persistFromRegistry(this.game.registry);
 

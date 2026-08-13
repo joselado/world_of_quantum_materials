@@ -1,5 +1,6 @@
 import type { Material, MaterialType, MoveClass, Stats } from './types';
 import { PLAYER_MATERIAL, DEFAULT_STATS, MOVES, TYPE_LOOK } from './materials';
+import { wildHpForWorld } from './balance';
 import { DEFAULT_ENCOUNTER_DENSITY, DEFAULT_FONT_SCALE, DEFAULT_MUSIC_STYLE, MUSIC_STYLE_PRESETS } from './settings';
 import type { MusicStyle } from './settings';
 import type { PassiveOwner } from './passives';
@@ -156,7 +157,12 @@ export function defaultSave(): SaveData {
   return {
     qumatessence: 0,
     unlockedMoves: [...PLAYER_MATERIAL.moves],
-    playerHp: PLAYER_MATERIAL.maxHp,
+    // A fresh save always starts at World 1 -- HP is never intrinsic to a
+    // crystal form (data/balance.ts's wildHpForWorld, driven purely by the
+    // player's current world), so this is the same World 1 baseline
+    // OverworldScene/HubScene fall back to when there's nowhere else to
+    // resume.
+    playerHp: wildHpForWorld(1),
     rivalDefeated: {},
     discoveredMaterials: [],
     playerStats: { ...DEFAULT_STATS },
@@ -283,7 +289,9 @@ export function persistFromRegistry(registry: RegistryLike) {
   const data: SaveData = {
     qumatessence: (registry.get('qumatessence') as number) ?? 0,
     unlockedMoves: (registry.get('unlockedMoves') as string[]) ?? [...PLAYER_MATERIAL.moves],
-    playerHp: (registry.get('playerHp') as number) ?? PLAYER_MATERIAL.maxHp,
+    // Defensive fallback only (playerHp is always set by the time this
+    // runs) -- same World 1 baseline defaultSave() itself uses.
+    playerHp: (registry.get('playerHp') as number) ?? wildHpForWorld(1),
     rivalDefeated: (registry.get('rivalDefeated') as Record<number, boolean>) ?? {},
     discoveredMaterials: (registry.get('discoveredMaterials') as DiscoveredMaterial[]) ?? [],
     playerStats: (registry.get('playerStats') as Stats) ?? { ...DEFAULT_STATS },

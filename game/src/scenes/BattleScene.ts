@@ -33,6 +33,9 @@ import {
   FRACTIONAL_GUARD_DAMAGE_MULT,
   ANYON_ECHO_FRACTION,
   EDGE_CURRENT_MISMATCH_MULT,
+  wildHpForWorld,
+  rivalHpForWorld,
+  rollEncounterFactor,
 } from '../data/balance';
 import { victoryLine, defeatLine } from '../data/greetings';
 import { PASSIVES } from '../data/passives';
@@ -274,6 +277,16 @@ export class BattleScene extends Phaser.Scene {
   private enemyStats!: Stats;
   private playerHp = 0;
   private opponentHp = 0;
+  // Neither the player's own crystal form nor `this.wild`/`adaptedForm`
+  // carries an intrinsic HP number (`data/types.ts`'s `Material`, `data/
+  // balance.ts`'s own comment) -- both max HP values are resolved once in
+  // create() instead: the player's own from `wildHpForWorld(this.world)`
+  // (no roll, their own body isn't a specimen with variance), the
+  // opponent's from `wildHpForWorld` scaled by that battle's own
+  // `rollEncounterFactor` for an ordinary wild, or from `rivalHpForWorld`
+  // (no roll) for a rival -- see create()'s own comment.
+  private playerMaxHp = 0;
+  private opponentMaxHp = 0;
   private turnLock = false;
   private opponentHpBar!: Phaser.GameObjects.Rectangle;
   private playerHpBar!: Phaser.GameObjects.Rectangle;
@@ -286,9 +299,10 @@ export class BattleScene extends Phaser.Scene {
   // replaced wholesale every time transmuteAdapted() fires; `null` for every
   // other fight, in which case opponentView() below falls back to the plain
   // static `this.wild` the same way every read here always did. Only its
-  // type/name/color/variant are ever read off this -- `this.wild.moves`/
-  // `.maxHp` (its actual attack moveset and HP) stay fixed throughout, see
-  // transmuteAdapted's own comment.
+  // type/name/color/variant are ever read off this -- `this.wild.moves`
+  // (its actual attack moveset) stays fixed throughout, see
+  // transmuteAdapted's own comment; HP is never read off either `Material`
+  // at all (see `opponentMaxHp`'s own comment above).
   private adaptedForm: Material | null = null;
   private playerCrystal!: Phaser.GameObjects.Container;
   private logText!: Phaser.GameObjects.Text;
@@ -355,7 +369,29 @@ export class BattleScene extends Phaser.Scene {
 
     this.playerMaterial = getPlayerMaterial(this.game.registry);
     this.playerStats = getPlayerStats(this.game.registry);
-    this.enemyStats = enemyStatsForWorld(this.world);
+
+    // Neither side's max HP/stats are intrinsic to a crystal form -- both
+    // are resolved fresh here from the current world instead (`data/
+    // balance.ts`). A rival is a fixed, known, repeatable challenge (no
+    // roll, `rivalHpForWorld`, plain `enemyStatsForWorld`); an ordinary
+    // wild gets one shared +/-15% `rollEncounterFactor` roll applied to both
+    // its HP and its whole stat block, reading as one specimen's own
+    // sample-to-sample variance rather than four independent rolls. The
+    // player's own max HP uses the same `wildHpForWorld` an ordinary wild's
+    // base HP does (their own body isn't a specimen with variance, so no
+    // roll), for whichever world they're currently in -- transmuting/fusing
+    // into a different form never changes it by itself.
+    const encounterFactor = this.isRival ? 1 : rollEncounterFactor();
+    const baseEnemyStats = enemyStatsForWorld(this.world);
+    this.enemyStats = this.isRival
+      ? baseEnemyStats
+      : {
+          quantumness: Math.round(baseEnemyStats.quantumness * encounterFactor),
+          velocity: Math.round(baseEnemyStats.velocity * encounterFactor),
+          correlation: Math.round(baseEnemyStats.correlation * encounterFactor),
+        };
+    this.playerMaxHp = wildHpForWorld(this.world);
+    this.opponentMaxHp = this.isRival ? rivalHpForWorld(this.world) : Math.round(wildHpForWorld(this.world) * encounterFactor);
 
     // World 10's rival mirrors the player's own current type from turn one
     // (literalizing "a model of you" immediately, not just once it first
@@ -372,9 +408,9 @@ export class BattleScene extends Phaser.Scene {
     this.playerActivePassives = new Set(Object.values(activeByOwner).filter((id): id is string => !!id));
     this.opponentActivePassives = new Set();
 
-    const savedHp = (this.game.registry.get('playerHp') as number) || this.playerMaterial.maxHp;
-    this.playerHp = Math.min(savedHp, this.playerMaterial.maxHp);
-    this.opponentHp = this.wild.maxHp;
+    const savedHp = (this.game.registry.get('playerHp') as number) || this.playerMaxHp;
+    this.playerHp = Math.min(savedHp, this.playerMaxHp);
+    this.opponentHp = this.opponentMaxHp;
     this.turnLock = false;
     this.movePageIndex = 0;
     this.playerStatus = null;
@@ -1360,8 +1396,8 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private updateBars() {
-    this.opponentHpBar.width = Math.max(0, (this.opponentHp / this.wild.maxHp) * HP_BAR_FILL_W);
-    this.playerHpBar.width = Math.max(0, (this.playerHp / this.playerMaterial.maxHp) * HP_BAR_FILL_W);
+    this.opponentHpBar.width = Math.max(0, (this.opponentHp / this.opponentMaxHp) * HP_BAR_FILL_W);
+    this.playerHpBar.width = Math.max(0, (this.playerHp / this.playerMaxHp) * HP_BAR_FILL_W);
   }
 
   // Recursively kills every tween targeting a Container or any descendant of
@@ -1391,10 +1427,12 @@ export class BattleScene extends Phaser.Scene {
   // swap plays out as an in-field glow/dissolve/reform effect directly on
   // the boss's own sprite (playTransmuteGlow below), the same way an ordinary
   // attack effect or impactPunch's crit flash already renders in the field
-  // rather than a separate panel/overlay. `this.wild.moves`/`.maxHp` (its
-  // real attack moveset and HP) are never touched by any of this, so it
-  // keeps fighting at the same power it was authored with, just under a new
-  // disguise. `onDone` fires after a fixed TURN_GAP_MS beat (the same gap
+  // rather than a separate panel/overlay. `this.wild.moves` (its real attack
+  // moveset) is never touched by any of this, so it keeps fighting at the
+  // same power it was authored with, just under a new disguise -- and HP was
+  // never tied to its identity in the first place (`opponentMaxHp` stays
+  // fixed for the whole battle regardless of how many times it transmutes).
+  // `onDone` fires after a fixed TURN_GAP_MS beat (the same gap
   // every other turn transition uses), independent of the glow effect's own
   // exact runtime, the same "don't gate the game's own flow on a purely
   // decorative animation" pattern an ordinary non-Ultimate move's
@@ -2067,7 +2105,7 @@ export class BattleScene extends Phaser.Scene {
   // `maxHp`. Returns '' (no log clause) once the side is already at full
   // HP -- there is nothing to report on a fully-healed side.
   private applyRegenTick(isPlayer: boolean, casterName: string): string {
-    const maxHp = isPlayer ? this.playerMaterial.maxHp : this.wild.maxHp;
+    const maxHp = isPlayer ? this.playerMaxHp : this.opponentMaxHp;
     const currentHp = isPlayer ? this.playerHp : this.opponentHp;
     const healFraction = this.kondoMitigationFraction(isPlayer, 'kondoBreakdown', REGEN_BASE_HEAL_FRACTION, REGEN_MAX_HEAL_FRACTION);
     const healAmount = Math.min(maxHp - currentHp, Math.round(maxHp * healFraction));
@@ -2170,7 +2208,7 @@ export class BattleScene extends Phaser.Scene {
 
     // Win or lose, the player crystal is fully healed afterward -- only the
     // qumatessence stake is on the line, not attrition into the next fight.
-    this.game.registry.set('playerHp', this.playerMaterial.maxHp);
+    this.game.registry.set('playerHp', this.playerMaxHp);
 
     // Beating the world's gating rival crystal is what actually unlocks
     // the guardian's shop/panel and the way to the next world -- see

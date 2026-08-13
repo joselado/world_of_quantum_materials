@@ -53,9 +53,10 @@
 //   form, crossed with every not-yet-owned SHOP_MOVE_IDS entry that
 //   candidate form can host (plus "buy nothing new"), and commits to
 //   whichever affordable (form, purchase) combination maximizes summed
-//   wild-pool-plus-rival margin *against this world's own opponents*, using
-//   each candidate's own `maxHp` as the player's maxHp while wearing it
-//   (transmuting is a full swap, not a reskin) and free-retuning every
+//   wild-pool-plus-rival margin *against this world's own opponents* (max HP
+//   is never part of what a candidate form changes -- it's purely a function
+//   of the current world, `wildHpForWorld`, the same for every form) and
+//   free-retuning every
 //   owned Analytic move (paying ULTIMATE_CLASS_UNLOCK_COST again per
 //   Ultimate move whose new class isn't already unlocked for it) to
 //   whichever TUNABLE_MOVE_CLASSES entry that candidate can host mismatches
@@ -90,10 +91,17 @@
 //   Magnon Pulse, bought as a classicalMagnet) goes the same way: usable
 //   only while the current form still hosts that class.
 // - Opponent Stats (Quantumness/Velocity/Correlation) come from
-//   `enemyStatsForWorld(world)` alone, identical for an ordinary wild and
-//   that world's rival (confirmed in BattleScene.create: `this.enemyStats =
-//   enemyStatsForWorld(this.world)` regardless of `isRival`) -- only maxHp/
-//   type/moveset differ between a wild and its world's rival.
+//   `enemyStatsForWorld(world)` for both an ordinary wild and that world's
+//   rival, unmodeled roll aside: in the real game (BattleScene.create) an
+//   ordinary wild's stats (and its max HP) additionally get one shared
+//   +/-15% `rollEncounterFactor` roll per encounter, which this script
+//   doesn't simulate -- `enemyStatsForWorld`'s own unrolled value is that
+//   roll's expected value (mean 1.0), the same "expected value, not a
+//   stochastic per-fight roll" treatment every other random effect here
+//   gets (see below). A rival never rolls at all, in the game or in this
+//   script -- max HP (`rivalHpForWorld` vs. an ordinary wild's
+//   `wildHpForWorld`) and type/moveset are what actually differ between a
+//   wild and its world's rival.
 // - "An ordinary wild fight" for a world is the average over that world's
 //   *entire* wild pool (`getWildPool`'s own worlds-1-9 merge rule is
 //   replicated below), not one hand-picked species -- both the player's
@@ -102,9 +110,11 @@
 //   `Phaser.Utils.Array.GetRandom` picking uniformly among a crystal's own
 //   moves).
 // - World 9's rival has no fixed type (`getRival(9, ...)` rolls one of
-//   `RIVAL_9_TYPES` uniformly at battle time) -- its maxHp/moveset are fixed
-//   (`rivalImpurityResonance`), so only the player's own outgoing-mismatch
-//   term is averaged across `RIVAL_9_TYPES`' 7 members.
+//   `RIVAL_9_TYPES` uniformly at battle time) -- its moveset is fixed
+//   (`rivalImpurityResonance`) and its max HP is `rivalHpForWorld(9)`
+//   regardless of which type gets rolled (world-driven, not per-species), so
+//   only the player's own outgoing-mismatch term is averaged across
+//   `RIVAL_9_TYPES`' 7 members.
 // - The final reported figures (the per-build tables) are *expected
 //   values*, not one stochastic playthrough: each hit is run through the
 //   real `resolveHitDamage` HIT_SAMPLES times with the seeded RNG and
@@ -229,9 +239,12 @@ function evalNode(node, sf) {
   throw new Error(`balance-sim: don't know how to read a ${ts.SyntaxKind[node.kind]} node: ${node.getText(sf)}`);
 }
 
+// No `maxHp` here -- crystal() takes no HP argument at all (no Material
+// carries intrinsic HP; every defender's max HP is resolved live from the
+// current world instead, see defendersFor below).
 function crystalFromCall(call) {
-  const [name, type, maxHp, moves] = call.args;
-  return { name, type, maxHp, moves };
+  const [name, type, moves] = call.args;
+  return { name, type, moves };
 }
 
 // WORLD_RIVALS entries are normally a crystal(...) call like every
@@ -239,10 +252,10 @@ function crystalFromCall(call) {
 // WORLD_RIVALS[10] ("The Adapted") is a plain object literal instead (its own
 // comment in materials.ts explains why: a placeholder type/color that isn't
 // meant to run through crystal()'s TYPE_LOOK-derived look). Only {name, type,
-// maxHp, moves} are ever read by this script either way.
+// moves} are ever read by this script either way.
 function materialFromEvaluated(val) {
   if (val && val.__call) return crystalFromCall(val);
-  return { name: val.name, type: val.type, maxHp: val.maxHp, moves: val.moves };
+  return { name: val.name, type: val.type, moves: val.moves };
 }
 
 // --- Static data: materials.ts -------------------------------------------
@@ -379,6 +392,8 @@ const {
   MISMATCH_MULTIPLIER,
   EDGE_CURRENT_MISMATCH_MULT,
   FRACTIONAL_GUARD_DAMAGE_MULT,
+  wildHpForWorld,
+  rivalHpForWorld,
 } = balance;
 
 // --- Seeded RNG (mulberry32) -- deterministic so re-running this script
@@ -507,9 +522,11 @@ function newState(accuracy) {
     accuracy,
     // The player's current crystal form (Dresselhaus's transmutation --
     // see header comment). Starts as Silicon/PLAYER_MATERIAL for every
-    // build; only a `transmutes: true` build ever changes these.
+    // build; only a `transmutes: true` build ever changes these. No
+    // `playerMaxHp` here -- max HP is never intrinsic to a crystal form,
+    // `evaluateFight`/`marginWithMultipliers` both read `wildHpForWorld(world)`
+    // directly for whichever world a fight is being evaluated in instead.
     playerType: PLAYER_MATERIAL.type,
-    playerMaxHp: PLAYER_MATERIAL.maxHp,
     playerFormName: PLAYER_MATERIAL.name,
     dresselhausUnlocked: new Set([PLAYER_MATERIAL.name]), // crystal names already paid DRESSELHAUS_TRANSMUTE_COST for (free to re-wear)
     ultimateClassUnlocked: new Map(), // ULTIMATE_MOVE_IDS id -> Set<MoveClass> already paid ULTIMATE_CLASS_UNLOCK_COST for
@@ -664,7 +681,15 @@ function avgEnemyHit(hitFn, state, playerStats, enemyStats, enemyMoves) {
   return total / enemyMoves.length;
 }
 
-// One fight's full evaluation against a single defender {type, maxHp, moves}.
+// One fight's full evaluation against a single defender {type, maxHp,
+// moves}. Neither side's max HP is intrinsic to a crystal any more (data/
+// balance.ts's own comment) -- `defender.maxHp` is attached fresh by
+// defendersFor below (wildHpForWorld/rivalHpForWorld, the defender's own
+// un-rolled expected value, matching how BattleScene's own +/-15%
+// rollEncounterFactor averages out over many fights), and the player's own
+// max HP is always `wildHpForWorld(world)` for whichever world this fight is
+// in, regardless of which form they're currently wearing (state.playerMaxHp
+// is retired -- see newState's own comment).
 function evaluateFight(hitFn, state, world, defender) {
   const playerStats = state.stats;
   const enemyStats = enemyStatsForWorld(world);
@@ -674,7 +699,7 @@ function evaluateFight(hitFn, state, world, defender) {
   const playerDmgPerRound = playerHitDmg * playerHits;
   const enemyDmgPerRound = enemyHitDmg * enemyHits;
   const roundsToKill = playerDmgPerRound > 0 ? Math.ceil(defender.maxHp / playerDmgPerRound) : Infinity;
-  const roundsToDie = enemyDmgPerRound > 0 ? Math.ceil(state.playerMaxHp / enemyDmgPerRound) : Infinity;
+  const roundsToDie = enemyDmgPerRound > 0 ? Math.ceil(wildHpForWorld(world) / enemyDmgPerRound) : Infinity;
   return { roundsToKill, roundsToDie, margin: roundsToDie - roundsToKill };
 }
 
@@ -688,16 +713,23 @@ function averageFights(fights) {
 
 // The defender(s) a wild/rival fight is evaluated against for a world --
 // shared by evaluateWildFight/evaluateRivalFight below and by the ±15%
-// robustness check, so the two can't drift apart.
+// robustness check, so the two can't drift apart. Attaches each defender's
+// own live `maxHp` here (wildHpForWorld/rivalHpForWorld -- see
+// evaluateFight's own comment) rather than reading one off the parsed
+// WORLD_CRYSTALS/WORLD_RIVALS data, which never carries HP at all.
 function defendersFor(world, isRival) {
-  if (!isRival) return getWildPool(world);
+  if (!isRival) {
+    const maxHp = wildHpForWorld(world);
+    return getWildPool(world).map((d) => ({ ...d, maxHp }));
+  }
+  const maxHp = rivalHpForWorld(world);
   if (world === 9) {
     // No fixed WORLD_RIVALS[9] entry -- getRival(9, t) rolls t uniformly
     // from RIVAL_9_TYPES at battle time (rollRival9Type); average over all 7.
-    const base = WORLD_RIVALS[9] ?? { maxHp: 66, moves: ['tunnelStrike', 'thermalFluctuation'] };
-    return RIVAL_9_TYPES.map((type) => ({ ...base, type }));
+    const base = WORLD_RIVALS[9] ?? { moves: ['tunnelStrike', 'thermalFluctuation'] };
+    return RIVAL_9_TYPES.map((type) => ({ ...base, type, maxHp }));
   }
-  return [WORLD_RIVALS[world]];
+  return [{ ...WORLD_RIVALS[world], maxHp }];
 }
 
 function evaluateWildFight(hitFn, state, world) {
@@ -721,7 +753,7 @@ function marginWithMultipliers(state, world, defenders, playerMult, enemyMult) {
     const playerDmgPerRound = bestPlayerHit(frozenHitDamage, state, playerStats, enemyStats, d.type) * playerMult * playerHits;
     const enemyDmgPerRound = avgEnemyHit(frozenHitDamage, state, playerStats, enemyStats, d.moves) * enemyMult * enemyHits;
     const roundsToKill = playerDmgPerRound > 0 ? Math.ceil(d.maxHp / playerDmgPerRound) : Infinity;
-    const roundsToDie = enemyDmgPerRound > 0 ? Math.ceil(state.playerMaxHp / enemyDmgPerRound) : Infinity;
+    const roundsToDie = enemyDmgPerRound > 0 ? Math.ceil(wildHpForWorld(world) / enemyDmgPerRound) : Infinity;
     return { roundsToKill, roundsToDie, margin: roundsToDie - roundsToKill };
   });
   return averageFights(fights).margin;
@@ -780,7 +812,7 @@ function retuneOwnedTunableMoves(state, cls) {
 function maybeTransmuteAndShop(state, world) {
   if (world < 3) return;
   const pool = getWildPool(world);
-  const stayOption = { name: state.playerFormName, type: state.playerType, maxHp: state.playerMaxHp };
+  const stayOption = { name: state.playerFormName, type: state.playerType };
   const options = [stayOption, ...transmuteCandidates(world)];
 
   let best = null;
@@ -808,7 +840,6 @@ function maybeTransmuteAndShop(state, world) {
 
       const trial = cloneState(state);
       trial.playerType = c.type;
-      trial.playerMaxHp = c.maxHp;
       if (shopPick) trial.ownedMoves.add(shopPick);
       retuneOwnedTunableMoves(trial, tunedClass);
       const score = evaluateWildFight(frozenHitDamage, trial, world).margin + evaluateRivalFight(frozenHitDamage, trial, world).margin;
@@ -823,7 +854,6 @@ function maybeTransmuteAndShop(state, world) {
   state.spentTotal += totalCost;
   state.dresselhausUnlocked.add(best.c.name);
   state.playerType = best.c.type;
-  state.playerMaxHp = best.c.maxHp;
   state.playerFormName = best.c.name;
   if (best.shopPick) state.ownedMoves.add(best.shopPick);
   for (const moveId of ULTIMATE_MOVE_IDS) {

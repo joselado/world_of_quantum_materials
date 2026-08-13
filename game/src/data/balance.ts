@@ -62,6 +62,57 @@ export function statUpgradeCost(currentValue: number): number {
   return (currentValue - BASE_STAT + 1) * 50;
 }
 
+// --- Max HP (BattleScene.create, no material carries its own intrinsic HP) -
+
+// No `Material` (wild, rival, or the player's own current form) carries an
+// intrinsic HP number at all -- max HP is purely a function of which world
+// the fight is happening in, read live by `BattleScene.create` rather than
+// stored anywhere in `data/materials.ts`. Two separate curves below: an
+// ordinary wild's (gentle, randomized per encounter) and a rival's (steeper,
+// fixed) -- transmuting/fusing into a different crystal form never changes
+// max HP by itself, only look/type/moveset do.
+
+const WILD_HP_BASE = 23;
+// Linear rather than enemyStatsForWorld's own two-phase curve -- a wild's HP
+// is a much smaller part of a fight's difficulty than its Quantumness/
+// Velocity/Correlation (which still follow that two-phase ramp), so it only
+// needs a gentle, steady climb: +10 total from World 1 to World 10, landing
+// near World 1's own historical ~23 baseline.
+const WILD_HP_GROWTH_PER_WORLD = 10 / 9;
+
+// An ordinary wild's (and the player's own) base max HP for a given world --
+// shared by every crystal in that world's WORLD_CRYSTALS list, so a compound
+// appearing in more than one world's list (e.g. Iron in World 1 and World 6)
+// still comes out independently leveled per world purely because `world`
+// differs at each read site, not because of anything about the compound
+// itself. There is deliberately no per-compound term at all -- an exotic-
+// tier crystal is no tougher, HP-wise, than a plain one from the same world;
+// power/exoticism is expressed entirely through its own move's `power`.
+// `BattleScene.create` scales this by `rollEncounterFactor` for an ordinary
+// wild opponent's actual battle HP (sample-to-sample specimen variance); the
+// player's own max HP uses this same un-rolled value for whichever world
+// they're currently in, no roll (their own body isn't a specimen with
+// variance). Rivals use `rivalHpForWorld` below instead, not this.
+export function wildHpForWorld(world: number): number {
+  return Math.round(WILD_HP_BASE + WILD_HP_GROWTH_PER_WORLD * (world - 1));
+}
+
+// A rival's own max HP, a separate and much steeper curve than an ordinary
+// wild's -- "many grains fused into one boss-scale mass" (WORLD_RIVALS' own
+// polycrystalline-golem framing) is meant to read as a genuine wall relative
+// to that world's ordinary wilds, not just a slightly bigger one. Loosely
+// calibrated to the golems' own historical 30/38/42/46/50/54/58/62 (worlds
+// 1-8) rather than reproducing it exactly -- linear growth landing on that
+// same 30 at World 1 and 62 at World 8, extended sensibly through World 9
+// (the rolled impurity resonance) and World 10 ("The Adapted"). No random
+// roll, unlike an ordinary wild -- a rival is a fixed, known, repeatable
+// challenge, the same boss every time it's fought.
+const RIVAL_HP_BASE = 30;
+const RIVAL_HP_GROWTH_PER_WORLD = 4.5;
+export function rivalHpForWorld(world: number): number {
+  return Math.round(RIVAL_HP_BASE + RIVAL_HP_GROWTH_PER_WORLD * (world - 1));
+}
+
 // Qumatessence price for a shop move, scaled off its own power -- the
 // stronger the quasiparticle, the more it costs, the same "priced to keep
 // buying meaningful" shape as statUpgradeCost. Shared by every guardian who
@@ -157,6 +208,20 @@ function clamp(value: number, min: number, max: number): number {
 // reimplemented here rather than imported so this module stays Phaser-free.
 function floatBetween(min: number, max: number, rng: () => number): number {
   return min + rng() * (max - min);
+}
+
+// One shared +/-15% roll for a wild encounter's whole stat block (HP,
+// Quantumness, Velocity, Correlation together, not four independent rolls)
+// -- BattleScene.create calls this once per non-rival battle and applies the
+// same factor to all four, so the fight reads as "this particular specimen
+// is somewhat tougher/weaker than its world's average" (real sample-to-
+// sample variation between specimens of the same compound), one coherent
+// trait rather than an arbitrary per-stat RNG bolt-on. Deliberately reuses
+// resolveHitDamage's own per-hit damage-variance range (`floatBetween(0.85,
+// 1.15, ...)`) rather than a separate range, for internal consistency.
+// Rivals never call this -- see `rivalHpForWorld`'s own comment.
+export function rollEncounterFactor(rng: () => number = Math.random): number {
+  return floatBetween(0.85, 1.15, rng);
 }
 
 export interface ResolveHitParams {

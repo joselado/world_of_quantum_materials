@@ -27,7 +27,7 @@ One world per course topic (see the topic table in the repo's top-level `CLAUDE.
 | World | Course topic | In-game name (`WORLD_NAMES`) / biome theme | Wild material archetypes | Gate to next world |
 |---|---|---|---|---|
 | 0 (Hub) | — | "The Lab" — guardian's house, save point, Qumatex | — | Start world 1 |
-| 1 | Second quantization, mean-field, SSB | **Mean-Field Meadow** — tutorial meadow | Free fermion, broken-symmetry magnet | Beat first rival crystal |
+| 1 | Second quantization, mean-field, SSB | **Mean-Field Meadow** — tutorial meadow | Free fermion, itinerant/local-moment magnets, ferroelectrics, a charge density wave, a superconductor | Beat first rival crystal |
 | 2 | Symmetries, tight-binding, effective models | **Bloch Caverns** — crystalline caves, repeating tile patterns | Bloch-wave critters, lattice defect variants | Beat that world's rival crystal |
 | 3 | Topological band theory | **Topological Islands** — floating islands, one-way edge paths | Quantum spin Hall insulators, bulk and monolayer alike | Cross a gap only an edge-mode move can bridge |
 | 4 | Magnetic field, QHE, Landau levels | **Landau Level Terrain** — visible field lines, quantized-orbit terrain | Landau-level materials, an intrinsic zero-field Chern insulator | Solve a Landau-level maze |
@@ -230,6 +230,24 @@ automatically every world, a player who never buys Velocity falls further behind
 effective Velocity every world — raising both how often the opponent goes first and, per the
 multi-attack rule above, how many times it swings each round.
 
+**Max HP is never intrinsic to a crystal** -- no `Material` (wild, rival, or the player's
+own current form) carries an HP number at all; it's purely a function of which world the
+fight is happening in, resolved fresh by `BattleScene.create` (`data/balance.ts`). An
+ordinary wild's base HP is `wildHpForWorld(world)` (a gentle linear climb, `23` at World 1
+to `33` at World 10 -- HP is a much smaller share of a fight's difficulty than the
+Quantumness/Velocity/Correlation curve above, so it doesn't need that curve's two-phase
+shape), scaled once per encounter by a shared `rollEncounterFactor` (+/-15%, the same range
+`resolveHitDamage`'s own per-hit damage variance uses) applied to that wild's HP *and* its
+whole stat block together -- one coherent "this specimen is somewhat tougher/weaker than
+its world's average" trait, not four independent rolls. A rival's HP instead follows
+`rivalHpForWorld(world)` (steeper, `30` at World 1 to `71` at World 10, loosely calibrated
+to the golems' own historical 30/38/42/46/50/54/58/62), with no roll at all and plain
+`enemyStatsForWorld(world)` stats -- a rival is a fixed, known, repeatable challenge, the
+same boss every time it's fought, unlike an ordinary wild's sample-to-sample variance. The
+player's own max HP uses `wildHpForWorld` too, for whichever world they're currently in, no
+roll (their own body isn't a specimen with variance) -- so transmuting/fusing into a
+different crystal form (§5) never changes it by itself, only the world does.
+
 **Crystal database.** Each wild "crystal" is named after a real compound rather than
 an invented species name, and inherits its main type (and therefore its look and its
 type-chart matchups) from that compound's actual physics. Below is the candidate list,
@@ -240,8 +258,9 @@ corresponding session file names no concrete real compound for that topic.
 
 Wired into `game/src/data/materials.ts` as `WORLD_CRYSTALS`, a **per-world database**
 keyed by world number rather than one global list — each world's `OverworldScene`
-pulls its own wild-encounter pool via `getWildPool(world)`, drawing 2-4 rows from the
-matching type/topic section of the table below (topic 2 has no dedicated main type of
+pulls its own wild-encounter pool via `getWildPool(world)`, drawing every row from the
+matching type/topic section of the table below (worlds 1-2 each run ~10-12; every other
+world stays in the 2-11 range -- topic 2 has no dedicated main type of
 its own, so it mixes metal/semiconductor/insulator compounds with "lattice" flavor
 instead of world 1's tutorial picks; world 10's pool draws exclusively from §5's
 hybrid-recipe results instead of one topic section, see the note just below
@@ -268,26 +287,11 @@ pool.
 | semiconductor (4) | Gallium Arsenide (GaAs) | Ordinary direct-gap III-V semiconductor in its own right — the integer quantum Hall effect this world's `chernInsulator` members carry needs a clean 2D electron gas confined at a GaAs/AlGaAs heterostructure interface under strong field, not the bulk compound itself, so plain Gallium Arsenide doesn't carry that type here |
 | insulator (2) | Diamond (C) | ~5.5 eV gap, textbook wide-gap covalent insulator — pristine, no defect (e.g. nitrogen-vacancy) dressing; not from the course, added as `insulator`'s second member alongside Magnesium Oxide |
 | insulator (2, hybrid parent) | Monolayer Boron Nitride (hBN) | ~5.9 eV gap insulator whose honeycomb lattice is nearly commensurate with graphene's — real graphene devices are built on or encapsulated in it; §5 hybrid recipe parent (with Graphene) for Rhombohedral Pentalayer Graphene/hBN Moiré below |
-| metal (2) | Gold (Au) | Filled 5d shell, half-filled 6s conduction band — the other flagship (with Silver) of visible-range plasmonics; not from the course |
-| metal (2) | Platinum (Pt) | Partially filled 5d bands, an ordinary d-band conductor/catalyst — its own interband transitions damp a plasmon response, so it carries Electron Pulse rather than Silver/Gold's Plasmon Pulse; not from the course |
-| metal (2) | Copper (Cu) | Half-filled 4s conduction band, the highest electrical conductivity of any non-precious metal — still genuinely plasmonic, just lossier than Ag/Au; not from the course |
-| metal (2) | Magnesium (Mg) | Nearly-free-electron divalent metal whose plasma frequency reaches into the UV — an elemental UV-plasmonic metal, unlike the noble metals' visible-range plasmons; not from the course |
-| metal (2) | Tungsten (W) | Partially filled 5d bands, ordinary band conductor — highest melting point of any elemental metal; not from the course |
-| metal (2) | Titanium (Ti) | Partially filled 3d bands, ordinary transition-metal conductor whose own interband transitions damp any plasmon response; not from the course |
-| metal (2) | Zinc (Zn) | Filled 3d shell below a nearly-free 4s conduction band, another elemental UV-plasmonic metal alongside Magnesium; not from the course |
-| insulator (1) | Sodium Chloride (NaCl) | Session1's own named conventional-insulator example (alongside MgO and boron nitride) — a wide ionic gap simply blocks electron propagation |
-| insulator (2) | Sapphire (Al$_2$O$_3$) | ~8.8 eV gap corundum, one of the hardest and most chemically inert insulating crystals known; not from the course |
-| insulator (2) | Lithium Fluoride (LiF) | ~13.6 eV gap, the widest-gap alkali halide — an even stronger textbook polaron host than NaCl; not from the course |
-| insulator (2) | Calcium Fluoride (CaF$_2$) | ~12 eV gap fluorite-structure ionic insulator, another textbook polaron host; not from the course |
-| insulator (2) | Aluminum Nitride (AlN) | ~6.2 eV gap, wider than GaN's own ~3.4 eV — too wide to dope the way GaN is, a true insulator rather than a semiconductor; not from the course |
-| semiconductor (2) | Germanium (Ge) | Narrow ~0.67 eV indirect-gap group-IV semiconductor, Silicon's own group-IV sibling and the original transistor material; not from the course |
-| semiconductor (2) | Indium Phosphide (InP) | Direct-gap (~1.35 eV) III-V semiconductor, a workhorse of high-speed electronics/photonics alongside GaAs; not from the course |
-| semiconductor (2) | Zinc Oxide (ZnO) | Wide direct-gap (~3.4 eV) II-VI semiconductor, easily doped n-type, ordinary single-particle band picture; not from the course |
-| semiconductor (2) | Indium Antimonide (InSb) | Narrowest gap (~0.17 eV) of the common III-V semiconductors, extreme electron mobility, still a plain band picture; not from the course |
-| semiconductor (2) | Lead Sulfide (PbS) | Narrow-gap (~0.41 eV) IV-VI semiconductor, the natural mineral galena, ordinary band picture in bulk; not from the course |
-| semiconductor (2) | Silicon Carbide, 4H phase (4H-SiC) | Wide (~3.2 eV) indirect-gap polytype, the power-electronics workhorse alongside GaN — exceptionally hard and thermally conductive, still an ordinary band semiconductor; not from the course |
-| semiconductor (2) | Titanium Dioxide, rutile phase (TiO$_2$) | ~3.0 eV gap wide-gap oxide semiconductor, famous for photocatalysis but an ordinary single-particle band picture underneath; not from the course |
-| semiconductor (2) | Boron Arsenide (BAs) | Moderate (~1.46 eV) indirect-gap III-V semiconductor, otherwise ordinary — famous instead for record-high thermal conductivity rivaling diamond; not from the course |
+| metal (2) | Tungsten (W) | Partially filled 5d bands, ordinary band conductor — highest melting point of any elemental metal; not from the course, the d-band Electron Pulse counterpart to Silver's/Graphene's free-electron Plasmon Pulse |
+| classicalMagnet (1) | Europium Oxide (EuO) | Half-filled Eu²⁺ 4f⁷ shell, well-isolated localized moments — the real material Weiss/mean-field theory's Brillouin-function prediction is classically tested against; a genuinely different mean-field derivation (localized-moment Weiss theory) from Iron/Cobalt's itinerant Stoner picture, even though both land on classicalMagnet order; not from the course |
+| classicalMagnet (1) | Manganese Fluoride (MnF$_2$) | Simple ionic (superexchange-mediated) local-moment antiferromagnet with strong single-ion anisotropy — the real-material realization of the mean-field Ising antiferromagnet, a third distinct route to classicalMagnet order alongside NiO's Mott-insulating Hubbard-$U$ picture and Chromium's itinerant spin-density-wave picture; not from the course |
+| ferroelectric (1) | Potassium Dihydrogen Phosphate (KH$_2$PO$_4$) | Order-disorder-type ferroelectric (proton tunneling between two off-center sites in an O-H...O bond, a pseudospin mean-field/Ising model) rather than Barium Titanate's displacive-type transition — same inversion-symmetry-breaking SSB, a genuinely different microscopic mechanism, and an even more literal mean-field-theory teaching example than BaTiO₃'s own soft-phonon-mode picture; not from the course |
+| metal (1) | Titanium Diselenide (TiSe$_2$) | 1T-TiSe₂'s own charge density wave (~200 K) is session1's own broken-continuous-translational-symmetry worked example, made real — a frozen (softened) lattice/charge modulation opens a small gap; stays `metal` rather than a dedicated type since session1 itself notes only the phonon is guaranteed gapless in every material, and a CDW's own low-energy fluctuation is exactly that lattice phonon branch, not a distinct quasiparticle; not from the course |
 | quantumSpinHall (3, hybrid) | HgTe/CdTe Quantum Well | The original 2D topological insulator (Bernevig-Hughes-Zhang model, König et al., Science 2007) — only the *engineered heterostructure* is topological, not either bulk parent above; §5 hybrid recipe result, lives as a World 10 wild rather than a World 3 one |
 | classicalMagnet (1) | Nickel Oxide (NiO) | Mott-insulating antiferromagnet — canonical mean-field/Hubbard-$U$ SSB example |
 | classicalMagnet (1, rare/special) | Graphene at strong coupling | Session 1 notes a finite $U_c$ opens a Mott/antiferromagnetic gap at the Dirac point — same base crystal as the metal entry above, but pushed past its symmetry-breaking threshold |
@@ -301,7 +305,7 @@ pool.
 | fractionalChern (4, hybrid) | Twisted bilayer Molybdenum Ditelluride (MoTe$_2$) | Zero-field *fractional* quantum Hall from topological flat bands — genuinely fractionalizes into charged anyons, unlike GaAs/Graphene's ordinary integer Landau levels above, so it gets its own type rather than sharing `chernInsulator`; §5 hybrid recipe result (the 2H monolayer above fused with itself), lives as a World 10 wild rather than a World 4 one |
 | fractionalChern (4, hybrid) | Rhombohedral Pentalayer Graphene/hBN Moiré | Zero-field fractional quantum anomalous Hall (2023–2024 experiments) — five rhombohedrally-stacked graphene layers aligned to a hBN substrate, the same charged-anyon edge physics as Twisted Bilayer MoTe₂ above by an aligned-heterostructure route instead of a twist angle; not from the course, §5 hybrid recipe result (Graphene + Monolayer Boron Nitride), lives as a World 10 wild rather than a World 4 one |
 | chernInsulator (4, new type) | Manganese Bismuth Telluride (MnBi$_2$Te$_4$) | Real intrinsic magnetic topological insulator — the actual zero-field QAHE/Chern-insulator material, standalone (not a hybrid recipe result) |
-| superconductor (5) | Aluminum (Al) | Conventional phonon-mediated BCS s-wave superconductor |
+| superconductor (5) | Aluminum (Al) | Conventional phonon-mediated BCS s-wave superconductor — also spawns in World 1, session1's own third worked mean-field example (alongside the charge density wave and magnetism above) being superconductivity's own broken gauge symmetry, the same deliberate cross-list Iron/Cobalt/Barium Titanate already use |
 | superconductor (5) | Lead (Pb) | Same family, higher $T_c$ |
 | superconductor (5) | YBCO / cuprates | Unconventional nodal d-wave high-$T_c$ superconductor, still ordinary (non-topological) pairing |
 | superconductor (5) | Lanthanum Decahydride (LaH$_{10}$) | Record near-room-temperature $T_c$ (~250–260 K at ~170 GPa) — still ordinary phonon-mediated BCS pairing, just driven to extremes by hydrogen's own light, strongly-coupled phonons in the hydride's clathrate cage; not from the course, added as a modern high-pressure-superconductivity flagship |
@@ -411,8 +415,9 @@ class, the *next* hit of that same class no longer gets the quasiparticle-mismat
 against it. Implemented entirely in `BattleScene` (`adaptedForm`, `transmuteAdapted`,
 `opponentView()`) as this one fight's own live state, not a change to the static
 `WORLD_RIVALS[10]` entry itself (whose `type` field is only a placeholder for the pre-battle
-overworld/dialogue preview) — its `moves`/`maxHp` (attack moveset and HP) stay fixed
-throughout, only its defensive identity is dynamic.
+overworld/dialogue preview) — its `moves` (attack moveset) stay fixed throughout, only its
+defensive identity is dynamic; max HP was never tied to its identity in the first place (a
+rival's own `rivalHpForWorld(world)`, unaffected by any transmutation — see §3's own note).
 
 **Subtype combination flavor (real-compound tie-ins):** the same mechanic from §3
 (main type + subtype → new material) has ready real-world flavor text once crystals are
@@ -762,8 +767,9 @@ state can mark her met before the player has actually reached her.
   themselves into it for a while. She still belongs at world 3 despite the topic there being
   topological band structure: her own early work characterizing bismuth's band structure is
   a real historical precursor to the Bi-Sb/Bi₂Se₃ family that became the first 3D topological
-  insulators. Transmuting changes the player's look, HP cap, and which moves are currently
-  usable (§3), without erasing any move already learned. **Excludes every hybrid-recipe
+  insulators. Transmuting changes the player's look, type, and which moves are currently
+  usable (§3), without erasing any move already learned or touching their stats or max HP
+  (max HP is never tied to crystal form at all -- see §3's own note on it). **Excludes every hybrid-recipe
   result** (`data/materials.ts`'s `isHybridMaterial`, every one of which lives only as a
   World 10 wild, never an earlier one) -- becoming a fused state is specifically Majorana's
   mechanic below, not this one. In Superposition Mode the candidate list is every non-hybrid
@@ -774,7 +780,7 @@ state can mark her met before the player has actually reached her.
   given crystal for the first time costs qumatessence and unlocks it in the same click,
   every later transmutation back into it is free, the same shape Bloch's per-destination
   gate above uses -- priced above Bloch's since committing to become one specific
-  crystal (stats, HP cap, and moveset all at once) is a bigger capability swing per
+  crystal (its own look, type, and moveset all at once) is a bigger capability swing per
   option than pure travel convenience. Superposition Mode bypasses this per-crystal cost
   entirely the same way Bloch's does
 - **Laughlin** → world 4 middle → sells two quiz-gated moves (`skyfallBeam`,
