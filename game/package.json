@@ -10,6 +10,7 @@
     "docs": "node scripts/gen-docs.mjs",
     "balance-sim": "node scripts/balance-sim.mjs",
     "mapgen:check": "node scripts/mapgen-check.mjs",
+    "content-lint": "node scripts/content-lint.mjs",
     "component-check": "node scripts/component-check.mjs",
     "playthrough-check": "node scripts/playthrough-check.mjs"
   },

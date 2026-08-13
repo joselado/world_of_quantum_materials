@@ -29,10 +29,12 @@ the code:
   guardian," "new persisted state touches `defaultSave`+`persistFromRegistry`
   together") to follow before adding something new.
 - `dev_notes/DEVELOPMENT.md` — build/run instructions, folder contents, where
-  active development happens (`game/`). Also covers `npm run component-check`/
-  `npm run playthrough-check` (`game/scripts/`), the headless-Chrome scripts
-  that verify the game is actually playable end-to-end rather than just
-  type-checking — see "Editing workflow" below for when to run them.
+  active development happens (`game/`). Also covers three verification
+  scripts under `game/scripts/`: `npm run content-lint` (instant, static
+  data-table consistency), and `npm run component-check`/`npm run
+  playthrough-check` (headless-Chrome, verify the game is actually playable
+  end-to-end rather than just type-checking) — see "Editing workflow" below
+  for when to run each.
 - `README.md` — short player-facing description of the game (premise, how it
   plays, controls); deliberately light on mechanics detail, linking out to
   `docs/` for anything a player would need to look up rather than explaining
@@ -71,6 +73,16 @@ checkout; that's gone now that this repo *is* the standalone checkout). Commit a
 
 ## Editing workflow
 
+- **Before every `git push`**, run the fast checks from `game/`: `npm run
+  content-lint` (seconds) and `npm run component-check` (a couple of
+  minutes). Always run both, regardless of what specifically changed — they're
+  cheap enough that "did this change plausibly need it" isn't worth reasoning
+  about. **Never run `npm run playthrough-check` (20 min–1hr+) unless the user
+  explicitly asks for it in that session** — it's too slow and disruptive to
+  run as a matter of course before every push; treat "run the full
+  playthrough" as an explicit, separate request every time; presuming it from
+  context, or defaulting to "if in doubt, run it" is not welcome, and it's not
+  a substitute for asking.
 - For content/mechanics changes: check `dev_notes/DESIGN.md` first for the current
   rules before changing battle/progression logic, so a change doesn't contradict a
   documented decision elsewhere.
@@ -92,18 +104,20 @@ checkout; that's gone now that this repo *is* the standalone checkout). Commit a
   "same-type pairs are still forbidden in general because fusing two of the same
   phase isn't a new state") — cut the narration of the change itself, keep the
   reasoning behind the current rule.
-- For changes touching battle flow, world progression (the reach-goal →
-  beat-rival → continue gate), scene transitions, or any in-game dialogue/panel
-  (new or edited), run `npm run component-check` from `game/` before calling
-  the work done — it's fast (~2-3 min) and catches stuck-panel/broken-transition
-  regressions that `tsc --noEmit` can't see. For a change plausibly big enough
-  to affect whether the game is completable at all (difficulty/economy tuning,
-  a new gating mechanic, anything `balance-sim` output would be relevant to),
-  also run the slower `npm run playthrough-check` (20 min–1hr+, a real
-  boot-to-finale playthrough) — see `dev_notes/DEVELOPMENT.md`'s
-  "Full-playthrough and component checks" section for what each one covers and
-  the gotchas already learned building them (headless-Chrome crash-recovery, a
-  script mistaking its own no-op click for a stuck game panel).
+- `content-lint` is especially worth running right after any content addition
+  (a new crystal, hybrid recipe, guardian, move) — it catches typo'd move
+  ids, a world missing from one table but not its sibling, or a hybrid
+  recipe whose result was never added to World 10's pool, the kind of mistake
+  `tsc --noEmit` can't see since the data is all validly-typed, just wrong.
+  `component-check` is especially worth running right after any change
+  touching battle flow, world progression (the reach-goal → beat-rival →
+  continue gate), scene transitions, or an in-game dialogue/panel — it
+  catches stuck-panel/broken-transition regressions `tsc --noEmit` can't see.
+  Both are also always run before a push regardless (see above); see
+  `dev_notes/DEVELOPMENT.md`'s "Content lint" and "Full-playthrough and
+  component checks" sections for what each one covers and the gotchas
+  already learned building them (headless-Chrome crash-recovery, a script
+  mistaking its own no-op click for a stuck game panel).
 - For `docs/*.md` specifically: never hand-edit inside a `<!-- GENERATED -->`
   block — change the underlying data in `game/src/data/materials.ts`/`passives.ts`
   and run `npm run docs` from `game/` instead, so the table stays derived from a

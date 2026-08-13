@@ -116,6 +116,28 @@ Monte-Carlo sample count/seed, the ±15%-variance robustness check behind a
 row's WIN/LOSE/INCONCLUSIVE verdict) is documented in that script's own
 header comment -- read it before trusting a number out of its output.
 
+## Content lint
+
+`game/scripts/content-lint.mjs` (`npm run content-lint` from `game/`, well
+under a second -- pure Node, no browser, no dev server) statically
+cross-checks the hand-authored data tables for internal consistency, the one
+class of bug none of the other checks on this page can see: every
+`MaterialType` has a `MOVE_COMPATIBILITY` row and can host `phonon` (the
+universal fallback move), every crystal/rival's `moves` list resolves to a
+real `MOVES` id, no two moves share a display name (this project has shipped
+exactly that bug before), `WORLD_NAMES`/`WORLD_RIVALS`/`WORLD_GUARDIANS` all
+cover the built worlds consistently (`WORLD_RIVALS` deliberately excluding
+World 9, whose rival is rolled at random rather than fixed), every
+`HYBRID_RECIPES` result actually lives in `WORLD_CRYSTALS[10]` and vice versa
+(DESIGN.md §5's "hosts exactly the hybrid-recipe results, and nothing else"),
+and every world 1-9 has a non-empty quiz pool. Reads `materials.ts`/
+`types.ts`/`passives.ts`/`quiz.ts`/`OverworldScene.ts` (for the class-private
+`WORLD_GUARDIANS` table) the same AST-parsing way `gen-docs.mjs` does, for
+the same reason (`materials.ts` pulls in Phaser at module scope). Run this
+after any content addition -- pairs naturally with the `add-content` skill's
+own checklist, and is cheap enough to run reflexively before reaching for
+`component-check`/`playthrough-check`, which check behavior rather than data.
+
 ### `game/` project layout
 
 ```
