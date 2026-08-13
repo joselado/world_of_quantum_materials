@@ -29,6 +29,22 @@ export interface ChoiceListState {
   activate(id: string): void;
 }
 
+// Opt-in layout/preview hooks, all defaulting to today's plain behavior so a
+// caller that passes nothing (Kondo) renders byte-for-byte identically to
+// before this existed. `centerX`/`wrapWidth` let a caller lay the list out
+// in a narrower column instead of full-canvas-centered (Franklin's own
+// panel, see franklin.ts, puts a crystal preview beside this list rather
+// than below it). `onSelect` adds a non-committal "look" click on top of
+// the existing "buy"/"make active" buttons (both of which already commit
+// something) -- every guardian panel's own "look costs nothing, only
+// committing does" convention, extended here to previewing a passive's own
+// ground halo (franklin.ts) without needing a second full render pass.
+export interface ChoiceListRenderOptions {
+  centerX?: number;
+  wrapWidth?: number;
+  onSelect?: (id: string) => void;
+}
+
 // The shared "buy several, only one active, switch by revisiting" shop
 // engine -- Franklin's three passives and Kondo's three self-buff moves are
 // both this same shape (see renderPassiveList below for Franklin's own
@@ -50,8 +66,11 @@ export function renderChoiceList(
   y: number,
   items: ChoiceListItem[],
   state: ChoiceListState,
-  reopen: () => void
+  reopen: () => void,
+  options: ChoiceListRenderOptions = {}
 ): number {
+  const centerX = options.centerX ?? CANVAS_W / 2;
+  const wrapWidth = options.wrapWidth ?? 480;
   const forSale = items.filter((item) => !state.isUnlocked(item.id));
   const learned = items.filter((item) => state.isUnlocked(item.id));
   const active = state.activeId();
@@ -73,15 +92,19 @@ export function renderChoiceList(
   const descScale = Math.min(fontScale(scene), 1.2);
   const descPx = `${Math.round(9 * descScale)}px`;
 
-  const addDescription = (text: string) => {
+  const addDescription = (id: string, text: string) => {
     const desc = scene.add
-      .text(CANVAS_W / 2, y, text, {
+      .text(centerX, y, text, {
         fontSize: descPx,
         color: REFERENCE_BLUE_GREY_HEX,
         align: 'center',
-        wordWrap: { width: 480 },
+        wordWrap: { width: wrapWidth },
       })
       .setOrigin(0.5, 0);
+    if (options.onSelect) {
+      const onSelect = options.onSelect;
+      desc.setInteractive({ useHandCursor: true }).on('pointerdown', () => onSelect(id));
+    }
     container.add(desc);
     y += desc.height + 4;
   };
@@ -90,7 +113,7 @@ export function renderChoiceList(
     const affordable = tokens >= item.cost;
     const btn = scene.addDialogueButtonAt(
       container,
-      CANVAS_W / 2,
+      centerX,
       y,
       `${item.name} -- ${item.cost} qumatessence`,
       () => {
@@ -102,12 +125,12 @@ export function renderChoiceList(
         scene.dialogueContainer?.destroy(true);
         reopen();
       },
-      480,
+      wrapWidth,
       buttonPx
     );
     if (!affordable) btn.setAlpha(0.5);
     y += btn.height + 2;
-    addDescription(item.description);
+    addDescription(item.id, item.description);
   });
 
   if (learned.length > 0) {
@@ -117,7 +140,7 @@ export function renderChoiceList(
       const label = isActive ? `${item.name} (active)` : `Make ${item.name} active`;
       const btn = scene.addDialogueButtonAt(
         container,
-        CANVAS_W / 2,
+        centerX,
         y,
         label,
         () => {
@@ -126,12 +149,12 @@ export function renderChoiceList(
           scene.dialogueContainer?.destroy(true);
           reopen();
         },
-        480,
+        wrapWidth,
         buttonPx
       );
       if (isActive) btn.setAlpha(0.5);
       y += btn.height + 2;
-      addDescription(item.description);
+      addDescription(item.id, item.description);
     });
   }
 
@@ -154,7 +177,8 @@ export function renderPassiveList(
   y: number,
   passiveIds: string[],
   owner: PassiveOwner,
-  reopen: () => void
+  reopen: () => void,
+  options?: ChoiceListRenderOptions
 ): number {
   const unlocked = (scene.game.registry.get('passivesUnlocked') as string[]) ?? [];
   const activeByOwner = (scene.game.registry.get('activePassiveByOwner') as Partial<Record<PassiveOwner, string>>) ?? {};
@@ -179,5 +203,5 @@ export function renderPassiveList(
       persistFromRegistry(scene.game.registry);
     },
   };
-  return renderChoiceList(scene, container, y, items, state, reopen);
+  return renderChoiceList(scene, container, y, items, state, reopen, options);
 }

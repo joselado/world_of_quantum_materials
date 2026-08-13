@@ -126,23 +126,63 @@ than appending a changelog, so this always reflects current reality.
   line carries a small purple prism icon of its own (`makeCrystal(this, 16, 0x9a6ad9, 'prism')`)
   since its two-column list/detail layout has no room for a full left-side motif column and its
   right-column crystal render (below) already reads as a themed motif in its own right. The
-  **left column** lists every (filtered) entry's own name as its own clickable row -- as many
-  as fit on one screen at the current text-size preset (same sample-row-measurement technique
-  as "Paginated candidate lists" below), a selected row highlighted gold-on-purple, with `<-
-  Prev`/`Next ->` and a `Page N/M` label appearing only once the full list outgrows one page. A
-  row whose own label would run past the column's width is trimmed to an ellipsis (measured
-  against the text's actual rendered width at the current font-scale preset) rather than
-  wrapped, since wrapping would make row heights uneven and break the page-fit math. The
-  **right column** shows whichever row is currently selected: the compound's own crystal render
-  (`makeCrystal`, size `36`), name, and physics blurb (`materialdex.ts`'s `materialBlurb`) --
-  the blurb's font shrinks in whole-px steps (floor `9`) if a long entry would otherwise push
-  the panel's footer off the canvas. A **type filter** button (`Type: <MaterialType | All> ▸`)
-  cycles through every `MaterialType` plus "All," narrowing which rows appear in the left
-  column and resetting the list to its first page and first matching row. A single "Close"
-  button sits below both columns. Every element is laid out top-down with its own measured
-  height advancing a running `y` (same pattern as `hubStations.ts`'s `showInfoPanel`), the
-  panel's own background rectangle sized and inserted behind everything only once the taller of
-  the two columns' real height is known.
+  **left column** (`scenes/panels/listDetail.ts`'s `renderListColumn`, see "List+detail panels"
+  below) lists every (filtered) entry's own name as its own clickable row -- as many as fit on
+  one screen at the current text-size preset, a selected row highlighted gold-on-purple, with
+  `<- Prev`/`Next ->` and a `Page N/M` label appearing only once the full list outgrows one
+  page. A row whose own label would run past the column's width is trimmed to an ellipsis
+  (`fitListLabel`, measured against the text's actual rendered width at the current font-scale
+  preset) rather than wrapped, since wrapping would make row heights uneven and break the
+  page-fit math. The **right column** stays this panel's own render (list+detail's shared
+  scaffolding covers the left column only, since a detail pane's content genuinely differs
+  panel to panel): whichever row is currently selected, shown as the compound's own crystal
+  render (`makeCrystal`, size `36`), name, and physics blurb (`materialdex.ts`'s
+  `materialBlurb`) -- the blurb's font shrinks in whole-px steps (floor `9`) if a long entry
+  would otherwise push the panel's footer off the canvas. A **type filter** button (`Type:
+  <MaterialType | All> ▸`) cycles through every `MaterialType` plus "All," narrowing which rows
+  appear in the left column and resetting the list to its first page and first matching row. A
+  single "Close" button sits below both columns. Every element is laid out top-down with its
+  own measured height advancing a running `y` (same pattern as `hubStations.ts`'s
+  `showInfoPanel`), the panel's own background rectangle sized and inserted behind everything
+  only once the taller of the two columns' real height is known.
+- **List+detail panels** (`scenes/panels/listDetail.ts`) are the shared two-column scaffolding
+  Qumatex above and three guardian panels' crystal-pick steps (Dresselhaus's single
+  transmute step, Anderson's host-pick step, Majorana's browse-by-hybrid-result step -- see
+  their own entries below) build on, rather than each hand-rolling its own copy of the same
+  left-column pagination math. `LIST_DETAIL_PANEL_W` (`720`) is the panel width every list+detail panel
+  uses -- wide enough for the two columns plus a real crystal render side by side, unlike the
+  narrower `600`px width a plain single-column shop panel (Kondo, Laughlin, Bloch, ...) still
+  uses; Franklin's own panel (below) is wider still (`760`) for its own, differently-shaped
+  two-column crystal-beside-list layout, distinct from both. `listDetailColumns(panelLeft)`
+  returns the one fixed set of column margins/widths
+  every list+detail panel shares (left column `200`px wide, a divider, then the right column
+  filling the rest). `renderListColumn` draws the left column exactly the way Qumatex's own
+  left column above works (sample-row-measurement fit-per-page, `fitListLabel` ellipsis-trim,
+  gold-on-purple selected-row highlight, Prev/Next/Page-N/M once the list outgrows one page) --
+  a caller passes its own item list, `idFor`/`labelFor`, which id is currently selected, and an
+  `onSelect` callback; nothing about *committing* to a selection lives in this shared piece. The
+  right/detail column is always a per-call-site render (`insertColumnDivider` just draws the
+  line between the two once both columns' real heights are known) since its content differs
+  panel to panel -- Qumatex's own pane (crystal + name + physics blurb, above) versus a
+  guardian's (crystal + name + cost/status text + a commit button, via the shared
+  `renderDetailCrystalHeader` crystal-plus-name block the three guardian panels each build
+  their own status text and confirm button on top of). A guardian's list+detail step is a
+  **preview-then-confirm** flow, distinct from the plain shop-row style used elsewhere (Kondo/
+  Laughlin/Bloch's flat button lists, still the right choice when there's no crystal art worth
+  previewing, e.g. Anderson's own second step picking a *move* rather than a crystal) and from
+  Franklin's own crystal-beside-list layout (below), which previews a passive's ground halo on
+  an always-visible crystal rather than swapping between candidate rows: clicking a left-column
+  row only changes which candidate is previewed in the right
+  column, at no cost and no effect, so a player can browse freely before deciding; the actual
+  action (transmute/dope-in/fuse, cost check and deduction included) only fires from the right
+  column's own explicit button ("Become `<name>`," "Dope in `<name>`," "Fuse into `<name>`").
+  Each such panel keeps its own transient "which row is currently previewed" field
+  (`GuardianPanelHost`'s `dresselhausPreview`/`andersonHostPreview`/`majoranaPreview`), separate
+  from the persisted "which row is committed to" field the two-step guardian (Anderson) already
+  has (`andersonSelection`) -- a preview is free to change or abandon, a commit is the one
+  action that actually spends anything. Majorana has no such committed-choice field: its panel
+  is a single browse-by-result step, so `majoranaPreview` (holding the previewed *hybrid
+  result's* name) alone drives its whole detail pane.
 - **Tutorial** (`scenes/panels/hubStations.ts`'s `showTutorialTopics`/`showTutorialTopic`,
   stroked cyan `0x5ad9ff`) opens to a menu listing every topic by its own title
   (`data/tutorial.ts`'s `TUTORIAL_PAGES`) rather than paging through them linearly -- the whole
@@ -467,23 +507,27 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   for a ring of six small spin arrows, each rotated tangent to its own position on the
   ring (a hedgehog-like winding, the spin texture a Dresselhaus/Rashba-split band actually
   traces in momentum space) rather than a face, slowly rotating.
-- His panel is a single paginated list, not the tab-content/footer shop shape -- every
-  defeated wild material (`defeatedMaterials`, sliced to the most recent 3, or in
-  Superposition Mode every non-hybrid crystal in the game -- `data/materials.ts`'s
-  `allCrystals()` filtered through `isHybridMaterial`) gets a button. Each crystal is its
-  own one-time unlock: one not yet in `registry`/save `dresselhausUnlockedCrystals` reads
-  `Become <name> (25 qumatessence)`, dimmed if unaffordable; clicking it while affordable
-  deducts the cost, adds that crystal's name to the list, and transmutes in the same
-  click (`transmuteInto`). An already-unlocked crystal drops the cost suffix -- `Become
-  <name>` -- and transmutes for free; whichever crystal the player is already wearing
-  shows as a dimmed `<name> (current form)` instead, same as before. Transmuting swaps
-  color/variant/moveset only -- HP is never intrinsic to a crystal form, it's `wildHpForWorld`
-  for whichever world the player will actually resume into -- and immediately redraws the
-  overworld avatar (`redrawPlayerCrystal`). Empty state: "You haven't
-  defeated any crystals yet -- there is nothing to become." Paginates once the list is
-  longer than one page (see "Paginated candidate lists" below) -- the common case in
-  Superposition Mode, which also treats every crystal as already unlocked -- ending in a
-  single "Farewell" button, no separate footer row.
+- His panel is a list+detail layout (`scenes/panels/listDetail.ts`, "List+detail panels"
+  above), not the tab-content/footer shop shape -- every defeated wild material
+  (`defeatedMaterials`, sliced to the most recent 3, or in Superposition Mode every
+  non-hybrid crystal in the game -- `data/materials.ts`'s `allCrystals()` filtered through
+  `isHybridMaterial`) gets a left-column row naming it only, no cost suffix. Clicking a row
+  only *previews* it (`scene.dresselhausPreview`) -- the right column shows that candidate's
+  own crystal render, name, and a status line ("This is your current form" for whichever
+  crystal the player is already wearing, "Already unlocked -- free to become" for one already
+  paid for, or "Costs 25 qumatessence to unlock (one-time; free after)" otherwise), plus a
+  "Become `<name>`" confirm button (hidden for the current form) that's the one action
+  actually checking/spending the cost, adding the crystal to `registry`/save
+  `dresselhausUnlockedCrystals` if it wasn't already there, and transmuting
+  (`transmuteInto`) -- browsing candidates in the left column costs nothing regardless of how
+  many are looked at. Transmuting swaps color/variant/moveset only -- HP is never intrinsic to
+  a crystal form, it's `wildHpForWorld` for whichever world the player will actually resume
+  into -- and immediately redraws the overworld avatar (`redrawPlayerCrystal`). Empty state
+  (no candidates at all, rendered as plain centered text with no columns): "You haven't
+  defeated any crystals yet -- there is nothing to become." The left column paginates once
+  the list is longer than one page -- the common case in Superposition Mode, which also
+  treats every crystal as already unlocked -- ending in a single "Farewell" button below both
+  columns, no separate footer row.
 
 ## Laughlin in the overworld (`OverworldScene.showLaughlinPanel`)
 
@@ -527,33 +571,37 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 - World 5 only, standing at the middle tile like every other guardian. Green (`0x4fd97a`)
   name label and panel stroke; his avatar (`art/majorana.ts`'s `makeMajoranaAvatar`) is
   unchanged by this mechanic.
-- His panel reuses the paginated-list shape Dresselhaus's panel uses, but with a
-  two-step flow instead of one screen: every defeated wild material (or, in Superposition
-  Mode, every crystal in the game) *that pairs with at least one of the others* gets a
-  button at the first step (any pairing with no matching entry in `data/materials.ts`'s
-  `HYBRID_RECIPES` -- keyed by parent name, not main type, so a same-type pair can still
-  be valid if a named recipe covers it -- is filtered out before it ever renders); picking
-  one is always free (just a browse) and asks "Combine `<first>` with..." at the second
-  step, re-listing only the remaining candidates that pair with it specifically. Each
-  partner at this second step is its own one-time unlock, keyed by the *result* the pair
-  would produce: a result not yet in `registry`/save `majoranaUnlockedResults` labels its
-  row `<partner> (60 qumatessence)`, dimmed if unaffordable; picking it while affordable
-  deducts the cost, adds the result's name to the list, and fuses in the same click. An
-  already-unlocked result drops the cost suffix -- just `<partner>` -- and fuses for
-  free. A "Never mind" (to back out to the first step) shares one row with the panel's
-  own Farewell button at this second step (side by side, the same convention the goal
-  panel's Farewell/Continue footer uses) rather than stacking two separate footer rows.
-  Both steps paginate (see "Paginated candidate lists" below) once the filtered list is
-  longer than one page. Picking a partner immediately transmutes the player into the
-  recipe's own named result (`data/materials.ts`'s `combineMaterials` -- name/type/moves all
-  fixed on the recipe, not computed at combine time) the same way Dresselhaus's
-  transmutation does -- no separate "confirm" step, and no memory of earlier fusions to
-  instantly re-become either -- every visit starts the two-step pick fresh. Empty state (no
-  valid pairing among the
-  candidates -- including having fewer than 2 total): "None of the crystals you've defeated
-  pair into a known hybrid recipe yet -- Majorana only knows specific real pairings (e.g.
-  Aluminum + Indium Arsenide, or two Graphenes together)." Superposition Mode treats every
-  result as already unlocked.
+- His panel is a single list+detail step (`scenes/panels/listDetail.ts`, "List+detail panels"
+  above), browsed by *hybrid result* rather than by ingredient: the left column lists every
+  named `data/materials.ts` `HYBRID_RECIPES` result reachable from the player's defeated wild
+  materials (or, in Superposition Mode, every crystal in the game) via
+  `combinableHybridResults` -- a same-name recipe (e.g. Graphene + Graphene) is reachable from a
+  single crystal of that name, a distinct-parent recipe needs both. Clicking a row only
+  previews it (`scene.majoranaPreview`, holding the previewed *result's* name); browsing costs
+  nothing regardless of how many hybrids are looked at. The right column shows, top to bottom:
+  the two original component crystals rendered small and side by side (`makeCrystal`, size
+  `22`) with a single caption line naming both (`<A> + <B>`, or `<A> ×2` for a self-paired
+  recipe, which keeps the caption short for this panel's longest self-paired name); the
+  resulting hybrid's own full-size crystal render and name below them
+  (`renderDetailCrystalHeader`, the same crystal-plus-name block Dresselhaus's/Anderson's own
+  detail panes use); an epic-narrative-plus-physics description of the fusion
+  (`materialdex.ts`'s `HYBRID_FUSION_LORE`, one entry per `HYBRID_RECIPES` result, shrinking in
+  whole-px steps floor `9` the same way Qumatex's own blurb does if a long entry risks pushing
+  the footer off the canvas); and finally a cost/status line and confirm button. Each result is
+  its own one-time unlock: a result not yet in `registry`/save `majoranaUnlockedResults` shows
+  "Costs 60 qumatessence to unlock (one-time; free after)" with a "Fuse into `<name>` (60
+  qumatessence)" confirm button, dimmed if unaffordable; an already-unlocked result shows
+  "Already unlocked -- free to fuse" with a plain "Fuse into `<name>`" button. Confirming is the
+  one action that actually checks/spends the cost, adds the result's name to the list, and
+  transmutes the player into the recipe's own named result (`data/materials.ts`'s
+  `combineMaterials` -- name/type/moves all fixed on the recipe, not computed at combine time)
+  the same way Dresselhaus's transmutation does -- no memory of earlier fusions to instantly
+  re-become one, every visit starts the browse fresh. The left column paginates once the
+  reachable-result list is longer than one page. Empty state (no reachable result at all,
+  rendered as plain centered text with no columns): "None of the crystals you've defeated pair
+  into a known hybrid recipe yet -- Majorana only knows specific real pairings (e.g. Aluminum +
+  Indium Arsenide, or two Graphenes together)." Superposition Mode treats every result as
+  already unlocked.
 
 ## Anderson in the overworld (`OverworldScene.showAndersonPanel`)
 
@@ -563,27 +611,33 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   one bright point pulsing at the center -- Anderson localization's own picture, a wave
   trapped by disorder instead of spreading freely -- rather than any other guardian's motif,
   plus four orbiting `×` glyphs instead of Noether's `✦` or Bloch's `◇`.
-- The panel follows the same two-step flow as Majorana's: every defeated
-  wild material (or, in Superposition Mode,
-  every crystal in the game) that isn't a hybrid (`isHybridMaterial`) gets a
-  button under "Dope in which crystal?" (paginated, see below); picking one is always
-  free (just a browse) and asks "Learn
-  which move from `<host>`?" at the second step. Each learnable move here is priced by
-  whether the *host* is unlocked, not the move: while `<host>` isn't yet in
-  `registry`/save `andersonUnlockedHosts`, every one of its rows reads `<move name> (Pwr
-  N) (35 qumatessence)`, dimmed if unaffordable; picking one while affordable deducts the
-  cost, adds the host's name to the list, and learns that move in the same click. Once a
-  host is unlocked, its rows drop the cost suffix -- `<move name> (Pwr N)` -- and learning
-  any of its moves (now or later) is free. A "Never mind" (to back out to the first step)
-  shares one row with the panel's own Farewell button at this second step (side by side,
-  the same convention the goal panel's Farewell/Continue footer uses) rather than
-  stacking two separate footer rows. Picking a move
-  appends it to the ordinary `unlockedMoves` list (`learnImpurityMove`) -- no form
-  change, no HP change, unlike Dresselhaus/Majorana. Empty states: "You
-  haven't defeated any original crystals yet -- there is nothing to dope in" (no host
-  candidates) or "You already
-  carry every move `<host>` has to offer" (host picked, but every one of its moves is
-  already learned). Superposition Mode treats every host as already unlocked.
+- The panel is a two-step flow, but only the first step (picking which host to dope in) is a
+  list+detail layout (`scenes/panels/listDetail.ts`, "List+detail panels" above) -- the second
+  step (which specific move to learn) stays a plain paginated
+  button list (`renderPagedButtons`, below), since a move has no crystal art of its own to
+  preview. Every defeated wild material (or, in Superposition Mode, every crystal in the
+  game) that isn't a hybrid (`isHybridMaterial`) gets a left-column row under "Dope in which
+  crystal?"; clicking one only previews it (`scene.andersonHostPreview`) -- the right column
+  shows that candidate's own crystal render, name, a status line ("Already unlocked -- free
+  to learn its moves" or "Costs 35 qumatessence to unlock (one-time, host-wide)"), and a
+  "Dope in `<name>`" confirm button that records it as the chosen host
+  (`scene.andersonSelection`) and advances to the second step -- still free, just like
+  browsing was; the ANDERSON_DOPE_COST charge itself only ever happens on the second step.
+  That second step asks "Learn which move from `<host>`?"; each learnable row is priced by
+  whether the *host* is unlocked, not the move: while `<host>` isn't yet in `registry`/save
+  `andersonUnlockedHosts`, every one of its rows reads `<move name> (Pwr N) (35
+  qumatessence)`, dimmed if unaffordable; picking one while affordable deducts the cost,
+  adds the host's name to the list, and learns that move in the same click. Once a host is
+  unlocked, its rows drop the cost suffix -- `<move name> (Pwr N)` -- and learning any of its
+  moves (now or later) is free. A "Never mind" (to back out to the first step) shares one row
+  with the panel's own Farewell button at this second step (side by side, the same
+  convention the goal panel's Farewell/Continue footer uses) rather than stacking two
+  separate footer rows. Picking a move appends it to the ordinary `unlockedMoves` list
+  (`learnImpurityMove`) -- no form change, no HP change, unlike Dresselhaus/Majorana. Empty
+  states (rendered as plain centered text with no columns): "You haven't defeated any
+  original crystals yet -- there is nothing to dope in" (no host candidates) or "You already
+  carry every move `<host>` has to offer" (host picked, but every one of its moves is already
+  learned). Superposition Mode treats every host as already unlocked.
 
 ## Feynman in the overworld (`OverworldScene.showFeynmanPanel`)
 
@@ -629,8 +683,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   Franklin's own passive rows use -- then one row per already-bought
   Kondo move, its own description printed the same way. A bought-and-inactive move reads
   "Make `<name>` active" as a clickable button, the currently active one (registry/save
-  `kondoActiveMove`) reads "`<name>` (active)" dimmed to 50% alpha with no click handler,
-  the same dimmed-current treatment Dresselhaus's "`<name>` (current form)" row uses. Buying
+  `kondoActiveMove`) reads "`<name>` (active)" dimmed to 50% alpha with no click handler. Buying
   the first Kondo move activates it immediately (still shows the dimmed "(active)" tag right
   away, no separate click needed); buying a second or third afterward doesn't, and switching
   which one is active always requires reopening this panel and clicking "Make active," not a
@@ -646,9 +699,30 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   scattered sites surrounded by concentric diffraction rings -- porous/amorphous carbon's
   own X-ray diffraction pattern made literal -- in a dusty amethyst/lavender palette
   distinct from Anderson's rust/amber despite the shared defect/disorder theme.
+- Qumatex-like: below the avatar/quote, the panel (`scenes/panels/franklin.ts`, `760` wide)
+  splits into two columns -- a fixed-size crystal-preview block on the left, the passive shop
+  list on the right, divided by the same thin vertical line `HubScene.renderMaterialdexPanel`'s
+  own two-column layout uses. Putting the crystal beside the list rather than above it means the
+  crystal block adds no extra height beyond whichever column is already taller, since this panel
+  has no shrink-to-fit safety net and was already close to `CANVAS_H` at the largest text-size
+  preset before the crystal existed.
+- The **crystal block** renders the player's own current crystal (`makeCrystal(scene, 34,
+  scene.playerMaterial.color, scene.playerMaterial.variant, { seed: scene.playerMaterial.name,
+  hybrid: scene.playerMaterial.hybridParents })`, the same call convention `BattleScene` uses)
+  standing on a plain `0x000000`-at-`0.3`-alpha ground-shadow ellipse (no biome here to shade it
+  off the way `BattleScene`'s own shadow is), fixed-size regardless of the text-size setting
+  ("art, not text," same reasoning as Qumatex's own `crystalBlockH`). Whichever passive is
+  currently being looked at gets its own ground halo drawn around that shadow
+  (`art/passiveHalos.ts`, see "Battle status effects" below for what each of the three looks
+  like) plus a small status label underneath: full alpha and "`<name>` (active)" for the passive
+  actually active in battle, `0.45` alpha and "`<name>` (preview)" for any other passive, or "No
+  passive active" if none is active yet and nothing's been clicked. The label's own reserved
+  height is measured up front from the longest possible `<name> (preview)` string so a later
+  preview swap can never grow the block past what the panel was first sized for.
 - Buy-list-plus-switch shape (`renderPassiveList`, Franklin's own thin wrapper around the
-  same `renderChoiceList` engine Kondo's own panel above uses): a still-unbought passive
-  (`data/passives.ts`'s
+  same `renderChoiceList` engine Kondo's own panel above uses), laid out in the right column via
+  `ChoiceListRenderOptions`' `centerX`/`wrapWidth` (so Kondo's own call, which passes neither,
+  keeps rendering full-canvas-centered): a still-unbought passive (`data/passives.ts`'s
   `FRANKLIN_PASSIVE_IDS` -- Diffraction Shadow, Satellite Reflection, Amorphous Halo)
   gets a `<name> -- <cost> qumatessence` buy button plus a one-line description
   underneath, both capped at a lower font-scale ceiling than every other guardian
@@ -664,7 +738,14 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   same reasoning as Kondo's first move; buying a second or third doesn't, and switching
   which one is active always requires reopening this panel. No "wrong form" empty
   state -- like Kondo's own self-buff moves, a passive is never gated by a crystal's
-  own physics at all, so all three are always purchasable.
+  own physics at all, so all three are always purchasable. Clicking any row's own
+  description (not its buy/activate button) previews that passive's ground halo on the crystal
+  block instead (`ChoiceListRenderOptions.onSelect`, reassigning a plain closure variable local
+  to `showFranklinPanel`, never the registry) -- the same "look costs nothing, only committing
+  does" convention every other guardian panel's own preview-vs-commit split already follows,
+  extended here to a passive's own look rather than just its cost. Buying or activating a passive
+  always reopens this panel from scratch, so the crystal falls back to whatever is now actually
+  active rather than a preview click from before that purchase surviving stale.
 
 ## Skłodowska-Curie in the overworld (`OverworldScene.showSklodowskaCuriePanel`)
 
@@ -694,11 +775,15 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 
 ## Paginated candidate lists (`OverworldScene.renderPagedButtons`)
 
-- Shared by every panel whose candidate pool can outgrow one screen -- Dresselhaus's transmute
-  list, both steps of Majorana's and Anderson's combine/dope flows, and Bloch's destination
-  list. Superposition Mode is what makes this routine rather than a rare edge case: its
-  candidate pool is every crystal in the game (or, for Bloch, every built world outright),
-  commonly 8-30+ entries where the equivalent Story Mode list is a handful.
+- Shared by every plain single-column candidate list that can outgrow one screen -- Anderson's
+  second step (picking which move to learn from an already-chosen host) and Bloch's
+  destination list. Superposition Mode is what makes this routine rather than a rare edge
+  case: its candidate pool is every crystal in the game (or, for Bloch, every built world
+  outright), commonly 8-30+ entries where the equivalent Story Mode list is a handful.
+  Dresselhaus's transmute list, Majorana's browse-by-hybrid-result list, and Anderson's own
+  first (host-pick) step instead use the two-column list+detail layout ("List+detail panels"
+  above) for the same reason -- its own left column paginates the same candidate-pool-can-
+  outgrow-one-screen way, just via `renderListColumn` rather than this function.
 - One button per row, same treatment as every other dialogue button, followed -- only
   once the list is longer than one page -- by a single shared row holding `<- Prev`
   (left), a small blue-grey `Page N/M` label (centered, vertically centered against the
@@ -722,12 +807,12 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   two just because a reservation assumed controls it turns out not to need -- verified
   with no overflow at every font-scale preset via the headless-Chromium harness (see
   DEVELOPMENT.md's "Verifying UI changes" section).
-- Majorana's and Anderson's second step (partner/move pick) also renders a "Never mind"
-  cancel row to back out to the first step -- this shares one row with the panel's own
-  Farewell button (side by side, the same left/right convention the goal panel's own
-  Farewell/Continue footer uses) rather than stacking as two separate rows, since this
-  step already carries more chrome (avatar, intro, a second-step label, the paginated
-  list itself) than any single-step panel does.
+- Anderson's second step (this function's own plain paginated list) also renders a "Never
+  mind" cancel row to back out to the first (host-pick) step -- this shares one row with the
+  panel's own Farewell button (side by side, the same left/right convention the goal panel's
+  own Farewell/Continue footer uses) rather than stacking as two separate rows, since this
+  step already carries more chrome (avatar, intro, a second-step label, the candidate list
+  itself) than any single-step panel does.
 
 ## Boss avatars (`OverworldScene.spawnBossSprite`, `art/boss.ts`)
 
@@ -907,6 +992,25 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   leaves no vertical room left for it at that same setting, it's simply omitted for that
   battle rather than drawn overlapping the
   status pill above it -- the status pill's own readability takes priority.
+- Franklin's active passive also gets a **ground halo** around the player's own ground-shadow
+  ellipse (`BattleScene.drawBackground`'s `this.add.ellipse(PLAYER_POS.x, 392, 130, 30, ...)`),
+  drawn once in `create()` (not per-turn) by `art/passiveHalos.ts`'s
+  `drawFranklinPassiveHalo(scene, container, x, y, passiveId, rx, ry, alpha?)`, keyed off
+  whichever id is in `playerActivePassives` -- never for the opponent, since no wild/rival ever
+  has an active passive. Anchored to the shadow's own position rather than wrapped around the
+  crystal body, and deliberately calmer than `addBoostHalo`'s energetic "temporary bonus" aura
+  (no rotating spikes/rising embers) since a passive is an always-on trait, not a per-turn boost.
+  Each of the three reads distinctly, grounded in its own physics: **Diffraction Shadow**
+  (`fractionalGuard`) is a static ring of small dim scattered spots, the spotty rings a
+  powder/polycrystalline sample's own diffraction pattern gives; **Satellite Reflection**
+  (`anyonEcho`) is a static, fainter ring offset to one side, echoing a diffraction pattern's own
+  secondary spot beside the main one; **Amorphous Halo** (`edgeCurrent`) is the only one that
+  moves, a soft additive-blended glow breathing on a slow 3.2s pulse -- an amorphous solid's own
+  diffuse halo, literally that term in X-ray diffraction. All three stay within Franklin's own
+  lavender/purple family and never gold, so they can't be confused with `addBoostHalo`'s gold
+  aura if both happen to be on screen at once (a passive can be active during a boosted turn).
+  The same builder previews each halo in Franklin's own panel (see "Franklin in the overworld"
+  above) at reduced alpha unless the passive shown is the one actually active.
 - The "A wild X appeared!" opener and the win/lose closing line are flavor text from
   `data/greetings.ts` (`victoryLine`/`defeatLine`), keyed to the wild material's type the
   same way the overworld encounter greeting is. A rival fight swaps the opener for "X blocks

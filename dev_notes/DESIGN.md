@@ -938,10 +938,10 @@ state can mark her met before the player has actually reached her.
   fused result's own name rather than by parent pair, since no two different pairs in
   `HYBRID_RECIPES` currently produce the same result, so "have I paid to become this
   hybrid" is the same question regardless of which pair first reaches it. The cost only
-  shows up (and is only charged) at the second step of the pick, once a specific partner
-  -- and so a specific result -- is actually chosen; browsing which crystal to start
-  from at the first step costs nothing, the same "browsing is free, only committing
-  costs" shape Anderson's host pick uses below. Priced highest of the four
+  shows up (and is only charged) once a specific hybrid result is actually confirmed;
+  browsing every reachable hybrid in the panel's table costs nothing, the same
+  "browsing is free, only committing costs" shape Anderson's host pick uses below.
+  Priced highest of the four
   repeatable-action guardians (Bloch/Dresselhaus/Anderson/Majorana) -- above even
   Noether's/Laughlin's/Kondo's ordinary `shopCost` top end (~55) -- since unlocking one
   specific hybrid result is comparable in value to learning a whole new move, and
@@ -1087,9 +1087,8 @@ state can mark her met before the player has actually reached her.
   applies here too: this isn't free-form disorder, it's one specific technique the player has
   to choose and commit to. The shop panel itself doubles as the switch -- a bought-and-inactive
   move gets a "Make `<name>`
-  active" button, the active one shows a dimmed "`<name>` (active)" tag instead, the same
-  dimmed-current convention Dresselhaus's transmute panel already uses, and every row (bought
-  or not) prints the move's own one-line description underneath, the same convention
+  active" button, the active one shows a dimmed "`<name>` (active)" tag instead, and every row
+  (bought or not) prints the move's own one-line description underneath, the same convention
   Franklin's own passive rows use. Buying the *first*
   Kondo move activates it automatically (still "picked by talking to Kondo," just in the same
   click as the purchase) so a fresh purchase is never invisible in battle with no explanation;

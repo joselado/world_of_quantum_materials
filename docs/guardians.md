@@ -77,12 +77,12 @@ every form hosts — until you retune it.
 Lets you fuse two crystals you've already defeated into a brand-new hybrid
 state and become it, if the pairing matches one of the game's named recipes
 (see [Hybrids](hybrids.md)) — rendered as an actual mix of both parents' own
-colors and shapes. Recipes don't carry over between visits: every trip to
-Majorana starts the pick fresh.
+colors and shapes. Browse hybrids directly by their result: pick one from the
+list to preview its two component crystals, the fused result, and its own
+physics blurb before deciding.
 
-- Browsing which crystal to combine first: always free
-- First time fusing into a given hybrid result: 60 qumatessence (shown once
-  you pick a specific partner)
+- Browsing any hybrid: always free
+- First time fusing into a given hybrid result: 60 qumatessence
 - Every later fusion into that same result: free, however you reach it
 
 ## Anderson's Impurities

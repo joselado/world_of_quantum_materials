@@ -5,6 +5,7 @@ import { shade } from '../art/colors';
 import { getBiome } from '../art/biomes';
 import type { Biome } from '../art/biomes';
 import { playAttackEffect, ANALYTIC_SHAPES, ULTIMATE_SHAPES } from '../art/attackEffects';
+import { drawFranklinPassiveHalo } from '../art/passiveHalos';
 import { fontPx, fontScale } from '../ui/text';
 import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY, REFERENCE_BLUE_GREY_HEX } from '../ui/theme';
 import {
@@ -418,6 +419,19 @@ export class BattleScene extends Phaser.Scene {
     const activeByOwner = (this.game.registry.get('activePassiveByOwner') as Partial<Record<PassiveOwner, string>>) ?? {};
     this.playerActivePassives = new Set(Object.values(activeByOwner).filter((id): id is string => !!id));
     this.opponentActivePassives = new Set();
+    // Franklin's ground halo (art/passiveHalos.ts) for whichever passive is
+    // active, drawn once here rather than per-turn -- no passive is ever
+    // active for the opponent side (opponentActivePassives above stays
+    // empty), so only the player's own ground shadow ever gets one. Drawn
+    // before the player crystal itself (create()'s own later section) so it
+    // renders behind it, anchored to the shadow ellipse's position
+    // (drawBackground's own `PLAYER_POS.x, 392`) rather than wrapped around
+    // the crystal body the way addBoostHalo's temporary aura is.
+    const franklinPassiveId = [...this.playerActivePassives].find((id) => id in PASSIVES);
+    if (franklinPassiveId) {
+      const haloLayer = this.add.container(0, 0);
+      drawFranklinPassiveHalo(this, haloLayer, PLAYER_POS.x, 392, franklinPassiveId, 65, 15);
+    }
 
     const savedHp = (this.game.registry.get('playerHp') as number) || this.playerMaxHp;
     this.playerHp = Math.min(savedHp, this.playerMaxHp);

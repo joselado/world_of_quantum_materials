@@ -302,11 +302,24 @@ export interface GuardianPanelHost extends Phaser.Scene {
   blochPage: number;
   dresselhausPage: number;
   majoranaPage: number;
-  majoranaSelection: string | null;
   andersonPage: number;
   andersonSelection: string | null;
   andersonMovePage: number;
   feynmanPage: number;
+  // Which candidate row is currently highlighted in the left column of a
+  // list+detail crystal-pick step (scenes/panels/listDetail.ts) without yet
+  // being committed to -- distinct from andersonSelection above, which
+  // records Anderson's *committed* host choice once the player has actually
+  // confirmed it (Majorana has no such committed-choice field: its panel is
+  // a single browse-by-result step, so majoranaPreview alone -- holding the
+  // previewed *hybrid result's* name -- drives its whole detail pane). Null
+  // means "nothing previewed yet," in which case the panel falls back to
+  // previewing the first candidate on the current page. Reset alongside the
+  // existing per-guardian fields on both OverworldScene.create()/
+  // closeDialogue() and HubScene.closeDialogue().
+  dresselhausPreview: string | null;
+  andersonHostPreview: string | null;
+  majoranaPreview: string | null;
 }
 
 // One entry per world with a guardian -- replaces the old per-guardian
@@ -409,22 +422,16 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // every fresh scene create so re-entering the world doesn't strand the
   // player on the stats tab.
   shopTab: 'moves' | 'stats' = 'moves';
-  // Majorana's combine panel (§5): the first crystal picked, while the panel
-  // rebuilds to ask for the second -- null means "no combine in progress,
-  // show the initial pick list." Reset on every fresh scene create and every
-  // closeDialogue() so a stale first pick can't survive a cancel-and-reopen.
-  majoranaSelection: string | null = null;
-  // Dresselhaus's transmute list and Majorana's per-step combine list both
+  // Dresselhaus's transmute list and Majorana's hybrid-result list both
   // paginate (Superposition Mode's candidate pool is every crystal in the
-  // game, far more than one panel can show at once) -- same reset rules as
-  // majoranaSelection above, plus a reset whenever majoranaSelection itself
-  // changes (see showMajoranaPanel) so switching steps starts back on page 0.
+  // game, far more than one panel can show at once). Reset on every fresh
+  // scene create and every closeDialogue().
   dresselhausPage = 0;
   majoranaPage = 0;
   // Anderson's impurity-doping panel (§5, World 9): the host crystal picked
   // to "dope in," while the panel rebuilds to ask which one of its moves to
   // learn -- null means "no doping in progress, show the host pick list."
-  // Same reset/pagination rules as majoranaSelection/majoranaPage above.
+  // Same reset/pagination rules as dresselhausPage/majoranaPage above.
   andersonSelection: string | null = null;
   andersonPage = 0;
   // Paginates the second step's own learnable-move list (renderPagedButtons)
@@ -446,6 +453,14 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // Superposition Mode's "every crystal" case even comes into it. Same
   // reset rules.
   feynmanPage = 0;
+  // Which row is currently highlighted (not yet committed) in a list+detail
+  // crystal-pick step's left column -- Dresselhaus's single step, Anderson's
+  // host-pick step, and Majorana's own single browse-by-result step
+  // (majoranaPreview holds the previewed *hybrid result's* name there). Same
+  // reset rules as andersonSelection above.
+  dresselhausPreview: string | null = null;
+  andersonHostPreview: string | null = null;
+  majoranaPreview: string | null = null;
 
   // One entry per world with a guardian (see GuardianDef above). Most `open`
   // callbacks call an imported scenes/panels/<guardian>.ts function with `s`
@@ -617,7 +632,6 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // clearing too.
     this.dialogueActive = false;
     this.dialogueContainer = undefined;
-    this.majoranaSelection = null;
     this.dresselhausPage = 0;
     this.majoranaPage = 0;
     this.andersonSelection = null;
@@ -625,6 +639,9 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.andersonMovePage = 0;
     this.blochPage = 0;
     this.feynmanPage = 0;
+    this.dresselhausPreview = null;
+    this.andersonHostPreview = null;
+    this.majoranaPreview = null;
     this.biome = getBiome(this.world);
 
     const state = this.game.registry;
@@ -1954,7 +1971,6 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.dialogueContainer?.destroy(true);
     this.dialogueContainer = undefined;
     this.dialogueActive = false;
-    this.majoranaSelection = null;
     this.dresselhausPage = 0;
     this.majoranaPage = 0;
     this.andersonSelection = null;
@@ -1962,6 +1978,9 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.andersonMovePage = 0;
     this.blochPage = 0;
     this.feynmanPage = 0;
+    this.dresselhausPreview = null;
+    this.andersonHostPreview = null;
+    this.majoranaPreview = null;
   }
 
   private isRivalDefeated(): boolean {

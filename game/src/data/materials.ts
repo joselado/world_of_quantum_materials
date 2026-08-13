@@ -1403,6 +1403,31 @@ export function hybridRecipeResult(nameA: string, nameB: string): Material | und
   return recipe?.result;
 }
 
+export interface HybridCombo {
+  result: Material;
+  parentA: Material;
+  parentB: Material;
+}
+
+// Every HYBRID_RECIPES result reachable from `pool` (materials the player
+// could supply both parents of) -- Majorana's panel lists hybrids by result
+// rather than walking a two-step ingredient pick, so it needs the whole
+// reachable set at once rather than one pair resolved at a time. A
+// same-name recipe (e.g. Graphene + Graphene) is reachable from a single
+// pool entry of that name, since fusing doesn't consume the original
+// crystal; a distinct-parent recipe needs both names present.
+export function combinableHybridResults(pool: { name: string }[]): HybridCombo[] {
+  const names = new Set(pool.map((m) => m.name));
+  const out: HybridCombo[] = [];
+  for (const { parents, result } of HYBRID_RECIPES) {
+    const [nameA, nameB] = parents;
+    const reachable = nameA === nameB ? names.has(nameA) : names.has(nameA) && names.has(nameB);
+    if (!reachable) continue;
+    out.push({ result, parentA: findMaterialByName(nameA)!, parentB: findMaterialByName(nameB)! });
+  }
+  return out;
+}
+
 // Every name any HYBRID_RECIPES entry produces -- Dresselhaus's
 // transmutation panel excludes all of these (his gift is a single crystal's
 // own spin-orbit texture, not a fused state), even for the ones that are

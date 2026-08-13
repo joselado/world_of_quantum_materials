@@ -105,3 +105,50 @@ const TYPE_FALLBACK_BLURBS: Record<MaterialType, string> = {
 export function materialBlurb(material: { name: string; type: MaterialType }): string {
   return MATERIAL_BLURBS[material.name] ?? TYPE_FALLBACK_BLURBS[material.type];
 }
+
+// One epic-narrative-plus-physics blurb per `HYBRID_RECIPES` result
+// (`data/materials.ts`), shown in Majorana's fuse panel below the two
+// component crystals and the resulting hybrid's own render. A separate
+// table from MATERIAL_BLURBS above (not an override of the three hybrid
+// results -- Twisted CrI₃, HgTe/CdTe Quantum Well, Rhombohedral Pentalayer
+// Graphene/hBN Moiré -- that already have a MATERIAL_BLURBS entry of their
+// own) since that table's post-battle/Materialdex wording is deliberately
+// dry and hedged (e.g. Twisted CrI₃'s still-theoretical multiferroicity),
+// while this one is Majorana's own showman voice -- grounded in the same
+// underlying physics fact, just told with more flourish. Twisted CrI₃ keeps
+// the "predicted, not yet observed" hedge for the same reason the
+// MATERIAL_BLURBS/DESIGN.md entries do; CrI₃/NbSe₂ is grounded by analogy to
+// the confirmed NbSe₂/CrBr₃ heterostructure below rather than asserting the
+// same result directly, since only NbSe₂/CrBr₃ is the actual observed pair
+// (real-world grounding for both -- InAs/Al: the Copenhagen/Delft Majorana
+// nanowire platform; Twisted Bilayer Graphene: Cao et al.'s magic-angle
+// result; Fe/Pb: Nadj-Perge et al.'s iron chain on lead; NbSe₂/CrBr₃:
+// Kezilebieke et al.'s topological heterostructure; HgTe/CdTe: König et
+// al.'s original quantum spin Hall well; the graphene/hBN moiré result: the
+// 2023-2024 zero-field fractional quantum anomalous Hall experiments -- kept
+// out of the player-facing text itself, which stays flavor-plus-physics
+// with no years or paper citations).
+export const HYBRID_FUSION_LORE: Record<string, string> = {
+  'InAs/Al Majorana Wire':
+    'Cooper pairs meet spin-orbit coupling -- each wire end splits a fermion clean in two.',
+  'Twisted Bilayer Graphene':
+    'Twist graphene against its own twin at the magic angle -- flat bands birth superconductivity.',
+  'CrI₃/NbSe₂ Topological-SC Heterostructure':
+    'A van der Waals magnet layered on a superconductor warps its pairing topological.',
+  'Cr-doped (Bi,Sb)₂Te₃':
+    "Chromium salts a topological insulator -- symmetry breaks within, one chiral edge remains.",
+  'Fe/Pb Majorana Chain':
+    'Iron atoms chained on lead braid magnetism into the pairing -- Majorana modes wait at the ends.',
+  'Twisted CrI₃':
+    'Twist two CrI₃ sheets and their spins spiral -- a polarization predicted, not yet confirmed.',
+  'Twisted Bilayer MoTe₂':
+    'Twist two MoTe₂ sheets until flat bands emerge -- electrons fractionalize into charged anyons.',
+  'NbSe₂/CrBr₃ Topological-SC Heterostructure':
+    'A superconductor stacked with a ferromagnet warps its pairing into chiral Majorana edges.',
+  '1T/1H-TaS₂ Heterostructure':
+    'Two TaS₂ phases interfaced: one locks in moments, the other screens them with free electrons.',
+  'HgTe/CdTe Quantum Well':
+    'A thin inverted layer between ordinary barriers hides a protected edge neither parent had.',
+  'Rhombohedral Pentalayer Graphene/hBN Moiré':
+    'Five aligned graphene layers grow a flat band that fractures into charged anyons.',
+};

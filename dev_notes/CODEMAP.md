@@ -51,7 +51,14 @@ game/src/
                                  tunableMoveShop.ts's renderTunableMoveShop()/
                                  showMoveClassPicker() is the one shared by laughlin.ts's Analytic
                                  shop (Skłodowska-Curie's Ultimate shop is priced too differently
-                                 to reuse it, see "Guardians" below), and hubStations.ts holds the
+                                 to reuse it, see "Guardians" below), listDetail.ts's
+                                 renderListColumn()/listDetailColumns()/fitListLabel()/
+                                 renderDetailCrystalHeader() is the shared two-column list+detail
+                                 scaffolding (STYLE.md's "List+detail panels") HubScene's own
+                                 Qumatex panel and dresselhaus.ts/anderson.ts (host-pick step
+                                 only)/majorana.ts (both pick-a-crystal steps) all render their
+                                 left "which crystal" column and detail-pane crystal/name header
+                                 through, and hubStations.ts holds the
                                  Lab's own six reference/settings stations (see "Lab stations and
                                  settings" below) -- taking scene: HubScene instead of
                                  scene: GuardianPanelHost, since HubScene is their only caller
@@ -186,7 +193,9 @@ game/src/
                                   allCrystals() -- every WORLD_CRYSTALS entry deduped by name, feeds
                                   Dresselhaus/Majorana/Anderson's Superposition Mode candidate pools,
                                   hybridRecipeResult()/HYBRID_RECIPES -- Majorana's named parent-pair
-                                  recipe catalog, combineMaterials() -- Majorana's hybrid-material fuser
+                                  recipe catalog, combinableHybridResults() -- every recipe reachable
+                                  from a pool, indexed by result, combineMaterials() -- Majorana's
+                                  hybrid-material fuser
     passives.ts                   PASSIVES/FRANKLIN_PASSIVE_IDS/PASSIVE_OWNERS/
                                   PASSIVE_OWNER_LABELS -- Franklin's whole-battle passive
                                   abilities (id/name/owner/description/cost)
@@ -213,7 +222,10 @@ game/src/
                                   filtering, since the finale is meant to test everything the course
                                   covered, not one world's own topic
     greetings.ts                 Per-MaterialType flavor lines (encounter/victory/defeat)
-    materialdex.ts               Per-material (fallback per-type) physics blurb for Qumatex
+    materialdex.ts               Per-material (fallback per-type) physics blurb for Qumatex --
+                                  MATERIAL_BLURBS/materialBlurb(); HYBRID_FUSION_LORE, a separate
+                                  epic-plus-physics blurb per HYBRID_RECIPES result for Majorana's
+                                  panel
     save.ts                      localStorage schema + persistFromRegistry()/load()
     tutorial.ts                    TUTORIAL_TIPS/TUTORIAL_PAGES -- contextual + replayable tutorial copy
     settings.ts                    DENSITY_PRESETS/DEFAULT_ENCOUNTER_DENSITY -- wild-encounter density presets,
@@ -383,11 +395,17 @@ difficulty-curve sanity check rather than a docs generator.
   purchase. Genuinely cross-cutting dialogue infrastructure -- `addDialogueButton(At)`,
   `renderPagedButtons`, `renderFarewellFooter`/`renderCancelFarewellFooter` (the latter's
   two-button "Never mind"/"Farewell" row, for a guardian panel with a pending two-step pick --
-  Majorana's first-crystal choice, Anderson's dope-in choice), `closeDialogue`, state accessors like
+  Anderson's dope-in choice), `closeDialogue`, state accessors like
   `getUnlockedMoves`/`getDefeatedMaterials`/`getVisitedWorlds`/`isSuperpositionMode`, `world`/
   `advanceToWorld` (Bloch's own travel action), every guardian's per-panel pagination/selection
-  field (`shopTab`, `blochPage`, `dresselhausPage`, `majoranaPage`/`majoranaSelection`,
-  `andersonPage`/`andersonSelection`/`andersonMovePage`, `feynmanPage`), and the player-form
+  field (`shopTab`, `blochPage`, `dresselhausPage`, `majoranaPage`,
+  `andersonPage`/`andersonSelection`/`andersonMovePage`, `feynmanPage`), each list+detail
+  crystal-pick step's own transient "which row is currently previewed but not yet committed"
+  field (`dresselhausPreview`, `andersonHostPreview`, `majoranaPreview` -- distinct from
+  `andersonSelection` above, which holds the already-*committed* host choice; Majorana has no
+  such committed-choice field of its own, since its panel is a single browse-by-result step and
+  `majoranaPreview` alone -- holding the previewed *hybrid result's* name -- drives its whole
+  detail pane), and the player-form
   mutator `applyPlayerForm` (shared by Dresselhaus's `transmuteInto` and Majorana's
   `becomeHybrid`, both of which moved into their own panel file as plain functions) -- is each
   member of `GuardianPanelHost`, implemented as public (not `private`) methods/fields on both
@@ -447,7 +465,7 @@ transmute into). Majorana's
 `becomeHybrid(material)` is called with an already-resolved `Material` object rather than a
 name -- freshly built each time by `combineMaterials`, which additionally attaches
 `hybridParents` for the fused-visual render; there's no memory of earlier fusions to pull a
-past one back from, every visit to Majorana rebuilds the pair from scratch.
+past one back from, every visit to Majorana recomputes the reachable-hybrid list from scratch.
 Anderson's `learnImpurityMove` is a third guardian that touches player state but deliberately
 *doesn't* go through `applyPlayerForm` at all -- it only appends a move id to `unlockedMoves`,
 leaving `playerForm` untouched, since the whole point of the impurity-doping mechanic is
@@ -912,18 +930,23 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   dimmed '`<name>` (active)' tag" shape -- "buying the very first one auto-activates it, buying
   a second or third doesn't" -- through one shared render engine,
   `scenes/panels/passiveList.ts`'s `renderChoiceList(scene, container, y, items:
-  ChoiceListItem[], state: ChoiceListState, reopen)`. Each guardian supplies its own thin
-  adapter over its own registry keys rather than the two kits sharing a registry shape: Franklin
-  calls `renderPassiveList(scene, container, y, passiveIds, owner: PassiveOwner, reopen)`, a
-  wrapper that builds `items` from `data/passives.ts` and a `ChoiceListState` backed by
-  `passivesUnlocked`/`activePassiveByOwner` (keyed by `owner`, parameterized even though
-  Franklin is the sole `PassiveOwner` today); Kondo builds its own `items`/`state` (`kondo.ts`'s
-  `kondoChoiceItems`/`kondoChoiceState`) directly against `unlockedMoves` (a move, read by the
-  battle move menu itself, not a passives-only concept) and the flat `kondoActiveMove` key. Like
-  Kondo's self-buff moves, a passive is never gated by `MOVE_COMPATIBILITY` at all (the same
-  "player-learned technique, not a quasiparticle a crystal has to host" reasoning) -- every
-  passive is always purchasable regardless of current form, so neither panel has a "wrong form"
-  empty state to special-case. Each still-unbought row also prints its own `description`
+  ChoiceListItem[], state: ChoiceListState, reopen, options?: ChoiceListRenderOptions)`. Each
+  guardian supplies its own thin adapter over its own registry keys rather than the two kits
+  sharing a registry shape: Franklin calls `renderPassiveList(scene, container, y, passiveIds,
+  owner: PassiveOwner, reopen, options?)`, a wrapper that builds `items` from `data/passives.ts`
+  and a `ChoiceListState` backed by `passivesUnlocked`/`activePassiveByOwner` (keyed by `owner`,
+  parameterized even though Franklin is the sole `PassiveOwner` today); Kondo builds its own
+  `items`/`state` (`kondo.ts`'s `kondoChoiceItems`/`kondoChoiceState`) directly against
+  `unlockedMoves` (a move, read by the battle move menu itself, not a passives-only concept) and
+  the flat `kondoActiveMove` key, and never passes `options`, so its own panel renders exactly as
+  it always has. `ChoiceListRenderOptions` (`centerX`/`wrapWidth`, defaulting to
+  `CANVAS_W / 2`/`480` if omitted; `onSelect`) is the opt-in surface franklin.ts's own
+  two-column layout (below) uses to lay the list out in a narrower right-hand column and to add a
+  non-committal "look" click on each row's description on top of the existing buy/activate
+  buttons. Like Kondo's self-buff moves, a passive is never gated by `MOVE_COMPATIBILITY` at all
+  (the same "player-learned technique, not a quasiparticle a crystal has to host" reasoning) --
+  every passive is always purchasable regardless of current form, so neither panel has a "wrong
+  form" empty state to special-case. Each still-unbought row also prints its own `description`
   underneath in a smaller, capped-scale font (`Math.min(fontScale(this), 1.3)` for the buy
   button itself, `1.2` for the description) -- neither panel has a shrink-to-fit safety net the
   way `showInfoPanel` does, and letting either scale all the way to the text-size setting's
@@ -931,14 +954,62 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   button off the bottom of the canvas the first time this was tried, verified via a live
   headless-Chromium run at every `fontScale` preset. See "Stats and battle resolution" above for
   exactly how each of Franklin's three passives hooks into `BattleScene`.
+- **Franklin's own panel layout** puts a fixed-size crystal-preview block (`showFranklinPanel`'s
+  `renderCrystalBlock`) in a left column beside the passive list's own right column (a `760`-wide
+  panel split via `ChoiceListRenderOptions`' `centerX`/`wrapWidth`, divided by a thin vertical
+  line the same way `HubScene.renderMaterialdexPanel`'s own two-column Qumatex divider is drawn),
+  rather than stacking the crystal above the list -- putting the two side by side means the
+  crystal block adds no extra panel height beyond whichever column is already taller, which
+  matters since this panel has no shrink-to-fit net and was already tight against `CANVAS_H` at
+  the largest text-size preset before this block existed. The crystal itself is
+  `makeCrystal(scene, 34, scene.playerMaterial.color, scene.playerMaterial.variant, { seed:
+  scene.playerMaterial.name, hybrid: scene.playerMaterial.hybridParents })` -- the player's own
+  current crystal, the same call convention `BattleScene` uses -- standing on a plain ground
+  shadow ellipse (`0x000000` at `0.3` alpha, no biome to shade it off the way `BattleScene`'s own
+  shadow is). `art/passiveHalos.ts`'s `drawFranklinPassiveHalo(scene, container, x, y, passiveId,
+  rx, ry, alpha?)` draws each of the three passives' own ground halo around that shadow, driven by
+  which passive is being looked at -- a plain `previewId` closure variable local to
+  `showFranklinPanel`, starting from whichever is actually active
+  (`activePassiveByOwner.franklin`) and reassigned by `ChoiceListRenderOptions.onSelect` on a
+  description-row click, never written to the registry so looking stays free -- rendered at full
+  alpha with an "(active)" label for the one actually active in battle, or `0.45` alpha with a
+  "(preview)" label for any other passive. This is deliberately *not* persisted state: buying or
+  activating a passive (`renderChoiceList`'s own buttons) always calls `reopen()`
+  (`showFranklinPanel` again from scratch), which re-reads `activePassiveByOwner.franklin` fresh
+  and starts the crystal back on whatever is now actually active -- a persisted preview field
+  would otherwise go stale across exactly that commit and show a passive that was only ever
+  looked at, not the one just bought/activated. The crystal block itself is rebuilt in place
+  (`killTweensDeep` first, to stop Amorphous Halo's own glow tween and `makeCrystal`'s per-shard
+  sparkle tweens from still targeting a destroyed object, the same reasoning
+  `BattleScene.killTweensDeep`'s own comment gives; then `crystalBlock.removeAll(true)` and
+  redrawn) on each preview click rather than a full `reopen()`, and the label's own height is
+  reserved up front from the longest possible passive-name-plus-"(preview)" string (the same
+  sample-measurement technique `renderPagedButtons`/Qumatex's own paginated list use) so a later
+  preview click can never grow the block past the height the panel was first sized for.
+  `BattleScene.create()` draws the same
+  `drawFranklinPassiveHalo` once around the player's own ground shadow (`PLAYER_POS.x, 392`,
+  matching `drawBackground`'s own shadow ellipse there) for whichever passive is in
+  `playerActivePassives` (see "Passives (Franklin's abilities)" above) -- at full alpha only,
+  since a passive showing up in battle at all already means it's the active one. `art/
+  passiveHalos.ts` keeps each of the three halos visually distinct from each other and from
+  `BattleScene.addBoostHalo`'s own "temporary bonus" aura: Diffraction Shadow is a static ring of
+  small dim scattered spots (a powder/polycrystalline sample's own spotty diffraction rings);
+  Satellite Reflection is a static, fainter ring offset to one side (a diffraction pattern's own
+  secondary spot beside the main one); Amorphous Halo is the only one that moves, a soft
+  additive-blended glow breathing on a slow 3.2s pulse (an amorphous solid's own diffuse halo,
+  literally that term in X-ray diffraction) -- all three stay in Franklin's own lavender/purple
+  family and never gold, so they can't be confused with `addBoostHalo`'s gold aura if both happen
+  to be on screen at once.
 - **Feynman's move-leveling panel** (`scenes/panels/feynman.ts`'s `showFeynmanPanel`) is a
   different mechanic shape entirely from every other guardian's -- not a purchase catalog, but
   a leveling attempt against a move the player already owns. `renderMoveLevelList` builds one
   row per `scene.getUnlockedMoves()` entry (deliberately not `getBattleMoves()` -- a move
   currently unusable in the player's present form is still worth leveling), paginated via
-  `scene.renderPagedButtons`/`scene.feynmanPage` the same way Bloch's/Dresselhaus's/Majorana's/
-  Anderson's own candidate lists are (see "Overworld menus and settings" below), since the
-  full unlocked-move list can outgrow one panel well before Superposition Mode's "every
+  `scene.renderPagedButtons`/`scene.feynmanPage` the same way Bloch's own destination list and
+  Anderson's second (which-move-to-learn) step are (see "Overworld menus and settings" below;
+  Dresselhaus's/Majorana's/Anderson's own crystal-list steps instead paginate via
+  `scenes/panels/listDetail.ts`'s `renderListColumn`, see "Candidate-crystal lists" above), since
+  the full unlocked-move list can outgrow one panel well before Superposition Mode's "every
   crystal" case even applies. Each row reads a move's current level (`data/materials.ts`'s
   `getMoveLevel`) and, if not already at tier 3, the cost to attempt the next tier
   (`feynmanLevelCost`) and that tier's own streak length (`MOVE_LEVEL_STREAKS`); a maxed or
@@ -952,31 +1023,38 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   the new tier to registry/save `moveLevels` before returning to `showFeynmanPanel`. See "Stats
   and battle resolution" above for `effectiveMovePower`/`moveDisplayName`, the two places a
   move's level actually surfaces in `BattleScene`.
-- **Majorana's hybrid-material panel** (`scenes/panels/majorana.ts`'s `showMajoranaPanel`) lets the player fuse
-  two `defeatedMaterials` into a new `Material` via `data/materials.ts`'s `combineMaterials(a,
-  b)`, which spreads whatever `Material` the matching `HYBRID_RECIPES` entry authored
-  (name/type/moves all fixed there, not computed at combine time) and adds only
-  `hybridParents` for the fused-visual render, then becomes it immediately via `applyPlayerForm`
-  (see "Player form" above). **Not any two defeated crystals** -- only pairs with a named entry
-  in `HYBRID_RECIPES`, keyed by parent *name* rather than main type (`hybridRecipeResult(nameA,
-  nameB)` returns the recipe's result, or `undefined` for an unrecognized pair) -- same-type
-  pairs are allowed when a named recipe explicitly covers them (e.g. Graphene + Graphene). The
-  panel filters both the first-pick list (only crystals with *some* valid partner among the
-  other recently-defeated ones) and the second-pick list (only crystals that pair with whichever
-  was picked first) through this before ever rendering a button, so an invalid combination is
-  never one click away -- `createHybrid` doesn't re-validate, it trusts the panel already
-  filtered. A two-step pick (`scene.majoranaSelection: string | null`, the first choice, while the
-  panel rebuilds for the second) rather than one screen of every valid pair -- reset in both
-  `create()` and `closeDialogue()` so a stale first pick can't survive a cancel-and-reopen.
-  Deliberately no memory of earlier fusions to re-become without recombining -- every visit
-  starts the two-step pick fresh; `createHybrid` doesn't persist anything beyond calling
-  `becomeHybrid`, which just runs `applyPlayerForm` (the player's *current* form, hybrid or
-  not, already survives a reload on its own via `playerForm`). Each individual result is its
-  own one-time `MAJORANA_FUSE_COST` (60) qumatessence unlock (registry/save
-  `majoranaUnlockedResults`, a list of result names), charged and recorded inside
-  `createHybrid` at the moment a specific partner is picked (the point the result is first
-  known) rather than at the first-crystal-browse step -- see the Superposition Mode bullets
-  above and DESIGN.md §5 for the pricing rationale.
+- **Majorana's hybrid-material panel** (`scenes/panels/majorana.ts`'s `showMajoranaPanel`) lets
+  the player fuse two crystals from the pool (`defeatedMaterials`, or `allCrystals()` in
+  Superposition Mode) into a new `Material` via `data/materials.ts`'s `combineMaterials(a, b)`,
+  which spreads whatever `Material` the matching `HYBRID_RECIPES` entry authored (name/type/moves
+  all fixed there, not computed at combine time) and adds only `hybridParents` for the
+  fused-visual render, then becomes it immediately via `applyPlayerForm` (see "Player form"
+  above). **Not any two pool crystals** -- only pairs with a named entry in `HYBRID_RECIPES`,
+  keyed by parent *name* rather than main type -- same-type pairs are allowed when a named recipe
+  explicitly covers them (e.g. Graphene + Graphene). The panel is browsed by *result*, not by
+  ingredient: `combinableHybridResults(pool)` (`data/materials.ts`) returns every `HYBRID_RECIPES`
+  entry reachable from the pool -- a same-name recipe needs only one pool entry of that name
+  (fusing doesn't consume the original crystal), a distinct-parent recipe needs both names
+  present -- paired with the resolved `parentA`/`parentB` `Material` objects for that entry's own
+  detail-pane render. The left column (`scenes/panels/listDetail.ts`'s `renderListColumn`,
+  "Candidate-crystal lists" above) lists these results by name; a row click only sets
+  `scene.majoranaPreview` (now the previewed *result's* name, not an ingredient's), so browsing
+  freely costs nothing -- the right column's own confirm button ("Fuse into `<name>`") is what
+  actually commits. The detail pane renders, top to bottom: the two component crystals small and
+  side by side (a local `renderParentCrystalsRow` helper, not part of `listDetail.ts` since it's
+  Majorana-specific), the resulting hybrid's own full render via the shared
+  `renderDetailCrystalHeader`, an epic-plus-physics blurb (`materialdex.ts`'s
+  `HYBRID_FUSION_LORE`, keyed by result name, shrinking in whole-px steps floor `9` the same way
+  Qumatex's own blurb does), then the cost/status line and confirm button. Deliberately no memory
+  of earlier fusions to re-become without recombining -- every visit recomputes
+  `combinableHybridResults` from scratch; `createHybrid` doesn't persist anything beyond calling
+  `becomeHybrid`, which just runs `applyPlayerForm` (the player's *current* form, hybrid or not,
+  already survives a reload on its own via `playerForm`). Each individual result is its own
+  one-time `MAJORANA_FUSE_COST` (60) qumatessence unlock (registry/save
+  `majoranaUnlockedResults`, a list of result names), charged and recorded inside `createHybrid`
+  -- called only from the confirm button, the point the result is first previewed being already a
+  free browse -- see the Superposition Mode bullets above and DESIGN.md §5 for the pricing
+  rationale.
 - **Laughlin's Analytic-move shop** (`scenes/panels/laughlin.ts`'s `showLaughlinPanel`, calling
   `scenes/panels/tunableMoveShop.ts`'s shared `renderTunableMoveShop(scene, container, y,
   moveIds, reopen)`) mirrors `scenes/panels/noether.ts`'s `showNoetherShop`/`renderShopMoves`'s
@@ -1044,8 +1122,7 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   by every already-bought Kondo move as its own row -- a bought-and-inactive move gets a "Make
   `<name>` active" button, the currently active one (registry/
   save `kondoActiveMove: string | null`) shows a dimmed "`<name>` (active)" tag instead (no
-  click handler), the same dimmed-current convention Dresselhaus's own "(current
-  form)" rows already use. Every row, bought or not, also prints the move's own `description`
+  click handler). Every row, bought or not, also prints the move's own `description`
   underneath (`data/materials.ts`'s `Move.description`, only Kondo's three moves carry one),
   the same convention `renderChoiceList` gives Franklin's own passives. Buying
   the first Kondo move auto-activates it (so a purchase is
@@ -1063,29 +1140,34 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   above) to apply its one fixed buff (`KONDO_MOVE_BUFF`, no randomness -- the move id decides
   the buff) to the caster's own side, not the opponent.
 - **Anderson's impurity-doping panel** (`scenes/panels/anderson.ts`'s `showAndersonPanel`/
-  `learnImpurityMove`) is a two-step pick like Majorana's, but the *result* is different: step
-  one picks a host crystal (`defeatedMaterials`, or every crystal in Superposition Mode -- same
-  pool source as Dresselhaus/Majorana), filtered to exclude any `isHybridMaterial` (a
+  `learnImpurityMove`) is its own two-step pick (host, then move), and
+  only its first step uses the list+detail layout ("Candidate-crystal lists" above) -- the
+  second stays a plain `renderPagedButtons` list, since a move has no crystal art to preview.
+  Step one picks a host crystal (`defeatedMaterials`, or every crystal in Superposition Mode --
+  same pool source as Dresselhaus/Majorana), filtered to exclude any `isHybridMaterial` (a
   Majorana fusion, or one of world 10's own named recipe-result wilds) -- doping in an
   impurity is meant to be one real compound's own excitation, not a channel a fusion already
-  borrowed from two others. Picking a host only sets `scene.andersonSelection` -- it does not
-  touch `andersonDopant`, so browsing a candidate's moveset and backing out doesn't disturb
-  whatever's already doped in. Step two looks the host up via `findMaterialByName` and lists
+  borrowed from two others. A left-column row click only sets `scene.andersonHostPreview`
+  (which host is currently shown in the right/detail column) -- committing to that host (the
+  right column's own "Dope in `<name>`" confirm button) is what sets `scene.andersonSelection`
+  and advances to step two; it does not touch `andersonDopant`, so previewing or even
+  committing to a host to browse its moveset and backing out doesn't disturb whatever's
+  already doped in. Step two looks the host up via `findMaterialByName` and lists
   whichever of its `.moves` aren't already *usable* (`!getBattleMoves(registry).includes(id)`,
   checked before this host becomes the dopant) rather than merely unlearned -- Superposition
   Mode auto-grants every move id to `unlockedMoves` on every world entry, so comparing against
   raw `unlockedMoves` would report every host as teaching nothing there. Picking a move is what
   actually commits: `unlockedMoves.push(id)` (if not already present) and `andersonDopant` are
   set together, then persisted. No `applyPlayerForm` call at all -- see "Player form" above.
-  `scene.andersonSelection: string | null` mirrors `majoranaSelection`'s reset rules
-  (`create()`/`closeDialogue()`), and `scene.andersonMovePage` (the second step's own pager)
-  resets alongside it at every one of those same reset points. Each individual host is its own
-  one-time `ANDERSON_DOPE_COST` (35) qumatessence unlock (registry/save
-  `andersonUnlockedHosts`, a list of host names), charged and recorded inside
-  `learnImpurityMove` -- the same place that already commits `andersonDopant` and the
-  `unlockedMoves` append -- rather than at the host-browsing step, so browsing a host's
-  moveset and backing out still costs nothing. See the Superposition Mode bullets above and
-  DESIGN.md §5 for the pricing rationale.
+  `scene.andersonSelection: string | null` is reset in both
+  `create()`/`closeDialogue()`, and `scene.andersonMovePage` (the second step's own pager) and
+  `scene.andersonHostPreview` (the first step's own list+detail preview field) reset alongside
+  it at every one of those same reset points. Each individual host is its own one-time
+  `ANDERSON_DOPE_COST` (35) qumatessence unlock (registry/save `andersonUnlockedHosts`, a list
+  of host names), charged and recorded inside `learnImpurityMove` -- the same place that
+  already commits `andersonDopant` and the `unlockedMoves` append -- rather than at the
+  host-preview or step-one-confirm points, both of which stay a free browse. See the
+  Superposition Mode bullets above and DESIGN.md §5 for the pricing rationale.
 
 **Every guardian stands mid-corridor, not at the goal or start.** `GuardianDef.tile` is `'goal' |
 'start' | 'middle'`, but every current `WORLD_GUARDIANS` entry uses `'middle'` -- `world/mapgen
@@ -1282,10 +1364,11 @@ element's actual measured height (`renderMaterialdexPanel`'s running `y`, same p
 shared "Close" footer, with the blurb's own font shrinking in whole-px steps (floor `9`) if a
 long entry would otherwise overflow.
 
-**Candidate-crystal lists share one pager: `OverworldScene.renderPagedButtons<T>`.** Used by
-Dresselhaus's transmute list, both steps of Majorana's and Anderson's combine/dope flows, and Bloch's
+**Plain single-column candidate lists share one pager: `OverworldScene.renderPagedButtons<T>`.**
+Used by Anderson's second step (which move to learn from an already-chosen host) and Bloch's
 destination list -- anywhere Superposition Mode's "every crystal"/"every world" pool can
-outgrow one panel. Takes the container/running-`y`/item array/current page/a `maxPerPage`
+outgrow one panel and there's no crystal art worth previewing per row (a move, a world name).
+Takes the container/running-`y`/item array/current page/a `maxPerPage`
 ceiling/label+onPick callbacks/an `onPageChange` callback (expected to rebuild the whole panel:
 set the field, destroy `dialogueContainer`, re-call `showXPanel()` -- same pattern as every
 other in-panel action) and returns the advanced `y`. **The actual per-page row count isn't
@@ -1299,11 +1382,33 @@ suffix) word-wraps to two lines rather than staying on one. The trailing `<- Pre
 `Next ->`/`Page N/M` row (only rendered once the list needs more than one page) is a single
 shared row, not a button row with the page label stacked underneath it -- reclaiming that
 row's worth of height is what keeps a guardian whose avatar/intro text already leaves little
-slack (Majorana, Anderson) inside the canvas at the largest text-size preset. Each caller owns
-its own page field (`dresselhausPage`, `majoranaPage`, `andersonPage`, `andersonMovePage`,
-`blochPage`, `feynmanPage`), all reset in both `create()` and `closeDialogue()` the same way
-`majoranaSelection` is. Reuse this rather than a bespoke row-count/shrink-to-fit calculation for
-any future candidate list that can grow unboundedly.
+slack (Anderson) inside the canvas at the largest text-size preset. Each caller owns
+its own page field (`andersonMovePage`, `blochPage`, `feynmanPage`), all reset in both
+`create()` and `closeDialogue()` the same way `andersonSelection` is. Reuse this rather than a
+bespoke row-count/shrink-to-fit calculation for any future plain candidate list that can grow
+unboundedly and has no crystal art to preview.
+
+**Candidate-crystal lists that *do* have art to preview instead use the two-column
+`scenes/panels/listDetail.ts` scaffolding** (STYLE.md's "List+detail panels") -- Dresselhaus's
+transmute list, Majorana's browse-by-hybrid-result list, Anderson's own host-pick (first) step,
+and HubScene's Qumatex panel. `renderListColumn<T>` is this layout's own left-column pager: a
+single fixed sample-row-height measurement (not `renderPagedButtons`' per-item real-height
+packing) reserving two rows' worth of tail space for the caller's own trailing content plus two
+more for its own Prev/Next/Page-N/M row, whether or not that row ends up rendering -- the same
+technique Qumatex's own left column always used, simpler than `renderPagedButtons`' two-pass
+packing since a list+detail row is always just a plain crystal/hybrid name (no cost suffix,
+since cost lives in the detail pane instead) and therefore always one line. Selection here is
+two-layered: `selectedId`/`onSelect` identify *which row is currently previewed* (a new
+transient field per panel -- `dresselhausPreview`, `andersonHostPreview`, `majoranaPreview`, see
+above), separate from whichever *committed* two-step-flow field (`andersonSelection`) a panel
+with an actual two-step flow already carries -- clicking a row only changes the preview, at no
+cost; the right/detail column's own explicit confirm button is what actually applies the
+guardian's mechanic. `insertColumnDivider` draws the line between the two columns once both are
+known, `fitListLabel` is the shared ellipsis-trim-on-overflow helper, and
+`renderDetailCrystalHeader` is the shared crystal-render-plus-name block the three guardian
+panels each build their own status text and confirm button on top of (Qumatex's own detail pane
+stays a separate render since it additionally masks an undiscovered entry and appends a physics
+blurb). `LIST_DETAIL_PANEL_W` (`720`) is the panel width every list+detail panel uses.
 
 ## Save schema
 
@@ -1312,7 +1417,8 @@ any future candidate list that can grow unboundedly.
 wild win, same "not for rivals" rule as `discoveredMaterials`), `playerForm: Material | null`
 (round-trips a *whole* `Material` object through `JSON.stringify`/`localStorage`, so the
 player's *current* form -- hybrid or not -- survives a reload for free; there's no separate
-history list of past Majorana fusions, every visit to his panel picks a fresh pair),
+history list of past Majorana fusions, every visit to his panel recomputes which hybrids are
+reachable fresh),
 `tutorialTipsSeen:
 string[]`, `superpositionMode: boolean` (Story Mode is just its `false` state -- see "Story
 Mode vs. Superposition Mode" above), `encounterDensity: number` (one of

@@ -2,10 +2,11 @@ import type { GuardianPanelHost } from '../OverworldScene';
 import { makeAndersonAvatar } from '../../art/anderson';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
-import { fontPx } from '../../ui/text';
-import { PANEL_BG } from '../../ui/theme';
+import { fontPx, fontScale } from '../../ui/text';
+import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 import { MOVES, allCrystals, isHybridMaterial, findMaterialByName, getBattleMoves, ANDERSON_DOPE_COST } from '../../data/materials';
 import { persistFromRegistry } from '../../data/save';
+import { LIST_DETAIL_PANEL_W, listDetailColumns, renderListColumn, insertColumnDivider, renderDetailCrystalHeader } from './listDetail';
 
 // Anderson stands at world 6's middle tile (WORLD_GUARDIANS) and lets the
 // player "dope in" a crystal they've encountered (or, in Superposition
@@ -32,14 +33,21 @@ import { persistFromRegistry } from '../../data/save';
 // species. Host pool excludes any `isHybridMaterial` (a Majorana fusion, or
 // one of world 10's own named recipe-result wilds) -- doping in an impurity
 // is meant to be one real, single-crystal excitation, not a channel a
-// fusion has borrowed from elsewhere. Two-step pick (scene.andersonSelection
-// holds the host while the panel rebuilds to ask which of its moves to
-// learn), paginated at both steps via renderPagedButtons (scene.andersonPage/
-// scene.andersonMovePage) -- same shape as Majorana's combine flow. A host's
-// moveset is always small in practice (crystal() only ever assigns two), but
-// the second step still routes through the shared pager rather than a fixed
-// render, since a not-yet-unlocked host's cost suffix on each row needs the
-// same measured shrink-to-fit protection every other candidate list gets.
+// fusion has borrowed from elsewhere.
+// The host-pick step below is a list+detail layout (scenes/panels/
+// listDetail.ts, STYLE.md's "List+detail panels"): the left column just
+// names candidates; clicking one only *previews* it in the right column
+// (`scene.andersonHostPreview`), same free-to-browse behavior this step
+// always had -- the right column's own "Dope in <name>" button is what
+// actually commits to that host and advances to the second step
+// (`scene.andersonSelection`), still costing nothing itself; the
+// ANDERSON_DOPE_COST charge only ever happens on the *second* step, picking
+// a specific move to learn (learnImpurityMove) -- unchanged from before,
+// this rework only changes how the host is browsed and confirmed. The
+// second step (which move to learn) stays today's flat paginated button
+// list (renderPagedButtons, scene.andersonMovePage) -- a move has no
+// crystal art of its own to preview, so it doesn't get a list+detail
+// treatment.
 // The "which move" step offers only moves that would newly become usable by
 // doping this host in (compares the host's moveset against
 // `getBattleMoves` computed with whatever's doped in *right now*, not
@@ -51,19 +59,12 @@ import { persistFromRegistry } from '../../data/save';
 // unlock (registry/save `andersonUnlockedHosts`, a list of host crystal
 // names already paid for), keyed by host rather than by which move was
 // learned -- once a host is unlocked, doping into it and learning *any* of
-// its moves (now or later) is free. The cost shows up at the second step
-// (picking which move to learn), since that's the point doping in this
-// host actually commits (learnImpurityMove); the first step (browsing
-// which host to look at) stays a free preview, same as it already was
-// before any of this -- picking a host to browse its moveset and backing
-// out via "Never mind"/"Farewell" still costs nothing, only actually
-// learning a move from a not-yet-unlocked host does. Superposition Mode
-// bypasses this per-host cost entirely (`isSuperpositionMode()`, not the
-// persisted list).
+// its moves (now or later) is free. Superposition Mode bypasses this
+// per-host cost entirely (`isSuperpositionMode()`, not the persisted list).
 export function showAndersonPanel(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
 
-  const panelWidth = 600;
+  const panelWidth = LIST_DETAIL_PANEL_W;
   const top = 20;
   const container = scene.add.container(0, 0).setDepth(100);
   scene.dialogueContainer = container;
@@ -92,17 +93,25 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
   container.add(intro);
   y += intro.height + 14;
 
+  // Font capped tighter than the detail-pane content below (Franklin's own
+  // precedent for capping a font against overflow, STYLE.md, applied more
+  // aggressively here) -- this line plus the "Dope in which crystal?" label
+  // sit above the two-column area, so their size pushes columnsTop (and with
+  // it the fixed-height right column below) down; an uncapped or lightly
+  // capped size at the largest text-size preset was enough on its own to
+  // overflow the canvas.
+  const headlineScale = Math.min(fontScale(scene), 1.05);
   const currentDopant = (scene.game.registry.get('andersonDopant') as string | null) ?? null;
   if (currentDopant) {
     const dopedText = scene.add
       .text(CANVAS_W / 2, y, `Currently doped with: ${currentDopant}`, {
-        fontSize: fontPx(scene, 12),
+        fontSize: `${Math.round(12 * headlineScale)}px`,
         color: '#8fd6a0',
         align: 'center',
       })
       .setOrigin(0.5, 0);
     container.add(dopedText);
-    y += dopedText.height + 10;
+    y += dopedText.height + 6;
   }
 
   // Doping in a hybrid (isHybridMaterial -- a Majorana fusion, or one of
@@ -132,42 +141,102 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
     } else {
       const label = scene.add
         .text(CANVAS_W / 2, y, 'Dope in which crystal?', {
-          fontSize: fontPx(scene, 12),
+          fontSize: `${Math.round(12 * headlineScale)}px`,
           color: '#e8b27a',
           align: 'center',
         })
         .setOrigin(0.5, 0);
       container.add(label);
-      y += label.height + 6;
+      y += label.height + 4;
+
       const sorted = pool.slice().sort((a, b) => a.name.localeCompare(b.name));
-      y = scene.renderPagedButtons(
+      const panelLeft = CANVAS_W / 2 - panelWidth / 2;
+      const columns = listDetailColumns(panelLeft);
+      const columnsTop = y;
+
+      const effectivePreview = sorted.some((c) => c.name === scene.andersonHostPreview)
+        ? (scene.andersonHostPreview as string)
+        : sorted[0].name;
+
+      const listResult = renderListColumn({
+        scene,
         container,
-        y,
-        sorted,
-        scene.andersonPage,
-        4,
-        (m) => m.name,
-        (m) => {
-          // Only records which host the player is *looking at* -- picking a
-          // candidate to browse its moveset must not itself touch the active
-          // `andersonDopant` (see learnImpurityMove, the only place that
-          // actually writes it), so browsing a host and backing out via
-          // "Never mind"/"Farewell" without learning anything leaves
-          // whatever impurity was already doped in still firing -- and
-          // browsing itself costs nothing, only committing to a move below
-          // does.
-          scene.andersonSelection = m.name;
-          scene.andersonPage = 0;
-          scene.andersonMovePage = 0;
-          scene.dialogueContainer?.destroy(true);
-          showAndersonPanel(scene);
-        },
-        (page) => {
+        x: columns.leftX,
+        y: columnsTop,
+        width: columns.leftColW,
+        items: sorted,
+        idFor: (m) => m.name,
+        labelFor: (m) => m.name,
+        selectedId: effectivePreview,
+        page: scene.andersonPage,
+        onPageChange: (page) => {
           scene.andersonPage = page;
           scene.dialogueContainer?.destroy(true);
           showAndersonPanel(scene);
-        }
-      );
+        },
+        onSelect: (m) => {
+          scene.andersonHostPreview = m.name;
+          scene.dialogueContainer?.destroy(true);
+          showAndersonPanel(scene);
+        },
+      });
+      scene.andersonPage = listResult.page;
+
+      const previewMaterial = findMaterialByName(effectivePreview);
+      let rightY = columnsTop;
+      if (previewMaterial) {
+        rightY = renderDetailCrystalHeader(scene, container, previewMaterial, columns.rightColCenterX, rightY, columns.rightColW);
+
+        const unlockedHosts = (scene.game.registry.get('andersonUnlockedHosts') as string[]) ?? [];
+        const hostUnlocked = superposition || unlockedHosts.includes(previewMaterial.name);
+
+        const statusScale = Math.min(fontScale(scene), 1.1);
+        const statusText = scene.add
+          .text(
+            columns.rightColCenterX,
+            rightY,
+            hostUnlocked
+              ? 'Already unlocked -- free to learn its moves.'
+              : `Costs ${ANDERSON_DOPE_COST} qumatessence to unlock (one-time, host-wide).`,
+            {
+              fontSize: `${Math.round(11 * statusScale)}px`,
+              color: REFERENCE_BLUE_GREY_HEX,
+              align: 'center',
+              wordWrap: { width: columns.rightColW },
+            }
+          )
+          .setOrigin(0.5, 0);
+        container.add(statusText);
+        rightY += statusText.height + 6;
+
+        // Picking a host to browse its moveset is always free -- only
+        // committing to one of its actual moves at the second step
+        // (learnImpurityMove) can spend ANDERSON_DOPE_COST -- so this
+        // confirm button just advances to that step, same as the old
+        // immediate row-click used to.
+        const buttonScale = Math.min(fontScale(scene), 1.3);
+        const confirmBtn = scene.addDialogueButtonAt(
+          container,
+          columns.rightColCenterX,
+          rightY,
+          `Dope in ${previewMaterial.name}`,
+          () => {
+            scene.andersonSelection = previewMaterial.name;
+            scene.andersonPage = 0;
+            scene.andersonMovePage = 0;
+            scene.andersonHostPreview = null;
+            scene.dialogueContainer?.destroy(true);
+            showAndersonPanel(scene);
+          },
+          columns.rightColW,
+          `${Math.round(13 * buttonScale)}px`
+        );
+        rightY += confirmBtn.height;
+      }
+
+      const columnsBottom = Math.max(listResult.bottom, rightY);
+      insertColumnDivider(scene, container, columns.dividerX, columnsTop, columnsBottom);
+      y = columnsBottom + 6;
     }
   } else {
     const host = findMaterialByName(scene.andersonSelection);
@@ -214,7 +283,8 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
       // 1-2 moves in practice (crystal() never assigns more) -- a
       // not-yet-unlocked host's cost suffix on each row still needs the
       // same measured shrink-to-fit protection every other candidate list
-      // gets, rather than an unprotected fixed render.
+      // gets, rather than an unprotected fixed render. Out of scope for the
+      // list+detail rework above -- a move has no crystal art to preview.
       const learnableItems = learnable.map((id) => ({ id, name: MOVES[id].name, power: MOVES[id].power }));
       y = scene.renderPagedButtons(
         container,
@@ -263,16 +333,16 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
 // Learning a move is the one action that actually commits to a new
 // impurity: this is the only place `andersonDopant` gets written (the
 // host-pick step in showAndersonPanel only records which host the player is
-// browsing, so looking at a candidate's moves and backing out via "Never
-// mind"/"Farewell" leaves whatever was doped in before untouched). Once
-// committed, `unlockedMoves` gets the ordinary append and getBattleMoves
-// unions this dopant's MOVE_COMPATIBILITY classes into the player's own to
-// decide what's actually usable in battle. `hostUnlocked`/`unlockedHosts`
-// are the panel's own snapshot from just before this was called -- if the
-// host isn't unlocked yet, this is also where the ANDERSON_DOPE_COST
-// purchase happens (guarded by an affordability check, same as any other
-// paid row's click handler); once paid, this host stays free to dope into
-// and learn from for the rest of the save.
+// browsing/previewing, so looking at a candidate's moves and backing out via
+// "Never mind"/"Farewell" leaves whatever was doped in before untouched).
+// Once committed, `unlockedMoves` gets the ordinary append and
+// getBattleMoves unions this dopant's MOVE_COMPATIBILITY classes into the
+// player's own to decide what's actually usable in battle. `hostUnlocked`/
+// `unlockedHosts` are the panel's own snapshot from just before this was
+// called -- if the host isn't unlocked yet, this is also where the
+// ANDERSON_DOPE_COST purchase happens (guarded by an affordability check,
+// same as any other paid row's click handler); once paid, this host stays
+// free to dope into and learn from for the rest of the save.
 function learnImpurityMove(scene: GuardianPanelHost, moveId: string, hostUnlocked: boolean, unlockedHosts: string[]) {
   if (!hostUnlocked) {
     if ((scene.game.registry.get('qumatessence') as number) < ANDERSON_DOPE_COST) return;

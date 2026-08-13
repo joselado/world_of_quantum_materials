@@ -2,10 +2,11 @@ import type { GuardianPanelHost } from '../OverworldScene';
 import { makeDresselhausAvatar } from '../../art/dresselhaus';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
-import { fontPx } from '../../ui/text';
-import { PANEL_BG } from '../../ui/theme';
+import { fontPx, fontScale } from '../../ui/text';
+import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 import { findMaterialByName, allCrystals, isHybridMaterial, DRESSELHAUS_TRANSMUTE_COST } from '../../data/materials';
 import { persistFromRegistry } from '../../data/save';
+import { LIST_DETAIL_PANEL_W, listDetailColumns, renderListColumn, insertColumnDivider, renderDetailCrystalHeader } from './listDetail';
 
 // Dresselhaus stands at world 3's middle tile like every other guardian (see
 // spawnGuardianSprite/WORLD_GUARDIANS), triggered on reaching that row
@@ -15,25 +16,27 @@ import { persistFromRegistry } from '../../data/save';
 // they are, so understanding a defeated crystal's structure well enough is
 // what lets the player rebuild themselves into it for a while.
 // Superposition Mode replaces "defeated" with every crystal in the game
-// (allCrystals()), paginated via renderPagedButtons since that pool is
-// far bigger than the normal handful of recent defeats.
+// (allCrystals()).
 // Each individual crystal is its own one-time DRESSELHAUS_TRANSMUTE_COST
 // qumatessence unlock (registry/save `dresselhausUnlockedCrystals`, a list
 // of crystal names already paid for), not a single flat unlock for the
 // whole ability: becoming a given crystal for the first time costs
-// qumatessence and records that crystal as unlocked in the same click,
-// every later transmutation back into it is free. A not-yet-unlocked
-// candidate shows its cost in the row label and dims if unaffordable (like
-// every other guardian's buy row); clicking is itself both the purchase and
-// the use, there's no separate "unlock, then transmute later" step.
-// Superposition Mode bypasses this per-crystal cost entirely
-// (`isSuperpositionMode()`, not the persisted list).
+// qumatessence and records that crystal as unlocked, every later
+// transmutation back into it is free. Superposition Mode bypasses this
+// per-crystal cost entirely (`isSuperpositionMode()`, not the persisted
+// list).
+// List+detail layout (scenes/panels/listDetail.ts, STYLE.md's "List+detail
+// panels"): the left column just names candidates; clicking one only
+// *previews* it in the right column (`scene.dresselhausPreview`) --
+// browsing costs nothing. The right column's own "Become <name>" button is
+// the one action that actually checks/spends the unlock cost and
+// transmutes, so a candidate can be looked at at length before committing.
 // Content laid out top-down first (running `y`), panel sized/inserted
 // behind everything afterward -- same pattern as showSettingsPanel.
 export function showDresselhausPanel(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
 
-  const panelWidth = 600;
+  const panelWidth = LIST_DETAIL_PANEL_W;
   const top = 20;
   const container = scene.add.container(0, 0).setDepth(100);
   scene.dialogueContainer = container;
@@ -86,42 +89,84 @@ export function showDresselhausPanel(scene: GuardianPanelHost) {
     container.add(text);
     y += text.height;
   } else {
-    const unlockedCrystals = (scene.game.registry.get('dresselhausUnlockedCrystals') as string[]) ?? [];
-    const isUnlocked = (name: string) => superposition || unlockedCrystals.includes(name);
-    const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
-    y = scene.renderPagedButtons(
+    const panelLeft = CANVAS_W / 2 - panelWidth / 2;
+    const columns = listDetailColumns(panelLeft);
+    const columnsTop = y;
+
+    const effectivePreview = candidates.some((c) => c.name === scene.dresselhausPreview)
+      ? (scene.dresselhausPreview as string)
+      : candidates[0].name;
+
+    const listResult = renderListColumn({
+      scene,
       container,
-      y,
-      candidates,
-      scene.dresselhausPage,
-      4,
-      (m) =>
-        scene.playerMaterial.name === m.name
-          ? `${m.name} (current form)`
-          : isUnlocked(m.name)
-          ? `Become ${m.name}`
-          : `Become ${m.name} (${DRESSELHAUS_TRANSMUTE_COST} qumatessence)`,
-      (m) => {
-        if (scene.playerMaterial.name === m.name) return;
-        if (isUnlocked(m.name)) {
-          transmuteInto(scene, m.name);
-          return;
-        }
-        if ((scene.game.registry.get('qumatessence') as number) < DRESSELHAUS_TRANSMUTE_COST) return;
-        scene.qumatessence -= DRESSELHAUS_TRANSMUTE_COST;
-        scene.game.registry.set('qumatessence', scene.qumatessence);
-        scene.tokenText.setText(`Qumatessence: ${scene.qumatessence}`);
-        scene.game.registry.set('dresselhausUnlockedCrystals', [...unlockedCrystals, m.name]);
-        persistFromRegistry(scene.game.registry);
-        transmuteInto(scene, m.name);
-      },
-      (page) => {
+      x: columns.leftX,
+      y: columnsTop,
+      width: columns.leftColW,
+      items: candidates,
+      idFor: (c) => c.name,
+      labelFor: (c) => c.name,
+      selectedId: effectivePreview,
+      page: scene.dresselhausPage,
+      onPageChange: (page) => {
         scene.dresselhausPage = page;
         scene.dialogueContainer?.destroy(true);
         showDresselhausPanel(scene);
       },
-      (m) => scene.playerMaterial.name === m.name || (!isUnlocked(m.name) && tokens < DRESSELHAUS_TRANSMUTE_COST)
-    );
+      onSelect: (c) => {
+        scene.dresselhausPreview = c.name;
+        scene.dialogueContainer?.destroy(true);
+        showDresselhausPanel(scene);
+      },
+    });
+    scene.dresselhausPage = listResult.page;
+
+    const previewMaterial = findMaterialByName(effectivePreview);
+    let rightY = columnsTop;
+    if (previewMaterial) {
+      rightY = renderDetailCrystalHeader(scene, container, previewMaterial, columns.rightColCenterX, rightY, columns.rightColW);
+
+      const unlockedCrystals = (scene.game.registry.get('dresselhausUnlockedCrystals') as string[]) ?? [];
+      const isUnlocked = superposition || unlockedCrystals.includes(previewMaterial.name);
+      const isCurrent = scene.playerMaterial.name === previewMaterial.name;
+      const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
+      const affordable = isUnlocked || tokens >= DRESSELHAUS_TRANSMUTE_COST;
+
+      const statusScale = Math.min(fontScale(scene), 1.2);
+      const statusText = scene.add
+        .text(
+          columns.rightColCenterX,
+          rightY,
+          isCurrent
+            ? 'This is your current form.'
+            : isUnlocked
+            ? 'Already unlocked -- free to become.'
+            : `Costs ${DRESSELHAUS_TRANSMUTE_COST} qumatessence to unlock (one-time; free after).`,
+          { fontSize: `${Math.round(11 * statusScale)}px`, color: REFERENCE_BLUE_GREY_HEX, align: 'center', wordWrap: { width: columns.rightColW } }
+        )
+        .setOrigin(0.5, 0);
+      container.add(statusText);
+      rightY += statusText.height + 6;
+
+      if (!isCurrent) {
+        const buttonScale = Math.min(fontScale(scene), 1.3);
+        const confirmBtn = scene.addDialogueButtonAt(
+          container,
+          columns.rightColCenterX,
+          rightY,
+          isUnlocked ? `Become ${previewMaterial.name}` : `Become ${previewMaterial.name} (${DRESSELHAUS_TRANSMUTE_COST} qumatessence)`,
+          () => transmuteInto(scene, previewMaterial.name, isUnlocked, unlockedCrystals),
+          columns.rightColW,
+          `${Math.round(13 * buttonScale)}px`
+        );
+        if (!affordable) confirmBtn.setAlpha(0.5);
+        rightY += confirmBtn.height;
+      }
+    }
+
+    const columnsBottom = Math.max(listResult.bottom, rightY);
+    insertColumnDivider(scene, container, columns.dividerX, columnsTop, columnsBottom);
+    y = columnsBottom + 6;
   }
   y += 8;
 
@@ -134,13 +179,21 @@ export function showDresselhausPanel(scene: GuardianPanelHost) {
   container.addAt(panel, 0);
 }
 
-function transmuteInto(scene: GuardianPanelHost, name: string) {
+function transmuteInto(scene: GuardianPanelHost, name: string, isUnlocked: boolean, unlockedCrystals: string[]) {
   const material = findMaterialByName(name);
   if (!material) return;
+  if (!isUnlocked) {
+    if ((scene.game.registry.get('qumatessence') as number) < DRESSELHAUS_TRANSMUTE_COST) return;
+    scene.qumatessence -= DRESSELHAUS_TRANSMUTE_COST;
+    scene.game.registry.set('qumatessence', scene.qumatessence);
+    scene.tokenText.setText(`Qumatessence: ${scene.qumatessence}`);
+    scene.game.registry.set('dresselhausUnlockedCrystals', [...unlockedCrystals, name]);
+    persistFromRegistry(scene.game.registry);
+  }
   scene.applyPlayerForm(material);
 
   // Rebuild the panel in place (dialogueActive already true from the open
-  // showDresselhausPanel call) so the new form's "(current form)" tag updates.
+  // showDresselhausPanel call) so the new form's status line updates.
   scene.dialogueContainer?.destroy(true);
   showDresselhausPanel(scene);
 }

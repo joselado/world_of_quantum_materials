@@ -14,6 +14,7 @@ import { PANEL_BG, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../ui/theme'
 import { BUILT_WORLDS, applySuperpositionUnlocks } from './OverworldScene';
 import type { GuardianPanelHost } from './OverworldScene';
 import { labPanelColumns, LAB_TITLE_COLOR, LAB_STATIONS } from './panels/hubStations';
+import { LIST_DETAIL_PANEL_W, listDetailColumns, renderListColumn, insertColumnDivider } from './panels/listDetail';
 import { makeQumatexMotif, makeSavePointMotif } from '../art/labMotifs';
 
 // World 0, "The Lab" (DESIGN.md's world table) -- boot destination from
@@ -92,11 +93,13 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   blochPage = 0;
   dresselhausPage = 0;
   majoranaPage = 0;
-  majoranaSelection: string | null = null;
   andersonPage = 0;
   andersonSelection: string | null = null;
   andersonMovePage = 0;
   feynmanPage = 0;
+  dresselhausPreview: string | null = null;
+  andersonHostPreview: string | null = null;
+  majoranaPreview: string | null = null;
   // The room's one floating crystal preview (STYLE.md's "the only crystal
   // render drawn anywhere in the room itself") -- `playerPreview` is the
   // stable tween target (the continuous bob), `playerCrystalGfx` the
@@ -768,23 +771,6 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     this.renderMaterialdexPanel();
   }
 
-  // Trims a row's already-rendered label down to `maxWidth` (appending an
-  // ellipsis) rather than wrapping it -- a handful of real compound names
-  // (e.g. "Rhombohedral Pentalayer Graphene/hBN Moiré") run well past the
-  // narrow left-column width, and wrapping would make row heights uneven,
-  // breaking the uniform-row-height math the page-fit calculation below
-  // relies on. Checked against the text object's own measured `.width` (so
-  // it accounts for the current font-scale preset) rather than a fixed
-  // character count.
-  private fitListLabel(rowText: Phaser.GameObjects.Text, label: string, maxWidth: number) {
-    if (rowText.width <= maxWidth) return;
-    let trimmed = label;
-    while (trimmed.length > 1 && rowText.width > maxWidth) {
-      trimmed = trimmed.slice(0, -1);
-      rowText.setText(`${trimmed}…`);
-    }
-  }
-
   // Two-column layout: every compound's name as its own clickable row in a
   // left column (as many as fit on one screen, paginated only once the full
   // list outgrows that), and a right-hand detail pane (crystal render, name,
@@ -800,7 +786,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     const discoveredAll = this.materialdexIndex().filter((e) => e.discovered).length;
     const entries = this.filteredMaterialdexIndex();
 
-    const panelW = 720;
+    const panelW = LIST_DETAIL_PANEL_W;
     const top = 16;
     const bottomMargin = 14;
     const panelLeft = CANVAS_W / 2 - panelW / 2;
@@ -848,115 +834,37 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     y += filterBtn.height + 10;
 
     const columnsTop = y;
-    const leftX = panelLeft + 18;
-    const leftColW = 200;
-    const dividerX = leftX + leftColW + 16;
-    const rightColLeft = dividerX + 16;
-    const rightColRight = panelLeft + panelW - 18;
-    const rightColW = rightColRight - rightColLeft;
-    const rightColCenterX = rightColLeft + rightColW / 2;
+    const { leftX, leftColW, dividerX, rightColW, rightColCenterX } = listDetailColumns(panelLeft);
 
-    // Left column: as many name rows as fit, same sample-row-measurement
-    // approach OverworldScene.renderPagedButtons uses (STYLE.md's
-    // "Paginated candidate lists") -- reserve space for this column's own
+    // Left column: as many name rows as fit (renderListColumn, STYLE.md's
+    // "List+detail panels") -- reserves space for this column's own
     // Prev/Next+page-label row and the panel's shared Close-button footer
     // whether or not either ends up showing, so a page that happens to fit
     // exactly doesn't get a taller neighbor once one of them appears.
-    const sampleRow = this.add.text(-1000, -1000, 'Sample', { fontSize: fontPx(this, 12), padding: { x: 8, y: 4 } });
-    const rowH = sampleRow.height + 4;
-    sampleRow.destroy();
-    const reservedTail = rowH * 2;
-    const reservedControls = rowH * 2;
-    const available = CANVAS_H - columnsTop - reservedTail - reservedControls;
-    const fitPerPage = Math.max(1, Math.floor(available / rowH));
-    const totalPages = Math.max(1, Math.ceil(entries.length / fitPerPage));
-    const listPage = Phaser.Math.Clamp(this.materialdexListPage, 0, totalPages - 1);
-    this.materialdexListPage = listPage;
-    const pageEntries = entries.slice(listPage * fitPerPage, listPage * fitPerPage + fitPerPage);
-
-    let leftY = columnsTop;
-    if (pageEntries.length === 0) {
-      const empty = this.add
-        .text(leftX, leftY, 'No crystals\nof this type.', {
-          fontSize: fontPx(this, 11),
-          color: REFERENCE_BLUE_GREY_HEX,
-        })
-        .setOrigin(0, 0);
-      container.add(empty);
-      leftY += empty.height + 4;
-    }
-    for (const { material, discovered } of pageEntries) {
-      const selected = material.name === this.materialdexSelectedName;
-      const label = discovered ? materialDisplayName(material) : '???';
-      const rowText = this.add
-        .text(leftX, leftY, label, {
-          fontSize: fontPx(this, 12),
-          color: selected ? GOLD_ACCENT_HEX : discovered ? '#cfd8ff' : '#6a7396',
-          backgroundColor: selected ? '#3a2a5c' : '#1c1c30',
-          padding: { x: 8, y: 4 },
-        })
-        .setOrigin(0, 0);
-      // Trim against the text's own natural (unfixed) width first --
-      // `setFixedSize` below pins `.width` to the row's uniform box size,
-      // which would make every row (even a short one) read as overflowing.
-      this.fitListLabel(rowText, label, leftColW - 4);
-      rowText
-        .setFixedSize(leftColW, rowH - 4)
-        .setInteractive({ useHandCursor: true })
-        .on('pointerdown', () => {
-          this.materialdexSelectedName = material.name;
-          this.renderMaterialdexPanel();
-        });
-      container.add(rowText);
-      leftY += rowH;
-    }
-    if (totalPages > 1) {
-      const leftColCenterX = leftX + leftColW / 2;
-      const prev = this.addButton(
-        leftColCenterX - leftColW / 4,
-        leftY,
-        '<- Prev',
-        () => {
-          if (listPage > 0) {
-            this.materialdexListPage = listPage - 1;
-            this.renderMaterialdexPanel();
-          }
-        },
-        fontPx(this, 10)
-      );
-      if (listPage === 0) prev.setAlpha(0.35);
-      const next = this.addButton(
-        leftColCenterX + leftColW / 4,
-        leftY,
-        'Next ->',
-        () => {
-          if (listPage < totalPages - 1) {
-            this.materialdexListPage = listPage + 1;
-            this.renderMaterialdexPanel();
-          }
-        },
-        fontPx(this, 10)
-      );
-      if (listPage === totalPages - 1) next.setAlpha(0.35);
-      container.add(prev);
-      container.add(next);
-      leftY += Math.max(prev.height, next.height) + 6;
-      const pageLabel = this.add
-        .text(leftColCenterX, leftY, `Page ${listPage + 1}/${totalPages}`, {
-          fontSize: fontPx(this, 10),
-          color: REFERENCE_BLUE_GREY_HEX,
-        })
-        .setOrigin(0.5, 0);
-      container.add(pageLabel);
-      leftY += pageLabel.height + 4;
-    }
-
-    // Vertical divider between the two columns, spanning the taller of the
-    // two -- drawn after the left column so its real height is known, and
-    // extended at least to the right column's own crystal/name/blurb block
-    // below.
-    const divider = this.add.graphics();
-    divider.lineStyle(1, 0x3a3a5c, 0.6);
+    const listResult = renderListColumn({
+      scene: this,
+      container,
+      x: leftX,
+      y: columnsTop,
+      width: leftColW,
+      items: entries,
+      idFor: (e) => e.material.name,
+      labelFor: (e) => (e.discovered ? materialDisplayName(e.material) : '???'),
+      colorFor: (e) => (e.discovered ? '#cfd8ff' : '#6a7396'),
+      selectedId: this.materialdexSelectedName,
+      page: this.materialdexListPage,
+      onPageChange: (page) => {
+        this.materialdexListPage = page;
+        this.renderMaterialdexPanel();
+      },
+      onSelect: (e) => {
+        this.materialdexSelectedName = e.material.name;
+        this.renderMaterialdexPanel();
+      },
+      emptyText: 'No crystals\nof this type.',
+    });
+    this.materialdexListPage = listResult.page;
+    const leftY = listResult.bottom;
 
     // Right column: the selected compound's crystal render, name, and
     // physics blurb, driven by materialdexSelectedName.
@@ -1019,8 +927,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     }
 
     const columnsBottom = Math.max(leftY, rightY);
-    divider.lineBetween(dividerX, columnsTop - 4, dividerX, columnsBottom);
-    container.addAt(divider, 0);
+    insertColumnDivider(this, container, dividerX, columnsTop, columnsBottom);
 
     y = columnsBottom + 10;
     const closeBtn = this.addButton(CANVAS_W / 2, y, '[ Close ]', () => this.closeDialogue());
@@ -1106,10 +1013,9 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     this.dialogueContainer = undefined;
     // Same per-guardian session-field reset as OverworldScene.closeDialogue()
     // -- without it, walking away mid-pick (Farewell rather than Never mind)
-    // from Majorana/Anderson's two-step panels left the stale first pick in
-    // place for the rest of the session, since this scene is long-lived and
-    // never re-runs its class field initializers.
-    this.majoranaSelection = null;
+    // from Anderson's two-step panel left the stale host pick in place for
+    // the rest of the session, since this scene is long-lived and never
+    // re-runs its class field initializers.
     this.dresselhausPage = 0;
     this.majoranaPage = 0;
     this.andersonSelection = null;
@@ -1118,5 +1024,8 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     this.blochPage = 0;
     this.feynmanPage = 0;
     this.guardiansPage = 0;
+    this.dresselhausPreview = null;
+    this.andersonHostPreview = null;
+    this.majoranaPreview = null;
   }
 }
