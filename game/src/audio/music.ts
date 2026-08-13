@@ -1408,11 +1408,12 @@ const SCORES: Record<string, Score> = {
 };
 
 // A track's notes must sum to exactly its score's loopBeats -- scheduleLoop
-// re-anchors to wall-clock time each iteration (see MusicEngine.play), so a
-// mismatch isn't cumulative drift, it's a voice that cuts out early or
-// overlaps itself at every loop seam. Checked once at module load over every
-// score in both tables, since this is the one class of bug that typechecks
-// clean and can't be caught by ear from a description of the notes.
+// advances its own audio-clock cursor by exactly loopBeats*secPerBeat each
+// iteration (see MusicEngine.play), so a mismatch isn't cumulative drift,
+// it's a voice that cuts out early or overlaps itself at every loop seam.
+// Checked once at module load over every score in both tables, since this
+// is the one class of bug that typechecks clean and can't be caught by ear
+// from a description of the notes.
 function assertLoopBeats(key: string, score: Score) {
   for (const track of score.tracks) {
     const sum = track.notes.reduce((total, note) => total + note.beats, 0);
@@ -1569,15 +1570,38 @@ class MusicEngine {
     const ambience = this.createAmbienceBus(ctx, sessionGain);
 
     const secPerBeat = 60 / score.bpm;
-    const loopMs = score.loopBeats * secPerBeat * 1000;
+    const loopBeatsSeconds = score.loopBeats * secPerBeat;
+    const loopMs = loopBeatsSeconds * 1000;
     const token = ++this.stopToken;
 
+    // nextLoopAt is this session's own audio-clock cursor, advanced by
+    // exactly one loop's duration each time a batch is scheduled -- not
+    // recomputed from ctx.currentTime on every call. ctx.currentTime stays
+    // frozen while the AudioContext is suspended (e.g. before the page's
+    // first user gesture) even though window.setTimeout keeps firing on its
+    // own wall-clock schedule regardless, so a cursor read fresh from
+    // ctx.currentTime each iteration would schedule a duplicate copy of the
+    // whole score at the same stale audio time on every re-arm. The three
+    // branches below are a standard lookahead scheduler: if the audio clock
+    // hasn't reached the cursor yet, wait and recheck rather than schedule;
+    // if the cursor has fallen behind the audio clock (a throttled
+    // background tab's timer firing late), resync it forward first so a
+    // catch-up doesn't dump every missed loop's notes at once with
+    // start times in the past; otherwise schedule at the cursor and advance
+    // it by exactly one loop.
+    let nextLoopAt = ctx.currentTime + 0.05;
     const scheduleLoop = () => {
       if (token !== this.stopToken) return;
-      const startAt = ctx.currentTime + 0.05;
+      if (ctx.currentTime + 0.2 < nextLoopAt) {
+        this.timer = window.setTimeout(scheduleLoop, 200);
+        return;
+      }
+      if (nextLoopAt < ctx.currentTime + 0.05) nextLoopAt = ctx.currentTime + 0.05;
+      const startAt = nextLoopAt;
       for (const track of score.tracks) {
         this.scheduleTrack(ctx, track, startAt, secPerBeat, sessionGain, ambience);
       }
+      nextLoopAt += loopBeatsSeconds;
       this.timer = window.setTimeout(scheduleLoop, loopMs);
     };
     scheduleLoop();

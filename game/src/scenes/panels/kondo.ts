@@ -1,29 +1,50 @@
+import type Phaser from 'phaser';
 import type { GuardianPanelHost } from '../OverworldScene';
 import { makeKondoAvatar } from '../../art/kondo';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
-import { fontPx } from '../../ui/text';
-import { PANEL_BG } from '../../ui/theme';
+import { fontScale } from '../../ui/text';
+import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 import { MOVES, KONDO_MOVE_IDS, shopCost, moveDisplayName } from '../../data/materials';
 import { persistFromRegistry } from '../../data/save';
-import { renderChoiceList } from './passiveList';
-import type { ChoiceListItem, ChoiceListState } from './passiveList';
+import { LIST_DETAIL_PANEL_W, listDetailColumns, renderListColumn, insertColumnDivider, renderSelfBuffMoveDetailHeader } from './listDetail';
 
 // Kondo stands at world 8's middle tile (WORLD_GUARDIANS) and sells three
 // self-buff moves (data/materials.ts's KONDO_MOVE_IDS -- Screening
 // Pulse/Scattering Drag/Coherence Cascade, kept out of Noether's and
 // Laughlin's own lists so Kondo is their one source), usable from any
 // crystal form the player is currently wearing since a self-buff isn't
-// gated by MOVE_COMPATIBILITY at all. Uses the same shared renderChoiceList
-// (panels/passiveList.ts) Franklin's passive shop uses, not Laughlin's flat
-// buy-only list -- see renderChoiceList's own comment for why: only one of
-// the three can ever be usable in battle at a time (registry/save
-// `kondoActiveMove`), so this panel is also the only place that switches
-// it, not just the one that sells them.
+// gated by MOVE_COMPATIBILITY at all.
+//
+// List+detail layout (scenes/panels/listDetail.ts, STYLE.md's "List+detail
+// panels"), the same shape Noether's/Laughlin's/Skłodowska-Curie's own
+// move-browsing steps use: the left column names all three KONDO_MOVE_IDS
+// (moveDisplayName, folding in Feynman's level prefix -- always a no-op for
+// a still-unbought move, since leveling requires already owning it). A row
+// click only *previews* it (scene.kondoMovePreview), free regardless of how
+// many rows are looked at. Unlike those three guardians' own moves, a Kondo
+// move is a self-buff, not a travelling attack -- BattleScene.resolveSelfBuff
+// plays its real effect centered on the caster's own position (from === to
+// === pos), not flying across the field -- so the right column's own detail
+// header (renderSelfBuffMoveDetailHeader, listDetail.ts) shows the player's
+// own current crystal standing on a ground shadow with the move's
+// 'screening'-class ring effect looping centered on it, rather than a
+// projectile crossing the pane. Below that: the move's own physics
+// description (data/materials.ts's Move.description, only Kondo's three
+// moves carry one), then a cost/status line and a confirm button -- "Learn
+// <name> (<cost> qumatessence)" for a still-unbought move (buying the very
+// first Kondo move ever bought auto-activates it, so a purchase is never
+// silently unusable), "Make <name> active" for an already-bought, inactive
+// move, or a dimmed "<name> (active)" tag (no-op click) for whichever one is
+// currently active (registry/save kondoActiveMove) -- only one of the three
+// is ever usable in battle at a time, switched by returning to this panel,
+// never a per-turn choice in the battle move menu. None of the three is
+// gated by MOVE_COMPATIBILITY, so all three are always for sale until
+// bought -- no empty/wrong-form state to render here.
 export function showKondoPanel(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
 
-  const panelWidth = 600;
+  const panelWidth = LIST_DETAIL_PANEL_W;
   const top = 20;
   const container = scene.add.container(0, 0).setDepth(100);
   scene.dialogueContainer = container;
@@ -38,18 +59,25 @@ export function showKondoPanel(scene: GuardianPanelHost) {
   playGuardianChime();
   y = avatarY + 48;
 
+  // Capped tighter than the ordinary intro-quote scaling every other guardian
+  // panel uses (STYLE.md), same reasoning/cap as Laughlin's own intro
+  // (panels/laughlin.ts) -- this panel now carries a full list+detail layout
+  // with an 84px animation stage plus a per-move description line below it,
+  // and an uncapped quote at the largest text-size preset pushed the detail
+  // pane's own confirm button past the bottom of the canvas.
+  const introScale = Math.min(fontScale(scene), 1.15);
   const intro = scene.add
     .text(
       CANVAS_W / 2,
       y,
       '"I am Kondo. Any crystal can turn its own disorder to its advantage -- screen itself, scatter its own signature, cascade its own coherence back together. Learn a technique, then tell me which one to hold. Only one at a time."',
-      { fontSize: fontPx(scene, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
+      { fontSize: `${Math.round(11 * introScale)}px`, fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
     )
     .setOrigin(0.5, 0);
   container.add(intro);
   y += intro.height + 14;
 
-  y = renderChoiceList(scene, container, y, kondoChoiceItems(scene), kondoChoiceState(scene), () => showKondoPanel(scene));
+  y = renderKondoMoves(scene, container, y, panelWidth);
   y += 8;
   y = scene.renderFarewellFooter(container, y);
   y += 8;
@@ -61,45 +89,126 @@ export function showKondoPanel(scene: GuardianPanelHost) {
   container.addAt(panel, 0);
 }
 
-// KONDO_MOVE_IDS as ChoiceListItems -- display name folds in Feynman's level
-// prefix (moveDisplayName), which is always a no-op for a not-yet-bought
-// move (leveling requires already owning it), so this one field is correct
-// for both the buy row and the already-bought "make active" row.
-function kondoChoiceItems(scene: GuardianPanelHost): ChoiceListItem[] {
-  return KONDO_MOVE_IDS.map((id) => ({
-    id,
-    name: moveDisplayName(scene.game.registry, id),
-    description: MOVES[id].description ?? '',
-    cost: shopCost(MOVES[id]),
-  }));
+function renderKondoMoves(scene: GuardianPanelHost, container: Phaser.GameObjects.Container, y: number, panelWidth: number): number {
+  const panelLeft = CANVAS_W / 2 - panelWidth / 2;
+  const columns = listDetailColumns(panelLeft);
+  const columnsTop = y;
+
+  const effectivePreview = KONDO_MOVE_IDS.includes(scene.kondoMovePreview ?? '') ? (scene.kondoMovePreview as string) : KONDO_MOVE_IDS[0];
+
+  const listResult = renderListColumn({
+    scene,
+    container,
+    x: columns.leftX,
+    y: columnsTop,
+    width: columns.leftColW,
+    items: KONDO_MOVE_IDS,
+    idFor: (id) => id,
+    labelFor: (id) => moveDisplayName(scene.game.registry, id),
+    selectedId: effectivePreview,
+    page: scene.kondoMovePage,
+    onPageChange: (page) => {
+      scene.kondoMovePage = page;
+      scene.dialogueContainer?.destroy(true);
+      showKondoPanel(scene);
+    },
+    onSelect: (id) => {
+      scene.kondoMovePreview = id;
+      scene.dialogueContainer?.destroy(true);
+      showKondoPanel(scene);
+    },
+  });
+  scene.kondoMovePage = listResult.page;
+
+  const id = effectivePreview;
+  const move = MOVES[id];
+  const displayName = moveDisplayName(scene.game.registry, id);
+  let rightY = columnsTop;
+  rightY = renderSelfBuffMoveDetailHeader(scene, container, scene.playerMaterial, displayName, move.class, columns.rightColCenterX, rightY, columns.rightColW);
+
+  const descScale = Math.min(fontScale(scene), 1.2);
+  const descText = scene.add
+    .text(columns.rightColCenterX, rightY, move.description ?? '', {
+      fontSize: `${Math.round(11 * descScale)}px`,
+      color: REFERENCE_BLUE_GREY_HEX,
+      align: 'center',
+      wordWrap: { width: columns.rightColW },
+    })
+    .setOrigin(0.5, 0);
+  container.add(descText);
+  rightY += descText.height + 6;
+
+  const unlocked = scene.getUnlockedMoves();
+  const isLearned = unlocked.includes(id);
+  const active = (scene.game.registry.get('kondoActiveMove') as string | null) ?? null;
+  const isActive = id === active;
+  const cost = shopCost(move);
+  const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
+  const affordable = isLearned || tokens >= cost;
+
+  const statusScale = Math.min(fontScale(scene), 1.2);
+  const statusLabel = !isLearned
+    ? `Costs ${cost} qumatessence to learn.`
+    : isActive
+    ? `${displayName} is your active technique.`
+    : 'Learned -- not currently active.';
+  const statusText = scene.add
+    .text(columns.rightColCenterX, rightY, statusLabel, {
+      fontSize: `${Math.round(11 * statusScale)}px`,
+      color: REFERENCE_BLUE_GREY_HEX,
+      align: 'center',
+      wordWrap: { width: columns.rightColW },
+    })
+    .setOrigin(0.5, 0);
+  container.add(statusText);
+  rightY += statusText.height + 6;
+
+  const buttonScale = Math.min(fontScale(scene), 1.3);
+  const buttonLabel = !isLearned ? `Learn ${displayName} (${cost} qumatessence)` : isActive ? `${displayName} (active)` : `Make ${displayName} active`;
+  const confirmBtn = scene.addDialogueButtonAt(
+    container,
+    columns.rightColCenterX,
+    rightY,
+    buttonLabel,
+    () => {
+      if (isActive) return;
+      if (isLearned) activateKondoMove(scene, id);
+      else buyKondoMove(scene, id, cost);
+    },
+    columns.rightColW,
+    `${Math.round(13 * buttonScale)}px`
+  );
+  if (isActive || !affordable) confirmBtn.setAlpha(0.5);
+  rightY += confirmBtn.height;
+
+  const columnsBottom = Math.max(listResult.bottom, rightY);
+  insertColumnDivider(scene, container, columns.dividerX, columnsTop, columnsBottom);
+  return columnsBottom + 6;
 }
 
-// Kondo's own ChoiceListState: unlocking a Kondo move is really unlocking a
-// battle move (`unlockedMoves`, read by the battle move menu itself, not a
-// passives-only concept), and "active" is the single flat registry/save
-// `kondoActiveMove` key rather than Franklin's per-owner map -- see
-// ChoiceListState's own comment for why this stays an adapter instead of
-// folding both kits onto one shared registry shape.
-function kondoChoiceState(scene: GuardianPanelHost): ChoiceListState {
-  return {
-    isUnlocked: (id) => scene.getUnlockedMoves().includes(id),
-    activeId: () => (scene.game.registry.get('kondoActiveMove') as string | null) ?? null,
-    unlock: (id) => {
-      scene.game.registry.set('unlockedMoves', [...scene.getUnlockedMoves(), id]);
-      // The very first Kondo move bought becomes active automatically --
-      // "picked for the first time" happens right here, in this same
-      // conversation with Kondo, so there's no dead-purchase state where a
-      // freshly bought move shows up nowhere in battle. Switching between
-      // two-or-more already-bought moves still always requires its own
-      // explicit "Make active" click.
-      if (!scene.game.registry.get('kondoActiveMove')) {
-        scene.game.registry.set('kondoActiveMove', id);
-      }
-      persistFromRegistry(scene.game.registry);
-    },
-    activate: (id) => {
-      scene.game.registry.set('kondoActiveMove', id);
-      persistFromRegistry(scene.game.registry);
-    },
-  };
+function buyKondoMove(scene: GuardianPanelHost, id: string, cost: number) {
+  if ((scene.game.registry.get('qumatessence') as number) < cost) return;
+  scene.qumatessence -= cost;
+  scene.game.registry.set('qumatessence', scene.qumatessence);
+  scene.tokenText.setText(`Qumatessence: ${scene.qumatessence}`);
+  scene.game.registry.set('unlockedMoves', [...scene.getUnlockedMoves(), id]);
+  // The very first Kondo move ever bought becomes active automatically --
+  // "picked for the first time" happens right here, in this same
+  // conversation with Kondo, so there's no dead-purchase state where a
+  // freshly bought move shows up nowhere in battle. Buying a second or third
+  // afterward doesn't -- switching between already-bought moves always
+  // requires its own explicit "Make active" click.
+  if (!scene.game.registry.get('kondoActiveMove')) {
+    scene.game.registry.set('kondoActiveMove', id);
+  }
+  persistFromRegistry(scene.game.registry);
+  scene.dialogueContainer?.destroy(true);
+  showKondoPanel(scene);
+}
+
+function activateKondoMove(scene: GuardianPanelHost, id: string) {
+  scene.game.registry.set('kondoActiveMove', id);
+  persistFromRegistry(scene.game.registry);
+  scene.dialogueContainer?.destroy(true);
+  showKondoPanel(scene);
 }

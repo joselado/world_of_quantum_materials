@@ -121,6 +121,11 @@ paid is gone either way, there's no refund on a miss. The cost to attempt a
 tier scales with the move's own power and how deep a tier you're
 attempting, so a weak move is cheap to push and a strong one costs more.
 
+A leveled move looks leveled when you actually cast it, too: it fires
+several times in quick, overlapping succession, each repeat bigger than the
+last (two for Double, three for Triple, four for Infinite), reading as a
+real escalating cascade rather than just a stronger single hit.
+
 ## Kondo's Clouds
 
 Sells three self-buff moves — cast on yourself, not the opponent, dealing no

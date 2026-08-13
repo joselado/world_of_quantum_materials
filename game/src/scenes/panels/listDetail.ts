@@ -1,8 +1,11 @@
 import Phaser from 'phaser';
 import { makeCrystal } from '../../art/crystals';
 import { CANVAS_H } from '../../art/perspective';
+import { startMoveEffectPreview } from '../../art/moveEffectPreview';
 import { materialDisplayName } from '../../data/materials';
-import type { Material } from '../../data/types';
+import type { MoveLevel } from '../../data/materials';
+import type { Material, MoveClass } from '../../data/types';
+import type { AttackShape } from '../../audio/sfx';
 import { fontPx, fontScale } from '../../ui/text';
 import { GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 
@@ -12,14 +15,26 @@ import { GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 // Originally Qumatex's own layout (HubScene.renderMaterialdexPanel, which
 // now calls into renderListColumn/listDetailColumns/fitListLabel here rather
 // than keeping its own copy), reused by Dresselhaus's transmute step,
-// Anderson's host-pick step, and Majorana's own browse-by-hybrid-result step
-// (scenes/panels/dresselhaus.ts, anderson.ts, majorana.ts). The right/detail
-// column stays a per-call-site
+// Anderson's host-pick step, Majorana's own browse-by-hybrid-result step, and
+// Noether's Moves tab (scenes/panels/dresselhaus.ts, anderson.ts,
+// majorana.ts, noether.ts). The right/detail column stays a per-call-site
 // render everywhere -- Qumatex's own pane additionally masks an undiscovered
 // entry and appends a physics blurb, while a guardian's pane shows a
-// cost/status line and a commit button -- only renderDetailCrystalHeader
-// below (the crystal-render-plus-name block every guardian panel's detail
-// pane opens with) is shared across the three guardian panels specifically.
+// cost/status line and a commit button -- renderDetailCrystalHeader below
+// (the crystal-render-plus-name block a crystal-picking guardian's detail
+// pane opens with), renderMoveDetailHeader (the looping-animation-plus-name
+// block a travelling-attack move-picking guardian's detail pane opens with),
+// and renderSelfBuffMoveDetailHeader (the same idea for a self-buff move
+// whose real effect centers on the caster rather than traveling -- Kondo's
+// panel) are three shared detail-pane openers every guardian panel's own
+// cost/status/confirm content sits below -- reused outside the paginated-
+// list shape too: Laughlin's/Skłodowska-Curie's own panels
+// (scenes/panels/laughlin.ts/sklodowskaCurie.ts) call renderMoveDetailHeader
+// from a bespoke, always-both-visible two-column layout (sideBySideColumns
+// below) rather than a browsed single detail pane, since each guardian only
+// ever has exactly two fixed moves worth showing, never a candidate list
+// worth paging through -- they don't import renderListColumn/
+// listDetailColumns at all.
 
 export const LIST_DETAIL_PANEL_W = 720;
 
@@ -45,6 +60,36 @@ export function listDetailColumns(panelLeft: number): ListDetailColumns {
   const rightColW = rightColRight - rightColLeft;
   const rightColCenterX = rightColLeft + rightColW / 2;
   return { leftX, leftColW, dividerX, rightColLeft, rightColRight, rightColW, rightColCenterX };
+}
+
+// Laughlin's and Skłodowska-Curie's own panels (scenes/panels/laughlin.ts/
+// sklodowskaCurie.ts) each have exactly two fixed moves, always both visible
+// side by side rather than a browsed left-hand candidate list -- wider than
+// LIST_DETAIL_PANEL_W since two full animation-stage-plus-inline-picker
+// columns need more room than the ordinary list+detail split's narrower
+// right column ever did (STYLE.md's own reasoning for the wider width).
+export const TWO_UP_PANEL_W = 800;
+
+export interface SideBySideColumns {
+  colW: number;
+  leftCenterX: number;
+  rightCenterX: number;
+  dividerX: number;
+}
+
+// Two equal-width columns for a TWO_UP_PANEL_W-wide panel whose left edge
+// sits at `panelLeft` -- the fixed-left-column-plus-detail-pane split
+// listDetailColumns above gives every *browsed* panel doesn't fit here,
+// since there's no list to browse, just two moves that both always render
+// their own full detail pane at once.
+export function sideBySideColumns(panelLeft: number, panelWidth: number): SideBySideColumns {
+  const margin = 18;
+  const gap = 24;
+  const colW = (panelWidth - margin * 2 - gap) / 2;
+  const leftCenterX = panelLeft + margin + colW / 2;
+  const rightCenterX = panelLeft + panelWidth - margin - colW / 2;
+  const dividerX = panelLeft + margin + colW + gap / 2;
+  return { colW, leftCenterX, rightCenterX, dividerX };
 }
 
 // Trims a row's already-rendered label down to `maxWidth` (appending an
@@ -237,6 +282,144 @@ export function renderDetailCrystalHeader(
   const nameScale = Math.min(fontScale(scene), 1.3);
   const nameText = scene.add
     .text(centerX, ny, materialDisplayName(material), {
+      fontSize: `${Math.round(14 * nameScale)}px`,
+      color: '#ffffff',
+      fontStyle: 'bold',
+      align: 'center',
+      wordWrap: { width: rightColW },
+    })
+    .setOrigin(0.5, 0);
+  container.add(nameText);
+  return ny + nameText.height + 6;
+}
+
+// Same "art block + name" shape renderDetailCrystalHeader above gives a
+// crystal-pick panel's detail pane, but for a *move* -- the "art" is the
+// move's own real battle-effect animation (art/moveEffectPreview.ts's
+// startMoveEffectPreview), looping between a short local from/to span sized
+// to this block rather than a real battle's PLAYER_POS/opponentPos (a
+// detail pane has no crystal positions of its own to borrow). Shared by
+// Noether's Moves tab and Laughlin's/Skłodowska-Curie's own bespoke
+// two-column panels (scenes/panels/noether.ts, laughlin.ts,
+// sklodowskaCurie.ts -- Kondo's own self-buff moves use the sibling
+// renderSelfBuffMoveDetailHeader below instead, since a self-buff's real
+// effect centers on the caster rather than traveling): each resolves its own
+// move's current class/shape override (Noether: the move's own static
+// class, no override; Laughlin/Curie: getTunedMoveClass plus
+// ANALYTIC_SHAPES/ULTIMATE_SHAPES) and passes it in here rather than this
+// module reaching into materials.ts/attackEffects.ts's per-move-id override
+// tables itself. `level` (default 0) is the player's actual Feynman
+// MoveLevel for this move (`getMoveLevel`) -- Noether's own unbought-move
+// rows never carry one above 0 (leveling requires already owning the move),
+// Laughlin's/Curie's pass their move's real level so a leveled Analytic/
+// Ultimate move's preview escalates into the same multi-trigger cascade a
+// real cast plays instead of always showing the flat unleveled loop.
+// `previewKey` (default 'default', see art/moveEffectPreview.ts)
+// distinguishes one call site's own preview chain from another's -- every
+// caller here has exactly one detail pane open at a time and so never needs
+// to pass one, except Laughlin's/Curie's own two-column panels, which have
+// two live simultaneously and key each by its own move id. `halfSpan`
+// (default 55, i.e. a 110px-wide stage, unchanged from before this param
+// existed) is how far the effect travels from `centerX` in each direction --
+// Laughlin's/Curie's own wider two-up columns (listDetail.ts's
+// sideBySideColumns) pass a larger value so the animation actually uses
+// more of the extra room their bespoke layout frees up, rather than leaving
+// the same fixed-pixel stage floating in a wider column.
+export function renderMoveDetailHeader(
+  scene: Phaser.Scene,
+  container: Phaser.GameObjects.Container,
+  displayName: string,
+  moveClass: MoveClass,
+  shapeOverride: AttackShape | undefined,
+  centerX: number,
+  y: number,
+  rightColW: number,
+  level: MoveLevel = 0,
+  previewKey?: string,
+  halfSpan = 55
+): number {
+  const stageH = 84; // same fixed "art, not text" block height renderDetailCrystalHeader uses above
+  const stageCenterY = y + stageH / 2;
+  startMoveEffectPreview(
+    {
+      scene,
+      moveClass,
+      shapeOverride,
+      level,
+      from: { x: centerX - halfSpan, y: stageCenterY + 14 },
+      to: { x: centerX + halfSpan, y: stageCenterY - 14 },
+    },
+    previewKey
+  );
+  let ny = y + stageH;
+
+  const nameScale = Math.min(fontScale(scene), 1.3);
+  const nameText = scene.add
+    .text(centerX, ny, displayName, {
+      fontSize: `${Math.round(14 * nameScale)}px`,
+      color: '#ffffff',
+      fontStyle: 'bold',
+      align: 'center',
+      wordWrap: { width: rightColW },
+    })
+    .setOrigin(0.5, 0);
+  container.add(nameText);
+  return ny + nameText.height + 6;
+}
+
+// Self-buff variant of renderMoveDetailHeader above -- Kondo's three
+// self-buff moves (scenes/panels/kondo.ts) don't travel from an attacker to
+// a target the way an ordinary move does: BattleScene.resolveSelfBuff plays
+// the real battle effect centered on the caster's own position (`from ===
+// to === pos`), not flying across the field. startMoveEffectPreview itself
+// needed no change to support this -- passing an identical from/to point
+// already centers the ring on that single point (art/attackEffects.ts's
+// playRing does `Phaser.Math.Linear(from, to, 0.12)` for its origin, which
+// collapses to that same point when from equals to), exactly the call
+// resolveSelfBuff already makes for a real cast. What a self-buff pane needs
+// beyond that is a crystal to center the ring *on* -- renderMoveDetailHeader
+// above has no crystal render at all -- so this renders the player's own
+// current crystal standing on a ground-shadow ellipse (the same makeCrystal
+// call and shadow geometry Franklin's panel already established, see
+// scenes/panels/franklin.ts's showFranklinPanel) with the move's effect
+// looping around it, before the same name-text tail every detail header
+// here uses. Not named after Kondo specifically so a future self-buff
+// guardian's panel can reuse it.
+export function renderSelfBuffMoveDetailHeader(
+  scene: Phaser.Scene,
+  container: Phaser.GameObjects.Container,
+  material: Material,
+  displayName: string,
+  moveClass: MoveClass,
+  centerX: number,
+  y: number,
+  rightColW: number
+): number {
+  const stageH = 84; // same fixed "art, not text" block height renderMoveDetailHeader uses above
+  const crystalSize = 34; // matches Franklin's own player-crystal render (art/franklin.ts)
+  const crystalCenterY = y + crystalSize;
+  const shadowY = crystalCenterY + crystalSize * 0.85;
+  const shadowRx = crystalSize * 1.18;
+  const shadowRy = crystalSize * 0.27;
+
+  container.add(scene.add.ellipse(centerX, shadowY, shadowRx * 2, shadowRy * 2, 0x000000, 0.3));
+
+  const crystal = makeCrystal(scene, crystalSize, material.color, material.variant, { seed: material.name, hybrid: material.hybridParents });
+  crystal.setPosition(centerX, crystalCenterY);
+  container.add(crystal);
+
+  startMoveEffectPreview({
+    scene,
+    moveClass,
+    from: { x: centerX, y: crystalCenterY },
+    to: { x: centerX, y: crystalCenterY },
+  });
+
+  let ny = y + stageH;
+
+  const nameScale = Math.min(fontScale(scene), 1.3);
+  const nameText = scene.add
+    .text(centerX, ny, displayName, {
       fontSize: `${Math.round(14 * nameScale)}px`,
       color: '#ffffff',
       fontStyle: 'bold',

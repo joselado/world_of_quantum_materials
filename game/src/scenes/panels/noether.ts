@@ -3,11 +3,13 @@ import type { GuardianPanelHost } from '../OverworldScene';
 import { makeNoetherAvatar } from '../../art/noether';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
-import { fontPx } from '../../ui/text';
+import { fontPx, fontScale } from '../../ui/text';
 import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 import { MOVES, SHOP_MOVE_IDS, compatibleMoves, shopCost, getPlayerStats, statUpgradeCost, MAX_STAT } from '../../data/materials';
 import { persistFromRegistry } from '../../data/save';
 import type { Stats } from '../../data/types';
+import { LIST_DETAIL_PANEL_W, listDetailColumns, renderListColumn, insertColumnDivider, renderMoveDetailHeader } from './listDetail';
+import { stopMoveEffectPreview } from '../../art/moveEffectPreview';
 
 // Noether appears once the player reaches world 1's middle tile, selling
 // the other early moves and stat upgrades for qumatessence, in two tabs of
@@ -19,10 +21,23 @@ import type { Stats } from '../../data/types';
 // to sit at a fixed offset from the avatar that assumed a short 1-line
 // render; at a bigger text-size setting it wraps to 3-4 lines and would
 // otherwise run straight into the tabs/rows below it.
+//
+// The Moves tab is a list+detail layout (scenes/panels/listDetail.ts,
+// STYLE.md's "List+detail panels") -- the left column just names
+// still-unbought, current-form-compatible moves; clicking one only
+// *previews* it (scene.noetherMovePreview), the right column showing that
+// move's own real battle-effect animation on a loop (renderMoveDetailHeader,
+// the move's own static class, no shape override -- unlike Laughlin's/
+// Curie's tunable moves, an ordinary move's battle look never changes) plus
+// its cost and a "Learn <name>" confirm button, the one action that
+// actually checks/spends the cost. The Stats tab (renderShopStats below) has
+// no move/animation concept and stays the plain button list it always was,
+// at its own narrower panel width -- only the Moves tab needs the wider
+// LIST_DETAIL_PANEL_W for its two columns.
 export function showNoetherShop(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
 
-  const panelWidth = 600;
+  const panelWidth = scene.shopTab === 'moves' ? LIST_DETAIL_PANEL_W : 600;
   const top = 20;
   const container = scene.add.container(0, 0).setDepth(100);
   scene.dialogueContainer = container;
@@ -51,7 +66,7 @@ export function showNoetherShop(scene: GuardianPanelHost) {
   y = renderShopTabs(scene, container, y);
   y += 6;
 
-  y = scene.shopTab === 'moves' ? renderShopMoves(scene, container, y) : renderShopStats(scene, container, y);
+  y = scene.shopTab === 'moves' ? renderShopMoves(scene, container, y, panelWidth) : renderShopStats(scene, container, y);
   y += 8;
   y = scene.renderFarewellFooter(container, y);
   y += 8;
@@ -88,13 +103,22 @@ function renderShopTabs(scene: GuardianPanelHost, container: Phaser.GameObjects.
   return y + maxHeight;
 }
 
-function renderShopMoves(scene: GuardianPanelHost, container: Phaser.GameObjects.Container, y: number): number {
+function renderShopMoves(scene: GuardianPanelHost, container: Phaser.GameObjects.Container, y: number, panelWidth: number): number {
   const unlocked = scene.getUnlockedMoves();
   const compatible = new Set(compatibleMoves(scene.playerMaterial));
   const forSale = SHOP_MOVE_IDS.filter((id) => !unlocked.includes(id) && compatible.has(id));
-  const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
 
   if (forSale.length === 0) {
+    // No detail pane renders in this branch, so nothing else will ever call
+    // startMoveEffectPreview to replace whatever the list was last
+    // previewing -- stop it explicitly here rather than leaving it running
+    // against a screen that no longer shows it. (Deliberately not called
+    // unconditionally at the top of showNoetherShop: a rebuild that DOES
+    // reach renderMoveDetailHeader below needs the *running* chain left
+    // alone so its own defer-until-settled logic can retarget it without
+    // briefly overlapping two plays -- see moveEffectPreview.ts's own
+    // comment.)
+    stopMoveEffectPreview();
     const text = scene.add
       .text(CANVAS_W / 2, y, "Nothing your current form can carry is left to teach.", {
         fontSize: fontPx(scene, 13),
@@ -107,29 +131,92 @@ function renderShopMoves(scene: GuardianPanelHost, container: Phaser.GameObjects
     return y + text.height;
   }
 
-  forSale.forEach((id) => {
-    const move = MOVES[id];
-    const cost = shopCost(move);
-    const affordable = tokens >= cost;
-    const btn = scene.addDialogueButton(container, y, `${move.name} -- ${cost} qumatessence`, () => {
-      if ((scene.game.registry.get('qumatessence') as number) < cost) return;
-      scene.qumatessence -= cost;
-      scene.game.registry.set('qumatessence', scene.qumatessence);
-      scene.tokenText.setText(`Qumatessence: ${scene.qumatessence}`);
-      scene.game.registry.set('unlockedMoves', [...scene.getUnlockedMoves(), id]);
-      persistFromRegistry(scene.game.registry);
-      // Rebuild the whole panel so the purchased move disappears from
-      // the list and the token total on display stays correct.
+  const panelLeft = CANVAS_W / 2 - panelWidth / 2;
+  const columns = listDetailColumns(panelLeft);
+  const columnsTop = y;
+
+  const effectivePreview = forSale.includes(scene.noetherMovePreview ?? '') ? (scene.noetherMovePreview as string) : forSale[0];
+
+  const listResult = renderListColumn({
+    scene,
+    container,
+    x: columns.leftX,
+    y: columnsTop,
+    width: columns.leftColW,
+    items: forSale,
+    idFor: (id) => id,
+    labelFor: (id) => MOVES[id].name,
+    selectedId: effectivePreview,
+    page: scene.noetherMovePage,
+    onPageChange: (page) => {
+      scene.noetherMovePage = page;
       scene.dialogueContainer?.destroy(true);
       showNoetherShop(scene);
-    });
-    if (!affordable) btn.setAlpha(0.5);
-    y += btn.height + 3;
+    },
+    onSelect: (id) => {
+      scene.noetherMovePreview = id;
+      scene.dialogueContainer?.destroy(true);
+      showNoetherShop(scene);
+    },
   });
-  return y;
+  scene.noetherMovePage = listResult.page;
+
+  const move = MOVES[effectivePreview];
+  let rightY = columnsTop;
+  rightY = renderMoveDetailHeader(scene, container, move.name, move.class, undefined, columns.rightColCenterX, rightY, columns.rightColW);
+
+  const cost = shopCost(move);
+  const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
+  const affordable = tokens >= cost;
+
+  const statusScale = Math.min(fontScale(scene), 1.2);
+  const statusText = scene.add
+    .text(columns.rightColCenterX, rightY, `Costs ${cost} qumatessence.`, {
+      fontSize: `${Math.round(11 * statusScale)}px`,
+      color: REFERENCE_BLUE_GREY_HEX,
+      align: 'center',
+      wordWrap: { width: columns.rightColW },
+    })
+    .setOrigin(0.5, 0);
+  container.add(statusText);
+  rightY += statusText.height + 6;
+
+  const buttonScale = Math.min(fontScale(scene), 1.3);
+  const confirmBtn = scene.addDialogueButtonAt(
+    container,
+    columns.rightColCenterX,
+    rightY,
+    `Learn ${move.name} (${cost} qumatessence)`,
+    () => buyNoetherMove(scene, effectivePreview, cost),
+    columns.rightColW,
+    `${Math.round(13 * buttonScale)}px`
+  );
+  if (!affordable) confirmBtn.setAlpha(0.5);
+  rightY += confirmBtn.height;
+
+  const columnsBottom = Math.max(listResult.bottom, rightY);
+  insertColumnDivider(scene, container, columns.dividerX, columnsTop, columnsBottom);
+  return columnsBottom + 6;
+}
+
+function buyNoetherMove(scene: GuardianPanelHost, id: string, cost: number) {
+  if ((scene.game.registry.get('qumatessence') as number) < cost) return;
+  scene.qumatessence -= cost;
+  scene.game.registry.set('qumatessence', scene.qumatessence);
+  scene.tokenText.setText(`Qumatessence: ${scene.qumatessence}`);
+  scene.game.registry.set('unlockedMoves', [...scene.getUnlockedMoves(), id]);
+  persistFromRegistry(scene.game.registry);
+  // Rebuild the whole panel so the purchased move disappears from
+  // the list and the token total on display stays correct.
+  scene.dialogueContainer?.destroy(true);
+  showNoetherShop(scene);
 }
 
 function renderShopStats(scene: GuardianPanelHost, container: Phaser.GameObjects.Container, y: number): number {
+  // The Stats tab has no move/animation concept at all -- stop whatever
+  // preview loop the Moves tab left running, same reasoning as the
+  // empty-forSale branch above (renderShopMoves).
+  stopMoveEffectPreview();
   const stats = getPlayerStats(scene.game.registry);
   const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
   const rows: { key: keyof Stats; label: string }[] = [

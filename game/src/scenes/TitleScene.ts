@@ -1,42 +1,99 @@
 import Phaser from 'phaser';
-import { clearSave, hasSave, loadSave, persistFromRegistry } from '../data/save';
+import { clearSave, hasSave, loadSave } from '../data/save';
 import { music } from '../audio/music';
 import { CANVAS_W, CANVAS_H } from '../art/perspective';
 import { makeCrystal } from '../art/crystals';
 import { TYPE_LOOK } from '../data/materials';
 import type { MaterialType } from '../data/types';
-import { fontPx } from '../ui/text';
+import { fontPx, fontScale } from '../ui/text';
 import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../ui/theme';
 
-// A curated handful of main types (not all 10, to keep the cluster
-// readable) showing off the variety of looks TYPE_LOOK defines -- purely a
-// "world full of different materials" branding image for the title screen,
-// independent of the player's own save/current form (the Hub is where that
-// gets its own moment). One "hero" entry (biggest, drawn last so it's on
-// top and centered) plus two near and two far flanking crystals, each
-// bobbing on its own independent timing so the cluster reads as alive
-// rather than a single synchronized animation.
-const SHOWCASE_CENTER = CANVAS_W / 2;
-const SHOWCASE: { type: MaterialType; size: number; x: number; y: number; duration: number; delay: number }[] = [
-  { type: 'metal', size: 24, x: SHOWCASE_CENTER - 221, y: 120, duration: 1300, delay: 0 },
-  { type: 'quantumSpinLiquid', size: 26, x: SHOWCASE_CENTER + 228, y: 115, duration: 1450, delay: 120 },
-  { type: 'classicalMagnet', size: 34, x: SHOWCASE_CENTER - 120, y: 147, duration: 1150, delay: 260 },
-  { type: 'superconductor', size: 34, x: SHOWCASE_CENTER + 124, y: 147, duration: 1250, delay: 60 },
-  { type: 'quantumSpinHall', size: 48, x: SHOWCASE_CENTER, y: 130, duration: 1100, delay: 0 },
+type ShowcaseEntry = { type: MaterialType; size: number; dx: number; dy: number; duration: number; delay: number };
+
+// A "character-select roster" branding image -- all 13 of data/materials.ts's
+// TYPE_LOOK entries shown at once (purely a "world full of different
+// materials" image, independent of the player's own save/current form; the
+// Hub is where the player's own crystal gets its own moment), arranged as
+// two rows rather than one big cluster so the whole thing stays a shallow
+// band instead of eating vertical space the title/buttons below need. `dx`/
+// `dy` are offsets from drawShowcaseCrystals's own `(centerX, topY)`
+// origin, not absolute canvas coordinates.
+//
+// Back row: smaller, more numerous, spread across most of the canvas width
+// -- reads as a shelf of specimens rather than a decorative cluster.
+const FAR_SHOWCASE: ShowcaseEntry[] = [
+  { type: 'metal', size: 14, dx: -360, dy: 14, duration: 1300, delay: 0 },
+  { type: 'insulator', size: 15, dx: -257, dy: 20, duration: 1400, delay: 140 },
+  { type: 'semiconductor', size: 16, dx: -154, dy: 10, duration: 1250, delay: 260 },
+  { type: 'quantumSpinLiquid', size: 14, dx: -51, dy: 18, duration: 1500, delay: 60 },
+  { type: 'kondoHeavyFermion', size: 15, dx: 51, dy: 12, duration: 1350, delay: 200 },
+  { type: 'chernInsulator', size: 16, dx: 154, dy: 20, duration: 1200, delay: 100 },
+  { type: 'ferroelectric', size: 14, dx: 257, dy: 10, duration: 1450, delay: 40 },
+  { type: 'multiferroic', size: 15, dx: 360, dy: 16, duration: 1300, delay: 220 },
+];
+// Front row: bigger, fewer, closer to the canvas center -- a centered "hero"
+// entry (quantumSpinHall, biggest, drawn last so it renders on top) flanked
+// by two pairs at decreasing size, the same "hero drawn last/centered" idea
+// the original 5-crystal cluster used.
+const NEAR_SHOWCASE: ShowcaseEntry[] = [
+  { type: 'classicalMagnet', size: 26, dx: -280, dy: 58, duration: 1150, delay: 260 },
+  { type: 'superconductor', size: 32, dx: -140, dy: 54, duration: 1250, delay: 60 },
+  { type: 'quantumSpinHall', size: 40, dx: 0, dy: 58, duration: 1100, delay: 0 },
+  { type: 'chernSuperconductor', size: 32, dx: 140, dy: 54, duration: 1300, delay: 120 },
+  { type: 'fractionalChern', size: 26, dx: 280, dy: 58, duration: 1400, delay: 180 },
 ];
 
-// The game's actual boot scene (main.ts lists this first) -- also where the
-// one localStorage save slot (data/save.ts) gets loaded into the Phaser
-// registry, the runtime source of truth every later scene reads/writes.
-// Every other scene assumes these registry keys already exist, so this load
-// has to happen before any of them can run.
+// The game's actual boot scene (main.ts lists this first) -- also where one
+// of the two localStorage save slots (data/save.ts, one per starting mode)
+// gets loaded into the Phaser registry, the runtime source of truth every
+// later scene reads/writes. Every other scene assumes these registry keys
+// already exist, so this load has to happen before any of them can run.
 export class TitleScene extends Phaser.Scene {
+  // The on-screen content (showcase, title, buttons, mode picker, hint) --
+  // torn down and rebuilt by redrawContent() every time the mode picker
+  // switches, since the "Continue"/"New Game" label, the "erase save" line,
+  // and the mode picker's own highlight all depend on which mode is
+  // currently selected.
+  private root?: Phaser.GameObjects.Container;
+
   constructor() {
     super('Title');
   }
 
   create() {
-    const save = loadSave();
+    const registry = this.game.registry;
+
+    // Which mode is preselected the moment the title screen first loads,
+    // before the player has touched the mode picker: whichever mode has an
+    // existing save if only one of the two does, so a returning player
+    // lands directly on their own "Continue" instead of an empty picker.
+    // Story Mode is the tiebreak when both or neither have a save yet,
+    // since it's the primary progression and Superposition Mode is an
+    // explicit testing/exploration extra layered on top of it.
+    const storySaved = hasSave(false);
+    const superpositionSaved = hasSave(true);
+    const initialSuperposition = !storySaved && superpositionSaved;
+    this.loadIntoRegistry(initialSuperposition);
+
+    music.play('overworld:1');
+
+    const g = this.add.graphics();
+    g.fillGradientStyle(0x0c1030, 0x0c1030, 0x241a44, 0x241a44, 1);
+    g.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+    this.redrawContent(registry);
+
+    this.input.keyboard!.once('keydown-SPACE', () => this.start());
+  }
+
+  // Loads one mode's save slot into the registry wholesale -- every field,
+  // not just `superpositionMode` -- called both at boot and every time the
+  // mode picker switches, so switching modes never leaves the *other*
+  // mode's qumatessence/unlockedMoves/playerForm/etc. sitting in the
+  // registry under the newly-selected mode's flag (which is exactly the
+  // save-mixing bug this two-slot split exists to prevent).
+  private loadIntoRegistry(superposition: boolean) {
+    const save = loadSave(superposition);
     const registry = this.game.registry;
     registry.set('qumatessence', save.qumatessence);
     registry.set('unlockedMoves', save.unlockedMoves);
@@ -58,6 +115,7 @@ export class TitleScene extends Phaser.Scene {
     registry.set('activePassiveByOwner', save.activePassiveByOwner);
     registry.set('moveClassTuning', save.moveClassTuning);
     registry.set('ultimateClassesUnlocked', save.ultimateClassesUnlocked);
+    registry.set('rival9Type', save.rival9Type);
     registry.set('andersonDopant', save.andersonDopant);
     registry.set('musicStyle', save.musicStyle);
     registry.set('difficultyTier', save.difficultyTier);
@@ -66,33 +124,63 @@ export class TitleScene extends Phaser.Scene {
     registry.set('andersonUnlockedHosts', save.andersonUnlockedHosts);
     registry.set('majoranaUnlockedResults', save.majoranaUnlockedResults);
     registry.set('moveLevels', save.moveLevels);
-
     music.setStyle(save.musicStyle);
-    music.play('overworld:1');
+  }
 
-    const g = this.add.graphics();
-    g.fillGradientStyle(0x0c1030, 0x0c1030, 0x241a44, 0x241a44, 1);
-    g.fillRect(0, 0, CANVAS_W, CANVAS_H);
+  // (Re)builds the whole visible screen from the registry's current state,
+  // destroying whatever this.root held before -- called at boot and again
+  // after every mode-picker switch/erase, so the label, the "erase save"
+  // line, and the picker's own highlight always reflect whichever mode is
+  // currently loaded rather than a value captured once at create() time.
+  // Old children are destroyed explicitly, not left to Container.destroy()
+  // (which only detaches its children by default, not destroy()s them), and
+  // their tweens are killed first since Phaser doesn't auto-stop a running
+  // tween just because its target GameObject is destroyed -- otherwise every
+  // mode switch would leak the previous screen's ~14 crystals/buttons and
+  // their tweens.
+  private redrawContent(registry: Phaser.Data.DataManager) {
+    if (this.root) {
+      const oldChildren = this.root.list.slice() as Phaser.GameObjects.GameObject[];
+      this.tweens.killTweensOf(oldChildren);
+      oldChildren.forEach((child) => child.destroy());
+      this.root.destroy();
+    }
 
-    this.drawShowcaseCrystals();
+    // Everything below (showcase, title, buttons, mode picker, hint) is laid
+    // out top-down in this container's local coordinates first, then the
+    // container itself is offset so the *whole composition* centers
+    // vertically in the canvas -- the same measure-then-center pattern
+    // confirmNewGame below uses for its own popup, needed here because the
+    // title's own line count (and whether the "erase save" line is present)
+    // depends on the Settings panel's text-size setting and the save state,
+    // so the total height isn't a fixed number to hand-center against.
+    const root = this.add.container(0, 0);
+    this.root = root;
 
-    // Laid out top-down with a running `y` (each element's own height
-    // advancing it) rather than fixed pixel positions, since the title's
-    // own font size -- and therefore how many lines it wraps to -- depends
-    // on the Settings panel's text-size setting (see OverworldScene
-    // .showSettingsPanel for the same pattern).
+    let y = this.drawShowcaseCrystals(root, 8);
+
+    // Font size is capped at the "Normal" (1.5x) text-size preset rather
+    // than scaling all the way to "Large" (2x) like most of this screen's
+    // other text -- at an uncapped 2x this line would wrap to two lines and
+    // roughly double its own height, which the mode picker and hint below
+    // don't have the spare vertical room to absorb (same reasoning
+    // OverworldScene's own fixed-geometry text applies via
+    // `Math.min(fontScale(this), 1.5)`).
+    const titleScale = Math.min(fontScale(this), 1.5);
     const title = this.add
-      .text(CANVAS_W / 2, 165, 'WORLD OF QUANTUM MATERIALS', {
-        fontSize: fontPx(this, 20),
+      .text(CANVAS_W / 2, y, 'WORLD OF QUANTUM MATERIALS', {
+        fontSize: `${Math.round(30 * titleScale)}px`,
         fontStyle: 'bold',
         color: '#ffffff',
         align: 'center',
         wordWrap: { width: CANVAS_W - 40 },
       })
       .setOrigin(0.5, 0);
-    let y = title.y + title.height + 14;
+    root.add(title);
+    y = title.y + title.height + 14;
 
-    const existingSave = hasSave();
+    const superposition = !!registry.get('superpositionMode');
+    const existingSave = hasSave(superposition);
     const label = existingSave ? 'Continue' : 'New Game';
     const startButton = this.add
       .text(CANVAS_W / 2, y, `[ ${label} ]`, {
@@ -104,12 +192,14 @@ export class TitleScene extends Phaser.Scene {
       .setOrigin(0.5, 0)
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => this.start());
+    root.add(startButton);
     this.tweens.add({ targets: startButton, alpha: { from: 0.7, to: 1 }, duration: 700, yoyo: true, repeat: -1 });
     y += startButton.height + 8;
 
-    // A save already exists, so "Continue" above resumes it -- this is the
-    // only path to actually start over, since there is otherwise no way to
-    // discard progress once a save has been written once.
+    // A save already exists for the currently selected mode, so "Continue"
+    // above resumes it -- this is the only path to actually start over,
+    // since there is otherwise no way to discard progress once a save has
+    // been written once.
     if (existingSave) {
       const erase = this.add
         .text(CANVAS_W / 2, y, 'New Game (erase save)', {
@@ -119,6 +209,7 @@ export class TitleScene extends Phaser.Scene {
         .setOrigin(0.5, 0)
         .setInteractive({ useHandCursor: true })
         .on('pointerdown', () => this.confirmNewGame());
+      root.add(erase);
       y += erase.height + 6;
     }
 
@@ -126,22 +217,25 @@ export class TitleScene extends Phaser.Scene {
     // control (vs. the hint's passive reminder), so it's the one that should
     // stay on-screen if a big text-size setting plus the extra "erase save"
     // line (a returning player only) leaves no room for both above the fold.
-    y = this.addModeSelector(registry, y);
+    y = this.addModeSelector(root, registry, y);
     y += 6;
 
-    this.add
+    const hint = this.add
       .text(CANVAS_W / 2, y, 'Press SPACE or click Continue to begin', {
         fontSize: fontPx(this, 12),
         color: REFERENCE_BLUE_GREY_HEX,
       })
       .setOrigin(0.5, 0);
+    root.add(hint);
+    y += hint.height;
 
-    this.input.keyboard!.once('keydown-SPACE', () => this.start());
+    root.y = Math.max(6, Math.round((CANVAS_H - y) / 2));
   }
 
   // "New Game (erase save)" is destructive and irreversible (localStorage,
   // no undo), so it goes through an inline yes/no confirm rather than
-  // wiping on a single click. Content laid out top-down first (running `y`,
+  // wiping on a single click. Erases only the currently selected mode's own
+  // save slot, never both. Content laid out top-down first (running `y`,
   // wordWrap on the confirm text) with the panel sized/inserted behind and
   // the whole container re-centered afterward -- same pattern every other
   // panel in the game uses -- rather than the earlier fixed 380x150 box at
@@ -180,8 +274,17 @@ export class TitleScene extends Phaser.Scene {
       .setOrigin(0.5, 0)
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => {
-        clearSave();
-        this.scene.restart();
+        // Reload (rather than this.scene.restart()) so the picker stays on
+        // the mode the player was just looking at -- a restart would rerun
+        // create()'s own initial-mode tiebreak, which could flip the picker
+        // to the *other* mode if that one happens to still have a save,
+        // right after the player asked to erase this one.
+        const registry = this.game.registry;
+        const superposition = !!registry.get('superpositionMode');
+        clearSave(superposition);
+        container.destroy();
+        this.loadIntoRegistry(superposition);
+        this.redrawContent(registry);
       });
     container.add(yes);
     const no = this.add
@@ -223,14 +326,16 @@ export class TitleScene extends Phaser.Scene {
   // only ones actually defeated. Picked here rather than mid-run so it's a
   // deliberate choice made before starting, not something stumbled into
   // during play. Returns the y position just past the whole control (label,
-  // two buttons, and the description line), for the caller's running `y`.
-  private addModeSelector(registry: Phaser.Data.DataManager, y: number): number {
+  // two buttons, and each button's own caption line), for the caller's
+  // running `y`.
+  private addModeSelector(root: Phaser.GameObjects.Container, registry: Phaser.Data.DataManager, y: number): number {
     const heading = this.add
       .text(CANVAS_W / 2, y, 'Choose your mode:', {
         fontSize: fontPx(this, 12),
         color: '#cfd8ff',
       })
       .setOrigin(0.5, 0);
+    root.add(heading);
     y += heading.height + 4;
 
     const isSuperposition = () => !!registry.get('superpositionMode');
@@ -251,6 +356,8 @@ export class TitleScene extends Phaser.Scene {
       })
       .setOrigin(0.5, 0)
       .setInteractive({ useHandCursor: true });
+    root.add(storyBtn);
+    root.add(superBtn);
 
     const refresh = () => {
       const superposition = isSuperposition();
@@ -259,51 +366,96 @@ export class TitleScene extends Phaser.Scene {
     };
     refresh();
 
-    const gap = 12;
+    // A noticeably wider gap than the two buttons' own internal padding
+    // (unlike the old 12px gap, which read as one combined control) so each
+    // button plus its own caption below it reads as its own self-contained
+    // choice rather than two options crammed together.
+    const gap = 50;
     const totalW = storyBtn.width + superBtn.width + gap;
     storyBtn.setX(CANVAS_W / 2 - totalW / 2 + storyBtn.width / 2);
     superBtn.setX(CANVAS_W / 2 + totalW / 2 - superBtn.width / 2);
 
+    // Switching modes reloads that mode's own save slot wholesale (see
+    // loadIntoRegistry) and rebuilds the whole screen from it, rather than
+    // just flipping the `superpositionMode` flag in place -- otherwise the
+    // registry would still be carrying the *other* mode's qumatessence/
+    // unlockedMoves/playerForm/etc. under the newly-selected mode's flag.
+    // Deliberately doesn't call persistFromRegistry() here (unlike this
+    // control's other write sites elsewhere in the game): nothing has
+    // actually changed yet for a mode with no save of its own, so writing
+    // here would create a save file -- and show "Continue" plus an "erase
+    // save" line -- for a slot the player has never actually played.
+    // Real progress in the newly-selected mode persists itself the moment
+    // it happens, via the same ~40 persistFromRegistry() call sites every
+    // other scene already uses.
     storyBtn.on('pointerdown', () => {
-      registry.set('superpositionMode', false);
-      persistFromRegistry(registry);
-      refresh();
+      if (!isSuperposition()) return;
+      this.loadIntoRegistry(false);
+      this.redrawContent(registry);
     });
     superBtn.on('pointerdown', () => {
-      registry.set('superpositionMode', true);
-      persistFromRegistry(registry);
-      refresh();
+      if (isSuperposition()) return;
+      this.loadIntoRegistry(true);
+      this.redrawContent(registry);
     });
     y += Math.max(storyBtn.height, superBtn.height) + 4;
 
-    const hint = this.add
-      .text(
-        CANVAS_W / 2,
-        y,
-        'Story Mode: discover who is behind the Decoherence. Superposition Mode: everything and everywhere.',
-        { fontSize: fontPx(this, 10), color: '#6f7ea8', align: 'center', wordWrap: { width: CANVAS_W - 60 } }
-      )
+    // Each caption sits under its own button rather than centered under the
+    // pair, and wraps to a width derived from how far apart the two buttons
+    // actually landed (not a fixed constant) so the two caption boxes never
+    // meet in the middle regardless of text-size preset or how wide
+    // "Superposition Mode" itself renders.
+    const captionScale = Math.min(fontScale(this), 1.5);
+    const captionWrap = Math.max(140, superBtn.x - storyBtn.x - 40);
+    const storyCaption = this.add
+      .text(storyBtn.x, y, 'Trace the Decoherence.', {
+        fontSize: `${Math.round(10 * captionScale)}px`,
+        color: '#6f7ea8',
+        align: 'center',
+        wordWrap: { width: captionWrap },
+      })
       .setOrigin(0.5, 0);
-    y += hint.height;
+    const superCaption = this.add
+      .text(superBtn.x, y, 'Everything, unlocked.', {
+        fontSize: `${Math.round(10 * captionScale)}px`,
+        color: '#6f7ea8',
+        align: 'center',
+        wordWrap: { width: captionWrap },
+      })
+      .setOrigin(0.5, 0);
+    root.add(storyCaption);
+    root.add(superCaption);
+    y += Math.max(storyCaption.height, superCaption.height);
 
     return y;
   }
 
-  private drawShowcaseCrystals() {
-    SHOWCASE.forEach((entry) => {
+  // Draws both showcase rows (FAR_SHOWCASE/NEAR_SHOWCASE above) into `root`,
+  // each crystal bobbing on its own independent duration/delay so the whole
+  // roster reads as alive rather than a single synchronized animation.
+  // Returns the y position just past the showcase, for the caller's running
+  // `y`.
+  private drawShowcaseCrystals(root: Phaser.GameObjects.Container, topY: number): number {
+    const centerX = CANVAS_W / 2;
+    let maxBottom = topY;
+    [...FAR_SHOWCASE, ...NEAR_SHOWCASE].forEach((entry) => {
       const look = TYPE_LOOK[entry.type];
       const crystal = makeCrystal(this, entry.size, look.color, look.variant);
-      crystal.setPosition(entry.x, entry.y);
+      const entryY = topY + entry.dy;
+      crystal.setPosition(centerX + entry.dx, entryY);
+      root.add(crystal);
       this.tweens.add({
         targets: crystal,
-        y: entry.y - 10,
+        y: entryY - 10,
         duration: entry.duration,
         delay: entry.delay,
         yoyo: true,
         repeat: -1,
         ease: 'Sine.easeInOut',
       });
+      maxBottom = Math.max(maxBottom, entryY + entry.size * 0.9);
     });
+    return maxBottom + 12;
   }
 
   private start() {

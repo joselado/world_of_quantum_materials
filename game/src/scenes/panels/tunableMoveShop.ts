@@ -1,165 +1,110 @@
 import type Phaser from 'phaser';
 import type { GuardianPanelHost } from '../OverworldScene';
-import { CANVAS_W } from '../../art/perspective';
-import { fontPx } from '../../ui/text';
-import { PANEL_BG } from '../../ui/theme';
-import {
-  MOVES,
-  TUNABLE_MOVE_CLASSES,
-  quasiparticleLabel,
-  moveDisplayName,
-  getTunedMoveClass,
-  canHost,
-  shopCost,
-} from '../../data/materials';
-import { persistFromRegistry } from '../../data/save';
+import { fontScale } from '../../ui/text';
+import { TUNABLE_MOVE_CLASSES, canHost } from '../../data/materials';
 import type { MoveClass } from '../../data/types';
 
-// Shared shop UI for a guardian who sells a small, fixed list of
-// quiz-gated, quasiparticle-tunable moves at the standard `shopCost`
-// (power×5), one-time-purchase-then-free-forever-retune flow -- written
-// generically (any move-id list, any reopen callback) so Laughlin's
-// Analytic shop (panels/laughlin.ts, ANALYTIC_MOVE_IDS) can call it
-// directly rather than duplicating the shop layout in his own file.
-// Skłodowska-Curie's Ultimate shop (panels/sklodowskaCurie.ts) does NOT use
-// this -- her per-quasiparticle-class unlock cost model is fundamentally
-// different from this flat one-time purchase, so her panel is bespoke.
-//
-// Two sections, same shape as Kondo's own panel: still-unbought moves
-// (buying opens showMoveClassPicker first, so a purchase always comes with a
-// quasiparticle chosen) followed by every already-bought move showing which
-// quasiparticle it's currently tuned to, with a free "Retune" click back
-// into the same picker -- unlike Kondo's single active-move switch, every
-// move sold here can be tuned (and usable) at once, this only ever changes
-// which quasiparticle each one's mismatch check reads
-// (materials.ts's getTunedMoveClass). Unlike Kondo's shop, `forSale`/
-// `learned` don't always partition every id between them -- `moveIds` is a
-// small fixed list with no third state, so `forSale` alone (not both being
-// empty) is the real "nothing left to buy" signal, shown as its own line
-// above the learned rows rather than replacing them.
-export function renderTunableMoveShop(
-  scene: GuardianPanelHost,
-  container: Phaser.GameObjects.Container,
-  y: number,
-  moveIds: string[],
-  reopen: () => void
-): number {
-  const unlocked = scene.getUnlockedMoves();
-  const forSale = moveIds.filter((id) => !unlocked.includes(id));
-  const learned = moveIds.filter((id) => unlocked.includes(id));
-  const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
-  const assigned = (scene.game.registry.get('moveClassTuning') as Partial<Record<string, MoveClass>>) ?? {};
-
-  if (forSale.length === 0) {
-    const text = scene.add
-      .text(CANVAS_W / 2, y, 'You already carry every analytic technique I can teach.', {
-        fontSize: fontPx(scene, 13),
-        color: '#ffffff',
-        align: 'center',
-        wordWrap: { width: 480 },
-      })
-      .setOrigin(0.5, 0);
-    container.add(text);
-    y += text.height + 6;
-  }
-
-  forSale.forEach((id) => {
-    const move = MOVES[id];
-    const cost = shopCost(move);
-    const affordable = tokens >= cost;
-    const displayName = moveDisplayName(scene.game.registry, id);
-    const btn = scene.addDialogueButton(container, y, `${displayName} -- ${cost} qumatessence`, () => {
-      if ((scene.game.registry.get('qumatessence') as number) < cost) return;
-      showMoveClassPicker(scene, id, (chosenClass) => {
-        scene.qumatessence -= cost;
-        scene.game.registry.set('qumatessence', scene.qumatessence);
-        scene.tokenText.setText(`Qumatessence: ${scene.qumatessence}`);
-        scene.game.registry.set('unlockedMoves', [...scene.getUnlockedMoves(), id]);
-        scene.game.registry.set('moveClassTuning', { ...assigned, [id]: chosenClass });
-        persistFromRegistry(scene.game.registry);
-        scene.dialogueContainer?.destroy(true);
-        reopen();
-      });
-    });
-    if (!affordable) btn.setAlpha(0.5);
-    y += btn.height + 3;
-  });
-
-  if (learned.length > 0) {
-    if (forSale.length > 0) y += 6;
-    learned.forEach((id) => {
-      const assignedClass = assigned[id];
-      const activeClass = getTunedMoveClass(scene.game.registry, id);
-      const displayName = moveDisplayName(scene.game.registry, id);
-      const label = !assignedClass
-        ? `${displayName} -- untuned (pick a quasiparticle)`
-        : activeClass === assignedClass
-        ? `${displayName} -- tuned to ${quasiparticleLabel(assignedClass)} (retune)`
-        : `${displayName} -- tuned to ${quasiparticleLabel(assignedClass)}, reverted to ${quasiparticleLabel(activeClass)} (this form can't host it -- retune)`;
-      const btn = scene.addDialogueButton(container, y, label, () => {
-        showMoveClassPicker(scene, id, (chosenClass) => {
-          scene.game.registry.set('moveClassTuning', { ...assigned, [id]: chosenClass });
-          persistFromRegistry(scene.game.registry);
-          scene.dialogueContainer?.destroy(true);
-          reopen();
-        });
-      });
-      y += btn.height + 3;
-    });
-  }
-  return y;
+// The quasiparticle picker every tunable move's own column renders directly
+// beneath itself (Laughlin's Analytic pair, scenes/panels/laughlin.ts;
+// Skłodowska-Curie's Ultimate pair, scenes/panels/sklodowskaCurie.ts) --
+// inline in that same panel, not a separate full-panel sub-view. Only offers
+// classes the player's *current* form can actually host (TUNABLE_MOVE_CLASSES
+// filtered through canHost) -- "which quasiparticle should this carry" is
+// meant to be a real physics choice grounded in what the player's own
+// crystal can host right now, not a free pick from every class in the game
+// regardless of how little sense it makes for the current form; retuning
+// later (after transmuting into a different form) just re-renders this same
+// filtered list. 'phonon' is on every MOVE_COMPATIBILITY list, so the
+// filtered list is never empty.
+export function hostableClasses(scene: GuardianPanelHost): MoveClass[] {
+  return TUNABLE_MOVE_CLASSES.filter((cls) => canHost(scene.playerMaterial.type, cls));
 }
 
-// The quasiparticle-choice sub-panel a tunable move's shop opens for one of
-// its moves, both on first purchase and on a later "Retune" click
-// (renderTunableMoveShop above) -- the move's own default MoveClass
-// ('phonon') never changes (see getTunedMoveClass), this only decides which
-// ordinary class the quasiparticle-mismatch check treats it as. Only offers
-// classes the player's *current* form can actually host
-// (TUNABLE_MOVE_CLASSES filtered through canHost) -- "which quasiparticle
-// should this carry" is meant to be a real physics choice grounded in what
-// the player's own crystal can host right now, not a free pick from every
-// class in the game regardless of how little sense it makes for the current
-// form; re-tuning later (after transmuting into a different form) just
-// reopens this same filtered list. 'phonon' is on every MOVE_COMPATIBILITY
-// list, so the filtered list is never empty. `onChosen` runs the caller's
-// own save/persist/redraw, this panel just presents the pick. Panel border
-// is a flat Laughlin-blue -- only Laughlin's Analytic shop calls into this
-// module today, Skłodowska-Curie's Ultimate shop is bespoke (see
-// panels/sklodowskaCurie.ts).
-export function showMoveClassPicker(scene: GuardianPanelHost, moveId: string, onChosen: (chosenClass: MoveClass) => void) {
-  scene.dialogueContainer?.destroy(true);
-  scene.dialogueActive = true;
+export interface QuasiparticleOption {
+  cls: MoveClass;
+  label: string;
+  dim: boolean;
+}
 
-  const panelWidth = 600;
-  const top = 20;
-  const container = scene.add.container(0, 0).setDepth(100);
-  scene.dialogueContainer = container;
+// Renders one small pill button per option, packed left-to-right and
+// wrapped onto as many rows as the column actually needs -- not a fixed
+// one-row-per-class vertical list, since a form like chernSuperconductor
+// hosts as many as five classes, and both this panel and Skłodowska-Curie's
+// own already have two of these pickers plus two full animation stages to
+// fit above the canvas's bottom edge (STYLE.md's own robustness note for
+// these two panels). Deliberately smaller/denser than the game's ordinary
+// dialogue-button style (fontPx 10, tight padding, capped at the Compact
+// text-size preset's own scale even at Normal/Large -- see below) since this
+// is a dense strip of many small optional controls, not body text a Large-
+// text player needs magnified the way the status line just above it already
+// is. Each caller (Laughlin/Curie) formats its own row label and afford/dim
+// state, since the two pricing models differ (a flat one-time move purchase
+// vs. a per-class unlock cost, see each panel's own comment) and this module
+// has no opinion on either. `onPick` is the one action that actually runs --
+// buying, retuning, or unlocking a class, whichever the caller's own label/
+// cost logic decided this row means.
+export function renderInlineClassPicker(
+  scene: GuardianPanelHost,
+  container: Phaser.GameObjects.Container,
+  centerX: number,
+  y: number,
+  colW: number,
+  options: QuasiparticleOption[],
+  onPick: (cls: MoveClass) => void
+): number {
+  const gapX = 6;
+  const gapY = 4;
+  // Capped at the Compact preset's own scale (1x) regardless of the
+  // player's actual Normal/Large setting -- see this file's own top comment
+  // for why a dense options strip stays flat here while the status line just
+  // above it keeps scaling normally.
+  const pickerFontPx = `${Math.round(10 * Math.min(fontScale(scene), 1))}px`;
 
-  let y = top;
-  const displayName = moveDisplayName(scene.game.registry, moveId);
-  const title = scene.add
-    .text(CANVAS_W / 2, y, `Which quasiparticle should ${displayName} carry?`, {
-      fontSize: fontPx(scene, 13),
-      color: '#ffffff',
-      fontStyle: 'bold',
-      align: 'center',
-      wordWrap: { width: panelWidth - 60 },
-    })
-    .setOrigin(0.5, 0);
-  container.add(title);
-  y += title.height + 10;
-
-  const hostable = TUNABLE_MOVE_CLASSES.filter((cls) => canHost(scene.playerMaterial.type, cls));
-  hostable.forEach((cls) => {
-    const btn = scene.addDialogueButton(container, y, quasiparticleLabel(cls), () => onChosen(cls));
-    y += btn.height + 3;
+  const buttons = options.map((opt) => {
+    const btn = scene.add
+      .text(-1000, -1000, opt.label, {
+        fontSize: pickerFontPx,
+        color: '#ffff88',
+        backgroundColor: '#222244',
+        padding: { x: 7, y: 3 },
+      })
+      .setOrigin(0.5, 0)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => onPick(opt.cls));
+    if (opt.dim) btn.setAlpha(0.5);
+    container.add(btn);
+    return btn;
   });
-  y += top;
 
-  const panelHeight = y - top;
-  const panel = scene.add
-    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
-    .setStrokeStyle(2, 0x6a7fff);
-  container.addAt(panel, 0);
+  // Pack left-to-right within the column's own width, wrapping to a new row
+  // once the next button would run past its right edge.
+  const rows: { btns: Phaser.GameObjects.Text[]; width: number; height: number }[] = [];
+  let row: Phaser.GameObjects.Text[] = [];
+  let rowWidth = 0;
+  let rowHeight = 0;
+  buttons.forEach((btn) => {
+    const w = btn.width;
+    if (row.length > 0 && rowWidth + gapX + w > colW) {
+      rows.push({ btns: row, width: rowWidth, height: rowHeight });
+      row = [];
+      rowWidth = 0;
+      rowHeight = 0;
+    }
+    rowWidth += (row.length > 0 ? gapX : 0) + w;
+    rowHeight = Math.max(rowHeight, btn.height);
+    row.push(btn);
+  });
+  if (row.length > 0) rows.push({ btns: row, width: rowWidth, height: rowHeight });
+
+  let rowY = y;
+  rows.forEach(({ btns, width, height }) => {
+    let x = centerX - width / 2;
+    btns.forEach((btn) => {
+      btn.setPosition(x + btn.width / 2, rowY);
+      x += btn.width + gapX;
+    });
+    rowY += height + gapY;
+  });
+
+  return rowY;
 }

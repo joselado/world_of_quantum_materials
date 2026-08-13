@@ -44,21 +44,40 @@ game/src/
                                  e.g. noether.ts's showNoetherShop(), sklodowskaCurie.ts's
                                  showSklodowskaCuriePanel(), anderson.ts's showAndersonPanel() --
                                  passiveList.ts's renderChoiceList() is the shared
-                                 buy-list-plus-switch engine franklin.ts (via its own
-                                 renderPassiveList() wrapper) and kondo.ts both call, kept in its
-                                 own file rather than folded into either guardian's own (see
-                                 "Guardian panels" below),
-                                 tunableMoveShop.ts's renderTunableMoveShop()/
-                                 showMoveClassPicker() is the one shared by laughlin.ts's Analytic
-                                 shop (Skłodowska-Curie's Ultimate shop is priced too differently
-                                 to reuse it, see "Guardians" below), listDetail.ts's
+                                 buy-list-plus-switch engine franklin.ts calls (via its own
+                                 renderPassiveList() wrapper), kept in its own file rather than
+                                 folded into franklin.ts itself (see "Guardian panels" below),
+                                 tunableMoveShop.ts's hostableClasses()/renderInlineClassPicker()
+                                 is the shared inline quasiparticle-picker row-strip laughlin.ts's
+                                 and sklodowskaCurie.ts's own two-column panels each render
+                                 directly beneath a move's own column (Skłodowska-Curie's own
+                                 per-class-unlock pricing is different enough from Laughlin's flat
+                                 one-time move purchase that each panel still formats/prices its
+                                 own rows, see "Guardians" below), listDetail.ts's
                                  renderListColumn()/listDetailColumns()/fitListLabel()/
-                                 renderDetailCrystalHeader() is the shared two-column list+detail
-                                 scaffolding (STYLE.md's "List+detail panels") HubScene's own
-                                 Qumatex panel and dresselhaus.ts/anderson.ts (host-pick step
-                                 only)/majorana.ts (both pick-a-crystal steps) all render their
-                                 left "which crystal" column and detail-pane crystal/name header
-                                 through, and hubStations.ts holds the
+                                 renderDetailCrystalHeader()/renderMoveDetailHeader()/
+                                 renderSelfBuffMoveDetailHeader()/sideBySideColumns() is the shared
+                                 detail-pane scaffolding (STYLE.md's "List+detail panels") --
+                                 renderListColumn/listDetailColumns back the paginated-left-column
+                                 shape HubScene's own Qumatex panel, dresselhaus.ts/anderson.ts
+                                 (host-pick step only)/majorana.ts (both pick-a-crystal steps),
+                                 noether.ts (Moves tab only)/kondo.ts (its own move-browsing step),
+                                 and bloch.ts (its own destination table -- the one caller whose
+                                 right side is the persistent Qumatuomi map, art/qumatuomiMap.ts,
+                                 rather than a per-selection detail pane) all use, while
+                                 sideBySideColumns backs laughlin.ts's/sklodowskaCurie.ts's own
+                                 bespoke always-both-visible two-column layout instead (no
+                                 candidate list, so neither imports renderListColumn/
+                                 listDetailColumns at all). Every one of these panels' own
+                                 "which crystal"/"which move"/"which world" detail pane opens
+                                 through -- renderDetailCrystalHeader for a crystal-plus-name
+                                 header, renderMoveDetailHeader for a looping travelling-attack-
+                                 effect-plus-name one, renderSelfBuffMoveDetailHeader for the same
+                                 idea but centered on a rendered player crystal instead of
+                                 traveling between two points (kondo.ts's own self-buff moves --
+                                 see "Kondo in the overworld" in STYLE.md and
+                                 art/moveEffectPreview.ts, above), and
+                                 hubStations.ts holds the
                                  Lab's own six reference/settings stations (see "Lab stations and
                                  settings" below) -- taking scene: HubScene instead of
                                  scene: GuardianPanelHost, since HubScene is their only caller
@@ -131,9 +150,73 @@ game/src/
                                   overrides (Laughlin's skyfallBeam/groundEruption), meteor/nova are
                                   ULTIMATE_SHAPES' overrides (Skłodowska-Curie's ultimateMeteor/
                                   ultimateNova, a 4-6s multi-phase sequence -- see "Stats and battle
-                                  resolution" below), every other shape is per-MoveClass
+                                  resolution" below), every other shape is per-MoveClass. Its own
+                                  `level` param (Feynman's MoveLevel, §5, "Stats and battle
+                                  resolution" below) escalates the effect into several staggered,
+                                  growing repeats via playOrdinaryRepeats/playUltimateRepeats,
+                                  only the last of which is wired to the real onImpact/onComplete.
+                                  Its own `depthOffset` param (default 0, every BattleScene call site
+                                  unaffected) shifts every Graphics object it creates by a fixed
+                                  amount -- moveEffectPreview.ts (below) is the one caller that
+                                  passes a nonzero value. resolveAttackShape()/attackEffectDurationMs()/
+                                  attackEffectTotalDurationMs() are exported for moveEffectPreview.ts's
+                                  own use (below) -- the last one folds the `level` escalation's own
+                                  stagger into the single-play duration, the real wall-clock time
+                                  until a leveled cascade's last repeat settles
+    moveEffectPreview.ts         startMoveEffectPreview(params, key?)/stopMoveEffectPreview(key?) --
+                                  loops playAttackEffect (above) inside a guardian panel's detail
+                                  pane (Noether's Moves tab, Kondo's self-buff step, Laughlin's/
+                                  Skłodowska-Curie's own two-column panels, scenes/panels/noether.ts,
+                                  kondo.ts, laughlin.ts, sklodowskaCurie.ts's own
+                                  renderMoveDetailHeader/renderSelfBuffMoveDetailHeader calls,
+                                  scenes/panels/listDetail.ts) rather than a static icon, at a
+                                  PREVIEW_DEPTH_OFFSET pushing the real effect's Graphics (normally
+                                  depth 58-61) above a dialogue panel's own container (depth 100) so
+                                  it draws on top of the pane instead of underneath it. `params.level`
+                                  (Feynman's MoveLevel) is forwarded straight into playAttackEffect's
+                                  own `level`, so a leveled move's preview escalates the same way a
+                                  real cast does. Tracks any number of independent, simultaneously-
+                                  looping preview *chains* in a `Map<string, PreviewChain>` keyed by
+                                  `key` (default `'default'`, what every single-preview caller --
+                                  Noether, Kondo -- implicitly uses, unaffected by the multi-chain
+                                  support) rather than one module-scoped `current`/`generation` pair
+                                  for the whole module -- Laughlin's/Skłodowska-Curie's own two-column
+                                  panels are the one case with two chains genuinely running at once
+                                  (keyed `laughlin:<moveId>`/`curie:<moveId>`, one per column), so
+                                  retuning one column's own move never disturbs the other column's
+                                  already-looping chain. Calling startMoveEffectPreview again on the
+                                  same key retargets that chain to a different move without needing to
+                                  stop it first -- the in-flight play is left to
+                                  finish on its own (attackEffects.ts's shapes have no external cancel
+                                  hook; every phase tears itself down in its own onComplete regardless
+                                  of anything outside it) and that chain's next cycle picks up whatever
+                                  its own `current` is by then, so a rapid preview switch never draws
+                                  two overlapping plays at once on the same chain. Callers must NOT
+                                  call stopMoveEffectPreview()
+                                  unconditionally right before a startMoveEffectPreview() on the same
+                                  key in the same rebuild (that would clear that chain's `current` and
+                                  defeat the retarget) -- only
+                                  from a branch that renders no detail pane at all (Noether's Stats tab,
+                                  its own empty-forSale state) or a real teardown
+                                  (OverworldScene.closeDialogue()/HubScene.closeDialogue(), which call
+                                  the no-key form to stop every chain at once)
     colors.ts                   shade(), hueShift(), hashSeed()/seededRandom() -- the deterministic
                                   per-compound PRNG jitterFor() (crystals.ts) is built from
+    qumatuomiMap.ts              buildQumatuomiMap(scene, { width, height, discoveredWorlds }) -- a
+                                  standalone, hand-drawn Finland-coastline map (a Suomi/"Qumatuomi"
+                                  pun) with one circle marker per world (1-10), each tinted with that
+                                  world's own art/biomes.ts palette once discovered or rendered
+                                  shrouded in mist otherwise (STYLE.md's "Qumatuomi map"); scales its
+                                  silhouette uniformly to fit the given width/height. Returns
+                                  { container, markers, width, height } -- markers is a { world,
+                                  marker: Phaser.GameObjects.Shape }[] (each also carries
+                                  setData('world', n)) so a caller can attach its own click
+                                  handling/tooltips later; width/height are the actual rendered size
+                                  (uniform scale-to-fit is usually smaller than the requested budget
+                                  on one axis). Knows nothing about scene.game.registry, travel
+                                  costs, or any guardian panel -- scenes/panels/bloch.ts is its one
+                                  consumer, wiring its own setInteractive/pointerdown handling onto
+                                  each returned marker.
   audio/
     sfx.ts                      Procedural sound effects (attack/impact/playGuardianChime)
     music.ts                    MusicEngine, per-scene/per-world tracks in two selectable
@@ -239,6 +322,10 @@ game/src/
     worldLore.ts                   WORLD_LORE (per-world 2-page history, shown once per save on first entry)/
                                     RIVAL_TAUNTS (per-world 2-part rival gate taunt) -- worldLoreSeen gating via
                                     hasSeenWorldLore/markWorldLoreSeen
+    worldFlavor.ts                  WORLD_FLAVOR -- one short epic-plus-physics paragraph per world, Bloch's
+                                    own panel's detail-pane blurb for whichever destination is currently
+                                    previewed -- distinct from story.ts's transition
+                                    beats and worldLore.ts's once-per-save Decoherence-arc history
   ui/
     text.ts                       fontPx()/fontScale() -- see "Lab stations and settings" below
     theme.ts                      PANEL_BG/GOLD_ACCENT(_HEX)/REFERENCE_BLUE_GREY(_HEX)/
@@ -354,8 +441,7 @@ difficulty-curve sanity check rather than a docs generator.
   encounter (`OverworldScene.showEncounter`) and the Lab's Moves/Stats/Abilities/Settings
   stations (`0x8fa0c9`, a distinct blue-grey so it doesn't collide), gold `0xffe066` = Noether, teal `0x4adde0` =
   Bloch, teal-green `0x4ad9a0` = Dresselhaus's transmutation panel, blue-violet `0x6a7fff` =
-  Laughlin's Analytic shop (`panels/tunableMoveShop.ts`'s `renderTunableMoveShop`, shared
-  chrome), green `0x4fd97a` = Majorana's hybrid panel, rust `0xc9884a` = Anderson's
+  Laughlin's Analytic shop, green `0x4fd97a` = Majorana's hybrid panel, rust `0xc9884a` = Anderson's
   impurity-doping panel, amber `0xffa64a` = Feynman's move-leveling panel (and its own
   question-streak sub-panel), red `0xe86a44` = Kondo's
   self-buff shop, purple `0xa878c9` = Franklin's passive panel, olive `0xc9d84a` =
@@ -380,32 +466,55 @@ difficulty-curve sanity check rather than a docs generator.
   which of the two scenes the player actually opened it from. A panel-specific helper only that
   one guardian calls (e.g. Noether's `renderShopTabs`) moves
   into the same file as a plain (non-exported) function taking `scene` as its first param; a
-  helper more than one guardian calls gets its own file under `scenes/panels/` instead rather
-  than living in either guardian's file -- `passiveList.ts`'s `renderChoiceList` (the shared
-  "buy several, only one active, switch by revisiting" engine both Franklin's passive kit and
-  Kondo's three self-buff moves sell, each through its own thin adapter over its own registry
-  keys -- Franklin's own `renderPassiveList` wrapper for `passivesUnlocked`/
-  `activePassiveByOwner`, Kondo's own `kondoChoiceItems`/`kondoChoiceState` for
-  `unlockedMoves`/`kondoActiveMove`) is the current example. `tunableMoveShop.ts`'s `renderTunableMoveShop`/
-  `showMoveClassPicker` currently has only one caller (Laughlin's Analytic shop) -- it still
-  lives in its own file rather than `laughlin.ts` since it's written generically (any move-id
-  list, any `shopCost`-flow purchase), the same shape a future flat-purchase tunable-move
-  guardian could reuse; Skłodowska-Curie's Ultimate shop deliberately does *not* reuse it (see
-  "Guardians" below), since her per-class-unlock pricing is fundamentally different from a flat
-  purchase. Genuinely cross-cutting dialogue infrastructure -- `addDialogueButton(At)`,
+  helper more than one guardian calls (or written generically enough that a future guardian
+  plausibly could) gets its own file under `scenes/panels/` instead rather than living in either
+  guardian's file -- `passiveList.ts`'s `renderChoiceList` (the shared "buy several, only one
+  active, switch by revisiting" engine Franklin's passive kit sells, through its own thin
+  `renderPassiveList` adapter over its own `passivesUnlocked`/`activePassiveByOwner` registry
+  keys) is the current example, kept in its own file even with a single caller today since a
+  future guardian selling another flat, non-previewable "buy several, equip one" kit could reuse
+  it the same way. `listDetail.ts`'s own `renderListColumn`/`renderMoveDetailHeader`/
+  `renderSelfBuffMoveDetailHeader`/`sideBySideColumns` (see the file-tree entry above) is the
+  genuinely multi-caller case, shared today by Dresselhaus/Anderson/Majorana/Noether/Kondo's own
+  panels plus HubScene's Qumatex panel (the paginated-left-column shape), and by Laughlin's/
+  Skłodowska-Curie's own panels (the bespoke always-both-visible two-column shape). Both
+  Laughlin's and Skłodowska-Curie's panels also share `tunableMoveShop.ts`'s
+  `hostableClasses`/`renderInlineClassPicker` -- the inline quasiparticle-picker row strip each
+  renders directly beneath a move's own column, written generically (any move id, filtered to
+  whatever the player's current form can host via `canHost`; caller supplies its own row
+  labels/afford state) rather than folded into either guardian's own file, the same shape a
+  future guardian selling another tunable move could reuse. Their pricing models still differ --
+  Skłodowska-Curie's per-class-unlock cost is fundamentally different from Laughlin's flat
+  one-time move purchase (see "Guardians" below) -- so each panel keeps its own
+  `buyLaughlinMove`/`retuneLaughlinMove` or `pickUltimateClass` commit logic; only the picker's
+  own row-packing/rendering is shared.
+  Genuinely cross-cutting dialogue infrastructure -- `addDialogueButton(At)`,
   `renderPagedButtons`, `renderFarewellFooter`/`renderCancelFarewellFooter` (the latter's
   two-button "Never mind"/"Farewell" row, for a guardian panel with a pending two-step pick --
   Anderson's dope-in choice), `closeDialogue`, state accessors like
   `getUnlockedMoves`/`getDefeatedMaterials`/`getVisitedWorlds`/`isSuperpositionMode`, `world`/
-  `advanceToWorld` (Bloch's own travel action), every guardian's per-panel pagination/selection
+  `advanceToWorld` (Bloch's own travel action), every guardian's
+  per-panel pagination/selection
   field (`shopTab`, `blochPage`, `dresselhausPage`, `majoranaPage`,
-  `andersonPage`/`andersonSelection`/`andersonMovePage`, `feynmanPage`), each list+detail
-  crystal-pick step's own transient "which row is currently previewed but not yet committed"
-  field (`dresselhausPreview`, `andersonHostPreview`, `majoranaPreview` -- distinct from
-  `andersonSelection` above, which holds the already-*committed* host choice; Majorana has no
-  such committed-choice field of its own, since its panel is a single browse-by-result step and
-  `majoranaPreview` alone -- holding the previewed *hybrid result's* name -- drives its whole
-  detail pane), and the player-form
+  `andersonPage`/`andersonSelection`/`andersonMovePage`, `feynmanPage`,
+  `noetherMovePage`/`kondoMovePage`), each list+detail
+  crystal-, move-, or (Bloch's own) world-pick step's own transient "which row is currently
+  previewed but not yet
+  committed" field (`dresselhausPreview`, `andersonHostPreview`, `majoranaPreview`,
+  `noetherMovePreview`/`kondoMovePreview`/
+  `blochPreview` -- the last one `number | null`, a world number rather than a
+  crystal/move name string -- distinct
+  from `andersonSelection` above, which holds the already-*committed* host choice; Majorana/
+  Kondo/Bloch have no such committed-choice field of their own, since each
+  panel is a single browse step and its own preview field alone -- holding the previewed
+  *hybrid result's*/*move's*/*world number's* name -- drives its whole detail (or, for Bloch,
+  status/confirm) pane (Kondo's own committed choice,
+  which of its three moves is actually usable in battle, lives in registry/save
+  `kondoActiveMove` instead, set only by the detail pane's own confirm button, the same
+  "browsing is free, committing is the confirm button" split every other list+detail panel
+  uses)) -- Laughlin's and Skłodowska-Curie's own panels have no pagination/preview field of
+  their own at all, since each always renders both of its two fixed moves at once rather than
+  browsing a candidate list -- and the player-form
   mutator `applyPlayerForm` (shared by Dresselhaus's `transmuteInto` and Majorana's
   `becomeHybrid`, both of which moved into their own panel file as plain functions) -- is each
   member of `GuardianPanelHost`, implemented as public (not `private`) methods/fields on both
@@ -691,6 +800,26 @@ the longer window. A whiff (`bonusMultiplier === 0`, only reachable for an Ultim
 same way, just with `dmg` resolving to (near-)zero and the log line reading a distinct fizzle
 message rather than the ordinary "used `<move>`! (N dmg)" line.
 
+**A leveled move fires its animation as several staggered, growing repeats instead of once**
+(Feynman's move-leveling, §5, `data/materials.ts`'s `MoveLevel`/`getMoveLevel`) -- purely
+presentational, since `resolveHit`'s own `power`/`dmg` already fold in the real
+`MOVE_LEVEL_MULTIPLIERS` bump once, upstream of any of this. `resolveHit` computes `level =
+isPlayer ? getMoveLevel(this.game.registry, moveId) : 0` (an opponent's copy of the same move id
+never carries a level) and passes it as `playAttackEffect`'s last param on both its ordinary and
+Ultimate call sites, and `resolveSelfBuff` does the same for Kondo's three self-buff moves (also
+leveled by Feynman, `kondoMitigationFraction`). Inside `art/attackEffects.ts`,
+`playOrdinaryRepeats`/`playUltimateRepeats` fire `LEVEL_TRIGGER_COUNTS[level]` (1/2/3/4) copies
+of the single-hit beat, each `LEVEL_TRIGGER_SCALES` bigger than the last and staggered by a
+shape-family-specific delay (see STYLE.md's "Attack effects" for the exact numbers) -- only the
+LAST copy is wired to the real `onImpact`/`onComplete` a caller passed in; every earlier copy
+gets a no-op for both. This is what keeps a leveled Ultimate's `checkEndOrContinue` (folded into
+`onComplete` above) firing exactly once regardless of trigger count -- wiring it to every repeat
+instead would release `turnLock` (and could call `endBattle`) more than once per move. For an
+ordinary (non-Ultimate) move this repeat-count is lower-stakes structurally: `applyResult()`/
+`checkEndOrContinue()` already run synchronously right after `playAttackEffect` returns, not
+gated on any callback from it (this section's own opening paragraph), so how many times the
+animation itself fires can never affect real damage/turn-state for that path either way.
+
 **Battle move menu is sectioned, paged one section (or one section-fragment) at a time.**
 `BattleScene.moveSections(moveIds)` splits `getBattleMoves`'s result into up to four
 sections (a module-level `MoveSection[]`, filtered to only the ones with at least one usable
@@ -852,6 +981,32 @@ HP" below, stays fixed for the whole battle).
 walking to (or seeing) the goal. If a future guardian panel needs a progression action, route it
 through `showGatePanel`, not by reaching for `renderShopFooter` directly.
 
+**Overworld depth layering.** `OverworldScene`'s corridor is a fixed stack of Phaser depths:
+`worldGfx` (the single per-frame-rebuilt `Graphics` mesh for ground tiles and wall blocks) at the
+default depth 0; qumatessence token bodies at 19; every other `WorldSprite` body (wild-encounter
+crystal, guardian, boss, door) at 20; `actorWallGfx` at 21; every `WorldSprite`'s name label at 22;
+the player's own crystal container at a fixed 40 (`this.player.setDepth(40)`); `playerWallGfx` at
+41; corner HUD text at 50; and every dialogue/panel container at 100. Because every actor's depth
+is fixed rather than computed from its actual position, `worldGfx` alone can never let a wall
+block occlude any of them even when a wall tile is immediately adjacent -- `paintAdjacentWallFaces`
+(called once per actor group every frame right after `drawWorld()`/`updateWorldSprites()`) repaints
+just the wall face(s) bordering a given tile (in whichever of the four grid directions has a wall
+neighbor), reusing `paintWallFacesAroundTile` per tile so a directly-adjacent wall visually blocks
+that actor's lower body instead of it appearing to float in front of the wall. Two separate
+`Graphics` objects call into it rather than one shared layer, since a `WorldSprite` and the player
+can be several rows apart and a single depth-41 layer would let a nearer actor's own occluded wall
+face clip the farther-back player too: `playerWallGfx` (depth 41, above the player only) is
+repainted with just `[this.playerTile]`, and `actorWallGfx` (depth 21, above every `WorldSprite`
+body but below every label) is repainted with `occludableActorTiles()` -- the home tile of every
+currently-visible wild-encounter/token/guardian/boss/door sprite, deduped so two actors (or the
+player) sharing a tile don't double-paint the same face. `wallFaceColor` and `drawWallFace` are
+shared between both repaints and `drawWallFaces`'s normal per-tile rendering so a repainted face
+always matches the one underneath it exactly. A residual limitation: since `actorWallGfx` is one
+flat layer above every actor body, one actor's own occluding wall face can still paint over a
+second actor standing in an adjacent tile in the same column, rather than a real per-actor depth
+sort -- accepted as visually rare (two landmark actors are seldom tile-adjacent to each other) and
+not worth a full depth-sort rewrite.
+
 ## World progression
 
 `HubScene.highestUnlockedWorld()` walks `rivalDefeated` from world 1 until it finds a world not
@@ -861,10 +1016,12 @@ the Hub before the finale panel fires re-enters World 10 rather than a nonexiste
 compute the next world rather than hardcoding it. `advanceToWorld`'s second param, `enterFrom:
 'start' | 'goal'` (default `'start'`), is what the world-door feature (above) uses to land the
 player on the destination's `goalTile` instead of its `startTile` -- every other caller
-(`showBlochHub`'s destination buttons, `showStoryBeat`'s "Onward") omits it and gets the ordinary
+(`showBlochHub`'s own confirm button, `showStoryBeat`'s "Onward") omits it and gets the ordinary
 south-edge spawn. `BUILT_WORLDS = [1, 2, 3, 4, 5, 6, 7, 8, 9,
-10]` is the single source of truth for "worlds with a walkable map," used by Bloch's
-teleport destination filter (and, in Superposition Mode, the list every world gets
+10]` is the single source of truth for "worlds with a walkable map," used by Bloch's own
+destination table (every row in the table is a `BUILT_WORLDS` entry, `???`-masked until
+discovered -- see "Bloch in the overworld," STYLE.md) and, in Superposition Mode, the list every
+world gets
 pre-marked visited against -- `OverworldScene.applySuperpositionLeveling`); extend it (plus
 a biome entry in `art/biomes.ts`) together if a future world is ever added past 10.
 `OverworldScene.recordVisit()`/`getVisitedWorlds()` track registry/save key `visitedWorlds`
@@ -924,36 +1081,30 @@ a blind find-and-replace on a name is unsafe).
 Franklin (world 9), and Skłodowska-Curie (world 10) all have real mechanics**, following the
 same `open: (s) => showXPanel(s)` pattern as Noether/Bloch/Dresselhaus (see "Guardian panels"
 above for the `scenes/panels/` file-per-guardian convention every one of them follows):
-- **Franklin's passive panel** (`scenes/panels/franklin.ts`'s `showFranklinPanel`) and
-  **Kondo's self-buff-move panel** (`scenes/panels/kondo.ts`'s `showKondoPanel`) both sell the
-  same "still-unbought get a buy button, already-bought get a 'Make `<name>` active' button or a
+- **Franklin's passive panel** (`scenes/panels/franklin.ts`'s `showFranklinPanel`) sells the
+  "still-unbought get a buy button, already-bought get a 'Make `<name>` active' button or a
   dimmed '`<name>` (active)' tag" shape -- "buying the very first one auto-activates it, buying
-  a second or third doesn't" -- through one shared render engine,
-  `scenes/panels/passiveList.ts`'s `renderChoiceList(scene, container, y, items:
-  ChoiceListItem[], state: ChoiceListState, reopen, options?: ChoiceListRenderOptions)`. Each
-  guardian supplies its own thin adapter over its own registry keys rather than the two kits
-  sharing a registry shape: Franklin calls `renderPassiveList(scene, container, y, passiveIds,
-  owner: PassiveOwner, reopen, options?)`, a wrapper that builds `items` from `data/passives.ts`
-  and a `ChoiceListState` backed by `passivesUnlocked`/`activePassiveByOwner` (keyed by `owner`,
-  parameterized even though Franklin is the sole `PassiveOwner` today); Kondo builds its own
-  `items`/`state` (`kondo.ts`'s `kondoChoiceItems`/`kondoChoiceState`) directly against
-  `unlockedMoves` (a move, read by the battle move menu itself, not a passives-only concept) and
-  the flat `kondoActiveMove` key, and never passes `options`, so its own panel renders exactly as
-  it always has. `ChoiceListRenderOptions` (`centerX`/`wrapWidth`, defaulting to
-  `CANVAS_W / 2`/`480` if omitted; `onSelect`) is the opt-in surface franklin.ts's own
-  two-column layout (below) uses to lay the list out in a narrower right-hand column and to add a
-  non-committal "look" click on each row's description on top of the existing buy/activate
-  buttons. Like Kondo's self-buff moves, a passive is never gated by `MOVE_COMPATIBILITY` at all
-  (the same "player-learned technique, not a quasiparticle a crystal has to host" reasoning) --
-  every passive is always purchasable regardless of current form, so neither panel has a "wrong
-  form" empty state to special-case. Each still-unbought row also prints its own `description`
-  underneath in a smaller, capped-scale font (`Math.min(fontScale(this), 1.3)` for the buy
-  button itself, `1.2` for the description) -- neither panel has a shrink-to-fit safety net the
-  way `showInfoPanel` does, and letting either scale all the way to the text-size setting's
-  uncapped 'Large' preset (like every other guardian panel's buttons do) pushed the Farewell
-  button off the bottom of the canvas the first time this was tried, verified via a live
-  headless-Chromium run at every `fontScale` preset. See "Stats and battle resolution" above for
-  exactly how each of Franklin's three passives hooks into `BattleScene`.
+  a second or third doesn't" -- through `scenes/panels/passiveList.ts`'s
+  `renderChoiceList(scene, container, y, items: ChoiceListItem[], state: ChoiceListState, reopen,
+  options?: ChoiceListRenderOptions)` via its own thin `renderPassiveList(scene, container, y,
+  passiveIds, owner: PassiveOwner, reopen, options?)` wrapper, which builds `items` from
+  `data/passives.ts` and a `ChoiceListState` backed by `passivesUnlocked`/`activePassiveByOwner`
+  (keyed by `owner`, parameterized even though Franklin is the sole `PassiveOwner` today).
+  `ChoiceListRenderOptions` (`centerX`/`wrapWidth`, defaulting to `CANVAS_W / 2`/`480` if
+  omitted; `onSelect`) is the opt-in surface franklin.ts's own two-column layout (below) uses to
+  lay the list out in a narrower right-hand column and to add a non-committal "look" click on
+  each row's description on top of the existing buy/activate buttons. Like Kondo's self-buff
+  moves (below), a passive is never gated by `MOVE_COMPATIBILITY` at all (the same "player-learned
+  technique, not a quasiparticle a crystal has to host" reasoning) -- every passive is always
+  purchasable regardless of current form, so this panel has no "wrong form" empty state to
+  special-case. Each still-unbought row also prints its own `description` underneath in a
+  smaller, capped-scale font (`Math.min(fontScale(this), 1.3)` for the buy button itself, `1.2`
+  for the description) -- this panel has no shrink-to-fit safety net the way `showInfoPanel`
+  does, and letting either scale all the way to the text-size setting's uncapped 'Large' preset
+  (like every other guardian panel's buttons do) pushed the Farewell button off the bottom of the
+  canvas the first time this was tried, verified via a live headless-Chromium run at every
+  `fontScale` preset. See "Stats and battle resolution" above for exactly how each of Franklin's
+  three passives hooks into `BattleScene`.
 - **Franklin's own panel layout** puts a fixed-size crystal-preview block (`showFranklinPanel`'s
   `renderCrystalBlock`) in a left column beside the passive list's own right column (a `760`-wide
   panel split via `ChoiceListRenderOptions`' `centerX`/`wrapWidth`, divided by a thin vertical
@@ -1005,9 +1156,10 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   a leveling attempt against a move the player already owns. `renderMoveLevelList` builds one
   row per `scene.getUnlockedMoves()` entry (deliberately not `getBattleMoves()` -- a move
   currently unusable in the player's present form is still worth leveling), paginated via
-  `scene.renderPagedButtons`/`scene.feynmanPage` the same way Bloch's own destination list and
-  Anderson's second (which-move-to-learn) step are (see "Overworld menus and settings" below;
-  Dresselhaus's/Majorana's/Anderson's own crystal-list steps instead paginate via
+  `scene.renderPagedButtons`/`scene.feynmanPage` the same way
+  Anderson's second (which-move-to-learn) step is (see "Overworld menus and settings" below;
+  Dresselhaus's/Majorana's/Anderson's own crystal-list steps and Bloch's own destination table
+  instead paginate via
   `scenes/panels/listDetail.ts`'s `renderListColumn`, see "Candidate-crystal lists" above), since
   the full unlocked-move list can outgrow one panel well before Superposition Mode's "every
   crystal" case even applies. Each row reads a move's current level (`data/materials.ts`'s
@@ -1055,90 +1207,131 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   -- called only from the confirm button, the point the result is first previewed being already a
   free browse -- see the Superposition Mode bullets above and DESIGN.md §5 for the pricing
   rationale.
-- **Laughlin's Analytic-move shop** (`scenes/panels/laughlin.ts`'s `showLaughlinPanel`, calling
-  `scenes/panels/tunableMoveShop.ts`'s shared `renderTunableMoveShop(scene, container, y,
-  moveIds, reopen)`) mirrors `scenes/panels/noether.ts`'s `showNoetherShop`/`renderShopMoves`'s
-  standard `shopCost` purchase flow but sells only `data/materials.ts`'s `ANALYTIC_MOVE_IDS`
-  (a hardcoded pair, `skyfallBeam`/`groundEruption` -- identity by id, since neither move has a
-  distinguishing class of its own to filter on), which `SHOP_MOVE_IDS` deliberately excludes so
-  Noether never also offers them. Two rendered sections: still-unbought moves, then every
-  already-bought one showing which quasiparticle it's tuned to (its row label is
-  `tunedMoveDisplayName`, e.g. "Magnon Lance -- tuned to Magnon (retune)"). Buying
-  (or later retuning) a move opens `tunableMoveShop.ts`'s `showMoveClassPicker` -- a sub-panel
-  offering `TUNABLE_MOVE_CLASSES` (every ordinary Attacks-section class, i.e. everything except
-  Kondo's `'screening'`) filtered through `canHost(playerMaterial.type, cls)` (so only
-  classes the player's *current* form can host are ever pickable), each labeled via
-  `quasiparticleLabel` -- which writes registry/save `moveClassTuning[moveId]` (a map shared
-  with Skłodowska-Curie's Ultimate moves below, since it's keyed by move id, not owner), read by
-  `data/materials.ts`'s `getTunedMoveClass` in place of the move's own static `class`
+- **Noether's Moves tab** (`scenes/panels/noether.ts`'s `showNoetherShop`/`renderShopMoves`)
+  browses by move through the list+detail layout ("Candidate-crystal
+  lists" below extends to move-browsing too) rather than a flat button list: the left column
+  names candidates (still-unbought, current-form-compatible `SHOP_MOVE_IDS`), a row click only
+  sets the panel's own preview field (`scene.noetherMovePreview`,
+  "Candidate-crystal lists" below), and the right column's `renderMoveDetailHeader`
+  (`scenes/panels/listDetail.ts`, backed by `art/moveEffectPreview.ts`'s
+  `startMoveEffectPreview`) shows that move's own real battle-effect animation looping, plus a
+  cost/status line and a "Learn `<name>` (`<cost>` qumatessence)" confirm button that
+  deducts `shopCost` and appends to `unlockedMoves` directly. `ANALYTIC_MOVE_IDS`/
+  `ULTIMATE_MOVE_IDS` (below) are deliberately excluded from `SHOP_MOVE_IDS` so Noether never
+  also offers Laughlin's/Skłodowska-Curie's own moves.
+- **Laughlin's Analytic-move panel** (`scenes/panels/laughlin.ts`'s `showLaughlinPanel`/
+  `renderAnalyticColumns`/`renderAnalyticColumn`) is a **bespoke two-column layout**, not the
+  list+detail shape above -- with only ever two fixed moves (`ANALYTIC_MOVE_IDS`:
+  `skyfallBeam`/`groundEruption`), both always render side by side at once
+  (`scenes/panels/listDetail.ts`'s `sideBySideColumns`, panel width `TWO_UP_PANEL_W`) rather than
+  being browsed one at a time through a candidate list, so there is no preview/pagination field
+  of Laughlin's own on `GuardianPanelHost` at all. Each column's own `renderMoveDetailHeader`
+  call (its own `laughlin:<moveId>`-keyed preview chain, "Attack effects" in STYLE.md and
+  `art/moveEffectPreview.ts` above) shows that move's own real battle-effect animation looping,
+  its name read via `moveDisplayName` (folds in both the current quasiparticle and Feynman's own
+  level prefix). Below that, a status line, then -- **inline, directly beneath that column**,
+  not a separate full-panel sub-view -- `scenes/panels/tunableMoveShop.ts`'s
+  `hostableClasses`/`renderInlineClassPicker`: one small pill button per `TUNABLE_MOVE_CLASSES`
+  entry (every ordinary Attacks-section class, i.e. everything except Kondo's `'screening'`)
+  filtered through `canHost(playerMaterial.type, cls)` (so only classes the player's *current*
+  form can host are ever pickable), each labeled via `quasiparticleLabel`. Clicking a row on a
+  still-unbought move both buys (checks/deducts `shopCost`, appends to `unlockedMoves`) and tunes
+  in one click (`buyLaughlinMove`); clicking a row on an already-bought move just retunes, free
+  (`retuneLaughlinMove`) -- either way it writes registry/save `moveClassTuning[moveId]` (a map
+  shared with Skłodowska-Curie's Ultimate moves below, since it's keyed by move id, not owner),
+  read by `data/materials.ts`'s `getTunedMoveClass` in place of the move's own static `class`
   (which defaults to `'phonon'`, the same universal class Phonon Beam carries) wherever
   `BattleScene` checks quasiparticle-mismatch (both `addMoveButton`'s `!!2x`
-  tag and `resolveHit`'s actual damage multiplier) and by `tunedMoveDisplayName` for the
-  label; the move's own static `class` never changes, so an untuned move stays
-  purchasable/usable from any form and still asks its question regardless of tuning. The
-  picker only filters at pick time, so a saved assignment can outlive a later transmute into
+  tag and `resolveHit`'s actual damage multiplier) and by `tunedMoveDisplayName`/`moveDisplayName`
+  for the label; the move's own static `class` never changes, so an untuned move stays
+  purchasable/usable from any form and still asks its question regardless of tuning. Retuning
+  only filters at pick time, so a saved assignment can outlive a later transmute into
   a form that can't host it -- `getTunedMoveClass` re-checks `canHost` against the player's
   *current* form every call and falls back to `'phonon'` (universal) when it
-  fails, and `tunedMoveDisplayName`/the shop row label read that same fallback rather than the
-  raw saved value, so name and mismatch math can't disagree -- `tunedMoveDisplayName` reads as
-  "Phonon Lance"/"Phonon Eruption" in that state, the shop row's own fallback text reads the
-  bare noun instead ("reverted to Phonon", `quasiparticleLabel`). See
-  `BattleScene.showAnalyticQuestion` (Stats and battle resolution, above) for how a purchased
-  Analytic move actually plays out in a fight.
-- **Skłodowska-Curie's Ultimate-move shop** (`scenes/panels/sklodowskaCurie.ts`'s
-  `showSklodowskaCuriePanel`/`renderUltimateMoves`/`showUltimateClassPicker`) sells
-  `data/materials.ts`'s `ULTIMATE_MOVE_IDS` (`ultimateMeteor`/`ultimateNova`), and is deliberately
-  **not** built on `tunableMoveShop.ts` -- her pricing model has no separate "buy the move" step
-  at all. `renderUltimateMoves` shows one row per Ultimate move, always (there's no
-  forSale/learned split the way `renderTunableMoveShop`'s does, since opening the class picker
-  and paying for a class *is* what first unlocks the move): the row names the move's current
-  quasiparticle (`tunedMoveDisplayName`/`getTunedMoveClass`, the same helpers Laughlin's shop
-  reads/writes) or says "not yet unlocked" if the move isn't in `unlockedMoves` yet.
-  `showUltimateClassPicker` offers the same `TUNABLE_MOVE_CLASSES`-filtered-by-`canHost` list
-  `showMoveClassPicker` does, but each row's cost is per-class rather than a flat move price:
-  "Free (already unlocked)" for a class already in registry/save
-  `ultimateClassesUnlocked[moveId]`, else `ULTIMATE_CLASS_UNLOCK_COST` (1000) qumatessence.
-  Picking an already-unlocked class just retunes (writes `moveClassTuning[moveId]`); picking a
+  fails, and `tunedMoveDisplayName`/the status line read that same fallback
+  rather than the raw saved value, so name and mismatch math can't disagree --
+  `tunedMoveDisplayName` reads as "Phonon Lance"/"Phonon Eruption" in that state, the status
+  line's own fallback text reads the bare noun instead ("reverted to Phonon",
+  `quasiparticleLabel`). `ANALYTIC_MOVE_IDS` is identity-by-id (`skyfallBeam`/`groundEruption`
+  -- neither move has a distinguishing class of its own to filter on). See
+  `BattleScene.showAnalyticQuestion`
+  (Stats and battle resolution, above) for how a purchased Analytic move actually plays out in a
+  fight.
+- **Skłodowska-Curie's Ultimate-move panel** (`scenes/panels/sklodowskaCurie.ts`'s
+  `showSklodowskaCuriePanel`/`renderUltimateColumns`/`renderUltimateColumn`/
+  `pickUltimateClass`) is the same **bespoke two-column layout** Laughlin's own panel uses, and
+  is deliberately **not** built on `tunableMoveShop.ts`'s buy/retune commit logic (though it does
+  share that module's `hostableClasses`/`renderInlineClassPicker` row-rendering) -- her pricing
+  model has no separate "buy the move" step at all. Both of the fixed `ULTIMATE_MOVE_IDS`
+  (`ultimateMeteor`/`ultimateNova`) always render side by side, named via `moveDisplayName`
+  (there's no forSale/learned split the way Noether's/Laughlin's own left columns have, since
+  picking a class *is* what first unlocks the move); each column's `renderMoveDetailHeader` shows
+  its own animation looping (overridden to the longer `playMeteor`/`playNova`
+  sequences via `ULTIMATE_SHAPES`, "Attack effects" in STYLE.md, its own `curie:<moveId>`-keyed
+  preview chain), a status line reading the
+  move's current quasiparticle (`getTunedMoveClass`, the same helper Laughlin's panel reads) or
+  "Not yet unlocked" if the move isn't in `unlockedMoves` yet, and -- **inline directly beneath
+  it** -- one pill button per hostable class, this time each row's own cost read straight off
+  registry/save `ultimateClassesUnlocked[moveId]` rather than a flat move price: "Free" (plus
+  " (current)" on the presently-tuned class) for a class already unlocked for that move, else
+  `ULTIMATE_CLASS_UNLOCK_COST` (1000) qumatessence, dimmed per-row (not all rows together, unlike
+  Laughlin's flat-cost picker) if the player can't afford that specific class right now. Picking
+  an already-unlocked class just retunes (writes `moveClassTuning[moveId]`); picking a
   new one deducts the cost, appends the class to `ultimateClassesUnlocked[moveId]`, retunes, and
   -- only on that move's very first-ever unlock -- appends the move id to `unlockedMoves` so it
-  appears in the battle menu. Once tuned, an Ultimate move's battle-side quasiparticle-mismatch
+  appears in the battle menu (`pickUltimateClass` does all of this in one click, no separate
+  sub-panel). Once tuned, an Ultimate move's battle-side quasiparticle-mismatch
   math reads exactly like an Analytic move's (`getTunedMoveClass`) -- no special-casing beyond
   the 3-question gate, which lives entirely in `BattleScene` (see "Ultimate moves defer
   damage/turn-handoff," above, and `showUltimateQuestions` in "Battle move menu is sectioned,"
-  above). Unlike `showMoveClassPicker` (every row there is always immediately actionable, so it
-  needs no separate exit), a row here can be genuinely unaffordable -- with no class yet
-  unlocked for that move and too little qumatessence, every row is a no-op click. A `<- Back`
-  footer button (calling the same `onDone` a successful pick would) is therefore required:
-  any sub-panel where every row *can* be a dead end needs an explicit way out that doesn't
-  depend on one of those rows succeeding.
-- **Kondo's self-buff shop** (`scenes/panels/kondo.ts`'s `showKondoPanel`, via the shared
-  `renderChoiceList` engine described above under Franklin's passive panel)
-  sells `data/materials.ts`'s `KONDO_MOVE_IDS` (three moves:
-  `screeningCloud`/`scatteringDrag`/`kondoBreakdown`, each tied to one of `types.ts`'s
-  `'screening'`-class `MOVES` entries, deliberately excluded from `SHOP_MOVE_IDS`/
-  `ANALYTIC_MOVE_IDS`/`ULTIMATE_MOVE_IDS`). Not Laughlin's flat buy-only shop: still-unbought
-  moves (usable from any form, since a self-buff isn't gated by
-  `MOVE_COMPATIBILITY` at all, same afford/dim buy-button treatment as every shop) are followed
-  by every already-bought Kondo move as its own row -- a bought-and-inactive move gets a "Make
-  `<name>` active" button, the currently active one (registry/
-  save `kondoActiveMove: string | null`) shows a dimmed "`<name>` (active)" tag instead (no
-  click handler). Every row, bought or not, also prints the move's own `description`
-  underneath (`data/materials.ts`'s `Move.description`, only Kondo's three moves carry one),
-  the same convention `renderChoiceList` gives Franklin's own passives. Buying
-  the first Kondo move auto-activates it (so a purchase is
-  never silently unusable); buying a second or third on top of an already-active one doesn't
-  -- switching between already-bought moves is always its own explicit click either way, and
-  only one can ever be active at a time. None of the three is gated by `MOVE_COMPATIBILITY`,
-  so every one of them is always for sale until bought -- there's no empty/wrong-form state to
-  render here, unlike Noether's shop. This
-  active/inactive split is a narrow, Kondo-specific special case in
-  `getBattleMoves` (`data/materials.ts`): a `KONDO_MOVE_IDS` entry is surfaced purely by
+  above). A row here can be genuinely unaffordable -- with no class yet
+  unlocked for a move and too little qumatessence, that row is a no-op click -- but the picker
+  needs no dedicated escape button of its own for that case: `renderFarewellFooter` is always
+  present below both columns regardless of affordability, so there is no dead-end risk to guard
+  against (a too-poor player is never left with nothing clickable and `dialogueActive` stuck
+  true).
+- **Kondo's self-buff shop** (`scenes/panels/kondo.ts`'s `showKondoPanel`) sells
+  `data/materials.ts`'s `KONDO_MOVE_IDS` (three moves: `screeningCloud`/`scatteringDrag`/
+  `kondoBreakdown`, each tied to one of `types.ts`'s `'screening'`-class `MOVES` entries,
+  deliberately excluded from `SHOP_MOVE_IDS`/`ANALYTIC_MOVE_IDS`/`ULTIMATE_MOVE_IDS`). List+detail
+  browse-by-move shop like Noether's above (`scenes/panels/
+  listDetail.ts`, "Candidate-crystal lists" above): the left column names all three
+  `KONDO_MOVE_IDS` via `moveDisplayName`; a row click only sets `scene.kondoMovePreview`
+  (browsing costs nothing regardless of how many moves are looked at, same as every other
+  list+detail panel). Unlike Noether's/Laughlin's/Skłodowska-Curie's own moves, a Kondo move is a
+  self-buff rather than a travelling attack -- `BattleScene.resolveSelfBuff` plays its real
+  effect centered on the caster's own position (`from === to === pos`, not flying attacker to
+  target) -- so the right column's detail header is `renderMoveDetailHeader`'s self-buff sibling,
+  `renderSelfBuffMoveDetailHeader`: it renders the player's own current crystal
+  (`scene.playerMaterial`, same `makeCrystal` call/ground-shadow-ellipse convention as
+  Franklin's own crystal block, `art/franklin.ts`) standing in the block with the move's
+  `'screening'`-class ring effect looping centered on it (`art/moveEffectPreview.ts`'s
+  `startMoveEffectPreview`, called with an identical `from`/`to` point -- needed no change to
+  support this, since `art/attackEffects.ts`'s `playRing` already collapses its own
+  `Phaser.Math.Linear(from, to, 0.12)` origin to that single point when `from` equals `to`, the
+  same call `resolveSelfBuff` makes for a real cast). Below that: the move's own `description`
+  (`data/materials.ts`'s `Move.description`, only Kondo's three moves carry one), then a
+  cost/status line and a confirm button -- "Learn `<name>` (`<cost>` qumatessence)" for a
+  still-unbought move (dimmed if unaffordable), "Make `<name>` active" for an already-bought,
+  inactive move, or a dimmed "`<name>` (active)" tag (no-op click) for whichever one is currently
+  active (registry/save `kondoActiveMove: string | null`) -- the one action that actually
+  checks/spends the cost and, for a still-unbought move, appends it to `unlockedMoves`. Buying
+  the very first Kondo move auto-activates it (so a purchase is never silently unusable); buying
+  a second or third on top of an already-active one doesn't -- switching between already-bought
+  moves is always its own explicit click either way, and only one can ever be active at a time.
+  None of the three is gated by `MOVE_COMPATIBILITY`, so every one of them is always for sale
+  until bought -- there's no empty/wrong-form state to render here, unlike Noether's shop. Kondo
+  has no committed-choice field of its own the way Anderson's two-step pick does -- like
+  Majorana/Laughlin/Skłodowska-Curie, `scene.kondoMovePreview` alone drives the whole detail
+  pane, and the actual commit is registry/save `kondoActiveMove`, written only by the detail
+  pane's own confirm button. This active/inactive split is a narrow, Kondo-specific special case
+  in `getBattleMoves` (`data/materials.ts`): a `KONDO_MOVE_IDS` entry is surfaced purely by
   whether it equals `kondoActiveMove`, checked before (not intersected with) the ordinary
-  `compatibleMoves` filter every other learned move goes through -- no other move class has
-  (or needs) an equip-slot-style mechanic like this. In battle, casting one calls
-  `BattleScene`'s `resolveSelfBuff`/`applyOrTickBuff` (see "Self-buffs (Kondo's three moves)"
-  above) to apply its one fixed buff (`KONDO_MOVE_BUFF`, no randomness -- the move id decides
-  the buff) to the caster's own side, not the opponent.
+  `compatibleMoves` filter every other learned move goes through -- no other move class has (or
+  needs) an equip-slot-style mechanic like this. In battle, casting one calls `BattleScene`'s
+  `resolveSelfBuff`/`applyOrTickBuff` (see "Self-buffs (Kondo's three moves)" above) to apply its
+  one fixed buff (`KONDO_MOVE_BUFF`, no randomness -- the move id decides the buff) to the
+  caster's own side, not the opponent.
 - **Anderson's impurity-doping panel** (`scenes/panels/anderson.ts`'s `showAndersonPanel`/
   `learnImpurityMove`) is its own two-step pick (host, then move), and
   only its first step uses the list+detail layout ("Candidate-crystal lists" above) -- the
@@ -1250,8 +1443,10 @@ loops (floor `9`px) since their body length varies more per instance.
 **Story Mode vs. Superposition Mode** (save/registry `superpositionMode`, picked on
 `TitleScene`'s title screen via `addModeSelector` -- a two-button picker, not a toggle; Story
 Mode is just `superpositionMode: false`, no separate field): Superposition Mode is a
-testing/exploration aid, not part of normal progression. Several things key off
-`isSuperpositionMode()`:
+testing/exploration aid, not part of normal progression. This same flag also selects which of
+`data/save.ts`'s two independent localStorage slots a given save reads from/writes to (see
+"Save schema" below) -- Story and Superposition progress live in entirely separate files, never
+sharing state. Several things key off `isSuperpositionMode()`:
 - `OverworldScene.applySuperpositionUnlocks(registry)` (exported right after `BUILT_WORLDS`,
   registry-only with no scene/world dependency of its own) is the shared "everything is
   already unlocked" grant, called from two places: `HubScene.create()` (so the Lab's own
@@ -1297,11 +1492,15 @@ testing/exploration aid, not part of normal progression. Several things key off
   world doors, or from the Lab's own Guardians station once met once) is sufficient for
   world-to-world movement on its own regardless of whether this door has ever been used, per
   the candidate-pool point below.
-- `showBlochHub`/`showDresselhausPanel`/`showMajoranaPanel`/`showAndersonPanel` each swap their
-  candidate pool -- Bloch's persisted `getVisitedWorlds()` filtered to `BUILT_WORLDS`, the other
-  three's `getDefeatedMaterials()` -- for the full pool (`BUILT_WORLDS`, `allCrystals()`) when
-  `isSuperpositionMode()` is true, rather than reading whatever's actually been visited/defeated
-  so far. Bloch's swap does not lean on `visitedWorlds` being pre-seeded by the grant above --
+- `showDresselhausPanel`/`showMajoranaPanel`/`showAndersonPanel` each swap their
+  candidate pool -- `getDefeatedMaterials()` -- for the full pool (`allCrystals()`) when
+  `isSuperpositionMode()` is true, rather than reading whatever's actually been defeated
+  so far. `showBlochHub`'s own table always lists every `BUILT_WORLDS` entry regardless of mode
+  (see "Bloch in the overworld," STYLE.md); what Superposition Mode swaps there is the
+  *discovered* set that decides which rows show their real name versus `???` -- persisted
+  `getVisitedWorlds()` filtered to `BUILT_WORLDS` in Story Mode, `BUILT_WORLDS` outright (every
+  world reads as discovered) in Superposition Mode. This swap does not lean on `visitedWorlds`
+  being pre-seeded by the grant above --
   even though `HubScene.create()`'s own call to `applySuperpositionUnlocks` already seeds
   `visitedWorlds` before any panel can open, checking `isSuperpositionMode()` directly keeps
   Bloch's hub decoupled from that seeding order, working immediately from the Lab on a
@@ -1310,7 +1509,8 @@ testing/exploration aid, not part of normal progression. Several things key off
   `isSuperpositionMode()` directly (not the persisted `blochUnlockedWorlds`/
   `dresselhausUnlockedCrystals`/`majoranaUnlockedResults`/`andersonUnlockedHosts` lists) to
   treat every individual option -- every world, crystal, hybrid result, or host -- as already
-  unlocked, the same way Skłodowska-Curie's `showUltimateClassPicker` treats every
+  unlocked, the same way Skłodowska-Curie's own panel (`renderUltimateColumn`/`pickUltimateClass`)
+  treats every
   quasiparticle class as already unlocked in this mode -- so toggling the mode back off doesn't
   leave any option permanently free sitting in the save.
 
@@ -1365,25 +1565,28 @@ shared "Close" footer, with the blurb's own font shrinking in whole-px steps (fl
 long entry would otherwise overflow.
 
 **Plain single-column candidate lists share one pager: `OverworldScene.renderPagedButtons<T>`.**
-Used by Anderson's second step (which move to learn from an already-chosen host) and Bloch's
-destination list -- anywhere Superposition Mode's "every crystal"/"every world" pool can
-outgrow one panel and there's no crystal art worth previewing per row (a move, a world name).
+Used by Anderson's second step (which move to learn from an already-chosen host) and Feynman's
+own move-leveling list -- anywhere Superposition Mode's "every crystal/move" pool can
+outgrow one panel and there's no crystal art worth previewing per row. Bloch's own destination
+list used this too before its table+map rework (see "Bloch in the overworld," STYLE.md) --
+its own left column is a `scenes/panels/listDetail.ts` table now, not this pager.
 Takes the container/running-`y`/item array/current page/a `maxPerPage`
 ceiling/label+onPick callbacks/an `onPageChange` callback (expected to rebuild the whole panel:
 set the field, destroy `dialogueContainer`, re-call `showXPanel()` -- same pattern as every
 other in-panel action) and returns the advanced `y`. **The actual per-page row count isn't
 `maxPerPage` verbatim** -- it measures every candidate's own label for real at the current
 `fontScale` (`ui/text.ts`), off-canvas and destroyed immediately after, and packs each page
-until the next label wouldn't fit above the panel's own trailing footer, because a fixed
-row count overflowed the canvas once the *default* text-size preset (1.5x, not 1x) met a
-9-destination Bloch list, and a uniform single-line estimate under-counts a page's real
+until the next label wouldn't fit above the panel's own trailing footer, since a fixed
+row count risks overflowing the canvas at the *default* text-size preset (1.5x, not 1x) once
+Superposition Mode makes a long candidate list the common case, and a uniform single-line
+estimate under-counts a page's real
 height once a long, multi-word label (a crystal name, or a guardian-shop row with a cost
 suffix) word-wraps to two lines rather than staying on one. The trailing `<- Prev`/
 `Next ->`/`Page N/M` row (only rendered once the list needs more than one page) is a single
 shared row, not a button row with the page label stacked underneath it -- reclaiming that
 row's worth of height is what keeps a guardian whose avatar/intro text already leaves little
 slack (Anderson) inside the canvas at the largest text-size preset. Each caller owns
-its own page field (`andersonMovePage`, `blochPage`, `feynmanPage`), all reset in both
+its own page field (`andersonMovePage`, `feynmanPage`), all reset in both
 `create()` and `closeDialogue()` the same way `andersonSelection` is. Reuse this rather than a
 bespoke row-count/shrink-to-fit calculation for any future plain candidate list that can grow
 unboundedly and has no crystal art to preview.
@@ -1391,24 +1594,46 @@ unboundedly and has no crystal art to preview.
 **Candidate-crystal lists that *do* have art to preview instead use the two-column
 `scenes/panels/listDetail.ts` scaffolding** (STYLE.md's "List+detail panels") -- Dresselhaus's
 transmute list, Majorana's browse-by-hybrid-result list, Anderson's own host-pick (first) step,
-and HubScene's Qumatex panel. `renderListColumn<T>` is this layout's own left-column pager: a
+and HubScene's Qumatex panel, the same shape a *move*-browsing shop (Noether's Moves tab and
+Kondo's own self-buff step, see "Guardians" above) also builds on, with a real battle-effect
+animation (`art/moveEffectPreview.ts`) standing in for a crystal render. Bloch's own destination
+table (`scenes/panels/bloch.ts`) builds on the same left-column scaffolding to browse by *world
+number* instead, and its own detail pane opens with the Qumatuomi map (`art/qumatuomiMap.ts`)
+fixed at the top -- rendered once showing all 10 worlds regardless
+of the current selection, unlike the rest of the pane below it -- in place of the crystal-render-
+plus-name block a crystal-browsing panel's own detail pane opens with, followed by the previewed
+destination's own physics blurb/cost/status/confirm content;
+see "Bloch in the overworld" (STYLE.md) for the full layout. Laughlin's and
+Skłodowska-Curie's own panels do *not* use this scaffolding at all -- each has exactly two fixed
+moves, always both rendered at once through their own bespoke `sideBySideColumns` layout instead
+of a browsed candidate list (see "Guardians" above); neither imports `renderListColumn` or
+`listDetailColumns`.
+`renderListColumn<T>`
+is this layout's own left-column pager: a
 single fixed sample-row-height measurement (not `renderPagedButtons`' per-item real-height
 packing) reserving two rows' worth of tail space for the caller's own trailing content plus two
 more for its own Prev/Next/Page-N/M row, whether or not that row ends up rendering -- the same
 technique Qumatex's own left column always used, simpler than `renderPagedButtons`' two-pass
-packing since a list+detail row is always just a plain crystal/hybrid name (no cost suffix,
-since cost lives in the detail pane instead) and therefore always one line. Selection here is
-two-layered: `selectedId`/`onSelect` identify *which row is currently previewed* (a new
-transient field per panel -- `dresselhausPreview`, `andersonHostPreview`, `majoranaPreview`, see
-above), separate from whichever *committed* two-step-flow field (`andersonSelection`) a panel
-with an actual two-step flow already carries -- clicking a row only changes the preview, at no
+packing since a list+detail row is always just a plain crystal/hybrid/move/world name (no cost
+suffix, since cost lives in the detail/status pane instead) and therefore always one line.
+Selection here is
+two-layered: `selectedId`/`onSelect` identify *which row is currently previewed* (a transient
+field per panel -- `dresselhausPreview`, `andersonHostPreview`, `majoranaPreview`,
+`noetherMovePreview`, `kondoMovePreview`, `blochPreview`, see above),
+separate from
+whichever *committed* two-step-flow field (`andersonSelection`) a panel
+with an actual two-step flow already carries -- clicking a row (or, for Bloch, a map marker too)
+only changes the preview, at no
 cost; the right/detail column's own explicit confirm button is what actually applies the
 guardian's mechanic. `insertColumnDivider` draws the line between the two columns once both are
 known, `fitListLabel` is the shared ellipsis-trim-on-overflow helper, and
-`renderDetailCrystalHeader` is the shared crystal-render-plus-name block the three guardian
-panels each build their own status text and confirm button on top of (Qumatex's own detail pane
-stays a separate render since it additionally masks an undiscovered entry and appends a physics
-blurb). `LIST_DETAIL_PANEL_W` (`720`) is the panel width every list+detail panel uses.
+`renderDetailCrystalHeader`/`renderMoveDetailHeader` are the shared header blocks each guardian
+panel builds its own status text and confirm button on top of -- a crystal render plus name for
+the three crystal-browsing panels, a looping battle-effect animation plus name for the
+move-browsing one (Noether's; Qumatex's own detail pane stays a separate render since it
+additionally masks an undiscovered entry and appends a physics blurb). `LIST_DETAIL_PANEL_W`
+(`720`) is the panel width every list+detail panel uses; Laughlin's/Skłodowska-Curie's own
+bespoke panels use the wider `TWO_UP_PANEL_W` (`800`) instead (see "Guardians" above).
 
 ## Save schema
 
@@ -1421,7 +1646,10 @@ history list of past Majorana fusions, every visit to his panel recomputes which
 reachable fresh),
 `tutorialTipsSeen:
 string[]`, `superpositionMode: boolean` (Story Mode is just its `false` state -- see "Story
-Mode vs. Superposition Mode" above), `encounterDensity: number` (one of
+Mode vs. Superposition Mode" above; also the routing key `saveKeyFor()` uses to pick which of
+`data/save.ts`'s two localStorage slots a given read/write belongs to, forced by `loadSave()`
+to always match the slot actually read rather than trusted from the stored blob),
+`encounterDensity: number` (one of
 `data/settings.ts`'s `DENSITY_PRESETS`, set via the Lab's Settings station),
 `musicStyle: MusicStyle` (same station's third row, one of `data/settings.ts`'s
 `MUSIC_STYLE_PRESETS` -- which of `audio/music.ts`'s `SCORES`/`SCORES_MODERN`
@@ -1484,23 +1712,27 @@ which guard against a *reference* going stale inside an otherwise current-shape 
 can happen in any version whenever content is renamed, not just at a save-format change, so
 those stay permanent and unversioned rather than living in `MIGRATIONS`.
 
-**Gotcha: `TitleScene.create()` copies `SaveData` into the registry field-by-field, not by
-looping over the object.** `defaultSave()`/`persistFromRegistry()` being updated for a new
-field isn't enough on its own -- `TitleScene`'s `registry.set('<key>', save.<key>)` calls are
-a third, separate hand-written list that has to gain the same new field too, or that field
-silently stays `undefined` in the registry on every fresh load (a save file itself would still
-have the right value, since `loadSave()`'s `{ ...defaultSave(), ...saved }` spread is generic
--- only the registry-seeding step in `TitleScene` is the hand-listed one). Caught the hard way
-while wiring up `activePassiveByOwner`: `OverworldScene`/`BattleScene`
+**Gotcha: `TitleScene.loadIntoRegistry()` copies `SaveData` into the registry field-by-field,
+not by looping over the object.** `defaultSave()`/`persistFromRegistry()` being updated for a
+new field isn't enough on its own -- `loadIntoRegistry`'s `registry.set('<key>', save.<key>)`
+calls are a third, separate hand-written list that has to gain the same new field too, or that
+field silently stays `undefined` in the registry on every fresh load (a save file itself would
+still have the right value, since `loadSave()`'s `{ ...defaultSave(), ...saved }` spread is
+generic -- only this registry-seeding step is the hand-listed one). Caught the hard way while
+wiring up `activePassiveByOwner`: `OverworldScene`/`BattleScene`
 both read the *registry*, not `loadSave()` directly, so a field missing from this list reads as
 permanently unset in every scene despite `data/save.ts` being fully correct.
+`loadIntoRegistry(superposition)` is called both at boot and every time the mode picker
+switches (so switching modes never leaves one mode's fields sitting in the registry under the
+other's flag), so this list only needs to exist in one place regardless of entry point.
 
-**Starting over.** `data/save.ts`'s `clearSave()` just removes the localStorage key --
-`TitleScene`'s "New Game (erase save)" link (behind `confirmNewGame`'s yes/no confirm) pairs it
-with `this.scene.restart()` rather than hand-resetting the registry, so the same
-`loadSave()`-into-registry block at the top of `create()` re-seeds every key from
-`defaultSave()`. Any future direct registry reset (skipping a scene restart) would need to
-re-seed every key itself -- prefer the restart approach.
+**Starting over.** `data/save.ts`'s `clearSave(superposition)` just removes the matching
+localStorage key -- `TitleScene`'s "New Game (erase save)" link (behind
+`confirmNewGame`'s yes/no confirm) erases only the currently selected mode's own slot, then
+calls `loadIntoRegistry`/`redrawContent` directly for that same mode rather than
+`this.scene.restart()`, so the picker stays on the mode the player was just looking at instead
+of re-running the initial-mode tiebreak (which could otherwise flip the screen to the *other*
+mode right after the erase, if that one still has a save).
 
 ## How to use this file
 

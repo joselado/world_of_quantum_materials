@@ -11,27 +11,51 @@ than appending a changelog, so this always reflects current reality.
 
 - Dark indigo gradient (`0x0c1030` → `0x241a44`), no biome/perspective machinery involved --
   this screen exists to load the save (see DESIGN.md §7) and hand off to the Hub, not to be a
-  world of its own. Title text reads "WORLD OF QUANTUM MATERIALS" (`26px` bold) over "a
-  crystal RPG" in muted italic blue-grey. Button label reads "Continue" if a save exists
-  (`data/save.ts`'s `hasSave`) or "New Game" otherwise; both SPACE and a click on the button
-  start the Hub.
-- Above the title text, a small showcase cluster of five crystals (`drawShowcaseCrystals`,
-  the module-level `SHOWCASE` array) rather than a single crystal -- a curated handful of
-  `data/materials.ts`'s `TYPE_LOOK` entries (metal, quantumSpinLiquid, classicalMagnet,
-  superconductor, quantumSpinHall), not tied to the player's own save/current form, since this is a "world full
-  of different materials" branding image rather than a "welcome back" one (the Hub is where
-  the player's own crystal gets its own moment). One centered "hero" crystal (biggest,
-  drawn last so it renders on top) flanked by two nearer and two further/smaller ones, each
-  bobbing on its own independent duration/delay so the cluster reads as alive rather than a
-  single synchronized animation.
-- Below the "Press SPACE..." hint, a **mode picker** (`addModeSelector`) rather than a single
-  toggle switch -- two side-by-side text buttons, "Story Mode" and "Superposition Mode", both
-  backed by the same `superpositionMode` boolean (Story Mode is just its `false` state). The
-  active one highlights (`#ffff88` yellow for Story, `#ff8fa0` warning pink for Superposition,
-  each with a lighter `#33335a` background) while the inactive one dims to `#8fa0c9`/`#1a1a2e`.
-  A one-line dim caption underneath spells out what each mode actually does (start at World 1
-  in order, vs. every guardian/transmutation/hybrid available immediately). Deliberately placed
-  on the title screen, as a choice made before starting a run, rather than toggleable mid-run.
+  world of its own. Everything below the gradient (showcase, title, button, mode picker, hint)
+  is built inside one container, laid out top-down in the container's own local coordinates
+  first; only once the whole stack's real height is known does the container get offset
+  (`root.y = Math.max(6, Math.round((CANVAS_H - y) / 2))`) so the *whole composition* centers
+  vertically in the canvas, the same measure-then-center pattern `confirmNewGame` below uses
+  for its own popup -- needed here because the stack's real height depends on both the save
+  state (an existing save adds an "erase save" line) and the Settings panel's text-size preset.
+- Title text reads "WORLD OF QUANTUM MATERIALS" (`30px` bold, white), the screen's visual
+  anchor -- big enough and high enough in the stack that the showcase and mode picker below
+  read as framing it rather than the other way around. Its font size is capped at the
+  "Normal"/1.5x text-size preset (`Math.min(fontScale(this), 1.5)`) rather than scaling all the
+  way to "Large"/2x like most of this screen's other text: at an uncapped 2x it would wrap to
+  two lines and roughly double its own height, which the mode picker and hint below don't have
+  spare vertical room to absorb (same reasoning `OverworldScene`'s own fixed-geometry text
+  applies). Button label reads "Continue" if a save exists for the currently selected mode
+  (`data/save.ts`'s `hasSave(superposition)`) or "New Game" otherwise, updating live if the
+  mode picker below is switched; both SPACE and a click on the button start the Hub.
+- Above the title text, a "character-select roster" showcase (`drawShowcaseCrystals`, the
+  module-level `FAR_SHOWCASE`/`NEAR_SHOWCASE` arrays) covering all 13 of `data/materials.ts`'s
+  `TYPE_LOOK` entries at once, not tied to the player's own save/current form, since this is a
+  "world full of different materials" branding image rather than a "welcome back" one (the Hub
+  is where the player's own crystal gets its own moment). Two rows rather than one cluster, so
+  the whole thing stays a shallow band instead of competing with the title/mode picker for
+  vertical space: a back row of 8 smaller crystals spread across most of the canvas width, and a
+  front row of 5 bigger ones closer to center with a biggest centered "hero" (`quantumSpinHall`,
+  drawn last so it renders on top) flanked by two decreasing-size pairs. Each crystal bobs on
+  its own independent duration/delay so the roster reads as alive rather than a single
+  synchronized animation.
+- The **mode picker** (`addModeSelector`) sits between the button/erase-save line above and the
+  "Press SPACE..." hint below -- two text buttons, "Story Mode" and "Superposition Mode", both
+  backed by the same `superpositionMode` boolean (Story Mode is just its `false` state),
+  separated by a noticeably wide `50`px gap (not the two buttons' own padding) so each button
+  plus its own caption reads as a self-contained choice rather than two options crammed
+  together. The active one highlights (`#ffff88` yellow for Story, `#ff8fa0` warning pink for
+  Superposition, each with a lighter `#33335a` background) while the inactive one dims to
+  `#8fa0c9`/`#1a1a2e`. Each button has its own one-line dim caption directly beneath it (not a
+  single caption centered under the pair) spelling out what that mode does ("Trace the
+  Decoherence." under Story, "Everything, unlocked." under Superposition); each caption's own
+  `wordWrap` width is derived from how far apart the two buttons actually rendered
+  (`superBtn.x - storyBtn.x - 40`, floored at `140`) rather than a fixed constant, so the two
+  caption boxes never meet in the middle regardless of text-size preset. The captions (not the
+  button labels themselves, which keep the same uncapped scale as the rest of this screen's
+  controls) are capped at the same 1.5x scale as the title, for the same fixed-geometry reason.
+  Deliberately placed on the title screen, as a choice made before starting a run, rather than
+  toggleable mid-run.
 
 ## The Hub (`scenes/HubScene.ts`, world 0)
 
@@ -146,15 +170,24 @@ than appending a changelog, so this always reflects current reality.
   `showInfoPanel`), the panel's own background rectangle sized and inserted behind everything
   only once the taller of the two columns' real height is known.
 - **List+detail panels** (`scenes/panels/listDetail.ts`) are the shared two-column scaffolding
-  Qumatex above and three guardian panels' crystal-pick steps (Dresselhaus's single
-  transmute step, Anderson's host-pick step, Majorana's browse-by-hybrid-result step -- see
-  their own entries below) build on, rather than each hand-rolling its own copy of the same
-  left-column pagination math. `LIST_DETAIL_PANEL_W` (`720`) is the panel width every list+detail panel
-  uses -- wide enough for the two columns plus a real crystal render side by side, unlike the
-  narrower `600`px width a plain single-column shop panel (Kondo, Laughlin, Bloch, ...) still
-  uses; Franklin's own panel (below) is wider still (`760`) for its own, differently-shaped
-  two-column crystal-beside-list layout, distinct from both. `listDetailColumns(panelLeft)`
-  returns the one fixed set of column margins/widths
+  Qumatex above and six guardian panels' own browse steps build on, rather than each
+  hand-rolling its own copy of the same left-column pagination math: three browse by
+  *crystal* (Dresselhaus's single transmute step, Anderson's host-pick step, Majorana's
+  browse-by-hybrid-result step -- see their own entries below), two browse by *move*
+  (Noether's Moves tab, Kondo's -- also below), and Bloch's own
+  destination table browses by *world number* ("Bloch in the overworld" below) -- its detail pane
+  opens with the Qumatuomi map (`art/qumatuomiMap.ts`) fixed at the top, rendered once showing all
+  10 worlds regardless of which row is selected, with the previewed destination's own physics
+  blurb/cost/status/confirm content stacked beneath it, in place of the crystal-render-plus-name
+  block a crystal-browsing panel's own detail pane opens with.
+  `LIST_DETAIL_PANEL_W`
+  (`720`) is the panel width every list+detail panel uses -- wide enough for the two columns
+  plus a real crystal render (or, for a move-browsing panel, its animation preview, or for
+  Bloch's own panel, the map) side by
+  side, unlike the narrower `600`px width a plain single-column shop panel (Feynman, ...)
+  still uses; Franklin's own panel (below) is wider still (`760`) for its own,
+  differently-shaped two-column crystal-beside-list layout, distinct from both.
+  `listDetailColumns(panelLeft)` returns the one fixed set of column margins/widths
   every list+detail panel shares (left column `200`px wide, a divider, then the right column
   filling the rest). `renderListColumn` draws the left column exactly the way Qumatex's own
   left column above works (sample-row-measurement fit-per-page, `fitListLabel` ellipsis-trim,
@@ -163,26 +196,49 @@ than appending a changelog, so this always reflects current reality.
   `onSelect` callback; nothing about *committing* to a selection lives in this shared piece. The
   right/detail column is always a per-call-site render (`insertColumnDivider` just draws the
   line between the two once both columns' real heights are known) since its content differs
-  panel to panel -- Qumatex's own pane (crystal + name + physics blurb, above) versus a
-  guardian's (crystal + name + cost/status text + a commit button, via the shared
-  `renderDetailCrystalHeader` crystal-plus-name block the three guardian panels each build
-  their own status text and confirm button on top of). A guardian's list+detail step is a
-  **preview-then-confirm** flow, distinct from the plain shop-row style used elsewhere (Kondo/
-  Laughlin/Bloch's flat button lists, still the right choice when there's no crystal art worth
-  previewing, e.g. Anderson's own second step picking a *move* rather than a crystal) and from
-  Franklin's own crystal-beside-list layout (below), which previews a passive's ground halo on
-  an always-visible crystal rather than swapping between candidate rows: clicking a left-column
-  row only changes which candidate is previewed in the right
+  panel to panel -- Qumatex's own pane (crystal + name + physics blurb, above), a
+  crystal-browsing guardian's (crystal + name + cost/status text + a commit button, via the
+  shared `renderDetailCrystalHeader` crystal-plus-name block those three panels each build
+  their own status text and confirm button on top of), a travelling-attack move-browsing
+  guardian's (the move's own real battle-effect animation, looping between two points in the
+  pane, in place of a crystal render + name + cost/status text + a commit button, via the shared
+  `renderMoveDetailHeader` block -- "Attack effects" below has the animation's own details), and
+  Kondo's own self-buff move-browsing step (the move's own real battle-effect animation looping
+  *centered on a rendered player crystal* instead of travelling between two points -- Kondo's
+  moves never leave the caster's own position in a real fight -- via the shared
+  `renderSelfBuffMoveDetailHeader` block, "Kondo in the overworld" below). A guardian's
+  list+detail step is a **preview-then-confirm** flow, distinct from the plain shop-row style
+  used elsewhere (Feynman's own move-leveling list, still the right choice when there's no
+  crystal/move art worth previewing, or Anderson's own second step picking a *move* rather than a
+  crystal), from Franklin's own crystal-beside-list layout (below), which previews a passive's
+  ground halo on an always-visible crystal rather than swapping between candidate rows, and from
+  Laughlin's/Skłodowska-Curie's own bespoke two-column panels ("Laughlin in the overworld"/
+  "Skłodowska-Curie in the overworld" below), which show both of a guardian's fixed two moves at
+  once rather than browsing a candidate list at all: clicking a
+  left-column row only changes which candidate is previewed in the right
   column, at no cost and no effect, so a player can browse freely before deciding; the actual
-  action (transmute/dope-in/fuse, cost check and deduction included) only fires from the right
-  column's own explicit button ("Become `<name>`," "Dope in `<name>`," "Fuse into `<name>`").
-  Each such panel keeps its own transient "which row is currently previewed" field
-  (`GuardianPanelHost`'s `dresselhausPreview`/`andersonHostPreview`/`majoranaPreview`), separate
-  from the persisted "which row is committed to" field the two-step guardian (Anderson) already
-  has (`andersonSelection`) -- a preview is free to change or abandon, a commit is the one
-  action that actually spends anything. Majorana has no such committed-choice field: its panel
-  is a single browse-by-result step, so `majoranaPreview` (holding the previewed *hybrid
-  result's* name) alone drives its whole detail pane.
+  action (transmute/dope-in/fuse/learn/travel, cost check and deduction included) only fires
+  from the right column's own explicit button ("Become `<name>`," "Dope in `<name>`," "Fuse into
+  `<name>`," "Learn `<name>`," "Make `<name>` active," "Travel to World `<n>` -- `<name>`").
+  Each such panel keeps its own
+  transient "which row is currently previewed" field (`GuardianPanelHost`'s
+  `dresselhausPreview`/`andersonHostPreview`/`majoranaPreview`/`noetherMovePreview`/
+  `kondoMovePreview`/`blochPreview`), separate from the
+  persisted
+  "which row is committed to" field the two-step guardian (Anderson) already has
+  (`andersonSelection`) -- a preview is free to change or abandon, a commit is the one action
+  that actually spends anything. Majorana/Kondo/Bloch have no such
+  committed-choice field: each is a single browse step, so its own preview field alone (holding
+  the previewed *hybrid result's*/*move's*/*world number's* name) drives its whole detail
+  pane -- Kondo's actual
+  commit (which of its three moves is usable in battle) lives in registry/save
+  `kondoActiveMove` instead, written only by the detail pane's own "Make active" button.
+  `blochPreview` is `number | null` (a world number), not a string, since Bloch's own rows/markers
+  identify a destination by world number rather than by a crystal/move name. Laughlin and
+  Skłodowska-Curie have no preview/pagination field of their own at all -- each has exactly two
+  fixed moves, always both rendered at once, so there is no candidate list to browse in the first
+  place; see their own entries below for their bespoke layout and its own "Retune"/per-class-unlock
+  buttons.
 - **Tutorial** (`scenes/panels/hubStations.ts`'s `showTutorialTopics`/`showTutorialTopic`,
   stroked cyan `0x5ad9ff`) opens to a menu listing every topic by its own title
   (`data/tutorial.ts`'s `TUTORIAL_PAGES`) rather than paging through them linearly -- the whole
@@ -300,6 +356,32 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 | 8 | Spinon Forest | muted grey-green gradient (`0x2a2f28`→`0x4a5248`) | low-contrast green `0x3a4238` | muted sage `0x5a6a58` | mist motes | no | rock |
 | 9 | Defect Wastes | scorched red-black gradient (`0x1a0808`→`0x3a1414`) | charred red `0x4a1c1c` | cracked red `0x8a2a2a` | cracks | no | **lava** -- the world's own "scorched" theme made literal |
 | 10 | Adaptive Meta-World | shimmering violet gradient (`0x2a1a3a`→`0x6a4a8a`) | violet `0x5a3a7a` | lavender `0xc9a8f0` | crystal glints (cyan) | yes | rock |
+
+## Qumatuomi map (`art/qumatuomiMap.ts`)
+
+A standalone map-art module drawing a simplified Finland coastline -- a flat-filled polygon whose
+every vertex is a real border/coastline landmark pushed through one affine lat/lon-to-native
+mapping (documented in the module; the two axis scales approximate equal ground distance per px at
+Finland's latitudes), rotated so north is the left edge and south is the right. That construction
+carries the landmarks that make the silhouette read as "Finland" at a glance: the northwestern
+"arm" protruding past a deep border notch, the Gulf of Bothnia bay corner indenting a waist, the
+wide southern half with the easternmost bulge, the slanted southeast border and south coast, and a
+trail of separate skerry circles off the southwest corner thinning out to the archipelago's large
+main island. `buildQumatuomiMap` places one small circle marker per world (1-10) along a purely
+aesthetic left-to-right zigzag, with one deliberate exception: World 10's marker is a real
+south-coast place's actual coordinates through that same mapping rather than placed by eye --
+never labeled or surfaced to the player, the position alone is the reference.
+Each world's own local patch of map is tinted with that world's `art/biomes.ts` palette
+(`hillColor` outer / `path` inner, soft concentric circles rather than faceted shading, blended
+via `colors.ts`'s `blend()`) once the caller marks it discovered; an undiscovered world instead
+gets a flat dim silhouette patch (the same `0x33394a` the Materialdex's own undiscovered-crystal
+treatment uses) plus a few soft, deterministically-jittered light-grey mist puffs, so it reads as
+shrouded rather than merely a different color. The landmass fill itself stays perfectly flat, no
+per-tile diagonal shading, matching every other ground/floor fill in the game. The module wires no
+interactivity of its own -- Bloch's panel ("Bloch in the overworld" below) is its one consumer,
+attaching its own `setInteractive`/`pointerdown` handling to each returned marker and reading back
+the module's actual rendered `width`/`height` (uniform scale-to-fit can make either one smaller
+than the caller's requested budget) for its own layout math.
 
 ## Qumatessence pickups (`art/tokens.ts`, `data/tokens.ts`)
 
@@ -454,21 +536,31 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 - Below the intro line, two small tab buttons (`renderShopTabs`, `panelY - 42`) switch the
   panel between a **Moves** list and a **Stats** list (`OverworldScene.shopTab`, reset to
   `'moves'` on every scene create) -- the active tab is highlighted gold-on-slate, the
-  inactive one dim blue-grey, same click-to-rebuild-the-panel pattern as buying itself.
-  - **Moves**: one button per still-unbought move the player's *current crystal form* can
-    physically carry (`data/materials.ts`'s `SHOP_MOVE_IDS` filtered through
-    `compatibleMoves`), labeled `<move name> -- <cost> qumatessence`; unaffordable buttons dim
-    to 50% alpha rather than hide, so the shop still previews what's coming.
+  inactive one dim blue-grey, same click-to-rebuild-the-panel pattern as buying itself. The
+  panel is `LIST_DETAIL_PANEL_W` (`720`) wide while the Moves tab is showing (below), `600`
+  while the Stats tab is (unaffected by this rework, still a plain button list) -- the two tabs
+  render at different panel widths since only one is ever visible at a time.
+  - **Moves** is a list+detail layout (`scenes/panels/listDetail.ts`, "List+detail panels"
+    above): the left column names every still-unbought move the player's *current crystal
+    form* can physically carry (`data/materials.ts`'s `SHOP_MOVE_IDS` filtered through
+    `compatibleMoves`), no cost suffix -- that lives in the detail pane instead. Clicking a row
+    only *previews* it (`scene.noetherMovePreview`); the right column shows that move's own
+    real battle-effect animation on a loop (`renderMoveDetailHeader`, "List+detail panels"
+    above and "Attack effects" below -- the move's own static class, no shape override, since
+    an ordinary move's battle look never changes), its name, a `Costs <cost> qumatessence.`
+    line, and a `Learn <name> (<cost> qumatessence)` confirm button (dimmed if unaffordable)
+    that's the one action actually checking/spending the cost and adding the move to
+    `unlockedMoves` -- browsing costs nothing regardless of how many moves are looked at. Empty
+    state (rendered as plain centered text with no columns): "Nothing your current form can
+    carry is left to teach."
   - **Stats**: one button per stat (Quantumness/Velocity/Correlation), labeled
     `<stat> (<role>): <value> -> <value+1> -- <cost> qumatessence`, same afford/dim treatment.
-  - Both tabs' rows start at `panelY - 8`, spaced `36`px apart, buying/upgrading rebuilds
-    the whole panel so the list updates and the token total on display stays correct.
 - Below the (variable-length) tab content, a single "Farewell" button
   (`renderFarewellFooter`) flowing right after the content rather than pinned to a fixed
   y -- Noether's own panel never offers "Face the Rival"/"Continue to World N+1"; that
   action lives only in the goal panel (see "The rival gate" below), since the goal tile is
-  where that world's boss actually stands. Bloch's panel (below) reuses this same
-  tab-content/single-footer layout.
+  where that world's boss actually stands. Every guardian panel but the rival gate's own
+  ends in this same single-Farewell footer, Bloch's panel (below) included.
 
 ## Bloch in the overworld (`OverworldScene.showBlochHub`)
 
@@ -480,23 +572,53 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   a bright state-vector arrow pointing off-axis -- a superposition, not a pinned-down state,
   matching his teleport ability -- plus three small orbiting `◇` waypoint marks instead of
   Noether's `✦` motes.
-- His panel (`showBlochHub`) is stroked teal (`0x4adde0`) and reuses the same tab-content/
-  footer shape as Noether's shop, minus the tabs -- one button per world the player has
-  visited (`visitedWorlds`) that also has a built map (`BUILT_WORLDS`), excluding the
-  current world. Each destination is its own one-time unlock: a world not yet in
-  `registry`/save `blochUnlockedWorlds` is labeled `Travel to World N -- <name> (15
-  qumatessence)`, dimmed if unaffordable (same afford/dim treatment as every other
-  guardian shop); clicking it while affordable deducts the cost, adds that world number
-  to `blochUnlockedWorlds`, and teleports there in the same click (`advanceToWorld`, no
-  battle). A world already in that list drops the cost suffix entirely -- `Travel to
-  World N -- <name>` -- and teleports for free. Empty state: "You haven't mapped
-  anywhere else yet." Destinations paginate (see "Paginated candidate lists" below) once
-  there are more than fit on one page -- routine in Superposition Mode, whose destination
-  list is every built world outright rather than the persisted `visitedWorlds` list (so
-  Bloch's hub works from the Lab even on a save that hasn't stepped through a world door
-  yet), makes Bloch's hub the *sole* way to move between worlds (there is no separate
-  warp panel), and treats every destination as already unlocked so a fresh Superposition
-  save can still teleport anywhere with zero qumatessence.
+- His panel (`showBlochHub`) is stroked teal (`0x4adde0`), `LIST_DETAIL_PANEL_W` (`720`) wide,
+  and is a table+map layout -- the most content-dense guardian panel in the game (avatar/intro, a
+  10-row destination table, the Qumatuomi map, a physics blurb, a status/confirm block, and the
+  Farewell footer, all in one). The **left column** is a list+detail table
+  (`scenes/panels/listDetail.ts`'s `renderListColumn`, "List+detail panels" above) listing every
+  built world (`BUILT_WORLDS`, all 10, not filtered to only visited ones) -- a world not yet
+  visited (Story Mode only; see the Superposition Mode note below) shows `???` in place of its
+  real name, dimmed the same blue-grey (`#6a7396`) Qumatex's own undiscovered rows use. The
+  **right side** is not a plain per-selection detail pane the way Dresselhaus'/Majorana's own
+  right columns are: the Qumatuomi map (`art/qumatuomiMap.ts`, "Qumatuomi map" above) sits fixed
+  at the top, rendered once showing all 10 worlds at once and never swapped, given a deliberately
+  tight height budget (`78`px requested) since the table above already claims most of the panel's
+  own vertical room -- the map's *width* budget is generous (the right column's own width) so
+  height, not width, is always the binding side of its uniform scale-to-fit. Each of the map's 10
+  markers gets its own `setInteractive` circle hit area (larger than the marker's own few-px
+  radius) and `pointerdown` handler, so clicking a marker previews that world exactly like
+  clicking its table row does. Beneath the (unmoving) map sits the actual detail content for
+  whichever world is currently previewed -- a physics blurb (`data/worldFlavor.ts`'s
+  `WORLD_FLAVOR`, in the same epic-plus-physics voice every guardian's own intro quote uses,
+  shrinking in whole-px steps down to floor `9` the same way Majorana's own hybrid-fusion-lore
+  description does if a long entry would otherwise overflow), then a status line, then (unless the
+  previewed world is either the one the player is already standing in or one not yet discovered,
+  see below) a confirm button reading
+  `Travel to World N -- <name>` (plus a `(15 qumatessence)` suffix, dimmed if unaffordable, for a
+  destination not yet in registry/save `blochUnlockedWorlds`); one already in that list drops the
+  suffix and travels for free -- the same crystal-render-then-name-then-status-then-button shape
+  every other list+detail detail pane uses, just with the fixed map standing in for the crystal
+  render. Clicking either input (a table row or a map marker) only *previews*
+  that world (`blochPreview`, "List+detail panels" above) -- highlighting the row gold-on-purple
+  and drawing a pulsing gold ring around the matching marker, updating the blurb/status/button
+  beneath the map in the same click, so the two inputs can never
+  disagree about the current selection -- at no cost; the confirm button is the one action that
+  actually checks/spends the cost, adds the world to `blochUnlockedWorlds`, and teleports
+  (`advanceToWorld`, no battle). Previewing the world currently stood in (`scene.world`; never
+  triggers on `HubScene`, whose `world` is always `0`) still shows that world's own blurb, with a
+  status line naming it directly ("You are standing in World N -- `<name>`.") instead of a
+  button; previewing an undiscovered `???` world shows a short fixed line in place of its blurb
+  ("Mist covers this land -- you have not walked it yet.") and "You haven't mapped anywhere else
+  yet." in place of its status -- the latter the same copy an earlier, whole-panel-replacing empty
+  state used before every world got its own row, now scoped to whichever world is actually being
+  previewed. Superposition Mode's own
+  `BUILT_WORLDS`-as-discovered special case (the persisted `visitedWorlds` list only gets
+  pre-seeded with every built world on world entry, not on opening the Lab, so a fresh
+  Superposition save still needs every world to read as discovered immediately) means no row ever
+  shows `???` there, and every destination reads as already unlocked, so a fresh Superposition
+  save can still teleport anywhere with zero qumatessence -- Bloch's hub is the *sole* way to move
+  between worlds in that mode (there is no separate warp panel).
 
 ## Dresselhaus in the overworld (`OverworldScene.showDresselhausPanel`)
 
@@ -534,37 +656,84 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
 - World 4 only, standing at the middle tile like every other guardian. Blue-violet
   (`#8fa0ff` label / `0x6a7fff` stroke and avatar accents) name label; his avatar
   (`art/laughlin.ts`'s `makeLaughlinAvatar`) is unchanged by this mechanic.
-- No tabs, two runs of rows instead of one flat list (`panels/tunableMoveShop.ts`'s
-  `renderTunableMoveShop` -- Skłodowska-Curie's shop below does *not* reuse this, her
-  per-class-unlock pricing is different enough that her panel is bespoke) -- still-unbought
-  quiz-gated moves
-  (`data/materials.ts`'s `ANALYTIC_MOVE_IDS`, a hardcoded pair, `skyfallBeam`/`groundEruption`),
-  same `<move name> -- <cost> qumatessence` label and afford/dim treatment as Noether's Moves
-  tab (reusing `shopCost`), followed by one row per already-bought move showing which
-  quasiparticle it's tuned to: "`<name>` -- tuned to `<quasiparticle>` (retune)", or if the
-  player has since transmuted into a form that can no longer host the saved assignment,
-  "`<name>` -- tuned to `<quasiparticle>`, reverted to Phonon (this form can't host it --
-  retune)" -- the fallback reads the bare quasiparticle noun (`quasiparticleLabel`), not the
-  move's own shape word, or "`<name>` -- untuned (pick a quasiparticle)" if never assigned --
-  `<name>` here is `tunedMoveDisplayName`, so a tuned move's own row already reads like "Magnon
-  Lance -- tuned to Magnon (retune)" rather than the untuned default "Phonon Lance." Empty state once
-  both are bought: "You already carry every analytic technique I can teach." Clicking either
-  an unbought move's buy row or a learned move's tune/retune row opens
-  `showMoveClassPicker`, a sub-panel titled "Which quasiparticle should `<name>` carry?"
-  listing `TUNABLE_MOVE_CLASSES` filtered down to whatever the player's *current* form can
-  host (`canHost`) as its own column of buttons (same button styling as the shop list, just
-  a different button set) -- each labeled with the quasiparticle's own bare name
-  (`quasiparticleLabel`, e.g. "Magnon" for `'magnon'`) rather than the class id or the
-  matching ordinary move's own full name. Picking one on an unbought move completes the
-  purchase; on an already-bought move it just re-saves the assignment, free.
+- **Bespoke two-column layout** (`scenes/panels/laughlin.ts`, not the paginated list+detail
+  shape above): his two quiz-gated Analytic moves (`data/materials.ts`'s `ANALYTIC_MOVE_IDS`, a
+  hardcoded pair, `skyfallBeam`/`groundEruption`) are always both visible side by side, one full
+  column each, rather than browsed one at a time through a left-hand candidate list -- with only
+  ever two fixed moves, a list column would just spend width a second full animation stage can
+  use instead. Panel width is `TWO_UP_PANEL_W` (`scenes/panels/listDetail.ts`, `800`), wider than
+  the ordinary `LIST_DETAIL_PANEL_W` (`720`) list+detail panels use, split into two equal columns
+  by `sideBySideColumns(panelLeft, panelWidth)` (own left/right margin `18`, a `24`px gap between
+  them, `insertColumnDivider` drawing the same vertical rule list+detail panels use between the
+  two). Each column (`renderAnalyticColumn`) opens with that move's own real battle-effect
+  animation on a loop (`renderMoveDetailHeader`, "List+detail panels" above and "Attack effects"
+  below -- passed a wider `halfSpan` of `80px`, versus every other caller's default `55px`, so
+  the animation actually uses more of this bespoke layout's own wider column rather than leaving
+  the same fixed-pixel stage floating in extra space, and its own preview chain keyed
+  `laughlin:<moveId>` so both columns' chains loop independently, see "Attack effects" below),
+  overriding the plain per-class bolt/ring/burst shape via `ANALYTIC_SHAPES` (each Analytic move
+  is `'beam'`/`'eruption'`) the same way `BattleScene` itself does, still colored by whichever
+  quasiparticle class the move is currently tuned to (`getTunedMoveClass` -- a not-yet-tuned move
+  falls back to its own default `'phonon'`, same fallback the real fight uses) and escalated to
+  the player's real Feynman level for that move (`getMoveLevel`) the same way every
+  `renderMoveDetailHeader` caller now can. The column's own name text is `moveDisplayName`, not
+  the bare `tunedMoveDisplayName` -- it folds in both the current quasiparticle (below) and
+  Feynman's own Double/Triple/Infinite level prefix, so a leveled tuned move's preview title and
+  its real battle-menu name always read identically. Below that: a status line -- for a
+  still-unbought move, "Costs `<cost>` qumatessence to learn." (reusing `shopCost`); for an
+  already-bought one, "Tuned to `<quasiparticle>`." (or, if the player has since transmuted into
+  a form that can no longer host the saved assignment, "Tuned to `<quasiparticle>`, reverted to
+  Phonon (this form can't host it)." -- the fallback reads the bare quasiparticle noun,
+  `quasiparticleLabel`, not the move's own shape word -- or "Untuned -- pick a quasiparticle." if
+  never assigned, Superposition Mode's own edge case) -- and, **inline directly beneath it, not a
+  separate full-panel sub-view**, one small pill button per quasiparticle class the player's
+  *current* form can host (`tunableMoveShop.ts`'s `hostableClasses`/`renderInlineClassPicker`,
+  "Quasiparticle picker" below), each labeled with the class's own bare name (`quasiparticleLabel`,
+  e.g. "Magnon" for `'magnon'`) plus " (current)" on whichever one the move is presently tuned to.
+  Clicking any row on a still-unbought move buys and tunes to that class in one click
+  (`buyLaughlinMove`, checking/spending `shopCost`, adding the move to `unlockedMoves`, and
+  recording the class -- all three at once, with no separate "buy" step before picking a
+  class); clicking a row on an already-bought move retunes to it
+  for free among any hostable class, no per-class cost (`retuneLaughlinMove`) -- picking a
+  different class re-renders the whole panel (this panel's own established
+  full-rebuild-per-click convention, same as every other guardian panel; only the retuned
+  column's own preview chain is retargeted by it, the other column's keeps looping through the
+  rebuild undisturbed, see "Attack effects" below). Skłodowska-Curie's own panel below does *not*
+  reuse `buyLaughlinMove`/`retuneLaughlinMove`, her per-class-unlock pricing is different enough
+  that her own picker logic is bespoke, though both panels share the same `renderInlineClassPicker`
+  row-rendering/wrapping and `hostableClasses` filter.
 - **The move's displayed name always leads with its current quasiparticle**
-  (`data/materials.ts`'s `tunedMoveDisplayName`) everywhere a move name shows up in battle
-  too -- the move-menu button, the analytic-question panel's title, the battle log's "X used
-  `<name>`!" line -- built from the quasiparticle's own bare label (`quasiparticleLabel`, e.g.
-  `Magnon` for `'magnon'`) plus each move's fixed shape word ("Lance"/"Eruption") rather
-  than a second hand-authored word list, so `skyfallBeam` tuned to `'magnon'` reads as
-  "Magnon Lance," `groundEruption` tuned to `'chargedAnyon'` as "Anyon Eruption," and so on. An
-  untuned move defaults to `'phonon'`, reading as "Phonon Lance"/"Phonon Eruption."
+  (`data/materials.ts`'s `tunedMoveDisplayName`, folded into `moveDisplayName` above) everywhere
+  a move name shows up in battle too -- the move-menu button, the analytic-question panel's
+  title, the battle log's "X used `<name>`!" line -- built from the quasiparticle's own bare
+  label (`quasiparticleLabel`, e.g. `Magnon` for `'magnon'`) plus each move's fixed shape word
+  ("Lance"/"Eruption") rather than a second hand-authored word list, so `skyfallBeam` tuned to
+  `'magnon'` reads as "Magnon Lance," `groundEruption` tuned to `'chargedAnyon'` as "Anyon
+  Eruption," and so on. An untuned move defaults to `'phonon'`, reading as "Phonon
+  Lance"/"Phonon Eruption." Since the inline picker directly beneath a column is what sets this,
+  the name updates the instant a row is clicked, reading directly off the same click that chose
+  the class.
+
+## Quasiparticle picker (`scenes/panels/tunableMoveShop.ts`)
+
+- The small pill-button strip Laughlin's and Skłodowska-Curie's own columns (above/below) each
+  render directly beneath themselves (`renderInlineClassPicker`), inline in the main panel rather
+  than a separate full-panel sub-view.
+  `hostableClasses(scene)` is `TUNABLE_MOVE_CLASSES` filtered through `canHost` against the
+  player's *current* form, shared by both callers so "which quasiparticle should this carry" stays
+  grounded in what the crystal can actually host right now rather than a free pick from every
+  class in the game. Rows pack left-to-right and wrap onto as many lines as the column actually
+  needs (rather than one fixed row per class) -- some forms host as many as five classes
+  (`chernSuperconductor`), and both panels already have two full animation stages plus two of
+  these pickers to fit above the canvas's bottom edge, a real, repeatedly-hit robustness
+  constraint (see each panel's own worst-case-content note). Deliberately smaller/denser than the
+  game's ordinary dialogue-button style -- `fontPx`-scaled but capped at the Compact preset's own
+  1x scale even at Normal/Large, tighter `{x:7,y:3}` padding -- since this is a dense strip of
+  many small optional controls, not body text a Large-text player needs magnified the way the
+  status line just above it already is. Each caller (Laughlin/Curie) formats its own row label
+  and afford/dim state, since the two pricing models differ; this module has no opinion on either
+  and just packs+renders whatever `QuasiparticleOption[]` it's handed, firing `onPick(cls)` on a
+  click.
 
 ## Majorana in the overworld (`OverworldScene.showMajoranaPanel`)
 
@@ -674,22 +843,33 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   (`0xe86a44`) name label and panel stroke -- distinct from Anderson's own rust/amber
   (`0xc9884a`) above; his avatar (`art/kondo.ts`'s `makeKondoAvatar`) is unchanged by this
   mechanic.
-- Two runs of rows, not Laughlin's flat buy-only shape above -- the same shared
-  `renderChoiceList` engine (`scenes/panels/passiveList.ts`) Franklin's passive panel below
-  uses: still-unbought moves from `data/materials.ts`'s `KONDO_MOVE_IDS` (Screening Pulse,
-  Scattering Drag, Coherence Cascade), usable from any form, same `<move name> -- <cost>
-  qumatessence` label and afford/dim treatment as Laughlin's/Noether's shops (reusing `shopCost`),
-  each followed by its own one-line `description` underneath in the same dimmer blue-grey
-  Franklin's own passive rows use -- then one row per already-bought
-  Kondo move, its own description printed the same way. A bought-and-inactive move reads
-  "Make `<name>` active" as a clickable button, the currently active one (registry/save
-  `kondoActiveMove`) reads "`<name>` (active)" dimmed to 50% alpha with no click handler. Buying
-  the first Kondo move activates it immediately (still shows the dimmed "(active)" tag right
-  away, no separate click needed); buying a second or third afterward doesn't, and switching
-  which one is active always requires reopening this panel and clicking "Make active," not a
-  per-turn choice in the battle move menu. None of the three self-buff moves is gated by a
-  crystal's own physics at all, so all three are always for sale until bought -- no empty/
-  wrong-form state to render here, unlike Noether's shop.
+- List+detail layout (`scenes/panels/listDetail.ts`, "List+detail panels" above), the same shape
+  Noether's/Laughlin's/Skłodowska-Curie's own move-browsing steps use: the left column names all
+  three of `data/materials.ts`'s `KONDO_MOVE_IDS` (Screening Pulse, Scattering Drag, Coherence
+  Cascade) via `moveDisplayName`. Clicking a row only *previews* it (`scene.kondoMovePreview`),
+  free regardless of how many moves are looked at. A Kondo move is a self-buff rather than a
+  travelling attack -- `BattleScene.resolveSelfBuff` plays its real effect centered on the
+  caster's own position (`from === to === pos`), not flying from attacker to target the way an
+  ordinary move does -- so the right column shows the player's own current crystal
+  (`makeCrystal(scene, 34, scene.playerMaterial.color, scene.playerMaterial.variant, { seed:
+  scene.playerMaterial.name, hybrid: scene.playerMaterial.hybridParents })`, the same call
+  convention Franklin's own panel below uses) standing on a ground-shadow ellipse, with the
+  move's `'screening'`-class ring effect (`art/attackEffects.ts`'s `EFFECT_STYLE`, tinted
+  `0xe86a44`) looping *centered on the crystal itself* rather than travelling across the pane --
+  `renderSelfBuffMoveDetailHeader` (`scenes/panels/listDetail.ts`), the self-buff sibling of the
+  ordinary `renderMoveDetailHeader` three other guardians' move-browsing panes use. Below that:
+  the move's own one-line `description` (`data/materials.ts`'s `Move.description`, only Kondo's
+  three moves carry one), then a cost/status line and a confirm button -- "Learn `<name>`
+  (`<cost>` qumatessence)" for a still-unbought move (dimmed if unaffordable, reusing `shopCost`),
+  "Make `<name>` active" for an already-bought but inactive move, or a dimmed "`<name>` (active)"
+  tag (no-op click) for whichever one is currently active (registry/save `kondoActiveMove`) --
+  the confirm button is the one action that actually checks/spends the cost. Buying the first
+  Kondo move activates it immediately (still shows the dimmed "(active)" tag right away, no
+  separate click needed); buying a second or third afterward doesn't, and switching which one is
+  active always requires reopening this panel and clicking "Make active," not a per-turn choice
+  in the battle move menu. None of the three self-buff moves is gated by a crystal's own physics
+  at all, so all three are always for sale until bought -- no empty/wrong-form state to render
+  here, unlike Noether's shop.
 
 ## Franklin in the overworld (`OverworldScene.showFranklinPanel`)
 
@@ -719,10 +899,10 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   passive active" if none is active yet and nothing's been clicked. The label's own reserved
   height is measured up front from the longest possible `<name> (preview)` string so a later
   preview swap can never grow the block past what the panel was first sized for.
-- Buy-list-plus-switch shape (`renderPassiveList`, Franklin's own thin wrapper around the
-  same `renderChoiceList` engine Kondo's own panel above uses), laid out in the right column via
-  `ChoiceListRenderOptions`' `centerX`/`wrapWidth` (so Kondo's own call, which passes neither,
-  keeps rendering full-canvas-centered): a still-unbought passive (`data/passives.ts`'s
+- Buy-list-plus-switch shape (`renderPassiveList`, Franklin's own thin wrapper around
+  `scenes/panels/passiveList.ts`'s `renderChoiceList` engine), laid out in the right column via
+  `ChoiceListRenderOptions`' `centerX`/`wrapWidth` (which default to full-canvas-centered when a
+  caller passes neither): a still-unbought passive (`data/passives.ts`'s
   `FRANKLIN_PASSIVE_IDS` -- Diffraction Shadow, Satellite Reflection, Amorphous Halo)
   gets a `<name> -- <cost> qumatessence` buy button plus a one-line description
   underneath, both capped at a lower font-scale ceiling than every other guardian
@@ -755,16 +935,43 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   `makeSklodowskaCurieAvatar`) keeps that identity's crystal-shard-with-a-pulsing-ring head
   motif but adds an outer halo ring and a denser eight-point starburst orbit (double the
   usual four) befitting the guardians' own capstone rather than a mid-game stop.
-- One row always shown per Ultimate move (`data/materials.ts`'s `ULTIMATE_MOVE_IDS` --
-  `ultimateMeteor`/`ultimateNova`), not a forSale/learned split the way Laughlin's shop
-  renders -- there's no separate "buy the move" step here, since opening the class picker
-  and paying for a class is itself what first unlocks the move. Each row names the move's
-  current quasiparticle (`tunedMoveDisplayName`) or reads "not yet unlocked (pick a
-  quasiparticle)" if the move isn't in `unlockedMoves` yet. Clicking a row opens the same
-  "Which quasiparticle should `<name>` carry?" sub-panel Laughlin's shop uses, but each row's
-  cost reads "Free (already unlocked)" for a class already paid for on that move, else
-  "1000 qumatessence" for one that isn't -- unlike Laughlin's flat one-time move purchase, the
-  cost here is per (move, quasiparticle class) pair.
+- **Bespoke two-column layout** (`scenes/panels/sklodowskaCurie.ts`, the same shape Laughlin's
+  own panel above uses, not the paginated list+detail shape): her two Ultimate moves
+  (`data/materials.ts`'s `ULTIMATE_MOVE_IDS` -- `ultimateMeteor`/`ultimateNova`) are always both
+  visible side by side, one full column each. Same `TWO_UP_PANEL_W`/`sideBySideColumns` geometry
+  Laughlin's panel uses -- her own intro quote is the longest in the game (it names all ten
+  guardians), capped at the same `1.15`x text-size scale Laughlin's own intro is, since with two
+  full animation-stage-plus-inline-picker columns below it there is even less spare vertical
+  room here than on his panel; see this panel's own worst-case-content note below for how tight
+  that budget actually is. Each column (`renderUltimateColumn`) opens with that move's own real
+  battle-effect animation on a loop (`renderMoveDetailHeader`, wider `halfSpan` of `80px` and its
+  own preview chain keyed `curie:<moveId>`, same reasoning as Laughlin's own columns), overriding
+  the plain per-class shape via `ULTIMATE_SHAPES` to the longer, multi-phase `playMeteor`/
+  `playNova` sequences (below), still colored by whichever quasiparticle class the move is
+  currently tuned to, and escalated to the player's real Feynman level for that move
+  (`getMoveLevel`) -- a leveled Ultimate's preview genuinely runs its own full multi-phase
+  cascade once per repeat, same as a real leveled cast (see "Attack effects" below). The column's
+  name text is `moveDisplayName` (level prefix folded in), not the bare `tunedMoveDisplayName`.
+  Below that: a status line -- "Not yet unlocked -- pick a quasiparticle to unlock it." if the
+  move isn't in `unlockedMoves` yet, or "Carrying `<quasiparticle>`." (or the same "reverted to
+  Phonon" fallback wording Laughlin's own status line uses, or "Unlocked, but untuned -- pick a
+  quasiparticle." in Superposition Mode's own edge case) -- and, **inline directly beneath it**,
+  one pill button per hostable quasiparticle class (`tunableMoveShop.ts`'s
+  `hostableClasses`/`renderInlineClassPicker`, "Quasiparticle picker" above), each row's own cost
+  read straight off registry/save `ultimateClassesUnlocked[moveId]` rather than a single flat
+  cost the way Laughlin's picker shows: "`<quasiparticle>` -- Free" (plus " (current)" on
+  whichever class the move is presently tuned to) for a class already paid for on that move, else
+  "`<quasiparticle>` -- 1000 qumatessence" for one that isn't, dimmed per-row if the player can't
+  afford that specific class right now (unlike Laughlin's flat one-time move purchase, where every
+  row dims together). Picking any row is the one action that unlocks (first time) or retunes
+  (already unlocked) in a single click (`pickUltimateClass`) -- and, on a move's very first-ever
+  class pick, also adds the move id to `unlockedMoves`. A row here can be genuinely unaffordable
+  -- with no class yet unlocked for a move and too little qumatessence, that row is a no-op
+  click -- but the picker needs no dedicated escape button of its own for that case:
+  `renderFarewellFooter` below is always present as part of the main panel regardless of
+  affordability, so a too-poor player is never left with nothing clickable and `dialogueActive`
+  stuck true. In Superposition Mode every hostable class reads and behaves as already unlocked, same
+  blanket-grant treatment every other guardian's gated content gets.
 - Using an Ultimate move in battle opens `BattleScene.showUltimateQuestions` instead of
   `showAnalyticQuestion` -- up to three sequential question panels, same visual family as
   the Analytic question panel below, tagged `★★★` in the move menu instead of `★`, with
@@ -772,18 +979,30 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   multi-phase "summon" animation dramatically longer than any other move's effect (see
   "Attack effects" below) rather than the shared windup/travel/impact beat every other
   move uses.
+- **Worst-case layout budget.** This panel (and Laughlin's own above) carries more content than
+  any other guardian panel -- two full animation stages plus two inline pickers below her own
+  especially long intro quote -- so the vertical fit was verified against the actual worst case
+  rather than assumed: both moves tuned to `'majorana'` (a class every `chernSuperconductor`
+  crystal hosts, the type with the most hostable classes at five, so both pickers wrap to their
+  own worst-case three rows) and both leveled to Feynman's own Infinite tier (longest name
+  prefix, longest preview animation). Measured content bottom stayed under `CANVAS_H` (`480`) at
+  both the default (`1.5x`) and largest (`2x`) text-size presets with real margin to spare (
+  roughly 20-25px), confirmed via a headless render rather than by inspection alone -- the
+  quasiparticle picker's own denser wrapped-pill layout ("Quasiparticle picker" above) is what
+  makes this fit at all; a naive one-row-per-class vertical list does not.
 
 ## Paginated candidate lists (`OverworldScene.renderPagedButtons`)
 
 - Shared by every plain single-column candidate list that can outgrow one screen -- Anderson's
-  second step (picking which move to learn from an already-chosen host) and Bloch's
-  destination list. Superposition Mode is what makes this routine rather than a rare edge
-  case: its candidate pool is every crystal in the game (or, for Bloch, every built world
-  outright), commonly 8-30+ entries where the equivalent Story Mode list is a handful.
-  Dresselhaus's transmute list, Majorana's browse-by-hybrid-result list, and Anderson's own
-  first (host-pick) step instead use the two-column list+detail layout ("List+detail panels"
-  above) for the same reason -- its own left column paginates the same candidate-pool-can-
-  outgrow-one-screen way, just via `renderListColumn` rather than this function.
+  second step (picking which move to learn from an already-chosen host) and Feynman's own
+  move-leveling list. Superposition Mode is what makes this routine rather than a rare edge
+  case: its candidate pool is every crystal/move in the game, commonly far more entries than the
+  equivalent Story Mode list. Dresselhaus's transmute list, Majorana's browse-by-hybrid-result
+  list, Anderson's own first (host-pick) step, Noether's/Laughlin's/Skłodowska-Curie's own move
+  lists, and Bloch's own destination table instead
+  use the two-column list+detail layout ("List+detail panels" above) for the same reason -- its
+  own left column paginates the same candidate-pool-can-outgrow-one-screen way, just via
+  `renderListColumn` rather than this function.
 - One button per row, same treatment as every other dialogue button, followed -- only
   once the list is longer than one page -- by a single shared row holding `<- Prev`
   (left), a small blue-grey `Page N/M` label (centered, vertically centered against the
@@ -796,8 +1015,9 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   actually fit above the panel's own trailing Farewell/Close button, since a long,
   multi-word label (a crystal name, or a guardian-shop label with a cost suffix) can
   word-wrap to two lines at a large preset while a short one stays on one. A fixed
-  per-page cap would overflow Bloch's hub at the *default* text-size preset (1.5x, not
-  1x) once Superposition Mode made a 9-destination list the common case; sharing one row
+  per-page cap risks overflowing a guardian's own panel at the *default* text-size preset
+  (1.5x, not 1x) once Superposition Mode makes a long candidate list the common case rather
+  than a rare one; sharing one row
   for Prev/Next/the page label (above) reclaims the vertical room a two-row layout spent
   on chrome rather than content, margin that matters most for a guardian whose avatar/
   intro text already leaves little slack at the largest preset. Packing itself runs
@@ -1195,7 +1415,7 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   "Abilities" above uses. Paginated (`renderPagedButtons`, `guardiansPage`, `HubScene`-only
   since this station never opens mid-walk from `OverworldScene`) rather than a shrink-to-fit
   loop -- ten two-line rows doesn't fit one panel at any text-size preset, same "list that can
-  outgrow the panel" tradeoff Bloch's/Feynman's own candidate lists make. A row click opens that
+  outgrow the panel" tradeoff Feynman's own candidate list makes. A row click opens that
   guardian's own bespoke panel (shop/teleport hub/transmutation, in that guardian's own stroke
   color per CODEMAP.md's panel-color list, not the Guardians list's lavender) directly in the
   Lab, replacing the lavender list panel in place -- the same panel the player would see by
@@ -1305,13 +1525,66 @@ on-path trail color, ambient decoration style, fog blend target, whether clouds 
   every other shape's ~810-830ms worst case comfortably but sits ~20ms under the beam move's
   own 870ms total -- in practice an imperceptible overlap with the very start of the next
   turn's own windup flash, not worth chasing given how minor it is, but worth knowing if
-  `TRAVEL_MS`/`TURN_GAP_MS` are ever retuned together.
+  `TRAVEL_MS`/`TURN_GAP_MS` are ever retuned together. A leveled move (below) runs
+  noticeably longer than this single-trigger budget, since it repeats the beat several times --
+  `TURN_GAP_MS` is not retuned for that case; the tail end of a leveled cascade is left to
+  overlap the very start of the next turn's own windup, the same way the beam move's own 20ms
+  overrun already does, just larger.
   Drawn fresh each frame with a `Graphics` object cleared and redrawn every tween tick (same
   pattern as the overworld's per-frame ground mesh) rather than a sprite, then destroyed on
   arrival/decay.
+- **A leveled move (Feynman's move-leveling, §5, World 7) escalates its own animation into
+  several overlapping, growing repeats of the same single hit** -- purely presentational, since
+  the real power bump (`MOVE_LEVEL_MULTIPLIERS`, a flat 1.5x/2x/3x) is already folded into the
+  hit's own damage math upstream of the animation; repeating the animation never repeats the
+  damage. Applies uniformly across every shape family bolt/ring/burst/beam/eruption/meteor/nova
+  -- nothing is exempted. Trigger count scales with level: Double=2, Triple=3, Infinite=4 (a
+  finite cap that reads as "a cascade, too many to track" rather than a literal unbounded loop).
+  Each successive repeat renders visibly bigger than the last (`LEVEL_TRIGGER_SCALES`, `1,
+  1.25, 1.5, 3.5` -- a real multiplier on every shape's own stroke widths/radii/lengths, not
+  just impact-sfx volume) and starts a bit after the previous one begins rather than after it
+  finishes, so the repeats visibly overlap instead of playing back-to-back with gaps. The
+  stagger differs by shape family: an ordinary/Analytic shape (bolt/ring/burst/beam/eruption)
+  staggers at 40% of its own `TRAVEL_MS`, so a fast bolt cascades quickly and a slower beam more
+  deliberately; meteor/nova instead use a fixed 650ms real-world delay between repeat starts,
+  since their own `TRAVEL_MS` describes a whole multi-second summon->charge->impact->aftermath
+  sequence rather than a single silhouette's travel time -- a percentage of it would stagger
+  repeats by seconds. A leveled Ultimate plays its full multi-phase sequence once per repeat
+  (each one bigger than the last) rather than a cheaper single-bigger-impact substitute, so a
+  level-3 Ultimate takes noticeably longer than an unleveled one (measured: roughly 7s for a
+  4-repeat meteor, versus ~5.2s unleveled) -- accepted as a deliberate tradeoff for Skłodowska-
+  Curie's own flashiest tier rather than something to shorten. Only the LAST repeat is wired to
+  the real `onImpact`/`onComplete` a caller passed in (BattleScene's actual damage/log/win-lose-
+  check/turn-release); every earlier repeat is fire-and-forget decoration, so the escalation
+  never multiplies real damage or fires `checkEndOrContinue` more than once regardless of
+  trigger count. Only the *player's* own leveled moves escalate -- an opponent's copy of the
+  same move id never carries a level (Feynman's leveling is the player's own save state), so a
+  wild/rival casting the same move always plays the plain, single-trigger animation.
 - Each attack also plays a procedural one-shot sound keyed to the same bolt/ring/burst shape
   (`audio/sfx.ts`'s `playAttackSfx`) on launch and an impact thump scaled by the
   quasiparticle-mismatch multiplier (`playImpactSfx`, 2x on a mismatched hit, 1x otherwise)
   on arrival, and dips the currently-playing
   music track's volume for the beat's duration (`audio/music.ts`'s `MusicEngine.duck`) so the
   hit reads clearly over the score before the music comes back up.
+- **Noether's/Kondo's/Laughlin's/Skłodowska-Curie's own detail panes loop this same real effect**
+  (`art/moveEffectPreview.ts`, "List+detail panels" above and "Laughlin in the overworld"/
+  "Skłodowska-Curie in the overworld" below) rather than a static icon, at a small
+  fixed local `from`/`to` span sized to the pane instead of a real battle's `PLAYER_POS`/
+  `opponentPos`. `playAttackEffect`'s own Graphics normally draw at depth 58-61 (tuned for
+  `BattleScene`'s background); a guardian panel's own dialogue container sits at depth `100`
+  (`OverworldScene.ts`/`HubScene.ts`'s `showXPanel` convention), which would otherwise draw over
+  (hide) the preview entirely, so `playAttackEffect`'s own `depthOffset` parameter (default `0`,
+  every `BattleScene` call site unaffected) shifts the preview's Graphics comfortably above it.
+  Each preview also carries the player's own real `MoveLevel` for that move (`getMoveLevel`) into
+  `playAttackEffect`'s own `level` parameter, so a leveled move's preview escalates into the same
+  multi-trigger, growing-size cascade a real leveled cast plays (the escalation rules above)
+  instead of always showing the flat unleveled loop -- a still-unbought move (Noether's own rows)
+  is simply never above level 0, since leveling requires already owning the move.
+  `moveEffectPreview.ts` tracks any number of independent, simultaneously-looping preview
+  *chains* at once, each identified by its own caller-supplied string key (default `'default'`,
+  what every single-preview caller -- Noether, Kondo -- implicitly lands on, unaffected by this):
+  Laughlin's and Skłodowska-Curie's own two-column panels (below) are the one case with two
+  chains genuinely running at once, one per move id, so retuning one column's own move never
+  disturbs the other column's already-looping chain. `stopMoveEffectPreview()` with no key stops
+  every chain at once (every guardian panel's own Farewell/close path); passed a key, it stops
+  only that one chain.

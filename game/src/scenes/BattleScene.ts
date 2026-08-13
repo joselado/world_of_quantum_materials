@@ -1055,64 +1055,120 @@ export class BattleScene extends Phaser.Scene {
   // already rely on.
   private showAnalyticQuestion(move: Move, onAnswered: (bonusMultiplier: number) => void) {
     const question = getAnalyticQuestion(this.game.registry.get('visitedWorlds') as number[]);
-    const container = this.add.container(0, 0).setDepth(100);
+    this.renderQuestionPanel({
+      title: moveDisplayName(this.game.registry, move.id),
+      titleColor: GOLD_ACCENT_HEX,
+      strokeColor: GOLD_ACCENT,
+      prompt: question.prompt,
+      options: [
+        { text: question.correct, correct: true },
+        { text: question.incorrect, correct: false },
+      ],
+      onPick: (correct) => onAnswered(correct ? ANALYTIC_CORRECT_MULTIPLIER : ANALYTIC_WRONG_MULTIPLIER),
+    });
+  }
 
+  // Shared panel builder for showAnalyticQuestion's single question and
+  // showUltimateQuestions' 3-question streak -- both are otherwise the same
+  // title/prompt/two-shuffled-answers layout on a bordered rectangle, just
+  // with a different title, color and onPick outcome. The title's length
+  // varies a lot at runtime: Feynman's level prefix ('Infinite') plus
+  // whichever quasiparticle the move is currently tuned to (e.g. 'Heavy
+  // Fermion') can produce something like "Infinite Heavy Fermion Meteor --
+  // question 3/3", well past the fixed panel width -- so the title wraps
+  // like the prompt below it, and the font scale is capped at the default
+  // 1.5 preset (only the 2x 'Large' preset gets clamped, matching
+  // drawMoveMenu's headerScale cap) rather than growing unbounded. If the
+  // measured panel still doesn't fit the field after that cap -- a long
+  // prompt/answer pair on top of a long title -- the whole panel shrinks
+  // further in fixed steps down to a floor where the 12px body text bottoms
+  // out at 9px, the same floor HubScene.renderMaterialdexPanel's own
+  // blurb-shrink loop uses.
+  private renderQuestionPanel(params: {
+    title: string;
+    titleColor: string;
+    strokeColor: number;
+    prompt: string;
+    options: { text: string; correct: boolean }[];
+    onPick: (correct: boolean) => void;
+  }) {
+    const { title, titleColor, strokeColor, prompt, options, onPick } = params;
     const panelWidth = 520;
     const top = 90;
-    let y = top + 16;
+    const contentWidth = panelWidth - 60;
+    const shuffled = Phaser.Utils.Array.Shuffle(options.slice());
 
-    const title = this.add
-      .text(FIELD_W / 2, y, moveDisplayName(this.game.registry, move.id), {
-        fontSize: fontPx(this, 15),
-        color: GOLD_ACCENT_HEX,
-        fontStyle: 'bold',
-      })
-      .setOrigin(0.5, 0);
-    container.add(title);
-    y += title.height + 8;
+    const attempt = (scale: number) => {
+      const container = this.add.container(0, 0).setDepth(100);
+      let y = top + 16;
 
-    const prompt = this.add
-      .text(FIELD_W / 2, y, question.prompt, {
-        fontSize: fontPx(this, 12),
-        color: '#ffffff',
-        align: 'center',
-        wordWrap: { width: panelWidth - 60 },
-      })
-      .setOrigin(0.5, 0);
-    container.add(prompt);
-    y += prompt.height + 14;
+      const titleText = this.add
+        .text(FIELD_W / 2, y, title, {
+          fontSize: `${Math.round(15 * scale)}px`,
+          color: titleColor,
+          fontStyle: 'bold',
+          align: 'center',
+          wordWrap: { width: contentWidth },
+        })
+        .setOrigin(0.5, 0);
+      container.add(titleText);
+      y += titleText.height + 8;
 
-    const options = Phaser.Utils.Array.Shuffle([
-      { text: question.correct, correct: true },
-      { text: question.incorrect, correct: false },
-    ]);
+      const promptText = this.add
+        .text(FIELD_W / 2, y, prompt, {
+          fontSize: `${Math.round(12 * scale)}px`,
+          color: '#ffffff',
+          align: 'center',
+          wordWrap: { width: contentWidth },
+        })
+        .setOrigin(0.5, 0);
+      container.add(promptText);
+      y += promptText.height + 14;
 
-    const finish = (correct: boolean) => {
-      container.destroy(true);
-      onAnswered(correct ? ANALYTIC_CORRECT_MULTIPLIER : ANALYTIC_WRONG_MULTIPLIER);
+      const finish = (correct: boolean) => {
+        container.destroy(true);
+        onPick(correct);
+      };
+
+      shuffled.forEach((opt) => {
+        const btn = this.addAnswerButton(container, y, opt.text, scale, contentWidth, () => finish(opt.correct));
+        y += btn.height + 8;
+      });
+
+      const panelHeight = y - top + 10;
+      return { container, panelHeight };
     };
 
-    options.forEach((opt) => {
-      const btn = this.addAnswerButton(container, y, opt.text, () => finish(opt.correct));
-      y += btn.height + 8;
-    });
+    let scale = Math.min(fontScale(this), 1.5);
+    let { container, panelHeight } = attempt(scale);
+    while (top + panelHeight > FIELD_H - 10 && scale > 0.75) {
+      container.destroy(true);
+      scale = Math.max(0.75, scale - 0.1);
+      ({ container, panelHeight } = attempt(scale));
+    }
 
-    const panelHeight = y - top + 10;
     const panel = this.add
       .rectangle(FIELD_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
-      .setStrokeStyle(2, GOLD_ACCENT);
+      .setStrokeStyle(2, strokeColor);
     container.addAt(panel, 0);
   }
 
-  private addAnswerButton(container: Phaser.GameObjects.Container, y: number, label: string, onClick: () => void) {
+  private addAnswerButton(
+    container: Phaser.GameObjects.Container,
+    y: number,
+    label: string,
+    scale: number,
+    width: number,
+    onClick: () => void
+  ) {
     const btn = this.add
       .text(FIELD_W / 2, y, label, {
-        fontSize: fontPx(this, 12),
+        fontSize: `${Math.round(12 * scale)}px`,
         color: '#ffff88',
         backgroundColor: '#222244',
         padding: { x: 10, y: 5 },
         align: 'center',
-        wordWrap: { width: 440 },
+        wordWrap: { width },
       })
       .setOrigin(0.5, 0)
       .setInteractive({ useHandCursor: true })
@@ -1143,58 +1199,23 @@ export class BattleScene extends Phaser.Scene {
       }
       const question = questions[index];
       index += 1;
-      const container = this.add.container(0, 0).setDepth(100);
-
-      const panelWidth = 520;
-      const top = 90;
-      let y = top + 16;
-
-      const title = this.add
-        .text(
-          FIELD_W / 2,
-          y,
-          `${moveDisplayName(this.game.registry, move.id)} -- question ${index}/${questions.length}`,
-          { fontSize: fontPx(this, 15), color: '#ff66ff', fontStyle: 'bold' }
-        )
-        .setOrigin(0.5, 0);
-      container.add(title);
-      y += title.height + 8;
-
-      const prompt = this.add
-        .text(FIELD_W / 2, y, question.prompt, {
-          fontSize: fontPx(this, 12),
-          color: '#ffffff',
-          align: 'center',
-          wordWrap: { width: panelWidth - 60 },
-        })
-        .setOrigin(0.5, 0);
-      container.add(prompt);
-      y += prompt.height + 14;
-
-      const options = Phaser.Utils.Array.Shuffle([
-        { text: question.correct, correct: true },
-        { text: question.incorrect, correct: false },
-      ]);
-
-      const finish = (correct: boolean) => {
-        container.destroy(true);
-        if (!correct) {
-          onAnswered(false);
-          return;
-        }
-        askNext();
-      };
-
-      options.forEach((opt) => {
-        const btn = this.addAnswerButton(container, y, opt.text, () => finish(opt.correct));
-        y += btn.height + 8;
+      this.renderQuestionPanel({
+        title: `${moveDisplayName(this.game.registry, move.id)} -- question ${index}/${questions.length}`,
+        titleColor: '#ff66ff',
+        strokeColor: 0xff66ff,
+        prompt: question.prompt,
+        options: [
+          { text: question.correct, correct: true },
+          { text: question.incorrect, correct: false },
+        ],
+        onPick: (correct) => {
+          if (!correct) {
+            onAnswered(false);
+            return;
+          }
+          askNext();
+        },
       });
-
-      const panelHeight = y - top + 10;
-      const panel = this.add
-        .rectangle(FIELD_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
-        .setStrokeStyle(2, 0xff66ff);
-      container.addAt(panel, 0);
     };
 
     askNext();
@@ -1843,8 +1864,12 @@ export class BattleScene extends Phaser.Scene {
     // Feynman's move-leveling (§5): a leveled move's own base power is
     // scaled up by its current tier's multiplier -- the player's own save
     // state only, so an opponent's copy of the same move id is never
-    // affected by it.
+    // affected by it. `level` feeds playAttackEffect below (art/
+    // attackEffects.ts) purely for presentation -- the escalating repeat
+    // animation there never touches damage, which is already fully decided
+    // by `power` here.
     const power = isPlayer ? effectiveMovePower(this.game.registry, moveId) : move.power;
+    const level = isPlayer ? getMoveLevel(this.game.registry, moveId) : 0;
     // The crit-chance/defense-factor/final-product math lives in
     // data/balance.ts's resolveHitDamage (Phaser-free, shared with the
     // balance simulator script) -- this just assembles this hit's own
@@ -1974,12 +1999,26 @@ export class BattleScene extends Phaser.Scene {
         mismatchMult * bonusMultiplier,
         shapeOverride,
         () => checkEndOrContinue(),
-        whiff
+        whiff,
+        0,
+        level
       );
       return;
     }
 
-    playAttackEffect(this, effectiveClass, from, to, () => this.impactPunch(targetCrystal), mismatchMult * bonusMultiplier, shapeOverride);
+    playAttackEffect(
+      this,
+      effectiveClass,
+      from,
+      to,
+      () => this.impactPunch(targetCrystal),
+      mismatchMult * bonusMultiplier,
+      shapeOverride,
+      undefined,
+      false,
+      0,
+      level
+    );
     applyResult();
     checkEndOrContinue();
   }
@@ -2068,13 +2107,19 @@ export class BattleScene extends Phaser.Scene {
   // the caster taking damage instead. Never changes either side's HP by
   // itself (Regenerating only ever heals, on a later tick -- see
   // applyOrTickBuff/applyRegenTick), so there is no win/lose check to make
-  // here the way resolveHit's own tail has to.
+  // here the way resolveHit's own tail has to. Kondo's three moves are as
+  // leveled-by-Feynman as any attack move (kondoMitigationFraction already
+  // scales their own buff strength by the caster's level) -- `level` here
+  // gets the same escalating-repeat ring pulse resolveHit's own attack path
+  // gets, gated `isPlayer`-only the same way (no wild ever casts a Kondo
+  // move, see KONDO_MOVE_IDS' own comment).
   private resolveSelfBuff(isPlayer: boolean, move: Move, tickStatus: boolean, onDone: () => void) {
     const who = isPlayer ? 'You' : `Wild ${this.opponentView().name}`;
     const pos = isPlayer ? PLAYER_POS : this.opponentPos;
     const targetCrystal = isPlayer ? this.playerCrystal : this.opponentCrystal;
+    const level = isPlayer ? getMoveLevel(this.game.registry, move.id) : 0;
 
-    playAttackEffect(this, move.class, pos, pos, () => this.flashHit(targetCrystal), 1);
+    playAttackEffect(this, move.class, pos, pos, () => this.flashHit(targetCrystal), 1, undefined, undefined, false, 0, level);
 
     const buffText = tickStatus ? this.applyOrTickBuff(move, isPlayer) : '';
     // Feynman's level prefix (§5) is the player's own save state -- see

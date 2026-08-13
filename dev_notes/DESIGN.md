@@ -89,8 +89,8 @@ there's something to check there -- Abilities behind a first passive learned
 (save/registry `passivesUnlocked`), Guardians behind a first guardian met
 (`metGuardians`) -- rather than on a fresh save with nothing yet to show; Superposition
 Mode (below) treats both as unlocked from the start, matching how its own guardian/passive
-grants already work. `TitleScene` boots the game and loads the one localStorage save
-slot (see §7) before handing off to the Hub; pressing `H` or `Enter` from any Overworld
+grants already work. `TitleScene` boots the game and loads the currently selected mode's own
+localStorage save slot (see §7) before handing off to the Hub; pressing `H` or `Enter` from any Overworld
 scene returns to it, resuming that world's own map and player position exactly rather than
 generating a fresh one. Pressing `Enter` again in the Lab is the exact reverse of that same
 trip: it sends the player back to precisely the world and position they left, regardless of
@@ -858,8 +858,8 @@ state can mark her met before the player has actually reached her.
   "`<quasiparticle>` Eruption" (`tunedMoveDisplayName`), defaulting to "Phonon Lance"/
   "Phonon Eruption" while untuned -- `skyfallBeam`'s own display name reads "Lance," not
   "Beam," so it never collides with the free starting Phonon Beam move once both default
-  to `'phonon'`. Buying a move (or later revisiting Laughlin) also opens a
-  quasiparticle-picker sub-panel (`showMoveClassPicker`, offering
+  to `'phonon'`. Buying a move (or later revisiting Laughlin) also opens an inline
+  quasiparticle picker beneath that move's own column (`renderInlineClassPicker`, offering
   `TUNABLE_MOVE_CLASSES` -- every ordinary Attacks-section class (i.e. every class
   except Kondo's `'screening'`) -- filtered down to only the ones the player's
   *current* form can actually host, `canHost(playerMaterial.type, cls)`: a class as
@@ -1315,20 +1315,41 @@ world 7's boss fights as an entangled pair where damaging one damages both.
 - **Hosting:** static site (GitHub Pages / Netlify) — client-side only, no backend
   needed unless cross-device save sync or trading is added later. `npm run build`
   in `game/` produces the deployable static output.
-- **Save system:** `localStorage` for v1, implemented (`game/src/data/save.ts`, one save
-  slot). `TitleScene` loads it into the Phaser registry -- the runtime source of truth
-  every scene reads/writes -- before the Hub or any world can run; `persistFromRegistry()`
-  is then called after every registry mutation that should survive a reload (token pickup,
-  move purchase, rival defeat, battle outcome), so the registry and localStorage stay in
-  sync rather than only saving at fixed checkpoints. The Hub's Save Point station (§2) also
-  triggers it explicitly, mostly for the player's own reassurance since autosave already
-  covers it.
-- **Starting a new game.** Once a save exists, the title screen's main button always reads
-  "Continue" -- `TitleScene`'s "New Game (erase save)" link is the only way to discard that
-  progress, gated behind an inline yes/no confirm (`TitleScene.confirmNewGame`) since it's
-  destructive and irreversible. Confirming calls `data/save.ts`'s `clearSave()` then
-  `this.scene.restart()`, so the Title's existing `loadSave()`-into-registry block re-seeds
-  every registry key from `defaultSave()` rather than needing a second seeding path.
+- **Save system:** `localStorage` for v1, implemented (`game/src/data/save.ts`), as two
+  entirely independent save slots -- `qm-rpg-save-story-v1` and
+  `qm-rpg-save-superposition-v1` -- one per starting mode (§7's Story Mode/Superposition
+  Mode picker), so progress made under one mode's looser rules can never be resumed under
+  the other's. `loadSave(superposition)`/`hasSave(superposition)`/`clearSave(superposition)`
+  all take which slot to act on; `persistFromRegistry(registry)` itself stays a single
+  no-argument-beyond-registry call (its ~40 call sites across the codebase are unaware of
+  the split) since it reads the registry's own current `superpositionMode` flag to decide
+  which slot to write. `TitleScene` loads the selected mode's slot into the Phaser registry
+  -- the runtime source of truth every scene reads/writes -- before the Hub or any world can
+  run, and reloads the *other* slot wholesale (every field, not just the flag) whenever the
+  player switches the mode picker, so no field from one mode's save is ever left sitting in
+  the registry under the other mode's flag. `persistFromRegistry()` is then called after
+  every registry mutation that should survive a reload (token pickup, move purchase, rival
+  defeat, battle outcome), so the registry and localStorage stay in sync rather than only
+  saving at fixed checkpoints. The Hub's Save Point station (§2) also triggers it explicitly,
+  mostly for the player's own reassurance since autosave already covers it. A save written
+  under the single-slot format that predates this split is migrated once, automatically, the
+  first time either `loadSave`/`hasSave` runs: its contents move into whichever new slot
+  matches its own stored `superpositionMode` field, and the old key is removed.
+- **Starting a new game.** Once a save exists for the currently selected mode, the title
+  screen's main button reads "Continue" for that mode -- `TitleScene`'s "New Game (erase
+  save)" link erases only the currently selected mode's own slot, never both, gated behind
+  an inline yes/no confirm (`TitleScene.confirmNewGame`) since it's destructive and
+  irreversible. Confirming calls `data/save.ts`'s `clearSave(superposition)` for the selected
+  mode, then reloads that same mode's now-empty slot back into the registry and rebuilds the
+  screen in place (rather than a full `this.scene.restart()`, which would rerun the picker's
+  own initial-mode tiebreak and could flip the screen to the *other* mode right after the
+  player asked to erase this one). Switching modes without erasing anything reaches the same
+  registry-reload path, keeping the displayed "Continue"/"New Game" label, the "erase save"
+  line, and the picker's own highlight always in sync with whichever mode is currently
+  selected. Which mode is preselected the moment the title screen first loads: whichever mode
+  has an existing save if only one of the two does, Story Mode as the tiebreak when both or
+  neither do, since it's the primary progression and Superposition Mode is an explicit
+  testing/exploration extra layered on top of it.
 - **Data-driven content:** materials and moves live in `game/src/data/materials.ts`
   (including the per-world `WORLD_CRYSTALS` database), the sole source of truth —
   there is no separate `data/materials.json` draft to keep in sync — so balance/content

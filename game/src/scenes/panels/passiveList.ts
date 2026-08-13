@@ -16,12 +16,14 @@ export interface ChoiceListItem {
 
 // Reads/writes whatever registry keys back a given "buy several, only one
 // active" kit -- Franklin's flat `passivesUnlocked`/`activePassiveByOwner`
-// pair, Kondo's own `unlockedMoves`/`kondoActiveMove` pair, or a future
-// guardian's own. Kept as an adapter rather than folding both kits onto one
-// shared registry key: Kondo's moves are also real battle moves
-// (`unlockedMoves`, read by the battle move menu itself), not a
-// passives-only concept, so the two kits' storage genuinely differs beneath
-// the identical shop UI.
+// pair today, or a future guardian's own. Kept as its own adapter interface
+// rather than a single hardcoded registry shape, since a future kit's
+// storage could differ from Franklin's own the way a kit selling real battle
+// moves (rather than passives) would need to read/write `unlockedMoves` plus
+// its own single "which one is active" key instead (Kondo's self-buff moves,
+// scenes/panels/kondo.ts, are exactly that shape -- but browsed through
+// listDetail.ts's own list+detail layout rather than this file's, since each
+// one is worth previewing with its own real battle-effect animation).
 export interface ChoiceListState {
   isUnlocked(id: string): boolean;
   activeId(): string | null;
@@ -29,10 +31,10 @@ export interface ChoiceListState {
   activate(id: string): void;
 }
 
-// Opt-in layout/preview hooks, all defaulting to today's plain behavior so a
-// caller that passes nothing (Kondo) renders byte-for-byte identically to
-// before this existed. `centerX`/`wrapWidth` let a caller lay the list out
-// in a narrower column instead of full-canvas-centered (Franklin's own
+// Opt-in layout/preview hooks, all defaulting to today's plain,
+// full-canvas-centered behavior so a caller that passes nothing renders the
+// same as if this options param didn't exist at all. `centerX`/`wrapWidth`
+// let a caller lay the list out in a narrower column instead (Franklin's own
 // panel, see franklin.ts, puts a crystal preview beside this list rather
 // than below it). `onSelect` adds a non-committal "look" click on top of
 // the existing "buy"/"make active" buttons (both of which already commit
@@ -46,10 +48,11 @@ export interface ChoiceListRenderOptions {
 }
 
 // The shared "buy several, only one active, switch by revisiting" shop
-// engine -- Franklin's three passives and Kondo's three self-buff moves are
-// both this same shape (see renderPassiveList below for Franklin's own
-// thin wrapper around it), kept as one render loop parameterized over
-// `items`/`state` rather than two near-identical copies. Still-unbought
+// engine -- Franklin's three passives are this shape (see renderPassiveList
+// below for Franklin's own thin wrapper around it), kept generic over
+// `items`/`state` rather than hardcoded to Franklin's own registry keys so a
+// future guardian selling another flat, non-previewable "buy several, equip
+// one" kit can reuse it the same way. Still-unbought
 // items get a buy button; every already-bought item gets its own "Make
 // `<name>` active" button or a dimmed "`<name>` (active)" tag -- same
 // dimmed-current convention every other guardian panel uses. Every row,

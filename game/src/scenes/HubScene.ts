@@ -16,6 +16,7 @@ import type { GuardianPanelHost } from './OverworldScene';
 import { labPanelColumns, LAB_TITLE_COLOR, LAB_STATIONS } from './panels/hubStations';
 import { LIST_DETAIL_PANEL_W, listDetailColumns, renderListColumn, insertColumnDivider } from './panels/listDetail';
 import { makeQumatexMotif, makeSavePointMotif } from '../art/labMotifs';
+import { stopMoveEffectPreview } from '../art/moveEffectPreview';
 
 // World 0, "The Lab" (DESIGN.md's world table) -- boot destination from
 // TitleScene and the return point from Overworld (press H or Enter). Unlike
@@ -100,6 +101,13 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   dresselhausPreview: string | null = null;
   andersonHostPreview: string | null = null;
   majoranaPreview: string | null = null;
+  noetherMovePreview: string | null = null;
+  noetherMovePage = 0;
+  kondoMovePreview: string | null = null;
+  kondoMovePage = 0;
+  // Same reset rules as dresselhausPreview/majoranaPreview above -- see
+  // GuardianPanelHost's own comment on this field.
+  blochPreview: number | null = null;
   // The room's one floating crystal preview (STYLE.md's "the only crystal
   // render drawn anywhere in the room itself") -- `playerPreview` is the
   // stable tween target (the continuous bob), `playerCrystalGfx` the
@@ -1009,6 +1017,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // clear their own previous container on a redraw (filter change, row
   // pick, list paging, settings change) before rebuilding.
   closeDialogue() {
+    stopMoveEffectPreview();
     this.dialogueContainer?.destroy(true);
     this.dialogueContainer = undefined;
     // Same per-guardian session-field reset as OverworldScene.closeDialogue()
@@ -1027,5 +1036,10 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     this.dresselhausPreview = null;
     this.andersonHostPreview = null;
     this.majoranaPreview = null;
+    this.noetherMovePreview = null;
+    this.noetherMovePage = 0;
+    this.kondoMovePreview = null;
+    this.kondoMovePage = 0;
+    this.blochPreview = null;
   }
 }

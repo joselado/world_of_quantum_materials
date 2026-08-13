@@ -106,6 +106,79 @@ const TRAVEL_MS: Record<AttackShape, number> = {
 };
 const IMPACT_MS = 260;
 
+// Resolves which shape a given (moveClass, shapeOverride) pair actually
+// plays -- the same precedence playAttackEffect itself uses (an override
+// always wins over the class's own default). Exported for
+// art/moveEffectPreview.ts, which needs to know a move's shape up front (to
+// look up its total duration below) without importing EFFECT_STYLE itself.
+export function resolveAttackShape(moveClass: MoveClass, shapeOverride?: AttackShape): AttackShape {
+  return shapeOverride ?? EFFECT_STYLE[moveClass].shape;
+}
+
+// How long one full play of a given shape takes, start to finish --
+// including the trailing impact shockwave for an ordinary shape, or the full
+// summon->charge->impact->aftermath sequence for meteor/nova. Exported for
+// art/moveEffectPreview.ts's looping detail-pane preview, which schedules
+// each loop's next play off this rather than guessing at (or duplicating) a
+// fixed pause.
+export function attackEffectDurationMs(shape: AttackShape): number {
+  if (shape === 'meteor') return METEOR_TOTAL_MS;
+  if (shape === 'nova') return NOVA_TOTAL_MS;
+  return WINDUP_MS + TRAVEL_MS[shape] + IMPACT_MS;
+}
+
+// Feynman's move-leveling (§5, World 7) escalates a leveled move's own
+// animation into several overlapping, growing repeats of the same single
+// hit, purely as presentation -- the real power bump (MOVE_LEVEL_MULTIPLIERS,
+// data/materials.ts) is already folded into a single hit's damage math
+// upstream of this file (BattleScene.resolveHit's own `power`/`dmg`), so
+// repeating the animation here never touches damage. `LEVEL_TRIGGER_COUNTS`
+// (Double=2/Triple=3/Infinite=4 -- "Infinite" is flavor, not a literal loop)
+// is how many times the effect fires; `LEVEL_TRIGGER_SCALES` is each
+// successive repeat's own visual size multiplier, growing so the cascade
+// reads as escalating rather than as N identical copies. Only the LAST
+// repeat is wired to the real `onImpact`/`onComplete` a caller passed in --
+// every earlier repeat is fire-and-forget decoration (its own onImpact is a
+// no-op, or omitted for the ordinary/Analytic shapes below, which never call
+// back into BattleScene through onImpact/onComplete for real state in the
+// first place -- see playAttackEffect's own doc comment). The stagger
+// between repeat starts differs by shape family: an ordinary/Analytic shape
+// (bolt/ring/burst/beam/eruption) staggers at `LEVEL_STAGGER_FRACTION` of
+// its own `TRAVEL_MS` (so a fast bolt cascades quickly, a slower beam more
+// deliberately); meteor/nova use a fixed real-world delay instead
+// (`ULTIMATE_LEVEL_STAGGER_MS`), since `TRAVEL_MS.meteor`/`.nova` describe a
+// whole multi-second summon->charge->impact->aftermath sequence, not a
+// single silhouette's travel time -- a fraction of it would stagger repeats
+// by seconds. A leveled Ultimate genuinely runs its full multi-phase
+// sequence once per repeat (each one growing), so a level-3 Ultimate takes
+// noticeably longer than an unleveled one; there is no shorter fallback for
+// that tier, by design (see this file's own comment on `playUltimateRepeats`
+// for the measured total).
+const LEVEL_TRIGGER_COUNTS: Record<number, number> = { 0: 1, 1: 2, 2: 3, 3: 4 };
+const LEVEL_TRIGGER_SCALES = [1, 1.25, 1.5, 3.5];
+const LEVEL_STAGGER_FRACTION = 0.4;
+const ULTIMATE_LEVEL_STAGGER_MS = 650;
+
+// Same idea as attackEffectDurationMs above, but accounting for the
+// leveling repeats just described -- the real wall-clock time from the
+// first repeat's launch to the last repeat settling, longer than
+// attackEffectDurationMs alone once level > 0 staggers two or more copies
+// of the same beat. Exported for art/moveEffectPreview.ts's looping
+// detail-pane preview, which needs this (not the single-play duration) to
+// schedule its next loop for a leveled ordinary shape without cutting off
+// the tail of an in-flight cascade -- meteor/nova previews don't need this,
+// since their own real onComplete (only ever fired once, by the last
+// repeat -- see playUltimateRepeats) already accounts for the full cascade.
+export function attackEffectTotalDurationMs(shape: AttackShape, level: 0 | 1 | 2 | 3 = 0): number {
+  const triggerCount = LEVEL_TRIGGER_COUNTS[level] ?? 1;
+  const stagger = shape === 'meteor' || shape === 'nova' ? ULTIMATE_LEVEL_STAGGER_MS : TRAVEL_MS[shape] * LEVEL_STAGGER_FRACTION;
+  return (triggerCount - 1) * stagger + attackEffectDurationMs(shape);
+}
+
+function triggerScaleFor(index: number): number {
+  return LEVEL_TRIGGER_SCALES[Math.min(index, LEVEL_TRIGGER_SCALES.length - 1)];
+}
+
 // Plays the full attack beat: a quick windup flash at the attacker, the
 // travelling effect itself, and a shockwave burst on arrival -- alongside
 // its sound (attack sfx on launch, an impact thud scaled by `powerRatio` on
@@ -120,7 +193,18 @@ const IMPACT_MS = 260;
 // to). `onComplete`/`whiff` only matter for the meteor/nova shapes below --
 // every other shape ignores them, since its tail (win/lose check, opponent's
 // turn) is already synchronous with resolveHit's own caller rather than
-// needing a completion callback of its own.
+// needing a completion callback of its own. `depthOffset` (default 0, so
+// every BattleScene call site -- none of which pass it -- renders at this
+// file's own hardcoded 58-61 exactly as before) shifts every Graphics object
+// this effect creates by a fixed amount; art/moveEffectPreview.ts's looping
+// detail-pane preview passes a large positive offset so the real battle
+// effect draws above a guardian panel's own dialogue container (depth 100,
+// OverworldScene.ts/HubScene.ts's showXPanel convention) instead of
+// underneath its background. `level` (default 0, Feynman's MoveLevel,
+// data/materials.ts) is BattleScene.resolveHit's own isPlayer-gated read of
+// the player's save state (an opponent's copy of the same move id never
+// carries one) -- see the escalation comment above for what a level above 0
+// actually does.
 export function playAttackEffect(
   scene: Phaser.Scene,
   moveClass: MoveClass,
@@ -130,10 +214,13 @@ export function playAttackEffect(
   powerRatio = 1,
   shapeOverride?: AttackShape,
   onComplete?: () => void,
-  whiff = false
+  whiff = false,
+  depthOffset = 0,
+  level: 0 | 1 | 2 | 3 = 0
 ) {
   const style = EFFECT_STYLE[moveClass];
   const shape = shapeOverride ?? style.shape;
+  const triggerCount = LEVEL_TRIGGER_COUNTS[level] ?? 1;
 
   // The Ultimate tier (Skłodowska-Curie's two moves, §5) runs its own
   // multi-phase summon->charge->impact->aftermath sequence (playMeteor/
@@ -144,52 +231,144 @@ export function playAttackEffect(
   // the win/lose check and the opponent's turn until the animation is
   // actually done rather than seconds early.
   if (shape === 'meteor' || shape === 'nova') {
-    const play = shape === 'meteor' ? playMeteor : playNova;
-    const totalMs = shape === 'meteor' ? METEOR_TOTAL_MS : NOVA_TOTAL_MS;
-    music.duck(totalMs);
+    playUltimateRepeats(scene, shape, style.color, to, whiff, onImpact, powerRatio, onComplete, depthOffset, triggerCount);
+    return;
+  }
+
+  playOrdinaryRepeats(scene, shape, style.color, from, to, onImpact, powerRatio, depthOffset, triggerCount);
+}
+
+// Fires `triggerCount` staggered, growing copies of the ordinary/Analytic
+// windup+shape+impact-shockwave beat -- see playAttackEffect's own escalation
+// comment for the trigger-count/scale/stagger rules. Every repeat plays the
+// full beat (its own windup, travel, impact shockwave + impact sfx, launch
+// sfx) since that IS the decoration; only the real `onImpact` callback is
+// withheld from every repeat but the last, so BattleScene's synchronous
+// applyResult()/checkEndOrContinue() (already called right after this
+// function returns, not gated on any callback -- see resolveHit's own
+// comment) can never be affected by how many times this fires.
+function playOrdinaryRepeats(
+  scene: Phaser.Scene,
+  shape: AttackShape,
+  color: number,
+  from: Point,
+  to: Point,
+  onImpact: (() => void) | undefined,
+  powerRatio: number,
+  depthOffset: number,
+  triggerCount: number
+) {
+  const singleMs = WINDUP_MS + TRAVEL_MS[shape] + IMPACT_MS;
+  const stagger = TRAVEL_MS[shape] * LEVEL_STAGGER_FRACTION;
+  music.duck((triggerCount - 1) * stagger + singleMs);
+
+  const playOnce = (scale: number, isLast: boolean) => {
+    playAttackSfx(shape);
+    playWindup(
+      scene,
+      color,
+      from,
+      () => {
+        const land = () => {
+          playImpactShockwave(scene, color, to, depthOffset, scale);
+          playImpactSfx(powerRatio);
+          if (isLast) onImpact?.();
+        };
+        if (shape === 'ring') playRing(scene, color, from, to, land, depthOffset, scale);
+        else if (shape === 'burst') playBurst(scene, color, from, to, land, depthOffset, scale);
+        else if (shape === 'beam') playBeam(scene, color, to, land, depthOffset, scale);
+        else if (shape === 'eruption') playEruption(scene, color, to, land, depthOffset, scale);
+        else playBolt(scene, color, from, to, land, depthOffset, scale);
+      },
+      depthOffset,
+      scale
+    );
+  };
+
+  for (let i = 0; i < triggerCount; i++) {
+    const startDelay = i * stagger;
+    const scale = triggerScaleFor(i);
+    const isLast = i === triggerCount - 1;
+    if (startDelay === 0) playOnce(scale, isLast);
+    else scene.time.delayedCall(startDelay, () => playOnce(scale, isLast));
+  }
+}
+
+// Fires `triggerCount` staggered, growing copies of a full Ultimate
+// summon->charge->impact->aftermath sequence (`ULTIMATE_LEVEL_STAGGER_MS`
+// between repeat starts, not a fraction of `TRAVEL_MS.meteor`/`.nova` --
+// see playAttackEffect's own escalation comment for why). `whiff` is the
+// same all-or-nothing outcome for every repeat (Skłodowska-Curie's Ultimate
+// gate is answered once, before any of this plays -- BattleScene's
+// showUltimateQuestions/resolveHit), so a failed cascade reads as every
+// repeat fizzling together rather than a mix. Only the LAST repeat's own
+// `onImpact`/`onComplete` are forwarded to the real callbacks BattleScene
+// passed in -- every earlier repeat gets a no-op for both, which is what
+// keeps `checkEndOrContinue` (folded into `onComplete` for an Ultimate move,
+// resolveHit) firing exactly once regardless of `triggerCount`: two or more
+// firings would release `turnLock` more than once and could schedule the
+// opponent's counter-swing (or call `endBattle`) repeatedly. A measured
+// level-3 (4-trigger) meteor: 3 * 650ms stagger + one full 5200ms sequence
+// for the last repeat ≈ 7.15s wall-clock before turnLock releases -- long,
+// but this is Skłodowska-Curie's own flashiest tier already (4-6s
+// unleveled), and the coordinator's own call was that a leveled Ultimate
+// should still play its full sequence per repeat rather than a cheaper
+// single-impact-only treatment.
+function playUltimateRepeats(
+  scene: Phaser.Scene,
+  shape: 'meteor' | 'nova',
+  color: number,
+  to: Point,
+  whiff: boolean,
+  onImpact: (() => void) | undefined,
+  powerRatio: number,
+  onComplete: (() => void) | undefined,
+  depthOffset: number,
+  triggerCount: number
+) {
+  const play = shape === 'meteor' ? playMeteor : playNova;
+  const singleMs = shape === 'meteor' ? METEOR_TOTAL_MS : NOVA_TOTAL_MS;
+  const stagger = ULTIMATE_LEVEL_STAGGER_MS;
+  music.duck((triggerCount - 1) * stagger + singleMs);
+
+  const playOnce = (scale: number, isLast: boolean) => {
     playAttackSfx(shape);
     play(
       scene,
-      style.color,
+      color,
       to,
       whiff,
       () => {
         if (whiff) {
           playFizzleSfx();
         } else {
-          playImpactShockwave(scene, style.color, to);
+          playImpactShockwave(scene, color, to, depthOffset, scale);
           playImpactSfx(powerRatio);
         }
-        onImpact?.();
+        if (isLast) onImpact?.();
       },
-      () => onComplete?.()
+      () => {
+        if (isLast) onComplete?.();
+      },
+      depthOffset,
+      scale
     );
-    return;
+  };
+
+  for (let i = 0; i < triggerCount; i++) {
+    const startDelay = i * stagger;
+    const scale = triggerScaleFor(i);
+    const isLast = i === triggerCount - 1;
+    if (startDelay === 0) playOnce(scale, isLast);
+    else scene.time.delayedCall(startDelay, () => playOnce(scale, isLast));
   }
-
-  const totalMs = WINDUP_MS + TRAVEL_MS[shape] + IMPACT_MS;
-  music.duck(totalMs);
-  playAttackSfx(shape);
-
-  playWindup(scene, style.color, from, () => {
-    const land = () => {
-      playImpactShockwave(scene, style.color, to);
-      playImpactSfx(powerRatio);
-      onImpact?.();
-    };
-    if (shape === 'ring') playRing(scene, style.color, from, to, land);
-    else if (shape === 'burst') playBurst(scene, style.color, from, to, land);
-    else if (shape === 'beam') playBeam(scene, style.color, to, land);
-    else if (shape === 'eruption') playEruption(scene, style.color, to, land);
-    else playBolt(scene, style.color, from, to, land);
-  });
 }
 
 // A quick expanding/fading glow at the attacker's own position, right
 // before the effect launches -- gives every attack a beat of anticipation
 // instead of firing instantly.
-function playWindup(scene: Phaser.Scene, color: number, at: Point, onDone: () => void) {
-  const g = scene.add.graphics().setDepth(59).setBlendMode(Phaser.BlendModes.ADD);
+function playWindup(scene: Phaser.Scene, color: number, at: Point, onDone: () => void, depthOffset = 0, scale = 1) {
+  const g = scene.add.graphics().setDepth(59 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
   scene.tweens.addCounter({
     from: 0,
     to: 1,
@@ -199,9 +378,9 @@ function playWindup(scene: Phaser.Scene, color: number, at: Point, onDone: () =>
       const t = tw.getValue() ?? 0;
       g.clear();
       g.fillStyle(color, 0.5 * (1 - t));
-      g.fillCircle(at.x, at.y, 4 + t * 22);
-      g.lineStyle(2, 0xffffff, 0.85 * (1 - t));
-      g.strokeCircle(at.x, at.y, 4 + t * 22);
+      g.fillCircle(at.x, at.y, (4 + t * 22) * scale);
+      g.lineStyle(2 * scale, 0xffffff, 0.85 * (1 - t));
+      g.strokeCircle(at.x, at.y, (4 + t * 22) * scale);
     },
     onComplete: () => {
       g.destroy();
@@ -210,8 +389,8 @@ function playWindup(scene: Phaser.Scene, color: number, at: Point, onDone: () =>
   });
 }
 
-function playBolt(scene: Phaser.Scene, color: number, from: Point, to: Point, onImpact?: () => void) {
-  const g = scene.add.graphics().setDepth(60).setBlendMode(Phaser.BlendModes.ADD);
+function playBolt(scene: Phaser.Scene, color: number, from: Point, to: Point, onImpact?: () => void, depthOffset = 0, scale = 1) {
+  const g = scene.add.graphics().setDepth(60 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
   scene.tweens.addCounter({
     from: 0,
     to: 1,
@@ -222,14 +401,14 @@ function playBolt(scene: Phaser.Scene, color: number, from: Point, to: Point, on
       const x = Phaser.Math.Linear(from.x, to.x, t);
       const y = Phaser.Math.Linear(from.y, to.y, t);
       g.clear();
-      g.lineStyle(8, color, 0.3);
+      g.lineStyle(8 * scale, color, 0.3);
       g.lineBetween(
         Phaser.Math.Linear(from.x, to.x, Math.max(0, t - 0.55)),
         Phaser.Math.Linear(from.y, to.y, Math.max(0, t - 0.55)),
         x,
         y
       );
-      g.lineStyle(4, color, 0.9);
+      g.lineStyle(4 * scale, color, 0.9);
       g.lineBetween(
         Phaser.Math.Linear(from.x, to.x, Math.max(0, t - 0.3)),
         Phaser.Math.Linear(from.y, to.y, Math.max(0, t - 0.3)),
@@ -237,9 +416,9 @@ function playBolt(scene: Phaser.Scene, color: number, from: Point, to: Point, on
         y
       );
       g.fillStyle(color, 1);
-      g.fillCircle(x, y, 8);
+      g.fillCircle(x, y, 8 * scale);
       g.fillStyle(0xffffff, 0.9);
-      g.fillCircle(x, y, 3.5);
+      g.fillCircle(x, y, 3.5 * scale);
     },
     onComplete: () => {
       g.destroy();
@@ -248,8 +427,8 @@ function playBolt(scene: Phaser.Scene, color: number, from: Point, to: Point, on
   });
 }
 
-function playRing(scene: Phaser.Scene, color: number, from: Point, to: Point, onImpact?: () => void) {
-  const g = scene.add.graphics().setDepth(60).setBlendMode(Phaser.BlendModes.ADD);
+function playRing(scene: Phaser.Scene, color: number, from: Point, to: Point, onImpact?: () => void, depthOffset = 0, scale = 1) {
+  const g = scene.add.graphics().setDepth(60 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
   const originX = Phaser.Math.Linear(from.x, to.x, 0.12);
   const originY = Phaser.Math.Linear(from.y, to.y, 0.12);
   scene.tweens.addCounter({
@@ -260,12 +439,12 @@ function playRing(scene: Phaser.Scene, color: number, from: Point, to: Point, on
     onUpdate: (tw) => {
       const t = tw.getValue() ?? 0;
       g.clear();
-      g.lineStyle(4, color, 1 - t * 0.85);
-      g.strokeCircle(originX, originY, 12 + t * 58);
-      g.lineStyle(3, color, (1 - t) * 0.7);
-      g.strokeCircle(originX, originY, 4 + t * 34);
-      g.lineStyle(2, 0xffffff, (1 - t) * 0.5);
-      g.strokeCircle(originX, originY, 20 + t * 46);
+      g.lineStyle(4 * scale, color, 1 - t * 0.85);
+      g.strokeCircle(originX, originY, (12 + t * 58) * scale);
+      g.lineStyle(3 * scale, color, (1 - t) * 0.7);
+      g.strokeCircle(originX, originY, (4 + t * 34) * scale);
+      g.lineStyle(2 * scale, 0xffffff, (1 - t) * 0.5);
+      g.strokeCircle(originX, originY, (20 + t * 46) * scale);
     },
     onComplete: () => {
       g.destroy();
@@ -274,8 +453,8 @@ function playRing(scene: Phaser.Scene, color: number, from: Point, to: Point, on
   });
 }
 
-function playBurst(scene: Phaser.Scene, color: number, from: Point, to: Point, onImpact?: () => void) {
-  const g = scene.add.graphics().setDepth(60).setBlendMode(Phaser.BlendModes.ADD);
+function playBurst(scene: Phaser.Scene, color: number, from: Point, to: Point, onImpact?: () => void, depthOffset = 0, scale = 1) {
+  const g = scene.add.graphics().setDepth(60 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
   const n = 12;
   scene.tweens.addCounter({
     from: 0,
@@ -287,11 +466,11 @@ function playBurst(scene: Phaser.Scene, color: number, from: Point, to: Point, o
       g.clear();
       const cx = Phaser.Math.Linear(from.x, to.x, t);
       const cy = Phaser.Math.Linear(from.y, to.y, t);
-      const spread = (1 - t) * 32 + t * 14;
+      const spread = ((1 - t) * 32 + t * 14) * scale;
       for (let i = 0; i < n; i++) {
         const ang = (i / n) * Math.PI * 2 + t * 3;
         g.fillStyle(color, 0.5 + t * 0.5);
-        g.fillCircle(cx + Math.cos(ang) * spread, cy + Math.sin(ang) * spread, 3.5);
+        g.fillCircle(cx + Math.cos(ang) * spread, cy + Math.sin(ang) * spread, 3.5 * scale);
       }
     },
     onComplete: () => {
@@ -312,9 +491,9 @@ function playBurst(scene: Phaser.Scene, color: number, from: Point, to: Point, o
 // swirling side-rays orbit the main column, a radiant sun expands at the
 // point of origin as the beam charges, and a trail of falling sparks chases
 // the head down.
-function playBeam(scene: Phaser.Scene, color: number, to: Point, onImpact?: () => void) {
-  const g = scene.add.graphics().setDepth(60).setBlendMode(Phaser.BlendModes.ADD);
-  const sun = scene.add.graphics().setDepth(59).setBlendMode(Phaser.BlendModes.ADD);
+function playBeam(scene: Phaser.Scene, color: number, to: Point, onImpact?: () => void, depthOffset = 0, scale = 1) {
+  const g = scene.add.graphics().setDepth(60 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
+  const sun = scene.add.graphics().setDepth(59 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
   const originY = -40;
   scene.tweens.addCounter({
     from: 0,
@@ -325,35 +504,35 @@ function playBeam(scene: Phaser.Scene, color: number, to: Point, onImpact?: () =
       const t = tw.getValue() ?? 0;
       const headY = Phaser.Math.Linear(originY, to.y, Math.min(1, t * 1.3));
       const pulse = 0.75 + 0.25 * Math.sin(t * 46);
-      const swirl = Math.sin(t * 20) * 12;
+      const swirl = Math.sin(t * 20) * 12 * scale;
       g.clear();
       // Wide, pulsing telegraph halo.
       g.fillStyle(color, 0.24 * t * pulse);
-      g.fillRect(to.x - 34, originY, 68, to.y - originY);
+      g.fillRect(to.x - 34 * scale, originY, 68 * scale, to.y - originY);
       // Two side-rays swirling around the main column.
       g.fillStyle(color, 0.55 * t);
-      g.fillRect(to.x - 24 + swirl, originY, 9, headY - originY);
-      g.fillRect(to.x + 15 - swirl, originY, 9, headY - originY);
+      g.fillRect(to.x - 24 * scale + swirl, originY, 9 * scale, headY - originY);
+      g.fillRect(to.x + 15 * scale - swirl, originY, 9 * scale, headY - originY);
       // Main column, brighter/wider than the original.
       g.fillStyle(color, 0.97);
-      g.fillRect(to.x - 15, originY, 30, headY - originY);
+      g.fillRect(to.x - 15 * scale, originY, 30 * scale, headY - originY);
       // White-hot core.
       g.fillStyle(0xffffff, 1);
-      g.fillRect(to.x - 5, originY, 10, headY - originY);
+      g.fillRect(to.x - 5 * scale, originY, 10 * scale, headY - originY);
       // Falling sparks trailing the head.
       for (let i = 0; i < 7; i++) {
         const sy = headY - i * 16;
         if (sy < originY) continue;
-        const sx = to.x + Math.sin(t * 34 + i * 1.7) * (14 - i);
+        const sx = to.x + Math.sin(t * 34 + i * 1.7) * (14 - i) * scale;
         g.fillStyle(i % 2 === 0 ? 0xffffff : color, 0.85 - i * 0.11);
-        g.fillCircle(sx, sy, 3.2 - i * 0.22);
+        g.fillCircle(sx, sy, (3.2 - i * 0.22) * scale);
       }
       // Radiant sun expanding at the point of origin as the beam charges.
       sun.clear();
       sun.fillStyle(0xffffff, 0.65 * (1 - t));
-      sun.fillCircle(to.x, originY, 12 + t * 46);
-      sun.lineStyle(2, color, 0.75 * (1 - t));
-      sun.strokeCircle(to.x, originY, 18 + t * 58);
+      sun.fillCircle(to.x, originY, (12 + t * 46) * scale);
+      sun.lineStyle(2 * scale, color, 0.75 * (1 - t));
+      sun.strokeCircle(to.x, originY, (18 + t * 58) * scale);
     },
     onComplete: () => {
       g.destroy();
@@ -370,8 +549,8 @@ function playBeam(scene: Phaser.Scene, color: number, to: Point, onImpact?: () =
 // an expanding double shockwave ring on the ground, a bright geyser core
 // punching straight up through the shards, and nearly double the shard
 // count spread wider than an ordinary burst.
-function playEruption(scene: Phaser.Scene, color: number, to: Point, onImpact?: () => void) {
-  const g = scene.add.graphics().setDepth(60).setBlendMode(Phaser.BlendModes.ADD);
+function playEruption(scene: Phaser.Scene, color: number, to: Point, onImpact?: () => void, depthOffset = 0, scale = 1) {
+  const g = scene.add.graphics().setDepth(60 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
   const n = 18;
   const groundY = to.y + 18;
   scene.tweens.addCounter({
@@ -383,27 +562,27 @@ function playEruption(scene: Phaser.Scene, color: number, to: Point, onImpact?: 
       const t = tw.getValue() ?? 0;
       g.clear();
       // Expanding double shockwave ring on the ground.
-      g.lineStyle(3, color, 0.85 * (1 - t));
-      g.strokeCircle(to.x, groundY, 16 + t * 76);
-      g.lineStyle(2, 0xffffff, 0.55 * (1 - t));
-      g.strokeCircle(to.x, groundY, 10 + t * 54);
+      g.lineStyle(3 * scale, color, 0.85 * (1 - t));
+      g.strokeCircle(to.x, groundY, (16 + t * 76) * scale);
+      g.lineStyle(2 * scale, 0xffffff, 0.55 * (1 - t));
+      g.strokeCircle(to.x, groundY, (10 + t * 54) * scale);
       // Brighter, wider crack glow.
       g.fillStyle(color, 0.65 * (1 - t));
-      g.fillEllipse(to.x, groundY, 74 + t * 54, 22);
+      g.fillEllipse(to.x, groundY, (74 + t * 54) * scale, 22 * scale);
       // Bright geyser core punching straight up through the shards.
-      const coreH = 96 * Math.min(1, t * 1.6);
+      const coreH = 96 * Math.min(1, t * 1.6) * scale;
       g.fillStyle(color, 0.55 * (1 - t * 0.5));
-      g.fillRect(to.x - 11, groundY - coreH * 0.8, 22, coreH * 0.8);
+      g.fillRect(to.x - 11 * scale, groundY - coreH * 0.8, 22 * scale, coreH * 0.8);
       g.fillStyle(0xffffff, 0.9 * (1 - t * 0.5));
-      g.fillRect(to.x - 4, groundY - coreH, 8, coreH);
+      g.fillRect(to.x - 4 * scale, groundY - coreH, 8 * scale, coreH);
       // Shards, nearly double the ordinary burst count and spread wider.
       for (let i = 0; i < n; i++) {
         const ang = -Math.PI / 2 + ((i / (n - 1)) - 0.5) * 2.3;
-        const dist = t * 100;
+        const dist = t * 100 * scale;
         const px = to.x + Math.cos(ang) * dist * 0.6;
         const py = groundY + Math.sin(ang) * dist;
         g.fillStyle(i % 2 === 0 ? color : 0xffffff, 0.95 * (1 - t * 0.6));
-        g.fillCircle(px, py, 5 - t * 1.6);
+        g.fillCircle(px, py, (5 - t * 1.6) * scale);
       }
     },
     onComplete: () => {
@@ -445,8 +624,8 @@ export const NOVA_TOTAL_MS = NOVA_SUMMON_MS + NOVA_CHARGE_MS + NOVA_IMPACT_MS + 
 // under the target -- a rotating hexagonal lattice ring inside an outer
 // glow ring, plus radiating spokes, all flattened to an ellipse for ground
 // perspective (matching playEruption's own groundY/fillEllipse convention).
-function playMeteorSummon(scene: Phaser.Scene, color: number, to: Point, onDone: () => void) {
-  const g = scene.add.graphics().setDepth(58).setBlendMode(Phaser.BlendModes.ADD);
+function playMeteorSummon(scene: Phaser.Scene, color: number, to: Point, onDone: () => void, depthOffset = 0, scale = 1) {
+  const g = scene.add.graphics().setDepth(58 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
   const groundY = to.y + 18;
   scene.tweens.addCounter({
     from: 0,
@@ -455,12 +634,12 @@ function playMeteorSummon(scene: Phaser.Scene, color: number, to: Point, onDone:
     ease: 'Cubic.easeOut',
     onUpdate: (tw) => {
       const t = tw.getValue() ?? 0;
-      const r = 10 + t * 66;
+      const r = (10 + t * 66) * scale;
       g.clear();
-      g.lineStyle(3, color, 0.2 + t * 0.55);
+      g.lineStyle(3 * scale, color, 0.2 + t * 0.55);
       g.strokeEllipse(to.x, groundY, r * 2, r * 0.8);
       const rot = t * Math.PI * 1.3;
-      g.lineStyle(2, 0xffffff, 0.15 + t * 0.5);
+      g.lineStyle(2 * scale, 0xffffff, 0.15 + t * 0.5);
       g.beginPath();
       for (let i = 0; i <= 6; i++) {
         const ang = rot + (i / 6) * Math.PI * 2;
@@ -472,7 +651,7 @@ function playMeteorSummon(scene: Phaser.Scene, color: number, to: Point, onDone:
       g.strokePath();
       for (let i = 0; i < 10; i++) {
         const ang = rot * 0.6 + (i / 10) * Math.PI * 2;
-        g.lineStyle(1.5, color, 0.15 + t * 0.35);
+        g.lineStyle(1.5 * scale, color, 0.15 + t * 0.35);
         g.lineBetween(to.x, groundY, to.x + Math.cos(ang) * r * 0.85, groundY + Math.sin(ang) * r * 0.85 * 0.4);
       }
     },
@@ -496,9 +675,9 @@ function playMeteorSummon(scene: Phaser.Scene, color: number, to: Point, onDone:
 // stays at frame 0 of the Impact phase (mirrors every other shape's land()),
 // so this hold -- not a delayed onImpact -- is what sells "suddenly explode"
 // rather than "still visibly growing when it detonates".
-function playMeteorCharge(scene: Phaser.Scene, color: number, to: Point, onDone: () => void) {
-  const mass = scene.add.graphics().setDepth(60).setBlendMode(Phaser.BlendModes.ADD);
-  const circle = scene.add.graphics().setDepth(58).setBlendMode(Phaser.BlendModes.ADD);
+function playMeteorCharge(scene: Phaser.Scene, color: number, to: Point, onDone: () => void, depthOffset = 0, scale = 1) {
+  const mass = scene.add.graphics().setDepth(60 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
+  const circle = scene.add.graphics().setDepth(58 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
   const groundY = to.y + 18;
   const originY = -60;
   scene.tweens.addCounter({
@@ -510,19 +689,19 @@ function playMeteorCharge(scene: Phaser.Scene, color: number, to: Point, onDone:
       const t = tw.getValue() ?? 0;
       const growT = Math.min(t / 0.82, 1);
       const massY = Phaser.Math.Linear(originY, to.y - 34, growT);
-      const massR = 14 + growT * 44;
+      const massR = (14 + growT * 44) * scale;
       mass.clear();
       for (let i = 0; i < 8; i++) {
         const ty = massY - i * 14;
         if (ty < originY) continue;
         mass.fillStyle(i % 2 === 0 ? 0xffffff : color, Math.max(0, 0.5 - i * 0.06));
-        mass.fillCircle(to.x + Math.sin(t * 22 + i) * (6 - i * 0.4), ty, Math.max(2, massR * 0.5 - i * 2));
+        mass.fillCircle(to.x + Math.sin(t * 22 + i) * (6 - i * 0.4) * scale, ty, Math.max(2, massR * 0.5 - i * 2));
       }
       for (let i = 0; i < 5; i++) {
         const ang = t * 9 + (i / 5) * Math.PI * 2;
         const orbR = massR * 1.6;
         mass.fillStyle(0x8a5a3a, 0.9);
-        mass.fillCircle(to.x + Math.cos(ang) * orbR, massY + Math.sin(ang) * orbR * 0.6, 4);
+        mass.fillCircle(to.x + Math.cos(ang) * orbR, massY + Math.sin(ang) * orbR * 0.6, 4 * scale);
       }
       mass.fillStyle(color, 0.85);
       mass.fillCircle(to.x, massY, massR);
@@ -531,10 +710,10 @@ function playMeteorCharge(scene: Phaser.Scene, color: number, to: Point, onDone:
 
       circle.clear();
       const pulse = 0.6 + 0.4 * Math.sin(t * 28);
-      circle.lineStyle(3, color, 0.4 * pulse);
-      circle.strokeEllipse(to.x, groundY, (58 + Math.sin(t * 10) * 4) * 2, (58 + Math.sin(t * 10) * 4) * 0.8);
-      circle.lineStyle(2, 0xffffff, 0.3 * pulse);
-      circle.strokeEllipse(to.x, groundY, 76, 30);
+      circle.lineStyle(3 * scale, color, 0.4 * pulse);
+      circle.strokeEllipse(to.x, groundY, (58 + Math.sin(t * 10) * 4) * 2 * scale, (58 + Math.sin(t * 10) * 4) * 0.8 * scale);
+      circle.lineStyle(2 * scale, 0xffffff, 0.3 * pulse);
+      circle.strokeEllipse(to.x, groundY, 76 * scale, 30 * scale);
     },
     onComplete: () => {
       mass.destroy();
@@ -561,10 +740,12 @@ function playMeteorImpact(
   to: Point,
   whiff: boolean,
   onImpact: () => void,
-  onDone: () => void
+  onDone: () => void,
+  depthOffset = 0,
+  scale = 1
 ) {
   onImpact();
-  const g = scene.add.graphics().setDepth(60).setBlendMode(Phaser.BlendModes.ADD);
+  const g = scene.add.graphics().setDepth(60 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
   const groundY = to.y + 18;
   const drawColor = whiff ? 0x777777 : color;
   scene.tweens.addCounter({
@@ -576,23 +757,23 @@ function playMeteorImpact(
       const t = tw.getValue() ?? 0;
       g.clear();
       if (whiff) {
-        const r = Math.max(0, 34 * (1 - t));
+        const r = Math.max(0, 34 * (1 - t)) * scale;
         g.fillStyle(drawColor, 0.35 * (1 - t));
         g.fillCircle(to.x, to.y - 18 * (1 - t), r);
-        g.lineStyle(2, 0x999999, 0.35 * (1 - t));
-        g.strokeEllipse(to.x, groundY, 40 * (1 - t), 14 * (1 - t));
+        g.lineStyle(2 * scale, 0x999999, 0.35 * (1 - t));
+        g.strokeEllipse(to.x, groundY, 40 * (1 - t) * scale, 14 * (1 - t) * scale);
         return;
       }
       g.fillStyle(0xffffff, 0.92 * (1 - t));
-      g.fillCircle(to.x, groundY, 26 + t * 130);
-      g.lineStyle(5, color, 0.85 * (1 - t));
-      g.strokeEllipse(to.x, groundY, (14 + t * 260) * 2, (14 + t * 260) * 0.5);
+      g.fillCircle(to.x, groundY, (26 + t * 130) * scale);
+      g.lineStyle(5 * scale, color, 0.85 * (1 - t));
+      g.strokeEllipse(to.x, groundY, (14 + t * 260) * 2 * scale, (14 + t * 260) * 0.5 * scale);
       g.fillStyle(color, 0.5 * (1 - t));
-      g.fillEllipse(to.x, groundY, 140 + t * 320, 26 + t * 50);
+      g.fillEllipse(to.x, groundY, (140 + t * 320) * scale, (26 + t * 50) * scale);
       for (let i = 0; i < 12; i++) {
         const ang = (i / 12) * Math.PI * 2;
-        const len = 24 + t * 230;
-        g.lineStyle(3, color, 0.7 * (1 - t));
+        const len = (24 + t * 230) * scale;
+        g.lineStyle(3 * scale, color, 0.7 * (1 - t));
         g.lineBetween(to.x, groundY, to.x + Math.cos(ang) * len, groundY + Math.sin(ang) * len * 0.5);
       }
     },
@@ -606,11 +787,11 @@ function playMeteorImpact(
 // Aftermath (`ultimateMeteor`): residual glow and rising embers/dissipating
 // shards, ending by tearing down every Graphics object this phase created
 // and firing `onComplete` exactly once.
-function playMeteorAftermath(scene: Phaser.Scene, color: number, to: Point, whiff: boolean, onComplete: () => void) {
-  const g = scene.add.graphics().setDepth(58).setBlendMode(Phaser.BlendModes.ADD);
+function playMeteorAftermath(scene: Phaser.Scene, color: number, to: Point, whiff: boolean, onComplete: () => void, depthOffset = 0, scale = 1) {
+  const g = scene.add.graphics().setDepth(58 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
   const groundY = to.y + 18;
   const emberColor = whiff ? 0x888888 : color;
-  const spread = whiff ? 14 : 60;
+  const spread = (whiff ? 14 : 60) * scale;
   const emberCount = whiff ? 6 : 9;
   scene.tweens.addCounter({
     from: 0,
@@ -621,12 +802,12 @@ function playMeteorAftermath(scene: Phaser.Scene, color: number, to: Point, whif
       const t = tw.getValue() ?? 0;
       g.clear();
       g.fillStyle(emberColor, 0.35 * (1 - t));
-      g.fillCircle(to.x, groundY, (whiff ? 10 : 48) * (1 - t));
+      g.fillCircle(to.x, groundY, (whiff ? 10 : 48) * (1 - t) * scale);
       for (let i = 0; i < emberCount; i++) {
         const ang = -Math.PI / 2 + (i - (emberCount - 1) / 2) * 0.32;
         const dist = t * spread;
         g.fillStyle(i % 2 === 0 ? 0xffffff : emberColor, (1 - t) * 0.75);
-        g.fillCircle(to.x + Math.cos(ang) * dist, groundY - t * 26 + Math.sin(ang) * dist * 0.3, 2.5 * (1 - t * 0.6));
+        g.fillCircle(to.x + Math.cos(ang) * dist, groundY - t * 26 * scale + Math.sin(ang) * dist * 0.3, 2.5 * (1 - t * 0.6) * scale);
       }
     },
     onComplete: () => {
@@ -645,15 +826,17 @@ function playMeteor(
   to: Point,
   whiff: boolean,
   onImpact: () => void,
-  onComplete: () => void
+  onComplete: () => void,
+  depthOffset = 0,
+  scale = 1
 ) {
   playMeteorSummon(scene, color, to, () => {
     playMeteorCharge(scene, color, to, () => {
       playMeteorImpact(scene, color, to, whiff, onImpact, () => {
-        playMeteorAftermath(scene, color, to, whiff, onComplete);
-      });
-    });
-  });
+        playMeteorAftermath(scene, color, to, whiff, onComplete, depthOffset, scale);
+      }, depthOffset, scale);
+    }, depthOffset, scale);
+  }, depthOffset, scale);
 }
 
 // Summon (`ultimateNova`): the same FF-style runic circle idea as
@@ -661,8 +844,8 @@ function playMeteor(
 // ground-flattened -- two counter-rotating mandala rings (an octagon plus
 // radiating spokes) building up around `to`, reading as a vertical mandala
 // rather than a ground rune.
-function playNovaSummon(scene: Phaser.Scene, color: number, to: Point, onDone: () => void) {
-  const g = scene.add.graphics().setDepth(60).setBlendMode(Phaser.BlendModes.ADD);
+function playNovaSummon(scene: Phaser.Scene, color: number, to: Point, onDone: () => void, depthOffset = 0, scale = 1) {
+  const g = scene.add.graphics().setDepth(60 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
   scene.tweens.addCounter({
     from: 0,
     to: 1,
@@ -670,12 +853,12 @@ function playNovaSummon(scene: Phaser.Scene, color: number, to: Point, onDone: (
     ease: 'Cubic.easeOut',
     onUpdate: (tw) => {
       const t = tw.getValue() ?? 0;
-      const r = 8 + t * 52;
+      const r = (8 + t * 52) * scale;
       g.clear();
-      g.lineStyle(3, color, 0.3 + t * 0.5);
+      g.lineStyle(3 * scale, color, 0.3 + t * 0.5);
       g.strokeCircle(to.x, to.y, r);
       const rot1 = t * Math.PI * 1.6;
-      g.lineStyle(2, 0xffffff, 0.2 + t * 0.5);
+      g.lineStyle(2 * scale, 0xffffff, 0.2 + t * 0.5);
       g.beginPath();
       for (let i = 0; i <= 8; i++) {
         const ang = rot1 + (i / 8) * Math.PI * 2;
@@ -688,7 +871,7 @@ function playNovaSummon(scene: Phaser.Scene, color: number, to: Point, onDone: (
       const rot2 = -t * Math.PI * 1.1;
       for (let i = 0; i < 10; i++) {
         const ang = rot2 + (i / 10) * Math.PI * 2;
-        g.lineStyle(1.5, color, 0.2 + t * 0.4);
+        g.lineStyle(1.5 * scale, color, 0.2 + t * 0.4);
         g.lineBetween(
           to.x + Math.cos(ang) * r * 0.4,
           to.y + Math.sin(ang) * r * 0.4,
@@ -714,8 +897,8 @@ function playNovaSummon(scene: Phaser.Scene, color: number, to: Point, onDone: (
 // growT gives the falling mass, so the last stretch before Impact reads as a
 // core visibly full and under pressure rather than one still visibly
 // swelling right up to the cut.
-function playNovaCharge(scene: Phaser.Scene, color: number, to: Point, onDone: () => void) {
-  const g = scene.add.graphics().setDepth(60).setBlendMode(Phaser.BlendModes.ADD);
+function playNovaCharge(scene: Phaser.Scene, color: number, to: Point, onDone: () => void, depthOffset = 0, scale = 1) {
+  const g = scene.add.graphics().setDepth(60 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
   scene.tweens.addCounter({
     from: 0,
     to: 1,
@@ -724,21 +907,21 @@ function playNovaCharge(scene: Phaser.Scene, color: number, to: Point, onDone: (
     onUpdate: (tw) => {
       const t = tw.getValue() ?? 0;
       const growT = Math.min(t / 0.82, 1);
-      const coreR = 6 + growT * 26;
+      const coreR = (6 + growT * 26) * scale;
       g.clear();
       const n = 14;
       for (let i = 0; i < n; i++) {
         const ang = (i / n) * Math.PI * 2 + t * 6;
-        const dist = (1 - t) * 70 + 10;
+        const dist = ((1 - t) * 70 + 10) * scale;
         g.fillStyle(i % 2 === 0 ? 0xffffff : color, 0.35 + t * 0.5);
-        g.fillCircle(to.x + Math.cos(ang) * dist, to.y + Math.sin(ang) * dist, 3 + t * 2);
+        g.fillCircle(to.x + Math.cos(ang) * dist, to.y + Math.sin(ang) * dist, (3 + t * 2) * scale);
       }
       const pulse = 0.7 + 0.3 * Math.sin(t * 36);
       g.fillStyle(color, 0.45 + t * 0.4);
       g.fillCircle(to.x, to.y, coreR * pulse);
       g.fillStyle(0xffffff, 0.55 + t * 0.35);
       g.fillCircle(to.x, to.y, coreR * 0.5 * pulse);
-      g.lineStyle(2 + t * 3, color, 0.25 + t * 0.5);
+      g.lineStyle((2 + t * 3) * scale, color, 0.25 + t * 0.5);
       g.strokeCircle(to.x, to.y, coreR * 2.4);
     },
     onComplete: () => {
@@ -764,10 +947,12 @@ function playNovaImpact(
   to: Point,
   whiff: boolean,
   onImpact: () => void,
-  onDone: () => void
+  onDone: () => void,
+  depthOffset = 0,
+  scale = 1
 ) {
   onImpact();
-  const g = scene.add.graphics().setDepth(61).setBlendMode(Phaser.BlendModes.ADD);
+  const g = scene.add.graphics().setDepth(61 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
   const drawColor = whiff ? 0x777777 : color;
   scene.tweens.addCounter({
     from: 0,
@@ -778,25 +963,30 @@ function playNovaImpact(
       const t = tw.getValue() ?? 0;
       g.clear();
       if (whiff) {
-        const r = Math.max(0, 26 * (1 - t));
+        const r = Math.max(0, 26 * (1 - t)) * scale;
         g.fillStyle(drawColor, 0.4 * (1 - t));
         g.fillCircle(to.x, to.y, r);
-        g.lineStyle(2, 0x999999, 0.35 * (1 - t));
-        g.strokeCircle(to.x, to.y, 14 * (1 - t));
+        g.lineStyle(2 * scale, 0x999999, 0.35 * (1 - t));
+        g.strokeCircle(to.x, to.y, 14 * (1 - t) * scale);
         return;
       }
       g.fillStyle(0xffffff, 0.96 * (1 - t));
-      g.fillCircle(to.x, to.y, 22 + t * 110);
-      g.lineStyle(5, color, 0.85 * (1 - t));
-      g.strokeCircle(to.x, to.y, 26 + t * 260);
-      g.lineStyle(3, 0xffffff, 0.5 * (1 - t));
-      g.strokeCircle(to.x, to.y, 14 + t * 190);
+      g.fillCircle(to.x, to.y, (22 + t * 110) * scale);
+      g.lineStyle(5 * scale, color, 0.85 * (1 - t));
+      g.strokeCircle(to.x, to.y, (26 + t * 260) * scale);
+      g.lineStyle(3 * scale, 0xffffff, 0.5 * (1 - t));
+      g.strokeCircle(to.x, to.y, (14 + t * 190) * scale);
       const rays = 18;
       for (let i = 0; i < rays; i++) {
         const ang = (i / rays) * Math.PI * 2;
-        const len = 28 + t * 230;
-        g.lineStyle(3, color, 0.75 * (1 - t));
-        g.lineBetween(to.x + Math.cos(ang) * 14, to.y + Math.sin(ang) * 14, to.x + Math.cos(ang) * len, to.y + Math.sin(ang) * len);
+        const len = (28 + t * 230) * scale;
+        g.lineStyle(3 * scale, color, 0.75 * (1 - t));
+        g.lineBetween(
+          to.x + Math.cos(ang) * 14 * scale,
+          to.y + Math.sin(ang) * 14 * scale,
+          to.x + Math.cos(ang) * len,
+          to.y + Math.sin(ang) * len
+        );
       }
     },
     onComplete: () => {
@@ -809,10 +999,10 @@ function playNovaImpact(
 // Aftermath (`ultimateNova`): dissipating shards radiating outward from the
 // center plus a fading core glow, ending by tearing down every Graphics
 // object this phase created and firing `onComplete` exactly once.
-function playNovaAftermath(scene: Phaser.Scene, color: number, to: Point, whiff: boolean, onComplete: () => void) {
-  const g = scene.add.graphics().setDepth(58).setBlendMode(Phaser.BlendModes.ADD);
+function playNovaAftermath(scene: Phaser.Scene, color: number, to: Point, whiff: boolean, onComplete: () => void, depthOffset = 0, scale = 1) {
+  const g = scene.add.graphics().setDepth(58 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
   const emberColor = whiff ? 0x888888 : color;
-  const spread = whiff ? 16 : 65;
+  const spread = (whiff ? 16 : 65) * scale;
   scene.tweens.addCounter({
     from: 0,
     to: 1,
@@ -822,13 +1012,13 @@ function playNovaAftermath(scene: Phaser.Scene, color: number, to: Point, whiff:
       const t = tw.getValue() ?? 0;
       g.clear();
       g.fillStyle(emberColor, 0.35 * (1 - t));
-      g.fillCircle(to.x, to.y, (whiff ? 8 : 40) * (1 - t));
+      g.fillCircle(to.x, to.y, (whiff ? 8 : 40) * (1 - t) * scale);
       const shards = whiff ? 8 : 10;
       for (let i = 0; i < shards; i++) {
         const ang = (i / shards) * Math.PI * 2;
         const dist = t * spread;
         g.fillStyle(i % 2 === 0 ? 0xffffff : emberColor, (1 - t) * 0.75);
-        g.fillCircle(to.x + Math.cos(ang) * dist, to.y + Math.sin(ang) * dist, 2.5 * (1 - t * 0.7));
+        g.fillCircle(to.x + Math.cos(ang) * dist, to.y + Math.sin(ang) * dist, 2.5 * (1 - t * 0.7) * scale);
       }
     },
     onComplete: () => {
@@ -848,23 +1038,25 @@ function playNova(
   to: Point,
   whiff: boolean,
   onImpact: () => void,
-  onComplete: () => void
+  onComplete: () => void,
+  depthOffset = 0,
+  scale = 1
 ) {
   playNovaSummon(scene, color, to, () => {
     playNovaCharge(scene, color, to, () => {
       playNovaImpact(scene, color, to, whiff, onImpact, () => {
-        playNovaAftermath(scene, color, to, whiff, onComplete);
-      });
-    });
-  });
+        playNovaAftermath(scene, color, to, whiff, onComplete, depthOffset, scale);
+      }, depthOffset, scale);
+    }, depthOffset, scale);
+  }, depthOffset, scale);
 }
 
 // A bright flash plus radiating shards on arrival, common to every move
 // class -- fire-and-forget (destroys itself once decayed, doesn't gate
 // onImpact) so it layers on top of whatever BattleScene does with the hit
 // (HP bar update, flashHit squash, camera shake) without delaying any of it.
-function playImpactShockwave(scene: Phaser.Scene, color: number, at: Point) {
-  const g = scene.add.graphics().setDepth(61).setBlendMode(Phaser.BlendModes.ADD);
+function playImpactShockwave(scene: Phaser.Scene, color: number, at: Point, depthOffset = 0, scale = 1) {
+  const g = scene.add.graphics().setDepth(61 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
   const shards = 8;
   scene.tweens.addCounter({
     from: 0,
@@ -875,14 +1067,14 @@ function playImpactShockwave(scene: Phaser.Scene, color: number, at: Point) {
       const t = tw.getValue() ?? 0;
       g.clear();
       g.fillStyle(0xffffff, 0.55 * (1 - t));
-      g.fillCircle(at.x, at.y, 6 + t * 12);
-      g.lineStyle(3, color, 0.8 * (1 - t));
-      g.strokeCircle(at.x, at.y, 10 + t * 40);
+      g.fillCircle(at.x, at.y, (6 + t * 12) * scale);
+      g.lineStyle(3 * scale, color, 0.8 * (1 - t));
+      g.strokeCircle(at.x, at.y, (10 + t * 40) * scale);
       for (let i = 0; i < shards; i++) {
         const ang = (i / shards) * Math.PI * 2;
-        const r0 = 8 + t * 6;
-        const r1 = 8 + t * 32;
-        g.lineStyle(2, color, 0.7 * (1 - t));
+        const r0 = (8 + t * 6) * scale;
+        const r1 = (8 + t * 32) * scale;
+        g.lineStyle(2 * scale, color, 0.7 * (1 - t));
         g.lineBetween(at.x + Math.cos(ang) * r0, at.y + Math.sin(ang) * r0, at.x + Math.cos(ang) * r1, at.y + Math.sin(ang) * r1);
       }
     },

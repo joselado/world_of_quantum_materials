@@ -208,8 +208,9 @@ bracket notation (`ow['showSettingsPanel']()`) since TypeScript's `private`
 is compile-time only. Combined with `page.evaluate` measuring
 `GameObjects.getBounds()` on a panel's container, this is enough to check
 every panel for text overflow/overlap at every font-scale preset
-(`localStorage.setItem('qm-rpg-save-v1', JSON.stringify({ fontScale: 2 }))`
-before reload) without a display or manual playtesting.
+(`localStorage.setItem('qm-rpg-save-story-v1', JSON.stringify({ fontScale: 2 }))`
+before reload -- `qm-rpg-save-superposition-v1` for the other mode's own
+save slot, see DESIGN.md §7) without a display or manual playtesting.
 
 **Gotcha:** `window.__game.scene.start(key)` called on the top-level
 `SceneManager` does *not* stop whatever scene was already running, unlike

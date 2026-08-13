@@ -5,13 +5,59 @@ import { DEFAULT_ENCOUNTER_DENSITY, DEFAULT_FONT_SCALE, DEFAULT_MUSIC_STYLE, MUS
 import type { MusicStyle, DifficultyTier } from './settings';
 import type { PassiveOwner } from './passives';
 
-// Single localStorage-backed save slot (v1: one profile, no cloud sync --
-// matches DESIGN.md §7). TitleScene reads this once at boot into the Phaser
-// registry, the runtime source of truth every scene already reads/writes;
-// persistFromRegistry() is then called after each registry mutation that
-// should survive a reload (token pickup, move purchase, rival defeat,
-// battle outcome) so the two never drift far apart.
-const SAVE_KEY = 'qm-rpg-save-v1';
+// Two independent localStorage-backed save slots, one per starting mode
+// (Story Mode / Superposition Mode -- see the `superpositionMode` field
+// below), no cloud sync (matches DESIGN.md §7). Story and Superposition
+// progress must never mix: Superposition Mode bypasses normal unlock
+// gating everywhere (every crystal/hybrid/impurity offered regardless of
+// what's been defeated, every world pre-marked visited, stats re-leveled on
+// every world entry), so a save written under one mode would be exploitable
+// if it could ever be resumed under the other's rules. TitleScene reads the
+// selected mode's slot at boot (and again on every mode-picker switch) into
+// the Phaser registry, the runtime source of truth every scene already
+// reads/writes; persistFromRegistry() is then called after each registry
+// mutation that should survive a reload (token pickup, move purchase, rival
+// defeat, battle outcome), routing the write to whichever slot matches the
+// registry's own current `superpositionMode` flag, so the two never drift
+// far apart.
+const STORY_SAVE_KEY = 'qm-rpg-save-story-v1';
+const SUPERPOSITION_SAVE_KEY = 'qm-rpg-save-superposition-v1';
+// Pre-two-slot save format. Never written to going forward -- only ever
+// read once, by migrateLegacySaveIfNeeded() below -- so its shape is just
+// "whatever SaveData looked like at the time," not a format this file
+// otherwise still supports.
+const LEGACY_SAVE_KEY = 'qm-rpg-save-v1';
+
+function saveKeyFor(superposition: boolean): string {
+  return superposition ? SUPERPOSITION_SAVE_KEY : STORY_SAVE_KEY;
+}
+
+// Runs once per browser, the first time either loadSave() or hasSave() is
+// called after this two-slot format shipped: if an old single-slot save is
+// still present and neither new slot has been written yet, copies its raw
+// contents verbatim into whichever new slot matches its own stored
+// `superpositionMode` field (verbatim, not re-serialized -- it may still be
+// carrying a pre-v1 `schemaVersion` that loadSave()'s MIGRATIONS below need
+// to see), then removes the old key so this never runs again. Distinct from
+// MIGRATIONS below: this is a one-time storage-key relocation for a save
+// format that predates per-mode slots entirely, not a step in the
+// versioned within-a-slot schema those replay. Best-effort, wrapped like
+// loadSave()/persistFromRegistry()'s own localStorage access -- solo hobby
+// project, no save-compatibility guarantee, so a failure here just leaves
+// the legacy save in place unmigrated rather than blocking anything else.
+function migrateLegacySaveIfNeeded() {
+  try {
+    const legacy = localStorage.getItem(LEGACY_SAVE_KEY);
+    if (!legacy) return;
+    if (localStorage.getItem(STORY_SAVE_KEY) !== null || localStorage.getItem(SUPERPOSITION_SAVE_KEY) !== null) return;
+    const parsed = JSON.parse(legacy) as Record<string, unknown>;
+    localStorage.setItem(saveKeyFor(!!parsed.superpositionMode), legacy);
+    localStorage.removeItem(LEGACY_SAVE_KEY);
+  } catch {
+    // Legacy save unreadable, or localStorage unavailable -- leave it in
+    // place; the next loadSave()/hasSave() call will just try again.
+  }
+}
 
 export interface DiscoveredMaterial {
   name: string;
@@ -57,7 +103,12 @@ export interface SaveData {
   // with every BUILT_WORLDS entry so Bloch's existing teleport hub (no
   // separate warp UI needed) can fold the player to any world immediately,
   // and Dresselhaus/Majorana/Anderson's panels offer every crystal/hybrid
-  // pairing rather than only ones actually defeated.
+  // pairing rather than only ones actually defeated. Also doubles as the
+  // save-routing key: this field, read off the registry (not this struct),
+  // is what saveKeyFor()/persistFromRegistry() use to decide which of the
+  // two localStorage slots above a given write belongs to, so it is always
+  // forced to match the slot a given SaveData was actually loaded from
+  // (see loadSave()) rather than trusted from the stored blob alone.
   superpositionMode: boolean;
   // The Lab's Settings station (scenes/panels/hubStations.ts's showSettingsPanel): the
   // per-corridor-row chance a wild crystal spawns, one of data/settings.ts's
@@ -199,20 +250,23 @@ export function defaultSave(): SaveData {
   };
 }
 
-// Wipes the save slot so the next loadSave() starts a fresh run --
-// TitleScene's "New Game" reset button. Callers must also re-seed the
-// registry (e.g. via scene.restart()) since this only clears localStorage.
-export function clearSave() {
+// Wipes one mode's save slot so the next loadSave(superposition) for that
+// same mode starts a fresh run -- TitleScene's "New Game" reset button,
+// which only ever erases the currently-selected mode's own slot, never
+// both. Callers must also re-seed the registry (e.g. via
+// loadSave(superposition)) since this only clears localStorage.
+export function clearSave(superposition: boolean) {
   try {
-    localStorage.removeItem(SAVE_KEY);
+    localStorage.removeItem(saveKeyFor(superposition));
   } catch {
     // localStorage unavailable -- nothing to clear.
   }
 }
 
-export function hasSave(): boolean {
+export function hasSave(superposition: boolean): boolean {
   try {
-    return localStorage.getItem(SAVE_KEY) !== null;
+    migrateLegacySaveIfNeeded();
+    return localStorage.getItem(saveKeyFor(superposition)) !== null;
   } catch {
     return false;
   }
@@ -255,17 +309,23 @@ const MIGRATIONS: SaveMigration[] = [
 
 const CURRENT_SCHEMA_VERSION = MIGRATIONS.length;
 
-export function loadSave(): SaveData {
+export function loadSave(superposition: boolean): SaveData {
   try {
-    const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return defaultSave();
+    migrateLegacySaveIfNeeded();
+    const raw = localStorage.getItem(saveKeyFor(superposition));
+    // `superpositionMode` is forced to the requested slot on every return
+    // path below (rather than trusted from `defaultSave()`, which hardcodes
+    // `false`, or from the stored blob) so the registry key every other
+    // scene reads (isSuperpositionMode()) always matches the slot this save
+    // actually came from, even for a slot that's never been written yet.
+    if (!raw) return { ...defaultSave(), superpositionMode: superposition };
     let parsed = JSON.parse(raw) as Record<string, unknown>;
     let version = typeof parsed.schemaVersion === 'number' ? (parsed.schemaVersion as number) : 0;
     while (version < MIGRATIONS.length) {
       parsed = MIGRATIONS[version](parsed);
       version += 1;
     }
-    const data: SaveData = { ...defaultSave(), ...(parsed as Partial<SaveData>) };
+    const data: SaveData = { ...defaultSave(), ...(parsed as Partial<SaveData>), superpositionMode: superposition };
     // Permanent safety nets, not migrations (see the comment above
     // MIGRATIONS) -- drop moves/types a prior version of the game defined
     // but this version renamed/retired (e.g. a retired move id, or the old
@@ -283,7 +343,7 @@ export function loadSave(): SaveData {
     if (!DIFFICULTY_TIER_PRESETS.some((p) => p.value === data.difficultyTier)) data.difficultyTier = DEFAULT_DIFFICULTY_TIER;
     return data;
   } catch {
-    return defaultSave();
+    return { ...defaultSave(), superpositionMode: superposition };
   }
 }
 
@@ -295,6 +355,11 @@ interface RegistryLike {
 }
 
 export function persistFromRegistry(registry: RegistryLike) {
+  // Which of the two slots this write belongs to -- read off the registry
+  // itself rather than taking a parameter, so every one of this function's
+  // ~40 call sites across the codebase can stay a plain `persistFromRegistry
+  // (registry)` with no awareness of the two-slot split.
+  const superposition = !!registry.get('superpositionMode');
   const data: SaveData = {
     qumatessence: (registry.get('qumatessence') as number) ?? 0,
     unlockedMoves: (registry.get('unlockedMoves') as string[]) ?? [...PLAYER_MATERIAL.moves],
@@ -310,7 +375,7 @@ export function persistFromRegistry(registry: RegistryLike) {
     metGuardians: (registry.get('metGuardians') as string[]) ?? [],
     tutorialTipsSeen: (registry.get('tutorialTipsSeen') as string[]) ?? [],
     worldLoreSeen: (registry.get('worldLoreSeen') as number[]) ?? [],
-    superpositionMode: (registry.get('superpositionMode') as boolean) ?? false,
+    superpositionMode: superposition,
     encounterDensity: (registry.get('encounterDensity') as number) ?? DEFAULT_ENCOUNTER_DENSITY,
     fontScale: (registry.get('fontScale') as number) ?? DEFAULT_FONT_SCALE,
     musicStyle: (registry.get('musicStyle') as MusicStyle) ?? DEFAULT_MUSIC_STYLE,
@@ -332,7 +397,7 @@ export function persistFromRegistry(registry: RegistryLike) {
     // schemaVersion is a wire-format-only stamp read by loadSave() to know
     // which MIGRATIONS have already applied -- it's never part of SaveData
     // itself/the registry, only added here at serialize time.
-    localStorage.setItem(SAVE_KEY, JSON.stringify({ ...data, schemaVersion: CURRENT_SCHEMA_VERSION }));
+    localStorage.setItem(saveKeyFor(superposition), JSON.stringify({ ...data, schemaVersion: CURRENT_SCHEMA_VERSION }));
   } catch {
     // localStorage unavailable (private browsing, quota) -- progress just
     // won't survive a reload this session.

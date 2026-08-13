@@ -17,6 +17,7 @@ import { makeKondoAvatar } from '../art/kondo';
 import { makeAndersonAvatar } from '../art/anderson';
 import { makeFranklinAvatar } from '../art/franklin';
 import { playGuardianChime } from '../audio/sfx';
+import { stopMoveEffectPreview } from '../art/moveEffectPreview';
 import { project, fogColor, HORIZON_Y, CANVAS_W, CANVAS_H, ProjectedPoint } from '../art/perspective';
 import {
   PLAYER_MATERIAL,
@@ -320,6 +321,35 @@ export interface GuardianPanelHost extends Phaser.Scene {
   dresselhausPreview: string | null;
   andersonHostPreview: string | null;
   majoranaPreview: string | null;
+  // Same "which row is currently previewed" convention as
+  // dresselhausPreview/majoranaPreview above, for Noether's own Moves tab
+  // list+detail layout (scenes/panels/noether.ts, STYLE.md's "Noether's
+  // shop"), holding a move id rather than a crystal/hybrid-result name.
+  // noetherMovePage paginates its own left column the same way
+  // dresselhausPage/majoranaPage do. Same reset rules (scene create,
+  // closeDialogue()) as every other per-guardian field above. Laughlin's and
+  // Skłodowska-Curie's own panels (scenes/panels/laughlin.ts/
+  // sklodowskaCurie.ts) have no preview/pagination field of their own --
+  // each has exactly two fixed moves, always both rendered side by side
+  // rather than browsed one at a time through a candidate list.
+  noetherMovePreview: string | null;
+  noetherMovePage: number;
+  // Same convention as noetherMovePreview above, for Kondo's own list+detail
+  // layout (scenes/panels/kondo.ts) -- holds one of KONDO_MOVE_IDS. Kondo's
+  // own panel has no committed-choice field of its own (like Majorana, not
+  // like Anderson's two-step pick): this preview field alone drives its
+  // whole detail pane, while the actually-committed "which one is usable in
+  // battle" choice lives in registry/save kondoActiveMove instead, set only
+  // by the detail pane's own confirm button.
+  kondoMovePreview: string | null;
+  kondoMovePage: number;
+  // Bloch's own table+map layout (scenes/panels/bloch.ts): which world
+  // number is currently previewed (highlighted in the destination table AND
+  // pulsing on the Qumatuomi map), independent of and reset the same way as
+  // dresselhausPreview/majoranaPreview above. Null means "nothing previewed
+  // yet," in which case the panel falls back to the first travelable
+  // destination.
+  blochPreview: number | null;
 }
 
 // One entry per world with a guardian -- replaces the old per-guardian
@@ -410,6 +440,19 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // onward to World N+1). See spawnDoorSprites/art/door.ts's makeDoorSprite.
   private doorSprites: WorldSprite[] = [];
   private worldGfx!: Phaser.GameObjects.Graphics;
+  // Sits at depth 41, just above the player (40) -- see
+  // paintAdjacentWallFaces for why a second Graphics object is needed
+  // instead of just depth-ordering worldGfx itself against the player.
+  private playerWallGfx!: Phaser.GameObjects.Graphics;
+  // Sits at depth 21, just above every non-player actor's body (19-20) and
+  // below their name labels (22) -- the same paintAdjacentWallFaces repaint
+  // as playerWallGfx, but for wild-encounter/token/guardian/boss/door
+  // sprites instead of the player. Kept as its own Graphics object rather
+  // than sharing playerWallGfx: a face painted here can only ever reach
+  // depth 21, so it can never occlude the player (40) the way a shared
+  // depth-41 layer would if an actor's occluded wall happened to sit
+  // between the camera and the player's own, farther-back tile.
+  private actorWallGfx!: Phaser.GameObjects.Graphics;
   private player!: Phaser.GameObjects.Container;
   private playerCrystalGfx!: Phaser.GameObjects.Container;
   playerMaterial!: Material;
@@ -461,6 +504,15 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   dresselhausPreview: string | null = null;
   andersonHostPreview: string | null = null;
   majoranaPreview: string | null = null;
+  // Same reset rules as dresselhausPreview/majoranaPreview above -- see the
+  // GuardianPanelHost interface's own comment on these fields.
+  noetherMovePreview: string | null = null;
+  noetherMovePage = 0;
+  kondoMovePreview: string | null = null;
+  kondoMovePage = 0;
+  // Same reset rules as dresselhausPreview/majoranaPreview above -- see the
+  // GuardianPanelHost interface's own comment on this field.
+  blochPreview: number | null = null;
 
   // One entry per world with a guardian (see GuardianDef above). Most `open`
   // callbacks call an imported scenes/panels/<guardian>.ts function with `s`
@@ -642,6 +694,9 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.dresselhausPreview = null;
     this.andersonHostPreview = null;
     this.majoranaPreview = null;
+    this.kondoMovePreview = null;
+    this.kondoMovePage = 0;
+    this.blochPreview = null;
     this.biome = getBiome(this.world);
 
     const state = this.game.registry;
@@ -662,6 +717,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
 
     this.drawSky();
     this.worldGfx = this.add.graphics();
+    this.playerWallGfx = this.add.graphics().setDepth(41);
+    this.actorWallGfx = this.add.graphics().setDepth(21);
     this.spawnCrystalSprites();
     this.spawnTokenSprites();
     this.spawnGuardianSprite();
@@ -1086,11 +1143,16 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
 
   update() {
     this.drawWorld();
+    // Sprite visibility (WorldSprite.container.visible) is set fresh below,
+    // so occludableActorTiles (which only occludes currently-visible actors)
+    // has to run after this, not before.
     this.updateWorldSprites(this.crystalSprites);
     this.updateWorldSprites(this.tokenSprites);
     this.updateWorldSprites(this.guardianSprites);
     this.updateWorldSprites(this.bossSprites);
     this.updateWorldSprites(this.doorSprites);
+    this.paintAdjacentWallFaces(this.playerWallGfx, [this.playerTile]);
+    this.paintAdjacentWallFaces(this.actorWallGfx, this.occludableActorTiles());
 
     if (this.moving || this.dialogueActive) return;
 
@@ -1264,7 +1326,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     regionTint: number | null
   ) {
     if (regionTint != null) {
-      const color = blend(fogColor(biome.ground, depthRatio, biome.fogTarget), regionTint, 0.6);
+      const color = this.wallFaceColor(biome, regionTint, depthRatio)!;
       g.fillStyle(color, 1);
       g.fillPoints([pFL, pFR, pNR, pNL], true);
       g.lineStyle(1, shade(color, -20), 0.3);
@@ -1287,12 +1349,27 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       return;
     }
 
-    const color = fogColor(biome.ground, depthRatio, biome.fogTarget);
+    const color = this.wallFaceColor(biome, regionTint, depthRatio)!;
     g.fillStyle(color, 1);
     g.fillPoints([pFL, pFR, pNR, pNL], true);
     g.lineStyle(1, shade(color, -20), 0.3);
     g.strokePoints([pFL, pFR, pNR, pNL], true);
     this.drawWallFaces(g, x, y, pFL, pFR, pNR, pNL, color);
+  }
+
+  // Resolves the shading color for a raised (rock-theme or region-tinted)
+  // wall tile's faces -- null for a theme that renders flush with the
+  // ground instead (lava/water/void, see drawOffPathTile) since there's no
+  // raised face to shade. Shared by drawOffPathTile (a wall tile's own
+  // faces, drawn into worldGfx) and paintWallFacesAroundTile (the
+  // occluding face(s) redrawn above an actor standing next to a wall), so
+  // the two never disagree on what color that face should be.
+  private wallFaceColor(biome: Biome, regionTint: number | null, depthRatio: number): number | null {
+    if (regionTint != null) {
+      return blend(fogColor(biome.ground, depthRatio, biome.fogTarget), regionTint, 0.6);
+    }
+    if (biome.wallTheme === 'lava' || biome.wallTheme === 'water' || biome.wallTheme === 'void') return null;
+    return fogColor(biome.ground, depthRatio, biome.fogTarget);
   }
 
   // A flat, glowing molten crust (Defect Wastes, world 9) -- no extruded
@@ -1411,33 +1488,129 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     pNL: ProjectedPoint,
     topColor: number
   ) {
+    if (this.walkable[y + 1]?.[x]) this.drawWallFace(g, pNL, pNR, topColor, -18); // near edge, facing the camera
+    if (this.walkable[y - 1]?.[x]) this.drawWallFace(g, pFR, pFL, topColor, -42); // far edge
+    if (this.walkable[y]?.[x - 1]) this.drawWallFace(g, pFL, pNL, topColor, -28); // left edge
+    if (this.walkable[y]?.[x + 1]) this.drawWallFace(g, pNR, pFR, topColor, -28); // right edge
+  }
+
+  // Draws one raised wall face between two ground-level projected points --
+  // extruded upward by WALL_HEIGHT_PX (scaled by each point's own
+  // perspective scale), with a mortar line partway up and a lit rim along
+  // the top edge so it reads as a stacked-stone block. Shared by
+  // drawWallFaces (a wall tile's full set of visible faces) and
+  // paintWallFacesAroundTile (just the face(s) bordering one actor's own
+  // tile, repainted above that actor).
+  private drawWallFace(g: Phaser.GameObjects.Graphics, a: ProjectedPoint, b: ProjectedPoint, topColor: number, shadeAmount: number) {
     const raise = (p: ProjectedPoint): ProjectedPoint => ({ ...p, y: p.y - WALL_HEIGHT_PX * p.scale });
-    const lerp = (a: ProjectedPoint, b: ProjectedPoint, t: number) => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
-    const face = (a: ProjectedPoint, b: ProjectedPoint, shadeAmount: number) => {
-      const topA = raise(a);
-      const topB = raise(b);
+    const lerp = (p: ProjectedPoint, q: ProjectedPoint, t: number) => ({ x: p.x + (q.x - p.x) * t, y: p.y + (q.y - p.y) * t });
+    const topA = raise(a);
+    const topB = raise(b);
 
-      g.fillStyle(shade(topColor, shadeAmount), 1);
-      g.fillPoints([a, b, topB, topA], true);
+    g.fillStyle(shade(topColor, shadeAmount), 1);
+    g.fillPoints([a, b, topB, topA], true);
 
-      // Mortar line partway up the block for a bit of stacked-stone texture.
-      const midA = lerp(a, topA, 0.5);
-      const midB = lerp(b, topB, 0.5);
-      g.lineStyle(1, shade(topColor, shadeAmount - 20), 0.55);
-      g.lineBetween(midA.x, midA.y, midB.x, midB.y);
+    // Mortar line partway up the block for a bit of stacked-stone texture.
+    const midA = lerp(a, topA, 0.5);
+    const midB = lerp(b, topB, 0.5);
+    g.lineStyle(1, shade(topColor, shadeAmount - 20), 0.55);
+    g.lineBetween(midA.x, midA.y, midB.x, midB.y);
 
-      g.lineStyle(1, shade(topColor, shadeAmount - 12), 0.4);
-      g.strokePoints([a, b, topB, topA], true);
+    g.lineStyle(1, shade(topColor, shadeAmount - 12), 0.4);
+    g.strokePoints([a, b, topB, topA], true);
 
-      // Bright rim along the top edge, as if lit from above.
-      g.lineStyle(2, shade(topColor, shadeAmount + 55), 0.85);
-      g.lineBetween(topA.x, topA.y, topB.x, topB.y);
-    };
+    // Bright rim along the top edge, as if lit from above.
+    g.lineStyle(2, shade(topColor, shadeAmount + 55), 0.85);
+    g.lineBetween(topA.x, topA.y, topB.x, topB.y);
+  }
 
-    if (this.walkable[y + 1]?.[x]) face(pNL, pNR, -18); // near edge, facing the camera
-    if (this.walkable[y - 1]?.[x]) face(pFR, pFL, -42); // far edge
-    if (this.walkable[y]?.[x - 1]) face(pFL, pNL, -28); // left edge
-    if (this.walkable[y]?.[x + 1]) face(pNR, pFR, -28); // right edge
+  // Repaints, into `g`, the wall face(s) bordering each of `tiles`' own grid
+  // position -- the exact face(s) worldGfx (depth 0) already drew this frame
+  // at the exact same projected position (see wallFaceColor). worldGfx alone
+  // can never occlude anything above it no matter how close a wall is, since
+  // it's always painted first; this exists purely to make a directly-
+  // adjacent wall's near face paint over whichever actor(s) sit at `tiles`,
+  // instead of that actor always reading as floating in front of it.
+  // `playerWallGfx` (depth 41, above the player's fixed depth 40) and
+  // `actorWallGfx` (depth 21, above every other actor's body but below its
+  // name label) are two separate calls into this same function -- see their
+  // own field comments for why occlusion needs two Graphics objects rather
+  // than one shared layer. Deduped by tile so an actor standing on another
+  // actor's tile (or the player standing where a token sits) doesn't
+  // double-paint the same face.
+  private paintAdjacentWallFaces(g: Phaser.GameObjects.Graphics, tiles: GridPoint[]) {
+    g.clear();
+    const seen = new Set<string>();
+    for (const { x, y } of tiles) {
+      const key = `${x},${y}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      this.paintWallFacesAroundTile(g, x, y);
+    }
+  }
+
+  // Every non-player WorldSprite currently visible (crystal/token/guardian/
+  // boss/door), reduced to just its home grid tile -- the same wander-center
+  // tile the sprite's own container.visible flag was set from this frame in
+  // updateWorldSprites, so a sprite the camera has scrolled/clipped past
+  // isn't fed into paintAdjacentWallFaces as a tile still needing occlusion,
+  // and a sprite already destroyed (crystalSprites/tokenSprites splice out
+  // their entry on pickup) is never in these arrays to begin with.
+  private occludableActorTiles(): GridPoint[] {
+    const tiles: GridPoint[] = [];
+    for (const group of [this.crystalSprites, this.tokenSprites, this.guardianSprites, this.bossSprites, this.doorSprites]) {
+      for (const s of group) {
+        if (!s.container.visible) continue;
+        tiles.push({ x: s.x, y: s.y });
+      }
+    }
+    return tiles;
+  }
+
+  // Every cull here mirrors drawWorld's own (walkable check, depthFar <= 0,
+  // lane clip, non-extruded wallThemes) so this can only ever repaint
+  // geometry drawWorld already drew this frame -- never wall geometry that
+  // wasn't actually visible, which would be a new artifact rather than a
+  // fix.
+  private paintWallFacesAroundTile(g: Phaser.GameObjects.Graphics, px: number, py: number) {
+    const camX = this.camPos.x;
+    const camY = this.camPos.y;
+
+    type Corner = 'FL' | 'FR' | 'NR' | 'NL';
+    const edges: Array<{ nx: number; ny: number; a: Corner; b: Corner; shadeAmount: number }> = [
+      { nx: px, ny: py - 1, a: 'NL', b: 'NR', shadeAmount: -18 }, // wall ahead -- its near edge touches this tile
+      { nx: px, ny: py + 1, a: 'FR', b: 'FL', shadeAmount: -42 }, // wall behind -- its far edge touches this tile
+      { nx: px - 1, ny: py, a: 'NR', b: 'FR', shadeAmount: -28 }, // wall to the west -- its right edge touches this tile
+      { nx: px + 1, ny: py, a: 'FL', b: 'NL', shadeAmount: -28 }, // wall to the east -- its left edge touches this tile
+    ];
+
+    for (const { nx, ny, a, b, shadeAmount } of edges) {
+      if (nx < 0 || nx >= GRID_W || ny < 0 || ny >= GRID_H) continue;
+      if (this.walkable[ny]?.[nx]) continue; // not a wall -- nothing to occlude with
+
+      const laneL = nx - camX - 0.5;
+      const laneR = nx - camX + 0.5;
+      if (laneL > LANE_CLIP || laneR < -LANE_CLIP) continue;
+
+      const depthFar = camY - ny + 0.5;
+      const depthNear = camY - ny - 0.5;
+      if (depthFar <= 0) continue; // drawWorld itself never drew this tile this frame
+
+      const overrideWorld = this.biomeOverride[ny]?.[nx];
+      const tileBiome = overrideWorld != null ? getBiome(overrideWorld) : this.biome;
+      const regionTint = this.regionColor[ny]?.[nx] ?? null;
+      const depthRatio = Phaser.Math.Clamp(depthFar / DRAW_DISTANCE_TILES, 0, 1);
+      const color = this.wallFaceColor(tileBiome, regionTint, depthRatio);
+      if (color == null) continue; // flush terrain (lava/water/void) -- nothing raised to redraw
+
+      const points: Record<Corner, ProjectedPoint> = {
+        FL: this.projectTile(laneL, depthFar),
+        FR: this.projectTile(laneR, depthFar),
+        NR: this.projectTile(laneR, depthNear),
+        NL: this.projectTile(laneL, depthNear),
+      };
+      this.drawWallFace(g, points[a], points[b], color, shadeAmount);
+    }
   }
 
   private decorateTile(
@@ -1559,7 +1732,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
             padding: { x: 3, y: 1 },
           })
           .setOrigin(0.5, 1)
-          .setDepth(21);
+          .setDepth(22);
 
         this.crystalSprites.push({
           x,
@@ -1595,7 +1768,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
             padding: { x: 3, y: 1 },
           })
           .setOrigin(0.5, 1)
-          .setDepth(20);
+          .setDepth(22);
 
         this.tokenSprites.push({ x, y, size: TOKEN_SIZE, container, label, seed: Math.random() * Math.PI * 2 });
       }
@@ -1627,7 +1800,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
         padding: { x: 3, y: 1 },
       })
       .setOrigin(0.5, 1)
-      .setDepth(21);
+      .setDepth(22);
 
     const tile = guardian.tile === 'start' ? this.startTile : guardian.tile === 'middle' ? this.midTile : this.goalTile;
     this.guardianSprites.push({ x: tile.x, y: tile.y, size: 42, container: avatar, label, seed: Math.random() * Math.PI * 2 });
@@ -1687,7 +1860,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
         wordWrap: { width: 220, useAdvancedWrap: true },
       })
       .setOrigin(0.5, 1)
-      .setDepth(21);
+      .setDepth(22);
 
     this.bossSprites.push({
       x: this.goalTile.x,
@@ -1722,7 +1895,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
         padding: { x: 3, y: 1 },
       })
       .setOrigin(0.5, 1)
-      .setDepth(21);
+      .setDepth(22);
     // Drawn one row north of startTile itself (still guaranteed walkable --
     // world/mapgen.ts's buildCorridor never drifts the corridor's center
     // before MIN_STRAIGHT_ROWS=2 straight rows, so the row right above the
@@ -1757,7 +1930,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
         padding: { x: 3, y: 1 },
       })
       .setOrigin(0.5, 1)
-      .setDepth(21);
+      .setDepth(22);
     this.doorSprites.push({
       x: this.goalTile.x,
       y: this.goalTile.y,
@@ -1968,6 +2141,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // or Noether's shop) and lets the player carry on -- no scene change
   // either way.
   closeDialogue() {
+    stopMoveEffectPreview();
     this.dialogueContainer?.destroy(true);
     this.dialogueContainer = undefined;
     this.dialogueActive = false;
@@ -1981,6 +2155,11 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.dresselhausPreview = null;
     this.andersonHostPreview = null;
     this.majoranaPreview = null;
+    this.noetherMovePreview = null;
+    this.noetherMovePage = 0;
+    this.kondoMovePreview = null;
+    this.kondoMovePage = 0;
+    this.blochPreview = null;
   }
 
   private isRivalDefeated(): boolean {
