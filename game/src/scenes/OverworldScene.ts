@@ -39,7 +39,7 @@ import { getWorldQuestion } from '../data/quiz';
 import { encounterGreeting } from '../data/greetings';
 import { TUTORIAL_TIPS, hasSeenTip, markTipSeen } from '../data/tutorial';
 import type { TutorialTipId } from '../data/tutorial';
-import { STORY_BEATS } from '../data/story';
+import { STORY_BEATS, WORLD_GOAL_TEXT } from '../data/story';
 import { WORLD_LORE, RIVAL_TAUNTS, hasSeenWorldLore, markWorldLoreSeen } from '../data/worldLore';
 import type { WorldLore } from '../data/worldLore';
 import { DEFAULT_ENCOUNTER_DENSITY } from '../data/settings';
@@ -581,11 +581,13 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       .setOrigin(1, 0)
       .setDepth(50);
     this.goalText = this.add
-      .text(CANVAS_W / 2, 90, 'You reached the far edge of this world!', {
+      .text(CANVAS_W / 2, 90, WORLD_GOAL_TEXT[this.world] ?? 'You reached the far edge of this world!', {
         fontSize: fontPx(this, 14),
         color: '#ffffff',
         backgroundColor: 'rgba(0,0,0,0.5)',
         padding: { x: 6, y: 4 },
+        align: 'center',
+        wordWrap: { width: CANVAS_W - 40 },
       })
       .setOrigin(0.5, 0)
       .setDepth(50)
@@ -2138,48 +2140,80 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
 
   // Shown once the last built world's rival is beaten -- a real ending
   // rather than a dead "Continue to World 11" button pointing at a world
-  // that doesn't exist.
+  // that doesn't exist. Pays off World 10's reveal (WORLD_LORE[10].page2):
+  // the Adapted was assembled from the player's own play, so beating it is
+  // framed as out-adapting a mirror built from nine worlds of your own
+  // choices, not defeating an outside enemy. Content laid out top-down
+  // first, panel sized/inserted behind everything afterward -- same pattern
+  // as showGuardianLore/showSettingsPanel.
   private showFinalePanel() {
     this.dialogueActive = true;
 
-    const panelY = 240;
+    const panelWidth = 600;
+    const top = 40;
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
 
-    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 600, 220, PANEL_BG, 0.96).setStrokeStyle(2, GOLD_ACCENT);
-    container.add(panel);
+    // Capped the same way renderWorldLorePage caps its own multi-paragraph
+    // prose -- this panel's closing text is long enough that the full
+    // uncapped fontScale (up to 2x at the "Large" preset) overflows the
+    // fixed CANVAS_H.
+    const scale = Math.min(fontScale(this), 1.5);
+
+    let y = top;
 
     const title = this.add
-      .text(CANVAS_W / 2, panelY - 80, 'The Decoherence is stabilized.', {
-        fontSize: fontPx(this, 16),
+      .text(CANVAS_W / 2, y, 'The Decoherence is stabilized.', {
+        fontSize: `${Math.round(16 * scale)}px`,
         color: GOLD_ACCENT_HEX,
         fontStyle: 'bold',
         align: 'center',
+        wordWrap: { width: panelWidth - 80 },
       })
       .setOrigin(0.5, 0);
     container.add(title);
+    y += title.height + 16;
 
     const body = this.add
       .text(
         CANVAS_W / 2,
-        panelY - 44,
-        "You mastered every phase of matter the model could throw at you. Thanks for playing.",
-        { fontSize: fontPx(this, 13), color: '#cfd8ff', align: 'center', wordWrap: { width: 480 } }
+        y,
+        "It reached for every trick it had ever watched you land, and still came up short. It was never a plague loose in these nine worlds -- it was built out of your own play, trained to wear your own moves back at you, and you out-adapted your own reflection anyway. Every symmetry, every edge state, every fractional charge you fought to protect holds on its own now, with nothing left studying how to unmake it.",
+        { fontSize: `${Math.round(13 * scale)}px`, color: '#cfd8ff', align: 'center', wordWrap: { width: 480 } }
       )
       .setOrigin(0.5, 0);
     container.add(body);
+    y += body.height + 16;
 
-    this.addDialogueButtonAt(
+    const thanks = this.add
+      .text(CANVAS_W / 2, y, 'Thanks for playing.', {
+        fontSize: `${Math.round(12 * scale)}px`,
+        color: REFERENCE_BLUE_GREY_HEX,
+        align: 'center',
+      })
+      .setOrigin(0.5, 0);
+    container.add(thanks);
+    y += thanks.height + 20;
+
+    const button = this.addDialogueButtonAt(
       container,
       CANVAS_W / 2,
-      panelY + 60,
+      y,
       'Return to the Lab',
       () => {
         this.closeDialogue();
         this.returnToHub();
       },
-      260
+      260,
+      `${Math.round(13 * scale)}px`
     );
+    y += button.height + top;
+
+    const panelHeight = y - top;
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.96)
+      .setStrokeStyle(2, GOLD_ACCENT);
+    container.addAt(panel, 0);
   }
 
   // The "beat the world's rival crystal" gate DESIGN.md's world table lists

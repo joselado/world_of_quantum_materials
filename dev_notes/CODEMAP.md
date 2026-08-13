@@ -216,7 +216,9 @@ game/src/
     tutorial.ts                    TUTORIAL_TIPS/TUTORIAL_PAGES -- contextual + replayable tutorial copy
     settings.ts                    DENSITY_PRESETS/DEFAULT_ENCOUNTER_DENSITY -- wild-encounter density presets,
                                     FONT_SCALE_PRESETS, MUSIC_STYLE_PRESETS/DEFAULT_MUSIC_STYLE
-    story.ts                       STORY_BEATS -- per-world Decoherence-arc line shown on advancing worlds
+    story.ts                       STORY_BEATS -- per-world Decoherence-arc line shown on advancing worlds --
+                                    and WORLD_GOAL_TEXT -- per-world one-liner for the goal-tile banner,
+                                    falling back to a generic line for a world with no entry
     worldLore.ts                   WORLD_LORE (per-world 2-page history, shown once per save on first entry)/
                                     RIVAL_TAUNTS (per-world 2-part rival gate taunt) -- worldLoreSeen gating via
                                     hasSeenWorldLore/markWorldLoreSeen

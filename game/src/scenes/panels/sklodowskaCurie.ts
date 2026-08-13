@@ -52,7 +52,7 @@ export function showSklodowskaCuriePanel(scene: GuardianPanelHost) {
     .text(
       CANVAS_W / 2,
       y,
-      '"I am Skłodowska-Curie -- I lead this circle of guardians, and here is our last lesson. Answer three questions on the physics running through everything you have learned, all three correct, and your crystal strikes with a force none of the others can match. Miss even one and the blow lands nowhere at all. Tell me which quasiparticle should carry it, too -- a new one costs dearly to unlock, but once bought it is yours to wear again for free."',
+      '"I am Skłodowska-Curie -- I lead this circle of guardians: Noether, Bloch, Dresselhaus, Laughlin, Majorana, Anderson, Feynman, Kondo, Franklin, and I. Here is our last lesson. Answer three questions on the physics running through everything you have learned, all three correct, and your crystal strikes with a force none of the others can match. Miss even one and the blow lands nowhere at all. Tell me which quasiparticle should carry it, too -- a new one costs dearly to unlock, but once bought it is yours to wear again for free."',
       { fontSize: fontPx(scene, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
     )
     .setOrigin(0.5, 0);

@@ -1161,6 +1161,11 @@ randomly-rolled rival types actually shows up rather than naming one; world 10's
 the story's climax reveal. A world with no matching entry shows no lore screen, and
 its rival gate shows a single generic line, so it's never a dead end.
 
+**Goal-tile banner.** Reaching a world's far edge shows a one-line banner
+(`data/story.ts`'s `WORLD_GOAL_TEXT`, keyed by world) naming that world's own
+physics; a world with no matching entry shows the generic "You reached the far
+edge of this world!" instead, so it's never a dead end.
+
 ## 6. Boss design
 
 Each world boss requires the ability that world specifically teaches, not just
