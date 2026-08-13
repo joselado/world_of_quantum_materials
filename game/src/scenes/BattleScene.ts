@@ -46,6 +46,7 @@ import {
   rollEncounterFactor,
   MAX_MULTI_HIT,
   DIFFICULTY_MULTIPLIERS,
+  superpositionEnemyStats,
 } from '../data/balance';
 import { DEFAULT_DIFFICULTY_TIER } from '../data/settings';
 import type { DifficultyTier } from '../data/settings';
@@ -381,10 +382,18 @@ export class BattleScene extends Phaser.Scene {
     // own multiplier comes from the Lab's Settings station (data/settings.ts's
     // DifficultyTier, DIFFICULTY_MULTIPLIERS), read fresh here rather than
     // cached, so a mid-playthrough difficulty change applies from the very
-    // next battle.
+    // next battle. In Superposition Mode, every stat is already pinned to
+    // MAX_STAT (OverworldScene's applySuperpositionUnlocks), so there's no
+    // "this world is harder than the last" progression left to track on the
+    // opponent's side either -- `superpositionEnemyStats` (still scaled by
+    // the same difficulty tier) replaces the per-world climb with one flat,
+    // representative value shared by every world.
     const encounterFactor = this.isRival ? 1 : rollEncounterFactor();
     const difficultyTier = (this.game.registry.get('difficultyTier') as DifficultyTier) ?? DEFAULT_DIFFICULTY_TIER;
-    const baseEnemyStats = enemyStatsForWorld(this.world, DIFFICULTY_MULTIPLIERS[difficultyTier]);
+    const superposition = !!this.game.registry.get('superpositionMode');
+    const baseEnemyStats = superposition
+      ? superpositionEnemyStats(DIFFICULTY_MULTIPLIERS[difficultyTier])
+      : enemyStatsForWorld(this.world, DIFFICULTY_MULTIPLIERS[difficultyTier]);
     this.enemyStats = this.isRival
       ? baseEnemyStats
       : {

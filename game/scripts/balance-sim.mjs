@@ -948,7 +948,7 @@ const BUILDS = [
     // affords a fix when the world it's stuck on genuinely isn't safe to
     // grind directly.
     spend(state, world, hitFn) {
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 30; i++) {
         // Both margins, not just the wild one -- a comfortably positive wild
         // margin doesn't mean this world is actually clear, since its own
         // rival (the real gate to the next world) is a stronger, separate

@@ -474,18 +474,22 @@ real quasiparticle; there is no abstract "disorder" move or class.
 `velocity`/`correlation`, base `1` each (`BASE_STAT`/`DEFAULT_STATS`), capped at `100`
 (`MAX_STAT`) -- Noether's shop (`OverworldScene.renderShopStats`) refuses to sell a stat past
 that, showing it as maxed instead. Player stats live in registry/save key `playerStats`, grown
-via that same shop (cost `statUpgradeCost(current, stat)` per +1 point, `x10` for `correlation`
-specifically -- `CORRELATION_COST_MULTIPLIER`, see that function's own comment for why
-Correlation is priced steeper). Opponent stats are never stored per-material --
-`enemyStatsForWorld(world, difficultyMultiplier)` (`data/balance.ts`) computes them fresh at
-battle start (`BattleScene.create`), scaling by a two-phase curve, gentle through worlds 1-3 and
-steeper from world 4 on (`EARLY_GROWTH_PER_STEP`/`LATE_GROWTH_PER_STEP`, see that function's own
-comment for the exact rates and the reasoning behind the two phases), then by the active
-difficulty tier's own multiplier (`DIFFICULTY_MULTIPLIERS`, read live off registry
-`difficultyTier`, the Lab's Settings station). Left fractional (never rounded) here -- an
-opponent's stats are never shown to the player as a number, only felt through hit chance/damage/
-turn order -- only the player's own `playerStats` round, at the one place this function's result
-gets copied into them (`OverworldScene.applySuperpositionLeveling`).
+via that same shop (cost `statUpgradeCost(current, stat)` per +1 point, the same rate for all
+three -- `CORRELATION_COST_MULTIPLIER` is `1`, kept as its own named constant in case a future
+formula change reopens the gap that once justified pricing Correlation steeper). Opponent stats
+are never stored per-material -- in Story Mode, `enemyStatsForWorld(world, difficultyMultiplier)`
+(`data/balance.ts`) computes them fresh at battle start (`BattleScene.create`), scaling by a
+two-phase curve, gentle through worlds 1-3 and steeper from world 4 on
+(`EARLY_GROWTH_PER_STEP`/`LATE_GROWTH_PER_STEP`, see that function's own comment for the exact
+rates and the reasoning behind the two phases); in Superposition Mode (every player stat already
+pinned to `MAX_STAT`, so there's no per-world climb left to track on the opponent's side either),
+`superpositionEnemyStats(difficultyMultiplier)` returns one flat baseline
+(`SUPERPOSITION_BASE_ENEMY_STAT`) shared by every world instead. Both apply the active difficulty
+tier's own multiplier on top (`DIFFICULTY_MULTIPLIERS`, read live off registry `difficultyTier`,
+the Lab's Settings station). Left fractional (never rounded) here -- an opponent's stats are never
+shown to the player as a number, only felt through hit chance/damage/turn order -- only the
+player's own `playerStats` round, at the one place enemy-stat math gets copied into them
+(`OverworldScene.applySuperpositionLeveling`'s call into the shared `applySuperpositionUnlocks`).
 
 **Max HP** (`data/balance.ts`) is never intrinsic to a `Material` either (no `maxHp` field at
 all -- see "Data model" above) -- both sides' current-battle max HP are resolved fresh in
@@ -506,10 +510,10 @@ sample-to-sample variance. `OverworldScene.applyPlayerForm`/`HubScene.applyPlaye
 itself.
 
 `BattleScene.resolveHit` is the single damage-resolution function both sides' attacks go
-through: crit chance from the attacker's Quantumness (linear from 0 at `BASE_STAT` to 50% at
-`MAX_STAT`, `critChance`), incoming damage divided by the defender's Correlation (`BASE_STAT /
-correlation`, uncapped -- see "Stats" above for why Correlation costs more per point than
-Quantumness/Velocity), and a `2x` "quasiparticle mismatch" multiplier from
+through: crit chance from the attacker's Quantumness (linear from 1% at `BASE_STAT` to 100% at
+`MAX_STAT`, `critChance`), incoming damage scaled by the defender's Correlation (`defenseFactor`,
+a concave climb from 0% to a 90% cap -- see "Stats" above), and a `2x` "quasiparticle mismatch"
+multiplier from
 `data/materials.ts`'s `canHost(defenderType, move.class)` -- a defender whose own
 `MOVE_COMPATIBILITY` list doesn't include the attacking move's class takes it at double force.
 The crit-chance/defense-factor/mismatch/final-product arithmetic itself lives in `data/

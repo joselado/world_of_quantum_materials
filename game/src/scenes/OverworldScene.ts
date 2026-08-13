@@ -27,14 +27,11 @@ import {
   MOVES,
   KONDO_MOVE_IDS,
   getPlayerMaterial,
-  enemyStatsForWorld,
   DEFAULT_STATS,
   allCrystals,
   isHybridMaterial,
 } from '../data/materials';
-import { wildHpForWorld, DIFFICULTY_MULTIPLIERS } from '../data/balance';
-import { DEFAULT_DIFFICULTY_TIER } from '../data/settings';
-import type { DifficultyTier } from '../data/settings';
+import { wildHpForWorld, MAX_STAT } from '../data/balance';
 import { PASSIVES, PASSIVE_OWNERS } from '../data/passives';
 import type { PassiveOwner } from '../data/passives';
 import { tokenColorForValue } from '../data/tokens';
@@ -48,7 +45,7 @@ import type { WorldLore } from '../data/worldLore';
 import { DEFAULT_ENCOUNTER_DENSITY } from '../data/settings';
 import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
-import type { Material, MaterialType, Stats } from '../data/types';
+import type { Material, MaterialType } from '../data/types';
 import { generateWorldMap } from '../world/mapgen';
 import type { GridPoint } from '../world/mapgen';
 import { fontPx, fontScale } from '../ui/text';
@@ -199,6 +196,14 @@ export function applySuperpositionUnlocks(registry: Phaser.Data.DataManager) {
     maxedLevels[id] = 3;
   });
   registry.set('moveLevels', maxedLevels);
+  // Every stat pinned to MAX_STAT outright -- world-independent (unlike
+  // Story Mode's own per-world re-leveling), so it belongs in this shared
+  // grant rather than OverworldScene's own per-world leveling step. With
+  // every stat already at its ceiling, there's no "this world is harder
+  // than the last" progression left for the player's own side to track --
+  // see enemyStatsForWorld's own Superposition-Mode branch for the matching
+  // flat, difficulty-tier-scaled opponent baseline this pairs with.
+  registry.set('playerStats', { quantumness: MAX_STAT, velocity: MAX_STAT, correlation: MAX_STAT });
   persistFromRegistry(registry);
 }
 
@@ -784,31 +789,20 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   }
 
   // Superposition Mode (Title screen toggle, data/save.ts's `superpositionMode`):
-  // re-levels the player to a fair footing for whatever world this scene
-  // just entered, on every entry -- not just the Hub door's initial jump, so
-  // Continue-to-next-world and Bloch's teleport stay competitive too. A flat
-  // +2 over enemyStatsForWorld keeps the player slightly ahead rather than
-  // exactly even, plus a full heal. Every guardian's own blanket "already
-  // unlocked" grant (moves, passives, visited worlds, Materialdex, the
-  // random active picks for Kondo/Franklin/Anderson/Dresselhaus-or-Majorana,
-  // Feynman's moves all maxed) lives in the shared applySuperpositionUnlocks
-  // above BUILT_WORLDS -- world-independent, so HubScene.create applies it
-  // too, on the Lab itself.
+  // re-levels the player to a full heal for whatever world this scene just
+  // entered, on every entry -- not just the Hub door's initial jump, so
+  // Continue-to-next-world and Bloch's teleport stay topped up too. Every
+  // guardian's own blanket "already unlocked" grant -- moves, passives,
+  // visited worlds, Materialdex, the random active picks for Kondo/Franklin/
+  // Anderson/Dresselhaus-or-Majorana, Feynman's moves all maxed, and the
+  // player's own stats all pinned to MAX_STAT -- lives in the shared
+  // applySuperpositionUnlocks above BUILT_WORLDS, world-independent (no
+  // "this world is harder than the last" progression left to re-level once
+  // every stat is already at its ceiling), so HubScene.create applies it too,
+  // on the Lab itself.
   private applySuperpositionLeveling() {
     if (!this.isSuperpositionMode()) return;
     applySuperpositionUnlocks(this.game.registry);
-    const difficultyTier = (this.game.registry.get('difficultyTier') as DifficultyTier) ?? DEFAULT_DIFFICULTY_TIER;
-    const target = enemyStatsForWorld(this.world, DIFFICULTY_MULTIPLIERS[difficultyTier]);
-    // Rounded here, not inside enemyStatsForWorld itself -- these become the
-    // player's own `playerStats`, always a whole number since Noether's shop
-    // displays/sells them one point at a time (unlike an opponent's own
-    // stats, which stay fractional -- see that function's own comment).
-    const stats: Stats = {
-      quantumness: Math.round(target.quantumness + 2),
-      velocity: Math.round(target.velocity + 2),
-      correlation: Math.round(target.correlation + 2),
-    };
-    this.game.registry.set('playerStats', stats);
     this.game.registry.set('playerHp', wildHpForWorld(this.world));
     persistFromRegistry(this.game.registry);
   }

@@ -203,26 +203,31 @@ source notes). Not all main+subtype pairs are physical/interesting — needs a f
 compatibility table before implementation (see open questions).
 
 **Attributes map to stats** (implemented: `game/src/data/types.ts`'s `Stats`, `game/src/data/materials.ts`/`data/balance.ts`):
-- **Quantumness** → crit chance ("a coherent critical hit"): `clamp((quantumness - BASE_STAT) * (0.5 / (MAX_STAT - BASE_STAT)), 0, 0.5)` --
-  linear from 0 at `BASE_STAT` to a flat 50% right at `MAX_STAT`, so every purchasable point keeps
-  mattering instead of crit chance saturating partway through the sellable range
+- **Quantumness** → crit chance ("a coherent critical hit"): linear from 1% at `BASE_STAT` to a
+  flat 100% right at `MAX_STAT` (`MIN_CRIT_CHANCE`/`MAX_CRIT_CHANCE`, `critChance`), so every
+  purchasable point keeps mattering instead of crit chance saturating partway through the sellable
+  range, and a maxed-out Quantumness crystal genuinely never rolls a non-crit
 - **Velocity** → turn order and hit count each round: whichever side has the higher effective
   Velocity swings first, and swings `clamp(floor(ratio), 1, MAX_MULTI_HIT)` times that round, where
   `ratio` is its Velocity divided by the slower side's (`BattleScene.currentHitOrder`); the slower
   side always still gets exactly one swing. Ties keep the player going first, one swing each.
   `MAX_MULTI_HIT` is 5
-- **Correlation** → defense: incoming damage is scaled by `BASE_STAT / correlation`, with no upper
-  plateau the way Quantumness/Velocity have (crit chance caps at 50%, the multi-hit bonus caps at
-  `MAX_MULTI_HIT`) -- every further point of Correlation keeps helping, which is why buying it
-  costs `CORRELATION_COST_MULTIPLIER` (10x) as much per point as Quantumness/Velocity do (below),
-  not the same flat rate
+- **Correlation** → defense (`defenseFactor`): a concave (square-root) climb from 0% damage
+  reduction at `BASE_STAT` to a flat `MAX_DEFENSE_REDUCTION` (90%) right at `MAX_STAT` -- the same
+  "full range stays meaningful, then plateaus" shape Quantumness/Velocity have, but front-loaded
+  (most of the benefit lands in the first several points, unlike a straight line) so an early, cheap
+  Correlation buy still meaningfully helps rather than needing many points before it registers. A
+  maxed-out Correlation crystal is very hard to hurt, not literally unhittable -- there's always
+  some real damage getting through, on both sides of a fight, regardless of how defensive either
+  gets
 
 Every crystal starts at `1/1/1` (`BASE_STAT`/`DEFAULT_STATS`) and can be raised up to `100`
 (`MAX_STAT`) per stat at Noether's shop -- a stat already at `MAX_STAT` shows as maxed and stops
 selling. The player's own stats live in the save (`playerStats`) and only grow by spending
-qumatessence with Noether (`OverworldScene.renderShopStats`/`data/balance.ts`'s
-`statUpgradeCost`, `(current - BASE_STAT + 1) * 50` per point, `x10` for Correlation
-specifically); an opponent's stats are computed fresh from the world number (and the active
+qumatessence with Noether (`OverworldScene.renderShopStats`/`data/balance.ts`'s `statUpgradeCost`,
+`(current - BASE_STAT + 1) * 50` per point, the same rate for all three stats -- Correlation no
+longer needs a steeper price than Quantumness/Velocity now that its own formula plateaus the same
+way theirs do); an opponent's stats are computed fresh from the world number (and the active
 difficulty tier, see below) at battle start (`enemyStatsForWorld(world, difficultyMultiplier)`,
 `data/balance.ts`) rather than hand-tuned per species, so difficulty climbs with the world.
 Growth follows a two-phase curve rather than one flat per-world rate: worlds 1-3 (the tutorial
@@ -235,27 +240,39 @@ fractional internally (never rounded, since they're never shown to the player as
 felt through hit chance/damage/turn order) so this curve's own sub-1 per-step rate actually
 registers rather than vanishing under premature rounding -- only the player's own `playerStats`
 (always a whole number, since Noether's shop displays/sells them one point at a time) round, at
-the one place `enemyStatsForWorld`'s result gets copied into them (Superposition Mode's
-re-leveling). Correlation grows slower than Quantumness/Velocity in both phases since its effect
-(defense = `BASE_STAT / correlation`) is already nonlinear, so each point there goes further than
-a flat point of Quantumness/Velocity. Because the player's own Velocity only grows by spending
-qumatessence with Noether while the opponent's grows automatically every world, a player who
-never buys Velocity falls further behind the opponent's effective Velocity every world — raising
-both how often the opponent goes first and, per the multi-attack rule above, how many times it
-swings each round.
+the one place enemy-stat math gets copied into them (Superposition Mode's grant, see below).
+Correlation still grows slightly slower than Quantumness/Velocity in both phases, weighted lighter
+to keep the overall climb balanced (`npm run balance-sim`-verified). Because the player's own
+Velocity only grows by spending qumatessence with Noether while the opponent's grows automatically
+every world, a player who never buys Velocity falls further behind the opponent's effective
+Velocity every world — raising both how often the opponent goes first and, per the multi-attack
+rule above, how many times it swings each round.
 
 **Difficulty tier** (the Lab's Settings station, `data/settings.ts`'s `DifficultyTier`/
 `DIFFICULTY_TIER_PRESETS`, `data/balance.ts`'s `DIFFICULTY_MULTIPLIERS`): a player-facing
-multiplier on the whole `enemyStatsForWorld` curve above, named B.Sc./M.Sc./Ph.D. after
+multiplier on `enemyStatsForWorld`'s whole curve above (Story Mode) or on `superpositionEnemyStats`'
+flat baseline (Superposition Mode, see below), named B.Sc./M.Sc./Ph.D. after
 `game/scripts/balance-sim.mjs`'s own three simulated playtest archetypes rather than a plain
 Easy/Normal/Hard, since each tier's multiplier is tuned and `npm run balance-sim`-verified against
 that archetype's own effort level. M.Sc. ("the intended default") is what every constant above is
-written against, so it's the tier that leaves the curve unscaled (`1`); B.Sc. eases it (`0.6`) for
-a lower-effort playstyle and Ph.D. tightens it (`1.4`) for a playstyle that would otherwise clear
-every world too comfortably. Unlike the density/text-size/music-style rows beside it, meant to be
-revisited mid-playthrough rather than picked once -- `BattleScene`/`OverworldScene` both read it
-live off the registry on every fight/re-level, so a change lands on the player's very next battle,
-no restart needed.
+written against, so it's the tier that leaves Story Mode's curve unscaled (`1`); B.Sc. eases it
+(`0.6`) for a lower-effort playstyle and Ph.D. tightens it (`1.4`) for a playstyle that would
+otherwise clear every world too comfortably. Unlike the density/text-size/music-style rows beside
+it, meant to be revisited mid-playthrough rather than picked once -- `BattleScene`/`OverworldScene`
+both read it live off the registry on every fight/re-level, so a change lands on the player's very
+next battle, no restart needed.
+
+**Superposition Mode's own stat/opponent handling** (`OverworldScene.applySuperpositionUnlocks`,
+`data/balance.ts`'s `superpositionEnemyStats`): every player stat is pinned straight to `MAX_STAT`
+(100/100/100) rather than re-leveled per world, since the mode's whole point is "every guardian,
+transmutation, and hybrid material is available right away." With the player permanently maxed,
+there's no "this world is harder than the last" progression left for the opponent's own side to
+track either, so every fight in this mode draws its opponent stats from one flat, world-independent
+baseline (`SUPERPOSITION_BASE_ENEMY_STAT`, 80) instead of `enemyStatsForWorld`'s per-world climb --
+the same difficulty tier multiplier still applies on top, giving B.Sc./M.Sc./Ph.D. real separation
+(a comfortable win, a genuine-but-winnable fight, and a tight one, respectively) rather than every
+tier converging on the same "always trivially wins" result a maxed player would otherwise get
+against a small, Story-Mode-curve-derived opponent.
 
 **Max HP is never intrinsic to a crystal** -- no `Material` (wild, rival, or the player's
 own current form) carries an HP number at all; it's purely a function of which world the
@@ -1351,10 +1368,11 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   `metGuardians` in this mode -- are already unlocked on a completely fresh save) and
   `OverworldScene.applySuperpositionLeveling()` (re-applied on every world entry --
   Continue, Bloch teleport, and the Hub door's World-1 jump alike -- alongside that
-  method's own world-specific `playerStats`/`playerHp` re-leveling to
-  `enemyStatsForWorld` plus a flat `+2`, which stays local to `OverworldScene` since
-  only that scene knows which world to re-level against). The grant unlocks every move
-  and passive, merges every built world into `visitedWorlds` (so Bloch's teleport hub,
+  method's own world-specific `playerHp` re-leveling, which stays local to
+  `OverworldScene` since only that scene knows which world to heal against). The grant
+  pins every player stat straight to `MAX_STAT` (world-independent, so it lives in the
+  shared grant rather than the per-world method) and unlocks every move and passive,
+  merges every built world into `visitedWorlds` (so Bloch's teleport hub,
   §5, offers every world immediately, with no separate "Warp" UI, on top of the world
   doors §5 every world already has), and pre-fills the Hub's Qumatex (§4) with every
   real compound in the game so it reads as fully discovered. Dresselhaus/Majorana/
@@ -1377,9 +1395,15 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   slot (every move he levels stands independently), so his own version of the grant is
   unconditional rather than seed-once: every move id's `moveLevels` entry is set
   straight to 3 (max) on every application, since there's no deliberate lower-level pick
-  worth preserving.
+  worth preserving. With the player's own stats permanently maxed, opponents in this
+  mode also stop scaling with the world -- `BattleScene`'s own `isSuperpositionMode`
+  branch draws from `superpositionEnemyStats` (§3) instead of `enemyStatsForWorld`, one
+  flat baseline shared by every world, still scaled by whichever difficulty tier is
+  active.
   Toggled once at the title screen rather than mid-run, so it's a deliberate
-  choice made before starting, not something stumbled into during play.
+  choice made before starting, not something stumbled into during play (the difficulty
+  tier itself, unlike this toggle, can still be changed mid-playthrough from the Lab's
+  Settings station -- §3).
 
 ## 8. Art & content pipeline
 

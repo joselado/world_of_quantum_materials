@@ -35,12 +35,13 @@ export const DEFAULT_STATS: Stats = { quantumness: BASE_STAT, velocity: BASE_STA
 // leveling, ...), so the gap that opens from there is meant to require
 // actually using them, staying genuinely hard for a near-optimal build all
 // the way to world 10. Correlation still gets the smaller share in both
-// phases since its effect (defense = BASE_STAT / correlation) is already
-// nonlinear, so each point there goes further than a flat point of
-// Quantumness/Velocity. Scaled to a tenth of BASE_STAT itself (0.1/0.35 per
-// step rather than 1/3.5) so `defenseFactor`'s BASE_STAT/correlation ratio
-// climbs at the same relative rate it did before BASE_STAT moved to 1 --
-// unscaled, a whole-point-per-step growth would swing that ratio far more
+// phases -- its own effect on defense (defenseFactor below) isn't a flat
+// per-point rate the way a raw stat difference is, so it's weighted lighter
+// here to keep the overall climb balanced (`npm run balance-sim`-verified,
+// not derived in closed form). Scaled to a tenth of BASE_STAT itself
+// (0.1/0.35 per step rather than 1/3.5) so the curve's overall shape stays
+// the same relative size it was before BASE_STAT moved to 1 -- unscaled, a
+// whole-point-per-step growth would swing every world's difficulty far more
 // violently against a BASE_STAT of 1 than it used to against 10 (see
 // enemyStatsForWorld's own comment on why the result stays fractional
 // rather than rounding here, which is what makes a sub-1 per-step rate
@@ -95,23 +96,50 @@ export function enemyStatsForWorld(world: number, difficultyMultiplier = 1): Sta
   };
 }
 
-// Correlation buys more defense per point than Quantumness/Velocity buy crit
-// chance/multi-hit -- crit chance is linear over the whole BASE_STAT-to-
-// MAX_STAT range (critChance above) and the multi-hit ratio is capped at
-// MAX_MULTI_HIT regardless of how far past the opponent's own Velocity a
-// player gets, but `defenseFactor = BASE_STAT / correlation` (resolveHitDamage
-// below) never plateaus -- with BASE_STAT this small, a handful of points
-// already cuts incoming damage sharply. Priced steeper here to keep
-// qumatessence-per-point-of-power roughly even across all three stats
-// (checked against `npm run balance-sim`'s difficulty curve, not derived in
-// closed form -- see that script's own header for what it simulates).
-const CORRELATION_COST_MULTIPLIER = 10;
+// Superposition Mode's own flat, world-independent opponent baseline
+// (BattleScene.create's own isSuperpositionMode branch) -- once every player
+// stat is pinned to MAX_STAT (OverworldScene's applySuperpositionUnlocks),
+// there's no "this world is harder than the last" progression left to track
+// on the opponent's side either, so every fight in this mode draws from this
+// single representative value instead of enemyStatsForWorld's own per-world
+// climb. Deliberately NOT an average of enemyStatsForWorld's own (small,
+// BASE_STAT-anchored) curve -- a maxed-out player's own Correlation already
+// floors incoming damage (defenseFactor above) regardless of how strong a
+// small-numbered opponent is, so an averaged opponent (worked out to ~1-3)
+// was a one-hit stomp in practice. SUPERPOSITION_BASE_ENEMY_STAT is picked
+// (and `npm run balance-sim`-adjacent hand math-verified, not derived in
+// closed form) so that MAX_STAT reduces to a genuinely close fight -- k/d
+// close to the low single digits, the same shape a real Story Mode fight
+// has, not a 60+ round grind -- with the difficulty tier's own multiplier
+// on top giving real separation between tiers (M.Sc.'s `1` sits right at
+// that close-fight value; Ph.D.'s `1.4` pushes past MAX_STAT, where
+// Quantumness/Correlation's own plateau keeps it merely tighter rather than
+// unwinnable; B.Sc.'s `0.6` sits comfortably below it).
+const SUPERPOSITION_BASE_ENEMY_STAT = 80;
+export function superpositionEnemyStats(difficultyMultiplier = 1): Stats {
+  const stat = SUPERPOSITION_BASE_ENEMY_STAT * difficultyMultiplier;
+  return { quantumness: stat, velocity: stat, correlation: stat };
+}
+
+// Correlation prices the same as Quantumness/Velocity -- all three now share
+// the same "full range stays meaningful, then plateaus" shape (critChance,
+// the multi-hit ratio, and defenseFactor's own concave climb below), so
+// there's no longer a reason for Correlation to cost more per point the way
+// it did when `defenseFactor` was a bare, never-plateauing `BASE_STAT /
+// correlation` hyperbola. Kept as its own named constant (rather than
+// deleting the differential-pricing machinery below) since re-introducing a
+// per-stat multiplier is one constant away if a future formula change
+// reopens the gap -- checked against `npm run balance-sim`'s difficulty
+// curve, not derived in closed form (see that script's own header for what
+// it simulates).
+const CORRELATION_COST_MULTIPLIER = 1;
 
 // Cost to raise a stat by 1 point from its current value, steepening as the
 // player buys more (the same "priced to keep buying meaningful" shape as
-// shopCost for moves). `stat` is required, not defaulted -- Correlation's own
-// steeper price above means a call site that forgot which stat it was buying
-// would silently under- or over-charge rather than fail loudly.
+// shopCost for moves). `stat` is required, not defaulted -- a call site that
+// forgot which stat it was buying would otherwise silently charge the wrong
+// rate if CORRELATION_COST_MULTIPLIER above ever moves off 1 again, rather
+// than failing loudly.
 export function statUpgradeCost(currentValue: number, stat: keyof Stats): number {
   const base = (currentValue - BASE_STAT + 1) * 50;
   return stat === 'correlation' ? base * CORRELATION_COST_MULTIPLIER : base;
@@ -269,13 +297,45 @@ export function mitigationFraction(levelMultiplier: number, base: number, cap: n
 
 // --- Core damage resolution (BattleScene.resolveHit) ------------------------
 
-// Quantumness -> crit ("coherent hit") chance (DESIGN.md §3): linear from 0
-// at BASE_STAT to a flat 50% right at MAX_STAT, so every point of
+// Quantumness -> crit ("coherent hit") chance (DESIGN.md §3): linear from 1%
+// at BASE_STAT to a flat 100% right at MAX_STAT, so every point of
 // Quantumness in the sellable range keeps pulling its weight instead of
-// crit chance saturating partway through it. The clamp is defensive only --
+// crit chance saturating partway through it, and a maxed-out Quantumness
+// crystal genuinely never rolls a non-crit. The clamp is defensive only --
 // Noether's shop never sells past MAX_STAT, so it never actually binds.
+const MIN_CRIT_CHANCE = 0.01;
+const MAX_CRIT_CHANCE = 1;
 export function critChance(attackerQuantumness: number): number {
-  return clamp((attackerQuantumness - BASE_STAT) * (0.5 / (MAX_STAT - BASE_STAT)), 0, 0.5);
+  return clamp(
+    MIN_CRIT_CHANCE + ((attackerQuantumness - BASE_STAT) * (MAX_CRIT_CHANCE - MIN_CRIT_CHANCE)) / (MAX_STAT - BASE_STAT),
+    MIN_CRIT_CHANCE,
+    MAX_CRIT_CHANCE
+  );
+}
+
+// Correlation -> defense: concave (square-root) climb from 0% damage
+// reduction at BASE_STAT to a flat MAX_DEFENSE_REDUCTION (90%) right at
+// MAX_STAT -- like critChance/the multi-hit ratio, the full range stays
+// meaningful and then plateaus, but unlike a straight line this front-loads
+// most of the benefit into the first several points (an early, cheap,
+// meaningful defensive buy stays available, the same property the old
+// unbounded `BASE_STAT / correlation` hyperbola had) while a straight line
+// would spread that benefit too thin to matter until many points in --
+// checked against `npm run balance-sim`: a straight-line version left the
+// B.Sc. archetype (which can only ever afford a handful of Correlation
+// points) unable to clear even World 1, since its first few points barely
+// moved the needle. A maxed-out Correlation crystal is very hard to hurt,
+// not literally unhittable, so there's always some real damage getting
+// through regardless of how defensive either side gets. The clamp guards
+// both directions: below BASE_STAT (never happens in practice, stats bottom
+// out there) `sqrt` of a negative input would be NaN, and above MAX_STAT (an
+// opponent's own stats, difficulty-tier-scaled, can genuinely exceed it --
+// see enemyStatsForWorld/superpositionEnemyStats) it would keep climbing
+// past the intended floor.
+const MAX_DEFENSE_REDUCTION = 0.9;
+export function defenseFactor(defenderCorrelation: number): number {
+  const progress = clamp((defenderCorrelation - BASE_STAT) / (MAX_STAT - BASE_STAT), 0, 1);
+  return 1 - MAX_DEFENSE_REDUCTION * Math.sqrt(progress);
 }
 
 // Velocity's own ceiling (DESIGN.md §4, BattleScene.currentHitOrder): the
@@ -352,9 +412,9 @@ export interface ResolveHitOutcome {
 
 // The exact math BattleScene.resolveHit runs to turn one hit's inputs into a
 // damage number and whether it crit -- crit chance from the attacker's
-// Quantumness, a defense factor from the defender's Correlation
-// (BASE_STAT / correlation), the quasiparticle-mismatch multiplier, every
-// other multiplicative term (quiz/Analytic/Ultimate bonus, Kondo Shielded,
+// Quantumness (critChance), a defense factor from the defender's Correlation
+// (defenseFactor), the quasiparticle-mismatch multiplier, every other
+// multiplicative term (quiz/Analytic/Ultimate bonus, Kondo Shielded,
 // Franklin Diffraction Shadow), a 1.5x crit bonus, and +/-15% damage
 // variance, all multiplied together and rounded once at the end.
 export function resolveHitDamage(params: ResolveHitParams): ResolveHitOutcome {
@@ -362,7 +422,7 @@ export function resolveHitDamage(params: ResolveHitParams): ResolveHitOutcome {
   const crit = (params.critRng ?? Math.random)() < chance;
   const variance = floatBetween(0.85, 1.15, params.varianceRng ?? Math.random);
   const mismatchMult = params.mismatch ? params.mismatchMultiplier : 1;
-  const defenseFactor = BASE_STAT / params.defenderStats.correlation;
+  const defense = defenseFactor(params.defenderStats.correlation);
   const damage = Math.round(
     params.power *
       mismatchMult *
@@ -370,7 +430,7 @@ export function resolveHitDamage(params: ResolveHitParams): ResolveHitOutcome {
       params.bonusMultiplier *
       params.shieldedMult *
       params.fractionalGuardMult *
-      defenseFactor *
+      defense *
       (crit ? 1.5 : 1) *
       variance
   );
