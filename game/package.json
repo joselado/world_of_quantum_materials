@@ -9,12 +9,15 @@
     "preview": "vite preview",
     "docs": "node scripts/gen-docs.mjs",
     "balance-sim": "node scripts/balance-sim.mjs",
-    "mapgen:check": "node scripts/mapgen-check.mjs"
+    "mapgen:check": "node scripts/mapgen-check.mjs",
+    "component-check": "node scripts/component-check.mjs",
+    "playthrough-check": "node scripts/playthrough-check.mjs"
   },
   "dependencies": {
     "phaser": "^3.70.0"
   },
   "devDependencies": {
+    "puppeteer-core": "^22.0.0",
     "typescript": "^5.5.0",
     "vite": "^5.4.0"
   }

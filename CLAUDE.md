@@ -29,7 +29,10 @@ the code:
   guardian," "new persisted state touches `defaultSave`+`persistFromRegistry`
   together") to follow before adding something new.
 - `dev_notes/DEVELOPMENT.md` — build/run instructions, folder contents, where
-  active development happens (`game/`).
+  active development happens (`game/`). Also covers `npm run component-check`/
+  `npm run playthrough-check` (`game/scripts/`), the headless-Chrome scripts
+  that verify the game is actually playable end-to-end rather than just
+  type-checking — see "Editing workflow" below for when to run them.
 - `README.md` — short player-facing description of the game (premise, how it
   plays, controls); deliberately light on mechanics detail, linking out to
   `docs/` for anything a player would need to look up rather than explaining
@@ -89,6 +92,18 @@ checkout; that's gone now that this repo *is* the standalone checkout). Commit a
   "same-type pairs are still forbidden in general because fusing two of the same
   phase isn't a new state") — cut the narration of the change itself, keep the
   reasoning behind the current rule.
+- For changes touching battle flow, world progression (the reach-goal →
+  beat-rival → continue gate), scene transitions, or any in-game dialogue/panel
+  (new or edited), run `npm run component-check` from `game/` before calling
+  the work done — it's fast (~2-3 min) and catches stuck-panel/broken-transition
+  regressions that `tsc --noEmit` can't see. For a change plausibly big enough
+  to affect whether the game is completable at all (difficulty/economy tuning,
+  a new gating mechanic, anything `balance-sim` output would be relevant to),
+  also run the slower `npm run playthrough-check` (20 min–1hr+, a real
+  boot-to-finale playthrough) — see `dev_notes/DEVELOPMENT.md`'s
+  "Full-playthrough and component checks" section for what each one covers and
+  the gotchas already learned building them (headless-Chrome crash-recovery, a
+  script mistaking its own no-op click for a stuck game panel).
 - For `docs/*.md` specifically: never hand-edit inside a `<!-- GENERATED -->`
   block — change the underlying data in `game/src/data/materials.ts`/`passives.ts`
   and run `npm run docs` from `game/` instead, so the table stays derived from a

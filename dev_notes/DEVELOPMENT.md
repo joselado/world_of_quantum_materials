@@ -213,3 +213,83 @@ are plain, non-interactive `Text` objects that can share a candidate's exact
 label text -- filtering to `obj.input` (only set once `setInteractive()` is
 called) is necessary but not sufficient once a scene has multiple panels/
 containers layered at once.
+
+## Full-playthrough and component checks
+
+Two checked-in scripts build on the `window.__game`/Puppeteer approach above
+to answer a question ad hoc UI verification can't: not just "does this one
+panel render correctly," but "can a player actually complete the game." Both
+live in `game/scripts/`, use `puppeteer-core` (a real `devDependency`, unlike
+the one-off ad hoc pattern above) against the Chrome-for-Testing binary
+Puppeteer itself caches at `~/.cache/puppeteer/chrome` (auto-detected;
+override with `CHROME_BIN` if that ever stops finding the right binary), and
+both auto-start `npm run dev` if it isn't already running on `:5173` and tear
+it down afterward (an already-running server is left alone). Output
+(screenshots, logs, JSON summaries) goes to `game/.check-artifacts/`
+(gitignored, not meant to be committed).
+
+**`npm run component-check`** (`scripts/component-check.mjs`, ~2-3 minutes) --
+jumps directly into scenes/states via `scene.start(...)` and scene-private
+fields rather than playing through them, so each of its ~50 tests takes
+seconds: world-entry dialogue termination for every world (the lore →
+goal/middle-tip → controls-tip chain), battle round-trips, all ten guardian
+panels' open/close, rival-gate win and loss paths, and fresh/corrupt/old-shape
+save boot resilience. **Run this first** whenever chasing a suspected
+gameplay-blocking bug -- it catches most individual-mechanism regressions far
+faster than a full playthrough, and its failure output (which world, which
+button sequence, a screenshot) usually points straight at the broken
+mechanism.
+
+**`npm run playthrough-check`** (`scripts/playthrough-check.mjs`, ~20 minutes
+to over an hour) -- an actual, real, single continuous playthrough: boots a
+fresh save and drives it from World 1 through beating World 10's rival (the
+real finale panel, `OverworldScene.showFinalePanel()`), BFS-pathfinding each
+freshly generated map, fighting every encounter and rival with whatever moves
+are currently unlocked, bouncing to the Lab between rival attempts to shop
+(weighted toward guardian-shop purchase buttons, not just window-shopping, so
+it actually invests qumatessence rather than wandering forever), and
+occasionally taking a Bloch side-trip to revisit an earlier world. **Losing
+individual battles is expected and fine** -- HP resets after every fight
+regardless of outcome (`BattleScene.endBattle`, DESIGN.md §3's "Max HP"
+section), so a loss only costs that fight's qumatessence stake, and a lost
+rival is simply retried (capped at 15 attempts per world, each preceded by a
+fresh Lab detour, before the run reports that world as a genuine blocker
+rather than spinning forever). Reach for this only after `component-check`
+passes clean -- it answers "does the whole chain complete," which
+`component-check`'s isolated jumps structurally can't.
+
+Both scripts print a running log and end with a JSON summary
+(`success`/`failure` with a `reason` and the world it happened in, plus
+stats). A `playthrough-check` failure's `reason` is written to be actionable
+on its own (`no-bfs-path`, `rival-unwinnable-after-15-attempts-with-shopping`,
+`hub-dialogue-stuck-repeating`, `movement-hang`, ...) -- but treat a single
+failure as a lead to investigate with `component-check` or manual replay, not
+as proof of a real bug on its own; see the next paragraph.
+
+**Gotcha, and the most important lesson from building these:** headless
+Chrome in this environment falls back to software WebGL (SwiftShader --
+Chrome warns as much on boot), which is far more prone to renderer crashes
+under repeated Phaser scene create/destroy churn (many battles in a row) than
+real GPU rendering would be. `playthrough-check.mjs` treats a crashed
+tab/frame as recoverable, not a failure: it relaunches the browser and
+resumes from the persisted save (the same `data/save.ts` path a real player
+closing and reopening the game would exercise), capped at 8 relaunches before
+giving up. This is an artifact of the sandboxed environment, not the game --
+don't read a relaunch log line as a finding.
+
+**Second lesson, kept here so it isn't relearned the hard way:** a script
+that blindly prefers a fixed button-label priority list can get stuck
+clicking a real, harmless no-op forever and misreport it as a stuck panel --
+this happened for real with the Lab's Qumatex/Materialdex list, whose
+"Next ->" pagination button stays present (just visually dimmed) on the last
+page, and a naive script that always prefers "Next ->" over the "\[ Close \]"
+button sitting right next to it will loop. Both scripts detect a click that
+produces no state change and switch to an exit-shaped button (`Close`,
+`Farewell`, ...) instead of re-clicking the same no-op -- a genuinely stuck
+dialogue (`stuck-repeating` in the failure reason) means that *also* failed
+to make progress, not just that one specific button was a dead end. Before
+trusting any future "stuck dialogue" finding from either script, check the
+diagnostic dump it logs (`dialogueContainer`'s actual button list at the
+point it gave up) for exactly this shape -- a real close/exit button sitting
+in the list that the click logic simply didn't prefer is a script bug, not a
+game one.
