@@ -1,21 +1,25 @@
 import Phaser from 'phaser';
 import { shade } from './colors';
 
-// Dresselhaus's avatar -- world 3's guardian (topological band theory: the
-// Dresselhaus effect -- bulk-inversion-asymmetry spin-orbit coupling -- is
-// the real ingredient that locks spin to momentum in models like BHZ, the
-// route an ordinary band structure actually takes into a topological one).
-// Own file, same convention as every other guardian (glow -> sway -> cloak ->
-// head-motif -> orbit ring). Head motif: a ring of small spin arrows, each
-// locked tangent to its own position on the ring rather than all pointing
-// the same way -- a spin-momentum-locked texture in place of a face, fitting
-// the guardian whose gift lets the player lock onto (become) any crystal
-// they've understood well enough to defeat.
+// Dresselhaus's avatar -- world 3's guardian: Mildred Dresselhaus, the
+// experimentalist of nanostructured carbon. Her science is the guardian's
+// own gift made literal: the same atoms, built into a different
+// nanostructure, are a different material entirely (graphite, graphene, a
+// nanotube, a fullerene -- all just carbon, rearranged), so understanding a
+// defeated crystal's structure closely enough lets the player rebuild
+// themselves into it. The avatar is a figure caught mid-transmutation: from
+// the waist down she *is* a faceted crystal -- point-down, shaded facet by
+// facet in the same vocabulary as the game's wild-crystal shards
+// (art/crystals.ts) -- with a dark bust still emerging above it, and in
+// place of a face, a slowly rotating hexagonal carbon ring, six bonded
+// sites -- the one motif every carbon nanostructure she mapped is built
+// from. Silhouette: a wide angular diamond under a narrow bust, unlike any
+// robed taper. Orbit glyphs read '↻', the transmutation cycle.
 export function makeDresselhausAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameObjects.Container {
   const S = 30 * scale;
   const teal = 0x4ad9a0;
+  const crystalColor = 0x1e8a66;
   const cloakColor = 0x123028;
-  const skin = 0xe6d2b8;
 
   const outer = scene.add.container(0, 0);
 
@@ -39,58 +43,77 @@ export function makeDresselhausAvatar(scene: Phaser.Scene, scale = 1): Phaser.Ga
   outer.add(sway);
   scene.tweens.add({ targets: sway, angle: { from: -2.3, to: 2.3 }, duration: 2800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
-  const headY = -S * 0.55;
+  // The crystal he is becoming, from the waist down: a point-down faceted
+  // shard, its four faces shaded off the same base color the way
+  // drawShardShape shades a wild crystal's.
+  const tip = { x: 0, y: S * 0.92 };
+  const left = { x: -S * 0.5, y: S * 0.28 };
+  const right = { x: S * 0.5, y: S * 0.28 };
+  const waistL = { x: -S * 0.28, y: -S * 0.05 };
+  const waistR = { x: S * 0.28, y: -S * 0.05 };
+  const core = { x: 0, y: S * 0.32 };
+  const crystal = scene.add.graphics();
+  crystal.fillStyle(shade(crystalColor, 45), 1);
+  crystal.fillTriangle(waistL.x, waistL.y, left.x, left.y, core.x, core.y);
+  crystal.fillStyle(shade(crystalColor, 15), 1);
+  crystal.fillTriangle(waistL.x, waistL.y, core.x, core.y, waistR.x, waistR.y);
+  crystal.fillStyle(shade(crystalColor, -15), 1);
+  crystal.fillTriangle(core.x, core.y, left.x, left.y, tip.x, tip.y);
+  crystal.fillStyle(shade(crystalColor, -35), 1);
+  crystal.fillPoints([core, tip, right, waistR], true);
+  crystal.lineStyle(1.5, shade(crystalColor, -55), 1);
+  crystal.strokePoints([waistL, left, tip, right, waistR], true);
+  sway.add(crystal);
 
-  const cloak = scene.add.graphics();
-  cloak.fillStyle(cloakColor, 1);
-  cloak.fillPoints(
+  // The bust still emerging above the waist -- the part of him not yet
+  // transmuted -- narrow against the crystal's width.
+  const bust = scene.add.graphics();
+  bust.fillStyle(cloakColor, 1);
+  bust.fillPoints(
     [
-      { x: -S * 0.44, y: -S * 0.28 },
-      { x: S * 0.44, y: -S * 0.28 },
-      { x: S * 0.28, y: S * 0.58 },
-      { x: 0, y: S * 0.85 },
-      { x: -S * 0.28, y: S * 0.58 },
+      { x: -S * 0.28, y: -S * 0.05 },
+      { x: S * 0.28, y: -S * 0.05 },
+      { x: S * 0.2, y: -S * 0.42 },
+      { x: -S * 0.2, y: -S * 0.42 },
     ],
     true
   );
-  cloak.lineStyle(1.5, teal, 0.6);
-  cloak.strokePoints(
+  bust.lineStyle(1.5, teal, 0.6);
+  bust.strokePoints(
     [
-      { x: -S * 0.44, y: -S * 0.28 },
-      { x: S * 0.44, y: -S * 0.28 },
-      { x: S * 0.28, y: S * 0.58 },
-      { x: 0, y: S * 0.85 },
-      { x: -S * 0.28, y: S * 0.58 },
+      { x: -S * 0.28, y: -S * 0.05 },
+      { x: S * 0.28, y: -S * 0.05 },
+      { x: S * 0.2, y: -S * 0.42 },
+      { x: -S * 0.2, y: -S * 0.42 },
     ],
     true
   );
-  sway.add(cloak);
+  sway.add(bust);
 
-  const head = scene.add.graphics();
-  head.fillStyle(shade(skin, 4), 1);
-  head.fillCircle(0, headY, S * 0.38);
-  sway.add(head);
-
-  // A spin-momentum-locked texture: six small arrows on a ring around the
-  // head, each rotated tangent to its own position (a hedgehog-like winding,
-  // the actual shape a Dresselhaus/Rashba-split band's spin texture traces
-  // in momentum space) rather than a face.
+  // The hexagonal carbon ring in place of a face: six bonded sites, the
+  // unit every nanostructure she mapped -- graphite sheet, nanotube,
+  // fullerene -- is assembled from, slowly rotating. No head behind it --
+  // the ring alone is the head.
+  const headY = -S * 0.68;
   const texture = scene.add.container(0, headY);
   const ringR = S * 0.26;
+  const hex = scene.add.graphics();
+  hex.lineStyle(1.6, teal, 0.95);
+  hex.beginPath();
+  for (let i = 0; i <= 6; i++) {
+    const ang = (i * Math.PI * 2) / 6;
+    const x = Math.cos(ang) * ringR;
+    const y = Math.sin(ang) * ringR;
+    if (i === 0) hex.moveTo(x, y);
+    else hex.lineTo(x, y);
+  }
+  hex.strokePath();
   for (let i = 0; i < 6; i++) {
     const ang = (i * Math.PI * 2) / 6;
-    const arrow = scene.add.graphics();
-    arrow.lineStyle(1.6, teal, 0.95);
-    arrow.beginPath();
-    arrow.moveTo(-S * 0.08, 0);
-    arrow.lineTo(S * 0.08, 0);
-    arrow.strokePath();
-    arrow.fillStyle(teal, 0.95);
-    arrow.fillTriangle(S * 0.09, 0, S * 0.03, -S * 0.045, S * 0.03, S * 0.045);
-    arrow.setPosition(Math.cos(ang) * ringR, Math.sin(ang) * ringR);
-    arrow.rotation = ang + Math.PI / 2;
-    texture.add(arrow);
+    hex.fillStyle(teal, 0.95);
+    hex.fillCircle(Math.cos(ang) * ringR, Math.sin(ang) * ringR, S * 0.055);
   }
+  texture.add(hex);
   sway.add(texture);
   scene.tweens.add({ targets: texture, angle: 360, duration: 6400, repeat: -1, ease: 'Linear' });
 

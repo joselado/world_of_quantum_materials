@@ -1,17 +1,21 @@
 import Phaser from 'phaser';
 import { shade } from './colors';
 
-// Anderson's avatar -- world 6's guardian (disorder and localization). Own
-// file, same convention as every other guardian (glow -> sway -> cloak ->
-// head-motif -> orbit ring). Head motif: a scattered, irregular lattice of
-// dim sites with one bright point pulsing at the center in place of a face --
-// Anderson localization's own picture, a wave trapped by disorder instead of
-// spreading freely -- rust/amber rather than any other guardian's palette.
+// Anderson's avatar -- world 6's guardian (disorder and localization, and
+// the doping mechanic that embeds an impurity's move in the player). The
+// figure has no outline at all: it is a loose scatter of chunky disordered
+// fragments -- densest through the torso, thinning toward the edges like a
+// localized wave's decaying envelope -- with one bright site pulsing at the
+// heart where the amplitude is trapped. Nothing connects the fragments
+// (unlike Feynman's propagator lattice next to him in the Lab): disorder
+// has no bonds, only sites. Orbit glyphs read '×', the impurity marks.
+//
+// Drawn in local space centered on the chest/torso (0,0), same convention
+// as every other avatar builder: an internal sway tween is baked in, so
+// callers are free to layer their own position/bob tween on top.
 export function makeAndersonAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameObjects.Container {
   const S = 30 * scale;
   const rust = 0xc9884a;
-  const cloakColor = 0x3a2a18;
-  const skin = 0xe6cba8;
 
   const outer = scene.add.container(0, 0);
 
@@ -35,64 +39,64 @@ export function makeAndersonAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameO
   outer.add(sway);
   scene.tweens.add({ targets: sway, angle: { from: -2.7, to: 2.7 }, duration: 2400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
-  const headY = -S * 0.55;
-
-  const cloak = scene.add.graphics();
-  cloak.fillStyle(cloakColor, 1);
-  cloak.fillPoints(
-    [
-      { x: -S * 0.44, y: -S * 0.28 },
-      { x: S * 0.44, y: -S * 0.28 },
-      { x: S * 0.28, y: S * 0.58 },
-      { x: 0, y: S * 0.85 },
-      { x: -S * 0.28, y: S * 0.58 },
-    ],
-    true
-  );
-  cloak.lineStyle(1.5, shade(rust, -20), 0.6);
-  cloak.strokePoints(
-    [
-      { x: -S * 0.44, y: -S * 0.28 },
-      { x: S * 0.44, y: -S * 0.28 },
-      { x: S * 0.28, y: S * 0.58 },
-      { x: 0, y: S * 0.85 },
-      { x: -S * 0.28, y: S * 0.58 },
-    ],
-    true
-  );
-  sway.add(cloak);
-
-  const head = scene.add.graphics();
-  head.fillStyle(shade(skin, 4), 1);
-  head.fillCircle(0, headY, S * 0.38);
-  sway.add(head);
-
-  // A disordered lattice of dim, irregularly placed sites, with one bright
-  // point localized at the center -- Anderson localization's own picture in
-  // place of a face: a wave trapped by disorder rather than spreading freely.
-  const lattice = scene.add.graphics();
-  const sites = [
-    { x: -0.22, y: -0.14 },
-    { x: 0.05, y: -0.22 },
-    { x: 0.24, y: -0.05 },
-    { x: -0.18, y: 0.1 },
-    { x: 0.2, y: 0.16 },
-    { x: -0.02, y: 0.22 },
-    { x: -0.28, y: 0.02 },
-    { x: 0.12, y: 0.02 },
+  // The fragments: each a small rotated quad, hand-placed so the scatter
+  // still suggests a standing figure -- a head-cluster, shoulders, a dense
+  // torso, a flaring hem -- while every piece stays disconnected. `spread`
+  // is the fragment's half-size; pieces stay chunky (>= 0.07*S) so the
+  // scatter survives the Lab's 0.55 scale instead of dissolving into dust.
+  const fragments: { x: number; y: number; r: number; rot: number; tint: number; alpha: number }[] = [
+    // head cluster
+    { x: -0.08, y: -0.62, r: 0.13, rot: 0.4, tint: 10, alpha: 0.95 },
+    { x: 0.12, y: -0.52, r: 0.1, rot: 1.1, tint: -5, alpha: 0.9 },
+    { x: -0.02, y: -0.4, r: 0.09, rot: 2.0, tint: 0, alpha: 0.85 },
+    // shoulders
+    { x: -0.32, y: -0.22, r: 0.12, rot: 0.9, tint: -10, alpha: 0.9 },
+    { x: 0.3, y: -0.26, r: 0.11, rot: 2.4, tint: -10, alpha: 0.9 },
+    // torso, dense around the localized core
+    { x: -0.14, y: -0.06, r: 0.11, rot: 1.6, tint: 5, alpha: 0.95 },
+    { x: 0.16, y: 0.02, r: 0.12, rot: 0.2, tint: 5, alpha: 0.95 },
+    { x: 0.0, y: 0.18, r: 0.1, rot: 2.8, tint: 0, alpha: 0.9 },
+    { x: -0.24, y: 0.16, r: 0.09, rot: 1.2, tint: -15, alpha: 0.85 },
+    // hem, flaring wider and fading
+    { x: -0.36, y: 0.48, r: 0.12, rot: 0.7, tint: -20, alpha: 0.75 },
+    { x: -0.1, y: 0.6, r: 0.13, rot: 1.9, tint: -15, alpha: 0.8 },
+    { x: 0.18, y: 0.54, r: 0.11, rot: 2.6, tint: -20, alpha: 0.75 },
+    { x: 0.4, y: 0.42, r: 0.09, rot: 0.3, tint: -25, alpha: 0.65 },
+    // stray far sites -- the envelope's decaying tail
+    { x: -0.56, y: 0.06, r: 0.07, rot: 1.4, tint: -30, alpha: 0.5 },
+    { x: 0.54, y: 0.2, r: 0.07, rot: 2.2, tint: -30, alpha: 0.5 },
   ];
-  sites.forEach((p) => {
-    lattice.fillStyle(shade(rust, -10), 0.55);
-    lattice.fillCircle(p.x * S, headY + p.y * S, S * 0.045);
+  const body = scene.add.graphics();
+  fragments.forEach((f) => {
+    const cx = f.x * S;
+    const cy = f.y * S;
+    const r = f.r * S;
+    body.fillStyle(shade(rust, f.tint), f.alpha);
+    body.fillPoints(
+      [
+        { x: cx + Math.cos(f.rot) * r, y: cy + Math.sin(f.rot) * r },
+        { x: cx + Math.cos(f.rot + 1.8) * r * 0.8, y: cy + Math.sin(f.rot + 1.8) * r * 0.8 },
+        { x: cx + Math.cos(f.rot + Math.PI) * r * 1.1, y: cy + Math.sin(f.rot + Math.PI) * r * 1.1 },
+        { x: cx + Math.cos(f.rot + 4.6) * r * 0.9, y: cy + Math.sin(f.rot + 4.6) * r * 0.9 },
+      ],
+      true
+    );
   });
-  lattice.fillStyle(0xffffff, 0.95);
-  lattice.fillCircle(0, headY, S * 0.08);
-  sway.add(lattice);
-  // The central localized point pulses in place, unlike the orbiting glyphs
-  // around it -- reads as "trapped," not "propagating."
+  sway.add(body);
+
+  // The localized site: one bright point at the heart of the scatter, with
+  // an additive halo, pulsing in place -- amplitude trapped by disorder
+  // rather than spreading. The only bright thing in the whole figure.
+  const core = scene.add.graphics();
+  core.setBlendMode(Phaser.BlendModes.ADD);
+  core.fillStyle(rust, 0.35);
+  core.fillCircle(0, S * 0.02, S * 0.2);
+  core.fillStyle(0xffffff, 0.95);
+  core.fillCircle(0, S * 0.02, S * 0.085);
+  sway.add(core);
   scene.tweens.add({
-    targets: lattice,
-    alpha: { from: 0.65, to: 1 },
+    targets: core,
+    alpha: { from: 0.6, to: 1 },
     duration: 900,
     yoyo: true,
     repeat: -1,

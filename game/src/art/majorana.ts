@@ -1,16 +1,24 @@
 import Phaser from 'phaser';
 import { shade } from './colors';
 
-// Majorana's avatar -- world 5's guardian (superconductivity/Majorana pairs).
-// Own file, same convention as every other guardian (glow -> sway -> cloak ->
-// head-motif -> orbit ring). Head motif: two pale half-particle glyphs
-// orbiting each other in place of a face -- a fermion that is its own
-// antiparticle, split into a pair.
+// Majorana's avatar -- world 5's guardian (superconductivity/Majorana
+// pairs, and the fusion mechanic that joins two crystals into one). The
+// figure is split clean down the middle: two mirrored half-cloaks and two
+// half-heads with a gap of dark between them, held together only by a thin
+// thread of pulsing motes running down the seam -- one fermion carried as
+// two spatially separated Majorana halves, the shared nonlocal state the
+// visible link. The halves breathe apart and back together, never quite
+// separating. Orbit glyphs read 'γ', the Majorana operator.
+//
+// Drawn in local space centered on the chest/torso (0,0), same convention
+// as every other avatar builder: an internal sway tween is baked in, so
+// callers are free to layer their own position/bob tween on top.
 export function makeMajoranaAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameObjects.Container {
   const S = 30 * scale;
   const green = 0x9fffb0;
   const cloakColor = 0x123322;
   const skin = 0xe0d0c0;
+  const headY = -S * 0.55;
 
   const outer = scene.add.container(0, 0);
 
@@ -34,55 +42,65 @@ export function makeMajoranaAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameO
   outer.add(sway);
   scene.tweens.add({ targets: sway, angle: { from: -2.4, to: 2.4 }, duration: 2700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
-  const headY = -S * 0.55;
-
-  const cloak = scene.add.graphics();
-  cloak.fillStyle(cloakColor, 1);
-  cloak.fillPoints(
-    [
-      { x: -S * 0.44, y: -S * 0.28 },
-      { x: S * 0.44, y: -S * 0.28 },
-      { x: S * 0.28, y: S * 0.58 },
-      { x: 0, y: S * 0.85 },
-      { x: -S * 0.28, y: S * 0.58 },
-    ],
-    true
-  );
-  cloak.lineStyle(1.5, shade(green, -30), 0.6);
-  cloak.strokePoints(
-    [
-      { x: -S * 0.44, y: -S * 0.28 },
-      { x: S * 0.44, y: -S * 0.28 },
-      { x: S * 0.28, y: S * 0.58 },
-      { x: 0, y: S * 0.85 },
-      { x: -S * 0.28, y: S * 0.58 },
-    ],
-    true
-  );
-  sway.add(cloak);
-
-  const head = scene.add.graphics();
-  head.fillStyle(shade(skin, 4), 1);
-  head.fillCircle(0, headY, S * 0.38);
-  sway.add(head);
-
-  // Two half-particle glyphs (open half-circles) orbiting a shared center in
-  // place of a face -- always exactly opposite each other, since a Majorana
-  // pair is one whole fermion split in two.
-  const pair = scene.add.container(0, headY);
-  const half = (flip: number) => {
+  // One half of the figure: a half-cloak with a straight inner edge at the
+  // seam, and a half-head above it. Built once and mirrored, so the two
+  // halves can never drift out of shape with each other.
+  const buildHalf = (flip: number) => {
+    const half = scene.add.container(0, 0);
     const g = scene.add.graphics();
-    g.lineStyle(1.6, green, 0.95);
+    const inner = flip * S * 0.09;
+    g.fillStyle(cloakColor, 1);
+    g.fillPoints(
+      [
+        { x: inner, y: -S * 0.3 },
+        { x: flip * S * 0.48, y: -S * 0.26 },
+        { x: flip * S * 0.3, y: S * 0.56 },
+        { x: inner, y: S * 0.82 },
+      ],
+      true
+    );
+    g.lineStyle(1.5, shade(green, -30), 0.7);
+    g.strokePoints(
+      [
+        { x: inner, y: -S * 0.3 },
+        { x: flip * S * 0.48, y: -S * 0.26 },
+        { x: flip * S * 0.3, y: S * 0.56 },
+        { x: inner, y: S * 0.82 },
+      ],
+      true
+    );
+    g.fillStyle(shade(skin, 4), 1);
     g.beginPath();
-    g.arc(flip * S * 0.16, 0, S * 0.14, Phaser.Math.DegToRad(flip > 0 ? -90 : 90), Phaser.Math.DegToRad(flip > 0 ? 90 : 270), false);
-    g.strokePath();
-    g.fillStyle(green, 0.5);
-    g.fillCircle(flip * S * 0.16, 0, S * 0.03);
-    return g;
+    g.arc(inner, headY, S * 0.28, Phaser.Math.DegToRad(flip > 0 ? -90 : 90), Phaser.Math.DegToRad(flip > 0 ? 90 : 270), false);
+    g.fillPath();
+    half.add(g);
+    return half;
   };
-  pair.add([half(-1), half(1)]);
-  sway.add(pair);
-  scene.tweens.add({ targets: pair, angle: 360, duration: 3400, repeat: -1, ease: 'Linear' });
+  const halfL = buildHalf(-1);
+  const halfR = buildHalf(1);
+  sway.add(halfL);
+  sway.add(halfR);
+  const drift = S * 0.05;
+  scene.tweens.add({ targets: halfL, x: { from: 0, to: -drift }, duration: 2100, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+  scene.tweens.add({ targets: halfR, x: { from: 0, to: drift }, duration: 2100, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+
+  // The seam: three motes of the shared state, strung down the gap -- the
+  // one whole fermion the two halves still add up to.
+  const thread = scene.add.graphics();
+  thread.setBlendMode(Phaser.BlendModes.ADD);
+  [headY, 0, S * 0.45].forEach((y) => {
+    thread.fillStyle(green, 0.9);
+    thread.fillCircle(0, y, S * 0.045);
+  });
+  sway.add(thread);
+  scene.tweens.add({
+    targets: thread,
+    alpha: { from: 0.35, to: 1 },
+    duration: 1400,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut',
+  });
 
   const orbit = scene.add.container(0, 0);
   for (let i = 0; i < 4; i++) {
