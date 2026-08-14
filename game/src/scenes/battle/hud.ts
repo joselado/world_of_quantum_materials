@@ -125,6 +125,15 @@ export interface Nameplate {
   hpFill: Phaser.GameObjects.Rectangle;
   statusLabel: Phaser.GameObjects.Text;
   top: number;
+  // Tears down every object this plate drew. The plate is a one-shot fitted
+  // layout -- the chip is sized to the name's *rendered* width and the bar
+  // sits under the name's measured height -- so a side whose name changes
+  // mid-battle (World 10's rival, BattleScene.transmuteAdapted) rebuilds its
+  // plate whole through this rather than retitling the label in place, which
+  // would leave a long new name overflowing a chip fitted to the old one.
+  // The plate draws straight into scene coordinates rather than into a
+  // container of its own, so the struct has to own this list itself.
+  destroy: () => void;
 }
 
 export interface NameplateOptions {
@@ -259,7 +268,8 @@ export function drawNameplate(scene: Phaser.Scene, opts: NameplateOptions): Name
   // long wrapped line and shares the field with the player's plate.
   [note, nameText, track, hpFill, statusLabel, passive].forEach((obj) => obj?.setDepth(5));
 
-  return { hpFill, statusLabel, top };
+  const parts = [note, nameText, chip, track, hpFill, statusLabel, passive];
+  return { hpFill, statusLabel, top, destroy: () => parts.forEach((obj) => obj?.destroy()) };
 }
 
 // The row of upcoming-hit icons under the "Turns" label, rebuilt whole

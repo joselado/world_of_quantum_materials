@@ -847,6 +847,128 @@ async function main() {
   }
 
   // =====================================================================
+  // Test 4d: World 10's Adapted actually transmuting, once per move class
+  // =====================================================================
+  // The Adapted is the only opponent that rebuilds its own sprite and
+  // nameplate mid-fight: every player Attack/Analytic/Ultimate move that
+  // resolves against a living one triggers BattleScene.transmuteAdapted.
+  // That swap runs from inside a tween's onComplete -- inside Phaser's own
+  // game step -- so anything it throws kills the requestAnimationFrame loop
+  // outright and the canvas freezes on its last frame, rather than merely
+  // stalling a turn. `game.loop.frame` is what tells those two apart, and a
+  // frozen loop is what this test is really watching for; runTest's own
+  // pageerror capture covers the throw itself.
+  //
+  // Test 4's World 10 loss path never reaches a single transmute -- the
+  // fresh-save player dies to that rival before any of its own hits resolve
+  // -- so this drives the fight directly and keeps both sides alive, which
+  // is the only way a player hit lands on a *living* Adapted repeatedly.
+  // Ultimates are worth their own case because that branch defers
+  // checkEndOrContinue (and so the transmute) to the summon animation's
+  // completion instead of running it inline.
+  const ADAPTED_WILD = { name: 'The Adapted', type: 'topological', color: 0x9b7bd4, variant: 'shard', moves: ['tunnelStrike'] };
+  const SWAPS_PER_MOVE = 3;
+
+  async function waitTurnFree(ms) {
+    for (let i = 0; i < Math.ceil(ms / 100); i++) {
+      const st = await page.evaluate(() => {
+        const s = window.__game.scene.getScene('Battle');
+        return s && window.__game.scene.isActive('Battle') ? { lock: s['turnLock'] } : null;
+      });
+      if (!st) return 'scene-gone';
+      if (!st.lock) return 'free';
+      await sleep(100);
+    }
+    return 'stuck';
+  }
+
+  async function testAdaptedTransmute(moveId) {
+    await resetRegistryOnly();
+    await jumpToScene('Battle', { wild: ADAPTED_WILD, world: 10, attackMultiplier: 1, isRival: true });
+
+    let ready = false;
+    for (let i = 0; i < 20; i++) {
+      if ((await getActiveScenes()).includes('Battle')) { ready = true; break; }
+      await sleep(50);
+    }
+    if (!ready) return { pass: false, detail: `${moveId}: Battle scene never became active` };
+
+    const names = [];
+    for (let swap = 1; swap <= SWAPS_PER_MOVE; swap++) {
+      const free = await waitTurnFree(15000);
+      if (free !== 'free') return { pass: false, detail: `${moveId}: swap ${swap}: turn never freed up (${free}) -- forms so far ${JSON.stringify(names)}` };
+
+      // Top both sides right up so neither can win before the next transmute.
+      // A dead Adapted ends the fight through endBattle (an Ultimate's power
+      // alone exceeds that rival's own max HP, so its *max* has to be raised
+      // too, not just its current HP -- otherwise the Ultimate branch is never
+      // exercised, it just one-shots the boss). A dead player ends the fight
+      // before their own hit ever resolves, which is precisely why the
+      // rival-gate loss path never reaches this code: a World 10 player's own
+      // max HP is far below what that rival hits for.
+      //
+      // The previous form is stashed on `window` for an identity comparison
+      // below: transmuteAdapted picks its new compound at random with no
+      // exclusion of the current one, so it can legally reshape into what it
+      // already is and produce an identical name. It always installs a *fresh*
+      // object though, so object identity detects the swap where a name
+      // comparison would intermittently miss it.
+      await page.evaluate(() => {
+        const s = window.__game.scene.getScene('Battle');
+        s['playerMaxHp'] = 99999;
+        s['playerHp'] = 99999;
+        s['opponentMaxHp'] = 99999;
+        s['opponentHp'] = 99999;
+        s['updateBars']();
+        window.__afPrev = s['adaptedForm'];
+      });
+
+      await page.evaluate((m) => window.__game.scene.getScene('Battle')['playerAttack'](m), moveId);
+
+      // Poll rather than sleep a fixed beat: the Ultimate branch defers the
+      // transmute to its summon animation's completion, which runs seconds
+      // longer than an ordinary move's effect. Two equal frame counts a poll
+      // apart mean the render loop itself stopped -- a frozen canvas, which is
+      // what a throw inside the swap (it runs in a tween callback, inside
+      // Phaser's game step) actually produces.
+      let swapped = null;
+      let prevFrame = -1;
+      for (let i = 0; i < 40; i++) {
+        await sleep(300);
+        const st = await page.evaluate(() => {
+          const g = window.__game;
+          const s = g.scene.getScene('Battle');
+          return {
+            frame: g.loop.frame,
+            active: g.scene.isActive('Battle'),
+            changed: s ? s['adaptedForm'] !== window.__afPrev : false,
+            name: s && s['adaptedForm'] ? s['adaptedForm'].name : null,
+            plate: !!(s && s['opponentPlate']),
+          };
+        });
+        if (i > 0 && st.frame === prevFrame) {
+          await page.screenshot({ path: `${SHOT_DIR}/fail-adapted-${moveId}-frozen.png` });
+          return {
+            pass: false,
+            detail: `${moveId}: swap ${swap}: render loop stopped advancing (frame stuck at ${st.frame}) -- the canvas is frozen, not merely stalled. form=${st.name}`,
+          };
+        }
+        prevFrame = st.frame;
+        if (!st.active) return { pass: false, detail: `${moveId}: swap ${swap}: battle ended before the transmute could be observed` };
+        if (st.changed) { swapped = st; break; }
+      }
+      if (!swapped) return { pass: false, detail: `${moveId}: swap ${swap}: transmute never fired -- forms so far ${JSON.stringify(names)}` };
+      if (!swapped.plate) return { pass: false, detail: `${moveId}: swap ${swap}: opponent nameplate missing after the rebuild` };
+      names.push(swapped.name);
+    }
+
+    const settled = await waitTurnFree(15000);
+    if (settled !== 'free') return { pass: false, detail: `${moveId}: turn never freed up after the last transmute (${settled})` };
+
+    return { pass: true, detail: `${moveId}: ${names.length} transmutes, loop kept running, forms ${JSON.stringify(names)}` };
+  }
+
+  // =====================================================================
   // Test 5: fresh-save and corrupt-save boot
   // =====================================================================
   async function bootAndReachTitle() {
@@ -949,6 +1071,11 @@ async function main() {
 
   log('=== Test 4c: rival gate round-trip -- actually WON battle (world 3, boosted defense) ===');
   await runTest('rival gate (actual win) w3', () => testRivalGateActualWin(3));
+
+  log('=== Test 4d: World 10 Adapted transmutation (attack / analytic / ultimate) ===');
+  for (const moveId of ['tunnelStrike', 'skyfallBeam', 'ultimateMeteor']) {
+    await runTest(`adapted transmute via ${moveId}`, () => testAdaptedTransmute(moveId));
+  }
 
   log('=== Test 5: fresh-save and corrupt-save boot ===');
   await runTest('boot: fresh save', () =>

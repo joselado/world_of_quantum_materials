@@ -276,8 +276,15 @@ jumps directly into scenes/states via `scene.start(...)` and scene-private
 fields rather than playing through them, so each of its ~50 tests takes
 seconds: world-entry dialogue termination for every world (the lore →
 goal/middle-tip → controls-tip chain), battle round-trips, all ten guardian
-panels' open/close, rival-gate win and loss paths, and fresh/corrupt/old-shape
-save boot resilience. **Run this first** whenever chasing a suspected
+panels' open/close, rival-gate win and loss paths, World 10's Adapted actually
+transmuting (once per move class, with both sides topped up so the swap is
+reached repeatedly -- the rival-gate loss path never gets there, since a
+fresh-save player dies before landing a hit on a living Adapted), and
+fresh/corrupt/old-shape save boot resilience. Every test also fails on any
+uncaught page error inside its own window, which is what catches a throw in a
+tween callback -- those run inside Phaser's game step, so they kill the
+`requestAnimationFrame` loop and freeze the canvas instead of surfacing as a
+stuck panel. **Run this first** whenever chasing a suspected
 gameplay-blocking bug -- it catches most individual-mechanism regressions far
 faster than a full playthrough, and its failure output (which world, which
 button sequence, a screenshot) usually points straight at the broken
