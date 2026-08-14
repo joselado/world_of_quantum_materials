@@ -74,6 +74,21 @@ export function hasTree(gx: number, gy: number): boolean {
   return hash(gx, gy, 3) < 0.86;
 }
 
+// How much crown a tree gets is tiered on the tile's own `detail`, the fade
+// the paint pass already applies over the last stretch before accents stop
+// being drawn (terrain/paint.ts). Half the crowns in a frame sit in that
+// stretch, and each one otherwise costs a near tree's price to draw structure
+// the haze is busy dissolving.
+//
+// Keying the tiers to `detail` rather than to a distance of this file's own is
+// what keeps the rule safe: `detail` is exactly 1 across the whole range where
+// a tree is drawn at full strength, so the near wood -- the half the 1-to-8
+// rhyme depends on being recognisable (WORLDS.md section 5) -- always gets the
+// full lobed crown, and the tiers move with the fade if its range ever moves.
+// Below this much of it left, the tree is a smudge against the haze and none
+// of its shape survives, so it collapses to one blob.
+const CROWN_SILHOUETTE_DETAIL = 0.45;
+
 export function drawTree(g: Phaser.GameObjects.Graphics, tile: AccentTile, style: TreeStyle) {
   const { cx, cy, s, gx, gy, depth, haze, detail } = tile;
   if (detail <= 0) return;
@@ -91,6 +106,15 @@ export function drawTree(g: Phaser.GameObjects.Graphics, tile: AccentTile, style
   const air = depth * 0.8;
   const alpha = style.alpha * detail;
 
+  if (detail < CROWN_SILHOUETTE_DETAIL) {
+    // One blob in the mean of the two crown colours, trunk included: at this
+    // strength the trunk is a thread the haze has already taken, and drawing
+    // it costs a fill to change nothing.
+    g.fillStyle(blend(blend(style.canopyShade, style.canopy, 0.5), haze, air), alpha);
+    ellipse(g, x, crownY, 0.46 * size, 0.34 * size);
+    return;
+  }
+
   g.fillStyle(blend(style.trunk, haze, air), alpha);
   if (style.fork) {
     const spread = 0.1 * size;
@@ -107,6 +131,13 @@ export function drawTree(g: Phaser.GameObjects.Graphics, tile: AccentTile, style
   g.fillStyle(blend(style.canopyShade, haze, air), alpha);
   ellipse(g, x, crownY + 0.05 * size, 0.46 * size, 0.32 * size);
   g.fillStyle(blend(style.canopy, haze, air), alpha);
+  if (detail < 1) {
+    // Once the fade has started on a tree, the gaps between the three lobes
+    // are finer than the contrast it has left against the haze, so one cap
+    // over the shaded mass carries the crown.
+    ellipse(g, x, crownY - 0.04 * size, 0.4 * size, 0.28 * size);
+    return;
+  }
   ellipse(g, x - 0.12 * size, crownY, 0.3 * size, 0.23 * size);
   ellipse(g, x + 0.12 * size, crownY, 0.27 * size, 0.21 * size);
   ellipse(g, x, crownY - 0.12 * size, 0.31 * size, 0.23 * size);
