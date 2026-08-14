@@ -1974,9 +1974,11 @@ than the caller's requested budget) for its own layout math.
   different figures. Registry `metGuardians` decides who is present; Superposition Mode stands
   all ten regardless.
 - **Ten fixed slots, five per cluster, in the two upper corners.** Each cluster is stacked one
-  avatar over a pair over a pair (`GUARDIAN_ROW_TOP` `96`, `GUARDIAN_ROW_PITCH` `68`, cluster
-  centers `96` in from either wall): worlds 1-5 fill the left cluster top-down, 6-10 the right,
-  reading left-to-right within each pair. A slot belongs to its guardian's world, so a guardian
+  avatar over a pair over a pair (`GUARDIAN_ROW_TOP` `96`, `GUARDIAN_ROW_PITCH` `78`, cluster
+  centers `96` in from either wall), each pair read left-to-right. `GUARDIAN_LEFT_CLUSTER`
+  and `GUARDIAN_RIGHT_CLUSTER` state which world stands in which slot: worlds 1-5 down the
+  left cluster, and 10 over 7-8 over 9-6 down the right, so Skłodowska-Curie, who leads the
+  circle of guardians, crowns her own side of the room. A slot belongs to its world, so a guardian
   never moves between visits as the roster grows -- an unmet guardian simply leaves their slot
   empty, and the corners fill in as the player works through the worlds. The corners are the
   only part of the wall wide enough: the room's quote sits between them (wrapped `420` to stay

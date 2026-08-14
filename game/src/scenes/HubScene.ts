@@ -69,9 +69,9 @@ const STATION_GRID_BOTTOM_MARGIN = 10;
 // The guardian gallery: every guardian the player has met stands in the room
 // as their own avatar (spawnGuardianAvatars), five per cluster in the two
 // upper corners, each cluster stacked one-over-two-over-two. Slots are keyed
-// to the guardian's own world (worlds 1-5 fill the left cluster top-down,
-// 6-10 the right), so a guardian never moves between visits as the roster
-// grows -- an unmet guardian simply leaves their slot empty, and the corners
+// to the guardian's own world (GUARDIAN_LEFT_CLUSTER/GUARDIAN_RIGHT_CLUSTER),
+// so a guardian never moves between visits as the roster grows -- an unmet
+// guardian simply leaves their slot empty, and the corners
 // fill in as the player progresses. The corners are the only part of the wall
 // wide enough for this: the room's quote sits between them, the instrument
 // panels and the player's own crystal hold the middle, and the counter below
@@ -94,6 +94,11 @@ const GUARDIAN_PLATE_DROP = 8;
 // every avatar a dead click target.
 const GUARDIAN_PLATE_REST_ALPHA = 0.001;
 const GUARDIAN_PLATE_HOVER_ALPHA = 0.14;
+// Which world's guardian stands in which slot, each cluster listed in the
+// order its slots are read: the solo top avatar first, then the upper pair
+// left-to-right, then the lower pair.
+const GUARDIAN_LEFT_CLUSTER = [1, 2, 3, 4, 5];
+const GUARDIAN_RIGHT_CLUSTER = [10, 7, 8, 9, 6];
 
 export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // Public, not private -- scenes/panels/hubStations.ts's Moves/Stats/
@@ -336,14 +341,17 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     return { button: btn, motif };
   }
 
-  // Where the guardian of world `world` stands: worlds 1-5 fill the left
-  // cluster, 6-10 the right, each cluster read top-down as one avatar over a
-  // pair over a pair. A guardian's slot is fixed by their world, so it never
-  // shifts as other guardians are met.
+  // Where the guardian of world `world` stands: each upper corner holds one
+  // cluster, read top-down as one avatar over a pair over a pair, filled in
+  // the order GUARDIAN_LEFT_CLUSTER/GUARDIAN_RIGHT_CLUSTER list their worlds.
+  // A guardian's slot is fixed by their world, so it never shifts as other
+  // guardians are met.
   private guardianSlot(world: number): { x: number; y: number } {
-    const index = (world - 1) % 5;
+    const leftIndex = GUARDIAN_LEFT_CLUSTER.indexOf(world);
+    const onLeft = leftIndex >= 0;
+    const index = onLeft ? leftIndex : GUARDIAN_RIGHT_CLUSTER.indexOf(world);
     const row = index === 0 ? 0 : index <= 2 ? 1 : 2;
-    const centerX = world <= 5 ? GUARDIAN_CLUSTER_CX : CANVAS_W - GUARDIAN_CLUSTER_CX;
+    const centerX = onLeft ? GUARDIAN_CLUSTER_CX : CANVAS_W - GUARDIAN_CLUSTER_CX;
     const x = row === 0 ? centerX : centerX + ((index - 1) % 2 === 0 ? -GUARDIAN_SLOT_W / 2 : GUARDIAN_SLOT_W / 2);
     return { x, y: GUARDIAN_ROW_TOP + row * GUARDIAN_ROW_PITCH };
   }
