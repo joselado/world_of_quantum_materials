@@ -60,12 +60,13 @@ export type TutorialTipId =
   | 'goal'
   | 'teleport'
   | 'transmutation'
-  | 'analyticUltimate'
+  | 'analyticMoves'
   | 'hybridFusion'
   | 'hostDoping'
   | 'moveLeveling'
   | 'statusEffects'
-  | 'passives';
+  | 'passives'
+  | 'ultimateMoves';
 
 export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
   lab: {
@@ -136,12 +137,11 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     body:
       "Dresselhaus (World 3) lets you rebuild your own crystal into any other crystal you've already defeated -- same atoms, different nanostructure, so you inherit that form's whole moveset and quasiparticle physics for as long as you wear it. Your HP still comes from the world you're in, not from which form you're wearing. Each crystal costs qumatessence to unlock the first time you become it; switching back and forth after that is free.",
   },
-  analyticUltimate: {
-    title: 'Analytic & Ultimate Moves',
-    listLabel: 'Analytic/Ultimate',
-    unlock: { kind: 'guardian', ids: ['laughlin', 'sklodowskaCurie'] },
+  analyticMoves: {
+    title: 'Analytic Moves',
+    unlock: { kind: 'guardian', ids: ['laughlin'] },
     body:
-      "Laughlin (World 4) and Skłodowska-Curie (World 10) each sell two quiz-gated moves, tuned to whichever quasiparticle your current crystal form can host -- retune to a different hostable class any time you revisit them, free after the first time. In battle, one of Laughlin's Analytic moves asks a single physics question before it lands: answer right and the hit lands much harder, wrong and it barely lands at all. One of Skłodowska-Curie's Ultimate moves asks a whole streak of questions instead -- get every one right for the move's full force, miss even one and it does nothing that turn.",
+      "Laughlin (World 4) sells two quiz-gated Analytic moves, each carrying whichever quasiparticle your current crystal form can host -- buying one costs qumatessence once, and retuning it to a different hostable class any time you revisit him is free. In battle, an Analytic move asks a single physics question before it lands: answer right and the hit lands much harder, wrong and it barely lands at all.",
   },
   hybridFusion: {
     title: 'Hybrid Fusion',
@@ -174,6 +174,12 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     unlock: { kind: 'guardian', ids: ['franklin'] },
     body:
       "Franklin (World 9) teaches passive abilities instead of moves -- once bought, a passive isn't chosen from the move menu each turn, it's simply active for a whole battle, working automatically in the background. Buy as many as you like, but only one can be active at a time; switch which one by revisiting Franklin, or check your current loadout any time from the Lab's Abilities station.",
+  },
+  ultimateMoves: {
+    title: 'Ultimate Moves',
+    unlock: { kind: 'guardian', ids: ['sklodowskaCurie'] },
+    body:
+      "Skłodowska-Curie (World 10) sells two quiz-gated Ultimate moves, far stronger than anything else in the game and priced per quasiparticle rather than per move: there is no separate purchase step, so picking a class your current crystal form can host costs a large sum of qumatessence the first time you pick it for that move -- which is also what puts the move in your battle menu -- and retuning back to a class you've already paid for is free forever. In battle, an Ultimate move asks three physics questions in a row: get every one right for the move's full force, miss even one and it does nothing that turn.",
   },
 };
 

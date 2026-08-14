@@ -264,7 +264,7 @@ than appending a changelog, so this always reflects current reality.
   listed topic is visible up front rather than reachable only by paging through the rest, and
   the list grows as the playthrough does -- Story Mode lists only discovered topics, in the
   order the game reveals them, so the panel is three rows tall on a fresh save and fills out
-  to all seventeen; Superposition Mode lists all seventeen from the start.
+  to all eighteen; Superposition Mode lists all eighteen from the start.
   Selecting a row is a scoped update (see "A preview click is a scoped update" further below),
   not a panel rebuild -- only the detail pane and panel chrome re-render, the list rows stay on
   screen.
@@ -1827,7 +1827,7 @@ than the caller's requested budget) for its own layout math.
   wide, same cyan `0x5ad9ff` stroke the station has always used, with a "Pick a topic to read
   it" hint above the two columns. The left column lists each topic `data/tutorial.ts`'s
   `visibleTutorialPages` returns as its own row (`renderListColumn`, paginated once the set
-  outgrows one page -- routine at the seventeen topics a finished Story save or any
+  outgrows one page -- routine at the eighteen topics a finished Story save or any
   Superposition save lists), so the player sees what's covered before opening anything and can
   jump straight to one topic instead of stepping through the rest to reach it. A row shows its own short `listLabel` where `TutorialPage` carries one (a handful of
   topics whose full `title` would collapse to a near-identical trimmed prefix at the left
@@ -1846,7 +1846,7 @@ than the caller's requested budget) for its own layout math.
   declaration order): in Story Mode a topic appears once its own contextual tip has fired or
   its guardian has been met, absent rather than shown locked until then, so the panel opens
   three rows tall on a fresh save and grows through the playthrough; Superposition Mode lists
-  all seventeen from the start, like everything else that mode unlocks up front. Reading a
+  all eighteen from the start, like everything else that mode unlocks up front. Reading a
   topic here never counts as discovering it.
 - Doesn't trigger automatically -- see "Contextual tutorial tips" above for what
   a new save actually sees; this is opt-in only, always opening on the topic list.
