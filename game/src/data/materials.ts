@@ -1575,7 +1575,7 @@ export function combineMaterials(a: Material, b: Material): Material {
 // covers just from its name.
 export const WORLD_NAMES: Partial<Record<number, string>> = {
   1: 'The Mean Fields',
-  2: 'Bloch Caverns',
+  2: 'The Stone Lattice',
   3: 'Topological Islands',
   4: 'Landau Level Terrain',
   5: 'Frozen Zero-Resistance Caverns',

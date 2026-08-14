@@ -1058,7 +1058,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     for (let y = 0; y < GRID_H; y++) {
       for (let x = 0; x < GRID_W; x++) {
         if (this.walkable[y][x]) {
-          this.flowerMap[y][x] = Math.random() < 0.16;
+          this.flowerMap[y][x] = Math.random() < this.biome.decorationChance;
         }
       }
     }

@@ -13,7 +13,35 @@ import type { AccentTile } from './types';
 // `biome` here is the scene's own, not the tile's -- the decoration belongs
 // to the world the player is walking through even where World 9's defect
 // patches borrow another world's palette for the ground under it.
-export function decorateTile(g: Phaser.GameObjects.Graphics, biome: Biome, { cx, cy, s }: AccentTile) {
+export function decorateTile(g: Phaser.GameObjects.Graphics, biome: Biome, tile: AccentTile) {
+  const { cx, cy, s } = tile;
+
+  // World 2 (the Stone Lattice): the aisle is an actual repeating wallpaper
+  // pattern, with two alternating tile motifs carrying the two-atom basis --
+  // a filled diamond on one sublattice, an open square on the other. Which
+  // motif a tile gets is decided by the parity of its own grid coordinates,
+  // so the two sublattices stay in register across the whole floor the way a
+  // real basis does rather than being scattered.
+  if (biome.decoration === 'mosaic') {
+    const r = 3.4 * s;
+    if ((tile.gx + tile.gy) % 2 === 0) {
+      g.fillStyle(0xb08355, 0.55);
+      g.fillPoints(
+        [
+          { x: cx, y: cy - r * 0.7 },
+          { x: cx + r, y: cy },
+          { x: cx, y: cy + r * 0.7 },
+          { x: cx - r, y: cy },
+        ],
+        true
+      );
+    } else {
+      g.lineStyle(1, 0x8f7051, 0.5);
+      g.strokeRect(cx - r * 0.7, cy - r * 0.5, r * 1.4, r);
+    }
+    return;
+  }
+
   if (biome.decoration === 'crystalGlints') {
     g.fillStyle(0x8fe8ff, 0.85);
     [0, 1, 2].forEach((i) => {

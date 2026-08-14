@@ -4,7 +4,7 @@
 // worlds -- only this table changes per world, matching DESIGN.md's per-world
 // biome themes.
 
-export type DecorationKind = 'flowers' | 'crystalGlints' | 'fieldLines' | 'networkNodes' | 'ripples' | 'cracks' | 'mistMotes';
+export type DecorationKind = 'flowers' | 'mosaic' | 'crystalGlints' | 'fieldLines' | 'networkNodes' | 'ripples' | 'cracks' | 'mistMotes';
 
 // What the *off-path* terrain actually is, not just what color it's painted
 // -- OverworldScene.drawOffPathTile branches on this to give each world's
@@ -16,7 +16,7 @@ export type DecorationKind = 'flowers' | 'crystalGlints' | 'fieldLines' | 'netwo
 // same plane as the walkable floor everywhere, so a theme changes the color
 // and the accent over it, never the geometry. Not every biome needs its own
 // theme; most stay 'rock' and differ only by ground/hill color.
-export type WallTheme = 'rock' | 'forest' | 'lava' | 'water' | 'void';
+export type WallTheme = 'rock' | 'forest' | 'columns' | 'lava' | 'water' | 'void';
 
 export interface Biome {
   name: string;
@@ -40,6 +40,12 @@ export interface Biome {
   fogTarget: number;
   clouds: boolean;
   decoration: DecorationKind;
+  // How much of the walkable route carries that decoration. A scatter (the
+  // Mean Fields' flowers, the Defect Scars' cracks) wants a fraction; a floor
+  // *pattern* wants all of it, since the Stone Lattice's aisle is an actual
+  // repeating wallpaper group and a wallpaper group with holes in it is not
+  // one.
+  decorationChance: number;
   wallTheme: WallTheme;
 }
 
@@ -64,26 +70,40 @@ const MEAN_FIELDS: Biome = {
   fogTarget: 0xbfe3ff,
   clouds: true,
   decoration: 'flowers',
+  decorationChance: 0.16,
   wallTheme: 'forest',
 };
 
-// Topic 2 (symmetries/tight-binding): amethyst cave gloom -- a saturated
-// violet floor path through cool indigo stone, cyan crystal glints over both.
-const CRYSTAL_CAVE: Biome = {
-  name: 'crystalCave',
-  skyTop: 0x1a1730,
-  skyBottom: 0x362f5c,
-  hillColor: 0x3a3560,
-  // Held well under every other world's: this indigo is seen from the Mean
-  // Fields, whose mist is the palest in the game, and a dark base against a
-  // pale fog spends the value budget fastest.
-  hillAlpha: 0.35,
-  ground: 0x27243a,
-  path: 0x625a8a,
-  fogTarget: 0x24203f,
+// World 2, the Stone Lattice (symmetries, tight-binding, effective models):
+// an open-air stone cloister in hard midday sun, and the only architecture in
+// the game. Every contrast axis flips against the Mean Fields at once --
+// organic against geometric, green against sandstone, soft irregular edges
+// against hard straight ones -- which is what stops two consecutive daylight
+// worlds from reading as one place.
+//
+// Cloudless, deliberately: the Mean Fields carry morning cloud and the Edge
+// Cliffs carry racing cloud, so a hard empty midday sky is this world's own
+// slot in that sequence.
+const STONE_LATTICE: Biome = {
+  name: 'stoneLattice',
+  skyTop: 0x5aa6e0,
+  skyBottom: 0xd6e6f0,
+  // Sandstone: the colonnade restated as horizon teeth. Seen from the Mean
+  // Fields, whose mist is the palest in the game, so it runs warm against
+  // that pale blue rather than dark under it.
+  hillColor: 0xb99a72,
+  hillAlpha: 0.75,
+  // The deep cast shadow *between* the columns, which is what the off-path
+  // fill actually is here -- the lit stone is the accent standing in it.
+  ground: 0x4a3427,
+  path: 0xdcc9a8,
+  fogTarget: 0xe0d3ba,
   clouds: false,
-  decoration: 'crystalGlints',
-  wallTheme: 'rock',
+  decoration: 'mosaic',
+  // A tiled aisle is a wallpaper group, so it covers the whole floor. A
+  // wallpaper group with holes in it is not one.
+  decorationChance: 1,
+  wallTheme: 'columns',
 };
 
 const FLOATING_ISLANDS: Biome = {
@@ -100,6 +120,7 @@ const FLOATING_ISLANDS: Biome = {
   fogTarget: 0x6888c0,
   clouds: true,
   decoration: 'crystalGlints',
+  decorationChance: 0.16,
   // Off-path here is the open drop between islands, not solid ground -- you'd
   // fall through it, matching the world's own "one-way edge paths" design.
   wallTheme: 'void',
@@ -118,6 +139,7 @@ const LANDAU_TERRAIN: Biome = {
   fogTarget: 0x1b3868,
   clouds: false,
   decoration: 'fieldLines',
+  decorationChance: 0.16,
   wallTheme: 'rock',
 };
 
@@ -137,6 +159,7 @@ const FROZEN_CAVERNS: Biome = {
   fogTarget: 0x44606e,
   clouds: false,
   decoration: 'crystalGlints',
+  decorationChance: 0.16,
   // "Zero-resistance" made literal underfoot too: off-path here is a frozen
   // lake, not stacked stone.
   wallTheme: 'water',
@@ -158,6 +181,7 @@ const WINDSWEPT_PLAINS: Biome = {
   fogTarget: 0xe6e8c2,
   clouds: true,
   decoration: 'ripples',
+  decorationChance: 0.16,
   wallTheme: 'rock',
 };
 
@@ -177,6 +201,7 @@ const NETWORK_GRAPH_WORLD: Biome = {
   fogTarget: 0x201238,
   clouds: false,
   decoration: 'networkNodes',
+  decorationChance: 0.16,
   wallTheme: 'rock',
 };
 
@@ -198,6 +223,7 @@ const FOGGY_FOREST: Biome = {
   fogTarget: 0x49544a,
   clouds: false,
   decoration: 'mistMotes',
+  decorationChance: 0.16,
   wallTheme: 'rock',
 };
 
@@ -218,6 +244,7 @@ const CRACKED_WORLD: Biome = {
   fogTarget: 0x2e1010,
   clouds: false,
   decoration: 'cracks',
+  decorationChance: 0.16,
   // The world's own "scorched"/"damaged" theme made literal underfoot: a
   // glowing molten crust, not a stacked stone wall.
   wallTheme: 'lava',
@@ -240,12 +267,13 @@ const META_WORLD: Biome = {
   fogTarget: 0x4a3068,
   clouds: true,
   decoration: 'crystalGlints',
+  decorationChance: 0.16,
   wallTheme: 'rock',
 };
 
 export const BIOMES: Partial<Record<number, Biome>> = {
   1: MEAN_FIELDS,
-  2: CRYSTAL_CAVE,
+  2: STONE_LATTICE,
   3: FLOATING_ISLANDS,
   4: LANDAU_TERRAIN,
   5: FROZEN_CAVERNS,

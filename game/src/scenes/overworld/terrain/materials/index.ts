@@ -1,6 +1,7 @@
 import type { AccentDraw, OffPathKind } from '../types';
 import { drawRockAccent } from './rock';
 import { drawForestAccent } from './forest';
+import { drawColumnsAccent } from './columns';
 import { drawLavaAccent } from './lava';
 import { drawWaterAccent } from './water';
 import { drawVoidAccent } from './void';
@@ -18,6 +19,7 @@ import { drawVoidAccent } from './void';
 export const TERRAIN_ACCENTS: Record<OffPathKind, AccentDraw | null> = {
   solid: drawRockAccent,
   forest: drawForestAccent,
+  columns: drawColumnsAccent,
   lava: drawLavaAccent,
   water: drawWaterAccent,
   void: drawVoidAccent,
