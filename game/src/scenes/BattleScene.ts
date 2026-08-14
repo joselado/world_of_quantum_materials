@@ -89,6 +89,7 @@ import {
   STATUS_PILL_COLOR,
   drawNameplate,
   drawTurnPreview,
+  type Nameplate,
 } from './battle/hud';
 
 // Correct/wrong multipliers for Laughlin's two quiz-gated Analytic moves (§5) --
@@ -240,7 +241,10 @@ export class BattleScene extends Phaser.Scene {
   private opponentHpBar!: Phaser.GameObjects.Rectangle;
   private playerHpBar!: Phaser.GameObjects.Rectangle;
   private opponentCrystal!: Phaser.GameObjects.Container;
-  private opponentNameText!: Phaser.GameObjects.Text;
+  // The opponent's own nameplate, held (rather than just its hp bar and
+  // status label) so `drawOpponentPlate` can tear the whole fitted layout
+  // down and rebuild it when World 10's rival renames itself mid-fight.
+  private opponentPlate?: Nameplate;
   private opponentPos: { x: number; y: number } = OPPONENT_POS;
   // World 10's rival ("The Adapted") has no fixed type/look/name of its own
   // -- see data/materials.ts's WORLD_RIVALS[10] comment. Set in create()
@@ -401,6 +405,11 @@ export class BattleScene extends Phaser.Scene {
     this.movePageIndex = 0;
     this.playerStatus = null;
     this.opponentStatus = null;
+    // Dropped rather than destroyed: the scene teardown already reclaimed the
+    // previous battle's objects, and this is the same battle-ephemeral reset
+    // every field above needs because Phaser reuses the Scene instance across
+    // scene.start() calls.
+    this.opponentPlate = undefined;
 
     // A rival fight's opponent is that world's boss -- render it with the
     // same gigantic, multi-shard look it has standing at the goal tile in
@@ -412,25 +421,7 @@ export class BattleScene extends Phaser.Scene {
     this.opponentCrystal.setPosition(this.opponentPos.x, this.opponentPos.y);
     this.bobCrystal(this.opponentCrystal, this.opponentPos.y);
 
-    // Opponent nameplate -- the same floating name-over-bar plate the player
-    // gets below, centered on whichever position this fight placed the
-    // opponent at and floating just above its own painted head. A rival's
-    // name runs much longer on average than an ordinary wild's, so its label
-    // starts a size smaller; the plate's own shrink-to-fit takes it the rest
-    // of the way when the boss golem's head leaves little room above it. No
-    // wild ever casts a Kondo move (KONDO_MOVE_IDS), so this side reserves no
-    // room for a status pill, and no opponent ever carries a passive.
-    const opponentPlate = drawNameplate(this, {
-      centerX: this.opponentPos.x,
-      headTop: this.opponentPos.y - (this.isRival ? BOSS_HEAD_RISE : WILD_HEAD_RISE),
-      name: this.opponentView().name,
-      namePx: Math.round((this.isRival ? 11 : 14) * Math.min(fontScale(this), 1.5)),
-      accent: REFERENCE_BLUE_GREY,
-      reserveStatus: false,
-      passiveText: passivePillText(this.opponentActivePassives),
-    });
-    this.opponentHpBar = opponentPlate.hpFill;
-    this.opponentStatusLabel = opponentPlate.statusLabel;
+    this.drawOpponentPlate();
 
     // Player (bottom-left)
     this.playerCrystal = makeCrystal(this, PLAYER_CRYSTAL_SIZE, this.playerMaterial.color, this.playerMaterial.variant, {
@@ -1442,6 +1433,37 @@ export class BattleScene extends Phaser.Scene {
     this.playerHpBar.width = Math.max(0, (this.playerHp / this.playerMaxHp) * HP_BAR_FILL_W);
   }
 
+  // The opponent's floating name-over-bar plate -- the same one the player
+  // gets in create(), centered on whichever position this fight placed the
+  // opponent at and floating just above its own painted head. A rival's name
+  // runs much longer on average than an ordinary wild's, so its label starts
+  // a size smaller; the plate's own shrink-to-fit takes it the rest of the
+  // way when the boss golem's head leaves little room above it. No wild ever
+  // casts a Kondo move (KONDO_MOVE_IDS), so this side reserves no room for a
+  // status pill, and no opponent ever carries a passive.
+  //
+  // Its own method rather than inline in create() because the plate is a
+  // one-shot fitted layout (see `Nameplate.destroy`) and World 10's rival
+  // renames itself mid-fight: transmuteAdapted rebuilds the whole plate
+  // through this after swapping `adaptedForm`, so the new name gets a chip
+  // and a shrink-to-fit actually measured against it. Reads the name off
+  // `opponentView()`, so it picks up whichever identity is current with no
+  // argument to keep in step.
+  private drawOpponentPlate() {
+    this.opponentPlate?.destroy();
+    this.opponentPlate = drawNameplate(this, {
+      centerX: this.opponentPos.x,
+      headTop: this.opponentPos.y - (this.isRival ? BOSS_HEAD_RISE : WILD_HEAD_RISE),
+      name: this.opponentView().name,
+      namePx: Math.round((this.isRival ? 11 : 14) * Math.min(fontScale(this), 1.5)),
+      accent: REFERENCE_BLUE_GREY,
+      reserveStatus: false,
+      passiveText: passivePillText(this.opponentActivePassives),
+    });
+    this.opponentHpBar = this.opponentPlate.hpFill;
+    this.opponentStatusLabel = this.opponentPlate.statusLabel;
+  }
+
   // World 10's rival transmutation (§5/§6, DESIGN.md) -- called from
   // resolveHit's checkEndOrContinue once per player attack that resolves
   // against a still-living Adapted. Picks a new type at random from among
@@ -1484,7 +1506,15 @@ export class BattleScene extends Phaser.Scene {
       this.bobCrystal(this.opponentCrystal, this.opponentPos.y);
       this.flashHit(this.opponentCrystal);
 
-      this.opponentNameText.setText(newForm.name);
+      // Rebuilt whole rather than retitled in place: the plate's chip is
+      // fitted to its name's rendered width, and a "Polycrystalline <compound>
+      // Golem" name is long enough that reusing the old fit would spill the
+      // label out of its own chip and over the bar under it. The rebuild
+      // re-binds the hp bar and status pill, so both have to be re-rendered
+      // onto the new objects.
+      this.drawOpponentPlate();
+      this.updateBars();
+      this.renderStatusLabel(false);
       this.setLogText(`${this.wild.name} reshapes into ${newForm.name}!`);
     });
 

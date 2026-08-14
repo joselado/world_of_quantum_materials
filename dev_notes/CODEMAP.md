@@ -1151,7 +1151,12 @@ against a still-living Adapted (Kondo's self-buff moves never reach that functio
 `typesHosting(moveClass)` (every `MaterialType` whose `MOVE_COMPATIBILITY` list actually
 includes that class), picks a real compound of one of those types at random from `allCrystals()`,
 and becomes a "Polycrystalline `<compound>` Golem" of it (same naming `WORLD_RIVALS[1-8]` uses),
-rebuilding `opponentCrystal`/`opponentNameText` and logging the change. `this.wild.moves`
+rebuilding `opponentCrystal`, rebuilding the opponent's nameplate through `drawOpponentPlate()`
+(whole, not retitled -- see "Nameplates" below) and logging the change. Both rebuilds happen
+inside a tween's `onComplete`, i.e. inside Phaser's own game step, so anything either throws
+kills the `requestAnimationFrame` loop and freezes the canvas rather than just stalling the
+turn; `component-check`'s Test 4d drives this path once per move class and watches
+`game.loop.frame` for exactly that. `this.wild.moves`
 (its actual attack moveset) is never touched by this -- only its defensive identity is
 dynamic; HP was never tied to its identity in the first place (`opponentMaxHp`, see "Max
 HP" below, stays fixed for the whole battle).
