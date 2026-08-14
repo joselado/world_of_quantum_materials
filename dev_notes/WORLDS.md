@@ -165,6 +165,14 @@ value break runs the opposite way to a dirt-track world. The generator's two
 parallel branches (the degenerate symmetry-broken ground states) read as two
 fields divided by a hedgerow: scenery, not a diagram.
 
+**The forest is open to being thinned or removed on rendering-cost grounds.**
+What it must not do is leave the world with nothing: with ground motifs gated
+off, the impassable surround is the only place a world's identity lives, so a
+world whose surround goes empty stops being anywhere. Something has to hem the
+field in. Removing the trees also costs the 1↔8 rhyme below, which is built on
+these specific trees — so that beat moves or is paid for elsewhere in the same
+change rather than quietly lapsing.
+
 The name is the register-setter for the whole set. "Mean field" is a technical
 term wearing work clothes — a civilian reads *fields*, a physicist reads the
 approximation. Worlds 1 and 4 both carry their physics in the *noun* this way;
@@ -770,7 +778,11 @@ That indifference is free, and it exists to be broken exactly once.
 **Loss (8).** The 1↔8 rhyme is the emotional beat: something the player walked
 past in safety at the start is what they are lost inside near the end. Without
 it, the sequence runs pretty → moody → dead with no moment where anything is
-taken from them specifically.
+taken from them specifically. It rests on World 1 and World 8 sharing one
+recognisable thing, currently its trees — so whatever hems in the Mean Fields
+is what the Splitting Hollow stands dead inside, and the two are chosen
+together. `docs/storyline.md` states the recognition in the player's own words
+and follows the same pairing.
 
 **Recognition (10).** The world turns to look. After nine worlds of terrain that
 did not know it was being walked on, the last one is built out of the player —
