@@ -329,8 +329,19 @@ than appending a changelog, so this always reflects current reality.
     strict lattice sheared per tile into a frozen moire. Never noise, which at this scale
     reads as a rendering fault, and never animated -- wind races across this world's sky while
     its ground stays perfectly still.
-  - **'charged'** (the Storm Flats, world 4): ground carrying the field, with forked
-    discharges crawling over it on a world-anchored cycle.
+  - **'charged'** (the Storm Flats, world 4): the ground the storm strikes. The tile accent is
+    the burn left behind -- a short forked scorch, fixed per tile and static, so the field
+    reads as ground that has been hit many times. The strike itself is a separate pass drawn
+    *after* the atmosphere (`terrain/materials/charged.ts`'s `drawStormStrikes`), because a
+    bolt crosses the air as well as the ground and one painted under the haze is one the haze
+    puts out. Three rules bind it. A strike **only ever lands on an impassable tile** -- that
+    is the world's entire message, and the column is searched along the chosen row rather than
+    picked outright, so the constraint costs no cadence where the corridor is wide. It is
+    **occasional** -- two slots on incommensurate cycles, each alive for a twentieth of its
+    own, which is about one flash every three seconds with the frame dark between them. And
+    its light is **local to the tile it hits** (nested ground pools, a sheathed bolt), never a
+    wash over the frame: a strike is momentarily the brightest thing on screen and gameplay
+    owns the extremes, so the route and the player's crystal keep their values through one.
   - **'ice'** (the Vortex Glacier, world 5): the frozen lake, still and faceted, plus the
     vortex pits inside it -- a rim and a cold glow of trapped flux on any impassable tile the
     walkable region nearly surrounds, which is what a vortex core is.
@@ -514,7 +525,7 @@ discipline and it is the premise made visible, so it is not negotiable for atmos
 
 **The two escalation spines.** Both must be legible in a screenshot cropped to the player's
 feet. What the impassable terrain *is*, from "you just wouldn't walk there" to "it would kill
-you": forest, stone, a drop, charged ground, ice and pits, iron shards, nothing at all, fog
+you": forest, stone, a drop, ground the storm strikes, ice and pits, iron shards, nothing at all, fog
 that takes you, molten crust, terrain that consumes. What the walkable ground *is*, from
 ground built for walking (a field path, a tiled aisle) through ground that merely happens to
 be traversable (ice, iron sand) to ground that isn't ground at all (filaments over void,
@@ -544,7 +555,7 @@ rather than free style choices:
 | 1 | The Mean Fields | pale morning blue (`0x8fd0ff`→`0xe8f6ff`) | dark canopy `0x1d4526` | pale wheat `0xd9d295` | flowers | yes | **forest** |
 | 2 | The Stone Lattice | hard midday blue (`0x5aa6e0`→`0xd6e6f0`) | deep cast shadow `0x4a3427` | sandstone aisle `0xdcc9a8` | mosaic (every tile) | no | **columns** |
 | 3 | The Edge Cliffs | bright afternoon (`0x4f9fd8`→`0xcfe6f2`) | dim slate `0x394349` under dead teal/ochre domain tints | lit ledge `0xdfe6e2` | edge flow (every tile) | yes, drifting | **deadFloor** |
-| 4 | The Storm Flats | stormy dusk (`0x151a3a`→`0x3a4270`) | charged ground `0x1b2044` | banded indigo `0x6272b8` | orbit rings | no | **charged** |
+| 4 | The Storm Flats | stormy dusk (`0x151a3a`→`0x3a4270`) | struck ground `0x1b2044` | banded indigo `0x6272b8` | orbit rings | no | **charged** |
 | 5 | The Vortex Glacier | overcast twilight (`0x3c4a56`→`0x6e808c`) | frozen lake `0x54707e` | swept ice `0xa8c8d4` | flow lines (every tile) | no | **ice** |
 | 6 | The Iron Steppe | night (`0x050a14`→`0x0d1622`) under a green aurora | near-black `0x121517` | iron sand `0x3a3f40` | ripples | no | **shards** |
 | 7 | The Entangled Web | none -- black (`0x000000`) | true void `0x000000` | white-gold filament `0xefdaa4` | lanes and rungs (every tile) | no | rock (black, no accent) |
@@ -629,7 +640,9 @@ A world may also carry a **sky extra** on the same entry, for a distant self a f
 cannot state -- the Storm Flats' arc-flashes and the Entangled Web's filament glints, the latter
 being that world's entire distant self at swallow zero. Distinct from an **overhead motif**
 (`OVERHEAD_SKIES`), which is read from the world the player is *standing in* rather than from its
-neighbour: the Storm Flats' arcs cracking across the whole dusk, the Iron Steppe's aurora.
+neighbour: the Iron Steppe's aurora. The Storm Flats' own storm is not in that table, because it
+is not a sky motif -- it is an event that lands, drawn with the terrain it strikes ("Struck
+ground" below).
 
 **The adjacency rule: adjacent distant selves must differ in shape-language or sky-activity, never
 in hue alone.** Haze inheritance already guarantees hue shifts; this catches the case where hue is

@@ -1393,8 +1393,12 @@ derived from it so the mist always clears the tallest one. `DISTANT_SELVES[w].sk
 extra drawn over the mist for the *neighbour's* horizon (the Storm Flats' arc-flashes, the
 Entangled Web's filament glints, which at swallow zero are its whole distant self).
 `OVERHEAD_SKIES[w]` is the separate table read from the world the player is **standing in** rather
-than from its neighbour -- the Storm Flats' overhead arcs, the Iron Steppe's aurora. The two tables
-answer different questions and must not be merged.
+than from its neighbour -- the Iron Steppe's aurora. The two tables answer different questions and
+must not be merged. The Storm Flats is deliberately absent from both: its storm is an event that
+lands rather than a sky motif, so it is drawn with the terrain it strikes (`drawStormStrikes` in
+`terrain/materials/charged.ts`, called from `drawTerrain` after `drawDepthHaze` -- a bolt has to
+be painted over the atmosphere it crosses, and it reads the terrain plan so it can only ever land
+on an impassable tile).
 
 **Off-path terrain materials.** One module per material under
 `scenes/overworld/terrain/materials/`, the same "one file per thing" convention the guardian

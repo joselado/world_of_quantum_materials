@@ -170,9 +170,10 @@ const EDGE_CLIFFS: Biome = {
 // World 4, the Storm Flats (magnetic field, quantum Hall, Landau levels):
 // flat bands underfoot in a single-hue indigo ramp under a stormy dusk. The
 // ground here is a diagram, and two things stop it reading as a chart: the
-// boundary shadow strips that give the bands material depth, and the
-// overhead arcs that put the violence in the sky (art/horizons.ts's
-// OVERHEAD_SKIES). Drop either and the world regresses immediately.
+// boundary shadow strips that give the bands material depth, and the strikes
+// that land in the off-path ground and light it
+// (scenes/overworld/terrain/materials/charged.ts). Drop either and the world
+// regresses immediately.
 //
 // Indigo rather than storm-violet. Violet belongs to the Devouring Mirror by
 // right, as the finale, and this world is the reason that has to be said out

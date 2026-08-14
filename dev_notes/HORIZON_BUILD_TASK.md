@@ -51,11 +51,16 @@ stage drawing at depth must keep true:
   or it double-counts.
 
 **A known limit, so it is not refiled as a bug.** Faint contour striping is
-visible in the mid-distance ground (roughly y 257–310 on screen), strongest in
-the shut states of the bright worlds. It is **row-fill quantization**: each
-projected grid row paints as one flat colour, so the depth fog can only step
-between rows rather than vary across them. It is game-wide, not a property of
-any one world, and at 1× it has to be hunted for on a clean display. The
+visible in the mid-distance ground, strongest in the shut states of the bright
+worlds. It is **row-fill quantization**: each projected grid row paints as one
+flat colour, so the depth fog can only step between rows rather than vary
+across them. The worst per-row step is about 15 luminance around depth ratio
+0.7, of which roughly a quarter survives the horizon band's wash over it, in a
+band about 6px tall. Those numbers are properties of the depth schedule and the
+row count, not of the horizon line: raising or lowering `HORIZON_Y` stretches
+the same steps over more or fewer pixels and changes neither the step nor how
+much of it the wash covers. It is game-wide, not a property of any one world,
+and at 1× it has to be hunted for on a clean display. The
 arrangement that keeps it that small is described in `CODEMAP.md`'s "Reaching
 the horizon" — a gentle near/mid falloff with the steepness spent late, under a
 band whose reach is derived to cover it. Anyone wanting to push further has two
@@ -90,9 +95,10 @@ same entry carries the Storm Flats' arc-flashes (the resolved Edge Cliffs →
 Storm Flats adjacency, both worlds being flat by identity) and the Entangled
 Web's filament glints, which at swallow zero are its entire distant self. A
 separate `OVERHEAD_SKIES` table carries motifs read from the world the player
-is **standing in** rather than from its neighbour — the Storm Flats' overhead
-arcs, the Iron Steppe's aurora. The two answer different questions and are
-deliberately not one table.
+is **standing in** rather than from its neighbour — the Iron Steppe's aurora.
+The two answer different questions and are deliberately not one table. The
+Storm Flats' own storm is in neither: it is an event that lands, drawn with the
+terrain it strikes (`terrain/materials/charged.ts`).
 
 Worlds 7, 8 and 10 are at swallow zero and show no silhouette; 7 still draws
 its glints, which is why "no profile" and "no distant self" are not the same

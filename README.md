@@ -37,7 +37,7 @@ The ten worlds are one road, and the light dies along it: morning, midday,
 afternoon, storm, twilight, night, and then no sky at all, after which every
 world lights itself. Stepping off the path never means the same thing twice
 either, and it gets worse as you go -- summer forest, then a colonnade, then
-a drop onto dead ground, charged ground, ice and vortex pits, leaning iron
+a drop onto dead ground, ground the storm strikes, ice and vortex pits, leaning iron
 shards, nothing at all, fog that takes you, molten crust, and finally
 terrain that reconfigures around whatever crystal you currently are. From
 each world's far end you can see the next one on the horizon.

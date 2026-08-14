@@ -9,6 +9,7 @@ import { drawDepthHaze, hazeTarget } from '../sky';
 import { groundColor } from './color';
 import { decorateTile } from './decoration';
 import { TERRAIN_ACCENTS } from './materials';
+import { drawStormStrikes } from './materials/charged';
 import { offPathKindOf } from './plan';
 import type { AccentTile, TerrainKind, TerrainTile, TerrainView } from './types';
 
@@ -103,6 +104,10 @@ export function drawTerrain(view: TerrainView) {
     }
   }
   drawDepthHaze(g, view);
+  // The Storm Flats' strikes cross the air as well as the ground, so they are
+  // drawn over the atmosphere rather than as a per-tile accent inside it --
+  // a bolt painted under the haze is a bolt the haze puts out.
+  if (view.biome.wallTheme === 'charged') drawStormStrikes(g, view);
 }
 
 // Projects a cached tile-space outline (art/contours.ts) at the current

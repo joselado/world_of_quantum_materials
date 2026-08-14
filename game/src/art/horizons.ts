@@ -290,54 +290,6 @@ function scarSky({ g, horizonY, target, now }: HorizonSky) {
   });
 }
 
-// The Storm Flats standing *in* itself: charged field-line arcs cracking
-// across the whole sky overhead, far larger and nearer than the flashes its
-// distant self shows a world away. Both are the same storm; this is the one
-// the player is under.
-//
-// This is the world's own sky rather than its neighbour's horizon, which is
-// why it is a separate table: a distant self is read from world N+1 and
-// belongs to the world depicted, while an overhead motif is read from the
-// world the player is standing in. The Storm Flats needs both, and the ground
-// here is a diagram, so the sky has to be the violence or the world reads as
-// a chart.
-const OVERHEAD_ARCS = [
-  { x: 150, period: 3100, phase: 0 },
-  { x: 430, period: 2400, phase: 1300 },
-  { x: 690, period: 3800, phase: 2600 },
-];
-
-function stormOverhead({ g, horizonY, target, now }: HorizonSky) {
-  OVERHEAD_ARCS.forEach((arc, i) => {
-    const t = ((now + arc.phase) % arc.period) / arc.period;
-    if (t > 0.22) return;
-    const flash = 1 - t / 0.22;
-    let x = arc.x;
-    let y = 4;
-    const branch: HorizonPoint[] = [];
-    g.lineStyle(1.6, blend(0xc8d4ff, target, 0.2), 0.65 * flash);
-    g.beginPath();
-    g.moveTo(x, y);
-    for (let seg = 0; seg < 8; seg++) {
-      x += (hash(i * 31 + seg) - 0.5) * 54;
-      y += (horizonY - 30 - y) / (8 - seg);
-      g.lineTo(x, y);
-      if (seg === 4) branch.push({ x, h: y });
-    }
-    g.strokePath();
-
-    // One fork off the main channel, which is what makes a discharge read as
-    // a discharge rather than as a crack in the screen.
-    if (!branch.length) return;
-    g.lineStyle(1, blend(0xc8d4ff, target, 0.35), 0.4 * flash);
-    g.beginPath();
-    g.moveTo(branch[0].x, branch[0].h);
-    g.lineTo(branch[0].x + 34, branch[0].h + 28);
-    g.lineTo(branch[0].x + 18, branch[0].h + 58);
-    g.strokePath();
-  });
-}
-
 // The Iron Steppe's aurora: the sky still exists here, but it is already
 // lying about where light comes from -- the sun is gone and everything the
 // player can see is emitted by the world itself. That makes this world the
@@ -387,8 +339,13 @@ function auroraOverhead({ g, horizonY, now }: HorizonSky) {
   });
 }
 
+// Motifs read from the world the player is **standing in**, as opposed to the
+// distant selves above, which are read from its neighbour and belong to the
+// world depicted. The two answer different questions and are deliberately not
+// one table. The Storm Flats is not here: its storm is not a sky motif at all
+// but an event that lands, so it is drawn with the terrain it strikes
+// (scenes/overworld/terrain/materials/charged.ts).
 export const OVERHEAD_SKIES: Partial<Record<number, (view: HorizonSky) => void>> = {
-  4: stormOverhead,
   6: auroraOverhead,
 };
 
