@@ -17,7 +17,7 @@ import {
 import { persistFromRegistry } from '../../data/save';
 import type { MoveClass } from '../../data/types';
 import { hostableClasses, renderInlineClassPicker } from './tunableMoveShop';
-import { TWO_UP_PANEL_W, sideBySideColumns, renderMoveDetailHeader, insertColumnDivider } from './listDetail';
+import { TWO_UP_PANEL_W, TWO_UP_STAGE_H, sideBySideColumns, renderMoveDetailHeader, insertColumnDivider } from './listDetail';
 
 // Skłodowska-Curie stands at world 10's middle tile (WORLD_GUARDIANS,
 // `id: 'sklodowskaCurie'` -- deliberately not `'curie'`, so she's gated
@@ -138,7 +138,19 @@ function renderUltimateColumn(
   const displayName = moveDisplayName(scene.game.registry, id);
   const activeClass = getTunedMoveClass(scene.game.registry, id);
   const level = getMoveLevel(scene.game.registry, id);
-  let ny = renderMoveDetailHeader(scene, container, displayName, activeClass, ULTIMATE_SHAPES[id], centerX, y, colW, level, `curie:${id}`);
+  let ny = renderMoveDetailHeader(
+    scene,
+    container,
+    displayName,
+    activeClass,
+    ULTIMATE_SHAPES[id],
+    centerX,
+    y,
+    colW,
+    level,
+    `curie:${id}`,
+    TWO_UP_STAGE_H
+  );
 
   const unlocked = scene.getUnlockedMoves();
   const isUnlocked = unlocked.includes(id);

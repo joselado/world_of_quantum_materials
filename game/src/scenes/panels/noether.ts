@@ -14,6 +14,7 @@ import {
   renderListColumn,
   destroyPanel,
   insertColumnDivider,
+  renderListColumnFooter,
   renderMoveDetailHeader,
   renderStatusAndConfirm,
 } from './listDetail';
@@ -74,10 +75,16 @@ export function showNoetherShop(scene: GuardianPanelHost) {
   y = renderShopTabs(scene, container, y);
   y += 6;
 
-  y = scene.shopTab === 'moves' ? renderShopMoves(scene, container, y, panelWidth) : renderShopStats(scene, container, y);
-  y += 8;
-  y = scene.renderFarewellFooter(container, y);
-  y += 8;
+  // The Moves tab is a list+detail layout and carries its own Farewell button
+  // inside the left column (renderListColumnFooter); the Stats tab is a plain
+  // single-column list with no left column to put one in, so it keeps the
+  // full-width footer row below its content.
+  if (scene.shopTab === 'moves') {
+    y = renderShopMoves(scene, container, y, panelWidth) + 8;
+  } else {
+    y = renderShopStats(scene, container, y) + 8;
+    y = scene.renderFarewellFooter(container, y) + 8;
+  }
 
   const panelHeight = y - top;
   const panel = scene.add
@@ -136,7 +143,11 @@ function renderShopMoves(scene: GuardianPanelHost, container: Phaser.GameObjects
       })
       .setOrigin(0.5, 0);
     container.add(text);
-    return y + text.height;
+    // No columns render in this branch, so there is no left column to put the
+    // Farewell button in -- it takes the full-width footer row the Stats tab
+    // uses instead. Without one the panel has nothing clickable at all and
+    // `dialogueActive` stays stuck true.
+    return scene.renderFarewellFooter(container, y + text.height + 8);
   }
 
   const panelLeft = CANVAS_W / 2 - panelWidth / 2;
@@ -190,7 +201,8 @@ function renderShopMoves(scene: GuardianPanelHost, container: Phaser.GameObjects
     },
   });
 
-  const columnsBottom = Math.max(listResult.bottom, rightY);
+  const leftBottom = renderListColumnFooter(scene, container, columns, listResult.bottom + 10, 'Farewell', () => scene.closeDialogue());
+  const columnsBottom = Math.max(leftBottom, rightY);
   insertColumnDivider(scene, container, columns.dividerX, columnsTop, columnsBottom);
   return columnsBottom + 6;
 }

@@ -4,7 +4,14 @@ import { CANVAS_W, CANVAS_H } from '../../art/perspective';
 import { fontPx, fontScale } from '../../ui/text';
 import { PANEL_BG, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY, REFERENCE_BLUE_GREY_HEX, TUTORIAL_CYAN, TUTORIAL_CYAN_HEX } from '../../ui/theme';
 import { visibleTutorialPages } from '../../data/tutorial';
-import { LIST_DETAIL_PANEL_W, listDetailColumns, renderListColumn, insertColumnDivider, destroyPanel } from './listDetail';
+import {
+  LIST_DETAIL_PANEL_W,
+  listDetailColumns,
+  renderListColumn,
+  insertColumnDivider,
+  renderListColumnFooter,
+  destroyPanel,
+} from './listDetail';
 import { PASSIVES, PASSIVE_OWNERS, PASSIVE_OWNER_LABELS } from '../../data/passives';
 import type { PassiveOwner } from '../../data/passives';
 import {
@@ -336,13 +343,11 @@ export function showTutorialTopics(scene: HubScene) {
     }
     rightY += bodyText.height + 14;
 
-    const columnsBottom = Math.max(listResult.bottom, rightY);
+    const leftBottom = renderListColumnFooter(scene, chromeBlock, columns, listResult.bottom + 10, 'Close', () => scene.closeDialogue());
+    const columnsBottom = Math.max(leftBottom, rightY);
     insertColumnDivider(scene, chromeBlock, columns.dividerX, columnsTop, columnsBottom);
-    let footerY = columnsBottom + 8;
-    const closeBtn = scene.addDialogueButtonAt(chromeBlock, CANVAS_W / 2, footerY, 'Close', () => scene.closeDialogue(), 260);
-    footerY += closeBtn.height + 12;
 
-    const panelHeight = footerY - top;
+    const panelHeight = columnsBottom + 14 - top;
     const panel = scene.add
       .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.95)
       .setStrokeStyle(2, TUTORIAL_CYAN);

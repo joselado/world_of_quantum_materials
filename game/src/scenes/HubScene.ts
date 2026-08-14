@@ -14,7 +14,15 @@ import { PANEL_BG, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../ui/theme'
 import { BUILT_WORLDS, OverworldScene, applySuperpositionUnlocks } from './OverworldScene';
 import type { GuardianPanelHost, GuardianRosterEntry } from './OverworldScene';
 import { LAB_TITLE_COLOR, LAB_STATIONS } from './panels/hubStations';
-import { LIST_DETAIL_PANEL_W, listDetailColumns, renderListColumn, insertColumnDivider } from './panels/listDetail';
+import {
+  DETAIL_CRYSTAL_SIZE,
+  DETAIL_STAGE_H,
+  LIST_DETAIL_PANEL_W,
+  listDetailColumns,
+  renderListColumn,
+  insertColumnDivider,
+  renderListColumnFooter,
+} from './panels/listDetail';
 import { makeQumatexMotif, makeDoorMotif } from '../art/labMotifs';
 import { stopMoveEffectPreview } from '../art/moveEffectPreview';
 
@@ -991,7 +999,8 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     y += filterBtn.height + 10;
 
     const columnsTop = y;
-    const { leftX, leftColW, dividerX, rightColW, rightColCenterX } = listDetailColumns(panelLeft);
+    const columns = listDetailColumns(panelLeft);
+    const { leftX, leftColW, dividerX, rightColW, rightColCenterX } = columns;
 
     // Left column: as many name rows as fit (renderListColumn, STYLE.md's
     // "List+detail panels") -- reserves space for this column's own
@@ -1033,12 +1042,15 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
       const { material, discovered } = selectedEntry;
       const crystal = makeCrystal(
         this,
-        36,
+        DETAIL_CRYSTAL_SIZE,
         discovered ? material.color : 0x33394a,
         material.variant,
         discovered ? { seed: material.name, hybrid: material.hybridParents } : undefined
       );
-      const crystalBlockH = 84; // fixed regardless of text-size setting -- art, not text (see STYLE.md)
+      // Same fixed art block every list+detail detail pane opens with
+      // (scenes/panels/listDetail.ts), so this pane and a guardian's read at
+      // the same weight.
+      const crystalBlockH = DETAIL_STAGE_H;
       crystal.setPosition(rightColCenterX, rightY + crystalBlockH / 2);
       container.add(crystal);
       rightY += crystalBlockH;
@@ -1083,15 +1095,11 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
       rightY += blurbText.height + 8;
     }
 
-    const columnsBottom = Math.max(leftY, rightY);
+    const leftBottom = renderListColumnFooter(this, container, columns, leftY + 10, 'Close', () => this.closeDialogue());
+    const columnsBottom = Math.max(leftBottom, rightY);
     insertColumnDivider(this, container, dividerX, columnsTop, columnsBottom);
 
-    y = columnsBottom + 10;
-    const closeBtn = this.addButton(CANVAS_W / 2, y, '[ Close ]', () => this.closeDialogue());
-    container.add(closeBtn);
-    y += closeBtn.height + bottomMargin;
-
-    this.insertMaterialdexPanelBg(container, panelW, top, y - top);
+    this.insertMaterialdexPanelBg(container, panelW, top, columnsBottom + bottomMargin - top);
   }
 
   // Background rectangle for the Qumatex panel, inserted behind

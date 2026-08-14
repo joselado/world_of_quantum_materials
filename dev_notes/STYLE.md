@@ -178,7 +178,8 @@ than appending a changelog, so this always reflects current reality.
   would otherwise push the panel's footer off the canvas. A **type filter** button (`Type:
   <MaterialType | All> ▸`) cycles through every `MaterialType` plus "All," narrowing which rows
   appear in the left column and resetting the list to its first page and first matching row. A
-  single "Close" button sits below both columns. Every element is laid out top-down with its
+  single "Close" button sits in the left column beneath its rows ("List+detail panels" below).
+  Every element is laid out top-down with its
   own measured height advancing a running `y` (same pattern as `hubStations.ts`'s
   `showInfoPanel`), the panel's own background rectangle sized and inserted behind everything
   only once the taller of the two columns' real height is known.
@@ -196,6 +197,19 @@ than appending a changelog, so this always reflects current reality.
   ("Full tutorial recap" below), the one user of this scaffolding with no art in its detail pane
   at all: just the selected topic's own title and body, no crystal render, animation, or map, and
   no commit button since browsing a topic is the whole interaction.
+  The panel's own escape button ("Farewell" for a guardian, "Close" in the Lab) sits **in the
+  left column, directly beneath its rows** (`renderListColumnFooter`), not in a full-width row
+  under both columns. The left column is the shorter of the two in every one of these panels,
+  so a footer inside it costs the panel no height, and the vertical budget a full-width footer
+  row would take goes to the detail pane instead -- which is why the pane can afford its
+  `DETAIL_STAGE_H` (`104`) art block and `DETAIL_CRYSTAL_SIZE` (`44`) crystal. Laughlin's and
+  Skłodowska-Curie's two-up panels (below) use the shorter `TWO_UP_STAGE_H` (`84`) instead:
+  with no left column, their Farewell button stays in a full-width row below both columns, so
+  they have no reclaimed height to spend, and their columns additionally carry an inline
+  quasiparticle picker beneath the status line that a browsed detail pane doesn't. A panel that
+  needs a *second* escape button ("Never mind" alongside "Farewell", on Anderson's pending
+  two-step pick) is not one of these layouts -- that step is a flat centered move list, and its
+  two buttons share one full-width row (`renderCancelFarewellFooter`).
   `LIST_DETAIL_PANEL_W`
   (`720`) is the panel width every list+detail panel uses -- wide enough for the two columns
   plus a real crystal render (or, for a move-browsing panel, its animation preview, or for
@@ -886,12 +900,14 @@ than the caller's requested budget) for its own layout math.
     carry is left to teach."
   - **Stats**: one button per stat (Quantumness/Velocity/Correlation), labeled
     `<stat> (<role>): <value> -> <value+1> -- <cost> qumatessence`, same afford/dim treatment.
-- Below the (variable-length) tab content, a single "Farewell" button
-  (`renderFarewellFooter`) flowing right after the content rather than pinned to a fixed
-  y -- Noether's own panel never offers "Face the Rival"/"Continue to World N+1"; that
-  action lives only in the goal panel (see "The rival gate" below), since the goal tile is
-  where that world's boss actually stands. Every guardian panel but the rival gate's own
-  ends in this same single-Farewell footer, Bloch's panel (below) included.
+- Every guardian panel but the rival gate's own ends in a single "Farewell" button -- Noether's
+  own panel never offers "Face the Rival"/"Continue to World N+1"; that action lives only in
+  the goal panel (see "The rival gate" below), since the goal tile is where that world's boss
+  actually stands. Where the panel is a list+detail layout (Noether's own Moves tab, and
+  Bloch's panel below) that button sits in the left column beneath its rows
+  ("List+detail panels" above); the Stats tab, a plain single-column list with no left column
+  to put one in, keeps it in a full-width row flowing right after the tab content
+  (`renderFarewellFooter`) rather than pinned to a fixed y.
 
 ## Bloch in the overworld (`OverworldScene.showBlochHub`)
 
@@ -978,8 +994,8 @@ than the caller's requested budget) for its own layout math.
   (no candidates at all, rendered as plain centered text with no columns): "You haven't
   defeated any crystals yet -- there is nothing to become." The left column paginates once
   the list is longer than one page -- the common case in Superposition Mode, which also
-  treats every crystal as already unlocked -- ending in a single "Farewell" button below both
-  columns, no separate footer row.
+  treats every crystal as already unlocked -- with the panel's single "Farewell" button in the
+  left column beneath those rows ("List+detail panels" above).
 
 ## Laughlin in the overworld (`OverworldScene.showLaughlinPanel`)
 
@@ -1954,7 +1970,8 @@ than the caller's requested budget) for its own layout math.
   otherwise.
 - The right column shows the selected topic's full title and body (same floor-9px shrink-to-fit
   loop every other Lab panel's body text uses), no crystal/move art and no commit button --
-  reading the body is the whole interaction. A single `Close` button sits below both columns;
+  reading the body is the whole interaction. A single `Close` button sits in the left column
+  beneath its rows ("List+detail panels" above);
   there's no separate "back to the topic list" step, since the list column is always on screen
   beside the detail pane rather than a full-panel view swapped out for another.
 - Selecting a row is a scoped update (`renderListColumn`'s own `setSelectedId` plus a

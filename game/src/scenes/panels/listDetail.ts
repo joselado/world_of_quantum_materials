@@ -95,6 +95,30 @@ export function listDetailColumns(panelLeft: number): ListDetailColumns {
 // right column ever did (STYLE.md's own reasoning for the wider width).
 export const TWO_UP_PANEL_W = 800;
 
+// The detail pane's own art block -- a crystal render, a looping battle-effect
+// animation, or a player crystal with a self-buff ring around it -- is a fixed
+// height regardless of the text-size setting ("art, not text", STYLE.md), so
+// every detail-pane opener below reserves the same one and a pane's height
+// stays predictable across presets. Sized against the vertical budget a
+// list+detail panel has with its escape buttons inside the left column
+// (renderListColumnFooter below) rather than in a full-width row under both
+// columns.
+export const DETAIL_STAGE_H = 104;
+// The crystal drawn inside that block, and the cap on the name text beneath
+// it. Both are shared across the three openers so a crystal-browsing pane and
+// a move-browsing pane read at the same weight.
+export const DETAIL_CRYSTAL_SIZE = 44;
+const DETAIL_NAME_CAP = 1.45;
+
+// The two-up panels' stage is shorter, because their height budget is
+// tighter: with no left column their Farewell button occupies a full-width row
+// below both columns, and their columns carry an inline quasiparticle picker
+// beneath the status line that a browsed detail pane doesn't. At the largest
+// text-size preset Skłodowska-Curie's column reaches within ~25px of the
+// bottom of the canvas even at this height, so it has no room for the taller
+// one.
+export const TWO_UP_STAGE_H = 84;
+
 export interface SideBySideColumns {
   colW: number;
   leftCenterX: number;
@@ -277,6 +301,35 @@ export function renderListColumn<T>(params: RenderListColumnParams<T>): RenderLi
   return { bottom: rowY, page: clampedPage, setSelectedId };
 }
 
+// A list+detail panel's own escape button ("Farewell", or "Close" in the
+// Lab), placed in the left column directly beneath its rows rather than in a
+// full-width row below both columns. The left column is the shorter of the
+// two in every one of these panels, so a footer living inside it costs the
+// panel no height at all, and the vertical budget a full-width footer row
+// would take goes to the detail pane's own art stage and text instead.
+// Callers pass this the left column's own measured bottom, and take the
+// larger of what it returns and their detail pane's bottom as the panel's
+// real content height -- the same `Math.max` both columns already went
+// through before the divider is drawn.
+export function renderListColumnFooter(
+  scene: GuardianPanelHost,
+  container: Phaser.GameObjects.Container,
+  columns: ListDetailColumns,
+  y: number,
+  label: string,
+  onClick: () => void
+): number {
+  const btn = scene.addDialogueButtonAt(
+    container,
+    columns.leftX + columns.leftColW / 2,
+    y,
+    label,
+    onClick,
+    columns.leftColW
+  );
+  return y + btn.height;
+}
+
 // Draws the vertical divider between the two columns, spanning from just
 // above the columns' shared top down to the taller of their two measured
 // bottoms -- inserted at container index 0 (below every row/button already
@@ -315,13 +368,16 @@ export function renderDetailCrystalHeader(
   y: number,
   rightColW: number
 ): number {
-  const crystal = makeCrystal(scene, 36, material.color, material.variant, { seed: material.name, hybrid: material.hybridParents });
-  const crystalBlockH = 84; // fixed regardless of text-size setting -- art, not text (see STYLE.md)
+  const crystal = makeCrystal(scene, DETAIL_CRYSTAL_SIZE, material.color, material.variant, {
+    seed: material.name,
+    hybrid: material.hybridParents,
+  });
+  const crystalBlockH = DETAIL_STAGE_H;
   crystal.setPosition(centerX, y + crystalBlockH / 2);
   container.add(crystal);
   let ny = y + crystalBlockH;
 
-  const nameScale = Math.min(fontScale(scene), 1.3);
+  const nameScale = Math.min(fontScale(scene), DETAIL_NAME_CAP);
   const nameText = scene.add
     .text(centerX, ny, materialDisplayName(material), {
       fontSize: `${Math.round(14 * nameScale)}px`,
@@ -373,9 +429,9 @@ export function renderMoveDetailHeader(
   y: number,
   rightColW: number,
   level: MoveLevel = 0,
-  previewKey?: string
+  previewKey?: string,
+  stageH: number = DETAIL_STAGE_H
 ): number {
-  const stageH = 84; // same fixed "art, not text" block height renderDetailCrystalHeader uses above
   startMoveEffectPreview(
     {
       scene,
@@ -388,7 +444,7 @@ export function renderMoveDetailHeader(
   );
   let ny = y + stageH;
 
-  const nameScale = Math.min(fontScale(scene), 1.3);
+  const nameScale = Math.min(fontScale(scene), DETAIL_NAME_CAP);
   const nameText = scene.add
     .text(centerX, ny, displayName, {
       fontSize: `${Math.round(14 * nameScale)}px`,
@@ -499,8 +555,8 @@ export function renderSelfBuffMoveDetailHeader(
   rightColW: number,
   level: MoveLevel = 0
 ): number {
-  const stageH = 84; // same fixed "art, not text" block height renderMoveDetailHeader uses above
-  const crystalSize = 34; // matches Franklin's own player-crystal render (art/franklin.ts)
+  const stageH = DETAIL_STAGE_H;
+  const crystalSize = DETAIL_CRYSTAL_SIZE;
   const crystalCenterY = y + crystalSize;
   const shadowY = crystalCenterY + crystalSize * 0.85;
   const shadowRx = crystalSize * 1.18;
@@ -521,7 +577,7 @@ export function renderSelfBuffMoveDetailHeader(
 
   let ny = y + stageH;
 
-  const nameScale = Math.min(fontScale(scene), 1.3);
+  const nameScale = Math.min(fontScale(scene), DETAIL_NAME_CAP);
   const nameText = scene.add
     .text(centerX, ny, displayName, {
       fontSize: `${Math.round(14 * nameScale)}px`,

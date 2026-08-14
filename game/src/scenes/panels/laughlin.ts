@@ -9,7 +9,7 @@ import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 import { ANALYTIC_MOVE_IDS, shopCost, moveDisplayName, getTunedMoveClass, getMoveLevel, quasiparticleLabel, MOVES } from '../../data/materials';
 import type { MoveClass } from '../../data/types';
 import { hostableClasses, renderInlineClassPicker } from './tunableMoveShop';
-import { TWO_UP_PANEL_W, sideBySideColumns, renderMoveDetailHeader, insertColumnDivider } from './listDetail';
+import { TWO_UP_PANEL_W, TWO_UP_STAGE_H, sideBySideColumns, renderMoveDetailHeader, insertColumnDivider } from './listDetail';
 import { persistFromRegistry } from '../../data/save';
 
 // Laughlin stands at world 4's middle tile (WORLD_GUARDIANS) and sells his
@@ -124,7 +124,19 @@ function renderAnalyticColumn(
   const displayName = moveDisplayName(scene.game.registry, id);
   const activeClass = getTunedMoveClass(scene.game.registry, id);
   const level = getMoveLevel(scene.game.registry, id);
-  let ny = renderMoveDetailHeader(scene, container, displayName, activeClass, ANALYTIC_SHAPES[id], centerX, y, colW, level, `laughlin:${id}`);
+  let ny = renderMoveDetailHeader(
+    scene,
+    container,
+    displayName,
+    activeClass,
+    ANALYTIC_SHAPES[id],
+    centerX,
+    y,
+    colW,
+    level,
+    `laughlin:${id}`,
+    TWO_UP_STAGE_H
+  );
 
   const unlocked = scene.getUnlockedMoves();
   const isLearned = unlocked.includes(id);

@@ -659,7 +659,7 @@ World 10's Adapted and nowhere else.
   future guardian selling another flat, non-previewable "buy several, equip one" kit could reuse
   it the same way. `listDetail.ts`'s own `renderListColumn`/`renderMoveDetailHeader`/
   `renderSelfBuffMoveDetailHeader`/`renderStatusAndConfirm`/`insertColumnDivider`/
-  `destroyPanel`/`sideBySideColumns` (see the file-tree entry above) is the
+  `renderListColumnFooter`/`destroyPanel`/`sideBySideColumns` (see the file-tree entry above) is the
   genuinely multi-caller case, shared today by Dresselhaus/Anderson/Majorana/Noether/Kondo's own
   panels plus HubScene's Qumatex panel (the paginated-left-column shape), by Laughlin's/
   Skłodowska-Curie's own panels (the bespoke always-both-visible two-column shape), and -- for
@@ -1200,11 +1200,12 @@ dynamic; HP was never tied to its identity in the first place (`opponentMaxHp`, 
 HP" below, stays fixed for the whole battle).
 
 **Progression (Face the Rival/Continue) is exclusive to the goal panel.** `renderShopFooter`
-(Farewell + Face-the-Rival/Continue, `showGatePanel`'s only caller) and `renderFarewellFooter`
-(Farewell only) are siblings -- every mid-corridor guardian panel (`showNoetherShop`'s two tabs,
-`showBlochHub`, `showGuardianLore`, `showDresselhausPanel`) calls `renderFarewellFooter`, never
-`renderShopFooter`, so no guardian panel can trigger that world's boss fight without the player
-walking to (or seeing) the goal. If a future guardian panel needs a progression action, route it
+(Farewell + Face-the-Rival/Continue, `showGatePanel`'s only caller) is the only footer helper that
+offers a progression action. Every mid-corridor guardian panel closes with a plain Farewell
+instead -- `renderFarewellFooter` for a full-width row, `renderListColumnFooter` for the
+list+detail panels that put it in the left column -- and none of them calls `renderShopFooter`,
+so no guardian panel can trigger that world's boss fight without the player walking to (or
+seeing) the goal. If a future guardian panel needs a progression action, route it
 through `showGatePanel`, not by reaching for `renderShopFooter` directly.
 
 **Overworld terrain rendering.** Painting the corridor floor splits in two, and new terrain work
@@ -2101,7 +2102,12 @@ about it. Laughlin's and
 Skłodowska-Curie's own panels do *not* use this scaffolding at all -- each has exactly two fixed
 moves, always both rendered at once through their own bespoke `sideBySideColumns` layout instead
 of a browsed candidate list (see "Guardians" above); neither imports `renderListColumn` or
-`listDetailColumns`.
+`listDetailColumns`. The two shapes also have genuinely different vertical budgets, which is the
+second reason to keep them apart rather than merge them: a list+detail panel hides its escape
+button inside the shorter left column and so gets that row's height back to spend on the detail
+pane, while a two-up panel has no left column, keeps a full-width footer row, and carries an
+inline quasiparticle picker in each column -- so the art-stage height is a property of the shape
+(`DETAIL_STAGE_H` vs `TWO_UP_STAGE_H` below), not a constant the two can share.
 `renderListColumn<T>`
 is this layout's own left-column pager: a
 single fixed sample-row-height measurement (not `renderPagedButtons`' per-item real-height
@@ -2130,7 +2136,19 @@ move-browsing ones, the same animation centered on the player's own crystal for 
 (Kondo's; Qumatex's own detail pane stays a separate render since it
 additionally masks an undiscovered entry and appends a physics blurb). Both move headers take the
 player's real Feynman `MoveLevel` (`getMoveLevel`) so a leveled move previews the same escalating
-multi-trigger cascade a real cast plays. `renderStatusAndConfirm` is the shared tail every one of
+multi-trigger cascade a real cast plays. `renderListColumnFooter` puts the panel's own escape button ("Farewell", or "Close" in the Lab)
+in the **left column beneath its rows** rather than in a full-width row under both columns --
+the left column is the shorter of the two here, so a footer inside it costs the panel no
+height, and the budget a full-width footer row would take goes to the detail pane's own art
+block and text instead. It places exactly one button; a panel needing a second escape button
+("Never mind" on Anderson's pending pick) isn't a list+detail layout at that step and uses the
+full-width two-button `renderCancelFarewellFooter` row instead. `DETAIL_STAGE_H` (`104`) and
+`DETAIL_CRYSTAL_SIZE` (`44`) are the one art-block height/crystal size all three detail-pane
+openers (and Qumatex's own pane) share, fixed regardless of the text-size setting ("art, not
+text"); Laughlin's/Skłodowska-Curie's own two-up columns pass `renderMoveDetailHeader` the
+shorter `TWO_UP_STAGE_H` (`84`) instead, since a panel with no left column reclaims no footer
+height to spend and their columns carry an inline class picker a browsed pane doesn't.
+`renderStatusAndConfirm` is the shared tail every one of
 those panes closes with: the cost/status line plus an optional confirm button (omitted where
 there's nothing to commit -- Dresselhaus's current form, Bloch's current or undiscovered world),
 parameterized only over the wording, the dimmed-when-unavailable flag, and two per-panel spacing

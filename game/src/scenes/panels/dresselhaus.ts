@@ -14,6 +14,7 @@ import {
   renderListColumn,
   destroyPanel,
   insertColumnDivider,
+  renderListColumnFooter,
   renderDetailCrystalHeader,
   renderStatusAndConfirm,
 } from './listDetail';
@@ -198,11 +199,10 @@ export function showDresselhausPanel(scene: GuardianPanelHost) {
       });
     }
 
-    const columnsBottom = Math.max(listResult.bottom, rightY);
+    const leftBottom = renderListColumnFooter(scene, chromeBlock, columns, listResult.bottom + 10, 'Farewell', () => scene.closeDialogue());
+    const columnsBottom = Math.max(leftBottom, rightY);
     insertColumnDivider(scene, chromeBlock, columns.dividerX, columnsTop, columnsBottom);
-    let footerY = columnsBottom + 6 + 8;
-    footerY = scene.renderFarewellFooter(chromeBlock, footerY) + 12;
-    finishPanel(footerY, chromeBlock);
+    finishPanel(columnsBottom + 14, chromeBlock);
   };
   renderDetail();
 }

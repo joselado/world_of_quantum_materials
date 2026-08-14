@@ -15,6 +15,7 @@ import {
   renderListColumn,
   destroyPanel,
   insertColumnDivider,
+  renderListColumnFooter,
   renderDetailCrystalHeader,
   renderStatusAndConfirm,
 } from './listDetail';
@@ -230,11 +231,10 @@ export function showMajoranaPanel(scene: GuardianPanelHost) {
       },
     });
 
-    const columnsBottom = Math.max(listResult.bottom, rightY);
+    const leftBottom = renderListColumnFooter(scene, chromeBlock, columns, listResult.bottom + 10, 'Farewell', () => scene.closeDialogue());
+    const columnsBottom = Math.max(leftBottom, rightY);
     insertColumnDivider(scene, chromeBlock, columns.dividerX, columnsTop, columnsBottom);
-    let footerY = columnsBottom + 2 + 2;
-    footerY = scene.renderFarewellFooter(chromeBlock, footerY) + 12;
-    finishPanel(footerY, chromeBlock);
+    finishPanel(columnsBottom + 14, chromeBlock);
   };
   renderDetail();
 }

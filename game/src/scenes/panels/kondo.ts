@@ -13,6 +13,7 @@ import {
   renderListColumn,
   destroyPanel,
   insertColumnDivider,
+  renderListColumnFooter,
   renderSelfBuffMoveDetailHeader,
   renderStatusAndConfirm,
 } from './listDetail';
@@ -194,11 +195,10 @@ export function showKondoPanel(scene: GuardianPanelHost) {
       },
     });
 
-    const columnsBottom = Math.max(listResult.bottom, rightY);
+    const leftBottom = renderListColumnFooter(scene, chromeBlock, columns, listResult.bottom + 10, 'Farewell', () => scene.closeDialogue());
+    const columnsBottom = Math.max(leftBottom, rightY);
     insertColumnDivider(scene, chromeBlock, columns.dividerX, columnsTop, columnsBottom);
-    let footerY = columnsBottom + 6 + 8;
-    footerY = scene.renderFarewellFooter(chromeBlock, footerY) + 8;
-    const panelHeight = footerY - top;
+    const panelHeight = columnsBottom + 14 - top;
     const panel = scene.add
       .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
       .setStrokeStyle(2, 0xe86a44);

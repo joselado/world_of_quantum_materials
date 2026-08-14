@@ -11,7 +11,15 @@ import { PANEL_BG, GOLD_ACCENT } from '../../ui/theme';
 import { worldName, BLOCH_DESTINATION_COST } from '../../data/materials';
 import { WORLD_FLAVOR } from '../../data/worldFlavor';
 import { persistFromRegistry } from '../../data/save';
-import { LIST_DETAIL_PANEL_W, destroyPanel, listDetailColumns, renderListColumn, insertColumnDivider, renderStatusAndConfirm } from './listDetail';
+import {
+  LIST_DETAIL_PANEL_W,
+  destroyPanel,
+  listDetailColumns,
+  renderListColumn,
+  insertColumnDivider,
+  renderListColumnFooter,
+  renderStatusAndConfirm,
+} from './listDetail';
 
 // Bloch stands at world 2's middle tile (see spawnGuardianSprite/
 // WORLD_GUARDIANS) and folds the player to any other world they've already
@@ -282,13 +290,11 @@ export function showBlochHub(scene: GuardianPanelHost) {
             },
     });
 
-    const columnsBottom = Math.max(listResult.bottom, rightY);
+    const leftBottom = renderListColumnFooter(scene, chromeBlock, columns, listResult.bottom + 10, 'Farewell', () => scene.closeDialogue());
+    const columnsBottom = Math.max(leftBottom, rightY);
     insertColumnDivider(scene, chromeBlock, columns.dividerX, columnsTop, columnsBottom);
-    let footerY = columnsBottom + 6;
-    footerY = scene.renderFarewellFooter(chromeBlock, footerY);
-    footerY += 2;
 
-    const panelHeight = footerY - top;
+    const panelHeight = columnsBottom + 14 - top;
     const panel = scene.add
       .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
       .setStrokeStyle(2, 0x4adde0);
