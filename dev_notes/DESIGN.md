@@ -1446,6 +1446,62 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   tier itself, unlike this toggle, can still be changed mid-playthrough from the Lab's
   Settings station -- §3).
 
+### Soundtrack
+
+All audio is procedural Web Audio with no external assets
+(`game/src/audio/music.ts`) — one looping overworld score and one battle score
+per world, in two arrangements the player picks from the Lab's Settings
+station: "Classic" (chiptune-leaning arpeggios and a driving battle kit) and
+"Modern" (ambient orchestral string pads, a phrase-length legato melody, and
+no percussion in the overworld). Both draw on the same per-world key and
+tempo, so a world sounds like itself in either.
+
+**The ten overworld scores are one arc rather than ten moods**, and its shape
+is `dev_notes/WORLDS.md`'s light rule: the sequence darkens as coherence is
+lost, so the music darkens with it.
+
+Worlds 1–6 all sit on a **C tonic** while the mode drains out of it, which is
+what makes the first half read as one light going out rather than six
+unrelated keys. Worlds 7–10 move a **tritone to F#** and stay there, because
+after World 7 the sun never returns and a tritone is the one interval with no
+pull back home. F# is planted twice before it takes over — as World 2's raised
+fourth and World 6's aurora drone — so the move sounds inevitable in
+retrospect rather than arbitrary; C then returns as World 10's own raised
+fourth, the dead sun seen in the mirror.
+
+| # | Key / mode | bpm | What carries it |
+|---|---|---|---|
+| 1 | C Ionian | 96 | Pad alternates between the fifth above and the fifth below — two equally correct voicings of one chord, the two degenerate ground states |
+| 2 | C Lydian | 100 | Two fixed motifs alternating bar by bar (the two-atom basis); the raised fourth is the game's first F# |
+| 3 | C Mixolydian | 104 | Eight unbroken eighth-notes over a bass holding one note per bar — wind racing across ground that cannot move |
+| 4 | C Aeolian | 132 | First minor world; a crash every fourth bar as the storm overhead — the first percussion in any overworld |
+| 5 | C Phrygian | 84 | Flat second as the world's whole colour; held bare fifths, whole bars of silence, nothing arriving on the tonic |
+| 6 | C Ionian | 116 | The false calm: World 1's own key and progression return, with a stuttering F#5 drone that grinds against the F chord |
+| 7 | F# whole-tone | 76 | **The hard turn.** Bass and pad deleted, reverb send on for the first time, no chord progression at all — a two-voice canon in a collection with no tonic |
+| 8 | F# Phrygian | 58 | The loss beat: World 1's melody at the tritone, bent into the mode, each phrase losing another note until the last bar is silence |
+| 9 | F# Phrygian dominant | 140 | Major third over a flat second; F# and G chords grinding a semitone apart, driven square lead over a bare kick |
+| 10 | F# Lydian | 158 | The lead answered a bar later by an exact copy of itself — the world modelling the player — over a held F#–C tritone |
+
+Three deliberate exceptions to a smooth ramp, all of them the story's:
+**World 6 brightens** (the mood relaxes, the danger does not), **World 7
+breaks rather than darkens** (the light rule's discontinuity is a
+discontinuity in the arrangement, not another step down), and **World 8 is
+the only world that quotes another** — a quote earns its place there because
+it is the only world built out of an earlier world's material.
+
+**The battle scores deliberately stay outside the arc**: bright, fast and
+driving in every world, because a fight is the player's own coherence pushing
+back against a world losing its own. What they carry instead is articulation
+— the band dropping out for two beats at the second riff and slamming back
+over a crash, a snare fill dragging the music into the reprise, brass pickups
+into each downbeat, hats lifting at phrase ends, and the loop's last two beats
+walking up into the tonic waiting at the loop point. The sparse cold worlds
+(5 and 8) opt out of the pickups, whose extra note before every bar would fill
+in exactly the silence that gives those two their character.
+
+`npm run music-arc-check` measures the arc from the audio rather than the
+configuration; see `dev_notes/DEVELOPMENT.md`.
+
 ## 8. Art & content pipeline
 
 - Style target: GBA-era Pokemon/Golden Sun — small tile sprites, simple battle
@@ -1464,9 +1520,9 @@ contextual tutorial tips, and the Story Mode/Superposition Mode picker are all i
 (§2, §4, §5, §7). `game/` is the only build; there is no separate no-install
 single-file `demo/` prototype. All audio is procedural Web Audio with no external assets
 (`game/src/audio/music.ts`), with both an overworld track and a battle track per world in
-two selectable arrangements — "Classic" (chiptune-leaning arpeggios) and "Modern" (an
-ambient orchestral string-pad/legato-melody arrangement) of the same per-world
-keys/tempos — toggled live from the Lab's Settings station.
+two selectable arrangements — "Classic" and "Modern" — of the same per-world keys/tempos,
+toggled live from the Lab's Settings station; the ten overworld scores form one darkening
+arc across the sequence (§7's "Soundtrack").
 
 Not yet built:
 - Bespoke per-world boss puzzles (§6) — every world currently uses the same reach-goal →
