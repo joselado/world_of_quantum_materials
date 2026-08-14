@@ -341,6 +341,52 @@ for (const w of BUILT_WORLDS.filter((w) => w !== '10')) {
   if (!pool || pool.length === 0) flag(`WORLD_QUESTIONS[${w}] is empty`);
 }
 
+// 15. The Lab's Tutorial station lists whichever topics a Story Mode save
+// has actually reached, in TUTORIAL_TIPS' own declaration order (data/
+// tutorial.ts's `visibleTutorialPages`), so that order has to be the order
+// the game reveals them in and every topic has to be reachable at all.
+// Three ways that goes wrong silently, none of which `tsc --noEmit` can
+// see: a `kind: 'guardian'` topic naming a guardian who doesn't exist (the
+// topic is then unreachable in Story Mode forever), those topics declared
+// out of world order (the list reads out of sequence), and a `kind: 'tip'`
+// topic with no contextual trigger site to fire it (also unreachable).
+{
+  const tutorialSf = parseFile('src/data/tutorial.ts');
+  const TUTORIAL_TIPS = evalNode(findTopLevelConst(tutorialSf, 'TUTORIAL_TIPS'), tutorialSf);
+  const guardianWorldById = new Map(Object.entries(WORLD_GUARDIANS_RAW).map(([world, g]) => [g.id, Number(world)]));
+  const triggerSites =
+    fs.readFileSync(path.join(gameDir, 'src/scenes/OverworldScene.ts'), 'utf8') +
+    fs.readFileSync(path.join(gameDir, 'src/scenes/HubScene.ts'), 'utf8');
+
+  let previousWorld = 0;
+  let previousId = null;
+  for (const [id, page] of Object.entries(TUTORIAL_TIPS)) {
+    const unlock = page.unlock;
+    if (unlock.kind === 'tip') {
+      if (!triggerSites.includes(`showTutorialTip('${id}'`) && !triggerSites.includes(`TUTORIAL_TIPS.${id}`)) {
+        flag(`TUTORIAL_TIPS['${id}'] is unlocked by its own contextual tip but nothing in OverworldScene/HubScene ever fires it`);
+      }
+      continue;
+    }
+    if (unlock.kind !== 'guardian') continue;
+    const worlds = unlock.ids.map((guardianId) => {
+      const world = guardianWorldById.get(guardianId);
+      if (world === undefined) flag(`TUTORIAL_TIPS['${id}'] unlocks on guardian '${guardianId}', who isn't in WORLD_GUARDIANS`);
+      return world;
+    });
+    const earliest = Math.min(...worlds.filter((w) => w !== undefined));
+    if (!Number.isFinite(earliest)) continue;
+    if (earliest < previousWorld) {
+      flag(
+        `TUTORIAL_TIPS['${id}'] unlocks in World ${earliest} but is declared after '${previousId}' (World ${previousWorld}) -- ` +
+          `declaration order is the order the Tutorial station lists topics in, so it has to match the order the game reveals them`
+      );
+    }
+    previousWorld = earliest;
+    previousId = id;
+  }
+}
+
 // --- report -----------------------------------------------------------
 
 if (issues.length === 0) {

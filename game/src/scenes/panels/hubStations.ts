@@ -4,7 +4,7 @@ import { OverworldScene } from '../OverworldScene';
 import { CANVAS_W, CANVAS_H } from '../../art/perspective';
 import { fontPx, fontScale } from '../../ui/text';
 import { PANEL_BG, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY, REFERENCE_BLUE_GREY_HEX, TUTORIAL_CYAN, TUTORIAL_CYAN_HEX } from '../../ui/theme';
-import { TUTORIAL_PAGES } from '../../data/tutorial';
+import { visibleTutorialPages } from '../../data/tutorial';
 import { LIST_DETAIL_PANEL_W, listDetailColumns, renderListColumn, insertColumnDivider, destroyPanel } from './listDetail';
 import { PASSIVES, PASSIVE_OWNERS, PASSIVE_OWNER_LABELS } from '../../data/passives';
 import type { PassiveOwner } from '../../data/passives';
@@ -304,21 +304,24 @@ export function showGuardiansPanel(scene: HubScene) {
 }
 
 // List+detail layout (scenes/panels/listDetail.ts, STYLE.md's "List+detail
-// panels") over data/tutorial.ts's TUTORIAL_PAGES -- the same shape a
-// guardian's own browsed panel uses, just with no crystal/move art to
-// preview: the left column names every topic (its own `listLabel` if it has
-// one, its `title` otherwise), paginated once the set outgrows one page; the
-// right column shows the selected topic's full title and body. Every topic
-// is visible in the list up front rather than reachable only by paging
-// through the rest. Selecting a row is a scoped update (CODEMAP's "scoped
+// panels") over data/tutorial.ts's `visibleTutorialPages` -- the topics this
+// save has reached, in the order the game reveals them (Story Mode; every
+// topic in Superposition Mode) -- the same shape a guardian's own browsed
+// panel uses, just with no crystal/move art to preview: the left column
+// names each topic (its own `listLabel` if it has one, its `title`
+// otherwise), paginated once the set outgrows one page; the right column
+// shows the selected topic's full title and body. The list is read once per
+// panel build and closed over, so a topic discovered while this panel is
+// open can't shift the rows out from under a click.
+// Selecting a row is a scoped update (CODEMAP's "scoped
 // update" convention), not a panel rebuild: `renderListColumn`'s own
 // `setSelectedId` restyles the row in place and only `detailBlock`/
 // `chromeBlock` re-render. A page flip still tears the panel down via
 // `destroyPanel` and rebuilds, since that changes which rows the list
 // itself shows -- the same split every other list+detail panel in the game
-// uses. Identifies a topic by its own index into TUTORIAL_PAGES (stringified
-// for `idFor`/`selectedId`) rather than by title, since two topics could in
-// principle share a shortened `listLabel`.
+// uses. Identifies a topic by its own index into that visible list
+// (stringified for `idFor`/`selectedId`) rather than by title, since two
+// topics could in principle share a shortened `listLabel`.
 export function showTutorialTopics(scene: HubScene) {
   destroyPanel(scene);
   scene.dialogueActive = true;
@@ -351,7 +354,8 @@ export function showTutorialTopics(scene: HubScene) {
   const columns = listDetailColumns(panelLeft);
   const columnsTop = y;
 
-  const items = TUTORIAL_PAGES.map((page, index) => ({ page, id: String(index) }));
+  const pages = visibleTutorialPages(scene.game.registry);
+  const items = pages.map((page, index) => ({ page, id: String(index) }));
   let selected = items.some((it) => it.id === String(scene.tutorialSelectedIndex)) ? String(scene.tutorialSelectedIndex) : items[0].id;
 
   const listResult = renderListColumn({
@@ -386,7 +390,7 @@ export function showTutorialTopics(scene: HubScene) {
     detailBlock.removeAll(true);
     chromeBlock.removeAll(true);
 
-    const page = TUTORIAL_PAGES[Number(selected)];
+    const page = pages[Number(selected)];
     let rightY = columnsTop;
 
     const titleText = scene.add
