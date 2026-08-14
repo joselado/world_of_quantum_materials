@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
-import { blend } from '../art/colors';
-import { BIOMES, getBiome } from '../art/biomes';
+import { getBiome } from '../art/biomes';
 import type { Biome } from '../art/biomes';
 import { makeCrystal } from '../art/crystals';
 import { makeToken } from '../art/tokens';
@@ -18,8 +17,20 @@ import { makeAndersonAvatar } from '../art/anderson';
 import { makeFranklinAvatar } from '../art/franklin';
 import { playGuardianChime } from '../audio/sfx';
 import { stopMoveEffectPreview } from '../art/moveEffectPreview';
-import { project, fogColor, HORIZON_Y, LANE_PX, CANVAS_W, CANVAS_H, ProjectedPoint } from '../art/perspective';
-import { buildContourGrid, ContourPoint, MAX_OFFSET, TileContour } from '../art/contours';
+import { project, CANVAS_W, CANVAS_H } from '../art/perspective';
+import {
+  CAMERA_BACK_TILES,
+  DRAW_DISTANCE_TILES,
+  GRID_H,
+  GRID_W,
+  LANE_CLIP,
+  TILE_SCALE,
+  projectTile,
+} from './overworld/projection';
+import { drawSky, forwardHazeBlend } from './overworld/sky';
+import { buildTerrainPlan } from './overworld/terrain/plan';
+import { drawTerrain } from './overworld/terrain/paint';
+import type { TerrainPlan, TerrainView } from './overworld/terrain/types';
 import {
   PLAYER_MATERIAL,
   WORLD_NAMES,
@@ -86,65 +97,6 @@ interface SavedMapState {
   reachedMiddle: boolean;
 }
 
-// What a tile's terrain actually is, once the grid has been read: 'path' is
-// walkable trail, 'solid' plain impassable ground (rock-theme or
-// region-tinted), and 'lava'/'water'/'void' the themes that lay an animated
-// accent over that same ground (see drawOffPathTile).
-type TerrainKind = 'path' | 'solid' | 'lava' | 'water' | 'void';
-
-// One tile's terrain, resolved from the grid (walkable, regionColor,
-// biomeOverride, flowerMap, midTile) into everything drawWorld needs that
-// doesn't depend on where the camera currently is -- see
-// OverworldScene.terrainPlan().
-interface TerrainTile {
-  kind: TerrainKind;
-  biome: Biome;
-  regionTint: number | null;
-  decorate: boolean;
-  midHighlight: boolean;
-}
-
-// Grid is deliberately fine-grained (many small tiles) rather than few large
-// ones, so each arrow-key step moves the camera a small distance. TILE_SCALE
-// shrinks every tile's footprint in world space; DRAW_DISTANCE_TILES and
-// LANE_CLIP are widened by the inverse factor so the visible world (in
-// screen terms) covers the same ground as before, just in smaller steps.
-const GRID_W = 27;
-const GRID_H = 50;
-const TILE_SCALE = 0.6;
-// How far off-center an actor can stand and still be worth drawing, in
-// tile-widths. The ground plane does not use this -- how wide the ground has
-// to be painted to fill the frame depends on how far away it is (laneClipAt).
-const LANE_CLIP = 8.5;
-const DRAW_DISTANCE_TILES = 15;
-// The far quarter of the draw distance is painted as pure atmosphere by
-// drawHorizonBand rather than left to the per-tile fog, which caps well short
-// of the haze color and would otherwise let the deepest rows surface as a
-// visible edge. It is also exactly where the detail passes (tile decoration,
-// terrain accents, actor sprites) already stop, so the band covers only
-// ground that had nothing left on it.
-const HORIZON_BAND_FROM = 0.75;
-// Thinnest projected row still worth painting, in screen pixels. The
-// projection is asymptotic, so rows keep compressing toward the horizon long
-// after they stop being resolvable; below a pixel they only alias and crawl
-// as the camera moves, and the horizon band covers that strip instead.
-const MIN_ROW_PX = 1;
-// How far south of the goal row the next world's fog starts bleeding into
-// this one's, in tiles, and how much of it has arrived by the goal row
-// itself. Held under 1 so the world keeps some of its own air even standing
-// at the gate; the fog target is applied in proportion to depth, so at the
-// goal row this recolors the distance and leaves the ground underfoot alone.
-const HAZE_INHERIT_TILES = 12;
-const HAZE_INHERIT_MAX = 0.8;
-// How far behind the player's own tile the camera sits, in tile-lengths.
-// Every depth handed to projectTile is measured from the player's tile
-// centre, and this is what turns that into the camera-relative depth the
-// projection wants. It is the whole reason the avatar can be drawn on-screen
-// standing on the tile the collision grid puts it on: at zero pullback the
-// player's tile centre projects to the very bottom edge of the canvas, so the
-// avatar would have to be drawn somewhere ahead of its own tile to be visible
-// at all -- and would then overlap whatever is beyond the tile it can walk on.
-const CAMERA_BACK_TILES = 0.7;
 const CRYSTAL_SIZE = 22;
 const TOKEN_SIZE = 26;
 const PLAYER_CRYSTAL_SIZE = 34;
@@ -171,15 +123,6 @@ const BOSS_CRYSTAL_SIZE = 78;
 // well under the boss (78) it shares the goal tile with once that world's
 // rival is beaten -- a doorway is a landmark, not a threat.
 const DOOR_SPRITE_SIZE = 46;
-// Contact-shadow strength per band, darkest first (art/contours.ts's
-// FLOOR_SHADOW_BANDS / SOLID_SHADOW_BANDS), and the depth past which the
-// junction is too small on screen to be worth the extra fills.
-const CONTACT_SHADOW_ALPHA = [0.24, 0.12];
-const CONTACT_SHADOW_MAX_DEPTH = 0.7;
-// The lit lip along the walkable side of the same boundary -- a pale edge
-// against the darker mass beyond it, which also keeps the walkable region's
-// own shape readable further into the distance than its fill alone would.
-const CONTOUR_RIM_ALPHA = 0.3;
 const QUIZ_CORRECT_MULTIPLIER = 1.5;
 const QUIZ_WRONG_MULTIPLIER = 0.6;
 
@@ -492,20 +435,13 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // whose generator doesn't use them.
   private regionColor: (number | null)[][] = [];
   private biomeOverride: (number | null)[][] = [];
-  // Whole-grid terrain classification, built on demand by terrainPlan() and
-  // dropped in create() once the map for this visit is in place. Phaser
-  // reuses the same scene instance across every scene.start, so a plan built
-  // for a previous visit would otherwise survive into the next one; anything
-  // that ever mutates the grid mid-visit (destructible walls, revealed
-  // terrain) has to drop it the same way.
-  private terrainPlanCache?: TerrainTile[][];
-  // Smoothed walkable/impassable boundary geometry, built from the same grid
-  // at the same time as terrainPlanCache and dropped alongside it. A tile away
-  // from any boundary has no entry (null) and is drawn as a plain quad.
-  private contourGrid: (TileContour | null)[][] = [];
-  // Northernmost row the corridor reaches, resolved with the plan and dropped
-  // alongside it (see findFarEdgeRow).
-  private farEdgeRow = 0;
+  // Whole-grid terrain classification and boundary geometry, built on demand
+  // by terrainPlan() and dropped in create() once the map for this visit is in
+  // place. Phaser reuses the same scene instance across every scene.start, so
+  // a plan built for a previous visit would otherwise survive into the next
+  // one; anything that ever mutates the grid mid-visit (destructible walls,
+  // revealed terrain) has to drop it the same way.
+  private terrainPlanCache?: TerrainPlan;
   // Per-frame memo for hazeTarget's forward blend, keyed by a biome's own fog
   // color: the blend factor only changes between frames, and world 9's defect
   // patches put several biomes on screen at once.
@@ -801,10 +737,9 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       this.generateMap();
     }
     this.terrainPlanCache = undefined;
-    this.contourGrid = [];
     this.camPos = { x: this.playerTile.x, y: this.playerTile.y };
 
-    this.drawSky();
+    drawSky(this, this.biome);
     this.worldGfx = this.add.graphics();
     this.spawnCrystalSprites();
     this.spawnTokenSprites();
@@ -1178,45 +1113,6 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.scene.start('Hub');
   }
 
-  private drawSky() {
-    const g = this.add.graphics();
-    g.fillGradientStyle(this.biome.skyTop, this.biome.skyTop, this.biome.skyBottom, this.biome.skyBottom, 1);
-    g.fillRect(0, 0, CANVAS_W, HORIZON_Y);
-
-    // Base ground haze fill so the far distance (beyond where individual
-    // grid tiles are drawn) and the strip either side of the path still
-    // read as ground, not void.
-    g.fillStyle(this.groundColor(this.biome.ground, 1, this.biome.fogTarget), 1);
-    g.fillRect(0, HORIZON_Y, CANVAS_W, CANVAS_H - HORIZON_Y);
-
-    g.fillStyle(this.biome.hillColor, this.biome.hillAlpha);
-    g.beginPath();
-    g.moveTo(0, HORIZON_Y);
-    for (let x = 0; x <= CANVAS_W; x += 32) {
-      g.lineTo(x, HORIZON_Y - 20 - Math.sin(x * 0.012) * 12 - Math.sin(x * 0.035) * 6);
-    }
-    g.lineTo(CANVAS_W, HORIZON_Y);
-    g.closePath();
-    g.fillPath();
-
-    if (this.biome.clouds) {
-      [
-        [90, 40],
-        [230, 65],
-        [400, 50],
-        [530, 32],
-      ].forEach(([x, y]) => this.drawCloud(x, y));
-    }
-  }
-
-  private drawCloud(x: number, y: number) {
-    const g = this.add.graphics();
-    g.fillStyle(0xffffff, 0.85);
-    g.fillEllipse(x, y, 50, 20);
-    g.fillEllipse(x - 20, y + 5, 32, 16);
-    g.fillEllipse(x + 20, y + 5, 32, 16);
-  }
-
   private idleBob() {
     this.tweens.add({
       targets: this.player,
@@ -1291,674 +1187,53 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     }
   }
 
-  // Tile lanes/depths are defined in grid-index units, measured from the
-  // player's own tile (lane 0, depth 0 is the tile the player stands on).
-  // Every projection goes through here so the world-space size of a tile
-  // (TILE_SCALE) and the camera's pullback behind the player
-  // (CAMERA_BACK_TILES) are applied consistently for both the ground mesh and
-  // the crystal sprites.
-  private projectTile(lane: number, depth: number): ProjectedPoint {
-    return project(lane * TILE_SCALE, (depth + CAMERA_BACK_TILES) * TILE_SCALE);
-  }
-
-  // How far off-center the ground has to be painted, in tile-widths, for the
-  // row at this depth to reach both sides of the frame. A fixed lane window
-  // cannot do this job: the projection shrinks a tile-width toward the
-  // vanishing point, so one that fills the frame up close covers a narrowing
-  // wedge in the distance and leaves the far corners of the screen on bare
-  // backdrop. One tile of slack past the frame edge keeps the outermost tile's
-  // own width in play rather than ending exactly on it.
-  private laneClipAt(depth: number): number {
-    return CANVAS_W / 2 / (TILE_SCALE * LANE_PX * this.projectTile(0, depth).scale) + 1;
-  }
-
-  // Terrain rendering splits in two: reading the grid (this, cached for as
-  // long as the grid stands still) and projecting/painting it (drawWorld,
-  // every frame). Everything here is camera-independent, so the whole grid
-  // is classified in one pass rather than just the currently-visible window
-  // -- a shape that spans the window edge (a wall run, a traced boundary)
-  // stays one continuous shape instead of being cut at whatever the camera
-  // happened to see when the plan was built.
-  private terrainPlan(): TerrainTile[][] {
+  // Terrain rendering splits in two: reading the grid (overworld/terrain/
+  // plan.ts) and projecting/painting it (overworld/terrain/paint.ts, every
+  // frame). The read half is cached here for as long as the grid stands
+  // still; create() drops the cache right after the map for this visit is in
+  // place, which is mandatory rather than defensive: Phaser reuses the same
+  // scene instance across every scene.start, so a plan built for the previous
+  // visit would otherwise survive into the next one, and anything that ever
+  // mutates the grid mid-visit has to drop it the same way.
+  private terrainPlan(): TerrainPlan {
     if (!this.terrainPlanCache) {
-      this.terrainPlanCache = this.buildTerrainPlan();
-      this.farEdgeRow = this.findFarEdgeRow();
-      this.contourGrid = buildContourGrid(this.depthContinuedWalkable(), GRID_W, GRID_H);
+      this.terrainPlanCache = buildTerrainPlan({
+        walkable: this.walkable,
+        regionColor: this.regionColor,
+        biomeOverride: this.biomeOverride,
+        flowerMap: this.flowerMap,
+        midTile: this.midTile,
+        biome: this.biome,
+      });
     }
     return this.terrainPlanCache;
   }
 
-  // The northernmost row the corridor reaches -- every generator paints its
-  // last band on the goal row and leaves the rows north of it unwalkable, so
-  // this is the last row that carries the path. It is the row the depth
-  // margin (drawMarginRows) continues toward the horizon, the way the lateral
-  // margin continues the grid's left/right edge column.
-  private findFarEdgeRow(): number {
-    for (let y = 0; y < GRID_H; y++) {
-      for (let x = 0; x < GRID_W; x++) {
-        if (this.walkable[y]?.[x]) return y;
-      }
-    }
-    return 0;
+  // Everything the terrain paint pass reads, gathered once per frame so the
+  // drawing modules never reach back into this scene -- the same
+  // written-against-an-interface split the guardian panels already use
+  // (GuardianPanelHost). Assembled fresh every frame, since all of it except
+  // the plan is camera- or clock-dependent.
+  private terrainView(): TerrainView {
+    return {
+      gfx: this.worldGfx,
+      plan: this.terrainPlan(),
+      camX: this.camPos.x,
+      camY: this.camPos.y,
+      biome: this.biome,
+      world: this.world,
+      midTile: this.midTile,
+      chokepointColor: OverworldScene.WORLD_GUARDIANS[this.world]?.strokeColor ?? GOLD_ACCENT,
+      now: this.time.now,
+      hazeBlend: this.hazeBlend,
+      hazeCache: this.hazeCache,
+    };
   }
 
-  // The walkability the contour trace sees: the real grid, with every row
-  // north of the far edge row carrying that row's walkability instead of its
-  // own. The trace treats out-of-grid as impassable, so without this the far
-  // edge row's path tiles would be traced as bounded on their north side and
-  // wear a boundary curve, contact shadow and rim light straight across a
-  // road the depth margin then continues past them. Movement still collides
-  // against the untouched `walkable` grid, so the repeated road is scenery:
-  // the player leaves through the goal tile, not by walking up it.
-  private depthContinuedWalkable(): boolean[][] {
-    const edge = this.farEdgeRow;
-    if (edge <= 0) return this.walkable;
-    const out: boolean[][] = [];
-    for (let y = 0; y < GRID_H; y++) out.push(y < edge ? [...this.walkable[edge]] : this.walkable[y]);
-    return out;
-  }
-
-  private buildTerrainPlan(): TerrainTile[][] {
-    const plan: TerrainTile[][] = [];
-    for (let y = 0; y < GRID_H; y++) {
-      const row: TerrainTile[] = [];
-      for (let x = 0; x < GRID_W; x++) {
-        // World 9's defect patches (world/generators/world9.ts) tag a tile
-        // with which world's biome table it should render with instead of
-        // this scene's own -- every other world leaves this null.
-        const overrideWorld = this.biomeOverride[y]?.[x];
-        const biome = overrideWorld != null ? getBiome(overrideWorld) : this.biome;
-        const regionTint = this.regionColor[y]?.[x] ?? null;
-        // A region tint outranks the biome's own wallTheme: a mapgen domain
-        // (world/mapgen.ts's Voronoi regions, world3.ts) should read as a
-        // distinct solid zone the player walks around, not as whatever
-        // hazard terrain that biome's off-path tiles happen to use.
-        const kind: TerrainKind = this.walkable[y]?.[x]
-          ? 'path'
-          : regionTint != null || biome.wallTheme === 'rock'
-            ? 'solid'
-            : biome.wallTheme;
-        row.push({
-          kind,
-          biome,
-          regionTint,
-          decorate: !!this.flowerMap[y]?.[x],
-          midHighlight: Math.abs(x - this.midTile.x) <= 1 && Math.abs(y - this.midTile.y) <= 1,
-        });
-      }
-      plan.push(row);
-    }
-    return plan;
-  }
-
-  // Projects and paints the visible slice of the terrain plan every frame
-  // from the current (possibly mid-tween) camera position -- what makes the
-  // world scroll continuously rather than snapping tile-by-tile. Only the
-  // projection, the depth-based fog/detail falloff, and the animated
-  // (time-driven) accents are computed here; everything that depends on the
-  // grid rather than the camera comes precomputed from terrainPlan().
   private drawWorld() {
-    const g = this.worldGfx;
-    g.clear();
-
-    const plan = this.terrainPlan();
-    const camX = this.camPos.x;
-    const camY = this.camPos.y;
-    this.hazeBlend = this.forwardHazeBlend();
+    this.hazeBlend = forwardHazeBlend(this.world, this.isRivalDefeated(), this.camPos.y, this.goalTile.y);
     this.hazeCache.clear();
-    // The deepest row drawn at all: where the depth fog saturates
-    // (depthRatio 1), which is the same bound the depth margin runs to.
-    const deepestRow = Math.floor(camY - DRAW_DISTANCE_TILES);
-    const minY = Math.max(this.farEdgeRow, deepestRow);
-    // Rows behind the player are still in frame -- the camera stands
-    // CAMERA_BACK_TILES behind the player's tile, so the ground the player
-    // has already walked over is what fills the bottom of the screen. The
-    // per-tile near-plane test below is what actually stops the sweep.
-    const maxY = Math.min(GRID_H - 1, Math.floor(camY) + 2);
-
-    // Farthest first, so every nearer row paints over it.
-    this.drawMarginRows(g, plan, camX, camY, deepestRow);
-
-    for (let y = minY; y <= maxY; y++) {
-      this.drawMarginColumns(g, plan[y], y, camX, camY);
-      const laneClip = this.laneClipAt(camY - y + 0.5);
-      for (let x = 0; x < GRID_W; x++) {
-        const laneL = x - camX - 0.5;
-        const laneR = x - camX + 0.5;
-        if (laneL > laneClip || laneR < -laneClip) continue;
-
-        const depthFar = camY - y + 0.5;
-        const depthNear = camY - y - 0.5;
-        if (depthFar + CAMERA_BACK_TILES <= 0) continue;
-
-        const pFL = this.projectTile(laneL, depthFar);
-        const pFR = this.projectTile(laneR, depthFar);
-        const pNR = this.projectTile(laneR, depthNear);
-        const pNL = this.projectTile(laneL, depthNear);
-
-        const depthRatio = Phaser.Math.Clamp(depthFar / DRAW_DISTANCE_TILES, 0, 1);
-        const tile = plan[y][x];
-        const contour = this.contourGrid[y]?.[x] ?? null;
-        const fill = contour ? this.projectContour(contour.outline, camX, camY) : [pFL, pFR, pNR, pNL];
-
-        if (tile.kind === 'path') {
-          let color = this.groundColor(tile.biome.path, depthRatio, this.walkableHazeTarget(tile.biome));
-          if (tile.regionTint != null) color = blend(color, tile.regionTint, 0.55);
-          g.fillStyle(color, 1);
-          g.fillPoints(fill, true);
-          if (contour) this.drawContactShadow(g, contour, tile.biome, camX, camY, depthRatio);
-          if (depthRatio < 0.75 && tile.decorate) {
-            this.decorateTile(g, pFL, pFR, pNR, pNL);
-          }
-          if (tile.midHighlight) {
-            // The glow falls off radially from the guardian's own tile, so the
-            // gate reads as a pool of light: at a uniform alpha the same nine
-            // tiles read as a hard rectangle laid over a floor whose every
-            // other edge curves.
-            const spread = Math.hypot(x - this.midTile.x, y - this.midTile.y);
-            this.drawMidHighlight(g, fill, depthRatio, 1 - 0.45 * spread);
-          }
-        } else {
-          this.drawOffPathTile(g, tile, fill, contour, pFL, pFR, pNR, pNL, depthRatio);
-        }
-      }
-    }
-    this.drawDepthHaze(g);
-  }
-
-  // Projects a cached tile-space outline (art/contours.ts) at the current
-  // camera position. Each call allocates its own array: Phaser's Graphics is
-  // retained-mode, so the points handed to fillPoints are read again at flush
-  // time and cannot be reused across draw calls within a frame.
-  private projectContour(points: ContourPoint[], camX: number, camY: number): ProjectedPoint[] {
-    const out: ProjectedPoint[] = [];
-    for (const p of points) out.push(this.projectTile(p.x - camX, camY - p.y));
-    return out;
-  }
-
-  // Columns just past the grid's left/right edges, drawn wherever the camera
-  // stands close enough to an edge that the lane window reaches past it.
-  // Each one continues its row's edge tile -- same biome, same region tint,
-  // same terrain accent -- but always as impassable ground (an edge tile
-  // that is walkable floor continues as its biome's off-path terrain, never
-  // as more floor), so the world runs to the frame edge instead of stopping
-  // on a stair-stepped strip of bare backdrop. Drawn before the row's real
-  // tiles: the innermost margin column is widened by MAX_OFFSET under an
-  // adjacent walkable tile so the boundary curve's vacated sliver is covered
-  // in ground color, and the real fills then paint over the rest of the
-  // overlap. No contour/contact-shadow work happens out here -- the real
-  // grid-edge boundary is already part of the traced contour (the trace
-  // treats out-of-grid as impassable), so the floor side keeps its usual
-  // curve, shadow and rim.
-  // `row` supplies the terrain and `y` the depth, which the depth margin
-  // (drawMarginRows) separates: its rows lie past the grid's far edge and
-  // take their terrain from the far edge row.
-  private drawMarginColumns(g: Phaser.GameObjects.Graphics, row: TerrainTile[], y: number, camX: number, camY: number) {
-    const depthFar = camY - y + 0.5;
-    if (depthFar + CAMERA_BACK_TILES <= 0) return;
-    const laneClip = this.laneClipAt(depthFar);
-    for (let gx = Math.floor(camX - laneClip); gx < 0; gx++) {
-      this.drawMarginTile(g, row[0], gx, y, camX, camY, gx === -1);
-    }
-    const rightEnd = Math.ceil(camX + laneClip);
-    for (let gx = GRID_W; gx <= rightEnd; gx++) {
-      this.drawMarginTile(g, row[GRID_W - 1], gx, y, camX, camY, gx === GRID_W);
-    }
-  }
-
-  // Rows past the grid's far edge, drawn wherever the camera stands close
-  // enough to that edge that the draw distance reaches beyond it -- the depth
-  // counterpart of drawMarginColumns, so the ground plane runs to the horizon
-  // instead of terminating on a strip of bare backdrop. Each one repeats the
-  // far edge row (findFarEdgeRow) whole, terrain kind included, so the
-  // walkable path repeats with it and the road continues past the world's own
-  // end; the haze is what ends it. Two bounds keep that honest: the sweep
-  // stops where the depth fog saturates (`deepestRow`, the same bound the
-  // real rows use, beyond which nothing is distinguishable anyway and the
-  // horizon band takes over), and it stops early on any row whose projected
-  // thickness has fallen under a pixel, which would alias and crawl as the
-  // camera moves. No contour, contact shadow or decoration out here: the far
-  // edge row's own contour already runs unbroken into these rows (see
-  // depthContinuedWalkable), and every repeat is far enough out that the
-  // detail passes are already faded off.
-  private drawMarginRows(
-    g: Phaser.GameObjects.Graphics,
-    plan: TerrainTile[][],
-    camX: number,
-    camY: number,
-    deepestRow: number
-  ) {
-    const edge = plan[this.farEdgeRow];
-    for (let gy = this.farEdgeRow - 1; gy >= deepestRow; gy--) {
-      const depthFar = camY - gy + 0.5;
-      const depthNear = camY - gy - 0.5;
-      if (this.projectTile(0, depthNear).y - this.projectTile(0, depthFar).y < MIN_ROW_PX) break;
-
-      this.drawMarginColumns(g, edge, gy, camX, camY);
-      const depthRatio = Phaser.Math.Clamp(depthFar / DRAW_DISTANCE_TILES, 0, 1);
-      const laneClip = this.laneClipAt(depthFar);
-      for (let x = 0; x < GRID_W; x++) {
-        const laneL = x - camX - 0.5;
-        const laneR = x - camX + 0.5;
-        if (laneL > laneClip || laneR < -laneClip) continue;
-
-        const pFL = this.projectTile(laneL, depthFar);
-        const pFR = this.projectTile(laneR, depthFar);
-        const pNR = this.projectTile(laneR, depthNear);
-        const pNL = this.projectTile(laneL, depthNear);
-        const fill = [pFL, pFR, pNR, pNL];
-        const tile = edge[x];
-
-        if (tile.kind === 'path') {
-          let color = this.groundColor(tile.biome.path, depthRatio, this.walkableHazeTarget(tile.biome));
-          if (tile.regionTint != null) color = blend(color, tile.regionTint, 0.55);
-          g.fillStyle(color, 1);
-          g.fillPoints(fill, true);
-        } else {
-          this.drawOffPathTile(g, tile, fill, null, pFL, pFR, pNR, pNL, depthRatio);
-        }
-      }
-    }
-  }
-
-  private drawMarginTile(
-    g: Phaser.GameObjects.Graphics,
-    edge: TerrainTile,
-    gx: number,
-    y: number,
-    camX: number,
-    camY: number,
-    innermost: boolean
-  ) {
-    let laneL = gx - camX - 0.5;
-    let laneR = gx - camX + 0.5;
-    const laneClip = this.laneClipAt(camY - y + 0.5);
-    if (laneL > laneClip || laneR < -laneClip) return;
-    if (innermost && edge.kind === 'path') {
-      if (gx < 0) laneR += MAX_OFFSET;
-      else laneL -= MAX_OFFSET;
-    }
-
-    const depthFar = camY - y + 0.5;
-    const depthNear = camY - y - 0.5;
-    const depthRatio = Phaser.Math.Clamp(depthFar / DRAW_DISTANCE_TILES, 0, 1);
-    const pFL = this.projectTile(laneL, depthFar);
-    const pFR = this.projectTile(laneR, depthFar);
-    const pNR = this.projectTile(laneR, depthNear);
-    const pNL = this.projectTile(laneL, depthNear);
-    const fill = [pFL, pFR, pNR, pNL];
-
-    g.fillStyle(this.offPathColor(edge.biome, edge.regionTint, depthRatio), 1);
-    g.fillPoints(fill, true);
-
-    if (depthRatio <= 0.75) {
-      const kind: TerrainKind =
-        edge.kind !== 'path'
-          ? edge.kind
-          : edge.regionTint != null || edge.biome.wallTheme === 'rock'
-            ? 'solid'
-            : edge.biome.wallTheme;
-      if (kind === 'lava') this.drawLavaAccent(g, fill, pFL, pFR, pNR, pNL);
-      else if (kind === 'water') this.drawWaterAccent(g, pFL, pFR, pNR, pNL);
-      else if (kind === 'void') this.drawVoidAccent(g, pFL, pFR, pNR, pNL);
-    }
-  }
-
-  // A soft ambient-occlusion band hugging the walkable/impassable boundary,
-  // drawn over the ground fill from both sides of the junction, so the floor
-  // reads as tucking under the terrain beyond it rather than butting flat
-  // against it. With the per-tile seam stroke gone this and the rim light are
-  // what mark the boundary, so a run of same-kind tiles reads as one
-  // continuous region while the edge between regions stays sharp.
-  private drawContactShadow(
-    g: Phaser.GameObjects.Graphics,
-    contour: TileContour,
-    biome: Biome,
-    camX: number,
-    camY: number,
-    depthRatio: number
-  ) {
-    if (depthRatio > CONTACT_SHADOW_MAX_DEPTH) return;
-    const fade = 1 - depthRatio / CONTACT_SHADOW_MAX_DEPTH;
-    for (const strip of contour.shadow) {
-      g.fillStyle(0x000000, (CONTACT_SHADOW_ALPHA[strip.band] ?? 0) * fade);
-      g.fillPoints(this.projectContour(strip.points, camX, camY), true);
-    }
-    if (contour.rim.length === 0) return;
-    g.lineStyle(1.5, blend(biome.path, 0xffffff, 0.45), CONTOUR_RIM_ALPHA * fade);
-    for (const lip of contour.rim) g.strokePoints(this.projectContour(lip, camX, camY), false);
-  }
-
-  // Distant walkable ground hazes toward a lighter target than its
-  // surroundings do, so the route the player is planning stays visible all the
-  // way to the horizon -- letting floor and off-path converge on one haze
-  // color erases the boundary at exactly the range it is being read from.
-  private walkableHazeTarget(biome: Biome): number {
-    return blend(this.hazeTarget(biome), biome.path, 0.35);
-  }
-
-  // What the distance hazes toward: a biome's own fog color, carried toward
-  // the next world's fog as the player nears the gate, so the air ahead
-  // becomes the next world's air. Every haze in the scene reads this, so the
-  // per-tile fog and the whole-screen wash always agree on where the
-  // atmosphere is going.
-  private hazeTarget(biome: Biome): number {
-    if (this.hazeBlend <= 0) return biome.fogTarget;
-    const cached = this.hazeCache.get(biome.fogTarget);
-    if (cached != null) return cached;
-    const next = getBiome(this.world + 1).fogTarget;
-    const mixed = blend(biome.fogTarget, next, this.hazeBlend);
-    this.hazeCache.set(biome.fogTarget, mixed);
-    return mixed;
-  }
-
-  // How much of the next world's air has arrived, from the camera's distance
-  // to the goal row. Gated on the goal gate's state: while this world's rival
-  // still stands the gate is shut, and a shut gate shows nothing of what is
-  // beyond it. World 10 has no next world -- it keeps its own air the whole
-  // way, its horizon being the Qumatuomi sky rather than a neighbour.
-  private forwardHazeBlend(): number {
-    if (!BIOMES[this.world + 1]) return 0;
-    if (!this.isRivalDefeated()) return 0;
-    const rows = this.camPos.y - this.goalTile.y;
-    return Phaser.Math.Clamp(1 - rows / HAZE_INHERIT_TILES, 0, 1) * HAZE_INHERIT_MAX;
-  }
-
-  // A wash of the biome's own haze color over the far reach of the ground
-  // plane, on top of the per-tile depth fog rather than instead of it: the
-  // per-tile blend alone still hands every tile a hard edge against its
-  // neighbor, and the wash is what turns the far distance into continuous
-  // atmosphere. Drawn into worldGfx so it stays under every actor.
-  private drawDepthHaze(g: Phaser.GameObjects.Graphics) {
-    const target = this.hazeTarget(this.biome);
-    this.fillVerticalFade(g, target, HORIZON_Y, 240, (t) => 0.35 * Math.pow(1 - t, 3));
-    this.drawHorizonBand(g, target);
-  }
-
-  // A vertical alpha ramp in one flat color, painted as abutting one-pixel
-  // rows. The rows must not overlap: two translucent rects sharing a scanline
-  // blend twice there, which draws a bright line at every seam -- invisible
-  // while the color is close to the ground under it, and stripes across the
-  // whole far distance as soon as it is not (a haze carrying the next world's
-  // fog color, biomes.ts's note on holding `fogTarget` near the floor colors).
-  private fillVerticalFade(
-    g: Phaser.GameObjects.Graphics,
-    color: number,
-    top: number,
-    height: number,
-    alphaAt: (t: number) => number
-  ) {
-    const rows = Math.max(1, Math.round(height));
-    for (let i = 0; i < rows; i++) {
-      g.fillStyle(color, alphaAt(i / rows));
-      g.fillRect(0, top + i * (height / rows), CANVAS_W, height / rows);
-    }
-  }
-
-  // The last stretch of ground is painted atmosphere rather than tiles: past
-  // the fog-saturation depth rows are compressed to nothing and hold nothing
-  // the haze has not already taken, so the terrain dissolves and meets the sky
-  // as a gradient instead of on the edge of a final row. The band is fully
-  // opaque from the horizon line down to that depth -- which is what covers
-  // the deepest rows, whose own fog caps well short of the haze color and
-  // would otherwise surface as a visible edge -- and thins from there toward
-  // the camera, running out at HORIZON_BAND_FROM of the draw distance. Both
-  // ends are fixed depths rather than tracked off the deepest row drawn, so
-  // the band never slides out from under the rows as the camera creeps.
-  private drawHorizonBand(g: Phaser.GameObjects.Graphics, target: number) {
-    const solid = this.projectTile(0, DRAW_DISTANCE_TILES).y;
-    const foot = this.projectTile(0, DRAW_DISTANCE_TILES * HORIZON_BAND_FROM).y;
-    const height = foot - HORIZON_Y;
-    const solidT = (solid - HORIZON_Y) / height;
-    this.fillVerticalFade(g, target, HORIZON_Y, height, (t) =>
-      t <= solidT ? 1 : Math.pow((1 - t) / (1 - solidT), 1.5)
-    );
-  }
-
-  // The ground plane leans hard on aerial perspective: `fogColor`'s own blend
-  // caps out well short of the haze color, so pre-blend the rest of the way
-  // with a curve that starts biting close to the camera instead of only at
-  // the draw-distance edge.
-  private groundColor(base: number, depthRatio: number, target: number): number {
-    return blend(fogColor(base, depthRatio, target), target, 0.4 * Math.pow(depthRatio, 0.9));
-  }
-
-  // The guardian chokepoint (invariant B, world/mapgen.ts's forceChokepoint)
-  // gets its own floor treatment -- a soft pulsing glow over the same path
-  // fill, in that world's own guardian color (WORLD_GUARDIANS' strokeColor,
-  // the same per-guardian color coding every panel/pill already uses) --
-  // covering `midTile` and its immediate neighbors so the forced pinch reads
-  // as a deliberate gate the player is walking through, not an arbitrary
-  // narrow spot.
-  private drawMidHighlight(g: Phaser.GameObjects.Graphics, fill: ProjectedPoint[], depthRatio: number, falloff: number) {
-    if (depthRatio > 0.9) return;
-    const glowColor = OverworldScene.WORLD_GUARDIANS[this.world]?.strokeColor ?? GOLD_ACCENT;
-    const pulse = 0.5 + 0.5 * Math.sin(this.time.now / 320);
-    g.fillStyle(glowColor, 0.28 * pulse * (1 - depthRatio) * falloff);
-    g.fillPoints(fill, true);
-  }
-
-  // Paints one impassable tile. Every off-path tile is flat ground in that
-  // biome's own off-path color, sitting in the same plane as the walkable
-  // floor; what its `wallTheme` decides (through the terrain kind resolved in
-  // buildTerrainPlan) is only the accent laid over that fill, so each world's
-  // impassable terrain still reads as its own material -- 'lava' a glowing
-  // molten crust, 'water' a rippling frozen lake, 'void' a starlit drop, and
-  // 'solid' bare ground with no accent at all. The "you cannot walk here"
-  // read comes from the color break plus the contact shadow and rim light at
-  // the boundary, which every theme gets alike. A region-tinted tile resolves
-  // to 'solid' and so keeps its domain color clean of any accent.
-  private drawOffPathTile(
-    g: Phaser.GameObjects.Graphics,
-    tile: TerrainTile,
-    fill: ProjectedPoint[],
-    contour: TileContour | null,
-    pFL: ProjectedPoint,
-    pFR: ProjectedPoint,
-    pNR: ProjectedPoint,
-    pNL: ProjectedPoint,
-    depthRatio: number
-  ) {
-    g.fillStyle(this.offPathColor(tile.biome, tile.regionTint, depthRatio), 1);
-    g.fillPoints(fill, true);
-
-    // Every accent is skipped past depthRatio 0.75 (the same gate
-    // `decorateTile` uses) so distant tiles stay a cheap flat fill rather than
-    // paying the animated-detail cost for the couple hundred off-path tiles a
-    // single frame can contain.
-    if (depthRatio <= 0.75) {
-      if (tile.kind === 'lava') this.drawLavaAccent(g, fill, pFL, pFR, pNR, pNL);
-      else if (tile.kind === 'water') this.drawWaterAccent(g, pFL, pFR, pNR, pNL);
-      else if (tile.kind === 'void') this.drawVoidAccent(g, pFL, pFR, pNR, pNL);
-    }
-
-    // The impassable side of the contact shadow, over the accent rather than
-    // under it, so the junction is shaded from both sides no matter which
-    // theme this tile draws.
-    if (contour) this.drawContactShadow(g, contour, tile.biome, this.camPos.x, this.camPos.y, depthRatio);
-  }
-
-  // The flat fill color of an impassable tile: the biome's own off-path
-  // ground, hazed for depth, tinted toward a mapgen domain's color where the
-  // tile belongs to one.
-  private offPathColor(biome: Biome, regionTint: number | null, depthRatio: number): number {
-    const base = this.groundColor(biome.ground, depthRatio, this.hazeTarget(biome));
-    return regionTint != null ? blend(base, regionTint, 0.6) : base;
-  }
-
-  // 'lava' (Defect Wastes, world 9): a glowing molten crust over the off-path
-  // fill -- a pulsing warm wash, a bright crack line and a hot core dot.
-  private drawLavaAccent(
-    g: Phaser.GameObjects.Graphics,
-    fill: ProjectedPoint[],
-    pFL: ProjectedPoint,
-    pFR: ProjectedPoint,
-    pNR: ProjectedPoint,
-    pNL: ProjectedPoint
-  ) {
-    const cx = (pFL.x + pFR.x + pNR.x + pNL.x) / 4;
-    const cy = (pFL.y + pFR.y + pNR.y + pNL.y) / 4;
-    const s = pNL.scale;
-    // Phase from the tile's screen position, geometry from its own center.
-    // The spatial frequency is kept low -- a fraction of a radian between
-    // neighboring tiles -- so the glow drifts across the crust as broad slow
-    // waves; a phase step of a radian or more per tile makes adjacent tiles
-    // pulse against each other and the whole crust read as a checkerboard of
-    // the very tile grid the smoothed terrain is meant to hide. The wash is
-    // also held dim enough that the crust never climbs toward the scorched
-    // clay of the walkable route (biomes.ts's crackedWorld) -- the world
-    // stays all reds, told apart by value.
-    const pulse = 0.55 + 0.45 * Math.sin(this.time.now / 260 + cx * 0.012 + cy * 0.007);
-
-    g.fillStyle(0xff5a1a, 0.24 * pulse);
-    g.fillPoints(fill, true);
-
-    g.lineStyle(1.6, 0xffcf4a, 0.6 * pulse);
-    g.beginPath();
-    g.moveTo(cx - 2.6 * s, cy - 1.2 * s);
-    g.lineTo(cx - 0.4 * s, cy + 0.6 * s);
-    g.lineTo(cx + 1.6 * s, cy - 0.8 * s);
-    g.strokePath();
-
-    g.fillStyle(0xfff0a0, 0.55 * pulse);
-    g.fillCircle(cx, cy, 1.1 * s * pulse);
-  }
-
-  // 'water' (Frozen Caverns, world 5): a rippling frozen lake -- shimmer
-  // streaks and a pale highlight drifting over the off-path fill.
-  private drawWaterAccent(
-    g: Phaser.GameObjects.Graphics,
-    pFL: ProjectedPoint,
-    pFR: ProjectedPoint,
-    pNR: ProjectedPoint,
-    pNL: ProjectedPoint
-  ) {
-    const cx = (pFL.x + pFR.x + pNR.x + pNL.x) / 4;
-    const cy = (pFL.y + pFR.y + pNR.y + pNL.y) / 4;
-    const s = pNL.scale;
-    const shimmer = 0.4 + 0.35 * Math.sin(this.time.now / 420 + cx * 0.04);
-
-    g.lineStyle(1, 0xcdeeff, 0.35 * shimmer);
-    g.lineBetween(cx - 2.4 * s, cy - 0.4 * s, cx + 2.4 * s, cy - 0.9 * s);
-    g.lineBetween(cx - 2 * s, cy + 0.6 * s, cx + 2 * s, cy + 0.2 * s);
-
-    g.fillStyle(0xffffff, 0.2 * shimmer);
-    g.fillEllipse(cx - 0.6 * s, cy - 0.5 * s, 2.4 * s, 0.6 * s);
-  }
-
-  // 'void' (Topological Islands, world 3): the dark drop between islands --
-  // a couple of faint stars glinting up out of it, so stepping off the path
-  // reads as falling into open space rather than onto darker ground.
-  private drawVoidAccent(
-    g: Phaser.GameObjects.Graphics,
-    pFL: ProjectedPoint,
-    pFR: ProjectedPoint,
-    pNR: ProjectedPoint,
-    pNL: ProjectedPoint
-  ) {
-    const cx = (pFL.x + pFR.x + pNR.x + pNL.x) / 4;
-    const cy = (pFL.y + pFR.y + pNR.y + pNL.y) / 4;
-    const s = pNL.scale;
-    const twinkle = 0.45 + 0.35 * Math.sin(this.time.now / 700 + cx * 0.07 + cy * 0.05);
-
-    g.fillStyle(0xdfe9ff, 0.7 * twinkle);
-    g.fillCircle(cx - 1.8 * s, cy - 0.7 * s, 0.5 * s);
-    g.fillStyle(0xdfe9ff, 0.45 * (1 - twinkle));
-    g.fillCircle(cx + 1.5 * s, cy + 0.8 * s, 0.4 * s);
-  }
-
-  private decorateTile(
-    g: Phaser.GameObjects.Graphics,
-    pFL: { x: number; y: number },
-    pFR: { x: number; y: number },
-    pNR: { x: number; y: number },
-    pNL: { x: number; y: number; scale: number }
-  ) {
-    const cx = (pFL.x + pFR.x + pNR.x + pNL.x) / 4;
-    const cy = (pFL.y + pFR.y + pNR.y + pNL.y) / 4;
-    const s = pNL.scale;
-
-    if (this.biome.decoration === 'crystalGlints') {
-      g.fillStyle(0x8fe8ff, 0.85);
-      [0, 1, 2].forEach((i) => {
-        const ang = (i * Math.PI * 2) / 3 - Math.PI / 2;
-        g.fillCircle(cx + Math.cos(ang) * 2 * s, cy + Math.sin(ang) * 1.4 * s, 1.4 * s);
-      });
-      g.fillStyle(0xffffff, 0.9);
-      g.fillCircle(cx, cy, 1 * s);
-      return;
-    }
-
-    // World 4 (QHE/Landau levels): short parallel field-line strokes with a
-    // small quantized-orbit ring, evoking magnetic field lines threading the
-    // terrain.
-    if (this.biome.decoration === 'fieldLines') {
-      g.lineStyle(1, 0x9fd8ff, 0.8);
-      [-2.4, 0, 2.4].forEach((off) => {
-        g.lineBetween(cx - 2.2 * s + off * s, cy - 1.6 * s, cx - 2.2 * s + off * s, cy + 1.6 * s);
-      });
-      g.lineStyle(1, 0xffffff, 0.7);
-      g.strokeCircle(cx, cy, 1.6 * s);
-      return;
-    }
-
-    // World 7 (entanglement/tensor networks): a small graph -- a few nodes
-    // joined by bond lines, matching the biome's "bonds as paths" theme.
-    if (this.biome.decoration === 'networkNodes') {
-      const pts = [
-        { x: cx - 2 * s, y: cy + 1 * s },
-        { x: cx, y: cy - 1.8 * s },
-        { x: cx + 2 * s, y: cy + 1 * s },
-      ];
-      g.lineStyle(1, 0xc9a8f0, 0.75);
-      g.lineBetween(pts[0].x, pts[0].y, pts[1].x, pts[1].y);
-      g.lineBetween(pts[1].x, pts[1].y, pts[2].x, pts[2].y);
-      g.lineBetween(pts[0].x, pts[0].y, pts[2].x, pts[2].y);
-      g.fillStyle(0xffffff, 0.9);
-      pts.forEach((p) => g.fillCircle(p.x, p.y, 1.1 * s));
-      return;
-    }
-
-    // World 6 (classical magnetism/magnons): concentric ripple rings, as if
-    // a magnon wave just passed through the grass.
-    if (this.biome.decoration === 'ripples') {
-      g.lineStyle(1, 0xfff3c9, 0.75);
-      [1.2, 2.2].forEach((r) => g.strokeCircle(cx, cy, r * s));
-      return;
-    }
-
-    // World 9 (excitations/defects): a jagged crack in the ground, the
-    // world's "cracked/glitching" theme made literal.
-    if (this.biome.decoration === 'cracks') {
-      g.lineStyle(1.4, 0xff8a5a, 0.85);
-      g.beginPath();
-      g.moveTo(cx - 2.4 * s, cy - 1.4 * s);
-      g.lineTo(cx - 0.6 * s, cy - 0.2 * s);
-      g.lineTo(cx + 0.8 * s, cy - 1 * s);
-      g.lineTo(cx + 2.4 * s, cy + 1.4 * s);
-      g.strokePath();
-      return;
-    }
-
-    // World 8 (spin liquid/Kondo): soft overlapping fog wisps rather than a
-    // sharp shape, matching the "fractionalizes on contact" foggy theme.
-    if (this.biome.decoration === 'mistMotes') {
-      g.fillStyle(0xdfe6df, 0.28);
-      [
-        [-1.6, 0],
-        [1.6, 0.4],
-        [0, -0.6],
-      ].forEach(([ox, oy]) => g.fillEllipse(cx + ox * s, cy + oy * s, 3.2 * s, 1.6 * s));
-      return;
-    }
-
-    g.fillStyle(0xffffff, 0.9);
-    [0, 1, 2, 3].forEach((i) => {
-      const ang = (i * Math.PI) / 2;
-      g.fillCircle(cx + Math.cos(ang) * 2.4 * s, cy + Math.sin(ang) * 1.6 * s, 1.8 * s);
-    });
-    g.fillStyle(0xffdd55, 1);
-    g.fillCircle(cx, cy, 1.3 * s);
+    drawTerrain(this.terrainView());
   }
 
   // One Container(+Text) per encounter/token tile, created once and
@@ -2244,7 +1519,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       // `p` is the sprite's tile centre on the ground plane, so the art is
       // lifted by its own ground-contact offset to stand on that point rather
       // than being centred over it.
-      const p = this.projectTile(lane, depth);
+      const p = projectTile(lane, depth);
       const bob = Math.sin(t * 0.004 + c.seed * 2.3) * 3 * p.scale;
       const originY = p.y - c.foot * p.scale + bob;
 
