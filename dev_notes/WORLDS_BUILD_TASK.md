@@ -121,6 +121,22 @@ and this is the bulk of the engineering:
 Palette values per world are in `WORLDS.md` §3. Note World 4 is storm **indigo**
 (not violet) and World 6's aurora is **pure green** — violet belongs to World 10.
 
+**`hillColor` and `hillAlpha` are not free palette fields.** They carry a
+world's **distant self** (`WORLDS.md` §4): `hillColor` is the silhouette's base
+colour, drowned toward the live blended haze value at render and never baked;
+`hillAlpha` is its **swallow** amount, and it is read by the world *depicted*,
+not by the world being stood in — which is why the Entangled Web and the
+Splitting Hollow sit at zero and World 6's horizon empties out as the player
+approaches World 7. Rewriting these as ordinary colours would silently undo
+that. `BattleScene`'s near ridgeline is deliberately decoupled from `hillAlpha`
+for the same reason; keep it that way.
+
+One consequence worth acting on while re-authoring: **World 4's forward horizon
+is currently near-invisible**, because World 5's base colour sits ~5 luminance
+from World 4's own fog and no swallow value can separate them. Fixing that means
+re-authoring the Vortex Glacier's base colour, which is world identity and so
+belongs here rather than to a horizon stage.
+
 Also in scope, because the theming depends on it: **the ground-decoration
 pipeline is currently dead code.** `generateMap` only marks `flowerMap` for
 non-walkable tiles, while `drawWorld`'s decoration draw is reached only from the
