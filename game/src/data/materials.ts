@@ -561,17 +561,29 @@ export function getTunedMoveClass(registry: RegistryLike, moveId: string): MoveC
 // falls back to) -- so unlike a static move name, this one never goes stale
 // relative to what the move actually mismatches with. The move's own fixed
 // shape (Lance vs. Eruption vs. Meteor vs. Nova) is read off its static
-// `name`'s own second word rather than a second hand-authored word list, so
-// a future MOVES rename stays in sync automatically; only the quasiparticle word in front
+// `name` with that move's own quasiparticle label stripped from the front,
+// rather than from a second hand-authored word list, so a future MOVES
+// rename stays in sync automatically; only the quasiparticle word in front
 // of it changes -- QUASIPARTICLE_NAMES's bare noun (not the raw move name)
 // so a multi-word quasiparticle like 'heavyFermion' still reads as "Heavy
-// Fermion Meteor", not a truncated "Heavy Meteor". Reads getTunedMoveClass
+// Fermion Meteor", not a truncated "Heavy Meteor". Stripping the label
+// rather than a fixed one word is what makes that work in both directions:
+// 'heavyFermion' is two words, so "Heavy Fermion Pulse" has to yield the
+// shape "Pulse" and not a stray "Fermion Pulse". A name that does not begin
+// with its own class's label falls back to dropping the first word; the one
+// class with no quasiparticle noun, Kondo's 'screening', never reaches here
+// at all, since moveDisplayName routes it to its static name instead.
+// Reads getTunedMoveClass
 // rather than the raw assignment, so if the current form can't host the
 // tuned class anymore the name reverts to its Phonon form too, matching what
 // the mismatch check actually uses.
 export function tunedMoveDisplayName(registry: RegistryLike, moveId: string): string {
+  const move = MOVES[moveId];
   const active = getTunedMoveClass(registry, moveId);
-  const shape = MOVES[moveId].name.split(' ').slice(1).join(' ');
+  const ownLabel = `${quasiparticleLabel(move.class)} `;
+  const shape = move.name.startsWith(ownLabel)
+    ? move.name.slice(ownLabel.length)
+    : move.name.split(' ').slice(1).join(' ');
   return `${quasiparticleLabel(active)} ${shape}`;
 }
 
