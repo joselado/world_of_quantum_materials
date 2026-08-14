@@ -1455,7 +1455,16 @@ reads as the wood being mown flat at a fixed range.
 Splitting Hollow's `fog` in two palettes. That sharing is a story beat rather than an optimization
 -- the wood skirted at the start is the thing the player is lost inside near the end, and it only
 lands if the trees are recognisable -- so a change there changes both worlds at once, which is the
-coupling wanted. Trees, columns and shards stand up off the ground plane; the plane itself stays
+coupling wanted. A wood is also by far the most expensive surround to draw -- trees are over half
+of the command buffer in both worlds that have them, which are the two most expensive worlds in the
+game -- so the crown is tiered on the tile's own `detail`: the full three-lobe crown while `detail`
+is 1, a single lit cap over the shaded mass once the fade has started, and one trunkless blob below
+`CROWN_SILHOUETTE_DETAIL`. Keying the tiers to `detail` rather than to a distance of the file's own
+is what makes that safe -- `detail` is exactly 1 across the whole range where a tree is drawn at
+full strength, so a crown is only ever simplified once the frame is already dissolving it, the near
+wood the rhyme depends on is never touched, and a threshold keyed to a tree's *on-screen size*
+instead would snap crowns between tiers as the player walked into them. Trees, columns and shards
+stand up off the ground plane; the plane itself stays
 flat everywhere (`STYLE.md`'s "Overworld path"). They get their occlusion free from the sweep
 painting far-to-near, with no height field and no repaint pass. Adding a material means adding
 a module and a table entry (plus the `wallTheme` in `art/biomes.ts` and the matching `TerrainKind`

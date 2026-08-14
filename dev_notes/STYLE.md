@@ -348,7 +348,11 @@ than appending a changelog, so this always reflects current reality.
     there to draw.
   - **'forest'** (the Mean Fields, world 1): dense summer canopy, drawn as a wood rather than
     a hazard -- no glow, no motion. Its tree sprites are the game's one shared terrain sprite
-    (`art/trees.ts`).
+    (`art/trees.ts`). A tree keeps its full three-lobe crown for as long as it is drawn at full
+    strength, and sheds crown detail only as the depth fade takes it -- a lit cap over the shaded
+    mass once the fade has started, a single blob near the end of it. The wood stays at full
+    density throughout: what recedes is how much shape each far crown is given, never how many
+    trees there are.
   - **'columns'** (the Stone Lattice, world 2): rows of identical sandstone columns on a
     strict lattice of the grid, one every second tile in both directions, lit from one fixed
     direction with deep cast shadow between them. The regularity is the point -- a colonnade
