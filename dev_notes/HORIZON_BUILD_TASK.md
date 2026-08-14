@@ -53,6 +53,19 @@ stage drawing at depth must keep true:
   internally. Drawing must call it and must not add the camera pullback itself,
   or it double-counts.
 
+**A known limit, so it is not refiled as a bug.** Faint contour striping is
+visible in the mid-distance ground (roughly y 257–310 on screen), strongest in
+the shut states of the bright worlds. It is **row-fill quantization**: each
+projected grid row paints as one flat colour, so the depth fog can only step
+between rows rather than vary across them. It is game-wide, not a property of
+any one world, and at 1× it has to be hunted for on a clean display. The
+arrangement that keeps it that small is described in `CODEMAP.md`'s "Reaching
+the horizon" — a gentle near/mid falloff with the steepness spent late, under a
+band whose reach is derived to cover it. Anyone wanting to push further has two
+levers: the shut-state zone above, or giving the ground a per-pixel gradient
+instead of one fill per row, which is the only thing that removes the cause
+rather than masking it.
+
 ## B — Haze inheritance — built
 
 `hazeTarget`/`forwardHazeBlend` carry every haze in the scene toward the next
