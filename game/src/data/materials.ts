@@ -1574,7 +1574,7 @@ export function combineMaterials(a: Material, b: Material): Material {
 // terrain -- a player should be able to tell which course topic a world
 // covers just from its name.
 export const WORLD_NAMES: Partial<Record<number, string>> = {
-  1: 'Mean-Field Meadow',
+  1: 'The Mean Fields',
   2: 'Bloch Caverns',
   3: 'Topological Islands',
   4: 'Landau Level Terrain',

@@ -9,7 +9,7 @@ import type { AtmosphereView } from '../sky';
 // walkable trail, 'solid' plain bare impassable ground, and every other kind
 // an off-path material that lays its own accent over that same ground (see
 // materials/), one per world's impassable surround.
-export type TerrainKind = 'path' | 'solid' | 'lava' | 'water' | 'void';
+export type TerrainKind = 'path' | 'solid' | 'forest' | 'lava' | 'water' | 'void';
 
 // The kinds an impassable tile can take -- one per off-path material, each
 // with its own module under materials/.
@@ -71,6 +71,19 @@ export interface AccentTile {
   s: number;
   gx: number;
   gy: number;
+  // How far out this tile is, 0 at the camera and 1 where the depth fog
+  // saturates, and the fog color it is heading toward. An accent that ignores
+  // these keeps its full contrast to the last row it is drawn on and stands
+  // its world's palette straight up against the mist, undoing for the accent
+  // pass what the fill pass is careful to do.
+  depth: number;
+  haze: number;
+  // The detail pass's own falloff, 1 near the camera and reaching 0 at the
+  // depth accents stop being drawn at. Fading on this is what keeps a
+  // material from ending on a visible line across the middle distance --
+  // most obvious with the Mean Fields' trees, where the cutoff would read as
+  // the wood simply being mown flat at a fixed range.
+  detail: number;
   now: number;
 }
 

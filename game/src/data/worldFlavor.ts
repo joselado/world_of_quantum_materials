@@ -11,7 +11,7 @@
 // currently previewed in Bloch's own table/map, kept as plain data so the
 // copy can be edited without touching panel code.
 export const WORLD_FLAVOR: Record<number, string> = {
-  1: "Left alone, the meadow's spins have no reason to point anywhere -- the Hamiltonian doesn't care. Then one mean-field interaction tips the balance, and the whole system commits to a single broken symmetry it can no longer see a reason to abandon.",
+  1: "Left alone, the field's spins have no reason to point anywhere -- the Hamiltonian doesn't care. Then one mean-field interaction tips the balance, and the whole system commits to a single broken symmetry it can no longer see a reason to abandon.",
   2: "Every alcove here repeats its neighbor exactly, and Bloch's theorem takes that symmetry seriously: an electron built to respect it can't live in just one alcove. It spreads as a plane wave dressed by the lattice, labeled only by a crystal momentum, never a single site.",
   3: 'No single measurement inside an island tells you its phase -- only the Berry curvature, integrated over the whole filled band, and what falls out is always an integer. Where two integers disagree, the gap can only close at the border, and a protected edge channel is what that invariant looks like underfoot.',
   4: 'A field this strong bends every trajectory into a closed orbit, and only orbits enclosing a whole number of flux quanta are allowed. Electrons fill these Landau levels one flat, massively degenerate rung at a time -- the only current that survives runs along the edge.',

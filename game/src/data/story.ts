@@ -6,7 +6,7 @@
 // line at the very start and the very end. Keyed by the world just beaten,
 // not the one being entered.
 export const STORY_BEATS: Partial<Record<number, string>> = {
-  1: 'The tutorial meadow steadies. Somewhere past the crystalline caves, the Decoherence is still spreading -- and it is learning from every phase of matter you master.',
+  1: 'The two branches hold their choice. Somewhere past the standing stones, the Decoherence is still spreading -- and it is learning from every phase of matter you master.',
   2: "The caves' lattice symmetry holds again. Ahead, the floating islands are cut through with one-way edges -- another shape the Decoherence hasn't figured out yet.",
   3: 'The islands stop drifting apart. Further on, quantized orbits ring the Landau terrain -- untouched territory for whatever is unraveling these worlds.',
   4: "The Landau terrain's orbits lock back into their levels. Beyond it, the caverns run cold enough for zero resistance -- and for Majorana pairs to hide in plain sight.",
@@ -22,7 +22,7 @@ export const STORY_BEATS: Partial<Record<number, string>> = {
 // place of a single generic line repeated across all ten worlds. Falls back
 // to that generic line for a world with no entry here.
 export const WORLD_GOAL_TEXT: Partial<Record<number, string>> = {
-  1: 'You reached the far edge of the Meadow. The branches still hold.',
+  1: 'You reached the far edge of the fields. The branches still hold.',
   2: 'You reached the far end of the caves. The lattice still repeats.',
   3: 'You reached the far islands. The seam still runs, unbroken.',
   4: 'You reached the last fork of the Landau terrain. The orbits still close.',

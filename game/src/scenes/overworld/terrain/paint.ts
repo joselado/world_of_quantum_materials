@@ -86,7 +86,7 @@ export function drawTerrain(view: TerrainView) {
         g.fillPoints(fill, true);
         if (contour) drawContactShadow(g, contour, tile.biome, camX, camY, depthRatio);
         if (depthRatio < DETAIL_MAX_DEPTH && tile.decorate) {
-          decorateTile(g, view.biome, accentTile(fill, pFL, pFR, pNR, pNL, x, y, view.now));
+          decorateTile(g, view.biome, accentTile(fill, pFL, pFR, pNR, pNL, x, y, depthRatio, hazeTarget(view, tile.biome), view.now));
         }
         if (tile.midHighlight) {
           // The glow falls off radially from the guardian's own tile, so the
@@ -223,7 +223,7 @@ function drawMarginTile(view: TerrainView, edge: TerrainTile, gx: number, y: num
 
   if (depthRatio <= DETAIL_MAX_DEPTH) {
     const kind = edge.kind !== 'path' ? edge.kind : offPathKindOf(edge.biome);
-    drawAccent(g, kind, fill, pFL, pFR, pNR, pNL, gx, y, view.now);
+    drawAccent(g, kind, fill, pFL, pFR, pNR, pNL, gx, y, depthRatio, hazeTarget(view, edge.biome), view.now);
   }
 }
 
@@ -309,7 +309,7 @@ function drawOffPathTile(
   g.fillPoints(fill, true);
 
   if (depthRatio <= DETAIL_MAX_DEPTH) {
-    drawAccent(g, tile.kind, fill, pFL, pFR, pNR, pNL, gx, gy, view.now);
+    drawAccent(g, tile.kind, fill, pFL, pFR, pNR, pNL, gx, gy, depthRatio, hazeTarget(view, tile.biome), view.now);
   }
 
   // The impassable side of the contact shadow, over the accent rather than
@@ -331,12 +331,14 @@ function drawAccent(
   pNL: ProjectedPoint,
   gx: number,
   gy: number,
+  depth: number,
+  haze: number,
   now: number
 ) {
   if (kind === 'path') return;
   const accent = TERRAIN_ACCENTS[kind];
   if (!accent) return;
-  accent(g, accentTile(fill, pFL, pFR, pNR, pNL, gx, gy, now));
+  accent(g, accentTile(fill, pFL, pFR, pNR, pNL, gx, gy, depth, haze, now));
 }
 
 // The per-tile geometry every accent and every decoration works from: the
@@ -350,6 +352,8 @@ function accentTile(
   pNL: ProjectedPoint,
   gx: number,
   gy: number,
+  depth: number,
+  haze: number,
   now: number
 ): AccentTile {
   return {
@@ -359,8 +363,19 @@ function accentTile(
     s: pNL.scale,
     gx,
     gy,
+    depth,
+    haze,
+    detail: detailFade(depth),
     now,
   };
+}
+
+// The detail pass fades over its last stretch rather than stopping dead, so
+// no material ends on a line drawn across the middle distance.
+const DETAIL_FADE_FROM = DETAIL_MAX_DEPTH * 0.62;
+
+function detailFade(depth: number): number {
+  return Phaser.Math.Clamp((DETAIL_MAX_DEPTH - depth) / (DETAIL_MAX_DEPTH - DETAIL_FADE_FROM), 0, 1);
 }
 
 // The flat fill color of an impassable tile: the biome's own off-path

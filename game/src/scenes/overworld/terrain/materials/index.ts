@@ -1,5 +1,6 @@
 import type { AccentDraw, OffPathKind } from '../types';
 import { drawRockAccent } from './rock';
+import { drawForestAccent } from './forest';
 import { drawLavaAccent } from './lava';
 import { drawWaterAccent } from './water';
 import { drawVoidAccent } from './void';
@@ -16,6 +17,7 @@ import { drawVoidAccent } from './void';
 // the paint pass itself has to change.
 export const TERRAIN_ACCENTS: Record<OffPathKind, AccentDraw | null> = {
   solid: drawRockAccent,
+  forest: drawForestAccent,
   lava: drawLavaAccent,
   water: drawWaterAccent,
   void: drawVoidAccent,

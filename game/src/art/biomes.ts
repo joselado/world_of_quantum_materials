@@ -16,7 +16,7 @@ export type DecorationKind = 'flowers' | 'crystalGlints' | 'fieldLines' | 'netwo
 // same plane as the walkable floor everywhere, so a theme changes the color
 // and the accent over it, never the geometry. Not every biome needs its own
 // theme; most stay 'rock' and differ only by ground/hill color.
-export type WallTheme = 'rock' | 'lava' | 'water' | 'void';
+export type WallTheme = 'rock' | 'forest' | 'lava' | 'water' | 'void';
 
 export interface Biome {
   name: string;
@@ -43,22 +43,28 @@ export interface Biome {
   wallTheme: WallTheme;
 }
 
-// Topic 1 (mean-field/SSB, the tutorial): a crisp spring morning -- fresh
-// mid-green grass and a warm dirt trail under a pale blue sky. Deliberately
-// cooler and fresher than world 6's golden-hour plains, so the game's two
-// green outdoor worlds read as different seasons rather than the same field.
-const MEADOW: Biome = {
-  name: 'meadow',
+// World 1, the Mean Fields (mean field, spontaneous symmetry breaking):
+// bright morning, and the only world whose value break runs the way a field
+// runs rather than the way a track does. You walk *in* the field -- pale
+// wheat and mown grass underfoot -- and dark summer canopy is what hems it
+// in, so the walkable route is the bright thing on screen and the surround
+// is the dark one. A dirt trail through light grass would invert that and
+// turn the world into a path across a lawn.
+const MEAN_FIELDS: Biome = {
+  name: 'meanFields',
   skyTop: 0x8fd0ff,
   skyBottom: 0xe8f6ff,
-  hillColor: 0x54a066,
-  hillAlpha: 0.8,
-  ground: 0x37913f,
-  path: 0xbb945c,
+  // Never composed into any horizon -- nothing precedes world 1, which
+  // simply starts (WORLDS.md section 4). Authored anyway, so every world
+  // states how it looks from outside itself in the same place.
+  hillColor: 0x2f6b3c,
+  hillAlpha: 0.55,
+  ground: 0x1d4526,
+  path: 0xd9d295,
   fogTarget: 0xbfe3ff,
   clouds: true,
   decoration: 'flowers',
-  wallTheme: 'rock',
+  wallTheme: 'forest',
 };
 
 // Topic 2 (symmetries/tight-binding): amethyst cave gloom -- a saturated
@@ -238,7 +244,7 @@ const META_WORLD: Biome = {
 };
 
 export const BIOMES: Partial<Record<number, Biome>> = {
-  1: MEADOW,
+  1: MEAN_FIELDS,
   2: CRYSTAL_CAVE,
   3: FLOATING_ISLANDS,
   4: LANDAU_TERRAIN,
@@ -251,5 +257,5 @@ export const BIOMES: Partial<Record<number, Biome>> = {
 };
 
 export function getBiome(world: number): Biome {
-  return BIOMES[world] ?? MEADOW;
+  return BIOMES[world] ?? MEAN_FIELDS;
 }
