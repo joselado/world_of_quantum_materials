@@ -389,3 +389,106 @@ absolute numbers a little and leaves the across-worlds shape intact. And the
 analyser taps the master bus ahead of the output compressor, so the figures
 are pre-compression; they are meaningful compared against each other, not as
 absolute loudness.
+
+## Checking arena legibility
+
+**`npm run greyscale-check`** (`scripts/greyscale-check.mjs`, ~2.5 minutes)
+answers the question a backdrop change can quietly break: do the two crystals
+and the two HP bars still read against whatever is drawn behind them, in all
+ten worlds? It is the squint test made mechanical -- shrink the frame, drain
+the colour, and see what a glance still finds -- and it exists because a
+colour check waves through the one failure that matters here, an element
+surviving on hue alone and vanishing in value, which is exactly what
+fog-coloured late worlds produce. Run it after any change to the battle
+backdrop, the crystal art, or the nameplates.
+
+It drives the real game to a rival battle in each world through the real gate
+route (reach the goal, face that world's own rival), so the opponent is the
+boss-sized silhouette standing against the ridgeline -- the harder case -- in
+the material the game itself chose. Both sides get a large HP buffer before
+anything is captured, because a fresh save's max HP in the late worlds is low
+enough for the rival to end the fight first, and the bars are left at 60% so
+they are measured part-drained rather than in the one frame where they are
+guaranteed full. `Math.random` is stubbed with a seeded stream and every tween
+is rewound to phase zero and paused before capture, so two runs render the
+same ten arenas: consecutive runs currently agree to the last decimal on every
+number below.
+
+Three frames are captured per arena: the full frame, the backdrop alone, and
+the frame with only the crystals hidden. The second gives the value of the
+backdrop behind and around every element with no other UI standing in for it;
+the third recovers each crystal's exact painted footprint without the script
+knowing anything about how that art is drawn. Each frame becomes a Rec.709
+luminance map, box-downscaled 8x (854x480 -> 107x60 cells). For an element
+covering cell set E, `salience(E)` is the mean over its cells of how much the
+element changes the value there -- the full frame against the backdrop it
+covers -- in greyscale units of 0-255. Measuring per cell against the exact
+backdrop is what keeps a ridge edge or a vignette corner the element happens
+to stand on from being credited to the element.
+
+That number is given a reference by asking what the backdrop manages unaided:
+the element's own cell shape is slid across every position of the
+backdrop-only frame and scored for how far each patch stands off its own 7x7
+neighbourhood. Ridgelines, haze bands and decorative background crystals score
+what they are worth; a smooth sky-to-ground gradient scores near zero, which
+is right, since a gradient is not a thing competing to be found. An element
+passes when it clears both arms:
+
+```
+salience >= 20                        absolute value separation
+salience >= 1.6 x p95(backdrop)       louder than the backdrop's busiest
+```
+
+Both thresholds are bracketed by measurement from both sides rather than
+picked by taste, and the script prints salience and the margin over the gate
+for every element in every world, so the distance to the line is always
+visible. Value zoning (the darkest darks and brightest brights belonging to
+gameplay) is printed alongside as a diagnostic and is not gated.
+
+**Every run grades the instrument as well as the arenas**, because a check
+that passes everything proves nothing. Three perturbations are applied to each
+arena in the same live battle and measured the same way: the backdrop flooded
+with a flat grey at the crystals' own measured mean luminance (a *negative*
+control -- a high-contrast object on a flat field is easier to find, not
+harder, so this must still pass, and a check that fails it is reacting to the
+frame having changed rather than to legibility); the backdrop given gameplay's
+own value range and gameplay's own scale of local contrast, which is
+over-decoration itself and must fail; and the whole gameplay layer dropped to
+alpha 0.05, which must also fail. A positive control that slips through is
+reported as the instrument being blind there, and fails the run just as a
+legibility failure does.
+
+Options: `QM_GREY_WORLDS=1,5,9` measures a subset, `QM_GREY_JSON=path` dumps
+the raw table for diffing two runs, `QM_GREY_SEED` re-pins the PRNG. It picks
+its own port (5191 by default, `QM_GREY_PORT`) rather than `:5173`, so it
+never disturbs a dev server already running. Artifacts land in
+`game/.check-artifacts/greyscale/`: the full-colour arena PNG per world, and
+the reduced greyscale frame the metric actually saw as a binary PGM -- worth
+opening when a number surprises you, since it is literally the squint.
+
+**The one structural assumption, and how it is kept honest:** the script
+separates backdrop from gameplay by display-list position, taking every object
+from the opponent crystal onward as the gameplay layer. That holds because
+`BattleScene.create()` draws the whole backdrop before any combatant exists,
+and it is an assumption a future edit to `create()` could silently break, so
+two assertions run every time: hiding the crystals must change the frame only
+inside the two boxes the script expects them in, and the backdrop-only frame
+must genuinely differ from the full frame everywhere an element is drawn. A
+tripped assertion is reported as a broken harness, distinctly from a
+legibility failure.
+
+What it does not check: colour, motion, and anything outside the four
+elements it measures. An arena that passes has crystals and HP bars that carry
+enough value contrast to be found in a squint; it says nothing about whether
+the arena is handsome, whether its idle motion is restrained, or whether the
+move menu and combat log read.
+
+**One known limitation, from checking the numbers against an independent
+read:** the score is an average over an element's whole footprint, so a dark
+silhouette rescued by a bright rim outline scores much like one whose body
+genuinely separates. Both do read, so this is not a false pass -- but a
+squinting player sees the outlined one as an outline rather than as a mass,
+and the numbers cannot tell those apart. The metric is a trustworthy ordering
+instrument at the low end, where it matters; at the top it keeps climbing well
+past the point where the eye has stopped noticing a difference, so a gap
+between two already-loud elements means less than the same gap near the gate.

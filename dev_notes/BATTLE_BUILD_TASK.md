@@ -136,10 +136,18 @@ the frame where a move lands belongs entirely to the move.
 
 **A greyscale thumbnail pass.** Screenshot every world's arena, shrink it, drain
 the colour: the two crystals and the HP bars must be the first four things a
-squint finds, in all ten worlds. That is a `verify-ui` job rather than a
-reviewer's opinion, and it catches the specific failure a colour check waves
-through — a crystal that survives on hue alone and vanishes in value, which is
-exactly what fog-coloured late worlds will produce.
+squint finds, in all ten worlds. It catches the specific failure a colour check
+waves through — a crystal that survives on hue alone and vanishes in value,
+which is exactly what fog-coloured late worlds will produce.
+
+`npm run greyscale-check` from `game/` is that pass, measured rather than
+eyeballed: a salience number per element per world against a threshold, with a
+sabotaged-frame control on every run (`dev_notes/DEVELOPMENT.md`, "Checking
+arena legibility"). Today's plain arenas all clear it, so run it before
+starting and keep that table: it is the before half of a real before/after.
+Where an arena's margin sits matters more than its verdict — the tightest
+before the rebuild is World 3's player HP bar at x1.17 over the gate, and
+World 10's at x1.38.
 
 Also put each arena beside the same world's overworld shot: the two should read
 as one place.
