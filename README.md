@@ -132,22 +132,26 @@ Abilities station too (appears once you've learned your first passive). See
 </tr>
 </table>
 
-**Face the boss.** Keep going past the guardian and you'll see it looming
-before you even reach it: a gigantic golem, built from many crystal shards
-fused into one mass, its grain boundaries glowing where they meet and a
-heavy shadow pooled under its feet, standing at the far end of every
-world -- and it keeps that same imposing look once the fight starts. Through World 9 its name is always a real compound in *polycrystalline*
-form (many grains fused into one, the same idea the golem's own body
-literalizes) -- Polycrystalline Silicon Golem guards World 1, for
-instance; World 10's rival, The Adapted, is the one that breaks the
-pattern. Beating it opens a glowing doorway right where the boss stood,
-letting you walk straight on to the next world.
+**Face the boss.** Every world narrows into a pass at its far end, and you'll
+see what is standing in it long before you get there: a gigantic golem, built
+from many crystal shards fused into one mass, its grain boundaries glowing
+where they meet and a heavy shadow pooled under its feet, filling the gap so
+completely that nothing of the next world shows past it -- and it keeps that
+same imposing look once the fight starts. Through World 9 its name is always a
+real compound in *polycrystalline* form (many grains fused into one, the same
+idea the golem's own body literalizes) -- Polycrystalline Silicon Golem guards
+World 1, for instance; World 10's rival, The Adapted, is the one that breaks
+the pattern. Walking up to it does nothing on its own: step to the mouth of
+the pass and press Space to challenge it. Beat it and the pass clears -- the
+next world's colours show through the gap, a board in the pass names it, and
+that world's ground bleeds back across the last few tiles as a seam you step
+over. Press Space again to cross.
 
 **Walk back anytime.** The near end of every world -- right where you first
-walked in -- has its own doorway too, leading back to the world before it
-(or the Lab, from World 1). Walk up to it and confirm to backtrack, no menu
-required; you'll land back in that earlier world right at its own far end,
-ready to walk forward through it again whenever you like.
+walked in -- is a pass too, with its own board and nobody guarding it, leading
+back to the world before it (or the Lab, from World 1). Walk up and press,
+no menu required; you'll land back in that earlier world right at its own far
+end, ready to walk forward through it again whenever you like.
 
 **Return to the Lab.** World 0 is a static hub room, each of its jobs its
 own physical station: Qumatex, a filterable index of every crystal in the

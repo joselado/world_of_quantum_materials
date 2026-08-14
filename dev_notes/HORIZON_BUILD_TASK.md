@@ -2,11 +2,12 @@
 
 Work list for making the overworld continuous to the horizon and turning the
 world-to-world connections into geography. The spec is `WORLDS.md` §4, which is
-the authority; this file is the checklist. Delete it once the work has landed.
+the authority; this file is the checklist. It stays until stage E lands, which is
+the one item still outstanding.
 
-**Ordering against the retheme.** Stages A, B and C are built, on top of the
+**Ordering against the retheme.** Stages A, B and C were built on top of the
 retheme — a world's distant self *is* its impassable surround restated at
-horizon scale, so the two were authored in one pass. Stages D–F remain.
+horizon scale, so the two were authored in one pass.
 
 ---
 
@@ -19,9 +20,9 @@ Build in this order. Each stage is shippable on its own.
 | **A** | Depth continuity — land reaches the horizon | nothing | **built** |
 | **B** | Haze inheritance — the air ahead becomes the next world's air | A | **built** |
 | **C** | Distant selves — per-world horizon profiles, composed into neighbours | retheme, A | **built** |
-| **D** | Gate apertures — state-signalled pass, ground seam | C | to do |
+| **D** | Gate apertures — state-signalled pass, ground seam | C | **built** |
 | **E** | Depth-projected flanks — the approach into the pass | D | **deferred** |
-| **F** | The Lab door, then the Qumatuomi sky | D (Lab quotes its grammar) | to do |
+| **F** | The Lab door, then the Qumatuomi sky | D (Lab quotes its grammar) | **built** |
 
 E is the only speculative item; if it reads badly in the first world tried,
 stop — D alone is a complete gate.
@@ -43,9 +44,8 @@ stage drawing at depth must keep true:
   moves.
 - **The repeated road is intentional** — repeating the far row repeats the
   walkable path, so a road continues past the world's end. It drowns in haze
-  quickly; stage D is what hides it behind a shut gate, which it does not yet do,
-  so on a goal tile with the rival still alive the road currently continues into
-  open haze.
+  quickly, and it runs only while the gate is open: stage D gates the repeat on
+  the pass state, so a road never continues past a guard still standing in it.
 - All depths route through `projectTile`, which applies `CAMERA_BACK_TILES`
   internally. Drawing must call it and must not add the camera pullback itself,
   or it double-counts.
@@ -75,8 +75,9 @@ world's fog colour as the player nears the goal row (`CODEMAP.md`'s "Forward
 haze inheritance").
 
 **Gated on gate state: a shut gate means no forward palette bleed.** The gate
-input is `isRivalDefeated()` until stage D builds the aperture itself; when it
-does, that is the single call to re-point.
+input is the `GateView.open` flag stage D introduced, which the aperture, the
+ground seam and the repeated road all read too, so no two of them can disagree
+about whether the way is open.
 
 ## C — Distant selves — built
 
@@ -104,52 +105,41 @@ Worlds 7, 8 and 10 are at swallow zero and show no silhouette; 7 still draws
 its glints, which is why "no profile" and "no distant self" are not the same
 thing.
 
-## D — The pass, its guard and its board
+## D — The pass, its guard and its board — built
 
-The full grammar is `WORLDS.md` §4's "Gates as passes"; this is the work list.
-The pass itself is **terrain and belongs to the retheme**, along with the
-matching narrow mouth at each world's start and the wild-suppression zone. This
-stage puts things in it and retires the panels.
+The full grammar is `WORLDS.md` §4's "Gates as passes". The pass geometry itself
+came with the retheme — `world/generators/shared.ts`'s `narrowGoalPass`/
+`openStartMouth`/`passZoneRows`, run on all ten worlds by `mapgen.ts`, which is
+also what keeps everything that spawns on a tile out of both passes. This stage
+put things in it and retired the panels; `STYLE.md`'s "Gates as passes" is the
+visual rule and `CODEMAP.md`'s "The gate interaction" and "The gate's own
+drawing" are the code.
 
-Replace `art/door.ts`'s floating archway with:
+What it landed, and what any later stage sharing the pass must keep true:
 
-- **Rival alive** — the rival stands in the pass and bars it. That is the state
-  signal; the fogged notch is not needed, because the guard is the message. Haze
-  inheritance stays off, and stage A's repeated road must not promise passage
-  past it. Size it to the aperture, not the screen (§4) — no walkable gap
-  showing from the approach tile, fully visible from the tile in front, no more.
-- **Rival beaten** — the pass clears, the next world's palette shows through it,
-  and a **board** in the pass names the destination. Plus a ground seam: the
-  next world's walkable colour across the last two or three tiles.
-
-**Both states share one interaction: approach, read, press.** A prompt appears a
-tile out and the keypress commits — challenging the rival in the first state,
-crossing in the second. **Arrival alone must never transition or start a fight**;
-a pass is the most interesting thing in a world and players will walk in to look.
-This is where the retired panels' confirmation goes, not a removal of it.
-
-The board is world-space and depth-scaled (scenery); the prompt is HUD and obeys
-every text preset (interface).
-
-Four things this stage must handle rather than inherit:
-
-- **`STORY_BEATS` fires on the confirm keypress** — the semantic descendant of
-  the "Continue" click, displayed over the transition fade so it cannot stack
-  against the board or the horizon reveal.
-- **The goal-reached event.** The progression gate is reach-goal → beat-rival →
-  continue, and the goal tile now sits behind the guard. Either move the trigger
-  to the pass mouth or collapse the two events deliberately — not by accident.
-- **`component-check` drives this gate by clicking the panels being retired**,
-  and it carries a known gotcha about mistaking its own no-op click for a stuck
-  panel, which a do-nothing pass tile will trip. Update it in the same change.
-  Sweep the tutorial and docs for "click Continue" wording too.
-- **Draw order.** The rival is currently drawn as a special case; confirm it
-  joins the common depth sort before stage E's flanks share the pass with it.
-
-The backward exit becomes a pass with a board too, in worlds 2–10 — with no
-guard and no state, since the way back is open from arrival onward. **World 1's
-stays a door** (it leads to the Lab, which is not a place), and **World 10 gets
-no board** (nothing lies beyond).
+- **Rival alive** — the rival stands in the throat and the throat row is not
+  walkable. No fogged notch: the guard is the message. Haze inheritance stays
+  off, and stage A's repeated road stops rather than promising passage past it.
+  `BOSS_CRYSTAL_SIZE` is derived from the aperture, not chosen against the
+  screen — the golem's widest span covers the throat's full walkable width, and
+  projection scale cancels out of that ratio.
+- **Rival beaten** — the pass clears, the next world's palette shows through an
+  aperture rising out of where the repeated road runs out, a board names the
+  destination, and the next world's walkable colour carries back across the last
+  few tiles as a seam.
+- **One interaction, both states: approach, read, press.** Arrival alone never
+  transitions or starts a fight. The board is world-space scenery with its name
+  painted into the sprite; the prompt is HUD and obeys every text preset.
+- **`STORY_BEATS` fires on the confirm keypress**, played over `crossPass`'s
+  fade so it cannot stack against the board or the horizon reveal.
+- **The goal-reached event moved to the pass mouth** (`maybeReachGoal` fires on
+  `goalTile.y + 1`), since the throat is unreachable while the gate is shut.
+- **Draw order.** Every world sprite now takes its depth from its own projected
+  depth each frame, the rival included, so stage E's flanks can share the pass
+  with it.
+- **Backward exits are passes with a board and no guard** in worlds 2–10.
+  World 1's is a door (it leads to the Lab, which is not a place); World 10 gets
+  no forward board (nothing lies beyond).
 
 ## E — Depth-projected flanks — deferred
 
@@ -181,33 +171,30 @@ all occupy the pass at different depths, and the rival is currently drawn as a
 special case rather than through the common depth sort. Until that is fixed the
 boss floats in front of walls it should be standing between.
 
-## F — The Lab door, and the Qumatuomi sky
+## F — The Lab door, and the Qumatuomi sky — built
 
-**The Lab** (`HubScene`, a static single-room scene with stations — room
-dressing, not terrain):
+`WORLDS.md` §4's "The Lab" and "The Qumatuomi sky" are the spec; `STYLE.md`'s
+"The Lab's two signals" and "The Qumatuomi sky" are the visual rule, and
+`CODEMAP.md`'s "The Lab's two signals" and "The Qumatuomi sky" are the code.
 
-- Its door is the aperture grammar **unbound** — it previews the *current*
-  destination, by default the world and position the player left, updating live
-  when the travel panel selects a different world.
-- Its accent lighting is keyed to the player's current crystal.
-- Everything else by absence: no window, no sky, nothing implying an outside.
-  *Interior-without-outside*, not void — void belongs to the Entangled Web.
-- Two signals total. It is a functional hub, not a diorama.
+**The Lab** carries two signals and no more. Its door previews the current
+destination — by default the world and position the player left — with that
+world's own palette in its opening, re-pointing live as the travel panel's
+selection moves (`blochPreview` is a getter/setter pair, so moving the
+selection re-points the door in the same gesture). Its accent lighting is the
+player's current crystal, repainted in place on transmutation. Everything else
+is said by absence: no window, no sky, nothing implying an outside.
 
-**The Qumatuomi sky** — World 10's horizon, reusing the existing
-`art/qumatuomiMap.ts` asset:
-
-- A reflection in a mirrored sky: foreshortened and tilted away, **not**
-  screen-parallel; rippling faintly with the world's shimmer; silver-violet;
-  dimmed and hazed by the same atmosphere that fogs everything else.
-- The haze is load-bearing. Fog is what makes something read as scenery, and an
-  interface element is never fogged. Rendered flat and unhazed this will read as
-  a misrendered minimap and players will try to click it.
-- Strip every interactive affordance inherited from the clickable panel version
-  — no markers, no labels.
-- Optional, faint, in this priority: a dim luminous trace of the player's actual
-  route across the map; then a single slow pulse at the Espoo point, which is
-  skippable if it reads even slightly like a readout.
+**The Qumatuomi sky** is World 10's horizon, read from the world stood in
+rather than from a neighbour it does not have. One power schedule drives both
+the row spacing and the half-width, so the plane recedes as a single piece;
+a slow sine offset per row is the ripple; fill and coastline are drowned into
+the live haze target the same way a distant self is. Markers, labels and
+region tints are stripped. The route trace runs through the worlds the player
+has actually walked, in visit order, with no marker at either end. The Espoo
+pulse is deliberately not built: it is the flourish §4 marks skippable, and a
+single point pulsing on a map is exactly the affordance the rest of this
+treatment exists to remove.
 
 ---
 
@@ -296,4 +283,4 @@ log: `STYLE.md` (the horizon system and the adjacency rule are visual
 conventions), `CODEMAP.md` (the new drawing paths and the distant-self asset
 convention), and `WORLDS.md` §4 if anything is learned that contradicts it —
 that file is binding, so a contradiction is raised and settled rather than
-quietly diverged from. Delete this file when the work lands.
+quietly diverged from.

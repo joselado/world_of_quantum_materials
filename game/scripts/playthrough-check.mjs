@@ -269,6 +269,21 @@ async function main() {
       { dx, dy }
     );
 
+  // The pass interaction, driven the way a player drives it: read the gate the
+  // player is standing at, then commit. Arrival at a pass does nothing on its
+  // own, so this press is the only thing that ever challenges a rival or
+  // crosses into the next world.
+  const pressAtGate = () =>
+    page.evaluate(() => {
+      const s = window.__game.scene.getScene('Overworld');
+      const gate = s['gateAtPlayer']();
+      if (gate !== 'forward') return { pressed: false };
+      const rd = window.__game.registry.get('rivalDefeated') || {};
+      const state = rd[s['world']] ? 'open' : 'shut';
+      s['confirmGate']();
+      return { pressed: true, state };
+    });
+
   const waitNotMoving = async (timeoutMs = 3000) => {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
@@ -319,9 +334,7 @@ async function main() {
     }, matchList);
 
   const PRIORITY = [
-    'Continue to World',
     'The Decoherence is stabilized',
-    'Face the Rival',
     'Battle!',
     'Next ->',
     'Onward',
@@ -715,18 +728,6 @@ async function main() {
           finaleReached = true;
           log('>>> FINALE PANEL DISMISSED -- game completed end to end.');
         }
-        if (r.clicked.some((c) => c.startsWith('Face the Rival'))) {
-          currentRivalAttempts++;
-          const w = before?.world ?? lastKnownWorld;
-          stats.rivalRetries[w] = (stats.rivalRetries[w] || 0) + 1;
-          if (currentRivalAttempts > 15) {
-            failure = { reason: 'rival-unwinnable-after-15-attempts-with-shopping', world: w };
-            log(`FAILED: rival at world ${w} not beaten after 15 attempts, each preceded by a Lab shopping detour.`);
-          }
-        }
-        if (r.clicked.some((c) => c.startsWith('Continue to World'))) {
-          currentRivalAttempts = 0;
-        }
         if (r.outcome === 'stuck' || r.outcome === 'stuck-repeating') {
           failure = { reason: `overworld-dialogue-${r.outcome}`, world: lastKnownWorld, clicked: r.clicked.slice(-15) };
           log(`FAILED: Overworld dialogue never resolved (${r.outcome}).`);
@@ -744,16 +745,33 @@ async function main() {
         currentRivalAttempts = 0;
         log(`=== Entered World ${ow.world} ===`);
       }
-      if (ow.playerTile.x === ow.goalTile.x && ow.playerTile.y === ow.goalTile.y) {
-        // At goal but no dialogue open right now -- give the auto-open a beat.
-        await sleep(400);
+      // The route ends at the pass mouth, one row south of the throat: the
+      // throat is the rival's own tile while that world's rival still stands,
+      // and nothing in either pass happens on arrival anyway. Reaching the
+      // mouth, the bot presses -- challenging the guard, or crossing.
+      const mouth = { x: ow.goalTile.x, y: ow.goalTile.y + 1 };
+      if (ow.playerTile.y <= mouth.y) {
+        const gate = await pressAtGate();
+        if (gate.pressed) {
+          if (gate.state === 'shut') {
+            currentRivalAttempts++;
+            stats.rivalRetries[ow.world] = (stats.rivalRetries[ow.world] || 0) + 1;
+            if (currentRivalAttempts > 15) {
+              failure = { reason: 'rival-unwinnable-after-15-attempts-with-shopping', world: ow.world };
+              log(`FAILED: rival at world ${ow.world} not beaten after 15 attempts, each preceded by a Lab shopping detour.`);
+            }
+          } else {
+            currentRivalAttempts = 0;
+          }
+        }
+        await sleep(600);
         continue;
       }
 
-      const path = bfs(ow.walkable, ow.playerTile, ow.goalTile);
+      const path = bfs(ow.walkable, ow.playerTile, mouth);
       if (!path || path.length < 2) {
-        failure = { reason: 'no-bfs-path', world: ow.world, playerTile: ow.playerTile, goalTile: ow.goalTile };
-        log(`FAILED: BFS found no path from ${JSON.stringify(ow.playerTile)} to ${JSON.stringify(ow.goalTile)} in world ${ow.world}.`);
+        failure = { reason: 'no-bfs-path', world: ow.world, playerTile: ow.playerTile, goalTile: mouth };
+        log(`FAILED: BFS found no path from ${JSON.stringify(ow.playerTile)} to the pass mouth ${JSON.stringify(mouth)} in world ${ow.world}.`);
         await page.screenshot({ path: `${SHOT_DIR}/no-path-world${ow.world}.png` });
         break;
       }

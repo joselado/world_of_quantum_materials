@@ -1,6 +1,6 @@
 // One line of Decoherence-arc flavor per world, shown right after that
 // world's rival is beaten and before OverworldScene.advanceToWorld moves the
-// player on (OverworldScene.tryAdvanceToNextWorld) -- the connective tissue
+// player on (OverworldScene.crossPass) -- the connective tissue
 // between the intro (data/tutorial.ts's first page) and the ending
 // (OverworldScene.showFinalePanel), so the Decoherence plot is more than a
 // line at the very start and the very end. Keyed by the world just beaten,

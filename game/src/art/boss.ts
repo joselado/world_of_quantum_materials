@@ -14,6 +14,10 @@ import type { CrystalVariant } from '../data/types';
 // the contact shadow pooled under them.
 export const BOSS_SILHOUETTE_TOP = 1.4;
 export const BOSS_SILHOUETTE_BOTTOM = 1.11;
+// Half the golem's widest span, at the outstretched fists -- what
+// OverworldScene sizes the boss from, so its silhouette spans the pass it
+// holds rather than a number chosen against the screen (WORLDS.md section 4).
+export const BOSS_SILHOUETTE_HALF_WIDTH = 1.1;
 // Where the golem plants its feet and pools its contact shadow, in the same
 // units -- the point a caller standing it on a tile lands on that tile's
 // ground (OverworldScene.spawnBossSprite's `foot`).
@@ -132,10 +136,10 @@ const SEAM_GLOW = 0xffb347;
 // data/materials.ts, names a real compound's polycrystalline form) as many
 // grains fused into one mass. Distinct from the single shared makeCrystal()
 // silhouette every ordinary wild/rival crystal uses elsewhere. Purely a
-// visual landmark where it stands at a world's goal tile
+// visual landmark where it stands in the throat of a world's forward pass
 // (OverworldScene.spawnBossSprite); it doesn't add its own click handler --
-// the actual fight is still reached through the existing "Face the Rival"
-// gate (OverworldScene.showRivalEncounter).
+// the fight is reached by pressing at the pass mouth
+// (OverworldScene.confirmGate -> showRivalEncounter).
 //
 // Everything that breathes lives in an inner container pivoted at the
 // golem's feet, never on the returned container itself: all three call sites

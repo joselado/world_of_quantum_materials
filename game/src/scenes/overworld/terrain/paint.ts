@@ -83,6 +83,7 @@ export function drawTerrain(view: TerrainView) {
       if (tile.kind === 'path') {
         let color = groundColor(bandBase(tile.biome, tile.biome.path, y), depthRatio, walkableHazeTarget(view, tile.biome, depthRatio));
         if (tile.regionTint != null) color = blend(color, tile.regionTint, regionTintAt(depthRatio, 0.55));
+        color = seamed(view, color, y);
         g.fillStyle(color, 1);
         g.fillPoints(fill, true);
         drawBandBoundary(g, tile.biome, y, pFL, pFR, pNR, pNL, depthRatio);
@@ -165,11 +166,18 @@ function drawMarginColumns(view: TerrainView, row: TerrainTile[], y: number) {
 // edge row's own contour already runs unbroken into these rows (see
 // plan.ts's depthContinuedWalkable), and every repeat is far enough out that
 // the detail passes are already faded off.
+//
+// The repeated road runs only while the way is actually open. The far edge
+// row *is* the pass throat, so repeating it repeats the pass -- a road
+// running on to the horizon through a gate whose guard is still standing in
+// it. While the rival lives the repeats take the surround's terrain instead,
+// and the road ends where the guard does.
 function drawMarginRows(view: TerrainView, deepestRow: number) {
   const g = view.gfx;
   const camX = view.camX;
   const camY = view.camY;
   const edge = view.plan.tiles[view.plan.farEdgeRow];
+  const roadRunsOn = !view.gate || view.gate.open;
   for (let gy = view.plan.farEdgeRow - 1; gy >= deepestRow; gy--) {
     const depthFar = camY - gy + 0.5;
     const depthNear = camY - gy - 0.5;
@@ -190,10 +198,13 @@ function drawMarginRows(view: TerrainView, deepestRow: number) {
       const fill = [pFL, pFR, pNR, pNL];
       const tile = edge[x];
 
-      if (tile.kind === 'path') {
+      if (tile.kind === 'path' && roadRunsOn) {
         let color = groundColor(bandBase(tile.biome, tile.biome.path, gy), depthRatio, walkableHazeTarget(view, tile.biome, depthRatio));
         if (tile.regionTint != null) color = blend(color, tile.regionTint, regionTintAt(depthRatio, 0.55));
         g.fillStyle(color, 1);
+        g.fillPoints(fill, true);
+      } else if (tile.kind === 'path') {
+        g.fillStyle(offPathColor(view, tile.biome, tile.regionTint, gy, depthRatio), 1);
         g.fillPoints(fill, true);
       } else {
         drawOffPathTile(view, tile, fill, null, pFL, pFR, pNR, pNL, x, gy, depthRatio);
@@ -256,6 +267,27 @@ function drawContactShadow(
   if (contour.rim.length === 0) return;
   g.lineStyle(1.5, blend(biome.path, 0xffffff, 0.45), CONTOUR_RIM_ALPHA * fade);
   for (const lip of contour.rim) g.strokePoints(projectContour(lip, camX, camY), false);
+}
+
+// How many rows of walkable ground the next world's own floor colour bleeds
+// back across, once the pass is open -- the seam the player visibly steps
+// over on the way out (WORLDS.md section 4). Short enough to be a threshold
+// rather than a gradient across the last stretch of corridor.
+const SEAM_ROWS = 3;
+const SEAM_STRENGTH = 0.45;
+
+// The ground seam: a short apron of the next world's own floor colour across
+// the throat row and the two south of it, strongest at the throat. Short and
+// square to the direction of travel on purpose -- a threshold is something
+// the player takes in one step, where a long gradient is indistinguishable
+// from distance haze and a recolour of the whole far corridor reads as a
+// terrain error. Nothing at all while the gate is shut.
+function seamed(view: TerrainView, color: number, gy: number): number {
+  const gate = view.gate;
+  if (!gate?.open || !gate.next) return color;
+  const rows = gy - gate.row;
+  if (rows < 0 || rows >= SEAM_ROWS) return color;
+  return blend(color, gate.next.path, SEAM_STRENGTH * (1 - rows / SEAM_ROWS));
 }
 
 // Distant walkable ground hazes toward a lighter target than its

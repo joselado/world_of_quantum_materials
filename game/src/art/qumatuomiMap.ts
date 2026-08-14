@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { getBiome } from './biomes';
 import { blend, hashSeed, seededRandom } from './colors';
+import { CANVAS_W } from './perspective';
 
 // A standalone, hand-drawn Finland-coastline map (a Suomi/"Qumatuomi" pun),
 // built the same way every other art/ builder in this game is -- Graphics
@@ -9,6 +10,12 @@ import { blend, hashSeed, seededRandom } from './colors';
 // know about Bloch/travel costs/guardian panels, and wires no interactivity
 // of its own. A caller places the returned container wherever it likes and
 // reads the returned marker list to attach its own click handling later.
+//
+// The same coastline has two builds, and they stay separate. `buildQumatuomiMap`
+// is the panel one: markers, region tints, a container to click. `drawQumatuomiSky`
+// is scenery -- World 10's horizon, drawn straight into a Graphics as a hazed
+// reflection with every affordance stripped. Sharing the geometry is the point;
+// sharing the markers would put an interface element in the sky.
 
 // Silhouette authored in a fixed native coordinate space, already in the
 // on-screen orientation the design calls "rotated 90 degrees" -- x=0 (left)
@@ -287,4 +294,156 @@ export function buildQumatuomiMap(scene: Phaser.Scene, opts: QumatuomiMapOptions
   }
 
   return { container, markers, width: NATIVE_W * scale, height: NATIVE_H * scale };
+}
+
+// ---------------------------------------------------------------------------
+// The Devouring Mirror's horizon (WORLDS.md section 4's "The Qumatuomi sky").
+//
+// Every other world's horizon is the world after it; the Mirror has none, so
+// what hangs in its sky is *every* world at once, seen from outside and above
+// -- which is precisely the view a trained model has of its training data.
+// It can show the whole map because it has consumed all of it.
+//
+// Rendered as a reflection in a mirrored sky rather than an image pasted flat
+// to the screen: foreshortened and tilted away, rippling faintly, silver-
+// violet, self-luminous, and dimmed and hazed by the same atmosphere that fogs
+// everything else. The haze is what does the work -- fog is the cheapest
+// signal that something is scenery, and an interface element is never fogged.
+// Rendered screen-parallel and unhazed this reads as a misrendered minimap and
+// players try to click it. Every interactive affordance is stripped: no
+// markers, no labels, no per-world region tints.
+
+// The reflection's silver-violet, before the haze takes it.
+const MIRROR_SILVER = 0xc9b6e8;
+const MIRROR_ROUTE = 0xf0e4ff;
+// How far the reflection is carried into the live fog target. Bounded from
+// above by the light rule, not only by taste: the record glows and nothing
+// shines on it, so the reflection has to stay *brighter* than the sky it
+// hangs in. Drowned past that it inverts into a silhouette, which reads as a
+// solid object rather than as light -- the opposite of a reflection. The
+// depth gradient that keeps it hazed is the veil below, which fades its far
+// edge without darkening the whole shape.
+const MIRROR_DROWN = 0.34;
+// The tilt. `v` runs 0 at the reflection's far edge to 1 at its near edge, and
+// both the vertical spacing and the width follow the same power schedule, so
+// the plane recedes as one piece instead of shearing.
+const MIRROR_FORESHORTEN = 1.9;
+// Half-width at the far edge as a fraction of the near edge's.
+const MIRROR_FAR_NARROW = 0.46;
+// The ripple: a mirrored sky is never still. Slow and shallow -- a shimmer
+// this map can carry without becoming a flag.
+const MIRROR_RIPPLE_PX = 2.4;
+const MIRROR_RIPPLE_RATE = 0.00042;
+
+export interface QumatuomiSkyOptions {
+  /** Screen x the reflection is centred on. */
+  cx: number;
+  /** Screen y of the reflection's far edge (its top). */
+  top: number;
+  /** Screen y of its near edge (its bottom). */
+  bottom: number;
+  /** Half-width of the near edge, in px. */
+  halfWidth: number;
+  /** The live fog colour everything else in the frame is hazing toward. */
+  target: number;
+  /** The scene clock, which drives the ripple. */
+  now: number;
+  /** Worlds the player has actually walked, in the order they walked them. */
+  route: number[];
+}
+
+// Projects a point in the map's own native space onto the tilted plane. The
+// country's long axis stays horizontal and its short axis becomes depth, so
+// the landmass lies flat in the sky and is read at a glancing angle.
+function toMirror(nx: number, ny: number, o: QumatuomiSkyOptions): { x: number; y: number; t: number } {
+  const u = nx / NATIVE_W - 0.5;
+  const v = ny / NATIVE_H;
+  const t = Math.pow(v, MIRROR_FORESHORTEN);
+  const half = o.halfWidth * (MIRROR_FAR_NARROW + (1 - MIRROR_FAR_NARROW) * t);
+  const ripple = Math.sin(v * 7.5 + o.now * MIRROR_RIPPLE_RATE) * MIRROR_RIPPLE_PX * (0.35 + 0.65 * t);
+  return { x: o.cx + u * 2 * half + ripple, y: o.top + (o.bottom - o.top) * t, t };
+}
+
+// A polyline drawn one segment at a time, each segment's width and alpha
+// scaled by how far away that part of the plane is. Phaser strokes a path at
+// one width and one alpha, so a line crossing a receding plane has to be
+// broken up to recede with it -- and a line that does not is the single thing
+// that collapses this whole treatment back into a flat decal with a stroke on
+// it. `t` is 0 at the far edge and 1 at the near one.
+function strokeReceding(
+  g: Phaser.GameObjects.Graphics,
+  pts: { x: number; y: number; t: number }[],
+  color: number,
+  width: number,
+  alpha: number
+) {
+  for (let i = 0; i < pts.length - 1; i++) {
+    const t = (pts[i].t + pts[i + 1].t) / 2;
+    const fade = 0.08 + 0.92 * t;
+    g.lineStyle(Math.max(0.4, width * fade), color, alpha * fade);
+    g.lineBetween(pts[i].x, pts[i].y, pts[i + 1].x, pts[i + 1].y);
+  }
+}
+
+export function drawQumatuomiSky(g: Phaser.GameObjects.Graphics, o: QumatuomiSkyOptions) {
+  const land = blend(MIRROR_SILVER, o.target, MIRROR_DROWN);
+  const shore = blend(MIRROR_SILVER, o.target, MIRROR_DROWN * 0.55);
+
+  const outline = SILHOUETTE_POINTS.map(([x, y]) => toMirror(x, y, o));
+  g.fillStyle(land, 0.5);
+  g.fillPoints(outline, true);
+  // A brighter coastline, self-luminous per the light rule: the record glows,
+  // nothing shines on it. It is what makes the shape read as a coastline
+  // rather than as a torn patch of cloud, so it carries more of the value
+  // budget than the fill it encloses -- but it recedes with the plane it is
+  // drawn on, thinning and dimming toward the far edge.
+  strokeReceding(g, outline.concat(outline[0]), shore, 2.1, 0.95);
+
+  ARCHIPELAGO_ISLANDS.forEach((isl) => {
+    const p = toMirror(isl.x, isl.y, o);
+    // Radius follows the same foreshortening the plane does, so a skerry near
+    // the far edge is smaller as well as fainter.
+    g.fillStyle(land, 0.62 * (0.3 + 0.7 * p.t));
+    g.fillCircle(p.x, p.y, Math.max(0.6, isl.r * 0.42 * (MIRROR_FAR_NARROW + (1 - MIRROR_FAR_NARROW) * p.t)));
+  });
+
+  // The atmosphere over the plane, thickening toward its far edge. This is the
+  // load-bearing part: fog is the cheapest signal that something is scenery,
+  // and a shape whose far edge is exactly as crisp as its near edge is a decal
+  // pasted on the sky however carefully its geometry recedes. Painted as
+  // abutting rows so no two of them share a scanline and double-blend.
+// Painted the full width of the frame rather than to the reflection's own
+  // bounds: a veil with vertical edges of its own would draw two lines down the
+  // sky, which is a box around the thing it exists to dissolve.
+  const veilRows = 24;
+  const veilH = o.bottom - o.top + 8;
+  for (let i = 0; i < veilRows; i++) {
+    const t = i / veilRows;
+    g.fillStyle(o.target, 0.46 * Math.pow(1 - t, 1.6));
+    g.fillRect(0, o.top - 6 + t * veilH, CANVAS_W, veilH / veilRows + 1);
+  }
+
+  // *It has your whole walk.* The one thing no other copy of this map carries:
+  // a dim luminous trace of the player's own route across it, world by world
+  // in the order they were walked. Drawn over the landmass and nothing else --
+  // no marker sits at either end of it, because a marker is an affordance and
+  // this is a record.
+  if (o.route.length < 2) return;
+  // Subdivided rather than drawn corner to corner: the world positions are a
+  // coarse zigzag, and a rigid straight run between two of them across a
+  // receding plane is the shape of a chart line. Sampling along each leg lets
+  // the trace thin and dim as it goes, which is what makes it a mark left on
+  // the map rather than a stroke drawn over it.
+  const legs = o.route.map((w) => WORLD_POSITIONS[w]).filter(Boolean);
+  if (legs.length < 2) return;
+  const trace: { x: number; y: number; t: number }[] = [];
+  for (let i = 0; i < legs.length - 1; i++) {
+    for (let k = 0; k < 6; k++) {
+      const f = k / 6;
+      trace.push(toMirror(legs[i].x + (legs[i + 1].x - legs[i].x) * f, legs[i].y + (legs[i + 1].y - legs[i].y) * f, o));
+    }
+  }
+  trace.push(toMirror(legs[legs.length - 1].x, legs[legs.length - 1].y, o));
+  strokeReceding(g, trace, blend(MIRROR_ROUTE, o.target, MIRROR_DROWN * 0.2), 3.5, 0.26);
+  strokeReceding(g, trace, MIRROR_ROUTE, 1.6, 0.6);
 }

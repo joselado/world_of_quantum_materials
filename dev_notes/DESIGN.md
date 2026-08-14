@@ -79,33 +79,37 @@ standing there, since its whole shape is keyed off that form's type.
 **Respawning.** A world refills itself while the player walks it, so a map that has been
 picked clean doesn't stay a dead corridor: on a repeating timer, wild crystals drift back in
 and qumatessence condenses again, each rolling its own chance so most ticks bring back
-nothing (`OverworldScene`'s `respawnTick`). Everything comes back *ahead* of the player and
-outside the drawn world -- past the projection's own draw distance, derived from it rather
-than a fixed row count -- since the camera faces north permanently, so a tile south of the
-player is never rendered at all and anything appearing there would be walked into having
-never been seen. Near the goal there is no such room, so respawns simply pause there. A
-respawn obeys every rule the original scatter does: never in a pass, never on the
-start/goal/guardian tile, one wild per row at most and never in a walkable run narrower than
-2 tiles, and drawn from the same `getWildPool(world)` the generator drew from -- so World 10
-keeps respawning hybrid-recipe results only, and World 9 the whole non-hybrid roster.
+nothing (`OverworldScene`'s `respawnTick`). Everything comes back **outside the drawn world**
+in either direction -- ahead of the player past the far edge of their field of vision, or
+behind them past the camera, both margins derived from the projection rather than fixed row
+counts. Nothing may ever appear within view: something that pops into existence in front of
+the player is a spawner rather than a world. Refilling behind as well as ahead is what lets a
+player walk a corridor back and forth and always find more; a rule that only reached ahead
+would leave the stretch already walked permanently bare and stop refilling at all near the
+north end of a map. A respawn obeys every rule the original scatter does: never in a pass,
+never on the start/goal/guardian tile, one wild per row at most and never in a walkable run
+narrower than 2 tiles, and drawn from the same `getWildPool(world)` the generator drew from --
+so World 10 keeps respawning hybrid-recipe results only, and World 9 the whole non-hybrid
+roster.
 
-Two ceilings bound it. Wilds refill toward the population that map stood up at generation,
-which is what the Settings station's encounter-density preset sets -- respawns replace what
-was fought, they never outpace the setting. Qumatessence gets that same standing-count
-ceiling *plus* a finite per-map budget equal to the map's own initial pickup count, so one
-map pays out at most twice what it was scattered with. Both ceilings and the remaining budget
-live in the map snapshot (§7's `saveMapState`/`restoreMap`), so a round trip through battle or
-the Lab resumes the same half-refilled world rather than a fresh one.
+**Over time a map gives back without limit; at any one instant it holds only what it stood
+up.** Both kinds carry exactly one ceiling, and it is a *concurrent* one: wilds refill toward
+the population that map was generated with, which is what the Settings station's
+encounter-density preset sets, and qumatessence toward its own initial scatter count.
+Respawns replace what was taken rather than outpacing the setting, and a player walking the
+same corridor long enough can always find more of both. Both ceilings live in the map
+snapshot (§7's `saveMapState`/`restoreMap`), so a round trip through battle or the Lab
+resumes the same half-refilled world rather than a fresh one.
 
-The pickup budget is a pacing rule, not a balance one, and it is worth being clear about
-which: **collecting is not where income comes from, so capping it protects no number.** A
-battle's own stake (§5) pays 50 in World 1 against roughly 9 qumatessence scattered over that
-entire map, and 200 in World 10 against roughly 260 -- a whole map of World 1 pickups is
-worth a fifth of one fight. What the budget preserves is what a pickup *is*: something found
-on a route, in an amount a route can hold. Without it a picked-clean corridor becomes a place
-to stand and wait, which is a worse way to spend the player's time than walking on, whatever
-it pays. Wilds carry no such budget because a wild that comes back is a fight, and fighting
-is the game.
+**Farming is intended, and the reason is thematic rather than economic.** The wild crystals
+are tests, the golem holding a world's pass is the exam, and grinding encounters is studying
+for it. On a harder run a player may genuinely need to farm to be ready for a rival, and the
+game must let them: an unbounded corridor is the difference between "prepare and come back"
+and "you should have prepared earlier." That is also why capping pickups would protect no
+number even if it were wanted -- a battle's own stake (§5) pays 50 in World 1 against roughly
+9 qumatessence scattered over that entire map, and 200 in World 10 against roughly 260, so a
+whole map of World 1 pickups is worth a fifth of one fight. Income comes from fighting, and
+fighting is the game.
 
 World names are meant to read as the lecture topic, not generic RPG terrain names (check
 `WORLD_NAMES` and `WORLD_RIVALS` together when naming a world -- a mismatched rival name is
@@ -149,11 +153,11 @@ Each world's "Gate to next world" fight is a distinct **rival crystal** -- world
 10 have a fixed entry in `game/src/data/materials.ts`'s `WORLD_RIVALS`, world 9's is built
 per-playthrough instead (see below); all ten worlds have a rival either way. Separate from
 that world's ordinary wild encounters (`WORLD_CRYSTALS`) -- beating a rival is what the
-world's "Continue to World N+1" action actually triggers. The rival fight is deliberately
+world's forward pass actually opens onto. The rival fight is deliberately
 *not* a precondition for reaching that world's guardian: the goal guardian is always reachable
 once the goal is reached, so the player can shop/prep before ever facing the rival, rather
 than being stuck needing bought moves to beat a rival they can't reach the guardian to
-prepare for (`OverworldScene.tryAdvanceToNextWorld`). Every rival has a fixed main type
+prepare for (`OverworldScene.confirmGate`). Every rival has a fixed main type
 except World 9's -- an impurity/defect-bound resonance that can form in any host
 crystal, so its type is rolled at random every time the player reaches World 9
 (`data/materials.ts`'s `RIVAL_9_TYPES`/`rollRival9Type`, cleared and re-rolled by
@@ -776,9 +780,9 @@ the right of the field (`BattleScene.drawMoveMenu`).
 Noether's shop panel also carries a second tab for spending qumatessence on the player's own
 Quantumness/Velocity/Correlation stats (§3). The actual "leave this world" action -- a
 footer button that fights the world's rival crystal the first time it's clicked (see §2),
-then becomes "Continue to World N+1" once that rival is beaten
-(`OverworldScene.tryAdvanceToNextWorld`) -- lives only in the goal panel, not Noether's
-(or any guardian's) own panel, since the goal is where that world's boss actually stands (§2).
+then crosses into World N+1 once that rival is beaten (`OverworldScene.confirmGate`) -- lives
+only at the pass itself, not in Noether's (or any guardian's) own panel, since the pass is where
+that world's boss actually stands (§2).
 
 **Stakes.** An ordinary battle's qumatessence stake scales with the current world's
 difficulty: winning earns it, losing costs it, floored at 0. It rises linearly from 50 in
@@ -846,8 +850,8 @@ state can mark her met before the player has actually reached her.
   built world outright (`isSuperpositionMode()`, the same short-circuit Dresselhaus/
   Majorana/Anderson use for their own candidate pools, not the persisted
   `visitedWorlds` list) so Bloch's hub can jump to any of them immediately even from
-  the Lab on a save that has never yet stepped through a world door; walking through a
-  world door (below) is the other way to move between worlds, one step at a time
+  the Lab on a save that has never yet crossed a pass; walking through a world's own pass
+  (below) is the other way to move between worlds, one step at a time
   rather than a jump to an arbitrary destination. Each individual destination is
   its own one-time `BLOCH_DESTINATION_COST` (15) qumatessence unlock (registry/save
   `blochUnlockedWorlds`, a list of world numbers already paid for) -- traveling to a
@@ -1222,10 +1226,10 @@ hanging to oversized fists, planted legs) built from many grain shards fused aro
 an oversized torso core, its grain boundaries lit from inside, a heavy contact shadow
 and a low danger glow pooled at its feet, so "many grains fused into one
 mass" reads at a glance, unmistakably more dangerous than an ordinary wild crystal
-from a distance, before the player ever opens the goal panel. It's a pure visual
-landmark: the fight itself is only reached through "Face the Rival" in the goal gate
+from a distance, long before the player reaches it. It's a pure visual
+landmark: the fight itself is only reached by pressing at the pass
 panel. The same `makeBossCrystal` look carries through every later view of that same
-rival -- its own "Face the Rival" dialogue (`OverworldScene.showRivalEncounter`) renders
+rival -- its own pre-fight taunt dialogue (`OverworldScene.showRivalEncounter`) renders
 it too, rather than reverting to the plain `makeCrystal` an ordinary wild encounter's
 greeting uses, and the fight itself carries it on: `BattleScene` renders a rival's
 opponent crystal at `BOSS_CRYSTAL_SIZE` (bigger than an ordinary wild encounter's),
@@ -1233,20 +1237,22 @@ shifted a bit left of the usual opponent spot so the taller, wider silhouette cl
 both the opponent HP bar above it and the move menu below, instead of the plain
 `makeCrystal` every wild battle uses.
 
-**World doors.** Every built world has a doorway landmark standing at its
-`startTile` (`OverworldScene.spawnDoorSprites`, `art/door.ts`'s `makeDoorSprite`) --
-walking onto it opens a confirm panel offering to step back into World N-1, or into
-the Hub for World 1 (`OverworldScene.showStartDoorPanel`/`returnToPreviousWorld`).
-Landing in the earlier world this way puts the player on *its* goal tile with that
-world's goal already marked reached, so arriving reads as walking in from the far
-end rather than restarting that world's whole corridor. Once a world's rival is
-beaten, a second door appears at its goal tile in place of the boss avatar, and
-walking onto it reopens the same goal gate panel the boss's "Face the Rival" button
-lived in, now offering "Continue to World N+1" -- so both directions between worlds
-are ordinary walking, not just a menu action, alongside Bloch's teleport hub (§5)
-for jumping to an arbitrary already-visited world. Both doors regenerate the
-destination world's map fresh, the same "walking between worlds always lays out a
-new corridor" rule §7 describes for every other transition.
+**Passes between worlds.** Every world's corridor narrows into a pass at each end
+(`world/generators/shared.ts`'s `narrowGoalPass`/`openStartMouth`), and those passes
+are how the player moves between worlds. The rival stands in the forward one and bars
+it while it lives; once it falls the pass clears, a board names the destination, and
+the next world's palette shows through the notch beyond. Both passes share one
+interaction — walk to the mouth, read the prompt, press to commit
+(`OverworldScene.confirmGate`) — so arriving at a pass never transitions or starts a
+fight on its own. The backward pass carries no state, since the way back is open from
+the moment the player walks in through it; landing in the earlier world that way puts
+the player at *its* far end with that world's goal already marked reached, so arriving
+reads as walking in from the far end rather than restarting the whole corridor. World
+1's backward exit is a door rather than a pass, because it leads to the Lab, which is
+not a place. Both directions are ordinary walking, not a menu action, alongside
+Bloch's teleport hub (§5) for jumping to an arbitrary already-visited world. Every
+crossing regenerates the destination world's map fresh, the same "walking between
+worlds always lays out a new corridor" rule §7 describes for every other transition.
 
 **Wild-encounter density.** The Lab's Settings station
 (`scenes/panels/hubStations.ts`'s `showSettingsPanel`) lets the player choose how often ordinary wild
@@ -1278,7 +1284,7 @@ first time the player steps into it (`OverworldScene.showWorldLore`, gated by
 `hasSeenWorldLore`/`markWorldLoreSeen` against its own `worldLoreSeen` save field —
 kept separate from `visitedWorlds` because Superposition Mode's blanket unlock grant
 (`applySuperpositionUnlocks`, §7) pre-seeds `visitedWorlds` with every built world --
-from the Lab itself, before the player has ever stepped through a world door -- which
+from the Lab itself, before the player has ever crossed a pass -- which
 would otherwise suppress every world's lore screen at once). It plays
 before the goal/middle auto-dialogues and the `'controls'` tutorial tip if more
 than one of those is due on the same entry, since it's the more establishing
@@ -1364,7 +1370,8 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   5 rolls tiers 4-6) -- weighted toward the window's lower tier so a high
   roll stays a treat rather than the norm. Both pickups and wild crystals then
   refill themselves as the world is walked (§2's "Respawning"), out of sight
-  ahead of the player, capped by density and by that map's own pickup budget.
+  in both directions, without limit over time and capped only on how many a
+  map carries at once.
   The whole ground plane is drawn flat, with the walkable/impassable
   boundary traced off the tile grid and redrawn as a smooth curve, so a path edge that turns
   reads as an organic shoreline rather than a stair-step; a contact shadow and rim light along
@@ -1380,7 +1387,7 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   1-8's whole biome look) that swaps which world's `art/biomes.ts` entry it renders with. The
   layout is regenerated (fresh `Math.random` calls) on
   first load and whenever the player switches worlds -- the Hub door, Bloch's
-  teleport, a world door (§5), a debug warp, or (World 10 only) transmuting/fusing into a new
+  teleport, a pass (§5), a debug warp, or (World 10 only) transmuting/fusing into a new
   form while already standing there, since World 10's shape is keyed off the player's own
   current type; a round trip through
   battle instead restores the exact layout and player position it started
@@ -1477,7 +1484,7 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   next one, meet each guardian in turn. **Superposition Mode** is a testing/
   exploration mode, not the intended first playthrough: every guardian is
   already met and fully unlocked from the moment the save exists, including
-  from the Lab itself before the player has ever stepped through a world door.
+  from the Lab itself before the player has ever crossed a pass.
   The blanket "everything unlocked" grant (`OverworldScene.applySuperpositionUnlocks`,
   registry-only, no scene/world dependency of its own) is shared by two call sites:
   `HubScene.create()` (so Kondo/Franklin/Noether/Laughlin/Feynman/Skłodowska-Curie/

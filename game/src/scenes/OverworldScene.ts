@@ -1,11 +1,12 @@
 import Phaser from 'phaser';
-import { getBiome } from '../art/biomes';
+import { BIOMES, getBiome } from '../art/biomes';
 import type { Biome } from '../art/biomes';
 import { makeCrystal } from '../art/crystals';
 import { makeToken } from '../art/tokens';
 import { makeNoetherAvatar } from '../art/noether';
-import { BOSS_FOOT, BOSS_SILHOUETTE_BOTTOM, BOSS_SILHOUETTE_TOP, makeBossCrystal } from '../art/boss';
+import { BOSS_FOOT, BOSS_SILHOUETTE_BOTTOM, BOSS_SILHOUETTE_HALF_WIDTH, BOSS_SILHOUETTE_TOP, makeBossCrystal } from '../art/boss';
 import { DOOR_FOOT, makeDoorSprite } from '../art/door';
+import { BOARD_FOOT, makePassBoard } from '../art/passBoard';
 import { makeBlochAvatar } from '../art/bloch';
 import { makeFeynmanAvatar } from '../art/feynman';
 import { makeDresselhausAvatar } from '../art/dresselhaus';
@@ -17,7 +18,7 @@ import { makeAndersonAvatar } from '../art/anderson';
 import { makeFranklinAvatar } from '../art/franklin';
 import { playGuardianChime } from '../audio/sfx';
 import { stopMoveEffectPreview } from '../art/moveEffectPreview';
-import { project, CANVAS_W, CANVAS_H } from '../art/perspective';
+import { project, CANVAS_W, CANVAS_H, LANE_PX } from '../art/perspective';
 import {
   CAMERA_BACK_TILES,
   DRAW_DISTANCE_TILES,
@@ -29,6 +30,7 @@ import {
   projectTile,
 } from './overworld/projection';
 import { drawSky, forwardHazeBlend } from './overworld/sky';
+import type { GateView } from './overworld/sky';
 import { buildTerrainPlan } from './overworld/terrain/plan';
 import { drawTerrain } from './overworld/terrain/paint';
 import type { TerrainPlan, TerrainView } from './overworld/terrain/types';
@@ -62,9 +64,9 @@ import type { DiscoveredMaterial } from '../data/save';
 import type { Material, MaterialType } from '../data/types';
 import { generateWorldMap } from '../world/mapgen';
 import type { GridPoint } from '../world/mapgen';
-import { passZoneRows } from '../world/generators/shared';
+import { PASS_HALF_WIDTH, passZoneRows } from '../world/generators/shared';
 import { fontPx, fontScale, fitProseToBudget } from '../ui/text';
-import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY, REFERENCE_BLUE_GREY_HEX, TUTORIAL_CYAN, STORY_LAVENDER } from '../ui/theme';
+import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX, TUTORIAL_CYAN, STORY_LAVENDER } from '../ui/theme';
 import { music } from '../audio/music';
 import { showNoetherShop } from './panels/noether';
 import { showSklodowskaCuriePanel } from './panels/sklodowskaCurie';
@@ -98,13 +100,13 @@ interface SavedMapState {
   vortexCores: GridPoint[];
   reachedGoal: boolean;
   reachedMiddle: boolean;
-  // Respawn bookkeeping (see "Respawning" below). All three are scalars
-  // rather than the grids above, so unlike `walkable`/`tokenTiles` they are
-  // genuinely copied here rather than shared by reference -- a respawn has
-  // to re-snapshot for them to survive a round trip through BattleScene.
+  // Respawn bookkeeping (see "Respawning" below): the standing population of
+  // each kind this map carries. Both are scalars rather than the grids above,
+  // so unlike `walkable`/`tokenTiles` they are genuinely copied here rather
+  // than shared by reference -- a respawn has to re-snapshot for them to
+  // survive a round trip through BattleScene.
   wildTarget: number;
   tokenTarget: number;
-  tokenRespawnsLeft: number;
 }
 
 const CRYSTAL_SIZE = 22;
@@ -122,17 +124,25 @@ const PLAYER_FOOT = PLAYER_CRYSTAL_SIZE;
 // its own tile centre, so the fixed on-screen avatar and the scrolling ground
 // under it always agree about which tile the player is standing on.
 const PLAYER_GROUND_Y = project(0, CAMERA_BACK_TILES * TILE_SCALE).y;
-// Substantially bigger than a wild crystal (CRYSTAL_SIZE) or even the player
-// (PLAYER_CRYSTAL_SIZE) -- the boss standing at the goal tile should read as
-// gigantic at a glance (art/boss.ts's makeBossCrystal further composes
-// several of these into one fused humanoid mass reaching
-// BOSS_SILHOUETTE_TOP/BOTTOM multiples of this above and below its center,
-// so the rendered golem stands well over twice this tall).
-const BOSS_CRYSTAL_SIZE = 78;
-// Bigger than the player (34) so a world door reads as a real structure, but
-// well under the boss (78) it shares the goal tile with once that world's
-// rival is beaten -- a doorway is a landmark, not a threat.
+// The walkable width of a pass throat, in tiles (world/generators/shared.ts's
+// taper). Everything sized against the aperture reads off this.
+const PASS_APERTURE_TILES = PASS_HALF_WIDTH * 2 + 1;
+// The rival is sized to the pass it holds, not to the screen: its widest
+// span (art/boss.ts's BOSS_SILHOUETTE_HALF_WIDTH, the outstretched fists)
+// covers the throat's full walkable width, so no gap shows past it from the
+// approach tile. Scale is not in this ratio because it cancels -- the golem
+// and the aperture stand at the same depth, so one number holds at every
+// distance the pass is looked at from. Scale is read against the opening
+// (WORLDS.md section 4): a figure filling a narrow notch reads larger than a
+// giant in an open field, and this comes out far above the player's own 34.
+const BOSS_CRYSTAL_SIZE = Math.round((PASS_APERTURE_TILES * TILE_SCALE * LANE_PX) / (2 * BOSS_SILHOUETTE_HALF_WIDTH));
+// The doorway landmark at World 1's backward exit -- bigger than the player
+// (34) so it reads as a real structure. Every geographic boundary is a pass;
+// the Lab is not a place, so the one non-geographic boundary is a door.
 const DOOR_SPRITE_SIZE = 46;
+// The signboard in a pass. Read at approach distance and no further, so it
+// stays a signpost rather than competing with the horizon it captions.
+const BOARD_SPRITE_SIZE = 34;
 const QUIZ_CORRECT_MULTIPLIER = 1.5;
 const QUIZ_WRONG_MULTIPLIER = 0.6;
 
@@ -145,15 +155,28 @@ const QUIZ_WRONG_MULTIPLIER = 0.6;
 const RESPAWN_TICK_MS = 3500;
 const WILD_RESPAWN_CHANCE = 0.35;
 const TOKEN_RESPAWN_CHANCE = 0.2;
-// How far north of the player's own row a respawn must land, in rows.
-// Everything comes back *ahead* of the player and outside the drawn world:
-// the camera faces north permanently, so a tile south of the player is never
-// rendered at all, and anything appearing there would be walked into having
-// never been seen. Derived from the projection's own draw distance rather
-// than fixed, plus two rows of slack -- one for the camera lagging behind
-// the player's tile mid-step, one for a sprite's own wander -- so widening
-// the draw distance can never start popping respawns into view.
+// The two margins a respawn must clear, in rows. Nothing may ever appear
+// within view, so the world refills only outside the drawn world -- ahead of
+// the player past the far edge of their field of vision, or behind them past
+// the camera.
+//
+// The northern margin is derived from the projection's own draw distance
+// rather than fixed, plus two rows of slack -- one for the camera lagging
+// behind the player's tile mid-step, one for a sprite's own wander -- so
+// widening the draw distance can never start popping respawns into view.
+//
+// The southern margin exists because the world has to refill *behind* the
+// player too: a player walking a corridor back and forth must always find
+// more, and refills that only ever land ahead leave the stretch already
+// walked permanently bare and stop entirely near the north end of a map. The
+// camera faces north permanently and sits CAMERA_BACK_TILES behind the
+// player, so a tile even one row south of the player's own is already culled
+// -- but `playerTile` moves to the destination the instant a step begins
+// while the camera is still tweening from the tile behind, so the margin has
+// to cover a full step of that lag, plus the same wander slack, plus one
+// spare.
 const RESPAWN_MIN_ROWS_AHEAD = Math.ceil(DRAW_DISTANCE_TILES * VISIBLE_DEPTH_FRACTION) + 2;
+const RESPAWN_MIN_ROWS_BEHIND = Math.ceil(CAMERA_BACK_TILES) + 2;
 
 // Worlds with a built overworld map (biome + rival, where applicable) --
 // bounds Bloch's teleport offers (a "visited" world the player can't
@@ -284,6 +307,10 @@ interface WorldSprite {
   // position (which follows the camera like everything else on the map)
   // push it past either edge.
   clampLabelToCanvas?: boolean;
+  // Planted, not alive: no wander, no bob. A crystal glints and a golem
+  // breathes, but a signboard nailed to two posts that drifts around its own
+  // tile reads as a prop rather than as part of the road.
+  still?: boolean;
 }
 
 // The interface every guardian-panel file (scenes/panels/<guardian>.ts,
@@ -485,7 +512,6 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // left to give back. The budget is what keeps a walked-over map from being
   // an unbounded currency source (DESIGN.md §2's pickup economy).
   private tokenTarget = 0;
-  private tokenRespawnsLeft = 0;
   private flowerMap: boolean[][] = [];
   private goalTile: GridPoint = { x: 0, y: 0 };
   private startTile: GridPoint = { x: 0, y: 0 };
@@ -512,6 +538,9 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // patches put several biomes on screen at once.
   private hazeBlend = 0;
   private hazeCache = new Map<number, number>();
+  // This world's forward pass as the drawing code sees it, rebuilt each frame
+  // by drawWorld from gateView().
+  private gate: GateView | null = null;
   private reachedGoal = false;
   private reachedMiddle = false;
   // Public rather than private: read/written directly by the extracted
@@ -527,17 +556,17 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // visible, wandering landmark standing on the map rather than only
   // appearing once their dialogue triggers.
   private guardianSprites: WorldSprite[] = [];
-  // 0 or 1 entries -- this world's rival/boss, while still undefeated, a
-  // purely visual landmark standing at the goal tile now that guardians have
-  // moved to the corridor's middle (see spawnBossSprite/art/boss.ts's
-  // makeBossCrystal) -- spawnDoorSprites takes over that tile with a door
-  // once the rival is beaten, so this stays empty from then on.
+  // 0 or 1 entries -- this world's rival, standing in the forward pass and
+  // barring it for as long as it lives (spawnBossSprite/art/boss.ts's
+  // makeBossCrystal). The guard is the whole of what signals a shut gate, so
+  // this emptying is what "the way is open" looks like.
   private bossSprites: WorldSprite[] = [];
-  // 1 or 2 entries -- a doorway landmark always standing at this world's
-  // startTile (leading back to World N-1, or the Hub for World 1) and,
-  // once this world's rival is beaten, a second one at goalTile (leading
-  // onward to World N+1). See spawnDoorSprites/art/door.ts's makeDoorSprite.
-  private doorSprites: WorldSprite[] = [];
+  // The scenery in this world's two passes: a board naming the destination at
+  // each (art/passBoard.ts), except that World 1's backward exit is a door
+  // instead (it leads to the Lab, which is not a place) and World 10's
+  // forward pass gets no board (nothing lies beyond). The forward board only
+  // stands once the rival has fallen; the backward one always does.
+  private gateSprites: WorldSprite[] = [];
   private worldGfx!: Phaser.GameObjects.Graphics;
   private player!: Phaser.GameObjects.Container;
   private playerCrystalGfx!: Phaser.GameObjects.Container;
@@ -545,6 +574,10 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   tokenText!: Phaser.GameObjects.Text;
   private goalText!: Phaser.GameObjects.Text;
+  // The interact prompt: interface, not scenery. It obeys every text-size
+  // preset, sits at a fixed place on screen rather than on a tile, and is
+  // what carries the choice -- approach, read, press.
+  private gatePrompt!: Phaser.GameObjects.Text;
   dialogueActive = false;
   dialogueContainer?: Phaser.GameObjects.Container;
   // Which section of Noether's panel is showing -- reset to 'moves' on
@@ -768,7 +801,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   create() {
     this.moving = false;
     // World 9's rival re-rolls every time the player reaches this world
-    // (Hub door, Bloch's teleport, "Continue to World N+1," a debug warp --
+    // (Hub door, Bloch's teleport, a crossed pass, a debug warp --
     // every path that lands here goes through this same create()) --
     // clearing the cached value here forces resolveRival9Type()'s first
     // read this visit to roll fresh; it then stays cached (so the goal-tile
@@ -826,7 +859,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.spawnTokenSprites();
     this.spawnGuardianSprite();
     this.spawnBossSprite();
-    this.spawnDoorSprites();
+    this.spawnGateSprites();
     // The world refills itself as the player walks it (see respawnTick and the
     // RESPAWN_* constants). Phaser's clock drops its own events on scene
     // shutdown, so this is started fresh on every entry rather than guarded.
@@ -893,7 +926,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       .setOrigin(0.5, 0)
       .setDepth(50)
       .setVisible(this.reachedGoal);
-    this.add
+    const labHint = this.add
       .text(CANVAS_W - 8, CANVAS_H - 8, 'Press Enter to go to the Lab', {
         fontSize: fontPx(this, 12),
         color: REFERENCE_BLUE_GREY_HEX,
@@ -902,6 +935,31 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       })
       .setOrigin(1, 1)
       .setDepth(50);
+    // Interface, not scenery: fixed on screen, sized by the text preset, and
+    // sitting low and centred where the pass itself is, so the offer reads as
+    // attached to what the player is looking at without being painted into
+    // the world. It is the only thing that arrives at the threshold -- the
+    // board and the guard were always there.
+    //
+    // Stacked above the Lab hint by measuring it rather than by a fixed
+    // offset: both grow with the text-size preset, and at the largest one a
+    // guessed gap puts the two plates through each other.
+    this.gatePrompt = this.add
+      .text(CANVAS_W / 2, labHint.y - labHint.height - 6, '', {
+        fontSize: fontPx(this, 14),
+        color: '#e6d9ff',
+        backgroundColor: 'rgba(0,0,0,0.62)',
+        padding: { x: 8, y: 4 },
+        align: 'center',
+        wordWrap: { width: CANVAS_W - 60 },
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(50)
+      .setVisible(false);
+    // Clicking the prompt is identical to pressing the key, and the prompt is
+    // interactive exactly while it is on screen -- so the affordance and the
+    // hit area are the same object and cannot drift apart.
+    this.gatePrompt.on('pointerdown', () => this.confirmGate());
 
     // The player is a crystal too, not a trainer commanding one -- the
     // overworld avatar is just the player's current form (playerMaterial,
@@ -922,6 +980,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.input.keyboard!.on('keydown-M', () => music.toggleMute());
     this.input.keyboard!.on('keydown-H', () => this.returnToHub());
     this.input.keyboard!.on('keydown-ENTER', () => this.returnToHub());
+    this.input.keyboard!.on('keydown-SPACE', () => this.confirmGate());
 
     // Defensive fallback only -- TitleScene normally seeds all of these
     // from localStorage (data/save.ts) before Overworld ever runs. Only
@@ -947,16 +1006,15 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
 
     // Same "don't stack on top of an already-open panel" guard the old
     // first-run tutorial used -- the player's starting tile is never on the
-    // goal/middle row, so this only actually skips in practice if a future
-    // change moves the start closer to either.
+    // middle row, so this only actually skips in practice if a future change
+    // moves the start closer to it.
     const finishEntry = () => {
-      this.maybeAutoOpenGoalDialogue();
       this.maybeAutoOpenMiddleDialogue();
       if (!this.dialogueActive) this.showTutorialTip('controls');
     };
     // World lore is the more "establishing" content when both are due on
-    // the same entry, so it plays first and finishEntry (the goal/middle
-    // auto-dialogues, then the controls tip) only runs once it's dismissed.
+    // the same entry, so it plays first and finishEntry (the guardian's
+    // auto-dialogue, then the controls tip) only runs once it's dismissed.
     const lore = WORLD_LORE[this.world];
     if (lore && !hasSeenWorldLore(this.game.registry, this.world)) {
       this.showWorldLore(lore, finishEntry);
@@ -992,8 +1050,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // once per save, the moment its own feature actually becomes relevant --
   // see the call sites in maybeTriggerEncounter (encounter), startBattle
   // (battle), maybeCollectToken (qumatessence), openGuardian (guardian), and
-  // maybeAutoOpenGoalDialogue (goal), plus the 'controls' call right above
-  // this method. `onClose` is whatever the caller was about to do next (open
+  // maybeReachGoal (goal), plus the 'controls' call right above this
+  // method. `onClose` is whatever the caller was about to do next (open
   // the encounter panel, launch the battle, ...) -- it always still runs,
   // either immediately (tip already seen) or after the player dismisses the
   // popup (first time), so callers don't need their own seen/unseen branch.
@@ -1121,8 +1179,12 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // goal, rather than re-walking the whole corridor. Overriding playerTile
     // here (after generateWorldMap already used the default south-edge
     // point to lay the corridor out) leaves map generation itself untouched.
+    // Landing on the pass mouth rather than in the throat itself: the throat
+    // is the rival's tile whenever this world's rival still stands, and
+    // walking in from the far end must not put the player on the wrong side
+    // of a guard they have not beaten.
     if (this.enterFrom === 'goal') {
-      this.playerTile = { ...this.goalTile };
+      this.playerTile = { x: this.goalTile.x, y: this.goalTile.y + 1 };
       this.reachedGoal = true;
     }
 
@@ -1163,12 +1225,11 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // scatter's own count each stay the single knob they already are.
     this.wildTarget = this.encounterTiles.reduce((n, row) => n + row.filter(Boolean).length, 0);
     this.tokenTarget = this.tokenTiles.reduce((n, row) => n + row.filter((v) => v > 0).length, 0);
-    this.tokenRespawnsLeft = this.tokenTarget;
 
     // Landing via the backward door (enterFrom === 'goal', above) needs this
     // freshly generated layout snapshotted immediately, not just held in
     // memory -- a wild fight fought anywhere in this world (e.g. answering
-    // "Face the Rival" from the goal panel that's about to auto-open) round
+    // pressing at the pass mouth) round
     // trips through BattleScene with no `regenerate` flag, and create()
     // restores from this saved snapshot rather than calling generateMap()
     // again; without saving here that restore would fall back to whatever
@@ -1205,7 +1266,6 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.reachedMiddle = saved.reachedMiddle;
     this.wildTarget = saved.wildTarget;
     this.tokenTarget = saved.tokenTarget;
-    this.tokenRespawnsLeft = saved.tokenRespawnsLeft;
     this.crystalSprites = [];
     this.tokenSprites = [];
   }
@@ -1228,7 +1288,6 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       reachedMiddle: this.reachedMiddle,
       wildTarget: this.wildTarget,
       tokenTarget: this.tokenTarget,
-      tokenRespawnsLeft: this.tokenRespawnsLeft,
     };
     this.game.registry.set('mapState', saved);
   }
@@ -1264,7 +1323,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.updateWorldSprites(this.tokenSprites);
     this.updateWorldSprites(this.guardianSprites);
     this.updateWorldSprites(this.bossSprites);
-    this.updateWorldSprites(this.doorSprites);
+    this.updateWorldSprites(this.gateSprites);
+    this.updateGatePrompt();
 
     if (this.moving || this.dialogueActive) return;
 
@@ -1285,6 +1345,10 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     const ny = Phaser.Math.Clamp(this.playerTile.y + dy, 0, GRID_H - 1);
     if (nx === this.playerTile.x && ny === this.playerTile.y) return;
     if (!this.walkable[ny]?.[nx]) return;
+    // The rival physically holds the throat while it lives, so the throat
+    // row is not walkable while it does. This is the state signal made
+    // literal -- the way is barred by the thing barring it.
+    if (ny === this.goalTile.y && !this.isRivalDefeated()) return;
 
     this.moving = true;
     this.playerTile = { x: nx, y: ny };
@@ -1301,13 +1365,6 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
         this.maybeCollectToken(nx, ny);
         this.maybeReachMiddle(nx, ny);
         this.maybeReachGoal(nx, ny);
-        // Repeat visits to the goal-door landmark reopen the gate panel too
-        // (maybeReachGoal itself only auto-opens it the first time this
-        // world's goal row is ever reached) -- tile-exact rather than
-        // "whole row," since this is specifically "walked onto the door,"
-        // not "reached the finish line."
-        if (nx === this.goalTile.x && ny === this.goalTile.y) this.maybeAutoOpenGoalDialogue();
-        this.maybeReachStartDoor(nx, ny);
       },
     });
 
@@ -1363,11 +1420,14 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       now: this.time.now,
       hazeBlend: this.hazeBlend,
       hazeCache: this.hazeCache,
+      gate: this.gate,
+      route: this.getVisitedWorlds(),
     };
   }
 
   private drawWorld() {
-    this.hazeBlend = forwardHazeBlend(this.world, this.isRivalDefeated(), this.camPos.y, this.goalTile.y);
+    this.gate = this.gateView();
+    this.hazeBlend = forwardHazeBlend(this.world, this.gate.open, this.camPos.y, this.goalTile.y);
     this.hazeCache.clear();
     drawTerrain(this.terrainView());
   }
@@ -1497,12 +1557,12 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   }
 
   // Qumatessence condenses again, valued by the same per-world tier window as
-  // the original scatter (data/tokens.ts). Two separate limits: a map never
-  // carries more pickups at once than it started with, and `tokenRespawnsLeft`
-  // caps how many it will ever give back, so walking a map over and over pays
-  // out a finite amount rather than an open-ended one.
+  // the original scatter (data/tokens.ts). Capped only on the *concurrent*
+  // population, exactly as wilds are: a map never carries more pickups at once
+  // than it stood up, and over time it gives back without limit, so a player
+  // walking it can always find more (DESIGN.md §2's respawn rule).
   private respawnToken(): boolean {
-    if (this.tokenRespawnsLeft <= 0 || this.tokenSprites.length >= this.tokenTarget) return false;
+    if (this.tokenSprites.length >= this.tokenTarget) return false;
     const candidates = this.respawnTiles();
     if (candidates.length === 0) return false;
 
@@ -1513,16 +1573,20 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     const value = pickTokenValue(this.world);
     this.tokenTiles[tile.y][tile.x] = value;
     this.addTokenSprite(tile.x, tile.y, value);
-    this.tokenRespawnsLeft -= 1;
     return true;
   }
 
-  // Every tile a respawn is allowed to land on: strictly north of the drawn
-  // world (RESPAWN_MIN_ROWS_AHEAD), walkable, empty, outside both passes, and
-  // off the three landmark tiles the guardian/boss/doors stand on.
+  // Every tile a respawn is allowed to land on: outside the drawn world in
+  // either direction (past RESPAWN_MIN_ROWS_AHEAD to the north or
+  // RESPAWN_MIN_ROWS_BEHIND to the south), walkable, empty, outside both
+  // passes, and off the three landmark tiles the guardian, the rival and the
+  // backward exit stand on. Refilling in both directions is what lets a player
+  // walk a corridor back and forth and always find more -- a rule that only
+  // reached ahead would leave the walked stretch bare and stop refilling at
+  // all once the player neared the north end of a map.
   private respawnTiles(): GridPoint[] {
-    const maxY = this.playerTile.y - RESPAWN_MIN_ROWS_AHEAD;
-    if (maxY < 0) return [];
+    const aheadOf = this.playerTile.y - RESPAWN_MIN_ROWS_AHEAD;
+    const behind = this.playerTile.y + RESPAWN_MIN_ROWS_BEHIND;
     // A pass is the one place a walkable run is allowed to be narrower than
     // two tiles, and that exception only holds while nothing can stand in it
     // (world/generators/shared.ts's passZoneRows) -- the same suppression the
@@ -1532,7 +1596,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     const landmarks = new Set([this.startTile, this.goalTile, this.midTile].map((p) => `${p.x},${p.y}`));
 
     const tiles: GridPoint[] = [];
-    for (let y = 0; y <= maxY; y++) {
+    for (let y = 0; y < GRID_H; y++) {
+      if (y > aheadOf && y < behind) continue;
       if (passRows.has(y)) continue;
       for (let x = 0; x < GRID_W; x++) {
         if (!this.walkable[y]?.[x]) continue;
@@ -1618,15 +1683,15 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     return getRival(this.world, this.world === 9 ? this.resolveRival9Type() : undefined);
   }
 
-  // This world's rival/boss (getWorldRival), standing at the goal tile as a
-  // gigantic, unmissable-from-a-distance landmark -- purely visual (no
-  // world has a WORLD_RIVALS gap, so this always finds one for a built
-  // world). The actual fight still only starts from "Face the Rival" in the
-  // goal gate panel (showGatePanel/showRivalEncounter); walking up to this
-  // sprite doesn't trigger anything on its own, same as a guardian sprite.
-  // Stops rendering once the rival is beaten -- a still-looming defeated
-  // boss would read as unresolved, where the door spawnDoorSprites puts at
-  // this same tile instead reads as "the way is open."
+  // This world's rival (getWorldRival), standing in the throat of the forward
+  // pass and physically barring it (no world has a WORLD_RIVALS gap, so this
+  // always finds one for a built world). Every rival is its world's physics
+  // made incorruptible, so holding the boundary is its job rather than a
+  // staging choice, and a body in the way is a plainer statement of "shut"
+  // than any weather drawn over the gap. Walking up to it triggers nothing on
+  // its own -- the fight starts on the confirm keypress the approach prompt
+  // offers (confirmGate). Stops rendering once the rival is beaten, which is
+  // the whole of what "the way is open" looks like.
   private spawnBossSprite() {
     this.bossSprites = [];
     if (this.isRivalDefeated()) return;
@@ -1670,73 +1735,63 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     });
   }
 
-  // The doorway landmark at this world's startTile, always present (leading
-  // back to World N-1, or the Lab for World 1), plus a second one at
-  // goalTile once this world's rival is beaten (leading onward to World
-  // N+1, standing in for the boss avatar -- spawnBossSprite stops rendering
-  // its own avatar there once the rival is beaten). Purely visual, same as
-  // a guardian or boss sprite -- walking onto either tile is what actually
-  // opens the confirm panel that switches worlds (maybeReachStartDoor/
-  // showStartDoorPanel for the start door, maybeReachGoal/
-  // maybeAutoOpenGoalDialogue for the goal door).
-  private spawnDoorSprites() {
-    this.doorSprites = [];
+  // The scenery standing in this world's two passes. Both are always there,
+  // depth-scaled and unreadably small from far off; what arrives as the
+  // player walks up is *interactivity* (the HUD prompt), never the object.
+  //
+  // The backward pass carries a board from the moment the player arrives,
+  // since the way back is open from then on and carries no state. The
+  // forward pass carries one only once its guard has fallen -- while the
+  // rival stands there, there is nothing to name, because nothing of the
+  // next world is visible past it.
+  //
+  // Two exceptions, both ontology rather than convenience: World 1's
+  // backward exit is a door, not a pass, because it leads to the Lab and the
+  // Lab is not a place; and World 10's forward pass gets no board, because
+  // the grammar means "another world lies beyond" and the finale's meaning is
+  // that there is not one.
+  private spawnGateSprites() {
+    this.gateSprites = [];
 
-    const startDoor = makeDoorSprite(this, DOOR_SPRITE_SIZE);
-    startDoor.setDepth(20);
-    const startLabel = this.add
-      .text(0, 0, this.world === 1 ? 'Door to the Lab' : `Door to World ${this.world - 1}`, {
-        fontSize: fontPx(this, 11),
-        color: '#e6d9ff',
-        backgroundColor: 'rgba(0,0,0,0.45)',
-        padding: { x: 3, y: 1 },
-      })
-      .setOrigin(0.5, 1)
-      .setDepth(22);
-    // Drawn one row north of startTile itself (still guaranteed walkable --
-    // world/mapgen.ts's buildCorridor never drifts the corridor's center
-    // before MIN_STRAIGHT_ROWS=2 straight rows, so the row right above the
-    // south edge is always centered on startTile.x too), not on top of it.
-    // The camera looks forward from just behind the player, so a sprite
-    // sitting exactly on startTile would only ever be visible while stacked
-    // directly under the player's own crystal, standing on the same tile --
-    // one row ahead puts it in front of the player at spawn and again every
-    // time they walk back down to the start row. The trigger tile itself
-    // (maybeReachStartDoor, below) stays at the real startTile -- moving it
-    // to match the sprite would fire on the player's very first step away
-    // from spawn instead of on walking back to it.
-    this.doorSprites.push({
-      x: this.startTile.x,
-      y: this.startTile.y - 1,
-      size: DOOR_SPRITE_SIZE,
-      foot: DOOR_SPRITE_SIZE * DOOR_FOOT,
-      container: startDoor,
-      label: startLabel,
-      seed: Math.random() * Math.PI * 2,
-    });
+    // Drawn one row north of startTile itself (still walkable -- the start
+    // mouth's own throat row is centred on startTile.x, world/generators/
+    // shared.ts's openStartMouth), not on top of it. The camera looks forward
+    // from just behind the player, so anything sitting exactly on startTile
+    // would only ever be visible stacked under the player's own crystal.
+    if (this.world === 1) {
+      const door = makeDoorSprite(this, DOOR_SPRITE_SIZE);
+      this.gateSprites.push({
+        x: this.startTile.x,
+        y: this.startTile.y - 1,
+        size: DOOR_SPRITE_SIZE,
+        foot: DOOR_SPRITE_SIZE * DOOR_FOOT,
+        container: door,
+        seed: Math.random() * Math.PI * 2,
+      });
+    } else {
+      this.gateSprites.push(this.makeBoardSprite(this.startTile.x, this.startTile.y - 1, worldName(this.world - 1)));
+    }
 
     if (!this.isRivalDefeated()) return;
-    const isLastWorld = this.world >= Math.max(...BUILT_WORLDS);
-    const goalDoor = makeDoorSprite(this, DOOR_SPRITE_SIZE);
-    goalDoor.setDepth(20);
-    const goalLabel = this.add
-      .text(0, 0, isLastWorld ? 'The way is open' : `Door to World ${this.world + 1}`, {
-        fontSize: fontPx(this, 11),
-        color: '#e6d9ff',
-        backgroundColor: 'rgba(0,0,0,0.45)',
-        padding: { x: 3, y: 1 },
-      })
-      .setOrigin(0.5, 1)
-      .setDepth(22);
-    this.doorSprites.push({
-      x: this.goalTile.x,
-      y: this.goalTile.y,
-      size: DOOR_SPRITE_SIZE,
-      foot: DOOR_SPRITE_SIZE * DOOR_FOOT,
-      container: goalDoor,
-      label: goalLabel,
+    if (this.world >= Math.max(...BUILT_WORLDS)) return;
+    // Beside the throat rather than in it, so the board captions the opening
+    // instead of standing in the gap the player is about to walk through.
+    // Whichever flank the grid actually has room for.
+    const right = this.goalTile.x + PASS_HALF_WIDTH + 1;
+    const boardX = right < GRID_W ? right : this.goalTile.x - PASS_HALF_WIDTH - 1;
+    this.gateSprites.push(this.makeBoardSprite(boardX, this.goalTile.y + 1, worldName(this.world + 1)));
+  }
+
+  private makeBoardSprite(x: number, y: number, destination: string): WorldSprite {
+    return {
+      x,
+      y,
+      size: BOARD_SPRITE_SIZE * 1.9,
+      foot: BOARD_SPRITE_SIZE * BOARD_FOOT,
+      container: makePassBoard(this, BOARD_SPRITE_SIZE, destination),
       seed: Math.random() * Math.PI * 2,
-    });
+      still: true,
+    };
   }
 
   // Wanders each sprite a little around its home tile (small sinusoidal
@@ -1749,8 +1804,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     const t = this.time.now;
 
     for (const c of sprites) {
-      const wanderLane = Math.sin(t * 0.0012 + c.seed) * 0.18;
-      const wanderDepth = Math.cos(t * 0.0009 + c.seed * 1.7) * 0.12;
+      const wanderLane = c.still ? 0 : Math.sin(t * 0.0012 + c.seed) * 0.18;
+      const wanderDepth = c.still ? 0 : Math.cos(t * 0.0009 + c.seed * 1.7) * 0.12;
 
       const lane = c.x - camX + wanderLane;
       const depth = camY - c.y + wanderDepth;
@@ -1770,11 +1825,18 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       // lifted by its own ground-contact offset to stand on that point rather
       // than being centred over it.
       const p = projectTile(lane, depth);
-      const bob = Math.sin(t * 0.004 + c.seed * 2.3) * 3 * p.scale;
+      const bob = c.still ? 0 : Math.sin(t * 0.004 + c.seed * 2.3) * 3 * p.scale;
       const originY = p.y - c.foot * p.scale + bob;
 
       c.container.setPosition(p.x, originY);
       c.container.setScale(p.scale);
+      // Every actor standing on the map sorts by its own projected depth, so
+      // whatever is nearer the camera is drawn over whatever is further --
+      // the rival in a pass among the boards and crystals around it included,
+      // rather than any one of them being a fixed-depth special case. Sits
+      // under the player (40) and well under any dialogue (100).
+      c.container.setDepth(30 - depth);
+      c.label?.setDepth(30 - depth + 0.5);
       // A clamped label (currently just a boss's own, see spawnBossSprite)
       // keeps its rendered half-width (label.width already reflects any
       // wordWrap) from pushing past either canvas edge, rather than staying
@@ -1908,7 +1970,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   }
 
   // Underlies addDialogueButton -- broken out so a footer row can place two
-  // buttons side by side (Noether's "Farewell" / "Continue to World 2")
+  // buttons side by side (a guardian panel's "Farewell" / "Not yet")
   // instead of stacking them, which would otherwise push the panel past the
   // bottom of the canvas.
   addDialogueButtonAt(
@@ -1974,43 +2036,99 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     return !!rivalDefeated[this.world];
   }
 
-  // Reopens this world's goal gate panel (showGatePanel -- no guardian stands
-  // here anymore, see WORLD_GUARDIANS' `tile: 'middle'`) whenever the player
-  // is currently standing on the already-reached goal row -- both right
-  // after first stepping onto it, after any later round trip through
-  // BattleScene (a wild fight fought near the goal, or the rival fight
-  // itself resolving) with the player still there, on landing here via the
-  // backward door's `enterFrom: 'goal'`, and on walking onto the goal-door
-  // landmark again later (see tryMove's onComplete). Gated on the player's
-  // *current* tile, not just the historical reachedGoal flag, so a battle
-  // fought elsewhere in the world (after the goal was reached once) doesn't
-  // pop this open out of nowhere on return -- the Lab's own guardian avatars
-  // already cover deliberately revisiting from afar.
-  // Since the guardian is mid-corridor, reached well before the goal, the
-  // player always has a chance to shop/prep before ever facing the boss
-  // waiting here; the rival fight is what "Continue to World N+1" triggers
-  // (see tryAdvanceToNextWorld).
-  private maybeAutoOpenGoalDialogue() {
-    if (!this.reachedGoal || this.dialogueActive) return;
-    if (this.playerTile.y !== this.goalTile.y) return;
-    this.showTutorialTip('goal', () => this.openGoalGuardianPanel());
+  // This world's forward pass, as everything that draws it needs to see it
+  // (sky.ts's GateView): where the throat sits, how wide it is, whether its
+  // guard has fallen and what lies beyond. One record, so the aperture in the
+  // horizon, the ground seam and the repeated road cannot disagree about
+  // whether the way is open.
+  private gateView(): GateView {
+    const open = this.isRivalDefeated();
+    return {
+      row: this.goalTile.y,
+      lane: this.goalTile.x - this.camPos.x,
+      halfTiles: PASS_HALF_WIDTH + 0.5,
+      open,
+      next: open ? BIOMES[this.world + 1] ?? null : null,
+    };
   }
 
-  // Looks up this world's goal-tile guardian (if any) in WORLD_GUARDIANS and
-  // opens their panel. No guardian currently uses `tile: 'goal'` -- every
-  // guardian stands mid-corridor now (see WORLD_GUARDIANS) -- so this always
-  // falls through to showGatePanel() in practice, which is exactly what a
-  // world needs at its goal: a way to trigger the rival gate, or reaching
-  // the goal would be a dead end with no way onward. Left branching on
-  // `tile === 'goal'` rather than calling showGatePanel() directly so a
-  // future guardian can still choose to stand at the goal instead.
-  private openGoalGuardianPanel() {
-    const guardian = OverworldScene.WORLD_GUARDIANS[this.world];
-    if (guardian?.tile === 'goal') {
-      this.openGuardian(guardian);
+  // Whether the player is standing on the tile a pass is entered from, which
+  // is where its prompt shows and its keypress commits. One tile south of the
+  // forward throat, one north of the backward one -- close enough that the
+  // pass fills the frame, far enough that the player is still outside it.
+  private gateAtPlayer(): 'forward' | 'backward' | null {
+    const { x, y } = this.playerTile;
+    if (y === this.goalTile.y + 1 && Math.abs(x - this.goalTile.x) <= PASS_HALF_WIDTH) return 'forward';
+    if (y === this.startTile.y && x === this.startTile.x) return 'backward';
+    return null;
+  }
+
+  // The prompt: shown a tile out from either pass, hidden everywhere else and
+  // while anything else owns the screen. Arrival alone never transitions or
+  // starts a fight -- a pass is the most interesting object in a world and
+  // players walk into it to look -- so what a step into range buys is the
+  // offer, and the keypress is what accepts it.
+  private updateGatePrompt() {
+    const gate = this.dialogueActive || this.moving ? null : this.gateAtPlayer();
+    if (!gate) {
+      if (this.gatePrompt.visible) this.gatePrompt.setVisible(false).disableInteractive();
       return;
     }
-    this.showGatePanel();
+    this.gatePrompt.setText(this.gatePromptLabel(gate)).setVisible(true).setInteractive({ useHandCursor: true });
+  }
+
+  private gatePromptLabel(gate: 'forward' | 'backward'): string {
+    if (gate === 'backward') return `Press Space to go back to ${this.world === 1 ? 'the Lab' : worldName(this.world - 1)}`;
+    if (!this.isRivalDefeated()) return `Press Space to challenge ${this.getWorldRival()?.name ?? 'the rival'}`;
+    if (this.world >= Math.max(...BUILT_WORLDS)) return 'Press Space to step through';
+    return `Press Space to cross into ${worldName(this.world + 1)}`;
+  }
+
+  // The keypress, which is the whole of the commitment. Challenging in the
+  // shut state, crossing in the open one -- the confirmation the retired gate
+  // panels carried, relocated into the prompt rather than removed.
+  private confirmGate() {
+    if (this.dialogueActive || this.moving) return;
+    const gate = this.gateAtPlayer();
+    if (!gate) return;
+    this.gatePrompt.setVisible(false).disableInteractive();
+
+    if (gate === 'backward') {
+      this.returnToPreviousWorld();
+      return;
+    }
+    if (!this.isRivalDefeated()) {
+      this.showRivalEncounter();
+      return;
+    }
+    if (this.world >= Math.max(...BUILT_WORLDS)) {
+      this.showFinalePanel();
+      return;
+    }
+    this.crossPass();
+  }
+
+  // Crossing, with the story beat riding the transition rather than standing
+  // beside it: the screen fades to the connective lavender first, and
+  // STORY_BEATS is read over that fade. It is the semantic descendant of the
+  // click that used to carry it, and playing it over the fade is what stops
+  // it stacking against the board and the horizon reveal the player is in the
+  // middle of looking at.
+  private crossPass() {
+    const fade = this.add
+      .rectangle(CANVAS_W / 2, CANVAS_H / 2, CANVAS_W, CANVAS_H, PANEL_BG, 0)
+      .setDepth(90);
+    this.dialogueActive = true;
+    this.tweens.add({
+      targets: fade,
+      fillAlpha: 0.92,
+      duration: 420,
+      ease: 'Sine.easeIn',
+      onComplete: () => {
+        this.dialogueActive = false;
+        this.showStoryBeat(this.world);
+      },
+    });
   }
 
   // Opens a guardian's panel and records the first time this guardian is met,
@@ -2026,60 +2144,6 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       persistFromRegistry(this.game.registry);
     }
     this.showTutorialTip('guardian', () => (guardian.open ?? ((s: OverworldScene) => s.showGuardianLore(guardian)))(this));
-  }
-
-  // Every world's goal panel now that no guardian stands there (they've all
-  // moved mid-corridor) -- the boss looming at this same tile (spawnBossSprite,
-  // replaced by a door once beaten) is what's actually guarding the way,
-  // this panel is just enough text plus the shared footer to reach the
-  // rival gate or continue onward, so no built world is ever a dead end.
-  private showGatePanel() {
-    this.dialogueActive = true;
-
-    const panelWidth = 500;
-    const top = 40;
-    const container = this.add.container(0, 0).setDepth(100);
-    this.dialogueContainer = container;
-
-    let y = top;
-
-    const text = this.add
-      .text(CANVAS_W / 2, y, 'The path onward is still guarded.', {
-        fontSize: fontPx(this, 14),
-        color: '#ffffff',
-        align: 'center',
-        wordWrap: { width: panelWidth - 60 },
-      })
-      .setOrigin(0.5, 0);
-    container.add(text);
-    y += text.height + 24;
-
-    y = this.renderShopFooter(container, y);
-    y += 16;
-
-    const panelHeight = y - top;
-    const panel = this.add
-      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
-      .setStrokeStyle(2, REFERENCE_BLUE_GREY);
-    container.addAt(panel, 0);
-  }
-
-  // Every built world (1-10) can be advanced past once its rival is
-  // defeated, except the last one -- there's no World 11 to start, so
-  // beating world 10's rival shows the finale instead of trying to.
-  private tryAdvanceToNextWorld() {
-    if (this.isRivalDefeated()) {
-      if (this.world >= Math.max(...BUILT_WORLDS)) {
-        this.closeDialogue();
-        this.showFinalePanel();
-        return;
-      }
-      this.closeDialogue();
-      this.showStoryBeat(this.world);
-      return;
-    }
-    this.closeDialogue();
-    this.showRivalEncounter();
   }
 
   // World-entry lore (data/worldLore.ts's WORLD_LORE) -- a two-page history
@@ -2250,8 +2314,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   }
 
   // Shown once the last built world's rival is beaten -- a real ending
-  // rather than a dead "Continue to World 11" button pointing at a world
-  // that doesn't exist. Pays off World 10's reveal (WORLD_LORE[10].page2):
+  // rather than a dead crossing into a world that doesn't exist. Pays off World 10's reveal (WORLD_LORE[10].page2):
   // the Adapted was assembled from the player's own play, so beating it is
   // framed as out-adapting a mirror built from nine worlds of your own
   // choices, not defeating an outside enemy. Content laid out top-down
@@ -2328,19 +2391,16 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   }
 
   // The "beat the world's rival crystal" gate DESIGN.md's world table lists
-  // per world -- triggered by "Continue to World N+1" rather than
-  // automatically on reaching the goal, so the player can prepare with the
-  // goal guardian first. Same in-map dialogue pattern as a wild encounter,
+  // per world -- triggered by the confirm keypress at the pass mouth rather
+  // than automatically on reaching it, so the player can prepare with the
+  // mid-corridor guardian first. Same in-map dialogue pattern as a wild encounter,
   // but with no "let me pass" option, since a gate that can be skipped
   // isn't a gate.
   private showRivalEncounter() {
     const rival = this.getWorldRival();
-    if (!rival) {
-      // Safety net for a world with no WORLD_RIVALS entry yet -- don't
-      // strand the player behind a gate that can't open.
-      this.openGoalGuardianPanel();
-      return;
-    }
+    // Safety net for a world with no WORLD_RIVALS entry yet -- no world has
+    // one, but a gate that cannot open would strand the player behind it.
+    if (!rival) return;
 
     // RIVAL_TAUNTS (data/worldLore.ts) gives most worlds a two-part taunt --
     // a narration+dialogue line, then a second that raises the stakes --
@@ -2377,7 +2437,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // Same makeBossCrystal golem spawnBossSprite renders standing at the goal
     // tile (and BattleScene renders as the opponent once the fight starts) --
     // the rival shouldn't revert to an ordinary plain-crystal look just
-    // because this "Face the Rival" dialogue is up. Redrawn on every page
+    // because this pre-fight taunt dialogue is up. Redrawn on every page
     // (rather than kept across the destroy-and-rebuild) so it's on screen
     // for both parts of the taunt, not just the first.
     // The golem's silhouette is taller than it is wide and asymmetric about
@@ -2432,37 +2492,9 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     container.addAt(panel, 0);
   }
 
-  // Fixed footer row (not stacked below the variable-length content above
-  // it) so it never runs off the panel/canvas. showGatePanel's only caller
-  // now that guardians stand mid-corridor instead of at the goal (see
-  // renderFarewellFooter below for the guardian-panel equivalent) -- this is
-  // deliberately the *only* place "Face the Rival"/"Continue" appears, so
-  // reaching it requires actually walking to the goal where that world's
-  // boss is waiting (spawnBossSprite), not just meeting the mid-corridor
-  // guardian. Bloch's teleport, once Superposition Mode has pre-seeded every
-  // world as visited, is the one path that still bypasses this gate
-  // entirely (see applySuperpositionLeveling/rivalDefeated above).
-  // Takes/returns the actual y the footer should render at (and ends at)
-  // rather than deriving it from a fixed offset off a panel-center constant
-  // -- callers now build their content top-down with a running `y` and
-  // hand that straight in, so a footer never lands on top of whatever
-  // variable-length content is above it.
-  private renderShopFooter(container: Phaser.GameObjects.Container, footerY: number): number {
-    const rivalDefeated = this.isRivalDefeated();
-    const isLastWorld = this.world >= Math.max(...BUILT_WORLDS);
-    const nextLabel = !rivalDefeated
-      ? 'Face the Rival ->'
-      : isLastWorld
-      ? 'The Decoherence is stabilized ->'
-      : `Continue to World ${this.world + 1} ->`;
-    const a = this.addDialogueButtonAt(container, CANVAS_W / 2 - 118, footerY, 'Farewell', () => this.closeDialogue());
-    const b = this.addDialogueButtonAt(container, CANVAS_W / 2 + 118, footerY, nextLabel, () => this.tryAdvanceToNextWorld());
-    return footerY + Math.max(a.height, b.height);
-  }
-
-  // Mid-corridor guardian panels (every one but the goal's showGatePanel) only
-  // need a way to close -- see renderShopFooter's comment for why the
-  // Face-the-Rival/Continue action doesn't belong here anymore.
+  // A guardian panel only ever needs a way to close. Leaving a world is a
+  // thing the player walks to and presses at (confirmGate), never a button
+  // inside a shop, so no guardian's panel carries one.
   renderFarewellFooter(container: Phaser.GameObjects.Container, footerY: number): number {
     const btn = this.addDialogueButtonAt(container, CANVAS_W / 2, footerY, 'Farewell', () => this.closeDialogue(), 260);
     return footerY + btn.height;
@@ -2471,8 +2503,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // Two-button variant for a guardian panel with a pending two-step pick
   // (Majorana's first-crystal choice, Anderson's dope-in choice) --
   // `cancelLabel`'s handler backs out of just the pending pick, Farewell
-  // backs out of the whole panel, side by side in one row (same convention
-  // renderShopFooter's Farewell/Continue row uses) rather than stacking two
+  // backs out of the whole panel, side by side in one row rather than
+  // stacking two
   // separate footer rows.
   renderCancelFarewellFooter(
     container: Phaser.GameObjects.Container,
@@ -2490,62 +2522,14 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.scene.start('Overworld', { world, regenerate: true, enterFrom });
   }
 
-  // A confirm step before actually leaving this world backward -- walking
-  // onto the door standing at startTile (spawnDoorSprites, maybeReachStartDoor)
-  // opens this rather than switching worlds immediately, so brushing the
-  // tile while exploring near the south edge can't backtrack the player by
-  // accident. Same dark rounded-rectangle-with-stroke panel treatment as
-  // every other overworld dialogue, stroked lavender to match
-  // showStoryBeat's own between-worlds panel.
-  private showStartDoorPanel() {
-    this.dialogueActive = true;
-
-    const isFirstWorld = this.world === 1;
-    const destination = isFirstWorld ? 'the Lab' : `World ${this.world - 1}`;
-
-    const panelWidth = 480;
-    const top = 160;
-    const container = this.add.container(0, 0).setDepth(100);
-    this.dialogueContainer = container;
-
-    let y = top;
-
-    const text = this.add
-      .text(CANVAS_W / 2, y, `A doorway leads back to ${destination}.`, {
-        fontSize: fontPx(this, 14),
-        color: '#e6d9ff',
-        align: 'center',
-        wordWrap: { width: panelWidth - 60 },
-      })
-      .setOrigin(0.5, 0);
-    container.add(text);
-    y += text.height + 22;
-
-    const a = this.addDialogueButtonAt(container, CANVAS_W / 2 - 118, y, 'Not yet', () => this.closeDialogue());
-    const b = this.addDialogueButtonAt(
-      container,
-      CANVAS_W / 2 + 118,
-      y,
-      `Return to ${destination}`,
-      () => this.returnToPreviousWorld()
-    );
-    y += Math.max(a.height, b.height);
-    y += 16;
-
-    const panelHeight = y - top;
-    const panel = this.add
-      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
-      .setStrokeStyle(2, STORY_LAVENDER);
-    container.addAt(panel, 0);
-  }
-
-  // Backward counterpart to tryAdvanceToNextWorld/advanceToWorld -- World 1's
-  // door leads to the Hub (there is no World 0 overworld map to land on),
-  // every other world's leads to World N-1, landing the player at that
-  // world's own goalTile with reachedGoal already true (advanceToWorld's
-  // `enterFrom: 'goal'`) rather than its startTile, so stepping back through
-  // a door reads as walking in from the far end, not re-walking the whole
-  // corridor.
+  // Backward counterpart to crossPass/advanceToWorld -- World 1's backward
+  // exit leads to the Lab (there is no World 0 overworld map to land on),
+  // every other world's to World N-1, landing the player at that world's own
+  // goalTile with reachedGoal already true (advanceToWorld's `enterFrom:
+  // 'goal'`) rather than its startTile, so stepping back reads as walking in
+  // from the far end, not re-walking the whole corridor. No confirm panel:
+  // the keypress at the pass mouth is itself the confirmation, and arriving
+  // at the mouth alone does nothing.
   private returnToPreviousWorld() {
     this.closeDialogue();
     if (this.world === 1) {
@@ -2553,20 +2537,6 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       return;
     }
     this.advanceToWorld(this.world - 1, 'goal');
-  }
-
-  // The doorway standing at this world's startTile (spawnDoorSprites) opens
-  // a confirm panel exactly when the player is standing on it -- tile-exact
-  // rather than "whole row" like maybeReachGoal/maybeReachMiddle, since a
-  // branch can wind back down to a tile on this same row away from the door
-  // itself, and this needs to fire only right at the landmark. Never a
-  // one-shot -- walking onto it always reopens the confirm panel, since the
-  // confirmation step itself (not a "seen it once" flag) is what keeps a
-  // brush against it from becoming an accidental backtrack.
-  private maybeReachStartDoor(x: number, y: number) {
-    if (this.dialogueActive) return;
-    if (x !== this.startTile.x || y !== this.startTile.y) return;
-    this.showStartDoorPanel();
   }
 
   getUnlockedMoves(): string[] {
@@ -2779,10 +2749,9 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // (see WORLD_GUARDIANS -- every current guardian sets one, but a future
   // guardian added before its own mechanic is built can leave `open` unset
   // and land here instead): avatar + a topic-tied quote, no shop tabs. Ends
-  // in renderFarewellFooter, not renderShopFooter -- every guardian stands
-  // mid-corridor, so the Face-the-Rival/Continue progression action stays
-  // exclusive to the goal panel (showGatePanel), reached only once the
-  // player actually walks the rest of the way to the boss waiting there.
+  // in renderFarewellFooter -- every guardian stands mid-corridor, and
+  // leaving the world is something the player walks the rest of the way to
+  // the pass and presses at.
   // Content laid out top-down first (running `y`), panel sized/inserted
   // behind everything afterward -- same pattern as showSettingsPanel.
   private showGuardianLore(guardian: GuardianDef) {
@@ -2836,7 +2805,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     container.addAt(panel, 0);
   }
 
-  // Mirrors maybeAutoOpenGoalDialogue for the middle row every guardian now
+  // The middle row every guardian now
   // stands on: reopens their panel when the player is currently standing on
   // the middle row and it's already been reached -- the first time the
   // player arrives there, and again after a battle fought right on that row
@@ -2867,14 +2836,18 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.showTutorialTip('qumatessence');
   }
 
-  // The goal is a whole finish row (the corridor is wide), not a single
-  // tile -- reaching it anywhere along that row counts.
+  // The goal event fires at the pass mouth, the row the throat is entered
+  // from, rather than on the throat row itself: the throat is where the
+  // rival stands, so while the gate is shut the throat row cannot be walked
+  // onto at all, and a goal event waiting there would never fire. Reaching
+  // the mouth anywhere along its row counts -- it is a whole row, and the
+  // corridor is still wide there.
   private maybeReachGoal(_x: number, y: number) {
-    if (this.reachedGoal || y !== this.goalTile.y) return;
+    if (this.reachedGoal || y > this.goalTile.y + 1) return;
     this.reachedGoal = true;
     this.goalText.setVisible(true);
     this.saveMapState();
-    this.maybeAutoOpenGoalDialogue();
+    this.showTutorialTip('goal');
   }
 
   // Same "whole row counts, not a single tile" rule as maybeReachGoal,

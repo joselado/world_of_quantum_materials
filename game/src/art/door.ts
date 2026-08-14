@@ -1,19 +1,17 @@
 import Phaser from 'phaser';
 import { STORY_LAVENDER } from '../ui/theme';
 
-// A doorway/cave-mouth landmark marking a walkable connection to an
-// adjacent world (OverworldScene.spawnDoorSprites) -- stands at every built
-// world's startTile (leading back to World N-1, or the Hub for World 1) and,
-// once that world's rival is defeated, at its goalTile too (leading onward
-// to World N+1, replacing the boss avatar that stood there while the rival
-// was still undefeated). Purely a visual landmark, same as a guardian or
-// boss avatar -- the actual world switch only happens through the confirm
-// panel a walk onto the door tile opens (OverworldScene.showStartDoorPanel/
-// showGatePanel), not a click handler on the sprite itself.
+// The doorway standing at World 1's backward exit (OverworldScene.
+// spawnGateSprites), and nowhere else. Every geographic boundary in the game
+// is a pass; this one leads to the Lab, which is not a place, so it is a
+// door instead -- the asymmetry is the ontology made visible (WORLDS.md
+// section 4). Purely a visual landmark, same as a guardian avatar: the
+// crossing itself happens on the confirm keypress the approach prompt offers
+// (OverworldScene.confirmGate), not on a click handler on the sprite.
 
 // Where the archway's pillars meet the ground, in multiples of the `size`
 // passed below -- an archway is a structure that stands on a tile, so the
-// caller placing it (OverworldScene.spawnDoorSprites' `foot`) lands this
+// caller placing it (OverworldScene.spawnGateSprites' `foot`) lands this
 // point on the tile rather than the container's own origin.
 export const DOOR_FOOT = 0.3;
 

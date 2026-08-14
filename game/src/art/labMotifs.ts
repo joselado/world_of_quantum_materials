@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { shade } from './colors';
+import { getBiome } from './biomes';
+import { blend, shade } from './colors';
 import { REFERENCE_BLUE_GREY, STORY_LAVENDER, TUTORIAL_CYAN } from '../ui/theme';
 
 // One small hand-drawn icon per Lab station (scenes/panels/hubStations.ts's
@@ -52,19 +53,23 @@ export function makeQumatexMotif(scene: Phaser.Scene, size: number): Phaser.Game
   return container;
 }
 
-export function makeDoorMotif(scene: Phaser.Scene, size: number): Phaser.GameObjects.Container {
+export function makeDoorMotif(scene: Phaser.Scene, size: number, destination: number): Phaser.GameObjects.Container {
   const container = scene.add.container(0, 0);
 
-  // A miniature of the walkable world-door's own archway (art/door.ts) --
-  // same stone frame, same dark inset, same self-luminous lavender portal --
-  // but freestanding, its glow spilling past the frame on every side rather
-  // than set into a wall. A world's own door is a notch in terrain leading to
-  // one fixed neighbour; a doorway standing in nothing is the Lab's, which
-  // leads anywhere. Deliberately not a spiral or funnel: at this size a
-  // spiral collapses into a whirlpool and reads as a hazard, and a tunnel
-  // with a visible far end would put a view of an exterior in a room that has
-  // none. The opening shows light, never scenery. The additive glow assumes
-  // the Lab's own dark wall behind it.
+  // The aperture grammar (WORLDS.md section 4), unbound. Out in the worlds an
+  // opening can only ever show the one fixed neighbour; the Lab's shows
+  // wherever the player is currently going, and re-tints the moment they
+  // change their mind (setDoorMotifDestination, driven by HubScene as the
+  // travel panel's selection moves). A door that changes its view when the
+  // player changes theirs reads as a teleporter with no word of explanation,
+  // and it teaches itself, because the player has already learned to read
+  // apertures out in the worlds.
+  //
+  // Deliberately not a spiral or funnel: at this size a spiral collapses into
+  // a whirlpool and reads as a hazard, and a tunnel with a visible far end
+  // would put a view of an exterior in a room that has none. The opening
+  // shows a palette, never scenery. The additive glow assumes the Lab's own
+  // dark wall behind it.
   const halo = scene.add.circle(0, 0, size * 0.55, STORY_LAVENDER, 0.15);
   halo.setBlendMode(Phaser.BlendModes.ADD);
   container.add(halo);
@@ -82,16 +87,38 @@ export function makeDoorMotif(scene: Phaser.Scene, size: number): Phaser.GameObj
 
   const portal = scene.add.graphics();
   portal.setBlendMode(Phaser.BlendModes.ADD);
-  portal.fillStyle(STORY_LAVENDER, 0.7);
-  portal.fillEllipse(0, 0, size * 0.42, size * 0.74);
-  portal.fillStyle(0xffffff, 0.45);
-  portal.fillEllipse(0, 0, size * 0.21, size * 0.37);
   container.add(portal);
+  container.setData('portal', portal);
+  container.setData('halo', halo);
+  container.setData('size', size);
+  setDoorMotifDestination(container, destination);
   // The one Lab motif that pulses: this station is a live passage rather than
-  // a reference panel, and the walkable world-door it mirrors pulses too.
+  // a reference panel, and every aperture out in the worlds is alive too.
   scene.tweens.add({ targets: portal, alpha: { from: 0.7, to: 1 }, duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
   return container;
+}
+
+// Re-points the Lab door at another world. The opening carries that world's
+// own walkable ground lifted toward its low sky -- the same pair the pass
+// aperture out in the worlds reads (scenes/overworld/sky.ts's
+// drawPassAperture), so the two are recognisably one grammar. The halo
+// follows, since a door whose surround stayed lavender while its opening
+// changed colour would read as a lamp behind a filter rather than as a view.
+export function setDoorMotifDestination(container: Phaser.GameObjects.Container, destination: number) {
+  const portal = container.getData('portal') as Phaser.GameObjects.Graphics | undefined;
+  const halo = container.getData('halo') as Phaser.GameObjects.Arc | undefined;
+  const size = container.getData('size') as number | undefined;
+  if (!portal || !size) return;
+
+  const biome = getBiome(destination);
+  const view = blend(biome.path, biome.skyBottom, 0.3);
+  portal.clear();
+  portal.fillStyle(view, 0.7);
+  portal.fillEllipse(0, 0, size * 0.42, size * 0.74);
+  portal.fillStyle(blend(view, 0xffffff, 0.55), 0.45);
+  portal.fillEllipse(0, 0, size * 0.21, size * 0.37);
+  halo?.setFillStyle(view, 0.15);
 }
 
 export function makeMovesMotif(scene: Phaser.Scene, size: number): Phaser.GameObjects.Container {

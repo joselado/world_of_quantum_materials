@@ -2,10 +2,10 @@ import Phaser from 'phaser';
 import { blend } from '../../art/colors';
 import { BIOMES, getBiome } from '../../art/biomes';
 import type { Biome } from '../../art/biomes';
-import { HORIZON_Y, CANVAS_W, CANVAS_H } from '../../art/perspective';
+import { HORIZON_Y, CANVAS_W, CANVAS_H, LANE_PX } from '../../art/perspective';
 import { DISTANT_SELVES, MAX_CREST, OVERHEAD_SKIES } from '../../art/horizons';
 import type { HorizonPoint } from '../../art/horizons';
-import { DRAW_DISTANCE_TILES, projectTile } from './projection';
+import { DRAW_DISTANCE_TILES, TILE_SCALE, projectTile } from './projection';
 import { FOG_CLOSE, groundColor } from './terrain/color';
 
 // Where drawHorizonBand starts thickening the per-tile fog into pure
@@ -83,13 +83,38 @@ export interface HazeView {
   hazeCache: Map<number, number>;
 }
 
+// This world's forward pass, as everything drawing it needs to see it: where
+// the throat sits on the grid and in the camera's lane space, how wide its
+// walkable aperture is, whether its guard has fallen, and the world beyond.
+// One record, read by the aperture in the horizon (drawPassAperture), by the
+// ground seam and by the repeated road (terrain/paint.ts), so no two of them
+// can disagree about whether the way is open.
+export interface GateView {
+  /** The throat's grid row -- the northernmost walkable row of the corridor. */
+  row: number;
+  /** The throat's lane offset from the camera, in tiles. */
+  lane: number;
+  /** Half the throat's walkable width, in tiles. */
+  halfTiles: number;
+  /** Whether this world's rival has fallen. */
+  open: boolean;
+  /** The world on the other side, or null in the last world, which has none. */
+  next: Biome | null;
+}
+
 // The same, plus the scene's own biome, which is what the whole-screen washes
-// (as opposed to the per-tile fills) haze toward, and the scene clock, which
+// (as opposed to the per-tile fills) haze toward, the scene clock, which
 // drives the animated half of a neighbour's distant self (the Storm Flats'
-// arc-flashes, the Entangled Web's glinting filaments).
+// arc-flashes, the Entangled Web's glinting filaments), and this world's
+// forward pass.
 export interface AtmosphereView extends HazeView {
   biome: Biome;
   now: number;
+  gate: GateView | null;
+  // The worlds the player has walked, in the order they walked them. Only the
+  // Devouring Mirror's own sky reads this, for the route traced across the
+  // Qumatuomi map hanging in it.
+  route: number[];
 }
 
 // The static backdrop, painted once per world entry into its own Graphics
@@ -222,10 +247,100 @@ export function drawDepthHaze(g: Phaser.GameObjects.Graphics, view: AtmosphereVi
   // stops climbing is itself an edge -- the same rectangle read this pass
   // exists to remove, moved up the sky.
   fillVerticalFade(g, tone, mistTop, mist, (t) => smoothstep(Math.min(1, (t * mist) / SKY_BLEND_H)));
+  // Under the distant self, never over it: what is visible through a gap in
+  // the land cannot pass in front of the ridge behind the gap.
+  drawPassAperture(g, view, target);
   drawDistantSelf(g, view, target);
   // The world's own sky motif, over the mist rather than in it: the Storm
   // Flats' arcs crack across the whole dusk, not just along its horizon.
-  OVERHEAD_SKIES[view.world]?.({ g, horizonY: HORIZON_Y, target, now: view.now });
+  OVERHEAD_SKIES[view.world]?.({ g, horizonY: HORIZON_Y, target, now: view.now, route: view.route });
+}
+
+// How far above the horizon line an open pass reaches, and the depth its
+// aperture is measured at. The far part of a pass is the next world's
+// interior, not this world's geography, so it lives in the fixed band the
+// projection never reaches (WORLDS.md section 4's far/near split) -- which
+// means its width is a chosen reading distance rather than a projected one.
+// The band's own foot is that distance: the aperture is exactly as wide as
+// the throat would be if it stood where the horizon band begins.
+// How far above the horizon line the opening reaches. Only a sliver of the
+// far world's sky is drawn up there: the far part of a pass belongs to the
+// fixed band around the horizon line (WORLDS.md section 4's far/near split),
+// a tall shape standing out of the line reads as a beam of light rather than
+// as a gap, and the neighbour's own silhouette is drawn over this and has to
+// keep the sky it stands in.
+const APERTURE_H = 10;
+// The depth the opening's base and width are both taken at: the foot of the
+// horizon band, which is where the road last *reads*. The band washes the
+// deepest rows to nothing well before the terrain sweep actually stops, so an
+// opening anchored on the last row drawn hangs above a road the player can no
+// longer see -- and a gap the road does not visibly run into is a beam.
+// Taking the width here too means the base matches the road's own width
+// there exactly, since both are the same three tiles at the same depth.
+const APERTURE_DEPTH = DRAW_DISTANCE_TILES * HORIZON_BAND_FROM;
+// What sits inside the opening is the far world itself, split at the horizon
+// line: its low sky above, its walkable ground below. An opening filled with
+// one flat glow is a lamp; an opening with a horizon in it is a place.
+//
+// Painted as abutting rows, each exactly as tall as its own step so no two
+// ever share a scanline (the trap fillVerticalFade's comment describes). Rows
+// are what let the strength fall to nothing at both ends: strongest at the
+// horizon line, where the sightline through the gap is longest, and gone by
+// the top and again well before the road below is still clearly this world's.
+// So the opening has no edge anywhere, and spills onto the road rather than
+// standing on it as a slab.
+const APERTURE_ROWS = 48;
+const APERTURE_PEAK = 0.5;
+// How far the view through the gap is carried into the live fog target. It is
+// scenery seen at the limit of the draw distance, so it obeys the same
+// atmosphere as everything else out there -- an unhazed one would read as an
+// interface element cut into the sky.
+const APERTURE_DROWN = 0.35;
+
+// The light through the doorway: once a world's rival has fallen, the pass
+// clears and what stands at the end of the road is the next world's own
+// palette -- the brightest thing on screen in the early worlds and the most
+// wrongly-coloured in the late ones. Diegetic, because what shows through the
+// gap is the destination itself.
+//
+// Nothing at all is drawn while the gate is shut. A body in the way is a
+// plainer statement than any weather over the gap, and a shut pass showing a
+// fogged notch would be showing something of a world it is refusing to show.
+function drawPassAperture(g: Phaser.GameObjects.Graphics, view: AtmosphereView, target: number) {
+  const gate = view.gate;
+  if (!gate?.open || !gate.next) return;
+
+  // The road converges toward the vanishing point, so the opening sits where
+  // this world's own corridor runs out rather than dead centre of the frame.
+  const cx = projectTile(gate.lane, DRAW_DISTANCE_TILES).x;
+  const p = projectTile(0, APERTURE_DEPTH);
+  const halfW = gate.halfTiles * TILE_SCALE * LANE_PX * p.scale;
+  const foot = p.y;
+  const top = HORIZON_Y - APERTURE_H;
+  // The far world's own sky and ground, read straight off the neighbour's
+  // entry and never off this world's -- what makes the opening read is that
+  // the palette inside it is foreign. Both drowned into the live fog target,
+  // the same way the silhouette beside them is.
+  const sky = blend(gate.next.skyBottom, target, APERTURE_DROWN);
+  const ground = blend(gate.next.path, target, APERTURE_DROWN);
+  const rowH = (foot - top) / APERTURE_ROWS;
+  // Where the horizon line falls as a fraction of the whole opening. The two
+  // planes are one plane -- the world through the gap stands on the same
+  // ground this one does -- so it shares this world's horizon.
+  const splitT = (HORIZON_Y - top) / (foot - top);
+
+  for (let i = 0; i < APERTURE_ROWS; i++) {
+    const t = i / APERTURE_ROWS;
+    const y = top + i * rowH;
+    // The road's own convergence: below the line the gap is as wide as the
+    // throat is at the depth that row sits at, so the opening *is* the far end
+    // of the road rather than a shape standing on it. Floored so the sliver of
+    // sky above the line is still a slot rather than a point.
+    const w = halfW * Math.max(0.14, (t - splitT) / (1 - splitT));
+    const strength = t < splitT ? t / splitT : Math.pow(1 - (t - splitT) / (1 - splitT), 1.4);
+    g.fillStyle(t < splitT ? sky : ground, APERTURE_PEAK * strength);
+    g.fillRect(cx - w, y, w * 2, rowH);
+  }
 }
 
 // A vertical alpha ramp, painted as abutting one-pixel rows in whatever color
@@ -331,7 +446,7 @@ function drawDistantSelf(g: Phaser.GameObjects.Graphics, view: AtmosphereView, t
     }
   }
 
-  self.sky?.({ g, horizonY: HORIZON_Y, target, now: view.now });
+  self.sky?.({ g, horizonY: HORIZON_Y, target, now: view.now, route: view.route });
 }
 
 // One copy of the silhouette: the strip between its crest (dropped `drop`

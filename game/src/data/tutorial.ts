@@ -123,7 +123,7 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     title: 'Reaching the Goal',
     unlock: { kind: 'tip' },
     body:
-      "A gigantic boss crystal guards the far end of every world -- you can shop with that world's guardian first, but the only way onward is to beat the boss in the goal panel. Win, and the next world opens up.",
+      "Every world narrows into a pass at its far end, and a gigantic boss crystal stands in it, holding the way. You can shop with that world's guardian first -- but nothing happens just by walking up. Step to the mouth of the pass and press Space to challenge it. Win, and the pass clears: the next world shows through the gap, a board names it, and pressing Space there again takes you across.",
   },
   teleport: {
     title: 'Teleportation',
