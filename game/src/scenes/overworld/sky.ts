@@ -169,10 +169,14 @@ export function drawDepthHaze(g: Phaser.GameObjects.Graphics, view: AtmosphereVi
   // The sky wash reaches every cloud too, at a strength that is zero until
   // the forward blend starts: once the air ahead is the next world's air,
   // a bank of this world's untouched daylight clouds over it is the loudest
-  // possible statement that the color below them is an overlay.
+  // possible statement that the color below them is an overlay. It covers
+  // the sky whole, down to the horizon line and under the mist band rather
+  // than stopping where the band begins -- a wash that ends anywhere the
+  // eye can find it has simply moved the edge it was drawn to remove, and
+  // the band's own ramp starts from zero at exactly that height.
   if (view.hazeBlend > 0) {
     g.fillStyle(target, SKY_TINT_MAX * view.hazeBlend);
-    g.fillRect(0, 0, CANVAS_W, mistTop);
+    g.fillRect(0, 0, CANVAS_W, HORIZON_Y);
   }
   fillVerticalFade(g, () => target, HORIZON_Y, 240, (t) => 0.35 * Math.pow(1 - t, 3));
   drawHorizonBand(g, tone);
