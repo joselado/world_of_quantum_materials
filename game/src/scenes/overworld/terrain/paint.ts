@@ -7,7 +7,7 @@ import type { ProjectedPoint } from '../../../art/perspective';
 import { CAMERA_BACK_TILES, DRAW_DISTANCE_TILES, GRID_H, GRID_W, laneClipAt, projectTile } from '../projection';
 import { drawDepthHaze, hazeTarget } from '../sky';
 import { groundColor } from './color';
-import { decorateTile } from './decoration';
+import { GROUND_MOTIFS_ENABLED, decorateTile } from './decoration';
 import { TERRAIN_ACCENTS } from './materials';
 import { drawStormStrikes } from './materials/charged';
 import { offPathKindOf } from './plan';
@@ -87,7 +87,7 @@ export function drawTerrain(view: TerrainView) {
         g.fillPoints(fill, true);
         drawBandBoundary(g, tile.biome, y, pFL, pFR, pNR, pNL, depthRatio);
         if (contour) drawContactShadow(g, contour, tile.biome, camX, camY, depthRatio);
-        if (depthRatio < DETAIL_MAX_DEPTH && tile.decorate) {
+        if (GROUND_MOTIFS_ENABLED && depthRatio < DETAIL_MAX_DEPTH && tile.decorate) {
           decorateTile(g, view.biome, accentTile(false, fill, pFL, pFR, pNR, pNL, x, y, depthRatio, hazeTarget(view, tile.biome), view.playerColor, view.now));
         }
         if (tile.midHighlight) {

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { blend } from '../../../../art/colors';
 import { LANE_PX } from '../../../../art/perspective';
+import { ellipseSteps } from '../../../../art/shapes';
 import { TILE_SCALE } from '../../projection';
 import type { AccentTile } from '../types';
 
@@ -41,5 +42,7 @@ export function drawConsumingAccent(g: Phaser.GameObjects.Graphics, { cx, cy, s,
   }
 
   g.lineStyle(1, blend(0xf0e4ff, haze, air), 0.3 * detail);
-  g.strokeEllipse(cx, cy, spread * 1.5 * u, spread * 0.82 * u);
+  const ringW = spread * 1.5 * u;
+  const ringH = spread * 0.82 * u;
+  g.strokeEllipse(cx, cy, ringW, ringH, ellipseSteps(ringW, ringH));
 }

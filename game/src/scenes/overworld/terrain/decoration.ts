@@ -4,6 +4,16 @@ import { LANE_PX } from '../../../art/perspective';
 import { TILE_SCALE } from '../projection';
 import type { AccentTile } from './types';
 
+// Whether the walkable floor carries its per-world motif at all. Off: the
+// route the player walks is one flat colour in every world, which is what
+// makes "where can I walk" readable at a glance -- a floor carrying its own
+// pattern competes with the walkable/impassable boundary for exactly the
+// attention that boundary needs.
+//
+// The motifs below stay written and reachable behind this one switch rather
+// than being deleted, so putting them back is flipping this constant.
+export const GROUND_MOTIFS_ENABLED: boolean = false;
+
 // A tile's width on screen at unit depth scale. Ground decoration is sized
 // against the tile it sits on rather than in raw pixels: a motif that has to
 // teach something -- a quantised orbit, a spin wave -- has to be big enough
@@ -11,13 +21,12 @@ import type { AccentTile } from './types';
 // handful of pixels a scatter of flowers needs.
 const TILE_PX = TILE_SCALE * LANE_PX;
 
-// The scatter of detail a decorated *walkable* tile carries, one motif per
-// biome (art/biomes.ts's `decoration`) so each world's floor reads as its own
-// place. This is ground decoration in the literal sense -- the Storm Flats'
-// quantised orbit rings, the Iron Steppe's spin-wave ripples, the Defect
-// Scars' cracks are all underfoot, on the route the player walks, which is
-// where the physics they teach lives. Impassable terrain gets its material's
-// own accent instead (materials/).
+// The scatter of detail a decorated *walkable* tile carries when
+// GROUND_MOTIFS_ENABLED is on, one motif per biome (art/biomes.ts's
+// `decoration`) -- the Storm Flats' quantised orbit rings, the Iron Steppe's
+// spin-wave ripples, the Defect Scars' cracks. Impassable terrain gets its
+// material's own accent instead (materials/), and that is what carries a
+// world's identity while the floor is flat.
 //
 // `biome` here is the scene's own, not the tile's -- the decoration belongs
 // to the world the player is walking through even where World 9's defect

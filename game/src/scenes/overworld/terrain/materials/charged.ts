@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { blend } from '../../../../art/colors';
 import { CANVAS_W } from '../../../../art/perspective';
+import { ellipseSteps } from '../../../../art/shapes';
 import { DRAW_DISTANCE_TILES, GRID_W, projectTile } from '../../projection';
 import type { AccentTile, TerrainView } from '../types';
 
@@ -128,7 +129,7 @@ function drawStrike(
     { w: 0.8, h: 0.3, c: bolt, a: 0.85 },
   ].forEach((pool) => {
     g.fillStyle(pool.c, pool.a * flash);
-    g.fillEllipse(tx, ty, r * pool.w, r * pool.h);
+    g.fillEllipse(tx, ty, r * pool.w, r * pool.h, ellipseSteps(r * pool.w, r * pool.h));
   });
 
   // The channel itself, from the top of the frame down onto that tile,

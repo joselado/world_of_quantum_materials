@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { blend } from '../../../../art/colors';
 import { LANE_PX } from '../../../../art/perspective';
+import { ellipseSteps } from '../../../../art/shapes';
 import { TILE_SCALE } from '../../projection';
 import type { AccentTile } from '../types';
 
@@ -50,7 +51,9 @@ export function drawLavaAccent(g: Phaser.GameObjects.Graphics, { fill, cx, cy, s
   g.strokePath();
 
   g.fillStyle(0xfff0a0, 0.6 * pulse);
-  g.fillEllipse(cx, cy, 0.2 * u * pulse, 0.11 * u * pulse);
+  const coreW = 0.2 * u * pulse;
+  const coreH = 0.11 * u * pulse;
+  g.fillEllipse(cx, cy, coreW, coreH, ellipseSteps(coreW, coreH));
 
   if (hash(gx, gy) < DRUM_RATE) drawColumnDrum(g, cx, cy, s, depth, haze, detail);
 }
@@ -71,8 +74,11 @@ function drawColumnDrum(
   const air = depth * 0.7;
   g.fillStyle(blend(0x8f7051, haze, air), detail);
   g.fillRect(cx - 0.3 * u, cy - 0.15 * u, 0.5 * u, 0.3 * u);
+  const faceW = 0.18 * u;
+  const faceH = 0.3 * u;
+  const steps = ellipseSteps(faceW, faceH);
   g.fillStyle(blend(0xd9c19a, haze, air), detail);
-  g.fillEllipse(cx + 0.2 * u, cy, 0.18 * u, 0.3 * u);
+  g.fillEllipse(cx + 0.2 * u, cy, faceW, faceH, steps);
   g.lineStyle(1, blend(0x5c4530, haze, air), 0.7 * detail);
-  g.strokeEllipse(cx + 0.2 * u, cy, 0.18 * u, 0.3 * u);
+  g.strokeEllipse(cx + 0.2 * u, cy, faceW, faceH, steps);
 }

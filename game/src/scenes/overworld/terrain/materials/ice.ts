@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { blend } from '../../../../art/colors';
 import { LANE_PX } from '../../../../art/perspective';
+import { ellipseSteps } from '../../../../art/shapes';
 import { TILE_SCALE } from '../../projection';
 import type { AccentTile } from '../types';
 
@@ -25,11 +26,11 @@ export function drawIceAccent(g: Phaser.GameObjects.Graphics, tile: AccentTile) 
     // Slow, because trapped flux is trapped -- it is not going anywhere.
     const pulse = 0.55 + 0.45 * Math.sin(now / 1100 + gx * 0.4);
     g.fillStyle(0x0a1620, 0.55 * detail);
-    g.fillEllipse(cx, cy, 0.8 * u, 0.46 * u);
+    g.fillEllipse(cx, cy, 0.8 * u, 0.46 * u, ellipseSteps(0.8 * u, 0.46 * u));
     g.fillStyle(blend(0x6fd8f0, haze, air), 0.42 * pulse * detail);
-    g.fillEllipse(cx, cy, 0.42 * u, 0.24 * u);
+    g.fillEllipse(cx, cy, 0.42 * u, 0.24 * u, ellipseSteps(0.42 * u, 0.24 * u));
     g.lineStyle(1.4, blend(0xdff4ff, haze, air), 0.5 * detail);
-    g.strokeEllipse(cx, cy, 0.82 * u, 0.48 * u);
+    g.strokeEllipse(cx, cy, 0.82 * u, 0.48 * u, ellipseSteps(0.82 * u, 0.48 * u));
     return;
   }
 
