@@ -14,8 +14,8 @@
 // Usage (from game/): npm run music-arc-check
 //   QM_MUSIC_STYLE=modern   measure the Modern arrangement instead
 //   QM_MUSIC_CAPTURE_MS     per-score capture window (default 45000)
-//   QM_MUSIC_JSON=path.json also write the raw table as JSON, for diffing a
-//                           before/after pair with scripts/music-arc-diff.mjs
+//   QM_MUSIC_JSON=path.json also write the raw table as JSON, so two runs can
+//                           be diffed against each other
 // CHROME_BIN auto-detects Puppeteer's cached Chrome-for-Testing binary if
 // unset, same as component-check.mjs. Picks its own port so it never
 // disturbs a dev server another session is already running.
