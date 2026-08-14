@@ -118,6 +118,36 @@ and at unison the clean and clipped signals fuse into one slightly degraded
 voice. The distortion is then not atmosphere but **the sound of being imperfectly
 known**.
 
+### World 7 needs a pedal — it currently reads as out of tune
+
+**Diagnosis:** whole-tone removes tonal gravity *by collection*, and deleting the
+bass and pad removed the reference *by register*. Those are two different
+subtractions and only one is survivable at a time. With no fundamental anywhere,
+the melody is not heard as floating over an abyss — it is heard as **wrong
+notes**, because "wrong" is all the ear can conclude without a floor.
+
+**Fix:** a held F♯ pedal. It restores the floor without restoring a single bar of
+progression, and it is what the dial specification asked for in the first place —
+harmonic rhythm at its floor means *the progression collapses to a held tonic
+pedal*, not silence. Give it **World 6's drone timbre**: that drone was the
+intruder grinding against the home key, and World 7's pedal is the same voice
+victorious with nothing left to grind against.
+
+It also fixes a structural bug hiding underneath the timbre complaint: **the turn
+to F♯ is currently inaudible as a turn**, because an anchorless whole-tone cloud
+cannot establish a new tonic, so the score's largest harmonic event lands as
+vagueness.
+
+Two secondary checks while in there: **reverb tail length**, since adjacent
+whole-tone steps smearing into one another produce a cluster-wash that compounds
+the broken reading; and keep the collection **strictly melodic over the pedal,
+never stacked as chords**.
+
+The light rule's wording changed to permit this — see `WORLDS.md` §1. It is now
+drawn around *motion beneath the melody* rather than around instruments, with an
+explicit exemption for World 10's borrowed accompaniment, which would otherwise
+have been outlawed by the rule as first written.
+
 ### The Lab gets its own theme, keyed to progress
 
 Full rule in `WORLDS.md` §4. In short: the Lab keeps World 1's material, held on

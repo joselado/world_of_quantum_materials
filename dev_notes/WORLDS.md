@@ -82,15 +82,38 @@ World 6 is the hinge: the first world where the sun is gone and the light is
 already emitted (the aurora), a preview of the rule before the sky itself is
 taken away.
 
-**The musical light rule is the same rule in sound: what World 7 deletes never
-comes back.** World 7 removes the bass, the pad and the chord progression
-outright, and turns on reverb for the first time in the game. None of the three
-returns in Worlds 8, 9 or 10, and the reverb stays on to the end. This is what
-keeps the late worlds a slope with a cliff in it rather than a slope instead of
-one: erosion and every other gradual process are *quantitative* and pass
-underneath World 7's deletions without refilling them. A future score change that
-restores a bass line after World 7 breaks the light rule exactly as a sunrise in
-World 9 would.
+**The musical light rule is the same rule in sound, and what World 7 removes is
+*motion beneath the melody*** — the chord progression, the moving bass line, the
+chordal pad. None of them returns in Worlds 8, 9 or 10, and the reverb that
+arrives with World 7 stays on to the end. **A sustained single-pitch pedal is
+permitted; anything that changes pitch, implies harmony, or articulates rhythm
+under the lead is not.** Wording it around motion rather than around instruments
+is what lets the rule forbid a refill — no later "just a little bass movement"
+can pass — while permitting the one thing World 7 needs to be audible at all.
+
+That pedal is not a concession. **World 6's F♯ drone is the intruder grinding
+against the home key; World 7's pedal is that same drone, victorious, with
+nothing left to grind against** — so the tritone turn is narrated rather than
+merely arrived at. It is also what makes the turn audible: an anchorless
+whole-tone cloud cannot establish a new tonic, so without it the score's largest
+harmonic event lands as vagueness.
+
+**One exemption, for the finale.** World 10's mixture layers borrowed basslines
+from the devoured worlds, which this rule would otherwise outlaw. The rule governs
+a world's *own living accompaniment*; World 10's is quotation, marked as lossy by
+the drive that distinguishes devoured material. **It is playback of the dead, not
+restoration of the living.**
+
+The rule underneath all of it: **loss is only audible against a reference that
+survives in the same dimension.** Pitch loss needs one pitch anchor, rhythmic
+loss needs a pulse, textural loss needs one continuous voice. Remove the last
+reference in a dimension and loss stops reading as loss and starts reading as
+malfunction, because the ear can no longer measure what is missing. The erosion
+schedule already obeys this without naming it — a removed note becomes a rest of
+identical duration, so the meter survives as the witness and a vanishing melody
+reads as vanishing rather than as stuttering playback. Dissolve as far as you
+like, down to one drone and one eroding line, provided every dimension keeps its
+witness until silence is the point.
 
 ### The escalation spines
 
