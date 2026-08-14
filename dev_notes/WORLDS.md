@@ -82,6 +82,16 @@ World 6 is the hinge: the first world where the sun is gone and the light is
 already emitted (the aurora), a preview of the rule before the sky itself is
 taken away.
 
+**The musical light rule is the same rule in sound: what World 7 deletes never
+comes back.** World 7 removes the bass, the pad and the chord progression
+outright, and turns on reverb for the first time in the game. None of the three
+returns in Worlds 8, 9 or 10, and the reverb stays on to the end. This is what
+keeps the late worlds a slope with a cliff in it rather than a slope instead of
+one: erosion and every other gradual process are *quantitative* and pass
+underneath World 7's deletions without refilling them. A future score change that
+restores a bass line after World 7 breaks the light rule exactly as a sunrise in
+World 9 would.
+
 ### The escalation spines
 
 Two ramps run in parallel, and both are legible in a screenshot cropped to the

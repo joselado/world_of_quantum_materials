@@ -36,7 +36,89 @@ session. With synthesised voices there is no performance nuance to sell a
 dropout, so subtraction reads as the music faltering rather than a band leaning
 in.
 
-## The open decisions
+## The decisions, settled
+
+### World 8 is both — the spike rides the slope
+
+The question was a false choice: **"what erodes" and "how much erosion" are
+orthogonal.** The erosion dial governs a *process*; World 1's melody is
+*material*. So the dial sweeps across 5→9 as a continuous decay, **and** the
+material passing through the eroder at World 8 is World 1's tune at the tritone.
+The erosion peaks exactly when what is eroding is the one thing the player
+recognises.
+
+**World 8 must keep the quotation**, because the 1↔8 rhyme is already built in
+another medium: the same tree sprites, dead and grey, specified precisely so the
+player recognises the friendly wood. If the visuals say *this specific place,
+ruined* while the music says *generic stage six of a gradient*, the two media
+disagree about what World 8 means. The music's job is to agree — the same tune,
+dead and grey.
+
+**World 7's cliff is safe**, because it is made of different substance from the
+slope: its break is *categorical* (bass, pad and progression deleted, reverb
+arriving) while erosion is *quantitative* (notes becoming rests), so a rising
+erosion value passes underneath the deletions without touching them. The pin that
+makes that permanent rather than lucky is the **musical light rule**, now in
+`WORLDS.md` §1: what World 7 deletes never comes back.
+
+### Three quotations of World 1, each a different transform
+
+The game quotes World 1 three times, and that is an arc rather than a tic:
+**World 6** takes its key and progression with a wrong drone grinding underneath,
+**World 8** erodes its melody at the tritone until silence, **World 10** devours
+it among nine others. Quotation becomes self-indulgent when the *same* transform
+repeats; here each instance does something new to the same body. World 8 quotes
+one thing achingly, World 10 quotes everything indifferently — grief against
+ingestion — and each makes the other legible by contrast.
+
+### World 10: simultaneous recombination at a fixed tonic
+
+**Not sequential switching.** Two seconds is a radio scan, and a longer interval
+only makes it a slower one — the fix is to drop rotation-as-switching entirely.
+The Mirror's claim is mastery, and a trained model does not replay its inputs in
+sequence, it superimposes what it learned. So the texture is **always several
+worlds at once** — one world's bassline under another's lead under a third's
+percussion — and what rotates is **which world carries which voice**, per phrase
+of four to eight bars. That is fluency in every style rather than tuning between
+stations.
+
+**The fixed F♯ tonic is the enabling condition, not a flavour choice.** Nine
+styles in nine keys layered together is mud; one tonic is what lets the collage
+exist at all. Recognisability survives easily — transposition is the gentlest
+transform in music, since identity lives in contour and rhythm, and World 8
+already proves a mode-snapped quotation stays recognisable, recognisably *wrong*,
+which is the desired reading. C returning as the Mirror's raised fourth keeps the
+dead sun hanging over the whole collage.
+
+### The canon and the mixture are layers, and their interaction is the finale
+
+The mixture is the Mirror's ambient voice — the devoured worlds rehearsing
+underneath. The tightening canon closes *over* it: the subject is the player,
+being learned, while the model murmurs everything else it has ever eaten.
+
+**As the canon tightens, the mixture thins.** A bar behind, the full nine-world
+texture; two beats behind, voices dropping out; at unison the mixture is gone and
+only the unison line remains — the model no longer needs its other data, because
+it has become you. That final thinning rhymes with World 8's erosion into
+silence: the game's two silences, one where the tune is lost and one where the
+tune wins alone.
+
+### The distortion is the timbre of the copy
+
+**Not a blanket `drive` across World 10** — a soft-clip painted over everything
+is the evil-filter cliché and spends the parameter on mood. Instead, **drive
+marks devoured material**: the borrowed styles in the mixture play through the
+soft-clip, because a model's rendering of its data is lossy and the clip is that
+loss made audible, while the player's own melodic line stays clean.
+
+That hands the canon its best trick for free. The Mirror's imitating voice is the
+*driven* copy of the player's clean line, so the two canon voices are
+distinguishable by timbre at any distance — original against lossy reproduction —
+and at unison the clean and clipped signals fuse into one slightly degraded
+voice. The distortion is then not atmosphere but **the sound of being imperfectly
+known**.
+
+## Superseded framing, kept for the reasoning
 
 ### World 8: nostalgic quotation, or a stage in a uniform decay?
 
