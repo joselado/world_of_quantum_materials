@@ -188,6 +188,13 @@ itself every time you land a hit, transmuting live into a real compound
 that hosts whatever quasiparticle class you just attacked with. See
 [Crystals](docs/crystals.md) for every world's full wild-material list.
 
+Each world has its own history, its own way the Decoherence comes for it,
+and its own rival standing in the way — and the ten of them tell one story.
+[The story](docs/storyline.md) is that story, world by world, from the
+premise to the ending. **It spoils everything**, including who the final
+enemy turns out to be, so it's for a second playthrough or for a player who
+wants their bearings more than the surprise.
+
 ## Battle basics
 
 Turn order is speed-ordered by your crystal's Velocity stat: the faster side
@@ -210,6 +217,7 @@ materials, and what each guardian teaches -- see:
 - [Crystals](docs/crystals.md)
 - [Hybrid materials](docs/hybrids.md)
 - [Guardians](docs/guardians.md)
+- [The story](docs/storyline.md) -- spoils the whole plot, including the ending
 
 ## Controls
 

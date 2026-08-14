@@ -1,2 +1,7 @@
 /lecture_notes
 /.claude/worktrees
+
+# Editor swap/backup files
+.*.swp
+.*.swo
+*~
