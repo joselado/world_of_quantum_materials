@@ -210,6 +210,64 @@ dressing, not terrain):
 
 ---
 
+## Open, measured, and deliberately not acted on
+
+Each of these was found by measurement and left as it stands. The measurement
+is the useful part; none blocks anything else.
+
+**The sky is 23% of the frame but reads as more.** `HORIZON_Y` is 110 of 480.
+The last ground row lands at y=180, though, because the horizon band owns the
+70px between the line and it — so 37.5% of the frame is above the deepest
+terrain. That band is structural: rows compress below a pixel before they
+reach the line, and something has to own the strip they cannot. `FOCAL` is a
+weak lever on it (dropping 2.2 to 1.2 moves 37.5% only to 31.6%, at the cost
+of squashing the near ground), so if the sky must shrink further, the lever is
+the fog schedule's late steepness or a per-pixel ground gradient, not the
+projection.
+
+**Row-fill quantization is unchanged by the horizon line, and now measured.**
+Worst per-row step about 15 luminance around depth ratio 0.7, roughly a
+quarter of it surviving the band's wash. Moving `HORIZON_Y` spreads the same
+steps over taller bands (4.8px to 6.2px) without changing the step. Every
+relation in the schedule is expressed in depth fractions, so the band's own
+proportions are identical at any horizon line — `solidT` and the wash alpha
+over a given row do not move at all.
+
+**The Vortex Glacier's flow-lines do not do what `WORLDS.md` §2 promises.**
+That entry requires streaks that "bend around and away from the bulk and
+converge only into the vortex pits" — field expulsion drawn as terrain. What
+`terrain/decoration.ts`'s `flowLines` branch draws is `sin(gx * 0.55)`, a
+ripple keyed to grid column alone, with no reference to a core or to the
+corridor. This is a binding-doc conflict and wants a ruling rather than a
+quiet edit either way: the honest options are to build the bow properly or to
+lower what §2 promises. Building it is now cheap, since the cores are already
+plumbed to the renderer (`vortexCores`) and only need reaching from the
+decoration pass.
+
+**The vortex pit's trapped-flux glow is below the visibility floor.** The pit's
+dark rim and lip read as a hole in the ice at native size; its interior
+measures 56–75 luminance with no pixel brighter than the surrounding ice, so
+the glow is a tint in the dark rather than light. It wants a small cyan core a
+few levels *above* the ice, not a blend toward it.
+
+**Two distant selves are weak on shape.** Measured as in-row contrast (the
+silhouette against the air beside it on the same scanline, which is what makes
+a profile legible as a *shape* rather than as a band): world 3's cliff
+plateaus seen from world 2 read 1.8 and are invisible at native contrast, and
+world 2's colonnade seen from world 1 reads 4.2 and is the one profile that
+still reads as a border pasted on the sky. The vertical budget is fine for both
+(the excursion from the mist is 10.2 and 8.3), so this is a shape problem, not
+a value one: lift world 3's relief or swallow, or take it to zero deliberately.
+For reference the rest are world 4's storm line 0.0 (flat by identity, carried
+by its arc-flashes instead), world 6's shard sawtooth 5.2, world 9's scar ridge
+27.4.
+
+**The Iron Steppe's aurora is cramped at the short sky.** Rescaled to fit, it
+runs from just clear of the shard crests to the top of the frame with no hard
+cut, but at 60px tall the sway and fold the slice structure is built for do not
+survive, and it reads closer to a few dim bands than to a curtain. Lifting its
+alpha or letting the lowest slices reach further down are both open.
+
 ## Verification
 
 `tsc --noEmit` cannot see any of this.

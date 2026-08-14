@@ -106,17 +106,17 @@ export function drawSky(scene: Phaser.Scene, biome: Biome) {
   g.fillStyle(groundColor(biome.ground, 1, biome.fogTarget), 1);
   g.fillRect(0, HORIZON_Y, CANVAS_W, CANVAS_H - HORIZON_Y);
 
-  // Clouds ride the strip of sky the mist has not reached, so a bank of them
-  // is read against the world's own high colour rather than against the fog.
-  // The lowest sits a little way into the feather, which hazes it -- the one
-  // nearest the horizon being the one that dissolves is aerial perspective
-  // working, not the wash catching it.
+  // Clouds ride the strip of sky the mist has not reached, so they are read
+  // against the world's own high colour rather than against the fog. That
+  // strip is narrow and short, and the corner HUD plates own both ends of it,
+  // so there are few of them and they start in the window between the plates
+  // -- a cloud sitting permanently behind a translucent panel reads as a
+  // smudge on the interface rather than as weather. A drifting world carries
+  // them out across the whole sky from there.
   if (biome.clouds) {
     [
-      [90, 16],
-      [230, 30],
-      [400, 23],
-      [530, 12],
+      [470, 15],
+      [600, 26],
     ].forEach(([x, y]) => drawCloud(scene, x, y, biome.cloudDrift));
   }
 }
