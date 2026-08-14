@@ -97,9 +97,10 @@ generating a fresh one. Pressing `Enter` again in the Lab is the exact reverse o
 trip: it sends the player back to precisely the world and position they left, regardless of
 how far their progress has otherwise advanced, so opening and closing the Lab from any world
 never moves the player. The door station is a separate, deliberately different affordance --
-always the player's furthest-reached world -- reading "Back to World N" and resuming in place
-once that world has genuinely been started, or "Enter World N" (always a fresh map) the first
-time it's ever reached.
+always the player's furthest-reached world, named rather than numbered -- reading "Back to
+`<world name>`" and resuming in place
+once that world has genuinely been started, or "Enter `<world name>`" (always a fresh map) the
+first time it's ever reached.
 
 Each world's "Gate to next world" fight is a distinct **rival crystal** -- worlds 1-8 and
 10 have a fixed entry in `game/src/data/materials.ts`'s `WORLD_RIVALS`, world 9's is built
@@ -1202,7 +1203,7 @@ Takes effect the next time a world map is generated (a fresh world entry or an
 explicit regenerate), not retroactively on the map the player is currently
 standing on.
 
-**Plot hook:** a "Decoherence" is spreading through the material worlds, causing wild
+**Plot hook:** a "Decoherence" is spreading through the quantum material worlds, causing wild
 materials to lose their protected properties. The player masters each phase of
 matter to stabilize it. World 10's boss is revealed as the source — an entity
 that reshapes itself live in battle to counter whatever quasiparticle class the

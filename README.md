@@ -11,7 +11,7 @@ your way to mastering every phase of matter.
 ## The premise
 
 **You are a crystal yourself** -- the same kind of material the wild
-encounters are drawn from, starting out as Silicon. A "Decoherence" is spreading through the material worlds, causing
+encounters are drawn from, starting out as Silicon. A "Decoherence" is spreading through the quantum material worlds, causing
 them to lose their protected properties, and you're the one walking through
 each phase of matter to stabilize it again.
 

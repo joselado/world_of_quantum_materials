@@ -1586,6 +1586,13 @@ export const WORLD_NAMES: Partial<Record<number, string>> = {
   10: 'The Adaptive Meta-World',
 };
 
+// The player-facing name of a world, for every place one is shown by name --
+// the Lab's door station, Bloch's destination rows, a world's own entry
+// banner. Falls back to "World N" for a number with no entry above.
+export function worldName(world: number): string {
+  return WORLD_NAMES[world] ?? `World ${world}`;
+}
+
 // World 9 (defects/excitations) additionally spawns every non-hybrid
 // material from worlds 1-8 on top of its own dedicated defect compounds --
 // the same "an impurity/defect-bound resonance can form in any host

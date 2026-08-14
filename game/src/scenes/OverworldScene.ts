@@ -22,7 +22,7 @@ import { project, fogColor, HORIZON_Y, CANVAS_W, CANVAS_H, ProjectedPoint } from
 import { buildContourGrid, ContourPoint, MAX_OFFSET, TileContour } from '../art/contours';
 import {
   PLAYER_MATERIAL,
-  WORLD_NAMES,
+  worldName,
   getWildPool,
   getRival,
   rollRival9Type,
@@ -839,14 +839,14 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // Enter's world<->Lab shuttle is used far more often than the other
     // keys, so it stays visible on every screen rather than relying on the
     // one-time tip/replayable recap alone.
-    const worldName = WORLD_NAMES[this.world] ?? `World ${this.world}`;
+    const name = worldName(this.world);
     const essenceGutterProbe = this.add
       .text(0, 0, 'Qumatessence: 99999', { fontSize: fontPx(this, 14), padding: { x: 4, y: 2 } })
       .setVisible(false);
     const essenceGutter = essenceGutterProbe.width + 8;
     essenceGutterProbe.destroy();
     this.add
-      .text(8, 8, `World ${this.world} -- ${worldName}`, {
+      .text(8, 8, `World ${this.world} -- ${name}`, {
         fontSize: fontPx(this, 16),
         color: '#ffffff',
         backgroundColor: 'rgba(0,0,0,0.35)',
@@ -2422,9 +2422,9 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     const scale = Math.min(fontScale(this), 1.5);
 
     let y = top;
-    const worldName = WORLD_NAMES[this.world] ?? `World ${this.world}`;
+    const name = worldName(this.world);
     const title = this.add
-      .text(CANVAS_W / 2, y, worldName, {
+      .text(CANVAS_W / 2, y, name, {
         fontSize: `${Math.round(15 * scale)}px`,
         color: '#ffffff',
         fontStyle: 'bold',

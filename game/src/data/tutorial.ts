@@ -55,7 +55,7 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     title: 'Welcome to the Quantum Materials RPG',
     listLabel: 'Welcome',
     body:
-      'A Decoherence is spreading through the material worlds. You are not a trainer catching creatures -- you are a crystal yourself, walking these worlds to master every phase of matter and stabilize it. This room is the Lab: Qumatex catalogs every crystal you discover, and the door leads to your first world. Your progress autosaves as you play, no button needed.',
+      'A Decoherence is spreading through the quantum material worlds. You are not a trainer catching creatures -- you are a crystal yourself, walking these worlds to master every phase of matter and stabilize it. This room is the Lab: Qumatex catalogs every crystal you discover, and the door leads to your first world. Your progress autosaves as you play, no button needed.',
   },
   controls: {
     title: 'Walking the Path',

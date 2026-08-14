@@ -24,8 +24,9 @@ game/src/
     HubScene.ts                World 0, static room, up to 7 stations: 2 that always exist
                                  (Qumatex/Door -- door label/click resume-in-place to
                                  highestUnlockedWorld() via canResumeWorld(), tracks
-                                 rivalDefeated progress in Story Mode, pinned to "Enter World 1"
-                                 in Superposition Mode; the Enter *key* instead resumes
+                                 rivalDefeated progress in Story Mode, labeled with the
+                                 destination's own name (materials.ts's worldName), pinned to
+                                 World 1 in Superposition Mode; the Enter *key* instead resumes
                                  resumeWorld() -- the exact world/position mapState holds,
                                  not necessarily highestUnlockedWorld())
                                  plus up to 5 reference/settings stations (Moves/Stats/Abilities/
@@ -174,7 +175,7 @@ game/src/
     boss.ts                      makeBossCrystal() -- towering humanoid golem boss avatar at a world's goal,
                                   plus the BOSS_SILHOUETTE_TOP/BOTTOM extents its callers lay out around
     tokens.ts                   makeToken() -- qumatessence pickup sprite
-    labMotifs.ts                 One small icon builder per Lab station (Qumatex/
+    labMotifs.ts                 One small icon builder per Lab station (Qumatex/Door/
                                   Moves/Stats/Abilities/Tutorial/Settings -- see "Lab
                                   stations and settings" below), planted beside that station's
                                   own button in the room (HubScene.addStationRow), fixed-px art
@@ -309,7 +310,10 @@ game/src/
                                   to a player, WORLD_CRYSTALS, WORLD_RIVALS,
                                   PLAYER_MATERIAL, SHOP_MOVE_IDS, ANALYTIC_MOVE_IDS,
                                   ULTIMATE_MOVE_IDS, ULTIMATE_CLASS_UNLOCK_COST,
-                                  TUNABLE_MOVE_CLASSES, RIVAL_9_TYPES, WORLD_NAMES,
+                                  TUNABLE_MOVE_CLASSES, RIVAL_9_TYPES, WORLD_NAMES/worldName()
+                                  -- the latter the "name, falling back to World N" read every
+                                  caller showing a world by name uses (the Lab's door station,
+                                  Bloch's destination rows, a world's own entry banner),
                                   getWildPool(), getRival(world, rival9Type?),
                                   compatibleMoves(),
                                   canHost(), getPlayerMaterial(), getPlayerStats(), getBattleMoves(),
@@ -1575,10 +1579,10 @@ avatar `Container` (a Container has no hit area of its own) and takes the same
 `LAB_TITLE_COLOR` (`#ffe066`) -- and one centered-content geometry: `hubStations.ts`'s
 `labPanelColumns(panelWidth)` returns a fixed `contentCenterX`/`contentWrapW` margined in from
 both edges of the panel. A panel's own themed motif (`art/labMotifs.ts`'s `makeQumatexMotif`/
-`makeMovesMotif`/`makeStatsMotif`/`makeAbilitiesMotif`/`makeTutorialMotif`/
+`makeDoorMotif`/`makeMovesMotif`/`makeStatsMotif`/`makeAbilitiesMotif`/`makeTutorialMotif`/
 `makeSettingsMotif` -- fixed-px art, never run through `ui/text.ts`'s
 `fontPx()`/`fontScale()`) is never drawn inside the panel; each `LAB_STATIONS` entry (and
-`HubScene`'s own hardcoded Qumatex row -- the door has no motif of its own) instead carries its
+`HubScene`'s own hardcoded Qumatex and door rows) instead carries its
 motif builder for `HubScene.addStationRow` to plant beside that station's own button in the
 room, at a much
 smaller fixed size (`STATION_MOTIF_SIZE = 26`) than a motif drawn inside a full panel would

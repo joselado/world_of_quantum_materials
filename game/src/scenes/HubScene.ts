@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { makeCrystal } from '../art/crystals';
 import { CANVAS_W, CANVAS_H } from '../art/perspective';
-import { getPlayerMaterial, allCrystals, TYPE_LOOK, materialDisplayName, materialTypeLabel } from '../data/materials';
+import { getPlayerMaterial, allCrystals, TYPE_LOOK, materialDisplayName, materialTypeLabel, worldName } from '../data/materials';
 import { wildHpForWorld } from '../data/balance';
 import { materialBlurb } from '../data/materialdex';
 import { persistFromRegistry } from '../data/save';
@@ -15,7 +15,7 @@ import { BUILT_WORLDS, OverworldScene, applySuperpositionUnlocks } from './Overw
 import type { GuardianPanelHost, GuardianRosterEntry } from './OverworldScene';
 import { LAB_TITLE_COLOR, LAB_STATIONS } from './panels/hubStations';
 import { LIST_DETAIL_PANEL_W, listDetailColumns, renderListColumn, insertColumnDivider } from './panels/listDetail';
-import { makeQumatexMotif } from '../art/labMotifs';
+import { makeQumatexMotif, makeDoorMotif } from '../art/labMotifs';
 import { stopMoveEffectPreview } from '../art/moveEffectPreview';
 
 // World 0, "The Lab" (DESIGN.md's world table) -- boot destination from
@@ -53,6 +53,10 @@ interface MaterialdexEntry {
 // setting, same "art, not text" reasoning as every other motif builder.
 const STATION_MOTIF_SIZE = 26;
 const STATION_MOTIF_GAP = 9;
+// Where the first station row starts, and how much clear canvas the grid
+// keeps below its last row.
+const STATION_ROW_TOP = 330;
+const STATION_GRID_BOTTOM_MARGIN = 10;
 
 // The guardian gallery: every guardian the player has met stands in the room
 // as their own avatar (spawnGuardianAvatars), five per cluster in the two
@@ -65,17 +69,17 @@ const STATION_MOTIF_GAP = 9;
 // panels and the player's own crystal hold the middle, and the counter below
 // `GUARDIAN_ROW_TOP + 2 * GUARDIAN_ROW_PITCH` is where the station rows start.
 const GUARDIAN_SLOT_W = 88;
-const GUARDIAN_SLOT_H = 64;
-const GUARDIAN_ROW_PITCH = 68;
+const GUARDIAN_SLOT_H = 72;
+const GUARDIAN_ROW_PITCH = 78;
 const GUARDIAN_ROW_TOP = 96;
 const GUARDIAN_CLUSTER_CX = 96;
-const GUARDIAN_AVATAR_SCALE = 0.45;
+const GUARDIAN_AVATAR_SCALE = 0.55;
 // Where the short name sits relative to the avatar's own origin (its chest),
 // and where the slot's click plate is centered between the two.
-const GUARDIAN_LABEL_DROP = 22;
+const GUARDIAN_LABEL_DROP = 27;
 const GUARDIAN_LABEL_BASE_PX = 9;
 const GUARDIAN_LABEL_MIN_PX = 9;
-const GUARDIAN_PLATE_DROP = 6;
+const GUARDIAN_PLATE_DROP = 8;
 // The click plate is invisible at rest and a faint wash under the pointer.
 // Never fully transparent: a Phaser game object with alpha 0 stops rendering,
 // and an unrendered object is skipped by hit-testing too, which would make
@@ -177,7 +181,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     this.drawRoom();
 
     this.add
-      .text(CANVAS_W / 2, 30, 'World 0 -- The Lab', {
+      .text(CANVAS_W / 2, 30, 'The Lab', {
         fontSize: fontPx(this, 16),
         color: '#ffffff',
         backgroundColor: 'rgba(0,0,0,0.35)',
@@ -189,7 +193,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
       .text(
         CANVAS_W / 2,
         62,
-        '"A Decoherence is spreading through the material worlds. Master each phase of matter to stabilize it." -- a voice, deep in the Lab',
+        '"A Decoherence is spreading through the quantum material worlds. Master each phase of matter to stabilize it." -- a voice, deep in the Lab',
         // Wrapped narrow enough to stay clear of the guardian clusters
         // standing in the two upper corners (spawnGuardianAvatars).
         { fontSize: fontPx(this, 12), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: 420 } }
@@ -236,29 +240,42 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     // (LAB_STATIONS' own `visible` checks) --
     // packed together into one grid of rows of three with no gaps, rather
     // than reserving a fixed grid slot for a station that isn't visible yet
-    // or special-casing Qumatex/the door into their own row. Qumatex carries
-    // its own small crystal-grid motif (`makeQumatexMotif`) beside its
-    // label, same as every reference/settings station below -- the door has
-    // no `art/labMotifs.ts` builder of its own, plain text being enough to
-    // read as an exit.
+    // or special-casing Qumatex/the door into their own row. Every station
+    // carries its own small `art/labMotifs.ts` motif beside its label --
+    // Qumatex a crystal grid, the door a freestanding lit archway.
     const stations: { label: string; onClick: () => void; motif?: (scene: Phaser.Scene, size: number) => Phaser.GameObjects.Container }[] = [
       { label: 'Qumatex', onClick: () => this.showMaterialdex(), motif: makeQumatexMotif },
-      { label: this.doorLabel(), onClick: () => this.enterWorld() },
+      { label: this.doorLabel(), onClick: () => this.enterWorld(), motif: makeDoorMotif },
       ...LAB_STATIONS.filter((station) => station.visible(this)).map((station) => ({
         label: station.label,
         onClick: () => station.onClick(this),
         motif: station.motif,
       })),
     ];
-    let y = 300;
+    // Low in the room, leaving the wall above the counter to the guardian
+    // clusters rather than splitting that band between the two. The grid is
+    // laid out from there and then lifted as a whole by however much it
+    // overshoots the canvas floor -- a long door label ("Back to Frozen
+    // Zero-Resistance Caverns") wraps to two or three lines at the Large text
+    // size, which is enough to push a three-row grid off the bottom.
+    let y = STATION_ROW_TOP;
+    const placed: Phaser.GameObjects.GameObject[] = [];
     for (let i = 0; i < stations.length; i += 3) {
       const rowStations = stations.slice(i, i + 3);
       let rowHeight = 0;
       rowStations.forEach((station, col) => {
-        const btn = this.addStationRow(stationX[col], y, station.label, station.onClick, station.motif);
-        rowHeight = Math.max(rowHeight, btn.height);
+        const row = this.addStationRow(stationX[col], y, station.label, station.onClick, station.motif);
+        placed.push(row.button, ...(row.motif ? [row.motif] : []));
+        rowHeight = Math.max(rowHeight, row.button.height);
       });
       y += rowHeight + 8;
+    }
+    const overshoot = y - 8 - (CANVAS_H - STATION_GRID_BOTTOM_MARGIN);
+    if (overshoot > 0) {
+      for (const obj of placed) {
+        const positioned = obj as Phaser.GameObjects.Text | Phaser.GameObjects.Container;
+        positioned.setY(positioned.y - overshoot);
+      }
     }
 
     // Reverse direction of OverworldScene's own keydown-ENTER (which sends
@@ -295,19 +312,19 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     label: string,
     onClick: () => void,
     makeMotif?: (scene: Phaser.Scene, size: number) => Phaser.GameObjects.Container
-  ): Phaser.GameObjects.Text {
+  ): { button: Phaser.GameObjects.Text; motif?: Phaser.GameObjects.Container } {
     const btn = this.addButton(x, y, label, () => {
       if (this.dialogueContainer) return;
       onClick();
     });
-    if (makeMotif) {
-      const pairWidth = STATION_MOTIF_SIZE + STATION_MOTIF_GAP + btn.width;
-      const pairLeft = x - pairWidth / 2;
-      btn.setX(pairLeft + STATION_MOTIF_SIZE + STATION_MOTIF_GAP + btn.width / 2);
-      const motif = makeMotif(this, STATION_MOTIF_SIZE);
-      motif.setPosition(pairLeft + STATION_MOTIF_SIZE / 2, y + btn.height / 2);
-    }
-    return btn;
+    if (!makeMotif) return { button: btn };
+
+    const pairWidth = STATION_MOTIF_SIZE + STATION_MOTIF_GAP + btn.width;
+    const pairLeft = x - pairWidth / 2;
+    btn.setX(pairLeft + STATION_MOTIF_SIZE + STATION_MOTIF_GAP + btn.width / 2);
+    const motif = makeMotif(this, STATION_MOTIF_SIZE);
+    motif.setPosition(pairLeft + STATION_MOTIF_SIZE / 2, y + btn.height / 2);
+    return { button: btn, motif };
   }
 
   // Where the guardian of world `world` stands: worlds 1-5 fill the left
@@ -367,6 +384,9 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
       }
 
       plate.on('pointerover', () => {
+        // A slot offers nothing while a panel is open (the click below is a
+        // no-op then), so it doesn't light up or float a readout either.
+        if (this.dialogueContainer) return;
         plate.setFillStyle(0x8fa0ff, GUARDIAN_PLATE_HOVER_ALPHA);
         label.setColor(guardian.labelColor);
         avatar.setScale(1.12);
@@ -455,7 +475,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // gradient from top to bottom. Static (drawn once here, never redrawn in an
   // `update()` -- this scene has none), so the extra shape count is free.
   private drawRoom() {
-    const floorTop = 340; // matches the station row (y=300) and its labels underneath
+    const floorTop = 340; // the station rows straddle this seam, standing against the counter
     const g = this.add.graphics();
     const glow = this.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
 
@@ -602,13 +622,17 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // so its own affordance is "back to wherever I was" (resumeWorld() below),
   // falling back to a fresh World 1 only when there's genuinely nowhere to
   // resume yet -- a fresh save that has never left the Lab in this mode.
+  // The label names the destination itself (data/materials.ts's WORLD_NAMES,
+  // the same names Bloch's destination rows and each world's own entry banner
+  // use) rather than its number, so the door reads as a way back to a place
+  // the player remembers walking rather than an index into a list.
   private doorLabel(): string {
     if (this.isSuperpositionMode()) {
       const world = this.resumeWorld();
-      return world !== undefined ? `Back to World ${world}` : 'Enter World 1';
+      return world !== undefined ? `Back to ${worldName(world)}` : `Enter ${worldName(1)}`;
     }
     const world = this.highestUnlockedWorld();
-    return this.canResumeWorld(world) ? `Back to World ${world}` : `Enter World ${world}`;
+    return this.canResumeWorld(world) ? `Back to ${worldName(world)}` : `Enter ${worldName(world)}`;
   }
 
   // The door station's own affordance: in Story Mode, always the player's
@@ -938,8 +962,8 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     // already carries the "themed motif" STYLE.md's Lab-panels section asks
     // for, so the title only gets this flourish rather than a second full
     // left-side motif column competing with the two-column list/detail
-    // layout. The Qumatex station's own room button has no motif of its
-    // own to echo (art/labMotifs.ts has no builder for it, same reason).
+    // layout. Distinct from the small crystal-grid motif this station's own
+    // room button carries (art/labMotifs.ts's makeQumatexMotif).
     const titleIcon = makeCrystal(this, 16, 0x9a6ad9, 'prism');
     titleIcon.setPosition(titleText.x - titleText.width / 2 - 16, titleText.y + titleText.height / 2);
     container.add(titleIcon);

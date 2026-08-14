@@ -79,9 +79,11 @@ than appending a changelog, so this always reflects current reality.
   plain gold-on-dark-blue text button (`HubScene.addStationRow`, same look every dialogue
   button in the game uses), not an icon a player clicks -- there is no `makeCrystal` render
   anywhere in the station rows. Qumatex and the door onward always exist and always lead the
-  grid, in that order. The door's label reads "Enter World N" for
+  grid, in that order. The door's label names its destination (`data/materials.ts`'s
+  `worldName()`, the same names Bloch's rows and each world's own entry banner use) rather than
+  its number: "Enter `<name>`" for
   `HubScene.highestUnlockedWorld()` (walking `rivalDefeated` from world 1 until it finds one
-  not yet beaten) the first time that world is ever stepped into, or "Back to World N" once it
+  not yet beaten) the first time that world is ever stepped into, or "Back to `<name>`" once it
   is -- `HubScene.canResumeWorld()` is
   the single predicate both the label and the door's own click/Enter-key navigation read,
   checking that the world is in the persisted `visitedWorlds` *and* that the registry's own
@@ -89,9 +91,9 @@ than appending a changelog, so this always reflects current reality.
   `saveMapState()`/`returnToHub()` -- see "Overworld path" below) still belongs to that exact
   world, since `mapState` is registry-only and doesn't survive a page reload the way
   `visitedWorlds` does; sharing one predicate is what keeps the label and the actual
-  resume-or-regenerate outcome from ever disagreeing. "Back to World N" always resumes the
-  player's exact saved position in that world; "Enter World N" always generates a fresh map. In
-  Superposition Mode the door always reads "Enter World 1" and always drops the player straight
+  resume-or-regenerate outcome from ever disagreeing. "Back to `<name>`" always resumes the
+  player's exact saved position in that world; "Enter `<name>`" always generates a fresh map. In
+  Superposition Mode the door always reads "Enter `<World 1's name>`" and always drops the player straight
   into a fresh World 1, same as Story Mode's own first entry -- `canResumeWorld()` never
   returns true in this mode, since the mode's own teleport-anywhere design (below) makes a
   single "resume where I left off" door meaningless once Bloch's hub can jump to any visited
@@ -101,7 +103,7 @@ than appending a changelog, so this always reflects current reality.
   which is not necessarily the door station's own frontier-world target -- opening the Lab from
   an earlier world (Bloch's teleport hub, or walking back through an earlier world's own door)
   and pressing Enter again lands the player back in that same earlier world, not the door's
-  "Back to World N." A no-op when there's nothing resumable (a fresh save with nothing in
+  "Back to `<name>`." A no-op when there's nothing resumable (a fresh save with nothing in
   progress yet has nothing to send Enter back to), and never fires while a Lab panel is open,
   matching every station's own one-panel-at-a-time guard. From there the player can
   walk to World 2 to reach Bloch, or click Bloch's own avatar in the Lab once he's been met
@@ -121,15 +123,23 @@ than appending a changelog, so this always reflects current reality.
   than reserving a fixed grid slot for a station that isn't visible yet or giving Qumatex/the
   door a row of their own; a row that doesn't divide evenly by three (e.g. the gated station
   unlocked) just trails off short on its last row rather than every row being forced full.
-  Every station except the door (Qumatex and all five `LAB_STATIONS` entries) gets its own small
+  Every station (Qumatex, the door, and all five `LAB_STATIONS` entries) gets its own small
   `art/labMotifs.ts` icon planted just to the left of its button label (`HubScene.addStationRow`,
   `STATION_MOTIF_SIZE = 26`, fixed-px, never scaled by the Text Size setting) -- much smaller
   than the same builder would draw inside a full panel, since here it sits inline with a
   compact button; Qumatex's own icon (`makeQumatexMotif`, a small 2x2 grid of tiny faceted
   gems reading as "an indexed catalog") is distinct from the panel's own detail pane, which
-  renders one full-size real crystal for whichever compound is currently selected. The door has
-  no motif of its own -- plain text is enough to read as an exit. Every station is a
-  no-op while another panel is already open (one panel at a time).
+  renders one full-size real crystal for whichever compound is currently selected. The door's
+  (`makeDoorMotif`) is a miniature of the walkable world-door's own archway (`art/door.ts`) --
+  the same stone frame, dark inset and self-luminous lavender (`STORY_LAVENDER`) portal, slowly
+  pulsing, the one Lab motif that animates -- but freestanding, its additive halo spilling past
+  the frame on every side: a world's door is a notch in terrain leading to one fixed neighbour,
+  and a doorway standing in nothing is the Lab's, which leads anywhere (WORLDS.md §4's "the
+  same aperture grammar, unbound"). Its opening shows light, never scenery -- a visible far end
+  would imply an exterior the Lab must not have. The grid is laid out from
+  `STATION_ROW_TOP` (`330`) and lifted as a whole by however much it overshoots a `10`px bottom
+  margin, since a long door label wraps to two or three lines at the Large text size. Every
+  station is a no-op while another panel is already open (one panel at a time).
 - **Every one of the Lab's six non-door panels reads as one coherent design** -- dark
   rounded-rectangle-with-stroke chrome and a bold gold (`#ffe066`) heading -- rather than
   several visually separate eras bolted together. Panel content is always laid out top-down
