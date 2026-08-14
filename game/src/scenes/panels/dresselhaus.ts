@@ -97,6 +97,11 @@ export function showDresselhausPanel(scene: GuardianPanelHost) {
   container.add(intro);
   y += intro.height + 14;
 
+  // Every crystal the player has defeated is on offer, listed in the order
+  // they were beaten -- studying a structure is what earns the right to
+  // rebuild yourself into it, and that knowledge doesn't lapse. The list
+  // column paginates, so a long roster costs nothing but pages.
+  //
   // Excludes every hybrid-recipe result (isHybridMaterial) -- becoming a
   // fused state is Majorana's mechanic, not this one, even for the ones
   // that are also ordinary wild encounters.
@@ -104,10 +109,7 @@ export function showDresselhausPanel(scene: GuardianPanelHost) {
     ? allCrystals()
         .filter((m) => !isHybridMaterial(m.name))
         .sort((a, b) => a.name.localeCompare(b.name))
-    : scene
-        .getDefeatedMaterials()
-        .filter((m) => !isHybridMaterial(m.name))
-        .slice(-3);
+    : scene.getDefeatedMaterials().filter((m) => !isHybridMaterial(m.name));
 
   if (candidates.length === 0) {
     const text = scene.add
