@@ -444,12 +444,13 @@ than appending a changelog, so this always reflects current reality.
 
 ## Biomes (`art/biomes.ts`)
 
-Per-world skin: sky/ceiling gradient, hill/ceiling silhouette, off-path ground color, on-path
+Per-world skin: sky/ceiling gradient, distant self (`hillColor`/`hillAlpha`, see "The horizon"
+below), off-path ground color, on-path
 trail color, ambient decoration style, fog blend target, whether clouds render, and (see
 "Overworld path" above) what the off-path terrain actually *is* -- `wallTheme`.
 
-Two constraints every entry has to satisfy, both consequences of the smoothed-ground treatment
-every world uses rather than free style choices:
+Three constraints every entry has to satisfy, all consequences of treatments every world uses
+rather than free style choices:
 
 - `ground` and `path` must hold a wide break (see "Overworld path" above) -- they carry the
   whole walkable/impassable read by themselves.
@@ -463,6 +464,8 @@ every world uses rather than free style choices:
   ground actually meets. Near a world's goal end the haze target is deliberately carried
   toward the *next* world's `fogTarget` (see "Overworld path" above), which is the one place
   it leaves that range on purpose -- the reason every haze wash is painted overlap-free.
+- `hillColor` and `hillAlpha` are this world's distant self, and are budgeted against the fog
+  the *neighbour* who can see it will drown them in (see "The horizon" below).
 
 | World | Biome | Sky/ceiling | Off-path ground | Path | Decoration | Clouds | Wall theme |
 |---|---|---|---|---|---|---|---|
@@ -486,6 +489,45 @@ never closes. World 3's Voronoi domain tints (`world/generators/world3.ts`'s
 `DOMAIN_PALETTE`) are saturated mid-value hues, all held well darker than the pale walkable
 edge channel: the domain-vs-domain hue contrast is the world's physics made visible, and the
 value gap to the path is what keeps a tinted bulk from ever reading as walkable ground.
+
+## The horizon
+
+`dev_notes/WORLDS.md` §4 is the spec; this is the visual rule it comes out as. Sky, mist and
+ground are **one atmosphere**, and the horizon line is a location inside it rather than a boundary
+between two pictures. The ground's depth fog arrives at the fog color exactly where the last row
+is drawn; the sky's own bottom arrives at the same color from above, at full strength across the
+lowest stretch of sky and feathered out over the stretch above that. Nothing in the frame paints
+its own idea of what color the air is -- every pass reads the one live haze target, which is what
+lets the target move (toward the next world's air, near an open gate) without anything tearing.
+
+**Distant selves.** Just above the line stands the *next* world's silhouette, composed from that
+world's own `hillColor` (base) and `hillAlpha` (swallow) -- a world states how it looks from
+outside itself, once, and its neighbour renders that statement. The shape is a placeholder two-sine
+profile shared by every world; per-world profiles replace it, each being that world's impassable
+surround restated at horizon scale.
+
+Three rules govern how one is painted, and they are what keep it from reading as a slab:
+
+- **Drowned, not painted.** The base color is carried most of the way into the live fog target,
+  so what remains is a narrow excursion from the mist rather than a shape laid over it. It reads
+  the *blended* target, never the neighbour's own `fogTarget` -- band and mist then move together
+  and no seam can open between them, even across a hard hue jump like grey into red.
+- **Continuous at the base, soft at the top.** Alpha ramps from zero at the foot of the silhouette
+  up to the authored swallow at its crest, measured against each column's *own* height so a
+  shallow dip is swallowed whole while the crest beside it still clears the fog. The crest itself
+  carries a couple of pixels of softness against the sky.
+- **A tight value budget.** The whole band stays inside a narrow excursion from the fog color, and
+  the budget is tighter than an own-palette band would need, because the horizon is always wearing
+  a *foreign* hue and a foreign hue is more legible than an own-palette one at equal contrast. The
+  budget binds hardest with the gate shut, when the mist has none of the neighbour's color in it
+  yet: World 2's dark indigo seen from World 1's pale blue air is the tightest pair in the game
+  and takes the lowest swallow. **A world whose base color cannot stay inside the budget at any
+  swallow worth drawing goes to zero and shows no silhouette at all** -- an emptied-out horizon
+  beats a slab, every time.
+
+Judged **gate-open, at the goal end**: that is where the mist carries the most of the next world's
+color, and a horizon treatment that only settles with the gate shut has been checked against the
+world's own air, which everything already agrees with.
 
 ## Qumatuomi map (`art/qumatuomiMap.ts`)
 
@@ -1347,6 +1389,9 @@ than the caller's requested budget) for its own layout math.
     biomes, where the raw blend endpoints sit too close together to separate the layers);
     nearer layers are flatter, darker, and carry a subtle 1.5px rim-light stroke along
     just their top edge (`blend(color, white, 0.38)` at 0.32 alpha) as directional skylight.
+    The layers borrow the biome's `hillColor` as a per-world ridge tone but set their own
+    alphas: `hillAlpha` is the overworld's swallow knob ("The horizon" above) and means nothing
+    in a near view, where a world whose distant horizon is swallowed still has a skyline.
   - **Ground**: a vertical gradient from a fog-blended far edge to a darkened near edge,
     with a translucent mist band pooling just below the horizon.
   - **Color grade**: one zone-level translucent tint keyed off the biome's `wallTheme` --

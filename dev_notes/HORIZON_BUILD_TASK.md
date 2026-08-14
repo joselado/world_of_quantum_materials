@@ -21,7 +21,7 @@ Build in this order. Each stage is shippable on its own.
 |---|---|---|---|
 | **A** | Depth continuity — land reaches the horizon | nothing | **built** |
 | **B** | Haze inheritance — the air ahead becomes the next world's air | A | **built** |
-| **C** | Distant selves — per-world horizon profiles, composed into neighbours | retheme, A | to do |
+| **C** | Distant selves — per-world horizon profiles, composed into neighbours | retheme, A | composition + atmosphere **built**; profiles to do |
 | **D** | Gate apertures — state-signalled pass, ground seam | C | to do |
 | **E** | Depth-projected flanks — the approach into the pass | D | to do |
 | **F** | The Lab door, then the Qumatuomi sky | D (Lab quotes its grammar) | to do |
@@ -65,14 +65,18 @@ does, that is the single call to re-point.
 
 ## C — Distant selves
 
-One asset per world: a silhouette profile plus a far palette. **Not two.** A
-world's forward horizon is composed at render time from its neighbour's distant
-self; the same asset is what that world wears on its own horizon. If B and C are
-implemented as separate assets they will drift.
+One asset per world: a silhouette profile plus a base colour and a swallow.
+**Not two.** A world's forward horizon is composed at render time from its
+neighbour's distant self; the same asset is what that world wears on its own
+horizon. If B and C are implemented as separate assets they will drift.
 
-Replace the shared two-sine hill band in `drawSky`, which currently gives every
-world the same profile in a different colour — a standing violation of the
-theming independent of this task.
+The composition system, the atmosphere the silhouette is drowned in, and the
+swallow knob are built (`scenes/overworld/sky.ts`'s `drawDistantSelf`,
+`art/biomes.ts`'s `hillColor`/`hillAlpha`). What is left is the **shape**: the
+profile is still the two-sine placeholder shared by every world, which gives
+every world the same hills in a different colour — a standing violation of the
+theming independent of this task. Author per-world profiles against the retheme
+and hand them to `silhouetteHeight`.
 
 Requirements from `WORLDS.md` §4:
 
@@ -94,8 +98,13 @@ Requirements from `WORLDS.md` §4:
   ~30° lean with a flip at one point (the domain wall) against the glacier's
   random vertical ridges.
 
-Blend the silhouette's base into the terrain's own fog target so land, haze and
-sky meet as a gradient rather than at a hard line.
+A new profile inherits the whole atmosphere contract already in place and must
+not fight it: shape and base colour only, no baked fog, and a swallow that keeps
+the band inside its value budget or goes to zero. `STYLE.md`'s "The horizon" is
+the rule; `CODEMAP.md`'s "The mist band and the distant self" is the code.
+
+Worlds 7, 8 and 10 are already at swallow zero and stay there — their horizons
+are meant to be empty, so they need no profile.
 
 ## D — Gate apertures
 
