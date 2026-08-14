@@ -463,7 +463,7 @@ the raw table for diffing two runs, `QM_GREY_SEED` re-pins the PRNG. It picks
 its own port (5191 by default, `QM_GREY_PORT`) rather than `:5173`, so it
 never disturbs a dev server already running. Artifacts land in
 `game/.check-artifacts/greyscale/`: the full-colour arena PNG per world, and
-the reduced greyscale frame the metric actually saw as a binary PGM -- worth
+the reduced greyscale frame the metric actually saw -- worth
 opening when a number surprises you, since it is literally the squint.
 
 **The one structural assumption, and how it is kept honest:** the script

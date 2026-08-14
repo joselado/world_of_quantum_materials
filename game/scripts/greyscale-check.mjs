@@ -3,8 +3,8 @@
 //
 // The squint test, made mechanical. It drives the real game in headless
 // Chrome to a rival battle in each world, screenshots the arena, drains the
-// colour, shrinks the frame, and measures how far each gameplay element's
-// value sits from the value of the backdrop around it -- then compares that
+// colour, shrinks the frame, and measures how much value each gameplay
+// element carries against the backdrop it stands on -- then compares that
 // against how much contrast the backdrop manages on its own at the same
 // scale. A colour check waves through the failure that matters (an element
 // surviving on hue alone and vanishing in value); greyscale is what catches
@@ -82,7 +82,7 @@
 //          own scale of local contrast. POSITIVE control: every element must
 //          FAIL. This is over-decoration itself -- the handsome backdrop that
 //          competes -- and is what the relative arm of the gate exists for.
-//   fade   the whole gameplay layer drops to alpha 0.15. POSITIVE control:
+//   fade   the whole gameplay layer drops to alpha 0.05. POSITIVE control:
 //          every element must FAIL. The other end -- elements that have lost
 //          their own contrast -- and what the absolute arm exists for.
 // A positive control that slips through means the instrument is blind, which
@@ -519,15 +519,58 @@ function crystalBox(anchor, width, height) {
 
 const round2 = (v) => (v === null || v === undefined ? null : Math.round(v * 100) / 100);
 
-// Binary PGM: the reduced greyscale frame exactly as the metric saw it, in a
-// format writable without an encoder and viewable in any image tool. One
-// glance at it also confirms the PNG decoder above did its job.
-function writePgm(file, reduced) {
+// The reduced greyscale frame exactly as the metric saw it, written back out
+// as a greyscale PNG. Worth opening when a number surprises you -- it is
+// literally the squint -- and one glance at it also confirms the decoder
+// above did its job, since a mis-decoded frame comes back as garbage.
+const CRC_TABLE = (() => {
+  const t = new Int32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c;
+  }
+  return t;
+})();
+
+function crc32(buf) {
+  let c = ~0;
+  for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+  return ~c >>> 0;
+}
+
+function pngChunk(type, body) {
+  const len = Buffer.alloc(4);
+  len.writeUInt32BE(body.length);
+  const typed = Buffer.concat([Buffer.from(type, 'ascii'), body]);
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(crc32(typed));
+  return Buffer.concat([len, typed, crc]);
+}
+
+function writeGreyPng(file, reduced) {
   const { cw, ch, cells } = reduced;
-  const header = Buffer.from(`P5\n${cw} ${ch}\n255\n`, 'ascii');
-  const body = Buffer.alloc(cw * ch);
-  for (let i = 0; i < body.length; i++) body[i] = Math.max(0, Math.min(255, Math.round(cells[i])));
-  fs.writeFileSync(file, Buffer.concat([header, body]));
+  const raw = Buffer.alloc(ch * (cw + 1));
+  for (let y = 0; y < ch; y++) {
+    raw[y * (cw + 1)] = 0; // no per-row filter
+    for (let x = 0; x < cw; x++) {
+      raw[y * (cw + 1) + 1 + x] = Math.max(0, Math.min(255, Math.round(cells[y * cw + x])));
+    }
+  }
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(cw, 0);
+  ihdr.writeUInt32BE(ch, 4);
+  ihdr[8] = 8; // bit depth
+  ihdr[9] = 0; // greyscale
+  fs.writeFileSync(
+    file,
+    Buffer.concat([
+      Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+      pngChunk('IHDR', ihdr),
+      pngChunk('IDAT', zlib.deflateSync(raw)),
+      pngChunk('IEND', Buffer.alloc(0)),
+    ])
+  );
 }
 
 // =====================================================================
@@ -902,7 +945,7 @@ async function main() {
     const regions = deriveRegions(baseFrames, geom);
     const base = measureArena(baseFrames, regions);
     fs.writeFileSync(path.join(SHOT_DIR, `w${world}-arena.png`), baseFrames.full);
-    writePgm(path.join(SHOT_DIR, `w${world}-squint.pgm`), base.reduced);
+    writeGreyPng(path.join(SHOT_DIR, `w${world}-squint.png`), base.reduced);
 
     // Both controls are aimed at values measured off the frame just
     // captured -- the crystals' own mean, and gameplay's own value range --
