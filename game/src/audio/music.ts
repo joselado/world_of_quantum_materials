@@ -821,13 +821,14 @@ function sectionBars(
 
 // --- Battle articulation --------------------------------------------------
 //
-// The battle theme's shape (vamp, stab lead, march, two crashes) is what
-// makes it exciting and is deliberately left alone. What these add is
-// articulation: the places a live band would push, drop out or lean on the
-// beat, which is the difference between a riff being played and a riff being
-// sequenced. They are separate from the plain kickPulse/snarePulse/hatPulse
-// patterns rather than changes to them, because the Modern arrangement's
-// battle kit still uses those.
+// The battle theme's shape (vamp, stab lead, march, crashes) is what makes
+// it exciting and is deliberately left alone. What these add is
+// articulation: the places a live band would push or lean on the beat,
+// which is the difference between a riff being played and a riff being
+// sequenced. The rhythm section runs unbroken underneath -- these punctuate
+// a groove rather than interrupting one. They are separate from the plain
+// kickPulse/snarePulse/hatPulse patterns rather than changes to them,
+// because the Modern arrangement's battle kit still uses those.
 
 // Backbeat on 2 and 4, with beat 4 of `dragBar` broken into four sixteenths
 // -- a fill that drags the music over the seam into the reprise instead of
@@ -846,38 +847,21 @@ function battleSnarePattern(bars: number, dragBar: number): PercNote[] {
   return notes;
 }
 
-// Offbeat eighths throughout, with two exceptions: the "and" of beat 4 in a
+// Offbeat eighths throughout, with one exception: the "and" of beat 4 in a
 // phrase-ending bar becomes two sixteenths, a lift that marks the phrase
-// without spending a fill on it; and the first two beats of `dropBar` go
-// silent so the kick and sub-bass are briefly left alone.
-function battleHatPattern(bars: number, liftBars: number[], dropBar: number): PercNote[] {
+// without spending a fill on it.
+function battleHatPattern(bars: number, liftBars: number[]): PercNote[] {
   const notes: PercNote[] = [];
   for (let bar = 0; bar < bars; bar++) {
     for (let beat = 0; beat < 4; beat++) {
       if (liftBars.includes(bar) && beat === 3) {
         notes.push({ hit: false, beats: 0.5 }, { hit: true, beats: 0.25 }, { hit: true, beats: 0.25 });
       } else {
-        notes.push({ hit: false, beats: 0.5 }, { hit: bar !== dropBar || beat >= 2, beats: 0.5 });
+        notes.push({ hit: false, beats: 0.5 }, { hit: true, beats: 0.5 });
       }
     }
   }
   return notes;
-}
-
-// Replaces the opening `beats` of a bar with one rest, splitting whichever
-// note straddles the boundary. The band drops into the hole and slams back
-// in on beat 3, which is the loudest thing the arrangement does without
-// adding a single new voice.
-function silenceOpening(bar: ToneNote[], beats: number): ToneNote[] {
-  const out: ToneNote[] = [{ midi: null, beats }];
-  let consumed = 0;
-  for (const note of bar) {
-    const start = consumed;
-    consumed += note.beats;
-    if (consumed <= beats) continue;
-    out.push({ midi: note.midi, beats: start >= beats ? note.beats : consumed - beats });
-  }
-  return out;
 }
 
 // Keeps only the opening `beats` of a bar, splitting a straddling note.
@@ -901,35 +885,6 @@ function turnoverWalk(rootName: string, octave: number): ToneNote[] {
     { midi: root + 8, beats: 0.5 },
     { midi: root + 10, beats: 1 },
   ];
-}
-
-// An eighth-note pickup on the "and" of beat 4, pitched a fifth below the
-// stab it leads into -- the lead reaching for the next downbeat rather than
-// waiting for it. Applied to the top brass line only; the octave-below
-// doubling holds its long note underneath, so the pickup reads as a flick
-// rather than as the whole section moving.
-function addBrassPickups(notes: ToneNote[]): ToneNote[] {
-  const out: ToneNote[] = [];
-  let beat = 0;
-  for (let i = 0; i < notes.length; i++) {
-    const note = notes[i];
-    const end = beat + note.beats;
-    let next: number | null = null;
-    for (let j = i + 1; j < notes.length; j++) {
-      if (notes[j].midi !== null) {
-        next = notes[j].midi;
-        break;
-      }
-    }
-    const landsOnBarline = Math.abs(end % 4) < 1e-6 && beat > 0;
-    if (landsOnBarline && note.midi !== null && note.beats > 0.5 && next !== null) {
-      out.push({ midi: note.midi, beats: note.beats - 0.5 }, { midi: next - 7, beats: 0.5 });
-    } else {
-      out.push(note);
-    }
-    beat = end;
-  }
-  return out;
 }
 
 // A crash track from a list of beat positions within the loop.
@@ -998,11 +953,13 @@ const BATTLE_INTRO_STING: ToneNote[] = [
 // riff, connected by real voice-leading rather than a silence-and-crash cut.
 //
 // Articulated the same way every other world's battle is (see the
-// "Battle articulation" helpers above): the band drops out for the first two
-// beats of B and slams back on beat 3 over a crash, the snare drags the
-// music over the seam into the reprise, the brass takes a pickup into each
-// downbeat, hats lift at phrase ends, and the loop's last two beats walk up
-// into the tonic waiting at the loop point.
+// "Battle articulation" helpers above): the band plays through every section
+// seam, a crash marks each 8-bar boundary on its downbeat, the snare drags
+// the music over the seam into the reprise, hats lift at phrase ends, and
+// the loop's last two beats walk up into the tonic waiting at the loop
+// point. Contrast comes from new material over an engine that keeps
+// running, never from taking voices away: the theme loops dozens of times
+// per session, and a gap that thrills once wears badly by the tenth pass.
 const BATTLE_DROP_BAR = BATTLE_A_PROGRESSION.length;
 const BATTLE_DRAG_BAR = BATTLE_A_PROGRESSION.length + BATTLE_B_PROGRESSION.length - 1;
 const BATTLE_LAST_BAR = BATTLE_FULL_PROGRESSION.length - 1;
@@ -1019,7 +976,6 @@ const BATTLE_SCORE: Score = {
       drive: true,
       notes: BATTLE_FULL_PROGRESSION.flatMap(([r, q], bar) => {
         const plain = vampBar(r, q);
-        if (bar === BATTLE_DROP_BAR) return silenceOpening(plain, 2);
         if (bar === BATTLE_LAST_BAR) return [...keepOpening(plain, 2), ...turnoverWalk(BATTLE_REPRISE[0][0], 0)];
         return plain;
       }),
@@ -1040,14 +996,13 @@ const BATTLE_SCORE: Score = {
       gain: 0.15,
       unison: true,
       drive: true,
-      notes: addBrassPickups([
+      notes: [
         ...sectionBars(BATTLE_A_PROGRESSION, stabBar, { [BATTLE_A_PROGRESSION.length - 1]: BATTLE_TO_B_TRANSITION }),
         ...sectionBars(BATTLE_B_PROGRESSION, stabBar, {
-          0: silenceOpening(stabBar(...BATTLE_B_PROGRESSION[0]), 2),
           [BATTLE_B_PROGRESSION.length - 1]: BATTLE_TO_A_TRANSITION,
         }),
         ...BATTLE_REPRISE.flatMap(([r, q]) => stabBar(r, q)),
-      ]),
+      ],
     },
     {
       kind: 'tone',
@@ -1059,7 +1014,6 @@ const BATTLE_SCORE: Score = {
           [BATTLE_A_PROGRESSION.length - 1]: octaveDown(BATTLE_TO_B_TRANSITION),
         }),
         ...sectionBars(BATTLE_B_PROGRESSION, stabBarLow, {
-          0: silenceOpening(stabBarLow(...BATTLE_B_PROGRESSION[0]), 2),
           [BATTLE_B_PROGRESSION.length - 1]: octaveDown(BATTLE_TO_A_TRANSITION),
         }),
         ...BATTLE_REPRISE.flatMap(([r, q]) => stabBarLow(r, q)),
@@ -1068,8 +1022,8 @@ const BATTLE_SCORE: Score = {
     { kind: 'tone', wave: 'sawtooth', gain: 0.18, drive: true, notes: BATTLE_INTRO_STING },
     { kind: 'kick', gain: 0.9, notes: kickPulse(BATTLE_FULL_PROGRESSION.length) },
     { kind: 'snare', gain: 0.5, notes: battleSnarePattern(BATTLE_FULL_PROGRESSION.length, BATTLE_DRAG_BAR) },
-    { kind: 'hat', gain: 0.22, notes: battleHatPattern(BATTLE_FULL_PROGRESSION.length, BATTLE_LIFT_BARS, BATTLE_DROP_BAR) },
-    crashTrack(BATTLE_LOOP_BEATS, 0.32, [0, BATTLE_DROP_BAR * 4 + 2, (BATTLE_A_PROGRESSION.length + BATTLE_B_PROGRESSION.length) * 4]),
+    { kind: 'hat', gain: 0.22, notes: battleHatPattern(BATTLE_FULL_PROGRESSION.length, BATTLE_LIFT_BARS) },
+    crashTrack(BATTLE_LOOP_BEATS, 0.32, [0, BATTLE_DROP_BAR * 4, (BATTLE_A_PROGRESSION.length + BATTLE_B_PROGRESSION.length) * 4]),
   ],
 };
 
@@ -1206,7 +1160,6 @@ interface BattleScoreConfig {
   // the worlds whose lead is deliberately sparse, where an extra note before
   // every bar would fill in exactly the silence that gives them their
   // character.
-  leadPickups?: boolean;
   subBassGain?: number;
   // 'holdTonic' sustains the loop's opening root the whole way through
   // instead of following each bar's chord -- for worlds whose harmony
@@ -1242,9 +1195,9 @@ function makeBattleScore(cfg: BattleScoreConfig): Score {
   const toB = battleTransitionLick(bProgression[0][0], bProgression[0][1], true);
   const toA = battleTransitionLick(reprise[0][0], reprise[0][1], false);
 
-  // Bar landmarks the articulation hangs off: B's first bar (the drop), B's
-  // last bar (the drag into the reprise), the loop's last bar (the turnover)
-  // and every phrase-ending bar in between (the hat lift).
+  // Bar landmarks the articulation hangs off: B's first bar (crashed on its
+  // downbeat), B's last bar (the drag into the reprise), the loop's last bar
+  // (the turnover) and every phrase-ending bar in between (the hat lift).
   const dropBar = aProgression.length;
   const dragBar = aProgression.length + bProgression.length - 1;
   const lastBar = fullProgression.length - 1;
@@ -1253,21 +1206,14 @@ function makeBattleScore(cfg: BattleScoreConfig): Score {
     if (bar !== dragBar && bar !== lastBar) liftBars.push(bar);
   }
 
-  const rawLead = [
+  const leadNotes = [
     ...sectionBars(aProgression, leadGen, { [aProgression.length - 1]: toB }),
-    ...sectionBars(bProgression, leadGen, {
-      0: silenceOpening(leadGen(...bProgression[0]), 2),
-      [bProgression.length - 1]: toA,
-    }),
+    ...sectionBars(bProgression, leadGen, { [bProgression.length - 1]: toA }),
     ...reprise.flatMap(([r, q]) => leadGen(r, q)),
   ];
-  const leadNotes = (cfg.leadPickups ?? true) ? addBrassPickups(rawLead) : rawLead;
   const leadLowNotes = [
     ...sectionBars(aProgression, leadGenLow, { [aProgression.length - 1]: octaveDown(toB) }),
-    ...sectionBars(bProgression, leadGenLow, {
-      0: silenceOpening(leadGenLow(...bProgression[0]), 2),
-      [bProgression.length - 1]: octaveDown(toA),
-    }),
+    ...sectionBars(bProgression, leadGenLow, { [bProgression.length - 1]: octaveDown(toA) }),
     ...reprise.flatMap(([r, q]) => leadGenLow(r, q)),
   ];
 
@@ -1280,7 +1226,7 @@ function makeBattleScore(cfg: BattleScoreConfig): Score {
 
   const kickGen = cfg.kickGen ?? kickPulse;
   const snareGen = cfg.snareGen ?? ((bars: number) => battleSnarePattern(bars, dragBar));
-  const hatGen = cfg.hatGen ?? ((bars: number) => battleHatPattern(bars, liftBars, dropBar));
+  const hatGen = cfg.hatGen ?? ((bars: number) => battleHatPattern(bars, liftBars));
 
   const tracks: Track[] = [
     {
@@ -1290,7 +1236,6 @@ function makeBattleScore(cfg: BattleScoreConfig): Score {
       drive: cfg.vampDrive ?? true,
       notes: fullProgression.flatMap(([r, q], bar) => {
         const plain = vampGen(r, q);
-        if (bar === dropBar) return silenceOpening(plain, 2);
         if (bar === lastBar) return [...keepOpening(plain, 2), ...turnoverWalk(reprise[0][0], 0)];
         return plain;
       }),
@@ -1315,7 +1260,7 @@ function makeBattleScore(cfg: BattleScoreConfig): Score {
     { kind: 'kick', gain: cfg.kickGain ?? 0.9, notes: kickGen(fullProgression.length) },
     { kind: 'snare', gain: cfg.snareGain ?? 0.5, notes: snareGen(fullProgression.length) },
     { kind: 'hat', gain: cfg.hatGain ?? 0.22, notes: hatGen(fullProgression.length) },
-    crashTrack(loopBeats, cfg.crashGain ?? 0.32, [0, dropBar * 4 + 2, (aProgression.length + bProgression.length) * 4]),
+    crashTrack(loopBeats, cfg.crashGain ?? 0.32, [0, dropBar * 4, (aProgression.length + bProgression.length) * 4]),
   ];
   if (cfg.extraVoice) {
     const extraVoice = cfg.extraVoice;
@@ -1400,7 +1345,6 @@ const BATTLE_SCORE_5 = makeBattleScore({
   vampGain: 0.1,
   vampDrive: false,
   leadGen: stabBarSparse,
-  leadPickups: false,
   leadWave: 'sine',
   leadUnison: false,
   leadDrive: false,
@@ -1460,7 +1404,6 @@ const BATTLE_SCORE_8 = makeBattleScore({
   vampGain: 0.09,
   vampDrive: false,
   leadGen: stabBarSparse,
-  leadPickups: false,
   leadWave: 'sine',
   leadUnison: false,
   leadDrive: false,
@@ -1499,8 +1442,8 @@ const BATTLE_SCORE_9 = makeBattleScore({
 
 // World 10, The Adaptive Meta-World: a shimmering octave-up unison doubling
 // of the lead (shimmer: true) over the same unison-detuned brass, no drive
-// for a cleaner reflective tone -- F# minor, the relative minor of the
-// overworld theme's A major.
+// for a cleaner reflective tone -- F# minor, sharing its tonic with the
+// overworld theme's F# Lydian.
 const BATTLE_SCORE_10 = makeBattleScore({
   bpm: 150,
   mainA: [['F#2', 'min'], ['E2', 'maj'], ['F#2', 'min'], ['E2', 'maj']],
