@@ -3,9 +3,9 @@
 Bring the battle environment up to the overworld's level. Delete this file once
 the work has landed.
 
-**Ordering:** after the retheme (`WORLDS_BUILD_TASK.md`), because the arena
-quotes the world's terrain vocabulary and that vocabulary does not exist until
-the retheme builds it. Safe to run **in parallel with `HORIZON_BUILD_TASK.md`
+**Ordering:** the retheme is built, and this depends on it — the arena quotes
+the world's terrain vocabulary, which the retheme is what establishes. Safe to
+run **in parallel with `HORIZON_BUILD_TASK.md`
 stage D** — that lives in the overworld's pass and door, this lives in
 `BattleScene` and `scenes/battle/`. The shared file to watch is `art/biomes.ts`.
 

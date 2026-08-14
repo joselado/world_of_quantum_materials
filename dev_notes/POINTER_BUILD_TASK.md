@@ -5,12 +5,16 @@ Delete this file once the work has landed, and move the rules in §1 into
 `STYLE.md` at the same time — they are interaction conventions and belong there
 once they describe something real.
 
-**Ordering:** after the retheme (`WORLDS_BUILD_TASK.md`) and ideally after the
-gate work in `HORIZON_BUILD_TASK.md` stage D. This touches every scene, and
-touching every scene while ten worlds are being rewritten underneath is how
-parallel conventions get born. The gate's board and challenge prompt are also
-the clearest worked example of §1's interactable rule, so building them first
-gives this task a pattern to follow rather than invent.
+**Ordering:** the retheme is built, so the one remaining dependency is soft —
+ideally after the gate work in `HORIZON_BUILD_TASK.md` stage D. This touches
+every scene, and touching every scene while another task rewrites one underneath
+is how parallel conventions get born. The gate's board and challenge prompt are
+also the clearest worked example of §1's interactable rule, so building them
+first gives this task a pattern to follow rather than invent.
+
+Only §2's world-space interactables actually need stage D. Hold-to-steer
+movement, the accidental-input rules and the advance/dismiss sweep depend on
+nothing here and are shippable on their own.
 
 ---
 
