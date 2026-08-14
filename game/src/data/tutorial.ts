@@ -179,7 +179,7 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     title: 'Ultimate Moves',
     unlock: { kind: 'guardian', ids: ['sklodowskaCurie'] },
     body:
-      "Skłodowska-Curie (World 10) sells two quiz-gated Ultimate moves, far stronger than anything else in the game and priced per quasiparticle rather than per move: there is no separate purchase step, so picking a class your current crystal form can host costs a large sum of qumatessence the first time you pick it for that move -- which is also what puts the move in your battle menu -- and retuning back to a class you've already paid for is free forever. In battle, an Ultimate move asks three physics questions in a row: get every one right for the move's full force, miss even one and it does nothing that turn.",
+      "Skłodowska-Curie (World 10) sells two quiz-gated Ultimate moves, far stronger than anything else in the game and priced per quasiparticle rather than per move: picking a class your form can host costs a large sum of qumatessence the first time, and also puts the move in your battle menu; retuning to a class you've already paid for is free. In battle an Ultimate move asks three physics questions in a row -- all correct for its full force, miss one and it does nothing that turn.",
   },
 };
 
