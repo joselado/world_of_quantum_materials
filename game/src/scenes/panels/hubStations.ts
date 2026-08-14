@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { HubScene } from '../HubScene';
 import { CANVAS_W, CANVAS_H } from '../../art/perspective';
-import { fontPx, fontScale } from '../../ui/text';
+import { fontPx, fontScale, fitProseToBudget } from '../../ui/text';
 import {
   PANEL_BG,
   GOLD_ACCENT_HEX,
@@ -336,15 +336,19 @@ export function showTutorialTopics(scene: HubScene) {
     detailBlock.add(titleText);
     rightY += titleText.height + 10;
 
-    // Same floor-9px shrink-to-fit loop the panel's earlier single-page
-    // version used -- the right column is narrower than that version's
-    // full-panel-width body, so a long topic still needs this to stay
-    // inside the canvas at the largest text-size preset.
-    const scale = fontScale(scene);
-    let bodyBase = 12;
+    // Shrink-only fitting (ui/text.ts's fitProseToBudget with the whole body
+    // as one entry): unlike the tutorial tip popup, this pane has no
+    // continue button of its own to carry a topic onto a second screen --
+    // the only button in the panel is the list column's shared "Close" --
+    // so a long topic has to be made to fit where it stands. The right
+    // column is narrower than the panel-width bodies elsewhere in the Lab,
+    // which is what makes the longest topics need this at all. Nothing sits
+    // under this column but the 14px gap and the panel's own bottom pad;
+    // the Close button is in the left column's footer, so it isn't reserved
+    // for here.
     const bodyText = scene.add
-      .text(columns.rightColCenterX, rightY, page.body, {
-        fontSize: `${Math.round(bodyBase * scale)}px`,
+      .text(columns.rightColCenterX, rightY, '', {
+        fontSize: `${Math.round(12 * fontScale(scene))}px`,
         color: '#cfd8ff',
         align: 'center',
         wordWrap: { width: columns.rightColW },
@@ -352,11 +356,7 @@ export function showTutorialTopics(scene: HubScene) {
       })
       .setOrigin(0.5, 0);
     detailBlock.add(bodyText);
-    const reservedBelow = 14 + 46 + 14; // gap + close-button estimate + bottom margin
-    while (rightY + bodyText.height + reservedBelow > CANVAS_H - 10 && bodyBase > 9) {
-      bodyBase -= 1;
-      bodyText.setFontSize(`${Math.round(bodyBase * scale)}px`);
-    }
+    fitProseToBudget(bodyText, [page.body], CANVAS_H - 16 - 14 - 14 - rightY);
     rightY += bodyText.height + 14;
 
     const leftBottom = renderListColumnFooter(scene, chromeBlock, columns, listResult.bottom + 10, 'Close', () => scene.closeDialogue());

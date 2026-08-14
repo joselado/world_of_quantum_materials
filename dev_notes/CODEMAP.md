@@ -476,7 +476,10 @@ game/src/
                                     previewed -- distinct from story.ts's transition
                                     beats and worldLore.ts's once-per-save Decoherence-arc history
   ui/
-    text.ts                       fontPx()/fontScale() -- see "Lab stations and settings" below
+    text.ts                       fontPx()/fontScale() -- see "Lab stations and settings" below --
+                                   and fitProseToBudget(), the shared fitter for authored prose
+                                   whose length the layout can't assume (see "Long authored
+                                   prose is fitted to the canvas" below)
     theme.ts                      PANEL_BG/GOLD_ACCENT(_HEX)/REFERENCE_BLUE_GREY(_HEX)/
                                    TUTORIAL_CYAN(_HEX)/STORY_LAVENDER -- colors reused for a shared
                                    UI role (a panel background, an "active" accent, etc.) across
@@ -1509,16 +1512,26 @@ a biome entry in `art/biomes.ts`) together if a future world is ever added past 
 once per world the first time that world's scene is created.
 
 **Long authored prose is fitted to the canvas, never assumed to fit.** `data/worldLore.ts`'s
-`WORLD_LORE` and `data/story.ts`'s `STORY_BEATS` are authored copy that varies a lot in
-length per world, so both of their panels size themselves to the text rather than the other
-way round. `showStoryBeat` sizes its panel rectangle to the measured beat and then centers
-it, and `renderWorldLorePage` takes an authored page as a paragraph list, drops trailing
-paragraphs that don't fit `CANVAS_H` onto a further screen, and falls back to the
-floor-`9`px shrink-to-fit loop `showInfoPanel` uses if a single paragraph is taller than the
-canvas by itself (see "The between-worlds story beat"/"The world-entry lore screen,"
-STYLE.md, for the layout numbers). Follow that shape for any new panel rendering per-world
-authored prose -- a fixed panel box plus an uncapped `fontPx` is what lets a longer entry
-for one world spill off the canvas while every other world looks fine.
+`WORLD_LORE`, `data/story.ts`'s `STORY_BEATS` and `data/tutorial.ts`'s `TUTORIAL_TIPS` are
+authored copy whose length varies a lot per entry, so their panels size themselves to the
+text rather than the other way round. `ui/text.ts`'s **`fitProseToBudget(text, paragraphs,
+budget, minPx = 9)`** is the one implementation of that: it drops trailing paragraphs (which
+the caller continues on a further screen, keeping what the reader does see at full size),
+then shrinks the font to an absolute px floor once a single paragraph is all that's left.
+The floor is absolute rather than a base size the caller's `fontScale` is re-applied to, so
+it stays a real floor at every `FONT_SCALE_PRESETS` setting.
+
+Three panels call it, each measuring its own title/button rather than estimating them:
+`OverworldScene.renderWorldLorePage` and `renderTutorialTipPopup` pass a paragraph list and
+recurse on the leftover onto a "Next ->" screen, and `showTutorialTopics`' detail pane passes
+the whole body as one entry to get shrink-only behavior, since its only button is the list
+column's shared "Close" and it has no second screen to continue onto. `showStoryBeat` needs
+no fitting -- it's one line -- but follows the same principle by sizing its panel rectangle
+to the measured beat and then centering it. See "The between-worlds story beat"/"The
+world-entry lore screen"/"Contextual tutorial tips," STYLE.md, for the per-panel layout
+numbers. Reach for this helper for any new panel rendering per-world or per-topic authored
+prose -- a fixed panel box plus an uncapped `fontPx` is what lets a longer entry for one
+world spill off the canvas while every other world looks fine.
 
 **Returning to the Hub always snapshots the in-progress world first.**
 `OverworldScene.returnToHub()` (H/Enter, the World 10 finale's "Return to the Lab", and
@@ -1940,8 +1953,10 @@ smaller fixed size (`STATION_MOTIF_SIZE = 26`) than a motif drawn inside a full 
 use. A panel whose own row list can grow long caps its row font scale
 (`Math.min(fontScale(scene), 1.3)`) rather than
 adding a shrink-to-fit loop, the tradeoff `renderPassiveList`/`showAbilitiesPanel`
-make; `showInfoPanel`/`showTutorialTopics`' own detail-pane render/`HubScene.showPanel` keep
-their own shrink-to-fit loops (floor `9`px) since their body length varies more per instance.
+make; `showInfoPanel`/`HubScene.showPanel` keep their own shrink-to-fit loops (floor `9`px)
+since their body length varies more per instance, and `showTutorialTopics`' own detail-pane
+render gets the same behavior from the shared `fitProseToBudget` (see "Long authored prose is
+fitted to the canvas" above).
 
 **Story Mode vs. Superposition Mode** (save/registry `superpositionMode`, picked on
 `TitleScene`'s title screen via `addModeSelector` -- a two-button picker, not a toggle; Story

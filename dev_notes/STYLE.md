@@ -274,7 +274,11 @@ than appending a changelog, so this always reflects current reality.
   browsed panel uses, just with no crystal/move art to preview. The left column names each topic
   the save has reached (its own short `listLabel` where a topic has one, its full `title`
   otherwise), paginated once the set outgrows one page; the right column shows the selected
-  topic's full title and body, with a floor-`9`px shrink-to-fit loop for a long body. Every
+  topic's full title and body, fitted with `ui/text.ts`'s `fitProseToBudget`. That pane has no
+  continue button of its own -- the panel's only button is the list column's shared "Close" --
+  so a long topic is fitted by shrinking in place (floor `9`px) rather than continued on a
+  second screen, and its budget reserves only the 14px gap, the panel's bottom pad and a 16px
+  margin, since the "Close" button sits in the left column, not under this one. Every
   listed topic is visible up front rather than reachable only by paging through the rest, and
   the list grows as the playthrough does -- Story Mode lists only discovered topics, in the
   order the game reveals them, so the panel is three rows tall on a fresh save and fills out
@@ -1540,15 +1544,14 @@ than the caller's requested budget) for its own layout math.
   `CANVAS_H` needs**, so a page longer than the canvas is never trusted to fit one
   screen. `renderWorldLorePage` takes a paragraph list (the authored page `split('\n\n')`),
   measures its own continue button first so the fit budget uses the button's real height,
-  and drops trailing paragraphs until the body fits `CANVAS_H` minus the title, the
+  and hands both to `ui/text.ts`'s `fitProseToBudget` against `CANVAS_H` minus the title, the
   button and a 16px bottom margin; whatever is left over continues on a further screen.
   Breaks therefore only ever fall on a paragraph boundary and never bridge the
   page-1/page-2 boundary. Any screen that isn't the last one for its authored page reads
   "Next ->"; the last screen of page 1 also reads "Next ->", and the last screen of page 2
   reads "Onward," which marks the world seen, persists, and closes the dialogue. A single
-  paragraph taller than the canvas on its own has no break left to take, so the body
-  additionally carries the floor-`9`px shrink-to-fit loop `showInfoPanel` uses as a
-  backstop. With the current `WORLD_LORE` copy every world plays two screens except World
+  paragraph taller than the canvas on its own has no break left to take, and falls back to
+  that helper's floor-`9`px shrink. With the current `WORLD_LORE` copy every world plays two screens except World
   10, whose page 2 is three paragraphs and plays as two screens at the "Normal"/"Large"
   presets and one at "Compact."
 
@@ -1979,6 +1982,13 @@ than the caller's requested budget) for its own layout math.
   uses -- title (bold white) above body text (muted blue-grey `#cfd8ff`, center-aligned, matching the
   wild-encounter greeting's tone), a single "Got it" button beneath. No page counter or
   Back/Next -- each popup is one tip, not a sequence, so paging chrome would be pure noise.
+  Title, body and button are all capped at `Math.min(fontScale(this), 1.5)`, the same cap the
+  world-entry lore screen and the between-worlds story beat put on their own prose, and the
+  body is then fitted to the canvas with `ui/text.ts`'s `fitProseToBudget` against a budget
+  measured from the popup's own title and button plus a 16px bottom margin. Every current tip
+  is a single paragraph, so that fitting only ever shrinks; a tip written with a paragraph
+  break would instead continue on a further screen whose button reads "Next ->", and `onClose`
+  fires only once the last screen is dismissed.
   The Lab's version (`HubScene.maybeShowLabTip`) reuses `HubScene.showPanel` instead (purple
   `0x9a6ad9` stroke, the same gold-title/measured-top-down-layout convention "The Hub" above
   describes for the Lab's other seven panels, just without a left motif of its own -- it's a
@@ -2006,8 +2016,9 @@ than the caller's requested budget) for its own layout math.
   topics whose full `title` would collapse to a near-identical trimmed prefix at the left
   column's `200`px width -- `fitListLabel` ellipsis-trims, doesn't wrap), its full `title`
   otherwise.
-- The right column shows the selected topic's full title and body (same floor-9px shrink-to-fit
-  loop every other Lab panel's body text uses), no crystal/move art and no commit button --
+- The right column shows the selected topic's full title and body (shrink-only
+  `fitProseToBudget`, floor `9`px -- see "Tutorial" under "The Hub" above), no crystal/move art
+  and no commit button --
   reading the body is the whole interaction. A single `Close` button sits in the left column
   beneath its rows ("List+detail panels" above);
   there's no separate "back to the topic list" step, since the list column is always on screen

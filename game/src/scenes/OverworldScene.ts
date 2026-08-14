@@ -61,7 +61,7 @@ import type { DiscoveredMaterial } from '../data/save';
 import type { Material, MaterialType } from '../data/types';
 import { generateWorldMap } from '../world/mapgen';
 import type { GridPoint } from '../world/mapgen';
-import { fontPx, fontScale } from '../ui/text';
+import { fontPx, fontScale, fitProseToBudget } from '../ui/text';
 import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY, REFERENCE_BLUE_GREY_HEX, TUTORIAL_CYAN, STORY_LAVENDER } from '../ui/theme';
 import { music } from '../audio/music';
 import { showNoetherShop } from './panels/noether';
@@ -962,37 +962,64 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     }
     markTipSeen(this.game.registry, id);
     persistFromRegistry(this.game.registry);
-    this.renderTutorialTipPopup(TUTORIAL_TIPS[id], onClose);
+    this.renderTutorialTipPopup(TUTORIAL_TIPS[id].title, TUTORIAL_TIPS[id].body.split('\n\n'), onClose);
   }
 
-  // A single-page version of renderTutorialPage below (no counter/Back/Next,
+  // A single-topic version of the Lab's Tutorial station (no topic list,
   // just a "Got it" button) -- content laid out top-down first, panel sized/
   // inserted behind it afterward, same pattern as every other panel here.
-  private renderTutorialTipPopup(page: (typeof TUTORIAL_TIPS)[TutorialTipId], onClose?: () => void) {
+  // Takes the tip body as a paragraph list and fits it the same way the
+  // world-entry lore screen does (ui/text.ts's fitProseToBudget): anything
+  // past the canvas continues on a further screen, and a paragraph with no
+  // break left to take shrinks instead. `onClose` runs once the last screen
+  // is dismissed.
+  private renderTutorialTipPopup(title: string, paragraphs: string[], onClose?: () => void) {
     this.dialogueContainer?.destroy(true);
     this.dialogueActive = true;
 
     const panelWidth = 520;
     const top = 60;
+    const bottomMargin = 16;
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
 
+    // Capped like the lore screen's and the story beat's own prose -- the
+    // Settings panel's 2x "Large" preset otherwise makes a tip several times
+    // taller than the fixed CANVAS_H can hold.
+    const scale = Math.min(fontScale(this), 1.5);
+
     let y = top;
-    const title = this.add
-      .text(CANVAS_W / 2, y, page.title, {
-        fontSize: fontPx(this, 16),
+    const titleText = this.add
+      .text(CANVAS_W / 2, y, title, {
+        fontSize: `${Math.round(16 * scale)}px`,
         color: '#ffffff',
         fontStyle: 'bold',
         align: 'center',
         wordWrap: { width: panelWidth - 60 },
       })
       .setOrigin(0.5, 0);
-    container.add(title);
-    y += title.height + 12;
+    container.add(titleText);
+    y += titleText.height + 12;
+
+    // Built before the body so the fit budget below uses the button's real
+    // measured height; its label and handler are filled in once the body
+    // knows whether anything is left over. Both labels are single-line at
+    // the same size, so setting the text afterwards can't change the height
+    // already budgeted against.
+    let onContinue = () => {};
+    const gotIt = this.addDialogueButtonAt(
+      container,
+      CANVAS_W / 2,
+      0,
+      'Got it',
+      () => onContinue(),
+      140,
+      `${Math.round(13 * scale)}px`
+    );
 
     const body = this.add
-      .text(CANVAS_W / 2, y, page.body, {
-        fontSize: fontPx(this, 12),
+      .text(CANVAS_W / 2, y, '', {
+        fontSize: `${Math.round(12 * scale)}px`,
         color: '#cfd8ff',
         align: 'center',
         wordWrap: { width: panelWidth - 60 },
@@ -1000,19 +1027,20 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       })
       .setOrigin(0.5, 0);
     container.add(body);
+
+    const rest = fitProseToBudget(body, paragraphs, CANVAS_H - bottomMargin - (18 + gotIt.height + 14) - y);
     y += body.height + 18;
 
-    const gotIt = this.addDialogueButtonAt(
-      container,
-      CANVAS_W / 2,
-      y,
-      'Got it',
-      () => {
+    gotIt.setY(y);
+    if (rest.length) {
+      gotIt.setText('Next ->');
+      onContinue = () => this.renderTutorialTipPopup(title, rest, onClose);
+    } else {
+      onContinue = () => {
         this.closeDialogue();
         onClose?.();
-      },
-      140
-    );
+      };
+    }
     y += gotIt.height + 14;
 
     const panelHeight = y - top;
@@ -1962,11 +1990,9 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       `${Math.round(13 * scale)}px`
     );
 
-    const bodyBudget = CANVAS_H - bottomMargin - (12 + btn.height + 12) - y;
-    let bodyPx = Math.round(11 * scale);
     const text = this.add
-      .text(CANVAS_W / 2, y, paragraphs.join('\n\n'), {
-        fontSize: `${bodyPx}px`,
+      .text(CANVAS_W / 2, y, '', {
+        fontSize: `${Math.round(11 * scale)}px`,
         color: '#e6d9ff',
         align: 'center',
         wordWrap: { width: panelWidth - 60 },
@@ -1975,21 +2001,9 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       .setOrigin(0.5, 0);
     container.add(text);
 
-    let shown = paragraphs.length;
-    while (shown > 1 && text.height > bodyBudget) {
-      shown -= 1;
-      text.setText(paragraphs.slice(0, shown).join('\n\n'));
-    }
-    // Floor-9px shrink-to-fit backstop, same as showInfoPanel's, for the
-    // case a single paragraph is taller than the canvas on its own and
-    // there's no break left to take.
-    while (text.height > bodyBudget && bodyPx > 9) {
-      bodyPx -= 1;
-      text.setFontSize(`${bodyPx}px`);
-    }
+    const rest = fitProseToBudget(text, paragraphs, CANVAS_H - bottomMargin - (12 + btn.height + 12) - y);
     y += text.height + 12;
 
-    const rest = paragraphs.slice(shown);
     btn.setY(y);
     if (rest.length) {
       btn.setText('Next ->');
