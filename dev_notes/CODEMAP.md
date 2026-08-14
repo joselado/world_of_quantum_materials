@@ -40,6 +40,31 @@ game/src/
                                  renderPagedButtons, renderFarewellFooter) every panels/ file uses.
                                  H and Enter both warp straight to the Hub (scene.start('Hub')) --
                                  no in-world menu
+    overworld/                 The corridor's ground plane and air, split out of OverworldScene
+                                 (see "Overworld terrain rendering" below). Plain functions taking
+                                 a per-frame render context, holding no scene state, the same
+                                 shape battle/hud.ts uses
+      projection.ts            The grid/camera constants (GRID_W/GRID_H, TILE_SCALE, LANE_CLIP,
+                                 DRAW_DISTANCE_TILES, CAMERA_BACK_TILES) plus projectTile() and
+                                 laneClipAt(). The one place the camera pullback is applied
+      sky.ts                   The static backdrop (drawSky: sky gradient, base ground wash, hill
+                                 silhouette, clouds) and the atmosphere over the ground plane
+                                 (drawDepthHaze and its horizon band, hazeTarget/forwardHazeBlend
+                                 and the HazeView/AtmosphereView contexts they read)
+      terrain/
+        types.ts               TerrainKind/OffPathKind/TerrainTile/TerrainPlan, the TerrainView
+                                 render context, and the AccentTile/AccentDraw contract every
+                                 off-path material is written against
+        plan.ts                buildTerrainPlan(TerrainSource) -- the camera-independent read of
+                                 the grid: per-tile terrain, farEdgeRow, and the contour trace
+        paint.ts               drawTerrain(TerrainView) -- the per-frame projection and painting
+                                 of that plan, including the lateral/depth margins, the contact
+                                 shadow and the chokepoint glow
+        color.ts               groundColor(), the depth haze every ground fill goes through
+        decoration.ts          decorateTile(), the per-biome motif on a decorated path tile
+        materials/             One module per off-path material behind a dispatcher (see
+                                 "Off-path terrain materials" below): rock.ts, lava.ts, water.ts,
+                                 void.ts, and index.ts's TERRAIN_ACCENTS table
     panels/                    One file per guardian's panel UI (see "Guardian panels" below),
                                  e.g. noether.ts's showNoetherShop(), sklodowskaCurie.ts's
                                  showSklodowskaCuriePanel(), anderson.ts's showAndersonPanel() --
@@ -1086,16 +1111,18 @@ walking to (or seeing) the goal. If a future guardian panel needs a progression 
 through `showGatePanel`, not by reaching for `renderShopFooter` directly.
 
 **Overworld terrain rendering.** Painting the corridor floor splits in two, and new terrain work
-belongs on one side or the other. `OverworldScene.buildTerrainPlan()` (reached through the
-memoizing `terrainPlan()` accessor) reads the grid
+belongs on one side or the other. `scenes/overworld/terrain/plan.ts`'s `buildTerrainPlan(src)`
+(reached through `OverworldScene`'s memoizing `terrainPlan()` accessor) reads the grid
 (`walkable`/`regionColor`/`biomeOverride`/`flowerMap`/`midTile`) and classifies every tile into a
 `TerrainTile`: its kind (`path`/`solid`/`lava`/`water`/`void`, where a region tint outranks the
-biome's own `wallTheme`), its resolved `Biome`, its region tint, and whether it carries
+biome's own `wallTheme` -- `offPathKindOf` is the single resolution both the plan and the lateral
+margin use), its resolved `Biome`, its region tint, and whether it carries
 decoration or the guardian-chokepoint highlight. That pass is camera-independent, so it covers
 the whole grid rather than just the visible window -- a shape spanning the window edge stays one
-continuous shape -- and its result is cached in `terrainPlanCache` for as long as the grid stands
-still. The same memoized pass also builds `contourGrid` via `art/contours.ts`'s
-`buildContourGrid`, which traces the walkable/impassable boundary on the tile lattice and smooths
+continuous shape -- and the whole `TerrainPlan` (tiles, `farEdgeRow`, contours) is cached in
+`OverworldScene.terrainPlanCache` for as long as the grid stands
+still. The same pass also traces the contours via `art/contours.ts`'s
+`buildContourGrid`, which follows the walkable/impassable boundary on the tile lattice and smooths
 it (Laplacian on the lattice corners, then Catmull-Rom through them) with no bias to either side,
 so along a straight run the drawn edge sits on the grid line the movement grid itself collides
 against. `MAX_OFFSET` (`sqrt(2)/4`) caps how far a corner travels, radially rather than per axis:
@@ -1112,30 +1139,42 @@ must never be reached for per frame. `create()` drops the cache right after the
 `generateMap()`/`restoreMap()` branch, which is mandatory rather than defensive: Phaser reuses
 the same scene instance across every `scene.start`, so a plan built for the previous visit would
 otherwise survive into the next one; anything that ever mutates the grid mid-visit has to drop it
-the same way. `drawWorld()` then runs every frame over the visible window (`DRAW_DISTANCE_TILES`,
-`LANE_CLIP`) doing only the camera-dependent half: projecting the cached contour geometry (or the
-tile's four corners where it has none) through `projectTile`/`art/perspective.ts` at the current
+the same way. `scenes/overworld/terrain/paint.ts`'s `drawTerrain(view)` then runs every frame over
+the visible window (`DRAW_DISTANCE_TILES`,
+`laneClipAt`) doing only the camera-dependent half: projecting the cached contour geometry (or the
+tile's four corners where it has none) through `projectTile` (`scenes/overworld/projection.ts`,
+over `art/perspective.ts`) at the current
 (possibly mid-tween) camera position (`projectContour`, `drawContactShadow`), deriving
 `depthRatio` for the fog/detail falloff, and painting -- including the time-driven accents (lava
 crust pulse, water shimmer, void starlight, chokepoint glow). Impassable tiles are painted flat,
-in the same plane as the floor (`drawOffPathTile`/`offPathColor` plus the per-`wallTheme` accent);
+in the same plane as the floor (`drawOffPathTile`/`offPathColor` plus the material's own accent,
+see "Off-path terrain materials" below);
 nothing in the scene rises above the ground plane, so the boundary read comes entirely from the
 color break plus the contact shadow and rim light. When the camera stands near the grid's
 left/right edge, `drawMarginColumns` first continues each row's edge tile past the grid as
 impassable ground (same biome/tint/accent, widened by `art/contours.ts`'s `MAX_OFFSET` under an
 adjacent walkable tile to tuck beneath the boundary curve), so the frame never shows the bare
 backdrop in a stair-stepped strip where tiles run out. There is no per-tile seam stroke, so a run of
-same-kind tiles reads as one region. Every ground color goes through `groundColor` (which deepens
+same-kind tiles reads as one region. Every ground color goes through `terrain/color.ts`'s
+`groundColor` (which deepens
 the haze past what `fogColor`'s own cap allows) with walkable ground hazing toward the lighter
-`walkableHazeTarget`, and the frame closes with `drawDepthHaze`, a whole-screen wash over the far
+`walkableHazeTarget`, and the frame closes with `sky.ts`'s `drawDepthHaze`, a whole-screen wash
+over the far
 ground plane. Geometry that is expensive to work out from the grid belongs in the plan; anything
-that depends on where the camera is has to stay in `drawWorld`, since that per-frame reprojection
+that depends on where the camera is has to stay in `drawTerrain`, since that per-frame reprojection
 is what makes the world scroll continuously instead of snapping tile-by-tile.
+
+Neither module reaches back into the scene. `OverworldScene.terrainView()` assembles a
+`TerrainView` once per frame -- the `Graphics` mesh, the plan, the camera position, the scene's own
+biome, `midTile`, the chokepoint color, the clock, and the haze blend/memo -- and every drawing
+function takes that context as a parameter, the same written-against-an-interface split the
+guardian panels use with `GuardianPanelHost`. `TerrainView` widens `sky.ts`'s `AtmosphereView`,
+which widens its `HazeView`, so a function that only needs the haze declares only that much.
 
 **Reaching the horizon** (`dev_notes/WORLDS.md` §4 is the spec, `STYLE.md`'s "Overworld path" the
 visual rule). `drawMarginRows` is `drawMarginColumns`'s counterpart in depth, run before the real
 rows so every nearer row paints over it: it repeats `farEdgeRow` -- the northernmost row the
-corridor reaches, resolved with the terrain plan and dropped alongside it -- outward past the
+corridor reaches, resolved with the terrain plan and carried on it -- outward past the
 grid's far edge, terrain kind included, so the walkable path repeats with it and a road runs on
 past the world's end. `drawMarginColumns` takes the row's terrain and its depth row index
 separately, which is what lets those repeated rows carry lateral margins of their own. The sweep
@@ -1148,7 +1187,7 @@ returns the lane offset that reaches the frame edge at that depth: a fixed lane 
 this job, since the projection shrinks a tile-width toward the vanishing point and one that fills
 the frame up close covers a narrowing wedge in the distance, leaving the far screen corners on
 bare backdrop. `LANE_CLIP` stays the constant for *actors*, whose visibility is a near-field
-question. `drawHorizonBand`, called from `drawDepthHaze`, owns the far quarter of the draw
+question. `sky.ts`'s `drawHorizonBand`, called from `drawDepthHaze`, owns the far quarter of the draw
 distance: opaque from `HORIZON_Y` down to `projectTile(0, DRAW_DISTANCE_TILES).y` -- which is what
 covers the deepest rows, whose own fog caps well short of the haze color and would otherwise
 surface as a visible edge -- and thinning from there to nothing at `HORIZON_BAND_FROM` of the draw
@@ -1158,22 +1197,40 @@ slides out from under the rows as the camera creeps. Both it and `drawDepthHaze`
 through `fillVerticalFade`, which paints abutting one-pixel rows -- overlapping translucent bands
 double-blend on the shared scanline and stripe the far distance, and two-pixel rows contour-band
 where the ramp is steepest. The trace is fed
-`depthContinuedWalkable` (the real grid, with every row north of `farEdgeRow` carrying that row's
+`plan.ts`'s `depthContinuedWalkable` (the real grid, with every row north of `farEdgeRow` carrying
+that row's
 walkability) so no boundary curve, contact shadow or rim light is drawn across the continuing
 road; `walkable` itself is untouched, so the repeated road is scenery and the player still leaves
-through the goal tile. Anything drawing at depth calls `projectTile`, which applies
-`CAMERA_BACK_TILES` internally -- adding the pullback again double-counts it.
+through the goal tile. Anything drawing at depth calls `projection.ts`'s `projectTile`, which
+applies `CAMERA_BACK_TILES` internally -- adding the pullback again double-counts it.
 
-**Forward haze inheritance.** `hazeTarget(biome)` is what every haze in the overworld reads
+**Forward haze inheritance.** `sky.ts`'s `hazeTarget(view, biome)` is what every haze in the
+overworld reads
 instead of `biome.fogTarget` directly (`walkableHazeTarget`, `offPathColor`, `drawDepthHaze`,
 `drawHorizonBand`), so the per-tile fog and the whole-screen washes always agree on where the
 atmosphere is going. It carries a biome's own fog color toward `getBiome(world + 1).fogTarget` by
 `forwardHazeBlend()`, which ramps from zero at `HAZE_INHERIT_TILES` south of the goal row to
 `HAZE_INHERIT_MAX` at the row itself, and returns zero for World 10 (no next world) or while
-`isRivalDefeated()` is false -- the goal gate is shut until that world's rival is beaten, and a
+`OverworldScene.isRivalDefeated()` is false -- the goal gate is shut until that world's rival is
+beaten, and a
 shut gate shows nothing of what is beyond it. The blend factor and a small per-biome memo are
-recomputed once per frame at the top of `drawWorld` (World 9's defect patches put several biomes
-on screen at once).
+recomputed once per frame in `OverworldScene.drawWorld` before the view is assembled (World 9's
+defect patches put several biomes on screen at once).
+
+**Off-path terrain materials.** One module per material under
+`scenes/overworld/terrain/materials/`, the same "one file per thing" convention the guardian
+avatars follow: `rock.ts`, `lava.ts`, `water.ts`, `void.ts`, reached through `index.ts`'s
+`TERRAIN_ACCENTS` table keyed by `OffPathKind`. Every impassable tile is flat ground in its
+biome's own off-path color, in the same plane as the walkable floor; what its material decides is
+only the accent laid over that fill, so each world's impassable terrain reads as its own
+substance while the "you cannot walk here" signal (the color break plus the contact shadow and rim
+light) stays identical everywhere. An accent receives an `AccentTile` -- the tile's projected
+outline for a full-tile wash, its screen centre, its depth scale, and the scene clock -- which
+`paint.ts` builds only for a material that actually draws, so a bare-ground tile costs nothing
+beyond its fill. `rock.ts` is exactly that case and maps to `null`. Adding a material means adding
+a module and a table entry (plus the `wallTheme` in `art/biomes.ts` and the matching `TerrainKind`
+in `terrain/types.ts`); nothing in the paint pass itself changes, and two people can add two
+materials without touching the same file.
 
 **Overworld depth layering.** `OverworldScene`'s corridor is a fixed stack of Phaser depths:
 `worldGfx` (the single `Graphics` mesh for the whole ground plane, repainted every frame -- see

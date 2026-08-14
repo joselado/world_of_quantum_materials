@@ -280,11 +280,11 @@ than appending a changelog, so this always reflects current reality.
 - The guardian's own tile (and its immediate neighbors) gets a soft pulsing glow overlaid on
   the ordinary path fill, in that world's own guardian color (`WORLD_GUARDIANS`'
   `strokeColor` -- the same per-guardian color coding panels/pills already use,
-  `OverworldScene.drawMidHighlight`) -- the forced chokepoint reads as a deliberate gate the
+  `terrain/paint.ts`'s `drawMidHighlight`) -- the forced chokepoint reads as a deliberate gate the
   player is walking through, not an arbitrary narrow spot.
 - Off-path tiles read as unambiguously "you cannot walk here," and every one of them lies in
   the same plane as the walkable floor -- impassable terrain is told apart by color and by the
-  boundary treatment below, never by rising above the ground. `OverworldScene.drawOffPathTile`
+  boundary treatment below, never by rising above the ground. `terrain/paint.ts`'s `drawOffPathTile`
   paints the tile in that biome's own `ground` color (hazed for depth, tinted toward a
   `regionColor` domain where the tile belongs to one) and then lays on the accent the terrain
   kind resolved from that tile's own biome's `wallTheme` calls for (`art/biomes.ts`, resolved
@@ -378,7 +378,7 @@ than appending a changelog, so this always reflects current reality.
     no outline, so the gate reads as a pool of light rather than a hard rectangle laid over a
     floor whose every other edge curves.
   - Where the camera stands close enough to the grid's left/right edge that the visible lane
-    window reaches past it, **margin columns** (`OverworldScene.drawMarginColumns`) continue
+    window reaches past it, **margin columns** (`terrain/paint.ts`'s `drawMarginColumns`) continue
     each row's edge tile off-grid -- same biome, same `regionColor` tint, same terrain accent,
     but always as impassable ground -- so the world runs to the frame edge instead of stopping
     on a stair-stepped strip of bare backdrop. The grid-edge boundary of a walkable edge tile
