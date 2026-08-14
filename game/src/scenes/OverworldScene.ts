@@ -173,9 +173,9 @@ export const BUILT_WORLDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 // Superposition Mode's blanket "every guardian is already unlocked" grant --
 // registry-only and world-independent, so it's shared by
 // OverworldScene.applySuperpositionLeveling (re-applied on every world
-// entry) and HubScene.create (so the Lab's Guardians station, which lists
-// every guardian regardless of `metGuardians` in this mode -- see
-// hubStations.ts's showGuardiansPanel -- is fully unlocked even on a save
+// entry) and HubScene.create (which stands every guardian's own avatar in the
+// Lab regardless of `metGuardians` in this mode, so each one's panel needs to
+// be fully unlocked even on a save
 // that has never yet stepped through a world door; without this, Kondo/
 // Franklin/Noether/Laughlin/Feynman/Skłodowska-Curie/Bloch's Lab panels
 // would show their ordinary locked/empty state until the first world entry
@@ -295,8 +295,8 @@ interface WorldSprite {
 // The interface every guardian-panel file (scenes/panels/<guardian>.ts,
 // tunableMoveShop.ts, passiveList.ts) is written against instead of the
 // concrete `OverworldScene` class -- both `OverworldScene` (a guardian met
-// mid-walk) and `HubScene` (the same guardian reopened from the Lab's
-// Guardians station, see hubStations.ts's showGuardiansPanel) implement it,
+// mid-walk) and `HubScene` (the same guardian reopened by clicking their own
+// avatar in the Lab, see HubScene.spawnGuardianAvatars) implement it,
 // so a panel opens identically -- same shop, same state -- regardless of
 // which scene the player is actually standing in when they open it. Genuinely
 // cross-cutting dialogue infrastructure (`addDialogueButton(At)`,
@@ -2286,8 +2286,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // landmark again later (see tryMove's onComplete). Gated on the player's
   // *current* tile, not just the historical reachedGoal flag, so a battle
   // fought elsewhere in the world (after the goal was reached once) doesn't
-  // pop this open out of nowhere on return -- the Guardians pause-menu list
-  // (showGuardiansPanel) already covers deliberately revisiting from afar.
+  // pop this open out of nowhere on return -- the Lab's own guardian avatars
+  // already cover deliberately revisiting from afar.
   // Since the guardian is mid-corridor, reached well before the goal, the
   // player always has a chance to shop/prep before ever facing the boss
   // waiting here; the rival fight is what "Continue to World N+1" triggers
@@ -2316,8 +2316,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   }
 
   // Opens a guardian's panel and records the first time this guardian is met,
-  // so the Guardians pause-menu list (showGuardiansPanel) grows as the player
-  // reaches each world's middle tile -- regardless of which panel that
+  // so the Lab's own guardian gallery (HubScene.spawnGuardianAvatars) fills in
+  // as the player reaches each world's middle tile -- regardless of which panel that
   // guardian actually shows (shop, teleport hub, transmutation, or lore).
   // Every guardian in WORLD_GUARDIANS sets `open`, pointing at that
   // guardian's own panel.

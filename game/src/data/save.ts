@@ -76,11 +76,12 @@ export interface SaveData {
   defeatedMaterials: DiscoveredMaterial[];
   playerForm: Material | null; // null = still the default PLAYER_MATERIAL (Silicon)
   // Guardian ids (WORLD_GUARDIANS' `id` field) the player has opened the panel
-  // of at least once -- drives the Lab's Guardians station list
-  // (scenes/panels/hubStations.ts's showGuardiansPanel), which should only offer guardians
-  // actually met rather than every guardian in the game. No migration shim
-  // for older saves' `metMentors` key (solo hobby project, no save-compatibility
-  // guarantee): a save predating this field just starts its Guardians list empty.
+  // of at least once -- decides which guardians stand in the Lab as their own
+  // clickable avatar (HubScene.spawnGuardianAvatars), so the room only offers
+  // guardians actually met rather than every guardian in the game. No migration
+  // shim for older saves' `metMentors` key (solo hobby project, no
+  // save-compatibility guarantee): a save predating this field just starts with
+  // an empty Lab.
   metGuardians: string[];
   // Which contextual tutorial tips (data/tutorial.ts's TutorialTipId) have
   // already fired -- each one plays once, the first time its own feature

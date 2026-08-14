@@ -21,15 +21,18 @@ import { stopMoveEffectPreview } from '../art/moveEffectPreview';
 // World 0, "The Lab" (DESIGN.md's world table) -- boot destination from
 // TitleScene and the return point from Overworld (press H or Enter). Unlike
 // the numbered worlds it isn't a walkable procedural map: it's a single
-// static room with up to eight stations -- Qumatex and the door onward,
-// which always exist, plus six reference/settings stations (Moves, Stats,
-// Abilities, Guardians, Tutorial, Settings, built in
+// static room with up to seven stations -- Qumatex and the door onward,
+// which always exist, plus five reference/settings stations (Moves, Stats,
+// Abilities, Tutorial, Settings, built in
 // scenes/panels/hubStations.ts's `LAB_STATIONS`) -- since none of the hub's
 // jobs need overworld movement or wild encounters of their own, and none of
-// those six stations' own content is tied to being mid-world. Abilities and
-// Guardians only actually appear once the player has learned a first
-// passive or met a first guardian (`LAB_STATIONS`' own `visible` checks) --
-// a fresh save has nothing to check or revisit there yet. Progress
+// those five stations' own content is tied to being mid-world. Abilities
+// only actually appears once the player has learned a first passive
+// (`LAB_STATIONS`' own `visible` check) -- a fresh save has nothing to check
+// there yet. Alongside the stations, every guardian the player has met
+// stands in the room as their own clickable avatar (spawnGuardianAvatars),
+// so reopening one costs a single click rather than a trip through a roster
+// list. Progress
 // autosaves silently after every meaningful state change (data/save.ts's
 // `persistFromRegistry`), so the room has no manual save station of its own.
 
@@ -82,7 +85,7 @@ const GUARDIAN_PLATE_HOVER_ALPHA = 0.14;
 
 export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // Public, not private -- scenes/panels/hubStations.ts's Moves/Stats/
-  // Abilities/Guardians/Tutorial/Settings stations live outside this class
+  // Abilities/Tutorial/Settings stations live outside this class
   // and need to read/replace the currently-open panel, same tradeoff
   // OverworldScene's own dialogue plumbing makes for its guardian panel
   // files (see CODEMAP.md's "Guardian panels").
@@ -114,8 +117,9 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
 
   // GuardianPanelHost implementation (see OverworldScene.ts's GuardianPanelHost
   // and CODEMAP.md's "Guardian panels") -- lets any guardian's own panel
-  // (shop/teleport hub/transmutation) render directly in the Lab, opened from
-  // the Guardians station, with no scene transition. `world` is fixed at 0
+  // (shop/teleport hub/transmutation) render directly in the Lab, opened by
+  // clicking that guardian's own avatar in the room
+  // (spawnGuardianAvatars), with no scene transition. `world` is fixed at 0
   // (World 0, the Lab itself, is never a BUILT_WORLDS entry) so Bloch's own
   // "exclude the world I'm currently in" destination filter excludes nothing
   // here, listing every visited world instead. `qumatessence`/`playerMaterial`
@@ -645,7 +649,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
 
   // Bloch's own explicit travel action (his destination rows) -- the one
   // deliberate way a guardian panel can move the player, whether opened by
-  // walking up to Bloch mid-world or from the Lab's Guardians station. Always
+  // walking up to Bloch mid-world or clicking his avatar in the Lab. Always
   // a fresh map (`regenerate: true`), matching OverworldScene's own
   // `advanceToWorld` -- picking a destination is a genuine, first-class trip
   // there, not a "resume" the way the Hub door's own `enterWorld` is.
@@ -657,7 +661,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // Sets the player's current crystal form and persists it -- HubScene's
   // counterpart to OverworldScene.applyPlayerForm, called by the same
   // Dresselhaus/Majorana panel code (transmuteInto/becomeHybrid) regardless
-  // of which scene's Guardians station opened them. Redraws the Lab's own
+  // of which scene the player opened that guardian in. Redraws the Lab's own
   // floating crystal preview in place rather than an overworld sprite; skips
   // OverworldScene.applyPlayerForm's World 10 map-regeneration branch since
   // the Lab is never World 10. HP is never intrinsic to a crystal form (see
@@ -1065,7 +1069,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
 
   // The Lab's one-off welcome tip (maybeShowLabTip) is this method's only
   // caller -- Qumatex builds its own panel (renderMaterialdexPanel) since it
-  // isn't one of scenes/panels/hubStations.ts's six stations. Kept on the
+  // isn't one of scenes/panels/hubStations.ts's five stations. Kept on the
   // same measured-top-down-layout/shrink-to-fit pattern as those anyway, so
   // a one-off popup doesn't look like a different panel era.
   private showPanel(title: string, body: string) {
@@ -1119,7 +1123,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
 
   // Public, not private -- see the dialogueContainer field comment above.
   // Shared by every panel this scene opens -- the Lab tip, Qumatex, and
-  // scenes/panels/hubStations.ts's six stations --
+  // scenes/panels/hubStations.ts's five stations --
   // renderMaterialdexPanel/hubStations.ts's own panels call this first to
   // clear their own previous container on a redraw (filter change, row
   // pick, list paging, settings change) before rebuilding.

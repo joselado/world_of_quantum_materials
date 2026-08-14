@@ -76,20 +76,21 @@ World 10 has no course notebook, which fits it being the finale rather than a ta
 topic: the boss is "a model of you," which is an honest metaphor for an ML surrogate.
 
 World 0 ("The Lab") is built as a static single-room hub (`game/src/scenes/HubScene.ts`),
-not a walkable map -- up to eight stations, since none of its jobs need overworld movement
+not a walkable map -- up to seven stations, since none of its jobs need overworld movement
 of their own. Two always exist (Qumatex, the door to the
-next unbeaten world); six are reference/settings stations (Moves, Stats, Abilities,
-Guardians, Tutorial, Settings, built in `game/src/scenes/panels/hubStations.ts`'s
+next unbeaten world); five are reference/settings stations (Moves, Stats, Abilities,
+Tutorial, Settings, built in `game/src/scenes/panels/hubStations.ts`'s
 `LAB_STATIONS`) -- everything a player might want to check or adjust between worlds,
 reachable only by physically returning to the Lab rather than from an in-world menu,
 since none of that
-content (player stats/moves/passives, which guardians have been met, game settings) is
-tied to being mid-world. Abilities and Guardians only actually appear in the room once
-there's something to check there -- Abilities behind a first passive learned
-(save/registry `passivesUnlocked`), Guardians behind a first guardian met
-(`metGuardians`) -- rather than on a fresh save with nothing yet to show; Superposition
-Mode (below) treats both as unlocked from the start, matching how its own guardian/passive
-grants already work. `TitleScene` boots the game and loads the currently selected mode's own
+content (player stats/moves/passives, game settings) is
+tied to being mid-world. Abilities only actually appears in the room once
+there's something to check there -- a first passive learned
+(save/registry `passivesUnlocked`) -- rather than on a fresh save with nothing yet to show;
+Superposition Mode (below) treats it as unlocked from the start, matching how its own
+guardian/passive grants already work. Alongside the stations, every guardian the player has
+met stands in the room as their own clickable avatar (§5) rather than being listed in a
+menu, so reopening one is a single click. `TitleScene` boots the game and loads the currently selected mode's own
 localStorage save slot (see §7) before handing off to the Hub; pressing `H` or `Enter` from any Overworld
 scene returns to it, resuming that world's own map and player position exactly rather than
 generating a fresh one. Pressing `Enter` again in the Lab is the exact reverse of that same
@@ -765,13 +766,13 @@ Every one of the ten worlds has its own guardian, waiting mid-corridor
 (`OverworldScene`'s `WORLD_GUARDIANS` table, every entry's `tile: 'middle'`) rather than
 at the goal -- the goal tile is occupied by that world's boss (see below), so a guardian
 is someone the player meets partway through the journey, not a gate to it. Every
-guardian stays reachable once met from the Lab's Guardians station
-(`scenes/panels/hubStations.ts`'s `showGuardiansPanel`, `data/save.ts`'s `metGuardians`)
--- picking one from that station's list opens that guardian's own panel (shop, teleport
+guardian stays reachable once met by standing in the Lab as their own clickable avatar
+(`HubScene.spawnGuardianAvatars`, `data/save.ts`'s `metGuardians`)
+-- clicking one opens that guardian's own panel (shop, teleport
 hub, transmutation) directly in the Lab, the same panel `open` callback `WORLD_GUARDIANS`
 uses when the player walks up to them mid-world, with no change to the player's own
 world/scene/position (`HubScene` implements `GuardianPanelHost`, the interface every
-guardian-panel file is written against -- see CODEMAP.md's "Guardian panels"). Selecting a
+guardian-panel file is written against -- see CODEMAP.md's "Guardian panels"). Opening a
 guardian is never itself a way to travel; Bloch's panel is the one guardian panel with an
 explicit travel action of its own (its destination rows), which still moves the player
 like any other deliberate warp. Every guardian has a
@@ -1402,7 +1403,7 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   The blanket "everything unlocked" grant (`OverworldScene.applySuperpositionUnlocks`,
   registry-only, no scene/world dependency of its own) is shared by two call sites:
   `HubScene.create()` (so Kondo/Franklin/Noether/Laughlin/Feynman/Skłodowska-Curie/
-  Bloch's own Lab panels -- reachable from the Lab's Guardians station regardless of
+  Bloch's own Lab panels -- every guardian standing in the Lab regardless of
   `metGuardians` in this mode -- are already unlocked on a completely fresh save) and
   `OverworldScene.applySuperpositionLeveling()` (re-applied on every world entry --
   Continue, Bloch teleport, and the Hub door's World-1 jump alike -- alongside that

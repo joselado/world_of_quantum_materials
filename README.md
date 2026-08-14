@@ -92,9 +92,9 @@ waiting partway through each world -- ten of them in all, each teaching a
 different way of bending the game's usual rules: new moves and stats,
 teleportation, transmuting into a crystal you've defeated, always-on passive
 abilities, fusing two crystals into a hybrid, quiz-gated power moves, and a
-capstone quiz-gated ultimate move. Every guardian you've met stays reachable
-from the Lab's Guardians station (which appears once you've met your first
-one), and your current passive loadout is always checkable from its
+capstone quiz-gated ultimate move. Every guardian you've met then stands in
+the Lab, and clicking them there reopens their panel on the spot, and your
+current passive loadout is always checkable from its
 Abilities station too (appears once you've learned your first passive). See
 [Guardians](docs/guardians.md) for what each one does.
 
@@ -141,8 +141,9 @@ own physical station: Qumatex, a filterable index of every crystal in the
 game listed by name alongside a note on the real physics behind it -- each
 with a "???" placeholder name and silhouette for anything you haven't found
 yet; a door back out to whichever world you're mid-way through; and stations
-to check your moves, your stats, revisit any guardian you've met, replay the
-tutorial, and adjust settings. Your progress autosaves as you play, so there's
+to check your moves, your stats, replay the tutorial, and adjust settings.
+Every guardian you've met stands in the room itself -- click one to reopen
+their panel without leaving. Your progress autosaves as you play, so there's
 no separate save button anywhere.
 
 <table>
