@@ -113,9 +113,9 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // Tutorial station's own list+detail panel (scenes/panels/hubStations.ts's
   // showTutorialTopics) -- also Lab-only. `tutorialPage` is which page of
   // the topic list is showing; `tutorialSelectedIndex` is the previewed
-  // topic's own index into data/tutorial.ts's TUTORIAL_PAGES, stable across
-  // a page flip the same way materialdexSelectedName survives a type-filter
-  // change.
+  // topic's own index into the list of topics that panel currently shows
+  // (data/tutorial.ts's `visibleTutorialPages`), stable across a page flip
+  // the same way materialdexSelectedName survives a type-filter change.
   tutorialPage = 0;
   tutorialSelectedIndex = 0;
 

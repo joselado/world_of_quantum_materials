@@ -441,7 +441,8 @@ game/src/
                                   epic-plus-physics blurb per HYBRID_RECIPES result for Majorana's
                                   panel
     save.ts                      localStorage schema + persistFromRegistry()/load()
-    tutorial.ts                    TUTORIAL_TIPS/TUTORIAL_PAGES -- contextual + replayable tutorial copy
+    tutorial.ts                    TUTORIAL_TIPS (copy + per-topic `unlock`)/visibleTutorialPages() --
+                                    contextual + replayable tutorial copy
     settings.ts                    DENSITY_PRESETS/DEFAULT_ENCOUNTER_DENSITY -- wild-encounter density presets,
                                     FONT_SCALE_PRESETS, MUSIC_STYLE_PRESETS/DEFAULT_MUSIC_STYLE,
                                     DIFFICULTY_TIER_PRESETS/DEFAULT_DIFFICULTY_TIER -- B.Sc./M.Sc./
@@ -1898,11 +1899,11 @@ seventh (`lab`) fires from `HubScene.maybeShowLabTip` instead, reusing that scen
 before an Overworld scene has ever been created. Both trigger sites persist through the same
 `markTipSeen` + `persistFromRegistry` pair.
 
-**Full tutorial recap** (`data/tutorial.ts`'s `TUTORIAL_PAGES` -- `Object.values(TUTORIAL_TIPS)`,
-same tips in a fixed order, the seven contextual ones first -- `scenes/panels/hubStations.ts`'s
-`showTutorialTopics`): a list+detail panel (`scenes/panels/listDetail.ts`, STYLE.md's "List+detail
+**Full tutorial recap** (`data/tutorial.ts`'s `visibleTutorialPages(registry)` --
+`scenes/panels/hubStations.ts`'s `showTutorialTopics`): a list+detail panel
+(`scenes/panels/listDetail.ts`, STYLE.md's "List+detail
 panels"), the same shape a guardian's own browsed panel uses, just with no crystal/move art to
-preview -- the left column names every topic (`renderListColumn`, paginated once the set
+preview -- the left column names each listed topic (`renderListColumn`, paginated once the set
 outgrows one page; a topic's own short `listLabel` if `TutorialPage` carries one, its full
 `title` otherwise, since the left column is only `200`px wide and a handful of topic titles
 would otherwise collapse to a near-identical trimmed prefix), the right column shows the
@@ -1910,12 +1911,30 @@ selected topic's full title and body. Selecting a row is a scoped update (see "A
 is a scoped update" below), not a panel rebuild: `renderListColumn`'s own `setSelectedId`
 restyles the row in place and only the detail pane and panel chrome (divider, Close button,
 background) re-render, tracked by `HubScene`'s own `tutorialSelectedIndex` (which topic, by its
-index into `TUTORIAL_PAGES`) and `tutorialPage` (which page of the list), both reset in
+index into the currently listed set) and `tutorialPage` (which page of the list), both reset in
 `closeDialogue()` the same way `materialdexSelectedName` is. A page flip still
 tears the panel down (`destroyPanel`) and rebuilds, since that changes which rows the list
 itself shows. Panel stroked cyan `0x5ad9ff` like the station always has been. Only reachable
-from the Lab's Tutorial station, not auto-triggered. To add/edit a tip, only `data/tutorial.ts`
-needs touching -- both this and the contextual popups above read it generically.
+from the Lab's Tutorial station, not auto-triggered.
+
+**Which topics that panel lists, and in what order** (`data/tutorial.ts`'s `TutorialPage.unlock`/
+`visibleTutorialPages`): Story Mode lists only what the save has reached -- a `{ kind: 'tip' }`
+topic once its own contextual popup has fired (`tutorialTipsSeen`), a `{ kind: 'guardian'; ids }`
+topic once any of those guardians has been met (`metGuardians`, a list because a topic can cover
+two guardians' takes on one mechanic and either can be reached first), a `{ kind: 'always' }`
+topic unconditionally. Superposition Mode returns every topic, matching how
+`applySuperpositionLeveling` treats guardians and passives as unlocked from
+the start. An undiscovered topic is absent rather than listed locked, and this path never calls
+`markTipSeen`, so browsing can't unlock a neighbouring topic or suppress a popup the player
+hasn't reached. `showTutorialTopics` reads the list once per panel build and closes over it, so
+the rows can't shift under a click. The Tutorial station itself stays ungated in `LAB_STATIONS`:
+`maybeShowLabTip` marks `lab` seen on the first Hub `create()` before the player can click
+anything, and `modes`/`settings` are `{ kind: 'always' }`, so the list has a floor of three rows
+and can never open empty. `TUTORIAL_TIPS`' declaration order is the canonical order the game
+reveals topics in and is what the panel lists them in; `npm run content-lint` enforces that
+guardian topics follow it and that no topic is unreachable. To add/edit a topic, only
+`data/tutorial.ts` needs touching -- the panel and the contextual popups above both read it
+generically.
 
 **Qumatex indexes every crystal, not just discovered ones, as a two-column list+detail
 panel.** `HubScene.materialdexIndex()` maps `data/materials.ts`'s `allCrystals()` against
@@ -2065,7 +2084,9 @@ player's *current* form -- hybrid or not -- survives a reload for free; there's 
 history list of past Majorana fusions, every visit to his panel recomputes which hybrids are
 reachable fresh),
 `tutorialTipsSeen:
-string[]`, `superpositionMode: boolean` (Story Mode is just its `false` state -- see "Story
+string[]` (which contextual tips have fired; also what gates those topics in the Lab's
+Tutorial station in Story Mode -- see "Which topics that panel lists, and in what order"
+above), `superpositionMode: boolean` (Story Mode is just its `false` state -- see "Story
 Mode vs. Superposition Mode" above; also the routing key `saveKeyFor()` uses to pick which of
 `data/save.ts`'s two localStorage slots a given read/write belongs to, forced by `loadSave()`
 to always match the slot actually read rather than trusted from the stored blob),

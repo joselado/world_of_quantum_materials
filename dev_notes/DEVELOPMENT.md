@@ -143,9 +143,12 @@ cover the built worlds consistently (`WORLD_RIVALS` deliberately excluding
 World 9, whose rival is rolled at random rather than fixed), every
 `HYBRID_RECIPES` result actually lives in `WORLD_CRYSTALS[10]` and vice versa
 (DESIGN.md §5's "hosts exactly the hybrid-recipe results, and nothing else"),
-and every world 1-9 has a non-empty quiz pool. Reads `materials.ts`/
-`types.ts`/`passives.ts`/`quiz.ts`/`OverworldScene.ts` (for the class-private
-`WORLD_GUARDIANS` table) the same AST-parsing way `gen-docs.mjs` does, for
+every world 1-9 has a non-empty quiz pool, and every `TUTORIAL_TIPS` topic is
+reachable and declared in the order the game reveals it (a `{ kind: 'tip' }`
+topic has a trigger site, a `{ kind: 'guardian' }` topic names a real guardian
+and follows the ones unlocked in earlier worlds). Reads `materials.ts`/
+`types.ts`/`passives.ts`/`quiz.ts`/`tutorial.ts`/`OverworldScene.ts` (for the
+class-private `WORLD_GUARDIANS` table) the same AST-parsing way `gen-docs.mjs` does, for
 the same reason (`materials.ts` pulls in Phaser at module scope). Run this
 after any content addition -- pairs naturally with the `add-content` skill's
 own checklist, and is cheap enough to run reflexively before reaching for

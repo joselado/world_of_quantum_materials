@@ -1373,8 +1373,9 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   there is no separate `data/materials.json` draft to keep in sync — so balance/content
   can be tuned without touching engine/rendering code.
 - **Onboarding is contextual, not one paged popup up front.** `game/src/data/tutorial.ts`'s
-  `TUTORIAL_TIPS` (keyed by `TutorialTipId`) holds every tutorial topic in the game -- seven
-  short tips that each fire once per save, right as their own feature actually becomes relevant
+  `TUTORIAL_TIPS` (keyed by `TutorialTipId`) holds every tutorial topic in the game, and each
+  entry's own `unlock` says what reveals it. Seven are `{ kind: 'tip' }`: short popups that
+  each fire once per save, right as their own feature actually becomes relevant
   rather than all at once before the player has done anything: `lab` on first
   entering the Lab (`HubScene.maybeShowLabTip`); `controls` on first entering
   an Overworld world; `encounter` on the first wild-crystal bump; `battle` on
@@ -1384,19 +1385,32 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   by save/registry `tutorialTipsSeen`). Each trigger site passes whatever it
   was about to do next as the tip's close callback (open the encounter panel,
   launch the battle, ...), so the tip is a one-time detour in front of that
-  action rather than a separate step callers have to branch on. The remaining topics -- a
-  guardian's own repeatable ability (quiz-gated Analytic/Ultimate moves, Feynman's move
-  leveling, Franklin's passives, Kondo's status effects, Majorana's hybrid fusion, Dresselhaus's
-  transmutation, Anderson's host doping, Bloch's teleportation), the Lab's Settings station, and
-  the Story Mode/Superposition Mode choice already made at the Title screen -- have no single
-  "first time this becomes relevant" moment worth interrupting play for, so they carry no
-  contextual trigger and are reachable only through the Tutorial station. The full set
-  is reachable any time from the Lab's Tutorial station
+  action rather than a separate step callers have to branch on. Eight are
+  `{ kind: 'guardian' }` -- a guardian's own repeatable ability (Bloch's teleportation,
+  Dresselhaus's transmutation, Laughlin/Skłodowska-Curie's quiz-gated Analytic/Ultimate moves,
+  Majorana's hybrid fusion, Anderson's host doping, Feynman's move leveling, Kondo's status
+  effects, Franklin's passives) has no single "first time this becomes relevant" moment worth
+  interrupting play for, so it carries no popup and is revealed by meeting that guardian
+  (registry `metGuardians`), read in their panel instead. The last two are
+  `{ kind: 'always' }` -- the Lab's Settings station and the Story Mode/Superposition Mode
+  choice already made at the Title screen are both true of a save from the moment it exists.
+  Every topic is readable any time from the Lab's Tutorial station
   (`scenes/panels/hubStations.ts`'s `showTutorialTopics`) as a list+detail panel
   (`scenes/panels/listDetail.ts`, DESIGN.md's own "List+detail panels" convention in
-  `dev_notes/STYLE.md`) -- a left-hand list of every topic's own title (paginated once the set
+  `dev_notes/STYLE.md`) -- a left-hand list of topic titles (paginated once the set
   outgrows one page), a right-hand pane showing whichever topic is selected, updated in place as
-  the player browses rather than opening a separate full panel per topic.
+  the player browses rather than opening a separate full panel per topic. That list is
+  `visibleTutorialPages(registry)`: in Story Mode, whichever topics the save has unlocked by
+  the rule above, so the list fills in as the playthrough does; in Superposition Mode, all of
+  them, the same way that mode treats every guardian and passive as unlocked from the start.
+  An undiscovered topic is absent from the list rather than shown locked, and reading a topic
+  here never marks it discovered (nothing on that path writes `tutorialTipsSeen`).
+  `TUTORIAL_TIPS`' own declaration order is the canonical order the game reveals topics in --
+  `lab`, `modes`, `settings`, then the six remaining contextual tips in World 1's own order,
+  then the eight guardian topics by world (Bloch's World 2 through Franklin's World 9) -- and
+  is what the station lists them in, so a new topic gets declared at the point of the
+  playthrough that reveals it. `npm run content-lint` checks that ordering, that every
+  guardian a topic names exists, and that every `{ kind: 'tip' }` topic has a trigger site.
 - **Story Mode vs. Superposition Mode.** The Title screen has the player pick
   one of two starting modes (`TitleScene.addModeSelector`) before Continue/New
   Game -- both back the same save/registry `superpositionMode` boolean (Story
