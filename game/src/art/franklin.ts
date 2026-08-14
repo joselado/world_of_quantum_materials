@@ -7,11 +7,16 @@ import { shade } from './colors';
 // into diffuse rings rather than the sharp spots a perfect crystal gives).
 // A slim, upright experimenter holding her detector plate out in front of
 // her like a shield -- which is also what her passives are: always-on
-// defensive diffraction effects. The plate is a dark disc filled with the
+// defensive diffraction effects. The plate is a dark upright sheet of film,
+// the rectangular format these images were actually exposed on, carrying the
 // diffuse Debye-Scherrer ring pattern a disordered sample scatters into --
-// concentric pulsing rings around a dim central beam spot, with a scatter
-// of pore sites between them. Silhouette: a head and narrow shoulders over
-// one large disc, unlike any other guardian's.
+// concentric pulsing rings around a dim central beam spot, with a scatter of
+// pore sites between them. Silhouette: a head and narrow shoulders over one
+// hard-edged upright slab. The rectangle is doing real work at Lab scale,
+// where these stand small and side by side: Kondo's screening shells are a
+// disc by necessity (an enclosing cloud *is* that physics), so a round plate
+// here would leave the two guardians sharing one outline and separable only
+// by colour, which greyscale defeats.
 //
 // Drawn in local space centered on the chest/torso (0,0), same convention
 // as every other avatar builder: an internal sway tween is baked in, so
@@ -98,13 +103,16 @@ export function makeFranklinAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameO
   );
   sway.add(head);
 
-  // The detector plate, held in front of the body: dark film disc, rimmed.
+  // The detector plate, held in front of the body: a dark upright sheet of
+  // film, rimmed.
   const plateY = S * 0.18;
+  const plateW = S * 1.02;
+  const plateH = S * 1.22;
   const plate = scene.add.graphics();
   plate.fillStyle(0x191230, 1);
-  plate.fillCircle(0, plateY, S * 0.58);
+  plate.fillRect(-plateW / 2, plateY - plateH / 2, plateW, plateH);
   plate.lineStyle(1.6, shade(lavender, -15), 0.9);
-  plate.strokeCircle(0, plateY, S * 0.58);
+  plate.strokeRect(-plateW / 2, plateY - plateH / 2, plateW, plateH);
   // The dim central beam spot and the pore sites -- the disordered sample's
   // own structure printed between the rings.
   plate.fillStyle(lavender, 0.55);
@@ -119,10 +127,10 @@ export function makeFranklinAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameO
     plate.fillStyle(shade(lavender, -10), 0.5);
     plate.fillCircle(p.x * S, plateY + p.y * S, S * 0.035);
   });
-  // Two hands gripping the rim -- the plate is held out, not mounted.
+  // Two hands gripping the edges -- the plate is held out, not mounted.
   plate.fillStyle(shade(skin, 4), 1);
-  plate.fillCircle(-S * 0.5, plateY - S * 0.28, S * 0.07);
-  plate.fillCircle(S * 0.5, plateY - S * 0.28, S * 0.07);
+  plate.fillCircle(-plateW / 2, plateY - S * 0.28, S * 0.07);
+  plate.fillCircle(plateW / 2, plateY - S * 0.28, S * 0.07);
   sway.add(plate);
 
   // Concentric diffraction rings on the plate -- the diffuse

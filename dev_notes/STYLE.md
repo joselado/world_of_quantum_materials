@@ -1258,13 +1258,16 @@ than the caller's requested budget) for its own layout math.
   (`#c9a8e0` label / `0xa878c9` stroke and avatar accents) name label; her avatar
   (`art/franklin.ts`'s `makeFranklinAvatar`) is a slim experimenter holding her detector
   plate out in front of her like a shield -- which is what her always-on defensive
-  passives are. The plate is a dark film disc gripped by two hands at its rim, printed
+  passives are. The plate is a dark upright sheet of film -- the rectangular format these
+  images are exposed on -- gripped by two hands at its edges and printed
   with the diffuse Debye-Scherrer ring pattern porous/amorphous carbon scatters an X-ray
   beam into: concentric rings pulsing on offset timings around a dim central beam spot,
   with scattered pore sites between them -- a dusty amethyst/lavender palette distinct
   from Anderson's rust/amber despite the shared defect/disorder theme. Silhouette: a head
-  and narrow shoulders over one large disc, the roster's only figure-behind-a-disc
-  outline.
+  and narrow shoulders over one hard-edged upright slab. The rectangle is load-bearing at
+  Lab scale, where the guardians stand small and side by side: Kondo's screening shells
+  are a disc by necessity, since an enclosing cloud is that physics, so a round plate here
+  would leave the two sharing one outline and separable only by colour.
 - Qumatex-like: below the avatar/quote, the panel (`scenes/panels/franklin.ts`, `760` wide)
   splits into two columns -- a fixed-size crystal-preview block on the left, the passive shop
   list on the right, divided by the same thin vertical line every list+detail panel uses
