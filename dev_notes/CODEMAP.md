@@ -49,7 +49,10 @@ game/src/
                                  a per-frame render context, holding no scene state, the same
                                  shape battle/hud.ts uses
       projection.ts            The grid/camera constants (GRID_W/GRID_H, TILE_SCALE, LANE_CLIP,
-                                 DRAW_DISTANCE_TILES, CAMERA_BACK_TILES) plus projectTile() and
+                                 DRAW_DISTANCE_TILES, VISIBLE_DEPTH_FRACTION -- the fraction
+                                 of it a world sprite is still drawn within, and so the far
+                                 edge of the player's field of vision OverworldScene's
+                                 respawn placement stays beyond -- CAMERA_BACK_TILES) plus projectTile() and
                                  laneClipAt(). The one place the camera pullback is applied
       sky.ts                   The static backdrop (drawSky: sky gradient, base ground wash,
                                  clouds) and the per-frame atmosphere (drawDepthHaze: the ground
@@ -1535,6 +1538,33 @@ resume-in-place; `mapState` is registry-only and doesn't survive a page reload t
 promising a resume it can no longer deliver. `HubScene.doorLabel()`/`enterWorld()` and the Lab's
 `keydown-ENTER` handler all read this one predicate rather than three separate checks that could
 drift apart.
+
+**A walked world refills itself, out of sight ahead of the player.** `OverworldScene`'s
+`respawnTick()` -- a `time.addEvent` loop started in `create()`, so Phaser's own clock drops
+it on scene shutdown -- rolls independently for a wild (`respawnWild`) and a pickup
+(`respawnToken`). Both draw their tile from the single `respawnTiles()` candidate set, which
+is where every placement rule lives: strictly north of `RESPAWN_MIN_ROWS_AHEAD` (computed
+from `DRAW_DISTANCE_TILES * VISIBLE_DEPTH_FRACTION`, not a literal, so widening the draw
+distance can't start popping spawns into view), walkable, empty, outside
+`passZoneRows(startTile, goalTile, midTile)` -- recomputed at runtime from the three points
+the scene already holds, rather than stored -- and off the start/goal/guardian tiles. On top
+of that, `respawnWild` keeps generation's own two rules (one encounter per row, never in a
+run narrower than 2 tiles via `walkableRunWidth`) and draws from the same
+`getWildPool(this.world)` the generator did, so no world's pool rule can drift; `respawnToken`
+keeps the dead-end preference (`walkableDegree(x, y) === 1`) `scatterTokens` has and values
+its drop with the same `pickTokenValue(world)`. Both build their sprite through
+`addCrystalSprite`/`addTokenSprite` -- the per-tile builders `spawnCrystalSprites`/
+`spawnTokenSprites` also loop over at map entry -- which create hidden, leaving
+`updateWorldSprites` to decide visibility from projected depth on the next frame.
+
+`wildTarget`/`tokenTarget`/`tokenRespawnsLeft` are the three ceilings (DESIGN.md §2's
+"Respawning"), counted off the actual placements in `generateMap` and carried in
+`SavedMapState` alongside the grids. They are the reason a respawn calls `saveMapState()`:
+the grids are shared by reference with the registry's `mapState`, so mutating a tile
+propagates for free, but these three are scalars and are genuinely copied. They deliberately
+get no `SaveData`/`defaultSave`/`persistFromRegistry` entry -- unlike the registry-then-persist
+rule's ordinary case, this is per-map state whose own map is registry-only and regenerated on
+reload, so a persisted budget would describe a map the reloaded session doesn't have.
 
 `WORLD_NAMES` is meant to be readable as "which course topic is this," not a generic RPG
 terrain name. `WORLD_RIVALS`' own names (and, per-type, `RIVAL_9_NAMES`) instead follow

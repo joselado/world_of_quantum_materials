@@ -1,6 +1,8 @@
 // Wild-encounter density presets for the Lab's Settings station
 // (scenes/panels/hubStations.ts's showSettingsPanel) -- the player-facing knob on the
-// per-corridor-row encounter roll generateMap() does at map-generation time.
+// per-corridor-row encounter roll generateMap() does at map-generation time,
+// and through the population that roll produces, the ceiling respawns refill
+// a walked world back toward (OverworldScene's respawnWild).
 // Kept as plain data (rather than living in OverworldScene itself) so
 // data/save.ts's default and OverworldScene's generation logic both read the
 // same numbers without either file importing from the other.

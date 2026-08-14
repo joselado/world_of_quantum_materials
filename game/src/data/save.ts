@@ -116,7 +116,8 @@ export interface SaveData {
   // per-corridor-row chance a wild crystal spawns, one of data/settings.ts's
   // DENSITY_PRESETS. Only affects maps generated after the change (a fresh
   // world entry/regenerate), not the map the player is currently standing
-  // on.
+  // on -- including the standing population respawns refill that map toward,
+  // which is counted once at generation rather than re-read live.
   encounterDensity: number;
   // Same Settings panel, second row: the multiplier ui/text.ts's fontPx()
   // applies to every scene's authored base px size, one of data/settings.ts's

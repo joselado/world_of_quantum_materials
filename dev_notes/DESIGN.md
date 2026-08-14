@@ -76,6 +76,32 @@ several possible routes. World 10's shape is re-rolled immediately, without leav
 world, whenever the player transmutes (Dresselhaus) or fuses (Majorana) into a new form while
 standing there, since its whole shape is keyed off that form's type.
 
+**Respawning.** A world refills itself while the player walks it, so a map that has been
+picked clean doesn't stay a dead corridor: on a repeating timer, wild crystals drift back in
+and qumatessence condenses again, each rolling its own chance so most ticks bring back
+nothing (`OverworldScene`'s `respawnTick`). Everything comes back *ahead* of the player and
+outside the drawn world -- past the projection's own draw distance, derived from it rather
+than a fixed row count -- since the camera faces north permanently, so a tile south of the
+player is never rendered at all and anything appearing there would be walked into having
+never been seen. Near the goal there is no such room, so respawns simply pause there. A
+respawn obeys every rule the original scatter does: never in a pass, never on the
+start/goal/guardian tile, one wild per row at most and never in a walkable run narrower than
+2 tiles, and drawn from the same `getWildPool(world)` the generator drew from -- so World 10
+keeps respawning hybrid-recipe results only, and World 9 the whole non-hybrid roster.
+
+Two ceilings keep this from rewriting the game's balance. Wilds refill toward the population
+that map stood up at generation, which is what the Settings station's encounter-density
+preset sets -- respawns replace what was fought, they never outpace the setting. Qumatessence
+gets that same standing-count ceiling *plus* a finite per-map budget equal to the map's own
+initial pickup count, so one map pays out at most twice what it was scattered with and
+walking it back and forth is not an open-ended currency source. Both ceilings and the
+remaining budget live in the map snapshot (§7's `saveMapState`/`restoreMap`), so a round trip through battle
+or the Lab resumes the same half-refilled world rather than a fresh one. Wilds are
+deliberately left uncapped beyond the density ceiling: a battle's own stake (§5) already pays
+far more than a whole map's pickups -- 50 per World 1 win against roughly 9 qumatessence
+scattered over the entire map, 200 per World 10 win against roughly 260 -- so fighting, not
+collecting, is where a grinding player's income comes from either way.
+
 World names are meant to read as the lecture topic, not generic RPG terrain names (check
 `WORLD_NAMES` and `WORLD_RIVALS` together when naming a world -- a mismatched rival name is
 easy to miss if only one table is updated). Every rival 1-8's own name (and, per-type, World
@@ -1311,7 +1337,7 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   encounter spawned on the path can never fully block it. A generator whose output fails
   either check is retried with fresh randomness (up to 10 times) before falling back to a
   plain wide corridor, logged rather than thrown -- generation is randomized and runs on
-  every world entry, so a bad roll shouldn't crash the scene. A handful of qumatessence
+  every world entry, so a bad roll shouldn't crash the scene. Five to eight qumatessence
   pickups are scattered across each map (preferring an actual dead-end tile when that
   generator's shape has one), each drawn from a ten-tier value ladder
   (`src/data/tokens.ts`), 1 at the bottom up to 50 at the top, each tier with
@@ -1321,7 +1347,10 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   lowest tiers, World 10 only its two highest, and worlds in between roll a
   three-tier window that slides up the ladder as the player advances (World
   5 rolls tiers 4-6) -- weighted toward the window's lower tier so a high
-  roll stays a treat rather than the norm. The whole ground plane is drawn flat, with the walkable/impassable
+  roll stays a treat rather than the norm. Both pickups and wild crystals then
+  refill themselves as the world is walked (§2's "Respawning"), out of sight
+  ahead of the player, capped by density and by that map's own pickup budget.
+  The whole ground plane is drawn flat, with the walkable/impassable
   boundary traced off the tile grid and redrawn as a smooth curve, so a path edge that turns
   reads as an organic shoreline rather than a stair-step; a contact shadow and rim light along
   that curve, plus each biome's own floor/off-path color break, are what mark where the player
