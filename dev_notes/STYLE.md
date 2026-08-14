@@ -1674,22 +1674,22 @@ than the caller's requested budget) for its own layout math.
 - Fires automatically the first time its own feature becomes relevant (`tutorialTipsSeen`,
   data/tutorial.ts's `TutorialTipId`) -- walking into the Lab, taking your first steps in a
   world, bumping into your first wild crystal, and so on -- never more than one on screen at a
-  time, and never several shown in a row. Only seven of `TUTORIAL_PAGES`' entries have a
-  contextual trigger like this (the ones with an obvious "first time this becomes relevant"
-  moment); the rest -- a guardian's own repeatable ability, the Lab's Settings station, the
-  Story/Superposition Mode choice already made at the Title screen -- carry no trigger of their
-  own and are only ever reached through the Tutorial station itself ("Full tutorial recap"
-  below).
+  time, and never several shown in a row. Seven of `TUTORIAL_TIPS`' entries have a contextual
+  trigger like this (the ones with an obvious "first time this becomes relevant" moment,
+  `unlock: { kind: 'tip' }`); the rest -- a guardian's own repeatable ability, the Lab's
+  Settings station, the Story/Superposition Mode choice already made at the Title screen --
+  carry no trigger of their own and are only ever read through the Tutorial station itself
+  ("Full tutorial recap" below).
 
 ## Full tutorial recap (`scenes/panels/hubStations.ts`'s `showTutorialTopics`)
 
 - A list+detail panel ("List+detail panels" above), not a linear pager: `LIST_DETAIL_PANEL_W`
   wide, same cyan `0x5ad9ff` stroke the station has always used, with a "Pick a topic to read
-  it" hint above the two columns. The left column lists every entry in `data/tutorial.ts`'s
-  `TUTORIAL_PAGES` as its own row (`renderListColumn`, paginated once the set outgrows one
-  page -- routine now that the set holds 17 topics), so the player sees what's covered before
-  opening anything and can jump straight to one topic instead of stepping through the rest to
-  reach it. A row shows its own short `listLabel` where `TutorialPage` carries one (a handful of
+  it" hint above the two columns. The left column lists each topic `data/tutorial.ts`'s
+  `visibleTutorialPages` returns as its own row (`renderListColumn`, paginated once the set
+  outgrows one page -- routine at the seventeen topics a finished Story save or any
+  Superposition save lists), so the player sees what's covered before opening anything and can
+  jump straight to one topic instead of stepping through the rest to reach it. A row shows its own short `listLabel` where `TutorialPage` carries one (a handful of
   topics whose full `title` would collapse to a near-identical trimmed prefix at the left
   column's `200`px width -- `fitListLabel` ellipsis-trims, doesn't wrap), its full `title`
   otherwise.
@@ -1702,6 +1702,12 @@ than the caller's requested budget) for its own layout math.
   `detailBlock`/`chromeBlock` re-render, "A preview click is a scoped update" below) -- the list
   stays on screen, only the detail pane and panel chrome change. A page flip still tears the
   panel down and rebuilds it, since that changes which rows the list itself shows.
+- The list is what the save has reached, in the order the game reveals it (`TUTORIAL_TIPS`'
+  declaration order): in Story Mode a topic appears once its own contextual tip has fired or
+  its guardian has been met, absent rather than shown locked until then, so the panel opens
+  three rows tall on a fresh save and grows through the playthrough; Superposition Mode lists
+  all seventeen from the start, like everything else that mode unlocks up front. Reading a
+  topic here never counts as discovering it.
 - Doesn't trigger automatically -- see "Contextual tutorial tips" above for what
   a new save actually sees; this is opt-in only, always opening on the topic list.
 

@@ -1851,7 +1851,9 @@ player's *current* form -- hybrid or not -- survives a reload for free; there's 
 history list of past Majorana fusions, every visit to his panel recomputes which hybrids are
 reachable fresh),
 `tutorialTipsSeen:
-string[]`, `superpositionMode: boolean` (Story Mode is just its `false` state -- see "Story
+string[]` (which contextual tips have fired; also what gates those topics in the Lab's
+Tutorial station in Story Mode -- see "Which topics that panel lists, and in what order"
+above), `superpositionMode: boolean` (Story Mode is just its `false` state -- see "Story
 Mode vs. Superposition Mode" above; also the routing key `saveKeyFor()` uses to pick which of
 `data/save.ts`'s two localStorage slots a given read/write belongs to, forced by `loadSave()`
 to always match the slot actually read rather than trusted from the stored blob),
