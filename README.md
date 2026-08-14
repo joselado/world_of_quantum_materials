@@ -31,7 +31,11 @@ narrows into a pass at its far end and opens out of the same pass at its
 start, so leaving one world and arriving in the next is one piece of
 geography seen twice. A handful of qumatessence (the in-game currency)
 pickups are tucked along the way, often at a dead end worth the detour --
-though never inside a pass, which stays clear.
+though never inside a pass, which stays clear. A world you have picked clean
+slowly refills: crystals drift back in and qumatessence condenses again,
+always far enough up the path that you see it coming rather than walk into
+it. There is only so much qumatessence in any one world, though, so
+pacing back and forth over the same ground stops paying eventually.
 
 The ten worlds are one road, and the light dies along it: morning, midday,
 afternoon, storm, twilight, night, and then no sky at all, after which every
@@ -238,8 +242,9 @@ a passive or met a guardian to check.
 In the Lab, click the **Settings** station to adjust:
 
 - **Enemy Density** -- Low, Normal, High, or Very High, if wild crystals feel
-  too sparse (or too frequent) along the path. Takes effect the next time you
-  enter or re-enter a world.
+  too sparse (or too frequent) along the path. Sets how many crystals a world
+  holds at once, so it also governs how many drift back in after you have
+  fought them. Takes effect the next time you enter or re-enter a world.
 - **Text Size** -- Compact, Normal, or Large. Applies immediately to every
   menu and dialogue in the game.
 - **Music Style** -- Classic or Modern, two different arrangements of every

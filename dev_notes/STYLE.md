@@ -496,6 +496,11 @@ than appending a changelog, so this always reflects current reality.
   back to any walkable tile otherwise -- so the original "reward sits at the end of a detour"
   read survives for the worlds that still build literal dead ends, without requiring every
   shape to have one.
+- Nothing ever materializes in frame. Wild crystals and qumatessence both come back as a
+  world is walked (DESIGN.md §2's "Respawning"), and every one of them is placed beyond the
+  far edge of the drawn world, ahead of the player, so the only way to meet one is to watch
+  it come out of the fog -- the same "seen coming rather than sprung from nowhere" read the
+  guardian and boss landmarks are placed for.
 - Corner HUD: the world name (top-left, white on translucent black) and the qumatessence
   counter (top-right, gold `#ffe066` on translucent black) sit on the same row at `y = 8` --
   the same spot `HubScene`'s own counter uses, so the Lab and the overworld put it in the same

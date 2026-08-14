@@ -25,6 +25,7 @@ import {
   GRID_W,
   LANE_CLIP,
   TILE_SCALE,
+  VISIBLE_DEPTH_FRACTION,
   projectTile,
 } from './overworld/projection';
 import { drawSky, forwardHazeBlend } from './overworld/sky';
@@ -47,7 +48,7 @@ import {
 import { wildHpForWorld, MAX_STAT } from '../data/balance';
 import { PASSIVES, PASSIVE_OWNERS } from '../data/passives';
 import type { PassiveOwner } from '../data/passives';
-import { tokenColorForValue } from '../data/tokens';
+import { pickTokenValue, tokenColorForValue } from '../data/tokens';
 import { getWorldQuestion } from '../data/quiz';
 import { encounterGreeting } from '../data/greetings';
 import { TUTORIAL_TIPS, hasSeenTip, markTipSeen } from '../data/tutorial';
@@ -61,6 +62,7 @@ import type { DiscoveredMaterial } from '../data/save';
 import type { Material, MaterialType } from '../data/types';
 import { generateWorldMap } from '../world/mapgen';
 import type { GridPoint } from '../world/mapgen';
+import { passZoneRows } from '../world/generators/shared';
 import { fontPx, fontScale, fitProseToBudget } from '../ui/text';
 import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY, REFERENCE_BLUE_GREY_HEX, TUTORIAL_CYAN, STORY_LAVENDER } from '../ui/theme';
 import { music } from '../audio/music';
@@ -96,6 +98,13 @@ interface SavedMapState {
   vortexCores: GridPoint[];
   reachedGoal: boolean;
   reachedMiddle: boolean;
+  // Respawn bookkeeping (see "Respawning" below). All three are scalars
+  // rather than the grids above, so unlike `walkable`/`tokenTiles` they are
+  // genuinely copied here rather than shared by reference -- a respawn has
+  // to re-snapshot for them to survive a round trip through BattleScene.
+  wildTarget: number;
+  tokenTarget: number;
+  tokenRespawnsLeft: number;
 }
 
 const CRYSTAL_SIZE = 22;
@@ -126,6 +135,25 @@ const BOSS_CRYSTAL_SIZE = 78;
 const DOOR_SPRITE_SIZE = 46;
 const QUIZ_CORRECT_MULTIPLIER = 1.5;
 const QUIZ_WRONG_MULTIPLIER = 0.6;
+
+// --- Respawning ------------------------------------------------------------
+// A world refills itself while the player walks it: wild crystals drift back
+// in and qumatessence condenses again, so a map that has been picked clean
+// doesn't stay a dead corridor. How often the world gets a chance to do it,
+// and how likely it takes that chance -- both kinds roll independently, so a
+// tick can bring back one, both, or (most often) neither.
+const RESPAWN_TICK_MS = 3500;
+const WILD_RESPAWN_CHANCE = 0.35;
+const TOKEN_RESPAWN_CHANCE = 0.2;
+// How far north of the player's own row a respawn must land, in rows.
+// Everything comes back *ahead* of the player and outside the drawn world:
+// the camera faces north permanently, so a tile south of the player is never
+// rendered at all, and anything appearing there would be walked into having
+// never been seen. Derived from the projection's own draw distance rather
+// than fixed, plus two rows of slack -- one for the camera lagging behind
+// the player's tile mid-step, one for a sprite's own wander -- so widening
+// the draw distance can never start popping respawns into view.
+const RESPAWN_MIN_ROWS_AHEAD = Math.ceil(DRAW_DISTANCE_TILES * VISIBLE_DEPTH_FRACTION) + 2;
 
 // Worlds with a built overworld map (biome + rival, where applicable) --
 // bounds Bloch's teleport offers (a "visited" world the player can't
@@ -448,6 +476,16 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   private walkable: boolean[][] = [];
   private encounterTiles: (Material | null)[][] = [];
   private tokenTiles: number[][] = [];
+  // How many wild crystals this map stood up at generation, which is also the
+  // ceiling respawns refill it back toward -- so the Settings station's
+  // encounter-density preset sets the world's standing population, not just
+  // its opening one.
+  private wildTarget = 0;
+  // The same ceiling for qumatessence, plus how many pickups this map has
+  // left to give back. The budget is what keeps a walked-over map from being
+  // an unbounded currency source (DESIGN.md §2's pickup economy).
+  private tokenTarget = 0;
+  private tokenRespawnsLeft = 0;
   private flowerMap: boolean[][] = [];
   private goalTile: GridPoint = { x: 0, y: 0 };
   private startTile: GridPoint = { x: 0, y: 0 };
@@ -789,6 +827,10 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.spawnGuardianSprite();
     this.spawnBossSprite();
     this.spawnDoorSprites();
+    // The world refills itself as the player walks it (see respawnTick and the
+    // RESPAWN_* constants). Phaser's clock drops its own events on scene
+    // shutdown, so this is started fresh on every entry rather than guarded.
+    this.time.addEvent({ delay: RESPAWN_TICK_MS, loop: true, callback: () => this.respawnTick() });
     music.play(`overworld:${this.world}`);
 
     this.qumatessence = (state.get('qumatessence') as number) || 0;
@@ -1115,6 +1157,14 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       this.encounterTiles[r.y][x] = Phaser.Utils.Array.GetRandom(wildPool);
     });
 
+    // What this map stood up is what respawns refill it back toward, and (for
+    // qumatessence) how much it has left to give -- both read off the actual
+    // placements above rather than re-derived, so density and the token
+    // scatter's own count each stay the single knob they already are.
+    this.wildTarget = this.encounterTiles.reduce((n, row) => n + row.filter(Boolean).length, 0);
+    this.tokenTarget = this.tokenTiles.reduce((n, row) => n + row.filter((v) => v > 0).length, 0);
+    this.tokenRespawnsLeft = this.tokenTarget;
+
     // Landing via the backward door (enterFrom === 'goal', above) needs this
     // freshly generated layout snapshotted immediately, not just held in
     // memory -- a wild fight fought anywhere in this world (e.g. answering
@@ -1153,6 +1203,9 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.vortexCores = saved.vortexCores;
     this.reachedGoal = saved.reachedGoal;
     this.reachedMiddle = saved.reachedMiddle;
+    this.wildTarget = saved.wildTarget;
+    this.tokenTarget = saved.tokenTarget;
+    this.tokenRespawnsLeft = saved.tokenRespawnsLeft;
     this.crystalSprites = [];
     this.tokenSprites = [];
   }
@@ -1173,6 +1226,9 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       vortexCores: this.vortexCores,
       reachedGoal: this.reachedGoal,
       reachedMiddle: this.reachedMiddle,
+      wildTarget: this.wildTarget,
+      tokenTarget: this.tokenTarget,
+      tokenRespawnsLeft: this.tokenRespawnsLeft,
     };
     this.game.registry.set('mapState', saved);
   }
@@ -1325,43 +1381,50 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     for (let y = 0; y < GRID_H; y++) {
       for (let x = 0; x < GRID_W; x++) {
         const material = this.encounterTiles[y]?.[x];
-        if (!material) continue;
-
-        const container = makeCrystal(this, CRYSTAL_SIZE, material.color, material.variant, {
-          seed: material.name,
-          hybrid: material.hybridParents,
-        });
-        // The same contact shadow the player's avatar and the boss golem
-        // carry, at the same CRYSTAL_FOOT offset: it is what makes a floating
-        // crystal read as hovering over one particular tile rather than
-        // drifting at an unplaceable distance, which matters most right up
-        // against the edge of the walkable region.
-        const shadow = this.add.ellipse(0, CRYSTAL_FOOT, CRYSTAL_SIZE, CRYSTAL_SIZE * 0.32, 0x000000, 0.28);
-        container.addAt(shadow, 0);
-        container.setDepth(20);
-
-        const label = this.add
-          .text(0, 0, material.name, {
-            fontSize: fontPx(this, 11),
-            color: '#ffffff',
-            backgroundColor: 'rgba(0,0,0,0.45)',
-            padding: { x: 3, y: 1 },
-          })
-          .setOrigin(0.5, 1)
-          .setDepth(22);
-
-        this.crystalSprites.push({
-          x,
-          y,
-          size: CRYSTAL_SIZE,
-          foot: CRYSTAL_FOOT,
-          material,
-          container,
-          label,
-          seed: Math.random() * Math.PI * 2,
-        });
+        if (material) this.addCrystalSprite(x, y, material);
       }
     }
+  }
+
+  // One wild crystal's own sprite. Built hidden: updateWorldSprites decides
+  // visibility from the tile's own projected depth on the very next frame, and
+  // a sprite added mid-walk (respawnWild) must never be painted before that
+  // check has run.
+  private addCrystalSprite(x: number, y: number, material: Material) {
+    const container = makeCrystal(this, CRYSTAL_SIZE, material.color, material.variant, {
+      seed: material.name,
+      hybrid: material.hybridParents,
+    });
+    // The same contact shadow the player's avatar and the boss golem
+    // carry, at the same CRYSTAL_FOOT offset: it is what makes a floating
+    // crystal read as hovering over one particular tile rather than
+    // drifting at an unplaceable distance, which matters most right up
+    // against the edge of the walkable region.
+    const shadow = this.add.ellipse(0, CRYSTAL_FOOT, CRYSTAL_SIZE, CRYSTAL_SIZE * 0.32, 0x000000, 0.28);
+    container.addAt(shadow, 0);
+    container.setDepth(20).setVisible(false);
+
+    const label = this.add
+      .text(0, 0, material.name, {
+        fontSize: fontPx(this, 11),
+        color: '#ffffff',
+        backgroundColor: 'rgba(0,0,0,0.45)',
+        padding: { x: 3, y: 1 },
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(22)
+      .setVisible(false);
+
+    this.crystalSprites.push({
+      x,
+      y,
+      size: CRYSTAL_SIZE,
+      foot: CRYSTAL_FOOT,
+      material,
+      container,
+      label,
+      seed: Math.random() * Math.PI * 2,
+    });
   }
 
   // Qumatessence pickups live only at the dead end of branches -- shiny little
@@ -1372,26 +1435,133 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     for (let y = 0; y < GRID_H; y++) {
       for (let x = 0; x < GRID_W; x++) {
         const value = this.tokenTiles[y]?.[x];
-        if (!value) continue;
-
-        const container = makeToken(this, TOKEN_SIZE, tokenColorForValue(value));
-        container.setDepth(19);
-
-        const label = this.add
-          .text(0, 0, `+${value}`, {
-            fontSize: fontPx(this, 12),
-            color: '#ffffff',
-            backgroundColor: 'rgba(0,0,0,0.45)',
-            padding: { x: 3, y: 1 },
-          })
-          .setOrigin(0.5, 1)
-          .setDepth(22);
-
-        // A qumatessence cloud hangs over its tile rather than resting on it,
-        // so its own centre is what the tile's ground point carries.
-        this.tokenSprites.push({ x, y, size: TOKEN_SIZE, foot: 0, container, label, seed: Math.random() * Math.PI * 2 });
+        if (value) this.addTokenSprite(x, y, value);
       }
     }
+  }
+
+  // One pickup's own sprite, built hidden for the same reason a wild
+  // crystal's is (addCrystalSprite above).
+  private addTokenSprite(x: number, y: number, value: number) {
+    const container = makeToken(this, TOKEN_SIZE, tokenColorForValue(value));
+    container.setDepth(19).setVisible(false);
+
+    const label = this.add
+      .text(0, 0, `+${value}`, {
+        fontSize: fontPx(this, 12),
+        color: '#ffffff',
+        backgroundColor: 'rgba(0,0,0,0.45)',
+        padding: { x: 3, y: 1 },
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(22)
+      .setVisible(false);
+
+    // A qumatessence cloud hangs over its tile rather than resting on it,
+    // so its own centre is what the tile's ground point carries.
+    this.tokenSprites.push({ x, y, size: TOKEN_SIZE, foot: 0, container, label, seed: Math.random() * Math.PI * 2 });
+  }
+
+  // One chance for the world to refill itself, on a repeating timer started in
+  // create(). Both kinds roll on their own, so a tick can bring back a wild, a
+  // pickup, both, or neither. A respawn re-snapshots the map: the grids
+  // themselves are shared by reference with `mapState`, but the scalar budgets
+  // are not (see SavedMapState).
+  private respawnTick() {
+    let changed = false;
+    if (Math.random() < WILD_RESPAWN_CHANCE) changed = this.respawnWild() || changed;
+    if (Math.random() < TOKEN_RESPAWN_CHANCE) changed = this.respawnToken() || changed;
+    if (changed) this.saveMapState();
+  }
+
+  // A wild drifts back in, drawn from exactly the pool generation drew from --
+  // `getWildPool(this.world)`, so World 10 stays hybrid-only and World 9 stays
+  // everything. Capped at the population the map stood up (`wildTarget`),
+  // which is what keeps the Settings station's density preset meaningful:
+  // respawns replace what was fought, they never outpace the setting.
+  private respawnWild(): boolean {
+    if (this.crystalSprites.length >= this.wildTarget) return false;
+    const pool = getWildPool(this.world);
+    if (pool.length === 0) return false;
+    // One encounter per row at most and never in a run narrower than two
+    // tiles, the same two rules generation obeys -- together they are why a
+    // wild can never fully block the route (DESIGN.md §2).
+    const candidates = this.respawnTiles().filter((p) => !this.encounterTiles[p.y].some(Boolean) && this.walkableRunWidth(p.x, p.y) >= 2);
+    if (candidates.length === 0) return false;
+
+    const tile = Phaser.Utils.Array.GetRandom(candidates);
+    const material = Phaser.Utils.Array.GetRandom(pool);
+    this.encounterTiles[tile.y][tile.x] = material;
+    this.addCrystalSprite(tile.x, tile.y, material);
+    return true;
+  }
+
+  // Qumatessence condenses again, valued by the same per-world tier window as
+  // the original scatter (data/tokens.ts). Two separate limits: a map never
+  // carries more pickups at once than it started with, and `tokenRespawnsLeft`
+  // caps how many it will ever give back, so walking a map over and over pays
+  // out a finite amount rather than an open-ended one.
+  private respawnToken(): boolean {
+    if (this.tokenRespawnsLeft <= 0 || this.tokenSprites.length >= this.tokenTarget) return false;
+    const candidates = this.respawnTiles();
+    if (candidates.length === 0) return false;
+
+    // The same "reward sits at the end of a detour" preference the generator's
+    // own scatter has (world/generators/shared.ts's scatterTokens).
+    const leaves = candidates.filter((p) => this.walkableDegree(p.x, p.y) === 1);
+    const tile = Phaser.Utils.Array.GetRandom(leaves.length > 0 ? leaves : candidates);
+    const value = pickTokenValue(this.world);
+    this.tokenTiles[tile.y][tile.x] = value;
+    this.addTokenSprite(tile.x, tile.y, value);
+    this.tokenRespawnsLeft -= 1;
+    return true;
+  }
+
+  // Every tile a respawn is allowed to land on: strictly north of the drawn
+  // world (RESPAWN_MIN_ROWS_AHEAD), walkable, empty, outside both passes, and
+  // off the three landmark tiles the guardian/boss/doors stand on.
+  private respawnTiles(): GridPoint[] {
+    const maxY = this.playerTile.y - RESPAWN_MIN_ROWS_AHEAD;
+    if (maxY < 0) return [];
+    // A pass is the one place a walkable run is allowed to be narrower than
+    // two tiles, and that exception only holds while nothing can stand in it
+    // (world/generators/shared.ts's passZoneRows) -- the same suppression the
+    // generator applies, recomputed from the three points mapState already
+    // carries.
+    const passRows = passZoneRows(this.startTile, this.goalTile, this.midTile);
+    const landmarks = new Set([this.startTile, this.goalTile, this.midTile].map((p) => `${p.x},${p.y}`));
+
+    const tiles: GridPoint[] = [];
+    for (let y = 0; y <= maxY; y++) {
+      if (passRows.has(y)) continue;
+      for (let x = 0; x < GRID_W; x++) {
+        if (!this.walkable[y]?.[x]) continue;
+        if (this.tokenTiles[y][x] || this.encounterTiles[y][x]) continue;
+        if (landmarks.has(`${x},${y}`)) continue;
+        tiles.push({ x, y });
+      }
+    }
+    return tiles;
+  }
+
+  // Width of the contiguous walkable run this tile sits in, along its own row.
+  private walkableRunWidth(x: number, y: number): number {
+    let left = x;
+    while (left > 0 && this.walkable[y][left - 1]) left--;
+    let right = x;
+    while (right < GRID_W - 1 && this.walkable[y][right + 1]) right++;
+    return right - left + 1;
+  }
+
+  // How many walkable neighbours a tile has; 1 marks the tip of a dead-end
+  // spur, which is where a pickup belongs.
+  private walkableDegree(x: number, y: number): number {
+    return [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ].filter(([dx, dy]) => this.walkable[y + dy]?.[x + dx]).length;
   }
 
   // This world's guardian (if any) stands (floats) mid-corridor as a visible
@@ -1591,7 +1761,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
         depth + CAMERA_BACK_TILES > 0.15 &&
         laneL <= LANE_CLIP &&
         laneR >= -LANE_CLIP &&
-        depth / DRAW_DISTANCE_TILES < 0.75;
+        depth / DRAW_DISTANCE_TILES < VISIBLE_DEPTH_FRACTION;
       c.container.setVisible(visible);
       c.label?.setVisible(visible);
       if (!visible) continue;

@@ -13,6 +13,13 @@ export const TILE_SCALE = 0.6;
 // to be painted to fill the frame depends on how far away it is (laneClipAt).
 export const LANE_CLIP = 8.5;
 export const DRAW_DISTANCE_TILES = 15;
+// The fraction of DRAW_DISTANCE_TILES a world sprite is still drawn within
+// (OverworldScene.updateWorldSprites) -- past it a crystal/pickup/landmark is
+// too deep into the fog to read, so it is culled rather than painted as a
+// speck. Exported because it is also the far edge of the player's field of
+// vision, which is what OverworldScene's respawn placement has to stay
+// beyond.
+export const VISIBLE_DEPTH_FRACTION = 0.75;
 // How far behind the player's own tile the camera sits, in tile-lengths.
 // Every depth handed to projectTile is measured from the player's tile
 // centre, and this is what turns that into the camera-relative depth the
