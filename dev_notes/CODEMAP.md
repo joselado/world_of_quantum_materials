@@ -1193,10 +1193,14 @@ question. `terrain/color.ts`'s `groundColor` is bound to that same row: its blen
 1, so the deepest row drawn arrives at the haze color exactly. That equality is what frees
 everything above the horizon line to be translucent -- ground that stops one blend short of the
 fog needs an opaque band over the join to hide the step, and an opaque band can never soften into
-anything (`WORLDS.md` section 4). Its exponent is held as low as that constraint allows, since it
-also sets how fast the color moves per row at the far end where projected rows are only a few
-pixels tall -- each row being one flat fill, a steep finish terraces the last stretch of ground,
-worst in the open-sky worlds whose fog target sits far above their ground in value by design.
+anything (`WORLDS.md` section 4). Its falloff is in two parts and where they meet is the point:
+a gentle curve up close, with the remaining blend taken smoothly to total only past `FOG_CLOSE`.
+Each grid row paints as one flat fill, so how fast the color moves *per row* is exactly how
+visibly the mid-distance terraces -- worst in the open-sky worlds, whose fog target sits far above
+their ground in value by design. Something has to be steep, since the blend must cross from
+nothing to total over one draw distance; `FOG_CLOSE` sits inside the reach of `drawHorizonBand`'s
+wash (`HORIZON_BAND_FROM`), so the rows carrying the fastest change are the rows already being
+painted over.
 `walkableHazeTarget` fades its own lightening out on the same
 schedule (`0.35 * (1 - depthRatio^3)`, flat enough to hold the route nearly to the end), or the
 repeated road surfaces as a bright stub against the band. `regionTintAt` puts a mapgen domain tint
@@ -1251,11 +1255,14 @@ ground plane's own fog arrives on, so the drift lives entirely above the deepest
 cannot open a step against it. Both mist passes read the same `tone`, so the ramp is continuous
 across the horizon line. (`fillVerticalFade` takes a `colorAt(y)` for this and lerps packed ints
 via `lerpColor`; it runs per scanline per frame, which is where Phaser `Color` objects would start
-costing allocation.) And the whole sky above the mist takes a flat wash of `target` at
+costing allocation.) And the sky takes a flat wash of `target` at
 `SKY_TINT_MAX * hazeBlend` -- zero until the forward blend runs, so it changes nothing in a world's
 own air, and at the gate it is what carries the clouds along with everything else. A bank of this
 world's untouched daylight clouds over the next world's mist is the loudest available statement
-that the color below them is an overlay rather than weather.
+that the color below them is an overlay rather than weather. The wash covers the sky whole, from
+the top of the frame down to the horizon line and under the mist band, rather than stopping where
+the band begins: a wash that ends anywhere the eye can find it has only moved the edge it was
+drawn to remove, and the band's own ramp starts from zero at exactly that height.
 
 `drawHorizonBand`'s own thinning is smoothstepped over `HORIZON_BAND_FROM` of the draw distance for
 the same reason its ends are: a ramp that starts falling the instant the opaque stretch ends puts a

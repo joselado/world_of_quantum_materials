@@ -515,8 +515,15 @@ about what a flat fill gives away:
 - **Near an open gate the whole sky goes with the mist, clouds included.** The air ahead becoming
   the next world's air is not a band across the middle of the frame; a bank of this world's
   untouched daylight clouds hanging over the next world's mist announces the colour below them as
-  an overlay louder than any edge could. This wash is absent with the gate shut, so a world in its
-  own air is untouched by it.
+  an overlay louder than any edge could. The wash runs to the top of the frame — one that stops
+  anywhere the eye can find it has only moved the edge it was meant to remove. It is absent with
+  the gate shut, so a world in its own air is untouched by it.
+
+A note on where a gradient is allowed to be steep, since something always must be. Every grid row
+of ground paints as one flat fill, so how fast a colour moves *per row* is exactly how visibly the
+distance terraces — and the depth fog has to cross from nothing to the full fog colour across one
+draw distance regardless. The resolution is to keep the near and middle distance gentle and spend
+the steepness late, where the horizon band's own wash is already painting over those rows.
 
 **Distant selves.** Just above the line stands the *next* world's silhouette, composed from that
 world's own `hillColor` (base) and `hillAlpha` (swallow) -- a world states how it looks from
