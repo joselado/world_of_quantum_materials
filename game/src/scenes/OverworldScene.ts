@@ -1891,12 +1891,16 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // Chained single-page panels rather than one scrolling page, the same
   // destroy-and-rebuild idiom renderTutorialTipPopup uses, since nothing
   // else in this file paginates body text (renderPagedButtons only
-  // paginates candidate-list buttons). onDone runs once page 2 is
-  // dismissed, so create() doesn't need its own branch for "lore already
-  // seen" vs "lore just finished."
+  // paginates candidate-list buttons). Each authored page is handed over as
+  // its own paragraph list so a page too tall for CANVAS_H splits across
+  // screens at a paragraph break instead of running off the canvas, and so
+  // a page break never falls mid-paragraph or bridges the authored page
+  // boundary. onDone runs once the last screen of page 2 is dismissed, so
+  // create() doesn't need its own branch for "lore already seen" vs "lore
+  // just finished."
   private showWorldLore(lore: WorldLore, onDone: () => void) {
-    this.renderWorldLorePage(lore.page1, 'Next ->', () =>
-      this.renderWorldLorePage(lore.page2, 'Onward', () => {
+    this.renderWorldLorePage(lore.page1.split('\n\n'), 'Next ->', () =>
+      this.renderWorldLorePage(lore.page2.split('\n\n'), 'Onward', () => {
         markWorldLoreSeen(this.game.registry, this.world);
         persistFromRegistry(this.game.registry);
         this.closeDialogue();
@@ -1905,20 +1909,24 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     );
   }
 
-  private renderWorldLorePage(body: string, buttonLabel: string, onContinue: () => void) {
+  // Renders as many of `paragraphs` as fit the canvas, then continues with
+  // whatever is left over on a further screen; `lastLabel` is the button on
+  // the screen that exhausts the list, intermediate screens read "Next ->".
+  private renderWorldLorePage(paragraphs: string[], lastLabel: string, onDone: () => void) {
     this.dialogueContainer?.destroy(true);
     this.dialogueActive = true;
 
     const panelWidth = CANVAS_W - 40;
     const top = 16;
+    const bottomMargin = 16;
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
 
     // Capped like BattleScene.drawMoveMenu's own chromeScale/headerScale --
-    // this panel's multi-paragraph prose is long enough that letting it
-    // scale all the way to the Settings panel's 2x "Large" preset overflows
-    // the fixed CANVAS_H, the same fixed-budget problem that cap already
-    // solves for the move menu's title/legend.
+    // the Settings panel's 2x "Large" preset would otherwise make this
+    // panel's multi-paragraph prose far taller than the fixed CANVAS_H, the
+    // same fixed-budget problem that cap already solves for the move menu's
+    // title/legend.
     const scale = Math.min(fontScale(this), 1.5);
 
     let y = top;
@@ -1935,9 +1943,30 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     container.add(title);
     y += title.height + 8;
 
+    // Built before the body so the fit budget below can use the button's
+    // real measured height. Its label and handler both depend on how much
+    // of the list actually fits, so they're filled in once that's known --
+    // the two labels are single-line at the same size, so setting the text
+    // afterwards can't change the height already budgeted against.
+    // fontSizePxOverride is capped the same way the body text is, otherwise
+    // the button falls through to addDialogueButtonAt's own uncapped
+    // default and eats into the margin the cap exists to protect.
+    let onContinue = () => {};
+    const btn = this.addDialogueButtonAt(
+      container,
+      CANVAS_W / 2,
+      0,
+      lastLabel,
+      () => onContinue(),
+      180,
+      `${Math.round(13 * scale)}px`
+    );
+
+    const bodyBudget = CANVAS_H - bottomMargin - (12 + btn.height + 12) - y;
+    let bodyPx = Math.round(11 * scale);
     const text = this.add
-      .text(CANVAS_W / 2, y, body, {
-        fontSize: `${Math.round(11 * scale)}px`,
+      .text(CANVAS_W / 2, y, paragraphs.join('\n\n'), {
+        fontSize: `${bodyPx}px`,
         color: '#e6d9ff',
         align: 'center',
         wordWrap: { width: panelWidth - 60 },
@@ -1945,21 +1974,29 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       })
       .setOrigin(0.5, 0);
     container.add(text);
+
+    let shown = paragraphs.length;
+    while (shown > 1 && text.height > bodyBudget) {
+      shown -= 1;
+      text.setText(paragraphs.slice(0, shown).join('\n\n'));
+    }
+    // Floor-9px shrink-to-fit backstop, same as showInfoPanel's, for the
+    // case a single paragraph is taller than the canvas on its own and
+    // there's no break left to take.
+    while (text.height > bodyBudget && bodyPx > 9) {
+      bodyPx -= 1;
+      text.setFontSize(`${bodyPx}px`);
+    }
     y += text.height + 12;
 
-    // fontSizePxOverride capped the same way the body text above is --
-    // otherwise the button would fall through to addDialogueButtonAt's own
-    // uncapped default and eat into the margin the body-text cap exists to
-    // protect.
-    const btn = this.addDialogueButtonAt(
-      container,
-      CANVAS_W / 2,
-      y,
-      buttonLabel,
-      onContinue,
-      180,
-      `${Math.round(13 * scale)}px`
-    );
+    const rest = paragraphs.slice(shown);
+    btn.setY(y);
+    if (rest.length) {
+      btn.setText('Next ->');
+      onContinue = () => this.renderWorldLorePage(rest, lastLabel, onDone);
+    } else {
+      onContinue = onDone;
+    }
     y += btn.height + 12;
 
     const panelHeight = y - top;
@@ -1983,16 +2020,20 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     }
 
     this.dialogueActive = true;
-    const panelY = 260;
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
 
-    const panel = this.add.rectangle(CANVAS_W / 2, panelY, 560, 200, PANEL_BG, 0.96).setStrokeStyle(2, STORY_LAVENDER);
-    container.add(panel);
+    // Capped the same way renderWorldLorePage caps its own prose -- these
+    // beats wrap to several more lines at the Settings panel's 2x "Large"
+    // preset than at the default, so the panel is sized to the text rather
+    // than the text being trusted to fit a fixed box.
+    const scale = Math.min(fontScale(this), 1.5);
+    const padding = 30;
+    const centerY = 260;
 
     const text = this.add
-      .text(CANVAS_W / 2, panelY - 70, line, {
-        fontSize: fontPx(this, 13),
+      .text(CANVAS_W / 2, 0, line, {
+        fontSize: `${Math.round(13 * scale)}px`,
         color: '#e6d9ff',
         align: 'center',
         wordWrap: { width: 500 },
@@ -2000,17 +2041,28 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       .setOrigin(0.5, 0);
     container.add(text);
 
-    this.addDialogueButtonAt(
+    const btn = this.addDialogueButtonAt(
       container,
       CANVAS_W / 2,
-      panelY + 60,
+      0,
       'Onward',
       () => {
         this.closeDialogue();
         this.advanceToWorld(completedWorld + 1);
       },
-      200
+      200,
+      `${Math.round(13 * scale)}px`
     );
+
+    const panelHeight = padding + text.height + 18 + btn.height + padding;
+    const top = Math.max(16, Math.round(centerY - panelHeight / 2));
+    text.setY(top + padding);
+    btn.setY(top + padding + text.height + 18);
+
+    const panel = this.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, 560, panelHeight, PANEL_BG, 0.96)
+      .setStrokeStyle(2, STORY_LAVENDER);
+    container.addAt(panel, 0);
   }
 
   // Shown once the last built world's rival is beaten -- a real ending

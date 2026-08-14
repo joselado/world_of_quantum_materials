@@ -1483,6 +1483,18 @@ a biome entry in `art/biomes.ts`) together if a future world is ever added past 
 (distinct from `rivalDefeated` -- you can visit a world without beating its rival), written
 once per world the first time that world's scene is created.
 
+**Long authored prose is fitted to the canvas, never assumed to fit.** `data/worldLore.ts`'s
+`WORLD_LORE` and `data/story.ts`'s `STORY_BEATS` are authored copy that varies a lot in
+length per world, so both of their panels size themselves to the text rather than the other
+way round. `showStoryBeat` sizes its panel rectangle to the measured beat and then centers
+it, and `renderWorldLorePage` takes an authored page as a paragraph list, drops trailing
+paragraphs that don't fit `CANVAS_H` onto a further screen, and falls back to the
+floor-`9`px shrink-to-fit loop `showInfoPanel` uses if a single paragraph is taller than the
+canvas by itself (see "The between-worlds story beat"/"The world-entry lore screen,"
+STYLE.md, for the layout numbers). Follow that shape for any new panel rendering per-world
+authored prose -- a fixed panel box plus an uncapped `fontPx` is what lets a longer entry
+for one world spill off the canvas while every other world looks fine.
+
 **Returning to the Hub always snapshots the in-progress world first.**
 `OverworldScene.returnToHub()` (H/Enter, the World 10 finale's "Return to the Lab", and
 `returnToPreviousWorld()`'s World-1 case -- every path from a world back to the Hub) calls

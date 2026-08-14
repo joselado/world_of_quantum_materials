@@ -1496,6 +1496,18 @@ than the caller's requested budget) for its own layout math.
   reopens this panel, since the confirm step itself (not a "seen it once"
   flag) is what keeps an accidental brush from becoming a real backtrack.
 
+## The between-worlds story beat (`OverworldScene.showStoryBeat`)
+
+- One line of `data/story.ts`'s `STORY_BEATS` on a single small panel, shown after a
+  world's rival falls and before `advanceToWorld` moves the player on. `560` wide,
+  height sized to the content (30px padding, the beat wrapped to 500px, 18px gap, the
+  "Onward" button, 30px padding) and then centered on `y = 260` with the top clamped to
+  a 16px margin, rather than a fixed box the text is trusted to fit. Stroked lavender
+  (`0xd9a5ff`), the color shared with the world-entry lore screen and the start-door
+  panel for "connective tissue between worlds." Body and button font are capped at
+  `Math.min(fontScale(this), 1.5)`, the same cap the lore screen's prose uses -- at the
+  uncapped 2x "Large" preset these beats wrap to several more lines than at the default.
+
 ## The world-entry lore screen (`OverworldScene.showWorldLore`/`renderWorldLorePage`)
 
 - The first time a save enters a world, before the player can otherwise interact with
@@ -1507,16 +1519,27 @@ than the caller's requested budget) for its own layout math.
   treatment as every other overworld dialogue, near-full-canvas width (`CANVAS_W - 40`),
   stroked lavender (`0xd9a5ff`) to match `showStoryBeat`'s and the start-door panel's
   own "connective tissue between worlds" convention. Heading is the world's name
-  (`WORLD_NAMES`); each page is laid out top-down (title, then body, then a button) with
+  (`WORLD_NAMES`); each screen is laid out top-down (title, then body, then a button) with
   the panel's background sized to the real content height afterward, the same idiom
-  `renderTutorialTipPopup` uses. Page 1 ends in a "Next ->" button that destroys and
-  rebuilds the panel showing page 2; page 2 ends in "Onward," which marks the world
-  seen, persists, and closes the dialogue. The title and body font sizes are capped at
+  `renderTutorialTipPopup` uses. The title and body font sizes are capped at
   `Math.min(fontScale(this), 1.5)` rather than scaling all the way to the Settings
   panel's 2x "Large" preset -- the same fixed-budget problem `BattleScene.drawMoveMenu`'s
-  own `chromeScale`/`headerScale` caps solve, since this panel's multi-paragraph prose is
-  long enough that uncapped 2x text overflows the canvas's fixed height on the longer
-  entries (worlds 9/10).
+  own `chromeScale`/`headerScale` caps solve.
+- The two authored pages are each rendered across **as many screens as the fixed
+  `CANVAS_H` needs**, so a page longer than the canvas is never trusted to fit one
+  screen. `renderWorldLorePage` takes a paragraph list (the authored page `split('\n\n')`),
+  measures its own continue button first so the fit budget uses the button's real height,
+  and drops trailing paragraphs until the body fits `CANVAS_H` minus the title, the
+  button and a 16px bottom margin; whatever is left over continues on a further screen.
+  Breaks therefore only ever fall on a paragraph boundary and never bridge the
+  page-1/page-2 boundary. Any screen that isn't the last one for its authored page reads
+  "Next ->"; the last screen of page 1 also reads "Next ->", and the last screen of page 2
+  reads "Onward," which marks the world seen, persists, and closes the dialogue. A single
+  paragraph taller than the canvas on its own has no break left to take, so the body
+  additionally carries the floor-`9`px shrink-to-fit loop `showInfoPanel` uses as a
+  backstop. With the current `WORLD_LORE` copy every world plays two screens except World
+  10, whose page 2 is three paragraphs and plays as two screens at the "Normal"/"Large"
+  presets and one at "Compact."
 
 ## The rival gate (`OverworldScene.showRivalEncounter`/`renderRivalTauntPage`)
 
