@@ -1,8 +1,25 @@
 // Small procedural music player -- no external audio assets, just
 // oscillators/noise scheduled through the Web Audio API. Both the overworld
-// and battle scenes get one looping score per world (relaxed major/minor-key
-// town themes; driving Golden Sun-style boss riffs), all 20 built from the
-// same handful of chord/pattern generators below. A second arrangement
+// and battle scenes get one looping score per world, all 20 built from the
+// same handful of chord/pattern generators below.
+//
+// The ten overworld scores are one arc, not ten moods. dev_notes/WORLDS.md's
+// light rule has the sequence darkening from morning to no-sky-at-all as
+// coherence is lost, so the music darkens with it, and its structure is that
+// rule's structure: Worlds 1-6 all sit on a C tonic while the *mode* drains
+// (Ionian, Lydian, Mixolydian, Aeolian, Phrygian), so it is one light going
+// out rather than six unrelated keys; World 6 returns to World 1's own key
+// as the false calm; and World 7 moves a tritone to F# and stays there,
+// because after World 7 the sun does not come back. That tritone is planted
+// twice before it takes over -- as World 2's raised fourth and World 6's
+// aurora drone -- and C returns inside it as World 10's raised fourth, the
+// dead sun seen in the mirror. See the per-world comments below.
+//
+// The battle scores deliberately do *not* follow that arc: they stay bright,
+// fast and driving in every world, because a fight is the player's own
+// coherence pushing back against a world losing its own.
+//
+// A second arrangement
 // reuses each world's own key/tempo through its own pair of generators
 // instead of retuning anything: "Modern" (SCORES_MODERN) is an ambient
 // orchestral-pad style -- sustained extended-chord string pads, a melodic
@@ -135,12 +152,27 @@ const OVERWORLD_BRIDGE_MELODY: ToneNote[] = [
   { midi: n('C5'), beats: 0.5 }, { midi: n('E5'), beats: 0.5 }, { midi: n('A4'), beats: 1 },
 ];
 
+// The pad alternates between the fifth above the root and the fifth below
+// it, bar by bar: two voicings of the same chord, equally correct, the world
+// settling into one or the other. World 1's map splits into the two
+// degenerate symmetry-broken ground states, and this is that in the harmony.
+function padAlternatingFifthBar(rootName: string, bar: number): ToneNote[] {
+  return [{ midi: n(rootName) + (bar % 2 === 0 ? 7 : -5), beats: 4 }];
+}
+
 const OVERWORLD_SCORE: Score = {
-  bpm: 108,
+  bpm: 96,
   loopBeats: OVERWORLD_BASS_ROOTS.length * 4,
   tracks: [
     { kind: 'tone', wave: 'triangle', gain: 0.16, notes: OVERWORLD_BASS_ROOTS.flatMap(padBassBar) },
-    { kind: 'tone', wave: 'sine', gain: 0.07, notes: OVERWORLD_PAD_ROOTS.flatMap(padFifthBar) },
+    {
+      kind: 'tone',
+      wave: 'sine',
+      gain: 0.075,
+      attack: 0.6,
+      release: 1.2,
+      notes: OVERWORLD_PAD_ROOTS.flatMap(padAlternatingFifthBar),
+    },
     {
       kind: 'tone',
       wave: 'sine',
@@ -161,7 +193,21 @@ const OVERWORLD_SCORE: Score = {
 // key/mode, tempo, chord progression, shape sequence, and lead timbre to
 // match its biome's mood (see DESIGN.md §2's biome column).
 
-type MelodyShape = 'skipUp' | 'skipDown' | 'arpUpDown' | 'arch' | 'zigzag' | 'sparse' | 'glitch';
+type MelodyShape =
+  | 'skipUp'
+  | 'skipDown'
+  | 'arpUpDown'
+  | 'arch'
+  | 'zigzag'
+  | 'sparse'
+  | 'glitch'
+  | 'cellsA'
+  | 'cellsB'
+  | 'race'
+  | 'lilt'
+  | 'liltUp'
+  | 'still'
+  | 'stillRest';
 
 // One bar (always 4 beats) of melody derived purely from a chord's root +
 // quality, the same "no per-note hand authoring" idea as vampBar/stabBar --
@@ -173,6 +219,8 @@ function melodyBar(rootName: string, quality: 'maj' | 'min', shape: MelodyShape,
   const sixth = root + (quality === 'maj' ? 9 : 8);
   const second = root + 2;
   const seventh = root + (quality === 'maj' ? 11 : 10);
+  const fourth = root + 5;
+  const sharpFourth = root + 6;
 
   switch (shape) {
     case 'skipUp':
@@ -214,7 +262,97 @@ function melodyBar(rootName: string, quality: 'maj' | 'min', shape: MelodyShape,
         { midi: fifth, beats: 0.25 }, { midi: null, beats: 0.25 }, { midi: root + 12, beats: 0.5 },
         { midi: sixth, beats: 0.5 }, { midi: null, beats: 0.5 }, { midi: third, beats: 1 },
       ];
+    case 'cellsA':
+    case 'cellsB':
+      // Two short fixed motifs that alternate bar by bar instead of one
+      // contour repeating -- a built, periodic tune for a built, periodic
+      // world, with the raised fourth in cell A carrying the Lydian colour.
+      return shape === 'cellsA'
+        ? [
+            { midi: third, beats: 1 }, { midi: fifth, beats: 1 },
+            { midi: sharpFourth, beats: 1 }, { midi: third, beats: 1 },
+          ]
+        : [
+            { midi: root, beats: 1 }, { midi: third, beats: 1 },
+            { midi: fifth, beats: 0.5 }, { midi: third, beats: 0.5 }, { midi: root, beats: 1 },
+          ];
+    case 'race':
+      // Eight unbroken eighth-notes, stepwise and never resting -- wind
+      // moving fast over ground that cannot move at all.
+      return [
+        { midi: root, beats: 0.5 }, { midi: second, beats: 0.5 }, { midi: third, beats: 0.5 }, { midi: fifth, beats: 0.5 },
+        { midi: sixth, beats: 0.5 }, { midi: fifth, beats: 0.5 }, { midi: third, beats: 0.5 }, { midi: second, beats: 0.5 },
+      ];
+    case 'lilt':
+      // A 3+3+2 swing across the bar -- the ground's own ripple, pleasant
+      // enough to relax into.
+      return [
+        { midi: third, beats: 1.5 }, { midi: second, beats: 1.5 }, { midi: root, beats: 1 },
+      ];
+    case 'liltUp':
+      return [
+        { midi: fifth, beats: 1.5 }, { midi: fourth, beats: 1.5 }, { midi: third, beats: 1 },
+      ];
+    case 'still':
+      // One held tone per bar, on the bare fifth so a phrase can end without
+      // ever arriving on the tonic, and 'stillRest' gives back whole bars of
+      // real silence. Cold and unresolved rather than merely slow.
+      return [{ midi: fifth, beats: 4 }];
+    case 'stillRest':
+      return [{ midi: null, beats: 4 }];
   }
+}
+
+// Rotates a looping voice later in time by `beats`: the tail that falls off
+// the end wraps around to the front. A canon built this way keeps the
+// score's exact loopBeats and still lines up correctly across the loop seam,
+// which a leading rest plus a truncated tail would not.
+function rotateNotes(notes: ToneNote[], beats: number): ToneNote[] {
+  const total = notes.reduce((sum, note) => sum + note.beats, 0);
+  const shift = ((beats % total) + total) % total;
+  if (shift === 0) return notes.map((note) => ({ ...note }));
+  const body = notes.map((note) => ({ ...note }));
+  const head: ToneNote[] = [];
+  let remaining = shift;
+  while (remaining > 0) {
+    const last = body[body.length - 1];
+    if (last.beats <= remaining) {
+      remaining -= last.beats;
+      head.unshift(body.pop()!);
+    } else {
+      last.beats -= remaining;
+      head.unshift({ midi: last.midi, beats: remaining });
+      remaining = 0;
+    }
+  }
+  return [...head, ...body];
+}
+
+// A fixed pitch held across the whole loop, as its own voice -- used where a
+// world needs something that never changes with the harmony underneath it
+// (World 6's aurora, World 10's tritone). `gaps` breaks the hold into two
+// long notes with a beat of silence between them, so the drone stutters.
+function droneTrack(
+  midi: number,
+  loopBeats: number,
+  opts: { gain: number; attack?: number; wave?: Wave; wet?: number; stutter?: boolean }
+): Track {
+  const notes: ToneNote[] = opts.stutter
+    ? [
+        { midi, beats: loopBeats / 2 - 1 },
+        { midi: null, beats: 1 },
+        { midi, beats: loopBeats / 2 - 1 },
+        { midi: null, beats: 1 },
+      ]
+    : [{ midi, beats: loopBeats }];
+  return {
+    kind: 'tone',
+    wave: opts.wave ?? 'sine',
+    gain: opts.gain,
+    attack: opts.attack,
+    wet: opts.wet,
+    notes,
+  };
 }
 
 type ChordStep = [string, 'maj' | 'min'];
@@ -228,138 +366,380 @@ interface OverworldScoreConfig {
   leadWave?: Wave;
   leadGain?: number;
   leadUnison?: boolean;
+  leadUnisonSpread?: number;
+  leadOctave?: number; // semitones above the chord root's own register; defaults to 12
+  leadDrive?: boolean;
+  leadAttack?: number;
+  leadWet?: number;
   padWave?: Wave;
+  padGain?: number;
+  padAttack?: number;
+  padRelease?: number;
+  padWet?: number;
+  padMode?: 'fifth' | 'none';
   bassWave?: Wave;
+  bassGain?: number;
+  // 'arp' is the walking root-octave-root figure; 'whole' holds one note per
+  // bar; 'slow' holds one across every two bars; 'none' removes the bass
+  // entirely, for a world standing on nothing.
+  bassMode?: 'arp' | 'whole' | 'slow' | 'none';
+  bassAttack?: number;
   counterShapes?: MelodyShape[]; // an optional second, quieter interlocking voice
+  // An optional canon: a second copy of the lead entering this many beats
+  // later, answering it with its own line.
+  mirrorDelayBeats?: number;
+  mirrorGain?: number;
+  extraTracks?: Track[];
 }
 
 function makeOverworldScore(cfg: OverworldScoreConfig): Score {
   const chords = [...cfg.verse, ...cfg.bridge];
   const bassRoots = chords.map(([r]) => r);
+  const loopBeats = chords.length * 4;
+  const leadOctave = cfg.leadOctave ?? 12;
+  const shapeFor = (shapes: MelodyShape[], i: number) => shapes[i % shapes.length];
   const lead = [
-    ...cfg.verse.flatMap(([r, q], i) => melodyBar(r, q, cfg.verseShapes[i % cfg.verseShapes.length])),
-    ...cfg.bridge.flatMap(([r, q], i) => melodyBar(r, q, cfg.bridgeShapes[i % cfg.bridgeShapes.length])),
+    ...cfg.verse.flatMap(([r, q], i) => melodyBar(r, q, shapeFor(cfg.verseShapes, i), leadOctave)),
+    ...cfg.bridge.flatMap(([r, q], i) => melodyBar(r, q, shapeFor(cfg.bridgeShapes, i), leadOctave)),
   ];
-  const tracks: Track[] = [
-    { kind: 'tone', wave: cfg.bassWave ?? 'triangle', gain: 0.15, notes: bassRoots.flatMap(padBassBar) },
-    { kind: 'tone', wave: cfg.padWave ?? 'sine', gain: 0.07, notes: bassRoots.flatMap(padFifthBar) },
-    { kind: 'tone', wave: cfg.leadWave ?? 'sine', gain: cfg.leadGain ?? 0.19, unison: cfg.leadUnison, notes: lead },
-  ];
+
+  const tracks: Track[] = [];
+
+  const bassMode = cfg.bassMode ?? 'arp';
+  if (bassMode !== 'none') {
+    let bassNotes: ToneNote[];
+    if (bassMode === 'arp') bassNotes = bassRoots.flatMap(padBassBar);
+    else if (bassMode === 'whole') bassNotes = bassRoots.map((r) => ({ midi: n(r), beats: 4 }));
+    else bassNotes = bassRoots.filter((_, i) => i % 2 === 0).map((r) => ({ midi: n(r), beats: 8 }));
+    tracks.push({
+      kind: 'tone',
+      wave: cfg.bassWave ?? 'triangle',
+      gain: cfg.bassGain ?? 0.15,
+      attack: cfg.bassAttack,
+      notes: bassNotes,
+    });
+  }
+
+  if ((cfg.padMode ?? 'fifth') !== 'none') {
+    tracks.push({
+      kind: 'tone',
+      wave: cfg.padWave ?? 'sine',
+      gain: cfg.padGain ?? 0.07,
+      attack: cfg.padAttack,
+      release: cfg.padRelease,
+      wet: cfg.padWet,
+      notes: bassRoots.flatMap(padFifthBar),
+    });
+  }
+
+  tracks.push({
+    kind: 'tone',
+    wave: cfg.leadWave ?? 'sine',
+    gain: cfg.leadGain ?? 0.19,
+    unison: cfg.leadUnison,
+    unisonSpread: cfg.leadUnisonSpread,
+    drive: cfg.leadDrive,
+    attack: cfg.leadAttack,
+    wet: cfg.leadWet,
+    notes: lead,
+  });
+
+  if (cfg.mirrorDelayBeats) {
+    tracks.push({
+      kind: 'tone',
+      wave: cfg.leadWave ?? 'sine',
+      gain: cfg.mirrorGain ?? (cfg.leadGain ?? 0.19) * 0.8,
+      unison: true,
+      unisonSpread: cfg.leadUnisonSpread,
+      wet: cfg.leadWet,
+      notes: rotateNotes(lead, cfg.mirrorDelayBeats),
+    });
+  }
+
   if (cfg.counterShapes) {
     const counter = [
-      ...cfg.verse.flatMap(([r, q], i) => melodyBar(r, q, cfg.counterShapes![i % cfg.counterShapes!.length], 0)),
-      ...cfg.bridge.flatMap(([r, q], i) => melodyBar(r, q, cfg.counterShapes![i % cfg.counterShapes!.length], 0)),
+      ...cfg.verse.flatMap(([r, q], i) => melodyBar(r, q, shapeFor(cfg.counterShapes!, i), 0)),
+      ...cfg.bridge.flatMap(([r, q], i) => melodyBar(r, q, shapeFor(cfg.counterShapes!, i), 0)),
     ];
     tracks.push({ kind: 'tone', wave: cfg.leadWave ?? 'sine', gain: (cfg.leadGain ?? 0.19) * 0.5, notes: counter });
   }
-  return { bpm: cfg.bpm, loopBeats: chords.length * 4, tracks };
+
+  if (cfg.extraTracks) tracks.push(...cfg.extraTracks);
+
+  return { bpm: cfg.bpm, loopBeats, tracks };
 }
 
-// World 2, Bloch Caverns (symmetries/tight-binding): echoing minor
-// arpeggios, moderate tempo -- A minor.
+// World 2 (symmetries/tight-binding): C Lydian, the raised fourth making
+// hard midday light out of the same tonic World 1 sits on. Two short fixed
+// motifs alternate bar by bar rather than one contour repeating -- a built,
+// periodic world gets a built, periodic tune, and the two motifs are the
+// two-atom basis. The F# in that raised fourth is also the first sounding of
+// the pitch Worlds 7-10 eventually move to permanently.
 const OVERWORLD_SCORE_2 = makeOverworldScore({
   bpm: 100,
-  verse: [['A2', 'min'], ['F2', 'maj'], ['C3', 'maj'], ['G2', 'maj']],
-  bridge: [['D2', 'min'], ['E2', 'min'], ['A2', 'min'], ['F2', 'maj']],
-  verseShapes: ['arpUpDown', 'skipDown'],
-  bridgeShapes: ['skipDown', 'arpUpDown'],
+  verse: [['C3', 'maj'], ['D3', 'maj'], ['C3', 'maj'], ['D3', 'maj']],
+  bridge: [['E2', 'min'], ['D3', 'maj'], ['C3', 'maj'], ['D3', 'maj']],
+  verseShapes: ['cellsA', 'cellsB'],
+  bridgeShapes: ['cellsB', 'cellsA'],
   leadWave: 'triangle',
+  bassMode: 'whole',
+  padGain: 0.06,
 });
 
-// World 3, Topological Islands (topological band theory): airy and major,
-// slower -- D major.
+// World 3 (topological band theory): C Mixolydian -- the flat seventh takes
+// the first real step down from World 1's bright major without darkening
+// into a minor key. Eight unbroken eighth-notes over a bass that holds one
+// note per bar and never moves: wind racing across ground that cannot move
+// at all, which is the world's whole picture.
 const OVERWORLD_SCORE_3 = makeOverworldScore({
-  bpm: 96,
-  verse: [['D3', 'maj'], ['A2', 'maj'], ['B2', 'min'], ['G2', 'maj']],
-  bridge: [['E2', 'min'], ['A2', 'maj'], ['D3', 'maj'], ['G2', 'maj']],
-  verseShapes: ['arch', 'skipUp'],
-  bridgeShapes: ['skipUp', 'arch'],
-  leadGain: 0.17,
+  bpm: 104,
+  verse: [['C3', 'maj'], ['A#2', 'maj'], ['C3', 'maj'], ['F2', 'maj']],
+  bridge: [['G2', 'min'], ['A#2', 'maj'], ['C3', 'maj'], ['F2', 'maj']],
+  verseShapes: ['race'],
+  bridgeShapes: ['race'],
+  leadGain: 0.16,
+  bassMode: 'whole',
 });
 
-// World 4, Landau Level Terrain (QHE/Landau levels): a circular, repeating
-// arpeggiated motif for quantized orbits -- E minor, driving.
+// World 4 (QHE/Landau levels): C Aeolian, the first genuinely minor world.
+// The circular arpeggio stands for the quantised orbits, and a crash on the
+// first beat of every fourth bar is the storm overhead -- the first
+// percussion anywhere in the overworld, and the reason it registers as
+// weather rather than as a drum kit.
 const OVERWORLD_SCORE_4 = makeOverworldScore({
   bpm: 132,
-  verse: [['E2', 'min'], ['C3', 'maj'], ['D3', 'maj'], ['B2', 'min']],
-  bridge: [['A2', 'min'], ['E2', 'min'], ['C3', 'maj'], ['D3', 'maj']],
+  verse: [['C3', 'min'], ['G#2', 'maj'], ['D#3', 'maj'], ['A#2', 'maj']],
+  bridge: [['F2', 'min'], ['C3', 'min'], ['G#2', 'maj'], ['A#2', 'maj']],
   verseShapes: ['arpUpDown'],
   bridgeShapes: ['arpUpDown'],
   leadWave: 'triangle',
   leadGain: 0.16,
+  extraTracks: [
+    {
+      kind: 'crash',
+      gain: 0.1,
+      notes: [
+        { hit: true, beats: 16 },
+        { hit: true, beats: 16 },
+      ],
+    },
+  ],
 });
 
-// World 5, Frozen Zero-Resistance Caverns (superconductivity/Majorana): a
-// sparse, cold drone rather than a running line -- F minor, slow.
+// World 5 (superconductivity/Majorana): C Phrygian. The flat second is the
+// coldest degree available and it is the world's whole colour, sounded as a
+// Db chord the harmony keeps falling onto. One held tone per bar on the bare
+// fifth, whole bars of real silence, and a bass moving once every two bars
+// -- nothing here ever arrives on the tonic.
 const OVERWORLD_SCORE_5 = makeOverworldScore({
   bpm: 84,
-  verse: [['F2', 'min'], ['D#2', 'maj'], ['C3', 'min'], ['G#2', 'maj']],
-  bridge: [['A#2', 'min'], ['F2', 'min'], ['D#2', 'maj'], ['C3', 'min']],
-  verseShapes: ['sparse'],
-  bridgeShapes: ['sparse'],
+  verse: [['C3', 'min'], ['C#3', 'maj'], ['C3', 'min'], ['C#3', 'maj']],
+  bridge: [['G#2', 'maj'], ['C#3', 'maj'], ['C3', 'min'], ['C#3', 'maj']],
+  verseShapes: ['still', 'still', 'stillRest', 'still'],
+  bridgeShapes: ['still', 'still', 'stillRest', 'still'],
   leadWave: 'sine',
   leadGain: 0.14,
   padWave: 'triangle',
+  padAttack: 0.9,
+  padRelease: 1.4,
+  bassMode: 'slow',
+  bassAttack: 0.5,
 });
 
-// World 6, Magnon Plains (classical magnetism/magnons): bright,
-// pentatonic-leaning skips -- G major, a little faster than world 1.
+// World 6 (classical magnetism/magnons): the false calm. The mode goes all
+// the way back to C Ionian -- World 1's own key and its own I-V-vi-IV -- so
+// the relief is real rather than implied, which is what makes this the one
+// world the player relaxes into. The tell is a single F#5 that holds right
+// through the loop and stutters twice, exactly like the aurora it stands
+// for. Against C and G it is a bright raised fourth; against F it is a
+// semitone grind that never resolves, and it is the pitch the back half of
+// the game is about to move to permanently. The danger is audible before it
+// is nameable.
 const OVERWORLD_SCORE_6 = makeOverworldScore({
   bpm: 116,
-  verse: [['G2', 'maj'], ['D3', 'maj'], ['E2', 'min'], ['C3', 'maj']],
-  bridge: [['A2', 'min'], ['D3', 'maj'], ['G2', 'maj'], ['C3', 'maj']],
-  verseShapes: ['skipUp', 'zigzag'],
-  bridgeShapes: ['zigzag', 'skipUp'],
+  verse: [['C3', 'maj'], ['G2', 'maj'], ['A2', 'min'], ['F2', 'maj']],
+  bridge: [['A2', 'min'], ['F2', 'maj'], ['C3', 'maj'], ['G2', 'maj']],
+  verseShapes: ['lilt', 'liltUp'],
+  bridgeShapes: ['liltUp', 'lilt'],
+  extraTracks: [droneTrack(n('F#5'), 32, { gain: 0.055, attack: 2, stutter: true })],
 });
 
-// World 7, Tensor-Network World (entanglement/tensor networks): two
-// interlocking voices (lead + a quieter counter-melody in a different
-// register/shape), matching "bonds as paths" -- B minor.
-const OVERWORLD_SCORE_7 = makeOverworldScore({
-  bpm: 120,
-  verse: [['B2', 'min'], ['G2', 'maj'], ['A2', 'maj'], ['F#2', 'min']],
-  bridge: [['E2', 'min'], ['B2', 'min'], ['G2', 'maj'], ['A2', 'maj']],
-  verseShapes: ['zigzag', 'arch'],
-  bridgeShapes: ['arch', 'zigzag'],
-  counterShapes: ['arpUpDown', 'skipDown'],
-  leadWave: 'triangle',
+// World 7 (entanglement/tensor networks) -- the hard turn, and the one place
+// in the game where the arrangement itself breaks rather than darkens.
+//
+// The tonic moves a tritone, from the C that carried Worlds 1-6 to the F#
+// that holds for the rest of the game; a tritone is the one interval with no
+// pull back home, which is the point. Several things change at once, because
+// the light rule (dev_notes/WORLDS.md) puts a discontinuity here rather than
+// another step down: the bass and the pad are *deleted*, so nothing supports
+// the music from below or fills the space around it -- no ground, no sky,
+// only the network; the ambience send switches on for the first time
+// anywhere in the game, so the only thing answering the melody is the room
+// itself, which is what "all light from here on is emitted by the world
+// rather than received from above" sounds like; and there is no chord
+// progression at all.
+//
+// The pitch collection is whole-tone: no leading tone and no tonic, six
+// pitches all equally far apart, so the ear cannot decide where home is. It
+// is also closed under transposition by a major third, so the canon below
+// moves its cell up and down the collection without ever leaving it --
+// geometry that continues in every direction and never arrives, which is a
+// tensor network drawn in pitch.
+const WORLD7_CELL: ToneNote[] = [
+  { midi: n('F#4'), beats: 1 },
+  { midi: n('A#4'), beats: 1 },
+  { midi: n('D5'), beats: 1.5 },
+  { midi: n('C5'), beats: 0.5 },
+];
+// Even semitone offsets only -- every one lands back inside the collection.
+const WORLD7_OFFSETS = [0, 2, 4, 2, 0, -2, -4, -2];
+const WORLD7_LEAD: ToneNote[] = WORLD7_OFFSETS.flatMap((offset) =>
+  WORLD7_CELL.map((note) => ({ midi: note.midi! + offset, beats: note.beats }))
+);
+
+const OVERWORLD_SCORE_7: Score = {
+  bpm: 76,
+  loopBeats: 32,
+  tracks: [
+    { kind: 'tone', wave: 'triangle', gain: 0.19, attack: 0.15, wet: 0.5, notes: WORLD7_LEAD },
+    // The answering strand: the same cell a major third away, entering two
+    // beats later. Two parts of one structure rather than a tune and its
+    // backing, since the network is all there is here.
+    {
+      kind: 'tone',
+      wave: 'triangle',
+      gain: 0.145,
+      attack: 0.15,
+      wet: 0.5,
+      notes: rotateNotes(
+        WORLD7_LEAD.map((note) => ({ midi: note.midi! + 4, beats: note.beats })),
+        2
+      ),
+    },
+  ],
+};
+
+// World 8 (quantum magnetism/spinons/Kondo) -- the loss beat.
+//
+// The world reuses World 1's own tree sprites, dead and grey, and the score
+// does the same thing to World 1's own tune: the meadow melody moved to the
+// tritone pole and bent into F# Phrygian, at little over half the speed. The
+// player is meant to almost recognise it. A quote earns its place here and
+// nowhere else, because this is the only world built out of an earlier
+// world's material -- what is taken from the player is specifically the
+// thing they were given first.
+const F_SHARP_PHRYGIAN = [6, 7, 9, 11, 1, 2, 4]; // F# G A B C# D E, as pitch classes
+
+// Up a tritone, then any pitch landing outside the mode pushed *down* to the
+// nearest degree inside it. Downward is what does the damage: it is what
+// turns the meadow's major thirds into minor ones, so the tune arrives
+// already grieving rather than merely transposed.
+function toPhrygianTritone(midi: number): number {
+  const up = midi + 6;
+  for (let drop = 0; drop < 12; drop++) {
+    if (F_SHARP_PHRYGIAN.includes((((up - drop) % 12) + 12) % 12)) return up - drop;
+  }
+  return up;
+}
+
+// Each successive phrase loses one more note from its end, so the tune keeps
+// trying to finish and keeps failing, and the loop's last bar is silence in
+// every voice -- the fog, with only the delay tail left in it. World 1's
+// verse is 4 phrases of 6 notes; at doubled note lengths that is 8 slow
+// bars, and the truncations take 0, 2, 3 and 4 beats back as silence.
+const WORLD8_PHRASE_TRUNCATION = [0, 1, 2, 3]; // notes dropped from each phrase's end
+
+const WORLD8_LEAD: ToneNote[] = WORLD8_PHRASE_TRUNCATION.flatMap((drop, phrase) => {
+  const source = OVERWORLD_VERSE_MELODY.slice(phrase * 6, phrase * 6 + 6);
+  const kept = source.slice(0, source.length - drop);
+  const rest = source.slice(source.length - drop).reduce((sum, note) => sum + note.beats * 2, 0);
+  const notes: ToneNote[] = kept.map((note) => ({
+    midi: note.midi === null ? null : toPhrygianTritone(note.midi),
+    beats: note.beats * 2,
+  }));
+  if (rest > 0) notes.push({ midi: null, beats: rest });
+  return notes;
 });
 
-// World 8, Spinon Forest (quantum magnetism/spinons/Kondo): hazy and low-
-// contrast -- C minor, sparse phrasing, low gains.
-const OVERWORLD_SCORE_8 = makeOverworldScore({
-  bpm: 88,
-  verse: [['C3', 'min'], ['G#2', 'maj'], ['A#2', 'maj'], ['F2', 'min']],
-  bridge: [['D#2', 'maj'], ['C3', 'min'], ['G#2', 'maj'], ['F2', 'min']],
-  verseShapes: ['sparse', 'skipDown'],
-  bridgeShapes: ['skipDown', 'sparse'],
-  leadGain: 0.13,
-  padWave: 'triangle',
-});
+// Seven bars of harmony and then nothing: the eighth bar is the fog.
+const WORLD8_CHORDS: ChordStep[] = [
+  ['F#2', 'min'], ['G2', 'maj'], ['F#2', 'min'], ['D2', 'maj'],
+  ['B2', 'min'], ['G2', 'maj'], ['F#2', 'min'],
+];
 
-// World 9, Defect Wastes (excitations and defects): glitchy, irregular
-// subdivisions -- D minor, quick tempo that never quite settles.
+const OVERWORLD_SCORE_8: Score = {
+  bpm: 58,
+  loopBeats: 32,
+  tracks: [
+    {
+      kind: 'tone',
+      wave: 'triangle',
+      gain: 0.1,
+      attack: 0.8,
+      release: 1.5,
+      notes: [...WORLD8_CHORDS.map(([r]) => ({ midi: n(r), beats: 4 })), { midi: null, beats: 4 }],
+    },
+    {
+      kind: 'tone',
+      wave: 'sine',
+      gain: 0.05,
+      attack: 0.9,
+      wet: 0.45,
+      notes: [...WORLD8_CHORDS.flatMap(([r]) => padFifthBar(r)), { midi: null, beats: 4 }],
+    },
+    { kind: 'tone', wave: 'sine', gain: 0.13, attack: 0.2, wet: 0.45, notes: WORLD8_LEAD },
+  ],
+};
+
+// World 9 (excitations and defects): F# Phrygian dominant -- a major third
+// over a flat second, the most scorched mode available, and the F# and G
+// chords grind a semitone against each other exactly as this world's healed
+// scars sit against its open ones. Driven square lead, and a bare kick on
+// the first beat of every bar: not a groove, a pulse under the crust.
 const OVERWORLD_SCORE_9 = makeOverworldScore({
   bpm: 140,
-  verse: [['D2', 'min'], ['A#2', 'maj'], ['C3', 'maj'], ['A2', 'min']],
-  bridge: [['G2', 'min'], ['D2', 'min'], ['A#2', 'maj'], ['C3', 'maj']],
+  verse: [['F#2', 'maj'], ['G2', 'maj'], ['F#2', 'maj'], ['G2', 'maj']],
+  bridge: [['B2', 'min'], ['G2', 'maj'], ['F#2', 'maj'], ['G2', 'maj']],
   verseShapes: ['glitch'],
   bridgeShapes: ['glitch'],
   leadWave: 'square',
   leadGain: 0.12,
+  leadDrive: true,
+  leadWet: 0.2,
+  padGain: 0.05,
+  extraTracks: [{ kind: 'kick', gain: 0.34, notes: kickPulseSparse(8) }],
 });
 
-// World 10, The Adaptive Meta-World (finale): a shimmering reprise mixing an earlier
-// arpeggiated shape with an earlier arching one -- A major, unison-detuned
-// lead for a "reflection" shimmer.
+// World 10 (ML for quantum materials): F# Lydian -- and its raised fourth is
+// C, the tonic Worlds 1-6 were built on, returning as a colour inside the
+// mirror rather than as a home that can be gone back to. The dead sun,
+// reflected.
+//
+// The lead is answered by an exact copy of itself a bar later: not a harmony
+// part, the same line, arriving after you. That is the world modelling the
+// player, and it is the only voice in the game that plays what another voice
+// has already played. A fixed F#-C tritone holds under everything, and the
+// wettest send in the game puts the whole thing at a distance, as though
+// heard from inside something else.
 const OVERWORLD_SCORE_10 = makeOverworldScore({
-  bpm: 112,
-  verse: [['A2', 'maj'], ['E2', 'maj'], ['F#2', 'min'], ['D2', 'maj']],
-  bridge: [['B2', 'min'], ['E2', 'maj'], ['A2', 'maj'], ['D2', 'maj']],
+  bpm: 158,
+  verse: [['F#2', 'maj'], ['G#2', 'maj'], ['F#2', 'maj'], ['D#2', 'min']],
+  bridge: [['G#2', 'maj'], ['D#2', 'min'], ['G#2', 'maj'], ['F#2', 'maj']],
   verseShapes: ['arpUpDown', 'arch'],
   bridgeShapes: ['arch', 'arpUpDown'],
   leadUnison: true,
-  leadGain: 0.16,
+  leadUnisonSpread: 16,
+  leadGain: 0.15,
+  leadWet: 0.6,
+  padMode: 'none',
+  bassMode: 'whole',
+  bassGain: 0.12,
+  mirrorDelayBeats: 4,
+  mirrorGain: 0.12,
+  extraTracks: [
+    droneTrack(n('F#3'), 32, { gain: 0.05, attack: 1.5 }),
+    droneTrack(n('C4'), 32, { gain: 0.045, attack: 1.5, wet: 0.4 }),
+  ],
 });
 
 // A "root,root,3rd,5th" x2 eighth-note vamp -- the driving ostinato shape
@@ -439,6 +819,136 @@ function sectionBars(
   return chords.flatMap(([root, quality], i) => overrides[i] ?? gen(root, quality));
 }
 
+// --- Battle articulation --------------------------------------------------
+//
+// The battle theme's shape (vamp, stab lead, march, two crashes) is what
+// makes it exciting and is deliberately left alone. What these add is
+// articulation: the places a live band would push, drop out or lean on the
+// beat, which is the difference between a riff being played and a riff being
+// sequenced. They are separate from the plain kickPulse/snarePulse/hatPulse
+// patterns rather than changes to them, because the Modern arrangement's
+// battle kit still uses those.
+
+// Backbeat on 2 and 4, with beat 4 of `dragBar` broken into four sixteenths
+// -- a fill that drags the music over the seam into the reprise instead of
+// letting the section merely stop and restart.
+function battleSnarePattern(bars: number, dragBar: number): PercNote[] {
+  const notes: PercNote[] = [];
+  for (let bar = 0; bar < bars; bar++) {
+    for (let beat = 0; beat < 4; beat++) {
+      if (bar === dragBar && beat === 3) {
+        for (let i = 0; i < 4; i++) notes.push({ hit: true, beats: 0.25 });
+      } else {
+        notes.push({ hit: beat % 2 === 1, beats: 1 });
+      }
+    }
+  }
+  return notes;
+}
+
+// Offbeat eighths throughout, with two exceptions: the "and" of beat 4 in a
+// phrase-ending bar becomes two sixteenths, a lift that marks the phrase
+// without spending a fill on it; and the first two beats of `dropBar` go
+// silent so the kick and sub-bass are briefly left alone.
+function battleHatPattern(bars: number, liftBars: number[], dropBar: number): PercNote[] {
+  const notes: PercNote[] = [];
+  for (let bar = 0; bar < bars; bar++) {
+    for (let beat = 0; beat < 4; beat++) {
+      if (liftBars.includes(bar) && beat === 3) {
+        notes.push({ hit: false, beats: 0.5 }, { hit: true, beats: 0.25 }, { hit: true, beats: 0.25 });
+      } else {
+        notes.push({ hit: false, beats: 0.5 }, { hit: bar !== dropBar || beat >= 2, beats: 0.5 });
+      }
+    }
+  }
+  return notes;
+}
+
+// Replaces the opening `beats` of a bar with one rest, splitting whichever
+// note straddles the boundary. The band drops into the hole and slams back
+// in on beat 3, which is the loudest thing the arrangement does without
+// adding a single new voice.
+function silenceOpening(bar: ToneNote[], beats: number): ToneNote[] {
+  const out: ToneNote[] = [{ midi: null, beats }];
+  let consumed = 0;
+  for (const note of bar) {
+    const start = consumed;
+    consumed += note.beats;
+    if (consumed <= beats) continue;
+    out.push({ midi: note.midi, beats: start >= beats ? note.beats : consumed - beats });
+  }
+  return out;
+}
+
+// Keeps only the opening `beats` of a bar, splitting a straddling note.
+function keepOpening(bar: ToneNote[], beats: number): ToneNote[] {
+  const out: ToneNote[] = [];
+  let consumed = 0;
+  for (const note of bar) {
+    if (consumed >= beats) break;
+    out.push({ midi: note.midi, beats: Math.min(note.beats, beats - consumed) });
+    consumed += note.beats;
+  }
+  return out;
+}
+
+// 5 - b6 - b7 climbing into the tonic that is waiting at the loop point, so
+// the seam sounds like an arrival rather than a restart. Two beats long.
+function turnoverWalk(rootName: string, octave: number): ToneNote[] {
+  const root = n(rootName) + octave;
+  return [
+    { midi: root + 7, beats: 0.5 },
+    { midi: root + 8, beats: 0.5 },
+    { midi: root + 10, beats: 1 },
+  ];
+}
+
+// An eighth-note pickup on the "and" of beat 4, pitched a fifth below the
+// stab it leads into -- the lead reaching for the next downbeat rather than
+// waiting for it. Applied to the top brass line only; the octave-below
+// doubling holds its long note underneath, so the pickup reads as a flick
+// rather than as the whole section moving.
+function addBrassPickups(notes: ToneNote[]): ToneNote[] {
+  const out: ToneNote[] = [];
+  let beat = 0;
+  for (let i = 0; i < notes.length; i++) {
+    const note = notes[i];
+    const end = beat + note.beats;
+    let next: number | null = null;
+    for (let j = i + 1; j < notes.length; j++) {
+      if (notes[j].midi !== null) {
+        next = notes[j].midi;
+        break;
+      }
+    }
+    const landsOnBarline = Math.abs(end % 4) < 1e-6 && beat > 0;
+    if (landsOnBarline && note.midi !== null && note.beats > 0.5 && next !== null) {
+      out.push({ midi: note.midi, beats: note.beats - 0.5 }, { midi: next - 7, beats: 0.5 });
+    } else {
+      out.push(note);
+    }
+    beat = end;
+  }
+  return out;
+}
+
+// A crash track from a list of beat positions within the loop.
+function crashTrack(loopBeats: number, gain: number, at: number[]): Track {
+  const notes: PercNote[] = [];
+  let cursor = 0;
+  for (let i = 0; i < at.length; i++) {
+    if (at[i] > cursor) {
+      notes.push({ hit: false, beats: at[i] - cursor });
+      cursor = at[i];
+    }
+    const next = Math.min(at[i + 1] ?? loopBeats, loopBeats);
+    notes.push({ hit: true, beats: next - cursor });
+    cursor = next;
+  }
+  if (cursor < loopBeats) notes.push({ hit: false, beats: loopBeats - cursor });
+  return { kind: 'crash', gain, notes };
+}
+
 // A (i-VII vamp, then a brighter bVI-bVII lift) and B (a longer i-bVI-bIII-
 // bVII riff a fourth up, in G minor) are the same length family and keep
 // the full band playing throughout -- same instrumentation, same driving
@@ -483,20 +993,46 @@ const BATTLE_INTRO_STING: ToneNote[] = [
 // Square-wave ostinato with grit, a sub-bass double running straight
 // through, a unison-detuned + octave-doubled sawtooth "brass" lead (with a
 // melodic pivot bridging A into B and B back into A), a kick/snare march
-// and hats that never drop out, and an opening crash + fanfare sting plus a
-// second crash marking the reprise -- a fuller, Final Fantasy-style battle
-// theme where B is a proper second riff, connected by real voice-leading
-// rather than a silence-and-crash cut.
+// and hats, and an opening crash + fanfare sting plus a crash marking the
+// reprise -- a Final Fantasy-style battle theme where B is a proper second
+// riff, connected by real voice-leading rather than a silence-and-crash cut.
+//
+// Articulated the same way every other world's battle is (see the
+// "Battle articulation" helpers above): the band drops out for the first two
+// beats of B and slams back on beat 3 over a crash, the snare drags the
+// music over the seam into the reprise, the brass takes a pickup into each
+// downbeat, hats lift at phrase ends, and the loop's last two beats walk up
+// into the tonic waiting at the loop point.
+const BATTLE_DROP_BAR = BATTLE_A_PROGRESSION.length;
+const BATTLE_DRAG_BAR = BATTLE_A_PROGRESSION.length + BATTLE_B_PROGRESSION.length - 1;
+const BATTLE_LAST_BAR = BATTLE_FULL_PROGRESSION.length - 1;
+const BATTLE_LIFT_BARS = [3, 7, 11];
+
 const BATTLE_SCORE: Score = {
   bpm: 160,
   loopBeats: BATTLE_LOOP_BEATS,
   tracks: [
-    { kind: 'tone', wave: 'square', gain: 0.13, drive: true, notes: BATTLE_FULL_PROGRESSION.flatMap(([r, q]) => vampBar(r, q)) },
+    {
+      kind: 'tone',
+      wave: 'square',
+      gain: 0.13,
+      drive: true,
+      notes: BATTLE_FULL_PROGRESSION.flatMap(([r, q], bar) => {
+        const plain = vampBar(r, q);
+        if (bar === BATTLE_DROP_BAR) return silenceOpening(plain, 2);
+        if (bar === BATTLE_LAST_BAR) return [...keepOpening(plain, 2), ...turnoverWalk(BATTLE_REPRISE[0][0], 0)];
+        return plain;
+      }),
+    },
     {
       kind: 'tone',
       wave: 'sine',
       gain: 0.11,
-      notes: BATTLE_FULL_PROGRESSION.flatMap(([root]) => subBassBar(root)),
+      notes: BATTLE_FULL_PROGRESSION.flatMap(([root], bar) =>
+        bar === BATTLE_LAST_BAR
+          ? [{ midi: n(root) - 12, beats: 2 }, ...turnoverWalk(BATTLE_REPRISE[0][0], -12)]
+          : subBassBar(root)
+      ),
     },
     {
       kind: 'tone',
@@ -504,11 +1040,14 @@ const BATTLE_SCORE: Score = {
       gain: 0.15,
       unison: true,
       drive: true,
-      notes: [
+      notes: addBrassPickups([
         ...sectionBars(BATTLE_A_PROGRESSION, stabBar, { [BATTLE_A_PROGRESSION.length - 1]: BATTLE_TO_B_TRANSITION }),
-        ...sectionBars(BATTLE_B_PROGRESSION, stabBar, { [BATTLE_B_PROGRESSION.length - 1]: BATTLE_TO_A_TRANSITION }),
+        ...sectionBars(BATTLE_B_PROGRESSION, stabBar, {
+          0: silenceOpening(stabBar(...BATTLE_B_PROGRESSION[0]), 2),
+          [BATTLE_B_PROGRESSION.length - 1]: BATTLE_TO_A_TRANSITION,
+        }),
         ...BATTLE_REPRISE.flatMap(([r, q]) => stabBar(r, q)),
-      ],
+      ]),
     },
     {
       kind: 'tone',
@@ -520,6 +1059,7 @@ const BATTLE_SCORE: Score = {
           [BATTLE_A_PROGRESSION.length - 1]: octaveDown(BATTLE_TO_B_TRANSITION),
         }),
         ...sectionBars(BATTLE_B_PROGRESSION, stabBarLow, {
+          0: silenceOpening(stabBarLow(...BATTLE_B_PROGRESSION[0]), 2),
           [BATTLE_B_PROGRESSION.length - 1]: octaveDown(BATTLE_TO_A_TRANSITION),
         }),
         ...BATTLE_REPRISE.flatMap(([r, q]) => stabBarLow(r, q)),
@@ -527,18 +1067,9 @@ const BATTLE_SCORE: Score = {
     },
     { kind: 'tone', wave: 'sawtooth', gain: 0.18, drive: true, notes: BATTLE_INTRO_STING },
     { kind: 'kick', gain: 0.9, notes: kickPulse(BATTLE_FULL_PROGRESSION.length) },
-    { kind: 'snare', gain: 0.5, notes: snarePulse(BATTLE_FULL_PROGRESSION.length) },
-    { kind: 'hat', gain: 0.22, notes: hatPulse(BATTLE_FULL_PROGRESSION.length) },
-    {
-      kind: 'crash',
-      gain: 0.32,
-      notes: [
-        { hit: true, beats: 4 },
-        { hit: false, beats: (BATTLE_A_PROGRESSION.length + BATTLE_B_PROGRESSION.length) * 4 - 4 },
-        { hit: true, beats: 4 },
-        { hit: false, beats: BATTLE_REPRISE.length * 4 - 4 },
-      ],
-    },
+    { kind: 'snare', gain: 0.5, notes: battleSnarePattern(BATTLE_FULL_PROGRESSION.length, BATTLE_DRAG_BAR) },
+    { kind: 'hat', gain: 0.22, notes: battleHatPattern(BATTLE_FULL_PROGRESSION.length, BATTLE_LIFT_BARS, BATTLE_DROP_BAR) },
+    crashTrack(BATTLE_LOOP_BEATS, 0.32, [0, BATTLE_DROP_BAR * 4 + 2, (BATTLE_A_PROGRESSION.length + BATTLE_B_PROGRESSION.length) * 4]),
   ],
 };
 
@@ -671,6 +1202,11 @@ interface BattleScoreConfig {
   leadGain?: number;
   leadUnison?: boolean;
   leadDrive?: boolean;
+  // The brass pickup into each downbeat. On by default, and turned off for
+  // the worlds whose lead is deliberately sparse, where an extra note before
+  // every bar would fill in exactly the silence that gives them their
+  // character.
+  leadPickups?: boolean;
   subBassGain?: number;
   // 'holdTonic' sustains the loop's opening root the whole way through
   // instead of following each bar's chord -- for worlds whose harmony
@@ -706,24 +1242,45 @@ function makeBattleScore(cfg: BattleScoreConfig): Score {
   const toB = battleTransitionLick(bProgression[0][0], bProgression[0][1], true);
   const toA = battleTransitionLick(reprise[0][0], reprise[0][1], false);
 
-  const leadNotes = [
+  // Bar landmarks the articulation hangs off: B's first bar (the drop), B's
+  // last bar (the drag into the reprise), the loop's last bar (the turnover)
+  // and every phrase-ending bar in between (the hat lift).
+  const dropBar = aProgression.length;
+  const dragBar = aProgression.length + bProgression.length - 1;
+  const lastBar = fullProgression.length - 1;
+  const liftBars: number[] = [];
+  for (let bar = 3; bar < fullProgression.length; bar += 4) {
+    if (bar !== dragBar && bar !== lastBar) liftBars.push(bar);
+  }
+
+  const rawLead = [
     ...sectionBars(aProgression, leadGen, { [aProgression.length - 1]: toB }),
-    ...sectionBars(bProgression, leadGen, { [bProgression.length - 1]: toA }),
+    ...sectionBars(bProgression, leadGen, {
+      0: silenceOpening(leadGen(...bProgression[0]), 2),
+      [bProgression.length - 1]: toA,
+    }),
     ...reprise.flatMap(([r, q]) => leadGen(r, q)),
   ];
+  const leadNotes = (cfg.leadPickups ?? true) ? addBrassPickups(rawLead) : rawLead;
   const leadLowNotes = [
     ...sectionBars(aProgression, leadGenLow, { [aProgression.length - 1]: octaveDown(toB) }),
-    ...sectionBars(bProgression, leadGenLow, { [bProgression.length - 1]: octaveDown(toA) }),
+    ...sectionBars(bProgression, leadGenLow, {
+      0: silenceOpening(leadGenLow(...bProgression[0]), 2),
+      [bProgression.length - 1]: octaveDown(toA),
+    }),
     ...reprise.flatMap(([r, q]) => leadGenLow(r, q)),
   ];
 
-  const subBassNotes = cfg.subBassMode === 'holdTonic'
-    ? fullProgression.flatMap(() => subBassBar(cfg.mainA[0][0]))
-    : fullProgression.flatMap(([root]) => subBassBar(root));
+  const subBassRoot = (root: string) => (cfg.subBassMode === 'holdTonic' ? cfg.mainA[0][0] : root);
+  const subBassNotes = fullProgression.flatMap(([root], bar) =>
+    bar === lastBar
+      ? [{ midi: n(subBassRoot(root)) - 12, beats: 2 }, ...turnoverWalk(reprise[0][0], -12)]
+      : subBassBar(subBassRoot(root))
+  );
 
   const kickGen = cfg.kickGen ?? kickPulse;
-  const snareGen = cfg.snareGen ?? snarePulse;
-  const hatGen = cfg.hatGen ?? hatPulse;
+  const snareGen = cfg.snareGen ?? ((bars: number) => battleSnarePattern(bars, dragBar));
+  const hatGen = cfg.hatGen ?? ((bars: number) => battleHatPattern(bars, liftBars, dropBar));
 
   const tracks: Track[] = [
     {
@@ -731,7 +1288,12 @@ function makeBattleScore(cfg: BattleScoreConfig): Score {
       wave: cfg.vampWave ?? 'square',
       gain: cfg.vampGain ?? 0.13,
       drive: cfg.vampDrive ?? true,
-      notes: fullProgression.flatMap(([r, q]) => vampGen(r, q)),
+      notes: fullProgression.flatMap(([r, q], bar) => {
+        const plain = vampGen(r, q);
+        if (bar === dropBar) return silenceOpening(plain, 2);
+        if (bar === lastBar) return [...keepOpening(plain, 2), ...turnoverWalk(reprise[0][0], 0)];
+        return plain;
+      }),
     },
     { kind: 'tone', wave: 'sine', gain: cfg.subBassGain ?? 0.11, notes: subBassNotes },
     {
@@ -753,16 +1315,7 @@ function makeBattleScore(cfg: BattleScoreConfig): Score {
     { kind: 'kick', gain: cfg.kickGain ?? 0.9, notes: kickGen(fullProgression.length) },
     { kind: 'snare', gain: cfg.snareGain ?? 0.5, notes: snareGen(fullProgression.length) },
     { kind: 'hat', gain: cfg.hatGain ?? 0.22, notes: hatGen(fullProgression.length) },
-    {
-      kind: 'crash',
-      gain: cfg.crashGain ?? 0.32,
-      notes: [
-        { hit: true, beats: 4 },
-        { hit: false, beats: (aProgression.length + bProgression.length) * 4 - 4 },
-        { hit: true, beats: 4 },
-        { hit: false, beats: reprise.length * 4 - 4 },
-      ],
-    },
+    crashTrack(loopBeats, cfg.crashGain ?? 0.32, [0, dropBar * 4 + 2, (aProgression.length + bProgression.length) * 4]),
   ];
   if (cfg.extraVoice) {
     const extraVoice = cfg.extraVoice;
@@ -847,6 +1400,7 @@ const BATTLE_SCORE_5 = makeBattleScore({
   vampGain: 0.1,
   vampDrive: false,
   leadGen: stabBarSparse,
+  leadPickups: false,
   leadWave: 'sine',
   leadUnison: false,
   leadDrive: false,
@@ -906,6 +1460,7 @@ const BATTLE_SCORE_8 = makeBattleScore({
   vampGain: 0.09,
   vampDrive: false,
   leadGen: stabBarSparse,
+  leadPickups: false,
   leadWave: 'sine',
   leadUnison: false,
   leadDrive: false,
@@ -1198,57 +1753,62 @@ function makeModernBattleScore(cfg: ModernBattleScoreConfig): Score {
 // so a world's identity carries across styles while the arrangement itself
 // -- pad texture, phrase shape, harmonization -- differs.
 const MODERN_OVERWORLD_SCORE_1 = makeModernOverworldScore({
-  bpm: 108,
+  bpm: 96,
   verse: [['C3', 'maj'], ['G2', 'maj'], ['A2', 'min'], ['F2', 'maj']],
   bridge: [['D2', 'min'], ['G2', 'maj'], ['C3', 'maj'], ['A2', 'min']],
 });
 const MODERN_OVERWORLD_SCORE_2 = makeModernOverworldScore({
   bpm: 100,
-  verse: [['A2', 'min'], ['F2', 'maj'], ['C3', 'maj'], ['G2', 'maj']],
-  bridge: [['D2', 'min'], ['E2', 'min'], ['A2', 'min'], ['F2', 'maj']],
+  verse: [['C3', 'maj'], ['D3', 'maj'], ['C3', 'maj'], ['D3', 'maj']],
+  bridge: [['E2', 'min'], ['D3', 'maj'], ['C3', 'maj'], ['D3', 'maj']],
 });
 const MODERN_OVERWORLD_SCORE_3 = makeModernOverworldScore({
-  bpm: 96,
-  verse: [['D3', 'maj'], ['A2', 'maj'], ['B2', 'min'], ['G2', 'maj']],
-  bridge: [['E2', 'min'], ['A2', 'maj'], ['D3', 'maj'], ['G2', 'maj']],
+  bpm: 104,
+  verse: [['C3', 'maj'], ['A#2', 'maj'], ['C3', 'maj'], ['F2', 'maj']],
+  bridge: [['G2', 'min'], ['A#2', 'maj'], ['C3', 'maj'], ['F2', 'maj']],
   variant: 'soaring',
 });
 const MODERN_OVERWORLD_SCORE_4 = makeModernOverworldScore({
   bpm: 132,
-  verse: [['E2', 'min'], ['C3', 'maj'], ['D3', 'maj'], ['B2', 'min']],
-  bridge: [['A2', 'min'], ['E2', 'min'], ['C3', 'maj'], ['D3', 'maj']],
+  verse: [['C3', 'min'], ['G#2', 'maj'], ['D#3', 'maj'], ['A#2', 'maj']],
+  bridge: [['F2', 'min'], ['C3', 'min'], ['G#2', 'maj'], ['A#2', 'maj']],
 });
 const MODERN_OVERWORLD_SCORE_5 = makeModernOverworldScore({
   bpm: 84,
-  verse: [['F2', 'min'], ['D#2', 'maj'], ['C3', 'min'], ['G#2', 'maj']],
-  bridge: [['A#2', 'min'], ['F2', 'min'], ['D#2', 'maj'], ['C3', 'min']],
+  verse: [['C3', 'min'], ['C#3', 'maj'], ['C3', 'min'], ['C#3', 'maj']],
+  bridge: [['G#2', 'maj'], ['C#3', 'maj'], ['C3', 'min'], ['C#3', 'maj']],
   variant: 'sparse',
 });
 const MODERN_OVERWORLD_SCORE_6 = makeModernOverworldScore({
   bpm: 116,
-  verse: [['G2', 'maj'], ['D3', 'maj'], ['E2', 'min'], ['C3', 'maj']],
-  bridge: [['A2', 'min'], ['D3', 'maj'], ['G2', 'maj'], ['C3', 'maj']],
+  verse: [['C3', 'maj'], ['G2', 'maj'], ['A2', 'min'], ['F2', 'maj']],
+  bridge: [['A2', 'min'], ['F2', 'maj'], ['C3', 'maj'], ['G2', 'maj']],
 });
+// The classic arrangement's World 7 is a whole-tone canon with no harmony
+// under it at all. Pads need chords to hold, so this states the same
+// rootlessness the way a chord progression can: major triads whose roots
+// climb in major thirds, an augmented cycle that never establishes a tonic.
 const MODERN_OVERWORLD_SCORE_7 = makeModernOverworldScore({
-  bpm: 120,
-  verse: [['B2', 'min'], ['G2', 'maj'], ['A2', 'maj'], ['F#2', 'min']],
-  bridge: [['E2', 'min'], ['B2', 'min'], ['G2', 'maj'], ['A2', 'maj']],
+  bpm: 76,
+  verse: [['F#2', 'maj'], ['A#2', 'maj'], ['D3', 'maj'], ['A#2', 'maj']],
+  bridge: [['D3', 'maj'], ['F#2', 'maj'], ['A#2', 'maj'], ['D3', 'maj']],
+  variant: 'sparse',
 });
 const MODERN_OVERWORLD_SCORE_8 = makeModernOverworldScore({
-  bpm: 88,
-  verse: [['C3', 'min'], ['G#2', 'maj'], ['A#2', 'maj'], ['F2', 'min']],
-  bridge: [['D#2', 'maj'], ['C3', 'min'], ['G#2', 'maj'], ['F2', 'min']],
+  bpm: 58,
+  verse: [['F#2', 'min'], ['G2', 'maj'], ['F#2', 'min'], ['D2', 'maj']],
+  bridge: [['B2', 'min'], ['G2', 'maj'], ['F#2', 'min'], ['D2', 'maj']],
   variant: 'sparse',
 });
 const MODERN_OVERWORLD_SCORE_9 = makeModernOverworldScore({
   bpm: 140,
-  verse: [['D2', 'min'], ['A#2', 'maj'], ['C3', 'maj'], ['A2', 'min']],
-  bridge: [['G2', 'min'], ['D2', 'min'], ['A#2', 'maj'], ['C3', 'maj']],
+  verse: [['F#2', 'maj'], ['G2', 'maj'], ['F#2', 'maj'], ['G2', 'maj']],
+  bridge: [['B2', 'min'], ['G2', 'maj'], ['F#2', 'maj'], ['G2', 'maj']],
 });
 const MODERN_OVERWORLD_SCORE_10 = makeModernOverworldScore({
-  bpm: 112,
-  verse: [['A2', 'maj'], ['E2', 'maj'], ['F#2', 'min'], ['D2', 'maj']],
-  bridge: [['B2', 'min'], ['E2', 'maj'], ['A2', 'maj'], ['D2', 'maj']],
+  bpm: 158,
+  verse: [['F#2', 'maj'], ['G#2', 'maj'], ['F#2', 'maj'], ['D#2', 'min']],
+  bridge: [['G#2', 'maj'], ['D#2', 'min'], ['G#2', 'maj'], ['F#2', 'maj']],
   variant: 'soaring',
 });
 
