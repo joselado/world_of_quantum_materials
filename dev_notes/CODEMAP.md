@@ -1977,8 +1977,9 @@ that guardian mid-world. This works because `HubScene` implements `GuardianPanel
 `advanceToWorld`, and every per-guardian pagination field, so a guardian's panel has everything
 it needs without the player's world/scene/position ever changing just from opening it.
 `guardianSlot(world)` is the pure layout half -- ten fixed slots, five per upper corner, each
-cluster stacked one-over-two-over-two, keyed by world so a guardian never moves between visits
-(see STYLE.md's "The Lab's guardian gallery" for the geometry, labels, and hover readout). The
+cluster stacked one-over-two-over-two and filled in the order its module-level
+`GUARDIAN_LEFT_CLUSTER`/`GUARDIAN_RIGHT_CLUSTER` list lays out, keyed by world so a guardian
+never moves between visits (see STYLE.md's "The Lab's guardian gallery" for the geometry, labels, and hover readout). The
 click target is a near-transparent interactive `Rectangle` covering the slot rather than the
 avatar `Container` (a Container has no hit area of its own) and takes the same
 `dialogueContainer` one-panel-at-a-time guard the station rows use.
