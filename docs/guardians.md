@@ -26,13 +26,19 @@ destination list is where a warp actually happens.
 
 ## Noether's Currents
 
+<img src="../screenshots/docs-guardians-noether-avatar.png" width="300" alt="Noether: a haloed golden figure floating in a flowing robe, sleeves spread wide">
+
 Sells every ordinary attack move and stat upgrade in the game, priced by raw
 power. Her shop only shows what your *current* crystal form can actually
 use — as a semiconductor-type player (Silicon, by default), you'll only see
 Electron Pulse until you transmute into a form whose physics supports more
 (see [Quasiparticles & moves](quasiparticles.md)).
 
+<img src="../screenshots/docs-guardians-noether-panel.png" width="300" alt="Noether's shop: the moves the current form can carry, the selected one playing its own battle effect beside its price">
+
 ## Bloch's States
+
+<img src="../screenshots/docs-guardians-bloch-avatar.png" width="300" alt="Bloch: a hooded traveller whose head is a wireframe Bloch sphere with a state-vector arrow, ringed by waypoint marks">
 
 Fast travel between worlds: Bloch teleports you to any world you've already
 visited, so backtracking never means re-walking a whole corridor.
@@ -42,7 +48,11 @@ visited, so backtracking never means re-walking a whole corridor.
 - Each world you haven't unlocked yet is priced separately — there's no
   single purchase that opens every destination at once
 
+<img src="../screenshots/docs-guardians-bloch-panel.png" width="300" alt="Bloch's destination list: every world already visited, the chosen one previewed with its map and its 15-qumatessence first trip">
+
 ## Dresselhaus's Nanostructures
+
+<img src="../screenshots/docs-guardians-dresselhaus-avatar.png" width="300" alt="Dresselhaus: a half-lit crystal figure with a carbon-hexagon ring for a head, circled by rotation arrows">
 
 Lets you *transmute* into any crystal you've already defeated — your look,
 stats, and available moves all switch over, and nothing you've already
@@ -57,7 +67,11 @@ standalone crystals, never a [hybrid](hybrids.md).
 - First time becoming a given crystal: 25 qumatessence
 - Every later transmutation back into that same crystal: free
 
+<img src="../screenshots/docs-guardians-dresselhaus-panel.png" width="300" alt="Dresselhaus's panel: crystals available to become, the selected one drawn beside its 25-qumatessence cost">
+
 ## Laughlin's Analytics
+
+<img src="../screenshots/docs-guardians-laughlin-avatar.png" width="300" alt="Laughlin: a stepped, incompressible droplet with a single quasihole lifted clear of it, labelled with the fraction one third">
 
 Sells two quiz-gated Analytic moves. Each one asks a physics-equation
 question before it lands — answer right and it hits for double damage,
@@ -73,7 +87,11 @@ ordinary attack. Transmute into a form that can't host your picked
 quasiparticle, and the move falls back to its Phonon form — the one class
 every form hosts — until you retune it.
 
+<img src="../screenshots/docs-guardians-laughlin-panel.png" width="300" alt="Laughlin's shop: his two Analytic moves side by side, each playing its own effect above the quasiparticles it can be tuned to">
+
 ## Majorana's Fusion
+
+<img src="../screenshots/docs-guardians-majorana-avatar.png" width="300" alt="Majorana: one figure split down the middle, its two halves joined by a seam of motes, gamma symbols drifting around it">
 
 Lets you fuse two crystals you've already defeated into a brand-new hybrid
 state and become it, if the pairing matches one of the game's named recipes
@@ -86,7 +104,11 @@ physics blurb before deciding.
 - First time fusing into a given hybrid result: 60 qumatessence
 - Every later fusion into that same result: free, however you reach it
 
+<img src="../screenshots/docs-guardians-majorana-panel.png" width="300" alt="Majorana's fusion panel: the hybrids currently reachable, one previewed as its two component crystals, the fused result and a 60-qumatessence cost">
+
 ## Anderson's Impurities
+
+<img src="../screenshots/docs-guardians-anderson-avatar.png" width="300" alt="Anderson: a scatter of disconnected fragments with no outline at all, drifting around one bright localized core">
 
 Lets you "dope in" a crystal you've defeated as an impurity and learn one
 specific move from it — borrowing a single excitation channel without fully
@@ -101,7 +123,11 @@ standalone crystals work as hosts, never a [hybrid](hybrids.md).
 - Every later visit to that same host (learning any of its moves, then or
   later): free
 
+<img src="../screenshots/docs-guardians-anderson-panel.png" width="300" alt="Anderson's panel: defeated crystals offered as impurity hosts, the crystal doped in right now named above the list">
+
 ## Feynman's Diagrammatics
+
+<img src="../screenshots/docs-guardians-feynman-avatar.png" width="300" alt="Feynman: a figure drawn as a diagram, vertices joined by propagator lines with loop corrections hanging off them">
 
 Lets you level up any move you already know how to use, no matter which
 guardian originally taught it to you. Three tiers sit on top of a move's
@@ -127,7 +153,11 @@ several times in quick, overlapping succession, each repeat bigger than the
 last (two for Double, three for Triple, four for Infinite), reading as a
 real escalating cascade rather than just a stronger single hit.
 
+<img src="../screenshots/docs-guardians-feynman-panel.png" width="300" alt="Feynman's panel: the moves already carried, with the streak of questions and the cost to push the selected one to Double">
+
 ## Kondo's Clouds
+
+<img src="../screenshots/docs-guardians-kondo-avatar.png" width="300" alt="Kondo: a small local moment drawn as an arrow, sitting inside two counter-rotating screening shells">
 
 Sells three self-buff moves — cast on yourself, not the opponent, dealing no
 damage:
@@ -142,7 +172,7 @@ damage:
 Picking a move picks the buff. Only one can be active at a time; switching
 means talking to Kondo again.
 
-<img src="../screenshots/docs-guardians-kondo.png" width="300" alt="Kondo's self-buff shop, listing his three screening moves">
+<img src="../screenshots/docs-guardians-kondo-panel.png" width="300" alt="Kondo's self-buff shop: his three screening moves, with the one currently being held marked active">
 
 Each of these three can also be leveled up at [Feynman's](#feynmans-diagrammatics),
 same as any other move — leveling one makes its buff itself stronger (more
@@ -151,12 +181,16 @@ so it never becomes complete immunity.
 
 ## Franklin's Scatterings
 
+<img src="../screenshots/docs-guardians-franklin-avatar.png" width="300" alt="Franklin: a figure holding up a sheet of film carrying diffraction rings and their scattered spots">
+
 Teaches three passive abilities — always-on effects for the whole battle,
 not moves you pick each turn. You can learn all three, but only one is ever
 equipped at a time; talk to Franklin again to switch. Themed around X-ray
 diffraction of a defect-riddled or porous crystal, the way a real
 diffraction pattern blurs from sharp spots into diffuse rings as a sample
 gets more disordered.
+
+<img src="../screenshots/docs-guardians-franklin-panel.png" width="300" alt="Franklin's panel: your crystal wearing the halo of whichever passive is active, beside the three passives and their prices">
 
 <!-- GENERATED:FRANKLIN_PASSIVES_TABLE START -->
 #### Franklin's passives
@@ -169,6 +203,8 @@ gets more disordered.
 <!-- GENERATED:FRANKLIN_PASSIVES_TABLE END -->
 
 ## Skłodowska-Curie's Experiments
+
+<img src="../screenshots/docs-guardians-curie-avatar.png" width="300" alt="Skłodowska-Curie: a ray-crowned spire figure with a glowing core, ringed by radiating sparks">
 
 Guards World 10 and is regarded as the leader of the guardians' circle.
 Sells two quiz-gated Ultimate moves, "[Quasiparticle] Meteor" and
@@ -183,3 +219,5 @@ like it is everywhere else: each quasiparticle class costs 1000
 qumatessence to unlock *per move*, after which retuning back to that class
 is free forever. Land a full 3-for-3 hit and it plays the longest, most
 dramatic summoning animation in the game.
+
+<img src="../screenshots/docs-guardians-curie-panel.png" width="300" alt="Skłodowska-Curie's panel: her two Ultimate moves side by side, one quasiparticle already unlocked and free to return to, the rest at 1000 qumatessence each">
