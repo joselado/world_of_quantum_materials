@@ -554,7 +554,8 @@ the *next* world's fog colour: the air ahead becomes the next world's air. On a
 darkening arc this is most of the felt effect on its own — the forward horizon
 being visibly worse than the ground underfoot is the cheapest dread available.
 
-**Gated on gate state:** a shut gate means no forward palette bleed.
+**Gated on gate state:** a shut gate — one whose rival still holds the pass —
+means no forward palette bleed.
 
 ### Judging a horizon change
 
@@ -624,21 +625,27 @@ Every geographic boundary is a pass; the one non-geographic boundary is a door.
 The asymmetry is the ontology made visible.
 
 Wayfinding is not the problem a gate solves — a corridor has nowhere else to
-walk. What the gate must carry is **state**: the goal gate exists only once that
-world's rival is beaten. So the aperture has two states.
+walk. What the gate must carry is **state**: the way forward opens only once
+that world's rival is beaten. The forward pass therefore has two states, and
+the guard is the whole of what tells them apart.
 
-- **Rival unbeaten** — the notch is fogged shut, opaque and dark. The next world
-  is not visible and haze inheritance does not run.
-- **Rival beaten** — the notch clears, and the next world's palette shows through
-  the gap as the brightest thing on screen, or in the late worlds the most
-  wrongly-coloured. Light through a doorway, and diegetic: what is visible
+- **Rival unbeaten** — the rival fills the pass, and nothing of the next world
+  is visible past it. Haze inheritance does not run: a shut gate shows nothing
+  of what lies beyond it. Nothing else marks the state, because a body in the
+  way is a plainer statement than any weather drawn over the gap.
+- **Rival beaten** — the pass clears and the notch beyond it carries the next
+  world's palette, the brightest thing on screen or, in the late worlds, the
+  most wrongly-coloured. Light through a doorway, and diegetic: what is visible
   through the gap is the destination itself.
 
-One ground-level cue joins it: the next world's walkable colour bleeding across
-the last two or three tiles, a seam the player visibly steps over. The confirm
-panel on stepping onto the tile stays — geography plus confirmation prevents
-accidental transitions, and the panel is the safety net if any one world's pass
-reads weakly.
+One ground-level cue joins the open state: the next world's walkable colour
+bleeding across the last two or three tiles, a seam the player visibly steps
+over.
+
+**A backward exit is a pass with a board and no guard.** It carries no state —
+the way back is open from the moment the player arrives, having walked in
+through it — so nothing bars it and nothing has to signal that nothing does.
+Two states belong to the forward pass alone.
 
 **The far/near split, which is what keeps this honest on a flat plane.** The
 horizon silhouette sits at a fixed offset above a fixed horizon line, and the

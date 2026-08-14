@@ -146,7 +146,8 @@ Four things this stage must handle rather than inherit:
 - **Draw order.** The rival is currently drawn as a special case; confirm it
   joins the common depth sort before stage E's flanks share the pass with it.
 
-The backward exit becomes a pass with a board too, in worlds 2–10. **World 1's
+The backward exit becomes a pass with a board too, in worlds 2–10 — with no
+guard and no state, since the way back is open from arrival onward. **World 1's
 stays a door** (it leads to the Lab, which is not a place), and **World 10 gets
 no board** (nothing lies beyond).
 
