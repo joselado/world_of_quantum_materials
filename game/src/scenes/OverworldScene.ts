@@ -914,13 +914,26 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       .setOrigin(0.5, 0)
       .setDepth(50)
       .setVisible(this.reachedGoal);
+    const labHint = this.add
+      .text(CANVAS_W - 8, CANVAS_H - 8, 'Press Enter to go to the Lab', {
+        fontSize: fontPx(this, 12),
+        color: REFERENCE_BLUE_GREY_HEX,
+        backgroundColor: 'rgba(0,0,0,0.35)',
+        padding: { x: 4, y: 2 },
+      })
+      .setOrigin(1, 1)
+      .setDepth(50);
     // Interface, not scenery: fixed on screen, sized by the text preset, and
     // sitting low and centred where the pass itself is, so the offer reads as
     // attached to what the player is looking at without being painted into
     // the world. It is the only thing that arrives at the threshold -- the
     // board and the guard were always there.
+    //
+    // Stacked above the Lab hint by measuring it rather than by a fixed
+    // offset: both grow with the text-size preset, and at the largest one a
+    // guessed gap puts the two plates through each other.
     this.gatePrompt = this.add
-      .text(CANVAS_W / 2, CANVAS_H - 34, '', {
+      .text(CANVAS_W / 2, labHint.y - labHint.height - 6, '', {
         fontSize: fontPx(this, 14),
         color: '#e6d9ff',
         backgroundColor: 'rgba(0,0,0,0.62)',
@@ -935,15 +948,6 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // interactive exactly while it is on screen -- so the affordance and the
     // hit area are the same object and cannot drift apart.
     this.gatePrompt.on('pointerdown', () => this.confirmGate());
-    this.add
-      .text(CANVAS_W - 8, CANVAS_H - 8, 'Press Enter to go to the Lab', {
-        fontSize: fontPx(this, 12),
-        color: REFERENCE_BLUE_GREY_HEX,
-        backgroundColor: 'rgba(0,0,0,0.35)',
-        padding: { x: 4, y: 2 },
-      })
-      .setOrigin(1, 1)
-      .setDepth(50);
 
     // The player is a crystal too, not a trainer commanding one -- the
     // overworld avatar is just the player's current form (playerMaterial,
@@ -1408,6 +1412,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       hazeBlend: this.hazeBlend,
       hazeCache: this.hazeCache,
       gate: this.gate,
+      route: this.getVisitedWorlds(),
     };
   }
 

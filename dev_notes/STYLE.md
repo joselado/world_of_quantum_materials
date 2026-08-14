@@ -745,10 +745,62 @@ gets a flat dim silhouette patch (the same `0x33394a` the Materialdex's own undi
 treatment uses) plus a few soft, deterministically-jittered light-grey mist puffs, so it reads as
 shrouded rather than merely a different color. The landmass fill itself stays perfectly flat, no
 per-tile diagonal shading, matching every other ground/floor fill in the game. The module wires no
-interactivity of its own -- Bloch's panel ("Bloch in the overworld" below) is its one consumer,
-attaching its own `setInteractive`/`pointerdown` handling to each returned marker and reading back
-the module's actual rendered `width`/`height` (uniform scale-to-fit can make either one smaller
-than the caller's requested budget) for its own layout math.
+interactivity of its own -- Bloch's panel ("Bloch in the overworld" below) is the one consumer of
+that build, attaching its own `setInteractive`/`pointerdown` handling to each returned marker and
+reading back the module's actual rendered `width`/`height` (uniform scale-to-fit can make either
+one smaller than the caller's requested budget) for its own layout math.
+
+### The Qumatuomi sky (World 10's horizon)
+
+The same asset, drawn as scenery rather than as a panel. World 10 has no next
+world, so what hangs in its sky is *every* world at once, seen from outside and
+above — precisely the view a trained model has of its training data.
+
+- **A reflection in a mirrored sky, never an image pasted flat to the screen**:
+  foreshortened and tilted away, rippling faintly with the world's own shimmer,
+  silver-violet, self-luminous per the light rule (the record glows, nothing
+  shines on it).
+- **The haze is load-bearing.** Fill and coastline alike are drowned into the
+  same live fog target every distant thing in the frame is drowned into. Fog is
+  the cheapest signal that something is scenery, and an interface element is
+  never fogged; rendered screen-parallel and unhazed this reads as a
+  misrendered minimap and players try to click it.
+- **Every interactive affordance is stripped** — no markers, no labels, no
+  per-world region tints. Those belong to the clickable panel build of the same
+  asset and stay there.
+- **The route trace** is a dim luminous line through the worlds the player has
+  actually walked, in the order they walked them. It is the one thing no other
+  copy of this map carries. No marker sits at either end of it: a marker is an
+  affordance, and this is a record.
+
+## The Lab's two signals (`HubScene`, `art/labMotifs.ts`)
+
+`dev_notes/WORLDS.md` §4's "The Lab" is the spec. The Lab is not a location — it
+is reachable from every world and returns the player exactly where they left —
+so it is a functional hub, not a diorama, and it carries **two signals and no
+more**:
+
+- **Its door is the aperture grammar unbound.** Out in the worlds an opening
+  can only ever show the one fixed neighbour; the Lab's shows wherever the
+  player is currently going, and re-tints live as the travel panel's selection
+  moves. Its opening carries the destination world's own walkable ground lifted
+  toward that world's low sky — the same pair the pass aperture reads — so the
+  two are recognisably one grammar. A door that changes its view when the
+  player changes their mind reads as a teleporter with no word of explanation,
+  and it teaches itself, because the player has already learned to read
+  apertures out in the worlds.
+- **Its accent lighting is the player's current crystal.** Everything in the
+  room that reads as *light* — the ceiling panels, the instrument screens, the
+  pool on the floor under the player's own crystal — takes that crystal's
+  colour and changes with it. Structure (wall, counter, bezels, floor tiles)
+  keeps its own colours, so this reads as lighting rather than as a repaint.
+
+Everything else the room says by **absence**: no window, no sky, nothing
+implying an outside. Every world has a horizon; the Lab has none, and that only
+reads as deliberate if nothing in the room accidentally supplies an exterior.
+This is *interior-without-outside*, not void — void belongs to the Entangled
+Web. The door's opening therefore shows a palette, never scenery, and the
+station motifs are deliberately not tunnels with a visible far end.
 
 ## Qumatessence pickups (`art/tokens.ts`, `data/tokens.ts`)
 

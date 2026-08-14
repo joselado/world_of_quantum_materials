@@ -22,7 +22,7 @@ Build in this order. Each stage is shippable on its own.
 | **C** | Distant selves — per-world horizon profiles, composed into neighbours | retheme, A | **built** |
 | **D** | Gate apertures — state-signalled pass, ground seam | C | **built** |
 | **E** | Depth-projected flanks — the approach into the pass | D | **deferred** |
-| **F** | The Lab door, then the Qumatuomi sky | D (Lab quotes its grammar) | to do |
+| **F** | The Lab door, then the Qumatuomi sky | D (Lab quotes its grammar) | **built** |
 
 E is the only speculative item; if it reads badly in the first world tried,
 stop — D alone is a complete gate.
@@ -171,33 +171,30 @@ all occupy the pass at different depths, and the rival is currently drawn as a
 special case rather than through the common depth sort. Until that is fixed the
 boss floats in front of walls it should be standing between.
 
-## F — The Lab door, and the Qumatuomi sky
+## F — The Lab door, and the Qumatuomi sky — built
 
-**The Lab** (`HubScene`, a static single-room scene with stations — room
-dressing, not terrain):
+`WORLDS.md` §4's "The Lab" and "The Qumatuomi sky" are the spec; `STYLE.md`'s
+"The Lab's two signals" and "The Qumatuomi sky" are the visual rule, and
+`CODEMAP.md`'s "The Lab's two signals" and "The Qumatuomi sky" are the code.
 
-- Its door is the aperture grammar **unbound** — it previews the *current*
-  destination, by default the world and position the player left, updating live
-  when the travel panel selects a different world.
-- Its accent lighting is keyed to the player's current crystal.
-- Everything else by absence: no window, no sky, nothing implying an outside.
-  *Interior-without-outside*, not void — void belongs to the Entangled Web.
-- Two signals total. It is a functional hub, not a diorama.
+**The Lab** carries two signals and no more. Its door previews the current
+destination — by default the world and position the player left — with that
+world's own palette in its opening, re-pointing live as the travel panel's
+selection moves (`blochPreview` is a getter/setter pair, so moving the
+selection re-points the door in the same gesture). Its accent lighting is the
+player's current crystal, repainted in place on transmutation. Everything else
+is said by absence: no window, no sky, nothing implying an outside.
 
-**The Qumatuomi sky** — World 10's horizon, reusing the existing
-`art/qumatuomiMap.ts` asset:
-
-- A reflection in a mirrored sky: foreshortened and tilted away, **not**
-  screen-parallel; rippling faintly with the world's shimmer; silver-violet;
-  dimmed and hazed by the same atmosphere that fogs everything else.
-- The haze is load-bearing. Fog is what makes something read as scenery, and an
-  interface element is never fogged. Rendered flat and unhazed this will read as
-  a misrendered minimap and players will try to click it.
-- Strip every interactive affordance inherited from the clickable panel version
-  — no markers, no labels.
-- Optional, faint, in this priority: a dim luminous trace of the player's actual
-  route across the map; then a single slow pulse at the Espoo point, which is
-  skippable if it reads even slightly like a readout.
+**The Qumatuomi sky** is World 10's horizon, read from the world stood in
+rather than from a neighbour it does not have. One power schedule drives both
+the row spacing and the half-width, so the plane recedes as a single piece;
+a slow sine offset per row is the ripple; fill and coastline are drowned into
+the live haze target the same way a distant self is. Markers, labels and
+region tints are stripped. The route trace runs through the worlds the player
+has actually walked, in visit order, with no marker at either end. The Espoo
+pulse is deliberately not built: it is the flourish §4 marks skippable, and a
+single point pulsing on a map is exactly the affordance the rest of this
+treatment exists to remove.
 
 ---
 

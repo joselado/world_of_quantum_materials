@@ -630,7 +630,25 @@ World 10's Adapted and nowhere else.
   the scrolling ground agree on which tile the player occupies. Every depth handed to
   `projectTile` is measured from the player's tile, which is where that constant gets applied;
   a new caller should not add it itself.
-- **Panel/dialogue UI.** Every overlay (wild encounter, guardian panels, rival gate, Hub's
+- **The Lab's two signals** (`HubScene`). `WORLDS.md` §4's "The Lab" is the spec: the room says
+everything else by absence, so only two things in it carry meaning.
+
+- **The door previews the current destination.** `HubScene.doorDestination()` resolves it --
+  whatever the travel panel currently has selected, else the door's own target (the resumed
+  world, or the frontier). `art/labMotifs.ts`'s `makeDoorMotif(scene, size, destination)` builds
+  the archway with that world's palette in its opening, and `setDoorMotifDestination` re-points
+  it. The live half is `blochPreview`: it is a getter/setter pair on `HubScene` rather than a
+  plain field, so `panels/bloch.ts` moving its selection re-points the door in the same gesture,
+  with no refresh call for the panel to remember. `closeDialogue()` clears it, which returns the
+  door to its own destination.
+- **The accent lighting is the player's crystal.** `HubScene.relightRoom()` paints everything in
+  the room that reads as *light* -- the ceiling panels, the instrument screens, the pool on the
+  floor -- in `playerMaterial.color`, into the `roomGlow` Graphics rather than a fresh one, so
+  `applyPlayerForm` can re-light after a transmutation without lifting the glow above the
+  stations standing in front of it. Structure (wall, counter, bezels, floor tiles) keeps its own
+  colours, so the accent reads as lighting rather than as a repaint.
+
+**Panel/dialogue UI.** Every overlay (wild encounter, guardian panels, rival gate, Hub's
   Qumatex panel, the Lab's own six stations) is the same dark rounded-rectangle-with-stroke
   treatment, with the stroke color signaling the panel's kind: blue-grey `0x444466` = wild
   encounter (`OverworldScene.showEncounter`) and the Lab's Moves/Stats/Abilities/Settings
@@ -1420,6 +1438,26 @@ disagree about whether the way is open:
 
 `forwardHazeBlend` takes the same `open` flag, so haze inheritance and the aperture are gated on
 one value rather than two reads of the registry.
+
+**The Qumatuomi sky.** World 10 has no next world, so its horizon is read from the world the
+player is standing in rather than from a neighbour: `OVERHEAD_SKIES[10]` (`art/horizons.ts`'s
+`qumatuomiOverhead`) sizes and places it, and `art/qumatuomiMap.ts`'s `drawQumatuomiSky` draws
+it. The asset module owns the geometry and knows nothing about its caller; the horizon table owns
+where in the sky it hangs, which is a property of the frame rather than of the map.
+
+`toMirror` is the whole of the tilt: the country's long axis stays horizontal and its short axis
+becomes depth, both the row spacing and the half-width following one `MIRROR_FORESHORTEN` power
+schedule so the plane recedes as a single piece instead of shearing, with a slow sine offset per
+row for the ripple. The fill and the coastline are drowned into the live haze target
+(`MIRROR_DROWN`) exactly as a distant self is -- fog is what makes something read as scenery, and
+an interface element is never fogged. No markers, no labels and no per-world region tints are
+drawn: those belong to the clickable panel build of the same asset (`buildQumatuomiMap`), which
+is a separate export and stays that way.
+
+The route trace is a polyline through `WORLD_POSITIONS` for the worlds in `AtmosphereView.route`
+-- `getVisitedWorlds()`, which is append-ordered, so it is the order the player actually walked
+them -- projected through the same `toMirror`. It is drawn over the landmass and nothing else; no
+marker sits at either end, because a marker is an affordance and this is a record.
 
 **The mist band and the distant self.** `drawDepthHaze` runs its passes off one `target`, so
 nothing in the frame can disagree about what color the air is: a whole-sky tint, the ground wash,

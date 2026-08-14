@@ -23,7 +23,8 @@ import {
   insertColumnDivider,
   renderListColumnFooter,
 } from './panels/listDetail';
-import { makeQumatexMotif, makeDoorMotif } from '../art/labMotifs';
+import { makeQumatexMotif, makeDoorMotif, setDoorMotifDestination } from '../art/labMotifs';
+import { blend } from '../art/colors';
 import { stopMoveEffectPreview } from '../art/moveEffectPreview';
 
 // World 0, "The Lab" (DESIGN.md's world table) -- boot destination from
@@ -161,7 +162,23 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   kondoMovePage = 0;
   // Same reset rules as dresselhausPreview/majoranaPreview above -- see
   // GuardianPanelHost's own comment on this field.
-  blochPreview: number | null = null;
+  // The travel panel's live selection. An accessor rather than a plain field
+  // because the Lab's door previews wherever the player is currently going:
+  // moving the selection re-points the door in the same gesture, with no
+  // separate refresh call for the panel to remember to make.
+  private blochPreviewWorld: number | null = null;
+  get blochPreview(): number | null {
+    return this.blochPreviewWorld;
+  }
+  set blochPreview(world: number | null) {
+    this.blochPreviewWorld = world;
+    this.refreshDoorPreview();
+  }
+  // The door station's own motif, kept so its opening can be re-pointed.
+  private doorMotif?: Phaser.GameObjects.Container;
+  // The room's light layer, repainted in place whenever the player's crystal
+  // changes (relightRoom).
+  private roomGlow?: Phaser.GameObjects.Graphics;
   // The room's one floating crystal preview (STYLE.md's "the only crystal
   // render drawn anywhere in the room itself") -- `playerPreview` is the
   // stable tween target (the continuous bob), `playerCrystalGfx` the
@@ -187,6 +204,9 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     this.guardianTooltip = undefined;
     music.play('overworld:1');
     this.dialogueContainer = undefined;
+    // Read before the room is lit: the Lab's accent lighting is the player's
+    // own crystal colour, so the room changes as the player does.
+    this.playerMaterial = getPlayerMaterial(this.game.registry);
     this.drawRoom();
 
     this.add
@@ -252,9 +272,10 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     // or special-casing Qumatex/the door into their own row. Every station
     // carries its own small `art/labMotifs.ts` motif beside its label --
     // Qumatex a crystal grid, the door a freestanding lit archway.
+    const doorMotif = (scene: Phaser.Scene, size: number) => makeDoorMotif(scene, size, this.doorDestination());
     const stations: { label: string; onClick: () => void; motif?: (scene: Phaser.Scene, size: number) => Phaser.GameObjects.Container }[] = [
       { label: 'Qumatex', onClick: () => this.showMaterialdex(), motif: makeQumatexMotif },
-      { label: this.doorLabel(), onClick: () => this.enterWorld(), motif: makeDoorMotif },
+      { label: this.doorLabel(), onClick: () => this.enterWorld(), motif: doorMotif },
       ...LAB_STATIONS.filter((station) => station.visible(this)).map((station) => ({
         label: station.label,
         onClick: () => station.onClick(this),
@@ -274,6 +295,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
       let rowHeight = 0;
       rowStations.forEach((station, col) => {
         const row = this.addStationRow(stationX[col], y, station.label, station.onClick, station.motif);
+        if (station.motif === doorMotif) this.doorMotif = row.motif;
         placed.push(row.button, ...(row.motif ? [row.motif] : []));
         rowHeight = Math.max(rowHeight, row.button.height);
       });
@@ -487,6 +509,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     const floorTop = 340; // the station rows straddle this seam, standing against the counter
     const g = this.add.graphics();
     const glow = this.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
+    this.roomGlow = glow;
 
     // Ceiling band, visually distinct from the wall below it (a seam line at
     // the boundary) so the room reads as having actual architecture instead
@@ -500,8 +523,6 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     for (const cx of [CANVAS_W * 0.25, CANVAS_W * 0.5, CANVAS_W * 0.75]) {
       g.fillStyle(0x2a3a5c, 0.6);
       g.fillRect(cx - 40, 14, 80, 9);
-      glow.fillStyle(0xcfe8ff, 0.35);
-      glow.fillRect(cx - 34, 16, 68, 4);
     }
     g.lineStyle(2, 0x3a3a5c, 0.7);
     g.lineBetween(0, ceilingH, CANVAS_W, ceilingH);
@@ -531,8 +552,6 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
       g.fillRect(px - 45, 176, 90, 56);
       g.lineStyle(2, 0x3a3a5c, 0.8);
       g.strokeRect(px - 45, 176, 90, 56);
-      glow.fillStyle(0x5ad9c9, 0.14);
-      glow.fillRect(px - 39, 182, 78, 44);
       g.lineStyle(1, 0x3a4a6c, 0.5);
       g.lineBetween(px - 39, 196, px + 39, 196);
       g.lineBetween(px - 39, 212, px + 39, 212);
@@ -566,11 +585,36 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     for (let tx = 0; tx <= CANVAS_W; tx += tileW) g.lineBetween(tx, floorTop, tx, CANVAS_H);
     for (let ty = floorTop; ty <= CANVAS_H; ty += tileH) g.lineBetween(0, ty, CANVAS_W, ty);
 
-    // Soft ambient glow on the floor beneath where the player's crystal
-    // floats (positioned in `create()` right after this call), so the room
-    // doesn't read as uniformly flat-lit.
+    this.relightRoom();
+  }
+
+  // Everything in the room that reads as *light* -- the ceiling panels, the
+  // instrument screens, and the pool on the floor beneath where the player's
+  // crystal floats -- painted in the player's own crystal colour. That is one
+  // of the Lab's two signals (the other being its door), and it is what makes
+  // a functional hub reflect the player rather than decorate itself: the room
+  // changes as the player does. Structure -- wall, counter, monitor bezels,
+  // floor tiles -- keeps its own colours, so this reads as lighting rather
+  // than as a repaint.
+  //
+  // Repainted into the same Graphics rather than a fresh one, so a
+  // transmutation re-lights the room without lifting the glow above the
+  // stations standing in front of it.
+  private relightRoom() {
+    const glow = this.roomGlow;
+    if (!glow) return;
+    const accent = this.playerMaterial.color;
+    glow.clear();
+    for (const cx of [CANVAS_W * 0.25, CANVAS_W * 0.5, CANVAS_W * 0.75]) {
+      glow.fillStyle(blend(accent, 0xffffff, 0.5), 0.35);
+      glow.fillRect(cx - 34, 16, 68, 4);
+    }
+    for (const px of [CANVAS_W / 2 - 145, CANVAS_W / 2 + 145]) {
+      glow.fillStyle(accent, 0.14);
+      glow.fillRect(px - 39, 182, 78, 44);
+    }
     for (let r = 90; r >= 30; r -= 20) {
-      glow.fillStyle(0x8fa0ff, 0.05);
+      glow.fillStyle(accent, 0.05);
       glow.fillCircle(CANVAS_W / 2, 250, r);
     }
   }
@@ -661,6 +705,20 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     this.scene.start('Overworld', { world, regenerate: !this.canResumeWorld(world) });
   }
 
+  // Where the door currently leads, and therefore what its opening shows:
+  // whatever world the travel panel has selected while that panel is open,
+  // and otherwise the door's own destination -- by default the world and
+  // position the player left.
+  private doorDestination(): number {
+    if (this.blochPreviewWorld != null) return this.blochPreviewWorld;
+    if (this.isSuperpositionMode()) return this.resumeWorld() ?? 1;
+    return this.highestUnlockedWorld();
+  }
+
+  private refreshDoorPreview() {
+    if (this.doorMotif) setDoorMotifDestination(this.doorMotif, this.doorDestination());
+  }
+
   // The world (and, via canResumeWorld's own mapState check, exact
   // position) the player actually left from when OverworldScene's own
   // keydown-ENTER sent them here (returnToHub -- always saveMapState()
@@ -728,6 +786,9 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     persistFromRegistry(this.game.registry);
 
     this.playerMaterial = material;
+    // The room's light follows the crystal it is keyed to, so a transmutation
+    // re-lights the Lab in the same gesture.
+    this.relightRoom();
     this.playerCrystalGfx.destroy();
     this.playerCrystalGfx = makeCrystal(this, 46, material.color, material.variant, {
       seed: material.name,

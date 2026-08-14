@@ -201,7 +201,6 @@ function drawMarginRows(view: TerrainView, deepestRow: number) {
       if (tile.kind === 'path' && roadRunsOn) {
         let color = groundColor(bandBase(tile.biome, tile.biome.path, gy), depthRatio, walkableHazeTarget(view, tile.biome, depthRatio));
         if (tile.regionTint != null) color = blend(color, tile.regionTint, regionTintAt(depthRatio, 0.55));
-        color = seamed(view, color, gy);
         g.fillStyle(color, 1);
         g.fillPoints(fill, true);
       } else if (tile.kind === 'path') {
@@ -277,20 +276,18 @@ function drawContactShadow(
 const SEAM_ROWS = 3;
 const SEAM_STRENGTH = 0.45;
 
-// The ground seam: the next world's own floor colour, at full strength on
-// the throat row and everything the repeated road carries past it, fading
-// out over the SEAM_ROWS south of it. Running the far side at full strength
-// rather than stopping at the throat is what keeps the ground agreeing with
-// the aperture above it -- the road past an open gate is already the next
-// world's, so a seam that reverted to this world's floor beyond the gate
-// would put a stripe across the corridor instead of a threshold under it.
-// Nothing at all while the gate is shut.
+// The ground seam: a short apron of the next world's own floor colour across
+// the throat row and the two south of it, strongest at the throat. Short and
+// square to the direction of travel on purpose -- a threshold is something
+// the player takes in one step, where a long gradient is indistinguishable
+// from distance haze and a recolour of the whole far corridor reads as a
+// terrain error. Nothing at all while the gate is shut.
 function seamed(view: TerrainView, color: number, gy: number): number {
   const gate = view.gate;
   if (!gate?.open || !gate.next) return color;
   const rows = gy - gate.row;
-  if (rows >= SEAM_ROWS) return color;
-  return blend(color, gate.next.path, SEAM_STRENGTH * (1 - Math.max(0, rows) / SEAM_ROWS));
+  if (rows < 0 || rows >= SEAM_ROWS) return color;
+  return blend(color, gate.next.path, SEAM_STRENGTH * (1 - rows / SEAM_ROWS));
 }
 
 // Distant walkable ground hazes toward a lighter target than its
