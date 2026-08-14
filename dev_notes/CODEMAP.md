@@ -278,7 +278,27 @@ game/src/
                                   picks the table + restarts the current track,
                                   makeBattleScore()/makeModernBattleScore() generate worlds
                                   2-10's (resp. all 10 modern) battle themes (classic world 1 is
-                                  hand-written), duck() for attack beats
+                                  hand-written), duck() for attack beats.
+                                  The ten overworld scores are one darkening arc keyed to
+                                  WORLDS.md's light rule (DESIGN.md §7's "Soundtrack" is the
+                                  world-by-world table): C tonic through worlds 1-6 with the
+                                  mode draining, a tritone to F# at world 7 that never comes
+                                  back. Classic worlds 1, 7 and 8 are hand-written Score
+                                  literals because their shape isn't a chord progression plus a
+                                  melody contour (7 is a whole-tone canon with no harmony at
+                                  all; 8 transforms world 1's own melody); every other classic
+                                  overworld comes from makeOverworldScore(), whose optional
+                                  knobs (bassMode/padMode/leadOctave/leadWet/mirrorDelayBeats/
+                                  extraTracks...) all default to the plain arrangement.
+                                  Battle articulation (silenceOpening/turnoverWalk/
+                                  addBrassPickups/battleSnarePattern/battleHatPattern/
+                                  crashTrack) is applied in makeBattleScore AND again in
+                                  world 1's hand-written BATTLE_SCORE -- a change to the battle
+                                  feel has to be made in both or world 1 silently diverges from
+                                  the other nine. These are separate from kickPulse/snarePulse/
+                                  hatPulse/subBassBar/battleIntroSting/chordTones/padVoiceBar/
+                                  harmonizeThird, which SCORES_MODERN also uses: fork those
+                                  rather than editing them.
   data/
     types.ts                    Move, Material, MoveClass, MaterialType, CrystalVariant, Stats
     balance.ts                   Every pure battle/economy formula, deliberately free of any
