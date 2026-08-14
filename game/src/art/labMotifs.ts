@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
 import { shade } from './colors';
-import { REFERENCE_BLUE_GREY, TUTORIAL_CYAN } from '../ui/theme';
+import { REFERENCE_BLUE_GREY, STORY_LAVENDER, TUTORIAL_CYAN } from '../ui/theme';
 
 // One small hand-drawn icon per Lab station (scenes/panels/hubStations.ts's
-// six reference/settings stations, plus HubScene's own Qumatex) -- the
+// five reference/settings stations, plus HubScene's own Qumatex and the
+// door onward) -- the
 // motif STYLE.md's "Lab panels" section describes, planted beside that
 // station's own button out in the Lab room (HubScene.addStationRow) rather
 // than inside the panel the button opens.
@@ -14,8 +15,7 @@ import { REFERENCE_BLUE_GREY, TUTORIAL_CYAN } from '../ui/theme';
 // and never run it through ui/text.ts's fontPx()/fontScale(), since a
 // decorative glyph's own size is art, not text (see ui/text.ts's own
 // comment, and Qumatex's `crystalBlockH` in HubScene.ts for the established
-// precedent). The door has no motif of its own -- plain text is enough to
-// read as an exit.
+// precedent).
 
 export function makeQumatexMotif(scene: Phaser.Scene, size: number): Phaser.GameObjects.Container {
   const container = scene.add.container(0, 0);
@@ -48,6 +48,48 @@ export function makeQumatexMotif(scene: Phaser.Scene, size: number): Phaser.Game
     g.strokePoints(pts, true);
   });
   container.add(g);
+
+  return container;
+}
+
+export function makeDoorMotif(scene: Phaser.Scene, size: number): Phaser.GameObjects.Container {
+  const container = scene.add.container(0, 0);
+
+  // A miniature of the walkable world-door's own archway (art/door.ts) --
+  // same stone frame, same dark inset, same self-luminous lavender portal --
+  // but freestanding, its glow spilling past the frame on every side rather
+  // than set into a wall. A world's own door is a notch in terrain leading to
+  // one fixed neighbour; a doorway standing in nothing is the Lab's, which
+  // leads anywhere. Deliberately not a spiral or funnel: at this size a
+  // spiral collapses into a whirlpool and reads as a hazard, and a tunnel
+  // with a visible far end would put a view of an exterior in a room that has
+  // none. The opening shows light, never scenery. The additive glow assumes
+  // the Lab's own dark wall behind it.
+  const halo = scene.add.circle(0, 0, size * 0.55, STORY_LAVENDER, 0.15);
+  halo.setBlendMode(Phaser.BlendModes.ADD);
+  container.add(halo);
+
+  const g = scene.add.graphics();
+  // Small corner radius: rounded much further, the frame stops reading as a
+  // doorway and starts reading as one more gem.
+  g.fillStyle(0x453f5e, 1);
+  g.fillRoundedRect(-size * 0.32, -size * 0.52, size * 0.64, size * 1.04, size * 0.1);
+  g.lineStyle(1, 0x7367a3, 1);
+  g.strokeRoundedRect(-size * 0.32, -size * 0.52, size * 0.64, size * 1.04, size * 0.1);
+  g.fillStyle(0x0d0b16, 1);
+  g.fillRoundedRect(-size * 0.23, -size * 0.43, size * 0.46, size * 0.86, size * 0.07);
+  container.add(g);
+
+  const portal = scene.add.graphics();
+  portal.setBlendMode(Phaser.BlendModes.ADD);
+  portal.fillStyle(STORY_LAVENDER, 0.7);
+  portal.fillEllipse(0, 0, size * 0.42, size * 0.74);
+  portal.fillStyle(0xffffff, 0.45);
+  portal.fillEllipse(0, 0, size * 0.21, size * 0.37);
+  container.add(portal);
+  // The one Lab motif that pulses: this station is a live passage rather than
+  // a reference panel, and the walkable world-door it mirrors pulses too.
+  scene.tweens.add({ targets: portal, alpha: { from: 0.7, to: 1 }, duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
   return container;
 }
@@ -137,33 +179,6 @@ export function makeAbilitiesMotif(scene: Phaser.Scene, size: number): Phaser.Ga
 
   const emblem = scene.add.circle(0, -h * 0.05, size * 0.1, 0xffffff, 0.85);
   container.add(emblem);
-
-  return container;
-}
-
-export function makeGuardiansMotif(scene: Phaser.Scene, size: number): Phaser.GameObjects.Container {
-  const container = scene.add.container(0, 0);
-  const color = 0xb98fea; // matches showGuardiansPanel's own stroke
-
-  // A tiny robed figure -- the same "floating haloed head over a cloak"
-  // silhouette family every guardian avatar builder draws, simplified down
-  // to icon size -- plus a small quote glyph, since this panel is where the
-  // player revisits a guardian's own lesson.
-  const g = scene.add.graphics();
-  g.fillStyle(shade(color, -10), 0.95);
-  g.fillTriangle(-size * 0.34, size * 0.5, size * 0.34, size * 0.5, 0, -size * 0.12);
-  g.fillStyle(shade(color, 30), 1);
-  g.fillCircle(0, -size * 0.32, size * 0.18);
-  const halo = scene.add.circle(0, -size * 0.32, size * 0.28, 0xffffff, 0.18);
-  halo.setBlendMode(Phaser.BlendModes.ADD);
-  container.add(halo);
-  container.add(g);
-
-  const quote = scene.add
-    .text(size * 0.3, size * 0.42, '”', { fontSize: `${Math.round(size * 0.6)}px`, color: '#ffffff' })
-    .setOrigin(0.5);
-  quote.setAlpha(0.8);
-  container.add(quote);
 
   return container;
 }

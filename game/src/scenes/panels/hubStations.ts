@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
 import type { HubScene } from '../HubScene';
-import { OverworldScene } from '../OverworldScene';
 import { CANVAS_W, CANVAS_H } from '../../art/perspective';
 import { fontPx, fontScale } from '../../ui/text';
 import { PANEL_BG, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY, REFERENCE_BLUE_GREY_HEX, TUTORIAL_CYAN, TUTORIAL_CYAN_HEX } from '../../ui/theme';
@@ -21,7 +20,7 @@ import {
 import { persistFromRegistry } from '../../data/save';
 import { music } from '../../audio/music';
 import { getBattleMoves, effectiveMovePower, moveDisplayName, getPlayerStats, getPlayerMaterial } from '../../data/materials';
-import { makeMovesMotif, makeStatsMotif, makeAbilitiesMotif, makeGuardiansMotif, makeTutorialMotif, makeSettingsMotif } from '../../art/labMotifs';
+import { makeMovesMotif, makeStatsMotif, makeAbilitiesMotif, makeTutorialMotif, makeSettingsMotif } from '../../art/labMotifs';
 
 // Every panel below (and HubScene's own Qumatex) shares this gold for its
 // fixed "panel name" heading. Tutorial's own page heading is content-specific
@@ -46,12 +45,11 @@ export function labPanelColumns(panelWidth: number): LabPanelColumns {
   return { contentCenterX: CANVAS_W / 2, contentWrapW: panelWidth - CONTENT_MARGIN * 2 };
 }
 
-// The six stations the Lab (HubScene, World 0) offers alongside its three
-// physical stations (Qumatex/Save/Door) -- Moves, Stats, Abilities,
-// Guardians, Tutorial, Settings. Each function here is what a station's
-// `onClick` calls directly; every one is a pure function of registry/save
-// state (player stats/moves/passives/settings, which guardians have been
-// met), not of anything tied to being mid-world, so none of it needs to
+// The five stations the Lab (HubScene, World 0) offers alongside Qumatex and
+// the door onward -- Moves, Stats, Abilities, Tutorial, Settings. Each
+// function here is what a station's `onClick` calls directly; every one is a
+// pure function of registry/save state (player stats/moves/passives/
+// settings), not of anything tied to being mid-world, so none of it needs to
 // live on OverworldScene -- these only ever run from the Lab. Takes `scene:
 // HubScene` as the first param, same shape every scenes/panels/<guardian>.ts
 // file takes `scene: OverworldScene`, since HubScene is now this module's
@@ -210,96 +208,6 @@ export function showAbilitiesPanel(scene: HubScene) {
   const panel = scene.add
     .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.95)
     .setStrokeStyle(2, REFERENCE_BLUE_GREY);
-  container.addAt(panel, 0);
-}
-
-// Every guardian the player has met so far (registry `metGuardians`, grown
-// by OverworldScene.openGuardian as middle tiles are reached) -- in
-// Superposition Mode every guardian lists immediately regardless of
-// `metGuardians`, matching that mode's "access to every guardian from the
-// beginning." Picking a row opens that guardian's own panel (the same
-// `open` callback WORLD_GUARDIANS uses when the player walks up to them
-// mid-world) directly in the Lab -- HubScene implements GuardianPanelHost
-// (OverworldScene.ts), the same interface every guardian-panel file is
-// written against, so the shop/teleport-hub/transmutation panel renders
-// identically here with no change to the player's world, scene, or map
-// position. Selecting a guardian is never itself a way to travel; Bloch's
-// panel still offers explicit "Travel to World N" rows (via
-// GuardianPanelHost.advanceToWorld), which are the one deliberate way this
-// station can move the player, same as walking through a world door.
-export function showGuardiansPanel(scene: HubScene) {
-  scene.dialogueContainer?.destroy(true);
-
-  const panelWidth = 600;
-  const top = 20;
-  const container = scene.add.container(0, 0).setDepth(100);
-  scene.dialogueContainer = container;
-
-  let y = top;
-
-  const title = scene.add
-    .text(CANVAS_W / 2, y, 'Guardians', { fontSize: fontPx(scene, 15), color: LAB_TITLE_COLOR, fontStyle: 'bold' })
-    .setOrigin(0.5, 0);
-  container.add(title);
-  y += title.height + 14;
-
-  const columns = labPanelColumns(panelWidth);
-
-  const rowPx = fontPx(scene, 13);
-
-  const met = (scene.game.registry.get('metGuardians') as string[]) ?? [];
-  const superposition = !!scene.game.registry.get('superpositionMode');
-  const guardians = OverworldScene.guardianRoster().filter((g) => superposition || met.includes(g.id));
-
-  if (guardians.length === 0) {
-    const text = scene.add
-      .text(columns.contentCenterX, y, "You haven't met any guardians yet.", {
-        fontSize: rowPx,
-        color: '#ffffff',
-        align: 'center',
-        wordWrap: { width: columns.contentWrapW },
-      })
-      .setOrigin(0.5, 0);
-    container.add(text);
-    y += text.height + 14;
-  } else {
-    // Each row prints the guardian's name/world and their one-line blurb
-    // together as a single two-line button label -- same name-then-
-    // description pairing showAbilitiesPanel's own per-owner rows use two
-    // stations away, so this list stops being bare names with no way to
-    // tell them apart before opening one. Paginated (renderPagedButtons,
-    // maxPerPage 4, same convention Bloch's/Feynman's own candidate lists
-    // use) since ten two-line rows -- every guardian, in Superposition Mode
-    // or by the time the player has met them all -- doesn't fit one panel
-    // at any text-size preset.
-    y = scene.renderPagedButtons(
-      container,
-      y,
-      guardians,
-      scene.guardiansPage,
-      4,
-      (g) => `${g.name} (World ${g.world})\n${g.blurb}`,
-      (g) => {
-        scene.closeDialogue();
-        g.open?.(scene);
-      },
-      (page) => {
-        scene.guardiansPage = page;
-        scene.dialogueContainer?.destroy(true);
-        showGuardiansPanel(scene);
-      }
-    );
-  }
-
-  y += 12;
-
-  const closeBtn = scene.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Close', () => scene.closeDialogue(), 440);
-  y += closeBtn.height + 12;
-
-  const panelHeight = y - top;
-  const panel = scene.add
-    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.95)
-    .setStrokeStyle(2, 0xb98fea);
   container.addAt(panel, 0);
 }
 
@@ -631,23 +539,15 @@ function isSuperpositionMode(scene: HubScene): boolean {
   return !!scene.game.registry.get('superpositionMode');
 }
 
-// Abilities/Guardians start out absent from the Lab room entirely on a
-// fresh save (HubScene.create() filters LAB_STATIONS by `visible` below) --
-// there's nothing to check/revisit until the player has actually learned a
-// passive or met a guardian. Superposition Mode (a testing/exploration aid,
-// DESIGN.md §5) always treats both as visible: it grants every passive
-// unconditionally the first time an Overworld scene runs
-// (OverworldScene.applySuperpositionLeveling), which wouldn't cover the
-// very first Lab visit of a fresh Superposition save, and showGuardiansPanel
-// already lists every guardian regardless of `metGuardians` in this mode, so
-// hiding the station itself until `metGuardians` grows would disagree with
-// what the station shows once opened.
+// Abilities starts out absent from the Lab room entirely on a fresh save
+// (HubScene.create() filters LAB_STATIONS by `visible` below) -- there's
+// nothing to check until the player has actually learned a passive.
+// Superposition Mode (a testing/exploration aid, DESIGN.md §5) always treats
+// it as visible: it grants every passive unconditionally the first time an
+// Overworld scene runs (OverworldScene.applySuperpositionLeveling), which
+// wouldn't cover the very first Lab visit of a fresh Superposition save.
 function hasLearnedAnyAbility(scene: HubScene): boolean {
   return isSuperpositionMode(scene) || ((scene.game.registry.get('passivesUnlocked') as string[]) ?? []).length > 0;
-}
-
-function hasMetAnyGuardian(scene: HubScene): boolean {
-  return isSuperpositionMode(scene) || ((scene.game.registry.get('metGuardians') as string[]) ?? []).length > 0;
 }
 
 export interface LabStation {
@@ -657,7 +557,7 @@ export interface LabStation {
   visible: (scene: HubScene) => boolean;
 }
 
-// The Lab's six reference/settings stations, each paired with its own
+// The Lab's five reference/settings stations, each paired with its own
 // `art/labMotifs.ts` icon (planted beside its button in the room by
 // HubScene.addStationRow, see labPanelColumns' own comment above) and a
 // `visible` check -- HubScene.create() filters this list down to whichever
@@ -668,7 +568,6 @@ export const LAB_STATIONS: LabStation[] = [
   { label: 'Moves', motif: makeMovesMotif, onClick: showMovesPanel, visible: () => true },
   { label: 'Stats', motif: makeStatsMotif, onClick: showStatsPanel, visible: () => true },
   { label: 'Abilities', motif: makeAbilitiesMotif, onClick: showAbilitiesPanel, visible: hasLearnedAnyAbility },
-  { label: 'Guardians', motif: makeGuardiansMotif, onClick: showGuardiansPanel, visible: hasMetAnyGuardian },
   { label: 'Tutorial', motif: makeTutorialMotif, onClick: showTutorialTopics, visible: () => true },
   { label: 'Settings', motif: makeSettingsMotif, onClick: showSettingsPanel, visible: () => true },
 ];

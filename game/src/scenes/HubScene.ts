@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { makeCrystal } from '../art/crystals';
 import { CANVAS_W, CANVAS_H } from '../art/perspective';
-import { getPlayerMaterial, allCrystals, TYPE_LOOK, materialDisplayName, materialTypeLabel } from '../data/materials';
+import { getPlayerMaterial, allCrystals, TYPE_LOOK, materialDisplayName, materialTypeLabel, worldName } from '../data/materials';
 import { wildHpForWorld } from '../data/balance';
 import { materialBlurb } from '../data/materialdex';
 import { persistFromRegistry } from '../data/save';
@@ -11,25 +11,28 @@ import { TUTORIAL_TIPS, hasSeenTip, markTipSeen } from '../data/tutorial';
 import { music } from '../audio/music';
 import { fontPx, fontScale } from '../ui/text';
 import { PANEL_BG, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../ui/theme';
-import { BUILT_WORLDS, applySuperpositionUnlocks } from './OverworldScene';
-import type { GuardianPanelHost } from './OverworldScene';
+import { BUILT_WORLDS, OverworldScene, applySuperpositionUnlocks } from './OverworldScene';
+import type { GuardianPanelHost, GuardianRosterEntry } from './OverworldScene';
 import { LAB_TITLE_COLOR, LAB_STATIONS } from './panels/hubStations';
 import { LIST_DETAIL_PANEL_W, listDetailColumns, renderListColumn, insertColumnDivider } from './panels/listDetail';
-import { makeQumatexMotif } from '../art/labMotifs';
+import { makeQumatexMotif, makeDoorMotif } from '../art/labMotifs';
 import { stopMoveEffectPreview } from '../art/moveEffectPreview';
 
 // World 0, "The Lab" (DESIGN.md's world table) -- boot destination from
 // TitleScene and the return point from Overworld (press H or Enter). Unlike
 // the numbered worlds it isn't a walkable procedural map: it's a single
-// static room with up to eight stations -- Qumatex and the door onward,
-// which always exist, plus six reference/settings stations (Moves, Stats,
-// Abilities, Guardians, Tutorial, Settings, built in
+// static room with up to seven stations -- Qumatex and the door onward,
+// which always exist, plus five reference/settings stations (Moves, Stats,
+// Abilities, Tutorial, Settings, built in
 // scenes/panels/hubStations.ts's `LAB_STATIONS`) -- since none of the hub's
 // jobs need overworld movement or wild encounters of their own, and none of
-// those six stations' own content is tied to being mid-world. Abilities and
-// Guardians only actually appear once the player has learned a first
-// passive or met a first guardian (`LAB_STATIONS`' own `visible` checks) --
-// a fresh save has nothing to check or revisit there yet. Progress
+// those five stations' own content is tied to being mid-world. Abilities
+// only actually appears once the player has learned a first passive
+// (`LAB_STATIONS`' own `visible` check) -- a fresh save has nothing to check
+// there yet. Alongside the stations, every guardian the player has met
+// stands in the room as their own clickable avatar (spawnGuardianAvatars),
+// so reopening one costs a single click rather than a trip through a roster
+// list. Progress
 // autosaves silently after every meaningful state change (data/save.ts's
 // `persistFromRegistry`), so the room has no manual save station of its own.
 
@@ -50,10 +53,43 @@ interface MaterialdexEntry {
 // setting, same "art, not text" reasoning as every other motif builder.
 const STATION_MOTIF_SIZE = 26;
 const STATION_MOTIF_GAP = 9;
+// Where the first station row starts, and how much clear canvas the grid
+// keeps below its last row.
+const STATION_ROW_TOP = 330;
+const STATION_GRID_BOTTOM_MARGIN = 10;
+
+// The guardian gallery: every guardian the player has met stands in the room
+// as their own avatar (spawnGuardianAvatars), five per cluster in the two
+// upper corners, each cluster stacked one-over-two-over-two. Slots are keyed
+// to the guardian's own world (worlds 1-5 fill the left cluster top-down,
+// 6-10 the right), so a guardian never moves between visits as the roster
+// grows -- an unmet guardian simply leaves their slot empty, and the corners
+// fill in as the player progresses. The corners are the only part of the wall
+// wide enough for this: the room's quote sits between them, the instrument
+// panels and the player's own crystal hold the middle, and the counter below
+// `GUARDIAN_ROW_TOP + 2 * GUARDIAN_ROW_PITCH` is where the station rows start.
+const GUARDIAN_SLOT_W = 88;
+const GUARDIAN_SLOT_H = 72;
+const GUARDIAN_ROW_PITCH = 78;
+const GUARDIAN_ROW_TOP = 96;
+const GUARDIAN_CLUSTER_CX = 96;
+const GUARDIAN_AVATAR_SCALE = 0.55;
+// Where the short name sits relative to the avatar's own origin (its chest),
+// and where the slot's click plate is centered between the two.
+const GUARDIAN_LABEL_DROP = 27;
+const GUARDIAN_LABEL_BASE_PX = 9;
+const GUARDIAN_LABEL_MIN_PX = 9;
+const GUARDIAN_PLATE_DROP = 8;
+// The click plate is invisible at rest and a faint wash under the pointer.
+// Never fully transparent: a Phaser game object with alpha 0 stops rendering,
+// and an unrendered object is skipped by hit-testing too, which would make
+// every avatar a dead click target.
+const GUARDIAN_PLATE_REST_ALPHA = 0.001;
+const GUARDIAN_PLATE_HOVER_ALPHA = 0.14;
 
 export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // Public, not private -- scenes/panels/hubStations.ts's Moves/Stats/
-  // Abilities/Guardians/Tutorial/Settings stations live outside this class
+  // Abilities/Tutorial/Settings stations live outside this class
   // and need to read/replace the currently-open panel, same tradeoff
   // OverworldScene's own dialogue plumbing makes for its guardian panel
   // files (see CODEMAP.md's "Guardian panels").
@@ -69,14 +105,11 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // entry this points at, even if that entry isn't on the list's current
   // page or has been filtered out of it.
   private materialdexSelectedName: string | null = null;
-  // Which page of the Guardians station's roster list is showing
-  // (scenes/panels/hubStations.ts's showGuardiansPanel), reset to 0 whenever
-  // the panel is closed (see closeDialogue below) -- Lab-only, so it lives
-  // here rather than on GuardianPanelHost the way Bloch/Feynman's own paged
-  // lists do (showGuardiansPanel takes a concrete HubScene, never opened
-  // mid-walk from OverworldScene the way every guardian's own panel is).
-  guardiansPage = 0;
-  // Same shape as guardiansPage/materialdexSelectedName above, for the
+  // The hover readout floating under whichever guardian avatar the pointer is
+  // currently over (spawnGuardianAvatars), destroyed the moment it leaves --
+  // at most one exists at a time.
+  private guardianTooltip?: Phaser.GameObjects.Container;
+  // Same shape as materialdexSelectedName above, for the
   // Tutorial station's own list+detail panel (scenes/panels/hubStations.ts's
   // showTutorialTopics) -- also Lab-only. `tutorialPage` is which page of
   // the topic list is showing; `tutorialSelectedIndex` is the previewed
@@ -88,8 +121,9 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
 
   // GuardianPanelHost implementation (see OverworldScene.ts's GuardianPanelHost
   // and CODEMAP.md's "Guardian panels") -- lets any guardian's own panel
-  // (shop/teleport hub/transmutation) render directly in the Lab, opened from
-  // the Guardians station, with no scene transition. `world` is fixed at 0
+  // (shop/teleport hub/transmutation) render directly in the Lab, opened by
+  // clicking that guardian's own avatar in the room
+  // (spawnGuardianAvatars), with no scene transition. `world` is fixed at 0
   // (World 0, the Lab itself, is never a BUILT_WORLDS entry) so Bloch's own
   // "exclude the world I'm currently in" destination filter excludes nothing
   // here, listing every visited world instead. `qumatessence`/`playerMaterial`
@@ -134,19 +168,20 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
 
   create() {
     // Applied before `playerMaterial` is read a few lines down (and before
-    // any guardian panel can open from this scene) -- Superposition Mode's
-    // Guardians station (hubStations.ts's showGuardiansPanel) lists every
-    // guardian regardless of `metGuardians`, so a save that has never yet
-    // stepped through a world door still needs this same blanket "already
-    // unlocked" grant OverworldScene.applySuperpositionLeveling applies on
-    // world entry -- see applySuperpositionUnlocks's own comment.
+    // any guardian panel can open from this scene) -- Superposition Mode
+    // stands every guardian's avatar in the room regardless of
+    // `metGuardians`, so a save that has never yet stepped through a world
+    // door still needs this same blanket "already unlocked" grant
+    // OverworldScene.applySuperpositionLeveling applies on world entry -- see
+    // applySuperpositionUnlocks's own comment.
     applySuperpositionUnlocks(this.game.registry);
+    this.guardianTooltip = undefined;
     music.play('overworld:1');
     this.dialogueContainer = undefined;
     this.drawRoom();
 
     this.add
-      .text(CANVAS_W / 2, 30, 'World 0 -- The Lab', {
+      .text(CANVAS_W / 2, 30, 'The Lab', {
         fontSize: fontPx(this, 16),
         color: '#ffffff',
         backgroundColor: 'rgba(0,0,0,0.35)',
@@ -158,8 +193,10 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
       .text(
         CANVAS_W / 2,
         62,
-        '"A Decoherence is spreading through the material worlds. Master each phase of matter to stabilize it." -- a voice, deep in the Lab',
-        { fontSize: fontPx(this, 12), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: 480 } }
+        '"A Decoherence is spreading through the quantum material worlds. Master each phase of matter to stabilize it." -- a voice, deep in the Lab',
+        // Wrapped narrow enough to stay clear of the guardian clusters
+        // standing in the two upper corners (spawnGuardianAvatars).
+        { fontSize: fontPx(this, 12), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: 420 } }
       )
       .setOrigin(0.5, 0);
 
@@ -188,6 +225,8 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     this.playerPreview.add(this.playerCrystalGfx);
     this.tweens.add({ targets: this.playerPreview, y: 220, duration: 1000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
+    this.spawnGuardianAvatars();
+
     // Margin is a fraction of CANVAS_W, not a flat pixel count, so the three
     // station columns stay proportionally inset from the walls at any canvas
     // width. Rounded so a station's motif+label pair lands on whole pixels.
@@ -197,33 +236,46 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     // Every station in the room -- Qumatex and the door (which always
     // exist), then the reference/settings stations (scenes/panels/
     // hubStations.ts's LAB_STATIONS) filtered down to whichever the player
-    // has actually unlocked, Abilities needing a first passive learned and
-    // Guardians a first guardian met (LAB_STATIONS' own `visible` checks) --
+    // has actually unlocked, Abilities needing a first passive learned
+    // (LAB_STATIONS' own `visible` checks) --
     // packed together into one grid of rows of three with no gaps, rather
     // than reserving a fixed grid slot for a station that isn't visible yet
-    // or special-casing Qumatex/the door into their own row. Qumatex carries
-    // its own small crystal-grid motif (`makeQumatexMotif`) beside its
-    // label, same as every reference/settings station below -- the door has
-    // no `art/labMotifs.ts` builder of its own, plain text being enough to
-    // read as an exit.
+    // or special-casing Qumatex/the door into their own row. Every station
+    // carries its own small `art/labMotifs.ts` motif beside its label --
+    // Qumatex a crystal grid, the door a freestanding lit archway.
     const stations: { label: string; onClick: () => void; motif?: (scene: Phaser.Scene, size: number) => Phaser.GameObjects.Container }[] = [
       { label: 'Qumatex', onClick: () => this.showMaterialdex(), motif: makeQumatexMotif },
-      { label: this.doorLabel(), onClick: () => this.enterWorld() },
+      { label: this.doorLabel(), onClick: () => this.enterWorld(), motif: makeDoorMotif },
       ...LAB_STATIONS.filter((station) => station.visible(this)).map((station) => ({
         label: station.label,
         onClick: () => station.onClick(this),
         motif: station.motif,
       })),
     ];
-    let y = 300;
+    // Low in the room, leaving the wall above the counter to the guardian
+    // clusters rather than splitting that band between the two. The grid is
+    // laid out from there and then lifted as a whole by however much it
+    // overshoots the canvas floor -- a long door label ("Back to Frozen
+    // Zero-Resistance Caverns") wraps to two or three lines at the Large text
+    // size, which is enough to push a three-row grid off the bottom.
+    let y = STATION_ROW_TOP;
+    const placed: Phaser.GameObjects.GameObject[] = [];
     for (let i = 0; i < stations.length; i += 3) {
       const rowStations = stations.slice(i, i + 3);
       let rowHeight = 0;
       rowStations.forEach((station, col) => {
-        const btn = this.addStationRow(stationX[col], y, station.label, station.onClick, station.motif);
-        rowHeight = Math.max(rowHeight, btn.height);
+        const row = this.addStationRow(stationX[col], y, station.label, station.onClick, station.motif);
+        placed.push(row.button, ...(row.motif ? [row.motif] : []));
+        rowHeight = Math.max(rowHeight, row.button.height);
       });
       y += rowHeight + 8;
+    }
+    const overshoot = y - 8 - (CANVAS_H - STATION_GRID_BOTTOM_MARGIN);
+    if (overshoot > 0) {
+      for (const obj of placed) {
+        const positioned = obj as Phaser.GameObjects.Text | Phaser.GameObjects.Container;
+        positioned.setY(positioned.y - overshoot);
+      }
     }
 
     // Reverse direction of OverworldScene's own keydown-ENTER (which sends
@@ -260,19 +312,148 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     label: string,
     onClick: () => void,
     makeMotif?: (scene: Phaser.Scene, size: number) => Phaser.GameObjects.Container
-  ): Phaser.GameObjects.Text {
+  ): { button: Phaser.GameObjects.Text; motif?: Phaser.GameObjects.Container } {
     const btn = this.addButton(x, y, label, () => {
       if (this.dialogueContainer) return;
       onClick();
     });
-    if (makeMotif) {
-      const pairWidth = STATION_MOTIF_SIZE + STATION_MOTIF_GAP + btn.width;
-      const pairLeft = x - pairWidth / 2;
-      btn.setX(pairLeft + STATION_MOTIF_SIZE + STATION_MOTIF_GAP + btn.width / 2);
-      const motif = makeMotif(this, STATION_MOTIF_SIZE);
-      motif.setPosition(pairLeft + STATION_MOTIF_SIZE / 2, y + btn.height / 2);
+    if (!makeMotif) return { button: btn };
+
+    const pairWidth = STATION_MOTIF_SIZE + STATION_MOTIF_GAP + btn.width;
+    const pairLeft = x - pairWidth / 2;
+    btn.setX(pairLeft + STATION_MOTIF_SIZE + STATION_MOTIF_GAP + btn.width / 2);
+    const motif = makeMotif(this, STATION_MOTIF_SIZE);
+    motif.setPosition(pairLeft + STATION_MOTIF_SIZE / 2, y + btn.height / 2);
+    return { button: btn, motif };
+  }
+
+  // Where the guardian of world `world` stands: worlds 1-5 fill the left
+  // cluster, 6-10 the right, each cluster read top-down as one avatar over a
+  // pair over a pair. A guardian's slot is fixed by their world, so it never
+  // shifts as other guardians are met.
+  private guardianSlot(world: number): { x: number; y: number } {
+    const index = (world - 1) % 5;
+    const row = index === 0 ? 0 : index <= 2 ? 1 : 2;
+    const centerX = world <= 5 ? GUARDIAN_CLUSTER_CX : CANVAS_W - GUARDIAN_CLUSTER_CX;
+    const x = row === 0 ? centerX : centerX + ((index - 1) % 2 === 0 ? -GUARDIAN_SLOT_W / 2 : GUARDIAN_SLOT_W / 2);
+    return { x, y: GUARDIAN_ROW_TOP + row * GUARDIAN_ROW_PITCH };
+  }
+
+  // The Lab's guardian gallery: every guardian the player has met (every
+  // guardian at all in Superposition Mode) stands in the room as their own
+  // avatar -- the same `art/<guardian>.ts` builder their overworld sprite and
+  // their panel's own header use -- and clicking one opens that guardian's
+  // panel directly, with no roster list in between. An unmet guardian leaves
+  // their slot empty (guardianSlot), so the corners fill in as the player
+  // works through the worlds.
+  private spawnGuardianAvatars() {
+    const met = (this.game.registry.get('metGuardians') as string[]) ?? [];
+    const superposition = this.isSuperpositionMode();
+
+    for (const guardian of OverworldScene.guardianRoster()) {
+      if (!superposition && !met.includes(guardian.id)) continue;
+      const slot = this.guardianSlot(guardian.world);
+
+      // The whole slot -- avatar plus label -- is one click target. It lives
+      // on a plain rectangle rather than on the avatar container itself
+      // because a Phaser Container has no hit area of its own, so making one
+      // interactive without an explicit geometry is exactly the dead target
+      // this is meant to avoid.
+      const plate = this.add
+        .rectangle(slot.x, slot.y + GUARDIAN_PLATE_DROP, GUARDIAN_SLOT_W - 4, GUARDIAN_SLOT_H, 0x8fa0ff, GUARDIAN_PLATE_REST_ALPHA)
+        .setInteractive({ useHandCursor: true });
+
+      const avatar = guardian.avatar(this, GUARDIAN_AVATAR_SCALE);
+      avatar.setPosition(slot.x, slot.y);
+
+      const label = this.add
+        .text(slot.x, slot.y + GUARDIAN_LABEL_DROP, guardian.shortName, {
+          fontSize: fontPx(this, GUARDIAN_LABEL_BASE_PX),
+          color: REFERENCE_BLUE_GREY_HEX,
+        })
+        .setOrigin(0.5, 0);
+      // A long surname is stepped down in whole pixels until it fits its own
+      // slot rather than wrapped or trimmed, so neighbouring slots' labels
+      // never touch. Stepped on the *rendered* size rather than the base one,
+      // since the same base px is 1.5x wider at the Large text-size preset --
+      // the widest name only fits every preset at the floor.
+      let labelPx = Math.round(GUARDIAN_LABEL_BASE_PX * fontScale(this));
+      while (label.width > GUARDIAN_SLOT_W - 6 && labelPx > GUARDIAN_LABEL_MIN_PX) {
+        labelPx -= 1;
+        label.setFontSize(`${labelPx}px`);
+      }
+
+      plate.on('pointerover', () => {
+        // A slot offers nothing while a panel is open (the click below is a
+        // no-op then), so it doesn't light up or float a readout either.
+        if (this.dialogueContainer) return;
+        plate.setFillStyle(0x8fa0ff, GUARDIAN_PLATE_HOVER_ALPHA);
+        label.setColor(guardian.labelColor);
+        avatar.setScale(1.12);
+        this.showGuardianTooltip(guardian, slot);
+      });
+      plate.on('pointerout', () => {
+        plate.setFillStyle(0x8fa0ff, GUARDIAN_PLATE_REST_ALPHA);
+        label.setColor(REFERENCE_BLUE_GREY_HEX);
+        avatar.setScale(1);
+        this.hideGuardianTooltip();
+      });
+      plate.on('pointerdown', () => {
+        // Same one-panel-at-a-time guard every station click uses.
+        if (this.dialogueContainer) return;
+        this.hideGuardianTooltip();
+        guardian.open?.(this);
+      });
     }
-    return btn;
+  }
+
+  // Full name plus the one-line "what they teach" blurb, floating just under
+  // the hovered avatar and clamped horizontally to stay on canvas -- the room
+  // itself only has width for a surname, so this is where a guardian says what
+  // they actually offer before the player commits a click to finding out. Even
+  // the bottom row's readout lands well above the canvas floor, so it always
+  // opens downward.
+  private showGuardianTooltip(guardian: GuardianRosterEntry, slot: { x: number; y: number }) {
+    this.hideGuardianTooltip();
+
+    const width = 200;
+    const padding = 6;
+    const container = this.add.container(0, 0).setDepth(60);
+    this.guardianTooltip = container;
+
+    // Capped text scale, the same tradeoff renderPassiveList/showAbilitiesPanel
+    // make: a guardian's full name is one long unbreakable word ("Skłodowska-
+    // Curie's"), which word wrap can't split, so at the Large preset an
+    // uncapped size would push it past this fixed-width box.
+    const scale = Math.min(fontScale(this), 1.3);
+    const wrapW = width - padding * 2;
+
+    const name = this.add
+      .text(0, 0, guardian.name, {
+        fontSize: `${Math.round(10 * scale)}px`,
+        color: guardian.labelColor,
+        fontStyle: 'bold',
+        align: 'center',
+        wordWrap: { width: wrapW },
+      })
+      .setOrigin(0.5, 0);
+    const blurb = this.add
+      .text(0, 0, guardian.blurb, { fontSize: `${Math.round(9 * scale)}px`, color: '#cfd8ff', align: 'center', wordWrap: { width: wrapW } })
+      .setOrigin(0.5, 0);
+
+    const height = name.height + 3 + blurb.height + padding * 2;
+    const centerX = Phaser.Math.Clamp(slot.x, width / 2 + 4, CANVAS_W - width / 2 - 4);
+    const top = slot.y + GUARDIAN_LABEL_DROP + 18;
+
+    const bg = this.add.rectangle(centerX, top + height / 2, width, height, PANEL_BG, 0.95).setStrokeStyle(1, 0x8fa0c9);
+    name.setPosition(centerX, top + padding);
+    blurb.setPosition(centerX, top + padding + name.height + 3);
+    container.add([bg, name, blurb]);
+  }
+
+  private hideGuardianTooltip() {
+    this.guardianTooltip?.destroy(true);
+    this.guardianTooltip = undefined;
   }
 
   // First contextual tutorial tip (data/tutorial.ts): the Lab is always the
@@ -294,7 +475,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // gradient from top to bottom. Static (drawn once here, never redrawn in an
   // `update()` -- this scene has none), so the extra shape count is free.
   private drawRoom() {
-    const floorTop = 340; // matches the station row (y=300) and its labels underneath
+    const floorTop = 340; // the station rows straddle this seam, standing against the counter
     const g = this.add.graphics();
     const glow = this.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
 
@@ -441,13 +622,17 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // so its own affordance is "back to wherever I was" (resumeWorld() below),
   // falling back to a fresh World 1 only when there's genuinely nowhere to
   // resume yet -- a fresh save that has never left the Lab in this mode.
+  // The label names the destination itself (data/materials.ts's WORLD_NAMES,
+  // the same names Bloch's destination rows and each world's own entry banner
+  // use) rather than its number, so the door reads as a way back to a place
+  // the player remembers walking rather than an index into a list.
   private doorLabel(): string {
     if (this.isSuperpositionMode()) {
       const world = this.resumeWorld();
-      return world !== undefined ? `Back to World ${world}` : 'Enter World 1';
+      return world !== undefined ? `Back to ${worldName(world)}` : `Enter ${worldName(1)}`;
     }
     const world = this.highestUnlockedWorld();
-    return this.canResumeWorld(world) ? `Back to World ${world}` : `Enter World ${world}`;
+    return this.canResumeWorld(world) ? `Back to ${worldName(world)}` : `Enter ${worldName(world)}`;
   }
 
   // The door station's own affordance: in Story Mode, always the player's
@@ -501,7 +686,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
 
   // Bloch's own explicit travel action (his destination rows) -- the one
   // deliberate way a guardian panel can move the player, whether opened by
-  // walking up to Bloch mid-world or from the Lab's Guardians station. Always
+  // walking up to Bloch mid-world or clicking his avatar in the Lab. Always
   // a fresh map (`regenerate: true`), matching OverworldScene's own
   // `advanceToWorld` -- picking a destination is a genuine, first-class trip
   // there, not a "resume" the way the Hub door's own `enterWorld` is.
@@ -513,7 +698,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // Sets the player's current crystal form and persists it -- HubScene's
   // counterpart to OverworldScene.applyPlayerForm, called by the same
   // Dresselhaus/Majorana panel code (transmuteInto/becomeHybrid) regardless
-  // of which scene's Guardians station opened them. Redraws the Lab's own
+  // of which scene the player opened that guardian in. Redraws the Lab's own
   // floating crystal preview in place rather than an overworld sprite; skips
   // OverworldScene.applyPlayerForm's World 10 map-regeneration branch since
   // the Lab is never World 10. HP is never intrinsic to a crystal form (see
@@ -777,8 +962,8 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     // already carries the "themed motif" STYLE.md's Lab-panels section asks
     // for, so the title only gets this flourish rather than a second full
     // left-side motif column competing with the two-column list/detail
-    // layout. The Qumatex station's own room button has no motif of its
-    // own to echo (art/labMotifs.ts has no builder for it, same reason).
+    // layout. Distinct from the small crystal-grid motif this station's own
+    // room button carries (art/labMotifs.ts's makeQumatexMotif).
     const titleIcon = makeCrystal(this, 16, 0x9a6ad9, 'prism');
     titleIcon.setPosition(titleText.x - titleText.width / 2 - 16, titleText.y + titleText.height / 2);
     container.add(titleIcon);
@@ -921,7 +1106,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
 
   // The Lab's one-off welcome tip (maybeShowLabTip) is this method's only
   // caller -- Qumatex builds its own panel (renderMaterialdexPanel) since it
-  // isn't one of scenes/panels/hubStations.ts's six stations. Kept on the
+  // isn't one of scenes/panels/hubStations.ts's five stations. Kept on the
   // same measured-top-down-layout/shrink-to-fit pattern as those anyway, so
   // a one-off popup doesn't look like a different panel era.
   private showPanel(title: string, body: string) {
@@ -975,7 +1160,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
 
   // Public, not private -- see the dialogueContainer field comment above.
   // Shared by every panel this scene opens -- the Lab tip, Qumatex, and
-  // scenes/panels/hubStations.ts's six stations --
+  // scenes/panels/hubStations.ts's five stations --
   // renderMaterialdexPanel/hubStations.ts's own panels call this first to
   // clear their own previous container on a redraw (filter change, row
   // pick, list paging, settings change) before rebuilding.
@@ -995,7 +1180,6 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     this.andersonMovePage = 0;
     this.blochPage = 0;
     this.feynmanPage = 0;
-    this.guardiansPage = 0;
     this.tutorialPage = 0;
     this.tutorialSelectedIndex = 0;
     this.dresselhausPreview = null;

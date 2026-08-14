@@ -8,7 +8,7 @@ import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W, CANVAS_H } from '../../art/perspective';
 import { fontPx, fontScale } from '../../ui/text';
 import { PANEL_BG, GOLD_ACCENT } from '../../ui/theme';
-import { WORLD_NAMES, BLOCH_DESTINATION_COST } from '../../data/materials';
+import { worldName, BLOCH_DESTINATION_COST } from '../../data/materials';
 import { WORLD_FLAVOR } from '../../data/worldFlavor';
 import { persistFromRegistry } from '../../data/save';
 import { LIST_DETAIL_PANEL_W, destroyPanel, listDetailColumns, renderListColumn, insertColumnDivider, renderStatusAndConfirm } from './listDetail';
@@ -159,7 +159,7 @@ export function showBlochHub(scene: GuardianPanelHost) {
     width: columns.leftColW,
     items,
     idFor: (w) => String(w),
-    labelFor: (w) => (discoveredWorlds.has(w) ? WORLD_NAMES[w] ?? `World ${w}` : '???'),
+    labelFor: (w) => (discoveredWorlds.has(w) ? worldName(w) : '???'),
     colorFor: (w) => (discoveredWorlds.has(w) ? '#cfd8ff' : '#6a7396'),
     selectedId: String(preview),
     page: scene.blochPage,
@@ -221,7 +221,7 @@ export function showBlochHub(scene: GuardianPanelHost) {
 
     const isCurrent = preview === scene.world;
     const discovered = discoveredWorlds.has(preview);
-    const name = WORLD_NAMES[preview] ?? `World ${preview}`;
+    const name = worldName(preview);
 
     // The previewed destination's own physics blurb -- masked to a short
     // fixed line for an undiscovered world (the table row already reads

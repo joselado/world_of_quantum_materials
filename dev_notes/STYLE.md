@@ -73,14 +73,17 @@ than appending a changelog, so this always reflects current reality.
   tiles). A soft additive-blended glow pools on the floor beneath where the player's own
   floating crystal (`makeCrystal`) sits -- the only crystal render drawn anywhere in the room
   itself, so the room reads as *the player's* space rather than a shelf of specimens. No
-  perspective/camera machinery -- everything is laid out at fixed canvas coordinates.
-- **Up to eight stations, packed into rows of three, no crystal icons.** Every station is a
+  perspective/camera machinery -- everything is laid out at fixed canvas coordinates. The two
+  upper corners hold the guardian gallery (see "The Lab's guardian gallery" below).
+- **Up to seven stations, packed into rows of three, no crystal icons.** Every station is a
   plain gold-on-dark-blue text button (`HubScene.addStationRow`, same look every dialogue
   button in the game uses), not an icon a player clicks -- there is no `makeCrystal` render
   anywhere in the station rows. Qumatex and the door onward always exist and always lead the
-  grid, in that order. The door's label reads "Enter World N" for
+  grid, in that order. The door's label names its destination (`data/materials.ts`'s
+  `worldName()`, the same names Bloch's rows and each world's own entry banner use) rather than
+  its number: "Enter `<name>`" for
   `HubScene.highestUnlockedWorld()` (walking `rivalDefeated` from world 1 until it finds one
-  not yet beaten) the first time that world is ever stepped into, or "Back to World N" once it
+  not yet beaten) the first time that world is ever stepped into, or "Back to `<name>`" once it
   is -- `HubScene.canResumeWorld()` is
   the single predicate both the label and the door's own click/Enter-key navigation read,
   checking that the world is in the persisted `visitedWorlds` *and* that the registry's own
@@ -88,9 +91,9 @@ than appending a changelog, so this always reflects current reality.
   `saveMapState()`/`returnToHub()` -- see "Overworld path" below) still belongs to that exact
   world, since `mapState` is registry-only and doesn't survive a page reload the way
   `visitedWorlds` does; sharing one predicate is what keeps the label and the actual
-  resume-or-regenerate outcome from ever disagreeing. "Back to World N" always resumes the
-  player's exact saved position in that world; "Enter World N" always generates a fresh map. In
-  Superposition Mode the door always reads "Enter World 1" and always drops the player straight
+  resume-or-regenerate outcome from ever disagreeing. "Back to `<name>`" always resumes the
+  player's exact saved position in that world; "Enter `<name>`" always generates a fresh map. In
+  Superposition Mode the door always reads "Enter `<World 1's name>`" and always drops the player straight
   into a fresh World 1, same as Story Mode's own first entry -- `canResumeWorld()` never
   returns true in this mode, since the mode's own teleport-anywhere design (below) makes a
   single "resume where I left off" door meaningless once Bloch's hub can jump to any visited
@@ -100,37 +103,44 @@ than appending a changelog, so this always reflects current reality.
   which is not necessarily the door station's own frontier-world target -- opening the Lab from
   an earlier world (Bloch's teleport hub, or walking back through an earlier world's own door)
   and pressing Enter again lands the player back in that same earlier world, not the door's
-  "Back to World N." A no-op when there's nothing resumable (a fresh save with nothing in
+  "Back to `<name>`." A no-op when there's nothing resumable (a fresh save with nothing in
   progress yet has nothing to send Enter back to), and never fires while a Lab panel is open,
   matching every station's own one-panel-at-a-time guard. From there the player can
-  walk to World 2 to reach Bloch, or open Bloch directly from the Lab's own Guardians
-  station once he's been met once -- either way, in Superposition Mode his teleport hub
+  walk to World 2 to reach Bloch, or click Bloch's own avatar in the Lab once he's been met
+  once -- either way, in Superposition Mode his teleport hub
   offers every built world immediately, with no separate warp/world-select panel, though
   every world also has its own walkable doors back to the Hub/previous world and
   onward to the next one (see "World doors" below). Right after Qumatex and the door, in the
-  same grid, come the six reference/settings stations (`scenes/panels/hubStations.ts`'s
-  `LAB_STATIONS` -- Moves, Stats, Abilities, Guardians, Tutorial, Settings), filtered down to
+  same grid, come the five reference/settings stations (`scenes/panels/hubStations.ts`'s
+  `LAB_STATIONS` -- Moves, Stats, Abilities, Tutorial, Settings), filtered down to
   whichever the player has actually unlocked: Abilities only appears once the player has
-  learned a first passive (`passivesUnlocked` non-empty), Guardians only once they've met a
-  first guardian (`metGuardians` non-empty) -- Superposition Mode treats both as unlocked from
-  the start, since it already grants every passive and lists every guardian regardless. Moves,
-  Stats, Tutorial, and Settings are never gated, so a fresh save always shows at least those
+  learned a first passive (`passivesUnlocked` non-empty) -- Superposition Mode treats it as
+  unlocked from the start, since it already grants every passive regardless. Moves,
+  Stats, Tutorial, and Settings are never gated, so a fresh save always shows those
   four alongside Qumatex and the door (six stations total, two full rows of three) even with
-  neither gated station visible yet. The full station list -- Qumatex, the door, then whichever
-  of the six `LAB_STATIONS` are visible -- is packed into rows of three with no gaps, rather
+  the gated station not visible yet. The full station list -- Qumatex, the door, then whichever
+  of the five `LAB_STATIONS` are visible -- is packed into rows of three with no gaps, rather
   than reserving a fixed grid slot for a station that isn't visible yet or giving Qumatex/the
-  door a row of their own; a row that doesn't divide evenly by three (e.g. one gated station
+  door a row of their own; a row that doesn't divide evenly by three (e.g. the gated station
   unlocked) just trails off short on its last row rather than every row being forced full.
-  Every station except the door (Qumatex and all six `LAB_STATIONS` entries) gets its own small
+  Every station (Qumatex, the door, and all five `LAB_STATIONS` entries) gets its own small
   `art/labMotifs.ts` icon planted just to the left of its button label (`HubScene.addStationRow`,
   `STATION_MOTIF_SIZE = 26`, fixed-px, never scaled by the Text Size setting) -- much smaller
   than the same builder would draw inside a full panel, since here it sits inline with a
   compact button; Qumatex's own icon (`makeQumatexMotif`, a small 2x2 grid of tiny faceted
   gems reading as "an indexed catalog") is distinct from the panel's own detail pane, which
-  renders one full-size real crystal for whichever compound is currently selected. The door has
-  no motif of its own -- plain text is enough to read as an exit. Every station is a
-  no-op while another panel is already open (one panel at a time).
-- **Every one of the Lab's seven non-door panels reads as one coherent design** -- dark
+  renders one full-size real crystal for whichever compound is currently selected. The door's
+  (`makeDoorMotif`) is a miniature of the walkable world-door's own archway (`art/door.ts`) --
+  the same stone frame, dark inset and self-luminous lavender (`STORY_LAVENDER`) portal, slowly
+  pulsing, the one Lab motif that animates -- but freestanding, its additive halo spilling past
+  the frame on every side: a world's door is a notch in terrain leading to one fixed neighbour,
+  and a doorway standing in nothing is the Lab's, which leads anywhere (WORLDS.md §4's "the
+  same aperture grammar, unbound"). Its opening shows light, never scenery -- a visible far end
+  would imply an exterior the Lab must not have. The grid is laid out from
+  `STATION_ROW_TOP` (`330`) and lifted as a whole by however much it overshoots a `10`px bottom
+  margin, since a long door label wraps to two or three lines at the Large text size. Every
+  station is a no-op while another panel is already open (one panel at a time).
+- **Every one of the Lab's six non-door panels reads as one coherent design** -- dark
   rounded-rectangle-with-stroke chrome and a bold gold (`#ffe066`) heading -- rather than
   several visually separate eras bolted together. Panel content is always laid out top-down
   first (a running `y`, each element's own measured height advancing it) and centered within
@@ -139,7 +149,7 @@ than appending a changelog, so this always reflects current reality.
   (`container.addAt(..., 0)`) only once the real final height is known, the same pattern this
   file's own "Paginated candidate lists" section documents for row-based panels. A panel's own
   themed motif (Moves' jagged orange energy bolt, Stats' small ascending bar chart, Abilities'
-  shield with a white emblem, Guardians' small haloed robed figure, Tutorial's small open book,
+  shield with a white emblem, Tutorial's small open book,
   Settings' meshed pair of gears -- all in `art/labMotifs.ts`) is never drawn inside the panel
   itself; it sits beside that station's own button out in the room instead (previous bullet),
   so panel content gets the panel's full width rather than sharing it with a left-side icon
@@ -1713,11 +1723,11 @@ than the caller's requested budget) for its own layout math.
   these appear in sequence, stopping at the first wrong answer since a miss already decides
   the outcome (a whiff).
 
-## The Lab's Moves/Stats/Abilities/Guardians stations (`scenes/panels/hubStations.ts`'s `showMovesPanel`/`showStatsPanel`/`showAbilitiesPanel`/`showGuardiansPanel`)
+## The Lab's Moves/Stats/Abilities stations (`scenes/panels/hubStations.ts`'s `showMovesPanel`/`showStatsPanel`/`showAbilitiesPanel`)
 
-- All four use the same dark rounded-rectangle-with-stroke panel treatment as everywhere else,
+- All three use the same dark rounded-rectangle-with-stroke panel treatment as everywhere else,
   stroked blue-grey (`0x8fa0c9`, distinct from every guardian/encounter panel's own stroke
-  color) except Guardians (see below). Each is its own station button on the Lab floor (see
+  color). Each is its own station button on the Lab floor (see
   "The Hub" above), not a row in a shared menu -- clicking one is a no-op while another panel
   is already open.
 - "Moves"/"Stats" share a generic info panel (`showInfoPanel`, `560` wide, same blue-grey
@@ -1736,23 +1746,45 @@ than the caller's requested budget) for its own layout math.
   body's shrink-to-fit only lowers font size and never truncates -- two full passive
   descriptions back to back could still overflow the canvas at that panel's largest text-size
   preset even at the shrink loop's own floor.
-- "Guardians" (`showGuardiansPanel`, `600` wide, stroked lavender `0xb98fea`) lists every met
-  guardian (`OverworldScene.guardianRoster()`, filtered by registry `metGuardians`, or every
-  guardian at once in Superposition Mode), each row a two-line button label -- name and world
-  number on the first line, that guardian's own one-line `blurb` (`GuardianDef.blurb`, the same
-  copy docs/guardians.md's own roster table uses) on the second -- so the list isn't bare names
-  with no way to tell them apart before opening one, the same name-then-description pairing
-  "Abilities" above uses. Paginated (`renderPagedButtons`, `guardiansPage`, `HubScene`-only
-  since this station never opens mid-walk from `OverworldScene`) rather than a shrink-to-fit
-  loop -- ten two-line rows doesn't fit one panel at any text-size preset, same "list that can
-  outgrow the panel" tradeoff Feynman's own candidate list makes. A row click opens that
-  guardian's own bespoke panel (shop/teleport hub/transmutation, in that guardian's own stroke
-  color per CODEMAP.md's panel-color list, not the Guardians list's lavender) directly in the
-  Lab, replacing the lavender list panel in place -- the same panel the player would see by
-  walking up to that guardian mid-world (see "Guardians, economy, and story arc" in DESIGN.md
-  §5). The player's world/scene/position never changes just from opening a guardian's panel this
-  way; Bloch's own panel is the one guardian panel with an explicit travel action (its
-  destination rows), which still moves the player like any other deliberate warp.
+## The Lab's guardian gallery (`HubScene.spawnGuardianAvatars`/`guardianSlot`)
+
+- **Every guardian the player has met stands in the Lab as their own avatar, and clicking one
+  opens that guardian's panel directly.** The avatar is the same `art/<guardian>.ts` builder
+  their overworld sprite and their panel's own header portrait use, drawn at scale `0.45` --
+  small enough to sit in a `88x64` slot, still distinct enough that ten of them read as ten
+  different figures. Registry `metGuardians` decides who is present; Superposition Mode stands
+  all ten regardless.
+- **Ten fixed slots, five per cluster, in the two upper corners.** Each cluster is stacked one
+  avatar over a pair over a pair (`GUARDIAN_ROW_TOP` `96`, `GUARDIAN_ROW_PITCH` `68`, cluster
+  centers `96` in from either wall): worlds 1-5 fill the left cluster top-down, 6-10 the right,
+  reading left-to-right within each pair. A slot belongs to its guardian's world, so a guardian
+  never moves between visits as the roster grows -- an unmet guardian simply leaves their slot
+  empty, and the corners fill in as the player works through the worlds. The corners are the
+  only part of the wall wide enough: the room's quote sits between them (wrapped `420` to stay
+  clear), the instrument panels and the player's own floating crystal hold the middle, and the
+  station rows start below the counter.
+- **A surname under each avatar, the full name and blurb on hover.** The label is that
+  guardian's `shortName` ("Noether," "Skłodowska-Curie") in reference blue-grey, stepped down in
+  whole pixels from `9`px-at-the-current-text-scale to a `9`px floor until it fits its own slot
+  (measured on the rendered size, not the base one, so the Large preset can't push a long name
+  into its neighbour). Hovering a slot washes it faintly blue, turns the label that guardian's
+  own `labelColor`, lifts the avatar to `1.12` scale, and floats a `200`-wide readout under it
+  with the guardian's full name and their one-line `blurb` -- clamped horizontally to the canvas,
+  its two lines' font scale capped at `1.3` (a full name is one long unbreakable word that word
+  wrap can't split), so a player can see what each figure offers
+  before spending a click on finding out.
+- **The click target is a rectangle covering the whole slot**, not the avatar container (a
+  Phaser Container has no hit area of its own). It is invisible at rest rather than fully
+  transparent, since a game object at alpha 0 stops rendering and an unrendered object is
+  skipped by hit-testing too. Clicking is a no-op while another panel is open, the same
+  one-panel-at-a-time guard every station uses.
+- Opening a guardian this way renders that guardian's own bespoke panel (shop/teleport hub/
+  transmutation, in that guardian's own stroke color per CODEMAP.md's panel-color list) right
+  there in the Lab -- the same panel the player would see by walking up to them mid-world (see
+  "Guardians, economy, and story arc" in DESIGN.md §5). The player's world/scene/position never
+  changes just from opening a guardian's panel this way; Bloch's own panel is the one guardian
+  panel with an explicit travel action (its destination rows), which still moves the player like
+  any other deliberate warp.
 
 ## Settings station (`scenes/panels/hubStations.ts`'s `showSettingsPanel`)
 

@@ -21,17 +21,21 @@ game/src/
   scenes/
     TitleScene.ts             Loads save -> registry, title showcase crystals, "Continue"/"New Game" -> Hub,
                                  Story Mode / Superposition Mode picker
-    HubScene.ts                World 0, static room, up to 9 stations: 3 that always exist
-                                 (Qumatex/Save/Door -- door label/click resume-in-place to
+    HubScene.ts                World 0, static room, up to 7 stations: 2 that always exist
+                                 (Qumatex/Door -- door label/click resume-in-place to
                                  highestUnlockedWorld() via canResumeWorld(), tracks
-                                 rivalDefeated progress in Story Mode, pinned to "Enter World 1"
-                                 in Superposition Mode; the Enter *key* instead resumes
+                                 rivalDefeated progress in Story Mode, labeled with the
+                                 destination's own name (materials.ts's worldName), pinned to
+                                 World 1 in Superposition Mode; the Enter *key* instead resumes
                                  resumeWorld() -- the exact world/position mapState holds,
                                  not necessarily highestUnlockedWorld())
-                                 plus up to 6 reference/settings stations (Moves/Stats/Abilities/
-                                 Guardians/Tutorial/Settings, panels/hubStations.ts's
-                                 LAB_STATIONS -- Abilities/Guardians filtered out until a first
-                                 passive/guardian is unlocked/met). No crystal render anywhere in
+                                 plus up to 5 reference/settings stations (Moves/Stats/Abilities/
+                                 Tutorial/Settings, panels/hubStations.ts's LAB_STATIONS --
+                                 Abilities filtered out until a first passive is learned).
+                                 Progress autosaves, so the room has no save station of its own.
+                                 Every met guardian also stands in the room as their own
+                                 clickable avatar (spawnGuardianAvatars/guardianSlot, see "Lab
+                                 stations and settings" below). No crystal render anywhere in
                                  the room except the player's own (addStationRow builds every
                                  station as a plain text button with an optional small
                                  art/labMotifs.ts icon beside it)
@@ -110,7 +114,7 @@ game/src/
                                  rebuild runs before calling showXPanel again (art/crystals.ts's
                                  killTweensDeep over the whole container, then destroy). And
                                  hubStations.ts holds the
-                                 Lab's own six reference/settings stations (see "Lab stations and
+                                 Lab's own five reference/settings stations (see "Lab stations and
                                  settings" below) -- taking scene: HubScene instead of
                                  scene: GuardianPanelHost, since HubScene is their only caller
     BattleScene.ts             Turn-based battle: move menu, damage/turn resolution, attack
@@ -198,8 +202,8 @@ game/src/
     boss.ts                      makeBossCrystal() -- towering humanoid golem boss avatar at a world's goal,
                                   plus the BOSS_SILHOUETTE_TOP/BOTTOM extents its callers lay out around
     tokens.ts                   makeToken() -- qumatessence pickup sprite
-    labMotifs.ts                 One small icon builder per Lab station (Qumatex/
-                                  Moves/Stats/Abilities/Guardians/Tutorial/Settings -- see "Lab
+    labMotifs.ts                 One small icon builder per Lab station (Qumatex/Door/
+                                  Moves/Stats/Abilities/Tutorial/Settings -- see "Lab
                                   stations and settings" below), planted beside that station's
                                   own button in the room (HubScene.addStationRow), fixed-px art
                                   like every other builder in this directory, never run through
@@ -353,7 +357,10 @@ game/src/
                                   to a player, WORLD_CRYSTALS, WORLD_RIVALS,
                                   PLAYER_MATERIAL, SHOP_MOVE_IDS, ANALYTIC_MOVE_IDS,
                                   ULTIMATE_MOVE_IDS, ULTIMATE_CLASS_UNLOCK_COST,
-                                  TUNABLE_MOVE_CLASSES, RIVAL_9_TYPES, WORLD_NAMES,
+                                  TUNABLE_MOVE_CLASSES, RIVAL_9_TYPES, WORLD_NAMES/worldName()
+                                  -- the latter the "name, falling back to World N" read every
+                                  caller showing a world by name uses (the Lab's door station,
+                                  Bloch's destination rows, a world's own entry banner),
                                   getWildPool(), getRival(world, rival9Type?),
                                   compatibleMoves(),
                                   canHost(), getPlayerMaterial(), getPlayerStats(), getBattleMoves(),
@@ -561,7 +568,7 @@ difficulty-curve sanity check rather than a docs generator.
   `projectTile` is measured from the player's tile, which is where that constant gets applied;
   a new caller should not add it itself.
 - **Panel/dialogue UI.** Every overlay (wild encounter, guardian panels, rival gate, Hub's
-  Qumatex/Save panels, the Lab's own six stations) is the same dark rounded-rectangle-with-stroke
+  Qumatex panel, the Lab's own five stations) is the same dark rounded-rectangle-with-stroke
   treatment, with the stroke color signaling the panel's kind: blue-grey `0x444466` = wild
   encounter (`OverworldScene.showEncounter`) and the Lab's Moves/Stats/Abilities/Settings
   stations (`0x8fa0c9`, a distinct blue-grey so it doesn't collide), gold `0xffe066` = Noether, teal `0x4adde0` =
@@ -572,7 +579,7 @@ difficulty-curve sanity check rather than a docs generator.
   self-buff shop, purple `0xa878c9` = Franklin's passive panel, olive `0xc9d84a` =
   Skłodowska-Curie's Ultimate shop, red `0xff6666` = rival gate (`showRivalEncounter`'s
   two-part taunt), purple `0x9a6ad9` = Hub's
-  `showPanel` (Qumatex/Save), lavender `0xd9a5ff` = `OverworldScene.showStoryBeat`'s
+  `showPanel`/Qumatex, lavender `0xd9a5ff` = `OverworldScene.showStoryBeat`'s
   between-worlds panel and `showWorldLore`'s once-per-save world-entry lore screen, and
   (in `BattleScene`, the one place dialogue-style overlays live outside
   `OverworldScene`) gold `0xffe066` again for `showAnalyticQuestion`'s in-battle question panel
@@ -585,8 +592,8 @@ difficulty-curve sanity check rather than a docs generator.
   `open: (s) => s.showXPanel()` shape from when every panel body lived on the class itself.
   `GuardianPanelHost` (`OverworldScene.ts`) is the interface every panel file is actually
   written against, not the concrete `OverworldScene` class -- both `OverworldScene` (a
-  guardian met mid-walk) and `HubScene` (the same guardian reopened from the Lab's Guardians
-  station, `scenes/panels/hubStations.ts`'s `showGuardiansPanel`) implement it, so a guardian's
+  guardian met mid-walk) and `HubScene` (the same guardian reopened by clicking their own
+  avatar in the Lab, `HubScene.spawnGuardianAvatars`) implement it, so a guardian's
   panel renders identically -- same shop, same state, no scene transition -- regardless of
   which of the two scenes the player actually opened it from. A panel-specific helper only that
   one guardian calls (e.g. Noether's `renderShopTabs`) moves
@@ -665,9 +672,10 @@ difficulty-curve sanity check rather than a docs generator.
   `makeNoetherAvatar()`, `art/bloch.ts`'s `makeBlochAvatar()`, `art/dresselhaus.ts`'s
   `makeDresselhausAvatar()`. Never a shared parameterized builder -- each guardian needs to read as
   visually distinct. Distinct from the guardian *panel* files above (`scenes/panels/`, the
-  shop/dialogue UI) -- the avatar builder only draws the little floating figure, used both by
-  the panel (for its header portrait) and by `OverworldScene.spawnGuardianSprite` (the
-  wandering overworld landmark).
+  shop/dialogue UI) -- the avatar builder only draws the little floating figure, used by
+  the panel (for its header portrait), by `OverworldScene.spawnGuardianSprite` (the
+  wandering overworld landmark), and by `HubScene.spawnGuardianAvatars` (the clickable figure
+  standing in the Lab), each at its own `scale`.
 - **Attack-effect anchoring: each side resolves its own position, live.** `playAttackEffect`'s
   `from`/`to` are `EffectAnchor`s (`art/attackAnchors.ts`), not copied points, and every draw
   function reads `.x`/`.y` off one of them on every tween tick. So the attacker's half of an
@@ -1707,25 +1715,25 @@ future guardian could choose them; nothing currently does.
 
 ## Lab stations and settings
 
-**The Lab's six reference/settings stations** (`scenes/panels/hubStations.ts`'s
+**The Lab's five reference/settings stations** (`scenes/panels/hubStations.ts`'s
 `LAB_STATIONS` array -- `showMovesPanel`/`showStatsPanel`/`showAbilitiesPanel`/
-`showGuardiansPanel`/`showTutorialTopics`/`showSettingsPanel`, each taking `scene: HubScene`):
+`showTutorialTopics`/`showSettingsPanel`, each taking `scene: HubScene`):
 built the same way a guardian panel file takes `scene: GuardianPanelHost` (see "Guardian panels"
-above) -- these six only ever run from `HubScene`, since pressing `H` or `Enter` from any
+above) -- these five only ever run from `HubScene`, since pressing `H` or `Enter` from any
 Overworld scene warps straight there (`this.scene.start('Hub')`, no menu/overlay of choices in
 between) rather than opening anything mid-world. Each is a pure function of registry/save
-state (player stats/moves/passives, `metGuardians`, game settings), not of anything tied to
+state (player stats/moves/passives, game settings), not of anything tied to
 being mid-world, which is what makes moving them out of `OverworldScene` safe. They follow
 `HubScene`'s own `dialogueContainer`/`closeDialogue()` overlay convention (both made public,
 not private, on `HubScene` for the same "panel modules living outside the class can't reach a
 `private` member" reason `OverworldScene` widens its own dialogue infrastructure), gated so a
 station can't open over another already-open panel (`HubScene.addStationRow`'s
 `dialogueContainer` check). Each `LAB_STATIONS` entry also carries a `visible(scene)` predicate
--- true unconditionally for Moves/Stats/Tutorial/Settings, and for Abilities/Guardians only
-once `passivesUnlocked`/`metGuardians` is non-empty (or `isSuperpositionMode()` is true, matching
-`showGuardiansPanel`'s own "list every guardian regardless" treatment in that mode) --
+-- true unconditionally for Moves/Stats/Tutorial/Settings, and for Abilities only
+once `passivesUnlocked` is non-empty (or `isSuperpositionMode()` is true, which grants every
+passive anyway) --
 `HubScene.create()` filters `LAB_STATIONS` by this before laying out the room's station rows,
-so Abilities/Guardians simply don't appear until there's something to check/revisit there.
+so Abilities simply doesn't appear until there's something to check there.
 `showMovesPanel` lists `getBattleMoves(registry)`
 (learned ∩ currently form-compatible, not the raw `unlockedMoves` list) as plain
 `<name> -- Pwr N` lines (`moveDisplayName`/`effectiveMovePower`, so a Feynman-leveled move's
@@ -1738,36 +1746,43 @@ passives.ts`'s `PASSIVE_OWNERS` (rather than a hand-written block) to build one
 name+description row per owner, labeled via `PASSIVE_OWNER_LABELS` and read from registry
 `activePassiveByOwner[owner]`, so a player doesn't have to walk back to either guardian's own
 panel just to remember which passive is running (and doesn't have to remember what that passive
-actually does either, since the full description shows here too). `showGuardiansPanel` lists
-every met guardian (`OverworldScene.guardianRoster()`, a public static id/name/world/`blurb`/
-`open` list derived from the private `WORLD_GUARDIANS` table's own `GuardianDef.blurb` -- the
-same one-line "what they do" copy docs/guardians.md's own roster table uses) as a two-line
-`name (World N)` + `blurb` button per guardian, paginated (`renderPagedButtons`, `HubScene`'s
-own `guardiansPage`, reset in `closeDialogue` like every other per-guardian pagination field --
-see "Guardian panels" above) since ten two-line rows don't fit one panel at any text-size
-preset. On a row click it calls that guardian's own `open` callback with `scene` (the
-`HubScene` itself) directly -- the exact same callback `WORLD_GUARDIANS` dispatches to when the
-player walks up to that guardian mid-world -- rather than warping anywhere. This works because
-`HubScene` implements `GuardianPanelHost` (see "Guardian panels" above) with its own copies of
-the qumatessence readout, `applyPlayerForm`, `advanceToWorld`, and every per-guardian pagination
-field, so a guardian's panel has everything it needs without the player's world/scene/position
-ever changing just from opening it.
+actually does either, since the full description shows here too).
 
-**All seven of the Lab's non-door panels** (the six stations above, plus `HubScene`'s own
+**The Lab's guardian gallery** (`HubScene.spawnGuardianAvatars`/`guardianSlot`/
+`showGuardianTooltip`, called once from `create()`): every guardian in registry `metGuardians`
+(every guardian at all in Superposition Mode) stands in the room as their own avatar, and
+clicking one opens that guardian's panel directly -- no roster list in between. The data comes
+from `OverworldScene.guardianRoster()`, a public static projection (`GuardianRosterEntry`) of
+the private `WORLD_GUARDIANS` table carrying id/name/`shortName`/world/`blurb`/`labelColor`/
+`avatar`/`open`; the avatar is that guardian's own `art/<guardian>.ts` builder (the same one
+their overworld sprite and their panel's header portrait use, never a Lab-specific copy), and
+`open` is the exact same callback `WORLD_GUARDIANS` dispatches to when the player walks up to
+that guardian mid-world. This works because `HubScene` implements `GuardianPanelHost` (see
+"Guardian panels" above) with its own copies of the qumatessence readout, `applyPlayerForm`,
+`advanceToWorld`, and every per-guardian pagination field, so a guardian's panel has everything
+it needs without the player's world/scene/position ever changing just from opening it.
+`guardianSlot(world)` is the pure layout half -- ten fixed slots, five per upper corner, each
+cluster stacked one-over-two-over-two, keyed by world so a guardian never moves between visits
+(see STYLE.md's "The Lab's guardian gallery" for the geometry, labels, and hover readout). The
+click target is a near-transparent interactive `Rectangle` covering the slot rather than the
+avatar `Container` (a Container has no hit area of its own) and takes the same
+`dialogueContainer` one-panel-at-a-time guard the station rows use.
+
+**All six of the Lab's non-door panels** (the five stations above, plus `HubScene`'s own
 `renderMaterialdexPanel`) share one heading color -- `hubStations.ts`'s exported
 `LAB_TITLE_COLOR` (`#ffe066`) -- and one centered-content geometry: `hubStations.ts`'s
 `labPanelColumns(panelWidth)` returns a fixed `contentCenterX`/`contentWrapW` margined in from
 both edges of the panel. A panel's own themed motif (`art/labMotifs.ts`'s `makeQumatexMotif`/
-`makeMovesMotif`/`makeStatsMotif`/`makeAbilitiesMotif`/`makeGuardiansMotif`/`makeTutorialMotif`/
+`makeDoorMotif`/`makeMovesMotif`/`makeStatsMotif`/`makeAbilitiesMotif`/`makeTutorialMotif`/
 `makeSettingsMotif` -- fixed-px art, never run through `ui/text.ts`'s
 `fontPx()`/`fontScale()`) is never drawn inside the panel; each `LAB_STATIONS` entry (and
-`HubScene`'s own hardcoded Qumatex row -- the door has no motif of its own) instead carries its
+`HubScene`'s own hardcoded Qumatex and door rows) instead carries its
 motif builder for `HubScene.addStationRow` to plant beside that station's own button in the
 room, at a much
 smaller fixed size (`STATION_MOTIF_SIZE = 26`) than a motif drawn inside a full panel would
-use. A panel whose own row list can grow long (Guardians, up to every guardian in
-Superposition Mode) caps its row font scale (`Math.min(fontScale(scene), 1.3)`) rather than
-adding a shrink-to-fit loop, the same tradeoff `renderPassiveList`/`showAbilitiesPanel` already
+use. A panel whose own row list can grow long caps its row font scale
+(`Math.min(fontScale(scene), 1.3)`) rather than
+adding a shrink-to-fit loop, the tradeoff `renderPassiveList`/`showAbilitiesPanel`
 make; `showInfoPanel`/`showTutorialTopics`' own detail-pane render/`HubScene.showPanel` keep
 their own shrink-to-fit loops (floor `9`px) since their body length varies more per instance.
 
@@ -1780,9 +1795,9 @@ testing/exploration aid, not part of normal progression. This same flag also sel
 sharing state. Several things key off `isSuperpositionMode()`:
 - `OverworldScene.applySuperpositionUnlocks(registry)` (exported right after `BUILT_WORLDS`,
   registry-only with no scene/world dependency of its own) is the shared "everything is
-  already unlocked" grant, called from two places: `HubScene.create()` (so the Lab's own
-  Guardians station -- `hubStations.ts`'s `showGuardiansPanel`, which lists every guardian
-  regardless of `metGuardians` in this mode -- is already fully unlocked on a save that's
+  already unlocked" grant, called from two places: `HubScene.create()` (which stands every
+  guardian's own avatar in the room regardless of `metGuardians` in this mode, so each one's
+  panel is already fully unlocked on a save that's
   never stepped through a world door) and `OverworldScene.applySuperpositionLeveling()`
   (re-applied on every `create()`, covering Continue, Bloch teleport, and the Hub door's
   World-1 jump alike, alongside that method's own world-specific `playerStats`/`playerHp`
@@ -1820,7 +1835,7 @@ sharing state. Several things key off `isSuperpositionMode()`:
 - `HubScene.enterWorld()`/`doorLabel()` branch on `isSuperpositionMode()` to jump straight to
   World 1 (`{ world: 1, regenerate: true }`) instead of `highestUnlockedWorld()`, bypassing
   `rivalDefeated` entirely -- Bloch (reachable at World 2's own middle tile via the walkable
-  world doors, or from the Lab's own Guardians station once met once) is sufficient for
+  world doors, or by clicking his own avatar in the Lab once met once) is sufficient for
   world-to-world movement on its own regardless of whether this door has ever been used, per
   the candidate-pool point below.
 - `showDresselhausPanel`/`showMajoranaPanel`/`showAndersonPanel` each swap their
@@ -1872,7 +1887,7 @@ is a scoped update" below), not a panel rebuild: `renderListColumn`'s own `setSe
 restyles the row in place and only the detail pane and panel chrome (divider, Close button,
 background) re-render, tracked by `HubScene`'s own `tutorialSelectedIndex` (which topic, by its
 index into `TUTORIAL_PAGES`) and `tutorialPage` (which page of the list), both reset in
-`closeDialogue()` the same way `guardiansPage`/`materialdexSelectedName` are. A page flip still
+`closeDialogue()` the same way `materialdexSelectedName` is. A page flip still
 tears the panel down (`destroyPanel`) and rebuilds, since that changes which rows the list
 itself shows. Panel stroked cyan `0x5ad9ff` like the station always has been. Only reachable
 from the Lab's Tutorial station, not auto-triggered. To add/edit a tip, only `data/tutorial.ts`

@@ -55,12 +55,12 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     title: 'Welcome to the Quantum Materials RPG',
     listLabel: 'Welcome',
     body:
-      'A Decoherence is spreading through the material worlds. You are not a trainer catching creatures -- you are a crystal yourself, walking these worlds to master every phase of matter and stabilize it. This room is the Lab: Qumatex catalogs every crystal you discover, and the door leads to your first world. Your progress autosaves as you play, no button needed.',
+      'A Decoherence is spreading through the quantum material worlds. You are not a trainer catching creatures -- you are a crystal yourself, walking these worlds to master every phase of matter and stabilize it. This room is the Lab: Qumatex catalogs every crystal you discover, and the door leads to your first world. Your progress autosaves as you play, no button needed.',
   },
   controls: {
     title: 'Walking the Path',
     body:
-      'Use the arrow keys to move: Up/Down step forward and back, Left/Right step sideways. Off-path ground is impassable -- told apart by its color, not by a wall you\'d see -- so watch where the walkable ground actually goes rather than holding one direction blindly. Press H or Enter any time to return to the Lab -- your moves, stats, abilities, guardians, tutorial, and settings all live as stations there -- and M to mute or unmute the music.',
+      'Use the arrow keys to move: Up/Down step forward and back, Left/Right step sideways. Off-path ground is impassable -- told apart by its color, not by a wall you\'d see -- so watch where the walkable ground actually goes rather than holding one direction blindly. Press H or Enter any time to return to the Lab -- your moves, stats, abilities, tutorial, and settings all live as stations there, and every guardian you have met stands in the room to be clicked -- and M to mute or unmute the music.',
   },
   encounter: {
     title: 'Wild Encounters',
@@ -80,7 +80,7 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
   guardian: {
     title: 'Guardians',
     body:
-      "Each world's guardian waits partway along the corridor: Noether sells moves and stat upgrades, Bloch teleports you between worlds you've visited, Dresselhaus lets you transmute into any crystal you've defeated. Once met, revisit any of them from the Lab's Guardians station.",
+      "Each world's guardian waits partway along the corridor: Noether sells moves and stat upgrades, Bloch teleports you between worlds you've visited, Dresselhaus lets you transmute into any crystal you've defeated. Once met, a guardian stands in the Lab -- click them there to reopen their panel any time.",
   },
   goal: {
     title: 'Reaching the Goal',
@@ -128,7 +128,7 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
   teleport: {
     title: 'Teleportation',
     body:
-      "Bloch (World 2) instantly folds you to any world you've already visited -- pure travel, no new power gained. Reach him mid-corridor or, once you've met him, revisit his panel any time from the Lab's Guardians station. Each destination costs qumatessence to unlock the first time you travel there; every later trip to that same world is free.",
+      "Bloch (World 2) instantly folds you to any world you've already visited -- pure travel, no new power gained. Reach him mid-corridor or, once you've met him, click his avatar in the Lab to reopen his panel any time. Each destination costs qumatessence to unlock the first time you travel there; every later trip to that same world is free.",
   },
   settings: {
     title: 'Settings',
