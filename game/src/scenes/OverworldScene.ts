@@ -100,13 +100,13 @@ interface SavedMapState {
   vortexCores: GridPoint[];
   reachedGoal: boolean;
   reachedMiddle: boolean;
-  // Respawn bookkeeping (see "Respawning" below). All three are scalars
-  // rather than the grids above, so unlike `walkable`/`tokenTiles` they are
-  // genuinely copied here rather than shared by reference -- a respawn has
-  // to re-snapshot for them to survive a round trip through BattleScene.
+  // Respawn bookkeeping (see "Respawning" below): the standing population of
+  // each kind this map carries. Both are scalars rather than the grids above,
+  // so unlike `walkable`/`tokenTiles` they are genuinely copied here rather
+  // than shared by reference -- a respawn has to re-snapshot for them to
+  // survive a round trip through BattleScene.
   wildTarget: number;
   tokenTarget: number;
-  tokenRespawnsLeft: number;
 }
 
 const CRYSTAL_SIZE = 22;
@@ -155,15 +155,28 @@ const QUIZ_WRONG_MULTIPLIER = 0.6;
 const RESPAWN_TICK_MS = 3500;
 const WILD_RESPAWN_CHANCE = 0.35;
 const TOKEN_RESPAWN_CHANCE = 0.2;
-// How far north of the player's own row a respawn must land, in rows.
-// Everything comes back *ahead* of the player and outside the drawn world:
-// the camera faces north permanently, so a tile south of the player is never
-// rendered at all, and anything appearing there would be walked into having
-// never been seen. Derived from the projection's own draw distance rather
-// than fixed, plus two rows of slack -- one for the camera lagging behind
-// the player's tile mid-step, one for a sprite's own wander -- so widening
-// the draw distance can never start popping respawns into view.
+// The two margins a respawn must clear, in rows. Nothing may ever appear
+// within view, so the world refills only outside the drawn world -- ahead of
+// the player past the far edge of their field of vision, or behind them past
+// the camera.
+//
+// The northern margin is derived from the projection's own draw distance
+// rather than fixed, plus two rows of slack -- one for the camera lagging
+// behind the player's tile mid-step, one for a sprite's own wander -- so
+// widening the draw distance can never start popping respawns into view.
+//
+// The southern margin exists because the world has to refill *behind* the
+// player too: a player walking a corridor back and forth must always find
+// more, and refills that only ever land ahead leave the stretch already
+// walked permanently bare and stop entirely near the north end of a map. The
+// camera faces north permanently and sits CAMERA_BACK_TILES behind the
+// player, so a tile even one row south of the player's own is already culled
+// -- but `playerTile` moves to the destination the instant a step begins
+// while the camera is still tweening from the tile behind, so the margin has
+// to cover a full step of that lag, plus the same wander slack, plus one
+// spare.
 const RESPAWN_MIN_ROWS_AHEAD = Math.ceil(DRAW_DISTANCE_TILES * VISIBLE_DEPTH_FRACTION) + 2;
+const RESPAWN_MIN_ROWS_BEHIND = Math.ceil(CAMERA_BACK_TILES) + 2;
 
 // Worlds with a built overworld map (biome + rival, where applicable) --
 // bounds Bloch's teleport offers (a "visited" world the player can't
@@ -499,7 +512,6 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // left to give back. The budget is what keeps a walked-over map from being
   // an unbounded currency source (DESIGN.md §2's pickup economy).
   private tokenTarget = 0;
-  private tokenRespawnsLeft = 0;
   private flowerMap: boolean[][] = [];
   private goalTile: GridPoint = { x: 0, y: 0 };
   private startTile: GridPoint = { x: 0, y: 0 };
@@ -1213,7 +1225,6 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // scatter's own count each stay the single knob they already are.
     this.wildTarget = this.encounterTiles.reduce((n, row) => n + row.filter(Boolean).length, 0);
     this.tokenTarget = this.tokenTiles.reduce((n, row) => n + row.filter((v) => v > 0).length, 0);
-    this.tokenRespawnsLeft = this.tokenTarget;
 
     // Landing via the backward door (enterFrom === 'goal', above) needs this
     // freshly generated layout snapshotted immediately, not just held in
@@ -1255,7 +1266,6 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.reachedMiddle = saved.reachedMiddle;
     this.wildTarget = saved.wildTarget;
     this.tokenTarget = saved.tokenTarget;
-    this.tokenRespawnsLeft = saved.tokenRespawnsLeft;
     this.crystalSprites = [];
     this.tokenSprites = [];
   }
@@ -1278,7 +1288,6 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       reachedMiddle: this.reachedMiddle,
       wildTarget: this.wildTarget,
       tokenTarget: this.tokenTarget,
-      tokenRespawnsLeft: this.tokenRespawnsLeft,
     };
     this.game.registry.set('mapState', saved);
   }
@@ -1548,12 +1557,12 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   }
 
   // Qumatessence condenses again, valued by the same per-world tier window as
-  // the original scatter (data/tokens.ts). Two separate limits: a map never
-  // carries more pickups at once than it started with, and `tokenRespawnsLeft`
-  // caps how many it will ever give back, so walking a map over and over pays
-  // out a finite amount rather than an open-ended one.
+  // the original scatter (data/tokens.ts). Capped only on the *concurrent*
+  // population, exactly as wilds are: a map never carries more pickups at once
+  // than it stood up, and over time it gives back without limit, so a player
+  // walking it can always find more (DESIGN.md §2's respawn rule).
   private respawnToken(): boolean {
-    if (this.tokenRespawnsLeft <= 0 || this.tokenSprites.length >= this.tokenTarget) return false;
+    if (this.tokenSprites.length >= this.tokenTarget) return false;
     const candidates = this.respawnTiles();
     if (candidates.length === 0) return false;
 
@@ -1564,16 +1573,20 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     const value = pickTokenValue(this.world);
     this.tokenTiles[tile.y][tile.x] = value;
     this.addTokenSprite(tile.x, tile.y, value);
-    this.tokenRespawnsLeft -= 1;
     return true;
   }
 
-  // Every tile a respawn is allowed to land on: strictly north of the drawn
-  // world (RESPAWN_MIN_ROWS_AHEAD), walkable, empty, outside both passes, and
-  // off the three landmark tiles the guardian/boss/doors stand on.
+  // Every tile a respawn is allowed to land on: outside the drawn world in
+  // either direction (past RESPAWN_MIN_ROWS_AHEAD to the north or
+  // RESPAWN_MIN_ROWS_BEHIND to the south), walkable, empty, outside both
+  // passes, and off the three landmark tiles the guardian, the rival and the
+  // backward exit stand on. Refilling in both directions is what lets a player
+  // walk a corridor back and forth and always find more -- a rule that only
+  // reached ahead would leave the walked stretch bare and stop refilling at
+  // all once the player neared the north end of a map.
   private respawnTiles(): GridPoint[] {
-    const maxY = this.playerTile.y - RESPAWN_MIN_ROWS_AHEAD;
-    if (maxY < 0) return [];
+    const aheadOf = this.playerTile.y - RESPAWN_MIN_ROWS_AHEAD;
+    const behind = this.playerTile.y + RESPAWN_MIN_ROWS_BEHIND;
     // A pass is the one place a walkable run is allowed to be narrower than
     // two tiles, and that exception only holds while nothing can stand in it
     // (world/generators/shared.ts's passZoneRows) -- the same suppression the
@@ -1583,7 +1596,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     const landmarks = new Set([this.startTile, this.goalTile, this.midTile].map((p) => `${p.x},${p.y}`));
 
     const tiles: GridPoint[] = [];
-    for (let y = 0; y <= maxY; y++) {
+    for (let y = 0; y < GRID_H; y++) {
+      if (y > aheadOf && y < behind) continue;
       if (passRows.has(y)) continue;
       for (let x = 0; x < GRID_W; x++) {
         if (!this.walkable[y]?.[x]) continue;

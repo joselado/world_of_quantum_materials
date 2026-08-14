@@ -1660,13 +1660,17 @@ promising a resume it can no longer deliver. `HubScene.doorLabel()`/`enterWorld(
 `keydown-ENTER` handler all read this one predicate rather than three separate checks that could
 drift apart.
 
-**A walked world refills itself, out of sight ahead of the player.** `OverworldScene`'s
+**A walked world refills itself, out of sight in both directions.** `OverworldScene`'s
 `respawnTick()` -- a `time.addEvent` loop started in `create()`, so Phaser's own clock drops
 it on scene shutdown -- rolls independently for a wild (`respawnWild`) and a pickup
 (`respawnToken`). Both draw their tile from the single `respawnTiles()` candidate set, which
-is where every placement rule lives: strictly north of `RESPAWN_MIN_ROWS_AHEAD` (computed
-from `DRAW_DISTANCE_TILES * VISIBLE_DEPTH_FRACTION`, not a literal, so widening the draw
-distance can't start popping spawns into view), walkable, empty, outside
+is where every placement rule lives: outside the drawn world in either direction -- past
+`RESPAWN_MIN_ROWS_AHEAD` to the north (computed from `DRAW_DISTANCE_TILES *
+VISIBLE_DEPTH_FRACTION`, not a literal, so widening the draw distance can't start popping
+spawns into view) or past `RESPAWN_MIN_ROWS_BEHIND` to the south (computed from
+`CAMERA_BACK_TILES`, since what bounds that side is where the camera sits, plus slack for
+`playerTile` moving to a step's destination while the camera is still tweening from the tile
+behind) -- walkable, empty, outside
 `passZoneRows(startTile, goalTile, midTile)` -- recomputed at runtime from the three points
 the scene already holds, rather than stored -- and off the start/goal/guardian tiles. On top
 of that, `respawnWild` keeps generation's own two rules (one encounter per row, never in a
@@ -1678,14 +1682,17 @@ its drop with the same `pickTokenValue(world)`. Both build their sprite through
 `spawnTokenSprites` also loop over at map entry -- which create hidden, leaving
 `updateWorldSprites` to decide visibility from projected depth on the next frame.
 
-`wildTarget`/`tokenTarget`/`tokenRespawnsLeft` are the three ceilings (DESIGN.md §2's
-"Respawning"), counted off the actual placements in `generateMap` and carried in
-`SavedMapState` alongside the grids. They are the reason a respawn calls `saveMapState()`:
-the grids are shared by reference with the registry's `mapState`, so mutating a tile
-propagates for free, but these three are scalars and are genuinely copied. They deliberately
-get no `SaveData`/`defaultSave`/`persistFromRegistry` entry -- unlike the registry-then-persist
-rule's ordinary case, this is per-map state whose own map is registry-only and regenerated on
-reload, so a persisted budget would describe a map the reloaded session doesn't have.
+`wildTarget`/`tokenTarget` are the two ceilings (DESIGN.md §2's "Respawning"), counted off
+the actual placements in `generateMap` and carried in `SavedMapState` alongside the grids.
+Both bound the *concurrent* population only -- a map gives back without limit over time, which
+is what lets a player farm a corridor, and holds only what it stood up at any one instant,
+which is what keeps the density preset meaningful. They are the reason a respawn calls
+`saveMapState()`: the grids are shared by reference with the registry's `mapState`, so
+mutating a tile propagates for free, but these two are scalars and are genuinely copied. They
+deliberately get no `SaveData`/`defaultSave`/`persistFromRegistry` entry -- unlike the
+registry-then-persist rule's ordinary case, this is per-map state whose own map is
+registry-only and regenerated on reload, so a persisted count would describe a map the
+reloaded session doesn't have.
 
 `WORLD_NAMES` is meant to be readable as "which course topic is this," not a generic RPG
 terrain name. `WORLD_RIVALS`' own names (and, per-type, `RIVAL_9_NAMES`) instead follow

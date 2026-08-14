@@ -79,33 +79,37 @@ standing there, since its whole shape is keyed off that form's type.
 **Respawning.** A world refills itself while the player walks it, so a map that has been
 picked clean doesn't stay a dead corridor: on a repeating timer, wild crystals drift back in
 and qumatessence condenses again, each rolling its own chance so most ticks bring back
-nothing (`OverworldScene`'s `respawnTick`). Everything comes back *ahead* of the player and
-outside the drawn world -- past the projection's own draw distance, derived from it rather
-than a fixed row count -- since the camera faces north permanently, so a tile south of the
-player is never rendered at all and anything appearing there would be walked into having
-never been seen. Near the goal there is no such room, so respawns simply pause there. A
-respawn obeys every rule the original scatter does: never in a pass, never on the
-start/goal/guardian tile, one wild per row at most and never in a walkable run narrower than
-2 tiles, and drawn from the same `getWildPool(world)` the generator drew from -- so World 10
-keeps respawning hybrid-recipe results only, and World 9 the whole non-hybrid roster.
+nothing (`OverworldScene`'s `respawnTick`). Everything comes back **outside the drawn world**
+in either direction -- ahead of the player past the far edge of their field of vision, or
+behind them past the camera, both margins derived from the projection rather than fixed row
+counts. Nothing may ever appear within view: something that pops into existence in front of
+the player is a spawner rather than a world. Refilling behind as well as ahead is what lets a
+player walk a corridor back and forth and always find more; a rule that only reached ahead
+would leave the stretch already walked permanently bare and stop refilling at all near the
+north end of a map. A respawn obeys every rule the original scatter does: never in a pass,
+never on the start/goal/guardian tile, one wild per row at most and never in a walkable run
+narrower than 2 tiles, and drawn from the same `getWildPool(world)` the generator drew from --
+so World 10 keeps respawning hybrid-recipe results only, and World 9 the whole non-hybrid
+roster.
 
-Two ceilings bound it. Wilds refill toward the population that map stood up at generation,
-which is what the Settings station's encounter-density preset sets -- respawns replace what
-was fought, they never outpace the setting. Qumatessence gets that same standing-count
-ceiling *plus* a finite per-map budget equal to the map's own initial pickup count, so one
-map pays out at most twice what it was scattered with. Both ceilings and the remaining budget
-live in the map snapshot (§7's `saveMapState`/`restoreMap`), so a round trip through battle or
-the Lab resumes the same half-refilled world rather than a fresh one.
+**Over time a map gives back without limit; at any one instant it holds only what it stood
+up.** Both kinds carry exactly one ceiling, and it is a *concurrent* one: wilds refill toward
+the population that map was generated with, which is what the Settings station's
+encounter-density preset sets, and qumatessence toward its own initial scatter count.
+Respawns replace what was taken rather than outpacing the setting, and a player walking the
+same corridor long enough can always find more of both. Both ceilings live in the map
+snapshot (§7's `saveMapState`/`restoreMap`), so a round trip through battle or the Lab
+resumes the same half-refilled world rather than a fresh one.
 
-The pickup budget is a pacing rule, not a balance one, and it is worth being clear about
-which: **collecting is not where income comes from, so capping it protects no number.** A
-battle's own stake (§5) pays 50 in World 1 against roughly 9 qumatessence scattered over that
-entire map, and 200 in World 10 against roughly 260 -- a whole map of World 1 pickups is
-worth a fifth of one fight. What the budget preserves is what a pickup *is*: something found
-on a route, in an amount a route can hold. Without it a picked-clean corridor becomes a place
-to stand and wait, which is a worse way to spend the player's time than walking on, whatever
-it pays. Wilds carry no such budget because a wild that comes back is a fight, and fighting
-is the game.
+**Farming is intended, and the reason is thematic rather than economic.** The wild crystals
+are tests, the golem holding a world's pass is the exam, and grinding encounters is studying
+for it. On a harder run a player may genuinely need to farm to be ready for a rival, and the
+game must let them: an unbounded corridor is the difference between "prepare and come back"
+and "you should have prepared earlier." That is also why capping pickups would protect no
+number even if it were wanted -- a battle's own stake (§5) pays 50 in World 1 against roughly
+9 qumatessence scattered over that entire map, and 200 in World 10 against roughly 260, so a
+whole map of World 1 pickups is worth a fifth of one fight. Income comes from fighting, and
+fighting is the game.
 
 World names are meant to read as the lecture topic, not generic RPG terrain names (check
 `WORLD_NAMES` and `WORLD_RIVALS` together when naming a world -- a mismatched rival name is
@@ -1356,7 +1360,8 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   5 rolls tiers 4-6) -- weighted toward the window's lower tier so a high
   roll stays a treat rather than the norm. Both pickups and wild crystals then
   refill themselves as the world is walked (§2's "Respawning"), out of sight
-  ahead of the player, capped by density and by that map's own pickup budget.
+  in both directions, without limit over time and capped only on how many a
+  map carries at once.
   The whole ground plane is drawn flat, with the walkable/impassable
   boundary traced off the tile grid and redrawn as a smooth curve, so a path edge that turns
   reads as an organic shoreline rather than a stair-step; a contact shadow and rim light along
