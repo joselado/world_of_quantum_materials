@@ -206,16 +206,16 @@ game/src/
                                   opponent-crystal swap and turn-preview redraw), since Phaser's own
                                   destroy() leaves tweens targeting a dead object running and the
                                   sparkle/glow tweens handed out here repeat forever
-    noether.ts                    makeNoetherAvatar()
-    bloch.ts                    makeBlochAvatar()
-    dresselhaus.ts               makeDresselhausAvatar()
-    laughlin.ts                  makeLaughlinAvatar()
-    majorana.ts                  makeMajoranaAvatar()
-    anderson.ts                   makeAndersonAvatar() -- disordered-lattice head motif, world 6
+    noether.ts                    makeNoetherAvatar() -- golden robed deity, halo + wide sleeves, world 1
+    bloch.ts                    makeBlochAvatar() -- robed figure, wireframe Bloch-sphere head, world 2
+    dresselhaus.ts               makeDresselhausAvatar() -- half-crystal transmutation figure, carbon-hexagon head, world 3
+    laughlin.ts                  makeLaughlinAvatar() -- wedding-cake quantum Hall droplet + quasihole, world 4
+    majorana.ts                  makeMajoranaAvatar() -- figure split into two breathing halves, world 5
+    anderson.ts                   makeAndersonAvatar() -- disconnected-fragment scatter, bright localized core, world 6
     feynman.ts                   makeFeynmanAvatar() -- vertex/propagator diagram-construct motif, world 7
-    kondo.ts                     makeKondoAvatar()
-    franklin.ts                   makeFranklinAvatar() -- diffraction/lattice-defect motif, world 9
-    sklodowskaCurie.ts            makeSklodowskaCurieAvatar(), world 10
+    kondo.ts                     makeKondoAvatar() -- small moment figure inside a screening-cloud arc shell, world 8
+    franklin.ts                   makeFranklinAvatar() -- figure holding a diffraction-ring detector plate, world 9
+    sklodowskaCurie.ts            makeSklodowskaCurieAvatar() -- radiant ray-crowned spire, world 10
     boss.ts                      makeBossCrystal() -- towering humanoid golem boss avatar at a world's goal,
                                   plus the BOSS_SILHOUETTE_TOP/BOTTOM extents its callers lay out around
     tokens.ts                   makeToken() -- qumatessence pickup sprite
@@ -1544,14 +1544,20 @@ rival name is easy to miss if only `WORLD_NAMES` is updated.
 
 ## Guardians
 
-Every guardian has its own avatar builder in its own file: `art/noether.ts`'s `makeNoetherAvatar`,
-`art/bloch.ts`'s `makeBlochAvatar` (wireframe Bloch-sphere head, teal),
-`art/dresselhaus.ts`'s `makeDresselhausAvatar` (spin-momentum-locked arrow ring, teal-green),
-and one file per remaining guardian (`art/laughlin.ts`, `art/majorana.ts`, `art/anderson.ts` --
-disordered-lattice head motif, world 6, `art/feynman.ts` -- vertex/propagator diagram
-construct, no robe/cloak fill at all unlike every other guardian's avatar, amber, world 7,
-`art/kondo.ts`, `art/franklin.ts` -- diffraction/lattice-defect motif, world 9,
-`art/sklodowskaCurie.ts`, world 10). Every guardian spawns through one
+Every guardian has its own avatar builder in its own file, each with its own silhouette --
+distinguishable from the others by outline alone even at the Lab's small `0.55` scale, in
+greyscale (see STYLE.md's per-guardian overworld sections for each design and the physics it
+states): `art/noether.ts`'s `makeNoetherAvatar` (golden robed deity, halo + wide sleeves),
+`art/bloch.ts`'s `makeBlochAvatar` (robed figure, wireframe Bloch-sphere head, teal),
+`art/dresselhaus.ts`'s `makeDresselhausAvatar` (half-crystal transmutation figure with a
+carbon-hexagon head, teal-green), `art/laughlin.ts` (stepped wedding-cake quantum Hall
+droplet with a lifted quasihole), `art/majorana.ts` (figure split into two breathing halves
+joined by a mote seam), `art/anderson.ts` (disconnected-fragment scatter around a bright
+localized core, world 6), `art/feynman.ts` (vertex/propagator diagram construct, no
+robe/cloak fill, amber, world 7), `art/kondo.ts` (small local-moment figure inside two
+counter-rotating screening-cloud arc shells), `art/franklin.ts` (figure holding a
+diffraction-ring detector plate, world 9), and `art/sklodowskaCurie.ts` (radiant
+ray-crowned spire, world 10). Every guardian spawns through one
 unified `OverworldScene.spawnGuardianSprite` (looked up from the `WORLD_GUARDIANS` table), not a
 bespoke `spawnXSprite` per guardian, and all share one chime, `playGuardianChime()` in
 `audio/sfx.ts`.

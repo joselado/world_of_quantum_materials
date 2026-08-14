@@ -979,14 +979,18 @@ than the caller's requested budget) for its own layout math.
 
 ## Dresselhaus in the overworld (`OverworldScene.showDresselhausPanel`)
 
-- World 3 only, standing at the middle tile like every other guardian, and his panel
+- World 3 only, standing at the middle tile like every other guardian, and her panel
   auto-opens on reaching that row (`maybeAutoOpenMiddleDialogue`), same as every
   other guardian. Teal-green (`#6ee8ba` label / `0x4ad9a0` stroke and avatar accents) name
-  label; his avatar (`art/dresselhaus.ts`'s `makeDresselhausAvatar`) swaps the head motif
-  for a ring of six small spin arrows, each rotated tangent to its own position on the
-  ring (a hedgehog-like winding, the spin texture a Dresselhaus/Rashba-split band actually
-  traces in momentum space) rather than a face, slowly rotating.
-- His panel is a list+detail layout (`scenes/panels/listDetail.ts`, "List+detail panels"
+  label; her avatar (`art/dresselhaus.ts`'s `makeDresselhausAvatar`) is a figure caught
+  mid-transmutation -- Mildred Dresselhaus's own science made visual: from the waist down
+  she *is* a point-down faceted crystal, shaded facet by facet in the same vocabulary as
+  the game's wild-crystal shards (`art/crystals.ts`), with a dark bust still emerging above
+  it and, in place of a face, a slowly rotating hexagonal carbon ring -- the unit every
+  nanostructure she mapped (graphite, graphene, nanotube, fullerene) is assembled from.
+  Silhouette: a wide angular diamond under a narrow bust, the roster's only bottom-heavy
+  angular outline.
+- Her panel is a list+detail layout (`scenes/panels/listDetail.ts`, "List+detail panels"
   above), not the tab-content/footer shop shape -- every defeated wild material
   (`defeatedMaterials`, sliced to the most recent 3, or in Superposition Mode every
   non-hybrid crystal in the game -- `data/materials.ts`'s `allCrystals()` filtered through
@@ -1012,7 +1016,12 @@ than the caller's requested budget) for its own layout math.
 
 - World 4 only, standing at the middle tile like every other guardian. Blue-violet
   (`#8fa0ff` label / `0x6a7fff` stroke and avatar accents) name label; his avatar
-  (`art/laughlin.ts`'s `makeLaughlinAvatar`) is unchanged by this mechanic.
+  (`art/laughlin.ts`'s `makeLaughlinAvatar`) is not a robed figure at all: the whole body
+  is the fractional quantum Hall electron liquid, drawn as the stepped "wedding-cake"
+  density profile an incompressible droplet takes -- four elliptical tiers narrowing
+  upward -- with one hollow quasihole dot floating lifted above the top tier on a faint
+  extraction line, and '⅓' orbit glyphs. Silhouette: a tiered stack, the roster's only
+  stepped outline.
 - **Bespoke two-column layout** (`scenes/panels/laughlin.ts`, not the paginated list+detail
   shape above): his two quiz-gated Analytic moves (`data/materials.ts`'s `ANALYTIC_MOVE_IDS`, a
   hardcoded pair, `skyfallBeam`/`groundEruption`) are always both visible side by side, one full
@@ -1093,8 +1102,12 @@ than the caller's requested budget) for its own layout math.
 ## Majorana in the overworld (`OverworldScene.showMajoranaPanel`)
 
 - World 5 only, standing at the middle tile like every other guardian. Green (`0x4fd97a`)
-  name label and panel stroke; his avatar (`art/majorana.ts`'s `makeMajoranaAvatar`) is
-  unchanged by this mechanic.
+  name label and panel stroke; his avatar (`art/majorana.ts`'s `makeMajoranaAvatar`) is a
+  figure split clean down the middle -- two mirrored half-cloaks and half-heads with a gap
+  of dark between them, held together only by a thread of pulsing motes down the seam (one
+  fermion carried as two spatially separated Majorana halves, the shared nonlocal state the
+  visible link), the halves breathing apart and back together without ever separating, with
+  'γ' orbit glyphs. Silhouette: the roster's only bisected outline.
 - His panel is a single list+detail step (`scenes/panels/listDetail.ts`, "List+detail panels"
   above), browsed by *hybrid result* rather than by ingredient: the left column lists every
   named `data/materials.ts` `HYBRID_RECIPES` result reachable from the player's defeated wild
@@ -1131,10 +1144,12 @@ than the caller's requested budget) for its own layout math.
 
 - World 6 only, standing at the middle tile like every other guardian. Rust/amber
   (`0xc9884a`) name label and panel stroke; his avatar (`art/anderson.ts`'s
-  `makeAndersonAvatar`) swaps the head for a scattered, irregular lattice of dim dots with
-  one bright point pulsing at the center -- Anderson localization's own picture, a wave
-  trapped by disorder instead of spreading freely -- rather than any other guardian's motif,
-  plus four orbiting `×` glyphs instead of Noether's `✦` or Bloch's `◇`.
+  `makeAndersonAvatar`) has no outline at all: the figure is a loose scatter of chunky
+  disconnected fragments -- densest through the torso, thinning toward the edges like a
+  localized wave's decaying envelope -- with one bright site pulsing at the heart where the
+  amplitude is trapped, plus four orbiting `×` impurity glyphs. Nothing connects the
+  fragments (deliberately unlike Feynman's propagator lattice beside him in the Lab):
+  disorder has no bonds, only sites. Silhouette: the roster's only fragmented outline.
 - The panel is a two-step flow, but only the first step (picking which host to dope in) is a
   list+detail layout (`scenes/panels/listDetail.ts`, "List+detail panels" above) -- the second
   step (which specific move to learn) stays a plain paginated
@@ -1168,12 +1183,13 @@ than the caller's requested budget) for its own layout math.
 - World 7 only, standing at the middle tile like every other guardian. Amber (`#ffa64a`
   label / `0xffa64a` stroke) name label -- the same amber the world's earlier guardian
   used, free to reuse once nothing else in the roster claims it. His avatar
-  (`art/feynman.ts`'s `makeFeynmanAvatar`) breaks from every other guardian's
-  floating-robed-figure silhouette on purpose: no cloak/robe fill at all, just a loose
+  (`art/feynman.ts`'s `makeFeynmanAvatar`) has no cloak/robe fill at all: a loose
   humanoid lattice of bright vertex points connected by straight propagator lines, two
   small pulsing loop-insertion circles along the torso/hip lines (the diagrammatic mark
   of a higher-order correction), and four small vertex dots orbiting in place of another
-  guardian's orbiting glyphs.
+  guardian's orbiting glyphs. Silhouette: the roster's only connected line-lattice
+  outline -- Anderson beside him in the Lab is the scatter with no connecting lines at
+  all, this is the construct that is nothing but connections.
 - A list+detail panel (`LIST_DETAIL_PANEL_W`, "List+detail panels" above). The left column
   lists every move the player has ever unlocked (`getUnlockedMoves`, not `getBattleMoves`: a
   move currently unusable in the player's present form is still worth leveling for later),
@@ -1200,8 +1216,12 @@ than the caller's requested budget) for its own layout math.
 
 - World 8 only, standing at the middle tile like every other guardian. Rust-orange
   (`0xe86a44`) name label and panel stroke -- distinct from Anderson's own rust/amber
-  (`0xc9884a`) above; his avatar (`art/kondo.ts`'s `makeKondoAvatar`) is unchanged by this
-  mechanic.
+  (`0xc9884a`) above; his avatar (`art/kondo.ts`'s `makeKondoAvatar`) is the Kondo effect
+  drawn whole: a deliberately small dark figure (the local moment) carrying one bold
+  pulsing spin arrow, wrapped inside a much larger screening cloud of open
+  conduction-electron arcs in two counter-rotating shells -- the same enclosing shape as
+  the shield his self-buff moves cast. The arcs are the avatar's outer edge; there is no
+  robe under them. Silhouette: the roster's only round, enclosing outline.
 - List+detail layout (`scenes/panels/listDetail.ts`, "List+detail panels" above), the same shape
   Noether's/Laughlin's/Skłodowska-Curie's own move-browsing steps use: the left column names all
   three of `data/materials.ts`'s `KONDO_MOVE_IDS` (Screening Pulse, Scattering Drag, Coherence
@@ -1236,10 +1256,15 @@ than the caller's requested budget) for its own layout math.
 
 - World 9 only, standing at the middle tile like every other guardian. Lavender
   (`#c9a8e0` label / `0xa878c9` stroke and avatar accents) name label; her avatar
-  (`art/franklin.ts`'s `makeFranklinAvatar`) swaps the head for a disordered lattice of
-  scattered sites surrounded by concentric diffraction rings -- porous/amorphous carbon's
-  own X-ray diffraction pattern made literal -- in a dusty amethyst/lavender palette
-  distinct from Anderson's rust/amber despite the shared defect/disorder theme.
+  (`art/franklin.ts`'s `makeFranklinAvatar`) is a slim experimenter holding her detector
+  plate out in front of her like a shield -- which is what her always-on defensive
+  passives are. The plate is a dark film disc gripped by two hands at its rim, printed
+  with the diffuse Debye-Scherrer ring pattern porous/amorphous carbon scatters an X-ray
+  beam into: concentric rings pulsing on offset timings around a dim central beam spot,
+  with scattered pore sites between them -- a dusty amethyst/lavender palette distinct
+  from Anderson's rust/amber despite the shared defect/disorder theme. Silhouette: a head
+  and narrow shoulders over one large disc, the roster's only figure-behind-a-disc
+  outline.
 - Qumatex-like: below the avatar/quote, the panel (`scenes/panels/franklin.ts`, `760` wide)
   splits into two columns -- a fixed-size crystal-preview block on the left, the passive shop
   list on the right, divided by the same thin vertical line every list+detail panel uses
@@ -1294,9 +1319,14 @@ than the caller's requested budget) for its own layout math.
 - World 10 only, standing at the middle tile like every other guardian -- the last one the
   player reaches. Olive (`0xc9d84a`) name label and panel stroke, carried over from the
   Curie identity's own palette; her avatar (`art/sklodowskaCurie.ts`'s
-  `makeSklodowskaCurieAvatar`) keeps that identity's crystal-shard-with-a-pulsing-ring head
-  motif but adds an outer halo ring and a denser eight-point starburst orbit (double the
-  usual four) befitting the guardians' own capstone rather than a mid-game stop.
+  `makeSklodowskaCurieAvatar`) is a radiant source: the tallest, narrowest figure in the
+  roster, a spire-like gown tapering to a single point below every other guardian's hem,
+  crowned by a pulsing fan of seven straight rays streaming off the head -- emission from
+  a radioactive source, and the shape of the Nova/Meteor ultimates she teaches -- with a
+  small crystal shard inside a pulsing ring at her chest (a Curie-temperature transition,
+  order turning on and off). The finale-only outer halo ring and the eight-point starburst
+  orbit (double the usual four) mark her as the guardians' capstone rather than a mid-game
+  stop. Silhouette: the roster's only tall spike-with-ray-crown outline.
 - **Bespoke two-column layout** (`scenes/panels/sklodowskaCurie.ts`, the same shape Laughlin's
   own panel above uses, not the paginated list+detail shape): her two Ultimate moves
   (`data/materials.ts`'s `ULTIMATE_MOVE_IDS` -- `ultimateMeteor`/`ultimateNova`) are always both

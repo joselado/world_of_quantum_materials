@@ -1,17 +1,22 @@
 import Phaser from 'phaser';
 import { shade } from './colors';
 
-// Kondo's avatar -- world 8's guardian (quantum magnetism/spinons/Kondo
-// physics, a direct namesake match). Own file, same convention as every
-// other guardian (glow -> sway -> cloak -> head-motif -> orbit ring). Head
-// motif: a screening cloud swirling around a single central spin arrow --
-// the Kondo effect itself -- deep red rather than any other guardian's
-// palette.
+// Kondo's avatar -- world 8's guardian (quantum magnetism/Kondo physics, a
+// direct namesake match, and the self-buff screening moves he sells). The
+// Kondo effect drawn whole: a small, dark figure -- the local moment --
+// carrying one bold spin arrow, wrapped inside a much larger swirling cloud
+// of conduction-electron arcs that screen it. The cloud is the silhouette:
+// round and enclosing rather than tall and tapered, the same shape as the
+// shield his moves cast on the player. Two arc shells counter-rotate so the
+// cloud reads as circulating rather than painted on.
+//
+// Drawn in local space centered on the chest/torso (0,0), same convention
+// as every other avatar builder: an internal sway tween is baked in, so
+// callers are free to layer their own position/bob tween on top.
 export function makeKondoAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameObjects.Container {
   const S = 30 * scale;
   const red = 0xff8f6a;
   const cloakColor = 0x3a1a14;
-  const skin = 0xe6d2b8;
 
   const outer = scene.add.container(0, 0);
 
@@ -35,75 +40,87 @@ export function makeKondoAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameObje
   outer.add(sway);
   scene.tweens.add({ targets: sway, angle: { from: -2.5, to: 2.5 }, duration: 2600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
-  const headY = -S * 0.55;
-
-  const cloak = scene.add.graphics();
-  cloak.fillStyle(cloakColor, 1);
-  cloak.fillPoints(
+  // The local moment: a deliberately small dark figure at the center of the
+  // cloud -- less than half the height of the other guardians, since being
+  // dwarfed by its own screening cloud is the point.
+  const cy = -S * 0.12;
+  const figure = scene.add.graphics();
+  figure.fillStyle(cloakColor, 1);
+  figure.fillPoints(
     [
-      { x: -S * 0.44, y: -S * 0.28 },
-      { x: S * 0.44, y: -S * 0.28 },
-      { x: S * 0.28, y: S * 0.58 },
-      { x: 0, y: S * 0.85 },
-      { x: -S * 0.28, y: S * 0.58 },
+      { x: -S * 0.2, y: cy + S * 0.02 },
+      { x: S * 0.2, y: cy + S * 0.02 },
+      { x: S * 0.13, y: cy + S * 0.4 },
+      { x: 0, y: cy + S * 0.52 },
+      { x: -S * 0.13, y: cy + S * 0.4 },
     ],
     true
   );
-  cloak.lineStyle(1.5, shade(red, -30), 0.6);
-  cloak.strokePoints(
+  figure.lineStyle(1.2, shade(red, -30), 0.7);
+  figure.strokePoints(
     [
-      { x: -S * 0.44, y: -S * 0.28 },
-      { x: S * 0.44, y: -S * 0.28 },
-      { x: S * 0.28, y: S * 0.58 },
-      { x: 0, y: S * 0.85 },
-      { x: -S * 0.28, y: S * 0.58 },
+      { x: -S * 0.2, y: cy + S * 0.02 },
+      { x: S * 0.2, y: cy + S * 0.02 },
+      { x: S * 0.13, y: cy + S * 0.4 },
+      { x: 0, y: cy + S * 0.52 },
+      { x: -S * 0.13, y: cy + S * 0.4 },
     ],
     true
   );
-  sway.add(cloak);
+  figure.fillStyle(shade(cloakColor, 20), 1);
+  figure.fillCircle(0, cy - S * 0.12, S * 0.15);
+  sway.add(figure);
 
-  const head = scene.add.graphics();
-  head.fillStyle(shade(skin, 4), 1);
-  head.fillCircle(0, headY, S * 0.38);
-  sway.add(head);
-
-  // A central spin arrow, held fixed, with three small conduction-electron
-  // motes swirling around it -- a local moment being screened, in place of
-  // a face.
+  // The moment's spin: one bold arrow rising straight through the figure,
+  // pulsing -- what the whole cloud is here to screen.
   const spin = scene.add.graphics();
   spin.lineStyle(2, red, 0.95);
   spin.beginPath();
-  spin.moveTo(0, headY + S * 0.14);
-  spin.lineTo(0, headY - S * 0.14);
+  spin.moveTo(0, cy + S * 0.34);
+  spin.lineTo(0, cy - S * 0.34);
   spin.strokePath();
   spin.fillStyle(red, 0.95);
-  spin.fillTriangle(0, headY - S * 0.2, -S * 0.05, headY - S * 0.1, S * 0.05, headY - S * 0.1);
+  spin.fillTriangle(0, cy - S * 0.44, -S * 0.07, cy - S * 0.3, S * 0.07, cy - S * 0.3);
   sway.add(spin);
+  scene.tweens.add({
+    targets: spin,
+    alpha: { from: 0.6, to: 1 },
+    duration: 1100,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut',
+  });
 
-  const cloud = scene.add.container(0, headY);
-  for (let i = 0; i < 3; i++) {
-    const ang = (i * Math.PI * 2) / 3;
-    const mote = scene.add.graphics();
-    mote.fillStyle(shade(red, 20), 0.85);
-    mote.fillCircle(Math.cos(ang) * S * 0.22, Math.sin(ang) * S * 0.22, S * 0.035);
-    cloud.add(mote);
-  }
-  sway.add(cloud);
-  scene.tweens.add({ targets: cloud, angle: 360, duration: 2600, repeat: -1, ease: 'Linear' });
-
-  const orbit = scene.add.container(0, 0);
-  for (let i = 0; i < 4; i++) {
-    const ang = (i * Math.PI) / 2;
-    const spark = scene.add
-      .text(Math.cos(ang) * S * 0.95, Math.sin(ang) * S * 0.95 - S * 0.1, '⇄', {
-        fontSize: `${Math.round(S * 0.3)}px`,
-        color: '#ff8f6a',
-      })
-      .setOrigin(0.5);
-    orbit.add(spark);
-  }
-  sway.add(orbit);
-  scene.tweens.add({ targets: orbit, angle: -360, duration: 5000, repeat: -1, ease: 'Linear' });
+  // The screening cloud: two shells of open conduction-electron arcs, each
+  // arc trailing a mote, counter-rotating around the moment. The arcs are
+  // the avatar's outer edge -- there is no robe under them at all.
+  const shell = (specs: { r: number; start: number; sweep: number; alpha: number }[]) => {
+    const c = scene.add.container(0, cy);
+    const g = scene.add.graphics();
+    specs.forEach((s) => {
+      g.lineStyle(1.8, shade(red, 10), s.alpha);
+      g.beginPath();
+      g.arc(0, 0, s.r, Phaser.Math.DegToRad(s.start), Phaser.Math.DegToRad(s.start + s.sweep), false);
+      g.strokePath();
+      const end = Phaser.Math.DegToRad(s.start + s.sweep);
+      g.fillStyle(shade(red, 25), Math.min(1, s.alpha + 0.15));
+      g.fillCircle(Math.cos(end) * s.r, Math.sin(end) * s.r, S * 0.05);
+    });
+    c.add(g);
+    return c;
+  };
+  const innerShell = shell([
+    { r: S * 0.58, start: -30, sweep: 200, alpha: 0.85 },
+    { r: S * 0.66, start: 170, sweep: 130, alpha: 0.6 },
+  ]);
+  const outerShell = shell([
+    { r: S * 0.82, start: 80, sweep: 170, alpha: 0.55 },
+    { r: S * 0.9, start: -80, sweep: 120, alpha: 0.4 },
+  ]);
+  sway.add(innerShell);
+  sway.add(outerShell);
+  scene.tweens.add({ targets: innerShell, angle: 360, duration: 3200, repeat: -1, ease: 'Linear' });
+  scene.tweens.add({ targets: outerShell, angle: -360, duration: 5200, repeat: -1, ease: 'Linear' });
 
   return outer;
 }

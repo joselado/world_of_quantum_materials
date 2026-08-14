@@ -2,9 +2,8 @@ import Phaser from 'phaser';
 import { shade } from './colors';
 
 // Feynman's own avatar -- world 7's guardian. Own file/builder per the
-// convention set by art/noether.ts's makeNoetherAvatar, but deliberately
-// not the "robed figure with a head motif" silhouette every other guardian
-// shares: Feynman's own physics is a diagrammatic technique (expand a
+// convention set by art/noether.ts's makeNoetherAvatar, with no robe/cloak
+// fill at all: Feynman's own physics is a diagrammatic technique (expand a
 // many-body calculation as a picture built from vertices and connecting
 // lines instead of writing it out term by term), and world 7's own course
 // topic covers the tensor-network diagram notation that same idea takes in
