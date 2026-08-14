@@ -368,7 +368,7 @@ export const OVERHEAD_SKIES: Partial<Record<number, (view: HorizonSky) => void>>
 function qumatuomiOverhead(view: HorizonSky) {
   drawQumatuomiSky(view.g, {
     cx: W / 2,
-    top: 36,
+    top: 46,
     bottom: view.horizonY - 2,
     halfWidth: W * 0.4,
     target: view.target,

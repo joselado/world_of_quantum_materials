@@ -316,10 +316,14 @@ export function buildQumatuomiMap(scene: Phaser.Scene, opts: QumatuomiMapOptions
 // The reflection's silver-violet, before the haze takes it.
 const MIRROR_SILVER = 0xc9b6e8;
 const MIRROR_ROUTE = 0xf0e4ff;
-// How far the reflection is carried into the live fog target. Deeper than the
-// distant selves' own drowning: this is the furthest thing in the game, and
-// what survives is a rumour of a coastline rather than a map.
-const MIRROR_DROWN = 0.72;
+// How far the reflection is carried into the live fog target. Bounded from
+// above by the light rule, not only by taste: the record glows and nothing
+// shines on it, so the reflection has to stay *brighter* than the sky it
+// hangs in. Drowned past that it inverts into a silhouette, which reads as a
+// solid object rather than as light -- the opposite of a reflection. The
+// depth gradient that keeps it hazed is the veil below, which fades its far
+// edge without darkening the whole shape.
+const MIRROR_DROWN = 0.34;
 // The tilt. `v` runs 0 at the reflection's far edge to 1 at its near edge, and
 // both the vertical spacing and the width follow the same power schedule, so
 // the plane recedes as one piece instead of shearing.
@@ -386,7 +390,7 @@ export function drawQumatuomiSky(g: Phaser.GameObjects.Graphics, o: QumatuomiSky
   const shore = blend(MIRROR_SILVER, o.target, MIRROR_DROWN * 0.55);
 
   const outline = SILHOUETTE_POINTS.map(([x, y]) => toMirror(x, y, o));
-  g.fillStyle(land, 0.66);
+  g.fillStyle(land, 0.5);
   g.fillPoints(outline, true);
   // A brighter coastline, self-luminous per the light rule: the record glows,
   // nothing shines on it. It is what makes the shape read as a coastline

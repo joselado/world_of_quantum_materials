@@ -17,8 +17,8 @@ export const DRAW_DISTANCE_TILES = 15;
 // (OverworldScene.updateWorldSprites) -- past it a crystal/pickup/landmark is
 // too deep into the fog to read, so it is culled rather than painted as a
 // speck. Exported because it is also the far edge of the player's field of
-// vision, which is what OverworldScene's respawn placement has to stay
-// beyond.
+// vision, which is the northern bound OverworldScene's respawn placement has
+// to stay beyond (its southern bound is CAMERA_BACK_TILES, below).
 export const VISIBLE_DEPTH_FRACTION = 0.75;
 // How far behind the player's own tile the camera sits, in tile-lengths.
 // Every depth handed to projectTile is measured from the player's tile
