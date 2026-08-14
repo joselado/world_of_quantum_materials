@@ -1,15 +1,19 @@
-// Static content/data-integrity lint for world_of_quantum_materials.
+// Static source/data-integrity lint for world_of_quantum_materials.
 //
 // Unlike every other script in this directory, this one checks neither
 // runtime behavior (component-check.mjs/playthrough-check.mjs) nor
-// difficulty (balance-sim.mjs) nor map shape (mapgen-check.mjs) -- it checks
-// that the hand-authored data tables themselves are internally consistent,
-// catching the class of mistake those other checks structurally can't see:
-// a typo'd move id, a world missing from one table but not its sibling, a
-// hybrid recipe whose result was never actually added to World 10's pool.
-// This project has shipped exactly this kind of bug before (a move name
-// collision, "fix Beam/Beam name collision") -- this script exists so the
-// next one gets caught before a commit rather than after.
+// difficulty (balance-sim.mjs) nor map shape (mapgen-check.mjs) -- it reads
+// the source itself and checks what stays consistent there, catching the
+// class of mistake those other checks structurally can't see. Two families:
+// the hand-authored data tables' internal consistency (checks 1-15) -- a
+// typo'd move id, a world missing from one table but not its sibling, a
+// hybrid recipe whose result was never actually added to World 10's pool --
+// and source-level assertions the compiler is deliberately told not to make
+// (check 16, orphan definite-assignment fields).
+// This project has shipped exactly these kinds of bug before (a move name
+// collision, "fix Beam/Beam name collision"; a never-assigned `!` field that
+// froze World 10) -- this script exists so the next one gets caught before a
+// commit rather than after.
 //
 // Parses source files with the TypeScript compiler API rather than
 // importing them, same reason and same technique as gen-docs.mjs/
@@ -113,6 +117,10 @@ function evalNode(node, sf) {
 
 const issues = [];
 const flag = (msg) => issues.push(msg);
+
+// Reported in the clean-run summary so a check silently finding nothing to
+// look at is distinguishable from one finding everything fine (check 16).
+let definiteAssignmentFields = 0;
 
 const setEq = (a, b) => a.size === b.size && [...a].every((x) => b.has(x));
 const fmtSet = (s) => `{${[...s].sort().join(', ')}}`;
@@ -387,10 +395,116 @@ for (const w of BUILT_WORLDS.filter((w) => w !== '10')) {
   }
 }
 
+// 16. Orphan definite-assignment fields. A `private x!: T` declaration
+// asserts to the compiler "something will assign this before any read," and
+// the compiler then stops checking -- so if nothing ever does, every read is
+// `undefined` with no diagnostic from `tsc --noEmit` anywhere, and the first
+// method call on it throws at runtime. This project has shipped exactly that
+// (a BattleScene text field declared, never assigned, read only on World
+// 10's transmute path, which froze the game); a passing typecheck is
+// structurally incapable of seeing it and a behavior check only sees it if
+// its own route happens to reach that one read.
+//
+// What counts as an assignment is deliberately generous and name-only,
+// matched across all of `src/` rather than within the declaring class: any
+// assignment operator (`=`, `+=`, `??=`, ...) writing to a property access
+// or a string-literal bracket access, `++`/`--`, a property target inside a
+// destructuring assignment pattern, and a `for (obj.x of ...)` binding. Public
+// `!:` fields on the scenes really are assigned from other files (panels
+// under scenes/panels/ write `scene.playerMaterial`), and a same-named write
+// anywhere suppressing a genuine orphan elsewhere is the failure mode worth
+// having: a hit here always means something, which is the only way a check
+// like this stays enabled.
+{
+  const srcDir = path.join(gameDir, 'src');
+  const tsFiles = [];
+  (function walk(dir) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith('.ts')) tsFiles.push(full);
+    }
+  })(srcDir);
+
+  const declared = [];
+  const assigned = new Set();
+  const unquote = (s) => s.replace(/^['"`]|['"`]$/g, '');
+
+  // Records whatever field name(s) `node` writes to when it appears on the
+  // left of an assignment -- recursing through destructuring patterns, whose
+  // targets parse as ordinary object/array *literals* rather than binding
+  // patterns when they're assignment targets rather than declarations.
+  const recordTarget = (node, sf) => {
+    if (ts.isParenthesizedExpression(node)) return recordTarget(node.expression, sf);
+    if (ts.isPropertyAccessExpression(node)) return void assigned.add(node.name.getText(sf));
+    if (ts.isElementAccessExpression(node)) {
+      const arg = node.argumentExpression;
+      if (arg && ts.isStringLiteralLike(arg)) assigned.add(arg.text);
+      return;
+    }
+    if (ts.isObjectLiteralExpression(node)) {
+      for (const prop of node.properties) {
+        if (ts.isPropertyAssignment(prop)) recordTarget(prop.initializer, sf);
+        else if (ts.isSpreadAssignment(prop)) recordTarget(prop.expression, sf);
+      }
+      return;
+    }
+    if (ts.isArrayLiteralExpression(node)) return void node.elements.forEach((el) => recordTarget(el, sf));
+    if (ts.isSpreadElement(node)) return recordTarget(node.expression, sf);
+    // `[a = fallback] = xs` -- the target is the left of the default.
+    if (ts.isBinaryExpression(node) && node.operatorToken.kind === ts.SyntaxKind.EqualsToken) return recordTarget(node.left, sf);
+  };
+
+  for (const file of tsFiles) {
+    const sf = ts.createSourceFile(file, fs.readFileSync(file, 'utf8'), ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+    const visit = (node) => {
+      if (ts.isPropertyDeclaration(node) && node.exclamationToken && !node.initializer) {
+        const owner = ts.isClassLike(node.parent) ? node.parent.name?.getText(sf) ?? '<anonymous class>' : '<unknown>';
+        declared.push({
+          file: path.relative(gameDir, file),
+          line: sf.getLineAndCharacterOfPosition(node.getStart(sf)).line + 1,
+          owner,
+          name: unquote(node.name.getText(sf)),
+        });
+      }
+      if (
+        ts.isBinaryExpression(node) &&
+        node.operatorToken.kind >= ts.SyntaxKind.FirstAssignment &&
+        node.operatorToken.kind <= ts.SyntaxKind.LastAssignment
+      ) {
+        recordTarget(node.left, sf);
+      }
+      if (
+        (ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node)) &&
+        (node.operator === ts.SyntaxKind.PlusPlusToken || node.operator === ts.SyntaxKind.MinusMinusToken)
+      ) {
+        recordTarget(node.operand, sf);
+      }
+      if ((ts.isForOfStatement(node) || ts.isForInStatement(node)) && !ts.isVariableDeclarationList(node.initializer)) {
+        recordTarget(node.initializer, sf);
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(sf);
+  }
+
+  definiteAssignmentFields = declared.length;
+  for (const d of declared) {
+    if (assigned.has(d.name)) continue;
+    flag(
+      `${d.file}:${d.line} ${d.owner}.${d.name} is declared with a definite-assignment '!' but nothing in src/ ever assigns it -- ` +
+        `every read of it is undefined at runtime, and the '!' is exactly what stops tsc from saying so`
+    );
+  }
+}
+
 // --- report -----------------------------------------------------------
 
 if (issues.length === 0) {
-  console.log(`content-lint: clean -- ${Object.keys(MOVES).length} moves, ${MATERIAL_TYPES.size} types, ${HYBRID_RECIPES.length} hybrid recipes, ${BUILT_WORLDS.length} worlds, no issues found.`);
+  console.log(
+    `content-lint: clean -- ${Object.keys(MOVES).length} moves, ${MATERIAL_TYPES.size} types, ${HYBRID_RECIPES.length} hybrid recipes, ` +
+      `${BUILT_WORLDS.length} worlds, ${definiteAssignmentFields} definite-assignment fields, no issues found.`
+  );
   process.exit(0);
 } else {
   console.log(`content-lint: ${issues.length} issue(s) found:\n`);
