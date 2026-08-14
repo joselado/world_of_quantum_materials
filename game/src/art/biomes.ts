@@ -7,15 +7,15 @@
 export type DecorationKind = 'flowers' | 'crystalGlints' | 'fieldLines' | 'networkNodes' | 'ripples' | 'cracks' | 'mistMotes';
 
 // What the *off-path* terrain actually is, not just what color it's painted
-// -- OverworldScene.drawOffPathTile branches on this to render impassable
-// ground as something you can plausibly see is impassable rather than a
-// uniformly-colored wall block everywhere: 'rock' (the original raised
-// stacked-stone block, still the default), 'lava' (a flat, glowing molten
-// crust -- Defect Wastes' "scorched" theme made literal), 'water' (a dark,
-// rippling frozen lake -- Frozen Caverns), 'void' (open sky/chasm you'd fall
-// through -- Floating Islands' "one-way edge paths"). Not every biome needs
-// its own theme; most stay 'rock' and differ only by wall/hill color, same
-// as before this field existed.
+// -- OverworldScene.drawOffPathTile branches on this to give each world's
+// impassable ground its own material: 'rock' (bare ground in the biome's own
+// `ground` color, the default, no accent), 'lava' (a glowing molten crust --
+// Defect Wastes' "scorched" theme made literal), 'water' (a rippling frozen
+// lake -- Frozen Caverns), 'void' (the starlit drop between islands --
+// Topological Islands' "one-way edge paths"). Impassable terrain lies in the
+// same plane as the walkable floor everywhere, so a theme changes the color
+// and the accent over it, never the geometry. Not every biome needs its own
+// theme; most stay 'rock' and differ only by ground/hill color.
 export type WallTheme = 'rock' | 'lava' | 'water' | 'void';
 
 export interface Biome {
@@ -32,28 +32,34 @@ export interface Biome {
   wallTheme: WallTheme;
 }
 
+// Topic 1 (mean-field/SSB, the tutorial): a crisp spring morning -- fresh
+// mid-green grass and a warm dirt trail under a pale blue sky. Deliberately
+// cooler and fresher than world 6's golden-hour plains, so the game's two
+// green outdoor worlds read as different seasons rather than the same field.
 const MEADOW: Biome = {
   name: 'meadow',
   skyTop: 0x8fd0ff,
   skyBottom: 0xe8f6ff,
-  hillColor: 0x5c9c6a,
+  hillColor: 0x54a066,
   hillAlpha: 0.8,
-  ground: 0x2e7d32,
-  path: 0xb08d57,
+  ground: 0x37913f,
+  path: 0xbb945c,
   fogTarget: 0xbfe3ff,
   clouds: true,
   decoration: 'flowers',
   wallTheme: 'rock',
 };
 
+// Topic 2 (symmetries/tight-binding): amethyst cave gloom -- a saturated
+// violet floor path through cool indigo stone, cyan crystal glints over both.
 const CRYSTAL_CAVE: Biome = {
   name: 'crystalCave',
   skyTop: 0x1a1730,
   skyBottom: 0x362f5c,
   hillColor: 0x3a3560,
   hillAlpha: 0.85,
-  ground: 0x2b2b3a,
-  path: 0x585073,
+  ground: 0x27243a,
+  path: 0x625a8a,
   fogTarget: 0x24203f,
   clouds: false,
   decoration: 'crystalGlints',
@@ -66,12 +72,15 @@ const FLOATING_ISLANDS: Biome = {
   skyBottom: 0x8fb8e8,
   hillColor: 0x4a6a9a,
   hillAlpha: 0.75,
-  ground: 0x35507a,
+  // Held far darker than the pale island floor it borders: off-path here is
+  // the drop between islands, and the depth of the value break is what sells
+  // it as empty space rather than lower ground.
+  ground: 0x17224a,
   path: 0x9ac0e0,
   fogTarget: 0x6888c0,
   clouds: true,
   decoration: 'crystalGlints',
-  // Off-path here is the open sky between islands, not solid ground -- you'd
+  // Off-path here is the open drop between islands, not solid ground -- you'd
   // fall through it, matching the world's own "one-way edge paths" design.
   wallTheme: 'void',
 };
@@ -84,8 +93,8 @@ const LANDAU_TERRAIN: Biome = {
   skyBottom: 0x1f4d8f,
   hillColor: 0x2a5ca8,
   hillAlpha: 0.8,
-  ground: 0x122544,
-  path: 0x3a7fd4,
+  ground: 0x0f1f3a,
+  path: 0x3f8ade,
   fogTarget: 0x1b3868,
   clouds: false,
   decoration: 'fieldLines',
@@ -113,17 +122,20 @@ const FROZEN_CAVERNS: Biome = {
   wallTheme: 'water',
 };
 
-// Topic 6 (classical magnetism/magnons): windswept plains with spin-wave
-// ripples in the grass -- a warmer, wilder green/gold than world 1's meadow.
+// Topic 6 (classical magnetism/magnons): golden-hour plains with spin-wave
+// ripples in the grass -- olive-gold grass hazing into a warm cream horizon,
+// the late-summer counterpart to world 1's crisp spring meadow. The haze
+// target follows the warm horizon rather than a blue sky, which is what
+// carries most of the two worlds' difference at distance.
 const WINDSWEPT_PLAINS: Biome = {
   name: 'windsweptPlains',
-  skyTop: 0x9fd8ff,
-  skyBottom: 0xdff3ff,
-  hillColor: 0x8fae5c,
+  skyTop: 0x9cc8e8,
+  skyBottom: 0xf0e8c8,
+  hillColor: 0x9caa52,
   hillAlpha: 0.8,
-  ground: 0x5f8536,
+  ground: 0x6e8d3a,
   path: 0xd4c07a,
-  fogTarget: 0xcbe8ff,
+  fogTarget: 0xe6e8c2,
   clouds: true,
   decoration: 'ripples',
   wallTheme: 'rock',
@@ -146,23 +158,30 @@ const NETWORK_GRAPH_WORLD: Biome = {
 };
 
 // Topic 8 (quantum magnetism/spinons/Kondo): a foggy forest that
-// fractionalizes on contact -- muted, low-contrast greys and greens.
+// fractionalizes on contact -- muted greys and greens. Muted in hue, but the
+// ground/path value break is still held wide: this is the darkest, haziest
+// biome, and the walkable route has to stay readable through that fog on its
+// own color break.
 const FOGGY_FOREST: Biome = {
   name: 'foggyForest',
   skyTop: 0x2a2f28,
-  skyBottom: 0x4a5248,
+  skyBottom: 0x4e584c,
   hillColor: 0x3a4238,
   hillAlpha: 0.9,
-  ground: 0x28302a,
-  path: 0x5a6a58,
-  fogTarget: 0x454e46,
+  ground: 0x1b231d,
+  path: 0x738667,
+  fogTarget: 0x49544a,
   clouds: false,
   decoration: 'mistMotes',
   wallTheme: 'rock',
 };
 
 // Topic 9 (excitations and defects): a cracked, glitching world -- scorched
-// reds and blacks, terrain that reads as damaged rather than merely dark.
+// reds and blacks, terrain that reads as damaged rather than merely dark. The
+// walkable route is scorched clay: still inside the world's warm red family,
+// but held several times lighter than the molten crust's own glow (whose wash
+// is kept dim for exactly this reason -- see OverworldScene.drawLavaAccent),
+// so the route is told apart by value while everything on screen stays red.
 const CRACKED_WORLD: Biome = {
   name: 'crackedWorld',
   skyTop: 0x1a0808,
@@ -170,7 +189,7 @@ const CRACKED_WORLD: Biome = {
   hillColor: 0x4a1c1c,
   hillAlpha: 0.85,
   ground: 0x220c0c,
-  path: 0x8a2a2a,
+  path: 0xa86b54,
   fogTarget: 0x2e1010,
   clouds: false,
   decoration: 'cracks',

@@ -30,9 +30,9 @@ reading that world's own shape, not just holding one direction. A handful of
 qumatessence (the in-game currency) pickups are tucked along the way,
 often at a dead end worth the detour. Every world has its own
 biome, matching that topic's flavor -- and stepping off the path doesn't
-always mean a wall: the Floating Islands drop away into open sky, the Frozen
-Caverns are a rippling frozen lake, and the Defect Wastes are a glowing
-molten crust, alongside the more ordinary raised stone everywhere else.
+always mean the same thing: the Floating Islands drop away into starlit open
+space, the Frozen Caverns are a rippling frozen lake, and the Defect Wastes
+are a glowing molten crust, alongside plainer rock everywhere else.
 
 <table>
 <tr>
@@ -122,9 +122,9 @@ Abilities station too (appears once you've learned your first passive). See
 
 **Face the boss.** Keep going past the guardian and you'll see it looming
 before you even reach it: a gigantic golem, built from many crystal shards
-fused into one mass and wrapped in its own pulsing aura, standing at the
-far end of every world -- and it keeps that same imposing look once the
-fight starts. Its name is always a real compound in *polycrystalline*
+fused into one mass, its grain boundaries glowing where they meet and a
+heavy shadow pooled under its feet, standing at the far end of every
+world -- and it keeps that same imposing look once the fight starts. Its name is always a real compound in *polycrystalline*
 form (many grains fused into one, the same idea the golem's own body
 literalizes) -- Polycrystalline Silicon Golem guards World 1, for
 instance. Beating it opens a glowing doorway right where the boss stood,
@@ -137,12 +137,13 @@ required; you'll land back in that earlier world right at its own far end,
 ready to walk forward through it again whenever you like.
 
 **Return to the Lab.** World 0 is a static hub room, each of its jobs its
-own physical station: a Save Point; Qumatex, a filterable index of every
-crystal in the game listed by name alongside a note on the real physics
-behind it -- each with a "???" placeholder name and silhouette for anything
-you haven't found yet; a door back out to whichever world you're mid-way
-through; and stations to check your moves, your stats, revisit any
-guardian you've met, replay the tutorial, and adjust settings.
+own physical station: Qumatex, a filterable index of every crystal in the
+game listed by name alongside a note on the real physics behind it -- each
+with a "???" placeholder name and silhouette for anything you haven't found
+yet; a door back out to whichever world you're mid-way through; and stations
+to check your moves, your stats, revisit any guardian you've met, replay the
+tutorial, and adjust settings. Your progress autosaves as you play, so there's
+no separate save button anywhere.
 
 <table>
 <tr>
@@ -237,8 +238,11 @@ In the Lab, click the **Settings** station to adjust:
 Short tips appear one at a time, right as each feature comes up for the
 first time -- entering the Lab, taking your first steps, your first wild
 encounter, your first battle, your first qumatessence, your first guardian,
-reaching your first goal. Want to revisit one? In the Lab, click
-**Tutorial** for a menu of every topic -- pick one to reread it.
+reaching your first goal. In the Lab, click **Tutorial** for the full list
+-- those same tips plus a topic for every guardian's own ability (quiz-gated
+moves, move leveling, passives, status effects, hybrid fusion, transmutation,
+host doping, teleportation), the Settings station, and Story Mode vs.
+Superposition Mode. Pick any topic on the left to read it on the right.
 
 ![A tutorial tip introducing the guardians](screenshots/tutorial-tip.png)
 

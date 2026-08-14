@@ -113,12 +113,17 @@ whole run. Each build maps to its own real in-game Settings difficulty tier
 `DIFFICULTY_MULTIPLIERS` applied to `enemyStatsForWorld`), so the simulator
 verifies each tier against the effort level it's actually named after, not
 just the raw unscaled curve. Each build's own "wins needed" per world is solved for by grinding ordinary
-wilds until that build's purchase logic makes its rival fight beatable
-(capped, not unbounded), rather than a fixed input -- and if a build is stuck
+wilds until that build's purchase logic makes its rival fight beatable,
+rather than a fixed input -- capped at that build's own per-world
+grind-patience budget (sized in whole-corridor re-walks from the map
+generator's own encounter density: lowest for B.Sc., highest for Ph.D.),
+so how much grinding each archetype tolerates is itself part of the effort
+model, not one shared constant. If a build is stuck
 on a purchase it can't afford while genuinely losing the world it's on
 (wild or rival), it farms qumatessence from the highest earlier world it can
 still safely clear instead of just giving up, the same thing a real player
-can do by walking back through an earlier world's own door. Every modeling
+can do by walking back through an earlier world's own door -- drawn from
+that same per-world patience budget. Every modeling
 assumption (each build's purchase ruleset, the transmutation search, the
 Monte-Carlo sample count/seed, the ±15%-variance robustness check behind a
 row's WIN/LOSE/INCONCLUSIVE verdict) is documented in that script's own

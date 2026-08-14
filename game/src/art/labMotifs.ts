@@ -1,12 +1,12 @@
 import Phaser from 'phaser';
 import { shade } from './colors';
-import { GOLD_ACCENT, REFERENCE_BLUE_GREY, TUTORIAL_CYAN } from '../ui/theme';
+import { REFERENCE_BLUE_GREY, TUTORIAL_CYAN } from '../ui/theme';
 
 // One small hand-drawn icon per Lab station (scenes/panels/hubStations.ts's
-// six reference/settings stations, plus HubScene's own Qumatex and Save
-// Point) -- the motif STYLE.md's "Lab panels" section describes, planted
-// beside that station's own button out in the Lab room
-// (HubScene.addStationRow) rather than inside the panel the button opens.
+// six reference/settings stations, plus HubScene's own Qumatex) -- the
+// motif STYLE.md's "Lab panels" section describes, planted beside that
+// station's own button out in the Lab room (HubScene.addStationRow) rather
+// than inside the panel the button opens.
 // Built from the same Phaser.GameObjects.Graphics primitive vocabulary as
 // every other piece of art in this game (no external image assets, per
 // STYLE.md). Every builder takes a fixed pixel `size` and returns a
@@ -52,54 +52,6 @@ export function makeQumatexMotif(scene: Phaser.Scene, size: number): Phaser.Game
   return container;
 }
 
-export function makeSavePointMotif(scene: Phaser.Scene, size: number): Phaser.GameObjects.Container {
-  const container = scene.add.container(0, 0);
-  const color = GOLD_ACCENT;
-
-  const halo = scene.add.ellipse(0, size * 0.38, size * 1.15, size * 0.42, color, 0.16);
-  halo.setBlendMode(Phaser.BlendModes.ADD);
-  container.add(halo);
-
-  // A slim faceted spire (echoing the Save Point hotspot's own gold shard
-  // icon) standing on a pooled glow, read as a beacon/rune marker rather
-  // than a gem sitting on the ground.
-  const g = scene.add.graphics();
-  const top = { x: 0, y: -size * 0.58 };
-  const left = { x: -size * 0.2, y: size * 0.02 };
-  const right = { x: size * 0.2, y: size * 0.02 };
-  const baseL = { x: -size * 0.1, y: size * 0.4 };
-  const baseR = { x: size * 0.1, y: size * 0.4 };
-  g.fillStyle(shade(color, 30), 1);
-  g.fillTriangle(top.x, top.y, left.x, left.y, 0, top.y * 0.05);
-  g.fillStyle(shade(color, -10), 1);
-  g.fillTriangle(top.x, top.y, 0, top.y * 0.05, right.x, right.y);
-  g.fillStyle(shade(color, -30), 1);
-  g.fillPoints([left, baseL, baseR, right], true);
-  g.lineStyle(1.5, shade(color, -50), 0.9);
-  g.strokePoints([top, right, baseR, baseL, left], true);
-  container.add(g);
-
-  // A small etched rune ring floating over the spire's tip -- a diamond
-  // inside a thin circle -- the "save" glyph.
-  const rune = scene.add.graphics();
-  rune.lineStyle(1.5, 0xffffff, 0.85);
-  rune.strokeCircle(0, -size * 0.72, size * 0.16);
-  const d = size * 0.08;
-  rune.strokePoints(
-    [
-      { x: 0, y: -size * 0.72 - d },
-      { x: d, y: -size * 0.72 },
-      { x: 0, y: -size * 0.72 + d },
-      { x: -d, y: -size * 0.72 },
-    ],
-    true
-  );
-  container.add(rune);
-
-  scene.tweens.add({ targets: rune, alpha: { from: 0.5, to: 1 }, duration: 1400, yoyo: true, repeat: -1 });
-  return container;
-}
-
 export function makeMovesMotif(scene: Phaser.Scene, size: number): Phaser.GameObjects.Container {
   const container = scene.add.container(0, 0);
   const color = 0xff9a4a; // Phonon Beam's own attack-effect orange, the one class every move class shares
@@ -108,8 +60,9 @@ export function makeMovesMotif(scene: Phaser.Scene, size: number): Phaser.GameOb
   glow.setBlendMode(Phaser.BlendModes.ADD);
   container.add(glow);
 
-  // A jagged energy bolt, the same silhouette family art/attackEffects.ts's
-  // bolt shape traces for Phonon Beam/Electron Pulse/Spinon Swap.
+  // A jagged energy bolt standing for the bolt-class attacks (Phonon Beam/
+  // Electron Pulse/Spinon Swap), in their shared attack-effect orange -- a
+  // static icon reading as "an attack," not a copy of the battle animation.
   const g = scene.add.graphics();
   const pts = [
     { x: -size * 0.05, y: -size * 0.55 },

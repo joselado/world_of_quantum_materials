@@ -22,7 +22,14 @@ import {
 
 const SEED_COUNT_MIN = 5;
 const SEED_COUNT_MAX = 8;
-const DOMAIN_PALETTE = [0x4ad9a0, 0xff8f6a, 0x8fa0ff, 0xffe066, 0xd97aff, 0x6ee8ba, 0xff6a9a, 0x7ac9ff];
+// One tint per bulk phase, blended 0.6 over the biome's dark void ground by
+// the renderer. Every entry is a saturated mid-value hue: distinct from each
+// other (adjacent domains must read as different phases at a glance -- that
+// contrast IS the world's physics) and all held well darker than the pale
+// ice-blue walkable path, so the edge channel between two domains stays the
+// brightest thing on screen. No pale or blue-white entries: a domain that
+// blends toward the path's own color would read as walkable ground.
+const DOMAIN_PALETTE = [0x2fae7d, 0xd96f4e, 0x5b6ed9, 0xc9a83a, 0xb44ac9, 0xc94a6a, 0x7a9a3a, 0x3a7a9a];
 
 export function generateWorld3Map(gridW: number, gridH: number, start: GridPoint): GeneratedMap {
   const goalY = 1;

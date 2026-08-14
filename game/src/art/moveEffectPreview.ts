@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { playAttackEffect, resolveAttackShape, attackEffectTotalDurationMs } from './attackEffects';
+import { playAttackEffect, resolveAttackShape, attackEffectTotalDurationMs, type EffectAnchor } from './attackEffects';
 import type { AttackShape } from '../audio/sfx';
 import type { MoveClass } from '../data/types';
 import type { MoveLevel } from '../data/materials';
@@ -13,10 +13,12 @@ import type { MoveLevel } from '../data/materials';
 // kondo.ts, laughlin.ts, sklodowskaCurie.ts, via scenes/panels/listDetail.ts's
 // renderMoveDetailHeader/renderSelfBuffMoveDetailHeader). A caller supplies a
 // short `from`/`to` span local to the pane (STYLE.md's own guidance: a real
-// battle uses PLAYER_POS/opponentPos, hundreds of pixels apart; a detail pane
-// has no such positions of its own to reuse, so each caller picks a small
-// fixed pair of points sized to its own pane instead) plus whichever
-// class/shape override that move actually plays with in a real fight
+// battle anchors each side of the effect to a live crystal, hundreds of
+// pixels apart; a detail pane has no crystals of its own to follow, so each
+// caller picks a small fixed pair of points sized to its own pane instead --
+// a fixed point is a perfectly good `EffectAnchor`, it just never moves)
+// plus whichever class/shape override that move actually plays with in a
+// real fight
 // (Laughlin's/Curie's ANALYTIC_SHAPES/ULTIMATE_SHAPES overrides, resolved by
 // the caller the same way BattleScene itself does) and, optionally, the
 // player's own current Feynman level for that move (`getMoveLevel`) so the
@@ -38,16 +40,11 @@ const PREVIEW_DEPTH_OFFSET = 150;
 // reads as a repeating demonstration rather than one unbroken strobe.
 const LOOP_PAUSE_MS = 500;
 
-interface Point {
-  x: number;
-  y: number;
-}
-
 export interface MoveEffectPreviewParams {
   scene: Phaser.Scene;
   moveClass: MoveClass;
-  from: Point;
-  to: Point;
+  from: EffectAnchor;
+  to: EffectAnchor;
   shapeOverride?: AttackShape;
   level?: MoveLevel;
 }

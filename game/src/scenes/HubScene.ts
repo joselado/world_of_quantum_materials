@@ -13,23 +13,25 @@ import { fontPx, fontScale } from '../ui/text';
 import { PANEL_BG, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../ui/theme';
 import { BUILT_WORLDS, applySuperpositionUnlocks } from './OverworldScene';
 import type { GuardianPanelHost } from './OverworldScene';
-import { labPanelColumns, LAB_TITLE_COLOR, LAB_STATIONS } from './panels/hubStations';
+import { LAB_TITLE_COLOR, LAB_STATIONS } from './panels/hubStations';
 import { LIST_DETAIL_PANEL_W, listDetailColumns, renderListColumn, insertColumnDivider } from './panels/listDetail';
-import { makeQumatexMotif, makeSavePointMotif } from '../art/labMotifs';
+import { makeQumatexMotif } from '../art/labMotifs';
 import { stopMoveEffectPreview } from '../art/moveEffectPreview';
 
 // World 0, "The Lab" (DESIGN.md's world table) -- boot destination from
 // TitleScene and the return point from Overworld (press H or Enter). Unlike
 // the numbered worlds it isn't a walkable procedural map: it's a single
-// static room with up to nine stations -- three that always exist (Qumatex,
-// a save point, the door onward) plus six reference/settings stations
-// (Moves, Stats, Abilities, Guardians, Tutorial, Settings, built in
+// static room with up to eight stations -- Qumatex and the door onward,
+// which always exist, plus six reference/settings stations (Moves, Stats,
+// Abilities, Guardians, Tutorial, Settings, built in
 // scenes/panels/hubStations.ts's `LAB_STATIONS`) -- since none of the hub's
 // jobs need overworld movement or wild encounters of their own, and none of
 // those six stations' own content is tied to being mid-world. Abilities and
 // Guardians only actually appear once the player has learned a first
 // passive or met a first guardian (`LAB_STATIONS`' own `visible` checks) --
-// a fresh save has nothing to check or revisit there yet.
+// a fresh save has nothing to check or revisit there yet. Progress
+// autosaves silently after every meaningful state change (data/save.ts's
+// `persistFromRegistry`), so the room has no manual save station of its own.
 
 // Every real compound in the game (`allCrystals()`), not just discovered
 // ones -- an undiscovered entry still occupies a slot in the index, masked
@@ -74,6 +76,15 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // lists do (showGuardiansPanel takes a concrete HubScene, never opened
   // mid-walk from OverworldScene the way every guardian's own panel is).
   guardiansPage = 0;
+  // Same shape as guardiansPage/materialdexSelectedName above, for the
+  // Tutorial station's own list+detail panel (scenes/panels/hubStations.ts's
+  // showTutorialTopics) -- also Lab-only. `tutorialPage` is which page of
+  // the topic list is showing; `tutorialSelectedIndex` is the previewed
+  // topic's own index into data/tutorial.ts's TUTORIAL_PAGES, stable across
+  // a page flip the same way materialdexSelectedName survives a type-filter
+  // change.
+  tutorialPage = 0;
+  tutorialSelectedIndex = 0;
 
   // GuardianPanelHost implementation (see OverworldScene.ts's GuardianPanelHost
   // and CODEMAP.md's "Guardian panels") -- lets any guardian's own panel
@@ -183,36 +194,33 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     const stationMargin = Math.round(CANVAS_W * 0.18);
     const stationX = [stationMargin, CANVAS_W / 2, CANVAS_W - stationMargin];
 
-    // Row 1: the three stations that exist regardless of progress --
-    // cataloguing, saving, leaving. Plain text buttons like every other
-    // station's; Qumatex carries its own small crystal-grid motif
-    // (`makeQumatexMotif`) and Save Point its own gold spire/rune motif
-    // (`makeSavePointMotif`) beside their labels, same as every reference/
-    // settings station below -- the door has no `art/labMotifs.ts` builder
-    // of its own, plain text being enough to read as an exit.
-    const row1Y = 300;
-    const row1Buttons = [
-      this.addStationRow(stationX[0], row1Y, 'Qumatex', () => this.showMaterialdex(), makeQumatexMotif),
-      this.addStationRow(stationX[1], row1Y, 'Save Point', () => this.showSavePoint(), makeSavePointMotif),
-      this.addStationRow(stationX[2], row1Y, this.doorLabel(), () => this.enterWorld()),
+    // Every station in the room -- Qumatex and the door (which always
+    // exist), then the reference/settings stations (scenes/panels/
+    // hubStations.ts's LAB_STATIONS) filtered down to whichever the player
+    // has actually unlocked, Abilities needing a first passive learned and
+    // Guardians a first guardian met (LAB_STATIONS' own `visible` checks) --
+    // packed together into one grid of rows of three with no gaps, rather
+    // than reserving a fixed grid slot for a station that isn't visible yet
+    // or special-casing Qumatex/the door into their own row. Qumatex carries
+    // its own small crystal-grid motif (`makeQumatexMotif`) beside its
+    // label, same as every reference/settings station below -- the door has
+    // no `art/labMotifs.ts` builder of its own, plain text being enough to
+    // read as an exit.
+    const stations: { label: string; onClick: () => void; motif?: (scene: Phaser.Scene, size: number) => Phaser.GameObjects.Container }[] = [
+      { label: 'Qumatex', onClick: () => this.showMaterialdex(), motif: makeQumatexMotif },
+      { label: this.doorLabel(), onClick: () => this.enterWorld() },
+      ...LAB_STATIONS.filter((station) => station.visible(this)).map((station) => ({
+        label: station.label,
+        onClick: () => station.onClick(this),
+        motif: station.motif,
+      })),
     ];
-    const row1Height = Math.max(...row1Buttons.map((b) => b.height));
-
-    // Rows 2+: the reference/settings stations (scenes/panels/hubStations.ts's
-    // LAB_STATIONS), filtered down to whichever the player has actually
-    // unlocked -- Abilities needs a first passive learned, Guardians a first
-    // guardian met (LAB_STATIONS' own `visible` checks) -- and packed into
-    // rows of three with no gaps, rather than reserving a fixed grid slot
-    // for a station that isn't visible yet. Always at least Moves/Stats/
-    // Tutorial/Settings (4), so this is always exactly two rows regardless
-    // of how many of the two gated stations have unlocked.
-    const visibleStations = LAB_STATIONS.filter((station) => station.visible(this));
-    let y = row1Y + row1Height + 8;
-    for (let i = 0; i < visibleStations.length; i += 3) {
-      const rowStations = visibleStations.slice(i, i + 3);
+    let y = 300;
+    for (let i = 0; i < stations.length; i += 3) {
+      const rowStations = stations.slice(i, i + 3);
       let rowHeight = 0;
       rowStations.forEach((station, col) => {
-        const btn = this.addStationRow(stationX[col], y, station.label, () => station.onClick(this), station.motif);
+        const btn = this.addStationRow(stationX[col], y, station.label, station.onClick, station.motif);
         rowHeight = Math.max(rowHeight, btn.height);
       });
       y += rowHeight + 8;
@@ -703,50 +711,6 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     return btn;
   }
 
-  // Its own panel (not a generic showPanel() call) so it can carry the same
-  // gold ("panel name") heading and centered-content layout the Lab's other
-  // seven panels use -- its own rune/beacon motif (makeSavePointMotif) sits
-  // beside its station button out in the room, not inside this panel.
-  private showSavePoint() {
-    persistFromRegistry(this.game.registry);
-    this.closeDialogue();
-
-    const panelWidth = 560;
-    const top = 20;
-    const container = this.add.container(0, 0).setDepth(100);
-    this.dialogueContainer = container;
-
-    let y = top;
-    const titleText = this.add
-      .text(CANVAS_W / 2, y, 'Save Point', { fontSize: fontPx(this, 15), color: LAB_TITLE_COLOR, fontStyle: 'bold' })
-      .setOrigin(0.5, 0);
-    container.add(titleText);
-    y += titleText.height + 14;
-
-    const columns = labPanelColumns(panelWidth);
-
-    const bodyText = this.add
-      .text(columns.contentCenterX, y, "Your progress hums into the Lab's memory. Game saved.", {
-        fontSize: fontPx(this, 13),
-        color: '#cfd8ff',
-        align: 'center',
-        wordWrap: { width: columns.contentWrapW },
-        lineSpacing: 6,
-      })
-      .setOrigin(0.5, 0);
-    container.add(bodyText);
-    y += bodyText.height + 18;
-
-    const closeBtn = this.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Close', () => this.closeDialogue(), 260);
-    y += closeBtn.height + 12;
-
-    const panelHeight = y - top;
-    const panel = this.add
-      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.95)
-      .setStrokeStyle(2, 0x9a6ad9);
-    container.addAt(panel, 0);
-  }
-
   // Every real compound in the game (allCrystals()), each paired with
   // whether the player has actually discovered it (registry
   // discoveredMaterials, set by OverworldScene.recordDiscovery) -- an
@@ -956,11 +920,10 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   }
 
   // The Lab's one-off welcome tip (maybeShowLabTip) is this method's only
-  // caller now -- Save Point and Qumatex build their own panels
-  // (showSavePoint/renderMaterialdexPanel) since neither is one of
-  // scenes/panels/hubStations.ts's six stations. Kept on the same
-  // measured-top-down-layout/shrink-to-fit pattern as those anyway, so a
-  // one-off popup doesn't look like a different panel era.
+  // caller -- Qumatex builds its own panel (renderMaterialdexPanel) since it
+  // isn't one of scenes/panels/hubStations.ts's six stations. Kept on the
+  // same measured-top-down-layout/shrink-to-fit pattern as those anyway, so
+  // a one-off popup doesn't look like a different panel era.
   private showPanel(title: string, body: string) {
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
@@ -1011,8 +974,8 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   }
 
   // Public, not private -- see the dialogueContainer field comment above.
-  // Shared by every panel this scene opens -- Save Point, the Lab tip,
-  // Qumatex, and scenes/panels/hubStations.ts's six stations --
+  // Shared by every panel this scene opens -- the Lab tip, Qumatex, and
+  // scenes/panels/hubStations.ts's six stations --
   // renderMaterialdexPanel/hubStations.ts's own panels call this first to
   // clear their own previous container on a redraw (filter change, row
   // pick, list paging, settings change) before rebuilding.
@@ -1033,6 +996,8 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     this.blochPage = 0;
     this.feynmanPage = 0;
     this.guardiansPage = 0;
+    this.tutorialPage = 0;
+    this.tutorialSelectedIndex = 0;
     this.dresselhausPreview = null;
     this.andersonHostPreview = null;
     this.majoranaPreview = null;

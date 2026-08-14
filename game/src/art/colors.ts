@@ -7,11 +7,30 @@ export function shade(colorInt: number, amount: number): number {
   return c.color;
 }
 
+// shade()'s darken branch taking a positive amount, for call sites that must
+// never write a unary-minus literal -- materials.ts's WORLD_RIVALS colors are
+// walked as literal AST nodes by scripts/content-lint.mjs and
+// scripts/gen-docs.mjs (parsed with the TypeScript compiler API rather than
+// executed, since materials.ts pulls in Phaser at module scope), and neither
+// script's literal-reducer handles a PrefixUnaryExpression (`-46`) or a
+// PropertyAccessExpression -- only string/numeric/boolean literals, arrays,
+// object literals, and calls/`new` built from those. `darken(color, 46)`
+// reduces to a plain call over two numeric literals, which both scripts can
+// read; `shade(color, -46)` would throw.
+export function darken(colorInt: number, amount: number): number {
+  return shade(colorInt, -amount);
+}
+
 // Linearly interpolates between two colors (t=0 -> a, t=1 -> b) -- used to
-// tint a tile's ordinary fill color toward a per-tile `regionColor` override
-// (OverworldScene's mapgen-driven branch/domain colors) without fully
-// replacing it, so the tinted tile still reads as that biome's own ground/
-// path rather than a flat swatch of the override color.
+// pull a saturated base color partway toward a target tone without fully
+// replacing it. OverworldScene tints a tile's ordinary fill color toward a
+// per-tile `regionColor` override (its mapgen-driven branch/domain colors)
+// this way, so the tinted tile still reads as that biome's own ground/path
+// rather than a flat swatch of the override color; materials.ts's
+// WORLD_RIVALS pulls a few rivals' colors toward a lore-grounded neutral
+// tone (e.g. "tarnished silver") the same way, since a plain hue rotation
+// can't desaturate a `TYPE_LOOK` base the way some of those descriptions
+// need.
 export function blend(a: number, b: number, t: number): number {
   const ca = Phaser.Display.Color.IntegerToColor(a);
   const cb = Phaser.Display.Color.IntegerToColor(b);

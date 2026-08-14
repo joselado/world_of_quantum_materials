@@ -34,13 +34,24 @@
 //   entire run (`transmutes: false`, BUILDS below) -- a deliberate choice,
 //   not an accident of a Silicon-locked model: a "low effort" character
 //   never spends a guardian visit on Dresselhaus's transmutation panel at
-//   all. Silicon only hosts 'electron'/'phonon', so the only ordinary shop
-//   move it ever buys is Tunnel Strike (Electron Pulse); its Analytic/
-//   Ultimate moves (it never owns any in practice) would tune to whichever
-//   TUNABLE_MOVE_CLASSES entry Silicon can host mismatches the most of the
-//   current world's wild pool (`bestMismatchClass` below -- for Silicon this
-//   always resolves to 'electron', since 'phonon' is universally hostable
-//   and never mismatches anything).
+//   all. The dividing line for which systems it touches is *ongoing
+//   engagement*, not price: it never uses anything quiz-gated or
+//   plan-ahead (Feynman's streak-gated leveling, Laughlin's per-use
+//   Analytic questions, Skłodowska-Curie's 3-question Ultimates,
+//   Dresselhaus's transmute-then-reshop play, Kondo's re-cast-every-fight
+//   buffs), but it does buy the game's one genuinely fire-and-forget
+//   upgrade when losing from world 9 on: Franklin's Diffraction Shadow
+//   (data/passives.ts's fractionalGuard -- pay once, permanently active,
+//   zero further interaction; see its own PASSIVES comment), exactly the
+//   kind of purchase a low-effort player makes precisely *because* it
+//   never needs touching again. Silicon only hosts 'electron'/'phonon', so
+//   the only ordinary shop move it ever buys is Tunnel Strike (Electron
+//   Pulse); its Analytic/Ultimate moves (it never owns any in practice)
+//   would tune to whichever TUNABLE_MOVE_CLASSES entry Silicon can host
+//   mismatches the most of the current world's wild pool
+//   (`bestMismatchClass` below -- for Silicon this always resolves to
+//   'electron', since 'phonon' is universally hostable and never
+//   mismatches anything).
 // - M.Sc. and Ph.D. both transmute-and-shop (`transmutes: true`): from
 //   world 3 onward (the world Dresselhaus is first met), `maybeTransmuteAndShop`
 //   is the central "transmute into a form that hosts a class this world's
@@ -103,8 +114,28 @@
 //   from the highest earlier world it can still currently beat
 //   (`safestClearedWorld`) instead of just giving up -- the same thing a
 //   real player can do by walking back through an earlier world's own door,
-//   no guardian tools needed. Capped at GRIND_CAP wins per farm, same cap
-//   `findWinsNeeded` uses for the current-world grind below.
+//   no guardian tools needed. Drawn from the same per-world grind-patience
+//   budget as `findWinsNeeded`'s current-world grind (next bullet), never
+//   an unbounded bail-out on top of it.
+// - Grinding patience is itself an effort-tier trait, so each build carries
+//   its own `grindCap`: one per-world budget of extra wild wins, spent by
+//   both `findWinsNeeded`'s current-world grind and `farmIfStuck`'s
+//   earlier-world farming (tracked in `state.grindWinsThisWorld`, reset
+//   each world). The budget is sized in full corridor re-walks, priced
+//   from the game's own map generation rather than a bare guess:
+//   OverworldScene.generateMap rolls one wild encounter per corridor row
+//   at the Settings station's default density, so a fresh corridor holds
+//   ~(GRID_H - 1) * DEFAULT_ENCOUNTER_DENSITY ~= 6 wild fights (both
+//   values read live from the game source -- see the grind-patience
+//   section below), and grinding N wins means re-walking the whole
+//   ~50-row corridor about N/6 times. B.Sc. tolerates ~2 extra re-walks
+//   per world (a real low-effort player pushes on or stalls rather than
+//   lapping a corridor all evening), M.Sc. ~4, Ph.D. GRIND_CAP (50 wins,
+//   ~8.5 re-walks -- grinding is exactly what a high-optimization player
+//   does happily, so its patience is bounded by the model's own hard
+//   anti-runaway ceiling rather than by temperament). A world whose rival
+//   isn't beatable within the budget is reported grind-capped, a direct
+//   signal that build would actually stall there in real play.
 // - Opponent Stats (Quantumness/Velocity/Correlation) come from
 //   `enemyStatsForWorld(world, activeDifficultyMultiplier)` for both an
 //   ordinary wild and that world's rival, unmodeled roll aside: in the real game (BattleScene.create) an
@@ -149,6 +180,46 @@
 //   stream, so re-running this script reproduces the same final table
 //   regardless of how many candidate forms/win-counts either search tries
 //   along the way.
+// - Quiz accuracy is one flat per-build rate, deliberately not varied per
+//   question: every quiz in the game (the pre-battle encounter question,
+//   Laughlin's per-use Analytic check, Feynman's leveling streaks,
+//   Skłodowska-Curie's Ultimate triple) is a two-option choice -- one
+//   correct answer shuffled against one authored-to-be-plausible
+//   distractor (OverworldScene.showEncounter) -- so 0.5 is exactly
+//   chance, the floor even a player who never reads the prompt achieves,
+//   which is what pins B.Sc. there. And data/quiz.ts carries no
+//   per-question difficulty metadata at all, so an accuracy model that
+//   varied by question would run on invented numbers rather than read
+//   ones -- a flat rate is the finest model the actual game data can
+//   ground. Ph.D.'s 0.95 (rather than a literal 1.0) reflects that the
+//   pool spans all ten worlds' course content with distractors built on
+//   genuinely subtle distinctions (thermodynamic vs zero-temperature
+//   limit, and so on): even a player who has mastered the course misreads
+//   occasionally, and a literal 1.0 matters most exactly where it's least
+//   plausible -- the Ultimate's all-3-or-nothing gate (accuracy^3) and
+//   Feynman's tier-3 8-streak (cost / accuracy^8), both of which a flat
+//   1.0 would model as risk-free.
+// - Every build picks its best currently-usable move each fight
+//   (`bestPlayerHit` maximizes expected damage over the owned set) --
+//   deliberately NOT varied by effort tier: BattleScene's own move menu
+//   (moveButtonContent) prints every move's effective power ("Pwr N") and
+//   an explicit "!!2x" tag whenever that move would mismatch the current
+//   opponent, so taking the best hit means reading the annotated menu the
+//   game itself provides, not memorizing MOVE_COMPATIBILITY -- at every
+//   effort level, "tap the biggest number" and per-fight-optimal coincide
+//   for the kits these builds actually own (B.Sc.'s two-move kit most
+//   trivially: Tunnel Strike out-damages Thermal Fluctuation whether or
+//   not the mismatch bonus lands).
+// - "Let me pass" (the free wild-encounter skip, OverworldScene.
+//   showEncounter) is folded into the income model rather than simulated
+//   per encounter: a build fights exactly the wild fights its own grind
+//   search solves for and implicitly passes every other encounter it
+//   meets, so encounter avoidance is already maximal for every build --
+//   and, symmetrically, no build banks income beyond what its own
+//   purchase logic asked for. That undercounts a completionist Ph.D.'s
+//   real bankroll (a human who fights every encounter on the way through
+//   arrives richer than the solved minimum), the same deliberate-
+//   undercount treatment as its Franklin passive switching below.
 // - "Rounds-to-kill"/"rounds-to-die" come from each side's average
 //   per-hit damage times its hits-per-round (the Velocity-ratio rule,
 //   `floor(ratio)` capped at [1, MAX_MULTI_HIT]), not a turn-by-turn battle log.
@@ -290,11 +361,25 @@ const BLOCH_DESTINATION_COST = evalNode(findTopLevelConst(materialsSf, 'BLOCH_DE
 const DRESSELHAUS_TRANSMUTE_COST = evalNode(findTopLevelConst(materialsSf, 'DRESSELHAUS_TRANSMUTE_COST'), materialsSf);
 const ANDERSON_DOPE_COST = evalNode(findTopLevelConst(materialsSf, 'ANDERSON_DOPE_COST'), materialsSf);
 const MAJORANA_FUSE_COST = evalNode(findTopLevelConst(materialsSf, 'MAJORANA_FUSE_COST'), materialsSf);
-// Not spent by any modeled build (no build fuses/dopes -- Ph.D. transmutes
-// via Dresselhaus only, see the header comment), extracted anyway since the
-// task calls out all five guardian-option costs as required static data and
-// it costs nothing to keep them alongside DRESSELHAUS_TRANSMUTE_COST for
-// reference/future use.
+// Not spent by any modeled build, each for its own reason (extracted anyway
+// so all five guardian-option costs live side by side, and so a future
+// change that does model one starts from the live number, not a hand-copy):
+// - Bloch's teleport is pure travel convenience -- it never touches a stat,
+//   move, or matchup, so it has no place in a fight/economy model beyond a
+//   trivial cost no archetype needs to be modeled skipping.
+// - Anderson's doping borrows one move channel from a host without changing
+//   form. Within this model its benefit is subsumed by the idealized
+//   transmute-and-shop search (which already reaches any (form,
+//   mismatch-class) combination and freely re-tunes Analytic/Ultimate
+//   moves), so modeling it separately would only re-relax a constraint the
+//   model already idealizes away -- a small undercount of M.Sc./Ph.D.'s
+//   real flexibility, same family as the other deliberate undercounts in
+//   the header comment.
+// - Majorana's fusion mints hybrid forms, which Dresselhaus never offers and
+//   no wild outside world 10 ever is -- modeling it would need
+//   HYBRID_RECIPES plus each hybrid's own hosting rules for one or two
+//   late-game worlds' worth of marginal advantage; left unmodeled as a
+//   small, deliberate undercount of Ph.D.'s ceiling in worlds 9-10.
 void BLOCH_DESTINATION_COST;
 void ANDERSON_DOPE_COST;
 void MAJORANA_FUSE_COST;
@@ -378,21 +463,32 @@ const PASSIVES = evalNode(findTopLevelConst(passivesSf, 'PASSIVES'), passivesSf)
 // --- Live formulas: data/balance.ts, transpiled and actually imported ----
 // (never a hand-copied duplicate -- see this file's own header comment).
 
-const balanceSrc = fs.readFileSync(path.join(gameDir, 'src/data/balance.ts'), 'utf8');
-const { outputText } = ts.transpileModule(balanceSrc, {
-  compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 },
-  fileName: 'balance.ts',
-});
-// balance.ts's only import is `import type { Move, Stats } from './types'`,
-// a type-only import the compiler always elides regardless of module
-// settings -- so the transpiled output has no runtime imports left to
-// resolve, and can be written to a standalone temp file and imported
-// directly rather than needing a data: URL's escaping/size concerns.
-const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'qwm-balance-sim-'));
-const tmpFile = path.join(tmpDir, 'balance.mjs');
-fs.writeFileSync(tmpFile, outputText);
-const balance = await import(pathToFileURL(tmpFile).href);
-fs.rmSync(tmpDir, { recursive: true, force: true });
+// Works for any module whose runtime imports are nil once type-only imports
+// are elided: balance.ts's only import is `import type { Move, Stats } from
+// './types'` (always elided by the compiler regardless of module settings)
+// and settings.ts has no imports at all -- so each transpiled output has no
+// runtime imports left to resolve, and can be written to a standalone temp
+// file and imported directly rather than needing a data: URL's
+// escaping/size concerns.
+async function transpileAndImport(relPath) {
+  const src = fs.readFileSync(path.join(gameDir, relPath), 'utf8');
+  const { outputText } = ts.transpileModule(src, {
+    compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 },
+    fileName: path.basename(relPath),
+  });
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'qwm-balance-sim-'));
+  const tmpFile = path.join(tmpDir, path.basename(relPath, '.ts') + '.mjs');
+  fs.writeFileSync(tmpFile, outputText);
+  const mod = await import(pathToFileURL(tmpFile).href);
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+  return mod;
+}
+
+const balance = await transpileAndImport('src/data/balance.ts');
+// Settings presets (data/settings.ts, also Phaser-free) -- read for the
+// default encounter density the grind-patience budgets below are priced
+// from, imported live like balance.ts rather than hand-copied.
+const { DEFAULT_ENCOUNTER_DENSITY } = await transpileAndImport('src/data/settings.ts');
 
 const {
   BASE_STAT,
@@ -521,10 +617,12 @@ function ultimateBonusMult(accuracy) {
 
 // --- Player build state -----------------------------------------------
 
-function newState(accuracy) {
+function newState(accuracy, grindCap) {
   return {
     qumatessence: 0,
     earnedTotal: 0,
+    grindCap, // per-world budget of extra wild wins (this build's own grinding patience -- see header comment), shared by findWinsNeeded and farmIfStuck
+    grindWinsThisWorld: 0, // wins already drawn from that budget in the current world, reset by simulateBuild at each world's start
     spentTotal: 0, // purchases only (moves, stat points, Dresselhaus/Ultimate retunes) -- rival-loss forfeitures are tracked separately, see lostToRivals
     lostToRivals: 0, // qumatessence forfeited on a lost rival fight (2x that world's stake, floored at the pre-loss balance)
     stats: { quantumness: BASE_STAT, velocity: BASE_STAT, correlation: BASE_STAT },
@@ -651,7 +749,12 @@ function bestMismatchClass(type, pool) {
 // --- Fight evaluation --------------------------------------------------
 
 // Player's best average damage-per-hit against one defender {type},
-// maximized over every owned, currently-usable attack move.
+// maximized over every owned, currently-usable attack move -- for every
+// effort tier, not just Ph.D.: BattleScene's move menu itself prints each
+// move's effective power and a "!!2x" mismatch tag against the current
+// opponent (moveButtonContent), so this pick models "tap the biggest number
+// on the annotated menu", not memorized type-chart optimization. See header
+// comment.
 function bestPlayerHit(hitFn, state, playerStats, enemyStats, defenderType) {
   let best = 0;
   for (const moveId of ownedAttackMoves(state)) {
@@ -887,6 +990,31 @@ function maybeTransmuteAndShop(state, world) {
   retuneOwnedTunableMoves(state, best.tunedClass);
 }
 
+// --- Grind patience, priced in corridor re-walks ---------------------------
+
+// The model's hard per-world grind ceiling, and (equivalently) the most
+// patient build's own `grindCap`: a world that isn't beatable/farmable even
+// at a build's cap comes back with `capped: true` (findWinsNeeded) or
+// however much of the budget farmIfStuck actually bought, rather than an
+// unbounded search. Every build's own `grindCap` is <= this.
+const GRIND_CAP = 50;
+
+// OverworldScene.generateMap rolls one wild encounter per corridor row
+// (never the player's own start row) at the Settings station's default
+// density, so one full walk of a freshly generated corridor meets about
+// this many wild fights -- ~6 at current values (GRID_H read live off
+// OverworldScene.ts's own const, density imported live from settings.ts).
+// Grinding N wins therefore costs roughly N / this many whole-corridor
+// re-walks (each re-entry through a world door regenerates the map), which
+// is what each build's `grindCap` below is sized in: re-walk tolerance is a
+// concrete, per-effort-tier behavior in a way a bare win count isn't.
+const overworldSf = parseFile('src/scenes/OverworldScene.ts');
+const GRID_H = evalNode(findTopLevelConst(overworldSf, 'GRID_H'), overworldSf);
+const ENCOUNTERS_PER_CORRIDOR_WALK = (GRID_H - 1) * DEFAULT_ENCOUNTER_DENSITY;
+function grindWinsForWalks(walks) {
+  return Math.max(1, Math.round(walks * ENCOUNTERS_PER_CORRIDOR_WALK));
+}
+
 // --- Builds --------------------------------------------------------------
 // Every purchase-priority ruleset below is a modeling assumption, not
 // derived from anything -- see the task brief's own framing of the three
@@ -932,21 +1060,29 @@ const BUILDS = [
     id: 'B.Sc.',
     label: 'B.Sc. (low effort)',
     tier: 'bsc', // data/settings.ts's DifficultyTier -- this archetype's own real in-game difficulty pick, DIFFICULTY_MULTIPLIERS applied via activeDifficultyMultiplier
-    accuracy: 0.5, // not specified by the task brief for B.Sc.; modeled as chance-level guessing, consistent with "low effort"
+    accuracy: 0.5, // exactly chance: every quiz is one correct answer shuffled against one authored-to-be-plausible distractor (OverworldScene.showEncounter), so a skim-and-click player lands at the coin flip -- and can't do worse than it. See header comment on why accuracy stays flat per build.
     transmutes: false, // low effort: never visits Dresselhaus at all, let alone the "last 3 defeated" grinding this model's own transmutation search assumes -- see header comment
-    // Reactive only: buys Tunnel Strike the first time it's needed and
-    // affordable, otherwise only patches a losing matchup with the
-    // cheapest available fix (one Correlation point), capped so a single
-    // world can't spend unboundedly. Never touches Laughlin/Feynman/Kondo/
-    // Franklin/Skłodowska-Curie/Dresselhaus. Unlike `findWinsNeeded`'s own
-    // grind loop (which assumes the *current* world's wilds are freely
-    // farmable even when this build is actually losing there), a still-short
-    // build farms qumatessence from the highest earlier world it can
-    // currently still beat instead -- the same thing a real low-effort
-    // player can always do (walk back through an earlier world's own door,
-    // no guardian tools needed), and the realistic way this archetype
-    // affords a fix when the world it's stuck on genuinely isn't safe to
-    // grind directly.
+    grindCap: grindWinsForWalks(2), // ~2 extra whole-corridor re-walks per world (~12 wild wins) before giving up -- a low-effort player retries a bit, but doesn't lap a 50-row corridor all evening; see the grind-patience section above
+    // Reactive only: never spends while winning, and when losing patches the
+    // matchup with whatever's cheapest among the zero-ongoing-engagement
+    // options -- Tunnel Strike (one-time), the cheapest of the three stat
+    // points (Noether's stat shop lists all three with prices, so "buy the
+    // cheap one" is zero-knowledge behavior; since all three share
+    // statUpgradeCost's identical curve this spreads points evenly, which
+    // also means Velocity's multi-hit and Quantumness's crit accrue
+    // incidentally, not by plan), and from world 9 Franklin's Diffraction
+    // Shadow (the game's one pay-once-permanently-active upgrade -- see
+    // header comment on why that one purchase fits this archetype while
+    // every quiz-gated/plan-ahead system doesn't). Capped so a single world
+    // can't spend unboundedly. Never touches Laughlin/Feynman/Kondo/
+    // Skłodowska-Curie/Dresselhaus. Unlike `findWinsNeeded`'s own grind
+    // loop (which assumes the *current* world's wilds are freely farmable
+    // even when this build is actually losing there), a still-short build
+    // farms qumatessence from the highest earlier world it can currently
+    // still beat instead -- the same thing a real low-effort player can
+    // always do (walk back through an earlier world's own door, no guardian
+    // tools needed), and the realistic way this archetype affords a fix
+    // when the world it's stuck on genuinely isn't safe to grind directly.
     spend(state, world, hitFn) {
       for (let i = 0; i < 30; i++) {
         // Both margins, not just the wild one -- a comfortably positive wild
@@ -958,8 +1094,13 @@ const BUILDS = [
         const margin = Math.min(wildMargin, rivalMargin);
         if (margin >= 0) break; // not currently losing anywhere -- B.Sc. stops touching the wallet
         const tunnelCost = state.ownedMoves.has('tunnelStrike') ? Infinity : shopCost(MOVES.tunnelStrike);
-        const correlationCost = statUpgradeCost(state.stats.correlation, 'correlation');
-        const cheapestFix = Math.min(tunnelCost, correlationCost);
+        const cheapestStat = STAT_ROTATION.reduce((a, b) =>
+          statUpgradeCost(state.stats[a], a) <= statUpgradeCost(state.stats[b], b) ? a : b
+        );
+        const statCost = statUpgradeCost(state.stats[cheapestStat], cheapestStat);
+        const passiveCost =
+          world >= 9 && !state.franklinOwned.has('fractionalGuard') ? PASSIVES.fractionalGuard.cost : Infinity;
+        const cheapestFix = Math.min(tunnelCost, statCost, passiveCost);
         if (state.qumatessence < cheapestFix) farmIfStuck(hitFn, state, world, cheapestFix - state.qumatessence, margin);
         if (!state.ownedMoves.has('tunnelStrike') && state.qumatessence >= tunnelCost) {
           state.qumatessence -= tunnelCost;
@@ -967,13 +1108,24 @@ const BUILDS = [
           state.ownedMoves.add('tunnelStrike');
           continue;
         }
-        if (state.qumatessence >= correlationCost) {
-          state.qumatessence -= correlationCost;
-          state.spentTotal += correlationCost;
-          state.stats.correlation += 1;
+        // Diffraction Shadow before another stat point once available: by
+        // world 9 the next stat point costs several times the passive's
+        // flat 40, and the passive's 15% incoming-damage cut applies to
+        // every fight from then on with zero further interaction.
+        if (passiveCost !== Infinity && state.qumatessence >= passiveCost) {
+          state.qumatessence -= passiveCost;
+          state.spentTotal += passiveCost;
+          state.franklinOwned.add('fractionalGuard');
+          state.franklinActive = 'fractionalGuard';
           continue;
         }
-        break; // still can't afford a fix even after farming everywhere safe -- B.Sc. just goes in anyway
+        if (state.qumatessence >= statCost) {
+          state.qumatessence -= statCost;
+          state.spentTotal += statCost;
+          state.stats[cheapestStat] += 1;
+          continue;
+        }
+        break; // still can't afford a fix even after farming everywhere safe/patience allows -- B.Sc. just goes in anyway
       }
     },
   },
@@ -981,8 +1133,9 @@ const BUILDS = [
     id: 'M.Sc.',
     label: 'M.Sc. (intended default)',
     tier: 'msc', // this archetype's own real in-game difficulty pick -- DIFFICULTY_MULTIPLIERS.msc is 1, so this reproduces the raw curve
-    accuracy: 0.75, // "answers the pre-battle quiz correctly ~75% of the time"
+    accuracy: 0.75, // midway between the coin-flip floor (0.5, two-option quizzes) and mastery: engaged with the course material but imperfect on it, which is exactly the "intended default" player
     transmutes: true, // transmuting into a mismatch-hosting form (and buying whatever it newly unlocks from Noether) is treated as ordinary, expected-tier play, not Ph.D.-only optimization -- see maybeTransmuteAndShop
+    grindCap: grindWinsForWalks(4), // ~4 extra whole-corridor re-walks per world (~24 wild wins): a typical player grinds when visibly stuck, but not indefinitely -- see the grind-patience section above
     spend(state, world, hitFn) {
       maybeTransmuteAndShop(state, world);
       let statsBoughtThisWorld = 0;
@@ -1055,8 +1208,9 @@ const BUILDS = [
     id: 'Ph.D.',
     label: 'Ph.D. (high optimization)',
     tier: 'phd', // this archetype's own real in-game difficulty pick
-    accuracy: 1.0, // "answers all quizzes correctly"
+    accuracy: 0.95, // near-mastery, not literal infallibility: the quiz pool spans all ten worlds' course content with authored-to-be-plausible distractors, and even a player who knows the material misreads occasionally -- which matters most exactly where a flat 1.0 would erase real risk, the Ultimate's all-3-or-nothing gate (0.95^3 ~= 0.86, not 1) and Feynman's tier-3 8-streak (expected cost x1.5, not x1). See header comment.
     transmutes: true, // near-optimal, aggressive: chases the same transmute-and-shop play as M.Sc. -- see maybeTransmuteAndShop -- plus everything else this build's own priority list below adds on top
+    grindCap: GRIND_CAP, // grinding is what a high-optimization player does happily -- patience bounded only by the model's own hard anti-runaway ceiling (50 wins, ~8.5 corridor re-walks per world), not by temperament
     spend(state, world, hitFn) {
       maybeTransmuteAndShop(state, world);
       for (let guard = 0; guard < 100; guard++) {
@@ -1146,26 +1300,26 @@ const BUILDS = [
 
 // --- Simulation ------------------------------------------------------------
 
-// Capped at GRIND_CAP everywhere below: a world that isn't beatable/farmable
-// even at the cap comes back with `capped: true` (findWinsNeeded) or however
-// much the cap actually bought (farmIfStuck) rather than an unbounded search.
-const GRIND_CAP = 50;
-
 // How many ordinary-wild wins (each worth battleStakeForWorld(world)
 // qumatessence) this build needs to grind in this world, on top of its
 // carryover balance, before its own purchase logic makes the rival's
-// expected margin non-negative -- solved for by trying 0, 1, 2, ... wins on
-// a disposable clone of `state` (never mutating the real run), using the
+// expected margin non-negative -- solved for by trying 0, 1, 2, ... wins
+// (up to this build's own per-world grind patience, state.grindCap) on a
+// disposable clone of `state` (never mutating the real run), using the
 // frozen hit function throughout (fast, and never touches the seeded RNG).
+// Each trial charges its own wins against the trial's grind budget before
+// spend() runs, so any farmIfStuck the trial's purchase logic triggers
+// draws only what that trial's patience has left.
 function findWinsNeeded(build, state, world) {
   const stake = battleStakeForWorld(world);
-  for (let wins = 0; wins <= GRIND_CAP; wins++) {
+  for (let wins = 0; wins <= state.grindCap; wins++) {
     const trial = cloneState(state);
     trial.qumatessence += wins * stake;
+    trial.grindWinsThisWorld += wins;
     build.spend(trial, world, frozenHitDamage);
     if (evaluateRivalFight(frozenHitDamage, trial, world).margin >= 0) return { winsNeeded: wins, capped: false };
   }
-  return { winsNeeded: GRIND_CAP, capped: true };
+  return { winsNeeded: state.grindCap, capped: true };
 }
 
 // The highest-numbered earlier world (currentWorld-1 down to 1) the given
@@ -1198,18 +1352,26 @@ function safestClearedWorld(hitFn, state, currentWorld) {
 // genuinely losing somewhere right now, which is exactly when
 // findWinsNeeded's own current-world grind assumption above stops being
 // realistic and a real player would go farm somewhere safer instead of
-// throwing themselves at a fight they're currently losing. Returns how much
+// throwing themselves at a fight they're currently losing. Wins come out of
+// the same per-world grind-patience budget findWinsNeeded charges
+// (state.grindCap minus state.grindWinsThisWorld -- see header comment):
+// walking laps of an *earlier* world's corridor is the same chore as
+// lapping the current one, so a build's tolerance for it doesn't reset just
+// because the door being re-entered is a different one. Returns how much
 // was actually earned (0 if nothing needed farming, this build isn't
-// actually in trouble, or nowhere earlier is safe either) -- callers
-// `continue` their loop on a positive return so the purchase this was
-// raising funds for gets picked up on the next pass.
+// actually in trouble, nowhere earlier is safe, or this world's patience is
+// already spent) -- callers `continue` their loop on a positive return so
+// the purchase this was raising funds for gets picked up on the next pass.
 function farmIfStuck(hitFn, state, world, neededExtra, currentMargin) {
   if (neededExtra <= 0) return 0;
   if (currentMargin >= 0) return 0;
+  const remainingPatience = state.grindCap - state.grindWinsThisWorld;
+  if (remainingPatience <= 0) return 0;
   const farmWorld = safestClearedWorld(hitFn, state, world);
   if (farmWorld === null) return 0;
   const grindStake = battleStakeForWorld(farmWorld);
-  const wins = Math.min(Math.ceil(neededExtra / grindStake), GRIND_CAP);
+  const wins = Math.min(Math.ceil(neededExtra / grindStake), remainingPatience);
+  state.grindWinsThisWorld += wins;
   const income = wins * grindStake;
   state.qumatessence += income;
   state.earnedTotal += income;
@@ -1219,18 +1381,23 @@ function farmIfStuck(hitFn, state, world, neededExtra, currentMargin) {
 function simulateBuild(build) {
   activeDifficultyMultiplier = DIFFICULTY_MULTIPLIERS[build.tier];
   const rng = mulberry32(0xb0ba1a); // fixed seed -- same seed reused per world/build so the whole table is reproducible run to run
-  const state = newState(build.accuracy);
+  const state = newState(build.accuracy, build.grindCap);
   const rows = [];
   for (let world = 1; world <= 10; world++) {
     const stake = battleStakeForWorld(world);
+    state.grindWinsThisWorld = 0; // fresh per-world patience budget -- see header comment
     const { winsNeeded, capped } = findWinsNeeded(build, state, world);
 
-    // A capped world (the rival never became beatable, even at the cap)
-    // gets zero applied income, not the cap's worth of it -- a build that
-    // can't clear the rival doesn't get to bank a 50-win windfall into
-    // later worlds it didn't actually grind. `winsNeeded` still reports the
-    // cap for visibility, it just isn't paid out.
+    // A capped world (the rival never became beatable, even at this
+    // build's full patience) gets zero applied income, not the budget's
+    // worth of it -- a build that can't clear the rival doesn't get to bank
+    // a full-budget windfall into later worlds it didn't actually grind.
+    // `winsNeeded` still reports the budget for visibility, it just isn't
+    // paid out -- and the patience budget stays uncharged, so the build's
+    // own spend() below can still farm within it for whatever reactive
+    // fixes it can actually afford before the (likely lost) rival fight.
     const income = capped ? 0 : winsNeeded * stake;
+    if (!capped) state.grindWinsThisWorld += winsNeeded;
     state.qumatessence += income;
     state.earnedTotal += income;
 
@@ -1294,7 +1461,7 @@ function fmt(n, digits = 1) {
 }
 
 function printBuildTable(build, rows) {
-  console.log(`\n=== ${build.label} -- quizAccuracy=${build.accuracy}, transmutes=${build.transmutes} ===`);
+  console.log(`\n=== ${build.label} -- quizAccuracy=${build.accuracy}, transmutes=${build.transmutes}, grindPatience=${build.grindCap} wins/world ===`);
   const header = [
     'W',
     'Earned(cum)',

@@ -1,9 +1,8 @@
 // Smoothed walkable/non-walkable boundary geometry for the overworld ground
 // plane. The grid itself stays a plain integer tile grid (OverworldScene's
-// movement, encounters and wall extrusion all read it unchanged) -- this
-// module only decides what *shape* each tile's ground fill is drawn as, so a
-// path edge that turns reads as a curve rather than a stair-step of
-// axis-aligned quads.
+// movement and encounters read it unchanged) -- this module only decides what
+// *shape* each tile's ground fill is drawn as, so a path edge that turns reads
+// as a curve rather than a stair-step of axis-aligned quads.
 //
 // Everything here is in continuous tile space and camera-independent: tile
 // (x, y) spans [x - 0.5, x + 0.5] x [y - 0.5, y + 0.5], and lattice corner
@@ -42,14 +41,18 @@ export interface TileContour {
 // How far the smoothed boundary is pulled toward the walkable side of the
 // grid line before any smoothing. This bias is what lets the curve move in
 // *both* directions during smoothing while never entering a solid tile's
-// footprint -- which in turn is what keeps extruded wall faces (drawn from the
-// untouched grid line) exactly where they always were. Without it only convex
-// corners could move, and a diagonal staircase would smooth into a scallop
-// instead of a diagonal.
+// footprint. Without it only convex corners could move, and a diagonal
+// staircase would smooth into a scallop instead of a diagonal. It also sets
+// how wide the solid side's own share of the contact shadow can be
+// (SOLID_SHADOW_BANDS below), since that band covers exactly the sliver of a
+// solid tile lying outside the curve.
 const INSET = 0.25;
 // Per-axis cap on how far a lattice corner may travel, kept under half a tile
-// so a deformed tile polygon can never fold over itself.
-const MAX_OFFSET = 0.45;
+// so a deformed tile polygon can never fold over itself. Exported because it
+// also bounds how far a boundary curve can vacate a walkable tile's footprint
+// -- OverworldScene widens its off-grid margin columns by exactly this much
+// to tuck under the curve where the grid edge meets walkable floor.
+export const MAX_OFFSET = 0.45;
 const SMOOTH_ITERATIONS = 3;
 const SMOOTH_LAMBDA = 0.5;
 // Sub-segments each boundary tile-edge is drawn as. Both tiles sharing the

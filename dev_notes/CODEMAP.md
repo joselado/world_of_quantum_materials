@@ -86,7 +86,20 @@ game/src/
                                  Lab's own six reference/settings stations (see "Lab stations and
                                  settings" below) -- taking scene: HubScene instead of
                                  scene: GuardianPanelHost, since HubScene is their only caller
-    BattleScene.ts             Turn-based battle: move buttons, HP bars, attack effects, log
+    BattleScene.ts             Turn-based battle: move menu, damage/turn resolution, attack
+                                 effects, log, end-of-battle summary
+    battle/
+      hud.ts                   Battle-screen layout, split out of BattleScene: the rails/positions/
+                                 sizing constants every battle element is placed from (LEFT/RIGHT/
+                                 TOP/BOTTOM_RAIL, PLAYER_POS/OPPONENT_POS/BOSS_OPPONENT_POS, the
+                                 measured *_HEAD_RISE/BOSS_FOOT_DROP painted-art offsets, HP-bar
+                                 dims, MENU_*, TURN_PREVIEW_*, LOG_*), plus the two HUD pieces that
+                                 are pure geometry: drawNameplate (one floating name-over-bar plate,
+                                 both sides) and drawTurnPreview (the "TURNS" icon row). Plain
+                                 functions taking the scene, holding no battle state, the same shape
+                                 panels/hubStations.ts uses. The move menu stays in BattleScene --
+                                 it reads/writes that scene's paging + turn-lock state and wires up
+                                 move buttons, so it's battle behaviour with a layout, not layout
   world/
     mapgen.ts                  generateWorldMap(gridW, gridH, start, world, playerType?) -- dispatches
                                   to generators/world<N>.ts by world number (world 10 additionally by
@@ -128,14 +141,17 @@ game/src/
                                   CANVAS_W/CANVAS_H from config/screen.ts since every
                                   scene/panel that needs the canvas size already imports it
                                   from here
-    biomes.ts                  Per-world visual skin (sky, walls, path, decoration, fog, wallTheme)
+    biomes.ts                  Per-world visual skin (sky, off-path ground, path, decoration, fog, wallTheme)
     contours.ts                Smoothed walkable/impassable boundary geometry in tile space --
                                   per-tile ground outline, contact-shadow strips, rim light --
                                   built once per world-state by OverworldScene's cached terrain
                                   pass and only projected per frame
     crystals.ts                 makeCrystal() -- shared shard/cluster/prism sprite builder, opts.seed
-                                  for per-compound jitter (jitterFor) and opts.hybrid for a fused
-                                  hybrid look (drawHybridCrystal); killTweensDeep(scene, obj) --
+                                  for per-compound jitter (jitterFor), opts.hybrid for a fused
+                                  hybrid look (drawHybridCrystal), opts.plain to drop the highlight
+                                  and sparkle glyphs when the crystal is one piece of a larger
+                                  composition; drawShardShape()/drawCubicShape() -- the bare faceted
+                                  primitives, exported for boss.ts's golem limbs; killTweensDeep(scene, obj) --
                                   the shared recursive tween-kill every caller about to destroy a
                                   Container runs first (scenes/panels/listDetail.ts's destroyPanel,
                                   franklin.ts's crystal-block re-render, BattleScene's
@@ -152,17 +168,21 @@ game/src/
     kondo.ts                     makeKondoAvatar()
     franklin.ts                   makeFranklinAvatar() -- diffraction/lattice-defect motif, world 9
     sklodowskaCurie.ts            makeSklodowskaCurieAvatar(), world 10
-    boss.ts                      makeBossCrystal() -- gigantic multi-shard golem boss avatar at a world's goal
+    boss.ts                      makeBossCrystal() -- towering humanoid golem boss avatar at a world's goal,
+                                  plus the BOSS_SILHOUETTE_TOP/BOTTOM extents its callers lay out around
     tokens.ts                   makeToken() -- qumatessence pickup sprite
-    labMotifs.ts                 One small icon builder per Lab station (Save Point/
+    labMotifs.ts                 One small icon builder per Lab station (Qumatex/
                                   Moves/Stats/Abilities/Guardians/Tutorial/Settings -- see "Lab
                                   stations and settings" below), planted beside that station's
                                   own button in the room (HubScene.addStationRow), fixed-px art
                                   like every other builder in this directory, never run through
                                   ui/text.ts's fontPx()/fontScale()
-    attackEffects.ts            playAttackEffect() -- bolt/ring/burst/beam/eruption/meteor/nova
-                                  particle effect; beam/eruption are ANALYTIC_SHAPES' per-move-id
-                                  overrides (Laughlin's skyfallBeam/groundEruption), meteor/nova are
+    attackEffects.ts            The attack-effect engine, and the single entry point every caller
+                                  imports from (it re-exports whatever the four modules below
+                                  define publicly, so a caller never needs to know which one a
+                                  given piece lives in). playAttackEffect() picks the shape --
+                                  beam/eruption are ANALYTIC_SHAPES' per-move-id overrides
+                                  (Laughlin's skyfallBeam/groundEruption), meteor/nova are
                                   ULTIMATE_SHAPES' overrides (Skłodowska-Curie's ultimateMeteor/
                                   ultimateNova, a 4-6s multi-phase sequence -- see "Stats and battle
                                   resolution" below), every other shape is per-MoveClass. Its own
@@ -178,6 +198,24 @@ game/src/
                                   own use (below) -- the last one folds the `level` escalation's own
                                   stagger into the single-play duration, the real wall-clock time
                                   until a leveled cascade's last repeat settles
+    attackAnchors.ts            EffectAnchor -- where one side of an effect draws, resolved live
+                                  on every tween tick rather than copied once. followAnchor(get)
+                                  tracks a game object through a thunk to whichever field holds it
+                                  (BattleScene's playerAnchor/opponentAnchor; the thunk is what
+                                  survives transmuteAdapted replacing opponentCrystal mid-effect),
+                                  fixedAnchor(x, y) is a point that never moves (moveEffectPreview.ts's
+                                  panel previews), latchAnchor(a) freezes one sample for a
+                                  travelling shape's launch-time aim. See "Attack-effect anchoring"
+                                  below for the attacker/target independence rule
+    attackStyles.ts             EFFECT_STYLE (per-MoveClass color + silhouette), ANALYTIC_SHAPES/
+                                  ULTIMATE_SHAPES (per-move-id overrides), resolveAttackShape()
+    attackShapes.ts             The single-beat silhouettes and their timings: playWindup (attacker
+                                  side), playBolt/playRing/playBurst/playBeam/playEruption,
+                                  playImpactShockwave (target side), WINDUP_MS/TRAVEL_MS/IMPACT_MS,
+                                  GROUND_DROP
+    attackUltimates.ts          Skłodowska-Curie's Ultimate tier: playMeteor/playNova and their
+                                  summon->charge->impact->aftermath phase functions,
+                                  METEOR_TOTAL_MS/NOVA_TOTAL_MS
     moveEffectPreview.ts         startMoveEffectPreview(params, key?)/stopMoveEffectPreview(key?) --
                                   loops playAttackEffect (above) inside a guardian panel's detail
                                   pane (Noether's Moves tab, Kondo's self-buff step, Laughlin's/
@@ -215,8 +253,8 @@ game/src/
                                   its own empty-forSale state) or a real teardown
                                   (OverworldScene.closeDialogue()/HubScene.closeDialogue(), which call
                                   the no-key form to stop every chain at once)
-    colors.ts                   shade(), hueShift(), hashSeed()/seededRandom() -- the deterministic
-                                  per-compound PRNG jitterFor() (crystals.ts) is built from
+    colors.ts                   shade(), darken(), blend(), hueShift(), hashSeed()/seededRandom() --
+                                  the deterministic per-compound PRNG jitterFor() (crystals.ts) is built from
     qumatuomiMap.ts              buildQumatuomiMap(scene, { width, height, discoveredWorlds }) -- a
                                   standalone, hand-drawn Finland-coastline map (a Suomi/"Qumatuomi"
                                   pun) with one circle marker per world (1-10), each tinted with that
@@ -373,10 +411,21 @@ difficulty-curve sanity check rather than a docs generator.
   Qumatex's "Name (ShortName)" line), and an optional `hybridParents` (both parents' own
   `color`/`variant`, set only by `combineMaterials` -- see below and STYLE.md's "Crystal
   sprites" section). No `maxHp` field -- HP is never intrinsic to a crystal, see "Max HP" below.
-- `crystal(name, type, moves, shadeStep?, variantOverride?, shortName?)` is the
+- `crystal(name, type, moves, shadeStep?, variantOverride?, shortName?, colorOverride?)` is the
   `WORLD_CRYSTALS`/`WORLD_RIVALS` row builder -- adding a `shortName` to an existing call while
   leaving `shadeStep`/`variantOverride` at their defaults means passing `undefined` for those
   positionally rather than omitting them (matches the existing pattern for `shadeStep` alone).
+  `colorOverride`, when given, replaces the whole `shade(look.color, shadeStep * 18)` computation
+  with that exact color -- every `WORLD_RIVALS[1-8]` entry uses it, since none of their
+  lore-described looks (a specific real-world hue/darkness) reduce to "the type's base color,
+  brightened by a multiple of 18%." Those calls build the override with `shade()`/`darken()`/
+  `blend()`/`hueShift()` (`art/colors.ts`) over a raw `TYPE_LOOK[type].color` hex literal rather
+  than a `TYPE_LOOK[type].color` property read, and never a bare negative-number literal (use
+  `darken(color, amount)`, not `shade(color, -amount)`) -- both `scripts/content-lint.mjs` and
+  `scripts/gen-docs.mjs` parse this file with the TypeScript compiler API rather than importing
+  it (materials.ts pulls in Phaser at module scope) and walk every `crystal()` call's arguments
+  as literal AST nodes; their literal-reducers don't handle a `PropertyAccessExpression` or a
+  `PrefixUnaryExpression`, only literals and calls/`new` built from those.
 - The player is not a separate class -- `PLAYER_MATERIAL` is just one `Material` row (currently
   Silicon, `type: 'semiconductor'`). Its starting `moves` is the tutorial loadout; moves actually
   available in battle also depend on the registry's `unlockedMoves` (grows via Noether's shop).
@@ -387,7 +436,7 @@ difficulty-curve sanity check rather than a docs generator.
   `getRival` still returns a `Material` for all ten worlds either way.
 - `MOVES: Record<id, Move>` -- every move is named after the quasiparticle that carries it
   (Phonon Beam, not "Thermal Attack"). `class: MoveClass` drives the attack-effect
-  shape/color (`art/attackEffects.ts`'s `EFFECT_STYLE`) and `MOVE_COMPATIBILITY`; `power`
+  shape/color (`art/attackStyles.ts`'s `EFFECT_STYLE`) and `MOVE_COMPATIBILITY`; `power`
   climbs with how unconventional that quasiparticle is (DESIGN.md §3), not per-move balance
   tuning in isolation.
 - `canHost(defenderType, moveClass)` -- does the defender's own `MOVE_COMPATIBILITY` list
@@ -417,7 +466,8 @@ difficulty-curve sanity check rather than a docs generator.
   "Guardians" below). Decide any new class's `MOVE_COMPATIBILITY` membership on purpose, not by omission.
 - Per-type look lives in `TYPE_LOOK` (base color + variant, exported); individual compounds
   of the same type get `shade(color, shadeStep * 18)` so siblings (Iron vs. Cobalt) read as a
-  family, *and* (rendering-side, not stored on the `Material` itself) `art/crystals.ts`'s
+  family (`WORLD_RIVALS[1-8]`'s golems opt out of this via `colorOverride` instead, see
+  `crystal()`'s own entry above), *and* (rendering-side, not stored on the `Material` itself) `art/crystals.ts`'s
   `jitterFor(material.name, ...)` gives each one its own hue/rotation/stretch/sparkle
   variation so same-type siblings don't render as one recolored shape reused across every
   compound of that type -- see STYLE.md. `TitleScene`'s showcase cluster is the one consumer
@@ -558,9 +608,26 @@ difficulty-curve sanity check rather than a docs generator.
   shop/dialogue UI) -- the avatar builder only draws the little floating figure, used both by
   the panel (for its header portrait) and by `OverworldScene.spawnGuardianSprite` (the
   wandering overworld landmark).
+- **Attack-effect anchoring: each side resolves its own position, live.** `playAttackEffect`'s
+  `from`/`to` are `EffectAnchor`s (`art/attackAnchors.ts`), not copied points, and every draw
+  function reads `.x`/`.y` off one of them on every tween tick. So the attacker's half of an
+  effect (`playWindup`) and the target's half (`playImpactShockwave`, `playBeam`,
+  `playEruption`, every meteor/nova phase) are each computed from one crystal alone, with
+  nothing shared between them -- move either crystal and its own half follows on its own.
+  `BattleScene` holds one anchor per side (`playerAnchor`/`opponentAnchor`, built with
+  `followAnchor(() => this.playerCrystal)` -- a thunk to the *field*, so `transmuteAdapted`
+  replacing `opponentCrystal` mid-effect keeps being tracked), and passes them to both
+  `resolveHit` and `resolveSelfBuff` (which passes the caster's own anchor as both `from` and
+  `to`). The one place information legitimately crosses sides is *aim*: a travelling shape
+  (`playBolt`/`playBurst`) latches its origin once at launch (`latchAnchor`) while its
+  destination stays live, and `playRing` samples both once to place its origin. Anything new
+  that positions a battle effect relative to a crystal should take an anchor the same way
+  rather than reading a fixed field coordinate -- `PLAYER_POS`/`opponentPos` stay what the
+  static field furniture (HP bars, ground shadows, where a crystal is first placed) is laid
+  out from, not what effects follow.
 - **Attack effects keyed by MoveClass**, not by move id -- adding/removing a move never touches
-  `attackEffects.ts`, only adding/removing a whole `MoveClass` does (update `EFFECT_STYLE` in
-  `art/attackEffects.ts` and `MOVE_COMPATIBILITY` in `data/materials.ts` together). Two
+  the shape/timing code, only adding/removing a whole `MoveClass` does (update `EFFECT_STYLE` in
+  `art/attackStyles.ts` and `MOVE_COMPATIBILITY` in `data/materials.ts` together). Two
   deliberate exceptions, both `Record<moveId, AttackShape>` lookups consulted in the same order
   (`ANALYTIC_SHAPES[move.id] ?? ULTIMATE_SHAPES[move.id]`) before falling back to
   `EFFECT_STYLE`'s per-class shape: `ANALYTIC_SHAPES` overrides the shape for Laughlin's two
@@ -765,18 +832,10 @@ directly below that side's status pill (`naturalY` offset from the status pill's
 `y`/`height`, same text-size-scaling reasoning the name/bar row's own layout uses) -- since the
 set never changes mid-battle there's no tick-down render function like `renderStatusLabel`,
 the pill's text (`passivePillText`, `PASSIVES[id]?.name` joined with `·` for the 0-2 entries a
-side can hold, `?.` guarding against a stale id from an old save) is built once at creation and
-the `Text` object isn't kept as a field, matching `opponentName`/`playerName` above rather than
-`playerStatusLabel`/`opponentStatusLabel` (those are fields because `renderStatusLabel` reads
-them back later; nothing reads the passive pill back). `addPassivePill` clamps the pill's `x`
-back against its caller's own `maxRightX` if the joined text would otherwise run past it at the
-largest text-size setting -- `FIELD_W - 8` on the opponent's side, but `MENU_X - 12` on the
-player's, since the bottom-anchored move menu shares that side's vertical band for the whole
-battle (`MENU_MIN_TOP`, see "Battle move menu" below) -- and if the vertical stack above it
-(boost/fail note + the name/bar row + status pill, on the player side) leaves no room left
-under `FIELD_H` at that same setting, destroys the pill outright rather than let it land back
-on top of the status pill above it -- the status pill's own readability takes priority over
-showing the passive pill in that narrow combo. It uses
+side can hold, `?.` guarding against a stale id from an old save) is built once and passed
+into `drawNameplate` as that plate's last stack row, and the `Text` object isn't kept as a
+field, unlike `playerStatusLabel`/`opponentStatusLabel` (those are fields because
+`renderStatusLabel` reads them back later; nothing reads the passive pill back). It uses
 `PASSIVE_PILL_COLOR` (a muted blue-violet) rather than `STATUS_PILL_COLOR`'s rust-orange, so
 an always-on passive reads as visually distinct from a ticking status at a glance.
 `activePassives(isPlayer)` is the
@@ -870,21 +929,22 @@ to on-screen ◀/▶ `Text` buttons flanking the header (rendered only when
 Guarded by `turnLock` (mid-swing) and `!this.moveMenu` (already destroyed by `endBattle`) so a
 keypress can never act mid-resolution or resurrect the panel after the battle ends.
 
-Sizing: `drawMoveMenu` runs its own title/legend/header/pager layout twice -- a throwaway
+Sizing: `drawMoveMenu` runs its own header/pager/legend layout twice -- a throwaway
 measurement pass (destroyed immediately) that exists only to learn the current page's real
 content height, then the same layout again for the real, permanently-positioned elements --
-because the panel is bottom-anchored (`menuTop = FIELD_H - MENU_BOTTOM_MARGIN - height`,
-floored at `MENU_MIN_TOP` so it can never grow up into the opponent's cluster) rather than
+because the panel is bottom-anchored (`menuTop = MENU_BOTTOM - height`, floored at
+`MENU_MIN_TOP` -- derived from the boss golem's own measured painted feet, so it can never
+grow up into the opponent's cluster) rather than
 built down from a fixed top the way a top-anchored panel could measure and place in one pass.
 The header `Text` (label + page indicator + optional legend) is capped well below the
-text-size setting's own range (`headerScale = Math.min(scale, 1.15)`, base 10px label / 8px
-legend), and the panel's own title/legend are capped the same way (`chromeScale =
-Math.min(scale, 1.35)`, matching `rowH`'s own cap below) -- letting either scale all the way
+text-size setting's own range (`headerScale = Math.min(scale, 1.15)`, base 12px label / 8px
+section legend), and the panel's own bottom legend strip is capped the same way (`chromeScale
+= Math.min(scale, 1.35)`, matching `rowH`'s own cap below) -- letting either scale all the way
 to the 2x 'Large' preset would eat directly into the row budget; the pager arrows render at a
 larger px than the header label (`arrowPx`), so the header's own row advances by
 `Math.max(headerLabel.height, pagerRowH)`, not the label's height alone, or the taller arrows
 would bleed into the first move row. Row height (`rowH`) is computed from the fixed vertical
-band the panel may occupy (`MENU_MIN_TOP` down to `FIELD_H - MENU_BOTTOM_MARGIN`) minus the
+band the panel may occupy (`MENU_MIN_TOP` down to `MENU_BOTTOM`) minus the
 chrome above, divided by the current page's `rowCount` (never more than `MOVE_MENU_MAX_ROWS`)
 via `Phaser.Math.Clamp` against a `20`px floor and a scale-scaled `maxRowH` ceiling. Each
 button's font size (`btnPx`) starts at `Math.min(desiredPx, fitPx)` (`fitPx` derived from
@@ -893,7 +953,10 @@ on the page with a throwaway `Text` object's `getWrappedText()` and shrinks `btn
 whole-pixel steps, uniformly across the page, until none of them actually wrap past 2 lines --
 catches a long tuned quasiparticle name (e.g. "Heavy Fermion Meteor") stacked with a `★★★
 !!2x` tag, which `fitPx`'s purely-vertical budget alone doesn't account for, without ever
-letting a label reach a 3rd line the row-height math has no room for.
+letting a label reach a 3rd line the row-height math has no room for. Each button is drawn
+centered in its own row band (`addMoveButton` takes the band's center y, origin `(0.5, 0.5)`)
+rather than pinned to its top edge, so a page with slack spreads it evenly instead of pooling
+it all under the first button.
 
 A move whose id is one of `ANALYTIC_MOVE_IDS` still gets its `★` tag on the button itself (the
 2x/0.5x legend text now lives under the Analytic section header instead, see above); its
@@ -934,10 +997,14 @@ and positioned at `BOSS_OPPONENT_POS` (both module constants) instead of the wil
 directly, so bolts/rings/bursts still travel to the crystal's real (possibly shifted) position.
 
 **The goal tile belongs to that world's boss, not a guardian.** `OverworldScene.spawnBossSprite`
-spawns `art/boss.ts`'s `makeBossCrystal` (a golem silhouette fused from multiple shards + pulsing
-aura + orbiting embers, `BOSS_CRYSTAL_SIZE = 70`) at `goalTile` for every built world's `getRival()` (via
+spawns `art/boss.ts`'s `makeBossCrystal` (a humanoid golem outline fused from many grain shards,
+with lit grain-boundary seams, a contact shadow and ground glow at its feet, and rising heat
+sparks -- `BOSS_CRYSTAL_SIZE = 78`) at `goalTile` for every built world's `getRival()` (via
 `OverworldScene.getWorldRival()`, see below), for as long as that world's rival is undefeated --
-purely a visual landmark via the same `WorldSprite` machinery, no click handler of its own.
+purely a visual landmark via the same `WorldSprite` machinery, no click handler of its own. The
+`WorldSprite.size` it pushes is `BOSS_CRYSTAL_SIZE * BOSS_SILHOUETTE_TOP` rather than the bare
+size, since that field only ever drives the name label's own offset and the golem's head reaches
+higher above its center than any other landmark's art does.
 `openGoalGuardianPanel()`'s branch on `guardian?.tile === 'goal'` is a permanent no-op (no entry
 uses it), so it always falls through to `showGatePanel()`, which is what renders at the goal.
 
@@ -1008,67 +1075,55 @@ through `showGatePanel`, not by reaching for `renderShopFooter` directly.
 belongs on one side or the other. `OverworldScene.buildTerrainPlan()` (reached through the
 memoizing `terrainPlan()` accessor) reads the grid
 (`walkable`/`regionColor`/`biomeOverride`/`flowerMap`/`midTile`) and classifies every tile into a
-`TerrainTile`: its kind (`path`/`block`/`lava`/`water`/`void`, where a region tint outranks the
-biome's own `wallTheme`), its resolved `Biome`, its region tint, whether it carries decoration or
-the guardian-chokepoint highlight, and which of its four edges border a walkable neighbor (the
-edges a block extrudes a wall face on, and a void hangs a rail on). That pass is
-camera-independent, so it covers the whole grid rather than just the visible window -- a shape
-spanning the window edge stays one continuous shape -- and its result is cached in
-`terrainPlanCache` for as long as the grid stands still. For a world in
-`CONTOUR_SMOOTHED_WORLDS` (World 5 today; an in-progress rollout) the same memoized pass also
-builds `contourGrid` via `art/contours.ts`'s `buildContourGrid`, which traces the
-walkable/impassable boundary on the tile lattice, biases it onto the walkable side, smooths it,
-and hands back per-tile ground-plane geometry in tile space: a curved `outline` (wound like the
-plain quad, so the two are interchangeable at the draw call), `shadow` strips for the contact
-shadow at the junction, and the walkable side's `rim` polyline. Both tiles sharing a boundary
-reference the same curve points, so the two fills abut exactly rather than overlapping or
-leaving a sliver -- and because the curve never crosses to the impassable side of the grid line,
-wall extrusion keeps rising from the untouched grid line and `paintWallFacesAroundTile` stays
-exact. That trace is the expensive part of the pass (a few ms for the whole grid) and, like the
-plan itself, must never be reached for per frame. `create()` drops the cache right after
-the `generateMap()`/`restoreMap()` branch, which is mandatory rather than defensive: Phaser reuses
+`TerrainTile`: its kind (`path`/`solid`/`lava`/`water`/`void`, where a region tint outranks the
+biome's own `wallTheme`), its resolved `Biome`, its region tint, and whether it carries
+decoration or the guardian-chokepoint highlight. That pass is camera-independent, so it covers
+the whole grid rather than just the visible window -- a shape spanning the window edge stays one
+continuous shape -- and its result is cached in `terrainPlanCache` for as long as the grid stands
+still. The same memoized pass also builds `contourGrid` via `art/contours.ts`'s
+`buildContourGrid`, which traces the walkable/impassable boundary on the tile lattice, biases it
+0.25 tiles onto the walkable side, smooths it (Catmull-Rom through the smoothed lattice corners,
+with a per-corner offset cap that keeps a deformed tile polygon from folding over itself), and
+hands back per-tile ground-plane geometry in tile space: a curved `outline` (wound like the plain
+quad, so the two are interchangeable at the draw call), `shadow` strips for the contact shadow at
+the junction, and the walkable side's `rim` polyline. Both tiles sharing a boundary reference the
+same curve points, so the two fills abut exactly rather than overlapping or leaving a sliver. A
+tile away from any boundary gets no entry at all and is drawn as its plain projected quad. That
+trace is the expensive part of the pass (a few ms for the whole grid) and, like the plan itself,
+must never be reached for per frame. `create()` drops the cache right after the
+`generateMap()`/`restoreMap()` branch, which is mandatory rather than defensive: Phaser reuses
 the same scene instance across every `scene.start`, so a plan built for the previous visit would
 otherwise survive into the next one; anything that ever mutates the grid mid-visit has to drop it
 the same way. `drawWorld()` then runs every frame over the visible window (`DRAW_DISTANCE_TILES`,
-`LANE_CLIP`) doing only the camera-dependent half: projecting each tile's four corners through
-`projectTile`/`art/perspective.ts` at the current (possibly mid-tween) camera position, deriving
+`LANE_CLIP`) doing only the camera-dependent half: projecting the cached contour geometry (or the
+tile's four corners where it has none) through `projectTile`/`art/perspective.ts` at the current
+(possibly mid-tween) camera position (`projectContour`, `drawContactShadow`), deriving
 `depthRatio` for the fog/detail falloff, and painting -- including the time-driven accents (lava
-crust pulse, water shimmer, chokepoint glow). On a smoothed world it projects the cached contour
-geometry through that same transform instead of the tile's four corners (`projectContour`,
-`drawContactShadow`), skips the per-tile seam stroke so a run of tiles reads as one region,
-routes every ground color through `groundColor` (which deepens the haze past what `fogColor`'s
-own cap allows) with walkable ground hazing toward the lighter `walkableHazeTarget`, and closes
-the frame with `drawDepthHaze`, a whole-screen wash over the far ground plane. Geometry that is expensive to work out from the grid
-belongs in the plan; anything that depends on where the camera is has to stay in `drawWorld`, since
-that per-frame reprojection is what makes the world scroll continuously instead of snapping
-tile-by-tile. `paintWallFacesAroundTile` (the occlusion repaint below) reads the grid directly,
-mirroring `drawWorld`'s own culls, rather than going through the plan.
+crust pulse, water shimmer, void starlight, chokepoint glow). Impassable tiles are painted flat,
+in the same plane as the floor (`drawOffPathTile`/`offPathColor` plus the per-`wallTheme` accent);
+nothing in the scene rises above the ground plane, so the boundary read comes entirely from the
+color break plus the contact shadow and rim light. When the camera stands near the grid's
+left/right edge, `drawMarginColumns` first continues each row's edge tile past the grid as
+impassable ground (same biome/tint/accent, widened by `art/contours.ts`'s `MAX_OFFSET` under an
+adjacent walkable tile to tuck beneath the boundary curve), so the frame never shows the bare
+backdrop in a stair-stepped strip where tiles run out. There is no per-tile seam stroke, so a run of
+same-kind tiles reads as one region. Every ground color goes through `groundColor` (which deepens
+the haze past what `fogColor`'s own cap allows) with walkable ground hazing toward the lighter
+`walkableHazeTarget`, and the frame closes with `drawDepthHaze`, a whole-screen wash over the far
+ground plane. Geometry that is expensive to work out from the grid belongs in the plan; anything
+that depends on where the camera is has to stay in `drawWorld`, since that per-frame reprojection
+is what makes the world scroll continuously instead of snapping tile-by-tile.
 
 **Overworld depth layering.** `OverworldScene`'s corridor is a fixed stack of Phaser depths:
-`worldGfx` (the single `Graphics` mesh for ground tiles and wall blocks, repainted every frame --
-see "Overworld terrain rendering" above) at the default depth 0; qumatessence token bodies at 19;
-every other `WorldSprite` body (wild-encounter crystal, guardian, boss, door) at 20; `actorWallGfx` at 21; every `WorldSprite`'s name label at 22;
-the player's own crystal container at a fixed 40 (`this.player.setDepth(40)`); `playerWallGfx` at
-41; corner HUD text at 50; and every dialogue/panel container at 100. Because every actor's depth
-is fixed rather than computed from its actual position, `worldGfx` alone can never let a wall
-block occlude any of them even when a wall tile is immediately adjacent -- `paintAdjacentWallFaces`
-(called once per actor group every frame right after `drawWorld()`/`updateWorldSprites()`) repaints
-just the wall face(s) bordering a given tile (in whichever of the four grid directions has a wall
-neighbor), reusing `paintWallFacesAroundTile` per tile so a directly-adjacent wall visually blocks
-that actor's lower body instead of it appearing to float in front of the wall. Two separate
-`Graphics` objects call into it rather than one shared layer, since a `WorldSprite` and the player
-can be several rows apart and a single depth-41 layer would let a nearer actor's own occluded wall
-face clip the farther-back player too: `playerWallGfx` (depth 41, above the player only) is
-repainted with just `[this.playerTile]`, and `actorWallGfx` (depth 21, above every `WorldSprite`
-body but below every label) is repainted with `occludableActorTiles()` -- the home tile of every
-currently-visible wild-encounter/token/guardian/boss/door sprite, deduped so two actors (or the
-player) sharing a tile don't double-paint the same face. `wallFaceColor` and `drawWallFace` are
-shared between both repaints and `drawWallFaces`'s normal per-tile rendering so a repainted face
-always matches the one underneath it exactly. A residual limitation: since `actorWallGfx` is one
-flat layer above every actor body, one actor's own occluding wall face can still paint over a
-second actor standing in an adjacent tile in the same column, rather than a real per-actor depth
-sort -- accepted as visually rare (two landmark actors are seldom tile-adjacent to each other) and
-not worth a full depth-sort rewrite.
+`worldGfx` (the single `Graphics` mesh for the whole ground plane, repainted every frame -- see
+"Overworld terrain rendering" above) at the default depth 0; qumatessence token bodies at 19;
+every other `WorldSprite` body (wild-encounter crystal, guardian, boss, door) at 20; every
+`WorldSprite`'s name label at 22; the player's own crystal container at a fixed 40
+(`this.player.setDepth(40)`); corner HUD text at 50; and every dialogue/panel container at 100.
+Every actor's depth is fixed rather than computed from its position, which is sound because the
+terrain is drawn entirely in the ground plane: `worldGfx` has nothing standing up out of it that
+an actor could be behind, so painting it first and every actor over it is always correct, and no
+actor can ever appear to float in front of terrain it should be occluded by.
 
 ## World progression
 
@@ -1369,10 +1424,10 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   (`scene.playerMaterial`, same `makeCrystal` call/ground-shadow-ellipse convention as
   Franklin's own crystal block, `art/franklin.ts`) standing in the block with the move's
   `'screening'`-class ring effect looping centered on it (`art/moveEffectPreview.ts`'s
-  `startMoveEffectPreview`, called with an identical `from`/`to` point -- needed no change to
-  support this, since `art/attackEffects.ts`'s `playRing` already collapses its own
-  `Phaser.Math.Linear(from, to, 0.12)` origin to that single point when `from` equals `to`, the
-  same call `resolveSelfBuff` makes for a real cast). Below that: the move's own `description`
+  `startMoveEffectPreview`, called with an identical `from`/`to` point -- which works because
+  `art/attackShapes.ts`'s `playRing` collapses its own `Phaser.Math.Linear(from, to, 0.12)`
+  origin to that single point when `from` equals `to`, the same call `resolveSelfBuff` makes
+  for a real cast, there passing the caster's own anchor twice). Below that: the move's own `description`
   (`data/materials.ts`'s `Move.description`, only Kondo's three moves carry one), then a
   cost/status line and a confirm button -- "Learn `<name>` (`<cost>` qumatessence)" for a
   still-unbought move (dimmed if unaffordable), "Make `<name>` active" for an already-bought,
@@ -1486,22 +1541,23 @@ the qumatessence readout, `applyPlayerForm`, `advanceToWorld`, and every per-gua
 field, so a guardian's panel has everything it needs without the player's world/scene/position
 ever changing just from opening it.
 
-**All eight of the Lab's non-door panels** (the six stations above, plus `HubScene`'s own
-`showSavePoint`/`renderMaterialdexPanel`) share one heading color -- `hubStations.ts`'s exported
+**All seven of the Lab's non-door panels** (the six stations above, plus `HubScene`'s own
+`renderMaterialdexPanel`) share one heading color -- `hubStations.ts`'s exported
 `LAB_TITLE_COLOR` (`#ffe066`) -- and one centered-content geometry: `hubStations.ts`'s
 `labPanelColumns(panelWidth)` returns a fixed `contentCenterX`/`contentWrapW` margined in from
 both edges of the panel. A panel's own themed motif (`art/labMotifs.ts`'s `makeQumatexMotif`/
 `makeMovesMotif`/`makeStatsMotif`/`makeAbilitiesMotif`/`makeGuardiansMotif`/`makeTutorialMotif`/
-`makeSettingsMotif`/`makeSavePointMotif` -- fixed-px art, never run through `ui/text.ts`'s
+`makeSettingsMotif` -- fixed-px art, never run through `ui/text.ts`'s
 `fontPx()`/`fontScale()`) is never drawn inside the panel; each `LAB_STATIONS` entry (and
-`HubScene`'s own hardcoded Qumatex/Save Point rows) instead carries its motif builder for
-`HubScene.addStationRow` to plant beside that station's own button in the room, at a much
+`HubScene`'s own hardcoded Qumatex row -- the door has no motif of its own) instead carries its
+motif builder for `HubScene.addStationRow` to plant beside that station's own button in the
+room, at a much
 smaller fixed size (`STATION_MOTIF_SIZE = 26`) than a motif drawn inside a full panel would
 use. A panel whose own row list can grow long (Guardians, up to every guardian in
 Superposition Mode) caps its row font scale (`Math.min(fontScale(scene), 1.3)`) rather than
 adding a shrink-to-fit loop, the same tradeoff `renderPassiveList`/`showAbilitiesPanel` already
-make; `showInfoPanel`/`showTutorialTopic`/`HubScene.showPanel` keep their own shrink-to-fit
-loops (floor `9`px) since their body length varies more per instance.
+make; `showInfoPanel`/`showTutorialTopics`' own detail-pane render/`HubScene.showPanel` keep
+their own shrink-to-fit loops (floor `9`px) since their body length varies more per instance.
 
 **Story Mode vs. Superposition Mode** (save/registry `superpositionMode`, picked on
 `TitleScene`'s title screen via `addModeSelector` -- a two-button picker, not a toggle; Story
@@ -1592,15 +1648,21 @@ before an Overworld scene has ever been created. Both trigger sites persist thro
 `markTipSeen` + `persistFromRegistry` pair.
 
 **Full tutorial recap** (`data/tutorial.ts`'s `TUTORIAL_PAGES` -- `Object.values(TUTORIAL_TIPS)`,
-same tips in a fixed order -- `scenes/panels/hubStations.ts`'s `showTutorialTopics`/
-`showTutorialTopic`): a topic menu, not a linear pager -- `showTutorialTopics` lists every
-`TUTORIAL_PAGES` entry's own `title` as its own clickable row (same
-`dialogueContainer`/`addDialogueButtonAt` overlay convention as every other panel, stroked
-cyan `0x5ad9ff`, see `STYLE.md`), so every topic is visible up front rather than reachable only
-by paging through the rest. Picking a row calls `showTutorialTopic(scene, index)`, which
-renders just that topic's title/body plus a `<- Topics` button back to the menu and a Close
-button -- no Back/Next between topics, no `tutorialIndex` state on `HubScene` to track a
-current page (each row's click handler closes over its own `index` directly). Only reachable
+same tips in a fixed order, the seven contextual ones first -- `scenes/panels/hubStations.ts`'s
+`showTutorialTopics`): a list+detail panel (`scenes/panels/listDetail.ts`, STYLE.md's "List+detail
+panels"), the same shape a guardian's own browsed panel uses, just with no crystal/move art to
+preview -- the left column names every topic (`renderListColumn`, paginated once the set
+outgrows one page; a topic's own short `listLabel` if `TutorialPage` carries one, its full
+`title` otherwise, since the left column is only `200`px wide and a handful of topic titles
+would otherwise collapse to a near-identical trimmed prefix), the right column shows the
+selected topic's full title and body. Selecting a row is a scoped update (see "A preview click
+is a scoped update" below), not a panel rebuild: `renderListColumn`'s own `setSelectedId`
+restyles the row in place and only the detail pane and panel chrome (divider, Close button,
+background) re-render, tracked by `HubScene`'s own `tutorialSelectedIndex` (which topic, by its
+index into `TUTORIAL_PAGES`) and `tutorialPage` (which page of the list), both reset in
+`closeDialogue()` the same way `guardiansPage`/`materialdexSelectedName` are. A page flip still
+tears the panel down (`destroyPanel`) and rebuilds, since that changes which rows the list
+itself shows. Panel stroked cyan `0x5ad9ff` like the station always has been. Only reachable
 from the Lab's Tutorial station, not auto-triggered. To add/edit a tip, only `data/tutorial.ts`
 needs touching -- both this and the contextual popups above read it generically.
 
@@ -1616,7 +1678,9 @@ renders whichever entry `materialdexSelectedName` points at (looked up by name i
 *unfiltered* index, so it stays valid across a list-page flip and only gets reassigned to the
 new filtered list's first entry on a type-filter change) -- crystal render, name, physics
 blurb, masked the same way when undiscovered. This panel skips the `labPanelColumns` treatment
-the other seven Lab panels use (above) in favor of its own two-column list/detail layout; its
+the other five Lab panels (Moves, Stats, Abilities, Guardians, Settings) use (above)
+in favor of its own two-column list/detail layout, the same shape the Lab's own Tutorial
+station also uses instead of `labPanelColumns` ("Full tutorial recap" above); its
 own right-column crystal render already is a themed motif, so instead of reusing the station
 row's own `makeQumatexMotif` icon (`art/labMotifs.ts`, a small 2x2 grid of tiny faceted gems,
 planted beside the Qumatex button out in the room itself) the title line gets a small purple
@@ -1654,19 +1718,25 @@ its own page field (`andersonMovePage`, `feynmanPage`), all reset in both
 bespoke row-count/shrink-to-fit calculation for any future plain candidate list that can grow
 unboundedly and has no crystal art to preview.
 
-**Candidate-crystal lists that *do* have art to preview instead use the two-column
-`scenes/panels/listDetail.ts` scaffolding** (STYLE.md's "List+detail panels") -- Dresselhaus's
-transmute list, Majorana's browse-by-hybrid-result list, Anderson's own host-pick (first) step,
-and HubScene's Qumatex panel, the same shape a *move*-browsing shop (Noether's Moves tab and
-Kondo's own self-buff step, see "Guardians" above) also builds on, with a real battle-effect
-animation (`art/moveEffectPreview.ts`) standing in for a crystal render. Bloch's own destination
-table (`scenes/panels/bloch.ts`) builds on the same left-column scaffolding to browse by *world
+**Candidate lists worth a two-column detail pane use the shared
+`scenes/panels/listDetail.ts` scaffolding** (STYLE.md's "List+detail panels") whether or not
+there's art to preview -- Dresselhaus's transmute list, Majorana's browse-by-hybrid-result list,
+Anderson's own host-pick (first) step, and HubScene's Qumatex panel browse by *crystal*, the same
+shape a *move*-browsing shop (Noether's Moves tab and Kondo's own self-buff step, see
+"Guardians" above) also builds on, with a real battle-effect animation
+(`art/moveEffectPreview.ts`) standing in for a crystal render. Bloch's own destination table
+(`scenes/panels/bloch.ts`) builds on the same left-column scaffolding to browse by *world
 number* instead, and its own detail pane opens with the Qumatuomi map (`art/qumatuomiMap.ts`)
 fixed at the top -- rendered once showing all 10 worlds regardless
 of the current selection, unlike the rest of the pane below it -- in place of the crystal-render-
 plus-name block a crystal-browsing panel's own detail pane opens with, followed by the previewed
 destination's own physics blurb/cost/status/confirm content;
-see "Bloch in the overworld" (STYLE.md) for the full layout. Laughlin's and
+see "Bloch in the overworld" (STYLE.md) for the full layout. The Lab's own Tutorial station
+(`scenes/panels/hubStations.ts`'s `showTutorialTopics`, "Full tutorial recap" above) browses by
+*topic* the same way, with no art and no commit step at all -- the detail pane is just that
+topic's own title and body, selecting a row is the whole interaction -- reusing the scaffolding
+purely for its paginated-list-plus-detail-pane shape, not for anything crystal/move-specific
+about it. Laughlin's and
 Skłodowska-Curie's own panels do *not* use this scaffolding at all -- each has exactly two fixed
 moves, always both rendered at once through their own bespoke `sideBySideColumns` layout instead
 of a browsed candidate list (see "Guardians" above); neither imports `renderListColumn` or
@@ -1709,25 +1779,30 @@ knobs (`statusCap`, Anderson's tighter `1.1`; `gapAfterStatus`, Bloch's tighter 
 bespoke panels use the wider `TWO_UP_PANEL_W` (`800`) instead (see "Guardians" above).
 
 **A preview click is a scoped update, not a panel rebuild** in Dresselhaus's, Anderson's,
-Majorana's, Kondo's and Bloch's panels -- follow this in any new list+detail panel. Each of
-them opens by building its avatar/intro/list rows once into the panel
-container, plus two sub-containers: a `chromeBlock` added *first* (so the divider, footer and
-panel background inside it render beneath everything added after) and a `detailBlock` for the
-right-hand pane. Clicking a row calls `renderListColumn`'s own `setSelectedId` (restyles the
-rows already on screen -- row heights are fixed, so nothing re-measures) and re-renders only
+Majorana's, Kondo's and Bloch's panels, and in the Lab's own Tutorial station -- follow this in
+any new list+detail panel. Each of the five guardian panels opens by building its avatar/intro/
+list rows once into the panel container, plus two sub-containers: a `chromeBlock` added *first*
+(so the divider, footer and panel background inside it render beneath everything added after)
+and a `detailBlock` for the right-hand pane; Tutorial's own `showTutorialTopics` follows the
+same `chromeBlock`/`detailBlock` split, just with a heading/hint line in place of a guardian
+avatar and intro quote. Clicking a row calls `renderListColumn`'s own `setSelectedId` (restyles
+the rows already on screen -- row heights are fixed, so nothing re-measures) and re-renders only
 `detailBlock` plus `chromeBlock`, whose height depends on it. Bloch's Qumatuomi map is the
 strongest case: its coastline, islands and markers are built once and only the selection ring
 (its own `ringBlock` *inside* the map's container, so it shares the map's local coordinates)
 moves. A commit -- a purchase, a transmutation, a page flip -- still tears the panel down via
 `destroyPanel(scene)` and calls `showXPanel` again, since those change what the list itself
-shows. `destroyPanel` is the shared teardown every rebuild goes through: it runs
+shows; Tutorial has no purchase/transmutation step, only a page flip ever rebuilds it.
+`destroyPanel` is the shared teardown every rebuild goes through: it runs
 `art/crystals.ts`'s `killTweensDeep` over the whole container before destroying it, since
 Phaser's own `destroy()` leaves tweens targeting a dead object running and a panel is full of
 infinitely-repeating ones (the guardian avatar's bob, `makeCrystal`'s per-shard sparkles, a
-hybrid halo's glow, Bloch's ring pulse). Noether's Moves tab rebuilds through `destroyPanel` on
+hybrid halo's glow, Bloch's ring pulse) -- Tutorial's own panel carries none of those, but calls
+`destroyPanel` on every rebuild anyway for the same "safe even with nothing to kill" consistency.
+Noether's Moves tab rebuilds through `destroyPanel` on
 a preview click too: its detail pane renders no crystal at all, and its animation preview is a
 `moveEffectPreview.ts` chain that retargets rather than restarting, so a scoped update would buy
-it much less than it buys the five above.
+it much less than it buys the five guardian panels above.
 
 ## Save schema
 

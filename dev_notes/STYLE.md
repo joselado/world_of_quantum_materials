@@ -74,13 +74,14 @@ than appending a changelog, so this always reflects current reality.
   floating crystal (`makeCrystal`) sits -- the only crystal render drawn anywhere in the room
   itself, so the room reads as *the player's* space rather than a shelf of specimens. No
   perspective/camera machinery -- everything is laid out at fixed canvas coordinates.
-- **Up to nine stations, one row at a time, no crystal icons.** Every station is a plain
-  gold-on-dark-blue text button (`HubScene.addStationRow`, same look every dialogue button in
-  the game uses), not an icon a player clicks -- there is no `makeCrystal` render anywhere in
-  the station rows. Row 1 always shows all three of Qumatex, Save Point, and the door onward,
-  in that column order. Its label reads "Enter World N" for `HubScene.highestUnlockedWorld()`
-  (walking `rivalDefeated` from world 1 until it finds one not yet beaten) the first time that
-  world is ever stepped into, or "Back to World N" once it is -- `HubScene.canResumeWorld()` is
+- **Up to eight stations, packed into rows of three, no crystal icons.** Every station is a
+  plain gold-on-dark-blue text button (`HubScene.addStationRow`, same look every dialogue
+  button in the game uses), not an icon a player clicks -- there is no `makeCrystal` render
+  anywhere in the station rows. Qumatex and the door onward always exist and always lead the
+  grid, in that order. The door's label reads "Enter World N" for
+  `HubScene.highestUnlockedWorld()` (walking `rivalDefeated` from world 1 until it finds one
+  not yet beaten) the first time that world is ever stepped into, or "Back to World N" once it
+  is -- `HubScene.canResumeWorld()` is
   the single predicate both the label and the door's own click/Enter-key navigation read,
   checking that the world is in the persisted `visitedWorlds` *and* that the registry's own
   `mapState` (`OverworldScene`'s in-progress map/position snapshot, written by
@@ -106,16 +107,21 @@ than appending a changelog, so this always reflects current reality.
   station once he's been met once -- either way, in Superposition Mode his teleport hub
   offers every built world immediately, with no separate warp/world-select panel, though
   every world also has its own walkable doors back to the Hub/previous world and
-  onward to the next one (see "World doors" below). Below row 1, the six reference/settings
-  stations (`scenes/panels/hubStations.ts`'s `LAB_STATIONS` -- Moves, Stats, Abilities,
-  Guardians, Tutorial, Settings) are filtered down to whichever the player has actually
-  unlocked and packed into rows of three with no gaps: Abilities only appears once the player
-  has learned a first passive (`passivesUnlocked` non-empty), Guardians only once they've met a
+  onward to the next one (see "World doors" below). Right after Qumatex and the door, in the
+  same grid, come the six reference/settings stations (`scenes/panels/hubStations.ts`'s
+  `LAB_STATIONS` -- Moves, Stats, Abilities, Guardians, Tutorial, Settings), filtered down to
+  whichever the player has actually unlocked: Abilities only appears once the player has
+  learned a first passive (`passivesUnlocked` non-empty), Guardians only once they've met a
   first guardian (`metGuardians` non-empty) -- Superposition Mode treats both as unlocked from
   the start, since it already grants every passive and lists every guardian regardless. Moves,
   Stats, Tutorial, and Settings are never gated, so a fresh save always shows at least those
-  four (two rows of up to three) even with neither gated station visible yet. Every station
-  except the door (Qumatex, Save Point, and all six `LAB_STATIONS` entries) gets its own small
+  four alongside Qumatex and the door (six stations total, two full rows of three) even with
+  neither gated station visible yet. The full station list -- Qumatex, the door, then whichever
+  of the six `LAB_STATIONS` are visible -- is packed into rows of three with no gaps, rather
+  than reserving a fixed grid slot for a station that isn't visible yet or giving Qumatex/the
+  door a row of their own; a row that doesn't divide evenly by three (e.g. one gated station
+  unlocked) just trails off short on its last row rather than every row being forced full.
+  Every station except the door (Qumatex and all six `LAB_STATIONS` entries) gets its own small
   `art/labMotifs.ts` icon planted just to the left of its button label (`HubScene.addStationRow`,
   `STATION_MOTIF_SIZE = 26`, fixed-px, never scaled by the Text Size setting) -- much smaller
   than the same builder would draw inside a full panel, since here it sits inline with a
@@ -124,7 +130,7 @@ than appending a changelog, so this always reflects current reality.
   renders one full-size real crystal for whichever compound is currently selected. The door has
   no motif of its own -- plain text is enough to read as an exit. Every station is a
   no-op while another panel is already open (one panel at a time).
-- **Every one of the Lab's eight non-door panels reads as one coherent design** -- dark
+- **Every one of the Lab's seven non-door panels reads as one coherent design** -- dark
   rounded-rectangle-with-stroke chrome and a bold gold (`#ffe066`) heading -- rather than
   several visually separate eras bolted together. Panel content is always laid out top-down
   first (a running `y`, each element's own measured height advancing it) and centered within
@@ -132,15 +138,12 @@ than appending a changelog, so this always reflects current reality.
   `labPanelColumns`), with the background rectangle sized and inserted behind everything
   (`container.addAt(..., 0)`) only once the real final height is known, the same pattern this
   file's own "Paginated candidate lists" section documents for row-based panels. A panel's own
-  themed motif (Save Point's glowing gold spire with an etched rune ring, Moves' jagged orange
-  energy bolt, Stats' small ascending bar chart, Abilities' shield with a white emblem,
-  Guardians' small haloed robed figure, Tutorial's small open book, Settings' meshed pair of
-  gears -- all in `art/labMotifs.ts`) is never drawn inside the panel itself; it sits beside
-  that station's own button out in the room instead (previous bullet), so panel content gets
-  the panel's full width rather than sharing it with a left-side icon column.
-- **Save Point** (`HubScene.showSavePoint`) is its own panel (not folded into a generic helper)
-  so it can carry its own gold heading distinctly from a Close button below a single centered
-  message.
+  themed motif (Moves' jagged orange energy bolt, Stats' small ascending bar chart, Abilities'
+  shield with a white emblem, Guardians' small haloed robed figure, Tutorial's small open book,
+  Settings' meshed pair of gears -- all in `art/labMotifs.ts`) is never drawn inside the panel
+  itself; it sits beside that station's own button out in the room instead (previous bullet),
+  so panel content gets the panel's full width rather than sharing it with a left-side icon
+  column.
 - **Qumatex** (`HubScene.renderMaterialdexPanel`) is a two-column index over every real
   compound in the game (`data/materials.ts`'s `allCrystals()`, alphabetical by name), not just
   ones the player has found -- an undiscovered entry still gets a slot, masked to a "???" name
@@ -170,16 +173,19 @@ than appending a changelog, so this always reflects current reality.
   `showInfoPanel`), the panel's own background rectangle sized and inserted behind everything
   only once the taller of the two columns' real height is known.
 - **List+detail panels** (`scenes/panels/listDetail.ts`) are the shared two-column scaffolding
-  Qumatex above and six guardian panels' own browse steps build on, rather than each
-  hand-rolling its own copy of the same left-column pagination math: three browse by
-  *crystal* (Dresselhaus's single transmute step, Anderson's host-pick step, Majorana's
+  Qumatex above, six guardian panels' own browse steps, and the Lab's own Tutorial station build
+  on, rather than each hand-rolling its own copy of the same left-column pagination math: three
+  browse by *crystal* (Dresselhaus's single transmute step, Anderson's host-pick step, Majorana's
   browse-by-hybrid-result step -- see their own entries below), two browse by *move*
-  (Noether's Moves tab, Kondo's -- also below), and Bloch's own
+  (Noether's Moves tab, Kondo's -- also below), Bloch's own
   destination table browses by *world number* ("Bloch in the overworld" below) -- its detail pane
   opens with the Qumatuomi map (`art/qumatuomiMap.ts`) fixed at the top, rendered once showing all
   10 worlds regardless of which row is selected, with the previewed destination's own physics
   blurb/cost/status/confirm content stacked beneath it, in place of the crystal-render-plus-name
-  block a crystal-browsing panel's own detail pane opens with.
+  block a crystal-browsing panel's own detail pane opens with -- and Tutorial browses by *topic*
+  ("Full tutorial recap" below), the one user of this scaffolding with no art in its detail pane
+  at all: just the selected topic's own title and body, no crystal render, animation, or map, and
+  no commit button since browsing a topic is the whole interaction.
   `LIST_DETAIL_PANEL_W`
   (`720`) is the panel width every list+detail panel uses -- wide enough for the two columns
   plus a real crystal render (or, for a move-browsing panel, its animation preview, or for
@@ -239,12 +245,16 @@ than appending a changelog, so this always reflects current reality.
   fixed moves, always both rendered at once, so there is no candidate list to browse in the first
   place; see their own entries below for their bespoke layout and its own "Retune"/per-class-unlock
   buttons.
-- **Tutorial** (`scenes/panels/hubStations.ts`'s `showTutorialTopics`/`showTutorialTopic`,
-  stroked cyan `0x5ad9ff`) opens to a menu listing every topic by its own title
-  (`data/tutorial.ts`'s `TUTORIAL_PAGES`) rather than paging through them linearly -- the whole
-  set is visible up front. Picking a row opens that topic's own single page (title, body, a
-  `<- Topics` button back to the menu, and Close), rather than stepping through every other
-  topic to reach it.
+- **Tutorial** (`scenes/panels/hubStations.ts`'s `showTutorialTopics`, stroked cyan `0x5ad9ff`,
+  `LIST_DETAIL_PANEL_W` wide) is a list+detail panel ("List+detail panels" below) over
+  `data/tutorial.ts`'s `TUTORIAL_PAGES` -- the same two-column shape a guardian's own browsed
+  panel uses, just with no crystal/move art to preview. The left column names every topic (its
+  own short `listLabel` where a topic has one, its full `title` otherwise), paginated once the
+  set outgrows one page; the right column shows the selected topic's full title and body, with
+  the same floor-`9`px shrink-to-fit loop the panel always used for a long body. Every topic is
+  visible in the list up front rather than reachable only by paging through the rest. Selecting a
+  row is a scoped update (see "A preview click is a scoped update" further below), not a panel
+  rebuild -- only the detail pane and panel chrome re-render, the list rows stay on screen.
 
 ## Overworld path
 
@@ -263,75 +273,90 @@ than appending a changelog, so this always reflects current reality.
   color (world 1's two broken-symmetry branches, world 3's Voronoi domains, both blended into
   the tile's ordinary fill via `art/colors.ts`'s `blend`) and `biomeOverride` swaps which
   world's whole `art/biomes.ts` entry a tile renders with instead of the current world's own
-  (world 9's patches, each independently borrowing one of worlds 1-8's look). A `regionColor`
-  tile always renders as solid extruded ground in that tint regardless of `wallTheme` --
-  world 3's own biome is `wallTheme: 'void'` (see below), which would otherwise paint every
-  domain interior as empty sky rather than a colored region.
+  (world 9's patches, each independently borrowing one of worlds 1-8's look). An off-path
+  `regionColor` tile renders as plain ground in that tint regardless of `wallTheme` and carries
+  no terrain accent -- world 3's own biome is `wallTheme: 'void'` (see below), whose starlit
+  drop would otherwise fight the domain color it is supposed to read as.
 - The guardian's own tile (and its immediate neighbors) gets a soft pulsing glow overlaid on
   the ordinary path fill, in that world's own guardian color (`WORLD_GUARDIANS`'
   `strokeColor` -- the same per-guardian color coding panels/pills already use,
   `OverworldScene.drawMidHighlight`) -- the forced chokepoint reads as a deliberate gate the
   player is walking through, not an arbitrary narrow spot.
-- Off-path tiles read as unambiguously "you cannot walk here," but not always the same way --
-  `OverworldScene.drawOffPathTile` dispatches on the terrain kind resolved from that tile's own
-  biome's `wallTheme` (`art/biomes.ts`, resolved per-tile via `biomeOverride` above; see the
-  Biomes table below):
-  - **'rock'** (most biomes): a raised, solid-looking wall block, not just
-    differently-colored flat ground -- every edge a non-walkable tile shares with a walkable
-    neighbor gets an extruded vertical face (`OverworldScene.drawWallFaces`, `WALL_HEIGHT_PX =
-    30`), shaded darker than the tile's own top color and shaded differently per facing (near/
-    far/left/right) for a bit of pseudo-3D shading. Each face also gets a darker mortar line
-    partway up and a brighter rim along its top edge (as if lit from above), so it reads as a
-    stacked stone block rather than a flat colored card.
-  - **'lava'** (Defect Wastes, world 9): a flat, glowing molten crust flush with the ground --
-    no extruded block, since lava is a hazard you'd sink into, not a wall you'd bump into
-    (`OverworldScene.drawLavaTile`). A pulsing warm overlay, a bright crack line, and a hot
-    core dot animate per-tile off `this.time.now`, skipped past `depthRatio 0.75` (same gate
-    `decorateTile` uses) so distant tiles stay a cheap flat fill.
-  - **'water'** (Frozen Caverns, world 5): a dark, rippling frozen lake, likewise flush with
-    the ground (`OverworldScene.drawWaterTile`) -- animated shimmer streaks rather than a
-    crack/glow overlay, same depth gate as lava.
-  - **'void'** (Floating Islands, world 3's own biome): no ground fill at all -- the static
-    sky/hill gradient `drawSky()` paints once behind `worldGfx` shows through, so a tile reads
-    as open air rather than solid ground in a different color (`OverworldScene.drawVoidTile`).
-    Only the edge shared with a walkable neighbor gets a glowing rail marking the drop-off; a
-    void tile with no walkable neighbor draws nothing at all. World 3's own off-path tiles are
-    almost always covered by a `regionColor` domain tint instead (see above), which always
-    wins over this theme -- this path mainly renders now when a world 9 patch borrows world
-    3's biome look for a tile that has no `regionColor` of its own.
-  A ground-tile fill itself (walkable, 'rock' off-path, or a `regionColor`-tinted tile) is a
+- Off-path tiles read as unambiguously "you cannot walk here," and every one of them lies in
+  the same plane as the walkable floor -- impassable terrain is told apart by color and by the
+  boundary treatment below, never by rising above the ground. `OverworldScene.drawOffPathTile`
+  paints the tile in that biome's own `ground` color (hazed for depth, tinted toward a
+  `regionColor` domain where the tile belongs to one) and then lays on the accent the terrain
+  kind resolved from that tile's own biome's `wallTheme` calls for (`art/biomes.ts`, resolved
+  per-tile via `biomeOverride` above; see the Biomes table below). Every accent is skipped past
+  `depthRatio 0.75` (the same gate `decorateTile` uses) so distant tiles stay a cheap flat
+  fill:
+  - **'rock'** (most biomes): bare ground, no accent at all -- the biome's own `ground` color
+    is the whole treatment.
+  - **'lava'** (Defect Wastes, world 9): a glowing molten crust
+    (`OverworldScene.drawLavaAccent`) -- a warm overlay, a bright crack line and a hot
+    core dot, animating off `this.time.now`. The overlay's pulse phase varies by only a
+    fraction of a radian between neighboring tiles, so the glow drifts across the crust as
+    broad slow waves -- a steeper phase step makes adjacent tiles pulse against each other and
+    the crust read as a checkerboard of the tile grid -- and its alpha is held dim enough that
+    the crust never climbs toward the value of the walkable clay route it must be told apart
+    from.
+  - **'water'** (Frozen Caverns, world 5): a rippling frozen lake
+    (`OverworldScene.drawWaterAccent`) -- animated shimmer streaks and a drifting pale
+    highlight.
+  - **'void'** (Topological Islands, world 3): the drop between islands
+    (`OverworldScene.drawVoidAccent`) -- a couple of faint stars glinting up out of a fill held
+    far darker than the pale island floor, so stepping off the path reads as falling into open
+    space rather than onto lower ground. World 3's own off-path tiles are often covered by a
+    `regionColor` domain tint instead (see above), which always wins over this theme.
+  A ground-tile fill itself (walkable or off-path, accented or `regionColor`-tinted) is a
   single flat color per tile, not a per-tile diagonal-facet/gradient shading -- floors read
   better flat; don't add such shading without asking first.
-- **Smoothed ground** (World 5 only today; `OverworldScene`'s `CONTOUR_SMOOTHED_WORLDS`, an
-  in-progress rollout the other nine worlds are not part of yet). The rule above is about a
+- Each biome's `ground` and `path` colors must hold a wide enough break between them to carry
+  the whole walkable/impassable read on their own, since nothing else in the scene marks it:
+  telling at a glance where the player may walk is a gameplay requirement, not a matter of
+  taste. Hue alone is enough where it is unambiguous (world 1's tan trail through green
+  meadow); the dark, hazy biomes lean on value instead (world 8's fog, world 9's scorched
+  clay route held several times lighter than the molten crust and its deliberately dim glow).
+- **Smoothed ground.** Every world's ground plane is drawn this way. The rule above is about a
   tile's *interior*, and this treatment leaves it intact -- every fill is still one flat color.
-  What changes is the *shape* of the fills and what is laid over the scene as a whole:
+  What it decides is the *shape* of the fills and what is laid over the scene as a whole:
   - The walkable/impassable boundary is traced on the tile lattice and redrawn as a curve
     (`art/contours.ts`, "Overworld terrain rendering" in CODEMAP.md), so a region edge that
     turns reads as an organic shoreline rather than a stair-step of axis-aligned quads. The
-    curve is pulled 0.25 tiles onto the walkable side of the grid line, which is what keeps
-    the ground plane clear of a solid tile's footprint and so leaves wall extrusion (which
-    still rises from the untouched grid line) exactly where it is.
-  - The per-tile seam stroke is dropped, so a run of same-kind tiles reads as one continuous
+    curve is pulled 0.25 tiles onto the walkable side of the grid line before smoothing, which
+    is what lets it move in *both* directions during smoothing without a deformed tile
+    ever folding over itself; without the bias only convex corners could move, and a diagonal
+    staircase would smooth into a scallop instead of a diagonal.
+  - There is no per-tile seam stroke, so a run of same-kind tiles reads as one continuous
     region rather than a grid.
   - A **contact shadow** -- two translucent black bands on the walkable side of the boundary
     and one on the impassable side, faded out past 70% of draw distance -- seats the floor
     into what it meets instead of letting the two butt flat together. Immediately inside it
     runs a thin **rim light** in a pale tint of the biome's path color, the classic light edge
     against a darker mass, which also keeps the walkable region's own shape readable further
-    into the distance than its fill alone manages.
-  - **Depth haze** is leaned on much harder: the per-tile fog blend is deepened, distant
-    walkable ground hazes toward a lighter target than its surroundings do (so the route stays
-    visible at the range the player plans it from), and a whole-screen wash of the biome's haze
-    color over the top of the ground plane turns the far distance into continuous atmosphere.
-  - The guardian chokepoint's glow falls off radially from the guardian's own tile and drops
-    its outline, so the gate reads as a pool of light rather than a hard rectangle laid over a
+    into the distance than its fill alone manages. Together they are what marks the boundary
+    in place of a seam.
+  - **Depth haze** is leaned on hard: the per-tile fog blend is deepened, distant walkable
+    ground hazes toward a lighter target than its surroundings do (so the route stays visible
+    at the range the player plans it from), and a whole-screen wash of the biome's haze color
+    over the top of the ground plane turns the far distance into continuous atmosphere.
+  - The guardian chokepoint's glow falls off radially from the guardian's own tile and carries
+    no outline, so the gate reads as a pool of light rather than a hard rectangle laid over a
     floor whose every other edge curves.
-  This treatment currently only pays off where impassable terrain lies flush with the ground
-  ('lava'/'water'/'void'). Against a 'rock' wall the extruded face rises from the grid line and
-  hides the smoothed floor edge behind it, so only the contact shadow, the seam removal and the
-  haze are visible there -- the blocky read in a rock world is the wall silhouette, which is a
-  separate piece of work.
+  - Where the camera stands close enough to the grid's left/right edge that the visible lane
+    window reaches past it, **margin columns** (`OverworldScene.drawMarginColumns`) continue
+    each row's edge tile off-grid -- same biome, same `regionColor` tint, same terrain accent,
+    but always as impassable ground -- so the world runs to the frame edge instead of stopping
+    on a stair-stepped strip of bare backdrop. The grid-edge boundary of a walkable edge tile
+    is already part of the traced contour (the trace treats out-of-grid as impassable), so the
+    floor side keeps its usual curve, shadow and rim against those columns.
+  A `regionColor` domain's own boundary is not part of the traced contour -- only the
+  walkable/impassable line is -- so where two domains meet inside impassable ground the color
+  break there still follows the tile lattice (world 3 keeps its domains apart with walkable
+  boundary strips almost everywhere, so this surfaces mainly where perspective foreshortening
+  hides such a strip behind the domain in front of it; world 9's `biomeOverride` patch edges
+  are tile-quantized the same way, which suits that world's glitch identity).
 - Decoration (flowers / crystal glints) is placed in the off-path terrain only, not on
   walkable tiles -- those are reserved for wild encounters and qumatessence pickups.
 - Qumatessence tokens are scattered across a handful of walkable tiles per map
@@ -371,28 +396,46 @@ than appending a changelog, so this always reflects current reality.
 
 ## Biomes (`art/biomes.ts`)
 
-Per-world skin: sky/ceiling gradient, hill/ceiling silhouette, wall-block color (off-path),
-on-path trail color, ambient decoration style, fog blend target, whether clouds render, and
-(see "Overworld path" above) what the off-path terrain actually *is* -- `wallTheme`.
+Per-world skin: sky/ceiling gradient, hill/ceiling silhouette, off-path ground color, on-path
+trail color, ambient decoration style, fog blend target, whether clouds render, and (see
+"Overworld path" above) what the off-path terrain actually *is* -- `wallTheme`.
 
-World 5's entry is held in a deliberately narrow, desaturated value range (its haze target
-`0x44606e` sits between its floor and its lake rather than near-black). That is a requirement of
-the smoothed-ground treatment it uses, not a free style choice: each grid row is one flat color,
-so a wide floor-to-surroundings spread turns a strong depth haze into visible horizontal
-stripes across the floor, where a compressed one lets the same falloff read as continuous air.
+Two constraints every entry has to satisfy, both consequences of the smoothed-ground treatment
+every world uses rather than free style choices:
 
-| World | Biome | Sky/ceiling | Walls (off-path) | Path | Decoration | Clouds | Wall theme |
+- `ground` and `path` must hold a wide break (see "Overworld path" above) -- they carry the
+  whole walkable/impassable read by themselves.
+- `fogTarget` has to stay near the value range `ground` and `path` already span. Each grid row
+  is one flat color, so a wide gap between a tile's own color and what the haze pulls it toward
+  turns a strong depth haze into visible horizontal stripes across the floor, where a small one
+  lets the same falloff read as continuous air. In the enclosed biomes that means a target
+  sitting between the two floor colors (world 5's `0x44606e` between its lake and its ice,
+  world 2's `0x24203f` just under its stone). The open-sky worlds (`clouds: true`) instead haze
+  toward their own bright sky, above both -- correct there, because that is the horizon their
+  ground actually meets.
+
+| World | Biome | Sky/ceiling | Off-path ground | Path | Decoration | Clouds | Wall theme |
 |---|---|---|---|---|---|---|---|
-| 1 | Tutorial Meadow | pale blue gradient (`0x8fd0ff`→`0xe8f6ff`) | grass `0x2e7d32` | dirt `0xb08d57` | flowers | yes | rock |
-| 2 | Crystalline Caves | dark purple gradient (`0x1a1730`→`0x362f5c`) | stone `0x2b2b3a` | cave floor `0x585073` | crystal glints (cyan) | no | rock |
-| 3 | Floating Islands | deep-to-pale blue gradient (`0x2a3d6b`→`0x8fb8e8`) | slate blue `0x35507a` | pale sky-blue walkway `0x9ac0e0` | crystal glints (cyan) | yes | **void** -- open sky/chasm, matches "one-way edge paths" |
-| 4 | Landau Level Terrain | deep electric-blue gradient (`0x081428`→`0x1f4d8f`) | field-line blue `0x2a5ca8` | glowing blue `0x3a7fd4` | field lines | no | rock |
+| 1 | Tutorial Meadow | pale blue gradient (`0x8fd0ff`→`0xe8f6ff`) | fresh grass `0x37913f` | dirt `0xbb945c` | flowers | yes | rock |
+| 2 | Crystalline Caves | dark purple gradient (`0x1a1730`→`0x362f5c`) | indigo stone `0x27243a` | amethyst floor `0x625a8a` | crystal glints (cyan) | no | rock |
+| 3 | Floating Islands | deep-to-pale blue gradient (`0x2a3d6b`→`0x8fb8e8`) | night-blue drop `0x17224a` | pale sky-blue walkway `0x9ac0e0` | crystal glints (cyan) | yes | **void** -- the drop between islands, matches "one-way edge paths" |
+| 4 | Landau Level Terrain | deep electric-blue gradient (`0x081428`→`0x1f4d8f`) | deep navy `0x0f1f3a` | glowing blue `0x3f8ade` | field lines | no | rock |
 | 5 | Frozen Caverns | icy dark gradient (`0x1b2c3a`→`0x3d5b69`) | icy slate `0x1c3440` | pale ice-blue `0xa4dbe6` | crystal glints (cyan) | no | **water** -- a frozen lake, "zero-resistance" made literal underfoot |
-| 6 | Magnon Plains | pale blue-green gradient (`0x9fd8ff`→`0xdff3ff`) | olive-gold `0x8fae5c` | warm gold `0xd4c07a` | ripples | yes | rock |
-| 7 | Tensor-Network World | dark violet gradient (`0x120a24`→`0x2c1a4a`) | deep purple `0x3a2560` | violet bond-path `0x8a5cd9` | network nodes | no | rock |
-| 8 | Spinon Forest | muted grey-green gradient (`0x2a2f28`→`0x4a5248`) | low-contrast green `0x3a4238` | muted sage `0x5a6a58` | mist motes | no | rock |
-| 9 | Defect Wastes | scorched red-black gradient (`0x1a0808`→`0x3a1414`) | charred red `0x4a1c1c` | cracked red `0x8a2a2a` | cracks | no | **lava** -- the world's own "scorched" theme made literal |
-| 10 | Adaptive Meta-World | shimmering violet gradient (`0x2a1a3a`→`0x6a4a8a`) | violet `0x5a3a7a` | lavender `0xc9a8f0` | crystal glints (cyan) | yes | rock |
+| 6 | Magnon Plains | warm golden-hour gradient (`0x9cc8e8`→`0xf0e8c8`) | olive-gold grass `0x6e8d3a` | warm gold `0xd4c07a` | ripples | yes | rock |
+| 7 | Tensor-Network World | dark violet gradient (`0x120a24`→`0x2c1a4a`) | near-black violet `0x1c1030` | violet bond-path `0x8a5cd9` | network nodes | no | rock |
+| 8 | Spinon Forest | muted grey-green gradient (`0x2a2f28`→`0x4e584c`) | deep forest shadow `0x1b231d` | muted sage `0x738667` | mist motes | no | rock |
+| 9 | Defect Wastes | scorched red-black gradient (`0x1a0808`→`0x3a1414`) | charred black-red `0x220c0c` | scorched clay `0xa86b54` | cracks | no | **lava** -- the world's own "scorched" theme made literal |
+| 10 | Adaptive Meta-World | shimmering violet gradient (`0x2a1a3a`→`0x6a4a8a`) | deep violet `0x3a2450` | lavender `0xc9a8f0` | crystal glints (cyan) | yes | rock |
+
+Worlds 1 and 6 are deliberately different seasons of green rather than two takes on the same
+field: world 1 a crisp spring morning (fresh mid-green, blue-sky haze), world 6 golden hour
+(olive-gold grass hazing into a warm cream horizon). World 9 stays entirely inside its warm
+red family -- the walkable route is scorched clay told apart from the molten crust by value
+alone, with the crust's own glow held dim (see the lava accent notes above) so that value gap
+never closes. World 3's Voronoi domain tints (`world/generators/world3.ts`'s
+`DOMAIN_PALETTE`) are saturated mid-value hues, all held well darker than the pale walkable
+edge channel: the domain-vs-domain hue contrast is the world's physics made visible, and the
+value gap to the path is what keeps a tinted bulk from ever reading as walkable ground.
 
 ## Qumatuomi map (`art/qumatuomiMap.ts`)
 
@@ -890,7 +933,7 @@ than the caller's requested budget) for its own layout math.
   (`makeCrystal(scene, 34, scene.playerMaterial.color, scene.playerMaterial.variant, { seed:
   scene.playerMaterial.name, hybrid: scene.playerMaterial.hybridParents })`, the same call
   convention Franklin's own panel below uses) standing on a ground-shadow ellipse, with the
-  move's `'screening'`-class ring effect (`art/attackEffects.ts`'s `EFFECT_STYLE`, tinted
+  move's `'screening'`-class ring effect (`art/attackStyles.ts`'s `EFFECT_STYLE`, tinted
   `0xe86a44`) looping *centered on the crystal itself* rather than travelling across the pane --
   `renderSelfBuffMoveDetailHeader` (`scenes/panels/listDetail.ts`), the self-buff sibling of the
   ordinary `renderMoveDetailHeader` three other guardians' move-browsing panes use. Like that
@@ -1076,22 +1119,55 @@ than the caller's requested budget) for its own layout math.
 ## Boss avatars (`OverworldScene.spawnBossSprite`, `art/boss.ts`)
 
 - Every built world's rival/boss, while still undefeated, stands at the goal
-  tile as a purely visual landmark, sized `BOSS_CRYSTAL_SIZE = 70` -- roughly 2x
-  a wild crystal (`22`) and 2x the player's own on-map size (`34`) -- and
+  tile as a purely visual landmark, sized `BOSS_CRYSTAL_SIZE = 78` -- and since
+  the silhouette reaches `BOSS_SILHOUETTE_TOP`/`BOSS_SILHOUETTE_BOTTOM`
+  (`1.4`/`1.11`, exported from `art/boss.ts`) multiples of that above and below
+  its own center, the rendered golem stands over 2.5x that tall, dwarfing both a
+  wild crystal (`22`) and the player's own on-map size (`34`) -- and
   rendered by `makeBossCrystal` rather than the shared `makeCrystal` every
   wild/rival crystal otherwise uses: a golem silhouette that literalizes each
   rival's own name (rivals 1-8 and World 9's per-type lookup, `WORLD_RIVALS`/
   `RIVAL_9_NAMES` in `data/materials.ts`, each name a real compound's
-  *polycrystalline* form -- "many grains fused into one mass") built from
-  seven smaller limb shards (shaded siblings of the core's
-  color, via `shade`) -- a head, two shoulder/arm shards, two smaller fist
-  shards past them, and two planted leg shards -- fused around one oversized
-  torso core, a two-layer additive aura that slowly pulses scale/alpha, and
-  six hot-orange embers tracing a tall ring around the whole body (same
-  orbiting-container-angle-tween trick as a guardian avatar's orbiting motes,
-  just warmer/redder to read as hostile rather than benevolent). Name label in
+  *polycrystalline* form -- "many grains fused into one mass"). Its build,
+  bottom to top:
+  - **One dark humanoid outline polygon** (`art/boss.ts`'s `SILHOUETTE`, traced
+    once in units of `size`) filled in `shade(color, -62)` and stroked at 3px,
+    drawn under every shard. Guaranteeing the creature read as one shape is what
+    lets the grains on top be as angular and noisy as the polycrystalline theme
+    wants, and the dark fill doubles as the hard edge that keeps the golem
+    legible over a daylight biome as well as a dark one. The same polygon at
+    `1.04` scale, additive in `shade(color, 70)`, sits behind it as a rim light --
+    a bright sliver in a dark biome, invisibly subtle in a bright one.
+  - **Top-heavy proportions**: shoulders that peak higher than the small sunken
+    head, long arms hanging to oversized boulder fists past the knees, a waist
+    that tapers in, short planted legs. Ten limb shards plus a pelvis and collar
+    block, each a shaded sibling of the base color (via `shade`, and each
+    darkened relative to it so the boss reads heavier than an ordinary wild of
+    the same compound), fused around one oversized torso core. Limbs are always a
+    solid habit (`drawShardShape`/`drawCubicShape`) rather than the material's own
+    `variant` -- the translucent `layer`/`twisted` sheets read as flimsy on an
+    arm -- so the compound's own habit lives in the torso core instead.
+  - **Grain-boundary seams**: five jagged polylines drawn twice, once dark as the
+    crack and once offset and additive as the light coming through it, each on its
+    own Graphics so it pulses on its own clock. The brightest of them is a slit cut
+    across the head, a dark socket with hot ember-orange inset inside it -- one
+    slit, not a pair of eyes, so it stays a lit fracture rather than a face.
+  - **Ground staging** instead of a body halo: a normal-blended dark contact
+    shadow pooled under the feet (mass, and it plants the golem instead of leaving
+    it floating), with the danger glow relegated to a low additive ellipse behind
+    the legs that pulses its alpha. A halo big enough to surround the whole body
+    is the visual language of a benevolent guardian, and an additive one washes out
+    to near-white over a daylight biome, erasing the silhouette's own edge.
+  - **Motion on four unrelated periods** so the idle loop never visibly resets:
+    a 900ms head-slit pulse, a 2300ms breath that squashes as it rises, a 3100ms
+    weight shift, a 3400ms head pan, plus two fists drifting out of phase with each
+    other and five heat sparks rising off the waist and fading above the head.
+    All of it lives on an inner container pivoted at the feet, never on the
+    returned container -- all three call sites already own the outer transform.
+  Name label in
   a bold, warning-toned pink-red (`#ff8f8f`), distinct from any guardian's own
-  label color. Reuses the
+  label color, and offset by `BOSS_SILHOUETTE_TOP` multiples of the size rather
+  than a bare one, so it clears the head. Reuses the
   `WorldSprite` projection/wander/bob machinery, so it scrolls and fades with
   distance like everything else standing on the map -- it doesn't add its own
   click handler, the fight is still only reached through the goal panel's
@@ -1107,7 +1183,7 @@ than the caller's requested budget) for its own layout math.
 
 - Every built world has a doorway landmark at its `startTile`, sized
   `DOOR_SPRITE_SIZE = 46` -- bigger than the player (`34`) so it reads as a real
-  structure, well under the boss (`70`) it can share a world with. Rendered by
+  structure, well under the boss (`78`) it can share a world with. Rendered by
   `makeDoorSprite`: a genuinely rectangular stone archway (a small corner
   radius, not one close to the shape's own half-width, so it doesn't collapse
   into a pill/gem silhouette), a darker inset "opening" void, a lavender
@@ -1186,15 +1262,15 @@ than the caller's requested budget) for its own layout math.
   pass," since a gate that can be skipped isn't a gate); a world with no `RIVAL_TAUNTS` entry
   falls back to a single generic line instead. The boss crystal is redrawn on both pages
   (`art/boss.ts`'s `makeBossCrystal` at `BOSS_CRYSTAL_SIZE`, `OverworldScene.ts`'s own copy
-  of `70`), the same golem silhouette the rival already renders as standing at the goal tile
+  of `78`), the same golem silhouette the rival already renders as standing at the goal tile
   (`spawnBossSprite`) and as the battle opponent (`scenes/BattleScene.ts`'s own
   `BOSS_CRYSTAL_SIZE`) -- not the plain faceted `makeCrystal` an ordinary wild encounter uses,
   so the rival never reverts to looking like an ordinary crystal just because this dialogue is
-  open. The crystal's vertical position is set with enough headroom below the panel's top edge
-  for `makeBossCrystal`'s translucent danger aura (which pulses out to `size*1.4*1.18`, well
-  past the bare `BOSS_CRYSTAL_SIZE` footprint) to stay inside the panel through its full pulse,
-  the same "decorative aura outgrows the crystal's own footprint" fact `BattleScene`'s boss
-  placement below already accounts for. The taunt text's own font size is capped the same way
+  open. Both the headroom above the crystal and the gap down to the taunt text come off
+  `art/boss.ts`'s exported `BOSS_SILHOUETTE_TOP`/`BOSS_SILHOUETTE_BOTTOM` rather than a bare
+  `BOSS_CRYSTAL_SIZE`, since the golem is taller than it is wide and asymmetric about its own
+  center -- so its head clears the panel's top border and the contact shadow under its feet
+  clears the first line of text. The taunt text's own font size is capped the same way
   the world-entry lore screen's is, for the same reason (worlds 9/10's longer taunts would
   otherwise overflow the canvas at the Settings panel's 2x preset). Losing doesn't set anything
   back except the token stake (see Stakes in DESIGN.md §4): the goal panel simply reopens and
@@ -1236,19 +1312,69 @@ than the caller's requested budget) for its own layout math.
 
 - A rival fight's opponent renders with `art/boss.ts`'s `makeBossCrystal` at
   `BOSS_CRYSTAL_SIZE = 64` -- bigger than an ordinary wild encounter's plain
-  `makeCrystal` at `50` -- positioned at `BOSS_OPPONENT_POS` (`{ x: 644, y: 155 }`,
-  shifted left and slightly down from the wild encounter's `OPPONENT_POS`) so the
-  wider multi-shard silhouette (plus its decorative halo/shard art, which renders
-  well past the bare `BOSS_CRYSTAL_SIZE` footprint) sits comfortably inside the
-  field, clear of the "Turns" preview widget in the opposite corner. The move
-  menu (`MENU_MIN_TOP`, below) is floored well below this cluster regardless of
-  page/text-size, so the two can never collide even though both occupy the
-  field's right half. Same look the boss already has standing at its world's goal
-  tile in the overworld (`OverworldScene.spawnBossSprite`), carried into the fight
-  itself rather than switching to the plain crystal look every wild battle uses.
-  Attack effects (`playAttackEffect`'s `from`/`to`) target this shifted position too
-  (`BattleScene.opponentPos`), not the wild encounter's fixed `OPPONENT_POS`, so
-  bolts/rings/bursts still travel to and from where the crystal actually is.
+  `makeCrystal` at `WILD_CRYSTAL_SIZE = 50` -- positioned at `BOSS_OPPONENT_POS`
+  (`{ x: 644, y: 167 }`, shifted left and slightly up from the wild encounter's
+  `OPPONENT_POS` of `{ x: 674, y: 162 }`) so the golem's silhouette (which reaches
+  well past the bare `BOSS_CRYSTAL_SIZE` footprint -- `BOSS_SILHOUETTE_TOP`/
+  `BOSS_SILHOUETTE_BOTTOM` multiples of it above and below that anchor) sits
+  comfortably inside the field.
+- Every layout bound that has to clear the golem is **derived from measured
+  offsets rather than hand-tuned literals** (`scenes/battle/hud.ts`'s
+  `BOSS_HEAD_RISE = 97`/`BOSS_FOOT_DROP = 70`, and `WILD_HEAD_RISE = 45`/
+  `PLAYER_HEAD_RISE = 57` for the other two crystals): how far each crystal's
+  actually-painted art reaches above and below its own anchor point, measured
+  from a live headless-Chromium render by hiding every other object in the scene
+  and scanning the rendered frame for painted pixels across several seconds, so
+  the idle bob/breath extent is included. At its current anchor the golem paints
+  70-237 vertically and 570-717 horizontally. Its nameplate floats off
+  `BOSS_HEAD_RISE` and the move menu's own ceiling (`MENU_MIN_TOP`, below) is
+  `BOSS_OPPONENT_POS.y + BOSS_FOOT_DROP + 7`, so moving the boss can never
+  silently leave either one overlapping it.
+- Same look the boss already has standing at its world's goal tile in the
+  overworld (`OverworldScene.spawnBossSprite`), carried into the fight itself
+  rather than switching to the plain crystal look every wild battle uses.
+  Attack effects follow the boss crystal itself rather than any fixed coordinate
+  (`playAttackEffect`'s `from`/`to` are live anchors, "Attack effects" below), so
+  bolts/rings/bursts travel to and from wherever it actually is, at whichever of
+  the two positions that fight placed it.
+
+## Battle HUD frame and nameplates (`scenes/battle/hud.ts`)
+
+- The battle screen splits into **two classes of element, and that split is what
+  makes it read as one composition**: a combatant's own readouts travel with the
+  combatant, and everything else is seated on a shared margin frame. The frame is
+  one set of rails (`LEFT_RAIL = 16`, `RIGHT_RAIL = 838`, `TOP_RAIL = 10`,
+  `BOTTOM_RAIL = 464`) that the turn-order widget, the move menu and the combat
+  log all sit on, rather than each corner carrying its own margin.
+- **Nameplates.** Both sides get the same floating name-over-bar plate
+  (`drawNameplate`), never a screen-corner HP row: a bottom-anchored stack of
+  the optional quiz-result note, the name, the HP bar, the status pill and the
+  passive pill, whose bottom edge sits `8`px above that crystal's own painted
+  head (its `*_HEAD_RISE` above), clamped so a tall stack rides down onto the top
+  rail instead of running off the field. The name and bar sit on a rounded
+  translucent chip sized to the name it actually holds (floored at the bar's own
+  width, capped by the rails), so a short name gets a small plate rather than
+  every plate stretching into a banner. The name shrinks in whole-px steps
+  (floor `9`) when the head above it leaves too little room -- which only bites
+  for a long rival name at a large text-size preset, where the golem's head
+  reaches highest. HP bars are `140x10` with a dark stroked track behind a
+  `134x6` fill, so a bar at full health still reads as a gauge.
+- **Gold means "the player."** The player's plate chip is stroked gold
+  (`GOLD_ACCENT`), the opponent's dim blue-grey (`REFERENCE_BLUE_GREY`) --
+  the same code the turn-order rings and the move menu's own gold chrome
+  already use, carried across every piece of chrome so a glance at any of it
+  says whose it is.
+- Room for the Kondo status pill is reserved in the stack only for a side that
+  can actually cast one (the player, when the battle's move list carries a Kondo
+  move; no wild ever does). Reserved rather than measured live because the plate
+  is bottom-anchored -- an unreserved pill appearing mid-fight would shove the
+  name and bar upward on the turn it lands.
+- **Ground shadows and ground-anchored effects share one offset.** Each
+  crystal's shadow ellipse is drawn `SHADOW_DROP` below its own anchor, which
+  *is* `art/attackShapes.ts`'s `GROUND_DROP` (imported, not a copy), so the
+  floor a meteor's rune or an impact shockwave lands on and the floor the
+  crystal visibly stands on are the same line by construction, at whichever
+  position a fight placed either crystal.
 
 ## Battle status effects (`scenes/BattleScene.ts`)
 
@@ -1262,27 +1388,23 @@ than the caller's requested budget) for its own layout math.
   idle-bob tween for free.
 - Kondo's Shielded/Evasive/Regenerating self-buffs (DESIGN.md §4) get a much smaller
   treatment than the quiz aura/raincloud above -- a plain text pill (`playerStatusLabel`/
-  `opponentStatusLabel`) docked just under that side's HP bar rather than anything layered
+  `opponentStatusLabel`) sitting as the next row down that side's own floating nameplate
+  (see "Battle HUD frame and nameplates" above) rather than anything layered
   onto the crystal itself, reading `"<Buff> (<turns left>)"` in Kondo's own rust-orange
   (`#ff8f6a`, matching his guardian label/panel stroke and the `'screening'` attack-effect
   color below) over the same translucent-black tag background every HP-bar name label
   already uses. Empty (no active buff) by default on both sides -- the pill only ever
   reads as chrome that appears when relevant, not a permanent fixture of the HP-bar area.
-- Franklin's active passive (DESIGN.md §5) gets its own pill directly below that
-  side's status pill, same size/background/depth as the status pill but in a muted
+- Franklin's active passive (DESIGN.md §5) gets its own pill as the last row of the
+  same nameplate stack, directly below that side's status pill, same size/background
+  as the status pill but in a muted
   blue-violet (`PASSIVE_PILL_COLOR`, `#8fa0ff` -- its own fixed constant, not derived from
   her own label color) rather than Kondo's
   rust-orange, so an always-on passive reads as visually distinct from a ticking status at a
   glance. Reads as the joined name(s) of whichever passive(s) are active (`·`-separated,
-  ready for a future second passive owner to stack onto the same line), empty by default the same way the
-  status pill is. Its horizontal position is clamped back onto the field if the joined text
-  would otherwise run past the canvas edge at the largest text-size setting -- clamped
-  against `MENU_X` rather than the canvas edge on the player's side, since the move menu is
-  bottom-anchored and shares that side's vertical band for the whole battle (`MENU_MIN_TOP`,
-  below); if the stack of rows above it (boost/fail note, the name+bar row, status pill)
-  leaves no vertical room left for it at that same setting, it's simply omitted for that
-  battle rather than drawn overlapping the
-  status pill above it -- the status pill's own readability takes priority.
+  ready for a future second passive owner to stack onto the same line), and is simply not
+  drawn at all when no passive is active -- the plate floats in open field rather than in a
+  crowded corner, so it needs no clamping or drop-it-if-there's-no-room fallback of its own.
 - Franklin's active passive also gets a **ground halo** around the player's own ground-shadow
   ellipse (`BattleScene.drawBackground`'s `this.add.ellipse(PLAYER_POS.x, 392, 130, 30, ...)`),
   drawn once in `create()` (not per-turn) by `art/passiveHalos.ts`'s
@@ -1306,14 +1428,18 @@ than the caller's requested budget) for its own layout math.
   `data/greetings.ts` (`victoryLine`/`defeatLine`), keyed to the wild material's type the
   same way the overworld encounter greeting is. A rival fight swaps the opener for "X blocks
   the way onward!" (no "wild") but reuses the same victory/defeat lines.
-- Every combat-log update goes through `BattleScene.setLogText`, which clamps the text
-  upward just enough to keep it on screen rather than sitting at a fixed y regardless of how
-  many lines it wraps to. A one-line per-turn message rests at the usual bottom-anchored spot
-  (`20, LOG_Y = 440`); a message that wraps to two lines (e.g. a quasiparticle-mismatch hit's
-  "No natural defense against this!" suffix) gets nudged up just enough to keep its second
-  line on screen. The end-of-battle summary reuses the same helper with a much higher ceiling
-  (`20, 210`) since it runs several lines longer once the physics blurb (`data/materialdex.ts`'s
-  `materialBlurb`) is appended after the flavor/token lines.
+- Every combat-log update goes through `BattleScene.setLogText`, which keeps the text
+  inside the band the frame leaves free at the bottom-left (`LOG_MIN_TOP` down to
+  `BOTTOM_RAIL`) -- the strip below the player's own ground shadow, which the player's
+  cluster leaves free now that its readouts float above its head instead of below it. A
+  line too tall for that band shrinks in whole-px steps (floor `10`, the same
+  shrink-to-fit every other fixed-budget text block in the game uses) rather than climbing
+  up into the player's crystal and nameplate, so a one-line per-turn message renders at
+  the full text-size preset and only a genuinely long wrapped one trades size for lines.
+  The end-of-battle summary reuses the same helper with a much higher ceiling (`150`) and a
+  wider wrap, since it runs several lines longer once the physics blurb
+  (`data/materialdex.ts`'s `materialBlurb`) is appended after the flavor/token lines, and
+  the move menu it would otherwise have to stay clear of is already destroyed by then.
 - Per-turn log text appends "No natural defense against this!" when the quasiparticle
   mismatch multiplier fires (`BattleScene.resolveHit`, the sole type-interaction rule in
   battle -- see DESIGN.md §3/§4), then "A coherent critical hit!" for a crit -- up to two
@@ -1321,10 +1447,10 @@ than the caller's requested budget) for its own layout math.
 
 ## Turn-order preview (`BattleScene.drawTurnPreview`)
 
-- A small "Turns" widget docked in the field's top-left corner (`x = 20, y = 8`), clear of
-  both HP-bar columns and the log text further down: a dim blue-grey (`#8fa0c9`, matching
-  the move menu's own section-header color) "Turns" label over the usual translucent-black
-  tag background, with a row of five 24px crystal icons (`makeCrystal`, 28px spacing) below
+- A small widget docked on the frame's top-left rails (`TURN_PREVIEW_X = 16`,
+  `TURN_PREVIEW_Y = 10`), clear of both nameplates and the log text further down: a bold dim
+  blue-grey (`#8fa0c9`) "TURNS" label over the usual translucent-black
+  tag background, with a row of five 32px crystal icons (`makeCrystal`, 36px spacing) below
   it, one per predicted hit: the player's own current crystal or the opponent's, each using
   that side's real `color`/`variant`/`seed`/`hybridParents`. Each icon also carries a ring
   behind the crystal shapes marking whose hit it is, independent of crystal color -- a bold
@@ -1334,8 +1460,8 @@ than the caller's requested budget) for its own layout math.
   row still reads at a glance in a same-material matchup (routine from world 9 onward) where
   the crystal colors themselves are identical. Always the plain `makeCrystal` look on the
   opponent's side, even in a rival fight where the on-field opponent itself renders bigger via
-  `makeBossCrystal` (see "Boss opponent in battle" below) -- a boss's wider multi-shard
-  silhouette wouldn't read at 24px, so the icon
+  `makeBossCrystal` (see "Boss opponent in battle" below) -- a boss's humanoid golem
+  silhouette wouldn't read at 32px, so the icon
   stays the ordinary single-shape crystal look rather than trying to match the boss art.
 - The row previews the next five hits in order (DESIGN.md §4's velocity multi-hit rule):
   the faster side's icons repeated `fasterHits` times, then the slower side's icon once,
@@ -1344,28 +1470,32 @@ than the caller's requested budget) for its own layout math.
   or one of Kondo's self-buff moves (always resolves as a single action for its round, see
   `playerAttack`) can make the actual round diverge from what it showed; the widget carries no
   disclaimer text for this, since it's still an accurate read of "if nothing changes."
-- Redrawn once in `create()` and again every time a round actually finishes (right where
-  `turnLock` releases).
+- Built whole (label included) by `scenes/battle/hud.ts`'s `drawTurnPreview` -- once in
+  `create()` and again every time a round actually finishes (right where `turnLock`
+  releases), the previous row destroyed each time.
 
 ## Battle move menu (`BattleScene.drawMoveMenu`)
 
-- A docked panel at the field's bottom-right (`width = MENU_WIDTH = 226`, `x = MENU_X =
-  FIELD_W - 8 - MENU_WIDTH`), same dark rounded-rectangle-with-stroke treatment as the
-  overworld's dialogue panels, stroked gold (`0xffe066`) to match Noether's own panel color,
-  titled "MOVES" in bold gold. Its bottom edge is fixed (`FIELD_H - MENU_BOTTOM_MARGIN`) and
+- A docked panel on the frame's bottom-right rails (`width = MENU_WIDTH = 284`, `x = MENU_X =
+  RIGHT_RAIL - MENU_WIDTH`), same dark rounded-rectangle-with-stroke treatment as the
+  overworld's dialogue panels, stroked gold (`0xffe066`) to match Noether's own panel color.
+  The section header itself is the panel's title (bold gold, below) -- there is no separate
+  "MOVES" line above it, since the header already names what the panel holds and a fourth
+  chrome line would come straight out of the row budget. Its bottom edge is fixed
+  (`MENU_BOTTOM`) and
   its top edge (`menuTop`) is derived fresh on every draw from however tall the current
   page's content actually is, so the panel visibly grows *upward* from that fixed bottom
   rather than down from a fixed top -- it reads as bottom-right-docked at every page/section
   instead of just starting high and getting taller. `MENU_MIN_TOP` floors how far up that
   growth is ever allowed to reach, comfortably below the opponent's crystal in every case
-  (including a rival fight's bigger, wider boss silhouette, whose rendered bounds reach a
-  measured ~223px including its decorative halo/shard art) so the panel and the opponent's
+  (including a rival fight's bigger, taller boss golem, whose painted bounds reach a
+  measured ~225px including its contact shadow and ground glow) so the panel and the opponent's
   cluster can never collide regardless of how tall a page's content gets at the largest
   text-size preset.
 - **Grouped into up to four move-kind sections (`ATTACKS`/`ANALYTIC`/`ULTIMATE`/`BUFFS`),
   shown one
-  page at a time** (DESIGN.md §4): a small bold blue-grey (`#8fa0c9`) header line reading the
-  section's label sits above that page's own rows, with a `(i/N)` page count appended once
+  page at a time** (DESIGN.md §4): a bold gold (`#ffe066`) header line reading the
+  section's label sits above that page's own rows as the panel's own title, with a `(i/N)` page count appended once
   there's more than one page. `BUFFS` carries its own legend line under the header the same
   way `ANALYTIC`/`ULTIMATE` do ("self-buff, no damage, 3 turns"), and each of its buttons
   shows the move's own name plus "3-turn buff" instead of the `Pwr <n>`/`!!2x` chrome an
@@ -1416,7 +1546,9 @@ than the caller's requested budget) for its own layout math.
   chrome above, divided across however many moves the *current page* has (never more than
   `MOVE_MENU_MAX_ROWS`) -- with a `20`px minimum floor so rows never shrink to illegible, and
   a scale-dependent ceiling (`maxRowH`) so a short page (e.g. a single-move `BUFFS` page)
-  doesn't grow rows past a sensible size just because the budget has slack. Because the page
+  doesn't grow rows past a sensible size just because the budget has slack. Each button is
+  centered in its own row band rather than pinned to the band's top edge, so a page with
+  slack reads as evenly spaced rather than as one dead gap under the first button. Because the page
   cap is fixed at 3 rather than growing with content, every page's budget stays close to
   identical, which is what keeps each button's font size (`btnPx`) close to its scale-scaled
   ceiling on every page rather than collapsing on whichever ones happen to have more moves.
@@ -1516,41 +1648,90 @@ than the caller's requested budget) for its own layout math.
   Back/Next -- each popup is one tip, not a sequence, so paging chrome would be pure noise.
   The Lab's version (`HubScene.maybeShowLabTip`) reuses `HubScene.showPanel` instead (purple
   `0x9a6ad9` stroke, the same gold-title/measured-top-down-layout convention "The Hub" above
-  describes for the Lab's other eight panels, just without a left motif of its own -- it's a
-  one-off popup, not one of those eight stations) rather than duplicating this one, since it's a
+  describes for the Lab's other seven panels, just without a left motif of its own -- it's a
+  one-off popup, not one of those stations) rather than duplicating this one, since it's a
   single one-off popup there too.
 - Fires automatically the first time its own feature becomes relevant (`tutorialTipsSeen`,
   data/tutorial.ts's `TutorialTipId`) -- walking into the Lab, taking your first steps in a
   world, bumping into your first wild crystal, and so on -- never more than one on screen at a
-  time, and never several shown in a row.
+  time, and never several shown in a row. Only seven of `TUTORIAL_PAGES`' entries have a
+  contextual trigger like this (the ones with an obvious "first time this becomes relevant"
+  moment); the rest -- a guardian's own repeatable ability, the Lab's Settings station, the
+  Story/Superposition Mode choice already made at the Title screen -- carry no trigger of their
+  own and are only ever reached through the Tutorial station itself ("Full tutorial recap"
+  below).
 
-## Full tutorial recap (`scenes/panels/hubStations.ts`'s `showTutorialTopics`/`showTutorialTopic`)
+## Full tutorial recap (`scenes/panels/hubStations.ts`'s `showTutorialTopics`)
 
-- A topic picker, not a linear pager: `showTutorialTopics` (`560` wide, same cyan `0x5ad9ff`
-  stroke) lists every tip in `data/tutorial.ts`'s `TUTORIAL_PAGES` as its own row (a "Pick a
-  topic to revisit" hint above the list), so the player sees what's covered before opening
-  anything and can jump straight to one topic instead of stepping through the rest to reach it.
-- Picking a row opens that topic's own single page (`showTutorialTopic`, `560` wide, same cyan
-  stroke) -- title, body (same floor-9px shrink-to-fit loop every other Lab panel's body text
-  uses), and a footer with `<- Topics` (back to the topic list) alongside `Close`, rather than a
-  Back/Next pager between topics.
+- A list+detail panel ("List+detail panels" above), not a linear pager: `LIST_DETAIL_PANEL_W`
+  wide, same cyan `0x5ad9ff` stroke the station has always used, with a "Pick a topic to read
+  it" hint above the two columns. The left column lists every entry in `data/tutorial.ts`'s
+  `TUTORIAL_PAGES` as its own row (`renderListColumn`, paginated once the set outgrows one
+  page -- routine now that the set holds 17 topics), so the player sees what's covered before
+  opening anything and can jump straight to one topic instead of stepping through the rest to
+  reach it. A row shows its own short `listLabel` where `TutorialPage` carries one (a handful of
+  topics whose full `title` would collapse to a near-identical trimmed prefix at the left
+  column's `200`px width -- `fitListLabel` ellipsis-trims, doesn't wrap), its full `title`
+  otherwise.
+- The right column shows the selected topic's full title and body (same floor-9px shrink-to-fit
+  loop every other Lab panel's body text uses), no crystal/move art and no commit button --
+  reading the body is the whole interaction. A single `Close` button sits below both columns;
+  there's no separate "back to the topic list" step, since the list column is always on screen
+  beside the detail pane rather than a full-panel view swapped out for another.
+- Selecting a row is a scoped update (`renderListColumn`'s own `setSelectedId` plus a
+  `detailBlock`/`chromeBlock` re-render, "A preview click is a scoped update" below) -- the list
+  stays on screen, only the detail pane and panel chrome change. A page flip still tears the
+  panel down and rebuilds it, since that changes which rows the list itself shows.
 - Doesn't trigger automatically -- see "Contextual tutorial tips" above for what
   a new save actually sees; this is opt-in only, always opening on the topic list.
 
-## Attack effects (`art/attackEffects.ts`, `audio/sfx.ts`, `scenes/BattleScene.ts`)
+## Attack effects (`art/attackEffects.ts` + `art/attackAnchors.ts`/`attackStyles.ts`/`attackShapes.ts`/`attackUltimates.ts`, `audio/sfx.ts`, `scenes/BattleScene.ts`)
 
+- **Each side of an effect is anchored to its own crystal, live.** The attacker's half (the
+  windup flash) and the target's half (the impact shockwave, the falling beam, the ground
+  eruption, an Ultimate's whole summon sequence) each resolve one crystal's current position
+  every frame they draw, with no shared coordinate and no dependence on where the other crystal
+  is -- so either crystal can move and its own half of the effect follows it. The only
+  information that crosses sides is *aim*, sampled once at launch: a travelling bolt/burst
+  fixes its origin where it was fired from while still homing on the target's live position,
+  and a ring places its origin once, a little way from the caster toward whatever it was aimed
+  at. `BattleScene`'s `PLAYER_POS`/`OPPONENT_POS`/`BOSS_OPPONENT_POS` lay out the static field
+  furniture (where each crystal is first placed, its HP-bar column, its ground shadow); effects
+  follow the crystals themselves, which include their own idle bob.
+- **Curves and falloff over hard geometry**, the same direction the battle backdrop and the
+  overworld's contour-smoothed terrain take. Every shape is built from a small shared drawing
+  vocabulary in `art/attackShapes.ts` rather than from bare strokes: `drawGlow` fakes a soft
+  radial falloff as four concentric discs whose radii grow geometrically while their alphas
+  roughly halve (a Graphics fill is flat, so this is how a gradient gets faked); `drawBloom` is
+  its two-layer counterpart for something that already has a body of its own, since drawGlow's
+  wide falloff at a radius of tens of pixels would wash out the backdrop; `drawAnnulus` draws a
+  wavefront as three bell-weighted concentric strokes so its edge falls off either side of the
+  crest instead of reading as a wire circle; `drawArcRing` builds a runic ring from
+  counter-rotating arc fragments, ticks and orbiting motes rather than a closed polygon with
+  spokes; `drawTaperedRays` and the impact debris draw as slivers that narrow to a point rather
+  than lines of constant width; `drawColumn`/`drawJet` build a falling beam and a rising geyser
+  as sampled filled paths whose width varies along their length, with a slow travelling waist,
+  rather than as axis-aligned rectangles. Anything drawn on the floor is squashed to
+  `GROUND_ASPECT` and planted `GROUND_DROP` below its anchor -- the same ground plane the
+  crystals' own shadows sit on, so a summon circle or a ground shockwave lies on the floor
+  under the crystal instead of wrapping around its middle.
 - Every move renders a distinct particle effect keyed by its move class, not just a color
-  swap: a fast focused **bolt** with a glowing double-width trailing line (Phonon Beam,
-  Electron Pulse, Spinon Swap), an **expanding ring** pulse with a bright inner rim (Magnon
-  Pulse, Polaron Drag), or a cluster of small particles that **converge/scatter** near the
-  target (Anyon Braid, Majorana Split). Each class also has its own color (e.g. orange for
-  Phonon Beam, red for Magnon Pulse). All shapes render additive-blended
-  (`Phaser.BlendModes.ADD`) so they glow instead of reading as flat shapes.
+  swap: a fast focused **bolt** -- a glowing head trailing a tapering comet tail of its own
+  recent positions, thrown on a shallow upward arc rather than a ruled straight line (Phonon
+  Beam, Electron Pulse, Spinon Swap); an **expanding ring** pulse, one soft-edged wavefront
+  with a fainter white echo chasing it (Magnon Pulse, Polaron Drag); or a loose cluster of
+  small particles that **converge/scatter** near the target, each keeping its own radius and
+  size so the swarm never collapses into an evenly spaced wheel (Anyon Braid, Majorana Split).
+  Each class also has its own color (e.g. orange for Phonon Beam, red for Magnon Pulse). All
+  shapes render additive-blended (`Phaser.BlendModes.ADD`) so they glow instead of reading as
+  flat shapes -- which does mean a bright class color over a bright sky washes toward white;
+  the fix used here is to keep white cores small and let the colored falloff carry the hue,
+  since a second, normally-blended Graphics per effect would cost an object per shape.
 - Kondo's three self-buff moves (Screening Pulse, Scattering Drag, Coherence Cascade) share
   the `'screening'` class's one look, unlike Laughlin's/Skłodowska-Curie's moves below -- an
   expanding ring (the same silhouette
   Magnon Pulse/Polaron Drag use, reading as an effect enveloping the caster) tinted Kondo's
-  own rust-orange (`0xe86a44`), played with the caster's own position as both `from` and `to`
+  own rust-orange (`0xe86a44`), played with the caster's own anchor as both `from` and `to`
   (`BattleScene.resolveSelfBuff`) so it centers on them instead of traveling toward the
   opponent, and paired with a plain squash-bounce on the caster's own crystal
   (`flashHit`) rather than the camera shake/flash an ordinary hit's `impactPunch` adds, so
@@ -1559,21 +1740,25 @@ than the caller's requested budget) for its own layout math.
   silhouettes too, so there's no `ANALYTIC_SHAPES`-style per-move override for this class.
 - Laughlin's two Analytic moves break the "one shape per class" rule on purpose, each with
   its own silhouette rather than sharing whichever ordinary
-  `EFFECT_STYLE` shape their currently-tuned quasiparticle carries (`art/attackEffects.ts`'s
+  `EFFECT_STYLE` shape their currently-tuned quasiparticle carries (`art/attackStyles.ts`'s
   `ANALYTIC_SHAPES`, keyed by move id, not class), and each substantially more elaborate than
   the three base bolt/ring/burst shapes -- deliberately reading as clearly stronger than an
   ordinary hit, not just a
   bigger bolt/ring/burst. **The beam move** (`skyfallBeam`, `playBeam`) drops a multi-layer
   column of light from off the top of the screen straight down onto the target: a wide pulsing
-  telegraph halo fades in first, then a white-hot core inside a brighter/wider outer column
-  falls the rest of the way, flanked by two side-rays that swirl around it and trailed by a
-  chain of falling sparks, while a radiant sun (a bright circle plus an expanding ring) grows
-  at the point of origin as the beam charges. **The eruption move** (`groundEruption`,
-  `playEruption`) bursts a wide double shockwave ring (white inner rim, colored outer rim)
-  plus a bright vertical geyser
-  core straight up through nearly twice the shard count (18 vs. the ordinary burst's 12),
-  spread wider than a normal burst. Both deliberately ignore the attacker's own position --
-  a beam falling from the sky and a crack opening in the ground don't originate there. Each
+  telegraph halo fades in first (ramped in early enough to have arrived well before the beam
+  lands), then a white-hot core inside a brighter, wider outer column falls the rest of the
+  way, flanked by two side-rays that wrap around it, trailed by a chain of sparks, and closed
+  out by a pool of light spreading across the ground where the column meets it with a few licks
+  curling back up. Every layer is a sampled path that narrows at the sky end and flares toward
+  the ground, so the shaft reads as light with air in it. Meanwhile a radiant sun grows at the
+  point of origin as the beam charges. **The eruption move** (`groundEruption`, `playEruption`)
+  opens a crack in the floor under the target: shockwave rings spreading out across the ground
+  plane, a tapered wavering geyser that rises and collapses within the beat rather than
+  freezing at full height, and nearly twice the ordinary burst's debris count (18 vs. 12)
+  thrown up and out as streaks, seeded per cast so no two casts spray alike, with the heavier
+  pieces arcing over and falling back. Neither takes an attacker anchor at all -- a beam falling
+  from the sky and a crack opening in the ground don't originate there. Each
   still renders in whichever color its own currently-tuned quasiparticle class carries
   (`EFFECT_STYLE`), same as an ordinary move -- only the silhouette is overridden.
 - Skłodowska-Curie's two Ultimate moves (`ultimateMeteor`/`ultimateNova`) get the same
@@ -1585,14 +1770,28 @@ than the caller's requested budget) for its own layout math.
   finishes (see `BattleScene`'s "Ultimate moves defer damage/turn-handoff" in `CODEMAP.md`).
   A whiff (any wrong answer in `showUltimateQuestions`) still plays the same windup/charge
   phases, but swaps the final impact/aftermath beat for a distinct fizzle cue instead of a
-  hit.
-- The full beat, in order: a ~90ms additive windup flash at the attacker's own position, the
-  travelling effect itself (`art/attackEffects.ts`'s `TRAVEL_MS`, 340-520ms depending on
-  shape -- beam is the longest at 520ms), then a fire-and-forget impact shockwave (a white
-  flash plus 8 radiating shards, ~260ms) at the target -- on top of which
+  hit. The meteor's rune is inscribed flat on the ground under the target and its mass punches
+  into frame fast, then *brakes* into a straining, trembling hover for the last stretch before
+  it drops -- the arrival is shaped inside the phase rather than by easing the phase's own
+  counter, which would spend most of the charge with the mass still off-screen. The nova's
+  rune stands upright around the target instead, and its charge pulls motes inward on their own
+  individual clocks, each respawning further out as it reaches the core, so it reads as matter
+  accreting rather than as one ring contracting.
+- The full beat, in order: a ~90ms windup at the attacker's own position -- sparks pulled
+  *inward* to a brightening core, an inhale, so brightness peaks exactly on the frame the shot
+  is released -- the travelling effect itself (`art/attackShapes.ts`'s `TRAVEL_MS`, 340-520ms
+  depending on shape -- beam is the longest at 520ms), then a fire-and-forget impact shockwave
+  (~260ms) at the target: a soft flash, a wavefront, and ten tapering debris slivers seeded per
+  impact so none of them reads as an evenly spoked asterisk. When the landing shape knows which
+  way it came in (a bolt/burst hands over its own arrival heading, a beam comes down, an
+  eruption comes up) the debris throws into the hemisphere away from it, ±70°; a ring or a
+  self-buff supplies no direction and stays evenly radial. On top of that
   `BattleScene.impactPunch` layers the target crystal's scale-squash (`flashHit`), a small
   camera shake (`0.006`, kept subtle since the field's background is solid black right up to
-  the canvas edge), and a brief camera flash. `BattleScene`'s `TURN_GAP_MS` (850ms) covers
+  the canvas edge), and a brief pale lift of the whole field -- deliberately dim and short
+  (`flash(70, 110, 118, 140)`), since a full-brightness white flash washes the field out for
+  long enough to swallow whichever silhouette just landed, and costs most on exactly the
+  flashiest moves. `BattleScene`'s `TURN_GAP_MS` (850ms) covers
   every other shape's ~810-830ms worst case comfortably but sits ~20ms under the beam move's
   own 870ms total -- in practice an imperceptible overlap with the very start of the next
   turn's own windup flash, not worth chasing given how minor it is, but worth knowing if
@@ -1640,8 +1839,8 @@ than the caller's requested budget) for its own layout math.
 - **Noether's/Kondo's/Laughlin's/Skłodowska-Curie's own detail panes loop this same real effect**
   (`art/moveEffectPreview.ts`, "List+detail panels" above and "Laughlin in the overworld"/
   "Skłodowska-Curie in the overworld" below) rather than a static icon, at a small
-  fixed local `from`/`to` span sized to the pane instead of a real battle's `PLAYER_POS`/
-  `opponentPos`. `playAttackEffect`'s own Graphics normally draw at depth 58-61 (tuned for
+  fixed local `from`/`to` span sized to the pane -- a detail pane has no crystals of its own to
+  follow, and a fixed point is a perfectly good anchor, it just never moves. `playAttackEffect`'s own Graphics normally draw at depth 58-61 (tuned for
   `BattleScene`'s background); a guardian panel's own dialogue container sits at depth `100`
   (`OverworldScene.ts`/`HubScene.ts`'s `showXPanel` convention), which would otherwise draw over
   (hide) the preview entirely, so `playAttackEffect`'s own `depthOffset` parameter (default `0`,

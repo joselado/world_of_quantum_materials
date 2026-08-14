@@ -1,4 +1,4 @@
-import { shade } from '../art/colors';
+import { shade, darken, blend, hueShift } from '../art/colors';
 import type { Material, Move, MoveClass, MaterialType, CrystalVariant, Stats } from './types';
 // Every pure stat/economy formula (BASE_STAT, enemyStatsForWorld,
 // statUpgradeCost, shopCost, Feynman's move-leveling multipliers/cost) lives
@@ -715,7 +715,11 @@ export function materialTypeLabel(type: MaterialType): string {
 // or a twisted double-layer instead of its type's usual shard/cluster/prism
 // look -- for the handful of compounds the design doc's crystal database
 // itself calls out as monolayer/van der Waals/twisted (Graphene, Monolayer
-// WTe2, CrI3, Twisted Bilayer MoTe2), not a blanket per-type rule. No HP
+// WTe2, CrI3, Twisted Bilayer MoTe2), not a blanket per-type rule.
+// `colorOverride` skips the `shadeStep` formula entirely and uses the given
+// color as-is -- for the handful of one-off compounds (WORLD_RIVALS' golems)
+// whose lore-described look (a specific real-world hue/darkness) doesn't
+// reduce to "TYPE_LOOK's base color, brightened by a multiple of 18%." No HP
 // here -- a crystal's max HP in battle is never intrinsic to the compound,
 // only to which world it's fought in (an ordinary wild's `wildHpForWorld`,
 // a rival's `rivalHpForWorld`, both `data/balance.ts`, read live by
@@ -726,14 +730,15 @@ function crystal(
   moves: string[],
   shadeStep = 0,
   variantOverride?: CrystalVariant,
-  shortName?: string
+  shortName?: string,
+  colorOverride?: number
 ): Material {
   const look = TYPE_LOOK[type];
   return {
     name,
     shortName,
     type,
-    color: shade(look.color, shadeStep * 18),
+    color: colorOverride ?? shade(look.color, shadeStep * 18),
     variant: variantOverride ?? look.variant,
     moves,
   };
@@ -1207,39 +1212,137 @@ export const WORLD_RIVALS: Partial<Record<number, Material>> = {
   // boss reads as an escalation of the physics the world already taught
   // rather than an unrelated label. Poly-Si is the textbook baseline: one of
   // the most common real polycrystalline materials (solar cells,
-  // semiconductor manufacturing).
-  1: crystal('Polycrystalline Silicon Golem', 'semiconductor', ['thermalFluctuation', 'tunnelStrike'], 3),
+  // semiconductor manufacturing). Color: brightened toward a pale, cool
+  // silvery-blue -- "the color of scoured silicon" (real polysilicon reads
+  // as a light silvery grey with a cool cast). Each rival below sets its
+  // color explicitly via `colorOverride` rather than `shadeStep` -- see
+  // `crystal()`'s own comment above -- with a raw TYPE_LOOK hex repeated as
+  // a literal rather than read via `TYPE_LOOK[type].color`: this object is
+  // walked as literal AST nodes by scripts/content-lint.mjs and
+  // scripts/gen-docs.mjs, and neither script's literal-reducer handles a
+  // PropertyAccessExpression.
+  1: crystal(
+    'Polycrystalline Silicon Golem',
+    'semiconductor',
+    ['thermalFluctuation', 'tunnelStrike'],
+    0,
+    undefined,
+    undefined,
+    shade(0x5a7ca6, 32)
+  ),
   // Polycrystalline graphene -- CVD-grown graphene grows as stitched-together
   // single-crystal grains with visible grain boundaries (Huang et al.,
   // Nature 2011), the defining "many grains fused into one sheet" example
-  // for a 'metal'-type 2D material.
-  2: crystal('Polycrystalline Graphene Golem', 'metal', ['thermalFluctuation', 'tunnelStrike'], 4),
+  // for a 'metal'-type 2D material. Color: darkened toward graphite-black.
+  // Kept shy of true black (rather than a stronger `darken()`) so
+  // art/boss.ts's own per-shard shadow-side darkening still leaves the
+  // torso and lit-side limbs a visibly dark grey instead of crushing to
+  // flat (0,0,0) once its offsets stack on top of this base.
+  2: crystal(
+    'Polycrystalline Graphene Golem',
+    'metal',
+    ['thermalFluctuation', 'tunnelStrike'],
+    0,
+    undefined,
+    undefined,
+    darken(0x7a8a99, 28)
+  ),
   // Bi₂Te₃ (world 3's own Bi₂Te₃ wild) is engineered polycrystalline on
   // purpose in real thermoelectric devices -- grain boundaries scatter
   // phonons and suppress thermal conductivity while preserving electrical
-  // conductivity, boosting its thermoelectric figure of merit.
-  3: crystal('Polycrystalline Bismuth Telluride Golem', 'quantumSpinHall', ['helicalCurrent', 'tunnelStrike'], 5),
+  // conductivity, boosting its thermoelectric figure of merit. Color:
+  // `blend()`s the type's saturated purple most of the way toward a neutral
+  // silver-grey for "tarnished silver," keeping a faint violet cast --
+  // `hueShift()` alone can't desaturate a color, only rotate its hue, so it
+  // can't reach a genuinely neutral tone the way this needs.
+  3: crystal(
+    'Polycrystalline Bismuth Telluride Golem',
+    'quantumSpinHall',
+    ['helicalCurrent', 'tunnelStrike'],
+    0,
+    undefined,
+    undefined,
+    blend(0x6a4ad9, 0x8f8f96, 0.68)
+  ),
   // MnBi₂Te₄'s own magnetic structure was solved by neutron powder
   // diffraction on a polycrystalline sample -- the real intrinsic
-  // zero-field Chern insulator world 4's own roster already hosts.
-  4: crystal('Polycrystalline Manganese Bismuth Telluride Golem', 'chernInsulator', ['chiralCurrent', 'tunnelStrike'], 6),
+  // zero-field Chern insulator world 4's own roster already hosts. Color:
+  // `blend()`s the type's yellow-green almost entirely toward a dark
+  // blue-grey slate tone, for "slate-dark layers."
+  4: crystal(
+    'Polycrystalline Manganese Bismuth Telluride Golem',
+    'chernInsulator',
+    ['chiralCurrent', 'tunnelStrike'],
+    0,
+    undefined,
+    undefined,
+    blend(0xc9d94a, 0x38424c, 0.85)
+  ),
   // Polycrystalline YBCO's grain boundaries act as weak-link Josephson
   // junctions that cap its critical current -- the textbook example of
   // polycrystallinity mattering physically for a superconductor, not just
-  // cosmetically.
-  5: crystal('Polycrystalline YBCO Golem', 'superconductor', ['higgsOscillation', 'tunnelStrike'], 7),
+  // cosmetically. Color: darkened toward black ceramic with a teal cast --
+  // as dark as the base color goes while still leaving art/boss.ts's torso
+  // and lit-side limbs visibly non-black once their own darkening stacks on
+  // top (see World 2's comment above for why this stops short of true
+  // black).
+  5: crystal(
+    'Polycrystalline YBCO Golem',
+    'superconductor',
+    ['higgsOscillation', 'tunnelStrike'],
+    0,
+    undefined,
+    undefined,
+    darken(0x7fd1e8, 46)
+  ),
   // Polycrystalline iron (grain-oriented electrical steel) is the classic
   // engineering ferromagnet -- domain structure and Hall-Petch strengthening
-  // in bulk iron are both textbook polycrystalline-magnet topics.
-  6: crystal('Polycrystalline Iron Golem', 'classicalMagnet', ['magneticField', 'thermalFluctuation'], 8),
+  // in bulk iron are both textbook polycrystalline-magnet topics. Color:
+  // `blend()`s the type's orange-brown toward a neutral iron grey.
+  6: crystal(
+    'Polycrystalline Iron Golem',
+    'classicalMagnet',
+    ['magneticField', 'thermalFluctuation'],
+    0,
+    undefined,
+    undefined,
+    blend(0xc97a3a, 0x86898d, 0.88)
+  ),
   // Herbertsmithite (world 7's own flagship, the one real compound its
   // lecture names) was first characterized as a polycrystalline powder --
-  // large single crystals came only later.
-  7: crystal('Polycrystalline Herbertsmithite Golem', 'quantumSpinLiquid', ['entanglementSwap', 'visonLoop'], 9),
+  // large single crystals came only later. Color: brightened slightly past
+  // the ordinary wild Herbertsmithite (which renders at the type's base
+  // color exactly) for "pale green mineral," and left as this world's only
+  // brighten-toward-base rival so it stays clearly distinct from World 8's
+  // dark brown-black despite sharing the same `quantumSpinLiquid` base.
+  7: crystal(
+    'Polycrystalline Herbertsmithite Golem',
+    'quantumSpinLiquid',
+    ['entanglementSwap', 'visonLoop'],
+    0,
+    undefined,
+    undefined,
+    shade(0x5ad9c9, 8)
+  ),
   // alpha-RuCl3 (world 8's own Kitaev-candidate wild) is routinely
   // characterized via polycrystalline powder susceptibility/specific-heat
-  // measurements alongside single crystals.
-  8: crystal('Polycrystalline Ruthenium Trichloride Golem', 'quantumSpinLiquid', ['entanglementSwap', 'triplonSurge'], 10),
+  // measurements alongside single crystals. Color: rotates the same
+  // `quantumSpinLiquid` base's cyan-green hue around to brown before
+  // darkening, for "brown-black layers" -- distinct from World 7's pale
+  // green despite the shared TYPE_LOOK base. `hueShift(x, 210)` rather than
+  // `hueShift(x, -150)` (the equivalent rotation, since hue is circular) so
+  // this stays a positive-only numeric-literal call -- see `darken()`'s own
+  // comment in art/colors.ts for why a unary-minus literal argument here
+  // would break content-lint/gen-docs.
+  8: crystal(
+    'Polycrystalline Ruthenium Trichloride Golem',
+    'quantumSpinLiquid',
+    ['entanglementSwap', 'triplonSurge'],
+    0,
+    undefined,
+    undefined,
+    darken(hueShift(0x5ad9c9, 210), 50)
+  ),
   // The finale: no real compound (see DESIGN.md §5's plot hook), and no
   // fixed type either -- "a model of you," decided live every fight
   // (BattleScene's own `adaptedForm`/`transmuteAdapted`): it starts the

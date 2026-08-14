@@ -17,7 +17,7 @@ const NO_STRETCH: Stretch = { x: 1, y: 1 };
 // narrows the whole silhouette without touching its height, turning the same
 // formula into an elongated "prismatic" needle (see the cluster branch of
 // `makeCrystal`) instead of a wide gem.
-function drawShardShape(
+export function drawShardShape(
   g: Phaser.GameObjects.Graphics,
   size: number,
   color: number,
@@ -53,7 +53,7 @@ function drawShardShape(
 // "cubic" habit (pyrite, galena, fluorite) alongside `drawShardShape`'s
 // elongated "prismatic" needle and `drawPrismShape`'s hexagonal column, used
 // together for the cluster variant's three-different-habits look.
-function drawCubicShape(g: Phaser.GameObjects.Graphics, size: number, color: number, stretch: Stretch = NO_STRETCH) {
+export function drawCubicShape(g: Phaser.GameObjects.Graphics, size: number, color: number, stretch: Stretch = NO_STRETCH) {
   const P = (x: number, y: number) => ({ x: x * stretch.x, y: y * stretch.y });
   const top = P(0, -size * 0.85);
   const left = P(-size * 0.55, -size * 0.45);
@@ -298,8 +298,10 @@ export function makeCrystal(
     container.add(g);
   }
 
-  const stars = Array.from({ length: jitter?.sparkleCount ?? 3 }, () => ({ glyph: jitter?.sparkleGlyph ?? '✦' }));
-  addHighlightAndSparkles(scene, container, size, stars);
+  if (!opts?.plain) {
+    const stars = Array.from({ length: jitter?.sparkleCount ?? 3 }, () => ({ glyph: jitter?.sparkleGlyph ?? '✦' }));
+    addHighlightAndSparkles(scene, container, size, stars);
+  }
 
   return container;
 }
@@ -358,6 +360,12 @@ export interface CrystalOptions {
   // `hybrid` is set.
   seed?: string;
   hybrid?: HybridLook;
+  // Draw the bare faceted shape with no specular highlight and no twinkling
+  // sparkle glyphs -- for a crystal that is one component of a larger
+  // composition (art/boss.ts's golem torso) rather than a whole material
+  // presented on its own, where a dozen white stars would bury the
+  // composition's own structure and read as decoration instead of mass.
+  plain?: boolean;
 }
 
 function hexColor(n: number): string {

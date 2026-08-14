@@ -11,8 +11,8 @@
 export const PANEL_BG = 0x10101c;
 
 // Active/highlighted gold accent: Noether's own color, reused system-wide for
-// the Save Point icon, in-battle analytic-question panel, world-finale panel,
-// and BattleScene's boost halo/ring.
+// the in-battle analytic-question panel, world-finale panel, and
+// BattleScene's boost halo/ring.
 export const GOLD_ACCENT = 0xffe066;
 export const GOLD_ACCENT_HEX = '#ffe066';
 

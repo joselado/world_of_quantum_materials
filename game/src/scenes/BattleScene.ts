@@ -4,7 +4,7 @@ import { makeBossCrystal } from '../art/boss';
 import { shade, blend, hashSeed, seededRandom } from '../art/colors';
 import { getBiome } from '../art/biomes';
 import type { Biome } from '../art/biomes';
-import { playAttackEffect, ANALYTIC_SHAPES, ULTIMATE_SHAPES } from '../art/attackEffects';
+import { playAttackEffect, followAnchor, ANALYTIC_SHAPES, ULTIMATE_SHAPES, type EffectAnchor } from '../art/attackEffects';
 import { drawFranklinPassiveHalo } from '../art/passiveHalos';
 import { fontPx, fontScale } from '../ui/text';
 import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY, REFERENCE_BLUE_GREY_HEX } from '../ui/theme';
@@ -60,7 +60,36 @@ import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
 import type { Material, Move, MoveClass, Stats } from '../data/types';
 import { music } from '../audio/music';
-import { CANVAS_W, CANVAS_H } from '../config/screen';
+import {
+  FIELD_W,
+  FIELD_H,
+  HORIZON_Y,
+  BOTTOM_RAIL,
+  PLAYER_POS,
+  OPPONENT_POS,
+  BOSS_OPPONENT_POS,
+  PLAYER_CRYSTAL_SIZE,
+  WILD_CRYSTAL_SIZE,
+  BOSS_CRYSTAL_SIZE,
+  SHADOW_DROP,
+  PLAYER_HEAD_RISE,
+  WILD_HEAD_RISE,
+  BOSS_HEAD_RISE,
+  HP_BAR_FILL_W,
+  MENU_WIDTH,
+  MENU_X,
+  MENU_BOTTOM,
+  MENU_MIN_TOP,
+  TURN_PREVIEW_LENGTH,
+  LOG_X,
+  LOG_Y,
+  LOG_MIN_TOP,
+  LOG_WRAP_WIDTH,
+  LOG_WRAP_WIDTH_VICTORY,
+  STATUS_PILL_COLOR,
+  drawNameplate,
+  drawTurnPreview,
+} from './battle/hud';
 
 // Correct/wrong multipliers for Laughlin's two quiz-gated Analytic moves (§5) --
 // deliberately steeper than the pre-battle quiz's QUIZ_CORRECT_MULTIPLIER/
@@ -123,12 +152,10 @@ const STATUS_INFO: Record<
 // Single status-pill color for all three (Kondo's own rust-orange, matching
 // WORLD_GUARDIANS[8].strokeColor/art/attackEffects.ts's 'screening' entry) --
 // the label text itself already names which buff is active.
-const STATUS_PILL_COLOR = '#ff8f6a';
 
 // Passive pill color -- a fixed blue-violet, deliberately far from
 // STATUS_PILL_COLOR's rust-orange so an always-on passive reads as visually
 // distinct from a ticking status at a glance.
-const PASSIVE_PILL_COLOR = '#8fa0ff';
 
 // A side can hold one Franklin passive at a time (data/passives.ts's one
 // current PassiveOwner) -- joined onto a single pill line the same '' when
@@ -160,61 +187,10 @@ function passivePillText(ids: Set<string>): string {
 // live in data/balance.ts, imported above (Phaser-free so the balance
 // simulator script can load them too).
 
-// Field size is the shared canvas size (config/screen.ts) -- aliased to
-// FIELD_W/FIELD_H here since every layout constant below reads as "a
-// distance across the battle field" rather than "a distance across the
-// canvas."
-const FIELD_W = CANVAS_W;
-const FIELD_H = CANVAS_H;
-const HORIZON_Y = 262;
-const LOG_Y = 440; // combat log's usual bottom-anchored resting position
-// battleStakeForWorld lives in data/balance.ts, imported above -- a rival
-// fight's stake is double this same world's ordinary stake, win or lose, see
-// the call site below.
-// A rival/boss fight's opponent renders bigger (see BOSS_CRYSTAL_SIZE below)
-// than an ordinary wild encounter's 50, and sits a bit further left/down so
-// its wider multi-shard silhouette (art/boss.ts's makeBossCrystal) stays
-// clear of the "Turns" preview widget in the opposite corner. Both crystals
-// sit well above MENU_MIN_TOP (below), so the move menu -- bottom-anchored,
-// see MENU_MIN_TOP's own comment -- can never reach up into either one.
-const OPPONENT_POS = { x: 674, y: 150 };
-const BOSS_OPPONENT_POS = { x: 644, y: 155 };
-const BOSS_CRYSTAL_SIZE = 64;
-const PLAYER_POS = { x: 240, y: 345 };
-// Shared HP-bar dimensions -- both the background/fill creation rects in
-// create() and the fill-width math in updateBars() read these same
-// constants, so the two can't silently drift out of sync the way two
-// independent "100" literals once could. The fill sits inset from the
-// background by the same margin on every side (see the (HP_BAR_W -
-// HP_BAR_FILL_W)/2 math at each call site) rather than flush with it.
-const HP_BAR_W = 156;
-const HP_BAR_H = 18;
-const HP_BAR_FILL_W = 150;
-const HP_BAR_FILL_H = 12;
-// Gap between the HP bar and the name label sharing its row (see "Opponent/
-// player clusters" below).
-const HP_BAR_NAME_GAP = 10;
 // Gap before the next turn fires -- long enough for the fuller attack beat
 // (windup + travel + impact shockwave, up to ~810ms for a ring move) in
 // art/attackEffects.ts to land and read clearly before the screen moves on.
 const TURN_GAP_MS = 850;
-// Move menu: docked bottom-right, its bottom edge fixed at
-// FIELD_H - MENU_BOTTOM_MARGIN and its top edge derived fresh on every
-// drawMoveMenu call from however tall the current page's content actually
-// is (drawMoveMenu's own comment) -- the panel grows upward from that fixed
-// bottom rather than down from a fixed top, so it reads as bottom-right-
-// docked at every page/section instead of just starting high and getting
-// taller. MENU_MIN_TOP caps how far up that growth is ever allowed to
-// reach, below the opponent's crystal in every case, including a rival
-// fight's own bigger, wider boss silhouette -- whose rendered bounds
-// (including its decorative halo/shard art, not just BOSS_CRYSTAL_SIZE's
-// bare number) reach a measured ~223px, verified against a live
-// headless-Chromium render at the largest text-size preset -- so the two
-// can never collide regardless of how tall a page's content gets.
-const MENU_WIDTH = 226;
-const MENU_X = FIELD_W - 8 - MENU_WIDTH;
-const MENU_BOTTOM_MARGIN = 16;
-const MENU_MIN_TOP = 232;
 // Every move-menu page is capped at this many rows, however many moves its
 // section actually has (moveMenuPages splits a larger section into several
 // same-label pages instead) -- a fixed cap keeps every page's row budget
@@ -222,36 +198,10 @@ const MENU_MIN_TOP = 232;
 // than a few-move page rendering tiny text just because some other section
 // happens to have many more moves.
 const MOVE_MENU_MAX_ROWS = 3;
-// "Turns" preview widget (top-left corner, clear of both HP-bar columns and
-// the log text further down) -- see `BattleScene.drawTurnPreview`.
-const TURN_PREVIEW_X = 20;
-const TURN_PREVIEW_Y = 8;
-const TURN_PREVIEW_LENGTH = 5;
-const TURN_PREVIEW_ICON_SIZE = 24;
-const TURN_PREVIEW_ICON_SPACING = 28;
-// Whose-turn ring drawn behind each icon (see `drawTurnPreview`) -- radius
-// matches half the icon spacing so adjacent rings meet edge-to-edge without
-// overlapping.
-const TURN_PREVIEW_RING_RADIUS = TURN_PREVIEW_ICON_SPACING / 2;
-// How far the opponent's name label (which grows leftward from the HP bar,
-// see "Opponent/player clusters" below) is kept from the field's left edge
-// at minimum, so a long rival name's wrapped block never reaches into the
-// "Turns" preview widget's own footprint (TURN_PREVIEW_X plus its row of
-// icons, ~158px wide with the sizes above).
-const OPPONENT_NAME_CLEAR_X = 180;
-// Fixed vertical center of the opponent's name+bar row -- unlike the
-// player's own row (which can be pushed down by the optional boost/fail
-// note stacked above it, see create()), nothing ever sits above the
-// opponent's row, so its y never needs to be computed at runtime.
-const OPPONENT_ROW_Y = 46;
-// Ordinary per-turn combat-log line width -- kept clear of the move menu's
-// left edge (MENU_X), which shares the log's own vertical band now that the
-// panel is bottom-anchored rather than confined to a column starting well
-// below the log. The end-of-battle summary (endBattle) uses a much wider
-// value instead: the move menu is already destroyed by the time it's shown
-// (endBattle's first line), so there's no panel left to stay clear of.
-const LOG_WRAP_WIDTH = MENU_X - 60;
-const LOG_WRAP_WIDTH_VICTORY = FIELD_W - 40;
+// The one tag the move buttons carry that needs explaining, kept deliberately
+// terse -- it sits as a dim strip along the panel's bottom edge, out of the
+// row budget's way.
+const MENU_LEGEND = '!! no natural defense (2x)';
 
 interface BattleInitData {
   wild: Material;
@@ -304,8 +254,19 @@ export class BattleScene extends Phaser.Scene {
   // at all (see `opponentMaxHp`'s own comment above).
   private adaptedForm: Material | null = null;
   private playerCrystal!: Phaser.GameObjects.Container;
+  // Where each side's half of an attack effect draws (art/attackAnchors.ts).
+  // Each one reads only its own crystal's live container position, so the
+  // attacker's part of an effect and the target's part are computed
+  // independently of each other -- neither is pinned to a fixed field
+  // coordinate, and neither has to stay in step with the other. Thunks to
+  // the *fields*, not to the containers: `transmuteAdapted` replaces
+  // `opponentCrystal` outright (from inside `checkEndOrContinue`, which for
+  // an ordinary move runs while that move's effect is still on screen), and
+  // a thunk keeps tracking the crystal that's actually there.
+  private playerAnchor: EffectAnchor = followAnchor(() => this.playerCrystal);
+  private opponentAnchor: EffectAnchor = followAnchor(() => this.opponentCrystal);
   private logText!: Phaser.GameObjects.Text;
-  private turnPreviewLabel!: Phaser.GameObjects.Text;
+  private logBasePx = 14;
   private turnPreviewRow?: Phaser.GameObjects.Container;
   private moveMenu?: Phaser.GameObjects.Container;
   // Which page drawMoveMenu is currently showing -- see drawMoveMenu's own
@@ -430,7 +391,7 @@ export class BattleScene extends Phaser.Scene {
     const franklinPassiveId = [...this.playerActivePassives].find((id) => id in PASSIVES);
     if (franklinPassiveId) {
       const haloLayer = this.add.container(0, 0);
-      drawFranklinPassiveHalo(this, haloLayer, PLAYER_POS.x, 392, franklinPassiveId, 65, 15);
+      drawFranklinPassiveHalo(this, haloLayer, PLAYER_POS.x, PLAYER_POS.y + SHADOW_DROP, franklinPassiveId, 65, 15);
     }
 
     const savedHp = (this.game.registry.get('playerHp') as number) || this.playerMaxHp;
@@ -441,187 +402,88 @@ export class BattleScene extends Phaser.Scene {
     this.playerStatus = null;
     this.opponentStatus = null;
 
-    // Opponent (top-right) -- name and HP bar share one row, mirrored from
-    // the player's own row below (name after the bar there, name before the
-    // bar here), both derived from this.opponentPos.x (the same anchor the
-    // crystal itself renders at, OPPONENT_POS or the shifted
-    // BOSS_OPPONENT_POS for a rival fight) rather than an independent
-    // hardcoded x, so the two can never drift apart. The bar is horizontally
-    // centered under/above the crystal; the name is right-aligned
-    // (origin (1, 0.5)) immediately to its left and grows further left as it
-    // wraps, clamped (OPPONENT_NAME_CLEAR_X) well clear of the "Turns"
-    // preview widget in the opposite corner. `useAdvancedWrap` lets Phaser
-    // break a single word mid-word when needed -- without it, wordWrap only
-    // breaks at spaces, so a long single word (e.g. "Polycrystalline" in
-    // every WORLD_RIVALS/RIVAL_9_NAMES boss name) wouldn't wrap at all and
-    // would overflow the box instead. A rival's own name runs much longer on
-    // average than an ordinary wild's, so its label uses a smaller base size
-    // to keep the wrapped block from reaching too far across the field.
-    const opponentBarLeftX = this.opponentPos.x - HP_BAR_W / 2;
-    this.add.rectangle(opponentBarLeftX, OPPONENT_ROW_Y, HP_BAR_W, HP_BAR_H, 0x222222, 0.55).setOrigin(0, 0.5);
-    this.opponentHpBar = this.add
-      .rectangle(opponentBarLeftX + (HP_BAR_W - HP_BAR_FILL_W) / 2, OPPONENT_ROW_Y, HP_BAR_FILL_W, HP_BAR_FILL_H, 0x33cc33)
-      .setOrigin(0, 0.5);
-    const opponentNameRightX = opponentBarLeftX - HP_BAR_NAME_GAP;
-    this.opponentNameText = this.add
-      .text(opponentNameRightX, OPPONENT_ROW_Y, this.opponentView().name, {
-        fontSize: fontPx(this, this.isRival ? 11 : 14),
-        color: '#ffffff',
-        backgroundColor: 'rgba(0,0,0,0.35)',
-        padding: { x: 4, y: 2 },
-        align: 'right',
-        wordWrap: { width: Math.max(80, opponentNameRightX - OPPONENT_NAME_CLEAR_X), useAdvancedWrap: true },
-      })
-      .setOrigin(1, 0.5);
-    // Status pill (Kondo's moves, §5) -- empty/invisible until a status is
-    // actually active (renderStatusLabel), so it costs nothing to lay out
-    // for the common case where no status is in play.
-    // Depth above the combat log (default depth 0, below) -- the log's own
-    // box grows upward on a long wrapped line (setLogText) and can reach as
-    // far up as this row at a big text-size setting; a higher depth keeps
-    // the pill legibly on top rather than getting visually buried under it.
-    const opponentRowBottom = OPPONENT_ROW_Y + Math.max(HP_BAR_H, this.opponentNameText.height) / 2;
-    this.opponentStatusLabel = this.add
-      .text(opponentBarLeftX, opponentRowBottom + 6, '', {
-        fontSize: fontPx(this, 11),
-        color: STATUS_PILL_COLOR,
-        padding: { x: 4, y: 1 },
-      })
-      .setOrigin(0, 0)
-      .setDepth(5);
-    // Passive pill (Franklin's abilities, §5) sits below the status
-    // pill, offset from its *measured* height rather than a further
-    // hardcoded gap -- same text-size-scaling reasoning as the row above,
-    // and the status pill's own height still varies with the text-size
-    // setting even while empty. Static for the whole battle
-    // (playerActivePassives/opponentActivePassives never change mid-battle),
-    // so its text is set once here (addPassivePill) rather than through a
-    // render function like renderStatusLabel, and isn't kept as a field
-    // since nothing needs to read it back afterward, same as
-    // opponentName/playerName above.
-    const opponentStatusBottom = this.opponentStatusLabel.y + this.opponentStatusLabel.height;
-    this.addPassivePill(
-      opponentBarLeftX,
-      opponentStatusBottom + 4,
-      passivePillText(this.opponentActivePassives),
-      opponentStatusBottom,
-      FIELD_W - 8
-    );
-
     // A rival fight's opponent is that world's boss -- render it with the
     // same gigantic, multi-shard look it has standing at the goal tile in
     // the overworld (art/boss.ts's makeBossCrystal), not the plain shared
     // makeCrystal() every ordinary wild encounter uses.
     this.opponentCrystal = this.isRival
       ? makeBossCrystal(this, BOSS_CRYSTAL_SIZE, this.opponentView().color, this.opponentView().variant)
-      : makeCrystal(this, 50, this.wild.color, this.wild.variant, { seed: this.wild.name, hybrid: this.wild.hybridParents });
+      : makeCrystal(this, WILD_CRYSTAL_SIZE, this.wild.color, this.wild.variant, { seed: this.wild.name, hybrid: this.wild.hybridParents });
     this.opponentCrystal.setPosition(this.opponentPos.x, this.opponentPos.y);
     this.bobCrystal(this.opponentCrystal, this.opponentPos.y);
 
+    // Opponent nameplate -- the same floating name-over-bar plate the player
+    // gets below, centered on whichever position this fight placed the
+    // opponent at and floating just above its own painted head. A rival's
+    // name runs much longer on average than an ordinary wild's, so its label
+    // starts a size smaller; the plate's own shrink-to-fit takes it the rest
+    // of the way when the boss golem's head leaves little room above it. No
+    // wild ever casts a Kondo move (KONDO_MOVE_IDS), so this side reserves no
+    // room for a status pill, and no opponent ever carries a passive.
+    const opponentPlate = drawNameplate(this, {
+      centerX: this.opponentPos.x,
+      headTop: this.opponentPos.y - (this.isRival ? BOSS_HEAD_RISE : WILD_HEAD_RISE),
+      name: this.opponentView().name,
+      namePx: Math.round((this.isRival ? 11 : 14) * Math.min(fontScale(this), 1.5)),
+      accent: REFERENCE_BLUE_GREY,
+      reserveStatus: false,
+      passiveText: passivePillText(this.opponentActivePassives),
+    });
+    this.opponentHpBar = opponentPlate.hpFill;
+    this.opponentStatusLabel = opponentPlate.statusLabel;
+
     // Player (bottom-left)
-    this.playerCrystal = makeCrystal(this, 55, this.playerMaterial.color, this.playerMaterial.variant, {
+    this.playerCrystal = makeCrystal(this, PLAYER_CRYSTAL_SIZE, this.playerMaterial.color, this.playerMaterial.variant, {
       seed: this.playerMaterial.name,
       hybrid: this.playerMaterial.hybridParents,
     });
     this.playerCrystal.setPosition(PLAYER_POS.x, PLAYER_POS.y);
     this.bobCrystal(this.playerCrystal, PLAYER_POS.y);
 
-    // Everything below the crystal (the optional boost/fail note, then the
-    // name+bar row) is stacked from a running y rather than fixed pixel
-    // offsets -- label height scales with the text-size setting (up to 2x,
-    // data/settings.ts), and a fixed offset tuned for the smallest size lets
-    // a taller note collide with the row below it.
-    let playerContentY = PLAYER_POS.y + 34;
-
     if (this.attackMultiplier !== 1) {
-      const boosted = this.attackMultiplier > 1;
-      if (boosted) this.addBoostHalo(this.playerCrystal);
+      if (this.attackMultiplier > 1) this.addBoostHalo(this.playerCrystal);
       else this.addFailCloud(this.playerCrystal);
-
-      const boostText = this.add
-        .text(PLAYER_POS.x, playerContentY, boosted ? 'Attack boosted!' : 'Attack weakened...', {
-          fontSize: fontPx(this, 12),
-          color: boosted ? '#88ff88' : '#ff8888',
-          backgroundColor: 'rgba(0,0,0,0.35)',
-          padding: { x: 4, y: 2 },
-        })
-        .setOrigin(0.5, 0);
-      playerContentY += boostText.height + 4;
     }
 
-    // The bar and the name beside it are both vertically centered on this
-    // same row -- name and bar share one row (bar then name, left to
-    // right), mirrored from the opponent's row above, both derived from
-    // PLAYER_POS.x the same way the opponent's row derives from
-    // this.opponentPos.x.
-    const playerRowY = playerContentY + HP_BAR_H / 2;
-    const playerBarLeftX = PLAYER_POS.x - HP_BAR_W / 2;
-    this.add.rectangle(playerBarLeftX, playerRowY, HP_BAR_W, HP_BAR_H, 0x222222, 0.55).setOrigin(0, 0.5);
-    this.playerHpBar = this.add
-      .rectangle(playerBarLeftX + (HP_BAR_W - HP_BAR_FILL_W) / 2, playerRowY, HP_BAR_FILL_W, HP_BAR_FILL_H, 0x33cc33)
-      .setOrigin(0, 0.5);
-    const playerNameX = playerBarLeftX + HP_BAR_W + HP_BAR_NAME_GAP;
-    // Wrap width clamped to stop before MENU_X -- the move menu is
-    // bottom-anchored and shares this same vertical band now (see
-    // MENU_MIN_TOP's own comment), so unlike the top band above (clear of
-    // the panel for the whole battle), a long hybrid name growing rightward
-    // here has to stay clear of it explicitly.
-    const playerName = this.add
-      .text(playerNameX, playerRowY, this.playerMaterial.name, {
-        fontSize: fontPx(this, 14),
-        color: '#ffffff',
-        backgroundColor: 'rgba(0,0,0,0.35)',
-        padding: { x: 4, y: 2 },
-        wordWrap: { width: Math.max(80, MENU_X - playerNameX - 16) },
-      })
-      .setOrigin(0, 0.5);
-    // Same depth-above-the-log reasoning as the opponent's pill above -- the
-    // player's own bar sits closer to the log's usual bottom-anchored
-    // resting spot, so this is the side actually at risk of the log's box
-    // climbing up over it on a long wrapped line.
-    const playerRowBottom = playerRowY + Math.max(HP_BAR_H, playerName.height) / 2;
-    this.playerStatusLabel = this.add
-      .text(playerBarLeftX, playerRowBottom + 6, '', {
-        fontSize: fontPx(this, 11),
-        color: STATUS_PILL_COLOR,
-        padding: { x: 4, y: 1 },
-      })
-      .setOrigin(0, 0)
-      .setDepth(5);
-    // Same measured-height stacking as the opponent's passive pill above --
-    // this is the side actually at risk of it, since the boost/fail note and
-    // the crystal itself already eat into the room below PLAYER_POS.y that
-    // this pill is the last row in. Clamped against MENU_X rather than
-    // FIELD_W (addPassivePill's own maxRightX param) for the same
-    // shared-vertical-band reason the name's own wordWrap width is clamped
-    // above.
-    const playerStatusBottom = this.playerStatusLabel.y + this.playerStatusLabel.height;
-    this.addPassivePill(playerBarLeftX, playerStatusBottom + 4, passivePillText(this.playerActivePassives), playerStatusBottom, MENU_X - 12);
+    // Player nameplate, floating above the player's own head exactly the way
+    // the opponent's does. Room for the Kondo status pill is reserved only
+    // when this form actually has one of his moves to cast (the plate is
+    // bottom-anchored, so an unreserved pill would shove the name and bar
+    // upward on the turn it lands).
+    this.currentMoveIds = getBattleMoves(this.game.registry);
+    const boosted = this.attackMultiplier > 1;
+    const playerPlate = drawNameplate(this, {
+      centerX: PLAYER_POS.x,
+      headTop: PLAYER_POS.y - PLAYER_HEAD_RISE,
+      name: this.playerMaterial.name,
+      namePx: Math.round(14 * Math.min(fontScale(this), 1.5)),
+      accent: GOLD_ACCENT,
+      reserveStatus: this.currentMoveIds.some((id) => KONDO_MOVE_IDS.includes(id)),
+      passiveText: passivePillText(this.playerActivePassives),
+      note:
+        this.attackMultiplier === 1
+          ? undefined
+          : {
+              text: boosted ? 'Attack boosted!' : 'Attack weakened...',
+              color: boosted ? '#88ff88' : '#ff8888',
+              px: Math.round(12 * Math.min(fontScale(this), 1.5)),
+            },
+    });
+    this.playerHpBar = playerPlate.hpFill;
+    this.playerStatusLabel = playerPlate.statusLabel;
 
     const openingLine = this.isRival ? `${this.wild.name} blocks the way onward!` : `A wild ${this.wild.name} appeared!`;
-    this.logText = this.add.text(20, LOG_Y, '', {
+    this.logText = this.add.text(LOG_X, LOG_Y, '', {
       fontSize: fontPx(this, 14),
       color: '#ffffff',
       backgroundColor: 'rgba(0,0,0,0.45)',
       padding: { x: 8, y: 6 },
       wordWrap: { width: LOG_WRAP_WIDTH },
     });
+    this.logBasePx = Math.round(14 * fontScale(this));
     this.setLogText(openingLine);
 
-    // "Turns" preview widget (top-left corner) -- see drawTurnPreview's own
-    // comment. Label is static chrome for the whole battle (same treatment
-    // as the move menu's own section headers, `#8fa0c9`), so it's built once
-    // here rather than inside drawTurnPreview, which only rebuilds the icon
-    // row itself.
-    this.turnPreviewLabel = this.add.text(TURN_PREVIEW_X, TURN_PREVIEW_Y, 'Turns', {
-      fontSize: fontPx(this, 11),
-      color: REFERENCE_BLUE_GREY_HEX,
-      backgroundColor: 'rgba(0,0,0,0.35)',
-      padding: { x: 4, y: 2 },
-    });
     this.drawTurnPreview();
-
-    this.currentMoveIds = getBattleMoves(this.game.registry);
     this.drawMoveMenu(this.currentMoveIds);
     // Left/Right cycle which page is showing (drawMoveMenu's own comment) --
     // mirrors the on-screen ◀/▶ arrows for a keyboard-only player, same
@@ -762,7 +624,6 @@ export class BattleScene extends Phaser.Scene {
     const container = this.add.container(0, 0).setDepth(30);
     this.moveMenu = container;
 
-    const titleStyle = { fontSize: `${Math.round(12 * chromeScale)}px`, fontStyle: 'bold' as const };
     const legendStyle = {
       fontSize: `${Math.round(10 * chromeScale)}px`,
       wordWrap: { width: MENU_WIDTH - 12 },
@@ -770,26 +631,15 @@ export class BattleScene extends Phaser.Scene {
     };
 
     if (moveIds.length === 0) {
-      const measureTitle = this.add.text(0, 0, 'MOVES', titleStyle);
-      const measureLegend = this.add.text(0, 0, '!! no natural defense (2x)', legendStyle);
+      const measureLegend = this.add.text(0, 0, MENU_LEGEND, legendStyle);
       const measureEmpty = this.add.text(0, 0, 'No usable moves', { fontSize: fontPx(this, 11), wordWrap: { width: MENU_WIDTH - 16 } });
-      const height = 8 + measureTitle.height + 4 + measureLegend.height + 8 + measureEmpty.height + 12;
-      measureTitle.destroy();
+      const height = 8 + measureEmpty.height + 8 + measureLegend.height + 8;
       measureLegend.destroy();
       measureEmpty.destroy();
-      const menuTop = FIELD_H - MENU_BOTTOM_MARGIN - height;
+      const menuTop = MENU_BOTTOM - height;
 
-      let y = menuTop + 8;
-      const title = this.add.text(MENU_X + MENU_WIDTH / 2, y, 'MOVES', { ...titleStyle, color: GOLD_ACCENT_HEX }).setOrigin(0.5, 0);
-      container.add(title);
-      y += title.height + 4;
-      const legend = this.add
-        .text(MENU_X + MENU_WIDTH / 2, y, '!! no natural defense (2x)', { ...legendStyle, color: REFERENCE_BLUE_GREY_HEX, align: 'center' })
-        .setOrigin(0.5, 0);
-      container.add(legend);
-      y += legend.height + 8;
       const empty = this.add
-        .text(MENU_X + MENU_WIDTH / 2, y, 'No usable moves', {
+        .text(MENU_X + MENU_WIDTH / 2, menuTop + 8, 'No usable moves', {
           fontSize: fontPx(this, 11),
           color: '#cfd8ff',
           align: 'center',
@@ -797,6 +647,10 @@ export class BattleScene extends Phaser.Scene {
         })
         .setOrigin(0.5, 0);
       container.add(empty);
+      const legend = this.add
+        .text(MENU_X + MENU_WIDTH / 2, menuTop + height - 8, MENU_LEGEND, { ...legendStyle, color: REFERENCE_BLUE_GREY_HEX, align: 'center' })
+        .setOrigin(0.5, 1);
+      container.add(legend);
       const bg = this.add
         .rectangle(MENU_X, menuTop, MENU_WIDTH, height, PANEL_BG, 0.9)
         .setOrigin(0, 0)
@@ -814,8 +668,8 @@ export class BattleScene extends Phaser.Scene {
 
     const HEADER_LEGEND_GAP = 1; // between the header's label and its own legend sub-line
     const HEADER_ROWS_GAP = 1; // from the header (or its legend) down to the first move row
-    const headerStyle = { fontSize: `${Math.round(10 * headerScale)}px`, fontStyle: 'bold' as const };
-    const arrowStyle = { fontSize: `${Math.round(13 * headerScale)}px`, fontStyle: 'bold' as const };
+    const headerStyle = { fontSize: `${Math.round(12 * headerScale)}px`, fontStyle: 'bold' as const };
+    const arrowStyle = { fontSize: `${Math.round(14 * headerScale)}px`, fontStyle: 'bold' as const };
     const sectionLegendStyle = { fontSize: `${Math.round(8 * headerScale)}px` };
 
     // --- Measurement pass: throwaway Text objects, destroyed immediately,
@@ -824,11 +678,10 @@ export class BattleScene extends Phaser.Scene {
     // setting -- see this method's own comment for why the panel being
     // bottom-anchored means this has to happen before anything permanent
     // can be positioned.
-    const measureTitle = this.add.text(0, 0, 'MOVES', titleStyle);
-    const measureLegend = this.add.text(0, 0, '!! no natural defense (2x)', legendStyle);
-    const rowsTop = 8 + measureTitle.height + 4 + measureLegend.height + 8;
-    measureTitle.destroy();
+    const measureLegend = this.add.text(0, 0, MENU_LEGEND, legendStyle);
+    const legendH = measureLegend.height + 6;
     measureLegend.destroy();
+    const rowsTop = 8;
 
     const measureHeader = this.add.text(0, 0, headerLabelText, headerStyle);
     const measureArrow = showPager ? this.add.text(0, 0, '◀', arrowStyle) : null;
@@ -859,17 +712,17 @@ export class BattleScene extends Phaser.Scene {
     // line, at any preset.
     const rowFloor = 20;
     const maxRowH = Math.round(46 * Math.min(scale, 1.35));
-    const budget = FIELD_H - MENU_BOTTOM_MARGIN - MENU_MIN_TOP;
-    const chromeH = rowsTop + headerTotalH + 8; // +8 matches the panel's own trailing bottom pad below
+    const budget = MENU_BOTTOM - MENU_MIN_TOP;
+    const chromeH = rowsTop + headerTotalH + legendH + 8; // +8 matches the panel's own trailing bottom pad below
     const avail = budget - chromeH;
     const naturalRowH = Math.floor(avail / rowCount);
     const rowH = Phaser.Math.Clamp(naturalRowH, rowFloor, Math.max(maxRowH, rowFloor));
     const height = chromeH + rowCount * rowH;
-    const menuTop = FIELD_H - MENU_BOTTOM_MARGIN - height;
+    const menuTop = MENU_BOTTOM - height;
 
     const padY = 5;
     const fitPx = Math.max(9, Math.floor((rowH - padY * 2) / 2.4));
-    const desiredPx = Math.round(10 * scale);
+    const desiredPx = Math.round(11 * scale);
     let btnPx = Math.min(desiredPx, fitPx);
 
     // fitPx above only budgets vertical space (rowH) on the assumption a
@@ -914,17 +767,16 @@ export class BattleScene extends Phaser.Scene {
       .setStrokeStyle(2, GOLD_ACCENT);
     container.addAt(bg, 0);
 
-    let y = menuTop + 8;
-    const title = this.add.text(MENU_X + MENU_WIDTH / 2, y, 'MOVES', { ...titleStyle, color: GOLD_ACCENT_HEX }).setOrigin(0.5, 0);
-    container.add(title);
-    y += title.height + 4;
     const legend = this.add
-      .text(MENU_X + MENU_WIDTH / 2, y, '!! no natural defense (2x)', { ...legendStyle, color: REFERENCE_BLUE_GREY_HEX, align: 'center' })
-      .setOrigin(0.5, 0);
+      .text(MENU_X + MENU_WIDTH / 2, menuTop + height - 8, MENU_LEGEND, {
+        ...legendStyle,
+        color: REFERENCE_BLUE_GREY_HEX,
+        align: 'center',
+      })
+      .setOrigin(0.5, 1);
     container.add(legend);
-    y += legend.height + 8;
 
-    let rowY = y;
+    let rowY = menuTop + rowsTop;
     let pagerRowH = 0;
     if (showPager) {
       const leftArrow = this.add
@@ -942,7 +794,7 @@ export class BattleScene extends Phaser.Scene {
       pagerRowH = Math.max(leftArrow.height, rightArrow.height);
     }
     const headerLabel = this.add
-      .text(MENU_X + MENU_WIDTH / 2, rowY, headerLabelText, { ...headerStyle, color: REFERENCE_BLUE_GREY_HEX })
+      .text(MENU_X + MENU_WIDTH / 2, rowY, headerLabelText, { ...headerStyle, color: GOLD_ACCENT_HEX })
       .setOrigin(0.5, 0);
     container.add(headerLabel);
     // The arrow glyphs render at a larger px than the header label, so
@@ -958,9 +810,12 @@ export class BattleScene extends Phaser.Scene {
     }
     rowY += HEADER_ROWS_GAP;
 
-    section.ids.forEach((moveId) => {
-      this.addMoveButton(container, moveId, rowY, btnPx, padY);
-      rowY += rowH;
+    // Each button is centered in its own row band rather than pinned to the
+    // band's top edge, so a page with slack (a short BUFFS page, or any page
+    // at a small text-size preset) reads as evenly spaced rather than as one
+    // dead gap under the first button.
+    section.ids.forEach((moveId, i) => {
+      this.addMoveButton(container, moveId, rowY + rowH * (i + 0.5), btnPx, padY);
     });
   }
 
@@ -1009,11 +864,11 @@ export class BattleScene extends Phaser.Scene {
 
   // One move button -- factored out of drawMoveMenu so the per-section loop
   // above doesn't duplicate the click-handler logic three times over.
-  private addMoveButton(container: Phaser.GameObjects.Container, moveId: string, y: number, btnPx: number, padY: number) {
+  private addMoveButton(container: Phaser.GameObjects.Container, moveId: string, centerY: number, btnPx: number, padY: number) {
     const move = MOVES[moveId];
     const { text, color } = this.moveButtonContent(moveId);
     const btn = this.add
-      .text(MENU_X + MENU_WIDTH / 2, y, text, {
+      .text(MENU_X + MENU_WIDTH / 2, centerY, text, {
         fontSize: `${btnPx}px`,
         color,
         backgroundColor: '#222244',
@@ -1021,7 +876,7 @@ export class BattleScene extends Phaser.Scene {
         align: 'center',
         wordWrap: { width: MENU_WIDTH - 16 },
       })
-      .setOrigin(0.5, 0)
+      .setOrigin(0.5, 0.5)
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', () => {
         if (this.turnLock) return;
@@ -1312,8 +1167,8 @@ export class BattleScene extends Phaser.Scene {
     // called, see create()'s own comment) rather than the plain OPPONENT_POS
     // constant, so the shadow still sits under the crystal in a rival fight,
     // where the opponent actually renders at BOSS_OPPONENT_POS instead.
-    this.add.ellipse(this.opponentPos.x, 195, 120, 28, shadowColor, 0.35);
-    this.add.ellipse(PLAYER_POS.x, 392, 130, 30, shadowColor, 0.35);
+    this.add.ellipse(this.opponentPos.x, this.opponentPos.y + SHADOW_DROP, 120, 28, shadowColor, 0.35);
+    this.add.ellipse(PLAYER_POS.x, PLAYER_POS.y + SHADOW_DROP, 130, 30, shadowColor, 0.35);
   }
 
   // One rolling ridge silhouette spanning the field width: a Catmull-Rom
@@ -1747,48 +1602,12 @@ export class BattleScene extends Phaser.Scene {
       killTweensDeep(this, this.turnPreviewRow);
       this.turnPreviewRow.destroy(true);
     }
-
     const { fasterIsPlayer, fasterHits } = this.currentHitOrder();
     const roundPattern: boolean[] = [];
     for (let i = 0; i < fasterHits; i++) roundPattern.push(fasterIsPlayer);
     roundPattern.push(!fasterIsPlayer);
     const sequence = Array.from({ length: TURN_PREVIEW_LENGTH }, (_, i) => roundPattern[i % roundPattern.length]);
-
-    // Gap below the label padded out by how far the ring extends past the
-    // icon's own half-size, so the ring never touches the label tag above
-    // it at any font-scale preset (the ring is the widest thing in each
-    // icon's footprint, wider than the crystal art itself).
-    const previewRowY =
-      this.turnPreviewLabel.y +
-      this.turnPreviewLabel.height +
-      4 +
-      Math.max(0, TURN_PREVIEW_RING_RADIUS - TURN_PREVIEW_ICON_SIZE / 2);
-    const container = this.add.container(TURN_PREVIEW_X, previewRowY);
-    sequence.forEach((isPlayer, i) => {
-      const material = isPlayer ? this.playerMaterial : this.opponentView();
-      const icon = makeCrystal(this, TURN_PREVIEW_ICON_SIZE, material.color, material.variant, {
-        seed: material.name,
-        hybrid: material.hybridParents,
-      });
-      // Whose-turn ring behind the crystal shapes (`addAt(..., 0)`): a bold
-      // full-opacity gold ring for the player's hits, matching this
-      // project's established active/highlighted accent color, versus a
-      // thinner, dimmer blue-grey ring (the same "inactive" tone used
-      // elsewhere, e.g. the shop's inactive tab) for the opponent's --
-      // keeps the row legible on whose turn is whose even when the two
-      // sides happen to share the exact same crystal color (same-material
-      // matchups, routine from world 9 onward).
-      const ring = this.add.circle(0, 0, TURN_PREVIEW_RING_RADIUS);
-      if (isPlayer) {
-        ring.setStrokeStyle(3, GOLD_ACCENT, 1);
-      } else {
-        ring.setStrokeStyle(1.5, REFERENCE_BLUE_GREY, 0.45);
-      }
-      icon.addAt(ring, 0);
-      icon.setPosition(i * TURN_PREVIEW_ICON_SPACING + TURN_PREVIEW_ICON_SIZE / 2, TURN_PREVIEW_ICON_SIZE / 2);
-      container.add(icon);
-    });
-    this.turnPreviewRow = container;
+    this.turnPreviewRow = drawTurnPreview(this, sequence, this.playerMaterial, this.opponentView());
   }
 
   private playerAttack(moveId: string, bonusMultiplier = 1) {
@@ -1903,11 +1722,26 @@ export class BattleScene extends Phaser.Scene {
   // progress) -- endBattle passes the much wider LOG_WRAP_WIDTH_VICTORY
   // instead, since it destroys the move menu before ever calling this, so
   // there's no panel left to stay clear of.
-  private setLogText(text: string, restY = LOG_Y, wrapWidth = LOG_WRAP_WIDTH) {
+  // Every combat-log update goes through here, clamped into the band the
+  // frame leaves free at the bottom-left (LOG_MIN_TOP..BOTTOM_RAIL) rather
+  // than sitting at a fixed y regardless of how many lines it wraps to. A
+  // line too tall for that band shrinks in whole-px steps (floor 10, the
+  // same shrink-to-fit every other fixed-budget text block in the game uses)
+  // instead of climbing up into the player's own crystal and nameplate. The
+  // end-of-battle summary passes its own much higher ceiling and wider wrap,
+  // since it runs several lines longer and the move menu it would otherwise
+  // have to stay clear of is already destroyed by then.
+  private setLogText(text: string, minTop = LOG_MIN_TOP, wrapWidth = LOG_WRAP_WIDTH) {
     this.logText.setWordWrapWidth(wrapWidth);
+    let px = this.logBasePx;
+    this.logText.setFontSize(`${px}px`);
     this.logText.setText(text);
-    const y = Math.max(8, Math.min(restY, FIELD_H - this.logText.height - 16));
-    this.logText.setPosition(20, y);
+    while (px > 10 && this.logText.height > BOTTOM_RAIL - minTop) {
+      px -= 1;
+      this.logText.setFontSize(`${px}px`);
+    }
+    const y = Math.max(minTop, BOTTOM_RAIL - this.logText.height);
+    this.logText.setPosition(LOG_X, y);
   }
 
   // Shared by both the player's and the opponent's swings -- the only
@@ -2010,8 +1844,8 @@ export class BattleScene extends Phaser.Scene {
     // doesn't matter how hard it would have landed).
     const evaded = Math.random() < this.statusEvasionChance(defenderIsPlayer);
 
-    const from = isPlayer ? PLAYER_POS : this.opponentPos;
-    const to = isPlayer ? this.opponentPos : PLAYER_POS;
+    const from = isPlayer ? this.playerAnchor : this.opponentAnchor;
+    const to = isPlayer ? this.opponentAnchor : this.playerAnchor;
     const targetCrystal = isPlayer ? this.opponentCrystal : this.playerCrystal;
     const shapeOverride = ANALYTIC_SHAPES[move.id] ?? ULTIMATE_SHAPES[move.id];
     const isUltimate = ULTIMATE_MOVE_IDS.includes(moveId);
@@ -2233,7 +2067,7 @@ export class BattleScene extends Phaser.Scene {
   // move, see KONDO_MOVE_IDS' own comment).
   private resolveSelfBuff(isPlayer: boolean, move: Move, tickStatus: boolean, onDone: () => void) {
     const who = isPlayer ? 'You' : `Wild ${this.opponentView().name}`;
-    const pos = isPlayer ? PLAYER_POS : this.opponentPos;
+    const pos = isPlayer ? this.playerAnchor : this.opponentAnchor;
     const targetCrystal = isPlayer ? this.playerCrystal : this.opponentCrystal;
     const level = isPlayer ? getMoveLevel(this.game.registry, move.id) : 0;
 
@@ -2317,51 +2151,6 @@ export class BattleScene extends Phaser.Scene {
     label.setBackgroundColor(status ? 'rgba(0,0,0,0.35)' : '');
   }
 
-  // Creates the passive pill (Franklin's abilities, §5) stacked below
-  // that side's status pill at (x, naturalY), then measures its actual
-  // rendered size and corrects position/existence rather than trusting
-  // naturalY/x directly -- up to two joined passive names (passivePillText)
-  // can run wide enough at the largest text-size setting to push past
-  // maxRightX if left-anchored at the same x as the column above it (fixed
-  // below by an x clamp; the player's own call site passes MENU_X rather
-  // than FIELD_W, since the bottom-anchored move menu shares that side's
-  // vertical band -- see MENU_MIN_TOP's own comment), and that same setting
-  // can leave the whole stack above it (boost/fail note + name/bar row +
-  // status pill, on the player side) taller than the room actually left
-  // under FIELD_H (fixed below by dropping the pill rather than drawing it
-  // back on top of the status pill it's stacked below).
-  private addPassivePill(x: number, naturalY: number, text: string, statusBottom: number, maxRightX: number) {
-    // Static for the whole battle (see this method's own comment above), so
-    // unlike the status pill there's no later render pass to toggle a
-    // background back off -- skip creating the label at all when there's no
-    // passive to show, rather than drawing an empty box (Phaser fills a
-    // Text object's backgroundColor even for an empty string).
-    if (!text) return;
-    const label = this.add
-      .text(x, naturalY, text, {
-        fontSize: fontPx(this, 11),
-        color: PASSIVE_PILL_COLOR,
-        backgroundColor: 'rgba(0,0,0,0.35)',
-        padding: { x: 4, y: 1 },
-      })
-      .setOrigin(0, 0)
-      .setDepth(5);
-    const cappedY = Math.min(naturalY, FIELD_H - label.height - 4);
-    // Vertical clamp only ever pulls the pill *up* off the canvas floor, never
-    // down -- if pulling it up that far would land it back on top of the
-    // status pill above it (the row it's stacked below in the first place),
-    // that would trade "passive pill clipped" for "status pill unreadable,"
-    // which is worse: the status pill already existed and already worked.
-    // Drop the passive pill instead of showing it garbled -- this only
-    // happens in the narrow combo of a boosted/weakened attack plus the
-    // largest text-size setting, where there simply isn't room for a fifth
-    // stacked row under the player crystal.
-    if (cappedY < statusBottom) {
-      label.destroy();
-      return;
-    }
-    label.setPosition(Math.min(x, maxRightX - label.width), cappedY);
-  }
 
   // Quick punchy scale-squash on the target crystal when a projectile
   // effect lands, so hits register even before the HP bar visibly moves.
@@ -2372,11 +2161,15 @@ export class BattleScene extends Phaser.Scene {
   // The full "hit landed" beat on top of art/attackEffects.ts's own impact
   // shockwave: the crystal squash, a small camera shake (kept subtle --
   // main.ts's canvas background is solid black, so anything punchier reveals
-  // it at the field's fixed-coordinate edges), and a brief white flash.
+  // it at the field's fixed-coordinate edges), and a brief pale lift of the
+  // whole field. The lift is deliberately dim and short: the impact's own
+  // shockwave already carries the hit locally, and a full-brightness
+  // white flash washes the field out for long enough to swallow whichever
+  // silhouette just landed -- the flashier the move, the more it costs.
   private impactPunch(container: Phaser.GameObjects.Container) {
     this.flashHit(container);
     this.cameras.main.shake(140, 0.006);
-    this.cameras.main.flash(90, 255, 255, 255, false);
+    this.cameras.main.flash(70, 110, 118, 140, false);
   }
 
   private endBattle(won: boolean) {
@@ -2434,7 +2227,7 @@ export class BattleScene extends Phaser.Scene {
     // rather than the narrower in-battle width -- the move menu (destroyed
     // above, at the top of this method) is gone by now, so there's nothing
     // left to dodge.
-    this.setLogText(`${flavor}\n${tokenText}\n\n${blurb}\n\nPress SPACE to return.`, 210, LOG_WRAP_WIDTH_VICTORY);
+    this.setLogText(`${flavor}\n${tokenText}\n\n${blurb}\n\nPress SPACE to return.`, 150, LOG_WRAP_WIDTH_VICTORY);
 
     this.input.keyboard!.once('keydown-SPACE', () => this.scene.start('Overworld', { world: this.world }));
   }

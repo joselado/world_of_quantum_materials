@@ -26,7 +26,7 @@ One world per course topic (see the topic table in the repo's top-level `CLAUDE.
 
 | World | Course topic | In-game name (`WORLD_NAMES`) / biome theme | Wild material archetypes | Gate to next world |
 |---|---|---|---|---|
-| 0 (Hub) | — | "The Lab" — guardian's house, save point, Qumatex | — | Start world 1 |
+| 0 (Hub) | — | "The Lab" — guardian's house, Qumatex | — | Start world 1 |
 | 1 | Second quantization, mean-field, SSB | **Mean-Field Meadow** — tutorial meadow | Free fermion, itinerant/local-moment magnets, ferroelectrics, a charge density wave, a superconductor | Beat first rival crystal |
 | 2 | Symmetries, tight-binding, effective models | **Bloch Caverns** — crystalline caves, repeating tile patterns | Bloch-wave critters, lattice defect variants | Beat that world's rival crystal |
 | 3 | Topological band theory | **Topological Islands** — floating islands, one-way edge paths | Quantum spin Hall insulators, bulk and monolayer alike | Cross a gap only an edge-mode move can bridge |
@@ -76,8 +76,8 @@ World 10 has no course notebook, which fits it being the finale rather than a ta
 topic: the boss is "a model of you," which is an honest metaphor for an ML surrogate.
 
 World 0 ("The Lab") is built as a static single-room hub (`game/src/scenes/HubScene.ts`),
-not a walkable map -- up to nine stations, since none of its jobs need overworld movement
-of their own. Three always exist (Qumatex, a save point, the door to the
+not a walkable map -- up to eight stations, since none of its jobs need overworld movement
+of their own. Two always exist (Qumatex, the door to the
 next unbeaten world); six are reference/settings stations (Moves, Stats, Abilities,
 Guardians, Tutorial, Settings, built in `game/src/scenes/panels/hubStations.ts`'s
 `LAB_STATIONS`) -- everything a player might want to check or adjust between worlds,
@@ -848,8 +848,8 @@ state can mark her met before the player has actually reached her.
   back to the full unfiltered pool if that intersection is ever empty) -- an early
   player is quizzed on early-world physics, not topics they haven't reached. Each move
   also gets its own dramatically flashier, per-move (not per-class) visual, deliberately
-  reading as stronger than every other move class (`art/attackEffects.ts`'s
-  `ANALYTIC_SHAPES`/`playBeam`/`playEruption`):
+  reading as stronger than every other move class (`art/attackStyles.ts`'s
+  `ANALYTIC_SHAPES`, drawn by `art/attackShapes.ts`'s `playBeam`/`playEruption`):
   `skyfallBeam` drops a multi-layer column of light from off the top of the screen --
   a white-hot core, two swirling side-rays, a trail of falling sparks, and a radiant
   sun expanding at the point of origin; `groundEruption` bursts a wide double
@@ -1152,7 +1152,7 @@ state can mark her met before the player has actually reached her.
   write to) -- no battle-side special-casing beyond the 3-question gate above. A
   successful 3-for-3 hit plays a multi-phase "Final-Fantasy-style summon" animation
   (windup/summon-circle → charge → impact → aftermath, 4-6 seconds total,
-  `art/attackEffects.ts`'s `playMeteor`/`playNova`) -- dramatically longer and flashier
+  `art/attackUltimates.ts`'s `playMeteor`/`playNova`) -- dramatically longer and flashier
   than any other move's effect in the game (`playBeam`/`playEruption`, by comparison,
   run under a second), fitting a move that's meant to read as the game's actual finale
   attack.
@@ -1161,9 +1161,11 @@ state can mark her met before the player has actually reached her.
 for a real compound's *polycrystalline* form (e.g. World 1's Polycrystalline Silicon
 Golem) rather than a generic RPG monster name, and, while still undefeated, stands
 visibly at the goal tile as a gigantic landmark (`OverworldScene.spawnBossSprite`,
-`art/boss.ts`'s `makeBossCrystal`) that literalizes that name -- a golem silhouette
-(head, torso, arms, legs) built from several shards fused around an oversized torso
-core, a pulsing danger aura, and orbiting embers, so "many grains fused into one
+`art/boss.ts`'s `makeBossCrystal`) that literalizes that name -- a towering,
+top-heavy humanoid silhouette (small sunken head, shoulders peaking above it, arms
+hanging to oversized fists, planted legs) built from many grain shards fused around
+an oversized torso core, its grain boundaries lit from inside, a heavy contact shadow
+and a low danger glow pooled at its feet, so "many grains fused into one
 mass" reads at a glance, unmistakably more dangerous than an ordinary wild crystal
 from a distance, before the player ever opens the goal panel. It's a pure visual
 landmark: the fight itself is only reached through "Face the Rival" in the goal gate
@@ -1172,8 +1174,9 @@ rival -- its own "Face the Rival" dialogue (`OverworldScene.showRivalEncounter`)
 it too, rather than reverting to the plain `makeCrystal` an ordinary wild encounter's
 greeting uses, and the fight itself carries it on: `BattleScene` renders a rival's
 opponent crystal at `BOSS_CRYSTAL_SIZE` (bigger than an ordinary wild encounter's),
-shifted a bit left of the usual opponent spot so the wider silhouette clears the move
-menu, instead of the plain `makeCrystal` every wild battle uses.
+shifted a bit left of the usual opponent spot so the taller, wider silhouette clears
+both the opponent HP bar above it and the move menu below, instead of the plain
+`makeCrystal` every wild battle uses.
 
 **World doors.** Every built world has a doorway landmark standing at its
 `startTile` (`OverworldScene.spawnDoorSprites`, `art/door.ts`'s `makeDoorSprite`) --
@@ -1296,12 +1299,15 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   lowest tiers, World 10 only its two highest, and worlds in between roll a
   three-tier window that slides up the ladder as the player advances (World
   5 rolls tiers 4-6) -- weighted toward the window's lower tier so a high
-  roll stays a treat rather than the norm. Off-path tiles render as terrain you can plausibly see is
-  impassable, not just differently-colored ground -- a raised wall block by default, or
-  (per-biome `wallTheme`, see `STYLE.md`) a molten lava crust, a frozen lake, or open
-  sky/chasm you'd fall through -- so blocked terrain reads unambiguously either way, unless
-  the tile carries its own `regionColor` tint (world 1's/3's/8's colored branches/domains),
-  which always renders as solid colored ground regardless of `wallTheme`. A tile can also
+  roll stays a treat rather than the norm. The whole ground plane is drawn flat, with the walkable/impassable
+  boundary traced off the tile grid and redrawn as a smooth curve, so a path edge that turns
+  reads as an organic shoreline rather than a stair-step; a contact shadow and rim light along
+  that curve, plus each biome's own floor/off-path color break, are what mark where the player
+  may walk. Off-path tiles carry terrain you can plausibly see is impassable (per-biome
+  `wallTheme`, see `STYLE.md`): bare rock by default, or a molten lava crust, a frozen lake, or
+  the starlit drop between islands -- unless the tile carries its own `regionColor` tint (world
+  1's/3's/8's colored branches/domains), which renders as plain ground in that tint regardless
+  of `wallTheme`. A tile can also
   carry a `biomeOverride` (world 9's patches, each independently borrowing one of worlds
   1-8's whole biome look) that swaps which world's `art/biomes.ts` entry it renders with. The
   layout is regenerated (fresh `Math.random` calls) on
@@ -1312,7 +1318,7 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   battle instead restores the exact layout and player position it started
   from (`OverworldScene.saveMapState`/`restoreMap`, via the Phaser registry).
   The pre-battle encounter dialogue itself never leaves the overworld scene.
-  Per-world visuals (sky/ceiling, wall vs. path color,
+  Per-world visuals (sky/ceiling, off-path vs. path color,
   decoration style) live in `src/art/biomes.ts`, keyed by world number,
   independent of the per-world shape generators.
 - **Hosting:** static site (GitHub Pages / Netlify) — client-side only, no backend
@@ -1333,8 +1339,7 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   the registry under the other mode's flag. `persistFromRegistry()` is then called after
   every registry mutation that should survive a reload (token pickup, move purchase, rival
   defeat, battle outcome), so the registry and localStorage stay in sync rather than only
-  saving at fixed checkpoints. The Hub's Save Point station (§2) also triggers it explicitly,
-  mostly for the player's own reassurance since autosave already covers it. A save written
+  saving at fixed checkpoints and there is no manual save UI anywhere in the game. A save written
   under the single-slot format that predates this split is migrated once, automatically, the
   first time either `loadSave`/`hasSave` runs: its contents move into whichever new slot
   matches its own stored `superpositionMode` field, and the old key is removed.
@@ -1357,9 +1362,9 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   (including the per-world `WORLD_CRYSTALS` database), the sole source of truth —
   there is no separate `data/materials.json` draft to keep in sync — so balance/content
   can be tuned without touching engine/rendering code.
-- **Onboarding is contextual, not one paged popup up front.** Seven short tips
-  (`game/src/data/tutorial.ts`'s `TUTORIAL_TIPS`, keyed by `TutorialTipId`) each
-  fire once per save, right as their own feature actually becomes relevant
+- **Onboarding is contextual, not one paged popup up front.** `game/src/data/tutorial.ts`'s
+  `TUTORIAL_TIPS` (keyed by `TutorialTipId`) holds every tutorial topic in the game -- seven
+  short tips that each fire once per save, right as their own feature actually becomes relevant
   rather than all at once before the player has done anything: `lab` on first
   entering the Lab (`HubScene.maybeShowLabTip`); `controls` on first entering
   an Overworld world; `encounter` on the first wild-crystal bump; `battle` on
@@ -1369,12 +1374,19 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   by save/registry `tutorialTipsSeen`). Each trigger site passes whatever it
   was about to do next as the tip's close callback (open the encounter panel,
   launch the battle, ...), so the tip is a one-time detour in front of that
-  action rather than a separate step callers have to branch on. The full set
-  can still be revisited any time from the Lab's Tutorial station
-  (`scenes/panels/hubStations.ts`'s `showTutorialTopics`, reading
-  `TUTORIAL_PAGES`) as a menu listing every topic by name -- picking one opens
-  just that topic's own page, with a button back to the topic menu, rather
-  than paging linearly through all seven.
+  action rather than a separate step callers have to branch on. The remaining topics -- a
+  guardian's own repeatable ability (quiz-gated Analytic/Ultimate moves, Feynman's move
+  leveling, Franklin's passives, Kondo's status effects, Majorana's hybrid fusion, Dresselhaus's
+  transmutation, Anderson's host doping, Bloch's teleportation), the Lab's Settings station, and
+  the Story Mode/Superposition Mode choice already made at the Title screen -- have no single
+  "first time this becomes relevant" moment worth interrupting play for, so they carry no
+  contextual trigger and are reachable only through the Tutorial station. The full set
+  is reachable any time from the Lab's Tutorial station
+  (`scenes/panels/hubStations.ts`'s `showTutorialTopics`) as a list+detail panel
+  (`scenes/panels/listDetail.ts`, DESIGN.md's own "List+detail panels" convention in
+  `dev_notes/STYLE.md`) -- a left-hand list of every topic's own title (paginated once the set
+  outgrows one page), a right-hand pane showing whichever topic is selected, updated in place as
+  the player browses rather than opening a separate full panel per topic.
 - **Story Mode vs. Superposition Mode.** The Title screen has the player pick
   one of two starting modes (`TitleScene.addModeSelector`) before Continue/New
   Game -- both back the same save/registry `superpositionMode` boolean (Story

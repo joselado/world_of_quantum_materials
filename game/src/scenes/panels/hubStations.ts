@@ -5,6 +5,7 @@ import { CANVAS_W, CANVAS_H } from '../../art/perspective';
 import { fontPx, fontScale } from '../../ui/text';
 import { PANEL_BG, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY, REFERENCE_BLUE_GREY_HEX, TUTORIAL_CYAN, TUTORIAL_CYAN_HEX } from '../../ui/theme';
 import { TUTORIAL_PAGES } from '../../data/tutorial';
+import { LIST_DETAIL_PANEL_W, listDetailColumns, renderListColumn, insertColumnDivider, destroyPanel } from './listDetail';
 import { PASSIVES, PASSIVE_OWNERS, PASSIVE_OWNER_LABELS } from '../../data/passives';
 import type { PassiveOwner } from '../../data/passives';
 import {
@@ -22,11 +23,10 @@ import { music } from '../../audio/music';
 import { getBattleMoves, effectiveMovePower, moveDisplayName, getPlayerStats, getPlayerMaterial } from '../../data/materials';
 import { makeMovesMotif, makeStatsMotif, makeAbilitiesMotif, makeGuardiansMotif, makeTutorialMotif, makeSettingsMotif } from '../../art/labMotifs';
 
-// Every panel below (and HubScene's own Save Point) shares this gold for its
-// fixed "panel name" heading -- Qumatex/Save Point/Moves/Stats/Abilities
-// already used it; Guardians/Settings are brought in line with it here too.
-// Tutorial's own page heading is content-specific (a different topic's title
-// every time, not a fixed panel name) and keeps its own cyan stroke instead.
+// Every panel below (and HubScene's own Qumatex) shares this gold for its
+// fixed "panel name" heading. Tutorial's own page heading is content-specific
+// (a different topic's title every time, not a fixed panel name) and keeps
+// its own cyan stroke instead.
 export const LAB_TITLE_COLOR = GOLD_ACCENT_HEX;
 
 // Every Lab panel's text/button content lays out centered within its own
@@ -303,20 +303,36 @@ export function showGuardiansPanel(scene: HubScene) {
   container.addAt(panel, 0);
 }
 
-// A menu of every topic (data/tutorial.ts's TUTORIAL_PAGES, the same seven
-// tips the contextual popups fire once each elsewhere) rather than one
-// linear pager -- lets the player see what's covered before opening
-// anything, and jump straight to one topic instead of stepping through the
-// rest to reach it. Picking a row opens that topic's own single page
-// (showTutorialTopic), which has its own "<- Topics" button back to this
-// menu instead of a Back/Next pager between topics.
+// List+detail layout (scenes/panels/listDetail.ts, STYLE.md's "List+detail
+// panels") over data/tutorial.ts's TUTORIAL_PAGES -- the same shape a
+// guardian's own browsed panel uses, just with no crystal/move art to
+// preview: the left column names every topic (its own `listLabel` if it has
+// one, its `title` otherwise), paginated once the set outgrows one page; the
+// right column shows the selected topic's full title and body. Every topic
+// is visible in the list up front rather than reachable only by paging
+// through the rest. Selecting a row is a scoped update (CODEMAP's "scoped
+// update" convention), not a panel rebuild: `renderListColumn`'s own
+// `setSelectedId` restyles the row in place and only `detailBlock`/
+// `chromeBlock` re-render. A page flip still tears the panel down via
+// `destroyPanel` and rebuilds, since that changes which rows the list
+// itself shows -- the same split every other list+detail panel in the game
+// uses. Identifies a topic by its own index into TUTORIAL_PAGES (stringified
+// for `idFor`/`selectedId`) rather than by title, since two topics could in
+// principle share a shortened `listLabel`.
 export function showTutorialTopics(scene: HubScene) {
-  scene.dialogueContainer?.destroy(true);
+  destroyPanel(scene);
+  scene.dialogueActive = true;
 
-  const panelWidth = 560;
+  const panelWidth = LIST_DETAIL_PANEL_W;
   const top = 20;
   const container = scene.add.container(0, 0).setDepth(100);
   scene.dialogueContainer = container;
+
+  // Added first so everything below (divider, footer, panel background)
+  // renders beneath every row/button added to `container` afterward -- same
+  // ordering every guardian's own list+detail panel uses.
+  const chromeBlock = scene.add.container(0, 0);
+  container.add(chromeBlock);
 
   let y = top;
   const title = scene.add
@@ -326,92 +342,101 @@ export function showTutorialTopics(scene: HubScene) {
   y += title.height + 6;
 
   const hint = scene.add
-    .text(CANVAS_W / 2, y, 'Pick a topic to revisit.', { fontSize: fontPx(scene, 11), color: REFERENCE_BLUE_GREY_HEX })
+    .text(CANVAS_W / 2, y, 'Pick a topic to read it.', { fontSize: fontPx(scene, 11), color: REFERENCE_BLUE_GREY_HEX })
     .setOrigin(0.5, 0);
   container.add(hint);
-  y += hint.height + 12;
+  y += hint.height + 10;
 
-  const columns = labPanelColumns(panelWidth);
-  TUTORIAL_PAGES.forEach((page, index) => {
-    const btn = scene.addDialogueButtonAt(
-      container,
-      columns.contentCenterX,
-      y,
-      page.title,
-      () => showTutorialTopic(scene, index),
-      columns.contentWrapW
-    );
-    y += btn.height + 6;
+  const panelLeft = CANVAS_W / 2 - panelWidth / 2;
+  const columns = listDetailColumns(panelLeft);
+  const columnsTop = y;
+
+  const items = TUTORIAL_PAGES.map((page, index) => ({ page, id: String(index) }));
+  let selected = items.some((it) => it.id === String(scene.tutorialSelectedIndex)) ? String(scene.tutorialSelectedIndex) : items[0].id;
+
+  const listResult = renderListColumn({
+    scene,
+    container,
+    x: columns.leftX,
+    y: columnsTop,
+    width: columns.leftColW,
+    items,
+    idFor: (it) => it.id,
+    labelFor: (it) => it.page.listLabel ?? it.page.title,
+    selectedId: selected,
+    page: scene.tutorialPage,
+    onPageChange: (page) => {
+      scene.tutorialPage = page;
+      destroyPanel(scene);
+      showTutorialTopics(scene);
+    },
+    onSelect: (it) => {
+      scene.tutorialSelectedIndex = Number(it.id);
+      selected = it.id;
+      listResult.setSelectedId(it.id);
+      renderDetail();
+    },
   });
-  y += 6;
+  scene.tutorialPage = listResult.page;
 
-  const closeBtn = scene.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Close', () => scene.closeDialogue(), 260);
-  y += closeBtn.height + 12;
+  const detailBlock = scene.add.container(0, 0);
+  container.add(detailBlock);
 
-  const panelHeight = y - top;
-  const panel = scene.add
-    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.95)
-    .setStrokeStyle(2, TUTORIAL_CYAN);
-  container.addAt(panel, 0);
-}
+  const renderDetail = () => {
+    detailBlock.removeAll(true);
+    chromeBlock.removeAll(true);
 
-// One topic's own page, opened from showTutorialTopics above -- title, body
-// (same floor-9px shrink-to-fit loop every other Lab panel's body text
-// uses), and a footer offering a way back to the topic menu alongside
-// Close.
-function showTutorialTopic(scene: HubScene, index: number) {
-  scene.dialogueContainer?.destroy(true);
+    const page = TUTORIAL_PAGES[Number(selected)];
+    let rightY = columnsTop;
 
-  const panelWidth = 560;
-  const top = 24;
-  const container = scene.add.container(0, 0).setDepth(100);
-  scene.dialogueContainer = container;
+    const titleText = scene.add
+      .text(columns.rightColCenterX, rightY, page.title, {
+        fontSize: fontPx(scene, 15),
+        color: '#ffffff',
+        fontStyle: 'bold',
+        align: 'center',
+        wordWrap: { width: columns.rightColW },
+      })
+      .setOrigin(0.5, 0);
+    detailBlock.add(titleText);
+    rightY += titleText.height + 10;
 
-  let y = top;
-  const page = TUTORIAL_PAGES[index];
-  const columns = labPanelColumns(panelWidth);
+    // Same floor-9px shrink-to-fit loop the panel's earlier single-page
+    // version used -- the right column is narrower than that version's
+    // full-panel-width body, so a long topic still needs this to stay
+    // inside the canvas at the largest text-size preset.
+    const scale = fontScale(scene);
+    let bodyBase = 12;
+    const bodyText = scene.add
+      .text(columns.rightColCenterX, rightY, page.body, {
+        fontSize: `${Math.round(bodyBase * scale)}px`,
+        color: '#cfd8ff',
+        align: 'center',
+        wordWrap: { width: columns.rightColW },
+        lineSpacing: 5,
+      })
+      .setOrigin(0.5, 0);
+    detailBlock.add(bodyText);
+    const reservedBelow = 14 + 46 + 14; // gap + close-button estimate + bottom margin
+    while (rightY + bodyText.height + reservedBelow > CANVAS_H - 10 && bodyBase > 9) {
+      bodyBase -= 1;
+      bodyText.setFontSize(`${Math.round(bodyBase * scale)}px`);
+    }
+    rightY += bodyText.height + 14;
 
-  const title = scene.add
-    .text(columns.contentCenterX, y, page.title, {
-      fontSize: fontPx(scene, 16),
-      color: '#ffffff',
-      fontStyle: 'bold',
-      align: 'center',
-      wordWrap: { width: columns.contentWrapW },
-    })
-    .setOrigin(0.5, 0);
-  container.add(title);
-  y += title.height + 12;
+    const columnsBottom = Math.max(listResult.bottom, rightY);
+    insertColumnDivider(scene, chromeBlock, columns.dividerX, columnsTop, columnsBottom);
+    let footerY = columnsBottom + 8;
+    const closeBtn = scene.addDialogueButtonAt(chromeBlock, CANVAS_W / 2, footerY, 'Close', () => scene.closeDialogue(), 260);
+    footerY += closeBtn.height + 12;
 
-  const scale = fontScale(scene);
-  let bodyBase = 12;
-  const body = scene.add
-    .text(columns.contentCenterX, y, page.body, {
-      fontSize: `${Math.round(bodyBase * scale)}px`,
-      color: '#cfd8ff',
-      align: 'center',
-      wordWrap: { width: columns.contentWrapW },
-      lineSpacing: 5,
-    })
-    .setOrigin(0.5, 0);
-  container.add(body);
-  const reservedBelow = 14 + 46 + 14; // gap + footer-row estimate + bottom margin
-  while (y + body.height + reservedBelow > CANVAS_H - 10 && bodyBase > 9) {
-    bodyBase -= 1;
-    body.setFontSize(`${Math.round(bodyBase * scale)}px`);
-  }
-  y += body.height + 14;
-
-  const footerY = y;
-  const backBtn = scene.addDialogueButtonAt(container, CANVAS_W / 2 - 90, footerY, '<- Topics', () => showTutorialTopics(scene), 150);
-  const closeBtn = scene.addDialogueButtonAt(container, CANVAS_W / 2 + 90, footerY, 'Close', () => scene.closeDialogue(), 150);
-  y = footerY + Math.max(backBtn.height, closeBtn.height) + 12;
-
-  const panelHeight = y - top;
-  const panel = scene.add
-    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.95)
-    .setStrokeStyle(2, TUTORIAL_CYAN);
-  container.addAt(panel, 0);
+    const panelHeight = footerY - top;
+    const panel = scene.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.95)
+      .setStrokeStyle(2, TUTORIAL_CYAN);
+    chromeBlock.addAt(panel, 0);
+  };
+  renderDetail();
 }
 
 // Wild-encounter density (data/settings.ts's DENSITY_PRESETS, read by
