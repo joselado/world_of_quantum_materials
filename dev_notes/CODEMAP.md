@@ -1088,6 +1088,15 @@ shifts the overworld's palette. See STYLE.md's "Battle backdrop" section for the
 rules. Any future per-biome visual field added to `Biome` should flow through here too if it
 should affect the battle arena, not just the overworld.
 
+**`create()` draws the entire backdrop before any combatant exists**, so display-list position
+from `opponentCrystal` onward is the seam between "what is drawn behind" and "what has to read
+against it". `scripts/greyscale-check.mjs` (DEVELOPMENT.md's "Checking arena legibility") uses
+exactly that seam to capture a backdrop-only frame, which is what lets it measure gameplay
+against its own background without importing any palette data. Keep new backdrop drawing
+inside `drawBackground()` rather than after the combatants; the check asserts the seam still
+holds on every run and reports a broken harness rather than silently measuring the wrong
+thing, but the assertion is a tripwire, not a fix.
+
 **BattleScene also requests the world's battle track.** `create()` calls `music.play` with the
 key `battle:<world>` -- `audio/music.ts`'s `SCORES` table has one procedural battle score per
 world (`BATTLE_SCORE`/`BATTLE_SCORE_2`.../`BATTLE_SCORE_10`, world 1 hand-written, worlds 2-10

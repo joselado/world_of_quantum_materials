@@ -74,6 +74,13 @@ For anything drawn behind gameplay — battle backdrops especially. Screenshot t
 scene, shrink it, drain the colour: **the crystals and the HP bars must be the
 first things a squint finds, in every world.**
 
+`npm run greyscale-check` from `game/` (~2.5 min) is that check, run over all
+ten arenas with a number per element per world and its own positive and
+negative controls on every run — see `dev_notes/DEVELOPMENT.md`'s "Checking
+arena legibility" for the metric, the thresholds and what it deliberately does
+not cover. Read its per-element margins rather than only its verdict: a world
+sitting at x1.2 over the gate is the one your next backdrop change will break.
+
 This catches the failure a colour check waves through — an element surviving on
 hue alone and vanishing in value, which is exactly what fog-coloured late worlds
 produce. Backdrops hold a compressed mid-value range; gameplay owns the darkest
