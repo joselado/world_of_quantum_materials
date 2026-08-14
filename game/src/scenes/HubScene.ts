@@ -388,9 +388,11 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   }
 
   // Full name plus the one-line "what they teach" blurb, floating just under
-  // the hovered avatar and clamped to stay on canvas -- the room itself only
-  // has width for a surname, so this is where a guardian says what they
-  // actually offer before the player commits a click to finding out.
+  // the hovered avatar and clamped horizontally to stay on canvas -- the room
+  // itself only has width for a surname, so this is where a guardian says what
+  // they actually offer before the player commits a click to finding out. Even
+  // the bottom row's readout lands well above the canvas floor, so it always
+  // opens downward.
   private showGuardianTooltip(guardian: GuardianRosterEntry, slot: { x: number; y: number }) {
     this.hideGuardianTooltip();
 
@@ -399,18 +401,29 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     const container = this.add.container(0, 0).setDepth(60);
     this.guardianTooltip = container;
 
+    // Capped text scale, the same tradeoff renderPassiveList/showAbilitiesPanel
+    // make: a guardian's full name is one long unbreakable word ("Skłodowska-
+    // Curie's"), which word wrap can't split, so at the Large preset an
+    // uncapped size would push it past this fixed-width box.
+    const scale = Math.min(fontScale(this), 1.3);
+    const wrapW = width - padding * 2;
+
     const name = this.add
-      .text(0, 0, guardian.name, { fontSize: fontPx(this, 10), color: guardian.labelColor, fontStyle: 'bold', wordWrap: { width: width - padding * 2 } })
+      .text(0, 0, guardian.name, {
+        fontSize: `${Math.round(10 * scale)}px`,
+        color: guardian.labelColor,
+        fontStyle: 'bold',
+        align: 'center',
+        wordWrap: { width: wrapW },
+      })
       .setOrigin(0.5, 0);
     const blurb = this.add
-      .text(0, 0, guardian.blurb, { fontSize: fontPx(this, 9), color: '#cfd8ff', align: 'center', wordWrap: { width: width - padding * 2 } })
+      .text(0, 0, guardian.blurb, { fontSize: `${Math.round(9 * scale)}px`, color: '#cfd8ff', align: 'center', wordWrap: { width: wrapW } })
       .setOrigin(0.5, 0);
 
     const height = name.height + 3 + blurb.height + padding * 2;
     const centerX = Phaser.Math.Clamp(slot.x, width / 2 + 4, CANVAS_W - width / 2 - 4);
-    const below = slot.y + GUARDIAN_LABEL_DROP + 18;
-    // Flips above the avatar rather than running off the bottom of the room.
-    const top = below + height > CANVAS_H - 6 ? slot.y - 34 - height : below;
+    const top = slot.y + GUARDIAN_LABEL_DROP + 18;
 
     const bg = this.add.rectangle(centerX, top + height / 2, width, height, PANEL_BG, 0.95).setStrokeStyle(1, 0x8fa0c9);
     name.setPosition(centerX, top + padding);

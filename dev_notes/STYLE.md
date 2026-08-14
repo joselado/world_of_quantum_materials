@@ -1648,8 +1648,9 @@ than the caller's requested budget) for its own layout math.
   (measured on the rendered size, not the base one, so the Large preset can't push a long name
   into its neighbour). Hovering a slot washes it faintly blue, turns the label that guardian's
   own `labelColor`, lifts the avatar to `1.12` scale, and floats a `200`-wide readout under it
-  with the guardian's full name and their one-line `blurb` -- clamped to the canvas and flipped
-  above the avatar if it would run off the bottom, so a player can see what each figure offers
+  with the guardian's full name and their one-line `blurb` -- clamped horizontally to the canvas,
+  its two lines' font scale capped at `1.3` (a full name is one long unbreakable word that word
+  wrap can't split), so a player can see what each figure offers
   before spending a click on finding out.
 - **The click target is a rectangle covering the whole slot**, not the avatar container (a
   Phaser Container has no hit area of its own). It is invisible at rest rather than fully
