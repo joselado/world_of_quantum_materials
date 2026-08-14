@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { blend } from './colors';
 import { LANE_PX } from './perspective';
+import { ellipseSteps } from './shapes';
 import { TILE_SCALE } from '../scenes/overworld/projection';
 import type { AccentTile } from '../scenes/overworld/terrain/types';
 
@@ -100,11 +101,17 @@ export function drawTree(g: Phaser.GameObjects.Graphics, tile: AccentTile, style
   }
 
   // Crown: a shaded lower mass with a lit cap over it, which is enough
-  // rounding to read as foliage without becoming a per-leaf drawing.
+  // rounding to read as foliage without becoming a per-leaf drawing. A wood
+  // is hundreds of crowns a frame, so each one is tessellated against its own
+  // size on screen (art/shapes.ts) rather than at Phaser's fixed count.
   g.fillStyle(blend(style.canopyShade, haze, air), alpha);
-  g.fillEllipse(x, crownY + 0.05 * size, 0.46 * size, 0.32 * size);
+  ellipse(g, x, crownY + 0.05 * size, 0.46 * size, 0.32 * size);
   g.fillStyle(blend(style.canopy, haze, air), alpha);
-  g.fillEllipse(x - 0.12 * size, crownY, 0.3 * size, 0.23 * size);
-  g.fillEllipse(x + 0.12 * size, crownY, 0.27 * size, 0.21 * size);
-  g.fillEllipse(x, crownY - 0.12 * size, 0.31 * size, 0.23 * size);
+  ellipse(g, x - 0.12 * size, crownY, 0.3 * size, 0.23 * size);
+  ellipse(g, x + 0.12 * size, crownY, 0.27 * size, 0.21 * size);
+  ellipse(g, x, crownY - 0.12 * size, 0.31 * size, 0.23 * size);
+}
+
+function ellipse(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number) {
+  g.fillEllipse(x, y, w, h, ellipseSteps(w, h));
 }

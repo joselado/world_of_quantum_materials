@@ -67,7 +67,9 @@ game/src/
                                  of that plan, including the lateral/depth margins, the contact
                                  shadow and the chokepoint glow
         color.ts               groundColor(), the depth haze every ground fill goes through
-        decoration.ts          decorateTile(), the per-biome motif on a decorated walkable tile
+        decoration.ts          decorateTile(), the per-biome floor motif, and
+                                 GROUND_MOTIFS_ENABLED, the default-off switch that decides
+                                 whether the walkable floor draws one at all
         materials/             One module per off-path material behind a dispatcher (see
                                  "Off-path terrain materials" below): rock.ts, forest.ts,
                                  columns.ts, deadFloor.ts, charged.ts, ice.ts, shards.ts,
@@ -185,6 +187,9 @@ game/src/
     horizons.ts                Per-world distant-self profiles, their sky extras, and the
                                   separate OVERHEAD_SKIES motifs read from the world stood in
     trees.ts                   The shared tree sprite, drawn by worlds 1 and 8 in two palettes
+    shapes.ts                  ellipseSteps(w, h) -- how many points to draw an ellipse with,
+                                 bucketed by its on-screen size (see "Ellipse tessellation"
+                                 below)
     contours.ts                Smoothed walkable/impassable boundary geometry in tile space --
                                   per-tile ground outline, contact-shadow strips, rim light --
                                   built once per world-state by OverworldScene's cached terrain
@@ -1450,6 +1455,26 @@ painting far-to-near, with no height field and no repaint pass. Adding a materia
 a module and a table entry (plus the `wallTheme` in `art/biomes.ts` and the matching `TerrainKind`
 in `terrain/types.ts`); nothing in the paint pass itself changes, and two people can add two
 materials without touching the same file.
+
+**Ground motifs.** `terrain/decoration.ts`'s `decorateTile` holds one floor motif per world --
+the Stone Lattice's sublattice mosaic, the Storm Flats' orbit rings, the Iron Steppe's spin-wave
+ripples, and the rest. Whether the walkable floor draws any of them is a single default-off
+switch in that file, `GROUND_MOTIFS_ENABLED`, read at `terrain/paint.ts`'s one call site; with
+it off the route is one flat colour in every world (`STYLE.md`'s "Overworld path"). The motifs
+and the `flowerMap`/`TerrainTile.decorate` plumbing that feeds them stay wired and reachable, so
+turning them back on is flipping that one constant rather than rebuilding the pass.
+
+**Ellipse tessellation.** Phaser draws an ellipse as a polygon and takes 32 points for it at any
+size, so a shape a few pixels across costs the same ~100 graphics commands as one filling the
+frame. The ground is repainted every frame and its accents draw ellipses per tile, which made
+that default the largest single item in the frame's command buffer. `art/shapes.ts`'s
+`ellipseSteps(width, height)` supplies the point count instead, bucketed by the shape's own
+on-screen size against a sub-pixel error budget (for an n-gon on a radius-r ellipse the widest
+gap to the true curve is `r*(1 - cos(PI/n))`). The buckets are discrete deliberately: a count
+that slid continuously with distance would re-tessellate a silhouette every frame the player
+moves, and an edge that re-cuts itself each frame crawls. Every per-tile ellipse in the terrain
+pass goes through it -- `art/trees.ts`'s crowns, `materials/lava.ts`, `materials/consuming.ts`,
+`materials/ice.ts` and `materials/charged.ts`'s strike pools -- and any new one should.
 
 **Overworld depth layering.** `OverworldScene`'s corridor is a fixed stack of Phaser depths:
 `worldGfx` (the single `Graphics` mesh for the whole ground plane, repainted every frame -- see

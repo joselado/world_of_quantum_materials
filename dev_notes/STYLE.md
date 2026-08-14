@@ -307,6 +307,17 @@ than appending a changelog, so this always reflects current reality.
   `regionColor` tile renders as plain ground in that tint regardless of `wallTheme` and carries
   no terrain accent -- world 3's own biome is `wallTheme: 'void'` (see below), whose starlit
   drop would otherwise fight the domain color it is supposed to read as.
+- **The walkable floor is one flat colour.** Nothing keyed to a tile's own `gx`/`gy` is drawn
+  on the route the player walks, in any world: a floor carrying its own pattern competes with
+  the walkable/impassable boundary for exactly the attention that boundary needs, and "where
+  can I walk" is the question the ground has to answer first. Depth-driven variation is not
+  within-row variation and stays -- the depth fog and the Storm Flats' band ramp are uniform
+  across a row and read as distance rather than as texture. A world's own character is carried
+  by its palette and by the impassable surround beside the route (`terrain/materials/`), not by
+  what the floor is painted with. The per-world floor motifs stay written behind
+  `terrain/decoration.ts`'s default-off `GROUND_MOTIFS_ENABLED`. The one thing that may vary
+  within a row on the floor is a *gameplay signal* rather than texture -- the chokepoint glow
+  immediately below.
 - The guardian's own tile (and its immediate neighbors) gets a soft pulsing glow overlaid on
   the ordinary path fill, in that world's own guardian color (`WORLD_GUARDIANS`'
   `strokeColor` -- the same per-guardian color coding panels/pills already use,
@@ -327,8 +338,7 @@ than appending a changelog, so this always reflects current reality.
   `regionColor` domain where the tile belongs to one) and then lays on the accent the terrain
   kind resolved from that tile's own biome's `wallTheme` calls for (`art/biomes.ts`, resolved
   per-tile via `biomeOverride` above; see the Biomes table below). Every accent is skipped past
-  `depthRatio 0.75` (the same gate `decorateTile` uses) so distant tiles stay a cheap flat
-  fill:
+  `depthRatio 0.75` so distant tiles stay a cheap flat fill:
   - **'rock'** (the Entangled Web, world 7): bare ground with nothing laid over its fill.
     In that world bare means black -- the surround is true void, and there is nothing out
     there to draw.
@@ -515,7 +525,8 @@ than appending a changelog, so this always reflects current reality.
 
 Per-world skin: sky/ceiling gradient, distant self (`hillColor`/`hillAlpha`, see "The horizon"
 below), off-path ground color, on-path
-trail color, ambient decoration style and how much of the route carries it, fog blend target,
+trail color, which floor motif the world would carry and how much of the route would show it
+(behind `GROUND_MOTIFS_ENABLED`, off by default -- see "Overworld path" above), fog blend target,
 whether clouds render and how fast they drift, the Storm Flats' flat-band ramp, and (see
 "Overworld path" above) what the off-path terrain actually *is* -- `wallTheme`.
 

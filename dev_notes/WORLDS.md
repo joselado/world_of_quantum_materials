@@ -138,18 +138,24 @@ A world where neither spine holds is a world that will read as placeholder art.
 
 ## 2. The worlds
 
+The walkable route is one flat colour in every world (`STYLE.md`'s "Overworld path"): what a
+world *is* is carried by its palette, its light, and the impassable surround beside the route,
+not by a pattern painted on the floor. The **Walkable** column below is that floor's colour and
+the corridor's own shape; the **Impassable** column is where each world's character actually
+lives.
+
 | # | Name | Walkable | Impassable | Light |
 |---|---|---|---|---|
 | 1 | **The Mean Fields** | wheat / mown grass | dense summer forest | bright morning |
-| 2 | **The Stone Lattice** | mosaic-tiled aisle | rows of identical sandstone columns | hard midday sun |
-| 3 | **The Edge Cliffs** | a lit ledge that visibly flows | shallow drop to sunken dead floors | bright, windy, motionless afternoon |
-| 4 | **The Storm Flats** | banded indigo ground, glowing boundary channels, orbit rings | ground the storm strikes | stormy dusk |
-| 5 | **The Vortex Glacier** | swept ice, flow-lines bending away from the bulk | frozen lake, vortex pits with trapped-flux glow | overcast twilight |
-| 6 | **The Iron Steppe** | black iron-sand, rippling | aligned iron shards, flipping across a domain wall | night, green aurora |
-| 7 | **The Entangled Web** | white-gold filaments and rungs | true void | no sky |
+| 2 | **The Stone Lattice** | pale sandstone aisle | rows of identical sandstone columns | hard midday sun |
+| 3 | **The Edge Cliffs** | a lit ledge between two domains | shallow drop to sunken dead floors | bright, windy, motionless afternoon |
+| 4 | **The Storm Flats** | banded indigo ground, glowing boundary channels | ground the storm strikes | stormy dusk |
+| 5 | **The Vortex Glacier** | pale swept ice | frozen lake, vortex pits with trapped-flux glow | overcast twilight |
+| 6 | **The Iron Steppe** | black iron-sand | aligned iron shards, flipping across a domain wall | night, green aurora |
+| 7 | **The Entangled Web** | white-gold causeway | true void | no sky |
 | 8 | **The Splitting Hollow** | forest floor, path forking | fog that takes you; World 1's trees, dead | fog-lit only |
-| 9 | **The Defect Scars** | scorched clay — old, closed scars | molten crust — wounds still open | red glow |
-| 10 | **The Devouring Mirror** | shifting silver-violet, dissolving behind you | terrain reconfiguring around you | uncanny shimmer |
+| 9 | **The Defect Scars** | scorched clay | molten crust — wounds still open | red glow |
+| 10 | **The Devouring Mirror** | shifting silver-violet | terrain reconfiguring around you | uncanny shimmer |
 
 ### 1 — The Mean Fields *(mean field, spontaneous symmetry breaking)*
 
@@ -168,14 +174,13 @@ duplication.
 ### 2 — The Stone Lattice *(symmetries, tight-binding, effective models)*
 
 Built rather than grown: an open-air stone cloister in hard midday sun, and the
-only architecture in the game. The floor is an actual repeating wallpaper
-pattern, with two alternating tile motifs carrying the two-atom basis; the
-surround is rows of identical sandstone columns with dark shadow gaps, evenly
-spaced, marching off in both directions.
+only architecture in the game. The surround is rows of identical sandstone
+columns with dark shadow gaps, evenly spaced, marching off in both directions,
+and the aisle between them is flat pale stone.
 
-A tiled floor is a wallpaper group and a colonnade is a one-dimensional lattice,
-so the player stands inside the mathematical objects rather than beside a
-picture of them. Every contrast axis flips against World 1 at once — organic
+A colonnade is a one-dimensional lattice, so the player walks along the
+mathematical object rather than beside a picture of it. Every contrast axis
+flips against World 1 at once — organic
 vs. geometric, green vs. sandstone, soft irregular edges vs. hard straight ones
 — which is what stops two consecutive daylight worlds from reading as one.
 
@@ -210,7 +215,10 @@ the texture of dead matter rather than as a rendering artifact.
 Discrete flat colour bands underfoot in a single-hue indigo ramp, a soft dark
 strip along each band's lower boundary, and a glowing channel at every boundary
 — which is not decoration but the subject, since edge channels live between
-filled Landau levels. Quantised orbit rings are the ground decoration.
+filled Landau levels. The bands run across the whole world, walkable and
+impassable alike: they are a property of the ground, not of the route through
+it. They are uniform along a row, which is why this world keeps its signature
+while its floor stays flat.
 
 Landau levels *are* dispersionless flat bands, so "Flats" is the physics, not
 the weather — the same trick as "Mean Fields", where the terrain noun is also
@@ -234,11 +242,11 @@ the route and the player's own crystal have to keep their values through one.
 Light falling on struck ground is honest here, since the sun is gone but the sky
 is not — the light rule only forbids received light from World 7 on.
 
-Two other things are load-bearing rather than optional. **The orbit rings stay**:
-with the name no longer saying "orbit", the rings are the only thing left
-teaching the mechanism. And the boundary shadow strips are lighting, not
-landform — they give flat bands material depth without promising elevation the
-engine can't deliver.
+The boundary shadow strips are lighting, not landform — they give flat bands
+material depth without promising elevation the engine can't deliver. The bands
+and their channels are what this world's terrain teaches; with a flat floor and
+a name that speaks of flats rather than orbits, the quantised orbit itself is
+carried by the world's writing and its quiz material rather than by the ground.
 
 ### 5 — The Vortex Glacier *(superconductivity, Nambu, Majorana)*
 
@@ -246,17 +254,19 @@ An open glacier at overcast twilight, with the corridor spiralling around one or
 two permanently blocked vortex cores. The pits are dark, rim-lit, with a faint
 cold glow of trapped flux down inside each one.
 
-"Swept" is literal: the ice is streaked with flow-lines that visibly bend around
-and away from the bulk and converge only into the vortex pits. That is field
-expulsion drawn as terrain — the world becomes *the place that pushes something
-invisible away from itself*, which is the topic, rather than "the ice one".
+Field expulsion is drawn where the field actually is: the pits. Everywhere else
+the ice is blank and pale — the field has been pushed out of it — and the only
+places anything shows are the cores, where the trapped flux glows. The world is
+*the place that pushes something invisible away from itself*, told by where the
+glow survives rather than by streaks on the road.
 
 ### 6 — The Iron Steppe *(classical magnetism, magnons)*
 
-Night under a green aurora. Black iron-sand underfoot with visible spin-wave
-ripples running through it; the surround is fields of aligned iron shards, all
-leaning the same way, flipping direction across a domain wall. The magnetic
-order is something the player can see standing up out of the ground.
+Night under a green aurora. Black iron-sand underfoot; the surround is fields of
+aligned iron shards, all leaning the same way, flipping direction across a
+domain wall. The magnetic order is something the player can see standing up out
+of the ground — the shards are the order made visible, and the domain wall is
+where it changes its mind.
 
 This is the **false calm**, and it is anatomically correct: the *mood* relaxes
 after ice and storm — the aurora is genuinely beautiful — while the *lethality*
@@ -270,13 +280,19 @@ already lying about where light comes from.
 
 ### 7 — The Entangled Web *(entanglement, tensor networks)*
 
-No sky, no ground — only the network. Taut, geometric, architectural filaments
-in white-gold, the game's one warm glow before World 9 burns, strung as the
+No sky, no ground — only the network. The walkable ground is white-gold, the
+game's one warm glow before World 9 burns, and its *shape* is the network: the
 ladder of lanes and rungs the generator builds, hanging in true void.
 
 In a tensor network the geometry *is* the entanglement: outside the network
 there is no space. Rendering the surround as actual nothing is the honest
 picture, not a mood choice, and this world holds the monopoly on it.
+
+This is the one world where that honesty costs something. Its surround draws
+nothing by definition and its floor is flat like every other, so the corridor's
+own outline is the whole of what identifies it — this world leans harder on
+shape alone than any other, and it is the first place to check after any change
+to the boundary treatment or the generator's ladder.
 
 Keep it still and structural — "shifting and alive" belongs entirely to World 10.
 
@@ -303,7 +319,8 @@ desaturated near-black grey-green.
 Damage past and damage present, in the same frame: the walkable scorched clay
 reads as old scars, closed and healed-over, while the impassable molten crust is
 wounds still open and glowing. A lattice defect *is* frozen-in damage that never
-heals, and this world's ground decoration is literally cracks.
+heals, and the contrast between the two carries it — the route is the damage that
+stopped, the surround is the damage that did not.
 
 The generator embeds patches of worlds 1–8's own looks along the corridor —
 borrowed defect "types" — which is also where World 2's toppled column drums
@@ -314,17 +331,22 @@ belong, half-sunk in the crust.
 The world that isn't a world, and the only name in the set with no terrain noun
 — which is correct, because a mirror is not a place you visit, it's a thing you
 face. Shifting silver-violet, the terrain reconfiguring around whatever crystal
-the player currently is, and **the path dissolving behind them as the world
-re-forms ahead**: the name has to be a description rather than a boast, so the
-world must visibly *take* something.
+the player currently is: the name has to be a description rather than a boast,
+so the world must visibly *take* something.
 
 **The surround is the player, rendered.** The impassable terrain does not merely
 reconfigure — what it reconfigures *into* is increasingly defined copies of the
-player's own crystal, sharpening as they approach the boss. With the path
-dissolving behind them, the full loop is **ingestion at the back and rendering at
-the front**: the world eats the player's trail and emits the player. That is the
-training loop drawn as terrain, and it cashes the devouring and the mirror in one
-gesture rather than two.
+player's own crystal, sharpening as they approach the boss. That is the training
+loop drawn as terrain, and it is what currently cashes both the devouring and the
+mirror.
+
+The other half of that loop — **the path dissolving behind the player as the
+world re-forms ahead**, so the world eats the trail at the back and emits the
+player at the front — is written as this world's floor motif and sits behind
+`GROUND_MOTIFS_ENABLED` with every other world's (`STYLE.md`'s "Overworld
+path"). While the floor is flat, the world renders the player without also
+visibly consuming the route, and the ingestion half of the image is carried by
+the writing rather than by the terrain.
 
 **The copies never resolve completely.** The terrain asymptotes; only the boss
 converges. Every reflection stays slightly wrong — soft-edged, off-colour,
