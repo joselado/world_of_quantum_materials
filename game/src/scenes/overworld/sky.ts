@@ -10,7 +10,7 @@ import { groundColor } from './terrain/color';
 // atmosphere, as a fraction of the draw distance. It is exactly where the
 // detail passes (tile decoration, terrain accents, actor sprites) already
 // stop, so the band covers only ground that had nothing left on it.
-const HORIZON_BAND_FROM = 0.75;
+const HORIZON_BAND_FROM = 0.55;
 // How far south of the goal row the next world's fog starts bleeding into
 // this one's, in tiles, and how much of it has arrived by the goal row
 // itself. Held under 1 so the world keeps some of its own air even standing
@@ -33,6 +33,11 @@ const HAZE_INHERIT_MAX = 0.8;
 // meaningful because what surrounds the band is the fog color.
 const SKY_BLEND_H = 96;
 const SKY_BLEND_FULL = 40;
+// How far the mist drifts back toward this world's own high sky as it climbs
+// away from the horizon line, and how much of the fog color washes over the
+// whole sky (clouds included) once the forward blend is running.
+const MIST_LIFT = 0.3;
+const SKY_TINT_MAX = 0.55;
 // How far the distant self is carried into the live fog target. The
 // silhouette is drowned rather than painted: what is left of its own color
 // is a narrow excursion from the mist it stands in, which is the whole
@@ -148,42 +153,72 @@ export function forwardHazeBlend(world: number, gateOpen: boolean, camY: number,
 // atmosphere.
 export function drawDepthHaze(g: Phaser.GameObjects.Graphics, view: AtmosphereView) {
   const target = hazeTarget(view, view.biome);
-  fillVerticalFade(g, target, HORIZON_Y, 240, (t) => 0.35 * Math.pow(1 - t, 3));
-  drawHorizonBand(g, target);
   const mist = SKY_BLEND_H + SKY_BLEND_FULL;
+  const mistTop = HORIZON_Y - mist;
+  // The mist is a column of air seen end-on, not a swatch: it holds the fog
+  // color where the sightline through it is longest -- the horizon line and
+  // the strip of ground below it -- and thins toward this world's own high
+  // sky as it climbs. Without that drift the full-strength stretch reads as
+  // a flat panel laid over the picture even with both its edges feathered,
+  // because a hundred rows of one exact color is the one thing real air
+  // never is.
+  const lifted = blend(target, view.biome.skyTop, MIST_LIFT);
+  const floorY = projectTile(0, DRAW_DISTANCE_TILES).y;
+  const tone = (y: number) => lerpColor(target, lifted, Math.max(0, (floorY - y) / (floorY - mistTop)));
+
+  // The sky wash reaches every cloud too, at a strength that is zero until
+  // the forward blend starts: once the air ahead is the next world's air,
+  // a bank of this world's untouched daylight clouds over it is the loudest
+  // possible statement that the color below them is an overlay.
+  if (view.hazeBlend > 0) {
+    g.fillStyle(target, SKY_TINT_MAX * view.hazeBlend);
+    g.fillRect(0, 0, CANVAS_W, mistTop);
+  }
+  fillVerticalFade(g, () => target, HORIZON_Y, 240, (t) => 0.35 * Math.pow(1 - t, 3));
+  drawHorizonBand(g, tone);
   // Smoothstepped rather than a power curve: the ramp has to arrive at the
   // full-strength zone with its slope already flat, or the point where it
   // stops climbing is itself an edge -- the same rectangle read this pass
   // exists to remove, moved up the sky.
-  fillVerticalFade(g, target, HORIZON_Y - mist, mist, (t) =>
-    smoothstep(Math.min(1, (t * mist) / SKY_BLEND_H))
-  );
+  fillVerticalFade(g, tone, mistTop, mist, (t) => smoothstep(Math.min(1, (t * mist) / SKY_BLEND_H)));
   drawDistantSelf(g, view, target);
 }
 
-// A vertical alpha ramp in one flat color, painted as abutting one-pixel
-// rows. The rows must not overlap: two translucent rects sharing a scanline
-// blend twice there, which draws a bright line at every seam -- invisible
-// while the color is close to the ground under it, and stripes across the
-// whole far distance as soon as it is not (a haze carrying the next world's
-// fog color, biomes.ts's note on holding `fogTarget` near the floor colors).
+// A vertical alpha ramp, painted as abutting one-pixel rows in whatever color
+// `colorAt` gives that row. The rows must not overlap: two translucent rects
+// sharing a scanline blend twice there, which draws a bright line at every
+// seam -- invisible while the color is close to the ground under it, and
+// stripes across the whole far distance as soon as it is not (a haze carrying
+// the next world's fog color, biomes.ts's note on holding `fogTarget` near
+// the floor colors).
 function fillVerticalFade(
   g: Phaser.GameObjects.Graphics,
-  color: number,
+  colorAt: (y: number) => number,
   top: number,
   height: number,
   alphaAt: (t: number) => number
 ) {
   const rows = Math.max(1, Math.round(height));
   for (let i = 0; i < rows; i++) {
+    const y = top + i * (height / rows);
     // The ramp is sampled at each row's far edge, so the last row painted
     // lands on alphaAt(1) exactly. A fade that has to arrive opaque (the sky
     // blend meeting the horizon line) otherwise stops a row short and leaves
     // a sliver of un-hazed sky against fully-hazed mist -- a hairline seam at
     // precisely the join this pass exists to remove.
-    g.fillStyle(color, alphaAt((i + 1) / rows));
-    g.fillRect(0, top + i * (height / rows), CANVAS_W, height / rows);
+    g.fillStyle(colorAt(y), alphaAt((i + 1) / rows));
+    g.fillRect(0, y, CANVAS_W, height / rows);
   }
+}
+
+// Packed-int color lerp. The mist ramp needs one of these per scanline of
+// every frame, which is where Phaser's Color objects would start costing
+// real allocation -- `blend` stays the right call everywhere it runs once.
+function lerpColor(a: number, b: number, t: number): number {
+  const r = Math.round(((a >> 16) & 255) + (((b >> 16) & 255) - ((a >> 16) & 255)) * t);
+  const g = Math.round(((a >> 8) & 255) + (((b >> 8) & 255) - ((a >> 8) & 255)) * t);
+  const bl = Math.round((a & 255) + ((b & 255) - (a & 255)) * t);
+  return (r << 16) | (g << 8) | bl;
 }
 
 // The last stretch of ground is painted atmosphere rather than tiles: past
@@ -197,12 +232,20 @@ function fillVerticalFade(
 // out at HORIZON_BAND_FROM of the draw distance. Both ends are fixed depths
 // rather than tracked off the deepest row drawn, so the band never slides
 // out from under the rows as the camera creeps.
-function drawHorizonBand(g: Phaser.GameObjects.Graphics, target: number) {
+//
+// The thinning is smoothstepped, so the band leaves full strength with its
+// slope already flat. A ramp that starts falling the instant the opaque
+// stretch ends puts a readable line there instead of at the horizon -- the
+// eye finds the place where a gradient stops changing just as easily as it
+// finds an edge.
+function drawHorizonBand(g: Phaser.GameObjects.Graphics, colorAt: (y: number) => number) {
   const solid = projectTile(0, DRAW_DISTANCE_TILES).y;
   const foot = projectTile(0, DRAW_DISTANCE_TILES * HORIZON_BAND_FROM).y;
   const height = foot - HORIZON_Y;
   const solidT = (solid - HORIZON_Y) / height;
-  fillVerticalFade(g, target, HORIZON_Y, height, (t) => (t <= solidT ? 1 : Math.pow((1 - t) / (1 - solidT), 1.5)));
+  fillVerticalFade(g, colorAt, HORIZON_Y, height, (t) =>
+    t <= solidT ? 1 : smoothstep(1 - (t - solidT) / (1 - solidT))
+  );
 }
 
 // The neighbour's distant self, standing on the horizon line. World N's
