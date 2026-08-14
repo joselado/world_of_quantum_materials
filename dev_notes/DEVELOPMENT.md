@@ -131,10 +131,12 @@ header comment -- read it before trusting a number out of its output.
 
 ## Content lint
 
-`game/scripts/content-lint.mjs` (`npm run content-lint` from `game/`, well
-under a second -- pure Node, no browser, no dev server) statically
-cross-checks the hand-authored data tables for internal consistency, the one
-class of bug none of the other checks on this page can see: every
+`game/scripts/content-lint.mjs` (`npm run content-lint` from `game/`, ~2s --
+pure Node, no browser, no dev server) reads the source with the TypeScript
+compiler API and checks two families of thing none of the other checks on
+this page can see.
+
+**The hand-authored data tables' internal consistency** (checks 1-15): every
 `MaterialType` has a `MOVE_COMPATIBILITY` row and can host `phonon` (the
 universal fallback move), every crystal/rival's `moves` list resolves to a
 real `MOVES` id, no two moves share a display name (this project has shipped
@@ -149,10 +151,94 @@ topic has a trigger site, a `{ kind: 'guardian' }` topic names a real guardian
 and follows the ones unlocked in earlier worlds). Reads `materials.ts`/
 `types.ts`/`passives.ts`/`quiz.ts`/`tutorial.ts`/`OverworldScene.ts` (for the
 class-private `WORLD_GUARDIANS` table) the same AST-parsing way `gen-docs.mjs` does, for
-the same reason (`materials.ts` pulls in Phaser at module scope). Run this
-after any content addition -- pairs naturally with the `add-content` skill's
-own checklist, and is cheap enough to run reflexively before reaching for
-`component-check`/`playthrough-check`, which check behavior rather than data.
+the same reason (`materials.ts` pulls in Phaser at module scope).
+
+**Orphan definite-assignment fields** (check 16), the one source-level rather
+than data-level check: it walks every `src/` class property declared
+`private x!: T` with no initializer and flags any whose name is never an
+assignment target anywhere in `src/`. The `!` is a promise to the compiler
+that something will assign the field, and the compiler stops checking once
+it's there -- so a field nothing ever assigns reads as `undefined` at
+runtime, `tsc --noEmit` says nothing, and the first method call on it throws.
+A behavior check only sees it if its own route happens to reach that one
+read, which for a field read on a single World 10 branch it may never do.
+What counts as an assignment is deliberately generous and matched by name
+across all of `src/` rather than within the declaring class: any assignment
+operator writing to a property access or a string-literal bracket access,
+`++`/`--`, a property target inside a destructuring assignment pattern, and a
+`for (obj.x of ...)` binding. The scenes' public `!` fields really are
+assigned from other files (panels under `scenes/panels/` write
+`scene.playerMaterial`), so a same-named write anywhere suppressing a genuine
+orphan elsewhere is the failure direction worth having -- a hit here always
+means something, which is the only way a check like this stays enabled.
+
+Run this after any content addition -- pairs naturally with the
+`add-content` skill's own checklist, and is cheap enough to run reflexively
+before reaching for `component-check`/`playthrough-check`, which check
+behavior rather than data.
+
+## Art-builder input sweep
+
+**`npm run art-sweep`** (`scripts/art-sweep.mjs`, ~20-35s) calls every
+procedural art builder over every input it can legitimately receive and
+asserts nothing throws. Almost every call site hands a builder a fixed,
+hand-checked entry, so a builder that chokes on one particular input stays
+invisible until that input is used; World 10's Adapted is the exception and
+the reason this exists, since `BattleScene.transmuteAdapted` picks a compound
+at random out of the whole roster (`allCrystals()`) and feeds it straight to
+`makeBossCrystal`. Four sweeps, ~1480 inputs:
+
+- `art/boss.ts`'s `makeBossCrystal` and `art/crystals.ts`'s `makeCrystal`
+  over every material x every `CrystalVariant` -- the wild roster, every
+  world's fixed rival, the player's starting form, and every Majorana fusion
+  the roster admits (built by the game's own `combineMaterials`, so the
+  two-parent hybrid render path is swept too), with and without the
+  per-compound `seed`/`hybrid` options.
+- The ten per-guardian avatar builders in `art/`.
+- `art/attackEffects.ts`'s `playAttackEffect` (a real cast) and
+  `playTargetEffect` (a guardian panel's looping detail-pane preview, which
+  is what a positive `depthOffset` means) over every `MoveClass` x every
+  per-move-id shape override x move levels 0 and 3. The class list is the
+  full union rather than each move's own authored class because a tunable
+  move carries whichever class the player retuned it to, so any class can
+  reach any move's override.
+
+Every domain is derived from the data (`allCrystals()`/`WORLD_RIVALS`/
+`MOVES`/`ANALYTIC_SHAPES`/`ULTIMATE_SHAPES` at runtime; the
+`CrystalVariant`/`MoveClass` unions and the `art/` `make*Avatar` exports
+parsed out of the source, since a type union is erased before runtime), so
+new content is swept the day it lands rather than the day someone remembers
+to extend a list here.
+
+**Two failure channels, and the second is the point.** A per-input
+`try`/`catch` attributes a synchronous throw to the exact input that caused
+it. But a throw inside a tween or timer callback fires from within Phaser's
+game step, long after the builder call returned -- it never reaches the frame
+that called the builder, it just kills the `requestAnimationFrame` loop and
+freezes the canvas. Those are caught by the page's own `pageerror`, attributed
+to the phase they landed in. The run also counts every effect's own impact
+callback and fails if one never fires: an effect that never lands is a battle
+turn that never resolves.
+
+It hosts the real modules in a real Phaser scene in a real browser -- a blank
+scene added to the running dev build, with the builders pulled in through the
+dev server's own module transform (`import('/src/art/boss.ts')`). Phaser
+cannot be imported into plain Node here at all (it reads `navigator` at module
+scope), and a stubbed scene object would be measuring the stub rather than
+Phaser. `QM_ART_TIMESCALE` (default 20) speeds up the scene's clock and tween
+manager so a 5.2-second Ultimate sequence still plays end to end, callbacks
+and all, without costing 5.2 seconds; the impact-callback count is what proves
+the compression played the sequences rather than dropping them. `QM_ART_PORT`
+(default 5190) keeps it off `:5173`, so it never disturbs a dev server another
+session is running.
+
+`QM_ART_BREAK=sync` casts one effect with a move class that doesn't exist and
+`QM_ART_BREAK=async` throws from inside an impact callback -- the sensitivity
+controls for the two channels. Use them to confirm the sweep can still fail
+before trusting a clean run; a check that has never been seen to fail is not
+evidence. `QM_ART_BREAK=async` also demonstrates why the second channel is
+needed at all: the single injected tween-callback throw stops the game loop,
+and the 237 impact callbacks queued behind it never fire.
 
 ### `game/` project layout
 

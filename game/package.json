@@ -11,6 +11,7 @@
     "balance-sim": "node scripts/balance-sim.mjs",
     "mapgen:check": "node scripts/mapgen-check.mjs",
     "content-lint": "node scripts/content-lint.mjs",
+    "art-sweep": "node scripts/art-sweep.mjs",
     "music-arc-check": "node scripts/music-arc-check.mjs",
     "component-check": "node scripts/component-check.mjs",
     "playthrough-check": "node scripts/playthrough-check.mjs"

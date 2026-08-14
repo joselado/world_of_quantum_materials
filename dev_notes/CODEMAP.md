@@ -481,6 +481,21 @@ same static tables the same AST way, but transpiles and actually imports
 economy formulas against three reference player builds across worlds 1-10, a
 difficulty-curve sanity check rather than a docs generator.
 
+`game/scripts/content-lint.mjs` (`npm run content-lint`) parses the data tables the same
+AST way for its consistency checks, and additionally walks every `src/` file's AST for
+class properties declared with a definite-assignment `!` and no initializer, flagging any
+whose name is never an assignment target anywhere in `src/` -- the `!` is what stops `tsc`
+from checking, so an unassigned one reads as `undefined` at runtime with no diagnostic.
+
+`game/scripts/art-sweep.mjs` (`npm run art-sweep`, see DEVELOPMENT.md's "Art-builder input
+sweep") is the one script that imports `src/` modules for real rather than parsing them:
+it drives the running dev build in headless Chrome and calls every art builder
+(`makeBossCrystal`, `makeCrystal`, the `make<Name>Avatar` set, `playAttackEffect`/
+`playTargetEffect`) over every input the data tables admit, asserting no throw. It exists
+because `BattleScene.transmuteAdapted` is the only runtime path that feeds a randomly
+picked `Material` into an art builder, so any input a builder can't handle surfaces at
+World 10's Adapted and nowhere else.
+
 ## Data model (`data/types.ts`, `data/materials.ts`)
 
 - A **Material** is a crystal: `name`, `type` (`MaterialType`), `color`, `variant`
@@ -1436,8 +1451,9 @@ bespoke `spawnXSprite` per guardian, and all share one chime, `playGuardianChime
 **Renaming a guardian is a display-layer change, not a mechanic change.** `WORLD_GUARDIANS[N].id`
 (a `metGuardians`/save-list key, never displayed) can stay whatever it was, or change to match --
 nothing special-cases a specific id string. What actually needs touching for a rename: the
-avatar file + exported function name (by convention, `art/<name>.ts`'s `make<Name>Avatar`,
-though this is a style convention, not something the code enforces), the `WORLD_GUARDIANS` entry's
+avatar file + exported function name (by convention, `art/<name>.ts`'s `make<Name>Avatar`
+-- the game itself doesn't enforce the name, but `scripts/art-sweep.mjs` finds the avatar
+builders to sweep by matching it, so one named otherwise silently stops being covered), the `WORLD_GUARDIANS` entry's
 `id`/`name`/`quote`/`avatar` fields, the corresponding `import` line in `OverworldScene.ts`, and
 every doc that names the guardian by name (DESIGN.md §5, this file, DEVELOPMENT.md, README.md --
 `grep -rn` the old name across the repo, not just `game/src/`, since course-content
