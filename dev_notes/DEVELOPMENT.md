@@ -11,8 +11,11 @@ mechanics/content decisions see `DESIGN.md`, for visual conventions see
 
 - `dev_notes/` -- this folder: `DESIGN.md` (the living design document --
   world map, type system, battle rules, guardians/story, tech stack, roadmap,
-  open questions), `STYLE.md` (visual/style decisions), `CODEMAP.md` (where
-  things live in the code), and `DEVELOPMENT.md` (this file). Edit these
+  open questions), `WORLDS.md` (binding: the Decoherence premise, the identity
+  of the ten worlds, and the naming/light/escalation rules that hold them
+  together), `STYLE.md` (visual/style decisions), `CODEMAP.md` (where
+  things live in the code), and `DEVELOPMENT.md` (this file), plus one-off
+  `*_BUILD_TASK.md` task briefs. Edit these
   directly as the game evolves rather than starting new docs.
 - `game/` -- **active development happens here.** A Vite + TypeScript +
   Phaser 3 project (see "Running the game" below).
@@ -124,7 +127,7 @@ model, not one shared constant. If a build is stuck
 on a purchase it can't afford while genuinely losing the world it's on
 (wild or rival), it farms qumatessence from the highest earlier world it can
 still safely clear instead of just giving up, the same thing a real player
-can do by walking back through an earlier world's own door -- drawn from
+can do by walking back into an earlier world -- drawn from
 that same per-world patience budget. Every modeling
 assumption (each build's purchase ruleset, the transmutation search, the
 Monte-Carlo sample count/seed, the ±15%-variance robustness check behind a
@@ -253,7 +256,7 @@ game/
     audio/                procedural sfx + per-scene music tracks
     scenes/
       TitleScene.ts       loads the save, Story Mode / Superposition Mode picker, "Continue"/"New Game"
-      HubScene.ts          World 0, static room, 9 stations (door jumps to World 2 in Superposition Mode)
+      HubScene.ts          World 0, static room, up to 8 stations (Abilities appears once a passive is learned; the door leads to the furthest unlocked world, or in Superposition Mode to the world you left, else a fresh World 1)
       OverworldScene.ts    per-world walkable map, encounters, shop, rival gate; H/Enter warp to the Hub
       overworld/            the corridor's ground plane and air: sky.ts, terrain/ (one module per
                               off-path material under terrain/materials/)

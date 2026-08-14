@@ -21,17 +21,20 @@ game/src/
   scenes/
     TitleScene.ts             Loads save -> registry, title showcase crystals, "Continue"/"New Game" -> Hub,
                                  Story Mode / Superposition Mode picker
-    HubScene.ts                World 0, static room, up to 7 stations: 2 that always exist
+    HubScene.ts                World 0, static room, up to 8 stations: 2 that always exist
                                  (Qumatex/Door -- door label/click resume-in-place to
                                  highestUnlockedWorld() via canResumeWorld(), tracks
                                  rivalDefeated progress in Story Mode, labeled with the
-                                 destination's own name (materials.ts's worldName), pinned to
-                                 World 1 in Superposition Mode; the Enter *key* instead resumes
+                                 destination's own name (materials.ts's worldName); in
+                                 Superposition Mode both label and click target resumeWorld()
+                                 instead, falling back to a fresh World 1 only when there's
+                                 nothing to resume; the Enter *key* always resumes
                                  resumeWorld() -- the exact world/position mapState holds,
                                  not necessarily highestUnlockedWorld())
-                                 plus up to 5 reference/settings stations (Moves/Stats/Abilities/
-                                 Tutorial/Settings, panels/hubStations.ts's LAB_STATIONS --
-                                 Abilities filtered out until a first passive is learned).
+                                 plus up to 6 reference/settings stations (Moves/Stats/Abilities/
+                                 Tutorial/Settings/Title Screen, panels/hubStations.ts's
+                                 LAB_STATIONS -- Abilities filtered out until a first passive
+                                 is learned).
                                  Progress autosaves, so the room has no save station of its own.
                                  Every met guardian also stands in the room as their own
                                  clickable avatar (spawnGuardianAvatars/guardianSlot, see "Lab
@@ -223,8 +226,8 @@ game/src/
                                   plus the BOSS_SILHOUETTE_TOP/BOTTOM extents its callers lay out around
     tokens.ts                   makeToken() -- qumatessence pickup sprite
     labMotifs.ts                 One small icon builder per Lab station (Qumatex/Door/
-                                  Moves/Stats/Abilities/Tutorial/Settings -- see "Lab
-                                  stations and settings" below), planted beside that station's
+                                  Moves/Stats/Abilities/Tutorial/Settings/Title Screen -- see
+                                  "Lab stations and settings" below), planted beside that station's
                                   own button in the room (HubScene.addStationRow), fixed-px art
                                   like every other builder in this directory, never run through
                                   ui/text.ts's fontPx()/fontScale()
@@ -2098,10 +2101,11 @@ click target is a near-transparent interactive `Rectangle` covering the slot rat
 avatar `Container` (a Container has no hit area of its own) and takes the same
 `dialogueContainer` one-panel-at-a-time guard the station rows use.
 
-**All seven of the Lab's non-door panels** (the six stations above, plus `HubScene`'s own
-`renderMaterialdexPanel`) share one heading color -- `hubStations.ts`'s exported
-`LAB_TITLE_COLOR` (`#ffe066`). The Moves, Stats, Abilities and Settings panels share one
-centered-content geometry on top of that: `hubStations.ts`'s
+**Six of the Lab's seven non-door panels** (every station above except Tutorial, plus
+`HubScene`'s own `renderMaterialdexPanel`) share one heading color -- `hubStations.ts`'s
+exported `LAB_TITLE_COLOR` (`#ffe066`); Tutorial's heading is content-specific and reads in
+`TUTORIAL_CYAN_HEX` instead, matching its own cyan-stroked panel. The Moves, Stats, Abilities
+and Settings panels share one centered-content geometry on top of that: `hubStations.ts`'s
 `labPanelColumns(panelWidth)` returns a fixed `contentCenterX`/`contentWrapW` margined in from
 both edges of the panel (Tutorial and Materialdex lay out their own two-column list/detail
 shape instead, and the Title Screen panel its own short centered confirm stack). A panel's own
@@ -2134,10 +2138,11 @@ sharing state. Several things key off `isSuperpositionMode()`:
   guardian's own avatar in the room regardless of `metGuardians` in this mode, so each one's
   panel is already fully unlocked on a save that's
   never crossed a pass) and `OverworldScene.applySuperpositionLeveling()`
-  (re-applied on every `create()`, covering Continue, Bloch teleport, and the Hub door's
-  World-1 jump alike, alongside that method's own world-specific `playerStats`/`playerHp`
-  re-leveling to `enemyStatsForWorld(this.world)` plus a flat `+2`, which stays local to
-  `OverworldScene` since only that scene knows which world to re-level against).
+  (re-applied on every `create()`, covering Continue, Bloch teleport, and the Hub door alike,
+  alongside that method's own world-specific `playerHp` reset to `wildHpForWorld(this.world)`,
+  which stays local to `OverworldScene` since only that scene knows which world to reset
+  against -- the stat grant itself is world-independent and lives in
+  `applySuperpositionUnlocks`, which pins every `playerStats` entry to `MAX_STAT`).
   `OverworldScene.create()` calls `applySuperpositionLeveling()` immediately after grabbing
   `this.game.registry`, before any map-state read/generation and before
   `getPlayerMaterial(state)` -- the grant can seed `playerForm` itself (below), and both
@@ -2167,10 +2172,12 @@ sharing state. Several things key off `isSuperpositionMode()`:
   (every move he levels stands independently), so his version of the grant is unconditional
   rather than seed-once: every move id's `moveLevels` entry is set straight to `3` (max) on
   every application, since there's no deliberate lower-level pick worth preserving.
-- `HubScene.enterWorld()`/`doorLabel()` branch on `isSuperpositionMode()` to jump straight to
-  World 1 (`{ world: 1, regenerate: true }`) instead of `highestUnlockedWorld()`, bypassing
-  `rivalDefeated` entirely -- Bloch (reachable at World 2's own middle tile via the walkable
-  a backward pass, or by clicking his own avatar in the Lab once met once) is sufficient for
+- `HubScene.enterWorld()`/`doorLabel()` branch on `isSuperpositionMode()` to target
+  `resumeWorld()` -- whatever world `mapState` actually holds -- instead of
+  `highestUnlockedWorld()`, falling back to a fresh World 1 (`{ world: 1, regenerate: true }`)
+  only when there's nothing to resume. This mode has no frontier world to walk to, since every
+  world is unlocked from the start and `rivalDefeated` is bypassed entirely -- Bloch (standing
+  at World 2's own middle tile, or clicked as his own avatar in the Lab) is sufficient for
   world-to-world movement on its own regardless of whether this door has ever been used, per
   the candidate-pool point below.
 - `showDresselhausPanel`/`showMajoranaPanel`/`showAndersonPanel` each swap their
@@ -2424,8 +2431,8 @@ to always match the slot actually read rather than trusted from the stored blob)
 tables `MusicEngine` draws from, applied immediately via `music.setStyle()`),
 `difficultyTier: DifficultyTier` (same station's fourth row, one of `data/settings.ts`'s
 `DIFFICULTY_TIER_PRESETS` -- B.Sc./M.Sc./Ph.D., `data/balance.ts`'s `DIFFICULTY_MULTIPLIERS`
-scaling `enemyStatsForWorld` -- read live by `BattleScene`/`OverworldScene` on every
-fight/re-level rather than cached, so a change applies to the very next battle),
+scaling `enemyStatsForWorld` -- read live by `BattleScene` at the start of every
+fight rather than cached, so a change applies to the very next battle),
 `kondoActiveMove: string | null` (which of
 `data/materials.ts`'s `KONDO_MOVE_IDS` is currently
 usable in battle, `null` until the player picks one via `scenes/panels/kondo.ts`'s `showKondoPanel` -- see

@@ -75,7 +75,7 @@ than appending a changelog, so this always reflects current reality.
   itself, so the room reads as *the player's* space rather than a shelf of specimens. No
   perspective/camera machinery -- everything is laid out at fixed canvas coordinates. The two
   upper corners hold the guardian gallery (see "The Lab's guardian gallery" below).
-- **Up to seven stations, packed into rows of three, no crystal icons.** Every station is a
+- **Up to eight stations, packed into rows of three, no crystal icons.** Every station is a
   plain gold-on-dark-blue text button (`HubScene.addStationRow`, same look every dialogue
   button in the game uses), not an icon a player clicks -- there is no `makeCrystal` render
   anywhere in the station rows. Qumatex and the door onward always exist and always lead the
@@ -116,31 +116,36 @@ than appending a changelog, so this always reflects current reality.
   whichever the player has actually unlocked: Abilities only appears once the player has
   learned a first passive (`passivesUnlocked` non-empty) -- Superposition Mode treats it as
   unlocked from the start, since it already grants every passive regardless. Moves,
-  Stats, Tutorial, and Settings are never gated, so a fresh save always shows those
-  four alongside Qumatex and the door (six stations total, two full rows of three) even with
-  the gated station not visible yet. The full station list -- Qumatex, the door, then whichever
-  of the five `LAB_STATIONS` are visible -- is packed into rows of three with no gaps, rather
-  than reserving a fixed grid slot for a station that isn't visible yet or giving Qumatex/the
-  door a row of their own; a row that doesn't divide evenly by three (e.g. the gated station
-  unlocked) just trails off short on its last row rather than every row being forced full.
-  Every station (Qumatex, the door, and all five `LAB_STATIONS` entries) gets its own small
+  Stats, Tutorial, Settings and Title Screen are never gated, so a fresh save always shows those
+  five alongside Qumatex and the door (seven stations total, two full rows of three and a
+  trailing row of one) even with the gated station not visible yet. The full station list --
+  Qumatex, the door, then whichever of the six `LAB_STATIONS` are visible -- is packed into
+  rows of three with no gaps, rather than reserving a fixed grid slot for a station that isn't
+  visible yet or giving Qumatex/the door a row of their own; a count that doesn't divide evenly
+  by three (seven stations, or eight with the gated station unlocked) just trails off short on
+  its last row rather than every row being forced full. Every station (Qumatex, the door, and all six `LAB_STATIONS` entries) gets its own small
   `art/labMotifs.ts` icon planted just to the left of its button label (`HubScene.addStationRow`,
   `STATION_MOTIF_SIZE = 26`, fixed-px, never scaled by the Text Size setting) -- much smaller
   than the same builder would draw inside a full panel, since here it sits inline with a
   compact button; Qumatex's own icon (`makeQumatexMotif`, a small 2x2 grid of tiny faceted
   gems reading as "an indexed catalog") is distinct from the panel's own detail pane, which
   renders one full-size real crystal for whichever compound is currently selected. The door's
-  (`makeDoorMotif`) is a miniature of the walkable world-door's own archway (`art/door.ts`) --
-  the same stone frame, dark inset and self-luminous lavender (`STORY_LAVENDER`) portal, slowly
-  pulsing, the one Lab motif that animates -- but freestanding, its additive halo spilling past
-  the frame on every side: a world's door is a notch in terrain leading to one fixed neighbour,
-  and a doorway standing in nothing is the Lab's, which leads anywhere (WORLDS.md §4's "the
-  same aperture grammar, unbound"). Its opening shows light, never scenery -- a visible far end
-  would imply an exterior the Lab must not have. The grid is laid out from
+  (`makeDoorMotif`) is a small freestanding frame -- lightly rounded so it still reads as a
+  doorway rather than one more gem, with a dark inset and a lit opening inside it, slowly
+  pulsing, the one Lab motif that animates -- its additive halo spilling past the frame on
+  every side: an opening out in the worlds is a notch in terrain leading to one fixed
+  neighbour, and an opening standing in nothing is the Lab's, which leads anywhere
+  (WORLDS.md §4's "the same aperture grammar, unbound"). What the opening shows is wherever
+  the player is currently going: `setDoorMotifDestination` tints both opening and halo with
+  that world's own walkable ground lifted toward its low sky (`blend(path, skyBottom, 0.3)`,
+  the same pair the pass aperture out in the worlds reads), and `HubScene.refreshDoorPreview`
+  re-points it live as Bloch's travel panel moves its selection, so changing your mind
+  re-colours the door in the same gesture. The opening shows a palette, never scenery -- a
+  visible far end would imply an exterior the Lab must not have. The grid is laid out from
   `STATION_ROW_TOP` (`330`) and lifted as a whole by however much it overshoots a `10`px bottom
   margin, since a long door label wraps to two or three lines at the Large text size. Every
   station is a no-op while another panel is already open (one panel at a time).
-- **Every one of the Lab's six non-door panels reads as one coherent design** -- dark
+- **Every one of the Lab's seven non-door panels reads as one coherent design** -- dark
   rounded-rectangle-with-stroke chrome and a bold gold (`#ffe066`) heading -- rather than
   several visually separate eras bolted together. Panel content is always laid out top-down
   first (a running `y`, each element's own measured height advancing it) and centered within
@@ -309,8 +314,8 @@ than appending a changelog, so this always reflects current reality.
   world's whole `art/biomes.ts` entry a tile renders with instead of the current world's own
   (world 9's patches, each independently borrowing one of worlds 1-8's look). An off-path
   `regionColor` tile renders as plain ground in that tint regardless of `wallTheme` and carries
-  no terrain accent -- world 3's own biome is `wallTheme: 'void'` (see below), whose starlit
-  drop would otherwise fight the domain color it is supposed to read as.
+  no terrain accent -- world 3's own biome is `wallTheme: 'deadFloor'` (see below), whose
+  stippled sunken bulk would otherwise fight the domain color it is supposed to read as.
 - **The walkable floor is one flat colour.** Nothing keyed to a tile's own `gx`/`gy` is drawn
   on the route the player walks, in any world: a floor carrying its own pattern competes with
   the walkable/impassable boundary for exactly the attention that boundary needs, and "where
@@ -440,11 +445,17 @@ than appending a changelog, so this always reflects current reality.
     past the left and right edges, so a world never visibly terminates. Two bounds keep that
     honest: the repetition stops where the depth fog saturates, beyond which nothing is
     distinguishable anyway, and it stops on any row whose projected thickness has fallen under
-    a pixel, since such rows only alias and crawl as the camera moves. The far quarter of the
-    draw distance is a **painted band** in the world's haze color rather than tiles, opaque
-    from the horizon line down to where the terrain runs out and thinning from there toward
-    the camera -- the terrain dissolves into pure atmosphere instead of ending on the edge of a
-    final row.
+    a pixel, since such rows only alias and crawl as the camera moves. A **painted band** in
+    the world's haze color takes over the far distance: opaque from the horizon line down to
+    where the terrain runs out -- the strip the projection puts out of the ground plane's reach,
+    since rows approach the horizon asymptotically and never arrive -- then thinning over the
+    deepest rows from there toward the camera and running out about a third of the draw
+    distance in (`HORIZON_BAND_FROM`, `FOG_CLOSE * 0.65`). The terrain dissolves into pure
+    atmosphere instead of ending on the edge of a final row. Both ends are fixed depths rather
+    than tracked off the deepest row actually drawn, so the band never slides out from under
+    the rows as the camera creeps, and the thinning is smoothstepped so the band leaves full
+    strength with its slope already flat -- a ramp that starts falling the instant the opaque
+    stretch ends puts a readable line there instead of at the horizon.
   - **The ground reaches both frame edges at every depth.** How wide the ground has to be
     painted depends on how far away it is: the projection shrinks a tile-width toward the
     vanishing point, so a lane window that fills the frame up close covers a narrowing wedge in
@@ -581,9 +592,10 @@ rather than free style choices:
   is one flat color, so a wide gap between a tile's own color and what the haze pulls it toward
   turns a strong depth haze into visible horizontal stripes across the floor, where a small one
   lets the same falloff read as continuous air. In the enclosed biomes that means a target
-  sitting between the two floor colors (world 5's `0x44606e` between its lake and its ice,
-  world 2's `0x24203f` just under its stone). The open-sky worlds (`clouds: true`) instead haze
-  toward their own bright sky, above both -- correct there, because that is the horizon their
+  sitting in or just past the range the two floor colors span (world 5's `0x7e939e` between its
+  lake and its ice, world 2's `0xe0d3ba` just above its lit sandstone aisle). The open-sky
+  worlds (`clouds: true`) instead haze toward their own bright sky, above both -- correct
+  there, because that is the horizon their
   ground actually meets. Near a world's goal end the haze target is deliberately carried
   toward the *next* world's `fogTarget` (see "Overworld path" above), which is the one place
   it leaves that range on purpose -- the reason every haze wash is painted overlap-free.
@@ -1623,7 +1635,7 @@ world are shaped, since world N's start is world N-1's exit.
   door, and the asymmetry is the ontology made visible. **World 10 gets no
   forward board** -- the grammar means "another world lies beyond", and the
   finale's meaning is that there is not one.
-- Board and door alike wear the same lavender (`STORY_LAVENDER`/`#e6d9ff`) the
+- Board and door alike wear the same lavender (`STORY_LAVENDER`/`#d9a5ff`) the
   story beat and the world-entry lore screen wear: the colour of connective
   tissue between worlds.
 
@@ -1634,9 +1646,9 @@ world are shaped, since world N's start is world N-1's exit.
   height sized to the content (30px padding, the beat wrapped to 500px, 18px gap, the
   "Onward" button, 30px padding) and then centered on `y = 260` with the top clamped to
   a 16px margin, rather than a fixed box the text is trusted to fit. Stroked lavender
-  (`0xd9a5ff`), the color shared with the world-entry lore screen and the start-door
-  panel for "connective tissue between worlds." Body and button font are capped at
-  `Math.min(fontScale(this), 1.5)`, the same cap the lore screen's prose uses -- at the
+  (`0xd9a5ff`), the color shared with the world-entry lore screen and with the boards and
+  door out in the worlds for "connective tissue between worlds." Body and button font are
+  capped at `Math.min(fontScale(this), 1.5)`, the same cap the lore screen's prose uses -- at the
   uncapped 2x "Large" preset these beats wrap to several more lines than at the default.
 
 ## The world-entry lore screen (`OverworldScene.showWorldLore`/`renderWorldLorePage`)
@@ -1648,9 +1660,8 @@ world are shaped, since world N's start is world N-1's exit.
   `data/worldLore.ts`'s `WORLD_LORE`, gated by `hasSeenWorldLore`/`markWorldLoreSeen`
   against its own `worldLoreSeen` save field. Same dark rounded-rectangle-with-stroke
   treatment as every other overworld dialogue, near-full-canvas width (`CANVAS_W - 40`),
-  stroked lavender (`0xd9a5ff`) to match `showStoryBeat`'s and the start-door panel's
-  own "connective tissue between worlds" convention. Heading is the world's name
-  (`WORLD_NAMES`); each screen is laid out top-down (title, then body, then a button) with
+  stroked lavender (`0xd9a5ff`) to match `showStoryBeat`'s own "connective tissue between
+  worlds" convention. Heading is the world's name (`WORLD_NAMES`); each screen is laid out top-down (title, then body, then a button) with
   the panel's background sized to the real content height afterward, the same idiom
   `renderTutorialTipPopup` uses. The title and body font sizes are capped at
   `Math.min(fontScale(this), 1.5)` rather than scaling all the way to the Settings
@@ -1723,9 +1734,9 @@ world are shaped, since world N's start is world N-1's exit.
   - **Ground**: a vertical gradient from a fog-blended far edge to a darkened near edge,
     with a translucent mist band pooling just below the horizon.
   - **Color grade**: one zone-level translucent tint keyed off the biome's `wallTheme` --
-    `water` gets a cool cyan wash deepening down the field, `lava` an ember glow straddling
-    the horizon, `void` a darkened zenith, and daylight (`clouds: true`) worlds a faint warm
-    sun wash from above; enclosed rock worlds stay untinted.
+    `ice` gets a cool cyan wash deepening down the field, `lava` an ember glow straddling
+    the horizon, `shards` a pool of aurora green along the horizon, and daylight
+    (`clouds: true`) worlds a faint warm sun wash from above; every other theme stays untinted.
   - **Haze**: two wide, faint fog-colored ellipses at the horizon on slow (17s/21s) infinite
     yoyo drift tweens -- ambient motion cheap enough to leave running, far too translucent
     (≤0.1 alpha) to compete with attack effects.

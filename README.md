@@ -33,9 +33,11 @@ geography seen twice. A handful of qumatessence (the in-game currency)
 pickups are tucked along the way, often at a dead end worth the detour --
 though never inside a pass, which stays clear. A world you have picked clean
 slowly refills: crystals drift back in and qumatessence condenses again,
-always far enough up the path that you see it coming rather than walk into
-it. There is only so much qumatessence in any one world, though, so
-pacing back and forth over the same ground stops paying eventually.
+always out of sight -- somewhere up the path ahead of you, or back down the
+stretch you already walked -- so nothing ever pops into view. A world never
+carries more crystals or pickups at once than it laid out to begin with, but
+it keeps giving back for as long as you walk it, so pacing between the two
+ends of the same corridor keeps paying.
 
 The ten worlds are one road, and the light dies along it: morning, midday,
 afternoon, storm, twilight, night, and then no sky at all, after which every
@@ -157,7 +159,7 @@ end, ready to walk forward through it again whenever you like.
 own physical station: Qumatex, a filterable index of every crystal in the
 game listed by name alongside a note on the real physics behind it -- each
 with a "???" placeholder name and silhouette for anything you haven't found
-yet; a door back out to whichever world you're mid-way through; and stations
+yet; a door back out to the furthest world you've reached; and stations
 to check your moves, your stats, replay the tutorial, and adjust settings.
 Every guardian you've met stands in the room itself -- click one to reopen
 their panel without leaving. Your progress autosaves as you play, so there's
@@ -237,10 +239,11 @@ materials, and what each guardian teaches -- see:
 | Enter, while in the Lab | Head back out to whichever world you're in the middle of (once you've entered one) |
 | M | Mute/unmute music |
 
-The Lab is where you check your moves and stats, revisit any guardian you've
-met, replay the tutorial, and adjust settings -- each is its own station in
-the room. Abilities and Guardians only show up once you've actually learned
-a passive or met a guardian to check.
+The Lab is where you check your moves and stats, replay the tutorial, and
+adjust settings -- each is its own station in the room. Every guardian you've
+met stands in the room itself, so revisiting one is a single click on them
+rather than a station of its own. The Abilities station only shows up once
+you've actually learned a passive to check.
 
 ## Settings
 

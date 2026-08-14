@@ -8,9 +8,11 @@ terrain, palette, light, and the story the sequence tells.
 
 **Implementation status:** the fiction below is settled and the code is on it —
 `data/materials.ts`'s `WORLD_NAMES`, `art/biomes.ts`, `art/horizons.ts` and the
-per-material modules under `scenes/overworld/terrain/materials/`. §4's remaining
-stages (gate apertures, depth-projected flanks, the Lab door and the Qumatuomi
-sky) are tracked in `HORIZON_BUILD_TASK.md`.
+per-material modules under `scenes/overworld/terrain/materials/`. Three pieces
+are still outstanding, each tracked in its own file: §4's depth-projected flanks
+in `HORIZON_BUILD_TASK.md`; World 10's rendered reflections (§2) in
+`REFLECTIONS_BUILD_TASK.md`; and §1's World 7 pedal and World 10 mixture,
+together with §4's progress-keyed Lab theme, in `MUSIC_BUILD_TASK.md`.
 
 ---
 
@@ -345,16 +347,17 @@ so the world must visibly *take* something.
 **The surround is the player, rendered.** The impassable terrain does not merely
 reconfigure — what it reconfigures *into* is increasingly defined copies of the
 player's own crystal, sharpening as they approach the boss. That is the training
-loop drawn as terrain, and it is what currently cashes both the devouring and the
-mirror.
+loop drawn as terrain, and it is what cashes both the devouring and the mirror.
+On screen the surround is faceted silver-violet that re-cuts itself on a slow
+cycle, tinted toward the player's own crystal colour; drawing those facets as
+the copies themselves is tracked in `REFLECTIONS_BUILD_TASK.md`.
 
 The other half of that loop — **the path dissolving behind the player as the
 world re-forms ahead**, so the world eats the trail at the back and emits the
 player at the front — is written as this world's floor motif and sits behind
 `GROUND_MOTIFS_ENABLED` with every other world's (`STYLE.md`'s "Overworld
-path"). While the floor is flat, the world renders the player without also
-visibly consuming the route, and the ingestion half of the image is carried by
-the writing rather than by the terrain.
+path"). While the floor is flat and the copies are undrawn, both halves of the
+image are carried by the writing rather than by the terrain.
 
 **The copies never resolve completely.** The terrain asymptotes; only the boss
 converges. Every reflection stays slightly wrong — soft-edged, off-colour,

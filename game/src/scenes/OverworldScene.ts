@@ -508,9 +508,10 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // encounter-density preset sets the world's standing population, not just
   // its opening one.
   private wildTarget = 0;
-  // The same ceiling for qumatessence, plus how many pickups this map has
-  // left to give back. The budget is what keeps a walked-over map from being
-  // an unbounded currency source (DESIGN.md §2's pickup economy).
+  // The same standing population for qumatessence. A map refills toward it
+  // for as long as the player walks it: farming is intended, so the ceiling
+  // is on how much sits out at once, never on how much a map gives in total
+  // (DESIGN.md §2's pickup economy).
   private tokenTarget = 0;
   private flowerMap: boolean[][] = [];
   private goalTile: GridPoint = { x: 0, y: 0 };
@@ -1219,10 +1220,10 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       this.encounterTiles[r.y][x] = Phaser.Utils.Array.GetRandom(wildPool);
     });
 
-    // What this map stood up is what respawns refill it back toward, and (for
-    // qumatessence) how much it has left to give -- both read off the actual
-    // placements above rather than re-derived, so density and the token
-    // scatter's own count each stay the single knob they already are.
+    // What this map stood up is what respawns refill it back toward -- both
+    // read off the actual placements above rather than re-derived, so density
+    // and the token scatter's own count each stay the single knob they
+    // already are.
     this.wildTarget = this.encounterTiles.reduce((n, row) => n + row.filter(Boolean).length, 0);
     this.tokenTarget = this.tokenTiles.reduce((n, row) => n + row.filter((v) => v > 0).length, 0);
 

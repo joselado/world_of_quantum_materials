@@ -123,10 +123,10 @@ World 10 has no course notebook, which fits it being the finale rather than a ta
 topic: the boss is "a model of you," which is an honest metaphor for an ML surrogate.
 
 World 0 ("The Lab") is built as a static single-room hub (`game/src/scenes/HubScene.ts`),
-not a walkable map -- up to seven stations, since none of its jobs need overworld movement
+not a walkable map -- up to eight stations, since none of its jobs need overworld movement
 of their own. Two always exist (Qumatex, the door to the
-next unbeaten world); five are reference/settings stations (Moves, Stats, Abilities,
-Tutorial, Settings, built in `game/src/scenes/panels/hubStations.ts`'s
+next unbeaten world); six are reference/settings stations (Moves, Stats, Abilities,
+Tutorial, Settings, Title Screen, built in `game/src/scenes/panels/hubStations.ts`'s
 `LAB_STATIONS`) -- everything a player might want to check or adjust between worlds,
 reachable only by physically returning to the Lab rather than from an in-world menu,
 since none of that
@@ -717,7 +717,7 @@ case across every section at once; capping every page at the same 3-move limit a
 that budget (and so each button's font size) close to identical from one page to the next.
 Each button also shows its power and, computed against the current opponent's type, a
 `!!2x` tag when the quasiparticle-mismatch double-damage rule above applies, plus a one-line
-top-of-panel legend spelling out that symbol; a button's label (move name plus any
+bottom-of-panel legend spelling out that symbol; a button's label (move name plus any
 `★`/`★★★`/`!!2x` tag) wraps onto a second line if it doesn't fit the panel's width on one,
 with the whole page's font size shrunk uniformly, if needed, to keep every label on the
 page within that same 2-line limit rather than a 3rd.
@@ -845,12 +845,15 @@ state can mark her met before the player has actually reached her.
 - **Bloch** → world 2 middle → folds space between worlds: teleports the player to any
   world they've already visited (`scenes/panels/bloch.ts`'s `showBlochHub`) -- fitting, since a
   Bloch state is a superposition spread across every unit cell, not pinned to one.
-  The destination list paginates (`renderPagedButtons`, see below) once it grows past
-  a page -- routine in Superposition Mode (see §7), whose destination list is every
-  built world outright (`isSuperpositionMode()`, the same short-circuit Dresselhaus/
+  The destination list is the shared list+detail left column (`renderListColumn`,
+  `scenes/panels/listDetail.ts`, STYLE.md's "List+detail panels"): it always lists all ten
+  built worlds, masking rows the save hasn't discovered to `???`, and pages itself
+  (`scene.blochPage`) whenever those ten rows don't fit one page at the current text-size
+  preset. Superposition Mode (see §7) reads every built world as discovered
+  (`isSuperpositionMode()`, the same short-circuit Dresselhaus/
   Majorana/Anderson use for their own candidate pools, not the persisted
-  `visitedWorlds` list) so Bloch's hub can jump to any of them immediately even from
-  the Lab on a save that has never yet crossed a pass; walking through a world's own pass
+  `visitedWorlds` list), so every row is a named, travelable destination immediately -- even
+  from the Lab on a save that has never yet crossed a pass; walking through a world's own pass
   (below) is the other way to move between worlds, one step at a time
   rather than a jump to an arbitrary destination. Each individual destination is
   its own one-time `BLOCH_DESTINATION_COST` (15) qumatessence unlock (registry/save
