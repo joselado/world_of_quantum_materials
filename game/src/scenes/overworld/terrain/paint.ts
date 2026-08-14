@@ -80,7 +80,7 @@ export function drawTerrain(view: TerrainView) {
       const fill = contour ? projectContour(contour.outline, camX, camY) : [pFL, pFR, pNR, pNL];
 
       if (tile.kind === 'path') {
-        let color = groundColor(tile.biome.path, depthRatio, walkableHazeTarget(view, tile.biome));
+        let color = groundColor(tile.biome.path, depthRatio, walkableHazeTarget(view, tile.biome, depthRatio));
         if (tile.regionTint != null) color = blend(color, tile.regionTint, 0.55);
         g.fillStyle(color, 1);
         g.fillPoints(fill, true);
@@ -185,7 +185,7 @@ function drawMarginRows(view: TerrainView, deepestRow: number) {
       const tile = edge[x];
 
       if (tile.kind === 'path') {
-        let color = groundColor(tile.biome.path, depthRatio, walkableHazeTarget(view, tile.biome));
+        let color = groundColor(tile.biome.path, depthRatio, walkableHazeTarget(view, tile.biome, depthRatio));
         if (tile.regionTint != null) color = blend(color, tile.regionTint, 0.55);
         g.fillStyle(color, 1);
         g.fillPoints(fill, true);
@@ -253,11 +253,15 @@ function drawContactShadow(
 }
 
 // Distant walkable ground hazes toward a lighter target than its
-// surroundings do, so the route the player is planning stays visible all the
-// way to the horizon -- letting floor and off-path converge on one haze
-// color erases the boundary at exactly the range it is being read from.
-function walkableHazeTarget(view: TerrainView, biome: Biome): number {
-  return blend(hazeTarget(view, biome), biome.path, 0.35);
+// surroundings do, so the route the player is planning stays readable far
+// into the distance -- letting floor and off-path converge on one haze color
+// erases the boundary at exactly the range it is being read from. The
+// lightening is itself faded out over the last of the draw distance, on a
+// curve flat enough to hold the route to nearly the end: every fill has to
+// arrive at the same haze color on the deepest row drawn, or the repeated
+// road (drawMarginRows) surfaces as a bright stub against the horizon band.
+function walkableHazeTarget(view: TerrainView, biome: Biome, depthRatio: number): number {
+  return blend(hazeTarget(view, biome), biome.path, 0.35 * (1 - Math.pow(depthRatio, 3)));
 }
 
 // The guardian chokepoint (invariant B, world/mapgen.ts's forceChokepoint)

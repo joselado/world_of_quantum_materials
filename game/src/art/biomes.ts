@@ -1,8 +1,8 @@
-// Per-world overworld skin: sky/ceiling gradient, hill/ceiling silhouette,
-// off-path vs. on-path ground color, ambient tile decoration, and the fog
-// target color distant tiles blend toward. Keeps OverworldScene's rendering
-// generic across worlds -- only this table changes per world, matching
-// DESIGN.md's per-world biome themes.
+// Per-world overworld skin: sky/ceiling gradient, distant self, off-path vs.
+// on-path ground color, ambient tile decoration, and the fog target color
+// distant tiles blend toward. Keeps OverworldScene's rendering generic across
+// worlds -- only this table changes per world, matching DESIGN.md's per-world
+// biome themes.
 
 export type DecorationKind = 'flowers' | 'crystalGlints' | 'fieldLines' | 'networkNodes' | 'ripples' | 'cracks' | 'mistMotes';
 
@@ -22,6 +22,17 @@ export interface Biome {
   name: string;
   skyTop: number;
   skyBottom: number;
+  // The world's distant self -- how it looks from a world away (WORLDS.md
+  // section 4). `hillColor` is its base color and `hillAlpha` its swallow, how
+  // much of the silhouette survives the mist, with zero meaning a world whose
+  // horizon is nothing at all. Both belong to the world depicted and are read
+  // by its *neighbour's* renderer: standing in world N, the horizon draws from
+  // world N+1's entry. Neither carries any atmosphere of its own -- the fog is
+  // applied at render from the live haze target, which is what lets the
+  // silhouette follow the retint as the player nears a gate. A swallow value
+  // is bounded by how far the base color sits from the fog it is drowned into:
+  // a world whose profile cannot stay inside a narrow excursion from the mist
+  // goes to zero rather than to a slab.
   hillColor: number;
   hillAlpha: number;
   ground: number; // off-path fill
@@ -57,7 +68,10 @@ const CRYSTAL_CAVE: Biome = {
   skyTop: 0x1a1730,
   skyBottom: 0x362f5c,
   hillColor: 0x3a3560,
-  hillAlpha: 0.85,
+  // Held well under every other world's: this indigo is seen from the Mean
+  // Fields, whose mist is the palest in the game, and a dark base against a
+  // pale fog spends the value budget fastest.
+  hillAlpha: 0.35,
   ground: 0x27243a,
   path: 0x625a8a,
   fogTarget: 0x24203f,
@@ -148,7 +162,10 @@ const NETWORK_GRAPH_WORLD: Biome = {
   skyTop: 0x120a24,
   skyBottom: 0x2c1a4a,
   hillColor: 0x3a2560,
-  hillAlpha: 0.8,
+  // Swallowed: this world's impassable is nothing, so it has no surround to
+  // restate at horizon scale. The Iron Steppe looking forward into an
+  // emptying horizon is the tell its false calm needs.
+  hillAlpha: 0,
   ground: 0x1c1030,
   path: 0x8a5cd9,
   fogTarget: 0x201238,
@@ -167,7 +184,9 @@ const FOGGY_FOREST: Biome = {
   skyTop: 0x2a2f28,
   skyBottom: 0x4e584c,
   hillColor: 0x3a4238,
-  hillAlpha: 0.9,
+  // Swallowed: a horizon that dissolves before it resolves is this world's
+  // identity, not a missing profile.
+  hillAlpha: 0,
   ground: 0x1b231d,
   path: 0x738667,
   fogTarget: 0x49544a,
@@ -206,7 +225,10 @@ const META_WORLD: Biome = {
   skyTop: 0x2a1a3a,
   skyBottom: 0x6a4a8a,
   hillColor: 0x5a3a7a,
-  hillAlpha: 0.75,
+  // Swallowed: this world is seen from the Defect Scars, and it has no
+  // silhouette to show there -- its own horizon is the Qumatuomi sky, and a
+  // violet ridge would announce a shape the Mirror never had.
+  hillAlpha: 0,
   ground: 0x3a2450,
   path: 0xc9a8f0,
   fogTarget: 0x4a3068,
