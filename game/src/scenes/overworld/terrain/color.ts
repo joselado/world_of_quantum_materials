@@ -20,10 +20,17 @@ import { fogColor } from '../../../art/perspective';
 //
 // Something has to be steep, since the blend must cross from nothing to total
 // over one draw distance. Putting the steep part late is what makes it free:
-// FOG_CLOSE is inside the reach of drawHorizonBand's own wash (sky.ts's
-// HORIZON_BAND_FROM), so the rows carrying the fastest color change are the
-// rows already being painted over.
-const FOG_CLOSE = 0.55;
+// every row past this depth is inside the reach of drawHorizonBand's wash, so
+// the rows carrying the fastest color change are rows already being painted
+// over. That is a relation between two modules and not a coincidence -- the
+// band's foot (sky.ts's HORIZON_BAND_FROM) is derived from this depth, and
+// has to stay nearer the camera than it. A step is only hidden in proportion
+// to the wash actually over it: the visible part is (1 - alpha) times the
+// step, and the step itself scales with how far a world's ground sits from
+// its haze target, which the Vortex Glacier at an open gate (icy dark ground,
+// the Iron Steppe's cream air ahead) stretches further than anything else in
+// the game.
+export const FOG_CLOSE = 0.55;
 
 export function groundColor(base: number, depthRatio: number, target: number): number {
   const near = 0.4 * Math.pow(depthRatio, 0.9);

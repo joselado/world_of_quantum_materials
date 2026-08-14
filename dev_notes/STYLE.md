@@ -523,7 +523,12 @@ A note on where a gradient is allowed to be steep, since something always must b
 of ground paints as one flat fill, so how fast a colour moves *per row* is exactly how visibly the
 distance terraces — and the depth fog has to cross from nothing to the full fog colour across one
 draw distance regardless. The resolution is to keep the near and middle distance gentle and spend
-the steepness late, where the horizon band's own wash is already painting over those rows.
+the steepness late, where the horizon band's own wash is already painting over those rows — so the
+band has to reach *nearer* the camera than the steep stretch begins, not merely meet it. What
+survives is the step times however much of the wash is not over it, and the step itself grows with
+the distance between a world's ground colour and the air it is hazing into. The widest such gap in
+the game is the Vortex Glacier at an open gate, dark ice under the Iron Steppe's cream, and it is
+the case the whole arrangement has to be sized against.
 
 **Distant selves.** Just above the line stands the *next* world's silhouette, composed from that
 world's own `hillColor` (base) and `hillAlpha` (swallow) -- a world states how it looks from

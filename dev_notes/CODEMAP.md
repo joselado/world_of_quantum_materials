@@ -1199,22 +1199,28 @@ Each grid row paints as one flat fill, so how fast the color moves *per row* is 
 visibly the mid-distance terraces -- worst in the open-sky worlds, whose fog target sits far above
 their ground in value by design. Something has to be steep, since the blend must cross from
 nothing to total over one draw distance; `FOG_CLOSE` sits inside the reach of `drawHorizonBand`'s
-wash (`HORIZON_BAND_FROM`), so the rows carrying the fastest change are the rows already being
-painted over.
+wash, so the rows carrying the fastest change are the rows already being painted over.
+`HORIZON_BAND_FROM` is derived from `FOG_CLOSE` rather than set beside it, since a step is only
+hidden in proportion to the wash actually over it -- the visible part is `(1 - alpha)` times the
+step -- and a band whose foot landed on `FOG_CLOSE` itself would be down to a few percent exactly
+where it is needed. The step itself scales with how far a world's ground sits from its haze
+target, which is why the Vortex Glacier at an open gate is the binding case in the game: icy dark
+ground against the Iron Steppe's cream air ahead spans three to four times the range any other
+world reaches in either gate state.
 `walkableHazeTarget` fades its own lightening out on the same
 schedule (`0.35 * (1 - depthRatio^3)`, flat enough to hold the route nearly to the end), or the
 repeated road surfaces as a bright stub against the band. `regionTintAt` puts a mapgen domain tint
 on that same schedule, and for the same reason with more force: the tint is mixed over ground the
 fog has *already* taken, so a fixed strength carries a raw saturated hue to the deepest row and
 undoes the arrival at the haze color for exactly the worlds that use domains (1 and 3).
-`sky.ts`'s `drawHorizonBand`, called from `drawDepthHaze`, owns the far quarter of the draw
+`sky.ts`'s `drawHorizonBand`, called from `drawDepthHaze`, owns the far reach of the draw
 distance: opaque from `HORIZON_Y` down to `projectTile(0, DRAW_DISTANCE_TILES).y`, which is the
 strip the projection puts out of the ground plane's reach -- rows approach the horizon line
 asymptotically and never arrive, so something has to own the last few pixels of ground -- and
-thinning from there to nothing at `HORIZON_BAND_FROM` of the draw
-distance, the same threshold past which tile decoration, terrain accents and actor sprites already
-stop. Both ends are fixed depths rather than tracked off the deepest row drawn, so the band never
-slides out from under the rows as the camera creeps. Both it and `drawDepthHaze`'s own wash go
+thinning from there to nothing at `HORIZON_BAND_FROM` of the draw distance, which is derived from
+`FOG_CLOSE` and deliberately nearer the camera than it, so the wash still carries weight
+everywhere the per-row color is moving fastest. Both ends are fixed depths rather than tracked off
+the deepest row drawn, so the band never slides out from under the rows as the camera creeps. Both it and `drawDepthHaze`'s own wash go
 through `fillVerticalFade`, which paints abutting one-pixel rows -- overlapping translucent bands
 double-blend on the shared scanline and stripe the far distance, and two-pixel rows contour-band
 where the ramp is steepest. It samples the ramp at each row's far edge (`(i + 1) / rows`) so a

@@ -4,13 +4,18 @@ import { BIOMES, getBiome } from '../../art/biomes';
 import type { Biome } from '../../art/biomes';
 import { HORIZON_Y, CANVAS_W, CANVAS_H } from '../../art/perspective';
 import { DRAW_DISTANCE_TILES, projectTile } from './projection';
-import { groundColor } from './terrain/color';
+import { FOG_CLOSE, groundColor } from './terrain/color';
 
 // Where drawHorizonBand starts thickening the per-tile fog into pure
-// atmosphere, as a fraction of the draw distance. It is exactly where the
-// detail passes (tile decoration, terrain accents, actor sprites) already
-// stop, so the band covers only ground that had nothing left on it.
-const HORIZON_BAND_FROM = 0.55;
+// atmosphere, as a fraction of the draw distance. Derived from the depth at
+// which the ground's own fog begins its steep stretch (terrain/color.ts's
+// FOG_CLOSE) and held nearer the camera than it, so the wash is already
+// carrying weight everywhere the per-row color is moving fastest. Ground
+// rows paint as flat fills, so what the eye reads there is the step between
+// two rows scaled by how much of the wash sits over them; a band whose foot
+// lands on FOG_CLOSE itself is down to a few percent exactly where it is
+// needed most.
+const HORIZON_BAND_FROM = FOG_CLOSE * 0.65;
 // How far south of the goal row the next world's fog starts bleeding into
 // this one's, in tiles, and how much of it has arrived by the goal row
 // itself. Held under 1 so the world keeps some of its own air even standing
