@@ -1507,15 +1507,22 @@ discontinuity in the arrangement, not another step down), and **World 8 is
 the only world that quotes another** — a quote earns its place there because
 it is the only world built out of an earlier world's material.
 
-**The battle scores deliberately stay outside the arc**: bright, fast and
-driving in every world, because a fight is the player's own coherence pushing
-back against a world losing its own. What they carry instead is articulation
-— the band dropping out for two beats at the second riff and slamming back
-over a crash, a snare fill dragging the music into the reprise, brass pickups
-into each downbeat, hats lifting at phrase ends, and the loop's last two beats
-walking up into the tonic waiting at the loop point. The sparse cold worlds
-(5 and 8) opt out of the pickups, whose extra note before every bar would fill
-in exactly the silence that gives those two their character.
+**The battle scores stay outside the arc**: bright, fast and driving in every
+world, because a fight is the player's own coherence pushing back against a
+world losing its own. What they carry instead is articulation — a crash on
+the downbeat of each eight-bar section boundary, a snare fill dragging the
+music into the reprise, hats lifting at phrase ends, and the loop's last two
+beats walking up into the tonic waiting at the loop point.
+
+The rhythm section plays through every seam. Contrast comes from new material
+over an engine that keeps running, never from taking voices away: a battle
+theme repeats dozens of times in a session, so a gesture that calls attention
+to itself wears badly, and synthesized voices have no performance nuance to
+sell a dropout — subtraction reads as the music faltering rather than as a
+band leaning in. The sparse cold worlds (5 and 8) are the deliberate
+exception: their held-note vamp and stab-then-silence lead are that decline
+made audible, and their silence is the world's own character rather than an
+articulation applied on top of it.
 
 `npm run music-arc-check` measures the arc from the audio rather than the
 configuration; see `dev_notes/DEVELOPMENT.md`.
