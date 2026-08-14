@@ -1,23 +1,19 @@
 import Phaser from 'phaser';
 import type { Biome } from '../../../art/biomes';
+import type { AccentTile } from './types';
 
-// The scatter of detail a decorated path tile carries, one motif per biome
-// (art/biomes.ts's `decoration`) so each world's floor reads as its own
-// place. `biome` here is the scene's own, not the tile's -- the decoration
-// belongs to the world the player is walking through even where World 9's
-// defect patches borrow another world's palette for the ground under it.
-export function decorateTile(
-  g: Phaser.GameObjects.Graphics,
-  biome: Biome,
-  pFL: { x: number; y: number },
-  pFR: { x: number; y: number },
-  pNR: { x: number; y: number },
-  pNL: { x: number; y: number; scale: number }
-) {
-  const cx = (pFL.x + pFR.x + pNR.x + pNL.x) / 4;
-  const cy = (pFL.y + pFR.y + pNR.y + pNL.y) / 4;
-  const s = pNL.scale;
-
+// The scatter of detail a decorated *walkable* tile carries, one motif per
+// biome (art/biomes.ts's `decoration`) so each world's floor reads as its own
+// place. This is ground decoration in the literal sense -- the Storm Flats'
+// quantised orbit rings, the Iron Steppe's spin-wave ripples, the Defect
+// Scars' cracks are all underfoot, on the route the player walks, which is
+// where the physics they teach lives. Impassable terrain gets its material's
+// own accent instead (materials/).
+//
+// `biome` here is the scene's own, not the tile's -- the decoration belongs
+// to the world the player is walking through even where World 9's defect
+// patches borrow another world's palette for the ground under it.
+export function decorateTile(g: Phaser.GameObjects.Graphics, biome: Biome, { cx, cy, s }: AccentTile) {
   if (biome.decoration === 'crystalGlints') {
     g.fillStyle(0x8fe8ff, 0.85);
     [0, 1, 2].forEach((i) => {

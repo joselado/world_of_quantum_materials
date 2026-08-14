@@ -1049,11 +1049,15 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.crystalSprites = [];
     this.tokenSprites = [];
 
-    // Decoration (flowers / crystal glints) lives in the off-path terrain
-    // beside the trail, not on the walkable tiles themselves.
+    // Ground decoration is scattered over the walkable route itself
+    // (terrain/decoration.ts): each world's motif is a property of the
+    // ground it teaches with -- orbit rings, spin-wave ripples, cracks --
+    // and belongs underfoot. Impassable tiles carry their material's own
+    // accent instead (terrain/materials/), so decorating them too would
+    // stack two treatments on one fill.
     for (let y = 0; y < GRID_H; y++) {
       for (let x = 0; x < GRID_W; x++) {
-        if (!this.walkable[y][x]) {
+        if (this.walkable[y][x]) {
           this.flowerMap[y][x] = Math.random() < 0.16;
         }
       }

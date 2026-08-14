@@ -6,9 +6,9 @@ import type { GridPoint } from '../../../world/mapgen';
 import type { AtmosphereView } from '../sky';
 
 // What a tile's terrain actually is, once the grid has been read: 'path' is
-// walkable trail, 'solid' plain impassable ground (rock-theme or
-// region-tinted), and 'lava'/'water'/'void' the themes that lay an animated
-// accent over that same ground (see materials/).
+// walkable trail, 'solid' plain bare impassable ground, and every other kind
+// an off-path material that lays its own accent over that same ground (see
+// materials/), one per world's impassable surround.
 export type TerrainKind = 'path' | 'solid' | 'lava' | 'water' | 'void';
 
 // The kinds an impassable tile can take -- one per off-path material, each
@@ -49,19 +49,28 @@ export interface TerrainView extends AtmosphereView {
   midTile: GridPoint;
   // This world's guardian color, for the chokepoint glow (drawMidHighlight).
   chokepointColor: number;
-  // The scene clock, driving every animated accent.
-  now: number;
 }
 
 // One impassable tile, ready for its material's accent: the tile's projected
-// outline (for a full-tile wash), its centre and depth scale on screen, and
-// the scene clock. Built only for a tile whose material actually draws an
-// accent, so a bare-ground tile costs nothing beyond its fill.
+// outline (for a full-tile wash), its centre and depth scale on screen, its
+// own grid coordinates, and the scene clock. Built only for a tile whose
+// material actually draws an accent, so a bare-ground tile costs nothing
+// beyond its fill.
+//
+// `gx`/`gy` are what make a feature stand still in the world rather than on
+// the screen. Anything anchored to the map -- the Iron Steppe's shards
+// leaning one way until the domain wall and the other way past it, the
+// Vortex Glacier's flow-lines bending around a fixed core -- must derive its
+// geometry from these; a feature phased off `cx`/`cy` swims across the ground
+// as the camera moves, which is right for a drifting shimmer and wrong for
+// anything the world is supposed to *contain*.
 export interface AccentTile {
   fill: ProjectedPoint[];
   cx: number;
   cy: number;
   s: number;
+  gx: number;
+  gy: number;
   now: number;
 }
 

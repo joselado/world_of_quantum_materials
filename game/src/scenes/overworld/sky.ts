@@ -3,6 +3,8 @@ import { blend } from '../../art/colors';
 import { BIOMES, getBiome } from '../../art/biomes';
 import type { Biome } from '../../art/biomes';
 import { HORIZON_Y, CANVAS_W, CANVAS_H } from '../../art/perspective';
+import { DISTANT_SELVES, MAX_CREST } from '../../art/horizons';
+import type { HorizonPoint } from '../../art/horizons';
 import { DRAW_DISTANCE_TILES, projectTile } from './projection';
 import { FOG_CLOSE, groundColor } from './terrain/color';
 
@@ -31,13 +33,13 @@ const HAZE_INHERIT_MAX = 0.8;
 // point the ground arrives at it from below.
 //
 // The full-strength height is not a taste setting: it clears the tallest
-// crest a distant self can reach (DISTANT_HEIGHT), so the silhouette stands
-// *in* the mist rather than against open sky. A silhouette drowned to within
-// a few values of the fog while its backdrop is still forty values off the
-// fog is the same slab as an undrowned one -- the value budget below is only
-// meaningful because what surrounds the band is the fog color.
+// crest a distant self can reach (art/horizons.ts's MAX_CREST), so the
+// silhouette stands *in* the mist rather than against open sky. A silhouette
+// drowned to within a few values of the fog while its backdrop is still forty
+// values off the fog is the same slab as an undrowned one -- the value budget
+// below is only meaningful because what surrounds the band is the fog color.
 const SKY_BLEND_H = 96;
-const SKY_BLEND_FULL = 40;
+const SKY_BLEND_FULL = MAX_CREST + 2;
 // How far the mist drifts back toward this world's own high sky as it climbs
 // away from the horizon line, and how much of the fog color washes over the
 // whole sky (clouds included) once the forward blend is running.
@@ -48,10 +50,6 @@ const SKY_TINT_MAX = 0.55;
 // is a narrow excursion from the mist it stands in, which is the whole
 // budget a horizon wearing a neighbour's hue gets (WORLDS.md section 4).
 const DISTANT_DROWN = 0.8;
-// The placeholder two-sine profile's tallest crest above the horizon line,
-// in pixels -- per-world profiles replace the shape, and this becomes their
-// authored height. Both the swallow ramp and the polygon read it.
-const DISTANT_HEIGHT = 38;
 // The silhouette is painted as nested copies of itself, each starting a step
 // higher up its own local height, so alpha accumulates from zero at the base
 // to the biome's full swallow at the crest -- mist pooling at the foot of a
@@ -60,9 +58,6 @@ const DISTANT_HEIGHT = 38;
 // softness on the top edge against the sky.
 const DISTANT_SWALLOW_STEPS = 6;
 const DISTANT_FEATHER_PX = 3;
-// Horizontal sampling of the profile. The finest term in the placeholder
-// shape runs a ~180px period, so this holds several samples across it.
-const DISTANT_SAMPLE_PX = 32;
 
 // What hazeTarget needs to resolve a biome's haze: which world the player is
 // in, how much of the next world's air has arrived (forwardHazeBlend), and a
@@ -76,9 +71,12 @@ export interface HazeView {
 }
 
 // The same, plus the scene's own biome, which is what the whole-screen washes
-// (as opposed to the per-tile fills) haze toward.
+// (as opposed to the per-tile fills) haze toward, and the scene clock, which
+// drives the animated half of a neighbour's distant self (the Storm Flats'
+// arc-flashes, the Entangled Web's glinting filaments).
 export interface AtmosphereView extends HazeView {
   biome: Biome;
+  now: number;
 }
 
 // The static backdrop, painted once per world entry into its own Graphics
@@ -273,44 +271,48 @@ function drawHorizonBand(g: Phaser.GameObjects.Graphics, colorAt: (y: number) =>
 // the player nears an open gate the target lerps toward the next world's
 // air, the silhouette lerps with it, and the horizon resolves into the next
 // world with nothing anywhere that switches.
+// The profile itself comes from art/horizons.ts, keyed by the same depicted
+// world -- shape there, color and swallow here, one asset read as a pair. A
+// world may carry a sky extra instead of, or as well as, a silhouette: the
+// Entangled Web's swallow is zero and its filament glints are the whole of
+// its distant self, so the extra is drawn whatever the swallow says.
 function drawDistantSelf(g: Phaser.GameObjects.Graphics, view: AtmosphereView, target: number) {
-  const depicted = BIOMES[view.world + 1];
-  if (!depicted || depicted.hillAlpha <= 0) return;
+  const world = view.world + 1;
+  const depicted = BIOMES[world];
+  const self = DISTANT_SELVES[world];
+  if (!depicted || !self) return;
 
-  // Every copy is painted at the one alpha that composites to the authored
-  // swallow where all of them overlap, so the knob means what it says.
-  const passes = DISTANT_SWALLOW_STEPS * DISTANT_FEATHER_PX;
-  g.fillStyle(blend(depicted.hillColor, target, DISTANT_DROWN), 1 - Math.pow(1 - depicted.hillAlpha, 1 / passes));
-  for (let step = 0; step < DISTANT_SWALLOW_STEPS; step++) {
-    for (let drop = 0; drop < DISTANT_FEATHER_PX; drop++) {
-      fillSilhouette(g, step / DISTANT_SWALLOW_STEPS, drop);
+  if (depicted.hillAlpha > 0 && self.points.length > 1) {
+    // Every copy is painted at the one alpha that composites to the authored
+    // swallow where all of them overlap, so the knob means what it says.
+    const passes = DISTANT_SWALLOW_STEPS * DISTANT_FEATHER_PX;
+    g.fillStyle(blend(depicted.hillColor, target, DISTANT_DROWN), 1 - Math.pow(1 - depicted.hillAlpha, 1 / passes));
+    for (let step = 0; step < DISTANT_SWALLOW_STEPS; step++) {
+      for (let drop = 0; drop < DISTANT_FEATHER_PX; drop++) {
+        fillSilhouette(g, self.points, step / DISTANT_SWALLOW_STEPS, drop);
+      }
     }
   }
+
+  self.sky?.({ g, horizonY: HORIZON_Y, target, now: view.now });
 }
 
 // One copy of the silhouette: the strip between its crest (dropped `drop`
 // pixels) and a floor sitting `foot` of the way up its own local height.
 // Measuring the floor against the local height rather than a flat screen
 // line is what makes the mist pool -- a shallow dip is swallowed whole while
-// a crest beside it still clears the fog.
-function fillSilhouette(g: Phaser.GameObjects.Graphics, foot: number, drop: number) {
+// a crest beside it still clears the fog. Crests are clamped to MAX_CREST,
+// which is the height the mist band is sized to cover; a profile reaching
+// past it would stand against open sky.
+function fillSilhouette(g: Phaser.GameObjects.Graphics, profile: HorizonPoint[], foot: number, drop: number) {
   const points: Phaser.Types.Math.Vector2Like[] = [];
   const back: Phaser.Types.Math.Vector2Like[] = [];
-  for (let x = 0; x <= CANVAS_W; x = Math.min(x + DISTANT_SAMPLE_PX, CANVAS_W)) {
-    const h = silhouetteHeight(x);
+  for (const p of profile) {
+    const h = Math.min(p.h, MAX_CREST);
     const crest = HORIZON_Y - h + drop;
-    points.push({ x, y: crest });
-    back.push({ x, y: Math.max(HORIZON_Y - h * foot, crest) });
-    if (x >= CANVAS_W) break;
+    points.push({ x: p.x, y: crest });
+    back.push({ x: p.x, y: Math.max(HORIZON_Y - h * foot, crest) });
   }
   back.reverse();
   g.fillPoints(points.concat(back), true);
-}
-
-// Placeholder profile: two sine terms, the same shape in every world. Per-
-// world profiles replace this -- a world's distant self is its own impassable
-// surround restated at horizon scale, and one rolling hill in ten colors is
-// the theming not made visible at distance.
-function silhouetteHeight(x: number): number {
-  return DISTANT_HEIGHT - 18 + Math.sin(x * 0.012) * 12 + Math.sin(x * 0.035) * 6;
 }

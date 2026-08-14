@@ -10,7 +10,7 @@ import { groundColor } from './color';
 import { decorateTile } from './decoration';
 import { TERRAIN_ACCENTS } from './materials';
 import { offPathKindOf } from './plan';
-import type { TerrainKind, TerrainTile, TerrainView } from './types';
+import type { AccentTile, TerrainKind, TerrainTile, TerrainView } from './types';
 
 // Thinnest projected row still worth painting, in screen pixels. The
 // projection is asymptotic, so rows keep compressing toward the horizon long
@@ -86,7 +86,7 @@ export function drawTerrain(view: TerrainView) {
         g.fillPoints(fill, true);
         if (contour) drawContactShadow(g, contour, tile.biome, camX, camY, depthRatio);
         if (depthRatio < DETAIL_MAX_DEPTH && tile.decorate) {
-          decorateTile(g, view.biome, pFL, pFR, pNR, pNL);
+          decorateTile(g, view.biome, accentTile(fill, pFL, pFR, pNR, pNL, x, y, view.now));
         }
         if (tile.midHighlight) {
           // The glow falls off radially from the guardian's own tile, so the
@@ -97,7 +97,7 @@ export function drawTerrain(view: TerrainView) {
           drawMidHighlight(g, view, fill, depthRatio, 1 - 0.45 * spread);
         }
       } else {
-        drawOffPathTile(view, tile, fill, contour, pFL, pFR, pNR, pNL, depthRatio);
+        drawOffPathTile(view, tile, fill, contour, pFL, pFR, pNR, pNL, x, y, depthRatio);
       }
     }
   }
@@ -190,7 +190,7 @@ function drawMarginRows(view: TerrainView, deepestRow: number) {
         g.fillStyle(color, 1);
         g.fillPoints(fill, true);
       } else {
-        drawOffPathTile(view, tile, fill, null, pFL, pFR, pNR, pNL, depthRatio);
+        drawOffPathTile(view, tile, fill, null, pFL, pFR, pNR, pNL, x, gy, depthRatio);
       }
     }
   }
@@ -222,8 +222,8 @@ function drawMarginTile(view: TerrainView, edge: TerrainTile, gx: number, y: num
   g.fillPoints(fill, true);
 
   if (depthRatio <= DETAIL_MAX_DEPTH) {
-    const kind = edge.kind !== 'path' ? edge.kind : offPathKindOf(edge.biome, edge.regionTint);
-    drawAccent(g, kind, fill, pFL, pFR, pNR, pNL, view.now);
+    const kind = edge.kind !== 'path' ? edge.kind : offPathKindOf(edge.biome);
+    drawAccent(g, kind, fill, pFL, pFR, pNR, pNL, gx, y, view.now);
   }
 }
 
@@ -300,6 +300,8 @@ function drawOffPathTile(
   pFR: ProjectedPoint,
   pNR: ProjectedPoint,
   pNL: ProjectedPoint,
+  gx: number,
+  gy: number,
   depthRatio: number
 ) {
   const g = view.gfx;
@@ -307,7 +309,7 @@ function drawOffPathTile(
   g.fillPoints(fill, true);
 
   if (depthRatio <= DETAIL_MAX_DEPTH) {
-    drawAccent(g, tile.kind, fill, pFL, pFR, pNR, pNL, view.now);
+    drawAccent(g, tile.kind, fill, pFL, pFR, pNR, pNL, gx, gy, view.now);
   }
 
   // The impassable side of the contact shadow, over the accent rather than
@@ -327,18 +329,38 @@ function drawAccent(
   pFR: ProjectedPoint,
   pNR: ProjectedPoint,
   pNL: ProjectedPoint,
+  gx: number,
+  gy: number,
   now: number
 ) {
   if (kind === 'path') return;
   const accent = TERRAIN_ACCENTS[kind];
   if (!accent) return;
-  accent(g, {
+  accent(g, accentTile(fill, pFL, pFR, pNR, pNL, gx, gy, now));
+}
+
+// The per-tile geometry every accent and every decoration works from: the
+// projected outline for a full-tile wash, the tile's centre and depth scale
+// on screen, where it sits on the grid, and the clock.
+function accentTile(
+  fill: ProjectedPoint[],
+  pFL: ProjectedPoint,
+  pFR: ProjectedPoint,
+  pNR: ProjectedPoint,
+  pNL: ProjectedPoint,
+  gx: number,
+  gy: number,
+  now: number
+): AccentTile {
+  return {
     fill,
     cx: (pFL.x + pFR.x + pNR.x + pNL.x) / 4,
     cy: (pFL.y + pFR.y + pNR.y + pNL.y) / 4,
     s: pNL.scale,
+    gx,
+    gy,
     now,
-  });
+  };
 }
 
 // The flat fill color of an impassable tile: the biome's own off-path

@@ -42,7 +42,7 @@ function classifyTiles(src: TerrainSource): TerrainTile[][] {
       const biome = overrideWorld != null ? getBiome(overrideWorld) : src.biome;
       const regionTint = src.regionColor[y]?.[x] ?? null;
       row.push({
-        kind: src.walkable[y]?.[x] ? 'path' : offPathKindOf(biome, regionTint),
+        kind: src.walkable[y]?.[x] ? 'path' : offPathKindOf(biome),
         biome,
         regionTint,
         decorate: !!src.flowerMap[y]?.[x],
@@ -54,14 +54,14 @@ function classifyTiles(src: TerrainSource): TerrainTile[][] {
   return plan;
 }
 
-// A region tint outranks the biome's own wallTheme: a mapgen domain
-// (world/mapgen.ts's Voronoi regions, world3.ts) should read as a distinct
-// solid zone the player walks around, not as whatever hazard terrain that
-// biome's off-path tiles happen to use.
-export function offPathKindOf(biome: Biome, regionTint: number | null): OffPathKind {
-  if (regionTint != null) return 'solid';
-  if (biome.wallTheme === 'rock') return 'solid';
-  return biome.wallTheme;
+// A tile's off-path material is its biome's, whatever else the tile carries.
+// A mapgen domain tint (world/mapgen.ts, world3.ts's Voronoi cells) colors
+// that material rather than replacing it: the Edge Cliffs' two dead domain
+// hues *are* its sunken floors, so the tint supplies the color and the
+// material supplies the crystalline stipple over it, and the world needs both
+// at once.
+export function offPathKindOf(biome: Biome): OffPathKind {
+  return biome.wallTheme === 'rock' ? 'solid' : biome.wallTheme;
 }
 
 // The northernmost row the corridor reaches -- every generator paints its
