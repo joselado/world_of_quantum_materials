@@ -895,59 +895,74 @@ async function main() {
 
     const names = [];
     for (let swap = 1; swap <= SWAPS_PER_MOVE; swap++) {
-      const free = await waitTurnFree(9000);
-      if (free !== 'free') return { pass: false, detail: `${moveId}: swap ${swap}: turn never freed up (${free}) -- names so far ${JSON.stringify(names)}` };
+      const free = await waitTurnFree(15000);
+      if (free !== 'free') return { pass: false, detail: `${moveId}: swap ${swap}: turn never freed up (${free}) -- forms so far ${JSON.stringify(names)}` };
 
-      // Top both sides back up so neither side can win before the next
-      // transmute -- a dead Adapted ends the fight through endBattle, and a
-      // dead player ends it before their own hit ever resolves (which is
-      // precisely why the rival-gate loss path never reaches this code: a
-      // World 10 player's own max HP is far below what that rival hits for).
-      // The player's *max* has to be raised too, not just their current HP.
-      const before = await page.evaluate(() => {
-        const g = window.__game;
-        const s = g.scene.getScene('Battle');
+      // Top both sides right up so neither can win before the next transmute.
+      // A dead Adapted ends the fight through endBattle (an Ultimate's power
+      // alone exceeds that rival's own max HP, so its *max* has to be raised
+      // too, not just its current HP -- otherwise the Ultimate branch is never
+      // exercised, it just one-shots the boss). A dead player ends the fight
+      // before their own hit ever resolves, which is precisely why the
+      // rival-gate loss path never reaches this code: a World 10 player's own
+      // max HP is far below what that rival hits for.
+      //
+      // The previous form is stashed on `window` for an identity comparison
+      // below: transmuteAdapted picks its new compound at random with no
+      // exclusion of the current one, so it can legally reshape into what it
+      // already is and produce an identical name. It always installs a *fresh*
+      // object though, so object identity detects the swap where a name
+      // comparison would intermittently miss it.
+      await page.evaluate(() => {
+        const s = window.__game.scene.getScene('Battle');
         s['playerMaxHp'] = 99999;
         s['playerHp'] = 99999;
-        s['opponentHp'] = s['opponentMaxHp'];
+        s['opponentMaxHp'] = 99999;
+        s['opponentHp'] = 99999;
         s['updateBars']();
-        return { frame: g.loop.frame, name: s['adaptedForm'] ? s['adaptedForm'].name : null };
+        window.__afPrev = s['adaptedForm'];
       });
 
       await page.evaluate((m) => window.__game.scene.getScene('Battle')['playerAttack'](m), moveId);
-      // Long enough to cover the glow's rise+fall, the fixed turn gap and an
-      // Ultimate's much longer summon animation ahead of the swap.
-      await sleep(3500);
 
-      const after = await page.evaluate(() => {
-        const g = window.__game;
-        const s = g.scene.getScene('Battle');
-        return {
-          frame: g.loop.frame,
-          active: g.scene.isActive('Battle'),
-          name: s && s['adaptedForm'] ? s['adaptedForm'].name : null,
-          plateName: s && s['opponentPlate'] ? 'present' : 'missing',
-        };
-      });
-
-      if (after.frame === before.frame) {
-        await page.screenshot({ path: `${SHOT_DIR}/fail-adapted-${moveId}-frozen.png` });
-        return {
-          pass: false,
-          detail: `${moveId}: swap ${swap}: game loop stopped advancing (frame stuck at ${after.frame}) -- the canvas is frozen, not merely stalled. form=${after.name}`,
-        };
+      // Poll rather than sleep a fixed beat: the Ultimate branch defers the
+      // transmute to its summon animation's completion, which runs seconds
+      // longer than an ordinary move's effect. Two equal frame counts a poll
+      // apart mean the render loop itself stopped -- a frozen canvas, which is
+      // what a throw inside the swap (it runs in a tween callback, inside
+      // Phaser's game step) actually produces.
+      let swapped = null;
+      let prevFrame = -1;
+      for (let i = 0; i < 40; i++) {
+        await sleep(300);
+        const st = await page.evaluate(() => {
+          const g = window.__game;
+          const s = g.scene.getScene('Battle');
+          return {
+            frame: g.loop.frame,
+            active: g.scene.isActive('Battle'),
+            changed: s ? s['adaptedForm'] !== window.__afPrev : false,
+            name: s && s['adaptedForm'] ? s['adaptedForm'].name : null,
+            plate: !!(s && s['opponentPlate']),
+          };
+        });
+        if (i > 0 && st.frame === prevFrame) {
+          await page.screenshot({ path: `${SHOT_DIR}/fail-adapted-${moveId}-frozen.png` });
+          return {
+            pass: false,
+            detail: `${moveId}: swap ${swap}: render loop stopped advancing (frame stuck at ${st.frame}) -- the canvas is frozen, not merely stalled. form=${st.name}`,
+          };
+        }
+        prevFrame = st.frame;
+        if (!st.active) return { pass: false, detail: `${moveId}: swap ${swap}: battle ended before the transmute could be observed` };
+        if (st.changed) { swapped = st; break; }
       }
-      if (!after.active) return { pass: false, detail: `${moveId}: swap ${swap}: battle ended before the transmute could be observed` };
-      if (!after.name || after.name === before.name) {
-        return { pass: false, detail: `${moveId}: swap ${swap}: opponent did not take a new form (still ${JSON.stringify(after.name)})` };
-      }
-      if (after.plateName !== 'present') {
-        return { pass: false, detail: `${moveId}: swap ${swap}: opponent nameplate missing after the rebuild` };
-      }
-      names.push(after.name);
+      if (!swapped) return { pass: false, detail: `${moveId}: swap ${swap}: transmute never fired -- forms so far ${JSON.stringify(names)}` };
+      if (!swapped.plate) return { pass: false, detail: `${moveId}: swap ${swap}: opponent nameplate missing after the rebuild` };
+      names.push(swapped.name);
     }
 
-    const settled = await waitTurnFree(9000);
+    const settled = await waitTurnFree(15000);
     if (settled !== 'free') return { pass: false, detail: `${moveId}: turn never freed up after the last transmute (${settled})` };
 
     return { pass: true, detail: `${moveId}: ${names.length} transmutes, loop kept running, forms ${JSON.stringify(names)}` };
