@@ -1499,8 +1499,8 @@ const BATTLE_SCORE_9 = makeBattleScore({
 
 // World 10, The Adaptive Meta-World: a shimmering octave-up unison doubling
 // of the lead (shimmer: true) over the same unison-detuned brass, no drive
-// for a cleaner reflective tone -- F# minor, the relative minor of the
-// overworld theme's A major.
+// for a cleaner reflective tone -- F# minor, sharing its tonic with the
+// overworld theme's F# Lydian.
 const BATTLE_SCORE_10 = makeBattleScore({
   bpm: 150,
   mainA: [['F#2', 'min'], ['E2', 'maj'], ['F#2', 'min'], ['E2', 'maj']],
