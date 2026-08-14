@@ -1277,8 +1277,10 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   rendering is projected (lane offset, depth) → screen point, with distance
   fog blending tiles toward a biome-specific haze color near the horizon. The
   ground plane always reaches that horizon and both frame edges, so a world
-  recedes into haze rather than visibly terminating (`dev_notes/WORLDS.md` §4
-  for the spec, `STYLE.md`'s "Overworld path" for the visual rule).
+  recedes into haze rather than visibly terminating, and sky, mist and ground
+  are one continuous atmosphere with the horizon line a location inside it
+  (`dev_notes/WORLDS.md` §4 for the spec, `STYLE.md`'s "Overworld path" and
+  "The horizon" for the visual rules).
 - **Overworld map generation** (`src/world/mapgen.ts`, `src/world/generators/`): each of the
   10 worlds has its own generator (`generators/world1.ts` .. `world10.ts`, see §2's map-shape
   table and CODEMAP.md for the file layout), producing that world's own physics motif rather

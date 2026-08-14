@@ -1129,9 +1129,13 @@ export class BattleScene extends Phaser.Scene {
       // Each layer's color takes an explicit brighten/darken step on top of
       // the sky/fog blend -- in dark biomes the raw blend endpoints sit so
       // close together that the layers would otherwise merge into one lump.
+      // The alphas are the backdrop's own: `hillColor` is borrowed as a
+      // per-world ridge tone, but `hillAlpha` is the overworld's swallow knob
+      // (`art/biomes.ts`) and means nothing here -- the arena is a near view,
+      // where a world whose horizon is swallowed still has a skyline.
       { baseY: HORIZON_Y - 26, count: 6, minH: 46, maxH: 122, color: shade(blend(biome.hillColor, biome.skyBottom, 0.58), 11), alpha: 0.95, rim: false },
       { baseY: HORIZON_Y - 16, count: 7, minH: 26, maxH: 84, color: shade(blend(biome.hillColor, biome.skyBottom, 0.34), 4), alpha: 0.95, rim: false },
-      { baseY: HORIZON_Y - 4, count: 8, minH: 12, maxH: 46, color: shade(blend(biome.hillColor, biome.fogTarget, 0.15), -5), alpha: biome.hillAlpha, rim: true },
+      { baseY: HORIZON_Y - 4, count: 8, minH: 12, maxH: 46, color: shade(blend(biome.hillColor, biome.fogTarget, 0.15), -5), alpha: 0.85, rim: true },
       { baseY: HORIZON_Y + 6, count: 9, minH: 5, maxH: 24, color: blend(shade(biome.ground, 20), biome.fogTarget, 0.1), alpha: 1, rim: true },
     ];
     ridgeLayers.forEach((layer, i) => {

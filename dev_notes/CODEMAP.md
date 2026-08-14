@@ -47,10 +47,12 @@ game/src/
       projection.ts            The grid/camera constants (GRID_W/GRID_H, TILE_SCALE, LANE_CLIP,
                                  DRAW_DISTANCE_TILES, CAMERA_BACK_TILES) plus projectTile() and
                                  laneClipAt(). The one place the camera pullback is applied
-      sky.ts                   The static backdrop (drawSky: sky gradient, base ground wash, hill
-                                 silhouette, clouds) and the atmosphere over the ground plane
-                                 (drawDepthHaze and its horizon band, hazeTarget/forwardHazeBlend
-                                 and the HazeView/AtmosphereView contexts they read)
+      sky.ts                   The static backdrop (drawSky: sky gradient, base ground wash,
+                                 clouds) and the per-frame atmosphere (drawDepthHaze: the ground
+                                 wash, the horizon band, the sky's own graduation into the fog,
+                                 and drawDistantSelf's neighbour silhouette), plus
+                                 hazeTarget/forwardHazeBlend and the HazeView/AtmosphereView
+                                 contexts they read
       terrain/
         types.ts               TerrainKind/OffPathKind/TerrainTile/TerrainPlan, the TerrainView
                                  render context, and the AccentTile/AccentDraw contract every
@@ -1207,16 +1209,42 @@ returns the lane offset that reaches the frame edge at that depth: a fixed lane 
 this job, since the projection shrinks a tile-width toward the vanishing point and one that fills
 the frame up close covers a narrowing wedge in the distance, leaving the far screen corners on
 bare backdrop. `LANE_CLIP` stays the constant for *actors*, whose visibility is a near-field
-question. `sky.ts`'s `drawHorizonBand`, called from `drawDepthHaze`, owns the far quarter of the draw
-distance: opaque from `HORIZON_Y` down to `projectTile(0, DRAW_DISTANCE_TILES).y` -- which is what
-covers the deepest rows, whose own fog caps well short of the haze color and would otherwise
-surface as a visible edge -- and thinning from there to nothing at `HORIZON_BAND_FROM` of the draw
-distance, the same threshold past which tile decoration, terrain accents and actor sprites already
-stop. Both ends are fixed depths rather than tracked off the deepest row drawn, so the band never
-slides out from under the rows as the camera creeps. Both it and `drawDepthHaze`'s own wash go
+question. `terrain/color.ts`'s `groundColor` is bound to that same row: its blend is total at `depthRatio`
+1, so the deepest row drawn arrives at the haze color exactly. That equality is what frees
+everything above the horizon line to be translucent -- ground that stops one blend short of the
+fog needs an opaque band over the join to hide the step, and an opaque band can never soften into
+anything (`WORLDS.md` section 4). Its falloff is in two parts and where they meet is the point:
+a gentle curve up close, with the remaining blend taken smoothly to total only past `FOG_CLOSE`.
+Each grid row paints as one flat fill, so how fast the color moves *per row* is exactly how
+visibly the mid-distance terraces -- worst in the open-sky worlds, whose fog target sits far above
+their ground in value by design. Something has to be steep, since the blend must cross from
+nothing to total over one draw distance; `FOG_CLOSE` sits inside the reach of `drawHorizonBand`'s
+wash, so the rows carrying the fastest change are the rows already being painted over.
+`HORIZON_BAND_FROM` is derived from `FOG_CLOSE` rather than set beside it, since a step is only
+hidden in proportion to the wash actually over it -- the visible part is `(1 - alpha)` times the
+step -- and a band whose foot landed on `FOG_CLOSE` itself would be down to a few percent exactly
+where it is needed. The step itself scales with how far a world's ground sits from its haze
+target, which is why the Vortex Glacier at an open gate is the binding case in the game: icy dark
+ground against the Iron Steppe's cream air ahead spans three to four times the range any other
+world reaches in either gate state.
+`walkableHazeTarget` fades its own lightening out on the same
+schedule (`0.35 * (1 - depthRatio^3)`, flat enough to hold the route nearly to the end), or the
+repeated road surfaces as a bright stub against the band. `regionTintAt` puts a mapgen domain tint
+on that same schedule, and for the same reason with more force: the tint is mixed over ground the
+fog has *already* taken, so a fixed strength carries a raw saturated hue to the deepest row and
+undoes the arrival at the haze color for exactly the worlds that use domains (1 and 3).
+`sky.ts`'s `drawHorizonBand`, called from `drawDepthHaze`, owns the far reach of the draw
+distance: opaque from `HORIZON_Y` down to `projectTile(0, DRAW_DISTANCE_TILES).y`, which is the
+strip the projection puts out of the ground plane's reach -- rows approach the horizon line
+asymptotically and never arrive, so something has to own the last few pixels of ground -- and
+thinning from there to nothing at `HORIZON_BAND_FROM` of the draw distance, which is derived from
+`FOG_CLOSE` and deliberately nearer the camera than it, so the wash still carries weight
+everywhere the per-row color is moving fastest. Both ends are fixed depths rather than tracked off
+the deepest row drawn, so the band never slides out from under the rows as the camera creeps. Both it and `drawDepthHaze`'s own wash go
 through `fillVerticalFade`, which paints abutting one-pixel rows -- overlapping translucent bands
 double-blend on the shared scanline and stripe the far distance, and two-pixel rows contour-band
-where the ramp is steepest. The trace is fed
+where the ramp is steepest. It samples the ramp at each row's far edge (`(i + 1) / rows`) so a
+fade that has to arrive opaque lands on `alphaAt(1)` rather than stopping a row short. The trace is fed
 `plan.ts`'s `depthContinuedWalkable` (the real grid, with every row north of `farEdgeRow` carrying
 that row's
 walkability) so no boundary curve, contact shadow or rim light is drawn across the continuing
@@ -1236,6 +1264,52 @@ beaten, and a
 shut gate shows nothing of what is beyond it. The blend factor and a small per-biome memo are
 recomputed once per frame in `OverworldScene.drawWorld` before the view is assembled (World 9's
 defect patches put several biomes on screen at once).
+
+**The mist band and the distant self.** `drawDepthHaze` runs its passes off one `target`, so
+nothing in the frame can disagree about what color the air is: a whole-sky tint, the ground wash,
+`drawHorizonBand`, then -- above the horizon line -- the sky's graduation into the fog and
+`drawDistantSelf`. The sky pass is the fog color at full strength from `SKY_BLEND_FULL` above the
+line down to the line itself, feathering out smoothstepped over the `SKY_BLEND_H` above that. Its
+full-strength height clears `DISTANT_HEIGHT`, the tallest crest a silhouette reaches, which is
+load-bearing rather than cosmetic: a silhouette drowned to within a few values of the fog while its
+backdrop is still forty values off the fog reads as the same slab an undrowned one would.
+
+Two things keep that stretch from reading as a panel laid over the picture. The mist is not one
+color: `drawDepthHaze`'s `tone(y)` drifts it toward the world's own `skyTop` by `MIST_LIFT` as it
+climbs, anchored to be exactly `target` at `projectTile(0, DRAW_DISTANCE_TILES).y` -- the row the
+ground plane's own fog arrives on, so the drift lives entirely above the deepest terrain and
+cannot open a step against it. Both mist passes read the same `tone`, so the ramp is continuous
+across the horizon line. (`fillVerticalFade` takes a `colorAt(y)` for this and lerps packed ints
+via `lerpColor`; it runs per scanline per frame, which is where Phaser `Color` objects would start
+costing allocation.) And the sky takes a flat wash of `target` at
+`SKY_TINT_MAX * hazeBlend` -- zero until the forward blend runs, so it changes nothing in a world's
+own air, and at the gate it is what carries the clouds along with everything else. A bank of this
+world's untouched daylight clouds over the next world's mist is the loudest available statement
+that the color below them is an overlay rather than weather. The wash covers the sky whole, from
+the top of the frame down to the horizon line and under the mist band, rather than stopping where
+the band begins: a wash that ends anywhere the eye can find it has only moved the edge it was
+drawn to remove, and the band's own ramp starts from zero at exactly that height.
+
+`drawHorizonBand`'s own thinning is smoothstepped over `HORIZON_BAND_FROM` of the draw distance for
+the same reason its ends are: a ramp that starts falling the instant the opaque stretch ends puts a
+readable line there, the eye finding where a gradient stops changing as easily as it finds an edge.
+
+`drawDistantSelf` composes world N's forward horizon out of world N+1's authored distant self --
+`BIOMES[world + 1]`'s `hillColor` (base) and `hillAlpha` (swallow), never the standing world's own,
+and `BIOMES` rather than `getBiome` so World 10 draws nothing instead of falling back to the
+meadow. A zero swallow draws nothing at all (Worlds 7, 8 and 10; see `art/biomes.ts` and
+`WORLDS.md` section 4 for why each). The fill is that base blended `DISTANT_DROWN` of the way into
+the *live* `hazeTarget` value -- the same one every other pass in the frame is using, never the
+neighbour's own `fogTarget` -- which is what welds band and mist together: the two move as one as
+the forward blend ramps, so the horizon resolves into the next world with nothing that switches.
+The silhouette is painted as `DISTANT_SWALLOW_STEPS` nested copies, each starting a step higher up
+its own *local* height so alpha accumulates from zero at the base (mist pooling at the foot of a
+ridge, and a base that meets the mist with no line in it) to the authored swallow at the crest,
+each repeated `DISTANT_FEATHER_PX` times with the crest dropped a pixel at a time for the soft top
+edge. Every copy is painted at the one alpha that composites to the authored swallow where all of
+them overlap, so the knob means what it says. `BattleScene`'s ridgelines borrow `hillColor` as a
+per-world tone but not `hillAlpha`, which is the overworld's swallow and means nothing in a near
+view.
 
 **Off-path terrain materials.** One module per material under
 `scenes/overworld/terrain/materials/`, the same "one file per thing" convention the guardian

@@ -80,8 +80,8 @@ export function drawTerrain(view: TerrainView) {
       const fill = contour ? projectContour(contour.outline, camX, camY) : [pFL, pFR, pNR, pNL];
 
       if (tile.kind === 'path') {
-        let color = groundColor(tile.biome.path, depthRatio, walkableHazeTarget(view, tile.biome));
-        if (tile.regionTint != null) color = blend(color, tile.regionTint, 0.55);
+        let color = groundColor(tile.biome.path, depthRatio, walkableHazeTarget(view, tile.biome, depthRatio));
+        if (tile.regionTint != null) color = blend(color, tile.regionTint, regionTintAt(depthRatio, 0.55));
         g.fillStyle(color, 1);
         g.fillPoints(fill, true);
         if (contour) drawContactShadow(g, contour, tile.biome, camX, camY, depthRatio);
@@ -185,8 +185,8 @@ function drawMarginRows(view: TerrainView, deepestRow: number) {
       const tile = edge[x];
 
       if (tile.kind === 'path') {
-        let color = groundColor(tile.biome.path, depthRatio, walkableHazeTarget(view, tile.biome));
-        if (tile.regionTint != null) color = blend(color, tile.regionTint, 0.55);
+        let color = groundColor(tile.biome.path, depthRatio, walkableHazeTarget(view, tile.biome, depthRatio));
+        if (tile.regionTint != null) color = blend(color, tile.regionTint, regionTintAt(depthRatio, 0.55));
         g.fillStyle(color, 1);
         g.fillPoints(fill, true);
       } else {
@@ -253,11 +253,15 @@ function drawContactShadow(
 }
 
 // Distant walkable ground hazes toward a lighter target than its
-// surroundings do, so the route the player is planning stays visible all the
-// way to the horizon -- letting floor and off-path converge on one haze
-// color erases the boundary at exactly the range it is being read from.
-function walkableHazeTarget(view: TerrainView, biome: Biome): number {
-  return blend(hazeTarget(view, biome), biome.path, 0.35);
+// surroundings do, so the route the player is planning stays readable far
+// into the distance -- letting floor and off-path converge on one haze color
+// erases the boundary at exactly the range it is being read from. The
+// lightening is itself faded out over the last of the draw distance, on a
+// curve flat enough to hold the route to nearly the end: every fill has to
+// arrive at the same haze color on the deepest row drawn, or the repeated
+// road (drawMarginRows) surfaces as a bright stub against the horizon band.
+function walkableHazeTarget(view: TerrainView, biome: Biome, depthRatio: number): number {
+  return blend(hazeTarget(view, biome), biome.path, 0.35 * (1 - Math.pow(depthRatio, 3)));
 }
 
 // The guardian chokepoint (invariant B, world/mapgen.ts's forceChokepoint)
@@ -342,5 +346,17 @@ function drawAccent(
 // tile belongs to one.
 function offPathColor(view: TerrainView, biome: Biome, regionTint: number | null, depthRatio: number): number {
   const base = groundColor(biome.ground, depthRatio, hazeTarget(view, biome));
-  return regionTint != null ? blend(base, regionTint, 0.6) : base;
+  return regionTint != null ? blend(base, regionTint, regionTintAt(depthRatio, 0.6)) : base;
+}
+
+// A mapgen domain tint drowns with everything else. The tint is mixed over
+// ground that has already been hazed, so a fixed strength would carry a raw
+// saturated hue all the way to the deepest row and stand the world's own
+// palette straight up against the mist -- undoing, for exactly the worlds
+// that use domains (world 1's branches, world 3's Voronoi cells), the
+// arrival at the haze color the depth fog is built to guarantee. The curve
+// is flat until late so a domain keeps its full strength across the range it
+// is actually read at.
+function regionTintAt(depthRatio: number, strength: number): number {
+  return strength * (1 - Math.pow(depthRatio, 3));
 }
