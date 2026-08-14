@@ -899,11 +899,16 @@ async function main() {
       if (free !== 'free') return { pass: false, detail: `${moveId}: swap ${swap}: turn never freed up (${free}) -- names so far ${JSON.stringify(names)}` };
 
       // Top both sides back up so neither side can win before the next
-      // transmute -- a dead Adapted returns through endBattle instead.
+      // transmute -- a dead Adapted ends the fight through endBattle, and a
+      // dead player ends it before their own hit ever resolves (which is
+      // precisely why the rival-gate loss path never reaches this code: a
+      // World 10 player's own max HP is far below what that rival hits for).
+      // The player's *max* has to be raised too, not just their current HP.
       const before = await page.evaluate(() => {
         const g = window.__game;
         const s = g.scene.getScene('Battle');
-        s['playerHp'] = s['playerMaxHp'];
+        s['playerMaxHp'] = 99999;
+        s['playerHp'] = 99999;
         s['opponentHp'] = s['opponentMaxHp'];
         s['updateBars']();
         return { frame: g.loop.frame, name: s['adaptedForm'] ? s['adaptedForm'].name : null };
