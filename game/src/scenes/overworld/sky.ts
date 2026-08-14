@@ -3,7 +3,7 @@ import { blend } from '../../art/colors';
 import { BIOMES, getBiome } from '../../art/biomes';
 import type { Biome } from '../../art/biomes';
 import { HORIZON_Y, CANVAS_W, CANVAS_H } from '../../art/perspective';
-import { DISTANT_SELVES, MAX_CREST } from '../../art/horizons';
+import { DISTANT_SELVES, MAX_CREST, OVERHEAD_SKIES } from '../../art/horizons';
 import type { HorizonPoint } from '../../art/horizons';
 import { DRAW_DISTANCE_TILES, projectTile } from './projection';
 import { FOG_CLOSE, groundColor } from './terrain/color';
@@ -205,6 +205,9 @@ export function drawDepthHaze(g: Phaser.GameObjects.Graphics, view: AtmosphereVi
   // exists to remove, moved up the sky.
   fillVerticalFade(g, tone, mistTop, mist, (t) => smoothstep(Math.min(1, (t * mist) / SKY_BLEND_H)));
   drawDistantSelf(g, view, target);
+  // The world's own sky motif, over the mist rather than in it: the Storm
+  // Flats' arcs crack across the whole dusk, not just along its horizon.
+  OVERHEAD_SKIES[view.world]?.({ g, horizonY: HORIZON_Y, target, now: view.now });
 }
 
 // A vertical alpha ramp, painted as abutting one-pixel rows in whatever color

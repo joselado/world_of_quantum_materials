@@ -1,6 +1,15 @@
 import Phaser from 'phaser';
 import type { Biome } from '../../../art/biomes';
+import { LANE_PX } from '../../../art/perspective';
+import { TILE_SCALE } from '../projection';
 import type { AccentTile } from './types';
+
+// A tile's width on screen at unit depth scale. Ground decoration is sized
+// against the tile it sits on rather than in raw pixels: a motif that has to
+// teach something -- a quantised orbit, a spin wave -- has to be big enough
+// on the ground to be read as that thing, and a tile is far wider than the
+// handful of pixels a scatter of flowers needs.
+const TILE_PX = TILE_SCALE * LANE_PX;
 
 // The scatter of detail a decorated *walkable* tile carries, one motif per
 // biome (art/biomes.ts's `decoration`) so each world's floor reads as its own
@@ -23,7 +32,7 @@ export function decorateTile(g: Phaser.GameObjects.Graphics, biome: Biome, tile:
   // so the two sublattices stay in register across the whole floor the way a
   // real basis does rather than being scattered.
   if (biome.decoration === 'mosaic') {
-    const r = 3.4 * s;
+    const r = 0.3 * TILE_PX * s;
     if ((tile.gx + tile.gy) % 2 === 0) {
       g.fillStyle(0xb08355, 0.55);
       g.fillPoints(
@@ -55,8 +64,9 @@ export function decorateTile(g: Phaser.GameObjects.Graphics, biome: Biome, tile:
       // popping in and out at the tile boundary.
       const fade = Math.sin(t * Math.PI);
       g.lineStyle(1.6, 0x8fe0ff, 0.85 * fade);
-      const y = cy + (0.5 - t) * 7 * s;
-      g.lineBetween(cx - 2.6 * s, y, cx + 2.6 * s, y);
+      const u = TILE_PX * s;
+      const y = cy + (0.5 - t) * 0.9 * u;
+      g.lineBetween(cx - 0.34 * u, y, cx + 0.34 * u, y);
     });
     return;
   }
@@ -72,16 +82,18 @@ export function decorateTile(g: Phaser.GameObjects.Graphics, biome: Biome, tile:
     return;
   }
 
-  // World 4 (QHE/Landau levels): short parallel field-line strokes with a
-  // small quantized-orbit ring, evoking magnetic field lines threading the
-  // terrain.
-  if (biome.decoration === 'fieldLines') {
-    g.lineStyle(1, 0x9fd8ff, 0.8);
-    [-2.4, 0, 2.4].forEach((off) => {
-      g.lineBetween(cx - 2.2 * s + off * s, cy - 1.6 * s, cx - 2.2 * s + off * s, cy + 1.6 * s);
-    });
-    g.lineStyle(1, 0xffffff, 0.7);
-    g.strokeCircle(cx, cy, 1.6 * s);
+  // World 4 (the Storm Flats): quantised orbit rings. With the world's name
+  // no longer saying "orbit", these rings are the only thing left teaching
+  // that a Landau level is a quantised orbit -- so they are pedagogy, not
+  // decoration, and the concentric pair carries the quantisation itself:
+  // successive orbits differ by exactly one flux quantum, never a fraction.
+  // Drawn as ellipses, since a circle on the ground is seen at a slant.
+  if (biome.decoration === 'orbitRings') {
+    const u = TILE_PX * s;
+    g.lineStyle(1.4, 0x9fd8ff, 0.5);
+    g.strokeEllipse(cx, cy, 0.62 * u, 0.34 * u);
+    g.lineStyle(1.4, 0xdff0ff, 0.75);
+    g.strokeEllipse(cx, cy, 0.34 * u, 0.19 * u);
     return;
   }
 

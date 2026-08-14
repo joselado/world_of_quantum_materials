@@ -4,7 +4,7 @@
 // worlds -- only this table changes per world, matching DESIGN.md's per-world
 // biome themes.
 
-export type DecorationKind = 'flowers' | 'mosaic' | 'edgeFlow' | 'crystalGlints' | 'fieldLines' | 'networkNodes' | 'ripples' | 'cracks' | 'mistMotes';
+export type DecorationKind = 'flowers' | 'mosaic' | 'edgeFlow' | 'crystalGlints' | 'orbitRings' | 'networkNodes' | 'ripples' | 'cracks' | 'mistMotes';
 
 // What the *off-path* terrain actually is, not just what color it's painted
 // -- OverworldScene.drawOffPathTile branches on this to give each world's
@@ -16,7 +16,7 @@ export type DecorationKind = 'flowers' | 'mosaic' | 'edgeFlow' | 'crystalGlints'
 // same plane as the walkable floor everywhere, so a theme changes the color
 // and the accent over it, never the geometry. Not every biome needs its own
 // theme; most stay 'rock' and differ only by ground/hill color.
-export type WallTheme = 'rock' | 'forest' | 'columns' | 'deadFloor' | 'lava' | 'water' | 'void';
+export type WallTheme = 'rock' | 'forest' | 'columns' | 'deadFloor' | 'charged' | 'lava' | 'water' | 'void';
 
 export interface Biome {
   name: string;
@@ -51,6 +51,22 @@ export interface Biome {
   // one.
   decorationChance: number;
   wallTheme: WallTheme;
+  // The Storm Flats' flat bands, and nothing else's. Landau levels are
+  // dispersionless flat bands, so "Flats" is the physics rather than the
+  // weather, and the ground says so: discrete steps of one hue, `period` rows
+  // to a step and `steps` steps before the ramp repeats, with a soft dark
+  // strip and a glowing channel at every boundary between two of them. The
+  // channel is the subject, not trim -- edge channels live between filled
+  // Landau levels. The strip is lighting and claims no elevation: it is what
+  // gives flat bands material depth on an engine that cannot draw a hill.
+  bands: BandRamp | null;
+}
+
+export interface BandRamp {
+  color: number;
+  period: number;
+  steps: number;
+  channel: number;
 }
 
 // World 1, the Mean Fields (mean field, spontaneous symmetry breaking):
@@ -77,6 +93,7 @@ const MEAN_FIELDS: Biome = {
   decoration: 'flowers',
   decorationChance: 0.16,
   wallTheme: 'forest',
+  bands: null,
 };
 
 // World 2, the Stone Lattice (symmetries, tight-binding, effective models):
@@ -110,6 +127,7 @@ const STONE_LATTICE: Biome = {
   // wallpaper group with holes in it is not one.
   decorationChance: 1,
   wallTheme: 'columns',
+  bands: null,
 };
 
 // World 3, the Edge Cliffs (topological band theory): a lit ledge with a
@@ -139,24 +157,39 @@ const EDGE_CLIFFS: Biome = {
   decoration: 'edgeFlow',
   decorationChance: 1,
   wallTheme: 'deadFloor',
+  bands: null,
 };
 
-// Topic 4 (QHE/Landau levels): a terrain of visible, glowing field lines and
-// quantized-orbit rings -- cold electric blue rather than the caves' violet.
-const LANDAU_TERRAIN: Biome = {
-  name: 'landauTerrain',
-  skyTop: 0x081428,
-  skyBottom: 0x1f4d8f,
-  hillColor: 0x2a5ca8,
-  hillAlpha: 0.8,
-  ground: 0x0f1f3a,
-  path: 0x3f8ade,
-  fogTarget: 0x1b3868,
+// World 4, the Storm Flats (magnetic field, quantum Hall, Landau levels):
+// flat bands underfoot in a single-hue indigo ramp under a stormy dusk. The
+// ground here is a diagram, and two things stop it reading as a chart: the
+// boundary shadow strips that give the bands material depth, and the
+// overhead arcs that put the violence in the sky (art/horizons.ts's
+// OVERHEAD_SKIES). Drop either and the world regresses immediately.
+//
+// Indigo rather than storm-violet. Violet belongs to the Devouring Mirror by
+// right, as the finale, and this world is the reason that has to be said out
+// loud -- a storm is the one other thing in the game that wants it.
+const STORM_FLATS: Biome = {
+  name: 'stormFlats',
+  skyTop: 0x151a3a,
+  skyBottom: 0x3a4270,
+  // Dead flat, because this world is flat by locked identity and so is the
+  // Edge Cliffs before it. The two therefore cannot be told apart on shape at
+  // all, and the whole distinction is carried by this world's storm.
+  hillColor: 0x3a4478,
+  hillAlpha: 0.5,
+  ground: 0x1b2044,
+  path: 0x6272b8,
+  fogTarget: 0x2b3260,
+  // The cloud sprite is a fair-weather cumulus and a storm is not made of
+  // those; this world's sky activity is its arcs.
   clouds: false,
   cloudDrift: 0,
-  decoration: 'fieldLines',
-  decorationChance: 0.16,
-  wallTheme: 'rock',
+  decoration: 'orbitRings',
+  decorationChance: 0.26,
+  wallTheme: 'charged',
+  bands: { color: 0x1a2044, period: 4, steps: 4, channel: 0xa8e4ff },
 };
 
 // Topic 5 (superconductivity/Majorana): a frozen, zero-resistance cavern --
@@ -180,6 +213,7 @@ const FROZEN_CAVERNS: Biome = {
   // "Zero-resistance" made literal underfoot too: off-path here is a frozen
   // lake, not stacked stone.
   wallTheme: 'water',
+  bands: null,
 };
 
 // Topic 6 (classical magnetism/magnons): golden-hour plains with spin-wave
@@ -201,6 +235,7 @@ const WINDSWEPT_PLAINS: Biome = {
   decoration: 'ripples',
   decorationChance: 0.16,
   wallTheme: 'rock',
+  bands: null,
 };
 
 // Topic 7 (entanglement/tensor networks): a dark network-graph world, bonds
@@ -222,6 +257,7 @@ const NETWORK_GRAPH_WORLD: Biome = {
   decoration: 'networkNodes',
   decorationChance: 0.16,
   wallTheme: 'rock',
+  bands: null,
 };
 
 // Topic 8 (quantum magnetism/spinons/Kondo): a foggy forest that
@@ -245,6 +281,7 @@ const FOGGY_FOREST: Biome = {
   decoration: 'mistMotes',
   decorationChance: 0.16,
   wallTheme: 'rock',
+  bands: null,
 };
 
 // Topic 9 (excitations and defects): a cracked, glitching world -- scorched
@@ -269,6 +306,7 @@ const CRACKED_WORLD: Biome = {
   // The world's own "scorched"/"damaged" theme made literal underfoot: a
   // glowing molten crust, not a stacked stone wall.
   wallTheme: 'lava',
+  bands: null,
 };
 
 // Topic 10 (finale, ML/adaptive boss): a meta-world reflecting the player's
@@ -291,13 +329,14 @@ const META_WORLD: Biome = {
   decoration: 'crystalGlints',
   decorationChance: 0.16,
   wallTheme: 'rock',
+  bands: null,
 };
 
 export const BIOMES: Partial<Record<number, Biome>> = {
   1: MEAN_FIELDS,
   2: STONE_LATTICE,
   3: EDGE_CLIFFS,
-  4: LANDAU_TERRAIN,
+  4: STORM_FLATS,
   5: FROZEN_CAVERNS,
   6: WINDSWEPT_PLAINS,
   7: NETWORK_GRAPH_WORLD,
