@@ -138,5 +138,5 @@ export function generateWorld3Map(gridW: number, gridH: number, start: GridPoint
     }
   }
 
-  return { walkable, start, goal, mid, regionColor, biomeOverride: makeColorGrid(gridW, gridH) };
+  return { walkable, start, goal, mid, regionColor, biomeOverride: makeColorGrid(gridW, gridH) , vortexCores: [] };
 }

@@ -49,5 +49,5 @@ export function generateWorld1Map(gridW: number, gridH: number, start: GridPoint
   const midBand = postBands[midIdx];
   const mid = { x: Math.round((midBand.left + midBand.right) / 2), y: midBand.y };
 
-  return { walkable, start, goal, mid, regionColor, biomeOverride: makeColorGrid(gridW, gridH) };
+  return { walkable, start, goal, mid, regionColor, biomeOverride: makeColorGrid(gridW, gridH) , vortexCores: [] };
 }

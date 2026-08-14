@@ -343,8 +343,10 @@ than appending a changelog, so this always reflects current reality.
     wash over the frame: a strike is momentarily the brightest thing on screen and gameplay
     owns the extremes, so the route and the player's crystal keep their values through one.
   - **'ice'** (the Vortex Glacier, world 5): the frozen lake, still and faceted, plus the
-    vortex pits inside it -- a rim and a cold glow of trapped flux on any impassable tile the
-    walkable region nearly surrounds, which is what a vortex core is.
+    vortex pits inside it -- a dark rim and a slow, cold glow of trapped flux, drawn on each
+    tile the generator placed as a vortex core and kept blocked while the corridor spiralled
+    around it. The field is expelled everywhere else in this world, so the pits are the only
+    place it can be, and the glow is that field made visible where the physics puts it.
   - **'shards'** (the Iron Steppe, world 6): leaning iron blades, all tilted the same way and
     flipping across a domain wall that drifts, so shards reverse while the player watches.
     Their lit edge is aurora green -- the only light this world has, and emitted rather than

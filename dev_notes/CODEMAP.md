@@ -1201,13 +1201,16 @@ through `showGatePanel`, not by reaching for `renderShopFooter` directly.
 **Overworld terrain rendering.** Painting the corridor floor splits in two, and new terrain work
 belongs on one side or the other. `scenes/overworld/terrain/plan.ts`'s `buildTerrainPlan(src)`
 (reached through `OverworldScene`'s memoizing `terrainPlan()` accessor) reads the grid
-(`walkable`/`regionColor`/`biomeOverride`/`flowerMap`/`midTile`) and classifies every tile into a
-`TerrainTile`: its kind (one per off-path material, resolved from the biome's own `wallTheme` by
-`offPathKindOf`, which is the single resolution both the plan and the lateral margin use), its
-resolved `Biome`, its region tint, whether it carries decoration or the guardian-chokepoint
-highlight, and whether it is an `enclave` -- an impassable tile the walkable region nearly
-surrounds, which is a hole in the floor rather than part of the surround and is what the Vortex
-Glacier's vortex cores are. A region tint *colors* its biome's material rather than replacing it:
+(`walkable`/`regionColor`/`biomeOverride`/`vortexCores`/`flowerMap`/`midTile`) and classifies every
+tile into a `TerrainTile`: its kind (one per off-path material, resolved from the biome's own
+`wallTheme` by `offPathKindOf`, which is the single resolution both the plan and the lateral margin
+use), its resolved `Biome`, its region tint, whether it carries decoration or the
+guardian-chokepoint highlight, and whether it is a `vortexCore` -- a tile world 5's generator
+placed as one and the finished grid still has blocked, which `materials/ice.ts` draws as a pit.
+That last one comes down from the generator rather than being recognised from the shape, and
+deliberately so: a blocked tile ringed by walkable ground is also what an ordinary corridor pinch
+and a forced chokepoint's wall look like, so inference draws pits where the world has none and
+misses the ones it is named for. A region tint *colors* its biome's material rather than replacing it:
 the Edge Cliffs' two dead domain hues are its sunken floors, and that world needs the tint and the
 crystalline stipple at once. That pass is camera-independent, so it covers
 the whole grid rather than just the visible window -- a shape spanning the window edge stays one
@@ -1410,7 +1413,7 @@ only the accent laid over that fill, so each world's impassable terrain reads as
 substance while the "you cannot walk here" signal (the color break plus the contact shadow and rim
 light) stays identical everywhere. An accent receives an `AccentTile` -- the tile's projected
 outline for a full-tile wash, its screen centre and depth scale, its own grid coordinates, whether
-it is an enclave, its depth ratio and live fog target, the detail-pass falloff, the player's
+it is a vortex core, its depth ratio and live fog target, the detail-pass falloff, the player's
 crystal colour and the scene clock -- which `paint.ts` builds only for a material that actually
 draws, so a bare-ground tile costs nothing beyond its fill. `rock.ts` is exactly that case and
 maps to `null`.

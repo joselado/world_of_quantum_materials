@@ -30,5 +30,6 @@ export function generateFallbackMap(gridW: number, gridH: number, start: GridPoi
     mid,
     regionColor: makeColorGrid(gridW, gridH),
     biomeOverride: makeColorGrid(gridW, gridH),
+    vortexCores: [],
   };
 }

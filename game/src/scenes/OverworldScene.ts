@@ -93,6 +93,7 @@ interface SavedMapState {
   midTile: GridPoint;
   regionColor: (number | null)[][];
   biomeOverride: (number | null)[][];
+  vortexCores: GridPoint[];
   reachedGoal: boolean;
   reachedMiddle: boolean;
 }
@@ -453,6 +454,9 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // whose generator doesn't use them.
   private regionColor: (number | null)[][] = [];
   private biomeOverride: (number | null)[][] = [];
+  // Tiles world 5's generator placed as vortex cores; its off-path material
+  // draws a pit at each (see world/generators/shared.ts's `vortexCores`).
+  private vortexCores: GridPoint[] = [];
   // Whole-grid terrain classification and boundary geometry, built on demand
   // by terrainPlan() and dropped in create() once the map for this visit is in
   // place. Phaser reuses the same scene instance across every scene.start, so
@@ -1032,6 +1036,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.midTile = map.mid;
     this.regionColor = map.regionColor;
     this.biomeOverride = map.biomeOverride;
+    this.vortexCores = map.vortexCores;
 
     // The backward door (returnToPreviousWorld) lands the player on this
     // freshly generated map's goalTile instead of the corridor's south-edge
@@ -1110,6 +1115,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.midTile = saved.midTile;
     this.regionColor = saved.regionColor;
     this.biomeOverride = saved.biomeOverride;
+    this.vortexCores = saved.vortexCores;
     this.reachedGoal = saved.reachedGoal;
     this.reachedMiddle = saved.reachedMiddle;
     this.crystalSprites = [];
@@ -1129,6 +1135,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       midTile: this.midTile,
       regionColor: this.regionColor,
       biomeOverride: this.biomeOverride,
+      vortexCores: this.vortexCores,
       reachedGoal: this.reachedGoal,
       reachedMiddle: this.reachedMiddle,
     };
@@ -1237,6 +1244,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
         walkable: this.walkable,
         regionColor: this.regionColor,
         biomeOverride: this.biomeOverride,
+        vortexCores: this.vortexCores,
         flowerMap: this.flowerMap,
         midTile: this.midTile,
         biome: this.biome,

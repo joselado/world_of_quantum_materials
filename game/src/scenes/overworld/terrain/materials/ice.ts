@@ -7,12 +7,11 @@ import type { AccentTile } from '../types';
 // 'ice' (the Vortex Glacier, world 5): the frozen lake either side of the
 // swept corridor, and the vortex pits inside it.
 //
-// A pit is an impassable tile the walkable region very nearly surrounds
-// (terrain/plan.ts's `enclave`) -- which is what a vortex core actually is, a
-// hole punched through an otherwise expelling superconductor. It gets a dark
-// rim and a faint cold glow of trapped flux down inside it: the field is
-// excluded everywhere else in this world, so the only place it can be is
-// here, and that glow is the field made visible exactly where the physics
+// A pit stands on a tile the generator placed as a vortex core and kept
+// blocked while the corridor spiralled around it (world/generators/world5.ts).
+// It gets a dark rim and a faint cold glow of trapped flux down inside it: the
+// field is excluded everywhere else in this world, so the only place it can be
+// is here, and that glow is the field made visible exactly where the physics
 // puts it.
 const TILE_PX = TILE_SCALE * LANE_PX;
 
@@ -21,7 +20,7 @@ export function drawIceAccent(g: Phaser.GameObjects.Graphics, tile: AccentTile) 
   if (detail <= 0) return;
   const air = depth * 0.75;
 
-  if (tile.enclave) {
+  if (tile.vortexCore) {
     const u = TILE_PX * s;
     // Slow, because trapped flux is trapped -- it is not going anywhere.
     const pulse = 0.55 + 0.45 * Math.sin(now / 1100 + gx * 0.4);

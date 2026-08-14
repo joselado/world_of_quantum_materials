@@ -59,6 +59,7 @@ export interface WorldMap {
   mid: GridPoint; // this world's guardian stands here, and every route is forced through it
   regionColor: NullableNumberGrid; // per-tile tint (world 1's/3's/8's colored branches/domains)
   biomeOverride: NullableNumberGrid; // per-tile "render with world K's biome instead" (world 9's patches)
+  vortexCores: GridPoint[]; // tiles placed as vortex cores, drawn as pits (world 5's spiral)
 }
 
 const MAX_ATTEMPTS = 10;

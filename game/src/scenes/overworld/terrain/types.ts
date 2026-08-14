@@ -24,14 +24,13 @@ export interface TerrainTile {
   regionTint: number | null;
   decorate: boolean;
   midHighlight: boolean;
-  // An impassable tile that the walkable region very nearly surrounds -- a
-  // hole in the floor rather than part of the surround. The Vortex Glacier is
-  // what this exists for: its permanently blocked cores are exactly that, a
-  // small blocked island the corridor spirals around, which is also what a
-  // vortex core physically is. Derived from the grid rather than handed down
-  // by the generator, so any world whose shape produces one gets the same
-  // read.
-  enclave: boolean;
+  // A tile the generator placed as a vortex core -- a hole punched through an
+  // otherwise expelling superconductor, which the Vortex Glacier draws as a
+  // pit (materials/ice.ts). Handed down from the generator rather than
+  // recognised from the shape: a blocked tile ringed by walkable ground is
+  // also what an ordinary corridor pinch looks like, so inference puts pits
+  // where the world has none.
+  vortexCore: boolean;
 }
 
 // The whole grid, read once: its per-tile terrain, the northernmost row the
@@ -79,9 +78,8 @@ export interface TerrainView extends AtmosphereView {
 // anything the world is supposed to *contain*.
 export interface AccentTile {
   fill: ProjectedPoint[];
-  // Whether this tile is a hole in the floor rather than part of the
-  // surround, from its TerrainTile (see `enclave` above).
-  enclave: boolean;
+  // Whether this tile is a vortex core, from its TerrainTile (see above).
+  vortexCore: boolean;
   cx: number;
   cy: number;
   s: number;
