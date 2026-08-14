@@ -1470,7 +1470,7 @@ fourth, the dead sun seen in the mirror.
 |---|---|---|---|
 | 1 | C Ionian | 96 | Pad alternates between the fifth above and the fifth below — two equally correct voicings of one chord, the two degenerate ground states |
 | 2 | C Lydian | 100 | Two fixed motifs alternating bar by bar (the two-atom basis); the raised fourth is the game's first F# |
-| 3 | C Mixolydian | 104 | Eight unbroken eighth-notes over a bass that never moves — wind racing across ground that cannot |
+| 3 | C Mixolydian | 104 | Eight unbroken eighth-notes over a bass holding one note per bar — wind racing across ground that cannot move |
 | 4 | C Aeolian | 132 | First minor world; a crash every fourth bar as the storm overhead — the first percussion in any overworld |
 | 5 | C Phrygian | 84 | Flat second as the world's whole colour; held bare fifths, whole bars of silence, nothing arriving on the tonic |
 | 6 | C Ionian | 116 | The false calm: World 1's own key and progression return, with a stuttering F#5 drone that grinds against the F chord |
