@@ -117,28 +117,37 @@ export function decorateTile(g: Phaser.GameObjects.Graphics, biome: Biome, tile:
     return;
   }
 
-  // World 7 (entanglement/tensor networks): a small graph -- a few nodes
-  // joined by bond lines, matching the biome's "bonds as paths" theme.
+  // World 7 (the Entangled Web): the floor is not ground, it is the network.
+  // Two filaments running away in depth with a rung strung between them and a
+  // site where they meet -- the ladder of lanes and rungs the generator
+  // builds, restated at tile scale so the surface reads as strung rather than
+  // paved. In a tensor network the geometry is the entanglement, so the rungs
+  // are the structure and not an ornament over it.
   if (biome.decoration === 'networkNodes') {
-    const pts = [
-      { x: cx - 2 * s, y: cy + 1 * s },
-      { x: cx, y: cy - 1.8 * s },
-      { x: cx + 2 * s, y: cy + 1 * s },
-    ];
-    g.lineStyle(1, 0xc9a8f0, 0.75);
-    g.lineBetween(pts[0].x, pts[0].y, pts[1].x, pts[1].y);
-    g.lineBetween(pts[1].x, pts[1].y, pts[2].x, pts[2].y);
-    g.lineBetween(pts[0].x, pts[0].y, pts[2].x, pts[2].y);
-    g.fillStyle(0xffffff, 0.9);
-    pts.forEach((p) => g.fillCircle(p.x, p.y, 1.1 * s));
+    const u = TILE_PX * s;
+    g.lineStyle(1.2, 0xfff4d0, 0.4);
+    [-0.24, 0.24].forEach((off) => g.lineBetween(cx + off * u, cy - 0.5 * u, cx + off * u, cy + 0.5 * u));
+    g.lineStyle(1, 0xfff4d0, 0.28);
+    g.lineBetween(cx - 0.24 * u, cy, cx + 0.24 * u, cy);
+    g.fillStyle(0xfffaf0, 0.85);
+    g.fillCircle(cx - 0.24 * u, cy, 0.045 * u);
+    g.fillCircle(cx + 0.24 * u, cy, 0.045 * u);
     return;
   }
 
-  // World 6 (classical magnetism/magnons): concentric ripple rings, as if
-  // a magnon wave just passed through the grass.
+  // World 6 (the Iron Steppe): spin-wave ripples running through the iron
+  // sand. They travel: tip one spin out of line and its neighbours lean to
+  // follow, and the tilt walks off across the steppe as a wave, which is the
+  // whole of what a magnon is. Rings expand outward and fade, so the ground is
+  // visibly carrying something rather than merely patterned with circles.
   if (biome.decoration === 'ripples') {
-    g.lineStyle(1, 0xfff3c9, 0.75);
-    [1.2, 2.2].forEach((r) => g.strokeCircle(cx, cy, r * s));
+    const u = TILE_PX * s;
+    const period = 2200;
+    [0, 0.45].forEach((offset) => {
+      const t = (((tile.now / period + offset + tile.gy * 0.07) % 1) + 1) % 1;
+      g.lineStyle(1.2, 0x8fe8a8, 0.5 * (1 - t));
+      g.strokeEllipse(cx, cy, t * 0.9 * u, t * 0.5 * u);
+    });
     return;
   }
 

@@ -9,7 +9,7 @@ import type { AtmosphereView } from '../sky';
 // walkable trail, 'solid' plain bare impassable ground, and every other kind
 // an off-path material that lays its own accent over that same ground (see
 // materials/), one per world's impassable surround.
-export type TerrainKind = 'path' | 'solid' | 'forest' | 'columns' | 'deadFloor' | 'charged' | 'ice' | 'lava' | 'void';
+export type TerrainKind = 'path' | 'solid' | 'forest' | 'columns' | 'deadFloor' | 'charged' | 'ice' | 'shards' | 'lava';
 
 // The kinds an impassable tile can take -- one per off-path material, each
 // with its own module under materials/.

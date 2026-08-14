@@ -1226,11 +1226,12 @@ export class BattleScene extends Phaser.Scene {
         g.fillRect(0, HORIZON_Y, FIELD_W, 70);
         break;
       }
-      case 'void': {
-        // Deepen the zenith toward true void so the sky reads bottomless.
-        const deep = 0x060618;
-        g.fillGradientStyle(deep, deep, deep, deep, 0.22, 0.22, 0, 0);
-        g.fillRect(0, 0, FIELD_W, Math.round(HORIZON_Y * 0.6));
+      case 'shards': {
+        // Aurora green pooled along the horizon, the only light this world
+        // has left and emitted rather than received.
+        const aurora = 0x3fd97a;
+        g.fillGradientStyle(aurora, aurora, aurora, aurora, 0, 0, 0.1, 0.1);
+        g.fillRect(0, HORIZON_Y - 70, FIELD_W, 70);
         break;
       }
       default: {

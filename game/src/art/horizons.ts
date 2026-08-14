@@ -328,8 +328,49 @@ function stormOverhead({ g, horizonY, target, now }: HorizonSky) {
   });
 }
 
+// The Iron Steppe's aurora: the sky still exists here, but it is already
+// lying about where light comes from -- the sun is gone and everything the
+// player can see is emitted by the world itself. That makes this world the
+// hinge of the light arc, one world before the sky is taken away entirely.
+//
+// It stutters. The aurora is genuinely beautiful and the mood genuinely
+// relaxes here, so without a tell the false calm is just a pretty world;
+// a curtain that drops out for a beat and comes back is the cheapest one
+// available, and real aurorae do it.
+const AURORA_BANDS = [
+  { x: 110, w: 190, phase: 0 },
+  { x: 330, w: 240, phase: 1.9 },
+  { x: 580, w: 210, phase: 3.4 },
+];
+
+function auroraOverhead({ g, horizonY, now }: HorizonSky) {
+  const stutter = Math.sin(now / 2300) > 0.93 ? 0.25 : 1;
+  AURORA_BANDS.forEach((band, i) => {
+    const lift = 26 + Math.sin(now / 2700 + i) * 10;
+    const base = horizonY - MAX_CREST - lift;
+    // Painted as many thin overlapping slices rather than a few thick ones: a
+    // curtain is brightest at its lower edge and dies out upward with no edge
+    // anywhere, and any slice tall enough to see is a bar of green glass.
+    // Each slice also sways and narrows as it climbs, which is what gives the
+    // sheet its fold.
+    const SLICES = 46;
+    const height = 118;
+    for (let step = 0; step < SLICES; step++) {
+      const t = step / SLICES;
+      const y = base - t * height;
+      const sway = Math.sin(now / 3100 + band.phase + t * 2.2) * 30 * t;
+      // Slices abut exactly rather than overlapping: two translucent rects
+      // sharing a scanline blend twice there and stripe the curtain, the same
+      // trap sky.ts's fillVerticalFade documents.
+      g.fillStyle(0x3fd97a, 0.05 * (1 - t) * (1 - t) * stutter);
+      g.fillRect(band.x + sway, y, band.w, height / SLICES);
+    }
+  });
+}
+
 export const OVERHEAD_SKIES: Partial<Record<number, (view: HorizonSky) => void>> = {
   4: stormOverhead,
+  6: auroraOverhead,
 };
 
 // A world with no distant self at all: the Splitting Hollow, eaten by its own

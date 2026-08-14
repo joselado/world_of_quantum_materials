@@ -16,7 +16,7 @@ export type DecorationKind = 'flowers' | 'mosaic' | 'edgeFlow' | 'crystalGlints'
 // same plane as the walkable floor everywhere, so a theme changes the color
 // and the accent over it, never the geometry. Not every biome needs its own
 // theme; most stay 'rock' and differ only by ground/hill color.
-export type WallTheme = 'rock' | 'forest' | 'columns' | 'deadFloor' | 'charged' | 'ice' | 'lava' | 'void';
+export type WallTheme = 'rock' | 'forest' | 'columns' | 'deadFloor' | 'charged' | 'ice' | 'shards' | 'lava';
 
 export interface Biome {
   name: string;
@@ -226,46 +226,73 @@ const VORTEX_GLACIER: Biome = {
   bands: null,
 };
 
-// Topic 6 (classical magnetism/magnons): golden-hour plains with spin-wave
-// ripples in the grass -- olive-gold grass hazing into a warm cream horizon,
-// the late-summer counterpart to world 1's crisp spring meadow. The haze
-// target follows the warm horizon rather than a blue sky, which is what
-// carries most of the two worlds' difference at distance.
-const WINDSWEPT_PLAINS: Biome = {
-  name: 'windsweptPlains',
-  skyTop: 0x9cc8e8,
-  skyBottom: 0xf0e8c8,
-  hillColor: 0x9caa52,
-  hillAlpha: 0.8,
-  ground: 0x6e8d3a,
-  path: 0xd4c07a,
-  fogTarget: 0xe6e8c2,
-  clouds: true,
+// World 6, the Iron Steppe (classical magnetism, magnons): night under a
+// green aurora, black iron-sand underfoot with spin-wave ripples running
+// through it, and fields of aligned iron shards leaning uniformly one way and
+// flipping across a domain wall.
+//
+// The hinge of the light arc: the sky still exists, but it is already lying
+// about where light comes from. Everything visible here is emitted by the
+// world rather than received from above, one world before the sky is taken
+// away for good.
+//
+// The false calm, and anatomically so -- the mood relaxes after ice and
+// storm while the lethality does not, since leaning shards are the most
+// overtly impaling surround so far.
+const IRON_STEPPE: Biome = {
+  name: 'ironSteppe',
+  skyTop: 0x050a14,
+  skyBottom: 0x0d1622,
+  // Leaning teeth, all tilted together, with the lean reversing at one point
+  // along the horizon -- the domain wall, visible from a world away. That
+  // uniform lean is what separates this from the Vortex Glacier before it,
+  // which is jagged, cold-dark and under failing light in exactly the same
+  // way but whose pressure ridges are random and vertical.
+  hillColor: 0x2e3a34,
+  hillAlpha: 0.45,
+  ground: 0x121517,
+  path: 0x3a3f40,
+  fogTarget: 0x16241d,
+  clouds: false,
   cloudDrift: 0,
   decoration: 'ripples',
-  decorationChance: 0.16,
-  wallTheme: 'rock',
+  decorationChance: 0.55,
+  wallTheme: 'shards',
   bands: null,
 };
 
-// Topic 7 (entanglement/tensor networks): a dark network-graph world, bonds
-// between sites rendered as the walkable paths themselves.
-const NETWORK_GRAPH_WORLD: Biome = {
-  name: 'networkGraphWorld',
-  skyTop: 0x120a24,
-  skyBottom: 0x2c1a4a,
-  hillColor: 0x3a2560,
+// World 7, the Entangled Web (entanglement, tensor networks): no sky, no
+// ground, only the network -- taut white-gold filaments strung as the ladder
+// of lanes and rungs the generator builds, hanging in true void.
+//
+// In a tensor network the geometry *is* the entanglement: outside the network
+// there is no space. Rendering the surround as actual nothing is the honest
+// picture rather than a mood choice, and this world holds the monopoly on it,
+// which is why nowhere else in the game spends it.
+//
+// The game's one warm glow before the Defect Scars burn. Kept still and
+// structural: "shifting and alive" belongs entirely to the Devouring Mirror.
+const ENTANGLED_WEB: Biome = {
+  name: 'entangledWeb',
+  skyTop: 0x000000,
+  skyBottom: 0x000000,
+  hillColor: 0x3a2f18,
   // Swallowed: this world's impassable is nothing, so it has no surround to
-  // restate at horizon scale. The Iron Steppe looking forward into an
-  // emptying horizon is the tell its false calm needs.
+  // restate at horizon scale. Its distant self is an absence with structure
+  // instead -- the sky ending, with filament glints hanging in blackness
+  // (art/horizons.ts). The Iron Steppe looking forward into a horizon that
+  // empties out is exactly the tell its false calm needs, and the composition
+  // system supplies it for free.
   hillAlpha: 0,
-  ground: 0x1c1030,
-  path: 0x8a5cd9,
-  fogTarget: 0x201238,
+  ground: 0x000000,
+  path: 0xefdaa4,
+  fogTarget: 0x050505,
   clouds: false,
   cloudDrift: 0,
   decoration: 'networkNodes',
-  decorationChance: 0.16,
+  decorationChance: 1,
+  // Bare, and bare means black here: the void needs no accent drawn over it,
+  // because there is nothing there to draw.
   wallTheme: 'rock',
   bands: null,
 };
@@ -348,8 +375,8 @@ export const BIOMES: Partial<Record<number, Biome>> = {
   3: EDGE_CLIFFS,
   4: STORM_FLATS,
   5: VORTEX_GLACIER,
-  6: WINDSWEPT_PLAINS,
-  7: NETWORK_GRAPH_WORLD,
+  6: IRON_STEPPE,
+  7: ENTANGLED_WEB,
   8: FOGGY_FOREST,
   9: CRACKED_WORLD,
   10: META_WORLD,
