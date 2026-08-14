@@ -77,13 +77,19 @@ export function makeBlochAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameObje
   sphereFill.fillCircle(0, sphereY, R);
   sway.add(sphereFill);
 
+  // The wireframe's geometry is drawn about the Graphics' own origin, with
+  // the object itself positioned at the sphere centre: the spin tween below
+  // rotates a Graphics about its origin, so this keeps the sphere spinning
+  // in place on the head. The fill/axis/arrow stay unrotated at sphereY in
+  // `sway`, pinned to the same centre.
   const wire = scene.add.graphics();
+  wire.setPosition(0, sphereY);
   wire.setBlendMode(Phaser.BlendModes.ADD);
   wire.lineStyle(1.5, teal, 0.9);
-  wire.strokeCircle(0, sphereY, R);
+  wire.strokeCircle(0, 0, R);
   wire.lineStyle(1.2, teal, 0.55);
-  wire.strokeEllipse(0, sphereY, R * 2, R * 0.7);
-  wire.strokeEllipse(0, sphereY, R * 1.1, R * 2);
+  wire.strokeEllipse(0, 0, R * 2, R * 0.7);
+  wire.strokeEllipse(0, 0, R * 1.1, R * 2);
   sway.add(wire);
 
   const axis = scene.add.graphics();

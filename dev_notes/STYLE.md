@@ -947,7 +947,8 @@ than the caller's requested budget) for its own layout math.
   landmark/wander/re-open pattern as Noether (see above), just with `art/bloch.ts`'s
   `makeBlochAvatar` and a cyan
   (`0x8fe8ff`) name label. His avatar swaps Noether's halo/head for a wireframe **Bloch
-  sphere** (equator + two tilted meridian ellipses, additive-blended, slowly spinning) with
+  sphere** (outline circle + equator and meridian ellipses, additive-blended, slowly
+  spinning in place about its own centre on the head) with
   a bright state-vector arrow pointing off-axis -- a superposition, not a pinned-down state,
   matching his teleport ability -- plus three small orbiting `◇` waypoint marks instead of
   Noether's `✦` motes.
