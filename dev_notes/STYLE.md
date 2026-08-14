@@ -647,10 +647,14 @@ Three rules govern how one is painted, and they are what keep it from reading as
   the budget is tighter than an own-palette band would need, because the horizon is always wearing
   a *foreign* hue and a foreign hue is more legible than an own-palette one at equal contrast. The
   budget binds hardest with the gate shut, when the mist has none of the neighbour's color in it
-  yet. It also binds from the other side: a base colour sitting too *close* to the fog it is
-  drowned into disappears entirely, which is why the Vortex Glacier's distant self is pale
-  ice-cyan -- a cold-dark ridge there sat a few values from the Storm Flats' own dusk and its
-  forward horizon simply vanished. **A world whose base color cannot stay inside the budget at any
+  yet. **It binds from the other side too, and that is the easier one to get wrong:** at an open
+  gate the mist is most of the way to the depicted world's *own* fog, so a base colour picked
+  from that world's own palette lands on top of the very air it is drowned into and the horizon
+  simply is not there. What survives is roughly `|hillLum - ownFogLum| x (1 - DISTANT_DROWN) x
+  hillAlpha`, and under about 3 luminance is invisible. Every distant self is therefore lit by
+  whatever that world emits rather than coloured like its ground -- the Vortex Glacier's pale
+  ice-cyan pressure ridges, the Storm Flats' storm-lit strip, the Iron Steppe's aurora-green
+  shard field, the Defect Scars' crust-lit ridge. **A world whose base color cannot stay inside the budget at any
   swallow worth drawing goes to zero and shows no silhouette at all** -- an emptied-out horizon
   beats a slab, every time.
 

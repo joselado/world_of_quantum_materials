@@ -40,9 +40,9 @@ export interface TreeStyle {
 }
 
 export const SUMMER_TREE: TreeStyle = {
-  canopy: 0x3f8c46,
-  canopyShade: 0x255a2c,
-  trunk: 0x6b4a2c,
+  canopy: 0x2f7038,
+  canopyShade: 0x18401f,
+  trunk: 0x53381f,
   alpha: 1,
   fork: false,
 };
@@ -51,9 +51,9 @@ export const SUMMER_TREE: TreeStyle = {
 // green: the two palettes have to stay clearly apart or the rhyme reads as
 // one reused asset rather than as the same forest, later and worse.
 export const DEAD_TREE: TreeStyle = {
-  canopy: 0x2b332a,
-  canopyShade: 0x1b211b,
-  trunk: 0x252a24,
+  canopy: 0x2a2d29,
+  canopyShade: 0x171a17,
+  trunk: 0x22241f,
   alpha: 1,
   fork: true,
 };
@@ -70,7 +70,7 @@ function hash(gx: number, gy: number, salt: number): number {
 // what let the ground fill read as shadow between crowns instead of the wood
 // reading as a single flat mat of green.
 export function hasTree(gx: number, gy: number): boolean {
-  return hash(gx, gy, 3) < 0.72;
+  return hash(gx, gy, 3) < 0.86;
 }
 
 export function drawTree(g: Phaser.GameObjects.Graphics, tile: AccentTile, style: TreeStyle) {

@@ -143,10 +143,21 @@ export function decorateTile(g: Phaser.GameObjects.Graphics, biome: Biome, tile:
   if (biome.decoration === 'ripples') {
     const u = TILE_PX * s;
     const period = 2200;
-    [0, 0.45].forEach((offset) => {
-      const t = (((tile.now / period + offset + tile.gy * 0.07) % 1) + 1) % 1;
-      g.lineStyle(1.2, 0x8fe8a8, 0.5 * (1 - t));
-      g.strokeEllipse(cx, cy, t * 0.9 * u, t * 0.5 * u);
+    // Crests rather than rings: a magnon is a transverse wave travelling
+    // through the order, so what the sand shows is a wavefront passing over
+    // it and moving on. Deliberately not the Storm Flats' concentric orbit
+    // rings -- two worlds sharing one signature ground mark would undo the
+    // point of having a signature at all, and a closed orbit and a
+    // propagating wave are different physics.
+    [0, 0.5].forEach((offset) => {
+      const t = (((tile.now / period + offset + tile.gx * 0.09) % 1) + 1) % 1;
+      const y = cy + (0.5 - t) * 1.1 * u;
+      g.lineStyle(1.4, 0x8fe8a8, 0.55 * Math.sin(t * Math.PI));
+      g.beginPath();
+      g.moveTo(cx - 0.42 * u, y + 0.07 * u);
+      g.lineTo(cx, y - 0.07 * u);
+      g.lineTo(cx + 0.42 * u, y + 0.07 * u);
+      g.strokePath();
     });
     return;
   }

@@ -148,6 +148,16 @@ const STORM_ARCS = [
 ];
 
 function stormSky({ g, horizonY, target, now }: HorizonSky) {
+  // A standing glow over the flat line, present between flashes. The arcs are
+  // this world's distant self, and an intermittent asset cannot be the whole
+  // of one -- a frame caught between two flashes would leave the Edge Cliffs
+  // looking forward at a colour change and nothing else, which is exactly the
+  // adjacency failure the arcs exist to prevent.
+  for (let i = 0; i < 5; i++) {
+    g.fillStyle(blend(0xb9c4ff, target, 0.45), 0.05);
+    g.fillRect(0, horizonY - 6 - i * 5, CANVAS_W, 5);
+  }
+
   STORM_ARCS.forEach((arc, i) => {
     const t = ((now + arc.phase) % arc.period) / arc.period;
     // Alive for the first tenth of the cycle, and fading across it, so the
@@ -353,17 +363,23 @@ function auroraOverhead({ g, horizonY, now }: HorizonSky) {
     // anywhere, and any slice tall enough to see is a bar of green glass.
     // Each slice also sways and narrows as it climbs, which is what gives the
     // sheet its fold.
-    const SLICES = 46;
+    const SLICES = 30;
     const height = 118;
     for (let step = 0; step < SLICES; step++) {
       const t = step / SLICES;
       const y = base - t * height;
       const sway = Math.sin(now / 3100 + band.phase + t * 2.2) * 30 * t;
-      // Slices abut exactly rather than overlapping: two translucent rects
-      // sharing a scanline blend twice there and stripe the curtain, the same
-      // trap sky.ts's fillVerticalFade documents.
-      g.fillStyle(0x3fd97a, 0.05 * (1 - t) * (1 - t) * stutter);
-      g.fillRect(band.x + sway, y, band.w, height / SLICES);
+      // Each slice is painted as three nested widths rather than one rect.
+      // A curtain has no vertical edge either -- a single rect gives the band
+      // hard sides, which is what makes it read as a pane of green glass
+      // rather than as light. Slices abut exactly rather than overlapping:
+      // two translucent rects sharing a scanline blend twice there and stripe
+      // the curtain, the same trap sky.ts's fillVerticalFade documents.
+      const alpha = 0.032 * (1 - t) * (1 - t) * stutter;
+      [1, 0.72, 0.4].forEach((w) => {
+        g.fillStyle(0x3fd97a, alpha);
+        g.fillRect(band.x + sway + (band.w * (1 - w)) / 2, y, band.w * w, height / SLICES);
+      });
     }
   });
 }

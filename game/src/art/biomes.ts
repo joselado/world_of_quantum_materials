@@ -92,7 +92,7 @@ const MEAN_FIELDS: Biome = {
   // states how it looks from outside itself in the same place.
   hillColor: 0x2f6b3c,
   hillAlpha: 0.55,
-  ground: 0x1d4526,
+  ground: 0x16341c,
   path: 0xd9d295,
   fogTarget: 0xbfe3ff,
   clouds: true,
@@ -184,8 +184,13 @@ const STORM_FLATS: Biome = {
   // Dead flat, because this world is flat by locked identity and so is the
   // Edge Cliffs before it. The two therefore cannot be told apart on shape at
   // all, and the whole distinction is carried by this world's storm.
-  hillColor: 0x3a4478,
-  hillAlpha: 0.5,
+  //
+  // Held far lighter than this world's own dusk, which is what the horizon is
+  // drowned into once the gate opens: a storm-lit strip under the arcs. A
+  // base colour sampled from the world's own dark ground would be within a
+  // couple of values of that fog and its forward horizon would not exist.
+  hillColor: 0x8492d8,
+  hillAlpha: 0.6,
   ground: 0x1b2044,
   path: 0x6272b8,
   fogTarget: 0x2b3260,
@@ -255,8 +260,12 @@ const IRON_STEPPE: Biome = {
   // uniform lean is what separates this from the Vortex Glacier before it,
   // which is jagged, cold-dark and under failing light in exactly the same
   // way but whose pressure ridges are random and vertical.
-  hillColor: 0x2e3a34,
-  hillAlpha: 0.45,
+  //
+  // Aurora green rather than iron black: the shards' lit edges are the only
+  // thing a world away can see of them, and a black base against this world's
+  // own near-black air is a horizon that is not there.
+  hillColor: 0x6f9c7e,
+  hillAlpha: 0.55,
   ground: 0x121517,
   path: 0x3a3f40,
   fogTarget: 0x16241d,
@@ -349,11 +358,13 @@ const DEFECT_SCARS: Biome = {
   name: 'defectScars',
   skyTop: 0x1a0808,
   skyBottom: 0x3a1414,
-  // A cracked ridge with glow veins in its notches (art/horizons.ts). Seen
-  // from the Splitting Hollow, which has no sky of its own, so the only thing
-  // that can announce the world beyond is light that world emits itself.
-  hillColor: 0x5a2418,
-  hillAlpha: 0.5,
+  // A cracked ridge with glow veins in its notches (art/horizons.ts), lit by
+  // its own crust and held well clear of this world's dark red air, which is
+  // what the horizon is drowned into once the gate opens. Seen from the
+  // Splitting Hollow, which has no sky of its own, so the only thing that can
+  // announce the world beyond is light that world emits itself.
+  hillColor: 0xc4643a,
+  hillAlpha: 0.55,
   ground: 0x2a0e0a,
   path: 0x9c6a52,
   fogTarget: 0x2e1010,
