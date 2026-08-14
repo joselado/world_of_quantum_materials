@@ -23,7 +23,7 @@ Build in this order. Each stage is shippable on its own.
 | **B** | Haze inheritance — the air ahead becomes the next world's air | A | **built** |
 | **C** | Distant selves — per-world horizon profiles, composed into neighbours | retheme, A | composition + atmosphere **built**; profiles to do |
 | **D** | Gate apertures — state-signalled pass, ground seam | C | to do |
-| **E** | Depth-projected flanks — the approach into the pass | D | to do |
+| **E** | Depth-projected flanks — the approach into the pass | D | **deferred** |
 | **F** | The Lab door, then the Qumatuomi sky | D (Lab quotes its grammar) | to do |
 
 E is the only speculative item; if it reads badly in the first world tried,
@@ -165,7 +165,12 @@ The backward exit becomes a pass with a board too, in worlds 2–10. **World 1's
 stays a door** (it leads to the Lab, which is not a place), and **World 10 gets
 no board** (nothing lies beyond).
 
-## E — Depth-projected flanks
+## E — Depth-projected flanks — deferred
+
+**Recorded, not scheduled.** Stage D is a complete, shippable gate without this;
+E is what would make the arrival cinematic rather than merely correct. It is
+deferred by decision rather than blocked, so pick it up whenever the rest is
+settled — nothing else depends on it.
 
 The far part of a pass (the notch, the neighbour's silhouette) lives in the
 fixed horizon band and is never reached — honest, because it is the next world's
@@ -179,7 +184,16 @@ and scaled through the same projection as everything else, so they grow, part
 around the corridor and slide off screen as the player arrives. No elevation
 geometry, no ground tilt — only scale.
 
-This is the speculative one. Try one world first and look at it before doing ten.
+This is the speculative one, and the risk is specific: on a flat plane a scaling
+flank can read as a flat shape *expanding in front of* the player rather than a
+wall passing beside them. Parallax is what sells it — the flanks must move
+**outward** as they grow, or it looks like a zoom, which would be worse than
+leaving it out. Try one world first and look at it before doing ten.
+
+It also has a prerequisite inside stage D: the flanks, the rival and the board
+all occupy the pass at different depths, and the rival is currently drawn as a
+special case rather than through the common depth sort. Until that is fixed the
+boss floats in front of walls it should be standing between.
 
 ## F — The Lab door, and the Qumatuomi sky
 
