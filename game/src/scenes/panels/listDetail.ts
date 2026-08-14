@@ -24,9 +24,9 @@ import { GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 // cost/status line and a commit button -- renderDetailCrystalHeader below
 // (the crystal-render-plus-name block a crystal-picking guardian's detail
 // pane opens with), renderMoveDetailHeader (the looping-animation-plus-name
-// block a travelling-attack move-picking guardian's detail pane opens with),
-// and renderSelfBuffMoveDetailHeader (the same idea for a self-buff move
-// whose real effect centers on the caster rather than traveling -- Kondo's
+// block an attack move-picking guardian's detail pane opens with),
+// and renderSelfBuffMoveDetailHeader (the same idea over a rendered player
+// crystal, for a self-buff move -- Kondo's
 // panel) are three shared detail-pane openers, and renderStatusAndConfirm
 // is the shared cost/status-line-plus-confirm-button tail every guardian
 // panel's pane closes with -- reused outside the paginated-
@@ -338,14 +338,16 @@ export function renderDetailCrystalHeader(
 // Same "art block + name" shape renderDetailCrystalHeader above gives a
 // crystal-pick panel's detail pane, but for a *move* -- the "art" is the
 // move's own real battle-effect animation (art/moveEffectPreview.ts's
-// startMoveEffectPreview), looping between a short local from/to span sized
-// to this block rather than a real battle's PLAYER_POS/opponentPos (a
-// detail pane has no crystal positions of its own to borrow). Shared by
+// startMoveEffectPreview), looping on the centre of this block: the target's
+// half of the beat, landing on the spot, rather than the full attacker-to-
+// target flight a real battle plays across the whole field (a pane this size
+// has no room for the crossing, and the half worth showing is what the move
+// does when it arrives). Shared by
 // Noether's Moves tab and Laughlin's/Skłodowska-Curie's own bespoke
 // two-column panels (scenes/panels/noether.ts, laughlin.ts,
 // sklodowskaCurie.ts -- Kondo's own self-buff moves use the sibling
-// renderSelfBuffMoveDetailHeader below instead, since a self-buff's real
-// effect centers on the caster rather than traveling): each resolves its own
+// renderSelfBuffMoveDetailHeader below instead, since a self-buff needs a
+// crystal rendered underneath the effect to read as buffing anything): each resolves its own
 // move's current class/shape override (Noether: the move's own static
 // class, no override; Laughlin/Curie: getTunedMoveClass plus
 // ANALYTIC_SHAPES/ULTIMATE_SHAPES) and passes it in here rather than this
@@ -360,13 +362,7 @@ export function renderDetailCrystalHeader(
 // distinguishes one call site's own preview chain from another's -- every
 // caller here has exactly one detail pane open at a time and so never needs
 // to pass one, except Laughlin's/Curie's own two-column panels, which have
-// two live simultaneously and key each by its own move id. `halfSpan`
-// (default 55, i.e. a 110px-wide stage) is how far the effect travels from
-// `centerX` in each direction --
-// Laughlin's/Curie's own wider two-up columns (listDetail.ts's
-// sideBySideColumns) pass a larger value so the animation actually uses
-// more of the extra room their bespoke layout frees up, rather than leaving
-// the same fixed-pixel stage floating in a wider column.
+// two live simultaneously and key each by its own move id.
 export function renderMoveDetailHeader(
   scene: Phaser.Scene,
   container: Phaser.GameObjects.Container,
@@ -377,19 +373,16 @@ export function renderMoveDetailHeader(
   y: number,
   rightColW: number,
   level: MoveLevel = 0,
-  previewKey?: string,
-  halfSpan = 55
+  previewKey?: string
 ): number {
   const stageH = 84; // same fixed "art, not text" block height renderDetailCrystalHeader uses above
-  const stageCenterY = y + stageH / 2;
   startMoveEffectPreview(
     {
       scene,
       moveClass,
       shapeOverride,
       level,
-      from: { x: centerX - halfSpan, y: stageCenterY + 14 },
-      to: { x: centerX + halfSpan, y: stageCenterY - 14 },
+      at: { x: centerX, y: y + stageH / 2 },
     },
     previewKey
   );
@@ -478,15 +471,11 @@ export function renderStatusAndConfirm(params: StatusAndConfirmParams): number {
 }
 
 // Self-buff variant of renderMoveDetailHeader above -- Kondo's three
-// self-buff moves (scenes/panels/kondo.ts) don't travel from an attacker to
+// self-buff moves (scenes/panels/kondo.ts) never travel from an attacker to
 // a target the way an ordinary move does: BattleScene.resolveSelfBuff plays
-// the real battle effect centered on the caster's own position (`from ===
-// to === pos`), not flying across the field. startMoveEffectPreview itself
-// needed no change to support this -- passing an identical from/to point
-// already centers the ring on that single point (art/attackEffects.ts's
-// playRing does `Phaser.Math.Linear(from, to, 0.12)` for its origin, which
-// collapses to that same point when from equals to), exactly the call
-// resolveSelfBuff already makes for a real cast. What a self-buff pane needs
+// the real battle effect centered on the caster's own position, so the
+// centred ring the preview draws is the whole effect rather than one half of
+// it. What a self-buff pane needs
 // beyond that is a crystal to center the ring *on* -- renderMoveDetailHeader
 // above has no crystal render at all -- so this renders the player's own
 // current crystal standing on a ground-shadow ellipse (the same makeCrystal
@@ -527,8 +516,7 @@ export function renderSelfBuffMoveDetailHeader(
     scene,
     moveClass,
     level,
-    from: { x: centerX, y: crystalCenterY },
-    to: { x: centerX, y: crystalCenterY },
+    at: { x: centerX, y: crystalCenterY },
   });
 
   let ny = y + stageH;

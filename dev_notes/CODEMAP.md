@@ -103,10 +103,10 @@ game/src/
                                  listDetailColumns at all). Every one of these panels' own
                                  "which crystal"/"which move"/"which world" detail pane opens
                                  through -- renderDetailCrystalHeader for a crystal-plus-name
-                                 header, renderMoveDetailHeader for a looping travelling-attack-
-                                 effect-plus-name one, renderSelfBuffMoveDetailHeader for the same
-                                 idea but centered on a rendered player crystal instead of
-                                 traveling between two points (kondo.ts's own self-buff moves --
+                                 header, renderMoveDetailHeader for a looping centered
+                                 attack-effect-plus-name one, renderSelfBuffMoveDetailHeader for
+                                 the same idea over a rendered player crystal
+                                 (kondo.ts's own self-buff moves --
                                  see "Kondo in the overworld" in STYLE.md and
                                  art/moveEffectPreview.ts, above) -- and closes through
                                  renderStatusAndConfirm, the shared cost/status-line-plus-confirm-
@@ -224,9 +224,16 @@ game/src/
                                   Its own `depthOffset` param (default 0, every BattleScene call site
                                   unaffected) shifts every Graphics object it creates by a fixed
                                   amount -- moveEffectPreview.ts (below) is the one caller that
-                                  passes a nonzero value. resolveAttackShape()/attackEffectDurationMs()/
-                                  attackEffectTotalDurationMs() are exported for moveEffectPreview.ts's
-                                  own use (below) -- the last one folds the `level` escalation's own
+                                  passes a nonzero value. playTargetEffect() is the same engine's
+                                  preview half: the *target's* share of the beat alone, centered on
+                                  one point -- meteor/nova and beam/eruption play their own full
+                                  sequences (they summon themselves at the target anyway, just
+                                  without the windup), a ring collapses onto the centre, and
+                                  bolt/burst -- which are nothing but travel -- are left with their
+                                  impact shockwave. resolveAttackShape()/attackEffectDurationMs()/
+                                  attackEffectTotalDurationMs()/targetEffectTotalDurationMs() are
+                                  exported for moveEffectPreview.ts's
+                                  own use (below) -- the last two fold the `level` escalation's own
                                   stagger into the single-play duration, the real wall-clock time
                                   until a leveled cascade's last repeat settles
     attackAnchors.ts            EffectAnchor -- where one side of an effect draws, resolved live
@@ -248,16 +255,20 @@ game/src/
                                   summon->charge->impact->aftermath phase functions,
                                   METEOR_TOTAL_MS/NOVA_TOTAL_MS
     moveEffectPreview.ts         startMoveEffectPreview(params, key?)/stopMoveEffectPreview(key?) --
-                                  loops playAttackEffect (above) inside a guardian panel's detail
+                                  loops playTargetEffect (above) inside a guardian panel's detail
                                   pane (Noether's Moves tab, Kondo's self-buff step, Laughlin's/
                                   Skłodowska-Curie's own two-column panels, scenes/panels/noether.ts,
                                   kondo.ts, laughlin.ts, sklodowskaCurie.ts's own
                                   renderMoveDetailHeader/renderSelfBuffMoveDetailHeader calls,
-                                  scenes/panels/listDetail.ts) rather than a static icon, at a
-                                  PREVIEW_DEPTH_OFFSET pushing the real effect's Graphics (normally
+                                  scenes/panels/listDetail.ts) rather than a static icon. A caller
+                                  passes one point (`params.at`, its own pane's centre) and gets the
+                                  target's half of the beat landing there. Plays at a
+                                  PREVIEW_DEPTH_OFFSET pushing the effect's Graphics (normally
                                   depth 58-61) above a dialogue panel's own container (depth 100) so
-                                  it draws on top of the pane instead of underneath it. `params.level`
-                                  (Feynman's MoveLevel) is forwarded straight into playAttackEffect's
+                                  it draws on top of the pane instead of underneath it -- that same
+                                  nonzero offset is what marks the objects as a detached preview for
+                                  attackFx.ts. `params.level`
+                                  (Feynman's MoveLevel) is forwarded straight into playTargetEffect's
                                   own `level`, so a leveled move's preview escalates the same way a
                                   real cast does. Tracks any number of independent, simultaneously-
                                   looping preview *chains* in a `Map<string, PreviewChain>` keyed by
@@ -270,10 +281,8 @@ game/src/
                                   retuning one column's own move never disturbs the other column's
                                   already-looping chain. Calling startMoveEffectPreview again on the
                                   same key retargets that chain to a different move without needing to
-                                  stop it first -- the in-flight play is left to
-                                  finish on its own (attackEffects.ts's shapes have no external cancel
-                                  hook; every phase tears itself down in its own onComplete regardless
-                                  of anything outside it) and that chain's next cycle picks up whatever
+                                  stop it first -- the in-flight play finishes on its own and that
+                                  chain's next cycle picks up whatever
                                   its own `current` is by then, so a rapid preview switch never draws
                                   two overlapping plays at once on the same chain. Callers must NOT
                                   call stopMoveEffectPreview()
@@ -283,7 +292,22 @@ game/src/
                                   from a branch that renders no detail pane at all (Noether's Stats tab,
                                   its own empty-forSale state) or a real teardown
                                   (OverworldScene.closeDialogue()/HubScene.closeDialogue(), which call
-                                  the no-key form to stop every chain at once)
+                                  the no-key form to stop every chain at once). Stopping also wipes
+                                  whatever is mid-flight (attackFx.ts's cancelPreviewFx), so closing a
+                                  panel takes its animation with it rather than leaving a
+                                  multi-second Ultimate sequence playing over the room
+    attackFx.ts                  fxGraphics()/fxCounter()/fxDelayedCall()/cancelPreviewFx() -- the
+                                  object-creation choke point every attackShapes.ts/attackUltimates.ts
+                                  shape draws through, so a *preview* of an effect can be torn down
+                                  mid-flight. A nonzero depthOffset means "detached preview" (it is 0
+                                  for every BattleScene call site and large for moveEffectPreview.ts's
+                                  panel previews) and is the sole condition for tracking anything here
+                                  -- a real cast allocates and tracks nothing extra and stays
+                                  fire-and-forget, every phase destroying its own Graphics in its own
+                                  onComplete. cancelPreviewFx stops tracked tweens
+                                  before destroying tracked Graphics: a Phaser tween's stop() fires
+                                  onStop, never onComplete, so no phase chained off an onComplete gets
+                                  to draw anything new after the cancel
     colors.ts                   shade(), darken(), blend(), hueShift(), hashSeed()/seededRandom() --
                                   the deterministic per-compound PRNG jitterFor() (crystals.ts) is built from
     qumatuomiMap.ts              buildQumatuomiMap(scene, { width, height, discoveredWorlds }) -- a

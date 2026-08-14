@@ -17,6 +17,7 @@ import {
   playImpactShockwave,
 } from './attackShapes';
 import { playMeteor, playNova, METEOR_TOTAL_MS, NOVA_TOTAL_MS } from './attackUltimates';
+import { fxDelayedCall } from './attackFx';
 
 // The battle-effect engine: which shape a move plays, how long the beat
 // lasts, and how Feynman's move-leveling escalates it into several repeats.
@@ -31,6 +32,7 @@ import { playMeteor, playNova, METEOR_TOTAL_MS, NOVA_TOTAL_MS } from './attackUl
 export type { EffectAnchor } from './attackAnchors';
 export { followAnchor, fixedAnchor } from './attackAnchors';
 export { ANALYTIC_SHAPES, ULTIMATE_SHAPES, resolveAttackShape } from './attackStyles';
+export { cancelPreviewFx } from './attackFx';
 
 // How long one full play of a given shape takes, start to finish --
 // including the trailing impact shockwave for an ordinary shape, or the full
@@ -75,6 +77,9 @@ const LEVEL_TRIGGER_COUNTS: Record<number, number> = { 0: 1, 1: 2, 2: 3, 3: 4 };
 const LEVEL_TRIGGER_SCALES = [1, 1.25, 1.5, 3.5];
 const LEVEL_STAGGER_FRACTION = 0.4;
 const ULTIMATE_LEVEL_STAGGER_MS = 650;
+// See playTargetEffect below: how much a preview enlarges the impact
+// shockwave of a shape that has nothing else left to show.
+const IMPACT_ONLY_SCALE = 1.8;
 
 // Same idea as attackEffectDurationMs above, but accounting for the
 // leveling repeats just described -- the real wall-clock time from the
@@ -163,6 +168,94 @@ export function playAttackEffect(
   playOrdinaryRepeats(scene, shape, style.color, from, to, onImpact, powerRatio, depthOffset, triggerCount);
 }
 
+// The target's half of a move's beat alone, centered on one point: what a
+// guardian panel's detail pane demonstrates (art/moveEffectPreview.ts). A
+// real cast spans the whole battlefield -- a windup flash at the attacker,
+// something crossing hundreds of pixels, then the arrival -- and none of that
+// survives being squeezed into a pane a hundred pixels wide, where the
+// interesting half (what the move does when it lands) ends up as a fraction
+// of a cramped diagonal. So the attacker's side is dropped entirely and only
+// what happens at the target is drawn, on the spot:
+//
+// - meteor/nova (Skłodowska-Curie's Ultimates) and beam/eruption (Laughlin's
+//   Analytics) already summon themselves at the target from off-field sky or
+//   ground rather than travelling from the attacker, so each plays its own
+//   full sequence unchanged, just without the windup.
+// - ring expands from its own origin, which collapses onto the single centre
+//   point here -- the same centred wave Kondo's self-buff moves already play
+//   in a real fight, where caster and target are one crystal.
+// - bolt/burst are nothing *but* travel, so what's left of one at the target
+//   is its impact: the shockwave alone.
+//
+// Feynman's level escalation still applies, so a leveled move previews the
+// same growing cascade it really casts. The music duck a real cast uses is
+// deliberately not fired here -- a preview loops every second or so for as
+// long as a panel is open, and ducking the score that often would read as a
+// fault in the music rather than emphasis on a hit.
+export function playTargetEffect(
+  scene: Phaser.Scene,
+  moveClass: MoveClass,
+  at: EffectAnchor,
+  shapeOverride?: AttackShape,
+  onComplete?: () => void,
+  depthOffset = 0,
+  level: 0 | 1 | 2 | 3 = 0
+) {
+  const style = EFFECT_STYLE[moveClass];
+  const shape = shapeOverride ?? style.shape;
+  const triggerCount = LEVEL_TRIGGER_COUNTS[level] ?? 1;
+
+  if (shape === 'meteor' || shape === 'nova') {
+    playUltimateRepeats(scene, shape, style.color, at, false, undefined, 1, onComplete, depthOffset, triggerCount);
+    return;
+  }
+
+  // A shape whose whole preview *is* the shockwave gets it enlarged: at its
+  // battle size it's a brief flash sized for the tail of something that just
+  // crossed the screen, and on its own in a pane it barely registers. The
+  // shapes that draw a full silhouette of their own (beam/eruption/ring) fill
+  // the stage already and stay at their real size.
+  const impactOnly = shape === 'bolt' || shape === 'burst';
+  const stagger = targetSingleDurationMs(shape) * LEVEL_STAGGER_FRACTION;
+  const playOnce = (scale: number) => {
+    playAttackSfx(shape);
+    const land = (dir?: { x: number; y: number }) => {
+      playImpactShockwave(scene, style.color, at, depthOffset, scale * (impactOnly ? IMPACT_ONLY_SCALE : 1), dir);
+      playImpactSfx(1);
+    };
+    if (shape === 'beam') playBeam(scene, style.color, at, land, depthOffset, scale);
+    else if (shape === 'eruption') playEruption(scene, style.color, at, land, depthOffset, scale);
+    else if (shape === 'ring') playRing(scene, style.color, at, at, land, depthOffset, scale);
+    else land();
+  };
+
+  for (let i = 0; i < triggerCount; i++) {
+    const startDelay = i * stagger;
+    if (startDelay === 0) playOnce(triggerScaleFor(i));
+    else fxDelayedCall(scene, depthOffset, startDelay, () => playOnce(triggerScaleFor(i)));
+  }
+}
+
+// One play of playTargetEffect above, start to finish -- the target-side
+// silhouette's own travel plus its impact, or the impact alone for a shape
+// whose target side is nothing but that.
+function targetSingleDurationMs(shape: AttackShape): number {
+  if (shape === 'meteor' || shape === 'nova') return attackEffectDurationMs(shape);
+  if (shape === 'bolt' || shape === 'burst') return IMPACT_MS;
+  return TRAVEL_MS[shape] + IMPACT_MS;
+}
+
+// playTargetEffect's counterpart to attackEffectTotalDurationMs -- the real
+// wall-clock time until a (possibly leveled) preview cascade settles, which
+// is how art/moveEffectPreview.ts schedules its next loop for every shape
+// except meteor/nova (those settle through their own onComplete instead).
+export function targetEffectTotalDurationMs(shape: AttackShape, level: 0 | 1 | 2 | 3 = 0): number {
+  const triggerCount = LEVEL_TRIGGER_COUNTS[level] ?? 1;
+  const single = targetSingleDurationMs(shape);
+  const stagger = shape === 'meteor' || shape === 'nova' ? ULTIMATE_LEVEL_STAGGER_MS : single * LEVEL_STAGGER_FRACTION;
+  return (triggerCount - 1) * stagger + single;
+}
+
 // Fires `triggerCount` staggered, growing copies of the ordinary/Analytic
 // windup+shape+impact-shockwave beat -- see playAttackEffect's own escalation
 // comment for the trigger-count/scale/stagger rules. Every repeat plays the
@@ -220,7 +313,7 @@ function playOrdinaryRepeats(
     const scale = triggerScaleFor(i);
     const isLast = i === triggerCount - 1;
     if (startDelay === 0) playOnce(scale, isLast);
-    else scene.time.delayedCall(startDelay, () => playOnce(scale, isLast));
+    else fxDelayedCall(scene, depthOffset, startDelay, () => playOnce(scale, isLast));
   }
 }
 
@@ -290,6 +383,6 @@ function playUltimateRepeats(
     const scale = triggerScaleFor(i);
     const isLast = i === triggerCount - 1;
     if (startDelay === 0) playOnce(scale, isLast);
-    else scene.time.delayedCall(startDelay, () => playOnce(scale, isLast));
+    else fxDelayedCall(scene, depthOffset, startDelay, () => playOnce(scale, isLast));
   }
 }

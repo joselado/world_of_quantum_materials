@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { EffectAnchor } from './attackAnchors';
 import { GROUND_DROP, GROUND_ASPECT, drawBloom, drawAnnulus, drawArcRing, drawTaperedRays } from './attackShapes';
+import { fxGraphics, fxCounter } from './attackFx';
 
 // Skłodowska-Curie's Ultimate pair (§5, World 10, ULTIMATE_SHAPES) -- the
 // flashiest tier, a 4-6s "Final-Fantasy-style summon" sequence rather than a
@@ -9,7 +10,7 @@ import { GROUND_DROP, GROUND_ASPECT, drawBloom, drawAnnulus, drawArcRing, drawTa
 // lands (Impact -- fires `onImpact` right as this phase *begins*, not at its
 // end, mirroring every other shape's `land()`), then decays away (Aftermath
 // -- fires `onComplete` once, at the very end). Each phase is its own
-// `scene.tweens.addCounter`, chained via onComplete rather than one long
+// counter tween (art/attackFx.ts's fxCounter), chained via onComplete rather than one long
 // tween, and each phase creates and destroys its own Graphics objects rather
 // than reusing one across phases -- unlike art/attackShapes.ts's shapes,
 // which only ever need one short tween and so never have to worry about that
@@ -43,8 +44,8 @@ export const NOVA_TOTAL_MS = NOVA_SUMMON_MS + NOVA_CHARGE_MS + NOVA_IMPACT_MS + 
 // spokes: a closed hexagon ringed by radiating lines reads as a wire wheel,
 // while turning fragments read as something being inscribed.
 function playMeteorSummon(scene: Phaser.Scene, color: number, to: EffectAnchor, onDone: () => void, depthOffset = 0, scale = 1) {
-  const g = scene.add.graphics().setDepth(58 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
-  scene.tweens.addCounter({
+  const g = fxGraphics(scene, 58, depthOffset);
+  fxCounter(scene, depthOffset, {
     from: 0,
     to: 1,
     duration: METEOR_SUMMON_MS,
@@ -78,10 +79,10 @@ function playMeteorSummon(scene: Phaser.Scene, color: number, to: EffectAnchor, 
 // so this hold -- not a delayed onImpact -- is what sells "suddenly explode"
 // rather than "still visibly growing when it detonates".
 function playMeteorCharge(scene: Phaser.Scene, color: number, to: EffectAnchor, onDone: () => void, depthOffset = 0, scale = 1) {
-  const mass = scene.add.graphics().setDepth(60 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
-  const circle = scene.add.graphics().setDepth(58 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
+  const mass = fxGraphics(scene, 60, depthOffset);
+  const circle = fxGraphics(scene, 58, depthOffset);
   const originY = -60;
-  scene.tweens.addCounter({
+  fxCounter(scene, depthOffset, {
     from: 0,
     to: 1,
     duration: METEOR_CHARGE_MS,
@@ -162,9 +163,9 @@ function playMeteorImpact(
   scale = 1
 ) {
   onImpact();
-  const g = scene.add.graphics().setDepth(60 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
+  const g = fxGraphics(scene, 60, depthOffset);
   const drawColor = whiff ? 0x777777 : color;
-  scene.tweens.addCounter({
+  fxCounter(scene, depthOffset, {
     from: 0,
     to: 1,
     duration: METEOR_IMPACT_MS,
@@ -206,11 +207,11 @@ function playMeteorAftermath(
   depthOffset = 0,
   scale = 1
 ) {
-  const g = scene.add.graphics().setDepth(58 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
+  const g = fxGraphics(scene, 58, depthOffset);
   const emberColor = whiff ? 0x888888 : color;
   const spread = (whiff ? 14 : 60) * scale;
   const emberCount = whiff ? 6 : 9;
-  scene.tweens.addCounter({
+  fxCounter(scene, depthOffset, {
     from: 0,
     to: 1,
     duration: METEOR_AFTERMATH_MS,
@@ -262,8 +263,8 @@ export function playMeteor(
 // the ground -- counter-rotating arc fragments building up around `to`,
 // reading as a vertical mandala rather than a ground rune.
 function playNovaSummon(scene: Phaser.Scene, color: number, to: EffectAnchor, onDone: () => void, depthOffset = 0, scale = 1) {
-  const g = scene.add.graphics().setDepth(60 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
-  scene.tweens.addCounter({
+  const g = fxGraphics(scene, 60, depthOffset);
+  fxCounter(scene, depthOffset, {
     from: 0,
     to: 1,
     duration: NOVA_SUMMON_MS,
@@ -293,7 +294,7 @@ function playNovaSummon(scene: Phaser.Scene, color: number, to: EffectAnchor, on
 // core visibly full and under pressure rather than one still visibly
 // swelling right up to the cut.
 function playNovaCharge(scene: Phaser.Scene, color: number, to: EffectAnchor, onDone: () => void, depthOffset = 0, scale = 1) {
-  const g = scene.add.graphics().setDepth(60 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
+  const g = fxGraphics(scene, 60, depthOffset);
   const motes = Array.from({ length: 14 }, (_, i) => ({
     angle: (i / 14) * Math.PI * 2,
     phase: Math.random(),
@@ -301,7 +302,7 @@ function playNovaCharge(scene: Phaser.Scene, color: number, to: EffectAnchor, on
     maxR: 50 + Math.random() * 40,
     pale: i % 2 === 0,
   }));
-  scene.tweens.addCounter({
+  fxCounter(scene, depthOffset, {
     from: 0,
     to: 1,
     duration: NOVA_CHARGE_MS,
@@ -358,9 +359,9 @@ function playNovaImpact(
   scale = 1
 ) {
   onImpact();
-  const g = scene.add.graphics().setDepth(61 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
+  const g = fxGraphics(scene, 61, depthOffset);
   const drawColor = whiff ? 0x777777 : color;
-  scene.tweens.addCounter({
+  fxCounter(scene, depthOffset, {
     from: 0,
     to: 1,
     duration: NOVA_IMPACT_MS,
@@ -400,10 +401,10 @@ function playNovaAftermath(
   depthOffset = 0,
   scale = 1
 ) {
-  const g = scene.add.graphics().setDepth(58 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
+  const g = fxGraphics(scene, 58, depthOffset);
   const emberColor = whiff ? 0x888888 : color;
   const spread = (whiff ? 16 : 65) * scale;
-  scene.tweens.addCounter({
+  fxCounter(scene, depthOffset, {
     from: 0,
     to: 1,
     duration: NOVA_AFTERMATH_MS,

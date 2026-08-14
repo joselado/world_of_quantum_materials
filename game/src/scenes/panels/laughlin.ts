@@ -124,7 +124,7 @@ function renderAnalyticColumn(
   const displayName = moveDisplayName(scene.game.registry, id);
   const activeClass = getTunedMoveClass(scene.game.registry, id);
   const level = getMoveLevel(scene.game.registry, id);
-  let ny = renderMoveDetailHeader(scene, container, displayName, activeClass, ANALYTIC_SHAPES[id], centerX, y, colW, level, `laughlin:${id}`, 80);
+  let ny = renderMoveDetailHeader(scene, container, displayName, activeClass, ANALYTIC_SHAPES[id], centerX, y, colW, level, `laughlin:${id}`);
 
   const unlocked = scene.getUnlockedMoves();
   const isLearned = unlocked.includes(id);

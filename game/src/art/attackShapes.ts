@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import type { AttackShape } from '../audio/sfx';
 import { latchAnchor, type EffectAnchor } from './attackAnchors';
+import { fxGraphics, fxCounter } from './attackFx';
 
 // The single-beat shape family: a windup at the attacker, one travelling (or
 // target-summoned) silhouette, and an impact shockwave at the target. Every
@@ -199,10 +200,10 @@ export function playWindup(
   depthOffset = 0,
   scale = 1
 ) {
-  const g = scene.add.graphics().setDepth(59 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
+  const g = fxGraphics(scene, 59, depthOffset);
   const sparks = 5;
   const seed = Math.random() * Math.PI * 2;
-  scene.tweens.addCounter({
+  fxCounter(scene, depthOffset, {
     from: 0,
     to: 1,
     duration: WINDUP_MS,
@@ -293,9 +294,9 @@ export function playBolt(
   depthOffset = 0,
   scale = 1
 ) {
-  const g = scene.add.graphics().setDepth(60 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
+  const g = fxGraphics(scene, 60, depthOffset);
   const origin = latchAnchor(from);
-  scene.tweens.addCounter({
+  fxCounter(scene, depthOffset, {
     from: 0,
     to: 1,
     duration: TRAVEL_MS.bolt,
@@ -351,10 +352,10 @@ export function playRing(
   depthOffset = 0,
   scale = 1
 ) {
-  const g = scene.add.graphics().setDepth(60 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
+  const g = fxGraphics(scene, 60, depthOffset);
   const originX = Phaser.Math.Linear(from.x, to.x, 0.12);
   const originY = Phaser.Math.Linear(from.y, to.y, 0.12);
-  scene.tweens.addCounter({
+  fxCounter(scene, depthOffset, {
     from: 0,
     to: 1,
     duration: TRAVEL_MS.ring,
@@ -390,14 +391,14 @@ export function playBurst(
   depthOffset = 0,
   scale = 1
 ) {
-  const g = scene.add.graphics().setDepth(60 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
+  const g = fxGraphics(scene, 60, depthOffset);
   const origin = latchAnchor(from);
   const seeds = Array.from({ length: BURST_PARTICLES }, () => ({
     phase: Math.random() * Math.PI * 2,
     radius: 0.7 + Math.random() * 0.6,
     size: 0.75 + Math.random() * 0.5,
   }));
-  scene.tweens.addCounter({
+  fxCounter(scene, depthOffset, {
     from: 0,
     to: 1,
     duration: TRAVEL_MS.burst,
@@ -523,10 +524,10 @@ export function playBeam(
   depthOffset = 0,
   scale = 1
 ) {
-  const g = scene.add.graphics().setDepth(60 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
-  const sun = scene.add.graphics().setDepth(59 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
+  const g = fxGraphics(scene, 60, depthOffset);
+  const sun = fxGraphics(scene, 59, depthOffset);
   const originY = -40;
-  scene.tweens.addCounter({
+  fxCounter(scene, depthOffset, {
     from: 0,
     to: 1,
     duration: TRAVEL_MS.beam,
@@ -608,7 +609,7 @@ export function playEruption(
   depthOffset = 0,
   scale = 1
 ) {
-  const g = scene.add.graphics().setDepth(60 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
+  const g = fxGraphics(scene, 60, depthOffset);
   const n = 18;
   // Seeded once per cast: without the jitter the shards fly as an evenly
   // spaced string of identical dots on one common arc, which reads as
@@ -619,7 +620,7 @@ export function playEruption(
     size: 0.8 + Math.random() * 0.5,
     heavy: i % 3 !== 0,
   }));
-  scene.tweens.addCounter({
+  fxCounter(scene, depthOffset, {
     from: 0,
     to: 1,
     duration: TRAVEL_MS.eruption,
@@ -681,14 +682,14 @@ export function playImpactShockwave(
   scale = 1,
   dir?: Direction
 ) {
-  const g = scene.add.graphics().setDepth(61 + depthOffset).setBlendMode(Phaser.BlendModes.ADD);
+  const g = fxGraphics(scene, 61, depthOffset);
   const base = dir ? Math.atan2(-dir.y, -dir.x) : 0;
   const spread = dir ? IMPACT_SPLASH_ARC : Math.PI;
   const shards = Array.from({ length: IMPACT_SHARDS }, (_, i) => ({
     angle: base + ((i / (IMPACT_SHARDS - 1)) - 0.5) * 2 * spread + (Math.random() - 0.5) * 0.5,
     length: 0.6 + Math.random() * 0.8,
   }));
-  scene.tweens.addCounter({
+  fxCounter(scene, depthOffset, {
     from: 0,
     to: 1,
     duration: IMPACT_MS,

@@ -138,7 +138,7 @@ function renderUltimateColumn(
   const displayName = moveDisplayName(scene.game.registry, id);
   const activeClass = getTunedMoveClass(scene.game.registry, id);
   const level = getMoveLevel(scene.game.registry, id);
-  let ny = renderMoveDetailHeader(scene, container, displayName, activeClass, ULTIMATE_SHAPES[id], centerX, y, colW, level, `curie:${id}`, 80);
+  let ny = renderMoveDetailHeader(scene, container, displayName, activeClass, ULTIMATE_SHAPES[id], centerX, y, colW, level, `curie:${id}`);
 
   const unlocked = scene.getUnlockedMoves();
   const isUnlocked = unlocked.includes(id);

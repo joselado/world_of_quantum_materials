@@ -215,13 +215,12 @@ than appending a changelog, so this always reflects current reality.
   panel to panel -- Qumatex's own pane (crystal + name + physics blurb, above), a
   crystal-browsing guardian's (crystal + name + cost/status text + a commit button, via the
   shared `renderDetailCrystalHeader` crystal-plus-name block those three panels each build
-  their own status text and confirm button on top of), a travelling-attack move-browsing
-  guardian's (the move's own real battle-effect animation, looping between two points in the
+  their own status text and confirm button on top of), an attack move-browsing
+  guardian's (the move's own real battle-effect animation, looping centered in the
   pane, in place of a crystal render + name + cost/status text + a commit button, via the shared
   `renderMoveDetailHeader` block -- "Attack effects" below has the animation's own details), and
-  Kondo's own self-buff move-browsing step (the move's own real battle-effect animation looping
-  *centered on a rendered player crystal* instead of travelling between two points -- Kondo's
-  moves never leave the caster's own position in a real fight -- via the shared
+  Kondo's own self-buff move-browsing step (the same centered loop, but *over a rendered player
+  crystal* -- a self-buff has to be seen buffing something -- via the shared
   `renderSelfBuffMoveDetailHeader` block, "Kondo in the overworld" below). A guardian's
   list+detail step is a **preview-then-confirm** flow, distinct from the plain shop-row style
   used elsewhere (Feynman's own move-leveling list, still the right choice when there's no
@@ -880,9 +879,7 @@ than the caller's requested budget) for its own layout math.
   them, `insertColumnDivider` drawing the same vertical rule list+detail panels use between the
   two). Each column (`renderAnalyticColumn`) opens with that move's own real battle-effect
   animation on a loop (`renderMoveDetailHeader`, "List+detail panels" above and "Attack effects"
-  below -- passed a wider `halfSpan` of `80px`, versus every other caller's default `55px`, so
-  the animation actually uses more of this bespoke layout's own wider column rather than leaving
-  the same fixed-pixel stage floating in extra space, and its own preview chain keyed
+  below -- centered in the column, with its own preview chain keyed
   `laughlin:<moveId>` so both columns' chains loop independently, see "Attack effects" below),
   overriding the plain per-class bolt/ring/burst shape via `ANALYTIC_SHAPES` (each Analytic move
   is `'beam'`/`'eruption'`) the same way `BattleScene` itself does, still colored by whichever
@@ -1160,8 +1157,8 @@ than the caller's requested budget) for its own layout math.
   full animation-stage-plus-inline-picker columns below it there is even less spare vertical
   room here than on his panel; see this panel's own worst-case-content note below for how tight
   that budget actually is. Each column (`renderUltimateColumn`) opens with that move's own real
-  battle-effect animation on a loop (`renderMoveDetailHeader`, wider `halfSpan` of `80px` and its
-  own preview chain keyed `curie:<moveId>`, same reasoning as Laughlin's own columns), overriding
+  battle-effect animation on a loop (`renderMoveDetailHeader`, centered in the column, with its
+  own preview chain keyed `curie:<moveId>`, same as Laughlin's own columns), overriding
   the plain per-class shape via `ULTIMATE_SHAPES` to the longer, multi-phase `playMeteor`/
   `playNova` sequences (below), still colored by whichever quasiparticle class the move is
   currently tuned to, and escalated to the player's real Feynman level for that move
