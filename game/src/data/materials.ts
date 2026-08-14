@@ -1074,7 +1074,7 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // entry specifically means the thin-film phase.
     crystal('Hafnium Oxide', 'ferroelectric', ['ferronPulse', 'thermalFluctuation'], 2, undefined, 'HfO₂'),
   ],
-  // The meta-world's wilds are exactly the game's named hybrid materials --
+  // The Devouring Mirror's wilds are exactly the game's named hybrid materials --
   // every HYBRID_RECIPES result and nothing else -- so the corridor plays
   // back the player's own fusions/discoveries literally, not just as flavor
   // text. Worlds 1-9 never spawn a hybrid-recipe result as an ordinary wild

@@ -6,16 +6,23 @@
 
 export type DecorationKind = 'flowers' | 'mosaic' | 'edgeFlow' | 'crystalGlints' | 'orbitRings' | 'flowLines' | 'networkNodes' | 'ripples' | 'cracks' | 'mistMotes' | 'dissolve';
 
-// What the *off-path* terrain actually is, not just what color it's painted
-// -- OverworldScene.drawOffPathTile branches on this to give each world's
-// impassable ground its own material: 'rock' (bare ground in the biome's own
-// `ground` color, the default, no accent), 'lava' (a glowing molten crust --
-// Defect Wastes' "scorched" theme made literal), 'water' (a rippling frozen
-// lake -- Frozen Caverns), 'void' (the starlit drop between islands --
-// Topological Islands' "one-way edge paths"). Impassable terrain lies in the
-// same plane as the walkable floor everywhere, so a theme changes the color
-// and the accent over it, never the geometry. Not every biome needs its own
-// theme; most stay 'rock' and differ only by ground/hill color.
+// What the *off-path* terrain actually is, not just what color it is painted.
+// terrain/plan.ts's offPathKindOf resolves this to the TerrainKind whose
+// module under terrain/materials/ draws the tile's accent, so each world's
+// impassable surround reads as its own substance: 'forest' the Mean Fields'
+// summer canopy, 'columns' the Stone Lattice's colonnade, 'deadFloor' the
+// Edge Cliffs' sunken bulk, 'charged' the Storm Flats' live ground, 'ice' the
+// Vortex Glacier's frozen lake and its vortex pits, 'shards' the Iron
+// Steppe's leaning blades, 'fog' the Splitting Hollow's wood and the fog that
+// is its actual hazard, 'lava' the Defect Scars' molten crust, 'consuming'
+// the Devouring Mirror's reconfiguring facets, and 'rock' bare ground with no
+// accent at all -- which in the Entangled Web means true black, since its
+// surround is nothing and there is nothing out there to draw.
+//
+// The ground plane stays flat under all of them: a theme changes the color
+// and what is laid over it, never the height of the floor. What a theme may
+// do is stand sprites on that flat ground, which is what the trees, columns
+// and shards are.
 export type WallTheme = 'rock' | 'forest' | 'columns' | 'deadFloor' | 'charged' | 'ice' | 'shards' | 'fog' | 'lava' | 'consuming';
 
 export interface Biome {

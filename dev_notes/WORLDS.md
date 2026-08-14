@@ -6,9 +6,11 @@ remains the source of truth for each world's *map shape* (its generator motif)
 and its progression gate; this file covers everything above that — naming,
 terrain, palette, light, and the story the sequence tells.
 
-**Implementation status:** the fiction below is settled; the code is not yet
-moved onto it. `data/materials.ts`'s `WORLD_NAMES` and `art/biomes.ts` still
-carry the previous theming. `WORLDS_BUILD_TASK.md` holds the work list.
+**Implementation status:** the fiction below is settled and the code is on it —
+`data/materials.ts`'s `WORLD_NAMES`, `art/biomes.ts`, `art/horizons.ts` and the
+per-material modules under `scenes/overworld/terrain/materials/`. §4's remaining
+stages (gate apertures, depth-projected flanks, the Lab door and the Qumatuomi
+sky) are tracked in `HORIZON_BUILD_TASK.md`.
 
 ---
 

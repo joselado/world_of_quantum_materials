@@ -622,7 +622,7 @@ const OVERWORLD_SCORE_7: Score = {
 // World 8 (quantum magnetism/spinons/Kondo) -- the loss beat.
 //
 // The world reuses World 1's own tree sprites, dead and grey, and the score
-// does the same thing to World 1's own tune: the meadow melody moved to the
+// does the same thing to World 1's own tune: the Mean Fields melody moved to the
 // tritone pole and bent into F# Phrygian, at little over half the speed. The
 // player is meant to almost recognise it. A quote earns its place here and
 // nowhere else, because this is the only world built out of an earlier
@@ -632,7 +632,7 @@ const F_SHARP_PHRYGIAN = [6, 7, 9, 11, 1, 2, 4]; // F# G A B C# D E, as pitch cl
 
 // Up a tritone, then any pitch landing outside the mode pushed *down* to the
 // nearest degree inside it. Downward is what does the damage: it is what
-// turns the meadow's major thirds into minor ones, so the tune arrives
+// turns the Mean Fields' major thirds into minor ones, so the tune arrives
 // already grieving rather than merely transposed.
 function toPhrygianTritone(midi: number): number {
   const up = midi + 6;
@@ -1086,7 +1086,7 @@ const BATTLE_SCORE: Score = {
 // without literally repeating world 1's D-minor riff ten times over.
 
 // Circular root-third-fifth-octave-fifth-third-root-third motion -- a
-// "quantized orbit" vamp shape for Landau Level Terrain's battle track,
+// "quantized orbit" vamp shape for the Storm Flats's battle track,
 // standing in for vampBar's straight eighth-note ostinato.
 function vampBarOrbit(rootName: string, quality: 'maj' | 'min'): ToneNote[] {
   const root = n(rootName);
@@ -1099,7 +1099,7 @@ function vampBarOrbit(rootName: string, quality: 'maj' | 'min'): ToneNote[] {
 }
 
 // A held root, then a held fifth -- half the note density of vampBar, for a
-// frozen/hazy battle vamp (Frozen Zero-Resistance Caverns, Spinon Forest)
+// frozen/hazy battle vamp (the Vortex Glacier, the Splitting Hollow)
 // instead of a running eighth-note ostinato.
 function vampBarSparse(rootName: string, _quality: 'maj' | 'min'): ToneNote[] {
   const root = n(rootName);
@@ -1117,7 +1117,7 @@ function stabBarSparse(rootName: string, _quality: 'maj' | 'min'): ToneNote[] {
 
 // The same irregular-subdivision stumble as melodyBar's 'glitch' shape,
 // built from a chord's own root/third/fifth/sixth instead of scale degrees
-// -- Defect Wastes' battle vamp never quite locks into a steady groove.
+// -- the Defect Scars' battle vamp never quite locks into a steady groove.
 function vampBarGlitch(rootName: string, quality: 'maj' | 'min'): ToneNote[] {
   const root = n(rootName);
   const third = root + (quality === 'maj' ? 4 : 3);
@@ -1131,7 +1131,7 @@ function vampBarGlitch(rootName: string, quality: 'maj' | 'min'): ToneNote[] {
 }
 
 // Kick hits with a syncopated double dropped into every other bar instead
-// of a straight backbeat -- a stumbling groove for Defect Wastes rather
+// of a straight backbeat -- a stumbling groove for the Defect Scars rather
 // than the march every other battle track uses.
 function kickPulseGlitch(bars: number): PercNote[] {
   const notes: PercNote[] = [];
@@ -1210,7 +1210,7 @@ interface BattleScoreConfig {
   subBassGain?: number;
   // 'holdTonic' sustains the loop's opening root the whole way through
   // instead of following each bar's chord -- for worlds whose harmony
-  // deliberately clashes by a semitone (Defect Wastes), where a moving
+  // deliberately clashes by a semitone (the Defect Scars), where a moving
   // sub-bass would just double the mud.
   subBassMode?: 'followChords' | 'holdTonic';
   kickGen?: (bars: number) => PercNote[];
@@ -1221,10 +1221,10 @@ interface BattleScoreConfig {
   hatGain?: number;
   crashGain?: number;
   // An optional quiet interlocking second voice riding on top of the vamp
-  // (Tensor-Network World's "bonds as paths").
+  // (the Entangled Web's "bonds as paths").
   extraVoice?: { wave: Wave; gain: number; gen: (root: string, quality: 'maj' | 'min') => ToneNote[] };
   // An optional quiet octave-up unison doubling of the lead (The Adaptive
-  // Meta-World's shimmer).
+  // the Devouring Mirror's shimmer).
   shimmer?: boolean;
 }
 
@@ -1333,7 +1333,7 @@ function makeBattleScore(cfg: BattleScoreConfig): Score {
   return { bpm: cfg.bpm, loopBeats, tracks };
 }
 
-// World 2, Bloch Caverns: echoing minor arpeggios, no drive/grit on either
+// World 2, the Stone Lattice: echoing minor arpeggios, no drive/grit on either
 // voice for a hollow cave-echo timbre -- A minor, moderate-fast.
 const BATTLE_SCORE_2 = makeBattleScore({
   bpm: 150,
@@ -1352,7 +1352,7 @@ const BATTLE_SCORE_2 = makeBattleScore({
   crashGain: 0.26,
 });
 
-// World 3, Topological Islands: airy and bright even at battle tempo -- no
+// World 3, the Edge Cliffs: airy and bright even at battle tempo -- no
 // drive on either voice, wide unison lead -- C# minor.
 const BATTLE_SCORE_3 = makeBattleScore({
   bpm: 148,
@@ -1369,7 +1369,7 @@ const BATTLE_SCORE_3 = makeBattleScore({
   crashGain: 0.3,
 });
 
-// World 4, Landau Level Terrain: the circular vampBarOrbit ostinato for
+// World 4, the Storm Flats: the circular vampBarOrbit ostinato for
 // quantized orbits, fast and driving -- E minor.
 const BATTLE_SCORE_4 = makeBattleScore({
   bpm: 172,
@@ -1384,7 +1384,7 @@ const BATTLE_SCORE_4 = makeBattleScore({
   crashGain: 0.34,
 });
 
-// World 5, Frozen Zero-Resistance Caverns: the sparse held-note vamp/stab
+// World 5, the Vortex Glacier: the sparse held-note vamp/stab
 // and half-time percussion, sine/triangle only, no drive -- F minor, the
 // slowest battle tempo of the ten.
 const BATTLE_SCORE_5 = makeBattleScore({
@@ -1414,7 +1414,7 @@ const BATTLE_SCORE_5 = makeBattleScore({
   crashGain: 0.16,
 });
 
-// World 6, Magnon Plains: bright and driving, a touch faster than the
+// World 6, the Iron Steppe: bright and driving, a touch faster than the
 // default battle feel -- G minor.
 const BATTLE_SCORE_6 = makeBattleScore({
   bpm: 164,
@@ -1428,7 +1428,7 @@ const BATTLE_SCORE_6 = makeBattleScore({
   crashGain: 0.34,
 });
 
-// World 7, Tensor-Network World: a quiet extraVoice riding the vampBarOrbit
+// World 7, the Entangled Web: a quiet extraVoice riding the vampBarOrbit
 // shape an octave above the vamp -- a second interlocking voice for "bonds
 // as paths," matching the overworld theme's own interlocking counter-melody
 // -- B minor.
@@ -1444,7 +1444,7 @@ const BATTLE_SCORE_7 = makeBattleScore({
   extraVoice: { wave: 'triangle', gain: 0.06, gen: (r, q) => octaveUp(vampBarOrbit(r, q)) },
 });
 
-// World 8, Spinon Forest: hazy and low-contrast like its overworld theme --
+// World 8, the Splitting Hollow: hazy and low-contrast like its overworld theme --
 // the same sparse vamp/stab/percussion as world 5, quieter still, no drive
 // -- C minor, slow.
 const BATTLE_SCORE_8 = makeBattleScore({
@@ -1474,7 +1474,7 @@ const BATTLE_SCORE_8 = makeBattleScore({
   crashGain: 0.14,
 });
 
-// World 9, Defect Wastes: the glitchy vamp/kick shapes, square wave with
+// World 9, the Defect Scars: the glitchy vamp/kick shapes, square wave with
 // heavy drive, and a harmony that deliberately clashes a semitone against
 // itself (D/D# and A/A#) instead of the clean diatonic bVII every other
 // world uses -- scorched and dissonant, the fastest tempo of the ten. The
@@ -1497,7 +1497,7 @@ const BATTLE_SCORE_9 = makeBattleScore({
   crashGain: 0.4,
 });
 
-// World 10, The Adaptive Meta-World: a shimmering octave-up unison doubling
+// World 10, the Devouring Mirror: a shimmering octave-up unison doubling
 // of the lead (shimmer: true) over the same unison-detuned brass, no drive
 // for a cleaner reflective tone -- F# minor, the relative minor of the
 // overworld theme's A major.

@@ -793,7 +793,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // qumatessence string this text style could ever show, not measured
     // live off the current value -- and the world name's wrap width is
     // narrowed to stop short of it, so a long world name (e.g. world 5's
-    // "Frozen Zero-Resistance Caverns") or a big text-size setting wraps
+    // "The Splitting Hollow") or a big text-size setting wraps
     // downward onto a second line instead of running wide enough to
     // collide with the counter. No permanent key-hint lines for movement,
     // M, or H live in this corner -- the Lab's Tutorial station is the

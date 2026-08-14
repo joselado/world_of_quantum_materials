@@ -1317,8 +1317,8 @@ export class BattleScene extends Phaser.Scene {
 
   // Scattered pebbles and ground tufts across the field so the ground
   // reads as textured, not a flat gradient fill -- tufts tint off the
-  // biome's path color (grass green in the meadow, icy blue in the frozen
-  // caverns, ...) rather than a hardcoded grass green everywhere.
+  // biome's path color (pale wheat in the Mean Fields, swept ice on the
+  // Vortex Glacier, ...) rather than a hardcoded grass green everywhere.
   private drawGroundDetail(biome: Biome) {
     const g = this.add.graphics();
     // Spread across the field's visible width, staying just inside the

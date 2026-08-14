@@ -37,7 +37,7 @@ export function project(lane: number, depth: number): ProjectedPoint {
 // path visibly recedes into the distance instead of looking like a flat wall
 // of color at the horizon. `target` defaults to a pale sky blue but callers
 // pass a biome-specific fog color (e.g. a dark cave haze) so the blend still
-// looks right off the meadow biome.
+// looks right off the Mean Fields' own pale blue sky.
 export function fogColor(base: number, depthRatio: number, target = 0xbfe3ff): number {
   const c1 = Phaser.Display.Color.IntegerToColor(base);
   const c2 = Phaser.Display.Color.IntegerToColor(target);

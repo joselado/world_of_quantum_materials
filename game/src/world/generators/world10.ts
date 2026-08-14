@@ -1,7 +1,7 @@
-// World 10 (ML for quantum materials, the finale meta-world): the map shape
+// World 10 (ML for quantum materials, the Devouring Mirror): the map shape
 // isn't its own motif -- it's dispatched by the player's *current* crystal's
 // own main type, reusing whichever of worlds 1-8's own generator matches
-// that type family's physics, so the meta-world literally reflects the
+// that type family's physics, so the world literally mirrors the
 // player's own form back at them (DESIGN.md's "a model of you"). A player
 // whose type doesn't resolve to one of the eight (no form yet) gets a fresh
 // random pick among all eight every time.

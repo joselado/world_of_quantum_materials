@@ -19,8 +19,10 @@ function hash(gx: number, gy: number): number {
   return v - Math.floor(v);
 }
 
-// 'lava' (Defect Wastes, world 9): a glowing molten crust over the off-path
-// fill -- a pulsing warm wash, a bright crack line and a hot core dot.
+// 'lava' (the Defect Scars, world 9): a glowing molten crust over the off-path
+// fill -- a pulsing warm wash, a bright fissure and a hot core. This is the
+// still-open half of that world's two-tense damage, against the closed old
+// scars cracking the walkable clay beside it.
 export function drawLavaAccent(g: Phaser.GameObjects.Graphics, { fill, cx, cy, s, gx, gy, depth, haze, detail, now }: AccentTile) {
   // Phase from the tile's screen position, geometry from its own center.
   // The spatial frequency is kept low -- a fraction of a radian between
