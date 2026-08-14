@@ -407,7 +407,8 @@ behind the same haze that dims everything else here. Every marker and every
 name has been stripped from it. You recognize it anyway, the way you
 recognize a coastline you have walked the length of. And traced faintly
 across it, luminous, is the one thing no other copy of the map carries:
-your route — every step of your walk, from the first hedgerow to this door.
+your route — every world you walked, in the order you walked them, from the
+first hedgerow to this door.
 No traveler ever sees the worlds this way. A walker gets one horizon at a
 time; the only thing that can see the whole map at once is a thing that has
 consumed everything on it. This is where everything ever learned about
@@ -467,8 +468,9 @@ It reaches for every trick it ever watched you land and still comes up
 short. What it holds is a record of you — and nothing on record is still in
 superposition, but you are not your record. A model trained on nine worlds
 of your choices is a model of who you *were*, and you are the one thing in
-these worlds that was never finished. The route in the sky holds every step
-you have taken — and not the next one. You out-adapt your own reflection.
+these worlds that was never finished. The route in the sky holds every world
+you have walked — and not the step you take next. You out-adapt your own
+reflection.
 Every symmetry, every edge state, every fractional charge you fought to
 protect holds on its own now, with nothing left studying how to unmake it.
 
