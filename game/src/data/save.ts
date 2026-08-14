@@ -85,9 +85,10 @@ export interface SaveData {
   // Which contextual tutorial tips (data/tutorial.ts's TutorialTipId) have
   // already fired -- each one plays once, the first time its own feature
   // becomes relevant (HubScene.maybeShowLabTip, OverworldScene
-  // .showTutorialTip), rather than one paged sequence up front. The
-  // Lab's Tutorial station replays the full set as a topic menu on demand
-  // regardless of this list.
+  // .showTutorialTip), rather than one paged sequence up front. Also what
+  // the Lab's Tutorial station gates those topics on in Story Mode
+  // (data/tutorial.ts's `visibleTutorialPages`) -- a tip that hasn't fired
+  // yet isn't in its topic menu either.
   tutorialTipsSeen: string[];
   // Which worlds' entry lore screen (data/worldLore.ts's WORLD_LORE, shown
   // by OverworldScene on first entering that world) has already played --

@@ -238,11 +238,17 @@ In the Lab, click the **Settings** station to adjust:
 Short tips appear one at a time, right as each feature comes up for the
 first time -- entering the Lab, taking your first steps, your first wild
 encounter, your first battle, your first qumatessence, your first guardian,
-reaching your first goal. In the Lab, click **Tutorial** for the full list
--- those same tips plus a topic for every guardian's own ability (quiz-gated
-moves, move leveling, passives, status effects, hybrid fusion, transmutation,
-host doping, teleportation), the Settings station, and Story Mode vs.
+reaching your first goal. In the Lab, click **Tutorial** to reread any of
+them, alongside a topic for every guardian's own ability (teleportation,
+transmutation, quiz-gated moves, hybrid fusion, host doping, move leveling,
+status effects, passives), the Settings station, and Story Mode vs.
 Superposition Mode. Pick any topic on the left to read it on the right.
+
+In Story Mode the list holds whatever you have found so far, in the order
+you find it: a tip appears once it has been shown to you, and a guardian's
+topic once you have met that guardian, so the page fills in as you play.
+Superposition Mode lists every topic from the start, like everything else in
+that mode.
 
 ![A tutorial tip introducing the guardians](screenshots/tutorial-tip.png)
 

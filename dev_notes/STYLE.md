@@ -247,14 +247,18 @@ than appending a changelog, so this always reflects current reality.
   buttons.
 - **Tutorial** (`scenes/panels/hubStations.ts`'s `showTutorialTopics`, stroked cyan `0x5ad9ff`,
   `LIST_DETAIL_PANEL_W` wide) is a list+detail panel ("List+detail panels" below) over
-  `data/tutorial.ts`'s `TUTORIAL_PAGES` -- the same two-column shape a guardian's own browsed
-  panel uses, just with no crystal/move art to preview. The left column names every topic (its
-  own short `listLabel` where a topic has one, its full `title` otherwise), paginated once the
-  set outgrows one page; the right column shows the selected topic's full title and body, with
-  the same floor-`9`px shrink-to-fit loop the panel always used for a long body. Every topic is
-  visible in the list up front rather than reachable only by paging through the rest. Selecting a
-  row is a scoped update (see "A preview click is a scoped update" further below), not a panel
-  rebuild -- only the detail pane and panel chrome re-render, the list rows stay on screen.
+  `data/tutorial.ts`'s `visibleTutorialPages` -- the same two-column shape a guardian's own
+  browsed panel uses, just with no crystal/move art to preview. The left column names each topic
+  the save has reached (its own short `listLabel` where a topic has one, its full `title`
+  otherwise), paginated once the set outgrows one page; the right column shows the selected
+  topic's full title and body, with a floor-`9`px shrink-to-fit loop for a long body. Every
+  listed topic is visible up front rather than reachable only by paging through the rest, and
+  the list grows as the playthrough does -- Story Mode lists only discovered topics, in the
+  order the game reveals them, so the panel is short on a fresh save and fills out toward
+  seventeen rows across two pages; Superposition Mode lists all seventeen from the start.
+  Selecting a row is a scoped update (see "A preview click is a scoped update" further below),
+  not a panel rebuild -- only the detail pane and panel chrome re-render, the list rows stay on
+  screen.
 
 ## Overworld path
 
