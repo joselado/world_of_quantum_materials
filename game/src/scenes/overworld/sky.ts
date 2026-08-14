@@ -6,12 +6,10 @@ import { HORIZON_Y, CANVAS_W, CANVAS_H } from '../../art/perspective';
 import { DRAW_DISTANCE_TILES, projectTile } from './projection';
 import { groundColor } from './terrain/color';
 
-// The far quarter of the draw distance is painted as pure atmosphere by
-// drawHorizonBand rather than left to the per-tile fog, which caps well short
-// of the haze color and would otherwise let the deepest rows surface as a
-// visible edge. It is also exactly where the detail passes (tile decoration,
-// terrain accents, actor sprites) already stop, so the band covers only
-// ground that had nothing left on it.
+// Where drawHorizonBand starts thickening the per-tile fog into pure
+// atmosphere, as a fraction of the draw distance. It is exactly where the
+// detail passes (tile decoration, terrain accents, actor sprites) already
+// stop, so the band covers only ground that had nothing left on it.
 const HORIZON_BAND_FROM = 0.75;
 // How far south of the goal row the next world's fog starts bleeding into
 // this one's, in tiles, and how much of it has arrived by the goal row
