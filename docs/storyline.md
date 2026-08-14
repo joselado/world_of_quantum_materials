@@ -36,6 +36,15 @@ darkening, deepest in the direction you are walking.
 
 <img src="../screenshots/docs-storyline-map.png" width="420" alt="The map of the ten worlds, each marked in its own world's colour along one landmass">
 
+That map is the one you travel by — the ten worlds marked along a single
+landmass. A map is a record, and records are how these worlds are known at
+all: somebody walks, somebody survives, somebody writes down what they saw.
+Watch how the writing fares as the road goes on: a survey comes back
+unfinished, ink gives out, a transcription runs out of paper — until, at
+the last threshold, nothing comes back at all. The deeper worlds are not
+less real. They are harder to *know*. And everything that was ever learned
+about them went somewhere.
+
 The ten worlds are one road, not ten rooms — you can see the next one on the
 horizon from the far end of each — and the light dies as you walk it:
 morning, midday, afternoon, storm, twilight, night, and then no sky at all,
@@ -168,7 +177,8 @@ I *am* the boundary."
 
 A surveyor came off the ledges with a map she could not finish: a trunk road
 splitting into two branches, each splitting again perpendicular and smaller,
-and the fourth split coming out the same shape as the first. Banded indigo
+and the fourth split coming out the same shape as the first. Hers is the first
+record this road hands back unfinished; it will not be the last. Banded indigo
 ground under a stormy dusk, glowing channels at every band boundary, and
 lightning cracking down into the ground you are not meant to walk on.
 
@@ -271,7 +281,8 @@ wave and fade out somewhere in my back."
 Someone once tried to write the steppe down — every spin, every direction,
 exactly, on paper. They got to forty spins and stopped: two choices per
 spin, doubling with every spin added, and forty already needs a trillion
-numbers. There was not enough paper.
+numbers. There was not enough paper. There was never going to be: a quantum
+world written down exactly outgrows any world you could write it in.
 
 This world is that record, built. There is no ground under it and no sky
 over it — outside the network there is no space to have either, and the sun
@@ -387,6 +398,22 @@ currently are while taking the ground back behind you as you walk. Its wild
 encounters are the **hybrids** — the fused crystals from Majorana's station,
 found nowhere else in these worlds.
 
+Then you look up. Every world on this road keeps the next one on its
+skyline; this corridor has no next world, and what hangs in its sky instead
+is the map — the same landmass you have been reading since the colonnade,
+reflected in a mirrored sky: foreshortened, tilted away from you, rippling
+faintly with the world's shimmer, silver-violet, glowing with its own light
+behind the same haze that dims everything else here. Every marker and every
+name has been stripped from it. You recognize it anyway, the way you
+recognize a coastline you have walked the length of. And traced faintly
+across it, luminous, is the one thing no other copy of the map carries:
+your route — every step of your walk, from the first hedgerow to this door.
+No traveler ever sees the worlds this way. A walker gets one horizon at a
+time; the only thing that can see the whole map at once is a thing that has
+consumed everything on it. This is where everything ever learned about
+these worlds went. The sky here is a mirror, and what it shows is
+everything it has eaten.
+
 Every world behind you stood on a single law. A symmetry. A repetition. A
 field. A boundary that could not be crossed without paying for it. This one
 obeys no such law. It was built the way an oracle is built — not from first
@@ -422,7 +449,9 @@ colors, your stance, your quasiparticle, copied so precisely that it looks
 more certain of itself than you have ever looked. **The Adapted.** It
 mirrors whatever type you are currently wearing, and every time you land a
 hit it reshapes itself into something that hosts the quasiparticle you just
-attacked with. "Every move you have ever landed, I have already survived
+attacked with. The sky mirrors what this world took from the nine behind
+you; the thing in front of you mirrors what it took from *you*. "Every move
+you have ever landed, I have already survived
 once. This is not a fight you can win by trying harder. Trying harder is how
 you built me."
 
@@ -438,7 +467,8 @@ It reaches for every trick it ever watched you land and still comes up
 short. What it holds is a record of you — and nothing on record is still in
 superposition, but you are not your record. A model trained on nine worlds
 of your choices is a model of who you *were*, and you are the one thing in
-these worlds that was never finished. You out-adapt your own reflection.
+these worlds that was never finished. The route in the sky holds every step
+you have taken — and not the next one. You out-adapt your own reflection.
 Every symmetry, every edge state, every fractional charge you fought to
 protect holds on its own now, with nothing left studying how to unmake it.
 
