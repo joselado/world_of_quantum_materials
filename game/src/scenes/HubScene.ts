@@ -96,9 +96,14 @@ const GUARDIAN_PLATE_REST_ALPHA = 0.001;
 const GUARDIAN_PLATE_HOVER_ALPHA = 0.14;
 // Which world's guardian stands in which slot, each cluster listed in the
 // order its slots are read: the solo top avatar first, then the upper pair
-// left-to-right, then the lower pair.
+// left-to-right, then the lower pair. The two lists run the worlds
+// anticlockwise around the room -- 1 at the top of the left corner, down the
+// left side, across the bottom, back up the right side to Skłodowska-Curie,
+// who leads the circle of guardians, at the top of the right corner. The
+// right cluster is the left one mirrored and walked in reverse, so the two
+// corners read as one loop rather than two stacks.
 const GUARDIAN_LEFT_CLUSTER = [1, 2, 3, 4, 5];
-const GUARDIAN_RIGHT_CLUSTER = [10, 7, 8, 9, 6];
+const GUARDIAN_RIGHT_CLUSTER = [10, 8, 9, 6, 7];
 
 export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // Public, not private -- scenes/panels/hubStations.ts's Moves/Stats/

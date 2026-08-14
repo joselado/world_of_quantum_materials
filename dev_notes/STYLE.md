@@ -1977,8 +1977,11 @@ than the caller's requested budget) for its own layout math.
   avatar over a pair over a pair (`GUARDIAN_ROW_TOP` `96`, `GUARDIAN_ROW_PITCH` `78`, cluster
   centers `96` in from either wall), each pair read left-to-right. `GUARDIAN_LEFT_CLUSTER`
   and `GUARDIAN_RIGHT_CLUSTER` state which world stands in which slot: worlds 1-5 down the
-  left cluster, and 10 over 7-8 over 9-6 down the right, so Skłodowska-Curie, who leads the
-  circle of guardians, crowns her own side of the room. A slot belongs to its world, so a guardian
+  left cluster, and 10 over 8-9 over 6-7 down the right. The two run the worlds anticlockwise
+  around the room -- 1 at the top of the left corner, down the left side, across the bottom and
+  back up the right to Skłodowska-Curie, who leads the circle of guardians, crowning her own
+  corner. The right cluster is the left one mirrored and walked in reverse, so the corners read
+  as one loop rather than two stacks. A slot belongs to its world, so a guardian
   never moves between visits as the roster grows -- an unmet guardian simply leaves their slot
   empty, and the corners fill in as the player works through the worlds. The corners are the
   only part of the wall wide enough: the room's quote sits between them (wrapped `420` to stay
