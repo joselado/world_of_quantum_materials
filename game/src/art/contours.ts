@@ -9,6 +9,15 @@
 // (i, j) sits at (i - 0.5, j - 0.5). OverworldScene builds this once per
 // world-state alongside its terrain plan and only projects the result each
 // frame.
+//
+// The curve starts on the grid lines themselves and is free to move to either
+// side of them, so the smoothing carries no systematic bias: along a straight
+// run of boundary the Laplacian is zero and the drawn edge lands exactly on
+// the tile edge the movement grid collides against, and only turns actually
+// bend it. That symmetry is also what lets a diagonal staircase smooth into a
+// diagonal rather than a scallop -- reaching the diagonal needs the corners on
+// one side to move inward and those on the other to move outward by the same
+// amount.
 
 export interface ContourPoint {
   x: number;
@@ -27,10 +36,10 @@ export interface TileContour {
   outline: ContourPoint[];
   // Soft contact-shadow strips hugging this tile's share of the boundary, one
   // strip per band per unbroken run of boundary sides. On a walkable tile they
-  // lie just inside the floor; on a solid tile they cover the sliver of its
-  // top that overhangs the boundary, so the same junction is shaded from both
-  // sides. A run is one strip rather than one per side precisely so two strips
-  // can never overlap at a turn and stack their alphas into an ink blot.
+  // lie just inside the floor; on a solid tile they lie just beyond it, so the
+  // same junction is shaded from both sides. A run is one strip rather than one
+  // per side precisely so two strips can never overlap at a turn and stack
+  // their alphas into an ink blot.
   shadow: ContourShadow[];
   // The walkable side's lit lip, just inside the shadow: a polyline per run of
   // boundary sides, stroked pale so the floor catches an edge light against
@@ -38,34 +47,36 @@ export interface TileContour {
   rim: ContourPoint[][];
 }
 
-// How far the smoothed boundary is pulled toward the walkable side of the
-// grid line before any smoothing. This bias is what lets the curve move in
-// *both* directions during smoothing while never entering a solid tile's
-// footprint. Without it only convex corners could move, and a diagonal
-// staircase would smooth into a scallop instead of a diagonal. It also sets
-// how wide the solid side's own share of the contact shadow can be
-// (SOLID_SHADOW_BANDS below), since that band covers exactly the sliver of a
-// solid tile lying outside the curve.
-const INSET = 0.25;
-// Per-axis cap on how far a lattice corner may travel, kept under half a tile
-// so a deformed tile polygon can never fold over itself. Exported because it
-// also bounds how far a boundary curve can vacate a walkable tile's footprint
-// -- OverworldScene widens its off-grid margin columns by exactly this much
-// to tuck under the curve where the grid edge meets walkable floor.
-export const MAX_OFFSET = 0.45;
+// Cap on how far a lattice corner may travel from the grid, and the one
+// number that keeps the drawn boundary honest about which tiles are walkable.
+// sqrt(2)/4 is what both constraints on it independently ask for:
+//   - A corner sits sqrt(2)/2 from the centre of each of the four tiles that
+//     meet there, so capping its travel at sqrt(2)/4 leaves the curve at least
+//     sqrt(2)/4 of a tile clear of every one of those centres. That clearance
+//     is the margin an entity standing on a tile actually gets, since entities
+//     stand at tile centres (OverworldScene's `foot`/CAMERA_BACK_TILES).
+//   - It is also exactly how far a 45-degree staircase's corners sit from the
+//     diagonal through its edge midpoints, so the smoothing can still pull a
+//     staircase all the way onto a clean diagonal rather than a scallop.
+// Being under half a tile, it also keeps a deformed tile polygon from folding
+// over itself. Exported because it bounds how far a boundary curve can vacate
+// a walkable tile's footprint -- OverworldScene widens its off-grid margin
+// columns by exactly this much to tuck under the curve where the grid edge
+// meets walkable floor.
+export const MAX_OFFSET = Math.SQRT2 / 4;
 const SMOOTH_ITERATIONS = 3;
 const SMOOTH_LAMBDA = 0.5;
 // Sub-segments each boundary tile-edge is drawn as. Both tiles sharing the
 // edge use the same sub-points, so the curve is watertight.
 const EDGE_SUBDIVISIONS = 4;
 // Contact-shadow band depths, measured from the boundary curve. The walkable
-// side gets two stacked bands for a soft falloff; the solid side gets one
-// covering its whole overhang.
+// side gets two stacked bands for a soft falloff; the solid side gets a single
+// deeper one, since nothing on that side needs to stay readable underneath it.
 const FLOOR_SHADOW_BANDS: Array<[number, number]> = [
   [0, 0.13],
   [0.13, 0.3],
 ];
-const SOLID_SHADOW_BANDS: Array<[number, number]> = [[0, INSET]];
+const SOLID_SHADOW_BANDS: Array<[number, number]> = [[0, 0.25]];
 // How far inside the boundary the lit lip runs -- inside the darkest shadow
 // band's own start, so the two read as one edge rather than two lines.
 const RIM_OFFSET = 0.045;
@@ -76,7 +87,8 @@ interface BoundaryEdge {
   nx: number; // inward normal (toward the walkable side), axis-aligned unit
   ny: number;
   // The straight grid line this edge lies on, as a tile-space coordinate on
-  // the normal axis -- smoothed points may never cross to its outward side.
+  // the normal axis -- what a smoothed point's own MAX_OFFSET cap is measured
+  // from, in either direction.
   base: number;
   subs: ContourPoint[]; // interior points, ordered from `a` toward `b`
 }
@@ -123,28 +135,22 @@ export function buildContourGrid(walkable: boolean[][], gridW: number, gridH: nu
   for (let c = 0; c < cornerCount; c++) {
     if (incident[c].length === 0) continue;
     isBoundary[c] = 1;
-    let nx = 0;
-    let ny = 0;
-    for (const e of incident[c]) {
-      nx += edges[e].nx;
-      ny += edges[e].ny;
-    }
-    const len = Math.hypot(nx, ny);
-    posX[c] = latticeX(c, stride) + (len > 0 ? (nx / len) * INSET : 0);
-    posY[c] = latticeY(c, stride) + (len > 0 ? (ny / len) * INSET : 0);
+    posX[c] = latticeX(c, stride);
+    posY[c] = latticeY(c, stride);
   }
 
+  // Radially, not per axis: the guarantee MAX_OFFSET carries is about the
+  // corner's distance from the tile centres around it, which a per-axis cap
+  // would let a diagonal move past by a factor of sqrt(2).
   const clampCorner = (c: number) => {
     const bx = latticeX(c, stride);
     const by = latticeY(c, stride);
-    let dx = posX[c] - bx;
-    let dy = posY[c] - by;
-    for (const e of incident[c]) {
-      if (edges[e].nx !== 0 && dx * edges[e].nx < 0) dx = 0;
-      if (edges[e].ny !== 0 && dy * edges[e].ny < 0) dy = 0;
-    }
-    posX[c] = bx + clamp(dx, -MAX_OFFSET, MAX_OFFSET);
-    posY[c] = by + clamp(dy, -MAX_OFFSET, MAX_OFFSET);
+    const dx = posX[c] - bx;
+    const dy = posY[c] - by;
+    const len = Math.hypot(dx, dy);
+    if (len <= MAX_OFFSET) return;
+    posX[c] = bx + (dx / len) * MAX_OFFSET;
+    posY[c] = by + (dy / len) * MAX_OFFSET;
   };
 
   const across = (e: number, c: number) => (edges[e].a === c ? edges[e].b : edges[e].a);
@@ -179,10 +185,10 @@ export function buildContourGrid(walkable: boolean[][], gridW: number, gridH: nu
       const p = catmullRom(p0, p1, p2, p3, k / EDGE_SUBDIVISIONS);
       if (edge.ny !== 0) {
         p.x = clamp(p.x, Math.min(p1.x, p2.x), Math.max(p1.x, p2.x));
-        p.y = edge.base + clamp((p.y - edge.base) * edge.ny, 0, MAX_OFFSET) * edge.ny;
+        p.y = edge.base + clamp(p.y - edge.base, -MAX_OFFSET, MAX_OFFSET);
       } else {
         p.y = clamp(p.y, Math.min(p1.y, p2.y), Math.max(p1.y, p2.y));
-        p.x = edge.base + clamp((p.x - edge.base) * edge.nx, 0, MAX_OFFSET) * edge.nx;
+        p.x = edge.base + clamp(p.x - edge.base, -MAX_OFFSET, MAX_OFFSET);
       }
       edge.subs.push(p);
     }

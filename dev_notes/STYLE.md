@@ -324,10 +324,13 @@ than appending a changelog, so this always reflects current reality.
   - The walkable/impassable boundary is traced on the tile lattice and redrawn as a curve
     (`art/contours.ts`, "Overworld terrain rendering" in CODEMAP.md), so a region edge that
     turns reads as an organic shoreline rather than a stair-step of axis-aligned quads. The
-    curve is pulled 0.25 tiles onto the walkable side of the grid line before smoothing, which
-    is what lets it move in *both* directions during smoothing without a deformed tile
-    ever folding over itself; without the bias only convex corners could move, and a diagonal
-    staircase would smooth into a scallop instead of a diagonal.
+    curve carries no bias to either side: it starts on the grid lines themselves and bends
+    only where the boundary turns, so along a straight run the drawn edge lands exactly on the
+    tile edge movement collides against, and a diagonal staircase smooths into a diagonal
+    rather than a scallop. No corner travels more than `sqrt(2)/4` of a tile from the lattice,
+    which leaves the curve at least that far clear of every tile centre -- the margin an
+    entity standing on a tile gets, since entities stand at tile centres (see "Standing on a
+    tile" below).
   - There is no per-tile seam stroke, so a run of same-kind tiles reads as one continuous
     region rather than a grid.
   - A **contact shadow** -- two translucent black bands on the walkable side of the boundary
@@ -357,6 +360,17 @@ than appending a changelog, so this always reflects current reality.
   boundary strips almost everywhere, so this surfaces mainly where perspective foreshortening
   hides such a strip behind the domain in front of it; world 9's `biomeOverride` patch edges
   are tile-quantized the same way, which suits that world's glitch identity).
+- **Standing on a tile.** Everything in the world -- the player's own avatar, wild crystals,
+  the boss golem, guardians, doors, pickups -- is placed by its *ground contact* (the point its
+  shadow is drawn at, `foot` in `OverworldScene`'s `WorldSprite`), and that contact lands on the
+  projected centre of the tile it occupies, never on a tile edge. Together with the unbiased
+  boundary curve above, that is what keeps a crystal walked flush against terrain reading as
+  standing *next to* it rather than in it, at every distance. Art that deliberately hovers with
+  no contact of its own -- a qumatessence cloud, a guardian adrift -- uses a zero offset, which
+  hangs it over the tile centre instead. The player's avatar is drawn at one fixed on-screen
+  spot, so the camera sits a fixed distance behind the player's tile
+  (`CAMERA_BACK_TILES`) and that spot is derived from the projection rather than picked by eye;
+  the ground the player has already walked over is what fills the bottom of the frame.
 - Decoration (flowers / crystal glints) is placed in the off-path terrain only, not on
   walkable tiles -- those are reserved for wild encounters and qumatessence pickups.
 - Qumatessence tokens are scattered across a handful of walkable tiles per map
@@ -517,7 +531,9 @@ than the caller's requested budget) for its own layout math.
   `variantOverride` param, not derived from `TYPE_LOOK`, since a compound's dimensionality
   doesn't track its main type.
 - Sizes: player `PLAYER_CRYSTAL_SIZE = 34` (largest, always on-screen), wild encounters
-  `CRYSTAL_SIZE = 22`.
+  `CRYSTAL_SIZE = 22`. Out on the map both carry a flat contact shadow one `size` below the
+  container origin -- the same convention the boss golem's own pooled shadow follows, and what
+  "Standing on a tile" above places on the tile centre.
 - **Per-compound identity.** `TYPE_LOOK` fixes one shard/cluster/prism/layer/twisted
   silhouette + base color per `MaterialType`, but individual compounds of the same type each
   get their own visual variation rather than rendering as that same silhouette in only a

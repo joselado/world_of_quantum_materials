@@ -14,6 +14,10 @@ import type { CrystalVariant } from '../data/types';
 // the contact shadow pooled under them.
 export const BOSS_SILHOUETTE_TOP = 1.4;
 export const BOSS_SILHOUETTE_BOTTOM = 1.11;
+// Where the golem plants its feet and pools its contact shadow, in the same
+// units -- the point a caller standing it on a tile lands on that tile's
+// ground (OverworldScene.spawnBossSprite's `foot`).
+export const BOSS_FOOT = 0.98;
 
 // The golem's outline, traced once in units of `size` (y positive downward,
 // center at the origin) and drawn as a single dark polygon under every
@@ -145,7 +149,7 @@ export function makeBossCrystal(
   variant: CrystalVariant
 ): Phaser.GameObjects.Container {
   const container = scene.add.container(0, 0);
-  const feetY = size * 0.98;
+  const feetY = size * BOSS_FOOT;
   const poly = (k: number) => SILHOUETTE.map(([x, y]) => ({ x: x * size * k, y: y * size * k }));
 
   // A plain dark contact shadow, normal-blended rather than additive: mass
