@@ -162,8 +162,7 @@ function renderMoveLevelList(
     columns.rightColCenterX,
     rightY,
     columns.rightColW,
-    level,
-    `feynman:${move.id}`
+    level
   );
 
   if (level >= 3) {
