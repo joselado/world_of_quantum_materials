@@ -301,6 +301,41 @@ the player currently is, and **the path dissolving behind them as the world
 re-forms ahead**: the name has to be a description rather than a boast, so the
 world must visibly *take* something.
 
+**The surround is the player, rendered.** The impassable terrain does not merely
+reconfigure — what it reconfigures *into* is increasingly defined copies of the
+player's own crystal, sharpening as they approach the boss. With the path
+dissolving behind them, the full loop is **ingestion at the back and rendering at
+the front**: the world eats the player's trail and emits the player. That is the
+training loop drawn as terrain, and it cashes the devouring and the mirror in one
+gesture rather than two.
+
+**The copies never resolve completely.** The terrain asymptotes; only the boss
+converges. Every reflection stays slightly wrong — soft-edged, off-colour,
+incomplete, the pose not quite right — for three reasons at once: the Adapted
+must remain the only *perfect* copy in the world or it walks on stage as a
+duplicate of scenery; samples from a still-training model genuinely do vary in
+fidelity, and the converged model is the fight; and almost-you is more
+frightening than exactly-you, because exactness reads as a mirror while a
+near-miss reads as something *trying*.
+
+**Reflections are surface phenomena; actors are ground phenomena.** A copy
+standing *on* the terrain is a second character, while a copy visible *in* it is
+a reflection — so they are clipped inside the surround's facets, under the
+world's sheen, tinted toward silver-violet, with no ground contact and no cast
+shadow. The behaviour that settles it beyond doubt: **they move only when the
+player moves, with a lag.** Mimicry-with-delay is the one thing every player
+instantly reads as a reflection, and it cannot be mistaken for an NPC because it
+has no volition. They are never interactable — no prompt, and clicks fall
+through, since they are world rather than object. The player's own crystal keeps
+the highest contrast and saturation on screen; reflections stay inside the
+backdrop's compressed band.
+
+**The lag shortens as definition rises, and never reaches zero.** Zero lag, full
+definition and unison all belong to the fight alone — the terrain carries the
+convergence from faint to almost, and the battle's own tightening canon carries
+the last lap from almost to unison. The two media relay rather than duplicate,
+handing off at the door.
+
 The name is the most deeply verified in the game, and not by texture: World 10's
 generator literally mirrors the player, reusing whichever of worlds 1–8's
 generator matches their current material's main type.
@@ -694,6 +729,13 @@ One cheap seed makes the turn land rather than arrive from nowhere: somewhere
 late — World 8 or 9 — a few crystalline fragments of the player's *own* material
 embedded in the impassable surround. The first hint that the world contains
 things like you, immediately before it becomes a thing that *is* you.
+
+**Those fragments must stay crude**: raw, unshaped, mineral, an accident of
+geology rather than a likeness. The gradient only works if the two stages read as
+different phenomena — **ore, then portrait** — so that World 10's rendered
+reflections (§2) land as categorically new rather than as more of the same. Left
+unspecified, this is exactly the detail an artist will naturally polish, and
+polishing it turns the seed into an early reflection and costs the reveal.
 
 ---
 
