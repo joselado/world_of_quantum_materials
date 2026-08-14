@@ -1,13 +1,21 @@
-import type Phaser from 'phaser';
 import type { GuardianPanelHost } from '../OverworldScene';
 import { makeKondoAvatar } from '../../art/kondo';
+import { killTweensDeep } from '../../art/crystals';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
 import { fontScale } from '../../ui/text';
 import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
-import { MOVES, KONDO_MOVE_IDS, shopCost, moveDisplayName } from '../../data/materials';
+import { MOVES, KONDO_MOVE_IDS, shopCost, moveDisplayName, getMoveLevel } from '../../data/materials';
 import { persistFromRegistry } from '../../data/save';
-import { LIST_DETAIL_PANEL_W, listDetailColumns, renderListColumn, insertColumnDivider, renderSelfBuffMoveDetailHeader } from './listDetail';
+import {
+  LIST_DETAIL_PANEL_W,
+  listDetailColumns,
+  renderListColumn,
+  destroyPanel,
+  insertColumnDivider,
+  renderSelfBuffMoveDetailHeader,
+  renderStatusAndConfirm,
+} from './listDetail';
 
 // Kondo stands at world 8's middle tile (WORLD_GUARDIANS) and sells three
 // self-buff moves (data/materials.ts's KONDO_MOVE_IDS -- Screening
@@ -41,6 +49,13 @@ import { LIST_DETAIL_PANEL_W, listDetailColumns, renderListColumn, insertColumnD
 // never a per-turn choice in the battle move menu. None of the three is
 // gated by MOVE_COMPATIBILITY, so all three are always for sale until
 // bought -- no empty/wrong-form state to render here.
+//
+// A preview click is a scoped update, not a panel rebuild (CODEMAP's
+// "scoped update" convention): the avatar, intro and list rows are built
+// once per panel open, and clicking a row only restyles the highlighted row
+// (listResult.setSelectedId) and re-renders `detailBlock`/`chromeBlock`.
+// Buying or activating still rebuilds the whole panel, since both change
+// state every row's own label reads.
 export function showKondoPanel(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
 
@@ -48,6 +63,11 @@ export function showKondoPanel(scene: GuardianPanelHost) {
   const top = 20;
   const container = scene.add.container(0, 0).setDepth(100);
   scene.dialogueContainer = container;
+
+  // Added first so everything below (divider, footer, panel background)
+  // renders beneath every row/button added to `container` afterward.
+  const chromeBlock = scene.add.container(0, 0);
+  container.add(chromeBlock);
 
   let y = top;
 
@@ -77,24 +97,11 @@ export function showKondoPanel(scene: GuardianPanelHost) {
   container.add(intro);
   y += intro.height + 14;
 
-  y = renderKondoMoves(scene, container, y, panelWidth);
-  y += 8;
-  y = scene.renderFarewellFooter(container, y);
-  y += 8;
-
-  const panelHeight = y - top;
-  const panel = scene.add
-    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
-    .setStrokeStyle(2, 0xe86a44);
-  container.addAt(panel, 0);
-}
-
-function renderKondoMoves(scene: GuardianPanelHost, container: Phaser.GameObjects.Container, y: number, panelWidth: number): number {
   const panelLeft = CANVAS_W / 2 - panelWidth / 2;
   const columns = listDetailColumns(panelLeft);
   const columnsTop = y;
 
-  const effectivePreview = KONDO_MOVE_IDS.includes(scene.kondoMovePreview ?? '') ? (scene.kondoMovePreview as string) : KONDO_MOVE_IDS[0];
+  let preview = KONDO_MOVE_IDS.includes(scene.kondoMovePreview ?? '') ? (scene.kondoMovePreview as string) : KONDO_MOVE_IDS[0];
 
   const listResult = renderListColumn({
     scene,
@@ -105,85 +112,99 @@ function renderKondoMoves(scene: GuardianPanelHost, container: Phaser.GameObject
     items: KONDO_MOVE_IDS,
     idFor: (id) => id,
     labelFor: (id) => moveDisplayName(scene.game.registry, id),
-    selectedId: effectivePreview,
+    selectedId: preview,
     page: scene.kondoMovePage,
     onPageChange: (page) => {
       scene.kondoMovePage = page;
-      scene.dialogueContainer?.destroy(true);
+      destroyPanel(scene);
       showKondoPanel(scene);
     },
     onSelect: (id) => {
       scene.kondoMovePreview = id;
-      scene.dialogueContainer?.destroy(true);
-      showKondoPanel(scene);
+      preview = id;
+      listResult.setSelectedId(id);
+      renderDetail();
     },
   });
   scene.kondoMovePage = listResult.page;
 
-  const id = effectivePreview;
-  const move = MOVES[id];
-  const displayName = moveDisplayName(scene.game.registry, id);
-  let rightY = columnsTop;
-  rightY = renderSelfBuffMoveDetailHeader(scene, container, scene.playerMaterial, displayName, move.class, columns.rightColCenterX, rightY, columns.rightColW);
+  const detailBlock = scene.add.container(0, 0);
+  container.add(detailBlock);
 
-  const descScale = Math.min(fontScale(scene), 1.2);
-  const descText = scene.add
-    .text(columns.rightColCenterX, rightY, move.description ?? '', {
-      fontSize: `${Math.round(11 * descScale)}px`,
-      color: REFERENCE_BLUE_GREY_HEX,
-      align: 'center',
-      wordWrap: { width: columns.rightColW },
-    })
-    .setOrigin(0.5, 0);
-  container.add(descText);
-  rightY += descText.height + 6;
+  const renderDetail = () => {
+    killTweensDeep(scene, detailBlock);
+    detailBlock.removeAll(true);
+    chromeBlock.removeAll(true);
 
-  const unlocked = scene.getUnlockedMoves();
-  const isLearned = unlocked.includes(id);
-  const active = (scene.game.registry.get('kondoActiveMove') as string | null) ?? null;
-  const isActive = id === active;
-  const cost = shopCost(move);
-  const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
-  const affordable = isLearned || tokens >= cost;
+    const id = preview;
+    const move = MOVES[id];
+    const displayName = moveDisplayName(scene.game.registry, id);
+    let rightY = columnsTop;
+    rightY = renderSelfBuffMoveDetailHeader(
+      scene,
+      detailBlock,
+      scene.playerMaterial,
+      displayName,
+      move.class,
+      columns.rightColCenterX,
+      rightY,
+      columns.rightColW,
+      getMoveLevel(scene.game.registry, id)
+    );
 
-  const statusScale = Math.min(fontScale(scene), 1.2);
-  const statusLabel = !isLearned
-    ? `Costs ${cost} qumatessence to learn.`
-    : isActive
-    ? `${displayName} is your active technique.`
-    : 'Learned -- not currently active.';
-  const statusText = scene.add
-    .text(columns.rightColCenterX, rightY, statusLabel, {
-      fontSize: `${Math.round(11 * statusScale)}px`,
-      color: REFERENCE_BLUE_GREY_HEX,
-      align: 'center',
-      wordWrap: { width: columns.rightColW },
-    })
-    .setOrigin(0.5, 0);
-  container.add(statusText);
-  rightY += statusText.height + 6;
+    const descScale = Math.min(fontScale(scene), 1.2);
+    const descText = scene.add
+      .text(columns.rightColCenterX, rightY, move.description ?? '', {
+        fontSize: `${Math.round(11 * descScale)}px`,
+        color: REFERENCE_BLUE_GREY_HEX,
+        align: 'center',
+        wordWrap: { width: columns.rightColW },
+      })
+      .setOrigin(0.5, 0);
+    detailBlock.add(descText);
+    rightY += descText.height + 6;
 
-  const buttonScale = Math.min(fontScale(scene), 1.3);
-  const buttonLabel = !isLearned ? `Learn ${displayName} (${cost} qumatessence)` : isActive ? `${displayName} (active)` : `Make ${displayName} active`;
-  const confirmBtn = scene.addDialogueButtonAt(
-    container,
-    columns.rightColCenterX,
-    rightY,
-    buttonLabel,
-    () => {
-      if (isActive) return;
-      if (isLearned) activateKondoMove(scene, id);
-      else buyKondoMove(scene, id, cost);
-    },
-    columns.rightColW,
-    `${Math.round(13 * buttonScale)}px`
-  );
-  if (isActive || !affordable) confirmBtn.setAlpha(0.5);
-  rightY += confirmBtn.height;
+    const unlocked = scene.getUnlockedMoves();
+    const isLearned = unlocked.includes(id);
+    const active = (scene.game.registry.get('kondoActiveMove') as string | null) ?? null;
+    const isActive = id === active;
+    const cost = shopCost(move);
+    const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
+    const affordable = isLearned || tokens >= cost;
 
-  const columnsBottom = Math.max(listResult.bottom, rightY);
-  insertColumnDivider(scene, container, columns.dividerX, columnsTop, columnsBottom);
-  return columnsBottom + 6;
+    rightY = renderStatusAndConfirm({
+      scene,
+      container: detailBlock,
+      centerX: columns.rightColCenterX,
+      y: rightY,
+      colW: columns.rightColW,
+      status: !isLearned
+        ? `Costs ${cost} qumatessence to learn.`
+        : isActive
+        ? `${displayName} is your active technique.`
+        : 'Learned -- not currently active.',
+      confirm: {
+        label: !isLearned ? `Learn ${displayName} (${cost} qumatessence)` : isActive ? `${displayName} (active)` : `Make ${displayName} active`,
+        onClick: () => {
+          if (isActive) return;
+          if (isLearned) activateKondoMove(scene, id);
+          else buyKondoMove(scene, id, cost);
+        },
+        dimmed: isActive || !affordable,
+      },
+    });
+
+    const columnsBottom = Math.max(listResult.bottom, rightY);
+    insertColumnDivider(scene, chromeBlock, columns.dividerX, columnsTop, columnsBottom);
+    let footerY = columnsBottom + 6 + 8;
+    footerY = scene.renderFarewellFooter(chromeBlock, footerY) + 8;
+    const panelHeight = footerY - top;
+    const panel = scene.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
+      .setStrokeStyle(2, 0xe86a44);
+    chromeBlock.addAt(panel, 0);
+  };
+  renderDetail();
 }
 
 function buyKondoMove(scene: GuardianPanelHost, id: string, cost: number) {
@@ -202,13 +223,13 @@ function buyKondoMove(scene: GuardianPanelHost, id: string, cost: number) {
     scene.game.registry.set('kondoActiveMove', id);
   }
   persistFromRegistry(scene.game.registry);
-  scene.dialogueContainer?.destroy(true);
+  destroyPanel(scene);
   showKondoPanel(scene);
 }
 
 function activateKondoMove(scene: GuardianPanelHost, id: string) {
   scene.game.registry.set('kondoActiveMove', id);
   persistFromRegistry(scene.game.registry);
-  scene.dialogueContainer?.destroy(true);
+  destroyPanel(scene);
   showKondoPanel(scene);
 }

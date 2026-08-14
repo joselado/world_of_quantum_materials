@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { makeCrystal } from '../../art/crystals';
+import type { GuardianPanelHost } from '../OverworldScene';
+import { killTweensDeep, makeCrystal } from '../../art/crystals';
 import { CANVAS_H } from '../../art/perspective';
 import { startMoveEffectPreview } from '../../art/moveEffectPreview';
 import { materialDisplayName } from '../../data/materials';
@@ -26,8 +27,9 @@ import { GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 // block a travelling-attack move-picking guardian's detail pane opens with),
 // and renderSelfBuffMoveDetailHeader (the same idea for a self-buff move
 // whose real effect centers on the caster rather than traveling -- Kondo's
-// panel) are three shared detail-pane openers every guardian panel's own
-// cost/status/confirm content sits below -- reused outside the paginated-
+// panel) are three shared detail-pane openers, and renderStatusAndConfirm
+// is the shared cost/status-line-plus-confirm-button tail every guardian
+// panel's pane closes with -- reused outside the paginated-
 // list shape too: Laughlin's/Skłodowska-Curie's own panels
 // (scenes/panels/laughlin.ts/sklodowskaCurie.ts) call renderMoveDetailHeader
 // from a bespoke, always-both-visible two-column layout (sideBySideColumns
@@ -35,8 +37,31 @@ import { GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 // ever has exactly two fixed moves worth showing, never a candidate list
 // worth paging through -- they don't import renderListColumn/
 // listDetailColumns at all.
+//
+// A browsed panel's preview click is a *scoped update*, not a panel
+// rebuild: the caller keeps its avatar/intro/list rows on screen, moves the
+// highlight with renderListColumn's own setSelectedId (below), and
+// re-renders only its detail pane and the divider/footer/panel-background
+// chrome whose height depends on it. Committing (a purchase, a
+// transmutation, a page flip) still tears the panel down and calls
+// showXPanel again, since those change what the list itself shows.
 
 export const LIST_DETAIL_PANEL_W = 720;
+
+// Tears down whichever panel container is currently open, ahead of a
+// showXPanel() call that rebuilds it (a page flip, a purchase, a
+// transmutation). Phaser's own destroy() reclaims the GameObjects but
+// leaves every tween still targeting them running, and a panel is full of
+// infinitely-repeating ones -- the guardian avatar's bob, makeCrystal's
+// per-shard sparkles, a hybrid halo's glow, Bloch's selection-ring pulse --
+// so a plain `dialogueContainer?.destroy(true)` leaks one more set of them
+// on every rebuild, forever. Every panel rebuild goes through here instead.
+export function destroyPanel(scene: GuardianPanelHost) {
+  if (!scene.dialogueContainer) return;
+  killTweensDeep(scene, scene.dialogueContainer);
+  scene.dialogueContainer.destroy(true);
+  scene.dialogueContainer = undefined;
+}
 
 export interface ListDetailColumns {
   leftX: number;
@@ -157,6 +182,13 @@ export interface RenderListColumnParams<T> {
 export interface RenderListColumnResult {
   bottom: number;
   page: number;
+  // Moves the gold-on-purple highlight to a different row by restyling the
+  // rows already on screen, without rebuilding the column. A preview-only
+  // row click uses this together with a scoped detail-pane re-render (see
+  // CODEMAP's "scoped update" convention) rather than tearing the whole
+  // panel down and running showXPanel again. Row heights are fixed
+  // (setFixedSize below), so nothing above or below needs re-measuring.
+  setSelectedId: (id: string | null) => void;
 }
 
 // Renders the left "candidate name" column: as many rows as fit above the
@@ -184,6 +216,7 @@ export function renderListColumn<T>(params: RenderListColumnParams<T>): RenderLi
   const clampedPage = Phaser.Math.Clamp(page, 0, totalPages - 1);
   const pageItems = items.slice(clampedPage * fitPerPage, clampedPage * fitPerPage + fitPerPage);
 
+  const rows: { id: string; text: Phaser.GameObjects.Text; baseColor: string }[] = [];
   let rowY = columnsTop;
   if (pageItems.length === 0) {
     const empty = scene.add
@@ -196,14 +229,16 @@ export function renderListColumn<T>(params: RenderListColumnParams<T>): RenderLi
     const id = idFor(item);
     const selected = id === selectedId;
     const label = labelFor(item);
+    const baseColor = colorFor?.(item) ?? '#cfd8ff';
     const rowText = scene.add
       .text(x, rowY, label, {
         fontSize: fontPx(scene, 12),
-        color: selected ? GOLD_ACCENT_HEX : colorFor?.(item) ?? '#cfd8ff',
+        color: selected ? GOLD_ACCENT_HEX : baseColor,
         backgroundColor: selected ? '#3a2a5c' : '#1c1c30',
         padding: { x: 8, y: 4 },
       })
       .setOrigin(0, 0);
+    rows.push({ id, text: rowText, baseColor });
     // Trim against the text's own natural (unfixed) width first --
     // setFixedSize below pins .width to the row's uniform box size, which
     // would make every row (even a short one) read as overflowing.
@@ -232,7 +267,14 @@ export function renderListColumn<T>(params: RenderListColumnParams<T>): RenderLi
     container.add(pageLabel);
     rowY += pageLabel.height + 4;
   }
-  return { bottom: rowY, page: clampedPage };
+  const setSelectedId = (id: string | null) => {
+    for (const row of rows) {
+      const selected = row.id === id;
+      row.text.setColor(selected ? GOLD_ACCENT_HEX : row.baseColor);
+      row.text.setBackgroundColor(selected ? '#3a2a5c' : '#1c1c30');
+    }
+  };
+  return { bottom: rowY, page: clampedPage, setSelectedId };
 }
 
 // Draws the vertical divider between the two columns, spanning from just
@@ -319,8 +361,8 @@ export function renderDetailCrystalHeader(
 // caller here has exactly one detail pane open at a time and so never needs
 // to pass one, except Laughlin's/Curie's own two-column panels, which have
 // two live simultaneously and key each by its own move id. `halfSpan`
-// (default 55, i.e. a 110px-wide stage, unchanged from before this param
-// existed) is how far the effect travels from `centerX` in each direction --
+// (default 55, i.e. a 110px-wide stage) is how far the effect travels from
+// `centerX` in each direction --
 // Laughlin's/Curie's own wider two-up columns (listDetail.ts's
 // sideBySideColumns) pass a larger value so the animation actually uses
 // more of the extra room their bespoke layout frees up, rather than leaving
@@ -367,6 +409,74 @@ export function renderMoveDetailHeader(
   return ny + nameText.height + 6;
 }
 
+export interface StatusAndConfirmParams {
+  scene: GuardianPanelHost;
+  container: Phaser.GameObjects.Container;
+  centerX: number;
+  y: number;
+  colW: number;
+  // The cost/state line: what this row costs, that it's already unlocked,
+  // that it's the form/world/technique the player is already on, etc.
+  status: string;
+  // Omitted when the previewed row has nothing to commit to -- Dresselhaus's
+  // current form, Bloch's current or still-undiscovered world -- in which
+  // case the status line stands alone.
+  confirm?: {
+    label: string;
+    onClick: () => void;
+    // Half-alpha "you can't do this right now" treatment: unaffordable, or
+    // already the active choice. Never blocks the click itself -- the
+    // handler's own guard does that, same as every other buy row.
+    dimmed?: boolean;
+  };
+  // Font-scale ceiling for the status line. 1.2 everywhere except Anderson's
+  // host-pick pane, which sits under two extra header lines of its own and
+  // buys the room back here.
+  statusCap?: number;
+  // Gap between the status line and the confirm button. 6 everywhere except
+  // Bloch's, the densest pane in the game (table + map + blurb + status +
+  // button + footer), where the 2px matters.
+  gapAfterStatus?: number;
+}
+
+// The cost/status line plus its confirm button -- the tail every guardian's
+// list+detail pane ends with, below whichever detail header (crystal, move,
+// self-buff move) that pane opens with. Shared by Dresselhaus/Anderson/
+// Majorana/Noether/Kondo/Bloch (scenes/panels/), which differ only in the
+// wording, the affordability check, and what the button actually commits --
+// none of which belongs here. Returns the y the pane continues at.
+export function renderStatusAndConfirm(params: StatusAndConfirmParams): number {
+  const { scene, container, centerX, y, colW, status, confirm, statusCap = 1.2, gapAfterStatus = 6 } = params;
+
+  const statusScale = Math.min(fontScale(scene), statusCap);
+  const statusText = scene.add
+    .text(centerX, y, status, {
+      fontSize: `${Math.round(11 * statusScale)}px`,
+      color: REFERENCE_BLUE_GREY_HEX,
+      align: 'center',
+      wordWrap: { width: colW },
+    })
+    .setOrigin(0.5, 0);
+  container.add(statusText);
+  let ny = y + statusText.height + gapAfterStatus;
+
+  if (confirm) {
+    const buttonScale = Math.min(fontScale(scene), 1.3);
+    const confirmBtn = scene.addDialogueButtonAt(
+      container,
+      centerX,
+      ny,
+      confirm.label,
+      confirm.onClick,
+      colW,
+      `${Math.round(13 * buttonScale)}px`
+    );
+    if (confirm.dimmed) confirmBtn.setAlpha(0.5);
+    ny += confirmBtn.height;
+  }
+  return ny;
+}
+
 // Self-buff variant of renderMoveDetailHeader above -- Kondo's three
 // self-buff moves (scenes/panels/kondo.ts) don't travel from an attacker to
 // a target the way an ordinary move does: BattleScene.resolveSelfBuff plays
@@ -384,7 +494,11 @@ export function renderMoveDetailHeader(
 // scenes/panels/franklin.ts's showFranklinPanel) with the move's effect
 // looping around it, before the same name-text tail every detail header
 // here uses. Not named after Kondo specifically so a future self-buff
-// guardian's panel can reuse it.
+// guardian's panel can reuse it. `level` (default 0) is the player's actual
+// Feynman MoveLevel for this move (`getMoveLevel`), threaded through the
+// same way renderMoveDetailHeader above threads its own, so a leveled
+// self-buff previews the escalating multi-trigger cascade a real cast plays
+// rather than the flat unleveled loop.
 export function renderSelfBuffMoveDetailHeader(
   scene: Phaser.Scene,
   container: Phaser.GameObjects.Container,
@@ -393,7 +507,8 @@ export function renderSelfBuffMoveDetailHeader(
   moveClass: MoveClass,
   centerX: number,
   y: number,
-  rightColW: number
+  rightColW: number,
+  level: MoveLevel = 0
 ): number {
   const stageH = 84; // same fixed "art, not text" block height renderMoveDetailHeader uses above
   const crystalSize = 34; // matches Franklin's own player-crystal render (art/franklin.ts)
@@ -411,6 +526,7 @@ export function renderSelfBuffMoveDetailHeader(
   startMoveEffectPreview({
     scene,
     moveClass,
+    level,
     from: { x: centerX, y: crystalCenterY },
     to: { x: centerX, y: crystalCenterY },
   });

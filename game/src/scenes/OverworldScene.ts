@@ -19,6 +19,7 @@ import { makeFranklinAvatar } from '../art/franklin';
 import { playGuardianChime } from '../audio/sfx';
 import { stopMoveEffectPreview } from '../art/moveEffectPreview';
 import { project, fogColor, HORIZON_Y, CANVAS_W, CANVAS_H, ProjectedPoint } from '../art/perspective';
+import { buildContourGrid, ContourPoint, TileContour } from '../art/contours';
 import {
   PLAYER_MATERIAL,
   WORLD_NAMES,
@@ -85,6 +86,30 @@ interface SavedMapState {
   reachedMiddle: boolean;
 }
 
+// What a tile's terrain actually is, once the grid has been read: 'path' is
+// walkable trail, 'block' a raised solid (rock-theme or region-tinted), and
+// 'lava'/'water'/'void' the flush-with-the-ground themes (see
+// drawOffPathTile).
+type TerrainKind = 'path' | 'block' | 'lava' | 'water' | 'void';
+
+// One tile's terrain, resolved from the grid (walkable, regionColor,
+// biomeOverride, flowerMap, midTile) into everything drawWorld needs that
+// doesn't depend on where the camera currently is -- see
+// OverworldScene.terrainPlan().
+interface TerrainTile {
+  kind: TerrainKind;
+  biome: Biome;
+  regionTint: number | null;
+  decorate: boolean;
+  midHighlight: boolean;
+  // Which of the tile's four edges border a walkable neighbor -- the edges a
+  // 'block' extrudes a wall face on, and a 'void' hangs a glowing rail on.
+  openNear: boolean; // y + 1, toward the camera
+  openFar: boolean; // y - 1
+  openLeft: boolean; // x - 1
+  openRight: boolean; // x + 1
+}
+
 // Grid is deliberately fine-grained (many small tiles) rather than few large
 // ones, so each arrow-key step moves the camera a small distance. TILE_SCALE
 // shrinks every tile's footprint in world space; DRAW_DISTANCE_TILES and
@@ -108,6 +133,21 @@ const BOSS_CRYSTAL_SIZE = 70;
 // rival is beaten -- a doorway is a landmark, not a threat.
 const DOOR_SPRITE_SIZE = 46;
 const WALL_HEIGHT_PX = 30;
+// Worlds whose ground plane is drawn with smoothed region boundaries, a
+// contact shadow at the floor/wall junction and a deepened atmospheric haze
+// (art/contours.ts, `smoothedGround` below) instead of plain per-tile quads.
+// An in-progress rollout: every world not listed here keeps the plain quad
+// look, so widening the set is the only step needed to extend it.
+const CONTOUR_SMOOTHED_WORLDS = new Set<number>([5]);
+// Contact-shadow strength per band, darkest first (art/contours.ts's
+// FLOOR_SHADOW_BANDS / SOLID_SHADOW_BANDS), and the depth past which the
+// junction is too small on screen to be worth the extra fills.
+const CONTACT_SHADOW_ALPHA = [0.24, 0.12];
+const CONTACT_SHADOW_MAX_DEPTH = 0.7;
+// The lit lip along the walkable side of the same boundary -- a pale edge
+// against the darker mass beyond it, which also keeps the walkable region's
+// own shape readable further into the distance than its fill alone would.
+const CONTOUR_RIM_ALPHA = 0.3;
 const QUIZ_CORRECT_MULTIPLIER = 1.5;
 const QUIZ_WRONG_MULTIPLIER = 0.6;
 
@@ -413,6 +453,17 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // whose generator doesn't use them.
   private regionColor: (number | null)[][] = [];
   private biomeOverride: (number | null)[][] = [];
+  // Whole-grid terrain classification, built on demand by terrainPlan() and
+  // dropped in create() once the map for this visit is in place. Phaser
+  // reuses the same scene instance across every scene.start, so a plan built
+  // for a previous visit would otherwise survive into the next one; anything
+  // that ever mutates the grid mid-visit (destructible walls, revealed
+  // terrain) has to drop it the same way.
+  private terrainPlanCache?: TerrainTile[][];
+  // Smoothed floor/solid boundary geometry, built from the same grid at the
+  // same time as terrainPlanCache and dropped alongside it. Empty for a world
+  // outside CONTOUR_SMOOTHED_WORLDS, which then draws plain tile quads.
+  private contourGrid: (TileContour | null)[][] = [];
   private reachedGoal = false;
   private reachedMiddle = false;
   // Public rather than private: read/written directly by the extracted
@@ -694,6 +745,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.dresselhausPreview = null;
     this.andersonHostPreview = null;
     this.majoranaPreview = null;
+    this.noetherMovePreview = null;
+    this.noetherMovePage = 0;
     this.kondoMovePreview = null;
     this.kondoMovePage = 0;
     this.blochPreview = null;
@@ -713,6 +766,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     } else {
       this.generateMap();
     }
+    this.terrainPlanCache = undefined;
+    this.contourGrid = [];
     this.camPos = { x: this.playerTile.x, y: this.playerTile.y };
 
     this.drawSky();
@@ -1099,7 +1154,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // Base ground haze fill so the far distance (beyond where individual
     // grid tiles are drawn) and the strip either side of the path still
     // read as ground, not void.
-    g.fillStyle(fogColor(this.biome.ground, 1, this.biome.fogTarget), 1);
+    g.fillStyle(this.groundColor(this.biome.ground, 1, this.biome.fogTarget), 1);
     g.fillRect(0, HORIZON_Y, CANVAS_W, CANVAS_H - HORIZON_Y);
 
     g.fillStyle(this.biome.hillColor, this.biome.hillAlpha);
@@ -1216,13 +1271,76 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     return project(lane * TILE_SCALE, depth * TILE_SCALE);
   }
 
-  // Redrawn every frame from the current (possibly mid-tween) camera
-  // position -- cheap at this grid size and what makes the world scroll
-  // continuously rather than snapping tile-by-tile.
+  // Terrain rendering splits in two: reading the grid (this, cached for as
+  // long as the grid stands still) and projecting/painting it (drawWorld,
+  // every frame). Everything here is camera-independent, so the whole grid
+  // is classified in one pass rather than just the currently-visible window
+  // -- a shape that spans the window edge (a wall run, a traced boundary)
+  // stays one continuous shape instead of being cut at whatever the camera
+  // happened to see when the plan was built.
+  private terrainPlan(): TerrainTile[][] {
+    if (!this.terrainPlanCache) {
+      this.terrainPlanCache = this.buildTerrainPlan();
+      this.contourGrid = this.smoothedGround ? buildContourGrid(this.walkable, GRID_W, GRID_H) : [];
+    }
+    return this.terrainPlanCache;
+  }
+
+  // Whether this world's ground plane uses the smoothed-boundary treatment
+  // (curved region edges, floor/wall contact shadow, deepened haze) rather
+  // than plain per-tile quads.
+  private get smoothedGround(): boolean {
+    return CONTOUR_SMOOTHED_WORLDS.has(this.world);
+  }
+
+  private buildTerrainPlan(): TerrainTile[][] {
+    const plan: TerrainTile[][] = [];
+    for (let y = 0; y < GRID_H; y++) {
+      const row: TerrainTile[] = [];
+      for (let x = 0; x < GRID_W; x++) {
+        // World 9's defect patches (world/generators/world9.ts) tag a tile
+        // with which world's biome table it should render with instead of
+        // this scene's own -- every other world leaves this null.
+        const overrideWorld = this.biomeOverride[y]?.[x];
+        const biome = overrideWorld != null ? getBiome(overrideWorld) : this.biome;
+        const regionTint = this.regionColor[y]?.[x] ?? null;
+        // A region tint outranks the biome's own wallTheme: a mapgen domain
+        // (world/mapgen.ts's Voronoi regions, world3.ts) should read as a
+        // distinct solid zone the player walks around, not as whatever
+        // hazard terrain that biome's off-path tiles happen to use.
+        const kind: TerrainKind = this.walkable[y]?.[x]
+          ? 'path'
+          : regionTint != null || biome.wallTheme === 'rock'
+            ? 'block'
+            : biome.wallTheme;
+        row.push({
+          kind,
+          biome,
+          regionTint,
+          decorate: !!this.flowerMap[y]?.[x],
+          midHighlight: Math.abs(x - this.midTile.x) <= 1 && Math.abs(y - this.midTile.y) <= 1,
+          openNear: !!this.walkable[y + 1]?.[x],
+          openFar: !!this.walkable[y - 1]?.[x],
+          openLeft: !!this.walkable[y]?.[x - 1],
+          openRight: !!this.walkable[y]?.[x + 1],
+        });
+      }
+      plan.push(row);
+    }
+    return plan;
+  }
+
+  // Projects and paints the visible slice of the terrain plan every frame
+  // from the current (possibly mid-tween) camera position -- what makes the
+  // world scroll continuously rather than snapping tile-by-tile. Only the
+  // projection, the depth-based fog/detail falloff, and the animated
+  // (time-driven) accents are computed here; everything that depends on the
+  // grid rather than the camera comes precomputed from terrainPlan().
   private drawWorld() {
     const g = this.worldGfx;
     g.clear();
 
+    const plan = this.terrainPlan();
     const camX = this.camPos.x;
     const camY = this.camPos.y;
     const minY = Math.max(0, Math.floor(camY - DRAW_DISTANCE_TILES));
@@ -1244,32 +1362,108 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
         const pNL = this.projectTile(laneL, depthNear);
 
         const depthRatio = Phaser.Math.Clamp(depthFar / DRAW_DISTANCE_TILES, 0, 1);
-        const walkable = !!this.walkable[y]?.[x];
-        // World 9's defect patches (world/generators/world9.ts) tag a tile
-        // with which world's biome table it should render with instead of
-        // this scene's own -- every other world leaves this null.
-        const overrideWorld = this.biomeOverride[y]?.[x];
-        const tileBiome = overrideWorld != null ? getBiome(overrideWorld) : this.biome;
-        const regionTint = this.regionColor[y]?.[x] ?? null;
+        const tile = plan[y][x];
+        const contour = this.contourGrid[y]?.[x] ?? null;
+        const fill = contour ? this.projectContour(contour.outline, camX, camY) : [pFL, pFR, pNR, pNL];
 
-        if (walkable) {
-          let color = fogColor(tileBiome.path, depthRatio, tileBiome.fogTarget);
-          if (regionTint != null) color = blend(color, regionTint, 0.55);
+        if (tile.kind === 'path') {
+          let color = this.groundColor(tile.biome.path, depthRatio, this.walkableHazeTarget(tile.biome));
+          if (tile.regionTint != null) color = blend(color, tile.regionTint, 0.55);
           g.fillStyle(color, 1);
-          g.fillPoints([pFL, pFR, pNR, pNL], true);
-          g.lineStyle(1, shade(color, -20), 0.3);
-          g.strokePoints([pFL, pFR, pNR, pNL], true);
-          if (depthRatio < 0.75 && this.flowerMap[y]?.[x]) {
+          g.fillPoints(fill, true);
+          // The per-tile seam is what makes a run of same-colored tiles read
+          // as a grid; a smoothed world drops it so the run reads as one
+          // continuous region, with the contact shadow marking the boundary
+          // instead.
+          if (!this.smoothedGround) {
+            g.lineStyle(1, shade(color, -20), 0.3);
+            g.strokePoints(fill, true);
+          }
+          if (contour) this.drawContactShadow(g, contour, tile.biome, camX, camY, depthRatio);
+          if (depthRatio < 0.75 && tile.decorate) {
             this.decorateTile(g, pFL, pFR, pNR, pNL);
           }
-          if (Math.abs(x - this.midTile.x) <= 1 && Math.abs(y - this.midTile.y) <= 1) {
-            this.drawMidHighlight(g, pFL, pFR, pNR, pNL, depthRatio);
+          if (tile.midHighlight) {
+            // On a smoothed world the glow falls off radially from the
+            // guardian's own tile, so the gate reads as a pool of light: at a
+            // uniform alpha the same nine tiles read as a hard rectangle laid
+            // over a floor whose every other edge curves.
+            const spread = Math.hypot(x - this.midTile.x, y - this.midTile.y);
+            this.drawMidHighlight(g, fill, depthRatio, this.smoothedGround ? 1 - 0.45 * spread : 1);
           }
         } else {
-          this.drawOffPathTile(g, x, y, pFL, pFR, pNR, pNL, depthRatio, tileBiome, regionTint);
+          this.drawOffPathTile(g, tile, fill, contour, pFL, pFR, pNR, pNL, depthRatio);
         }
       }
     }
+    if (this.smoothedGround) this.drawDepthHaze(g);
+  }
+
+  // Projects a cached tile-space outline (art/contours.ts) at the current
+  // camera position. Each call allocates its own array: Phaser's Graphics is
+  // retained-mode, so the points handed to fillPoints are read again at flush
+  // time and cannot be reused across draw calls within a frame.
+  private projectContour(points: ContourPoint[], camX: number, camY: number): ProjectedPoint[] {
+    const out: ProjectedPoint[] = [];
+    for (const p of points) out.push(this.projectTile(p.x - camX, camY - p.y));
+    return out;
+  }
+
+  // A soft ambient-occlusion band hugging the floor/solid boundary, drawn over
+  // the ground fill and under any wall face extruded at that junction, so the
+  // floor reads as tucking under the wall's base rather than butting flat
+  // against it.
+  private drawContactShadow(
+    g: Phaser.GameObjects.Graphics,
+    contour: TileContour,
+    biome: Biome,
+    camX: number,
+    camY: number,
+    depthRatio: number
+  ) {
+    if (depthRatio > CONTACT_SHADOW_MAX_DEPTH) return;
+    const fade = 1 - depthRatio / CONTACT_SHADOW_MAX_DEPTH;
+    for (const strip of contour.shadow) {
+      g.fillStyle(0x000000, (CONTACT_SHADOW_ALPHA[strip.band] ?? 0) * fade);
+      g.fillPoints(this.projectContour(strip.points, camX, camY), true);
+    }
+    if (contour.rim.length === 0) return;
+    g.lineStyle(1.5, blend(biome.path, 0xffffff, 0.45), CONTOUR_RIM_ALPHA * fade);
+    for (const lip of contour.rim) g.strokePoints(this.projectContour(lip, camX, camY), false);
+  }
+
+  // Distant walkable ground hazes toward a lighter target than its
+  // surroundings do, so the route the player is planning stays visible all the
+  // way to the horizon -- letting floor and off-path converge on one haze
+  // color erases the boundary at exactly the range it is being read from.
+  private walkableHazeTarget(biome: Biome): number {
+    if (!this.smoothedGround) return biome.fogTarget;
+    return blend(biome.fogTarget, biome.path, 0.35);
+  }
+
+  // A wash of the biome's own haze color over the far reach of the ground
+  // plane, on top of the per-tile depth fog rather than instead of it: the
+  // per-tile blend alone still hands every tile a hard edge against its
+  // neighbor, and the wash is what turns the far distance into continuous
+  // atmosphere. Drawn into worldGfx so it stays under every actor.
+  private drawDepthHaze(g: Phaser.GameObjects.Graphics) {
+    const bands = 34;
+    const height = 240;
+    for (let i = 0; i < bands; i++) {
+      const t = i / bands;
+      g.fillStyle(this.biome.fogTarget, 0.35 * Math.pow(1 - t, 3));
+      g.fillRect(0, HORIZON_Y + t * height, CANVAS_W, height / bands + 1);
+    }
+  }
+
+  // A world using the smoothed ground treatment also leans much harder on
+  // aerial perspective: `fogColor`'s own blend caps out well short of the
+  // haze color, so pre-blend the rest of the way with a curve that starts
+  // biting close to the camera instead of only at the draw-distance edge.
+  private groundColor(base: number, depthRatio: number, target: number): number {
+    const c = fogColor(base, depthRatio, target);
+    if (!this.smoothedGround) return c;
+    return blend(c, target, 0.4 * Math.pow(depthRatio, 0.9));
   }
 
   // The guardian chokepoint (invariant B, world/mapgen.ts's forceChokepoint)
@@ -1279,82 +1473,69 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // covering `midTile` and its immediate neighbors so the forced pinch reads
   // as a deliberate gate the player is walking through, not an arbitrary
   // narrow spot.
-  private drawMidHighlight(
+  private drawMidHighlight(g: Phaser.GameObjects.Graphics, fill: ProjectedPoint[], depthRatio: number, falloff: number) {
+    if (depthRatio > 0.9) return;
+    const glowColor = OverworldScene.WORLD_GUARDIANS[this.world]?.strokeColor ?? GOLD_ACCENT;
+    const pulse = 0.5 + 0.5 * Math.sin(this.time.now / 320);
+    g.fillStyle(glowColor, 0.28 * pulse * (1 - depthRatio) * falloff);
+    g.fillPoints(fill, true);
+    if (this.smoothedGround) return;
+    g.lineStyle(1.5, glowColor, 0.6 * (1 - depthRatio));
+    g.strokePoints(fill, true);
+  }
+
+  // Dispatches an off-path tile's look by its terrain kind (resolved in
+  // buildTerrainPlan from the biome's `wallTheme` and any region tint) --
+  // most tiles are a 'block' (raised stacked-stone, tinted if it belongs to
+  // a mapgen domain), but a few biomes render terrain you can plausibly see
+  // is impassable instead of a uniformly-colored wall: 'lava' (a flat
+  // glowing molten crust), 'water' (a dark rippling frozen lake), 'void'
+  // (open sky you'd fall through). Only a 'block' extrudes; the other three
+  // sit flush with the ground plane, since a wall of lava/water/open air
+  // isn't a raised stone block.
+  private drawOffPathTile(
     g: Phaser.GameObjects.Graphics,
+    tile: TerrainTile,
+    fill: ProjectedPoint[],
+    contour: TileContour | null,
     pFL: ProjectedPoint,
     pFR: ProjectedPoint,
     pNR: ProjectedPoint,
     pNL: ProjectedPoint,
     depthRatio: number
   ) {
-    if (depthRatio > 0.9) return;
-    const glowColor = OverworldScene.WORLD_GUARDIANS[this.world]?.strokeColor ?? GOLD_ACCENT;
-    const pulse = 0.5 + 0.5 * Math.sin(this.time.now / 320);
-    g.fillStyle(glowColor, 0.28 * pulse * (1 - depthRatio));
-    g.fillPoints([pFL, pFR, pNR, pNL], true);
-    g.lineStyle(1.5, glowColor, 0.6 * (1 - depthRatio));
-    g.strokePoints([pFL, pFR, pNR, pNL], true);
-  }
+    // The solid-side half of the contact shadow: the sliver of this tile that
+    // overhangs the boundary, darkened before anything is extruded above it,
+    // so the junction is shaded from both sides whether the impassable
+    // terrain here rises as a block or lies flush.
+    const shadeJunction = () => {
+      if (contour) this.drawContactShadow(g, contour, tile.biome, this.camPos.x, this.camPos.y, depthRatio);
+    };
 
-  // Dispatches an off-path tile's look by its own biome's `wallTheme`
-  // (art/biomes.ts, resolved per-tile by `biomeOverride` -- see drawWorld)
-  // -- most biomes stay 'rock' (raised stacked-stone block, the original
-  // look), but a few render terrain you can plausibly see is impassable
-  // instead of a uniformly-colored wall: 'lava' (a flat glowing molten
-  // crust), 'water' (a dark rippling frozen lake), 'void' (open sky you'd
-  // fall through). Only 'rock' extrudes a solid block; the other three are
-  // flush with the ground plane, since a wall of lava/water/open air isn't
-  // a raised stone block.
-  //
-  // A tile carrying a `regionColor` (world/mapgen.ts's Voronoi domains,
-  // world3.ts) always renders as solid extruded ground tinted with that
-  // color instead, regardless of `wallTheme` -- a domain interior is meant
-  // to read as a distinct solid zone the player walks around, not whatever
-  // hazard that biome's own off-path terrain happens to use (world 3's own
-  // biome is `wallTheme: 'void'`, which would otherwise render every domain
-  // as empty sky rather than a colored region).
-  private drawOffPathTile(
-    g: Phaser.GameObjects.Graphics,
-    x: number,
-    y: number,
-    pFL: ProjectedPoint,
-    pFR: ProjectedPoint,
-    pNR: ProjectedPoint,
-    pNL: ProjectedPoint,
-    depthRatio: number,
-    biome: Biome,
-    regionTint: number | null
-  ) {
-    if (regionTint != null) {
-      const color = this.wallFaceColor(biome, regionTint, depthRatio)!;
-      g.fillStyle(color, 1);
-      g.fillPoints([pFL, pFR, pNR, pNL], true);
-      g.lineStyle(1, shade(color, -20), 0.3);
-      g.strokePoints([pFL, pFR, pNR, pNL], true);
-      this.drawWallFaces(g, x, y, pFL, pFR, pNR, pNL, color);
+    if (tile.kind === 'lava') {
+      this.drawLavaTile(g, fill, pFL, pFR, pNR, pNL, depthRatio, tile.biome);
+      shadeJunction();
+      return;
+    }
+    if (tile.kind === 'water') {
+      this.drawWaterTile(g, fill, pFL, pFR, pNR, pNL, depthRatio, tile.biome);
+      shadeJunction();
+      return;
+    }
+    if (tile.kind === 'void') {
+      this.drawVoidTile(g, tile, pFL, pFR, pNR, pNL, depthRatio);
       return;
     }
 
-    const theme = biome.wallTheme;
-    if (theme === 'lava') {
-      this.drawLavaTile(g, pFL, pFR, pNR, pNL, depthRatio, biome);
-      return;
-    }
-    if (theme === 'water') {
-      this.drawWaterTile(g, pFL, pFR, pNR, pNL, depthRatio, biome);
-      return;
-    }
-    if (theme === 'void') {
-      this.drawVoidTile(g, x, y, pFL, pFR, pNR, pNL, depthRatio);
-      return;
-    }
-
-    const color = this.wallFaceColor(biome, regionTint, depthRatio)!;
+    const color = this.wallFaceColor(tile.biome, tile.regionTint, depthRatio)!;
     g.fillStyle(color, 1);
-    g.fillPoints([pFL, pFR, pNR, pNL], true);
-    g.lineStyle(1, shade(color, -20), 0.3);
-    g.strokePoints([pFL, pFR, pNR, pNL], true);
-    this.drawWallFaces(g, x, y, pFL, pFR, pNR, pNL, color);
+    g.fillPoints(fill, true);
+    if (!this.smoothedGround) {
+      g.lineStyle(1, shade(color, -20), 0.3);
+      g.strokePoints(fill, true);
+    }
+    shadeJunction();
+    this.drawWallFaces(g, tile, pFL, pFR, pNR, pNL, color);
   }
 
   // Resolves the shading color for a raised (rock-theme or region-tinted)
@@ -1366,10 +1547,10 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // the two never disagree on what color that face should be.
   private wallFaceColor(biome: Biome, regionTint: number | null, depthRatio: number): number | null {
     if (regionTint != null) {
-      return blend(fogColor(biome.ground, depthRatio, biome.fogTarget), regionTint, 0.6);
+      return blend(this.groundColor(biome.ground, depthRatio, biome.fogTarget), regionTint, 0.6);
     }
     if (biome.wallTheme === 'lava' || biome.wallTheme === 'water' || biome.wallTheme === 'void') return null;
-    return fogColor(biome.ground, depthRatio, biome.fogTarget);
+    return this.groundColor(biome.ground, depthRatio, biome.fogTarget);
   }
 
   // A flat, glowing molten crust (Defect Wastes, world 9) -- no extruded
@@ -1380,6 +1561,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // single frame can contain.
   private drawLavaTile(
     g: Phaser.GameObjects.Graphics,
+    fill: ProjectedPoint[],
     pFL: ProjectedPoint,
     pFR: ProjectedPoint,
     pNR: ProjectedPoint,
@@ -1387,9 +1569,9 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     depthRatio: number,
     biome: Biome
   ) {
-    const crust = fogColor(biome.ground, depthRatio, biome.fogTarget);
+    const crust = this.groundColor(biome.ground, depthRatio, biome.fogTarget);
     g.fillStyle(crust, 1);
-    g.fillPoints([pFL, pFR, pNR, pNL], true);
+    g.fillPoints(fill, true);
     if (depthRatio > 0.75) return;
 
     const cx = (pFL.x + pFR.x + pNR.x + pNL.x) / 4;
@@ -1398,7 +1580,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     const pulse = 0.55 + 0.45 * Math.sin(this.time.now / 260 + cx * 0.05 + cy * 0.03);
 
     g.fillStyle(0xff5a1a, 0.32 * pulse);
-    g.fillPoints([pFL, pFR, pNR, pNL], true);
+    g.fillPoints(fill, true);
 
     g.lineStyle(1.6, 0xffcf4a, 0.7 * pulse);
     g.beginPath();
@@ -1415,6 +1597,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // ground, same "not a wall block" reasoning as lava above.
   private drawWaterTile(
     g: Phaser.GameObjects.Graphics,
+    fill: ProjectedPoint[],
     pFL: ProjectedPoint,
     pFR: ProjectedPoint,
     pNR: ProjectedPoint,
@@ -1422,9 +1605,9 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     depthRatio: number,
     biome: Biome
   ) {
-    const base = fogColor(biome.ground, depthRatio, biome.fogTarget);
+    const base = this.groundColor(biome.ground, depthRatio, biome.fogTarget);
     g.fillStyle(base, 1);
-    g.fillPoints([pFL, pFR, pNR, pNL], true);
+    g.fillPoints(fill, true);
     if (depthRatio > 0.75) return;
 
     const cx = (pFL.x + pFR.x + pNR.x + pNL.x) / 4;
@@ -1448,8 +1631,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // void tile with no walkable neighbor needs nothing drawn at all.
   private drawVoidTile(
     g: Phaser.GameObjects.Graphics,
-    x: number,
-    y: number,
+    tile: TerrainTile,
     pFL: ProjectedPoint,
     pFR: ProjectedPoint,
     pNR: ProjectedPoint,
@@ -1463,10 +1645,10 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       g.lineStyle(2, 0xeaf6ff, 0.85 * edgeAlpha);
       g.lineBetween(a.x, a.y, b.x, b.y);
     };
-    if (this.walkable[y + 1]?.[x]) rail(pNL, pNR);
-    if (this.walkable[y - 1]?.[x]) rail(pFR, pFL);
-    if (this.walkable[y]?.[x - 1]) rail(pFL, pNL);
-    if (this.walkable[y]?.[x + 1]) rail(pNR, pFR);
+    if (tile.openNear) rail(pNL, pNR);
+    if (tile.openFar) rail(pFR, pFL);
+    if (tile.openLeft) rail(pFL, pNL);
+    if (tile.openRight) rail(pNR, pFR);
   }
 
   // Off-path tiles read as raised, solid blocks rather than just
@@ -1476,22 +1658,21 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // height scaled by that point's own perspective scale). Each face gets a
   // lit rim along its top edge and a darker mortar line partway up, so it
   // reads as a stacked stone block rather than a flat colored card. Only
-  // called for the 'rock' wallTheme (see `drawOffPathTile`) -- lava/water/
-  // void render their own flush-with-the-ground look instead.
+  // called for a 'block' tile (see `drawOffPathTile`) -- lava/water/void
+  // render their own flush-with-the-ground look instead.
   private drawWallFaces(
     g: Phaser.GameObjects.Graphics,
-    x: number,
-    y: number,
+    tile: TerrainTile,
     pFL: ProjectedPoint,
     pFR: ProjectedPoint,
     pNR: ProjectedPoint,
     pNL: ProjectedPoint,
     topColor: number
   ) {
-    if (this.walkable[y + 1]?.[x]) this.drawWallFace(g, pNL, pNR, topColor, -18); // near edge, facing the camera
-    if (this.walkable[y - 1]?.[x]) this.drawWallFace(g, pFR, pFL, topColor, -42); // far edge
-    if (this.walkable[y]?.[x - 1]) this.drawWallFace(g, pFL, pNL, topColor, -28); // left edge
-    if (this.walkable[y]?.[x + 1]) this.drawWallFace(g, pNR, pFR, topColor, -28); // right edge
+    if (tile.openNear) this.drawWallFace(g, pNL, pNR, topColor, -18); // near edge, facing the camera
+    if (tile.openFar) this.drawWallFace(g, pFR, pFL, topColor, -42); // far edge
+    if (tile.openLeft) this.drawWallFace(g, pFL, pNL, topColor, -28); // left edge
+    if (tile.openRight) this.drawWallFace(g, pNR, pFR, topColor, -28); // right edge
   }
 
   // Draws one raised wall face between two ground-level projected points --

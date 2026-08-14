@@ -670,7 +670,10 @@ page within that same 2-line limit rather than a 3rd.
 `art/biomes.ts` table the overworld corridor uses (`getBiome(this.world)`) —
 sky, ridgelines, ground, and the decorative crystal outcrops/ground tufts are all
 shaded off that world's biome colors, so a fight in the frozen caverns or the cracked
-world actually looks like it, not like every other world's battle.
+world actually looks like it, not like every other world's battle. The backdrop is built
+as a soft layered atmosphere (curved parallax ridgelines, fog blending, a theme-keyed
+color grade, drifting haze, corner vignette) — STYLE.md's "Battle backdrop" section has
+the visual rules.
 
 **Wild encounter dialogue.** Bumping into a wild crystal opens a single in-map dialogue
 screen (`OverworldScene.showEncounter`, not a separate scene): a greeting line tied to

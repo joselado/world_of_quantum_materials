@@ -93,16 +93,19 @@ const LANDAU_TERRAIN: Biome = {
 };
 
 // Topic 5 (superconductivity/Majorana): a frozen, zero-resistance cavern --
-// icy blue-white, glinting rather than glowing.
+// icy blue-white, glinting rather than glowing. Held in a narrow, desaturated
+// value range: a wide ice-to-near-black spread makes each depth step of the
+// haze a visible band across the floor, where a compressed one lets the same
+// falloff read as continuous cold air.
 const FROZEN_CAVERNS: Biome = {
   name: 'frozenCaverns',
-  skyTop: 0x0d1b2a,
-  skyBottom: 0x2a4858,
-  hillColor: 0x24404f,
+  skyTop: 0x1b2c3a,
+  skyBottom: 0x3d5b69,
+  hillColor: 0x3c5866,
   hillAlpha: 0.85,
-  ground: 0x0f2430,
-  path: 0x8fdcff,
-  fogTarget: 0x14313e,
+  ground: 0x1c3440,
+  path: 0xa4dbe6,
+  fogTarget: 0x44606e,
   clouds: false,
   decoration: 'crystalGlints',
   // "Zero-resistance" made literal underfoot too: off-path here is a frozen

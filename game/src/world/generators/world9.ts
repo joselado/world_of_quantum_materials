@@ -5,7 +5,7 @@
 // as different defect *types*, not one uniform borrowed look. The patch
 // itself doesn't change the walkable shape at all (a defect is a local
 // texture, not a detour) -- it only tags the tiles it covers with
-// `biomeOverride`, consumed on the rendering side (OverworldScene.drawWorld)
+// `biomeOverride`, consumed on the rendering side (OverworldScene's terrain plan)
 // to swap which biome table that tile's fill/wall colors come from.
 
 import { GeneratedMap, GridPoint, inBounds, makeColorGrid, wanderBands, paintBands, makeGrid } from './shared';

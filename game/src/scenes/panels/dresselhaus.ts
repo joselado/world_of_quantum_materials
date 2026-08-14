@@ -1,12 +1,22 @@
+import type Phaser from 'phaser';
 import type { GuardianPanelHost } from '../OverworldScene';
 import { makeDresselhausAvatar } from '../../art/dresselhaus';
+import { killTweensDeep } from '../../art/crystals';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
-import { fontPx, fontScale } from '../../ui/text';
-import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
+import { fontPx } from '../../ui/text';
+import { PANEL_BG } from '../../ui/theme';
 import { findMaterialByName, allCrystals, isHybridMaterial, DRESSELHAUS_TRANSMUTE_COST } from '../../data/materials';
 import { persistFromRegistry } from '../../data/save';
-import { LIST_DETAIL_PANEL_W, listDetailColumns, renderListColumn, insertColumnDivider, renderDetailCrystalHeader } from './listDetail';
+import {
+  LIST_DETAIL_PANEL_W,
+  listDetailColumns,
+  renderListColumn,
+  destroyPanel,
+  insertColumnDivider,
+  renderDetailCrystalHeader,
+  renderStatusAndConfirm,
+} from './listDetail';
 
 // Dresselhaus stands at world 3's middle tile like every other guardian (see
 // spawnGuardianSprite/WORLD_GUARDIANS), triggered on reaching that row
@@ -33,6 +43,12 @@ import { LIST_DETAIL_PANEL_W, listDetailColumns, renderListColumn, insertColumnD
 // transmutes, so a candidate can be looked at at length before committing.
 // Content laid out top-down first (running `y`), panel sized/inserted
 // behind everything afterward -- same pattern as showSettingsPanel.
+// A preview click is a scoped update, not a panel rebuild (CODEMAP's
+// "scoped update" convention): the avatar, intro and list rows are built
+// once per panel open, and clicking a row only restyles the highlighted row
+// (listResult.setSelectedId) and re-renders `detailBlock`/`chromeBlock`.
+// Committing (transmuteInto) still rebuilds the whole panel, since the
+// player's own form -- and with it every status line -- has changed.
 export function showDresselhausPanel(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
 
@@ -40,6 +56,21 @@ export function showDresselhausPanel(scene: GuardianPanelHost) {
   const top = 20;
   const container = scene.add.container(0, 0).setDepth(100);
   scene.dialogueContainer = container;
+
+  // Added first so everything below (divider, footer, panel background)
+  // renders beneath every row/button added to `container` afterward -- the
+  // same "underneath" ordering insertColumnDivider's own addAt(_, 0) gives a
+  // single-container panel.
+  const chromeBlock = scene.add.container(0, 0);
+  container.add(chromeBlock);
+
+  const finishPanel = (yEnd: number, target: Phaser.GameObjects.Container) => {
+    const panelHeight = yEnd - top;
+    const panel = scene.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
+      .setStrokeStyle(2, 0x4ad9a0);
+    target.addAt(panel, 0);
+  };
 
   let y = top;
 
@@ -88,43 +119,55 @@ export function showDresselhausPanel(scene: GuardianPanelHost) {
       .setOrigin(0.5, 0);
     container.add(text);
     y += text.height;
-  } else {
-    const panelLeft = CANVAS_W / 2 - panelWidth / 2;
-    const columns = listDetailColumns(panelLeft);
-    const columnsTop = y;
+    y += 8;
+    y = scene.renderFarewellFooter(container, y) + 12;
+    finishPanel(y, container);
+    return;
+  }
 
-    const effectivePreview = candidates.some((c) => c.name === scene.dresselhausPreview)
-      ? (scene.dresselhausPreview as string)
-      : candidates[0].name;
+  const panelLeft = CANVAS_W / 2 - panelWidth / 2;
+  const columns = listDetailColumns(panelLeft);
+  const columnsTop = y;
 
-    const listResult = renderListColumn({
-      scene,
-      container,
-      x: columns.leftX,
-      y: columnsTop,
-      width: columns.leftColW,
-      items: candidates,
-      idFor: (c) => c.name,
-      labelFor: (c) => c.name,
-      selectedId: effectivePreview,
-      page: scene.dresselhausPage,
-      onPageChange: (page) => {
-        scene.dresselhausPage = page;
-        scene.dialogueContainer?.destroy(true);
-        showDresselhausPanel(scene);
-      },
-      onSelect: (c) => {
-        scene.dresselhausPreview = c.name;
-        scene.dialogueContainer?.destroy(true);
-        showDresselhausPanel(scene);
-      },
-    });
-    scene.dresselhausPage = listResult.page;
+  let preview = candidates.some((c) => c.name === scene.dresselhausPreview) ? (scene.dresselhausPreview as string) : candidates[0].name;
 
-    const previewMaterial = findMaterialByName(effectivePreview);
+  const listResult = renderListColumn({
+    scene,
+    container,
+    x: columns.leftX,
+    y: columnsTop,
+    width: columns.leftColW,
+    items: candidates,
+    idFor: (c) => c.name,
+    labelFor: (c) => c.name,
+    selectedId: preview,
+    page: scene.dresselhausPage,
+    onPageChange: (page) => {
+      scene.dresselhausPage = page;
+      destroyPanel(scene);
+      showDresselhausPanel(scene);
+    },
+    onSelect: (c) => {
+      scene.dresselhausPreview = c.name;
+      preview = c.name;
+      listResult.setSelectedId(c.name);
+      renderDetail();
+    },
+  });
+  scene.dresselhausPage = listResult.page;
+
+  const detailBlock = scene.add.container(0, 0);
+  container.add(detailBlock);
+
+  const renderDetail = () => {
+    killTweensDeep(scene, detailBlock);
+    detailBlock.removeAll(true);
+    chromeBlock.removeAll(true);
+
+    const previewMaterial = findMaterialByName(preview);
     let rightY = columnsTop;
     if (previewMaterial) {
-      rightY = renderDetailCrystalHeader(scene, container, previewMaterial, columns.rightColCenterX, rightY, columns.rightColW);
+      rightY = renderDetailCrystalHeader(scene, detailBlock, previewMaterial, columns.rightColCenterX, rightY, columns.rightColW);
 
       const unlockedCrystals = (scene.game.registry.get('dresselhausUnlockedCrystals') as string[]) ?? [];
       const isUnlocked = superposition || unlockedCrystals.includes(previewMaterial.name);
@@ -132,51 +175,36 @@ export function showDresselhausPanel(scene: GuardianPanelHost) {
       const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
       const affordable = isUnlocked || tokens >= DRESSELHAUS_TRANSMUTE_COST;
 
-      const statusScale = Math.min(fontScale(scene), 1.2);
-      const statusText = scene.add
-        .text(
-          columns.rightColCenterX,
-          rightY,
-          isCurrent
-            ? 'This is your current form.'
-            : isUnlocked
-            ? 'Already unlocked -- free to become.'
-            : `Costs ${DRESSELHAUS_TRANSMUTE_COST} qumatessence to unlock (one-time; free after).`,
-          { fontSize: `${Math.round(11 * statusScale)}px`, color: REFERENCE_BLUE_GREY_HEX, align: 'center', wordWrap: { width: columns.rightColW } }
-        )
-        .setOrigin(0.5, 0);
-      container.add(statusText);
-      rightY += statusText.height + 6;
-
-      if (!isCurrent) {
-        const buttonScale = Math.min(fontScale(scene), 1.3);
-        const confirmBtn = scene.addDialogueButtonAt(
-          container,
-          columns.rightColCenterX,
-          rightY,
-          isUnlocked ? `Become ${previewMaterial.name}` : `Become ${previewMaterial.name} (${DRESSELHAUS_TRANSMUTE_COST} qumatessence)`,
-          () => transmuteInto(scene, previewMaterial.name, isUnlocked, unlockedCrystals),
-          columns.rightColW,
-          `${Math.round(13 * buttonScale)}px`
-        );
-        if (!affordable) confirmBtn.setAlpha(0.5);
-        rightY += confirmBtn.height;
-      }
+      rightY = renderStatusAndConfirm({
+        scene,
+        container: detailBlock,
+        centerX: columns.rightColCenterX,
+        y: rightY,
+        colW: columns.rightColW,
+        status: isCurrent
+          ? 'This is your current form.'
+          : isUnlocked
+          ? 'Already unlocked -- free to become.'
+          : `Costs ${DRESSELHAUS_TRANSMUTE_COST} qumatessence to unlock (one-time; free after).`,
+        confirm: isCurrent
+          ? undefined
+          : {
+              label: isUnlocked
+                ? `Become ${previewMaterial.name}`
+                : `Become ${previewMaterial.name} (${DRESSELHAUS_TRANSMUTE_COST} qumatessence)`,
+              onClick: () => transmuteInto(scene, previewMaterial.name, isUnlocked, unlockedCrystals),
+              dimmed: !affordable,
+            },
+      });
     }
 
     const columnsBottom = Math.max(listResult.bottom, rightY);
-    insertColumnDivider(scene, container, columns.dividerX, columnsTop, columnsBottom);
-    y = columnsBottom + 6;
-  }
-  y += 8;
-
-  y = scene.renderFarewellFooter(container, y) + 12;
-
-  const panelHeight = y - top;
-  const panel = scene.add
-    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
-    .setStrokeStyle(2, 0x4ad9a0);
-  container.addAt(panel, 0);
+    insertColumnDivider(scene, chromeBlock, columns.dividerX, columnsTop, columnsBottom);
+    let footerY = columnsBottom + 6 + 8;
+    footerY = scene.renderFarewellFooter(chromeBlock, footerY) + 12;
+    finishPanel(footerY, chromeBlock);
+  };
+  renderDetail();
 }
 
 function transmuteInto(scene: GuardianPanelHost, name: string, isUnlocked: boolean, unlockedCrystals: string[]) {
@@ -194,6 +222,6 @@ function transmuteInto(scene: GuardianPanelHost, name: string, isUnlocked: boole
 
   // Rebuild the panel in place (dialogueActive already true from the open
   // showDresselhausPanel call) so the new form's status line updates.
-  scene.dialogueContainer?.destroy(true);
+  destroyPanel(scene);
   showDresselhausPanel(scene);
 }

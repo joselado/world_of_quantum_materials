@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
-import { makeCrystal } from '../art/crystals';
+import { killTweensDeep, makeCrystal } from '../art/crystals';
 import { makeBossCrystal } from '../art/boss';
-import { shade } from '../art/colors';
+import { shade, blend, hashSeed, seededRandom } from '../art/colors';
 import { getBiome } from '../art/biomes';
 import type { Biome } from '../art/biomes';
 import { playAttackEffect, ANALYTIC_SHAPES, ULTIMATE_SHAPES } from '../art/attackEffects';
@@ -1221,18 +1221,33 @@ export class BattleScene extends Phaser.Scene {
     askNext();
   }
 
-  // Colored from that world's own biome (art/biomes.ts, the same table
-  // OverworldScene's corridor uses) instead of a fixed pastoral meadow --
-  // every world's battles used to render the same green-hills-and-blue-sky
-  // arena regardless of whether the fight was in a frozen cavern or a
-  // cracked, glitching world.
+  // The whole battle backdrop, colored from that world's own biome
+  // (art/biomes.ts, the same table OverworldScene's corridor reads) so a
+  // frozen-cavern fight and a cracked-world fight each render in their own
+  // palette. Drawn once per battle entry (not per frame), which is what
+  // affords the layered-atmosphere treatment below: eased sky wash, four
+  // curved parallax ridgelines, fog/mist blending, theme-keyed color grade,
+  // drifting haze, and a corner vignette.
   private drawBackground() {
     const biome = getBiome(this.world);
     const g = this.add.graphics();
 
-    // Sky, brightest near the horizon where it meets the ridgeline.
-    g.fillGradientStyle(biome.skyTop, biome.skyTop, biome.skyBottom, biome.skyBottom, 1);
-    g.fillRect(0, 0, FIELD_W, HORIZON_Y);
+    // Sky as an eased two-segment vertical wash (dark zenith easing into a
+    // brighter horizon) rather than one linear gradient -- the mid-stop sits
+    // above the geometric middle so the brightening accelerates toward the
+    // horizon the way real atmospheric scattering does.
+    const skyMid = blend(biome.skyTop, biome.skyBottom, 0.45);
+    const skyMidY = Math.round(HORIZON_Y * 0.52);
+    g.fillGradientStyle(biome.skyTop, biome.skyTop, skyMid, skyMid, 1);
+    g.fillRect(0, 0, FIELD_W, skyMidY);
+    g.fillGradientStyle(skyMid, skyMid, biome.skyBottom, biome.skyBottom, 1);
+    g.fillRect(0, skyMidY, FIELD_W, HORIZON_Y - skyMidY);
+    // A soft glow hugging the horizon, tinted off the biome's own fog color,
+    // so the sky melts into the ridgelines instead of meeting them at a
+    // clean band boundary.
+    const horizonGlow = blend(biome.skyBottom, shade(biome.fogTarget, 20), 0.7);
+    g.fillGradientStyle(horizonGlow, horizonGlow, horizonGlow, horizonGlow, 0, 0, 0.5, 0.5);
+    g.fillRect(0, HORIZON_Y - 70, FIELD_W, 70);
 
     if (biome.clouds) {
       this.drawSun(560, 55);
@@ -1241,26 +1256,56 @@ export class BattleScene extends Phaser.Scene {
       this.drawCloud(540, 40);
     }
 
-    // Layered ridgelines behind the field, hazier and bluer the further
-    // back they sit, giving the field actual depth instead of a flat
-    // two-tone sky/ground split -- shaded off the biome's own hill/ground
-    // colors so the layering effect survives across every palette.
-    this.drawRidge(g, HORIZON_Y - 20, shade(biome.hillColor, 25), biome.hillAlpha * 0.85, [40, 150, 40, 170, 30, 140, 20, 160, 40]);
-    this.drawRidge(g, HORIZON_Y - 4, biome.hillColor, biome.hillAlpha, [10, 70, 25, 95, 15, 60, 30, 80, 10]);
-    this.drawRidge(g, HORIZON_Y + 6, shade(biome.ground, 22), 1, [5, 30, 10, 40, 6, 28, 12, 34, 5]);
+    // Four stacked ridgeline layers behind the field, each further layer
+    // flatter and blended harder toward the sky/fog color (aerial
+    // perspective), the nearer ones darker and more sculpted. Silhouettes
+    // are Catmull-Rom curves through per-world seeded peak heights, so every
+    // world gets its own stable rolling skyline and the value range stays
+    // compressed relative to the crystals fighting in front of it.
+    const ridgeLayers: {
+      baseY: number;
+      count: number;
+      minH: number;
+      maxH: number;
+      color: number;
+      alpha: number;
+      rim: boolean;
+    }[] = [
+      // Each layer's color takes an explicit brighten/darken step on top of
+      // the sky/fog blend -- in dark biomes the raw blend endpoints sit so
+      // close together that the layers would otherwise merge into one lump.
+      { baseY: HORIZON_Y - 26, count: 6, minH: 46, maxH: 122, color: shade(blend(biome.hillColor, biome.skyBottom, 0.58), 11), alpha: 0.95, rim: false },
+      { baseY: HORIZON_Y - 16, count: 7, minH: 26, maxH: 84, color: shade(blend(biome.hillColor, biome.skyBottom, 0.34), 4), alpha: 0.95, rim: false },
+      { baseY: HORIZON_Y - 4, count: 8, minH: 12, maxH: 46, color: shade(blend(biome.hillColor, biome.fogTarget, 0.15), -5), alpha: biome.hillAlpha, rim: true },
+      { baseY: HORIZON_Y + 6, count: 9, minH: 5, maxH: 24, color: blend(shade(biome.ground, 20), biome.fogTarget, 0.1), alpha: 1, rim: true },
+    ];
+    ridgeLayers.forEach((layer, i) => {
+      const rand = seededRandom(hashSeed(`battle-ridge-${this.world}-${i}`));
+      const heights = Array.from({ length: layer.count }, () => layer.minH + rand() * (layer.maxH - layer.minH));
+      this.drawRidge(g, layer.baseY, layer.color, layer.alpha, heights, layer.rim);
+    });
 
-    // Ground.
-    g.fillGradientStyle(
-      shade(biome.ground, 25),
-      shade(biome.ground, 25),
-      shade(biome.ground, -15),
-      shade(biome.ground, -15),
-      1
-    );
+    // Ground, its horizon edge pulled toward the fog color so it recedes
+    // into the same atmosphere the ridges sit in.
+    const groundFar = blend(shade(biome.ground, 20), biome.fogTarget, 0.3);
+    const groundNear = shade(biome.ground, -18);
+    g.fillGradientStyle(groundFar, groundFar, groundNear, groundNear, 1);
     g.fillRect(0, HORIZON_Y, FIELD_W, FIELD_H - HORIZON_Y);
+    // Mist pooling just below the horizon, fading out down the field.
+    const mist = shade(biome.fogTarget, 25);
+    g.fillGradientStyle(mist, mist, mist, mist, 0.32, 0.32, 0, 0);
+    g.fillRect(0, HORIZON_Y, FIELD_W, 64);
+
+    this.drawColorGrade(g, biome);
+    this.drawHazeBands(biome);
 
     this.drawBackgroundCrystals(biome);
     this.drawGroundDetail(biome);
+
+    // Corner-only vignette, in a near-black derived from the biome's own
+    // sky, pulling the eye toward center-frame. Drawn before the crystals/
+    // UI are added so only the backdrop is dimmed, never the foreground.
+    this.drawVignette(biome);
 
     const shadowColor = shade(biome.ground, -40);
     // Anchored to the live this.opponentPos (set before drawBackground() is
@@ -1271,24 +1316,116 @@ export class BattleScene extends Phaser.Scene {
     this.add.ellipse(PLAYER_POS.x, 392, 130, 30, shadowColor, 0.35);
   }
 
-  // A jagged ridge silhouette spanning the field width, from a flat
-  // baseline up through a zig-zag of peaks -- used for both the hazy
-  // far mountains and the closer, darker foothills.
+  // One rolling ridge silhouette spanning the field width: a Catmull-Rom
+  // spline through the given peak heights (sampled densely, so the fill is
+  // a smooth curve rather than straight segments), filled down to its
+  // baseline. `rim` adds a thin lighter stroke along just the top edge --
+  // directional skylight on the nearer ridges, without any per-shape
+  // internal shading.
   private drawRidge(
     g: Phaser.GameObjects.Graphics,
     baseY: number,
     color: number,
     alpha: number,
-    peaks: number[]
+    peaks: number[],
+    rim = false
   ) {
-    const stepX = FIELD_W / (peaks.length - 1);
+    // Control points overshoot both edges so the visible curve never sags
+    // toward an endpoint inside the frame.
+    const margin = 60;
+    const stepX = (FIELD_W + margin * 2) / (peaks.length - 1);
+    const controls = peaks.map((h, i) => new Phaser.Math.Vector2(-margin + i * stepX, baseY - h));
+    const curvePts = new Phaser.Curves.Spline(controls).getPoints(80);
+
     g.fillStyle(color, alpha);
     g.beginPath();
-    g.moveTo(0, baseY);
-    peaks.forEach((h, i) => g.lineTo(i * stepX, baseY - h));
-    g.lineTo(FIELD_W, baseY);
+    g.moveTo(-margin, baseY + 4);
+    curvePts.forEach((p) => g.lineTo(p.x, p.y));
+    g.lineTo(FIELD_W + margin, baseY + 4);
     g.closePath();
     g.fillPath();
+
+    if (rim) {
+      g.lineStyle(1.5, blend(color, 0xffffff, 0.38), 0.32);
+      g.beginPath();
+      g.moveTo(curvePts[0].x, curvePts[0].y);
+      curvePts.forEach((p) => g.lineTo(p.x, p.y));
+      g.strokePath();
+    }
+  }
+
+  // Whole-scene translucent color-grade keyed off the biome's terrain theme
+  // -- zone-level tinting (a cool wash over a frozen world's field, embers
+  // glowing at a scorched world's horizon), never per-shape shading.
+  private drawColorGrade(g: Phaser.GameObjects.Graphics, biome: Biome) {
+    switch (biome.wallTheme) {
+      case 'water': {
+        // Cool cyan wash deepening down the field, as if lit through ice.
+        const cool = 0x3a8ab8;
+        g.fillGradientStyle(cool, cool, cool, cool, 0, 0, 0.1, 0.1);
+        g.fillRect(0, HORIZON_Y, FIELD_W, FIELD_H - HORIZON_Y);
+        break;
+      }
+      case 'lava': {
+        // Warm ember glow straddling the horizon, strongest at the ridge
+        // bases, as if lit from molten ground beyond them.
+        const ember = 0xff5a22;
+        g.fillGradientStyle(ember, ember, ember, ember, 0, 0, 0.14, 0.14);
+        g.fillRect(0, HORIZON_Y - 60, FIELD_W, 60);
+        g.fillGradientStyle(ember, ember, ember, ember, 0.1, 0.1, 0, 0);
+        g.fillRect(0, HORIZON_Y, FIELD_W, 70);
+        break;
+      }
+      case 'void': {
+        // Deepen the zenith toward true void so the sky reads bottomless.
+        const deep = 0x060618;
+        g.fillGradientStyle(deep, deep, deep, deep, 0.22, 0.22, 0, 0);
+        g.fillRect(0, 0, FIELD_W, Math.round(HORIZON_Y * 0.6));
+        break;
+      }
+      default: {
+        // Open-sky daylight worlds get a faint warm sunlight wash from
+        // above; enclosed rock worlds stay untinted.
+        if (biome.clouds) {
+          const sun = 0xfff0c0;
+          g.fillGradientStyle(sun, sun, sun, sun, 0.08, 0.08, 0, 0);
+          g.fillRect(0, 0, FIELD_W, HORIZON_Y);
+        }
+      }
+    }
+  }
+
+  // Two wide, faint fog bands drifting slowly across the horizon --
+  // just enough ambient motion that the arena reads as a place with air in
+  // it, kept far too translucent and slow to compete with move effects or
+  // UI. Cheap: two ellipses on infinite yoyo tweens, no per-frame redraw.
+  private drawHazeBands(biome: Biome) {
+    const hazeColor = shade(biome.fogTarget, 35);
+    const haze1 = this.add.ellipse(FIELD_W * 0.3, HORIZON_Y - 26, 460, 44, hazeColor, 0.08);
+    const haze2 = this.add.ellipse(FIELD_W * 0.72, HORIZON_Y - 6, 540, 36, hazeColor, 0.1);
+    this.tweens.add({ targets: haze1, x: haze1.x + 46, duration: 17000, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    this.tweens.add({ targets: haze2, x: haze2.x - 54, duration: 21000, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  }
+
+  // Corner-only translucent vignette: four gradient rects whose alpha peaks
+  // at the frame corner and falls to zero toward center-frame, leaving the
+  // middle of the arena (where both crystals live) untouched.
+  private drawVignette(biome: Biome) {
+    const g = this.add.graphics();
+    const c = blend(biome.skyTop, 0x000000, 0.75);
+    const w = 300;
+    const h = 200;
+    const a = 0.2;
+    // top-left / top-right
+    g.fillGradientStyle(c, c, c, c, a, 0, 0, 0);
+    g.fillRect(0, 0, w, h);
+    g.fillGradientStyle(c, c, c, c, 0, a, 0, 0);
+    g.fillRect(FIELD_W - w, 0, w, h);
+    // bottom-left / bottom-right
+    g.fillGradientStyle(c, c, c, c, 0, 0, a, 0);
+    g.fillRect(0, FIELD_H - h, w, h);
+    g.fillGradientStyle(c, c, c, c, 0, 0, 0, a);
+    g.fillRect(FIELD_W - w, FIELD_H - h, w, h);
   }
 
   private drawSun(x: number, y: number) {
@@ -1446,21 +1583,6 @@ export class BattleScene extends Phaser.Scene {
     this.playerHpBar.width = Math.max(0, (this.playerHp / this.playerMaxHp) * HP_BAR_FILL_W);
   }
 
-  // Recursively kills every tween targeting a Container or any descendant of
-  // it -- reused by transmuteAdapted below (World 10's rival) whenever it
-  // destroys-and-rebuilds the opponent's makeBossCrystal() subtree mid-battle.
-  // Plain `destroy(true)` reclaims the GameObjects but leaves any tween still
-  // targeting them (the aura/orbit tweens inside makeBossCrystal, or the
-  // sparkle tweens inside each shard's own makeCrystal(), see
-  // drawTurnPreview's own comment on the same issue) ticking forever against
-  // a dead object otherwise.
-  private killTweensDeep(obj: Phaser.GameObjects.GameObject) {
-    this.tweens.killTweensOf(obj);
-    if (obj instanceof Phaser.GameObjects.Container) {
-      obj.each((child: Phaser.GameObjects.GameObject) => this.killTweensDeep(child));
-    }
-  }
-
   // World 10's rival transmutation (§5/§6, DESIGN.md) -- called from
   // resolveHit's checkEndOrContinue once per player attack that resolves
   // against a still-living Adapted. Picks a new type at random from among
@@ -1496,7 +1618,7 @@ export class BattleScene extends Phaser.Scene {
     this.playTransmuteGlow(() => {
       this.adaptedForm = newForm;
 
-      this.killTweensDeep(this.opponentCrystal);
+      killTweensDeep(this, this.opponentCrystal);
       this.opponentCrystal.destroy(true);
       this.opponentCrystal = makeBossCrystal(this, BOSS_CRYSTAL_SIZE, newForm.color, newForm.variant);
       this.opponentCrystal.setPosition(this.opponentPos.x, this.opponentPos.y);
@@ -1622,11 +1744,7 @@ export class BattleScene extends Phaser.Scene {
   // with everything else in the row.
   private drawTurnPreview() {
     if (this.turnPreviewRow) {
-      this.turnPreviewRow.each((icon: Phaser.GameObjects.GameObject) => {
-        if (icon instanceof Phaser.GameObjects.Container) {
-          icon.each((child: Phaser.GameObjects.GameObject) => this.tweens.killTweensOf(child));
-        }
-      });
+      killTweensDeep(this, this.turnPreviewRow);
       this.turnPreviewRow.destroy(true);
     }
 

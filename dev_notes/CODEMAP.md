@@ -55,9 +55,10 @@ game/src/
                                  one-time move purchase that each panel still formats/prices its
                                  own rows, see "Guardians" below), listDetail.ts's
                                  renderListColumn()/listDetailColumns()/fitListLabel()/
-                                 renderDetailCrystalHeader()/renderMoveDetailHeader()/
-                                 renderSelfBuffMoveDetailHeader()/sideBySideColumns() is the shared
-                                 detail-pane scaffolding (STYLE.md's "List+detail panels") --
+                                 insertColumnDivider()/renderDetailCrystalHeader()/
+                                 renderMoveDetailHeader()/renderSelfBuffMoveDetailHeader()/
+                                 renderStatusAndConfirm()/destroyPanel()/sideBySideColumns() is the
+                                 shared detail-pane scaffolding (STYLE.md's "List+detail panels") --
                                  renderListColumn/listDetailColumns back the paginated-left-column
                                  shape HubScene's own Qumatex panel, dresselhaus.ts/anderson.ts
                                  (host-pick step only)/majorana.ts (both pick-a-crystal steps),
@@ -76,7 +77,11 @@ game/src/
                                  idea but centered on a rendered player crystal instead of
                                  traveling between two points (kondo.ts's own self-buff moves --
                                  see "Kondo in the overworld" in STYLE.md and
-                                 art/moveEffectPreview.ts, above), and
+                                 art/moveEffectPreview.ts, above) -- and closes through
+                                 renderStatusAndConfirm, the shared cost/status-line-plus-confirm-
+                                 button tail. destroyPanel() is the shared teardown every panel
+                                 rebuild runs before calling showXPanel again (art/crystals.ts's
+                                 killTweensDeep over the whole container, then destroy). And
                                  hubStations.ts holds the
                                  Lab's own six reference/settings stations (see "Lab stations and
                                  settings" below) -- taking scene: HubScene instead of
@@ -124,9 +129,19 @@ game/src/
                                   scene/panel that needs the canvas size already imports it
                                   from here
     biomes.ts                  Per-world visual skin (sky, walls, path, decoration, fog, wallTheme)
+    contours.ts                Smoothed walkable/impassable boundary geometry in tile space --
+                                  per-tile ground outline, contact-shadow strips, rim light --
+                                  built once per world-state by OverworldScene's cached terrain
+                                  pass and only projected per frame
     crystals.ts                 makeCrystal() -- shared shard/cluster/prism sprite builder, opts.seed
                                   for per-compound jitter (jitterFor) and opts.hybrid for a fused
-                                  hybrid look (drawHybridCrystal)
+                                  hybrid look (drawHybridCrystal); killTweensDeep(scene, obj) --
+                                  the shared recursive tween-kill every caller about to destroy a
+                                  Container runs first (scenes/panels/listDetail.ts's destroyPanel,
+                                  franklin.ts's crystal-block re-render, BattleScene's
+                                  opponent-crystal swap and turn-preview redraw), since Phaser's own
+                                  destroy() leaves tweens targeting a dead object running and the
+                                  sparkle/glow tweens handed out here repeat forever
     noether.ts                    makeNoetherAvatar()
     bloch.ts                    makeBlochAvatar()
     dresselhaus.ts               makeDresselhausAvatar()
@@ -474,10 +489,13 @@ difficulty-curve sanity check rather than a docs generator.
   keys) is the current example, kept in its own file even with a single caller today since a
   future guardian selling another flat, non-previewable "buy several, equip one" kit could reuse
   it the same way. `listDetail.ts`'s own `renderListColumn`/`renderMoveDetailHeader`/
-  `renderSelfBuffMoveDetailHeader`/`sideBySideColumns` (see the file-tree entry above) is the
+  `renderSelfBuffMoveDetailHeader`/`renderStatusAndConfirm`/`insertColumnDivider`/
+  `destroyPanel`/`sideBySideColumns` (see the file-tree entry above) is the
   genuinely multi-caller case, shared today by Dresselhaus/Anderson/Majorana/Noether/Kondo's own
-  panels plus HubScene's Qumatex panel (the paginated-left-column shape), and by Laughlin's/
-  Skłodowska-Curie's own panels (the bespoke always-both-visible two-column shape). Both
+  panels plus HubScene's Qumatex panel (the paginated-left-column shape), by Laughlin's/
+  Skłodowska-Curie's own panels (the bespoke always-both-visible two-column shape), and -- for
+  `insertColumnDivider`/`destroyPanel`, which are about panel chrome rather than the list+detail
+  split itself -- by Franklin's own crystal-beside-list panel too. Both
   Laughlin's and Skłodowska-Curie's panels also share `tunableMoveShop.ts`'s
   `hostableClasses`/`renderInlineClassPicker` -- the inline quasiparticle-picker row strip each
   renders directly beneath a move's own column, written generically (any move id, filtered to
@@ -888,11 +906,16 @@ wrong answer since the outcome is already decided) in place of `showAnalyticQues
 `playerAttack(moveId, allCorrect ? 1 : 0)` instead of a continuous multiplier.
 
 **BattleScene reads the world's biome.** `drawBackground` calls `getBiome(this.world)` (the
-same `art/biomes.ts` table `OverworldScene`'s corridor uses) -- sky/ridge/ground gradients, the
-decorative crystal outcrops, and the ground tufts all derive from the biome's `skyTop`/
-`skyBottom`/`hillColor`/`ground`/`path` fields via `shade()`. Any future per-biome visual field
-added to `Biome` should flow through here too if it should affect the battle arena, not just
-the overworld.
+same `art/biomes.ts` table `OverworldScene`'s corridor uses) -- the eased sky wash, the four
+Catmull-Rom ridgeline layers (`drawRidge`), the ground gradient/mist, the `wallTheme`-keyed
+color grade (`drawColorGrade`), the drifting haze bands (`drawHazeBands`), the corner vignette
+(`drawVignette`), the decorative crystal outcrops, and the ground tufts all derive from the
+biome's `skyTop`/`skyBottom`/`hillColor`/`ground`/`path`/`fogTarget` fields via
+`shade()`/`blend()`; battle-specific tints are always derived in `BattleScene` from those
+shared fields rather than stored as extra `Biome` fields, so retuning the battle arena never
+shifts the overworld's palette. See STYLE.md's "Battle backdrop" section for the visual
+rules. Any future per-biome visual field added to `Biome` should flow through here too if it
+should affect the battle arena, not just the overworld.
 
 **BattleScene also requests the world's battle track.** `create()` calls `music.play` with the
 key `battle:<world>` -- `audio/music.ts`'s `SCORES` table has one procedural battle score per
@@ -981,10 +1004,50 @@ HP" below, stays fixed for the whole battle).
 walking to (or seeing) the goal. If a future guardian panel needs a progression action, route it
 through `showGatePanel`, not by reaching for `renderShopFooter` directly.
 
+**Overworld terrain rendering.** Painting the corridor floor splits in two, and new terrain work
+belongs on one side or the other. `OverworldScene.buildTerrainPlan()` (reached through the
+memoizing `terrainPlan()` accessor) reads the grid
+(`walkable`/`regionColor`/`biomeOverride`/`flowerMap`/`midTile`) and classifies every tile into a
+`TerrainTile`: its kind (`path`/`block`/`lava`/`water`/`void`, where a region tint outranks the
+biome's own `wallTheme`), its resolved `Biome`, its region tint, whether it carries decoration or
+the guardian-chokepoint highlight, and which of its four edges border a walkable neighbor (the
+edges a block extrudes a wall face on, and a void hangs a rail on). That pass is
+camera-independent, so it covers the whole grid rather than just the visible window -- a shape
+spanning the window edge stays one continuous shape -- and its result is cached in
+`terrainPlanCache` for as long as the grid stands still. For a world in
+`CONTOUR_SMOOTHED_WORLDS` (World 5 today; an in-progress rollout) the same memoized pass also
+builds `contourGrid` via `art/contours.ts`'s `buildContourGrid`, which traces the
+walkable/impassable boundary on the tile lattice, biases it onto the walkable side, smooths it,
+and hands back per-tile ground-plane geometry in tile space: a curved `outline` (wound like the
+plain quad, so the two are interchangeable at the draw call), `shadow` strips for the contact
+shadow at the junction, and the walkable side's `rim` polyline. Both tiles sharing a boundary
+reference the same curve points, so the two fills abut exactly rather than overlapping or
+leaving a sliver -- and because the curve never crosses to the impassable side of the grid line,
+wall extrusion keeps rising from the untouched grid line and `paintWallFacesAroundTile` stays
+exact. That trace is the expensive part of the pass (a few ms for the whole grid) and, like the
+plan itself, must never be reached for per frame. `create()` drops the cache right after
+the `generateMap()`/`restoreMap()` branch, which is mandatory rather than defensive: Phaser reuses
+the same scene instance across every `scene.start`, so a plan built for the previous visit would
+otherwise survive into the next one; anything that ever mutates the grid mid-visit has to drop it
+the same way. `drawWorld()` then runs every frame over the visible window (`DRAW_DISTANCE_TILES`,
+`LANE_CLIP`) doing only the camera-dependent half: projecting each tile's four corners through
+`projectTile`/`art/perspective.ts` at the current (possibly mid-tween) camera position, deriving
+`depthRatio` for the fog/detail falloff, and painting -- including the time-driven accents (lava
+crust pulse, water shimmer, chokepoint glow). On a smoothed world it projects the cached contour
+geometry through that same transform instead of the tile's four corners (`projectContour`,
+`drawContactShadow`), skips the per-tile seam stroke so a run of tiles reads as one region,
+routes every ground color through `groundColor` (which deepens the haze past what `fogColor`'s
+own cap allows) with walkable ground hazing toward the lighter `walkableHazeTarget`, and closes
+the frame with `drawDepthHaze`, a whole-screen wash over the far ground plane. Geometry that is expensive to work out from the grid
+belongs in the plan; anything that depends on where the camera is has to stay in `drawWorld`, since
+that per-frame reprojection is what makes the world scroll continuously instead of snapping
+tile-by-tile. `paintWallFacesAroundTile` (the occlusion repaint below) reads the grid directly,
+mirroring `drawWorld`'s own culls, rather than going through the plan.
+
 **Overworld depth layering.** `OverworldScene`'s corridor is a fixed stack of Phaser depths:
-`worldGfx` (the single per-frame-rebuilt `Graphics` mesh for ground tiles and wall blocks) at the
-default depth 0; qumatessence token bodies at 19; every other `WorldSprite` body (wild-encounter
-crystal, guardian, boss, door) at 20; `actorWallGfx` at 21; every `WorldSprite`'s name label at 22;
+`worldGfx` (the single `Graphics` mesh for ground tiles and wall blocks, repainted every frame --
+see "Overworld terrain rendering" above) at the default depth 0; qumatessence token bodies at 19;
+every other `WorldSprite` body (wild-encounter crystal, guardian, boss, door) at 20; `actorWallGfx` at 21; every `WorldSprite`'s name label at 22;
 the player's own crystal container at a fixed 40 (`this.player.setDepth(40)`); `playerWallGfx` at
 41; corner HUD text at 50; and every dialogue/panel container at 100. Because every actor's depth
 is fixed rather than computed from its actual position, `worldGfx` alone can never let a wall
@@ -1130,9 +1193,9 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   and starts the crystal back on whatever is now actually active -- a persisted preview field
   would otherwise go stale across exactly that commit and show a passive that was only ever
   looked at, not the one just bought/activated. The crystal block itself is rebuilt in place
-  (`killTweensDeep` first, to stop Amorphous Halo's own glow tween and `makeCrystal`'s per-shard
-  sparkle tweens from still targeting a destroyed object, the same reasoning
-  `BattleScene.killTweensDeep`'s own comment gives; then `crystalBlock.removeAll(true)` and
+  (`art/crystals.ts`'s shared `killTweensDeep` first, to stop Amorphous Halo's own glow tween and
+  `makeCrystal`'s per-shard sparkle tweens from still targeting a destroyed object; then
+  `crystalBlock.removeAll(true)` and
   redrawn) on each preview click rather than a full `reopen()`, and the label's own height is
   reserved up front from the longest possible passive-name-plus-"(preview)" string (the same
   sample-measurement technique `renderPagedButtons`/Qumatex's own paginated list use) so a later
@@ -1626,14 +1689,45 @@ with an actual two-step flow already carries -- clicking a row (or, for Bloch, a
 only changes the preview, at no
 cost; the right/detail column's own explicit confirm button is what actually applies the
 guardian's mechanic. `insertColumnDivider` draws the line between the two columns once both are
-known, `fitListLabel` is the shared ellipsis-trim-on-overflow helper, and
-`renderDetailCrystalHeader`/`renderMoveDetailHeader` are the shared header blocks each guardian
-panel builds its own status text and confirm button on top of -- a crystal render plus name for
-the three crystal-browsing panels, a looping battle-effect animation plus name for the
-move-browsing one (Noether's; Qumatex's own detail pane stays a separate render since it
-additionally masks an undiscovered entry and appends a physics blurb). `LIST_DETAIL_PANEL_W`
+known (inserted at container index 0, so it renders *beneath* every row/button -- Franklin's own
+bespoke 760px two-column panel calls it too, with its own divider x, rather than hand-drawing a
+second copy), `fitListLabel` is the shared ellipsis-trim-on-overflow helper, and
+`renderDetailCrystalHeader`/`renderMoveDetailHeader`/`renderSelfBuffMoveDetailHeader` are the
+shared header blocks each guardian panel's detail pane opens with -- a crystal render plus name
+for the three crystal-browsing panels, a looping battle-effect animation plus name for the
+move-browsing ones, the same animation centered on the player's own crystal for a self-buff move
+(Kondo's; Qumatex's own detail pane stays a separate render since it
+additionally masks an undiscovered entry and appends a physics blurb). Both move headers take the
+player's real Feynman `MoveLevel` (`getMoveLevel`) so a leveled move previews the same escalating
+multi-trigger cascade a real cast plays. `renderStatusAndConfirm` is the shared tail every one of
+those panes closes with: the cost/status line plus an optional confirm button (omitted where
+there's nothing to commit -- Dresselhaus's current form, Bloch's current or undiscovered world),
+parameterized only over the wording, the dimmed-when-unavailable flag, and two per-panel spacing
+knobs (`statusCap`, Anderson's tighter `1.1`; `gapAfterStatus`, Bloch's tighter `4`).
+`LIST_DETAIL_PANEL_W`
 (`720`) is the panel width every list+detail panel uses; Laughlin's/Skłodowska-Curie's own
 bespoke panels use the wider `TWO_UP_PANEL_W` (`800`) instead (see "Guardians" above).
+
+**A preview click is a scoped update, not a panel rebuild** in Dresselhaus's, Anderson's,
+Majorana's, Kondo's and Bloch's panels -- follow this in any new list+detail panel. Each of
+them opens by building its avatar/intro/list rows once into the panel
+container, plus two sub-containers: a `chromeBlock` added *first* (so the divider, footer and
+panel background inside it render beneath everything added after) and a `detailBlock` for the
+right-hand pane. Clicking a row calls `renderListColumn`'s own `setSelectedId` (restyles the
+rows already on screen -- row heights are fixed, so nothing re-measures) and re-renders only
+`detailBlock` plus `chromeBlock`, whose height depends on it. Bloch's Qumatuomi map is the
+strongest case: its coastline, islands and markers are built once and only the selection ring
+(its own `ringBlock` *inside* the map's container, so it shares the map's local coordinates)
+moves. A commit -- a purchase, a transmutation, a page flip -- still tears the panel down via
+`destroyPanel(scene)` and calls `showXPanel` again, since those change what the list itself
+shows. `destroyPanel` is the shared teardown every rebuild goes through: it runs
+`art/crystals.ts`'s `killTweensDeep` over the whole container before destroying it, since
+Phaser's own `destroy()` leaves tweens targeting a dead object running and a panel is full of
+infinitely-repeating ones (the guardian avatar's bob, `makeCrystal`'s per-shard sparkles, a
+hybrid halo's glow, Bloch's ring pulse). Noether's Moves tab rebuilds through `destroyPanel` on
+a preview click too: its detail pane renders no crystal at all, and its animation preview is a
+`moveEffectPreview.ts` chain that retargets rather than restarting, so a scoped update would buy
+it much less than it buys the five above.
 
 ## Save schema
 

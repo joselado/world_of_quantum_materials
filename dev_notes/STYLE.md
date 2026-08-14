@@ -259,7 +259,7 @@ than appending a changelog, so this always reflects current reality.
   `forceChokepoint`/`verifyChokepoint`), not just placed near the geometric middle of one of
   several possible routes.
 - Two per-tile overlays a generator can paint on top of its own shape, both consumed
-  generically by `OverworldScene.drawWorld`: `regionColor` tints a tile toward a fixed hex
+  generically by `OverworldScene`'s terrain rendering: `regionColor` tints a tile toward a fixed hex
   color (world 1's two broken-symmetry branches, world 3's Voronoi domains, both blended into
   the tile's ordinary fill via `art/colors.ts`'s `blend`) and `biomeOverride` swaps which
   world's whole `art/biomes.ts` entry a tile renders with instead of the current world's own
@@ -273,8 +273,9 @@ than appending a changelog, so this always reflects current reality.
   `OverworldScene.drawMidHighlight`) -- the forced chokepoint reads as a deliberate gate the
   player is walking through, not an arbitrary narrow spot.
 - Off-path tiles read as unambiguously "you cannot walk here," but not always the same way --
-  `OverworldScene.drawOffPathTile` dispatches on that tile's own biome's `wallTheme`
-  (`art/biomes.ts`, resolved per-tile via `biomeOverride` above; see the Biomes table below):
+  `OverworldScene.drawOffPathTile` dispatches on the terrain kind resolved from that tile's own
+  biome's `wallTheme` (`art/biomes.ts`, resolved per-tile via `biomeOverride` above; see the
+  Biomes table below):
   - **'rock'** (most biomes): a raised, solid-looking wall block, not just
     differently-colored flat ground -- every edge a non-walkable tile shares with a walkable
     neighbor gets an extruded vertical face (`OverworldScene.drawWallFaces`, `WALL_HEIGHT_PX =
@@ -301,6 +302,36 @@ than appending a changelog, so this always reflects current reality.
   A ground-tile fill itself (walkable, 'rock' off-path, or a `regionColor`-tinted tile) is a
   single flat color per tile, not a per-tile diagonal-facet/gradient shading -- floors read
   better flat; don't add such shading without asking first.
+- **Smoothed ground** (World 5 only today; `OverworldScene`'s `CONTOUR_SMOOTHED_WORLDS`, an
+  in-progress rollout the other nine worlds are not part of yet). The rule above is about a
+  tile's *interior*, and this treatment leaves it intact -- every fill is still one flat color.
+  What changes is the *shape* of the fills and what is laid over the scene as a whole:
+  - The walkable/impassable boundary is traced on the tile lattice and redrawn as a curve
+    (`art/contours.ts`, "Overworld terrain rendering" in CODEMAP.md), so a region edge that
+    turns reads as an organic shoreline rather than a stair-step of axis-aligned quads. The
+    curve is pulled 0.25 tiles onto the walkable side of the grid line, which is what keeps
+    the ground plane clear of a solid tile's footprint and so leaves wall extrusion (which
+    still rises from the untouched grid line) exactly where it is.
+  - The per-tile seam stroke is dropped, so a run of same-kind tiles reads as one continuous
+    region rather than a grid.
+  - A **contact shadow** -- two translucent black bands on the walkable side of the boundary
+    and one on the impassable side, faded out past 70% of draw distance -- seats the floor
+    into what it meets instead of letting the two butt flat together. Immediately inside it
+    runs a thin **rim light** in a pale tint of the biome's path color, the classic light edge
+    against a darker mass, which also keeps the walkable region's own shape readable further
+    into the distance than its fill alone manages.
+  - **Depth haze** is leaned on much harder: the per-tile fog blend is deepened, distant
+    walkable ground hazes toward a lighter target than its surroundings do (so the route stays
+    visible at the range the player plans it from), and a whole-screen wash of the biome's haze
+    color over the top of the ground plane turns the far distance into continuous atmosphere.
+  - The guardian chokepoint's glow falls off radially from the guardian's own tile and drops
+    its outline, so the gate reads as a pool of light rather than a hard rectangle laid over a
+    floor whose every other edge curves.
+  This treatment currently only pays off where impassable terrain lies flush with the ground
+  ('lava'/'water'/'void'). Against a 'rock' wall the extruded face rises from the grid line and
+  hides the smoothed floor edge behind it, so only the contact shadow, the seam removal and the
+  haze are visible there -- the blocky read in a rock world is the wall silhouette, which is a
+  separate piece of work.
 - Decoration (flowers / crystal glints) is placed in the off-path terrain only, not on
   walkable tiles -- those are reserved for wild encounters and qumatessence pickups.
 - Qumatessence tokens are scattered across a handful of walkable tiles per map
@@ -344,13 +375,19 @@ Per-world skin: sky/ceiling gradient, hill/ceiling silhouette, wall-block color 
 on-path trail color, ambient decoration style, fog blend target, whether clouds render, and
 (see "Overworld path" above) what the off-path terrain actually *is* -- `wallTheme`.
 
+World 5's entry is held in a deliberately narrow, desaturated value range (its haze target
+`0x44606e` sits between its floor and its lake rather than near-black). That is a requirement of
+the smoothed-ground treatment it uses, not a free style choice: each grid row is one flat color,
+so a wide floor-to-surroundings spread turns a strong depth haze into visible horizontal
+stripes across the floor, where a compressed one lets the same falloff read as continuous air.
+
 | World | Biome | Sky/ceiling | Walls (off-path) | Path | Decoration | Clouds | Wall theme |
 |---|---|---|---|---|---|---|---|
 | 1 | Tutorial Meadow | pale blue gradient (`0x8fd0ff`→`0xe8f6ff`) | grass `0x2e7d32` | dirt `0xb08d57` | flowers | yes | rock |
 | 2 | Crystalline Caves | dark purple gradient (`0x1a1730`→`0x362f5c`) | stone `0x2b2b3a` | cave floor `0x585073` | crystal glints (cyan) | no | rock |
 | 3 | Floating Islands | deep-to-pale blue gradient (`0x2a3d6b`→`0x8fb8e8`) | slate blue `0x35507a` | pale sky-blue walkway `0x9ac0e0` | crystal glints (cyan) | yes | **void** -- open sky/chasm, matches "one-way edge paths" |
 | 4 | Landau Level Terrain | deep electric-blue gradient (`0x081428`→`0x1f4d8f`) | field-line blue `0x2a5ca8` | glowing blue `0x3a7fd4` | field lines | no | rock |
-| 5 | Frozen Caverns | icy dark gradient (`0x0d1b2a`→`0x2a4858`) | icy slate `0x24404f` | pale ice-blue `0x8fdcff` | crystal glints (cyan) | no | **water** -- a frozen lake, "zero-resistance" made literal underfoot |
+| 5 | Frozen Caverns | icy dark gradient (`0x1b2c3a`→`0x3d5b69`) | icy slate `0x1c3440` | pale ice-blue `0xa4dbe6` | crystal glints (cyan) | no | **water** -- a frozen lake, "zero-resistance" made literal underfoot |
 | 6 | Magnon Plains | pale blue-green gradient (`0x9fd8ff`→`0xdff3ff`) | olive-gold `0x8fae5c` | warm gold `0xd4c07a` | ripples | yes | rock |
 | 7 | Tensor-Network World | dark violet gradient (`0x120a24`→`0x2c1a4a`) | deep purple `0x3a2560` | violet bond-path `0x8a5cd9` | network nodes | no | rock |
 | 8 | Spinon Forest | muted grey-green gradient (`0x2a2f28`→`0x4a5248`) | low-contrast green `0x3a4238` | muted sage `0x5a6a58` | mist motes | no | rock |
@@ -609,10 +646,9 @@ than the caller's requested budget) for its own layout math.
   triggers on `HubScene`, whose `world` is always `0`) still shows that world's own blurb, with a
   status line naming it directly ("You are standing in World N -- `<name>`.") instead of a
   button; previewing an undiscovered `???` world shows a short fixed line in place of its blurb
-  ("Mist covers this land -- you have not walked it yet.") and "You haven't mapped anywhere else
-  yet." in place of its status -- the latter the same copy an earlier, whole-panel-replacing empty
-  state used before every world got its own row, now scoped to whichever world is actually being
-  previewed. Superposition Mode's own
+  ("Mist covers this land -- you have not walked it yet.") and, in place of its status, Bloch
+  saying why there's no button ("You have never walked this land -- I cannot fold you where you
+  have not been."). Superposition Mode's own
   `BUILT_WORLDS`-as-discovered special case (the persisted `visitedWorlds` list only gets
   pre-seeded with every built world on world entry, not on opening the Lab, so a fresh
   Superposition save still needs every world to read as discovered immediately) means no row ever
@@ -857,7 +893,9 @@ than the caller's requested budget) for its own layout math.
   move's `'screening'`-class ring effect (`art/attackEffects.ts`'s `EFFECT_STYLE`, tinted
   `0xe86a44`) looping *centered on the crystal itself* rather than travelling across the pane --
   `renderSelfBuffMoveDetailHeader` (`scenes/panels/listDetail.ts`), the self-buff sibling of the
-  ordinary `renderMoveDetailHeader` three other guardians' move-browsing panes use. Below that:
+  ordinary `renderMoveDetailHeader` three other guardians' move-browsing panes use. Like that
+  sibling, it plays the move at the player's real Feynman level, so a leveled Kondo move previews
+  the same escalating multi-trigger cascade a real cast plays. Below that:
   the move's own one-line `description` (`data/materials.ts`'s `Move.description`, only Kondo's
   three moves carry one), then a cost/status line and a confirm button -- "Learn `<name>`
   (`<cost>` qumatessence)" for a still-unbought move (dimmed if unaffordable, reusing `shopCost`),
@@ -881,8 +919,9 @@ than the caller's requested budget) for its own layout math.
   distinct from Anderson's rust/amber despite the shared defect/disorder theme.
 - Qumatex-like: below the avatar/quote, the panel (`scenes/panels/franklin.ts`, `760` wide)
   splits into two columns -- a fixed-size crystal-preview block on the left, the passive shop
-  list on the right, divided by the same thin vertical line `HubScene.renderMaterialdexPanel`'s
-  own two-column layout uses. Putting the crystal beside the list rather than above it means the
+  list on the right, divided by the same thin vertical line every list+detail panel uses
+  (`scenes/panels/listDetail.ts`'s `insertColumnDivider`, drawn beneath every row and button).
+  Putting the crystal beside the list rather than above it means the
   crystal block adds no extra height beyond whichever column is already taller, since this panel
   has no shrink-to-fit safety net and was already close to `CANVAS_H` at the largest text-size
   preset before the crystal existed.
@@ -1160,6 +1199,38 @@ than the caller's requested budget) for its own layout math.
   otherwise overflow the canvas at the Settings panel's 2x preset). Losing doesn't set anything
   back except the token stake (see Stakes in DESIGN.md §4): the goal panel simply reopens and
   "Face the Rival ->" is still there to retry.
+
+## Battle backdrop (`BattleScene.drawBackground`)
+
+- The arena backdrop is drawn once per battle entry (in `create()`, never per-frame) and
+  aims for a soft, layered, atmospheric read: every color in it derives from that world's
+  `art/biomes.ts` entry via `shade()`/`blend()`, and the background's whole value range is
+  deliberately compressed toward the sky/fog colors so the two crystals, move effects, and
+  UI pop in front of it. No per-shape internal gradients on small elements -- depth comes
+  from whole-scene layers:
+  - **Sky**: an eased two-segment vertical wash (`skyTop` → a mid-stop blended at 0.45,
+    placed above the geometric middle → `skyBottom`), so brightening accelerates toward the
+    horizon, plus a translucent fog-tinted glow band hugging the horizon (`HORIZON_Y = 262`).
+  - **Ridgelines**: four stacked silhouette layers, each a Catmull-Rom spline
+    (`Phaser.Curves.Spline`, sampled at 80 points) through peak heights seeded per
+    world+layer (`seededRandom(hashSeed('battle-ridge-<world>-<layer>'))`, so every world
+    keeps its own stable skyline). Further layers are taller-but-hazier (blended harder
+    toward `skyBottom` and explicitly brightened a step -- the explicit step matters in dark
+    biomes, where the raw blend endpoints sit too close together to separate the layers);
+    nearer layers are flatter, darker, and carry a subtle 1.5px rim-light stroke along
+    just their top edge (`blend(color, white, 0.38)` at 0.32 alpha) as directional skylight.
+  - **Ground**: a vertical gradient from a fog-blended far edge to a darkened near edge,
+    with a translucent mist band pooling just below the horizon.
+  - **Color grade**: one zone-level translucent tint keyed off the biome's `wallTheme` --
+    `water` gets a cool cyan wash deepening down the field, `lava` an ember glow straddling
+    the horizon, `void` a darkened zenith, and daylight (`clouds: true`) worlds a faint warm
+    sun wash from above; enclosed rock worlds stay untinted.
+  - **Haze**: two wide, faint fog-colored ellipses at the horizon on slow (17s/21s) infinite
+    yoyo drift tweens -- ambient motion cheap enough to leave running, far too translucent
+    (≤0.1 alpha) to compete with attack effects.
+  - **Vignette**: corner-only -- four gradient rects whose alpha peaks at 0.2 in the frame
+    corner and fades to zero toward center, in a near-black blended from `skyTop`. Drawn
+    before the crystals/UI so it only ever dims the backdrop.
 
 ## Boss opponent in battle (`scenes/BattleScene.ts`)
 

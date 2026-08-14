@@ -208,6 +208,24 @@ function jitterFor(seed: string, baseColor: number): CompoundJitter {
   };
 }
 
+// Kills every tween targeting `obj` or any descendant of it, so a Container
+// about to be destroyed (a panel rebuild, a battle-time crystal swap) leaves
+// nothing ticking behind it. Needed because Phaser's own
+// GameObject.destroy() does not touch tweens, and makeCrystal below hands
+// out `repeat: -1` sparkle/glow tweens -- one per shard, plus the hybrid
+// halo's -- that would otherwise keep animating a dead object forever, one
+// more leaked set per rebuild. Every guardian panel's own
+// `dialogueContainer?.destroy(true)` rebuild goes through this first
+// (scenes/panels/), as does BattleScene's opponent-crystal swap. Typed
+// against just the `tweens` manager so both a real Phaser.Scene and a
+// GuardianPanelHost satisfy it.
+export function killTweensDeep(scene: Pick<Phaser.Scene, 'tweens'>, obj: Phaser.GameObjects.GameObject) {
+  scene.tweens.killTweensOf(obj);
+  if (obj instanceof Phaser.GameObjects.Container) {
+    obj.each((child: Phaser.GameObjects.GameObject) => killTweensDeep(scene, child));
+  }
+}
+
 // Builds a shiny crystal (a Container so it can be positioned/tweened as one
 // unit) matching a material's `variant`: a single shard, a jagged cluster of
 // three shards, a layered prism, a floating 2D sheet, or two twisted

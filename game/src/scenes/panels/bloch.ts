@@ -2,15 +2,16 @@ import Phaser from 'phaser';
 import type { GuardianPanelHost } from '../OverworldScene';
 import { BUILT_WORLDS } from '../OverworldScene';
 import { makeBlochAvatar } from '../../art/bloch';
+import { killTweensDeep } from '../../art/crystals';
 import { buildQumatuomiMap } from '../../art/qumatuomiMap';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W, CANVAS_H } from '../../art/perspective';
 import { fontPx, fontScale } from '../../ui/text';
-import { PANEL_BG, REFERENCE_BLUE_GREY_HEX, GOLD_ACCENT } from '../../ui/theme';
+import { PANEL_BG, GOLD_ACCENT } from '../../ui/theme';
 import { WORLD_NAMES, BLOCH_DESTINATION_COST } from '../../data/materials';
 import { WORLD_FLAVOR } from '../../data/worldFlavor';
 import { persistFromRegistry } from '../../data/save';
-import { LIST_DETAIL_PANEL_W, listDetailColumns, renderListColumn, insertColumnDivider } from './listDetail';
+import { LIST_DETAIL_PANEL_W, destroyPanel, listDetailColumns, renderListColumn, insertColumnDivider, renderStatusAndConfirm } from './listDetail';
 
 // Bloch stands at world 2's middle tile (see spawnGuardianSprite/
 // WORLD_GUARDIANS) and folds the player to any other world they've already
@@ -44,8 +45,8 @@ import { LIST_DETAIL_PANEL_W, listDetailColumns, renderListColumn, insertColumnD
 // own undiscovered-crystal rows use (HubScene.renderMaterialdexPanel). The
 // right column is not a plain per-selection detail pane the way Dresselhaus'/
 // Majorana's own right columns are: a persistent Qumatuomi map
-// (art/qumatuomiMap.ts), rendered once showing all 10 worlds at once and
-// never swapped, sits above the actual detail content -- the previewed
+// (art/qumatuomiMap.ts), showing all 10 worlds at once and never swapped,
+// sits above the actual detail content -- the previewed
 // destination's own physics blurb (data/worldFlavor.ts's WORLD_FLAVOR, in
 // the same epic-plus-physics voice every guardian's own intro quote uses,
 // masked to a short "unmapped" line for an undiscovered world the same way
@@ -58,13 +59,18 @@ import { LIST_DETAIL_PANEL_W, listDetailColumns, renderListColumn, insertColumnD
 // matching marker -- at no cost, updating the blurb/status/button
 // underneath the (otherwise unmoving) map in the same click; the confirm
 // button is the one action that actually checks/spends the unlock cost and
-// travels (`advanceToWorld`). The currently *previewed* world has no
+// travels (`advanceToWorld`). A preview click is a scoped update, not a
+// panel rebuild (CODEMAP's "scoped update" convention), which matters more
+// here than in any other panel: the map's whole coastline, islands and
+// markers are built once per panel open, and a click only moves the
+// selection ring (`ringBlock`, inside the map's own container so it shares
+// the map's local coordinates) and re-renders `detailBlock`/`chromeBlock`.
+// The currently *previewed* world has no
 // confirm button at all in two cases: it's the world the player is already
 // standing in (`scene.world`, 0 on HubScene so this never triggers there --
 // its own status line still names it, "You are standing in World N --
-// <name>."), or it hasn't been discovered yet ("You haven't mapped
-// anywhere else yet." -- the same copy an earlier, whole-panel-replacing
-// empty state used before every world got its own row).
+// <name>."), or it hasn't been discovered yet, in which case the status
+// line says so in Bloch's own voice instead.
 export function showBlochHub(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
 
@@ -88,6 +94,11 @@ export function showBlochHub(scene: GuardianPanelHost) {
   const top = 20;
   const container = scene.add.container(0, 0).setDepth(100);
   scene.dialogueContainer = container;
+
+  // Added first so everything below (divider, footer, panel background)
+  // renders beneath every row/button added to `container` afterward.
+  const chromeBlock = scene.add.container(0, 0);
+  container.add(chromeBlock);
 
   let y = top;
 
@@ -131,7 +142,14 @@ export function showBlochHub(scene: GuardianPanelHost) {
   const items = BUILT_WORLDS;
   const isTravelable = (w: number) => discoveredWorlds.has(w) && w !== scene.world;
   const firstTravelable = items.find(isTravelable);
-  const effectivePreview = items.includes(scene.blochPreview ?? -1) ? (scene.blochPreview as number) : firstTravelable ?? items[0];
+  let preview = items.includes(scene.blochPreview ?? -1) ? (scene.blochPreview as number) : firstTravelable ?? items[0];
+
+  const selectWorld = (w: number) => {
+    scene.blochPreview = w;
+    preview = w;
+    listResult.setSelectedId(String(w));
+    renderDetail();
+  };
 
   const listResult = renderListColumn({
     scene,
@@ -143,25 +161,22 @@ export function showBlochHub(scene: GuardianPanelHost) {
     idFor: (w) => String(w),
     labelFor: (w) => (discoveredWorlds.has(w) ? WORLD_NAMES[w] ?? `World ${w}` : '???'),
     colorFor: (w) => (discoveredWorlds.has(w) ? '#cfd8ff' : '#6a7396'),
-    selectedId: String(effectivePreview),
+    selectedId: String(preview),
     page: scene.blochPage,
     onPageChange: (page) => {
       scene.blochPage = page;
-      scene.dialogueContainer?.destroy(true);
+      destroyPanel(scene);
       showBlochHub(scene);
     },
-    onSelect: (w) => {
-      scene.blochPreview = w;
-      scene.dialogueContainer?.destroy(true);
-      showBlochHub(scene);
-    },
+    onSelect: (w) => selectWorld(w),
   });
   scene.blochPage = listResult.page;
 
-  // Right column: the persistent Qumatuomi map (all 10 worlds, every visit
-  // -- not swapped per selection), then the previewed destination's own
-  // blurb, cost/status line, and confirm button.
-  let rightY = columnsTop;
+  // Right column: the persistent Qumatuomi map (all 10 worlds, built once
+  // per panel open and never swapped or redrawn on a preview click -- only
+  // the selection ring inside it moves), then the previewed destination's
+  // own blurb, cost/status line, and confirm button.
+  const mapTop = columnsTop;
   const mapBuild = buildQumatuomiMap(scene, { width: columns.rightColW, height: 78, discoveredWorlds });
   // buildQumatuomiMap does uniform scale-to-fit -- its returned width/height
   // are usually smaller than the requested budget on one axis, so the real
@@ -169,109 +184,117 @@ export function showBlochHub(scene: GuardianPanelHost) {
   // Height is deliberately the tight side of the budget -- this is the
   // densest guardian panel in the game (table + map + blurb + status/button
   // + footer all in one), so the map stays legible rather than large.
-  mapBuild.container.setPosition(columns.rightColCenterX, rightY + mapBuild.height / 2);
+  mapBuild.container.setPosition(columns.rightColCenterX, mapTop + mapBuild.height / 2);
   container.add(mapBuild.container);
-  rightY += mapBuild.height + 4;
+  const detailTop = mapTop + mapBuild.height + 4;
 
   // Each marker previews its own world on click (same effect as its table
   // row), with a generous invisible hit circle since the marker itself is
-  // only a few px across. The previewed world's own marker gets a pulsing
-  // gold ring so the map and table can never disagree about the current
-  // selection.
+  // only a few px across.
   mapBuild.markers.forEach(({ world, marker }) => {
-    marker.setInteractive(new Phaser.Geom.Circle(0, 0, 12), Phaser.Geom.Circle.Contains).on('pointerdown', () => {
-      scene.blochPreview = world;
-      scene.dialogueContainer?.destroy(true);
-      showBlochHub(scene);
-    });
+    marker.setInteractive(new Phaser.Geom.Circle(0, 0, 12), Phaser.Geom.Circle.Contains).on('pointerdown', () => selectWorld(world));
   });
-  const selectedMarker = mapBuild.markers.find((m) => m.world === effectivePreview);
-  if (selectedMarker) {
-    const ring = scene.add.circle(selectedMarker.marker.x, selectedMarker.marker.y, 8, 0x000000, 0).setStrokeStyle(2, GOLD_ACCENT, 1);
-    mapBuild.container.add(ring);
-    scene.tweens.add({ targets: ring, scale: 1.8, alpha: { from: 1, to: 0 }, duration: 900, repeat: -1, ease: 'Sine.easeOut' });
-  }
 
-  const isCurrent = effectivePreview === scene.world;
-  const discovered = discoveredWorlds.has(effectivePreview);
-  const name = WORLD_NAMES[effectivePreview] ?? `World ${effectivePreview}`;
+  // The previewed world's own marker gets a pulsing gold ring so the map and
+  // table can never disagree about the current selection. Lives in its own
+  // container *inside* the map's, since the ring is positioned in the map's
+  // local coordinates -- redrawn on every preview click while the map's own
+  // coastline/islands/markers stay put.
+  const ringBlock = scene.add.container(0, 0);
+  mapBuild.container.add(ringBlock);
 
-  // The previewed destination's own physics blurb -- masked to a short fixed
-  // line for an undiscovered world (the table row already reads "???" and
-  // the map marker is already shrouded; a full paragraph of course content
-  // for a world never visited would leak more than either of those does).
-  // Shrinks in whole-px steps (floor 9, same technique Majorana's own
-  // hybrid-fusion-lore description uses) -- reservedBelow covers everything
-  // still to come below it (status line, confirm button, footer) the same
-  // way Majorana's own reservedBelow does.
-  const descScale = Math.min(fontScale(scene), 1.1);
-  let descBase = 11;
-  const descText = scene.add
-    .text(columns.rightColCenterX, rightY, discovered ? WORLD_FLAVOR[effectivePreview] : 'Mist covers this land -- you have not walked it yet.', {
-      fontSize: `${Math.round(descBase * descScale)}px`,
-      color: '#cfd8ff',
-      align: 'left',
-      wordWrap: { width: columns.rightColW },
-      lineSpacing: 3,
-    })
-    .setOrigin(0.5, 0);
-  container.add(descText);
-  const reservedBelow = 100;
-  while (rightY + descText.height + reservedBelow > CANVAS_H - 10 && descBase > 9) {
-    descBase -= 1;
-    descText.setFontSize(`${Math.round(descBase * descScale)}px`);
-  }
-  rightY += descText.height + 4;
+  const detailBlock = scene.add.container(0, 0);
+  container.add(detailBlock);
 
-  const statusScale = Math.min(fontScale(scene), 1.2);
-  const statusLabel = isCurrent
-    ? `You are standing in World ${effectivePreview} -- ${name}.`
-    : !discovered
-    ? "You haven't mapped anywhere else yet."
-    : isUnlocked(effectivePreview)
-    ? 'Already unlocked -- free to travel.'
-    : `Costs ${BLOCH_DESTINATION_COST} qumatessence to unlock (one-time; free after).`;
-  const statusText = scene.add
-    .text(columns.rightColCenterX, rightY, statusLabel, {
-      fontSize: `${Math.round(11 * statusScale)}px`,
-      color: REFERENCE_BLUE_GREY_HEX,
-      align: 'center',
-      wordWrap: { width: columns.rightColW },
-    })
-    .setOrigin(0.5, 0);
-  container.add(statusText);
-  rightY += statusText.height + 4;
+  const renderDetail = () => {
+    killTweensDeep(scene, ringBlock);
+    ringBlock.removeAll(true);
+    detailBlock.removeAll(true);
+    chromeBlock.removeAll(true);
 
-  if (!isCurrent && discovered) {
-    const unlocked = isUnlocked(effectivePreview);
+    const selectedMarker = mapBuild.markers.find((m) => m.world === preview);
+    if (selectedMarker) {
+      const ring = scene.add.circle(selectedMarker.marker.x, selectedMarker.marker.y, 8, 0x000000, 0).setStrokeStyle(2, GOLD_ACCENT, 1);
+      ringBlock.add(ring);
+      scene.tweens.add({ targets: ring, scale: 1.8, alpha: { from: 1, to: 0 }, duration: 900, repeat: -1, ease: 'Sine.easeOut' });
+    }
+
+    const isCurrent = preview === scene.world;
+    const discovered = discoveredWorlds.has(preview);
+    const name = WORLD_NAMES[preview] ?? `World ${preview}`;
+
+    // The previewed destination's own physics blurb -- masked to a short
+    // fixed line for an undiscovered world (the table row already reads
+    // "???" and the map marker is already shrouded; a full paragraph of
+    // course content for a world never visited would leak more than either
+    // of those does). Shrinks in whole-px steps (floor 9, same technique
+    // Majorana's own hybrid-fusion-lore description uses) -- reservedBelow
+    // covers everything still to come below it (status line, confirm
+    // button, footer) the same way Majorana's own reservedBelow does.
+    const descScale = Math.min(fontScale(scene), 1.1);
+    let descBase = 11;
+    const descText = scene.add
+      .text(columns.rightColCenterX, detailTop, discovered ? WORLD_FLAVOR[preview] : 'Mist covers this land -- you have not walked it yet.', {
+        fontSize: `${Math.round(descBase * descScale)}px`,
+        color: '#cfd8ff',
+        align: 'left',
+        wordWrap: { width: columns.rightColW },
+        lineSpacing: 3,
+      })
+      .setOrigin(0.5, 0);
+    detailBlock.add(descText);
+    const reservedBelow = 100;
+    while (detailTop + descText.height + reservedBelow > CANVAS_H - 10 && descBase > 9) {
+      descBase -= 1;
+      descText.setFontSize(`${Math.round(descBase * descScale)}px`);
+    }
+
+    const unlocked = isUnlocked(preview);
     const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
-    const affordable = unlocked || tokens >= BLOCH_DESTINATION_COST;
-    const buttonScale = Math.min(fontScale(scene), 1.3);
-    const confirmBtn = scene.addDialogueButtonAt(
-      container,
-      columns.rightColCenterX,
-      rightY,
-      unlocked ? `Travel to World ${effectivePreview} -- ${name}` : `Travel to World ${effectivePreview} -- ${name} (${BLOCH_DESTINATION_COST} qumatessence)`,
-      () => travelTo(scene, effectivePreview, unlocked, unlockedWorlds),
-      columns.rightColW,
-      `${Math.round(13 * buttonScale)}px`
-    );
-    if (!affordable) confirmBtn.setAlpha(0.5);
-    rightY += confirmBtn.height;
-  }
+    const rightY = renderStatusAndConfirm({
+      scene,
+      container: detailBlock,
+      centerX: columns.rightColCenterX,
+      y: detailTop + descText.height + 4,
+      colW: columns.rightColW,
+      // 4 rather than the usual 6: this is the densest guardian panel in the
+      // game and the 2px is worth reclaiming here.
+      gapAfterStatus: 4,
+      status: isCurrent
+        ? `You are standing in World ${preview} -- ${name}.`
+        : !discovered
+        ? 'You have never walked this land -- I cannot fold you where you have not been.'
+        : unlocked
+        ? 'Already unlocked -- free to travel.'
+        : `Costs ${BLOCH_DESTINATION_COST} qumatessence to unlock (one-time; free after).`,
+      // No confirm button for the world the player is already standing in,
+      // or for one they have not discovered yet -- neither is a destination
+      // Bloch can fold them to.
+      confirm:
+        isCurrent || !discovered
+          ? undefined
+          : {
+              label: unlocked
+                ? `Travel to World ${preview} -- ${name}`
+                : `Travel to World ${preview} -- ${name} (${BLOCH_DESTINATION_COST} qumatessence)`,
+              onClick: () => travelTo(scene, preview, unlocked, unlockedWorlds),
+              dimmed: !unlocked && tokens < BLOCH_DESTINATION_COST,
+            },
+    });
 
-  const columnsBottom = Math.max(listResult.bottom, rightY);
-  insertColumnDivider(scene, container, columns.dividerX, columnsTop, columnsBottom);
-  y = columnsBottom + 6;
+    const columnsBottom = Math.max(listResult.bottom, rightY);
+    insertColumnDivider(scene, chromeBlock, columns.dividerX, columnsTop, columnsBottom);
+    let footerY = columnsBottom + 6;
+    footerY = scene.renderFarewellFooter(chromeBlock, footerY);
+    footerY += 2;
 
-  y = scene.renderFarewellFooter(container, y);
-  y += 2;
-
-  const panelHeight = y - top;
-  const panel = scene.add
-    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
-    .setStrokeStyle(2, 0x4adde0);
-  container.addAt(panel, 0);
+    const panelHeight = footerY - top;
+    const panel = scene.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
+      .setStrokeStyle(2, 0x4adde0);
+    chromeBlock.addAt(panel, 0);
+  };
+  renderDetail();
 }
 
 function travelTo(scene: GuardianPanelHost, world: number, isUnlocked: boolean, unlockedWorlds: number[]) {

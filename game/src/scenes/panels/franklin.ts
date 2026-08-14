@@ -1,7 +1,6 @@
-import Phaser from 'phaser';
 import type { GuardianPanelHost } from '../OverworldScene';
 import { makeFranklinAvatar } from '../../art/franklin';
-import { makeCrystal } from '../../art/crystals';
+import { killTweensDeep, makeCrystal } from '../../art/crystals';
 import { drawFranklinPassiveHalo } from '../../art/passiveHalos';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
@@ -10,6 +9,7 @@ import { PANEL_BG } from '../../ui/theme';
 import { FRANKLIN_PASSIVE_IDS, PASSIVES } from '../../data/passives';
 import type { PassiveOwner } from '../../data/passives';
 import { renderPassiveList } from './passiveList';
+import { insertColumnDivider } from './listDetail';
 
 // Franklin stands at world 9's middle tile (WORLD_GUARDIANS) and sells
 // three passive abilities (data/passives.ts's FRANKLIN_PASSIVE_IDS --
@@ -145,13 +145,10 @@ export function showFranklinPanel(scene: GuardianPanelHost) {
   });
 
   const columnsBottom = Math.max(crystalBlockBottom, listBottom);
-  // Vertical divider between the crystal preview and the list, same
-  // "drawn after both columns so the real height is known" convention
-  // HubScene's Qumatex panel uses for its own two-column divider.
-  const divider = scene.add.graphics();
-  divider.lineStyle(1, 0x3a3a5c, 0.6);
-  divider.lineBetween(rightColLeft - gapCols / 2, columnsTop - 4, rightColLeft - gapCols / 2, columnsBottom);
-  container.add(divider);
+  // Vertical divider between the crystal preview and the list -- the same
+  // shared helper every list+detail panel uses (scenes/panels/listDetail.ts),
+  // drawn after both columns so the real height is known.
+  insertColumnDivider(scene, container, rightColLeft - gapCols / 2, columnsTop, columnsBottom);
 
   y = columnsBottom + 8;
   y = scene.renderFarewellFooter(container, y);
@@ -162,17 +159,4 @@ export function showFranklinPanel(scene: GuardianPanelHost) {
     .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
     .setStrokeStyle(2, 0xa878c9);
   container.addAt(panel, 0);
-}
-
-// Recursively kills every tween targeting the crystal block or any
-// descendant of it -- same reasoning as BattleScene's own killTweensDeep:
-// Amorphous Halo's own glow tween and makeCrystal's per-shard sparkle
-// tweens would otherwise keep ticking forever against a dead object after
-// renderCrystalBlock's own `crystalBlock.removeAll(true)` destroys them on
-// the next preview click.
-function killTweensDeep(scene: GuardianPanelHost, obj: Phaser.GameObjects.GameObject) {
-  scene.tweens.killTweensOf(obj);
-  if (obj instanceof Phaser.GameObjects.Container) {
-    obj.each((child: Phaser.GameObjects.GameObject) => killTweensDeep(scene, child));
-  }
 }

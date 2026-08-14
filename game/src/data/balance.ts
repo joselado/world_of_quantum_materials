@@ -121,17 +121,15 @@ export function superpositionEnemyStats(difficultyMultiplier = 1): Stats {
   return { quantumness: stat, velocity: stat, correlation: stat };
 }
 
-// Correlation prices the same as Quantumness/Velocity -- all three now share
-// the same "full range stays meaningful, then plateaus" shape (critChance,
-// the multi-hit ratio, and defenseFactor's own concave climb below), so
-// there's no longer a reason for Correlation to cost more per point the way
-// it did when `defenseFactor` was a bare, never-plateauing `BASE_STAT /
-// correlation` hyperbola. Kept as its own named constant (rather than
-// deleting the differential-pricing machinery below) since re-introducing a
-// per-stat multiplier is one constant away if a future formula change
-// reopens the gap -- checked against `npm run balance-sim`'s difficulty
-// curve, not derived in closed form (see that script's own header for what
-// it simulates).
+// Correlation prices the same as Quantumness/Velocity -- all three share the
+// same "full range stays meaningful, then plateaus" shape (critChance, the
+// multi-hit ratio, and defenseFactor's own concave climb below), so no one
+// of them buys disproportionately more per point than the others. Kept as
+// its own named constant (rather than deleting the differential-pricing
+// machinery below) since re-introducing a per-stat multiplier is one
+// constant away if a future formula change reopens that gap -- checked
+// against `npm run balance-sim`'s difficulty curve, not derived in closed
+// form (see that script's own header for what it simulates).
 const CORRELATION_COST_MULTIPLIER = 1;
 
 // Cost to raise a stat by 1 point from its current value, steepening as the

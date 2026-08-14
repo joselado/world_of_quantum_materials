@@ -1,12 +1,22 @@
+import type Phaser from 'phaser';
 import type { GuardianPanelHost } from '../OverworldScene';
 import { makeAndersonAvatar } from '../../art/anderson';
+import { killTweensDeep } from '../../art/crystals';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
 import { fontPx, fontScale } from '../../ui/text';
-import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
+import { PANEL_BG } from '../../ui/theme';
 import { MOVES, allCrystals, isHybridMaterial, findMaterialByName, getBattleMoves, ANDERSON_DOPE_COST } from '../../data/materials';
 import { persistFromRegistry } from '../../data/save';
-import { LIST_DETAIL_PANEL_W, listDetailColumns, renderListColumn, insertColumnDivider, renderDetailCrystalHeader } from './listDetail';
+import {
+  LIST_DETAIL_PANEL_W,
+  listDetailColumns,
+  renderListColumn,
+  destroyPanel,
+  insertColumnDivider,
+  renderDetailCrystalHeader,
+  renderStatusAndConfirm,
+} from './listDetail';
 
 // Anderson stands at world 6's middle tile (WORLD_GUARDIANS) and lets the
 // player "dope in" a crystal they've encountered (or, in Superposition
@@ -37,17 +47,18 @@ import { LIST_DETAIL_PANEL_W, listDetailColumns, renderListColumn, insertColumnD
 // The host-pick step below is a list+detail layout (scenes/panels/
 // listDetail.ts, STYLE.md's "List+detail panels"): the left column just
 // names candidates; clicking one only *previews* it in the right column
-// (`scene.andersonHostPreview`), same free-to-browse behavior this step
-// always had -- the right column's own "Dope in <name>" button is what
-// actually commits to that host and advances to the second step
-// (`scene.andersonSelection`), still costing nothing itself; the
-// ANDERSON_DOPE_COST charge only ever happens on the *second* step, picking
-// a specific move to learn (learnImpurityMove) -- unchanged from before,
-// this rework only changes how the host is browsed and confirmed. The
-// second step (which move to learn) stays today's flat paginated button
-// list (renderPagedButtons, scene.andersonMovePage) -- a move has no
-// crystal art of its own to preview, so it doesn't get a list+detail
-// treatment.
+// (`scene.andersonHostPreview`), free to browse -- the right column's own
+// "Dope in <name>" button is what actually commits to that host and
+// advances to the second step (`scene.andersonSelection`), still costing
+// nothing itself; the ANDERSON_DOPE_COST charge only ever happens on the
+// *second* step, picking a specific move to learn (learnImpurityMove). A
+// preview click there is a scoped update, not a panel rebuild (CODEMAP's
+// "scoped update" convention): the avatar, intro and list rows are built
+// once per panel open, and clicking a row only restyles the highlighted row
+// (listResult.setSelectedId) and re-renders `detailBlock`/`chromeBlock`.
+// The second step (which move to learn) is a flat paginated button list
+// (renderPagedButtons, scene.andersonMovePage) -- a move has no crystal art
+// of its own to preview, so it doesn't get a list+detail treatment.
 // The "which move" step offers only moves that would newly become usable by
 // doping this host in (compares the host's moveset against
 // `getBattleMoves` computed with whatever's doped in *right now*, not
@@ -68,6 +79,19 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
   const top = 20;
   const container = scene.add.container(0, 0).setDepth(100);
   scene.dialogueContainer = container;
+
+  // Added first so everything below (divider, footer, panel background)
+  // renders beneath every row/button added to `container` afterward.
+  const chromeBlock = scene.add.container(0, 0);
+  container.add(chromeBlock);
+
+  const finishPanel = (yEnd: number, target: Phaser.GameObjects.Container) => {
+    const panelHeight = yEnd - top;
+    const panel = scene.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
+      .setStrokeStyle(2, 0xc9884a);
+    target.addAt(panel, 0);
+  };
 
   let y = top;
 
@@ -154,9 +178,7 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
       const columns = listDetailColumns(panelLeft);
       const columnsTop = y;
 
-      const effectivePreview = sorted.some((c) => c.name === scene.andersonHostPreview)
-        ? (scene.andersonHostPreview as string)
-        : sorted[0].name;
+      let preview = sorted.some((c) => c.name === scene.andersonHostPreview) ? (scene.andersonHostPreview as string) : sorted[0].name;
 
       const listResult = renderListColumn({
         scene,
@@ -167,76 +189,78 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
         items: sorted,
         idFor: (m) => m.name,
         labelFor: (m) => m.name,
-        selectedId: effectivePreview,
+        selectedId: preview,
         page: scene.andersonPage,
         onPageChange: (page) => {
           scene.andersonPage = page;
-          scene.dialogueContainer?.destroy(true);
+          destroyPanel(scene);
           showAndersonPanel(scene);
         },
         onSelect: (m) => {
           scene.andersonHostPreview = m.name;
-          scene.dialogueContainer?.destroy(true);
-          showAndersonPanel(scene);
+          preview = m.name;
+          listResult.setSelectedId(m.name);
+          renderDetail();
         },
       });
       scene.andersonPage = listResult.page;
 
-      const previewMaterial = findMaterialByName(effectivePreview);
-      let rightY = columnsTop;
-      if (previewMaterial) {
-        rightY = renderDetailCrystalHeader(scene, container, previewMaterial, columns.rightColCenterX, rightY, columns.rightColW);
+      const detailBlock = scene.add.container(0, 0);
+      container.add(detailBlock);
 
-        const unlockedHosts = (scene.game.registry.get('andersonUnlockedHosts') as string[]) ?? [];
-        const hostUnlocked = superposition || unlockedHosts.includes(previewMaterial.name);
+      const renderDetail = () => {
+        killTweensDeep(scene, detailBlock);
+        detailBlock.removeAll(true);
+        chromeBlock.removeAll(true);
 
-        const statusScale = Math.min(fontScale(scene), 1.1);
-        const statusText = scene.add
-          .text(
-            columns.rightColCenterX,
-            rightY,
-            hostUnlocked
+        const previewMaterial = findMaterialByName(preview);
+        let rightY = columnsTop;
+        if (previewMaterial) {
+          rightY = renderDetailCrystalHeader(scene, detailBlock, previewMaterial, columns.rightColCenterX, rightY, columns.rightColW);
+
+          const unlockedHosts = (scene.game.registry.get('andersonUnlockedHosts') as string[]) ?? [];
+          const hostUnlocked = superposition || unlockedHosts.includes(previewMaterial.name);
+
+          rightY = renderStatusAndConfirm({
+            scene,
+            container: detailBlock,
+            centerX: columns.rightColCenterX,
+            y: rightY,
+            colW: columns.rightColW,
+            // Capped tighter than the other panels' 1.2, for the same
+            // reason the headline above is: this pane sits under two extra
+            // header lines of Anderson's own.
+            statusCap: 1.1,
+            status: hostUnlocked
               ? 'Already unlocked -- free to learn its moves.'
               : `Costs ${ANDERSON_DOPE_COST} qumatessence to unlock (one-time, host-wide).`,
-            {
-              fontSize: `${Math.round(11 * statusScale)}px`,
-              color: REFERENCE_BLUE_GREY_HEX,
-              align: 'center',
-              wordWrap: { width: columns.rightColW },
-            }
-          )
-          .setOrigin(0.5, 0);
-        container.add(statusText);
-        rightY += statusText.height + 6;
+            // Picking a host to browse its moveset is always free -- only
+            // committing to one of its actual moves at the second step
+            // (learnImpurityMove) can spend ANDERSON_DOPE_COST -- so this
+            // confirm button just advances to that step, and never dims on
+            // affordability the way every other guardian's buy button does.
+            confirm: {
+              label: `Dope in ${previewMaterial.name}`,
+              onClick: () => {
+                scene.andersonSelection = previewMaterial.name;
+                scene.andersonPage = 0;
+                scene.andersonMovePage = 0;
+                scene.andersonHostPreview = null;
+                destroyPanel(scene);
+                showAndersonPanel(scene);
+              },
+            },
+          });
+        }
 
-        // Picking a host to browse its moveset is always free -- only
-        // committing to one of its actual moves at the second step
-        // (learnImpurityMove) can spend ANDERSON_DOPE_COST -- so this
-        // confirm button just advances to that step, same as the old
-        // immediate row-click used to.
-        const buttonScale = Math.min(fontScale(scene), 1.3);
-        const confirmBtn = scene.addDialogueButtonAt(
-          container,
-          columns.rightColCenterX,
-          rightY,
-          `Dope in ${previewMaterial.name}`,
-          () => {
-            scene.andersonSelection = previewMaterial.name;
-            scene.andersonPage = 0;
-            scene.andersonMovePage = 0;
-            scene.andersonHostPreview = null;
-            scene.dialogueContainer?.destroy(true);
-            showAndersonPanel(scene);
-          },
-          columns.rightColW,
-          `${Math.round(13 * buttonScale)}px`
-        );
-        rightY += confirmBtn.height;
-      }
-
-      const columnsBottom = Math.max(listResult.bottom, rightY);
-      insertColumnDivider(scene, container, columns.dividerX, columnsTop, columnsBottom);
-      y = columnsBottom + 6;
+        const columnsBottom = Math.max(listResult.bottom, rightY);
+        insertColumnDivider(scene, chromeBlock, columns.dividerX, columnsTop, columnsBottom);
+        let footerY = columnsBottom + 6 + 8;
+        footerY = scene.renderFarewellFooter(chromeBlock, footerY) + 12;
+        finishPanel(footerY, chromeBlock);
+      };
+      renderDetail();
+      return;
     }
   } else {
     const host = findMaterialByName(scene.andersonSelection);
@@ -283,8 +307,9 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
       // 1-2 moves in practice (crystal() never assigns more) -- a
       // not-yet-unlocked host's cost suffix on each row still needs the
       // same measured shrink-to-fit protection every other candidate list
-      // gets, rather than an unprotected fixed render. Out of scope for the
-      // list+detail rework above -- a move has no crystal art to preview.
+      // gets, rather than an unprotected fixed render. A flat button list
+      // rather than the list+detail layout the host-pick step above uses --
+      // a move has no crystal art of its own to preview.
       const learnableItems = learnable.map((id) => ({ id, name: MOVES[id].name, power: MOVES[id].power }));
       y = scene.renderPagedButtons(
         container,
@@ -296,7 +321,7 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
         (m) => learnImpurityMove(scene, m.id, hostUnlocked, unlockedHosts),
         (page) => {
           scene.andersonMovePage = page;
-          scene.dialogueContainer?.destroy(true);
+          destroyPanel(scene);
           showAndersonPanel(scene);
         },
         () => !affordable
@@ -313,7 +338,7 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
         scene.andersonSelection = null;
         scene.andersonPage = 0;
         scene.andersonMovePage = 0;
-        scene.dialogueContainer?.destroy(true);
+        destroyPanel(scene);
         showAndersonPanel(scene);
       }) + 12;
     footerRendered = true;
@@ -323,11 +348,7 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
     y = scene.renderFarewellFooter(container, y) + 12;
   }
 
-  const panelHeight = y - top;
-  const panel = scene.add
-    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
-    .setStrokeStyle(2, 0xc9884a);
-  container.addAt(panel, 0);
+  finishPanel(y, container);
 }
 
 // Learning a move is the one action that actually commits to a new
@@ -360,6 +381,6 @@ function learnImpurityMove(scene: GuardianPanelHost, moveId: string, hostUnlocke
   scene.andersonSelection = null;
   scene.andersonPage = 0;
   scene.andersonMovePage = 0;
-  scene.dialogueContainer?.destroy(true);
+  destroyPanel(scene);
   showAndersonPanel(scene);
 }

@@ -3,12 +3,20 @@ import type { GuardianPanelHost } from '../OverworldScene';
 import { makeNoetherAvatar } from '../../art/noether';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
-import { fontPx, fontScale } from '../../ui/text';
+import { fontPx } from '../../ui/text';
 import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 import { MOVES, SHOP_MOVE_IDS, compatibleMoves, shopCost, getPlayerStats, statUpgradeCost, MAX_STAT } from '../../data/materials';
 import { persistFromRegistry } from '../../data/save';
 import type { Stats } from '../../data/types';
-import { LIST_DETAIL_PANEL_W, listDetailColumns, renderListColumn, insertColumnDivider, renderMoveDetailHeader } from './listDetail';
+import {
+  LIST_DETAIL_PANEL_W,
+  listDetailColumns,
+  renderListColumn,
+  destroyPanel,
+  insertColumnDivider,
+  renderMoveDetailHeader,
+  renderStatusAndConfirm,
+} from './listDetail';
 import { stopMoveEffectPreview } from '../../art/moveEffectPreview';
 
 // Noether appears once the player reaches world 1's middle tile, selling
@@ -94,7 +102,7 @@ function renderShopTabs(scene: GuardianPanelHost, container: Phaser.GameObjects.
       .on('pointerdown', () => {
         if (scene.shopTab === tab) return;
         scene.shopTab = tab;
-        scene.dialogueContainer?.destroy(true);
+        destroyPanel(scene);
         showNoetherShop(scene);
       });
     container.add(btn);
@@ -150,12 +158,12 @@ function renderShopMoves(scene: GuardianPanelHost, container: Phaser.GameObjects
     page: scene.noetherMovePage,
     onPageChange: (page) => {
       scene.noetherMovePage = page;
-      scene.dialogueContainer?.destroy(true);
+      destroyPanel(scene);
       showNoetherShop(scene);
     },
     onSelect: (id) => {
       scene.noetherMovePreview = id;
-      scene.dialogueContainer?.destroy(true);
+      destroyPanel(scene);
       showNoetherShop(scene);
     },
   });
@@ -167,32 +175,20 @@ function renderShopMoves(scene: GuardianPanelHost, container: Phaser.GameObjects
 
   const cost = shopCost(move);
   const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
-  const affordable = tokens >= cost;
 
-  const statusScale = Math.min(fontScale(scene), 1.2);
-  const statusText = scene.add
-    .text(columns.rightColCenterX, rightY, `Costs ${cost} qumatessence.`, {
-      fontSize: `${Math.round(11 * statusScale)}px`,
-      color: REFERENCE_BLUE_GREY_HEX,
-      align: 'center',
-      wordWrap: { width: columns.rightColW },
-    })
-    .setOrigin(0.5, 0);
-  container.add(statusText);
-  rightY += statusText.height + 6;
-
-  const buttonScale = Math.min(fontScale(scene), 1.3);
-  const confirmBtn = scene.addDialogueButtonAt(
+  rightY = renderStatusAndConfirm({
+    scene,
     container,
-    columns.rightColCenterX,
-    rightY,
-    `Learn ${move.name} (${cost} qumatessence)`,
-    () => buyNoetherMove(scene, effectivePreview, cost),
-    columns.rightColW,
-    `${Math.round(13 * buttonScale)}px`
-  );
-  if (!affordable) confirmBtn.setAlpha(0.5);
-  rightY += confirmBtn.height;
+    centerX: columns.rightColCenterX,
+    y: rightY,
+    colW: columns.rightColW,
+    status: `Costs ${cost} qumatessence.`,
+    confirm: {
+      label: `Learn ${move.name} (${cost} qumatessence)`,
+      onClick: () => buyNoetherMove(scene, effectivePreview, cost),
+      dimmed: tokens < cost,
+    },
+  });
 
   const columnsBottom = Math.max(listResult.bottom, rightY);
   insertColumnDivider(scene, container, columns.dividerX, columnsTop, columnsBottom);
@@ -208,7 +204,7 @@ function buyNoetherMove(scene: GuardianPanelHost, id: string, cost: number) {
   persistFromRegistry(scene.game.registry);
   // Rebuild the whole panel so the purchased move disappears from
   // the list and the token total on display stays correct.
-  scene.dialogueContainer?.destroy(true);
+  destroyPanel(scene);
   showNoetherShop(scene);
 }
 
@@ -241,7 +237,7 @@ function renderShopStats(scene: GuardianPanelHost, container: Phaser.GameObjects
       scene.game.registry.set('playerStats', updated);
       scene.tokenText.setText(`Qumatessence: ${scene.qumatessence}`);
       persistFromRegistry(scene.game.registry);
-      scene.dialogueContainer?.destroy(true);
+      destroyPanel(scene);
       showNoetherShop(scene);
     });
     if (!affordable) btn.setAlpha(0.5);

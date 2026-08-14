@@ -1,6 +1,6 @@
 import type { GuardianPanelHost } from '../OverworldScene';
 import { makeMajoranaAvatar } from '../../art/majorana';
-import { makeCrystal } from '../../art/crystals';
+import { killTweensDeep, makeCrystal } from '../../art/crystals';
 import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W, CANVAS_H } from '../../art/perspective';
 import { fontPx, fontScale } from '../../ui/text';
@@ -9,7 +9,15 @@ import { allCrystals, combineMaterials, combinableHybridResults, MAJORANA_FUSE_C
 import { HYBRID_FUSION_LORE } from '../../data/materialdex';
 import { persistFromRegistry } from '../../data/save';
 import type { Material, MaterialType } from '../../data/types';
-import { LIST_DETAIL_PANEL_W, listDetailColumns, renderListColumn, insertColumnDivider, renderDetailCrystalHeader } from './listDetail';
+import {
+  LIST_DETAIL_PANEL_W,
+  listDetailColumns,
+  renderListColumn,
+  destroyPanel,
+  insertColumnDivider,
+  renderDetailCrystalHeader,
+  renderStatusAndConfirm,
+} from './listDetail';
 
 // Majorana stands at world 5's middle tile (WORLD_GUARDIANS) and lets the
 // player fuse two crystals they've already defeated into a new
@@ -37,6 +45,13 @@ import { LIST_DETAIL_PANEL_W, listDetailColumns, renderListColumn, insertColumnD
 // mechanic. The confirm button ("Fuse") is the one action that actually
 // checks/spends the cost and fuses. Superposition Mode bypasses this
 // per-result cost entirely (`isSuperpositionMode()`, not the persisted list).
+// A preview click is a scoped update, not a panel rebuild (CODEMAP's
+// "scoped update" convention): the avatar, intro and list rows are built
+// once per panel open, and clicking a row only restyles the highlighted row
+// (listResult.setSelectedId) and re-renders `detailBlock`/`chromeBlock` --
+// which matters most here, since the detail pane rebuilds three crystals
+// (both parents plus the result) on every click. Fusing still rebuilds the
+// whole panel, since the player's own form has changed.
 export function showMajoranaPanel(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
 
@@ -44,6 +59,19 @@ export function showMajoranaPanel(scene: GuardianPanelHost) {
   const top = 20;
   const container = scene.add.container(0, 0).setDepth(100);
   scene.dialogueContainer = container;
+
+  // Added first so everything below (divider, footer, panel background)
+  // renders beneath every row/button added to `container` afterward.
+  const chromeBlock = scene.add.container(0, 0);
+  container.add(chromeBlock);
+
+  const finishPanel = (yEnd: number, target: Phaser.GameObjects.Container) => {
+    const panelHeight = yEnd - top;
+    const panel = scene.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
+      .setStrokeStyle(2, 0x4fd97a);
+    target.addAt(panel, 0);
+  };
 
   let y = top;
 
@@ -88,46 +116,58 @@ export function showMajoranaPanel(scene: GuardianPanelHost) {
       .setOrigin(0.5, 0);
     container.add(text);
     y += text.height;
-  } else {
-    // No "which hybrid?" step label -- Dresselhaus's single-step transmute
-    // list has none either, and reclaiming this row's height matters more
-    // here than in his panel (see the worst-case-content note above).
+    y += 2;
+    y = scene.renderFarewellFooter(container, y) + 12;
+    finishPanel(y, container);
+    return;
+  }
 
-    const panelLeft = CANVAS_W / 2 - panelWidth / 2;
-    const columns = listDetailColumns(panelLeft);
-    const columnsTop = y;
+  // No "which hybrid?" step label -- Dresselhaus's single-step transmute
+  // list has none either, and reclaiming this row's height matters more
+  // here than in his panel (see the worst-case-content note above).
 
-    const effectivePreview = combos.some((c) => c.result.name === scene.majoranaPreview)
-      ? (scene.majoranaPreview as string)
-      : combos[0].result.name;
+  const panelLeft = CANVAS_W / 2 - panelWidth / 2;
+  const columns = listDetailColumns(panelLeft);
+  const columnsTop = y;
 
-    const listResult = renderListColumn({
-      scene,
-      container,
-      x: columns.leftX,
-      y: columnsTop,
-      width: columns.leftColW,
-      items: combos,
-      idFor: (c) => c.result.name,
-      labelFor: (c) => c.result.name,
-      selectedId: effectivePreview,
-      page: scene.majoranaPage,
-      onPageChange: (page) => {
-        scene.majoranaPage = page;
-        scene.dialogueContainer?.destroy(true);
-        showMajoranaPanel(scene);
-      },
-      onSelect: (c) => {
-        scene.majoranaPreview = c.result.name;
-        scene.dialogueContainer?.destroy(true);
-        showMajoranaPanel(scene);
-      },
-    });
-    scene.majoranaPage = listResult.page;
+  let preview = combos.some((c) => c.result.name === scene.majoranaPreview) ? (scene.majoranaPreview as string) : combos[0].result.name;
 
-    const combo = combos.find((c) => c.result.name === effectivePreview)!;
-    let rightY = renderParentCrystalsRow(scene, container, combo.parentA, combo.parentB, columns.rightColCenterX, columnsTop, columns.rightColW);
-    rightY = renderDetailCrystalHeader(scene, container, combo.result, columns.rightColCenterX, rightY, columns.rightColW);
+  const listResult = renderListColumn({
+    scene,
+    container,
+    x: columns.leftX,
+    y: columnsTop,
+    width: columns.leftColW,
+    items: combos,
+    idFor: (c) => c.result.name,
+    labelFor: (c) => c.result.name,
+    selectedId: preview,
+    page: scene.majoranaPage,
+    onPageChange: (page) => {
+      scene.majoranaPage = page;
+      destroyPanel(scene);
+      showMajoranaPanel(scene);
+    },
+    onSelect: (c) => {
+      scene.majoranaPreview = c.result.name;
+      preview = c.result.name;
+      listResult.setSelectedId(c.result.name);
+      renderDetail();
+    },
+  });
+  scene.majoranaPage = listResult.page;
+
+  const detailBlock = scene.add.container(0, 0);
+  container.add(detailBlock);
+
+  const renderDetail = () => {
+    killTweensDeep(scene, detailBlock);
+    detailBlock.removeAll(true);
+    chromeBlock.removeAll(true);
+
+    const combo = combos.find((c) => c.result.name === preview)!;
+    let rightY = renderParentCrystalsRow(scene, detailBlock, combo.parentA, combo.parentB, columns.rightColCenterX, columnsTop, columns.rightColW);
+    rightY = renderDetailCrystalHeader(scene, detailBlock, combo.result, columns.rightColCenterX, rightY, columns.rightColW);
 
     const unlockedResults = (scene.game.registry.get('majoranaUnlockedResults') as string[]) ?? [];
     const isUnlocked = (resultName: string) => superposition || unlockedResults.includes(resultName);
@@ -160,7 +200,7 @@ export function showMajoranaPanel(scene: GuardianPanelHost) {
         lineSpacing: 3,
       })
       .setOrigin(0.5, 0);
-    container.add(descText);
+    detailBlock.add(descText);
     const reservedBelow = 100;
     while (rightY + descText.height + reservedBelow > CANVAS_H - 10 && descBase > 9) {
       descBase -= 1;
@@ -168,49 +208,35 @@ export function showMajoranaPanel(scene: GuardianPanelHost) {
     }
     rightY += descText.height + 6;
 
-    const statusScale = Math.min(fontScale(scene), 1.2);
-    const statusText = scene.add
-      .text(
-        columns.rightColCenterX,
-        rightY,
-        resultUnlocked ? 'Already unlocked -- free to fuse.' : `Costs ${MAJORANA_FUSE_COST} qumatessence to unlock (one-time; free after).`,
-        { fontSize: `${Math.round(11 * statusScale)}px`, color: REFERENCE_BLUE_GREY_HEX, align: 'center', wordWrap: { width: columns.rightColW } }
-      )
-      .setOrigin(0.5, 0);
-    container.add(statusText);
-    rightY += statusText.height + 6;
-
     // The hybrid's own name is already the large title just above (from
     // renderDetailCrystalHeader), so the button doesn't repeat it -- keeps
     // the label short enough to stay one line even at the largest
     // text-size preset, unlike Dresselhaus's/Anderson's "Become/Dope in
     // <name>" (their result is the only crystal shown, so naming it there
     // is the only place it appears).
-    const buttonScale = Math.min(fontScale(scene), 1.3);
-    const confirmBtn = scene.addDialogueButtonAt(
-      container,
-      columns.rightColCenterX,
-      rightY,
-      resultUnlocked ? 'Fuse' : `Fuse (${MAJORANA_FUSE_COST} qumatessence)`,
-      () => createHybrid(scene, combo, unlockedResults),
-      columns.rightColW,
-      `${Math.round(13 * buttonScale)}px`
-    );
-    if (!affordable) confirmBtn.setAlpha(0.5);
-    rightY += confirmBtn.height;
+    rightY = renderStatusAndConfirm({
+      scene,
+      container: detailBlock,
+      centerX: columns.rightColCenterX,
+      y: rightY,
+      colW: columns.rightColW,
+      status: resultUnlocked
+        ? 'Already unlocked -- free to fuse.'
+        : `Costs ${MAJORANA_FUSE_COST} qumatessence to unlock (one-time; free after).`,
+      confirm: {
+        label: resultUnlocked ? 'Fuse' : `Fuse (${MAJORANA_FUSE_COST} qumatessence)`,
+        onClick: () => createHybrid(scene, combo, unlockedResults),
+        dimmed: !affordable,
+      },
+    });
 
     const columnsBottom = Math.max(listResult.bottom, rightY);
-    insertColumnDivider(scene, container, columns.dividerX, columnsTop, columnsBottom);
-    y = columnsBottom + 2;
-  }
-  y += 2;
-  y = scene.renderFarewellFooter(container, y) + 12;
-
-  const panelHeight = y - top;
-  const panel = scene.add
-    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
-    .setStrokeStyle(2, 0x4fd97a);
-  container.addAt(panel, 0);
+    insertColumnDivider(scene, chromeBlock, columns.dividerX, columnsTop, columnsBottom);
+    let footerY = columnsBottom + 2 + 2;
+    footerY = scene.renderFarewellFooter(chromeBlock, footerY) + 12;
+    finishPanel(footerY, chromeBlock);
+  };
+  renderDetail();
 }
 
 // The two original ingredients, rendered small and side by side above the
@@ -264,7 +290,7 @@ function renderParentCrystalsRow(
 
 function becomeHybrid(scene: GuardianPanelHost, hybrid: Material) {
   scene.applyPlayerForm(hybrid);
-  scene.dialogueContainer?.destroy(true);
+  destroyPanel(scene);
   showMajoranaPanel(scene);
 }
 

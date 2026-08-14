@@ -6,6 +6,7 @@ import { REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 import { PASSIVES } from '../../data/passives';
 import type { PassiveOwner } from '../../data/passives';
 import { persistFromRegistry } from '../../data/save';
+import { destroyPanel } from './listDetail';
 
 export interface ChoiceListItem {
   id: string;
@@ -125,7 +126,7 @@ export function renderChoiceList(
         scene.game.registry.set('qumatessence', scene.qumatessence);
         scene.tokenText.setText(`Qumatessence: ${scene.qumatessence}`);
         state.unlock(item.id);
-        scene.dialogueContainer?.destroy(true);
+        destroyPanel(scene);
         reopen();
       },
       wrapWidth,
@@ -149,7 +150,7 @@ export function renderChoiceList(
         () => {
           if (isActive) return;
           state.activate(item.id);
-          scene.dialogueContainer?.destroy(true);
+          destroyPanel(scene);
           reopen();
         },
         wrapWidth,
