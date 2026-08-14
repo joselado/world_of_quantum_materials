@@ -137,7 +137,7 @@ game/src/
                                   getPlayerMaterial), re-triggered live by OverworldScene.applyPlayerForm
                                   whenever the player transmutes/fuses while standing in World 10
   art/
-    perspective.ts             Pseudo-3D projection (grid coord -> screen point); re-exports
+    perspective.ts             Pseudo-3D projection (lane/depth from the camera -> screen point); re-exports
                                   CANVAS_W/CANVAS_H from config/screen.ts since every
                                   scene/panel that needs the canvas size already imports it
                                   from here
@@ -500,6 +500,19 @@ difficulty-curve sanity check rather than a docs generator.
   `OverworldScene` (`updateWorldSprites`) rather than bespoke per-kind code -- a new NPC or
   landmark should spawn through the single unified `OverworldScene.spawnGuardianSprite` (looked
   up from `WORLD_GUARDIANS`) pattern, not a bespoke `spawnXSprite` per guardian.
+  A `WorldSprite` carries two vertical offsets and they mean different things: `size` is how far
+  its art reaches *above* its container origin (what the name label rides on), and `foot` is where
+  its own ground contact sits *below* that origin. `updateWorldSprites` lands `foot` on the
+  projected centre of tile `(x, y)`, so every landmark stands on its tile the way the player's
+  avatar does. Art that carries a contact shadow exports the offset it drew that shadow at
+  (`art/boss.ts`'s `BOSS_FOOT`, `art/door.ts`'s `DOOR_FOOT`) rather than the caller guessing;
+  art that deliberately hovers (a qumatessence cloud, a guardian adrift) passes `foot: 0`. The
+  player's avatar is not a `WorldSprite` -- it is drawn at one fixed screen position -- but obeys
+  the same rule via `CAMERA_BACK_TILES`: the camera sits that far behind the player's tile, and
+  `PLAYER_GROUND_Y` is the projection of the player's own tile centre, so the fixed avatar and
+  the scrolling ground agree on which tile the player occupies. Every depth handed to
+  `projectTile` is measured from the player's tile, which is where that constant gets applied;
+  a new caller should not add it itself.
 - **Panel/dialogue UI.** Every overlay (wild encounter, guardian panels, rival gate, Hub's
   Qumatex/Save panels, the Lab's own six stations) is the same dark rounded-rectangle-with-stroke
   treatment, with the stroke color signaling the panel's kind: blue-grey `0x444466` = wild
@@ -1004,7 +1017,8 @@ sparks -- `BOSS_CRYSTAL_SIZE = 78`) at `goalTile` for every built world's `getRi
 purely a visual landmark via the same `WorldSprite` machinery, no click handler of its own. The
 `WorldSprite.size` it pushes is `BOSS_CRYSTAL_SIZE * BOSS_SILHOUETTE_TOP` rather than the bare
 size, since that field only ever drives the name label's own offset and the golem's head reaches
-higher above its center than any other landmark's art does.
+higher above its center than any other landmark's art does; its `foot` is
+`BOSS_CRYSTAL_SIZE * BOSS_FOOT`, the offset `makeBossCrystal` pooled its own contact shadow at.
 `openGoalGuardianPanel()`'s branch on `guardian?.tile === 'goal'` is a permanent no-op (no entry
 uses it), so it always falls through to `showGatePanel()`, which is what renders at the goal.
 
@@ -1081,9 +1095,13 @@ decoration or the guardian-chokepoint highlight. That pass is camera-independent
 the whole grid rather than just the visible window -- a shape spanning the window edge stays one
 continuous shape -- and its result is cached in `terrainPlanCache` for as long as the grid stands
 still. The same memoized pass also builds `contourGrid` via `art/contours.ts`'s
-`buildContourGrid`, which traces the walkable/impassable boundary on the tile lattice, biases it
-0.25 tiles onto the walkable side, smooths it (Catmull-Rom through the smoothed lattice corners,
-with a per-corner offset cap that keeps a deformed tile polygon from folding over itself), and
+`buildContourGrid`, which traces the walkable/impassable boundary on the tile lattice and smooths
+it (Laplacian on the lattice corners, then Catmull-Rom through them) with no bias to either side,
+so along a straight run the drawn edge sits on the grid line the movement grid itself collides
+against. `MAX_OFFSET` (`sqrt(2)/4`) caps how far a corner travels, radially rather than per axis:
+that is simultaneously the clearance the curve keeps from every tile centre -- the margin an
+entity standing on a tile gets -- the travel a 45-degree staircase needs to reach a clean
+diagonal, and small enough that a deformed tile polygon cannot fold over itself. It
 hands back per-tile ground-plane geometry in tile space: a curved `outline` (wound like the plain
 quad, so the two are interchangeable at the draw call), `shadow` strips for the contact shadow at
 the junction, and the walkable side's `rim` polyline. Both tiles sharing a boundary reference the

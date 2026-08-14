@@ -5,8 +5,8 @@ import type { Biome } from '../art/biomes';
 import { makeCrystal } from '../art/crystals';
 import { makeToken } from '../art/tokens';
 import { makeNoetherAvatar } from '../art/noether';
-import { BOSS_SILHOUETTE_BOTTOM, BOSS_SILHOUETTE_TOP, makeBossCrystal } from '../art/boss';
-import { makeDoorSprite } from '../art/door';
+import { BOSS_FOOT, BOSS_SILHOUETTE_BOTTOM, BOSS_SILHOUETTE_TOP, makeBossCrystal } from '../art/boss';
+import { DOOR_FOOT, makeDoorSprite } from '../art/door';
 import { makeBlochAvatar } from '../art/bloch';
 import { makeFeynmanAvatar } from '../art/feynman';
 import { makeDresselhausAvatar } from '../art/dresselhaus';
@@ -114,9 +114,30 @@ const GRID_H = 50;
 const TILE_SCALE = 0.6;
 const LANE_CLIP = 8.5;
 const DRAW_DISTANCE_TILES = 15;
+// How far behind the player's own tile the camera sits, in tile-lengths.
+// Every depth handed to projectTile is measured from the player's tile
+// centre, and this is what turns that into the camera-relative depth the
+// projection wants. It is the whole reason the avatar can be drawn on-screen
+// standing on the tile the collision grid puts it on: at zero pullback the
+// player's tile centre projects to the very bottom edge of the canvas, so the
+// avatar would have to be drawn somewhere ahead of its own tile to be visible
+// at all -- and would then overlap whatever is beyond the tile it can walk on.
+const CAMERA_BACK_TILES = 0.7;
 const CRYSTAL_SIZE = 22;
 const TOKEN_SIZE = 26;
 const PLAYER_CRYSTAL_SIZE = 34;
+// A sprite's ground contact -- where its own shadow is drawn, in local px
+// below its container origin, before the depth scale is applied. The
+// projection puts this point on its tile's centre, so every landmark stands
+// on its tile the same way the player's avatar does. Art that deliberately
+// hovers with no contact point of its own (a qumatessence cloud, a guardian
+// adrift) uses 0, which hangs it over the tile centre instead.
+const CRYSTAL_FOOT = CRYSTAL_SIZE;
+const PLAYER_FOOT = PLAYER_CRYSTAL_SIZE;
+// Where the player's avatar plants its shadow on screen: the projection of
+// its own tile centre, so the fixed on-screen avatar and the scrolling ground
+// under it always agree about which tile the player is standing on.
+const PLAYER_GROUND_Y = project(0, CAMERA_BACK_TILES * TILE_SCALE).y;
 // Substantially bigger than a wild crystal (CRYSTAL_SIZE) or even the player
 // (PLAYER_CRYSTAL_SIZE) -- the boss standing at the goal tile should read as
 // gigantic at a glance (art/boss.ts's makeBossCrystal further composes
@@ -251,7 +272,14 @@ interface OverworldInitData {
 interface WorldSprite {
   x: number;
   y: number;
+  // Height of this sprite's art above its own container origin, in px before
+  // the depth scale -- what the label rides on, not the art's overall size.
   size: number;
+  // This sprite's ground contact below its container origin, in the same
+  // units (see CRYSTAL_FOOT). updateWorldSprites lands it on the projected
+  // centre of tile (x, y), so the sprite stands on that tile rather than
+  // straddling its edge.
+  foot: number;
   container: Phaser.GameObjects.Container;
   label?: Phaser.GameObjects.Text;
   seed: number;
@@ -830,8 +858,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // Silicon by default or whatever Dresselhaus transmuted them into) rendered
     // the same way a wild crystal is, floating and bobbing rather than
     // walking.
-    this.player = this.add.container(CANVAS_W / 2, 400);
-    const playerShadow = this.add.ellipse(0, 34, 34, 11, 0x000000, 0.28);
+    this.player = this.add.container(CANVAS_W / 2, PLAYER_GROUND_Y - PLAYER_FOOT);
+    const playerShadow = this.add.ellipse(0, PLAYER_FOOT, 34, 11, 0x000000, 0.28);
     this.playerCrystalGfx = makeCrystal(this, PLAYER_CRYSTAL_SIZE, this.playerMaterial.color, this.playerMaterial.variant, {
       seed: this.playerMaterial.name,
       hybrid: this.playerMaterial.hybridParents,
@@ -1233,11 +1261,14 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     }
   }
 
-  // Tile lanes/depths are defined in grid-index units; every projection goes
-  // through here so the world-space size of a tile (TILE_SCALE) is applied
-  // consistently for both the ground mesh and the crystal sprites.
+  // Tile lanes/depths are defined in grid-index units, measured from the
+  // player's own tile (lane 0, depth 0 is the tile the player stands on).
+  // Every projection goes through here so the world-space size of a tile
+  // (TILE_SCALE) and the camera's pullback behind the player
+  // (CAMERA_BACK_TILES) are applied consistently for both the ground mesh and
+  // the crystal sprites.
   private projectTile(lane: number, depth: number): ProjectedPoint {
-    return project(lane * TILE_SCALE, depth * TILE_SCALE);
+    return project(lane * TILE_SCALE, (depth + CAMERA_BACK_TILES) * TILE_SCALE);
   }
 
   // Terrain rendering splits in two: reading the grid (this, cached for as
@@ -1302,7 +1333,11 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     const camX = this.camPos.x;
     const camY = this.camPos.y;
     const minY = Math.max(0, Math.floor(camY - DRAW_DISTANCE_TILES));
-    const maxY = Math.min(GRID_H - 1, Math.floor(camY) + 1);
+    // Rows behind the player are still in frame -- the camera stands
+    // CAMERA_BACK_TILES behind the player's tile, so the ground the player
+    // has already walked over is what fills the bottom of the screen. The
+    // per-tile near-plane test below is what actually stops the sweep.
+    const maxY = Math.min(GRID_H - 1, Math.floor(camY) + 2);
 
     for (let y = minY; y <= maxY; y++) {
       this.drawMarginColumns(g, plan, y, camX, camY);
@@ -1313,7 +1348,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
 
         const depthFar = camY - y + 0.5;
         const depthNear = camY - y - 0.5;
-        if (depthFar <= 0) continue;
+        if (depthFar + CAMERA_BACK_TILES <= 0) continue;
 
         const pFL = this.projectTile(laneL, depthFar);
         const pFR = this.projectTile(laneR, depthFar);
@@ -1376,7 +1411,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // curve, shadow and rim.
   private drawMarginColumns(g: Phaser.GameObjects.Graphics, plan: TerrainTile[][], y: number, camX: number, camY: number) {
     const depthFar = camY - y + 0.5;
-    if (depthFar <= 0) return;
+    if (depthFar + CAMERA_BACK_TILES <= 0) return;
     for (let gx = Math.floor(camX - LANE_CLIP); gx < 0; gx++) {
       this.drawMarginTile(g, plan[y][0], gx, y, camX, camY, gx === -1);
     }
@@ -1737,6 +1772,13 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
           seed: material.name,
           hybrid: material.hybridParents,
         });
+        // The same contact shadow the player's avatar and the boss golem
+        // carry, at the same CRYSTAL_FOOT offset: it is what makes a floating
+        // crystal read as hovering over one particular tile rather than
+        // drifting at an unplaceable distance, which matters most right up
+        // against the edge of the walkable region.
+        const shadow = this.add.ellipse(0, CRYSTAL_FOOT, CRYSTAL_SIZE, CRYSTAL_SIZE * 0.32, 0x000000, 0.28);
+        container.addAt(shadow, 0);
         container.setDepth(20);
 
         const label = this.add
@@ -1753,6 +1795,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
           x,
           y,
           size: CRYSTAL_SIZE,
+          foot: CRYSTAL_FOOT,
           material,
           container,
           label,
@@ -1785,7 +1828,9 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
           .setOrigin(0.5, 1)
           .setDepth(22);
 
-        this.tokenSprites.push({ x, y, size: TOKEN_SIZE, container, label, seed: Math.random() * Math.PI * 2 });
+        // A qumatessence cloud hangs over its tile rather than resting on it,
+        // so its own centre is what the tile's ground point carries.
+        this.tokenSprites.push({ x, y, size: TOKEN_SIZE, foot: 0, container, label, seed: Math.random() * Math.PI * 2 });
       }
     }
   }
@@ -1818,7 +1863,10 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       .setDepth(22);
 
     const tile = guardian.tile === 'start' ? this.startTile : guardian.tile === 'middle' ? this.midTile : this.goalTile;
-    this.guardianSprites.push({ x: tile.x, y: tile.y, size: 42, container: avatar, label, seed: Math.random() * Math.PI * 2 });
+    // A guardian is a figure adrift, not a standing one (see the sway/glow in
+    // its avatar builder), so like a qumatessence cloud it hovers over its
+    // tile's ground point instead of planting a contact on it.
+    this.guardianSprites.push({ x: tile.x, y: tile.y, size: 42, foot: 0, container: avatar, label, seed: Math.random() * Math.PI * 2 });
   }
 
   // World 9's rival (an impurity/defect-bound resonance) has no fixed type --
@@ -1885,6 +1933,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       // so the label rides that measured height rather than a bare
       // BOSS_CRYSTAL_SIZE -- which would put the name across its face.
       size: BOSS_CRYSTAL_SIZE * BOSS_SILHOUETTE_TOP,
+      foot: BOSS_CRYSTAL_SIZE * BOSS_FOOT,
       container: avatar,
       label,
       seed: Math.random() * Math.PI * 2,
@@ -1919,8 +1968,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // world/mapgen.ts's buildCorridor never drifts the corridor's center
     // before MIN_STRAIGHT_ROWS=2 straight rows, so the row right above the
     // south edge is always centered on startTile.x too), not on top of it.
-    // The forward-facing camera (updateWorldSprites' `depth = camY - c.y`)
-    // never renders anything behind the player's own row, so a sprite
+    // The camera looks forward from just behind the player, so a sprite
     // sitting exactly on startTile would only ever be visible while stacked
     // directly under the player's own crystal, standing on the same tile --
     // one row ahead puts it in front of the player at spawn and again every
@@ -1932,6 +1980,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       x: this.startTile.x,
       y: this.startTile.y - 1,
       size: DOOR_SPRITE_SIZE,
+      foot: DOOR_SPRITE_SIZE * DOOR_FOOT,
       container: startDoor,
       label: startLabel,
       seed: Math.random() * Math.PI * 2,
@@ -1954,6 +2003,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       x: this.goalTile.x,
       y: this.goalTile.y,
       size: DOOR_SPRITE_SIZE,
+      foot: DOOR_SPRITE_SIZE * DOOR_FOOT,
       container: goalDoor,
       label: goalLabel,
       seed: Math.random() * Math.PI * 2,
@@ -1974,19 +2024,27 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       const wanderDepth = Math.cos(t * 0.0009 + c.seed * 1.7) * 0.12;
 
       const lane = c.x - camX + wanderLane;
-      const depth = camY - c.y + 0.5 + wanderDepth;
+      const depth = camY - c.y + wanderDepth;
       const laneL = lane - 0.5;
       const laneR = lane + 0.5;
 
-      const visible = depth > 0.15 && laneL <= LANE_CLIP && laneR >= -LANE_CLIP && depth / DRAW_DISTANCE_TILES < 0.75;
+      const visible =
+        depth + CAMERA_BACK_TILES > 0.15 &&
+        laneL <= LANE_CLIP &&
+        laneR >= -LANE_CLIP &&
+        depth / DRAW_DISTANCE_TILES < 0.75;
       c.container.setVisible(visible);
       c.label?.setVisible(visible);
       if (!visible) continue;
 
+      // `p` is the sprite's tile centre on the ground plane, so the art is
+      // lifted by its own ground-contact offset to stand on that point rather
+      // than being centred over it.
       const p = this.projectTile(lane, depth);
       const bob = Math.sin(t * 0.004 + c.seed * 2.3) * 3 * p.scale;
+      const originY = p.y - c.foot * p.scale + bob;
 
-      c.container.setPosition(p.x, p.y + bob);
+      c.container.setPosition(p.x, originY);
       c.container.setScale(p.scale);
       // A clamped label (currently just a boss's own, see spawnBossSprite)
       // keeps its rendered half-width (label.width already reflects any
@@ -1994,7 +2052,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       // strictly centered on the sprite's own projected x like every other
       // landmark's shorter label.
       const labelX = c.clampLabelToCanvas && c.label ? Phaser.Math.Clamp(p.x, (c.label.width * p.scale) / 2, CANVAS_W - (c.label.width * p.scale) / 2) : p.x;
-      c.label?.setPosition(labelX, p.y + bob - c.size * p.scale - 4);
+      c.label?.setPosition(labelX, originY - c.size * p.scale - 4);
       c.label?.setScale(p.scale);
     }
   }

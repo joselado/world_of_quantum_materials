@@ -1270,7 +1270,10 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   — the player's crystal floats in place at the bottom of the screen while the
   world is redrawn every frame from a smoothly-tweened camera position, giving
   a continuous "walking down a path" feel similar to World of Final Fantasy's
-  field view. Movement/encounter logic runs on a plain 2D grid; only the tile
+  field view. The camera sits a fixed distance *behind* the player's own tile
+  (`CAMERA_BACK_TILES`), which is what lets the fixed on-screen avatar stand on
+  the tile the movement grid actually places it on rather than somewhere ahead
+  of it. Movement/encounter logic runs on a plain 2D grid; only the tile
   rendering is projected (lane offset, depth) → screen point, with distance
   fog blending tiles toward a biome-specific haze color near the horizon.
 - **Overworld map generation** (`src/world/mapgen.ts`, `src/world/generators/`): each of the

@@ -10,6 +10,13 @@ import { STORY_LAVENDER } from '../ui/theme';
 // boss avatar -- the actual world switch only happens through the confirm
 // panel a walk onto the door tile opens (OverworldScene.showStartDoorPanel/
 // showGatePanel), not a click handler on the sprite itself.
+
+// Where the archway's pillars meet the ground, in multiples of the `size`
+// passed below -- an archway is a structure that stands on a tile, so the
+// caller placing it (OverworldScene.spawnDoorSprites' `foot`) lands this
+// point on the tile rather than the container's own origin.
+export const DOOR_FOOT = 0.3;
+
 export function makeDoorSprite(scene: Phaser.Scene, size: number): Phaser.GameObjects.Container {
   const container = scene.add.container(0, 0);
 
@@ -38,10 +45,12 @@ export function makeDoorSprite(scene: Phaser.Scene, size: number): Phaser.GameOb
   // to the shape's own half-width) so the silhouette reads as a doorway
   // rather than collapsing into a pill/gem outline at a distance.
   const frame = scene.add.graphics();
+  const frameTop = -size * 1.05;
+  const frameHeight = size * DOOR_FOOT - frameTop;
   frame.fillStyle(0x453f5e, 1);
-  frame.fillRoundedRect(-size * 0.55, -size * 1.05, size * 1.1, size * 1.35, size * 0.2);
+  frame.fillRoundedRect(-size * 0.55, frameTop, size * 1.1, frameHeight, size * 0.2);
   frame.lineStyle(Math.max(2, size * 0.05), 0x7367a3, 1);
-  frame.strokeRoundedRect(-size * 0.55, -size * 1.05, size * 1.1, size * 1.35, size * 0.2);
+  frame.strokeRoundedRect(-size * 0.55, frameTop, size * 1.1, frameHeight, size * 0.2);
   container.add(frame);
 
   // The opening itself -- a darker inset void so the frame reads as a
