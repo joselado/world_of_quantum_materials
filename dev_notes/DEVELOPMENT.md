@@ -254,7 +254,9 @@ containers layered at once.
 
 Two checked-in scripts build on the `window.__game`/Puppeteer approach above
 to answer a question ad hoc UI verification can't: not just "does this one
-panel render correctly," but "can a player actually complete the game." Both
+panel render correctly," but "can a player actually complete the game."
+(A third, `music-arc-check`, uses the same headless-Chrome machinery for the
+soundtrack -- see "Measuring the music arc" below.) Both
 live in `game/scripts/`, use `puppeteer-core` (a real `devDependency`, unlike
 the one-off ad hoc pattern above) against the Chrome-for-Testing binary
 Puppeteer itself caches at `~/.cache/puppeteer/chrome` (auto-detected;
@@ -329,3 +331,49 @@ diagnostic dump it logs (`dialogueContainer`'s actual button list at the
 point it gave up) for exactly this shape -- a real close/exit button sitting
 in the list that the click logic simply didn't prefer is a script bug, not a
 game one.
+
+## Measuring the music arc
+
+**`npm run music-arc-check`** (`scripts/music-arc-check.mjs`, ~17 minutes)
+makes the soundtrack's per-world arc checkable without listening to it. The
+ten worlds darken as the player advances (`dev_notes/WORLDS.md`'s light
+rule) and the score carries that; "it sounds darker" is not something a
+reviewer can verify, so this script turns it into numbers. It drives the real
+game in headless Chrome, hangs an `AnalyserNode` off the live music bus
+(`MusicEngine.getSfxBus()`'s master node -- fanning off it is
+non-destructive, so the game plays exactly as it normally would), plays all
+20 scores, and prints a per-score row: RMS, spectral centroid, the share of
+energy above 4 kHz and below 120 Hz, spectral flatness, a Plomp-Levelt
+roughness proxy for sensory dissonance, and a detected-onset rate standing in
+for note density x tempo. It measures the audio that actually comes out and
+never imports the score tables, so it can't restate the intent it exists to
+check. `QM_MUSIC_STYLE=modern` measures the Modern arrangement instead,
+`QM_MUSIC_CAPTURE_MS` sets the per-score window, and `QM_MUSIC_JSON=path`
+dumps the raw table for diffing two runs. It picks its own port (5188 by
+default, `QM_MUSIC_PORT`) rather than `:5173`, so it never disturbs a dev
+server already running.
+
+It is also where `music.ts`'s own module-load `assertLoopBeats` assertion
+gets caught: a track whose note lengths don't sum to its score's `loopBeats`
+typechecks clean and can't be spotted by reading, but it logs a `music:`
+console error that fails this run.
+
+**The gotcha that makes the numbers trustworthy, and would silently corrupt
+them otherwise:** it reloads the page between scores, giving each one a fresh
+`AudioContext`. `play()` schedules a whole loop of oscillators up front and
+`stop()` only ramps their shared gain to zero, so every node stays alive and
+costing CPU until its own stop time -- up to a loop later. Measuring several
+scores in one page therefore piles up hundreds of inaudible-but-still-running
+oscillators until the audio thread starts glitching, and that added noise
+reads as a steady climb in brightness and spectral flatness with position in
+the run. That artifact looks exactly like the darkening arc the script exists
+to measure, which is what makes it dangerous rather than merely noisy.
+
+Two limits worth knowing before over-reading a small delta. The capture
+window is a fixed wall-clock duration rather than an integer number of loops,
+so once-per-loop events (the battle crash and fanfare sting) are weighted
+slightly differently between scores of different loop lengths -- this shifts
+absolute numbers a little and leaves the across-worlds shape intact. And the
+analyser taps the master bus ahead of the output compressor, so the figures
+are pre-compression; they are meaningful compared against each other, not as
+absolute loudness.
