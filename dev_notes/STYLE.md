@@ -298,33 +298,59 @@ than appending a changelog, so this always reflects current reality.
   `strokeColor` -- the same per-guardian color coding panels/pills already use,
   `terrain/paint.ts`'s `drawMidHighlight`) -- the forced chokepoint reads as a deliberate gate the
   player is walking through, not an arbitrary narrow spot.
-- Off-path tiles read as unambiguously "you cannot walk here," and every one of them lies in
-  the same plane as the walkable floor -- impassable terrain is told apart by color and by the
-  boundary treatment below, never by rising above the ground. `terrain/paint.ts`'s `drawOffPathTile`
+- Off-path tiles read as unambiguously "you cannot walk here." The **ground plane itself is
+  always flat** -- impassable ground lies in the same plane as the walkable floor, and is told
+  apart by color and by the boundary treatment below, never by the terrain rising into a
+  wall. What a material may do is stand *objects* on that flat ground: the Mean Fields' and
+  Splitting Hollow's trees, the Stone Lattice's columns, the Iron Steppe's shards. Those are
+  sprites on a tile, the same as a guardian or a door, not extruded terrain -- there is no
+  height field, no occlusion pass and no elevation anywhere in the collision grid. They get
+  their occlusion free, because the terrain sweep paints far-to-near and anything drawn upward
+  from its own tile covers the rows beyond it. A world whose surround is a *place* rather than
+  a surface needs this: a canopy that never leaves the floor is not a wood, and the 1 to 8 tree
+  rhyme depends on the trees being recognisable as trees. `terrain/paint.ts`'s `drawOffPathTile`
   paints the tile in that biome's own `ground` color (hazed for depth, tinted toward a
   `regionColor` domain where the tile belongs to one) and then lays on the accent the terrain
   kind resolved from that tile's own biome's `wallTheme` calls for (`art/biomes.ts`, resolved
   per-tile via `biomeOverride` above; see the Biomes table below). Every accent is skipped past
   `depthRatio 0.75` (the same gate `decorateTile` uses) so distant tiles stay a cheap flat
   fill:
-  - **'rock'** (most biomes): bare ground, no accent at all -- the biome's own `ground` color
-    is the whole treatment.
-  - **'lava'** (Defect Wastes, world 9): a glowing molten crust
-    (`OverworldScene.drawLavaAccent`) -- a warm overlay, a bright crack line and a hot
-    core dot, animating off `this.time.now`. The overlay's pulse phase varies by only a
-    fraction of a radian between neighboring tiles, so the glow drifts across the crust as
-    broad slow waves -- a steeper phase step makes adjacent tiles pulse against each other and
-    the crust read as a checkerboard of the tile grid -- and its alpha is held dim enough that
+  - **'rock'** (the Entangled Web, world 7): bare ground with nothing laid over its fill.
+    In that world bare means black -- the surround is true void, and there is nothing out
+    there to draw.
+  - **'forest'** (the Mean Fields, world 1): dense summer canopy, drawn as a wood rather than
+    a hazard -- no glow, no motion. Its tree sprites are the game's one shared terrain sprite
+    (`art/trees.ts`).
+  - **'columns'** (the Stone Lattice, world 2): rows of identical sandstone columns on a
+    strict lattice of the grid, one every second tile in both directions, lit from one fixed
+    direction with deep cast shadow between them. The regularity is the point -- a colonnade
+    is a one-dimensional lattice, and jitter here draws a ruin.
+  - **'deadFloor'** (the Edge Cliffs, world 3): the sunken bulk one storey down, its stipple a
+    strict lattice sheared per tile into a frozen moire. Never noise, which at this scale
+    reads as a rendering fault, and never animated -- wind races across this world's sky while
+    its ground stays perfectly still.
+  - **'charged'** (the Storm Flats, world 4): ground carrying the field, with forked
+    discharges crawling over it on a world-anchored cycle.
+  - **'ice'** (the Vortex Glacier, world 5): the frozen lake, still and faceted, plus the
+    vortex pits inside it -- a rim and a cold glow of trapped flux on any impassable tile the
+    walkable region nearly surrounds, which is what a vortex core is.
+  - **'shards'** (the Iron Steppe, world 6): leaning iron blades, all tilted the same way and
+    flipping across a domain wall that drifts, so shards reverse while the player watches.
+    Their lit edge is aurora green -- the only light this world has, and emitted rather than
+    received.
+  - **'fog'** (the Splitting Hollow, world 8): World 1's tree sprites dead, grey and forked at
+    the trunk, under a fog wash that is the actual hazard and thickens over the impassable
+    until the wood inside it is barely there. A rare fragment of the player's own crystal sits
+    among them.
+  - **'lava'** (the Defect Scars, world 9): a glowing molten crust -- a warm overlay, a bright
+    fissure and a hot core, animating off the scene clock. The overlay's pulse phase varies by
+    only a fraction of a radian between neighboring tiles, so the glow drifts across the crust
+    as broad slow waves; a steeper phase step makes adjacent tiles pulse against each other
+    and the crust read as a checkerboard of the tile grid. Its alpha is held dim enough that
     the crust never climbs toward the value of the walkable clay route it must be told apart
-    from.
-  - **'water'** (Frozen Caverns, world 5): a rippling frozen lake
-    (`OverworldScene.drawWaterAccent`) -- animated shimmer streaks and a drifting pale
-    highlight.
-  - **'void'** (Topological Islands, world 3): the drop between islands
-    (`OverworldScene.drawVoidAccent`) -- a couple of faint stars glinting up out of a fill held
-    far darker than the pale island floor, so stepping off the path reads as falling into open
-    space rather than onto lower ground. World 3's own off-path tiles are often covered by a
-    `regionColor` domain tint instead (see above), which always wins over this theme.
+    from. A rare tile also carries a half-sunk drum from the Stone Lattice's fallen colonnade.
+  - **'consuming'** (the Devouring Mirror, world 10): facets that re-cut themselves on a slow
+    cycle, tinted toward the player's own crystal color -- the world is built out of them.
   A ground-tile fill itself (walkable or off-path, accented or `regionColor`-tinted) is a
   single flat color per tile, not a per-tile diagonal-facet/gradient shading -- floors read
   better flat; don't add such shading without asking first.
@@ -435,7 +461,7 @@ than appending a changelog, so this always reflects current reality.
   corner. The counter's column is reserved as a right-side gutter, sized once from the widest
   qumatessence string this text style could ever show rather than measured live off the
   current value, and the world name's word-wrap width is narrowed to stop short of that
-  gutter -- a long name (e.g. world 5's "Frozen Zero-Resistance Caverns") or a large text-size
+  gutter -- a long name (e.g. world 8's "The Splitting Hollow") or a large text-size
   setting wraps down onto a second line instead of running wide enough to collide with the
   counter. The bottom-right corner carries one small always-on hint, "Press Enter to go to the
   Lab" (muted blue-grey `#8fa0c9` on translucent black, matching the Settings station's hint-line
@@ -462,8 +488,38 @@ than appending a changelog, so this always reflects current reality.
 
 Per-world skin: sky/ceiling gradient, distant self (`hillColor`/`hillAlpha`, see "The horizon"
 below), off-path ground color, on-path
-trail color, ambient decoration style, fog blend target, whether clouds render, and (see
+trail color, ambient decoration style and how much of the route carries it, fog blend target,
+whether clouds render and how fast they drift, the Storm Flats' flat-band ramp, and (see
 "Overworld path" above) what the off-path terrain actually *is* -- `wallTheme`.
+
+### The three rules every world is judged against first
+
+`WORLDS.md` is the authority on what each world is; these are the visual rules that generate
+those decisions, and a new world or a revision to an old one is checked against them before
+anything else.
+
+**The naming law.** No name promises anything the texture doesn't show. Every world name is a
+physics word plus a terrain word and both halves must be visible on screen. Two corollaries:
+**no physicists** (the guardians are the people, and the only human presence in the game) and
+**no quasiparticles** (those are the moves and the creatures, with their own namespace). Both
+push names away from proper nouns, which cannot be drawn, and toward phenomena, which can. The
+vocabulary stays short and plain: the rule polices obscurity, not intensity.
+
+**The light rule.** The sequence is one long day dying, and the day is coherence -- morning,
+midday, afternoon, stormy dusk, overcast twilight, night, **no sky at all**, fog, firelight,
+shimmer. **After World 7 the sun never returns**: every light in Worlds 8-10 is emitted by the
+world itself, never received from above. World 6 is the hinge, the first world lit by
+something it emits (the aurora) while a sky is still there. This costs nothing but palette
+discipline and it is the premise made visible, so it is not negotiable for atmosphere's sake.
+
+**The two escalation spines.** Both must be legible in a screenshot cropped to the player's
+feet. What the impassable terrain *is*, from "you just wouldn't walk there" to "it would kill
+you": forest, stone, a drop, charged ground, ice and pits, iron shards, nothing at all, fog
+that takes you, molten crust, terrain that consumes. What the walkable ground *is*, from
+ground built for walking (a field path, a tiled aisle) through ground that merely happens to
+be traversable (ice, iron sand) to ground that isn't ground at all (filaments over void,
+scorched crust, a surface that dissolves behind you). A world where neither spine holds will
+read as placeholder art.
 
 Three constraints every entry has to satisfy, all consequences of treatments every world uses
 rather than free style choices:
@@ -485,26 +541,31 @@ rather than free style choices:
 
 | World | Biome | Sky/ceiling | Off-path ground | Path | Decoration | Clouds | Wall theme |
 |---|---|---|---|---|---|---|---|
-| 1 | Tutorial Meadow | pale blue gradient (`0x8fd0ff`→`0xe8f6ff`) | fresh grass `0x37913f` | dirt `0xbb945c` | flowers | yes | rock |
-| 2 | Crystalline Caves | dark purple gradient (`0x1a1730`→`0x362f5c`) | indigo stone `0x27243a` | amethyst floor `0x625a8a` | crystal glints (cyan) | no | rock |
-| 3 | Floating Islands | deep-to-pale blue gradient (`0x2a3d6b`→`0x8fb8e8`) | night-blue drop `0x17224a` | pale sky-blue walkway `0x9ac0e0` | crystal glints (cyan) | yes | **void** -- the drop between islands, matches "one-way edge paths" |
-| 4 | Landau Level Terrain | deep electric-blue gradient (`0x081428`→`0x1f4d8f`) | deep navy `0x0f1f3a` | glowing blue `0x3f8ade` | field lines | no | rock |
-| 5 | Frozen Caverns | icy dark gradient (`0x1b2c3a`→`0x3d5b69`) | icy slate `0x1c3440` | pale ice-blue `0xa4dbe6` | crystal glints (cyan) | no | **water** -- a frozen lake, "zero-resistance" made literal underfoot |
-| 6 | Magnon Plains | warm golden-hour gradient (`0x9cc8e8`→`0xf0e8c8`) | olive-gold grass `0x6e8d3a` | warm gold `0xd4c07a` | ripples | yes | rock |
-| 7 | Tensor-Network World | dark violet gradient (`0x120a24`→`0x2c1a4a`) | near-black violet `0x1c1030` | violet bond-path `0x8a5cd9` | network nodes | no | rock |
-| 8 | Spinon Forest | muted grey-green gradient (`0x2a2f28`→`0x4e584c`) | deep forest shadow `0x1b231d` | muted sage `0x738667` | mist motes | no | rock |
-| 9 | Defect Wastes | scorched red-black gradient (`0x1a0808`→`0x3a1414`) | charred black-red `0x220c0c` | scorched clay `0xa86b54` | cracks | no | **lava** -- the world's own "scorched" theme made literal |
-| 10 | Adaptive Meta-World | shimmering violet gradient (`0x2a1a3a`→`0x6a4a8a`) | deep violet `0x3a2450` | lavender `0xc9a8f0` | crystal glints (cyan) | yes | rock |
+| 1 | The Mean Fields | pale morning blue (`0x8fd0ff`→`0xe8f6ff`) | dark canopy `0x1d4526` | pale wheat `0xd9d295` | flowers | yes | **forest** |
+| 2 | The Stone Lattice | hard midday blue (`0x5aa6e0`→`0xd6e6f0`) | deep cast shadow `0x4a3427` | sandstone aisle `0xdcc9a8` | mosaic (every tile) | no | **columns** |
+| 3 | The Edge Cliffs | bright afternoon (`0x4f9fd8`→`0xcfe6f2`) | dim slate `0x394349` under dead teal/ochre domain tints | lit ledge `0xdfe6e2` | edge flow (every tile) | yes, drifting | **deadFloor** |
+| 4 | The Storm Flats | stormy dusk (`0x151a3a`→`0x3a4270`) | charged ground `0x1b2044` | banded indigo `0x6272b8` | orbit rings | no | **charged** |
+| 5 | The Vortex Glacier | overcast twilight (`0x3c4a56`→`0x6e808c`) | frozen lake `0x54707e` | swept ice `0xa8c8d4` | flow lines (every tile) | no | **ice** |
+| 6 | The Iron Steppe | night (`0x050a14`→`0x0d1622`) under a green aurora | near-black `0x121517` | iron sand `0x3a3f40` | ripples | no | **shards** |
+| 7 | The Entangled Web | none -- black (`0x000000`) | true void `0x000000` | white-gold filament `0xefdaa4` | lanes and rungs (every tile) | no | rock (black, no accent) |
+| 8 | The Splitting Hollow | fog-lit only (`0x39423c`→`0x59635a`) | near-black `0x1b211c` | grey-green floor `0x5d6a5c` | mist motes | no | **fog** |
+| 9 | The Defect Scars | scorched red-black (`0x1a0808`→`0x3a1414`) | charred `0x2a0e0a` | scorched clay `0x9c6a52` | cracks | no | **lava** |
+| 10 | The Devouring Mirror | silver-violet shimmer (`0x2a1a3a`→`0x6a4a8a`) | reconfiguring `0x2e2044` | dissolving silver `0xd8c8ee` | dissolve (every tile) | no | **consuming** |
 
-Worlds 1 and 6 are deliberately different seasons of green rather than two takes on the same
-field: world 1 a crisp spring morning (fresh mid-green, blue-sky haze), world 6 golden hour
-(olive-gold grass hazing into a warm cream horizon). World 9 stays entirely inside its warm
-red family -- the walkable route is scorched clay told apart from the molten crust by value
-alone, with the crust's own glow held dim (see the lava accent notes above) so that value gap
-never closes. World 3's Voronoi domain tints (`world/generators/world3.ts`'s
-`DOMAIN_PALETTE`) are saturated mid-value hues, all held well darker than the pale walkable
-edge channel: the domain-vs-domain hue contrast is the world's physics made visible, and the
-value gap to the path is what keeps a tinted bulk from ever reading as walkable ground.
+Every world owns a hue, because unassigned colours are where collisions breed. Violet belongs
+to the Devouring Mirror by right, as the finale, which is why the Storm Flats are indigo
+rather than storm-violet and the Iron Steppe's aurora is pure green rather than green-violet.
+
+The Mean Fields are the one world whose value break runs the way a field runs rather than the
+way a track does: pale wheat underfoot and dark canopy around it, so the walkable route is the
+*bright* thing on screen. World 9 stays entirely inside its warm red family -- the walkable
+route is scorched clay told apart from the molten crust by value alone, with the crust's own
+glow held dim (see the lava accent notes above) so that value gap never closes. World 3's
+Voronoi domain tints (`world/generators/world3.ts`'s `DOMAIN_PALETTE`) are two families of
+dead teal and dead ochre, interleaved so adjacent domains reliably differ -- the walkable seam
+only exists where two disagree -- and all held well darker than the pale lit ledge: the
+domain-vs-domain hue contrast is the world's physics made visible, and the value gap to the
+path is what keeps a bulk from ever reading as walkable ground.
 
 ## The horizon
 
@@ -540,14 +601,37 @@ the steepness late, where the horizon band's own wash is already painting over t
 band has to reach *nearer* the camera than the steep stretch begins, not merely meet it. What
 survives is the step times however much of the wash is not over it, and the step itself grows with
 the distance between a world's ground colour and the air it is hazing into. The widest such gap in
-the game is the Vortex Glacier at an open gate, dark ice under the Iron Steppe's cream, and it is
-the case the whole arrangement has to be sized against.
+the game is the Stone Lattice at an open gate, deep cast shadow under the Edge Cliffs' bright
+afternoon air, and it is the case the whole arrangement has to be sized against.
 
 **Distant selves.** Just above the line stands the *next* world's silhouette, composed from that
-world's own `hillColor` (base) and `hillAlpha` (swallow) -- a world states how it looks from
-outside itself, once, and its neighbour renders that statement. The shape is a placeholder two-sine
-profile shared by every world; per-world profiles replace it, each being that world's impassable
-surround restated at horizon scale.
+world's own `hillColor` (base) and `hillAlpha` (swallow) on its `Biome` entry plus its profile in
+`art/horizons.ts` -- a world states how it looks from outside itself, once, and its neighbour
+renders that statement. Each profile is that world's own impassable surround restated at horizon
+scale: column teeth for the Stone Lattice, low stepped plateaus for the Edge Cliffs, random
+vertical pressure ridges for the Vortex Glacier, a uniformly leaning sawtooth for the Iron Steppe,
+a notched glow-veined ridge for the Defect Scars. A generic hill in ten colours fails this rule --
+it is the theming *not* made visible at distance. Profiles are authored as explicit polylines, not
+sampled from a height function, so a hard-edged surround stays hard at a handful of points where
+uniform sampling would need hundreds to stop chamfering it. No crest may exceed `MAX_CREST`, which
+is what the mist band's full-strength stretch is sized to clear.
+
+A world may also carry a **sky extra** on the same entry, for a distant self a filled outline
+cannot state -- the Storm Flats' arc-flashes and the Entangled Web's filament glints, the latter
+being that world's entire distant self at swallow zero. Distinct from an **overhead motif**
+(`OVERHEAD_SKIES`), which is read from the world the player is *standing in* rather than from its
+neighbour: the Storm Flats' arcs cracking across the whole dusk, the Iron Steppe's aurora.
+
+**The adjacency rule: adjacent distant selves must differ in shape-language or sky-activity, never
+in hue alone.** Haze inheritance already guarantees hue shifts; this catches the case where hue is
+*all* that shifts, and it is checked by looking at each world's forward horizon from mid-corridor.
+Two pairs are settled and are requirements rather than suggestions. **Edge Cliffs to Storm Flats**
+cannot differ on shape, both worlds being flat by locked identity, so the differentiator is the
+sky: arc-flashes over a dead-flat line against stepped plateaus under racing cloud. **Vortex
+Glacier to Iron Steppe** are both jagged, cold-dark and under failing light, so the physics
+separates them -- the Steppe's shards lean *uniformly*, with the lean flipping at one point along
+the horizon (the domain wall, visible from a world away), where the glacier's pressure ridges are
+random and vertical.
 
 Three rules govern how one is painted, and they are what keep it from reading as a slab:
 
@@ -563,8 +647,10 @@ Three rules govern how one is painted, and they are what keep it from reading as
   the budget is tighter than an own-palette band would need, because the horizon is always wearing
   a *foreign* hue and a foreign hue is more legible than an own-palette one at equal contrast. The
   budget binds hardest with the gate shut, when the mist has none of the neighbour's color in it
-  yet: World 2's dark indigo seen from World 1's pale blue air is the tightest pair in the game
-  and takes the lowest swallow. **A world whose base color cannot stay inside the budget at any
+  yet. It also binds from the other side: a base colour sitting too *close* to the fog it is
+  drowned into disappears entirely, which is why the Vortex Glacier's distant self is pale
+  ice-cyan -- a cold-dark ridge there sat a few values from the Storm Flats' own dusk and its
+  forward horizon simply vanished. **A world whose base color cannot stay inside the budget at any
   swallow worth drawing goes to zero and shows no silhouette at all** -- an emptied-out horizon
   beats a slab, every time.
 

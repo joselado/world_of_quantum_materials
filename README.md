@@ -25,23 +25,31 @@ scenery -- a corridor that splits into two colored branches and remerges in
 the mean-field world, a network of colored domains you trace the boundary
 of in the topological world, a corridor that spirals around a frozen vortex
 in the superconductivity world, a real ladder of linked lanes in the
-tensor-network world, and so on -- so reaching the far end takes actually
-reading that world's own shape, not just holding one direction. A handful of
-qumatessence (the in-game currency) pickups are tucked along the way,
-often at a dead end worth the detour. Every world has its own
-biome, matching that topic's flavor -- and stepping off the path doesn't
-always mean the same thing: the Floating Islands drop away into starlit open
-space, the Frozen Caverns are a rippling frozen lake, and the Defect Wastes
-are a glowing molten crust, alongside plainer rock everywhere else.
+entanglement world, and so on -- so reaching the far end takes actually
+reading that world's own shape, not just holding one direction. Every world
+narrows into a pass at its far end and opens out of the same pass at its
+start, so leaving one world and arriving in the next is one piece of
+geography seen twice. A handful of qumatessence (the in-game currency)
+pickups are tucked along the way, often at a dead end worth the detour --
+though never inside a pass, which stays clear.
+
+The ten worlds are one road, and the light dies along it: morning, midday,
+afternoon, storm, twilight, night, and then no sky at all, after which every
+world lights itself. Stepping off the path never means the same thing twice
+either, and it gets worse as you go -- summer forest, then a colonnade, then
+a drop onto dead ground, charged ground, ice and vortex pits, leaning iron
+shards, nothing at all, fog that takes you, molten crust, and finally
+terrain that reconfigures around whatever crystal you currently are. From
+each world's far end you can see the next one on the horizon.
 
 <table>
 <tr>
-<td><img src="screenshots/overworld.png" width="300" alt="World 1, the Mean-Field Meadow"></td>
-<td><img src="screenshots/biome-landau.png" width="300" alt="World 4, Landau Level Terrain"></td>
+<td><img src="screenshots/overworld.png" width="300" alt="World 1, the Mean Fields"></td>
+<td><img src="screenshots/biome-landau.png" width="300" alt="World 4, the Storm Flats"></td>
 </tr>
 <tr>
-<td><img src="screenshots/biome-network.png" width="300" alt="World 7, the Tensor-Network World"></td>
-<td><img src="screenshots/biome-cracked.png" width="300" alt="World 9, the Defect Wastes"></td>
+<td><img src="screenshots/biome-network.png" width="300" alt="World 7, the Entangled Web"></td>
+<td><img src="screenshots/biome-cracked.png" width="300" alt="World 9, the Defect Scars"></td>
 </tr>
 </table>
 
@@ -160,16 +168,16 @@ archetypes, and a rival crystal gating the way to the next world.
 
 | # | World | Course topic |
 |---|---|---|
-| 1 | Mean-Field Meadow | Second quantization, mean-field, symmetry breaking |
-| 2 | Bloch Caverns | Symmetries, tight-binding band structure |
-| 3 | Topological Islands | Topological band theory |
-| 4 | Landau Level Terrain | Magnetic field, quantum Hall effect, Landau levels |
-| 5 | Frozen Zero-Resistance Caverns | Superconductivity, Nambu representation, Majoranas |
-| 6 | Magnon Plains | Classical magnetism and magnons |
-| 7 | Tensor-Network World | Quantum entanglement and tensor networks |
-| 8 | Spinon Forest | Quantum magnetism, spinons, Kondo physics |
-| 9 | Defect Wastes | Excitations and defects |
-| 10 | The Adaptive Meta-World | Machine learning for quantum materials |
+| 1 | The Mean Fields | Second quantization, mean-field, symmetry breaking |
+| 2 | The Stone Lattice | Symmetries, tight-binding band structure |
+| 3 | The Edge Cliffs | Topological band theory |
+| 4 | The Storm Flats | Magnetic field, quantum Hall effect, Landau levels |
+| 5 | The Vortex Glacier | Superconductivity, Nambu representation, Majoranas |
+| 6 | The Iron Steppe | Classical magnetism and magnons |
+| 7 | The Entangled Web | Quantum entanglement and tensor networks |
+| 8 | The Splitting Hollow | Quantum magnetism, spinons, Kondo physics |
+| 9 | The Defect Scars | Excitations and defects |
+| 10 | The Devouring Mirror | Machine learning for quantum materials |
 
 World 10's wilds are every hybrid crystal fusable at Majorana's station (see
 [Hybrids](docs/hybrids.md)) — real compounds in their own right, just ones

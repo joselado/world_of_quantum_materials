@@ -4,12 +4,9 @@ Work list for making the overworld continuous to the horizon and turning the
 world-to-world connections into geography. The spec is `WORLDS.md` §4, which is
 the authority; this file is the checklist. Delete it once the work has landed.
 
-**Ordering against the retheme.** Stages A and B are independent of
-`WORLDS_BUILD_TASK.md` and are built — they fix a live complaint and touch none
-of the theming. Stages C–F depend on the retheme, because a world's distant
-self *is* its impassable surround restated at horizon scale, and those surrounds
-do not exist until the retheme builds them. Do not author distant selves against
-the current biomes; they will be thrown away.
+**Ordering against the retheme.** Stages A, B and C are built, on top of the
+retheme — a world's distant self *is* its impassable surround restated at
+horizon scale, so the two were authored in one pass. Stages D–F remain.
 
 ---
 
@@ -21,7 +18,7 @@ Build in this order. Each stage is shippable on its own.
 |---|---|---|---|
 | **A** | Depth continuity — land reaches the horizon | nothing | **built** |
 | **B** | Haze inheritance — the air ahead becomes the next world's air | A | **built** |
-| **C** | Distant selves — per-world horizon profiles, composed into neighbours | retheme, A | composition + atmosphere **built**; profiles to do |
+| **C** | Distant selves — per-world horizon profiles, composed into neighbours | retheme, A | **built** |
 | **D** | Gate apertures — state-signalled pass, ground seam | C | to do |
 | **E** | Depth-projected flanks — the approach into the pass | D | **deferred** |
 | **F** | The Lab door, then the Qumatuomi sky | D (Lab quotes its grammar) | to do |
@@ -76,48 +73,30 @@ haze inheritance").
 input is `isRivalDefeated()` until stage D builds the aperture itself; when it
 does, that is the single call to re-point.
 
-## C — Distant selves
+## C — Distant selves — built
 
-One asset per world: a silhouette profile plus a base colour and a swallow.
-**Not two.** A world's forward horizon is composed at render time from its
-neighbour's distant self; the same asset is what that world wears on its own
-horizon. If B and C are implemented as separate assets they will drift.
+One asset per world, authored once: a profile in `art/horizons.ts` plus a base
+colour and a swallow on that world's `Biome` entry. World N's forward horizon
+is composed at render time from world N+1's, and each profile is that world's
+own impassable surround restated at horizon scale — column teeth, stepped
+plateaus, random vertical pressure ridges, a uniformly leaning sawtooth with a
+flip at the domain wall, a notched glow-veined ridge. `STYLE.md`'s "The
+horizon" is the rule; `CODEMAP.md`'s "The mist band and the distant self" and
+"Per-world horizon shapes" are the code.
 
-The composition system, the atmosphere the silhouette is drowned in, and the
-swallow knob are built (`scenes/overworld/sky.ts`'s `drawDistantSelf`,
-`art/biomes.ts`'s `hillColor`/`hillAlpha`). What is left is the **shape**: the
-profile is still the two-sine placeholder shared by every world, which gives
-every world the same hills in a different colour — a standing violation of the
-theming independent of this task. Author per-world profiles against the retheme
-and hand them to `silhouetteHeight`.
+Two things beyond the silhouette landed with it, because WORLDS.md §4 requires
+distant selves a filled outline cannot state. A per-world **sky extra** on the
+same entry carries the Storm Flats' arc-flashes (the resolved Edge Cliffs →
+Storm Flats adjacency, both worlds being flat by identity) and the Entangled
+Web's filament glints, which at swallow zero are its entire distant self. A
+separate `OVERHEAD_SKIES` table carries motifs read from the world the player
+is **standing in** rather than from its neighbour — the Storm Flats' overhead
+arcs, the Iron Steppe's aurora. The two answer different questions and are
+deliberately not one table.
 
-Requirements from `WORLDS.md` §4:
-
-- A distant self is **that world's impassable surround at horizon scale**, not a
-  hill variation. Column teeth, leaning shard rows, a cracked glow-veined ridge.
-- **No backward variants.** The camera never turns. The arrival beat is obtained
-  instead by bleeding the previous world's ground palette into the first few
-  margin rows on entry.
-- **The Entangled Web** has no surround; its distant self is an absence with
-  structure — the sky ending, thin white-gold filament glints in blackness.
-- **The Devouring Mirror's horizon is the Qumatuomi sky** (stage F), not a
-  silhouette. An earlier draft of the spec said its horizon should be itself;
-  that is superseded and must not also be built.
-- **The adjacency rule applies**: adjacent distant selves must differ in
-  shape-language or sky-activity, never in hue alone. Two pairs are already
-  resolved in the spec and their resolutions are requirements, not suggestions —
-  the Storm Flats' arc-flashes (because Edge Cliffs → Storm Flats cannot differ
-  on shape, both being flat by locked identity), and the Iron Steppe's uniform
-  ~30° lean with a flip at one point (the domain wall) against the glacier's
-  random vertical ridges.
-
-A new profile inherits the whole atmosphere contract already in place and must
-not fight it: shape and base colour only, no baked fog, and a swallow that keeps
-the band inside its value budget or goes to zero. `STYLE.md`'s "The horizon" is
-the rule; `CODEMAP.md`'s "The mist band and the distant self" is the code.
-
-Worlds 7, 8 and 10 are already at swallow zero and stay there — their horizons
-are meant to be empty, so they need no profile.
+Worlds 7, 8 and 10 are at swallow zero and show no silhouette; 7 still draws
+its glints, which is why "no profile" and "no distant self" are not the same
+thing.
 
 ## D — The pass, its guard and its board
 
