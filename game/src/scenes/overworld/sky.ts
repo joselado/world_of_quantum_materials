@@ -99,7 +99,7 @@ export function drawSky(scene: Phaser.Scene, biome: Biome) {
       [230, 65],
       [400, 50],
       [530, 32],
-    ].forEach(([x, y]) => drawCloud(scene, x, y));
+    ].forEach(([x, y]) => drawCloud(scene, x, y, biome.cloudDrift));
   }
 }
 
@@ -107,12 +107,28 @@ function smoothstep(t: number): number {
   return t * t * (3 - 2 * t);
 }
 
-function drawCloud(scene: Phaser.Scene, x: number, y: number) {
+// A cloud is drawn at the origin and positioned by the object's own
+// transform, so a drifting world can move it without redrawing anything.
+// The Edge Cliffs are the world this exists for: wind racing overhead while
+// the ground beneath stays perfectly still is that world's horror, and it
+// only lands if the sky is visibly the only thing moving.
+function drawCloud(scene: Phaser.Scene, x: number, y: number, drift: number) {
   const g = scene.add.graphics();
   g.fillStyle(0xffffff, 0.85);
-  g.fillEllipse(x, y, 50, 20);
-  g.fillEllipse(x - 20, y + 5, 32, 16);
-  g.fillEllipse(x + 20, y + 5, 32, 16);
+  g.fillEllipse(0, 0, 50, 20);
+  g.fillEllipse(-20, 5, 32, 16);
+  g.fillEllipse(20, 5, 32, 16);
+  g.setPosition(x, y);
+  if (drift <= 0) return;
+
+  const span = CANVAS_W + 120;
+  scene.tweens.add({
+    targets: g,
+    x: x + span,
+    duration: (span / drift) * 1000,
+    repeat: -1,
+    onRepeat: () => g.setX(x - 60),
+  });
 }
 
 // What the distance hazes toward: a biome's own fog color, carried toward

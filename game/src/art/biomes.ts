@@ -4,7 +4,7 @@
 // worlds -- only this table changes per world, matching DESIGN.md's per-world
 // biome themes.
 
-export type DecorationKind = 'flowers' | 'mosaic' | 'crystalGlints' | 'fieldLines' | 'networkNodes' | 'ripples' | 'cracks' | 'mistMotes';
+export type DecorationKind = 'flowers' | 'mosaic' | 'edgeFlow' | 'crystalGlints' | 'fieldLines' | 'networkNodes' | 'ripples' | 'cracks' | 'mistMotes';
 
 // What the *off-path* terrain actually is, not just what color it's painted
 // -- OverworldScene.drawOffPathTile branches on this to give each world's
@@ -16,7 +16,7 @@ export type DecorationKind = 'flowers' | 'mosaic' | 'crystalGlints' | 'fieldLine
 // same plane as the walkable floor everywhere, so a theme changes the color
 // and the accent over it, never the geometry. Not every biome needs its own
 // theme; most stay 'rock' and differ only by ground/hill color.
-export type WallTheme = 'rock' | 'forest' | 'columns' | 'lava' | 'water' | 'void';
+export type WallTheme = 'rock' | 'forest' | 'columns' | 'deadFloor' | 'lava' | 'water' | 'void';
 
 export interface Biome {
   name: string;
@@ -39,6 +39,10 @@ export interface Biome {
   path: number; // walkable trail fill
   fogTarget: number;
   clouds: boolean;
+  // How fast those clouds cross the sky, in pixels per second, zero for a
+  // still sky. Only the Edge Cliffs run this: racing cloud over ground where
+  // nothing can move is that world's whole tension.
+  cloudDrift: number;
   decoration: DecorationKind;
   // How much of the walkable route carries that decoration. A scatter (the
   // Mean Fields' flowers, the Defect Scars' cracks) wants a fraction; a floor
@@ -69,6 +73,7 @@ const MEAN_FIELDS: Biome = {
   path: 0xd9d295,
   fogTarget: 0xbfe3ff,
   clouds: true,
+  cloudDrift: 0,
   decoration: 'flowers',
   decorationChance: 0.16,
   wallTheme: 'forest',
@@ -99,6 +104,7 @@ const STONE_LATTICE: Biome = {
   path: 0xdcc9a8,
   fogTarget: 0xe0d3ba,
   clouds: false,
+  cloudDrift: 0,
   decoration: 'mosaic',
   // A tiled aisle is a wallpaper group, so it covers the whole floor. A
   // wallpaper group with holes in it is not one.
@@ -106,24 +112,33 @@ const STONE_LATTICE: Biome = {
   wallTheme: 'columns',
 };
 
-const FLOATING_ISLANDS: Biome = {
-  name: 'floatingIslands',
-  skyTop: 0x2a3d6b,
-  skyBottom: 0x8fb8e8,
-  hillColor: 0x4a6a9a,
-  hillAlpha: 0.75,
-  // Held far darker than the pale island floor it borders: off-path here is
-  // the drop between islands, and the depth of the value break is what sells
-  // it as empty space rather than lower ground.
-  ground: 0x17224a,
-  path: 0x9ac0e0,
-  fogTarget: 0x6888c0,
+// World 3, the Edge Cliffs (topological band theory): a lit ledge with a
+// shallow drop either side of it, and the two bulk domains as sunken dead
+// floors flanking it. Bulk-boundary correspondence made literal -- the edge
+// state is the only place you can stand, and the bulk is over the side.
+//
+// The drop is shallow and never true void. Nothingness belongs to the
+// Entangled Web alone, a visible floor below calibrates the eye far better
+// than uncalibrated black, and a gapped bulk is genuinely matter -- present,
+// extended, inert, just unavailable. The domain colors themselves come from
+// the generator (world/generators/world3.ts's DOMAIN_PALETTE); `ground` is
+// the dim slate they are mixed over.
+const EDGE_CLIFFS: Biome = {
+  name: 'edgeCliffs',
+  skyTop: 0x4f9fd8,
+  skyBottom: 0xcfe6f2,
+  // Dead ochre: the sunken floors restated as low flat-topped plateaus with
+  // an abrupt step wherever two domains meet.
+  hillColor: 0x8a7a5a,
+  hillAlpha: 0.6,
+  ground: 0x394349,
+  path: 0xdfe6e2,
+  fogTarget: 0xbcd6e0,
   clouds: true,
-  decoration: 'crystalGlints',
-  decorationChance: 0.16,
-  // Off-path here is the open drop between islands, not solid ground -- you'd
-  // fall through it, matching the world's own "one-way edge paths" design.
-  wallTheme: 'void',
+  cloudDrift: 22,
+  decoration: 'edgeFlow',
+  decorationChance: 1,
+  wallTheme: 'deadFloor',
 };
 
 // Topic 4 (QHE/Landau levels): a terrain of visible, glowing field lines and
@@ -138,6 +153,7 @@ const LANDAU_TERRAIN: Biome = {
   path: 0x3f8ade,
   fogTarget: 0x1b3868,
   clouds: false,
+  cloudDrift: 0,
   decoration: 'fieldLines',
   decorationChance: 0.16,
   wallTheme: 'rock',
@@ -158,6 +174,7 @@ const FROZEN_CAVERNS: Biome = {
   path: 0xa4dbe6,
   fogTarget: 0x44606e,
   clouds: false,
+  cloudDrift: 0,
   decoration: 'crystalGlints',
   decorationChance: 0.16,
   // "Zero-resistance" made literal underfoot too: off-path here is a frozen
@@ -180,6 +197,7 @@ const WINDSWEPT_PLAINS: Biome = {
   path: 0xd4c07a,
   fogTarget: 0xe6e8c2,
   clouds: true,
+  cloudDrift: 0,
   decoration: 'ripples',
   decorationChance: 0.16,
   wallTheme: 'rock',
@@ -200,6 +218,7 @@ const NETWORK_GRAPH_WORLD: Biome = {
   path: 0x8a5cd9,
   fogTarget: 0x201238,
   clouds: false,
+  cloudDrift: 0,
   decoration: 'networkNodes',
   decorationChance: 0.16,
   wallTheme: 'rock',
@@ -222,6 +241,7 @@ const FOGGY_FOREST: Biome = {
   path: 0x738667,
   fogTarget: 0x49544a,
   clouds: false,
+  cloudDrift: 0,
   decoration: 'mistMotes',
   decorationChance: 0.16,
   wallTheme: 'rock',
@@ -243,6 +263,7 @@ const CRACKED_WORLD: Biome = {
   path: 0xa86b54,
   fogTarget: 0x2e1010,
   clouds: false,
+  cloudDrift: 0,
   decoration: 'cracks',
   decorationChance: 0.16,
   // The world's own "scorched"/"damaged" theme made literal underfoot: a
@@ -266,6 +287,7 @@ const META_WORLD: Biome = {
   path: 0xc9a8f0,
   fogTarget: 0x4a3068,
   clouds: true,
+  cloudDrift: 0,
   decoration: 'crystalGlints',
   decorationChance: 0.16,
   wallTheme: 'rock',
@@ -274,7 +296,7 @@ const META_WORLD: Biome = {
 export const BIOMES: Partial<Record<number, Biome>> = {
   1: MEAN_FIELDS,
   2: STONE_LATTICE,
-  3: FLOATING_ISLANDS,
+  3: EDGE_CLIFFS,
   4: LANDAU_TERRAIN,
   5: FROZEN_CAVERNS,
   6: WINDSWEPT_PLAINS,

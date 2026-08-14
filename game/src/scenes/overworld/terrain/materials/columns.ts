@@ -25,8 +25,8 @@ export function drawColumnsAccent(g: Phaser.GameObjects.Graphics, { cx, cy, s, g
   if (gx % COLUMN_SPACING !== 0 || gy % COLUMN_SPACING !== 0) return;
 
   const u = TILE_PX * s;
-  const shaftW = 0.34 * u;
-  const shaftH = 1.5 * u;
+  const shaftW = 0.3 * u;
+  const shaftH = 2.2 * u;
   const air = depth * 0.8;
   const top = cy - shaftH;
 
@@ -42,7 +42,7 @@ export function drawColumnsAccent(g: Phaser.GameObjects.Graphics, { cx, cy, s, g
   // Capital and base, both a little wider than the shaft: the two places a
   // column stops being a rectangle.
   g.fillStyle(blend(STONE_CAP, haze, air), detail);
-  g.fillRect(cx - shaftW * 0.66, top, shaftW * 1.32, 0.12 * u);
+  g.fillRect(cx - shaftW * 0.7, top, shaftW * 1.4, 0.17 * u);
   g.fillStyle(blend(STONE_SHADE, haze, air), air > 0.5 ? detail : detail * 0.9);
-  g.fillRect(cx - shaftW * 0.66, cy - 0.1 * u, shaftW * 1.32, 0.1 * u);
+  g.fillRect(cx - shaftW * 0.7, cy - 0.13 * u, shaftW * 1.4, 0.13 * u);
 }

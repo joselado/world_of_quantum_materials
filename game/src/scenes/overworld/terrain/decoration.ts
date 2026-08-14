@@ -42,6 +42,25 @@ export function decorateTile(g: Phaser.GameObjects.Graphics, biome: Biome, tile:
     return;
   }
 
+  // World 3 (the Edge Cliffs): the ledge visibly flows. The streaks all drift
+  // the same way and never the other, because that is the physics the whole
+  // world rests on -- on an edge channel direction and spin are welded
+  // together, so nothing on this road can turn around. A back-and-forth
+  // shimmer here would quietly teach the opposite of the lesson.
+  if (biome.decoration === 'edgeFlow') {
+    const period = 1600;
+    [0, 0.5].forEach((offset) => {
+      const t = ((tile.now / period + offset + tile.gx * 0.13) % 1 + 1) % 1;
+      // Brightest mid-run, so a streak arrives and leaves rather than
+      // popping in and out at the tile boundary.
+      const fade = Math.sin(t * Math.PI);
+      g.lineStyle(1.6, 0x8fe0ff, 0.85 * fade);
+      const y = cy + (0.5 - t) * 7 * s;
+      g.lineBetween(cx - 2.6 * s, y, cx + 2.6 * s, y);
+    });
+    return;
+  }
+
   if (biome.decoration === 'crystalGlints') {
     g.fillStyle(0x8fe8ff, 0.85);
     [0, 1, 2].forEach((i) => {
