@@ -254,8 +254,8 @@ than appending a changelog, so this always reflects current reality.
   topic's full title and body, with a floor-`9`px shrink-to-fit loop for a long body. Every
   listed topic is visible up front rather than reachable only by paging through the rest, and
   the list grows as the playthrough does -- Story Mode lists only discovered topics, in the
-  order the game reveals them, so the panel is short on a fresh save and fills out toward
-  seventeen rows across two pages; Superposition Mode lists all seventeen from the start.
+  order the game reveals them, so the panel is three rows tall on a fresh save and fills out
+  to all seventeen; Superposition Mode lists all seventeen from the start.
   Selecting a row is a scoped update (see "A preview click is a scoped update" further below),
   not a panel rebuild -- only the detail pane and panel chrome re-render, the list rows stay on
   screen.
