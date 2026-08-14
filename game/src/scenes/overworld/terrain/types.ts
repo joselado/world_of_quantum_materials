@@ -9,7 +9,7 @@ import type { AtmosphereView } from '../sky';
 // walkable trail, 'solid' plain bare impassable ground, and every other kind
 // an off-path material that lays its own accent over that same ground (see
 // materials/), one per world's impassable surround.
-export type TerrainKind = 'path' | 'solid' | 'forest' | 'columns' | 'deadFloor' | 'charged' | 'ice' | 'shards' | 'lava';
+export type TerrainKind = 'path' | 'solid' | 'forest' | 'columns' | 'deadFloor' | 'charged' | 'ice' | 'shards' | 'fog' | 'lava' | 'consuming';
 
 // The kinds an impassable tile can take -- one per off-path material, each
 // with its own module under materials/.
@@ -57,6 +57,11 @@ export interface TerrainView extends AtmosphereView {
   midTile: GridPoint;
   // This world's guardian color, for the chokepoint glow (drawMidHighlight).
   chokepointColor: number;
+  // The player's current crystal color. The Splitting Hollow's surround
+  // carries fragments of it (materials/fog.ts) -- the first hint that the
+  // world contains things like the player, immediately before the last world
+  // turns out to be one.
+  playerColor: number;
 }
 
 // One impassable tile, ready for its material's accent: the tile's projected
@@ -95,6 +100,9 @@ export interface AccentTile {
   // most obvious with the Mean Fields' trees, where the cutoff would read as
   // the wood simply being mown flat at a fixed range.
   detail: number;
+  // The player's own crystal color, for the recognition seed (see
+  // TerrainView.playerColor).
+  playerColor: number;
   now: number;
 }
 

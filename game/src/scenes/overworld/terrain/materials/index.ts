@@ -7,6 +7,8 @@ import { drawChargedAccent } from './charged';
 import { drawLavaAccent } from './lava';
 import { drawIceAccent } from './ice';
 import { drawShardsAccent } from './shards';
+import { drawFogAccent } from './fog';
+import { drawConsumingAccent } from './consuming';
 
 // One off-path material per module, reached through this table. Every
 // impassable tile is flat ground in its biome's own off-path color, sitting in
@@ -27,4 +29,6 @@ export const TERRAIN_ACCENTS: Record<OffPathKind, AccentDraw | null> = {
   lava: drawLavaAccent,
   ice: drawIceAccent,
   shards: drawShardsAccent,
+  fog: drawFogAccent,
+  consuming: drawConsumingAccent,
 };

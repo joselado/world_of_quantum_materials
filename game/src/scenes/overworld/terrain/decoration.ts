@@ -151,28 +151,58 @@ export function decorateTile(g: Phaser.GameObjects.Graphics, biome: Biome, tile:
     return;
   }
 
-  // World 9 (excitations/defects): a jagged crack in the ground, the
-  // world's "cracked/glitching" theme made literal.
+  // World 9 (the Defect Scars): a crack in the clay. This is the old, closed
+  // half of the world's two-tense damage -- the walkable route reads as scars
+  // that healed, against the molten crust beside it, which is a wound still
+  // open. A lattice defect is frozen-in damage that never heals, so the
+  // ground here is literally cracked.
   if (biome.decoration === 'cracks') {
-    g.lineStyle(1.4, 0xff8a5a, 0.85);
+    const u = TILE_PX * s;
+    g.lineStyle(1.5, 0x6b3524, 0.8);
     g.beginPath();
-    g.moveTo(cx - 2.4 * s, cy - 1.4 * s);
-    g.lineTo(cx - 0.6 * s, cy - 0.2 * s);
-    g.lineTo(cx + 0.8 * s, cy - 1 * s);
-    g.lineTo(cx + 2.4 * s, cy + 1.4 * s);
+    g.moveTo(cx - 0.42 * u, cy - 0.2 * u);
+    g.lineTo(cx - 0.1 * u, cy - 0.02 * u);
+    g.lineTo(cx + 0.14 * u, cy - 0.15 * u);
+    g.lineTo(cx + 0.42 * u, cy + 0.2 * u);
     g.strokePath();
     return;
   }
 
-  // World 8 (spin liquid/Kondo): soft overlapping fog wisps rather than a
-  // sharp shape, matching the "fractionalizes on contact" foggy theme.
+  // World 8 (the Splitting Hollow): fog on the route as well as off it, but
+  // thin here -- soft wisps rather than a sharp shape. The route is where the
+  // fog is survivable, and the difference in how much of it there is between
+  // path and surround is the whole warning.
   if (biome.decoration === 'mistMotes') {
-    g.fillStyle(0xdfe6df, 0.28);
+    const u = TILE_PX * s;
+    g.fillStyle(0xdfe6df, 0.22);
     [
-      [-1.6, 0],
-      [1.6, 0.4],
-      [0, -0.6],
-    ].forEach(([ox, oy]) => g.fillEllipse(cx + ox * s, cy + oy * s, 3.2 * s, 1.6 * s));
+      [-0.24, 0],
+      [0.24, 0.06],
+      [0, -0.1],
+    ].forEach(([ox, oy]) => g.fillEllipse(cx + ox * u, cy + oy * u, 0.5 * u, 0.24 * u));
+    return;
+  }
+
+  // World 10 (the Devouring Mirror): the path dissolves behind the player as
+  // the world re-forms ahead. The nearest rows -- the ground just walked over
+  // -- break into fragments that come apart and drift, so the world visibly
+  // takes something rather than merely claiming to. Without this, "Devouring"
+  // is a boast.
+  if (biome.decoration === 'dissolve') {
+    const u = TILE_PX * s;
+    const eaten = Math.max(0, 1 - tile.depth / 0.16);
+    if (eaten <= 0) return;
+    for (let i = 0; i < 9; i++) {
+      const a = (i * Math.PI * 2) / 9 + tile.gx * 0.6 + tile.gy * 0.3;
+      const drift = eaten * 0.7 * u;
+      g.fillStyle(0x2e2044, 0.72 * eaten);
+      g.fillEllipse(
+        cx + Math.cos(a) * (0.16 * u + drift),
+        cy + Math.sin(a) * (0.1 * u + drift * 0.55),
+        0.24 * u * eaten,
+        0.14 * u * eaten
+      );
+    }
     return;
   }
 

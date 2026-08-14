@@ -13,8 +13,8 @@ export const STORY_BEATS: Partial<Record<number, string>> = {
   5: 'The glacier stays superconducting. Out on the black iron sand beyond it, spin waves still ripple where they should be still -- the next front the Decoherence has opened.',
   6: 'The steppe falls quiet and ordered. Past it, an entire world is nothing but bonds and entanglement, hung in nothing at all -- if the Decoherence can unravel that, it can unravel anything.',
   7: 'The network holds its bonds. Past its last rung stands a dead wood in fog that fractionalizes everything entering it -- spin liquids that never settle on an order of their own.',
-  8: 'The forest resolves into something you can name again. Ahead, the world itself is cracked and glitching -- defects and impurities, the Decoherence wearing through the material.',
-  9: "The cracks seal. What's left is a world built to look like you -- adaptive, watching, the last and strangest phase of matter you'll face.",
+  8: 'The wood resolves into something you can name again. Ahead the ground itself is scarred -- old burns closed over, and crust still open and glowing between them: defects and impurities, the Decoherence wearing through the material.',
+  9: "The scars close. What's left is a world that re-forms around you as you walk and takes the ground back behind you -- adaptive, watching, the last and strangest phase of matter you'll face.",
 };
 
 // One line of world-specific flavor shown on the goal-tile banner
@@ -30,6 +30,6 @@ export const WORLD_GOAL_TEXT: Partial<Record<number, string>> = {
   6: 'You reached the far steppe. The last swell still moves.',
   7: 'You reached the end of the tensor lanes. The rungs still hold.',
   8: 'You reached the far treeline. The resonance still holds.',
-  9: 'You reached the far wastes. The hole is still just a hole.',
+  9: 'You reached the far scars. The hole is still just a hole.',
   10: "You reached the end of the corridor. It already knows you're here.",
 };

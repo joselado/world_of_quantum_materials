@@ -87,7 +87,7 @@ export function drawTerrain(view: TerrainView) {
         drawBandBoundary(g, tile.biome, y, pFL, pFR, pNR, pNL, depthRatio);
         if (contour) drawContactShadow(g, contour, tile.biome, camX, camY, depthRatio);
         if (depthRatio < DETAIL_MAX_DEPTH && tile.decorate) {
-          decorateTile(g, view.biome, accentTile(false, fill, pFL, pFR, pNR, pNL, x, y, depthRatio, hazeTarget(view, tile.biome), view.now));
+          decorateTile(g, view.biome, accentTile(false, fill, pFL, pFR, pNR, pNL, x, y, depthRatio, hazeTarget(view, tile.biome), view.playerColor, view.now));
         }
         if (tile.midHighlight) {
           // The glow falls off radially from the guardian's own tile, so the
@@ -224,7 +224,7 @@ function drawMarginTile(view: TerrainView, edge: TerrainTile, gx: number, y: num
 
   if (depthRatio <= DETAIL_MAX_DEPTH) {
     const kind = edge.kind !== 'path' ? edge.kind : offPathKindOf(edge.biome);
-    drawAccent(g, kind, fill, pFL, pFR, pNR, pNL, gx, y, edge.enclave, depthRatio, hazeTarget(view, edge.biome), view.now);
+    drawAccent(g, kind, fill, pFL, pFR, pNR, pNL, gx, y, edge.enclave, depthRatio, hazeTarget(view, edge.biome), view.playerColor, view.now);
   }
 }
 
@@ -312,7 +312,7 @@ function drawOffPathTile(
   drawBandBoundary(g, tile.biome, gy, pFL, pFR, pNR, pNL, depthRatio);
 
   if (depthRatio <= DETAIL_MAX_DEPTH) {
-    drawAccent(g, tile.kind, fill, pFL, pFR, pNR, pNL, gx, gy, tile.enclave, depthRatio, hazeTarget(view, tile.biome), view.now);
+    drawAccent(g, tile.kind, fill, pFL, pFR, pNR, pNL, gx, gy, tile.enclave, depthRatio, hazeTarget(view, tile.biome), view.playerColor, view.now);
   }
 
   // The impassable side of the contact shadow, over the accent rather than
@@ -337,12 +337,13 @@ function drawAccent(
   enclave: boolean,
   depth: number,
   haze: number,
+  playerColor: number,
   now: number
 ) {
   if (kind === 'path') return;
   const accent = TERRAIN_ACCENTS[kind];
   if (!accent) return;
-  accent(g, accentTile(enclave, fill, pFL, pFR, pNR, pNL, gx, gy, depth, haze, now));
+  accent(g, accentTile(enclave, fill, pFL, pFR, pNR, pNL, gx, gy, depth, haze, playerColor, now));
 }
 
 // The per-tile geometry every accent and every decoration works from: the
@@ -359,6 +360,7 @@ function accentTile(
   gy: number,
   depth: number,
   haze: number,
+  playerColor: number,
   now: number
 ): AccentTile {
   return {
@@ -372,6 +374,7 @@ function accentTile(
     depth,
     haze,
     detail: detailFade(depth),
+    playerColor,
     now,
   };
 }

@@ -4,7 +4,7 @@
 // worlds -- only this table changes per world, matching DESIGN.md's per-world
 // biome themes.
 
-export type DecorationKind = 'flowers' | 'mosaic' | 'edgeFlow' | 'crystalGlints' | 'orbitRings' | 'flowLines' | 'networkNodes' | 'ripples' | 'cracks' | 'mistMotes';
+export type DecorationKind = 'flowers' | 'mosaic' | 'edgeFlow' | 'crystalGlints' | 'orbitRings' | 'flowLines' | 'networkNodes' | 'ripples' | 'cracks' | 'mistMotes' | 'dissolve';
 
 // What the *off-path* terrain actually is, not just what color it's painted
 // -- OverworldScene.drawOffPathTile branches on this to give each world's
@@ -16,7 +16,7 @@ export type DecorationKind = 'flowers' | 'mosaic' | 'edgeFlow' | 'crystalGlints'
 // same plane as the walkable floor everywhere, so a theme changes the color
 // and the accent over it, never the geometry. Not every biome needs its own
 // theme; most stay 'rock' and differ only by ground/hill color.
-export type WallTheme = 'rock' | 'forest' | 'columns' | 'deadFloor' | 'charged' | 'ice' | 'shards' | 'lava';
+export type WallTheme = 'rock' | 'forest' | 'columns' | 'deadFloor' | 'charged' | 'ice' | 'shards' | 'fog' | 'lava' | 'consuming';
 
 export interface Biome {
   name: string;
@@ -297,75 +297,94 @@ const ENTANGLED_WEB: Biome = {
   bands: null,
 };
 
-// Topic 8 (quantum magnetism/spinons/Kondo): a foggy forest that
-// fractionalizes on contact -- muted greys and greens. Muted in hue, but the
-// ground/path value break is still held wide: this is the darkest, haziest
-// biome, and the walkable route has to stay readable through that fog on its
-// own color break.
-const FOGGY_FOREST: Biome = {
-  name: 'foggyForest',
-  skyTop: 0x2a2f28,
-  skyBottom: 0x4e584c,
+// World 8, the Splitting Hollow (quantum magnetism, spinons, Kondo): a dead
+// forest in deep fog, lit only by the fog itself. Every trunk forks in two
+// and the corridor forks with them, matching the generator's fractionalizing
+// path.
+//
+// The threat is the fog, not the trees. Trees are the Mean Fields' "you just
+// would not walk there", and reusing that at world eight of ten would walk
+// the escalation spine backwards; the fog is what takes you, which is Kondo
+// screening and spinon confinement made into a hazard.
+//
+// Muted in hue, but the ground/path value break is held wide anyway: this is
+// the haziest world in the game and the walkable route has to stay readable
+// through that on its own colour break.
+const SPLITTING_HOLLOW: Biome = {
+  name: 'splittingHollow',
+  skyTop: 0x39423c,
+  skyBottom: 0x59635a,
   hillColor: 0x3a4238,
   // Swallowed: a horizon that dissolves before it resolves is this world's
-  // identity, not a missing profile.
+  // identity, not a missing profile. The Entangled Web therefore looks
+  // forward into grey nothing, which is the correct view of this place.
   hillAlpha: 0,
-  ground: 0x1b231d,
-  path: 0x738667,
-  fogTarget: 0x49544a,
+  ground: 0x1b211c,
+  path: 0x5d6a5c,
+  fogTarget: 0x59635a,
   clouds: false,
   cloudDrift: 0,
   decoration: 'mistMotes',
-  decorationChance: 0.16,
-  wallTheme: 'rock',
+  decorationChance: 0.5,
+  wallTheme: 'fog',
   bands: null,
 };
 
-// Topic 9 (excitations and defects): a cracked, glitching world -- scorched
-// reds and blacks, terrain that reads as damaged rather than merely dark. The
-// walkable route is scorched clay: still inside the world's warm red family,
-// but held several times lighter than the molten crust's own glow (whose wash
-// is kept dim for exactly this reason -- see OverworldScene.drawLavaAccent),
-// so the route is told apart by value while everything on screen stays red.
-const CRACKED_WORLD: Biome = {
-  name: 'crackedWorld',
+// World 9, the Defect Scars (excitations and defects): damage past and damage
+// present in the same frame. The walkable scorched clay reads as old scars,
+// closed and healed over, while the impassable molten crust is wounds still
+// open and glowing -- and a lattice defect is exactly that, frozen-in damage
+// that never heals. Its ground decoration is literally cracks.
+//
+// Self-luminous, per the light rule: after world seven the sun does not come
+// back, and everything lit here is lit by the crust.
+const DEFECT_SCARS: Biome = {
+  name: 'defectScars',
   skyTop: 0x1a0808,
   skyBottom: 0x3a1414,
-  hillColor: 0x4a1c1c,
-  hillAlpha: 0.85,
-  ground: 0x220c0c,
-  path: 0xa86b54,
+  // A cracked ridge with glow veins in its notches (art/horizons.ts). Seen
+  // from the Splitting Hollow, which has no sky of its own, so the only thing
+  // that can announce the world beyond is light that world emits itself.
+  hillColor: 0x5a2418,
+  hillAlpha: 0.5,
+  ground: 0x2a0e0a,
+  path: 0x9c6a52,
   fogTarget: 0x2e1010,
   clouds: false,
   cloudDrift: 0,
   decoration: 'cracks',
-  decorationChance: 0.16,
-  // The world's own "scorched"/"damaged" theme made literal underfoot: a
-  // glowing molten crust, not a stacked stone wall.
+  decorationChance: 0.4,
   wallTheme: 'lava',
   bands: null,
 };
 
-// Topic 10 (finale, ML/adaptive boss): a meta-world reflecting the player's
-// own team back at them -- shimmering silver-violet, distinct from every
-// earlier biome's palette.
-const META_WORLD: Biome = {
-  name: 'metaWorld',
+// World 10, the Devouring Mirror (machine learning for quantum materials):
+// the world that is not a world. Shifting silver-violet, the terrain
+// reconfiguring around whatever crystal the player currently is, and the path
+// dissolving behind them as the world re-forms ahead -- the name has to be a
+// description rather than a boast, so the world must visibly take something.
+//
+// Violet belongs here by right, as the finale, which is why the Storm Flats
+// are indigo and the Iron Steppe's aurora is pure green.
+const DEVOURING_MIRROR: Biome = {
+  name: 'devouringMirror',
   skyTop: 0x2a1a3a,
   skyBottom: 0x6a4a8a,
   hillColor: 0x5a3a7a,
-  // Swallowed: this world is seen from the Defect Scars, and it has no
-  // silhouette to show there -- its own horizon is the Qumatuomi sky, and a
-  // violet ridge would announce a shape the Mirror never had.
+  // Swallowed: this world is seen from the Defect Scars and has no silhouette
+  // to show there. Its own horizon is the Qumatuomi sky -- every world at
+  // once, seen from above, which is the view a trained model has of its
+  // training data -- and a violet ridge would announce a shape the Mirror
+  // never had.
   hillAlpha: 0,
-  ground: 0x3a2450,
-  path: 0xc9a8f0,
+  ground: 0x2e2044,
+  path: 0xd8c8ee,
   fogTarget: 0x4a3068,
-  clouds: true,
+  clouds: false,
   cloudDrift: 0,
-  decoration: 'crystalGlints',
-  decorationChance: 0.16,
-  wallTheme: 'rock',
+  decoration: 'dissolve',
+  decorationChance: 1,
+  wallTheme: 'consuming',
   bands: null,
 };
 
@@ -377,9 +396,9 @@ export const BIOMES: Partial<Record<number, Biome>> = {
   5: VORTEX_GLACIER,
   6: IRON_STEPPE,
   7: ENTANGLED_WEB,
-  8: FOGGY_FOREST,
-  9: CRACKED_WORLD,
-  10: META_WORLD,
+  8: SPLITTING_HOLLOW,
+  9: DEFECT_SCARS,
+  10: DEVOURING_MIRROR,
 };
 
 export function getBiome(world: number): Biome {

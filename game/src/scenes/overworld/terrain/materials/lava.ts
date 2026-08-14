@@ -1,9 +1,27 @@
 import Phaser from 'phaser';
+import { blend } from '../../../../art/colors';
+import { LANE_PX } from '../../../../art/perspective';
+import { TILE_SCALE } from '../../projection';
 import type { AccentTile } from '../types';
+
+// How often a toppled drum from the Stone Lattice's colonnade shows in the
+// crust. Rare on purpose: the generator already embeds patches of worlds 1-8
+// along this corridor as borrowed defect "types", and this is the one piece
+// of the game's only architecture that outlived its world. Civilization is a
+// brief episode -- one built world, then never again -- and these half-sunk
+// drums are what turns that into a story rather than a set-dressing
+// experiment.
+const DRUM_RATE = 0.05;
+const TILE_PX = TILE_SCALE * LANE_PX;
+
+function hash(gx: number, gy: number): number {
+  const v = Math.sin(gx * 57.3 + gy * 133.9) * 43758.5453;
+  return v - Math.floor(v);
+}
 
 // 'lava' (Defect Wastes, world 9): a glowing molten crust over the off-path
 // fill -- a pulsing warm wash, a bright crack line and a hot core dot.
-export function drawLavaAccent(g: Phaser.GameObjects.Graphics, { fill, cx, cy, s, now }: AccentTile) {
+export function drawLavaAccent(g: Phaser.GameObjects.Graphics, { fill, cx, cy, s, gx, gy, depth, haze, detail, now }: AccentTile) {
   // Phase from the tile's screen position, geometry from its own center.
   // The spatial frequency is kept low -- a fraction of a radian between
   // neighboring tiles -- so the glow drifts across the crust as broad slow
@@ -15,16 +33,44 @@ export function drawLavaAccent(g: Phaser.GameObjects.Graphics, { fill, cx, cy, s
   // stays all reds, told apart by value.
   const pulse = 0.55 + 0.45 * Math.sin(now / 260 + cx * 0.012 + cy * 0.007);
 
+  const u = TILE_PX * s;
   g.fillStyle(0xff5a1a, 0.24 * pulse);
   g.fillPoints(fill, true);
 
-  g.lineStyle(1.6, 0xffcf4a, 0.6 * pulse);
+  // A fissure running through the crust, sized against the tile: this is the
+  // still-open half of the world's two-tense damage, and it has to read as a
+  // wound rather than as a scratch.
+  g.lineStyle(2, 0xffcf4a, 0.65 * pulse);
   g.beginPath();
-  g.moveTo(cx - 2.6 * s, cy - 1.2 * s);
-  g.lineTo(cx - 0.4 * s, cy + 0.6 * s);
-  g.lineTo(cx + 1.6 * s, cy - 0.8 * s);
+  g.moveTo(cx - 0.44 * u, cy - 0.2 * u);
+  g.lineTo(cx - 0.07 * u, cy + 0.1 * u);
+  g.lineTo(cx + 0.27 * u, cy - 0.13 * u);
   g.strokePath();
 
-  g.fillStyle(0xfff0a0, 0.55 * pulse);
-  g.fillCircle(cx, cy, 1.1 * s * pulse);
+  g.fillStyle(0xfff0a0, 0.6 * pulse);
+  g.fillEllipse(cx, cy, 0.2 * u * pulse, 0.11 * u * pulse);
+
+  if (hash(gx, gy) < DRUM_RATE) drawColumnDrum(g, cx, cy, s, depth, haze, detail);
+}
+
+// One drum of a fallen sandstone column, lying on its side and half sunk into
+// the crust: an ellipse for the exposed circular face and a short barrel
+// behind it, with the near half swallowed by the ground it is sinking into.
+function drawColumnDrum(
+  g: Phaser.GameObjects.Graphics,
+  cx: number,
+  cy: number,
+  s: number,
+  depth: number,
+  haze: number,
+  detail: number
+) {
+  const u = TILE_PX * s;
+  const air = depth * 0.7;
+  g.fillStyle(blend(0x8f7051, haze, air), detail);
+  g.fillRect(cx - 0.3 * u, cy - 0.15 * u, 0.5 * u, 0.3 * u);
+  g.fillStyle(blend(0xd9c19a, haze, air), detail);
+  g.fillEllipse(cx + 0.2 * u, cy, 0.18 * u, 0.3 * u);
+  g.lineStyle(1, blend(0x5c4530, haze, air), 0.7 * detail);
+  g.strokeEllipse(cx + 0.2 * u, cy, 0.18 * u, 0.3 * u);
 }

@@ -1581,9 +1581,9 @@ export const WORLD_NAMES: Partial<Record<number, string>> = {
   5: 'The Vortex Glacier',
   6: 'The Iron Steppe',
   7: 'The Entangled Web',
-  8: 'Spinon Forest',
-  9: 'Defect Wastes',
-  10: 'The Adaptive Meta-World',
+  8: 'The Splitting Hollow',
+  9: 'The Defect Scars',
+  10: 'The Devouring Mirror',
 };
 
 // The player-facing name of a world, for every place one is shown by name --

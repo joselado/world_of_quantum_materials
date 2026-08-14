@@ -1260,6 +1260,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       world: this.world,
       midTile: this.midTile,
       chokepointColor: OverworldScene.WORLD_GUARDIANS[this.world]?.strokeColor ?? GOLD_ACCENT,
+      playerColor: this.playerMaterial.color,
       now: this.time.now,
       hazeBlend: this.hazeBlend,
       hazeCache: this.hazeCache,
