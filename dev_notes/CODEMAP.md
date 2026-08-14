@@ -1199,7 +1199,10 @@ pixels tall -- each row being one flat fill, a steep finish terraces the last st
 worst in the open-sky worlds whose fog target sits far above their ground in value by design.
 `walkableHazeTarget` fades its own lightening out on the same
 schedule (`0.35 * (1 - depthRatio^3)`, flat enough to hold the route nearly to the end), or the
-repeated road surfaces as a bright stub against the band.
+repeated road surfaces as a bright stub against the band. `regionTintAt` puts a mapgen domain tint
+on that same schedule, and for the same reason with more force: the tint is mixed over ground the
+fog has *already* taken, so a fixed strength carries a raw saturated hue to the deepest row and
+undoes the arrival at the haze color for exactly the worlds that use domains (1 and 3).
 `sky.ts`'s `drawHorizonBand`, called from `drawDepthHaze`, owns the far quarter of the draw
 distance: opaque from `HORIZON_Y` down to `projectTile(0, DRAW_DISTANCE_TILES).y`, which is the
 strip the projection puts out of the ground plane's reach -- rows approach the horizon line

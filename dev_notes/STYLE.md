@@ -271,7 +271,10 @@ than appending a changelog, so this always reflects current reality.
 - Two per-tile overlays a generator can paint on top of its own shape, both consumed
   generically by `OverworldScene`'s terrain rendering: `regionColor` tints a tile toward a fixed hex
   color (world 1's two broken-symmetry branches, world 3's Voronoi domains, both blended into
-  the tile's ordinary fill via `art/colors.ts`'s `blend`) and `biomeOverride` swaps which
+  the tile's ordinary fill via `art/colors.ts`'s `blend`, at a strength that holds across the range
+  the domain is read at and then drowns with everything else -- the tint sits over already-hazed
+  ground, so a fixed strength would stand a raw saturated hue up against the mist at the horizon)
+  and `biomeOverride` swaps which
   world's whole `art/biomes.ts` entry a tile renders with instead of the current world's own
   (world 9's patches, each independently borrowing one of worlds 1-8's look). An off-path
   `regionColor` tile renders as plain ground in that tint regardless of `wallTheme` and carries

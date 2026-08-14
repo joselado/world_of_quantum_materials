@@ -81,7 +81,7 @@ export function drawTerrain(view: TerrainView) {
 
       if (tile.kind === 'path') {
         let color = groundColor(tile.biome.path, depthRatio, walkableHazeTarget(view, tile.biome, depthRatio));
-        if (tile.regionTint != null) color = blend(color, tile.regionTint, 0.55);
+        if (tile.regionTint != null) color = blend(color, tile.regionTint, regionTintAt(depthRatio, 0.55));
         g.fillStyle(color, 1);
         g.fillPoints(fill, true);
         if (contour) drawContactShadow(g, contour, tile.biome, camX, camY, depthRatio);
@@ -186,7 +186,7 @@ function drawMarginRows(view: TerrainView, deepestRow: number) {
 
       if (tile.kind === 'path') {
         let color = groundColor(tile.biome.path, depthRatio, walkableHazeTarget(view, tile.biome, depthRatio));
-        if (tile.regionTint != null) color = blend(color, tile.regionTint, 0.55);
+        if (tile.regionTint != null) color = blend(color, tile.regionTint, regionTintAt(depthRatio, 0.55));
         g.fillStyle(color, 1);
         g.fillPoints(fill, true);
       } else {
@@ -346,5 +346,17 @@ function drawAccent(
 // tile belongs to one.
 function offPathColor(view: TerrainView, biome: Biome, regionTint: number | null, depthRatio: number): number {
   const base = groundColor(biome.ground, depthRatio, hazeTarget(view, biome));
-  return regionTint != null ? blend(base, regionTint, 0.6) : base;
+  return regionTint != null ? blend(base, regionTint, regionTintAt(depthRatio, 0.6)) : base;
+}
+
+// A mapgen domain tint drowns with everything else. The tint is mixed over
+// ground that has already been hazed, so a fixed strength would carry a raw
+// saturated hue all the way to the deepest row and stand the world's own
+// palette straight up against the mist -- undoing, for exactly the worlds
+// that use domains (world 1's branches, world 3's Voronoi cells), the
+// arrival at the haze color the depth fog is built to guarantee. The curve
+// is flat until late so a domain keeps its full strength across the range it
+// is actually read at.
+function regionTintAt(depthRatio: number, strength: number): number {
+  return strength * (1 - Math.pow(depthRatio, 3));
 }
