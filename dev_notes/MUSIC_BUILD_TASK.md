@@ -118,6 +118,29 @@ and at unison the clean and clipped signals fuse into one slightly degraded
 voice. The distortion is then not atmosphere but **the sound of being imperfectly
 known**.
 
+### The Lab gets its own theme, keyed to progress
+
+Full rule in `WORLDS.md` §4. In short: the Lab keeps World 1's material, held on
+C to the end, with the mode draining as the player's furthest world advances.
+The Title screen keeps World 1's theme unchanged forever, so the two begin
+identical and drift apart as a save advances.
+
+**A constant bright Lab would undercut the arc, and the reason is frequency
+rather than brightness.** Contrast completes an arc when the contrasting thing is
+rare — a pilgrimage. The Lab is one keypress from anywhere, dozens of times a
+session, so a permanent return to the brightest music in the game is a
+dread-dispenser with a bypass valve, and frequent access turns poignant contrast
+into "the arc is optional."
+
+**Implementation: a grace period, and crossfades.** The Lab has two modes of use
+and the music should tell them apart. A trip of a few seconds is *tool use* — the
+music continues, nothing restages. A genuine stay is an *interior visit*, and the
+Lab's theme fades in. That is not a patch over a disruptive theme; it encodes a
+distinction the mechanic already makes, since the Lab preserves position and
+returns the player exactly. Crossfade the handoff and resume the world's theme
+where it left off on exit: **the hard cut, not the change itself, is where the
+annoyance lives.**
+
 ## Superseded framing, kept for the reasoning
 
 ### World 8: nostalgic quotation, or a stage in a uniform decay?

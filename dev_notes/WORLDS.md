@@ -592,6 +592,27 @@ Two signals carry that, and only two:
   player has already learned to read apertures out in the worlds.
 - **Its accent lighting is keyed to the player's current crystal**, so the room
   changes as the player does.
+- **Its music is keyed to the player's progress.** The Lab keeps World 1's theme
+  — the game's home key — held on C to the end, with its mode draining stepwise
+  as the player's furthest world advances. So flicking into the Lab from World 9
+  still brings the player home, to the tonic the outside world abandoned at the
+  tritone turn and which survives in exactly this one room — but home in a dark
+  mode. The safety is real, because the key persists and that is what a refuge
+  actually offers; the escape hatch is welded shut, because the brightness does
+  not, and no keypress returns the player to morning. It uses the front half's
+  own transform, the mode drain, and never erosion or the tritone — those belong
+  to World 8's loss beat and must not be spent on a room visited forty times.
+
+The rule this rhymes with, stated together: **the Lab's light is keyed to the
+player's crystal and the Lab's music to the player's progress — the room
+reflects the player, and the player is what the story is changing.**
+
+The **Title screen** keeps World 1's theme unchanged forever. It plays to someone
+for whom the premise does not yet exist, so it is the world before the story. The
+payoff is that Title and Lab begin identical and **drift apart** as a save
+advances: a late-game player noticing the Lab no longer sounds like the title
+screen is the whole arc measured in one comparison. They share material precisely
+so that they can come to disagree.
 
 Everything else is said by **absence**: no window, no sky, nothing implying an
 outside. Every world has a horizon; the Lab has none. That only reads as
