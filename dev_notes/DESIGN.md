@@ -89,18 +89,23 @@ start/goal/guardian tile, one wild per row at most and never in a walkable run n
 2 tiles, and drawn from the same `getWildPool(world)` the generator drew from -- so World 10
 keeps respawning hybrid-recipe results only, and World 9 the whole non-hybrid roster.
 
-Two ceilings keep this from rewriting the game's balance. Wilds refill toward the population
-that map stood up at generation, which is what the Settings station's encounter-density
-preset sets -- respawns replace what was fought, they never outpace the setting. Qumatessence
-gets that same standing-count ceiling *plus* a finite per-map budget equal to the map's own
-initial pickup count, so one map pays out at most twice what it was scattered with and
-walking it back and forth is not an open-ended currency source. Both ceilings and the
-remaining budget live in the map snapshot (§7's `saveMapState`/`restoreMap`), so a round trip through battle
-or the Lab resumes the same half-refilled world rather than a fresh one. Wilds are
-deliberately left uncapped beyond the density ceiling: a battle's own stake (§5) already pays
-far more than a whole map's pickups -- 50 per World 1 win against roughly 9 qumatessence
-scattered over the entire map, 200 per World 10 win against roughly 260 -- so fighting, not
-collecting, is where a grinding player's income comes from either way.
+Two ceilings bound it. Wilds refill toward the population that map stood up at generation,
+which is what the Settings station's encounter-density preset sets -- respawns replace what
+was fought, they never outpace the setting. Qumatessence gets that same standing-count
+ceiling *plus* a finite per-map budget equal to the map's own initial pickup count, so one
+map pays out at most twice what it was scattered with. Both ceilings and the remaining budget
+live in the map snapshot (§7's `saveMapState`/`restoreMap`), so a round trip through battle or
+the Lab resumes the same half-refilled world rather than a fresh one.
+
+The pickup budget is a pacing rule, not a balance one, and it is worth being clear about
+which: **collecting is not where income comes from, so capping it protects no number.** A
+battle's own stake (§5) pays 50 in World 1 against roughly 9 qumatessence scattered over that
+entire map, and 200 in World 10 against roughly 260 -- a whole map of World 1 pickups is
+worth a fifth of one fight. What the budget preserves is what a pickup *is*: something found
+on a route, in an amount a route can hold. Without it a picked-clean corridor becomes a place
+to stand and wait, which is a worse way to spend the player's time than walking on, whatever
+it pays. Wilds carry no such budget because a wild that comes back is a fight, and fighting
+is the game.
 
 World names are meant to read as the lecture topic, not generic RPG terrain names (check
 `WORLD_NAMES` and `WORLD_RIVALS` together when naming a world -- a mismatched rival name is
