@@ -136,10 +136,11 @@ Abilities station too (appears once you've learned your first passive). See
 before you even reach it: a gigantic golem, built from many crystal shards
 fused into one mass, its grain boundaries glowing where they meet and a
 heavy shadow pooled under its feet, standing at the far end of every
-world -- and it keeps that same imposing look once the fight starts. Its name is always a real compound in *polycrystalline*
+world -- and it keeps that same imposing look once the fight starts. Through World 9 its name is always a real compound in *polycrystalline*
 form (many grains fused into one, the same idea the golem's own body
 literalizes) -- Polycrystalline Silicon Golem guards World 1, for
-instance. Beating it opens a glowing doorway right where the boss stood,
+instance; World 10's rival, The Adapted, is the one that breaks the
+pattern. Beating it opens a glowing doorway right where the boss stood,
 letting you walk straight on to the next world.
 
 **Walk back anytime.** The near end of every world -- right where you first

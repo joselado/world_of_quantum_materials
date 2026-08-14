@@ -55,10 +55,10 @@ visited, so backtracking never means re-walking a whole corridor.
 
 <img src="../screenshots/docs-guardians-dresselhaus-avatar.png" width="300" alt="Dresselhaus: a half-lit crystal figure with a carbon-hexagon ring for a head, circled by rotation arrows">
 
-Lets you *transmute* into any crystal you've already defeated — your look,
-stats, and available moves all switch over, and nothing you've already
-learned is erased. Switch back later and you get the rest of it back for
-free.
+Lets you *transmute* into any crystal you've already defeated — your look
+and which of your moves are usable both switch over, your stats stay yours,
+and nothing you've already learned is erased. Switch back later and you get
+the rest of it back for free.
 
 The idea: the same atoms, built into a different nanostructure, become a
 different material entirely — so understanding a defeated crystal well
@@ -86,7 +86,9 @@ The move stays usable from any form and always asks its question, but this
 choice decides whether it can land a quasiparticle-mismatch hit like an
 ordinary attack. Transmute into a form that can't host your picked
 quasiparticle, and the move falls back to its Phonon form — the one class
-every form hosts — until you retune it.
+every form hosts — for as long as you wear that form. Your pick is kept:
+transmute back into a form that can host it and the move carries it again,
+free and without retuning.
 
 <img src="../screenshots/docs-guardians-laughlin-panel.png" width="300" alt="Laughlin's shop: his two Analytic moves side by side, each playing its own effect above the quasiparticles it can be tuned to">
 

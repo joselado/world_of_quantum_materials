@@ -16,10 +16,12 @@ mechanics/content decisions see `DESIGN.md`, for visual conventions see
   directly as the game evolves rather than starting new docs.
 - `game/` -- **active development happens here.** A Vite + TypeScript +
   Phaser 3 project (see "Running the game" below).
-- `docs/` -- player-facing reference docs `README.md` links out to
-  (quasiparticles/moves, crystals, hybrid materials, guardians). Their
-  tables are generated from `game/src/data/materials.ts`/`passives.ts` --
-  see "Regenerating docs/ tables" below.
+- `docs/` -- player-facing docs `README.md` links out to: four reference
+  pages (quasiparticles/moves, crystals, hybrid materials, guardians) plus
+  `storyline.md`, a hand-written spoiler walkthrough of the plot. The four
+  reference pages' tables are generated from
+  `game/src/data/materials.ts`/`passives.ts` -- see "Regenerating docs/
+  tables" below.
 - `bin/play.mjs` -- the cross-platform launcher behind `npm run play` (see
   "Running the game" below); the root `package.json` exists only to give it
   that command name, it has no dependencies of its own.
@@ -281,9 +283,11 @@ visual landmark. Contextual tutorial tips guide new players, a Story Mode /
 Superposition Mode title-screen picker lets you choose between them
 (Superposition Mode auto-levels the player and pre-marks every world visited
 so Bloch's teleport hub gives instant access to any world/guardian, for testing
-without grinding), and the Lab's Settings station offers wild-encounter
-density and a Text Size preset applied via `ui/text.ts`'s
-`fontPx`/`fontScale` helpers. `game/` is the only build.
+without grinding), and the Lab's Settings station offers four rows --
+wild-encounter density, a Text Size preset applied via `ui/text.ts`'s
+`fontPx`/`fontScale` helpers, a Music Style (Classic/Modern) arrangement
+switch, and a difficulty tier (B.Sc./M.Sc./Ph.D.) feeding
+`data/balance.ts`'s `DIFFICULTY_MULTIPLIERS`. `game/` is the only build.
 
 ## Verifying UI changes
 

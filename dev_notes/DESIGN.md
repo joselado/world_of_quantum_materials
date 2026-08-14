@@ -269,7 +269,7 @@ compatibility table before implementation (see open questions).
 Every crystal starts at `1/1/1` (`BASE_STAT`/`DEFAULT_STATS`) and can be raised up to `100`
 (`MAX_STAT`) per stat at Noether's shop -- a stat already at `MAX_STAT` shows as maxed and stops
 selling. The player's own stats live in the save (`playerStats`) and only grow by spending
-qumatessence with Noether (`OverworldScene.renderShopStats`/`data/balance.ts`'s `statUpgradeCost`,
+qumatessence with Noether (`scenes/panels/noether.ts`'s `renderShopStats`/`data/balance.ts`'s `statUpgradeCost`,
 `(current - BASE_STAT + 1) * 50` per point, the same rate for all three stats -- Correlation no
 longer needs a steeper price than Quantumness/Velocity now that its own formula plateaus the same
 way theirs do); an opponent's stats are computed fresh from the world number (and the active
@@ -281,11 +281,14 @@ Quantumness/Velocity and `+0.05` Correlation per world past world 1; worlds 4-10
 who has met the early guardians and can draw on their systems (Dresselhaus's transmutation,
 Laughlin's Analytic moves, Feynman's leveling, ...), so growth steepens to `+0.35`
 Quantumness/Velocity and `+0.22` Correlation per world from there. An opponent's own stats stay
-fractional internally (never rounded, since they're never shown to the player as a number, only
-felt through hit chance/damage/turn order) so this curve's own sub-1 per-step rate actually
-registers rather than vanishing under premature rounding -- only the player's own `playerStats`
-(always a whole number, since Noether's shop displays/sells them one point at a time) round, at
-the one place enemy-stat math gets copied into them (Superposition Mode's grant, see below).
+fractional through this curve (never rounded here, since they're never shown to the player as a
+number, only felt through hit chance/damage/turn order) so its own sub-1 per-step rate actually
+registers rather than vanishing under premature rounding. `BattleScene.create` rounds the result
+only for an ordinary wild, whose `rollEncounterFactor()` +/-15% roll scales the baseline first; a
+rival's stats are used exactly as this curve returns them. The player's own `playerStats` are
+whole numbers, since Noether's shop displays/sells them one point at a time, and none of this
+enemy-stat math ever feeds them (Superposition Mode's grant pins all three straight to
+`MAX_STAT`, see below).
 Correlation still grows slightly slower than Quantumness/Velocity in both phases, weighted lighter
 to keep the overall climb balanced (`npm run balance-sim`-verified). Because the player's own
 Velocity only grows by spending qumatessence with Noether while the opponent's grows automatically
@@ -435,8 +438,9 @@ pool.
 unlike every other entry in this table, it has no main type or real compound of its own at
 all, since its type is decided live in battle instead (see the note just below the table).
 
-Bismuth Selenide (magnetically doped) and Samarium Hexaboride are documented candidates
-not yet wired into `WORLD_CRYSTALS` — every other row above is live in the code. Weyl
+Bismuth Selenide (magnetically doped), Samarium Hexaboride and Graphene at strong coupling
+are documented candidates not yet wired into `WORLD_CRYSTALS` — every other row above is
+live in the code. Weyl
 semimetals (Tantalum Arsenide) were considered and dropped from the roster entirely
 (`TAXONOMY.txt`'s own open-questions note): a Weyl semimetal's chiral Fermi arcs and
 chiral anomaly are genuinely distinct 3D gapless physics, not a `chernInsulator`
@@ -543,8 +547,10 @@ gated the same way to whichever types the actual physics motivates it for (Magno
 magnetically ordered types; Chiral Current → integer-Chern types; Helical Current →
 time-reversal-protected edge/surface types; Anyon Braid → fractional-Chern only; Majorana
 Split → `chernSuperconductor` only, genuine topological pairing required; Higgs
-Oscillation → any superconducting type; Spinon Swap/Vison Loop/Triplon Surge →
-quantum-spin-liquid; Heavy Fermion Pulse → Kondo-lattice only; Ferron Pulse →
+Oscillation → any superconducting type; Vison Loop/Triplon Surge → quantum-spin-liquid
+only; Spinon Swap → quantum-spin-liquid *and* Kondo-lattice, since a Kondo lattice
+fractionalizes into spinons at its own Kondo-breakdown quantum critical point; Heavy
+Fermion Pulse → Kondo-lattice only; Ferron Pulse →
 ferroelectric/multiferroic; Electromagnon Pulse → multiferroic only). This is enforced
 everywhere the player's moveset shows up: the battle move menu (`getBattleMoves` = learned
 moves ∩ compatible moves) and Noether's shop (same intersection, so she only ever offers
@@ -603,8 +609,9 @@ non-Abelian zero modes).
 Because Phonon Beam (`phonon`) is on every type's
 `MOVE_COMPATIBILITY` list, it can never trigger the quasiparticle-mismatch double-damage
 rule above — the one universal move is also the one that never gets the mismatch bonus, by
-design. Laughlin's two Analytic moves (`skyfallBeam`/`groundEruption`) sit at a middling
-base power below the ordinary tiers on purpose — their real payoff is the answer-gated
+design. Laughlin's two Analytic moves (`skyfallBeam`/`groundEruption`) sit at power 10 on
+purpose — level with the `spinon`/`vison`/`chiral`/`helical`/`higgs`/`heavyFermion` tier and
+below only Anyon Braid/Majorana Split among the ordinary attack moves — since their real payoff is the answer-gated
 2x/0.5x multiplier above, not raw power. Kondo's three moves (Screening Pulse, Scattering
 Drag, Coherence Cascade, §5) carry the same low `power` value, on par with Electron Pulse,
 but it's never read as damage at all — they're self-buffs, not attacks, so `power` only
@@ -758,8 +765,8 @@ same greeting screen, though every world currently has a populated pool.
 **Starting loadout and unlocking moves.** The player's crystal starts knowing only Phonon
 Beam. Reaching world 1's middle tile for the first time introduces the guardian Noether (§5),
 who sells every other move (`SHOP_MOVE_IDS`) for qumatessence, priced by move power
-(`OverworldScene.shopCost`, currently power × 5) -- filtered down to whatever the player's
-*current* crystal form can physically carry (§3's `MOVE_COMPATIBILITY`), so a
+(`data/balance.ts`'s `shopCost`, re-exported by `data/materials.ts`, currently power × 5)
+-- filtered down to whatever the player's *current* crystal form can physically carry (§3's `MOVE_COMPATIBILITY`), so a
 semiconductor-type player (Silicon, by default) is only ever offered Electron Pulse until
 they transmute into a form that supports more. Unlocked moves persist in the Phaser registry's `unlockedMoves` entry (a global
 "moves learned," never erased by transmuting) and become available as battle buttons in
@@ -832,7 +839,7 @@ state can mark her met before the player has actually reached her.
   game (fitting, since Noether's theorem is literally "symmetry implies a conservation
   law" -- here, conserving enough qumatessence gets you a new move or a sharper stat)
 - **Bloch** → world 2 middle → folds space between worlds: teleports the player to any
-  world they've already visited (`OverworldScene.showBlochHub`) -- fitting, since a
+  world they've already visited (`scenes/panels/bloch.ts`'s `showBlochHub`) -- fitting, since a
   Bloch state is a superposition spread across every unit cell, not pinned to one.
   The destination list paginates (`renderPagedButtons`, see below) once it grows past
   a page -- routine in Superposition Mode (see §7), whose destination list is every
@@ -855,7 +862,7 @@ state can mark her met before the player has actually reached her.
   entirely (`isSuperpositionMode()`, not the persisted list), since that mode relies on
   Bloch's hub being the *sole* way to move between worlds with no separate warp panel
 - **Dresselhaus** → world 3 middle → lets the player transmute into any *single* crystal
-  they've already defeated (`OverworldScene.showDresselhausPanel`/`transmuteInto`) -- fitting,
+  they've already defeated (`scenes/panels/dresselhaus.ts`'s `showDresselhausPanel`/`transmuteInto`) -- fitting,
   since her real physics is that a material's properties come from how its atoms are
   *structured* (its nanostructure and phonon spectrum), not just which atoms they are, so
   understanding a defeated crystal's structure well enough is what lets the player rebuild
@@ -881,7 +888,7 @@ state can mark her met before the player has actually reached her.
   option than pure travel convenience. Superposition Mode bypasses this per-crystal cost
   entirely the same way Bloch's does
 - **Laughlin** → world 4 middle → sells two quiz-gated moves (`skyfallBeam`,
-  `groundEruption` -- `OverworldScene.showLaughlinPanel`, `data/materials.ts`'s
+  `groundEruption` -- `scenes/panels/laughlin.ts`'s `showLaughlinPanel`, `data/materials.ts`'s
   `ANALYTIC_MOVE_IDS`, a hardcoded pair of move ids rather than a shared class --
   neither move has a class of its own to be identified by, see below) -- fitting,
   since Laughlin's own physics (the fractional quantum Hall wavefunction) is world 4's
@@ -943,7 +950,7 @@ state can mark her met before the player has actually reached her.
   `quasiparticleLabel`, not the move's own shape word).
 - **Majorana** → world 5 middle → lets the player fuse two crystals they've already
   defeated into a new hybrid material and become it immediately
-  (`OverworldScene.showMajoranaPanel`/`combineMaterials`) -- but only a curated
+  (`scenes/panels/majorana.ts`'s `showMajoranaPanel`/`data/materials.ts`'s `combineMaterials`) -- but only a curated
   catalog of named parent pairs (`data/materials.ts`'s `HYBRID_RECIPES`/
   `hybridRecipeResult`), keyed by parent *name* rather than main type, not any two
   defeated crystals. The catalog is closed by name rather than governed by a generic
@@ -953,7 +960,10 @@ state can mark her met before the player has actually reached her.
   two graphene sheets) -- so a pair with no named recipe simply can't be fused, same-type
   or not. Every recipe mirrors a real (or credibly engineered) platform -- an InAs/Al
   Majorana nanowire; two Graphenes → Twisted Bilayer Graphene (magic-angle
-  superconductivity); CrI₃ + NbSe₂ or NbSe₂ + CrBr₃ → topological-superconductor
+  superconductivity); Chromium + Bi₂Te₃ → Cr-doped (Bi,Sb)₂Te₃, magnetic doping of an
+  undoped topological-insulator host, where the Cr breaks time-reversal symmetry and turns
+  Bi₂Te₃'s helical surface state into a single chiral edge channel -- a zero-field quantum
+  anomalous Hall state; CrI₃ + NbSe₂ or NbSe₂ + CrBr₃ → topological-superconductor
   heterostructures (the latter is Kezilebieke et al., Nature 2020); Iron + Lead → the
   Fe/Pb Majorana chain, literalizing the mechanic's own worked example; CrI₃ + CrI₃ →
   Twisted CrI₃, a *theoretically proposed* (not yet confirmed) multiferroic from
@@ -1005,7 +1015,7 @@ state can mark her met before the player has actually reached her.
   rather than always the default starting form
 - **Anderson** → world 6 middle → "dopes in" a crystal the player has defeated as an
   impurity, then teaches one specific move from that crystal's own moveset
-  (`OverworldScene.showAndersonPanel`/`learnImpurityMove`) -- a two-step pick (host,
+  (`scenes/panels/anderson.ts`'s `showAndersonPanel`/`learnImpurityMove`) -- a two-step pick (host,
   then which of its moves to learn). Picking a host only records which one the player
   is browsing; the persisted `andersonDopant` (save.ts) is written only once a move is
   actually learned, replacing whatever was doped in before -- only one impurity species
@@ -1048,7 +1058,7 @@ state can mark her met before the player has actually reached her.
   guardian's: leveling up a move the player already owns (`data/materials.ts`'s
   `MOVE_LEVEL_NAMES`/`MOVE_LEVEL_MULTIPLIERS`/`MOVE_LEVEL_STREAKS`,
   `getMoveLevel`/`effectiveMovePower`/`feynmanLevelCost`/`moveDisplayName`,
-  `OverworldScene.showFeynmanPanel` via `scenes/panels/feynman.ts`) -- fitting, since
+  `scenes/panels/feynman.ts`'s `showFeynmanPanel`) -- fitting, since
   Feynman's own diagrammatic technique (expand a many-body calculation as a picture
   built from vertices and propagator lines instead of writing it out term by term) is a
   direct notational sibling to world 7's own course topic: session07.tex's "Tensor
@@ -1106,7 +1116,7 @@ state can mark her met before the player has actually reached her.
   Anderson's/Dresselhaus-or-Majorana's own picks. A Superposition Mode playthrough never
   has to actually answer Feynman's own questions to reach max level -- his panel still
   works exactly as in Story Mode if visited, each row already reading "max level."
-- **Kondo** → world 8 middle → sells three self-buff moves (`OverworldScene.showKondoPanel`,
+- **Kondo** → world 8 middle → sells three self-buff moves (`scenes/panels/kondo.ts`'s `showKondoPanel`,
   `data/materials.ts`'s `KONDO_MOVE_IDS`) -- Screening Pulse, Scattering Drag, Coherence
   Cascade -- each of which deterministically applies one of §4's three buffs (Shielded,
   Evasive, Regenerating respectively) to the *caster's own* side instead of attacking the
@@ -1149,7 +1159,7 @@ state can mark her met before the player has actually reached her.
   rather than always the same one so a fresh Superposition save doesn't always start on the
   same move.
 - **Franklin** → world 9 middle → teaches three passive abilities
-  (`data/passives.ts`'s `FRANKLIN_PASSIVE_IDS`, `OverworldScene.showFranklinPanel`) --
+  (`data/passives.ts`'s `FRANKLIN_PASSIVE_IDS`, `scenes/panels/franklin.ts`'s `showFranklinPanel`) --
   an always-on, whole-battle modifier rather than a move picked from the battle menu
   each turn. All three can be bought independently, but only one is ever active in
   battle at a time (registry/save `activePassiveByOwner`, switched only by revisiting
@@ -1361,9 +1371,11 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   that curve, plus each biome's own floor/off-path color break, are what mark where the player
   may walk. Off-path tiles carry terrain you can plausibly see is impassable (per-biome
   `wallTheme`, see `STYLE.md`): bare rock by default, or a molten lava crust, a frozen lake, or
-  the starlit drop between islands -- unless the tile carries its own `regionColor` tint (world
-  1's/3's/8's colored branches/domains), which renders as plain ground in that tint regardless
-  of `wallTheme`. A tile can also
+  the starlit drop between islands. A tile can additionally carry its own `regionColor` tint
+  (world 3's Voronoi domains): the tint colors that tile's ground and the biome's `wallTheme`
+  material still draws its accent over it -- the tint supplies the color, the material the
+  texture. World 1's two symmetry-broken branches are tinted the same way, on the walkable
+  lanes themselves rather than on off-path ground. A tile can also
   carry a `biomeOverride` (world 9's patches, each independently borrowing one of worlds
   1-8's whole biome look) that swaps which world's `art/biomes.ts` entry it renders with. The
   layout is regenerated (fresh `Math.random` calls) on
@@ -1577,8 +1589,12 @@ configuration; see `dev_notes/DEVELOPMENT.md`.
 
 - Style target: GBA-era Pokemon/Golden Sun — small tile sprites, simple battle
   sprites (player bottom-left, opponent top-right), portrait busts for dialogue.
-- Tools: Aseprite (sprites/tiles), Tiled (maps, exports to Phaser-compatible
-  formats).
+- Tools: none — the game ships and loads no image assets at all. Every crystal, tile,
+  effect and guardian portrait is drawn procedurally with Phaser `Graphics` from the
+  builders in `game/src/art/` (crystals, biomes, trees, attack effects, one avatar
+  builder file per guardian) plus `game/src/scenes/overworld/terrain/materials/` for
+  off-path terrain accents, and each world's map is generated at runtime by
+  `game/src/world/mapgen.ts` rather than authored in a map editor.
 - Materialdex entries and post-battle explanations can be adapted from
   `lecture_notes/tex_extended/sessions/sessionNN.tex` (symlinked into this repo's
   root, see CLAUDE.md) rather than written fresh.
@@ -1616,7 +1632,7 @@ Not yet built:
 - **Course integration** — supplementary/optional tool, or tied into assessment?
   Affects how rigorous the Materialdex needs to be.
 - **Quiz-text subscript notation** — physics questions/answers (`game/src/data/quiz.ts`)
-  write subscripts as plain ASCII underscores (`U_c`, `k_B`, `E_F`, ~70 instances) since
+  write subscripts as plain ASCII underscores (`U_c`, `k_B`, `E_F`, ~120 instances) since
   Phaser's `Text` has no native rich-text/subscript rendering, and Unicode's subscript
   Latin-letter block doesn't cover every needed letter (no subscript `b`, `c`, or `f`, so
   `k_B`/`U_c`/`E_F` themselves couldn't round-trip through it). Readable as-is to this

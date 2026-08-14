@@ -5,7 +5,10 @@ heterostructures, a credibly engineered one — rather than a generic
 monster. A crystal's type fixes its look and which quasiparticles it can
 host (see [Quasiparticles & moves](quasiparticles.md)). Each world draws
 from its own course topic, though a few compounds show up in more than one
-world when the same real material is relevant to both.
+world when the same real material is relevant to both. World 9 is the
+exception: alongside its own defect compounds listed below, every
+non-hybrid crystal from Worlds 1-8 turns up there too, so any type can
+appear.
 
 <img src="../screenshots/docs-crystals-encounter.png" width="300" alt="A wild Yttrium Iron Garnet asks a magnon physics question mid-encounter">
 

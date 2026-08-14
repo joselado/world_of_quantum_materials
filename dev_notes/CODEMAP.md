@@ -709,10 +709,11 @@ World 10's Adapted and nowhere else.
   *hybrid result's*/*move's*/*world number's* name -- drives its whole detail (or, for Bloch,
   status/confirm) pane (Kondo's own committed choice,
   which of its three moves is actually usable in battle, lives in registry/save
-  `kondoActiveMove` instead, set only by the detail pane's own confirm button, the same
+  `kondoActiveMove` instead, written by the detail pane's own confirm button -- the same
   "browsing is free, committing is the confirm button" split every other list+detail panel
-  uses)) -- Laughlin's and Skłodowska-Curie's own panels have no pagination/preview field of
-  their own at all, since each always renders both of its two fixed moves at once rather than
+  uses -- with Superposition Mode's `applySuperpositionUnlocks` additionally seeding it to a
+  random one of the three while it's still unset)) -- Laughlin's and Skłodowska-Curie's own
+  panels have no pagination/preview field of their own at all, since each always renders both of its two fixed moves at once rather than
   browsing a candidate list -- and the player-form
   mutator `applyPlayerForm` (shared by Dresselhaus's `transmuteInto` and Majorana's
   `becomeHybrid`, both of which moved into their own panel file as plain functions) -- is each
@@ -796,8 +797,10 @@ Anderson's `learnImpurityMove` is a third guardian that touches player state but
 *doesn't* go through `applyPlayerForm` at all -- it only appends a move id to `unlockedMoves`,
 leaving `playerForm` untouched, since the whole point of the impurity-doping mechanic is
 borrowing one move without becoming (or fusing into) anything. `learnImpurityMove` is also the
-only place that writes registry/save key `andersonDopant` (`scenes/panels/anderson.ts`),
-replacing whatever was doped in before -- only one impurity at a time; merely picking a host to
+one place a deliberate pick writes registry/save key `andersonDopant`
+(`scenes/panels/anderson.ts`), replacing whatever was doped in before -- only one impurity at a
+time (in Superposition Mode `applySuperpositionUnlocks` additionally seeds that key to a random
+non-hybrid crystal while it's still unset); merely picking a host to
 browse its moveset (`scene.andersonSelection`) doesn't touch it, so previewing a candidate and
 backing out without learning a move leaves the previous impurity's channel firing.
 
@@ -816,8 +819,8 @@ real quasiparticle; there is no abstract "disorder" move or class.
 
 **Stats** (`data/types.ts`'s `Stats`, `data/materials.ts`/`data/balance.ts`): `quantumness`/
 `velocity`/`correlation`, base `1` each (`BASE_STAT`/`DEFAULT_STATS`), capped at `100`
-(`MAX_STAT`) -- Noether's shop (`OverworldScene.renderShopStats`) refuses to sell a stat past
-that, showing it as maxed instead. Player stats live in registry/save key `playerStats`, grown
+(`MAX_STAT`) -- Noether's shop (`scenes/panels/noether.ts`'s `renderShopStats`) refuses to sell
+a stat past that, showing it as maxed instead. Player stats live in registry/save key `playerStats`, grown
 via that same shop (cost `statUpgradeCost(current, stat)` per +1 point, the same rate for all
 three -- `CORRELATION_COST_MULTIPLIER` is `1`, kept as its own named constant in case a future
 formula change reopens the gap that once justified pricing Correlation steeper). Opponent stats
@@ -831,9 +834,11 @@ pinned to `MAX_STAT`, so there's no per-world climb left to track on the opponen
 (`SUPERPOSITION_BASE_ENEMY_STAT`) shared by every world instead. Both apply the active difficulty
 tier's own multiplier on top (`DIFFICULTY_MULTIPLIERS`, read live off registry `difficultyTier`,
 the Lab's Settings station). Left fractional (never rounded) here -- an opponent's stats are never
-shown to the player as a number, only felt through hit chance/damage/turn order -- only the
-player's own `playerStats` round, at the one place enemy-stat math gets copied into them
-(`OverworldScene.applySuperpositionLeveling`'s call into the shared `applySuperpositionUnlocks`).
+shown to the player as a number, only felt through hit chance/damage/turn order -- and
+`BattleScene.create` rounds them only for an ordinary wild, whose `rollEncounterFactor()` roll
+(+/-15%) scales the baseline first; a rival's are used exactly as returned. The player's own
+`playerStats` never come off this curve at all: Story Mode grows them a whole point at a time
+through Noether's shop, and `applySuperpositionUnlocks` pins each of them to `MAX_STAT` outright.
 
 **Max HP** (`data/balance.ts`) is never intrinsic to a `Material` either (no `maxHp` field at
 all -- see "Data model" above) -- both sides' current-battle max HP are resolved fresh in
@@ -959,9 +964,10 @@ there's no active buff.
 `create()` from registry/save `activePassiveByOwner` (keyed by `PassiveOwner`, `data/
 passives.ts`) and held for the whole battle -- unlike Kondo's self-buffs above, a passive has no `turnsLeft`/tick-down
 machinery at all, it's just on or off for the battle. Each side's active passives get their
-own pill too, built by `addPassivePill(x, naturalY, text, statusBottom, maxRightX)` and stacked
-directly below that side's status pill (`naturalY` offset from the status pill's own measured
-`y`/`height`, same text-size-scaling reasoning the name/bar row's own layout uses) -- since the
+own pill too, built inside `scenes/battle/hud.ts`'s `drawNameplate` from its `passiveText`
+option and laid out as the last row of that plate's bottom-anchored stack, directly below the
+side's status pill (its height counts toward the stack height the plate shrinks its name down
+to fit into the room above the crystal's head) -- since the
 set never changes mid-battle there's no tick-down render function like `renderStatusLabel`,
 the pill's text (`passivePillText`, `PASSIVES[id]?.name` joined with `·` for the 0-2 entries a
 side can hold, `?.` guarding against a stale id from an old save) is built once and passed
@@ -1689,8 +1695,9 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   sample-measurement technique `renderPagedButtons`/Qumatex's own paginated list use) so a later
   preview click can never grow the block past the height the panel was first sized for.
   `BattleScene.create()` draws the same
-  `drawFranklinPassiveHalo` once around the player's own ground shadow (`PLAYER_POS.x, 392`,
-  matching `drawBackground`'s own shadow ellipse there) for whichever passive is in
+  `drawFranklinPassiveHalo` once around the player's own ground shadow
+  (`PLAYER_POS.x, PLAYER_POS.y + SHADOW_DROP`, matching `drawBackground`'s own shadow ellipse
+  there) for whichever passive is in
   `playerActivePassives` (see "Passives (Franklin's abilities)" above) -- at full alpha only,
   since a passive showing up in battle at all already means it's the active one. `art/
   passiveHalos.ts` keeps each of the three halos visually distinct from each other and from
@@ -1932,9 +1939,10 @@ future guardian could choose them; nothing currently does.
 
 **The Lab's six reference/settings stations** (`scenes/panels/hubStations.ts`'s
 `LAB_STATIONS` array -- `showMovesPanel`/`showStatsPanel`/`showAbilitiesPanel`/
-`showTutorialTopics`/`showSettingsPanel`, each taking `scene: HubScene`):
+`showTutorialTopics`/`showSettingsPanel`/`showTitleScreenPanel`, each taking
+`scene: HubScene`):
 built the same way a guardian panel file takes `scene: GuardianPanelHost` (see "Guardian panels"
-above) -- these five only ever run from `HubScene`, since pressing `H` or `Enter` from any
+above) -- these six only ever run from `HubScene`, since pressing `H` or `Enter` from any
 Overworld scene warps straight there (`this.scene.start('Hub')`, no menu/overlay of choices in
 between) rather than opening anything mid-world. Each is a pure function of registry/save
 state (player stats/moves/passives, game settings), not of anything tied to
@@ -1944,7 +1952,7 @@ not private, on `HubScene` for the same "panel modules living outside the class 
 `private` member" reason `OverworldScene` widens its own dialogue infrastructure), gated so a
 station can't open over another already-open panel (`HubScene.addStationRow`'s
 `dialogueContainer` check). Each `LAB_STATIONS` entry also carries a `visible(scene)` predicate
--- true unconditionally for Moves/Stats/Tutorial/Settings, and for Abilities only
+-- true unconditionally for Moves/Stats/Tutorial/Settings/Title Screen, and for Abilities only
 once `passivesUnlocked` is non-empty (or `isSuperpositionMode()` is true, which grants every
 passive anyway) --
 `HubScene.create()` filters `LAB_STATIONS` by this before laying out the room's station rows,
@@ -1986,11 +1994,14 @@ avatar `Container` (a Container has no hit area of its own) and takes the same
 
 **All seven of the Lab's non-door panels** (the six stations above, plus `HubScene`'s own
 `renderMaterialdexPanel`) share one heading color -- `hubStations.ts`'s exported
-`LAB_TITLE_COLOR` (`#ffe066`) -- and one centered-content geometry: `hubStations.ts`'s
+`LAB_TITLE_COLOR` (`#ffe066`). The Moves, Stats, Abilities and Settings panels share one
+centered-content geometry on top of that: `hubStations.ts`'s
 `labPanelColumns(panelWidth)` returns a fixed `contentCenterX`/`contentWrapW` margined in from
-both edges of the panel. A panel's own themed motif (`art/labMotifs.ts`'s `makeQumatexMotif`/
+both edges of the panel (Tutorial and Materialdex lay out their own two-column list/detail
+shape instead, and the Title Screen panel its own short centered confirm stack). A panel's own
+themed motif (`art/labMotifs.ts`'s `makeQumatexMotif`/
 `makeDoorMotif`/`makeMovesMotif`/`makeStatsMotif`/`makeAbilitiesMotif`/`makeTutorialMotif`/
-`makeSettingsMotif` -- fixed-px art, never run through `ui/text.ts`'s
+`makeSettingsMotif`/`makeTitleScreenMotif` -- fixed-px art, never run through `ui/text.ts`'s
 `fontPx()`/`fontScale()`) is never drawn inside the panel; each `LAB_STATIONS` entry (and
 `HubScene`'s own hardcoded Qumatex and door rows) instead carries its
 motif builder for `HubScene.addStationRow` to plant beside that station's own button in the
@@ -2141,7 +2152,7 @@ renders whichever entry `materialdexSelectedName` points at (looked up by name i
 *unfiltered* index, so it stays valid across a list-page flip and only gets reassigned to the
 new filtered list's first entry on a type-filter change) -- crystal render, name, physics
 blurb, masked the same way when undiscovered. This panel skips the `labPanelColumns` treatment
-the other five Lab panels (Moves, Stats, Abilities, Guardians, Settings) use (above)
+the Moves, Stats, Abilities and Settings panels use (above)
 in favor of its own two-column list/detail layout, the same shape the Lab's own Tutorial
 station also uses instead of `labPanelColumns` ("Full tutorial recap" above); its
 own right-column crystal render already is a themed motif, so instead of reusing the station

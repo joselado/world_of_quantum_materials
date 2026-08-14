@@ -173,8 +173,8 @@ than appending a changelog, so this always reflects current reality.
   page-fit math. The **right column** stays this panel's own render (list+detail's shared
   scaffolding covers the left column only, since a detail pane's content genuinely differs
   panel to panel): whichever row is currently selected, shown as the compound's own crystal
-  render (`makeCrystal`, size `36`), name, and physics blurb (`materialdex.ts`'s
-  `materialBlurb`) -- the blurb's font shrinks in whole-px steps (floor `9`) if a long entry
+  render (`makeCrystal` at the shared `DETAIL_CRYSTAL_SIZE`, `44`), name, and physics blurb
+  (`materialdex.ts`'s `materialBlurb`) -- the blurb's font shrinks in whole-px steps (floor `9`) if a long entry
   would otherwise push the panel's footer off the canvas. A **type filter** button (`Type:
   <MaterialType | All> ▸`) cycles through every `MaterialType` plus "All," narrowing which rows
   appear in the left column and resetting the list to its first page and first matching row. A
@@ -184,11 +184,11 @@ than appending a changelog, so this always reflects current reality.
   `showInfoPanel`), the panel's own background rectangle sized and inserted behind everything
   only once the taller of the two columns' real height is known.
 - **List+detail panels** (`scenes/panels/listDetail.ts`) are the shared two-column scaffolding
-  Qumatex above, six guardian panels' own browse steps, and the Lab's own Tutorial station build
+  Qumatex above, seven guardian panels' own browse steps, and the Lab's own Tutorial station build
   on, rather than each hand-rolling its own copy of the same left-column pagination math: three
   browse by *crystal* (Dresselhaus's single transmute step, Anderson's host-pick step, Majorana's
-  browse-by-hybrid-result step -- see their own entries below), two browse by *move*
-  (Noether's Moves tab, Kondo's -- also below), Bloch's own
+  browse-by-hybrid-result step -- see their own entries below), three browse by *move*
+  (Noether's Moves tab, Kondo's, Feynman's move-leveling list -- also below), Bloch's own
   destination table browses by *world number* ("Bloch in the overworld" below) -- its detail pane
   opens with the Qumatuomi map (`art/qumatuomiMap.ts`) fixed at the top, rendered once showing all
   10 worlds regardless of which row is selected, with the previewed destination's own physics
@@ -214,9 +214,9 @@ than appending a changelog, so this always reflects current reality.
   (`720`) is the panel width every list+detail panel uses -- wide enough for the two columns
   plus a real crystal render (or, for a move-browsing panel, its animation preview, or for
   Bloch's own panel, the map) side by
-  side, unlike the narrower `600`px width a plain single-column shop panel (Feynman, ...)
-  still uses; Franklin's own panel (below) is wider still (`760`) for its own,
-  differently-shaped two-column crystal-beside-list layout, distinct from both.
+  side, unlike the narrower `600`px width a plain single-column panel (Noether's Stats tab,
+  Feynman's own question-streak sub-panel) uses; Franklin's own panel (below) is wider still
+  (`760`) for its own, differently-shaped two-column crystal-beside-list layout, distinct from both.
   `listDetailColumns(panelLeft)` returns the one fixed set of column margins/widths
   every list+detail panel shares (left column `200`px wide, a divider, then the right column
   filling the rest). `renderListColumn` draws the left column exactly the way Qumatex's own
@@ -237,9 +237,9 @@ than appending a changelog, so this always reflects current reality.
   crystal* -- a self-buff has to be seen buffing something -- via the shared
   `renderSelfBuffMoveDetailHeader` block, "Kondo in the overworld" below). A guardian's
   list+detail step is a **preview-then-confirm** flow, distinct from the plain shop-row style
-  used elsewhere (Feynman's own move-leveling list, still the right choice when there's no
-  crystal/move art worth previewing, or Anderson's own second step picking a *move* rather than a
-  crystal), from Franklin's own crystal-beside-list layout (below), which previews a passive's
+  used elsewhere (Anderson's own second step, picking a *move* rather than a crystal, still the
+  right choice when there's no crystal/move art worth previewing), from Franklin's own
+  crystal-beside-list layout (below), which previews a passive's
   ground halo on an always-visible crystal rather than swapping between candidate rows, and from
   Laughlin's/Skłodowska-Curie's own bespoke two-column panels ("Laughlin in the overworld"/
   "Skłodowska-Curie in the overworld" below), which show both of a guardian's fixed two moves at
@@ -289,10 +289,10 @@ than appending a changelog, so this always reflects current reality.
 
 ## Overworld path
 
-- The grid is `GRID_W = 27` columns wide (`OverworldScene.ts`, `GRID_H = 50` tall). Each of
-  the 10 worlds has its own map *shape* (`world/mapgen.ts` dispatching to
+- The grid is `GRID_W = 27` columns wide (`scenes/overworld/projection.ts`, `GRID_H = 50`
+  tall). Each of the 10 worlds has its own map *shape* (`world/mapgen.ts` dispatching to
   `world/generators/world1.ts` .. `world10.ts`, see CODEMAP.md) -- a wandering corridor is
-  only world 2/6/9's own base motif now, not a look shared by all ten. Every shape still
+  only world 2/6/9's own base motif, not a look shared by all ten. Every shape still
   obeys the same two rules regardless: no walkable segment is ever narrower than 2 tiles (so
   a wild-encounter tile spawned on the path can never fully block it), and the world's
   guardian tile (`mid`) is a forced, verified articulation point -- every route from the
@@ -592,7 +592,7 @@ rather than free style choices:
 
 | World | Biome | Sky/ceiling | Off-path ground | Path | Decoration | Clouds | Wall theme |
 |---|---|---|---|---|---|---|---|
-| 1 | The Mean Fields | pale morning blue (`0x8fd0ff`→`0xe8f6ff`) | dark canopy `0x1d4526` | pale wheat `0xd9d295` | flowers | yes | **forest** |
+| 1 | The Mean Fields | pale morning blue (`0x8fd0ff`→`0xe8f6ff`) | dark canopy `0x16341c` | pale wheat `0xd9d295` | flowers | yes | **forest** |
 | 2 | The Stone Lattice | hard midday blue (`0x5aa6e0`→`0xd6e6f0`) | deep cast shadow `0x4a3427` | sandstone aisle `0xdcc9a8` | mosaic (every tile) | no | **columns** |
 | 3 | The Edge Cliffs | bright afternoon (`0x4f9fd8`→`0xcfe6f2`) | dim slate `0x394349` under dead teal/ochre domain tints | lit ledge `0xdfe6e2` | edge flow (every tile) | yes, drifting | **deadFloor** |
 | 4 | The Storm Flats | stormy dusk (`0x151a3a`→`0x3a4270`) | struck ground `0x1b2044` | banded indigo `0x6272b8` | orbit rings | no | **charged** |
@@ -752,7 +752,9 @@ than the caller's requested budget) for its own layout math.
 
 ## Qumatessence pickups (`art/tokens.ts`, `data/tokens.ts`)
 
-- One token sits at the dead end of each branch (not scattered along it).
+- Placed by `world/generators/shared.ts`'s `scatterTokens`, which prefers dead-end tiles
+  (degree 1 in the walkable graph) and falls back to any walkable tile for a world whose
+  shape has too few of them -- the same rule "Overworld path" above states.
 - Rendered as a "shiny cloud" (cluster of soft overlapping circles + bright core + halo +
   sparkles), `makeToken()` -- deliberately different silhouette from the faceted
   crystal/prism look used for wild encounters and the player, so pickups read as
@@ -800,9 +802,13 @@ than the caller's requested budget) for its own layout math.
   WTe₂, Chromium Triiodide). `twisted` is two of those sheets stacked with a rotational
   offset between their hex outlines (the moiré mismatch is the point), both rendered
   semi-transparent so the offset is actually visible — used for twisted systems (Twisted
-  Bilayer MoTe₂). Picked per-compound via `data/materials.ts`'s `crystal()`
-  `variantOverride` param, not derived from `TYPE_LOOK`, since a compound's dimensionality
-  doesn't track its main type.
+  Bilayer MoTe₂). Set both ways: `TYPE_LOOK` already makes `layer` the default for
+  quantumSpinHall and multiferroic and `twisted` the default for chernInsulator and
+  fractionalChern, and `data/materials.ts`'s `crystal()` `variantOverride` param sets the
+  variant per compound wherever an individual compound departs from its type's default --
+  into a sheet (Graphene, Monolayer WTe₂, Chromium Triiodide) or back out of one (Bi₂Te₃ and
+  Bismuth Ferrite render as `prism`) -- since a compound's dimensionality doesn't track its
+  main type.
 - Sizes: player `PLAYER_CRYSTAL_SIZE = 34` (largest, always on-screen), wild encounters
   `CRYSTAL_SIZE = 22`. Out on the map both carry a flat contact shadow one `size` below the
   container origin -- the same convention the boss golem's own pooled shadow follows, and what
@@ -841,8 +847,9 @@ than the caller's requested budget) for its own layout math.
 
 ## Wild encounter dialogue (`OverworldScene.showEncounter`)
 
-- Appears as an overlay panel inside the overworld itself (dark `0x10101c` rectangle,
-  `600x300`, stroked in `0x444466`) rather than switching to a separate scene --
+- Appears as an overlay panel inside the overworld itself (dark `0x10101c` rectangle, `600`
+  wide with its height sized to the content laid out inside it, stroked in `0x444466`)
+  rather than switching to a separate scene --
   asking a question or offering a fight shouldn't feel like leaving the map. Movement is
   frozen (`dialogueActive`) while it's open.
 - Single screen, no click-through: the wild crystal bobs at the top (`makeCrystal()`, size
@@ -873,7 +880,7 @@ than the caller's requested budget) for its own layout math.
   (`updateWorldSprites`) rather than a bespoke sprite path, so a guardian scrolls,
   fades with distance, and idly wanders exactly like every other world sprite --
   the player sees and walks up to them instead of them only materializing once
-  their dialogue fires. Depth `20`/`21` (container/label), matching wild-encounter
+  their dialogue fires. Depth `20`/`22` (container/label), matching wild-encounter
   crystals. Permanent -- unlike encounter/token sprites a guardian is never removed,
   since reaching their row still opens their panel on top of (not instead of) them
   standing there.
@@ -900,14 +907,15 @@ than the caller's requested budget) for its own layout math.
   Appears automatically every time the Overworld scene is (re)created with this world's
   middle row already reached (`OverworldScene.maybeAutoOpenMiddleDialogue`) -- first on
   stepping onto that row, then again after every later round trip through `BattleScene`,
-  so the panel stays revisitable instead of a single one-shot popup. Panel height `340`
-  (taller than a wild encounter's `300`) to fit the fixed footer row below the content.
-- Below the intro line, two small tab buttons (`renderShopTabs`, `panelY - 42`) switch the
-  panel between a **Moves** list and a **Stats** list (`OverworldScene.shopTab`, reset to
+  so the panel stays revisitable instead of a single one-shot popup. Panel height is sized to
+  the content laid out above it (the same running-`y`-then-size-the-background idiom the
+  wild-encounter panel uses), so whichever footer that tab carries always has room.
+- Below the intro line, two small tab buttons (`renderShopTabs`, placed at the running layout
+  `y` like every other row of this panel) switch the panel between a **Moves** list and a **Stats** list (`OverworldScene.shopTab`, reset to
   `'moves'` on every scene create) -- the active tab is highlighted gold-on-slate, the
   inactive one dim blue-grey, same click-to-rebuild-the-panel pattern as buying itself. The
   panel is `LIST_DETAIL_PANEL_W` (`720`) wide while the Moves tab is showing (below), `600`
-  while the Stats tab is (unaffected by this rework, still a plain button list) -- the two tabs
+  while the Stats tab is (a plain button list) -- the two tabs
   render at different panel widths since only one is ever visible at a time.
   - **Moves** is a list+detail layout (`scenes/panels/listDetail.ts`, "List+detail panels"
     above): the left column names every still-unbought move the player's *current crystal
@@ -1005,10 +1013,10 @@ than the caller's requested budget) for its own layout math.
   angular outline.
 - Her panel is a list+detail layout (`scenes/panels/listDetail.ts`, "List+detail panels"
   above), not the tab-content/footer shop shape -- every defeated wild material
-  (`defeatedMaterials`, sliced to the most recent 3, or in Superposition Mode every
-  non-hybrid crystal in the game -- `data/materials.ts`'s `allCrystals()` filtered through
-  `isHybridMaterial`) gets a left-column row naming it only, no cost suffix. Clicking a row
-  only *previews* it (`scene.dresselhausPreview`) -- the right column shows that candidate's
+  (`defeatedMaterials`, or in Superposition Mode every crystal in the game --
+  `data/materials.ts`'s `allCrystals()`), in both modes filtered through `isHybridMaterial`
+  so no hybrid-recipe result is ever offered, gets a left-column row naming it only, no cost
+  suffix. Clicking a row only *previews* it (`scene.dresselhausPreview`) -- the right column shows that candidate's
   own crystal render, name, and a status line ("This is your current form" for whichever
   crystal the player is already wearing, "Already unlocked -- free to become" for one already
   paid for, or "Costs 25 qumatessence to unlock (one-time; free after)" otherwise), plus a
@@ -1130,7 +1138,7 @@ than the caller's requested budget) for its own layout math.
   previews it (`scene.majoranaPreview`, holding the previewed *result's* name); browsing costs
   nothing regardless of how many hybrids are looked at. The right column shows, top to bottom:
   the two original component crystals rendered small and side by side (`makeCrystal`, size
-  `22`) with a single caption line naming both (`<A> + <B>`, or `<A> ×2` for a self-paired
+  `14`) with a single caption line naming both (`<A> + <B>`, or `<A> ×2` for a self-paired
   recipe, which keeps the caption short for this panel's longest self-paired name); the
   resulting hybrid's own full-size crystal render and name below them
   (`renderDetailCrystalHeader`, the same crystal-plus-name block Dresselhaus's/Anderson's own
@@ -1236,20 +1244,20 @@ than the caller's requested budget) for its own layout math.
   the shield his self-buff moves cast. The arcs are the avatar's outer edge; there is no
   robe under them. Silhouette: the roster's only round, enclosing outline.
 - List+detail layout (`scenes/panels/listDetail.ts`, "List+detail panels" above), the same shape
-  Noether's/Laughlin's/Skłodowska-Curie's own move-browsing steps use: the left column names all
+  Noether's Moves tab and Feynman's own move-leveling list use: the left column names all
   three of `data/materials.ts`'s `KONDO_MOVE_IDS` (Screening Pulse, Scattering Drag, Coherence
   Cascade) via `moveDisplayName`. Clicking a row only *previews* it (`scene.kondoMovePreview`),
   free regardless of how many moves are looked at. A Kondo move is a self-buff rather than a
   travelling attack -- `BattleScene.resolveSelfBuff` plays its real effect centered on the
   caster's own position (`from === to === pos`), not flying from attacker to target the way an
-  ordinary move does -- so the right column shows the player's own current crystal
-  (`makeCrystal(scene, 34, scene.playerMaterial.color, scene.playerMaterial.variant, { seed:
-  scene.playerMaterial.name, hybrid: scene.playerMaterial.hybridParents })`, the same call
-  convention Franklin's own panel below uses) standing on a ground-shadow ellipse, with the
+  ordinary move does -- so the right column shows the player's own current crystal, rendered
+  by the shared `renderSelfBuffMoveDetailHeader` (`scenes/panels/listDetail.ts`) at the shared
+  `DETAIL_CRYSTAL_SIZE` (`44`) with the player material's own `seed`/`hybridParents`,
+  standing on a ground-shadow ellipse, with the
   move's `'screening'`-class ring effect (`art/attackStyles.ts`'s `EFFECT_STYLE`, tinted
   `0xe86a44`) looping *centered on the crystal itself* rather than travelling across the pane --
-  `renderSelfBuffMoveDetailHeader` (`scenes/panels/listDetail.ts`), the self-buff sibling of the
-  ordinary `renderMoveDetailHeader` three other guardians' move-browsing panes use. Like that
+  the self-buff sibling of the ordinary `renderMoveDetailHeader` that Noether's, Feynman's,
+  Laughlin's and Skłodowska-Curie's own panes use. Like that
   sibling, it plays the move at the player's real Feynman level, so a leveled Kondo move previews
   the same escalating multi-trigger cascade a real cast plays. Below that:
   the move's own one-line `description` (`data/materials.ts`'s `Move.description`, only Kondo's
@@ -1402,13 +1410,13 @@ than the caller's requested budget) for its own layout math.
 ## Paginated candidate lists (`OverworldScene.renderPagedButtons`)
 
 - Shared by every plain single-column candidate list that can outgrow one screen -- Anderson's
-  second step (picking which move to learn from an already-chosen host) and Feynman's own
-  move-leveling list. Superposition Mode is what makes this routine rather than a rare edge
+  second step (picking which move to learn from an already-chosen host) is its only caller.
+  Superposition Mode is what makes this routine rather than a rare edge
   case: its candidate pool is every crystal/move in the game, commonly far more entries than the
   equivalent Story Mode list. Dresselhaus's transmute list, Majorana's browse-by-hybrid-result
-  list, Anderson's own first (host-pick) step, Noether's/Laughlin's/Skłodowska-Curie's own move
-  lists, and Bloch's own destination table instead
-  use the two-column list+detail layout ("List+detail panels" above) for the same reason -- its
+  list, Anderson's own first (host-pick) step, Feynman's own move-leveling list,
+  Noether's/Laughlin's/Skłodowska-Curie's own move lists, and Bloch's own destination table
+  instead use the two-column list+detail layout ("List+detail panels" above) for the same reason -- its
   own left column paginates the same candidate-pool-can-outgrow-one-screen way, just via
   `renderListColumn` rather than this function.
 - One button per row, same treatment as every other dialogue button, followed -- only
@@ -1466,10 +1474,12 @@ than the caller's requested budget) for its own layout math.
     a bright sliver in a dark biome, invisibly subtle in a bright one.
   - **Top-heavy proportions**: shoulders that peak higher than the small sunken
     head, long arms hanging to oversized boulder fists past the knees, a waist
-    that tapers in, short planted legs. Ten limb shards plus a pelvis and collar
-    block, each a shaded sibling of the base color (via `shade`, and each
-    darkened relative to it so the boss reads heavier than an ordinary wild of
-    the same compound), fused around one oversized torso core. Limbs are always a
+    that tapers in, short planted legs. Six limb shards (two legs, two upper
+    arms, two pauldrons) plus a pelvis and a collar block, each a shaded sibling
+    of the base color (via `shade`, and each darkened relative to it so the boss
+    reads heavier than an ordinary wild of the same compound), fused around one
+    oversized torso core, with the two oversized fists drawn after that core so
+    they hang in front of it. Limbs are always a
     solid habit (`drawShardShape`/`drawCubicShape`) rather than the material's own
     `variant` -- the translucent `layer`/`twisted` sheets read as flimsy on an
     arm -- so the compound's own habit lives in the torso core instead.
@@ -1762,7 +1772,8 @@ than the caller's requested budget) for its own layout math.
   drawn at all when no passive is active -- the plate floats in open field rather than in a
   crowded corner, so it needs no clamping or drop-it-if-there's-no-room fallback of its own.
 - Franklin's active passive also gets a **ground halo** around the player's own ground-shadow
-  ellipse (`BattleScene.drawBackground`'s `this.add.ellipse(PLAYER_POS.x, 392, 130, 30, ...)`),
+  ellipse (`BattleScene.drawBackground`'s
+  `this.add.ellipse(PLAYER_POS.x, PLAYER_POS.y + SHADOW_DROP, 130, 30, ...)`),
   drawn once in `create()` (not per-turn) by `art/passiveHalos.ts`'s
   `drawFranklinPassiveHalo(scene, container, x, y, passiveId, rx, ry, alpha?)`, keyed off
   whichever id is in `playerActivePassives` -- never for the opponent, since no wild/rival ever
@@ -1889,8 +1900,8 @@ than the caller's requested budget) for its own layout math.
   bought an analytic move or a Kondo self-buff sees a plain `ATTACKS` header with nothing to
   switch to.
 - Header text is deliberately capped at a lower text-size ceiling than the panel's own
-  title/legend (`headerScale = Math.min(fontScale, 1.15)`, 10px label / 8px legend sub-line
-  at that scale), and the pager arrows render a size above that (`13 * headerScale`) --
+  title/legend (`headerScale = Math.min(fontScale, 1.15)`, 12px label / 8px legend sub-line
+  at that scale), and the pager arrows render a size above that (`14 * headerScale`) --
   letting either scale all the way to the Lab's Settings station's uncapped 'Large' preset
   the way the title does would eat directly into the row budget below, and the header row's
   own height is taken from whichever of the label/arrows is actually taller so the arrows
@@ -1969,8 +1980,8 @@ than the caller's requested budget) for its own layout math.
 
 - **Every guardian the player has met stands in the Lab as their own avatar, and clicking one
   opens that guardian's panel directly.** The avatar is the same `art/<guardian>.ts` builder
-  their overworld sprite and their panel's own header portrait use, drawn at scale `0.45` --
-  small enough to sit in a `88x64` slot, still distinct enough that ten of them read as ten
+  their overworld sprite and their panel's own header portrait use, drawn at scale `0.55` --
+  small enough to sit in an `88x72` slot, still distinct enough that ten of them read as ten
   different figures. Registry `metGuardians` decides who is present; Superposition Mode stands
   all ten regardless.
 - **Ten fixed slots, five per cluster, in the two upper corners.** Each cluster is stacked one
