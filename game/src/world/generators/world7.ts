@@ -76,5 +76,5 @@ export function generateWorld7Map(gridW: number, gridH: number, start: GridPoint
   const midEntry = history[Math.floor(history.length / 2)];
   const mid = { x: Math.round(midEntry.laneCenters[Math.floor(laneCount / 2)]), y: midEntry.y };
 
-  return { walkable, start, goal, mid, regionColor: makeColorGrid(gridW, gridH), biomeOverride: makeColorGrid(gridW, gridH) };
+  return { walkable, start, goal, mid, regionColor: makeColorGrid(gridW, gridH), biomeOverride: makeColorGrid(gridW, gridH) , vortexCores: [] };
 }

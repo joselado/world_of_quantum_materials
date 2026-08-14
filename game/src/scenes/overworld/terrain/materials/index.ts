@@ -1,8 +1,14 @@
 import type { AccentDraw, OffPathKind } from '../types';
 import { drawRockAccent } from './rock';
+import { drawForestAccent } from './forest';
+import { drawColumnsAccent } from './columns';
+import { drawDeadFloorAccent } from './deadFloor';
+import { drawChargedAccent } from './charged';
 import { drawLavaAccent } from './lava';
-import { drawWaterAccent } from './water';
-import { drawVoidAccent } from './void';
+import { drawIceAccent } from './ice';
+import { drawShardsAccent } from './shards';
+import { drawFogAccent } from './fog';
+import { drawConsumingAccent } from './consuming';
 
 // One off-path material per module, reached through this table. Every
 // impassable tile is flat ground in its biome's own off-path color, sitting in
@@ -16,7 +22,13 @@ import { drawVoidAccent } from './void';
 // the paint pass itself has to change.
 export const TERRAIN_ACCENTS: Record<OffPathKind, AccentDraw | null> = {
   solid: drawRockAccent,
+  forest: drawForestAccent,
+  columns: drawColumnsAccent,
+  deadFloor: drawDeadFloorAccent,
+  charged: drawChargedAccent,
   lava: drawLavaAccent,
-  water: drawWaterAccent,
-  void: drawVoidAccent,
+  ice: drawIceAccent,
+  shards: drawShardsAccent,
+  fog: drawFogAccent,
+  consuming: drawConsumingAccent,
 };

@@ -1209,7 +1209,7 @@ export class BattleScene extends Phaser.Scene {
   // glowing at a scorched world's horizon), never per-shape shading.
   private drawColorGrade(g: Phaser.GameObjects.Graphics, biome: Biome) {
     switch (biome.wallTheme) {
-      case 'water': {
+      case 'ice': {
         // Cool cyan wash deepening down the field, as if lit through ice.
         const cool = 0x3a8ab8;
         g.fillGradientStyle(cool, cool, cool, cool, 0, 0, 0.1, 0.1);
@@ -1226,11 +1226,12 @@ export class BattleScene extends Phaser.Scene {
         g.fillRect(0, HORIZON_Y, FIELD_W, 70);
         break;
       }
-      case 'void': {
-        // Deepen the zenith toward true void so the sky reads bottomless.
-        const deep = 0x060618;
-        g.fillGradientStyle(deep, deep, deep, deep, 0.22, 0.22, 0, 0);
-        g.fillRect(0, 0, FIELD_W, Math.round(HORIZON_Y * 0.6));
+      case 'shards': {
+        // Aurora green pooled along the horizon, the only light this world
+        // has left and emitted rather than received.
+        const aurora = 0x3fd97a;
+        g.fillGradientStyle(aurora, aurora, aurora, aurora, 0, 0, 0.1, 0.1);
+        g.fillRect(0, HORIZON_Y - 70, FIELD_W, 70);
         break;
       }
       default: {
@@ -1316,8 +1317,8 @@ export class BattleScene extends Phaser.Scene {
 
   // Scattered pebbles and ground tufts across the field so the ground
   // reads as textured, not a flat gradient fill -- tufts tint off the
-  // biome's path color (grass green in the meadow, icy blue in the frozen
-  // caverns, ...) rather than a hardcoded grass green everywhere.
+  // biome's path color (pale wheat in the Mean Fields, swept ice on the
+  // Vortex Glacier, ...) rather than a hardcoded grass green everywhere.
   private drawGroundDetail(biome: Biome) {
     const g = this.add.graphics();
     // Spread across the field's visible width, staying just inside the

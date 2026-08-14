@@ -4,12 +4,9 @@ Work list for making the overworld continuous to the horizon and turning the
 world-to-world connections into geography. The spec is `WORLDS.md` §4, which is
 the authority; this file is the checklist. Delete it once the work has landed.
 
-**Ordering against the retheme.** Stages A and B are independent of
-`WORLDS_BUILD_TASK.md` and are built — they fix a live complaint and touch none
-of the theming. Stages C–F depend on the retheme, because a world's distant
-self *is* its impassable surround restated at horizon scale, and those surrounds
-do not exist until the retheme builds them. Do not author distant selves against
-the current biomes; they will be thrown away.
+**Ordering against the retheme.** Stages A, B and C are built, on top of the
+retheme — a world's distant self *is* its impassable surround restated at
+horizon scale, so the two were authored in one pass. Stages D–F remain.
 
 ---
 
@@ -21,7 +18,7 @@ Build in this order. Each stage is shippable on its own.
 |---|---|---|---|
 | **A** | Depth continuity — land reaches the horizon | nothing | **built** |
 | **B** | Haze inheritance — the air ahead becomes the next world's air | A | **built** |
-| **C** | Distant selves — per-world horizon profiles, composed into neighbours | retheme, A | composition + atmosphere **built**; profiles to do |
+| **C** | Distant selves — per-world horizon profiles, composed into neighbours | retheme, A | **built** |
 | **D** | Gate apertures — state-signalled pass, ground seam | C | to do |
 | **E** | Depth-projected flanks — the approach into the pass | D | **deferred** |
 | **F** | The Lab door, then the Qumatuomi sky | D (Lab quotes its grammar) | to do |
@@ -54,11 +51,16 @@ stage drawing at depth must keep true:
   or it double-counts.
 
 **A known limit, so it is not refiled as a bug.** Faint contour striping is
-visible in the mid-distance ground (roughly y 257–310 on screen), strongest in
-the shut states of the bright worlds. It is **row-fill quantization**: each
-projected grid row paints as one flat colour, so the depth fog can only step
-between rows rather than vary across them. It is game-wide, not a property of
-any one world, and at 1× it has to be hunted for on a clean display. The
+visible in the mid-distance ground, strongest in the shut states of the bright
+worlds. It is **row-fill quantization**: each projected grid row paints as one
+flat colour, so the depth fog can only step between rows rather than vary
+across them. The worst per-row step is about 15 luminance around depth ratio
+0.7, of which roughly a quarter survives the horizon band's wash over it, in a
+band about 6px tall. Those numbers are properties of the depth schedule and the
+row count, not of the horizon line: raising or lowering `HORIZON_Y` stretches
+the same steps over more or fewer pixels and changes neither the step nor how
+much of it the wash covers. It is game-wide, not a property of any one world,
+and at 1× it has to be hunted for on a clean display. The
 arrangement that keeps it that small is described in `CODEMAP.md`'s "Reaching
 the horizon" — a gentle near/mid falloff with the steepness spent late, under a
 band whose reach is derived to cover it. Anyone wanting to push further has two
@@ -76,48 +78,31 @@ haze inheritance").
 input is `isRivalDefeated()` until stage D builds the aperture itself; when it
 does, that is the single call to re-point.
 
-## C — Distant selves
+## C — Distant selves — built
 
-One asset per world: a silhouette profile plus a base colour and a swallow.
-**Not two.** A world's forward horizon is composed at render time from its
-neighbour's distant self; the same asset is what that world wears on its own
-horizon. If B and C are implemented as separate assets they will drift.
+One asset per world, authored once: a profile in `art/horizons.ts` plus a base
+colour and a swallow on that world's `Biome` entry. World N's forward horizon
+is composed at render time from world N+1's, and each profile is that world's
+own impassable surround restated at horizon scale — column teeth, stepped
+plateaus, random vertical pressure ridges, a uniformly leaning sawtooth with a
+flip at the domain wall, a notched glow-veined ridge. `STYLE.md`'s "The
+horizon" is the rule; `CODEMAP.md`'s "The mist band and the distant self" and
+"Per-world horizon shapes" are the code.
 
-The composition system, the atmosphere the silhouette is drowned in, and the
-swallow knob are built (`scenes/overworld/sky.ts`'s `drawDistantSelf`,
-`art/biomes.ts`'s `hillColor`/`hillAlpha`). What is left is the **shape**: the
-profile is still the two-sine placeholder shared by every world, which gives
-every world the same hills in a different colour — a standing violation of the
-theming independent of this task. Author per-world profiles against the retheme
-and hand them to `silhouetteHeight`.
+Two things beyond the silhouette landed with it, because WORLDS.md §4 requires
+distant selves a filled outline cannot state. A per-world **sky extra** on the
+same entry carries the Storm Flats' arc-flashes (the resolved Edge Cliffs →
+Storm Flats adjacency, both worlds being flat by identity) and the Entangled
+Web's filament glints, which at swallow zero are its entire distant self. A
+separate `OVERHEAD_SKIES` table carries motifs read from the world the player
+is **standing in** rather than from its neighbour — the Iron Steppe's aurora.
+The two answer different questions and are deliberately not one table. The
+Storm Flats' own storm is in neither: it is an event that lands, drawn with the
+terrain it strikes (`terrain/materials/charged.ts`).
 
-Requirements from `WORLDS.md` §4:
-
-- A distant self is **that world's impassable surround at horizon scale**, not a
-  hill variation. Column teeth, leaning shard rows, a cracked glow-veined ridge.
-- **No backward variants.** The camera never turns. The arrival beat is obtained
-  instead by bleeding the previous world's ground palette into the first few
-  margin rows on entry.
-- **The Entangled Web** has no surround; its distant self is an absence with
-  structure — the sky ending, thin white-gold filament glints in blackness.
-- **The Devouring Mirror's horizon is the Qumatuomi sky** (stage F), not a
-  silhouette. An earlier draft of the spec said its horizon should be itself;
-  that is superseded and must not also be built.
-- **The adjacency rule applies**: adjacent distant selves must differ in
-  shape-language or sky-activity, never in hue alone. Two pairs are already
-  resolved in the spec and their resolutions are requirements, not suggestions —
-  the Storm Flats' arc-flashes (because Edge Cliffs → Storm Flats cannot differ
-  on shape, both being flat by locked identity), and the Iron Steppe's uniform
-  ~30° lean with a flip at one point (the domain wall) against the glacier's
-  random vertical ridges.
-
-A new profile inherits the whole atmosphere contract already in place and must
-not fight it: shape and base colour only, no baked fog, and a swallow that keeps
-the band inside its value budget or goes to zero. `STYLE.md`'s "The horizon" is
-the rule; `CODEMAP.md`'s "The mist band and the distant self" is the code.
-
-Worlds 7, 8 and 10 are already at swallow zero and stay there — their horizons
-are meant to be empty, so they need no profile.
+Worlds 7, 8 and 10 are at swallow zero and show no silhouette; 7 still draws
+its glints, which is why "no profile" and "no distant self" are not the same
+thing.
 
 ## D — The pass, its guard and its board
 
@@ -224,6 +209,64 @@ dressing, not terrain):
   skippable if it reads even slightly like a readout.
 
 ---
+
+## Open, measured, and deliberately not acted on
+
+Each of these was found by measurement and left as it stands. The measurement
+is the useful part; none blocks anything else.
+
+**The sky is 23% of the frame but reads as more.** `HORIZON_Y` is 110 of 480.
+The last ground row lands at y=180, though, because the horizon band owns the
+70px between the line and it — so 37.5% of the frame is above the deepest
+terrain. That band is structural: rows compress below a pixel before they
+reach the line, and something has to own the strip they cannot. `FOCAL` is a
+weak lever on it (dropping 2.2 to 1.2 moves 37.5% only to 31.6%, at the cost
+of squashing the near ground), so if the sky must shrink further, the lever is
+the fog schedule's late steepness or a per-pixel ground gradient, not the
+projection.
+
+**Row-fill quantization is unchanged by the horizon line, and now measured.**
+Worst per-row step about 15 luminance around depth ratio 0.7, roughly a
+quarter of it surviving the band's wash. Moving `HORIZON_Y` spreads the same
+steps over taller bands (4.8px to 6.2px) without changing the step. Every
+relation in the schedule is expressed in depth fractions, so the band's own
+proportions are identical at any horizon line — `solidT` and the wash alpha
+over a given row do not move at all.
+
+**The Vortex Glacier's flow-lines do not do what `WORLDS.md` §2 promises.**
+That entry requires streaks that "bend around and away from the bulk and
+converge only into the vortex pits" — field expulsion drawn as terrain. What
+`terrain/decoration.ts`'s `flowLines` branch draws is `sin(gx * 0.55)`, a
+ripple keyed to grid column alone, with no reference to a core or to the
+corridor. This is a binding-doc conflict and wants a ruling rather than a
+quiet edit either way: the honest options are to build the bow properly or to
+lower what §2 promises. Building it is now cheap, since the cores are already
+plumbed to the renderer (`vortexCores`) and only need reaching from the
+decoration pass.
+
+**The vortex pit's trapped-flux glow is below the visibility floor.** The pit's
+dark rim and lip read as a hole in the ice at native size; its interior
+measures 56–75 luminance with no pixel brighter than the surrounding ice, so
+the glow is a tint in the dark rather than light. It wants a small cyan core a
+few levels *above* the ice, not a blend toward it.
+
+**Two distant selves are weak on shape.** Measured as in-row contrast (the
+silhouette against the air beside it on the same scanline, which is what makes
+a profile legible as a *shape* rather than as a band): world 3's cliff
+plateaus seen from world 2 read 1.8 and are invisible at native contrast, and
+world 2's colonnade seen from world 1 reads 4.2 and is the one profile that
+still reads as a border pasted on the sky. The vertical budget is fine for both
+(the excursion from the mist is 10.2 and 8.3), so this is a shape problem, not
+a value one: lift world 3's relief or swallow, or take it to zero deliberately.
+For reference the rest are world 4's storm line 0.0 (flat by identity, carried
+by its arc-flashes instead), world 6's shard sawtooth 5.2, world 9's scar ridge
+27.4.
+
+**The Iron Steppe's aurora is cramped at the short sky.** Rescaled to fit, it
+runs from just clear of the shard crests to the top of the frame with no hard
+cut, but at 60px tall the sway and fold the slice structure is built for do not
+survive, and it reads closer to a few dim bands than to a curtain. Lifting its
+alpha or letting the lowest slices reach further down are both open.
 
 ## Verification
 

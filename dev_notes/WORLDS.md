@@ -6,9 +6,11 @@ remains the source of truth for each world's *map shape* (its generator motif)
 and its progression gate; this file covers everything above that — naming,
 terrain, palette, light, and the story the sequence tells.
 
-**Implementation status:** the fiction below is settled; the code is not yet
-moved onto it. `data/materials.ts`'s `WORLD_NAMES` and `art/biomes.ts` still
-carry the previous theming. `WORLDS_BUILD_TASK.md` holds the work list.
+**Implementation status:** the fiction below is settled and the code is on it —
+`data/materials.ts`'s `WORLD_NAMES`, `art/biomes.ts`, `art/horizons.ts` and the
+per-material modules under `scenes/overworld/terrain/materials/`. §4's remaining
+stages (gate apertures, depth-projected flanks, the Lab door and the Qumatuomi
+sky) are tracked in `HORIZON_BUILD_TASK.md`.
 
 ---
 
@@ -121,9 +123,9 @@ Two ramps run in parallel, and both are legible in a screenshot cropped to the
 player's feet.
 
 **What the impassable terrain is** — from "you just wouldn't walk there" to "it
-would kill you": forest → stone → a drop → charged ground → ice and pits →
-iron shards → nothing at all → fog that takes you → molten crust → terrain that
-consumes.
+would kill you": forest → stone → a drop → ground the storm strikes → ice and
+pits → iron shards → nothing at all → fog that takes you → molten crust →
+terrain that consumes.
 
 **What the walkable ground is** — from ground *built for walking* (a field
 path, a tiled aisle), to ground that merely *happens to be traversable* (ice,
@@ -141,7 +143,7 @@ A world where neither spine holds is a world that will read as placeholder art.
 | 1 | **The Mean Fields** | wheat / mown grass | dense summer forest | bright morning |
 | 2 | **The Stone Lattice** | mosaic-tiled aisle | rows of identical sandstone columns | hard midday sun |
 | 3 | **The Edge Cliffs** | a lit ledge that visibly flows | shallow drop to sunken dead floors | bright, windy, motionless afternoon |
-| 4 | **The Storm Flats** | banded indigo ground, glowing boundary channels, orbit rings | charged field-line arcs overhead | stormy dusk |
+| 4 | **The Storm Flats** | banded indigo ground, glowing boundary channels, orbit rings | ground the storm strikes | stormy dusk |
 | 5 | **The Vortex Glacier** | swept ice, flow-lines bending away from the bulk | frozen lake, vortex pits with trapped-flux glow | overcast twilight |
 | 6 | **The Iron Steppe** | black iron-sand, rippling | aligned iron shards, flipping across a domain wall | night, green aurora |
 | 7 | **The Entangled Web** | white-gold filaments and rungs | true void | no sky |
@@ -208,20 +210,35 @@ the texture of dead matter rather than as a rendering artifact.
 Discrete flat colour bands underfoot in a single-hue indigo ramp, a soft dark
 strip along each band's lower boundary, and a glowing channel at every boundary
 — which is not decoration but the subject, since edge channels live between
-filled Landau levels. Quantised orbit rings are the ground decoration. Overhead,
-charged field-line arcs crack across a stormy dusk.
+filled Landau levels. Quantised orbit rings are the ground decoration.
 
 Landau levels *are* dispersionless flat bands, so "Flats" is the physics, not
 the weather — the same trick as "Mean Fields", where the terrain noun is also
 the term of art. It is also the honest terrain noun for an engine that cannot
 draw a hill.
 
-Two things are load-bearing rather than optional here. **The orbit rings stay**:
+**The impassable ground is the ground the storm strikes**, and sky and surround
+are one event rather than two features: a forked bolt cracks down out of the
+dusk every few seconds, lands in the off-path ground, and lights it for as long
+as it lasts, leaving the burn scars the field is textured with. That is the
+escalation spine stated in a single image — nobody has to be told why not to
+walk there — and it is why this world sits between a drop and a glacier. **A
+strike never lands on the walkable path**; one that did would say the opposite
+of everything the world means.
+
+Two constraints hold it there. **Occasional, never strobing** — a strike is an
+event, and a continuously flickering frame competes with the fight and is
+unpleasant to play under. And the flash stays **local to the tile it hits**: it
+is momentarily the brightest thing on screen, and gameplay owns the extremes, so
+the route and the player's own crystal have to keep their values through one.
+Light falling on struck ground is honest here, since the sun is gone but the sky
+is not — the light rule only forbids received light from World 7 on.
+
+Two other things are load-bearing rather than optional. **The orbit rings stay**:
 with the name no longer saying "orbit", the rings are the only thing left
-teaching the mechanism. **The overhead arcs stay**: the ground is a diagram, so
-the sky has to be the violence, or this becomes the one world that reads as a
-chart. The boundary shadow strips are lighting, not landform — they give flat
-bands material depth without promising elevation the engine can't deliver.
+teaching the mechanism. And the boundary shadow strips are lighting, not
+landform — they give flat bands material depth without promising elevation the
+engine can't deliver.
 
 ### 5 — The Vortex Glacier *(superconductivity, Nambu, Majorana)*
 
@@ -485,10 +502,16 @@ world's ground palette into the first few margin rows on entry.
 
 **A distant self is that world's impassable surround restated at horizon scale**
 — column teeth for the Stone Lattice, leaning shard rows for the Iron Steppe, a
-cracked glow-veined ridge for the Defect Scars. This is the same asset that
-serves as the world's own horizon when standing in it, which is why it is
-authored once. A generic hill profile in a different colour per world fails this
-rule: it is the theming *not* made visible at distance.
+cracked glow-veined ridge for the Defect Scars. A generic hill profile in a
+different colour per world fails this rule: it is the theming *not* made visible
+at distance.
+
+**A world never sees its own distant self.** Standing in world N the horizon
+composition draws world N+1's and nothing else, so a world's own statement of how
+it looks from outside is only ever rendered by whoever is looking at it. World 1's
+entry is therefore authored and never composed into anyone's horizon: nothing
+precedes it, and it has no view behind. What a world shows above its own horizon
+line is its air, its overhead motif and its neighbour — never a portrait of itself.
 
 **The swallowed set** — the worlds whose distant self is no silhouette at all:
 
@@ -795,7 +818,7 @@ Recorded so they are not rediscovered as surprises:
 
 - **World 4 is the world most at risk of reading as graphic design.** Flat
   bands, flat glow lines and flat rings on a flat plane. The boundary shadow
-  strips and overhead arcs are what keep it material; if either is dropped, the
+  strips and the strikes are what keep it material; if either is dropped, the
   world regresses immediately.
 - **"The Edge Cliffs" is the one name whose verification is pending on
   rendering.** A cliff is the one landform this engine can only imply. The

@@ -67,10 +67,12 @@ game/src/
                                  of that plan, including the lateral/depth margins, the contact
                                  shadow and the chokepoint glow
         color.ts               groundColor(), the depth haze every ground fill goes through
-        decoration.ts          decorateTile(), the per-biome motif on a decorated path tile
+        decoration.ts          decorateTile(), the per-biome motif on a decorated walkable tile
         materials/             One module per off-path material behind a dispatcher (see
-                                 "Off-path terrain materials" below): rock.ts, lava.ts, water.ts,
-                                 void.ts, and index.ts's TERRAIN_ACCENTS table
+                                 "Off-path terrain materials" below): rock.ts, forest.ts,
+                                 columns.ts, deadFloor.ts, charged.ts, ice.ts, shards.ts,
+                                 fog.ts, lava.ts, consuming.ts, and index.ts's
+                                 TERRAIN_ACCENTS table
     panels/                    One file per guardian's panel UI (see "Guardian panels" below),
                                  e.g. noether.ts's showNoetherShop(), sklodowskaCurie.ts's
                                  showSklodowskaCuriePanel(), anderson.ts's showAndersonPanel() --
@@ -134,12 +136,15 @@ game/src/
   world/
     mapgen.ts                  generateWorldMap(gridW, gridH, start, world, playerType?) -- dispatches
                                   to generators/world<N>.ts by world number (world 10 additionally by
-                                  playerType, see generators/world10.ts), then runs two passes common
+                                  playerType, see generators/world10.ts), then runs three passes common
                                   to all ten: forceChokepoint (walls off the guardian's row except a
                                   small gap, so the returned `mid` is a true articulation point --
-                                  invariant B) and deriveRows/scatterTokens (encounter-row sampling +
-                                  qumatessence placement, computed from the final walkable grid rather
-                                  than something each generator handles itself). Retries a failing
+                                  invariant B), narrowGoalPass/openStartMouth (the corridor tapers into
+                                  a pass at the goal and out of the same pass at the start), and
+                                  deriveRows/scatterTokens (encounter-row sampling + qumatessence
+                                  placement, computed from the final walkable grid rather than
+                                  something each generator handles itself, and kept out of both
+                                  passes via passZoneRows). Retries a failing
                                   generator (reachability or chokepoint check fails) with fresh
                                   randomness up to 10 times before falling back to generators/fallback.ts's
                                   plain corridor, console.error-ing rather than throwing -- generation
@@ -155,13 +160,15 @@ game/src/
                                   optionally regionColor-tinted), paintColumnBand (paintBand's vertical
                                   mirror, world4.ts's horizontal branches), carveThickPath/nearestWalkable
                                   (splicing a fixed point into a network-shaped layout that doesn't
-                                  already touch it, world3.ts/world5.ts), and the invariant-B primitives
-                                  (forceChokepoint/reachable/verifyChokepoint) mapgen.ts runs centrally
+                                  already touch it, world3.ts/world5.ts), the invariant-B primitives
+                                  (forceChokepoint/reachable/verifyChokepoint) mapgen.ts runs centrally,
+                                  and the pass taper (narrowGoalPass/openStartMouth/passZoneRows) that
+                                  makes world N's entry the same geography as world N-1's exit
       fallback.ts                generateFallbackMap() -- the plain wide wandering corridor with no
                                   per-world motif of its own; mapgen.ts's retry-exhausted fallback, also
                                   the base shape world6.ts/world9.ts build their own motif on top of
       world1.ts .. world10.ts    One file per world's own generator (GeneratedMap: walkable/start/goal/
-                                  mid/regionColor/biomeOverride), each implementing that world's own
+                                  mid/regionColor/biomeOverride/vortexCores), each implementing that world's own
                                   course-topic motif -- see DESIGN.md §2's per-world table for what each
                                   one is. world10.ts dispatches to whichever of world1-8's own generator
                                   matches the player's current Material.type (data/materials.ts's
@@ -172,7 +179,12 @@ game/src/
                                   CANVAS_W/CANVAS_H from config/screen.ts since every
                                   scene/panel that needs the canvas size already imports it
                                   from here
-    biomes.ts                  Per-world visual skin (sky, off-path ground, path, decoration, fog, wallTheme)
+    biomes.ts                  Per-world visual skin (sky, off-path ground, path, decoration,
+                                  fog, cloud drift, flat-band ramp, wallTheme, distant-self
+                                  colour/swallow)
+    horizons.ts                Per-world distant-self profiles, their sky extras, and the
+                                  separate OVERHEAD_SKIES motifs read from the world stood in
+    trees.ts                   The shared tree sprite, drawn by worlds 1 and 8 in two palettes
     contours.ts                Smoothed walkable/impassable boundary geometry in tile space --
                                   per-tile ground outline, contact-shadow strips, rim light --
                                   built once per world-state by OverworldScene's cached terrain
@@ -1198,11 +1210,18 @@ through `showGatePanel`, not by reaching for `renderShopFooter` directly.
 **Overworld terrain rendering.** Painting the corridor floor splits in two, and new terrain work
 belongs on one side or the other. `scenes/overworld/terrain/plan.ts`'s `buildTerrainPlan(src)`
 (reached through `OverworldScene`'s memoizing `terrainPlan()` accessor) reads the grid
-(`walkable`/`regionColor`/`biomeOverride`/`flowerMap`/`midTile`) and classifies every tile into a
-`TerrainTile`: its kind (`path`/`solid`/`lava`/`water`/`void`, where a region tint outranks the
-biome's own `wallTheme` -- `offPathKindOf` is the single resolution both the plan and the lateral
-margin use), its resolved `Biome`, its region tint, and whether it carries
-decoration or the guardian-chokepoint highlight. That pass is camera-independent, so it covers
+(`walkable`/`regionColor`/`biomeOverride`/`vortexCores`/`flowerMap`/`midTile`) and classifies every
+tile into a `TerrainTile`: its kind (one per off-path material, resolved from the biome's own
+`wallTheme` by `offPathKindOf`, which is the single resolution both the plan and the lateral margin
+use), its resolved `Biome`, its region tint, whether it carries decoration or the
+guardian-chokepoint highlight, and whether it is a `vortexCore` -- a tile world 5's generator
+placed as one and the finished grid still has blocked, which `materials/ice.ts` draws as a pit.
+That last one comes down from the generator rather than being recognised from the shape, and
+deliberately so: a blocked tile ringed by walkable ground is also what an ordinary corridor pinch
+and a forced chokepoint's wall look like, so inference draws pits where the world has none and
+misses the ones it is named for. A region tint *colors* its biome's material rather than replacing it:
+the Edge Cliffs' two dead domain hues are its sunken floors, and that world needs the tint and the
+crystalline stipple at once. That pass is camera-independent, so it covers
 the whole grid rather than just the visible window -- a shape spanning the window edge stays one
 continuous shape -- and the whole `TerrainPlan` (tiles, `farEdgeRow`, contours) is cached in
 `OverworldScene.terrainPlanCache` for as long as the grid stands
@@ -1333,9 +1352,12 @@ nothing in the frame can disagree about what color the air is: a whole-sky tint,
 `drawHorizonBand`, then -- above the horizon line -- the sky's graduation into the fog and
 `drawDistantSelf`. The sky pass is the fog color at full strength from `SKY_BLEND_FULL` above the
 line down to the line itself, feathering out smoothstepped over the `SKY_BLEND_H` above that. Its
-full-strength height clears `DISTANT_HEIGHT`, the tallest crest a silhouette reaches, which is
+full-strength height clears `MAX_CREST`, the tallest crest a silhouette reaches, which is
 load-bearing rather than cosmetic: a silhouette drowned to within a few values of the fog while its
-backdrop is still forty values off the fog reads as the same slab an undrowned one would.
+backdrop is still forty values off the fog reads as the same slab an undrowned one would. The
+feather is what is left of the sky once that stretch and `SKY_CLEAR_H` of the world's own untouched
+sky have been paid for, rather than a height of its own -- `HORIZON_Y` sits high in the frame, so a
+mist sized independently of it would run off the top and take the sky's own colour with it.
 
 Two things keep that stretch from reading as a panel laid over the picture. The mist is not one
 color: `drawDepthHaze`'s `tone(y)` drifts it toward the world's own `skyTop` by `MIST_LIFT` as it
@@ -1358,7 +1380,8 @@ the same reason its ends are: a ramp that starts falling the instant the opaque 
 readable line there, the eye finding where a gradient stops changing as easily as it finds an edge.
 
 `drawDistantSelf` composes world N's forward horizon out of world N+1's authored distant self --
-`BIOMES[world + 1]`'s `hillColor` (base) and `hillAlpha` (swallow), never the standing world's own,
+`BIOMES[world + 1]`'s `hillColor` (base) and `hillAlpha` (swallow) plus `DISTANT_SELVES[world + 1]`'s
+profile in `art/horizons.ts`, never the standing world's own,
 and `BIOMES` rather than `getBiome` so World 10 draws nothing instead of falling back to the
 meadow. A zero swallow draws nothing at all (Worlds 7, 8 and 10; see `art/biomes.ts` and
 `WORLDS.md` section 4 for why each). The fill is that base blended `DISTANT_DROWN` of the way into
@@ -1374,17 +1397,54 @@ them overlap, so the knob means what it says. `BattleScene`'s ridgelines borrow 
 per-world tone but not `hillAlpha`, which is the overworld's swallow and means nothing in a near
 view.
 
+**Per-world horizon shapes** live in `art/horizons.ts`, alongside two things a filled outline
+cannot say. `DISTANT_SELVES[w].points` is that world's profile as an explicit polyline (screen x,
+crest height above the horizon line), authored rather than sampled so a hard-edged surround stays
+hard at a handful of points; `MAX_CREST` bounds every crest, and `sky.ts`'s `SKY_BLEND_FULL` is
+derived from it so the mist always clears the tallest one. `DISTANT_SELVES[w].sky` is an optional
+extra drawn over the mist for the *neighbour's* horizon (the Storm Flats' arc-flashes, the
+Entangled Web's filament glints, which at swallow zero are its whole distant self).
+`OVERHEAD_SKIES[w]` is the separate table read from the world the player is **standing in** rather
+than from its neighbour -- the Iron Steppe's aurora. The two tables answer different questions and
+must not be merged. The Storm Flats is deliberately absent from both: its storm is an event that
+lands rather than a sky motif, so it is drawn with the terrain it strikes (`drawStormStrikes` in
+`terrain/materials/charged.ts`, called from `drawTerrain` after `drawDepthHaze` -- a bolt has to
+be painted over the atmosphere it crosses, and it reads the terrain plan so it can only ever land
+on an impassable tile).
+
 **Off-path terrain materials.** One module per material under
 `scenes/overworld/terrain/materials/`, the same "one file per thing" convention the guardian
-avatars follow: `rock.ts`, `lava.ts`, `water.ts`, `void.ts`, reached through `index.ts`'s
-`TERRAIN_ACCENTS` table keyed by `OffPathKind`. Every impassable tile is flat ground in its
+avatars follow: `rock.ts`, `forest.ts`, `columns.ts`, `deadFloor.ts`, `charged.ts`, `ice.ts`,
+`shards.ts`, `fog.ts`, `lava.ts`, `consuming.ts`, reached through `index.ts`'s `TERRAIN_ACCENTS`
+table keyed by `OffPathKind`. Every impassable tile is flat ground in its
 biome's own off-path color, in the same plane as the walkable floor; what its material decides is
 only the accent laid over that fill, so each world's impassable terrain reads as its own
 substance while the "you cannot walk here" signal (the color break plus the contact shadow and rim
 light) stays identical everywhere. An accent receives an `AccentTile` -- the tile's projected
-outline for a full-tile wash, its screen centre, its depth scale, and the scene clock -- which
-`paint.ts` builds only for a material that actually draws, so a bare-ground tile costs nothing
-beyond its fill. `rock.ts` is exactly that case and maps to `null`. Adding a material means adding
+outline for a full-tile wash, its screen centre and depth scale, its own grid coordinates, whether
+it is a vortex core, its depth ratio and live fog target, the detail-pass falloff, the player's
+crystal colour and the scene clock -- which `paint.ts` builds only for a material that actually
+draws, so a bare-ground tile costs nothing beyond its fill. `rock.ts` is exactly that case and
+maps to `null`.
+
+Three of those fields are the ones a new material most often gets wrong. **Grid coordinates**, not
+screen ones, are what make a feature stand still in the world: anything anchored to the map (the
+Iron Steppe's shards leaning one way until the domain wall, the Vortex Glacier's pits) must derive
+its geometry from `gx`/`gy`, since a feature phased off `cx`/`cy` swims across the ground as the
+camera moves. **`haze` and `depth`** are how a material recedes into the same air as the ground
+under it; ignoring them stands a world's palette straight up against the mist at the last row
+drawn, undoing for the accent pass what the fill pass is careful to do. And **`detail`** fades over
+the last stretch before accents stop being drawn at all, which is what keeps a material from ending
+on a visible line across the middle distance -- most obvious with trees, where the cutoff otherwise
+reads as the wood being mown flat at a fixed range.
+
+`art/trees.ts` is the game's one shared terrain sprite, drawn by the Mean Fields' `forest` and the
+Splitting Hollow's `fog` in two palettes. That sharing is a story beat rather than an optimization
+-- the wood skirted at the start is the thing the player is lost inside near the end, and it only
+lands if the trees are recognisable -- so a change there changes both worlds at once, which is the
+coupling wanted. Trees, columns and shards stand up off the ground plane; the plane itself stays
+flat everywhere (`STYLE.md`'s "Overworld path"). They get their occlusion free from the sweep
+painting far-to-near, with no height field and no repaint pass. Adding a material means adding
 a module and a table entry (plus the `wallTheme` in `art/biomes.ts` and the matching `TerrainKind`
 in `terrain/types.ts`); nothing in the paint pass itself changes, and two people can add two
 materials without touching the same file.

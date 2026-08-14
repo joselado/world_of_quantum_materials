@@ -1074,7 +1074,7 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // entry specifically means the thin-film phase.
     crystal('Hafnium Oxide', 'ferroelectric', ['ferronPulse', 'thermalFluctuation'], 2, undefined, 'HfO₂'),
   ],
-  // The meta-world's wilds are exactly the game's named hybrid materials --
+  // The Devouring Mirror's wilds are exactly the game's named hybrid materials --
   // every HYBRID_RECIPES result and nothing else -- so the corridor plays
   // back the player's own fusions/discoveries literally, not just as flavor
   // text. Worlds 1-9 never spawn a hybrid-recipe result as an ordinary wild
@@ -1574,16 +1574,16 @@ export function combineMaterials(a: Material, b: Material): Material {
 // terrain -- a player should be able to tell which course topic a world
 // covers just from its name.
 export const WORLD_NAMES: Partial<Record<number, string>> = {
-  1: 'Mean-Field Meadow',
-  2: 'Bloch Caverns',
-  3: 'Topological Islands',
-  4: 'Landau Level Terrain',
-  5: 'Frozen Zero-Resistance Caverns',
-  6: 'Magnon Plains',
-  7: 'Tensor-Network World',
-  8: 'Spinon Forest',
-  9: 'Defect Wastes',
-  10: 'The Adaptive Meta-World',
+  1: 'The Mean Fields',
+  2: 'The Stone Lattice',
+  3: 'The Edge Cliffs',
+  4: 'The Storm Flats',
+  5: 'The Vortex Glacier',
+  6: 'The Iron Steppe',
+  7: 'The Entangled Web',
+  8: 'The Splitting Hollow',
+  9: 'The Defect Scars',
+  10: 'The Devouring Mirror',
 };
 
 // The player-facing name of a world, for every place one is shown by name --

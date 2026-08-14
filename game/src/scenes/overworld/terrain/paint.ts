@@ -9,8 +9,9 @@ import { drawDepthHaze, hazeTarget } from '../sky';
 import { groundColor } from './color';
 import { decorateTile } from './decoration';
 import { TERRAIN_ACCENTS } from './materials';
+import { drawStormStrikes } from './materials/charged';
 import { offPathKindOf } from './plan';
-import type { TerrainKind, TerrainTile, TerrainView } from './types';
+import type { AccentTile, TerrainKind, TerrainTile, TerrainView } from './types';
 
 // Thinnest projected row still worth painting, in screen pixels. The
 // projection is asymptotic, so rows keep compressing toward the horizon long
@@ -80,13 +81,14 @@ export function drawTerrain(view: TerrainView) {
       const fill = contour ? projectContour(contour.outline, camX, camY) : [pFL, pFR, pNR, pNL];
 
       if (tile.kind === 'path') {
-        let color = groundColor(tile.biome.path, depthRatio, walkableHazeTarget(view, tile.biome, depthRatio));
+        let color = groundColor(bandBase(tile.biome, tile.biome.path, y), depthRatio, walkableHazeTarget(view, tile.biome, depthRatio));
         if (tile.regionTint != null) color = blend(color, tile.regionTint, regionTintAt(depthRatio, 0.55));
         g.fillStyle(color, 1);
         g.fillPoints(fill, true);
+        drawBandBoundary(g, tile.biome, y, pFL, pFR, pNR, pNL, depthRatio);
         if (contour) drawContactShadow(g, contour, tile.biome, camX, camY, depthRatio);
         if (depthRatio < DETAIL_MAX_DEPTH && tile.decorate) {
-          decorateTile(g, view.biome, pFL, pFR, pNR, pNL);
+          decorateTile(g, view.biome, accentTile(false, fill, pFL, pFR, pNR, pNL, x, y, depthRatio, hazeTarget(view, tile.biome), view.playerColor, view.now));
         }
         if (tile.midHighlight) {
           // The glow falls off radially from the guardian's own tile, so the
@@ -97,11 +99,15 @@ export function drawTerrain(view: TerrainView) {
           drawMidHighlight(g, view, fill, depthRatio, 1 - 0.45 * spread);
         }
       } else {
-        drawOffPathTile(view, tile, fill, contour, pFL, pFR, pNR, pNL, depthRatio);
+        drawOffPathTile(view, tile, fill, contour, pFL, pFR, pNR, pNL, x, y, depthRatio);
       }
     }
   }
   drawDepthHaze(g, view);
+  // The Storm Flats' strikes cross the air as well as the ground, so they are
+  // drawn over the atmosphere rather than as a per-tile accent inside it --
+  // a bolt painted under the haze is a bolt the haze puts out.
+  if (view.biome.wallTheme === 'charged') drawStormStrikes(g, view);
 }
 
 // Projects a cached tile-space outline (art/contours.ts) at the current
@@ -185,12 +191,12 @@ function drawMarginRows(view: TerrainView, deepestRow: number) {
       const tile = edge[x];
 
       if (tile.kind === 'path') {
-        let color = groundColor(tile.biome.path, depthRatio, walkableHazeTarget(view, tile.biome, depthRatio));
+        let color = groundColor(bandBase(tile.biome, tile.biome.path, gy), depthRatio, walkableHazeTarget(view, tile.biome, depthRatio));
         if (tile.regionTint != null) color = blend(color, tile.regionTint, regionTintAt(depthRatio, 0.55));
         g.fillStyle(color, 1);
         g.fillPoints(fill, true);
       } else {
-        drawOffPathTile(view, tile, fill, null, pFL, pFR, pNR, pNL, depthRatio);
+        drawOffPathTile(view, tile, fill, null, pFL, pFR, pNR, pNL, x, gy, depthRatio);
       }
     }
   }
@@ -218,12 +224,12 @@ function drawMarginTile(view: TerrainView, edge: TerrainTile, gx: number, y: num
   const pNL = projectTile(laneL, depthNear);
   const fill = [pFL, pFR, pNR, pNL];
 
-  g.fillStyle(offPathColor(view, edge.biome, edge.regionTint, depthRatio), 1);
+  g.fillStyle(offPathColor(view, edge.biome, edge.regionTint, y, depthRatio), 1);
   g.fillPoints(fill, true);
 
   if (depthRatio <= DETAIL_MAX_DEPTH) {
-    const kind = edge.kind !== 'path' ? edge.kind : offPathKindOf(edge.biome, edge.regionTint);
-    drawAccent(g, kind, fill, pFL, pFR, pNR, pNL, view.now);
+    const kind = edge.kind !== 'path' ? edge.kind : offPathKindOf(edge.biome);
+    drawAccent(g, kind, fill, pFL, pFR, pNR, pNL, gx, y, edge.vortexCore, depthRatio, hazeTarget(view, edge.biome), view.playerColor, view.now);
   }
 }
 
@@ -300,14 +306,18 @@ function drawOffPathTile(
   pFR: ProjectedPoint,
   pNR: ProjectedPoint,
   pNL: ProjectedPoint,
+  gx: number,
+  gy: number,
   depthRatio: number
 ) {
   const g = view.gfx;
-  g.fillStyle(offPathColor(view, tile.biome, tile.regionTint, depthRatio), 1);
+  g.fillStyle(offPathColor(view, tile.biome, tile.regionTint, gy, depthRatio), 1);
   g.fillPoints(fill, true);
 
+  drawBandBoundary(g, tile.biome, gy, pFL, pFR, pNR, pNL, depthRatio);
+
   if (depthRatio <= DETAIL_MAX_DEPTH) {
-    drawAccent(g, tile.kind, fill, pFL, pFR, pNR, pNL, view.now);
+    drawAccent(g, tile.kind, fill, pFL, pFR, pNR, pNL, gx, gy, tile.vortexCore, depthRatio, hazeTarget(view, tile.biome), view.playerColor, view.now);
   }
 
   // The impassable side of the contact shadow, over the accent rather than
@@ -327,26 +337,120 @@ function drawAccent(
   pFR: ProjectedPoint,
   pNR: ProjectedPoint,
   pNL: ProjectedPoint,
+  gx: number,
+  gy: number,
+  vortexCore: boolean,
+  depth: number,
+  haze: number,
+  playerColor: number,
   now: number
 ) {
   if (kind === 'path') return;
   const accent = TERRAIN_ACCENTS[kind];
   if (!accent) return;
-  accent(g, {
+  accent(g, accentTile(vortexCore, fill, pFL, pFR, pNR, pNL, gx, gy, depth, haze, playerColor, now));
+}
+
+// The per-tile geometry every accent and every decoration works from: the
+// projected outline for a full-tile wash, the tile's centre and depth scale
+// on screen, where it sits on the grid, and the clock.
+function accentTile(
+  vortexCore: boolean,
+  fill: ProjectedPoint[],
+  pFL: ProjectedPoint,
+  pFR: ProjectedPoint,
+  pNR: ProjectedPoint,
+  pNL: ProjectedPoint,
+  gx: number,
+  gy: number,
+  depth: number,
+  haze: number,
+  playerColor: number,
+  now: number
+): AccentTile {
+  return {
+    vortexCore,
     fill,
     cx: (pFL.x + pFR.x + pNR.x + pNL.x) / 4,
     cy: (pFL.y + pFR.y + pNR.y + pNL.y) / 4,
     s: pNL.scale,
+    gx,
+    gy,
+    depth,
+    haze,
+    detail: detailFade(depth),
+    playerColor,
     now,
-  });
+  };
+}
+
+// The detail pass fades over its last stretch rather than stopping dead, so
+// no material ends on a line drawn across the middle distance.
+const DETAIL_FADE_FROM = DETAIL_MAX_DEPTH * 0.62;
+
+function detailFade(depth: number): number {
+  return Phaser.Math.Clamp((DETAIL_MAX_DEPTH - depth) / (DETAIL_MAX_DEPTH - DETAIL_FADE_FROM), 0, 1);
 }
 
 // The flat fill color of an impassable tile: the biome's own off-path
-// ground, hazed for depth, tinted toward a mapgen domain's color where the
-// tile belongs to one.
-function offPathColor(view: TerrainView, biome: Biome, regionTint: number | null, depthRatio: number): number {
-  const base = groundColor(biome.ground, depthRatio, hazeTarget(view, biome));
+// ground, stepped onto its band where the biome has bands, hazed for depth,
+// and tinted toward a mapgen domain's color where the tile belongs to one.
+function offPathColor(view: TerrainView, biome: Biome, regionTint: number | null, gy: number, depthRatio: number): number {
+  const base = groundColor(bandBase(biome, biome.ground, gy), depthRatio, hazeTarget(view, biome));
   return regionTint != null ? blend(base, regionTint, regionTintAt(depthRatio, 0.6)) : base;
+}
+
+// Which step of the flat-band ramp a row sits on. Applied to walkable and
+// impassable ground alike: the bands are a property of the world, not of the
+// route through it, so a band that stopped at the corridor's edge would read
+// as paint on the road rather than as the ground being stratified.
+// The row index is a true modulo, not a remainder. The depth margin
+// (drawMarginRows) continues the ground past the grid's far edge on negative
+// row numbers, and a remainder there would run the ramp backwards past its
+// own base -- which does not merely look wrong, it leaves the blend
+// extrapolating outside 0-255 and overflowing one channel into the next.
+function bandBase(biome: Biome, base: number, gy: number): number {
+  const ramp = biome.bands;
+  if (!ramp) return base;
+  const step = ((Math.floor(gy / ramp.period) % ramp.steps) + ramp.steps) % ramp.steps;
+  return blend(base, ramp.color, step / (ramp.steps - 1));
+}
+
+// The boundary between two bands: a glowing channel along it, and a soft dark
+// strip on the band's lower side. The channel is the subject -- edge channels
+// live between filled Landau levels -- and the strip is what keeps a stack of
+// flat fills reading as material rather than as a bar chart. Neither claims
+// any elevation; both are lighting on a plane.
+const BAND_CHANNEL_ALPHA = 0.8;
+const BAND_STRIP_ALPHA = 0.38;
+
+function drawBandBoundary(
+  g: Phaser.GameObjects.Graphics,
+  biome: Biome,
+  gy: number,
+  pFL: ProjectedPoint,
+  pFR: ProjectedPoint,
+  pNR: ProjectedPoint,
+  pNL: ProjectedPoint,
+  depthRatio: number
+) {
+  const ramp = biome.bands;
+  if (!ramp || ((gy % ramp.period) + ramp.period) % ramp.period !== 0 || depthRatio > DETAIL_MAX_DEPTH) return;
+  const fade = 1 - depthRatio / DETAIL_MAX_DEPTH;
+
+  g.fillStyle(0x000000, BAND_STRIP_ALPHA * fade);
+  g.fillPoints(
+    [
+      { x: pNL.x, y: pNL.y },
+      { x: pNR.x, y: pNR.y },
+      { x: pNR.x + (pFR.x - pNR.x) * 0.4, y: pNR.y + (pFR.y - pNR.y) * 0.4 },
+      { x: pNL.x + (pFL.x - pNL.x) * 0.4, y: pNL.y + (pFL.y - pNL.y) * 0.4 },
+    ],
+    true
+  );
+
+  g.lineStyle(1.5, ramp.channel, BAND_CHANNEL_ALPHA * fade);
+  g.lineBetween(pNL.x, pNL.y, pNR.x, pNR.y);
 }
 
 // A mapgen domain tint drowns with everything else. The tint is mixed over

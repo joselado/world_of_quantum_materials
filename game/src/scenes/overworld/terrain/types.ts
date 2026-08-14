@@ -6,10 +6,10 @@ import type { GridPoint } from '../../../world/mapgen';
 import type { AtmosphereView } from '../sky';
 
 // What a tile's terrain actually is, once the grid has been read: 'path' is
-// walkable trail, 'solid' plain impassable ground (rock-theme or
-// region-tinted), and 'lava'/'water'/'void' the themes that lay an animated
-// accent over that same ground (see materials/).
-export type TerrainKind = 'path' | 'solid' | 'lava' | 'water' | 'void';
+// walkable trail, 'solid' plain bare impassable ground, and every other kind
+// an off-path material that lays its own accent over that same ground (see
+// materials/), one per world's impassable surround.
+export type TerrainKind = 'path' | 'solid' | 'forest' | 'columns' | 'deadFloor' | 'charged' | 'ice' | 'shards' | 'fog' | 'lava' | 'consuming';
 
 // The kinds an impassable tile can take -- one per off-path material, each
 // with its own module under materials/.
@@ -24,6 +24,13 @@ export interface TerrainTile {
   regionTint: number | null;
   decorate: boolean;
   midHighlight: boolean;
+  // A tile the generator placed as a vortex core -- a hole punched through an
+  // otherwise expelling superconductor, which the Vortex Glacier draws as a
+  // pit (materials/ice.ts). Handed down from the generator rather than
+  // recognised from the shape: a blocked tile ringed by walkable ground is
+  // also what an ordinary corridor pinch looks like, so inference puts pits
+  // where the world has none.
+  vortexCore: boolean;
 }
 
 // The whole grid, read once: its per-tile terrain, the northernmost row the
@@ -49,19 +56,51 @@ export interface TerrainView extends AtmosphereView {
   midTile: GridPoint;
   // This world's guardian color, for the chokepoint glow (drawMidHighlight).
   chokepointColor: number;
-  // The scene clock, driving every animated accent.
-  now: number;
+  // The player's current crystal color. The Splitting Hollow's surround
+  // carries fragments of it (materials/fog.ts) -- the first hint that the
+  // world contains things like the player, immediately before the last world
+  // turns out to be one.
+  playerColor: number;
 }
 
 // One impassable tile, ready for its material's accent: the tile's projected
-// outline (for a full-tile wash), its centre and depth scale on screen, and
-// the scene clock. Built only for a tile whose material actually draws an
-// accent, so a bare-ground tile costs nothing beyond its fill.
+// outline (for a full-tile wash), its centre and depth scale on screen, its
+// own grid coordinates, and the scene clock. Built only for a tile whose
+// material actually draws an accent, so a bare-ground tile costs nothing
+// beyond its fill.
+//
+// `gx`/`gy` are what make a feature stand still in the world rather than on
+// the screen. Anything anchored to the map -- the Iron Steppe's shards
+// leaning one way until the domain wall and the other way past it, the
+// Vortex Glacier's flow-lines bending around a fixed core -- must derive its
+// geometry from these; a feature phased off `cx`/`cy` swims across the ground
+// as the camera moves, which is right for a drifting shimmer and wrong for
+// anything the world is supposed to *contain*.
 export interface AccentTile {
   fill: ProjectedPoint[];
+  // Whether this tile is a vortex core, from its TerrainTile (see above).
+  vortexCore: boolean;
   cx: number;
   cy: number;
   s: number;
+  gx: number;
+  gy: number;
+  // How far out this tile is, 0 at the camera and 1 where the depth fog
+  // saturates, and the fog color it is heading toward. An accent that ignores
+  // these keeps its full contrast to the last row it is drawn on and stands
+  // its world's palette straight up against the mist, undoing for the accent
+  // pass what the fill pass is careful to do.
+  depth: number;
+  haze: number;
+  // The detail pass's own falloff, 1 near the camera and reaching 0 at the
+  // depth accents stop being drawn at. Fading on this is what keeps a
+  // material from ending on a visible line across the middle distance --
+  // most obvious with the Mean Fields' trees, where the cutoff would read as
+  // the wood simply being mown flat at a fixed range.
+  detail: number;
+  // The player's own crystal color, for the recognition seed (see
+  // TerrainView.playerColor).
+  playerColor: number;
   now: number;
 }
 

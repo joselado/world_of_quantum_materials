@@ -10,7 +10,13 @@ import { CANVAS_W, CANVAS_H } from '../config/screen';
 // of truth for the game's canvas size); re-exported here since every other
 // scene/panel already imports its canvas size from this module.
 export { CANVAS_W, CANVAS_H };
-export const HORIZON_Y = 190;
+// The horizon line sits high in the frame: the camera looks down onto the
+// ground plane, which owns roughly three quarters of the screen, and the sky
+// is the remaining strip above it. Everything drawn at depth is measured
+// against this line -- the mist band, the distant self and the ground wash
+// are all sized from it (scenes/overworld/sky.ts), so it cannot be moved
+// alone.
+export const HORIZON_Y = 110;
 export const FOCAL = 2.2;
 export const LANE_PX = 150;
 
@@ -37,7 +43,7 @@ export function project(lane: number, depth: number): ProjectedPoint {
 // path visibly recedes into the distance instead of looking like a flat wall
 // of color at the horizon. `target` defaults to a pale sky blue but callers
 // pass a biome-specific fog color (e.g. a dark cave haze) so the blend still
-// looks right off the meadow biome.
+// looks right off the Mean Fields' own pale blue sky.
 export function fogColor(base: number, depthRatio: number, target = 0xbfe3ff): number {
   const c1 = Phaser.Display.Color.IntegerToColor(base);
   const c2 = Phaser.Display.Color.IntegerToColor(target);

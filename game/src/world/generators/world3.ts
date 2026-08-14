@@ -29,7 +29,14 @@ const SEED_COUNT_MAX = 8;
 // ice-blue walkable path, so the edge channel between two domains stays the
 // brightest thing on screen. No pale or blue-white entries: a domain that
 // blends toward the path's own color would read as walkable ground.
-const DOMAIN_PALETTE = [0x2fae7d, 0xd96f4e, 0x5b6ed9, 0xc9a83a, 0xb44ac9, 0xc94a6a, 0x7a9a3a, 0x3a7a9a];
+// The bulk domains, and they are all dead: a gapped bulk is matter that is
+// present, extended and inert, so the colors are desaturated and dark against
+// the lit seam the player actually walks. Two families, teal and ochre,
+// interleaved so that adjacent domains reliably differ -- which they must,
+// since the only walkable ground in this world is the boundary where two
+// differently-colored ones meet, and a seam with no color change across it
+// would leave the player navigating by nothing.
+const DOMAIN_PALETTE = [0x3f5a55, 0x6b5a3c, 0x4a6b63, 0x7d6a47, 0x35504c, 0x5a4c33, 0x557a70, 0x8a7454];
 
 export function generateWorld3Map(gridW: number, gridH: number, start: GridPoint): GeneratedMap {
   const goalY = 1;
@@ -131,5 +138,5 @@ export function generateWorld3Map(gridW: number, gridH: number, start: GridPoint
     }
   }
 
-  return { walkable, start, goal, mid, regionColor, biomeOverride: makeColorGrid(gridW, gridH) };
+  return { walkable, start, goal, mid, regionColor, biomeOverride: makeColorGrid(gridW, gridH) , vortexCores: [] };
 }

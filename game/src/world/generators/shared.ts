@@ -48,6 +48,16 @@ export interface GeneratedMap {
   mid: GridPoint;
   regionColor: NullableNumberGrid;
   biomeOverride: NullableNumberGrid;
+  // Tiles the generator deliberately placed as vortex cores, which the
+  // Vortex Glacier renders as pits (scenes/overworld/terrain/materials/ice.ts).
+  // A core is a *known* structure the shape is built around rather than
+  // something a renderer could recognise by looking: a blocked tile with a
+  // walkable ring is what a lot of ordinary corridor pinches also look like,
+  // so inferring it from the neighbourhood puts pits where there are none and
+  // misses the ones the world is named for. World 5 is the only generator that
+  // places them; World 10 inherits the list along with the shape, and simply
+  // never draws pits, its surround being a different material.
+  vortexCores: GridPoint[];
 }
 
 export function makeGrid(gridW: number, gridH: number): boolean[][] {
@@ -270,7 +280,15 @@ export function deriveRows(walkable: boolean[][], gridW: number, gridH: number):
 // survives for every generator that still builds literal dead ends --
 // falling back to any walkable tile (excluding start/goal/mid, which should
 // read as landmarks, not pickup spots) for shapes that don't.
-export function scatterTokens(walkable: boolean[][], gridW: number, gridH: number, world: number, exclude: GridPoint[], count: number): number[][] {
+export function scatterTokens(
+  walkable: boolean[][],
+  gridW: number,
+  gridH: number,
+  world: number,
+  exclude: GridPoint[],
+  count: number,
+  excludeRows?: Set<number>
+): number[][] {
   const tokens = makeNumberGrid(gridW, gridH);
   const excluded = new Set(exclude.map((p) => key(p.x, p.y)));
   const leaves: GridPoint[] = [];
@@ -283,7 +301,7 @@ export function scatterTokens(walkable: boolean[][], gridW: number, gridH: numbe
   ];
   for (let y = 0; y < gridH; y++) {
     for (let x = 0; x < gridW; x++) {
-      if (!walkable[y][x] || excluded.has(key(x, y))) continue;
+      if (!walkable[y][x] || excluded.has(key(x, y)) || excludeRows?.has(y)) continue;
       all.push({ x, y });
       const degree = dirs.filter(([dx, dy]) => walkable[y + dy]?.[x + dx]).length;
       if (degree === 1) leaves.push({ x, y });
@@ -388,6 +406,108 @@ export function carveThickPath(walkable: boolean[][], gridW: number, gridH: numb
     else y += y < to.y ? 1 : -1;
     stamp(x, y);
   }
+}
+
+// Both ends of every world are the same piece of geography seen twice: the
+// corridor narrows into a pass at the goal, and the next world opens with the
+// mouth of that same pass widening out. World N's start is world N-1's exit,
+// so if the player leaves through a chokepoint they have to arrive in one --
+// otherwise the seam contradicts itself. Both ends are shaped here, from the
+// same taper, which is what keeps them one joint rather than two worlds'
+// independently-drawn edges.
+//
+// The narrowing is permanent geography, not staging: it is there before the
+// rival is beaten and after. What changes with the gate is what can be seen
+// through the pass, not whether the pass exists.
+//
+// World 1's *backward* exit is deliberately not one of these. It leads to the
+// Lab, which is not a place (WORLDS.md section 4) -- every geographic
+// boundary in the game is a pass, and the single non-geographic one is a
+// door. That asymmetry is the point and is left alone here.
+export const PASS_HALF_WIDTH = 1;
+const PASS_OPEN_HALF_WIDTH = 6;
+// How many rows the taper runs over, at each end, where the world gives it
+// room. Also the depth of the wild-suppression zone (passZoneRows):
+// everything the taper touches is a place nothing may spawn.
+export const PASS_ROWS = 6;
+
+// How deep a taper may actually cut, which is however much of PASS_ROWS fits
+// between the throat and the guardian's row. The guardian's chokepoint and
+// the pass are two different pieces of geography and must not land on the
+// same row: the taper runs after forceChokepoint and would overwrite its gap,
+// leaving a world whose every route no longer goes through its guardian.
+// Worlds whose generator puts the guardian close to the goal (world8.ts's
+// reserved final stretch can be as short as ten rows) get a shorter taper
+// rather than a broken invariant. Two rows of clearance, not one: the join
+// that reconnects the world's own corridor to the mouth stamps a row past the
+// taper's own last one, and re-opening tiles on the guardian's walled row
+// would break the chokepoint just as surely as tapering over it.
+function passDepth(throat: GridPoint, mid: GridPoint): number {
+  return Math.max(0, Math.min(PASS_ROWS, Math.abs(mid.y - throat.y) - 2));
+}
+
+// Narrows the corridor into the pass over the last rows before the goal.
+export function narrowGoalPass(walkable: boolean[][], gridW: number, gridH: number, goal: GridPoint, mid: GridPoint) {
+  taperPass(walkable, gridW, gridH, goal, 1, passDepth(goal, mid));
+}
+
+// The same taper mirrored at the entry row, so the world opens as a mouth
+// widening out of the pass the player just walked through.
+export function openStartMouth(walkable: boolean[][], gridW: number, gridH: number, start: GridPoint, mid: GridPoint) {
+  taperPass(walkable, gridW, gridH, start, -1, passDepth(start, mid));
+}
+
+// `inward` points from the throat toward the world's interior: +1 at the
+// goal (which sits at the grid's north edge, so the interior is south), -1 at
+// the start.
+//
+// The taper only ever *removes* tiles outside its band, then re-asserts the
+// throat itself, so it can narrow any shape a generator produced without
+// knowing anything about that shape. What it cannot guarantee on its own is
+// the join: a corridor arriving well off to one side would be severed by the
+// widest cut, so the row just past the taper is reconnected explicitly.
+function taperPass(walkable: boolean[][], gridW: number, gridH: number, throat: GridPoint, inward: number, rows: number) {
+  if (rows < 2) return;
+  for (let i = 0; i < rows; i++) {
+    const y = throat.y + inward * i;
+    if (y < 0 || y >= gridH) return;
+    const half = Math.round(PASS_HALF_WIDTH + (PASS_OPEN_HALF_WIDTH - PASS_HALF_WIDTH) * (i / (rows - 1)));
+    for (let x = 0; x < gridW; x++) {
+      if (Math.abs(x - throat.x) > half) walkable[y][x] = false;
+    }
+    for (let x = throat.x - PASS_HALF_WIDTH; x <= throat.x + PASS_HALF_WIDTH; x++) {
+      if (inBounds(x, y, gridW, gridH)) walkable[y][x] = true;
+    }
+  }
+
+  const joinY = throat.y + inward * rows;
+  const mouthY = throat.y + inward * (rows - 1);
+  if (joinY < 0 || joinY >= gridH) return;
+  const anchor = nearestWalkableOnRow(walkable, gridW, joinY, throat.x);
+  if (anchor == null) return;
+  carveThickPath(walkable, gridW, gridH, { x: anchor, y: joinY }, { x: throat.x, y: mouthY }, 2);
+}
+
+function nearestWalkableOnRow(walkable: boolean[][], gridW: number, y: number, nearX: number): number | null {
+  let best: number | null = null;
+  for (let x = 0; x < gridW; x++) {
+    if (!walkable[y]?.[x]) continue;
+    if (best == null || Math.abs(x - nearX) < Math.abs(best - nearX)) best = x;
+  }
+  return best;
+}
+
+// The rows nothing may spawn on. A pass is a deliberate exception to the rule
+// that no walkable segment is ever narrower than 2 tiles -- that rule exists
+// so a tile-bound spawn can never fill the route -- so the exception is only
+// safe if the narrowed rows are kept clear of everything that spawns on a
+// tile: wild encounters and qumatessence alike. Both ends are covered, since
+// a throat at the entry is exactly as narrow as one at the goal.
+export function passZoneRows(start: GridPoint, goal: GridPoint, mid: GridPoint): Set<number> {
+  const rows = new Set<number>();
+  for (let i = 0; i < passDepth(goal, mid); i++) rows.add(goal.y + i);
+  for (let i = 0; i < passDepth(start, mid); i++) rows.add(start.y - i);
+  return rows;
 }
 
 // Invariant B's own check: with `mid` and its 4 immediate neighbors removed

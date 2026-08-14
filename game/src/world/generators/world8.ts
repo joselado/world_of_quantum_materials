@@ -59,5 +59,5 @@ export function generateWorld8Map(gridW: number, gridH: number, start: GridPoint
   const midBand = finalBands[midIdx];
   const mid = { x: Math.round((midBand.left + midBand.right) / 2), y: midBand.y };
 
-  return { walkable, start, goal, mid, regionColor: makeColorGrid(gridW, gridH), biomeOverride: makeColorGrid(gridW, gridH) };
+  return { walkable, start, goal, mid, regionColor: makeColorGrid(gridW, gridH), biomeOverride: makeColorGrid(gridW, gridH) , vortexCores: [] };
 }

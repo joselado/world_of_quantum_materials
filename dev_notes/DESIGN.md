@@ -23,20 +23,22 @@ battle.
 ## 2. World map — 10 worlds + hub
 
 One world per course topic (see the topic table in the repo's top-level `CLAUDE.md`).
+Each world's name, terrain, palette, light and story are `WORLDS.md`'s; this table
+owns the topic mapping, the wild pools and the progression gates.
 
-| World | Course topic | In-game name (`WORLD_NAMES`) / biome theme | Wild material archetypes | Gate to next world |
+| World | Course topic | In-game name (`WORLD_NAMES`) | Wild material archetypes | Gate to next world |
 |---|---|---|---|---|
 | 0 (Hub) | — | "The Lab" — guardian's house, Qumatex | — | Start world 1 |
-| 1 | Second quantization, mean-field, SSB | **Mean-Field Meadow** — tutorial meadow | Free fermion, itinerant/local-moment magnets, ferroelectrics, a charge density wave, a superconductor | Beat first rival crystal |
-| 2 | Symmetries, tight-binding, effective models | **Bloch Caverns** — crystalline caves, repeating tile patterns | Bloch-wave critters, lattice defect variants | Beat that world's rival crystal |
-| 3 | Topological band theory | **Topological Islands** — floating islands, one-way edge paths | Quantum spin Hall insulators, bulk and monolayer alike | Cross a gap only an edge-mode move can bridge |
-| 4 | Magnetic field, QHE, Landau levels | **Landau Level Terrain** — visible field lines, quantized-orbit terrain | Landau-level materials, an intrinsic zero-field Chern insulator | Solve a Landau-level maze |
-| 5 | Superconductivity, Nambu, Majorana | **Frozen Zero-Resistance Caverns** | s-wave SC, triplet SC | Pair two Majorana halves |
-| 6 | Classical magnetism, magnons | **Magnon Plains** — windswept plains, spin-wave ripples | Ferro/antiferromagnets, magnon wave-riders, a multiferroic | Ride a magnon wave across a canyon |
-| 7 | Entanglement, tensor networks | **Tensor-Network World** — bonds as paths | Entangled pairs (fought as a bonded duo) | Compress a tangled area into a walkable MPS path |
-| 8 | Quantum magnetism, spinons, Kondo | **Spinon Forest** — foggy forest, fractionalizes on contact | Spin liquids, Kondo-screened critters, a genuine Kondo-lattice heavy-fermion compound | Screen a "local moment" boss mechanic |
-| 9 | Excitations and defects | **Defect Wastes** — cracked/glitching world | Defect-bound states, impurity resonances, a couple of ferroelectrics with no course topic of their own, plus every non-hybrid material from worlds 1-8 | Repair/exploit N defects to stabilize a bridge |
-| 10 | ML for quantum materials | **The Adaptive Meta-World** — reflects the player's own team | Every hybrid-recipe crystal, and only hybrid-recipe crystals, plus the final boss, which transmutes live in battle to mirror the player | Final battle |
+| 1 | Second quantization, mean-field, SSB | **The Mean Fields** | Free fermion, itinerant/local-moment magnets, ferroelectrics, a charge density wave, a superconductor | Beat first rival crystal |
+| 2 | Symmetries, tight-binding, effective models | **The Stone Lattice** | Bloch-wave critters, lattice defect variants | Beat that world's rival crystal |
+| 3 | Topological band theory | **The Edge Cliffs** | Quantum spin Hall insulators, bulk and monolayer alike | Cross a gap only an edge-mode move can bridge |
+| 4 | Magnetic field, QHE, Landau levels | **The Storm Flats** | Landau-level materials, an intrinsic zero-field Chern insulator | Solve a Landau-level maze |
+| 5 | Superconductivity, Nambu, Majorana | **The Vortex Glacier** | s-wave SC, triplet SC | Pair two Majorana halves |
+| 6 | Classical magnetism, magnons | **The Iron Steppe** | Ferro/antiferromagnets, magnon wave-riders, a multiferroic | Ride a magnon wave across a canyon |
+| 7 | Entanglement, tensor networks | **The Entangled Web** | Entangled pairs (fought as a bonded duo) | Compress a tangled area into a walkable MPS path |
+| 8 | Quantum magnetism, spinons, Kondo | **The Splitting Hollow** | Spin liquids, Kondo-screened critters, a genuine Kondo-lattice heavy-fermion compound | Screen a "local moment" boss mechanic |
+| 9 | Excitations and defects | **The Defect Scars** | Defect-bound states, impurity resonances, a couple of ferroelectrics with no course topic of their own, plus every non-hybrid material from worlds 1-8 | Repair/exploit N defects to stabilize a bridge |
+| 10 | ML for quantum materials | **The Devouring Mirror** | Every hybrid-recipe crystal, and only hybrid-recipe crystals, plus the final boss, which transmutes live in battle to mirror the player | Final battle |
 
 Each world's overworld *map shape* (not just its biome skin) is its own physics motif too,
 generated fresh every visit by `game/src/world/generators/world<N>.ts` (dispatched from
@@ -54,6 +56,16 @@ generated fresh every visit by `game/src/world/generators/world<N>.ts` (dispatch
 | 8 | The corridor occasionally splits into two thin parallel paths for a stretch (fractionalization) before recombining, possibly more than once |
 | 9 | An ordinary wide corridor with several small patches embedded along it, each patch independently rendered using one of worlds 1-8's own biome look (a borrowed defect "type") |
 | 10 | Reuses whichever of worlds 1-8's own generator matches the player's *current* material's main type (e.g. a superconductor-type player gets world 5's spiral); a player whose type doesn't resolve to one of the eight falls back to a fresh random pick among all eight every visit |
+
+Every shape is then tapered at both ends by a shared pass (`generators/shared.ts`'s
+`narrowGoalPass`/`openStartMouth`): the corridor narrows to a three-tile throat at the goal
+and opens out of the same throat at the start, so world N's entry is the same piece of
+geography as world N-1's exit. The narrowing is permanent terrain, present whatever the
+gate's state, and nothing spawns inside either pass -- neither wild encounters nor
+qumatessence. The taper stops short of the guardian's row, since it runs after the
+chokepoint pass and would otherwise overwrite the gap that forces every route through the
+guardian. World 1's backward exit stays a door rather than a pass: it leads to the Lab,
+which is not a place, and that is the game's one non-geographic boundary.
 
 Every shape still obeys the same two rules regardless of its own motif: no walkable segment
 is ever narrower than 2 tiles (so a wild encounter spawned on the path can never fully block
@@ -438,7 +450,7 @@ STYLE.md's "Crystal sprites" section.
 
 World 10's wild pool (`WORLD_CRYSTALS[10]` in `data/materials.ts`) hosts exactly the
 game's actual named hybrid-recipe results (§5's `HYBRID_RECIPES`) and nothing else —
-worlds 1-9 never spawn a hybrid-recipe result as an ordinary wild, so the meta-world's
+worlds 1-9 never spawn a hybrid-recipe result as an ordinary wild, so the Mirror's
 corridor plays back the player's own fusions/discoveries literally rather than as echo
 flavor text. Standalone compounds whose own type has no dedicated world of its own
 (MnBi₂Te₄ and Monolayer NiI₂, whose types tie to existing topics' sessions; GeTe, whose

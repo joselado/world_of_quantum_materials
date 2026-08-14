@@ -6,15 +6,15 @@
 // line at the very start and the very end. Keyed by the world just beaten,
 // not the one being entered.
 export const STORY_BEATS: Partial<Record<number, string>> = {
-  1: 'The tutorial meadow steadies. Somewhere past the crystalline caves, the Decoherence is still spreading -- and it is learning from every phase of matter you master.',
-  2: "The caves' lattice symmetry holds again. Ahead, the floating islands are cut through with one-way edges -- another shape the Decoherence hasn't figured out yet.",
-  3: 'The islands stop drifting apart. Further on, quantized orbits ring the Landau terrain -- untouched territory for whatever is unraveling these worlds.',
-  4: "The Landau terrain's orbits lock back into their levels. Beyond it, the caverns run cold enough for zero resistance -- and for Majorana pairs to hide in plain sight.",
-  5: 'The caverns stay superconducting. Out on the windswept plains, spin waves still ripple where they should be still -- the next front the Decoherence has opened.',
-  6: 'The plains fall quiet and ordered. Past them, an entire world is nothing but bonds and entanglement -- if the Decoherence can unravel that, it can unravel anything.',
-  7: 'The network holds its bonds. Deeper in, a foggy forest fractionalizes everything that enters it -- spin liquids that never settle on an order of their own.',
-  8: 'The forest resolves into something you can name again. Ahead, the world itself is cracked and glitching -- defects and impurities, the Decoherence wearing through the material.',
-  9: "The cracks seal. What's left is a world built to look like you -- adaptive, watching, the last and strangest phase of matter you'll face.",
+  1: 'The two branches hold their choice. Somewhere past the standing stones, the Decoherence is still spreading -- and it is learning from every phase of matter you master.',
+  2: "The colonnade's lattice symmetry holds again. Ahead, the ground breaks into flat dead domains with a single lit ledge running between them -- another shape the Decoherence hasn't figured out yet.",
+  3: 'The seam holds, and the bulk stays where it is. Further on, the ground falls into flat glowing bands under a storm that never breaks -- untouched territory for whatever is unraveling these worlds.',
+  4: "The flats' orbits lock back into their levels. Beyond them, an open glacier runs cold enough for zero resistance -- and for Majorana pairs to hide in plain sight.",
+  5: 'The glacier stays superconducting. Out on the black iron sand beyond it, spin waves still ripple where they should be still -- the next front the Decoherence has opened.',
+  6: 'The steppe falls quiet and ordered. Past it, an entire world is nothing but bonds and entanglement, hung in nothing at all -- if the Decoherence can unravel that, it can unravel anything.',
+  7: 'The network holds its bonds. Past its last rung stands a dead wood in fog that fractionalizes everything entering it -- spin liquids that never settle on an order of their own.',
+  8: 'The wood resolves into something you can name again. Ahead the ground itself is scarred -- old burns closed over, and crust still open and glowing between them: defects and impurities, the Decoherence wearing through the material.',
+  9: "The scars close. What's left is a world that re-forms around you as you walk and takes the ground back behind you -- adaptive, watching, the last and strangest phase of matter you'll face.",
 };
 
 // One line of world-specific flavor shown on the goal-tile banner
@@ -22,14 +22,14 @@ export const STORY_BEATS: Partial<Record<number, string>> = {
 // place of a single generic line repeated across all ten worlds. Falls back
 // to that generic line for a world with no entry here.
 export const WORLD_GOAL_TEXT: Partial<Record<number, string>> = {
-  1: 'You reached the far edge of the Meadow. The branches still hold.',
-  2: 'You reached the far end of the caves. The lattice still repeats.',
-  3: 'You reached the far islands. The seam still runs, unbroken.',
-  4: 'You reached the last fork of the Landau terrain. The orbits still close.',
-  5: 'You reached the deepest cavern. The phase still holds.',
-  6: 'You reached the far plains. The last swell still moves.',
+  1: 'You reached the far edge of the fields. The branches still hold.',
+  2: 'You reached the far end of the colonnade. The lattice still repeats.',
+  3: 'You reached the last ledge. The seam still runs, unbroken.',
+  4: 'You reached the last fork of the flats. The orbits still close.',
+  5: 'You reached the far ice. The phase still holds.',
+  6: 'You reached the far steppe. The last swell still moves.',
   7: 'You reached the end of the tensor lanes. The rungs still hold.',
   8: 'You reached the far treeline. The resonance still holds.',
-  9: 'You reached the far wastes. The hole is still just a hole.',
+  9: 'You reached the far scars. The hole is still just a hole.',
   10: "You reached the end of the corridor. It already knows you're here.",
 };
