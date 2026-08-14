@@ -151,6 +151,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   andersonSelection: string | null = null;
   andersonMovePage = 0;
   feynmanPage = 0;
+  feynmanPreview: string | null = null;
   dresselhausPreview: string | null = null;
   andersonHostPreview: string | null = null;
   majoranaPreview: string | null = null;
@@ -1188,6 +1189,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     this.andersonMovePage = 0;
     this.blochPage = 0;
     this.feynmanPage = 0;
+    this.feynmanPreview = null;
     this.tutorialPage = 0;
     this.tutorialSelectedIndex = 0;
     this.dresselhausPreview = null;

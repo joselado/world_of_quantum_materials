@@ -1163,14 +1163,18 @@ than the caller's requested budget) for its own layout math.
   small pulsing loop-insertion circles along the torso/hip lines (the diagrammatic mark
   of a higher-order correction), and four small vertex dots orbiting in place of another
   guardian's orbiting glyphs.
-- A single paginated move list (`renderPagedButtons`, `scene.feynmanPage`) rather than a
-  fixed-row shape -- every move the player has ever unlocked (`getUnlockedMoves`, not
-  `getBattleMoves`: a move currently unusable in the player's present form is still
-  worth leveling for later) gets its own row reading `<name> -- level to "<next tier>"
-  (streak <N>): <cost> qumatessence`, or `<name> -- max level` once already at
-  tier 3; a maxed or unaffordable row dims and is a no-op, the same convention every
-  other guardian's unaffordable/unusable row already uses.
-- Clicking an eligible row deducts `feynmanLevelCost` immediately (the qumatessence is
+- A list+detail panel (`LIST_DETAIL_PANEL_W`, "List+detail panels" above). The left column
+  lists every move the player has ever unlocked (`getUnlockedMoves`, not `getBattleMoves`: a
+  move currently unusable in the player's present form is still worth leveling for later),
+  each row showing the move's tuned name without its level prefix -- the prefix is the same
+  word on every row once a save is well leveled, and it alone fills the column at the largest
+  text-size preset. Selecting a row previews that move in the right pane at its real current
+  level, over a status line reading `Level to "<next tier>": <N> questions in a row, <cost>
+  qumatessence paid whether it lands or not` and a confirm button. A move already at tier 3
+  still previews -- its cascade at full level is the reward for having leveled it -- with a
+  status line saying so and no confirm button; an unaffordable one dims the confirm, not the
+  row. Owning no moves at all leaves the panel a single line and a Farewell button.
+- Confirming deducts `feynmanLevelCost` immediately (the qumatessence is
   spent the instant the attempt starts, not on a successful outcome) and opens the
   question streak in its own sub-panel -- same amber stroke as the main panel, one
   question at a time (`data/quiz.ts`'s `getAnalyticQuestions`), two shuffled answer

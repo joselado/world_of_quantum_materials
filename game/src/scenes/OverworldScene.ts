@@ -330,7 +330,12 @@ export interface GuardianPanelHost extends Phaser.Scene {
   andersonSelection: string | null;
   andersonMovePage: number;
   feynmanPage: number;
-  // Which candidate row is currently highlighted in the left column of a
+  // Same convention as noetherMovePreview below, for Feynman's own
+  // list+detail layout (scenes/panels/feynman.ts) -- holds the id of the
+  // already-unlocked move currently previewed in its detail pane. Feynman
+  // has no committed-choice field of its own: leveling a move writes
+  // registry/save moveLevels straight from the detail pane's confirm button.
+  feynmanPreview: string | null;
   // list+detail crystal-pick step (scenes/panels/listDetail.ts) without yet
   // being committed to -- distinct from andersonSelection above, which
   // records Anderson's *committed* host choice once the player has actually
@@ -539,6 +544,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // Superposition Mode's "every crystal" case even comes into it. Same
   // reset rules.
   feynmanPage = 0;
+  feynmanPreview: string | null = null;
   // Which row is currently highlighted (not yet committed) in a list+detail
   // crystal-pick step's left column -- Dresselhaus's single step, Anderson's
   // host-pick step, and Majorana's own single browse-by-result step
@@ -748,6 +754,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.andersonMovePage = 0;
     this.blochPage = 0;
     this.feynmanPage = 0;
+    this.feynmanPreview = null;
     this.dresselhausPreview = null;
     this.andersonHostPreview = null;
     this.majoranaPreview = null;
@@ -1753,6 +1760,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.andersonMovePage = 0;
     this.blochPage = 0;
     this.feynmanPage = 0;
+    this.feynmanPreview = null;
     this.dresselhausPreview = null;
     this.andersonHostPreview = null;
     this.majoranaPreview = null;

@@ -9,6 +9,7 @@ import {
   MOVES,
   getMoveLevel,
   moveDisplayName,
+  tunedMoveDisplayName,
   feynmanLevelCost,
   MOVE_LEVEL_NAMES,
   MOVE_LEVEL_STREAKS,
@@ -17,6 +18,16 @@ import type { MoveLevel } from '../../data/materials';
 import { getAnalyticQuestions } from '../../data/quiz';
 import { persistFromRegistry } from '../../data/save';
 import type { Move } from '../../data/types';
+import {
+  LIST_DETAIL_PANEL_W,
+  listDetailColumns,
+  renderListColumn,
+  destroyPanel,
+  insertColumnDivider,
+  renderListColumnFooter,
+  renderMoveDetailHeader,
+  renderStatusAndConfirm,
+} from './listDetail';
 
 // Feynman stands at world 7's middle tile (WORLD_GUARDIANS) and offers to
 // level up any move the player already carries (`unlockedMoves`, regardless
@@ -26,13 +37,14 @@ import type { Move } from '../../data/types';
 // purchase step: picking a row here both pays `feynmanLevelCost` up front
 // (lost regardless of outcome) and immediately opens the streak of quiz
 // questions that decides whether the level actually lands -- see
-// showLevelStreak below. Shaped closer to Franklin's/Kondo's own
-// already-bought-move lists than to a flat buy-list shop, since every row
-// here is already something the player owns.
+// showLevelStreak below. A list+detail panel (listDetail.ts): the left
+// column lists the moves the player owns, the right pane previews the
+// selected one at its real current level and states what the next level
+// costs and how long a streak it demands.
 export function showFeynmanPanel(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
 
-  const panelWidth = 600;
+  const panelWidth = LIST_DETAIL_PANEL_W;
   const top = 20;
   const container = scene.add.container(0, 0).setDepth(100);
   scene.dialogueContainer = container;
@@ -58,9 +70,7 @@ export function showFeynmanPanel(scene: GuardianPanelHost) {
   container.add(intro);
   y += intro.height + 14;
 
-  y = renderMoveLevelList(scene, container, y);
-  y += 8;
-  y = scene.renderFarewellFooter(container, y);
+  y = renderMoveLevelList(scene, container, y, panelWidth);
   y += 8;
 
   const panelHeight = y - top;
@@ -73,60 +83,135 @@ export function showFeynmanPanel(scene: GuardianPanelHost) {
 // One row per move the player has ever unlocked (getUnlockedMoves --
 // deliberately not getBattleMoves: a move currently unusable in the
 // player's present form is still a real move worth leveling for the next
-// time it becomes usable again). Paginated like every other candidate list
-// that can outgrow one panel (renderPagedButtons, scene.feynmanPage) --
-// SHOP_MOVE_IDS alone already outgrows a handful of rows once Noether's/
-// Laughlin's/Kondo's/Anderson's moves start piling up over a playthrough.
-// A maxed-out (level 3) move's row dims and is a no-op, same as every other
-// panel's unaffordable/unusable row convention.
-function renderMoveLevelList(scene: GuardianPanelHost, container: Phaser.GameObjects.Container, y: number): number {
+// time it becomes usable again). Rows carry the move's tuned name without
+// its level prefix (tunedMoveDisplayName, not moveDisplayName): the prefix
+// is the same word on every row of a well-leveled save, and at the largest
+// text-size preset it alone fills the 200px column, trimming every row to
+// an identical "Infinite ..." Level, streak length and cost all live in the
+// detail pane instead, beside the move's own animated preview -- the pane
+// has the width to show the full leveled name in its header. A maxed-out (level 3) move
+// still selects and previews -- its cascade at full level is the reward for
+// having leveled it -- but the pane offers no confirm button, the same
+// nothing-to-commit convention Dresselhaus's current form and Bloch's
+// current world use.
+function renderMoveLevelList(
+  scene: GuardianPanelHost,
+  container: Phaser.GameObjects.Container,
+  y: number,
+  panelWidth: number
+): number {
   const moves = scene.getUnlockedMoves().map((id) => MOVES[id]);
+
+  if (moves.length === 0) {
+    const text = scene.add
+      .text(CANVAS_W / 2, y, 'You carry no moves for me to correct.', {
+        fontSize: fontPx(scene, 13),
+        color: '#ffffff',
+        align: 'center',
+        wordWrap: { width: panelWidth - 80 },
+      })
+      .setOrigin(0.5, 0);
+    container.add(text);
+    // No columns render in this branch, so there is no left column to put
+    // the Farewell button in -- it takes a full-width footer row instead.
+    return scene.renderFarewellFooter(container, y + text.height + 8);
+  }
+
+  const columns = listDetailColumns((CANVAS_W - panelWidth) / 2);
+  const columnsTop = y;
+
+  const preview = scene.feynmanPreview && MOVES[scene.feynmanPreview] ? scene.feynmanPreview : null;
+  const effectivePreview = preview && moves.some((m) => m.id === preview) ? preview : moves[0].id;
+
+  const listResult = renderListColumn({
+    scene,
+    container,
+    x: columns.leftX,
+    y: columnsTop,
+    width: columns.leftColW,
+    items: moves,
+    idFor: (move) => move.id,
+    labelFor: (move) =>
+      move.class === 'screening' ? move.name : tunedMoveDisplayName(scene.game.registry, move.id),
+    selectedId: effectivePreview,
+    page: scene.feynmanPage,
+    onPageChange: (page) => {
+      scene.feynmanPage = page;
+      destroyPanel(scene);
+      showFeynmanPanel(scene);
+    },
+    onSelect: (move) => {
+      scene.feynmanPreview = move.id;
+      destroyPanel(scene);
+      showFeynmanPanel(scene);
+    },
+  });
+  scene.feynmanPage = listResult.page;
+
+  const move = MOVES[effectivePreview];
+  const level = getMoveLevel(scene.game.registry, move.id) as MoveLevel;
   const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
 
-  const labelFor = (move: Move) => {
-    const level = getMoveLevel(scene.game.registry, move.id) as MoveLevel;
-    const name = moveDisplayName(scene.game.registry, move.id);
-    if (level >= 3) return `${name} -- max level`;
+  let rightY = columnsTop;
+  rightY = renderMoveDetailHeader(
+    scene,
+    container,
+    moveDisplayName(scene.game.registry, move.id),
+    move.class,
+    undefined,
+    columns.rightColCenterX,
+    rightY,
+    columns.rightColW,
+    level,
+    `feynman:${move.id}`
+  );
+
+  if (level >= 3) {
+    rightY = renderStatusAndConfirm({
+      scene,
+      container,
+      centerX: columns.rightColCenterX,
+      y: rightY,
+      colW: columns.rightColW,
+      status: `Already at "${MOVE_LEVEL_NAMES[3]}" -- the highest correction I can draw.`,
+    });
+  } else {
     const nextLevel = (level + 1) as 1 | 2 | 3;
     const cost = feynmanLevelCost(move, nextLevel);
     const streak = MOVE_LEVEL_STREAKS[nextLevel];
-    return `${name} -- level to "${MOVE_LEVEL_NAMES[nextLevel]}" (streak ${streak}): ${cost} qumatessence`;
-  };
+    rightY = renderStatusAndConfirm({
+      scene,
+      container,
+      centerX: columns.rightColCenterX,
+      y: rightY,
+      colW: columns.rightColW,
+      status: `Level to "${MOVE_LEVEL_NAMES[nextLevel]}": ${streak} questions in a row, ${cost} qumatessence paid whether it lands or not.`,
+      confirm: {
+        label: `Level to "${MOVE_LEVEL_NAMES[nextLevel]}" (${cost} qumatessence)`,
+        onClick: () => startLevelUp(scene, move, nextLevel, cost),
+        dimmed: tokens < cost,
+      },
+    });
+  }
 
-  const isMaxedOrUnaffordable = (move: Move) => {
-    const level = getMoveLevel(scene.game.registry, move.id) as MoveLevel;
-    if (level >= 3) return true;
-    const cost = feynmanLevelCost(move, (level + 1) as 1 | 2 | 3);
-    return tokens < cost;
-  };
-
-  return scene.renderPagedButtons(
-    container,
-    y,
-    moves,
-    scene.feynmanPage,
-    4,
-    labelFor,
-    (move) => {
-      const level = getMoveLevel(scene.game.registry, move.id) as MoveLevel;
-      if (level >= 3) return;
-      const nextLevel = (level + 1) as 1 | 2 | 3;
-      const cost = feynmanLevelCost(move, nextLevel);
-      if (((scene.game.registry.get('qumatessence') as number) || 0) < cost) return;
-      scene.qumatessence -= cost;
-      scene.game.registry.set('qumatessence', scene.qumatessence);
-      scene.tokenText.setText(`Qumatessence: ${scene.qumatessence}`);
-      persistFromRegistry(scene.game.registry);
-      scene.dialogueContainer?.destroy(true);
-      showLevelStreak(scene, move.id, nextLevel);
-    },
-    (page) => {
-      scene.feynmanPage = page;
-      scene.dialogueContainer?.destroy(true);
-      showFeynmanPanel(scene);
-    },
-    isMaxedOrUnaffordable
+  const leftBottom = renderListColumnFooter(scene, container, columns, listResult.bottom + 10, 'Farewell', () =>
+    scene.closeDialogue()
   );
+  const columnsBottom = Math.max(leftBottom, rightY);
+  insertColumnDivider(scene, container, columns.dividerX, columnsTop, columnsBottom);
+  return columnsBottom + 6;
+}
+
+// Pays up front, then hands off to the streak -- the qumatessence is gone
+// the moment this runs, regardless of how the questions go (§5).
+function startLevelUp(scene: GuardianPanelHost, move: Move, nextLevel: 1 | 2 | 3, cost: number) {
+  if (((scene.game.registry.get('qumatessence') as number) || 0) < cost) return;
+  scene.qumatessence -= cost;
+  scene.game.registry.set('qumatessence', scene.qumatessence);
+  scene.tokenText.setText(`Qumatessence: ${scene.qumatessence}`);
+  persistFromRegistry(scene.game.registry);
+  destroyPanel(scene);
+  showLevelStreak(scene, move.id, nextLevel);
 }
 
 // The pay-then-answer-a-streak gamble itself (§5) -- the qumatessence is

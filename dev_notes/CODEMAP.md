@@ -660,7 +660,8 @@ World 10's Adapted and nowhere else.
   it the same way. `listDetail.ts`'s own `renderListColumn`/`renderMoveDetailHeader`/
   `renderSelfBuffMoveDetailHeader`/`renderStatusAndConfirm`/`insertColumnDivider`/
   `renderListColumnFooter`/`destroyPanel`/`sideBySideColumns` (see the file-tree entry above) is the
-  genuinely multi-caller case, shared today by Dresselhaus/Anderson/Majorana/Noether/Kondo's own
+  genuinely multi-caller case, shared today by Dresselhaus/Anderson/Majorana/Noether/Kondo/
+  Feynman's own
   panels plus HubScene's Qumatex panel (the paginated-left-column shape), by Laughlin's/
   Skłodowska-Curie's own panels (the bespoke always-both-visible two-column shape), and -- for
   `insertColumnDivider`/`destroyPanel`, which are about panel chrome rather than the list+detail
@@ -683,7 +684,7 @@ World 10's Adapted and nowhere else.
   `advanceToWorld` (Bloch's own travel action), every guardian's
   per-panel pagination/selection
   field (`shopTab`, `blochPage`, `dresselhausPage`, `majoranaPage`,
-  `andersonPage`/`andersonSelection`/`andersonMovePage`, `feynmanPage`,
+  `andersonPage`/`andersonSelection`/`andersonMovePage`, `feynmanPage`/`feynmanPreview`,
   `noetherMovePage`/`kondoMovePage`), each list+detail
   crystal-, move-, or (Bloch's own) world-pick step's own transient "which row is currently
   previewed but not yet
@@ -1608,21 +1609,23 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   to be on screen at once.
 - **Feynman's move-leveling panel** (`scenes/panels/feynman.ts`'s `showFeynmanPanel`) is a
   different mechanic shape entirely from every other guardian's -- not a purchase catalog, but
-  a leveling attempt against a move the player already owns. `renderMoveLevelList` builds one
-  row per `scene.getUnlockedMoves()` entry (deliberately not `getBattleMoves()` -- a move
-  currently unusable in the player's present form is still worth leveling), paginated via
-  `scene.renderPagedButtons`/`scene.feynmanPage` the same way
-  Anderson's second (which-move-to-learn) step is (see "Overworld menus and settings" below;
-  Dresselhaus's/Majorana's/Anderson's own crystal-list steps and Bloch's own destination table
-  instead paginate via
-  `scenes/panels/listDetail.ts`'s `renderListColumn`, see "Candidate-crystal lists" above), since
-  the full unlocked-move list can outgrow one panel well before Superposition Mode's "every
-  crystal" case even applies. Each row reads a move's current level (`data/materials.ts`'s
-  `getMoveLevel`) and, if not already at tier 3, the cost to attempt the next tier
-  (`feynmanLevelCost`) and that tier's own streak length (`MOVE_LEVEL_STREAKS`); a maxed or
-  unaffordable row dims via `renderPagedButtons`' own `isDim` param and is a no-op. Clicking an
-  eligible row deducts the cost immediately (before a single question is asked, and never
-  refunded) and calls `showLevelStreak`, a self-contained recursive question flow (`getAnalyticQuestions`
+  a leveling attempt against a move the player already owns. `renderMoveLevelList` is a
+  list+detail layout (`scenes/panels/listDetail.ts`, "Candidate-crystal lists" above) over
+  `scene.getUnlockedMoves()` (deliberately not `getBattleMoves()` -- a move currently unusable
+  in the player's present form is still worth leveling), paginated by `renderListColumn` via
+  `scene.feynmanPage`/`scene.feynmanPreview`. Rows carry `tunedMoveDisplayName`, **not**
+  `moveDisplayName`: the level prefix is the same word on every row of a well-leveled save and
+  at the largest text-size preset it alone fills the `200`px column, trimming every row to an
+  identical "Infinite ...". The detail pane, which has the width for the full leveled name,
+  previews the selected move at its real current level (`renderMoveDetailHeader` + `getMoveLevel`,
+  so the cascade matches what a real cast plays) over a `renderStatusAndConfirm` block naming the
+  next tier, that tier's streak length (`MOVE_LEVEL_STREAKS`) and its cost (`feynmanLevelCost`).
+  An already-maxed move still selects and previews but gets no confirm button (the same
+  nothing-to-commit convention Dresselhaus's current form and Bloch's current world use); an
+  unaffordable one dims the confirm rather than the row. With no unlocked moves at all the panel
+  renders no columns, so it falls back to a full-width `renderFarewellFooter` -- the same
+  no-left-column-to-put-it-in case Noether's empty Moves tab handles. Confirming deducts the cost
+  immediately (before a single question is asked, and never refunded) and calls `showLevelStreak`, a self-contained recursive question flow (`getAnalyticQuestions`
   from `data/quiz.ts`, the same visited-world-filtered pool Laughlin's own single question
   draws from) built the same way `OverworldScene.showEncounter`'s pre-battle quiz and
   `BattleScene.showUltimateQuestions` are, just living in the overworld panel rather than
@@ -2075,7 +2078,7 @@ suffix) word-wraps to two lines rather than staying on one. The trailing `<- Pre
 shared row, not a button row with the page label stacked underneath it -- reclaiming that
 row's worth of height is what keeps a guardian whose avatar/intro text already leaves little
 slack (Anderson) inside the canvas at the largest text-size preset. Each caller owns
-its own page field (`andersonMovePage`, `feynmanPage`), all reset in both
+its own page field (`andersonMovePage`), all reset in both
 `create()` and `closeDialogue()` the same way `andersonSelection` is. Reuse this rather than a
 bespoke row-count/shrink-to-fit calculation for any future plain candidate list that can grow
 unboundedly and has no crystal art to preview.
