@@ -1193,7 +1193,11 @@ question. `terrain/color.ts`'s `groundColor` is bound to that same row: its blen
 1, so the deepest row drawn arrives at the haze color exactly. That equality is what frees
 everything above the horizon line to be translucent -- ground that stops one blend short of the
 fog needs an opaque band over the join to hide the step, and an opaque band can never soften into
-anything (`WORLDS.md` section 4). `walkableHazeTarget` fades its own lightening out on the same
+anything (`WORLDS.md` section 4). Its exponent is held as low as that constraint allows, since it
+also sets how fast the color moves per row at the far end where projected rows are only a few
+pixels tall -- each row being one flat fill, a steep finish terraces the last stretch of ground,
+worst in the open-sky worlds whose fog target sits far above their ground in value by design.
+`walkableHazeTarget` fades its own lightening out on the same
 schedule (`0.35 * (1 - depthRatio^3)`, flat enough to hold the route nearly to the end), or the
 repeated road surfaces as a bright stub against the band.
 `sky.ts`'s `drawHorizonBand`, called from `drawDepthHaze`, owns the far quarter of the draw
@@ -1228,14 +1232,31 @@ shut gate shows nothing of what is beyond it. The blend factor and a small per-b
 recomputed once per frame in `OverworldScene.drawWorld` before the view is assembled (World 9's
 defect patches put several biomes on screen at once).
 
-**The mist band and the distant self.** `drawDepthHaze` runs four passes off one `target`, so
-nothing in the frame can disagree about what color the air is: the ground wash, `drawHorizonBand`,
-then -- above the horizon line -- the sky's graduation into the fog and `drawDistantSelf`. The sky
-pass is the fog color at full strength from `SKY_BLEND_FULL` above the line down to the line
-itself, feathering out smoothstepped over the `SKY_BLEND_H` above that. Its full-strength height
-clears `DISTANT_HEIGHT`, the tallest crest a silhouette reaches, which is load-bearing rather than
-cosmetic: a silhouette drowned to within a few values of the fog while its backdrop is still forty
-values off the fog reads as the same slab an undrowned one would.
+**The mist band and the distant self.** `drawDepthHaze` runs its passes off one `target`, so
+nothing in the frame can disagree about what color the air is: a whole-sky tint, the ground wash,
+`drawHorizonBand`, then -- above the horizon line -- the sky's graduation into the fog and
+`drawDistantSelf`. The sky pass is the fog color at full strength from `SKY_BLEND_FULL` above the
+line down to the line itself, feathering out smoothstepped over the `SKY_BLEND_H` above that. Its
+full-strength height clears `DISTANT_HEIGHT`, the tallest crest a silhouette reaches, which is
+load-bearing rather than cosmetic: a silhouette drowned to within a few values of the fog while its
+backdrop is still forty values off the fog reads as the same slab an undrowned one would.
+
+Two things keep that stretch from reading as a panel laid over the picture. The mist is not one
+color: `drawDepthHaze`'s `tone(y)` drifts it toward the world's own `skyTop` by `MIST_LIFT` as it
+climbs, anchored to be exactly `target` at `projectTile(0, DRAW_DISTANCE_TILES).y` -- the row the
+ground plane's own fog arrives on, so the drift lives entirely above the deepest terrain and
+cannot open a step against it. Both mist passes read the same `tone`, so the ramp is continuous
+across the horizon line. (`fillVerticalFade` takes a `colorAt(y)` for this and lerps packed ints
+via `lerpColor`; it runs per scanline per frame, which is where Phaser `Color` objects would start
+costing allocation.) And the whole sky above the mist takes a flat wash of `target` at
+`SKY_TINT_MAX * hazeBlend` -- zero until the forward blend runs, so it changes nothing in a world's
+own air, and at the gate it is what carries the clouds along with everything else. A bank of this
+world's untouched daylight clouds over the next world's mist is the loudest available statement
+that the color below them is an overlay rather than weather.
+
+`drawHorizonBand`'s own thinning is smoothstepped over `HORIZON_BAND_FROM` of the draw distance for
+the same reason its ends are: a ramp that starts falling the instant the opaque stretch ends puts a
+readable line there, the eye finding where a gradient stops changing as easily as it finds an edge.
 
 `drawDistantSelf` composes world N's forward horizon out of world N+1's authored distant self --
 `BIOMES[world + 1]`'s `hillColor` (base) and `hillAlpha` (swallow), never the standing world's own,

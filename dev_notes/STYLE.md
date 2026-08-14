@@ -500,6 +500,21 @@ lowest stretch of sky and feathered out over the stretch above that. Nothing in 
 its own idea of what color the air is -- every pass reads the one live haze target, which is what
 lets the target move (toward the next world's air, near an open gate) without anything tearing.
 
+Two rules keep that stretch of air from reading as a panel laid across the picture, and both are
+about what a flat fill gives away:
+
+- **The mist is never one colour.** It holds the fog colour where the sightline through it is
+  longest -- the horizon line and the ground just below it -- and drifts back toward the world's
+  own high sky as it climbs. A hundred rows of one exact value is the single thing real air never
+  is, and the eye finds the place where a gradient *stops changing* as readily as it finds an edge.
+  Every falloff in the system is smoothstepped for the same reason, so each one leaves and reaches
+  its limits with its slope already flat.
+- **Near an open gate the whole sky goes with the mist, clouds included.** The air ahead becoming
+  the next world's air is not a band across the middle of the frame; a bank of this world's
+  untouched daylight clouds hanging over the next world's mist announces the colour below them as
+  an overlay louder than any edge could. This wash is absent with the gate shut, so a world in its
+  own air is untouched by it.
+
 **Distant selves.** Just above the line stands the *next* world's silhouette, composed from that
 world's own `hillColor` (base) and `hillAlpha` (swallow) -- a world states how it looks from
 outside itself, once, and its neighbour renders that statement. The shape is a placeholder two-sine
