@@ -119,29 +119,51 @@ the rule; `CODEMAP.md`'s "The mist band and the distant self" is the code.
 Worlds 7, 8 and 10 are already at swallow zero and stay there — their horizons
 are meant to be empty, so they need no profile.
 
-## D — Gate apertures
+## D — The pass, its guard and its board
 
-Replace `art/door.ts`'s floating archway with the corridor narrowing into a
-pass, the destination visible through the gap.
+The full grammar is `WORLDS.md` §4's "Gates as passes"; this is the work list.
+The pass itself is **terrain and belongs to the retheme**, along with the
+matching narrow mouth at each world's start and the wild-suppression zone. This
+stage puts things in it and retires the panels.
 
-The gate's job is **state, not wayfinding** — a corridor has nowhere else to
-walk, but the goal gate exists only once that world's rival is beaten. So:
+Replace `art/door.ts`'s floating archway with:
 
-- **Rival unbeaten** — notch fogged shut, opaque, dark. Next world not visible,
-  haze inheritance off, and the repeated road from stage A vanishes into the
-  fog rather than promising passage.
-- **Rival beaten** — notch clears, the next world's palette showing through the
-  gap as the brightest thing on screen (or in late worlds, the most
-  wrongly-coloured).
+- **Rival alive** — the rival stands in the pass and bars it. That is the state
+  signal; the fogged notch is not needed, because the guard is the message. Haze
+  inheritance stays off, and stage A's repeated road must not promise passage
+  past it. Size it to the aperture, not the screen (§4) — no walkable gap
+  showing from the approach tile, fully visible from the tile in front, no more.
+- **Rival beaten** — the pass clears, the next world's palette shows through it,
+  and a **board** in the pass names the destination. Plus a ground seam: the
+  next world's walkable colour across the last two or three tiles.
 
-Plus a ground seam: the next world's walkable colour across the last two or
-three tiles, a boundary the player visibly steps over.
+**Both states share one interaction: approach, read, press.** A prompt appears a
+tile out and the keypress commits — challenging the rival in the first state,
+crossing in the second. **Arrival alone must never transition or start a fight**;
+a pass is the most interesting thing in a world and players will walk in to look.
+This is where the retired panels' confirmation goes, not a removal of it.
 
-**Keep the confirm panel.** Geography plus confirmation prevents accidental
-transitions, and it is the safety net if any one world's pass reads weakly.
-Note the door sprite currently also stands at the *start* tile (back to world
-N−1, or the Hub from World 1) — that instance needs its own treatment, not just
-the goal-tile one.
+The board is world-space and depth-scaled (scenery); the prompt is HUD and obeys
+every text preset (interface).
+
+Four things this stage must handle rather than inherit:
+
+- **`STORY_BEATS` fires on the confirm keypress** — the semantic descendant of
+  the "Continue" click, displayed over the transition fade so it cannot stack
+  against the board or the horizon reveal.
+- **The goal-reached event.** The progression gate is reach-goal → beat-rival →
+  continue, and the goal tile now sits behind the guard. Either move the trigger
+  to the pass mouth or collapse the two events deliberately — not by accident.
+- **`component-check` drives this gate by clicking the panels being retired**,
+  and it carries a known gotcha about mistaking its own no-op click for a stuck
+  panel, which a do-nothing pass tile will trip. Update it in the same change.
+  Sweep the tutorial and docs for "click Continue" wording too.
+- **Draw order.** The rival is currently drawn as a special case; confirm it
+  joins the common depth sort before stage E's flanks share the pass with it.
+
+The backward exit becomes a pass with a board too, in worlds 2–10. **World 1's
+stays a door** (it leads to the Lab, which is not a place), and **World 10 gets
+no board** (nothing lies beyond).
 
 ## E — Depth-projected flanks
 

@@ -475,11 +475,62 @@ the world's own air only, which every part of the horizon already agrees with by
 default, and has therefore proven nothing. Both states are worth capturing; only
 the open one decides.
 
-### Gates as apertures
+### Gates as passes
 
 One grammar throughout: **a palette seen through an opening is where you are
 going.** The gate is not an object standing on a tile; it is the corridor
 narrowing into a pass, with the destination visible through the gap.
+
+**The narrowing is permanent geography.** It is the pass, and it stays once the
+rival is beaten — a road outlives its guard. Both ends of every world are
+shaped: **world N's start is world N−1's exit**, so if the player leaves through
+a narrowing pass, world N must open with a narrow mouth that widens. Departure
+and arrival geometry are one joint designed twice, not two worlds' edges that
+happen to meet.
+
+**Nothing spawns in a pass.** A pass is a deliberate exception to the rule that
+no walkable segment is narrower than two tiles — a rule that exists so a wild
+encounter can never fully block the path. The exception is only safe if the
+generator emits a goal-adjacent suppression zone covering everything that spawns
+on tiles.
+
+**The rival stands in the pass and holds it.** That is the state signal: while
+the rival lives, the way is physically barred by the thing barring it, which is
+truer than weather. Every rival is its world's physics made incorruptible, so
+holding the boundary is its job rather than a staging choice. It also preserves
+the reveal, since nothing of the next world is visible past it.
+
+**Size the rival to the aperture, not to the screen.** Scale is read against the
+opening: a modest figure filling a narrow notch reads larger than a giant in an
+open field. Wide enough that no walkable gap shows from the approach tile, fully
+visible and silhouette-readable from the tile in front, and no more. The
+narrowing carries the menace.
+
+**Once the rival falls, a board in the pass names the destination** — "To The
+Storm Flats". This reads as a road sign only because every world is named as a
+place; it is the first system-level dividend the naming law pays.
+
+**Two objects, two duties.** The board is scenery: world-space, depth-scaled,
+painted legible at approach distance, illegible from far off — which is what
+keeps it a signpost rather than an interface element, and what stops it
+competing with the horizon reveal, since the horizon resolves first and the name
+becomes readable later as its caption. The **interact prompt** is interface: it
+obeys every text-size preset, and it carries the choice.
+
+**Approach, read, press.** Both gate states share one interaction grammar, and
+the keypress is what makes it safe. Arrival alone must never transition or start
+a fight: a pass is the most interesting object in a world and players will walk
+into it to look. The confirmation is not removed with the old menus, it is
+relocated into the prompt — and the story beat between worlds fires on that
+keypress, the exact semantic descendant of the click it replaces.
+
+**World 10 has no board.** The grammar means "another world lies beyond", and the
+finale's meaning is that there is not one. The Adapted holds the pass; when it
+falls, the pass frames the mirror-sky and nothing else.
+
+**World 1's backward exit is a door, not a pass**, because it leads to the Lab.
+Every geographic boundary is a pass; the one non-geographic boundary is a door.
+The asymmetry is the ontology made visible.
 
 Wayfinding is not the problem a gate solves — a corridor has nowhere else to
 walk. What the gate must carry is **state**: the goal gate exists only once that
