@@ -4,9 +4,9 @@ Work list for making the overworld continuous to the horizon and turning the
 world-to-world connections into geography. The spec is `WORLDS.md` §4, which is
 the authority; this file is the checklist. Delete it once the work has landed.
 
-**Ordering against the retheme.** Stage A below is independent of
-`WORLDS_BUILD_TASK.md` and can ship first — it fixes a live complaint and touches
-none of the theming. Stages B–F depend on the retheme, because a world's distant
+**Ordering against the retheme.** Stages A and B are independent of
+`WORLDS_BUILD_TASK.md` and are built — they fix a live complaint and touch none
+of the theming. Stages C–F depend on the retheme, because a world's distant
 self *is* its impassable surround restated at horizon scale, and those surrounds
 do not exist until the retheme builds them. Do not author distant selves against
 the current biomes; they will be thrown away.
@@ -17,58 +17,51 @@ the current biomes; they will be thrown away.
 
 Build in this order. Each stage is shippable on its own.
 
-| Stage | What | Depends on |
-|---|---|---|
-| **A** | Depth continuity — land reaches the horizon | nothing |
-| **B** | Haze inheritance — the air ahead becomes the next world's air | A |
-| **C** | Distant selves — per-world horizon profiles, composed into neighbours | retheme, A |
-| **D** | Gate apertures — state-signalled pass, ground seam | C |
-| **E** | Depth-projected flanks — the approach into the pass | D |
-| **F** | The Lab door, then the Qumatuomi sky | D (Lab quotes its grammar) |
+| Stage | What | Depends on | Status |
+|---|---|---|---|
+| **A** | Depth continuity — land reaches the horizon | nothing | **built** |
+| **B** | Haze inheritance — the air ahead becomes the next world's air | A | **built** |
+| **C** | Distant selves — per-world horizon profiles, composed into neighbours | retheme, A | to do |
+| **D** | Gate apertures — state-signalled pass, ground seam | C | to do |
+| **E** | Depth-projected flanks — the approach into the pass | D | to do |
+| **F** | The Lab door, then the Qumatuomi sky | D (Lab quotes its grammar) | to do |
 
-A and B are cheap and deliver most of the felt improvement. E is the only
-speculative item; if it reads badly in the first world tried, stop — D alone is
-a complete gate.
+E is the only speculative item; if it reads badly in the first world tried,
+stop — D alone is a complete gate.
 
 ---
 
-## A — Depth continuity
+## A — Depth continuity — built
 
-The mechanism of the "world suddenly stops" complaint: terrain rows are drawn
-from `minY = max(0, camY - DRAW_DISTANCE_TILES)`, **clamped at grid row 0**, so
-near a world's far edge there are no rows left to draw and the flat background
-fill shows through.
+`OverworldScene.drawMarginRows` repeats the far edge row outward past the grid,
+terrain kind included, as `drawMarginColumns`'s counterpart in depth;
+`drawHorizonBand` owns the last strip up to the horizon line. See `CODEMAP.md`'s
+"Reaching the horizon" for the drawing paths and `STYLE.md`'s "Overworld path"
+for the visual rule. What `WORLDS.md` §4 requires of it, and what any later
+stage drawing at depth must keep true:
 
-`drawMarginColumns`/`drawMarginTile` already solve exactly this problem
-laterally, repeating the edge column's terrain outward to `LANE_CLIP`. Mirror
-that in depth. Follow the existing pattern rather than inventing a second one.
-
-Three things `WORLDS.md` §4 requires and this stage must honour:
-
-- **Cap the repetition at the row where depth haze reaches full opacity.** This
-  bounds the cost — you need rows-until-fog, not unbounded rows — and a painted
+- The repetition is capped at the depth-fog saturation row, and the painted
   gradient band owns the final strip up to the horizon line.
-- **Stop drawing rows thinner than a pixel.** Near the horizon projected rows
-  compress below a pixel and will alias and crawl as the camera moves.
+- No row thinner than a pixel is drawn — such rows alias and crawl as the camera
+  moves.
 - **The repeated road is intentional** — repeating the far row repeats the
-  walkable path, so a road continues past the world's end. Keep it, drown it in
-  haze quickly, and see stage D for hiding it behind a shut gate.
+  walkable path, so a road continues past the world's end. It drowns in haze
+  quickly; stage D is what hides it behind a shut gate, which it does not yet do,
+  so on a goal tile with the rival still alive the road currently continues into
+  open haze.
+- All depths route through `projectTile`, which applies `CAMERA_BACK_TILES`
+  internally. Drawing must call it and must not add the camera pullback itself,
+  or it double-counts.
 
-**Invariant from the footing fix (already on master):** all depths route through
-`projectTile`, which applies `CAMERA_BACK_TILES` internally. New drawing must
-call `projectTile` and must not add the camera pullback itself, or it
-double-counts.
+## B — Haze inheritance — built
 
-## B — Haze inheritance
+`hazeTarget`/`forwardHazeBlend` carry every haze in the scene toward the next
+world's fog colour as the player nears the goal row (`CODEMAP.md`'s "Forward
+haze inheritance").
 
-As the player nears a world's goal end, lerp the depth haze's fog target toward
-the *next* world's fog colour. This is a per-biome colour lerp on
-`drawDepthHaze`, which already exists.
-
-**Gated on gate state: a shut gate means no forward palette bleed.** This is a
-cross-feature dependency between B and D and it is the kind of thing that
-silently drops when stages become separate tasks — wire the gate state through
-now, even if D is not built yet, rather than retrofitting it.
+**Gated on gate state: a shut gate means no forward palette bleed.** The gate
+input is `isRivalDefeated()` until stage D builds the aperture itself; when it
+does, that is the single call to re-point.
 
 ## C — Distant selves
 

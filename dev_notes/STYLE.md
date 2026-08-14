@@ -343,7 +343,37 @@ than appending a changelog, so this always reflects current reality.
   - **Depth haze** is leaned on hard: the per-tile fog blend is deepened, distant walkable
     ground hazes toward a lighter target than its surroundings do (so the route stays visible
     at the range the player plans it from), and a whole-screen wash of the biome's haze color
-    over the top of the ground plane turns the far distance into continuous atmosphere.
+    over the top of the ground plane turns the far distance into continuous atmosphere. Every
+    such wash is painted as *abutting one-pixel rows*, never as overlapping bands: two
+    translucent rects sharing a scanline blend twice there and draw a bright line at every
+    seam, which is invisible while the wash color sits close to the ground under it and
+    stripes the whole far distance as soon as it does not.
+  - **The ground plane always reaches the horizon** (`dev_notes/WORLDS.md` §4 is the spec).
+    Terrain is repeated in depth past the grid's far edge the same way it is repeated sideways
+    past the left and right edges, so a world never visibly terminates. Two bounds keep that
+    honest: the repetition stops where the depth fog saturates, beyond which nothing is
+    distinguishable anyway, and it stops on any row whose projected thickness has fallen under
+    a pixel, since such rows only alias and crawl as the camera moves. The far quarter of the
+    draw distance is a **painted band** in the world's haze color rather than tiles, opaque
+    from the horizon line down to where the terrain runs out and thinning from there toward
+    the camera -- the terrain dissolves into pure atmosphere instead of ending on the edge of a
+    final row.
+  - **The ground reaches both frame edges at every depth.** How wide the ground has to be
+    painted depends on how far away it is: the projection shrinks a tile-width toward the
+    vanishing point, so a lane window that fills the frame up close covers a narrowing wedge in
+    the distance. Painting the width the frame actually needs, per row, is what keeps the far
+    corners of the screen off the bare backdrop -- a distant wedge of terrain on flat fill
+    reads as a world that stops, however far back the stopping point is.
+  - **The repeated road is intentional.** Repeating the far edge row repeats the walkable path
+    with it, so a road runs on past the world's own end -- the one detail that says the ten
+    worlds are one road rather than ten rooms. It is scenery, not passage: movement still
+    collides against the real grid, and the player leaves through the goal tile.
+  - **The air ahead becomes the next world's air.** As the player nears a world's goal end the
+    haze target lerps toward the next world's own haze color, reaching four-fifths of the way
+    at the goal row itself. The fog is applied in proportion to depth, so this recolors the
+    distance and leaves the ground underfoot alone. It is **gated on gate state**: while that
+    world's rival still stands the gate is shut, and a shut gate shows nothing of what is
+    beyond it. World 10 has no next world and keeps its own air the whole way.
   - The guardian chokepoint's glow falls off radially from the guardian's own tile and carries
     no outline, so the gate reads as a pool of light rather than a hard rectangle laid over a
     floor whose every other edge curves.
@@ -353,7 +383,11 @@ than appending a changelog, so this always reflects current reality.
     but always as impassable ground -- so the world runs to the frame edge instead of stopping
     on a stair-stepped strip of bare backdrop. The grid-edge boundary of a walkable edge tile
     is already part of the traced contour (the trace treats out-of-grid as impassable), so the
-    floor side keeps its usual curve, shadow and rim against those columns.
+    floor side keeps its usual curve, shadow and rim against those columns. **Margin rows**
+    (`drawMarginRows`) are the same idea in depth, with one deliberate difference: they repeat
+    the far edge row's terrain *kind* as well as its color, so the path repeats with it, and
+    the trace is fed the far edge row's walkability for every row beyond it so no boundary
+    curve, shadow or rim is drawn across a road that continues.
   A `regionColor` domain's own boundary is not part of the traced contour -- only the
   walkable/impassable line is -- so where two domains meet inside impassable ground the color
   break there still follows the tile lattice (world 3 keeps its domains apart with walkable
@@ -426,7 +460,9 @@ every world uses rather than free style choices:
   sitting between the two floor colors (world 5's `0x44606e` between its lake and its ice,
   world 2's `0x24203f` just under its stone). The open-sky worlds (`clouds: true`) instead haze
   toward their own bright sky, above both -- correct there, because that is the horizon their
-  ground actually meets.
+  ground actually meets. Near a world's goal end the haze target is deliberately carried
+  toward the *next* world's `fogTarget` (see "Overworld path" above), which is the one place
+  it leaves that range on purpose -- the reason every haze wash is painted overlap-free.
 
 | World | Biome | Sky/ceiling | Off-path ground | Path | Decoration | Clouds | Wall theme |
 |---|---|---|---|---|---|---|---|

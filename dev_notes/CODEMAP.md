@@ -1132,6 +1132,49 @@ ground plane. Geometry that is expensive to work out from the grid belongs in th
 that depends on where the camera is has to stay in `drawWorld`, since that per-frame reprojection
 is what makes the world scroll continuously instead of snapping tile-by-tile.
 
+**Reaching the horizon** (`dev_notes/WORLDS.md` §4 is the spec, `STYLE.md`'s "Overworld path" the
+visual rule). `drawMarginRows` is `drawMarginColumns`'s counterpart in depth, run before the real
+rows so every nearer row paints over it: it repeats `farEdgeRow` -- the northernmost row the
+corridor reaches, resolved with the terrain plan and dropped alongside it -- outward past the
+grid's far edge, terrain kind included, so the walkable path repeats with it and a road runs on
+past the world's end. `drawMarginColumns` takes the row's terrain and its depth row index
+separately, which is what lets those repeated rows carry lateral margins of their own. The sweep
+runs to `Math.floor(camY - DRAW_DISTANCE_TILES)`, the depth-fog saturation row that also bounds
+the real rows, and breaks early on any row whose projected thickness has fallen under
+`MIN_ROW_PX`; at the current constants the fog bound always binds first (the thinnest row drawn is
+~2.8px, the sub-pixel bound would not bite until ~28 tiles out), so the guard is what keeps that
+true if the constants move. How wide each row is painted comes from `laneClipAt(depth)`, which
+returns the lane offset that reaches the frame edge at that depth: a fixed lane window cannot do
+this job, since the projection shrinks a tile-width toward the vanishing point and one that fills
+the frame up close covers a narrowing wedge in the distance, leaving the far screen corners on
+bare backdrop. `LANE_CLIP` stays the constant for *actors*, whose visibility is a near-field
+question. `drawHorizonBand`, called from `drawDepthHaze`, owns the far quarter of the draw
+distance: opaque from `HORIZON_Y` down to `projectTile(0, DRAW_DISTANCE_TILES).y` -- which is what
+covers the deepest rows, whose own fog caps well short of the haze color and would otherwise
+surface as a visible edge -- and thinning from there to nothing at `HORIZON_BAND_FROM` of the draw
+distance, the same threshold past which tile decoration, terrain accents and actor sprites already
+stop. Both ends are fixed depths rather than tracked off the deepest row drawn, so the band never
+slides out from under the rows as the camera creeps. Both it and `drawDepthHaze`'s own wash go
+through `fillVerticalFade`, which paints abutting one-pixel rows -- overlapping translucent bands
+double-blend on the shared scanline and stripe the far distance, and two-pixel rows contour-band
+where the ramp is steepest. The trace is fed
+`depthContinuedWalkable` (the real grid, with every row north of `farEdgeRow` carrying that row's
+walkability) so no boundary curve, contact shadow or rim light is drawn across the continuing
+road; `walkable` itself is untouched, so the repeated road is scenery and the player still leaves
+through the goal tile. Anything drawing at depth calls `projectTile`, which applies
+`CAMERA_BACK_TILES` internally -- adding the pullback again double-counts it.
+
+**Forward haze inheritance.** `hazeTarget(biome)` is what every haze in the overworld reads
+instead of `biome.fogTarget` directly (`walkableHazeTarget`, `offPathColor`, `drawDepthHaze`,
+`drawHorizonBand`), so the per-tile fog and the whole-screen washes always agree on where the
+atmosphere is going. It carries a biome's own fog color toward `getBiome(world + 1).fogTarget` by
+`forwardHazeBlend()`, which ramps from zero at `HAZE_INHERIT_TILES` south of the goal row to
+`HAZE_INHERIT_MAX` at the row itself, and returns zero for World 10 (no next world) or while
+`isRivalDefeated()` is false -- the goal gate is shut until that world's rival is beaten, and a
+shut gate shows nothing of what is beyond it. The blend factor and a small per-biome memo are
+recomputed once per frame at the top of `drawWorld` (World 9's defect patches put several biomes
+on screen at once).
+
 **Overworld depth layering.** `OverworldScene`'s corridor is a fixed stack of Phaser depths:
 `worldGfx` (the single `Graphics` mesh for the whole ground plane, repainted every frame -- see
 "Overworld terrain rendering" above) at the default depth 0; qumatessence token bodies at 19;

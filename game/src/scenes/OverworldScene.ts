@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { blend } from '../art/colors';
-import { getBiome } from '../art/biomes';
+import { BIOMES, getBiome } from '../art/biomes';
 import type { Biome } from '../art/biomes';
 import { makeCrystal } from '../art/crystals';
 import { makeToken } from '../art/tokens';
@@ -18,7 +18,7 @@ import { makeAndersonAvatar } from '../art/anderson';
 import { makeFranklinAvatar } from '../art/franklin';
 import { playGuardianChime } from '../audio/sfx';
 import { stopMoveEffectPreview } from '../art/moveEffectPreview';
-import { project, fogColor, HORIZON_Y, CANVAS_W, CANVAS_H, ProjectedPoint } from '../art/perspective';
+import { project, fogColor, HORIZON_Y, LANE_PX, CANVAS_W, CANVAS_H, ProjectedPoint } from '../art/perspective';
 import { buildContourGrid, ContourPoint, MAX_OFFSET, TileContour } from '../art/contours';
 import {
   PLAYER_MATERIAL,
@@ -112,8 +112,30 @@ interface TerrainTile {
 const GRID_W = 27;
 const GRID_H = 50;
 const TILE_SCALE = 0.6;
+// How far off-center an actor can stand and still be worth drawing, in
+// tile-widths. The ground plane does not use this -- how wide the ground has
+// to be painted to fill the frame depends on how far away it is (laneClipAt).
 const LANE_CLIP = 8.5;
 const DRAW_DISTANCE_TILES = 15;
+// The far quarter of the draw distance is painted as pure atmosphere by
+// drawHorizonBand rather than left to the per-tile fog, which caps well short
+// of the haze color and would otherwise let the deepest rows surface as a
+// visible edge. It is also exactly where the detail passes (tile decoration,
+// terrain accents, actor sprites) already stop, so the band covers only
+// ground that had nothing left on it.
+const HORIZON_BAND_FROM = 0.75;
+// Thinnest projected row still worth painting, in screen pixels. The
+// projection is asymptotic, so rows keep compressing toward the horizon long
+// after they stop being resolvable; below a pixel they only alias and crawl
+// as the camera moves, and the horizon band covers that strip instead.
+const MIN_ROW_PX = 1;
+// How far south of the goal row the next world's fog starts bleeding into
+// this one's, in tiles, and how much of it has arrived by the goal row
+// itself. Held under 1 so the world keeps some of its own air even standing
+// at the gate; the fog target is applied in proportion to depth, so at the
+// goal row this recolors the distance and leaves the ground underfoot alone.
+const HAZE_INHERIT_TILES = 12;
+const HAZE_INHERIT_MAX = 0.8;
 // How far behind the player's own tile the camera sits, in tile-lengths.
 // Every depth handed to projectTile is measured from the player's tile
 // centre, and this is what turns that into the camera-relative depth the
@@ -481,6 +503,14 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // at the same time as terrainPlanCache and dropped alongside it. A tile away
   // from any boundary has no entry (null) and is drawn as a plain quad.
   private contourGrid: (TileContour | null)[][] = [];
+  // Northernmost row the corridor reaches, resolved with the plan and dropped
+  // alongside it (see findFarEdgeRow).
+  private farEdgeRow = 0;
+  // Per-frame memo for hazeTarget's forward blend, keyed by a biome's own fog
+  // color: the blend factor only changes between frames, and world 9's defect
+  // patches put several biomes on screen at once.
+  private hazeBlend = 0;
+  private hazeCache = new Map<number, number>();
   private reachedGoal = false;
   private reachedMiddle = false;
   // Public rather than private: read/written directly by the extracted
@@ -1271,6 +1301,17 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     return project(lane * TILE_SCALE, (depth + CAMERA_BACK_TILES) * TILE_SCALE);
   }
 
+  // How far off-center the ground has to be painted, in tile-widths, for the
+  // row at this depth to reach both sides of the frame. A fixed lane window
+  // cannot do this job: the projection shrinks a tile-width toward the
+  // vanishing point, so one that fills the frame up close covers a narrowing
+  // wedge in the distance and leaves the far corners of the screen on bare
+  // backdrop. One tile of slack past the frame edge keeps the outermost tile's
+  // own width in play rather than ending exactly on it.
+  private laneClipAt(depth: number): number {
+    return CANVAS_W / 2 / (TILE_SCALE * LANE_PX * this.projectTile(0, depth).scale) + 1;
+  }
+
   // Terrain rendering splits in two: reading the grid (this, cached for as
   // long as the grid stands still) and projecting/painting it (drawWorld,
   // every frame). Everything here is camera-independent, so the whole grid
@@ -1281,9 +1322,40 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   private terrainPlan(): TerrainTile[][] {
     if (!this.terrainPlanCache) {
       this.terrainPlanCache = this.buildTerrainPlan();
-      this.contourGrid = buildContourGrid(this.walkable, GRID_W, GRID_H);
+      this.farEdgeRow = this.findFarEdgeRow();
+      this.contourGrid = buildContourGrid(this.depthContinuedWalkable(), GRID_W, GRID_H);
     }
     return this.terrainPlanCache;
+  }
+
+  // The northernmost row the corridor reaches -- every generator paints its
+  // last band on the goal row and leaves the rows north of it unwalkable, so
+  // this is the last row that carries the path. It is the row the depth
+  // margin (drawMarginRows) continues toward the horizon, the way the lateral
+  // margin continues the grid's left/right edge column.
+  private findFarEdgeRow(): number {
+    for (let y = 0; y < GRID_H; y++) {
+      for (let x = 0; x < GRID_W; x++) {
+        if (this.walkable[y]?.[x]) return y;
+      }
+    }
+    return 0;
+  }
+
+  // The walkability the contour trace sees: the real grid, with every row
+  // north of the far edge row carrying that row's walkability instead of its
+  // own. The trace treats out-of-grid as impassable, so without this the far
+  // edge row's path tiles would be traced as bounded on their north side and
+  // wear a boundary curve, contact shadow and rim light straight across a
+  // road the depth margin then continues past them. Movement still collides
+  // against the untouched `walkable` grid, so the repeated road is scenery:
+  // the player leaves through the goal tile, not by walking up it.
+  private depthContinuedWalkable(): boolean[][] {
+    const edge = this.farEdgeRow;
+    if (edge <= 0) return this.walkable;
+    const out: boolean[][] = [];
+    for (let y = 0; y < GRID_H; y++) out.push(y < edge ? [...this.walkable[edge]] : this.walkable[y]);
+    return out;
   }
 
   private buildTerrainPlan(): TerrainTile[][] {
@@ -1332,19 +1404,28 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     const plan = this.terrainPlan();
     const camX = this.camPos.x;
     const camY = this.camPos.y;
-    const minY = Math.max(0, Math.floor(camY - DRAW_DISTANCE_TILES));
+    this.hazeBlend = this.forwardHazeBlend();
+    this.hazeCache.clear();
+    // The deepest row drawn at all: where the depth fog saturates
+    // (depthRatio 1), which is the same bound the depth margin runs to.
+    const deepestRow = Math.floor(camY - DRAW_DISTANCE_TILES);
+    const minY = Math.max(this.farEdgeRow, deepestRow);
     // Rows behind the player are still in frame -- the camera stands
     // CAMERA_BACK_TILES behind the player's tile, so the ground the player
     // has already walked over is what fills the bottom of the screen. The
     // per-tile near-plane test below is what actually stops the sweep.
     const maxY = Math.min(GRID_H - 1, Math.floor(camY) + 2);
 
+    // Farthest first, so every nearer row paints over it.
+    this.drawMarginRows(g, plan, camX, camY, deepestRow);
+
     for (let y = minY; y <= maxY; y++) {
-      this.drawMarginColumns(g, plan, y, camX, camY);
+      this.drawMarginColumns(g, plan[y], y, camX, camY);
+      const laneClip = this.laneClipAt(camY - y + 0.5);
       for (let x = 0; x < GRID_W; x++) {
         const laneL = x - camX - 0.5;
         const laneR = x - camX + 0.5;
-        if (laneL > LANE_CLIP || laneR < -LANE_CLIP) continue;
+        if (laneL > laneClip || laneR < -laneClip) continue;
 
         const depthFar = camY - y + 0.5;
         const depthNear = camY - y - 0.5;
@@ -1409,15 +1490,74 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // grid-edge boundary is already part of the traced contour (the trace
   // treats out-of-grid as impassable), so the floor side keeps its usual
   // curve, shadow and rim.
-  private drawMarginColumns(g: Phaser.GameObjects.Graphics, plan: TerrainTile[][], y: number, camX: number, camY: number) {
+  // `row` supplies the terrain and `y` the depth, which the depth margin
+  // (drawMarginRows) separates: its rows lie past the grid's far edge and
+  // take their terrain from the far edge row.
+  private drawMarginColumns(g: Phaser.GameObjects.Graphics, row: TerrainTile[], y: number, camX: number, camY: number) {
     const depthFar = camY - y + 0.5;
     if (depthFar + CAMERA_BACK_TILES <= 0) return;
-    for (let gx = Math.floor(camX - LANE_CLIP); gx < 0; gx++) {
-      this.drawMarginTile(g, plan[y][0], gx, y, camX, camY, gx === -1);
+    const laneClip = this.laneClipAt(depthFar);
+    for (let gx = Math.floor(camX - laneClip); gx < 0; gx++) {
+      this.drawMarginTile(g, row[0], gx, y, camX, camY, gx === -1);
     }
-    const rightEnd = Math.ceil(camX + LANE_CLIP);
+    const rightEnd = Math.ceil(camX + laneClip);
     for (let gx = GRID_W; gx <= rightEnd; gx++) {
-      this.drawMarginTile(g, plan[y][GRID_W - 1], gx, y, camX, camY, gx === GRID_W);
+      this.drawMarginTile(g, row[GRID_W - 1], gx, y, camX, camY, gx === GRID_W);
+    }
+  }
+
+  // Rows past the grid's far edge, drawn wherever the camera stands close
+  // enough to that edge that the draw distance reaches beyond it -- the depth
+  // counterpart of drawMarginColumns, so the ground plane runs to the horizon
+  // instead of terminating on a strip of bare backdrop. Each one repeats the
+  // far edge row (findFarEdgeRow) whole, terrain kind included, so the
+  // walkable path repeats with it and the road continues past the world's own
+  // end; the haze is what ends it. Two bounds keep that honest: the sweep
+  // stops where the depth fog saturates (`deepestRow`, the same bound the
+  // real rows use, beyond which nothing is distinguishable anyway and the
+  // horizon band takes over), and it stops early on any row whose projected
+  // thickness has fallen under a pixel, which would alias and crawl as the
+  // camera moves. No contour, contact shadow or decoration out here: the far
+  // edge row's own contour already runs unbroken into these rows (see
+  // depthContinuedWalkable), and every repeat is far enough out that the
+  // detail passes are already faded off.
+  private drawMarginRows(
+    g: Phaser.GameObjects.Graphics,
+    plan: TerrainTile[][],
+    camX: number,
+    camY: number,
+    deepestRow: number
+  ) {
+    const edge = plan[this.farEdgeRow];
+    for (let gy = this.farEdgeRow - 1; gy >= deepestRow; gy--) {
+      const depthFar = camY - gy + 0.5;
+      const depthNear = camY - gy - 0.5;
+      if (this.projectTile(0, depthNear).y - this.projectTile(0, depthFar).y < MIN_ROW_PX) break;
+
+      this.drawMarginColumns(g, edge, gy, camX, camY);
+      const depthRatio = Phaser.Math.Clamp(depthFar / DRAW_DISTANCE_TILES, 0, 1);
+      const laneClip = this.laneClipAt(depthFar);
+      for (let x = 0; x < GRID_W; x++) {
+        const laneL = x - camX - 0.5;
+        const laneR = x - camX + 0.5;
+        if (laneL > laneClip || laneR < -laneClip) continue;
+
+        const pFL = this.projectTile(laneL, depthFar);
+        const pFR = this.projectTile(laneR, depthFar);
+        const pNR = this.projectTile(laneR, depthNear);
+        const pNL = this.projectTile(laneL, depthNear);
+        const fill = [pFL, pFR, pNR, pNL];
+        const tile = edge[x];
+
+        if (tile.kind === 'path') {
+          let color = this.groundColor(tile.biome.path, depthRatio, this.walkableHazeTarget(tile.biome));
+          if (tile.regionTint != null) color = blend(color, tile.regionTint, 0.55);
+          g.fillStyle(color, 1);
+          g.fillPoints(fill, true);
+        } else {
+          this.drawOffPathTile(g, tile, fill, null, pFL, pFR, pNR, pNL, depthRatio);
+        }
+      }
     }
   }
 
@@ -1432,7 +1572,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   ) {
     let laneL = gx - camX - 0.5;
     let laneR = gx - camX + 0.5;
-    if (laneL > LANE_CLIP || laneR < -LANE_CLIP) return;
+    const laneClip = this.laneClipAt(camY - y + 0.5);
+    if (laneL > laneClip || laneR < -laneClip) return;
     if (innermost && edge.kind === 'path') {
       if (gx < 0) laneR += MAX_OFFSET;
       else laneL -= MAX_OFFSET;
@@ -1493,7 +1634,34 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // way to the horizon -- letting floor and off-path converge on one haze
   // color erases the boundary at exactly the range it is being read from.
   private walkableHazeTarget(biome: Biome): number {
-    return blend(biome.fogTarget, biome.path, 0.35);
+    return blend(this.hazeTarget(biome), biome.path, 0.35);
+  }
+
+  // What the distance hazes toward: a biome's own fog color, carried toward
+  // the next world's fog as the player nears the gate, so the air ahead
+  // becomes the next world's air. Every haze in the scene reads this, so the
+  // per-tile fog and the whole-screen wash always agree on where the
+  // atmosphere is going.
+  private hazeTarget(biome: Biome): number {
+    if (this.hazeBlend <= 0) return biome.fogTarget;
+    const cached = this.hazeCache.get(biome.fogTarget);
+    if (cached != null) return cached;
+    const next = getBiome(this.world + 1).fogTarget;
+    const mixed = blend(biome.fogTarget, next, this.hazeBlend);
+    this.hazeCache.set(biome.fogTarget, mixed);
+    return mixed;
+  }
+
+  // How much of the next world's air has arrived, from the camera's distance
+  // to the goal row. Gated on the goal gate's state: while this world's rival
+  // still stands the gate is shut, and a shut gate shows nothing of what is
+  // beyond it. World 10 has no next world -- it keeps its own air the whole
+  // way, its horizon being the Qumatuomi sky rather than a neighbour.
+  private forwardHazeBlend(): number {
+    if (!BIOMES[this.world + 1]) return 0;
+    if (!this.isRivalDefeated()) return 0;
+    const rows = this.camPos.y - this.goalTile.y;
+    return Phaser.Math.Clamp(1 - rows / HAZE_INHERIT_TILES, 0, 1) * HAZE_INHERIT_MAX;
   }
 
   // A wash of the biome's own haze color over the far reach of the ground
@@ -1502,13 +1670,49 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // neighbor, and the wash is what turns the far distance into continuous
   // atmosphere. Drawn into worldGfx so it stays under every actor.
   private drawDepthHaze(g: Phaser.GameObjects.Graphics) {
-    const bands = 34;
-    const height = 240;
-    for (let i = 0; i < bands; i++) {
-      const t = i / bands;
-      g.fillStyle(this.biome.fogTarget, 0.35 * Math.pow(1 - t, 3));
-      g.fillRect(0, HORIZON_Y + t * height, CANVAS_W, height / bands + 1);
+    const target = this.hazeTarget(this.biome);
+    this.fillVerticalFade(g, target, HORIZON_Y, 240, (t) => 0.35 * Math.pow(1 - t, 3));
+    this.drawHorizonBand(g, target);
+  }
+
+  // A vertical alpha ramp in one flat color, painted as abutting one-pixel
+  // rows. The rows must not overlap: two translucent rects sharing a scanline
+  // blend twice there, which draws a bright line at every seam -- invisible
+  // while the color is close to the ground under it, and stripes across the
+  // whole far distance as soon as it is not (a haze carrying the next world's
+  // fog color, biomes.ts's note on holding `fogTarget` near the floor colors).
+  private fillVerticalFade(
+    g: Phaser.GameObjects.Graphics,
+    color: number,
+    top: number,
+    height: number,
+    alphaAt: (t: number) => number
+  ) {
+    const rows = Math.max(1, Math.round(height));
+    for (let i = 0; i < rows; i++) {
+      g.fillStyle(color, alphaAt(i / rows));
+      g.fillRect(0, top + i * (height / rows), CANVAS_W, height / rows);
     }
+  }
+
+  // The last stretch of ground is painted atmosphere rather than tiles: past
+  // the fog-saturation depth rows are compressed to nothing and hold nothing
+  // the haze has not already taken, so the terrain dissolves and meets the sky
+  // as a gradient instead of on the edge of a final row. The band is fully
+  // opaque from the horizon line down to that depth -- which is what covers
+  // the deepest rows, whose own fog caps well short of the haze color and
+  // would otherwise surface as a visible edge -- and thins from there toward
+  // the camera, running out at HORIZON_BAND_FROM of the draw distance. Both
+  // ends are fixed depths rather than tracked off the deepest row drawn, so
+  // the band never slides out from under the rows as the camera creeps.
+  private drawHorizonBand(g: Phaser.GameObjects.Graphics, target: number) {
+    const solid = this.projectTile(0, DRAW_DISTANCE_TILES).y;
+    const foot = this.projectTile(0, DRAW_DISTANCE_TILES * HORIZON_BAND_FROM).y;
+    const height = foot - HORIZON_Y;
+    const solidT = (solid - HORIZON_Y) / height;
+    this.fillVerticalFade(g, target, HORIZON_Y, height, (t) =>
+      t <= solidT ? 1 : Math.pow((1 - t) / (1 - solidT), 1.5)
+    );
   }
 
   // The ground plane leans hard on aerial perspective: `fogColor`'s own blend
@@ -1578,7 +1782,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // ground, hazed for depth, tinted toward a mapgen domain's color where the
   // tile belongs to one.
   private offPathColor(biome: Biome, regionTint: number | null, depthRatio: number): number {
-    const base = this.groundColor(biome.ground, depthRatio, biome.fogTarget);
+    const base = this.groundColor(biome.ground, depthRatio, this.hazeTarget(biome));
     return regionTint != null ? blend(base, regionTint, 0.6) : base;
   }
 
