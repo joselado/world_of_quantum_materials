@@ -22,6 +22,14 @@ the code:
   battle rules, guardians/story, tech stack, roadmap, open questions. Source
   of truth for game content/mechanics; edit it in place as the game evolves
   rather than starting a new doc.
+- `dev_notes/WORLDS.md` — **binding**: the premise (the Decoherence arc), the
+  identity of the ten worlds, and the rules that hold them together — the naming
+  law, the light rule, the two escalation spines, the per-world terrain and
+  palette, and how the premise is voiced in `worldLore.ts`/`story.ts`. Any change
+  to a world's name, terrain, palette, lore, rival taunt or story beat is judged
+  against this file first; if a proposed change conflicts with it, raise the
+  conflict rather than quietly diverging. `DESIGN.md` §2 stays the source of
+  truth for map shapes and progression gates.
 - `dev_notes/STYLE.md` — visual conventions (sizes, colors, shapes,
   panel/motion rules).
 - `dev_notes/CODEMAP.md` — where things live in the code: function names,

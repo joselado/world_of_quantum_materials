@@ -1,0 +1,428 @@
+# WORLDS.md — world identity, theming and story
+
+The agreed identity of the ten worlds: what each place is called, what it looks
+like, what it means, and the rules that hold the set together. `DESIGN.md` §2
+remains the source of truth for each world's *map shape* (its generator motif)
+and its progression gate; this file covers everything above that — naming,
+terrain, palette, light, and the story the sequence tells.
+
+**Implementation status:** the fiction below is settled; the code is not yet
+moved onto it. `data/materials.ts`'s `WORLD_NAMES` and `art/biomes.ts` still
+carry the previous theming. `WORLDS_BUILD_TASK.md` holds the work list.
+
+---
+
+## 0. The premise
+
+**Decoherence has come. The materials of the world are losing their coherence.**
+
+The player is a crystal — a quantum thing — walking into that. Each world is
+further into it than the last, and the light dying across the sequence is not an
+art choice but the story made visible: the worlds get darker because coherence
+is being lost, and the last of it goes out in World 7 when the sky does.
+
+The final enemy is a machine-learning model that devours coherence and defeats
+the player **by understanding them** — because to learn a quantum thing is to
+measure it, and to measure it is to collapse it (§2, World 10).
+
+Everything else in this file serves that premise. The naming law keeps each
+world honest about what it is; the light rule is decoherence advancing; the two
+escalation spines are how far gone each place already is.
+
+---
+
+## 1. The three rules
+
+Three rules generate every decision in this file. A new world, or a revision to
+an old one, is judged against them before anything else.
+
+### The naming law
+
+**No name promises anything the texture doesn't show.**
+
+Every world name is a physics word plus a terrain word, and both halves must be
+visible on screen. "The Iron Steppe" works because the iron is *there* — black
+iron-sand underfoot, iron shards in the surround. A name the player cannot
+verify by looking out the window is a name that has drifted into being a
+lecture index.
+
+Two corollaries, both load-bearing:
+
+- **No physicists.** The guardians are the people, and they are the only human
+  presence in the game. A world named after the physicist standing in it is
+  redundant, and a world named after a *different* physicist than its guardian
+  is confusing. Personal names belong to guardians alone.
+- **No quasiparticles.** Quasiparticles are the moves and the creatures
+  (`docs/quasiparticles.md`); they have their own namespace. A world named for
+  one borrows an identity that belongs to the battle system.
+
+Both bans push names away from proper nouns, which cannot be drawn, and toward
+phenomena, which can. That is why they hold: they are the naming law restated.
+
+The vocabulary is deliberately short and plain — a player should not need a
+dictionary. The rule polices *obscurity*, not *intensity*: "devouring" is
+vivid, not hard, and belongs where the game is loudest.
+
+### The light rule
+
+The sequence is one long day dying — and the day is coherence. This is the
+premise (§0) rendered as light, so the rule is diegetic rather than atmospheric:
+the player is watching decoherence arrive.
+
+Morning → midday → afternoon → stormy dusk → overcast twilight → night →
+**no sky at all** → fog → firelight → shimmer.
+
+**After World 7, the sun never returns.** All light in Worlds 8–10 is *emitted
+by the world itself* — fog-glow, magma, the Mirror's own shimmer — never
+received from above. Once the player has been shown that there is no sky, it is
+not handed back. This is what makes the back third feel like somewhere the day
+cannot reach, and it costs nothing but palette discipline.
+
+World 6 is the hinge: the first world where the sun is gone and the light is
+already emitted (the aurora), a preview of the rule before the sky itself is
+taken away.
+
+### The escalation spines
+
+Two ramps run in parallel, and both are legible in a screenshot cropped to the
+player's feet.
+
+**What the impassable terrain is** — from "you just wouldn't walk there" to "it
+would kill you": forest → stone → a drop → charged ground → ice and pits →
+iron shards → nothing at all → fog that takes you → molten crust → terrain that
+consumes.
+
+**What the walkable ground is** — from ground *built for walking* (a field
+path, a tiled aisle), to ground that merely *happens to be traversable* (ice,
+iron sand), to ground that *isn't ground at all* (filaments over void, scorched
+crust, a surface that dissolves behind you).
+
+A world where neither spine holds is a world that will read as placeholder art.
+
+---
+
+## 2. The worlds
+
+| # | Name | Walkable | Impassable | Light |
+|---|---|---|---|---|
+| 1 | **The Mean Fields** | wheat / mown grass | dense summer forest | bright morning |
+| 2 | **The Stone Lattice** | mosaic-tiled aisle | rows of identical sandstone columns | hard midday sun |
+| 3 | **The Edge Cliffs** | a lit ledge that visibly flows | shallow drop to sunken dead floors | bright, windy, motionless afternoon |
+| 4 | **The Storm Flats** | banded indigo ground, glowing boundary channels, orbit rings | charged field-line arcs overhead | stormy dusk |
+| 5 | **The Vortex Glacier** | swept ice, flow-lines bending away from the bulk | frozen lake, vortex pits with trapped-flux glow | overcast twilight |
+| 6 | **The Iron Steppe** | black iron-sand, rippling | aligned iron shards, flipping across a domain wall | night, green aurora |
+| 7 | **The Entangled Web** | white-gold filaments and rungs | true void | no sky |
+| 8 | **The Splitting Hollow** | forest floor, path forking | fog that takes you; World 1's trees, dead | fog-lit only |
+| 9 | **The Defect Scars** | scorched clay — old, closed scars | molten crust — wounds still open | red glow |
+| 10 | **The Devouring Mirror** | shifting silver-violet, dissolving behind you | terrain reconfiguring around you | uncanny shimmer |
+
+### 1 — The Mean Fields *(mean field, spontaneous symmetry breaking)*
+
+You walk *in* a field, and forest is what hems it in. The walkable route is the
+bright one — wheat and mown grass — and the surround is dark canopy, so the
+value break runs the opposite way to a dirt-track world. The generator's two
+parallel branches (the degenerate symmetry-broken ground states) read as two
+fields divided by a hedgerow: scenery, not a diagram.
+
+The name is the register-setter for the whole set. "Mean field" is a technical
+term wearing work clothes — a civilian reads *fields*, a physicist reads the
+approximation. Worlds 1 and 4 both carry their physics in the *noun* this way;
+every other world carries it in the modifier. That is a rhyme, not a
+duplication.
+
+### 2 — The Stone Lattice *(symmetries, tight-binding, effective models)*
+
+Built rather than grown: an open-air stone cloister in hard midday sun, and the
+only architecture in the game. The floor is an actual repeating wallpaper
+pattern, with two alternating tile motifs carrying the two-atom basis; the
+surround is rows of identical sandstone columns with dark shadow gaps, evenly
+spaced, marching off in both directions.
+
+A tiled floor is a wallpaper group and a colonnade is a one-dimensional lattice,
+so the player stands inside the mathematical objects rather than beside a
+picture of them. Every contrast axis flips against World 1 at once — organic
+vs. geometric, green vs. sandstone, soft irregular edges vs. hard straight ones
+— which is what stops two consecutive daylight worlds from reading as one.
+
+Civilization is a brief episode: one built world, then never again. World 9's
+molten crust carries a few toppled column drums, which is what makes that a
+story rather than a set-dressing experiment.
+
+### 3 — The Edge Cliffs *(topological band theory)*
+
+The generator partitions the grid into Voronoi domains — distinct bulk
+topological phases — and the only walkable ground is the seam between two
+differently-coloured ones. So: a lit ledge with a drop on either side, and the
+two bulk domains as the sunken floors flanking it. Bulk-boundary correspondence
+made literal — the edge state is the only place you can stand; the bulk is over
+the side.
+
+**The drop is shallow, and never true void.** The domains are visible one storey
+down as extended flat expanses of dead colour, crystallized, airless, nothing
+moving. This matters for three reasons: nothingness is World 7's one card, and
+spending it at slot three pre-spoils the emotional peak the light rule exists to
+protect; a gapped bulk is *matter* — present, extended, inert, just unavailable
+— which is the actual physics; and the player still navigates by colour
+territory, which the Voronoi shape depends on.
+
+Wind over a world where nothing can move is the horror, not a contradiction:
+clouds race overhead while the ground stays perfectly still. Keep the dead-matter
+stipple *structured* — a crystalline speckle or frozen moiré — so it reads as
+the texture of dead matter rather than as a rendering artifact.
+
+### 4 — The Storm Flats *(magnetic field, quantum Hall, Landau levels)*
+
+Discrete flat colour bands underfoot in a single-hue indigo ramp, a soft dark
+strip along each band's lower boundary, and a glowing channel at every boundary
+— which is not decoration but the subject, since edge channels live between
+filled Landau levels. Quantised orbit rings are the ground decoration. Overhead,
+charged field-line arcs crack across a stormy dusk.
+
+Landau levels *are* dispersionless flat bands, so "Flats" is the physics, not
+the weather — the same trick as "Mean Fields", where the terrain noun is also
+the term of art. It is also the honest terrain noun for an engine that cannot
+draw a hill.
+
+Two things are load-bearing rather than optional here. **The orbit rings stay**:
+with the name no longer saying "orbit", the rings are the only thing left
+teaching the mechanism. **The overhead arcs stay**: the ground is a diagram, so
+the sky has to be the violence, or this becomes the one world that reads as a
+chart. The boundary shadow strips are lighting, not landform — they give flat
+bands material depth without promising elevation the engine can't deliver.
+
+### 5 — The Vortex Glacier *(superconductivity, Nambu, Majorana)*
+
+An open glacier at overcast twilight, with the corridor spiralling around one or
+two permanently blocked vortex cores. The pits are dark, rim-lit, with a faint
+cold glow of trapped flux down inside each one.
+
+"Swept" is literal: the ice is streaked with flow-lines that visibly bend around
+and away from the bulk and converge only into the vortex pits. That is field
+expulsion drawn as terrain — the world becomes *the place that pushes something
+invisible away from itself*, which is the topic, rather than "the ice one".
+
+### 6 — The Iron Steppe *(classical magnetism, magnons)*
+
+Night under a green aurora. Black iron-sand underfoot with visible spin-wave
+ripples running through it; the surround is fields of aligned iron shards, all
+leaning the same way, flipping direction across a domain wall. The magnetic
+order is something the player can see standing up out of the ground.
+
+This is the **false calm**, and it is anatomically correct: the *mood* relaxes
+after ice and storm — the aurora is genuinely beautiful — while the *lethality*
+does not, since leaning iron shards are the most overtly impaling surround so
+far. A false calm the player cannot retrospectively recognize as false is just a
+pretty world, so it needs one tell: the aurora stutters, or the shard field
+beyond the domain wall visibly flips while you watch.
+
+It is also the hinge of the light arc (§1): the sky still exists, but it is
+already lying about where light comes from.
+
+### 7 — The Entangled Web *(entanglement, tensor networks)*
+
+No sky, no ground — only the network. Taut, geometric, architectural filaments
+in white-gold, the game's one warm glow before World 9 burns, strung as the
+ladder of lanes and rungs the generator builds, hanging in true void.
+
+In a tensor network the geometry *is* the entanglement: outside the network
+there is no space. Rendering the surround as actual nothing is the honest
+picture, not a mood choice, and this world holds the monopoly on it.
+
+Keep it still and structural — "shifting and alive" belongs entirely to World 10.
+
+### 8 — The Splitting Hollow *(quantum magnetism, spinons, Kondo)*
+
+A dead forest in deep fog, lit only by the fog itself. Every trunk forks in two
+and the corridor forks with them, matching the generator's fractionalizing path.
+
+**The threat is the fog, not the trees.** Trees are "you just wouldn't walk
+there" — World 1's logic, which would regress the escalation spine at world
+eight of ten. The fog is what takes you: stray from the path and the medium
+itself absorbs you, which is Kondo screening and spinon confinement made into a
+hazard rather than a diagram.
+
+The trees are World 1's tree sprites, dead and grey. That is the game's one real
+story beat — the friendly wood you skirted the edge of at the start is the thing
+you are lost inside near the end — and it only lands if the player can
+*recognize* the trees, so the sprite reuse is the point, not an optimization.
+The two palettes must stay clearly apart: warm sunlit summer green against
+desaturated near-black grey-green.
+
+### 9 — The Defect Scars *(excitations and defects)*
+
+Damage past and damage present, in the same frame: the walkable scorched clay
+reads as old scars, closed and healed-over, while the impassable molten crust is
+wounds still open and glowing. A lattice defect *is* frozen-in damage that never
+heals, and this world's ground decoration is literally cracks.
+
+The generator embeds patches of worlds 1–8's own looks along the corridor —
+borrowed defect "types" — which is also where World 2's toppled column drums
+belong, half-sunk in the crust.
+
+### 10 — The Devouring Mirror *(machine learning for quantum materials)*
+
+The world that isn't a world, and the only name in the set with no terrain noun
+— which is correct, because a mirror is not a place you visit, it's a thing you
+face. Shifting silver-violet, the terrain reconfiguring around whatever crystal
+the player currently is, and **the path dissolving behind them as the world
+re-forms ahead**: the name has to be a description rather than a boast, so the
+world must visibly *take* something.
+
+The name is the most deeply verified in the game, and not by texture: World 10's
+generator literally mirrors the player, reusing whichever of worlds 1–8's
+generator matches their current material's main type.
+
+**Its identity, and the reason the name holds three readings at once:**
+
+- *Appetite* — the mood.
+- *Training* — a model learns you by consuming you. The Adapted devours your
+  play in order to become your reflection, which is what a trained model is.
+- *Decoherence* — the physics of why being known destroys you. Decoherence is
+  not a fog that eats superpositions; it happens because the environment
+  *acquires information* about the system. The system entangles with its
+  surroundings, they come to hold a record of its state, and superposition dies
+  precisely when something else knows which state you are in (einselection;
+  Zurek's quantum Darwinism sharpens this to the environment holding *redundant
+  copies*). So decoherence is the environment building a model of you, and the
+  modelling is not a side effect of the destruction — it is the mechanism.
+
+To be learned is to be measured; to be measured is to decohere. The surrogate
+that copies you and the process that devours your coherence are one physical
+event described twice. The copy the Mirror makes cannot be quantum — no-cloning
+forbids it — so what it captures is the player's *classical shadow*, which is
+also, verbatim, the name of a real technique for learning quantum states from
+randomised measurements (Huang, Kueng & Preskill, 2020; shadow tomography rather
+than machine learning strictly, though it is now a workhorse in ML-for-quantum
+work).
+
+**Keep the hierarchy straight.** Decoherence is the *villain's mechanism*;
+machine learning is still the *lesson*. The dex entries, the quiz and the
+adaptive boss mechanics carry the ML topic; the decoherence framing is the story
+that makes the lesson frightening. The story frames the lesson, never replaces
+it.
+
+No player will derive quantum Darwinism from a two-word name, so the world's own
+text needs **one bridging line** — guardian dialogue or a dex entry with the
+shape of *to learn you, it must measure you; to measure you is to unmake you*.
+Without it, the name tells the decoherence story while the writing tells the ML
+story, with no visible seam between them.
+
+The finale, stated plainly: **the last world defeats you by understanding you,
+and understanding a quantum thing collapses it.** This is also the payoff for
+"you are a crystal" — the player's quantumness is what is at stake, and the last
+enemy is observation itself.
+
+---
+
+## 3. Palette
+
+Every world owns a hue, and unassigned colours are where collisions breed.
+
+| # | Owns |
+|---|---|
+| 1 | fresh spring green, warm dirt, pale blue sky |
+| 2 | sandstone, terracotta, bleached white, deep cast shadow |
+| 3 | dead teal and dead ochre (the two domains), against a bright sky |
+| 4 | storm indigo, single-hue ramp |
+| 5 | pale ice-cyan, desaturated, narrow value range |
+| 6 | black iron-sand under pure green aurora |
+| 7 | white-gold filaments on black — the only warm glow before World 9 |
+| 8 | desaturated grey-green, near-black in fog |
+| 9 | scorched red, molten orange |
+| 10 | silver-violet |
+
+Violet belongs to World 10 by right, as the finale — which is why World 4 is
+indigo rather than storm-violet and World 6's aurora is pure green rather than
+green-violet.
+
+---
+
+## 4. Story shape
+
+The premise (§0) supplies the arc; three beats carry it:
+
+**Indifference (1–9).** The terrain is grandly indifferent to the player — a
+mote walking through fields, cloisters and glaciers that do not know it exists.
+That indifference is free, and it exists to be broken exactly once.
+
+**Loss (8).** The 1↔8 rhyme is the emotional beat: something the player walked
+past in safety at the start is what they are lost inside near the end. Without
+it, the sequence runs pretty → moody → dead with no moment where anything is
+taken from them specifically.
+
+**Recognition (10).** The world turns to look. After nine worlds of terrain that
+did not know it was being walked on, the last one is built out of the player —
+and that is what finishes them, because being known is the mechanism of the
+decoherence that has been advancing since World 1.
+
+One cheap seed makes the turn land rather than arrive from nowhere: somewhere
+late — World 8 or 9 — a few crystalline fragments of the player's *own* material
+embedded in the impassable surround. The first hint that the world contains
+things like you, immediately before it becomes a thing that *is* you.
+
+---
+
+## 5. The premise in the game's voice
+
+The premise is not only art direction — it is already spoken by the game, across
+five text surfaces, and the theming exists to make the terrain agree with what
+the text has been saying all along. Anything added here must keep these
+patterns, because they are what make the arc land rather than merely exist.
+
+| Surface | File | When | Job |
+|---|---|---|---|
+| `WORLD_LORE` | `data/worldLore.ts` | once, on first entering a world | two pages: the world's physics told as history, then how the Decoherence attacks *that* physics |
+| `RIVAL_TAUNTS` | `data/worldLore.ts` | before the rival fight | two parts: the rival's boast |
+| `STORY_BEATS` | `data/story.ts` | after a rival is beaten | one line of connective tissue, looking forward |
+| `WORLD_GOAL_TEXT` | `data/story.ts` | on reaching the goal tile | one line: this world's physics still holds |
+| `WORLD_FLAVOR` | `data/worldFlavor.ts` | Bloch's destination preview | plain physics, deliberately *not* narrative |
+
+**The Decoherence is never generic.** In every world it attacks one *named
+mechanism*, and always the one that world exists to teach — it doesn't erase the
+Meadow's order, it makes the broken symmetry doubt itself; it doesn't break the
+lattice's atoms, it puts one alcove fractionally out of step so the delocalized
+state has nowhere to live; it doesn't touch the Majorana halves, it shortens the
+passage until they can feel each other. A world whose Decoherence page could be
+pasted into another world's slot has failed this rule.
+
+**Every rival 1–8 is the same shape: *I am this world's physics, made
+incorruptible.*** The boast is always the precise mechanism that answers the
+attack named on that world's second lore page — the golem that committed its
+ground state before you were born, the one whose pattern rebuilds across every
+grain boundary, the one that is the boundary rather than standing on it. That is
+why the rivals feel like part of the story rather than a difficulty gate, and it
+is the pattern any new rival must follow.
+
+**World 9 breaks the shape once, and World 10 breaks it permanently.** World 9's
+rival has no lattice of its own and borrows whatever it lands in. World 10's is
+the reveal: the Adapted was never one of the golems in disguise — each of those
+was only its own world's physics grown strange — it watched from outside and
+trained on the player, and every rival brought down was a lesson. That is the
+arc's payoff and the reason the finale is a mirror.
+
+**Tone gradient.** The lore voice tracks the light: worlds 1–3 are told as
+legend, second-hand and almost pastoral ("Long ago, before the corridors had
+numbers"); by 7–9 the narrator has stopped telling stories and is reporting; by
+10 nothing precedes the player at all — "no traveler returns with a rumor". Keep
+new copy on that slope.
+
+## 6. Known soft spots
+
+Recorded so they are not rediscovered as surprises:
+
+- **World 4 is the world most at risk of reading as graphic design.** Flat
+  bands, flat glow lines and flat rings on a flat plane. The boundary shadow
+  strips and overhead arcs are what keep it material; if either is dropped, the
+  world regresses immediately.
+- **"The Edge Cliffs" is the one name whose verification is pending on
+  rendering.** A cliff is the one landform this engine can only imply. The
+  shallow-drop version lowers the risk — a visible floor below calibrates the
+  eye far better than uncalibrated black — but if the lit-lip-over-dark-mass
+  read fails, the name describes a world with no cliffs.
+- **The 4→5 step is the flattest on the staircase** — storm to cold quiet is
+  lateral rather than an escalation. Twilight is darker than dusk and the
+  descent into cold reads as its own kind of worse, so this is tolerated rather
+  than fixed.
+- **"The Stone Lattice" is the one name that names an object rather than a
+  place.** Kept because it preserves the tight-binding topic word. "The Stone
+  Rows" is the alternative if place-ness ever matters more than the topic.
