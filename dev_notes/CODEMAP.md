@@ -168,7 +168,7 @@ game/src/
                                   per-world motif of its own; mapgen.ts's retry-exhausted fallback, also
                                   the base shape world6.ts/world9.ts build their own motif on top of
       world1.ts .. world10.ts    One file per world's own generator (GeneratedMap: walkable/start/goal/
-                                  mid/regionColor/biomeOverride), each implementing that world's own
+                                  mid/regionColor/biomeOverride/vortexCores), each implementing that world's own
                                   course-topic motif -- see DESIGN.md §2's per-world table for what each
                                   one is. world10.ts dispatches to whichever of world1-8's own generator
                                   matches the player's current Material.type (data/materials.ts's
