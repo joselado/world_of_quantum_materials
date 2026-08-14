@@ -1578,7 +1578,7 @@ export const WORLD_NAMES: Partial<Record<number, string>> = {
   2: 'The Stone Lattice',
   3: 'The Edge Cliffs',
   4: 'The Storm Flats',
-  5: 'Frozen Zero-Resistance Caverns',
+  5: 'The Vortex Glacier',
   6: 'Magnon Plains',
   7: 'Tensor-Network World',
   8: 'Spinon Forest',

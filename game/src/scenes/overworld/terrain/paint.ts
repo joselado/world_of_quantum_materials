@@ -87,7 +87,7 @@ export function drawTerrain(view: TerrainView) {
         drawBandBoundary(g, tile.biome, y, pFL, pFR, pNR, pNL, depthRatio);
         if (contour) drawContactShadow(g, contour, tile.biome, camX, camY, depthRatio);
         if (depthRatio < DETAIL_MAX_DEPTH && tile.decorate) {
-          decorateTile(g, view.biome, accentTile(fill, pFL, pFR, pNR, pNL, x, y, depthRatio, hazeTarget(view, tile.biome), view.now));
+          decorateTile(g, view.biome, accentTile(false, fill, pFL, pFR, pNR, pNL, x, y, depthRatio, hazeTarget(view, tile.biome), view.now));
         }
         if (tile.midHighlight) {
           // The glow falls off radially from the guardian's own tile, so the
@@ -224,7 +224,7 @@ function drawMarginTile(view: TerrainView, edge: TerrainTile, gx: number, y: num
 
   if (depthRatio <= DETAIL_MAX_DEPTH) {
     const kind = edge.kind !== 'path' ? edge.kind : offPathKindOf(edge.biome);
-    drawAccent(g, kind, fill, pFL, pFR, pNR, pNL, gx, y, depthRatio, hazeTarget(view, edge.biome), view.now);
+    drawAccent(g, kind, fill, pFL, pFR, pNR, pNL, gx, y, edge.enclave, depthRatio, hazeTarget(view, edge.biome), view.now);
   }
 }
 
@@ -312,7 +312,7 @@ function drawOffPathTile(
   drawBandBoundary(g, tile.biome, gy, pFL, pFR, pNR, pNL, depthRatio);
 
   if (depthRatio <= DETAIL_MAX_DEPTH) {
-    drawAccent(g, tile.kind, fill, pFL, pFR, pNR, pNL, gx, gy, depthRatio, hazeTarget(view, tile.biome), view.now);
+    drawAccent(g, tile.kind, fill, pFL, pFR, pNR, pNL, gx, gy, tile.enclave, depthRatio, hazeTarget(view, tile.biome), view.now);
   }
 
   // The impassable side of the contact shadow, over the accent rather than
@@ -334,6 +334,7 @@ function drawAccent(
   pNL: ProjectedPoint,
   gx: number,
   gy: number,
+  enclave: boolean,
   depth: number,
   haze: number,
   now: number
@@ -341,13 +342,14 @@ function drawAccent(
   if (kind === 'path') return;
   const accent = TERRAIN_ACCENTS[kind];
   if (!accent) return;
-  accent(g, accentTile(fill, pFL, pFR, pNR, pNL, gx, gy, depth, haze, now));
+  accent(g, accentTile(enclave, fill, pFL, pFR, pNR, pNL, gx, gy, depth, haze, now));
 }
 
 // The per-tile geometry every accent and every decoration works from: the
 // projected outline for a full-tile wash, the tile's centre and depth scale
 // on screen, where it sits on the grid, and the clock.
 function accentTile(
+  enclave: boolean,
   fill: ProjectedPoint[],
   pFL: ProjectedPoint,
   pFR: ProjectedPoint,
@@ -360,6 +362,7 @@ function accentTile(
   now: number
 ): AccentTile {
   return {
+    enclave,
     fill,
     cx: (pFL.x + pFR.x + pNR.x + pNL.x) / 4,
     cy: (pFL.y + pFR.y + pNR.y + pNL.y) / 4,
@@ -393,10 +396,15 @@ function offPathColor(view: TerrainView, biome: Biome, regionTint: number | null
 // impassable ground alike: the bands are a property of the world, not of the
 // route through it, so a band that stopped at the corridor's edge would read
 // as paint on the road rather than as the ground being stratified.
+// The row index is a true modulo, not a remainder. The depth margin
+// (drawMarginRows) continues the ground past the grid's far edge on negative
+// row numbers, and a remainder there would run the ramp backwards past its
+// own base -- which does not merely look wrong, it leaves the blend
+// extrapolating outside 0-255 and overflowing one channel into the next.
 function bandBase(biome: Biome, base: number, gy: number): number {
   const ramp = biome.bands;
   if (!ramp) return base;
-  const step = Math.floor(gy / ramp.period) % ramp.steps;
+  const step = ((Math.floor(gy / ramp.period) % ramp.steps) + ramp.steps) % ramp.steps;
   return blend(base, ramp.color, step / (ramp.steps - 1));
 }
 
@@ -419,7 +427,7 @@ function drawBandBoundary(
   depthRatio: number
 ) {
   const ramp = biome.bands;
-  if (!ramp || gy % ramp.period !== 0 || depthRatio > DETAIL_MAX_DEPTH) return;
+  if (!ramp || ((gy % ramp.period) + ramp.period) % ramp.period !== 0 || depthRatio > DETAIL_MAX_DEPTH) return;
   const fade = 1 - depthRatio / DETAIL_MAX_DEPTH;
 
   g.fillStyle(0x000000, BAND_STRIP_ALPHA * fade);

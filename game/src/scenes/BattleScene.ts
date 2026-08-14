@@ -1209,7 +1209,7 @@ export class BattleScene extends Phaser.Scene {
   // glowing at a scorched world's horizon), never per-shape shading.
   private drawColorGrade(g: Phaser.GameObjects.Graphics, biome: Biome) {
     switch (biome.wallTheme) {
-      case 'water': {
+      case 'ice': {
         // Cool cyan wash deepening down the field, as if lit through ice.
         const cool = 0x3a8ab8;
         g.fillGradientStyle(cool, cool, cool, cool, 0, 0, 0.1, 0.1);

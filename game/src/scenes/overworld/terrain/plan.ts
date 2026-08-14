@@ -47,11 +47,24 @@ function classifyTiles(src: TerrainSource): TerrainTile[][] {
         regionTint,
         decorate: !!src.flowerMap[y]?.[x],
         midHighlight: Math.abs(x - src.midTile.x) <= 1 && Math.abs(y - src.midTile.y) <= 1,
+        enclave: !src.walkable[y]?.[x] && walkableNeighbours(src.walkable, x, y) >= 6,
       });
     }
     plan.push(row);
   }
   return plan;
+}
+
+// How much of a tile's eight-neighbourhood is walkable, which is what tells a
+// hole in the floor from the edge of the surround.
+function walkableNeighbours(walkable: boolean[][], x: number, y: number): number {
+  let n = 0;
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if ((dx || dy) && walkable[y + dy]?.[x + dx]) n++;
+    }
+  }
+  return n;
 }
 
 // A tile's off-path material is its biome's, whatever else the tile carries.

@@ -71,6 +71,26 @@ export function decorateTile(g: Phaser.GameObjects.Graphics, biome: Biome, tile:
     return;
   }
 
+  // World 5 (the Vortex Glacier): the ice is swept. The streaks run along the
+  // corridor and bow sideways with distance from its centre, so the field
+  // reads as being pushed away from the bulk rather than flowing down a pipe
+  // -- field expulsion drawn on the ground the player walks. Still, always:
+  // this world pushes something invisible away from itself, it does not
+  // shimmer.
+  if (biome.decoration === 'flowLines') {
+    const u = TILE_PX * s;
+    const bow = Math.sin(tile.gx * 0.55) * 0.22 * u;
+    g.lineStyle(1.2, 0xe4f4fb, 0.4);
+    [-0.22, 0.1].forEach((off) => {
+      g.beginPath();
+      g.moveTo(cx + off * u - bow * 0.5, cy - 0.42 * u);
+      g.lineTo(cx + off * u + bow, cy);
+      g.lineTo(cx + off * u - bow * 0.5, cy + 0.42 * u);
+      g.strokePath();
+    });
+    return;
+  }
+
   if (biome.decoration === 'crystalGlints') {
     g.fillStyle(0x8fe8ff, 0.85);
     [0, 1, 2].forEach((i) => {

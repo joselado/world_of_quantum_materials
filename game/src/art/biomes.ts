@@ -4,7 +4,7 @@
 // worlds -- only this table changes per world, matching DESIGN.md's per-world
 // biome themes.
 
-export type DecorationKind = 'flowers' | 'mosaic' | 'edgeFlow' | 'crystalGlints' | 'orbitRings' | 'networkNodes' | 'ripples' | 'cracks' | 'mistMotes';
+export type DecorationKind = 'flowers' | 'mosaic' | 'edgeFlow' | 'crystalGlints' | 'orbitRings' | 'flowLines' | 'networkNodes' | 'ripples' | 'cracks' | 'mistMotes';
 
 // What the *off-path* terrain actually is, not just what color it's painted
 // -- OverworldScene.drawOffPathTile branches on this to give each world's
@@ -16,7 +16,7 @@ export type DecorationKind = 'flowers' | 'mosaic' | 'edgeFlow' | 'crystalGlints'
 // same plane as the walkable floor everywhere, so a theme changes the color
 // and the accent over it, never the geometry. Not every biome needs its own
 // theme; most stay 'rock' and differ only by ground/hill color.
-export type WallTheme = 'rock' | 'forest' | 'columns' | 'deadFloor' | 'charged' | 'lava' | 'water' | 'void';
+export type WallTheme = 'rock' | 'forest' | 'columns' | 'deadFloor' | 'charged' | 'ice' | 'lava' | 'void';
 
 export interface Biome {
   name: string;
@@ -192,27 +192,37 @@ const STORM_FLATS: Biome = {
   bands: { color: 0x1a2044, period: 4, steps: 4, channel: 0xa8e4ff },
 };
 
-// Topic 5 (superconductivity/Majorana): a frozen, zero-resistance cavern --
-// icy blue-white, glinting rather than glowing. Held in a narrow, desaturated
-// value range: a wide ice-to-near-black spread makes each depth step of the
-// haze a visible band across the floor, where a compressed one lets the same
-// falloff read as continuous cold air.
-const FROZEN_CAVERNS: Biome = {
-  name: 'frozenCaverns',
-  skyTop: 0x1b2c3a,
-  skyBottom: 0x3d5b69,
-  hillColor: 0x3c5866,
-  hillAlpha: 0.85,
-  ground: 0x1c3440,
-  path: 0xa4dbe6,
-  fogTarget: 0x44606e,
+// World 5, the Vortex Glacier (superconductivity, Nambu, Majorana): an open
+// glacier at overcast twilight, the corridor spiralling around one or two
+// permanently blocked vortex cores. "Swept" is literal -- the ice is streaked
+// with flow-lines that bend away from the bulk and converge only into the
+// pits, which is field expulsion drawn as terrain. The world becomes the
+// place that pushes something invisible away from itself, rather than "the
+// ice one".
+//
+// Held desaturated and in a narrow value range: a wide ice-to-near-black
+// spread makes each depth step of the haze a visible band across the floor,
+// where a compressed one lets the same falloff read as continuous cold air.
+const VORTEX_GLACIER: Biome = {
+  name: 'vortexGlacier',
+  skyTop: 0x3c4a56,
+  skyBottom: 0x6e808c,
+  // Pale ice-cyan, and pale deliberately: this is the one distant self read
+  // against the Storm Flats' dark indigo dusk, and a cold-dark ridge there
+  // sits so close to that world's own fog that its forward horizon
+  // disappears. Pressure ridges are pale ice seen from a world away, so the
+  // honest color is also the legible one.
+  hillColor: 0x9fc8d8,
+  hillAlpha: 0.7,
+  ground: 0x54707e,
+  path: 0xa8c8d4,
+  fogTarget: 0x7e939e,
+  // Overcast: an unbroken lid rather than discrete clouds.
   clouds: false,
   cloudDrift: 0,
-  decoration: 'crystalGlints',
-  decorationChance: 0.16,
-  // "Zero-resistance" made literal underfoot too: off-path here is a frozen
-  // lake, not stacked stone.
-  wallTheme: 'water',
+  decoration: 'flowLines',
+  decorationChance: 1,
+  wallTheme: 'ice',
   bands: null,
 };
 
@@ -337,7 +347,7 @@ export const BIOMES: Partial<Record<number, Biome>> = {
   2: STONE_LATTICE,
   3: EDGE_CLIFFS,
   4: STORM_FLATS,
-  5: FROZEN_CAVERNS,
+  5: VORTEX_GLACIER,
   6: WINDSWEPT_PLAINS,
   7: NETWORK_GRAPH_WORLD,
   8: FOGGY_FOREST,

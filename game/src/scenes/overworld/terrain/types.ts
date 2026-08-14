@@ -9,7 +9,7 @@ import type { AtmosphereView } from '../sky';
 // walkable trail, 'solid' plain bare impassable ground, and every other kind
 // an off-path material that lays its own accent over that same ground (see
 // materials/), one per world's impassable surround.
-export type TerrainKind = 'path' | 'solid' | 'forest' | 'columns' | 'deadFloor' | 'charged' | 'lava' | 'water' | 'void';
+export type TerrainKind = 'path' | 'solid' | 'forest' | 'columns' | 'deadFloor' | 'charged' | 'ice' | 'lava' | 'void';
 
 // The kinds an impassable tile can take -- one per off-path material, each
 // with its own module under materials/.
@@ -24,6 +24,14 @@ export interface TerrainTile {
   regionTint: number | null;
   decorate: boolean;
   midHighlight: boolean;
+  // An impassable tile that the walkable region very nearly surrounds -- a
+  // hole in the floor rather than part of the surround. The Vortex Glacier is
+  // what this exists for: its permanently blocked cores are exactly that, a
+  // small blocked island the corridor spirals around, which is also what a
+  // vortex core physically is. Derived from the grid rather than handed down
+  // by the generator, so any world whose shape produces one gets the same
+  // read.
+  enclave: boolean;
 }
 
 // The whole grid, read once: its per-tile terrain, the northernmost row the
@@ -66,6 +74,9 @@ export interface TerrainView extends AtmosphereView {
 // anything the world is supposed to *contain*.
 export interface AccentTile {
   fill: ProjectedPoint[];
+  // Whether this tile is a hole in the floor rather than part of the
+  // surround, from its TerrainTile (see `enclave` above).
+  enclave: boolean;
   cx: number;
   cy: number;
   s: number;
