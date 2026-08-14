@@ -44,13 +44,17 @@ const ow = window.__game.scene.getScene('Overworld'); // or 'Hub' / 'Battle' / '
 ow['showSettingsPanel'](); // TypeScript `private` is compile-time only -- bracket notation still calls it
 ```
 
-To set the font-scale preset before a load (this game reads it from the save
-on boot, not live):
+To set the font-scale preset, set it on the registry:
 
 ```js
-localStorage.setItem('qm-rpg-save-v1', JSON.stringify({ fontScale: 2 }));
+window.__game.registry.set('fontScale', 2);
 ```
-then reload the page.
+
+**Do not write `localStorage['qm-rpg-save-v1']` for this.** Saves are per-mode
+(`qm-rpg-save-story-v1` / `qm-rpg-save-superposition-v1`), so that key is only a
+legacy fallback and writing it **silently does nothing** — you get default-scale
+renders while believing you are at Large, with no error. Confirm the scale
+actually changed in the render before trusting any "no overflow at Large" result.
 
 To measure a panel for overflow, grab its container's real rendered bounds
 and compare against the canvas (`CANVAS_W = 854`, `CANVAS_H = 480`,
