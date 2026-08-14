@@ -116,7 +116,7 @@ game/src/
                                  rebuild runs before calling showXPanel again (art/crystals.ts's
                                  killTweensDeep over the whole container, then destroy). And
                                  hubStations.ts holds the
-                                 Lab's own five reference/settings stations (see "Lab stations and
+                                 Lab's own six reference/settings stations (see "Lab stations and
                                  settings" below) -- taking scene: HubScene instead of
                                  scene: GuardianPanelHost, since HubScene is their only caller
     BattleScene.ts             Turn-based battle: move menu, damage/turn resolution, attack
@@ -620,7 +620,7 @@ World 10's Adapted and nowhere else.
   `projectTile` is measured from the player's tile, which is where that constant gets applied;
   a new caller should not add it itself.
 - **Panel/dialogue UI.** Every overlay (wild encounter, guardian panels, rival gate, Hub's
-  Qumatex panel, the Lab's own five stations) is the same dark rounded-rectangle-with-stroke
+  Qumatex panel, the Lab's own six stations) is the same dark rounded-rectangle-with-stroke
   treatment, with the stroke color signaling the panel's kind: blue-grey `0x444466` = wild
   encounter (`OverworldScene.showEncounter`) and the Lab's Moves/Stats/Abilities/Settings
   stations (`0x8fa0c9`, a distinct blue-grey so it doesn't collide), gold `0xffe066` = Noether, teal `0x4adde0` =
@@ -1835,7 +1835,7 @@ future guardian could choose them; nothing currently does.
 
 ## Lab stations and settings
 
-**The Lab's five reference/settings stations** (`scenes/panels/hubStations.ts`'s
+**The Lab's six reference/settings stations** (`scenes/panels/hubStations.ts`'s
 `LAB_STATIONS` array -- `showMovesPanel`/`showStatsPanel`/`showAbilitiesPanel`/
 `showTutorialTopics`/`showSettingsPanel`, each taking `scene: HubScene`):
 built the same way a guardian panel file takes `scene: GuardianPanelHost` (see "Guardian panels"
@@ -1888,7 +1888,7 @@ click target is a near-transparent interactive `Rectangle` covering the slot rat
 avatar `Container` (a Container has no hit area of its own) and takes the same
 `dialogueContainer` one-panel-at-a-time guard the station rows use.
 
-**All six of the Lab's non-door panels** (the five stations above, plus `HubScene`'s own
+**All seven of the Lab's non-door panels** (the six stations above, plus `HubScene`'s own
 `renderMaterialdexPanel`) share one heading color -- `hubStations.ts`'s exported
 `LAB_TITLE_COLOR` (`#ffe066`) -- and one centered-content geometry: `hubStations.ts`'s
 `labPanelColumns(panelWidth)` returns a fixed `contentCenterX`/`contentWrapW` margined in from

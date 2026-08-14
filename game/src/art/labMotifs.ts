@@ -3,7 +3,7 @@ import { shade } from './colors';
 import { REFERENCE_BLUE_GREY, STORY_LAVENDER, TUTORIAL_CYAN } from '../ui/theme';
 
 // One small hand-drawn icon per Lab station (scenes/panels/hubStations.ts's
-// five reference/settings stations, plus HubScene's own Qumatex and the
+// six reference/settings stations, plus HubScene's own Qumatex and the
 // door onward) -- the
 // motif STYLE.md's "Lab panels" section describes, planted beside that
 // station's own button out in the Lab room (HubScene.addStationRow) rather
@@ -249,6 +249,48 @@ export function makeSettingsMotif(scene: Phaser.Scene, size: number): Phaser.Gam
   };
   drawGear(-size * 0.14, -size * 0.1, size * 0.32, 8, color);
   drawGear(size * 0.24, size * 0.24, size * 0.18, 6, shade(color, 20));
+  container.add(g);
+
+  return container;
+}
+
+export function makeTitleScreenMotif(scene: Phaser.Scene, size: number): Phaser.GameObjects.Container {
+  const container = scene.add.container(0, 0);
+  const color = STORY_LAVENDER;
+
+  // The title card itself -- a lit plaque carrying the showcase crystal over
+  // two menu lines. Deliberately not another archway: the door motif already
+  // means "through here, into a world," and this station is the one way out
+  // of the game rather than into any part of it.
+  const g = scene.add.graphics();
+  const w = size * 0.88;
+  const h = size * 0.68;
+  const r = size * 0.1;
+  g.fillStyle(shade(color, -72), 1);
+  g.fillRoundedRect(-w / 2, -h / 2, w, h, r);
+  g.lineStyle(1.5, color, 0.9);
+  g.strokeRoundedRect(-w / 2, -h / 2, w, h, r);
+
+  const gemR = size * 0.16;
+  const gemY = -h * 0.14;
+  g.fillStyle(shade(color, 30), 1);
+  g.fillPoints(
+    [
+      { x: 0, y: gemY - gemR },
+      { x: gemR * 0.72, y: gemY },
+      { x: 0, y: gemY + gemR },
+      { x: -gemR * 0.72, y: gemY },
+    ],
+    true
+  );
+
+  // Two menu lines under it, the second dimmer, so the plaque reads as a
+  // screen with choices on it rather than a framed picture.
+  const barH = size * 0.055;
+  g.fillStyle(color, 0.8);
+  g.fillRect(-w * 0.26, h * 0.12, w * 0.52, barH);
+  g.fillStyle(color, 0.45);
+  g.fillRect(-w * 0.17, h * 0.28, w * 0.34, barH);
   container.add(g);
 
   return container;

@@ -111,8 +111,8 @@ than appending a changelog, so this always reflects current reality.
   offers every built world immediately, with no separate warp/world-select panel, though
   every world also has its own walkable doors back to the Hub/previous world and
   onward to the next one (see "World doors" below). Right after Qumatex and the door, in the
-  same grid, come the five reference/settings stations (`scenes/panels/hubStations.ts`'s
-  `LAB_STATIONS` -- Moves, Stats, Abilities, Tutorial, Settings), filtered down to
+  same grid, come the six reference/settings stations (`scenes/panels/hubStations.ts`'s
+  `LAB_STATIONS` -- Moves, Stats, Abilities, Tutorial, Settings, Title Screen), filtered down to
   whichever the player has actually unlocked: Abilities only appears once the player has
   learned a first passive (`passivesUnlocked` non-empty) -- Superposition Mode treats it as
   unlocked from the start, since it already grants every passive regardless. Moves,

@@ -2,7 +2,15 @@ import Phaser from 'phaser';
 import type { HubScene } from '../HubScene';
 import { CANVAS_W, CANVAS_H } from '../../art/perspective';
 import { fontPx, fontScale } from '../../ui/text';
-import { PANEL_BG, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY, REFERENCE_BLUE_GREY_HEX, TUTORIAL_CYAN, TUTORIAL_CYAN_HEX } from '../../ui/theme';
+import {
+  PANEL_BG,
+  GOLD_ACCENT_HEX,
+  REFERENCE_BLUE_GREY,
+  REFERENCE_BLUE_GREY_HEX,
+  STORY_LAVENDER,
+  TUTORIAL_CYAN,
+  TUTORIAL_CYAN_HEX,
+} from '../../ui/theme';
 import { visibleTutorialPages } from '../../data/tutorial';
 import {
   LIST_DETAIL_PANEL_W,
@@ -27,7 +35,14 @@ import {
 import { persistFromRegistry } from '../../data/save';
 import { music } from '../../audio/music';
 import { getBattleMoves, effectiveMovePower, moveDisplayName, getPlayerStats, getPlayerMaterial } from '../../data/materials';
-import { makeMovesMotif, makeStatsMotif, makeAbilitiesMotif, makeTutorialMotif, makeSettingsMotif } from '../../art/labMotifs';
+import {
+  makeMovesMotif,
+  makeStatsMotif,
+  makeAbilitiesMotif,
+  makeTutorialMotif,
+  makeSettingsMotif,
+  makeTitleScreenMotif,
+} from '../../art/labMotifs';
 
 // Every panel below (and HubScene's own Qumatex) shares this gold for its
 // fixed "panel name" heading. Tutorial's own page heading is content-specific
@@ -52,8 +67,9 @@ export function labPanelColumns(panelWidth: number): LabPanelColumns {
   return { contentCenterX: CANVAS_W / 2, contentWrapW: panelWidth - CONTENT_MARGIN * 2 };
 }
 
-// The five stations the Lab (HubScene, World 0) offers alongside Qumatex and
-// the door onward -- Moves, Stats, Abilities, Tutorial, Settings. Each
+// The six stations the Lab (HubScene, World 0) offers alongside Qumatex and
+// the door onward -- Moves, Stats, Abilities, Tutorial, Settings, Title
+// Screen. Each
 // function here is what a station's `onClick` calls directly; every one is a
 // pure function of registry/save state (player stats/moves/passives/
 // settings), not of anything tied to being mid-world, so none of it needs to
@@ -516,6 +532,67 @@ export function showSettingsPanel(scene: HubScene) {
   container.addAt(panel, 0);
 }
 
+// The way out of the game, asked before it is taken. The Lab is where a run
+// sits between worlds, so it is where a player who is finished stops -- and
+// the confirm step is here because this station sits in the same grid as
+// Qumatex and the door, where every other click opens something rather than
+// leaving.
+//
+// The save is written before the scene switches: TitleScene.create() reloads
+// a mode's whole save slot into the registry, so anything still only in the
+// registry at that moment would be dropped on the way out.
+export function showTitleScreenPanel(scene: HubScene) {
+  scene.dialogueContainer?.destroy(true);
+
+  const panelWidth = 520;
+  const top = 90;
+  const container = scene.add.container(0, 0).setDepth(100);
+  scene.dialogueContainer = container;
+
+  let y = top + 14;
+
+  const title = scene.add
+    .text(CANVAS_W / 2, y, 'Title Screen', { fontSize: fontPx(scene, 15), color: LAB_TITLE_COLOR, fontStyle: 'bold' })
+    .setOrigin(0.5, 0);
+  container.add(title);
+  y += title.height + 10;
+
+  const body = scene.add
+    .text(CANVAS_W / 2, y, 'Leave the lab and return to the title screen? Your progress is saved.', {
+      fontSize: fontPx(scene, 12),
+      color: '#ffffff',
+      align: 'center',
+      wordWrap: { width: panelWidth - 60 },
+      lineSpacing: 4,
+    })
+    .setOrigin(0.5, 0);
+  container.add(body);
+  y += body.height + 14;
+
+  const goBtn = scene.addDialogueButtonAt(
+    container,
+    CANVAS_W / 2,
+    y,
+    'Return to Title Screen',
+    () => {
+      persistFromRegistry(scene.game.registry);
+      scene.closeDialogue();
+      scene.scene.start('Title');
+    },
+    300
+  );
+  y += goBtn.height + 6;
+
+  const stayBtn = scene.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Stay in the Lab', () => scene.closeDialogue(), 300);
+  y += stayBtn.height + 14;
+
+  const panelHeight = y - top;
+  const panel = scene.add
+    .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.95)
+    .setStrokeStyle(2, STORY_LAVENDER);
+  container.addAt(panel, 0);
+}
+
 function encounterDensityIndex(registry: Phaser.Data.DataManager): number {
   const value = (registry.get('encounterDensity') as number) ?? DEFAULT_ENCOUNTER_DENSITY;
   const idx = DENSITY_PRESETS.findIndex((p) => p.value === value);
@@ -566,7 +643,7 @@ export interface LabStation {
   visible: (scene: HubScene) => boolean;
 }
 
-// The Lab's five reference/settings stations, each paired with its own
+// The Lab's six reference/settings stations, each paired with its own
 // `art/labMotifs.ts` icon (planted beside its button in the room by
 // HubScene.addStationRow, see labPanelColumns' own comment above) and a
 // `visible` check -- HubScene.create() filters this list down to whichever
@@ -579,4 +656,5 @@ export const LAB_STATIONS: LabStation[] = [
   { label: 'Abilities', motif: makeAbilitiesMotif, onClick: showAbilitiesPanel, visible: hasLearnedAnyAbility },
   { label: 'Tutorial', motif: makeTutorialMotif, onClick: showTutorialTopics, visible: () => true },
   { label: 'Settings', motif: makeSettingsMotif, onClick: showSettingsPanel, visible: () => true },
+  { label: 'Title Screen', motif: makeTitleScreenMotif, onClick: showTitleScreenPanel, visible: () => true },
 ];

@@ -29,12 +29,12 @@ import { stopMoveEffectPreview } from '../art/moveEffectPreview';
 // World 0, "The Lab" (DESIGN.md's world table) -- boot destination from
 // TitleScene and the return point from Overworld (press H or Enter). Unlike
 // the numbered worlds it isn't a walkable procedural map: it's a single
-// static room with up to seven stations -- Qumatex and the door onward,
-// which always exist, plus five reference/settings stations (Moves, Stats,
-// Abilities, Tutorial, Settings, built in
+// static room with up to eight stations -- Qumatex and the door onward,
+// which always exist, plus six reference/settings stations (Moves, Stats,
+// Abilities, Tutorial, Settings, Title Screen, built in
 // scenes/panels/hubStations.ts's `LAB_STATIONS`) -- since none of the hub's
 // jobs need overworld movement or wild encounters of their own, and none of
-// those five stations' own content is tied to being mid-world. Abilities
+// those six stations' own content is tied to being mid-world. Abilities
 // only actually appears once the player has learned a first passive
 // (`LAB_STATIONS`' own `visible` check) -- a fresh save has nothing to check
 // there yet. Alongside the stations, every guardian the player has met
@@ -1115,7 +1115,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
 
   // The Lab's one-off welcome tip (maybeShowLabTip) is this method's only
   // caller -- Qumatex builds its own panel (renderMaterialdexPanel) since it
-  // isn't one of scenes/panels/hubStations.ts's five stations. Kept on the
+  // isn't one of scenes/panels/hubStations.ts's six stations. Kept on the
   // same measured-top-down-layout/shrink-to-fit pattern as those anyway, so
   // a one-off popup doesn't look like a different panel era.
   private showPanel(title: string, body: string) {
@@ -1169,7 +1169,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
 
   // Public, not private -- see the dialogueContainer field comment above.
   // Shared by every panel this scene opens -- the Lab tip, Qumatex, and
-  // scenes/panels/hubStations.ts's five stations --
+  // scenes/panels/hubStations.ts's six stations --
   // renderMaterialdexPanel/hubStations.ts's own panels call this first to
   // clear their own previous container on a redraw (filter change, row
   // pick, list paging, settings change) before rebuilding.
