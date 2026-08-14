@@ -234,17 +234,14 @@ async function main() {
     await sleep(700);
   };
 
-  // Priority-order clicker used by the world-entry test: prefer the
-  // known lore/tip-page buttons, else click the first available button
-  // that isn't 'Let me pass' (a door-confirm dialogue, never appropriate
-  // to click while resolving an entry sequence).
+  // Priority-order clicker used by the world-entry test: prefer the known
+  // lore/tip-page buttons, else click the first available button that isn't
+  // 'Let me pass' (a wild-encounter escape, never appropriate to click while
+  // resolving an entry sequence).
   async function clickEntryDialogueOnce() {
-    // 'Farewell' is included (ahead of the generic fallback) so the
-    // enterFrom:'goal' entry variant -- which can land on the gate panel
-    // mid-chain, offering 'Farewell'/'Face the Rival ->' -- closes out
-    // rather than the fallback's "click whatever's first" logic risking a
-    // click into 'Face the Rival ->' and accidentally starting a full
-    // battle, which is no longer just testing entry-dialogue termination.
+    // 'Farewell' is included ahead of the generic fallback so a guardian
+    // panel opened mid-chain closes out rather than the fallback's "click
+    // whatever's first" logic wandering into a purchase.
     const priority = ['Next ->', 'Onward', 'Got it', 'Farewell'];
     const r = await clickText(priority);
     if (r.clicked) return r.clicked;
@@ -346,13 +343,11 @@ async function main() {
     };
   }
 
-  // Exercises a longer entry chain than the plain case: landing via the
-  // backward door (`enterFrom: 'goal'`) puts the player on the goal row
-  // before create() runs, so once the world-entry lore is dismissed,
-  // finishEntry's maybeAutoOpenGoalDialogue() immediately chains into the
-  // goal tip and gate panel too (lore x2 -> goal tip -> gate panel, all
-  // synchronously sequential via dialogueContainer?.destroy(true), never
-  // two chains open at once). This does NOT reproduce -- and isn't
+  // Exercises the other entry variant: stepping back through a world's
+  // backward pass (`enterFrom: 'goal'`) puts the player at the far end's
+  // pass mouth with the goal already marked reached before create() runs, so
+  // the entry chain runs with `reachedGoal` already true. This does NOT
+  // reproduce -- and isn't
   // designed to reproduce -- the full bot's intermittent stuck-repeat,
   // which would need a second entry chain to start while one is already
   // live (e.g. a scene re-start arriving mid-panel); that condition isn't
@@ -565,12 +560,64 @@ async function main() {
   }
 
   // =====================================================================
+  // Walks the player to the mouth of this world's forward pass -- the tile a
+  // gate is entered from -- the same way tryMove's onComplete does, and
+  // dismisses the one-time goal tip if this is the first time that row has
+  // been reached. Arrival alone must never open anything else and must never
+  // transition or start a fight: that is the whole point of the pass
+  // interaction, so every gate test asserts it here rather than assuming it.
+  //
+  // Note for anyone extending this: a step onto the mouth tile is a genuine
+  // no-op at the panel level. A clicker that reads "nothing opened" as a
+  // stuck game will misreport this every time -- what proves the gate is
+  // alive is the prompt, not a dialogue.
+  async function standAtPassMouth() {
+    const arrival = await page.evaluate(() => {
+      const s = window.__game.scene.getScene('Overworld');
+      const goal = s['goalTile'];
+      const tile = { x: goal.x, y: goal.y + 1 };
+      s['playerTile'] = tile;
+      s['camPos'] = { x: tile.x, y: tile.y };
+      s['maybeReachGoal'](tile.x, tile.y);
+      return { dialogueActive: s['dialogueActive'] };
+    });
+    // The only thing arrival is allowed to raise is the one-time 'goal'
+    // tutorial tip, which is onboarding rather than the gate.
+    if (arrival.dialogueActive) {
+      await clickText(['Got it']);
+      await sleep(300);
+    }
+    return page.evaluate(() => {
+      const s = window.__game.scene.getScene('Overworld');
+      s['updateGatePrompt']();
+      return {
+        dialogueActive: s['dialogueActive'],
+        prompt: s['gatePrompt'].visible ? s['gatePrompt'].text : null,
+      };
+    });
+  }
+
+  // The confirm keypress, which is the whole of the commitment -- challenging
+  // the guard while the gate is shut, crossing once it is open. Driven
+  // through the scene's own handler rather than page.keyboard so it does not
+  // depend on where canvas focus happens to be.
+  async function pressAtPass() {
+    await page.evaluate(() => window.__game.scene.getScene('Overworld')['confirmGate']());
+    await sleep(700);
+  }
+
+  // What the prompt reads at the mouth right now -- the gate's whole state
+  // signal, and what carries the choice.
+  async function passPromptLabel() {
+    return (await standAtPassMouth()).prompt;
+  }
+
   // Test 4: rival gate round-trip
   // =====================================================================
   // "Loss path": a fresh, unleveled level-1 player (registry.reset()'s
   // defaults) facing a full rival almost always loses -- this deliberately
-  // exercises that branch (the gate re-offering 'Face the Rival ->' so the
-  // fight can be retried), not the win branch. See testRivalGateWinPath and
+  // exercises that branch (the pass still shut and its prompt still offering
+  // the challenge, so the fight can be retried), not the win branch. See testRivalGateWinPath and
   // testRivalGateActualWin below for the "rival defeated" / "actually WON"
   // branches, which this function structurally cannot reach on its own.
   async function testRivalGate(world) {
@@ -583,21 +630,18 @@ async function main() {
       return { pass: false, detail: `world ${world}: entry sequence never cleared (${entry.reason}). clicks=${JSON.stringify(entry.clicks)}` };
     }
 
-    // Jump the player to the goal row and trigger the same reach-goal path
-    // tryMove's onComplete uses.
-    const reachResult = await page.evaluate(() => {
-      const s = window.__game.scene.getScene('Overworld');
-      const goal = s['goalTile'];
-      s['playerTile'] = { x: goal.x, y: goal.y };
-      s['maybeReachGoal'](goal.x, goal.y);
-      return { dialogueActive: s['dialogueActive'] };
-    });
-    if (!reachResult.dialogueActive) {
-      return { pass: false, detail: `world ${world}: maybeReachGoal did not open the gate panel` };
+    const at = await standAtPassMouth();
+    if (at.dialogueActive) {
+      return { pass: false, detail: `world ${world}: arriving at the pass mouth opened a panel -- arrival alone must never do anything` };
     }
+    if (!at.prompt || !at.prompt.includes('challenge')) {
+      return { pass: false, detail: `world ${world}: shut gate offered no challenge prompt at the mouth (prompt=${JSON.stringify(at.prompt)})` };
+    }
+    await pressAtPass();
 
-    // Click through: possible one-time 'Got it' tip, then 'Face the Rival ->',
-    // then the two-part taunt ('Next ->' then 'Battle!').
+    // Click through the two-part taunt ('Next ->' then 'Battle!') the confirm
+    // keypress opens, plus the one-time 'battle' tutorial tip that fires on
+    // the way into the fight itself.
     const clicks = [];
     let reachedBattle = false;
     for (let i = 0; i < 8; i++) {
@@ -606,7 +650,7 @@ async function main() {
         reachedBattle = true;
         break;
       }
-      const r = await clickText(['Got it', 'Face the Rival ->', 'Next ->', 'Battle!']);
+      const r = await clickText(['Next ->', 'Battle!', 'Got it']);
       if (!r.clicked) {
         const dump = await dumpOverworldDialogue();
         await page.screenshot({ path: `${SHOT_DIR}/fail-rivalgate-w${world}-preBattle.png` });
@@ -642,44 +686,30 @@ async function main() {
       return !!rd[w];
     }, world);
 
-    const gateDump = await page.evaluate(() => {
-      const s = window.__game.scene.getScene('Overworld');
-      s['showGatePanel']();
-      const c = s['dialogueContainer'];
-      return c ? c.list.filter((o) => typeof o.text === 'string').map((o) => o.text) : [];
-    });
-
-    const expectSubstr = !rivalDefeated
-      ? 'Face the Rival'
-      : world >= 10
-      ? 'The Decoherence is stabilized'
-      : `Continue to World ${world + 1}`;
-    const found = gateDump.some((t) => t.includes(expectSubstr));
-    if (!found) {
-      await page.screenshot({ path: `${SHOT_DIR}/fail-rivalgate-w${world}-wrongbutton.png` });
+    const prompt = await passPromptLabel();
+    const expectSubstr = !rivalDefeated ? 'challenge' : world >= 10 ? 'step through' : 'cross into';
+    if (!prompt || !prompt.includes(expectSubstr)) {
+      await page.screenshot({ path: `${SHOT_DIR}/fail-rivalgate-w${world}-wrongprompt.png` });
       return {
         pass: false,
-        detail: `world ${world}: gate panel after battle (${result.outcome}, rivalDefeated=${rivalDefeated}) expected a button containing "${expectSubstr}" but got ${JSON.stringify(
-          gateDump
-        )}`,
+        detail: `world ${world}: prompt after battle (${result.outcome}, rivalDefeated=${rivalDefeated}) expected to contain "${expectSubstr}" but read ${JSON.stringify(prompt)}`,
       };
     }
 
     return {
       pass: true,
-      detail: `world ${world} (loss path): rival battle ${result.outcome} (${result.rounds} rounds), rivalDefeated=${rivalDefeated}, gate correctly offers "${expectSubstr}"`,
+      detail: `world ${world} (loss path): rival battle ${result.outcome} (${result.rounds} rounds), rivalDefeated=${rivalDefeated}, pass prompt correctly reads "${prompt}"`,
     };
   }
 
-  // Pre-sets rivalDefeated so the gate panel offers 'Continue to World N+1
-  // ->' (or 'The Decoherence is stabilized ->' for World 10) without
-  // needing to actually win a fight -- exercises tryAdvanceToNextWorld's
-  // win branch, showStoryBeat/showFinalePanel, and (for a mid world) lands
-  // on the next world via advanceToWorld's in-scene scene.start, so the
-  // next world's own entry-dialogue chain gets resolved through the same
-  // in-scene transition path a real winning playthrough uses (an external
-  // page-level scene jump, used everywhere else in this suite, never
-  // exercises that path).
+  // Pre-sets rivalDefeated so the pass is already open without needing to
+  // actually win a fight -- exercises confirmGate's open branch, crossPass's
+  // fade plus showStoryBeat over it (or showFinalePanel in World 10), and
+  // (for a mid world) lands on the next world via advanceToWorld's in-scene
+  // scene.start, so the next world's own entry-dialogue chain gets resolved
+  // through the same in-scene transition path a real winning playthrough
+  // uses (an external page-level scene jump, used everywhere else in this
+  // suite, never exercises that path).
   async function testRivalGateWinPath(world) {
     const isLastWorld = world >= 10;
     await resetRegistryOnly();
@@ -696,40 +726,25 @@ async function main() {
       window.__game.registry.set('rivalDefeated', { ...rd, [w]: true });
     }, world);
 
-    const reachResult = await page.evaluate(() => {
-      const s = window.__game.scene.getScene('Overworld');
-      const goal = s['goalTile'];
-      s['playerTile'] = { x: goal.x, y: goal.y };
-      s['maybeReachGoal'](goal.x, goal.y);
-      return { dialogueActive: s['dialogueActive'] };
-    });
-    if (!reachResult.dialogueActive) {
-      return { pass: false, detail: `world ${world}: maybeReachGoal did not open the gate panel (rivalDefeated preset)` };
+    const at = await standAtPassMouth();
+    if (at.dialogueActive) {
+      return { pass: false, detail: `world ${world}: arriving at an open pass opened a panel -- arrival alone must never do anything` };
+    }
+    const expectPrompt = isLastWorld ? 'step through' : 'cross into';
+    if (!at.prompt || !at.prompt.includes(expectPrompt)) {
+      await page.screenshot({ path: `${SHOT_DIR}/fail-rivalgate-winpath-w${world}.png` });
+      return { pass: false, detail: `world ${world}: open pass prompt expected to contain "${expectPrompt}" but read ${JSON.stringify(at.prompt)}` };
     }
 
-    // Deterministic click sequence (each button only ever appears once, in
-    // this order): the one-time 'Got it' goal tip, then the gate's
-    // continue/finale button, then (mid-world only) the story beat's
-    // 'Onward', or (World 10 only) the finale's 'Return to the Lab'. Kept
-    // as explicit priority-per-step rather than one open-ended loop,
-    // because the mid-world path's button labels ('Onward', 'Got it')
-    // overlap with the NEXT world's own fresh entry-dialogue buttons once
-    // advanceToWorld's in-scene scene.start fires -- an open-ended loop
-    // here could silently consume clicks meant for verification below.
-    const expectLabel = isLastWorld ? 'The Decoherence is stabilized' : `Continue to World ${world + 1}`;
-    const clicks = [];
-    const step1 = await clickText(['Got it']);
-    if (step1.clicked) {
-      clicks.push(step1.clicked);
-      await sleep(300);
-    }
-    const step2 = await clickText([expectLabel]);
-    if (!step2.clicked) {
-      await page.screenshot({ path: `${SHOT_DIR}/fail-rivalgate-winpath-w${world}.png` });
-      return { pass: false, detail: `world ${world}: gate panel did not offer "${expectLabel}". clicks so far=${JSON.stringify(clicks)}, available=${JSON.stringify(step2.available)}` };
-    }
-    clicks.push(step2.clicked);
-    await sleep(350);
+    // The keypress commits. In a mid world it fades and plays the story beat
+    // over the fade; in World 10 it opens the finale. Kept as an explicit
+    // step-by-step sequence rather than one open-ended loop, because the
+    // mid-world path's button label ('Onward') overlaps with the NEXT
+    // world's own fresh entry-dialogue buttons once advanceToWorld's
+    // in-scene scene.start fires -- an open-ended loop here could silently
+    // consume clicks meant for verification below.
+    const clicks = ['<press>'];
+    await pressAtPass();
 
     if (!isLastWorld) {
       const step3 = await clickText(['Onward']);
@@ -803,14 +818,10 @@ async function main() {
       window.__game.registry.set('playerStats', { quantumness: 30, velocity: 30, correlation: 99999 });
     });
 
-    const reachResult = await page.evaluate(() => {
-      const s = window.__game.scene.getScene('Overworld');
-      const goal = s['goalTile'];
-      s['playerTile'] = { x: goal.x, y: goal.y };
-      s['maybeReachGoal'](goal.x, goal.y);
-      return { dialogueActive: s['dialogueActive'] };
-    });
-    if (!reachResult.dialogueActive) return { pass: false, detail: `world ${world}: maybeReachGoal did not open the gate panel` };
+    const at = await standAtPassMouth();
+    if (at.dialogueActive) return { pass: false, detail: `world ${world}: arriving at the pass mouth opened a panel` };
+    if (!at.prompt) return { pass: false, detail: `world ${world}: no prompt at the pass mouth` };
+    await pressAtPass();
 
     const clicks = [];
     let reachedBattle = false;
@@ -819,7 +830,7 @@ async function main() {
         reachedBattle = true;
         break;
       }
-      const r = await clickText(['Got it', 'Face the Rival ->', 'Next ->', 'Battle!']);
+      const r = await clickText(['Next ->', 'Battle!', 'Got it']);
       if (!r.clicked) return { pass: false, detail: `world ${world}: stuck before Battle. clicks=${JSON.stringify(clicks)}` };
       clicks.push(r.clicked);
       await sleep(350);

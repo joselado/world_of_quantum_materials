@@ -810,7 +810,7 @@ async function main() {
 
     for (let i = 0; i < 8; i++) {
       if ((await getActiveScenes()).includes('Battle')) break;
-      const r = await clickText(['Got it', 'Face the Rival ->', 'Next ->', 'Battle!']);
+      const r = await clickText(['Got it', 'Next ->', 'Battle!']);
       if (!r.clicked) throw new Error(`world ${world}: stuck before the battle started`);
       await sleep(320);
     }

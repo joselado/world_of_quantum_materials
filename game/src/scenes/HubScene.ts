@@ -737,7 +737,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   }
 
   // Farewell-only footer (no Face-the-Rival/Continue action) -- every
-  // guardian panel but the rival gate's own showGatePanel (OverworldScene-only,
+  // guardian panel but the rival gate itself (OverworldScene-only,
   // never opened from the Lab) uses this, so it's the only footer variant
   // GuardianPanelHost needs to provide.
   renderFarewellFooter(container: Phaser.GameObjects.Container, footerY: number): number {

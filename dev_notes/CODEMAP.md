@@ -1147,25 +1147,59 @@ purely a visual landmark via the same `WorldSprite` machinery, no click handler 
 size, since that field only ever drives the name label's own offset and the golem's head reaches
 higher above its center than any other landmark's art does; its `foot` is
 `BOSS_CRYSTAL_SIZE * BOSS_FOOT`, the offset `makeBossCrystal` pooled its own contact shadow at.
-`openGoalGuardianPanel()`'s branch on `guardian?.tile === 'goal'` is a permanent no-op (no entry
-uses it), so it always falls through to `showGatePanel()`, which is what renders at the goal.
+`BOSS_CRYSTAL_SIZE` is *derived*, not chosen: it is the size at which the golem's widest span
+(`art/boss.ts`'s `BOSS_SILHOUETTE_HALF_WIDTH`) covers the pass throat's full walkable width
+(`PASS_HALF_WIDTH * 2 + 1` tiles). Projection scale cancels out of that ratio -- golem and
+aperture stand at the same depth -- so the one number holds at every distance the pass is
+looked at from.
 
-**World doors.** `OverworldScene.spawnDoorSprites` puts a doorway landmark (`art/door.ts`'s
-`makeDoorSprite`, `DOOR_SPRITE_SIZE = 46`) at every built world's `startTile`, and a second one at
-`goalTile` once `isRivalDefeated()` is true for that world -- `spawnBossSprite` stops spawning its
-own avatar there once the rival is beaten, so the two never share the tile. Walking onto the
-start-tile door is tile-exact (`OverworldScene.maybeReachStartDoor`, checked against `startTile.x`
-*and* `.y`, unlike the row-only `maybeReachGoal`/`maybeReachMiddle`) and opens
-`showStartDoorPanel`, a confirm panel offering to step back into World N-1 (or the Hub for World
-1) via `returnToPreviousWorld`, which calls `advanceToWorld(world, 'goal')` -- the second param
-threads through `OverworldInitData.enterFrom` and `Overworld`'s own `create()`/`generateMap()` so
-the destination scene overrides its freshly generated `playerTile` to that map's own `goalTile`
-and marks `reachedGoal = true` immediately, landing the player as if they'd walked in from the far
-end rather than restarting that world's corridor. The goal-tile door doesn't need its own confirm
-panel -- walking onto it (also tile-exact, checked in `tryMove`'s `onComplete` alongside
-`maybeReachGoal`) just reopens the same `showGatePanel` the boss's "Face the Rival" button already
-lived in, now offering "Continue to World N+1" via the existing `renderShopFooter`/
-`tryAdvanceToNextWorld` path -- no separate door-specific advance logic.
+**The gate interaction: approach, read, press.** `WORLDS.md` §4 is the spec. Both of a world's
+passes share one grammar, and it lives in four methods on `OverworldScene`:
+
+- `gateAtPlayer()` -- which pass the player is standing at the mouth of, if any: one row south of
+  the forward throat and within `PASS_HALF_WIDTH` of it, or exactly on `startTile` for the
+  backward one.
+- `updateGatePrompt()` -- called every frame from `update()`. Shows/hides `gatePrompt`, the HUD
+  prompt (`fontPx`, so it obeys every text-size preset), and sets it interactive exactly while it
+  is visible, so clicking it and pressing the key are the same action on the same object.
+- `gatePromptLabel(gate)` -- what the prompt reads: challenge the named rival, cross into the
+  named next world, "step through" in World 10, or go back to the previous world / the Lab.
+- `confirmGate()` -- the commitment, bound to Space and to the prompt's own `pointerdown`.
+  Backward: `returnToPreviousWorld()`. Forward and shut: `showRivalEncounter()`. Forward and open:
+  `crossPass()`, or `showFinalePanel()` in World 10, which has nothing beyond.
+
+`crossPass()` fades a full-canvas rect to `PANEL_BG` over 420ms and plays `showStoryBeat` over
+that fade, so `STORY_BEATS` cannot stack against the board or the horizon reveal the player is
+looking at. `returnToPreviousWorld` calls `advanceToWorld(world, 'goal')` -- the second param
+threads through `OverworldInitData.enterFrom` and `create()`/`generateMap()`, which overrides the
+freshly generated `playerTile` to that map's *pass mouth* (`goalTile.y + 1`, never the throat,
+which is the rival's tile whenever that world's rival still stands) and marks `reachedGoal = true`.
+
+**Arrival alone does nothing.** No tile in either pass opens a panel, starts a fight or switches
+worlds on contact; `tryMove`'s `onComplete` only runs the ordinary encounter/token/row checks. A
+step onto a pass tile is a genuine no-op at the panel level, which `component-check`'s
+`standAtPassMouth` asserts explicitly -- and which any future clicker has to know, since "nothing
+opened" there is correct rather than a stuck panel.
+
+**The rival holds the throat.** While `isRivalDefeated()` is false, `tryMove` refuses any step
+onto `goalTile.y`. The way is barred by the thing barring it, and `maybeReachGoal` therefore fires
+on the mouth row (`y <= goalTile.y + 1`) rather than on the throat, which would otherwise be
+unreachable while the gate is shut.
+
+**Gate scenery.** `OverworldScene.spawnGateSprites` puts one `WorldSprite` in each pass. Backward:
+a board (`art/passBoard.ts`'s `makePassBoard`, `BOARD_SPRITE_SIZE = 34`) naming World N-1, always
+present since the way back carries no state -- except World 1, which gets `art/door.ts`'s
+`makeDoorSprite` instead, because it leads to the Lab and the Lab is not a place. Forward: a board
+naming World N+1, spawned only once the rival is beaten, and never in World 10. Boards set
+`WorldSprite.still`, which suppresses the wander/bob every other landmark carries -- a signboard
+nailed to two posts does not drift. The name is a `Text` *inside* the container rather than a
+`WorldSprite.label`, so it projects and depth-scales with the posts and is legible only on
+approach.
+
+**Depth sort.** `updateWorldSprites` assigns `setDepth(30 - depth)` per frame from each sprite's
+own projected depth (label at `+0.5`), so every actor standing on the map -- wilds, tokens,
+guardian, rival, boards -- sorts against each other by distance rather than by creation order.
+Under the player (40) and well under any dialogue (100).
 
 **World 9's rival has no fixed type, unlike every other world's.** `data/materials.ts`'s
 `getRival(world, rival9Type?)` takes an optional second param that only world 9 reads --
@@ -1211,14 +1245,13 @@ turn; `component-check`'s Test 4d drives this path once per move class and watch
 dynamic; HP was never tied to its identity in the first place (`opponentMaxHp`, see "Max
 HP" below, stays fixed for the whole battle).
 
-**Progression (Face the Rival/Continue) is exclusive to the goal panel.** `renderShopFooter`
-(Farewell + Face-the-Rival/Continue, `showGatePanel`'s only caller) is the only footer helper that
-offers a progression action. Every mid-corridor guardian panel closes with a plain Farewell
-instead -- `renderFarewellFooter` for a full-width row, `renderListColumnFooter` for the
-list+detail panels that put it in the left column -- and none of them calls `renderShopFooter`,
-so no guardian panel can trigger that world's boss fight without the player walking to (or
-seeing) the goal. If a future guardian panel needs a progression action, route it
-through `showGatePanel`, not by reaching for `renderShopFooter` directly.
+**Progression is exclusive to the pass.** No panel anywhere offers a progression action:
+leaving a world is something the player walks to and presses at (`confirmGate`). Every guardian
+panel closes with a plain Farewell -- `renderFarewellFooter` for a full-width row,
+`renderListColumnFooter` for the list+detail panels that put it in the left column -- so no
+guardian panel can trigger that world's rival fight without the player walking to the pass. A
+future panel needing a progression action still routes it through `confirmGate`'s own paths
+rather than growing a button of its own.
 
 **Overworld terrain rendering.** Painting the corridor floor splits in two, and new terrain work
 belongs on one side or the other. `scenes/overworld/terrain/plan.ts`'s `buildTerrainPlan(src)`
@@ -1344,7 +1377,11 @@ fade that has to arrive opaque lands on `alphaAt(1)` rather than stopping a row 
 that row's
 walkability) so no boundary curve, contact shadow or rim light is drawn across the continuing
 road; `walkable` itself is untouched, so the repeated road is scenery and the player still leaves
-through the goal tile. Anything drawing at depth calls `projection.ts`'s `projectTile`, which
+through the goal tile. The repeat only runs while the way is actually open (`drawMarginRows`'s
+`roadRunsOn`, off whenever `view.gate` reports a shut gate): the far edge row *is* the pass
+throat, so repeating it while the rival still stands there would run a road to the horizon through
+a gate its guard is holding. Shut, the repeats take the surround's terrain instead and the road
+ends where the guard does. Anything drawing at depth calls `projection.ts`'s `projectTile`, which
 applies `CAMERA_BACK_TILES` internally -- adding the pullback again double-counts it.
 
 **Forward haze inheritance.** `sky.ts`'s `hazeTarget(view, biome)` is what every haze in the
@@ -1359,6 +1396,30 @@ beaten, and a
 shut gate shows nothing of what is beyond it. The blend factor and a small per-biome memo are
 recomputed once per frame in `OverworldScene.drawWorld` before the view is assembled (World 9's
 defect patches put several biomes on screen at once).
+
+**The gate's own drawing.** One record carries the forward pass to every pass that draws it:
+`sky.ts`'s `GateView` (throat row, throat lane relative to the camera, half-width in tiles,
+whether the rival has fallen, and the neighbour's `Biome`), rebuilt each frame by
+`OverworldScene.gateView()` and hung off `AtmosphereView`. Three consumers read it and cannot
+disagree about whether the way is open:
+
+- `sky.ts`'s `drawPassAperture`, called from `drawDepthHaze` after the distant self -- the notch.
+  Three nested tapering shapes (never a stack of rows: abutting translucent rows double-blend on a
+  shared scanline and stripe the whole opening) in the *next* world's `path` lifted toward its
+  `skyBottom`, rising out of `projectTile(0, DRAW_DISTANCE_TILES).y` -- where the repeated road
+  runs out -- to `APERTURE_H` above the horizon line. Its width is the throat's own, measured at
+  that same depth, so the opening continues the road rather than floating over it. Drawn only when
+  the gate is open: a shut pass shows nothing of what lies beyond it, and there is no fogged notch.
+- `terrain/paint.ts`'s `seamed` -- the ground seam. The next world's `path` at `SEAM_STRENGTH` on
+  the throat row and on everything the repeated road carries past it, fading out over `SEAM_ROWS`
+  south of it. Running the far side at full strength rather than stopping at the throat is what
+  keeps the ground agreeing with the aperture above it; a seam that reverted beyond the gate would
+  put a stripe across the corridor instead of a threshold under it.
+- `drawMarginRows`'s `roadRunsOn` (above) -- the repeated road, which only runs while the gate is
+  open.
+
+`forwardHazeBlend` takes the same `open` flag, so haze inheritance and the aperture are gated on
+one value rather than two reads of the registry.
 
 **The mist band and the distant self.** `drawDepthHaze` runs its passes off one `target`, so
 nothing in the frame can disagree about what color the air is: a whole-sky tint, the ground wash,
@@ -1507,7 +1568,7 @@ actor can ever appear to float in front of terrain it should be occluded by.
 `HubScene.highestUnlockedWorld()` walks `rivalDefeated` from world 1 until it finds a world not
 yet beaten, capped at `BUILT_WORLDS`'s own max (10) so beating World 10's rival and returning to
 the Hub before the finale panel fires re-enters World 10 rather than a nonexistent World 11.
-`OverworldScene.tryAdvanceToNextWorld()`/`advanceToWorld(this.world + 1)` likewise
+`OverworldScene.crossPass()`/`advanceToWorld(this.world + 1)` likewise
 compute the next world rather than hardcoding it. `advanceToWorld`'s second param, `enterFrom:
 'start' | 'goal'` (default `'start'`), is what the world-door feature (above) uses to land the
 player on the destination's `goalTile` instead of its `startTile` -- every other caller
@@ -1923,7 +1984,7 @@ several possible routes -- see the `world/` file-tree entry above and DESIGN.md 
 alongside `start`/`goal`, threaded through `OverworldScene.midTile` and `SavedMapState` the same
 way `goalTile`/`startTile` are. Reaching that row (`OverworldScene.maybeReachMiddle`, mirroring
 `maybeReachGoal`'s "whole row counts, not one tile" rule) sets `reachedMiddle` and calls
-`maybeAutoOpenMiddleDialogue()` -- the counterpart to `maybeAutoOpenGoalDialogue()`/
+`maybeAutoOpenMiddleDialogue()` -- the mid-corridor counterpart to `maybeReachGoal()`/
 `maybeReachGoal`, both still used for the goal tile's own panel. `'start'`/`'goal'` remain valid
 `tile` values (and `spawnGuardianSprite`'s tile-lookup still branches on all three) purely so a
 future guardian could choose them; nothing currently does.
@@ -2015,7 +2076,7 @@ sharing state. Several things key off `isSuperpositionMode()`:
   already unlocked" grant, called from two places: `HubScene.create()` (which stands every
   guardian's own avatar in the room regardless of `metGuardians` in this mode, so each one's
   panel is already fully unlocked on a save that's
-  never stepped through a world door) and `OverworldScene.applySuperpositionLeveling()`
+  never crossed a pass) and `OverworldScene.applySuperpositionLeveling()`
   (re-applied on every `create()`, covering Continue, Bloch teleport, and the Hub door's
   World-1 jump alike, alongside that method's own world-specific `playerStats`/`playerHp`
   re-leveling to `enemyStatsForWorld(this.world)` plus a flat `+2`, which stays local to
@@ -2052,7 +2113,7 @@ sharing state. Several things key off `isSuperpositionMode()`:
 - `HubScene.enterWorld()`/`doorLabel()` branch on `isSuperpositionMode()` to jump straight to
   World 1 (`{ world: 1, regenerate: true }`) instead of `highestUnlockedWorld()`, bypassing
   `rivalDefeated` entirely -- Bloch (reachable at World 2's own middle tile via the walkable
-  world doors, or by clicking his own avatar in the Lab once met once) is sufficient for
+  a backward pass, or by clicking his own avatar in the Lab once met once) is sufficient for
   world-to-world movement on its own regardless of whether this door has ever been used, per
   the candidate-pool point below.
 - `showDresselhausPanel`/`showMajoranaPanel`/`showAndersonPanel` each swap their
@@ -2082,7 +2143,7 @@ sharing state. Several things key off `isSuperpositionMode()`:
 own feature, not as one first-run sequence. `OverworldScene.showTutorialTip(id, onClose)` is
 the shared entry point for six of the seven (`controls` on Overworld create, `encounter` in
 `maybeTriggerEncounter`, `battle` in `startBattle`, `qumatessence` in `maybeCollectToken`,
-`guardian` in `openGuardian`, `goal` in `maybeAutoOpenGoalDialogue`) -- it checks `hasSeenTip`,
+`guardian` in `openGuardian`, `goal` in `maybeReachGoal`) -- it checks `hasSeenTip`,
 and either calls `onClose` straight away (already seen) or renders the tip via
 `renderTutorialTipPopup` and calls `onClose` once the player dismisses it, so callers just
 pass "whatever I was about to do next" and never branch on seen/unseen themselves. The

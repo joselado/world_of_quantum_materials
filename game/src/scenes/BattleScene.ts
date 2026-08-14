@@ -2229,7 +2229,7 @@ export class BattleScene extends Phaser.Scene {
 
     // Beating the world's gating rival crystal is what actually unlocks
     // the guardian's shop/panel and the way to the next world -- see
-    // OverworldScene.showRivalEncounter/maybeAutoOpenGoalDialogue.
+    // OverworldScene.showRivalEncounter.
     if (won && this.isRival) {
       const rivalDefeated = (this.game.registry.get('rivalDefeated') as Record<number, boolean>) ?? {};
       this.game.registry.set('rivalDefeated', { ...rivalDefeated, [this.world]: true });

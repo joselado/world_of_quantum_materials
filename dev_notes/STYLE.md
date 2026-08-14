@@ -110,7 +110,7 @@ than appending a changelog, so this always reflects current reality.
   once -- either way, in Superposition Mode his teleport hub
   offers every built world immediately, with no separate warp/world-select panel, though
   every world also has its own walkable doors back to the Hub/previous world and
-  onward to the next one (see "World doors" below). Right after Qumatex and the door, in the
+  onward to the next one. Right after Qumatex and the door, in the
   same grid, come the six reference/settings stations (`scenes/panels/hubStations.ts`'s
   `LAB_STATIONS` -- Moves, Stats, Abilities, Tutorial, Settings, Title Screen), filtered down to
   whichever the player has actually unlocked: Abilities only appears once the player has
@@ -521,7 +521,7 @@ than appending a changelog, so this always reflects current reality.
   up against this corner's overflow risk.
 - Map regenerates fresh (new `Math.random` layout, retried internally up to 10 times against
   the two invariants above before falling back to a plain wide corridor) on first load and on
-  an explicit world change that's genuinely new ground -- Bloch's teleport, a world door, a
+  an explicit world change that's genuinely new ground -- Bloch's teleport, a backward pass, a
   debug warp, the Hub door/Lab Enter-key into a world never yet visited, or (World 10 only)
   transmuting/fusing into a new form while standing there, since World 10's shape is keyed off
   the player's own current type. A round trip through a battle, or leaving to the Hub and
@@ -925,8 +925,8 @@ than the caller's requested budget) for its own layout math.
   - **Stats**: one button per stat (Quantumness/Velocity/Correlation), labeled
     `<stat> (<role>): <value> -> <value+1> -- <cost> qumatessence`, same afford/dim treatment.
 - Every guardian panel but the rival gate's own ends in a single "Farewell" button -- Noether's
-  own panel never offers "Face the Rival"/"Continue to World N+1"; that action lives only in
-  the goal panel (see "The rival gate" below), since the goal tile is where that world's boss
+  own panel never offers a way onward; leaving a world is something the player walks to the
+  pass and presses at (see "Gates as passes" below), since the pass is where that world's boss
   actually stands. Where the panel is a list+detail layout (Noether's own Moves tab, and
   Bloch's panel below) that button sits in the left column beneath its rows
   ("List+detail panels" above); the Stats tab, a plain single-column list with no left column
@@ -1183,7 +1183,7 @@ than the caller's requested budget) for its own layout math.
   unlocked, its rows drop the cost suffix -- `<move name> (Pwr N)` -- and learning any of its
   moves (now or later) is free. A "Never mind" (to back out to the first step) shares one row
   with the panel's own Farewell button at this second step (side by side, the same
-  convention the goal panel's Farewell/Continue footer uses) rather than stacking two
+  convention) rather than stacking two
   separate footer rows. Picking a move appends it to the ordinary `unlockedMoves` list
   (`learnImpurityMove`) -- no form change, no HP change, unlike Dresselhaus/Majorana. Empty
   states (rendered as plain centered text with no columns): "You haven't defeated any
@@ -1437,15 +1437,22 @@ than the caller's requested budget) for its own layout math.
   DEVELOPMENT.md's "Verifying UI changes" section).
 - Anderson's second step (this function's own plain paginated list) also renders a "Never
   mind" cancel row to back out to the first (host-pick) step -- this shares one row with the
-  panel's own Farewell button (side by side, the same left/right convention the goal panel's
+  panel's own Farewell button (side by side, the same left/right convention every other
   own Farewell/Continue footer uses) rather than stacking as two separate rows, since this
   step already carries more chrome (avatar, intro, a second-step label, the candidate list
   itself) than any single-step panel does.
 
 ## Boss avatars (`OverworldScene.spawnBossSprite`, `art/boss.ts`)
 
-- Every built world's rival/boss, while still undefeated, stands at the goal
-  tile as a purely visual landmark, sized `BOSS_CRYSTAL_SIZE = 78` -- and since
+- Every built world's rival, while still undefeated, stands in the throat of
+  that world's forward pass and bars it, as a purely visual landmark. **It is
+  sized to the aperture, not to the screen**: `BOSS_CRYSTAL_SIZE` is derived so
+  that the golem's widest span (`BOSS_SILHOUETTE_HALF_WIDTH`) covers the
+  throat's full walkable width, leaving no gap showing from the approach tile
+  and staying fully visible from the tile in front. Projection scale cancels
+  out of that ratio, so it holds at every distance. Scale is read against the
+  opening -- a figure filling a narrow notch reads larger than a giant in an
+  open field, and the narrowing carries the menace. Since
   the silhouette reaches `BOSS_SILHOUETTE_TOP`/`BOSS_SILHOUETTE_BOTTOM`
   (`1.4`/`1.11`, exported from `art/boss.ts`) multiples of that above and below
   its own center, the rendered golem stands over 2.5x that tall, dwarfing both a
@@ -1496,62 +1503,66 @@ than the caller's requested budget) for its own layout math.
   than a bare one, so it clears the head. Reuses the
   `WorldSprite` projection/wander/bob machinery, so it scrolls and fades with
   distance like everything else standing on the map -- it doesn't add its own
-  click handler, the fight is still only reached through the goal panel's
-  "Face the Rival" button. `makeBossCrystal`'s core/limb color and variant
+  click handler, the fight is still only reached by pressing at the pass mouth. `makeBossCrystal`'s core/limb color and variant
   come from the boss `Material`'s own `color`/`variant` (`TYPE_LOOK[type]`), so
   World 9's boss -- the one rival with no fixed type, DESIGN.md §2 -- looks
   different depending on which `MaterialType` got rolled for that playthrough,
   same as every other world's boss reads off its own fixed type. Once that
-  world's rival is beaten, this avatar stops spawning and a world door (below)
-  takes over the goal tile instead.
+  world's rival is beaten this avatar stops spawning, and the pass simply
+  clearing is the whole of what "the way is open" looks like.
 
-## World doors (`OverworldScene.spawnDoorSprites`, `art/door.ts`)
+## Gates as passes (`OverworldScene.spawnGateSprites`, `art/passBoard.ts`, `art/door.ts`)
 
-- Every built world has a doorway landmark at its `startTile`, sized
-  `DOOR_SPRITE_SIZE = 46` -- bigger than the player (`34`) so it reads as a real
-  structure, well under the boss (`78`) it can share a world with. Rendered by
-  `makeDoorSprite`: a genuinely rectangular stone archway (a small corner
-  radius, not one close to the shape's own half-width, so it doesn't collapse
-  into a pill/gem silhouette), a darker inset "opening" void, a lavender
-  (`0xd9a5ff`) glowing portal filling that opening with a couple of orbiting
-  white motes (the same "something is happening here" cue a guardian avatar's
-  orbiting motes give), and a wide, faint additive halo behind the whole thing
-  so it still reads as a colored beacon once shrunk small by distance -- the
-  same trick the boss's own aura uses. Lavender matches `showStoryBeat`'s own
-  between-worlds panel stroke, the color already established for "connective
-  tissue between worlds." Once that world's rival is beaten, a second door of
-  the same look spawns at `goalTile` too, replacing the boss avatar there.
-  Reuses the `WorldSprite` machinery like every other landmark -- no click
-  handler of its own; walking onto either tile is what opens the actual
-  confirm/gate panel (`OverworldScene.showStartDoorPanel`/`showGatePanel`).
-  Name label underneath reads "Door to the Lab" or "Door to World N" (start
-  door) and "Door to World N" or "The way is open" for World 10 (goal door,
-  matching `renderShopFooter`'s own last-world label), same small
-  dark-background label treatment every other landmark uses, text in the same
-  lavender (`#e6d9ff`) family as the portal glow rather than a guardian's own
-  label color or the boss's warning pink-red. The start-door sprite itself
-  stands one row north of its own trigger tile (`startTile`), not on top of
-  it -- the forward-facing camera never renders anything behind the player's
-  current row, so drawing it exactly on `startTile` would only ever be
-  visible stacked under the player's own crystal; a row ahead puts it
-  visibly in front of the player at spawn and again on every walk back down
-  to the start row.
+`dev_notes/WORLDS.md` §4's "Gates as passes" is the spec. One grammar throughout:
+**a palette seen through an opening is where you are going.** A gate is not an
+object standing on a tile -- it is the corridor narrowing into a pass, which is
+permanent geography and stays once the rival is beaten. Both ends of every
+world are shaped, since world N's start is world N-1's exit.
 
-## The start-door confirm panel (`OverworldScene.showStartDoorPanel`)
-
-- Walking onto the start-door tile (tile-exact, not "anywhere on that row" --
-  `OverworldScene.maybeReachStartDoor`) opens a small panel rather than
-  switching worlds immediately, so brushing the tile while exploring a
-  dead-end branch near the south edge can't backtrack the player by accident.
-  Same dark rounded-rectangle-with-stroke treatment as every other overworld
-  dialogue (`480×`variable, sized to content), stroked lavender (`0xd9a5ff`) to
-  match the door sprite and `showStoryBeat`'s panel. One line of flavor text
-  ("A doorway leads back to World N-1"/"...to the Lab"), then two buttons side
-  by side: "Not yet" (closes with no scene change, same as `closeDialogue`
-  everywhere else) and "Return to World N-1"/"Return to the Lab", which calls
-  `returnToPreviousWorld`. Never a one-shot -- walking onto the door always
-  reopens this panel, since the confirm step itself (not a "seen it once"
-  flag) is what keeps an accidental brush from becoming a real backtrack.
+- **Two objects, two duties.** The **board** is scenery: world-space,
+  depth-scaled, its name painted *into* the sprite (a `Text` inside the
+  container, not a `WorldSprite.label`) so it resolves into a caption only on
+  approach and is unreadably small from far off. That is what keeps it a
+  signpost rather than an interface element, and what stops it competing with
+  the horizon reveal -- the horizon resolves first, the name later. The
+  **prompt** is interface: HUD, centred low on screen, obeying every text-size
+  preset, and it is what carries the choice.
+- **Scenery never spawns in.** A board is present from the moment its pass is,
+  at whatever size distance gives it. What arrives at the threshold is
+  *interactivity*, not the object.
+- **A board is planted, not alive.** `WorldSprite.still` suppresses the
+  wander/bob every other landmark carries; a signboard nailed to two posts that
+  drifts around its tile reads as a prop.
+- **Approach, read, press.** Both gate states share one interaction. A prompt
+  appears a tile out and the keypress commits -- challenging the guard while
+  the gate is shut, crossing once it is open. **Arrival alone never transitions
+  or starts a fight**: a pass is the most interesting object in a world and
+  players walk into it to look. Clicking the prompt is identical to pressing
+  the key, and the prompt is interactive exactly while it is on screen, so the
+  affordance and the hit area are the same object.
+- **Shut** -- the rival fills the throat and the throat row cannot be walked
+  onto. Nothing else marks the state: a body in the way is a plainer statement
+  than any weather over the gap. No aperture, no forward palette bleed, and the
+  repeated road stops rather than promising passage past the guard.
+- **Open** -- the pass clears, the next world's palette shows through the notch
+  above where the road runs out (light through a doorway, and diegetic: what is
+  visible through the gap is the destination), a board names the destination,
+  and the next world's walkable colour bleeds back across the last few tiles as
+  a seam the player visibly steps over.
+- **The backward exit is a pass with a board and no guard**, carrying no state
+  -- the way back is open from the moment the player arrives, having walked in
+  through it. **World 1's is a door** (`art/door.ts`'s `makeDoorSprite`,
+  `DOOR_SPRITE_SIZE = 46`: a genuinely rectangular stone archway with a small
+  corner radius so it doesn't collapse into a pill silhouette, a darker inset
+  opening, a lavender `0xd9a5ff` portal with orbiting white motes, and a wide
+  faint additive halo so it still reads as a beacon when distance shrinks it).
+  Every geographic boundary is a pass; the one non-geographic boundary is a
+  door, and the asymmetry is the ontology made visible. **World 10 gets no
+  forward board** -- the grammar means "another world lies beyond", and the
+  finale's meaning is that there is not one.
+- Board and door alike wear the same lavender (`STORY_LAVENDER`/`#e6d9ff`) the
+  story beat and the world-entry lore screen wear: the colour of connective
+  tissue between worlds.
 
 ## The between-worlds story beat (`OverworldScene.showStoryBeat`)
 
@@ -1599,7 +1610,7 @@ than the caller's requested budget) for its own layout math.
 
 ## The rival gate (`OverworldScene.showRivalEncounter`/`renderRivalTauntPage`)
 
-- Triggered by clicking "Face the Rival ->" in the goal panel (`showGatePanel`), not
+- Triggered by the confirm keypress at a shut pass's mouth (`confirmGate`), not
   automatically on reaching the goal and not from any guardian's own panel -- so the player
   can walk past the goal to shop with Noether or any other guardian before ever facing the
   fight they're being gated on. Same 600-wide panel treatment as a wild encounter (centered
@@ -1621,8 +1632,8 @@ than the caller's requested budget) for its own layout math.
   clears the first line of text. The taunt text's own font size is capped the same way
   the world-entry lore screen's is, for the same reason (worlds 9/10's longer taunts would
   otherwise overflow the canvas at the Settings panel's 2x preset). Losing doesn't set anything
-  back except the token stake (see Stakes in DESIGN.md §4): the goal panel simply reopens and
-  "Face the Rival ->" is still there to retry.
+  back except the token stake (see Stakes in DESIGN.md §4): the pass is still shut, its guard
+  still standing in it, and the prompt still offers the challenge to retry.
 
 ## Battle backdrop (`BattleScene.drawBackground`)
 

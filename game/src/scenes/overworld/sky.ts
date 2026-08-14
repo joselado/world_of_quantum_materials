@@ -2,10 +2,10 @@ import Phaser from 'phaser';
 import { blend } from '../../art/colors';
 import { BIOMES, getBiome } from '../../art/biomes';
 import type { Biome } from '../../art/biomes';
-import { HORIZON_Y, CANVAS_W, CANVAS_H } from '../../art/perspective';
+import { HORIZON_Y, CANVAS_W, CANVAS_H, LANE_PX } from '../../art/perspective';
 import { DISTANT_SELVES, MAX_CREST, OVERHEAD_SKIES } from '../../art/horizons';
 import type { HorizonPoint } from '../../art/horizons';
-import { DRAW_DISTANCE_TILES, projectTile } from './projection';
+import { DRAW_DISTANCE_TILES, TILE_SCALE, projectTile } from './projection';
 import { FOG_CLOSE, groundColor } from './terrain/color';
 
 // Where drawHorizonBand starts thickening the per-tile fog into pure
@@ -83,13 +83,34 @@ export interface HazeView {
   hazeCache: Map<number, number>;
 }
 
+// This world's forward pass, as everything drawing it needs to see it: where
+// the throat sits on the grid and in the camera's lane space, how wide its
+// walkable aperture is, whether its guard has fallen, and the world beyond.
+// One record, read by the aperture in the horizon (drawPassAperture), by the
+// ground seam and by the repeated road (terrain/paint.ts), so no two of them
+// can disagree about whether the way is open.
+export interface GateView {
+  /** The throat's grid row -- the northernmost walkable row of the corridor. */
+  row: number;
+  /** The throat's lane offset from the camera, in tiles. */
+  lane: number;
+  /** Half the throat's walkable width, in tiles. */
+  halfTiles: number;
+  /** Whether this world's rival has fallen. */
+  open: boolean;
+  /** The world on the other side, or null in the last world, which has none. */
+  next: Biome | null;
+}
+
 // The same, plus the scene's own biome, which is what the whole-screen washes
-// (as opposed to the per-tile fills) haze toward, and the scene clock, which
+// (as opposed to the per-tile fills) haze toward, the scene clock, which
 // drives the animated half of a neighbour's distant self (the Storm Flats'
-// arc-flashes, the Entangled Web's glinting filaments).
+// arc-flashes, the Entangled Web's glinting filaments), and this world's
+// forward pass.
 export interface AtmosphereView extends HazeView {
   biome: Biome;
   now: number;
+  gate: GateView | null;
 }
 
 // The static backdrop, painted once per world entry into its own Graphics
@@ -223,9 +244,82 @@ export function drawDepthHaze(g: Phaser.GameObjects.Graphics, view: AtmosphereVi
   // exists to remove, moved up the sky.
   fillVerticalFade(g, tone, mistTop, mist, (t) => smoothstep(Math.min(1, (t * mist) / SKY_BLEND_H)));
   drawDistantSelf(g, view, target);
+  drawPassAperture(g, view);
   // The world's own sky motif, over the mist rather than in it: the Storm
   // Flats' arcs crack across the whole dusk, not just along its horizon.
   OVERHEAD_SKIES[view.world]?.({ g, horizonY: HORIZON_Y, target, now: view.now });
+}
+
+// How far above the horizon line an open pass reaches, and the depth its
+// aperture is measured at. The far part of a pass is the next world's
+// interior, not this world's geography, so it lives in the fixed band the
+// projection never reaches (WORLDS.md section 4's far/near split) -- which
+// means its width is a chosen reading distance rather than a projected one.
+// The band's own foot is that distance: the aperture is exactly as wide as
+// the throat would be if it stood where the horizon band begins.
+// How far above the horizon line the opening reaches, how far below it its
+// base sits, and the depth its width is measured at. The far part of a pass
+// belongs to the fixed band above the horizon line, never to the projected
+// ground (WORLDS.md section 4's far/near split), so this is a compact slot
+// standing on the line rather than anything drawn down the ground plane --
+// a shape reaching down over the road would be a painted beam, since it
+// would be the same size forty tiles out as on the goal tile.
+const APERTURE_H = 26;
+const APERTURE_BASE = 4;
+const APERTURE_DEPTH = DRAW_DISTANCE_TILES;
+// Painted as three nested copies of one tapering shape rather than as a
+// stack of rows: abutting translucent rows blend twice wherever two of them
+// share a scanline, which stripes the whole opening (the same trap
+// fillVerticalFade's comment describes), and three shapes give a soft edge
+// with no scanline anywhere in it.
+const APERTURE_STEPS = [
+  { scale: 1, alpha: 0.3 },
+  { scale: 0.62, alpha: 0.32 },
+  { scale: 0.3, alpha: 0.4 },
+];
+
+// The light through the doorway: once a world's rival has fallen, the pass
+// clears and what stands at the end of the road is the next world's own
+// palette -- the brightest thing on screen in the early worlds and the most
+// wrongly-coloured in the late ones. Diegetic, because what shows through the
+// gap is the destination itself.
+//
+// Nothing at all is drawn while the gate is shut. A body in the way is a
+// plainer statement than any weather over the gap, and a shut pass showing a
+// fogged notch would be showing something of a world it is refusing to show.
+function drawPassAperture(g: Phaser.GameObjects.Graphics, view: AtmosphereView) {
+  const gate = view.gate;
+  if (!gate?.open || !gate.next) return;
+
+  // The road converges toward the vanishing point, so the opening sits where
+  // this world's own corridor runs out rather than dead centre of the frame.
+  const cx = projectTile(gate.lane, DRAW_DISTANCE_TILES).x;
+  const p = projectTile(0, APERTURE_DEPTH);
+  const halfW = gate.halfTiles * TILE_SCALE * LANE_PX * p.scale;
+  const foot = p.y + APERTURE_BASE;
+  const top = HORIZON_Y - APERTURE_H;
+  // The far world's own walkable ground, read straight off the neighbour's
+  // entry and never off this world's -- what makes the opening read is that
+  // the palette in it is foreign. Lifted toward that world's low sky so it
+  // is light coming through a gap rather than a swatch of its floor.
+  const glow = blend(gate.next.path, gate.next.skyBottom, 0.3);
+
+  for (const step of APERTURE_STEPS) {
+    const w = halfW * step.scale;
+    g.fillStyle(glow, step.alpha);
+    // A slot narrowing to a point as it climbs: wide where the ground it
+    // stands on is, closed at the top, so it reads as a gap between things
+    // rather than as a bar standing on the horizon.
+    g.fillPoints(
+      [
+        { x: cx - w, y: foot },
+        { x: cx - w * 0.6, y: top },
+        { x: cx + w * 0.6, y: top },
+        { x: cx + w, y: foot },
+      ],
+      true
+    );
+  }
 }
 
 // A vertical alpha ramp, painted as abutting one-pixel rows in whatever color
