@@ -358,6 +358,14 @@ painted gradient band owns the final strip up to the horizon line. And **stop
 drawing rows thinner than a pixel**: near the horizon, projected rows compress
 below a pixel and will alias and crawl as the camera moves.
 
+The first of those is an equality, not an inequality: **the depth fog reaches the
+fog colour exactly at the last row drawn.** If the fog still holds some of the
+ground's own colour where the rows stop, the band above has to be opaque to cover
+the step, and an opaque band is one that can never soften into anything. Land, mist
+and sky are one atmosphere with the horizon line as a location inside it, not three
+rectangles clipped against each other — so the sky's own bottom graduates into the
+same fog target on its way down to that line.
+
 **The road continues.** Repeating the far row repeats the walkable path with it,
 so a road runs on past the world's end. That is intended — it is this section's
 whole thesis in one detail — but it must drown in haze quickly, and while a gate
@@ -366,10 +374,41 @@ the rival still forbids.
 
 ### Distant selves
 
-**Each world authors exactly one distant self**: a silhouette profile plus a far
-palette — how it looks from far away. A world's forward horizon is then composed
-at render time from its *neighbour's* distant self. No world authors its
-neighbours' horizons, and no world has two silhouettes to keep in sync.
+**Each world authors exactly one distant self**: a silhouette profile, a base
+colour, and a swallow value — how it looks from far away. A world's forward
+horizon is then composed at render time from its *neighbour's* distant self. No
+world authors its neighbours' horizons, and no world has two silhouettes to keep
+in sync.
+
+**The data belongs to the world depicted, and is consumed by its neighbour's
+renderer.** Standing in world N, every field the horizon reads — profile, base
+colour, swallow — comes from world N+1's own entry, never from world N's. This is
+what makes "authored once" true rather than merely intended: a world states how it
+looks from outside itself, in one place, and whoever can see it reads that
+statement.
+
+**A distant self is authored as shape and base colour only. Atmosphere is applied
+at render, never baked into the asset.** This is not hygiene. Haze inheritance
+(below) retints the air toward the *next* world's fog colour as the player walks
+toward the gate, and the silhouette has to be drowned in whatever that live value
+currently is. A base colour with fog already painted into it cannot follow that
+retint, and the moment it stops following, a seam opens between the silhouette and
+the mist it stands in.
+
+**Swallow** is how much of the silhouette the mist eats: a per-biome value on the
+same entry, `Biome.hillAlpha`. It is what lets one world's horizon be a firm ridge
+and another's a rumour, and zero is a legitimate value — a world whose distant self
+is nothing.
+
+Which value a world may take is decided by one aesthetic rule. The silhouette is
+drowned most of the way into the live fog target and its base runs continuous with
+the mist, so what the player sees is a narrow excursion from the fog colour rather
+than a shape painted over it. A foreign hue is inherently more legible than an
+own-palette hue at equal contrast, and the horizon is always wearing a foreign hue
+here, so the budget is tighter than an own-colour band would need. **If a world's
+profile and base colour cannot stay inside that budget at any swallow worth
+drawing, its swallow goes to zero and it joins the swallowed set** — an emptied-out
+horizon is always preferable to a slab.
 
 The camera always faces forward along the corridor and never turns, so **there is
 no backward variant**. The one place a backward view would have earned its keep
@@ -383,16 +422,20 @@ serves as the world's own horizon when standing in it, which is why it is
 authored once. A generic hill profile in a different colour per world fails this
 rule: it is the theming *not* made visible at distance.
 
-Two worlds need deliberate handling:
+**The swallowed set** — the worlds whose distant self is no silhouette at all:
 
 - **The Entangled Web** has no surround — its impassable is nothing — so its
   distant self is an absence with structure: the sky ending, thin white-gold
-  filament glints in blackness where a horizon should be. This is a gift rather
-  than a gap: the Iron Steppe's forward horizon showing the world *stop* is
-  exactly the tell its false calm needs, supplied by the composition system for
-  free.
+  filament glints in blackness where a horizon should be. Swallow zero. This is a
+  gift rather than a gap: the Iron Steppe's forward horizon showing the world
+  *stop* is exactly the tell its false calm needs, supplied by the composition
+  system for free.
+- **The Splitting Hollow** is eaten by its own fog. A horizon that dissolves
+  before it resolves is that world's identity, not a missing asset, so it too
+  carries swallow zero and the Entangled Web looks forward into grey nothing.
 - **The Devouring Mirror** has no next world, and its horizon is the Qumatuomi
-  sky (below) rather than any silhouette.
+  sky (below) rather than any silhouette. Its swallow is zero so that the Defect
+  Scars' forward horizon does not wear a violet ridge the Mirror never had.
 
 ### The adjacency rule
 
@@ -421,6 +464,16 @@ darkening arc this is most of the felt effect on its own — the forward horizon
 being visibly worse than the ground underfoot is the cheapest dread available.
 
 **Gated on gate state:** a shut gate means no forward palette bleed.
+
+### Judging a horizon change
+
+**Gate-open, standing at the goal end, is the acceptance state for every change to
+the horizon.** That is where the mist is carrying the most of the next world's
+colour, and a colour the horizon does not follow is exactly what tears the picture
+apart. A treatment that looks settled with the gate shut has been judged against
+the world's own air only, which every part of the horizon already agrees with by
+default, and has therefore proven nothing. Both states are worth capturing; only
+the open one decides.
 
 ### Gates as apertures
 
