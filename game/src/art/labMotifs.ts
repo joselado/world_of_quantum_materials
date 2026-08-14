@@ -3,7 +3,7 @@ import { shade } from './colors';
 import { REFERENCE_BLUE_GREY, TUTORIAL_CYAN } from '../ui/theme';
 
 // One small hand-drawn icon per Lab station (scenes/panels/hubStations.ts's
-// six reference/settings stations, plus HubScene's own Qumatex) -- the
+// five reference/settings stations, plus HubScene's own Qumatex) -- the
 // motif STYLE.md's "Lab panels" section describes, planted beside that
 // station's own button out in the Lab room (HubScene.addStationRow) rather
 // than inside the panel the button opens.
@@ -137,33 +137,6 @@ export function makeAbilitiesMotif(scene: Phaser.Scene, size: number): Phaser.Ga
 
   const emblem = scene.add.circle(0, -h * 0.05, size * 0.1, 0xffffff, 0.85);
   container.add(emblem);
-
-  return container;
-}
-
-export function makeGuardiansMotif(scene: Phaser.Scene, size: number): Phaser.GameObjects.Container {
-  const container = scene.add.container(0, 0);
-  const color = 0xb98fea; // matches showGuardiansPanel's own stroke
-
-  // A tiny robed figure -- the same "floating haloed head over a cloak"
-  // silhouette family every guardian avatar builder draws, simplified down
-  // to icon size -- plus a small quote glyph, since this panel is where the
-  // player revisits a guardian's own lesson.
-  const g = scene.add.graphics();
-  g.fillStyle(shade(color, -10), 0.95);
-  g.fillTriangle(-size * 0.34, size * 0.5, size * 0.34, size * 0.5, 0, -size * 0.12);
-  g.fillStyle(shade(color, 30), 1);
-  g.fillCircle(0, -size * 0.32, size * 0.18);
-  const halo = scene.add.circle(0, -size * 0.32, size * 0.28, 0xffffff, 0.18);
-  halo.setBlendMode(Phaser.BlendModes.ADD);
-  container.add(halo);
-  container.add(g);
-
-  const quote = scene.add
-    .text(size * 0.3, size * 0.42, '”', { fontSize: `${Math.round(size * 0.6)}px`, color: '#ffffff' })
-    .setOrigin(0.5);
-  quote.setAlpha(0.8);
-  container.add(quote);
 
   return container;
 }

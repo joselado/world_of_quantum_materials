@@ -421,16 +421,34 @@ export interface GuardianPanelHost extends Phaser.Scene {
 // guardians' own capstone. A future guardian added with no mechanic yet can
 // still leave `open` unset and fall through to the shared showGuardianLore
 // panel below.
+// The public projection of GuardianDef the Lab reads (OverworldScene.guardianRoster).
+export interface GuardianRosterEntry {
+  id: string;
+  name: string;
+  shortName: string;
+  world: number;
+  blurb: string;
+  labelColor: string;
+  avatar: (scene: Phaser.Scene, scale?: number) => Phaser.GameObjects.Container;
+  open?: (scene: GuardianPanelHost) => void;
+}
+
 interface GuardianDef {
   id: string;
   name: string;
+  // Surname alone, for the label under the guardian's own avatar in the Lab
+  // (HubScene.spawnGuardianAvatars) -- one slot in the corner clusters is far
+  // too narrow for the full "Noether's Currents" form the overworld sprite's
+  // own label uses.
+  shortName: string;
   labelColor: string;
   strokeColor: number;
   quote: string;
   // One-line "what they do" -- the same copy docs/guardians.md's own
-  // roster table uses, surfaced in-game by the Lab's Guardians station
-  // (scenes/panels/hubStations.ts's showGuardiansPanel) so that list isn't
-  // bare names with no way to tell them apart before opening one.
+  // roster table uses, surfaced in-game by the hover readout on that
+  // guardian's own Lab avatar (HubScene.spawnGuardianAvatars) so the room
+  // isn't ten unlabelled figures with no way to tell what each one offers
+  // before clicking one.
   blurb: string;
   avatar: (scene: Phaser.Scene, scale?: number) => Phaser.GameObjects.Container;
   // Every guardian now stands mid-corridor ('middle', see DESIGN.md §5) so the
@@ -578,6 +596,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     1: {
       id: 'noether',
       name: "Noether's Currents",
+      shortName: 'Noether',
       labelColor: '#ffe066',
       strokeColor: 0xffe066,
       quote: 'Every symmetry hides a conservation law.',
@@ -589,6 +608,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     2: {
       id: 'bloch',
       name: "Bloch's States",
+      shortName: 'Bloch',
       labelColor: '#8fe8ff',
       strokeColor: 0x4adde0,
       quote: 'Every crystal is a superposition of the worlds it has touched.',
@@ -600,6 +620,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     3: {
       id: 'dresselhaus',
       name: "Dresselhaus's Nanostructures",
+      shortName: 'Dresselhaus',
       labelColor: '#6ee8ba',
       strokeColor: 0x4ad9a0,
       quote: 'Build the same atoms into a different nanostructure and you get a different material entirely.',
@@ -611,6 +632,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     4: {
       id: 'laughlin',
       name: "Laughlin's Analytics",
+      shortName: 'Laughlin',
       labelColor: '#8fa0ff',
       strokeColor: 0x6a7fff,
       quote:
@@ -623,6 +645,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     5: {
       id: 'majorana',
       name: "Majorana's Fusion",
+      shortName: 'Majorana',
       labelColor: '#9fffb0',
       strokeColor: 0x4fd97a,
       quote: 'Split one fermion into two halves, each its own antiparticle, and see what a superconductor can hide at its edge.',
@@ -634,6 +657,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     6: {
       id: 'anderson',
       name: "Anderson's Impurities",
+      shortName: 'Anderson',
       labelColor: '#e8b27a',
       strokeColor: 0xc9884a,
       quote: 'Enough disorder and a wave stops spreading at all -- it localizes, trapped by the very randomness that surrounds it.',
@@ -645,6 +669,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     7: {
       id: 'feynman',
       name: "Feynman's Diagrammatics",
+      shortName: 'Feynman',
       labelColor: '#ffa64a',
       strokeColor: 0xffa64a,
       quote: 'A tensor network and a Feynman diagram draw the same trick two ways -- a vertex for every point, a line for every leg.',
@@ -656,6 +681,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     8: {
       id: 'kondo',
       name: "Kondo's Clouds",
+      shortName: 'Kondo',
       labelColor: '#ff8f6a',
       strokeColor: 0xe86a44,
       quote: 'A single stray spin, screened by a sea of conduction electrons until it all but disappears at low temperature.',
@@ -667,6 +693,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     9: {
       id: 'franklin',
       name: "Franklin's Scatterings",
+      shortName: 'Franklin',
       labelColor: '#c9a8e0',
       strokeColor: 0xa878c9,
       quote:
@@ -679,6 +706,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     10: {
       id: 'sklodowskaCurie',
       name: "Skłodowska-Curie's Experiments",
+      shortName: 'Skłodowska-Curie',
       labelColor: '#d9e86a',
       strokeColor: 0xc9d84a,
       quote:
@@ -690,21 +718,25 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     },
   };
 
-  // The id/name/world/blurb/`open` quintuplet the Lab's Guardians station
-  // (HubScene, via scenes/panels/hubStations.ts's showGuardiansPanel) needs
-  // to list a met guardian, show what they teach, and open their panel
-  // directly -- everything else on GuardianDef (avatar builder, colors,
-  // quote) stays private to this class. `open` is included so the Lab can
-  // call the exact same callback the walk-up path uses, rather than keeping
-  // a second dispatch table in sync with WORLD_GUARDIANS by hand.
-  static guardianRoster(): { id: string; name: string; world: number; blurb: string; open?: (scene: GuardianPanelHost) => void }[] {
+  // Everything the Lab needs to stand a met guardian in the room as their own
+  // clickable avatar (HubScene.spawnGuardianAvatars): who they are (id, both
+  // name forms, world), how they draw and label (avatar builder, labelColor),
+  // what they offer (blurb, the hover readout's second line), and how to open
+  // them (`open`, the exact same callback the walk-up path uses, rather than
+  // keeping a second dispatch table in sync with WORLD_GUARDIANS by hand).
+  // Everything else on GuardianDef (strokeColor, quote, tile) stays private to
+  // this class.
+  static guardianRoster(): GuardianRosterEntry[] {
     return Object.entries(OverworldScene.WORLD_GUARDIANS)
       .filter((entry): entry is [string, GuardianDef] => !!entry[1])
       .map(([world, guardian]) => ({
         id: guardian.id,
         name: guardian.name,
+        shortName: guardian.shortName,
         world: Number(world),
         blurb: guardian.blurb,
+        labelColor: guardian.labelColor,
+        avatar: guardian.avatar,
         open: guardian.open,
       }));
   }
