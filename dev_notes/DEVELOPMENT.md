@@ -23,8 +23,8 @@ mechanics/content decisions see `DESIGN.md`, for visual conventions see
 - `bin/play.mjs` -- the cross-platform launcher behind `npm run play` (see
   "Running the game" below); the root `package.json` exists only to give it
   that command name, it has no dependencies of its own.
-- `screenshots/` -- the images embedded in `README.md`. Regenerate rather
-  than hand-edit if the UI they show changes materially.
+- `screenshots/` -- the images embedded in `README.md` and `docs/*.md`.
+  Regenerate rather than hand-edit if the UI they show changes materially.
 
 ## Running the game
 

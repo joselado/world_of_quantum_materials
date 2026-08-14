@@ -2,8 +2,9 @@
 
 One guardian waits partway through each of the ten worlds, each teaching you
 a different way to bend the game's usual rules. Every guardian you've met
-then stands in the Lab -- five along each upper corner, in world order, with
-their slot staying empty until you've met them -- and clicking one opens
+then stands in the Lab -- five along each upper corner, running anticlockwise
+around the room from Noether at the top left to Skłodowska-Curie at the top
+right, with their slot staying empty until you've met them -- and clicking one opens
 their shop/panel right there, no travel required. Hover a figure to see their
 full name and what they teach. Bloch's own panel is the
 exception with a purpose: fast travel is literally what he offers, so his
