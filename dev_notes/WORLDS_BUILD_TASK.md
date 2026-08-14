@@ -59,10 +59,10 @@ takes a world with it. Treat them as acceptance criteria, not polish.
   assume.
 ### Narrative text — the largest and most delicate part of this task
 
-The Decoherence arc is already written across five surfaces (`WORLDS.md` §5) and
+The Decoherence arc is already written across five surfaces (`WORLDS.md` §6) and
 it is good. **The risk here is damaging it, not writing it.** Much of it names
 the old terrain directly, so the retheme forces rewrites — every one of which
-must preserve the patterns in §5: the Decoherence attacks a *named mechanism*
+must preserve the patterns in §6: the Decoherence attacks a *named mechanism*
 specific to that world, and the rival is that world's physics made
 incorruptible. Change the scenery, never the argument.
 

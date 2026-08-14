@@ -307,6 +307,9 @@ shape of *to learn you, it must measure you; to measure you is to unmake you*.
 Without it, the name tells the decoherence story while the writing tells the ML
 story, with no visible seam between them.
 
+Its horizon is the Qumatuomi sky (§4) — every world at once, seen from above,
+which is the view a trained model has of its training data.
+
 The finale, stated plainly: **the last world defeats you by understanding you,
 and understanding a quantum thing collapses it.** This is also the payoff for
 "you are a crystal" — the player's quantumness is what is at stake, and the last
@@ -337,7 +340,181 @@ green-violet.
 
 ---
 
-## 4. Story shape
+## 4. The horizon, and the connections between worlds
+
+The ten worlds are one road, not ten rooms. This section is how that is made
+visible: land that reaches the horizon instead of stopping, a horizon that shows
+where you are going, and gates that are geography rather than furniture.
+
+### Continuity
+
+The ground plane must always reach the horizon. Terrain is repeated in depth
+past the grid's far row the same way it is already repeated sideways past the
+left and right edges, so a world never visibly terminates.
+
+Two bounds keep that honest. **Cap the repetition at the row where depth haze
+reaches full opacity** — beyond it nothing is distinguishable anyway, and a
+painted gradient band owns the final strip up to the horizon line. And **stop
+drawing rows thinner than a pixel**: near the horizon, projected rows compress
+below a pixel and will alias and crawl as the camera moves.
+
+**The road continues.** Repeating the far row repeats the walkable path with it,
+so a road runs on past the world's end. That is intended — it is this section's
+whole thesis in one detail — but it must drown in haze quickly, and while a gate
+is shut it must vanish into the closed notch's fog rather than promising passage
+the rival still forbids.
+
+### Distant selves
+
+**Each world authors exactly one distant self**: a silhouette profile plus a far
+palette — how it looks from far away. A world's forward horizon is then composed
+at render time from its *neighbour's* distant self. No world authors its
+neighbours' horizons, and no world has two silhouettes to keep in sync.
+
+The camera always faces forward along the corridor and never turns, so **there is
+no backward variant**. The one place a backward view would have earned its keep
+is the arrival beat, and that is obtained instead by bleeding the previous
+world's ground palette into the first few margin rows on entry.
+
+**A distant self is that world's impassable surround restated at horizon scale**
+— column teeth for the Stone Lattice, leaning shard rows for the Iron Steppe, a
+cracked glow-veined ridge for the Defect Scars. This is the same asset that
+serves as the world's own horizon when standing in it, which is why it is
+authored once. A generic hill profile in a different colour per world fails this
+rule: it is the theming *not* made visible at distance.
+
+Two worlds need deliberate handling:
+
+- **The Entangled Web** has no surround — its impassable is nothing — so its
+  distant self is an absence with structure: the sky ending, thin white-gold
+  filament glints in blackness where a horizon should be. This is a gift rather
+  than a gap: the Iron Steppe's forward horizon showing the world *stop* is
+  exactly the tell its false calm needs, supplied by the composition system for
+  free.
+- **The Devouring Mirror** has no next world, and its horizon is the Qumatuomi
+  sky (below) rather than any silhouette.
+
+### The adjacency rule
+
+**Adjacent distant selves must differ in shape-language or sky-activity, never
+in hue alone.** Hue is already guaranteed to shift by haze inheritance; this rule
+exists to catch the case where hue is *all* that shifts. Two worked examples,
+both already resolved:
+
+- **Edge Cliffs → Storm Flats** cannot satisfy this on shape: both worlds are
+  flat by locked identity, so the change would read as dead teal-and-ochre giving
+  way to dead indigo. The differentiator is the **sky** — the Storm Flats' distant
+  self is carried by its storm, arc-flashes over a dead-flat horizon line.
+  Distant lightning over flatness against racing cloud over flatness is
+  unmistakable, and honest, because the storm is that world's identity.
+- **Vortex Glacier → Iron Steppe** are both jagged, cold-dark and under failing
+  light. The physics separates them: the Steppe's shards lean *uniformly* one way
+  (aligned moments), so its horizon teeth all tilt together, where the glacier's
+  pressure ridges are random and vertical. Let the lean **flip at one point along
+  the horizon** — the domain wall, visible from a world away.
+
+### Haze inheritance
+
+As the player nears a world's goal end, the depth haze's fog target lerps toward
+the *next* world's fog colour: the air ahead becomes the next world's air. On a
+darkening arc this is most of the felt effect on its own — the forward horizon
+being visibly worse than the ground underfoot is the cheapest dread available.
+
+**Gated on gate state:** a shut gate means no forward palette bleed.
+
+### Gates as apertures
+
+One grammar throughout: **a palette seen through an opening is where you are
+going.** The gate is not an object standing on a tile; it is the corridor
+narrowing into a pass, with the destination visible through the gap.
+
+Wayfinding is not the problem a gate solves — a corridor has nowhere else to
+walk. What the gate must carry is **state**: the goal gate exists only once that
+world's rival is beaten. So the aperture has two states.
+
+- **Rival unbeaten** — the notch is fogged shut, opaque and dark. The next world
+  is not visible and haze inheritance does not run.
+- **Rival beaten** — the notch clears, and the next world's palette shows through
+  the gap as the brightest thing on screen, or in the late worlds the most
+  wrongly-coloured. Light through a doorway, and diegetic: what is visible
+  through the gap is the destination itself.
+
+One ground-level cue joins it: the next world's walkable colour bleeding across
+the last two or three tiles, a seam the player visibly steps over. The confirm
+panel on stepping onto the tile stays — geography plus confirmation prevents
+accidental transitions, and the panel is the safety net if any one world's pass
+reads weakly.
+
+**The far/near split, which is what keeps this honest on a flat plane.** The
+horizon silhouette sits at a fixed offset above a fixed horizon line, and the
+projection is asymptotic — anything drawn in that band is the same size forty
+tiles out as it is on the goal tile. So the *far* part of a pass (the notch, the
+neighbour's silhouette) stays in that band and is never reached, which is
+truthful, because it is not this world's geography at all: it is the next
+world's interior, and the player reaches it by loading it. The *near* part (the
+flanking walls of the pass) must instead be depth-projected — anchored at the
+goal row and scaled through the same projection as everything else — so that the
+flanks grow, part around the corridor and slide off screen as the player
+arrives. The approach then genuinely happens, with no elevation geometry and no
+ground tilt, only scale.
+
+### The Lab
+
+The Lab is **not a location**. It is reachable from every world, returns the
+player to precisely where they left regardless of progress, and hosts travel to
+any world already visited — it does not sit beside World 1, it sits beside
+everywhere. The player is a crystal and the Lab is where that crystal is
+examined, so it is better understood as the inside of the thing being played
+than as a room on the map.
+
+Two signals carry that, and only two:
+
+- **Its door is the same aperture grammar, unbound.** In the worlds an aperture
+  can only ever show the fixed neighbour; the Lab's can show anywhere. It
+  previews the *current* destination — by default the world and position the
+  player left — and updates live when the travel panel selects a different world.
+  A door that changes its view when the player changes their mind reads as a
+  teleporter without a word of explanation, and it teaches itself, because the
+  player has already learned to read apertures out in the worlds.
+- **Its accent lighting is keyed to the player's current crystal**, so the room
+  changes as the player does.
+
+Everything else is said by **absence**: no window, no sky, nothing implying an
+outside. Every world has a horizon; the Lab has none. That only reads as
+deliberate if nothing in the room accidentally supplies an exterior. Note this is
+*interior-without-outside*, not void — void belongs to the Entangled Web.
+
+For the same reason **World 1 simply starts**, with no view behind it. An arrival
+with no *behind* is honest for a place you were teleported into; its start margin
+gets its own morning haze and nothing more.
+
+### The Qumatuomi sky
+
+The Devouring Mirror's horizon is the Qumatuomi map — the game's own world map,
+a geographically traced silhouette on which World 10 sits at Espoo's real
+coordinates — seen from above.
+
+It is the only horizon that is not the next world, because instead it is *every*
+world, seen from outside and above. That is precisely the view a trained model
+has of its training data: the Mirror can show the whole map at once because it
+has consumed all of it.
+
+**Render it as a reflection in a mirrored sky**, not as an image pasted flat to
+the screen: foreshortened and tilted away, rippling faintly with the world's
+shimmer, silver-violet, and dimmed and hazed by the same atmosphere that fogs
+everything else. The haze is what does the work — fog is the cheapest signal that
+something is scenery, and an interface element is never fogged. Rendered
+screen-parallel and unhazed it will read as a misrendered minimap, and players
+will try to click it. Self-luminous, per the light rule: the record glows,
+nothing shines on it.
+
+Strip every interactive affordance from the asset — no markers, no labels.
+Two optional flourishes, both kept faint: a dim luminous trace of the player's
+actual route across the map (*it has your whole walk*), and a single slow pulse
+at the Espoo point. The route trace is the stronger; the pulse is skippable if it
+reads even slightly like a readout.
+
+## 5. Story shape
 
 The premise (§0) supplies the arc; three beats carry it:
 
@@ -362,7 +539,7 @@ things like you, immediately before it becomes a thing that *is* you.
 
 ---
 
-## 5. The premise in the game's voice
+## 6. The premise in the game's voice
 
 The premise is not only art direction — it is already spoken by the game, across
 five text surfaces, and the theming exists to make the terrain agree with what
@@ -406,9 +583,15 @@ numbers"); by 7–9 the narrator has stopped telling stories and is reporting; b
 10 nothing precedes the player at all — "no traveler returns with a rumor". Keep
 new copy on that slope.
 
-## 6. Known soft spots
+## 7. Known soft spots
 
 Recorded so they are not rediscovered as surprises:
+
+- **A pass's depth-projected flanks are the most speculative rendering trick in
+  the set** — side objects scaled by depth, standing in for elevation the engine
+  cannot draw. Everything else works without them, which is why they come last:
+  if they read badly in the first world tried, the state-signalled aperture alone
+  is a complete, shippable gate.
 
 - **World 4 is the world most at risk of reading as graphic design.** Flat
   bands, flat glow lines and flat rings on a flat plane. The boundary shadow
