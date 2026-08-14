@@ -1385,11 +1385,11 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   by save/registry `tutorialTipsSeen`). Each trigger site passes whatever it
   was about to do next as the tip's close callback (open the encounter panel,
   launch the battle, ...), so the tip is a one-time detour in front of that
-  action rather than a separate step callers have to branch on. Eight are
+  action rather than a separate step callers have to branch on. Nine are
   `{ kind: 'guardian' }` -- a guardian's own repeatable ability (Bloch's teleportation,
-  Dresselhaus's transmutation, Laughlin/Skłodowska-Curie's quiz-gated Analytic/Ultimate moves,
-  Majorana's hybrid fusion, Anderson's host doping, Feynman's move leveling, Kondo's status
-  effects, Franklin's passives) has no single "first time this becomes relevant" moment worth
+  Dresselhaus's transmutation, Laughlin's quiz-gated Analytic moves, Majorana's hybrid fusion,
+  Anderson's host doping, Feynman's move leveling, Kondo's status effects, Franklin's passives,
+  Skłodowska-Curie's quiz-gated Ultimate moves) has no single "first time this becomes relevant" moment worth
   interrupting play for, so it carries no popup and is revealed by meeting that guardian
   (registry `metGuardians`), read in their panel instead. The last two are
   `{ kind: 'always' }` -- the Lab's Settings station and the Story Mode/Superposition Mode
@@ -1407,7 +1407,7 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   here never marks it discovered (nothing on that path writes `tutorialTipsSeen`).
   `TUTORIAL_TIPS`' own declaration order is the canonical order the game reveals topics in --
   `lab`, `modes`, `settings`, then the six remaining contextual tips in World 1's own order,
-  then the eight guardian topics by world (Bloch's World 2 through Franklin's World 9) -- and
+  then the nine guardian topics by world (Bloch's World 2 through Skłodowska-Curie's World 10) -- and
   is what the station lists them in, so a new topic gets declared at the point of the
   playthrough that reveals it. `npm run content-lint` checks that ordering, that every
   guardian a topic names exists, and that every `{ kind: 'tip' }` topic has a trigger site.
