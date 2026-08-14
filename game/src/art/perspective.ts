@@ -10,7 +10,13 @@ import { CANVAS_W, CANVAS_H } from '../config/screen';
 // of truth for the game's canvas size); re-exported here since every other
 // scene/panel already imports its canvas size from this module.
 export { CANVAS_W, CANVAS_H };
-export const HORIZON_Y = 190;
+// The horizon line sits high in the frame: the camera looks down onto the
+// ground plane, which owns roughly three quarters of the screen, and the sky
+// is the remaining strip above it. Everything drawn at depth is measured
+// against this line -- the mist band, the distant self and the ground wash
+// are all sized from it (scenes/overworld/sky.ts), so it cannot be moved
+// alone.
+export const HORIZON_Y = 110;
 export const FOCAL = 2.2;
 export const LANE_PX = 150;
 

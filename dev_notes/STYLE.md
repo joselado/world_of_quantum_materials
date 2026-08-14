@@ -569,9 +569,18 @@ path is what keeps a bulk from ever reading as walkable ground.
 
 ## The horizon
 
-`dev_notes/WORLDS.md` §4 is the spec; this is the visual rule it comes out as. Sky, mist and
-ground are **one atmosphere**, and the horizon line is a location inside it rather than a boundary
-between two pictures. The ground's depth fog arrives at the fog color exactly where the last row
+`dev_notes/WORLDS.md` §4 is the spec; this is the visual rule it comes out as.
+
+**The horizon line sits high in the frame** (`HORIZON_Y`, roughly a quarter of the way down): the
+camera looks *down* onto the ground plane, which owns the rest, and the sky is the strip above it.
+That is a frame budget, not a free constant -- the mist band, the clouds and any overhead motif
+have to fit in the sky that is left, so each is sized as a share of it rather than in fixed
+pixels. It is also not the whole of what a player reads as sky: the horizon band below the line
+(next paragraph) is painted atmosphere too, so the ground resolves into visible terrain some way
+below the line rather than at it.
+
+Sky, mist and ground are **one atmosphere**, and the horizon line is a location inside it rather
+than a boundary between two pictures. The ground's depth fog arrives at the fog color exactly where the last row
 is drawn; the sky's own bottom arrives at the same color from above, at full strength across the
 lowest stretch of sky and feathered out over the stretch above that. Nothing in the frame paints
 its own idea of what color the air is -- every pass reads the one live haze target, which is what

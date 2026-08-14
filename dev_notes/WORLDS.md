@@ -419,10 +419,16 @@ world's ground palette into the first few margin rows on entry.
 
 **A distant self is that world's impassable surround restated at horizon scale**
 — column teeth for the Stone Lattice, leaning shard rows for the Iron Steppe, a
-cracked glow-veined ridge for the Defect Scars. This is the same asset that
-serves as the world's own horizon when standing in it, which is why it is
-authored once. A generic hill profile in a different colour per world fails this
-rule: it is the theming *not* made visible at distance.
+cracked glow-veined ridge for the Defect Scars. A generic hill profile in a
+different colour per world fails this rule: it is the theming *not* made visible
+at distance.
+
+**A world never sees its own distant self.** Standing in world N the horizon
+composition draws world N+1's and nothing else, so a world's own statement of how
+it looks from outside is only ever rendered by whoever is looking at it. World 1's
+entry is therefore authored and never composed into anyone's horizon: nothing
+precedes it, and it has no view behind. What a world shows above its own horizon
+line is its air, its overhead motif and its neighbour — never a portrait of itself.
 
 **The swallowed set** — the worlds whose distant self is no silhouette at all:
 

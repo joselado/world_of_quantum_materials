@@ -38,8 +38,21 @@ const HAZE_INHERIT_MAX = 0.8;
 // drowned to within a few values of the fog while its backdrop is still forty
 // values off the fog is the same slab as an undrowned one -- the value budget
 // below is only meaningful because what surrounds the band is the fog color.
-const SKY_BLEND_H = 96;
+//
+// The feather takes whatever height is left once the full-strength stretch
+// and a strip of the world's own untouched sky have been paid for, rather
+// than being a number of its own: the sky is a narrow band above a high
+// horizon line, and a mist sized independently of it would run off the top of
+// the frame and take the world's own sky colour with it.
+const SKY_CLEAR_H = 28;
 const SKY_BLEND_FULL = MAX_CREST + 2;
+const SKY_BLEND_H = HORIZON_Y - SKY_BLEND_FULL - SKY_CLEAR_H;
+// How far down the ground plane the wash over the far distance reaches,
+// carried as a fraction of the ground's own height so it covers the same
+// stretch of *world* whatever the horizon line is. Its cubic falloff has run
+// out well before the foot, which is what keeps the near ground the biome's
+// own colour.
+const GROUND_WASH_H = (CANVAS_H - HORIZON_Y) * 0.83;
 // How far the mist drifts back toward this world's own high sky as it climbs
 // away from the horizon line, and how much of the fog color washes over the
 // whole sky (clouds included) once the forward blend is running.
@@ -93,12 +106,17 @@ export function drawSky(scene: Phaser.Scene, biome: Biome) {
   g.fillStyle(groundColor(biome.ground, 1, biome.fogTarget), 1);
   g.fillRect(0, HORIZON_Y, CANVAS_W, CANVAS_H - HORIZON_Y);
 
+  // Clouds ride the strip of sky the mist has not reached, so a bank of them
+  // is read against the world's own high colour rather than against the fog.
+  // The lowest sits a little way into the feather, which hazes it -- the one
+  // nearest the horizon being the one that dissolves is aerial perspective
+  // working, not the wash catching it.
   if (biome.clouds) {
     [
-      [90, 40],
-      [230, 65],
-      [400, 50],
-      [530, 32],
+      [90, 16],
+      [230, 30],
+      [400, 23],
+      [530, 12],
     ].forEach(([x, y]) => drawCloud(scene, x, y, biome.cloudDrift));
   }
 }
@@ -197,7 +215,7 @@ export function drawDepthHaze(g: Phaser.GameObjects.Graphics, view: AtmosphereVi
     g.fillStyle(target, SKY_TINT_MAX * view.hazeBlend);
     g.fillRect(0, 0, CANVAS_W, HORIZON_Y);
   }
-  fillVerticalFade(g, () => target, HORIZON_Y, 240, (t) => 0.35 * Math.pow(1 - t, 3));
+  fillVerticalFade(g, () => target, HORIZON_Y, GROUND_WASH_H, (t) => 0.35 * Math.pow(1 - t, 3));
   drawHorizonBand(g, tone);
   // Smoothstepped rather than a power curve: the ramp has to arrive at the
   // full-strength zone with its slope already flat, or the point where it

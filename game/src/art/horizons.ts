@@ -356,15 +356,18 @@ const AURORA_BANDS = [
 function auroraOverhead({ g, horizonY, now }: HorizonSky) {
   const stutter = Math.sin(now / 2300) > 0.93 ? 0.25 : 1;
   AURORA_BANDS.forEach((band, i) => {
-    const lift = 26 + Math.sin(now / 2700 + i) * 10;
+    const lift = 14 + Math.sin(now / 2700 + i) * 6;
     const base = horizonY - MAX_CREST - lift;
     // Painted as many thin overlapping slices rather than a few thick ones: a
     // curtain is brightest at its lower edge and dies out upward with no edge
     // anywhere, and any slice tall enough to see is a bar of green glass.
     // Each slice also sways and narrows as it climbs, which is what gives the
     // sheet its fold.
+    // The curtain hangs from just clear of the shard crests up to the top of
+    // the frame -- an aurora that stops short of the frame edge reads as a
+    // painted band, and the sky above a high horizon line is a narrow strip.
     const SLICES = 30;
-    const height = 118;
+    const height = 60;
     for (let step = 0; step < SLICES; step++) {
       const t = step / SLICES;
       const y = base - t * height;

@@ -1340,9 +1340,12 @@ nothing in the frame can disagree about what color the air is: a whole-sky tint,
 `drawHorizonBand`, then -- above the horizon line -- the sky's graduation into the fog and
 `drawDistantSelf`. The sky pass is the fog color at full strength from `SKY_BLEND_FULL` above the
 line down to the line itself, feathering out smoothstepped over the `SKY_BLEND_H` above that. Its
-full-strength height clears `DISTANT_HEIGHT`, the tallest crest a silhouette reaches, which is
+full-strength height clears `MAX_CREST`, the tallest crest a silhouette reaches, which is
 load-bearing rather than cosmetic: a silhouette drowned to within a few values of the fog while its
-backdrop is still forty values off the fog reads as the same slab an undrowned one would.
+backdrop is still forty values off the fog reads as the same slab an undrowned one would. The
+feather is what is left of the sky once that stretch and `SKY_CLEAR_H` of the world's own untouched
+sky have been paid for, rather than a height of its own -- `HORIZON_Y` sits high in the frame, so a
+mist sized independently of it would run off the top and take the sky's own colour with it.
 
 Two things keep that stretch from reading as a panel laid over the picture. The mist is not one
 color: `drawDepthHaze`'s `tone(y)` drifts it toward the world's own `skyTop` by `MIST_LIFT` as it
