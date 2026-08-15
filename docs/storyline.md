@@ -81,6 +81,8 @@ finish itself until the end of the road.
 
 ## 1 — The Mean Fields
 
+<img src="../screenshots/storyline-world-1.png" width="420" alt="The Mean Fields seen from the middle of its corridor">
+
 *Mean-field theory and spontaneous symmetry breaking.*
 
 You begin in wheat and mown grass under a bright morning, with dark summer
@@ -111,6 +113,8 @@ there — and it is learning from every phase of matter you master.
 
 ## 2 — The Stone Lattice
 
+<img src="../screenshots/storyline-world-2.png" width="420" alt="The Stone Lattice seen from the middle of its corridor">
+
 *Symmetries, tight-binding, and Bloch states.*
 
 The only thing anyone ever built in these worlds: an open-air stone cloister
@@ -140,6 +144,8 @@ can pin me down like I'm sitting in one place. I'm not — I never was."
 ---
 
 ## 3 — The Edge Cliffs
+
+<img src="../screenshots/storyline-world-3.png" width="420" alt="The Edge Cliffs seen from the middle of its corridor">
 
 *Topological band theory.*
 
@@ -172,6 +178,8 @@ I *am* the boundary."
 ---
 
 ## 4 — The Storm Flats
+
+<img src="../screenshots/storyline-world-4.png" width="420" alt="The Storm Flats seen from the middle of its corridor">
 
 *Magnetic field, the quantum Hall effect, and Landau levels.*
 
@@ -206,6 +214,8 @@ thing as most of one."
 ---
 
 ## 5 — The Vortex Glacier
+
+<img src="../screenshots/storyline-world-5.png" width="420" alt="The Vortex Glacier seen from the middle of its corridor">
 
 *Superconductivity and Majorana modes.*
 
@@ -243,6 +253,8 @@ that emptied this glacier arrived there, and found nothing to take.
 
 ## 6 — The Iron Steppe
 
+<img src="../screenshots/storyline-world-6.png" width="420" alt="The Iron Steppe seen from the middle of its corridor">
+
 *Classical magnetism and magnons.*
 
 Night, black iron sand, and a green aurora — the most beautiful of the ten
@@ -275,6 +287,8 @@ wave and fade out somewhere in my back."
 ---
 
 ## 7 — The Entangled Web
+
+<img src="../screenshots/storyline-world-7.png" width="420" alt="The Entangled Web seen from the middle of its corridor">
 
 *Entanglement and tensor networks.*
 
@@ -312,6 +326,8 @@ what's on the cut."
 ---
 
 ## 8 — The Screened Swamp
+
+<img src="../screenshots/storyline-world-8.png" width="420" alt="The Screened Swamp seen from the middle of its corridor">
 
 *Quantum magnetism, spinons, and Kondo physics.*
 
@@ -355,6 +371,8 @@ stays whole. "Hurt me twice, then. Halves are all you get."
 
 ## 9 — The Defect Scars
 
+<img src="../screenshots/storyline-world-9.png" width="420" alt="The Defect Scars seen from the middle of its corridor">
+
 *Excitations and defects.*
 
 The water gives out and the mist lifts off it onto open ground with holes in
@@ -393,6 +411,8 @@ substance of its own, wearing whatever it studies.
 ---
 
 ## 10 — The Devouring Mirror
+
+<img src="../screenshots/storyline-world-10.png" width="420" alt="The Devouring Mirror seen from the middle of its corridor">
 
 *Machine learning for quantum materials — and the ending.*
 

@@ -7,17 +7,17 @@ import type { MoveLevel } from '../data/materials';
 // Loops a move's own real battle-effect animation -- the literal effect
 // BattleScene fires when the move is cast in a fight, sound and all, not a
 // separate static icon or a stripped-down copy -- inside a guardian panel's
-// detail pane (STYLE.md's "List+detail panels" and "Laughlin in the
+// detail pane (STYLE.md's "List+detail panels" and "Landau in the
 // overworld"/"Skłodowska-Curie in the overworld"; Noether's/Kondo's/
-// Laughlin's/Skłodowska-Curie's own panels, scenes/panels/noether.ts,
-// kondo.ts, laughlin.ts, sklodowskaCurie.ts, via scenes/panels/listDetail.ts's
+// Landau's/Skłodowska-Curie's own panels, scenes/panels/noether.ts,
+// kondo.ts, landau.ts, sklodowskaCurie.ts, via scenes/panels/listDetail.ts's
 // renderMoveDetailHeader/renderSelfBuffMoveDetailHeader).
 //
 // A caller supplies one point (`at`) -- the centre of its own pane -- and the
 // preview plays the *target's* half of the beat there (attackEffects.ts's
 // playTargetEffect: what the move does where it lands, with the attacker's
 // windup and its flight across the field dropped), plus whichever class/shape
-// override that move actually plays with in a real fight (Laughlin's/Curie's
+// override that move actually plays with in a real fight (Landau's/Curie's
 // ANALYTIC_SHAPES/ULTIMATE_SHAPES overrides, resolved by the caller the same
 // way BattleScene itself does) and, optionally, the player's own current
 // Feynman level for that move (`getMoveLevel`) so the preview escalates into
@@ -51,8 +51,8 @@ export interface MoveEffectPreviewParams {
 }
 
 // A preview "chain" is a single looping play, tracked independently of every
-// other chain by its own caller-supplied `key`. Laughlin's/Skłodowska-Curie's
-// two-column panels (scenes/panels/laughlin.ts/sklodowskaCurie.ts) run two
+// other chain by its own caller-supplied `key`. Landau's/Skłodowska-Curie's
+// two-column panels (scenes/panels/landau.ts/sklodowskaCurie.ts) run two
 // chains at once, one per column, since both of a guardian's fixed two moves
 // are always visible side by side rather than browsed one at a time through
 // a shared detail pane. Every other caller (Noether's shop, Kondo's self-buff
@@ -81,7 +81,7 @@ const chains = new Map<string, PreviewChain>();
 // whatever `current` is by the time it fires. The previously-selected move
 // finishes its own cycle, then the newly selected one starts, never both
 // drawing at once. A caller doesn't need to call stopMoveEffectPreview itself
-// before retargeting a chain (e.g. Laughlin's panel rebuilding after a
+// before retargeting a chain (e.g. Landau's panel rebuilding after a
 // retune), just before tearing the chain down for good (Farewell/close) with
 // nothing new to preview in its place.
 export function startMoveEffectPreview(params: MoveEffectPreviewParams, key: string = DEFAULT_KEY) {

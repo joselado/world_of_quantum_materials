@@ -10,7 +10,7 @@ import { BOARD_FOOT, makePassBoard } from '../art/passBoard';
 import { makeBlochAvatar } from '../art/bloch';
 import { makeFeynmanAvatar } from '../art/feynman';
 import { makeDresselhausAvatar } from '../art/dresselhaus';
-import { makeLaughlinAvatar } from '../art/laughlin';
+import { makeLandauAvatar } from '../art/landau';
 import { makeMajoranaAvatar } from '../art/majorana';
 import { makeSklodowskaCurieAvatar } from '../art/sklodowskaCurie';
 import { makeKondoAvatar } from '../art/kondo';
@@ -71,7 +71,7 @@ import { music } from '../audio/music';
 import { showNoetherShop } from './panels/noether';
 import { showSklodowskaCuriePanel } from './panels/sklodowskaCurie';
 import { showKondoPanel } from './panels/kondo';
-import { showLaughlinPanel } from './panels/laughlin';
+import { showLandauPanel } from './panels/landau';
 import { showFeynmanPanel } from './panels/feynman';
 import { showBlochHub } from './panels/bloch';
 import { showDresselhausPanel } from './panels/dresselhaus';
@@ -209,7 +209,7 @@ export const BUILT_WORLDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 // Lab regardless of `metGuardians` in this mode, so each one's panel needs to
 // be fully unlocked even on a save
 // that has never yet stepped through a world door; without this, Kondo/
-// Franklin/Noether/Laughlin/Feynman/Skłodowska-Curie/Bloch's Lab panels
+// Franklin/Noether/Landau/Feynman/Skłodowska-Curie/Bloch's Lab panels
 // would show their ordinary locked/empty state until the first world entry
 // applied this same grant). Call this before anything reads `playerForm`
 // back out (`getPlayerMaterial`, world 10's own map-shape dispatch) --
@@ -435,8 +435,8 @@ export interface GuardianPanelHost extends Phaser.Scene {
   // shop"), holding a move id rather than a crystal/hybrid-result name.
   // noetherMovePage paginates its own left column the same way
   // dresselhausPage/majoranaPage do. Same reset rules (scene create,
-  // closeDialogue()) as every other per-guardian field above. Laughlin's and
-  // Skłodowska-Curie's own panels (scenes/panels/laughlin.ts/
+  // closeDialogue()) as every other per-guardian field above. Landau's and
+  // Skłodowska-Curie's own panels (scenes/panels/landau.ts/
   // sklodowskaCurie.ts) have no preview/pagination field of their own --
   // each has exactly two fixed moves, always both rendered side by side
   // rather than browsed one at a time through a candidate list.
@@ -465,7 +465,7 @@ export interface GuardianPanelHost extends Phaser.Scene {
 // dispatch (spawnGuardianSprite/openGuardian), the same "reusable rather than
 // per-world bespoke" approach the map generator and biome table already
 // use. Every guardian sets `open` explicitly: Noether (shop), Bloch
-// (teleport hub), Dresselhaus (transmutation), Laughlin (analytic moves),
+// (teleport hub), Dresselhaus (transmutation), Landau (analytic moves),
 // Majorana (hybrid materials), Anderson (impurity doping, World 6), Feynman
 // (move-leveling, World 7), Kondo (self-buff moves), Franklin (passive
 // abilities, World 9). World 10 hosts Skłodowska-Curie (Ultimate moves), the
@@ -572,7 +572,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   private reachedGoal = false;
   private reachedMiddle = false;
   // Public rather than private: read/written directly by the extracted
-  // scenes/panels/*.ts guardian-panel modules (Noether/Laughlin/Kondo/
+  // scenes/panels/*.ts guardian-panel modules (Noether/Landau/Kondo/
   // Skłodowska-Curie sell moves and stats for qumatessence), which live outside
   // this class and so can't reach a `private` field. Same reasoning applies
   // to every other field/method below marked public instead of private.
@@ -639,7 +639,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // Feynman's move-leveling list (§5, World 7): paginated for the same
   // reason as Bloch/Dresselhaus/Majorana/Anderson above -- every move the
   // player has ever unlocked across the whole game (SHOP_MOVE_IDS plus
-  // Laughlin's/Kondo's/Anderson's own) can outgrow one panel well before
+  // Landau's/Kondo's/Anderson's own) can outgrow one panel well before
   // Superposition Mode's "every crystal" case even comes into it. Same
   // reset rules.
   feynmanPage = 0;
@@ -705,17 +705,17 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       open: (s) => showDresselhausPanel(s),
     },
     4: {
-      id: 'laughlin',
-      name: "Laughlin's Analytics",
-      shortName: 'Laughlin',
+      id: 'landau',
+      name: "Landau's Formulas",
+      shortName: 'Landau',
       labelColor: '#8fa0ff',
       strokeColor: 0x6a7fff,
       quote:
-        'Take an electron liquid in a strong enough field and it condenses into something new -- excite it, and the charge that peels off is a fraction of an electron, not a whole one. Answer my questions right and I will teach your crystal to strike by that same physics.',
+        'Switch on a perpendicular field and every electron orbit closes: the continuous band collapses into flat levels, one fixed quantum of energy apart, with nothing in between. Answer my questions right and I will teach your crystal to strike by that same physics.',
       blurb: 'Sells two quiz-gated Analytic moves.',
-      avatar: makeLaughlinAvatar,
+      avatar: makeLandauAvatar,
       tile: 'middle',
-      open: (s) => showLaughlinPanel(s),
+      open: (s) => showLandauPanel(s),
     },
     5: {
       id: 'majorana',

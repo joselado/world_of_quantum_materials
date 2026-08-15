@@ -511,7 +511,7 @@ function drawJet(
 // full-height column fades in before the bright head starts falling) so the
 // "incoming" beat reads clearly, then the head travels the height of the
 // field to land. Substantially flashier than the other move classes on
-// purpose -- Laughlin's own request was "a beam falling from the sky,"
+// purpose -- Landau's own request was "a beam falling from the sky,"
 // clearly reading as stronger than an ordinary hit: a pair of swirling
 // side-rays orbit the main column, a radiant sun expands at the point of
 // origin as the beam charges, and a trail of falling sparks chases the head
@@ -597,7 +597,7 @@ export function playBeam(
 // Shards bursting up and outward from a crack in the ground under the
 // target -- also takes no attacker anchor, since the eruption comes up from
 // beneath the defender rather than travelling from the attacker.
-// Substantially flashier than the other move classes on purpose (Laughlin's
+// Substantially flashier than the other move classes on purpose (Landau's
 // own request): an expanding double shockwave ring on the ground, a bright
 // geyser core punching straight up through the shards, and nearly double the
 // shard count spread wider than an ordinary burst.

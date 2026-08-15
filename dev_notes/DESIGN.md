@@ -295,7 +295,7 @@ Growth follows a two-phase curve rather than one flat per-world rate: worlds 1-3
 stretch, before the player has had a real chance to shop/transmute/level up) grow slowly, `+0.1`
 Energy/Momentum and `+0.05` Lifetime per world past world 1; worlds 4-10 assume a player
 who has met the early guardians and can draw on their systems (Dresselhaus's transmutation,
-Laughlin's Analytic moves, Feynman's leveling, ...), so growth steepens to `+0.35`
+Landau's Analytic moves, Feynman's leveling, ...), so growth steepens to `+0.35`
 Energy/Momentum and `+0.22` Lifetime per world from there. An opponent's own stats stay
 fractional through this curve (never rounded here, since they're never shown to the player as a
 number, only felt through hit chance/damage/turn order) so its own sub-1 per-step rate actually
@@ -587,7 +587,7 @@ and Coherence Cascade (`screening`, §5) are self-buffs — casting one applies 
 3-turn buff to the caster's own side instead of hitting the opponent, so there's
 no defender to mismatch against and no compatibility list to check. Left off
 every main type's `MOVE_COMPATIBILITY` list entirely rather than added to all of
-them, they're purchasable and usable from any form regardless. Laughlin's two Analytic moves (`skyfallBeam`/
+them, they're purchasable and usable from any form regardless. Landau's two Analytic moves (`skyfallBeam`/
 `groundEruption`, §5) and Skłodowska-Curie's two Ultimate moves (`ultimateMeteor`/
 `ultimateNova`, §5) reach the same "usable from any form, never mismatches" result a
 different way: their static `class` simply defaults to `phonon`, the same universal,
@@ -597,7 +597,7 @@ of their own. An Analytic move's real risk/reward comes from the question
 doubles the damage, wrong answer halves it. An Ultimate move instead asks three
 questions in a row (`BattleScene.showUltimateQuestions`) and is all-or-nothing:
 every answer correct lands the hit at full (already very high, see below) power,
-any wrong answer whiffs it for zero. Separately, both Laughlin and Skłodowska-Curie
+any wrong answer whiffs it for zero. Separately, both Landau and Skłodowska-Curie
 let the player tell them which quasiparticle each of their moves should carry
 instead (§5's `getTunedMoveClass`, shared by both guardians' shops via the same
 registry/save `moveClassTuning` map) — that choice feeds back into the
@@ -633,7 +633,7 @@ non-Abelian zero modes).
 Because Phonon Beam (`phonon`) is on every type's
 `MOVE_COMPATIBILITY` list, it can never trigger the quasiparticle-mismatch double-damage
 rule above — the one universal move is also the one that never gets the mismatch bonus, by
-design. Laughlin's two Analytic moves (`skyfallBeam`/`groundEruption`) sit at power 10 on
+design. Landau's two Analytic moves (`skyfallBeam`/`groundEruption`) sit at power 10 on
 purpose — level with the `spinon`/`vison`/`chiral`/`helical`/`higgs`/`heavyFermion` tier and
 below only Anyon Braid/Majorana Split among the ordinary attack moves — since their real payoff is the answer-gated
 2x/0.5x multiplier above, not raw power. Kondo's three moves (Screening Pulse, Scattering
@@ -655,7 +655,7 @@ The cap keeps an extreme Momentum gap from producing an unbounded hit sequence; 
 always still gets exactly one hit. All of the faster side's hits resolve first, consecutively,
 before the slower side's single hit — and the round stops immediately if either side's HP hits
 0 partway through, rather than firing the rest of the queued hits. Skłodowska-Curie's two
-quiz-gated Ultimate moves and Laughlin's two quiz-gated Analytic moves (§5) are exempt from this
+quiz-gated Ultimate moves and Landau's two quiz-gated Analytic moves (§5) are exempt from this
 scaling — picking one of those keeps the plain one-hit-each behavior regardless of the Momentum
 ratio, since their own answer-gating and (for Ultimates) multi-phase animation timing are
 already tuned around exactly one hit per side per round.
@@ -714,7 +714,7 @@ amount, since a dodged hit never connected at all.
 `BattleScene.drawMoveMenu` splits the currently usable moves (`getBattleMoves`) into up to
 four sections -- **Attacks** (every ordinary physics-gated move -- any move that isn't in
 `ANALYTIC_MOVE_IDS` or `ULTIMATE_MOVE_IDS` and whose `class` isn't `'screening'`),
-**Analytic** (Laughlin's two answer-gated moves, identified by move id rather than by any
+**Analytic** (Landau's two answer-gated moves, identified by move id rather than by any
 shared class, tagged `★` with their own "right=2x wrong=½x" legend line under the header),
 **Ultimate** (Skłodowska-Curie's two answer-gated moves, tagged `★★★` with their own
 "3/3 correct or it whiffs" legend line), and **Buffs** (Kondo's currently-active self-buff
@@ -722,7 +722,7 @@ move, at most one, since `getBattleMoves` only ever surfaces whichever one is
 `kondoActiveMove`, §5, tagged with its own "self-buff, no damage, 3 turns" legend line)
 -- but renders only the page the player is currently on (`movePageIndex`), not all of them
 stacked. A section only counts as a page at all if it has at least one usable move, so a
-player with no Laughlin/Skłodowska-Curie moves bought or no Kondo move active never sees an
+player with no Landau/Skłodowska-Curie moves bought or no Kondo move active never sees an
 empty page, and the pager (◀/▶ buttons plus the Left/Right keys, `switchMovePage`) is hidden
 entirely once there's only one page to switch between. A section with more moves than one
 page can hold (`moveMenuPages`, capped at `MOVE_MENU_MAX_ROWS` -- 3 moves per page, always)
@@ -859,7 +859,7 @@ guardian-panel file is written against -- see CODEMAP.md's "Guardian panels"). O
 guardian is never itself a way to travel; Bloch's panel is the one guardian panel with an
 explicit travel action of its own (its destination rows), which still moves the player
 like any other deliberate warp. Every guardian has a
-real mechanic (Noether, Bloch, Dresselhaus, Laughlin, Majorana, Anderson, Feynman, Kondo,
+real mechanic (Noether, Bloch, Dresselhaus, Landau, Majorana, Anderson, Feynman, Kondo,
 Franklin, Skłodowska-Curie) -- a guardian without one yet would fall through to the
 shared `OverworldScene.showGuardianLore` panel (avatar + quote only), but nothing
 currently does. World 10's guardian (Skłodowska-Curie) is gated behind actually walking
@@ -922,12 +922,12 @@ state can mark her met before the player has actually reached her.
   crystal (its own look, type, and moveset all at once) is a bigger capability swing per
   option than pure travel convenience. Superposition Mode bypasses this per-crystal cost
   entirely the same way Bloch's does
-- **Laughlin** → world 4 middle → sells two quiz-gated moves (`skyfallBeam`,
-  `groundEruption` -- `scenes/panels/laughlin.ts`'s `showLaughlinPanel`, `data/materials.ts`'s
+- **Landau** → world 4 middle → sells two quiz-gated moves (`skyfallBeam`,
+  `groundEruption` -- `scenes/panels/landau.ts`'s `showLandauPanel`, `data/materials.ts`'s
   `ANALYTIC_MOVE_IDS`, a hardcoded pair of move ids rather than a shared class --
   neither move has a class of its own to be identified by, see below) -- fitting,
-  since Laughlin's own physics (the fractional quantum Hall wavefunction) is world 4's
-  topic. Using one asks a physics-equation question first (`data/quiz.ts`'s
+  since Landau's own physics (Landau quantization -- a perpendicular field collapsing a
+  continuous band into flat, equally spaced levels) is world 4's topic itself. Using one asks a physics-equation question first (`data/quiz.ts`'s
   `ANALYTIC_QUESTIONS`, `BattleScene.showAnalyticQuestion`): answer right and the hit
   lands at 2x, answer wrong and it lands at 0.5x. Each question is tagged with the
   world number(s) whose course topic it belongs to, and `getAnalyticQuestion(visitedWorlds)`
@@ -948,7 +948,7 @@ state can mark her met before the player has actually reached her.
   "`<quasiparticle>` Eruption" (`tunedMoveDisplayName`), defaulting to "Phonon Lance"/
   "Phonon Eruption" while untuned -- `skyfallBeam`'s own display name reads "Lance," not
   "Beam," so it never collides with the free starting Phonon Beam move once both default
-  to `'phonon'`. Buying a move (or later revisiting Laughlin) also opens an inline
+  to `'phonon'`. Buying a move (or later revisiting Landau) also opens an inline
   quasiparticle picker beneath that move's own column (`renderInlineClassPicker`, offering
   `TUNABLE_MOVE_CLASSES` -- every ordinary Attacks-section class (i.e. every class
   except Kondo's `'screening'`) -- filtered down to only the ones the player's
@@ -1036,7 +1036,7 @@ state can mark her met before the player has actually reached her.
   "browsing is free, only committing costs" shape Anderson's host pick uses below.
   Priced highest of the four
   repeatable-action guardians (Bloch/Dresselhaus/Anderson/Majorana) -- above even
-  Noether's/Laughlin's/Kondo's ordinary `shopCost` top end (~55) -- since unlocking one
+  Noether's/Landau's/Kondo's ordinary `shopCost` top end (~55) -- since unlocking one
   specific hybrid result is comparable in value to learning a whole new move, and
   reaches only `HYBRID_RECIPES`' curated results, an additional content category rather
   than a reshaping of an existing one, even though Majorana sits earlier in the world
@@ -1101,7 +1101,7 @@ state can mark her met before the player has actually reached her.
   summing over a shared index -- the same "represent a contraction as a picture" idea a
   Feynman diagram's own vertices-and-propagators notation uses. Any move the player has
   ever unlocked (`unlockedMoves`, regardless of which guardian originally sold it --
-  Noether's ordinary attacks, Laughlin's Analytic pair, Kondo's self-buffs, an
+  Noether's ordinary attacks, Landau's Analytic pair, Kondo's self-buffs, an
   Anderson-doped move, even the starting Phonon Beam) can be leveled through three fixed
   tiers, one at a time in sequence (a move must already hold tier N-1 before N can be
   attempted): **Double** (1.5x, a 2-question streak), **Triple** (2x, a
@@ -1122,7 +1122,7 @@ state can mark her met before the player has actually reached her.
   decoupled: the qumatessence is spent the moment the attempt starts, before a single
   question is asked, and is never refunded regardless of outcome -- landing the whole
   streak (`data/quiz.ts`'s `getAnalyticQuestions`, the same visited-world-filtered
-  Analytic pool Laughlin's own single question draws from, since world 7 has a course
+  Analytic pool Landau's own single question draws from, since world 7 has a course
   topic of its own unlike World 10's topic-less finale) writes the new level; missing
   even one question anywhere in the streak (the same "stop at the first wrong answer,
   no partial credit" shape Skłodowska-Curie's Ultimate-move gate uses, generalized to a
@@ -1130,7 +1130,7 @@ state can mark her met before the player has actually reached her.
   with the payment still gone. The streak plays out in the overworld panel itself, as
   its own purchase-shaped flow (`scenes/panels/feynman.ts`'s own question UI, built the
   same way `OverworldScene.showEncounter`'s pre-battle quiz is), not mid-battle the way
-  Laughlin's/Skłodowska-Curie's own quiz gates fire -- Feynman's leveling attempt is a
+  Landau's/Skłodowska-Curie's own quiz gates fire -- Feynman's leveling attempt is a
   standalone decision made at his panel, not something triggered by using a move in a
   fight. A leveled move's effective power (`effectiveMovePower`) -- or, for one of
   Kondo's three, its effective mitigation strength (`kondoMitigationFraction`) -- only
@@ -1139,7 +1139,7 @@ state can mark her met before the player has actually reached her.
   levels are the player's own save state, not a property of the move itself; the level prefix folds
   into every rendering of a move's name (`moveDisplayName`, threaded through the battle
   move menu/log, every guardian's own move-list panel, and Feynman's own) the same way
-  Laughlin's/Skłodowska-Curie's tuned-quasiparticle name already does
+  Landau's/Skłodowska-Curie's tuned-quasiparticle name already does
   (`tunedMoveDisplayName`) -- `moveDisplayName` falls back to a move's own static name
   for Kondo's three `'screening'`-class self-buffs specifically, since they have no
   quasiparticle for `tunedMoveDisplayName` to read. Feynman has no single "active" slot
@@ -1221,11 +1221,11 @@ state can mark her met before the player has actually reached her.
   as the leader of the guardians' circle, teaching the game's one capstone mechanic:
   two "Ultimate Move" moves, `ultimateMeteor`/`ultimateNova` (`data/materials.ts`'s
   `ULTIMATE_MOVE_IDS`, displayed as "`<quasiparticle>` Meteor"/"`<quasiparticle>` Nova"
-  via the same `tunedMoveDisplayName` Laughlin's Analytic moves use), each at power 100 --
+  via the same `tunedMoveDisplayName` Landau's Analytic moves use), each at power 100 --
   ten times an Analytic move's power, and the highest of any move in the game (§3).
   Landing one requires answering three quiz questions in a row, all correct
   (`data/quiz.ts`'s `ULTIMATE_QUESTIONS`/`getUltimateQuestions`, drawn from a broad,
-  any-topic pool rather than restricted to visited worlds the way Laughlin's Analytic
+  any-topic pool rather than restricted to visited worlds the way Landau's Analytic
   pool is -- fitting a finale that asks the player to show mastery of everything, not
   one world's own topic); `BattleScene.showUltimateQuestions` stops at the first wrong
   answer, since the outcome (a whiff for zero damage) is already decided at that point,
@@ -1237,7 +1237,7 @@ state can mark her met before the player has actually reached her.
   ordinary retuning is already free once a move is owned, except the unlock is
   per-class here rather than per-move. The first unlock of either move also adds it to
   `unlockedMoves` so it appears in the battle menu. Once tuned, an Ultimate move's
-  battle-side quasiparticle-mismatch math reads exactly like Laughlin's Analytic moves
+  battle-side quasiparticle-mismatch math reads exactly like Landau's Analytic moves
   (`getTunedMoveClass`, the same shared `moveClassTuning` map both guardians' shops
   write to) -- no battle-side special-casing beyond the 3-question gate above. A
   successful 3-for-3 hit plays a multi-phase "Final-Fantasy-style summon" animation
@@ -1483,7 +1483,7 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   launch the battle, ...), so the tip is a one-time detour in front of that
   action rather than a separate step callers have to branch on. Nine are
   `{ kind: 'guardian' }` -- a guardian's own repeatable ability (Bloch's teleportation,
-  Dresselhaus's transmutation, Laughlin's quiz-gated Analytic moves, Majorana's hybrid fusion,
+  Dresselhaus's transmutation, Landau's quiz-gated Analytic moves, Majorana's hybrid fusion,
   Anderson's host doping, Feynman's move leveling, Kondo's status effects, Franklin's passives,
   Skłodowska-Curie's quiz-gated Ultimate moves) has no single "first time this becomes relevant" moment worth
   interrupting play for, so it carries no popup and is revealed by meeting that guardian
@@ -1518,7 +1518,7 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   from the Lab itself before the player has ever crossed a pass.
   The blanket "everything unlocked" grant (`OverworldScene.applySuperpositionUnlocks`,
   registry-only, no scene/world dependency of its own) is shared by two call sites:
-  `HubScene.create()` (so Kondo/Franklin/Noether/Laughlin/Feynman/Skłodowska-Curie/
+  `HubScene.create()` (so Kondo/Franklin/Noether/Landau/Feynman/Skłodowska-Curie/
   Bloch's own Lab panels -- every guardian standing in the Lab regardless of
   `metGuardians` in this mode -- are already unlocked on a completely fresh save) and
   `OverworldScene.applySuperpositionLeveling()` (re-applied on every world entry --
@@ -1681,7 +1681,7 @@ Not yet built:
 - **Multiplayer/trading** — in scope or not? Changes hosting/save-system
   requirements significantly if yes.
 - **Quiz-question-fetch functions aren't parallel** — `data/quiz.ts`'s
-  `getAnalyticQuestion(visitedWorlds)` (Laughlin, singular), `getAnalyticQuestions(visitedWorlds,
+  `getAnalyticQuestion(visitedWorlds)` (Landau, singular), `getAnalyticQuestions(visitedWorlds,
   count)` (Feynman's streak, plural, same pool), and `getUltimateQuestions(count)`
   (Skłodowska-Curie, plural, a broader pool, no `visitedWorlds` param at all) are three
   differently-shaped call sites for what's conceptually one repeated "quiz-gate" need. Worth

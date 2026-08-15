@@ -30,8 +30,8 @@ import { GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 // panel) are three shared detail-pane openers, and renderStatusAndConfirm
 // is the shared cost/status-line-plus-confirm-button tail every guardian
 // panel's pane closes with -- reused outside the paginated-
-// list shape too: Laughlin's/Skłodowska-Curie's own panels
-// (scenes/panels/laughlin.ts/sklodowskaCurie.ts) call renderMoveDetailHeader
+// list shape too: Landau's/Skłodowska-Curie's own panels
+// (scenes/panels/landau.ts/sklodowskaCurie.ts) call renderMoveDetailHeader
 // from a bespoke, always-both-visible two-column layout (sideBySideColumns
 // below) rather than a browsed single detail pane, since each guardian only
 // ever has exactly two fixed moves worth showing, never a candidate list
@@ -87,7 +87,7 @@ export function listDetailColumns(panelLeft: number): ListDetailColumns {
   return { leftX, leftColW, dividerX, rightColLeft, rightColRight, rightColW, rightColCenterX };
 }
 
-// Laughlin's and Skłodowska-Curie's own panels (scenes/panels/laughlin.ts/
+// Landau's and Skłodowska-Curie's own panels (scenes/panels/landau.ts/
 // sklodowskaCurie.ts) each have exactly two fixed moves, always both visible
 // side by side rather than a browsed left-hand candidate list -- wider than
 // LIST_DETAIL_PANEL_W since two full animation-stage-plus-inline-picker
@@ -399,25 +399,25 @@ export function renderDetailCrystalHeader(
 // target flight a real battle plays across the whole field (a pane this size
 // has no room for the crossing, and the half worth showing is what the move
 // does when it arrives). Shared by
-// Noether's Moves tab and Laughlin's/Skłodowska-Curie's own bespoke
-// two-column panels (scenes/panels/noether.ts, laughlin.ts,
+// Noether's Moves tab and Landau's/Skłodowska-Curie's own bespoke
+// two-column panels (scenes/panels/noether.ts, landau.ts,
 // sklodowskaCurie.ts -- Kondo's own self-buff moves use the sibling
 // renderSelfBuffMoveDetailHeader below instead, since a self-buff needs a
 // crystal rendered underneath the effect to read as buffing anything): each resolves its own
 // move's current class/shape override (Noether: the move's own static
-// class, no override; Laughlin/Curie: getTunedMoveClass plus
+// class, no override; Landau/Curie: getTunedMoveClass plus
 // ANALYTIC_SHAPES/ULTIMATE_SHAPES) and passes it in here rather than this
 // module reaching into materials.ts/attackEffects.ts's per-move-id override
 // tables itself. `level` (default 0) is the player's actual Feynman
 // MoveLevel for this move (`getMoveLevel`) -- Noether's own unbought-move
 // rows never carry one above 0 (leveling requires already owning the move),
-// Laughlin's/Curie's pass their move's real level so a leveled Analytic/
+// Landau's/Curie's pass their move's real level so a leveled Analytic/
 // Ultimate move's preview escalates into the same multi-trigger cascade a
 // real cast plays instead of always showing the flat unleveled loop.
 // `previewKey` (default 'default', see art/moveEffectPreview.ts)
 // distinguishes one call site's own preview chain from another's -- every
 // caller here has exactly one detail pane open at a time and so never needs
-// to pass one, except Laughlin's/Curie's own two-column panels, which have
+// to pass one, except Landau's/Curie's own two-column panels, which have
 // two live simultaneously and key each by its own move id.
 export function renderMoveDetailHeader(
   scene: Phaser.Scene,

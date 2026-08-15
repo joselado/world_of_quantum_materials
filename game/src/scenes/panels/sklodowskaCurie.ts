@@ -25,7 +25,7 @@ import { TWO_UP_PANEL_W, TWO_UP_STAGE_H, sideBySideColumns, renderMoveDetailHead
 // an old save's World-6 Curie visit) and sells her two quiz-gated Ultimate
 // moves (data/materials.ts's ULTIMATE_MOVE_IDS, a meteor move and a nova
 // move). Her pricing model is deliberately NOT the standard `shopCost`
-// flow Laughlin's shop uses -- there is no separate "buy the move" step;
+// flow Landau's shop uses -- there is no separate "buy the move" step;
 // instead each quasiparticle class costs `ULTIMATE_CLASS_UNLOCK_COST`
 // qumatessence to unlock per move, the first time it's picked for that move,
 // after which retuning back to an already-unlocked class is free forever
@@ -35,20 +35,20 @@ import { TWO_UP_PANEL_W, TWO_UP_STAGE_H, sideBySideColumns, renderMoveDetailHead
 //
 // Bespoke two-column layout (TWO_UP_PANEL_W, wider than the ordinary
 // LIST_DETAIL_PANEL_W list+detail panels use, scenes/panels/listDetail.ts),
-// the same shape Laughlin's own panel uses: both of her fixed two moves are
+// the same shape Landau's own panel uses: both of her fixed two moves are
 // always visible side by side, not browsed one at a time through a left-hand
 // candidate list. Each column opens with that move's own real battle-effect
 // animation on a loop (renderMoveDetailHeader), overriding the plain
 // per-class shape via ULTIMATE_SHAPES to the longer, multi-phase
 // playMeteor/playNova sequences -- the same override BattleScene itself
 // applies -- still colored by whichever quasiparticle class the move is
-// currently tuned to (getTunedMoveClass, same fallback rules as Laughlin's
+// currently tuned to (getTunedMoveClass, same fallback rules as Landau's
 // Analytic pair) and escalated to the player's real Feynman level for that
 // move (getMoveLevel). Below that, a status line and -- inline, not a
 // separate full-panel sub-view -- one row per hostable quasiparticle class
 // (tunableMoveShop.ts's renderInlineClassPicker), each row's own cost read
 // straight off registry/save `ultimateClassesUnlocked[moveId]` rather than a
-// single flat cost the way Laughlin's picker shows: "Free" for an
+// single flat cost the way Landau's picker shows: "Free" for an
 // already-unlocked class, `ULTIMATE_CLASS_UNLOCK_COST` qumatessence
 // otherwise. Picking any row is the one action that unlocks (on a class
 // never picked for this move before) or retunes (on one already unlocked)
@@ -63,7 +63,7 @@ import { TWO_UP_PANEL_W, TWO_UP_STAGE_H, sideBySideColumns, renderMoveDetailHead
 export function showSklodowskaCuriePanel(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
   // Deliberately does NOT call stopMoveEffectPreview() here -- same
-  // reasoning as showLaughlinPanel's own comment (panels/laughlin.ts): both
+  // reasoning as showLandauPanel's own comment (panels/landau.ts): both
   // columns' own renderMoveDetailHeader calls always run, retargeting their
   // own already-running preview chain in place.
 
@@ -95,7 +95,7 @@ export function showSklodowskaCuriePanel(scene: GuardianPanelHost) {
     .text(
       CANVAS_W / 2,
       y,
-      '"I am Skłodowska-Curie -- I lead this circle of guardians: Noether, Bloch, Dresselhaus, Laughlin, Majorana, Anderson, Feynman, Kondo, Franklin, and I. Here is our last lesson. Answer three questions on the physics running through everything you have learned, all three correct, and your crystal strikes with a force none of the others can match. Miss even one and the blow lands nowhere at all. Tell me which quasiparticle should carry it, too -- a new one costs dearly to unlock, but once bought it is yours to wear again for free."',
+      '"I am Skłodowska-Curie -- I lead this circle of guardians: Noether, Bloch, Dresselhaus, Landau, Majorana, Anderson, Feynman, Kondo, Franklin, and I. Here is our last lesson. Answer three questions on the physics running through everything you have learned, all three correct, and your crystal strikes with a force none of the others can match. Miss even one and the blow lands nowhere at all. Tell me which quasiparticle should carry it, too -- a new one costs dearly to unlock, but once bought it is yours to wear again for free."',
       { fontSize: `${Math.round(11 * introScale)}px`, fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
     )
     .setOrigin(0.5, 0);

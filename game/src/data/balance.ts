@@ -45,7 +45,7 @@ export const STAT_LABELS: Record<keyof Stats, string> = {
 // teach the controls and the type system before the player has had a real
 // chance to shop/transmute/level up, so they stay close to BASE_STAT; worlds
 // 4-10 assume a player who has met the early guardians and can draw on their
-// systems (Dresselhaus's transmutation, Laughlin's Analytic moves, Feynman's
+// systems (Dresselhaus's transmutation, Landau's Analytic moves, Feynman's
 // leveling, ...), so the gap that opens from there is meant to require
 // actually using them, staying genuinely hard for a near-optimal build all
 // the way to world 10. Correlation still gets the smaller share in both
@@ -211,7 +211,7 @@ export function rivalHpForWorld(world: number): number {
 // Qumatessence price for a shop move, scaled off its own power -- the
 // stronger the quasiparticle, the more it costs, the same "priced to keep
 // buying meaningful" shape as statUpgradeCost. Shared by every guardian who
-// sells moves for qumatessence (Noether, Laughlin, Kondo) --
+// sells moves for qumatessence (Noether, Landau, Kondo) --
 // Skłodowska-Curie's Ultimate moves are the one exception, priced via
 // ULTIMATE_CLASS_UNLOCK_COST instead (data/materials.ts).
 export function shopCost(move: Move): number {
@@ -399,7 +399,7 @@ export interface ResolveHitParams {
   // The pre-battle quiz's attack multiplier (1.5x/0.6x/1) for the player's
   // side, 1 for an opponent's.
   attackMult: number;
-  // Laughlin's Analytic moves' answer-gated 2x/0.5x, or Skłodowska-Curie's
+  // Landau's Analytic moves' answer-gated 2x/0.5x, or Skłodowska-Curie's
   // Ultimate moves' all-or-nothing 1x/0x -- 1 for every ordinary move.
   bonusMultiplier: number;
   // Kondo's Shielded buff on the defender's side (statusShieldMultiplier) --

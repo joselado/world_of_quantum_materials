@@ -156,7 +156,7 @@ export interface SaveData {
   // Which quasiparticle class a given tunable move (by move id) is
   // currently tuned to (data/materials.ts's getTunedMoveClass,
   // scenes/panels/tunableMoveShop.ts's showMoveClassPicker) -- shared by
-  // Laughlin's two Analytic moves and Skłodowska-Curie's two Ultimate moves
+  // Landau's two Analytic moves and Skłodowska-Curie's two Ultimate moves
   // alike, since it's keyed by move id, not by owner. An id missing from
   // this map is "untuned," falling back to the move's own always-safe
   // default 'phonon' class for the quasiparticle-mismatch check.

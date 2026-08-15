@@ -247,7 +247,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
       .setOrigin(0.5, 0);
 
     // Corner readout, same top-right placement/look as OverworldScene's own
-    // qumatessence HUD -- a guardian's shop panel (Noether/Laughlin/Majorana/
+    // qumatessence HUD -- a guardian's shop panel (Noether/Landau/Majorana/
     // Anderson/Kondo/Feynman/Skłodowska-Curie/Bloch's per-destination unlock)
     // can now open and spend directly from the Lab, so the balance it reads
     // and deducts from needs to be visible here too, not just mid-world.

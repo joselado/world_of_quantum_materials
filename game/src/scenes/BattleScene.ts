@@ -94,7 +94,7 @@ import {
   type Nameplate,
 } from './battle/hud';
 
-// Correct/wrong multipliers for Laughlin's two quiz-gated Analytic moves (§5) --
+// Correct/wrong multipliers for Landau's two quiz-gated Analytic moves (§5) --
 // deliberately steeper than the pre-battle quiz's QUIZ_CORRECT_MULTIPLIER/
 // QUIZ_WRONG_MULTIPLIER (OverworldScene.ts, 1.5/0.6): those apply to every
 // attack for a whole fight as a one-time roll, these are a per-use gamble
@@ -586,12 +586,12 @@ export class BattleScene extends Phaser.Scene {
   // since they never deal damage or mismatch at all.
   //
   // Shows exactly one page at a time (DESIGN.md §4's "group moves by kind"
-  // -- physics-gated attacks, Laughlin's two answer-gated Analytic moves,
+  // -- physics-gated attacks, Landau's two answer-gated Analytic moves,
   // and Kondo's currently-active self-buff move work differently enough
   // that a flat list blurred the distinction), paged with on-screen ◀/▶
   // arrows and the Left/Right keys (movePageIndex/switchMovePage) -- a
   // move-kind section only produces a page at all if it has at least one
-  // usable move, so a player with none of Laughlin's moves bought or no
+  // usable move, so a player with none of Landau's moves bought or no
   // Kondo move active never sees an empty page, and the pager itself is
   // hidden entirely if there's only one page to begin with. Every page holds
   // at most MOVE_MENU_MAX_ROWS moves (moveMenuPages splits a larger section
@@ -902,7 +902,7 @@ export class BattleScene extends Phaser.Scene {
     container.add(btn);
   }
 
-  // The question panel an analytic move (Laughlin's `skyfallBeam`/`groundEruption`,
+  // The question panel an analytic move (Landau's `skyfallBeam`/`groundEruption`,
   // §5) opens before it resolves -- turnLock is already true by
   // the time this is called (the move button handler sets it before
   // calling this), so no other move/menu interaction can happen underneath
@@ -1851,7 +1851,7 @@ export class BattleScene extends Phaser.Scene {
     // double force. This is the only type-interaction term battle damage
     // has (DESIGN.md §4) -- there is no separate strong/weak type chart on
     // top of it. Every move's own fixed `class` decides this, except for a
-    // tunable move (Laughlin's Analytic pair, Skłodowska-Curie's Ultimate
+    // tunable move (Landau's Analytic pair, Skłodowska-Curie's Ultimate
     // pair) once tuned via the owning guardian's picker: getTunedMoveClass
     // swaps in whatever quasiparticle the player assigned instead of the
     // move's default 'phonon', so a tuned move mismatches like an ordinary

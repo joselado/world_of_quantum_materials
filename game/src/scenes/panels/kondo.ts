@@ -21,12 +21,12 @@ import {
 // Kondo stands at world 8's middle tile (WORLD_GUARDIANS) and sells three
 // self-buff moves (data/materials.ts's KONDO_MOVE_IDS -- Screening
 // Pulse/Scattering Drag/Coherence Cascade, kept out of Noether's and
-// Laughlin's own lists so Kondo is their one source), usable from any
+// Landau's own lists so Kondo is their one source), usable from any
 // crystal form the player is currently wearing since a self-buff isn't
 // gated by MOVE_COMPATIBILITY at all.
 //
 // List+detail layout (scenes/panels/listDetail.ts, STYLE.md's "List+detail
-// panels"), the same shape Noether's/Laughlin's/Skłodowska-Curie's own
+// panels"), the same shape Noether's/Landau's/Skłodowska-Curie's own
 // move-browsing steps use: the left column names all three KONDO_MOVE_IDS
 // (moveDisplayName, folding in Feynman's level prefix -- always a no-op for
 // a still-unbought move, since leveling requires already owning it). A row
@@ -81,8 +81,8 @@ export function showKondoPanel(scene: GuardianPanelHost) {
   y = avatarY + 48;
 
   // Capped tighter than the ordinary intro-quote scaling every other guardian
-  // panel uses (STYLE.md), same reasoning/cap as Laughlin's own intro
-  // (panels/laughlin.ts) -- this panel now carries a full list+detail layout
+  // panel uses (STYLE.md), same reasoning/cap as Landau's own intro
+  // (panels/landau.ts) -- this panel now carries a full list+detail layout
   // with an 84px animation stage plus a per-move description line below it,
   // and an uncapped quote at the largest text-size preset pushed the detail
   // pane's own confirm button past the bottom of the canvas.

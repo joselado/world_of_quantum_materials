@@ -37,7 +37,7 @@ import { stopMoveEffectPreview } from '../../art/moveEffectPreview';
 // still-unbought, current-form-compatible moves; clicking one only
 // *previews* it (scene.noetherMovePreview), the right column showing that
 // move's own real battle-effect animation on a loop (renderMoveDetailHeader,
-// the move's own static class, no shape override -- unlike Laughlin's/
+// the move's own static class, no shape override -- unlike Landau's/
 // Curie's tunable moves, an ordinary move's battle look never changes) plus
 // its cost and a "Learn <name>" confirm button, the one action that
 // actually checks/spends the cost. The Stats tab (renderShopStats below) has

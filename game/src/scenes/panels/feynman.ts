@@ -218,7 +218,7 @@ function startLevelUp(scene: GuardianPanelHost, move: Move, nextLevel: 1 | 2 | 3
 // handler), so every path out of here just decides whether the move's
 // level actually changes, never whether the payment is refunded. Draws
 // `MOVE_LEVEL_STREAKS[targetLevel]` questions from the same
-// visited-world-filtered pool Laughlin's Analytic moves use
+// visited-world-filtered pool Landau's Analytic moves use
 // (getAnalyticQuestions), asked one at a time -- stops at the first wrong
 // answer, the same no-partial-credit shape
 // BattleScene.showUltimateQuestions uses for Skłodowska-Curie's Ultimate

@@ -248,7 +248,7 @@ What this means in practice:
   under both columns. The left column is the shorter of the two in every one of these panels,
   so a footer inside it costs the panel no height, and the vertical budget a full-width footer
   row would take goes to the detail pane instead -- which is why the pane can afford its
-  `DETAIL_STAGE_H` (`104`) art block and `DETAIL_CRYSTAL_SIZE` (`44`) crystal. Laughlin's and
+  `DETAIL_STAGE_H` (`104`) art block and `DETAIL_CRYSTAL_SIZE` (`44`) crystal. Landau's and
   Skłodowska-Curie's two-up panels (below) use the shorter `TWO_UP_STAGE_H` (`84`) instead:
   with no left column, their Farewell button stays in a full-width row below both columns, so
   they have no reclaimed height to spend, and their columns additionally carry an inline
@@ -287,7 +287,7 @@ What this means in practice:
   right choice when there's no crystal/move art worth previewing), from Franklin's own
   crystal-beside-list layout (below), which previews a passive's
   ground halo on an always-visible crystal rather than swapping between candidate rows, and from
-  Laughlin's/Skłodowska-Curie's own bespoke two-column panels ("Laughlin in the overworld"/
+  Landau's/Skłodowska-Curie's own bespoke two-column panels ("Landau in the overworld"/
   "Skłodowska-Curie in the overworld" below), which show both of a guardian's fixed two moves at
   once rather than browsing a candidate list at all: clicking a
   left-column row only changes which candidate is previewed in the right
@@ -311,7 +311,7 @@ What this means in practice:
   commit (which of its three moves is usable in battle) lives in registry/save
   `kondoActiveMove` instead, written only by the detail pane's own "Make active" button.
   `blochPreview` is `number | null` (a world number), not a string, since Bloch's own rows/markers
-  identify a destination by world number rather than by a crystal/move name. Laughlin and
+  identify a destination by world number rather than by a crystal/move name. Landau and
   Skłodowska-Curie have no preview/pagination field of their own at all -- each has exactly two
   fixed moves, always both rendered at once, so there is no candidate list to browse in the first
   place; see their own entries below for their bespoke layout and its own "Retune"/per-class-unlock
@@ -1181,17 +1181,19 @@ station motifs are deliberately not tunnels with a visible far end.
   treats every crystal as already unlocked -- with the panel's single "Farewell" button in the
   left column beneath those rows ("List+detail panels" above).
 
-## Laughlin in the overworld (`OverworldScene.showLaughlinPanel`)
+## Landau in the overworld (`OverworldScene.showLandauPanel`)
 
 - World 4 only, standing at the middle tile like every other guardian. Blue-violet
   (`#8fa0ff` label / `0x6a7fff` stroke and avatar accents) name label; his avatar
-  (`art/laughlin.ts`'s `makeLaughlinAvatar`) is not a robed figure at all: the whole body
-  is the fractional quantum Hall electron liquid, drawn as the stepped "wedding-cake"
-  density profile an incompressible droplet takes -- four elliptical tiers narrowing
-  upward -- with one hollow quasihole dot floating lifted above the top tier on a faint
-  extraction line, and '⅓' orbit glyphs. Silhouette: a tiered stack, the roster's only
-  stepped outline.
-- **Bespoke two-column layout** (`scenes/panels/laughlin.ts`, not the paginated list+detail
+  (`art/landau.ts`'s `makeLandauAvatar`) is not a robed figure at all: the whole body
+  is the Landau-quantized spectrum itself, drawn as five equal-length horizontal rungs at
+  even spacing (a Landau level is flat, and the oscillator ladder puts every gap at the
+  same `ħω_c`), brightest at the bottom and dimming upward, over a single faint parabola
+  standing for the free band the field quantizes. One bright electron jumps rung to rung
+  on a stepped tween -- never a slide, since there is no energy between two levels -- and
+  the orbit glyphs read 'ħω'. Silhouette: a stack of horizontal bars, the roster's only
+  rung ladder.
+- **Bespoke two-column layout** (`scenes/panels/landau.ts`, not the paginated list+detail
   shape above): his two quiz-gated Analytic moves (`data/materials.ts`'s `ANALYTIC_MOVE_IDS`, a
   hardcoded pair, `skyfallBeam`/`groundEruption`) are always both visible side by side, one full
   column each, rather than browsed one at a time through a left-hand candidate list -- with only
@@ -1203,7 +1205,7 @@ station motifs are deliberately not tunnels with a visible far end.
   two). Each column (`renderAnalyticColumn`) opens with that move's own real battle-effect
   animation on a loop (`renderMoveDetailHeader`, "List+detail panels" above and "Attack effects"
   below -- centered in the column, with its own preview chain keyed
-  `laughlin:<moveId>` so both columns' chains loop independently, see "Attack effects" below),
+  `landau:<moveId>` so both columns' chains loop independently, see "Attack effects" below),
   overriding the plain per-class bolt/ring/burst shape via `ANALYTIC_SHAPES` (each Analytic move
   is `'beam'`/`'eruption'`) the same way `BattleScene` itself does, still colored by whichever
   quasiparticle class the move is currently tuned to (`getTunedMoveClass` -- a not-yet-tuned move
@@ -1224,15 +1226,15 @@ station motifs are deliberately not tunnels with a visible far end.
   "Quasiparticle picker" below), each labeled with the class's own bare name (`quasiparticleLabel`,
   e.g. "Magnon" for `'magnon'`) plus " (current)" on whichever one the move is presently tuned to.
   Clicking any row on a still-unbought move buys and tunes to that class in one click
-  (`buyLaughlinMove`, checking/spending `shopCost`, adding the move to `unlockedMoves`, and
+  (`buyLandauMove`, checking/spending `shopCost`, adding the move to `unlockedMoves`, and
   recording the class -- all three at once, with no separate "buy" step before picking a
   class); clicking a row on an already-bought move retunes to it
-  for free among any hostable class, no per-class cost (`retuneLaughlinMove`) -- picking a
+  for free among any hostable class, no per-class cost (`retuneLandauMove`) -- picking a
   different class re-renders the whole panel (this panel's own established
   full-rebuild-per-click convention, same as every other guardian panel; only the retuned
   column's own preview chain is retargeted by it, the other column's keeps looping through the
   rebuild undisturbed, see "Attack effects" below). Skłodowska-Curie's own panel below does *not*
-  reuse `buyLaughlinMove`/`retuneLaughlinMove`, her per-class-unlock pricing is different enough
+  reuse `buyLandauMove`/`retuneLandauMove`, her per-class-unlock pricing is different enough
   that her own picker logic is bespoke, though both panels share the same `renderInlineClassPicker`
   row-rendering/wrapping and `hostableClasses` filter.
 - **The move's displayed name always leads with its current quasiparticle**
@@ -1249,7 +1251,7 @@ station motifs are deliberately not tunnels with a visible far end.
 
 ## Quasiparticle picker (`scenes/panels/tunableMoveShop.ts`)
 
-- The small pill-button strip Laughlin's and Skłodowska-Curie's own columns (above/below) each
+- The small pill-button strip Landau's and Skłodowska-Curie's own columns (above/below) each
   render directly beneath themselves (`renderInlineClassPicker`), inline in the main panel rather
   than a separate full-panel sub-view.
   `hostableClasses(scene)` is `TUNABLE_MOVE_CLASSES` filtered through `canHost` against the
@@ -1263,7 +1265,7 @@ station motifs are deliberately not tunnels with a visible far end.
   game's ordinary dialogue-button style -- `fontPx`-scaled but capped at the Compact preset's own
   1x scale even at Normal/Large, tighter `{x:7,y:3}` padding -- since this is a dense strip of
   many small optional controls, not body text a Large-text player needs magnified the way the
-  status line just above it already is. Each caller (Laughlin/Curie) formats its own row label
+  status line just above it already is. Each caller (Landau/Curie) formats its own row label
   and afford/dim state, since the two pricing models differ; this module has no opinion on either
   and just packs+renders whatever `QuasiparticleOption[]` it's handed, firing `onPick(cls)` on a
   click.
@@ -1405,7 +1407,7 @@ station motifs are deliberately not tunnels with a visible far end.
   move's `'screening'`-class ring effect (`art/attackStyles.ts`'s `EFFECT_STYLE`, tinted
   `0xe86a44`) looping *centered on the crystal itself* rather than travelling across the pane --
   the self-buff sibling of the ordinary `renderMoveDetailHeader` that Noether's, Feynman's,
-  Laughlin's and Skłodowska-Curie's own panes use. Like that
+  Landau's and Skłodowska-Curie's own panes use. Like that
   sibling, it plays the move at the player's real Feynman level, so a leveled Kondo move previews
   the same escalating multi-trigger cascade a real cast plays. Below that:
   the move's own one-line `description` (`data/materials.ts`'s `Move.description`, only Kondo's
@@ -1499,17 +1501,17 @@ station motifs are deliberately not tunnels with a visible far end.
   order turning on and off). The finale-only outer halo ring and the eight-point starburst
   orbit (double the usual four) mark her as the guardians' capstone rather than a mid-game
   stop. Silhouette: the roster's only tall spike-with-ray-crown outline.
-- **Bespoke two-column layout** (`scenes/panels/sklodowskaCurie.ts`, the same shape Laughlin's
+- **Bespoke two-column layout** (`scenes/panels/sklodowskaCurie.ts`, the same shape Landau's
   own panel above uses, not the paginated list+detail shape): her two Ultimate moves
   (`data/materials.ts`'s `ULTIMATE_MOVE_IDS` -- `ultimateMeteor`/`ultimateNova`) are always both
   visible side by side, one full column each. Same `TWO_UP_PANEL_W`/`sideBySideColumns` geometry
-  Laughlin's panel uses -- her own intro quote is the longest in the game (it names all ten
-  guardians), capped at the same `1.15`x text-size scale Laughlin's own intro is, since with two
+  Landau's panel uses -- her own intro quote is the longest in the game (it names all ten
+  guardians), capped at the same `1.15`x text-size scale Landau's own intro is, since with two
   full animation-stage-plus-inline-picker columns below it there is even less spare vertical
   room here than on his panel; see this panel's own worst-case-content note below for how tight
   that budget actually is. Each column (`renderUltimateColumn`) opens with that move's own real
   battle-effect animation on a loop (`renderMoveDetailHeader`, centered in the column, with its
-  own preview chain keyed `curie:<moveId>`, same as Laughlin's own columns), overriding
+  own preview chain keyed `curie:<moveId>`, same as Landau's own columns), overriding
   the plain per-class shape via `ULTIMATE_SHAPES` to the longer, multi-phase `playMeteor`/
   `playNova` sequences (below), still colored by whichever quasiparticle class the move is
   currently tuned to, and escalated to the player's real Feynman level for that move
@@ -1518,15 +1520,15 @@ station motifs are deliberately not tunnels with a visible far end.
   name text is `moveDisplayName` (level prefix folded in), not the bare `tunedMoveDisplayName`.
   Below that: a status line -- "Not yet unlocked -- pick a quasiparticle to unlock it." if the
   move isn't in `unlockedMoves` yet, or "Carrying `<quasiparticle>`." (or the same "reverted to
-  Phonon" fallback wording Laughlin's own status line uses, or "Unlocked, but untuned -- pick a
+  Phonon" fallback wording Landau's own status line uses, or "Unlocked, but untuned -- pick a
   quasiparticle." in Superposition Mode's own edge case) -- and, **inline directly beneath it**,
   one pill button per hostable quasiparticle class (`tunableMoveShop.ts`'s
   `hostableClasses`/`renderInlineClassPicker`, "Quasiparticle picker" above), each row's own cost
   read straight off registry/save `ultimateClassesUnlocked[moveId]` rather than a single flat
-  cost the way Laughlin's picker shows: "`<quasiparticle>` -- Free" (plus " (current)" on
+  cost the way Landau's picker shows: "`<quasiparticle>` -- Free" (plus " (current)" on
   whichever class the move is presently tuned to) for a class already paid for on that move, else
   "`<quasiparticle>` -- 1000 qumatessence" for one that isn't, dimmed per-row if the player can't
-  afford that specific class right now (unlike Laughlin's flat one-time move purchase, where every
+  afford that specific class right now (unlike Landau's flat one-time move purchase, where every
   row dims together). Picking any row is the one action that unlocks (first time) or retunes
   (already unlocked) in a single click (`pickUltimateClass`) -- and, on a move's very first-ever
   class pick, also adds the move id to `unlockedMoves`. A row here can be genuinely unaffordable
@@ -1543,7 +1545,7 @@ station motifs are deliberately not tunnels with a visible far end.
   multi-phase "summon" animation dramatically longer than any other move's effect (see
   "Attack effects" below) rather than the shared windup/travel/impact beat every other
   move uses.
-- **Worst-case layout budget.** This panel (and Laughlin's own above) carries more content than
+- **Worst-case layout budget.** This panel (and Landau's own above) carries more content than
   any other guardian panel -- two full animation stages plus two inline pickers below her own
   especially long intro quote -- so the vertical fit was verified against the actual worst case
   rather than assumed: both moves tuned to `'majorana'` (a class every `chernSuperconductor`
@@ -1563,7 +1565,7 @@ station motifs are deliberately not tunnels with a visible far end.
   case: its candidate pool is every crystal/move in the game, commonly far more entries than the
   equivalent Story Mode list. Dresselhaus's transmute list, Majorana's browse-by-hybrid-result
   list, Anderson's own first (host-pick) step, Feynman's own move-leveling list,
-  Noether's/Laughlin's/Skłodowska-Curie's own move lists, and Bloch's own destination table
+  Noether's/Landau's/Skłodowska-Curie's own move lists, and Bloch's own destination table
   instead use the two-column list+detail layout ("List+detail panels" above) for the same reason -- its
   own left column paginates the same candidate-pool-can-outgrow-one-screen way, just via
   `renderListColumn` rather than this function.
@@ -2065,7 +2067,7 @@ world are shaped, since world N's start is world N-1's exit.
   currently-active self-buff move), which reads in `STATUS_PILL_COLOR` (`#ff8f6a`, Kondo's own
   rust-orange) instead, tying the button back to the status pill the buff itself renders as
   once cast. A form with zero currently-usable moves (shouldn't normally happen, since
-  Phonon Beam is universal) shows "No usable moves" instead of an empty panel. Laughlin's two
+  Phonon Beam is universal) shows "No usable moves" instead of an empty panel. Landau's two
   Analytic moves (`skyfallBeam`/`groundEruption`) get a gold `★` tag appended to their own
   label, with a "right=2x wrong=½x" legend living as its own dim sub-line directly under the
   `ANALYTIC` header instead of in the panel's top legend; Skłodowska-Curie's two Ultimate
@@ -2119,7 +2121,7 @@ world are shaped, since world N's start is world N-1's exit.
   opened by clicking an analytic move's button, before that move resolves. Same dark
   rounded-rectangle-with-stroke family as every overworld panel (520 wide, height grown to
   fit), stroked gold (`0xffe066`, matching the move menu's own border and the `★` tag rather
-  than Laughlin's own blue-violet shop stroke). Move name in
+  than Landau's own blue-violet shop stroke). Move name in
   bold gold above the question prompt (white, center-aligned, matching the wild-encounter
   quiz's tone), then two shuffled answer buttons in the same `[ #222244 / #ffff88 ]`
   treatment every other button uses. No "let me pass" -- picking an analytic move already
@@ -2349,7 +2351,7 @@ world are shaped, since world N's start is world N-1's exit.
   the fix used here is to keep white cores small and let the colored falloff carry the hue,
   since a second, normally-blended Graphics per effect would cost an object per shape.
 - Kondo's three self-buff moves (Screening Pulse, Scattering Drag, Coherence Cascade) share
-  the `'screening'` class's one look, unlike Laughlin's/Skłodowska-Curie's moves below -- an
+  the `'screening'` class's one look, unlike Landau's/Skłodowska-Curie's moves below -- an
   expanding ring (the same silhouette
   Magnon Pulse/Polaron Drag use, reading as an effect enveloping the caster) tinted Kondo's
   own rust-orange (`0xe86a44`), played with the caster's own anchor as both `from` and `to`
@@ -2359,7 +2361,7 @@ world are shaped, since world N's start is world N-1's exit.
   casting a buff doesn't read as the caster taking damage. Distinct move names and the buff
   log line each one produces already read as three different moves without three different
   silhouettes too, so there's no `ANALYTIC_SHAPES`-style per-move override for this class.
-- Laughlin's two Analytic moves break the "one shape per class" rule on purpose, each with
+- Landau's two Analytic moves break the "one shape per class" rule on purpose, each with
   its own silhouette rather than sharing whichever ordinary
   `EFFECT_STYLE` shape their currently-tuned quasiparticle carries (`art/attackStyles.ts`'s
   `ANALYTIC_SHAPES`, keyed by move id, not class), and each substantially more elaborate than
@@ -2385,7 +2387,7 @@ world are shaped, since world N's start is world N-1's exit.
 - Skłodowska-Curie's two Ultimate moves (`ultimateMeteor`/`ultimateNova`) get the same
   per-move-id shape-override treatment (`ULTIMATE_SHAPES`), but run their own multi-phase
   summon→charge→impact→aftermath sequence (`playMeteor`/`playNova`) rather than the shared
-  windup/travel/impact beat every other shape (including Laughlin's beam/eruption) uses --
+  windup/travel/impact beat every other shape (including Landau's beam/eruption) uses --
   4-6 seconds total, dramatically longer than any other move's effect, with `onImpact` firing
   at the sequence's own strike beat and `onComplete` only once the full aftermath decay
   finishes (see `BattleScene`'s "Ultimate moves defer damage/turn-handoff" in `CODEMAP.md`).
@@ -2457,8 +2459,8 @@ world are shaped, since world N's start is world N-1's exit.
   on arrival, and dips the currently-playing
   music track's volume for the beat's duration (`audio/music.ts`'s `MusicEngine.duck`) so the
   hit reads clearly over the score before the music comes back up.
-- **Noether's/Kondo's/Laughlin's/Skłodowska-Curie's own detail panes loop this same real effect**
-  (`art/moveEffectPreview.ts`, "List+detail panels" above and "Laughlin in the overworld"/
+- **Noether's/Kondo's/Landau's/Skłodowska-Curie's own detail panes loop this same real effect**
+  (`art/moveEffectPreview.ts`, "List+detail panels" above and "Landau in the overworld"/
   "Skłodowska-Curie in the overworld" below) rather than a static icon, at a small
   fixed local `from`/`to` span sized to the pane -- a detail pane has no crystals of its own to
   follow, and a fixed point is a perfectly good anchor, it just never moves. `playAttackEffect`'s own Graphics normally draw at depth 58-61 (tuned for
@@ -2474,7 +2476,7 @@ world are shaped, since world N's start is world N-1's exit.
   `moveEffectPreview.ts` tracks any number of independent, simultaneously-looping preview
   *chains* at once, each identified by its own caller-supplied string key (default `'default'`,
   what every single-preview caller -- Noether, Kondo -- implicitly lands on, unaffected by this):
-  Laughlin's and Skłodowska-Curie's own two-column panels (below) are the one case with two
+  Landau's and Skłodowska-Curie's own two-column panels (below) are the one case with two
   chains genuinely running at once, one per move id, so retuning one column's own move never
   disturbs the other column's already-looping chain. `stopMoveEffectPreview()` with no key stops
   every chain at once (every guardian panel's own Farewell/close path); passed a key, it stops

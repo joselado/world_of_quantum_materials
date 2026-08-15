@@ -10,7 +10,7 @@ import type { AttackShape } from '../audio/sfx';
 // particles converging/scattering (Anyon Braid, Majorana Split, Heavy
 // Fermion Pulse, Vison Loop). 'beam'/'eruption' are never picked from here
 // -- they're only ever reached via ANALYTIC_SHAPES' per-move-id override
-// below (BattleScene's resolveHit always supplies one for Laughlin's two
+// below (BattleScene's resolveHit always supplies one for Landau's two
 // moves), so no class needs its own `shape: 'beam' | 'eruption'` entry.
 export const EFFECT_STYLE: Record<MoveClass, { color: number; shape: AttackShape }> = {
   electron: { color: 0x4a90d9, shape: 'bolt' },
@@ -56,12 +56,12 @@ export const EFFECT_STYLE: Record<MoveClass, { color: number; shape: AttackShape
   // caster's own anchor as both `from` and `to`, so the ring centers on the
   // caster instead of traveling to the opponent. Three distinct move names
   // and buff log lines already read as three different moves without three
-  // different silhouettes too, so unlike Laughlin's/Skłodowska-Curie's moves
+  // different silhouettes too, so unlike Landau's/Skłodowska-Curie's moves
   // they need no per-move-id shape override.
   screening: { color: 0xe86a44, shape: 'ring' },
 };
 
-// Per-move-id shape overrides for Laughlin's two Analytic moves -- the one pair where
+// Per-move-id shape overrides for Landau's two Analytic moves -- the one pair where
 // both moves (`skyfallBeam`, `groundEruption`) want two distinct silhouettes
 // (a falling beam, a ground eruption) rather than sharing whichever
 // ordinary EFFECT_STYLE shape their currently-tuned quasiparticle carries.

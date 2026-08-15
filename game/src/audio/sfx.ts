@@ -7,7 +7,7 @@
 import { music } from './music';
 
 // Same silhouettes art/attackEffects.ts uses per move class -- bolt/ring/
-// burst for the original seven classes, beam/eruption for Laughlin's
+// burst for the original seven classes, beam/eruption for Landau's
 // Analytic moves (a flashier, per-move rather than per-class pair:
 // `skyfallBeam` gets 'beam', `groundEruption` gets 'eruption'), and
 // meteor/nova for Skłodowska-Curie's Ultimate pair (`ultimateMeteor`/

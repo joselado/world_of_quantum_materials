@@ -91,10 +91,10 @@ game/src/
                                  renderPassiveList() wrapper), kept in its own file rather than
                                  folded into franklin.ts itself (see "Guardian panels" below),
                                  tunableMoveShop.ts's hostableClasses()/renderInlineClassPicker()
-                                 is the shared inline quasiparticle-picker row-strip laughlin.ts's
+                                 is the shared inline quasiparticle-picker row-strip landau.ts's
                                  and sklodowskaCurie.ts's own two-column panels each render
                                  directly beneath a move's own column (Skłodowska-Curie's own
-                                 per-class-unlock pricing is different enough from Laughlin's flat
+                                 per-class-unlock pricing is different enough from Landau's flat
                                  one-time move purchase that each panel still formats/prices its
                                  own rows, see "Guardians" below), listDetail.ts's
                                  renderListColumn()/listDetailColumns()/fitListLabel()/
@@ -109,7 +109,7 @@ game/src/
                                  and bloch.ts (its own destination table -- the one caller whose
                                  right side is the persistent Qumatuomi map, art/qumatuomiMap.ts,
                                  rather than a per-selection detail pane) all use, while
-                                 sideBySideColumns backs laughlin.ts's/sklodowskaCurie.ts's own
+                                 sideBySideColumns backs landau.ts's/sklodowskaCurie.ts's own
                                  bespoke always-both-visible two-column layout instead (no
                                  candidate list, so neither imports renderListColumn/
                                  listDetailColumns at all). Every one of these panels' own
@@ -220,7 +220,7 @@ game/src/
     noether.ts                    makeNoetherAvatar() -- golden robed deity, halo + wide sleeves, world 1
     bloch.ts                    makeBlochAvatar() -- robed figure, wireframe Bloch-sphere head, world 2
     dresselhaus.ts               makeDresselhausAvatar() -- half-crystal transmutation figure, carbon-hexagon head, world 3
-    laughlin.ts                  makeLaughlinAvatar() -- wedding-cake quantum Hall droplet + quasihole, world 4
+    landau.ts                  makeLandauAvatar() -- evenly spaced flat-level ladder + climbing electron, world 4
     majorana.ts                  makeMajoranaAvatar() -- figure split into two breathing halves, world 5
     anderson.ts                   makeAndersonAvatar() -- disconnected-fragment scatter, bright localized core, world 6
     feynman.ts                   makeFeynmanAvatar() -- vertex/propagator diagram-construct motif, world 7
@@ -243,7 +243,7 @@ game/src/
                                   define publicly, so a caller never needs to know which one a
                                   given piece lives in). playAttackEffect() picks the shape --
                                   beam/eruption are ANALYTIC_SHAPES' per-move-id overrides
-                                  (Laughlin's skyfallBeam/groundEruption), meteor/nova are
+                                  (Landau's skyfallBeam/groundEruption), meteor/nova are
                                   ULTIMATE_SHAPES' overrides (Skłodowska-Curie's ultimateMeteor/
                                   ultimateNova, a 4-6s multi-phase sequence -- see "Stats and battle
                                   resolution" below), every other shape is per-MoveClass. Its own
@@ -286,9 +286,9 @@ game/src/
                                   METEOR_TOTAL_MS/NOVA_TOTAL_MS
     moveEffectPreview.ts         startMoveEffectPreview(params, key?)/stopMoveEffectPreview(key?) --
                                   loops playTargetEffect (above) inside a guardian panel's detail
-                                  pane (Noether's Moves tab, Kondo's self-buff step, Laughlin's/
+                                  pane (Noether's Moves tab, Kondo's self-buff step, Landau's/
                                   Skłodowska-Curie's own two-column panels, scenes/panels/noether.ts,
-                                  kondo.ts, laughlin.ts, sklodowskaCurie.ts's own
+                                  kondo.ts, landau.ts, sklodowskaCurie.ts's own
                                   renderMoveDetailHeader/renderSelfBuffMoveDetailHeader calls,
                                   scenes/panels/listDetail.ts) rather than a static icon. A caller
                                   passes one point (`params.at`, its own pane's centre) and gets the
@@ -305,9 +305,9 @@ game/src/
                                   `key` (default `'default'`, what every single-preview caller --
                                   Noether, Kondo -- implicitly uses, unaffected by the multi-chain
                                   support) rather than one module-scoped `current`/`generation` pair
-                                  for the whole module -- Laughlin's/Skłodowska-Curie's own two-column
+                                  for the whole module -- Landau's/Skłodowska-Curie's own two-column
                                   panels are the one case with two chains genuinely running at once
-                                  (keyed `laughlin:<moveId>`/`curie:<moveId>`, one per column), so
+                                  (keyed `landau:<moveId>`/`curie:<moveId>`, one per column), so
                                   retuning one column's own move never disturbs the other column's
                                   already-looping chain. Calling startMoveEffectPreview again on the
                                   same key retargets that chain to a different move without needing to
@@ -425,7 +425,7 @@ game/src/
                                   fed into getRival() (see "Rival/boss fights" below),
                                   getTunedMoveClass()/tunedMoveDisplayName() -- read a tunable move's
                                   tuned quasiparticle (falling back to its default 'phonon' class),
-                                  shared by Laughlin's Analytic moves and Skłodowska-Curie's Ultimate
+                                  shared by Landau's Analytic moves and Skłodowska-Curie's Ultimate
                                   moves alike since both read/write the same registry/save
                                   moveClassTuning map,
                                   MOVE_LEVEL_NAMES/MOVE_LEVEL_MULTIPLIERS/MOVE_LEVEL_STREAKS/
@@ -457,7 +457,7 @@ game/src/
                                   MATERIAL_QUESTIONS pool and ML_LECTURE_QUESTIONS (session10.tex,
                                   the course's ML finale) -- plus the world-tagged ANALYTIC_QUESTIONS pool
                                   (AnalyticQuestion carries worlds: number[]) via
-                                  getAnalyticQuestion(visitedWorlds) for Laughlin's two quiz-gated
+                                  getAnalyticQuestion(visitedWorlds) for Landau's two quiz-gated
                                   Analytic moves -- draws only questions tagged with a visited
                                   world's topic (falling back to the full pool if that intersection
                                   is ever empty) -- and getAnalyticQuestions(visitedWorlds, count) for
@@ -595,7 +595,7 @@ World 10's Adapted and nowhere else.
   gated, not "always compatible" the way Phonon Beam's universal-but-still-checked class is.
   `getBattleMoves` (`data/materials.ts`) mirrors this: a `KONDO_MOVE_IDS` entry is surfaced
   purely by whether it's the active `kondoActiveMove`, never intersected with
-  `compatibleMoves`. Laughlin's two Analytic
+  `compatibleMoves`. Landau's two Analytic
   moves (`skyfallBeam`, `groundEruption`) and Skłodowska-Curie's two Ultimate moves
   (`ultimateMeteor`, `ultimateNova`) reach the same "usable from any form, never mismatches"
   result without needing a class of their own -- their static `class` defaults to `'phonon'`,
@@ -678,7 +678,7 @@ everything else by absence, so only two things in it carry meaning.
   encounter (`OverworldScene.showEncounter`) and the Lab's Moves/Stats/Abilities/Settings
   stations (`0x8fa0c9`, a distinct blue-grey so it doesn't collide), gold `0xffe066` = Noether, teal `0x4adde0` =
   Bloch, teal-green `0x4ad9a0` = Dresselhaus's transmutation panel, blue-violet `0x6a7fff` =
-  Laughlin's Analytic shop, green `0x4fd97a` = Majorana's hybrid panel, rust `0xc9884a` = Anderson's
+  Landau's Analytic shop, green `0x4fd97a` = Majorana's hybrid panel, rust `0xc9884a` = Anderson's
   impurity-doping panel, amber `0xffa64a` = Feynman's move-leveling panel (and its own
   question-streak sub-panel), red `0xe86a44` = Kondo's
   self-buff shop, purple `0xa878c9` = Franklin's passive panel, olive `0xc9d84a` =
@@ -715,19 +715,19 @@ everything else by absence, so only two things in it carry meaning.
   `renderListColumnFooter`/`destroyPanel`/`sideBySideColumns` (see the file-tree entry above) is the
   genuinely multi-caller case, shared today by Dresselhaus/Anderson/Majorana/Noether/Kondo/
   Feynman's own
-  panels plus HubScene's Qumatex panel (the paginated-left-column shape), by Laughlin's/
+  panels plus HubScene's Qumatex panel (the paginated-left-column shape), by Landau's/
   Skłodowska-Curie's own panels (the bespoke always-both-visible two-column shape), and -- for
   `insertColumnDivider`/`destroyPanel`, which are about panel chrome rather than the list+detail
   split itself -- by Franklin's own crystal-beside-list panel too. Both
-  Laughlin's and Skłodowska-Curie's panels also share `tunableMoveShop.ts`'s
+  Landau's and Skłodowska-Curie's panels also share `tunableMoveShop.ts`'s
   `hostableClasses`/`renderInlineClassPicker` -- the inline quasiparticle-picker row strip each
   renders directly beneath a move's own column, written generically (any move id, filtered to
   whatever the player's current form can host via `canHost`; caller supplies its own row
   labels/afford state) rather than folded into either guardian's own file, the same shape a
   future guardian selling another tunable move could reuse. Their pricing models still differ --
-  Skłodowska-Curie's per-class-unlock cost is fundamentally different from Laughlin's flat
+  Skłodowska-Curie's per-class-unlock cost is fundamentally different from Landau's flat
   one-time move purchase (see "Guardians" below) -- so each panel keeps its own
-  `buyLaughlinMove`/`retuneLaughlinMove` or `pickUltimateClass` commit logic; only the picker's
+  `buyLandauMove`/`retuneLandauMove` or `pickUltimateClass` commit logic; only the picker's
   own row-packing/rendering is shared.
   Genuinely cross-cutting dialogue infrastructure -- `addDialogueButton(At)`,
   `renderPagedButtons`, `renderFarewellFooter`/`renderCancelFarewellFooter` (the latter's
@@ -754,7 +754,7 @@ everything else by absence, so only two things in it carry meaning.
   `kondoActiveMove` instead, written by the detail pane's own confirm button -- the same
   "browsing is free, committing is the confirm button" split every other list+detail panel
   uses -- with Superposition Mode's `applySuperpositionUnlocks` additionally seeding it to a
-  random one of the three while it's still unset)) -- Laughlin's and Skłodowska-Curie's own
+  random one of the three while it's still unset)) -- Landau's and Skłodowska-Curie's own
   panels have no pagination/preview field of their own at all, since each always renders both of its two fixed moves at once rather than
   browsing a candidate list -- and the player-form
   mutator `applyPlayerForm` (shared by Dresselhaus's `transmuteInto` and Majorana's
@@ -805,7 +805,7 @@ everything else by absence, so only two things in it carry meaning.
   `art/attackStyles.ts` and `MOVE_COMPATIBILITY` in `data/materials.ts` together). Two
   deliberate exceptions, both `Record<moveId, AttackShape>` lookups consulted in the same order
   (`ANALYTIC_SHAPES[move.id] ?? ULTIMATE_SHAPES[move.id]`) before falling back to
-  `EFFECT_STYLE`'s per-class shape: `ANALYTIC_SHAPES` overrides the shape for Laughlin's two
+  `EFFECT_STYLE`'s per-class shape: `ANALYTIC_SHAPES` overrides the shape for Landau's two
   moves (`skyfallBeam`, `groundEruption`), and `ULTIMATE_SHAPES` overrides it for
   Skłodowska-Curie's two (`ultimateMeteor`, `ultimateNova`) -- both since these moves want their
   own silhouette regardless of whichever ordinary quasiparticle class each is currently tuned
@@ -950,7 +950,7 @@ move's name in `BattleScene` (move buttons, the battle log) goes through the mat
 `moveDisplayName(registry, moveId)` on the player's own side (`tunedMoveDisplayName` otherwise)
 for the same isPlayer-gated reason -- see `moveButtonContent`/`resolveHit`'s `applyResult`/
 `resolveSelfBuff`. `resolveHit` also takes a `bonusMultiplier` param (default `1`,
-a no-op) -- `playerAttack` forwards one of Laughlin's Analytic moves' answer-gated 2x/0.5x, or
+a no-op) -- `playerAttack` forwards one of Landau's Analytic moves' answer-gated 2x/0.5x, or
 one of Skłodowska-Curie's Ultimate moves' all-or-nothing 1x/0x, through to the one `resolveHit`
 call for that specific move id; the opponent's hit(s) in the same round are never affected. The
 question(s) are always answered *before* `resolveHit` runs (`BattleScene.showAnalyticQuestion`/
@@ -1109,7 +1109,7 @@ animation itself fires can never affect real damage/turn-state for that path eit
 `BattleScene.moveSections(moveIds)` splits `getBattleMoves`'s result into up to four
 sections (a module-level `MoveSection[]`, filtered to only the ones with at least one usable
 move): **Attacks** (every move whose id isn't in `ANALYTIC_MOVE_IDS` or `ULTIMATE_MOVE_IDS`, and
-whose `class` isn't `'screening'`), **Analytic** (Laughlin's two moves, identified by id rather
+whose `class` isn't `'screening'`), **Analytic** (Landau's two moves, identified by id rather
 than by a shared class, `★` tag, own "right=2x wrong=½x" legend sub-line under its own header),
 **Ultimate** (Skłodowska-Curie's two moves, `★★★` tag, own "3/3 correct or it whiffs" legend
 sub-line), **Buffs** (Kondo's currently-active self-buff move, at most one, own "self-buff, no
@@ -1775,8 +1775,8 @@ greyscale (see STYLE.md's per-guardian overworld sections for each design and th
 states): `art/noether.ts`'s `makeNoetherAvatar` (golden robed deity, halo + wide sleeves),
 `art/bloch.ts`'s `makeBlochAvatar` (robed figure, wireframe Bloch-sphere head, teal),
 `art/dresselhaus.ts`'s `makeDresselhausAvatar` (half-crystal transmutation figure with a
-carbon-hexagon head, teal-green), `art/laughlin.ts` (stepped wedding-cake quantum Hall
-droplet with a lifted quasihole), `art/majorana.ts` (figure split into two breathing halves
+carbon-hexagon head, teal-green), `art/landau.ts` (ladder of evenly spaced flat levels
+with an electron jumping between them), `art/majorana.ts` (figure split into two breathing halves
 joined by a mote seam), `art/anderson.ts` (disconnected-fragment scatter around a bright
 localized core, world 6), `art/feynman.ts` (vertex/propagator diagram construct, no
 robe/cloak fill, amber, world 7), `art/kondo.ts` (small local-moment figure inside two
@@ -1801,7 +1801,7 @@ without being about the guardian at all -- e.g. "Anderson localization"/"Anderso
 physics terminology (DESIGN.md, `quiz.ts`) has nothing to do with the guardian named Anderson, so
 a blind find-and-replace on a name is unsafe).
 
-**Laughlin (world 4), Majorana (world 5), Anderson (world 6), Feynman (world 7), Kondo (world 8),
+**Landau (world 4), Majorana (world 5), Anderson (world 6), Feynman (world 7), Kondo (world 8),
 Franklin (world 9), and Skłodowska-Curie (world 10) all have real mechanics**, following the
 same `open: (s) => showXPanel(s)` pattern as Noether/Bloch/Dresselhaus (see "Guardian panels"
 above for the `scenes/panels/` file-per-guardian convention every one of them follows):
@@ -1895,7 +1895,7 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   renders no columns, so it falls back to a full-width `renderFarewellFooter` -- the same
   no-left-column-to-put-it-in case Noether's empty Moves tab handles. Confirming deducts the cost
   immediately (before a single question is asked, and never refunded) and calls `showLevelStreak`, a self-contained recursive question flow (`getAnalyticQuestions`
-  from `data/quiz.ts`, the same visited-world-filtered pool Laughlin's own single question
+  from `data/quiz.ts`, the same visited-world-filtered pool Landau's own single question
   draws from) built the same way `OverworldScene.showEncounter`'s pre-battle quiz and
   `BattleScene.showUltimateQuestions` are, just living in the overworld panel rather than
   mid-battle -- stops at the first wrong answer (writing nothing) or, on a full streak, writes
@@ -1945,15 +1945,15 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   cost/status line and a "Learn `<name>`" confirm button that
   deducts `shopCost` and appends to `unlockedMoves` directly. `ANALYTIC_MOVE_IDS`/
   `ULTIMATE_MOVE_IDS` (below) are deliberately excluded from `SHOP_MOVE_IDS` so Noether never
-  also offers Laughlin's/Skłodowska-Curie's own moves.
-- **Laughlin's Analytic-move panel** (`scenes/panels/laughlin.ts`'s `showLaughlinPanel`/
+  also offers Landau's/Skłodowska-Curie's own moves.
+- **Landau's Analytic-move panel** (`scenes/panels/landau.ts`'s `showLandauPanel`/
   `renderAnalyticColumns`/`renderAnalyticColumn`) is a **bespoke two-column layout**, not the
   list+detail shape above -- with only ever two fixed moves (`ANALYTIC_MOVE_IDS`:
   `skyfallBeam`/`groundEruption`), both always render side by side at once
   (`scenes/panels/listDetail.ts`'s `sideBySideColumns`, panel width `TWO_UP_PANEL_W`) rather than
   being browsed one at a time through a candidate list, so there is no preview/pagination field
-  of Laughlin's own on `GuardianPanelHost` at all. Each column's own `renderMoveDetailHeader`
-  call (its own `laughlin:<moveId>`-keyed preview chain, "Attack effects" in STYLE.md and
+  of Landau's own on `GuardianPanelHost` at all. Each column's own `renderMoveDetailHeader`
+  call (its own `landau:<moveId>`-keyed preview chain, "Attack effects" in STYLE.md and
   `art/moveEffectPreview.ts` above) shows that move's own real battle-effect animation looping,
   its name read via `moveDisplayName` (folds in both the current quasiparticle and Feynman's own
   level prefix). Below that, a status line, then -- **inline, directly beneath that column**,
@@ -1963,8 +1963,8 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   filtered through `canHost(playerMaterial.type, cls)` (so only classes the player's *current*
   form can host are ever pickable), each labeled via `quasiparticleLabel`. Clicking a row on a
   still-unbought move both buys (checks/deducts `shopCost`, appends to `unlockedMoves`) and tunes
-  in one click (`buyLaughlinMove`); clicking a row on an already-bought move just retunes, free
-  (`retuneLaughlinMove`) -- either way it writes registry/save `moveClassTuning[moveId]` (a map
+  in one click (`buyLandauMove`); clicking a row on an already-bought move just retunes, free
+  (`retuneLandauMove`) -- either way it writes registry/save `moveClassTuning[moveId]` (a map
   shared with Skłodowska-Curie's Ultimate moves below, since it's keyed by move id, not owner),
   read by `data/materials.ts`'s `getTunedMoveClass` in place of the move's own static `class`
   (which defaults to `'phonon'`, the same universal class Phonon Beam carries) wherever
@@ -1986,23 +1986,23 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   fight.
 - **Skłodowska-Curie's Ultimate-move panel** (`scenes/panels/sklodowskaCurie.ts`'s
   `showSklodowskaCuriePanel`/`renderUltimateColumns`/`renderUltimateColumn`/
-  `pickUltimateClass`) is the same **bespoke two-column layout** Laughlin's own panel uses, and
+  `pickUltimateClass`) is the same **bespoke two-column layout** Landau's own panel uses, and
   is deliberately **not** built on `tunableMoveShop.ts`'s buy/retune commit logic (though it does
   share that module's `hostableClasses`/`renderInlineClassPicker` row-rendering) -- her pricing
   model has no separate "buy the move" step at all. Both of the fixed `ULTIMATE_MOVE_IDS`
   (`ultimateMeteor`/`ultimateNova`) always render side by side, named via `moveDisplayName`
-  (there's no forSale/learned split the way Noether's/Laughlin's own left columns have, since
+  (there's no forSale/learned split the way Noether's/Landau's own left columns have, since
   picking a class *is* what first unlocks the move); each column's `renderMoveDetailHeader` shows
   its own animation looping (overridden to the longer `playMeteor`/`playNova`
   sequences via `ULTIMATE_SHAPES`, "Attack effects" in STYLE.md, its own `curie:<moveId>`-keyed
   preview chain), a status line reading the
-  move's current quasiparticle (`getTunedMoveClass`, the same helper Laughlin's panel reads) or
+  move's current quasiparticle (`getTunedMoveClass`, the same helper Landau's panel reads) or
   "Not yet unlocked" if the move isn't in `unlockedMoves` yet, and -- **inline directly beneath
   it** -- one pill button per hostable class, this time each row's own cost read straight off
   registry/save `ultimateClassesUnlocked[moveId]` rather than a flat move price: "Free" (plus
   " (current)" on the presently-tuned class) for a class already unlocked for that move, else
   `ULTIMATE_CLASS_UNLOCK_COST` (1000) qumatessence, dimmed per-row (not all rows together, unlike
-  Laughlin's flat-cost picker) if the player can't afford that specific class right now. Picking
+  Landau's flat-cost picker) if the player can't afford that specific class right now. Picking
   an already-unlocked class just retunes (writes `moveClassTuning[moveId]`); picking a
   new one deducts the cost, appends the class to `ultimateClassesUnlocked[moveId]`, retunes, and
   -- only on that move's very first-ever unlock -- appends the move id to `unlockedMoves` so it
@@ -2025,7 +2025,7 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   listDetail.ts`, "Candidate-crystal lists" above): the left column names all three
   `KONDO_MOVE_IDS` via `moveDisplayName`; a row click only sets `scene.kondoMovePreview`
   (browsing costs nothing regardless of how many moves are looked at, same as every other
-  list+detail panel). Unlike Noether's/Laughlin's/Skłodowska-Curie's own moves, a Kondo move is a
+  list+detail panel). Unlike Noether's/Landau's/Skłodowska-Curie's own moves, a Kondo move is a
   self-buff rather than a travelling attack -- `BattleScene.resolveSelfBuff` plays its real
   effect centered on the caster's own position (`from === to === pos`, not flying attacker to
   target) -- so the right column's detail header is `renderMoveDetailHeader`'s self-buff sibling,
@@ -2049,7 +2049,7 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   None of the three is gated by `MOVE_COMPATIBILITY`, so every one of them is always for sale
   until bought -- there's no empty/wrong-form state to render here, unlike Noether's shop. Kondo
   has no committed-choice field of its own the way Anderson's two-step pick does -- like
-  Majorana/Laughlin/Skłodowska-Curie, `scene.kondoMovePreview` alone drives the whole detail
+  Majorana/Landau/Skłodowska-Curie, `scene.kondoMovePreview` alone drives the whole detail
   pane, and the actual commit is registry/save `kondoActiveMove`, written only by the detail
   pane's own confirm button. This active/inactive split is a narrow, Kondo-specific special case
   in `getBattleMoves` (`data/materials.ts`): a `KONDO_MOVE_IDS` entry is surfaced purely by
@@ -2401,7 +2401,7 @@ see "Bloch in the overworld" (STYLE.md) for the full layout. The Lab's own Tutor
 *topic* the same way, with no art and no commit step at all -- the detail pane is just that
 topic's own title and body, selecting a row is the whole interaction -- reusing the scaffolding
 purely for its paginated-list-plus-detail-pane shape, not for anything crystal/move-specific
-about it. Laughlin's and
+about it. Landau's and
 Skłodowska-Curie's own panels do *not* use this scaffolding at all -- each has exactly two fixed
 moves, always both rendered at once through their own bespoke `sideBySideColumns` layout instead
 of a browsed candidate list (see "Guardians" above); neither imports `renderListColumn` or
@@ -2448,7 +2448,7 @@ block and text instead. It places exactly one button; a panel needing a second e
 full-width two-button `renderCancelFarewellFooter` row instead. `DETAIL_STAGE_H` (`104`) and
 `DETAIL_CRYSTAL_SIZE` (`44`) are the one art-block height/crystal size all three detail-pane
 openers (and Qumatex's own pane) share, fixed regardless of the text-size setting ("art, not
-text"); Laughlin's/Skłodowska-Curie's own two-up columns pass `renderMoveDetailHeader` the
+text"); Landau's/Skłodowska-Curie's own two-up columns pass `renderMoveDetailHeader` the
 shorter `TWO_UP_STAGE_H` (`84`) instead, since a panel with no left column reclaims no footer
 height to spend and their columns carry an inline class picker a browsed pane doesn't.
 `renderStatusAndConfirm` is the shared tail every one of
@@ -2457,7 +2457,7 @@ there's nothing to commit -- Dresselhaus's current form, Bloch's current or undi
 parameterized only over the wording, the dimmed-when-unavailable flag, and two per-panel spacing
 knobs (`statusCap`, Anderson's tighter `1.1`; `gapAfterStatus`, Bloch's tighter `4`).
 `LIST_DETAIL_PANEL_W`
-(`720`) is the panel width every list+detail panel uses; Laughlin's/Skłodowska-Curie's own
+(`720`) is the panel width every list+detail panel uses; Landau's/Skłodowska-Curie's own
 bespoke panels use the wider `TWO_UP_PANEL_W` (`800`) instead (see "Guardians" above).
 
 **A preview click is a scoped update, not a panel rebuild** in Dresselhaus's, Anderson's,
@@ -2522,7 +2522,7 @@ since passive ids are globally unique across `PASSIVES`) and
 equipped, per owner -- `data/passives.ts`'s `PassiveOwner`/`PASSIVE_OWNERS`, same "several
 unlocked, one active per owner" shape as `kondoActiveMove`, see "Guardians" above),
 `moveClassTuning: Partial<Record<string, MoveClass>>` (which quasiparticle a given tunable move
-is tuned to, by move id -- shared by Laughlin's two Analytic moves and Skłodowska-Curie's two
+is tuned to, by move id -- shared by Landau's two Analytic moves and Skłodowska-Curie's two
 Ultimate moves alike, since it's keyed by move id, not owner; an id missing from this map is
 "untuned," `data/materials.ts`'s `getTunedMoveClass` falls back to the move's own default
 `'phonon'` class), `ultimateClassesUnlocked: Partial<Record<string, MoveClass[]>>` (which

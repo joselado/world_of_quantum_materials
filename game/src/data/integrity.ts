@@ -22,7 +22,7 @@ export function checkDataIntegrity(builtWorlds: number[]): void {
       if (!(moveId in MOVES)) {
         problems.push(`Material "${material.name}" lists unknown move id "${moveId}" (not in MOVES)`);
       }
-      // Analytic (Laughlin, World 4) and Ultimate (Skłodowska-Curie, World 10)
+      // Analytic (Landau, World 4) and Ultimate (Skłodowska-Curie, World 10)
       // moves are player-only -- their quiz gate lives in BattleScene's move-menu
       // click handler, not in the damage formula, so an opponent rolling one of
       // these ids would bypass the gate entirely and hit at full power for free.

@@ -15,6 +15,7 @@
     "music-arc-check": "node scripts/music-arc-check.mjs",
     "greyscale-check": "node scripts/greyscale-check.mjs",
     "perf-check": "node scripts/perf-check.mjs",
+    "shots": "node scripts/shots.mjs",
     "component-check": "node scripts/component-check.mjs",
     "playthrough-check": "node scripts/playthrough-check.mjs"
   },

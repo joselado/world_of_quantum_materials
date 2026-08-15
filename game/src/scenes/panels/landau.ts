@@ -1,6 +1,6 @@
 import type Phaser from 'phaser';
 import type { GuardianPanelHost } from '../OverworldScene';
-import { makeLaughlinAvatar } from '../../art/laughlin';
+import { makeLandauAvatar } from '../../art/landau';
 import { playGuardianChime } from '../../audio/sfx';
 import { ANALYTIC_SHAPES } from '../../art/attackEffects';
 import { CANVAS_W } from '../../art/perspective';
@@ -12,13 +12,13 @@ import { hostableClasses, renderInlineClassPicker } from './tunableMoveShop';
 import { TWO_UP_PANEL_W, TWO_UP_STAGE_H, sideBySideColumns, renderMoveDetailHeader, insertColumnDivider } from './listDetail';
 import { persistFromRegistry } from '../../data/save';
 
-// Laughlin stands at world 4's middle tile (WORLD_GUARDIANS) and sells his
+// Landau stands at world 4's middle tile (WORLD_GUARDIANS) and sells his
 // two quiz-gated Analytic moves (data/materials.ts's ANALYTIC_MOVE_IDS, a
 // lance move and an eruption move, each displayed as "<quasiparticle> Lance"/
 // "<quasiparticle> Eruption" via moveDisplayName, which also folds in
 // Feynman's own Double/Triple/Infinite level prefix) -- kept out of
 // Noether's own shop (SHOP_MOVE_IDS excludes them, see materials.ts's
-// comment) so Laughlin is their one source.
+// comment) so Landau is their one source.
 //
 // Bespoke two-column layout (TWO_UP_PANEL_W, wider than the ordinary
 // LIST_DETAIL_PANEL_W list+detail panels use, scenes/panels/listDetail.ts):
@@ -39,15 +39,15 @@ import { persistFromRegistry } from '../../data/save';
 // not a separate full-panel sub-view -- one row per hostable quasiparticle
 // class (tunableMoveShop.ts's renderInlineClassPicker): for a still-unbought
 // move, clicking any row buys and tunes to that class in one step
-// (buyLaughlinMove); for an already-bought move, clicking a row retunes for
-// free among any hostable class (retuneLaughlinMove), the currently-tuned
+// (buyLandauMove); for an already-bought move, clicking a row retunes for
+// free among any hostable class (retuneLandauMove), the currently-tuned
 // row marked "(current)". Picking a different class re-renders the whole
 // panel (this file's own established full-rebuild-per-click convention,
 // same as every other guardian panel), but only *this* column's own preview
 // chain (art/moveEffectPreview.ts, keyed per move id) is retargeted by
 // it -- the other column's chain keeps looping through the rebuild
 // undisturbed, since it's still passed the same params it already had.
-export function showLaughlinPanel(scene: GuardianPanelHost) {
+export function showLandauPanel(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
   // Deliberately does NOT call stopMoveEffectPreview() here -- both
   // columns' own renderMoveDetailHeader calls below always run, retargeting
@@ -63,7 +63,7 @@ export function showLaughlinPanel(scene: GuardianPanelHost) {
   let y = top;
 
   const avatarY = y + 42;
-  const avatar = makeLaughlinAvatar(scene);
+  const avatar = makeLandauAvatar(scene);
   avatar.setPosition(CANVAS_W / 2, avatarY);
   container.add(avatar);
   scene.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
@@ -81,7 +81,7 @@ export function showLaughlinPanel(scene: GuardianPanelHost) {
     .text(
       CANVAS_W / 2,
       y,
-      '"An excited fractional quantum Hall state answers a blow with only a fraction of its force -- but tell me the physics right and I\'ll teach your crystal to strike by it instead. Answer right and the hit lands twice as hard, answer wrong and it barely lands at all. Tell me which quasiparticle to carry it with, too."',
+      '"Put a strong enough field on a two-dimensional electron gas and its whole band collapses into a ladder of flat levels, one fixed quantum of energy apart -- tell me the physics right and I\'ll teach your crystal to strike by that ladder. Answer right and the hit climbs a rung and lands twice as hard, answer wrong and it barely lands at all. Tell me which quasiparticle to carry it with, too."',
       { fontSize: `${Math.round(11 * introScale)}px`, fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
     )
     .setOrigin(0.5, 0);
@@ -134,7 +134,7 @@ function renderAnalyticColumn(
     y,
     colW,
     level,
-    `laughlin:${id}`,
+    `landau:${id}`,
     TWO_UP_STAGE_H
   );
 
@@ -170,13 +170,13 @@ function renderAnalyticColumn(
     dim: !isLearned && !affordable,
   }));
   ny = renderInlineClassPicker(scene, container, centerX, ny, colW, options, (cls) =>
-    isLearned ? retuneLaughlinMove(scene, id, cls) : buyLaughlinMove(scene, id, cost, cls)
+    isLearned ? retuneLandauMove(scene, id, cls) : buyLandauMove(scene, id, cost, cls)
   );
 
   return ny;
 }
 
-function buyLaughlinMove(scene: GuardianPanelHost, id: string, cost: number, chosenClass: MoveClass) {
+function buyLandauMove(scene: GuardianPanelHost, id: string, cost: number, chosenClass: MoveClass) {
   if ((scene.game.registry.get('qumatessence') as number) < cost) return;
   const assigned = (scene.game.registry.get('moveClassTuning') as Partial<Record<string, MoveClass>>) ?? {};
   scene.qumatessence -= cost;
@@ -186,13 +186,13 @@ function buyLaughlinMove(scene: GuardianPanelHost, id: string, cost: number, cho
   scene.game.registry.set('moveClassTuning', { ...assigned, [id]: chosenClass });
   persistFromRegistry(scene.game.registry);
   scene.dialogueContainer?.destroy(true);
-  showLaughlinPanel(scene);
+  showLandauPanel(scene);
 }
 
-function retuneLaughlinMove(scene: GuardianPanelHost, id: string, chosenClass: MoveClass) {
+function retuneLandauMove(scene: GuardianPanelHost, id: string, chosenClass: MoveClass) {
   const assigned = (scene.game.registry.get('moveClassTuning') as Partial<Record<string, MoveClass>>) ?? {};
   scene.game.registry.set('moveClassTuning', { ...assigned, [id]: chosenClass });
   persistFromRegistry(scene.game.registry);
   scene.dialogueContainer?.destroy(true);
-  showLaughlinPanel(scene);
+  showLandauPanel(scene);
 }

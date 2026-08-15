@@ -17,7 +17,7 @@ destination list is where a warp actually happens.
 | [Noether's Currents](#noethers-currents) | 1 | Sells ordinary moves and stat upgrades |
 | [Bloch's States](#blochs-states) | 2 | Teleports you between worlds you've visited |
 | [Dresselhaus's Nanostructures](#dresselhauss-nanostructures) | 3 | Lets you transmute into a defeated crystal |
-| [Laughlin's Analytics](#laughlins-analytics) | 4 | Sells two quiz-gated Analytic moves |
+| [Landau's Formulas](#landaus-formulas) | 4 | Sells two quiz-gated Analytic moves |
 | [Majorana's Fusion](#majoranas-fusion) | 5 | Fuses two crystals into a hybrid state |
 | [Anderson's Impurities](#andersons-impurities) | 6 | Lets you dope in an impurity move |
 | [Feynman's Diagrammatics](#feynmans-diagrammatics) | 7 | Lets you level up a move you already know |
@@ -70,9 +70,9 @@ standalone crystals, never a [hybrid](hybrids.md).
 
 <img src="../screenshots/docs-guardians-dresselhaus-panel.png" width="300" alt="Dresselhaus's panel: crystals available to become, the selected one drawn beside its 25-qumatessence cost">
 
-## Laughlin's Analytics
+## Landau's Formulas
 
-<img src="../screenshots/docs-guardians-laughlin-avatar.png" width="300" alt="Laughlin: a stepped, incompressible droplet with a single quasihole lifted clear of it, labelled with the fraction one third">
+<img src="../screenshots/docs-guardians-landau-avatar.png" width="300" alt="Landau: a ladder of flat, evenly spaced levels with one electron jumping between them, drawn over the faint parabola of the band they came from">
 
 Sells two quiz-gated Analytic moves. Each one asks a physics-equation
 question before it lands — answer right and it hits for double damage,
@@ -80,7 +80,7 @@ answer wrong and it's halved — with a flashier effect than an ordinary move.
 The question pool only draws from worlds you've already visited, so early on
 you'll only be asked things you could plausibly already know.
 
-Buying (or later revisiting Laughlin) also lets you pick which quasiparticle
+Buying (or later revisiting Landau) also lets you pick which quasiparticle
 the move should carry, filtered to whatever your *current* form can host.
 The move stays usable from any form and always asks its question, but this
 choice decides whether it can land a quasiparticle-mismatch hit like an
@@ -90,7 +90,7 @@ every form hosts — for as long as you wear that form. Your pick is kept:
 transmute back into a form that can host it and the move carries it again,
 free and without retuning.
 
-<img src="../screenshots/docs-guardians-laughlin-panel.png" width="300" alt="Laughlin's shop: his two Analytic moves side by side, each playing its own effect above the quasiparticles it can be tuned to">
+<img src="../screenshots/docs-guardians-landau-panel.png" width="300" alt="Landau's shop: his two Analytic moves side by side, each playing its own effect above the quasiparticles it can be tuned to">
 
 ## Majorana's Fusion
 

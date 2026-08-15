@@ -30,7 +30,7 @@ export { BASE_STAT, MAX_STAT, DEFAULT_STATS, enemyStatsForWorld, statUpgradeCost
 // quasiparticle-naming rule -- a technique/process the player applies (a
 // scattering channel deliberately tuned) rather than a particle a crystal
 // itself emits, so their names describe the process instead (see that
-// class's own comment below). Laughlin's Analytic moves (skyfallBeam/
+// class's own comment below). Landau's Analytic moves (skyfallBeam/
 // groundEruption below) and Skłodowska-Curie's Ultimate moves
 // (ultimateMeteor/ultimateNova) each name a quasiparticle like any other
 // move too, but a dynamic one -- `tunedMoveDisplayName` renders each as
@@ -107,7 +107,7 @@ export const MOVES: Record<string, Move> = {
   // A Z2 gauge-flux (vortex) excitation -- spinon's topological-order
   // companion in a Z2 quantum spin liquid.
   visonLoop: { id: 'visonLoop', name: 'Vison Loop', class: 'vison', power: 10 },
-  // Laughlin's quiz-gated Analytic moves (§5, World 4, ANALYTIC_MOVE_IDS
+  // Landau's quiz-gated Analytic moves (§5, World 4, ANALYTIC_MOVE_IDS
   // below) -- power sits below the other exotic-tier moves since their real
   // payoff is the answer-gated 2x/0.5x multiplier BattleScene applies, not
   // raw power. Never listed in any material's `moves` array (wild/rival
@@ -115,7 +115,7 @@ export const MOVES: Record<string, Move> = {
   // and an opponent using one would bypass the quiz gate entirely (it lives
   // in the player-only move-menu click handler, not the damage formula).
   // Each starts at the universal 'phonon' class (so it's usable/
-  // never-mismatched before the player ever tunes it) -- Laughlin's picker
+  // never-mismatched before the player ever tunes it) -- Landau's picker
   // (TUNABLE_MOVE_CLASSES, getTunedMoveClass) lets the player assign it any
   // quasiparticle their current form hosts instead.
   skyfallBeam: { id: 'skyfallBeam', name: 'Phonon Lance', class: 'phonon', power: 10 },
@@ -188,14 +188,14 @@ export const MOVES: Record<string, Move> = {
   },
 };
 
-// Laughlin is the sole seller of these two quiz-gated Analytic moves
-// (scenes/panels/laughlin.ts, panels/tunableMoveShop.ts, mirroring
+// Landau is the sole seller of these two quiz-gated Analytic moves
+// (scenes/panels/landau.ts, panels/tunableMoveShop.ts, mirroring
 // Noether's showNoetherShop) -- kept out of SHOP_MOVE_IDS so Noether's own
 // shop never offers them too. Named explicitly by id rather than filtered
 // by class -- unlike Kondo's screening moves, these don't share a
 // distinguishing class of their own (each carries whatever ordinary
 // quasiparticle class the player has tuned it to, see getTunedMoveClass
-// below), so "is this one of Laughlin's moves" is a fact about the move's
+// below), so "is this one of Landau's moves" is a fact about the move's
 // identity, not something derivable from `class`.
 //
 // Never add these ids (or ULTIMATE_MOVE_IDS below) to any material's
@@ -232,7 +232,7 @@ export const ULTIMATE_CLASS_UNLOCK_COST = 1000;
 // `cost` and Skłodowska-Curie's `ULTIMATE_CLASS_UNLOCK_COST` already use,
 // just keyed per candidate rather than per passive/class. Priced well
 // below Franklin's 40-50 whole-passive band and Noether's/
-// Laughlin's/Kondo's ~35-55 `shopCost` moves, since a single option here is
+// Landau's/Kondo's ~35-55 `shopCost` moves, since a single option here is
 // a narrower purchase than a whole passive or move -- unlocking every
 // option of an ability (e.g. every world Bloch can reach) costs
 // meaningfully more in total than the old flat per-ability price did, by
@@ -246,7 +246,7 @@ export const ULTIMATE_CLASS_UNLOCK_COST = 1000;
 // pure travel; Anderson (world 6) permanently opens one
 // specific dopant's move channel and sits later in the world progression,
 // so it costs more still; Majorana (world 5) is priced highest of the
-// four -- above even Noether's/Laughlin's/Kondo's ordinary `shopCost` top
+// four -- above even Noether's/Landau's/Kondo's ordinary `shopCost` top
 // end (~55) -- despite sitting earlier than Anderson, since unlocking one
 // specific hybrid result is comparable in value to learning a whole new
 // move, and fusing at all only reaches HYBRID_RECIPES' curated results, an
@@ -328,7 +328,7 @@ export const KONDO_MOVE_IDS = Object.values(MOVES)
 
 // Every move Noether can eventually teach, priced by raw power
 // (`OverworldScene.shopCost`) -- everything except the player's starting
-// Phonon Beam, Laughlin's quiz-gated Analytic moves (ANALYTIC_MOVE_IDS,
+// Phonon Beam, Landau's quiz-gated Analytic moves (ANALYTIC_MOVE_IDS,
 // sold only by him), Skłodowska-Curie's quiz-gated Ultimate moves
 // (ULTIMATE_MOVE_IDS, sold only by her, and priced completely differently
 // besides -- see her panel), and Kondo's screening moves (KONDO_MOVE_IDS,
@@ -526,7 +526,7 @@ export function getBattleMoves(registry: RegistryLike): string[] {
 
 // The quasiparticle class BattleScene's mismatch check should use for a
 // given move -- ordinarily just that move's own fixed `class`, except for a
-// tunable move (Laughlin's two Analytic moves, Skłodowska-Curie's two
+// tunable move (Landau's two Analytic moves, Skłodowska-Curie's two
 // Ultimate moves) once the player has tuned it via the owning guardian's
 // picker (registry/save `moveClassTuning`): the mismatch check reads the
 // player-assigned quasiparticle instead of the move's default 'phonon', so a
@@ -554,7 +554,7 @@ export function getTunedMoveClass(registry: RegistryLike, moveId: string): MoveC
   return canHost(currentType, assigned) ? assigned : 'phonon';
 }
 
-// A tunable move (Laughlin's Analytic pair, Skłodowska-Curie's Ultimate
+// A tunable move (Landau's Analytic pair, Skłodowska-Curie's Ultimate
 // pair) always displays whichever quasiparticle it's currently carrying,
 // tuned or not (e.g. skyfallBeam tuned to 'magnon' reads as "Magnon Lance";
 // untuned reads as "Phonon Lance", the same default `getTunedMoveClass`

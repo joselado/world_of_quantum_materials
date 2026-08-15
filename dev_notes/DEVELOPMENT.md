@@ -483,6 +483,33 @@ analyser taps the master bus ahead of the output compressor, so the figures
 are pre-compression; they are meaningful compared against each other, not as
 absolute loudness.
 
+## Regenerating the doc screenshots
+
+**`npm run shots`** (`scripts/shots.mjs`, ~90 seconds) rewrites the PNGs in the
+repo's top-level `screenshots/` that `README.md` and `docs/` embed. Run it after
+any change that alters what the game looks like, the same way `npm run docs` is
+run after a change to the content tables — a screenshot is the one part of the
+docs that cannot be kept true by reading it.
+
+Run a subset with `npm run shots -- worlds guardians`. The groups are `title`,
+`hub`, `worlds`, `guardians` and `battle`; no argument runs all of them.
+
+Every shot is taken at the game's own 854x480 canvas and driven through the
+scene's own methods rather than by clicking, so it is reproducible. Two framing
+rules are baked in: a world is shot from the **middle of its corridor**, walked
+in with the game's own movement so the camera follows — from the entrance a
+world is mostly its own back-exit sign — and a guardian panel is shot **before
+its looping move previews ramp up**, since a capture taken mid-cycle puts a
+plume of effect across the panel's own text.
+
+A PNG under 5 kB fails the run: that is an empty or black frame, a shot that
+"worked" but captured nothing, which the docs would otherwise embed silently.
+
+Not everything in `screenshots/` is covered. The shots that depend on a battle
+reaching a particular moment — a type-mismatch hit landing, a victory banner —
+are still hand-captured; the script's own header lists what it does drive, and
+adding one is a matter of driving the state and adding an entry.
+
 ## Checking graphics performance
 
 **`npm run perf-check`** (`scripts/perf-check.mjs`, ~16 seconds) is the gate on

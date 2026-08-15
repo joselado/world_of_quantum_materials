@@ -125,8 +125,8 @@ Abilities station too (appears once you've learned your first passive). See
 <td><img src="screenshots/mentor-majorana.png" width="300" alt="Majorana's hybrid-material panel"></td>
 </tr>
 <tr>
-<td><img src="screenshots/mentor-laughlin.png" width="300" alt="Laughlin's quiz-gated Analytic move shop"></td>
-<td><img src="screenshots/battle-analytic-move.png" width="300" alt="One of Laughlin's Analytic moves asking a physics question mid-battle"></td>
+<td><img src="screenshots/mentor-landau.png" width="300" alt="Landau's quiz-gated Analytic move shop"></td>
+<td><img src="screenshots/battle-analytic-move.png" width="300" alt="One of Landau's Analytic moves asking a physics question mid-battle"></td>
 </tr>
 <tr>
 <td><img src="screenshots/mentor-curie.png" width="300" alt="Skłodowska-Curie's capstone Ultimate-move shop"></td>

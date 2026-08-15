@@ -36,7 +36,7 @@
 //   never spends a guardian visit on Dresselhaus's transmutation panel at
 //   all. The dividing line for which systems it touches is *ongoing
 //   engagement*, not price: it never uses anything quiz-gated or
-//   plan-ahead (Feynman's streak-gated leveling, Laughlin's per-use
+//   plan-ahead (Feynman's streak-gated leveling, Landau's per-use
 //   Analytic questions, Skłodowska-Curie's 3-question Ultimates,
 //   Dresselhaus's transmute-then-reshop play, Kondo's re-cast-every-fight
 //   buffs), but it does buy the game's one genuinely fire-and-forget
@@ -182,7 +182,7 @@
 //   along the way.
 // - Quiz accuracy is one flat per-build rate, deliberately not varied per
 //   question: every quiz in the game (the pre-battle encounter question,
-//   Laughlin's per-use Analytic check, Feynman's leveling streaks,
+//   Landau's per-use Analytic check, Feynman's leveling streaks,
 //   Skłodowska-Curie's Ultimate triple) is a two-option choice -- one
 //   correct answer shuffled against one authored-to-be-plausible
 //   distractor (OverworldScene.showEncounter) -- so 0.5 is exactly
@@ -729,7 +729,7 @@ function playerMismatchMultiplierAsDefender(state) {
 // across every hostable class for a fixed move against a fixed pool, so
 // maximizing mismatch *count* is exactly maximizing expected damage, not
 // just a proxy for it. Backs both Dresselhaus's own choice of which class to
-// retune into and Laughlin's/Skłodowska-Curie's own purchase-time tuning
+// retune into and Landau's/Skłodowska-Curie's own purchase-time tuning
 // pick below. 'phonon' (never mismatches anything, but always hostable) is
 // the guaranteed floor if nothing scores better.
 function bestMismatchClass(type, pool) {
@@ -1074,7 +1074,7 @@ const BUILDS = [
     // Shadow (the game's one pay-once-permanently-active upgrade -- see
     // header comment on why that one purchase fits this archetype while
     // every quiz-gated/plan-ahead system doesn't). Capped so a single world
-    // can't spend unboundedly. Never touches Laughlin/Feynman/Kondo/
+    // can't spend unboundedly. Never touches Landau/Feynman/Kondo/
     // Skłodowska-Curie/Dresselhaus. Unlike `findWinsNeeded`'s own grind
     // loop (which assumes the *current* world's wilds are freely farmable
     // even when this build is actually losing there), a still-short build
@@ -1147,12 +1147,12 @@ const BUILDS = [
           continue;
         }
         if (world >= 4) {
-          const laughlinMove = ANALYTIC_MOVE_IDS.find((id) => !state.ownedMoves.has(id));
-          if (laughlinMove && state.qumatessence >= shopCost(MOVES[laughlinMove])) {
-            state.qumatessence -= shopCost(MOVES[laughlinMove]);
-            state.spentTotal += shopCost(MOVES[laughlinMove]);
-            state.ownedMoves.add(laughlinMove);
-            state.tunedClass.set(laughlinMove, bestMismatchClass(state.playerType, getWildPool(world)));
+          const landauMove = ANALYTIC_MOVE_IDS.find((id) => !state.ownedMoves.has(id));
+          if (landauMove && state.qumatessence >= shopCost(MOVES[landauMove])) {
+            state.qumatessence -= shopCost(MOVES[landauMove]);
+            state.spentTotal += shopCost(MOVES[landauMove]);
+            state.ownedMoves.add(landauMove);
+            state.tunedClass.set(landauMove, bestMismatchClass(state.playerType, getWildPool(world)));
             continue;
           }
         }
@@ -1183,15 +1183,15 @@ const BUILDS = [
         // Nothing on the priority list above is currently affordable --
         // before giving up, farm an earlier safe world (farmIfStuck) for
         // whichever of the cheap, always-relevant options (Tunnel Strike, the
-        // next Laughlin move, one more stat point) is nearest, same as B.Sc.
+        // next Landau move, one more stat point) is nearest, same as B.Sc.
         // above. Skips Feynman/Franklin/Ultimate's own costs here -- those
         // are optimizations this build takes when they fall into its lap,
         // not what a stuck M.Sc. would specifically grind toward.
         const wantCosts = [];
         if (!state.ownedMoves.has('tunnelStrike')) wantCosts.push(shopCost(MOVES.tunnelStrike));
         if (world >= 4) {
-          const laughlinMove = ANALYTIC_MOVE_IDS.find((id) => !state.ownedMoves.has(id));
-          if (laughlinMove) wantCosts.push(shopCost(MOVES[laughlinMove]));
+          const landauMove = ANALYTIC_MOVE_IDS.find((id) => !state.ownedMoves.has(id));
+          if (landauMove) wantCosts.push(shopCost(MOVES[landauMove]));
         }
         if (statsBoughtThisWorld < 2) {
           const statKey = STAT_ROTATION[state.statRotation % 3];
@@ -1221,12 +1221,12 @@ const BUILDS = [
           continue;
         }
         if (world >= 4) {
-          const laughlinMove = ANALYTIC_MOVE_IDS.find((id) => !state.ownedMoves.has(id));
-          if (laughlinMove && state.qumatessence >= shopCost(MOVES[laughlinMove])) {
-            state.qumatessence -= shopCost(MOVES[laughlinMove]);
-            state.spentTotal += shopCost(MOVES[laughlinMove]);
-            state.ownedMoves.add(laughlinMove);
-            state.tunedClass.set(laughlinMove, bestMismatchClass(state.playerType, getWildPool(world)));
+          const landauMove = ANALYTIC_MOVE_IDS.find((id) => !state.ownedMoves.has(id));
+          if (landauMove && state.qumatessence >= shopCost(MOVES[landauMove])) {
+            state.qumatessence -= shopCost(MOVES[landauMove]);
+            state.spentTotal += shopCost(MOVES[landauMove]);
+            state.ownedMoves.add(landauMove);
+            state.tunedClass.set(landauMove, bestMismatchClass(state.playerType, getWildPool(world)));
             continue;
           }
         }
@@ -1281,8 +1281,8 @@ const BUILDS = [
         const wantCosts = [statUpgradeCost(state.stats[STAT_ROTATION[state.statRotation % 3]], STAT_ROTATION[state.statRotation % 3])];
         if (!state.ownedMoves.has('tunnelStrike')) wantCosts.push(shopCost(MOVES.tunnelStrike));
         if (world >= 4) {
-          const laughlinMove = ANALYTIC_MOVE_IDS.find((id) => !state.ownedMoves.has(id));
-          if (laughlinMove) wantCosts.push(shopCost(MOVES[laughlinMove]));
+          const landauMove = ANALYTIC_MOVE_IDS.find((id) => !state.ownedMoves.has(id));
+          if (landauMove) wantCosts.push(shopCost(MOVES[landauMove]));
         }
         if (world >= 8 && !state.kondoOwned) wantCosts.push(shopCost(MOVES.screeningCloud));
         if (world >= 9) {

@@ -2140,7 +2140,7 @@ export function getWorldQuestion(world: number, materialName?: string): Material
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-// Laughlin's analytic moves (§5, World 4, BattleScene.showAnalyticQuestion):
+// Landau's analytic moves (§5, World 4, BattleScene.showAnalyticQuestion):
 // using `skyfallBeam` or `groundEruption` asks one of these before the hit
 // resolves -- correct doubles the damage, wrong halves it. Unlike
 // WORLD_QUESTIONS/MATERIAL_QUESTIONS above these aren't per-world or

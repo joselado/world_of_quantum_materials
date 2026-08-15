@@ -5,7 +5,7 @@ import { TUNABLE_MOVE_CLASSES, canHost } from '../../data/materials';
 import type { MoveClass } from '../../data/types';
 
 // The quasiparticle picker every tunable move's own column renders directly
-// beneath itself (Laughlin's Analytic pair, scenes/panels/laughlin.ts;
+// beneath itself (Landau's Analytic pair, scenes/panels/landau.ts;
 // Skłodowska-Curie's Ultimate pair, scenes/panels/sklodowskaCurie.ts) --
 // inline in that same panel, not a separate full-panel sub-view. Only offers
 // classes the player's *current* form can actually host (TUNABLE_MOVE_CLASSES
@@ -37,7 +37,7 @@ export interface QuasiparticleOption {
 // text-size preset's own scale even at Normal/Large -- see below) since this
 // is a dense strip of many small optional controls, not body text a Large-
 // text player needs magnified the way the status line just above it already
-// is. Each caller (Laughlin/Curie) formats its own row label and afford/dim
+// is. Each caller (Landau/Curie) formats its own row label and afford/dim
 // state, since the two pricing models differ (a flat one-time move purchase
 // vs. a per-class unlock cost, see each panel's own comment) and this module
 // has no opinion on either. `onPick` is the one action that actually runs --

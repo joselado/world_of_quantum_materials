@@ -118,7 +118,7 @@ function triggerScaleFor(index: number): number {
 //
 // `shapeOverride` lets a caller pick a specific silhouette regardless of
 // moveClass's usual one (BattleScene passes ANALYTIC_SHAPES[move.id] for
-// Laughlin's two moves, or ULTIMATE_SHAPES[move.id] for Skłodowska-Curie's
+// Landau's two moves, or ULTIMATE_SHAPES[move.id] for Skłodowska-Curie's
 // two, so those four read differently regardless of whichever quasiparticle
 // each is currently tuned to). `onComplete`/`whiff` only matter for the
 // meteor/nova shapes -- every other shape ignores them, since its tail
@@ -177,8 +177,8 @@ export function playAttackEffect(
 // of a cramped diagonal. So the attacker's side is dropped entirely and only
 // what happens at the target is drawn, on the spot:
 //
-// - meteor/nova (Skłodowska-Curie's Ultimates) and beam/eruption (Laughlin's
-//   Analytics) already summon themselves at the target from off-field sky or
+// - meteor/nova (Skłodowska-Curie's Ultimates) and beam/eruption (Landau's
+//   Analytic pair) already summon themselves at the target from off-field sky or
 //   ground rather than travelling from the attacker, so each plays its own
 //   full sequence unchanged, just without the windup.
 // - ring expands from its own origin, which collapses onto the single centre

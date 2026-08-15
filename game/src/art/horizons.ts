@@ -329,16 +329,28 @@ const SCAR_BLOCKS = [
   { w: 96, h: 20 },
 ];
 const SCAR_NOTCH = 9;
+// The height the ridge never drops below between two plateaus. A notch is cut
+// *into* the ridge, not through it: cutting to the ridge's own base separates
+// the plateaus completely at horizon scale, and a row of flat-topped shapes
+// standing clear of each other in the mist reads as planks floating above the
+// land rather than as one broken skyline. Keeping the notch floor tied to the
+// shorter of its two neighbours means a deep plateau still gets a deep notch,
+// so the ridge stays broken without coming apart.
+const SCAR_BASE = 6;
+const SCAR_NOTCH_DEPTH = 0.45;
 
 function scarRidge(): HorizonPoint[] {
-  const pts: HorizonPoint[] = [{ x: 0, h: 4 }];
+  const pts: HorizonPoint[] = [{ x: 0, h: SCAR_BASE }];
   let x = 0;
-  for (const block of SCAR_BLOCKS) {
-    pts.push({ x, h: block.h }, { x: x + block.w, h: block.h }, { x: x + block.w, h: 4 });
-    x += block.w + SCAR_NOTCH;
-    pts.push({ x, h: 4 });
-  }
-  pts.push({ x: W + SCAR_NOTCH, h: 4 });
+  SCAR_BLOCKS.forEach((block, i) => {
+    pts.push({ x, h: block.h }, { x: x + block.w, h: block.h });
+    x += block.w;
+    const next = SCAR_BLOCKS[i + 1];
+    const floor = next ? Math.max(SCAR_BASE, Math.min(block.h, next.h) * SCAR_NOTCH_DEPTH) : SCAR_BASE;
+    pts.push({ x: x + SCAR_NOTCH / 2, h: floor });
+    x += SCAR_NOTCH;
+  });
+  pts.push({ x: W + SCAR_NOTCH, h: SCAR_BASE });
   return pts;
 }
 

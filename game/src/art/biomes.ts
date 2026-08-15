@@ -376,8 +376,15 @@ const DEFECT_SCARS: Biome = {
   // what the horizon is drowned into once the gate opens. Seen from the
   // Screened Swamp, where the sun is long gone, so the only thing that can
   // announce the world beyond is light that world emits itself.
-  hillColor: 0xc4643a,
-  hillAlpha: 0.55,
+  hillColor: 0x8a4c33,
+  // Bounded by how far this base colour sits from the mist it is drowned into
+  // (WORLDS.md section 4): the Screened Swamp's air is a cool near-black
+  // grey-green, and a warm crust profile held at a high swallow stands against
+  // it as a lit slab rather than as land a world away. The molten identity is
+  // carried by the glow veins in `scarSky`, which are self-luminous and
+  // unaffected by this, so the ridge itself can afford to stay close to the
+  // mist.
+  hillAlpha: 0.22,
   ground: 0x2a0e0a,
   path: 0x9c6a52,
   fogTarget: 0x2e1010,

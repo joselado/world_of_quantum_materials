@@ -57,19 +57,19 @@ of it.
 | Superconductor | Electron, Higgs, Phonon |
 <!-- GENERATED:COMPATIBILITY_TABLE END -->
 
-## Laughlin's Analytic moves
+## Landau's Analytic moves
 
-Laughlin (World 4) sells two moves that aren't in the table above, since
+Landau (World 4) sells two moves that aren't in the table above, since
 they're quiz-gated separately: a lance and an eruption. Using either one asks
 a physics-equation question first — answer right and it hits for double
 damage, answer wrong and it's halved.
 
-Laughlin's shop also lets you tune each move to any quasiparticle class your
+Landau's shop also lets you tune each move to any quasiparticle class your
 *current* form can host, the same choice an ordinary move's fixed class
 already makes for you. Each move's name always reads "<quasiparticle>
 Lance"/"<quasiparticle> Eruption," defaulting to Phonon Lance/Phonon Eruption
 until tuned, so they're always usable. See
-[Guardians](guardians.md#laughlins-analytics) for how the shop and tuning
+[Guardians](guardians.md#landaus-formulas) for how the shop and tuning
 picker work.
 
 ## Skłodowska-Curie's Ultimate moves
@@ -82,7 +82,7 @@ spanning the whole course rather than one world's topic. Miss even one
 question and the move whiffs for zero damage, though the turn is still
 spent.
 
-Like Laughlin's Analytic moves, each one can be tuned to any quasiparticle
+Like Landau's Analytic moves, each one can be tuned to any quasiparticle
 class your *current* form can host, and always reads "<quasiparticle>
 Meteor"/"<quasiparticle> Nova." Tuning isn't a flat purchase here, though:
 each quasiparticle class costs 1000 qumatessence to unlock per move, the

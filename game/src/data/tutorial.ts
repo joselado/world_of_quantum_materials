@@ -139,9 +139,9 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
   },
   analyticMoves: {
     title: 'Analytic Moves',
-    unlock: { kind: 'guardian', ids: ['laughlin'] },
+    unlock: { kind: 'guardian', ids: ['landau'] },
     body:
-      "Laughlin (World 4) sells two quiz-gated Analytic moves, each carrying whichever quasiparticle your current crystal form can host -- buying one costs qumatessence once, and retuning it to a different hostable class any time you revisit him is free. In battle, an Analytic move asks a single physics question before it lands: answer right and the hit lands much harder, wrong and it barely lands at all.",
+      "Landau (World 4) sells two quiz-gated Analytic moves, each carrying whichever quasiparticle your current crystal form can host -- buying one costs qumatessence once, and retuning it to a different hostable class any time you revisit him is free. In battle, an Analytic move asks a single physics question before it lands: answer right and the hit lands much harder, wrong and it barely lands at all.",
   },
   hybridFusion: {
     title: 'Hybrid Fusion',
