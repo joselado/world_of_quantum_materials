@@ -3,7 +3,8 @@ import type { Biome } from '../../../art/biomes';
 import { buildContourGrid } from '../../../art/contours';
 import type { GridPoint } from '../../../world/mapgen';
 import { GRID_W, GRID_H } from '../projection';
-import type { OffPathKind, TerrainPlan, TerrainTile } from './types';
+import type { BattleLocale, OffPathKind, TerrainPlan, TerrainTile } from './types';
+import type { WallTheme } from '../../../art/biomes';
 
 // The grid as the plan pass reads it -- everything OverworldScene knows about
 // the map that decides what a tile is made of.
@@ -68,6 +69,63 @@ function classifyTiles(src: TerrainSource): TerrainTile[][] {
 // at once.
 export function offPathKindOf(biome: Biome): OffPathKind {
   return biome.wallTheme === 'rock' ? 'solid' : biome.wallTheme;
+}
+
+// The same mapping read backwards, for a caller holding a sampled kind and
+// needing the theme a biome would have stated it with (BattleScene's
+// arena color grade). Kept beside its forward half so the two can't drift.
+export function wallThemeOf(kind: OffPathKind): WallTheme {
+  return kind === 'solid' ? 'rock' : kind;
+}
+
+// How far around the encounter tile counts as "here". Two tiles out matches
+// World 9's smallest defect patch (world/generators/world9.ts's
+// PATCH_RADIUS_MIN), so a patch the player is standing in carries its own
+// tally, while the window stays small enough that two spots a few tiles apart
+// read different surroundings.
+const LOCALE_RADIUS = 2;
+
+// What the battle arena is told about where the fight started: the tile the
+// player stands on, its own biome, and a read of the ground around it. Mid
+// corridor there may be no impassable tile within the window at all, in which
+// case the surround falls back to what the tile's biome says its off-path
+// material is -- the world's own answer, which is the right one for a fight
+// in the open.
+export function sampleBattleLocale(plan: TerrainPlan, at: GridPoint): BattleLocale {
+  const x = Math.min(GRID_W - 1, Math.max(0, at.x));
+  const y = Math.min(GRID_H - 1, Math.max(0, at.y));
+  const here = plan.tiles[y][x];
+  const kinds = new Map<OffPathKind, number>();
+  const tints = new Map<number, number>();
+  for (let yy = Math.max(0, y - LOCALE_RADIUS); yy <= Math.min(GRID_H - 1, y + LOCALE_RADIUS); yy++) {
+    for (let xx = Math.max(0, x - LOCALE_RADIUS); xx <= Math.min(GRID_W - 1, x + LOCALE_RADIUS); xx++) {
+      const tile = plan.tiles[yy][xx];
+      if (tile.kind !== 'path') kinds.set(tile.kind, (kinds.get(tile.kind) ?? 0) + 1);
+      if (tile.regionTint != null) tints.set(tile.regionTint, (tints.get(tile.regionTint) ?? 0) + 1);
+    }
+  }
+  return {
+    x,
+    y,
+    biome: here.biome,
+    surround: dominant(kinds) ?? offPathKindOf(here.biome),
+    regionTint: dominant(tints) ?? null,
+  };
+}
+
+// The most common entry, with ties going to whichever was met first -- the
+// window is walked in a fixed order, so the same spot always answers the same
+// way.
+function dominant<T>(counts: Map<T, number>): T | null {
+  let best: T | null = null;
+  let bestCount = 0;
+  counts.forEach((count, key) => {
+    if (count > bestCount) {
+      best = key;
+      bestCount = count;
+    }
+  });
+  return best;
 }
 
 // The northernmost row the corridor reaches -- every generator paints its

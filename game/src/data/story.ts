@@ -33,3 +33,13 @@ export const WORLD_GOAL_TEXT: Partial<Record<number, string>> = {
   9: 'You reached the far scars. The hole is still just a hole.',
   10: "You reached the end of the corridor. It already knows you're here.",
 };
+
+// The arc's closing screen, shown by OverworldScene.showFinalePanel once the
+// last built world's rival falls. Kept here beside the beats rather than
+// inline in that panel so the Lab's Story station (data/storyLog.ts) can
+// close its own chronological reading with the same words the ending itself
+// uses.
+export const FINALE_TITLE = 'The Decoherence is stabilized.';
+
+export const FINALE_BODY =
+  "It reached for every trick it had ever watched you land, and still came up short. It was never a plague loose in these nine worlds -- it was built out of your own play, trained to wear your own moves back at you, and you out-adapted your own reflection anyway. Every symmetry, every edge state, every fractional charge you fought to protect holds on its own now, with nothing left studying how to unmake it.";

@@ -659,7 +659,8 @@ export const PLAYER_MATERIAL: Material = {
   shortName: 'Si',
   type: 'semiconductor',
   color: 0x4a90d9,
-  variant: 'shard',
+  // Diamond-cubic, like its type's default.
+  variant: 'octahedral',
   moves: ['thermalFluctuation'],
 };
 
@@ -669,14 +670,23 @@ export const PLAYER_MATERIAL: Material = {
 // showcase (TitleScene's crystal cluster) can pull real per-type looks
 // instead of duplicating color literals that would drift out of sync.
 export const TYPE_LOOK: Record<MaterialType, { color: number; variant: CrystalVariant }> = {
-  metal: { color: 0x7a8a99, variant: 'shard' },
-  // Pale, inert grey-white -- MgO's wide-gap ionic-insulator character.
-  insulator: { color: 0xb8c4cc, variant: 'shard' },
-  semiconductor: { color: 0x5a7ca6, variant: 'shard' },
+  // The elemental metals here are fcc/bcc and the semimetal is zinc blende --
+  // all cubic.
+  metal: { color: 0x7a8a99, variant: 'cubic' },
+  // Pale, inert grey-white -- MgO's wide-gap ionic-insulator character. Its
+  // rock-salt lattice is cubic, as is diamond's own.
+  insulator: { color: 0xb8c4cc, variant: 'cubic' },
+  // Diamond structure and zinc blende: the tetrahedrally-bonded cubic family,
+  // whose habit is the {111} octahedron.
+  semiconductor: { color: 0x5a7ca6, variant: 'octahedral' },
   classicalMagnet: { color: 0xc97a3a, variant: 'cluster' },
   quantumSpinLiquid: { color: 0x5ad9c9, variant: 'cluster' },
   // Deep amber/gold -- "heavy," dense, mass-renormalized carriers.
   kondoHeavyFermion: { color: 0xd9962a, variant: 'cluster' },
+  // The one type with no characteristic lattice of its own -- elemental
+  // cubic, layered cuprate, hydride and TMD superconductors share nothing
+  // structurally -- so it keeps the generic faceted habit and each member
+  // states its own structure via `variantOverride`.
   superconductor: { color: 0x7fd1e8, variant: 'shard' },
   // Superconductor blue shifted toward violet -- reads as that type's own
   // exotic cousin rather than an unrelated hue.
@@ -691,8 +701,10 @@ export const TYPE_LOOK: Record<MaterialType, { color: number; variant: CrystalVa
   // MoTe₂) genuinely is a twisted moiré stack.
   fractionalChern: { color: 0xe8c94a, variant: 'twisted' },
   // Rose -- contrasts multiferroic's magenta, evokes electric polarization
-  // rather than magnetism.
-  ferroelectric: { color: 0xd96a8a, variant: 'shard' },
+  // rather than magnetism. 'tetragonal' since the type's archetypes (BaTiO₃'s
+  // room-temperature P4mm perovskite, KDP) both polarize along a four-fold
+  // axis, which is the distortion the order parameter lives on.
+  ferroelectric: { color: 0xd96a8a, variant: 'tetragonal' },
   multiferroic: { color: 0xc94ac0, variant: 'layer' },
 };
 
@@ -723,15 +735,19 @@ export function materialTypeLabel(type: MaterialType): string {
 // A crystal database row: real compound name + main type (which fixes its
 // look and its move compatibility). `shadeStep` just separates same-type
 // siblings visually (e.g. Iron vs. Cobalt) using TYPE_LOOK's base color.
-// `variantOverride` lets a specific compound render as a floating 2D sheet
-// or a twisted double-layer instead of its type's usual shard/cluster/prism
-// look -- for the handful of compounds the design doc's crystal database
-// itself calls out as monolayer/van der Waals/twisted (Graphene, Monolayer
-// WTe2, CrI3, Twisted Bilayer MoTe2), not a blanket per-type rule.
+// `variantOverride` states a compound's own crystal habit where its structure
+// differs from the one its type's `TYPE_LOOK` entry assumes -- a lattice is a
+// property of the compound, and a main type groups compounds by their physics
+// rather than by their symmetry, so the two part company often (wurtzite GaN
+// among the zinc-blende semiconductors, rhombohedral Bi₂Te₃, monolayer CrI₃
+// among the bulk magnets). Only ever set from the compound's real structure,
+// never for visual variety; a compound whose structure is low-symmetry enough
+// to have no characteristic habit takes 'shard'.
 // `colorOverride` skips the `shadeStep` formula entirely and uses the given
-// color as-is -- for the handful of one-off compounds (WORLD_RIVALS' golems)
-// whose lore-described look (a specific real-world hue/darkness) doesn't
-// reduce to "TYPE_LOOK's base color, brightened by a multiple of 18%." No HP
+// color as-is -- every rival golem (WORLD_RIVALS[1-8] and World 9's
+// `rivalImpurityResonance`) takes this route, since a golem's tarnished,
+// desaturated look doesn't reduce to "TYPE_LOOK's base color, brightened by
+// a multiple of 18%." No HP
 // here -- a crystal's max HP in battle is never intrinsic to the compound,
 // only to which world it's fought in (an ordinary wild's `wildHpForWorld`,
 // a rival's `rivalHpForWorld`, both `data/balance.ts`, read live by
@@ -840,13 +856,13 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // 'metal''s ordinary Electron Pulse/Phonon Beam moveset (its own
     // "translational symmetry breaking" story lives in this comment and its
     // materialdex.ts blurb, not in a separate move).
-    crystal('Titanium Diselenide', 'metal', ['tunnelStrike', 'thermalFluctuation'], 6, undefined, 'TiSe₂'),
+    crystal('Titanium Diselenide', 'metal', ['tunnelStrike', 'thermalFluctuation'], 6, 'prism', 'TiSe₂'),
     // Session1's own third worked mean-field example, alongside the charge
     // density wave and magnetism above, is superconductivity's own broken
     // gauge symmetry -- cross-listed from World 5 (same type/moveset as that
     // entry) the same deliberate way Iron/Cobalt/Barium Titanate already
     // are, rather than invented fresh for this world.
-    crystal('Aluminum', 'superconductor', ['higgsOscillation', 'thermalFluctuation'], 0, undefined, 'Al'),
+    crystal('Aluminum', 'superconductor', ['higgsOscillation', 'thermalFluctuation'], 0, 'cubic', 'Al'),
   ],
   // Topic 2 (symmetries, tight-binding) has no dedicated main type of its
   // own in the type system -- it mixes the metal/semiconductor/insulator
@@ -866,13 +882,13 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // plasmon of any elemental metal -- real plasmonics/nanophotonics
     // overwhelmingly runs on silver (and gold) rather than graphene.
     crystal('Silver', 'metal', ['plasmonPulse', 'thermalFluctuation'], 1, undefined, 'Ag'),
-    crystal('Gallium Nitride', 'semiconductor', ['tunnelStrike', 'thermalFluctuation'], 2, undefined, 'GaN'),
+    crystal('Gallium Nitride', 'semiconductor', ['tunnelStrike', 'thermalFluctuation'], 2, 'prism', 'GaN'),
     crystal('Magnesium Oxide', 'insulator', ['thermalFluctuation', 'localizationPin'], 0, undefined, 'MgO'),
     // Diamond's ~5.5 eV indirect gap is far too wide for doping or thermal
     // excitation to put a carrier in the conduction band -- the textbook
     // wide-gap covalent insulator, pristine (no nitrogen-vacancy or other
     // defect dressing).
-    crystal('Diamond', 'insulator', ['thermalFluctuation', 'localizationPin'], 1, undefined, 'C'),
+    crystal('Diamond', 'insulator', ['thermalFluctuation', 'localizationPin'], 1, 'octahedral', 'C'),
     // ~5.9 eV gap, the other half (with Graphene) of the HYBRID_RECIPES
     // pairing below -- real graphene devices are almost always built on or
     // encapsulated in hBN specifically because its own lattice is nearly
@@ -914,12 +930,12 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // time-reversal protected), the same boundary physics every other
     // 'quantumSpinHall' member hosts regardless of bulk dimensionality (see
     // types.ts's comment on that type).
-    crystal('Bi₂Te₃', 'quantumSpinHall', ['helicalCurrent', 'tunnelStrike'], 0, 'prism'),
+    crystal('Bi₂Te₃', 'quantumSpinHall', ['helicalCurrent', 'tunnelStrike'], 0, 'rhombohedral'),
     // A bulk-derived monolayer's own quantum spin Hall state, same helical
     // boundary physics as Bi₂Te₃ above and the engineered HgTe/CdTe Quantum
     // Well (world 2's HgTe + CdTe fused, a World 10 wild -- see that pool's
     // own comment).
-    crystal('Monolayer WTe₂', 'quantumSpinHall', ['helicalCurrent', 'thermalFluctuation'], 1, 'layer'),
+    crystal('Monolayer WTe₂', 'quantumSpinHall', ['helicalCurrent', 'thermalFluctuation'], 1, 'layerSquare'),
   ],
   // 'chernInsulator' rather than a dedicated field-driven-only type -- the
   // ordinary quantum Hall effect's quantized conductance is itself a Chern
@@ -942,20 +958,20 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     crystal('MnBi₂Te₄', 'chernInsulator', ['chiralCurrent', 'tunnelStrike'], 2, 'layer'),
   ],
   5: [
-    crystal('Aluminum', 'superconductor', ['higgsOscillation', 'thermalFluctuation'], 0, undefined, 'Al'),
-    crystal('Lead', 'superconductor', ['higgsOscillation', 'thermalFluctuation'], 1, undefined, 'Pb'),
-    crystal('YBCO', 'superconductor', ['higgsOscillation', 'thermalFluctuation'], 2),
+    crystal('Aluminum', 'superconductor', ['higgsOscillation', 'thermalFluctuation'], 0, 'cubic', 'Al'),
+    crystal('Lead', 'superconductor', ['higgsOscillation', 'thermalFluctuation'], 1, 'cubic', 'Pb'),
+    crystal('YBCO', 'superconductor', ['higgsOscillation', 'thermalFluctuation'], 2, 'tetragonal'),
     // Record near-room-temperature Tc (~250 K at ~170 GPa) -- still ordinary
     // (if spectacular) phonon-mediated BCS pairing, extreme electron-phonon
     // coupling from light hydrogen phonons in the hydride's clathrate cage,
     // not any topological mechanism.
-    crystal('Lanthanum Decahydride', 'superconductor', ['higgsOscillation', 'thermalFluctuation'], 3, undefined, 'LaH₁₀'),
+    crystal('Lanthanum Decahydride', 'superconductor', ['higgsOscillation', 'thermalFluctuation'], 3, 'cubic', 'LaH₁₀'),
     // Niobium: the highest-Tc elemental BCS superconductor at ambient
     // pressure, same conventional family as Aluminum/Lead above. Tantalum
     // Disulfide's 1H phase is a standalone metallic/superconducting TMD
     // monolayer in its own right -- distinct from the 1T phase (world 8),
     // and the other half of the 1T/1H-TaS₂ heterostructure hybrid recipe.
-    crystal('Niobium', 'superconductor', ['higgsOscillation', 'thermalFluctuation'], 4, undefined, 'Nb'),
+    crystal('Niobium', 'superconductor', ['higgsOscillation', 'thermalFluctuation'], 4, 'cubic', 'Nb'),
     crystal('Tantalum Disulfide (1H)', 'superconductor', ['higgsOscillation', 'thermalFluctuation'], 5, 'layer', 'TaS₂ (1H)'),
     // Leading spin-triplet/chiral superconductor candidate -- huge
     // beyond-Pauli-limit critical fields and (contested) reports of
@@ -992,7 +1008,7 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // magnetism/magnons) as the classicalMagnet compounds above, just a
     // distinct type once the noncollinear order starts coupling to electric
     // polarization.
-    crystal('Monolayer NiI₂', 'multiferroic', ['electromagnonPulse', 'magneticField'], 1, 'layer'),
+    crystal('Monolayer NiI₂', 'multiferroic', ['electromagnonPulse', 'magneticField'], 1, 'layerTriangle'),
     // The flagship room-temperature single-phase multiferroic -- large
     // switchable polarization (Ti⁴⁺-analog off-centering, but from the Bi³⁺
     // lone pair) coexisting with G-type antiferromagnetic order carrying a
@@ -1000,7 +1016,7 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // response (unlike Twisted CrI₃'s still-theoretical coupling below). A
     // bulk perovskite, not a 2D sheet, so it overrides back to 'prism' the
     // same way Bi₂Te₃ overrides quantumSpinHall's own 'layer' default.
-    crystal('Bismuth Ferrite', 'multiferroic', ['electromagnonPulse', 'magneticField'], 0, 'prism', 'BiFeO₃'),
+    crystal('Bismuth Ferrite', 'multiferroic', ['electromagnonPulse', 'magneticField'], 0, 'rhombohedral', 'BiFeO₃'),
   ],
   7: [
     crystal('Herbertsmithite', 'quantumSpinLiquid', ['entanglementSwap', 'thermalFluctuation']),
@@ -1061,8 +1077,8 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
   // is where every homeless type ends up (see WORLD_CRYSTALS' own top
   // comment).
   9: [
-    crystal('Fe(Te,Se)', 'chernSuperconductor', ['decoherenceWave', 'higgsOscillation'], 1),
-    crystal('Niobium Diselenide', 'superconductor', ['higgsOscillation', 'thermalFluctuation'], 2, undefined, 'NbSe₂'),
+    crystal('Fe(Te,Se)', 'chernSuperconductor', ['decoherenceWave', 'higgsOscillation'], 1, 'tetragonal'),
+    crystal('Niobium Diselenide', 'superconductor', ['higgsOscillation', 'thermalFluctuation'], 2, 'prism', 'NbSe₂'),
     // Elemental Mn's own complex itinerant antiferromagnetism (same
     // "classicalMagnet" liberty already taken with Chromium) is beside the
     // point here -- it's the textbook itinerant local-moment magnet for this
@@ -1077,14 +1093,14 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // Robust room-temperature ferroelectric Rashba semiconductor -- a
     // stronger, more switchable ferroelectric than BaTiO₃'s own ~120°C
     // transition, same type.
-    crystal('GeTe', 'ferroelectric', ['ferronPulse', 'thermalFluctuation'], 1),
+    crystal('GeTe', 'ferroelectric', ['ferronPulse', 'thermalFluctuation'], 1, 'rhombohedral'),
     // The CMOS-compatible ferroelectric behind real FeRAM/FeFET devices --
     // pristine, undoped epitaxial thin films switch too (Cheema et al.,
     // Nature 2020, strain rather than a dopant stabilizing the polar
     // orthorhombic Pca2₁ phase); bulk, un-strained HfO₂ is the ordinary
     // centrosymmetric monoclinic phase and not ferroelectric at all, so this
     // entry specifically means the thin-film phase.
-    crystal('Hafnium Oxide', 'ferroelectric', ['ferronPulse', 'thermalFluctuation'], 2, undefined, 'HfO₂'),
+    crystal('Hafnium Oxide', 'ferroelectric', ['ferronPulse', 'thermalFluctuation'], 2, 'shard', 'HfO₂'),
   ],
   // The Devouring Mirror's wilds are exactly the game's named hybrid materials --
   // every HYBRID_RECIPES result and nothing else -- so the corridor plays
@@ -1114,7 +1130,7 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // The original 2D topological insulator (Bernevig-Hughes-Zhang model,
     // König et al., Science 2007) -- only the engineered quantum well is
     // topological, not either bulk parent (world 2's HgTe + CdTe) alone.
-    crystal('HgTe/CdTe Quantum Well', 'quantumSpinHall', ['helicalCurrent', 'tunnelStrike'], 2, 'layer'),
+    crystal('HgTe/CdTe Quantum Well', 'quantumSpinHall', ['helicalCurrent', 'tunnelStrike'], 2, 'layerSquare'),
     // Twisted Bilayer MoTe₂'s zero-field *fractional* quantum Hall state
     // genuinely fractionalizes into charged anyons, unlike world 4's
     // ordinary integer-Landau-level members, so it lives under
@@ -1200,6 +1216,12 @@ const RIVAL_9_NAMES: Partial<Record<MaterialType, string>> = {
   chernInsulator: 'Polycrystalline Manganese Bismuth Telluride Golem',
 };
 
+// The neutral "tarnished polycrystalline" grey the rolled type's own base
+// color is pulled halfway toward below -- the same desaturation WORLD_RIVALS
+// [3]/[4]/[6] reach for by hand, which is what marks a color as a golem's
+// rather than a pristine wild crystal's.
+const RIVAL_9_TARNISH = 0x6e737a;
+
 // A fixed, broadly-compatible moveset (Electron Pulse + Phonon Beam) rather
 // than one tailored per rolled type -- no single 2-move set could match
 // every one of RIVAL_9_TYPES' seven very different classes anyway, and wild/
@@ -1209,7 +1231,25 @@ function rivalImpurityResonance(type: MaterialType): Material {
   // Every caller (rollRival9Type, and the cached rival9Type resolved from
   // it) only ever produces a RIVAL_9_TYPES member, which RIVAL_9_NAMES
   // covers completely -- see its own comment above.
-  return crystal(RIVAL_9_NAMES[type]!, type, ['tunnelStrike', 'thermalFluctuation'], 11);
+  //
+  // The color is derived from the rolled type's own base rather than picked
+  // per type by hand the way WORLD_RIVALS[1-8]'s are: the roll is the whole
+  // point of this rival -- the player reads which phase it turned out to be
+  // off the golem's color -- so the color has to track TYPE_LOOK by
+  // construction instead of through a parallel per-type table that could
+  // drift from it. Reading `TYPE_LOOK[type].color` is fine here where
+  // WORLD_RIVALS' own entries have to repeat the hex as a literal: only that
+  // object literal's AST is reduced by scripts/content-lint.mjs and
+  // scripts/gen-docs.mjs, never this function.
+  return crystal(
+    RIVAL_9_NAMES[type]!,
+    type,
+    ['tunnelStrike', 'thermalFluctuation'],
+    0,
+    undefined,
+    undefined,
+    blend(TYPE_LOOK[type].color, RIVAL_9_TARNISH, 0.5)
+  );
 }
 
 // The single "beat this to unlock the guardian and the way onward" gate per
@@ -1255,7 +1295,7 @@ export const WORLD_RIVALS: Partial<Record<number, Material>> = {
     'metal',
     ['thermalFluctuation', 'tunnelStrike'],
     0,
-    undefined,
+    'prism',
     undefined,
     darken(0x7a8a99, 28)
   ),
@@ -1272,7 +1312,7 @@ export const WORLD_RIVALS: Partial<Record<number, Material>> = {
     'quantumSpinHall',
     ['helicalCurrent', 'tunnelStrike'],
     0,
-    undefined,
+    'rhombohedral',
     undefined,
     blend(0x6a4ad9, 0x8f8f96, 0.68)
   ),
@@ -1303,7 +1343,7 @@ export const WORLD_RIVALS: Partial<Record<number, Material>> = {
     'superconductor',
     ['higgsOscillation', 'tunnelStrike'],
     0,
-    undefined,
+    'tetragonal',
     undefined,
     darken(0x7fd1e8, 46)
   ),
@@ -1368,14 +1408,19 @@ export const WORLD_RIVALS: Partial<Record<number, Material>> = {
   // Not built with crystal() (unlike every other entry here) since that
   // derives color/variant from TYPE_LOOK[type], which would tie this
   // placeholder type to a look that means something for every other
-  // material; color/variant are set directly instead, preserving the
-  // original featureless dark-prism look a "no fixed identity" entity
-  // should have at rest. Excluded from gen-docs.mjs's generated rivals
-  // table the same way World 9's rival already is (see docs/crystals.md).
+  // material; color/variant are set directly instead, for the featureless
+  // dark-prism look a "no fixed identity" entity should have at rest. Its
+  // color is the one fully unsaturated grey in the whole roster: every other
+  // crystal's hue names its phase, and this thing has none of its own until
+  // it takes the player's. Dark, but lifted off near-black so art/boss.ts's
+  // own per-shard darkening still leaves the torso and head readable (the
+  // same floor Worlds 2 and 5 above stop at). Excluded from gen-docs.mjs's
+  // generated rivals table the same way World 9's rival already is (see
+  // docs/crystals.md).
   10: {
     name: 'The Adapted',
     type: 'metal',
-    color: shade(0x333333, 216),
+    color: 0x4a4a4a,
     variant: 'prism',
     moves: ['tunnelStrike', 'magneticField', 'fluxTwist', 'decoherenceWave'],
   },

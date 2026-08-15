@@ -123,10 +123,10 @@ World 10 has no course notebook, which fits it being the finale rather than a ta
 topic: the boss is "a model of you," which is an honest metaphor for an ML surrogate.
 
 World 0 ("The Lab") is built as a static single-room hub (`game/src/scenes/HubScene.ts`),
-not a walkable map -- up to eight stations, since none of its jobs need overworld movement
+not a walkable map -- up to nine stations, since none of its jobs need overworld movement
 of their own. Two always exist (Qumatex, the door to the
-next unbeaten world); six are reference/settings stations (Moves, Stats, Abilities,
-Tutorial, Settings, Title Screen, built in `game/src/scenes/panels/hubStations.ts`'s
+next unbeaten world); seven are reference/settings stations (Moves, Stats, Abilities,
+Tutorial, Story, Settings, Title Screen, built in `game/src/scenes/panels/hubStations.ts`'s
 `LAB_STATIONS`) -- everything a player might want to check or adjust between worlds,
 reachable only by physically returning to the Lab rather than from an in-world menu,
 since none of that
@@ -251,22 +251,28 @@ classicalMagnet subtype → spin-triplet superconductor, matching the example in
 source notes). Not all main+subtype pairs are physical/interesting — needs a full
 compatibility table before implementation (see open questions).
 
-**Attributes map to stats** (implemented: `game/src/data/types.ts`'s `Stats`, `game/src/data/materials.ts`/`data/balance.ts`):
-- **Quantumness** → crit chance ("a coherent critical hit"): linear from 1% at `BASE_STAT` to a
+**Attributes map to stats** (implemented: `game/src/data/types.ts`'s `Stats`, `game/src/data/materials.ts`/`data/balance.ts`).
+Each attribute has a player-facing name and an internal `Stats` field name, and the two are
+independent — see CODEMAP.md's "Stats and battle resolution" for the pairing and what an internal
+rename would touch. This doc uses the player-facing names, with the field in backticks:
+- **Energy** (`quantumness`) → crit chance ("a coherent critical hit"): linear from 1% at
+  `BASE_STAT` to a
   flat 100% right at `MAX_STAT` (`MIN_CRIT_CHANCE`/`MAX_CRIT_CHANCE`, `critChance`), so every
   purchasable point keeps mattering instead of crit chance saturating partway through the sellable
-  range, and a maxed-out Quantumness crystal genuinely never rolls a non-crit
-- **Velocity** → turn order and hit count each round: whichever side has the higher effective
-  Velocity swings first, and swings `clamp(floor(ratio), 1, MAX_MULTI_HIT)` times that round, where
-  `ratio` is its Velocity divided by the slower side's (`BattleScene.currentHitOrder`); the slower
+  range, and a maxed-out Energy crystal genuinely never rolls a non-crit
+- **Momentum** (`velocity`) → turn order and hit count each round: whichever side has the higher
+  effective
+  Momentum swings first, and swings `clamp(floor(ratio), 1, MAX_MULTI_HIT)` times that round, where
+  `ratio` is its Momentum divided by the slower side's (`BattleScene.currentHitOrder`); the slower
   side always still gets exactly one swing. Ties keep the player going first, one swing each.
   `MAX_MULTI_HIT` is 5
-- **Correlation** → defense (`defenseFactor`): a concave (square-root) climb from 0% damage
+- **Lifetime** (`correlation`) → defense (`defenseFactor`): a concave (square-root) climb from 0%
+  damage
   reduction at `BASE_STAT` to a flat `MAX_DEFENSE_REDUCTION` (90%) right at `MAX_STAT` -- the same
-  "full range stays meaningful, then plateaus" shape Quantumness/Velocity have, but front-loaded
+  "full range stays meaningful, then plateaus" shape Energy/Momentum have, but front-loaded
   (most of the benefit lands in the first several points, unlike a straight line) so an early, cheap
-  Correlation buy still meaningfully helps rather than needing many points before it registers. A
-  maxed-out Correlation crystal is very hard to hurt, not literally unhittable -- there's always
+  Lifetime buy still meaningfully helps rather than needing many points before it registers. A
+  maxed-out Lifetime crystal is very hard to hurt, not literally unhittable -- there's always
   some real damage getting through, on both sides of a fight, regardless of how defensive either
   gets
 
@@ -274,17 +280,17 @@ Every crystal starts at `1/1/1` (`BASE_STAT`/`DEFAULT_STATS`) and can be raised 
 (`MAX_STAT`) per stat at Noether's shop -- a stat already at `MAX_STAT` shows as maxed and stops
 selling. The player's own stats live in the save (`playerStats`) and only grow by spending
 qumatessence with Noether (`scenes/panels/noether.ts`'s `renderShopStats`/`data/balance.ts`'s `statUpgradeCost`,
-`(current - BASE_STAT + 1) * 50` per point, the same rate for all three stats -- Correlation no
-longer needs a steeper price than Quantumness/Velocity now that its own formula plateaus the same
-way theirs do); an opponent's stats are computed fresh from the world number (and the active
+`(current - BASE_STAT + 1) * 50` per point, the same rate for all three stats -- Lifetime prices
+the same as Energy/Momentum, since its own formula plateaus the same way theirs do); an opponent's
+stats are computed fresh from the world number (and the active
 difficulty tier, see below) at battle start (`enemyStatsForWorld(world, difficultyMultiplier)`,
 `data/balance.ts`) rather than hand-tuned per species, so difficulty climbs with the world.
 Growth follows a two-phase curve rather than one flat per-world rate: worlds 1-3 (the tutorial
 stretch, before the player has had a real chance to shop/transmute/level up) grow slowly, `+0.1`
-Quantumness/Velocity and `+0.05` Correlation per world past world 1; worlds 4-10 assume a player
+Energy/Momentum and `+0.05` Lifetime per world past world 1; worlds 4-10 assume a player
 who has met the early guardians and can draw on their systems (Dresselhaus's transmutation,
 Laughlin's Analytic moves, Feynman's leveling, ...), so growth steepens to `+0.35`
-Quantumness/Velocity and `+0.22` Correlation per world from there. An opponent's own stats stay
+Energy/Momentum and `+0.22` Lifetime per world from there. An opponent's own stats stay
 fractional through this curve (never rounded here, since they're never shown to the player as a
 number, only felt through hit chance/damage/turn order) so its own sub-1 per-step rate actually
 registers rather than vanishing under premature rounding. `BattleScene.create` rounds the result
@@ -293,11 +299,11 @@ rival's stats are used exactly as this curve returns them. The player's own `pla
 whole numbers, since Noether's shop displays/sells them one point at a time, and none of this
 enemy-stat math ever feeds them (Superposition Mode's grant pins all three straight to
 `MAX_STAT`, see below).
-Correlation still grows slightly slower than Quantumness/Velocity in both phases, weighted lighter
+Lifetime still grows slightly slower than Energy/Momentum in both phases, weighted lighter
 to keep the overall climb balanced (`npm run balance-sim`-verified). Because the player's own
-Velocity only grows by spending qumatessence with Noether while the opponent's grows automatically
-every world, a player who never buys Velocity falls further behind the opponent's effective
-Velocity every world — raising both how often the opponent goes first and, per the multi-attack
+Momentum only grows by spending qumatessence with Noether while the opponent's grows automatically
+every world, a player who never buys Momentum falls further behind the opponent's effective
+Momentum every world — raising both how often the opponent goes first and, per the multi-attack
 rule above, how many times it swings each round.
 
 **Difficulty tier** (the Lab's Settings station, `data/settings.ts`'s `DifficultyTier`/
@@ -331,7 +337,7 @@ own current form) carries an HP number at all; it's purely a function of which w
 fight is happening in, resolved fresh by `BattleScene.create` (`data/balance.ts`). An
 ordinary wild's base HP is `wildHpForWorld(world)` (a gentle linear climb, `23` at World 1
 to `33` at World 10 -- HP is a much smaller share of a fight's difficulty than the
-Quantumness/Velocity/Correlation curve above, so it doesn't need that curve's two-phase
+Energy/Momentum/Lifetime curve above, so it doesn't need that curve's two-phase
 shape), scaled once per encounter by a shared `rollEncounterFactor` (+/-15%, the same range
 `resolveHitDamage`'s own per-hit damage variance uses) applied to that wild's HP *and* its
 whole stat block together -- one coherent "this specimen is somewhat tougher/weaker than
@@ -463,14 +469,22 @@ the level of "a metal," "a superconductor," generic ML methods), so those two ro
 entirely on textbook fill-ins rather than course-sourced examples — worth flagging if
 a stricter "must appear in the course material" rule is later adopted.
 
-**2D and twisted crystal graphics.** Most compounds render as the shard/cluster/prism
-gem look their main type's `TYPE_LOOK` fixes, but a handful the table above itself calls
-out as monolayer/van der Waals/twisted get a per-compound look override instead
-(`data/materials.ts`'s `crystal()` `variantOverride` param, `art/crystals.ts`'s
-`drawLayerShape`/`drawTwistedShape`, see STYLE.md): Graphene, Monolayer WTe₂, and
-Chromium Triiodide render as a single floating 2D sheet (`'layer'`); Twisted Bilayer
-MoTe₂ renders as two twisted, moiré-offset sheets (`'twisted'`) — the crystal's shape
-reflects the actual dimensionality/stacking of the compound, not just its main type.
+**A crystal's shape is its real crystal habit.** Every compound renders in the habit its
+own lattice grows in — cubic for the rock-salt/bcc/fcc/zinc-blende compounds, octahedral
+for the tetrahedrally bonded diamond family, rhombohedral for the R-3m/R3c trigonal ones,
+tetragonal for the four-fold ThCr₂Si₂/PbO/perovskite/cuprate families, a hexagonal prism
+for the hexagonal/wurtzite/hcp ones, a thin floating sheet cut to its in-plane cell
+(hexagonal, triangular or four-sided) for the monolayers, two moiré-offset sheets for the
+twisted systems, and a plain faceted shard where a structure is low-symmetry enough to have
+no characteristic habit. A main type's `TYPE_LOOK` entry states the structure its members
+typically share and `data/materials.ts`'s `crystal()` `variantOverride` param states an
+individual compound's own where it differs (wurtzite GaN among the zinc-blende
+semiconductors, rhombohedral Bi₂Te₃ and BiFeO₃, monolayer CrI₃ among the bulk magnets) —
+a main type groups compounds by their physics, so it doesn't track their symmetry. The one
+habit that is not a lattice claim is `'cluster'` (classicalMagnet, quantumSpinLiquid,
+kondoHeavyFermion): many grains intergrown into a single specimen is a *growth* habit, and
+so sits over any lattice. See `art/crystals.ts`'s `drawSolidShape` and STYLE.md's "Crystal
+sprites" for what each one is drawn as.
 
 **Every compound has its own look, not just its type's.** Beyond the `variantOverride`
 above, every crystal built with `data/materials.ts`'s `crystal()` gets a small,
@@ -628,15 +642,15 @@ cleared.
 
 ## 4. Battle system
 
-Turn-based, speed-ordered by Velocity. The faster side doesn't just swing first each round —
+Turn-based, speed-ordered by Momentum. The faster side doesn't just swing first each round —
 it swings more often, scaling with how much faster it is: its hit count is its effective
-Velocity divided by the slower side's, floored and capped at 5 (`clamp(floor(ratio), 1, MAX_MULTI_HIT)`).
-The cap keeps an extreme Velocity gap from producing an unbounded hit sequence; the slower side
+Momentum divided by the slower side's, floored and capped at 5 (`clamp(floor(ratio), 1, MAX_MULTI_HIT)`).
+The cap keeps an extreme Momentum gap from producing an unbounded hit sequence; the slower side
 always still gets exactly one hit. All of the faster side's hits resolve first, consecutively,
 before the slower side's single hit — and the round stops immediately if either side's HP hits
 0 partway through, rather than firing the rest of the queued hits. Skłodowska-Curie's two
 quiz-gated Ultimate moves and Laughlin's two quiz-gated Analytic moves (§5) are exempt from this
-scaling — picking one of those keeps the plain one-hit-each behavior regardless of the Velocity
+scaling — picking one of those keeps the plain one-hit-each behavior regardless of the Momentum
 ratio, since their own answer-gating and (for Ultimates) multi-phase animation timing are
 already tuned around exactly one hit per side per round.
 
@@ -672,7 +686,7 @@ chart" philosophy above. Implemented generically per-side in `BattleScene.resolv
 `resolveHit` (the same multiplier-term shape every other `resolveHit` factor already uses)
 rather than hardcoded to "player only," even though only the player can currently learn the
 moves that apply them — no `WORLD_CRYSTALS` entry knows them yet. Ticks down once per round
-per side regardless of how many actions that side took this round (a Velocity advantage no
+per side regardless of how many actions that side took this round (a Momentum advantage no
 longer repeats a self-buff cast — see §4's velocity-ratio paragraph above — so this only
 matters for a side continuing to hold an already-active buff while using ordinary moves) and
 expires with its own battle-log line appended the same way a mismatch/crit clause stacks onto
@@ -722,14 +736,22 @@ bottom-of-panel legend spelling out that symbol; a button's label (move name plu
 with the whole page's font size shrunk uniformly, if needed, to keep every label on the
 page within that same 2-line limit rather than a 3rd.
 
-**Battle background per world.** `BattleScene.drawBackground` reads the same
-`art/biomes.ts` table the overworld corridor uses (`getBiome(this.world)`) —
-sky, ridgelines, ground, and the decorative crystal outcrops/ground tufts are all
-shaded off that world's biome colors, so a fight in the frozen caverns or the cracked
-world actually looks like it, not like every other world's battle. The backdrop is built
-as a soft layered atmosphere (curved parallax ridgelines, fog blending, a theme-keyed
-color grade, drifting haze, corner vignette) — STYLE.md's "Battle backdrop" section has
-the visual rules.
+**Battle background per place.** `BattleScene.drawBackground` colors the arena from
+where on the map the fight started, not just from which world it is: the encounter
+tile is sampled off the same terrain plan the corridor is drawn from
+(`scenes/overworld/terrain/plan.ts`'s `sampleBattleLocale`, passed through the
+battle's own init data) and supplies the palette (that tile's own `art/biomes.ts`
+entry — which on a World 9 defect patch is the borrowed world's, not the Defect
+Scars'), the color grade (whatever off-path material dominates the ground around
+it), the ground tint (the domain hue of the region it stands in, worlds 1/3/8) and
+the skyline (the ridge seeds fold in the tile's coordinates, so each place in a
+world keeps its own stable silhouette). Sky, ridgelines, ground, and the decorative
+crystal outcrops/ground tufts are all shaded off those colors, so a fight in the
+frozen caverns or the cracked world actually looks like it, not like every other
+world's battle. The arena stays a backdrop rather than a re-render of the corridor:
+it is built as a soft layered atmosphere (curved parallax ridgelines, fog blending,
+a terrain-keyed color grade, drifting haze, corner vignette) — STYLE.md's "Battle
+backdrop" section has the visual rules.
 
 **Wild encounter dialogue.** Bumping into a wild crystal opens a single in-map dialogue
 screen (`OverworldScene.showEncounter`, not a separate scene): a greeting line tied to
@@ -778,7 +800,7 @@ they transmute into a form that supports more. Unlocked moves persist in the Pha
 (`getBattleMoves` = learned ∩ compatible). The move list renders as a docked panel on
 the right of the field (`BattleScene.drawMoveMenu`).
 Noether's shop panel also carries a second tab for spending qumatessence on the player's own
-Quantumness/Velocity/Correlation stats (§3). The actual "leave this world" action -- a
+Energy/Momentum/Lifetime stats (§3). The actual "leave this world" action -- a
 footer button that fights the world's rival crystal the first time it's clicked (see §2),
 then crosses into World N+1 once that rival is beaten (`OverworldScene.confirmGate`) -- lives
 only at the pass itself, not in Noether's (or any guardian's) own panel, since the pass is where

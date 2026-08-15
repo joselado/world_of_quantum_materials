@@ -13,18 +13,14 @@ const NO_STRETCH: Stretch = { x: 1, y: 1 };
 
 // A single faceted gem, drawn centered on (0,0) in the Graphics object's own
 // local space -- callers position/rotate it via the Graphics object's own
-// transform rather than doing point-rotation math by hand. `widthScale`
-// narrows the whole silhouette without touching its height, turning the same
-// formula into an elongated "prismatic" needle (see the cluster branch of
-// `makeCrystal`) instead of a wide gem.
+// transform rather than doing point-rotation math by hand.
 export function drawShardShape(
   g: Phaser.GameObjects.Graphics,
   size: number,
   color: number,
-  stretch: Stretch = NO_STRETCH,
-  widthScale = 1
+  stretch: Stretch = NO_STRETCH
 ) {
-  const P = (x: number, y: number) => ({ x: x * widthScale * stretch.x, y: y * stretch.y });
+  const P = (x: number, y: number) => ({ x: x * stretch.x, y: y * stretch.y });
   const top = P(0, -size);
   const upperLeft = P(-size * 0.55, -size * 0.25);
   const upperRight = P(size * 0.55, -size * 0.25);
@@ -50,9 +46,9 @@ export function drawShardShape(
 }
 
 // A blocky isometric cube -- top rhombus + two shaded side faces -- the
-// "cubic" habit (pyrite, galena, fluorite) alongside `drawShardShape`'s
-// elongated "prismatic" needle and `drawPrismShape`'s hexagonal column, used
-// together for the cluster variant's three-different-habits look.
+// "cubic" habit (pyrite, galena, fluorite). The blunt counterpart to
+// `drawShardShape`'s angular point among art/boss.ts's golem grains, where a
+// mass built only of points reads as spiky rather than heavy.
 export function drawCubicShape(g: Phaser.GameObjects.Graphics, size: number, color: number, stretch: Stretch = NO_STRETCH) {
   const P = (x: number, y: number) => ({ x: x * stretch.x, y: y * stretch.y });
   const top = P(0, -size * 0.85);
@@ -80,6 +76,238 @@ export function drawCubicShape(g: Phaser.GameObjects.Graphics, size: number, col
   g.fillPoints(rightFace, true);
   g.lineStyle(2, shade(color, -55), 1);
   g.strokePoints(rightFace, true);
+}
+
+// One intergrown spire of the cluster habit below: a prismatic body rising
+// out of the shared base into a pointed termination. `apex` is the tip;
+// `shoulderL`/`shoulderR` are where the termination's two roof facets meet
+// the body's two prism faces; `front` tops the vertical front edge that
+// splits those prism faces; `baseL`/`baseF`/`baseR` are where the body meets
+// the base. `lift` offsets every facet's shading together, so a spire
+// standing behind another catches less of the light.
+interface ClusterSpire {
+  apex: [number, number];
+  shoulderL: [number, number];
+  shoulderR: [number, number];
+  front: [number, number];
+  baseL: [number, number];
+  baseF: [number, number];
+  baseR: [number, number];
+  lift: number;
+}
+
+// Listed back to front: the two flanking spires lean away from a taller,
+// upright central one that is drawn last and therefore stands in front of
+// both. Their coordinates are shared with `CLUSTER_OUTLINE` below -- every
+// apex and outward shoulder here is a vertex of that outline -- which is
+// what keeps all three inside one silhouette.
+const CLUSTER_SPIRES: ClusterSpire[] = [
+  {
+    apex: [-0.66, -0.34],
+    shoulderL: [-0.74, 0.04],
+    shoulderR: [-0.46, -0.1],
+    front: [-0.6, 0.03],
+    baseL: [-0.56, 0.74],
+    baseF: [-0.5, 0.78],
+    baseR: [-0.34, 0.72],
+    lift: -6,
+  },
+  {
+    apex: [0.62, -0.58],
+    shoulderL: [0.4, -0.3],
+    shoulderR: [0.72, -0.18],
+    front: [0.57, -0.2],
+    baseL: [0.32, 0.66],
+    baseF: [0.52, 0.73],
+    baseR: [0.64, 0.66],
+    lift: -12,
+  },
+  {
+    apex: [0.0, -0.95],
+    shoulderL: [-0.3, -0.4],
+    shoulderR: [0.32, -0.44],
+    front: [0.02, -0.27],
+    baseL: [-0.26, 0.7],
+    baseF: [0.04, 0.79],
+    baseR: [0.34, 0.68],
+    lift: 0,
+  },
+];
+
+// The whole habit's single outer silhouette, walked clockwise from the base's
+// left corner: up the left spire, over its apex, down into the notch where it
+// grows out of the central one, up to the central apex, down into the second
+// notch, over the right spire, and back along the shared base.
+const CLUSTER_OUTLINE: [number, number][] = [
+  [-0.56, 0.74],
+  [-0.74, 0.04],
+  [-0.66, -0.34],
+  [-0.46, -0.1],
+  [-0.3, -0.4],
+  [0.0, -0.95],
+  [0.32, -0.44],
+  [0.4, -0.3],
+  [0.62, -0.58],
+  [0.72, -0.18],
+  [0.64, 0.66],
+  [0.52, 0.73],
+  [0.04, 0.79],
+  [-0.5, 0.78],
+];
+
+// The cluster habit: three spires intergrown into one body on a shared base,
+// the way a real specimen grows, so the richer "mineral" read the variant
+// exists for costs it none of a single crystal's coherence. Every facet is
+// lit from the upper left, matching every other shape in this file and the
+// specular highlight `addHighlightAndSparkles` lays over them all.
+//
+// The whole silhouette is filled dark first and the spires are painted into
+// it back to front, which is what makes this one body rather than three: the
+// wedges the spires don't cover are the recesses where they intergrow, and
+// the only outline stroked around the outside is the silhouette's own. Each
+// spire's interior carries just its facet junctions -- the roof/body seam and
+// the front edge -- so the faceting still reads at the 22px a wild encounter
+// is drawn at.
+function drawClusterShape(g: Phaser.GameObjects.Graphics, size: number, color: number, stretch: Stretch = NO_STRETCH) {
+  const P = ([x, y]: [number, number]) => ({ x: x * size * stretch.x, y: y * size * stretch.y });
+  const outline = CLUSTER_OUTLINE.map(P);
+
+  g.fillStyle(shade(color, -50), 1);
+  g.fillPoints(outline, true);
+
+  CLUSTER_SPIRES.forEach((s) => {
+    const apex = P(s.apex), shL = P(s.shoulderL), shR = P(s.shoulderR), front = P(s.front);
+    const baseL = P(s.baseL), baseF = P(s.baseF), baseR = P(s.baseR);
+
+    g.fillStyle(shade(color, 46 + s.lift), 1);
+    g.fillTriangle(apex.x, apex.y, front.x, front.y, shL.x, shL.y);
+
+    g.fillStyle(shade(color, 16 + s.lift), 1);
+    g.fillTriangle(apex.x, apex.y, shR.x, shR.y, front.x, front.y);
+
+    g.fillStyle(shade(color, s.lift - 6), 1);
+    g.fillPoints([shL, front, baseF, baseL], true);
+
+    g.fillStyle(shade(color, s.lift - 34), 1);
+    g.fillPoints([front, shR, baseR, baseF], true);
+
+    g.lineStyle(1.5, shade(color, -46), 1);
+    g.strokePoints([shL, front, shR], false);
+    g.strokePoints([apex, front, baseF], false);
+  });
+
+  g.lineStyle(2, shade(color, -58), 1);
+  g.strokePoints(outline, true);
+}
+
+// A regular octahedron: two square pyramids meeting at a horizontal girdle,
+// the {111} habit the tetrahedrally-bonded diamond family grows in (diamond
+// itself, silicon, the zinc-blende semiconductors). Seen from just above the
+// girdle, so both back-top facets and the two front-bottom ones are in view
+// and the girdle itself crosses the body as a chevron -- without that
+// crossing an octahedron collapses into the same tall diamond outline
+// `drawShardShape` already owns.
+function drawOctahedralShape(g: Phaser.GameObjects.Graphics, size: number, color: number, stretch: Stretch = NO_STRETCH) {
+  const P = (x: number, y: number) => ({ x: x * size * stretch.x, y: y * size * stretch.y });
+  const top = P(0, -1.0);
+  const left = P(-0.74, -0.06);
+  const right = P(0.74, -0.06);
+  const front = P(0, 0.2);
+  const back = P(0, -0.3);
+  const bottom = P(0, 0.94);
+
+  g.fillStyle(shade(color, 28), 1);
+  g.fillTriangle(top.x, top.y, back.x, back.y, left.x, left.y);
+  g.fillStyle(shade(color, 10), 1);
+  g.fillTriangle(top.x, top.y, right.x, right.y, back.x, back.y);
+  g.fillStyle(shade(color, 50), 1);
+  g.fillTriangle(top.x, top.y, left.x, left.y, front.x, front.y);
+  g.fillStyle(shade(color, 22), 1);
+  g.fillTriangle(top.x, top.y, front.x, front.y, right.x, right.y);
+  g.fillStyle(shade(color, -16), 1);
+  g.fillTriangle(left.x, left.y, bottom.x, bottom.y, front.x, front.y);
+  g.fillStyle(shade(color, -40), 1);
+  g.fillTriangle(front.x, front.y, bottom.x, bottom.y, right.x, right.y);
+
+  g.lineStyle(1.5, shade(color, -42), 1);
+  g.strokePoints([left, back, right], false);
+  g.strokePoints([top, front, bottom], false);
+  g.lineStyle(2, shade(color, -52), 1);
+  g.strokePoints([left, front, right], false);
+  g.lineStyle(2, shade(color, -58), 1);
+  g.strokePoints([top, right, bottom, left], true);
+}
+
+// A rhombohedron -- the leaning block every face of which is the same rhombus,
+// the calcite habit, and the shape the R-3m/R3c trigonal compounds (Bi2Te3
+// and its family, GeTe, BiFeO3) actually grow in. The lean is what tells it
+// apart from `drawCubicShape` at a glance: a cube's side edges drop straight
+// down, this one's all slide the same way, so no angle in the whole solid is
+// a right angle.
+function drawRhombohedralShape(g: Phaser.GameObjects.Graphics, size: number, color: number, stretch: Stretch = NO_STRETCH) {
+  const P = (x: number, y: number) => ({ x: x * size * stretch.x, y: y * size * stretch.y });
+  const tBack = P(0.1, -0.86);
+  const tRight = P(0.78, -0.56);
+  const tFront = P(0.3, -0.24);
+  const tLeft = P(-0.38, -0.54);
+  const bLeft = P(-0.6, 0.32);
+  const bFront = P(0.08, 0.62);
+  const bRight = P(0.56, 0.3);
+
+  const topFace = [tBack, tRight, tFront, tLeft];
+  g.fillStyle(shade(color, 38), 1);
+  g.fillPoints(topFace, true);
+
+  g.fillStyle(shade(color, -8), 1);
+  g.fillPoints([tLeft, tFront, bFront, bLeft], true);
+
+  g.fillStyle(shade(color, -34), 1);
+  g.fillPoints([tFront, tRight, bRight, bFront], true);
+
+  g.lineStyle(1.5, shade(color, -46), 1);
+  g.strokePoints([tLeft, tFront, tRight], false);
+  g.strokePoints([tFront, bFront], false);
+  g.lineStyle(2, shade(color, -58), 1);
+  g.strokePoints([tBack, tRight, bRight, bFront, bLeft, tLeft], true);
+}
+
+// A tetragonal bipyramid on a square prism -- the KDP habit, and the shape of
+// the square-planed families: the ThCr2Si2 heavy fermions, the PbO-type iron
+// chalcogenides, the tetragonal perovskite ferroelectrics, the layered
+// cuprates. Its girdle is four-fold where `drawPrismShape`'s is six-fold, and
+// it is capped by a pyramid where that one is cut flat.
+function drawTetragonalShape(g: Phaser.GameObjects.Graphics, size: number, color: number, stretch: Stretch = NO_STRETCH) {
+  const P = (x: number, y: number) => ({ x: x * size * stretch.x, y: y * size * stretch.y });
+  const apex = P(0, -1.0);
+  const gBack = P(0, -0.62);
+  const gRight = P(0.56, -0.44);
+  const gFront = P(0, -0.26);
+  const gLeft = P(-0.56, -0.44);
+  const bLeft = P(-0.56, 0.62);
+  const bFront = P(0, 0.8);
+  const bRight = P(0.56, 0.62);
+
+  g.fillStyle(shade(color, 26), 1);
+  g.fillTriangle(apex.x, apex.y, gBack.x, gBack.y, gLeft.x, gLeft.y);
+  g.fillStyle(shade(color, 8), 1);
+  g.fillTriangle(apex.x, apex.y, gRight.x, gRight.y, gBack.x, gBack.y);
+  g.fillStyle(shade(color, 50), 1);
+  g.fillTriangle(apex.x, apex.y, gLeft.x, gLeft.y, gFront.x, gFront.y);
+  g.fillStyle(shade(color, 24), 1);
+  g.fillTriangle(apex.x, apex.y, gFront.x, gFront.y, gRight.x, gRight.y);
+
+  g.fillStyle(shade(color, -6), 1);
+  g.fillPoints([gLeft, gFront, bFront, bLeft], true);
+  g.fillStyle(shade(color, -32), 1);
+  g.fillPoints([gFront, gRight, bRight, bFront], true);
+
+  g.lineStyle(1.5, shade(color, -44), 1);
+  g.strokePoints([gLeft, gBack, gRight], false);
+  g.strokePoints([apex, gFront, bFront], false);
+  g.lineStyle(2, shade(color, -52), 1);
+  g.strokePoints([gLeft, gFront, gRight], false);
+  g.lineStyle(2, shade(color, -58), 1);
+  g.strokePoints([apex, gRight, bRight, bFront, bLeft, gLeft], true);
 }
 
 // A layered hexagonal prism -- hex top face + two shaded side faces -- meant to
@@ -140,6 +368,48 @@ function drawLayerShape(g: Phaser.GameObjects.Graphics, size: number, color: num
   g.strokePoints(rim, true);
 
   const top = hexPts(s * 0.8, 0);
+  g.fillStyle(shade(color, 25), 0.85);
+  g.fillPoints(top, true);
+  g.lineStyle(2, shade(color, -35), 1);
+  g.strokePoints(top, true);
+}
+
+// The same thin floating plate `drawLayerShape` draws, cut to a different
+// in-plane lattice: a triangle for the triangular-lattice monolayers
+// (NiI2, ...), a square for the ones whose in-plane cell is four-sided (1T'
+// WTe2, a zinc-blende (001) quantum well). Same grammar throughout -- detached
+// ground shadow, a thin rim under a lit top face -- since what these share
+// with the hexagonal sheet is being one monolayer, and all that differs is the
+// shape of the cell.
+function drawPlateShape(
+  g: Phaser.GameObjects.Graphics,
+  size: number,
+  color: number,
+  stretch: Stretch,
+  corners: number,
+  radiusScale: number
+) {
+  const s = size;
+  const P = (x: number, y: number) => ({ x: x * stretch.x, y: y * stretch.y });
+  g.fillStyle(0x000000, 0.18);
+  g.fillEllipse(0, s * 0.55 * stretch.y, s * 1.1 * stretch.x, s * 0.22 * stretch.y);
+
+  const plate = (radius: number, yOff: number) => {
+    const pts: { x: number; y: number }[] = [];
+    for (let i = 0; i < corners; i++) {
+      const ang = Phaser.Math.DegToRad((360 / corners) * i - 90);
+      pts.push(P(Math.cos(ang) * radius, yOff + Math.sin(ang) * radius * 0.34));
+    }
+    return pts;
+  };
+
+  const rim = plate(s * radiusScale, s * 0.08);
+  g.fillStyle(shade(color, -30), 0.95);
+  g.fillPoints(rim, true);
+  g.lineStyle(2, shade(color, -55), 1);
+  g.strokePoints(rim, true);
+
+  const top = plate(s * radiusScale, 0);
   g.fillStyle(shade(color, 25), 0.85);
   g.fillPoints(top, true);
   g.lineStyle(2, shade(color, -35), 1);
@@ -226,11 +496,36 @@ export function killTweensDeep(scene: Pick<Phaser.Scene, 'tweens'>, obj: Phaser.
   }
 }
 
+// One `CrystalVariant`'s own habit, drawn into `g` centered on (0,0) -- the
+// single place a variant name is turned into a shape, so `makeCrystal`'s
+// ordinary render and `drawVariantShape`'s hybrid halves can never disagree
+// about what a variant looks like. `shard` is the fallback as well as a
+// variant in its own right: it is the habit a compound gets when its
+// structure has no characteristic one.
+function drawSolidShape(
+  g: Phaser.GameObjects.Graphics,
+  size: number,
+  color: number,
+  variant: CrystalVariant,
+  stretch: Stretch = NO_STRETCH
+) {
+  if (variant === 'cluster') drawClusterShape(g, size, color, stretch);
+  else if (variant === 'prism') drawPrismShape(g, size, color, stretch);
+  else if (variant === 'cubic') drawCubicShape(g, size, color, stretch);
+  else if (variant === 'octahedral') drawOctahedralShape(g, size, color, stretch);
+  else if (variant === 'rhombohedral') drawRhombohedralShape(g, size, color, stretch);
+  else if (variant === 'tetragonal') drawTetragonalShape(g, size, color, stretch);
+  else if (variant === 'layer') drawLayerShape(g, size, color, stretch);
+  else if (variant === 'layerTriangle') drawPlateShape(g, size, color, stretch, 3, 1.05);
+  else if (variant === 'layerSquare') drawPlateShape(g, size, color, stretch, 4, 0.88);
+  else if (variant === 'twisted') drawTwistedShape(g, size, color, stretch);
+  else drawShardShape(g, size, color, stretch);
+}
+
 // Builds a shiny crystal (a Container so it can be positioned/tweened as one
-// unit) matching a material's `variant`: a single shard, a jagged cluster of
-// three shards, a layered prism, a floating 2D sheet, or two twisted
-// sheets -- plus a specular highlight and a few twinkling sparkles for the
-// "shiny" look.
+// unit) matching a material's `variant` -- one of `drawSolidShape`'s habits,
+// plus a specular highlight and a few twinkling sparkles for the "shiny"
+// look.
 export function makeCrystal(
   scene: Phaser.Scene,
   size: number,
@@ -254,49 +549,10 @@ export function makeCrystal(
   const stretch = jitter?.stretch ?? NO_STRETCH;
   const rot = jitter?.rotationRad ?? 0;
 
-  if (variant === 'cluster') {
-    // Three genuinely different crystal habits intergrown together -- a
-    // narrow prismatic needle, a blocky cube, and a hexagonal column --
-    // rather than the same shard silhouette repeated at three sizes, so a
-    // "resting cluster of crystals" actually reads as a mineral specimen
-    // instead of one gem split into copies.
-    const prismatic = scene.add.graphics();
-    drawShardShape(prismatic, size * 0.6, drawColor, stretch, 0.4);
-    prismatic.setPosition(-size * 0.42, size * 0.3);
-    prismatic.setRotation(Phaser.Math.DegToRad(-20) + rot);
-    container.add(prismatic);
-
-    const cubic = scene.add.graphics();
-    drawCubicShape(cubic, size * 0.5, drawColor, stretch);
-    cubic.setPosition(size * 0.4, size * 0.34);
-    cubic.setRotation(Phaser.Math.DegToRad(14) - rot);
-    container.add(cubic);
-
-    const hexagonal = scene.add.graphics();
-    drawPrismShape(hexagonal, size * 0.8, drawColor, stretch);
-    hexagonal.setRotation(rot * 0.5);
-    container.add(hexagonal);
-  } else if (variant === 'prism') {
-    const g = scene.add.graphics();
-    drawPrismShape(g, size, drawColor, stretch);
-    g.setRotation(rot);
-    container.add(g);
-  } else if (variant === 'layer') {
-    const g = scene.add.graphics();
-    drawLayerShape(g, size, drawColor, stretch);
-    g.setRotation(rot);
-    container.add(g);
-  } else if (variant === 'twisted') {
-    const g = scene.add.graphics();
-    drawTwistedShape(g, size, drawColor, stretch);
-    g.setRotation(rot);
-    container.add(g);
-  } else {
-    const g = scene.add.graphics();
-    drawShardShape(g, size, drawColor, stretch);
-    g.setRotation(rot);
-    container.add(g);
-  }
+  const g = scene.add.graphics();
+  drawSolidShape(g, size, drawColor, variant, stretch);
+  g.setRotation(rot);
+  container.add(g);
 
   if (!opts?.plain) {
     const stars = Array.from({ length: jitter?.sparkleCount ?? 3 }, () => ({ glyph: jitter?.sparkleGlyph ?? '✦' }));
@@ -378,16 +634,13 @@ function averageColor(a: number, b: number): number {
   return (Math.round((ar + br) / 2) << 16) | (Math.round((ag + bg) / 2) << 8) | Math.round((ab + bb) / 2);
 }
 
-// A variant's own shape, single-color, no shadow/rim flourish beyond what the
-// shape function already does -- the building block `drawHybridCrystal` fuses
-// two of. 'cluster' collapses to a plain shard here (its usual three-shard
-// silhouette would crowd a shape that's already sharing space with a second
-// parent's own shape).
+// A parent's own habit at hybrid scale, unstretched -- the building block
+// `drawHybridCrystal` fuses two of. 'cluster' collapses to a plain shard here
+// (its own multi-spire silhouette would crowd a shape that's already sharing
+// space with a second parent's own shape); every other variant contributes
+// the same habit it renders as on its own.
 function drawVariantShape(g: Phaser.GameObjects.Graphics, size: number, color: number, variant: CrystalVariant) {
-  if (variant === 'prism') drawPrismShape(g, size, color);
-  else if (variant === 'layer') drawLayerShape(g, size, color);
-  else if (variant === 'twisted') drawTwistedShape(g, size, color);
-  else drawShardShape(g, size, color);
+  drawSolidShape(g, size, color, variant === 'cluster' ? 'shard' : variant);
 }
 
 // Majorana's hybridization mechanic (DESIGN.md §5): render a fused material

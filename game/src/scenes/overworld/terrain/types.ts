@@ -33,6 +33,28 @@ export interface TerrainTile {
   vortexCore: boolean;
 }
 
+// Where a fight started, read off the same plan the corridor is drawn from
+// (plan.ts's sampleBattleLocale) and handed to BattleScene, which colors the
+// arena from it. Enough to place the battle on the map without carrying any
+// of the projection geometry the overworld's own accents need: the arena is a
+// flat near view and re-renders none of that.
+export interface BattleLocale {
+  // The encounter tile's own grid coordinates -- what gives each spot in a
+  // world its own stable skyline (BattleScene.drawBackground's ridge seeds).
+  x: number;
+  y: number;
+  // That tile's own biome, which is the scene's biome everywhere except a
+  // World 9 defect patch, where it is the borrowed world's instead.
+  biome: Biome;
+  // The off-path material that dominates the neighbourhood around the tile,
+  // falling back to the tile biome's own where the tile stands too far from
+  // anything impassable to see one.
+  surround: OffPathKind;
+  // The dominant mapgen domain tint around the tile (worlds 1/3/8's colored
+  // regions), null where the surround carries none.
+  regionTint: number | null;
+}
+
 // The whole grid, read once: its per-tile terrain, the northernmost row the
 // corridor reaches, and the smoothed walkable/impassable boundary geometry.
 // A tile away from any boundary has no contour entry (null) and is drawn as a

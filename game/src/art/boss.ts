@@ -342,3 +342,47 @@ export function makeBossCrystal(
 
   return container;
 }
+
+// The same golem reduced to what still reads at HUD-icon scale -- the battle
+// turn-order preview's 32px row (scenes/battle/hud.ts's drawTurnPreview),
+// where the opponent's icon has to be tellable from the player's ordinary
+// `makeCrystal` gem beside it. `makeBossCrystal` can't just be called with a
+// small `size` for this: its grain shards, seams and head slit are only a
+// pixel or two across there, its contact shadow spans 1.9x its size and its
+// heat sparks tween out to 1.35x above it (both of which would reach into the
+// neighbouring icons of a 36px-spaced row), and its ~15 idle tweens would be
+// rebuilt per icon every time the row redraws. What survives here is only
+// what carries the distinction: the humanoid outline, against the single
+// faceted shape every ordinary crystal is, plus the lit head slit. Filled in
+// the material's own color rather than the arena golem's much darker
+// `shade(color, -62)` silhouette fill, since at this size the fill is all the
+// color there is to read the boss's type off. Static, with no tweens of its
+// own -- a row that rebuilds every round shouldn't pay for idle animation.
+export function makeBossIcon(scene: Phaser.Scene, size: number, color: number): Phaser.GameObjects.Container {
+  const container = scene.add.container(0, 0);
+  // Half of `size`, so the widest span (BOSS_SILHOUETTE_HALF_WIDTH) lands on
+  // the same 0.55x half-width art/crystals.ts's own shapes have at that size
+  // -- a boss icon drops into a row laid out for crystal icons without
+  // needing spacing of its own. `art` re-centers the silhouette, which
+  // reaches further above its own center than below it.
+  const k = size * 0.5;
+  const art = scene.add.container(0, k * 0.17);
+  container.add(art);
+
+  const poly = SILHOUETTE.map(([x, y]) => ({ x: x * k, y: y * k }));
+  const body = scene.add.graphics();
+  body.fillStyle(color, 1);
+  body.fillPoints(poly, true);
+  body.lineStyle(2, shade(color, -55), 1);
+  body.strokePoints(poly, true);
+  art.add(body);
+
+  // A round ember dot rather than the full-size art's cut slit: a 4x1px
+  // sliver would vanish, where a dot of the boss family's own ember color
+  // survives and still reads as one lit eye in the head.
+  const eye = scene.add.circle(0, -k * 1.06, Math.max(1.5, k * 0.13), EMBER, 1);
+  eye.setBlendMode(Phaser.BlendModes.ADD);
+  art.add(eye);
+
+  return container;
+}

@@ -6,6 +6,7 @@ import { CANVAS_W } from '../../art/perspective';
 import { fontPx } from '../../ui/text';
 import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 import { MOVES, SHOP_MOVE_IDS, compatibleMoves, shopCost, getPlayerStats, statUpgradeCost, MAX_STAT } from '../../data/materials';
+import { STAT_LABELS } from '../../data/balance';
 import { persistFromRegistry } from '../../data/save';
 import type { Stats } from '../../data/types';
 import {
@@ -228,9 +229,9 @@ function renderShopStats(scene: GuardianPanelHost, container: Phaser.GameObjects
   const stats = getPlayerStats(scene.game.registry);
   const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
   const rows: { key: keyof Stats; label: string }[] = [
-    { key: 'quantumness', label: 'Quantumness (crit chance)' },
-    { key: 'velocity', label: 'Velocity (turn order)' },
-    { key: 'correlation', label: 'Correlation (defense)' },
+    { key: 'quantumness', label: `${STAT_LABELS.quantumness} (crit chance)` },
+    { key: 'velocity', label: `${STAT_LABELS.velocity} (turn order)` },
+    { key: 'correlation', label: `${STAT_LABELS.correlation} (defense)` },
   ];
 
   rows.forEach((row) => {

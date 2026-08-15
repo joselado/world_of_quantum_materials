@@ -185,13 +185,19 @@ export function showBlochHub(scene: GuardianPanelHost) {
   // the selection ring inside it moves), then the previewed destination's
   // own blurb, cost/status line, and confirm button.
   const mapTop = columnsTop;
-  const mapBuild = buildQumatuomiMap(scene, { width: columns.rightColW, height: 78, discoveredWorlds });
+  const mapBuild = buildQumatuomiMap(scene, { width: columns.rightColW, height: 110, discoveredWorlds });
   // buildQumatuomiMap does uniform scale-to-fit -- its returned width/height
   // are usually smaller than the requested budget on one axis, so the real
   // rendered size (not the request) drives the rest of this column's math.
-  // Height is deliberately the tight side of the budget -- this is the
-  // densest guardian panel in the game (table + map + blurb + status/button
-  // + footer all in one), so the map stays legible rather than large.
+  // Height is the binding side of the budget (the right column's own width is
+  // far more room than the silhouette's proportions need), and 110 is the
+  // map's own native height, so it draws at 1:1 with no scaling at all. That
+  // is also as large as this panel -- the densest in the game (table + map +
+  // blurb + status/button + footer all in one) -- can carry: on a full page of
+  // destination rows the left column is the taller of the two, so the panel's
+  // own tallest state costs no extra height, and the blurb below clears its
+  // own shrink loop untouched at the longest world entry and the largest
+  // text-size preset.
   mapBuild.container.setPosition(columns.rightColCenterX, mapTop + mapBuild.height / 2);
   container.add(mapBuild.container);
   const detailTop = mapTop + mapBuild.height + 4;

@@ -4,7 +4,7 @@ import { blend, shade } from './colors';
 import { REFERENCE_BLUE_GREY, STORY_LAVENDER, TUTORIAL_CYAN } from '../ui/theme';
 
 // One small hand-drawn icon per Lab station (scenes/panels/hubStations.ts's
-// six reference/settings stations, plus HubScene's own Qumatex and the
+// seven reference/settings stations, plus HubScene's own Qumatex and the
 // door onward) -- the
 // motif STYLE.md's "Lab panels" section describes, planted beside that
 // station's own button out in the Lab room (HubScene.addStationRow) rather
@@ -246,6 +246,41 @@ export function makeTutorialMotif(scene: Phaser.Scene, size: number): Phaser.Gam
   }
   g.lineStyle(1.5, shade(color, -55), 1);
   g.lineBetween(spineX, -pageH * 0.5, spineX, pageH * 0.5);
+  container.add(g);
+
+  return container;
+}
+
+export function makeStoryMotif(scene: Phaser.Scene, size: number): Phaser.GameObjects.Container {
+  const container = scene.add.container(0, 0);
+  const color = STORY_LAVENDER; // matches the story-beat panels' own lavender stroke
+
+  const glow = scene.add.circle(0, 0, size * 0.48, color, 0.12);
+  glow.setBlendMode(Phaser.BlendModes.ADD);
+  container.add(glow);
+
+  // The route, not a book: a road stepping through its waypoints, the same
+  // shape World 10's mirrored sky traces across the map. The near waypoints
+  // are lit and the far ones are not, so the glyph reads both as the arc
+  // filling in as it is read and as the road's own light dying the further
+  // along it goes (WORLDS.md's light rule). An abstract diagram rather than
+  // scenery, since the Lab has no outside.
+  const g = scene.add.graphics();
+  const nodes = [
+    { x: -0.4, y: 0.36 },
+    { x: -0.14, y: -0.04 },
+    { x: 0.14, y: 0.18 },
+    { x: 0.4, y: -0.36 },
+  ].map((p) => ({ x: p.x * size, y: p.y * size }));
+  g.lineStyle(1.5, shade(color, -25), 0.9);
+  for (let i = 1; i < nodes.length; i++) g.lineBetween(nodes[i - 1].x, nodes[i - 1].y, nodes[i].x, nodes[i].y);
+  nodes.forEach((node, i) => {
+    const walked = i < 2;
+    g.fillStyle(walked ? shade(color, 35) : shade(color, -50), 1);
+    g.fillCircle(node.x, node.y, size * (walked ? 0.11 : 0.085));
+    g.lineStyle(1, shade(color, -60), 0.9);
+    g.strokeCircle(node.x, node.y, size * (walked ? 0.11 : 0.085));
+  });
   container.add(g);
 
   return container;

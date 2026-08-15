@@ -105,7 +105,7 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     title: 'Battles',
     unlock: { kind: 'tip' },
     body:
-      'Battles are turn-based -- whichever side has higher Velocity swings first each round. Pick a move from the panel on the right; every move is a real quasiparticle, and a defender with no natural way to host it takes double damage.',
+      'Battles are turn-based -- whichever side has higher Momentum swings first each round. Pick a move from the panel on the right; every move is a real quasiparticle, and a defender with no natural way to host it takes double damage.',
   },
   qumatessence: {
     title: 'Qumatessence',

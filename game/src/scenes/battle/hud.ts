@@ -19,6 +19,7 @@
 // each.
 import Phaser from 'phaser';
 import { makeCrystal } from '../../art/crystals';
+import { makeBossIcon } from '../../art/boss';
 import { GROUND_DROP } from '../../art/attackShapes';
 import { GOLD_ACCENT, PANEL_BG, REFERENCE_BLUE_GREY } from '../../ui/theme';
 import { fontScale } from '../../ui/text';
@@ -278,7 +279,8 @@ export function drawTurnPreview(
   scene: Phaser.Scene,
   sequence: boolean[],
   playerMaterial: Material,
-  opponentMaterial: Material
+  opponentMaterial: Material,
+  opponentIsBoss: boolean
 ): Phaser.GameObjects.Container {
   const container = scene.add.container(TURN_PREVIEW_X, TURN_PREVIEW_Y).setDepth(5);
   const label = scene.add
@@ -299,10 +301,17 @@ export function drawTurnPreview(
   const rowY = label.height + 4 + Math.max(0, TURN_PREVIEW_RING_RADIUS - TURN_PREVIEW_ICON_SIZE / 2);
   sequence.forEach((isPlayer, i) => {
     const material = isPlayer ? playerMaterial : opponentMaterial;
-    const icon = makeCrystal(scene, TURN_PREVIEW_ICON_SIZE, material.color, material.variant, {
-      seed: material.name,
-      hybrid: material.hybridParents,
-    });
+    // A rival's icons carry the golem silhouette the same opponent has on the
+    // field (art/boss.ts's makeBossIcon, reduced to what reads at this size),
+    // so the row shows the same two fighters the arena does rather than
+    // demoting the boss to an ordinary crystal.
+    const icon =
+      !isPlayer && opponentIsBoss
+        ? makeBossIcon(scene, TURN_PREVIEW_ICON_SIZE, material.color)
+        : makeCrystal(scene, TURN_PREVIEW_ICON_SIZE, material.color, material.variant, {
+            seed: material.name,
+            hybrid: material.hybridParents,
+          });
     // Whose-turn ring behind the crystal shapes (`addAt(..., 0)`): a bold
     // full-opacity gold ring for the player's hits, matching this project's
     // established active/highlighted accent color, versus a thinner, dimmer

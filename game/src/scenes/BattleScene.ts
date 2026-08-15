@@ -3,7 +3,9 @@ import { killTweensDeep, makeCrystal } from '../art/crystals';
 import { makeBossCrystal } from '../art/boss';
 import { shade, blend, hashSeed, seededRandom } from '../art/colors';
 import { getBiome } from '../art/biomes';
-import type { Biome } from '../art/biomes';
+import type { Biome, WallTheme } from '../art/biomes';
+import { wallThemeOf } from './overworld/terrain/plan';
+import type { BattleLocale } from './overworld/terrain/types';
 import { playAttackEffect, followAnchor, ANALYTIC_SHAPES, ULTIMATE_SHAPES, type EffectAnchor } from '../art/attackEffects';
 import { drawFranklinPassiveHalo } from '../art/passiveHalos';
 import { fontPx, fontScale } from '../ui/text';
@@ -209,6 +211,10 @@ interface BattleInitData {
   world?: number;
   attackMultiplier?: number;
   isRival?: boolean;
+  // Where on that world's map the fight started (scenes/overworld/terrain/
+  // plan.ts's sampleBattleLocale). Optional: without it the arena falls back
+  // to the world's own default biome and skyline.
+  locale?: BattleLocale;
 }
 
 interface MoveSection {
@@ -220,6 +226,11 @@ interface MoveSection {
 export class BattleScene extends Phaser.Scene {
   private wild!: Material;
   private world = 1;
+  // Where this fight started, when the caller knows (drawBackground). Assigned
+  // unconditionally in init() -- Phaser reuses the scene instance across
+  // scene.start(), so a battle entered without one has to clear the previous
+  // battle's locale rather than inherit it.
+  private locale?: BattleLocale;
   private attackMultiplier = 1;
   private isRival = false;
   private playerMaterial!: Material;
@@ -317,6 +328,7 @@ export class BattleScene extends Phaser.Scene {
   init(data: BattleInitData) {
     this.wild = data.wild;
     this.world = data.world ?? 1;
+    this.locale = data.locale;
     this.attackMultiplier = data.attackMultiplier ?? 1;
     this.isRival = data.isRival ?? false;
   }
@@ -1067,15 +1079,27 @@ export class BattleScene extends Phaser.Scene {
     askNext();
   }
 
-  // The whole battle backdrop, colored from that world's own biome
-  // (art/biomes.ts, the same table OverworldScene's corridor reads) so a
-  // frozen-cavern fight and a cracked-world fight each render in their own
-  // palette. Drawn once per battle entry (not per frame), which is what
-  // affords the layered-atmosphere treatment below: eased sky wash, four
-  // curved parallax ridgelines, fog/mist blending, theme-keyed color grade,
-  // drifting haze, and a corner vignette.
+  // The whole battle backdrop, colored from where on the map the fight
+  // started (`locale`, scenes/overworld/terrain/plan.ts's sampleBattleLocale)
+  // rather than from the world alone: the encounter tile's own biome supplies
+  // the palette, its surroundings the color grade, its coordinates the
+  // skyline. Without a locale the world's own biome answers all three, which
+  // is the arena a caller that doesn't know where it stands gets.
+  //
+  // Drawn once per battle entry (not per frame), which is what affords the
+  // layered-atmosphere treatment below: eased sky wash, four curved parallax
+  // ridgelines, fog/mist blending, theme-keyed color grade, drifting haze,
+  // and a corner vignette. It stays a backdrop -- the local read tints and
+  // grades an arena rather than restaging the overworld's terrain in it, and
+  // the whole value range stays compressed so the crystals read in front.
   private drawBackground() {
-    const biome = getBiome(this.world);
+    const base = this.locale?.biome ?? getBiome(this.world);
+    const tint = this.locale?.regionTint ?? null;
+    // A domain tint from the ground around the tile (worlds 1/3/8's colored
+    // regions) pulled into the arena's own ground at a fraction, so two
+    // domains of one world are distinguishable underfoot without the arena
+    // reading as a different world.
+    const biome: Biome = tint == null ? base : { ...base, ground: blend(base.ground, tint, 0.15) };
     const g = this.add.graphics();
 
     // Sky as an eased two-segment vertical wash (dark zenith easing into a
@@ -1105,9 +1129,11 @@ export class BattleScene extends Phaser.Scene {
     // Four stacked ridgeline layers behind the field, each further layer
     // flatter and blended harder toward the sky/fog color (aerial
     // perspective), the nearer ones darker and more sculpted. Silhouettes
-    // are Catmull-Rom curves through per-world seeded peak heights, so every
-    // world gets its own stable rolling skyline and the value range stays
-    // compressed relative to the crystals fighting in front of it.
+    // are Catmull-Rom curves through seeded peak heights, seeded off the
+    // encounter tile as well as the world, so every place in a world has its
+    // own rolling skyline -- the same spot always the same one -- and the
+    // value range stays compressed relative to the crystals fighting in
+    // front of it.
     const ridgeLayers: {
       baseY: number;
       count: number;
@@ -1129,8 +1155,9 @@ export class BattleScene extends Phaser.Scene {
       { baseY: HORIZON_Y - 4, count: 8, minH: 12, maxH: 46, color: shade(blend(biome.hillColor, biome.fogTarget, 0.15), -5), alpha: 0.85, rim: true },
       { baseY: HORIZON_Y + 6, count: 9, minH: 5, maxH: 24, color: blend(shade(biome.ground, 20), biome.fogTarget, 0.1), alpha: 1, rim: true },
     ];
+    const spot = this.locale ? `${this.locale.x},${this.locale.y}-` : '';
     ridgeLayers.forEach((layer, i) => {
-      const rand = seededRandom(hashSeed(`battle-ridge-${this.world}-${i}`));
+      const rand = seededRandom(hashSeed(`battle-ridge-${this.world}-${spot}${i}`));
       const heights = Array.from({ length: layer.count }, () => layer.minH + rand() * (layer.maxH - layer.minH));
       this.drawRidge(g, layer.baseY, layer.color, layer.alpha, heights, layer.rim);
     });
@@ -1204,11 +1231,15 @@ export class BattleScene extends Phaser.Scene {
     }
   }
 
-  // Whole-scene translucent color-grade keyed off the biome's terrain theme
-  // -- zone-level tinting (a cool wash over a frozen world's field, embers
-  // glowing at a scorched world's horizon), never per-shape shading.
+  // Whole-scene translucent color-grade keyed off what the ground around the
+  // encounter tile is actually made of (the locale's sampled surround,
+  // falling back to the biome's own terrain theme) -- zone-level tinting (a
+  // cool wash over a frozen field, embers glowing at a scorched horizon),
+  // never per-shape shading. Every tint here is held at or below 0.14 alpha:
+  // the grade says what kind of place this is and then gets out of the way.
   private drawColorGrade(g: Phaser.GameObjects.Graphics, biome: Biome) {
-    switch (biome.wallTheme) {
+    const theme: WallTheme = this.locale ? wallThemeOf(this.locale.surround) : biome.wallTheme;
+    switch (theme) {
       case 'ice': {
         // Cool cyan wash deepening down the field, as if lit through ice.
         const cool = 0x3a8ab8;
@@ -1642,7 +1673,7 @@ export class BattleScene extends Phaser.Scene {
     for (let i = 0; i < fasterHits; i++) roundPattern.push(fasterIsPlayer);
     roundPattern.push(!fasterIsPlayer);
     const sequence = Array.from({ length: TURN_PREVIEW_LENGTH }, (_, i) => roundPattern[i % roundPattern.length]);
-    this.turnPreviewRow = drawTurnPreview(this, sequence, this.playerMaterial, this.opponentView());
+    this.turnPreviewRow = drawTurnPreview(this, sequence, this.playerMaterial, this.opponentView(), this.isRival);
   }
 
   private playerAttack(moveId: string, bonusMultiplier = 1) {

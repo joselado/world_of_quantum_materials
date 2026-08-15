@@ -8,10 +8,12 @@ import {
   REFERENCE_BLUE_GREY,
   REFERENCE_BLUE_GREY_HEX,
   STORY_LAVENDER,
+  STORY_LAVENDER_HEX,
   TUTORIAL_CYAN,
   TUTORIAL_CYAN_HEX,
 } from '../../ui/theme';
 import { visibleTutorialPages } from '../../data/tutorial';
+import { storyLogIndex } from '../../data/storyLog';
 import {
   LIST_DETAIL_PANEL_W,
   listDetailColumns,
@@ -32,6 +34,7 @@ import {
   DIFFICULTY_TIER_PRESETS,
   DEFAULT_DIFFICULTY_TIER,
 } from '../../data/settings';
+import { STAT_LABELS } from '../../data/balance';
 import { persistFromRegistry } from '../../data/save';
 import { music } from '../../audio/music';
 import { getBattleMoves, effectiveMovePower, moveDisplayName, getPlayerStats, getPlayerMaterial } from '../../data/materials';
@@ -40,6 +43,7 @@ import {
   makeStatsMotif,
   makeAbilitiesMotif,
   makeTutorialMotif,
+  makeStoryMotif,
   makeSettingsMotif,
   makeTitleScreenMotif,
 } from '../../art/labMotifs';
@@ -67,8 +71,8 @@ export function labPanelColumns(panelWidth: number): LabPanelColumns {
   return { contentCenterX: CANVAS_W / 2, contentWrapW: panelWidth - CONTENT_MARGIN * 2 };
 }
 
-// The six stations the Lab (HubScene, World 0) offers alongside Qumatex and
-// the door onward -- Moves, Stats, Abilities, Tutorial, Settings, Title
+// The seven stations the Lab (HubScene, World 0) offers alongside Qumatex and
+// the door onward -- Moves, Stats, Abilities, Tutorial, Story, Settings, Title
 // Screen. Each
 // function here is what a station's `onClick` calls directly; every one is a
 // pure function of registry/save state (player stats/moves/passives/
@@ -90,9 +94,9 @@ export function showStatsPanel(scene: HubScene) {
   const qumatessence = (scene.game.registry.get('qumatessence') as number) || 0;
   const playerMaterial = getPlayerMaterial(scene.game.registry);
   const body =
-    `Quantumness: ${stats.quantumness} -- raises your crit chance\n` +
-    `Velocity: ${stats.velocity} -- higher goes first each round\n` +
-    `Correlation: ${stats.correlation} -- higher takes less damage\n\n` +
+    `${STAT_LABELS.quantumness}: ${stats.quantumness} -- raises your crit chance\n` +
+    `${STAT_LABELS.velocity}: ${stats.velocity} -- higher goes first each round\n` +
+    `${STAT_LABELS.correlation}: ${stats.correlation} -- higher takes less damage\n\n` +
     `Qumatessence: ${qumatessence}\nCurrent form: ${playerMaterial.name}\n\n` +
     "Raise any of these with qumatessence at Noether's shop.";
   showInfoPanel(scene, 'Your Stats', body);
@@ -372,6 +376,142 @@ export function showTutorialTopics(scene: HubScene) {
   renderDetail();
 }
 
+// The Decoherence arc, re-readable in the order a playthrough delivers it
+// (data/storyLog.ts's `storyLogIndex`) -- the same list+detail layout the
+// Tutorial station above uses, with Qumatex's checklist masking over it: the
+// whole arc is always listed, and a chapter the save hasn't reached yet keeps
+// its slot as a dimmed "???" row whose detail pane says only that the player
+// hasn't walked that far, rather than being absent from the list or spelling
+// out what is coming. The list is read once per panel build and closed over,
+// so nothing can shift the rows out from under a click.
+// Selecting a row is a scoped update (CODEMAP's "scoped update" convention),
+// not a panel rebuild: `renderListColumn`'s own `setSelectedId` restyles the
+// row in place and only `detailBlock`/`chromeBlock` re-render. A page flip
+// still tears the panel down via `destroyPanel` and rebuilds, since that
+// changes which rows the list itself shows. Identifies a chapter by its own
+// index into STORY_LOG (stringified for `idFor`/`selectedId`), which is
+// stable: the list is the whole arc at every point in a playthrough, so a
+// row never moves as chapters are reached.
+export function showStoryLog(scene: HubScene) {
+  destroyPanel(scene);
+  scene.dialogueActive = true;
+
+  const panelWidth = LIST_DETAIL_PANEL_W;
+  const top = 20;
+  const container = scene.add.container(0, 0).setDepth(100);
+  scene.dialogueContainer = container;
+
+  // Added first so everything below (divider, footer, panel background)
+  // renders beneath every row/button added to `container` afterward -- same
+  // ordering every guardian's own list+detail panel uses.
+  const chromeBlock = scene.add.container(0, 0);
+  container.add(chromeBlock);
+
+  let y = top;
+  const title = scene.add
+    .text(CANVAS_W / 2, y, 'Story', { fontSize: fontPx(scene, 15), color: STORY_LAVENDER_HEX, fontStyle: 'bold' })
+    .setOrigin(0.5, 0);
+  container.add(title);
+  y += title.height + 6;
+
+  const hint = scene.add
+    .text(CANVAS_W / 2, y, 'Pick a chapter to read it.', { fontSize: fontPx(scene, 11), color: REFERENCE_BLUE_GREY_HEX })
+    .setOrigin(0.5, 0);
+  container.add(hint);
+  y += hint.height + 10;
+
+  const panelLeft = CANVAS_W / 2 - panelWidth / 2;
+  const columns = listDetailColumns(panelLeft);
+  const columnsTop = y;
+
+  const rows = storyLogIndex(scene.game.registry);
+  const items = rows.map((row, index) => ({ row, id: String(index) }));
+  let selected = items.some((it) => it.id === String(scene.storySelectedIndex)) ? String(scene.storySelectedIndex) : items[0].id;
+
+  const listResult = renderListColumn({
+    scene,
+    container,
+    x: columns.leftX,
+    y: columnsTop,
+    width: columns.leftColW,
+    items,
+    idFor: (it) => it.id,
+    labelFor: (it) => (it.row.reached ? it.row.entry.listLabel ?? it.row.entry.title : '???'),
+    colorFor: (it) => (it.row.reached ? '#cfd8ff' : '#6a7396'),
+    selectedId: selected,
+    page: scene.storyPage,
+    onPageChange: (page) => {
+      scene.storyPage = page;
+      destroyPanel(scene);
+      showStoryLog(scene);
+    },
+    onSelect: (it) => {
+      scene.storySelectedIndex = Number(it.id);
+      selected = it.id;
+      listResult.setSelectedId(it.id);
+      renderDetail();
+    },
+  });
+  scene.storyPage = listResult.page;
+
+  const detailBlock = scene.add.container(0, 0);
+  container.add(detailBlock);
+
+  const renderDetail = () => {
+    detailBlock.removeAll(true);
+    chromeBlock.removeAll(true);
+
+    const { entry, reached } = rows[Number(selected)];
+    let rightY = columnsTop;
+
+    const titleText = scene.add
+      .text(columns.rightColCenterX, rightY, reached ? entry.title : '???', {
+        fontSize: fontPx(scene, 15),
+        color: '#ffffff',
+        fontStyle: 'bold',
+        align: 'center',
+        wordWrap: { width: columns.rightColW },
+      })
+      .setOrigin(0.5, 0);
+    detailBlock.add(titleText);
+    rightY += titleText.height + 10;
+
+    // Shrink-only fitting, same as the Tutorial station's own pane: this
+    // panel's only button is the list column's shared "Close," so a long
+    // chapter has to be made to fit where it stands. An unreached chapter
+    // shows one short line in place of its body -- a masked row's pane owes
+    // the player the fact that there is more road, not a pane of question
+    // marks (the same treatment Bloch's own table gives an unvisited world).
+    const bodyText = scene.add
+      .text(columns.rightColCenterX, rightY, '', {
+        fontSize: `${Math.round(12 * fontScale(scene))}px`,
+        color: '#cfd8ff',
+        align: 'center',
+        wordWrap: { width: columns.rightColW },
+        lineSpacing: 5,
+      })
+      .setOrigin(0.5, 0);
+    detailBlock.add(bodyText);
+    fitProseToBudget(
+      bodyText,
+      [reached ? entry.body : 'You have not walked this far down the road yet.'],
+      CANVAS_H - 16 - 14 - 14 - rightY
+    );
+    rightY += bodyText.height + 14;
+
+    const leftBottom = renderListColumnFooter(scene, chromeBlock, columns, listResult.bottom + 10, 'Close', () => scene.closeDialogue());
+    const columnsBottom = Math.max(leftBottom, rightY);
+    insertColumnDivider(scene, chromeBlock, columns.dividerX, columnsTop, columnsBottom);
+
+    const panelHeight = columnsBottom + 14 - top;
+    const panel = scene.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.95)
+      .setStrokeStyle(2, STORY_LAVENDER);
+    chromeBlock.addAt(panel, 0);
+  };
+  renderDetail();
+}
+
 // Wild-encounter density (data/settings.ts's DENSITY_PRESETS, read by
 // OverworldScene.generateMap via encounterChance()), text size
 // (FONT_SCALE_PRESETS, read live by every fontPx() call), music style
@@ -643,7 +783,7 @@ export interface LabStation {
   visible: (scene: HubScene) => boolean;
 }
 
-// The Lab's six reference/settings stations, each paired with its own
+// The Lab's seven reference/settings stations, each paired with its own
 // `art/labMotifs.ts` icon (planted beside its button in the room by
 // HubScene.addStationRow, see labPanelColumns' own comment above) and a
 // `visible` check -- HubScene.create() filters this list down to whichever
@@ -655,6 +795,7 @@ export const LAB_STATIONS: LabStation[] = [
   { label: 'Stats', motif: makeStatsMotif, onClick: showStatsPanel, visible: () => true },
   { label: 'Abilities', motif: makeAbilitiesMotif, onClick: showAbilitiesPanel, visible: hasLearnedAnyAbility },
   { label: 'Tutorial', motif: makeTutorialMotif, onClick: showTutorialTopics, visible: () => true },
+  { label: 'Story', motif: makeStoryMotif, onClick: showStoryLog, visible: () => true },
   { label: 'Settings', motif: makeSettingsMotif, onClick: showSettingsPanel, visible: () => true },
   { label: 'Title Screen', motif: makeTitleScreenMotif, onClick: showTitleScreenPanel, visible: () => true },
 ];

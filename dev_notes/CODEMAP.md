@@ -64,11 +64,13 @@ game/src/
                                  hazeTarget/forwardHazeBlend and the HazeView/AtmosphereView
                                  contexts they read
       terrain/
-        types.ts               TerrainKind/OffPathKind/TerrainTile/TerrainPlan, the TerrainView
-                                 render context, and the AccentTile/AccentDraw contract every
-                                 off-path material is written against
+        types.ts               TerrainKind/OffPathKind/TerrainTile/TerrainPlan/BattleLocale, the
+                                 TerrainView render context, and the AccentTile/AccentDraw
+                                 contract every off-path material is written against
         plan.ts                buildTerrainPlan(TerrainSource) -- the camera-independent read of
-                                 the grid: per-tile terrain, farEdgeRow, and the contour trace
+                                 the grid: per-tile terrain, farEdgeRow, and the contour trace;
+                                 sampleBattleLocale(plan, tile) -- the same read sampled around
+                                 one tile into the BattleLocale the arena colours itself from
         paint.ts               drawTerrain(TerrainView) -- the per-frame projection and painting
                                  of that plan, including the lateral/depth margins, the contact
                                  shadow and the chokepoint glow
@@ -200,12 +202,15 @@ game/src/
                                   per-tile ground outline, contact-shadow strips, rim light --
                                   built once per world-state by OverworldScene's cached terrain
                                   pass and only projected per frame
-    crystals.ts                 makeCrystal() -- shared shard/cluster/prism sprite builder, opts.seed
+    crystals.ts                 makeCrystal() -- shared crystal sprite builder, opts.seed
                                   for per-compound jitter (jitterFor), opts.hybrid for a fused
                                   hybrid look (drawHybridCrystal), opts.plain to drop the highlight
                                   and sparkle glyphs when the crystal is one piece of a larger
-                                  composition; drawShardShape()/drawCubicShape() -- the bare faceted
-                                  primitives, exported for boss.ts's golem limbs; killTweensDeep(scene, obj) --
+                                  composition; drawSolidShape() -- the one dispatcher turning a
+                                  CrystalVariant into a habit (a new variant needs a branch here and
+                                  nowhere else), which both makeCrystal and drawVariantShape (the
+                                  hybrid halves) go through; drawShardShape()/drawCubicShape() -- two of
+                                  those habits, also exported for boss.ts's golem limbs; killTweensDeep(scene, obj) --
                                   the shared recursive tween-kill every caller about to destroy a
                                   Container runs first (scenes/panels/listDetail.ts's destroyPanel,
                                   franklin.ts's crystal-block re-render, BattleScene's
@@ -223,7 +228,9 @@ game/src/
     franklin.ts                   makeFranklinAvatar() -- figure holding a diffraction-ring detector plate, world 9
     sklodowskaCurie.ts            makeSklodowskaCurieAvatar() -- radiant ray-crowned spire, world 10
     boss.ts                      makeBossCrystal() -- towering humanoid golem boss avatar at a world's goal,
-                                  plus the BOSS_SILHOUETTE_TOP/BOTTOM extents its callers lay out around
+                                  plus the BOSS_SILHOUETTE_TOP/BOTTOM extents its callers lay out around;
+                                  makeBossIcon() -- the same silhouette reduced to a static HUD-scale icon
+                                  (battle/hud.ts's turn-order row), no shards/seams/sparks/tweens
     tokens.ts                   makeToken() -- qumatessence pickup sprite
     labMotifs.ts                 One small icon builder per Lab station (Qumatex/Door/
                                   Moves/Stats/Abilities/Tutorial/Settings/Title Screen -- see
@@ -383,7 +390,9 @@ game/src/
                                   Phaser import (unlike materials.ts, which pulls in Phaser via
                                   art/colors.ts at module scope) so game/scripts/balance-sim.mjs
                                   can transpile and import it directly at runtime: BASE_STAT,
-                                  DEFAULT_STATS, enemyStatsForWorld(), statUpgradeCost(),
+                                  DEFAULT_STATS, STAT_LABELS (the player-facing name of each
+                                  Stats field -- see "Stats and battle resolution" below),
+                                  enemyStatsForWorld(), statUpgradeCost(),
                                   shopCost(), MOVE_LEVEL_MULTIPLIERS, MOVE_LEVEL_STREAKS,
                                   feynmanLevelCost(), battleStakeForWorld(),
                                   FRACTIONAL_GUARD_DAMAGE_MULT/ANYON_ECHO_FRACTION/
@@ -472,8 +481,17 @@ game/src/
                                     Ph.D. difficulty tier, data/balance.ts's DIFFICULTY_MULTIPLIERS
                                     applied to enemyStatsForWorld
     story.ts                       STORY_BEATS -- per-world Decoherence-arc line shown on advancing worlds --
-                                    and WORLD_GOAL_TEXT -- per-world one-liner for the goal-tile banner,
-                                    falling back to a generic line for a world with no entry
+                                    WORLD_GOAL_TEXT -- per-world one-liner for the goal-tile banner,
+                                    falling back to a generic line for a world with no entry -- and
+                                    FINALE_TITLE/FINALE_BODY, the arc's closing screen
+                                    (OverworldScene.showFinalePanel)
+    storyLog.ts                    STORY_LOG/storyLogIndex() -- the whole Decoherence arc in the order a
+                                    playthrough delivers it, for the Lab's Story station. Authors no copy
+                                    of its own: assembles every chapter from tutorial.ts's `lab` page,
+                                    worldLore.ts, story.ts, so a chapter re-read here and met in play can
+                                    never drift. Each chapter's `unlock` maps onto save state the
+                                    playthrough already persists (tutorialTipsSeen/worldLoreSeen/
+                                    rivalDefeated) -- no progress field of its own
     worldLore.ts                   WORLD_LORE (per-world 2-page history, shown once per save on first entry)/
                                     RIVAL_TAUNTS (per-world 2-part rival gate taunt) -- worldLoreSeen gating via
                                     hasSeenWorldLore/markWorldLoreSeen
@@ -487,7 +505,7 @@ game/src/
                                    whose length the layout can't assume (see "Long authored
                                    prose is fitted to the canvas" below)
     theme.ts                      PANEL_BG/GOLD_ACCENT(_HEX)/REFERENCE_BLUE_GREY(_HEX)/
-                                   TUTORIAL_CYAN(_HEX)/STORY_LAVENDER -- colors reused for a shared
+                                   TUTORIAL_CYAN(_HEX)/STORY_LAVENDER(_HEX) -- colors reused for a shared
                                    UI role (a panel background, an "active" accent, etc.) across
                                    multiple scene/panel files. A guardian's own identity color
                                    (their `art/<guardian>.ts` avatar plus their own
@@ -525,7 +543,7 @@ World 10's Adapted and nowhere else.
 ## Data model (`data/types.ts`, `data/materials.ts`)
 
 - A **Material** is a crystal: `name`, `type` (`MaterialType`), `color`, `variant`
-  (shard/cluster/prism/layer/twisted), `moves` (string ids into `MOVES`), an optional
+  (the compound's crystal habit -- see STYLE.md's "Crystal sprites"), `moves` (string ids into `MOVES`), an optional
   `shortName` (a short chemical-formula/acronym form, e.g. "MnO", "YIG" -- only set where one's
   genuinely worth authoring; `materials.ts`'s `materialDisplayName()` is the one consumer today,
   Qumatex's "Name (ShortName)" line), and an optional `hybridParents` (both parents' own
@@ -586,16 +604,19 @@ World 10's Adapted and nowhere else.
   "Guardians" below). Decide any new class's `MOVE_COMPATIBILITY` membership on purpose, not by omission.
 - Per-type look lives in `TYPE_LOOK` (base color + variant, exported); individual compounds
   of the same type get `shade(color, shadeStep * 18)` so siblings (Iron vs. Cobalt) read as a
-  family (`WORLD_RIVALS[1-8]`'s golems opt out of this via `colorOverride` instead, see
+  family (every rival golem opts out of this via `colorOverride` instead -- `WORLD_RIVALS[1-8]`
+  with a hand-picked literal each, World 9's `rivalImpurityResonance` by blending its rolled
+  type's own `TYPE_LOOK` base halfway to a tarnished grey so the color tracks the roll, see
   `crystal()`'s own entry above), *and* (rendering-side, not stored on the `Material` itself) `art/crystals.ts`'s
   `jitterFor(material.name, ...)` gives each one its own hue/rotation/stretch/sparkle
   variation so same-type siblings don't render as one recolored shape reused across every
   compound of that type -- see STYLE.md. `TitleScene`'s showcase cluster is the one consumer
   outside `data/materials.ts` itself so far (and the one place that skips per-compound jitter,
-  since it only has a `MaterialType` to draw from, not a specific compound name). A compound
-  whose actual dimensionality/stacking doesn't match its type's usual gem look overrides it via
-  `crystal()`'s `variantOverride` param (Graphene/Monolayer WTe₂/Chromium Triiodide → `'layer'`,
-  Twisted Bilayer MoTe₂ → `'twisted'`; see STYLE.md).
+  since it only has a `MaterialType` to draw from, not a specific compound name). A compound whose
+  own lattice differs from the structure its type's `TYPE_LOOK` entry assumes states its own
+  habit via `crystal()`'s `variantOverride` param (wurtzite GaN → `'prism'`, rhombohedral
+  Bi₂Te₃/BiFeO₃/GeTe → `'rhombohedral'`, Graphene/CrI₃ → `'layer'`, Twisted Bilayer MoTe₂ →
+  `'twisted'`; see STYLE.md).
 - `combineMaterials(a, b)` (Majorana's hybrid fuser, §5) looks up `hybridRecipeResult(a.name,
   b.name)` -- a curated, named parent-pair catalog (`HYBRID_RECIPES`), not a type-derived
   result -- and spreads that recipe's own authored `Material` (name/type/color/moves all
@@ -838,13 +859,41 @@ real quasiparticle; there is no abstract "disorder" move or class.
 
 ## Stats and battle resolution
 
+**Player-facing stat names vs. internal field names.** The two are independent, and the pairing is:
+
+| internal `Stats` field | player-facing name | role |
+| --- | --- | --- |
+| `quantumness` | **Energy** | crit ("coherent hit") chance |
+| `velocity` | **Momentum** | turn order and hits per round |
+| `correlation` | **Lifetime** | defense / damage reduction |
+
+`data/balance.ts`'s `STAT_LABELS` (`Record<keyof Stats, string>`) is the single source of truth for
+the right-hand column: every place the player reads a stat name -- Noether's Stats tab
+(`scenes/panels/noether.ts`'s `renderShopStats`) and the Lab's Stats station
+(`scenes/panels/hubStations.ts`'s `showStatsPanel`) -- takes its wording from there rather than
+spelling it out, so a wording change is a one-line edit. Prose that names a stat mid-sentence
+(`data/tutorial.ts`'s battle-basics page, `README.md`) writes the display name literally, since a
+template substitution there would read worse than it reads now. The internal field names are
+identifiers only: they name the `Stats` interface's fields, the persisted `playerStats` save keys,
+and the balance-formula parameters (`critChance(attackerQuantumness)`,
+`defenseFactor(defenderCorrelation)`, `CORRELATION_COST_MULTIPLIER`).
+
+Migrating the internals to match the display names is a possible future change. It would touch the
+`Stats` interface (`data/types.ts`), every field access across `data/balance.ts`,
+`scenes/BattleScene.ts`, `scenes/OverworldScene.ts` and the two panels above, the formula parameter
+and constant names listed above, `game/scripts/balance-sim.mjs`/`component-check.mjs` (both build
+`Stats` objects by field name), and the `playerStats` save key, whose stored object literally
+carries `{ quantumness, velocity, correlation }` (`data/save.ts`'s `defaultSave`/
+`persistFromRegistry`) -- so it needs a save migration mapping old keys to new, not just a rename,
+if existing saves are to survive it.
+
 **Stats** (`data/types.ts`'s `Stats`, `data/materials.ts`/`data/balance.ts`): `quantumness`/
 `velocity`/`correlation`, base `1` each (`BASE_STAT`/`DEFAULT_STATS`), capped at `100`
 (`MAX_STAT`) -- Noether's shop (`scenes/panels/noether.ts`'s `renderShopStats`) refuses to sell
 a stat past that, showing it as maxed instead. Player stats live in registry/save key `playerStats`, grown
 via that same shop (cost `statUpgradeCost(current, stat)` per +1 point, the same rate for all
 three -- `CORRELATION_COST_MULTIPLIER` is `1`, kept as its own named constant in case a future
-formula change reopens the gap that once justified pricing Correlation steeper). Opponent stats
+formula change reopens the gap that once justified pricing `correlation` steeper). Opponent stats
 are never stored per-material -- in Story Mode, `enemyStatsForWorld(world, difficultyMultiplier)`
 (`data/balance.ts`) computes them fresh at battle start (`BattleScene.create`), scaling by a
 two-phase curve, gentle through worlds 1-3 and steeper from world 4 on
@@ -880,8 +929,8 @@ sample-to-sample variance. `OverworldScene.applyPlayerForm`/`HubScene.applyPlaye
 itself.
 
 `BattleScene.resolveHit` is the single damage-resolution function both sides' attacks go
-through: crit chance from the attacker's Quantumness (linear from 1% at `BASE_STAT` to 100% at
-`MAX_STAT`, `critChance`), incoming damage scaled by the defender's Correlation (`defenseFactor`,
+through: crit chance from the attacker's `quantumness` (linear from 1% at `BASE_STAT` to 100% at
+`MAX_STAT`, `critChance`), incoming damage scaled by the defender's `correlation` (`defenseFactor`,
 a concave climb from 0% to a 90% cap -- see "Stats" above), and a `2x` "quasiparticle mismatch"
 multiplier from
 `data/materials.ts`'s `canHost(defenderType, move.class)` -- a defender whose own
@@ -914,9 +963,9 @@ synchronicity, deferring its own damage-application/log and win-lose-check/turn-
 Ultimate-specific paragraph below.
 
 **Turn order and multi-attack (`BattleScene.playerAttack`, `BattleScene.currentHitOrder`).**
-Velocity (each side's own raw effective value) decides both who
+`velocity` (each side's own raw effective value) decides both who
 swings first each round and how many times the faster side swings: `currentHitOrder()` returns
-`{ fasterIsPlayer, fasterHits }`, where `ratio` is the faster side's effective Velocity divided
+`{ fasterIsPlayer, fasterHits }`, where `ratio` is the faster side's effective `velocity` divided
 by the slower side's, and `fasterHits` is `Phaser.Math.Clamp(Math.floor(ratio), 1, MAX_MULTI_HIT)`
 (`data/balance.ts`, `5`) -- the slower side always gets exactly one hit. A tie keeps the player going first, one hit each, same
 as the ratio-1 case. Both `playerAttack` (which resolves the round's actual hits) and
@@ -1127,10 +1176,20 @@ shape but with `showUltimateQuestions` (up to 3 sequential questions, stopping a
 wrong answer since the outcome is already decided) in place of `showAnalyticQuestion`, and
 `playerAttack(moveId, allCorrect ? 1 : 0)` instead of a continuous multiplier.
 
-**BattleScene reads the world's biome.** `drawBackground` calls `getBiome(this.world)` (the
-same `art/biomes.ts` table `OverworldScene`'s corridor uses) -- the eased sky wash, the four
-Catmull-Rom ridgeline layers (`drawRidge`), the ground gradient/mist, the `wallTheme`-keyed
-color grade (`drawColorGrade`), the drifting haze bands (`drawHazeBands`), the corner vignette
+**BattleScene reads the biome of the place the fight started.** `OverworldScene.startBattle`
+-- the single entry point to the Battle scene, rivals included -- passes a `locale`
+(`BattleInitData.locale`) built by `battleLocale()` from `scenes/overworld/terrain/plan.ts`'s
+`sampleBattleLocale(plan, tile)`: the encounter tile's coordinates, that tile's own `Biome`,
+the dominant off-path `TerrainKind` over a 5x5 window around it, and the dominant
+`regionTint` in that window. `drawBackground` colours the arena from it -- the tile's own
+biome (which is the world's everywhere except a World 9 defect patch, whose per-tile
+`biomeOverride` the plan already resolved), the sampled surround keying the color grade
+(`drawColorGrade`, via `plan.ts`'s `wallThemeOf`, `offPathKindOf` read backwards), the
+sampled tint blended into `ground` at 0.15, and the tile coordinates folded into the ridge
+seeds so each place keeps its own stable skyline. The field is optional and a battle started
+without one falls back to `getBiome(this.world)` for all four. The eased sky wash, the four
+Catmull-Rom ridgeline layers (`drawRidge`), the ground gradient/mist, the color grade, the
+drifting haze bands (`drawHazeBands`), the corner vignette
 (`drawVignette`), the decorative crystal outcrops, and the ground tufts all derive from the
 biome's `skyTop`/`skyBottom`/`hillColor`/`ground`/`path`/`fogTarget` fields via
 `shade()`/`blend()`; battle-specific tints are always derived in `BattleScene` from those
@@ -2252,6 +2311,26 @@ reveals topics in and is what the panel lists them in; `npm run content-lint` en
 guardian topics follow it and that no topic is unreachable. To add/edit a topic, only
 `data/tutorial.ts` needs touching -- the panel and the contextual popups above both read it
 generically.
+
+**Story station** (`data/storyLog.ts`'s `STORY_LOG`/`storyLogIndex(registry)` --
+`scenes/panels/hubStations.ts`'s `showStoryLog`): the Decoherence arc, re-readable in the order
+a playthrough delivers it, as the same list+detail panel the tutorial recap uses, stroked story
+lavender `0xd9a5ff`. `STORY_LOG`'s declaration order is the chronology -- the premise, each
+world's three chapters (entry history, the Decoherence's attack on it, and its pass: goal line,
+two-part rival taunt, the beat that follows the win), then the ending -- and the panel lists all
+thirty-two at every point in a playthrough. A chapter the save hasn't reached keeps its row and
+is masked to `'???'` in the dimmer `#6a7396` via `renderListColumn`'s own `labelFor`/`colorFor`
+hooks, the same treatment Qumatex gives an undiscovered crystal and Bloch's table an unvisited
+world, with its detail pane cut to one short line rather than a pane of question marks. Reach is
+derived, never stored: `{ kind: 'tip' }` reads `tutorialTipsSeen`, `{ kind: 'lore'; world }`
+reads `worldLoreSeen`, `{ kind: 'rival'; world }` reads `rivalDefeated`, and Superposition Mode
+reads everything -- so the station adds no persisted state and `defaultSave`/
+`persistFromRegistry` are untouched. `HubScene`'s own `storySelectedIndex` (an index into
+`STORY_LOG`, stable since the list never changes length) and `storyPage` track the selection and
+list page, both reset in `closeDialogue()` beside the tutorial pair. Browsing never writes
+`tutorialTipsSeen`/`worldLoreSeen`, so reading a chapter can't unlock a neighbour or suppress a
+popup. To add or edit a beat, only the data it is assembled from needs touching -- `storyLog.ts`
+authors no story copy of its own.
 
 **Qumatex indexes every crystal, not just discovered ones, as a two-column list+detail
 panel.** `HubScene.materialdexIndex()` maps `data/materials.ts`'s `allCrystals()` against

@@ -64,9 +64,12 @@ just a fight. Most ask a short physics question pulled straight from the
 course material -- answer correctly and you go into battle with a power
 boost, answer wrong and you're weakened, or just say "let me pass" and walk
 on with no consequence either way. Every compound has its own look, too --
-same main type, same base silhouette family, but each one gets its own tilt,
-proportions, and tint, so a wild Chromium reads as its own crystal
-standing next to the Nickel Oxide beside it.
+it is drawn in the crystal habit its real lattice grows in, so a cubic
+compound is a blocky cube, a trigonal one a leaning rhomb, a hexagonal one a
+six-sided column, and a monolayer a thin sheet floating over its own shadow.
+On top of that each compound gets its own tilt, proportions, and tint, so a
+wild Chromium reads as its own crystal standing next to the Nickel Oxide
+beside it.
 
 <table>
 <tr>
@@ -79,7 +82,7 @@ standing next to the Nickel Oxide beside it.
 </tr>
 </table>
 
-**Battle.** Turn-based, speed-ordered by your crystal's Velocity stat -- and
+**Battle.** Turn-based, speed-ordered by your crystal's Momentum stat -- and
 the faster side doesn't just go first, it swings more than once a round if
 it's fast enough. Every move is a real quasiparticle, and every material can
 only ever learn the
@@ -160,7 +163,8 @@ own physical station: Qumatex, a filterable index of every crystal in the
 game listed by name alongside a note on the real physics behind it -- each
 with a "???" placeholder name and silhouette for anything you haven't found
 yet; a door back out to the furthest world you've reached; and stations
-to check your moves, your stats, replay the tutorial, and adjust settings.
+to check your moves, your stats, replay the tutorial, re-read the story so
+far, and adjust settings.
 Every guardian you've met stands in the room itself -- click one to reopen
 their panel without leaving. Your progress autosaves as you play, so there's
 no separate save button anywhere.
@@ -208,11 +212,11 @@ wants their bearings more than the surprise.
 
 ## Battle basics
 
-Turn order is speed-ordered by your crystal's Velocity stat: the faster side
+Turn order is speed-ordered by your crystal's Momentum stat: the faster side
 swings first, and swings again -- up to 5 times a round -- the more its
-Velocity outpaces the other side's, while the slower side always still gets
-its own hit. Quantumness raises your crit ("coherent hit") chance,
-Correlation raises your defense -- every stat runs from 1 up to a cap of 100,
+Momentum outpaces the other side's, while the slower side always still gets
+its own hit. Energy raises your crit ("coherent hit") chance,
+Lifetime raises your defense -- every stat runs from 1 up to a cap of 100,
 raised one point at a time at Noether's shop.
 Every crystal carries HP, fully healed after each battle -- qumatessence, not
 HP attrition, are what's actually on the line from one fight to the next.
@@ -239,8 +243,13 @@ materials, and what each guardian teaches -- see:
 | Enter, while in the Lab | Head back out to whichever world you're in the middle of (once you've entered one) |
 | M | Mute/unmute music |
 
-The Lab is where you check your moves and stats, replay the tutorial, and
-adjust settings -- each is its own station in the room. Every guardian you've
+The Lab is where you check your moves and stats, replay the tutorial, re-read
+the story, and adjust settings -- each is its own station in the room. The
+**Story** station collects the whole Decoherence arc in the order you meet it:
+the premise, each world's history and how the Decoherence attacks it, the
+golem holding its pass, and the ending. A chapter you haven't reached yet
+still holds its place in the list as "???", so you can see how much road is
+left without being told what's on it. Every guardian you've
 met stands in the room itself, so revisiting one is a single click on them
 rather than a station of its own. The Abilities station only shows up once
 you've actually learned a passive to check.

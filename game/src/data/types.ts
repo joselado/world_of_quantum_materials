@@ -157,7 +157,34 @@ export type MaterialType =
   // and 'electromagnon' (the two hybridized together), all three distinct.
   | 'multiferroic';
 
-export type CrystalVariant = 'shard' | 'cluster' | 'prism' | 'layer' | 'twisted';
+// Which solid a compound is drawn as (art/crystals.ts). Each one is a real
+// crystal habit, picked from the compound's own lattice rather than for
+// variety: `cubic` for the cubic systems (rock salt, bcc/fcc, zinc blende,
+// perovskite), `octahedral` for the tetrahedrally-bonded diamond family whose
+// habit is the {111} octahedron, `rhombohedral` for the R-3m/R3c trigonal
+// compounds, `tetragonal` for the square-planed I4/mmm and P4 families,
+// `prism` for the hexagonal/wurtzite/hcp ones, and `shard` where a compound's
+// structure is low-symmetry enough to have no characteristic habit at all.
+// `cluster` is the one entry that is a *growth* habit rather than a lattice
+// symmetry -- many grains intergrown into one specimen -- so it sits happily
+// over any of the above.
+//
+// The last three are two-dimensional rather than solid: `layer`, `layerTriangle`
+// and `layerSquare` are one monolayer seen as a thin plate, cut to the shape of
+// its own in-plane lattice (honeycomb/hexagonal, triangular, square), and
+// `twisted` is two such plates stacked at a moire angle.
+export type CrystalVariant =
+  | 'shard'
+  | 'cluster'
+  | 'prism'
+  | 'cubic'
+  | 'octahedral'
+  | 'rhombohedral'
+  | 'tetragonal'
+  | 'layer'
+  | 'layerTriangle'
+  | 'layerSquare'
+  | 'twisted';
 
 export interface Move {
   id: string;
@@ -207,9 +234,11 @@ export interface Material {
   };
 }
 
-// Quantumness -> crit ("coherent hit") chance; Velocity -> which side acts
-// first each round; Correlation -> defense (per DESIGN.md §3's attribute
-// table). Only the player and the current world's opponent carry a live
+// `quantumness` -> crit ("coherent hit") chance; `velocity` -> which side
+// acts first each round; `correlation` -> defense (per DESIGN.md §3's
+// attribute table). These field names are internal identifiers only -- the
+// player reads Energy/Momentum/Lifetime, from data/balance.ts's STAT_LABELS.
+// Only the player and the current world's opponent carry a live
 // Stats block (see data/materials.ts's DEFAULT_STATS/enemyStatsForWorld) --
 // ordinary wild/rival Material rows don't need their own, since opponent
 // stats scale off the world number rather than the species.

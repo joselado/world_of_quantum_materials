@@ -26,6 +26,20 @@ export const MAX_STAT = 100;
 
 export const DEFAULT_STATS: Stats = { quantumness: BASE_STAT, velocity: BASE_STAT, correlation: BASE_STAT };
 
+// What the player reads on a stat. Every panel/list/readout label takes its
+// wording from here rather than spelling it out; prose that names a stat
+// mid-sentence (data/tutorial.ts's battle-basics page, README.md) writes the
+// display name literally, since a substitution there would read worse. The
+// display names and the `Stats` field names are deliberately independent --
+// the field names are internal identifiers (they also key the save file and
+// the formula parameters below). CODEMAP.md's "Stats and battle resolution"
+// section carries the pairing and what an internal rename would touch.
+export const STAT_LABELS: Record<keyof Stats, string> = {
+  quantumness: 'Energy',
+  velocity: 'Momentum',
+  correlation: 'Lifetime',
+};
+
 // Enemy-stat growth is a two-phase curve, gentle through worlds 1-3 and
 // steeper from world 4 on, rather than one flat per-world rate -- worlds 1-3
 // teach the controls and the type system before the player has had a real

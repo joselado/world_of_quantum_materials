@@ -75,7 +75,7 @@ than appending a changelog, so this always reflects current reality.
   itself, so the room reads as *the player's* space rather than a shelf of specimens. No
   perspective/camera machinery -- everything is laid out at fixed canvas coordinates. The two
   upper corners hold the guardian gallery (see "The Lab's guardian gallery" below).
-- **Up to eight stations, packed into rows of three, no crystal icons.** Every station is a
+- **Up to nine stations, packed into rows of three, no crystal icons.** Every station is a
   plain gold-on-dark-blue text button (`HubScene.addStationRow`, same look every dialogue
   button in the game uses), not an icon a player clicks -- there is no `makeCrystal` render
   anywhere in the station rows. Qumatex and the door onward always exist and always lead the
@@ -111,19 +111,19 @@ than appending a changelog, so this always reflects current reality.
   offers every built world immediately, with no separate warp/world-select panel, though
   every world also has its own walkable doors back to the Hub/previous world and
   onward to the next one. Right after Qumatex and the door, in the
-  same grid, come the six reference/settings stations (`scenes/panels/hubStations.ts`'s
-  `LAB_STATIONS` -- Moves, Stats, Abilities, Tutorial, Settings, Title Screen), filtered down to
+  same grid, come the seven reference/settings stations (`scenes/panels/hubStations.ts`'s
+  `LAB_STATIONS` -- Moves, Stats, Abilities, Tutorial, Story, Settings, Title Screen), filtered down to
   whichever the player has actually unlocked: Abilities only appears once the player has
   learned a first passive (`passivesUnlocked` non-empty) -- Superposition Mode treats it as
   unlocked from the start, since it already grants every passive regardless. Moves,
-  Stats, Tutorial, Settings and Title Screen are never gated, so a fresh save always shows those
-  five alongside Qumatex and the door (seven stations total, two full rows of three and a
-  trailing row of one) even with the gated station not visible yet. The full station list --
-  Qumatex, the door, then whichever of the six `LAB_STATIONS` are visible -- is packed into
+  Stats, Tutorial, Story, Settings and Title Screen are never gated, so a fresh save always shows
+  those six alongside Qumatex and the door (eight stations total, two full rows of three and a
+  trailing row of two) even with the gated station not visible yet. The full station list --
+  Qumatex, the door, then whichever of the seven `LAB_STATIONS` are visible -- is packed into
   rows of three with no gaps, rather than reserving a fixed grid slot for a station that isn't
   visible yet or giving Qumatex/the door a row of their own; a count that doesn't divide evenly
-  by three (seven stations, or eight with the gated station unlocked) just trails off short on
-  its last row rather than every row being forced full. Every station (Qumatex, the door, and all six `LAB_STATIONS` entries) gets its own small
+  by three (eight stations, or nine with the gated station unlocked) just trails off short on
+  its last row rather than every row being forced full. Every station (Qumatex, the door, and all seven `LAB_STATIONS` entries) gets its own small
   `art/labMotifs.ts` icon planted just to the left of its button label (`HubScene.addStationRow`,
   `STATION_MOTIF_SIZE = 26`, fixed-px, never scaled by the Text Size setting) -- much smaller
   than the same builder would draw inside a full panel, since here it sits inline with a
@@ -851,34 +851,60 @@ station motifs are deliberately not tunnels with a visible far end.
 
 ## Crystal sprites (player + wild encounters)
 
-- Shared `makeCrystal()` builder (`art/crystals.ts`): faceted `shard` / `cluster` / `prism`
-  silhouette per material, colored per its main type (`TYPE_LOOK` in `data/materials.ts`),
-  plus a highlight and twinkling sparkles. `cluster` (classicalMagnet, quantumSpinLiquid,
-  kondoHeavyFermion) draws three genuinely different real crystal habits intergrown
-  together rather than one shape repeated at three sizes: a narrow prismatic needle
-  (`drawShardShape` with its `widthScale` param narrowed), a blocky isometric cube
-  (`drawCubicShape`), and a hexagonal column (`drawPrismShape`, reused directly) -- so a
-  "resting cluster" reads as an actual mineral specimen rather than duplicated gems.
-- Two more variants exist for compounds whose actual dimensionality/stacking doesn't read
-  as a solid gem: `layer` is a single thin, flattened hexagonal sheet with a soft
-  *detached* shadow underneath it (not touching the sheet) so it reads as floating rather
-  than resting on the ground — used for 2D/van der Waals compounds (Graphene, Monolayer
-  WTe₂, Chromium Triiodide). `twisted` is two of those sheets stacked with a rotational
-  offset between their hex outlines (the moiré mismatch is the point), both rendered
-  semi-transparent so the offset is actually visible — used for twisted systems (Twisted
-  Bilayer MoTe₂). Set both ways: `TYPE_LOOK` already makes `layer` the default for
-  quantumSpinHall and multiferroic and `twisted` the default for chernInsulator and
-  fractionalChern, and `data/materials.ts`'s `crystal()` `variantOverride` param sets the
-  variant per compound wherever an individual compound departs from its type's default --
-  into a sheet (Graphene, Monolayer WTe₂, Chromium Triiodide) or back out of one (Bi₂Te₃ and
-  Bismuth Ferrite render as `prism`) -- since a compound's dimensionality doesn't track its
-  main type.
+- Shared `makeCrystal()` builder (`art/crystals.ts`): one faceted silhouette per material,
+  colored per its main type (`TYPE_LOOK` in `data/materials.ts`), plus a highlight and
+  twinkling sparkles. **The silhouette is the compound's real crystal habit, read off its
+  lattice, never picked for variety** -- `art/crystals.ts`'s `drawSolidShape` is the single
+  place a `CrystalVariant` becomes a shape, so `makeCrystal`'s ordinary render and
+  `drawVariantShape`'s hybrid halves can't disagree about what a variant looks like.
+  Eleven habits:
+  - **Solids.** `cubic` (`drawCubicShape`, a blocky isometric cube) for the cubic systems --
+    rock salt, bcc/fcc metals, zinc blende, the cubic hydride. `octahedral`
+    (`drawOctahedralShape`, two square pyramids meeting at a girdle) for the tetrahedrally
+    bonded diamond family whose habit is the {111} octahedron. `rhombohedral`
+    (`drawRhombohedralShape`, a leaning block with no right angle in it) for the R-3m/R3c
+    trigonal compounds. `tetragonal` (`drawTetragonalShape`, a square prism under a
+    bipyramidal cap -- the KDP habit) for the four-fold families: ThCr₂Si₂ heavy fermions,
+    PbO-type iron chalcogenides, tetragonal perovskite ferroelectrics, layered cuprates.
+    `prism` (`drawPrismShape`, a hexagonal column) for hexagonal/wurtzite/hcp/trigonal-layered
+    compounds. `shard` (`drawShardShape`, a plain faceted gem) is both a habit in its own
+    right and the fallback: it is what a compound gets when its structure is low-symmetry
+    enough to have no characteristic habit (HfO₂'s ferroelectric orthorhombic phase).
+    Each solid is lit from the upper left, the same direction `addHighlightAndSparkles`
+    puts its specular highlight.
+  - **`cluster`** (`drawClusterShape`; classicalMagnet, quantumSpinLiquid, kondoHeavyFermion)
+    is the one entry that states a *growth* habit rather than a lattice symmetry -- many
+    grains intergrown into one specimen -- which is why it sits over those three types
+    regardless of their members' individual lattices. Three spires rise from a shared base
+    into one body: the whole silhouette is filled dark first and the spires painted into it
+    back to front, so the wedges they don't cover are the recesses where they intergrow and
+    the only outline stroked around the outside is the silhouette's own. Interiors carry just
+    each spire's facet junctions (the roof/body seam and the front edge), which is what keeps
+    the faceting readable at the 22px a wild encounter is drawn at.
+  - **Monolayers.** `layer` (`drawLayerShape`) is one thin flattened hexagonal sheet with a
+    soft *detached* shadow underneath it (not touching the sheet) so it reads as floating
+    rather than resting on the ground -- for honeycomb/hexagonal monolayers (Graphene, hBN,
+    the 2H TMDs, CrI₃). `layerTriangle` and `layerSquare` (`drawPlateShape`) are the same
+    plate grammar -- detached shadow, thin rim, lit top face -- cut to a triangular
+    (Monolayer NiI₂) or four-sided (1T′ WTe₂, the HgTe/CdTe quantum well) in-plane cell.
+    `twisted` (`drawTwistedShape`) is two hexagonal sheets stacked with a rotational offset,
+    both semi-transparent so the moiré mismatch between their outlines is actually visible.
+- Both `TYPE_LOOK` and `data/materials.ts`'s `crystal()` `variantOverride` param set the
+  habit, and neither is a shortcut for the other: `TYPE_LOOK` states the structure the type's
+  members typically share (`cubic` for metal/insulator, `octahedral` for semiconductor,
+  `tetragonal` for ferroelectric, `layer` for quantumSpinHall/multiferroic, `twisted` for
+  chernInsulator/fractionalChern, `shard` for superconductor, whose members share no lattice
+  at all), and `variantOverride` states an individual compound's own where it differs
+  (wurtzite GaN among the zinc-blende semiconductors, rhombohedral Bi₂Te₃ and BiFeO₃,
+  tetragonal YBCO and Fe(Te,Se), cubic Al/Pb/Nb/LaH₁₀, monolayer CrI₃ among the bulk magnets).
+  A main type groups compounds by their physics rather than their symmetry, so the two part
+  company often.
 - Sizes: player `PLAYER_CRYSTAL_SIZE = 34` (largest, always on-screen), wild encounters
   `CRYSTAL_SIZE = 22`. Out on the map both carry a flat contact shadow one `size` below the
   container origin -- the same convention the boss golem's own pooled shadow follows, and what
   "Standing on a tile" above places on the tile centre.
-- **Per-compound identity.** `TYPE_LOOK` fixes one shard/cluster/prism/layer/twisted
-  silhouette + base color per `MaterialType`, but individual compounds of the same type each
+- **Per-compound identity.** `TYPE_LOOK` fixes one habit + base color per `MaterialType`
+  (and `variantOverride` the habit per compound), but individual compounds of the same type each
   get their own visual variation rather than rendering as that same silhouette in only a
   different brightness. Every call site that has an actual `Material` passes `makeCrystal()`'s
   `opts.seed` (the material's own name);
@@ -896,9 +922,9 @@ station motifs are deliberately not tunnels with a visible far end.
   both parents, not one flat blended color. `data/materials.ts`'s `combineMaterials` carries
   each parent's own `color`/`variant` forward as the new `Material`'s `hybridParents`; when
   present, `makeCrystal()`'s `opts.hybrid` routes to `drawHybridCrystal` instead of the
-  ordinary single-shape path: both parents' own shapes (`drawVariantShape`, one silhouette per
-  variant, 'cluster' collapsing to a plain shard so it doesn't crowd a shape already sharing
-  space with a second parent's own shape) render off-center at a slight opposing tilt, the
+  ordinary single-shape path: both parents' own habits (`drawVariantShape`, which is
+  `drawSolidShape` at hybrid scale with 'cluster' collapsed to a plain shard so it doesn't crowd
+  a shape already sharing space with a second parent's own) render off-center at a slight opposing tilt, the
   second layered on top at less than full opacity so the overlap region genuinely blends both
   parent colors via normal alpha compositing -- **not** `Phaser.BlendModes.ADD` on the shapes
   themselves, since that washes out to solid white against anything but a black
@@ -994,7 +1020,7 @@ station motifs are deliberately not tunnels with a visible far end.
     `unlockedMoves` -- browsing costs nothing regardless of how many moves are looked at. Empty
     state (rendered as plain centered text with no columns): "Nothing your current form can
     carry is left to teach."
-  - **Stats**: one button per stat (Quantumness/Velocity/Correlation), labeled
+  - **Stats**: one button per stat (Energy/Momentum/Lifetime), labeled
     `<stat> (<role>): <value> -> <value+1> -- <cost> qumatessence`, same afford/dim treatment.
 - Every guardian panel but the rival gate's own ends in a single "Farewell" button -- Noether's
   own panel never offers a way onward; leaving a world is something the player walks to the
@@ -1026,10 +1052,14 @@ station motifs are deliberately not tunnels with a visible far end.
   real name, dimmed the same blue-grey (`#6a7396`) Qumatex's own undiscovered rows use. The
   **right side** is not a plain per-selection detail pane the way Dresselhaus'/Majorana's own
   right columns are: the Qumatuomi map (`art/qumatuomiMap.ts`, "Qumatuomi map" above) sits fixed
-  at the top, rendered once showing all 10 worlds at once and never swapped, given a deliberately
-  tight height budget (`78`px requested) since the table above already claims most of the panel's
-  own vertical room -- the map's *width* budget is generous (the right column's own width) so
-  height, not width, is always the binding side of its uniform scale-to-fit. Each of the map's 10
+  at the top, rendered once showing all 10 worlds at once and never swapped, given a height budget
+  (`110`px requested) equal to the silhouette's own native height, so it draws at 1:1 with no
+  scaling at all -- the map's *width* budget is generous (the right column's own width) so
+  height, not width, is always the binding side of its uniform scale-to-fit. That is also as large
+  as this panel can carry it: on a full page of destination rows the left column is the taller of
+  the two, so the panel's own tallest state costs no extra height, and at the largest text-size
+  preset the blurb beneath still clears its own shrink loop untouched on the longest world entry.
+  Each of the map's 10
   markers gets its own `setInteractive` circle hit area (larger than the marker's own few-px
   radius) and `pointerdown` handler, so clicking a marker previews that world exactly like
   clicking its table row does. Beneath the (unmoving) map sits the actual detail content for
@@ -1712,18 +1742,30 @@ world are shaped, since world N's start is world N-1's exit.
 ## Battle backdrop (`BattleScene.drawBackground`)
 
 - The arena backdrop is drawn once per battle entry (in `create()`, never per-frame) and
-  aims for a soft, layered, atmospheric read: every color in it derives from that world's
+  aims for a soft, layered, atmospheric read: every color in it derives from an
   `art/biomes.ts` entry via `shade()`/`blend()`, and the background's whole value range is
   deliberately compressed toward the sky/fog colors so the two crystals, move effects, and
   UI pop in front of it. No per-shape internal gradients on small elements -- depth comes
   from whole-scene layers:
+- **Which entry, and what else the place contributes**, is the encounter's own spot on the
+  map (`BattleInitData.locale`, sampled by `scenes/overworld/terrain/plan.ts`'s
+  `sampleBattleLocale` over a 5x5 window around the tile the player stood on): the tile's
+  own biome supplies the palette, the dominant off-path material around it keys the color
+  grade, the dominant domain tint around it is blended into the arena's `ground` at 0.15,
+  and the tile's coordinates go into the ridge seeds. The world's own biome answers all
+  four when a battle is entered without a locale. This is **palette plus grade at reduced
+  contrast, never a re-render of the corridor**: the arena is a flat near view with no
+  projection, so nothing from `terrain/materials/` (which draws against projected fill
+  polygons and depth/detail falloffs) belongs here, and a loud local material must not
+  arrive as a loud arena -- the whole point of the compressed value range above.
   - **Sky**: an eased two-segment vertical wash (`skyTop` → a mid-stop blended at 0.45,
     placed above the geometric middle → `skyBottom`), so brightening accelerates toward the
     horizon, plus a translucent fog-tinted glow band hugging the horizon (`HORIZON_Y = 262`).
   - **Ridgelines**: four stacked silhouette layers, each a Catmull-Rom spline
     (`Phaser.Curves.Spline`, sampled at 80 points) through peak heights seeded per
-    world+layer (`seededRandom(hashSeed('battle-ridge-<world>-<layer>'))`, so every world
-    keeps its own stable skyline). Further layers are taller-but-hazier (blended harder
+    world+place+layer (`seededRandom(hashSeed('battle-ridge-<world>-<x>,<y>-<layer>'))`, or
+    `'battle-ridge-<world>-<layer>'` with no locale, so every spot in a world keeps its own
+    stable skyline and the same spot always draws the same one). Further layers are taller-but-hazier (blended harder
     toward `skyBottom` and explicitly brightened a step -- the explicit step matters in dark
     biomes, where the raw blend endpoints sit too close together to separate the layers);
     nearer layers are flatter, darker, and carry a subtle 1.5px rim-light stroke along
@@ -1733,10 +1775,13 @@ world are shaped, since world N's start is world N-1's exit.
     in a near view, where a world whose distant horizon is swallowed still has a skyline.
   - **Ground**: a vertical gradient from a fog-blended far edge to a darkened near edge,
     with a translucent mist band pooling just below the horizon.
-  - **Color grade**: one zone-level translucent tint keyed off the biome's `wallTheme` --
-    `ice` gets a cool cyan wash deepening down the field, `lava` an ember glow straddling
-    the horizon, `shards` a pool of aurora green along the horizon, and daylight
-    (`clouds: true`) worlds a faint warm sun wash from above; every other theme stays untinted.
+  - **Color grade**: one zone-level translucent tint keyed off what the ground around the
+    encounter tile is made of (the locale's sampled surround, else the biome's own
+    `wallTheme`) -- `ice` gets a cool cyan wash deepening down the field, `lava` an ember
+    glow straddling the horizon, `shards` a pool of aurora green along the horizon, and
+    daylight (`clouds: true`) worlds a faint warm sun wash from above; every other terrain
+    stays untinted. Every tint here is held at or below 0.14 alpha: the grade says what
+    kind of place this is and then gets out of the way.
   - **Haze**: two wide, faint fog-colored ellipses at the horizon on slow (17s/21s) infinite
     yoyo drift tweens -- ambient motion cheap enough to leave running, far too translucent
     (≤0.1 alpha) to compete with attack effects.
@@ -1900,11 +1945,14 @@ world are shaped, since world N's start is world N-1's exit.
   accent color) for the player's hits, a faint blue-grey ring (`0x8fa0c9`, 1.5px stroke, 45%
   alpha -- the same dim "inactive" tone the shop's inactive tab uses) for the opponent's, so the
   row still reads at a glance in a same-material matchup (routine from world 9 onward) where
-  the crystal colors themselves are identical. Always the plain `makeCrystal` look on the
-  opponent's side, even in a rival fight where the on-field opponent itself renders bigger via
-  `makeBossCrystal` (see "Boss opponent in battle" below) -- a boss's humanoid golem
-  silhouette wouldn't read at 32px, so the icon
-  stays the ordinary single-shape crystal look rather than trying to match the boss art.
+  the crystal colors themselves are identical. In a rival fight the opponent's icons instead
+  carry `art/boss.ts`'s `makeBossIcon` -- the same humanoid golem outline the on-field
+  opponent has (see "Boss opponent in battle" below), cut down to what survives at 32px: the
+  silhouette polygon at half scale (so its widest span matches an ordinary icon's), filled in
+  the material's own color rather than the arena golem's much darker silhouette fill, with one
+  additive ember dot for the head slit, and no grain shards, seams, sparks, contact shadow or
+  idle tweens. The outline against a faceted gem is the whole distinction at that size, so the
+  row shows the same two fighters the arena does.
 - The row previews the next five hits in order (DESIGN.md §4's velocity multi-hit rule):
   the faster side's icons repeated `fasterHits` times, then the slower side's icon once,
   tiled out to five. It's a best-effort look-ahead, not a guarantee -- it assumes ordinary
@@ -2040,7 +2088,7 @@ world are shaped, since world N's start is world N-1's exit.
   moves intersected with what the current crystal form's physics can host, §3) as plain
   `<name> -- Pwr N` lines (name and power both reflecting any Feynman level via
   `moveDisplayName`/`effectiveMovePower`), no move-class label and no "incompatible" entries
-  cluttering the list; Stats lists Quantumness/Velocity/Correlation plus qumatessence and
+  cluttering the list; Stats lists Energy/Momentum/Lifetime plus qumatessence and
   current form name. Both end in a single "Close" button.
 - "Abilities" is its own dedicated panel (`showAbilitiesPanel`, `560` wide, same blue-grey
   stroke) rather than a third `showInfoPanel` body -- one name+description block
@@ -2168,6 +2216,37 @@ world are shaped, since world N's start is world N-1's exit.
   topic here never counts as discovering it.
 - Doesn't trigger automatically -- see "Contextual tutorial tips" above for what
   a new save actually sees; this is opt-in only, always opening on the topic list.
+
+## Story station (`scenes/panels/hubStations.ts`'s `showStoryLog`)
+
+- The Decoherence arc, re-readable in the order a playthrough delivers it. Same list+detail
+  panel shape as the full tutorial recap above (`LIST_DETAIL_PANEL_W` wide, a "Pick a chapter to
+  read it" hint over two columns, the selected chapter's full title and body in the right
+  column, a single `Close` in the left column's footer), stroked the story lavender `0xd9a5ff`
+  the between-worlds story beat already uses.
+- **The list is the whole arc at every point in a playthrough, with Qumatex's checklist masking
+  over it.** `data/storyLog.ts`'s `storyLogIndex` returns all of `STORY_LOG` in declaration
+  order -- the premise, then each world's three chapters (its entry history, the Decoherence's
+  attack on it, and its pass: goal line, the rival's two-part boast, the beat that follows the
+  win), then the ending -- each paired with whether the save has reached it. A chapter not yet
+  reached keeps its row and reads `'???'` in the dimmer `#6a7396`, exactly as an undiscovered
+  crystal does in Qumatex and an unvisited world does in Bloch's table (`renderListColumn`'s own
+  `labelFor`/`colorFor` hooks; there is no separate masking renderer). Its detail pane shows
+  `'???'` over one short line rather than a pane of question marks, the same way Bloch's pane
+  gives an unwalked world a single "mist covers this land" line in place of its blurb. So the
+  station reads as a checklist of the arc: how much road is left is visible, what is on it is
+  not. Superposition Mode reads everything unmasked, like everything else that mode unlocks up
+  front.
+- **A row is `<world>. <chapter>` with the leading article dropped** ("1. Mean Fields", "1.
+  Decoherence", "1. Pass"), since the left column is only `200`px wide and `fitListLabel`
+  ellipsis-trims rather than wrapping; the detail pane's own title carries the full name ("The
+  Mean Fields: The Pass") so a chapter still names its world where there is room for it. Thirty-
+  two chapters page at every text-size preset, the same pager every other list+detail panel uses.
+- The body is shrink-only `fitProseToBudget` (floor `9`px) like the tutorial recap's -- the
+  panel's only button is the shared `Close`, so a long chapter is made to fit where it stands.
+  The longest, World 10's own reveal at ~1450 characters, reaches that floor and still fits.
+- Reading a chapter never marks it reached: nothing on this path writes `tutorialTipsSeen` or
+  `worldLoreSeen`, so opening the premise can't suppress the Lab's own welcome popup.
 
 ## Attack effects (`art/attackEffects.ts` + `art/attackAnchors.ts`/`attackStyles.ts`/`attackShapes.ts`/`attackUltimates.ts`, `audio/sfx.ts`, `scenes/BattleScene.ts`)
 

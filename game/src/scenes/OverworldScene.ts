@@ -31,9 +31,9 @@ import {
 } from './overworld/projection';
 import { drawSky, forwardHazeBlend } from './overworld/sky';
 import type { GateView } from './overworld/sky';
-import { buildTerrainPlan } from './overworld/terrain/plan';
+import { buildTerrainPlan, sampleBattleLocale } from './overworld/terrain/plan';
 import { drawTerrain } from './overworld/terrain/paint';
-import type { TerrainPlan, TerrainView } from './overworld/terrain/types';
+import type { BattleLocale, TerrainPlan, TerrainView } from './overworld/terrain/types';
 import {
   PLAYER_MATERIAL,
   worldName,
@@ -55,7 +55,7 @@ import { getWorldQuestion } from '../data/quiz';
 import { encounterGreeting } from '../data/greetings';
 import { TUTORIAL_TIPS, hasSeenTip, markTipSeen } from '../data/tutorial';
 import type { TutorialTipId } from '../data/tutorial';
-import { STORY_BEATS, WORLD_GOAL_TEXT } from '../data/story';
+import { STORY_BEATS, WORLD_GOAL_TEXT, FINALE_TITLE, FINALE_BODY } from '../data/story';
 import { WORLD_LORE, RIVAL_TAUNTS, hasSeenWorldLore, markWorldLoreSeen } from '../data/worldLore';
 import type { WorldLore } from '../data/worldLore';
 import { DEFAULT_ENCOUNTER_DENSITY } from '../data/settings';
@@ -1999,10 +1999,23 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     return btn;
   }
 
+  // Where the fight is happening, sampled off the terrain plan the corridor
+  // is already drawn from. Every battle is entered through startBattle below,
+  // rivals included, so this is the one place the arena is told its location.
+  private battleLocale(): BattleLocale {
+    return sampleBattleLocale(this.terrainPlan(), this.playerTile);
+  }
+
   private startBattle(material: Material, attackMultiplier: number, isRival = false) {
     this.showTutorialTip('battle', () => {
       this.closeDialogue();
-      this.scene.start('Battle', { wild: material, world: this.world, attackMultiplier, isRival });
+      this.scene.start('Battle', {
+        wild: material,
+        world: this.world,
+        attackMultiplier,
+        isRival,
+        locale: this.battleLocale(),
+      });
     });
   }
 
@@ -2338,7 +2351,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     let y = top;
 
     const title = this.add
-      .text(CANVAS_W / 2, y, 'The Decoherence is stabilized.', {
+      .text(CANVAS_W / 2, y, FINALE_TITLE, {
         fontSize: `${Math.round(16 * scale)}px`,
         color: GOLD_ACCENT_HEX,
         fontStyle: 'bold',
@@ -2353,7 +2366,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       .text(
         CANVAS_W / 2,
         y,
-        "It reached for every trick it had ever watched you land, and still came up short. It was never a plague loose in these nine worlds -- it was built out of your own play, trained to wear your own moves back at you, and you out-adapted your own reflection anyway. Every symmetry, every edge state, every fractional charge you fought to protect holds on its own now, with nothing left studying how to unmake it.",
+        FINALE_BODY,
         { fontSize: `${Math.round(13 * scale)}px`, color: '#cfd8ff', align: 'center', wordWrap: { width: 480 } }
       )
       .setOrigin(0.5, 0);

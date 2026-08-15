@@ -26,5 +26,7 @@ export const REFERENCE_BLUE_GREY_HEX = '#8fa0c9';
 export const TUTORIAL_CYAN = 0x5ad9ff;
 export const TUTORIAL_CYAN_HEX = '#5ad9ff';
 
-// Story-beat, start-door, and world-transition portal stroke.
+// Story-beat, start-door, and world-transition portal stroke, also the Lab's
+// Story station panel/icon.
 export const STORY_LAVENDER = 0xd9a5ff;
+export const STORY_LAVENDER_HEX = '#d9a5ff';
