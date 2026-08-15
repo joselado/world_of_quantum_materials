@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "bundle": "node scripts/bundle.mjs",
     "preview": "vite preview",
     "docs": "node scripts/gen-docs.mjs",
     "balance-sim": "node scripts/balance-sim.mjs",

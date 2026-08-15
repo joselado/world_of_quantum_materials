@@ -1,0 +1,68 @@
+# Publishes the game to GitHub Pages on every push to master, so the link in
+# README.md is always the current game and there is no separate deploy step to
+# remember. Builds two things from one checkout and ships them together:
+#
+#   index.html + assets/  the playable site (what the link opens)
+#   game.html             the standalone single-file copy, downloadable from
+#                         the same site and playable offline afterwards
+#
+# One manual step this cannot do for itself: the repository's
+# Settings -> Pages -> Source has to be set to "GitHub Actions" once, or the
+# deploy job has nowhere to publish to.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [master]
+  # So a deploy can be re-run from the Actions tab without an empty commit.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time, and a newer push supersedes an in-flight older one --
+# the site should end up matching master, not whichever job happened to finish
+# last.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: game
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: game/package-lock.json
+
+      - run: npm ci
+
+      # Typechecks as it goes: the build script is `tsc -b && vite build`, so a
+      # type error fails the deploy rather than publishing a broken game.
+      - run: npm run build
+
+      # Written into dist/ by the bundler, so it deploys with the site.
+      - run: npm run bundle
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: game/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

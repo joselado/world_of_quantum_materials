@@ -30,6 +30,9 @@ mechanics/content decisions see `DESIGN.md`, for visual conventions see
   that command name, it has no dependencies of its own.
 - `screenshots/` -- the images embedded in `README.md` and `docs/*.md`.
   Regenerate rather than hand-edit if the UI they show changes materially.
+- `.github/workflows/pages.yml` -- builds and publishes the game to GitHub
+  Pages on every push to master (see "Running the game" below), which is what
+  makes the play-in-your-browser link in `README.md` always current.
 
 ## Running the game
 
@@ -58,12 +61,36 @@ Either way this starts a local dev server (Vite prints the URL, typically
 `http://localhost:5173`) with hot-reload -- edits to any file under
 `game/src/` apply instantly in the browser.
 
-To produce a static build (e.g. for hosting on GitHub Pages/Netlify):
+To produce a static build:
 
 ```
 npm run build    # outputs to game/dist/
+npm run bundle   # adds game/dist/game.html, the standalone single-file copy
 npm run preview  # serve that build locally to sanity-check it
 ```
+
+`game/vite.config.ts` sets `base: './'`, so one build runs from wherever it is
+put -- a Pages sub-path, a local folder, any static host. Vite's default
+absolute base is correct for none of those but the last.
+
+`scripts/bundle.mjs` builds a second time to produce `game.html`, and it is a
+different build rather than a repackaging of the first: a browser refuses to
+load a *module* script over `file://`, so the standalone copy is built as a
+single classic IIFE chunk and inlined into the HTML, leaving a page that
+fetches nothing at all. That is only possible because the game loads no asset
+files either -- every sprite and note is generated at runtime -- so one script
+really is the whole game. It writes into `dist/` alongside the ordinary build,
+so both ship from one artifact. (If you ever edit that inlining step: the code
+must be passed to `String.replace` through a *function*, since a replacement
+string expands `$&`/`` $` ``/`$'` and minified JS is full of `$` -- a plain
+string silently corrupts the bundle into something that throws at parse time.)
+
+Both are published by `.github/workflows/pages.yml` on every push to master:
+the site at `https://joselado.github.io/world_of_quantum_materials/` and the
+downloadable `game.html` beside it. The workflow runs the same `npm run build`
+(so `tsc -b` failing fails the deploy rather than publishing a broken game).
+The repo's Settings -> Pages -> Source must be set to "GitHub Actions" for the
+deploy job to have anywhere to publish; that is a one-time manual step.
 
 Type-check without building:
 

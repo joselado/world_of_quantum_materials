@@ -3,7 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Quantum Materials RPG</title>
+  <title>World of Quantum Materials</title>
+  <!-- The player's own crystal, as a data URI rather than a file: this game
+       ships no image assets (every sprite is drawn at runtime), and the
+       standalone single-file build has nowhere to fetch one from anyway. -->
+  <link
+    rel="icon"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpolygon points='16,2 30,16 16,30 2,16' fill='%233fb8d8'/%3E%3Cpolygon points='16,2 30,16 16,16' fill='%238fe6f5'/%3E%3Cpolygon points='16,2 2,16 16,16' fill='%2364d2ea'/%3E%3C/svg%3E"
+  />
   <style>
     html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #111; font-family: sans-serif; }
     body { display: block; }
