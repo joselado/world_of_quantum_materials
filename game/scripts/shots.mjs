@@ -441,32 +441,55 @@ async function main() {
       // A landed hit with no natural defense against it, and the victory
       // screen: both are moments a battle passes through rather than states it
       // rests in, so each is driven straight from the scene.
-      const mismatch = await page.evaluate(async () => {
-        const b = window.__game.scene.getScene('Battle');
-        if (!b || !b.scene.isActive()) return false;
-        if (typeof b['playerAttack'] !== 'function') return false;
-        // playerAttack takes a move id. Prefer one the defender has no natural
-        // way to host, since the doubled hit is the whole point of the shot.
-        const mod = await import('/src/data/materials.ts');
-        const compat = mod.MOVE_COMPATIBILITY?.[b['wild']?.type] ?? [];
-        const own = mod.getBattleMoves?.(window.__game.registry) ?? ['phonon'];
-        const mismatched = own.find((id) => {
-          const cls = mod.MOVES?.[id]?.moveClass ?? mod.MOVES?.[id]?.class;
-          return cls && !compat.includes(cls);
+      // A fresh battle for these two rather than the one the question panel was
+      // raised in: that panel is an anonymous container, so it cannot be closed
+      // by name, and left standing it covers exactly what these two shots are
+      // of -- the hit, and the victory banner underneath it.
+      const freshBattle = async () => {
+        return page.evaluate(async () => {
+          const g = window.__game;
+          g.scene.start('Overworld', { world: 1 });
+          await new Promise((r) => setTimeout(r, 1200));
+          const s = g.scene.getScene('Overworld');
+          for (let i = 0; i < 4; i++) {
+            if (!s['dialogueActive']) break;
+            s['closeDialogue']?.();
+            await new Promise((r) => setTimeout(r, 120));
+          }
+          const pool = s['encounterTiles']?.flat().filter(Boolean);
+          if (!pool || !pool.length) return false;
+          s['startBattle'](pool[0], 1, false);
+          return true;
         });
-        b['playerAttack'](mismatched ?? own[0]);
-        return true;
-      });
-      await sleep(700);
+      };
+
+      const mismatch = (await freshBattle())
+        ? await page.evaluate(async () => {
+            const b = window.__game.scene.getScene('Battle');
+            if (!b || typeof b['playerAttack'] !== 'function') return false;
+            const mod = await import('/src/data/materials.ts');
+            const compat = mod.MOVE_COMPATIBILITY?.[b['wild']?.type] ?? [];
+            const own = mod.getBattleMoves?.(window.__game.registry) ?? ['phonon'];
+            const mismatched = own.find((id) => {
+              const cls = mod.MOVES?.[id]?.moveClass ?? mod.MOVES?.[id]?.class;
+              return cls && !compat.includes(cls);
+            });
+            b['playerAttack'](mismatched ?? own[0]);
+            return true;
+          })
+        : false;
+      await sleep(900);
       if (mismatch) await shoot('battle-mismatch');
       else log('  (skipped battle-mismatch -- could not drive an attack)');
 
-      const victory = await page.evaluate(async () => {
-        const b = window.__game.scene.getScene('Battle');
-        if (!b || !b.scene.isActive() || typeof b['endBattle'] !== 'function') return false;
-        b['endBattle'](true);
-        return true;
-      });
+      const victory = (await freshBattle())
+        ? await page.evaluate(async () => {
+            const b = window.__game.scene.getScene('Battle');
+            if (!b || typeof b['endBattle'] !== 'function') return false;
+            b['endBattle'](true);
+            return true;
+          })
+        : false;
       await sleep(900);
       if (victory) await shoot('battle-victory');
       else log('  (skipped battle-victory -- could not reach the victory screen)');

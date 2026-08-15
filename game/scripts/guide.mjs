@@ -64,20 +64,33 @@ function need(binary) {
 // attribute is carried across so the images stay the size the docs chose for
 // them rather than filling the text column.
 function htmlImagesToMarkdown(md) {
+  const imgToMd = (tag, widthAttr) => {
+    const src = /src="([^"]+)"/.exec(tag)?.[1];
+    if (!src) return '';
+    const alt = /alt="([^"]*)"/.exec(tag)?.[1] ?? '';
+    return `![${alt}](${src})${widthAttr}`;
+  };
+
   return (
     md
-      // <img src="X" width="N" alt="A"> in any attribute order.
-      .replace(/<img\s+[^>]*>/g, (tag) => {
-        const src = /src="([^"]+)"/.exec(tag)?.[1];
-        if (!src) return '';
-        const alt = /alt="([^"]*)"/.exec(tag)?.[1] ?? '';
-        const width = /width="?(\d+)"?/.exec(tag)?.[1];
-        const size = width ? `{width=${Math.min(Number(width), 460)}px}` : '';
-        return `\n\n![${alt}](${src})${size}\n\n`;
+      // A row of README's screenshot grids becomes one line of images rather
+      // than one figure per image. Stacking a 2x2 grid vertically is what
+      // turned a compact comparison into two pages of figures with holes
+      // between them, so a row's images are kept beside each other and share
+      // the measure.
+      .replace(/<tr[^>]*>([\s\S]*?)<\/tr>/g, (_row, inner) => {
+        const tags = inner.match(/<img\s+[^>]*>/g) ?? [];
+        if (!tags.length) return '\n';
+        const each = tags.length > 1 ? `{width=${Math.floor(94 / tags.length)}%}` : '{width=62%}';
+        return `\n\n${tags.map((t) => imgToMd(t, each)).join(' ')}\n\n`;
       })
-      // The grid wrappers README uses to pair screenshots. Their cells become
-      // ordinary block content, one image after another.
-      .replace(/<\/?(table|thead|tbody|tr|td|th)[^>]*>/g, '\n')
+      // Any image not inside a grid.
+      .replace(/<img\s+[^>]*>/g, (tag) => {
+        const width = /width="?(\d+)"?/.exec(tag)?.[1];
+        const size = width ? `{width=${Math.min(Number(width), 330)}px}` : '';
+        return `\n\n${imgToMd(tag, size)}\n\n`;
+      })
+      .replace(/<\/?(table|thead|tbody|td|th)[^>]*>/g, '\n')
       .replace(/<\/?(p|div|span|br)[^>]*>/g, '\n')
   );
 }
@@ -124,8 +137,37 @@ function asChapter(md, title) {
     .filter((line) => !/^#\s+/.test(line))
     .map((line) => (/^#{2,5}\s/.test(line) ? '#' + line : line))
     .join('\n');
-  return `\n\n\\newpage\n\n# ${title}\n\n${body}\n`;
+  return `\n\n# ${title}\n\n${body}\n`;
 }
+
+// Compaction pandoc exposes no variable for. Two-column was the obvious idea
+// and does not work here: pandoc emits `longtable` for the generated move and
+// crystal tables, longtable cannot be used in LaTeX's twocolumn mode, and the
+// widest of those tables wants the full measure anyway. Tightening a single
+// column recovers more than columns would have.
+const HEADER_TEX = path.join(GAME_DIR, '.check-artifacts', 'guide-header.tex');
+
+const HEADER = String.raw`
+\usepackage{titlesec}
+\titlespacing*{\section}{0pt}{1.1ex plus .2ex}{0.6ex}
+\titlespacing*{\subsection}{0pt}{0.9ex plus .2ex}{0.4ex}
+\titlespacing*{\subsubsection}{0pt}{0.7ex plus .2ex}{0.3ex}
+\titleformat{\section}{\Large\bfseries}{\thesection}{0.6em}{}
+\setlength{\parskip}{0.45ex plus .1ex}
+\setlength{\emergencystretch}{3em}
+% Figures sit where they are written rather than drifting to their own page,
+% which is where most of the white space came from.
+\usepackage{float}
+\floatplacement{figure}{H}
+\setlength{\textfloatsep}{0.6ex}
+\setlength{\intextsep}{0.8ex}
+\setlength{\abovecaptionskip}{0.3ex}
+\setlength{\belowcaptionskip}{0.6ex}
+% Tables breathe less between rows than the default.
+\renewcommand{\arraystretch}{0.98}
+\usepackage{enumitem}
+\setlist{nosep,topsep=0.3ex,itemsep=0.2ex,parsep=0pt}
+`;
 
 function main() {
   need('pandoc');
@@ -150,6 +192,7 @@ function main() {
 
   const assembled = path.join(GAME_DIR, '.check-artifacts', 'guide.md');
   fs.mkdirSync(path.dirname(assembled), { recursive: true });
+  fs.writeFileSync(HEADER_TEX, HEADER);
   fs.writeFileSync(assembled, parts.join('\n'));
 
   const args = [
@@ -164,9 +207,13 @@ function main() {
     '-V',
     `subtitle=${SUBTITLE}`,
     '-V',
-    'geometry:margin=2.4cm',
+    'geometry:margin=1.7cm',
     '-V',
-    'documentclass=report',
+    'documentclass=article',
+    '-V',
+    'fontsize=10pt',
+    '-V',
+    'classoption=twoside',
     '-V',
     'colorlinks=true',
     '-V',
@@ -181,7 +228,11 @@ function main() {
     '-V',
     'monofont=DejaVu Sans Mono',
     '-V',
-    'linestretch=1.05',
+    'linestretch=1.0',
+    '-V',
+    'indent=false',
+    '-H',
+    HEADER_TEX,
   ];
 
   console.log('  running pandoc...');

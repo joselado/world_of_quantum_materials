@@ -505,6 +505,15 @@ repeats itself: README summarises what the reference chapters then explain in
 full, and the guide is meant to hold the same information the docs hold, in one
 artifact a player can read front to back.
 
+The layout is a dense single column: `article` class at 10pt, tight margins,
+compact heading spacing, figures pinned where they are written rather than
+floating to pages of their own, and README's screenshot grids kept as
+side-by-side rows instead of one figure per image. **Two columns were tried and
+rejected** — pandoc emits `longtable` for the generated move and crystal tables,
+`longtable` cannot be used in LaTeX's twocolumn mode, and the widest of those
+tables wants the full measure anyway. Tightening one column recovered more than
+columns would have.
+
 Three markdown-to-PDF hazards the script handles, each of which drops or breaks
 content rather than failing loudly:
 
