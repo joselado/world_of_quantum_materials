@@ -119,6 +119,7 @@ export class TitleScene extends Phaser.Scene {
     registry.set('andersonDopant', save.andersonDopant);
     registry.set('musicStyle', save.musicStyle);
     registry.set('difficultyTier', save.difficultyTier);
+    registry.set('worldSize', save.worldSize);
     registry.set('blochUnlockedWorlds', save.blochUnlockedWorlds);
     registry.set('dresselhausUnlockedCrystals', save.dresselhausUnlockedCrystals);
     registry.set('andersonUnlockedHosts', save.andersonUnlockedHosts);

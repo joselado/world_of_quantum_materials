@@ -7,16 +7,40 @@
 // The result reads as a woven, lattice-like path rather than one smoothly
 // wandering line.
 
-import { GeneratedMap, GridPoint, makeColorGrid, makeGrid, paintBand } from './shared';
+import { GeneratedMap, GridPoint, WorldScale, makeColorGrid, makeGrid, paintBand } from './shared';
 
 const WIDTH = 5;
+// The unit cell, and the only geometry in the game the world-size setting
+// leaves alone (with World 6's magnon wavelength). A lattice constant is a
+// length of the material, not of the map: a bigger crystal is more unit
+// cells, not stretched ones. So the corridor gets wider with the world while
+// the weave keeps its own period and amplitude, and a Macro world simply
+// contains more of it.
 const MOTIF: number[] = [0, 2, 4, 5, 4, 2]; // one periodic unit cell's envelope, period 6
 const SUBLATTICE_SHIFT = 2; // the two basis atoms' own offset within a cell
 
-export function generateWorld2Map(gridW: number, gridH: number, start: GridPoint): GeneratedMap {
+// The narrowest this corridor may be built, which the unit cell decides
+// rather than the world size: the centerline moves by up to this much from
+// one row to the next (the envelope's own biggest step, plus the sublattice
+// flipping sides every row), and a band narrower than that step lands clear
+// of the band above it, leaving a lattice of disconnected rungs with no route
+// through. The physical reading is the same as the geometric one -- the
+// lattice constant is fixed, so a crystal cannot be thinner than its own unit
+// cell, however small a world it sits in.
+function minLatticeWidth(): number {
+  let biggestStep = 0;
+  for (let i = 0; i < MOTIF.length; i++) {
+    const step = Math.abs(MOTIF[(i + 1) % MOTIF.length] - MOTIF[i]);
+    biggestStep = Math.max(biggestStep, step);
+  }
+  return biggestStep + SUBLATTICE_SHIFT + 1;
+}
+
+export function generateWorld2Map(gridW: number, gridH: number, start: GridPoint, scale: WorldScale): GeneratedMap {
   const goalY = 1;
   const totalRows = start.y - goalY + 1;
-  const half = WIDTH / 2;
+  const width = Math.max(scale.tiles(WIDTH), minLatticeWidth());
+  const half = width / 2;
   const minCenter = half;
   const maxCenter = gridW - half;
   const baseCenter = Math.min(maxCenter, Math.max(minCenter, start.x));
@@ -29,7 +53,7 @@ export function generateWorld2Map(gridW: number, gridH: number, start: GridPoint
     const envelope = MOTIF[i % MOTIF.length] - MOTIF[Math.floor(MOTIF.length / 2)];
     const sublattice = i % 2 === 0 ? -SUBLATTICE_SHIFT / 2 : SUBLATTICE_SHIFT / 2;
     const center = Math.min(maxCenter, Math.max(minCenter, baseCenter + envelope + sublattice));
-    const band = paintBand(walkable, gridW, y, center, WIDTH);
+    const band = paintBand(walkable, gridW, y, center, width);
     if (band) bands.push({ y, ...band });
   }
 

@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
 import { blend } from './colors';
 import { CANVAS_W } from './perspective';
-import { drawQumatuomiSky } from './qumatuomiMap';
 
 // The shape half of each world's distant self -- how that world looks from a
 // world away (WORLDS.md section 4). Its base color and swallow live on the
@@ -50,10 +49,16 @@ export interface HorizonSky {
   horizonY: number;
   target: number;
   now: number;
+  // The world the player is standing in. Only the overhead motifs read it --
+  // a distant self belongs to the world depicted and already knows which one
+  // it is, while the last four worlds share one sky whose stage is the world
+  // it is drawn in (art/stars.ts).
+  world: number;
   // The worlds the player has actually walked, in the order they walked them.
-  // Only the Devouring Mirror's own sky reads this -- its horizon is the map
-  // of every world at once, and the route across it is the one thing that
-  // copy of the map carries and no other does.
+  // Nothing in the sky reads this: the map that carries the route is the one
+  // lying below the Devouring Mirror's cliff (scenes/overworld/sky.ts's
+  // overlook pass), not a sky motif. Carried here so a sky that wants the
+  // player's own history has it.
   route: number[];
 }
 
@@ -426,33 +431,13 @@ function auroraOverhead({ g, horizonY, now }: HorizonSky) {
 // (scenes/overworld/terrain/materials/charged.ts).
 export const OVERHEAD_SKIES: Partial<Record<number, (view: HorizonSky) => void>> = {
   6: auroraOverhead,
-  10: qumatuomiOverhead,
 };
 
-// The Devouring Mirror's own horizon, read from the world the player is
-// standing in rather than from a neighbour, because it has none: the
-// Qumatuomi map reflected in a mirrored sky (art/qumatuomiMap.ts's
-// drawQumatuomiSky, and WORLDS.md section 4's "The Qumatuomi sky").
-//
-// Sized and placed here rather than in the asset: it occupies the mist band,
-// so its near edge sits just clear of the horizon line and its far edge stops
-// short of the frame's top, keeping it inside the same stretch of air every
-// other distant thing is drawn in.
-function qumatuomiOverhead(view: HorizonSky) {
-  drawQumatuomiSky(view.g, {
-    cx: W / 2,
-    top: 46,
-    bottom: view.horizonY - 2,
-    halfWidth: W * 0.4,
-    target: view.target,
-    now: view.now,
-    route: view.route,
-  });
-}
-
-// A world with no distant self at all: the Devouring Mirror, whose horizon is
-// the Qumatuomi sky rather than any silhouette. It carries swallow zero, so
-// this is what the Defect Scars look forward into.
+// A world with no distant self at all: the Devouring Mirror, which has no
+// world after it to show and keeps its Qumatuomi map on the ground below its
+// cliff rather than in its sky (art/qumatuomiMap.ts's drawQumatuomiOverlook,
+// WORLDS.md section 4). It carries swallow zero, so this is what the Defect
+// Scars look forward into.
 const NOTHING: DistantSelf = { points: [] };
 
 export const DISTANT_SELVES: Partial<Record<number, DistantSelf>> = {

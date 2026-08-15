@@ -17,9 +17,14 @@
 //     and kept out of both passes.
 //
 // Generation is randomized and runs on every world entry (a fresh corridor
-// each time, same as before per-world generators existed), so a shape that
-// fails either invariant just gets regenerated with fresh randomness rather
-// than crashing the scene -- see generateWorldMap's retry loop.
+// each time), so a shape that fails either invariant just gets regenerated
+// with fresh randomness rather than crashing the scene -- see
+// generateWorldMap's retry loop.
+//
+// How big the world is comes in as a WorldScale (generators/shared.ts), an
+// explicit parameter rather than module state, so one process can generate at
+// several sizes -- which is what lets scripts/mapgen-check.mjs prove both
+// invariants at every size the Settings station offers.
 
 import type { MaterialType } from '../data/types';
 import { generateFallbackMap } from './generators/fallback';
@@ -28,6 +33,7 @@ import {
   GeneratedMap,
   GridPoint,
   NullableNumberGrid,
+  WorldScale,
   deriveRows,
   forceChokepoint,
   narrowGoalPass,
@@ -36,6 +42,7 @@ import {
   reachable,
   scatterTokens,
   verifyChokepoint,
+  worldScale,
 } from './generators/shared';
 import { generateWorld1Map } from './generators/world1';
 import { generateWorld2Map } from './generators/world2';
@@ -64,45 +71,60 @@ export interface WorldMap {
 
 const MAX_ATTEMPTS = 10;
 
-function buildWorldShape(gridW: number, gridH: number, start: GridPoint, world: number, playerType?: MaterialType): GeneratedMap {
+function buildWorldShape(gridW: number, gridH: number, start: GridPoint, world: number, scale: WorldScale, playerType?: MaterialType): GeneratedMap {
   switch (world) {
     case 1:
-      return generateWorld1Map(gridW, gridH, start);
+      return generateWorld1Map(gridW, gridH, start, scale);
     case 2:
-      return generateWorld2Map(gridW, gridH, start);
+      return generateWorld2Map(gridW, gridH, start, scale);
     case 3:
-      return generateWorld3Map(gridW, gridH, start);
+      return generateWorld3Map(gridW, gridH, start, scale);
     case 4:
-      return generateWorld4Map(gridW, gridH, start);
+      return generateWorld4Map(gridW, gridH, start, scale);
     case 5:
-      return generateWorld5Map(gridW, gridH, start);
+      return generateWorld5Map(gridW, gridH, start, scale);
     case 6:
-      return generateWorld6Map(gridW, gridH, start);
+      return generateWorld6Map(gridW, gridH, start, scale);
     case 7:
-      return generateWorld7Map(gridW, gridH, start);
+      return generateWorld7Map(gridW, gridH, start, scale);
     case 8:
-      return generateWorld8Map(gridW, gridH, start);
+      return generateWorld8Map(gridW, gridH, start, scale);
     case 9:
-      return generateWorld9Map(gridW, gridH, start);
+      return generateWorld9Map(gridW, gridH, start, scale);
     case 10:
-      return generateWorld10Map(gridW, gridH, start, playerType);
+      return generateWorld10Map(gridW, gridH, start, scale, playerType);
     default:
-      return generateFallbackMap(gridW, gridH, start);
+      return generateFallbackMap(gridW, gridH, start, scale);
   }
 }
 
-export function generateWorldMap(gridW: number, gridH: number, start: GridPoint, world: number, playerType?: MaterialType): WorldMap {
+// How many qumatessence pickups a world is seeded with. Scales with the
+// world's own length rather than its area: a pickup is something found while
+// walking the route, so what has to stay constant is how often one turns up
+// along it.
+function tokenCount(scale: WorldScale): number {
+  return Math.max(1, Math.round((5 + Math.floor(Math.random() * 4)) * scale.factor));
+}
+
+export function generateWorldMap(
+  gridW: number,
+  gridH: number,
+  start: GridPoint,
+  world: number,
+  scale: WorldScale = worldScale(1),
+  playerType?: MaterialType
+): WorldMap {
   let result: GeneratedMap | null = null;
 
   for (let attempt = 0; attempt < MAX_ATTEMPTS && !result; attempt++) {
-    const candidate = buildWorldShape(gridW, gridH, start, world, playerType);
+    const candidate = buildWorldShape(gridW, gridH, start, world, scale, playerType);
     forceChokepoint(candidate.walkable, gridW, candidate.mid);
     // After the chokepoint, so the pass wins where the two would ever land on
     // the same row; verifyChokepoint below then rejects the shape if the
     // taper cost the guardian its forced crossing, and the retry loop rolls
     // another.
-    narrowGoalPass(candidate.walkable, gridW, gridH, candidate.goal, candidate.mid);
-    openStartMouth(candidate.walkable, gridW, gridH, candidate.start, candidate.mid);
+    narrowGoalPass(candidate.walkable, gridW, gridH, candidate.goal, candidate.mid, scale);
+    openStartMouth(candidate.walkable, gridW, gridH, candidate.start, candidate.mid, scale);
     if (!reachable(candidate.walkable, gridW, gridH, candidate.start, candidate.goal)) continue;
     if (!verifyChokepoint(candidate.walkable, gridW, gridH, candidate.start, candidate.goal, candidate.mid)) continue;
     result = candidate;
@@ -110,26 +132,18 @@ export function generateWorldMap(gridW: number, gridH: number, start: GridPoint,
 
   if (!result) {
     console.error(`mapgen: world ${world} failed to produce a valid chokepointed map after ${MAX_ATTEMPTS} attempts -- falling back to the plain corridor`);
-    result = generateFallbackMap(gridW, gridH, start);
+    result = generateFallbackMap(gridW, gridH, start, scale);
     forceChokepoint(result.walkable, gridW, result.mid);
-    narrowGoalPass(result.walkable, gridW, gridH, result.goal, result.mid);
-    openStartMouth(result.walkable, gridW, gridH, result.start, result.mid);
+    narrowGoalPass(result.walkable, gridW, gridH, result.goal, result.mid, scale);
+    openStartMouth(result.walkable, gridW, gridH, result.start, result.mid, scale);
   }
 
   // Nothing spawns inside either pass. Encounters are sampled per corridor
   // row, so dropping those rows here keeps them out; tokens are placed by
   // tile and take the same row set.
-  const passRows = passZoneRows(result.start, result.goal, result.mid);
+  const passRows = passZoneRows(result.start, result.goal, result.mid, scale);
   const rows = deriveRows(result.walkable, gridW, gridH).filter((r) => !passRows.has(r.y));
-  const tokens = scatterTokens(
-    result.walkable,
-    gridW,
-    gridH,
-    world,
-    [result.start, result.goal, result.mid],
-    5 + Math.floor(Math.random() * 4),
-    passRows
-  );
+  const tokens = scatterTokens(result.walkable, gridW, gridH, world, [result.start, result.goal, result.mid], tokenCount(scale), passRows);
 
   return { ...result, rows, tokens };
 }

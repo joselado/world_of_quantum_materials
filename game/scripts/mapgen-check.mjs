@@ -4,11 +4,17 @@
 // true articulation point between `start` and `goal`) rather than trusting
 // mapgen.ts's own internal retry/verify pass -- a bug inside forceChokepoint
 // or verifyChokepoint itself wouldn't be caught by that pass re-checking
-// its own work. Bundles src/world/mapgen.ts with esbuild (already a
-// transitive dependency via vite) since the generator modules are plain TS
-// with no Phaser import, unlike most of src/ -- see generators/shared.ts's
-// own module comment. Run via `npm run mapgen:check` (or directly with
-// `node scripts/mapgen-check.mjs`).
+// its own work. Every world is checked at every world size the Settings
+// station offers, since the size factor multiplies every length the
+// generators are written in.
+//
+// Bundles the generator side with esbuild (already a transitive dependency
+// via vite) since those modules are plain TS with no Phaser import, unlike
+// most of src/ -- see generators/shared.ts's own module comment. The bundle
+// entry is written here rather than being a file in src/: what this script
+// needs is mapgen plus the size presets and the scale helper, which is a
+// combination only this script wants. Run via `npm run mapgen:check` (or
+// directly with `node scripts/mapgen-check.mjs`).
 
 import esbuild from 'esbuild';
 import fs from 'node:fs';
@@ -20,7 +26,15 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const gameDir = path.resolve(__dirname, '..');
 
 const built = await esbuild.build({
-  entryPoints: [path.join(gameDir, 'src/world/mapgen.ts')],
+  stdin: {
+    contents: [
+      "export { generateWorldMap } from './src/world/mapgen';",
+      "export { worldScale } from './src/world/generators/shared';",
+      "export { WORLD_SIZE_PRESETS, gridDimsFor } from './src/data/settings';",
+    ].join('\n'),
+    resolveDir: gameDir,
+    loader: 'ts',
+  },
   bundle: true,
   format: 'esm',
   platform: 'node',
@@ -30,12 +44,23 @@ const built = await esbuild.build({
 
 const outFile = path.join(os.tmpdir(), `mapgen-check-${process.pid}-${Date.now()}.mjs`);
 fs.writeFileSync(outFile, built.outputFiles[0].text);
-const { generateWorldMap } = await import(`file://${outFile}`);
+const { generateWorldMap, worldScale, gridDimsFor, WORLD_SIZE_PRESETS } = await import(`file://${outFile}`);
 fs.unlinkSync(outFile);
 
-const GRID_W = 27;
-const GRID_H = 50;
-const START = { x: Math.floor(GRID_W / 2), y: GRID_H - 5 };
+// Every size the Lab's Settings station offers (data/settings.ts's
+// WORLD_SIZE_PRESETS), not just the default one: the invariants are what make
+// a world walkable at all, and a world-size factor multiplies every length a
+// generator is written in, so each size is its own geometry to prove.
+const SIZES = WORLD_SIZE_PRESETS.map((preset) => {
+  const dims = gridDimsFor(preset.factor);
+  return {
+    label: preset.label,
+    scale: worldScale(preset.factor),
+    gridW: dims.w,
+    gridH: dims.h,
+    start: { x: Math.floor(dims.w / 2), y: dims.h - Math.max(2, Math.round(5 * preset.factor)) },
+  };
+});
 const ITERATIONS_PER_WORLD = 400;
 const WORLD10_TYPES = [
   'metal',
@@ -111,17 +136,19 @@ let failures = 0;
 let totalNarrowFrac = 0;
 let totalMaps = 0;
 
-for (let world = 1; world <= 10; world++) {
+for (const size of SIZES) {
+  const { gridW: GRID_W, gridH: GRID_H, start: START } = size;
+  for (let world = 1; world <= 10; world++) {
   const types = world === 10 ? WORLD10_TYPES : [undefined];
   for (const playerType of types) {
     for (let i = 0; i < ITERATIONS_PER_WORLD; i++) {
-      const map = generateWorldMap(GRID_W, GRID_H, START, world, playerType);
+      const map = generateWorldMap(GRID_W, GRID_H, START, world, size.scale, playerType);
       totalMaps++;
 
       const ok = reachable(map.walkable, GRID_W, GRID_H, map.start, map.goal);
       if (!ok) {
         failures++;
-        console.error(`FAIL world ${world} (${playerType ?? 'n/a'}) iter ${i}: start cannot reach goal`);
+        console.error(`FAIL ${size.label} world ${world} (${playerType ?? 'n/a'}) iter ${i}: start cannot reach goal`);
         continue;
       }
 
@@ -135,7 +162,7 @@ for (let world = 1; world <= 10; world++) {
       const midToGoal = Math.abs(map.mid.x - map.goal.x) + Math.abs(map.mid.y - map.goal.y);
       if (midToGoal < 2 || map.mid.y === map.goal.y || map.mid.y === map.start.y) {
         failures++;
-        console.error(`FAIL world ${world} (${playerType ?? 'n/a'}) iter ${i}: mid too close to goal/start (dist ${midToGoal}, mid.y=${map.mid.y}, goal.y=${map.goal.y}, start.y=${map.start.y})`);
+        console.error(`FAIL ${size.label} world ${world} (${playerType ?? 'n/a'}) iter ${i}: mid too close to goal/start (dist ${midToGoal}, mid.y=${map.mid.y}, goal.y=${map.goal.y}, start.y=${map.start.y})`);
       }
 
       const blocked = new Set([key(map.mid.x, map.mid.y)]);
@@ -150,15 +177,19 @@ for (let world = 1; world <= 10; world++) {
       const stillReachable = reachable(map.walkable, GRID_W, GRID_H, map.start, map.goal, blocked);
       if (stillReachable) {
         failures++;
-        console.error(`FAIL world ${world} (${playerType ?? 'n/a'}) iter ${i}: goal still reachable with mid removed -- not a real chokepoint`);
+        console.error(`FAIL ${size.label} world ${world} (${playerType ?? 'n/a'}) iter ${i}: goal still reachable with mid removed -- not a real chokepoint`);
       }
 
       totalNarrowFrac += narrowTileFraction(map.walkable, GRID_W, GRID_H);
     }
   }
+  }
+  console.log(`${size.label} (${GRID_W}x${GRID_H}): done.`);
 }
 
-console.log(`Checked ${totalMaps} generated maps across all 10 worlds (World 10 across ${WORLD10_TYPES.length} player types).`);
+console.log(
+  `Checked ${totalMaps} generated maps across all 10 worlds (World 10 across ${WORLD10_TYPES.length} player types) at ${SIZES.length} world sizes.`
+);
 console.log(`Average narrow-tile fraction (invariant A proxy, lower is better): ${((totalNarrowFrac / totalMaps) * 100).toFixed(2)}%`);
 if (failures > 0) {
   console.error(`${failures} invariant failure(s).`);

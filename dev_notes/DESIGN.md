@@ -1293,6 +1293,37 @@ Takes effect the next time a world map is generated (a fresh world entry or an
 explicit regenerate), not retroactively on the map the player is currently
 standing on.
 
+**World size.** The same Settings station offers Nano/Meso/Macro
+(`data/settings.ts`'s `WORLD_SIZE_PRESETS`) -- one multiplicative factor (0.7 / 1 / 3)
+applied to every length a world is built out of: the grid itself
+(27x50 at Meso), every corridor width, every branch, spur, spiral and lane
+offset, and every stretch measured in rows. A tile is the same size on screen at
+every setting and the draw distance is unchanged, so a bigger world is a longer walk
+down a wider corridor rather than the same walk seen from further away. Like the
+density above it, this is read at map-generation time, so it applies to the next
+world entered.
+
+Three kinds of number deliberately don't scale, and the reasons are worth keeping:
+
+- **Counts, not lengths** -- how many Voronoi domains World 3 is partitioned into,
+  how many vortices World 5 winds around, how many defect patches World 9 carries,
+  how many legs World 7's network has. Holding the count and scaling the feature is
+  what makes a bigger world the same picture rather than a busier one; for World 9
+  it is also what keeps the defect *concentration* (patch area over corridor area)
+  the same at every size.
+- **Periodic motifs** -- World 2's unit cell and World 6's magnon wavelength are
+  lengths of the material, not of the map, so a bigger crystal is more unit cells at
+  the same lattice constant rather than stretched ones. World 2's corridor
+  consequently has a floor: it can never be narrower than its own unit cell steps
+  sideways from row to row, which at Nano is what the width is held at.
+- **The two throats** -- the guardian's chokepoint gap and the pass throat
+  (`PASS_HALF_WIDTH`) are three tiles wide in every world at every size. A
+  chokepoint is narrow *relative to the world it interrupts*, and a pass is a
+  doorway between two worlds rather than a feature of either. The chokepoint gap is
+  additionally load-bearing for verification: `verifyChokepoint` proves invariant B
+  by removing `mid` and its four neighbours, which is exactly a one-tile-half-width
+  gap.
+
 **Plot hook:** a "Decoherence" is spreading through the quantum material worlds, causing wild
 materials to lose their protected properties. The player masters each phase of
 matter to stabilize it. World 10's boss is revealed as the source — an entity

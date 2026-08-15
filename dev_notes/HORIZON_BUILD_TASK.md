@@ -22,7 +22,7 @@ Build in this order. Each stage is shippable on its own.
 | **C** | Distant selves — per-world horizon profiles, composed into neighbours | retheme, A | **built** |
 | **D** | Gate apertures — state-signalled pass, ground seam | C | **built** |
 | **E** | Depth-projected flanks — the approach into the pass | D | **deferred** |
-| **F** | The Lab door, then the Qumatuomi sky | D (Lab quotes its grammar) | **built** |
+| **F** | The Lab door, then the Qumatuomi map below World 10's cliff | D (Lab quotes its grammar) | **built** |
 
 E is the only speculative item; if it reads badly in the first world tried,
 stop — D alone is a complete gate.
@@ -171,11 +171,12 @@ all occupy the pass at different depths, and the rival is currently drawn as a
 special case rather than through the common depth sort. Until that is fixed the
 boss floats in front of walls it should be standing between.
 
-## F — The Lab door, and the Qumatuomi sky — built
+## F — The Lab door, and the Qumatuomi map below the cliff — built
 
-`WORLDS.md` §4's "The Lab" and "The Qumatuomi sky" are the spec; `STYLE.md`'s
-"The Lab's two signals" and "The Qumatuomi sky" are the visual rule, and
-`CODEMAP.md`'s "The Lab's two signals" and "The Qumatuomi sky" are the code.
+`WORLDS.md` §4's "The Lab" and "The Qumatuomi map below" are the spec; `STYLE.md`'s
+"The Lab's two signals" and "The Qumatuomi map below" are the visual rule, and
+`CODEMAP.md`'s "The Lab's two signals" and "The Qumatuomi map below the cliff"
+are the code.
 
 **The Lab** carries two signals and no more. Its door previews the current
 destination — by default the world and position the player left — with that
@@ -185,12 +186,14 @@ selection re-points the door in the same gesture). Its accent lighting is the
 player's current crystal, repainted in place on transmutation. Everything else
 is said by absence: no window, no sky, nothing implying an outside.
 
-**The Qumatuomi sky** is World 10's horizon, read from the world stood in
-rather than from a neighbour it does not have. One power schedule drives both
-the row spacing and the half-width, so the plane recedes as a single piece;
-a slow sine offset per row is the ripple; fill and coastline are drowned into
-the live haze target the same way a distant self is. Markers, labels and
-region tints are stripped. The route trace runs through the worlds the player
+**The Qumatuomi map** lies below World 10's cliff, which is what that world's
+road ends at once its rival falls — it has no neighbour to put on a horizon.
+Nothing is drawn past the edge, so the gap between the lip and the horizon is
+free for the drop's own shade and the land below it. The silhouette goes
+through the panel build's own uniform scale-to-fit, in its own land colours,
+squashed slightly: the player has to recognise the coastline, and that outranks
+perspective. Depth is carried by a veil graded across the land instead.
+Markers, labels and region tints are stripped. The route trace runs through the worlds the player
 has actually walked, in visit order, with no marker at either end. The Espoo
 pulse is deliberately not built: it is the flourish §4 marks skippable, and a
 single point pulsing on a map is exactly the affordance the rest of this
@@ -273,7 +276,7 @@ alpha or letting the lowest slices reach further down are both open.
 - Gates need both states captured: rival alive and rival beaten.
 - Get an independent visual opinion (a `model: "fable"` subagent) rather than
   self-assessing. The specific questions worth putting to it: does the land now
-  read as continuous or merely as extended, does the Qumatuomi sky read as vista
+  read as continuous or merely as extended, does the Qumatuomi map read as vista
   or as HUD, and do stage E's flanks read as an approach or as a mistake.
 
 ## Docs to keep in sync

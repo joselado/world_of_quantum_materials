@@ -380,14 +380,28 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // the order GUARDIAN_LEFT_CLUSTER/GUARDIAN_RIGHT_CLUSTER list their worlds.
   // A guardian's slot is fixed by their world, so it never shifts as other
   // guardians are met.
-  private guardianSlot(world: number): { x: number; y: number } {
+  //
+  // `labelRoom` is how wide that slot's name may be drawn, which is not the
+  // same as how wide the slot is: the top row of each cluster holds a single
+  // guardian with the whole cluster's width to itself, while the two rows
+  // under it hold a pair each and have to share. The longest name in the game
+  // (Skłodowska-Curie) stands in one of those top rows, and it is only the
+  // paired rows that ever have a neighbour close enough to run into. A top row
+  // takes the cluster's full width, which still lands inside the frame at both
+  // corners and is what lets the longest name hold the gallery's own size at
+  // every text-size preset.
+  private guardianSlot(world: number): { x: number; y: number; labelRoom: number } {
     const leftIndex = GUARDIAN_LEFT_CLUSTER.indexOf(world);
     const onLeft = leftIndex >= 0;
     const index = onLeft ? leftIndex : GUARDIAN_RIGHT_CLUSTER.indexOf(world);
     const row = index === 0 ? 0 : index <= 2 ? 1 : 2;
     const centerX = onLeft ? GUARDIAN_CLUSTER_CX : CANVAS_W - GUARDIAN_CLUSTER_CX;
     const x = row === 0 ? centerX : centerX + ((index - 1) % 2 === 0 ? -GUARDIAN_SLOT_W / 2 : GUARDIAN_SLOT_W / 2);
-    return { x, y: GUARDIAN_ROW_TOP + row * GUARDIAN_ROW_PITCH };
+    return {
+      x,
+      y: GUARDIAN_ROW_TOP + row * GUARDIAN_ROW_PITCH,
+      labelRoom: row === 0 ? 2 * GUARDIAN_SLOT_W : GUARDIAN_SLOT_W - 6,
+    };
   }
 
   // The Lab's guardian gallery: every guardian the player has met (every
@@ -423,13 +437,15 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
           color: REFERENCE_BLUE_GREY_HEX,
         })
         .setOrigin(0.5, 0);
-      // A long surname is stepped down in whole pixels until it fits its own
-      // slot rather than wrapped or trimmed, so neighbouring slots' labels
-      // never touch. Stepped on the *rendered* size rather than the base one,
-      // since the same base px is 1.5x wider at the Large text-size preset --
-      // the widest name only fits every preset at the floor.
+      // A long surname is stepped down in whole pixels until it fits the room
+      // its own slot has (guardianSlot's `labelRoom`) rather than wrapped or
+      // trimmed, so neighbouring slots' labels never touch. Stepped on the
+      // *rendered* size rather than the base one, since the same base px is
+      // 1.5x wider at the Large text-size preset. Every name in the game fits
+      // its own room at every preset, so the gallery reads at one size; the
+      // step-down is the guard that keeps that true if a longer one is added.
       let labelPx = Math.round(GUARDIAN_LABEL_BASE_PX * fontScale(this));
-      while (label.width > GUARDIAN_SLOT_W - 6 && labelPx > GUARDIAN_LABEL_MIN_PX) {
+      while (label.width > slot.labelRoom && labelPx > GUARDIAN_LABEL_MIN_PX) {
         labelPx -= 1;
         label.setFontSize(`${labelPx}px`);
       }

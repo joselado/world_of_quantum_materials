@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { blend } from '../../../../art/colors';
 import { LANE_PX } from '../../../../art/perspective';
-import { GRID_W, TILE_SCALE } from '../../projection';
+import { gridW, TILE_SCALE } from '../../projection';
 import type { AccentTile } from '../types';
 
 // 'shards' (the Iron Steppe, world 6): fields of aligned iron shards, every
@@ -24,7 +24,7 @@ const WALL_DRIFT_MS = 9000;
 // rather than ruling a straight line down the map, because a domain wall is a
 // surface that finds its own shape, not a drawn boundary.
 function wallAt(gy: number, now: number): number {
-  return GRID_W * 0.55 + 3 * Math.sin(gy * 0.21) + 5 * Math.sin((now / WALL_DRIFT_MS) * Math.PI * 2);
+  return gridW() * 0.55 + 3 * Math.sin(gy * 0.21) + 5 * Math.sin((now / WALL_DRIFT_MS) * Math.PI * 2);
 }
 
 export function drawShardsAccent(g: Phaser.GameObjects.Graphics, { cx, cy, s, gx, gy, depth, haze, detail, now }: AccentTile) {

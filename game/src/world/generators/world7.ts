@@ -8,21 +8,31 @@
 // network into one walkable path," matching this world's own gate flavor
 // (DESIGN.md §2).
 
-import { GeneratedMap, GridPoint, clamp, makeColorGrid, makeGrid, paintBand } from './shared';
+import { GeneratedMap, GridPoint, WorldScale, clamp, makeColorGrid, makeGrid, paintBand } from './shared';
 
 const LANE_WIDTH = 3;
 const FAN_ROWS = 5;
 const RUNG_INTERVAL = 7;
 const RUNG_HEIGHT = 2;
 
-export function generateWorld7Map(gridW: number, gridH: number, start: GridPoint): GeneratedMap {
+export function generateWorld7Map(gridW: number, gridH: number, start: GridPoint, scale: WorldScale): GeneratedMap {
   const goalY = 1;
   const totalRows = start.y - goalY + 1;
+  // How many legs the network has is a count -- the same diagram at every
+  // world size, drawn at the size of that world.
   const laneCount = Math.random() < 0.5 ? 3 : 4;
-  const offsets = laneCount === 3 ? [-6, 0, 6] : [-9, -3, 3, 9];
+  const baseOffsets = laneCount === 3 ? [-6, 0, 6] : [-9, -3, 3, 9];
+  const offsets = baseOffsets.map((off) => off * scale.factor);
   const maxOffset = Math.max(...offsets.map(Math.abs));
 
-  const spineHalf = LANE_WIDTH / 2;
+  const laneWidth = scale.tiles(LANE_WIDTH);
+  const fanRows = scale.tiles(FAN_ROWS);
+  const rungInterval = scale.tiles(RUNG_INTERVAL);
+  const rungHeight = scale.tiles(RUNG_HEIGHT);
+  const holdRows = scale.tiles(3, 1);
+  const driftStep = scale.tiles(1, 1);
+
+  const spineHalf = laneWidth / 2;
   const minCenter = maxOffset + spineHalf;
   const maxCenter = gridW - maxOffset - spineHalf;
 
@@ -40,28 +50,28 @@ export function generateWorld7Map(gridW: number, gridH: number, start: GridPoint
   for (let i = 0; i < totalRows; i++) {
     const y = start.y - i;
 
-    if (straight >= 3 && Math.random() < 0.3 && minCenter < maxCenter) {
+    if (straight >= holdRows && Math.random() < 0.3 && minCenter < maxCenter) {
       const dir = Math.random() < 0.5 ? -1 : 1;
-      center = clamp(center + dir, minCenter, maxCenter);
+      center = clamp(center + dir * driftStep, minCenter, maxCenter);
       straight = 0;
     } else {
       straight += 1;
     }
 
-    const fanT = clamp(Math.min(i, totalRows - 1 - i) / FAN_ROWS, 0, 1);
+    const fanT = clamp(Math.min(i, totalRows - 1 - i) / fanRows, 0, 1);
     const laneCenters = offsets.map((off) => center + off * fanT);
     history.push({ y, laneCenters });
-    laneCenters.forEach((lc) => paintBand(walkable, gridW, y, lc, LANE_WIDTH));
+    laneCenters.forEach((lc) => paintBand(walkable, gridW, y, lc, laneWidth));
 
     // Rungs only make sense once the lanes are genuinely separate (fanT
     // close to 1) -- bridging adjacent lane pairs with a short walkable
-    // span at this row, RUNG_HEIGHT rows tall so the crossing itself still
+    // span at this row, several rows tall so the crossing itself still
     // clears invariant A.
-    if (fanT > 0.85 && i % RUNG_INTERVAL === 0) {
+    if (fanT > 0.85 && i % rungInterval === 0) {
       for (let li = 0; li < laneCenters.length - 1; li++) {
         const leftX = Math.round(laneCenters[li]);
         const rightX = Math.round(laneCenters[li + 1]);
-        for (let dy = 0; dy < RUNG_HEIGHT; dy++) {
+        for (let dy = 0; dy < rungHeight; dy++) {
           const ry = y - dy;
           if (ry < 0) break;
           for (let x = leftX; x <= rightX; x++) walkable[ry][x] = true;

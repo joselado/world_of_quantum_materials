@@ -426,17 +426,17 @@ currently are while taking the ground back behind you as you walk. Its wild
 encounters are the **hybrids** — the fused crystals from Majorana's station,
 found nowhere else in these worlds.
 
-Then you look up. Every world on this road keeps the next one on its
-skyline; this corridor has no next world, and what hangs in its sky instead
-is the map — the same landmass you have been reading since the colonnade,
-reflected in a mirrored sky: foreshortened, tilted away from you, rippling
-faintly with the world's shimmer, silver-violet, glowing with its own light
-behind the same haze that dims everything else here. Every marker and every
-name has been stripped from it. You recognize it anyway, the way you
-recognize a coastline you have walked the length of. And traced faintly
-across it, luminous, is the one thing no other copy of the map carries:
-your route — every world you walked, in the order you walked them, from the
-first hedgerow to this door.
+Then you beat it, and the road stops. Every world on this road keeps the
+next one on its skyline; this corridor has no next world, and once the
+Adapted falls there is no road past the pass either — the ground simply
+ends, and you are standing on the edge of a cliff. Below it, far down and
+half lost in the haze, is the map — the same landmass you have been reading
+since the colonnade, lying there whole. Every marker and every name has been
+stripped from it. You recognize it anyway, the way you recognize a coastline
+you have walked the length of. And traced faintly across it, luminous, is
+the one thing no other copy of the map carries: your route — every world you
+walked, in the order you walked them, from the first hedgerow to this
+edge.
 No traveler ever sees the worlds this way. A walker gets one horizon at a
 time; the only thing that can see the whole map at once is a thing that has
 consumed everything on it. This is where everything ever learned about

@@ -2,7 +2,7 @@ import { getBiome } from '../../../art/biomes';
 import type { Biome } from '../../../art/biomes';
 import { buildContourGrid } from '../../../art/contours';
 import type { GridPoint } from '../../../world/mapgen';
-import { GRID_W, GRID_H } from '../projection';
+import { gridW, gridH } from '../projection';
 import type { BattleLocale, OffPathKind, TerrainPlan, TerrainTile } from './types';
 import type { WallTheme } from '../../../art/biomes';
 
@@ -16,6 +16,11 @@ export interface TerrainSource {
   flowerMap: boolean[][];
   midTile: GridPoint;
   biome: Biome;
+  // Whether the road stops at this world's far edge instead of running on
+  // past it -- the Devouring Mirror's cliff, once The Adapted has fallen. It
+  // decides whether the far edge row is drawn as a continuing road or as a
+  // real edge with its own boundary curve, contact shadow and rim light.
+  endsAtCliff: boolean;
 }
 
 // Terrain rendering splits in two: reading the grid (this, cached by the
@@ -28,20 +33,26 @@ export interface TerrainSource {
 export function buildTerrainPlan(src: TerrainSource): TerrainPlan {
   const tiles = classifyTiles(src);
   const farEdgeRow = findFarEdgeRow(src.walkable);
-  const contours = buildContourGrid(depthContinuedWalkable(src.walkable, farEdgeRow), GRID_W, GRID_H);
+  const contours = buildContourGrid(
+    src.endsAtCliff ? src.walkable : depthContinuedWalkable(src.walkable, farEdgeRow),
+    gridW(),
+    gridH()
+  );
   return { tiles, farEdgeRow, contours };
 }
 
 function classifyTiles(src: TerrainSource): TerrainTile[][] {
+  const cols = gridW();
+  const rows = gridH();
   // A core only counts where the finished grid actually left it blocked: the
   // shared chokepoint and pass passes run after the generator and could carve
   // one open, and a pit or a pool feature drawn on walkable floor would be a
   // hole in the road.
   const cores = new Set(src.featureCores.filter((c) => !src.walkable[c.y]?.[c.x]).map((c) => `${c.x},${c.y}`));
   const plan: TerrainTile[][] = [];
-  for (let y = 0; y < GRID_H; y++) {
+  for (let y = 0; y < rows; y++) {
     const row: TerrainTile[] = [];
-    for (let x = 0; x < GRID_W; x++) {
+    for (let x = 0; x < cols; x++) {
       // World 9's defect patches (world/generators/world9.ts) tag a tile
       // with which world's biome table it should render with instead of
       // this scene's own -- every other world leaves this null.
@@ -93,13 +104,13 @@ const LOCALE_RADIUS = 2;
 // material is -- the world's own answer, which is the right one for a fight
 // in the open.
 export function sampleBattleLocale(plan: TerrainPlan, at: GridPoint): BattleLocale {
-  const x = Math.min(GRID_W - 1, Math.max(0, at.x));
-  const y = Math.min(GRID_H - 1, Math.max(0, at.y));
+  const x = Math.min(gridW() - 1, Math.max(0, at.x));
+  const y = Math.min(gridH() - 1, Math.max(0, at.y));
   const here = plan.tiles[y][x];
   const kinds = new Map<OffPathKind, number>();
   const tints = new Map<number, number>();
-  for (let yy = Math.max(0, y - LOCALE_RADIUS); yy <= Math.min(GRID_H - 1, y + LOCALE_RADIUS); yy++) {
-    for (let xx = Math.max(0, x - LOCALE_RADIUS); xx <= Math.min(GRID_W - 1, x + LOCALE_RADIUS); xx++) {
+  for (let yy = Math.max(0, y - LOCALE_RADIUS); yy <= Math.min(gridH() - 1, y + LOCALE_RADIUS); yy++) {
+    for (let xx = Math.max(0, x - LOCALE_RADIUS); xx <= Math.min(gridW() - 1, x + LOCALE_RADIUS); xx++) {
       const tile = plan.tiles[yy][xx];
       if (tile.kind !== 'path') kinds.set(tile.kind, (kinds.get(tile.kind) ?? 0) + 1);
       if (tile.regionTint != null) tints.set(tile.regionTint, (tints.get(tile.regionTint) ?? 0) + 1);
@@ -135,17 +146,19 @@ function dominant<T>(counts: Map<T, number>): T | null {
 // margin (paint.ts's drawMarginRows) continues toward the horizon, the way
 // the lateral margin continues the grid's left/right edge column.
 function findFarEdgeRow(walkable: boolean[][]): number {
-  for (let y = 0; y < GRID_H; y++) {
-    for (let x = 0; x < GRID_W; x++) {
+  for (let y = 0; y < gridH(); y++) {
+    for (let x = 0; x < gridW(); x++) {
       if (walkable[y]?.[x]) return y;
     }
   }
   return 0;
 }
 
-// The walkability the contour trace sees: the real grid, with every row
-// north of the far edge row carrying that row's walkability instead of its
-// own. The trace treats out-of-grid as impassable, so without this the far
+// The walkability the contour trace sees where the road runs on past the far
+// edge: the real grid, with every row north of the far edge row carrying that
+// row's walkability instead of its own. A world that ends at a cliff passes
+// its grid through untouched, because there the far edge really is one and
+// has earned every edge treatment the trace gives a boundary. The trace treats out-of-grid as impassable, so without this the far
 // edge row's path tiles would be traced as bounded on their north side and
 // wear a boundary curve, contact shadow and rim light straight across a
 // road the depth margin then continues past them. Movement still collides
@@ -154,6 +167,6 @@ function findFarEdgeRow(walkable: boolean[][]): number {
 function depthContinuedWalkable(walkable: boolean[][], farEdgeRow: number): boolean[][] {
   if (farEdgeRow <= 0) return walkable;
   const out: boolean[][] = [];
-  for (let y = 0; y < GRID_H; y++) out.push(y < farEdgeRow ? [...walkable[farEdgeRow]] : walkable[y]);
+  for (let y = 0; y < gridH(); y++) out.push(y < farEdgeRow ? [...walkable[farEdgeRow]] : walkable[y]);
   return out;
 }

@@ -97,3 +97,49 @@ export const DIFFICULTY_TIER_PRESETS: DifficultyTierPreset[] = [
 ];
 
 export const DEFAULT_DIFFICULTY_TIER: DifficultyTier = DIFFICULTY_TIER_PRESETS[1].value; // M.Sc. -- the tuned default
+
+// Same Settings panel, fifth row: how big a world is. One multiplicative
+// factor applied to every length the overworld is built out of -- the grid
+// itself, every corridor width, every branch/spur/spiral, every stretch
+// measured in rows -- so a world keeps its shape and changes only its size
+// (world/generators/shared.ts's WorldScale, scenes/overworld/projection.ts's
+// active grid dimensions). Tile size on screen and draw distance are
+// untouched, so a bigger world is a longer walk down a wider corridor rather
+// than the same walk seen from further away.
+//
+// Named for the length scales a materials physicist actually works at, and
+// spaced the way those names are: Meso is the tuned default every other
+// mapgen constant is written against, Nano is a brisk run through the same
+// world, and Macro is a genuinely large one -- three times the corridor in
+// every direction, which is where the world stops fitting in a single view
+// and starts being something the player crosses.
+export type WorldSizeId = 'nano' | 'meso' | 'macro';
+
+export interface WorldSizePreset {
+  label: string;
+  value: WorldSizeId;
+  factor: number;
+}
+
+export const WORLD_SIZE_PRESETS: WorldSizePreset[] = [
+  { label: 'Nano', value: 'nano', factor: 0.7 },
+  { label: 'Meso', value: 'meso', factor: 1 },
+  { label: 'Macro', value: 'macro', factor: 3 },
+];
+
+export const DEFAULT_WORLD_SIZE: WorldSizeId = WORLD_SIZE_PRESETS[1].value; // Meso -- the unscaled world
+
+// The Meso grid, which every other size is this one times its own factor.
+export const BASE_GRID_W = 27;
+export const BASE_GRID_H = 50;
+
+export function worldSizeFactor(id: WorldSizeId): number {
+  return WORLD_SIZE_PRESETS.find((p) => p.value === id)?.factor ?? 1;
+}
+
+// The grid a given factor asks for. Both dimensions scale: a world that grew
+// only longer would be the same corridor walked for longer, and the point of
+// the setting is a bigger world, not a slower one.
+export function gridDimsFor(factor: number): { w: number; h: number } {
+  return { w: Math.round(BASE_GRID_W * factor), h: Math.round(BASE_GRID_H * factor) };
+}

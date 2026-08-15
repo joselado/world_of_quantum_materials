@@ -33,7 +33,10 @@ import {
   DEFAULT_MUSIC_STYLE,
   DIFFICULTY_TIER_PRESETS,
   DEFAULT_DIFFICULTY_TIER,
+  WORLD_SIZE_PRESETS,
+  DEFAULT_WORLD_SIZE,
 } from '../../data/settings';
+import type { WorldSizeId } from '../../data/settings';
 import { STAT_LABELS } from '../../data/balance';
 import { persistFromRegistry } from '../../data/save';
 import { music } from '../../audio/music';
@@ -660,7 +663,36 @@ export function showSettingsPanel(scene: HubScene) {
     })
     .setOrigin(0.5, 0);
   container.add(tierHint);
-  y += tierHint.height + 14;
+  y += tierHint.height + 10;
+
+  const sizeIndex = worldSizeIndex(registry);
+  const sizePreset = WORLD_SIZE_PRESETS[sizeIndex];
+  const sizeBtn = scene.addDialogueButtonAt(
+    container,
+    columns.contentCenterX,
+    y,
+    `World Size: ${sizePreset.label}`,
+    () => {
+      const next = WORLD_SIZE_PRESETS[(sizeIndex + 1) % WORLD_SIZE_PRESETS.length];
+      registry.set('worldSize', next.value);
+      persistFromRegistry(registry);
+      showSettingsPanel(scene);
+    },
+    contentWidth
+  );
+  y += sizeBtn.height + 4;
+
+  const sizeHint = scene.add
+    .text(columns.contentCenterX, y, 'Takes effect the next time you enter a world.', {
+      fontSize: fontPx(scene, 11),
+      color: REFERENCE_BLUE_GREY_HEX,
+      align: 'center',
+      wordWrap: { width: contentWidth },
+      lineSpacing: 4,
+    })
+    .setOrigin(0.5, 0);
+  container.add(sizeHint);
+  y += sizeHint.height + 14;
 
   const closeBtn = scene.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Close', () => scene.closeDialogue(), 260);
   y += closeBtn.height + 8;
@@ -759,6 +791,13 @@ function difficultyTierIndex(registry: Phaser.Data.DataManager): number {
   const idx = DIFFICULTY_TIER_PRESETS.findIndex((p) => p.value === value);
   if (idx !== -1) return idx;
   return DIFFICULTY_TIER_PRESETS.findIndex((p) => p.value === DEFAULT_DIFFICULTY_TIER);
+}
+
+function worldSizeIndex(registry: Phaser.Data.DataManager): number {
+  const value = (registry.get('worldSize') as WorldSizeId) ?? DEFAULT_WORLD_SIZE;
+  const idx = WORLD_SIZE_PRESETS.findIndex((p) => p.value === value);
+  if (idx !== -1) return idx;
+  return WORLD_SIZE_PRESETS.findIndex((p) => p.value === DEFAULT_WORLD_SIZE);
 }
 
 function isSuperpositionMode(scene: HubScene): boolean {

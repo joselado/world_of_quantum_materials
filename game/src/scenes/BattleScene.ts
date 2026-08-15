@@ -1810,6 +1810,37 @@ export class BattleScene extends Phaser.Scene {
     this.logText.setPosition(LOG_X, y);
   }
 
+  // Lifts the log out of the field and onto a panel of its own, once the
+  // fight is over. During combat the log is a caption on the action -- one
+  // line at a time, deliberately not covering the crystals it is describing
+  // -- and a translucent strip behind it is the right weight for that. The
+  // closing summary is a different thing: several lines of flavour, payout
+  // and the physics the fight was actually teaching, which is the one text in
+  // a battle the player is meant to stop and read. Over an arena of lit
+  // crystals, a shaded strip is not enough to read a paragraph off, so it
+  // takes the same panel every other block of read-me text in this scene gets
+  // (renderQuestionPanel) -- opaque, bordered, and above everything left on
+  // the field.
+  private raiseLogToPanel(won: boolean) {
+    const pad = 14;
+    const b = this.logText.getBounds();
+    // Centred on the field rather than left-anchored where the log sat: with
+    // the move menu gone there is nothing to dodge, and a paragraph reads
+    // from the middle of the frame.
+    const panelW = Math.min(FIELD_W - 24, b.width + pad * 2);
+    const panelH = b.height + pad * 2;
+    const cx = FIELD_W / 2;
+    const cy = Math.min(b.centerY, FIELD_H - panelH / 2 - 10);
+    this.logText.setPosition(cx - b.width / 2, cy - b.height / 2);
+    this.logText.setBackgroundColor('rgba(0,0,0,0)');
+    this.logText.setDepth(101);
+
+    this.add
+      .rectangle(cx, cy, panelW, panelH, PANEL_BG, 0.94)
+      .setStrokeStyle(2, won ? GOLD_ACCENT : REFERENCE_BLUE_GREY)
+      .setDepth(100);
+  }
+
   // Shared by both the player's and the opponent's swings -- the only
   // difference is which side is attacking, so the damage/crit/log/effect
   // logic lives here once instead of duplicated per side. `bonusMultiplier`
@@ -2294,6 +2325,7 @@ export class BattleScene extends Phaser.Scene {
     // above, at the top of this method) is gone by now, so there's nothing
     // left to dodge.
     this.setLogText(`${flavor}\n${tokenText}\n\n${blurb}\n\nPress SPACE to return.`, 150, LOG_WRAP_WIDTH_VICTORY);
+    this.raiseLogToPanel(won);
 
     this.input.keyboard!.once('keydown-SPACE', () => this.scene.start('Overworld', { world: this.world }));
   }

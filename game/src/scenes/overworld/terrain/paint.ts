@@ -4,7 +4,7 @@ import type { Biome } from '../../../art/biomes';
 import { MAX_OFFSET } from '../../../art/contours';
 import type { ContourPoint, TileContour } from '../../../art/contours';
 import type { ProjectedPoint } from '../../../art/perspective';
-import { CAMERA_BACK_TILES, DRAW_DISTANCE_TILES, GRID_H, GRID_W, laneClipAt, projectTile } from '../projection';
+import { CAMERA_BACK_TILES, DRAW_DISTANCE_TILES, gridH, gridW, laneClipAt, projectTile } from '../projection';
 import { drawDepthHaze, hazeTarget } from '../sky';
 import { groundColor } from './color';
 import { GROUND_MOTIFS_ENABLED, decorateTile } from './decoration';
@@ -53,7 +53,8 @@ export function drawTerrain(view: TerrainView) {
   // CAMERA_BACK_TILES behind the player's tile, so the ground the player
   // has already walked over is what fills the bottom of the screen. The
   // per-tile near-plane test below is what actually stops the sweep.
-  const maxY = Math.min(GRID_H - 1, Math.floor(camY) + 2);
+  const maxY = Math.min(gridH() - 1, Math.floor(camY) + 2);
+  const cols = gridW();
 
   // Farthest first, so every nearer row paints over it.
   drawMarginRows(view, deepestRow);
@@ -61,7 +62,7 @@ export function drawTerrain(view: TerrainView) {
   for (let y = minY; y <= maxY; y++) {
     drawMarginColumns(view, tiles[y], y);
     const laneClip = laneClipAt(camY - y + 0.5);
-    for (let x = 0; x < GRID_W; x++) {
+    for (let x = 0; x < cols; x++) {
       const laneL = x - camX - 0.5;
       const laneR = x - camX + 0.5;
       if (laneL > laneClip || laneR < -laneClip) continue;
@@ -146,8 +147,9 @@ function drawMarginColumns(view: TerrainView, row: TerrainTile[], y: number) {
     drawMarginTile(view, row[0], gx, y, gx === -1);
   }
   const rightEnd = Math.ceil(view.camX + laneClip);
-  for (let gx = GRID_W; gx <= rightEnd; gx++) {
-    drawMarginTile(view, row[GRID_W - 1], gx, y, gx === GRID_W);
+  const cols = gridW();
+  for (let gx = cols; gx <= rightEnd; gx++) {
+    drawMarginTile(view, row[cols - 1], gx, y, gx === cols);
   }
 }
 
@@ -173,11 +175,17 @@ function drawMarginColumns(view: TerrainView, row: TerrainTile[], y: number) {
 // it. While the rival lives the repeats take the surround's terrain instead,
 // and the road ends where the guard does.
 function drawMarginRows(view: TerrainView, deepestRow: number) {
+  // A world that ends at a cliff has nothing past its last row: no repeated
+  // road, no repeated surround, no ground at all. What fills the gap instead
+  // is the drop and the map lying below it (sky.ts's drawOverlook), and the
+  // gap has to actually be empty for there to be anything to fill.
+  if (view.overlook) return;
   const g = view.gfx;
   const camX = view.camX;
   const camY = view.camY;
   const edge = view.plan.tiles[view.plan.farEdgeRow];
   const roadRunsOn = !view.gate || view.gate.open;
+  const cols = gridW();
   for (let gy = view.plan.farEdgeRow - 1; gy >= deepestRow; gy--) {
     const depthFar = camY - gy + 0.5;
     const depthNear = camY - gy - 0.5;
@@ -186,7 +194,7 @@ function drawMarginRows(view: TerrainView, deepestRow: number) {
     drawMarginColumns(view, edge, gy);
     const depthRatio = Phaser.Math.Clamp(depthFar / DRAW_DISTANCE_TILES, 0, 1);
     const laneClip = laneClipAt(depthFar);
-    for (let x = 0; x < GRID_W; x++) {
+    for (let x = 0; x < cols; x++) {
       const laneL = x - camX - 0.5;
       const laneR = x - camX + 0.5;
       if (laneL > laneClip || laneR < -laneClip) continue;

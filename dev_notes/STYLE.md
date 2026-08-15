@@ -337,8 +337,12 @@ What this means in practice:
 
 ## Overworld path
 
-- The grid is `GRID_W = 27` columns wide (`scenes/overworld/projection.ts`, `GRID_H = 50`
-  tall). Each of the 10 worlds has its own map *shape* (`world/mapgen.ts` dispatching to
+- The grid is 27 columns wide and 50 tall at the default Meso world size, and that
+  size times its own factor at Nano/Macro (`data/settings.ts`'s `WORLD_SIZE_PRESETS`,
+  DESIGN.md §2). The dimensions the renderer draws to are read through
+  `scenes/overworld/projection.ts`'s `gridW()`/`gridH()`, which `OverworldScene` sets
+  from the grid it is about to draw. Each of the 10 worlds has its own map *shape*
+  (`world/mapgen.ts` dispatching to
   `world/generators/world1.ts` .. `world10.ts`, see CODEMAP.md) -- a wandering corridor is
   only world 2/6/9's own base motif, not a look shared by all ten. Every shape still
   obeys the same two rules regardless: no walkable segment is ever narrower than 2 tiles (so
@@ -815,21 +819,30 @@ that build, attaching its own `setInteractive`/`pointerdown` handling to each re
 reading back the module's actual rendered `width`/`height` (uniform scale-to-fit can make either
 one smaller than the caller's requested budget) for its own layout math.
 
-### The Qumatuomi sky (World 10's horizon)
+### The Qumatuomi map below (World 10's cliff)
 
-The same asset, drawn as scenery rather than as a panel. World 10 has no next
-world, so what hangs in its sky is *every* world at once, seen from outside and
-above — precisely the view a trained model has of its training data.
+The same asset, drawn as scenery rather than as a panel. World 10's road ends at
+a cliff once The Adapted falls, and what lies below the edge is *every* world at
+once, seen from above — precisely the view a trained model has of its training
+data.
 
-- **A reflection in a mirrored sky, never an image pasted flat to the screen**:
-  foreshortened and tilted away, rippling faintly with the world's own shimmer,
-  silver-violet, self-luminous per the light rule (the record glows, nothing
-  shines on it).
-- **The haze is load-bearing.** Fill and coastline alike are drowned into the
-  same live fog target every distant thing in the frame is drowned into. Fog is
-  the cheapest signal that something is scenery, and an interface element is
-  never fogged; rendered screen-parallel and unhazed this reads as a
-  misrendered minimap and players try to click it.
+- **Ground far below, never an image pasted flat to the screen**: it fills the
+  gap between the cliff lip and the horizon, with the cliff's shadow under the
+  lip, self-luminous per the light rule (the record glows, nothing shines on
+  it).
+- **The same shape as the panel build.** One uniform scale for both axes and the
+  panel's own land colours, so the coastline below is recognisably the map
+  Bloch's panel shows; the only concession to the viewing angle is a mild
+  vertical squash. Recognition is what the view is for, and it outranks
+  perspective.
+- **The haze is load-bearing.** The land is drowned into the same live fog target
+  every distant thing is drowned into, graded across its own depth so the far
+  coast dissolves and the near one does not. Fog is the cheapest signal that
+  something is scenery, and an interface element is never fogged; unhazed this
+  reads as a misrendered minimap and players try to click it.
+- **The gap must actually be empty.** Past a cliff there is no repeated road and
+  no repeated surround — the terrain sweep draws nothing there, which is what
+  leaves room for the drop and the land below to be seen at all.
 - **Every interactive affordance is stripped** — no markers, no labels, no
   per-world region tints. Those belong to the clickable panel build of the same
   asset and stay there.
@@ -837,6 +850,23 @@ above — precisely the view a trained model has of its training data.
   actually walked, in the order they walked them. It is the one thing no other
   copy of this map carries. No marker sits at either end of it: a marker is an
   affordance, and this is a record.
+
+### The star network (Worlds 7-10's sky)
+
+One network assembling itself across the last four worlds (`art/stars.ts`,
+`dev_notes/WORLDS.md` §1's "The stars"): scattered points in World 7, the first
+strange links in World 8, drifting cloud occluding part of the pattern in World
+9, every point joined in World 10.
+
+- **Authored, never rolled.** Positions and links are a fixed table, so the sky
+  a player looks up at in World 10 is the one they saw in World 7, finished.
+- **The stages only add.** A link drawn in World 8 is still there in World 10;
+  World 9 hides part of the pattern by covering it, never by unbuilding it.
+- **Drawn under the mist band**, so how far a star fades is the atmosphere's
+  answer and the field can use the whole sky rather than the strip above the
+  mist.
+- **The finished network carries visibly more light** — brighter nodes, haloed,
+  with heavier links — because the reveal has to land at a glance.
 
 ## The Lab's two signals (`HubScene`, `art/labMotifs.ts`)
 

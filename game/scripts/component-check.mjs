@@ -687,7 +687,9 @@ async function main() {
     }, world);
 
     const prompt = await passPromptLabel();
-    const expectSubstr = !rivalDefeated ? 'challenge' : world >= 10 ? 'step through' : 'cross into';
+    // The last world's beaten pass does not lead anywhere: its road ends at a
+    // cliff and the offer is to look out over the worlds from it, not to cross.
+    const expectSubstr = !rivalDefeated ? 'challenge' : world >= 10 ? 'look out over the worlds' : 'cross into';
     if (!prompt || !prompt.includes(expectSubstr)) {
       await page.screenshot({ path: `${SHOT_DIR}/fail-rivalgate-w${world}-wrongprompt.png` });
       return {
@@ -730,7 +732,7 @@ async function main() {
     if (at.dialogueActive) {
       return { pass: false, detail: `world ${world}: arriving at an open pass opened a panel -- arrival alone must never do anything` };
     }
-    const expectPrompt = isLastWorld ? 'step through' : 'cross into';
+    const expectPrompt = isLastWorld ? 'look out over the worlds' : 'cross into';
     if (!at.prompt || !at.prompt.includes(expectPrompt)) {
       await page.screenshot({ path: `${SHOT_DIR}/fail-rivalgate-winpath-w${world}.png` });
       return { pass: false, detail: `world ${world}: open pass prompt expected to contain "${expectPrompt}" but read ${JSON.stringify(at.prompt)}` };

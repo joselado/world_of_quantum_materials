@@ -1,12 +1,38 @@
 import { project, LANE_PX, CANVAS_W, ProjectedPoint } from '../../art/perspective';
+import { BASE_GRID_H, BASE_GRID_W } from '../../data/settings';
 
 // Grid is deliberately fine-grained (many small tiles) rather than few large
 // ones, so each arrow-key step moves the camera a small distance. TILE_SCALE
 // shrinks every tile's footprint in world space; DRAW_DISTANCE_TILES and
 // LANE_CLIP are widened by the inverse factor so the visible world (in
 // screen terms) covers the same ground as before, just in smaller steps.
-export const GRID_W = 27;
-export const GRID_H = 50;
+//
+// How many tiles there are is a property of the map currently standing, not a
+// constant: the Lab's Settings station's world-size knob (data/settings.ts's
+// WORLD_SIZE_PRESETS) builds a bigger or smaller grid out of the same tiles.
+// So the dimensions are read through gridW()/gridH() rather than imported as
+// numbers, and OverworldScene sets them from the grid it is about to draw --
+// before generating a fresh map, and again from a restored one's own
+// dimensions, which is what keeps a map that outlived a settings change
+// drawn at the size it was actually built at. Everything else here is
+// genuinely fixed: a tile is the same size on screen at every world size, so
+// a bigger world is a longer walk rather than a wider view.
+let activeGridW = BASE_GRID_W;
+let activeGridH = BASE_GRID_H;
+
+export function gridW(): number {
+  return activeGridW;
+}
+
+export function gridH(): number {
+  return activeGridH;
+}
+
+export function setActiveGridDims(w: number, h: number) {
+  activeGridW = w;
+  activeGridH = h;
+}
+
 export const TILE_SCALE = 0.6;
 // How far off-center an actor can stand and still be worth drawing, in
 // tile-widths. The ground plane does not use this -- how wide the ground has

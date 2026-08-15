@@ -1,8 +1,17 @@
 import type { Material, MaterialType, MoveClass, Stats } from './types';
 import { PLAYER_MATERIAL, DEFAULT_STATS, MOVES, TYPE_LOOK } from './materials';
 import { wildHpForWorld } from './balance';
-import { DEFAULT_ENCOUNTER_DENSITY, DEFAULT_FONT_SCALE, DEFAULT_MUSIC_STYLE, MUSIC_STYLE_PRESETS, DEFAULT_DIFFICULTY_TIER, DIFFICULTY_TIER_PRESETS } from './settings';
-import type { MusicStyle, DifficultyTier } from './settings';
+import {
+  DEFAULT_ENCOUNTER_DENSITY,
+  DEFAULT_FONT_SCALE,
+  DEFAULT_MUSIC_STYLE,
+  MUSIC_STYLE_PRESETS,
+  DEFAULT_DIFFICULTY_TIER,
+  DIFFICULTY_TIER_PRESETS,
+  DEFAULT_WORLD_SIZE,
+  WORLD_SIZE_PRESETS,
+} from './settings';
+import type { MusicStyle, DifficultyTier, WorldSizeId } from './settings';
 import type { PassiveOwner } from './passives';
 
 // Two independent localStorage-backed save slots, one per starting mode
@@ -136,6 +145,11 @@ export interface SaveData {
   // live on every fight/re-level rather than caching it, so a change here
   // applies to the player's very next battle.
   difficultyTier: DifficultyTier;
+  // Same Settings panel, fifth row: how big a world is built, one of
+  // data/settings.ts's WORLD_SIZE_PRESETS. Like encounterDensity above it,
+  // this is read at map-generation time, so it applies to the next world
+  // entered rather than to the one the player is standing in.
+  worldSize: WorldSizeId;
   // Which of Kondo's three screening-class moves (data/materials.ts's
   // KONDO_MOVE_IDS) is currently the active/usable one -- null until the
   // player picks one for the first time in OverworldScene.showKondoPanel.
@@ -238,6 +252,7 @@ export function defaultSave(): SaveData {
     fontScale: DEFAULT_FONT_SCALE,
     musicStyle: DEFAULT_MUSIC_STYLE,
     difficultyTier: DEFAULT_DIFFICULTY_TIER,
+    worldSize: DEFAULT_WORLD_SIZE,
     kondoActiveMove: null,
     passivesUnlocked: [],
     activePassiveByOwner: {},
@@ -344,6 +359,7 @@ export function loadSave(superposition: boolean): SaveData {
     if (data.rival9Type && !(data.rival9Type in TYPE_LOOK)) data.rival9Type = null;
     if (!MUSIC_STYLE_PRESETS.some((p) => p.value === data.musicStyle)) data.musicStyle = DEFAULT_MUSIC_STYLE;
     if (!DIFFICULTY_TIER_PRESETS.some((p) => p.value === data.difficultyTier)) data.difficultyTier = DEFAULT_DIFFICULTY_TIER;
+    if (!WORLD_SIZE_PRESETS.some((p) => p.value === data.worldSize)) data.worldSize = DEFAULT_WORLD_SIZE;
     return data;
   } catch {
     return { ...defaultSave(), superpositionMode: superposition };
@@ -383,6 +399,7 @@ export function persistFromRegistry(registry: RegistryLike) {
     fontScale: (registry.get('fontScale') as number) ?? DEFAULT_FONT_SCALE,
     musicStyle: (registry.get('musicStyle') as MusicStyle) ?? DEFAULT_MUSIC_STYLE,
     difficultyTier: (registry.get('difficultyTier') as DifficultyTier) ?? DEFAULT_DIFFICULTY_TIER,
+    worldSize: (registry.get('worldSize') as WorldSizeId) ?? DEFAULT_WORLD_SIZE,
     kondoActiveMove: (registry.get('kondoActiveMove') as string | null) ?? null,
     passivesUnlocked: (registry.get('passivesUnlocked') as string[]) ?? [],
     activePassiveByOwner: (registry.get('activePassiveByOwner') as Partial<Record<PassiveOwner, string>>) ?? {},

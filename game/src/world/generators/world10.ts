@@ -11,7 +11,7 @@
 // dispatch is re-evaluated live, not just on first entry.
 
 import type { MaterialType } from '../../data/types';
-import { GeneratedMap, GridPoint } from './shared';
+import { GeneratedMap, GridPoint, WorldScale } from './shared';
 import { generateWorld1Map } from './world1';
 import { generateWorld2Map } from './world2';
 import { generateWorld3Map } from './world3';
@@ -21,7 +21,7 @@ import { generateWorld6Map } from './world6';
 import { generateWorld7Map } from './world7';
 import { generateWorld8Map } from './world8';
 
-type SubGenerator = (gridW: number, gridH: number, start: GridPoint) => GeneratedMap;
+type SubGenerator = (gridW: number, gridH: number, start: GridPoint, scale: WorldScale) => GeneratedMap;
 
 const ALL_SUB_GENERATORS: SubGenerator[] = [
   generateWorld1Map,
@@ -55,7 +55,13 @@ const TYPE_TO_GENERATOR: Partial<Record<MaterialType, SubGenerator>> = {
   fractionalChern: generateWorld4Map,
 };
 
-export function generateWorld10Map(gridW: number, gridH: number, start: GridPoint, playerType: MaterialType | undefined): GeneratedMap {
+export function generateWorld10Map(
+  gridW: number,
+  gridH: number,
+  start: GridPoint,
+  scale: WorldScale,
+  playerType: MaterialType | undefined
+): GeneratedMap {
   const generator = (playerType && TYPE_TO_GENERATOR[playerType]) ?? ALL_SUB_GENERATORS[Math.floor(Math.random() * ALL_SUB_GENERATORS.length)];
-  return generator(gridW, gridH, start);
+  return generator(gridW, gridH, start, scale);
 }

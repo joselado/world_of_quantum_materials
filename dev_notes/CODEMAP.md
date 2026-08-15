@@ -51,7 +51,12 @@ game/src/
                                  (see "Overworld terrain rendering" below). Plain functions taking
                                  a per-frame render context, holding no scene state, the same
                                  shape battle/hud.ts uses
-      projection.ts            The grid/camera constants (GRID_W/GRID_H, TILE_SCALE, LANE_CLIP,
+      projection.ts            The active grid dimensions (gridW()/gridH(), set by
+                                 OverworldScene via setActiveGridDims() from the grid it is
+                                 about to draw -- read as accessors, not constants, because the
+                                 Settings station's world-size knob builds a bigger or smaller
+                                 grid out of the same tiles) plus the camera constants
+                                 (TILE_SCALE, LANE_CLIP,
                                  DRAW_DISTANCE_TILES, VISIBLE_DEPTH_FRACTION -- the fraction
                                  of it a world sprite is still drawn within, and so the far
                                  edge of the player's field of vision OverworldScene's
@@ -144,7 +149,7 @@ game/src/
                                  it reads/writes that scene's paging + turn-lock state and wires up
                                  move buttons, so it's battle behaviour with a layout, not layout
   world/
-    mapgen.ts                  generateWorldMap(gridW, gridH, start, world, playerType?) -- dispatches
+    mapgen.ts                  generateWorldMap(gridW, gridH, start, world, scale?, playerType?) -- dispatches
                                   to generators/world<N>.ts by world number (world 10 additionally by
                                   playerType, see generators/world10.ts), then runs three passes common
                                   to all ten: forceChokepoint (walls off the guardian's row except a
@@ -159,9 +164,18 @@ game/src/
                                   randomness up to 10 times before falling back to generators/fallback.ts's
                                   plain corridor, console.error-ing rather than throwing -- generation
                                   is randomized and runs on every world entry, so a bad roll shouldn't
-                                  crash the scene
+                                  crash the scene. `scale` is the WorldScale every generator
+                                  multiplies its own lengths by -- an explicit parameter rather
+                                  than module state, so one process can generate at several sizes,
+                                  which is what lets scripts/mapgen-check.mjs prove both invariants
+                                  at every size the Settings station offers
     generators/
-      shared.ts                 GridPoint/WorldMap-adjacent types (GeneratedMap, NullableNumberGrid),
+      shared.ts                 WorldScale (worldScale(factor)/scaleOfGrid(gridH) and its tiles(n, min)
+                                  helper: the one place a world-size factor turns into tiles, flooring
+                                  at MIN_SEGMENT_WIDTH so a scaled width can never fall under
+                                  invariant A -- a generator writes its lengths through it and its
+                                  counts/periods around it, see DESIGN.md §2),
+                                  GridPoint/WorldMap-adjacent types (GeneratedMap, NullableNumberGrid),
                                   grid helpers (makeGrid/makeColorGrid/shuffled/clamp/inBounds), the
                                   wandering-band painter every corridor-like generator builds on
                                   (wanderBands/paintBand/paintBands, parameterized on width so a 7-wide
@@ -1249,10 +1263,12 @@ passes share one grammar, and it lives in four methods on `OverworldScene`:
   prompt (`fontPx`, so it obeys every text-size preset), and sets it interactive exactly while it
   is visible, so clicking it and pressing the key are the same action on the same object.
 - `gatePromptLabel(gate)` -- what the prompt reads: challenge the named rival, cross into the
-  named next world, "step through" in World 10, or go back to the previous world / the Lab.
+  named next world, "look out over the worlds" at World 10's cliff edge, or go back to the
+  previous world / the Lab.
 - `confirmGate()` -- the commitment, bound to Space and to the prompt's own `pointerdown`.
   Backward: `returnToPreviousWorld()`. Forward and shut: `showRivalEncounter()`. Forward and open:
-  `crossPass()`, or `showFinalePanel()` in World 10, which has nothing beyond.
+  `crossPass()`, or `showFinalePanel()` in World 10, whose pass opens onto its own cliff edge
+  rather than a next world.
 
 `crossPass()` fades a full-canvas rect to `PANEL_BG` over 420ms and plays `showStoryBeat` over
 that fade, so `STORY_BEATS` cannot stack against the board or the horizon reveal the player is
@@ -1508,25 +1524,43 @@ disagree about whether the way is open:
 `forwardHazeBlend` takes the same `open` flag, so haze inheritance and the aperture are gated on
 one value rather than two reads of the registry.
 
-**The Qumatuomi sky.** World 10 has no next world, so its horizon is read from the world the
-player is standing in rather than from a neighbour: `OVERHEAD_SKIES[10]` (`art/horizons.ts`'s
-`qumatuomiOverhead`) sizes and places it, and `art/qumatuomiMap.ts`'s `drawQumatuomiSky` draws
-it. The asset module owns the geometry and knows nothing about its caller; the horizon table owns
-where in the sky it hangs, which is a property of the frame rather than of the map.
+**The Qumatuomi map below the cliff.** World 10 has no next world, so once its rival is beaten
+its road stops: `OverworldScene.endsAtCliff()` is the one predicate for that state, and it feeds
+three places. `overlookView()` turns it into the screen y of the cliff lip (the near edge of the
+goal row, which is the last row any generator paints), carried on `AtmosphereView.overlook`;
+`terrain/paint.ts`'s `drawMarginRows` returns immediately on it, so nothing is drawn past the
+edge; and `terrain/plan.ts` skips `depthContinuedWalkable` on it, so the far edge row wears its
+own boundary curve, contact shadow and rim light instead of being smoothed into a road that
+continues. `sky.ts`'s `drawOverlook` then fills the gap it all leaves, with `art/qumatuomiMap.ts`'s
+`drawQumatuomiOverlook` for the land and its own graded shade for the drop under the lip.
 
-`toMirror` is the whole of the tilt: the country's long axis stays horizontal and its short axis
-becomes depth, both the row spacing and the half-width following one `MIRROR_FORESHORTEN` power
-schedule so the plane recedes as a single piece instead of shearing, with a slow sine offset per
-row for the ripple. The fill and the coastline are drowned into the live haze target
-(`MIRROR_DROWN`) exactly as a distant self is -- fog is what makes something read as scenery, and
-an interface element is never fogged. No markers, no labels and no per-world region tints are
-drawn: those belong to the clickable panel build of the same asset (`buildQumatuomiMap`), which
-is a separate export and stays that way.
+It is drawn *after* the horizon band rather than under it. The band's job is to wash out the
+deepest rows of a road running on to the horizon, and the land past a cliff lies in exactly that
+stretch of the frame -- under the band it is simply erased, and from a few rows back the world
+would end in a flat line with nothing beyond it. Its own veil is the atmosphere it answers to,
+graded across the land so the far coast dissolves and the near one does not.
+
+`overlookPlacement`/`toOverlook` are deliberately *not* a tilt: one uniform scale for both axes
+times a mild `OVERLOOK_SQUASH`, which is what keeps the coastline the same shape as
+`buildQumatuomiMap`'s, in the same land colours. Recognition is the whole point of the view
+(WORLDS.md section 4), so it outranks perspective; depth is carried by the veil and the drop
+instead. No markers, no labels and no per-world region tints are drawn: those belong to the
+clickable panel build of the same asset (`buildQumatuomiMap`), which is a separate export and
+stays that way.
 
 The route trace is a polyline through `WORLD_POSITIONS` for the worlds in `AtmosphereView.route`
 -- `getVisitedWorlds()`, which is append-ordered, so it is the order the player actually walked
-them -- projected through the same `toMirror`. It is drawn over the landmass and nothing else; no
+them -- projected through the same placement. It is drawn over the landmass and nothing else; no
 marker sits at either end, because a marker is an affordance and this is a record.
+
+**The star network (`art/stars.ts`).** Worlds 7-10 share one sky that assembles a network across
+them (WORLDS.md section 1's "The stars"). `drawStarNetwork` is called from `drawDepthHaze`
+directly rather than through `OVERHEAD_SKIES`, because it has to be painted *under* the mist band:
+the band is the air, and a star low in the frame is seen through more of it than one high up, which
+is what lets the field use the whole sky instead of the strip above the mist. `NODES`/`FIRST_LINKS`
+/`NETWORK_LINKS` are authored tables, never rolled -- the World 10 sky has to be the World 7 sky
+finished -- and the stage is read straight off the world number: links from World 8, occluding
+cloud in World 9 only, the full set plus haloed nodes in World 10.
 
 **The mist band and the distant self.** `drawDepthHaze` runs its passes off one `target`, so
 nothing in the frame can disagree about what color the air is: a whole-sky tint, the ground wash,

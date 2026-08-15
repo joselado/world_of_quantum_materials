@@ -22,12 +22,14 @@ import { project, CANVAS_W, CANVAS_H, LANE_PX } from '../art/perspective';
 import {
   CAMERA_BACK_TILES,
   DRAW_DISTANCE_TILES,
-  GRID_H,
-  GRID_W,
   LANE_CLIP,
   TILE_SCALE,
   VISIBLE_DEPTH_FRACTION,
+  gridH,
+  gridW,
+  laneClipAt,
   projectTile,
+  setActiveGridDims,
 } from './overworld/projection';
 import { drawSky, forwardHazeBlend } from './overworld/sky';
 import type { GateView } from './overworld/sky';
@@ -58,13 +60,15 @@ import type { TutorialTipId } from '../data/tutorial';
 import { STORY_BEATS, WORLD_GOAL_TEXT, FINALE_TITLE, FINALE_BODY } from '../data/story';
 import { WORLD_LORE, RIVAL_TAUNTS, hasSeenWorldLore, markWorldLoreSeen } from '../data/worldLore';
 import type { WorldLore } from '../data/worldLore';
-import { DEFAULT_ENCOUNTER_DENSITY } from '../data/settings';
+import { DEFAULT_ENCOUNTER_DENSITY, DEFAULT_WORLD_SIZE, gridDimsFor, worldSizeFactor } from '../data/settings';
+import type { WorldSizeId } from '../data/settings';
 import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
 import type { Material, MaterialType } from '../data/types';
 import { generateWorldMap } from '../world/mapgen';
 import type { GridPoint } from '../world/mapgen';
-import { PASS_HALF_WIDTH, passZoneRows } from '../world/generators/shared';
+import { PASS_HALF_WIDTH, passZoneRows, scaleOfGrid, worldScale } from '../world/generators/shared';
+import type { WorldScale } from '../world/generators/shared';
 import { fontPx, fontScale, fitProseToBudget } from '../ui/text';
 import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX, TUTORIAL_CYAN, STORY_LAVENDER } from '../ui/theme';
 import { music } from '../audio/music';
@@ -201,6 +205,10 @@ const RESPAWN_MIN_ROWS_BEHIND = Math.ceil(CAMERA_BACK_TILES) + 2;
 // data/integrity.ts can assert every entry here actually has a biome and a
 // rival.
 export const BUILT_WORLDS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+// The last world there is. What makes it the last is visible in it: its road
+// stops at a cliff instead of running on into a neighbour (overlookView).
+export const FINAL_WORLD = Math.max(...BUILT_WORLDS);
 
 // Superposition Mode's blanket "every guardian is already unlocked" grant --
 // registry-only and world-independent, so it's shared by
@@ -539,6 +547,12 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // (DESIGN.md §2's pickup economy).
   private tokenTarget = 0;
   private flowerMap: boolean[][] = [];
+  // How big the map currently standing is (data/settings.ts's world-size
+  // knob, world/generators/shared.ts's WorldScale). Held per map rather than
+  // read from the setting on demand: the pass geometry recomputed here
+  // (respawnTiles) has to agree with the geometry the generator used, and a
+  // map restored after a settings change was built at the old size.
+  private mapScale: WorldScale = worldScale(1);
   private goalTile: GridPoint = { x: 0, y: 0 };
   private startTile: GridPoint = { x: 0, y: 0 };
   private midTile: GridPoint = { x: 0, y: 0 };
@@ -1180,14 +1194,23 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   private generateMap() {
     this.reachedGoal = false;
     this.reachedMiddle = false;
-    this.playerTile = { x: Math.floor(GRID_W / 2), y: GRID_H - 5 };
+
+    // How big this world is, read fresh from the Settings station's knob
+    // (like the encounter density below it) and applied to the grid before
+    // anything is laid out on it -- the projection's own dimensions, the
+    // generator's lengths, and every grid this scene allocates below all
+    // have to be the same size as each other.
+    this.mapScale = worldScale(worldSizeFactor(this.worldSize()));
+    const dims = gridDimsFor(this.mapScale.factor);
+    setActiveGridDims(dims.w, dims.h);
+    this.playerTile = { x: Math.floor(gridW() / 2), y: gridH() - this.mapScale.tiles(5) };
 
     const wildPool = getWildPool(this.world);
     // World 10's own shape is dispatched by the player's current material
     // type (world/generators/world10.ts) -- every other world ignores this
     // param.
     const playerType = this.world === 10 ? getPlayerMaterial(this.game.registry).type : undefined;
-    const map = generateWorldMap(GRID_W, GRID_H, this.playerTile, this.world, playerType);
+    const map = generateWorldMap(gridW(), gridH(), this.playerTile, this.world, this.mapScale, playerType);
     this.walkable = map.walkable;
     this.tokenTiles = map.tokens;
     this.goalTile = map.goal;
@@ -1212,8 +1235,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       this.reachedGoal = true;
     }
 
-    this.encounterTiles = Array.from({ length: GRID_H }, () => Array(GRID_W).fill(null));
-    this.flowerMap = Array.from({ length: GRID_H }, () => Array(GRID_W).fill(false));
+    this.encounterTiles = Array.from({ length: gridH() }, () => Array(gridW()).fill(null));
+    this.flowerMap = Array.from({ length: gridH() }, () => Array(gridW()).fill(false));
     this.crystalSprites = [];
     this.tokenSprites = [];
 
@@ -1223,8 +1246,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // and belongs underfoot. Impassable tiles carry their material's own
     // accent instead (terrain/materials/), so decorating them too would
     // stack two treatments on one fill.
-    for (let y = 0; y < GRID_H; y++) {
-      for (let x = 0; x < GRID_W; x++) {
+    for (let y = 0; y < gridH(); y++) {
+      for (let x = 0; x < gridW(); x++) {
         if (this.walkable[y][x]) {
           this.flowerMap[y][x] = Math.random() < this.biome.decorationChance;
         }
@@ -1271,10 +1294,24 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     return (this.game.registry.get('encounterDensity') as number) ?? DEFAULT_ENCOUNTER_DENSITY;
   }
 
+  // The same station's world-size knob, read at the same moment and for the
+  // same reason: a world is built at whatever size the setting says when it
+  // is generated, and keeps that size for as long as it stands.
+  private worldSize(): WorldSizeId {
+    return (this.game.registry.get('worldSize') as WorldSizeId) ?? DEFAULT_WORLD_SIZE;
+  }
+
   // Round trip through BattleScene resumes here -- restores the exact
   // layout and player position saveMapState() captured right before the
   // battle started, instead of rolling a brand new map.
   private restoreMap(saved: SavedMapState) {
+    // The size the saved grid was actually built at, taken from the grid
+    // itself rather than from the setting: the player may have changed the
+    // world-size knob in the Lab and come back through the door to a world
+    // still standing at its old size, and the projection has to draw the map
+    // in hand, not the one the setting would generate next.
+    setActiveGridDims(saved.walkable[0]?.length ?? gridW(), saved.walkable.length);
+    this.mapScale = scaleOfGrid(saved.walkable.length);
     this.playerTile = { ...saved.playerTile };
     this.walkable = saved.walkable;
     this.tokenTiles = saved.tokenTiles;
@@ -1365,8 +1402,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   private tryMove(dx: number, dy: number) {
     if (dx === 0 && dy === 0) return;
 
-    const nx = Phaser.Math.Clamp(this.playerTile.x + dx, 0, GRID_W - 1);
-    const ny = Phaser.Math.Clamp(this.playerTile.y + dy, 0, GRID_H - 1);
+    const nx = Phaser.Math.Clamp(this.playerTile.x + dx, 0, gridW() - 1);
+    const ny = Phaser.Math.Clamp(this.playerTile.y + dy, 0, gridH() - 1);
     if (nx === this.playerTile.x && ny === this.playerTile.y) return;
     if (!this.walkable[ny]?.[nx]) return;
     // The rival physically holds the throat while it lives, so the throat
@@ -1421,6 +1458,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
         flowerMap: this.flowerMap,
         midTile: this.midTile,
         biome: this.biome,
+        endsAtCliff: this.endsAtCliff(),
       });
     }
     return this.terrainPlanCache;
@@ -1447,7 +1485,31 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       hazeCache: this.hazeCache,
       gate: this.gate,
       route: this.getVisitedWorlds(),
+      overlook: this.overlookView(),
     };
+  }
+
+  // The Devouring Mirror ends at a cliff once The Adapted has fallen: the road
+  // does not run on, because there is nothing after this world to run on to,
+  // and what the edge looks out over is the Qumatuomi map -- every world at
+  // once, seen from above, which is the view the thing the player just beat
+  // had of them (WORLDS.md section 4). Null everywhere else, which is every
+  // other world and this one while the boss still stands in the way.
+  //
+  // The lip is the near edge of the goal row, which is the last row the
+  // terrain sweep draws: every generator paints its final band there and
+  // leaves the rows north of it unwalkable. So the gap the map fills is
+  // exactly the gap the ground leaves.
+  private overlookView(): { lipY: number } | null {
+    if (!this.endsAtCliff()) return null;
+    return { lipY: projectTile(0, this.camPos.y - this.goalTile.y - 0.5).y };
+  }
+
+  // Whether this world stops at its far edge rather than running on past it.
+  // Deliberately independent of the terrain plan, which asks this question
+  // while it is being built.
+  private endsAtCliff(): boolean {
+    return this.world === FINAL_WORLD && this.isRivalDefeated();
   }
 
   private drawWorld() {
@@ -1463,8 +1525,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // is a handful of shaded shapes plus sparkle tweens, too costly to
   // recreate every frame.
   private spawnCrystalSprites() {
-    for (let y = 0; y < GRID_H; y++) {
-      for (let x = 0; x < GRID_W; x++) {
+    for (let y = 0; y < gridH(); y++) {
+      for (let x = 0; x < gridW(); x++) {
         const material = this.encounterTiles[y]?.[x];
         if (material) this.addCrystalSprite(x, y, material);
       }
@@ -1517,8 +1579,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // labeled with the exact value so the payout reads at a glance before the
   // player walks all the way out there.
   private spawnTokenSprites() {
-    for (let y = 0; y < GRID_H; y++) {
-      for (let x = 0; x < GRID_W; x++) {
+    for (let y = 0; y < gridH(); y++) {
+      for (let x = 0; x < gridW(); x++) {
         const value = this.tokenTiles[y]?.[x];
         if (value) this.addTokenSprite(x, y, value);
       }
@@ -1578,7 +1640,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // built and sampled its own candidate list.
   private surveyRespawnGround(): RespawnGround {
     const rowsWithEncounter = new Set<number>();
-    for (let y = 0; y < GRID_H; y++) {
+    for (let y = 0; y < gridH(); y++) {
       if (this.encounterTiles[y]?.some(Boolean)) rowsWithEncounter.add(y);
     }
     const tiles = this.respawnTiles().map((p) => ({
@@ -1650,14 +1712,14 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // (world/generators/shared.ts's passZoneRows) -- the same suppression the
     // generator applies, recomputed from the three points mapState already
     // carries.
-    const passRows = passZoneRows(this.startTile, this.goalTile, this.midTile);
+    const passRows = passZoneRows(this.startTile, this.goalTile, this.midTile, this.mapScale);
     const landmarks = new Set([this.startTile, this.goalTile, this.midTile].map((p) => `${p.x},${p.y}`));
 
     const tiles: GridPoint[] = [];
-    for (let y = 0; y < GRID_H; y++) {
+    for (let y = 0; y < gridH(); y++) {
       if (y > aheadOf && y < behind) continue;
       if (passRows.has(y)) continue;
-      for (let x = 0; x < GRID_W; x++) {
+      for (let x = 0; x < gridW(); x++) {
         if (!this.walkable[y]?.[x]) continue;
         if (this.tokenTiles[y][x] || this.encounterTiles[y][x]) continue;
         if (landmarks.has(`${x},${y}`)) continue;
@@ -1672,7 +1734,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     let left = x;
     while (left > 0 && this.walkable[y][left - 1]) left--;
     let right = x;
-    while (right < GRID_W - 1 && this.walkable[y][right + 1]) right++;
+    while (right < gridW() - 1 && this.walkable[y][right + 1]) right++;
     return right - left + 1;
   }
 
@@ -1831,12 +1893,12 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     }
 
     if (!this.isRivalDefeated()) return;
-    if (this.world >= Math.max(...BUILT_WORLDS)) return;
+    if (this.world >= FINAL_WORLD) return;
     // Beside the throat rather than in it, so the board captions the opening
     // instead of standing in the gap the player is about to walk through.
     // Whichever flank the grid actually has room for.
     const right = this.goalTile.x + PASS_HALF_WIDTH + 1;
-    const boardX = right < GRID_W ? right : this.goalTile.x - PASS_HALF_WIDTH - 1;
+    const boardX = right < gridW() ? right : this.goalTile.x - PASS_HALF_WIDTH - 1;
     this.gateSprites.push(this.makeBoardSprite(boardX, this.goalTile.y + 1, worldName(this.world + 1)));
   }
 
@@ -1870,10 +1932,19 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       const laneL = lane - 0.5;
       const laneR = lane + 0.5;
 
+      // How far off-center this sprite may stand and still be on screen,
+      // which depends on how far away it is: the projection narrows a
+      // tile-width toward the vanishing point, so ground that runs off the
+      // frame edge up close is well inside it further out. The ground itself
+      // is already painted to that same widening bound (laneClipAt), and a
+      // wide world -- Macro's corridors run three times the width of Meso's
+      // -- puts real walkable ground, and the crystals standing on it, out
+      // past a fixed lane window that a narrow corridor never reached.
+      const laneClip = Math.max(LANE_CLIP, laneClipAt(depth));
       const visible =
         depth + CAMERA_BACK_TILES > 0.15 &&
-        laneL <= LANE_CLIP &&
-        laneR >= -LANE_CLIP &&
+        laneL <= laneClip &&
+        laneR >= -laneClip &&
         depth / DRAW_DISTANCE_TILES < VISIBLE_DEPTH_FRACTION;
       c.container.setVisible(visible);
       c.label?.setVisible(visible);
@@ -2063,9 +2134,17 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     return sampleBattleLocale(this.terrainPlan(), this.playerTile);
   }
 
+  // Every battle leaves the scene, and create() resumes from the map
+  // snapshot, so every battle snapshots first -- here, at the one door all
+  // of them go through. Without it a fight resumes at whatever position was
+  // last written for some other reason (a respawn refill, an earlier
+  // encounter), which for a rival fight means walking to the pass, winning
+  // it, and being put back wherever the player happened to be standing the
+  // last time the world refilled itself -- most visibly at the guardian.
   private startBattle(material: Material, attackMultiplier: number, isRival = false) {
     this.showTutorialTip('battle', () => {
       this.closeDialogue();
+      this.saveMapState();
       this.scene.start('Battle', {
         wild: material,
         world: this.world,
@@ -2123,13 +2202,17 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     };
   }
 
-  // Whether the player is standing on the tile a pass is entered from, which
-  // is where its prompt shows and its keypress commits. One tile south of the
-  // forward throat, one north of the backward one -- close enough that the
-  // pass fills the frame, far enough that the player is still outside it.
+  // Whether the player is standing where a pass is taken, which is where its
+  // prompt shows and its keypress commits. The forward pass counts from its
+  // mouth -- one tile south of the throat, close enough that the pass fills
+  // the frame -- and from the throat row itself, which is walkable ground the
+  // moment the rival holding it falls. Both, not just the mouth: the offer to
+  // cross has to survive the player walking the last step into the gap they
+  // are being offered, or stepping forward takes the way onward off the
+  // screen. The backward pass is a single tile, the one the player arrived on.
   private gateAtPlayer(): 'forward' | 'backward' | null {
     const { x, y } = this.playerTile;
-    if (y === this.goalTile.y + 1 && Math.abs(x - this.goalTile.x) <= PASS_HALF_WIDTH) return 'forward';
+    if ((y === this.goalTile.y || y === this.goalTile.y + 1) && Math.abs(x - this.goalTile.x) <= PASS_HALF_WIDTH) return 'forward';
     if (y === this.startTile.y && x === this.startTile.x) return 'backward';
     return null;
   }
@@ -2151,7 +2234,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   private gatePromptLabel(gate: 'forward' | 'backward'): string {
     if (gate === 'backward') return `Press Space to go back to ${this.world === 1 ? 'the Lab' : worldName(this.world - 1)}`;
     if (!this.isRivalDefeated()) return `Press Space to challenge ${this.getWorldRival()?.name ?? 'the rival'}`;
-    if (this.world >= Math.max(...BUILT_WORLDS)) return 'Press Space to step through';
+    if (this.world >= FINAL_WORLD) return 'Press Space to look out over the worlds';
     return `Press Space to cross into ${worldName(this.world + 1)}`;
   }
 
@@ -2172,7 +2255,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       this.showRivalEncounter();
       return;
     }
-    if (this.world >= Math.max(...BUILT_WORLDS)) {
+    if (this.world >= FINAL_WORLD) {
       this.showFinalePanel();
       return;
     }

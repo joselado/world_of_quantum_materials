@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { blend } from '../../../../art/colors';
 import { LANE_PX } from '../../../../art/perspective';
 import { ellipseSteps } from '../../../../art/shapes';
-import { GRID_H, TILE_SCALE } from '../../projection';
+import { gridH, TILE_SCALE } from '../../projection';
 import type { AccentTile } from '../types';
 
 // 'bog' (the Screened Swamp, world 8): the open water the peat banks thread
@@ -112,7 +112,7 @@ function drawMoment(g: Phaser.GameObjects.Graphics, tile: AccentTile, u: number,
   const { cx, cy, gx, gy, haze, detail, now } = tile;
   // Deepness, with a little per-moment jitter so the world does not close its
   // halos along one line drawn straight across the map.
-  const deep = 1 - gy / (GRID_H - 1) + (hash(gx, gy, 23) - 0.5) * 0.12;
+  const deep = 1 - gy / (gridH() - 1) + (hash(gx, gy, 23) - 0.5) * 0.12;
   const shut = smoothstep(SCREEN_FROM, SCREEN_TO, deep);
   const burn = 1 - shut;
   const pulse = 0.75 + 0.25 * Math.sin(now / 1300 + gx * 0.7);

@@ -410,10 +410,10 @@ const DEVOURING_MIRROR: Biome = {
   skyBottom: 0x6a4a8a,
   hillColor: 0x5a3a7a,
   // Swallowed: this world is seen from the Defect Scars and has no silhouette
-  // to show there. Its own horizon is the Qumatuomi sky -- every world at
-  // once, seen from above, which is the view a trained model has of its
-  // training data -- and a violet ridge would announce a shape the Mirror
-  // never had.
+  // to show there. Its own road ends at a cliff with the Qumatuomi map lying
+  // below it -- every world at once, seen from above, which is the view a
+  // trained model has of its training data -- and a violet ridge would
+  // announce a shape the Mirror never had.
   hillAlpha: 0,
   ground: 0x2e2044,
   path: 0xd8c8ee,

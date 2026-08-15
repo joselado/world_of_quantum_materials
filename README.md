@@ -273,6 +273,12 @@ In the Lab, click the **Settings** station to adjust:
 - **Difficulty** -- B.Sc., M.Sc., or Ph.D., how hard every world's opponents
   hit. Unlike the settings above, meant to be changed mid-playthrough, not
   just once -- it applies to your very next battle.
+- **World Size** -- Nano, Meso, or Macro. Every world keeps its own shape and
+  changes how big it is: Macro corridors run three times as wide and three
+  times as far, Nano ones are a brisk run through the same place. Crystals and
+  qumatessence are spread through it at the same rate either way, so a bigger
+  world holds proportionally more of both. Takes effect the next time you enter
+  a world.
 
 ![Settings panel](screenshots/settings.png)
 

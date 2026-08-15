@@ -14,10 +14,54 @@
 // data/tokens.ts (which this module also imports) already is.
 
 import { pickTokenValue } from '../../data/tokens';
+import { BASE_GRID_H } from '../../data/settings';
 
 export interface GridPoint {
   x: number;
   y: number;
+}
+
+// The one multiplicative factor the Lab's Settings station's world-size knob
+// (data/settings.ts's WORLD_SIZE_PRESETS) turns into an actual map: every
+// length a generator is written in -- corridor widths, branch lengths, spiral
+// radii, the number of rows a stretch runs for -- goes through `tiles()`
+// before it reaches the grid, so a world keeps its shape at every size and
+// changes only how big it is.
+//
+// Two kinds of number deliberately do NOT go through it:
+//
+//  - Anything that is a *count* rather than a length (how many Voronoi
+//    domains, how many defect patches, how many vortices). A count held fixed
+//    while the lengths grow is what makes the bigger world the same picture
+//    rather than a busier one.
+//  - A periodic motif's own period: World 2's unit cell and World 6's magnon
+//    wavelength are physical lengths of the material, not of the map, so a
+//    bigger crystal is more unit cells at the same lattice constant, not a
+//    stretched one.
+export interface WorldScale {
+  factor: number;
+  // A length in tiles, scaled and rounded, never below `min` -- which
+  // defaults to the 2-tile floor invariant A puts under every walkable
+  // segment (DESIGN.md §2), since a width is the common case and a width
+  // scaled below 2 is a corridor a single spawn can cork.
+  tiles(n: number, min?: number): number;
+}
+
+export const MIN_SEGMENT_WIDTH = 2;
+
+export function worldScale(factor: number): WorldScale {
+  return {
+    factor,
+    tiles: (n: number, min: number = MIN_SEGMENT_WIDTH) => Math.max(min, Math.round(n * factor)),
+  };
+}
+
+// The scale a map already on the grid was built at, recovered from its own
+// dimensions -- for a saved map restored after the setting has since been
+// changed (OverworldScene.restoreMap), where the grid in hand, not the
+// current setting, is what the pass geometry has to agree with.
+export function scaleOfGrid(gridH: number): WorldScale {
+  return worldScale(gridH / BASE_GRID_H);
 }
 
 export interface CorridorRow {
@@ -137,6 +181,13 @@ export interface WanderOptions {
   driftChance?: number;
   minStraight?: number;
   maxStep?: number;
+  // How big this world is (see WorldScale). `width` is the caller's own
+  // already-scaled number, but the wander's own shape -- how far it steps
+  // sideways and how many rows it holds a line for -- lives in here, so a
+  // bigger world drifts by proportionally more over proportionally longer
+  // runs instead of jittering at Meso's amplitude across three times the
+  // rows.
+  scale?: WorldScale;
 }
 
 // Builds (without painting) a list of bands from `startY` down to `goalY`
@@ -148,10 +199,11 @@ export interface WanderOptions {
 // bands (attach a branch, split them into two, etc.) before committing them
 // to the grid.
 export function wanderBands(gridW: number, startX: number, startY: number, goalY: number, opts: WanderOptions): WanderBand[] {
-  const width = Math.max(2, opts.width);
+  const scale = opts.scale ?? worldScale(1);
+  const width = Math.max(MIN_SEGMENT_WIDTH, opts.width);
   const driftChance = opts.driftChance ?? 0.45;
-  const minStraight = opts.minStraight ?? 2;
-  const maxStep = opts.maxStep ?? 2;
+  const minStraight = opts.minStraight ?? scale.tiles(2, 1);
+  const maxStep = opts.maxStep ?? scale.tiles(2, 1);
   const half = width / 2;
   const minCenter = half;
   const maxCenter = gridW - half;
@@ -329,6 +381,14 @@ export function scatterTokens(
 // rather than proven per-shape -- turns four separate hard geometric proofs
 // (worlds 1/3/7/8's genuine alternate routes) into one shared pass plus the
 // reachability/chokepoint checks below.
+//
+// The gap is the same three tiles at every world size, like the pass throat
+// above: what makes a chokepoint one is that it is narrow next to the world
+// it interrupts, so a bigger world wants the same pinch, not a bigger one.
+// verifyChokepoint below proves invariant B by removing `mid` and its four
+// neighbours, which is exactly a `gapHalfWidth = 1` gap -- a wider gap would
+// have to be removed in full there or the check would start passing shapes
+// whose guardian crossing is not actually forced.
 export function forceChokepoint(walkable: boolean[][], gridW: number, mid: GridPoint, gapHalfWidth = 1) {
   const y = mid.y;
   if (!walkable[y]) return;
@@ -426,12 +486,32 @@ export function carveThickPath(walkable: boolean[][], gridW: number, gridH: numb
 // Lab, which is not a place (WORLDS.md section 4) -- every geographic
 // boundary in the game is a pass, and the single non-geographic one is a
 // door. That asymmetry is the point and is left alone here.
+// The throat itself is one width at every world size. A pass is a doorway
+// between two worlds, not a feature of either, and it is the same doorway
+// walked twice -- so it is exactly as wide whether the world behind it is
+// Nano or Macro. It is also load-bearing beyond its own look: the gate the
+// player steps through, the boss preview seen through it and the sign board
+// beside it are all placed off this number (OverworldScene), and widening it
+// would move all three.
 export const PASS_HALF_WIDTH = 1;
-const PASS_OPEN_HALF_WIDTH = 6;
+// The mouth the taper opens out to, which is a piece of the world rather than
+// of the doorway, so it scales with the world's own corridors.
+const BASE_PASS_OPEN_HALF_WIDTH = 6;
 // How many rows the taper runs over, at each end, where the world gives it
 // room. Also the depth of the wild-suppression zone (passZoneRows):
 // everything the taper touches is a place nothing may spawn.
-export const PASS_ROWS = 6;
+const BASE_PASS_ROWS = 6;
+
+function passRows(scale: WorldScale): number {
+  return scale.tiles(BASE_PASS_ROWS);
+}
+
+// How thick the stitch is that reconnects a world's own corridor to the pass
+// mouth (taperPass below). It scales, since it is joining corridors that
+// scale, and everything that has to keep clear of it scales with it.
+function joinThickness(scale: WorldScale): number {
+  return scale.tiles(2);
+}
 
 // How deep a taper may actually cut, which is however much of PASS_ROWS fits
 // between the throat and the guardian's row. The guardian's chokepoint and
@@ -439,24 +519,23 @@ export const PASS_ROWS = 6;
 // same row: the taper runs after forceChokepoint and would overwrite its gap,
 // leaving a world whose every route no longer goes through its guardian.
 // Worlds whose generator puts the guardian close to the goal (world8.ts's
-// reserved final stretch can be as short as ten rows) get a shorter taper
-// rather than a broken invariant. Two rows of clearance, not one: the join
-// that reconnects the world's own corridor to the mouth stamps a row past the
-// taper's own last one, and re-opening tiles on the guardian's walled row
-// would break the chokepoint just as surely as tapering over it.
-function passDepth(throat: GridPoint, mid: GridPoint): number {
-  return Math.max(0, Math.min(PASS_ROWS, Math.abs(mid.y - throat.y) - 2));
+// reserved final stretch) get a shorter taper rather than a broken invariant.
+// The clearance is the join's own thickness, not one row: the join stamps a
+// block past the taper's own last row, and re-opening tiles on the guardian's
+// walled row would break the chokepoint just as surely as tapering over it.
+function passDepth(throat: GridPoint, mid: GridPoint, scale: WorldScale): number {
+  return Math.max(0, Math.min(passRows(scale), Math.abs(mid.y - throat.y) - joinThickness(scale)));
 }
 
 // Narrows the corridor into the pass over the last rows before the goal.
-export function narrowGoalPass(walkable: boolean[][], gridW: number, gridH: number, goal: GridPoint, mid: GridPoint) {
-  taperPass(walkable, gridW, gridH, goal, 1, passDepth(goal, mid));
+export function narrowGoalPass(walkable: boolean[][], gridW: number, gridH: number, goal: GridPoint, mid: GridPoint, scale: WorldScale) {
+  taperPass(walkable, gridW, gridH, goal, 1, passDepth(goal, mid, scale), scale);
 }
 
 // The same taper mirrored at the entry row, so the world opens as a mouth
 // widening out of the pass the player just walked through.
-export function openStartMouth(walkable: boolean[][], gridW: number, gridH: number, start: GridPoint, mid: GridPoint) {
-  taperPass(walkable, gridW, gridH, start, -1, passDepth(start, mid));
+export function openStartMouth(walkable: boolean[][], gridW: number, gridH: number, start: GridPoint, mid: GridPoint, scale: WorldScale) {
+  taperPass(walkable, gridW, gridH, start, -1, passDepth(start, mid, scale), scale);
 }
 
 // `inward` points from the throat toward the world's interior: +1 at the
@@ -468,12 +547,13 @@ export function openStartMouth(walkable: boolean[][], gridW: number, gridH: numb
 // knowing anything about that shape. What it cannot guarantee on its own is
 // the join: a corridor arriving well off to one side would be severed by the
 // widest cut, so the row just past the taper is reconnected explicitly.
-function taperPass(walkable: boolean[][], gridW: number, gridH: number, throat: GridPoint, inward: number, rows: number) {
+function taperPass(walkable: boolean[][], gridW: number, gridH: number, throat: GridPoint, inward: number, rows: number, scale: WorldScale) {
   if (rows < 2) return;
+  const openHalf = scale.tiles(BASE_PASS_OPEN_HALF_WIDTH);
   for (let i = 0; i < rows; i++) {
     const y = throat.y + inward * i;
     if (y < 0 || y >= gridH) return;
-    const half = Math.round(PASS_HALF_WIDTH + (PASS_OPEN_HALF_WIDTH - PASS_HALF_WIDTH) * (i / (rows - 1)));
+    const half = Math.round(PASS_HALF_WIDTH + (openHalf - PASS_HALF_WIDTH) * (i / (rows - 1)));
     for (let x = 0; x < gridW; x++) {
       if (Math.abs(x - throat.x) > half) walkable[y][x] = false;
     }
@@ -487,7 +567,7 @@ function taperPass(walkable: boolean[][], gridW: number, gridH: number, throat: 
   if (joinY < 0 || joinY >= gridH) return;
   const anchor = nearestWalkableOnRow(walkable, gridW, joinY, throat.x);
   if (anchor == null) return;
-  carveThickPath(walkable, gridW, gridH, { x: anchor, y: joinY }, { x: throat.x, y: mouthY }, 2);
+  carveThickPath(walkable, gridW, gridH, { x: anchor, y: joinY }, { x: throat.x, y: mouthY }, joinThickness(scale));
 }
 
 function nearestWalkableOnRow(walkable: boolean[][], gridW: number, y: number, nearX: number): number | null {
@@ -505,10 +585,10 @@ function nearestWalkableOnRow(walkable: boolean[][], gridW: number, y: number, n
 // safe if the narrowed rows are kept clear of everything that spawns on a
 // tile: wild encounters and qumatessence alike. Both ends are covered, since
 // a throat at the entry is exactly as narrow as one at the goal.
-export function passZoneRows(start: GridPoint, goal: GridPoint, mid: GridPoint): Set<number> {
+export function passZoneRows(start: GridPoint, goal: GridPoint, mid: GridPoint, scale: WorldScale): Set<number> {
   const rows = new Set<number>();
-  for (let i = 0; i < passDepth(goal, mid); i++) rows.add(goal.y + i);
-  for (let i = 0; i < passDepth(start, mid); i++) rows.add(start.y - i);
+  for (let i = 0; i < passDepth(goal, mid, scale); i++) rows.add(goal.y + i);
+  for (let i = 0; i < passDepth(start, mid, scale); i++) rows.add(start.y - i);
   return rows;
 }
 

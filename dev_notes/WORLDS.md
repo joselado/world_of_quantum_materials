@@ -487,8 +487,9 @@ shape of *to learn you, it must measure you; to measure you is to unmake you*.
 Without it, the name tells the decoherence story while the writing tells the ML
 story, with no visible seam between them.
 
-Its horizon is the Qumatuomi sky (§4) — every world at once, seen from above,
-which is the view a trained model has of its training data.
+Its road ends at a cliff, and the Qumatuomi map lies below it (§4) — every world
+at once, seen from above, which is the view a trained model has of its training
+data.
 
 The finale, stated plainly: **the last world defeats you by understanding you,
 and understanding a quantum thing collapses it.** This is also the payoff for
@@ -622,9 +623,11 @@ line is its air, its overhead motif and its neighbour — never a portrait of it
   needs two — the band must run *lighter* than the air it is seen in and the reeds
   *darker*. Both are therefore drawn as a sky extra at swallow zero. The profile
   is dead flat because a bog is: everything upright in that world is reed.
-- **The Devouring Mirror** has no next world, and its horizon is the Qumatuomi
-  sky (below) rather than any silhouette. Its swallow is zero so that the Defect
-  Scars' forward horizon does not wear a violet ridge the Mirror never had.
+- **The Devouring Mirror** has no next world and no distant self at all: its
+  road stops at a cliff, and what is beyond the edge is the Qumatuomi map lying
+  below it (§4) rather than any silhouette. Its swallow is zero so that the
+  Defect Scars' forward horizon does not wear a violet ridge the Mirror never
+  had.
 
 ### The adjacency rule
 
@@ -809,25 +812,41 @@ For the same reason **World 1 simply starts**, with no view behind it. An arriva
 with no *behind* is honest for a place you were teleported into; its start margin
 gets its own morning haze and nothing more.
 
-### The Qumatuomi sky
+### The Qumatuomi map below
 
-The Devouring Mirror's horizon is the Qumatuomi map — the game's own world map,
-a geographically traced silhouette on which World 10 sits at Espoo's real
+The Devouring Mirror's road does not run on. It ends at a cliff, and what lies
+below the edge is the Qumatuomi map — the game's own world map, a
+geographically traced silhouette on which World 10 sits at Espoo's real
 coordinates — seen from above.
 
-It is the only horizon that is not the next world, because instead it is *every*
-world, seen from outside and above. That is precisely the view a trained model
-has of its training data: the Mirror can show the whole map at once because it
-has consumed all of it.
+It is the only world-end that is not the next world, because instead it is
+*every* world, seen from outside and above. That is precisely the view a trained
+model has of its training data: the Mirror can show the whole map at once
+because it has consumed all of it. The player only gets that view by beating the
+thing that had it.
 
-**Render it as a reflection in a mirrored sky**, not as an image pasted flat to
-the screen: foreshortened and tilted away, rippling faintly with the world's
-shimmer, silver-violet, and dimmed and hazed by the same atmosphere that fogs
-everything else. The haze is what does the work — fog is the cheapest signal that
-something is scenery, and an interface element is never fogged. Rendered
-screen-parallel and unhazed it will read as a misrendered minimap, and players
-will try to click it. Self-luminous, per the light rule: the record glows,
-nothing shines on it.
+**The edge is earned, and the world changes at it.** While The Adapted stands in
+the pass, the Mirror is an ordinary corridor and the map is not visible at all.
+Once it falls, the road past the pass is simply gone: no repeated road, no
+horizon silhouette, no ground at all past the last row — the world stops, and
+the view opens. The finale is taken standing at that edge.
+
+**Render it as ground far below, not as an image pasted flat to the screen**: it
+lies in the gap between the cliff lip and the horizon, with the cliff's own
+shadow under the lip and a stretch of unseen ground between, dimmed and hazed by
+the same atmosphere that fogs everything else and more heavily toward its far
+coast. The haze is what does the work — fog is the cheapest signal that
+something is scenery, and an interface element is never fogged. Unhazed it will
+read as a misrendered minimap, and players will try to click it. Self-luminous,
+per the light rule: the record glows, nothing shines on it.
+
+**The shape is the point, and outranks the perspective.** It is drawn through
+the same uniform scale-to-fit the panel map uses, in the same land colours, so
+the coastline below is recognisably the same one Bloch's panel shows. The player
+has to *recognise* it — that recognition is the whole reveal — so the only
+concession to looking down at it is a mild vertical squash. A steeply
+foreshortened map that reads as a generic landmass has thrown away what it was
+for.
 
 Strip every interactive affordance from the asset — no markers, no labels.
 Two optional flourishes, both kept faint: a dim luminous trace of the player's

@@ -4,19 +4,27 @@
 // than a static sine-offset centerline. Walking the corridor means walking
 // through a repeating sequence of pulse crests and troughs.
 
-import { GeneratedMap, GridPoint, clamp, makeColorGrid, makeGrid, paintBand } from './shared';
+import { GeneratedMap, GridPoint, MIN_SEGMENT_WIDTH, WorldScale, clamp, makeColorGrid, makeGrid, paintBand } from './shared';
 
 const BASE_WIDTH = 5;
 const BULGE_WIDTH = 5; // extra width added at a pulse's crest
+// The wave itself, and (with World 2's unit cell) the geometry the world-size
+// setting leaves alone: a magnon's wavelength is a property of the magnet,
+// not of how much of it there is. A bigger world is more wave packets at the
+// same wavelength, riding a proportionally wider corridor.
 const PULSE_PERIOD = 9; // rows between successive crests
 const PULSE_SIGMA = 2.1;
 
-export function generateWorld6Map(gridW: number, gridH: number, start: GridPoint): GeneratedMap {
+export function generateWorld6Map(gridW: number, gridH: number, start: GridPoint, scale: WorldScale): GeneratedMap {
   const goalY = 1;
   const totalRows = start.y - goalY + 1;
-  const half = BASE_WIDTH / 2;
+  const baseWidth = scale.tiles(BASE_WIDTH);
+  const bulgeWidth = scale.tiles(BULGE_WIDTH);
+  const half = baseWidth / 2;
   const minCenter = half;
   const maxCenter = gridW - half;
+  const holdRows = scale.tiles(3, 1);
+  const driftStep = scale.tiles(1, 1);
 
   const walkable = makeGrid(gridW, gridH);
   const bands: { y: number; left: number; right: number }[] = [];
@@ -26,9 +34,9 @@ export function generateWorld6Map(gridW: number, gridH: number, start: GridPoint
   for (let i = 0; i < totalRows; i++) {
     const y = start.y - i;
 
-    if (straight >= 3 && Math.random() < 0.35) {
+    if (straight >= holdRows && Math.random() < 0.35) {
       const dir = Math.random() < 0.5 ? -1 : 1;
-      center = clamp(center + dir, minCenter, maxCenter);
+      center = clamp(center + dir * driftStep, minCenter, maxCenter);
       straight = 0;
     } else {
       straight += 1;
@@ -36,8 +44,8 @@ export function generateWorld6Map(gridW: number, gridH: number, start: GridPoint
 
     const phase = i % PULSE_PERIOD;
     const distToCrest = Math.min(phase, PULSE_PERIOD - phase);
-    const bulge = BULGE_WIDTH * Math.exp(-(distToCrest * distToCrest) / (2 * PULSE_SIGMA * PULSE_SIGMA));
-    const width = Math.max(2, Math.round(BASE_WIDTH + bulge));
+    const bulge = bulgeWidth * Math.exp(-(distToCrest * distToCrest) / (2 * PULSE_SIGMA * PULSE_SIGMA));
+    const width = Math.max(MIN_SEGMENT_WIDTH, Math.round(baseWidth + bulge));
 
     const band = paintBand(walkable, gridW, y, center, width);
     if (band) bands.push({ y, ...band });

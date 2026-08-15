@@ -7,14 +7,23 @@
 // structure layered on the trunk, echoing how the butterfly's own spectrum
 // repeats a self-similar pattern across scales.
 
-import { GeneratedMap, GridPoint, clamp, inBounds, makeColorGrid, makeGrid, paintBand, paintBands, paintColumnBand, wanderBands } from './shared';
+import { GeneratedMap, GridPoint, MIN_SEGMENT_WIDTH, WorldScale, clamp, inBounds, makeColorGrid, makeGrid, paintBand, paintBands, paintColumnBand, wanderBands } from './shared';
 
 const TRUNK_WIDTH = 7;
 const BASE_BRANCH_LEN = 9;
 const BASE_BRANCH_WIDTH = 5;
 const SELF_SIMILAR_RATIO = 0.55;
 const MAX_DEPTH = 3;
-const MIN_WIDTH = 2;
+// The recursion's own floor, and the one length here the world size leaves
+// alone: it is invariant A's 2-tile minimum, which is about what a single
+// spawn can cork rather than about how big the world is. A bigger world
+// therefore resolves one more level of the butterfly before hitting it, which
+// is the right way round for a self-similar spectrum.
+const MIN_WIDTH = MIN_SEGMENT_WIDTH;
+// Rows of trunk per branch point, before the count is clamped -- how often
+// the structure sprouts, so it scales with the world and the number of
+// branch points stays in the same band at every size.
+const BRANCH_SPACING_ROWS = 9;
 
 type Orientation = 'horizontal' | 'vertical';
 
@@ -49,18 +58,28 @@ function growFractal(
   }
 }
 
-export function generateWorld4Map(gridW: number, gridH: number, start: GridPoint): GeneratedMap {
+export function generateWorld4Map(gridW: number, gridH: number, start: GridPoint, scale: WorldScale): GeneratedMap {
   const goalY = 1;
-  const bands = wanderBands(gridW, start.x, start.y, goalY, { width: TRUNK_WIDTH, driftChance: 0.3 });
+  const bands = wanderBands(gridW, start.x, start.y, goalY, { width: scale.tiles(TRUNK_WIDTH), driftChance: 0.3, scale });
 
   const walkable = makeGrid(gridW, gridH);
   paintBands(walkable, gridW, bands);
 
-  const branchPointCount = clamp(Math.round(bands.length / 9), 3, 6);
+  const branchPointCount = clamp(Math.round(bands.length / scale.tiles(BRANCH_SPACING_ROWS)), 3, 6);
+  const endClearance = scale.tiles(3);
   for (let i = 1; i <= branchPointCount; i++) {
-    const idx = clamp(Math.round((i / (branchPointCount + 1)) * bands.length), 3, bands.length - 4);
+    const idx = clamp(Math.round((i / (branchPointCount + 1)) * bands.length), endClearance, bands.length - endClearance - 1);
     const band = bands[idx];
-    growFractal(walkable, gridW, gridH, { x: band.center, y: band.y }, 'horizontal', BASE_BRANCH_LEN, BASE_BRANCH_WIDTH, MAX_DEPTH);
+    growFractal(
+      walkable,
+      gridW,
+      gridH,
+      { x: band.center, y: band.y },
+      'horizontal',
+      scale.tiles(BASE_BRANCH_LEN),
+      scale.tiles(BASE_BRANCH_WIDTH),
+      MAX_DEPTH
+    );
   }
 
   const goalBand = bands[bands.length - 1];

@@ -6,13 +6,13 @@
 // their own motif as a modification layered on top of this same base shape
 // rather than duplicating the wandering-band logic.
 
-import { GeneratedMap, GridPoint, makeColorGrid, makeGrid, paintBands, wanderBands } from './shared';
+import { GeneratedMap, GridPoint, WorldScale, makeColorGrid, makeGrid, paintBands, wanderBands, worldScale } from './shared';
 
 const CORRIDOR_WIDTH = 7;
 
-export function generateFallbackMap(gridW: number, gridH: number, start: GridPoint): GeneratedMap {
+export function generateFallbackMap(gridW: number, gridH: number, start: GridPoint, scale: WorldScale = worldScale(1)): GeneratedMap {
   const goalY = 1;
-  const bands = wanderBands(gridW, start.x, start.y, goalY, { width: CORRIDOR_WIDTH });
+  const bands = wanderBands(gridW, start.x, start.y, goalY, { width: scale.tiles(CORRIDOR_WIDTH), scale });
 
   const walkable = makeGrid(gridW, gridH);
   paintBands(walkable, gridW, bands);

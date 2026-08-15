@@ -12,6 +12,7 @@
 import {
   GeneratedMap,
   GridPoint,
+  WorldScale,
   carveThickPath,
   inBounds,
   makeColorGrid,
@@ -20,8 +21,15 @@ import {
   shuffled,
 } from './shared';
 
+// How many bulk phases the world is partitioned into -- a count, so it is the
+// same at every world size and the domains themselves grow with the map. A
+// bigger world is a coarser phase diagram walked further, not a finer one.
 const SEED_COUNT_MIN = 5;
 const SEED_COUNT_MAX = 8;
+// How wide the edge channel between two domains is opened to, in tiles. The
+// raw Voronoi boundary is one tile, so this is delivered by dilating it -- see
+// the dilation pass below.
+const EDGE_WIDTH = 3;
 // One tint per bulk phase, blended 0.6 over the biome's dark void ground by
 // the renderer. Every entry is a saturated mid-value hue: distinct from each
 // other (adjacent domains must read as different phases at a glance -- that
@@ -38,9 +46,10 @@ const SEED_COUNT_MAX = 8;
 // would leave the player navigating by nothing.
 const DOMAIN_PALETTE = [0x3f5a55, 0x6b5a3c, 0x4a6b63, 0x7d6a47, 0x35504c, 0x5a4c33, 0x557a70, 0x8a7454];
 
-export function generateWorld3Map(gridW: number, gridH: number, start: GridPoint): GeneratedMap {
+export function generateWorld3Map(gridW: number, gridH: number, start: GridPoint, scale: WorldScale): GeneratedMap {
   const goalY = 1;
-  const goal = { x: Math.round(gridW / 2) + (Math.random() < 0.5 ? -2 : 2), y: goalY };
+  const goalOffset = scale.tiles(2);
+  const goal = { x: Math.round(gridW / 2) + (Math.random() < 0.5 ? -goalOffset : goalOffset), y: goalY };
 
   const seedCount = SEED_COUNT_MIN + Math.floor(Math.random() * (SEED_COUNT_MAX - SEED_COUNT_MIN + 1));
   const seeds: GridPoint[] = Array.from({ length: seedCount }, () => ({
@@ -87,18 +96,23 @@ export function generateWorld3Map(gridW: number, gridH: number, start: GridPoint
     }
   }
 
-  // Dilate once so the boundary reads as a real corridor (invariant A) even
-  // right at a Voronoi vertex where three-plus domains meet at a point,
-  // where the raw one-tile boundary would otherwise pinch to width 1.
+  // Dilate the one-tile boundary out to the world's own edge width, so the
+  // seam reads as a real corridor (invariant A) even right at a Voronoi vertex
+  // where three-plus domains meet at a point and the raw boundary pinches to
+  // width 1. The radius is what the width asks for: a Manhattan-disc dilation
+  // by r opens a 2r+1-wide channel, and rounding is generous rather than
+  // sparing, since this is the only walkable ground in the world.
+  const dilateRadius = Math.max(1, Math.round((scale.tiles(EDGE_WIDTH) - 1) / 2));
   const walkable = makeGrid(gridW, gridH);
   for (let y = 0; y < gridH; y++) {
     for (let x = 0; x < gridW; x++) {
       if (!raw[y][x]) continue;
-      walkable[y][x] = true;
-      if (inBounds(x + 1, y, gridW, gridH)) walkable[y][x + 1] = true;
-      if (inBounds(x - 1, y, gridW, gridH)) walkable[y][x - 1] = true;
-      if (inBounds(x, y + 1, gridW, gridH)) walkable[y + 1][x] = true;
-      if (inBounds(x, y - 1, gridW, gridH)) walkable[y - 1][x] = true;
+      for (let dy = -dilateRadius; dy <= dilateRadius; dy++) {
+        const span = dilateRadius - Math.abs(dy);
+        for (let dx = -span; dx <= span; dx++) {
+          if (inBounds(x + dx, y + dy, gridW, gridH)) walkable[y + dy][x + dx] = true;
+        }
+      }
     }
   }
 
@@ -107,7 +121,7 @@ export function generateWorld3Map(gridW: number, gridH: number, start: GridPoint
   const splice = (p: GridPoint) => {
     if (walkable[p.y]?.[p.x]) return;
     const nearest = nearestWalkable(walkable, gridW, gridH, p);
-    if (nearest) carveThickPath(walkable, gridW, gridH, p, nearest, 2);
+    if (nearest) carveThickPath(walkable, gridW, gridH, p, nearest, scale.tiles(2));
     else walkable[p.y][p.x] = true;
   };
   splice(start);

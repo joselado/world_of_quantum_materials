@@ -87,7 +87,7 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     title: 'Settings',
     unlock: { kind: 'always' },
     body:
-      "The Lab's Settings station holds four knobs. Enemy Density controls how many wild encounters the next map you generate will have. Text Size and Music Style both apply immediately to whatever's already on screen. Difficulty scales every stat your opponents get, from an easier B.Sc. tier through the tuned M.Sc. default to a much tougher Ph.D. tier -- and unlike the other three, it applies starting with your very next battle, so it's meant to be adjusted mid-playthrough, not just picked once.",
+      "The Lab's Settings station holds five knobs. Enemy Density controls how many wild encounters the next map you generate will have, and World Size how big that map is -- Nano, Meso or Macro, the same world laid out three times as wide and three times as far at the top end. Text Size and Music Style both apply immediately to whatever's already on screen. Difficulty scales every stat your opponents get, from an easier B.Sc. tier through the tuned M.Sc. default to a much tougher Ph.D. tier -- and unlike the other four, it applies starting with your very next battle, so it's meant to be adjusted mid-playthrough, not just picked once.",
   },
   controls: {
     title: 'Walking the Path',

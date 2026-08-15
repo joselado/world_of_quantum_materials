@@ -4,6 +4,8 @@ import { BIOMES, getBiome } from '../../art/biomes';
 import type { Biome } from '../../art/biomes';
 import { HORIZON_Y, CANVAS_W, CANVAS_H, LANE_PX } from '../../art/perspective';
 import { DISTANT_SELVES, MAX_CREST, OVERHEAD_SKIES } from '../../art/horizons';
+import { drawQumatuomiOverlook } from '../../art/qumatuomiMap';
+import { drawStarNetwork } from '../../art/stars';
 import type { HorizonPoint } from '../../art/horizons';
 import { DRAW_DISTANCE_TILES, TILE_SCALE, projectTile } from './projection';
 import { FOG_CLOSE, groundColor } from './terrain/color';
@@ -111,10 +113,16 @@ export interface AtmosphereView extends HazeView {
   biome: Biome;
   now: number;
   gate: GateView | null;
-  // The worlds the player has walked, in the order they walked them. Only the
-  // Devouring Mirror's own sky reads this, for the route traced across the
-  // Qumatuomi map hanging in it.
+  // The worlds the player has walked, in the order they walked them, for the
+  // route traced across the Qumatuomi map below the Devouring Mirror's cliff.
   route: number[];
+  // Set only where the world ends at a cliff rather than running on: the
+  // Devouring Mirror, once The Adapted has fallen. `lipY` is the screen y of
+  // the edge itself, so the drop and the map below it fill exactly the gap
+  // between the last ground drawn and the horizon -- a gap that opens up as
+  // the player walks toward the edge, which is what makes the view something
+  // they walk out to rather than something that is simply on screen.
+  overlook: { lipY: number } | null;
 }
 
 // The static backdrop, painted once per world entry into its own Graphics
@@ -193,7 +201,8 @@ export function hazeTarget(view: HazeView, biome: Biome): number {
 // to the goal row. Gated on the goal gate's state: while this world's rival
 // still stands the gate is shut, and a shut gate shows nothing of what is
 // beyond it. World 10 has no next world -- it keeps its own air the whole
-// way, its horizon being the Qumatuomi sky rather than a neighbour.
+// way, and what its beaten pass opens onto is its own cliff edge rather than
+// a neighbour.
 export function forwardHazeBlend(world: number, gateOpen: boolean, camY: number, goalRow: number): number {
   if (!BIOMES[world + 1]) return 0;
   if (!gateOpen) return 0;
@@ -240,6 +249,11 @@ export function drawDepthHaze(g: Phaser.GameObjects.Graphics, view: AtmosphereVi
     g.fillStyle(target, SKY_TINT_MAX * view.hazeBlend);
     g.fillRect(0, 0, CANVAS_W, HORIZON_Y);
   }
+  // Under the mist band that follows, which is the whole reason the field can
+  // use the entire sky: a star low in the frame is seen through more air than
+  // one high in it, and the band is already the air. Drawn over the sky tint
+  // so the last four worlds' sky is never emptier than the world before them.
+  drawStarNetwork({ g, world: view.world, horizonY: HORIZON_Y, target, now: view.now });
   fillVerticalFade(g, () => target, HORIZON_Y, GROUND_WASH_H, (t) => 0.35 * Math.pow(1 - t, 3));
   drawHorizonBand(g, tone);
   // Smoothstepped rather than a power curve: the ramp has to arrive at the
@@ -247,13 +261,69 @@ export function drawDepthHaze(g: Phaser.GameObjects.Graphics, view: AtmosphereVi
   // stops climbing is itself an edge -- the same rectangle read this pass
   // exists to remove, moved up the sky.
   fillVerticalFade(g, tone, mistTop, mist, (t) => smoothstep(Math.min(1, (t * mist) / SKY_BLEND_H)));
+  // After the horizon band rather than under it, and hazed by its own depth
+  // grade instead. The band's job is to wash out the deepest rows of a road
+  // running on to the horizon; the land past a cliff edge lies in exactly
+  // that stretch of the frame, so under the band it is simply erased, and
+  // from a few rows back the world would end in a flat line with nothing
+  // beyond it. Its own veil (art/qumatuomiMap.ts) is the atmosphere it
+  // answers to -- graded across the land so the far coast dissolves and the
+  // near one does not, which is the same thing the band would have done had
+  // it been able to do it in depth rather than in screen rows.
+  drawOverlook(g, view, target);
   // Under the distant self, never over it: what is visible through a gap in
   // the land cannot pass in front of the ridge behind the gap.
   drawPassAperture(g, view, target);
   drawDistantSelf(g, view, target);
   // The world's own sky motif, over the mist rather than in it: the Storm
   // Flats' arcs crack across the whole dusk, not just along its horizon.
-  OVERHEAD_SKIES[view.world]?.({ g, horizonY: HORIZON_Y, target, now: view.now, route: view.route });
+  OVERHEAD_SKIES[view.world]?.({ g, horizonY: HORIZON_Y, target, now: view.now, route: view.route, world: view.world });
+}
+
+// How dark the face of the cliff runs directly under the lip, and over how
+// many pixels it gives way to the land below. A drop is read from its own
+// shadow: the ground the player is standing on has to visibly stop having
+// anything under it, or the map beyond simply looks like more of the road.
+const DROP_SHADE = 0x000000;
+const DROP_ALPHA = 0.42;
+// Sized against the gap it falls into rather than fixed, so the shade under
+// the lip never grows to swallow the land it is supposed to be in front of.
+const DROP_FRACTION = 0.16;
+const DROP_MAX_H = 26;
+
+// What lies past the edge of a world that ends at one: the drop under the
+// lip, and the Qumatuomi map lying on the ground far below it (art/
+// qumatuomiMap.ts's drawQumatuomiOverlook, WORLDS.md section 4). Everything
+// between the horizon line and the lip belongs to this pass -- the terrain
+// sweep draws nothing past a cliff (terrain/paint.ts's drawMarginRows), so
+// this is what fills the gap it leaves.
+function drawOverlook(g: Phaser.GameObjects.Graphics, view: AtmosphereView, target: number) {
+  if (!view.overlook) return;
+  const lipY = view.overlook.lipY;
+  if (lipY <= HORIZON_Y) return;
+
+  drawQumatuomiOverlook(g, {
+    cx: CANVAS_W / 2,
+    top: HORIZON_Y,
+    bottom: lipY,
+    target,
+    now: view.now,
+    route: view.route,
+  });
+
+  // The shadow under the lip, painted last of the three so it sits over the
+  // land's near edge: what is directly below a cliff is in the cliff's own
+  // shade, and the deepest part of it is right against the rock. Abutting
+  // rows, so no two share a scanline and double-blend.
+  const dropH = Math.min(DROP_MAX_H, (lipY - HORIZON_Y) * DROP_FRACTION);
+  const rows = 16;
+  for (let i = 0; i < rows; i++) {
+    const t = i / rows;
+    const y = lipY - dropH + t * dropH;
+    if (y < HORIZON_Y) continue;
+    g.fillStyle(DROP_SHADE, DROP_ALPHA * Math.pow(t, 1.6));
+    g.fillRect(0, y, CANVAS_W, dropH / rows + 1);
+  }
 }
 
 // How far above the horizon line an open pass reaches, and the depth its
@@ -413,7 +483,7 @@ function drawHorizonBand(g: Phaser.GameObjects.Graphics, colorAt: (y: number) =>
 // never off the one the player is standing in (WORLDS.md section 4). Nothing
 // is drawn where there is no next world, nor where the next world's authored
 // swallow is zero: the Entangled Web has no surround to show, and the
-// Devouring Mirror's horizon is the Qumatuomi sky. World 6's forward horizon
+// Devouring Mirror ends at a cliff instead. World 6's forward horizon
 // emptying out is that rule arriving as a story beat rather than as a
 // special case.
 //
@@ -446,7 +516,9 @@ function drawDistantSelf(g: Phaser.GameObjects.Graphics, view: AtmosphereView, t
     }
   }
 
-  self.sky?.({ g, horizonY: HORIZON_Y, target, now: view.now, route: view.route });
+  // The world *depicted*, which is the neighbour ahead -- a distant self is
+  // that world seen from a world away, not the one being stood in.
+  self.sky?.({ g, horizonY: HORIZON_Y, target, now: view.now, route: view.route, world: view.world + 1 });
 }
 
 // One copy of the silhouette: the strip between its crest (dropped `drop`

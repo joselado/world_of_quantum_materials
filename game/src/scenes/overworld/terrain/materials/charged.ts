@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { blend } from '../../../../art/colors';
 import { CANVAS_W } from '../../../../art/perspective';
 import { ellipseSteps } from '../../../../art/shapes';
-import { DRAW_DISTANCE_TILES, GRID_W, projectTile } from '../../projection';
+import { DRAW_DISTANCE_TILES, gridW, projectTile } from '../../projection';
 import type { AccentTile, TerrainView } from '../types';
 
 // 'charged' (the Storm Flats, world 4): the ground the storm strikes. Fourth
@@ -98,8 +98,8 @@ export function drawStormStrikes(g: Phaser.GameObjects.Graphics, view: TerrainVi
 function strikeColumn(view: TerrainView, gy: number, seed: number): number {
   const row = view.plan.tiles[gy];
   if (!row) return -1;
-  const from = Math.floor(seed * GRID_W);
-  for (let step = 0; step < GRID_W; step++) {
+  const from = Math.floor(seed * gridW());
+  for (let step = 0; step < gridW(); step++) {
     const dir = step % 2 ? -1 : 1;
     const gx = from + dir * Math.ceil(step / 2);
     if (row[gx]?.kind === 'charged') return gx;
