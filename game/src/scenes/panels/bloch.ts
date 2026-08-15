@@ -34,8 +34,8 @@ import {
 // hub: traveling to a world for the first time costs qumatessence and
 // records that world as unlocked in the same click, every later trip to
 // that same world is free. A destination not yet unlocked shows its cost
-// in the confirm button and dims if unaffordable (like every other
-// guardian's buy row) -- there's no separate "unlock, then travel later"
+// in the status line and dims its confirm button if unaffordable (like
+// every other guardian's buy row) -- there's no separate "unlock, then travel later"
 // step since confirming a destination is itself the only thing there is to
 // do with it. Superposition Mode bypasses this per-destination cost
 // entirely and relies on Bloch's hub being the *sole* way to move between
@@ -288,9 +288,7 @@ export function showBlochHub(scene: GuardianPanelHost) {
         isCurrent || !discovered
           ? undefined
           : {
-              label: unlocked
-                ? `Travel to World ${preview} -- ${name}`
-                : `Travel to World ${preview} -- ${name} (${BLOCH_DESTINATION_COST} qumatessence)`,
+              label: `Travel to ${name}`,
               onClick: () => travelTo(scene, preview, unlocked, unlockedWorlds),
               dimmed: !unlocked && tokens < BLOCH_DESTINATION_COST,
             },

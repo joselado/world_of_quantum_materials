@@ -32,8 +32,8 @@ start, so leaving one world and arriving in the next is one piece of
 geography seen twice. A handful of qumatessence (the in-game currency)
 pickups are tucked along the way, often at a dead end worth the detour --
 though never inside a pass, which stays clear. A world you have picked clean
-slowly refills: crystals drift back in and qumatessence condenses again,
-always out of sight -- somewhere up the path ahead of you, or back down the
+refills as you walk it: crystals drift back in and qumatessence condenses
+again as soon as the ground is behind you, always out of sight -- somewhere up the path ahead of you, or back down the
 stretch you already walked -- so nothing ever pops into view. A world never
 carries more crystals or pickups at once than it laid out to begin with, but
 it keeps giving back for as long as you walk it, so pacing between the two

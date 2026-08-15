@@ -186,7 +186,7 @@ function renderMoveLevelList(
       colW: columns.rightColW,
       status: `Level to "${MOVE_LEVEL_NAMES[nextLevel]}": ${streak} questions in a row, ${cost} qumatessence paid whether it lands or not.`,
       confirm: {
-        label: `Level to "${MOVE_LEVEL_NAMES[nextLevel]}" (${cost} qumatessence)`,
+        label: `Level to "${MOVE_LEVEL_NAMES[nextLevel]}"`,
         onClick: () => startLevelUp(scene, move, nextLevel, cost),
         dimmed: tokens < cost,
       },

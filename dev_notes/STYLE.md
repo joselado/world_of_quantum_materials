@@ -252,8 +252,10 @@ than appending a changelog, so this always reflects current reality.
   left-column row only changes which candidate is previewed in the right
   column, at no cost and no effect, so a player can browse freely before deciding; the actual
   action (transmute/dope-in/fuse/learn/travel, cost check and deduction included) only fires
-  from the right column's own explicit button ("Become `<name>`," "Dope in `<name>`," "Fuse into
-  `<name>`," "Learn `<name>`," "Make `<name>` active," "Travel to World `<n>` -- `<name>`").
+  from the right column's own explicit button ("Become `<name>`," "Dope in `<name>`," "Fuse,"
+  "Learn `<name>`," "Make `<name>` active," "Travel to `<name>`"). A button names the action and
+  its object only -- the cost/status line directly above it carries the price and the unlock
+  state, so the button never restates them.
   Each such panel keeps its own
   transient "which row is currently previewed" field (`GuardianPanelHost`'s
   `dresselhausPreview`/`andersonHostPreview`/`majoranaPreview`/`noetherMovePreview`/
@@ -1015,7 +1017,7 @@ station motifs are deliberately not tunnels with a visible far end.
     real battle-effect animation on a loop (`renderMoveDetailHeader`, "List+detail panels"
     above and "Attack effects" below -- the move's own static class, no shape override, since
     an ordinary move's battle look never changes), its name, a `Costs <cost> qumatessence.`
-    line, and a `Learn <name> (<cost> qumatessence)` confirm button (dimmed if unaffordable)
+    line, and a `Learn <name>` confirm button (dimmed if unaffordable)
     that's the one action actually checking/spending the cost and adding the move to
     `unlockedMoves` -- browsing costs nothing regardless of how many moves are looked at. Empty
     state (rendered as plain centered text with no columns): "Nothing your current form can
@@ -1069,9 +1071,9 @@ station motifs are deliberately not tunnels with a visible far end.
   description does if a long entry would otherwise overflow), then a status line, then (unless the
   previewed world is either the one the player is already standing in or one not yet discovered,
   see below) a confirm button reading
-  `Travel to World N -- <name>` (plus a `(15 qumatessence)` suffix, dimmed if unaffordable, for a
-  destination not yet in registry/save `blochUnlockedWorlds`); one already in that list drops the
-  suffix and travels for free -- the same crystal-render-then-name-then-status-then-button shape
+  `Travel to <name>` (dimmed if unaffordable while the destination is not yet in registry/save
+  `blochUnlockedWorlds`; the status line above it carries the 15-qumatessence price, and one
+  already in that list travels for free) -- the same crystal-render-then-name-then-status-then-button shape
   every other list+detail detail pane uses, just with the fixed map standing in for the crystal
   render. Clicking either input (a table row or a map marker) only *previews*
   that world (`blochPreview`, "List+detail panels" above) -- highlighting the row gold-on-purple
@@ -1242,9 +1244,9 @@ station motifs are deliberately not tunnels with a visible far end.
   whole-px steps floor `9` the same way Qumatex's own blurb does if a long entry risks pushing
   the footer off the canvas); and finally a cost/status line and confirm button. Each result is
   its own one-time unlock: a result not yet in `registry`/save `majoranaUnlockedResults` shows
-  "Costs 60 qumatessence to unlock (one-time; free after)" with a "Fuse into `<name>` (60
-  qumatessence)" confirm button, dimmed if unaffordable; an already-unlocked result shows
-  "Already unlocked -- free to fuse" with a plain "Fuse into `<name>`" button. Confirming is the
+  "Costs 60 qumatessence to unlock (one-time; free after)" with a "Fuse" confirm button, dimmed
+  if unaffordable; an already-unlocked result shows "Already unlocked -- free to fuse" with the
+  same "Fuse" button, undimmed. Confirming is the
   one action that actually checks/spends the cost, adds the result's name to the list, and
   transmutes the player into the recipe's own named result (`data/materials.ts`'s
   `combineMaterials` -- name/type/moves all fixed on the recipe, not computed at combine time)
@@ -1356,8 +1358,8 @@ station motifs are deliberately not tunnels with a visible far end.
   sibling, it plays the move at the player's real Feynman level, so a leveled Kondo move previews
   the same escalating multi-trigger cascade a real cast plays. Below that:
   the move's own one-line `description` (`data/materials.ts`'s `Move.description`, only Kondo's
-  three moves carry one), then a cost/status line and a confirm button -- "Learn `<name>`
-  (`<cost>` qumatessence)" for a still-unbought move (dimmed if unaffordable, reusing `shopCost`),
+  three moves carry one), then a cost/status line and a confirm button -- "Learn `<name>`"
+  for a still-unbought move (dimmed if unaffordable, priced by `shopCost`),
   "Make `<name>` active" for an already-bought but inactive move, or a dimmed "`<name>` (active)"
   tag (no-op click) for whichever one is currently active (registry/save `kondoActiveMove`) --
   the confirm button is the one action that actually checks/spends the cost. Buying the first

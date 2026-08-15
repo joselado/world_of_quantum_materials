@@ -1729,9 +1729,10 @@ promising a resume it can no longer deliver. `HubScene.doorLabel()`/`enterWorld(
 drift apart.
 
 **A walked world refills itself, out of sight in both directions.** `OverworldScene`'s
-`respawnTick()` -- a `time.addEvent` loop started in `create()`, so Phaser's own clock drops
-it on scene shutdown -- rolls independently for a wild (`respawnWild`) and a pickup
-(`respawnToken`). Both draw their tile from the single `respawnTiles()` candidate set, which
+`refillHidden()` -- run from `tryMove`'s step-completion callback, since which ground is
+hidden can only change when the player moves -- tops both populations back up to their
+ceilings, a wild at a time (`respawnWild`) and a pickup at a time (`respawnToken`). Both draw
+their tile from the single `respawnTiles()` candidate set, which
 is where every placement rule lives: outside the drawn world in either direction -- past
 `RESPAWN_MIN_ROWS_AHEAD` to the north (computed from `DRAW_DISTANCE_TILES *
 VISIBLE_DEPTH_FRACTION`, not a literal, so widening the draw distance can't start popping
@@ -1919,7 +1920,7 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   detail-pane render. The left column (`scenes/panels/listDetail.ts`'s `renderListColumn`,
   "Candidate-crystal lists" above) lists these results by name; a row click only sets
   `scene.majoranaPreview` (now the previewed *result's* name, not an ingredient's), so browsing
-  freely costs nothing -- the right column's own confirm button ("Fuse into `<name>`") is what
+  freely costs nothing -- the right column's own confirm button ("Fuse") is what
   actually commits. The detail pane renders, top to bottom: the two component crystals small and
   side by side (a local `renderParentCrystalsRow` helper, not part of `listDetail.ts` since it's
   Majorana-specific), the resulting hybrid's own full render via the shared
@@ -1943,7 +1944,7 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   "Candidate-crystal lists" below), and the right column's `renderMoveDetailHeader`
   (`scenes/panels/listDetail.ts`, backed by `art/moveEffectPreview.ts`'s
   `startMoveEffectPreview`) shows that move's own real battle-effect animation looping, plus a
-  cost/status line and a "Learn `<name>` (`<cost>` qumatessence)" confirm button that
+  cost/status line and a "Learn `<name>`" confirm button that
   deducts `shopCost` and appends to `unlockedMoves` directly. `ANALYTIC_MOVE_IDS`/
   `ULTIMATE_MOVE_IDS` (below) are deliberately excluded from `SHOP_MOVE_IDS` so Noether never
   also offers Laughlin's/Skłodowska-Curie's own moves.
@@ -2039,7 +2040,7 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   origin to that single point when `from` equals `to`, the same call `resolveSelfBuff` makes
   for a real cast, there passing the caster's own anchor twice). Below that: the move's own `description`
   (`data/materials.ts`'s `Move.description`, only Kondo's three moves carry one), then a
-  cost/status line and a confirm button -- "Learn `<name>` (`<cost>` qumatessence)" for a
+  cost/status line and a confirm button -- "Learn `<name>`" for a
   still-unbought move (dimmed if unaffordable), "Make `<name>` active" for an already-bought,
   inactive move, or a dimmed "`<name>` (active)" tag (no-op click) for whichever one is currently
   active (registry/save `kondoActiveMove: string | null`) -- the one action that actually

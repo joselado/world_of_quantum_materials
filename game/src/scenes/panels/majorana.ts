@@ -225,7 +225,7 @@ export function showMajoranaPanel(scene: GuardianPanelHost) {
         ? 'Already unlocked -- free to fuse.'
         : `Costs ${MAJORANA_FUSE_COST} qumatessence to unlock (one-time; free after).`,
       confirm: {
-        label: resultUnlocked ? 'Fuse' : `Fuse (${MAJORANA_FUSE_COST} qumatessence)`,
+        label: 'Fuse',
         onClick: () => createHybrid(scene, combo, unlockedResults),
         dimmed: !affordable,
       },

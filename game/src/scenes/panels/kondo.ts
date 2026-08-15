@@ -185,7 +185,7 @@ export function showKondoPanel(scene: GuardianPanelHost) {
         ? `${displayName} is your active technique.`
         : 'Learned -- not currently active.',
       confirm: {
-        label: !isLearned ? `Learn ${displayName} (${cost} qumatessence)` : isActive ? `${displayName} (active)` : `Make ${displayName} active`,
+        label: !isLearned ? `Learn ${displayName}` : isActive ? `${displayName} (active)` : `Make ${displayName} active`,
         onClick: () => {
           if (isActive) return;
           if (isLearned) activateKondoMove(scene, id);

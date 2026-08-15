@@ -192,9 +192,7 @@ export function showDresselhausPanel(scene: GuardianPanelHost) {
         confirm: isCurrent
           ? undefined
           : {
-              label: isUnlocked
-                ? `Become ${previewMaterial.name}`
-                : `Become ${previewMaterial.name} (${DRESSELHAUS_TRANSMUTE_COST} qumatessence)`,
+              label: `Become ${previewMaterial.name}`,
               onClick: () => transmuteInto(scene, previewMaterial.name, isUnlocked, unlockedCrystals),
               dimmed: !affordable,
             },

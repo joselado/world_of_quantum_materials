@@ -136,6 +136,22 @@ const PASS_APERTURE_TILES = PASS_HALF_WIDTH * 2 + 1;
 // (WORLDS.md section 4): a figure filling a narrow notch reads larger than a
 // giant in an open field, and this comes out far above the player's own 34.
 const BOSS_CRYSTAL_SIZE = Math.round((PASS_APERTURE_TILES * TILE_SCALE * LANE_PX) / (2 * BOSS_SILHOUETTE_HALF_WIDTH));
+// The golem's full vertical extent per unit of size, head to contact shadow.
+const BOSS_SILHOUETTE_HEIGHT = BOSS_SILHOUETTE_TOP + BOSS_SILHOUETTE_BOTTOM;
+// How small the rival's taunt-page golem may shrink before the taunt text
+// starts giving up size instead (renderRivalTauntPage). A figure below this
+// stops reading as the golem standing in the pass and starts reading as an
+// icon of one, which is worth more than a point of font size.
+const MIN_BOSS_SIZE = 56;
+// The taunt page's fixed vertical spacing: headroom above the golem's head,
+// the gap from its feet to the first line, from the last line to the button,
+// and below the button to the panel edge -- plus the margin the panel itself
+// keeps off the bottom of the canvas.
+const HEAD_ROOM = 20;
+const CRYSTAL_TO_TEXT = 20;
+const TEXT_TO_BUTTON = 16;
+const BELOW_BUTTON = 20;
+const BOTTOM_MARGIN = 10;
 // The doorway landmark at World 1's backward exit -- bigger than the player
 // (34) so it reads as a real structure. Every geographic boundary is a pass;
 // the Lab is not a place, so the one non-geographic boundary is a door.
@@ -148,13 +164,12 @@ const QUIZ_WRONG_MULTIPLIER = 0.6;
 
 // --- Respawning ------------------------------------------------------------
 // A world refills itself while the player walks it: wild crystals drift back
-// in and qumatessence condenses again, so a map that has been picked clean
-// doesn't stay a dead corridor. How often the world gets a chance to do it,
-// and how likely it takes that chance -- both kinds roll independently, so a
-// tick can bring back one, both, or (most often) neither.
-const RESPAWN_TICK_MS = 3500;
-const WILD_RESPAWN_CHANCE = 0.35;
-const TOKEN_RESPAWN_CHANCE = 0.2;
+// in and qumatessence condenses again as soon as the ground they land on has
+// left the player's view, so a map that has been picked clean doesn't stay a
+// dead corridor and walking back to a stretch already cleared finds it grown
+// over again. Driven off the player's own steps (`refillHidden`), since which
+// ground is hidden can only change when the player moves.
+//
 // The two margins a respawn must clear, in rows. Nothing may ever appear
 // within view, so the world refills only outside the drawn world -- ahead of
 // the player past the far edge of their field of vision, or behind them past
@@ -861,10 +876,6 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.spawnGuardianSprite();
     this.spawnBossSprite();
     this.spawnGateSprites();
-    // The world refills itself as the player walks it (see respawnTick and the
-    // RESPAWN_* constants). Phaser's clock drops its own events on scene
-    // shutdown, so this is started fresh on every entry rather than guarded.
-    this.time.addEvent({ delay: RESPAWN_TICK_MS, loop: true, callback: () => this.respawnTick() });
     music.play(`overworld:${this.world}`);
 
     this.qumatessence = (state.get('qumatessence') as number) || 0;
@@ -1362,6 +1373,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       ease: 'Sine.easeInOut',
       onComplete: () => {
         this.moving = false;
+        this.refillHidden();
         this.maybeTriggerEncounter(nx, ny);
         this.maybeCollectToken(nx, ny);
         this.maybeReachMiddle(nx, ny);
@@ -1523,15 +1535,17 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.tokenSprites.push({ x, y, size: TOKEN_SIZE, foot: 0, container, label, seed: Math.random() * Math.PI * 2 });
   }
 
-  // One chance for the world to refill itself, on a repeating timer started in
-  // create(). Both kinds roll on their own, so a tick can bring back a wild, a
-  // pickup, both, or neither. A respawn re-snapshots the map: the grids
-  // themselves are shared by reference with `mapState`, but the scalar budgets
-  // are not (see SavedMapState).
-  private respawnTick() {
+  // The world refills its hidden ground, run on every step the player takes.
+  // Both kinds fill all the way back to the ceiling the map stood up
+  // (`wildTarget`/`tokenTarget`), so ground that has left view is restored
+  // toward its normal density rather than stacking each time it is hidden.
+  // A refill re-snapshots the map: the grids themselves are shared by
+  // reference with `mapState`, but the scalar budgets are not (see
+  // SavedMapState).
+  private refillHidden() {
     let changed = false;
-    if (Math.random() < WILD_RESPAWN_CHANCE) changed = this.respawnWild() || changed;
-    if (Math.random() < TOKEN_RESPAWN_CHANCE) changed = this.respawnToken() || changed;
+    while (this.respawnWild()) changed = true;
+    while (this.respawnToken()) changed = true;
     if (changed) this.saveMapState();
   }
 
@@ -2446,34 +2460,35 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     const container = this.add.container(0, 0).setDepth(100);
     this.dialogueContainer = container;
 
-    let y = top;
-
-    // Same makeBossCrystal golem spawnBossSprite renders standing at the goal
-    // tile (and BattleScene renders as the opponent once the fight starts) --
-    // the rival shouldn't revert to an ordinary plain-crystal look just
-    // because this pre-fight taunt dialogue is up. Redrawn on every page
-    // (rather than kept across the destroy-and-rebuild) so it's on screen
-    // for both parts of the taunt, not just the first.
-    // The golem's silhouette is taller than it is wide and asymmetric about
-    // its own center (art/boss.ts's BOSS_SILHOUETTE_TOP/BOTTOM), so both the
-    // headroom above it and the gap to the taunt text below come off those
-    // two extents rather than a bare BOSS_CRYSTAL_SIZE -- the head clears
-    // the panel's top border, and the contact shadow under its feet clears
-    // the first line of text.
-    const crystalY = y + BOSS_CRYSTAL_SIZE * BOSS_SILHOUETTE_TOP + 20;
-    const crystal = makeBossCrystal(this, BOSS_CRYSTAL_SIZE, rival.color, rival.variant);
-    crystal.setPosition(CANVAS_W / 2, crystalY);
-    container.add(crystal);
-    this.tweens.add({ targets: crystal, y: crystalY + 10, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    y = crystalY + BOSS_CRYSTAL_SIZE * BOSS_SILHOUETTE_BOTTOM + 20;
-
-    // Capped the same way renderWorldLorePage's own body text is -- the
-    // longer taunts (worlds 9/10) are long enough that the Settings panel's
-    // 2x "Large" preset would push this text past the fixed CANVAS_H once
-    // added to the crystal's own fixed headroom above.
     const scale = Math.min(fontScale(this), 1.5);
+
+    // Everything on this page is measured before anything is placed, because
+    // the button is the one element that must never leave the canvas: this
+    // dialogue is the only way into a rival fight, so a button pushed past
+    // CANVAS_H doesn't just look wrong, it strands the player at the pass
+    // with no way onward. The order is button, then taunt, then the golem
+    // last with whatever height the other two didn't need -- the reverse of
+    // the reading order, and deliberately so, since the golem is the only
+    // one of the three that can give ground without costing the player
+    // anything.
+    //
+    // fontSizePxOverride matches the taunt's own cap below; addDialogueButton
+    // has no override parameter, so this goes through addDialogueButtonAt.
+    const btn = this.addDialogueButtonAt(
+      container,
+      CANVAS_W / 2,
+      0,
+      buttonLabel,
+      onButton,
+      480,
+      `${Math.round(13 * scale)}px`
+    );
+
+    // The taunt shrinks only against the budget left once the golem is at its
+    // smallest, so a long taunt (worlds 9/10) costs reading size only after
+    // the golem has already given up everything it can.
     const text = this.add
-      .text(CANVAS_W / 2, y, line, {
+      .text(CANVAS_W / 2, 0, line, {
         fontSize: `${Math.round(12 * scale)}px`,
         fontStyle: 'italic',
         color: '#ffb3b3',
@@ -2482,22 +2497,50 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       })
       .setOrigin(0.5, 0);
     container.add(text);
-    y += text.height + 16;
+    const chrome = top + HEAD_ROOM + CRYSTAL_TO_TEXT + TEXT_TO_BUTTON + btn.height + BELOW_BUTTON + BOTTOM_MARGIN;
+    // A single-element list: this page has nowhere to continue to, so
+    // fitProseToBudget shrinks rather than paginating (ui/text.ts).
+    fitProseToBudget(text, [line], CANVAS_H - chrome - MIN_BOSS_SIZE * BOSS_SILHOUETTE_HEIGHT);
 
-    // fontSizePxOverride capped the same way the taunt text above is (see
-    // that comment) -- addDialogueButton itself has no override parameter,
-    // so this goes through addDialogueButtonAt directly instead.
-    const btn = this.addDialogueButtonAt(
-      container,
-      CANVAS_W / 2,
-      y,
-      buttonLabel,
-      onButton,
-      480,
-      `${Math.round(13 * scale)}px`
+    // Same makeBossCrystal golem spawnBossSprite renders standing at the goal
+    // tile (and BattleScene renders as the opponent once the fight starts) --
+    // the rival shouldn't revert to an ordinary plain-crystal look just
+    // because this pre-fight taunt dialogue is up. Redrawn on every page
+    // (rather than kept across the destroy-and-rebuild) so it's on screen
+    // for both parts of the taunt, not just the first.
+    //
+    // Its size is what the page has left rather than the fixed
+    // BOSS_CRYSTAL_SIZE, which is sized for the pass aperture out in the
+    // world (see its own definition) and is far taller than a dialogue panel
+    // sharing the canvas with prose and a button can afford. A short taunt at
+    // a small text preset leaves enough room that the clamp lands back on the
+    // full BOSS_CRYSTAL_SIZE, so the common case is the golem at full height.
+    const crystalSize = Phaser.Math.Clamp(
+      (CANVAS_H - chrome - text.height) / BOSS_SILHOUETTE_HEIGHT,
+      MIN_BOSS_SIZE,
+      BOSS_CRYSTAL_SIZE
     );
+
+    let y = top;
+    // The golem's silhouette is taller than it is wide and asymmetric about
+    // its own center (art/boss.ts's BOSS_SILHOUETTE_TOP/BOTTOM), so both the
+    // headroom above it and the gap to the taunt text below come off those
+    // two extents rather than a bare size -- the head clears the panel's top
+    // border, and the contact shadow under its feet clears the first line of
+    // text.
+    const crystalY = y + crystalSize * BOSS_SILHOUETTE_TOP + HEAD_ROOM;
+    const crystal = makeBossCrystal(this, crystalSize, rival.color, rival.variant);
+    crystal.setPosition(CANVAS_W / 2, crystalY);
+    container.add(crystal);
+    this.tweens.add({ targets: crystal, y: crystalY + 10, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    y = crystalY + crystalSize * BOSS_SILHOUETTE_BOTTOM + CRYSTAL_TO_TEXT;
+
+    text.setY(y);
+    y += text.height + TEXT_TO_BUTTON;
+
+    btn.setY(y);
     y += btn.height;
-    y += 20;
+    y += BELOW_BUTTON;
 
     const panelHeight = y - top;
     const panel = this.add

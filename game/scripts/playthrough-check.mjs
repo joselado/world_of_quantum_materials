@@ -534,7 +534,7 @@ async function main() {
   // available buttons (occasionally backing out early, same as a real
   // player browsing), which naturally wanders into Noether's shop, Guardians
   // list, etc. and buys whatever's affordable it happens to click, without
-  // hand-coding each guardian's own shop layout. "Travel to World N" (Bloch,
+  // hand-coding each guardian's own shop layout. "Travel to <world>" (Bloch,
   // once met) and "Guardians" get extra weight so a real playthrough's habit
   // of occasionally revisiting an earlier world to grind gets exercised
   // deliberately rather than left to pure chance.
@@ -565,9 +565,11 @@ async function main() {
       );
       if (candidates.length === 0) break;
       const closeLike = candidates.filter((t) => ['Farewell', 'Close', 'Cancel', 'Not yet'].includes(t));
-      // Every purchase button in every guardian shop includes "qumatessence"
-      // in its own label (shopCost's convention, e.g. Noether's
-      // `${label}: ${value} -> ${value+1} -- ${cost} qumatessence`) -- a
+      // Priced shop *rows* carry "qumatessence" in their own label (the rows
+      // where the price appears nowhere else, e.g. Noether's stat rows
+      // `${label}: ${value} -> ${value+1} -- ${cost} qumatessence`; a
+      // list+detail pane's confirm button leaves the price to the status
+      // line above it and so doesn't match here) -- a
       // real player who bothers to open a shop mostly buys things rather
       // than window-shopping forever, so weight these heavily once visible.
       // Affordability is still enforced by the purchase handler itself
@@ -575,7 +577,7 @@ async function main() {
       const purchaseLike = candidates.filter((t) => t.includes('qumatessence'));
       const weighted = [...candidates];
       candidates.forEach((t) => {
-        if (t === 'Guardians' || t.startsWith('Travel to World')) weighted.push(t, t, t);
+        if (t === 'Guardians' || t.startsWith('Travel to ')) weighted.push(t, t, t);
         if (t.includes('qumatessence')) weighted.push(t, t, t, t, t, t);
       });
       let pick;

@@ -196,7 +196,7 @@ function renderShopMoves(scene: GuardianPanelHost, container: Phaser.GameObjects
     colW: columns.rightColW,
     status: `Costs ${cost} qumatessence.`,
     confirm: {
-      label: `Learn ${move.name} (${cost} qumatessence)`,
+      label: `Learn ${move.name}`,
       onClick: () => buyNoetherMove(scene, effectivePreview, cost),
       dimmed: tokens < cost,
     },

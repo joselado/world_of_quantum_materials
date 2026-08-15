@@ -77,9 +77,10 @@ world, whenever the player transmutes (Dresselhaus) or fuses (Majorana) into a n
 standing there, since its whole shape is keyed off that form's type.
 
 **Respawning.** A world refills itself while the player walks it, so a map that has been
-picked clean doesn't stay a dead corridor: on a repeating timer, wild crystals drift back in
-and qumatessence condenses again, each rolling its own chance so most ticks bring back
-nothing (`OverworldScene`'s `respawnTick`). Everything comes back **outside the drawn world**
+picked clean doesn't stay a dead corridor: on every step the player takes, wild crystals
+drift back in and qumatessence condenses again on ground that has left view
+(`OverworldScene`'s `refillHidden`, run from the step itself since which ground is hidden can
+only change when the player moves). Everything comes back **outside the drawn world**
 in either direction -- ahead of the player past the far edge of their field of vision, or
 behind them past the camera, both margins derived from the projection rather than fixed row
 counts. Nothing may ever appear within view: something that pops into existence in front of
@@ -92,7 +93,7 @@ narrower than 2 tiles, and drawn from the same `getWildPool(world)` the generato
 so World 10 keeps respawning hybrid-recipe results only, and World 9 the whole non-hybrid
 roster.
 
-**Over time a map gives back without limit; at any one instant it holds only what it stood
+**A map gives back without limit; at any one instant it holds only what it stood
 up.** Both kinds carry exactly one ceiling, and it is a *concurrent* one: wilds refill toward
 the population that map was generated with, which is what the Settings station's
 encounter-density preset sets, and qumatessence toward its own initial scatter count.
