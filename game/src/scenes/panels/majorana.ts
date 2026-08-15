@@ -111,7 +111,7 @@ export function showMajoranaPanel(scene: GuardianPanelHost) {
       .text(
         CANVAS_W / 2,
         y,
-        "None of the crystals you've defeated pair into a known hybrid recipe yet. Majorana only knows specific real pairings (e.g. Aluminum + Indium Arsenide, or two Graphenes together).",
+        "None of the materials you've defeated pair into a known hybrid recipe yet. Majorana only knows specific real pairings (e.g. Aluminum + Indium Arsenide, or two Graphenes together).",
         { fontSize: fontPx(scene, 13), color: '#ffffff', align: 'center', wordWrap: { width: 480 } }
       )
       .setOrigin(0.5, 0);

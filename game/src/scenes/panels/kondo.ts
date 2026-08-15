@@ -91,7 +91,7 @@ export function showKondoPanel(scene: GuardianPanelHost) {
     .text(
       CANVAS_W / 2,
       y,
-      '"I am Kondo. Any crystal can turn its own disorder to its advantage: screen itself, scatter its own signature, cascade its own coherence back together. Learn a technique, then tell me which one to hold. Only one at a time."',
+      '"I am Kondo. Any quantum material can turn its own disorder to its advantage: screen itself, scatter its own signature, cascade its own coherence back together. Learn a technique, then tell me which one to hold. Only one at a time."',
       { fontSize: `${Math.round(11 * introScale)}px`, fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
     )
     .setOrigin(0.5, 0);

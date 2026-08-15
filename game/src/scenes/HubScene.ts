@@ -1125,7 +1125,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
         this.materialdexSelectedName = e.material.name;
         this.renderMaterialdexPanel();
       },
-      emptyText: 'No crystals\nof this type.',
+      emptyText: 'No materials\nof this type.',
     });
     this.materialdexListPage = listResult.page;
     const leftY = listResult.bottom;
@@ -1172,7 +1172,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
       // uses this same loop).
       const blurb = discovered
         ? materialBlurb(material)
-        : 'Not yet discovered. Find and battle this crystal out in the field to catalogue it.';
+        : 'Not yet discovered. Find and battle this quantum material out in the field to catalogue it.';
       const scale = fontScale(this);
       let blurbBase = 12;
       const blurbText = this.add

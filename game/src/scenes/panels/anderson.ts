@@ -110,8 +110,8 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
       CANVAS_W / 2,
       y,
       superposition
-        ? '"I am Anderson. In superposition any crystal can be doped in as an impurity. Pick one, and I\'ll teach you the channel it opens, active for as long as that impurity stays doped in; a new one replaces it."'
-        : '"I am Anderson. Dope in a defeated crystal as an impurity, and I\'ll teach you the one channel it opens, active only while that impurity stays doped in; a new dopant replaces it."',
+        ? '"I am Anderson. In superposition any quantum material can be doped in as an impurity. Pick one, and I\'ll teach you the channel it opens, active for as long as that impurity stays doped in; a new one replaces it."'
+        : '"I am Anderson. Dope in a defeated quantum material as an impurity, and I\'ll teach you the one channel it opens, active only while that impurity stays doped in; a new dopant replaces it."',
       { fontSize: fontPx(scene, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
     )
     .setOrigin(0.5, 0);
@@ -154,7 +154,7 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
   if (scene.andersonSelection === null) {
     if (pool.length === 0) {
       const text = scene.add
-        .text(CANVAS_W / 2, y, "You haven't defeated any original crystals yet, so there is nothing to dope in.", {
+        .text(CANVAS_W / 2, y, "You haven't defeated any original materials yet, so there is nothing to dope in.", {
           fontSize: fontPx(scene, 13),
           color: '#ffffff',
           align: 'center',
@@ -165,7 +165,7 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
       y += text.height;
     } else {
       const label = scene.add
-        .text(CANVAS_W / 2, y, 'Dope in which crystal?', {
+        .text(CANVAS_W / 2, y, 'Dope in which material?', {
           fontSize: `${Math.round(12 * headlineScale)}px`,
           color: '#e8b27a',
           align: 'center',

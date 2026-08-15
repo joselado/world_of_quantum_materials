@@ -113,7 +113,7 @@ export function showDresselhausPanel(scene: GuardianPanelHost) {
 
   if (candidates.length === 0) {
     const text = scene.add
-      .text(CANVAS_W / 2, y, "You haven't defeated any crystals yet, so there is nothing to become.", {
+      .text(CANVAS_W / 2, y, "You haven't defeated any materials yet, so there is nothing to become.", {
         fontSize: fontPx(scene, 13),
         color: '#ffffff',
         align: 'center',

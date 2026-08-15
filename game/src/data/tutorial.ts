@@ -74,7 +74,7 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     listLabel: 'Welcome',
     unlock: { kind: 'tip' },
     body:
-      'A Decoherence is spreading through the quantum material worlds. You are a quantum material yourself, walking these worlds to master every phase of matter and stabilize it. This room is the Lab: Qumatex catalogs every crystal you discover, and the door leads to your first world. Your progress autosaves as you play, no button needed.',
+      'A Decoherence is spreading through the quantum material worlds. You are a quantum material yourself, walking these worlds to master every phase of matter and stabilize it. This room is the Lab: Qumatex catalogs every quantum material you discover, and the door leads to your first world. Your progress autosaves as you play, no button needed.',
   },
   modes: {
     title: 'Story Mode vs. Superposition Mode',
@@ -99,7 +99,7 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     title: 'Wild Encounters',
     unlock: { kind: 'tip' },
     body:
-      'Walking into a wild crystal opens a dialogue. Many ask a short physics question: answer correctly for a power boost this battle, wrong for a penalty, or choose "Let me pass" to skip the fight with no consequence either way.',
+      'Walking into a wild quantum material opens a dialogue. Many ask a short physics question: answer correctly for a power boost this battle, wrong for a penalty, or choose "Let me pass" to skip the fight with no consequence either way.',
   },
   battle: {
     title: 'Battles',
@@ -117,13 +117,13 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     title: 'Guardians',
     unlock: { kind: 'tip' },
     body:
-      "Each world's guardian waits partway along the corridor: Noether sells moves and stat upgrades, Bloch teleports you between worlds you've visited, Dresselhaus lets you transmute into any crystal you've defeated. Once met, a guardian stands in the Lab. Click them there to reopen their panel any time.",
+      "Each world's guardian waits partway along the corridor: Noether sells moves and stat upgrades, Bloch teleports you between worlds you've visited, Dresselhaus lets you transmute into any material you've defeated. Once met, a guardian stands in the Lab. Click them there to reopen their panel any time.",
   },
   goal: {
     title: 'Reaching the Goal',
     unlock: { kind: 'tip' },
     body:
-      "Every world narrows into a pass at its far end, and a gigantic boss crystal stands in it, holding the way. You can shop with that world's guardian first, but nothing happens just by walking up. Step to the mouth of the pass and press Space to challenge it. Win, and the pass clears: the next world shows through the gap, a board names it, and pressing Space there again takes you across.",
+      "Every world narrows into a pass at its far end, and a gigantic boss stands in it, holding the way. You can shop with that world's guardian first, but nothing happens just by walking up. Step to the mouth of the pass and press Space to challenge it. Win, and the pass clears: the next world shows through the gap, a board names it, and pressing Space there again takes you across.",
   },
   teleport: {
     title: 'Teleportation',
@@ -135,26 +135,26 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     title: 'Transmutation',
     unlock: { kind: 'guardian', ids: ['dresselhaus'] },
     body:
-      "Dresselhaus (World 3) lets you rebuild your own crystal into any other crystal you've already defeated: same atoms, different nanostructure, so you inherit that form's whole moveset and quasiparticle physics for as long as you wear it. Your HP still comes from the world you're in, not from which form you're wearing. Each crystal costs qumatessence to unlock the first time you become it; switching back and forth after that is free.",
+      "Dresselhaus (World 3) lets you rebuild yourself into any other quantum material you've already defeated: same atoms, different nanostructure, so you inherit that form's whole moveset and quasiparticle physics for as long as you wear it. Your HP still comes from the world you're in, not from which form you're wearing. Each crystal costs qumatessence to unlock the first time you become it; switching back and forth after that is free.",
   },
   analyticMoves: {
     title: 'Analytic Moves',
     unlock: { kind: 'guardian', ids: ['landau'] },
     body:
-      "Landau (World 4) sells two quiz-gated Analytic moves, each carrying whichever quasiparticle your current crystal form can host. Buying one costs qumatessence once, and retuning it to a different hostable class any time you revisit him is free. In battle, an Analytic move asks a single physics question before it lands: answer right and the hit lands much harder, wrong and it barely lands at all.",
+      "Landau (World 4) sells two quiz-gated Analytic moves, each carrying whichever quasiparticle your current form can host. Buying one costs qumatessence once, and retuning it to a different hostable class any time you revisit him is free. In battle, an Analytic move asks a single physics question before it lands: answer right and the hit lands much harder, wrong and it barely lands at all.",
   },
   hybridFusion: {
     title: 'Hybrid Fusion',
     unlock: { kind: 'guardian', ids: ['majorana'] },
     body:
-      "Majorana (World 5) fuses two crystals you've already defeated into a genuinely new hybrid material, and you become it the moment you fuse. Not every pairing fuses into something real, so browse by result to see which hybrids your current roster of defeated crystals can actually reach. Each hybrid result costs qumatessence to unlock the first time you fuse into it; every later fusion into that same result is free.",
+      "Majorana (World 5) fuses two quantum materials you've already defeated into a genuinely new hybrid material, and you become it the moment you fuse. Not every pairing fuses into something real, so browse by result to see which hybrids your current roster of defeated crystals can actually reach. Each hybrid result costs qumatessence to unlock the first time you fuse into it; every later fusion into that same result is free.",
   },
   hostDoping: {
     title: 'Doping In an Impurity',
     listLabel: 'Doping In',
     unlock: { kind: 'guardian', ids: ['anderson'] },
     body:
-      "Anderson (World 6) lets you dope in a crystal you've encountered as an impurity, without becoming it; browsing hosts costs nothing. Committing to one opens a second step: pick one specific move from that host's own moveset to learn, spending qumatessence to do it. Only one impurity is doped in at a time; swapping to a different host doesn't erase a move you've already learned, it just changes which moves besides your own form's are currently usable.",
+      "Anderson (World 6) lets you dope in a quantum material you've encountered as an impurity, without becoming it; browsing hosts costs nothing. Committing to one opens a second step: pick one specific move from that host's own moveset to learn, spending qumatessence to do it. Only one impurity is doped in at a time; swapping to a different host doesn't erase a move you've already learned, it just changes which moves besides your own form's are currently usable.",
   },
   moveLeveling: {
     title: "Feynman's Move Leveling",
@@ -167,7 +167,7 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     title: 'Status Effects',
     unlock: { kind: 'guardian', ids: ['kondo'] },
     body:
-      "Kondo (World 8) sells three self-buff techniques, each usable from any crystal form since they aren't tied to a quasiparticle at all. Casting one costs a turn like any move, then holds for several turns after: one shields you from incoming damage, one gives incoming hits a chance to miss you entirely, one heals you back a little each turn. Only one can be active in battle at a time (switch which by revisiting Kondo), and a pill under your HP bar shows the effect and how many turns it has left.",
+      "Kondo (World 8) sells three self-buff techniques, each usable from any form since they aren't tied to a quasiparticle at all. Casting one costs a turn like any move, then holds for several turns after: one shields you from incoming damage, one gives incoming hits a chance to miss you entirely, one heals you back a little each turn. Only one can be active in battle at a time (switch which by revisiting Kondo), and a pill under your HP bar shows the effect and how many turns it has left.",
   },
   passives: {
     title: 'Passive Abilities',
