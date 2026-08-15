@@ -482,12 +482,29 @@ async function main() {
       if (mismatch) await shoot('battle-mismatch');
       else log('  (skipped battle-mismatch -- could not drive an attack)');
 
+      // Won for real rather than by calling endBattle: a battle ended straight
+      // from the outside leaves the loser standing at full HP behind the
+      // banner, which is not what winning looks like.
       const victory = (await freshBattle())
         ? await page.evaluate(async () => {
             const b = window.__game.scene.getScene('Battle');
-            if (!b || typeof b['endBattle'] !== 'function') return false;
-            b['endBattle'](true);
-            return true;
+            if (!b || typeof b['playerAttack'] !== 'function') return false;
+            const mod = await import('/src/data/materials.ts');
+            const own = mod.getBattleMoves?.(window.__game.registry) ?? ['phonon'];
+            // The shot is of the victory screen, not of a fair fight: the
+            // player is stacked so the win lands inside the loop rather than
+            // the capture timing out on a long trade.
+            b['playerHp'] = b['playerMaxHp'] ?? 999;
+            const strongest = own
+              .slice()
+              .sort((a, c) => (mod.MOVES?.[c]?.power ?? 0) - (mod.MOVES?.[a]?.power ?? 0))[0];
+            for (let round = 0; round < 90; round++) {
+              if ((b['opponentHp'] ?? 0) <= 0 || !b.scene.isActive()) break;
+              if (!b['turnLock']) b['playerAttack'](strongest ?? own[0]);
+              b['playerHp'] = b['playerMaxHp'] ?? 999;
+              await new Promise((r) => setTimeout(r, 420));
+            }
+            return (b['opponentHp'] ?? 1) <= 0;
           })
         : false;
       await sleep(900);
