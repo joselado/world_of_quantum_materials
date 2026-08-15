@@ -483,6 +483,41 @@ analyser taps the master bus ahead of the output compressor, so the figures
 are pre-compression; they are meaningful compared against each other, not as
 absolute loudness.
 
+## Building the player's guide
+
+**`npm run guide`** (`scripts/guide.mjs`) assembles `guide.pdf` at the repo root
+out of `README.md` and every file in `docs/`, typeset through pandoc and
+xelatex (both are assumed to be on PATH; the script stops with a clear message
+if either is missing). The PDF is committed, and `README.md` links to it.
+
+It is an assembly, not a rewrite. Half the sources are themselves generated —
+the move/crystal/hybrid tables from `materials.ts`/`passives.ts`, the
+screenshots from the running game — so the guide inherits their correctness and
+cannot state a different move power than the game has. Nothing in it is
+hand-maintained prose. The full refresh, in order:
+
+```
+npm run docs && npm run shots && npm run guide
+```
+
+The guide keeps the storyline chapter, spoilers and all, and it deliberately
+repeats itself: README summarises what the reference chapters then explain in
+full, and the guide is meant to hold the same information the docs hold, in one
+artifact a player can read front to back.
+
+Three markdown-to-PDF hazards the script handles, each of which drops or breaks
+content rather than failing loudly:
+
+- The docs lay images out with raw `<img>` tags and README wraps some in
+  `<table>` grids. Pandoc discards raw HTML when targeting LaTeX, so every
+  image would silently vanish; they are rewritten to markdown images first,
+  carrying their width across.
+- Image paths differ by source (`screenshots/x.png` in README,
+  `../screenshots/x.png` in docs), so both are resolved against the repo root.
+- A heading inside a blockquote — the spoiler callouts use one — becomes a
+  sectioning command inside a quote environment, which LaTeX refuses to
+  typeset. Those keep their emphasis as bold instead.
+
 ## Regenerating the doc screenshots
 
 **`npm run shots`** (`scripts/shots.mjs`, ~90 seconds) rewrites the PNGs in the

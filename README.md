@@ -234,6 +234,10 @@ materials, and what each guardian teaches -- see:
 - [Guardians](docs/guardians.md)
 - [The story](docs/storyline.md) -- spoils the whole plot, including the ending
 
+All of it is also collected in **[the player's guide](guide.pdf)**, a single
+printable document: this page, the story, and every reference table in one
+place.
+
 ## Controls
 
 | Key | Action |
