@@ -76,7 +76,17 @@ const GUARDIANS = [
   [10, 'curie'],
 ];
 
-const SHOT_GROUPS = ['title', 'hub', 'worlds', 'guardians', 'battle'];
+// The wild encounters README and docs/crystals.md illustrate, each chosen for
+// the physics its question asks. Driven by name so the shot keeps showing the
+// compound the surrounding prose talks about.
+const ENCOUNTERS = [
+  ['encounter', 'Nickel Oxide', 1],
+  ['encounter-topological', 'Bi₂Te₃', 3],
+  ['encounter-supercon', 'Aluminum', 5],
+  ['encounter-tensornet', 'Herbertsmithite', 8],
+];
+
+const SHOT_GROUPS = ['title', 'hub', 'worlds', 'guardians', 'battle', 'encounters'];
 
 function detectChromeBin() {
   if (process.env.CHROME_BIN) return process.env.CHROME_BIN;
@@ -157,6 +167,16 @@ async function main() {
     await page.waitForFunction(() => window.__game && window.__game.scene.getScenes(true).length, {
       timeout: 30000,
     });
+
+    // A crop of the canvas rather than the whole frame, for the doc images that
+    // show one element (a guardian's avatar) rather than a whole screen.
+    const shootClip = async (name, clip) => {
+      const file = path.join(SHOT_DIR, `${name}.png`);
+      await page.screenshot({ path: file, clip });
+      const kb = (fs.statSync(file).size / 1024).toFixed(0);
+      written.push({ name, kb: Number(kb), min: 1 });
+      log(`  wrote ${name}.png (${kb} kB, cropped)`);
+    };
 
     const shoot = async (name) => {
       const file = path.join(SHOT_DIR, `${name}.png`);
@@ -290,12 +310,68 @@ async function main() {
         }
         log(`  ${id} (world ${world})`);
         await shoot(`docs-guardians-${id}-panel`);
+        // The avatar alone, cropped from the panel it heads: docs/guardians.md
+        // shows each guardian's own art beside their section, and a full-panel
+        // shot at that width reduces the avatar to a few pixels.
+        await shootClip(`docs-guardians-${id}-avatar`, { x: 372, y: 24, width: 110, height: 80 });
         await shoot(`mentor-${id}`);
         // Bloch's panel is the one that looks materially different in
         // Superposition Mode, where every world is already reachable, and
         // README shows both.
-        if (id === 'bloch') await shoot('superposition-bloch');
+        if (id === 'bloch') {
+          await shoot('superposition-bloch');
+          // docs/storyline.md heads its road section with the Qumatuomi map,
+          // which is the right column of Bloch's own panel.
+          await shootClip('docs-storyline-map', { x: 430, y: 100, width: 400, height: 200 });
+        }
+        // docs/hybrids.md illustrates fusion with Majorana's own panel.
+        if (id === 'majorana') await shoot('docs-hybrids-majorana');
       }
+    }
+
+    if (groups.includes('encounters')) {
+      log('=== encounters ===');
+      for (const [name, compound, world] of ENCOUNTERS) {
+        const shown = await page.evaluate(async ({ compound, world }) => {
+          const g = window.__game;
+          g.scene.start('Overworld', { world });
+          await new Promise((r) => setTimeout(r, 1200));
+          const s = g.scene.getScene('Overworld');
+          for (let i = 0; i < 4; i++) {
+            if (!s['dialogueActive']) break;
+            s['closeDialogue']?.();
+            await new Promise((r) => setTimeout(r, 120));
+          }
+          const mod = await import('/src/data/materials.ts');
+          const mat = mod.findMaterialByName?.(compound);
+          if (!mat || typeof s['showEncounter'] !== 'function') return false;
+          s['showEncounter'](mat);
+          return true;
+        }, { compound, world });
+        await sleep(800);
+        if (shown) {
+          log(`  ${compound}`);
+          await shoot(name);
+          if (name === 'encounter') await shoot('docs-crystals-encounter');
+        } else {
+          log(`  (skipped ${name} -- could not raise an encounter for ${compound})`);
+        }
+      }
+
+      // A contextual tutorial tip, as README shows one.
+      const tip = await page.evaluate(async () => {
+        const g = window.__game;
+        const s = g.scene.getScene('Overworld');
+        s['dialogueContainer']?.destroy(true);
+        const mod = await import('/src/data/tutorial.ts');
+        const page0 = mod.TUTORIAL_TIPS?.['guardians'] ?? Object.values(mod.TUTORIAL_TIPS ?? {})[0];
+        if (!page0 || typeof s['renderTutorialTipPopup'] !== 'function') return false;
+        s['renderTutorialTipPopup'](page0.title, page0.body.split('\n\n'));
+        return true;
+      });
+      await sleep(700);
+      if (tip) await shoot('tutorial-tip');
+      else log('  (skipped tutorial-tip -- could not raise a tip popup)');
     }
 
     if (groups.includes('battle')) {
@@ -351,6 +427,49 @@ async function main() {
       await sleep(900);
       if (analytic) await shoot('battle-analytic-move');
       else log('  (skipped battle-analytic-move -- could not raise the question panel)');
+
+      // The move menu on its own, as docs/quasiparticles.md shows it.
+      const menu = await page.evaluate(async () => {
+        const b = window.__game.scene.getScene('Battle');
+        if (!b || !b.scene.isActive()) return false;
+        b['dialogueContainer']?.destroy(true);
+        return true;
+      });
+      await sleep(600);
+      if (menu) await shootClip('docs-quasiparticles-movemenu', { x: 520, y: 330, width: 330, height: 150 });
+
+      // A landed hit with no natural defense against it, and the victory
+      // screen: both are moments a battle passes through rather than states it
+      // rests in, so each is driven straight from the scene.
+      const mismatch = await page.evaluate(async () => {
+        const b = window.__game.scene.getScene('Battle');
+        if (!b || !b.scene.isActive()) return false;
+        if (typeof b['playerAttack'] !== 'function') return false;
+        // playerAttack takes a move id. Prefer one the defender has no natural
+        // way to host, since the doubled hit is the whole point of the shot.
+        const mod = await import('/src/data/materials.ts');
+        const compat = mod.MOVE_COMPATIBILITY?.[b['wild']?.type] ?? [];
+        const own = mod.getBattleMoves?.(window.__game.registry) ?? ['phonon'];
+        const mismatched = own.find((id) => {
+          const cls = mod.MOVES?.[id]?.moveClass ?? mod.MOVES?.[id]?.class;
+          return cls && !compat.includes(cls);
+        });
+        b['playerAttack'](mismatched ?? own[0]);
+        return true;
+      });
+      await sleep(700);
+      if (mismatch) await shoot('battle-mismatch');
+      else log('  (skipped battle-mismatch -- could not drive an attack)');
+
+      const victory = await page.evaluate(async () => {
+        const b = window.__game.scene.getScene('Battle');
+        if (!b || !b.scene.isActive() || typeof b['endBattle'] !== 'function') return false;
+        b['endBattle'](true);
+        return true;
+      });
+      await sleep(900);
+      if (victory) await shoot('battle-victory');
+      else log('  (skipped battle-victory -- could not reach the victory screen)');
     }
   } finally {
     await browser.close();
@@ -362,7 +481,7 @@ async function main() {
   // A PNG that comes out tiny is a black or empty frame -- a shot that "worked"
   // but captured nothing is the failure worth catching here, since the docs
   // would silently embed it.
-  const suspicious = written.filter((w) => w.kb < 5);
+  const suspicious = written.filter((w) => w.kb < (w.min ?? 5));
   for (const s of suspicious) log(`  SUSPICIOUS: ${s.name}.png is only ${s.kb} kB -- likely an empty frame`);
   log(`shots: wrote ${written.length} file(s) to screenshots/. Wall time: ${wall}s`);
   if (suspicious.length) process.exit(1);
