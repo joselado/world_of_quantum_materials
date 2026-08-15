@@ -1016,6 +1016,63 @@ async function main() {
     return { pass: true, detail: `${label}: booted to Title then Hub cleanly` };
   }
 
+  // Writes a current-shape save carrying real progress, mangles it the way an
+  // update would, and checks the progress is still there after a boot --
+  // reading it back off the registry, which is what every scene actually uses.
+  async function testSavedProgressSurvives(label, mangle) {
+    const PROGRESS = {
+      qumatessence: 4242,
+      visitedWorlds: [1, 2, 3],
+      rivalDefeated: { 1: true, 2: true },
+      metGuardians: ['noether', 'bloch'],
+    };
+    await page.evaluate(
+      ({ key, progress, mangleSrc }) => {
+        localStorage.clear();
+        const base = {
+          ...progress,
+          unlockedMoves: [],
+          playerHp: 100,
+          discoveredMaterials: [],
+          superpositionMode: false,
+          schemaVersion: 1,
+        };
+        localStorage.setItem(key, JSON.stringify(eval(mangleSrc)(base)));
+      },
+      { key: 'qm-rpg-save-story-v1', progress: PROGRESS, mangleSrc: `(${mangle.toString()})` }
+    );
+
+    const boot = await testBootScenario(label, async () => {});
+    if (!boot.pass) return boot;
+
+    const got = await page.evaluate(() => ({
+      qumatessence: window.__game.registry.get('qumatessence'),
+      visitedWorlds: window.__game.registry.get('visitedWorlds'),
+      rivalDefeated: window.__game.registry.get('rivalDefeated'),
+      metGuardians: window.__game.registry.get('metGuardians'),
+      worldSize: window.__game.registry.get('worldSize'),
+      difficultyTier: window.__game.registry.get('difficultyTier'),
+    }));
+    if (got.qumatessence !== PROGRESS.qumatessence) {
+      return { pass: false, detail: `${label}: qumatessence came back as ${got.qumatessence}, expected ${PROGRESS.qumatessence}` };
+    }
+    if (JSON.stringify(got.visitedWorlds) !== JSON.stringify(PROGRESS.visitedWorlds)) {
+      return { pass: false, detail: `${label}: visitedWorlds came back as ${JSON.stringify(got.visitedWorlds)}` };
+    }
+    if (!got.rivalDefeated?.['1'] || !got.rivalDefeated?.['2']) {
+      return { pass: false, detail: `${label}: rivalDefeated came back as ${JSON.stringify(got.rivalDefeated)}` };
+    }
+    if (JSON.stringify(got.metGuardians) !== JSON.stringify(PROGRESS.metGuardians)) {
+      return { pass: false, detail: `${label}: metGuardians came back as ${JSON.stringify(got.metGuardians)}` };
+    }
+    // A field the save never carried has to arrive as its default, not as
+    // undefined -- an undefined setting is what actually breaks a later build.
+    if (!got.worldSize || !got.difficultyTier) {
+      return { pass: false, detail: `${label}: settings defaults missing (worldSize=${got.worldSize}, difficultyTier=${got.difficultyTier})` };
+    }
+    return { pass: true, detail: `${label}: progress intact (${got.qumatessence} qumatessence, worlds ${JSON.stringify(got.visitedWorlds)}), defaults filled in` };
+  }
+
   // =====================================================================
   // Run everything
   // =====================================================================
@@ -1096,15 +1153,40 @@ async function main() {
       await page.evaluate(() => localStorage.clear());
     })
   );
+  // The real Story-mode slot, which is the key loadSave() actually reads --
+  // a scenario written to any other key tests nothing but a fresh boot.
+  const STORY_SLOT = 'qm-rpg-save-story-v1';
   await runTest('boot: corrupt JSON save', () =>
     testBootScenario('corrupt-json', async () => {
-      await page.evaluate(() => localStorage.setItem('qm-rpg-save-v1', '{ this is not valid JSON'));
+      await page.evaluate((k) => localStorage.setItem(k, '{ this is not valid JSON'), STORY_SLOT);
     })
   );
-  await runTest('boot: minimal/old-shape save', () =>
-    testBootScenario('old-shape', async () => {
-      await page.evaluate(() => localStorage.setItem('qm-rpg-save-v1', JSON.stringify({ qumatessence: 5 })));
+  await runTest('boot: minimal save', () =>
+    testBootScenario('minimal', async () => {
+      await page.evaluate((k) => localStorage.setItem(k, JSON.stringify({ qumatessence: 5 })), STORY_SLOT);
     })
+  );
+
+  // Forward compatibility, which is the promise the save format actually
+  // makes: a save written today still loads after the game is updated. The
+  // two ways an update can break one are simulated from this side --
+  // a field the save has never heard of (a setting added later, which must
+  // fall back to its default rather than being read as undefined), and a
+  // save stamped by a *newer* build than the one reading it (a player who
+  // ran a later version, then an older one). Progress must survive both.
+  await runTest('boot: save missing a later-added field', () =>
+    testSavedProgressSurvives('missing-field', (save) => {
+      delete save.worldSize;
+      delete save.difficultyTier;
+      return save;
+    })
+  );
+  await runTest('boot: save from a newer build', () =>
+    testSavedProgressSurvives('newer-build', (save) => ({
+      ...save,
+      schemaVersion: 999,
+      somethingAddedLater: { nested: true },
+    }))
   );
 
   // ---- summary ----

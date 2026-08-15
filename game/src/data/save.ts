@@ -31,41 +31,9 @@ import type { PassiveOwner } from './passives';
 // far apart.
 const STORY_SAVE_KEY = 'qm-rpg-save-story-v1';
 const SUPERPOSITION_SAVE_KEY = 'qm-rpg-save-superposition-v1';
-// Pre-two-slot save format. Never written to going forward -- only ever
-// read once, by migrateLegacySaveIfNeeded() below -- so its shape is just
-// "whatever SaveData looked like at the time," not a format this file
-// otherwise still supports.
-const LEGACY_SAVE_KEY = 'qm-rpg-save-v1';
 
 function saveKeyFor(superposition: boolean): string {
   return superposition ? SUPERPOSITION_SAVE_KEY : STORY_SAVE_KEY;
-}
-
-// Runs once per browser, the first time either loadSave() or hasSave() is
-// called after this two-slot format shipped: if an old single-slot save is
-// still present and neither new slot has been written yet, copies its raw
-// contents verbatim into whichever new slot matches its own stored
-// `superpositionMode` field (verbatim, not re-serialized -- it may still be
-// carrying a pre-v1 `schemaVersion` that loadSave()'s MIGRATIONS below need
-// to see), then removes the old key so this never runs again. Distinct from
-// MIGRATIONS below: this is a one-time storage-key relocation for a save
-// format that predates per-mode slots entirely, not a step in the
-// versioned within-a-slot schema those replay. Best-effort, wrapped like
-// loadSave()/persistFromRegistry()'s own localStorage access -- solo hobby
-// project, no save-compatibility guarantee, so a failure here just leaves
-// the legacy save in place unmigrated rather than blocking anything else.
-function migrateLegacySaveIfNeeded() {
-  try {
-    const legacy = localStorage.getItem(LEGACY_SAVE_KEY);
-    if (!legacy) return;
-    if (localStorage.getItem(STORY_SAVE_KEY) !== null || localStorage.getItem(SUPERPOSITION_SAVE_KEY) !== null) return;
-    const parsed = JSON.parse(legacy) as Record<string, unknown>;
-    localStorage.setItem(saveKeyFor(!!parsed.superpositionMode), legacy);
-    localStorage.removeItem(LEGACY_SAVE_KEY);
-  } catch {
-    // Legacy save unreadable, or localStorage unavailable -- leave it in
-    // place; the next loadSave()/hasSave() call will just try again.
-  }
 }
 
 export interface DiscoveredMaterial {
@@ -87,10 +55,9 @@ export interface SaveData {
   // Guardian ids (WORLD_GUARDIANS' `id` field) the player has opened the panel
   // of at least once -- decides which guardians stand in the Lab as their own
   // clickable avatar (HubScene.spawnGuardianAvatars), so the room only offers
-  // guardians actually met rather than every guardian in the game. No migration
-  // shim for older saves' `metMentors` key (solo hobby project, no
-  // save-compatibility guarantee): a save predating this field just starts with
-  // an empty Lab.
+  // guardians actually met rather than every guardian in the game. A save with
+  // no entry for this field opens an empty Lab, which is the same thing a new
+  // save shows.
   metGuardians: string[];
   // Which contextual tutorial tips (data/tutorial.ts's TutorialTipId) have
   // already fired -- each one plays once, the first time its own feature
@@ -283,53 +250,50 @@ export function clearSave(superposition: boolean) {
 
 export function hasSave(superposition: boolean): boolean {
   try {
-    migrateLegacySaveIfNeeded();
     return localStorage.getItem(saveKeyFor(superposition)) !== null;
   } catch {
     return false;
   }
 }
 
-// A save-shape change that isn't just "a new field with a sensible default"
-// (already free via loadSave()'s `{ ...defaultSave(), ...parsed }` merge
-// below) -- specifically, a field holding real player progress (currency,
-// an unlock list, stats) getting renamed or restructured, where resetting
-// to default would erase actual play rather than just a cheap-to-redo
-// selection -- gets one entry appended here instead of an ad hoc check
-// bolted onto loadSave(). MIGRATIONS[i] patches a raw parsed save forward
-// from schema version i to i+1; loadSave() runs every migration from the
-// save's own stored version up to the current one. Append a new function
-// when such a change ships; never edit an already-shipped one, since a save
-// sitting in someone's browser could be at any past version and still needs
-// to replay it as originally written. CURRENT_SCHEMA_VERSION is just
-// MIGRATIONS.length, so there's nothing separate to remember to bump.
+// What keeps a save playable across updates, in three layers, weakest first.
 //
-// This is deliberately not the same mechanism as loadSave()'s two
-// unlockedMoves/playerForm/rival9Type safety nets further down -- those
-// guard against a *reference* going stale (a move id, a MaterialType)
-// inside an otherwise current-shape field, which can happen in any version
-// whenever content is renamed, not just at a save-format change, so they
-// stay permanent and unversioned rather than becoming one more migration
-// step.
+// **New fields are free.** loadSave() merges a parsed save over defaultSave(),
+// so a save written before a field existed simply takes that field's default.
+// Most changes to this file need nothing else: add the field to SaveData and
+// to defaultSave() together and every existing save keeps working.
+//
+// **Stale references are dropped, always.** A save can name a move id or a
+// material type that this version has since renamed or retired. MOVES and
+// TYPE_LOOK are plain lookups with no fallback of their own, so an
+// unrecognised name would crash the next panel render or battle rather than
+// degrade; loadSave() therefore filters those fields on every load, and the
+// preset-backed settings fall back to their defaults the same way. These are
+// permanent and unversioned, because content gets renamed in any version, not
+// only when the save format changes.
+//
+// **Restructuring gets a migration.** When a change is *not* just a new field
+// -- a field holding real progress (currency, an unlock list, stats) renamed
+// or restructured, where taking the default would erase play rather than a
+// cheap-to-redo selection -- append one function here rather than bolting a
+// check onto loadSave(). MIGRATIONS[i] patches a save from version
+// SCHEMA_BASELINE + i to the next, and loadSave() replays every one from the
+// version a save was written at up to the current one. Append when such a
+// change ships; never edit one already shipped, since a save sitting in a
+// browser could be at any past version and still has to replay it as written.
+//
+// SCHEMA_BASELINE is the format every save this version writes is stamped
+// with, and the oldest one that is read. Saves older than it are not
+// supported: they still load rather than being discarded, but through the
+// merge alone, so anything a migration would have carried across is lost.
 type SaveMigration = (raw: Record<string, unknown>) => Record<string, unknown>;
 
-const MIGRATIONS: SaveMigration[] = [
-  // v0 -> v1: the currency field was renamed qumatokens -> qumatessence.
-  // Carry an old save's accumulated value across rather than losing it.
-  (raw) => {
-    if (typeof raw.qumatessence !== 'number' && typeof raw.qumatokens === 'number') {
-      raw.qumatessence = raw.qumatokens;
-    }
-    delete raw.qumatokens;
-    return raw;
-  },
-];
-
-const CURRENT_SCHEMA_VERSION = MIGRATIONS.length;
+const SCHEMA_BASELINE = 1;
+const MIGRATIONS: SaveMigration[] = [];
+const CURRENT_SCHEMA_VERSION = SCHEMA_BASELINE + MIGRATIONS.length;
 
 export function loadSave(superposition: boolean): SaveData {
   try {
-    migrateLegacySaveIfNeeded();
     const raw = localStorage.getItem(saveKeyFor(superposition));
     // `superpositionMode` is forced to the requested slot on every return
     // path below (rather than trusted from `defaultSave()`, which hardcodes
@@ -338,22 +302,24 @@ export function loadSave(superposition: boolean): SaveData {
     // actually came from, even for a slot that's never been written yet.
     if (!raw) return { ...defaultSave(), superpositionMode: superposition };
     let parsed = JSON.parse(raw) as Record<string, unknown>;
-    let version = typeof parsed.schemaVersion === 'number' ? (parsed.schemaVersion as number) : 0;
-    while (version < MIGRATIONS.length) {
-      parsed = MIGRATIONS[version](parsed);
+    // Clamped up to the baseline rather than trusted outright, so a save from
+    // before it skips straight to the merge instead of indexing off the front
+    // of MIGRATIONS -- and one written by a *newer* build than this (a player
+    // who ran a later version, then an older one) simply runs no migrations
+    // and keeps every field this version still understands.
+    const stamped = typeof parsed.schemaVersion === 'number' ? (parsed.schemaVersion as number) : 0;
+    let version = Math.max(stamped, SCHEMA_BASELINE);
+    while (version < CURRENT_SCHEMA_VERSION) {
+      parsed = MIGRATIONS[version - SCHEMA_BASELINE](parsed);
       version += 1;
     }
     const data: SaveData = { ...defaultSave(), ...(parsed as Partial<SaveData>), superpositionMode: superposition };
-    // Permanent safety nets, not migrations (see the comment above
-    // MIGRATIONS) -- drop moves/types a prior version of the game defined
-    // but this version renamed/retired (e.g. a retired move id, or the old
-    // 'trivial'/'magnet'/'qhe' types later renamed
-    // 'classicalmag'/'spinliquid'/'supercon'). MOVES/TYPE_LOOK are plain
-    // object lookups with no fallback of their own, so an unrecognized
-    // reference would otherwise crash the next panel render/battle rather
-    // than degrade gracefully. `playerForm: null` already means "still the
-    // default PLAYER_MATERIAL," so resetting to that is the same safe
-    // fallback a save predating the field itself already uses.
+    // The permanent safety nets (see the comment above MIGRATIONS): drop any
+    // move id or material type this version no longer defines, and fall back
+    // to the default for any preset-backed setting whose stored value is not
+    // one of the offered ones. `playerForm: null` already means "still the
+    // default PLAYER_MATERIAL", so resetting to it is the same state a save
+    // that never set a form is in.
     data.unlockedMoves = data.unlockedMoves.filter((id) => id in MOVES);
     if (data.playerForm && !(data.playerForm.type in TYPE_LOOK)) data.playerForm = null;
     if (data.rival9Type && !(data.rival9Type in TYPE_LOOK)) data.rival9Type = null;
