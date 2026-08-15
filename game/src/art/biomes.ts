@@ -13,17 +13,17 @@ export type DecorationKind = 'flowers' | 'mosaic' | 'edgeFlow' | 'crystalGlints'
 // summer canopy, 'columns' the Stone Lattice's colonnade, 'deadFloor' the
 // Edge Cliffs' sunken bulk, 'charged' the Storm Flats' live ground, 'ice' the
 // Vortex Glacier's frozen lake and its vortex pits, 'shards' the Iron
-// Steppe's leaning blades, 'fog' the Splitting Hollow's wood and the fog that
-// is its actual hazard, 'lava' the Defect Scars' molten crust, 'consuming'
+// Steppe's leaning blades, 'bog' the Screened Swamp's open water, its reeds
+// and the moments burning in it, 'lava' the Defect Scars' molten crust, 'consuming'
 // the Devouring Mirror's reconfiguring facets, and 'rock' bare ground with no
 // accent at all -- which in the Entangled Web means true black, since its
 // surround is nothing and there is nothing out there to draw.
 //
 // The ground plane stays flat under all of them: a theme changes the color
 // and what is laid over it, never the height of the floor. What a theme may
-// do is stand sprites on that flat ground, which is what the trees, columns
-// and shards are.
-export type WallTheme = 'rock' | 'forest' | 'columns' | 'deadFloor' | 'charged' | 'ice' | 'shards' | 'fog' | 'lava' | 'consuming';
+// do is stand sprites on that flat ground, which is what the trees, columns,
+// shards and reeds are.
+export type WallTheme = 'rock' | 'forest' | 'columns' | 'deadFloor' | 'charged' | 'ice' | 'shards' | 'bog' | 'lava' | 'consuming';
 
 export interface Biome {
   name: string;
@@ -314,36 +314,48 @@ const ENTANGLED_WEB: Biome = {
   bands: null,
 };
 
-// World 8, the Splitting Hollow (quantum magnetism, spinons, Kondo): a dead
-// forest in deep fog, lit only by the fog itself. Every trunk forks in two
-// and the corridor forks with them, matching the generator's fractionalizing
-// path.
+// World 8, the Screened Swamp (quantum magnetism, spinons, Kondo): an open
+// bog. Near-black water in pools, reed clumps standing out of it, and peat
+// banks threading between the pools as the only footing. The silhouette is
+// horizontal -- flat water, flat mist, upright reeds -- which is what keeps
+// it apart from the Entangled Web's overhead lattice and the Defect Scars'
+// broken ground.
 //
-// The threat is the fog, not the trees. Trees are the Mean Fields' "you just
-// would not walk there", and reusing that at world eight of ten would walk
-// the escalation spine backwards; the fog is what takes you, which is Kondo
-// screening and spinon confinement made into a hazard.
+// The threat is the water, not the reeds. Reeds are the Mean Fields' "you
+// just would not walk there", and reusing that at world eight of ten would
+// walk the escalation spine backwards; the water is what takes you, which is
+// Kondo screening and spinon confinement made into a hazard.
+//
+// The mist lies on the water rather than through the air, so the sky is open
+// above it. The light is still the world's own -- mist-glow and the moments
+// burning in the pools (terrain/materials/bog.ts) -- so nothing is received
+// from above.
 //
 // Muted in hue, but the ground/path value break is held wide anyway: this is
 // the haziest world in the game and the walkable route has to stay readable
 // through that on its own colour break.
-const SPLITTING_HOLLOW: Biome = {
-  name: 'splittingHollow',
-  skyTop: 0x39423c,
-  skyBottom: 0x59635a,
-  hillColor: 0x3a4238,
-  // Swallowed: a horizon that dissolves before it resolves is this world's
-  // identity, not a missing profile. The Entangled Web therefore looks
-  // forward into grey nothing, which is the correct view of this place.
+const SCREENED_SWAMP: Biome = {
+  name: 'screenedSwamp',
+  // Dark above, pale at the horizon: the mist is a layer sitting on the bog,
+  // and open sky is what the world has over it.
+  skyTop: 0x1c231e,
+  skyBottom: 0x616d60,
+  // Swallow zero: this world's distant self is a dead flat band of mist
+  // glowing off standing water with reed clumps in it, and neither half can be
+  // said as a drowned silhouette, so both are drawn as a sky extra instead
+  // (art/horizons.ts's swampSky). The base colour still stands, since the
+  // battle arena borrows it as its own ridge tone whatever the swallow is --
+  // dark reed-green, so those ridges keep off the values gameplay owns.
+  hillColor: 0x33403a,
   hillAlpha: 0,
-  ground: 0x1b211c,
-  path: 0x5d6a5c,
-  fogTarget: 0x59635a,
+  ground: 0x121815,
+  path: 0x625f50,
+  fogTarget: 0x616d60,
   clouds: false,
   cloudDrift: 0,
   decoration: 'mistMotes',
   decorationChance: 0.5,
-  wallTheme: 'fog',
+  wallTheme: 'bog',
   bands: null,
 };
 
@@ -362,7 +374,7 @@ const DEFECT_SCARS: Biome = {
   // A cracked ridge with glow veins in its notches (art/horizons.ts), lit by
   // its own crust and held well clear of this world's dark red air, which is
   // what the horizon is drowned into once the gate opens. Seen from the
-  // Splitting Hollow, which has no sky of its own, so the only thing that can
+  // Screened Swamp, where the sun is long gone, so the only thing that can
   // announce the world beyond is light that world emits itself.
   hillColor: 0xc4643a,
   hillAlpha: 0.55,
@@ -415,7 +427,7 @@ export const BIOMES: Partial<Record<number, Biome>> = {
   5: VORTEX_GLACIER,
   6: IRON_STEPPE,
   7: ENTANGLED_WEB,
-  8: SPLITTING_HOLLOW,
+  8: SCREENED_SWAMP,
   9: DEFECT_SCARS,
   10: DEVOURING_MIRROR,
 };

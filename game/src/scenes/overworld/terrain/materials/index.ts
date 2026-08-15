@@ -7,7 +7,7 @@ import { drawChargedAccent } from './charged';
 import { drawLavaAccent } from './lava';
 import { drawIceAccent } from './ice';
 import { drawShardsAccent } from './shards';
-import { drawFogAccent } from './fog';
+import { drawBogAccent } from './bog';
 import { drawConsumingAccent } from './consuming';
 
 // One off-path material per module, reached through this table. Every
@@ -29,6 +29,6 @@ export const TERRAIN_ACCENTS: Record<OffPathKind, AccentDraw | null> = {
   lava: drawLavaAccent,
   ice: drawIceAccent,
   shards: drawShardsAccent,
-  fog: drawFogAccent,
+  bog: drawBogAccent,
   consuming: drawConsumingAccent,
 };

@@ -97,7 +97,7 @@ interface SavedMapState {
   midTile: GridPoint;
   regionColor: (number | null)[][];
   biomeOverride: (number | null)[][];
-  vortexCores: GridPoint[];
+  featureCores: GridPoint[];
   reachedGoal: boolean;
   reachedMiddle: boolean;
   // Respawn bookkeeping (see "Respawning" below): the standing population of
@@ -299,6 +299,16 @@ interface OverworldInitData {
   // caller that sets this, so walking back into an earlier world arrives
   // from its far end (already at the reached goal) rather than its near one.
   enterFrom?: 'start' | 'goal';
+}
+
+// One refill's survey of the ground it may place on (`surveyRespawnGround`):
+// the eligible tiles with the geometry the placers ask about, and the rows
+// that already hold an encounter. Both placers consume from it -- a placed
+// tile is spliced out -- so the survey is walked once and spent, never rebuilt
+// per item.
+interface RespawnGround {
+  tiles: { p: GridPoint; runWidth: number; degree: number }[];
+  rowsWithEncounter: Set<number>;
 }
 
 interface WorldSprite {
@@ -539,9 +549,11 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // whose generator doesn't use them.
   private regionColor: (number | null)[][] = [];
   private biomeOverride: (number | null)[][] = [];
-  // Tiles world 5's generator placed as vortex cores; its off-path material
-  // draws a pit at each (see world/generators/shared.ts's `vortexCores`).
-  private vortexCores: GridPoint[] = [];
+  // Impassable tiles the generator built its shape around; the world's own
+  // off-path material draws its named feature at each -- world 5's vortex
+  // pits, world 8's local moments (world/generators/shared.ts's
+  // `featureCores`).
+  private featureCores: GridPoint[] = [];
   // Whole-grid terrain classification and boundary geometry, built on demand
   // by terrainPlan() and dropped in create() once the map for this visit is in
   // place. Phaser reuses the same scene instance across every scene.start, so
@@ -890,8 +902,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // reserved as a right-side gutter -- sized once from the widest
     // qumatessence string this text style could ever show, not measured
     // live off the current value -- and the world name's wrap width is
-    // narrowed to stop short of it, so a long world name (e.g. world 5's
-    // "The Splitting Hollow") or a big text-size setting wraps
+    // narrowed to stop short of it, so a long world name (e.g. world 10's
+    // "The Devouring Mirror") or a big text-size setting wraps
     // downward onto a second line instead of running wide enough to
     // collide with the counter. No permanent key-hint lines for movement,
     // M, or H live in this corner -- the Lab's Tutorial station is the
@@ -1183,7 +1195,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.midTile = map.mid;
     this.regionColor = map.regionColor;
     this.biomeOverride = map.biomeOverride;
-    this.vortexCores = map.vortexCores;
+    this.featureCores = map.featureCores;
 
     // The backward door (returnToPreviousWorld) lands the player on this
     // freshly generated map's goalTile instead of the corridor's south-edge
@@ -1273,7 +1285,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.midTile = saved.midTile;
     this.regionColor = saved.regionColor;
     this.biomeOverride = saved.biomeOverride;
-    this.vortexCores = saved.vortexCores;
+    this.featureCores = saved.featureCores;
     this.reachedGoal = saved.reachedGoal;
     this.reachedMiddle = saved.reachedMiddle;
     this.wildTarget = saved.wildTarget;
@@ -1295,7 +1307,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       midTile: this.midTile,
       regionColor: this.regionColor,
       biomeOverride: this.biomeOverride,
-      vortexCores: this.vortexCores,
+      featureCores: this.featureCores,
       reachedGoal: this.reachedGoal,
       reachedMiddle: this.reachedMiddle,
       wildTarget: this.wildTarget,
@@ -1405,7 +1417,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
         walkable: this.walkable,
         regionColor: this.regionColor,
         biomeOverride: this.biomeOverride,
-        vortexCores: this.vortexCores,
+        featureCores: this.featureCores,
         flowerMap: this.flowerMap,
         midTile: this.midTile,
         biome: this.biome,
@@ -1542,11 +1554,40 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // A refill re-snapshots the map: the grids themselves are shared by
   // reference with `mapState`, but the scalar budgets are not (see
   // SavedMapState).
+  // The eligible ground is surveyed once per refill and then consumed, rather
+  // than re-surveyed per thing placed: a survey walks the whole grid and
+  // measures each open tile's run width and degree, so re-running it for every
+  // item turned a refill of n things into n grid walks. That is the shape that
+  // spikes exactly when a player has just cleared a stretch and the refill has
+  // the most to do -- one long frame in the middle of walking, which is the
+  // thing STYLE.md's cost rule forbids. Surveying once makes a refill one walk
+  // regardless of how much it restores.
   private refillHidden() {
+    if (this.crystalSprites.length >= this.wildTarget && this.tokenSprites.length >= this.tokenTarget) return;
+    const open = this.surveyRespawnGround();
     let changed = false;
-    while (this.respawnWild()) changed = true;
-    while (this.respawnToken()) changed = true;
+    while (this.respawnWild(open)) changed = true;
+    while (this.respawnToken(open)) changed = true;
     if (changed) this.saveMapState();
+  }
+
+  // One walk of the grid: every tile a respawn may land on, each carrying the
+  // geometry the two placers ask about, plus the set of rows that already hold
+  // an encounter. Shuffled here so a placer can take the first tile that suits
+  // it and still be picking uniformly at random, the way both did when each
+  // built and sampled its own candidate list.
+  private surveyRespawnGround(): RespawnGround {
+    const rowsWithEncounter = new Set<number>();
+    for (let y = 0; y < GRID_H; y++) {
+      if (this.encounterTiles[y]?.some(Boolean)) rowsWithEncounter.add(y);
+    }
+    const tiles = this.respawnTiles().map((p) => ({
+      p,
+      runWidth: this.walkableRunWidth(p.x, p.y),
+      degree: this.walkableDegree(p.x, p.y),
+    }));
+    Phaser.Utils.Array.Shuffle(tiles);
+    return { tiles, rowsWithEncounter };
   }
 
   // A wild drifts back in, drawn from exactly the pool generation drew from --
@@ -1554,19 +1595,21 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // everything. Capped at the population the map stood up (`wildTarget`),
   // which is what keeps the Settings station's density preset meaningful:
   // respawns replace what was fought, they never outpace the setting.
-  private respawnWild(): boolean {
+  private respawnWild(open: RespawnGround): boolean {
     if (this.crystalSprites.length >= this.wildTarget) return false;
     const pool = getWildPool(this.world);
     if (pool.length === 0) return false;
     // One encounter per row at most and never in a run narrower than two
     // tiles, the same two rules generation obeys -- together they are why a
-    // wild can never fully block the route (DESIGN.md §2).
-    const candidates = this.respawnTiles().filter((p) => !this.encounterTiles[p.y].some(Boolean) && this.walkableRunWidth(p.x, p.y) >= 2);
-    if (candidates.length === 0) return false;
+    // wild can never fully block the route (DESIGN.md §2). The row rule reads
+    // the survey's own set, which this placer keeps current as it fills.
+    const i = open.tiles.findIndex((t) => t.runWidth >= 2 && !open.rowsWithEncounter.has(t.p.y));
+    if (i < 0) return false;
 
-    const tile = Phaser.Utils.Array.GetRandom(candidates);
+    const tile = open.tiles.splice(i, 1)[0].p;
     const material = Phaser.Utils.Array.GetRandom(pool);
     this.encounterTiles[tile.y][tile.x] = material;
+    open.rowsWithEncounter.add(tile.y);
     this.addCrystalSprite(tile.x, tile.y, material);
     return true;
   }
@@ -1576,15 +1619,15 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // population, exactly as wilds are: a map never carries more pickups at once
   // than it stood up, and over time it gives back without limit, so a player
   // walking it can always find more (DESIGN.md §2's respawn rule).
-  private respawnToken(): boolean {
+  private respawnToken(open: RespawnGround): boolean {
     if (this.tokenSprites.length >= this.tokenTarget) return false;
-    const candidates = this.respawnTiles();
-    if (candidates.length === 0) return false;
+    if (open.tiles.length === 0) return false;
 
     // The same "reward sits at the end of a detour" preference the generator's
-    // own scatter has (world/generators/shared.ts's scatterTokens).
-    const leaves = candidates.filter((p) => this.walkableDegree(p.x, p.y) === 1);
-    const tile = Phaser.Utils.Array.GetRandom(leaves.length > 0 ? leaves : candidates);
+    // own scatter has (world/generators/shared.ts's scatterTokens) -- a dead
+    // end first, any open tile only if the survey turned up none.
+    const leaf = open.tiles.findIndex((t) => t.degree === 1);
+    const tile = open.tiles.splice(leaf >= 0 ? leaf : 0, 1)[0].p;
     const value = pickTokenValue(this.world);
     this.tokenTiles[tile.y][tile.x] = value;
     this.addTokenSprite(tile.x, tile.y, value);

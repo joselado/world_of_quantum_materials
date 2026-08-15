@@ -6,7 +6,7 @@ import type { AccentTile } from '../types';
 // gentlest impassable terrain in the game and the bottom of the escalation
 // spine -- you just would not walk into it -- so it is drawn as a wood rather
 // than as a hazard: no glow, no motion, nothing that suggests it would hurt.
-// The tree sprites are shared with the Splitting Hollow (art/trees.ts).
+// The tree sprites themselves live in art/trees.ts.
 export function drawForestAccent(g: Phaser.GameObjects.Graphics, tile: AccentTile) {
   if (!hasTree(tile.gx, tile.gy)) return;
   drawTree(g, tile, SUMMER_TREE);

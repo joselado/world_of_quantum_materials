@@ -81,7 +81,7 @@ game/src/
         materials/             One module per off-path material behind a dispatcher (see
                                  "Off-path terrain materials" below): rock.ts, forest.ts,
                                  columns.ts, deadFloor.ts, charged.ts, ice.ts, shards.ts,
-                                 fog.ts, lava.ts, consuming.ts, and index.ts's
+                                 bog.ts, lava.ts, consuming.ts, and index.ts's
                                  TERRAIN_ACCENTS table
     panels/                    One file per guardian's panel UI (see "Guardian panels" below),
                                  e.g. noether.ts's showNoetherShop(), sklodowskaCurie.ts's
@@ -178,7 +178,7 @@ game/src/
                                   per-world motif of its own; mapgen.ts's retry-exhausted fallback, also
                                   the base shape world6.ts/world9.ts build their own motif on top of
       world1.ts .. world10.ts    One file per world's own generator (GeneratedMap: walkable/start/goal/
-                                  mid/regionColor/biomeOverride/vortexCores), each implementing that world's own
+                                  mid/regionColor/biomeOverride/featureCores), each implementing that world's own
                                   course-topic motif -- see DESIGN.md §2's per-world table for what each
                                   one is. world10.ts dispatches to whichever of world1-8's own generator
                                   matches the player's current Material.type (data/materials.ts's
@@ -194,7 +194,7 @@ game/src/
                                   colour/swallow)
     horizons.ts                Per-world distant-self profiles, their sky extras, and the
                                   separate OVERHEAD_SKIES motifs read from the world stood in
-    trees.ts                   The shared tree sprite, drawn by worlds 1 and 8 in two palettes
+    trees.ts                   The Mean Fields' tree sprite (world 1's `forest` material)
     shapes.ts                  ellipseSteps(w, h) -- how many points to draw an ellipse with,
                                  bucketed by its on-screen size (see "Ellipse tessellation"
                                  below)
@@ -1342,12 +1342,13 @@ rather than growing a button of its own.
 **Overworld terrain rendering.** Painting the corridor floor splits in two, and new terrain work
 belongs on one side or the other. `scenes/overworld/terrain/plan.ts`'s `buildTerrainPlan(src)`
 (reached through `OverworldScene`'s memoizing `terrainPlan()` accessor) reads the grid
-(`walkable`/`regionColor`/`biomeOverride`/`vortexCores`/`flowerMap`/`midTile`) and classifies every
+(`walkable`/`regionColor`/`biomeOverride`/`featureCores`/`flowerMap`/`midTile`) and classifies every
 tile into a `TerrainTile`: its kind (one per off-path material, resolved from the biome's own
 `wallTheme` by `offPathKindOf`, which is the single resolution both the plan and the lateral margin
 use), its resolved `Biome`, its region tint, whether it carries decoration or the
-guardian-chokepoint highlight, and whether it is a `vortexCore` -- a tile world 5's generator
-placed as one and the finished grid still has blocked, which `materials/ice.ts` draws as a pit.
+guardian-chokepoint highlight, and whether it is a `featureCore` -- an impassable tile a generator
+built its shape around and the finished grid still has blocked, which the world's own material
+draws its named feature on: `materials/ice.ts` a vortex pit, `materials/bog.ts` a local moment.
 That last one comes down from the generator rather than being recognised from the shape, and
 deliberately so: a blocked tile ringed by walkable ground is also what an ordinary corridor pinch
 and a forced chokepoint's wall look like, so inference draws pits where the world has none and
@@ -1595,14 +1596,14 @@ on an impassable tile).
 **Off-path terrain materials.** One module per material under
 `scenes/overworld/terrain/materials/`, the same "one file per thing" convention the guardian
 avatars follow: `rock.ts`, `forest.ts`, `columns.ts`, `deadFloor.ts`, `charged.ts`, `ice.ts`,
-`shards.ts`, `fog.ts`, `lava.ts`, `consuming.ts`, reached through `index.ts`'s `TERRAIN_ACCENTS`
+`shards.ts`, `bog.ts`, `lava.ts`, `consuming.ts`, reached through `index.ts`'s `TERRAIN_ACCENTS`
 table keyed by `OffPathKind`. Every impassable tile is flat ground in its
 biome's own off-path color, in the same plane as the walkable floor; what its material decides is
 only the accent laid over that fill, so each world's impassable terrain reads as its own
 substance while the "you cannot walk here" signal (the color break plus the contact shadow and rim
 light) stays identical everywhere. An accent receives an `AccentTile` -- the tile's projected
 outline for a full-tile wash, its screen centre and depth scale, its own grid coordinates, whether
-it is a vortex core, its depth ratio and live fog target, the detail-pass falloff, the player's
+it is a feature core, its depth ratio and live fog target, the detail-pass falloff, the player's
 crystal colour and the scene clock -- which `paint.ts` builds only for a material that actually
 draws, so a bare-ground tile costs nothing beyond its fill. `rock.ts` is exactly that case and
 maps to `null`.
@@ -1618,20 +1619,17 @@ the last stretch before accents stop being drawn at all, which is what keeps a m
 on a visible line across the middle distance -- most obvious with trees, where the cutoff otherwise
 reads as the wood being mown flat at a fixed range.
 
-`art/trees.ts` is the game's one shared terrain sprite, drawn by the Mean Fields' `forest` and the
-Splitting Hollow's `fog` in two palettes. That sharing is a story beat rather than an optimization
--- the wood skirted at the start is the thing the player is lost inside near the end, and it only
-lands if the trees are recognisable -- so a change there changes both worlds at once, which is the
-coupling wanted. A wood is also by far the most expensive surround to draw -- trees are over half
-of the command buffer in both worlds that have them, which are the two most expensive worlds in the
-game -- so the crown is tiered on the tile's own `detail`: the full three-lobe crown while `detail`
+`art/trees.ts` holds the Mean Fields' tree sprite, drawn by that world's `forest` material and
+nowhere else. A wood is by far the most expensive surround to draw -- trees are over half of the
+command buffer in World 1, the most expensive world in the game -- so the crown is tiered on the
+tile's own `detail`: the full three-lobe crown while `detail`
 is 1, a single lit cap over the shaded mass once the fade has started, and one trunkless blob below
 `CROWN_SILHOUETTE_DETAIL`. Keying the tiers to `detail` rather than to a distance of the file's own
 is what makes that safe -- `detail` is exactly 1 across the whole range where a tree is drawn at
-full strength, so a crown is only ever simplified once the frame is already dissolving it, the near
-wood the rhyme depends on is never touched, and a threshold keyed to a tree's *on-screen size*
-instead would snap crowns between tiers as the player walked into them. Trees, columns and shards
-stand up off the ground plane; the plane itself stays
+full strength, so a crown is only ever simplified once the frame is already dissolving it, and a
+threshold keyed to a tree's *on-screen size*
+instead would snap crowns between tiers as the player walked into them. Trees, columns, shards and
+reeds stand up off the ground plane; the plane itself stays
 flat everywhere (`STYLE.md`'s "Overworld path"). They get their occlusion free from the sweep
 painting far-to-near, with no height field and no repaint pass. Adding a material means adding
 a module and a table entry (plus the `wallTheme` in `art/biomes.ts` and the matching `TerrainKind`

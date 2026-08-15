@@ -6,6 +6,14 @@ remains the source of truth for each world's *map shape* (its generator motif)
 and its progression gate; this file covers everything above that — naming,
 terrain, palette, light, and the story the sequence tells.
 
+**The maps are under active revision.** World layouts are being fine-tuned, so
+this file's terrain and palette entries and `DESIGN.md` §2's map shapes are open
+for change rather than fixed. A proposed change to a world's ground is a design
+question to be decided on its merits, not a violation to be raised — while this
+holds, judge such a proposal on whether it serves the world, and take the rest of
+this file (the naming law, the light rule, the escalation spines, the premise) as
+binding as ever. Everything outside the maps is unaffected.
+
 **Implementation status:** the fiction below is settled and the code is on it —
 `data/materials.ts`'s `WORLD_NAMES`, `art/biomes.ts`, `art/horizons.ts` and the
 per-material modules under `scenes/overworld/terrain/materials/`. Three pieces
@@ -74,17 +82,53 @@ premise (§0) rendered as light, so the rule is diegetic rather than atmospheric
 the player is watching decoherence arrive.
 
 Morning → midday → afternoon → stormy dusk → overcast twilight → night →
-**no sky at all** → fog → firelight → shimmer.
+**stars alone** → fog → firelight → shimmer.
 
-**After World 7, the sun never returns.** All light in Worlds 8–10 is *emitted
-by the world itself* — fog-glow, magma, the Mirror's own shimmer — never
-received from above. Once the player has been shown that there is no sky, it is
-not handed back. This is what makes the back third feel like somewhere the day
-cannot reach, and it costs nothing but palette discipline.
+**After World 7, the sun never returns.** The world's own light — fog-glow,
+magma, the Mirror's shimmer — is what lights Worlds 8–10 from the ground. The
+day does not come back, and the back third stays somewhere it cannot reach.
+
+**Starlight is the one thing received from above in the back third**, and it is
+there to carry the network arc (§1's "The stars"), not to relight the world. It
+is the faintest light in the game: it never raises the ground's value, never
+casts, and never competes with a world's emitted sources. A world reads as dark
+with the stars in it exactly as it does without them — they are a figure in the
+sky, not illumination.
 
 World 6 is the hinge: the first world where the sun is gone and the light is
 already emitted (the aurora), a preview of the rule before the sky itself is
 taken away.
+
+### The stars
+
+The last four worlds carry a starfield that changes across them, and what it is
+doing is telling the player what the final enemy is before the game says so. A
+machine-learning model is a network — nodes and the weights between them — so the
+sky assembles one, in four stages, and by the time it is finished the player has
+been looking at a picture of World 10's boss for three worlds.
+
+| World | Stage | What the sky shows |
+|---|---|---|
+| **7** The Entangled Web | **scattered** | Faint, ordinary stars. Unconnected points, nothing to read into them yet. |
+| **8** The Screened Swamp | **first links** | Strange connections appear between a few of them — lines no constellation would draw. |
+| **9** The Defect Scars | **occluded** | Cloud drifts across and hides part of the pattern, so what is being assembled cannot be seen whole. |
+| **10** The Devouring Mirror | **the network** | Every point joined. The thing that has been assembling itself is finished, and it is what the player is about to fight. |
+
+Three rules hold it together.
+
+**The stages only ever add.** A link drawn in World 8 is still there in World 10.
+The player is watching one thing being built across four worlds, not four
+different skies, and a link that comes and goes would read as weather.
+
+**World 7's points stay unconnected.** That world's *ground* is already nodes
+joined by bonds (its lanes and cross-link rungs), so a connected sky above it
+would restate the terrain and read as tensor networks rather than as the enemy.
+Unconnected points above a bonded floor is the useful arrangement: the sky is
+doing something the ground is not, which is what makes it worth looking at.
+
+**Occlusion at World 9 is the point, not a gap.** Hiding part of the pattern one
+world before it completes is what makes the completion land — and a model whose
+shape you cannot quite see is the more honest picture of the thing anyway.
 
 **The musical light rule is the same rule in sound, and what World 7 removes is
 *motion beneath the melody*** — the chord progression, the moving bass line, the
@@ -126,7 +170,7 @@ player's feet.
 
 **What the impassable terrain is** — from "you just wouldn't walk there" to "it
 would kill you": forest → stone → a drop → ground the storm strikes → ice and
-pits → iron shards → nothing at all → fog that takes you → molten crust →
+pits → iron shards → nothing at all → water that takes you → molten crust →
 terrain that consumes.
 
 **What the walkable ground is** — from ground *built for walking* (a field
@@ -155,7 +199,7 @@ lives.
 | 5 | **The Vortex Glacier** | pale swept ice | frozen lake, vortex pits with trapped-flux glow | overcast twilight |
 | 6 | **The Iron Steppe** | black iron-sand | aligned iron shards, flipping across a domain wall | night, green aurora |
 | 7 | **The Entangled Web** | white-gold causeway | true void | no sky |
-| 8 | **The Splitting Hollow** | forest floor, path forking | fog that takes you; World 1's trees, dead | fog-lit only |
+| 8 | **The Screened Swamp** | peat bank threading between pools, parting and rejoining | open water that takes you; reeds standing in it | mist-glow and the moments burning in the pools |
 | 9 | **The Defect Scars** | scorched clay | molten crust — wounds still open | red glow |
 | 10 | **The Devouring Mirror** | shifting silver-violet | terrain reconfiguring around you | uncanny shimmer |
 
@@ -250,7 +294,8 @@ unpleasant to play under. And the flash stays **local to the tile it hits**: it
 is momentarily the brightest thing on screen, and gameplay owns the extremes, so
 the route and the player's own crystal have to keep their values through one.
 Light falling on struck ground is honest here, since the sun is gone but the sky
-is not — the light rule only forbids received light from World 7 on.
+is not — the light rule forbids received light from World 7 on, starlight
+excepted, and that exception lights nothing.
 
 The boundary shadow strips are lighting, not landform — they give flat bands
 material depth without promising elevation the engine can't deliver. The bands
@@ -306,23 +351,40 @@ to the boundary treatment or the generator's ladder.
 
 Keep it still and structural — "shifting and alive" belongs entirely to World 10.
 
-### 8 — The Splitting Hollow *(quantum magnetism, spinons, Kondo)*
+### 8 — The Screened Swamp *(quantum magnetism, spinons, Kondo)*
 
-A dead forest in deep fog, lit only by the fog itself. Every trunk forks in two
-and the corridor forks with them, matching the generator's fractionalizing path.
+Open black water under low mist, reed clumps standing out of it, and peat banks
+threading between the pools as the only ground that holds. No trees: the
+silhouette is horizontal — flat water, flat mist, upright reeds — which is what
+keeps it clearly apart from World 7's web overhead and World 9's broken ground.
 
-**The threat is the fog, not the trees.** Trees are "you just wouldn't walk
+**The threat is the water, not the reeds.** Reeds are "you just wouldn't walk
 there" — World 1's logic, which would regress the escalation spine at world
-eight of ten. The fog is what takes you: stray from the path and the medium
+eight of ten. The water is what takes you: stray from the bank and the medium
 itself absorbs you, which is Kondo screening and spinon confinement made into a
 hazard rather than a diagram.
 
-The trees are World 1's tree sprites, dead and grey. That is the game's one real
-story beat — the friendly wood you skirted the edge of at the start is the thing
-you are lost inside near the end — and it only lands if the player can
-*recognize* the trees, so the sprite reuse is the point, not an optimization.
-The two palettes must stay clearly apart: warm sunlit summer green against
-desaturated near-black grey-green.
+**Screening is visible or the name is a lie** (the naming law). Lone bright
+points burn in the water — local moments — and each is being closed over by a
+halo of small counter-lights gathering around it. Near the entrance a moment
+still burns through its halo; deeper in, the halos have shut and the points are
+out. That is the screening cloud rendered as the thing it is: the medium's own
+carriers crowding a moment until its magnetism is gone, and it doubles as the
+escalation spine, since further in is further screened.
+
+**The split and the screening are one picture.** The corridor parts into two
+thin parallel banks and rejoins — spinon fractionalization, the world's other
+topic — and what it parts *around* is a pool with a screened moment in it. The
+path splits because something in the water is being put out.
+
+The mist lies *on the water*, not through the air: this world's sky is open
+above it, which is what lets the star arc's first links be seen here (§1's "The
+stars"), and it keeps World 8's low mist distinct from World 9's occluding
+cloud. The light is still the world's own — mist-glow and the moments' own
+burning — so the light rule holds.
+
+Palette: near-black green-grey water, sickly pale mist, reeds darker than
+either.
 
 ### 9 — The Defect Scars *(excitations and defects)*
 
@@ -448,7 +510,7 @@ Every world owns a hue, and unassigned colours are where collisions breed.
 | 5 | pale ice-cyan, desaturated, narrow value range |
 | 6 | black iron-sand under pure green aurora |
 | 7 | white-gold filaments on black — the only warm glow before World 9 |
-| 8 | desaturated grey-green, near-black in fog |
+| 8 | near-black green-grey water, sickly pale mist, reeds darker than either |
 | 9 | scorched red, molten orange |
 | 10 | silver-violet |
 
@@ -554,9 +616,12 @@ line is its air, its overhead motif and its neighbour — never a portrait of it
   gift rather than a gap: the Iron Steppe's forward horizon showing the world
   *stop* is exactly the tell its false calm needs, supplied by the composition
   system for free.
-- **The Splitting Hollow** is eaten by its own fog. A horizon that dissolves
-  before it resolves is that world's identity, not a missing asset, so it too
-  carries swallow zero and the Entangled Web looks forward into grey nothing.
+- **The Screened Swamp** has a distant self, but neither half of it is a
+  silhouette: a dead flat band of mist glowing off standing water, with dark reed
+  clumps standing in it. A drowned silhouette can only ever be one value, and this
+  needs two — the band must run *lighter* than the air it is seen in and the reeds
+  *darker*. Both are therefore drawn as a sky extra at swallow zero. The profile
+  is dead flat because a bog is: everything upright in that world is reed.
 - **The Devouring Mirror** has no next world, and its horizon is the Qumatuomi
   sky (below) rather than any silhouette. Its swallow is zero so that the Defect
   Scars' forward horizon does not wear a violet ridge the Mirror never had.
@@ -778,31 +843,35 @@ The premise (§0) supplies the arc; three beats carry it:
 mote walking through fields, cloisters and glaciers that do not know it exists.
 That indifference is free, and it exists to be broken exactly once.
 
-**Loss (8).** The 1↔8 rhyme is the emotional beat: something the player walked
-past in safety at the start is what they are lost inside near the end. Without
-it, the sequence runs pretty → moody → dead with no moment where anything is
-taken from them specifically. It rests on World 1 and World 8 sharing one
-recognisable thing, currently its trees — so whatever hems in the Mean Fields
-is what the Splitting Hollow stands dead inside, and the two are chosen
-together. `docs/storyline.md` states the recognition in the player's own words
-and follows the same pairing.
+**Loss (8).** The emotional beat: something is taken from the player
+specifically, rather than the sequence simply running pretty → moody → dead.
+World 8 carries it as the world putting its own lights out — a moment still
+burning near the entrance and nothing but shut halos deeper in, so walking
+the world *is* watching it go out. **This beat is currently the weakest of
+the three and is open to being re-anchored**: it has no callback to an earlier
+world holding it up, and a recognisable thing shared between World 1 and World
+8 would be the cheapest way to give it one.
 
 **Recognition (10).** The world turns to look. After nine worlds of terrain that
 did not know it was being walked on, the last one is built out of the player —
 and that is what finishes them, because being known is the mechanism of the
 decoherence that has been advancing since World 1.
 
-One cheap seed makes the turn land rather than arrive from nowhere: somewhere
-late — World 8 or 9 — a few crystalline fragments of the player's *own* material
-embedded in the impassable surround. The first hint that the world contains
-things like you, immediately before it becomes a thing that *is* you.
+One cheap seed makes the turn land rather than arrive from nowhere: the
+occasional pool in the Screened Swamp shows the player's *own* colour back at
+them, wavering on the water. The first hint that the world contains things like
+you, immediately before it becomes a thing that *is* you — and it rhymes
+straight into World 10, since the player meets their own reflection in a bog
+and the last world is a mirror.
 
-**Those fragments must stay crude**: raw, unshaped, mineral, an accident of
-geology rather than a likeness. The gradient only works if the two stages read as
-different phenomena — **ore, then portrait** — so that World 10's rendered
-reflections (§2) land as categorically new rather than as more of the same. Left
-unspecified, this is exactly the detail an artist will naturally polish, and
-polishing it turns the seed into an early reflection and costs the reveal.
+**That reflection must stay broken**: a few soft shapes sliding against each
+other on moving water, never a likeness assembling itself. The gradient only
+works if the two stages read as different phenomena — **something in the water,
+then a portrait** — so that World 10's rendered reflections (§2) land as
+categorically new rather than as more of the same. Left unspecified, this is
+exactly the detail an artist will naturally polish, and polishing it costs the
+reveal. It is also rare on purpose: a hint the player notices and wonders about,
+not one they can catalogue.
 
 ---
 

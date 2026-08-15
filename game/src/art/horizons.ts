@@ -251,6 +251,67 @@ function webSky({ g, horizonY, now }: HorizonSky) {
   });
 }
 
+// World 8, the Screened Swamp: an open bog seen from a world away, which is a
+// low band of standing water with mist glowing off it and reed clumps
+// standing in that band. The profile is dead flat, because a bog is: this
+// world's silhouette is horizontal by identity, and everything upright in it
+// is reed.
+//
+// The band is the *lit* half and the reeds are the dark half, and neither can
+// be said as a filled silhouette, so the whole distant self is a sky extra at
+// swallow zero. A silhouette is drowned most of the way into the live haze
+// before it is painted (scenes/overworld/sky.ts's DISTANT_DROWN), which would
+// leave a dark base against this world's own pale mist surviving as nothing at
+// all -- and the pale base that *would* survive is the same `hillColor` the
+// battle arena borrows as its ridge tone, where near-white ridges over
+// near-black bog floor bury the HP bars. Drawing both halves here keeps each
+// consumer's value where it belongs.
+const WATER_H = 7;
+
+// How the lit band is painted: abutting one-pixel rows, brightest at the water
+// line and thinning upward, so it has no edge anywhere. Rows never share a
+// scanline -- two translucent rects over the same row blend twice and stripe
+// the band, the trap sky.ts's fillVerticalFade documents.
+function waterGlow(g: Phaser.GameObjects.Graphics, horizonY: number, target: number) {
+  for (let i = 0; i < WATER_H; i++) {
+    const t = i / (WATER_H - 1);
+    g.fillStyle(blend(0xc4d4c6, target, 0.35), 0.12 * (1 - 0.6 * t));
+    g.fillRect(0, horizonY - i - 1, W, 1);
+  }
+}
+
+// The reed clumps standing in that band: a handful of short dark strokes per
+// clump, still, and the only vertical thing this world shows from outside
+// itself. They are what stop the band reading as the Storm Flats' bare line.
+const REED_TUFTS = [
+  { x: 62, w: 30, h: 22 },
+  { x: 148, w: 20, h: 14 },
+  { x: 205, w: 36, h: 27 },
+  { x: 318, w: 24, h: 17 },
+  { x: 396, w: 32, h: 24 },
+  { x: 489, w: 18, h: 12 },
+  { x: 552, w: 38, h: 29 },
+  { x: 671, w: 22, h: 16 },
+  { x: 738, w: 30, h: 21 },
+];
+const STALKS_PER_TUFT = 4;
+
+function swampSky({ g, horizonY, target }: HorizonSky) {
+  waterGlow(g, horizonY, target);
+  g.lineStyle(1, blend(0x0a0f0b, target, 0.3), 0.55);
+  REED_TUFTS.forEach((tuft, i) => {
+    for (let s = 0; s < STALKS_PER_TUFT; s++) {
+      const t = s / (STALKS_PER_TUFT - 1);
+      const x = tuft.x + t * tuft.w;
+      // Tallest in the middle of the clump and shorter at its edges, so a
+      // clump reads as a clump rather than as a comb.
+      const h = tuft.h * (0.45 + 0.55 * Math.sin(t * Math.PI));
+      const lean = (hash(i * 13 + s) - 0.5) * 5;
+      g.lineBetween(x, horizonY - WATER_H + 2, x + lean, horizonY - h);
+    }
+  });
+}
+
 // World 9, the Defect Scars: molten crust seen from a world away -- a broken
 // ridge of blocky plateaus with narrow deep notches cut through it, which is
 // the wound-still-open half of the world's two-tense damage at horizon scale.
@@ -282,9 +343,9 @@ function scarRidge(): HorizonPoint[] {
 }
 
 // The glow veins in that ridge: short hot lines standing in the notches,
-// self-luminous per the light rule -- the Splitting Hollow has no sky, so the
-// only thing that can announce the world beyond it is light the world emits
-// itself.
+// self-luminous per the light rule -- the sun is gone by the Screened Swamp,
+// so the only thing that can announce the world beyond it is light that world
+// emits itself.
 function scarSky({ g, horizonY, target, now }: HorizonSky) {
   let x = 0;
   SCAR_BLOCKS.forEach((block, i) => {
@@ -377,10 +438,9 @@ function qumatuomiOverhead(view: HorizonSky) {
   });
 }
 
-// A world with no distant self at all: the Splitting Hollow, eaten by its own
-// fog, and the Devouring Mirror, whose horizon is the Qumatuomi sky rather
-// than any silhouette. Both carry swallow zero, so this is what their
-// neighbours look forward into.
+// A world with no distant self at all: the Devouring Mirror, whose horizon is
+// the Qumatuomi sky rather than any silhouette. It carries swallow zero, so
+// this is what the Defect Scars look forward into.
 const NOTHING: DistantSelf = { points: [] };
 
 export const DISTANT_SELVES: Partial<Record<number, DistantSelf>> = {
@@ -391,7 +451,7 @@ export const DISTANT_SELVES: Partial<Record<number, DistantSelf>> = {
   5: { points: glacierRidges() },
   6: { points: shardRows() },
   7: { points: [], sky: webSky },
-  8: NOTHING,
+  8: { points: [], sky: swampSky },
   9: { points: scarRidge(), sky: scarSky },
   10: NOTHING,
 };

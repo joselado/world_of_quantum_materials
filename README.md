@@ -190,7 +190,7 @@ archetypes, and a rival crystal gating the way to the next world.
 | 5 | The Vortex Glacier | Superconductivity, Nambu representation, Majoranas |
 | 6 | The Iron Steppe | Classical magnetism and magnons |
 | 7 | The Entangled Web | Quantum entanglement and tensor networks |
-| 8 | The Splitting Hollow | Quantum magnetism, spinons, Kondo physics |
+| 8 | The Screened Swamp | Quantum magnetism, spinons, Kondo physics |
 | 9 | The Defect Scars | Excitations and defects |
 | 10 | The Devouring Mirror | Machine learning for quantum materials |
 

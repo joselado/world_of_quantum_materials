@@ -12,7 +12,7 @@ export interface TerrainSource {
   walkable: boolean[][];
   regionColor: (number | null)[][];
   biomeOverride: (number | null)[][];
-  vortexCores: GridPoint[];
+  featureCores: GridPoint[];
   flowerMap: boolean[][];
   midTile: GridPoint;
   biome: Biome;
@@ -35,8 +35,9 @@ export function buildTerrainPlan(src: TerrainSource): TerrainPlan {
 function classifyTiles(src: TerrainSource): TerrainTile[][] {
   // A core only counts where the finished grid actually left it blocked: the
   // shared chokepoint and pass passes run after the generator and could carve
-  // one open, and a pit drawn on walkable floor would be a hole in the road.
-  const cores = new Set(src.vortexCores.filter((c) => !src.walkable[c.y]?.[c.x]).map((c) => `${c.x},${c.y}`));
+  // one open, and a pit or a pool feature drawn on walkable floor would be a
+  // hole in the road.
+  const cores = new Set(src.featureCores.filter((c) => !src.walkable[c.y]?.[c.x]).map((c) => `${c.x},${c.y}`));
   const plan: TerrainTile[][] = [];
   for (let y = 0; y < GRID_H; y++) {
     const row: TerrainTile[] = [];
@@ -53,7 +54,7 @@ function classifyTiles(src: TerrainSource): TerrainTile[][] {
         regionTint,
         decorate: !!src.flowerMap[y]?.[x],
         midHighlight: Math.abs(x - src.midTile.x) <= 1 && Math.abs(y - src.midTile.y) <= 1,
-        vortexCore: cores.has(`${x},${y}`),
+        featureCore: cores.has(`${x},${y}`),
       });
     }
     plan.push(row);

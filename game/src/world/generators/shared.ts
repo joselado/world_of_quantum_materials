@@ -48,16 +48,18 @@ export interface GeneratedMap {
   mid: GridPoint;
   regionColor: NullableNumberGrid;
   biomeOverride: NullableNumberGrid;
-  // Tiles the generator deliberately placed as vortex cores, which the
-  // Vortex Glacier renders as pits (scenes/overworld/terrain/materials/ice.ts).
-  // A core is a *known* structure the shape is built around rather than
-  // something a renderer could recognise by looking: a blocked tile with a
-  // walkable ring is what a lot of ordinary corridor pinches also look like,
-  // so inferring it from the neighbourhood puts pits where there are none and
-  // misses the ones the world is named for. World 5 is the only generator that
-  // places them; World 10 inherits the list along with the shape, and simply
-  // never draws pits, its surround being a different material.
-  vortexCores: GridPoint[];
+  // Impassable tiles the generator deliberately built its shape around, which
+  // the world's own off-path material draws its one named feature on: the
+  // Vortex Glacier's pits (scenes/overworld/terrain/materials/ice.ts) and the
+  // Screened Swamp's local moments (materials/bog.ts). A core is a *known*
+  // structure rather than something a renderer could recognise by looking: a
+  // blocked tile with a walkable ring is what a lot of ordinary corridor
+  // pinches also look like, so inferring it from the neighbourhood puts
+  // features where there are none and misses the ones the world is named for.
+  // Worlds 5 and 8 are the only generators that place them; World 10 inherits
+  // World 5's list along with its shape, and simply never draws anything at
+  // them, its surround being a different material.
+  featureCores: GridPoint[];
 }
 
 export function makeGrid(gridW: number, gridH: number): boolean[][] {

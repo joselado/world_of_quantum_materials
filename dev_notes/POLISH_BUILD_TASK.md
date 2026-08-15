@@ -256,6 +256,30 @@ presume.
 
 ## Lower priority
 
+### 14b. Respawn cost if maps grow substantially — deferred by decision
+
+A refill surveys the ground once and consumes from that survey
+(`surveyRespawnGround` in `OverworldScene.ts`), which costs, roughly,
+`A + C·W + n·C` for map area *A*, eligible tiles *C*, width *W* and *n* things
+placed. Measured on today's maps, the per-step case a player actually hits runs
+1.7 ms median and 6 ms worst.
+
+That is fine at the current size and it is deliberately not optimised further.
+If maps grow substantially, the next two walls, in the order worth attacking:
+
+1. **The survey is still O(area) and still runs on every step that has anything
+   to place.** The fix is to stop rebuilding it — maintain the eligible set
+   incrementally as the player moves and as tiles are consumed and freed, so a
+   step costs the delta rather than the whole map. This adds real state that has
+   to stay correct, which is why it is not worth doing before the size demands
+   it.
+2. **Sprite construction is the floor underneath that** — a full-map refill is
+   about 12 ms, most of it building containers, graphics and labels, which no
+   survey work touches. Pooling sprites rather than constructing them is the
+   answer if it ever bites.
+
+Re-measure before touching either; neither is worth doing speculatively.
+
 ### 15. Quiz subscript notation
 
 `data/quiz.ts` writes subscripts as ASCII underscores (`U_c`, `k_B`, `E_F`,

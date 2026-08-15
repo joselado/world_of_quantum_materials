@@ -4,7 +4,7 @@
 // has to wind around -- before straightening back out and continuing on to
 // the goal.
 //
-// The cores are returned in `vortexCores` and cleared back to blocked after
+// The cores are returned in `featureCores` and cleared back to blocked after
 // every band, spiral and join has been painted. Both matter. The spiral's own
 // brush and the join carve out of the last core each pass close enough to the
 // centre to fill it, so a core protected only where it is placed is a core the
@@ -53,7 +53,7 @@ export function generateWorld5Map(gridW: number, gridH: number, start: GridPoint
 
   const walkable = makeGrid(gridW, gridH);
   const allBands: WanderBand[] = [];
-  const vortexCores: GridPoint[] = [];
+  const featureCores: GridPoint[] = [];
 
   let segStartX = start.x;
   let segStartY = start.y;
@@ -68,7 +68,7 @@ export function generateWorld5Map(gridW: number, gridH: number, start: GridPoint
     const lastBand = segBands[segBands.length - 1];
     const side = Math.random() < 0.5 ? 1 : -1;
     const core = { x: clamp(lastBand.center + side * (SPIRAL_R_MAX + 2), SPIRAL_R_MAX + 2, gridW - SPIRAL_R_MAX - 2), y: targetY };
-    vortexCores.push(core);
+    featureCores.push(core);
     const { entry, exit } = paintSpiral(walkable, gridW, gridH, core, side as 1 | -1);
     carveThickPath(walkable, gridW, gridH, { x: lastBand.center, y: approachY }, entry, SPIRAL_WIDTH);
 
@@ -81,7 +81,7 @@ export function generateWorld5Map(gridW: number, gridH: number, start: GridPoint
   if (finalBands.length) carveThickPath(walkable, gridW, gridH, { x: segStartX, y: segStartY + 1 }, { x: finalBands[0].center, y: finalBands[0].y }, TRUNK_WIDTH - 2);
   allBands.push(...finalBands);
 
-  for (const core of vortexCores) walkable[core.y][core.x] = false;
+  for (const core of featureCores) walkable[core.y][core.x] = false;
 
   const goalBand = finalBands[finalBands.length - 1] ?? allBands[allBands.length - 1];
   const goal = { x: Math.round((goalBand.left + goalBand.right) / 2), y: goalBand.y };
@@ -92,5 +92,5 @@ export function generateWorld5Map(gridW: number, gridH: number, start: GridPoint
   const midBand = allBands[midIdx] ?? goalBand;
   const mid = { x: Math.round((midBand.left + midBand.right) / 2), y: midBand.y };
 
-  return { walkable, start, goal, mid, regionColor: makeColorGrid(gridW, gridH), biomeOverride: makeColorGrid(gridW, gridH), vortexCores };
+  return { walkable, start, goal, mid, regionColor: makeColorGrid(gridW, gridH), biomeOverride: makeColorGrid(gridW, gridH), featureCores };
 }

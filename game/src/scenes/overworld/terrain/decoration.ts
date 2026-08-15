@@ -188,10 +188,10 @@ export function decorateTile(g: Phaser.GameObjects.Graphics, biome: Biome, tile:
     return;
   }
 
-  // World 8 (the Splitting Hollow): fog on the route as well as off it, but
-  // thin here -- soft wisps rather than a sharp shape. The route is where the
-  // fog is survivable, and the difference in how much of it there is between
-  // path and surround is the whole warning.
+  // World 8 (the Screened Swamp): mist on the bank as well as on the water,
+  // but thin here -- soft wisps rather than a sharp shape. The bank is where
+  // the mist is survivable, and the difference in how much of it there is
+  // between path and water is the whole warning.
   if (biome.decoration === 'mistMotes') {
     const u = TILE_PX * s;
     g.fillStyle(0xdfe6df, 0.22);

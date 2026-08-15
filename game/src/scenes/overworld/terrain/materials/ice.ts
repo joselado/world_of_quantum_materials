@@ -21,7 +21,7 @@ export function drawIceAccent(g: Phaser.GameObjects.Graphics, tile: AccentTile) 
   if (detail <= 0) return;
   const air = depth * 0.75;
 
-  if (tile.vortexCore) {
+  if (tile.featureCore) {
     const u = TILE_PX * s;
     // Slow, because trapped flux is trapped -- it is not going anywhere.
     const pulse = 0.55 + 0.45 * Math.sin(now / 1100 + gx * 0.4);

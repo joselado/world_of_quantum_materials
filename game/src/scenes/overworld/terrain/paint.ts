@@ -240,7 +240,7 @@ function drawMarginTile(view: TerrainView, edge: TerrainTile, gx: number, y: num
 
   if (depthRatio <= DETAIL_MAX_DEPTH) {
     const kind = edge.kind !== 'path' ? edge.kind : offPathKindOf(edge.biome);
-    drawAccent(g, kind, fill, pFL, pFR, pNR, pNL, gx, y, edge.vortexCore, depthRatio, hazeTarget(view, edge.biome), view.playerColor, view.now);
+    drawAccent(g, kind, fill, pFL, pFR, pNR, pNL, gx, y, edge.featureCore, depthRatio, hazeTarget(view, edge.biome), view.playerColor, view.now);
   }
 }
 
@@ -349,7 +349,7 @@ function drawOffPathTile(
   drawBandBoundary(g, tile.biome, gy, pFL, pFR, pNR, pNL, depthRatio);
 
   if (depthRatio <= DETAIL_MAX_DEPTH) {
-    drawAccent(g, tile.kind, fill, pFL, pFR, pNR, pNL, gx, gy, tile.vortexCore, depthRatio, hazeTarget(view, tile.biome), view.playerColor, view.now);
+    drawAccent(g, tile.kind, fill, pFL, pFR, pNR, pNL, gx, gy, tile.featureCore, depthRatio, hazeTarget(view, tile.biome), view.playerColor, view.now);
   }
 
   // The impassable side of the contact shadow, over the accent rather than
@@ -371,7 +371,7 @@ function drawAccent(
   pNL: ProjectedPoint,
   gx: number,
   gy: number,
-  vortexCore: boolean,
+  featureCore: boolean,
   depth: number,
   haze: number,
   playerColor: number,
@@ -380,14 +380,14 @@ function drawAccent(
   if (kind === 'path') return;
   const accent = TERRAIN_ACCENTS[kind];
   if (!accent) return;
-  accent(g, accentTile(vortexCore, fill, pFL, pFR, pNR, pNL, gx, gy, depth, haze, playerColor, now));
+  accent(g, accentTile(featureCore, fill, pFL, pFR, pNR, pNL, gx, gy, depth, haze, playerColor, now));
 }
 
 // The per-tile geometry every accent and every decoration works from: the
 // projected outline for a full-tile wash, the tile's centre and depth scale
 // on screen, where it sits on the grid, and the clock.
 function accentTile(
-  vortexCore: boolean,
+  featureCore: boolean,
   fill: ProjectedPoint[],
   pFL: ProjectedPoint,
   pFR: ProjectedPoint,
@@ -401,7 +401,7 @@ function accentTile(
   now: number
 ): AccentTile {
   return {
-    vortexCore,
+    featureCore,
     fill,
     cx: (pFL.x + pFR.x + pNR.x + pNL.x) / 4,
     cy: (pFL.y + pFR.y + pNR.y + pNL.y) / 4,

@@ -5,14 +5,8 @@ import { ellipseSteps } from './shapes';
 import { TILE_SCALE } from '../scenes/overworld/projection';
 import type { AccentTile } from '../scenes/overworld/terrain/types';
 
-// The game's one shared terrain sprite, drawn by two worlds. The Mean Fields'
-// dense summer canopy and the Splitting Hollow's dead wood are the same
-// geometry in two palettes, and that is the point rather than an
-// optimization: the friendly wood the player skirted the edge of in world one
-// is the thing they are lost inside in world eight, and the beat only lands
-// if the trees are recognizably the same trees (WORLDS.md sections 2 and 5).
-// So anything that changes the drawing changes both worlds at once, which is
-// exactly the coupling wanted here.
+// The Mean Fields' dense summer canopy (terrain/materials/forest.ts), and
+// the only wood in the game.
 //
 // Trees stand up off the ground plane, unlike every other terrain treatment,
 // which is flat by rule. They can, because the terrain sweep paints
@@ -33,11 +27,6 @@ export interface TreeStyle {
   canopyShade: number;
   trunk: number;
   alpha: number;
-  // The Splitting Hollow's trunks fork in two below the crown, matching its
-  // corridor and its physics -- one excitation reading as two. The crown
-  // above the fork is left alone, since the crown is the half the player has
-  // to recognize.
-  fork: boolean;
 }
 
 export const SUMMER_TREE: TreeStyle = {
@@ -45,18 +34,6 @@ export const SUMMER_TREE: TreeStyle = {
   canopyShade: 0x18401f,
   trunk: 0x53381f,
   alpha: 1,
-  fork: false,
-};
-
-// Desaturated near-black grey-green against the summer wood's warm sunlit
-// green: the two palettes have to stay clearly apart or the rhyme reads as
-// one reused asset rather than as the same forest, later and worse.
-export const DEAD_TREE: TreeStyle = {
-  canopy: 0x2a2d29,
-  canopyShade: 0x171a17,
-  trunk: 0x22241f,
-  alpha: 1,
-  fork: true,
 };
 
 // Deterministic per-tile variation, keyed off the grid rather than the
@@ -82,9 +59,8 @@ export function hasTree(gx: number, gy: number): boolean {
 //
 // Keying the tiers to `detail` rather than to a distance of this file's own is
 // what keeps the rule safe: `detail` is exactly 1 across the whole range where
-// a tree is drawn at full strength, so the near wood -- the half the 1-to-8
-// rhyme depends on being recognisable (WORLDS.md section 5) -- always gets the
-// full lobed crown, and the tiers move with the fade if its range ever moves.
+// a tree is drawn at full strength, so the near wood always gets the full
+// lobed crown, and the tiers move with the fade if its range ever moves.
 // Below this much of it left, the tree is a smudge against the haze and none
 // of its shape survives, so it collapses to one blob.
 const CROWN_SILHOUETTE_DETAIL = 0.45;
@@ -116,13 +92,7 @@ export function drawTree(g: Phaser.GameObjects.Graphics, tile: AccentTile, style
   }
 
   g.fillStyle(blend(style.trunk, haze, air), alpha);
-  if (style.fork) {
-    const spread = 0.1 * size;
-    g.fillTriangle(x - 0.035 * size, base, x + 0.035 * size, base, x - spread, crownY);
-    g.fillTriangle(x - 0.035 * size, base, x + 0.035 * size, base, x + spread, crownY);
-  } else {
-    g.fillRect(x - 0.035 * size, base - trunkH, 0.07 * size, trunkH + 0.02 * size);
-  }
+  g.fillRect(x - 0.035 * size, base - trunkH, 0.07 * size, trunkH + 0.02 * size);
 
   // Crown: a shaded lower mass with a lit cap over it, which is enough
   // rounding to read as foliage without becoming a per-leaf drawing. A wood

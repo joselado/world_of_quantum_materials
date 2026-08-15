@@ -28,7 +28,7 @@ export function makePassBoard(scene: Phaser.Scene, size: number, destination: st
   const container = scene.add.container(0, 0);
 
   // The plank is sized to the name rather than the name wrapped to a fixed
-  // plank: world names run from "Qumatex" to "The Splitting Hollow", and a
+  // plank: world names run from "Qumatex" to "The Devouring Mirror", and a
   // board whose text overflows its own board is worse than a wide board.
   const label = scene.add
     .text(0, 0, `To ${destination}`, {

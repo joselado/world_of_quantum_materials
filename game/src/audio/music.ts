@@ -1053,7 +1053,7 @@ function vampBarOrbit(rootName: string, quality: 'maj' | 'min'): ToneNote[] {
 }
 
 // A held root, then a held fifth -- half the note density of vampBar, for a
-// frozen/hazy battle vamp (the Vortex Glacier, the Splitting Hollow)
+// frozen/hazy battle vamp (the Vortex Glacier, the Screened Swamp)
 // instead of a running eighth-note ostinato.
 function vampBarSparse(rootName: string, _quality: 'maj' | 'min'): ToneNote[] {
   const root = n(rootName);
@@ -1388,7 +1388,7 @@ const BATTLE_SCORE_7 = makeBattleScore({
   extraVoice: { wave: 'triangle', gain: 0.06, gen: (r, q) => octaveUp(vampBarOrbit(r, q)) },
 });
 
-// World 8, the Splitting Hollow: hazy and low-contrast like its overworld theme --
+// World 8, the Screened Swamp: hazy and low-contrast like its overworld theme --
 // the same sparse vamp/stab/percussion as world 5, quieter still, no drive
 // -- C minor, slow.
 const BATTLE_SCORE_8 = makeBattleScore({

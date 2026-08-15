@@ -412,10 +412,10 @@ function drawHorizonBand(g: Phaser.GameObjects.Graphics, colorAt: (y: number) =>
 // profile, base color, swallow -- comes off that world's biome entry and
 // never off the one the player is standing in (WORLDS.md section 4). Nothing
 // is drawn where there is no next world, nor where the next world's authored
-// swallow is zero: the Entangled Web has no surround to show, the Splitting
-// Hollow's own fog eats its, and the Devouring Mirror's horizon is the
-// Qumatuomi sky. World 6's forward horizon emptying out is that rule
-// arriving as a story beat rather than as a special case.
+// swallow is zero: the Entangled Web has no surround to show, and the
+// Devouring Mirror's horizon is the Qumatuomi sky. World 6's forward horizon
+// emptying out is that rule arriving as a story beat rather than as a
+// special case.
 //
 // The fill is that world's base color drowned into the *live* haze target --
 // the same value every other haze in this frame is using, never the

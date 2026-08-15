@@ -311,24 +311,23 @@ what's on the cut."
 
 ---
 
-## 8 — The Splitting Hollow
+## 8 — The Screened Swamp
 
 *Quantum magnetism, spinons, and Kondo physics.*
 
-The lanes end at a treeline standing in fog — and **you have seen these
-trees before.** They are the summer wood you skirted the edge of in the Mean
-Fields, in better light, at the very start of the road. They are dead now,
-and you are inside them. It is not the trees you should be watching, though
-— it is the fog they are standing in. Step off the path and the medium
-itself takes you.
+The lanes end at a shoreline, and past it is bog: black water in pools with
+mist lying flat on it, reeds standing out of it, and a thread of peat bank
+that is the only ground that holds. Watch the water, not the reeds. Step off
+the bank and the medium closes over you.
 
 There is a rule every world so far has obeyed: a disturbance in a magnet is
 one whole spin's worth. You can move it, smear it out, watch it travel — but
-you cannot have half of one. Walk into this forest and the path splits, and
-not into two roads to somewhere: into two halves of the same thing. What
-entered as one spin's worth of disturbance is now two pieces carrying half
-each, drifting apart, keeping no account of one another. The forest calls
-them **spinons** and does not consider the old rule binding.
+you cannot have half of one. Walk out along this bank and it parts, and not
+into two roads to somewhere: into two halves of the same thing, with a pool
+between them. What entered as one spin's worth of disturbance is now two
+pieces carrying half each, drifting apart, keeping no account of one
+another. The bog calls them **spinons** and does not consider the old rule
+binding.
 
 The halves can only wander because nothing here is settled. The spins are
 paired off into quiet, neutral couples — but which spin is paired with which
@@ -336,13 +335,21 @@ was never decided, and every possible pairing is happening at once,
 resonating between one covering and the next. The Decoherence picks a
 covering. That is the whole of it. The pairings go rigid, moving an unpaired
 spin now means breaking a bond that will not break, and the halves are
-dragged back together into one ordinary flip. Deeper in the fog stands the
+dragged back together into one ordinary flip.
+
+The lights burning out in the pools are what the place is named for. Each is
+a lone moment — a single spin nothing has managed to pair off — and the
+water around it is a sea of loose carriers that crowd in until one of them
+is bound to the moment in a singlet of exactly the kind the rest of the bog
+is made of. Total spin zero; nothing left to point anywhere. Near the shore
+a moment still burns through the cloud gathering on it; further out the
+clouds have closed and the pools are dark. Out in that dark stands the
 **Polycrystalline Ruthenium Trichloride Golem**, whose frustration is not
 geometry but its bonds: every spin sits on three that each demand a
 different axis, so obeying one means defying two, and nothing you land on it
 stays whole. "Hurt me twice, then. Halves are all you get."
 
-*You reached the far treeline. The resonance still holds.*
+*You reached the far bank. The resonance still holds.*
 
 ---
 
@@ -350,7 +357,8 @@ stays whole. "Hurt me twice, then. Halves are all you get."
 
 *Excitations and defects.*
 
-The fog thins and the trees give out onto open ground with holes in it. Not
+The water gives out and the mist lifts off it onto open ground with holes in
+it. Not
 ruins — patches. One stretch is wheatfield. The next is colonnade, repeating
 itself. Further on, a strip of lit ledge, a scrap of swept ice, a few square
 metres of iron sand still rippling. Half sunk in the molten crust lie the

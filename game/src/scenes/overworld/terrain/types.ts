@@ -9,7 +9,7 @@ import type { AtmosphereView } from '../sky';
 // walkable trail, 'solid' plain bare impassable ground, and every other kind
 // an off-path material that lays its own accent over that same ground (see
 // materials/), one per world's impassable surround.
-export type TerrainKind = 'path' | 'solid' | 'forest' | 'columns' | 'deadFloor' | 'charged' | 'ice' | 'shards' | 'fog' | 'lava' | 'consuming';
+export type TerrainKind = 'path' | 'solid' | 'forest' | 'columns' | 'deadFloor' | 'charged' | 'ice' | 'shards' | 'bog' | 'lava' | 'consuming';
 
 // The kinds an impassable tile can take -- one per off-path material, each
 // with its own module under materials/.
@@ -24,13 +24,14 @@ export interface TerrainTile {
   regionTint: number | null;
   decorate: boolean;
   midHighlight: boolean;
-  // A tile the generator placed as a vortex core -- a hole punched through an
-  // otherwise expelling superconductor, which the Vortex Glacier draws as a
-  // pit (materials/ice.ts). Handed down from the generator rather than
-  // recognised from the shape: a blocked tile ringed by walkable ground is
-  // also what an ordinary corridor pinch looks like, so inference puts pits
-  // where the world has none.
-  vortexCore: boolean;
+  // An impassable tile the generator built its shape around, which the
+  // world's off-path material draws its named feature on -- the Vortex
+  // Glacier's pits (materials/ice.ts), the Screened Swamp's local moments
+  // (materials/bog.ts). Handed down from the generator rather than recognised
+  // from the shape: a blocked tile ringed by walkable ground is also what an
+  // ordinary corridor pinch looks like, so inference puts features where the
+  // world has none.
+  featureCore: boolean;
 }
 
 // Where a fight started, read off the same plan the corridor is drawn from
@@ -78,8 +79,8 @@ export interface TerrainView extends AtmosphereView {
   midTile: GridPoint;
   // This world's guardian color, for the chokepoint glow (drawMidHighlight).
   chokepointColor: number;
-  // The player's current crystal color. The Splitting Hollow's surround
-  // carries fragments of it (materials/fog.ts) -- the first hint that the
+  // The player's current crystal color. The Screened Swamp's pools show a
+  // wavering reflection of it (materials/bog.ts) -- the first hint that the
   // world contains things like the player, immediately before the last world
   // turns out to be one.
   playerColor: number;
@@ -101,7 +102,7 @@ export interface TerrainView extends AtmosphereView {
 export interface AccentTile {
   fill: ProjectedPoint[];
   // Whether this tile is a vortex core, from its TerrainTile (see above).
-  vortexCore: boolean;
+  featureCore: boolean;
   cx: number;
   cy: number;
   s: number;

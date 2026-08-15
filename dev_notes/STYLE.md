@@ -7,6 +7,47 @@ code); this file covers "how things currently look" -- sizes, colors, shapes. Ed
 as choices change; when a new decision replaces an old one, remove the old entry rather
 than appending a changelog, so this always reflects current reality.
 
+## The cost rule
+
+**Speed beats spectacle. Every visual must stay affordable to simulate, and an
+effect that is not affordable does not ship.** This outranks how good an effect
+looks: a frame the game renders quickly is worth more than one that impresses,
+and there is no visual in this game important enough to be paid for in frame
+time.
+
+**Lag during gameplay is not acceptable.** This is a requirement, not a
+preference, and it is not tradeable against any visual. The game must hold a
+steady frame while the player is *playing* — walking the overworld, taking a
+turn in battle, opening a panel. A hitch is as disqualifying as a low average:
+one long frame when a scene loads, a world regenerates, or an effect first fires
+is a defect, not a cost of doing business, because it lands exactly where the
+player is acting.
+
+Judge it where it is felt. A static frame that renders quickly proves nothing —
+measure while walking, mid-battle, and across a scene transition, since that is
+where the work actually happens. Per-step and per-frame code paths are the ones
+to watch: anything that runs on every player step is on the critical path for
+lag even though it is not, strictly, rendering.
+
+What this means in practice:
+
+- **Measure, don't estimate.** An effect's cost is a number obtained by timing
+  frames with and without it on the same seed, not a judgement that it "should
+  be cheap". Claims about performance without a measurement are not claims.
+- **Draw distance is not optional.** Anything drawn per tile rides the existing
+  falloff (`AccentTile`'s `depth`, `haze` and `detail`) and stops being drawn
+  before the horizon. The overworld trees are the precedent: their falloff
+  exists because drawing them all the way out was not affordable.
+- **Prefer the cheap suggestion to the real simulation.** Suggest a reflection
+  with a few soft shapes rather than mirroring a scene; suggest depth with
+  shading rather than geometry. The engine draws flat ground for the same
+  reason.
+- **Per-frame work is the budget; build-once work is nearly free.** An effect
+  computed once when a scene or panel is built costs almost nothing; the same
+  effect recomputed every frame is what ends up being cut.
+- **When an effect cannot be made affordable, cut it and say so.** Shipping a
+  cost quietly is the failure mode this rule exists to prevent.
+
 ## Title screen (`scenes/TitleScene.ts`)
 
 - Dark indigo gradient (`0x0c1030` → `0x241a44`), no biome/perspective machinery involved --
@@ -337,14 +378,14 @@ than appending a changelog, so this always reflects current reality.
 - Off-path tiles read as unambiguously "you cannot walk here." The **ground plane itself is
   always flat** -- impassable ground lies in the same plane as the walkable floor, and is told
   apart by color and by the boundary treatment below, never by the terrain rising into a
-  wall. What a material may do is stand *objects* on that flat ground: the Mean Fields' and
-  Splitting Hollow's trees, the Stone Lattice's columns, the Iron Steppe's shards. Those are
+  wall. What a material may do is stand *objects* on that flat ground: the Mean Fields' trees,
+  the Stone Lattice's columns, the Iron Steppe's shards, the Screened Swamp's reeds. Those are
   sprites on a tile, the same as a guardian or a door, not extruded terrain -- there is no
   height field, no occlusion pass and no elevation anywhere in the collision grid. They get
   their occlusion free, because the terrain sweep paints far-to-near and anything drawn upward
   from its own tile covers the rows beyond it. A world whose surround is a *place* rather than
-  a surface needs this: a canopy that never leaves the floor is not a wood, and the 1 to 8 tree
-  rhyme depends on the trees being recognisable as trees. `terrain/paint.ts`'s `drawOffPathTile`
+  a surface needs this: a canopy that never leaves the floor is not a wood, and reeds that never
+  leave the water are not reeds. `terrain/paint.ts`'s `drawOffPathTile`
   paints the tile in that biome's own `ground` color (hazed for depth, tinted toward a
   `regionColor` domain where the tile belongs to one) and then lays on the accent the terrain
   kind resolved from that tile's own biome's `wallTheme` calls for (`art/biomes.ts`, resolved
@@ -390,10 +431,17 @@ than appending a changelog, so this always reflects current reality.
     flipping across a domain wall that drifts, so shards reverse while the player watches.
     Their lit edge is aurora green -- the only light this world has, and emitted rather than
     received.
-  - **'fog'** (the Splitting Hollow, world 8): World 1's tree sprites dead, grey and forked at
-    the trunk, under a fog wash that is the actual hazard and thickens over the impassable
-    until the wood inside it is barely there. A rare fragment of the player's own crystal sits
-    among them.
+  - **'bog'** (the Screened Swamp, world 8): near-black open water under a mist wash that is
+    the actual hazard and gathers with distance until the pool is barely readable as a surface,
+    with clumps of dark reed stalks standing out of it. A lone bright point burning in the water
+    is a local moment, ringed by small cool counter-lights that draw inward and brighten as the
+    screening cloud closes -- wide and faint with the moment still burning near the world's
+    entrance, shut tight with the point out deeper in, driven off the tile's own grid row. The
+    generator marks the middle of each pool the bank parts around as a feature core, so a moment
+    is always burning inside a split. An occasional pool wavers with the player's own crystal
+    colour. Everything in this surround is a line, a small circle or a short ellipse and nothing
+    is a sprite, which is what keeps the world cheaper to draw than a wood at the same tile
+    count (the cost rule at the top of this file).
   - **'lava'** (the Defect Scars, world 9): a glowing molten crust -- a warm overlay, a bright
     fissure and a hot core, animating off the scene clock. The overlay's pulse phase varies by
     only a fraction of a radian between neighboring tiles, so the glow drifts across the crust
@@ -410,7 +458,8 @@ than appending a changelog, so this always reflects current reality.
   the whole walkable/impassable read on their own, since nothing else in the scene marks it:
   telling at a glance where the player may walk is a gameplay requirement, not a matter of
   taste. Hue alone is enough where it is unambiguous (world 1's tan trail through green
-  meadow); the dark, hazy biomes lean on value instead (world 8's fog, world 9's scorched
+  meadow); the dark, hazy biomes lean on value instead (world 8's peat bank held far lighter
+  than its near-black water, world 9's scorched
   clay route held several times lighter than the molten crust and its deliberately dim glow).
 - **Smoothed ground.** Every world's ground plane is drawn this way. The rule above is about a
   tile's *interior*, and this treatment leaves it intact -- every fill is still one flat color.
@@ -524,7 +573,7 @@ than appending a changelog, so this always reflects current reality.
   corner. The counter's column is reserved as a right-side gutter, sized once from the widest
   qumatessence string this text style could ever show rather than measured live off the
   current value, and the world name's word-wrap width is narrowed to stop short of that
-  gutter -- a long name (e.g. world 8's "The Splitting Hollow") or a large text-size
+  gutter -- a long name (e.g. world 10's "The Devouring Mirror") or a large text-size
   setting wraps down onto a second line instead of running wide enough to collide with the
   counter. The bottom-right corner carries one small always-on hint, "Press Enter to go to the
   Lab" (muted blue-grey `#8fa0c9` on translucent black, matching the Settings station's hint-line
@@ -613,7 +662,7 @@ rather than free style choices:
 | 5 | The Vortex Glacier | overcast twilight (`0x3c4a56`→`0x6e808c`) | frozen lake `0x54707e` | swept ice `0xa8c8d4` | flow lines (every tile) | no | **ice** |
 | 6 | The Iron Steppe | night (`0x050a14`→`0x0d1622`) under a green aurora | near-black `0x121517` | iron sand `0x3a3f40` | ripples | no | **shards** |
 | 7 | The Entangled Web | none -- black (`0x000000`) | true void `0x000000` | white-gold filament `0xefdaa4` | lanes and rungs (every tile) | no | rock (black, no accent) |
-| 8 | The Splitting Hollow | fog-lit only (`0x39423c`→`0x59635a`) | near-black `0x1b211c` | grey-green floor `0x5d6a5c` | mist motes | no | **fog** |
+| 8 | The Screened Swamp | dark above, pale mist at the horizon (`0x1c231e`→`0x616d60`) | near-black water `0x121815` | peat bank `0x625f50` | mist motes | no | **bog** |
 | 9 | The Defect Scars | scorched red-black (`0x1a0808`→`0x3a1414`) | charred `0x2a0e0a` | scorched clay `0x9c6a52` | cracks | no | **lava** |
 | 10 | The Devouring Mirror | silver-violet shimmer (`0x2a1a3a`→`0x6a4a8a`) | reconfiguring `0x2e2044` | dissolving silver `0xd8c8ee` | dissolve (every tile) | no | **consuming** |
 
@@ -691,8 +740,10 @@ uniform sampling would need hundreds to stop chamfering it. No crest may exceed 
 is what the mist band's full-strength stretch is sized to clear.
 
 A world may also carry a **sky extra** on the same entry, for a distant self a filled outline
-cannot state -- the Storm Flats' arc-flashes and the Entangled Web's filament glints, the latter
-being that world's entire distant self at swallow zero. Distinct from an **overhead motif**
+cannot state -- the Storm Flats' arc-flashes, and, as entire distant selves at swallow zero, the
+Entangled Web's filament glints and the Screened Swamp's flat band of mist-lit standing water with
+dark reed clumps in it. A drowned silhouette carries one value; the swamp needs two, its band
+lighter than the air and its reeds darker, so neither half can be that fill. Distinct from an **overhead motif**
 (`OVERHEAD_SKIES`), which is read from the world the player is *standing in* rather than from its
 neighbour: the Iron Steppe's aurora. The Storm Flats' own storm is not in that table, because it
 is not a sky motif -- it is an event that lands, drawn with the terrain it strikes ("Struck
@@ -1774,7 +1825,12 @@ world are shaped, since world N's start is world N-1's exit.
     just their top edge (`blend(color, white, 0.38)` at 0.32 alpha) as directional skylight.
     The layers borrow the biome's `hillColor` as a per-world ridge tone but set their own
     alphas: `hillAlpha` is the overworld's swallow knob ("The horizon" above) and means nothing
-    in a near view, where a world whose distant horizon is swallowed still has a skyline.
+    in a near view, where a world whose distant horizon is swallowed still has a skyline. **So
+    `hillColor` is budgeted twice**, and a value picked only to survive the overworld's drowning
+    lands here undrowned: a near-white base gives near-white ridges over a dark arena floor and
+    pushes the backdrop's local contrast up into the range the HP bars need. Where the two
+    budgets pull apart, the arena wins and the overworld's horizon is drawn as a sky extra
+    instead (the Screened Swamp).
   - **Ground**: a vertical gradient from a fog-blended far edge to a darkened near edge,
     with a translucent mist band pooling just below the horizon.
   - **Color grade**: one zone-level translucent tint keyed off what the ground around the

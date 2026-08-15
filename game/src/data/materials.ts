@@ -1638,7 +1638,7 @@ export const WORLD_NAMES: Partial<Record<number, string>> = {
   5: 'The Vortex Glacier',
   6: 'The Iron Steppe',
   7: 'The Entangled Web',
-  8: 'The Splitting Hollow',
+  8: 'The Screened Swamp',
   9: 'The Defect Scars',
   10: 'The Devouring Mirror',
 };

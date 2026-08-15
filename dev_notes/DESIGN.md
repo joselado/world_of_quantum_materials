@@ -26,6 +26,11 @@ One world per course topic (see the topic table in the repo's top-level `CLAUDE.
 Each world's name, terrain, palette, light and story are `WORLDS.md`'s; this table
 owns the topic mapping, the wild pools and the progression gates.
 
+**The maps are under active revision.** The map shapes below are being fine-tuned
+and are open for change rather than fixed; `WORLDS.md`'s header carries the same
+note for the terrain and palette side. The topic mapping, the wild pools and the
+progression gates are not part of that revision and still hold.
+
 | World | Course topic | In-game name (`WORLD_NAMES`) | Wild material archetypes | Gate to next world |
 |---|---|---|---|---|
 | 0 (Hub) | — | "The Lab" — guardian's house, Qumatex | — | Start world 1 |
@@ -36,7 +41,7 @@ owns the topic mapping, the wild pools and the progression gates.
 | 5 | Superconductivity, Nambu, Majorana | **The Vortex Glacier** | s-wave SC, triplet SC | Pair two Majorana halves |
 | 6 | Classical magnetism, magnons | **The Iron Steppe** | Ferro/antiferromagnets, magnon wave-riders, a multiferroic | Ride a magnon wave across a canyon |
 | 7 | Entanglement, tensor networks | **The Entangled Web** | Entangled pairs (fought as a bonded duo) | Compress a tangled area into a walkable MPS path |
-| 8 | Quantum magnetism, spinons, Kondo | **The Splitting Hollow** | Spin liquids, Kondo-screened critters, a genuine Kondo-lattice heavy-fermion compound | Screen a "local moment" boss mechanic |
+| 8 | Quantum magnetism, spinons, Kondo | **The Screened Swamp** | Spin liquids, Kondo-screened critters, a genuine Kondo-lattice heavy-fermion compound | Screen a "local moment" boss mechanic |
 | 9 | Excitations and defects | **The Defect Scars** | Defect-bound states, impurity resonances, a couple of ferroelectrics with no course topic of their own, plus every non-hybrid material from worlds 1-8 | Repair/exploit N defects to stabilize a bridge |
 | 10 | ML for quantum materials | **The Devouring Mirror** | Every hybrid-recipe crystal, and only hybrid-recipe crystals, plus the final boss, which transmutes live in battle to mirror the player | Final battle |
 
@@ -53,7 +58,7 @@ generated fresh every visit by `game/src/world/generators/world<N>.ts` (dispatch
 | 5 | The main corridor spirals briefly around one or two fixed, permanently-blocked vortex-core points before straightening back out |
 | 6 | A mostly steady-width corridor whose width periodically bulges wider and narrows back -- a train of propagating wave packets along its length |
 | 7 | 3-4 parallel lanes (a tensor network's own sites/legs) linked by periodic cross-link rungs (bonds) -- a real ladder, not one path with spurs |
-| 8 | The corridor occasionally splits into two thin parallel paths for a stretch (fractionalization) before recombining, possibly more than once |
+| 8 | A peat bank threading between pools of open water, which occasionally parts into two thin parallel banks for a stretch (fractionalization) before rejoining, possibly more than once; the middle of each pool it parts around is returned as a feature core, where the surround burns a local moment |
 | 9 | An ordinary wide corridor with several small patches embedded along it, each patch independently rendered using one of worlds 1-8's own biome look (a borrowed defect "type") |
 | 10 | Reuses whichever of worlds 1-8's own generator matches the player's *current* material's main type (e.g. a superconductor-type player gets world 5's spiral); a player whose type doesn't resolve to one of the eight falls back to a fresh random pick among all eight every visit |
 
@@ -1596,7 +1601,8 @@ Three deliberate exceptions to a smooth ramp, all of them the story's:
 breaks rather than darkens** (the light rule's discontinuity is a
 discontinuity in the arrangement, not another step down), and **World 8 is
 the only world that quotes another** — a quote earns its place there because
-it is the only world built out of an earlier world's material.
+World 8 is where the arc's loss beat lands (`WORLDS.md` §5), and a melody
+coming back wrong is the cheapest way to make a loss audible.
 
 **The battle scores stay outside the arc**: bright, fast and driving in every
 world, because a fight is the player's own coherence pushing back against a
