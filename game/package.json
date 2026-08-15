@@ -14,6 +14,7 @@
     "art-sweep": "node scripts/art-sweep.mjs",
     "music-arc-check": "node scripts/music-arc-check.mjs",
     "greyscale-check": "node scripts/greyscale-check.mjs",
+    "perf-check": "node scripts/perf-check.mjs",
     "component-check": "node scripts/component-check.mjs",
     "playthrough-check": "node scripts/playthrough-check.mjs"
   },

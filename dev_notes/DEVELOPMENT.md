@@ -483,6 +483,43 @@ analyser taps the master bus ahead of the output compressor, so the figures
 are pre-compression; they are meaningful compared against each other, not as
 absolute loudness.
 
+## Checking graphics performance
+
+**`npm run perf-check`** (`scripts/perf-check.mjs`, ~16 seconds) is the gate on
+`STYLE.md`'s cost rule. It is fast enough to sit beside `content-lint` as a
+pre-push check rather than inside `component-check`.
+
+It asserts on **work, not time**. Headless Chrome throttles
+`requestAnimationFrame` and rasterizes in software, so frame deltas measured
+there come back around 100ms whatever the game is doing — an absolute
+frame-time gate would be flaky and meaningless. Draw-call counts, live object
+counts and tween counts are the same on every machine and catch what actually
+causes lag: an effect that draws per tile with no falloff, or a panel that
+leaks an endless tween per rebuild.
+
+Three checks:
+
+- **Draw budget** — Graphics draw calls and live objects for one overworld
+  paint pass, per world, against a per-world ceiling in `BUDGETS`. A new motif
+  drawn without a draw-distance falloff blows straight through it.
+- **Tween leaks** — cycling panels must return the tween count to baseline.
+  Phaser's `destroy()` does not touch tweens, which is why
+  `art/crystals.ts`'s `killTweensDeep` exists; a leak here is a slow-building
+  lag source no single-frame test would see.
+- **Relative cost** — each world's paint pass timed against the median of all
+  ten *in the same run*, so the ratio is immune to machine speed. A warning,
+  not a failure: it answers "is this world unusually heavy for this game?"
+
+`BUDGETS` is set from measured counts with headroom, because a map is generated
+fresh on every visit and a world's count moves a few percent between runs.
+Raising an entry is a deliberate act — if a world genuinely needs to draw more,
+raise its ceiling and say why, rather than nudging numbers until the suite is
+quiet.
+
+It does not tell you the game feels smooth on your machine, only that nothing
+has started doing dramatically more work than it used to. Your own eyes remain
+the final check.
+
 ## Checking arena legibility
 
 **`npm run greyscale-check`** (`scripts/greyscale-check.mjs`, ~2.5 minutes)
