@@ -1,16 +1,22 @@
 # World of Quantum Materials
 
-A browser-based RPG with overworld exploration and turn-based battles, built
-to teach the concepts from Aalto University's *Advanced Quantum Materials*
-course a different way. Ten worlds, one per course topic -- walk around, get
-ambushed by real compounds, answer a physics question mid-fight, and battle
-your way to mastering every phase of matter.
+**You are a quantum material.** A browser-based role-playing game that teaches
+Aalto University's [*Advanced Quantum
+Materials*](https://github.com/joselado/Advanced_Quantum_Materials_2025) course
+from the inside: you start as Silicon, walk ten worlds (one per course topic),
+and battle the real compounds that ambush you, using only the quasiparticles
+your own lattice can host. Every move is a genuine excitation (magnons,
+phonons, spinons, Majorana modes), and it lands at **double damage** on a
+material whose physics cannot host it, so winning means knowing which phase you
+are facing. Meanwhile a "Decoherence" is stripping the worlds of their
+protected properties, and you are the one walking each phase of matter back
+into shape.
 
 ![Title screen](screenshots/title.png)
 
 ## Play it
 
-**In your browser** -- nothing to install:
+**In your browser**, nothing to install:
 
 **https://joselado.github.io/world_of_quantum_materials/**
 
@@ -22,9 +28,9 @@ open it.
 **Offline, as a single file.** Download
 [`game.html`](https://joselado.github.io/world_of_quantum_materials/game.html)
 (right-click the link, "Save Link As...") and open it by double-clicking it.
-The whole game is inside that one file -- every sprite and every note is drawn
-and played by code rather than loaded from anywhere -- so once it is on your
-machine it never touches the network again.
+The whole game is inside that one file, because every sprite and every note is
+drawn and played by code rather than loaded from anywhere, so once it is on
+your machine it never touches the network again.
 
 **From the source**, if you want to read or change the game. Install
 [Node.js](https://nodejs.org) 18+, then from the repo root:
@@ -37,7 +43,7 @@ That installs what it needs on first run and opens the game. Same command on
 Windows, macOS and Linux.
 
 Your progress is saved in the browser you play in (or, for `game.html`, in the
-browser you open it with) -- so it stays on that machine, and clearing your
+browser you open it with), so it stays on that machine, and clearing your
 browsing data clears it. There are no accounts and nothing is sent anywhere.
 
 Build instructions, the project's file layout, and design/contribution notes
@@ -45,43 +51,30 @@ are in `dev_notes/DEVELOPMENT.md`.
 
 ## The premise
 
-**You are a crystal yourself** -- the same kind of material the wild
-encounters are drawn from, starting out as Silicon. A "Decoherence" is spreading through the quantum material worlds, causing
-them to lose their protected properties, and you're the one walking through
-each phase of matter to stabilize it again.
+**You are a quantum material yourself**, the same kind of matter the wild
+encounters are drawn from, starting out as Silicon. A "Decoherence" is
+spreading through these worlds, causing them to lose their protected
+properties, and you're the one walking through each phase of matter to
+stabilize it again.
 
 ## How it plays
 
-**Explore.** Each world is a walkable path rendered in an
-over-the-shoulder pseudo-3D view, the world redrawn from a smoothly moving
-camera as you walk: Up/Down walk forward and back, Left/Right step
-sideways. Every world's own layout echoes its own physics, not just its
-scenery -- a corridor that splits into two colored branches and remerges in
-the mean-field world, a network of colored domains you trace the boundary
-of in the topological world, a corridor that spirals around a frozen vortex
-in the superconductivity world, a real ladder of linked lanes in the
-entanglement world, and so on -- so reaching the far end takes actually
-reading that world's own shape, not just holding one direction. Every world
-narrows into a pass at its far end and opens out of the same pass at its
-start, so leaving one world and arriving in the next is one piece of
-geography seen twice. A handful of qumatessence (the in-game currency)
-pickups are tucked along the way, often at a dead end worth the detour --
-though never inside a pass, which stays clear. A world you have picked clean
-refills as you walk it: crystals drift back in and qumatessence condenses
-again as soon as the ground is behind you, always out of sight -- somewhere up the path ahead of you, or back down the
-stretch you already walked -- so nothing ever pops into view. A world never
-carries more crystals or pickups at once than it laid out to begin with, but
-it keeps giving back for as long as you walk it, so pacing between the two
-ends of the same corridor keeps paying.
+**Explore.** Each world is a walkable path rendered in an over-the-shoulder
+pseudo-3D view, the world redrawn from a smoothly moving camera as you walk.
+Every world's layout echoes its own physics, not just its scenery: a corridor
+that splits into two colored branches and remerges in the mean-field world, a
+network of colored domains you trace the boundary of in the topological world,
+a spiral around a frozen vortex in the superconductivity world, a real ladder
+of linked lanes in the entanglement world. Reaching the far end means reading
+that shape, not just holding one direction. Pickups of qumatessence (the
+in-game currency) are tucked along the way, often at a dead end worth the
+detour, and a world you have picked clean quietly refills as you walk it,
+always out of sight.
 
-The ten worlds are one road, and the light dies along it: morning, midday,
-afternoon, storm, twilight, night, and then no sky at all, after which every
-world lights itself. Stepping off the path never means the same thing twice
-either, and it gets worse as you go -- summer forest, then a colonnade, then
-a drop onto dead ground, ground the storm strikes, ice and vortex pits, leaning iron
-shards, nothing at all, black water that closes over you, molten crust, and finally
-terrain that reconfigures around whatever crystal you currently are. From
-each world's far end you can see the next one on the horizon.
+The ten worlds are one road, and the light dies along it, from morning through
+storm and night to no sky at all, after which every world lights itself.
+Stepping off the path is never safe, and what it costs you gets worse with
+every world. From each world's far end you can see the next one on the horizon.
 
 <table>
 <tr>
@@ -95,16 +88,14 @@ each world's far end you can see the next one on the horizon.
 </table>
 
 **Get ambushed.** Bump into a wild crystal and it starts a conversation, not
-just a fight. Most ask a short physics question pulled straight from the
-course material -- answer correctly and you go into battle with a power
-boost, answer wrong and you're weakened, or just say "let me pass" and walk
-on with no consequence either way. Every compound has its own look, too --
-it is drawn in the crystal habit its real lattice grows in, so a cubic
-compound is a blocky cube, a trigonal one a leaning rhomb, a hexagonal one a
-six-sided column, and a monolayer a thin sheet floating over its own shadow.
-On top of that each compound gets its own tilt, proportions, and tint, so a
-wild Chromium reads as its own crystal standing next to the Nickel Oxide
-beside it.
+just a fight. Most ask a short physics question pulled straight from the course
+material: answer correctly and you go into battle with a power boost, answer
+wrong and you're weakened, or just say "let me pass" and walk on with no
+consequence either way. Every compound has its own look too, drawn in the
+crystal habit its real lattice grows in (a cubic compound is a blocky cube, a
+monolayer a thin sheet floating over its own shadow), with its own tilt,
+proportions and tint, so a wild Chromium reads as its own crystal standing next
+to the Nickel Oxide beside it.
 
 <table>
 <tr>
@@ -117,12 +108,11 @@ beside it.
 </tr>
 </table>
 
-**Battle.** Turn-based, speed-ordered by your crystal's Momentum stat -- and
-the faster side doesn't just go first, it swings more than once a round if
-it's fast enough. Every move is a real quasiparticle, and every material can
-only ever learn the
-moves its actual physics supports -- a plain band insulator never gets a
-magnon move, since it has no magnetic order to carry one. If a defender's
+**Battle.** Turn-based, speed-ordered by your crystal's Momentum stat, and the
+faster side doesn't just go first, it swings more than once a round if it's
+fast enough. Every move is a real quasiparticle, and every material can only
+ever learn the moves its actual physics supports: a plain band insulator never
+gets a magnon move, since it has no magnetic order to carry one. If a defender's
 own physics can't host your move's quasiparticle at all, it lands at
 **double damage**, the one type-interaction rule in battle. See
 [Quasiparticles & moves](docs/quasiparticles.md) for the full move list and
@@ -139,16 +129,13 @@ which crystal types can use each one.
 </tr>
 </table>
 
-**Grow.** Winning battles and grabbing qumatessence pickups funds the guardians
-waiting partway through each world -- ten of them in all, each teaching a
+**Grow.** Winning battles and grabbing qumatessence pickups funds the
+guardians waiting partway through each world, ten in all, each teaching a
 different way of bending the game's usual rules: new moves and stats,
 teleportation, transmuting into a crystal you've defeated, always-on passive
 abilities, fusing two crystals into a hybrid, quiz-gated power moves, and a
-capstone quiz-gated ultimate move. Every guardian you've met then stands in
-the Lab, and clicking them there reopens their panel on the spot, and your
-current passive loadout is always checkable from its
-Abilities station too (appears once you've learned your first passive). See
-[Guardians](docs/guardians.md) for what each one does.
+capstone quiz-gated ultimate move. Every guardian you've met then stands in the
+Lab, one click away. See [Guardians](docs/guardians.md) for what each one does.
 
 <table>
 <tr>
@@ -172,37 +159,31 @@ Abilities station too (appears once you've learned your first passive). See
 </tr>
 </table>
 
-**Face the boss.** Every world narrows into a pass at its far end, and you'll
-see what is standing in it long before you get there: a gigantic golem, built
-from many crystal shards fused into one mass, its grain boundaries glowing
-where they meet and a heavy shadow pooled under its feet, filling the gap so
-completely that nothing of the next world shows past it -- and it keeps that
-same imposing look once the fight starts. Through World 9 its name is always a
-real compound in *polycrystalline* form (many grains fused into one, the same
-idea the golem's own body literalizes) -- Polycrystalline Silicon Golem guards
-World 1, for instance; World 10's rival, The Adapted, is the one that breaks
-the pattern. Walking up to it does nothing on its own: step to the mouth of
-the pass and press Space to challenge it. Beat it and the pass clears -- the
-next world's colours show through the gap, a board in the pass names it, and
-that world's ground bleeds back across the last few tiles as a seam you step
-over. Press Space again to cross.
+**Face the boss.** Every world narrows into a pass at its far end, and you
+will see what stands in it long before you get there: a gigantic golem, built
+from many crystal shards fused into one mass, filling the gap so completely
+that nothing of the next world shows past it. Through World 9 its name is
+always a real compound in *polycrystalline* form (many grains fused into one,
+the same idea the golem's own body literalizes); World 10's rival, The Adapted,
+is the one that breaks the pattern. Step to the mouth of the pass and press
+Space to challenge it. Beat it and the pass clears: the next world's colours
+show through the gap, a board names it, and pressing Space again crosses over.
 
-**Walk back anytime.** The near end of every world -- right where you first
-walked in -- is a pass too, with its own board and nobody guarding it, leading
+**Walk back anytime.** The near end of every world, right where you first
+walked in, is a pass too, with its own board and nobody guarding it, leading
 back to the world before it (or the Lab, from World 1). Walk up and press,
 no menu required; you'll land back in that earlier world right at its own far
 end, ready to walk forward through it again whenever you like.
 
-**Return to the Lab.** World 0 is a static hub room, each of its jobs its
-own physical station: Qumatex, a filterable index of every crystal in the
-game listed by name alongside a note on the real physics behind it -- each
-with a "???" placeholder name and silhouette for anything you haven't found
-yet; a door back out to the furthest world you've reached; and stations
-to check your moves, your stats, replay the tutorial, re-read the story so
-far, and adjust settings.
-Every guardian you've met stands in the room itself -- click one to reopen
-their panel without leaving. Your progress autosaves as you play, so there's
-no separate save button anywhere.
+**Return to the Lab.** World 0 is a static hub room, each of its jobs its own
+physical station: Qumatex, a filterable index of every crystal in the game
+listed by name alongside a note on the real physics behind it, each with a
+"???" placeholder name and silhouette for anything you haven't found yet; a
+door back out to the furthest world you've reached; and stations to check your
+moves, your stats, replay the tutorial, re-read the story so far, and adjust
+settings. Every guardian you've met stands in the room itself, so you can click
+one to reopen their panel without leaving. Your progress autosaves as you play,
+so there's no separate save button anywhere.
 
 <table>
 <tr>
@@ -213,7 +194,7 @@ no separate save button anywhere.
 
 ## The ten worlds
 
-One world per course topic -- each with its own biome, wild-material
+One world per course topic, each with its own biome, wild-material
 archetypes, and a rival crystal gating the way to the next world.
 
 | # | World | Course topic |
@@ -230,7 +211,7 @@ archetypes, and a rival crystal gating the way to the next world.
 | 10 | The Devouring Mirror | Machine learning for quantum materials |
 
 World 10's wilds are every hybrid crystal fusable at Majorana's station (see
-[Hybrids](docs/hybrids.md)) — real compounds in their own right, just ones
+[Hybrids](docs/hybrids.md)), real compounds in their own right, just ones
 reached by fusing two parents rather than found unmixed anywhere else. Its
 rival, The Adapted, is a final boss built as "a model of you": it starts the
 fight mirroring whichever type you're currently wearing, then reshapes
@@ -239,7 +220,7 @@ that hosts whatever quasiparticle class you just attacked with. See
 [Crystals](docs/crystals.md) for every world's full wild-material list.
 
 Each world has its own history, its own way the Decoherence comes for it,
-and its own rival standing in the way — and the ten of them tell one story.
+and its own rival standing in the way, and the ten of them tell one story.
 [The story](docs/storyline.md) is that story, world by world, from the
 premise to the ending. **It spoils everything**, including who the final
 enemy turns out to be, so it's for a second playthrough or for a player who
@@ -247,27 +228,24 @@ wants their bearings more than the surprise.
 
 ## Battle basics
 
-Turn order is speed-ordered by your crystal's Momentum stat: the faster side
-swings first, and swings again -- up to 5 times a round -- the more its
-Momentum outpaces the other side's, while the slower side always still gets
-its own hit. Energy raises your crit ("coherent hit") chance,
-Lifetime raises your defense -- every stat runs from 1 up to a cap of 100,
-raised one point at a time at Noether's shop.
-Every crystal carries HP, fully healed after each battle -- qumatessence, not
-HP attrition, are what's actually on the line from one fight to the next.
-The move menu shows one kind of move at a time (ordinary attacks, quiz-gated
-moves, or status-inflicting moves) rather than one flat list, with ◀/▶
-arrows (or the Left/Right keys) to page between kinds when you have more
-than one.
+Turn order runs on Momentum: the faster side swings first, and swings again
+(up to 5 times a round) the more its Momentum outpaces the other side's, while
+the slower side always still gets its own hit. Energy raises your crit
+("coherent hit") chance and Lifetime raises your defense; every stat runs from
+1 to a cap of 100, raised one point at a time at Noether's shop. HP is fully
+healed after each battle, so qumatessence, not HP attrition, is what is
+actually on the line from one fight to the next. The move menu shows one kind
+of move at a time (ordinary attacks, quiz-gated moves, or status-inflicting
+moves), with the Left/Right keys or the on-screen arrows to page between kinds.
 
-For the full mechanics -- every move and which crystals can use it, hybrid
-materials, and what each guardian teaches -- see:
+For the full mechanics, meaning every move and which crystals can use it,
+hybrid materials, and what each guardian teaches, see:
 
 - [Quasiparticles & moves](docs/quasiparticles.md)
 - [Crystals](docs/crystals.md)
 - [Hybrid materials](docs/hybrids.md)
 - [Guardians](docs/guardians.md)
-- [The story](docs/storyline.md) -- spoils the whole plot, including the ending
+- [The story](docs/storyline.md): spoils the whole plot, including the ending
 
 All of it is also collected in **[the player's guide](guide.pdf)**, a single
 printable document: this page, the story, and every reference table in one
@@ -275,40 +253,47 @@ place.
 
 ## Controls
 
+Play uses both: the mouse chooses, the keyboard walks.
+
+**With the mouse.** Everything on screen that offers something is clickable:
+the Lab's stations and the guardians standing in the room, every panel button,
+the prompt that appears at a pass, the answers to a wild crystal's question,
+your moves in battle, and the arrows that page between kinds of move.
+
+**With the keyboard.**
+
 | Key | Action |
 |---|---|
-| Arrow keys | Move (Up/Down forward-back, Left/Right sideways) |
+| Arrow keys | Walk (Up/Down forward and back, Left/Right sideways) |
+| Space | Take whatever is offered where you stand: greet a wild crystal, challenge a rival, cross a pass, carry on after a battle |
 | Enter or H | Return to the Lab (World 0) |
 | Enter, while in the Lab | Head back out to whichever world you're in the middle of (once you've entered one) |
-| M | Mute/unmute music |
+| Left / Right, in battle | Page between kinds of move |
+| M | Mute or unmute the music |
 
-The Lab is where you check your moves and stats, replay the tutorial, re-read
-the story, and adjust settings -- each is its own station in the room. The
-**Story** station collects the whole Decoherence arc in the order you meet it:
-the premise, each world's history and how the Decoherence attacks it, the
-golem holding its pass, and the ending. A chapter you haven't reached yet
-still holds its place in the list as "???", so you can see how much road is
-left without being told what's on it. Every guardian you've
-met stands in the room itself, so revisiting one is a single click on them
-rather than a station of its own. The Abilities station only shows up once
-you've actually learned a passive to check.
+Walking is the one thing the mouse can't do, and picking a move in battle or
+opening a station in the Lab is the one thing the keyboard can't do.
+
+The Lab is where everything else lives: your moves and stats, tutorial replays,
+the story so far, and settings, each its own station in the room (see "Return
+to the Lab" above).
 
 ## Settings
 
 In the Lab, click the **Settings** station to adjust:
 
-- **Enemy Density** -- Low, Normal, High, or Very High, if wild crystals feel
+- **Enemy Density**: Low, Normal, High, or Very High, if wild crystals feel
   too sparse (or too frequent) along the path. Sets how many crystals a world
   holds at once, so it also governs how many drift back in after you have
   fought them. Takes effect the next time you enter or re-enter a world.
-- **Text Size** -- Compact, Normal, or Large. Applies immediately to every
+- **Text Size**: Compact, Normal, or Large. Applies immediately to every
   menu and dialogue in the game.
-- **Music Style** -- Classic or Modern, two different arrangements of every
+- **Music Style**: Classic or Modern, two different arrangements of every
   world's soundtrack. Applies immediately.
-- **Difficulty** -- B.Sc., M.Sc., or Ph.D., how hard every world's opponents
+- **Difficulty**: B.Sc., M.Sc., or Ph.D., how hard every world's opponents
   hit. Unlike the settings above, meant to be changed mid-playthrough, not
-  just once -- it applies to your very next battle.
-- **World Size** -- Nano, Meso, or Macro. Every world keeps its own shape and
+  just once, and it applies to your very next battle.
+- **World Size**: Nano, Meso, or Macro. Every world keeps its own shape and
   changes how big it is: Macro corridors run three times as wide and three
   times as far, Nano ones are a brisk run through the same place. Crystals and
   qumatessence are spread through it at the same rate either way, so a bigger
@@ -319,21 +304,12 @@ In the Lab, click the **Settings** station to adjust:
 
 ## Tutorial
 
-Short tips appear one at a time, right as each feature comes up for the
-first time -- entering the Lab, taking your first steps, your first wild
-encounter, your first battle, your first qumatessence, your first guardian,
-reaching your first goal. In the Lab, click **Tutorial** to reread any of
-them, alongside a topic for every guardian's own ability (teleportation,
-transmutation, Analytic moves, hybrid fusion, host doping, move leveling,
-status effects, passives, Ultimate moves), the Settings station, and Story
-Mode vs. Superposition Mode. Pick any topic on the left to read it on the
-right.
-
-In Story Mode the list holds whatever you have found so far, in the order
-you find it: a tip appears once it has been shown to you, and a guardian's
-topic once you have met that guardian, so the page fills in as you play.
-Superposition Mode lists every topic from the start, like everything else in
-that mode.
+Short tips appear one at a time, right as each feature first comes up:
+entering the Lab, your first steps, your first encounter, your first battle,
+your first guardian. In the Lab, click **Tutorial** to reread any of them,
+alongside a topic for every guardian's ability, the Settings station, and Story
+Mode vs. Superposition Mode. In Story Mode the list fills in as you play; in
+Superposition Mode every topic is listed from the start.
 
 ![A tutorial tip introducing the guardians](screenshots/tutorial-tip.png)
 
@@ -341,24 +317,21 @@ that mode.
 
 Before you start, the title screen asks you to pick a mode:
 
-- **Story Mode** is the normal playthrough -- start at World 1, defeat each
+- **Story Mode** is the normal playthrough: start at World 1, defeat each
   world's rival to open the next one, meet each guardian in turn.
-- **Superposition Mode** is for exploring/testing without grinding: every
-  guardian is already met and everything they teach is unlocked from the
-  moment you start -- even from the Lab, before you've stepped into any
-  world. Every time you enter a world your stats, moves, and HP are
-  automatically brought up to a level competitive with that world's
-  opponents, Bloch's teleport hub (see above) offers every world immediately,
-  and Dresselhaus/Majorana/Anderson offer every crystal in the game rather
-  than only ones you've actually defeated. Kondo's active self-buff,
-  Franklin's active passive, Anderson's doped-in impurity, and your own
-  starting crystal (or hybrid, courtesy of Dresselhaus/Majorana) each start
-  on a randomly chosen pick rather than a fixed default, so a fresh
-  Superposition save rarely looks the same twice.
+- **Superposition Mode** is for players who want the whole game open from the
+  first minute, with no story to work through first. Every guardian is already
+  met and everything they teach is unlocked from the moment you start. Your
+  stats, moves and HP are automatically brought up to each world's level,
+  Bloch's teleport hub offers every world immediately, and Dresselhaus,
+  Majorana and Anderson offer every crystal in the game. Several starting picks
+  are randomized, so a fresh Superposition save rarely looks the same twice.
 
 ![Title screen's Story Mode / Superposition Mode picker](screenshots/title.png)
 ![Bloch's teleport hub with every world unlocked in Superposition Mode](screenshots/superposition-bloch.png)
 
-Superposition Mode isn't the intended way to play through the story the
-first time -- it's there for seeing later worlds/guardians without earning
-your way there first.
+Pick Superposition Mode when you would rather browse than progress: to look at
+a later world, try a guardian's ability, or see what a hybrid plays like,
+without walking the road to it first. The two modes keep separate saves, so
+you can keep a story run going and still go exploring whenever you feel like
+it.

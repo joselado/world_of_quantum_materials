@@ -7,6 +7,32 @@ code); this file covers "how things currently look" -- sizes, colors, shapes. Ed
 as choices change; when a new decision replaces an old one, remove the old entry rather
 than appending a changelog, so this always reflects current reality.
 
+## Player-facing writing
+
+**No em dashes, and no `--` dash punctuation, in anything a player reads.** That is
+`README.md`, `docs/*.md`, the built `guide.pdf`, and every string a player sees on screen:
+materialdex blurbs, quiz prompts and explanations, guardian dialogue, world lore, story
+beats, tutorial pages, settings labels, battle log lines. Use a comma, a colon,
+parentheses, bold/italic, or a sentence split instead, whichever reads best in that line.
+Rewrite the sentence rather than swapping the character: a blind replacement leaves comma
+splices behind.
+
+The line is drawn by audience, not by file. A string literal in `game/src/` is player-facing
+and in scope; the comment above it is not. Code comments, `dev_notes/**` (this file
+included) and `game/scripts/**` keep the repo's existing `--` style, and most `--` in the
+repo lives there.
+
+**Say "quantum material" where it fits, and "crystal" where it doesn't.** The player is a
+quantum material, and that is the phrase to reach for first, in the game as well as in the
+docs: it is the term the audience arrives with and the one the course is named for. "Crystal"
+stays available and is the right word wherever the full phrase runs long or lands twice in a
+sentence, and it remains the game's own everyday noun for the things you meet and fight.
+
+`README.md`'s opening paragraph carries the punchline in its first lines rather than building
+to it: you are a quantum material, fighting real compounds with the quasiparticles your own
+lattice can host. A visitor deciding in three seconds should meet that, not a description of
+the course it teaches.
+
 ## The cost rule
 
 **Speed beats spectacle. Every visual must stay affordable to simulate, and an

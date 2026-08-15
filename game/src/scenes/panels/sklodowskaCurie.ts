@@ -95,7 +95,7 @@ export function showSklodowskaCuriePanel(scene: GuardianPanelHost) {
     .text(
       CANVAS_W / 2,
       y,
-      '"I am Skłodowska-Curie -- I lead this circle of guardians: Noether, Bloch, Dresselhaus, Landau, Majorana, Anderson, Feynman, Kondo, Franklin, and I. Here is our last lesson. Answer three questions on the physics running through everything you have learned, all three correct, and your crystal strikes with a force none of the others can match. Miss even one and the blow lands nowhere at all. Tell me which quasiparticle should carry it, too -- a new one costs dearly to unlock, but once bought it is yours to wear again for free."',
+      '"I am Skłodowska-Curie, and I lead this circle of guardians: Noether, Bloch, Dresselhaus, Landau, Majorana, Anderson, Feynman, Kondo, Franklin, and I. Here is our last lesson. Answer three questions on the physics running through everything you have learned, all three correct, and your crystal strikes with a force none of the others can match. Miss even one and the blow lands nowhere at all. Tell me which quasiparticle should carry it, too. A new one costs dearly to unlock, but once bought it is yours to wear again for free."',
       { fontSize: `${Math.round(11 * introScale)}px`, fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
     )
     .setOrigin(0.5, 0);
@@ -158,9 +158,9 @@ function renderUltimateColumn(
 
   const statusScale = Math.min(fontScale(scene), 1.15);
   const statusLabel = !isUnlocked
-    ? 'Not yet unlocked -- pick a quasiparticle to unlock it.'
+    ? 'Not yet unlocked: pick a quasiparticle to unlock it.'
     : !assigned
-    ? 'Unlocked, but untuned -- pick a quasiparticle.'
+    ? 'Unlocked, but untuned: pick a quasiparticle.'
     : activeClass === assigned
     ? `Carrying ${quasiparticleLabel(assigned)}.`
     : `Carrying ${quasiparticleLabel(assigned)}, reverted to ${quasiparticleLabel(activeClass)} (this form can't host it).`;
@@ -188,7 +188,7 @@ function renderUltimateColumn(
     const isCurrent = isClassUnlocked && cls === assigned;
     return {
       cls,
-      label: `${quasiparticleLabel(cls)} -- ${costLabel}${isCurrent ? ' (current)' : ''}`,
+      label: `${quasiparticleLabel(cls)}: ${costLabel}${isCurrent ? ' (current)' : ''}`,
       dim: !isClassUnlocked && tokens < ULTIMATE_CLASS_UNLOCK_COST,
     };
   });

@@ -28,7 +28,7 @@ together with §4's progress-keyed Lab theme, in `MUSIC_BUILD_TASK.md`.
 
 **Decoherence has come. The materials of the world are losing their coherence.**
 
-The player is a crystal — a quantum thing — walking into that. Each world is
+The player is a quantum material — a quantum thing — walking into that. Each world is
 further into it than the last, and the light dying across the sequence is not an
 art choice but the story made visible: the worlds get darker because coherence
 is being lost, and the last of it goes out in World 7 when the sky does.
@@ -493,8 +493,8 @@ data.
 
 The finale, stated plainly: **the last world defeats you by understanding you,
 and understanding a quantum thing collapses it.** This is also the payoff for
-"you are a crystal" — the player's quantumness is what is at stake, and the last
-enemy is observation itself.
+"you are a quantum material" — the player's quantumness is what is at stake, and
+the last enemy is observation itself.
 
 ---
 
@@ -766,8 +766,8 @@ ground tilt, only scale.
 The Lab is **not a location**. It is reachable from every world, returns the
 player to precisely where they left regardless of progress, and hosts travel to
 any world already visited — it does not sit beside World 1, it sits beside
-everywhere. The player is a crystal and the Lab is where that crystal is
-examined, so it is better understood as the inside of the thing being played
+everywhere. The player is a quantum material and the Lab is where that material
+is examined, so it is better understood as the inside of the thing being played
 than as a room on the map.
 
 Two signals carry that, and only two:

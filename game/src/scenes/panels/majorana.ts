@@ -95,7 +95,7 @@ export function showMajoranaPanel(scene: GuardianPanelHost) {
       CANVAS_W / 2,
       y,
       superposition
-        ? '"I am Majorana. In superposition every pairing is possible -- fuse any two states that make physical sense."'
+        ? '"I am Majorana. In superposition every pairing is possible: fuse any two states that make physical sense."'
         : '"I am Majorana. Fuse two states you understand and see what phase they make together."',
       { fontSize: fontPx(scene, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
     )
@@ -111,7 +111,7 @@ export function showMajoranaPanel(scene: GuardianPanelHost) {
       .text(
         CANVAS_W / 2,
         y,
-        "None of the crystals you've defeated pair into a known hybrid recipe yet -- Majorana only knows specific real pairings (e.g. Aluminum + Indium Arsenide, or two Graphenes together).",
+        "None of the crystals you've defeated pair into a known hybrid recipe yet. Majorana only knows specific real pairings (e.g. Aluminum + Indium Arsenide, or two Graphenes together).",
         { fontSize: fontPx(scene, 13), color: '#ffffff', align: 'center', wordWrap: { width: 480 } }
       )
       .setOrigin(0.5, 0);
@@ -222,7 +222,7 @@ export function showMajoranaPanel(scene: GuardianPanelHost) {
       y: rightY,
       colW: columns.rightColW,
       status: resultUnlocked
-        ? 'Already unlocked -- free to fuse.'
+        ? 'Already unlocked, free to fuse.'
         : `Costs ${MAJORANA_FUSE_COST} qumatessence to unlock (one-time; free after).`,
       confirm: {
         label: 'Fuse',

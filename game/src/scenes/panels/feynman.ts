@@ -63,7 +63,7 @@ export function showFeynmanPanel(scene: GuardianPanelHost) {
     .text(
       CANVAS_W / 2,
       y,
-      '"A tensor network and a Feynman diagram draw the same trick two ways -- a vertex for every point, a line for every leg. Show me you understand a move you already carry, and I will draw a higher-order correction into it. Paid for whether it lands or not."',
+      '"A tensor network and a Feynman diagram draw the same trick two ways: a vertex for every point, a line for every leg. Show me you understand a move you already carry, and I will draw a higher-order correction into it. Paid for whether it lands or not."',
       { fontSize: fontPx(scene, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
     )
     .setOrigin(0.5, 0);
@@ -172,7 +172,7 @@ function renderMoveLevelList(
       centerX: columns.rightColCenterX,
       y: rightY,
       colW: columns.rightColW,
-      status: `Already at "${MOVE_LEVEL_NAMES[3]}" -- the highest correction I can draw.`,
+      status: `Already at "${MOVE_LEVEL_NAMES[3]}", the highest correction I can draw.`,
     });
   } else {
     const nextLevel = (level + 1) as 1 | 2 | 3;
@@ -258,7 +258,7 @@ function showLevelStreak(scene: GuardianPanelHost, moveId: string, targetLevel: 
       .text(
         CANVAS_W / 2,
         y,
-        `${moveDisplayName(scene.game.registry, moveId)} -> "${MOVE_LEVEL_NAMES[targetLevel]}" -- question ${index + 1}/${questions.length}`,
+        `${moveDisplayName(scene.game.registry, moveId)} -> "${MOVE_LEVEL_NAMES[targetLevel]}" (question ${index + 1}/${questions.length})`,
         { fontSize: fontPx(scene, 13), color: '#ffa64a', fontStyle: 'bold', align: 'center', wordWrap: { width: panelWidth - 60 } }
       )
       .setOrigin(0.5, 0);

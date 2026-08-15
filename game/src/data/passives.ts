@@ -69,7 +69,7 @@ export const PASSIVES: Record<string, Passive> = {
     id: 'anyonEcho',
     name: 'Satellite Reflection',
     owner: 'franklin',
-    description: 'A critical hit throws off a secondary diffraction peak -- a bonus follow-up damage tick.',
+    description: 'A critical hit throws off a secondary diffraction peak: a bonus follow-up damage tick.',
     cost: 45,
   },
   edgeCurrent: {

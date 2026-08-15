@@ -89,8 +89,8 @@ export function showDresselhausPanel(scene: GuardianPanelHost) {
       CANVAS_W / 2,
       y,
       superposition
-        ? '"I am Dresselhaus. In superposition every nanostructure is within reach at once -- become anything that exists, not only what you have already beaten."'
-        : '"I am Dresselhaus. Build the same atoms into a different nanostructure and you get a different material entirely -- new electrons, new phonons, no new chemistry required. Study a defeated crystal\'s structure closely enough, and you can rebuild yourself into it, for a while."',
+        ? '"I am Dresselhaus. In superposition every nanostructure is within reach at once: become anything that exists, not only what you have already beaten."'
+        : '"I am Dresselhaus. Build the same atoms into a different nanostructure and you get a different material entirely: new electrons, new phonons, no new chemistry required. Study a defeated crystal\'s structure closely enough, and you can rebuild yourself into it, for a while."',
       { fontSize: fontPx(scene, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
     )
     .setOrigin(0.5, 0);
@@ -113,7 +113,7 @@ export function showDresselhausPanel(scene: GuardianPanelHost) {
 
   if (candidates.length === 0) {
     const text = scene.add
-      .text(CANVAS_W / 2, y, "You haven't defeated any crystals yet -- there is nothing to become.", {
+      .text(CANVAS_W / 2, y, "You haven't defeated any crystals yet, so there is nothing to become.", {
         fontSize: fontPx(scene, 13),
         color: '#ffffff',
         align: 'center',
@@ -187,7 +187,7 @@ export function showDresselhausPanel(scene: GuardianPanelHost) {
         status: isCurrent
           ? 'This is your current form.'
           : isUnlocked
-          ? 'Already unlocked -- free to become.'
+          ? 'Already unlocked, free to become.'
           : `Costs ${DRESSELHAUS_TRANSMUTE_COST} qumatessence to unlock (one-time; free after).`,
         confirm: isCurrent
           ? undefined

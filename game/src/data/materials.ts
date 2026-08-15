@@ -170,21 +170,21 @@ export const MOVES: Record<string, Move> = {
     name: 'Screening Pulse',
     class: 'screening',
     power: 7,
-    description: 'Re-forms your own screening cloud -- reduces damage you take for 3 turns.',
+    description: 'Re-forms your own screening cloud: reduces damage you take for 3 turns.',
   },
   scatteringDrag: {
     id: 'scatteringDrag',
     name: 'Scattering Drag',
     class: 'screening',
     power: 7,
-    description: 'Randomizes your own scattering trajectory -- a chance to evade an incoming hit entirely for 3 turns.',
+    description: 'Randomizes your own scattering trajectory: a chance to evade an incoming hit entirely for 3 turns.',
   },
   kondoBreakdown: {
     id: 'kondoBreakdown',
     name: 'Coherence Cascade',
     class: 'screening',
     power: 7,
-    description: 'Re-forms your own Kondo singlet -- restores coherence and heals you each turn for 3 turns.',
+    description: 'Re-forms your own Kondo singlet: restores coherence and heals you each turn for 3 turns.',
   },
 };
 

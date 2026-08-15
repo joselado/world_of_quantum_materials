@@ -66,7 +66,7 @@ export function showNoetherShop(scene: GuardianPanelHost) {
     .text(
       CANVAS_W / 2,
       y,
-      '"I am Noether. Every symmetry hides a conservation law -- spend your qumatessence on a new attack, or a sharper stat."',
+      '"I am Noether. Every symmetry hides a conservation law. Spend your qumatessence on a new attack, or a sharper stat."',
       { fontSize: fontPx(scene, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
     )
     .setOrigin(0.5, 0);
@@ -239,7 +239,7 @@ function renderShopStats(scene: GuardianPanelHost, container: Phaser.GameObjects
     const maxed = value >= MAX_STAT;
     const cost = statUpgradeCost(value, row.key);
     const affordable = !maxed && tokens >= cost;
-    const label = maxed ? `${row.label}: ${value} -- maxed` : `${row.label}: ${value} -> ${value + 1} -- ${cost} qumatessence`;
+    const label = maxed ? `${row.label}: ${value} (maxed)` : `${row.label}: ${value} -> ${value + 1} (${cost} qumatessence)`;
     const btn = scene.addDialogueButton(container, y, label, () => {
       if (maxed) return;
       const current = (scene.game.registry.get('qumatessence') as number) || 0;

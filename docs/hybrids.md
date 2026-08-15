@@ -5,7 +5,7 @@ Some crystals in the game aren't a single, un-mixed compound. Majorana
 state, if the pairing matches one of the named recipes below.
 
 Every result is a real crystal, and every one is also found wild in World
-10 — worlds 1-9 never spawn one as an ordinary wild encounter — so a hybrid
+10 (worlds 1-9 never spawn one as an ordinary wild encounter), so a hybrid
 you fuse and the same hybrid found wild are the exact same crystal.
 Dresselhaus's transmute list and Anderson's impurity-host list both skip
 every hybrid, since those two mechanics are about one real, standalone
@@ -13,9 +13,9 @@ crystal's own physics.
 
 ## Fusion recipes (Majorana)
 
-Not every possible pairing works — this is a curated, physically grounded
+Not every possible pairing works: this is a curated, physically grounded
 catalog of named parent pairs, not a generic "these two types always fuse
-into that type" rule. If a pairing isn't listed below, it can't be fused —
+into that type" rule. If a pairing isn't listed below, it can't be fused:
 even if both crystals share the same type.
 
 <img src="../screenshots/docs-hybrids-majorana.png" width="300" alt="Majorana's fusion panel, previewing the HgTe/CdTe Quantum Well hybrid">

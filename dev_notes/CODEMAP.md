@@ -1253,12 +1253,27 @@ higher above its center than any other landmark's art does; its `foot` is
 aperture stand at the same depth -- so the one number holds at every distance the pass is
 looked at from.
 
+**Input, and the README's Controls section.** What the player can press or click is split by
+device today: walking is `OverworldScene`'s `createCursorKeys()` arrows and nothing else, while
+choosing anything (a Lab station, a guardian, a panel button, a battle move) is a `pointerdown`
+and nothing else. `Space` takes whatever the current tile offers, `Enter`/`H` reach the Lab,
+`M` mutes, and `Left`/`Right` page the battle move menu. Neither device covers the whole game
+on its own.
+
+**Whenever that changes, update `README.md`'s "Controls" section in the same edit.** It is the
+only player-facing statement of what the inputs are, and a control the game has but the README
+does not is a control most players never find. The standing goal is that the game becomes
+playable on the keyboard alone (menu selection and Lab stations reachable without a pointer),
+which is what a console port would need; a click-to-move overworld would do the same for the
+mouse alone.
+
 **The gate interaction: approach, read, press.** `WORLDS.md` §4 is the spec. Both of a world's
 passes share one grammar, and it lives in four methods on `OverworldScene`:
 
-- `gateAtPlayer()` -- which pass the player is standing at the mouth of, if any: one row south of
-  the forward throat and within `PASS_HALF_WIDTH` of it, or exactly on `startTile` for the
-  backward one.
+- `gateAtPlayer()` -- which pass the player is standing at, if any: the mouth row or the throat
+  row itself (the throat becomes walkable the moment its rival falls, and the offer to cross has
+  to survive the player stepping into the gap they are being offered), within `PASS_HALF_WIDTH`
+  of the forward throat; or exactly on `startTile` for the backward one.
 - `updateGatePrompt()` -- called every frame from `update()`. Shows/hides `gatePrompt`, the HUD
   prompt (`fontPx`, so it obeys every text-size preset), and sets it interactive exactly while it
   is visible, so clicking it and pressing the key are the same action on the same object.

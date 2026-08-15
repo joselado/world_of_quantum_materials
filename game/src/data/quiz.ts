@@ -80,13 +80,13 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'In the extended (infinite) 1D Hubbard chain, at what interaction strength does antiferromagnetic order first appear?',
-      correct: 'Any U > 0 -- no threshold',
+      correct: 'Any U > 0: no threshold',
       incorrect: 'Only above a finite critical U_c',
     },
     // Chromium -- itinerant (nested-Fermi-surface) antiferromagnet, contrasted with MnO/NiO's Mott picture.
     {
       prompt: "Elemental chromium's spin-density-wave antiferromagnetism comes from Fermi-surface nesting. In this world's toy nested chain, what does that same mechanism do to the ordering threshold?",
-      correct: 'It removes the threshold entirely -- order turns on for any U > 0',
+      correct: 'It removes the threshold entirely: order turns on for any U > 0',
       incorrect: 'It raises the threshold to U_c = 4t, twice the dimer value',
     },
     {
@@ -128,7 +128,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: "Iron's ferromagnetism is best described, in the itinerant/localized language, as...",
-      correct: 'Itinerant magnetism -- delocalized electrons near a Stoner instability',
+      correct: 'Itinerant magnetism: delocalized electrons near a Stoner instability',
       incorrect: 'Localized-moment magnetism from fully frozen charge',
     },
     // Cobalt -- itinerant ferromagnet, mean-field half of its pool (the
@@ -136,7 +136,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     // World 6 below).
     {
       prompt: 'In the mean-field Hubbard model, which direction does the spontaneous exchange field point?',
-      correct: 'Any direction in spin space -- not fixed to z',
+      correct: 'Any direction in spin space: not fixed to z',
       incorrect: 'Always along the z axis, fixed by the Hamiltonian',
     },
     {
@@ -162,17 +162,17 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: "How many orbitals does graphene's honeycomb lattice carry per unit cell?",
-      correct: 'Two -- one per sublattice (A, B)',
+      correct: 'Two: one per sublattice (A, B)',
       incorrect: 'One, shared by the whole cell',
     },
     {
       prompt: "What is an electron's effective mass exactly at the tip of graphene's Dirac cone?",
-      correct: 'Formally zero -- massless',
+      correct: 'Formally zero: massless',
       incorrect: 'Equal to the bare electron mass',
     },
     {
       prompt: "At how many inequivalent points of graphene's Brillouin zone do the bands touch at zero energy?",
-      correct: 'Two -- K and K′',
+      correct: 'Two: K and K′',
       incorrect: 'One, at the zone center Γ',
     },
     {
@@ -239,7 +239,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'A large or divergent density of states right at the Fermi level means a material is...',
-      correct: 'Sensitive -- even weak interactions can drive an instability',
+      correct: 'Sensitive: even weak interactions can drive an instability',
       incorrect: 'Essentially immune to interaction effects',
     },
     {
@@ -260,7 +260,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     // Indium Arsenide -- narrow-gap dopable semiconductor, symmetry operators/Bloch phase.
     {
       prompt: 'A unitary symmetry operator in quantum mechanics always has eigenvalues with...',
-      correct: 'Unit modulus -- a pure phase e^{iφ}',
+      correct: 'Unit modulus: a pure phase e^{iφ}',
       incorrect: 'An arbitrary, unconstrained real magnitude',
     },
     {
@@ -337,13 +337,13 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'Always the literal bare electron mass, unaffected by the crystal',
     },
     {
-      prompt: 'Which of the three archetypal dispersions -- parabolic, Dirac, or flat -- describes most ordinary semiconductors, before any band-inversion physics is added?',
+      prompt: 'Which of the three archetypal dispersions (parabolic, Dirac, or flat) describes most ordinary semiconductors, before any band-inversion physics is added?',
       correct: 'Parabolic, E ∝ k²',
       incorrect: 'Dirac, E ∝ |k|',
     },
     {
       prompt: 'For an infinite chain, why does the translation operator T share an eigenbasis with the Hamiltonian?',
-      correct: 'Because [H,T] = 0 -- they commute',
+      correct: 'Because [H,T] = 0, they commute',
       incorrect: 'Because T is Hermitian, and every Hermitian operator commutes with H',
     },
     {
@@ -359,7 +359,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'Applying a 90° rotation to a p_x orbital produces a p_y orbital. What does that tell you about whether p_x is an eigenstate of that rotation?',
-      correct: 'It is not an eigenstate -- the rotation maps it to a genuinely different state',
+      correct: 'It is not an eigenstate: the rotation maps it to a genuinely different state',
       incorrect: 'It is automatically an eigenstate, since orbitals are eigenstates of every symmetry',
     },
     {
@@ -406,7 +406,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'Above its own bulk plasma frequency, how does a metal like silver behave toward light?',
-      correct: 'It becomes transparent -- the free-electron gas can no longer screen the field',
+      correct: 'It becomes transparent: the free-electron gas can no longer screen the field',
       incorrect: 'It becomes a perfect reflector',
     },
     {
@@ -415,14 +415,14 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'A metal simply has a wider band gap than a semiconductor',
     },
     {
-      prompt: "Diamond's ~5.5 eV gap is too wide for doping or thermal excitation to cross practically -- which type does that make it?",
+      prompt: "Diamond's ~5.5 eV gap is too wide for doping or thermal excitation to cross practically. Which type does that make it?",
       correct: 'Insulator',
       incorrect: 'Semiconductor',
     },
     {
       prompt: 'What move can an insulator like Diamond carry that a metal cannot?',
-      correct: 'Polaron Drag -- a self-trapped, lattice-dressed carrier',
-      incorrect: 'Plasmon Pulse -- a free-electron-gas collective mode',
+      correct: 'Polaron Drag: a self-trapped, lattice-dressed carrier',
+      incorrect: 'Plasmon Pulse: a free-electron-gas collective mode',
     },
     {
       prompt: "Diamond's stiff sp³ covalent lattice gives it an unusually high...",
@@ -451,8 +451,8 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: "hBN's own ~5.9 eV gap rules out which move?",
-      correct: 'Electron Pulse -- too wide a gap for an ordinary band electron',
-      incorrect: 'Phonon Beam -- lattice vibrations need a narrower gap',
+      correct: 'Electron Pulse: too wide a gap for an ordinary band electron',
+      incorrect: 'Phonon Beam: lattice vibrations need a narrower gap',
     },
     {
       prompt: 'What turns a Graphene + hBN pairing into a fractional Chern insulator instead of leaving both as ordinary compounds?',
@@ -460,7 +460,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'Simply placing them in contact at any angle, no alignment required',
     },
     {
-      prompt: 'hBN and graphite share the same layered honeycomb structure -- what is the key electronic difference?',
+      prompt: 'hBN and graphite share the same layered honeycomb structure. What is the key electronic difference?',
       correct: "hBN's two sublattices are inequivalent (B vs. N), opening a large gap graphene's identical-atom sublattices don't have",
       incorrect: "hBN's layers are held together by covalent bonds instead of van der Waals forces",
     },
@@ -529,7 +529,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     {
       prompt: 'What happens if time-reversal-symmetry-breaking disorder (e.g. magnetic impurities) is added at a topological-insulator surface like Bi₂Te₃\'s?',
       correct: 'It opens a genuine gap in the surface spectrum, destroying the protection',
-      incorrect: 'Nothing -- the Kramers protection survives any perturbation whatsoever',
+      incorrect: 'Nothing: the Kramers protection survives any perturbation whatsoever',
     },
     {
       prompt: "Kramers' theorem forces two time-reversed partner states at the same time-reversal-invariant momentum to be linearly independent. Why?",
@@ -549,8 +549,8 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     // Graphene (strong field) -- Dirac Landau levels.
     {
       prompt: "In a strong magnetic field, graphene's Landau level energies scale as...",
-      correct: 'E_n ∝ √(nB) -- square root of both level index and field',
-      incorrect: 'E_n ∝ nB -- linear in level index and field',
+      correct: 'E_n ∝ √(nB): square root of both level index and field',
+      incorrect: 'E_n ∝ nB: linear in level index and field',
     },
     {
       prompt: "Graphene's n = 0 Landau level, unlike every other level in the ladder, sits at...",
@@ -591,7 +591,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     {
       prompt: "In the Haldane model, why does the imaginary second-neighbor (Haldane) hopping term open a topologically nontrivial gap while a simple staggered sublattice potential alone does not?",
       correct: "The Haldane term's Berry-curvature contributions from the two valleys add; the staggered potential's cancel",
-      incorrect: "Both terms' valley contributions add the same way -- the staggered potential is topological too",
+      incorrect: "Both terms' valley contributions add the same way: the staggered potential is topological too",
     },
     {
       prompt: 'If a Chern-3 material borders ordinary vacuum (C=0), how many protected chiral edge modes appear at that interface?',
@@ -604,7 +604,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'The magnetic field must pass through exactly zero at the midpoint',
     },
     {
-      prompt: "Graphene bilayers twisted and aligned to a boron-nitride substrate reach zero-field quantized Hall conductance through a mechanism distinct from MnBi₂Te₄'s intrinsic magnetism -- namely...",
+      prompt: "Graphene bilayers twisted and aligned to a boron-nitride substrate reach zero-field quantized Hall conductance through a mechanism distinct from MnBi₂Te₄'s intrinsic magnetism, namely...",
       correct: 'Orbital magnetism (circulating currents), rather than spin/local-moment magnetism',
       incorrect: 'Doped-in paramagnetic impurities',
     },
@@ -612,8 +612,8 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     // 2DEG substrate, not for its own bulk physics); written from real physics.
     {
       prompt: 'In GaAs, the conduction-band minimum and valence-band maximum sit at...',
-      correct: 'The same crystal momentum (Γ) -- a direct gap',
-      incorrect: 'Different momenta, as in silicon -- an indirect gap',
+      correct: 'The same crystal momentum (Γ): a direct gap',
+      incorrect: 'Different momenta, as in silicon: an indirect gap',
     },
     {
       prompt: "Why does GaAs's direct gap make it useful for LEDs and laser diodes in a way silicon isn't?",
@@ -622,7 +622,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'What crystal structure does bulk GaAs adopt?',
-      correct: 'Zinc blende -- Ga and As each forming an FCC sublattice, offset by a quarter of the body diagonal',
+      correct: 'Zinc blende: Ga and As each forming an FCC sublattice, offset by a quarter of the body diagonal',
       incorrect: 'Diamond structure, with every lattice site occupied by the same atom, like silicon',
     },
     {
@@ -782,13 +782,13 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'Extended s-wave order is still L = 0, same symmetry as plain s-wave, but differs how?',
-      correct: "It's nodal radially -- positive near Γ, negative farther out",
+      correct: "It's nodal radially: positive near Γ, negative farther out",
       incorrect: "It's nodal angularly, alternating sign around the Fermi surface",
     },
     {
       prompt: 'Does a uniform pairing Δ still fully gap the Fermi surface on a triangular lattice, whatever the chemical potential?',
-      correct: 'Yes -- a constant Δ gaps it at any chemical potential',
-      incorrect: 'No -- uniform gapping only works on the square lattice',
+      correct: 'Yes: a constant Δ gaps it at any chemical potential',
+      incorrect: 'No: uniform gapping only works on the square lattice',
     },
     {
       prompt: 'The superconducting gap Δ(k) can be expanded in an angular-momentum basis on the Fermi surface, directly analogous to...',
@@ -809,8 +809,8 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: "Is LaH₁₀'s superconducting mechanism conventional or unconventional?",
-      correct: 'Conventional -- ordinary phonon-mediated BCS (Migdal-Eliashberg) pairing',
-      incorrect: 'Unconventional -- d-wave pairing mediated by spin fluctuations',
+      correct: 'Conventional: ordinary phonon-mediated BCS (Migdal-Eliashberg) pairing',
+      incorrect: 'Unconventional: d-wave pairing mediated by spin fluctuations',
     },
     {
       prompt: 'Why does hydrogen make such an effective phonon-mediated superconductor?',
@@ -824,7 +824,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'Does LaH₁₀ host a Majorana zero mode the way a chernSuperconductor does?',
-      correct: "No -- its pairing is ordinary and non-topological, so it stays plain 'superconductor'",
+      correct: "No: its pairing is ordinary and non-topological, so it stays plain 'superconductor'",
       incorrect: 'Yes, its extreme Tc implies topological pairing',
     },
     {
@@ -855,7 +855,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: "Is UTe₂'s topological/chiral nature experimentally settled?",
-      correct: 'No -- newer high-quality crystals have complicated the earlier time-reversal-breaking evidence',
+      correct: 'No: newer high-quality crystals have complicated the earlier time-reversal-breaking evidence',
       incorrect: 'Yes, it has been unambiguously confirmed by multiple independent groups',
     },
     {
@@ -872,8 +872,8 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     // (the mean-field/Stoner half lives in World 1's own pool above).
     {
       prompt: "Near k=0, a ferromagnet's magnon dispersion behaves as...",
-      correct: 'E(k) ∝ k² -- quadratic',
-      incorrect: 'E(k) ∝ |k| -- linear',
+      correct: 'E(k) ∝ k²: quadratic',
+      incorrect: 'E(k) ∝ |k|: linear',
     },
     {
       prompt: 'A magnon propagating through a ferromagnetic conductor like iron carries...',
@@ -952,7 +952,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     {
       prompt: 'On a ribbon geometry, a topologically nontrivial magnon band structure hosts...',
       correct: 'Chiral edge magnon modes crossing the gap',
-      incorrect: 'No edge states -- topology only shows up in the bulk',
+      incorrect: 'No edge states: topology only shows up in the bulk',
     },
     {
       prompt: 'What symmetry must be broken for Dzyaloshinskii-Moriya exchange to appear at all?',
@@ -967,8 +967,8 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     // Chromium Tribromide (CrBr₃) -- van der Waals ferromagnet.
     {
       prompt: 'A magnet like CrBr₃ that breaks time-reversal symmetry hosts which emergent excitation, as opposed to a quantum spin liquid?',
-      correct: 'Magnons -- spin-1, charge-neutral excitations',
-      incorrect: 'Spinons -- spin-1/2, charge-neutral excitations',
+      correct: 'Magnons: spin-1, charge-neutral excitations',
+      incorrect: 'Spinons: spin-1/2, charge-neutral excitations',
     },
     {
       prompt: 'What two quantities does the Stoner criterion multiply together to test for spontaneous magnetism?',
@@ -977,13 +977,13 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'At half filling, as U→∞ in a strongly-correlated self-consistent Hubbard chain, the magnetic moment per site saturates at...',
-      correct: 'Exactly one Bohr magneton -- a full localized spin-1/2',
+      correct: 'Exactly one Bohr magneton: a full localized spin-1/2',
       incorrect: 'It grows without bound as U increases',
     },
     {
       prompt: "Near k=0, how does an antiferromagnet's magnon dispersion behave, in contrast to a ferromagnet's quadratic E(k)∝k²?",
-      correct: 'E(k) ∝ |k| -- linear, Dirac-cone-like',
-      incorrect: 'E(k) ∝ k² -- also quadratic, same as the ferromagnet',
+      correct: 'E(k) ∝ |k|: linear, Dirac-cone-like',
+      incorrect: 'E(k) ∝ k²: also quadratic, same as the ferromagnet',
     },
     {
       prompt: 'The direct superexchange mechanism (J=4t²/U, from a single-orbital Hubbard model) always produces coupling that is...',
@@ -1008,12 +1008,12 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'Real-world, monolayer NiI₂ is classified as a...',
-      correct: "Type-II multiferroic -- its ferroelectricity is magnetically induced",
-      incorrect: 'Type-I multiferroic -- independent magnetic and electric order',
+      correct: "Type-II multiferroic: its ferroelectricity is magnetically induced",
+      incorrect: 'Type-I multiferroic: independent magnetic and electric order',
     },
     {
       prompt: 'The J1-J2 spiral mechanism behind NiI₂-type noncollinear order can occur even on a lattice that is...',
-      correct: 'Perfectly bipartite, such as a simple chain -- no geometric frustration needed',
+      correct: 'Perfectly bipartite, such as a simple chain: no geometric frustration needed',
       incorrect: 'Only a non-bipartite lattice like triangular or kagome',
     },
     {
@@ -1029,8 +1029,8 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     // Yttrium Iron Garnet -- off-syllabus (magnonics workhorse), real physics.
     {
       prompt: "Is YIG's magnetic order ferromagnetic or ferrimagnetic?",
-      correct: 'Ferrimagnetic -- two sublattices order antiparallel with unequal moment',
-      incorrect: 'Ferromagnetic -- all moments align exactly parallel',
+      correct: 'Ferrimagnetic: two sublattices order antiparallel with unequal moment',
+      incorrect: 'Ferromagnetic: all moments align exactly parallel',
     },
     {
       prompt: 'What property makes YIG the material of choice for real magnon-transport experiments?',
@@ -1102,7 +1102,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     {
       prompt: "For the antiferromagnetic Heisenberg dimer's singlet ground state, what is the entanglement entropy between its two sites?",
       correct: 'log 2, the maximum a single spin-1/2 can carry',
-      incorrect: 'Zero -- singlets are unentangled',
+      incorrect: 'Zero: singlets are unentangled',
     },
     {
       prompt: 'In the dimerized chain, why does the entanglement entropy stay fixed no matter how large subsystem A grows?',
@@ -1132,8 +1132,8 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'Storing a general L-site spin-1/2 wave function exactly requires how many coefficients?',
-      correct: '2^L -- exponential in system size',
-      incorrect: 'L² -- polynomial in system size',
+      correct: '2^L: exponential in system size',
+      incorrect: 'L²: polynomial in system size',
     },
     {
       prompt: 'The matrix product state ansatz replaces those exponentially many coefficients with a parameter count that scales as...',
@@ -1177,7 +1177,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'A nonlinear optimization over all tensors simultaneously',
     },
     {
-      prompt: "Right at a quantum critical point -- unlike a gapped chain such as Y₂BaNiO₅'s own Haldane phase -- how does entanglement entropy scale with subsystem size?",
+      prompt: "Right at a quantum critical point (unlike a gapped chain such as Y₂BaNiO₅'s own Haldane phase), how does entanglement entropy scale with subsystem size?",
       correct: 'Logarithmically, S(ℓ) = (c/3) log ℓ + const.',
       incorrect: 'It stays exactly constant, the same as the gapped case',
     },
@@ -1270,7 +1270,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'A polaron and a magnon',
     },
     {
-      prompt: 'A valence bond solid -- a fixed, static covering of the lattice by singlets -- is not yet a genuine quantum spin liquid. Why not?',
+      prompt: 'A valence bond solid (a fixed, static covering of the lattice by singlets) is not yet a genuine quantum spin liquid. Why not?',
       correct: 'Its excitations (triplons) are still spin-1, structurally the same as an ordinary magnon',
       incorrect: "It doesn't have a time-reversal-symmetric ground state",
     },
@@ -1302,7 +1302,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'Growing the Kondo hybridization γ_K in the mean-field lattice Hamiltonian does what to the gap at the anti-crossing?',
-      correct: 'Opens/grows it monotonically -- the larger γ_K, the larger the gap',
+      correct: 'Opens/grows it monotonically: the larger γ_K, the larger the gap',
       incorrect: 'Shrinks it, since stronger coupling favors a gapless metal',
     },
     {
@@ -1312,7 +1312,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: "Why does the game classify YbRh₂Si₂ as 'kondoHeavyFermion' rather than 'classicalMagnet', even though it eventually orders magnetically at very low temperature?",
-      correct: 'Its heavy, Kondo-hybridized quasiparticles -- not simple localized spins -- carry that order and define the compound',
+      correct: 'Its heavy, Kondo-hybridized quasiparticles (not simple localized spins) carry that order and define the compound',
       incorrect: 'Because antiferromagnetism is impossible in any classicalMagnet-type material',
     },
     // Cerium Cobalt Indide -- off-syllabus, second Kondo-lattice flagship.
@@ -1390,12 +1390,12 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: "The Yu-Shiba-Rusinov bound-state energy depends on the impurity's exchange coupling J only through α = πν₀JS. What does that say about the sign of J?",
-      correct: 'It is irrelevant -- only J² and the spin S matter',
+      correct: 'It is irrelevant: only J² and the spin S matter',
       incorrect: 'Only an antiferromagnetic (negative) J can break Cooper pairs',
     },
     {
       prompt: "As a magnetic impurity's coupling in an s-wave superconductor is tuned past α = πν₀JS = 1, what happens to its in-gap bound state?",
-      correct: 'Its energy crosses zero -- a genuine quantum phase transition',
+      correct: 'Its energy crosses zero: a genuine quantum phase transition',
       incorrect: 'It vanishes abruptly back into the gap edge',
     },
     {
@@ -1422,7 +1422,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'The spatial wavelength of Friedel oscillations around a 1D metallic impurity is set by...',
-      correct: 'π/k_F -- half the Fermi wavelength',
+      correct: 'π/k_F: half the Fermi wavelength',
       incorrect: 'The lattice constant, regardless of filling',
     },
     {
@@ -1432,8 +1432,8 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'Raising the chemical potential (and hence k_F) of a metal does what to the Friedel-oscillation wavelength around an impurity?',
-      correct: 'Shortens it -- the oscillations speed up',
-      incorrect: 'Lengthens it -- the oscillations slow down',
+      correct: 'Shortens it: the oscillations speed up',
+      incorrect: 'Lengthens it: the oscillations slow down',
     },
     {
       prompt: 'The static Lindhard function χ₀(q) develops a genuine singularity at the wavevector spanning occupied to empty states of equal energy across the Fermi surface. In 1D, this wavevector is...',
@@ -1478,12 +1478,12 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     // Manganese -- itinerant local-moment magnet, RPA read of the Stoner instability.
     {
       prompt: "A classical mean-field magnet's susceptibility χ(T) diverges as 1/(T−T_c) approaching a ferromagnetic transition. What is the analogous form for an antiferromagnetic transition?",
-      correct: '1/(T+T_c) -- an apparent divergence at a negative temperature',
+      correct: '1/(T+T_c): an apparent divergence at a negative temperature',
       incorrect: '1/(T−T_c), identical to the ferromagnetic case',
     },
     {
       prompt: 'What does a diverging susceptibility actually tell you about a system?',
-      correct: 'That an instability is coming, and which direction to push -- not the full ordered state',
+      correct: 'That an instability is coming, and which direction to push: not the full ordered state',
       incorrect: 'The complete microscopic structure of the ordered state that will form',
     },
     {
@@ -1493,8 +1493,8 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'In the RPA response χ(q,ω) = χ₀/(1 − Uχ₀), what condition marks the actual magnetic instability?',
-      correct: 'Uχ₀(q,0) = 1 -- the denominator vanishing',
-      incorrect: 'χ₀(q,0) = 0 -- the numerator vanishing',
+      correct: 'Uχ₀(q,0) = 1: the denominator vanishing',
+      incorrect: 'χ₀(q,0) = 0: the numerator vanishing',
     },
     {
       prompt: 'For a Fermi surface with strong nesting, where does the bare spin response χ₀(q,0) actually peak, shifting the instability away from simple ferromagnetism?',
@@ -1524,8 +1524,8 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: "Reversing GeTe's ferroelectric polarization direction does what to its Rashba-split spin texture?",
-      correct: 'Reverses it too -- the two are locked together',
-      incorrect: 'Nothing -- the spin texture is fixed independent of polarization',
+      correct: 'Reverses it too: the two are locked together',
+      incorrect: 'Nothing: the spin texture is fixed independent of polarization',
     },
     {
       prompt: "Why does the game classify GeTe as 'ferroelectric' rather than 'semiconductor', despite it being a genuine narrow-gap semiconductor?",
@@ -1540,7 +1540,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     // Hafnium Oxide -- off-syllabus, CMOS-compatible thin-film ferroelectric.
     {
       prompt: 'Is bulk, unstrained HfO₂ ferroelectric?',
-      correct: 'No -- its ordinary monoclinic phase is centrosymmetric and not ferroelectric',
+      correct: 'No: its ordinary monoclinic phase is centrosymmetric and not ferroelectric',
       incorrect: 'Yes, ferroelectricity is intrinsic to HfO₂ in any form',
     },
     {
@@ -1560,7 +1560,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: "Does HfO₂'s ferroelectric phase require any magnetic order to be present?",
-      correct: "No -- ferroelectric order carries no magnetic order at all in this game's taxonomy",
+      correct: "No: ferroelectric order carries no magnetic order at all in this game's taxonomy",
       incorrect: 'Yes, magnetism is what couples to and stabilizes the polarization',
     },
     {
@@ -1602,8 +1602,8 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
     },
     {
       prompt: 'Cooling further below its cubic-to-tetragonal transition, how many more structural phase transitions does BaTiO₃ undergo?',
-      correct: 'Two more -- into orthorhombic, then rhombohedral phases',
-      incorrect: 'None -- the tetragonal phase persists all the way to absolute zero',
+      correct: 'Two more: into orthorhombic, then rhombohedral phases',
+      incorrect: 'None: the tetragonal phase persists all the way to absolute zero',
     },
     {
       prompt: 'BaTiO₃ is piezoelectric as well as ferroelectric. What does that mean?',
@@ -1713,7 +1713,7 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
     },
     {
       prompt: 'A Haldane-type zero-field Chern insulator and the ordinary field-driven quantum Hall state are...',
-      correct: 'Adiabatically connected -- the same topological phase',
+      correct: 'Adiabatically connected: the same topological phase',
       incorrect: 'Fundamentally distinct phases separated by a phase transition',
     },
     {
@@ -1726,7 +1726,7 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
   'Fe/Pb Majorana Chain': [
     {
       prompt: 'A Majorana fermion is algebraically defined by which condition on its operator γ?',
-      correct: 'γ† = γ -- it is its own antiparticle',
+      correct: 'γ† = γ: it is its own antiparticle',
       incorrect: 'γ† = −γ',
     },
     {
@@ -1742,7 +1742,7 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
     {
       prompt: 'Braiding one Majorana zero mode around another acts on the ground-state manifold as...',
       correct: 'A non-commuting (non-Abelian) unitary',
-      incorrect: 'A simple commuting phase -- order never matters',
+      incorrect: 'A simple commuting phase: order never matters',
     },
     {
       prompt: 'Why must Kitaev-chain pairing sit on a bond rather than on-site?',
@@ -1785,7 +1785,7 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
     {
       prompt: "In twisted graphene's nodal superconducting regime, where does the spectrum stay gapless?",
       correct: 'Wherever the Fermi surface crosses the nodal lines of the gap',
-      incorrect: 'Nowhere -- nodal order is still fully gapped',
+      incorrect: 'Nowhere: nodal order is still fully gapped',
     },
   ],
 
@@ -1831,12 +1831,12 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
     {
       prompt: 'Engineering a topological superconductor this way requires breaking which two symmetries at once?',
       correct: 'Time-reversal symmetry (magnetism) and gauge symmetry (superconductivity)',
-      incorrect: 'Only gauge symmetry -- time-reversal must stay intact',
+      incorrect: 'Only gauge symmetry: time-reversal must stay intact',
     },
     {
       prompt: "A trivial s-wave gap and this heterostructure's topological gap can look nearly identical in bulk spectroscopy. What actually tells them apart?",
       correct: 'Only the topological one hosts gapless boundary/edge modes',
-      incorrect: 'Nothing -- matching bulk spectra means matching topology',
+      incorrect: 'Nothing: matching bulk spectra means matching topology',
     },
     {
       prompt: 'Chiral and p-wave superconductors needed for Majorana physics are rare in naturally occurring crystals, so platforms like this one are...',
@@ -1890,7 +1890,7 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
       incorrect: 'A uniform collinear Néel state, unaffected by the moiré pattern',
     },
     {
-      prompt: 'The Dzyaloshinskii-Moriya interaction -- the spin-orbit term proposed to underlie moiré-induced multiferroicity in twisted CrI₃ -- favors neighboring spins rotated by roughly...',
+      prompt: 'The Dzyaloshinskii-Moriya interaction (the spin-orbit term proposed to underlie moiré-induced multiferroicity in twisted CrI₃) favors neighboring spins rotated by roughly...',
       correct: '90°, promoting spiral order',
       incorrect: '180°, i.e. perfectly antiparallel',
     },
@@ -1924,7 +1924,7 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
     },
     {
       prompt: 'At zero Kondo hybridization (γ_K = 0), what does the auxiliary f-fermion band in the Kondo-lattice model look like?',
-      correct: 'Perfectly flat at zero energy -- these auxiliary fermions carry no hopping of their own',
+      correct: 'Perfectly flat at zero energy: these auxiliary fermions carry no hopping of their own',
       incorrect: 'Dispersive, with the same bandwidth as the conduction band',
     },
     {
@@ -2001,7 +2001,7 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
     {
       prompt: 'Bulk CdTe is an ordinary gapped semiconductor, but bulk HgTe is a zero-gap semimetal with inverted band ordering. What does quantum-well confinement add that neither bulk parent has alone?',
       correct: "Above a critical thickness, confinement opens a gap while keeping HgTe's inverted band ordering",
-      incorrect: 'Nothing changes electronically -- the well is topological simply because it is thin',
+      incorrect: 'Nothing changes electronically: the well is topological simply because it is thin',
     },
     {
       prompt: "What symmetry protects the HgTe/CdTe quantum well's helical edge states from backscattering off ordinary, non-magnetic disorder?",
@@ -2045,8 +2045,8 @@ export const ML_LECTURE_QUESTIONS: MaterialQuestion[] = [
   },
   {
     prompt: 'Compared to matrix product states and PEPS, an NNQS of a given architecture is...',
-    correct: 'More expressive -- MPS and PEPS sit inside the space of states an NNQS can reach',
-    incorrect: 'Less expressive -- it can only represent states an MPS can also represent',
+    correct: 'More expressive: MPS and PEPS sit inside the space of states an NNQS can reach',
+    incorrect: 'Less expressive: it can only represent states an MPS can also represent',
   },
   {
     prompt: 'In quantum state tomography with a neural-network ansatz, what is the network trained to do?',
@@ -2085,12 +2085,12 @@ export const ML_LECTURE_QUESTIONS: MaterialQuestion[] = [
   },
   {
     prompt: "In this world's 'easy' phase-classification example, the ferromagnetic Ising model, what makes the phase easy to read off even without a network?",
-    correct: 'A simple local order parameter -- the total magnetization -- distinguishes the two phases',
+    correct: 'A simple local order parameter (the total magnetization) distinguishes the two phases',
     incorrect: 'The two phases always look visibly different in every snapshot',
   },
   {
     prompt: 'The Ising gauge theory is this world\'s "hard" phase-classification example because its two phases are distinguished by...',
-    correct: 'No local order parameter at all -- only a nonlocal, topological distinction',
+    correct: 'No local order parameter at all: only a nonlocal, topological distinction',
     incorrect: 'A local order parameter that is simply harder to compute',
   },
   {
@@ -2209,8 +2209,8 @@ export const ANALYTIC_QUESTIONS: AnalyticQuestion[] = [
   },
   {
     prompt: 'The Kondo temperature T_K depends on the exchange coupling J roughly as...',
-    correct: 'T_K ∝ exp(-1/(J·D(E_F))) -- exponentially small',
-    incorrect: 'T_K ∝ J² -- a simple power law',
+    correct: 'T_K ∝ exp(-1/(J·D(E_F))): exponentially small',
+    incorrect: 'T_K ∝ J²: a simple power law',
     worlds: [8],
   },
   {
@@ -2281,8 +2281,8 @@ export const ANALYTIC_QUESTIONS: AnalyticQuestion[] = [
   },
   {
     prompt: "The Hubbard model's interaction term is...",
-    correct: 'U Σ_i n_i↑ n_i↓ -- an energy cost per doubly occupied site',
-    incorrect: 'U Σ_i (n_i↑ + n_i↓) -- an energy cost per electron',
+    correct: 'U Σ_i n_i↑ n_i↓: an energy cost per doubly occupied site',
+    incorrect: 'U Σ_i (n_i↑ + n_i↓): an energy cost per electron',
     worlds: [1],
   },
   {
@@ -2293,14 +2293,14 @@ export const ANALYTIC_QUESTIONS: AnalyticQuestion[] = [
   },
   {
     prompt: 'The total bandwidth of a 1D nearest-neighbor tight-binding chain with hopping t is...',
-    correct: '4t -- the band runs from −2t to +2t',
-    incorrect: '2t -- the band runs from −t to +t',
+    correct: '4t: the band runs from −2t to +2t',
+    incorrect: '2t: the band runs from −t to +t',
     worlds: [2],
   },
   {
     prompt: "A band's Chern number can take values...",
-    correct: 'Any integer -- it is a topological invariant',
-    incorrect: 'Any real number -- it varies continuously',
+    correct: 'Any integer: it is a topological invariant',
+    incorrect: 'Any real number: it varies continuously',
     worlds: [3],
   },
   {
@@ -2311,7 +2311,7 @@ export const ANALYTIC_QUESTIONS: AnalyticQuestion[] = [
   },
   {
     prompt: 'The degeneracy of a Landau level per unit area is...',
-    correct: 'n_B = eB/h -- one state per flux quantum h/e',
+    correct: 'n_B = eB/h: one state per flux quantum h/e',
     incorrect: 'Independent of the magnetic field B',
     worlds: [4],
   },
@@ -2329,7 +2329,7 @@ export const ANALYTIC_QUESTIONS: AnalyticQuestion[] = [
   },
   {
     prompt: 'A Majorana operator γ is defined by the property...',
-    correct: 'γ† = γ -- it is its own antiparticle',
+    correct: 'γ† = γ: it is its own antiparticle',
     incorrect: 'γ† = −γ',
     worlds: [5],
   },
@@ -2347,8 +2347,8 @@ export const ANALYTIC_QUESTIONS: AnalyticQuestion[] = [
   },
   {
     prompt: 'The ground state of a gapped 1D Hamiltonian has entanglement entropy that...',
-    correct: 'Saturates to a constant -- an area law',
-    incorrect: 'Grows linearly with subsystem size -- a volume law',
+    correct: 'Saturates to a constant: an area law',
+    incorrect: 'Grows linearly with subsystem size: a volume law',
     worlds: [7],
   },
   {
@@ -2365,13 +2365,13 @@ export const ANALYTIC_QUESTIONS: AnalyticQuestion[] = [
   },
   {
     prompt: 'Dilute magnetic impurities in a metal make the low-temperature resistivity...',
-    correct: 'Rise logarithmically as T decreases -- the Kondo effect',
+    correct: 'Rise logarithmically as T decreases: the Kondo effect',
     incorrect: 'Keep dropping monotonically toward zero',
     worlds: [8],
   },
   {
     prompt: 'In a 1D disordered chain, Anderson localization sets in...',
-    correct: 'For arbitrarily weak disorder -- all states localize',
+    correct: 'For arbitrarily weak disorder, all states localize',
     incorrect: 'Only above a critical disorder strength',
     worlds: [9],
   },
@@ -2444,12 +2444,12 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   },
   {
     prompt: "Spontaneously breaking a continuous symmetry guarantees, by Goldstone's theorem...",
-    correct: 'A gapless mode -- zero energy as k → 0',
+    correct: 'A gapless mode: zero energy as k → 0',
     incorrect: 'A gapped mode, with gap set by the order parameter',
   },
   {
     prompt: "The two-site half-filled Hubbard dimer's mean-field antiferromagnetic order parameter m turns on...",
-    correct: 'Only above a critical interaction U_c = 2t -- m=0 below it, then m=√(1−4t²/U²) above',
+    correct: 'Only above a critical interaction U_c = 2t: m=0 below it, then m=√(1−4t²/U²) above',
     incorrect: 'Immediately at any U>0, growing smoothly from zero with no threshold',
   },
   {
@@ -2462,8 +2462,8 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   // -- World 2: symmetries, tight binding, Bloch, Dirac cones --
   {
     prompt: 'The total bandwidth of the 2D square-lattice nearest-neighbor tight-binding band, with hopping t, is...',
-    correct: '8t -- the band runs from −4t to +4t',
-    incorrect: '4t -- the band runs from −2t to +2t',
+    correct: '8t: the band runs from −4t to +4t',
+    incorrect: '4t: the band runs from −2t to +2t',
   },
   {
     prompt: 'Adding a staggered sublattice potential ±m to graphene...',
@@ -2472,8 +2472,8 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   },
   {
     prompt: "Kramers' theorem guarantees every level is doubly degenerate when the time-reversal operator satisfies...",
-    correct: 'T² = −1 -- half-integer spin',
-    incorrect: 'T² = +1 -- integer spin',
+    correct: 'T² = −1: half-integer spin',
+    incorrect: 'T² = +1: integer spin',
   },
   {
     prompt: 'The 1D nearest-neighbor tight-binding chain H = t Σ_n (c_n†c_{n+1} + h.c.) has Bloch dispersion...',
@@ -2482,7 +2482,7 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   },
   {
     prompt: 'The effective mass tensor (1/m*)ᵢⱼ = (1/ħ²) ∂²E/∂kᵢ∂kⱼ, built from the curvature of the dispersion, matters because...',
-    correct: 'It is the mass actually measured in transport and cyclotron-resonance experiments -- the bare electron mass is not directly observable inside a solid',
+    correct: 'It is the mass actually measured in transport and cyclotron-resonance experiments; the bare electron mass is not directly observable inside a solid',
     incorrect: 'It equals the bare electron mass measured directly by cyclotron resonance, since band curvature only renormalizes the group velocity, not the mass',
   },
   // -- World 3: topological band theory --
@@ -2504,7 +2504,7 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   {
     prompt: 'For the two-band model H(k) = k_xσ_x + λk_yσ_y + mσ_z near a single gapped Dirac cone, the Chern number contributed by that one cone is...',
     correct:
-      'C_Dirac = (1/2) sgn(m) sgn(λ) -- a half-integer, since a physical lattice always sums an even number of time-reversal-partnered cones to get an integer',
+      'C_Dirac = (1/2) sgn(m) sgn(λ): a half-integer, since a physical lattice always sums an even number of time-reversal-partnered cones to get an integer',
     incorrect: 'C_Dirac = sgn(m) sgn(λ), always an integer ±1 from a single cone alone',
   },
   {
@@ -2532,19 +2532,19 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   },
   {
     prompt: 'Compared to an ordinary parabolic (Schrödinger) 2D electron gas, the Landau levels of Dirac (graphene-like) electrons in field B are...',
-    correct: 'E_n = sgn(n)·v_F√(2ħB|n|), n=0,±1,±2,… -- unequally spaced, growing as √B, with a genuine zero-energy level pinned at n=0',
-    incorrect: 'E_n = ħω_c(n+1/2), just as in the parabolic case -- equally spaced and growing linearly in B',
+    correct: 'E_n = sgn(n)·v_F√(2ħB|n|), n=0,±1,±2,…: unequally spaced, growing as √B, with a genuine zero-energy level pinned at n=0',
+    incorrect: 'E_n = ħω_c(n+1/2), just as in the parabolic case: equally spaced and growing linearly in B',
   },
   // -- World 5: BCS, Nambu, Majoranas --
   {
     prompt: 'BCS theory gives the critical temperature, in terms of the Debye frequency ω_D and coupling N₀V, as...',
-    correct: 'k_B T_c ≈ 1.13 ħω_D exp(−1/(N₀V)) -- non-perturbative in V',
-    incorrect: 'k_B T_c ∝ ħω_D (N₀V)² -- second-order perturbation theory',
+    correct: 'k_B T_c ≈ 1.13 ħω_D exp(−1/(N₀V)): non-perturbative in V',
+    incorrect: 'k_B T_c ∝ ħω_D (N₀V)²: second-order perturbation theory',
   },
   {
     prompt: 'The BCS ground state pairs electrons in the states...',
-    correct: '(k↑, −k↓) -- zero total momentum, opposite spins',
-    incorrect: '(k↑, k↓) -- equal momenta, opposite spins',
+    correct: '(k↑, −k↓): zero total momentum, opposite spins',
+    incorrect: '(k↑, k↓): equal momenta, opposite spins',
   },
   {
     prompt: "The two Majorana end modes of a topological Kitaev chain together encode...",
@@ -2559,7 +2559,7 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   // -- World 6: classical magnetism, magnons, DM --
   {
     prompt: "Thermal magnons deplete a 3D ferromagnet's magnetization at low T as...",
-    correct: 'M(0) − M(T) ∝ T^(3/2) -- the Bloch law',
+    correct: 'M(0) − M(T) ∝ T^(3/2): the Bloch law',
     incorrect: 'M(0) − M(T) ∝ T²',
   },
   {
@@ -2574,8 +2574,8 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   },
   {
     prompt: 'By the Stoner criterion for the Hubbard model, a mean-field magnetic solution with m≠0 first appears once...',
-    correct: 'U·D(E_F) ≥ 1 -- the interaction times the density of states at the Fermi level clears one',
-    incorrect: 'U > t -- the interaction strength exceeds the bare hopping amplitude',
+    correct: 'U·D(E_F) ≥ 1: the interaction times the density of states at the Fermi level clears one',
+    incorrect: 'U > t: the interaction strength exceeds the bare hopping amplitude',
   },
   {
     prompt: 'The superexchange coupling derived from a single-orbital Hubbard model at U≫t, J_ij = 4t_ij²/U...',
@@ -2585,18 +2585,18 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   // -- World 7: entanglement, tensor networks, MPS --
   {
     prompt: 'A block of length ℓ in an infinite critical (gapless) 1D chain has entanglement entropy...',
-    correct: 'S = (c/3) log ℓ -- logarithmic, with c the central charge',
-    incorrect: 'S ∝ ℓ -- a volume law',
+    correct: 'S = (c/3) log ℓ: logarithmic, with c the central charge',
+    incorrect: 'S ∝ ℓ: a volume law',
   },
   {
     prompt: 'The number of parameters in a matrix product state of N sites, local dimension d, bond dimension M, scales...',
-    correct: 'Linearly in N -- roughly N·d·M²',
+    correct: 'Linearly in N: roughly N·d·M²',
     incorrect: 'Exponentially in N, like the full d^N Hilbert space',
   },
   {
     prompt: 'Tracing out half of an entangled pure state leaves a reduced density matrix that is...',
-    correct: 'Mixed -- Tr ρ² < 1',
-    incorrect: 'Still pure -- Tr ρ² = 1',
+    correct: 'Mixed: Tr ρ² < 1',
+    incorrect: 'Still pure: Tr ρ² = 1',
   },
   {
     prompt:
@@ -2607,14 +2607,14 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   },
   {
     prompt: 'Given a large enough bond dimension, a matrix product state can represent...',
-    correct: 'Any L-site state exactly -- successive SVDs with no truncation need at most M = d^(L/2) at the central cut',
-    incorrect: 'Only area-law states -- a volume-law state escapes the ansatz at any finite bond dimension',
+    correct: 'Any L-site state exactly: successive SVDs with no truncation need at most M = d^(L/2) at the central cut',
+    incorrect: 'Only area-law states: a volume-law state escapes the ansatz at any finite bond dimension',
   },
   // -- World 8: quantum magnetism, spinons, Kondo, heavy fermions --
   {
     prompt: "By Haldane's conjecture, the spin-1 Heisenberg antiferromagnetic chain is...",
-    correct: 'Gapped -- unlike the gapless spin-1/2 chain',
-    incorrect: 'Gapless -- just like the spin-1/2 chain',
+    correct: 'Gapped, unlike the gapless spin-1/2 chain',
+    incorrect: 'Gapless, just like the spin-1/2 chain',
   },
   {
     prompt: "Below the Kondo temperature, a magnetic impurity's spin is...",
@@ -2623,23 +2623,23 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   },
   {
     prompt: 'Neutron scattering on a spin-1/2 Heisenberg chain sees, instead of one sharp magnon...',
-    correct: 'A broad two-spinon continuum -- each spin flip fractionalizes',
+    correct: 'A broad two-spinon continuum: each spin flip fractionalizes',
     incorrect: 'A single sharp mode at twice the magnon energy',
   },
   {
     prompt: "A heavy-fermion metal's enormous quasiparticle mass shows up in the specific heat C = γT as...",
     correct: 'A Sommerfeld coefficient γ hundreds of times larger than in ordinary metals',
-    incorrect: 'A vanishing Sommerfeld coefficient γ -- the heavy carriers cannot respond',
+    incorrect: 'A vanishing Sommerfeld coefficient γ: the heavy carriers cannot respond',
   },
   // -- World 9: disorder, localization, impurities --
   {
     prompt: 'By the scaling theory of localization, a 3D disordered metal...',
-    correct: 'Has a mobility edge -- a genuine metal-insulator transition at finite disorder',
+    correct: 'Has a mobility edge: a genuine metal-insulator transition at finite disorder',
     incorrect: 'Localizes at arbitrarily weak disorder, like 1D and 2D',
   },
   {
     prompt: 'Friedel oscillations of the electron density around an impurity in a metal have wavevector...',
-    correct: '2k_F -- set by the sharp Fermi surface',
+    correct: '2k_F: set by the sharp Fermi surface',
     incorrect: 'k_F',
   },
   {
@@ -2671,24 +2671,24 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   {
     prompt:
       'In the variational hierarchy of many-body ansätze (NNQS, PEPS, matrix product states), a neural-network quantum state (NNQS) of a given architecture is...',
-    correct: 'The most expressive of the three -- PEPS states sit inside the states that NNQS can reach, and MPS inside PEPS in turn',
-    incorrect: 'The least expressive of the three -- MPS and PEPS can both reach states no NNQS of comparable size can represent',
+    correct: 'The most expressive of the three: PEPS states sit inside the states that NNQS can reach, and MPS inside PEPS in turn',
+    incorrect: 'The least expressive of the three: MPS and PEPS can both reach states no NNQS of comparable size can represent',
   },
   {
     prompt:
       "Classifying the classical Ising gauge theory's low-T and high-T configurations by summing the spins (an ordinary magnetization order parameter)...",
-    correct: 'Fails -- the phases are topologically distinct with no local order parameter, whereas a CNN trained on labeled low-T/high-T configurations succeeds',
+    correct: 'Fails: the phases are topologically distinct with no local order parameter, whereas a CNN trained on labeled low-T/high-T configurations succeeds',
     incorrect: 'Works exactly as well as it does for the ordinary Ising model, since both are classical spin models on the same lattice',
   },
   {
     prompt:
       'Hamiltonian learning trains a neural network on synthetic (Hamiltonian → observable) pairs from many known models, then applies the trained network to...',
     correct: 'A real experimental observable, to infer the physical Hamiltonian parameters λ that produced it',
-    incorrect: 'A known Hamiltonian, to predict the observable it would produce -- the ordinary forward direction of the same calculation',
+    incorrect: 'A known Hamiltonian, to predict the observable it would produce: the ordinary forward direction of the same calculation',
   },
   {
     prompt: 'Replacing the exchange-correlation functional in the Kohn-Sham loop with a machine-learned v_xc...',
-    correct: "Still requires diagonalizing H_KS self-consistently at every iteration -- learning v_xc doesn't remove the self-consistency loop",
+    correct: "Still requires diagonalizing H_KS self-consistently at every iteration: learning v_xc doesn't remove the self-consistency loop",
     incorrect: 'Removes the need for the self-consistency loop entirely, since the learned v_xc is now exact',
   },
   // -- Methods & experimental probes: exact diagonalization, mean-field/DFT
@@ -2697,9 +2697,9 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   // fitting an any-topic pool the same way the questions above do.
   {
     prompt:
-      'The dimension of the many-body Hilbert space for a chain of L spin-1/2 sites -- and hence the number of coefficients needed to store its ground state exactly -- grows as...',
-    correct: 'd = 2^L -- exponentially with system size',
-    incorrect: 'd = L^2 -- only quadratically with system size',
+      'The dimension of the many-body Hilbert space for a chain of L spin-1/2 sites (and hence the number of coefficients needed to store its ground state exactly) grows as...',
+    correct: 'd = 2^L: exponentially with system size',
+    incorrect: 'd = L^2: only quadratically with system size',
   },
   {
     prompt: 'A mean-field or Kohn-Sham calculation is solved self-consistently by...',

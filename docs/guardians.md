@@ -2,10 +2,10 @@
 
 One guardian waits partway through each of the ten worlds, each teaching you
 a different way to bend the game's usual rules. Every guardian you've met
-then stands in the Lab -- five along each upper corner, running anticlockwise
+then stands in the Lab, five along each upper corner, running anticlockwise
 around the room from Noether at the top left to Skłodowska-Curie at the top
-right, with their slot staying empty until you've met them -- and clicking one opens
-their shop/panel right there, no travel required. Hover a figure to see their
+right, with their slot staying empty until you've met them. Clicking one opens
+their shop or panel right there, no travel required. Hover a figure to see their
 full name and what they teach. Bloch's own panel is the
 exception with a purpose: fast travel is literally what he offers, so his
 destination list is where a warp actually happens.
@@ -31,7 +31,7 @@ destination list is where a warp actually happens.
 
 Sells every ordinary attack move and stat upgrade in the game, priced by raw
 power. Her shop only shows what your *current* crystal form can actually
-use — as a semiconductor-type player (Silicon, by default), you'll only see
+use, as a semiconductor-type player (Silicon, by default), you'll only see
 Electron Pulse until you transmute into a form whose physics supports more
 (see [Quasiparticles & moves](quasiparticles.md)).
 
@@ -46,7 +46,7 @@ visited, so backtracking never means re-walking a whole corridor.
 
 - First trip to a given world: 15 qumatessence
 - Every later trip to that same world: free
-- Each world you haven't unlocked yet is priced separately — there's no
+- Each world you haven't unlocked yet is priced separately, there's no
   single purchase that opens every destination at once
 
 <img src="../screenshots/docs-guardians-bloch-panel.png" width="300" alt="Bloch's destination list: every world already visited, the chosen one previewed with its map and its 15-qumatessence first trip">
@@ -55,13 +55,13 @@ visited, so backtracking never means re-walking a whole corridor.
 
 <img src="../screenshots/docs-guardians-dresselhaus-avatar.png" width="300" alt="Dresselhaus: a half-lit crystal figure with a carbon-hexagon ring for a head, circled by rotation arrows">
 
-Lets you *transmute* into any crystal you've already defeated — your look
+Lets you *transmute* into any crystal you've already defeated, your look
 and which of your moves are usable both switch over, your stats stay yours,
 and nothing you've already learned is erased. Switch back later and you get
 the rest of it back for free.
 
 The idea: the same atoms, built into a different nanostructure, become a
-different material entirely — so understanding a defeated crystal well
+different material entirely, so understanding a defeated crystal well
 enough lets you rebuild yourself into it, for a while. Only works on
 standalone crystals, never a [hybrid](hybrids.md).
 
@@ -75,8 +75,8 @@ standalone crystals, never a [hybrid](hybrids.md).
 <img src="../screenshots/docs-guardians-landau-avatar.png" width="300" alt="Landau: a ladder of flat, evenly spaced levels with one electron jumping between them, drawn over the faint parabola of the band they came from">
 
 Sells two quiz-gated Analytic moves. Each one asks a physics-equation
-question before it lands — answer right and it hits for double damage,
-answer wrong and it's halved — with a flashier effect than an ordinary move.
+question before it lands: answer right and it hits for double damage, answer
+wrong and it's halved, with a flashier effect than an ordinary move.
 The question pool only draws from worlds you've already visited, so early on
 you'll only be asked things you could plausibly already know.
 
@@ -85,8 +85,8 @@ the move should carry, filtered to whatever your *current* form can host.
 The move stays usable from any form and always asks its question, but this
 choice decides whether it can land a quasiparticle-mismatch hit like an
 ordinary attack. Transmute into a form that can't host your picked
-quasiparticle, and the move falls back to its Phonon form — the one class
-every form hosts — for as long as you wear that form. Your pick is kept:
+quasiparticle, and the move falls back to its Phonon form (the one class
+every form hosts) for as long as you wear that form. Your pick is kept:
 transmute back into a form that can host it and the move carries it again,
 free and without retuning.
 
@@ -98,7 +98,7 @@ free and without retuning.
 
 Lets you fuse two crystals you've already defeated into a brand-new hybrid
 state and become it, if the pairing matches one of the game's named recipes
-(see [Hybrids](hybrids.md)) — rendered as an actual mix of both parents' own
+(see [Hybrids](hybrids.md)), rendered as an actual mix of both parents' own
 colors and shapes. Browse hybrids directly by their result: pick one from the
 list to preview its two component crystals, the fused result, and its own
 physics blurb before deciding.
@@ -114,7 +114,7 @@ physics blurb before deciding.
 <img src="../screenshots/docs-guardians-anderson-avatar.png" width="300" alt="Anderson: a scatter of disconnected fragments with no outline at all, drifting around one bright localized core">
 
 Lets you "dope in" a crystal you've defeated as an impurity and learn one
-specific move from it — borrowing a single excitation channel without fully
+specific move from it, borrowing a single excitation channel without fully
 becoming that crystal the way Dresselhaus does. The move keeps firing in
 battle for as long as you stay doped with that crystal, even if your own
 current form can't otherwise host it. Dope in a different crystal later and
@@ -134,7 +134,7 @@ standalone crystals work as hosts, never a [hybrid](hybrids.md).
 
 Lets you level up any move you already know how to use, no matter which
 guardian originally taught it to you. Three tiers sit on top of a move's
-base form — Double, Triple, and Infinite — each one a bigger boost (1.5x,
+base form (Double, Triple, and Infinite), each one a bigger boost (1.5x,
 then 2x, then 3x) and its own name prefix ("Electron Pulse" becomes
 "Double Electron Pulse," then "Triple Electron Pulse," then "Infinite
 Electron Pulse"). For an ordinary attack, that boost multiplies its power;
@@ -144,9 +144,9 @@ tier once you've already landed the one before it.
 
 Leveling a move is a gamble, not a straightforward purchase: you pay the
 qumatessence up front, then have to answer a streak of physics questions in
-a row — 2 correct in a row for Double, 4 for Triple, 8 for Infinite. Answer
+a row, 2 correct in a row for Double, 4 for Triple, 8 for Infinite. Answer
 every one right and the move levels up for good. Miss even a single
-question and the move stays at its current level — the qumatessence you
+question and the move stays at its current level, the qumatessence you
 paid is gone either way, there's no refund on a miss. The cost to attempt a
 tier scales with the move's own power and how deep a tier you're
 attempting, so a weak move is cheap to push and a strong one costs more.
@@ -162,14 +162,14 @@ real escalating cascade rather than just a stronger single hit.
 
 <img src="../screenshots/docs-guardians-kondo-avatar.png" width="300" alt="Kondo: a small local moment drawn as an arrow, sitting inside two counter-rotating screening shells">
 
-Sells three self-buff moves — cast on yourself, not the opponent, dealing no
+Sells three self-buff moves, cast on yourself rather than the opponent, dealing no
 damage:
 
-- **Screening Pulse** — shields you, reducing incoming damage for a few
+- **Screening Pulse**: shields you, reducing incoming damage for a few
   turns
-- **Scattering Drag** — makes you evasive, giving incoming hits a chance to
+- **Scattering Drag**: makes you evasive, giving incoming hits a chance to
   miss entirely
-- **Coherence Cascade** — sets you regenerating, healing you a little each
+- **Coherence Cascade**: sets you regenerating, healing you a little each
   turn
 
 Picking a move picks the buff. Only one can be active at a time; switching
@@ -178,7 +178,7 @@ means talking to Kondo again.
 <img src="../screenshots/docs-guardians-kondo-panel.png" width="300" alt="Kondo's self-buff shop: his three screening moves, with the one currently being held marked active">
 
 Each of these three can also be leveled up at [Feynman's](#feynmans-diagrammatics),
-same as any other move — leveling one makes its buff itself stronger (more
+same as any other move, leveling one makes its buff itself stronger (more
 damage reduction, a better dodge chance, more healing per tick), up to a cap
 so it never becomes complete immunity.
 
@@ -186,7 +186,7 @@ so it never becomes complete immunity.
 
 <img src="../screenshots/docs-guardians-franklin-avatar.png" width="300" alt="Franklin: a figure holding up a sheet of film carrying diffraction rings and their scattered spots">
 
-Teaches three passive abilities — always-on effects for the whole battle,
+Teaches three passive abilities, always-on effects for the whole battle,
 not moves you pick each turn. You can learn all three, but only one is ever
 equipped at a time; talk to Franklin again to switch. Themed around X-ray
 diffraction of a defect-riddled or porous crystal, the way a real
@@ -201,7 +201,7 @@ gets more disordered.
 | Passive | Effect | Cost |
 | --- | --- | --- |
 | Diffraction Shadow | A defect-riddled lattice scatters and attenuates an incoming blow, the way porous carbon attenuates an X-ray beam. | 40 |
-| Satellite Reflection | A critical hit throws off a secondary diffraction peak -- a bonus follow-up damage tick. | 45 |
+| Satellite Reflection | A critical hit throws off a secondary diffraction peak: a bonus follow-up damage tick. | 45 |
 | Amorphous Halo | A diffuse, defect-broadened halo softens the quasiparticle-mismatch double damage to a smaller multiplier. | 45 |
 <!-- GENERATED:FRANKLIN_PASSIVES_TABLE END -->
 
@@ -211,7 +211,7 @@ gets more disordered.
 
 Guards World 10 and is regarded as the leader of the guardians' circle.
 Sells two quiz-gated Ultimate moves, "[Quasiparticle] Meteor" and
-"[Quasiparticle] Nova" — each far more powerful than any ordinary move in
+"[Quasiparticle] Nova", each far more powerful than any ordinary move in
 the game, and gated to match: landing one takes three physics questions in a
 row, all correct, drawn from a broad pool spanning everything the course has
 covered rather than any one world's topic. Miss even one question and the

@@ -8,7 +8,7 @@ import type { Material, MaterialType } from './types';
 
 const ENCOUNTER_GREETINGS: Record<MaterialType, string> = {
   metal: '{name} shrugs. "No topological protection here. Ordinary as it gets."',
-  insulator: '{name} doesn\'t budge -- its gap is wide enough that nothing crosses it easily.',
+  insulator: '{name} doesn\'t budge. Its gap is wide enough that nothing crosses it easily.',
   semiconductor: '{name} sits behind its own modest gap, waiting for you to cross it.',
   classicalMagnet: '{name} snaps its moments into line, aimed your way.',
   quantumSpinLiquid: '{name} refuses to settle down, on principle.',
@@ -16,10 +16,10 @@ const ENCOUNTER_GREETINGS: Record<MaterialType, string> = {
   superconductor: '{name} glides in with zero resistance and zero manners.',
   chernSuperconductor: '{name} pairs up and braids a knot you cannot easily untie.',
   chernInsulator: '{name} circles you at a suspiciously quantized conductance.',
-  quantumSpinHall: '{name} refuses to be perturbed. "Try the edge, if you dare -- it runs both ways."',
+  quantumSpinHall: '{name} refuses to be perturbed. "Try the edge, if you dare. It runs both ways."',
   fractionalChern: '{name} splits its own charge into pieces you cannot recombine.',
   ferroelectric: '{name} points the same way no matter how you look at it.',
-  multiferroic: '{name} hums with a polarization that shouldn\'t line up with its spins -- and does anyway.',
+  multiferroic: '{name} hums with a polarization that shouldn\'t line up with its spins, and does anyway.',
 };
 
 const VICTORY_LINES: Record<MaterialType, string> = {

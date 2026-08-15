@@ -128,7 +128,7 @@ export function showBlochHub(scene: GuardianPanelHost) {
       CANVAS_W / 2,
       y,
       superposition
-        ? '"I am Bloch. In superposition every world is already within reach -- name any of them."'
+        ? '"I am Bloch. In superposition every world is already within reach: name any of them."'
         : '"I am Bloch. Name a world you have already touched, and I will fold you there."',
       { fontSize: fontPx(scene, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
     )
@@ -248,7 +248,7 @@ export function showBlochHub(scene: GuardianPanelHost) {
     const descScale = Math.min(fontScale(scene), 1.1);
     let descBase = 11;
     const descText = scene.add
-      .text(columns.rightColCenterX, detailTop, discovered ? WORLD_FLAVOR[preview] : 'Mist covers this land -- you have not walked it yet.', {
+      .text(columns.rightColCenterX, detailTop, discovered ? WORLD_FLAVOR[preview] : 'Mist covers this land. You have not walked it yet.', {
         fontSize: `${Math.round(descBase * descScale)}px`,
         color: '#cfd8ff',
         align: 'left',
@@ -275,11 +275,11 @@ export function showBlochHub(scene: GuardianPanelHost) {
       // game and the 2px is worth reclaiming here.
       gapAfterStatus: 4,
       status: isCurrent
-        ? `You are standing in World ${preview} -- ${name}.`
+        ? `You are standing in World ${preview}: ${name}.`
         : !discovered
-        ? 'You have never walked this land -- I cannot fold you where you have not been.'
+        ? 'You have never walked this land. I cannot fold you where you have not been.'
         : unlocked
-        ? 'Already unlocked -- free to travel.'
+        ? 'Already unlocked, free to travel.'
         : `Costs ${BLOCH_DESTINATION_COST} qumatessence to unlock (one-time; free after).`,
       // No confirm button for the world the player is already standing in,
       // or for one they have not discovered yet -- neither is a destination

@@ -57,7 +57,7 @@ export function showFranklinPanel(scene: GuardianPanelHost) {
     .text(
       CANVAS_W / 2,
       y,
-      '"Fire X-rays through a defect-riddled crystal and the sharp spots blur into rings -- every pore and dislocation leaves its signature in how the beam scatters. I can teach your crystal to scatter a blow the same way -- only one lesson holds at a time."',
+      '"Fire X-rays through a defect-riddled crystal and the sharp spots blur into rings: every pore and dislocation leaves its signature in how the beam scatters. I can teach your crystal to scatter a blow the same way. Only one lesson holds at a time."',
       { fontSize: fontPx(scene, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
     )
     .setOrigin(0.5, 0);

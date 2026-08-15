@@ -87,7 +87,7 @@ export function labPanelColumns(panelWidth: number): LabPanelColumns {
 export function showMovesPanel(scene: HubScene) {
   const lines = getBattleMoves(scene.game.registry).map((id) => {
     const power = Math.round(effectiveMovePower(scene.game.registry, id));
-    return `${moveDisplayName(scene.game.registry, id)} -- Pwr ${power}`;
+    return `${moveDisplayName(scene.game.registry, id)}: Pwr ${power}`;
   });
   showInfoPanel(scene, 'Your Moves', lines.join('\n'));
 }
@@ -97,9 +97,9 @@ export function showStatsPanel(scene: HubScene) {
   const qumatessence = (scene.game.registry.get('qumatessence') as number) || 0;
   const playerMaterial = getPlayerMaterial(scene.game.registry);
   const body =
-    `${STAT_LABELS.quantumness}: ${stats.quantumness} -- raises your crit chance\n` +
-    `${STAT_LABELS.velocity}: ${stats.velocity} -- higher goes first each round\n` +
-    `${STAT_LABELS.correlation}: ${stats.correlation} -- higher takes less damage\n\n` +
+    `${STAT_LABELS.quantumness}: ${stats.quantumness} (raises your crit chance)\n` +
+    `${STAT_LABELS.velocity}: ${stats.velocity} (higher goes first each round)\n` +
+    `${STAT_LABELS.correlation}: ${stats.correlation} (higher takes less damage)\n\n` +
     `Qumatessence: ${qumatessence}\nCurrent form: ${playerMaterial.name}\n\n` +
     "Raise any of these with qumatessence at Noether's shop.";
   showInfoPanel(scene, 'Your Stats', body);
@@ -654,7 +654,7 @@ export function showSettingsPanel(scene: HubScene) {
   y += tierBtn.height + 4;
 
   const tierHint = scene.add
-    .text(columns.contentCenterX, y, `"${tierPreset.blurb}" -- applies to your very next battle.`, {
+    .text(columns.contentCenterX, y, `"${tierPreset.blurb}" Applies to your very next battle.`, {
       fontSize: fontPx(scene, 11),
       color: REFERENCE_BLUE_GREY_HEX,
       align: 'center',

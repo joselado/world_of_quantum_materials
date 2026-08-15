@@ -110,8 +110,8 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
       CANVAS_W / 2,
       y,
       superposition
-        ? '"I am Anderson. In superposition any crystal can be doped in as an impurity -- pick one, and I\'ll teach you the channel it opens, active for as long as that impurity stays doped in; a new one replaces it."'
-        : '"I am Anderson. Dope in a defeated crystal as an impurity, and I\'ll teach you the one channel it opens -- active only while that impurity stays doped in; a new dopant replaces it."',
+        ? '"I am Anderson. In superposition any crystal can be doped in as an impurity. Pick one, and I\'ll teach you the channel it opens, active for as long as that impurity stays doped in; a new one replaces it."'
+        : '"I am Anderson. Dope in a defeated crystal as an impurity, and I\'ll teach you the one channel it opens, active only while that impurity stays doped in; a new dopant replaces it."',
       { fontSize: fontPx(scene, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
     )
     .setOrigin(0.5, 0);
@@ -154,7 +154,7 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
   if (scene.andersonSelection === null) {
     if (pool.length === 0) {
       const text = scene.add
-        .text(CANVAS_W / 2, y, "You haven't defeated any original crystals yet -- there is nothing to dope in.", {
+        .text(CANVAS_W / 2, y, "You haven't defeated any original crystals yet, so there is nothing to dope in.", {
           fontSize: fontPx(scene, 13),
           color: '#ffffff',
           align: 'center',
@@ -233,7 +233,7 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
             // header lines of Anderson's own.
             statusCap: 1.1,
             status: hostUnlocked
-              ? 'Already unlocked -- free to learn its moves.'
+              ? 'Already unlocked, free to learn its moves.'
               : `Costs ${ANDERSON_DOPE_COST} qumatessence to unlock (one-time, host-wide).`,
             // Picking a host to browse its moveset is always free -- only
             // committing to one of its actual moves at the second step
@@ -317,7 +317,7 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
         learnableItems,
         scene.andersonMovePage,
         4,
-        (m) => (hostUnlocked ? `${m.name} (Pwr ${m.power})` : `${m.name} (Pwr ${m.power}) -- ${ANDERSON_DOPE_COST} qumatessence`),
+        (m) => (hostUnlocked ? `${m.name} (Pwr ${m.power})` : `${m.name} (Pwr ${m.power}): ${ANDERSON_DOPE_COST} qumatessence`),
         (m) => learnImpurityMove(scene, m.id, hostUnlocked, unlockedHosts),
         (page) => {
           scene.andersonMovePage = page;

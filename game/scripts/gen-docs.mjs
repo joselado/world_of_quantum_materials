@@ -193,7 +193,9 @@ function genCrystals() {
       const rows = [...crystals]
         .sort((a, b) => typeLabel(a.type).localeCompare(typeLabel(b.type)) || a.name.localeCompare(b.name))
         .map((c) => [c.name, typeLabel(c.type)]);
-      return `### World ${world} -- ${WORLD_TOPICS[world] ?? ''}\n\n${table(['Crystal', 'Type'], rows)}`;
+      // Colon rather than a dash: this heading is player-facing output, and
+      // player-facing text carries no dash punctuation (STYLE.md).
+      return `### World ${world}: ${WORLD_TOPICS[world] ?? ''}\n\n${table(['Crystal', 'Type'], rows)}`;
     });
   const rivalRows = Object.entries(WORLD_RIVALS)
     .sort(([a], [b]) => Number(a) - Number(b))

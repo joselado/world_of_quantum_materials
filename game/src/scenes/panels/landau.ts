@@ -81,7 +81,7 @@ export function showLandauPanel(scene: GuardianPanelHost) {
     .text(
       CANVAS_W / 2,
       y,
-      '"Put a strong enough field on a two-dimensional electron gas and its whole band collapses into a ladder of flat levels, one fixed quantum of energy apart -- tell me the physics right and I\'ll teach your crystal to strike by that ladder. Answer right and the hit climbs a rung and lands twice as hard, answer wrong and it barely lands at all. Tell me which quasiparticle to carry it with, too."',
+      '"Put a strong enough field on a two-dimensional electron gas and its whole band collapses into a ladder of flat levels, one fixed quantum of energy apart. Tell me the physics right and I\'ll teach your crystal to strike by that ladder. Answer right and the hit climbs a rung and lands twice as hard, answer wrong and it barely lands at all. Tell me which quasiparticle to carry it with, too."',
       { fontSize: `${Math.round(11 * introScale)}px`, fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
     )
     .setOrigin(0.5, 0);
@@ -149,7 +149,7 @@ function renderAnalyticColumn(
   const statusLabel = !isLearned
     ? `Costs ${cost} qumatessence to learn.`
     : !assigned
-    ? 'Untuned -- pick a quasiparticle.'
+    ? 'Untuned: pick a quasiparticle.'
     : activeClass === assigned
     ? `Tuned to ${quasiparticleLabel(assigned)}.`
     : `Tuned to ${quasiparticleLabel(assigned)}, reverted to ${quasiparticleLabel(activeClass)} (this form can't host it).`;

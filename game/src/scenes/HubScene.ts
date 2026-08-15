@@ -239,7 +239,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
       .text(
         CANVAS_W / 2,
         62,
-        '"A Decoherence is spreading through the quantum material worlds. Master each phase of matter to stabilize it." -- a voice, deep in the Lab',
+        'A voice, deep in the Lab: "A Decoherence is spreading through the quantum material worlds. Master each phase of matter to stabilize it."',
         // Wrapped narrow enough to stay clear of the guardian clusters
         // standing in the two upper corners (spawnGuardianAvatars).
         { fontSize: fontPx(this, 12), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: 420 } }
@@ -1056,7 +1056,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     let y = top;
 
     const titleText = this.add
-      .text(CANVAS_W / 2, y, `Qumatex -- ${discoveredAll}/${totalAll} discovered`, {
+      .text(CANVAS_W / 2, y, `Qumatex: ${discoveredAll}/${totalAll} discovered`, {
         fontSize: fontPx(this, 14),
         color: GOLD_ACCENT_HEX,
         fontStyle: 'bold',
@@ -1172,7 +1172,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
       // uses this same loop).
       const blurb = discovered
         ? materialBlurb(material)
-        : 'Not yet discovered -- find and battle this crystal out in the field to catalogue it.';
+        : 'Not yet discovered. Find and battle this crystal out in the field to catalogue it.';
       const scale = fontScale(this);
       let blurbBase = 12;
       const blurbText = this.add

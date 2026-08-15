@@ -749,7 +749,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       shortName: 'Anderson',
       labelColor: '#e8b27a',
       strokeColor: 0xc9884a,
-      quote: 'Enough disorder and a wave stops spreading at all -- it localizes, trapped by the very randomness that surrounds it.',
+      quote: 'Enough disorder and a wave stops spreading at all: it localizes, trapped by the very randomness that surrounds it.',
       blurb: 'Lets you dope in an impurity move.',
       avatar: makeAndersonAvatar,
       tile: 'middle',
@@ -761,7 +761,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       shortName: 'Feynman',
       labelColor: '#ffa64a',
       strokeColor: 0xffa64a,
-      quote: 'A tensor network and a Feynman diagram draw the same trick two ways -- a vertex for every point, a line for every leg.',
+      quote: 'A tensor network and a Feynman diagram draw the same trick two ways: a vertex for every point, a line for every leg.',
       blurb: 'Lets you level up a move you already know.',
       avatar: makeFeynmanAvatar,
       tile: 'middle',
@@ -786,7 +786,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       labelColor: '#c9a8e0',
       strokeColor: 0xa878c9,
       quote:
-        'Fire X-rays through a defect-riddled crystal and the sharp spots blur into diffuse rings -- every pore and dislocation leaves its own signature in how the beam scatters. I can teach your crystal to scatter a blow the same way.',
+        'Fire X-rays through a defect-riddled crystal and the sharp spots blur into diffuse rings: every pore and dislocation leaves its own signature in how the beam scatters. I can teach your crystal to scatter a blow the same way.',
       blurb: 'Teaches always-on passive abilities.',
       avatar: makeFranklinAvatar,
       tile: 'middle',
@@ -935,7 +935,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     const essenceGutter = essenceGutterProbe.width + 8;
     essenceGutterProbe.destroy();
     this.add
-      .text(8, 8, `World ${this.world} -- ${name}`, {
+      .text(8, 8, `World ${this.world}: ${name}`, {
         fontSize: fontPx(this, 16),
         color: '#ffffff',
         backgroundColor: 'rgba(0,0,0,0.35)',
@@ -2968,7 +2968,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     y += intro.height + 14;
 
     const note = this.add
-      .text(CANVAS_W / 2, y, `${guardian.name} has nothing to teach you yet -- more to come.`, {
+      .text(CANVAS_W / 2, y, `${guardian.name} has nothing to teach you yet. More to come.`, {
         fontSize: fontPx(this, 11),
         color: REFERENCE_BLUE_GREY_HEX,
         align: 'center',

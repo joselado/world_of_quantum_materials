@@ -2,7 +2,7 @@
 
 Every move is named after a real quasiparticle or excitation, never a
 generic "attack type." A crystal can only ever learn moves its own physics
-actually supports — a plain band insulator has no magnetic order, so it
+actually supports: a plain band insulator has no magnetic order, so it
 never gets a magnon move. Move power climbs with how exotic the underlying
 physics is: an ordinary lattice vibration sits at the bottom, a topological
 or non-Abelian excitation at the top.
@@ -36,7 +36,7 @@ or non-Abelian excitation at the top.
 
 This is the game's only type-interaction rule: if the defender's own type
 can't host the attacking move's quasiparticle class at all, the hit lands at
-**double damage**. That's it — no separate strong/weak chart stacked on top
+**double damage**. That's it: no separate strong/weak chart stacked on top
 of it.
 
 <!-- GENERATED:COMPATIBILITY_TABLE START -->
@@ -61,7 +61,7 @@ of it.
 
 Landau (World 4) sells two moves that aren't in the table above, since
 they're quiz-gated separately: a lance and an eruption. Using either one asks
-a physics-equation question first — answer right and it hits for double
+a physics-equation question first: answer right and it hits for double
 damage, answer wrong and it's halved.
 
 Landau's shop also lets you tune each move to any quasiparticle class your
@@ -75,8 +75,8 @@ picker work.
 ## Skłodowska-Curie's Ultimate moves
 
 Skłodowska-Curie (World 10) sells two more moves outside the table above: a
-meteor and a nova. Each is far more powerful than any ordinary move — power
-100, ten times an Analytic move's — and gated to match: landing one takes
+meteor and a nova. Each is far more powerful than any ordinary move (power
+100, ten times an Analytic move's) and gated to match: landing one takes
 three physics questions in a row, all correct, drawn from a broad pool
 spanning the whole course rather than one world's topic. Miss even one
 question and the move whiffs for zero damage, though the turn is still
@@ -86,7 +86,7 @@ Like Landau's Analytic moves, each one can be tuned to any quasiparticle
 class your *current* form can host, and always reads "<quasiparticle>
 Meteor"/"<quasiparticle> Nova." Tuning isn't a flat purchase here, though:
 each quasiparticle class costs 1000 qumatessence to unlock per move, the
-first time you pick it — after that, retuning back to it is free forever.
+first time you pick it, after that, retuning back to it is free forever.
 See [Guardians](guardians.md#skłodowska-curies-experiments) for how the shop
 and per-class pricing work.
 
@@ -95,8 +95,8 @@ and per-class pricing work.
 Kondo's three moves sit outside the roster above entirely: they're
 self-buffs, not attacks. They deal no damage and never trigger the
 quasiparticle-mismatch rule, so there's no compatibility list to check.
-Casting one buffs you for 3 turns instead of hitting the opponent — reduced
-incoming damage, a chance to dodge outright, or healing over time — and only
+Casting one buffs you for 3 turns instead of hitting the opponent: reduced
+incoming damage, a chance to dodge outright, or healing over time. Only
 one can be active at a time. See [Guardians](guardians.md#kondos-clouds) for
 details.
 

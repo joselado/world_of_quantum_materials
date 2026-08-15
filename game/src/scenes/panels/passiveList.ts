@@ -119,7 +119,7 @@ export function renderChoiceList(
       container,
       centerX,
       y,
-      `${item.name} -- ${item.cost} qumatessence`,
+      `${item.name} (${item.cost} qumatessence)`,
       () => {
         if ((scene.game.registry.get('qumatessence') as number) < item.cost) return;
         scene.qumatessence -= item.cost;

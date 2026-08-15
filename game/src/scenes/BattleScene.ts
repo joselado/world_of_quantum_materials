@@ -833,17 +833,17 @@ export class BattleScene extends Phaser.Scene {
   // that function's own comment for why it can't read tunedMoveDisplayName
   // directly here).
   //
-  // A single "name — details" line rather than a forced two-line name/Pwr
+  // A single "Name: details" line rather than a forced two-line name/Pwr
   // split -- addMoveButton's own wordWrap only breaks this onto a second
   // line for a genuinely long label (a long tuned name plus an Ultimate's
   // ★★★ and a mismatch !!2x tag all at once), so a short label like "Phonon
-  // Beam — Pwr 6" renders on one line instead of always reserving room for
+  // Beam: Pwr 6" renders on one line instead of always reserving room for
   // two. Always the player's own move menu, so Feynman's level prefix/
   // effective power apply unconditionally here (unlike resolveHit's own
   // isPlayer-gated read, see that method's own comment).
   private moveButtonContent(moveId: string): { text: string; color: string } {
     if (KONDO_MOVE_IDS.includes(moveId)) {
-      return { text: `${moveDisplayName(this.game.registry, moveId)} — ${STATUS_DURATION}-turn buff`, color: STATUS_PILL_COLOR };
+      return { text: `${moveDisplayName(this.game.registry, moveId)}: ${STATUS_DURATION}-turn buff`, color: STATUS_PILL_COLOR };
     }
     const mismatch = !canHost(this.opponentView().type, getTunedMoveClass(this.game.registry, moveId));
     let tag = '';
@@ -862,7 +862,7 @@ export class BattleScene extends Phaser.Scene {
     }
     const displayName = moveDisplayName(this.game.registry, moveId);
     const power = Math.round(effectiveMovePower(this.game.registry, moveId));
-    return { text: `${displayName} — Pwr ${power}${tag}`, color };
+    return { text: `${displayName}: Pwr ${power}${tag}`, color };
   }
 
   // One move button -- factored out of drawMoveMenu so the per-section loop
@@ -1058,7 +1058,7 @@ export class BattleScene extends Phaser.Scene {
       const question = questions[index];
       index += 1;
       this.renderQuestionPanel({
-        title: `${moveDisplayName(this.game.registry, move.id)} -- question ${index}/${questions.length}`,
+        title: `${moveDisplayName(this.game.registry, move.id)} (question ${index}/${questions.length})`,
         titleColor: '#ff66ff',
         strokeColor: 0xff66ff,
         prompt: question.prompt,
@@ -1998,7 +1998,7 @@ export class BattleScene extends Phaser.Scene {
 
       this.setLogText(
         whiff
-          ? `${who}'s ${displayName} fizzles out -- the pattern never locked!`
+          ? `${who}'s ${displayName} fizzles out. The pattern never locked!`
           : `${who} used ${displayName}! (${dmg} dmg)${mismatchText}${critText}${buffText}${echoText}`
       );
     };
