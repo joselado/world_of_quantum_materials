@@ -167,8 +167,12 @@ export type MaterialType =
 //
 // The last three are two-dimensional rather than solid: `layer`, `layerTriangle`
 // and `layerSquare` are one monolayer seen as a thin plate, cut to the shape of
-// its own in-plane lattice (honeycomb/hexagonal, triangular, square), and
-// `twisted` is two such plates stacked at a moire angle.
+// its own in-plane lattice (honeycomb/hexagonal, triangular, square).
+//
+// Every habit here is one body. A crystal drawn from two separate pieces only
+// ever means a Majorana fusion, which is `hybridParents`' own render
+// (art/crystals.ts's `drawHybridCrystal`), so a compound rendering as two
+// offset plates reads as "this is a fused state" and nothing else.
 export type CrystalVariant =
   | 'shard'
   | 'cluster'
@@ -179,8 +183,7 @@ export type CrystalVariant =
   | 'tetragonal'
   | 'layer'
   | 'layerTriangle'
-  | 'layerSquare'
-  | 'twisted';
+  | 'layerSquare';
 
 export interface Move {
   id: string;
@@ -215,13 +218,14 @@ export interface Material {
   // `BattleScene.create`), and the player's own max HP follows the same
   // `wildHpForWorld` reasoning off whichever world they're currently in.
   moves: string[];
-  // Set only for a Majorana-fused hybrid (data/materials.ts's
-  // combineMaterials) -- both parents' own look, carried forward so
-  // art/crystals.ts can render the fused crystal as an actual mixture
-  // instead of just `color`'s flat blend. Optional so a hybrid `playerForm`
-  // loaded from a save written before this field existed still round-trips
-  // (JSON.parse just omits the key) and falls back to the ordinary
-  // single-shape render rather than throwing.
+  // Set on every hybrid material -- both parents' own look, carried forward
+  // so art/crystals.ts can render the fused crystal as an actual mixture
+  // instead of just `color`'s flat blend, whether the player fused it
+  // (data/materials.ts's combineMaterials) or met it wild in World 10 (the
+  // same field stamped on each HYBRID_RECIPES result). Optional because an
+  // ordinary single-compound crystal has no parents at all; a hybrid
+  // `playerForm` restored from a save that predates the field gets it back
+  // from the roster on load (data/save.ts), so a hybrid always draws fused.
   hybridParents?: {
     colorA: number;
     variantA: CrystalVariant;

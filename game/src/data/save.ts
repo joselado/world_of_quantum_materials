@@ -1,5 +1,5 @@
 import type { Material, MaterialType, MoveClass, Stats } from './types';
-import { PLAYER_MATERIAL, DEFAULT_STATS, MOVES, TYPE_LOOK } from './materials';
+import { PLAYER_MATERIAL, DEFAULT_STATS, MOVES, TYPE_LOOK, findMaterialByName } from './materials';
 import { wildHpForWorld } from './balance';
 import {
   DEFAULT_ENCOUNTER_DENSITY,
@@ -322,6 +322,21 @@ export function loadSave(superposition: boolean): SaveData {
     // that never set a form is in.
     data.unlockedMoves = data.unlockedMoves.filter((id) => id in MOVES);
     if (data.playerForm && !(data.playerForm.type in TYPE_LOOK)) data.playerForm = null;
+    // A stored form carries the whole Material, so its *look* can be stale in
+    // ways the type check above can't see: a habit outside this version's
+    // `CrystalVariant`, or a hybrid missing `hybridParents`, which would
+    // render as a single shape rather than the fused pair a hybrid is
+    // always drawn as.
+    // Both are repaired from the roster entry of the same name -- every form
+    // the player can be in is one, since Dresselhaus transmutes into a roster
+    // entry and Majorana fuses into one -- leaving the form itself, and
+    // everything else stored about the run, untouched.
+    if (data.playerForm) {
+      const roster = findMaterialByName(data.playerForm.name);
+      if (roster) {
+        data.playerForm = { ...data.playerForm, variant: roster.variant, hybridParents: roster.hybridParents };
+      }
+    }
     if (data.rival9Type && !(data.rival9Type in TYPE_LOOK)) data.rival9Type = null;
     if (!MUSIC_STYLE_PRESETS.some((p) => p.value === data.musicStyle)) data.musicStyle = DEFAULT_MUSIC_STYLE;
     if (!DIFFICULTY_TIER_PRESETS.some((p) => p.value === data.difficultyTier)) data.difficultyTier = DEFAULT_DIFFICULTY_TIER;

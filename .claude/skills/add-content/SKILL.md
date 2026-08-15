@@ -44,7 +44,10 @@ skipping grounding entirely.
      family rather than reusing one exact color.
    - `variantOverride` only if this compound's real dimensionality/stacking
      doesn't match its type's default look (layered 2D materials ->
-     `'layer'`, a moiré/twisted structure -> `'twisted'` -- see `dev_notes/STYLE.md`).
+     `'layer'`, R-3m/R3c trigonal ones -> `'rhombohedral'` -- see
+     `dev_notes/STYLE.md`). Every habit is a single body; a compound that
+     would want a two-piece look is a hybrid recipe result, and draws as its
+     two parents fused instead.
    - `shortName` only where a short chemical-formula/acronym form is
      genuinely worth authoring, not for every entry.
 2. Add a `MATERIAL_BLURBS[name]` entry (`game/src/data/materialdex.ts`) --

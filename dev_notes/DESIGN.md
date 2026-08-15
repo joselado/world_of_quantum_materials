@@ -480,9 +480,12 @@ own lattice grows in — cubic for the rock-salt/bcc/fcc/zinc-blende compounds, 
 for the tetrahedrally bonded diamond family, rhombohedral for the R-3m/R3c trigonal ones,
 tetragonal for the four-fold ThCr₂Si₂/PbO/perovskite/cuprate families, a hexagonal prism
 for the hexagonal/wurtzite/hcp ones, a thin floating sheet cut to its in-plane cell
-(hexagonal, triangular or four-sided) for the monolayers, two moiré-offset sheets for the
-twisted systems, and a plain faceted shard where a structure is low-symmetry enough to have
-no characteristic habit. A main type's `TYPE_LOOK` entry states the structure its members
+(hexagonal, triangular or four-sided) for the monolayers, and a plain faceted shard where a
+structure is low-symmetry enough to have no characteristic habit. Every one of those is a
+single body: a crystal drawn from two separate pieces is a fused hybrid (§5) and nothing
+else, so the player reads "this is a fused state" off the shape alone, and a twisted or
+moiré-stacked compound is therefore always a hybrid rather than an ordinary crystal with a
+stacked look. A main type's `TYPE_LOOK` entry states the structure its members
 typically share and `data/materials.ts`'s `crystal()` `variantOverride` param states an
 individual compound's own where it differs (wurtzite GaN among the zinc-blende
 semiconductors, rhombohedral Bi₂Te₃ and BiFeO₃, monolayer CrI₃ among the bulk magnets) —

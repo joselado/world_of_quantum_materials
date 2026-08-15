@@ -74,7 +74,7 @@ const SILHOUETTE: [number, number][] = [
 // Body shards, in units of `size`, fused around the torso core added after
 // them (its own bulk overlaps and fuses their inner edges). Limbs are always
 // a solid habit -- an angular shard or a blocky cube -- rather than the
-// material's own `variant`: the 'layer'/'twisted' variants are translucent
+// material's own `variant`: the monolayer plates are translucent
 // floating sheets, which read as flimsy on an arm, so the compound's own
 // habit lives in the torso core instead, where it stays the golem's chest
 // and is still what the eye lands on first.

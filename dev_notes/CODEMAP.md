@@ -630,16 +630,20 @@ World 10's Adapted and nowhere else.
   since it only has a `MaterialType` to draw from, not a specific compound name). A compound whose
   own lattice differs from the structure its type's `TYPE_LOOK` entry assumes states its own
   habit via `crystal()`'s `variantOverride` param (wurtzite GaN → `'prism'`, rhombohedral
-  Bi₂Te₃/BiFeO₃/GeTe → `'rhombohedral'`, Graphene/CrI₃ → `'layer'`, Twisted Bilayer MoTe₂ →
-  `'twisted'`; see STYLE.md).
+  Bi₂Te₃/BiFeO₃/GeTe → `'rhombohedral'`, Graphene/CrI₃ → `'layer'`; see STYLE.md). Every
+  habit is one body -- two separate pieces in a crystal mean a Majorana fusion, drawn from
+  `hybridParents` rather than from any `CrystalVariant`.
 - `combineMaterials(a, b)` (Majorana's hybrid fuser, §5) looks up `hybridRecipeResult(a.name,
   b.name)` -- a curated, named parent-pair catalog (`HYBRID_RECIPES`), not a type-derived
   result -- and spreads that recipe's own authored `Material` (name/type/color/moves all
   fixed on its `WORLD_CRYSTALS` entry, not computed here), adding only `hybridParents` (both
   inputs' own `color`/`variant`, sorted the same way the lookup itself is order-independent) so
   `makeCrystal()`'s `opts.hybrid` can render an actual fused mixture on top of the recipe's own
-  base look (see STYLE.md). Optional field, so a save whose `playerForm` predates
-  `hybridParents` just renders the ordinary single-shape look instead of throwing.
+  base look (see STYLE.md). Every `HYBRID_RECIPES` result carries the same field from module
+  load, so a wild hybrid met in World 10 renders identically to a player-fused one. The field
+  is optional because an ordinary single-compound crystal has no parents; a `playerForm`
+  restored from a save without it gets it back from the roster in `loadSave()`, so a hybrid
+  is always drawn fused.
 
 ## Cross-cutting patterns (reuse these, don't reinvent)
 
@@ -2617,9 +2621,12 @@ entry patches a raw parsed save forward by one schema version (`MIGRATIONS[i]`: 
 `CURRENT_SCHEMA_VERSION` (just `MIGRATIONS.length`, so nothing separate needs bumping);
 `persistFromRegistry()` stamps that current version onto every save it writes. A migration is
 appended, never edited in place, once shipped -- a save could be sitting at any past version.
-This is separate from `loadSave()`'s other two safety nets (filtering `unlockedMoves` to ids
-still in `MOVES`, resetting `playerForm`/`rival9Type` if their `type` isn't in `TYPE_LOOK`),
-which guard against a *reference* going stale inside an otherwise current-shape field -- that
+This is separate from `loadSave()`'s other safety nets (filtering `unlockedMoves` to ids
+still in `MOVES`; resetting `playerForm`/`rival9Type` if their `type` isn't in `TYPE_LOOK`;
+and re-reading a stored `playerForm`'s `variant`/`hybridParents` off the roster entry of the
+same name, so a form saved with a habit outside this version's `CrystalVariant`, or a hybrid
+saved without its parents, still renders right), which guard against a *reference* going stale
+inside an otherwise current-shape field -- that
 can happen in any version whenever content is renamed, not just at a save-format change, so
 those stay permanent and unversioned rather than living in `MIGRATIONS`.
 

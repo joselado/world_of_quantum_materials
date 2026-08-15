@@ -723,15 +723,19 @@ export const TYPE_LOOK: Record<MaterialType, { color: number; variant: CrystalVa
   // Superconductor blue shifted toward violet -- reads as that type's own
   // exotic cousin rather than an unrelated hue.
   chernSuperconductor: { color: 0x4a7fd9, variant: 'prism' },
-  chernInsulator: { color: 0xc9d94a, variant: 'twisted' },
+  // 'rhombohedral' for the R-3m tetradymites the type's own members are
+  // built on -- MnBi₂Te₄ (both the World 4 wild and the golems named for it)
+  // and the Cr-doped (Bi,Sb)₂Te₃ host. A member that isn't one of those, like
+  // Graphene under a strong field, states its own habit instead.
+  chernInsulator: { color: 0xc9d94a, variant: 'rhombohedral' },
   // 'layer' is the default variant since most members are quantum wells/
   // monolayers -- a bulk 3D member like Bi₂Te₃ overrides back to 'prism' on
   // its own crystal() call instead (see WORLD_CRYSTALS[3]).
   quantumSpinHall: { color: 0x6a4ad9, variant: 'layer' },
   // Warmer than chernInsulator's yellow-green -- distinct but visibly
-  // related, and 'twisted' by default since its flagship (Twisted Bilayer
-  // MoTe₂) genuinely is a twisted moiré stack.
-  fractionalChern: { color: 0xe8c94a, variant: 'twisted' },
+  // related, and 'layer' since every member is a stack of honeycomb
+  // monolayers (Twisted Bilayer MoTe₂, pentalayer graphene on hBN).
+  fractionalChern: { color: 0xe8c94a, variant: 'layer' },
   // Rose -- contrasts multiferroic's magenta, evokes electric polarization
   // rather than magnetism. 'tetragonal' since the type's archetypes (BaTiO₃'s
   // room-temperature P4mm perovskite, KDP) both polarize along a four-fold
@@ -1142,8 +1146,16 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
   // is reachable *only* by fusion until the player reaches here.
   // WORLD_RIVALS[10] ("The Adapted") has no fixed type/look of its own at
   // all -- see that table's own comment.
+  //
+  // Every entry here draws as its two parents fused (the `hybridParents`
+  // stamped on below HYBRID_RECIPES, rendered by art/crystals.ts's
+  // drawHybridCrystal), which is the one thing in the game drawn from two
+  // separate pieces -- every `CrystalVariant` habit is a single body, so two
+  // shapes in one crystal always read as a fusion. Each entry still states
+  // the habit its own lattice grows in, keeping the row a true description
+  // of the compound even though the fused render is what a player sees.
   10: [
-    crystal('Twisted Bilayer Graphene', 'superconductor', ['higgsOscillation', 'thermalFluctuation'], 0, 'twisted'),
+    crystal('Twisted Bilayer Graphene', 'superconductor', ['higgsOscillation', 'thermalFluctuation'], 0, 'layer'),
     // Majorana-nanowire platform -- engineered from an ordinary s-wave
     // superconductor (Aluminum) proximitizing a strong-spin-orbit
     // semiconductor (InAs), not an intrinsically chiral pairing, so it gets
@@ -1151,7 +1163,7 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     crystal('InAs/Al Majorana Wire', 'chernSuperconductor', ['decoherenceWave', 'higgsOscillation'], 1),
     crystal('CrI₃/NbSe₂ Topological-SC Heterostructure', 'chernSuperconductor', ['chiralCurrent', 'decoherenceWave'], 0, 'layer'),
     crystal('NbSe₂/CrBr₃ Topological-SC Heterostructure', 'chernSuperconductor', ['chiralCurrent', 'decoherenceWave'], 1, 'layer'),
-    crystal('Twisted CrI₃', 'multiferroic', ['electromagnonPulse', 'magneticField'], 0, 'twisted'),
+    crystal('Twisted CrI₃', 'multiferroic', ['electromagnonPulse', 'magneticField'], 0),
     crystal('1T/1H-TaS₂ Heterostructure', 'kondoHeavyFermion', ['entanglementSwap', 'heavyFermionPulse'], 4, 'layer'),
     // Quantum anomalous Hall effect -- zero-field Chern insulator, from
     // doping magnetism into Bi₂Te₃ (world 3) -- 'chernInsulator', not
@@ -1168,7 +1180,7 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // ordinary integer-Landau-level members, so it lives under
     // 'fractionalChern' instead of 'chernInsulator' -- world 4's own
     // untwisted 2H monolayer parent fuses with itself to make this.
-    crystal('Twisted Bilayer MoTe₂', 'fractionalChern', ['fluxTwist', 'thermalFluctuation'], 2, 'twisted'),
+    crystal('Twisted Bilayer MoTe₂', 'fractionalChern', ['fluxTwist', 'thermalFluctuation'], 2),
     // Zero-field fractional quantum anomalous Hall (2023-2024), from
     // rhombohedral-stacked pentalayer graphene aligned to a hBN substrate --
     // fractionally quantized Hall plateaus at moiré filling, no applied

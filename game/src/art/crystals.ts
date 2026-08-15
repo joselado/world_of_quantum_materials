@@ -416,39 +416,6 @@ function drawPlateShape(
   g.strokePoints(top, true);
 }
 
-// Two layer-shapes stacked with a rotational offset between them -- the
-// moire mismatch between the two hex outlines is the whole point, for
-// twisted-system compounds (twisted bilayer MoTe2, ...). Both faces render
-// semi-transparent so the offset between them is actually visible rather
-// than the top layer just occluding the bottom one.
-function drawTwistedShape(g: Phaser.GameObjects.Graphics, size: number, color: number, stretch: Stretch = NO_STRETCH) {
-  const s = size;
-  const P = (x: number, y: number) => ({ x: x * stretch.x, y: y * stretch.y });
-  g.fillStyle(0x000000, 0.18);
-  g.fillEllipse(0, s * 0.6 * stretch.y, s * 1.15 * stretch.x, s * 0.22 * stretch.y);
-
-  const hexPts = (radius: number, yOff: number, rotDeg: number) => {
-    const pts: { x: number; y: number }[] = [];
-    for (let i = 0; i < 6; i++) {
-      const ang = Phaser.Math.DegToRad(60 * i - 90 + rotDeg);
-      pts.push(P(Math.cos(ang) * radius, yOff + Math.sin(ang) * radius * 0.4));
-    }
-    return pts;
-  };
-
-  const bottom = hexPts(s * 0.78, s * 0.14, -12);
-  g.fillStyle(shade(color, -10), 0.55);
-  g.fillPoints(bottom, true);
-  g.lineStyle(2, shade(color, -45), 0.85);
-  g.strokePoints(bottom, true);
-
-  const top = hexPts(s * 0.78, -s * 0.1, 12);
-  g.fillStyle(shade(color, 30), 0.6);
-  g.fillPoints(top, true);
-  g.lineStyle(2, shade(color, -25), 0.9);
-  g.strokePoints(top, true);
-}
-
 // A compound's own per-instance look, derived once from a hash of its name
 // (not re-rolled per render) -- a hue tint plus a rotation/stretch on the
 // shape itself, so materials sharing one MaterialType's variant/base color
@@ -502,6 +469,10 @@ export function killTweensDeep(scene: Pick<Phaser.Scene, 'tweens'>, obj: Phaser.
 // about what a variant looks like. `shard` is the fallback as well as a
 // variant in its own right: it is the habit a compound gets when its
 // structure has no characteristic one.
+//
+// Every habit below is a single body -- two separate pieces in one crystal
+// mean a Majorana fusion and nothing else (`drawHybridCrystal`), so a
+// compound never draws as more than one solid on its own.
 function drawSolidShape(
   g: Phaser.GameObjects.Graphics,
   size: number,
@@ -518,7 +489,6 @@ function drawSolidShape(
   else if (variant === 'layer') drawLayerShape(g, size, color, stretch);
   else if (variant === 'layerTriangle') drawPlateShape(g, size, color, stretch, 3, 1.05);
   else if (variant === 'layerSquare') drawPlateShape(g, size, color, stretch, 4, 0.88);
-  else if (variant === 'twisted') drawTwistedShape(g, size, color, stretch);
   else drawShardShape(g, size, color, stretch);
 }
 
@@ -649,10 +619,11 @@ function drawVariantShape(g: Phaser.GameObjects.Graphics, size: number, color: n
 // region where they overlap actually brightens into a shared "fusion" glow,
 // split by a jagged glowing seam (the fusion boundary made literal) and
 // finished with sparkles tinted in both parents' own colors rather than
-// plain white. Only reached via `makeCrystal`'s `opts.hybrid` -- a hybrid
-// `Material` with no `hybridParents` (e.g. a `playerForm` loaded from a save
-// written before this field existed) simply omits `hybrid` and falls back to
-// the ordinary single-shape render instead of calling this at all.
+// plain white. This is the one crystal in the game drawn from two separate
+// pieces: every `CrystalVariant` habit is a single body, so two shapes in
+// one crystal always mean a fusion. Reached via `makeCrystal`'s
+// `opts.hybrid`, which every hybrid material carries (see `hybridParents` in
+// data/types.ts).
 function drawHybridCrystal(
   scene: Phaser.Scene,
   container: Phaser.GameObjects.Container,

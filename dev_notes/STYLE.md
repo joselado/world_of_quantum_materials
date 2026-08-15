@@ -968,7 +968,9 @@ station motifs are deliberately not tunnels with a visible far end.
   lattice, never picked for variety** -- `art/crystals.ts`'s `drawSolidShape` is the single
   place a `CrystalVariant` becomes a shape, so `makeCrystal`'s ordinary render and
   `drawVariantShape`'s hybrid halves can't disagree about what a variant looks like.
-  Eleven habits:
+  **Every habit is a single body, without exception** -- a crystal drawn from two separate
+  pieces means a Majorana fusion and nothing else (the **Hybrid materials** bullet below), so
+  the player can read "this is a fused state" straight off the silhouette. Ten habits:
   - **Solids.** `cubic` (`drawCubicShape`, a blocky isometric cube) for the cubic systems --
     rock salt, bcc/fcc metals, zinc blende, the cubic hydride. `octahedral`
     (`drawOctahedralShape`, two square pyramids meeting at a girdle) for the tetrahedrally
@@ -998,14 +1000,15 @@ station motifs are deliberately not tunnels with a visible far end.
     the 2H TMDs, CrI₃). `layerTriangle` and `layerSquare` (`drawPlateShape`) are the same
     plate grammar -- detached shadow, thin rim, lit top face -- cut to a triangular
     (Monolayer NiI₂) or four-sided (1T′ WTe₂, the HgTe/CdTe quantum well) in-plane cell.
-    `twisted` (`drawTwistedShape`) is two hexagonal sheets stacked with a rotational offset,
-    both semi-transparent so the moiré mismatch between their outlines is actually visible.
+    All three are one plate: a twisted or moiré-stacked compound is a hybrid, and draws as
+    its two parents fused rather than as a habit of its own.
 - Both `TYPE_LOOK` and `data/materials.ts`'s `crystal()` `variantOverride` param set the
   habit, and neither is a shortcut for the other: `TYPE_LOOK` states the structure the type's
   members typically share (`cubic` for metal/insulator, `octahedral` for semiconductor,
-  `tetragonal` for ferroelectric, `layer` for quantumSpinHall/multiferroic, `twisted` for
-  chernInsulator/fractionalChern, `shard` for superconductor, whose members share no lattice
-  at all), and `variantOverride` states an individual compound's own where it differs
+  `tetragonal` for ferroelectric, `layer` for quantumSpinHall/multiferroic/fractionalChern,
+  `rhombohedral` for chernInsulator's R-3m tetradymites, `shard` for superconductor, whose
+  members share no lattice at all), and `variantOverride` states an individual compound's
+  own where it differs
   (wurtzite GaN among the zinc-blende semiconductors, rhombohedral Bi₂Te₃ and BiFeO₃,
   tetragonal YBCO and Fe(Te,Se), cubic Al/Pb/Nb/LaH₁₀, monolayer CrI₃ among the bulk magnets).
   A main type groups compounds by their physics rather than their symmetry, so the two part
@@ -1030,9 +1033,13 @@ station motifs are deliberately not tunnels with a visible far end.
   shards, the title screen's `TYPE_LOOK`-only showcase) omit `seed` and keep their exact
   hand-tuned look.
 - **Hybrid materials** (Majorana's fuse mechanic, DESIGN.md §5) render as an actual mixture of
-  both parents, not one flat blended color. `data/materials.ts`'s `combineMaterials` carries
-  each parent's own `color`/`variant` forward as the new `Material`'s `hybridParents`; when
-  present, `makeCrystal()`'s `opts.hybrid` routes to `drawHybridCrystal` instead of the
+  both parents, not one flat blended color -- **the one crystal in the game drawn from two
+  separate pieces**, which is what makes a fused state readable at a glance against a roster
+  of single-body habits. `data/materials.ts`'s `combineMaterials` carries
+  each parent's own `color`/`variant` forward as the new `Material`'s `hybridParents`, and
+  each `HYBRID_RECIPES` result carries the same field before any player fuses it, so a wild
+  hybrid met in World 10 and a player-made one render identically;
+  `makeCrystal()`'s `opts.hybrid` routes to `drawHybridCrystal` instead of the
   ordinary single-shape path: both parents' own habits (`drawVariantShape`, which is
   `drawSolidShape` at hybrid scale with 'cluster' collapsed to a plain shard so it doesn't crowd
   a shape already sharing space with a second parent's own) render off-center at a slight opposing tilt, the
@@ -1042,9 +1049,9 @@ station motifs are deliberately not tunnels with a visible far end.
   background (the overworld sky never is). A soft additive-blended glow (their averaged color)
   and a jagged white-gold seam down the middle *do* use `ADD`, since those are meant to read as
   light/energy rather than solid material. Finished with sparkles tinted in both parents' own
-  colors (`hexColor`) instead of the plain-white default. A hybrid `playerForm` loaded from a
-  save written before `hybridParents` existed simply has no `hybridParents` key and falls back
-  to the ordinary single-shape render rather than throwing.
+  colors (`hexColor`) instead of the plain-white default. A hybrid `playerForm` restored from a
+  save that predates `hybridParents` gets the field back from the roster entry of the same
+  name on load (`data/save.ts`), so a hybrid is never drawn as a single shape.
 
 ## Wild encounter dialogue (`OverworldScene.showEncounter`)
 
@@ -1706,7 +1713,7 @@ station motifs are deliberately not tunnels with a visible far end.
     oversized torso core, with the two oversized fists drawn after that core so
     they hang in front of it. Limbs are always a
     solid habit (`drawShardShape`/`drawCubicShape`) rather than the material's own
-    `variant` -- the translucent `layer`/`twisted` sheets read as flimsy on an
+    `variant` -- the translucent monolayer plates read as flimsy on an
     arm -- so the compound's own habit lives in the torso core instead.
   - **Grain-boundary seams**: five jagged polylines drawn twice, once dark as the
     crack and once offset and additive as the light coming through it, each on its
