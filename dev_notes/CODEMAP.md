@@ -673,7 +673,7 @@ everything else by absence, so only two things in it carry meaning.
   colours, so the accent reads as lighting rather than as a repaint.
 
 **Panel/dialogue UI.** Every overlay (wild encounter, guardian panels, rival gate, Hub's
-  Qumatex panel, the Lab's own six stations) is the same dark rounded-rectangle-with-stroke
+  Qumatex panel, the Lab's own stations) is the same dark rounded-rectangle-with-stroke
   treatment, with the stroke color signaling the panel's kind: blue-grey `0x444466` = wild
   encounter (`OverworldScene.showEncounter`) and the Lab's Moves/Stats/Abilities/Settings
   stations (`0x8fa0c9`, a distinct blue-grey so it doesn't collide), gold `0xffe066` = Noether, teal `0x4adde0` =
