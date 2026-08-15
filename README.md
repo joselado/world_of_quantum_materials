@@ -162,9 +162,11 @@ Lab, one click away. See [Guardians](docs/guardians.md) for what each one does.
 **Face the boss.** Every world narrows into a pass at its far end, and you
 will see what stands in it long before you get there: a gigantic golem, built
 from many crystal shards fused into one mass, filling the gap so completely
-that nothing of the next world shows past it. Through World 9 its name is
-always a real compound in *polycrystalline* form (many grains fused into one,
-the same idea the golem's own body literalizes); World 10's rival, The Adapted,
+that nothing of the next world shows past it. Its name is a real material with
+the kind of order it lost written in front of it, *polycrystalline* for most,
+*amorphous* or *disordered* where a world's own lesson rested on something
+else. Each one boasts about the very property its own disorder took from it,
+and none of them knows that is what it is doing. World 10's rival, The Adapted,
 is the one that breaks the pattern. Step to the mouth of the pass and press
 Space to challenge it. Beat it and the pass clears: the next world's colours
 show through the gap, a board names it, and pressing Space again crosses over.

@@ -94,6 +94,7 @@ const materialsSf = parseFile('src/data/materials.ts');
 const MOVES = evalNode(findTopLevelConst(materialsSf, 'MOVES'), materialsSf);
 const ANALYTIC_MOVE_IDS = evalNode(findTopLevelConst(materialsSf, 'ANALYTIC_MOVE_IDS'), materialsSf);
 const ULTIMATE_MOVE_IDS = evalNode(findTopLevelConst(materialsSf, 'ULTIMATE_MOVE_IDS'), materialsSf);
+const GOLEM_MOVE_IDS = evalNode(findTopLevelConst(materialsSf, 'GOLEM_MOVE_IDS'), materialsSf);
 
 const WORLD_CRYSTALS_RAW = evalNode(findTopLevelConst(materialsSf, 'WORLD_CRYSTALS'), materialsSf);
 const WORLD_CRYSTALS = Object.fromEntries(
@@ -165,7 +166,15 @@ function genQuasiparticles() {
   }
   const allTypeCount = Object.keys(MOVE_COMPATIBILITY).length;
   const moveRows = Object.values(MOVES)
-    .filter((m) => !ANALYTIC_MOVE_IDS.includes(m.id) && !ULTIMATE_MOVE_IDS.includes(m.id) && m.class !== 'screening')
+    // Golem moves are opponent-only, so they stay out of a table that tells a
+    // player which moves they can use.
+    .filter(
+      (m) =>
+        !ANALYTIC_MOVE_IDS.includes(m.id) &&
+        !ULTIMATE_MOVE_IDS.includes(m.id) &&
+        !GOLEM_MOVE_IDS.includes(m.id) &&
+        m.class !== 'screening'
+    )
     .sort((a, b) => a.power - b.power)
     .map((m) => {
       const types = classToTypes[m.class] ?? [];

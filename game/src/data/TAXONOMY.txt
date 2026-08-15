@@ -35,7 +35,6 @@ phonon         lattice vibration -- universal, every class hosts it
 electron       ordinary band electron ("trivial")
 plasmon        collective charge oscillation -- free-electron-gas only
 magnon         collective spin wave
-polaron        lattice-dressed/self-trapped charge carrier
 spinon         fractionalized spin excitation
 triplon        propagating S=1 excitation of a singlet/dimer (valence-bond) ground state -- a *confined* mode, conceptually the opposite of spinon's fractionalization; lives on quantum_spin_liquid anyway, a deliberate simplification
 electromagnon  magnon-phonon hybrid with electric-dipole activity
@@ -51,7 +50,7 @@ vison          Z2 gauge-flux (vortex) excitation of a Z2 spin liquid
 --- CLASSES (13) ---
 
 metal:                phonon, electron, plasmon                    # Aluminum, Graphene
-insulator:             phonon, polaron                              # Magnesium Oxide -- polaron lives here, not metal/semiconductor: self-trapped polarons are strongest in ionic insulators/oxides
+insulator:             phonon                                       # Magnesium Oxide -- phonon alone: no carriers for an electron/plasmon, no order for a collective mode
 semiconductor:         phonon, electron                             # Silicon
 classical_magnet:      phonon, magnon                               # Iron, Manganese Oxide
 quantum_spin_liquid:   phonon, spinon, vison, triplon               # Herbertsmithite, Strontium Copper Borate (triplon), alpha-RuCl3 (vison)

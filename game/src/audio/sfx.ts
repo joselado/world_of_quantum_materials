@@ -40,7 +40,7 @@ function playBoltSfx(ctx: AudioContext, dest: GainNode, t: number) {
 }
 
 // A bandpassed noise sweep plus a low sine "whomp" underneath -- ring moves
-// (an expanding wave pulse: Magnon Pulse, Polaron Drag).
+// (an expanding wave pulse: Magnon Pulse).
 function playRingSfx(ctx: AudioContext, dest: GainNode, noiseBuffer: AudioBuffer, t: number) {
   const src = ctx.createBufferSource();
   src.buffer = noiseBuffer;

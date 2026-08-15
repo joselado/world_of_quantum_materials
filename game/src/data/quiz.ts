@@ -420,9 +420,9 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'Semiconductor',
     },
     {
-      prompt: 'What move can an insulator like Diamond carry that a metal cannot?',
-      correct: 'Polaron Drag: a self-trapped, lattice-dressed carrier',
-      incorrect: 'Plasmon Pulse: a free-electron-gas collective mode',
+      prompt: 'Which excitation does a wide-gap insulator like Diamond still carry, with no free carriers at all?',
+      correct: 'A phonon, the quantized vibration of the lattice itself',
+      incorrect: 'A plasmon, the collective mode of a free-electron gas',
     },
     {
       prompt: "Diamond's stiff sp³ covalent lattice gives it an unusually high...",
@@ -440,9 +440,9 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'Metallic bonding with delocalized electrons',
     },
     {
-      prompt: 'Which type most strongly self-traps a polaron, relative to a metal or an ordinary semiconductor?',
-      correct: 'A wide-gap insulator, especially an ionic/heteropolar one',
-      incorrect: 'A metal, since it has the most free carriers available',
+      prompt: 'Why does a wide-gap insulator carry so much of its heat as lattice vibration rather than as electrons?',
+      correct: 'Its gap leaves almost no mobile carriers, so the phonons are what is left to carry it',
+      incorrect: 'Its electrons are heavier than a metal\'s, so they carry heat more slowly',
     },
     {
       prompt: 'Why is hBN specifically the material real graphene devices are stacked on or encapsulated in?',
@@ -466,7 +466,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'Which quasiparticle can a wide-gap insulator like hBN still host despite its gap?',
-      correct: 'A phonon, and a self-trapped polaron',
+      correct: 'A phonon, which needs no carriers at all',
       incorrect: 'A plasmon, since a wide gap still permits free carriers',
     },
     {

@@ -111,7 +111,7 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
       y,
       superposition
         ? '"I am Anderson. In superposition any quantum material can be doped in as an impurity. Pick one, and I\'ll teach you the channel it opens, active for as long as that impurity stays doped in; a new one replaces it."'
-        : '"I am Anderson. Dope in a defeated quantum material as an impurity, and I\'ll teach you the one channel it opens, active only while that impurity stays doped in; a new dopant replaces it."',
+        : '"I am Anderson. Dope in a defeated quantum material as an impurity, and I\'ll teach you the one channel it opens, active only while that impurity stays doped in; a new dopant replaces it. One impurity, placed on purpose, is a question. Enough of them, placed by no one, is a verdict. I teach the dose."',
       { fontSize: fontPx(scene, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
     )
     .setOrigin(0.5, 0);

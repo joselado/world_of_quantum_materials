@@ -64,12 +64,18 @@ Every world runs the same way. You walk it, its wild crystals ambush you, a
 the far end the road narrows into a pass, and something enormous is
 standing in it.
 
-The passes are held by golems. Each is a real compound in its
-polycrystalline form, a thousand separate grains fused into one giant,
-and each is **its own world's physics, made incorruptible**. Whatever the
-Decoherence is doing to that world, the golem holding its pass is the one
-thing there that the trick does not work on. It will tell you so itself,
-right before you fight it.
+The passes are held by golems. Each is a real material with the kind of
+order it lost written in front of its name: *polycrystalline* for most, a
+thousand separate grains fused into one giant, and *amorphous* or
+*disordered* where that world's own lesson rested on something else. Each
+one will tell you, right before you fight it, that it is **its own world's
+physics made incorruptible**, and each one is proud, and dangerous, and
+entirely sincere.
+
+Listen to what they actually boast about, though. Read the ten of them
+against the physics you are being taught on the way, and a second reading
+assembles itself underneath the first. It will not finish before the ninth
+world, and you are not meant to hurry it.
 
 And in every world, the Decoherence attacks *one named mechanism*, always
 the one that world stands on. It never simply erodes things. It finds the

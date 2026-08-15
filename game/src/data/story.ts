@@ -11,7 +11,7 @@ export const STORY_BEATS: Partial<Record<number, string>> = {
   3: 'The seam holds, and the bulk stays where it is. Further on, the ground falls into flat glowing bands under a storm that never breaks: untouched territory for whatever is unraveling these worlds.',
   4: "The flats' orbits lock back into their levels. Beyond them, an open glacier runs cold enough for zero resistance, and for Majorana pairs to hide in plain sight.",
   5: 'The glacier stays superconducting. Out on the black iron sand beyond it, spin waves still ripple where they should be still: the next front the Decoherence has opened.',
-  6: 'The steppe falls quiet and ordered. Past it, an entire world is nothing but bonds and entanglement, hung in nothing at all. If the Decoherence can unravel that, it can unravel anything.',
+  6: "The steppe falls quiet and ordered, though the golem's last wave never did reach its far side. Past it, an entire world is nothing but bonds and entanglement, hung in nothing at all. If the Decoherence can unravel that, it can unravel anything.",
   7: 'The network holds its bonds. Past its last rung the lanes give onto black water that fractionalizes everything entering it: spin liquids that never settle on an order of their own.',
   8: 'The water settles into something you can name again. Ahead the ground itself is scarred, old burns closed over and crust still open and glowing between them: defects and impurities, the Decoherence wearing through the material.',
   9: "The scars close. What's left is a world that re-forms around you as you walk and takes the ground back behind you: adaptive, watching, the last and strangest phase of matter you'll face.",

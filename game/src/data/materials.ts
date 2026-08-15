@@ -52,7 +52,7 @@ export { BASE_STAT, MAX_STAT, DEFAULT_STATS, enemyStatsForWorld, statUpgradeCost
 //   8  magnon (Magnon Pulse) / plasmon (Plasmon Pulse) / ferron (Ferron
 //      Pulse) -- tied: an ordinary collective mode of a magnet, a metal, or
 //      a ferroelectric respectively, none more exotic than the others
-//   9  polaron (Polaron Drag) / electromagnon (Electromagnon Pulse) /
+//   9  electromagnon (Electromagnon Pulse) /
 //      triplon (Triplon Surge) -- tied: a lattice-dressed carrier, a
 //      magnon-phonon hybrid, and a dimer magnet's own confined triplet mode
 //   10 spinon (Spinon Swap) / vison (Vison Loop) / chiral (Chiral Current) /
@@ -71,7 +71,6 @@ export const MOVES: Record<string, Move> = {
     class: 'phonon',
     power: 6,
   },
-  localizationPin: { id: 'localizationPin', name: 'Polaron Drag', class: 'polaron', power: 9 },
   // 'chargedAnyon' rather than a generic topological/edge class -- braiding
   // fractional-charge excitations is specifically a fractional-Chern-state
   // phenomenon, not something an ordinary (non-fractionalized) chiral or
@@ -107,6 +106,24 @@ export const MOVES: Record<string, Move> = {
   // A Z2 gauge-flux (vortex) excitation -- spinon's topological-order
   // companion in a Z2 quantum spin liquid.
   visonLoop: { id: 'visonLoop', name: 'Vison Loop', class: 'vison', power: 10 },
+
+  // The golems' own moves (GOLEM_MOVE_IDS below). Same quasiparticle class
+  // and same power as the move each one corrupts, so nothing about the
+  // type-interaction rule or the damage curve changes: what a rival throws
+  // is still its world's own excitation, and still lands double on a
+  // defender whose physics cannot host that class. What changed is the
+  // excitation itself. A golem's coherence was ground out of it, and the
+  // quasiparticle it carries came out the other side decohered, which is
+  // why it is named for what it used to be. Opponent-only, in the same way
+  // Analytic and Ultimate moves are player-only: no shop sells these and no
+  // wild crystal carries one.
+  decoheredMagnon: { id: 'decoheredMagnon', name: 'Decohered Magnon Pulse', class: 'magnon', power: 8 },
+  decoheredSpinon: { id: 'decoheredSpinon', name: 'Decohered Spinon Swap', class: 'spinon', power: 10 },
+  decoheredTriplon: { id: 'decoheredTriplon', name: 'Decohered Triplon Surge', class: 'triplon', power: 9 },
+  decoheredChiral: { id: 'decoheredChiral', name: 'Decohered Chiral Current', class: 'chiral', power: 10 },
+  decoheredHelical: { id: 'decoheredHelical', name: 'Decohered Helical Current', class: 'helical', power: 10 },
+  decoheredHiggs: { id: 'decoheredHiggs', name: 'Decohered Higgs Oscillation', class: 'higgs', power: 10 },
+  decoheredVison: { id: 'decoheredVison', name: 'Decohered Vison Loop', class: 'vison', power: 10 },
   // Landau's quiz-gated Analytic moves (§5, World 4, ANALYTIC_MOVE_IDS
   // below) -- power sits below the other exotic-tier moves since their real
   // payoff is the answer-gated 2x/0.5x multiplier BattleScene applies, not
@@ -161,10 +178,9 @@ export const MOVES: Record<string, Move> = {
   // "breakdown," since a literal Kondo breakdown is the opposite (the
   // heavy-fermion composite's own hybridization collapsing at a quantum
   // critical point). None of the three buff names doubles as a MoveClass --
-  // 'majorana' and 'polaron' are separately Majorana Split's and Polaron
-  // Drag's classes, unrelated quasiparticle physics, so a buff name
-  // matching one of those would read as if this generic technique were
-  // tied to that specific move instead.
+  // 'majorana' is separately Majorana Split's own class, unrelated
+  // quasiparticle physics, so a buff name matching it would read as if this
+  // generic technique were tied to that specific move instead.
   screeningCloud: {
     id: 'screeningCloud',
     name: 'Screening Pulse',
@@ -212,6 +228,32 @@ export const ANALYTIC_MOVE_IDS = ['skyfallBeam', 'groundEruption'];
 // comment just above for why these can never appear in an opponent's
 // `moves` array either.
 export const ULTIMATE_MOVE_IDS = ['ultimateMeteor', 'ultimateNova'];
+
+// The rival golems' decohered moves -- opponent-only, the mirror image of
+// ANALYTIC_MOVE_IDS/ULTIMATE_MOVE_IDS above. A player never obtains one:
+// they are kept out of SHOP_MOVE_IDS so Noether cannot sell them, out of
+// every wild crystal's moveset, and out of the generated move table in
+// docs/quasiparticles.md, since a player-facing move list should only list
+// moves a player can actually end up holding.
+// Whether a golem's body is built of grains at all. The rival naming system
+// states which kind of order that world lost (WORLDS.md section 6), so it is
+// also the honest source for how the body is drawn: a golem named Amorphous
+// has no grains to fuse and no boundaries to light, and drawing it with the
+// shared mosaic of lit seams would put a visible physics error on screen.
+// Every other golem, polycrystalline or disordered, is grained.
+export function isGrainedGolem(name: string): boolean {
+  return !name.startsWith('Amorphous');
+}
+
+export const GOLEM_MOVE_IDS = [
+  'decoheredMagnon',
+  'decoheredSpinon',
+  'decoheredTriplon',
+  'decoheredChiral',
+  'decoheredHelical',
+  'decoheredHiggs',
+  'decoheredVison',
+];
 
 // Qumatessence cost to unlock one quasiparticle class for one Ultimate move
 // (Skłodowska-Curie's panel, registry/save `ultimateClassesUnlocked`) --
@@ -271,7 +313,6 @@ export const TUNABLE_MOVE_CLASSES: MoveClass[] = [
   'electron',
   'magnon',
   'phonon',
-  'polaron',
   'spinon',
   'triplon',
   'electromagnon',
@@ -298,7 +339,6 @@ const QUASIPARTICLE_NAMES: Partial<Record<MoveClass, string>> = {
   electron: 'Electron',
   magnon: 'Magnon',
   phonon: 'Phonon',
-  polaron: 'Polaron',
   spinon: 'Spinon',
   triplon: 'Triplon',
   electromagnon: 'Electromagnon',
@@ -342,6 +382,7 @@ export const SHOP_MOVE_IDS = Object.keys(MOVES).filter(
     id !== 'thermalFluctuation' &&
     !ANALYTIC_MOVE_IDS.includes(id) &&
     !ULTIMATE_MOVE_IDS.includes(id) &&
+    !GOLEM_MOVE_IDS.includes(id) &&
     !KONDO_MOVE_IDS.includes(id)
 );
 
@@ -372,11 +413,12 @@ const MOVE_COMPATIBILITY: Record<MaterialType, MoveClass[]> = {
   // gas support a plasmon at all, so it's deliberately not shared with
   // 'semiconductor'/'insulator' below.
   metal: ['electron', 'phonon', 'plasmon'],
-  // No 'electron' -- the gap is wide enough that even an ordinary band
-  // electron doesn't propagate. 'polaron' instead: self-trapped polarons
-  // are strongest in exactly this kind of ionic insulator/oxide, not a bare
-  // metal or a narrow-gap semiconductor.
-  insulator: ['phonon', 'polaron'],
+  // Phonon alone. The gap is wide enough that no ordinary band electron
+  // propagates, and there is no order of any kind to carry a collective
+  // mode, so what is left is the one excitation every solid has: its own
+  // lattice, vibrating. The narrowest row in this table, and the reason an
+  // insulator is the least quantum thing a player can wear or fight.
+  insulator: ['phonon'],
   semiconductor: ['electron', 'phonon'],
   classicalMagnet: ['magnon', 'phonon'],
   // Hosts spinon (the fractionalized excitation itself), vison (its
@@ -389,7 +431,7 @@ const MOVE_COMPATIBILITY: Record<MaterialType, MoveClass[]> = {
   // at, on top of the class's own defining heavy-fermion composite.
   kondoHeavyFermion: ['electron', 'phonon', 'heavyFermion', 'spinon'],
   // Ordinary (non-topological) Cooper pairing -- 'higgs' (the condensate's
-  // own amplitude mode) rather than 'polaron'/'majorana': a plain s-wave
+  // own amplitude mode) rather than 'majorana': a plain s-wave
   // pairing alone doesn't host a Majorana zero mode, that needs genuine
   // topological pairing (see 'chernSuperconductor').
   superconductor: ['electron', 'phonon', 'higgs'],
@@ -872,9 +914,9 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
   // conductor respectively); Gallium Nitride, Indium Arsenide, and the
   // semiconducting MoTe₂ phase are narrow-gap dopable semiconductors, same
   // category as Silicon; Magnesium Oxide, Diamond, and Monolayer Boron
-  // Nitride are gapped too wide for that instead, true insulators (and, as
-  // ionic/heteropolar lattices, actually stronger polaron hosts than a bare
-  // semiconductor -- see MOVE_COMPATIBILITY.insulator).
+  // Nitride are gapped too wide for that instead, true insulators, left with
+  // their own lattice vibration and nothing else (see
+  // MOVE_COMPATIBILITY.insulator).
   2: [
     // Plasmon Pulse moveset -- see world 1's Graphene entry above.
     crystal('Graphene', 'metal', ['plasmonPulse', 'thermalFluctuation'], 0, 'layer'),
@@ -883,18 +925,18 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // overwhelmingly runs on silver (and gold) rather than graphene.
     crystal('Silver', 'metal', ['plasmonPulse', 'thermalFluctuation'], 1, undefined, 'Ag'),
     crystal('Gallium Nitride', 'semiconductor', ['tunnelStrike', 'thermalFluctuation'], 2, 'prism', 'GaN'),
-    crystal('Magnesium Oxide', 'insulator', ['thermalFluctuation', 'localizationPin'], 0, undefined, 'MgO'),
+    crystal('Magnesium Oxide', 'insulator', ['thermalFluctuation'], 0, undefined, 'MgO'),
     // Diamond's ~5.5 eV indirect gap is far too wide for doping or thermal
     // excitation to put a carrier in the conduction band -- the textbook
     // wide-gap covalent insulator, pristine (no nitrogen-vacancy or other
     // defect dressing).
-    crystal('Diamond', 'insulator', ['thermalFluctuation', 'localizationPin'], 1, 'octahedral', 'C'),
+    crystal('Diamond', 'insulator', ['thermalFluctuation'], 1, 'octahedral', 'C'),
     // ~5.9 eV gap, the other half (with Graphene) of the HYBRID_RECIPES
     // pairing below -- real graphene devices are almost always built on or
     // encapsulated in hBN specifically because its own lattice is nearly
     // commensurate with graphene's, letting an aligned stack open a moiré
     // superlattice rather than just inert dielectric support.
-    crystal('Monolayer Boron Nitride', 'insulator', ['thermalFluctuation', 'localizationPin'], 2, 'layer', 'hBN'),
+    crystal('Monolayer Boron Nitride', 'insulator', ['thermalFluctuation'], 2, 'layer', 'hBN'),
     // HYBRID_RECIPES parents (below) -- InAs's own role is providing the
     // strong spin-orbit coupling a Majorana wire needs; the 2H
     // (semiconducting) MoTe₂ monolayer is the untwisted parent that becomes
@@ -1291,9 +1333,9 @@ export const WORLD_RIVALS: Partial<Record<number, Material>> = {
   // torso and lit-side limbs a visibly dark grey instead of crushing to
   // flat (0,0,0) once its offsets stack on top of this base.
   2: crystal(
-    'Polycrystalline Graphene Golem',
-    'metal',
-    ['thermalFluctuation', 'tunnelStrike'],
+    'Amorphous Silica Golem',
+    'insulator',
+    ['thermalFluctuation'],
     0,
     'prism',
     undefined,
@@ -1308,9 +1350,9 @@ export const WORLD_RIVALS: Partial<Record<number, Material>> = {
   // `hueShift()` alone can't desaturate a color, only rotate its hue, so it
   // can't reach a genuinely neutral tone the way this needs.
   3: crystal(
-    'Polycrystalline Bismuth Telluride Golem',
+    'Disordered Bismuth Telluride Golem',
     'quantumSpinHall',
-    ['helicalCurrent', 'tunnelStrike'],
+    ['decoheredHelical', 'tunnelStrike'],
     0,
     'rhombohedral',
     undefined,
@@ -1322,9 +1364,9 @@ export const WORLD_RIVALS: Partial<Record<number, Material>> = {
   // `blend()`s the type's yellow-green almost entirely toward a dark
   // blue-grey slate tone, for "slate-dark layers."
   4: crystal(
-    'Polycrystalline Manganese Bismuth Telluride Golem',
+    'Disordered Manganese Bismuth Telluride Golem',
     'chernInsulator',
-    ['chiralCurrent', 'tunnelStrike'],
+    ['decoheredChiral', 'tunnelStrike'],
     0,
     undefined,
     undefined,
@@ -1341,7 +1383,7 @@ export const WORLD_RIVALS: Partial<Record<number, Material>> = {
   5: crystal(
     'Polycrystalline YBCO Golem',
     'superconductor',
-    ['higgsOscillation', 'tunnelStrike'],
+    ['decoheredHiggs', 'tunnelStrike'],
     0,
     'tetragonal',
     undefined,
@@ -1354,7 +1396,7 @@ export const WORLD_RIVALS: Partial<Record<number, Material>> = {
   6: crystal(
     'Polycrystalline Iron Golem',
     'classicalMagnet',
-    ['magneticField', 'thermalFluctuation'],
+    ['decoheredMagnon', 'thermalFluctuation'],
     0,
     undefined,
     undefined,
@@ -1370,7 +1412,7 @@ export const WORLD_RIVALS: Partial<Record<number, Material>> = {
   7: crystal(
     'Polycrystalline Herbertsmithite Golem',
     'quantumSpinLiquid',
-    ['entanglementSwap', 'visonLoop'],
+    ['decoheredSpinon', 'decoheredVison'],
     0,
     undefined,
     undefined,
@@ -1389,7 +1431,7 @@ export const WORLD_RIVALS: Partial<Record<number, Material>> = {
   8: crystal(
     'Polycrystalline Ruthenium Trichloride Golem',
     'quantumSpinLiquid',
-    ['entanglementSwap', 'triplonSurge'],
+    ['decoheredSpinon', 'decoheredTriplon'],
     0,
     undefined,
     undefined,

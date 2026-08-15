@@ -1688,20 +1688,6 @@ Not yet built:
 
 ## 10. Open design questions
 
-- **What a polycrystalline golem *is*, in story terms** -- an unadopted idea worth keeping:
-  that each one is a crystal whose quantumness was stolen or corrupted, a material that lost
-  the coherence the player is walking the worlds to restore. It reads well against what is
-  already built. The rivals are named in *polycrystalline* form (many grains fused into one)
-  and are drawn as shard-fused masses with lit grain boundaries, which is exactly what a
-  material looks like once its long-range coherence is gone; and the arc's own premise is
-  Decoherence taking the worlds' protected properties. It also gives the golems a reason to
-  stand in the way that is not just "boss here". Against it: WORLDS.md's current rival shape
-  is *I am this world's physics, made incorruptible*, which reads as a rival that has resisted
-  the Decoherence rather than fallen to it -- so adopting this would mean re-deciding that
-  boast, and re-deciding what the World 10 reveal makes of it (today the Adapted was never one
-  of the golems, it merely trained on them). Not adopted; recorded so a future pass has the
-  idea and the conflict together.
-
 - **Subtype combination rules** — which main+subtype pairs are physically/
   narratively sensible needs a full compatibility table, not just one example.
 - **Debuffs-on-the-opponent aren't implemented at all today** — no guardian teaches a move

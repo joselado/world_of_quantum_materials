@@ -14,10 +14,6 @@ export type MoveClass =
   // MOVE_COMPATIBILITY list and never triggers the quasiparticle-mismatch
   // bonus.
   | 'phonon'
-  // Lattice-dressed/self-trapped charge carrier -- Polaron Drag's class.
-  // Strongest in ionic insulators/oxides, not a bare metal or a narrow-gap
-  // semiconductor, so it's on 'insulator' rather than 'metal'/'semiconductor'.
-  | 'polaron'
   // Fractionalized spin excitation -- Spinon Swap's class.
   | 'spinon'
   // Propagating S=1 excitation of a singlet/dimer (valence-bond) ground
@@ -89,9 +85,9 @@ export type MaterialType =
   | 'metal'
   // A wide-gap band compound (MgO) -- same "ordinary single-particle band
   // picture, no symmetry breaking or topology" physics as 'semiconductor',
-  // just too wide a gap to practically dope/excite across. Hosts 'polaron'
-  // instead of 'plasmon'/'electron' -- self-trapped polarons are strongest
-  // in exactly this kind of ionic insulator/oxide.
+  // just too wide a gap to practically dope/excite across. Hosts 'phonon'
+  // and nothing else: no carriers to make an 'electron'/'plasmon' out of,
+  // and no order of any kind to carry a collective mode.
   | 'insulator'
   // An ordinary gapped band compound with a narrow enough gap to dope/
   // thermally excite carriers across (Si, GaN) -- unlike 'metal', no

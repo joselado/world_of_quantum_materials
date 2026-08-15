@@ -134,6 +134,25 @@ const MOVE_CLASSES = new Set(findTypeUnionLiterals(typesSf, 'MoveClass'));
 const materialsSf = parseFile('src/data/materials.ts');
 const MOVES = evalNode(findTopLevelConst(materialsSf, 'MOVES'), materialsSf);
 const MOVE_COMPATIBILITY = evalNode(findTopLevelConst(materialsSf, 'MOVE_COMPATIBILITY'), materialsSf);
+const GOLEM_MOVE_IDS = evalNode(findTopLevelConst(materialsSf, 'GOLEM_MOVE_IDS'), materialsSf);
+const ANALYTIC_MOVE_IDS = evalNode(findTopLevelConst(materialsSf, 'ANALYTIC_MOVE_IDS'), materialsSf);
+const ULTIMATE_MOVE_IDS = evalNode(findTopLevelConst(materialsSf, 'ULTIMATE_MOVE_IDS'), materialsSf);
+// Kondo's screening moves are identified by class rather than by a literal
+// list in materials.ts, so they are identified the same way here.
+const KONDO_MOVE_IDS = Object.values(MOVES)
+  .filter((m) => m.class === 'screening')
+  .map((m) => m.id);
+// SHOP_MOVE_IDS is computed rather than declared in materials.ts (a filter over
+// MOVES), so it is mirrored here the same way scripts/gen-docs.mjs mirrors the
+// player-only exclusions. Keep this in step with materials.ts's own filter.
+const SHOP_MOVE_IDS = Object.keys(MOVES).filter(
+  (id) =>
+    id !== 'thermalFluctuation' &&
+    !ANALYTIC_MOVE_IDS.includes(id) &&
+    !ULTIMATE_MOVE_IDS.includes(id) &&
+    !GOLEM_MOVE_IDS.includes(id) &&
+    !KONDO_MOVE_IDS.includes(id)
+);
 const TYPE_LOOK = evalNode(findTopLevelConst(materialsSf, 'TYPE_LOOK'), materialsSf);
 const WORLD_NAMES = evalNode(findTopLevelConst(materialsSf, 'WORLD_NAMES'), materialsSf);
 
@@ -229,7 +248,59 @@ for (const move of Object.values(MOVES)) {
   if (!MOVE_CLASSES.has(move.class)) flag(`MOVES['${move.id}'].class is unknown MoveClass '${move.class}'`);
 }
 
-// 6. No two moves share a display name -- this project has shipped exactly
+// 6. Every opponent's own moves must be hostable by its own type. A crystal
+// that fights with a quasiparticle its physics cannot host contradicts the
+// one type-interaction rule the whole battle system rests on (a defender that
+// cannot host a class takes double damage from it, DESIGN.md §4), and it is
+// invisible to tsc: the moveset is a plain string array, valid whatever it
+// contains. This has been a live risk exactly once, when an opponent was
+// retyped without its moveset following, so the check is cheap insurance on
+// every future retype.
+for (const [world, entries] of Object.entries(WORLD_CRYSTALS)) {
+  for (const c of entries) {
+    for (const moveId of c.moves ?? []) {
+      const move = MOVES[moveId];
+      if (!move) continue; // covered by the unknown-move-id check above
+      if (!(MOVE_COMPATIBILITY[c.type] ?? []).includes(move.class)) {
+        flag(
+          `WORLD_CRYSTALS[${world}] '${c.name}' (${c.type}) carries '${move.name}', whose class '${move.class}' its type cannot host`
+        );
+      }
+    }
+  }
+}
+for (const [world, rival] of Object.entries(WORLD_RIVALS)) {
+  if (!rival) continue; // World 10's Adapted has no fixed type
+  for (const moveId of rival.moves ?? []) {
+    const move = MOVES[moveId];
+    if (!move) continue;
+    if (!(MOVE_COMPATIBILITY[rival.type] ?? []).includes(move.class)) {
+      flag(
+        `WORLD_RIVALS[${world}] '${rival.name}' (${rival.type}) carries '${move.name}', whose class '${move.class}' its type cannot host`
+      );
+    }
+  }
+}
+
+// 7. The golems' decohered moves are opponent-only: no shop sells them and no
+// wild crystal carries one. The mirror of the player-only Analytic/Ultimate
+// moves, and the same kind of leak (a boss-only move reachable by the player,
+// or a golem move handed to a wild) would be silent otherwise.
+{
+  const golemOnly = new Set(GOLEM_MOVE_IDS);
+  for (const id of SHOP_MOVE_IDS) {
+    if (golemOnly.has(id)) flag(`SHOP_MOVE_IDS offers golem-only move '${id}'`);
+  }
+  for (const [world, entries] of Object.entries(WORLD_CRYSTALS)) {
+    for (const c of entries) {
+      for (const moveId of c.moves ?? []) {
+        if (golemOnly.has(moveId)) flag(`WORLD_CRYSTALS[${world}] '${c.name}' carries golem-only move '${moveId}'`);
+      }
+    }
+  }
+}
+
+// 8. No two moves share a display name -- this project has shipped exactly
 // this bug before (a "Beam"/"Beam" collision), and it's otherwise invisible
 // until two colliding moves happen to appear on screen together.
 {

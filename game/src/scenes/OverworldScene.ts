@@ -48,6 +48,7 @@ import {
   DEFAULT_STATS,
   allCrystals,
   isHybridMaterial,
+  isGrainedGolem,
 } from '../data/materials';
 import { wildHpForWorld, MAX_STAT } from '../data/balance';
 import { PASSIVES, PASSIVE_OWNERS } from '../data/passives';
@@ -1818,7 +1819,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     const boss = this.getWorldRival();
     if (!boss) return;
 
-    const avatar = makeBossCrystal(this, BOSS_CRYSTAL_SIZE, boss.color, boss.variant);
+    const avatar = makeBossCrystal(this, BOSS_CRYSTAL_SIZE, boss.color, boss.variant, isGrainedGolem(boss.name));
     avatar.setDepth(20);
 
     // Wrapped and centered (not just single-line) since a polycrystalline-

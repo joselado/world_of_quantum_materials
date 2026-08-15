@@ -19,8 +19,28 @@ export const MATERIAL_BLURBS: Record<string, string> = {
     "GaN is an ordinary doped semiconductor: its transport is governed by a single-particle band picture, with no symmetry breaking or topological structure involved.",
   'Magnesium Oxide':
     'MgO is a simple ionic band insulator, the textbook baseline against which topological insulators (a gapped spectrum for a very different reason) are usually contrasted.',
+  // The ten rivals, and the one place the game states plainly what a golem is.
+  // A rival's blurb is what BattleScene shows the moment it falls, so this is
+  // the text a player reads ten times across the game, once per boss, each
+  // time naming the specific order that boss lost. Kept as physics rather than
+  // as accusation: the material says what happened to it, and the player
+  // assembles the pattern (WORLDS.md section 6).
   'Polycrystalline Silicon Golem':
-    "Silicon's electrons fill a conventional band structure right up to a gap: an ordinary semiconductor, no protected states or broken symmetry needed to explain it.",
+    "Silicon's electrons fill a conventional band structure right up to a gap: an ordinary semiconductor, no protected states or broken symmetry needed to explain it. Ground into grains, each one broke the symmetry on its own and in its own direction, so averaged over the whole body the order parameter is zero. A thousand commitments, summing to nothing decided.",
+  'Amorphous Silica Golem':
+    "Silica with no long-range order left at all: glass, not quartz. Bloch's theorem needs a lattice to repeat, so with the repetition gone there is no crystal momentum to carry and no band to fill. Nothing in it can be labelled by k, and what it has instead of states that span the solid is a site, and another site, and no way to be both.",
+  'Disordered Bismuth Telluride Golem':
+    "Bi₂Te₃'s topological surface state is protected by time reversal, and protection has a limit. Past a critical disorder strength the quantum spin Hall phase gives way to a trivial Anderson insulator: every state localized, no Kramers-protected channel anywhere in it. What is left still glows along the seam, and nothing along that seam has moved in a long time.",
+  'Disordered Manganese Bismuth Telluride Golem':
+    "MnBi₂Te₄ quantizes from the inside, its own magnetic order standing in for an applied field, and real samples are plagued by Mn/Bi antisite disorder that kills the quantization outright. Disordered far enough, the extended states that carry the Chern number are gone, the invariant falls to zero, and the plateau is not noisy but absent. There is nothing left in it to count.",
+  'Polycrystalline YBCO Golem':
+    "Granular YBCO superconducts grain by grain, and the grain boundaries are Josephson weak links that can still lock the whole body to one phase. That agreement is real, and it is a treaty rather than an identity: it holds while the current stays small, the field stays low and the cold stays deep, and it is the one thing on this road that the Decoherence has not yet been able to take.",
+  'Polycrystalline Iron Golem':
+    "Polycrystalline iron is still a magnet: every grain keeps its order, and the domain walls slide as they always did. What the grains take is the magnon. A spin wave scatters at every boundary, its mean free path falls to the size of a grain, and the long-wavelength modes that carry order across a body no longer fit inside any part of this one.",
+  'Polycrystalline Herbertsmithite Golem':
+    "Herbertsmithite's kagome lattice frustrates every spin into never choosing, and its ground state is one long-range entangled whole. Each grain of this body is still a spin liquid, enormous on lattice scales, and the single system-wide state that made them one is gone. A spin liquid is locally featureless by design, so nothing inside it can tell the difference.",
+  'Polycrystalline Ruthenium Trichloride Golem':
+    "α-RuCl₃'s Kitaev bonds fractionalize a flipped spin into halves that travel apart, and travelling apart needs one coherent resonating background to travel through. Stacking faults and grain boundaries end that background, so the halves are confined back into an ordinary whole flip at the first seam they reach. It still comes apart. It no longer gets anywhere.",
   // CrI3 itself is "just" a van der Waals ferromagnet, not multiferroic --
   // twisting two layers together is what's new, and even then this is a
   // theoretical proposal (noncollinear moiré spin textures inducing
@@ -77,7 +97,7 @@ const TYPE_FALLBACK_BLURBS: Record<MaterialType, string> = {
   metal:
     'An ordinary conductor: its electrons are well described by a single-particle picture, with no symmetry breaking or topological protection involved, and a partially filled band that can carry a plasmon.',
   insulator:
-    'An ordinary gapped band compound whose gap is too wide to practically cross: carriers stay put, though the lattice itself can still self-trap a polaron.',
+    'An ordinary gapped band compound whose gap is too wide to practically cross: no carriers go anywhere, and what is left to excite is the lattice itself.',
   semiconductor:
     'An ordinary gapped band compound with a narrow enough gap to dope or thermally excite carriers across: a single-particle picture, no symmetry breaking or topology involved.',
   classicalMagnet:

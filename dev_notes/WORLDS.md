@@ -689,8 +689,11 @@ on tiles.
 
 **The rival stands in the pass and holds it.** That is the state signal: while
 the rival lives, the way is physically barred by the thing barring it, which is
-truer than weather. Every rival is its world's physics made incorruptible, so
-holding the boundary is its job rather than a staging choice. It also preserves
+truer than weather. A pass is where coherence used to flow between worlds, so a
+pass is where the grinding happened, and what is left of that world's material
+is lodged in the one place it could not be carried out of. The golem is not
+posted there. It is stuck there, which is why holding the boundary reads as its
+nature rather than as a staging choice. It also preserves
 the reveal, since nothing of the next world is visible past it.
 
 **Size the rival to the aperture, not to the screen.** Scale is read against the
@@ -917,20 +920,62 @@ state has nowhere to live; it doesn't touch the Majorana halves, it shortens the
 passage until they can feel each other. A world whose Decoherence page could be
 pasted into another world's slot has failed this rule.
 
-**Every rival 1–8 is the same shape: *I am this world's physics, made
-incorruptible.*** The boast is always the precise mechanism that answers the
-attack named on that world's second lore page — the golem that committed its
-ground state before you were born, the one whose pattern rebuilds across every
-grain boundary, the one that is the boundary rather than standing on it. That is
-why the rivals feel like part of the story rather than a difficulty gate, and it
-is the pattern any new rival must follow.
+**Every rival 1–8 is the same shape: *I am what this world's physics became
+when its coherence was ground out of it, and I have mistaken that for
+strength.*** A golem is not a champion posted at the pass. It is what the
+Decoherence leaves behind: the world's own material, its order broken, lodged in
+the choke point where coherence used to flow between worlds, reciting the
+mechanism it can no longer perform. The boast is always the precise mechanism
+that answers the attack named on that world's second lore page, and it is always
+the precise property the golem has lost. Both readings must survive in the same
+words.
+
+Three rules hold that shape together.
+
+**The golem never learns what it is.** The boasts stay proud, and the fights
+stay dangerous. A rival that pitied itself would drain every victory in the
+game, and ten of them would drain the whole road. Only the player's
+understanding changes; the golem's never does.
+
+**The name states which kind of order died.** "Polycrystalline" is the default
+and the drumbeat: long-range phase coherence broken at a thousand grain
+boundaries. The exceptions are diagnoses, not variety. World 2 is *Amorphous*,
+because that world's lesson rests on translational order and its golem has none
+left. Worlds 3 and 4 are *Disordered*, because past a critical disorder strength
+a topological phase gives way to a trivial Anderson insulator, and what is left
+is protection that no longer protects anything. "Disordered" rather than
+"localized" is deliberate: states localize, samples disorder, and "Anderson" is a
+guardian's name, which belongs to guardians alone (the naming law, §1).
+
+**What a golem throws is decohered.** Its moves carry its world's own
+quasiparticle at its own class and power, named for what that excitation used to
+be (Decohered Chiral Current, Decohered Magnon Pulse). The corruption is in the
+excitation, not in the rulebook: the type-interaction rule is untouched, so a
+golem still lands double on a defender whose physics cannot host its class.
+World 2 is the far end of that gradient and carries no signature move at all,
+because a material with no lattice left has nothing but its own vibration.
+
+That is why the rivals feel like part of the story rather than a difficulty
+gate, and it is the pattern any new rival must follow.
 
 **World 9 breaks the shape once, and World 10 breaks it permanently.** World 9's
-rival has no lattice of its own and borrows whatever it lands in. World 10's is
-the reveal: the Adapted was never one of the golems in disguise — each of those
-was only its own world's physics grown strange — it watched from outside and
-trained on the player, and every rival brought down was a lesson. That is the
-arc's payoff and the reason the finale is a mirror.
+rival has no lattice of its own and borrows whatever it lands in: the one thing
+in these worlds with no coherence to lose, which is why it is the only rival the
+Decoherence took nothing from. World 10's is the reveal, and it turns on the
+golems rather than replacing them: the Adapted was never one of them in disguise
+and never sent them, because measurement does not need a soldier. **The golems
+are its leavings.** Learning a quantum thing to exhaustion is what makes it
+definite, and a material that has been made definite is a material whose
+coherence is gone. Every pass the player forced was held by the residue of that
+learning, and every rival brought down was a lesson the Adapted had already
+taken. That is the arc's payoff and the reason the finale is a mirror: the
+Adapted's model of the player, complete and predictive and incapable of
+superposition, is the tenth golem, and the player is looking at it.
+
+**The golems stay innocent, and this is load-bearing.** They are casualties, not
+agents. If they are ever rewritten as the Adapted's servants the reveal dies,
+because "it was never one of them in disguise" only lands while they are
+something it made rather than something it wore.
 
 **Tone gradient.** The lore voice tracks the light: worlds 1–3 are told as
 legend, second-hand and almost pastoral ("Long ago, before the corridors had

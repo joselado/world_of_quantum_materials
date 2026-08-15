@@ -19,7 +19,6 @@ or non-Abelian excitation at the top.
 | Magnon Pulse | Magnon | 8 | Classical Magnet, Multiferroic |
 | Plasmon Pulse | Plasmon | 8 | Metal |
 | Ferron Pulse | Ferron | 8 | Ferroelectric, Multiferroic |
-| Polaron Drag | Polaron | 9 | Insulator |
 | Triplon Surge | Triplon | 9 | Quantum Spin Liquid |
 | Electromagnon Pulse | Electromagnon | 9 | Multiferroic |
 | Spinon Swap | Spinon | 10 | Kondo Heavy Fermion, Quantum Spin Liquid |
@@ -47,7 +46,7 @@ of it.
 | Classical Magnet | Magnon, Phonon |
 | Ferroelectric | Ferron, Phonon |
 | Fractional Chern Insulator | Anyon, Electron, Phonon |
-| Insulator | Phonon, Polaron |
+| Insulator | Phonon |
 | Kondo Heavy Fermion | Electron, Heavy Fermion, Phonon, Spinon |
 | Metal | Electron, Phonon, Plasmon |
 | Multiferroic | Electromagnon, Ferron, Magnon, Phonon |

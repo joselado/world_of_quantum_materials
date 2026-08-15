@@ -5,7 +5,7 @@ import type { AttackShape } from '../audio/sfx';
 // color swap) so different quasiparticles read differently in battle:
 // bolt = a fast, focused shot (Phonon Beam, Electron Pulse, Spinon Swap,
 // Triplon Surge, Chiral Current); ring = an expanding wave pulse (Magnon
-// Pulse, Polaron Drag, Electromagnon Pulse, Plasmon Pulse, Ferron Pulse,
+// Pulse, Electromagnon Pulse, Plasmon Pulse, Ferron Pulse,
 // Higgs Oscillation, Helical Current, Screening Pulse); burst = many small
 // particles converging/scattering (Anyon Braid, Majorana Split, Heavy
 // Fermion Pulse, Vison Loop). 'beam'/'eruption' are never picked from here
@@ -16,7 +16,6 @@ export const EFFECT_STYLE: Record<MoveClass, { color: number; shape: AttackShape
   electron: { color: 0x4a90d9, shape: 'bolt' },
   magnon: { color: 0xd94a4a, shape: 'ring' },
   phonon: { color: 0xff8844, shape: 'bolt' },
-  polaron: { color: 0x8a6ad9, shape: 'ring' },
   spinon: { color: 0x5ad9c9, shape: 'bolt' },
   // A dimer magnet's confined triplet mode -- a fast, focused shot like
   // Spinon Swap, tinted a distinct rose rather than spinon's teal.
