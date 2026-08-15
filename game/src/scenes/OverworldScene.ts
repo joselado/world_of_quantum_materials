@@ -48,7 +48,6 @@ import {
   DEFAULT_STATS,
   allCrystals,
   isHybridMaterial,
-  isGrainedGolem,
 } from '../data/materials';
 import { wildHpForWorld, MAX_STAT } from '../data/balance';
 import { PASSIVES, PASSIVE_OWNERS } from '../data/passives';
@@ -451,6 +450,12 @@ export interface GuardianPanelHost extends Phaser.Scene {
   // rather than browsed one at a time through a candidate list.
   noetherMovePreview: string | null;
   noetherMovePage: number;
+  // The same pair again for Noether's other tab, holding a `Stats` key
+  // (data/balance.ts's STAT_LABELS) rather than a move id. Kept separate from
+  // the Moves pair so switching tabs never drags one tab's selection into the
+  // other's list.
+  noetherStatPreview: string | null;
+  noetherStatPage: number;
   // Same convention as noetherMovePreview above, for Kondo's own list+detail
   // layout (scenes/panels/kondo.ts) -- holds one of KONDO_MOVE_IDS. Kondo's
   // own panel has no committed-choice field of its own (like Majorana, not
@@ -671,6 +676,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // GuardianPanelHost interface's own comment on these fields.
   noetherMovePreview: string | null = null;
   noetherMovePage = 0;
+  noetherStatPreview: string | null = null;
+  noetherStatPage = 0;
   kondoMovePreview: string | null = null;
   kondoMovePage = 0;
   // Same reset rules as dresselhausPreview/majoranaPreview above -- see the
@@ -874,6 +881,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.majoranaPreview = null;
     this.noetherMovePreview = null;
     this.noetherMovePage = 0;
+    this.noetherStatPreview = null;
+    this.noetherStatPage = 0;
     this.kondoMovePreview = null;
     this.kondoMovePage = 0;
     this.blochPreview = null;
@@ -1819,7 +1828,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     const boss = this.getWorldRival();
     if (!boss) return;
 
-    const avatar = makeBossCrystal(this, BOSS_CRYSTAL_SIZE, boss.color, boss.variant, isGrainedGolem(boss.name));
+    const avatar = makeBossCrystal(this, BOSS_CRYSTAL_SIZE, boss.color, boss.variant);
     avatar.setDepth(20);
 
     // Wrapped and centered (not just single-line) since a polycrystalline-
@@ -2177,6 +2186,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.majoranaPreview = null;
     this.noetherMovePreview = null;
     this.noetherMovePage = 0;
+    this.noetherStatPreview = null;
+    this.noetherStatPage = 0;
     this.kondoMovePreview = null;
     this.kondoMovePage = 0;
     this.blochPreview = null;

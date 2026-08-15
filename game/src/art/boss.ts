@@ -150,12 +150,7 @@ export function makeBossCrystal(
   scene: Phaser.Scene,
   size: number,
   color: number,
-  variant: CrystalVariant,
-  // Whether this body is made of grains. False for an amorphous golem, which
-  // has no boundaries to crack or light (data/materials.ts's isGrainedGolem);
-  // it takes a single soft internal sheen instead, so it still reads as a
-  // solid rather than as a flat silhouette.
-  grained = true
+  variant: CrystalVariant
 ): Phaser.GameObjects.Container {
   const container = scene.add.container(0, 0);
   const feetY = size * BOSS_FOOT;
@@ -264,31 +259,17 @@ export function makeBossCrystal(
   art.add(glare);
   scene.tweens.add({ targets: glare, alpha: { from: 0.55, to: 1 }, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
-  if (!grained) {
-    // The one thing a glass body has instead of seams: a broad, soft internal
-    // highlight, drawn once and left still. Nothing in it repeats and nothing
-    // in it is a boundary, which is the whole point of the material.
-    const sheen = scene.add.graphics();
-    sheen.setBlendMode(Phaser.BlendModes.ADD);
-    sheen.fillStyle(SEAM_GLOW, 0.1);
-    sheen.fillEllipse(-size * 0.12, -size * 0.18, size * 0.5, size * 0.9);
-    sheen.fillStyle(SEAM_GLOW, 0.07);
-    sheen.fillEllipse(size * 0.18, size * 0.1, size * 0.34, size * 0.6);
-    art.add(sheen);
-  }
-
   const cracks = scene.add.graphics();
   cracks.lineStyle(3, shade(color, -70), 0.9);
-  if (grained)
-    SEAMS.forEach((path) => {
-      cracks.strokePoints(path.map(([x, y]) => ({ x: x * size, y: y * size })), false);
-    });
+  SEAMS.forEach((path) => {
+    cracks.strokePoints(path.map(([x, y]) => ({ x: x * size, y: y * size })), false);
+  });
   art.add(cracks);
 
   // One Graphics per seam, so each pulses on its own clock -- a body whose
   // every seam brightens in lockstep reads as a single looping animation,
   // where staggered ones read as something alive straining inside.
-  (grained ? SEAMS : []).forEach((path, i) => {
+  SEAMS.forEach((path, i) => {
     const glow = scene.add.graphics();
     glow.setBlendMode(Phaser.BlendModes.ADD);
     glow.lineStyle(1.5, SEAM_GLOW, 0.85);

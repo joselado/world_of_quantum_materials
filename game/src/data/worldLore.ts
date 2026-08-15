@@ -96,19 +96,19 @@ export const RIVAL_TAUNTS: Partial<Record<number, RivalTaunt>> = {
   },
   2: {
     part1:
-      'A golem of clouded glass rises where the bays narrow, seamless, no two angles alike, not one face repeated anywhere on it. "Amorphous Silica Golem. Look around you. Bay after bay, the same shape at the same spacing, stone too frightened to differ from itself. I am what this colonnade is made of, set free of all that. Nothing in me repeats, and I answer to no pattern at all."',
+      'A shard-fused golem of clouded quartz rises where the bays narrow, every grain of it a small perfect lattice and every boundary between them a seam of glass. "Polycrystalline Silica Golem. Look around you. Bay after bay, the same shape at the same spacing, stone too frightened to differ from itself. I am what this colonnade is made of, and I kept the pattern. Every grain of me still repeats. Ask them to agree on where."',
     part2:
-      '"Your lattice makes you a promise: be periodic, and you may be everywhere at once. I never took that deal. Every part of me is only itself. You call that a prison. I call it the only honesty in this hall. Come, then, quantum material. Show me how far being everywhere carries you against something that has learned to stay."',
+      '"Your lattice makes you a promise: be periodic, and you may be everywhere at once. Mine keeps that promise a grain at a time, and between the grains there is glass, and glass repeats nothing. So I stay where I am put. You call that a prison. I call it the only honesty in this hall. Come, then, quantum material. Show me how far being everywhere carries you against something that has learned to stay."',
   },
   3: {
     part1:
-      'A shard-fused golem of tarnished silver waits on the seam, its edges lit where phase meets phase, though nothing moves along the light. "Disordered Bismuth Telluride Golem. I am not standing on the boundary. I am the boundary. Every current in me knew its spin before it took a step, and no flaw in this world has ever turned one around."',
+      'A shard-fused golem of tarnished silver waits on the seam, its edges lit where phase meets phase, though nothing moves along the light. "Polycrystalline Bismuth Telluride Golem. I am not standing on the boundary. I am the boundary. Every current in me knew its spin before it took a step, and no flaw in this world has ever turned one around."',
     part2:
       '"Strike me from behind, then. You will find there is no behind. Nothing in me reverses. Nothing in me scatters onward. Nothing in me moves at all. That is how complete my protection has become. Look how still my currents run. Not one of them has taken a step in a very long time."',
   },
   4: {
     part1:
-      'A shard-fused golem of slate-dark layers rises where the branches divide, each layer a sheet of ordered spins stacked on the next, every sheet interrupted. "Disordered Manganese Bismuth Telluride Golem. You needed a field to make this terrain quantize. I never did. My own spins do it, from the inside, and they have never once been switched off."',
+      'A shard-fused golem of slate-dark layers rises where the branches divide, each layer a sheet of ordered spins stacked on the next, every sheet interrupted. "Polycrystalline Manganese Bismuth Telluride Golem. You needed a field to make this terrain quantize. I never did. My own spins do it, from the inside, and they have never once been switched off."',
     part2:
       '"The number I carry does not wobble when you hit it. It cannot. It is an integer, and there is no such thing as most of one. Go on. Count me. Take as long as you need, and tell me what you find, and I will tell you it was always exactly that."',
   },

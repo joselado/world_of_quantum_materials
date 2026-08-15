@@ -175,6 +175,8 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   majoranaPreview: string | null = null;
   noetherMovePreview: string | null = null;
   noetherMovePage = 0;
+  noetherStatPreview: string | null = null;
+  noetherStatPage = 0;
   kondoMovePreview: string | null = null;
   kondoMovePage = 0;
   // Same reset rules as dresselhausPreview/majoranaPreview above -- see
@@ -1296,6 +1298,8 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     this.majoranaPreview = null;
     this.noetherMovePreview = null;
     this.noetherMovePage = 0;
+    this.noetherStatPreview = null;
+    this.noetherStatPage = 0;
     this.kondoMovePreview = null;
     this.kondoMovePage = 0;
     this.blochPreview = null;

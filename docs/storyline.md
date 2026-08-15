@@ -109,8 +109,9 @@ they can settle into anything with a name.
 
 Where the branches remerge stands the **Polycrystalline Silicon Golem**: a
 thousand grains, every one of which chose long ago and never wavered. "Doubt
-doesn't tunnel through me. It dissipates before it arrives." Beat it and the
-choice holds. But whatever is spreading through these worlds is still out
+doesn't tunnel through me. It dissipates before it arrives." Ask it which way
+the fields broke and every grain answers, and every grain swears the others
+say the same. Beat it and the choice holds. But whatever is spreading through these worlds is still out
 there, and it is learning from every phase of matter you master.
 
 *You reached the far edge of the fields. The branches still hold.*
@@ -141,9 +142,12 @@ So the Decoherence does not attack the stone. It attacks the repetition:
 one column drifts fractionally out of step with the next, and the borderless
 state that spread through the entire cloister has nowhere left to live. It
 collapses back into a single bay, trapped, ordinary, alone. Holding the far
-end is the **Polycrystalline Graphene Golem**, whose pattern rebuilds itself
-across every grain boundary faster than you can look. "You still think you
-can pin me down like I'm sitting in one place. I'm not, I never was."
+end is the **Polycrystalline Silica Golem**, clouded quartz in a hall of
+repeating stone, every grain of it a small perfect lattice and every boundary
+between them a seam of glass. "I kept the pattern. Every grain of me still
+repeats. Ask them to agree on where. Your lattice makes you a promise: be
+periodic, and you may be everywhere at once. Mine keeps it a grain at a time,
+and between the grains there is glass."
 
 *You reached the far end of the colonnade. The lattice still repeats.*
 
@@ -177,7 +181,8 @@ spin mid-step, and the rule the whole road rests on has no answer for that.
 The seam still glows and still shows on the map. It is simply no longer
 protected. On the far ledge, the **Polycrystalline Bismuth Telluride Golem**
 has stood since the borders were drawn: "I am not standing on the boundary.
-I *am* the boundary."
+I *am* the boundary. Nothing in me reverses. Nothing in me scatters onward.
+Nothing in me moves at all. That is how complete my protection has become."
 
 *You reached the last ledge. The seam still runs, unbroken.*
 
@@ -211,9 +216,10 @@ phase a traveler picks up walking a closed loop and the loop stops returning
 to where it started; orbits stop closing; the rungs smear back into an
 ordinary slope. At the largest fork waits the **Polycrystalline Manganese
 Bismuth Telluride Golem**, which never needed the field switched on at all,
-its own spins quantize it from the inside. "The number I carry doesn't
-wobble when you hit it. It can't. It's an integer, and there is no such
-thing as most of one."
+its own spins quantizing it from the inside, every stacked sheet of them
+interrupted. "The number I carry doesn't wobble when you hit it. It can't.
+It's an integer, and there is no such thing as most of one. Go on. Count me.
+Take as long as you need, and tell me what you find."
 
 *You reached the last fork of the flats. The orbits still close.*
 
@@ -250,8 +256,11 @@ two ends are near enough to feel one another, and the moment they do they
 snap back into one ordinary traveler and everything hidden in the gap is
 gone. Far out on the ice, the **Polycrystalline YBCO Golem** holds a single
 phase across a body of a thousand separate grains, every boundary a weak
-link carrying current across a gap it has no business crossing. The cold
-that emptied this glacier arrived there, and found nothing to take.
+link carrying current across a gap it has no business crossing. That
+agreement is real, and it is a treaty rather than an identity: it holds
+while the current stays small and the cold stays deep. The cold that emptied
+this glacier arrived there and found the agreement already made. Nothing has
+asked much of it since.
 
 *You reached the far ice. The phase still holds.*
 
@@ -324,8 +333,10 @@ rung then needs to be thicker, and there is no thickness that finishes the
 job. It knew where the knowledge lived, and it knew what the rungs could not
 carry. Across four lanes at once sits the **Polycrystalline Herbertsmithite
 Golem**, a lattice of triangles in which no three spins can ever agree, so
-none of them commit. "Cut me wherever you like. You'll only ever learn
-what's on the cut."
+none of them commit, its body seamed with fracture lines. "Cut me wherever
+you like. You'll only ever learn what's on the cut." It has checked every
+grain of itself, and every grain reports the same perfect nothing it has
+always reported.
 
 *You reached the end of the tensor lanes. The rungs still hold.*
 

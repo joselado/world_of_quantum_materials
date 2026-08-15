@@ -161,9 +161,9 @@ convention once it reshapes.
 | World | Rival | Type |
 | --- | --- | --- |
 | 1 | Polycrystalline Silicon Golem | Semiconductor |
-| 2 | Amorphous Silica Golem | Insulator |
-| 3 | Disordered Bismuth Telluride Golem | Quantum Spin Hall Insulator |
-| 4 | Disordered Manganese Bismuth Telluride Golem | Chern Insulator |
+| 2 | Polycrystalline Silica Golem | Insulator |
+| 3 | Polycrystalline Bismuth Telluride Golem | Quantum Spin Hall Insulator |
+| 4 | Polycrystalline Manganese Bismuth Telluride Golem | Chern Insulator |
 | 5 | Polycrystalline YBCO Golem | Superconductor |
 | 6 | Polycrystalline Iron Golem | Classical Magnet |
 | 7 | Polycrystalline Herbertsmithite Golem | Quantum Spin Liquid |

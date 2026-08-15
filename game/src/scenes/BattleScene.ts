@@ -28,7 +28,6 @@ import {
   KONDO_MOVE_IDS,
   typesHosting,
   allCrystals,
-  isGrainedGolem,
 } from '../data/materials';
 import {
   battleStakeForWorld,
@@ -429,7 +428,7 @@ export class BattleScene extends Phaser.Scene {
     // the overworld (art/boss.ts's makeBossCrystal), not the plain shared
     // makeCrystal() every ordinary wild encounter uses.
     this.opponentCrystal = this.isRival
-      ? makeBossCrystal(this, BOSS_CRYSTAL_SIZE, this.opponentView().color, this.opponentView().variant, isGrainedGolem(this.opponentView().name))
+      ? makeBossCrystal(this, BOSS_CRYSTAL_SIZE, this.opponentView().color, this.opponentView().variant)
       : makeCrystal(this, WILD_CRYSTAL_SIZE, this.wild.color, this.wild.variant, { seed: this.wild.name, hybrid: this.wild.hybridParents });
     this.opponentCrystal.setPosition(this.opponentPos.x, this.opponentPos.y);
     this.bobCrystal(this.opponentCrystal, this.opponentPos.y);
@@ -1534,7 +1533,7 @@ export class BattleScene extends Phaser.Scene {
 
       killTweensDeep(this, this.opponentCrystal);
       this.opponentCrystal.destroy(true);
-      this.opponentCrystal = makeBossCrystal(this, BOSS_CRYSTAL_SIZE, newForm.color, newForm.variant, isGrainedGolem(newForm.name));
+      this.opponentCrystal = makeBossCrystal(this, BOSS_CRYSTAL_SIZE, newForm.color, newForm.variant);
       this.opponentCrystal.setPosition(this.opponentPos.x, this.opponentPos.y);
       this.bobCrystal(this.opponentCrystal, this.opponentPos.y);
       this.flashHit(this.opponentCrystal);

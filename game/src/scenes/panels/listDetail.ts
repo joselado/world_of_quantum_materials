@@ -108,7 +108,10 @@ export const DETAIL_STAGE_H = 104;
 // it. Both are shared across the three openers so a crystal-browsing pane and
 // a move-browsing pane read at the same weight.
 export const DETAIL_CRYSTAL_SIZE = 44;
-const DETAIL_NAME_CAP = 1.45;
+// Font-scale ceiling for a detail pane's own name heading, shared by the
+// openers below and by a pane that renders its heading itself because it has
+// no art block to open with (Noether's Stats tab, scenes/panels/noether.ts).
+export const DETAIL_NAME_CAP = 1.45;
 
 // The two-up panels' stage is shorter, because their height budget is
 // tighter: with no left column their Farewell button occupies a full-width row

@@ -27,11 +27,11 @@ export const MATERIAL_BLURBS: Record<string, string> = {
   // assembles the pattern (WORLDS.md section 6).
   'Polycrystalline Silicon Golem':
     "Silicon's electrons fill a conventional band structure right up to a gap: an ordinary semiconductor, no protected states or broken symmetry needed to explain it. Ground into grains, each one broke the symmetry on its own and in its own direction, so averaged over the whole body the order parameter is zero. A thousand commitments, summing to nothing decided.",
-  'Amorphous Silica Golem':
-    "Silica with no long-range order left at all: glass, not quartz. Bloch's theorem needs a lattice to repeat, so with the repetition gone there is no crystal momentum to carry and no band to fill. Nothing in it can be labelled by k, and what it has instead of states that span the solid is a site, and another site, and no way to be both.",
-  'Disordered Bismuth Telluride Golem':
+  'Polycrystalline Silica Golem':
+    "Silica in grains, each one a small perfect lattice, with a film of glass at every boundary between them. Bloch's theorem needs the repetition to reach the edge of the solid, and here it stops at the edge of a grain: there is no crystal momentum for the body as a whole, no band that spans it, and nothing in it that can be labelled by k. Every grain still repeats. No two of them agree on where.",
+  'Polycrystalline Bismuth Telluride Golem':
     "Bi₂Te₃'s topological surface state is protected by time reversal, and protection has a limit. Past a critical disorder strength the quantum spin Hall phase gives way to a trivial Anderson insulator: every state localized, no Kramers-protected channel anywhere in it. What is left still glows along the seam, and nothing along that seam has moved in a long time.",
-  'Disordered Manganese Bismuth Telluride Golem':
+  'Polycrystalline Manganese Bismuth Telluride Golem':
     "MnBi₂Te₄ quantizes from the inside, its own magnetic order standing in for an applied field, and real samples are plagued by Mn/Bi antisite disorder that kills the quantization outright. Disordered far enough, the extended states that carry the Chern number are gone, the invariant falls to zero, and the plateau is not noisy but absent. There is nothing left in it to count.",
   'Polycrystalline YBCO Golem':
     "Granular YBCO superconducts grain by grain, and the grain boundaries are Josephson weak links that can still lock the whole body to one phase. That agreement is real, and it is a treaty rather than an identity: it holds while the current stays small, the field stays low and the cold stays deep, and it is the one thing on this road that the Decoherence has not yet been able to take.",

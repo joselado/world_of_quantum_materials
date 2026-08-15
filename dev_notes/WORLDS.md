@@ -937,15 +937,13 @@ stay dangerous. A rival that pitied itself would drain every victory in the
 game, and ten of them would drain the whole road. Only the player's
 understanding changes; the golem's never does.
 
-**The name states which kind of order died.** "Polycrystalline" is the default
-and the drumbeat: long-range phase coherence broken at a thousand grain
-boundaries. The exceptions are diagnoses, not variety. World 2 is *Amorphous*,
-because that world's lesson rests on translational order and its golem has none
-left. Worlds 3 and 4 are *Disordered*, because past a critical disorder strength
-a topological phase gives way to a trivial Anderson insulator, and what is left
-is protection that no longer protects anything. "Disordered" rather than
-"localized" is deliberate: states localize, samples disorder, and "Anderson" is a
-guardian's name, which belongs to guardians alone (the naming law, §1).
+**The name does not change.** Every rival 1 to 9 is a real material in
+*polycrystalline* form, and that uniformity is the drumbeat: the same word in
+front of every boss in a game about coherence, which is the earliest clue and
+the one the player stops noticing. What each golem lost is said in its own
+dialogue instead, never in its name, so the name stays a label and the physics
+stays a thing the golem says about itself. World 10 states the loss by carrying
+no material name at all.
 
 **What a golem throws is decohered.** Its moves carry its world's own
 quasiparticle at its own class and power, named for what that excitation used to

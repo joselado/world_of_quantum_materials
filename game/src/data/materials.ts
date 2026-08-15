@@ -235,16 +235,6 @@ export const ULTIMATE_MOVE_IDS = ['ultimateMeteor', 'ultimateNova'];
 // every wild crystal's moveset, and out of the generated move table in
 // docs/quasiparticles.md, since a player-facing move list should only list
 // moves a player can actually end up holding.
-// Whether a golem's body is built of grains at all. The rival naming system
-// states which kind of order that world lost (WORLDS.md section 6), so it is
-// also the honest source for how the body is drawn: a golem named Amorphous
-// has no grains to fuse and no boundaries to light, and drawing it with the
-// shared mosaic of lit seams would put a visible physics error on screen.
-// Every other golem, polycrystalline or disordered, is grained.
-export function isGrainedGolem(name: string): boolean {
-  return !name.startsWith('Amorphous');
-}
-
 export const GOLEM_MOVE_IDS = [
   'decoheredMagnon',
   'decoheredSpinon',
@@ -1333,7 +1323,7 @@ export const WORLD_RIVALS: Partial<Record<number, Material>> = {
   // torso and lit-side limbs a visibly dark grey instead of crushing to
   // flat (0,0,0) once its offsets stack on top of this base.
   2: crystal(
-    'Amorphous Silica Golem',
+    'Polycrystalline Silica Golem',
     'insulator',
     ['thermalFluctuation'],
     0,
@@ -1350,7 +1340,7 @@ export const WORLD_RIVALS: Partial<Record<number, Material>> = {
   // `hueShift()` alone can't desaturate a color, only rotate its hue, so it
   // can't reach a genuinely neutral tone the way this needs.
   3: crystal(
-    'Disordered Bismuth Telluride Golem',
+    'Polycrystalline Bismuth Telluride Golem',
     'quantumSpinHall',
     ['decoheredHelical', 'tunnelStrike'],
     0,
@@ -1364,7 +1354,7 @@ export const WORLD_RIVALS: Partial<Record<number, Material>> = {
   // `blend()`s the type's yellow-green almost entirely toward a dark
   // blue-grey slate tone, for "slate-dark layers."
   4: crystal(
-    'Disordered Manganese Bismuth Telluride Golem',
+    'Polycrystalline Manganese Bismuth Telluride Golem',
     'chernInsulator',
     ['decoheredChiral', 'tunnelStrike'],
     0,

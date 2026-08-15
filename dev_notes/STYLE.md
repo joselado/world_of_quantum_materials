@@ -260,15 +260,17 @@ What this means in practice:
   on, rather than each hand-rolling its own copy of the same left-column pagination math: three
   browse by *crystal* (Dresselhaus's single transmute step, Anderson's host-pick step, Majorana's
   browse-by-hybrid-result step -- see their own entries below), three browse by *move*
-  (Noether's Moves tab, Kondo's, Feynman's move-leveling list -- also below), Bloch's own
+  (Noether's Moves tab, Kondo's, Feynman's move-leveling list -- also below), Noether's Stats tab
+  browses by *stat* (also below, its pane opening on the stat's own name and effect line since a
+  stat has no art of its own), Bloch's own
   destination table browses by *world number* ("Bloch in the overworld" below) -- its detail pane
   opens with the Qumatuomi map (`art/qumatuomiMap.ts`) fixed at the top, rendered once showing all
   10 worlds regardless of which row is selected, with the previewed destination's own physics
   blurb/cost/status/confirm content stacked beneath it, in place of the crystal-render-plus-name
   block a crystal-browsing panel's own detail pane opens with -- and Tutorial browses by *topic*
-  ("Full tutorial recap" below), the one user of this scaffolding with no art in its detail pane
-  at all: just the selected topic's own title and body, no crystal render, animation, or map, and
-  no commit button since browsing a topic is the whole interaction.
+  ("Full tutorial recap" below), the one user of this scaffolding whose detail pane is *only*
+  text and has no commit button either: just the selected topic's own title and body, since
+  browsing a topic is the whole interaction.
   The panel's own escape button ("Farewell" for a guardian, "Close" in the Lab) sits **in the
   left column, directly beneath its rows** (`renderListColumnFooter`), not in a full-width row
   under both columns. The left column is the shorter of the two in every one of these panels,
@@ -286,8 +288,8 @@ What this means in practice:
   (`720`) is the panel width every list+detail panel uses -- wide enough for the two columns
   plus a real crystal render (or, for a move-browsing panel, its animation preview, or for
   Bloch's own panel, the map) side by
-  side, unlike the narrower `600`px width a plain single-column panel (Noether's Stats tab,
-  Feynman's own question-streak sub-panel) uses; Franklin's own panel (below) is wider still
+  side, unlike the narrower `600`px width a plain single-column panel (Feynman's own
+  question-streak sub-panel) uses; Franklin's own panel (below) is wider still
   (`760`) for its own, differently-shaped two-column crystal-beside-list layout, distinct from both.
   `listDetailColumns(panelLeft)` returns the one fixed set of column margins/widths
   every list+detail panel shares (left column `200`px wide, a divider, then the right column
@@ -1113,9 +1115,9 @@ station motifs are deliberately not tunnels with a visible far end.
   `y` like every other row of this panel) switch the panel between a **Moves** list and a **Stats** list (`OverworldScene.shopTab`, reset to
   `'moves'` on every scene create) -- the active tab is highlighted gold-on-slate, the
   inactive one dim blue-grey, same click-to-rebuild-the-panel pattern as buying itself. The
-  panel is `LIST_DETAIL_PANEL_W` (`720`) wide while the Moves tab is showing (below), `600`
-  while the Stats tab is (a plain button list) -- the two tabs
-  render at different panel widths since only one is ever visible at a time.
+  panel is `LIST_DETAIL_PANEL_W` (`720`) wide on either tab, since both are list+detail
+  layouts ("List+detail panels" above), so switching tabs never resizes the panel around the
+  player.
   - **Moves** is a list+detail layout (`scenes/panels/listDetail.ts`, "List+detail panels"
     above): the left column names every still-unbought move the player's *current crystal
     form* can physically carry (`data/materials.ts`'s `SHOP_MOVE_IDS` filtered through
@@ -1129,16 +1131,26 @@ station motifs are deliberately not tunnels with a visible far end.
     `unlockedMoves` -- browsing costs nothing regardless of how many moves are looked at. Empty
     state (rendered as plain centered text with no columns): "Nothing your current form can
     carry is left to teach."
-  - **Stats**: one button per stat (Energy/Momentum/Lifetime), labeled
-    `<stat> (<role>): <value> -> <value+1> -- <cost> qumatessence`, same afford/dim treatment.
+  - **Stats** is the same list+detail layout: the left column names the three stats
+    (Energy/Momentum/Lifetime, `data/balance.ts`'s `STAT_LABELS`), no value or cost suffix, and
+    clicking a row only *previews* it (`scene.noetherStatPreview`, paginated by
+    `noetherStatPage` like every other left column). A stat has no art to open its detail pane
+    with, so the pane leads with the stat's own name (bold, capped at the shared
+    `DETAIL_NAME_CAP`), then a one-line effect gloss ("Raises your crit chance.", "Higher goes
+    first each round.", "Higher takes less damage."), then a `Now at <value>. Raising it to
+    <value+1> costs <cost> qumatessence.` status line and a `Raise <stat>` confirm button
+    (dimmed if unaffordable) that is the one action checking/spending the cost. A stat already
+    at `MAX_STAT` (all three of them in Superposition Mode, which pins them there) still
+    selects and reads; its pane says `Already at <MAX_STAT>, as high as I can raise it.` and
+    offers no button, the same nothing-to-commit convention Feynman's fully-leveled moves use.
 - Every guardian panel but the rival gate's own ends in a single "Farewell" button -- Noether's
   own panel never offers a way onward; leaving a world is something the player walks to the
   pass and presses at (see "Gates as passes" below), since the pass is where that world's boss
-  actually stands. Where the panel is a list+detail layout (Noether's own Moves tab, and
+  actually stands. Where the panel is a list+detail layout (both of Noether's own tabs, and
   Bloch's panel below) that button sits in the left column beneath its rows
-  ("List+detail panels" above); the Stats tab, a plain single-column list with no left column
-  to put one in, keeps it in a full-width row flowing right after the tab content
-  (`renderFarewellFooter`) rather than pinned to a fixed y.
+  ("List+detail panels" above); the Moves tab's empty state, which renders no columns at all
+  and so has no left column to put one in, keeps it in a full-width row flowing right after
+  that text (`renderFarewellFooter`) rather than pinned to a fixed y.
 
 ## Bloch in the overworld (`OverworldScene.showBlochHub`)
 

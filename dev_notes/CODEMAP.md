@@ -110,7 +110,7 @@ game/src/
                                  renderListColumn/listDetailColumns back the paginated-left-column
                                  shape HubScene's own Qumatex panel, dresselhaus.ts/anderson.ts
                                  (host-pick step only)/majorana.ts (both pick-a-crystal steps),
-                                 noether.ts (Moves tab only)/kondo.ts (its own move-browsing step),
+                                 noether.ts (both tabs)/kondo.ts (its own move-browsing step),
                                  and bloch.ts (its own destination table -- the one caller whose
                                  right side is the persistent Qumatuomi map, art/qumatuomiMap.ts,
                                  rather than a per-selection detail pane) all use, while
@@ -333,8 +333,9 @@ game/src/
                                   unconditionally right before a startMoveEffectPreview() on the same
                                   key in the same rebuild (that would clear that chain's `current` and
                                   defeat the retarget) -- only
-                                  from a branch that renders no detail pane at all (Noether's Stats tab,
-                                  its own empty-forSale state) or a real teardown
+                                  from a branch that starts no preview of its own (Noether's Stats tab,
+                                  whose pane has no animation in it, and his Moves tab's own
+                                  empty-forSale state, which renders no pane at all) or a real teardown
                                   (OverworldScene.closeDialogue()/HubScene.closeDialogue(), which call
                                   the no-key form to stop every chain at once). Stopping also wipes
                                   whatever is mid-flight (attackFx.ts's cancelPreviewFx), so closing a
@@ -752,11 +753,11 @@ everything else by absence, so only two things in it carry meaning.
   per-panel pagination/selection
   field (`shopTab`, `blochPage`, `dresselhausPage`, `majoranaPage`,
   `andersonPage`/`andersonSelection`/`andersonMovePage`, `feynmanPage`/`feynmanPreview`,
-  `noetherMovePage`/`kondoMovePage`), each list+detail
-  crystal-, move-, or (Bloch's own) world-pick step's own transient "which row is currently
+  `noetherMovePage`/`noetherStatPage`/`kondoMovePage`), each list+detail
+  crystal-, move-, stat-, or (Bloch's own) world-pick step's own transient "which row is currently
   previewed but not yet
   committed" field (`dresselhausPreview`, `andersonHostPreview`, `majoranaPreview`,
-  `noetherMovePreview`/`kondoMovePreview`/
+  `noetherMovePreview`/`noetherStatPreview`/`kondoMovePreview`/
   `blochPreview` -- the last one `number | null`, a world number rather than a
   crystal/move name string -- distinct
   from `andersonSelection` above, which holds the already-*committed* host choice; Majorana/
@@ -1995,6 +1996,14 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   deducts `shopCost` and appends to `unlockedMoves` directly. `ANALYTIC_MOVE_IDS`/
   `ULTIMATE_MOVE_IDS` (below) are deliberately excluded from `SHOP_MOVE_IDS` so Noether never
   also offers Landau's/Skłodowska-Curie's own moves.
+- **Noether's Stats tab** (`renderShopStats` in the same file) is the same layout over the three
+  `Stats` keys: the left column names them via `STAT_LABELS`, a row click sets
+  `scene.noetherStatPreview`, and the detail pane carries the stat's own effect line, a
+  `statUpgradeCost` status line and a "Raise `<stat>`" confirm button writing registry/save
+  `playerStats`. Its pane is the one in the game with no art block at all, so it renders its
+  own name heading (capped at `listDetail.ts`'s shared `DETAIL_NAME_CAP`) instead of calling one
+  of that module's detail-header openers, and it calls `stopMoveEffectPreview()` on the way in
+  since nothing in it will retarget the Moves tab's looping preview.
 - **Landau's Analytic-move panel** (`scenes/panels/landau.ts`'s `showLandauPanel`/
   `renderAnalyticColumns`/`renderAnalyticColumn`) is a **bespoke two-column layout**, not the
   list+detail shape above -- with only ever two fixed moves (`ANALYTIC_MOVE_IDS`:
