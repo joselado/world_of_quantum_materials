@@ -354,6 +354,16 @@ every other gameplay scene explicitly before starting the next one
 (`window.__game.scene.stop('Battle')` etc.), or route every switch through
 a small in-page helper that does that for you.
 
+**Gotcha:** when what's being measured is how far a piece of art actually
+*paints* rather than where a container's bounds claim it does (`battle/hud.ts`'s
+`*_HEAD_RISE`/`BOSS_FOOT_DROP` are all derived this way), hide every other
+object in the scene, put a flat **mid-grey** behind it, and scan several
+seconds of frames for any pixel that differs from that grey -- so the idle
+motion is included in the reach and a dark contact shadow counts as painted
+as much as a bright rim does. A black backdrop with a brightness threshold
+misses every shadow the art drops, which is exactly the half of a standing
+figure's extent a layout has to clear.
+
 **Gotcha:** the default `fontScale` preset (`data/settings.ts`'s
 `DEFAULT_FONT_SCALE`) is `1.5`, not `1` -- a bounds check run only at
 `fontScale: 1` (or only at the largest preset, `2`) can miss an overflow

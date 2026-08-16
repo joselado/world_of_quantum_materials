@@ -72,6 +72,7 @@ import {
   PLAYER_CRYSTAL_SIZE,
   WILD_CRYSTAL_SIZE,
   BOSS_CRYSTAL_SIZE,
+  BOSS_GROUND_LIFT,
   SHADOW_DROP,
   PLAYER_HEAD_RISE,
   WILD_HEAD_RISE,
@@ -427,10 +428,14 @@ export class BattleScene extends Phaser.Scene {
     // the overworld (art/boss.ts's makeBossCrystal), not the plain shared
     // makeCrystal() every ordinary wild encounter uses.
     this.opponentCrystal = this.isRival
-      ? makeBossCrystal(this, BOSS_CRYSTAL_SIZE, this.opponentView().color, this.opponentView().variant)
+      ? makeBossCrystal(this, BOSS_CRYSTAL_SIZE, this.opponentView().color, this.opponentView().variant, { footDrop: SHADOW_DROP })
       : makeCrystal(this, WILD_CRYSTAL_SIZE, this.wild.color, this.wild.variant, { seed: this.wild.name, hybrid: this.wild.hybridParents });
     this.opponentCrystal.setPosition(this.opponentPos.x, this.opponentPos.y);
-    this.bobCrystal(this.opponentCrystal, this.opponentPos.y);
+    // A gem hovers; a golem stands. Only the crystals get the idle bob --
+    // lifting a rival's whole container would carry its contact shadow up
+    // with it (art/boss.ts), and its own feet-pivoted rig already gives it
+    // more idle life than the bob ever did.
+    if (!this.isRival) this.bobCrystal(this.opponentCrystal, this.opponentPos.y);
 
     this.drawOpponentPlate();
 
@@ -1532,9 +1537,8 @@ export class BattleScene extends Phaser.Scene {
 
       killTweensDeep(this, this.opponentCrystal);
       this.opponentCrystal.destroy(true);
-      this.opponentCrystal = makeBossCrystal(this, BOSS_CRYSTAL_SIZE, newForm.color, newForm.variant);
+      this.opponentCrystal = makeBossCrystal(this, BOSS_CRYSTAL_SIZE, newForm.color, newForm.variant, { footDrop: SHADOW_DROP });
       this.opponentCrystal.setPosition(this.opponentPos.x, this.opponentPos.y);
-      this.bobCrystal(this.opponentCrystal, this.opponentPos.y);
       this.flashHit(this.opponentCrystal);
 
       // Rebuilt whole rather than retitled in place: the plate's chip is
@@ -1569,7 +1573,11 @@ export class BattleScene extends Phaser.Scene {
   // this to the game's one other "become a different crystal" moment,
   // distinct from any ordinary attack's own EFFECT_STYLE color.
   private playTransmuteGlow(onSwap: () => void) {
-    const { x, y } = this.opponentPos;
+    // Centred on the golem's own body rather than on `opponentPos`, which is
+    // a ground reference (see hud.ts's BOSS_GROUND_LIFT) and would put the
+    // rising glow around its shins.
+    const { x } = this.opponentPos;
+    const y = this.opponentPos.y - BOSS_GROUND_LIFT;
     const RISE_MS = 360;
     const FALL_MS = 320;
     const g = this.add.graphics().setDepth(59).setBlendMode(Phaser.BlendModes.ADD);

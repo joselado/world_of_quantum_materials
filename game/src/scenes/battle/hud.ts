@@ -19,7 +19,7 @@
 // each.
 import Phaser from 'phaser';
 import { makeCrystal } from '../../art/crystals';
-import { makeBossIcon } from '../../art/boss';
+import { BOSS_FOOT, makeBossIcon } from '../../art/boss';
 import { GROUND_DROP } from '../../art/attackShapes';
 import { GOLD_ACCENT, PANEL_BG, REFERENCE_BLUE_GREY } from '../../ui/theme';
 import { fontScale } from '../../ui/text';
@@ -49,24 +49,41 @@ export const BOTTOM_RAIL = FIELD_H - 16;
 // position that fight placed either crystal.
 export const PLAYER_POS = { x: 240, y: 345 };
 export const OPPONENT_POS = { x: 674, y: 162 };
-export const BOSS_OPPONENT_POS = { x: 644, y: 167 };
+export const BOSS_OPPONENT_POS = { x: 644, y: 184 };
 export const PLAYER_CRYSTAL_SIZE = 55;
 export const WILD_CRYSTAL_SIZE = 50;
 export const BOSS_CRYSTAL_SIZE = 64;
 export const SHADOW_DROP = GROUND_DROP;
 
+// A rival's golem is a standing figure, not a hovering gem: its feet have to
+// meet the arena floor exactly, and the arena floor at a combatant's spot is
+// GROUND_DROP below that combatant's anchor by the rule above. The golem's
+// own art puts its feet BOSS_FOOT*size below wherever it is drawn, which is
+// further than that, so it is handed to `makeBossCrystal` as a `footDrop` of
+// SHADOW_DROP instead -- its art rides this much higher inside its own
+// container, and its feet, its contact shadow, the arena's painted floor
+// shadow and every ground-anchored attack effect all land on one line.
+// BOSS_OPPONENT_POS is set so that line falls where it does, rather than the
+// golem itself moving up the field.
+export const BOSS_GROUND_LIFT = BOSS_FOOT * BOSS_CRYSTAL_SIZE - GROUND_DROP;
+
 // How far each crystal's actually-painted art reaches above and below its
 // own anchor point -- measured from a live headless-Chromium render (see
-// DEVELOPMENT.md), by hiding every other object in the scene and scanning
-// the rendered frame for painted pixels over several seconds so the idle
-// bob/breath is included, not computed from the art's nominal size (every
-// one of these silhouettes reaches well past it, the boss golem most of
-// all). A nameplate floats off the head offset; the move menu's own ceiling
-// is derived from the boss's foot offset.
+// DEVELOPMENT.md), by hiding every other object in the scene, putting a flat
+// mid-grey behind it (so a dark contact shadow counts as painted as much as
+// a bright rim does) and scanning several seconds of frames for any pixel
+// that differs from it, so the idle motion is included in the reach rather
+// than only the pose one frame happened to catch. Not computed from the
+// art's nominal size (every one of these silhouettes reaches well past it,
+// the boss golem most of all). A nameplate floats off the head offset; the move menu's own ceiling
+// is derived from the boss's foot offset. The boss's pair is measured from
+// its own anchor, so both already carry BOSS_GROUND_LIFT: its head sits
+// further above that ground point than a body-centred offset would suggest,
+// and its foot drop is the contact shadow's own reach past GROUND_DROP.
 export const PLAYER_HEAD_RISE = 57;
 export const WILD_HEAD_RISE = 45;
-export const BOSS_HEAD_RISE = 97;
-export const BOSS_FOOT_DROP = 70;
+export const BOSS_HEAD_RISE = 108;
+export const BOSS_FOOT_DROP = 57;
 
 // Nameplate geometry, shared by both sides.
 export const HP_BAR_W = 140;

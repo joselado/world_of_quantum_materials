@@ -1268,9 +1268,14 @@ rival -- its own pre-fight taunt dialogue (`OverworldScene.showRivalEncounter`) 
 it too, rather than reverting to the plain `makeCrystal` an ordinary wild encounter's
 greeting uses, and the fight itself carries it on: `BattleScene` renders a rival's
 opponent crystal at `BOSS_CRYSTAL_SIZE` (bigger than an ordinary wild encounter's),
-shifted a bit left of the usual opponent spot so the taller, wider silhouette clears
-both the opponent HP bar above it and the move menu below, instead of the plain
-`makeCrystal` every wild battle uses.
+at its own spot left of and below the usual opponent one so the taller, wider
+silhouette clears both the opponent HP bar above it and the move menu below, instead
+of the plain `makeCrystal` every wild battle uses. A rival's spot is a *ground*
+reference rather than a body centre: the golem is placed by its feet, so they meet
+the arena floor exactly and its contact shadow, the arena's own floor shadow and any
+ground-anchored attack effect all pool on one line under it. It is also the one
+combatant that never hovers -- a gem floats, a golem stands (STYLE.md's "The contact
+rule").
 
 **Passes between worlds.** Every world's corridor narrows into a pass at each end
 (`world/generators/shared.ts`'s `narrowGoalPass`/`openStartMouth`), and those passes

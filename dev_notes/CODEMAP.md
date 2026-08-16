@@ -140,7 +140,8 @@ game/src/
       hud.ts                   Battle-screen layout, split out of BattleScene: the rails/positions/
                                  sizing constants every battle element is placed from (LEFT/RIGHT/
                                  TOP/BOTTOM_RAIL, PLAYER_POS/OPPONENT_POS/BOSS_OPPONENT_POS, the
-                                 measured *_HEAD_RISE/BOSS_FOOT_DROP painted-art offsets, HP-bar
+                                 measured *_HEAD_RISE/BOSS_FOOT_DROP painted-art offsets,
+                                 BOSS_GROUND_LIFT, HP-bar
                                  dims, MENU_*, TURN_PREVIEW_*, LOG_*), plus the two HUD pieces that
                                  are pure geometry: drawNameplate (one floating name-over-bar plate,
                                  both sides) and drawTurnPreview (the "TURNS" icon row). Plain
@@ -250,7 +251,9 @@ game/src/
     franklin.ts                   makeFranklinAvatar() -- figure holding a diffraction-ring detector plate, world 9
     sklodowskaCurie.ts            makeSklodowskaCurieAvatar() -- radiant ray-crowned spire, world 10
     boss.ts                      makeBossCrystal() -- towering humanoid golem boss avatar at a world's goal,
-                                  plus the BOSS_SILHOUETTE_TOP/BOTTOM extents its callers lay out around;
+                                  plus the BOSS_SILHOUETTE_TOP/BOTTOM extents its callers lay out around
+                                  and BOSS_FOOT, the default for its own `footDrop` option (where its
+                                  feet and contact shadow land below the container origin);
                                   makeBossIcon() -- the same silhouette reduced to a static HUD-scale icon
                                   (battle/hud.ts's turn-order row), no shards/seams/sparks/tweens
     tokens.ts                   makeToken() -- qumatessence pickup sprite
@@ -676,7 +679,9 @@ World 10's Adapted and nowhere else.
   projected centre of tile `(x, y)`, so every landmark stands on its tile the way the player's
   avatar does. Art that carries a contact shadow exports the offset it drew that shadow at
   (`art/boss.ts`'s `BOSS_FOOT`, `art/door.ts`'s `DOOR_FOOT`) rather than the caller guessing;
-  art that deliberately hovers (a qumatessence cloud, a guardian adrift) passes `foot: 0`. The
+  art that deliberately hovers (a qumatessence cloud, a guardian adrift) passes `foot: 0`.
+  Anything whose art actually *meets* the ground also sets `still`, which turns the wander and
+  bob off -- see STYLE.md's "The contact rule." The
   player's avatar is not a `WorldSprite` -- it is drawn at one fixed screen position -- but obeys
   the same rule via `CAMERA_BACK_TILES`: the camera sits that far behind the player's tile, and
   `PLAYER_GROUND_Y` is the projection of the player's own tile centre, so the fixed avatar and
@@ -1253,17 +1258,26 @@ and positioned at `BOSS_OPPONENT_POS` (both module constants) instead of the wil
 `OPPONENT_POS` -- the instance field `this.opponentPos` tracks whichever was actually used, and
 `resolveHit`'s attack-effect `from`/`to` read that field, not the `OPPONENT_POS` constant
 directly, so bolts/rings/bursts still travel to the crystal's real (possibly shifted) position.
+A rival's anchor is a *ground* reference, not a body centre: the golem is built with
+`footDrop: SHADOW_DROP`, so its feet and contact shadow land on the same `GROUND_DROP`-below-anchor
+line the arena's painted floor shadow and every ground-anchored attack effect land on, and its art
+rides `BOSS_GROUND_LIFT` higher inside its own container to get there (`BOSS_OPPONENT_POS` is set
+so that puts the golem where the composition wants it). It is also the one combatant `create` does
+*not* `bobCrystal`: a gem hovers, a golem stands (STYLE.md's "The contact rule").
 
 **The goal tile belongs to that world's boss, not a guardian.** `OverworldScene.spawnBossSprite`
 spawns `art/boss.ts`'s `makeBossCrystal` (a humanoid golem outline fused from many grain shards,
 with lit grain-boundary seams, a contact shadow and ground glow at its feet, and rising heat
-sparks -- `BOSS_CRYSTAL_SIZE = 78`) at `goalTile` for every built world's `getRival()` (via
+sparks) at `goalTile` for every built world's `getRival()` (via
 `OverworldScene.getWorldRival()`, see below), for as long as that world's rival is undefeated --
 purely a visual landmark via the same `WorldSprite` machinery, no click handler of its own. The
 `WorldSprite.size` it pushes is `BOSS_CRYSTAL_SIZE * BOSS_SILHOUETTE_TOP` rather than the bare
 size, since that field only ever drives the name label's own offset and the golem's head reaches
 higher above its center than any other landmark's art does; its `foot` is
 `BOSS_CRYSTAL_SIZE * BOSS_FOOT`, the offset `makeBossCrystal` pooled its own contact shadow at.
+It is spawned `still`, so it neither wanders nor bobs: a figure standing on its own feet cannot
+be lifted off them by the machinery that makes a loose crystal glint and drift, and its idle life
+comes from `makeBossCrystal`'s own feet-pivoted rig instead.
 `BOSS_CRYSTAL_SIZE` is *derived*, not chosen: it is the size at which the golem's widest span
 (`art/boss.ts`'s `BOSS_SILHOUETTE_HALF_WIDTH`) covers the pass throat's full walkable width
 (`PASS_HALF_WIDTH * 2 + 1` tiles). Projection scale cancels out of that ratio -- golem and
@@ -1325,8 +1339,9 @@ a board (`art/passBoard.ts`'s `makePassBoard`, `BOARD_SPRITE_SIZE = 34`) naming 
 present since the way back carries no state -- except World 1, which gets `art/door.ts`'s
 `makeDoorSprite` instead, because it leads to the Lab and the Lab is not a place. Forward: a board
 naming World N+1, spawned only once the rival is beaten, and never in World 10. Boards set
-`WorldSprite.still`, which suppresses the wander/bob every other landmark carries -- a signboard
-nailed to two posts does not drift. The name is a `Text` *inside* the container rather than a
+`WorldSprite.still`, which suppresses the wander/bob a loose hovering crystal carries -- a
+signboard nailed to two posts does not drift. (The goal-tile golem sets it too, for its own
+reason: see above.) The name is a `Text` *inside* the container rather than a
 `WorldSprite.label`, so it projects and depth-scales with the posts and is legible only on
 approach.
 

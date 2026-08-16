@@ -342,9 +342,14 @@ interface WorldSprite {
   // position (which follows the camera like everything else on the map)
   // push it past either edge.
   clampLabelToCanvas?: boolean;
-  // Planted, not alive: no wander, no bob. A crystal glints and a golem
-  // breathes, but a signboard nailed to two posts that drifts around its own
-  // tile reads as a prop rather than as part of the road.
+  // Planted: no wander, no bob. A loose crystal glints and drifts because it
+  // is a gem hovering over the tile it sits on, but anything that meets the
+  // ground -- a signboard nailed to two posts, a rival's golem standing on
+  // its own two feet -- has to stay where it is put. Drifting reads as a
+  // prop rather than as part of the road; bobbing carries the sprite's own
+  // contact shadow up with it and reads as floating. A planted sprite is
+  // still free to be alive, from art of its own that moves without leaving
+  // the ground (art/boss.ts's feet-pivoted idle rig).
   still?: boolean;
 }
 
@@ -1900,6 +1905,11 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       label,
       seed: Math.random() * Math.PI * 2,
       clampLabelToCanvas: true,
+      // It stands in the pass on its own two feet -- see `still`. What
+      // makes it read as alive rather than as scenery is its own idle rig
+      // (art/boss.ts), which breathes and shifts its weight without ever
+      // lifting off the tile.
+      still: true,
     });
   }
 
@@ -2721,7 +2731,6 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     const crystal = makeBossCrystal(this, crystalSize, rival.color, rival.variant);
     crystal.setPosition(CANVAS_W / 2, crystalY);
     container.add(crystal);
-    this.tweens.add({ targets: crystal, y: crystalY + 10, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     y = crystalY + crystalSize * BOSS_SILHOUETTE_BOTTOM + CRYSTAL_TO_TEXT;
 
     text.setY(y);

@@ -13,14 +13,15 @@ import type { CrystalVariant } from '../data/types';
 // outline and the rising heat sparks; BOTTOM covers the planted feet plus
 // the contact shadow pooled under them.
 export const BOSS_SILHOUETTE_TOP = 1.4;
-export const BOSS_SILHOUETTE_BOTTOM = 1.11;
+export const BOSS_SILHOUETTE_BOTTOM = 1.16;
 // Half the golem's widest span, at the outstretched fists -- what
 // OverworldScene sizes the boss from, so its silhouette spans the pass it
 // holds rather than a number chosen against the screen (WORLDS.md section 4).
 export const BOSS_SILHOUETTE_HALF_WIDTH = 1.1;
 // Where the golem plants its feet and pools its contact shadow, in the same
 // units -- the point a caller standing it on a tile lands on that tile's
-// ground (OverworldScene.spawnBossSprite's `foot`).
+// ground (OverworldScene.spawnBossSprite's `foot`), and the default for
+// `makeBossCrystal`'s own `footDrop` option.
 export const BOSS_FOOT = 0.98;
 
 // The golem's outline, traced once in units of `size` (y positive downward,
@@ -144,26 +145,36 @@ const SEAM_GLOW = 0xffb347;
 // Everything that breathes lives in an inner container pivoted at the
 // golem's feet, never on the returned container itself: all three call sites
 // already own the outer transform (the overworld re-positions and re-scales
-// it every frame, the taunt panel and BattleScene each bob it), so an idle
-// tween on the root would be silently overwritten.
+// it every frame), so an idle tween on the root would be silently
+// overwritten. That split is also what keeps the golem standing: the whole
+// creature is *planted*, so no caller may tween the returned container's `y`
+// -- lifting the root lifts the contact shadow with it and the thing reads
+// as hovering. Every bit of life it has comes from the feet-pivoted rig
+// below, which leans and breathes without ever leaving the ground.
+//
+// `footDrop` is how far below the returned container's origin the golem's
+// feet -- and the contact shadow pooled under them -- land, so a caller
+// whose anchor point is a ground reference rather than a body centre
+// (BattleScene, whose combatant anchor sits GROUND_DROP above the arena
+// floor every ground-anchored attack effect also lands on) can hand that
+// distance in and have the feet meet exactly that line. Defaults to the
+// silhouette's own BOSS_FOOT, which is what a caller placing the golem by
+// its own art wants.
 export function makeBossCrystal(
   scene: Phaser.Scene,
   size: number,
   color: number,
-  variant: CrystalVariant
+  variant: CrystalVariant,
+  opts: { footDrop?: number } = {}
 ): Phaser.GameObjects.Container {
   const container = scene.add.container(0, 0);
   const feetY = size * BOSS_FOOT;
+  // Everything the golem is made of hangs off `rig`, offset so the feet land
+  // on the caller's requested contact line while the art below stays written
+  // in the silhouette's own coordinates.
+  const rig = scene.add.container(0, (opts.footDrop ?? feetY) - feetY);
+  container.add(rig);
   const poly = (k: number) => SILHOUETTE.map(([x, y]) => ({ x: x * size * k, y: y * size * k }));
-
-  // A plain dark contact shadow, normal-blended rather than additive: mass
-  // is what makes this read as heavy, and a shadow pooled under the feet
-  // does more for that than any glow can. It also plants the golem on the
-  // ground instead of leaving it floating.
-  const shadow = scene.add.graphics();
-  shadow.fillStyle(0x000000, 0.34);
-  shadow.fillEllipse(0, feetY, size * 1.9, size * 0.24);
-  container.add(shadow);
 
   // The danger glow, kept low and behind the legs so it reads as the ground
   // scorching under the thing rather than a halo around it -- a halo is the
@@ -176,8 +187,26 @@ export function makeBossCrystal(
   pool.fillEllipse(0, feetY * 0.97, size * 1.7, size * 0.32);
   pool.fillStyle(shade(color, 60), 0.2);
   pool.fillEllipse(0, feetY * 0.97, size * 1.0, size * 0.2);
-  container.add(pool);
+  rig.add(pool);
   scene.tweens.add({ targets: pool, alpha: { from: 0.5, to: 1 }, duration: 1700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+
+  // A plain dark contact shadow, normal-blended rather than additive: mass
+  // is what makes this read as heavy, and a shadow pooled under the feet
+  // does more for that than any glow can. It also plants the golem on the
+  // ground instead of leaving it floating -- which is why it goes *over* the
+  // scorch pool above and under the legs below: the darkest point on screen
+  // has to be the point the golem touches, and an additive glow painted on
+  // top of the contact patch turns it into the lit disc a hovering thing
+  // stands on. Tight and dark at the feet, with a wider, fainter penumbra
+  // spreading out from it so the hard patch doesn't read as a decal.
+  const shadow = scene.add.graphics();
+  shadow.fillStyle(0x000000, 0.2);
+  shadow.fillEllipse(0, feetY, size * 1.9, size * 0.36);
+  shadow.fillStyle(0x000000, 0.34);
+  shadow.fillEllipse(0, feetY, size * 1.34, size * 0.24);
+  shadow.fillStyle(0x000000, 0.5);
+  shadow.fillEllipse(0, feetY, size * 0.86, size * 0.14);
+  rig.add(shadow);
 
   // `body` pivots at the feet so the idle motion below scales and leans the
   // golem from the ground up rather than ballooning it about its middle;
@@ -186,7 +215,7 @@ export function makeBossCrystal(
   const body = scene.add.container(0, feetY);
   const art = scene.add.container(0, -feetY);
   body.add(art);
-  container.add(body);
+  rig.add(body);
 
   // Rim light: the same outline a touch larger and additive, so only the
   // sliver protruding past the dark silhouette shows -- a bright edge in a
@@ -292,7 +321,7 @@ export function makeBossCrystal(
   [-0.6, -0.2, 0.15, 0.45, 0.75].forEach((dx, i) => {
     const spark = scene.add.circle(dx * size, size * 0.3, size * 0.045, EMBER, 0.95);
     spark.setBlendMode(Phaser.BlendModes.ADD);
-    container.add(spark);
+    rig.add(spark);
     scene.tweens.add({
       targets: spark,
       y: -size * 1.35,

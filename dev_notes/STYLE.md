@@ -90,6 +90,35 @@ What this means in practice:
 - **When an effect cannot be made affordable, cut it and say so.** Shipping a
   cost quietly is the failure mode this rule exists to prevent.
 
+## The contact rule
+
+**Anything with feet stands on the ground, and nothing lifts it off.** A gem
+hovers, a qumatessence cloud drifts, a guardian may be adrift on purpose -- but
+a figure the player reads as *standing* (a rival's golem above all) has to meet
+the floor and stay met. Two things break it, and both are easy to do by
+accident:
+
+- **Never tween the root `y` of a sprite that carries its own contact shadow.**
+  The shadow lives inside that container, so lifting the root lifts the shadow
+  with it and the whole assembly slides over the ground -- the exact signature
+  of hovering. The golem is excluded from the overworld's wander/bob
+  (`WorldSprite.still`), from `BattleScene.bobCrystal`, and from any idle tween
+  on the taunt page for this reason. Idle life comes from *inside* instead:
+  `makeBossCrystal`'s rig is pivoted at the feet, so it breathes, leans and
+  shifts its weight without the contact point ever moving.
+- **The darkest pixel must be the contact point.** A contact shadow drawn
+  *under* an additive glow gets washed into a bright disc, and a bright disc
+  beneath a figure reads as the pad it is hovering over. Ground glow first,
+  dark shadow on top of it, art on top of that.
+
+Where a scene has its own floor line, the feet meet *that* line rather than
+approximately near it: in battle the arena floor at a combatant's spot is
+`GROUND_DROP` below its anchor (the same line every ground-anchored attack
+effect lands on), so the golem is built with `footDrop: SHADOW_DROP` and its
+feet, its own shadow, the arena's painted shadow and any impact rune all
+coincide. One shadow, one line. Two ellipses at slightly different heights
+under one figure reads as floating even when neither is wrong on its own.
+
 ## Title screen (`scenes/TitleScene.ts`)
 
 - Dark indigo gradient (`0x0c1030` → `0x241a44`), no biome/perspective machinery involved --
@@ -1731,7 +1760,7 @@ station motifs are deliberately not tunnels with a visible far end.
   opening -- a figure filling a narrow notch reads larger than a giant in an
   open field, and the narrowing carries the menace. Since
   the silhouette reaches `BOSS_SILHOUETTE_TOP`/`BOSS_SILHOUETTE_BOTTOM`
-  (`1.4`/`1.11`, exported from `art/boss.ts`) multiples of that above and below
+  (`1.4`/`1.16`, exported from `art/boss.ts`) multiples of that above and below
   its own center, the rendered golem stands over 2.5x that tall, dwarfing both a
   wild crystal (`22`) and the player's own on-map size (`34`) -- and
   rendered by `makeBossCrystal` rather than the shared `makeCrystal` every
@@ -1765,11 +1794,15 @@ station motifs are deliberately not tunnels with a visible far end.
     across the head, a dark socket with hot ember-orange inset inside it -- one
     slit, not a pair of eyes, so it stays a lit fracture rather than a face.
   - **Ground staging** instead of a body halo: a normal-blended dark contact
-    shadow pooled under the feet (mass, and it plants the golem instead of leaving
-    it floating), with the danger glow relegated to a low additive ellipse behind
-    the legs that pulses its alpha. A halo big enough to surround the whole body
-    is the visual language of a benevolent guardian, and an additive one washes out
-    to near-white over a daylight biome, erasing the silhouette's own edge.
+    shadow pooled under the feet in three nested ellipses, tight and dark where
+    the golem touches and spreading out into a wide faint penumbra, with the
+    danger glow relegated to a low additive ellipse behind the legs that pulses
+    its alpha. The shadow goes **over** that glow and under the legs: the darkest
+    point on screen has to be the point the golem touches, and an additive glow
+    painted on top of the contact patch turns it into the lit disc a hovering
+    thing stands on. A halo big enough to surround the whole body is the visual
+    language of a benevolent guardian, and an additive one washes out to
+    near-white over a daylight biome, erasing the silhouette's own edge.
   - **Motion on four unrelated periods** so the idle loop never visibly resets:
     a 900ms head-slit pulse, a 2300ms breath that squashes as it rises, a 3100ms
     weight shift, a 3400ms head pan, plus two fists drifting out of phase with each
@@ -1780,9 +1813,12 @@ station motifs are deliberately not tunnels with a visible far end.
   a bold, warning-toned pink-red (`#ff8f8f`), distinct from any guardian's own
   label color, and offset by `BOSS_SILHOUETTE_TOP` multiples of the size rather
   than a bare one, so it clears the head. Reuses the
-  `WorldSprite` projection/wander/bob machinery, so it scrolls and fades with
+  `WorldSprite` projection machinery, so it scrolls and fades with
   distance like everything else standing on the map -- it doesn't add its own
-  click handler, the fight is still only reached by pressing at the pass mouth. `makeBossCrystal`'s core/limb color and variant
+  click handler, the fight is still only reached by pressing at the pass mouth.
+  It sets `WorldSprite.still` to opt out of that machinery's wander and bob:
+  the golem stands on its own two feet, and its life comes from the rig inside
+  it ("The contact rule" above). `makeBossCrystal`'s core/limb color and variant
   come from the boss `Material`'s own `color`/`variant` (`TYPE_LOOK[type]`), so
   World 9's boss -- the one rival with no fixed type, DESIGN.md §2 -- looks
   different depending on which `MaterialType` got rolled for that playthrough,
@@ -1810,8 +1846,9 @@ world are shaped, since world N's start is world N-1's exit.
   at whatever size distance gives it. What arrives at the threshold is
   *interactivity*, not the object.
 - **A board is planted, not alive.** `WorldSprite.still` suppresses the
-  wander/bob every other landmark carries; a signboard nailed to two posts that
-  drifts around its tile reads as a prop.
+  wander/bob a loose hovering crystal carries; a signboard nailed to two posts
+  that drifts around its tile reads as a prop. (The rival's golem is planted
+  too, for a different reason -- "The contact rule" above.)
 - **Approach, read, press.** Both gate states share one interaction. A prompt
   appears a tile out and the keypress commits -- challenging the guard while
   the gate is shut, crossing once it is open. **Arrival alone never transitions
@@ -1898,8 +1935,9 @@ world are shaped, since world N's start is world N-1's exit.
   a "Next ->" button) and `part2` (rendered with the mandatory "Battle!" button -- no "let me
   pass," since a gate that can be skipped isn't a gate); a world with no `RIVAL_TAUNTS` entry
   falls back to a single generic line instead. The boss crystal is redrawn on both pages
-  (`art/boss.ts`'s `makeBossCrystal` at `BOSS_CRYSTAL_SIZE`, `OverworldScene.ts`'s own copy
-  of `78`), the same golem silhouette the rival already renders as standing at the goal tile
+  (`art/boss.ts`'s `makeBossCrystal`, at whatever height the page has left over once the
+  button and taunt are placed, clamped between `MIN_BOSS_SIZE` and `OverworldScene.ts`'s own
+  aperture-derived `BOSS_CRYSTAL_SIZE`), the same golem silhouette the rival renders as standing at the goal tile
   (`spawnBossSprite`) and as the battle opponent (`scenes/BattleScene.ts`'s own
   `BOSS_CRYSTAL_SIZE`) -- not the plain faceted `makeCrystal` an ordinary wild encounter uses,
   so the rival never reverts to looking like an ordinary crystal just because this dialogue is
@@ -1907,7 +1945,8 @@ world are shaped, since world N's start is world N-1's exit.
   `art/boss.ts`'s exported `BOSS_SILHOUETTE_TOP`/`BOSS_SILHOUETTE_BOTTOM` rather than a bare
   `BOSS_CRYSTAL_SIZE`, since the golem is taller than it is wide and asymmetric about its own
   center -- so its head clears the panel's top border and the contact shadow under its feet
-  clears the first line of text. The taunt text's own font size is capped the same way
+  clears the first line of text. It stands still on the page, as it does everywhere else
+  ("The contact rule"). The taunt text's own font size is capped the same way
   the world-entry lore screen's is, for the same reason (worlds 9/10's longer taunts would
   otherwise overflow the canvas at the Settings panel's 2x preset). Losing doesn't set anything
   back except the token stake (see Stakes in DESIGN.md §4): the pass is still shut, its guard
@@ -1973,23 +2012,33 @@ world are shaped, since world N's start is world N-1's exit.
 - A rival fight's opponent renders with `art/boss.ts`'s `makeBossCrystal` at
   `BOSS_CRYSTAL_SIZE = 64` -- bigger than an ordinary wild encounter's plain
   `makeCrystal` at `WILD_CRYSTAL_SIZE = 50` -- positioned at `BOSS_OPPONENT_POS`
-  (`{ x: 644, y: 167 }`, shifted left and slightly up from the wild encounter's
+  (`{ x: 644, y: 184 }`, shifted left and down from the wild encounter's
   `OPPONENT_POS` of `{ x: 674, y: 162 }`) so the golem's silhouette (which reaches
   well past the bare `BOSS_CRYSTAL_SIZE` footprint -- `BOSS_SILHOUETTE_TOP`/
   `BOSS_SILHOUETTE_BOTTOM` multiples of it above and below that anchor) sits
   comfortably inside the field.
+- **A rival's anchor is a ground reference, not a body centre** ("The contact
+  rule" above). The arena floor at a combatant's spot is `GROUND_DROP` below its
+  anchor -- the line the painted floor shadow and every ground-anchored attack
+  effect already land on -- so the golem is built with `footDrop: SHADOW_DROP`
+  and its art rides `BOSS_GROUND_LIFT` higher inside its own container to put
+  its feet exactly there. `BOSS_OPPONENT_POS` is chosen so that the golem still
+  lands where the composition wants it, one shadow under one pair of feet. It is
+  also the one combatant that never gets `bobCrystal`'s idle lift: a gem hovers,
+  a golem stands.
 - Every layout bound that has to clear the golem is **derived from measured
   offsets rather than hand-tuned literals** (`scenes/battle/hud.ts`'s
-  `BOSS_HEAD_RISE = 97`/`BOSS_FOOT_DROP = 70`, and `WILD_HEAD_RISE = 45`/
+  `BOSS_HEAD_RISE = 108`/`BOSS_FOOT_DROP = 57`, and `WILD_HEAD_RISE = 45`/
   `PLAYER_HEAD_RISE = 57` for the other two crystals): how far each crystal's
   actually-painted art reaches above and below its own anchor point, measured
-  from a live headless-Chromium render by hiding every other object in the scene
-  and scanning the rendered frame for painted pixels across several seconds, so
-  the idle bob/breath extent is included. At its current anchor the golem paints
-  70-237 vertically and 570-717 horizontally. Its nameplate floats off
-  `BOSS_HEAD_RISE` and the move menu's own ceiling (`MENU_MIN_TOP`, below) is
-  `BOSS_OPPONENT_POS.y + BOSS_FOOT_DROP + 7`, so moving the boss can never
-  silently leave either one overlapping it.
+  from a live headless-Chromium render by hiding every other object in the
+  scene, putting a flat mid-grey behind it (so a dark contact shadow counts as
+  painted as much as a bright rim does) and scanning several seconds of frames
+  for any pixel that differs from it, so the full idle extent is included. At
+  its current anchor the golem paints 76-241 vertically and 570-717
+  horizontally. Its nameplate floats off `BOSS_HEAD_RISE` and the move menu's
+  own ceiling (`MENU_MIN_TOP`, below) is `BOSS_OPPONENT_POS.y + BOSS_FOOT_DROP +
+  7`, so moving the boss can never silently leave either one overlapping it.
 - Same look the boss already has standing at its world's goal tile in the
   overworld (`OverworldScene.spawnBossSprite`), carried into the fight itself
   rather than switching to the plain crystal look every wild battle uses.
