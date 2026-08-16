@@ -32,15 +32,15 @@ export const MATERIAL_BLURBS: Record<string, string> = {
   'Polycrystalline Bismuth Telluride Golem':
     "Bi₂Te₃'s topological surface state is protected by time reversal, and protection has a limit. Past a critical disorder strength the quantum spin Hall phase gives way to a trivial Anderson insulator: every state localized, no Kramers-protected channel anywhere in it. What is left still glows along the seam, and nothing along that seam has moved in a long time.",
   'Polycrystalline Manganese Bismuth Telluride Golem':
-    "MnBi₂Te₄ quantizes from the inside, its own magnetic order standing in for an applied field, and real samples are plagued by Mn/Bi antisite disorder that kills the quantization outright. Disordered far enough, the extended states that carry the Chern number are gone, the invariant falls to zero, and the plateau is not noisy but absent. There is nothing left in it to count.",
+    "MnBi₂Te₄ quantizes from the inside: its own magnetic order stands in for an applied field. Real samples are riddled with Mn/Bi antisite disorder, and that disorder kills the quantization outright. Push it far enough and the extended states that carry the Chern number are gone, the invariant falls to zero, and the plateau is not noisy but absent. There is nothing left in it to count.",
   'Polycrystalline YBCO Golem':
-    "Granular YBCO superconducts grain by grain, and the grain boundaries are Josephson weak links that can still lock the whole body to one phase. That agreement is real, and it is a treaty rather than an identity: it holds while the current stays small, the field stays low and the cold stays deep, and it is the one thing on this road that the Decoherence has not yet been able to take.",
+    "Granular YBCO superconducts grain by grain, and the grain boundaries are Josephson weak links that can still lock the whole body to one phase. That agreement is real, and it is a treaty rather than an identity: it holds while the current stays small, the field stays low and the cold stays deep. It is the one thing on this road the Decoherence has not yet been able to take.",
   'Polycrystalline Iron Golem':
     "Polycrystalline iron is still a magnet: every grain keeps its order, and the domain walls slide as they always did. What the grains take is the magnon. A spin wave scatters at every boundary, its mean free path falls to the size of a grain, and the long-wavelength modes that carry order across a body no longer fit inside any part of this one.",
   'Polycrystalline Herbertsmithite Golem':
     "Herbertsmithite's kagome lattice frustrates every spin into never choosing, and its ground state is one long-range entangled whole. Each grain of this body is still a spin liquid, enormous on lattice scales, and the single system-wide state that made them one is gone. A spin liquid is locally featureless by design, so nothing inside it can tell the difference.",
   'Polycrystalline Ruthenium Trichloride Golem':
-    "α-RuCl₃'s Kitaev bonds fractionalize a flipped spin into halves that travel apart, and travelling apart needs one coherent resonating background to travel through. Stacking faults and grain boundaries end that background, so the halves are confined back into an ordinary whole flip at the first seam they reach. It still comes apart. It no longer gets anywhere.",
+    "α-RuCl₃'s Kitaev bonds fractionalize a flipped spin into halves that travel apart, and travelling apart needs one coherent resonating background to travel through. Stacking faults and grain boundaries end that background. The halves are confined back into an ordinary whole flip at the first seam they reach. It still comes apart. It no longer gets anywhere.",
   // CrI3 itself is "just" a van der Waals ferromagnet, not multiferroic --
   // twisting two layers together is what's new, and even then this is a
   // theoretical proposal (noncollinear moiré spin textures inducing
@@ -156,7 +156,7 @@ export const HYBRID_FUSION_LORE: Record<string, string> = {
   'CrI₃/NbSe₂ Topological-SC Heterostructure':
     'A van der Waals magnet layered on a superconductor warps its pairing topological.',
   'Cr-doped (Bi,Sb)₂Te₃':
-    "Chromium salts a topological insulator: symmetry breaks within, one chiral edge remains.",
+    "Chromium seeds a topological insulator: symmetry breaks inside, one chiral edge remains.",
   'Fe/Pb Majorana Chain':
     'Iron atoms chained on lead braid magnetism into the pairing: Majorana modes wait at the ends.',
   'Twisted CrI₃':
