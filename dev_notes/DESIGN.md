@@ -513,16 +513,16 @@ typically share and `data/materials.ts`'s `crystal()` `variantOverride` param st
 individual compound's own where it differs (wurtzite GaN among the zinc-blende
 semiconductors, rhombohedral Bi₂Te₃ and BiFeO₃, monolayer CrI₃ among the bulk magnets) —
 a main type groups compounds by their physics, so it doesn't track their symmetry. The one
-habit that is not a lattice claim is `'cluster'` (classicalMagnet, quantumSpinLiquid,
-kondoHeavyFermion): many grains intergrown into a single specimen is a *growth* habit, and
-so sits over any lattice. See `art/crystals.ts`'s `drawSolidShape` and STYLE.md's "Crystal
+habit that is not a lattice claim is `'spire'` (classicalMagnet, quantumSpinLiquid,
+kondoHeavyFermion): a body grown tall and terminated in a point is a *growth* habit, and so
+sits over any lattice. See `art/crystals.ts`'s `drawSolidShape` and STYLE.md's "Crystal
 sprites" for what each one is drawn as.
 
 **Every compound has its own look, not just its type's.** Beyond the `variantOverride`
 above, every crystal built with `data/materials.ts`'s `crystal()` gets a small,
 deterministic per-compound hue/rotation/stretch/sparkle variation (`art/crystals.ts`'s
 `jitterFor`, keyed off the compound's own name) layered on top of its `TYPE_LOOK`
-silhouette/color, so e.g. Manganese Oxide and Nickel Oxide (both `classicalMagnet`-type clusters)
+silhouette/color, so e.g. Manganese Oxide and Nickel Oxide (both `classicalMagnet`-type spires)
 read as individuals rather than one recolored shape reused twice. See STYLE.md's "Crystal
 sprites" section for the mechanism.
 

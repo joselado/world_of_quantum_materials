@@ -161,9 +161,9 @@ export type MaterialType =
 // compounds, `tetragonal` for the square-planed I4/mmm and P4 families,
 // `prism` for the hexagonal/wurtzite/hcp ones, and `shard` where a compound's
 // structure is low-symmetry enough to have no characteristic habit at all.
-// `cluster` is the one entry that is a *growth* habit rather than a lattice
-// symmetry -- many grains intergrown into one specimen -- so it sits happily
-// over any of the above.
+// `spire` is the one entry that is a *growth* habit rather than a lattice
+// symmetry -- a single body grown tall and brought to a point -- so it sits
+// happily over any of the above.
 //
 // The last three are two-dimensional rather than solid: `layer`, `layerTriangle`
 // and `layerSquare` are one monolayer seen as a thin plate, cut to the shape of
@@ -175,7 +175,7 @@ export type MaterialType =
 // offset plates reads as "this is a fused state" and nothing else.
 export type CrystalVariant =
   | 'shard'
-  | 'cluster'
+  | 'spire'
   | 'prism'
   | 'cubic'
   | 'octahedral'

@@ -690,7 +690,7 @@ World 10's Adapted and nowhere else.
   `crystal()`'s own entry above), *and* (rendering-side, not stored on the `Material` itself) `art/crystals.ts`'s
   `jitterFor(material.name, ...)` gives each one its own hue/rotation/stretch/sparkle
   variation so same-type siblings don't render as one recolored shape reused across every
-  compound of that type -- see STYLE.md. `TitleScene`'s showcase cluster is the one consumer
+  compound of that type -- see STYLE.md. `TitleScene`'s showcase row is the one consumer
   outside `data/materials.ts` itself so far (and the one place that skips per-compound jitter,
   since it only has a `MaterialType` to draw from, not a specific compound name). A compound whose
   own lattice differs from the structure its type's `TYPE_LOOK` entry assumes states its own

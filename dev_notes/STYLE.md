@@ -1036,7 +1036,12 @@ station motifs are deliberately not tunnels with a visible far end.
 
 - Shared `makeCrystal()` builder (`art/crystals.ts`): one faceted silhouette per material,
   colored per its main type (`TYPE_LOOK` in `data/materials.ts`), plus a highlight and
-  twinkling sparkles. **The silhouette is the compound's real crystal habit, read off its
+  twinkling sparkles. **`size` means the same thing to every habit**: each solid is drawn in
+  whatever proportions it actually has, which left a quarter's spread between the largest and
+  smallest at the same `size`, so `drawSolidShape` evens the largest dimension out through
+  `HABIT_SCALE` -- measured off rendered pixels, and deliberately small, since past about a
+  tenth it would be redrawing a shape rather than scaling it. Two specimens shown side by
+  side should differ in *shape*, never in importance. **The silhouette is the compound's real crystal habit, read off its
   lattice, never picked for variety** -- `art/crystals.ts`'s `drawSolidShape` is the single
   place a `CrystalVariant` becomes a shape, so `makeCrystal`'s ordinary render and
   `drawVariantShape`'s hybrid halves can't disagree about what a variant looks like.
@@ -1057,15 +1062,16 @@ station motifs are deliberately not tunnels with a visible far end.
     enough to have no characteristic habit (HfO₂'s ferroelectric orthorhombic phase).
     Each solid is lit from the upper left, the same direction `addHighlightAndSparkles`
     puts its specular highlight.
-  - **`cluster`** (`drawClusterShape`; classicalMagnet, quantumSpinLiquid, kondoHeavyFermion)
-    is the one entry that states a *growth* habit rather than a lattice symmetry -- many
-    grains intergrown into one specimen -- which is why it sits over those three types
-    regardless of their members' individual lattices. Three spires rise from a shared base
-    into one body: the whole silhouette is filled dark first and the spires painted into it
-    back to front, so the wedges they don't cover are the recesses where they intergrow and
-    the only outline stroked around the outside is the silhouette's own. Interiors carry just
-    each spire's facet junctions (the roof/body seam and the front edge), which is what keeps
-    the faceting readable at the 22px a wild encounter is drawn at.
+  - **`spire`** (`drawSpireShape`; classicalMagnet, quantumSpinLiquid, kondoHeavyFermion)
+    is the one entry that states a *growth* habit rather than a lattice symmetry -- a body
+    grown tall and brought to a point -- which is why it sits over those three types
+    regardless of their members' individual lattices. One prismatic body rises into a
+    pointed termination: the silhouette is filled dark first and the facets painted into
+    it, so the outline stays a single closed shape. It is **one body**, like every other
+    habit here -- a crystal drawn from separate pieces means a Majorana fusion and nothing
+    else, so a habit spending several pieces on itself takes a word the visual language has
+    already given to something more important. What distinguishes it from `prism` is the
+    termination: `prism` is a flat-topped column, `spire` comes to a point.
   - **Monolayers.** `layer` (`drawLayerShape`) is one thin flattened hexagonal sheet with a
     soft *detached* shadow underneath it (not touching the sheet) so it reads as floating
     rather than resting on the ground -- for honeycomb/hexagonal monolayers (Graphene, hBN,
@@ -1113,7 +1119,7 @@ station motifs are deliberately not tunnels with a visible far end.
   hybrid met in World 10 and a player-made one render identically;
   `makeCrystal()`'s `opts.hybrid` routes to `drawHybridCrystal` instead of the
   ordinary single-shape path: both parents' own habits (`drawVariantShape`, which is
-  `drawSolidShape` at hybrid scale with 'cluster' collapsed to a plain shard so it doesn't crowd
+  `drawSolidShape` at hybrid scale with 'spire' collapsed to a plain shard so it doesn't crowd
   a shape already sharing space with a second parent's own) render off-center at a slight opposing tilt, the
   second layered on top at less than full opacity so the overlap region genuinely blends both
   parent colors via normal alpha compositing -- **not** `Phaser.BlendModes.ADD` on the shapes

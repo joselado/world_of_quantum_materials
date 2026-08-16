@@ -19,28 +19,34 @@ type ShowcaseEntry = { type: MaterialType; size: number; dx: number; dy: number;
 // `dy` are offsets from drawShowcaseCrystals's own `(centerX, topY)`
 // origin, not absolute canvas coordinates.
 //
+// Every entry in a row is the same size. A roster image is a comparison, and
+// a comparison whose members are drawn at different sizes says one specimen
+// matters more than another -- which is not a claim this game makes about its
+// materials. Depth is carried by the two rows being different sizes from each
+// other, not by ranking within a row.
+//
 // Back row: smaller, more numerous, spread across most of the canvas width
 // -- reads as a shelf of specimens rather than a decorative cluster.
 const FAR_SHOWCASE: ShowcaseEntry[] = [
-  { type: 'metal', size: 14, dx: -360, dy: 14, duration: 1300, delay: 0 },
+  { type: 'metal', size: 15, dx: -360, dy: 14, duration: 1300, delay: 0 },
   { type: 'insulator', size: 15, dx: -257, dy: 20, duration: 1400, delay: 140 },
-  { type: 'semiconductor', size: 16, dx: -154, dy: 10, duration: 1250, delay: 260 },
-  { type: 'quantumSpinLiquid', size: 14, dx: -51, dy: 18, duration: 1500, delay: 60 },
+  { type: 'semiconductor', size: 15, dx: -154, dy: 10, duration: 1250, delay: 260 },
+  { type: 'quantumSpinLiquid', size: 15, dx: -51, dy: 18, duration: 1500, delay: 60 },
   { type: 'kondoHeavyFermion', size: 15, dx: 51, dy: 12, duration: 1350, delay: 200 },
-  { type: 'chernInsulator', size: 16, dx: 154, dy: 20, duration: 1200, delay: 100 },
-  { type: 'ferroelectric', size: 14, dx: 257, dy: 10, duration: 1450, delay: 40 },
+  { type: 'chernInsulator', size: 15, dx: 154, dy: 20, duration: 1200, delay: 100 },
+  { type: 'ferroelectric', size: 15, dx: 257, dy: 10, duration: 1450, delay: 40 },
   { type: 'multiferroic', size: 15, dx: 360, dy: 16, duration: 1300, delay: 220 },
 ];
-// Front row: bigger, fewer, closer to the canvas center -- a centered "hero"
-// entry (quantumSpinHall, biggest, drawn last so it renders on top) flanked
-// by two pairs at decreasing size, the same "hero drawn last/centered" idea
-// the original 5-crystal cluster used.
+// Front row: fewer and nearer, so bigger than the back row -- and uniform
+// within itself, for the reason above. The centre entry is still drawn last,
+// so where the row's own bobbing brings two together the middle one passes in
+// front.
 const NEAR_SHOWCASE: ShowcaseEntry[] = [
-  { type: 'classicalMagnet', size: 26, dx: -280, dy: 58, duration: 1150, delay: 260 },
+  { type: 'classicalMagnet', size: 32, dx: -280, dy: 58, duration: 1150, delay: 260 },
   { type: 'superconductor', size: 32, dx: -140, dy: 54, duration: 1250, delay: 60 },
-  { type: 'quantumSpinHall', size: 40, dx: 0, dy: 58, duration: 1100, delay: 0 },
+  { type: 'quantumSpinHall', size: 32, dx: 0, dy: 58, duration: 1100, delay: 0 },
   { type: 'chernSuperconductor', size: 32, dx: 140, dy: 54, duration: 1300, delay: 120 },
-  { type: 'fractionalChern', size: 26, dx: 280, dy: 58, duration: 1400, delay: 180 },
+  { type: 'fractionalChern', size: 32, dx: 280, dy: 58, duration: 1400, delay: 180 },
 ];
 
 // The game's actual boot scene (main.ts lists this first) -- also where one

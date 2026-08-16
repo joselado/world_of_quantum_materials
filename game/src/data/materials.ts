@@ -699,7 +699,7 @@ export const PLAYER_MATERIAL: Material = {
 // One base look per main type, shaded a little differently per compound
 // within that type so siblings (e.g. Iron vs. Cobalt) read as a family
 // rather than being indistinguishable. Exported so a purely decorative
-// showcase (TitleScene's crystal cluster) can pull real per-type looks
+// showcase (TitleScene's crystal row) can pull real per-type looks
 // instead of duplicating color literals that would drift out of sync.
 export const TYPE_LOOK: Record<MaterialType, { color: number; variant: CrystalVariant }> = {
   // The elemental metals here are fcc/bcc and the semimetal is zinc blende --
@@ -711,10 +711,10 @@ export const TYPE_LOOK: Record<MaterialType, { color: number; variant: CrystalVa
   // Diamond structure and zinc blende: the tetrahedrally-bonded cubic family,
   // whose habit is the {111} octahedron.
   semiconductor: { color: 0x5a7ca6, variant: 'octahedral' },
-  classicalMagnet: { color: 0xc97a3a, variant: 'cluster' },
-  quantumSpinLiquid: { color: 0x5ad9c9, variant: 'cluster' },
+  classicalMagnet: { color: 0xc97a3a, variant: 'spire' },
+  quantumSpinLiquid: { color: 0x5ad9c9, variant: 'spire' },
   // Deep amber/gold -- "heavy," dense, mass-renormalized carriers.
-  kondoHeavyFermion: { color: 0xd9962a, variant: 'cluster' },
+  kondoHeavyFermion: { color: 0xd9962a, variant: 'spire' },
   // The one type with no characteristic lattice of its own -- elemental
   // cubic, layered cuprate, hydride and TMD superconductors share nothing
   // structurally -- so it keeps the generic faceted habit and each member

@@ -294,8 +294,8 @@ reconciling onto a single `getQuestions(pool, count, visitedWorlds?)`.
 
 ### 17. Crystal habits still to reconcile with lattice
 
-The `cluster` variant is a **growth** habit — many grains intergrown — rather than
-a symmetry claim, so it sits over any lattice, and its three types
+The `spire` variant is a **growth** habit — a body grown tall and terminated —
+rather than a symmetry claim, so it sits over any lattice, and its three types
 (`classicalMagnet`, `quantumSpinLiquid`, `kondoHeavyFermion`) keep it. Per-member
 lattice overrides are available if a compound should state its own symmetry
 instead: Fe/Cr/NiO/MnO/EuO → cubic, Co → prism, MnF₂/YbRh₂Si₂/CeCoIn₅ →

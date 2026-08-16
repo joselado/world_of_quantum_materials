@@ -78,14 +78,12 @@ export function drawCubicShape(g: Phaser.GameObjects.Graphics, size: number, col
   g.strokePoints(rightFace, true);
 }
 
-// One intergrown spire of the cluster habit below: a prismatic body rising
-// out of the shared base into a pointed termination. `apex` is the tip;
-// `shoulderL`/`shoulderR` are where the termination's two roof facets meet
-// the body's two prism faces; `front` tops the vertical front edge that
-// splits those prism faces; `baseL`/`baseF`/`baseR` are where the body meets
-// the base. `lift` offsets every facet's shading together, so a spire
-// standing behind another catches less of the light.
-interface ClusterSpire {
+// The spire habit's geometry: a prismatic body rising into a pointed
+// termination. `apex` is the tip; `shoulderL`/`shoulderR` are where the
+// termination's two roof facets meet the body's two prism faces; `front` tops
+// the vertical front edge that splits those prism faces; `baseL`/`baseF`/
+// `baseR` are where the body meets the ground.
+interface SpireGeometry {
   apex: [number, number];
   shoulderL: [number, number];
   shoulderR: [number, number];
@@ -93,7 +91,6 @@ interface ClusterSpire {
   baseL: [number, number];
   baseF: [number, number];
   baseR: [number, number];
-  lift: number;
 }
 
 // Listed back to front: the two flanking spires lean away from a taller,
@@ -101,100 +98,65 @@ interface ClusterSpire {
 // both. Their coordinates are shared with `CLUSTER_OUTLINE` below -- every
 // apex and outward shoulder here is a vertex of that outline -- which is
 // what keeps all three inside one silhouette.
-const CLUSTER_SPIRES: ClusterSpire[] = [
-  {
-    apex: [-0.66, -0.34],
-    shoulderL: [-0.74, 0.04],
-    shoulderR: [-0.46, -0.1],
-    front: [-0.6, 0.03],
-    baseL: [-0.56, 0.74],
-    baseF: [-0.5, 0.78],
-    baseR: [-0.34, 0.72],
-    lift: -6,
-  },
-  {
-    apex: [0.62, -0.58],
-    shoulderL: [0.4, -0.3],
-    shoulderR: [0.72, -0.18],
-    front: [0.57, -0.2],
-    baseL: [0.32, 0.66],
-    baseF: [0.52, 0.73],
-    baseR: [0.64, 0.66],
-    lift: -12,
-  },
-  {
-    apex: [0.0, -0.95],
-    shoulderL: [-0.3, -0.4],
-    shoulderR: [0.32, -0.44],
-    front: [0.02, -0.27],
-    baseL: [-0.26, 0.7],
-    baseF: [0.04, 0.79],
-    baseR: [0.34, 0.68],
-    lift: 0,
-  },
+// As wide as it is tall, near enough: a habit far taller than it is broad
+// reads as a splinter rather than as a crystal, and every other habit in this
+// file sits near a 1.3:1 box.
+const SPIRE: SpireGeometry = {
+  apex: [0.0, -0.68],
+  shoulderL: [-0.46, -0.18],
+  shoulderR: [0.48, -0.22],
+  front: [0.02, -0.06],
+  baseL: [-0.42, 0.6],
+  baseF: [0.04, 0.68],
+  baseR: [0.48, 0.58],
+};
+
+// The habit's own silhouette, walked clockwise from the base's left corner:
+// up the left prism face, over the termination to the apex, down the right
+// roof facet, and back along the base.
+const SPIRE_OUTLINE: [number, number][] = [
+  [-0.42, 0.6],
+  [-0.46, -0.18],
+  [0.0, -0.68],
+  [0.48, -0.22],
+  [0.48, 0.58],
+  [0.04, 0.68],
 ];
 
-// The whole habit's single outer silhouette, walked clockwise from the base's
-// left corner: up the left spire, over its apex, down into the notch where it
-// grows out of the central one, up to the central apex, down into the second
-// notch, over the right spire, and back along the shared base.
-const CLUSTER_OUTLINE: [number, number][] = [
-  [-0.56, 0.74],
-  [-0.74, 0.04],
-  [-0.66, -0.34],
-  [-0.46, -0.1],
-  [-0.3, -0.4],
-  [0.0, -0.95],
-  [0.32, -0.44],
-  [0.4, -0.3],
-  [0.62, -0.58],
-  [0.72, -0.18],
-  [0.64, 0.66],
-  [0.52, 0.73],
-  [0.04, 0.79],
-  [-0.5, 0.78],
-];
-
-// The cluster habit: three spires intergrown into one body on a shared base,
-// the way a real specimen grows, so the richer "mineral" read the variant
-// exists for costs it none of a single crystal's coherence. Every facet is
-// lit from the upper left, matching every other shape in this file and the
-// specular highlight `addHighlightAndSparkles` lays over them all.
+// The spire habit: a single terminated crystal, tall and pointed, distinct
+// from `prism`'s flat-topped column by having a termination at all. Every
+// facet is lit from the upper left, matching every other shape in this file
+// and the specular highlight `addHighlightAndSparkles` lays over them all.
 //
-// The whole silhouette is filled dark first and the spires are painted into
-// it back to front, which is what makes this one body rather than three: the
-// wedges the spires don't cover are the recesses where they intergrow, and
-// the only outline stroked around the outside is the silhouette's own. Each
-// spire's interior carries just its facet junctions -- the roof/body seam and
-// the front edge -- so the faceting still reads at the 22px a wild encounter
-// is drawn at.
-function drawClusterShape(g: Phaser.GameObjects.Graphics, size: number, color: number, stretch: Stretch = NO_STRETCH) {
+// One body, like every other habit here: a crystal drawn from separate pieces
+// means a Majorana fusion and nothing else (data/types.ts's CrystalVariant),
+// so a habit made of several spires spends a word the visual language has
+// already given to something more important.
+function drawSpireShape(g: Phaser.GameObjects.Graphics, size: number, color: number, stretch: Stretch = NO_STRETCH) {
   const P = ([x, y]: [number, number]) => ({ x: x * size * stretch.x, y: y * size * stretch.y });
-  const outline = CLUSTER_OUTLINE.map(P);
+  const outline = SPIRE_OUTLINE.map(P);
 
   g.fillStyle(shade(color, -50), 1);
   g.fillPoints(outline, true);
 
-  CLUSTER_SPIRES.forEach((s) => {
-    const apex = P(s.apex), shL = P(s.shoulderL), shR = P(s.shoulderR), front = P(s.front);
-    const baseL = P(s.baseL), baseF = P(s.baseF), baseR = P(s.baseR);
+  const apex = P(SPIRE.apex), shL = P(SPIRE.shoulderL), shR = P(SPIRE.shoulderR), front = P(SPIRE.front);
+  const baseL = P(SPIRE.baseL), baseF = P(SPIRE.baseF), baseR = P(SPIRE.baseR);
 
-    g.fillStyle(shade(color, 46 + s.lift), 1);
-    g.fillTriangle(apex.x, apex.y, front.x, front.y, shL.x, shL.y);
+  g.fillStyle(shade(color, 46), 1);
+  g.fillTriangle(apex.x, apex.y, front.x, front.y, shL.x, shL.y);
 
-    g.fillStyle(shade(color, 16 + s.lift), 1);
-    g.fillTriangle(apex.x, apex.y, shR.x, shR.y, front.x, front.y);
+  g.fillStyle(shade(color, 16), 1);
+  g.fillTriangle(apex.x, apex.y, shR.x, shR.y, front.x, front.y);
 
-    g.fillStyle(shade(color, s.lift - 6), 1);
-    g.fillPoints([shL, front, baseF, baseL], true);
+  g.fillStyle(shade(color, -6), 1);
+  g.fillPoints([shL, front, baseF, baseL], true);
 
-    g.fillStyle(shade(color, s.lift - 34), 1);
-    g.fillPoints([front, shR, baseR, baseF], true);
+  g.fillStyle(shade(color, -34), 1);
+  g.fillPoints([front, shR, baseR, baseF], true);
 
-    g.lineStyle(1.5, shade(color, -46), 1);
-    g.strokePoints([shL, front, shR], false);
-    g.strokePoints([apex, front, baseF], false);
-  });
+  g.lineStyle(1.5, shade(color, -46), 1);
+  g.strokePoints([shL, front, shR], false);
+  g.strokePoints([apex, front, baseF], false);
 
   g.lineStyle(2, shade(color, -58), 1);
   g.strokePoints(outline, true);
@@ -320,22 +282,31 @@ function drawPrismShape(g: Phaser.GameObjects.Graphics, size: number, color: num
     const ang = Phaser.Math.DegToRad(60 * i - 90);
     topPts.push(P(Math.cos(ang) * s * 0.55, -s * 0.25 + Math.sin(ang) * s * 0.32));
   }
+  const frontPts = [P(-s * 0.45, -s * 0.05), P(s * 0.05, -s * 0.05), P(s * 0.05, s * 0.75), P(-s * 0.45, s * 0.6)];
+  const sidePts = [P(s * 0.05, -s * 0.05), P(s * 0.5, 0), P(s * 0.5, s * 0.7), P(s * 0.05, s * 0.75)];
+
   g.fillStyle(shade(color, 35), 1);
   g.fillPoints(topPts, true);
-  g.lineStyle(2, shade(color, -45), 1);
-  g.strokePoints(topPts, true);
-
-  const frontPts = [P(-s * 0.45, -s * 0.05), P(s * 0.05, -s * 0.05), P(s * 0.05, s * 0.75), P(-s * 0.45, s * 0.6)];
   g.fillStyle(shade(color, -5), 1);
   g.fillPoints(frontPts, true);
-  g.lineStyle(2, shade(color, -50), 1);
-  g.strokePoints(frontPts, true);
-
-  const sidePts = [P(s * 0.05, -s * 0.05), P(s * 0.5, 0), P(s * 0.5, s * 0.7), P(s * 0.05, s * 0.75)];
   g.fillStyle(shade(color, -30), 1);
   g.fillPoints(sidePts, true);
-  g.lineStyle(2, shade(color, -55), 1);
-  g.strokePoints(sidePts, true);
+
+  // Facet edges first, thin and only a little darker than the faces they
+  // divide, then one heavy stroke around the whole habit. Stroking each face
+  // as its own closed polygon instead is what made the lit top cap read as a
+  // separate piece sitting on the body -- and a crystal in several pieces
+  // means a Majorana fusion in this game (data/types.ts's CrystalVariant), so
+  // an ordinary compound must never draw as one.
+  g.lineStyle(1, shade(color, -30), 0.9);
+  g.strokePoints([topPts[4], topPts[3], topPts[2]], false);
+  g.strokePoints([P(s * 0.05, -s * 0.05), P(s * 0.05, s * 0.75)], false);
+
+  g.lineStyle(2, shade(color, -50), 1);
+  g.strokePoints(
+    [topPts[5], topPts[0], topPts[1], topPts[2], P(s * 0.5, 0), P(s * 0.5, s * 0.7), P(s * 0.05, s * 0.75), P(-s * 0.45, s * 0.6), P(-s * 0.45, -s * 0.05), topPts[4]],
+    true
+  );
 }
 
 // A thin, flattened hexagonal sheet -- a single atomic layer floating in
@@ -419,7 +390,7 @@ function drawPlateShape(
 // A compound's own per-instance look, derived once from a hash of its name
 // (not re-rolled per render) -- a hue tint plus a rotation/stretch on the
 // shape itself, so materials sharing one MaterialType's variant/base color
-// (e.g. every 'classicalMagnet'-type cluster) still read as visually distinct
+// (e.g. every 'classicalMagnet'-type spire) still read as visually distinct
 // individuals rather than the same silhouette in a different brightness.
 // Applied to the inner Graphics object(s), never the outer Container, so it
 // survives whatever a caller does to the returned container afterward
@@ -473,6 +444,27 @@ export function killTweensDeep(scene: Pick<Phaser.Scene, 'tweens'>, obj: Phaser.
 // Every habit below is a single body -- two separate pieces in one crystal
 // mean a Majorana fusion and nothing else (`drawHybridCrystal`), so a
 // compound never draws as more than one solid on its own.
+// Each habit's own drawing is written in whatever proportions that solid
+// actually has, so the same `size` came out as a 55px spire and a 68px
+// octahedron -- a quarter apart, which reads as one specimen mattering more
+// than another when the roster is shown side by side. These factors even the
+// *largest* dimension out, measured off rendered pixels rather than guessed,
+// so `size` means the same thing to every habit. They are deliberately small:
+// anything bigger than this would be redrawing a shape rather than scaling it,
+// and a monolayer is genuinely wider than it is thick.
+const HABIT_SCALE: Record<CrystalVariant, number> = {
+  shard: 0.91,
+  spire: 1.09,
+  cubic: 1.0,
+  octahedral: 0.88,
+  rhombohedral: 1.0,
+  tetragonal: 0.92,
+  prism: 1.09,
+  layer: 1.09,
+  layerTriangle: 0.94,
+  layerSquare: 0.97,
+};
+
 function drawSolidShape(
   g: Phaser.GameObjects.Graphics,
   size: number,
@@ -480,7 +472,8 @@ function drawSolidShape(
   variant: CrystalVariant,
   stretch: Stretch = NO_STRETCH
 ) {
-  if (variant === 'cluster') drawClusterShape(g, size, color, stretch);
+  size *= HABIT_SCALE[variant] ?? 1;
+  if (variant === 'spire') drawSpireShape(g, size, color, stretch);
   else if (variant === 'prism') drawPrismShape(g, size, color, stretch);
   else if (variant === 'cubic') drawCubicShape(g, size, color, stretch);
   else if (variant === 'octahedral') drawOctahedralShape(g, size, color, stretch);
@@ -605,12 +598,12 @@ function averageColor(a: number, b: number): number {
 }
 
 // A parent's own habit at hybrid scale, unstretched -- the building block
-// `drawHybridCrystal` fuses two of. 'cluster' collapses to a plain shard here
+// `drawHybridCrystal` fuses two of. 'spire' collapses to a plain shard here
 // (its own multi-spire silhouette would crowd a shape that's already sharing
 // space with a second parent's own shape); every other variant contributes
 // the same habit it renders as on its own.
 function drawVariantShape(g: Phaser.GameObjects.Graphics, size: number, color: number, variant: CrystalVariant) {
-  drawSolidShape(g, size, color, variant === 'cluster' ? 'shard' : variant);
+  drawSolidShape(g, size, color, variant === 'spire' ? 'shard' : variant);
 }
 
 // Majorana's hybridization mechanic (DESIGN.md §5): render a fused material
