@@ -5,7 +5,10 @@ import { shade, blend, hashSeed, seededRandom } from '../art/colors';
 import { getBiome } from '../art/biomes';
 import type { Biome, WallTheme } from '../art/biomes';
 import { wallThemeOf } from './overworld/terrain/plan';
-import type { BattleLocale } from './overworld/terrain/types';
+import { TERRAIN_ACCENTS } from './overworld/terrain/materials';
+import type { AccentTile, BattleLocale, OffPathKind } from './overworld/terrain/types';
+import { DISTANT_SELVES, MAX_CREST, type HorizonPoint } from '../art/horizons';
+import type { ProjectedPoint } from '../art/perspective';
 import { playAttackEffect, followAnchor, ANALYTIC_SHAPES, ULTIMATE_SHAPES, type EffectAnchor } from '../art/attackEffects';
 import { drawFranklinPassiveHalo } from '../art/passiveHalos';
 import { fontPx, fontScale } from '../ui/text';
@@ -94,6 +97,128 @@ import {
   drawTurnPreview,
   type Nameplate,
 } from './battle/hud';
+
+// Which backdrop the arena draws. 'realistic' is the one the game ships
+// (drawRealisticBackdrop: a projected ground plane, the world's own surround
+// standing in it, its distant self on the horizon and depth-interleaved
+// mist). 'layered' (sky wash, seeded ridgelines, two flat ground bands) and
+// 'bands' (four gradient bands) are the earlier treatments, kept switchable so
+// the three can be compared on the same encounter rather than from memory.
+const BACKDROP_MODE: 'layered' | 'bands' | 'realistic' = 'realistic';
+
+// The four-band backdrop's own geometry, top down. The floor takes whatever is
+// left, which is most of the lower half -- it is where the fight happens.
+const BAND_SKY_H = 96;
+// Above the opponent's own feet (OPPONENT_POS.y 162, BOSS_OPPONENT_POS.y 184),
+// which is what puts both fighters on the walkable ground instead of leaving
+// one of them hovering over the surround.
+const BAND_FLOOR_EDGE_Y = 172;
+// The mist's reach above and below the horizon, and how dense it gets. Alpha,
+// never a fill: mist with an edge is a wall.
+const BAND_MIST_RISE = 34;
+const BAND_MIST_FALL = 46;
+const BAND_MIST_ALPHA = 0.5;
+
+// ---------------------------------------------------------------------------
+// The realistic backdrop (drawRealisticBackdrop), top down.
+// ---------------------------------------------------------------------------
+// Where the furthest ground meets the sky. Everything below it is one ground
+// plane seen in perspective; everything above it is air.
+const R_HORIZON_Y = 124;
+// The near edge of the impassable surround, which is the far edge of the
+// walkable floor the fight stands on. Above both fighters' ground contact
+// (a crystal's shadow sits at its own y + SHADOW_DROP, the wild opponent's
+// lowest at 208), so both of them stand on walkable ground.
+const R_FLOOR_EDGE_Y = 172;
+// How that plane is projected: screen y = R_HORIZON_Y + R_FLOOR_K / d, so
+// distance 1 lands on the bottom edge of the frame and the floor's far edge
+// falls at d ≈ 5. One-over-distance is the whole of perspective on a flat
+// plane, and every size, spacing and density drawn on the floor is derived
+// from it rather than picked per row -- which is what makes the texture
+// gradient (marks growing and thinning out as they come forward) read as
+// distance instead of as decoration.
+const R_FLOOR_K = FIELD_H - R_HORIZON_Y;
+// Lane width at unit distance, in pixels. Sets how fast the ground's own
+// texture converges toward the vanishing point.
+const R_LANE_K = 118;
+// The impassable surround stands beyond the floor's far edge, in rows at these
+// fractions of the way from the horizon down to that edge. Spaced like
+// one-over-distance rather than evenly: the far rows crowd toward the horizon
+// the way real ground does.
+const R_SURROUND_ROWS = [0.14, 0.22, 0.34, 0.5, 0.72, 1] as const;
+// How much ground one tile of the surround covers at the row standing on the
+// floor's own far edge, in pixels. Further rows divide it by their own
+// perspective scale, so the stand thickens toward the horizon by itself.
+const R_STAND_TILE = 74;
+// How much of the air a surface has behind it at the horizon, and at the
+// floor's far edge. Aerial perspective is the backdrop's main depth cue and
+// its main legibility control at once: everything distant converges on one
+// colour, so nothing far away can carry enough local contrast to compete with
+// the crystals in front of it.
+const R_DROWN_FAR = 0.88;
+const R_DROWN_NEAR = 0.16;
+// The clock the once-drawn backdrop freezes its animated materials and sky
+// extras at. A backdrop painted at scene creation would otherwise sample
+// whatever millisecond the battle happened to start on, so a swamp moment
+// could be caught mid-blink and the Defect Scars' embers between pulses.
+// Fixed instead, and chosen so the pulses land bright and the Storm Flats'
+// arcs are mid-flash rather than in the nine-tenths of their cycle they are
+// dark for -- a storm caught between two flashes is a colour change.
+const R_FROZEN_NOW = 2620;
+// How many tiles of ground one unit of distance covers, which is what lets a
+// world's flat-band ramp (art/biomes.ts's `bands`, the Storm Flats' Landau
+// levels) be stepped across the arena floor on the same row numbering the
+// overworld steps it on.
+const R_ROWS_PER_UNIT = 1.1;
+
+// What each off-path material needs to be drawn at arena scale rather than
+// overworld scale. A material sizes its feature off `AccentTile.s` (most of
+// them as u = 90·s pixels, a few -- the Storm Flats' scorches, the Vortex
+// Glacier's cleavage lines -- in raw `s` pixels), and those two conventions
+// are three orders of magnitude apart, so the arena converts its own
+// per-row perspective scale into each material's own units here. `core` is
+// how often a tile is offered as the material's named feature (a vortex pit,
+// a burning moment); `coreScale` overrides the scale for those, since the
+// Vortex Glacier's pit is sized in u while the lake around it is not.
+interface ArenaMaterial {
+  scale: number;
+  coreScale?: number;
+  core: number;
+  // How wide a tile is on the ground, relative to the row's own perspective
+  // width -- a colonnade stands further apart than a wood.
+  spacing: number;
+}
+
+// How much of the air stands between the camera and a point at distance `d`
+// on the ground plane. One curve answers for the whole picture -- the floor
+// underfoot, the surround beyond it, the stand growing out of it -- which is
+// what makes them read as one continuous space rather than as three layers
+// that happen to share a palette. Rooted at R_DROWN_NEAR rather than zero
+// because even the ground at the player's feet is being seen through the
+// world's own air.
+function drownAt(d: number): number {
+  return R_DROWN_NEAR + (R_DROWN_FAR - R_DROWN_NEAR) * Math.pow(Phaser.Math.Clamp((d - 1) / 29, 0, 1), 0.45);
+}
+
+const R_MATERIALS: Record<OffPathKind, ArenaMaterial | null> = {
+  // Bare ground draws nothing, which is the Entangled Web's whole surround:
+  // there is nothing out there, and the arena says so by leaving it empty.
+  solid: null,
+  forest: { scale: 0.8, core: 0, spacing: 0.62 },
+  // 2.2 tiles of shaft per column, so a quarter of the others' scale still
+  // stands the tallest thing in the frame.
+  columns: { scale: 0.5, core: 0.12, spacing: 1.4 },
+  deadFloor: { scale: 0.9, core: 0, spacing: 1 },
+  // Raw-pixel geometry: a scorch spans about 5.4·s, so arena scale is in the
+  // tens rather than around one.
+  charged: { scale: 14, core: 0, spacing: 1.15 },
+  // The lake's cleavage lines are raw-pixel too; its pits are sized in u.
+  ice: { scale: 9, coreScale: 0.5, core: 0.3, spacing: 1.1 },
+  shards: { scale: 0.5, core: 0, spacing: 1.15 },
+  bog: { scale: 0.62, core: 0.1, spacing: 1 },
+  lava: { scale: 0.8, core: 0, spacing: 1 },
+  consuming: { scale: 1.5, core: 0, spacing: 1.2 },
+};
 
 // Correct/wrong multipliers for Landau's two quiz-gated Analytic moves (§5) --
 // deliberately steeper than the pre-battle quiz's QUIZ_CORRECT_MULTIPLIER/
@@ -1105,6 +1230,16 @@ export class BattleScene extends Phaser.Scene {
     // domains of one world are distinguishable underfoot without the arena
     // reading as a different world.
     const biome: Biome = tint == null ? base : { ...base, ground: blend(base.ground, tint, 0.15) };
+
+    if (BACKDROP_MODE === 'realistic') {
+      this.drawRealisticBackdrop(biome);
+      return;
+    }
+    if (BACKDROP_MODE === 'bands') {
+      this.drawBandBackdrop(biome);
+      return;
+    }
+
     const g = this.add.graphics();
 
     // Sky as an eased two-segment vertical wash (dark zenith easing into a
@@ -1264,6 +1399,538 @@ export class BattleScene extends Phaser.Scene {
     // where the opponent actually renders at BOSS_OPPONENT_POS instead.
     this.add.ellipse(this.opponentPos.x, this.opponentPos.y + SHADOW_DROP, 120, 28, shadowColor, 0.35);
     this.add.ellipse(PLAYER_POS.x, PLAYER_POS.y + SHADOW_DROP, 130, 30, shadowColor, 0.35);
+  }
+
+  // The four-band backdrop: walkable, impassable, mist, sky, bottom to top,
+  // every colour taken from the encounter's own biome so one function serves
+  // all ten worlds and each one arrives in its own palette without a line of
+  // per-world code.
+  //
+  // The bands are not equal and their edges are not lines. This is the same
+  // depth model the overworld draws with, restated without projection: the
+  // floor the fight is on fills the near half of the frame, and everything
+  // beyond it -- the impassable ground, the mist, the sky -- compresses toward
+  // the horizon the way distance actually compresses. Both fighters stand on
+  // the floor, since a corridor seen from inside it puts what is further along
+  // it higher up the frame rather than on different ground.
+  //
+  // What sells it is the air rather than the bands. Every surface fades toward
+  // `fogTarget` as it recedes, so the floor's far end, the surround above it
+  // and the sky all meet in the same haze instead of butting against each
+  // other; the mist itself is drawn as a band whose *alpha* rises and falls,
+  // never a stripe with edges of its own. A hard edge across the full width of
+  // the frame is the highest-contrast thing that can be in it -- higher than
+  // any crystal or HP bar -- which is why the flat version of this backdrop
+  // failed the arena's legibility gate in seven worlds out of ten.
+  private drawBandBackdrop(biome: Biome) {
+    const g = this.add.graphics();
+
+    // Everything distant converges on one air colour, so the bands have
+    // somewhere to meet. Held between the fog and the sky's own bottom, which
+    // is what stops the horizon reading as a line drawn across the frame.
+    const air = blend(biome.fogTarget, biome.skyBottom, 0.45);
+    const skyLow = blend(biome.skyBottom, air, 0.55);
+
+    g.fillGradientStyle(biome.skyTop, biome.skyTop, skyLow, skyLow, 1);
+    g.fillRect(0, 0, FIELD_W, BAND_SKY_H);
+
+    // The impassable ground beyond the floor's far edge: almost entirely air
+    // where it meets the sky, resolving into its own colour as it comes
+    // forward to the edge.
+    const surroundFar = blend(biome.ground, air, 0.85);
+    const surroundNear = blend(biome.ground, air, 0.12);
+    g.fillGradientStyle(surroundFar, surroundFar, surroundNear, surroundNear, 1);
+    g.fillRect(0, BAND_SKY_H, FIELD_W, BAND_FLOOR_EDGE_Y - BAND_SKY_H);
+
+    // The floor, from a far end deep in the same air to full colour underfoot.
+    const floorFar = blend(biome.path, air, 0.45);
+    const floorNear = shade(biome.path, -6);
+    g.fillGradientStyle(floorFar, floorFar, floorNear, floorNear, 1);
+    g.fillRect(0, BAND_FLOOR_EDGE_Y, FIELD_W, FIELD_H - BAND_FLOOR_EDGE_Y);
+
+    // The mist, as a rise and fall of alpha rather than a band with edges --
+    // it is air gathering at distance, and air has no boundary.
+    const mist = shade(biome.fogTarget, 18);
+    g.fillGradientStyle(mist, mist, mist, mist, 0, 0, BAND_MIST_ALPHA, BAND_MIST_ALPHA);
+    g.fillRect(0, BAND_SKY_H - BAND_MIST_RISE, FIELD_W, BAND_MIST_RISE);
+    g.fillGradientStyle(mist, mist, mist, mist, BAND_MIST_ALPHA, BAND_MIST_ALPHA, 0, 0);
+    g.fillRect(0, BAND_SKY_H, FIELD_W, BAND_MIST_FALL);
+
+    // The floor's far edge, marked but never ruled: a few pixels of light on
+    // the walkable side, faint enough that it reads as the ground catching the
+    // sky rather than as a line drawn between two fills. Without it the two
+    // grounds dissolve into each other at this much haze and the backdrop
+    // stops saying which one the fight is on, which is the only thing it is
+    // here to say.
+    g.fillStyle(blend(floorFar, 0xffffff, 0.3), 0.28);
+    g.fillRect(0, BAND_FLOOR_EDGE_Y, FIELD_W, 3);
+
+    const shadowColor = shade(biome.ground, -40);
+    this.add.ellipse(this.opponentPos.x, this.opponentPos.y + SHADOW_DROP, 120, 28, shadowColor, 0.35);
+    this.add.ellipse(PLAYER_POS.x, PLAYER_POS.y + SHADOW_DROP, 130, 30, shadowColor, 0.35);
+  }
+
+  // The arena as the place the fight started in, built from one ground plane
+  // in perspective rather than from stacked bands:
+  //
+  //   sky  ->  this world's distant self  ->  mist  ->  the world's own
+  //   impassable surround standing beyond the floor, in receding rows  ->
+  //   the walkable floor, textured on the same projection, coming forward
+  //   to the bottom of the frame.
+  //
+  // Two things do the work. The first is **one projection for everything
+  // below the horizon**: screen y = R_HORIZON_Y + R_FLOOR_K / d, so a mark's
+  // size, the spacing between marks and how many of them fall in a row are
+  // all one over the same distance. That is what a texture gradient is, and
+  // it is the depth cue a stack of gradients cannot fake. The second is
+  // **air between the layers**: every surface is blended toward one air
+  // colour by how far away it is, and the mist is drawn as veils *between*
+  // the rows rather than as a coat over them, so what is behind a veil is
+  // dimmer than what is in front of it and distance reads as volume.
+  //
+  // The place itself comes from `terrain/materials/` -- the same modules the
+  // overworld draws that world's impassable ground with, so the Mean Fields
+  // stand a wood beyond the floor, the Stone Lattice a colonnade, the Iron
+  // Steppe leaning blades -- and from `art/horizons.ts`, whose per-world
+  // profile stands on the skyline as more of the same world further off.
+  // Both arrive already drowned in the arena's air, which is what keeps a
+  // loud local material from becoming a loud arena.
+  private drawRealisticBackdrop(biome: Biome) {
+    const spot = this.locale ? `${this.locale.x},${this.locale.y}` : 'default';
+    const seed = `battle-real-${this.world}-${spot}`;
+    // Everything distant converges here. Held between the biome's own fog and
+    // the bottom of its sky, so the ground arrives at the same colour from
+    // below that the sky arrives at from above and the horizon is a place
+    // inside one atmosphere rather than a seam between two.
+    const air = blend(biome.fogTarget, biome.skyBottom, 0.4);
+    const g = this.add.graphics();
+
+    // Sky: a three-stop wash whose brightening accelerates downward, the way
+    // scattering does, ending in the air colour at the horizon line itself.
+    const skyLow = blend(biome.skyBottom, air, 0.75);
+    const skyMid = blend(biome.skyTop, skyLow, 0.5);
+    const skyMidY = Math.round(R_HORIZON_Y * 0.42);
+    g.fillGradientStyle(biome.skyTop, biome.skyTop, skyMid, skyMid, 1);
+    g.fillRect(0, 0, FIELD_W, skyMidY);
+    g.fillGradientStyle(skyMid, skyMid, skyLow, skyLow, 1);
+    g.fillRect(0, skyMidY, FIELD_W, R_HORIZON_Y - skyMidY);
+
+    if (biome.clouds) {
+      this.drawSun(596, 34);
+      this.drawCloud(120, 30);
+      this.drawCloud(300, 52);
+      this.drawCloud(500, 26);
+    }
+
+    // The distance, in two passes of this world's own profile: a far echo
+    // half the height and nearly all air, and the profile itself in front of
+    // it. A distant self is how a world looks from a world away, and what is
+    // a world away across the world being stood in is more of the same
+    // world -- the arena has no forward direction for a neighbour to sit in.
+    const self = DISTANT_SELVES[this.world];
+    if (self && self.points.length > 1) {
+      this.drawArenaSilhouette(g, self.points, 0.5, blend(biome.hillColor, air, 0.92), 0.75, 14);
+      this.drawArenaSilhouette(g, self.points, 1, blend(biome.hillColor, air, R_DROWN_FAR), 0.85, 0);
+    }
+    // The half of a distant self a filled outline cannot say -- the Storm
+    // Flats' arcs, the Entangled Web's filament glints, the Screened Swamp's
+    // reed beds, the Defect Scars' burning notches. Frozen at R_FROZEN_NOW,
+    // since the backdrop is painted once.
+    self?.sky?.({ g, horizonY: R_HORIZON_Y, target: air, now: R_FROZEN_NOW, world: this.world, route: [] });
+
+    // The mist the silhouette's feet stand in: densest along the horizon
+    // line, thinning up into the world's own sky and down onto the ground.
+    this.drawArenaVeil(g, air, 0.4, 58, 22);
+
+    // The impassable ground beyond the floor, as a plane rather than a band:
+    // all air where it meets the horizon, its own colour by the time it
+    // reaches the floor's edge.
+    const baseGy = this.locale?.y ?? 40;
+    this.drawGroundPlane(g, biome.ground, biome, air, R_HORIZON_Y, R_FLOOR_EDGE_Y + 2, baseGy);
+
+    this.drawSurroundStand(biome, air, seed);
+
+    // The floor. Its far edge meanders a few pixels rather than ruling a line
+    // across the frame, and it is drawn over the stand so the near row of the
+    // surround stands behind the lip instead of on top of it.
+    const edgeRand = seededRandom(hashSeed(`${seed}-edge`));
+    const edgeCount = 11;
+    const edgeMargin = 40;
+    const edgeStep = (FIELD_W + edgeMargin * 2) / (edgeCount - 1);
+    const edgeControls = Array.from(
+      { length: edgeCount },
+      (_, i) => new Phaser.Math.Vector2(-edgeMargin + i * edgeStep, R_FLOOR_EDGE_Y + (edgeRand() * 2 - 1) * 4)
+    );
+    const edgePts = new Phaser.Curves.Spline(edgeControls).getPoints(90);
+
+    // The walkable colour is pulled toward the surround's own before anything
+    // else happens to it: several worlds paint their route far brighter than
+    // the ground around it (the Entangled Web's gold thread over true black),
+    // and a value break that wide across the whole frame is the loudest thing
+    // in the picture -- louder than either crystal standing on it.
+    const floorBase = blend(biome.path, biome.ground, 0.3);
+    const floorFar = blend(floorBase, air, drownAt(R_FLOOR_K / (R_FLOOR_EDGE_Y - R_HORIZON_Y)));
+    g.fillStyle(floorFar, 1);
+    g.beginPath();
+    g.moveTo(edgePts[0].x, edgePts[0].y);
+    edgePts.forEach((p) => g.lineTo(p.x, p.y));
+    g.lineTo(FIELD_W + edgeMargin, R_FLOOR_EDGE_Y + 6);
+    g.lineTo(-edgeMargin, R_FLOOR_EDGE_Y + 6);
+    g.closePath();
+    g.fillPath();
+    this.drawGroundPlane(g, floorBase, biome, air, R_FLOOR_EDGE_Y + 6, FIELD_H, baseGy);
+
+    // What the stand casts onto the ground in front of it, and the lit lip of
+    // the walkable side under it. A contact shadow is what stops the surround
+    // reading as a picture hung behind the floor.
+    const contact = shade(biome.ground, -34);
+    [11, 8, 5.5, 3.5, 2].forEach((off) => {
+      g.fillStyle(contact, 0.09);
+      g.beginPath();
+      g.moveTo(edgePts[0].x, edgePts[0].y);
+      edgePts.forEach((p) => g.lineTo(p.x, p.y));
+      for (let i = edgePts.length - 1; i >= 0; i--) g.lineTo(edgePts[i].x, edgePts[i].y + off);
+      g.closePath();
+      g.fillPath();
+    });
+    g.lineStyle(1.5, blend(floorFar, 0xffffff, 0.35), 0.3);
+    g.beginPath();
+    g.moveTo(edgePts[0].x, edgePts[0].y + 1);
+    edgePts.forEach((p) => g.lineTo(p.x, p.y + 1));
+    g.strokePath();
+
+    this.drawFloorTexture(biome, air, floorBase, seed);
+
+    // A last thin veil along the horizon over everything, so the far stand
+    // and the sky share the same air after all the detail has been laid in.
+    this.drawArenaVeil(this.add.graphics(), air, 0.16, 40, 30);
+    this.drawArenaHaze(air);
+    this.drawVignette(biome);
+
+    const shadowColor = shade(biome.ground, -40);
+    this.add.ellipse(this.opponentPos.x, this.opponentPos.y + SHADOW_DROP, 120, 28, shadowColor, 0.35);
+    this.add.ellipse(PLAYER_POS.x, PLAYER_POS.y + SHADOW_DROP, 130, 30, shadowColor, 0.35);
+  }
+
+  // A horizon profile filled at the arena's own horizon line, drowned in the
+  // arena's air. Painted as nested copies of itself, each starting a step
+  // higher up its own local height, so alpha accumulates from nothing at the
+  // base to the full swallow at the crest -- mist pooling at the foot of a
+  // distant ridge, and a base that meets the mist with no line in it.
+  // `lift` raises the whole profile, which is how the far echo sits behind
+  // the near one rather than exactly under it.
+  private drawArenaSilhouette(
+    g: Phaser.GameObjects.Graphics,
+    profile: HorizonPoint[],
+    heightScale: number,
+    color: number,
+    swallow: number,
+    lift: number
+  ) {
+    const steps = 5;
+    const baseY = R_HORIZON_Y + lift;
+    g.fillStyle(color, 1 - Math.pow(1 - swallow, 1 / steps));
+    for (let step = 0; step < steps; step++) {
+      const foot = step / steps;
+      let prevX = 0;
+      let prevCrest = 0;
+      let prevFloor = 0;
+      for (let i = 0; i < profile.length; i++) {
+        const p = profile[i];
+        const h = Math.min(p.h, MAX_CREST) * heightScale;
+        const crest = baseY - h;
+        const floor = Math.max(baseY - h * foot, crest);
+        if (i > 0 && (floor > crest || prevFloor > prevCrest)) {
+          g.fillTriangle(prevX, prevCrest, p.x, crest, p.x, floor);
+          g.fillTriangle(prevX, prevCrest, p.x, floor, prevX, prevFloor);
+        }
+        prevX = p.x;
+        prevCrest = crest;
+        prevFloor = floor;
+      }
+    }
+  }
+
+  // One layer of air, peaking on the horizon line and falling away above and
+  // below it. Never a fill with an edge: mist with a boundary is a wall, and
+  // a hard horizontal edge is the highest-contrast thing that can be in the
+  // frame -- higher than either crystal in front of it.
+  private drawArenaVeil(g: Phaser.GameObjects.Graphics, air: number, alpha: number, rise: number, fall: number) {
+    g.fillGradientStyle(air, air, air, air, 0, 0, alpha, alpha);
+    g.fillRect(0, R_HORIZON_Y - rise, FIELD_W, rise);
+    g.fillGradientStyle(air, air, air, air, alpha, alpha, 0, 0);
+    g.fillRect(0, R_HORIZON_Y, FIELD_W, fall);
+  }
+
+  // Two slow banks of air drifting along the horizon. The only thing in the
+  // backdrop that moves: still air over a still landscape reads as a
+  // painting of one.
+  private drawArenaHaze(air: number) {
+    const bank1 = this.add.ellipse(FIELD_W * 0.28, R_HORIZON_Y - 12, 520, 46, air, 0.11);
+    const bank2 = this.add.ellipse(FIELD_W * 0.74, R_HORIZON_Y + 4, 600, 34, air, 0.13);
+    this.tweens.add({ targets: bank1, x: bank1.x + 54, duration: 21000, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    this.tweens.add({ targets: bank2, x: bank2.x - 44, duration: 26000, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+  }
+
+  // The world's own impassable surround, standing beyond the floor's far edge
+  // in rows that recede: each row further back is smaller, more densely
+  // packed across the frame, deeper in the air, and separated from the row in
+  // front of it by a veil of that air. The tiles handed to the material are
+  // synthesised for a flat near view -- the arena has no projection of its
+  // own -- but their grid coordinates come from the encounter's own tile, so
+  // everything a material anchors to the map (which way the Iron Steppe's
+  // blades lean, where the Screened Swamp's moments burn) is what it was at
+  // the spot the fight started.
+  private drawSurroundStand(biome: Biome, air: number, seed: string) {
+    const kind: OffPathKind = this.locale?.surround ?? (biome.wallTheme === 'rock' ? 'solid' : biome.wallTheme);
+    const spec = R_MATERIALS[kind];
+    const draw = TERRAIN_ACCENTS[kind];
+    if (!spec || !draw) return;
+
+    const rand = seededRandom(hashSeed(`${seed}-stand-${kind}`));
+    const baseGx = this.locale?.x ?? 13;
+    const baseGy = this.locale?.y ?? 40;
+    const span = R_FLOOR_EDGE_Y - R_HORIZON_Y;
+
+    // Back to front, so nearer rows overlap further ones -- occlusion is the
+    // depth cue that costs nothing and cannot be argued with.
+    for (let row = R_SURROUND_ROWS.length - 1; row >= 0; row--) {
+      const f = R_SURROUND_ROWS[row];
+      const rowY = R_HORIZON_Y + span * f;
+      const tileW = R_STAND_TILE * f * spec.spacing;
+      const cols = Math.ceil((FIELD_W + tileW * 2) / tileW);
+      const drown = drownAt(R_FLOOR_K / (rowY - R_HORIZON_Y));
+      // Rows behind the front one are drawn into their own layer at reduced
+      // opacity, which is the only distance control some materials have: the
+      // Defect Scars' crust and the Stone Lattice's shafts paint at fixed
+      // saturation and full alpha whatever depth they are handed.
+      const layer = this.add.graphics();
+      layer.setAlpha(0.3 + 0.7 * f);
+
+      // The cell the tile occupies on the ground, which is what the two
+      // materials that wash their whole tile (the Defect Scars' crust, the
+      // Screened Swamp's water) are handed. Taken from the column index with
+      // no jitter in it and stretched to meet the rows either side, so those
+      // washes tile the receding plane instead of showing their own quads.
+      const rowTop = row === R_SURROUND_ROWS.length - 1 ? R_HORIZON_Y : R_HORIZON_Y + span * ((f + R_SURROUND_ROWS[row + 1]) / 2);
+      const rowBot = row === 0 ? R_FLOOR_EDGE_Y + 4 : R_HORIZON_Y + span * ((f + R_SURROUND_ROWS[row - 1]) / 2);
+
+      for (let col = 0; col < cols; col++) {
+        const cellX = -tileW + (col + 0.5) * tileW;
+        const cx = cellX + (rand() - 0.5) * tileW * 0.5;
+        const cy = rowY + (rand() - 0.5) * span * f * 0.22;
+        const core = rand() < spec.core;
+        const s = (core && spec.coreScale != null ? spec.coreScale : spec.scale) * f;
+        draw(
+          layer,
+          this.arenaAccentTile(biome, air, cx, cy, s, drown, f, core, baseGx + col, baseGy - row * 2, {
+            x: cellX,
+            w: tileW,
+            top: rowTop,
+            bot: rowBot,
+          })
+        );
+      }
+
+      // The air standing between this row and the next one forward. Applied
+      // per row rather than once at the end: what is behind a veil has to be
+      // dimmer than what is in front of it, or the mist is a coat of paint
+      // over a flat picture instead of a depth in it.
+      if (row > 0) this.drawArenaVeil(layer, air, 0.1 + 0.1 * (1 - f), 46, span);
+    }
+  }
+
+  // One synthesised tile for a material that expects the overworld's
+  // projection. The polygon is a proper ground-plane trapezoid (narrower at
+  // its far edge) rather than a rectangle, since the two materials that use
+  // it -- the Defect Scars' crust and the Screened Swamp's water -- wash the
+  // whole tile, and a rectangle would tile the receding ground with squares.
+  private arenaAccentTile(
+    biome: Biome,
+    air: number,
+    cx: number,
+    cy: number,
+    s: number,
+    drown: number,
+    perspective: number,
+    core: boolean,
+    gx: number,
+    gy: number,
+    cell: { x: number; w: number; top: number; bot: number }
+  ): AccentTile {
+    // Narrower at its far edge, wider at its near one, and exactly as wide as
+    // the row's own cell: a ground quad in perspective, so a wash laid over
+    // the whole of it meets its neighbours without a seam or an overlap.
+    const halfFar = (cell.w * 0.5 * (cell.top - R_HORIZON_Y)) / Math.max(1, cell.bot - R_HORIZON_Y);
+    const at = (x: number, y: number): ProjectedPoint => ({ x, y, scale: s });
+    return {
+      fill: [
+        at(cell.x - halfFar, cell.top),
+        at(cell.x + halfFar, cell.top),
+        at(cell.x + cell.w * 0.5, cell.bot),
+        at(cell.x - cell.w * 0.5, cell.bot),
+      ],
+      featureCore: core,
+      cx,
+      cy,
+      s,
+      gx,
+      gy,
+      depth: drown,
+      haze: air,
+      // Full detail only on the row standing at the floor's edge: `detail` is
+      // a level-of-detail tier as well as an alpha in several materials, and
+      // a far row drawn at the near row's fidelity is what makes a wood look
+      // like wallpaper.
+      detail: Math.min(1, 0.3 + perspective * 0.8),
+      playerColor: this.playerMaterial?.color ?? biome.path,
+      now: R_FROZEN_NOW,
+      regionTint: this.locale?.regionTint ?? null,
+    };
+  }
+
+  // One stretch of the ground plane, painted as strips at constant world
+  // spacing rather than as a vertical gradient. Each strip is drowned in the
+  // air by its own distance, so the plane arrives at the horizon in the same
+  // colour the sky does; and each is stepped onto its world's flat band where
+  // the world has them, on the same row numbering the overworld steps the
+  // ramp on (art/biomes.ts's `bands`, terrain/paint.ts's `bandBase`). The
+  // bands are a property of the world rather than of the route through it, so
+  // this is called for the impassable surround and the walkable floor alike --
+  // the Storm Flats' Landau levels stratify the whole arena, and the glowing
+  // channel between two filled levels is the subject rather than trim.
+  private drawGroundPlane(
+    g: Phaser.GameObjects.Graphics,
+    base: number,
+    biome: Biome,
+    air: number,
+    topY: number,
+    botY: number,
+    baseGy: number
+  ) {
+    const ramp = biome.bands;
+    const strips = 72;
+    // Capped rather than run to the vanishing point: the plane compresses
+    // without limit toward the horizon, and beyond this the strips are thinner
+    // than a pixel and a banded world stacks a ladder of channels into the
+    // last few rows. What lies past it is the mist and the silhouette.
+    const dTop = Math.min(26, R_FLOOR_K / Math.max(1, topY - R_HORIZON_Y));
+    const dBot = R_FLOOR_K / Math.max(1, botY - R_HORIZON_Y);
+    const boundaries: { y: number; fade: number }[] = [];
+    let prevY = topY;
+    let prevStep = -1;
+    for (let i = 1; i <= strips; i++) {
+      const d = dTop * Math.pow(dBot / dTop, i / strips);
+      const y = Math.min(botY, R_HORIZON_Y + R_FLOOR_K / d);
+      const drown = drownAt(d);
+      let color = base;
+      if (ramp) {
+        const gy = Math.round(baseGy - d * R_ROWS_PER_UNIT);
+        const step = ((Math.floor(gy / ramp.period) % ramp.steps) + ramp.steps) % ramp.steps;
+        color = blend(base, ramp.color, step / (ramp.steps - 1));
+        // A boundary too far off to hold its own value is left to the mist
+        // rather than drawn as a faint rule across the whole frame.
+        if (prevStep >= 0 && step !== prevStep && drown < 0.72) boundaries.push({ y: prevY, fade: 1 - drown });
+        prevStep = step;
+      }
+      g.fillStyle(blend(color, air, drown), 1);
+      // Half a pixel of overlap: adjacent strips must not leave a seam of the
+      // layer beneath showing between them.
+      g.fillRect(0, prevY - 0.5, FIELD_W, y - prevY + 1);
+      prevY = y;
+    }
+    // Drawn after the strips so a boundary's shadow lies on the band below it
+    // rather than under the next strip painted. Neither the strip nor the
+    // channel claims any elevation: both are lighting on a flat plane.
+    boundaries.forEach(({ y, fade }) => {
+      const depth = Math.max(2, (botY - topY) * 0.02 + 60 / Math.max(1, R_FLOOR_K / (y - R_HORIZON_Y)));
+      g.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, 0.3 * fade, 0.3 * fade, 0, 0);
+      g.fillRect(0, y, FIELD_W, depth);
+      if (ramp) {
+        g.lineStyle(1.5, ramp.channel, 0.45 * fade);
+        g.lineBetween(0, y, FIELD_W, y);
+      }
+    });
+  }
+
+  // The walkable floor's own surface, drawn on the same one-over-distance
+  // projection as everything else: rows at constant world spacing, marks
+  // whose size and lateral spacing are both one over their distance, so they
+  // grow and thin out as they come forward. Nothing here is a shape the eye
+  // is meant to find -- it is grain, held a few values off the floor it lies
+  // on. The depth is in the *gradient* of it, and a texture gradient is what
+  // separates a receding plane from a painted one.
+  private drawFloorTexture(biome: Biome, air: number, floorBase: number, seed: string) {
+    const g = this.add.graphics();
+    const rand = seededRandom(hashSeed(`${seed}-floor`));
+    const cx0 = FIELD_W * 0.5;
+    const dNear = R_FLOOR_K / (FIELD_H - R_HORIZON_Y);
+    const dFar = R_FLOOR_K / (R_FLOOR_EDGE_Y - R_HORIZON_Y);
+
+    // The route itself, running away from the player: a few scuffed lanes
+    // converging on the vanishing point. Straight lines on the ground stay
+    // straight on screen, so this costs two points each and is the single
+    // clearest statement that the floor is a floor going somewhere.
+    const lanePale = shade(floorBase, 18);
+    [-3.1, -1.4, 1.5, 3.2].forEach((lane) => {
+      g.lineStyle(1.5, lanePale, 0.06);
+      g.lineBetween(cx0 + (lane * R_LANE_K) / dNear, FIELD_H, cx0 + (lane * R_LANE_K) / dFar, R_FLOOR_EDGE_Y);
+    });
+
+    const light = blend(shade(floorBase, 16), 0xffffff, 0.1);
+    const dark = shade(floorBase, -18);
+    const rows = 46;
+    for (let i = 0; i < rows; i++) {
+      const d = dNear * Math.pow(dFar / dNear, i / (rows - 1));
+      const y = R_HORIZON_Y + R_FLOOR_K / d;
+      const lane = R_LANE_K / d;
+      const size = 26 / d;
+      // Grain fades into the same air everything else does, so the floor's
+      // far end dissolves rather than stopping.
+      const fade = Phaser.Math.Clamp((y - R_FLOOR_EDGE_Y) / 90, 0, 1);
+      for (let l = -26; l <= 26; l++) {
+        if (rand() > 0.42) continue;
+        const x = cx0 + (l + (rand() - 0.5) * 0.85) * lane;
+        if (x < -size || x > FIELD_W + size) continue;
+        const pale = rand() < 0.45;
+        g.fillStyle(pale ? light : dark, (pale ? 0.13 : 0.17) * fade);
+        g.fillEllipse(x, y + (rand() - 0.5) * size * 0.4, size * (0.5 + rand() * 0.7), size * (0.2 + rand() * 0.2));
+      }
+    }
+
+    // Clutter standing on the near floor: a scatter of small clumps, each
+    // with the bit of shadow that puts it *on* the ground rather than in
+    // front of it. Sized and spaced one over their own distance like
+    // everything else, and thinned out to nothing before the floor's far end,
+    // so the near ground has something the eye can measure the far ground
+    // against. Held a few values off the floor it stands on -- ground clutter
+    // that can be picked out individually is a field of objects, and the only
+    // objects in the arena are the two fighting on it.
+    for (let i = 0; i < rows; i++) {
+      const d = dNear * Math.pow(dFar / dNear, i / (rows - 1));
+      if (d > 3.4) break;
+      const y = R_HORIZON_Y + R_FLOOR_K / d;
+      const lane = R_LANE_K / d;
+      const size = 15 / d;
+      for (let l = -14; l <= 14; l++) {
+        if (rand() > 0.09) continue;
+        const x = cx0 + (l + (rand() - 0.5) * 0.9) * lane;
+        if (x < -size || x > FIELD_W + size) continue;
+        g.fillStyle(shade(floorBase, -26), 0.16);
+        g.fillEllipse(x + size * 0.2, y + size * 0.22, size * 1.1, size * 0.34);
+        g.fillStyle(rand() < 0.5 ? shade(floorBase, 22) : shade(floorBase, -14), 0.22);
+        g.fillEllipse(x, y, size * (0.5 + rand() * 0.4), size * (0.4 + rand() * 0.3));
+      }
+    }
+
+    // A broad soft brightening across the near floor, keyed to where the sky
+    // is lightest, so the ground is lit rather than merely coloured.
+    const lit = blend(floorBase, biome.skyBottom, 0.16);
+    g.fillGradientStyle(lit, lit, lit, lit, 0, 0.16, 0, 0.02);
+    g.fillRect(0, R_FLOOR_EDGE_Y + 20, FIELD_W, FIELD_H - R_FLOOR_EDGE_Y - 20);
+    // and the air itself lying over the ground's far reach.
+    g.fillGradientStyle(air, air, air, air, 0.26, 0.26, 0, 0);
+    g.fillRect(0, R_FLOOR_EDGE_Y, FIELD_W, 96);
   }
 
   // One rolling ridge silhouette spanning the field width: a Catmull-Rom

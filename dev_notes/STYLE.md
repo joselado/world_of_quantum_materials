@@ -2027,76 +2027,117 @@ world are shaped, since world N's start is world N-1's exit.
   back except the token stake (see Stakes in DESIGN.md §4): the pass is still shut, its guard
   still standing in it, and the prompt still offers the challenge to retry.
 
-## Battle backdrop (`BattleScene.drawBackground`)
+## Battle backdrop (`BattleScene.drawRealisticBackdrop`)
 
 - The arena backdrop is drawn once per battle entry (in `create()`, never per-frame) and
-  aims for a soft, layered, atmospheric read: every color in it derives from an
-  `art/biomes.ts` entry via `shade()`/`blend()`, and the background's whole value range is
-  deliberately compressed toward the sky/fog colors so the two crystals, move effects, and
-  UI pop in front of it. No per-shape internal gradients on small elements -- depth comes
-  from whole-scene layers:
-- **Which entry, and what else the place contributes**, is the encounter's own spot on the
-  map (`BattleInitData.locale`, sampled by `scenes/overworld/terrain/plan.ts`'s
-  `sampleBattleLocale` over a 5x5 window around the tile the player stood on): the tile's
-  own biome supplies the palette, the dominant off-path material around it keys the color
-  grade, the dominant domain tint around it is blended into the arena's `ground` at 0.15,
-  and the tile's coordinates go into the ridge seeds. The world's own biome answers all
-  four when a battle is entered without a locale. This is **palette plus grade at reduced
-  contrast, never a re-render of the corridor**: the arena is a flat near view with no
-  projection, so nothing from `terrain/materials/` (which draws against projected fill
-  polygons and depth/detail falloffs) belongs here, and a loud local material must not
-  arrive as a loud arena -- the whole point of the compressed value range above.
-  - **Sky**: an eased two-segment vertical wash (`skyTop` → a mid-stop blended at 0.45,
-    placed above the geometric middle → `skyBottom`), so brightening accelerates toward the
-    horizon, plus a translucent fog-tinted glow band hugging the horizon (`HORIZON_Y = 262`).
-  - **Ridgelines**: four stacked silhouette layers, each a Catmull-Rom spline
-    (`Phaser.Curves.Spline`, sampled at 80 points) through peak heights seeded per
-    world+place+layer (`seededRandom(hashSeed('battle-ridge-<world>-<x>,<y>-<layer>'))`, or
-    `'battle-ridge-<world>-<layer>'` with no locale, so every spot in a world keeps its own
-    stable skyline and the same spot always draws the same one). Further layers are taller-but-hazier (blended harder
-    toward `skyBottom` and explicitly brightened a step -- the explicit step matters in dark
-    biomes, where the raw blend endpoints sit too close together to separate the layers);
-    nearer layers are flatter, darker, and carry a subtle 1.5px rim-light stroke along
-    just their top edge (`blend(color, white, 0.38)` at 0.32 alpha) as directional skylight.
-    The layers borrow the biome's `hillColor` as a per-world ridge tone but set their own
-    alphas: `hillAlpha` is the overworld's swallow knob ("The horizon" above) and means nothing
-    in a near view, where a world whose distant horizon is swallowed still has a skyline. **So
-    `hillColor` is budgeted twice**, and a value picked only to survive the overworld's drowning
-    lands here undrowned: a near-white base gives near-white ridges over a dark arena floor and
-    pushes the backdrop's local contrast up into the range the HP bars need. Where the two
-    budgets pull apart, the arena wins and the overworld's horizon is drawn as a sky extra
-    instead (the Screened Swamp).
-  - **Ground**: two flat bands, stating which of the world's two grounds the fight started
-    on -- the one thing sky and ridges alone can't say (a fight beside a narrow seam would
-    look like a fight in an open field). From the horizon down to `FLOOR_EDGE_Y`
-    (`battle/hud.ts`) runs the impassable surround the route is hemmed in by
-    (`biome.ground`, fog-blended at its far edge, darkening nearer); below it, the walkable
-    floor the fight stands on (`biome.path` pulled about a third of the way toward
-    `biome.ground`, so a bright overworld floor still arrives inside the arena's compressed
-    value range). Their join meanders a few pixels around `FLOOR_EDGE_Y` along a seeded
-    Catmull-Rom polyline (`'battle-floor-<world>-<x>,<y>-edge'`, the ridges' own locale
-    seeding, so the same spot always draws the same edge) -- a boundary ruler-straight
-    across the whole frame reads as stagecraft, not terrain. The edge quotes the
-    overworld's boundary treatment: the impassable side darkens into the join (stacked
-    thin translucent bands hugging the curve, since a gradient fill can't follow a path)
-    and a thin lit lip runs along the walkable side. A translucent mist band pools just
-    below the horizon, and the scattered ground tufts tint from whichever band they stand
-    in (`ground` above the edge, `path` below). The player's crystal stands on the floor
-    band; the opponent sits above the horizon entirely -- the arena is a stylised stage,
-    and the opponent's own shadow pad, not the floor plane, is what it hovers over.
-  - **Color grade**: one zone-level translucent tint keyed off what the ground around the
-    encounter tile is made of (the locale's sampled surround, else the biome's own
-    `wallTheme`) -- `ice` gets a cool cyan wash deepening down the field, `lava` an ember
-    glow straddling the horizon, `shards` a pool of aurora green along the horizon, and
-    daylight (`clouds: true`) worlds a faint warm sun wash from above; every other terrain
-    stays untinted. Every tint here is held at or below 0.14 alpha: the grade says what
-    kind of place this is and then gets out of the way.
-  - **Haze**: two wide, faint fog-colored ellipses at the horizon on slow (17s/21s) infinite
-    yoyo drift tweens -- ambient motion cheap enough to leave running, far too translucent
-    (≤0.1 alpha) to compete with attack effects.
+  shows **the place on the map the fight started in**: the same ground, the same
+  impassable surround, the same skyline the player was just walking through, seen from
+  ground level. Which place that is comes from `BattleInitData.locale` (sampled by
+  `scenes/overworld/terrain/plan.ts`'s `sampleBattleLocale` over a 5x5 window around the
+  tile the player stood on): the tile's own biome supplies the palette, the dominant
+  off-path material around it decides which surround stands beyond the floor, the tile's
+  grid coordinates seed the arena and are handed to the material as its own `gx`/`gy`,
+  and the dominant domain tint is blended into the ground at 0.15. The world's own biome
+  answers all of it when a battle is entered without a locale.
+- Because it is painted once, it can afford to be a picture rather than a wash. Two
+  things carry it:
+  - **One projection for everything below the horizon.** Screen y = `R_HORIZON_Y` +
+    `R_FLOOR_K` / d, so a mark's size, the lateral spacing between marks and how many
+    fall in a row are all one over the same distance. That is a texture gradient, and it
+    is the depth cue a stack of vertical gradients cannot fake. `R_HORIZON_Y = 124` is
+    where the furthest ground meets the sky; `R_FLOOR_EDGE_Y = 172` is the walkable
+    floor's far edge, set above both fighters' ground contact (a crystal's shadow sits at
+    its own y + `SHADOW_DROP`, the wild opponent's lowest at 208) so both crystals stand
+    on walkable ground.
+  - **Air between the layers.** One `air` colour (`fogTarget` blended 0.4 toward
+    `skyBottom`) is what every distance converges on, so the ground arrives at the horizon
+    in the colour the sky arrives at and the horizon is a place inside one atmosphere
+    rather than a seam between two. `drownAt(d)` is the single curve that answers how much
+    air stands in front of anything, floor, surround and stand alike. Mist is drawn as
+    veils *between* the receding rows, never as one coat over the finished picture: what
+    is behind a veil has to be dimmer than what is in front of it, or the mist is paint
+    rather than depth. No mist layer ever has an edge -- a hard horizontal line across the
+    full width is the highest-contrast thing that can be in the frame, higher than either
+    crystal.
+- Layers, back to front:
+  - **Sky**: a three-stop wash (`skyTop` → a mid stop → `skyBottom` blended 0.75 into the
+    air) whose brightening accelerates downward the way scattering does, ending in the air
+    colour at the horizon line itself. Sun and clouds on daylight (`clouds: true`) worlds.
+  - **Distant self**: the world's **own** profile from `art/horizons.ts`, in two passes --
+    a far echo at half height drowned 0.92 into the air, and the profile itself drowned
+    `R_DROWN_FAR`. A distant self is how a world looks from a world away, and what is a
+    world away across the world being stood in is more of the same world; the arena has no
+    forward direction for a neighbour to sit in, which is why this reads world N where
+    the overworld's horizon reads world N+1. Filled as nested copies each starting a step
+    higher up its own local height, so alpha accumulates from nothing at the base to the
+    full swallow at the crest -- mist pooling at the foot of a ridge. `hillAlpha` is the
+    overworld's swallow knob and is not read here; the arena sets its own. The profile's
+    sky extra runs too, frozen: the Storm Flats' arcs, the Entangled Web's filament
+    glints, the Screened Swamp's reed beds, the Defect Scars' burning notches. Worlds
+    whose profile is empty (the Entangled Web, the Screened Swamp, the Devouring Mirror)
+    get nothing there, which is their identity rather than a gap to fill.
+  - **Ground plane** (`drawGroundPlane`, called for the impassable surround and the
+    walkable floor alike): strips at constant world spacing rather than a vertical
+    gradient, each drowned by its own distance and stepped onto the world's flat band
+    where the world has one (`art/biomes.ts`'s `bands`, on the same row numbering
+    `terrain/paint.ts`'s `bandBase` uses). The bands are a property of the world rather
+    than of the route through it, so the Storm Flats' Landau levels stratify the whole
+    arena and the glowing channel between two filled levels is the subject, not trim. The
+    plane's distance is capped rather than run to the vanishing point: past that the
+    strips are thinner than a pixel and a banded world stacks a ladder of channels into
+    the last rows.
+  - **The surround standing on it** (`drawSurroundStand`): the world's own material from
+    `scenes/overworld/terrain/materials/` -- the Mean Fields' wood, the Stone Lattice's
+    colonnade, the Winding Borders' rubble, the Iron Steppe's blades, the Screened Swamp's
+    reeds, the Defect Scars' crust -- in five rows beyond the floor's far edge, each
+    further row smaller, more densely packed, deeper in the air, drawn into its own layer
+    at its own opacity and separated from the row in front by a veil of that air. Drawn
+    back to front, so nearer rows occlude further ones. The `AccentTile`s are synthesised
+    for a flat near view (the arena has no projection of its own), but their grid
+    coordinates come from the encounter's own tile, so whatever a material anchors to the
+    map -- which way the Iron Steppe's blades lean, where the Screened Swamp's moments
+    burn -- is what it was where the fight started. `R_MATERIALS` converts the arena's
+    per-row perspective scale into each material's own units, since a material sizes its
+    feature either as u = 90·s pixels or in raw `s` pixels and those two conventions are
+    orders of magnitude apart. Bare ground (`solid`) draws nothing, which is the Entangled
+    Web's whole surround: there is nothing out there, and the arena says so.
+  - **The floor's far edge**: a Catmull-Rom polyline meandering a few pixels around
+    `R_FLOOR_EDGE_Y`, seeded off the encounter tile so the same spot always draws the same
+    edge. Drawn over the stand, so the near row of the surround stands behind the lip
+    rather than on it, with a stacked contact shadow under the stand and a thin lit lip on
+    the walkable side. A boundary ruled straight across the whole frame reads as
+    stagecraft, not terrain.
+  - **Floor surface** (`drawFloorTexture`): grain -- small marks on the same
+    one-over-distance rows, growing and thinning out as they come forward -- plus a few
+    scuffed lanes converging on the vanishing point (the route itself, running away from
+    the player), plus near-field clutter with the bit of shadow that puts it *on* the
+    ground. Nothing here is a shape the eye is meant to find; the depth is in the
+    *gradient* of it. All of it is held a few values off the floor it lies on, and it
+    fades out well before the floor's far end.
+  - **Value compression**: the walkable colour is pulled 0.3 toward the surround's before
+    anything else happens to it. Several worlds paint their route far brighter than the
+    ground around it (the Entangled Web's gold thread over true black), and a value break
+    that wide across the whole frame is louder than either crystal standing on it.
+  - **Haze**: two wide, faint air-coloured ellipses at the horizon on slow (21s/26s)
+    infinite yoyo drift tweens. The only thing in the backdrop that moves: still air over
+    a still landscape reads as a painting of one.
   - **Vignette**: corner-only -- four gradient rects whose alpha peaks at 0.2 in the frame
     corner and fades to zero toward center, in a near-black blended from `skyTop`. Drawn
     before the crystals/UI so it only ever dims the backdrop.
+- **Freezing.** The backdrop is painted at scene creation, so every animated material and
+  sky extra is handed one fixed clock (`R_FROZEN_NOW`) rather than whatever millisecond
+  the battle happened to start on -- chosen so the Defect Scars' embers land bright and
+  the Storm Flats' arcs are mid-flash rather than in the nine tenths of their cycle they
+  are dark for. A storm caught between two flashes is a colour change.
+- **What keeps it legible.** Richness is bought at high spatial frequency and spent
+  nowhere at low frequency: the arena's legibility gate (`npm run greyscale-check`)
+  squints at an 8x downscale, where fine grain averages away to nothing and only
+  large-scale value breaks compete with the crystals. So detail is fine, dense and close
+  in value to what it sits on; contrast is paid out through aerial perspective, which
+  costs contrast at exactly the distances the crystals are not standing at. Two earlier
+  treatments are kept switchable on `BACKDROP_MODE` for comparison on the same encounter:
+  `'layered'` (sky wash, seeded Catmull-Rom ridgelines, two flat ground bands) and
+  `'bands'` (four gradient bands meeting in the fog).
 
 ## Boss opponent in battle (`scenes/BattleScene.ts`)
 

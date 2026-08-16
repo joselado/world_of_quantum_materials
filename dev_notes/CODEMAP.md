@@ -1276,16 +1276,18 @@ wrong answer since the outcome is already decided) in place of `showAnalyticQues
 (`BattleInitData.locale`) built by `battleLocale()` from `scenes/overworld/terrain/plan.ts`'s
 `sampleBattleLocale(plan, tile)`: the encounter tile's coordinates, that tile's own `Biome`,
 the dominant off-path `TerrainKind` over a 5x5 window around it, and the dominant
-`regionTint` in that window. `drawBackground` colours the arena from it -- the tile's own
+`regionTint` in that window. `drawBackground` builds the arena from it -- the tile's own
 biome (which is the world's everywhere except a World 9 defect patch, whose per-tile
-`biomeOverride` the plan already resolved), the sampled surround keying the color grade
-(`drawColorGrade`, via `plan.ts`'s `wallThemeOf`, `offPathKindOf` read backwards), the
-sampled tint blended into `ground` at 0.15, and the tile coordinates folded into the ridge
-seeds so each place keeps its own stable skyline. The field is optional and a battle started
-without one falls back to `getBiome(this.world)` for all four. The eased sky wash, the four
-Catmull-Rom ridgeline layers (`drawRidge`), the ground gradient/mist, the color grade, the
-drifting haze bands (`drawHazeBands`), the corner vignette
-(`drawVignette`), the decorative crystal outcrops, and the ground tufts all derive from the
+`biomeOverride` the plan already resolved), the sampled surround deciding which module
+under `terrain/materials/` stands beyond the walkable floor (`drawSurroundStand`), the
+sampled tint blended into `ground` at 0.15, and the tile coordinates seeding the arena and
+handed to that material as its own `gx`/`gy`, so a feature the material anchors to the map
+arrives as it was where the fight started. The field is optional and a battle started
+without one falls back to `getBiome(this.world)` for all four. `BACKDROP_MODE` selects
+between `drawRealisticBackdrop` (what ships) and the two earlier treatments kept for
+comparison. The sky wash, the world's own distant self (`art/horizons.ts`), the ground
+plane strips (`drawGroundPlane`), the mist veils, the floor grain (`drawFloorTexture`),
+the drifting haze and the corner vignette (`drawVignette`) all derive from the
 biome's `skyTop`/`skyBottom`/`hillColor`/`ground`/`path`/`fogTarget` fields via
 `shade()`/`blend()`; battle-specific tints are always derived in `BattleScene` from those
 shared fields rather than stored as extra `Biome` fields, so retuning the battle arena never
