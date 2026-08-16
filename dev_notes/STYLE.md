@@ -2405,9 +2405,10 @@ world are shaped, since world N's start is world N-1's exit.
   the between-worlds story beat already uses.
 - **The list is the whole arc at every point in a playthrough, with Qumatex's checklist masking
   over it.** `data/storyLog.ts`'s `storyLogIndex` returns all of `STORY_LOG` in declaration
-  order -- the premise, then each world's three chapters (its entry history, the Decoherence's
+  order -- the premise, then each world's chapters (its entry history, the Decoherence's
   attack on it, and its pass: goal line, the rival's two-part boast, the beat that follows the
-  win), then the ending -- each paired with whether the save has reached it. A chapter not yet
+  win; World 10's reveal is split across two chapters, its lore page 2 being too long for this
+  pane's shrink-only fit), then the ending -- each paired with whether the save has reached it. A chapter not yet
   reached keeps its row and reads `'???'` in the dimmer `#6a7396`, exactly as an undiscovered
   crystal does in Qumatex and an unvisited world does in Bloch's table (`renderListColumn`'s own
   `labelFor`/`colorFor` hooks; there is no separate masking renderer). Its detail pane shows

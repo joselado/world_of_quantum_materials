@@ -1336,7 +1336,9 @@ player just attacked with.
 
 **Story beats between worlds.** The plot isn't only the tutorial's first page and
 the ending — beating each world's rival shows a short Decoherence-arc line
-(`data/story.ts`'s `STORY_BEATS`, keyed by the world just beaten) before
+(`data/story.ts`'s `STORY_BEATS`, keyed by the world just beaten; the narrator
+observing the beaten golem's release as that world's material made whole again,
+then a look forward — WORLDS.md §6 holds the rules for that voice) before
 `OverworldScene.showStoryBeat`/`advanceToWorld` moves the player into the next
 world, previewing that world's biome and nudging the plot forward one step at a
 time. Falls straight through to `advanceToWorld` if a world has no entry, so a

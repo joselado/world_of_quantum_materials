@@ -2419,9 +2419,10 @@ generically.
 `scenes/panels/hubStations.ts`'s `showStoryLog`): the Decoherence arc, re-readable in the order
 a playthrough delivers it, as the same list+detail panel the tutorial recap uses, stroked story
 lavender `0xd9a5ff`. `STORY_LOG`'s declaration order is the chronology -- the premise, each
-world's three chapters (entry history, the Decoherence's attack on it, and its pass: goal line,
-two-part rival taunt, the beat that follows the win), then the ending -- and the panel lists all
-thirty-two at every point in a playthrough. A chapter the save hasn't reached keeps its row and
+world's chapters (entry history, the Decoherence's attack on it, and its pass: goal line,
+two-part rival taunt, the beat that follows the win; World 10 carries four, its reveal split
+in two because its lore page 2 outgrows the pane's shrink-only fit), then the ending -- and
+the panel lists all thirty-three at every point in a playthrough. A chapter the save hasn't reached keeps its row and
 is masked to `'???'` in the dimmer `#6a7396` via `renderListColumn`'s own `labelFor`/`colorFor`
 hooks, the same treatment Qumatex gives an undiscovered crystal and Bloch's table an unvisited
 world, with its detail pane cut to one short line rather than a pane of question marks. Reach is

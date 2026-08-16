@@ -692,8 +692,10 @@ the rival lives, the way is physically barred by the thing barring it, which is
 truer than weather. A pass is where coherence used to flow between worlds, so a
 pass is where the grinding happened, and what is left of that world's material
 is lodged in the one place it could not be carried out of. The golem is not
-posted there. It is stuck there, which is why holding the boundary reads as its
-nature rather than as a staging choice. It also preserves
+posted there. It is caught there: it was carrying its world's coherence through
+the pass when it was learned to exhaustion, so it fell where the grinding
+happened, and holding the boundary reads as its nature rather than as a staging
+choice. It also preserves
 the reveal, since nothing of the next world is visible past it.
 
 **Size the rival to the aperture, not to the screen.** Scale is read against the
@@ -908,7 +910,7 @@ patterns, because they are what make the arc land rather than merely exist.
 |---|---|---|---|
 | `WORLD_LORE` | `data/worldLore.ts` | once, on first entering a world | two pages: the world's physics told as history, then how the Decoherence attacks *that* physics |
 | `RIVAL_TAUNTS` | `data/worldLore.ts` | before the rival fight | two parts: the rival's boast |
-| `STORY_BEATS` | `data/story.ts` | after a rival is beaten | one line of connective tissue, looking forward |
+| `STORY_BEATS` | `data/story.ts` | after a rival is beaten | the golem's release, observed by the narrator, then connective tissue looking forward |
 | `WORLD_GOAL_TEXT` | `data/story.ts` | on reaching the goal tile | one line: this world's physics still holds |
 | `WORLD_FLAVOR` | `data/worldFlavor.ts` | Bloch's destination preview | plain physics, deliberately *not* narrative |
 
@@ -923,14 +925,15 @@ pasted into another world's slot has failed this rule.
 **Every rival 1–8 is the same shape: *I am what this world's physics became
 when its coherence was ground out of it, and I have mistaken that for
 strength.*** A golem is not a champion posted at the pass. It is what the
-Decoherence leaves behind: the world's own material, its order broken, lodged in
-the choke point where coherence used to flow between worlds, reciting the
-mechanism it can no longer perform. The boast is always the precise mechanism
+Decoherence leaves behind: the world's own material — the one that resisted
+being learned the longest, which is exactly why it had to be learned to
+exhaustion — its order broken, lodged in the choke point where coherence used
+to flow between worlds, reciting the mechanism it can no longer perform. The boast is always the precise mechanism
 that answers the attack named on that world's second lore page, and it is always
 the precise property the golem has lost. Both readings must survive in the same
 words.
 
-Three rules hold that shape together.
+Four rules hold that shape together.
 
 **The golem never learns what it is.** The boasts stay proud, and the fights
 stay dangerous. A rival that pitied itself would drain every victory in the
@@ -953,6 +956,35 @@ golem still lands double on a defender whose physics cannot host its class.
 World 2 is the far end of that gradient and carries no signature move at all,
 because a material with no lattice left has nothing but its own vibration.
 
+**Beating a golem frees the material, and only the narrator says so.** Golems
+1–8 are fallen resistors: each was its world's own material, the one that held
+out longest against being learned, ground to exhaustion where it stood. When
+one falls, its disorder anneals and the freed material rejoins its world — the
+post-victory story beat (`STORY_BEATS`) states this as a physical observation
+in that world's own physics vocabulary, ahead of its forward look. The
+guardrails on this are all load-bearing:
+
+- **No post-battle golem dialogue surface exists, and none may be added.** The
+  freed material never speaks, never thanks, never lingers as a figure in the
+  pass; gratitude anywhere would break "the golem never learns what it is."
+- **The light never returns.** Liberation restores the mechanism and frees the
+  material; no beat says fog lifted or a world brightened. The lost light is
+  cost already paid, which is what keeps the arc melancholy rather than
+  triumphant.
+- **Liberation frees the material but does not un-teach the Adapted.** The
+  lesson stays taken — the record lives in the Adapted, not in the residue —
+  so "the golems are its leavings" holds intact.
+- **World 9 is exempt**: the flaw has no coherence to lose, so there is
+  nothing to free. It disperses, and the ground it borrowed goes back to being
+  ground. Its own taunt states the exemption from the inside ("nothing was
+  ever taken from me"), which is also its strongest seed of the reveal.
+- **World 10 cannot be freed**: disorder anneals, a record does not. The
+  Adapted is not a fallen quantum thing; it is the record itself, and the
+  finale refuses reversal ("stabilized," never undone).
+- **"Hero" appears in no player-facing string.** The resistance is told in the
+  lore closers' hearsay voice on the tone gradient; the release is told by the
+  beat as annealing observed, never as an emotional transaction.
+
 That is why the rivals feel like part of the story rather than a difficulty
 gate, and it is the pattern any new rival must follow.
 
@@ -970,10 +1002,12 @@ taken. That is the arc's payoff and the reason the finale is a mirror: the
 Adapted's model of the player, complete and predictive and incapable of
 superposition, is the tenth golem, and the player is looking at it.
 
-**The golems stay innocent, and this is load-bearing.** They are casualties, not
-agents. If they are ever rewritten as the Adapted's servants the reveal dies,
-because "it was never one of them in disguise" only lands while they are
-something it made rather than something it wore.
+**The golems stay innocent, and this is load-bearing.** They are never the
+Adapted's agents. Each one fought the Decoherence and fell — its world's
+coherence-bearer, learned to exhaustion — which is the opposite of serving it.
+If they are ever rewritten as the Adapted's servants the reveal dies, because
+"it was never one of them in disguise" only lands while they are something it
+made rather than something it wore.
 
 **Tone gradient.** The lore voice tracks the light: worlds 1–3 are told as
 legend, second-hand and almost pastoral ("Long ago, before the corridors had

@@ -15,9 +15,10 @@ import type { TutorialTipId } from './tutorial';
 // a beat here and meeting it in play can never drift apart.
 //
 // `STORY_LOG`'s own declaration order is the chronology: the premise, then
-// each world's three chapters in the order that world plays them, then the
-// ending. A new beat is added by declaring it at the point of the
-// playthrough that reveals it.
+// each world's chapters in the order that world plays them (three per world;
+// World 10 carries four, its reveal split in two), then the ending. A new
+// beat is added by declaring it at the point of the playthrough that
+// reveals it.
 //
 // Bloch's destination blurbs (data/worldFlavor.ts) and each guardian's own
 // intro quote are deliberately absent: neither is arc content -- the first is
@@ -79,6 +80,34 @@ function worldChapters(world: number, titles?: { decoherence?: string; pass?: st
   ];
 }
 
+// World 10's page-2 reveal is the longest lore page in the game -- long
+// enough that the Story station's shrink-only detail pane
+// (scenes/panels/hubStations.ts's showStoryLog, which has no continue button
+// to paginate onto) cannot hold it at any font-scale preset. Its re-read
+// therefore splits into two chapters at the page's own paragraph seam: the
+// reveal itself (what has hunted you, and how it trained), then the
+// measurement lesson the page closes on (what the teaching cost, and why
+// nothing here can be freed). In play the world-entry lore panel still shows
+// the page whole -- that surface paginates
+// (OverworldScene.renderWorldLorePage) -- and both chapter bodies stay
+// assembled from the same WORLD_LORE string, so re-reading and meeting the
+// text in play cannot drift apart.
+function world10Chapters(): StoryEntry[] {
+  const [history, reveal, pass] = worldChapters(10, { decoherence: 'The Reveal', pass: 'The Adapted' });
+  const paragraphs = reveal.body.split('\n\n');
+  return [
+    history,
+    { ...reveal, body: paragraphs.slice(0, 2).join('\n\n') },
+    {
+      ...reveal,
+      title: `${worldName(10)}: The Record`,
+      listLabel: '10. Record',
+      body: paragraphs.slice(2).join('\n\n'),
+    },
+    pass,
+  ];
+}
+
 export const STORY_LOG: StoryEntry[] = [
   {
     title: 'A Decoherence Is Spreading',
@@ -95,7 +124,7 @@ export const STORY_LOG: StoryEntry[] = [
   ...worldChapters(7),
   ...worldChapters(8),
   ...worldChapters(9),
-  ...worldChapters(10, { decoherence: 'The Reveal', pass: 'The Adapted' }),
+  ...world10Chapters(),
   {
     title: FINALE_TITLE,
     listLabel: 'The Ending',

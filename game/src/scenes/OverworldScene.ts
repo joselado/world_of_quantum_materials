@@ -2552,31 +2552,23 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     container.add(title);
     y += title.height + 16;
 
-    const body = this.add
-      .text(
-        CANVAS_W / 2,
-        y,
-        FINALE_BODY,
-        { fontSize: `${Math.round(13 * scale)}px`, color: '#cfd8ff', align: 'center', wordWrap: { width: 480 } }
-      )
-      .setOrigin(0.5, 0);
-    container.add(body);
-    y += body.height + 16;
-
+    // Thanks line and button are built before the body so the fit budget
+    // below can use their real measured heights (same pattern as
+    // renderWorldLorePage); both are positioned once the body's fitted
+    // height is known.
     const thanks = this.add
-      .text(CANVAS_W / 2, y, 'Thanks for playing.', {
+      .text(CANVAS_W / 2, 0, 'Thanks for playing.', {
         fontSize: `${Math.round(12 * scale)}px`,
         color: REFERENCE_BLUE_GREY_HEX,
         align: 'center',
       })
       .setOrigin(0.5, 0);
     container.add(thanks);
-    y += thanks.height + 20;
 
     const button = this.addDialogueButtonAt(
       container,
       CANVAS_W / 2,
-      y,
+      0,
       'Return to the Lab',
       () => {
         this.closeDialogue();
@@ -2585,6 +2577,27 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       260,
       `${Math.round(13 * scale)}px`
     );
+
+    const body = this.add
+      .text(
+        CANVAS_W / 2,
+        y,
+        '',
+        { fontSize: `${Math.round(13 * scale)}px`, color: '#cfd8ff', align: 'center', wordWrap: { width: 480 } }
+      )
+      .setOrigin(0.5, 0);
+    container.add(body);
+    // Shrink-only fit (the whole body as one paragraph, nowhere to continue
+    // to): an ending screen pages to nothing, so the closing text gives up
+    // font size rather than splitting, and the panel always ends on the
+    // canvas at every FONT_SCALE_PRESETS setting.
+    fitProseToBudget(body, [FINALE_BODY], CANVAS_H - y - (16 + thanks.height + 20 + button.height + top));
+    y += body.height + 16;
+
+    thanks.setY(y);
+    y += thanks.height + 20;
+
+    button.setY(y);
     y += button.height + top;
 
     const panelHeight = y - top;

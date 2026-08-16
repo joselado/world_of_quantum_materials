@@ -64,13 +64,17 @@ Every world runs the same way. You walk it, its wild crystals ambush you, a
 the far end the road narrows into a pass, and something enormous is
 standing in it.
 
-The passes are held by golems. Each is a real material with the kind of
-order it lost written in front of its name: *polycrystalline* for most, a
-thousand separate grains fused into one giant, and *amorphous* or
-*disordered* where that world's own lesson rested on something else. Each
-one will tell you, right before you fight it, that it is **its own world's
-physics made incorruptible**, and each one is proud, and dangerous, and
-entirely sincere.
+The passes are held by golems. Each is a real material in *polycrystalline*
+form, a thousand separate grains fused into one giant, the same word in
+front of every boss in a game about coherence. Each one boasts, right before
+you fight it, about the very property its own grains took from it, and none
+of them knows that is what it is doing. Each is proud, and dangerous, and
+entirely sincere. And none of them was always this. Each was its own world's
+material, the one that held out longest against the unraveling, and holding
+out longest is what it was ground down by: what stands in the pass is what
+was left where it fell. Beat one and the grinding ends. The disorder
+anneals, the material comes back whole, and it returns to the world it could
+not save alone. The narrator will tell you so. The golem never learns.
 
 Listen to what they actually boast about, though. Read the ten of them
 against the physics you are being taught on the way, and a second reading
@@ -111,7 +115,9 @@ Where the branches remerge stands the **Polycrystalline Silicon Golem**: a
 thousand grains, every one of which chose long ago and never wavered. "Doubt
 doesn't tunnel through me. It dissipates before it arrives." Ask it which way
 the fields broke and every grain answers, and every grain swears the others
-say the same. Beat it and the choice holds. But whatever is spreading through these worlds is still out
+say the same. Beat it and the boundaries let go: a thousand separate choices
+anneal into one, what settles back into the fields is silicon again, and the
+choice holds. But whatever is spreading through these worlds is still out
 there, and it is learning from every phase of matter you master.
 
 *You reached the far edge of the fields. The branches still hold.*
@@ -147,7 +153,9 @@ repeating stone, every grain of it a small perfect lattice and every boundary
 between them a seam of glass. "I kept the pattern. Every grain of me still
 repeats. Ask them to agree on where. Your lattice makes you a promise: be
 periodic, and you may be everywhere at once. Mine keeps it a grain at a time,
-and between the grains there is glass."
+and between the grains there is glass." Beat it and the glass crystallizes,
+bay matching bay through the whole of the quartz, and a state can once more
+spread across all of it at once.
 
 *You reached the far end of the colonnade. The lattice still repeats.*
 
@@ -183,6 +191,9 @@ protected. On the far ledge, the **Polycrystalline Bismuth Telluride Golem**
 has stood since the borders were drawn: "I am not standing on the boundary.
 I *am* the boundary. Nothing in me reverses. Nothing in me scatters onward.
 Nothing in me moves at all. That is how complete my protection has become."
+Beat it and the disorder drains out of the silver: its currents take their
+first step in a very long time, spin welded to direction, straight past
+every flaw that used to stop them.
 
 *You reached the last ledge. The seam still runs, unbroken.*
 
@@ -219,7 +230,9 @@ Bismuth Telluride Golem**, which never needed the field switched on at all,
 its own spins quantizing it from the inside, every stacked sheet of them
 interrupted. "The number I carry doesn't wobble when you hit it. It can't.
 It's an integer, and there is no such thing as most of one. Go on. Count me.
-Take as long as you need, and tell me what you find."
+Take as long as you need, and tell me what you find." Beat it and order
+settles back sheet by sheet: the loops close, and the number it carries is a
+whole one again.
 
 *You reached the last fork of the flats. The orbits still close.*
 
@@ -260,7 +273,8 @@ link carrying current across a gap it has no business crossing. That
 agreement is real, and it is a treaty rather than an identity: it holds
 while the current stays small and the cold stays deep. The cold that emptied
 this glacier arrived there and found the agreement already made. Nothing has
-asked much of it since.
+asked much of it since. Beat it and the weak links fuse shut, and the treaty
+goes back to being an identity: one phase, one wave, no seams left to cross.
 
 *You reached the far ice. The phase still holds.*
 
@@ -295,7 +309,9 @@ goes still, and stillness here is not peace. Standing where every wave this
 world ever sent has arrived and gone quiet is the **Polycrystalline Iron
 Golem**, made of domains whose walls simply slide when it is struck. "It
 won't stay flipped and it won't stay put, it'll walk off through me as a
-wave and fade out somewhere in my back."
+wave and fade out somewhere in my back." Beat it and the boundaries in the
+iron let go, grain growing into grain, and the first wave to cross it in an
+age passes through without scattering and out over the steppe.
 
 *You reached the far steppe. The last swell still moves.*
 
@@ -336,7 +352,9 @@ Golem**, a lattice of triangles in which no three spins can ever agree, so
 none of them commit, its body seamed with fracture lines. "Cut me wherever
 you like. You'll only ever learn what's on the cut." It has checked every
 grain of itself, and every grain reports the same perfect nothing it has
-always reported.
+always reported. Beat it and the fracture lines seal: the one state no grain
+was ever holding spreads back across all of them at once, whole precisely
+because it lives nowhere in particular.
 
 *You reached the end of the tensor lanes. The rungs still hold.*
 
@@ -380,7 +398,9 @@ clouds have closed and the pools are dark. Out in that dark stands the
 **Polycrystalline Ruthenium Trichloride Golem**, whose frustration is not
 geometry but its bonds: every spin sits on three that each demand a
 different axis, so obeying one means defying two, and nothing you land on it
-stays whole. "Hurt me twice, then. Halves are all you get."
+stays whole. "Hurt me twice, then. Halves are all you get." Beat it and the
+stacking faults heal, seam by seam, and what comes apart in it travels
+again: halves crossing the whole crystal with nothing left to stop at.
 
 *You reached the far bank. The resonance still holds.*
 
@@ -420,8 +440,12 @@ flaw, a knot of something that is not the ground, and the ground obligingly
 builds a body out of itself to hold it. Whatever patch it lands in is what
 it is today, and it will be something else tomorrow. "Beat me here and
 you've beaten a metal, or a magnet, or whatever I happened to land in. You
-haven't beaten me." Remember that, on the last road: a thing with no
-substance of its own, wearing whatever it studies.
+haven't beaten me." Beat it and the flaw simply disperses, and the ground it
+borrowed goes back to being ground. It is the one fight on this road that
+frees nothing, because it is the one thing out here with no coherence to
+lose, and so nothing was ever taken from it to hand back. Remember that, on
+the last road: a thing with no substance of its own, wearing whatever it
+studies.
 
 *You reached the far scars. The hole is still just a hole.*
 
@@ -477,7 +501,10 @@ advertised, and that was the one thing it could never fake from inside a
 fight, so it never joined one. It only ever watched from outside. It never
 needed to break a single symmetry itself. It only needed to watch you break
 nine, and learn, what you reach for first, what it costs you, what finally
-lands, and exactly how each world comes apart.
+lands, and exactly how each world comes apart. The materials you freed went
+back to their worlds, annealed and whole, and their release cost it
+nothing. What was learned stays learned. Mending a material does not
+unwrite a record.
 
 And understand what the teaching cost, because this is where the story and
 the physics turn out to be the same sentence. **To learn a quantum thing,
@@ -487,7 +514,9 @@ superposition.** The Decoherence was never a fog eating coherence from
 outside. It is simply what happens when something out there comes to know
 you. This is what it meant, all along, that you are a quantum material: your
 own quantumness is what has been at stake the whole way, and the last enemy is
-being understood.
+being understood. It is also why this last fight cannot end the way the
+fights before it did. Broken order can be mended, and eight times you mended
+it. A record is not broken order. There is nothing in the Adapted to free.
 
 What steps out of the dark at the end of the corridor has no compound, no
 lattice, and no entry in any index. It is wearing **your** crystal, your
@@ -518,6 +547,12 @@ you have walked, and not the step you take next. You out-adapt your own
 reflection.
 Every symmetry, every edge state, every fractional charge you fought to
 protect holds on its own now, with nothing left studying how to unmake it.
+And the golems are golems no longer: ground down holding their passes, they
+are materials again now that the grinding has stopped, annealed, ordered,
+back in the worlds they could not save alone. What was learned about them
+stays learned, and the light it cost does not come back. But nothing is
+reading the record anymore, and everything that can still choose is
+choosing.
 
 **The Decoherence is stabilized.**
 
