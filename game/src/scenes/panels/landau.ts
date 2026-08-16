@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import type { GuardianPanelHost } from '../OverworldScene';
+import { renderGuardianHeader } from './guardianHeader';
 import { makeLandauAvatar } from '../../art/landau';
-import { playGuardianChime } from '../../audio/sfx';
 import { ANALYTIC_SHAPES } from '../../art/attackEffects';
 import { CANVAS_W } from '../../art/perspective';
 import { fontScale } from '../../ui/text';
@@ -62,14 +62,6 @@ export function showLandauPanel(scene: GuardianPanelHost) {
 
   let y = top;
 
-  const avatarY = y + 42;
-  const avatar = makeLandauAvatar(scene);
-  avatar.setPosition(CANVAS_W / 2, avatarY);
-  container.add(avatar);
-  scene.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-  playGuardianChime();
-  y = avatarY + 48;
-
   // Capped tighter than the ordinary intro-quote scaling every other
   // guardian panel uses (STYLE.md), same reasoning/cap as Skłodowska-Curie's
   // own intro (panels/sklodowskaCurie.ts) -- this panel carries two full
@@ -77,16 +69,13 @@ export function showLandauPanel(scene: GuardianPanelHost) {
   // quote at the largest text-size preset risks pushing the columns' own
   // confirm rows past the bottom of the canvas.
   const introScale = Math.min(fontScale(scene), 1.15);
-  const intro = scene.add
-    .text(
-      CANVAS_W / 2,
-      y,
-      '"Put a strong enough field on a two-dimensional electron gas and its whole band collapses into a ladder of flat levels, one fixed quantum of energy apart. Tell me the physics right and I\'ll teach your crystal to strike by that ladder. Answer right and the hit climbs a rung and lands twice as hard, answer wrong and it barely lands at all. Tell me which quasiparticle to carry it with, too."',
-      { fontSize: `${Math.round(11 * introScale)}px`, fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
-    )
-    .setOrigin(0.5, 0);
-  container.add(intro);
-  y += intro.height + 14;
+  y = renderGuardianHeader(scene, container, {
+    y,
+    panelWidth,
+    avatar: makeLandauAvatar,
+    quote: '"Put a strong enough field on a two-dimensional electron gas and its whole band collapses into a ladder of flat levels, one fixed quantum of energy apart. Tell me the physics right and I\'ll teach your crystal to strike by that ladder. Answer right and the hit climbs a rung and lands twice as hard, answer wrong and it barely lands at all. Tell me which quasiparticle to carry it with, too."',
+    introPx: `${Math.round(11 * introScale)}px`,
+  });
 
   y = renderAnalyticColumns(scene, container, y, panelWidth);
   y += 8;

@@ -1140,6 +1140,47 @@ station motifs are deliberately not tunnels with a visible far end.
   since reaching their row still opens their panel on top of (not instead of) them
   standing there.
 
+## Guardian panel headers (`scenes/panels/guardianHeader.ts`)
+
+- **Every guardian panel opens with that guardian's own avatar, large, and their
+  opening line beside it.** One `renderGuardianHeader` call rather than the same
+  block copied into eleven panels (the ten bespoke ones in `scenes/panels/` plus
+  `OverworldScene.showGuardianLore`), so the roster reads as one cast rather than
+  eleven layouts and a new guardian's panel inherits the shape for free. The
+  panel that opens when the player walks up to a guardian mid-corridor and the
+  one that opens when they click that guardian's avatar in the Lab are the same
+  function (`GuardianDef.open`), so both get this by construction.
+- **Portrait beside the line, not stacked above it.** The avatar *is* the
+  guardian -- the roster is deliberately ten figures of light rather than ten
+  faces -- and standing it in its own column with the quote taking the room next
+  to it buys the portrait roughly twice the size while costing the panel *less*
+  height than stacking did, because the tall portrait and the tall quote now
+  overlap instead of adding. These are the densest panels in the game (a list, a
+  detail pane, a footer under this block), and the tightest of them clears the
+  canvas floor by only a couple of dozen pixels at the Large text preset.
+- **Sized off the widest of the roster, not per guardian**, so the ten stand at
+  one size and a new one drops in without a layout pass: `PORTRAIT_SCALE = 2`
+  against the measured reach of the biggest of them (Skłodowska-Curie, `44` up /
+  `77` top-to-bottom / `39` either side per unit of scale, measured from a live
+  headless render the same way `battle/hud.ts`'s crystal offsets are -- every
+  builder draws pure light with a glow around it, so a nominal size would
+  understate all ten).
+- **Hung from the top of the band by that measured rise, not centred on its
+  middle.** Every one of these avatars reaches further above its own origin than
+  below it, so centring the origin would either push the tallest past the panel's
+  top edge or force a deeper band than the art needs.
+- The band is as tall as whichever needs more -- the portrait's own painted span,
+  or a long opening line running past it -- and the shorter of the two centres
+  against it. A `6`px idle float, deliberately smaller than a stacked layout's
+  since the portrait it moves is twice the size: the same travel would read as
+  drifting rather than breathing.
+- The quote is **left-aligned**, not centred: a centred block beside a portrait
+  leaves a ragged left edge running down the middle of the panel, where the eye
+  expects the line to start where the figure stops. Its font size is passed in by
+  each panel rather than derived in the header, since several panels cap their own
+  intro font below the text-size setting (see Landau's/Kondo's/Skłodowska-Curie's
+  own sections) and the shared block must not quietly override that.
+
 ## Noether's shop (`OverworldScene.showNoetherShop`)
 
 - Same panel treatment as a wild encounter, but stroked in gold (`0xffe066`) instead of
@@ -1164,12 +1205,12 @@ station motifs are deliberately not tunnels with a visible far end.
   fading outward, never a hard-edged disc -- pulses slowly for a
   "presence" that thin streamlines wouldn't give on their own. A short layered-bell chime (`audio/sfx.ts`'s `playGuardianChime`,
   shared by every guardian panel) plays whenever the shop opens. Content is laid out top-down
-  from a running `y` starting at `top = 20`: avatar centered at `avatarY = y + 42` (top edge
-  landing a few px inside the panel's own top edge), intro quote text (11px italic) pushed down
-  to `y = avatarY + 48` -- the same two constants and font size every one of the other nine
-  guardian panels uses, including the fallback `showGuardianLore` a future guardian without a
-  bespoke panel lands on, so no panel needs its own avatar/quote-positioning tuning pass --
-  each guardian still gets its own avatar builder in its own file
+  from a running `y` starting at `top = 20`, opening with the shared guardian header
+  (`scenes/panels/guardianHeader.ts`'s `renderGuardianHeader`, "Guardian panel headers" below)
+  -- the same call every one of the other nine guardian panels makes, including the fallback
+  `showGuardianLore` a future guardian without a bespoke panel lands on, so no panel needs its
+  own avatar/quote-positioning tuning pass -- each guardian still gets its own avatar builder
+  in its own file
   (`art/bloch.ts`, `art/franklin.ts`, ...) even though the surrounding panel shape is shared.
   Appears automatically every time the Overworld scene is (re)created with this world's
   middle row already reached (`OverworldScene.maybeAutoOpenMiddleDialogue`) -- first on

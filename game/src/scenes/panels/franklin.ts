@@ -1,8 +1,8 @@
 import type { GuardianPanelHost } from '../OverworldScene';
+import { renderGuardianHeader } from './guardianHeader';
 import { makeFranklinAvatar } from '../../art/franklin';
 import { killTweensDeep, makeCrystal } from '../../art/crystals';
 import { drawFranklinPassiveHalo } from '../../art/passiveHalos';
-import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
 import { fontPx, fontScale } from '../../ui/text';
 import { PANEL_BG } from '../../ui/theme';
@@ -45,24 +45,13 @@ export function showFranklinPanel(scene: GuardianPanelHost) {
 
   let y = top;
 
-  const avatarY = y + 42;
-  const avatar = makeFranklinAvatar(scene);
-  avatar.setPosition(CANVAS_W / 2, avatarY);
-  container.add(avatar);
-  scene.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-  playGuardianChime();
-  y = avatarY + 48;
-
-  const intro = scene.add
-    .text(
-      CANVAS_W / 2,
-      y,
-      '"Fire X-rays through a defect-riddled crystal and the sharp spots blur into rings: every pore and dislocation leaves its signature in how the beam scatters. I can teach your crystal to scatter a blow the same way. Only one lesson holds at a time."',
-      { fontSize: fontPx(scene, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
-    )
-    .setOrigin(0.5, 0);
-  container.add(intro);
-  y += intro.height + 14;
+  y = renderGuardianHeader(scene, container, {
+    y,
+    panelWidth,
+    avatar: makeFranklinAvatar,
+    quote: '"Fire X-rays through a defect-riddled crystal and the sharp spots blur into rings: every pore and dislocation leaves its signature in how the beam scatters. I can teach your crystal to scatter a blow the same way. Only one lesson holds at a time."',
+    introPx: fontPx(scene, 11),
+  });
 
   const columnsTop = y;
   const panelLeft = CANVAS_W / 2 - panelWidth / 2;

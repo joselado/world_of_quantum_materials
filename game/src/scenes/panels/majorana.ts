@@ -1,7 +1,7 @@
 import type { GuardianPanelHost } from '../OverworldScene';
+import { renderGuardianHeader } from './guardianHeader';
 import { makeMajoranaAvatar } from '../../art/majorana';
 import { killTweensDeep, makeCrystal } from '../../art/crystals';
-import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W, CANVAS_H } from '../../art/perspective';
 import { fontPx, fontScale } from '../../ui/text';
 import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
@@ -76,32 +76,21 @@ export function showMajoranaPanel(scene: GuardianPanelHost) {
 
   let y = top;
 
-  const avatarY = y + 42;
-  const avatar = makeMajoranaAvatar(scene);
-  avatar.setPosition(CANVAS_W / 2, avatarY);
-  container.add(avatar);
-  scene.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-  playGuardianChime();
-  y = avatarY + 48;
-
   // Kept short -- this panel carries more content below than any other
   // guardian panel, and the header's own wrap grows uncapped at larger
   // text-size presets the same way every guardian's intro does (STYLE.md),
   // so a short quote here is what keeps the worst-case content (a long
   // hybrid name, largest preset) inside the canvas.
   const superposition = scene.isSuperpositionMode();
-  const intro = scene.add
-    .text(
-      CANVAS_W / 2,
-      y,
-      superposition
-        ? '"I am Majorana. In superposition every pairing is possible: fuse any two states that make physical sense."'
-        : '"I am Majorana. Fuse two states you understand and see what phase they make together."',
-      { fontSize: fontPx(scene, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
-    )
-    .setOrigin(0.5, 0);
-  container.add(intro);
-  y += intro.height + 8;
+  y = renderGuardianHeader(scene, container, {
+    y,
+    panelWidth,
+    avatar: makeMajoranaAvatar,
+    quote: superposition
+      ? '"I am Majorana. In superposition every pairing is possible: fuse any two states that make physical sense."'
+      : '"I am Majorana. Fuse two states you understand and see what phase they make together."',
+    introPx: fontPx(scene, 11),
+  });
 
   const pool: { name: string; type: MaterialType }[] = superposition ? allCrystals() : scene.getDefeatedMaterials();
   const combos = combinableHybridResults(pool).sort((a, b) => a.result.name.localeCompare(b.result.name));

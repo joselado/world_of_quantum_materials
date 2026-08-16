@@ -1,8 +1,8 @@
 import type Phaser from 'phaser';
 import type { GuardianPanelHost } from '../OverworldScene';
+import { renderGuardianHeader } from './guardianHeader';
 import { makeDresselhausAvatar } from '../../art/dresselhaus';
 import { killTweensDeep } from '../../art/crystals';
-import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
 import { fontPx } from '../../ui/text';
 import { PANEL_BG } from '../../ui/theme';
@@ -75,27 +75,16 @@ export function showDresselhausPanel(scene: GuardianPanelHost) {
 
   let y = top;
 
-  const avatarY = y + 42;
-  const avatar = makeDresselhausAvatar(scene);
-  avatar.setPosition(CANVAS_W / 2, avatarY);
-  container.add(avatar);
-  scene.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-  playGuardianChime();
-  y = avatarY + 48;
-
   const superposition = scene.isSuperpositionMode();
-  const intro = scene.add
-    .text(
-      CANVAS_W / 2,
-      y,
-      superposition
-        ? '"I am Dresselhaus. In superposition every nanostructure is within reach at once: become anything that exists, not only what you have already beaten."'
-        : '"I am Dresselhaus. Build the same atoms into a different nanostructure and you get a different material entirely: new electrons, new phonons, no new chemistry required. Study a defeated crystal\'s structure closely enough, and you can rebuild yourself into it, for a while."',
-      { fontSize: fontPx(scene, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
-    )
-    .setOrigin(0.5, 0);
-  container.add(intro);
-  y += intro.height + 14;
+  y = renderGuardianHeader(scene, container, {
+    y,
+    panelWidth,
+    avatar: makeDresselhausAvatar,
+    quote: superposition
+      ? '"I am Dresselhaus. In superposition every nanostructure is within reach at once: become anything that exists, not only what you have already beaten."'
+      : '"I am Dresselhaus. Build the same atoms into a different nanostructure and you get a different material entirely: new electrons, new phonons, no new chemistry required. Study a defeated crystal\'s structure closely enough, and you can rebuild yourself into it, for a while."',
+    introPx: fontPx(scene, 11),
+  });
 
   // Every crystal the player has defeated is on offer, listed in the order
   // they were beaten -- studying a structure is what earns the right to

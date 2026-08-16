@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
 import type { GuardianPanelHost } from '../OverworldScene';
+import { renderGuardianHeader } from './guardianHeader';
 import { BUILT_WORLDS } from '../OverworldScene';
 import { makeBlochAvatar } from '../../art/bloch';
 import { killTweensDeep } from '../../art/crystals';
 import { buildQumatuomiMap } from '../../art/qumatuomiMap';
-import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W, CANVAS_H } from '../../art/perspective';
 import { fontPx, fontScale } from '../../ui/text';
 import { PANEL_BG, GOLD_ACCENT } from '../../ui/theme';
@@ -110,38 +110,20 @@ export function showBlochHub(scene: GuardianPanelHost) {
 
   let y = top;
 
-  const avatarY = y + 42;
-  const avatar = makeBlochAvatar(scene);
-  avatar.setPosition(CANVAS_W / 2, avatarY);
-  container.add(avatar);
-  scene.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-  y = avatarY + 48;
-  playGuardianChime();
-
   // Kept short, like Majorana's own intro -- this panel carries more content
   // below than almost any other guardian panel, and an uncapped quote grows
   // uncapped at larger text-size presets the same way every guardian's
   // intro does (STYLE.md), so a short sentence here is part of what keeps
   // worst-case content (largest preset) inside the canvas.
-  const intro = scene.add
-    .text(
-      CANVAS_W / 2,
-      y,
-      superposition
-        ? '"I am Bloch. In superposition every world is already within reach: name any of them."'
-        : '"I am Bloch. Name a world you have already touched, and I will fold you there."',
-      { fontSize: fontPx(scene, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
-    )
-    .setOrigin(0.5, 0);
-  container.add(intro);
-  // Deliberately not trimmed tighter than other guardian panels' own
-  // intro-to-columns gap: shaving even a couple more px here pushes
-  // columnsTop up just enough to flip renderListColumn's own fit-per-page
-  // count by a whole extra row (a ~28px jump, not a small one), which costs
-  // far more height than this gap could ever save. The margin below is
-  // reclaimed downstream instead (the right column's own blurb/status/
-  // button gaps, and the footer's).
-  y += intro.height + 6;
+  y = renderGuardianHeader(scene, container, {
+    y,
+    panelWidth,
+    avatar: makeBlochAvatar,
+    quote: superposition
+      ? '"I am Bloch. In superposition every world is already within reach: name any of them."'
+      : '"I am Bloch. Name a world you have already touched, and I will fold you there."',
+    introPx: fontPx(scene, 11),
+  });
 
   const panelLeft = CANVAS_W / 2 - panelWidth / 2;
   const columns = listDetailColumns(panelLeft);

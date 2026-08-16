@@ -328,8 +328,20 @@ async function main() {
         await shoot(`docs-guardians-${id}-panel`);
         // The avatar alone, cropped from the panel it heads: docs/guardians.md
         // shows each guardian's own art beside their section, and a full-panel
-        // shot at that width reduces the avatar to a few pixels.
-        await shootClip(`docs-guardians-${id}-avatar`, { x: 372, y: 24, width: 110, height: 80 });
+        // shot at that width reduces the avatar to a few pixels. The portrait
+        // stands in its own column at the panel's left edge, and the panels are
+        // not all the same width, so the crop is taken off the panel's own
+        // measured left edge rather than a fixed x.
+        // Off the panel's own background rectangle (always child 0, inserted
+        // with addAt after the content is laid out) rather than the container's
+        // bounds: a Phaser Container takes no bounds from Graphics children,
+        // and every guardian's avatar is pure Graphics, so the container would
+        // report a left edge of 0.
+        const panelLeft = await page.evaluate(() => {
+          const sc = window.__game.scene.getScene('Overworld');
+          return Math.round(sc['dialogueContainer'].list[0].getBounds().left);
+        });
+        await shootClip(`docs-guardians-${id}-avatar`, { x: panelLeft + 22, y: 21, width: 166, height: 162 });
         await shoot(`mentor-${id}`);
         // Bloch's panel is the one that looks materially different in
         // Superposition Mode, where every world is already reachable, and

@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import type { GuardianPanelHost } from '../OverworldScene';
+import { renderGuardianHeader } from './guardianHeader';
 import { makeFeynmanAvatar } from '../../art/feynman';
-import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
 import { fontPx } from '../../ui/text';
 import { PANEL_BG } from '../../ui/theme';
@@ -54,24 +54,13 @@ export function showFeynmanPanel(scene: GuardianPanelHost) {
 
   let y = top;
 
-  const avatarY = y + 42;
-  const avatar = makeFeynmanAvatar(scene);
-  avatar.setPosition(CANVAS_W / 2, avatarY);
-  container.add(avatar);
-  scene.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-  playGuardianChime();
-  y = avatarY + 48;
-
-  const intro = scene.add
-    .text(
-      CANVAS_W / 2,
-      y,
-      '"A tensor network and a Feynman diagram draw the same trick two ways: a vertex for every point, a line for every leg. Show me you understand a move you already carry, and I will draw a higher-order correction into it. Paid for whether it lands or not."',
-      { fontSize: fontPx(scene, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
-    )
-    .setOrigin(0.5, 0);
-  container.add(intro);
-  y += intro.height + 14;
+  y = renderGuardianHeader(scene, container, {
+    y,
+    panelWidth,
+    avatar: makeFeynmanAvatar,
+    quote: '"A tensor network and a Feynman diagram draw the same trick two ways: a vertex for every point, a line for every leg. Show me you understand a move you already carry, and I will draw a higher-order correction into it. Paid for whether it lands or not."',
+    introPx: fontPx(scene, 11),
+  });
 
   y = renderMoveLevelList(scene, container, y, panelWidth);
   y += 8;

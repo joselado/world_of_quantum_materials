@@ -16,7 +16,6 @@ import { makeSklodowskaCurieAvatar } from '../art/sklodowskaCurie';
 import { makeKondoAvatar } from '../art/kondo';
 import { makeAndersonAvatar } from '../art/anderson';
 import { makeFranklinAvatar } from '../art/franklin';
-import { playGuardianChime } from '../audio/sfx';
 import { stopMoveEffectPreview } from '../art/moveEffectPreview';
 import { project, CANVAS_W, CANVAS_H, LANE_PX } from '../art/perspective';
 import {
@@ -72,6 +71,7 @@ import type { WorldScale } from '../world/generators/shared';
 import { fontPx, fontScale, fitProseToBudget } from '../ui/text';
 import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX, TUTORIAL_CYAN, STORY_LAVENDER } from '../ui/theme';
 import { music } from '../audio/music';
+import { renderGuardianHeader } from './panels/guardianHeader';
 import { showNoetherShop } from './panels/noether';
 import { showSklodowskaCuriePanel } from './panels/sklodowskaCurie';
 import { showKondoPanel } from './panels/kondo';
@@ -3019,25 +3019,13 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
 
     let y = top;
 
-    const avatarY = y + 42;
-    const avatar = guardian.avatar(this);
-    avatar.setPosition(CANVAS_W / 2, avatarY);
-    container.add(avatar);
-    this.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    playGuardianChime();
-    y = avatarY + 48;
-
-    const intro = this.add
-      .text(CANVAS_W / 2, y, `"${guardian.quote}"`, {
-        fontSize: fontPx(this, 11),
-        fontStyle: 'italic',
-        color: '#cfd8ff',
-        align: 'center',
-        wordWrap: { width: panelWidth - 80 },
-      })
-      .setOrigin(0.5, 0);
-    container.add(intro);
-    y += intro.height + 14;
+    y = renderGuardianHeader(this, container, {
+      y,
+      panelWidth,
+      avatar: guardian.avatar,
+      quote: `"${guardian.quote}"`,
+      introPx: fontPx(this, 11),
+    });
 
     const note = this.add
       .text(CANVAS_W / 2, y, `${guardian.name} has nothing to teach you yet. More to come.`, {

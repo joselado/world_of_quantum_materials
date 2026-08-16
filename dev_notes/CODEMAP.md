@@ -91,6 +91,9 @@ game/src/
     panels/                    One file per guardian's panel UI (see "Guardian panels" below),
                                  e.g. noether.ts's showNoetherShop(), sklodowskaCurie.ts's
                                  showSklodowskaCuriePanel(), anderson.ts's showAndersonPanel() --
+                                 guardianHeader.ts's renderGuardianHeader() is the large-portrait-
+                                 plus-opening-line block all of them (and showGuardianLore) open
+                                 with,
                                  passiveList.ts's renderChoiceList() is the shared
                                  buy-list-plus-switch engine franklin.ts calls (via its own
                                  renderPassiveList() wrapper), kept in its own file rather than
@@ -744,7 +747,15 @@ everything else by absence, so only two things in it carry meaning.
   `renderPassiveList` adapter over its own `passivesUnlocked`/`activePassiveByOwner` registry
   keys) is the current example, kept in its own file even with a single caller today since a
   future guardian selling another flat, non-previewable "buy several, equip one" kit could reuse
-  it the same way. `listDetail.ts`'s own `renderListColumn`/`renderMoveDetailHeader`/
+  it the same way. `guardianHeader.ts`'s `renderGuardianHeader` is the block every one of those
+  panels opens with -- that guardian's own avatar at `PORTRAIT_SCALE`, standing in its own column
+  at the panel's left edge, with their opening line beside it (STYLE.md's "Guardian panel
+  headers") -- called by all ten plus `OverworldScene.showGuardianLore`, which is the fallback a
+  guardian added before its own mechanic is built lands on. It takes `panelWidth` and the intro's
+  font size as parameters rather than deriving either, since the panels are not all one width and
+  several cap their own intro font below the text-size setting. It also plays the shared
+  `playGuardianChime`, so a panel never calls that itself. `listDetail.ts`'s own
+  `renderListColumn`/`renderMoveDetailHeader`/
   `renderSelfBuffMoveDetailHeader`/`renderStatusAndConfirm`/`insertColumnDivider`/
   `renderListColumnFooter`/`destroyPanel`/`sideBySideColumns` (see the file-tree entry above) is the
   genuinely multi-caller case, shared today by Dresselhaus/Anderson/Majorana/Noether/Kondo/

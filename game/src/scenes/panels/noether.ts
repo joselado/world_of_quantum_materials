@@ -1,7 +1,6 @@
 import type Phaser from 'phaser';
 import type { GuardianPanelHost } from '../OverworldScene';
 import { makeNoetherAvatar } from '../../art/noether';
-import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
 import { fontPx, fontScale } from '../../ui/text';
 import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
@@ -21,6 +20,7 @@ import {
   renderStatusAndConfirm,
 } from './listDetail';
 import { stopMoveEffectPreview } from '../../art/moveEffectPreview';
+import { renderGuardianHeader } from './guardianHeader';
 
 // Noether appears once the player reaches world 1's middle tile, selling
 // the other early moves and stat upgrades for qumatessence, in two tabs of
@@ -56,24 +56,13 @@ export function showNoetherShop(scene: GuardianPanelHost) {
 
   let y = top;
 
-  const avatarY = y + 42;
-  const avatar = makeNoetherAvatar(scene);
-  avatar.setPosition(CANVAS_W / 2, avatarY);
-  container.add(avatar);
-  scene.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-  playGuardianChime();
-  y = avatarY + 48;
-
-  const intro = scene.add
-    .text(
-      CANVAS_W / 2,
-      y,
-      '"I am Noether. Every symmetry hides a conservation law. Spend your qumatessence on a new attack, or a sharper stat."',
-      { fontSize: fontPx(scene, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
-    )
-    .setOrigin(0.5, 0);
-  container.add(intro);
-  y += intro.height + 10;
+  y = renderGuardianHeader(scene, container, {
+    y,
+    panelWidth,
+    avatar: makeNoetherAvatar,
+    quote: '"I am Noether. Every symmetry hides a conservation law. Spend your qumatessence on a new attack, or a sharper stat."',
+    introPx: fontPx(scene, 11),
+  });
 
   y = renderShopTabs(scene, container, y);
   y += 6;

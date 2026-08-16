@@ -1,7 +1,7 @@
 import type Phaser from 'phaser';
 import type { GuardianPanelHost } from '../OverworldScene';
+import { renderGuardianHeader } from './guardianHeader';
 import { makeSklodowskaCurieAvatar } from '../../art/sklodowskaCurie';
-import { playGuardianChime } from '../../audio/sfx';
 import { ULTIMATE_SHAPES } from '../../art/attackEffects';
 import { CANVAS_W } from '../../art/perspective';
 import { fontScale } from '../../ui/text';
@@ -74,14 +74,6 @@ export function showSklodowskaCuriePanel(scene: GuardianPanelHost) {
 
   let y = top;
 
-  const avatarY = y + 42;
-  const avatar = makeSklodowskaCurieAvatar(scene);
-  avatar.setPosition(CANVAS_W / 2, avatarY);
-  container.add(avatar);
-  scene.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-  playGuardianChime();
-  y = avatarY + 48;
-
   // Capped tighter than the ordinary intro-quote scaling every other
   // guardian panel uses (STYLE.md) -- Skłodowska-Curie's own quote is the
   // longest in the game (it names all ten guardians) and this panel now
@@ -91,16 +83,13 @@ export function showSklodowskaCuriePanel(scene: GuardianPanelHost) {
   // own confirm rows off the bottom of the canvas (same failure mode
   // Anderson's own headline cap, STYLE.md, guards against).
   const introScale = Math.min(fontScale(scene), 1.15);
-  const intro = scene.add
-    .text(
-      CANVAS_W / 2,
-      y,
-      '"I am Skłodowska-Curie, and I lead this circle of guardians: Noether, Bloch, Dresselhaus, Landau, Majorana, Anderson, Feynman, Kondo, Franklin, and I. Here is our last lesson. Answer three questions on the physics running through everything you have learned, all three correct, and your crystal strikes with a force none of the others can match. Miss even one and the blow lands nowhere at all. Tell me which quasiparticle should carry it, too. A new one costs dearly to unlock, but once bought it is yours to wear again for free."',
-      { fontSize: `${Math.round(11 * introScale)}px`, fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
-    )
-    .setOrigin(0.5, 0);
-  container.add(intro);
-  y += intro.height + 14;
+  y = renderGuardianHeader(scene, container, {
+    y,
+    panelWidth,
+    avatar: makeSklodowskaCurieAvatar,
+    quote: '"I am Skłodowska-Curie, and I lead this circle of guardians: Noether, Bloch, Dresselhaus, Landau, Majorana, Anderson, Feynman, Kondo, Franklin, and I. Here is our last lesson. Answer three questions on the physics running through everything you have learned, all three correct, and your crystal strikes with a force none of the others can match. Miss even one and the blow lands nowhere at all. Tell me which quasiparticle should carry it, too. A new one costs dearly to unlock, but once bought it is yours to wear again for free."',
+    introPx: `${Math.round(11 * introScale)}px`,
+  });
 
   y = renderUltimateColumns(scene, container, y, panelWidth);
   y += 8;

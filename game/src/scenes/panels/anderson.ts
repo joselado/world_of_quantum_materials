@@ -1,8 +1,8 @@
 import type Phaser from 'phaser';
 import type { GuardianPanelHost } from '../OverworldScene';
+import { renderGuardianHeader } from './guardianHeader';
 import { makeAndersonAvatar } from '../../art/anderson';
 import { killTweensDeep } from '../../art/crystals';
-import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
 import { fontPx, fontScale } from '../../ui/text';
 import { PANEL_BG } from '../../ui/theme';
@@ -96,27 +96,16 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
 
   let y = top;
 
-  const avatarY = y + 42;
-  const avatar = makeAndersonAvatar(scene);
-  avatar.setPosition(CANVAS_W / 2, avatarY);
-  container.add(avatar);
-  scene.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-  playGuardianChime();
-  y = avatarY + 48;
-
   const superposition = scene.isSuperpositionMode();
-  const intro = scene.add
-    .text(
-      CANVAS_W / 2,
-      y,
-      superposition
-        ? '"I am Anderson. In superposition any quantum material can be doped in as an impurity. Pick one, and I\'ll teach you the channel it opens, active for as long as that impurity stays doped in; a new one replaces it."'
-        : '"I am Anderson. Dope in a defeated quantum material as an impurity, and I\'ll teach you the one channel it opens, active only while that impurity stays doped in; a new dopant replaces it. One impurity, placed on purpose, is a question. Enough of them, placed by no one, is a verdict. I teach the dose."',
-      { fontSize: fontPx(scene, 11), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
-    )
-    .setOrigin(0.5, 0);
-  container.add(intro);
-  y += intro.height + 14;
+  y = renderGuardianHeader(scene, container, {
+    y,
+    panelWidth,
+    avatar: makeAndersonAvatar,
+    quote: superposition
+      ? '"I am Anderson. In superposition any quantum material can be doped in as an impurity. Pick one, and I\'ll teach you the channel it opens, active for as long as that impurity stays doped in; a new one replaces it."'
+      : '"I am Anderson. Dope in a defeated quantum material as an impurity, and I\'ll teach you the one channel it opens, active only while that impurity stays doped in; a new dopant replaces it. One impurity, placed on purpose, is a question. Enough of them, placed by no one, is a verdict. I teach the dose."',
+    introPx: fontPx(scene, 11),
+  });
 
   // Font capped tighter than the detail-pane content below (Franklin's own
   // precedent for capping a font against overflow, STYLE.md, applied more

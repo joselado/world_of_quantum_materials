@@ -1,7 +1,7 @@
 import type { GuardianPanelHost } from '../OverworldScene';
+import { renderGuardianHeader } from './guardianHeader';
 import { makeKondoAvatar } from '../../art/kondo';
 import { killTweensDeep } from '../../art/crystals';
-import { playGuardianChime } from '../../audio/sfx';
 import { CANVAS_W } from '../../art/perspective';
 import { fontScale } from '../../ui/text';
 import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
@@ -72,14 +72,6 @@ export function showKondoPanel(scene: GuardianPanelHost) {
 
   let y = top;
 
-  const avatarY = y + 42;
-  const avatar = makeKondoAvatar(scene);
-  avatar.setPosition(CANVAS_W / 2, avatarY);
-  container.add(avatar);
-  scene.tweens.add({ targets: avatar, y: avatarY + 8, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-  playGuardianChime();
-  y = avatarY + 48;
-
   // Capped tighter than the ordinary intro-quote scaling every other guardian
   // panel uses (STYLE.md), same reasoning/cap as Landau's own intro
   // (panels/landau.ts) -- this panel now carries a full list+detail layout
@@ -87,16 +79,13 @@ export function showKondoPanel(scene: GuardianPanelHost) {
   // and an uncapped quote at the largest text-size preset pushed the detail
   // pane's own confirm button past the bottom of the canvas.
   const introScale = Math.min(fontScale(scene), 1.15);
-  const intro = scene.add
-    .text(
-      CANVAS_W / 2,
-      y,
-      '"I am Kondo. Any quantum material can turn its own disorder to its advantage: screen itself, scatter its own signature, cascade its own coherence back together. Learn a technique, then tell me which one to hold. Only one at a time."',
-      { fontSize: `${Math.round(11 * introScale)}px`, fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: panelWidth - 80 } }
-    )
-    .setOrigin(0.5, 0);
-  container.add(intro);
-  y += intro.height + 14;
+  y = renderGuardianHeader(scene, container, {
+    y,
+    panelWidth,
+    avatar: makeKondoAvatar,
+    quote: '"I am Kondo. Any quantum material can turn its own disorder to its advantage: screen itself, scatter its own signature, cascade its own coherence back together. Learn a technique, then tell me which one to hold. Only one at a time."',
+    introPx: `${Math.round(11 * introScale)}px`,
+  });
 
   const panelLeft = CANVAS_W / 2 - panelWidth / 2;
   const columns = listDetailColumns(panelLeft);
