@@ -71,6 +71,22 @@ What this means in practice:
 - **Per-frame work is the budget; build-once work is nearly free.** An effect
   computed once when a scene or panel is built costs almost nothing; the same
   effect recomputed every frame is what ends up being cut.
+- **Know what a Phaser draw call costs before reaching for it.** Phaser
+  re-tessellates a Graphics object's whole command list on every frame it
+  renders, and three of its convenience calls carry a price their signature
+  does not show:
+  - **A filled path runs through a general polygon triangulator**, so a shape
+    whose triangles are already known should say so. `art/shapes.ts`'s
+    `fillPolygon` fills a four-point convex shape (every projected tile) as two
+    triangles instead, and `drawSilhouette`-style ribbons are drawn as a strip
+    of quads.
+  - **A path that touches itself is far worse than one that does not** -- the
+    triangulator drops to a recovery path quadratic in the point count. An
+    outline whose two sides can meet (a crest line clamped against its own
+    floor) is the case to watch.
+  - **`fillCircle` tessellates to about a hundred segments whatever its
+    radius.** Use `art/shapes.ts`'s `fillDot`, which sizes the count off the
+    radius the way `ellipseSteps` does for every other round shape.
 - **When an effect cannot be made affordable, cut it and say so.** Shipping a
   cost quietly is the failure mode this rule exists to prevent.
 

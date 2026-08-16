@@ -71,8 +71,16 @@ const DISTANT_DROWN = 0.8;
 // distant ridge, and a base that meets the mist with no line in it. Each
 // copy is repeated with its crest dropped a pixel at a time, which is the
 // softness on the top edge against the sky.
-const DISTANT_SWALLOW_STEPS = 6;
-const DISTANT_FEATHER_PX = 3;
+//
+// The whole silhouette is redrawn once per copy on every frame, so the two
+// counts multiply into the most-drawn shape in the game and are kept only as
+// high as the ramp needs. Each copy carries the alpha that composites to the
+// authored swallow (see drawDistantSelf), so raising or lowering them changes
+// how finely the ramp is stepped, never how dark the ridge ends up: at these
+// counts no pixel differs from a far more finely stepped ramp by more than a
+// thirtieth of a value, which is below what the screen can show.
+const DISTANT_SWALLOW_STEPS = 4;
+const DISTANT_FEATHER_PX = 2;
 
 // What hazeTarget needs to resolve a biome's haze: which world the player is
 // in, how much of the next world's air has arrived (forwardHazeBlend), and a
@@ -420,6 +428,12 @@ function drawPassAperture(g: Phaser.GameObjects.Graphics, view: AtmosphereView, 
 // stripes across the whole far distance as soon as it is not (a haze carrying
 // the next world's fog color, biomes.ts's note on holding `fogTarget` near
 // the floor colors).
+// How tall one band of a vertical fade is. A band interpolates linearly where
+// the ramp it stands in may curve, and that error falls with the square of the
+// band count -- ten pixels holds it near a thousandth of an alpha step on the
+// steepest ramp here, which is well under what a screen can show.
+const FADE_BAND_PX = 10;
+
 function fillVerticalFade(
   g: Phaser.GameObjects.Graphics,
   colorAt: (y: number) => number,
@@ -427,16 +441,31 @@ function fillVerticalFade(
   height: number,
   alphaAt: (t: number) => number
 ) {
-  const rows = Math.max(1, Math.round(height));
-  for (let i = 0; i < rows; i++) {
-    const y = top + i * (height / rows);
-    // The ramp is sampled at each row's far edge, so the last row painted
-    // lands on alphaAt(1) exactly. A fade that has to arrive opaque (the sky
-    // blend meeting the horizon line) otherwise stops a row short and leaves
-    // a sliver of un-hazed sky against fully-hazed mist -- a hairline seam at
-    // precisely the join this pass exists to remove.
-    g.fillStyle(colorAt(y), alphaAt((i + 1) / rows));
-    g.fillRect(0, y, CANVAS_W, height / rows);
+  // Painted as a handful of gradient bands rather than a row of flat ones.
+  // Phaser interpolates both colour and alpha across a rect's corners, so one
+  // band covering ten scanlines carries the same ramp those ten flat rows
+  // spelled out one at a time -- and the ramp is what this draws, so a
+  // continuous one is if anything truer to it than a staircase was. The whole
+  // atmosphere is repainted every frame in every world, and at a row apiece
+  // this was the single most numerous thing the game drew.
+  //
+  // Bands still abut exactly rather than overlapping: two translucent rects
+  // sharing a scanline blend twice there and draw a bright line at every seam.
+  const bands = Math.max(1, Math.min(Math.round(height), Math.ceil(height / FADE_BAND_PX)));
+  for (let i = 0; i < bands; i++) {
+    const t0 = i / bands;
+    const t1 = (i + 1) / bands;
+    const y0 = top + t0 * height;
+    const y1 = top + t1 * height;
+    // The ramp still arrives at alphaAt(1) exactly on the last band's lower
+    // edge. A fade that has to arrive opaque (the sky blend meeting the
+    // horizon line) otherwise stops short and leaves a sliver of un-hazed sky
+    // against fully-hazed mist -- a hairline seam at precisely the join this
+    // pass exists to remove.
+    const cTop = colorAt(y0);
+    const cBot = colorAt(y1);
+    g.fillGradientStyle(cTop, cTop, cBot, cBot, alphaAt(t0), alphaAt(t0), alphaAt(t1), alphaAt(t1));
+    g.fillRect(0, y0, CANVAS_W, y1 - y0);
   }
 }
 
@@ -528,15 +557,34 @@ function drawDistantSelf(g: Phaser.GameObjects.Graphics, view: AtmosphereView, t
 // a crest beside it still clears the fog. Crests are clamped to MAX_CREST,
 // which is the height the mist band is sized to cover; a profile reaching
 // past it would stand against open sky.
+// Painted as one quad per profile segment rather than as a single filled
+// path. The floor is clamped up to the crest wherever a dip is swallowed
+// whole, so the outline's two sides meet there and the path touches itself --
+// and a self-touching path sends Phaser's triangulator down its recovery
+// path, which is quadratic in the point count. A profile is a couple of
+// hundred points and the whole silhouette is redrawn `passes` times a frame,
+// which made this one shape the most expensive thing the game drew.
+//
+// The strip covers exactly the same region: consecutive quads share an edge,
+// and a segment whose floor has already met its crest contributes no area.
 function fillSilhouette(g: Phaser.GameObjects.Graphics, profile: HorizonPoint[], foot: number, drop: number) {
-  const points: Phaser.Types.Math.Vector2Like[] = [];
-  const back: Phaser.Types.Math.Vector2Like[] = [];
-  for (const p of profile) {
+  let prevX = 0;
+  let prevCrest = 0;
+  let prevFloor = 0;
+  for (let i = 0; i < profile.length; i++) {
+    const p = profile[i];
     const h = Math.min(p.h, MAX_CREST);
     const crest = HORIZON_Y - h + drop;
-    points.push({ x: p.x, y: crest });
-    back.push({ x: p.x, y: Math.max(HORIZON_Y - h * foot, crest) });
+    const floor = Math.max(HORIZON_Y - h * foot, crest);
+    // A segment whose floor has met its crest at both ends is a strip of no
+    // height: it covers nothing, and the later swallow steps leave every
+    // shallow dip in the profile exactly there.
+    if (i > 0 && (floor > crest || prevFloor > prevCrest)) {
+      g.fillTriangle(prevX, prevCrest, p.x, crest, p.x, floor);
+      g.fillTriangle(prevX, prevCrest, p.x, floor, prevX, prevFloor);
+    }
+    prevX = p.x;
+    prevCrest = crest;
+    prevFloor = floor;
   }
-  back.reverse();
-  g.fillPoints(points.concat(back), true);
 }

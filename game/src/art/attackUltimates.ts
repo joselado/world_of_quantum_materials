@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { EffectAnchor } from './attackAnchors';
 import { GROUND_DROP, GROUND_ASPECT, drawBloom, drawAnnulus, drawArcRing, drawTaperedRays } from './attackShapes';
 import { fxGraphics, fxCounter } from './attackFx';
+import { fillDot } from './shapes';
 
 // Skłodowska-Curie's Ultimate pair (§5, World 10, ULTIMATE_SHAPES) -- the
 // flashiest tier, a 4-6s "Final-Fantasy-style summon" sequence rather than a
@@ -107,7 +108,7 @@ function playMeteorCharge(scene: Phaser.Scene, color: number, to: EffectAnchor, 
         const ty = massY - i * 14;
         if (ty < originY) continue;
         mass.fillStyle(i % 2 === 0 ? 0xffffff : color, Math.max(0, 0.5 - i * 0.06));
-        mass.fillCircle(massX + Math.sin(t * 22 + i) * (6 - i * 0.4) * scale, ty, Math.max(2, massR * 0.5 - i * 2));
+        fillDot(mass, massX + Math.sin(t * 22 + i) * (6 - i * 0.4) * scale, ty, Math.max(2, massR * 0.5 - i * 2));
       }
       for (let i = 0; i < 5; i++) {
         const ang = t * 9 + (i / 5) * Math.PI * 2;
@@ -115,7 +116,7 @@ function playMeteorCharge(scene: Phaser.Scene, color: number, to: EffectAnchor, 
         // Ember-bright rather than rock-brown: these draw additively, and an
         // additive dark brown against a bright sky adds up to nothing.
         mass.fillStyle(0xd9762a, 0.9);
-        mass.fillCircle(massX + Math.cos(ang) * orbR, massY + Math.sin(ang) * orbR * 0.6, 4 * scale);
+        fillDot(mass, massX + Math.cos(ang) * orbR, massY + Math.sin(ang) * orbR * 0.6, 4 * scale);
       }
       // Kept translucent rather than a solid fill: additive at full strength
       // over a bright sky saturates to a flat white disc, while a softer
@@ -125,7 +126,7 @@ function playMeteorCharge(scene: Phaser.Scene, color: number, to: EffectAnchor, 
       // body rather than dead center, so it reads as a lit mass with a
       // direction of travel instead of a flat glowing ball.
       mass.fillStyle(0xffffff, 0.7);
-      mass.fillCircle(massX, massY + massR * 0.25, massR * 0.45);
+      fillDot(mass, massX, massY + massR * 0.25, massR * 0.45);
 
       circle.clear();
       const pulse = 0.6 + 0.4 * Math.sin(t * 28);
@@ -177,7 +178,7 @@ function playMeteorImpact(
       if (whiff) {
         const r = Math.max(0, 34 * (1 - t)) * scale;
         g.fillStyle(drawColor, 0.35 * (1 - t));
-        g.fillCircle(to.x, to.y - 18 * (1 - t), r);
+        fillDot(g, to.x, to.y - 18 * (1 - t), r);
         g.lineStyle(2 * scale, 0x999999, 0.35 * (1 - t));
         g.strokeEllipse(to.x, groundY, 40 * (1 - t) * scale, 14 * (1 - t) * scale);
         return;
@@ -226,7 +227,7 @@ function playMeteorAftermath(
         const ang = -Math.PI / 2 + (i - (emberCount - 1) / 2) * 0.32;
         const dist = t * spread;
         g.fillStyle(i % 2 === 0 ? 0xffffff : emberColor, (1 - t) * 0.75);
-        g.fillCircle(to.x + Math.cos(ang) * dist, groundY - t * 26 * scale + Math.sin(ang) * dist * 0.3, 2.5 * (1 - t * 0.6) * scale);
+        fillDot(g, to.x + Math.cos(ang) * dist, groundY - t * 26 * scale + Math.sin(ang) * dist * 0.3, 2.5 * (1 - t * 0.6) * scale);
       }
     },
     onComplete: () => {
@@ -328,7 +329,7 @@ function playNovaCharge(scene: Phaser.Scene, color: number, to: EffectAnchor, on
       const pulse = 0.7 + 0.3 * Math.sin(t * 36);
       drawBloom(g, color, to.x, to.y, coreR * pulse, 0.5 + t * 0.4);
       g.fillStyle(0xffffff, 0.55 + t * 0.35);
-      g.fillCircle(to.x, to.y, coreR * 0.5 * pulse);
+      fillDot(g, to.x, to.y, coreR * 0.5 * pulse);
       drawAnnulus(g, color, to.x, to.y, coreR * 2.4, (2 + t * 3) * scale, 0.25 + t * 0.5);
     },
     onComplete: () => {
@@ -372,7 +373,7 @@ function playNovaImpact(
       if (whiff) {
         const r = Math.max(0, 26 * (1 - t)) * scale;
         g.fillStyle(drawColor, 0.4 * (1 - t));
-        g.fillCircle(to.x, to.y, r);
+        fillDot(g, to.x, to.y, r);
         g.lineStyle(2 * scale, 0x999999, 0.35 * (1 - t));
         g.strokeCircle(to.x, to.y, 14 * (1 - t) * scale);
         return;
@@ -413,13 +414,13 @@ function playNovaAftermath(
       const t = tw.getValue() ?? 0;
       g.clear();
       g.fillStyle(emberColor, 0.35 * (1 - t));
-      g.fillCircle(to.x, to.y, (whiff ? 8 : 40) * (1 - t) * scale);
+      fillDot(g, to.x, to.y, (whiff ? 8 : 40) * (1 - t) * scale);
       const shards = whiff ? 8 : 10;
       for (let i = 0; i < shards; i++) {
         const ang = (i / shards) * Math.PI * 2;
         const dist = t * spread;
         g.fillStyle(i % 2 === 0 ? 0xffffff : emberColor, (1 - t) * 0.75);
-        g.fillCircle(to.x + Math.cos(ang) * dist, to.y + Math.sin(ang) * dist, 2.5 * (1 - t * 0.7) * scale);
+        fillDot(g, to.x + Math.cos(ang) * dist, to.y + Math.sin(ang) * dist, 2.5 * (1 - t * 0.7) * scale);
       }
     },
     onComplete: () => {

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { fillDot } from './shapes';
 
 // Ground halos for Franklin's three passives (data/passives.ts's
 // fractionalGuard/anyonEcho/edgeCurrent, world 9) -- each one visualizes its
@@ -56,7 +57,7 @@ function drawDiffractionShadowHalo(
     const jitter = (Math.sin(i * 12.9898) * 0.5 + 0.5) * 0.5 + 0.5;
     const rMult = 1.1 + jitter * 0.35;
     g.fillStyle(0x6a5a80, (0.35 + jitter * 0.35) * alpha);
-    g.fillCircle(x + Math.cos(ang) * rx * rMult, y + Math.sin(ang) * ry * rMult, 1.5 + jitter * 1.5);
+    fillDot(g, x + Math.cos(ang) * rx * rMult, y + Math.sin(ang) * ry * rMult, 1.5 + jitter * 1.5);
   }
   container.add(g);
 }

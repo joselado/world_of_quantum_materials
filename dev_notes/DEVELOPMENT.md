@@ -612,7 +612,16 @@ Three checks:
 fresh on every visit and a world's count moves a few percent between runs.
 Raising an entry is a deliberate act — if a world genuinely needs to draw more,
 raise its ceiling and say why, rather than nudging numbers until the suite is
-quiet.
+quiet. Lowering one is the other half of the same rule: when a pass gets
+cheaper, the ceiling comes down with it, or the headroom quietly becomes room
+for the next regression to hide in.
+
+Op counts are comparable across builds only while the *kinds* of call stay the
+same. A change that swaps one call for another shape of call — a filled path
+for two triangles, a rect per scanline for a few gradient bands — moves the
+number for a reason that has nothing to do with how hard the frame is to draw,
+so re-baseline the budgets in the same change rather than reading the
+difference as a win or a loss.
 
 It does not tell you the game feels smooth on your machine, only that nothing
 has started doing dramatically more work than it used to. Your own eyes remain

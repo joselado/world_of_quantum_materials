@@ -8,6 +8,7 @@ import { CAMERA_BACK_TILES, DRAW_DISTANCE_TILES, gridH, gridW, laneClipAt, proje
 import { drawDepthHaze, hazeTarget } from '../sky';
 import { groundColor } from './color';
 import { GROUND_MOTIFS_ENABLED, decorateTile } from './decoration';
+import { fillPolygon } from '../../../art/shapes';
 import { TERRAIN_ACCENTS } from './materials';
 import { drawStormStrikes } from './materials/charged';
 import { offPathKindOf } from './plan';
@@ -86,7 +87,7 @@ export function drawTerrain(view: TerrainView) {
         if (tile.regionTint != null) color = blend(color, tile.regionTint, regionTintAt(depthRatio, 0.55));
         color = seamed(view, color, y);
         g.fillStyle(color, 1);
-        g.fillPoints(fill, true);
+        fillPolygon(g, fill);
         drawBandBoundary(g, tile.biome, y, pFL, pFR, pNR, pNL, depthRatio);
         if (contour) drawContactShadow(g, contour, tile.biome, camX, camY, depthRatio);
         if (GROUND_MOTIFS_ENABLED && depthRatio < DETAIL_MAX_DEPTH && tile.decorate) {
@@ -210,10 +211,10 @@ function drawMarginRows(view: TerrainView, deepestRow: number) {
         let color = groundColor(bandBase(tile.biome, tile.biome.path, gy), depthRatio, walkableHazeTarget(view, tile.biome, depthRatio));
         if (tile.regionTint != null) color = blend(color, tile.regionTint, regionTintAt(depthRatio, 0.55));
         g.fillStyle(color, 1);
-        g.fillPoints(fill, true);
+        fillPolygon(g, fill);
       } else if (tile.kind === 'path') {
         g.fillStyle(offPathColor(view, tile.biome, tile.regionTint, gy, depthRatio), 1);
-        g.fillPoints(fill, true);
+        fillPolygon(g, fill);
       } else {
         drawOffPathTile(view, tile, fill, null, pFL, pFR, pNR, pNL, x, gy, depthRatio);
       }
@@ -244,7 +245,7 @@ function drawMarginTile(view: TerrainView, edge: TerrainTile, gx: number, y: num
   const fill = [pFL, pFR, pNR, pNL];
 
   g.fillStyle(offPathColor(view, edge.biome, edge.regionTint, y, depthRatio), 1);
-  g.fillPoints(fill, true);
+  fillPolygon(g, fill);
 
   if (depthRatio <= DETAIL_MAX_DEPTH) {
     const kind = edge.kind !== 'path' ? edge.kind : offPathKindOf(edge.biome);
@@ -270,7 +271,7 @@ function drawContactShadow(
   const fade = 1 - depthRatio / CONTACT_SHADOW_MAX_DEPTH;
   for (const strip of contour.shadow) {
     g.fillStyle(0x000000, (CONTACT_SHADOW_ALPHA[strip.band] ?? 0) * fade);
-    g.fillPoints(projectContour(strip.points, camX, camY), true);
+    fillPolygon(g, projectContour(strip.points, camX, camY));
   }
   if (contour.rim.length === 0) return;
   g.lineStyle(1.5, blend(biome.path, 0xffffff, 0.45), CONTOUR_RIM_ALPHA * fade);
@@ -326,7 +327,7 @@ function drawMidHighlight(
   if (depthRatio > 0.9) return;
   const pulse = 0.5 + 0.5 * Math.sin(view.now / 320);
   g.fillStyle(view.chokepointColor, 0.28 * pulse * (1 - depthRatio) * falloff);
-  g.fillPoints(fill, true);
+  fillPolygon(g, fill);
 }
 
 // Paints one impassable tile. Every off-path tile is flat ground in that
@@ -352,7 +353,7 @@ function drawOffPathTile(
 ) {
   const g = view.gfx;
   g.fillStyle(offPathColor(view, tile.biome, tile.regionTint, gy, depthRatio), 1);
-  g.fillPoints(fill, true);
+  fillPolygon(g, fill);
 
   drawBandBoundary(g, tile.biome, gy, pFL, pFR, pNR, pNL, depthRatio);
 
@@ -479,15 +480,12 @@ function drawBandBoundary(
   const fade = 1 - depthRatio / DETAIL_MAX_DEPTH;
 
   g.fillStyle(0x000000, BAND_STRIP_ALPHA * fade);
-  g.fillPoints(
-    [
-      { x: pNL.x, y: pNL.y },
-      { x: pNR.x, y: pNR.y },
-      { x: pNR.x + (pFR.x - pNR.x) * 0.4, y: pNR.y + (pFR.y - pNR.y) * 0.4 },
-      { x: pNL.x + (pFL.x - pNL.x) * 0.4, y: pNL.y + (pFL.y - pNL.y) * 0.4 },
-    ],
-    true
-  );
+  fillPolygon(g, [
+    { x: pNL.x, y: pNL.y },
+    { x: pNR.x, y: pNR.y },
+    { x: pNR.x + (pFR.x - pNR.x) * 0.4, y: pNR.y + (pFR.y - pNR.y) * 0.4 },
+    { x: pNL.x + (pFL.x - pNL.x) * 0.4, y: pNL.y + (pFL.y - pNL.y) * 0.4 },
+  ]);
 
   g.lineStyle(1.5, ramp.channel, BAND_CHANNEL_ALPHA * fade);
   g.lineBetween(pNL.x, pNL.y, pNR.x, pNR.y);

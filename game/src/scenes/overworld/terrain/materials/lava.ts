@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { blend } from '../../../../art/colors';
 import { LANE_PX } from '../../../../art/perspective';
-import { ellipseSteps } from '../../../../art/shapes';
+import { ellipseSteps, fillPolygon } from '../../../../art/shapes';
 import { TILE_SCALE } from '../../projection';
 import type { AccentTile } from '../types';
 
@@ -38,7 +38,7 @@ export function drawLavaAccent(g: Phaser.GameObjects.Graphics, { fill, cx, cy, s
 
   const u = TILE_PX * s;
   g.fillStyle(0xff5a1a, 0.24 * pulse);
-  g.fillPoints(fill, true);
+  fillPolygon(g, fill);
 
   // A fissure running through the crust, sized against the tile: this is the
   // still-open half of the world's two-tense damage, and it has to read as a

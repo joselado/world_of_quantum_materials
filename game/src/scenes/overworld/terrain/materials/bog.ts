@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { blend } from '../../../../art/colors';
 import { LANE_PX } from '../../../../art/perspective';
-import { ellipseSteps } from '../../../../art/shapes';
+import { ellipseSteps, fillPolygon, fillDot } from '../../../../art/shapes';
 import { gridH, TILE_SCALE } from '../../projection';
 import type { AccentTile } from '../types';
 
@@ -95,7 +95,7 @@ export function drawBogAccent(g: Phaser.GameObjects.Graphics, tile: AccentTile) 
   // away from the light.
   const drift = Math.sin(now / 2600 + gx * 0.5 + gy * 0.3);
   g.fillStyle(blend(0xbcc8bc, haze, 0.35), (0.02 + 0.2 * depth + 0.02 * drift) * detail);
-  g.fillPoints(tile.fill, true);
+  fillPolygon(g, tile.fill);
 
   // Reeds last, so they stand out of the mist instead of under it. Stalks
   // only -- a reed is a line, and the clump is what reads, so nothing here is
@@ -125,7 +125,7 @@ function drawMoment(g: Phaser.GameObjects.Graphics, tile: AccentTile, u: number,
     g.fillEllipse(cx, cy, 0.7 * u, 0.4 * u, ellipseSteps(0.7 * u, 0.4 * u));
     g.fillEllipse(cx, cy, 0.4 * u, 0.24 * u, ellipseSteps(0.4 * u, 0.24 * u));
     g.fillStyle(blend(0xeaf8ec, haze, air * 0.5), 0.85 * burn * pulse * detail);
-    g.fillCircle(cx, cy, 0.085 * u);
+    fillDot(g, cx, cy, 0.085 * u);
   }
 
   // The counter-lights: out wide and faint while the moment still burns, in
@@ -134,7 +134,7 @@ function drawMoment(g: Phaser.GameObjects.Graphics, tile: AccentTile, u: number,
   g.fillStyle(blend(0x8fb4c8, haze, air), (0.2 + 0.45 * shut) * detail);
   for (let i = 0; i < HALO_LIGHTS; i++) {
     const a = (i * Math.PI * 2) / HALO_LIGHTS + gx * 0.4 + gy * 0.2;
-    g.fillCircle(cx + Math.cos(a) * radius, cy + Math.sin(a) * radius * 0.6, (0.035 + 0.02 * shut) * u);
+    fillDot(g, cx + Math.cos(a) * radius, cy + Math.sin(a) * radius * 0.6, (0.035 + 0.02 * shut) * u);
   }
 }
 
@@ -170,10 +170,16 @@ function drawReeds(g: Phaser.GameObjects.Graphics, tile: AccentTile, u: number, 
   const root = cx + (hash(gx, gy, 21) - 0.5) * 0.8 * u;
   const base = cy + (0.1 + hash(gx, gy, 22) * 0.5) * u;
   g.lineStyle(1.2, blend(0x0d120e, haze, air), 0.85 * detail);
+  // The whole clump as one path. Every stalk is the same stroke, and the reeds
+  // are the most numerous stroke in the game, so one path per clump rather
+  // than one per stalk cuts the stroke calls to a fifth for the same drawing.
+  g.beginPath();
   for (let i = 0; i < stalks; i++) {
     const off = (hash(gx, gy, 30 + i) - 0.5) * 0.7 * u;
     const height = (0.4 + hash(gx, gy, 40 + i) * 0.45) * u;
     const lean = (hash(gx, gy, 50 + i) - 0.5) * 0.3 * u;
-    g.lineBetween(root + off, base, root + off + lean, base - height);
+    g.moveTo(root + off, base);
+    g.lineTo(root + off + lean, base - height);
   }
+  g.strokePath();
 }

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { AttackShape } from '../audio/sfx';
 import { latchAnchor, type EffectAnchor } from './attackAnchors';
 import { fxGraphics, fxCounter } from './attackFx';
+import { fillDot } from './shapes';
 
 // The single-beat shape family: a windup at the attacker, one travelling (or
 // target-summoned) silhouette, and an impact shockwave at the target. Every
@@ -52,13 +53,13 @@ export const GROUND_ASPECT = 0.28;
 // `alpha` scales the whole stack, so a caller fades a glow by fading this.
 export function drawGlow(g: Phaser.GameObjects.Graphics, color: number, x: number, y: number, r: number, alpha: number) {
   g.fillStyle(color, 0.9 * alpha);
-  g.fillCircle(x, y, r);
+  fillDot(g, x, y, r);
   g.fillStyle(color, 0.4 * alpha);
-  g.fillCircle(x, y, r * 1.75);
+  fillDot(g, x, y, r * 1.75);
   g.fillStyle(color, 0.18 * alpha);
-  g.fillCircle(x, y, r * 2.75);
+  fillDot(g, x, y, r * 2.75);
   g.fillStyle(color, 0.07 * alpha);
-  g.fillCircle(x, y, r * 4);
+  fillDot(g, x, y, r * 4);
 }
 
 // The same idea as drawGlow, for something that already has a body of its
@@ -68,9 +69,9 @@ export function drawGlow(g: Phaser.GameObjects.Graphics, color: number, x: numbe
 // outermost stop covers most of the field and washes the backdrop out.
 export function drawBloom(g: Phaser.GameObjects.Graphics, color: number, x: number, y: number, r: number, alpha: number) {
   g.fillStyle(color, 0.26 * alpha);
-  g.fillCircle(x, y, r * 1.5);
+  fillDot(g, x, y, r * 1.5);
   g.fillStyle(color, alpha);
-  g.fillCircle(x, y, r);
+  fillDot(g, x, y, r);
 }
 
 // Draws one wavefront as a soft-edged annulus: three concentric strokes a
@@ -151,7 +152,7 @@ export function drawArcRing(
   for (let i = 0; i < 4; i++) {
     const ang = spin * Math.PI * 1.3 + (i / 4) * Math.PI * 2;
     g.fillStyle(0xffffff, alpha);
-    g.fillCircle(x + Math.cos(ang) * r, y + Math.sin(ang) * r * flatten, 2.2 * scale);
+    fillDot(g, x + Math.cos(ang) * r, y + Math.sin(ang) * r * flatten, 2.2 * scale);
   }
 }
 
@@ -215,7 +216,7 @@ export function playWindup(
         const ang = seed + (i / sparks) * Math.PI * 2 + t * 1.2;
         const r = (26 - t * 23) * scale;
         g.fillStyle(0xffffff, 0.2 + t * 0.7);
-        g.fillCircle(at.x + Math.cos(ang) * r, at.y + Math.sin(ang) * r, 2.5 * scale);
+        fillDot(g, at.x + Math.cos(ang) * r, at.y + Math.sin(ang) * r, 2.5 * scale);
       }
       drawGlow(g, color, at.x, at.y, (2 + t * 5) * scale, 0.6 * t);
     },
@@ -309,12 +310,12 @@ export function playBolt(
         const s = Math.max(0, p - k * BOLT_TRAIL_STEP);
         const q = arcPoint(origin, to, s, scale);
         g.fillStyle(color, 0.55 * Math.pow(1 - k / BOLT_TRAIL, 1.7));
-        g.fillCircle(q.x, q.y, (5 - k * 0.4) * scale);
+        fillDot(g, q.x, q.y, (5 - k * 0.4) * scale);
       }
       const head = arcPoint(origin, to, p, scale);
       drawGlow(g, color, head.x, head.y, 4 * scale, 1);
       g.fillStyle(0xffffff, 0.6);
-      g.fillCircle(head.x, head.y, 1.8 * scale);
+      fillDot(g, head.x, head.y, 1.8 * scale);
     },
     onComplete: () => {
       g.destroy();
@@ -414,7 +415,7 @@ export function playBurst(
         const ang = s.phase + (i / BURST_PARTICLES) * Math.PI * 2 + t * 3;
         const r = spread * s.radius;
         g.fillStyle(color, 0.5 + t * 0.5);
-        g.fillCircle(c.x + Math.cos(ang) * r, c.y + Math.sin(ang) * r, 3.5 * s.size * scale);
+        fillDot(g, c.x + Math.cos(ang) * r, c.y + Math.sin(ang) * r, 3.5 * s.size * scale);
       }
     },
     onComplete: () => {
@@ -561,7 +562,7 @@ export function playBeam(
         if (sy < originY) continue;
         const sx = to.x + Math.sin(t * 34 + i * 1.7) * (14 - i) * scale;
         g.fillStyle(i % 2 === 0 ? 0xffffff : color, 0.85 - i * 0.11);
-        g.fillCircle(sx, sy, (3.2 - i * 0.22) * scale);
+        fillDot(g, sx, sy, (3.2 - i * 0.22) * scale);
       }
       // Once the head is down, a pool of light spreading across the ground
       // where the column meets it, with a few licks curling back up.

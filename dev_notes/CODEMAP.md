@@ -210,8 +210,11 @@ game/src/
                                   separate OVERHEAD_SKIES motifs read from the world stood in
     trees.ts                   The Mean Fields' tree sprite (world 1's `forest` material)
     shapes.ts                  ellipseSteps(w, h) -- how many points to draw an ellipse with,
-                                 bucketed by its on-screen size (see "Ellipse tessellation"
-                                 below)
+                                 bucketed by its on-screen size; fillDot(g, x, y, r) -- a filled
+                                 circle at that same point count, in place of Phaser's fixed
+                                 ~100-segment fillCircle; fillPolygon(g, pts) -- a filled convex
+                                 shape, two triangles for the four-point case rather than a
+                                 triangulated path (see "Ellipse tessellation" below)
     contours.ts                Smoothed walkable/impassable boundary geometry in tile space --
                                   per-tile ground outline, contact-shadow strips, rim light --
                                   built once per world-state by OverworldScene's cached terrain
@@ -1709,6 +1712,23 @@ that slid continuously with distance would re-tessellate a silhouette every fram
 moves, and an edge that re-cuts itself each frame crawls. Every per-tile ellipse in the terrain
 pass goes through it -- `art/trees.ts`'s crowns, `materials/lava.ts`, `materials/consuming.ts`,
 `materials/ice.ts` and `materials/charged.ts`'s strike pools -- and any new one should.
+
+`fillDot(g, x, y, r)` is the same budget for a filled circle: Phaser's own `fillCircle` goes
+through `arc`, which the renderer expands into about a hundred segments whatever the radius is,
+so a two-pixel spark costs what a screen-filling disc costs. Every per-frame circle uses it --
+the bog's moments and counter-lights, the star network, the passive halos, and the attack and
+ultimate effects.
+
+**Filled shapes and the triangulator.** Phaser runs every filled *path* through earcut on each
+frame the shape renders. `fillPolygon(g, pts)` short-circuits the four-point case -- every
+projected terrain tile, and the great majority of fills in a frame -- into two `fillTriangle`
+calls, which need no triangulation and reach the same pixels. Two further rules follow from the
+same machinery: a path that touches itself sends earcut down a recovery path quadratic in its
+point count, which is why the distant silhouette (`overworld/sky.ts`'s `fillSilhouette`) is
+painted as a strip of quads rather than as one outline whose crest and floor meet wherever a dip
+is swallowed; and a long vertical ramp is drawn as a few gradient-filled bands
+(`fillVerticalFade`) rather than a rect per scanline, since Phaser interpolates colour and alpha
+across a rect's corners.
 
 **Overworld depth layering.** `OverworldScene`'s corridor is a fixed stack of Phaser depths:
 `worldGfx` (the single `Graphics` mesh for the whole ground plane, repainted every frame -- see

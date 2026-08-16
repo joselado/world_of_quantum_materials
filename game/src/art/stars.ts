@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { blend } from './colors';
 import { CANVAS_W } from './perspective';
+import { fillDot } from './shapes';
 
 // The starfield the last four worlds carry (WORLDS.md section 1's "The
 // stars"), and what it is doing is telling the player what the final enemy is
@@ -208,12 +209,12 @@ export function drawStarNetwork(o: StarSky) {
     // switched on by World 10.
     const lit = complete ? 1 : 0.72;
     g.fillStyle(star, 0.9 * p.fade * twinkle * lit);
-    g.fillCircle(p.x, p.y, complete ? 1.9 : 1.3);
+    fillDot(g, p.x, p.y, complete ? 1.9 : 1.3);
     // A soft halo on the finished network only, which is the difference
     // between points in a sky and nodes that are doing something.
     if (complete) {
       g.fillStyle(star, 0.16 * p.fade * twinkle);
-      g.fillCircle(p.x, p.y, 4.2);
+      fillDot(g, p.x, p.y, 4.2);
     }
   });
 

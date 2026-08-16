@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { blend } from './colors';
 import { LANE_PX } from './perspective';
-import { ellipseSteps } from './shapes';
+import { ellipseSteps, fillPolygon } from './shapes';
 import { TILE_SCALE } from '../scenes/overworld/projection';
 import type { AccentTile } from '../scenes/overworld/terrain/types';
 
@@ -65,6 +65,61 @@ export function hasTree(gx: number, gy: number): boolean {
 // of its shape survives, so it collapses to one blob.
 const CROWN_SILHOUETTE_DETAIL = 0.45;
 
+// The three lobes of a full-strength crown, in units of `size`: centre offset,
+// and semi-axes -- half the width and height an ellipse of that lobe would be
+// drawn at, since Phaser sizes an ellipse by its diameters. The one place
+// their layout is stated.
+const CROWN_LOBES = [
+  { dx: -0.12, dy: 0, rx: 0.15, ry: 0.115 },
+  { dx: 0.12, dy: 0, rx: 0.135, ry: 0.105 },
+  { dx: 0, dy: -0.12, rx: 0.155, ry: 0.115 },
+];
+
+// The outline of those three lobes fused into one, worked out once at load and
+// scaled per tree. The lobes are a single colour at full alpha, so their union
+// is the whole of what reaches the screen and drawing it as one shape paints
+// the same crown for a third of the fills -- and a wood is hundreds of crowns
+// a frame, so the two fills saved on each are the difference between the
+// Mean Fields costing several times what every other world costs and costing
+// about the same.
+//
+// Every lobe contains the crown's own centre, so the union is star-shaped
+// about it: one radius per angle describes the whole outline. That radius is
+// the furthest any lobe reaches along the ray, which is the standard
+// ray/ellipse intersection -- the origin sits inside each ellipse, so each has
+// exactly one root ahead of it.
+function unionRadius(cos: number, sin: number): number {
+  let far = 0;
+  for (const l of CROWN_LOBES) {
+    const a = (cos * cos) / (l.rx * l.rx) + (sin * sin) / (l.ry * l.ry);
+    const b = -2 * ((l.dx * cos) / (l.rx * l.rx) + (l.dy * sin) / (l.ry * l.ry));
+    const c = (l.dx * l.dx) / (l.rx * l.rx) + (l.dy * l.dy) / (l.ry * l.ry) - 1;
+    const t = (-b + Math.sqrt(b * b - 4 * a * c)) / (2 * a);
+    if (t > far) far = t;
+  }
+  return far;
+}
+
+// One outline per point count the size buckets can ask for (art/shapes.ts),
+// so a distant crown is described by as few points as its own size warrants,
+// the same budget every other round shape here is held to.
+const CROWN_OUTLINES = new Map<number, { x: number; y: number }[]>();
+
+function crownOutline(steps: number): { x: number; y: number }[] {
+  let pts = CROWN_OUTLINES.get(steps);
+  if (pts) return pts;
+  pts = [];
+  for (let i = 0; i < steps; i++) {
+    const ang = (Math.PI * 2 * i) / steps;
+    const cos = Math.cos(ang);
+    const sin = Math.sin(ang);
+    const r = unionRadius(cos, sin);
+    pts.push({ x: cos * r, y: sin * r });
+  }
+  CROWN_OUTLINES.set(steps, pts);
+  return pts;
+}
+
 export function drawTree(g: Phaser.GameObjects.Graphics, tile: AccentTile, style: TreeStyle) {
   const { cx, cy, s, gx, gy, depth, haze, detail } = tile;
   if (detail <= 0) return;
@@ -108,9 +163,14 @@ export function drawTree(g: Phaser.GameObjects.Graphics, tile: AccentTile, style
     ellipse(g, x, crownY - 0.04 * size, 0.4 * size, 0.28 * size);
     return;
   }
-  ellipse(g, x - 0.12 * size, crownY, 0.3 * size, 0.23 * size);
-  ellipse(g, x + 0.12 * size, crownY, 0.27 * size, 0.21 * size);
-  ellipse(g, x, crownY - 0.12 * size, 0.31 * size, 0.23 * size);
+  // The three lobes as one shape (CROWN_OUTLINES). Sized off the widest lobe,
+  // so the point count tracks what the crown actually spans on screen.
+  const outline = crownOutline(ellipseSteps(0.55 * size, 0.35 * size));
+  const pts = new Array<{ x: number; y: number }>(outline.length);
+  for (let i = 0; i < outline.length; i++) {
+    pts[i] = { x: x + outline[i].x * size, y: crownY + outline[i].y * size };
+  }
+  fillPolygon(g, pts);
 }
 
 function ellipse(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number) {

@@ -40,6 +40,13 @@ export function drawIceAccent(g: Phaser.GameObjects.Graphics, tile: AccentTile) 
   // that shimmers.
   const shimmer = 0.5 + 0.3 * Math.sin(gx * 1.7 + gy * 2.3);
   g.lineStyle(1, blend(0xcdeeff, haze, air), 0.3 * shimmer * detail);
-  g.lineBetween(cx - 2.6 * s, cy - 0.4 * s, cx + 2.4 * s, cy - 1.1 * s);
-  g.lineBetween(cx - 2.2 * s, cy + 0.9 * s, cx + 2.6 * s, cy + 0.3 * s);
+  // Both cleavage lines in one path. They already share a stroke style, and a
+  // lake is a few hundred tiles a frame, so issuing them as one path halves
+  // the stroke calls the world makes without touching a pixel of it.
+  g.beginPath();
+  g.moveTo(cx - 2.6 * s, cy - 0.4 * s);
+  g.lineTo(cx + 2.4 * s, cy - 1.1 * s);
+  g.moveTo(cx - 2.2 * s, cy + 0.9 * s);
+  g.lineTo(cx + 2.6 * s, cy + 0.3 * s);
+  g.strokePath();
 }

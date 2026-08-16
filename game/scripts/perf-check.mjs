@@ -55,16 +55,16 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // world properties rather than per-tile ones, so a world that gains a motif
 // without a draw-distance falloff blows through these immediately.
 const BUDGETS = {
-  1: { ops: 32000, objects: 500 },
-  2: { ops: 16000, objects: 500 },
-  3: { ops: 20000, objects: 500 },
-  4: { ops: 19000, objects: 500 },
-  5: { ops: 21000, objects: 500 },
-  6: { ops: 16000, objects: 500 },
-  7: { ops: 16000, objects: 500 },
-  8: { ops: 23000, objects: 500 },
-  9: { ops: 22000, objects: 500 },
-  10: { ops: 23000, objects: 500 },
+  1: { ops: 21000, objects: 500 },
+  2: { ops: 10000, objects: 500 },
+  3: { ops: 15000, objects: 500 },
+  4: { ops: 13000, objects: 500 },
+  5: { ops: 16000, objects: 500 },
+  6: { ops: 10000, objects: 500 },
+  7: { ops: 11000, objects: 500 },
+  8: { ops: 15000, objects: 500 },
+  9: { ops: 15000, objects: 500 },
+  10: { ops: 18000, objects: 500 },
 };
 
 // How far above the median world's paint time a single world may sit before

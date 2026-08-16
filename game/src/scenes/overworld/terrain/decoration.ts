@@ -3,6 +3,7 @@ import type { Biome } from '../../../art/biomes';
 import { LANE_PX } from '../../../art/perspective';
 import { TILE_SCALE } from '../projection';
 import type { AccentTile } from './types';
+import { fillDot } from '../../../art/shapes';
 
 // Whether the walkable floor carries its per-world motif at all. Off: the
 // route the player walks is one flat colour in every world, which is what
@@ -104,10 +105,10 @@ export function decorateTile(g: Phaser.GameObjects.Graphics, biome: Biome, tile:
     g.fillStyle(0x8fe8ff, 0.85);
     [0, 1, 2].forEach((i) => {
       const ang = (i * Math.PI * 2) / 3 - Math.PI / 2;
-      g.fillCircle(cx + Math.cos(ang) * 2 * s, cy + Math.sin(ang) * 1.4 * s, 1.4 * s);
+      fillDot(g, cx + Math.cos(ang) * 2 * s, cy + Math.sin(ang) * 1.4 * s, 1.4 * s);
     });
     g.fillStyle(0xffffff, 0.9);
-    g.fillCircle(cx, cy, 1 * s);
+    fillDot(g, cx, cy, 1 * s);
     return;
   }
 
@@ -139,8 +140,8 @@ export function decorateTile(g: Phaser.GameObjects.Graphics, biome: Biome, tile:
     g.lineStyle(1, 0xfff4d0, 0.28);
     g.lineBetween(cx - 0.24 * u, cy, cx + 0.24 * u, cy);
     g.fillStyle(0xfffaf0, 0.85);
-    g.fillCircle(cx - 0.24 * u, cy, 0.045 * u);
-    g.fillCircle(cx + 0.24 * u, cy, 0.045 * u);
+    fillDot(g, cx - 0.24 * u, cy, 0.045 * u);
+    fillDot(g, cx + 0.24 * u, cy, 0.045 * u);
     return;
   }
 
@@ -229,8 +230,8 @@ export function decorateTile(g: Phaser.GameObjects.Graphics, biome: Biome, tile:
   g.fillStyle(0xffffff, 0.9);
   [0, 1, 2, 3].forEach((i) => {
     const ang = (i * Math.PI) / 2;
-    g.fillCircle(cx + Math.cos(ang) * 2.4 * s, cy + Math.sin(ang) * 1.6 * s, 1.8 * s);
+    fillDot(g, cx + Math.cos(ang) * 2.4 * s, cy + Math.sin(ang) * 1.6 * s, 1.8 * s);
   });
   g.fillStyle(0xffdd55, 1);
-  g.fillCircle(cx, cy, 1.3 * s);
+  fillDot(g, cx, cy, 1.3 * s);
 }
