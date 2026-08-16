@@ -21,6 +21,7 @@ import {
   insertColumnDivider,
   destroyPanel,
   TREE_ENTRY_INDENT,
+  TUNED_MOVE_STAGE_H,
 } from './listDetail';
 import { persistFromRegistry } from '../../data/save';
 
@@ -173,6 +174,9 @@ function renderAnalyticColumn(
   const displayName = moveDisplayName(scene.game.registry, id);
   const activeClass = getTunedMoveClass(scene.game.registry, id);
   const level = getMoveLevel(scene.game.registry, id);
+  // The stage runs at the taller TUNED_MOVE_STAGE_H rather than the ordinary
+  // detail-pane block: this panel's height is set by its left column, so the
+  // room is already reserved (listDetail.ts).
   let ny = renderMoveDetailHeader(
     scene,
     container,
@@ -182,7 +186,9 @@ function renderAnalyticColumn(
     centerX,
     y,
     colW,
-    level
+    level,
+    undefined,
+    TUNED_MOVE_STAGE_H
   );
 
   const unlocked = scene.getUnlockedMoves();

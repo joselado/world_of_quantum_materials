@@ -7,6 +7,8 @@ import { fontPx } from '../../ui/text';
 import { PANEL_BG } from '../../ui/theme';
 import {
   MOVES,
+  compatibleMoves,
+  getPlayerMaterial,
   getMoveLevel,
   getTunedMoveClass,
   moveDisplayName,
@@ -72,10 +74,19 @@ export function showFeynmanPanel(scene: GuardianPanelHost) {
   container.addAt(panel, 0);
 }
 
-// One row per move the player has ever unlocked (getUnlockedMoves --
-// deliberately not getBattleMoves: a move currently unusable in the
-// player's present form is still a real move worth leveling for the next
-// time it becomes usable again). Rows carry the move's tuned name without
+// One row per unlocked move **the player's current crystal can actually
+// host** -- the unlocked list filtered by `compatibleMoves` on the form they
+// are wearing right now. Feynman deepens a move the player carries, and a
+// quasiparticle their present lattice has no way to support is not one they
+// carry; offering to level it is offering to sharpen something they cannot
+// swing. Transmuting or fusing into a form that hosts it brings it back into
+// the list, at whatever level it already had, since the level lives on the
+// move rather than on the form.
+//
+// The Kondo single-active-move rule is deliberately *not* applied here (so
+// this is not simply `getBattleMoves`): which Kondo move is screened in right
+// now is a battle-loadout question, and both are equally real to level. Rows
+// carry the move's tuned name without
 // its level prefix (tunedMoveDisplayName, not moveDisplayName): the prefix
 // is the same word on every row of a well-leveled save, and at the largest
 // text-size preset it alone fills the 200px column, trimming every row to
@@ -92,7 +103,8 @@ function renderMoveLevelList(
   y: number,
   panelWidth: number
 ): number {
-  const moves = scene.getUnlockedMoves().map((id) => MOVES[id]);
+  const hostable = new Set(compatibleMoves(getPlayerMaterial(scene.game.registry)));
+  const moves = scene.getUnlockedMoves().filter((id) => hostable.has(id)).map((id) => MOVES[id]);
 
   if (moves.length === 0) {
     const text = scene.add

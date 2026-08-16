@@ -546,7 +546,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
   // World 4 (session04.tex: quantum Hall effect, Landau levels, Chern
   // insulators, the Haldane model).
   4: [
-    // Graphene (strong field) -- Dirac Landau levels.
+    // Graphene under a strong field -- Dirac Landau levels.
     {
       prompt: "In a strong magnetic field, graphene's Landau level energies scale as...",
       correct: 'E_n ∝ √(nB): square root of both level index and field',

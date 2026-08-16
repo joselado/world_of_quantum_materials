@@ -84,16 +84,12 @@ export type DifficultyTier = 'bsc' | 'msc' | 'phd';
 export interface DifficultyTierPreset {
   label: string;
   value: DifficultyTier;
-  // A one-line in-character gloss for the Settings panel -- flavor, not a
-  // mechanics explanation (the panel's own hint line covers what actually
-  // changes).
-  blurb: string;
 }
 
 export const DIFFICULTY_TIER_PRESETS: DifficultyTierPreset[] = [
-  { label: 'B.Sc.', value: 'bsc', blurb: "You handed in the problem set. Late. That's basically a pass." },
-  { label: 'M.Sc.', value: 'msc', blurb: 'You understood the problem set. Mostly.' },
-  { label: 'Ph.D.', value: 'phd', blurb: 'You ARE the problem set now.' },
+  { label: 'B.Sc.', value: 'bsc' },
+  { label: 'M.Sc.', value: 'msc' },
+  { label: 'Ph.D.', value: 'phd' },
 ];
 
 export const DEFAULT_DIFFICULTY_TIER: DifficultyTier = DIFFICULTY_TIER_PRESETS[1].value; // M.Sc. -- the tuned default

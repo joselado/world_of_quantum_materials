@@ -40,10 +40,17 @@ const TITLE_LAYOUT: 'a' | 'b' | 'c' = 'b';
 // bottom space the content stack centers above rather than into -- 1 keeps
 // the stack fully clear of the map, 0 lets it overlap freely, and a fraction
 // lets only the last line or two reach into the map's upper coast.
-const TITLE_STARS: Record<'a' | 'b' | 'c', { horizonY: number; alpha: number; scale: number }> = {
-  a: { horizonY: 132, alpha: 0.4, scale: 1 },
-  b: { horizonY: 176, alpha: 0.75, scale: 0.5 },
-  c: { horizonY: 250, alpha: 0.3, scale: 1 },
+// `topReserve` is the band at the top of the screen the constellation claims
+// for itself, which the content stack then centers *below* rather than
+// through. Only the tight-figure layout needs one: drawn small and bright
+// above the crystals it is a thing in its own right, and centering the stack
+// in the whole canvas as if it were not there leaves the composition riding
+// high with the bottom of the screen empty. The wide faint variants sit
+// behind the crystals instead and claim nothing.
+const TITLE_STARS: Record<'a' | 'b' | 'c', { horizonY: number; alpha: number; scale: number; topReserve: number }> = {
+  a: { horizonY: 132, alpha: 0.4, scale: 1, topReserve: 0 },
+  b: { horizonY: 176, alpha: 0.75, scale: 0.5, topReserve: 62 },
+  c: { horizonY: 250, alpha: 0.3, scale: 1, topReserve: 0 },
 };
 const TITLE_MAP: Record<'a' | 'b' | 'c', { width: number; alpha: number; reserveFrac: number }> = {
   a: { width: 168, alpha: 1, reserveFrac: 1 },
@@ -330,9 +337,14 @@ export class TitleScene extends Phaser.Scene {
     root.add(hint);
     y += hint.height;
 
-    // Centered in the space the bottom map doesn't claim (mapReserve is zero
-    // for layouts whose map the stack is allowed to overlap).
-    root.y = Math.max(6, Math.round((CANVAS_H - this.mapReserve - y) / 2));
+    // Centered in the space left between what the constellation claims at the
+    // top and what the map claims at the bottom (either can be zero, for a
+    // framing element the stack is allowed to overlap). Clamped so a tall
+    // stack -- an existing save's erase line at the Large text preset -- runs
+    // off neither end rather than being centered off the bottom of the screen.
+    const stars = TITLE_STARS[TITLE_LAYOUT];
+    const centered = stars.topReserve + Math.round((CANVAS_H - stars.topReserve - this.mapReserve - y) / 2);
+    root.y = Phaser.Math.Clamp(centered, 6, Math.max(6, CANVAS_H - y - 6));
   }
 
   // "New Game (erase save)" is destructive and irreversible (localStorage,

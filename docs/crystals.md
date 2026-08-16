@@ -56,7 +56,6 @@ appear.
 
 | Crystal | Type |
 | --- | --- |
-| Graphene (strong field) | Chern Insulator |
 | MnBi₂Te₄ | Chern Insulator |
 | Gallium Arsenide | Semiconductor |
 

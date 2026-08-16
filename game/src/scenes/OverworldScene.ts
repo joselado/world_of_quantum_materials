@@ -1558,9 +1558,17 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // terrain sweep draws: every generator paints its final band there and
   // leaves the rows north of it unwalkable. So the gap the map fills is
   // exactly the gap the ground leaves.
-  private overlookView(): { lipY: number } | null {
+  // The map below is placed off the lip's own depth rather than off the gap it
+  // leaves on screen (overworld/sky.ts's drawOverlook), so the country lies at
+  // a fixed distance past the edge and the walk out to it is what brings it up.
+  // `lane` is the goal column measured from the camera, the same
+  // tile-minus-camera lane every ground row is drawn at: it is what keeps the
+  // land still against the ground when the player walks along the cliff instead
+  // of straight at it.
+  private overlookView(): { lipY: number; lipDepth: number; lane: number } | null {
     if (!this.endsAtCliff()) return null;
-    return { lipY: projectTile(0, this.camPos.y - this.goalTile.y - 0.5).y };
+    const lipDepth = this.camPos.y - this.goalTile.y - 0.5;
+    return { lipY: projectTile(0, lipDepth).y, lipDepth, lane: this.goalTile.x - this.camPos.x };
   }
 
   // Whether this world stops at its far edge rather than running on past it.

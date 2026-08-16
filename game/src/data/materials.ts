@@ -725,8 +725,8 @@ export const TYPE_LOOK: Record<MaterialType, { color: number; variant: CrystalVa
   chernSuperconductor: { color: 0x4a7fd9, variant: 'prism' },
   // 'rhombohedral' for the R-3m tetradymites the type's own members are
   // built on -- MnBi₂Te₄ (both the World 4 wild and the golems named for it)
-  // and the Cr-doped (Bi,Sb)₂Te₃ host. A member that isn't one of those, like
-  // Graphene under a strong field, states its own habit instead.
+  // and the Cr-doped (Bi,Sb)₂Te₃ host. A member built on a different lattice
+  // states its own habit instead, through crystal()'s variantOverride.
   chernInsulator: { color: 0xc9d94a, variant: 'rhombohedral' },
   // 'layer' is the default variant since most members are quantum wells/
   // monolayers -- a bulk 3D member like Bi₂Te₃ overrides back to 'prism' on
@@ -986,7 +986,6 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // field, a specific engineered device, not a property of bulk GaAs
     // itself, so it doesn't carry that type here.
     crystal('Gallium Arsenide', 'semiconductor', ['tunnelStrike', 'thermalFluctuation'], 0, undefined, 'GaAs'),
-    crystal('Graphene (strong field)', 'chernInsulator', ['chiralCurrent', 'thermalFluctuation'], 1, 'layer'),
     // Real intrinsic magnetic topological insulator -- the actual zero-field
     // QAHE/Chern-insulator material, its magnetism built into the crystal
     // itself rather than doped in (contrast Cr-doped (Bi,Sb)₂Te₃, a World 10

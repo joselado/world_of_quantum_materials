@@ -1649,7 +1649,9 @@ one value rather than two reads of the registry.
 **The Qumatuomi map below the cliff.** World 10 has no next world, so once its rival is beaten
 its road stops: `OverworldScene.endsAtCliff()` is the one predicate for that state, and it feeds
 three places. `overlookView()` turns it into the screen y of the cliff lip (the near edge of the
-goal row, which is the last row any generator paints), carried on `AtmosphereView.overlook`;
+goal row, which is the last row any generator paints) plus that lip's own depth and lane, so the
+land below can be projected against the world rather than pinned to the frame, carried on
+`AtmosphereView.overlook`;
 `terrain/paint.ts`'s `drawMarginRows` returns immediately on it, so nothing is drawn past the
 edge; and `terrain/plan.ts` skips `depthContinuedWalkable` on it, so the far edge row wears its
 own boundary curve, contact shadow and rim light instead of being smoothed into a road that
@@ -1666,9 +1668,21 @@ graded across the land so the far coast dissolves and the near one does not.
 times a mild `OVERLOOK_SQUASH`, which is what keeps the coastline the same shape as
 `buildQumatuomiMap`'s, in the same land colours. Recognition is the whole point of the view
 (WORLDS.md section 4), so it outranks perspective; depth is carried by the veil and the drop
-instead. No markers, no labels and no per-world region tints are drawn: those belong to the
-clickable panel build of the same asset (`buildQumatuomiMap`), which is a separate export and
-stays that way.
+instead.
+
+**The land is anchored to the world, not to the frame.** Its near and far coasts sit at fixed
+ground rows past the lip (`OVERLOOK_NEAR_TILES`/`OVERLOOK_FAR_TILES`) projected through
+`projectTile`, and it is centred on the goal column's own lane -- so walking toward the edge
+brings it up the way ground does, strafing slides it exactly as far as the ground slides, and
+standing still leaves it still. It is a country lying there, which is the whole claim of the
+view: from where The Adapted stood, this is what it was learning from.
+
+**The regions are drawn, the interface is not.** The land carries the same per-world terrain
+paint and texture marks the panel build draws, resolved once module-wide and consumed by both
+through `paintRegions`/`drawRegionTextures`, with the overlook passing a tint hook that lifts
+each colour toward the record's own light and drowns it into the live fog. What stays out is
+everything that is interface rather than country: no markers, no labels, and no discovery
+shroud, since a shroud is a state of the player's knowledge rather than a fact about the land.
 
 The route trace is a polyline through `WORLD_POSITIONS` for the worlds in `AtmosphereView.route`
 -- `getVisitedWorlds()`, which is append-ordered, so it is the order the player actually walked
@@ -2646,8 +2660,10 @@ height, and the budget a full-width footer row would take goes to the detail pan
 block and text instead. It places exactly one button; a panel needing a second escape button
 ("Never mind" on Anderson's pending pick) isn't a list+detail layout at that step and uses the
 full-width two-button `renderCancelFarewellFooter` row instead. `DETAIL_STAGE_H` (`104`) and
-`DETAIL_CRYSTAL_SIZE` (`44`) are the one art-block height/crystal size all three detail-pane
-openers (and Qumatex's own pane) share, fixed regardless of the text-size setting ("art, not
+`DETAIL_CRYSTAL_SIZE` (`44`) are the art-block height/crystal size the detail-pane openers
+share by default (and Qumatex's own pane); `TUNED_MOVE_STAGE_H` (`144`) is the taller stage
+Landau's and Skłodowska-Curie's tuned-move panes ask for, which their own left column has the
+height to absorb. Both are fixed regardless of the text-size setting ("art, not
 text").
 `renderStatusAndConfirm` is the shared tail every one of
 those panes closes with: the cost/status line plus an optional confirm button (omitted where

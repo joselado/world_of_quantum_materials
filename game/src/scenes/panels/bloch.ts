@@ -79,6 +79,17 @@ import {
 // its own status line still names it, "You are standing in World N --
 // <name>."), or it hasn't been discovered yet, in which case the status
 // line says so in Bloch's own voice instead.
+// The height budget the Qumatuomi map is drawn into, above the blurb/status/
+// button that share the right column with it. Well past the map's own 110px
+// native height, so the coastline draws scaled up and its painted regions and
+// texture marks (art/qumatuomiMap.ts) are large enough to read as terrain --
+// as much as this panel, the densest in the game (table + map + blurb +
+// status/button + footer all in one), can carry: at the largest text-size
+// preset the right column is the taller of the two and reaches the bottom of
+// the canvas with the same margin the left column already ends on at the
+// smallest.
+const MAP_H = 146;
+
 export function showBlochHub(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
 
@@ -167,19 +178,13 @@ export function showBlochHub(scene: GuardianPanelHost) {
   // the selection ring inside it moves), then the previewed destination's
   // own blurb, cost/status line, and confirm button.
   const mapTop = columnsTop;
-  const mapBuild = buildQumatuomiMap(scene, { width: columns.rightColW, height: 110, discoveredWorlds });
+  const mapBuild = buildQumatuomiMap(scene, { width: columns.rightColW, height: MAP_H, discoveredWorlds });
   // buildQumatuomiMap does uniform scale-to-fit -- its returned width/height
   // are usually smaller than the requested budget on one axis, so the real
   // rendered size (not the request) drives the rest of this column's math.
-  // Height is the binding side of the budget (the right column's own width is
-  // far more room than the silhouette's proportions need), and 110 is the
-  // map's own native height, so it draws at 1:1 with no scaling at all. That
-  // is also as large as this panel -- the densest in the game (table + map +
-  // blurb + status/button + footer all in one) -- can carry: on a full page of
-  // destination rows the left column is the taller of the two, so the panel's
-  // own tallest state costs no extra height, and the blurb below clears its
-  // own shrink loop untouched at the longest world entry and the largest
-  // text-size preset.
+  // Height is the binding side of the budget: the right column's own width is
+  // far more room than the silhouette's proportions need, so MAP_H alone sets
+  // how large the map draws.
   mapBuild.container.setPosition(columns.rightColCenterX, mapTop + mapBuild.height / 2);
   container.add(mapBuild.container);
   const detailTop = mapTop + mapBuild.height + 4;

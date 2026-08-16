@@ -654,7 +654,7 @@ export function showSettingsPanel(scene: HubScene) {
   y += tierBtn.height + 4;
 
   const tierHint = scene.add
-    .text(columns.contentCenterX, y, `"${tierPreset.blurb}" Applies to your very next battle.`, {
+    .text(columns.contentCenterX, y, 'Applies to your very next battle.', {
       fontSize: fontPx(scene, 11),
       color: REFERENCE_BLUE_GREY_HEX,
       align: 'center',

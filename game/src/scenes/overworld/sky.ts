@@ -125,12 +125,16 @@ export interface AtmosphereView extends HazeView {
   // route traced across the Qumatuomi map below the Devouring Mirror's cliff.
   route: number[];
   // Set only where the world ends at a cliff rather than running on: the
-  // Devouring Mirror, once The Adapted has fallen. `lipY` is the screen y of
-  // the edge itself, so the drop and the map below it fill exactly the gap
-  // between the last ground drawn and the horizon -- a gap that opens up as
-  // the player walks toward the edge, which is what makes the view something
-  // they walk out to rather than something that is simply on screen.
-  overlook: { lipY: number } | null;
+  // Devouring Mirror, once The Adapted has fallen. `lipDepth` is the edge's own
+  // depth from the camera in tiles and `lipY` the screen y that projects to, so
+  // the drop and the map below it fill exactly the gap between the last ground
+  // drawn and the horizon -- a gap that opens up as the player walks toward the
+  // edge, which is what makes the view something they walk out to rather than
+  // something that is simply on screen. `lane` is the country's own axis as a
+  // lane offset from the camera, which is what the land below is centred on:
+  // measured from the camera rather than the frame, it holds still against the
+  // ground when the player walks along the edge instead of sliding with them.
+  overlook: { lipY: number; lipDepth: number; lane: number } | null;
 }
 
 // The static backdrop, painted once per world entry into its own Graphics
@@ -299,6 +303,19 @@ const DROP_ALPHA = 0.42;
 const DROP_FRACTION = 0.16;
 const DROP_MAX_H = 26;
 
+// Where the land below actually lies, in tiles past the cliff lip: its near
+// (south) coast and its far (north) one. The map is placed by these two ground
+// rows and nothing else, which is what makes it a country lying at a fixed
+// distance rather than a backdrop -- walking toward the edge brings it up and
+// opens it out exactly as much as ground at that distance opens out, and
+// standing still leaves it standing still. The near offset is the stretch of
+// ground directly under a cliff that a standing figure cannot see, and the two
+// together also bound how wide the land can ever draw: the coastline is scaled
+// uniformly off the gap between them, so the country's own proportions turn a
+// depth budget into a width.
+const OVERLOOK_NEAR_TILES = 1.8;
+const OVERLOOK_FAR_TILES = 24;
+
 // What lies past the edge of a world that ends at one: the drop under the
 // lip, and the Qumatuomi map lying on the ground far below it (art/
 // qumatuomiMap.ts's drawQumatuomiOverlook, WORLDS.md section 4). Everything
@@ -307,13 +324,17 @@ const DROP_MAX_H = 26;
 // this is what fills the gap it leaves.
 function drawOverlook(g: Phaser.GameObjects.Graphics, view: AtmosphereView, target: number) {
   if (!view.overlook) return;
-  const lipY = view.overlook.lipY;
+  const { lipY, lipDepth, lane } = view.overlook;
   if (lipY <= HORIZON_Y) return;
 
+  // The land's two coasts are two ground rows, projected the same way every
+  // tile in the world is; its middle row is what it is centred on sideways.
+  // Depth alone decides the screen y, so both edges are read at the country's
+  // own lane without that changing where they sit vertically.
   drawQumatuomiOverlook(g, {
-    cx: CANVAS_W / 2,
-    top: HORIZON_Y,
-    bottom: lipY,
+    cx: projectTile(lane, lipDepth + (OVERLOOK_NEAR_TILES + OVERLOOK_FAR_TILES) / 2).x,
+    top: projectTile(lane, lipDepth + OVERLOOK_FAR_TILES).y,
+    bottom: projectTile(lane, lipDepth + OVERLOOK_NEAR_TILES).y,
     target,
     now: view.now,
     route: view.route,

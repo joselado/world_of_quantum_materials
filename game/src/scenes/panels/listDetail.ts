@@ -87,13 +87,22 @@ export function listDetailColumns(panelLeft: number): ListDetailColumns {
 
 // The detail pane's own art block -- a crystal render, a looping battle-effect
 // animation, or a player crystal with a self-buff ring around it -- is a fixed
-// height regardless of the text-size setting ("art, not text", STYLE.md), so
-// every detail-pane opener below reserves the same one and a pane's height
-// stays predictable across presets. Sized against the vertical budget a
-// list+detail panel has with its escape buttons inside the left column
+// height regardless of the text-size setting ("art, not text", STYLE.md), so a
+// pane's height stays predictable across presets. Sized against the vertical
+// budget a list+detail panel has with its escape buttons inside the left column
 // (renderListColumnFooter below) rather than in a full-width row under both
-// columns.
+// columns. This is the block height every opener uses unless its caller asks
+// for another (TUNED_MOVE_STAGE_H below).
 export const DETAIL_STAGE_H = 104;
+// The taller stage the two tunable-move panels use (Landau's Analytic pair,
+// Skłodowska-Curie's Ultimate pair -- scenes/panels/landau.ts,
+// sklodowskaCurie.ts). Their left column is the one that sets those panels'
+// height: a move heading plus its hostable quasiparticles plus a second
+// heading plus the footer runs taller than the detail pane does, so the pane
+// can spend this much on its stage without the panel growing at all at the
+// largest text-size preset. Every other opener stays on DETAIL_STAGE_H, whose
+// panels have a shorter left column and no room to spare.
+export const TUNED_MOVE_STAGE_H = 144;
 // The crystal drawn inside that block, and the cap on the name text beneath
 // it. Both are shared across the three openers so a crystal-browsing pane and
 // a move-browsing pane read at the same weight.

@@ -13,14 +13,17 @@ import { CANVAS_W } from './perspective';
 // reads the returned marker list to attach its own click handling later.
 //
 // The same coastline has two builds, and they stay separate. `buildQumatuomiMap`
-// is the panel one: markers, per-world region terrain (MAP_STYLE below), a
-// container to click.
-// `drawQumatuomiOverlook` is scenery -- the land below World 10's cliff, drawn
-// straight into a Graphics as a hazed record with every affordance stripped.
-// Sharing the geometry is the point, and sharing it *exactly* is what lets a
-// player recognise the coastline below the cliff as the map they have been
-// reading in Bloch's panel all game; sharing the markers would put an
-// interface element in the scenery.
+// is the panel one: markers, a container to click. `drawQumatuomiOverlook` is
+// scenery -- the land below World 10's cliff, drawn straight into a Graphics as
+// a hazed record with every affordance stripped.
+// Sharing the land is the point, and sharing it *exactly* is what lets a
+// player recognise the country below the cliff as the map they have been
+// reading in Bloch's panel all game. Both builds therefore run through the same
+// geometry *and* the same per-world region painting (`regionRuns`,
+// `paintRegions`, `drawRegionTextures` below) -- what the two do differently is
+// the ink each colour arrives in, which the overlook carries into the live fog.
+// What is not shared is the markers: those are an interface element, and an
+// interface element in the scenery is the thing the overlook exists without.
 
 // Silhouette authored in a fixed native coordinate space, already in the
 // on-screen orientation the design calls "rotated 90 degrees" -- x=0 (left)
@@ -175,9 +178,10 @@ const MIST_COLOR = 0xcfd6e6;
 //       (art/horizons.ts's distant self) as a miniature ridge across its
 //       region.
 //
-// All three keep the same coastline, markers and undiscovered shroud;
-// drawQumatuomiOverlook below is untouched by this choice (the overlook
-// deliberately strips every per-world region treatment).
+// All three keep the same coastline, markers and undiscovered shroud.
+// drawQumatuomiOverlook below always paints the 'a' treatment -- regions plus
+// texture marks -- since that is what the country actually looks like from
+// above, and the land past the cliff has to be the land in the panel.
 export type QumatuomiMapStyle = 'a' | 'b' | 'c';
 export const MAP_STYLE: QumatuomiMapStyle = 'a';
 
@@ -258,7 +262,15 @@ function maxSafeRadius(x: number, y: number, desired: number): number {
 
 type ToScreen = (nx: number, ny: number) => { x: number; y: number };
 
-// --- Style 'a' / 'c': painted regions --------------------------------------
+// A colour transform a caller can put between the map's own palette and the
+// ink that reaches the Graphics. The panel build hands its colours through
+// untouched; the overlook (below) carries every one of them into the live fog,
+// which is what keeps the land past the cliff reading as scenery rather than
+// as a minimap someone laid on the picture.
+type Tint = (color: number) => number;
+const NO_TINT: Tint = (c) => c;
+
+// --- Painted regions, shared by the panel build and the overlook -----------
 
 // Native-px cell size of the region fill, and how wide the soft blend between
 // two adjacent regions runs. Cells are painted only when all four corners sit
@@ -267,37 +279,102 @@ type ToScreen = (nx: number, ny: number) => { x: number; y: number };
 // spilling past the stroked outline without a clip mask.
 const REGION_CELL = 2;
 const REGION_BORDER_SOFT = 6;
+// How finely a border cell's blend is rounded before neighbouring cells are
+// merged into one run (below). Finer than the cell grid itself resolves, so
+// the soft border is unchanged by the rounding and long interior stretches
+// still collapse to a single rectangle.
+const REGION_MIX_STEPS = 16;
 
-function paintRegions(g: Phaser.GameObjects.Graphics, discovered: Set<number>, toScreen: ToScreen, scale: number) {
-  const colorOf = (w: number) => (discovered.has(w) ? regionColor(w) : UNDISCOVERED_FILL);
-  for (let x = 0; x < NATIVE_W; x += REGION_CELL) {
-    for (let y = 0; y < NATIVE_H; y += REGION_CELL) {
+// One horizontal stretch of cells that all take the same colour, in native
+// coordinates. `mix` is how far the fill is carried from world `w1` toward
+// `w2`, which is only ever non-zero along the soft border between two regions.
+interface RegionRun {
+  x: number;
+  y: number;
+  /** Native width of the run -- one or more REGION_CELLs. */
+  w: number;
+  w1: number;
+  w2: number;
+  mix: number;
+}
+
+let regionRunCache: RegionRun[] | null = null;
+
+// The nearest-world partition of the landmass, resolved once for the whole
+// module and reused by both builds. Nothing here depends on the caller's
+// scale, screen position or discovery state, so the point-in-polygon and
+// nearest-world work -- thousands of cells' worth -- is done a single time
+// rather than per build. The overlook is what forces that: it is scenery
+// redrawn every frame, and re-partitioning the country sixty times a second
+// would be paid for out of the frame budget of the walk up to the cliff.
+// Cells are merged into horizontal runs for the same reason: an interior
+// stretch of one world's region is a single rectangle instead of fifty.
+function regionRuns(): RegionRun[] {
+  if (regionRunCache) return regionRunCache;
+  const runs: RegionRun[] = [];
+  for (let y = 0; y < NATIVE_H; y += REGION_CELL) {
+    let run: RegionRun | null = null;
+    for (let x = 0; x < NATIVE_W; x += REGION_CELL) {
       if (
         !insideLand(x, y) ||
         !insideLand(x + REGION_CELL, y) ||
         !insideLand(x, y + REGION_CELL) ||
         !insideLand(x + REGION_CELL, y + REGION_CELL)
-      )
+      ) {
+        run = null;
         continue;
+      }
       const { w1, w2, d1, d2 } = nearestTwoWorlds(x + REGION_CELL / 2, y + REGION_CELL / 2);
       const margin = d2 - d1;
-      const col = margin < REGION_BORDER_SOFT ? blend(colorOf(w1), colorOf(w2), 0.5 - (margin / REGION_BORDER_SOFT) * 0.5) : colorOf(w1);
-      const p = toScreen(x, y);
-      g.fillStyle(col, 1);
-      g.fillRect(p.x, p.y, REGION_CELL * scale, REGION_CELL * scale);
+      const mix =
+        margin < REGION_BORDER_SOFT
+          ? Math.round((0.5 - (margin / REGION_BORDER_SOFT) * 0.5) * REGION_MIX_STEPS) / REGION_MIX_STEPS
+          : 0;
+      if (run && run.w1 === w1 && run.mix === mix && (mix === 0 || run.w2 === w2) && run.x + run.w === x) {
+        run.w += REGION_CELL;
+      } else {
+        run = { x, y, w: REGION_CELL, w1, w2: mix === 0 ? w1 : w2, mix };
+        runs.push(run);
+      }
     }
+  }
+  regionRunCache = runs;
+  return runs;
+}
+
+interface RegionPaintOptions {
+  discovered: Set<number>;
+  toScreen: ToScreen;
+  /** Screen px per native px, horizontally and vertically -- the overlook's own squash makes these differ. */
+  sx: number;
+  sy: number;
+  tint?: Tint;
+}
+
+function paintRegions(g: Phaser.GameObjects.Graphics, o: RegionPaintOptions) {
+  const tint = o.tint ?? NO_TINT;
+  const colorOf = (w: number) => tint(o.discovered.has(w) ? regionColor(w) : UNDISCOVERED_FILL);
+  // Half a pixel of overlap on each run, so two neighbours drawn at a
+  // fractional scale meet rather than leaving a hairline of the land fill
+  // between them. Every fill here is opaque, so an overlap costs nothing.
+  const bleed = 0.5;
+  for (const run of regionRuns()) {
+    const col = run.mix > 0 ? blend(colorOf(run.w1), colorOf(run.w2), run.mix) : colorOf(run.w1);
+    const p = o.toScreen(run.x, run.y);
+    g.fillStyle(col, 1);
+    g.fillRect(p.x, p.y, run.w * o.sx + bleed, REGION_CELL * o.sy + bleed);
   }
   // The skerries belong to whichever region their nearest world owns -- a rim
   // of LAND_FILL stays around each, same as the mainland's shoreline.
   ARCHIPELAGO_ISLANDS.forEach((isl) => {
     const { w1 } = nearestTwoWorlds(isl.x, isl.y);
-    const p = toScreen(isl.x, isl.y);
+    const p = o.toScreen(isl.x, isl.y);
     g.fillStyle(colorOf(w1), 1);
-    g.fillCircle(p.x, p.y, Math.max(0.5, (isl.r - 0.6) * scale));
+    g.fillCircle(p.x, p.y, Math.max(0.5, (isl.r - 0.6) * o.sx));
   });
 }
 
-// --- Style 'a': per-world texture marks ------------------------------------
+// --- Per-world texture marks ------------------------------------------------
 
 // Deterministically scattered marks, each built from its world's own surround
 // (the same identities art/horizons.ts and the wall themes state): crowns for
@@ -305,78 +382,95 @@ function paintRegions(g: Phaser.GameObjects.Graphics, discovered: Set<number>, t
 // band stripes, flow streaks, leaning shards, gold web nodes, pools and
 // reeds, cracks with embers, pale facets. Marks stay off the soft borders and
 // off undiscovered regions.
-function drawTextureMark(g: Phaser.GameObjects.Graphics, world: number, p: { x: number; y: number }, s: number, rand: () => number) {
+function drawTextureMark(
+  g: Phaser.GameObjects.Graphics,
+  world: number,
+  p: { x: number; y: number },
+  s: number,
+  rand: () => number,
+  tint: Tint
+) {
+  const fill = (color: number, alpha: number) => g.fillStyle(tint(color), alpha);
+  const line = (width: number, color: number, alpha: number) => g.lineStyle(width, tint(color), alpha);
   switch (world) {
     case 1: {
-      g.fillStyle(0x1e4726, 0.9);
+      fill(0x1e4726, 0.9);
       g.fillCircle(p.x, p.y, (0.8 + rand() * 0.6) * s);
       break;
     }
     case 2: {
       const w = 1.3 * s;
-      g.fillStyle(0xdcc9a8, 0.5);
+      fill(0xdcc9a8, 0.5);
       g.fillRect(p.x - w / 2, p.y - w / 2, w, w);
       break;
     }
     case 3: {
-      g.lineStyle(Math.max(0.6, 0.7 * s), 0x2c343a, 0.65);
+      line(Math.max(0.6, 0.7 * s), 0x2c343a, 0.65);
       g.lineBetween(p.x - 1.8 * s, p.y, p.x + 1.8 * s, p.y);
       break;
     }
     case 4: {
-      g.lineStyle(Math.max(0.5, 0.6 * s), 0x8fa8e8, 0.5);
+      line(Math.max(0.5, 0.6 * s), 0x8fa8e8, 0.5);
       g.lineBetween(p.x - 2 * s, p.y, p.x + 2 * s, p.y);
       break;
     }
     case 5: {
-      g.lineStyle(Math.max(0.5, 0.6 * s), 0xd8ecf4, 0.55);
+      line(Math.max(0.5, 0.6 * s), 0xd8ecf4, 0.55);
       g.lineBetween(p.x - 1.6 * s, p.y + 0.6 * s, p.x + 1.6 * s, p.y - 0.6 * s);
       break;
     }
     case 6: {
-      g.lineStyle(Math.max(0.6, 0.8 * s), 0x6f9c7e, 0.6);
+      line(Math.max(0.6, 0.8 * s), 0x6f9c7e, 0.6);
       g.lineBetween(p.x - 0.6 * s, p.y + 1.1 * s, p.x + 0.6 * s, p.y - 1.1 * s);
       break;
     }
     case 7: {
-      g.fillStyle(0xefdaa4, 0.85);
+      fill(0xefdaa4, 0.85);
       g.fillCircle(p.x, p.y, 0.55 * s);
       if (rand() < 0.45) {
-        g.lineStyle(Math.max(0.4, 0.4 * s), 0xefdaa4, 0.4);
+        line(Math.max(0.4, 0.4 * s), 0xefdaa4, 0.4);
         g.lineBetween(p.x, p.y, p.x + (rand() * 4 - 2) * s, p.y + (rand() * 4 - 2) * s);
       }
       break;
     }
     case 8: {
       if (rand() < 0.5) {
-        g.fillStyle(0x0a100c, 0.75);
+        fill(0x0a100c, 0.75);
         g.fillEllipse(p.x, p.y, 2.6 * s, 1.5 * s);
       } else {
-        g.lineStyle(Math.max(0.5, 0.6 * s), 0x707a60, 0.8);
+        line(Math.max(0.5, 0.6 * s), 0x707a60, 0.8);
         g.lineBetween(p.x, p.y + 0.9 * s, p.x, p.y - 0.9 * s);
       }
       break;
     }
     case 9: {
-      g.lineStyle(Math.max(0.5, 0.6 * s), 0x140608, 0.8);
+      line(Math.max(0.5, 0.6 * s), 0x140608, 0.8);
       const dx = (rand() - 0.5) * 2 * s;
       g.lineBetween(p.x - 1.5 * s, p.y - dx, p.x, p.y + dx * 0.5);
       g.lineBetween(p.x, p.y + dx * 0.5, p.x + 1.5 * s, p.y - dx * 0.3);
       if (rand() < 0.4) {
-        g.fillStyle(0xff8a3a, 0.7);
+        fill(0xff8a3a, 0.7);
         g.fillCircle(p.x, p.y + dx * 0.5, 0.5 * s);
       }
       break;
     }
     case 10: {
-      g.fillStyle(0xd8c8ee, 0.4);
+      fill(0xd8c8ee, 0.4);
       g.fillTriangle(p.x, p.y - 1.1 * s, p.x + 1 * s, p.y + 0.7 * s, p.x - 1 * s, p.y + 0.7 * s);
       break;
     }
   }
 }
 
-function drawRegionTextures(g: Phaser.GameObjects.Graphics, discovered: Set<number>, toScreen: ToScreen, scale: number) {
+interface RegionTextureOptions {
+  discovered: Set<number>;
+  toScreen: ToScreen;
+  /** Size the marks are drawn at, in screen px per native px. */
+  markScale: number;
+  tint?: Tint;
+}
+
+function drawRegionTextures(g: Phaser.GameObjects.Graphics, o: RegionTextureOptions) {
   const rand = seededRandom(hashSeed('qumatuomi-texture'));
   for (let i = 0; i < 560; i++) {
     const x = rand() * NATIVE_W;
@@ -384,8 +478,8 @@ function drawRegionTextures(g: Phaser.GameObjects.Graphics, discovered: Set<numb
     if (!insideLand(x, y)) continue;
     const { w1, d1, d2 } = nearestTwoWorlds(x, y);
     if (d2 - d1 < 3) continue;
-    if (!discovered.has(w1)) continue;
-    drawTextureMark(g, w1, toScreen(x, y), scale, rand);
+    if (!o.discovered.has(w1)) continue;
+    drawTextureMark(g, w1, o.toScreen(x, y), o.markScale, rand, o.tint ?? NO_TINT);
   }
 }
 
@@ -663,8 +757,8 @@ export function buildQumatuomiMap(scene: Phaser.Scene, opts: QumatuomiMapOptions
   container.add(regions);
 
   if (MAP_STYLE === 'a' || MAP_STYLE === 'c') {
-    paintRegions(regions, discovered, toScreen, scale);
-    if (MAP_STYLE === 'a') drawRegionTextures(regions, discovered, toScreen, scale);
+    paintRegions(regions, { discovered, toScreen, sx: scale, sy: scale });
+    if (MAP_STYLE === 'a') drawRegionTextures(regions, { discovered, toScreen, markScale: scale });
     else for (let world = 1; world <= 10; world++) if (discovered.has(world)) drawMiniHorizon(regions, world, toScreen, scale);
   }
 
@@ -739,12 +833,15 @@ export function buildQumatuomiMap(scene: Phaser.Scene, opts: QumatuomiMapOptions
 // players try to click it.
 //
 // The silhouette is drawn through the same uniform scale-to-fit
-// `buildQumatuomiMap` uses, in the same colours, so the land below is
-// recognisably the same map Bloch's panel shows -- that recognition is the
-// whole point of the view, and it is worth more than any amount of
-// perspective. The only concession to the viewing angle is a mild vertical
-// squash. Every interactive affordance is stripped: no markers, no labels, no
-// per-world region tints.
+// `buildQumatuomiMap` uses, in the same colours, and painted into the same ten
+// regions with the same texture marks, so the land below is recognisably the
+// same map Bloch's panel shows -- that recognition is the whole point of the
+// view, and it is worth more than any amount of perspective. The only
+// concession to the viewing angle is a mild vertical squash. What is stripped
+// is the interface: no markers, no labels, nothing to click. The regions are
+// not interface -- they are what the country looks like from above, and every
+// colour they carry is drowned into the live fog on its way to the Graphics
+// (`regionTint` below).
 
 // How much the map is flattened by being looked down on at an angle. Mild on
 // purpose: enough that the land reads as lying away from the viewer rather
@@ -765,24 +862,40 @@ const OVERLOOK_SHORE = 0xe8f2e0;
 // does not -- an edge as crisp at the back as at the front is a decal.
 const OVERLOOK_DROWN = 0.12;
 const OVERLOOK_FAR_DROWN = 0.62;
-// How much of the gap between lip and horizon the land is drawn across, and
-// how far its near edge is held back from the lip. The ground immediately
-// under a cliff is the part a standing figure cannot see, and that unseen
-// stretch is what makes the land below read as *below*.
-const OVERLOOK_FILL = 0.78;
-const OVERLOOK_LIP_GAP = 0.2;
+// The painted regions, carried further than the base land is: toward the
+// record's own self-lit green so ten terrain colours still read as one country
+// glowing in the dark, and further into the live fog so they stay air-borne
+// terrain rather than the flat saturated swatches a minimap is made of. The
+// texture marks take the same transform, since they are the most saturated ink
+// on the map and the first thing that would read as an interface.
+const OVERLOOK_REGION_LIFT = 0.32;
+const OVERLOOK_REGION_DROWN = 0.14;
 // The route traced across it, and the shimmer over the whole record -- slow
-// and shallow, a world that is not quite still rather than a flag.
+// and shallow, a world that is not quite still rather than a flag. The
+// shimmer's amplitude is in native map px, so it stays a property of the land
+// and recedes with it instead of staying a fixed wobble on the glass.
 const OVERLOOK_ROUTE = 0xf0e4ff;
-const OVERLOOK_SHIMMER_PX = 1.6;
+const OVERLOOK_SHIMMER_NATIVE = 0.7;
 const OVERLOOK_SHIMMER_RATE = 0.00042;
+// Widths of the two lines drawn on the land -- its coast and the player's own
+// route -- in native map px rather than screen px, so both thin as the country
+// recedes. A line held at a fixed screen width is drawn on the glass rather
+// than on the ground, and the whole point of the view is that the ground is
+// where it is.
+const OVERLOOK_SHORE_W = 1.3;
+const OVERLOOK_ROUTE_W = 0.95;
+const OVERLOOK_ROUTE_GLOW_W = 2;
 
 export interface QumatuomiOverlookOptions {
-  /** Screen x the map is centred on. */
+  /**
+   * Screen x the map is centred on -- the projection of the country's own axis
+   * on the ground plane, not the middle of the frame, so the land holds still
+   * against the world when the player walks along the cliff.
+   */
   cx: number;
-  /** Screen y of its far (top) edge -- the horizon end of the gap. */
+  /** Screen y of its far (north) edge, projected from the ground row that edge lies on. */
   top: number;
-  /** Screen y of its near (bottom) edge -- the cliff lip. */
+  /** Screen y of its near (south) edge, projected the same way. */
   bottom: number;
   /** The live fog colour everything else in the frame is hazing toward. */
   target: number;
@@ -792,20 +905,23 @@ export interface QumatuomiOverlookOptions {
   route: number[];
 }
 
-// The map's own native space projected into the gap below the cliff. One
-// uniform scale for both axes (times the squash), which is what keeps the
-// coastline the same shape as the panel's: the land is placed in the gap and
-// sized to it, never stretched to fill it.
+// The map's own native space placed between the two projected edges the caller
+// hands in. Both of those come from fixed ground rows below the cliff
+// (scenes/overworld/sky.ts), so everything derived here -- how big the land is
+// and where it sits -- is a function of where the camera stands in the world:
+// the land grows as it is walked toward and holds still when the walking
+// stops, the way ground does, instead of being fitted to whatever gap the
+// screen currently has. One uniform scale for both axes (times the squash) is
+// what keeps the coastline the same shape as the panel's.
 function overlookPlacement(o: QumatuomiOverlookOptions) {
-  const gap = Math.max(8, o.bottom - o.top);
-  const scale = Math.min((CANVAS_W * 0.88) / NATIVE_W, (gap * OVERLOOK_FILL) / (NATIVE_H * OVERLOOK_SQUASH));
-  const drawnH = NATIVE_H * scale * OVERLOOK_SQUASH;
-  const cy = o.bottom - gap * OVERLOOK_LIP_GAP - drawnH / 2;
+  const drawnH = Math.max(4, o.bottom - o.top);
+  const scale = drawnH / (NATIVE_H * OVERLOOK_SQUASH);
+  const cy = (o.top + o.bottom) / 2;
   return { scale, cy, drawnH };
 }
 
 function toOverlook(nx: number, ny: number, o: QumatuomiOverlookOptions, place: ReturnType<typeof overlookPlacement>) {
-  const shimmer = Math.sin(ny * 0.06 + o.now * OVERLOOK_SHIMMER_RATE) * OVERLOOK_SHIMMER_PX;
+  const shimmer = Math.sin(ny * 0.06 + o.now * OVERLOOK_SHIMMER_RATE) * OVERLOOK_SHIMMER_NATIVE * place.scale;
   return {
     x: o.cx + (nx - NATIVE_W / 2) * place.scale + shimmer,
     y: place.cy + (ny - NATIVE_H / 2) * place.scale * OVERLOOK_SQUASH,
@@ -835,6 +951,11 @@ function strokeReceding(
   }
 }
 
+// Every world at once is what the view is of, so nothing here is shrouded:
+// the mist over an unvisited region is a state of the player's knowledge, and
+// the country below the cliff is not.
+const ALL_WORLDS = new Set([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+
 export function drawQumatuomiOverlook(g: Phaser.GameObjects.Graphics, o: QumatuomiOverlookOptions) {
   const place = overlookPlacement(o);
   const land = blend(OVERLOOK_LAND, o.target, OVERLOOK_DROWN);
@@ -843,17 +964,35 @@ export function drawQumatuomiOverlook(g: Phaser.GameObjects.Graphics, o: Qumatuo
   const outline = SILHOUETTE_POINTS.map(([x, y]) => toOverlook(x, y, o, place));
   g.fillStyle(land, 1);
   g.fillPoints(outline, true);
-  // The coastline, self-luminous per the light rule: the record glows,
-  // nothing shines on it. It is what makes the shape read as a coastline
-  // rather than as a patch of ground, and it is the line the player actually
-  // recognises the map by.
-  strokeReceding(g, outline.concat(outline[0]), shore, 2.2, 0.95);
-
+  // The skerries, laid down before the regions so each keeps the same rim of
+  // plain land around its own painted centre that the mainland keeps along its
+  // coast.
   ARCHIPELAGO_ISLANDS.forEach((isl) => {
     const p = toOverlook(isl.x, isl.y, o, place);
     g.fillStyle(land, 0.95);
     g.fillCircle(p.x, p.y, Math.max(0.6, isl.r * place.scale));
   });
+
+  // The same ten painted regions the panel build draws, over the base land and
+  // under the coastline. Each colour is lifted into the record's own light and
+  // drowned into the live fog on the way in, which is what keeps a country
+  // that is genuinely ten colours from reading as a minimap.
+  const regionTint: Tint = (c) => blend(blend(c, OVERLOOK_LAND, OVERLOOK_REGION_LIFT), o.target, OVERLOOK_REGION_DROWN);
+  const toScreen: ToScreen = (nx, ny) => toOverlook(nx, ny, o, place);
+  paintRegions(g, {
+    discovered: ALL_WORLDS,
+    toScreen,
+    sx: place.scale,
+    sy: place.scale * OVERLOOK_SQUASH,
+    tint: regionTint,
+  });
+  drawRegionTextures(g, { discovered: ALL_WORLDS, toScreen, markScale: place.scale, tint: regionTint });
+
+  // The coastline, self-luminous per the light rule: the record glows,
+  // nothing shines on it. It is what makes the shape read as a coastline
+  // rather than as a patch of ground, and it is the line the player actually
+  // recognises the map by.
+  strokeReceding(g, outline.concat(outline[0]), shore, OVERLOOK_SHORE_W * place.scale, 0.95);
 
   // *It has your whole walk.* The one thing no other copy of this map carries:
   // a dim luminous trace of the player's own route across it, world by world
@@ -875,8 +1014,8 @@ export function drawQumatuomiOverlook(g: Phaser.GameObjects.Graphics, o: Qumatuo
       }
     }
     trace.push(toOverlook(legs[legs.length - 1].x, legs[legs.length - 1].y, o, place));
-    strokeReceding(g, trace, blend(OVERLOOK_ROUTE, o.target, OVERLOOK_DROWN * 0.2), 3.5, 0.3);
-    strokeReceding(g, trace, OVERLOOK_ROUTE, 1.6, 0.65);
+    strokeReceding(g, trace, blend(OVERLOOK_ROUTE, o.target, OVERLOOK_DROWN * 0.2), OVERLOOK_ROUTE_GLOW_W * place.scale, 0.3);
+    strokeReceding(g, trace, OVERLOOK_ROUTE, OVERLOOK_ROUTE_W * place.scale, 0.65);
   }
 
   // The air over the land, thickening toward its far edge. This is the

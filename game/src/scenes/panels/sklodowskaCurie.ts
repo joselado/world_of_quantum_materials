@@ -29,6 +29,7 @@ import {
   insertColumnDivider,
   destroyPanel,
   TREE_ENTRY_INDENT,
+  TUNED_MOVE_STAGE_H,
 } from './listDetail';
 
 // Skłodowska-Curie stands at world 10's middle tile (WORLD_GUARDIANS,
@@ -188,7 +189,22 @@ function renderUltimateColumn(
   const displayName = moveDisplayName(scene.game.registry, id);
   const activeClass = getTunedMoveClass(scene.game.registry, id);
   const level = getMoveLevel(scene.game.registry, id);
-  let ny = renderMoveDetailHeader(scene, container, displayName, activeClass, ULTIMATE_SHAPES[id], centerX, y, colW, level);
+  // The stage runs at the taller TUNED_MOVE_STAGE_H rather than the ordinary
+  // detail-pane block: this panel's height is set by its left column, so the
+  // room is already reserved (listDetail.ts).
+  let ny = renderMoveDetailHeader(
+    scene,
+    container,
+    displayName,
+    activeClass,
+    ULTIMATE_SHAPES[id],
+    centerX,
+    y,
+    colW,
+    level,
+    undefined,
+    TUNED_MOVE_STAGE_H
+  );
 
   const isUnlocked = scene.getUnlockedMoves().includes(id);
   const assigned = ((scene.game.registry.get('moveClassTuning') as Partial<Record<string, MoveClass>>) ?? {})[id];

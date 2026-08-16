@@ -347,8 +347,11 @@ under one figure reads as floating even when neither is wrong on its own.
   only two things to sell is read this way too** (Landau's and Skłodowska-Curie's own panels,
   below): two rows and one full-width pane cost far less height than two half-width panes side
   by side, and neither half was ever wide enough for a full animation stage with an inline
-  quasiparticle picker under it. Two rows never paginate, so the list column is as short as a
-  column gets and the pane takes all of the height that buys. A panel that
+  quasiparticle picker under it. Those two panels run their stage at the taller
+  `TUNED_MOVE_STAGE_H` (`144`) instead: their left column is a move heading, that move's hostable
+  quasiparticles, a second heading and the footer, which is the taller of the two columns and
+  already reserves the room, so the animation is drawn as large as the panel's own worst case
+  allows rather than as large as the shorter shared block. A panel that
   needs a *second* escape button ("Never mind" alongside "Farewell", on Anderson's pending
   two-step pick) is not one of these layouts -- that step is a flat centered move list, and its
   two buttons share one full-width row (`renderCancelFarewellFooter`).
@@ -940,7 +943,10 @@ the Materialdex's own undiscovered-crystal treatment uses) plus a few soft,
 deterministically-jittered light-grey mist puffs, so it reads as shrouded rather than merely a
 different color. Every fill stays flat -- no per-tile diagonal shading -- matching every other
 ground/floor fill in the game (`MAP_STYLE` in the module is the one line that picks this region
-treatment). The module wires no
+treatment). The partition itself is resolved once for the whole module and shared by both builds
+(`regionRuns`), as horizontal runs of same-coloured cells rather than cell-by-cell: the overlook
+below is scenery redrawn every frame, so classifying the country cannot be per-draw work.
+The module wires no
 interactivity of its own -- Bloch's panel ("Bloch in the overworld" below) is the one consumer of
 that build, attaching its own `setInteractive`/`pointerdown` handling to each returned marker and
 reading back the module's actual rendered `width`/`height` (uniform scale-to-fit can make either
@@ -953,15 +959,32 @@ a cliff once The Adapted falls, and what lies below the edge is *every* world at
 once, seen from above — precisely the view a trained model has of its training
 data.
 
-- **Ground far below, never an image pasted flat to the screen**: it fills the
+- **Ground far below, never an image pasted flat to the screen**: it lies in the
   gap between the cliff lip and the horizon, with the cliff's shadow under the
   lip, self-luminous per the light rule (the record glows, nothing shines on
   it).
-- **The same shape as the panel build.** One uniform scale for both axes and the
-  panel's own land colours, so the coastline below is recognisably the map
-  Bloch's panel shows; the only concession to the viewing angle is a mild
-  vertical squash. Recognition is what the view is for, and it outranks
-  perspective.
+- **Fixed in the world, not fitted to the screen.** The land's near and far
+  coasts are two ground rows a fixed number of tiles past the lip
+  (`OVERLOOK_NEAR_TILES`/`OVERLOOK_FAR_TILES` in `scenes/overworld/sky.ts`),
+  projected exactly like every other row of ground, and it is centred on the
+  goal column's own lane rather than on the middle of the frame. So the country
+  lies at a fixed place in the world: walking toward the edge brings it up and
+  opens it out by as much as ground at that distance opens out, walking along
+  the edge slides it with the ground, and standing still leaves it still. The
+  near offset clears the last row the terrain sweep actually draws, which is
+  what leaves the stretch of unseen ground a cliff puts between a standing
+  figure and what is below. Both lines drawn on the land -- its coast and the
+  route trace -- carry widths in the map's own native px, so they thin as it
+  recedes instead of staying a fixed width on the glass.
+- **The same land as the panel build.** One uniform scale for both axes, the
+  panel's own land colours, and the same ten painted regions with the same
+  texture marks, so the country below is recognisably the map Bloch's panel
+  shows; the only concession to the viewing angle is a mild vertical squash.
+  Recognition is what the view is for, and it outranks perspective. Every
+  region colour is lifted toward the record's own light and drowned into the
+  live fog on the way in, the texture marks included -- they are the most
+  saturated ink on the map, and undrowned they are the first thing that would
+  read as an interface.
 - **The haze is load-bearing.** The land is drowned into the same live fog target
   every distant thing is drowned into, graded across its own depth so the far
   coast dissolves and the near one does not. Fog is the cheapest signal that
@@ -970,9 +993,11 @@ data.
 - **The gap must actually be empty.** Past a cliff there is no repeated road and
   no repeated surround — the terrain sweep draws nothing there, which is what
   leaves room for the drop and the land below to be seen at all.
-- **Every interactive affordance is stripped** — no markers, no labels, no
-  per-world region tints. Those belong to the clickable panel build of the same
-  asset and stay there.
+- **Every interactive affordance is stripped** — no markers, no labels, nothing
+  to click. Those belong to the clickable panel build of the same asset and stay
+  there. The regions are not an affordance: they are what the country looks like
+  from above, and the shroud over an undiscovered one is, so nothing below the
+  cliff is shrouded — the view is of every world at once.
 - **The route trace** is a dim luminous line through the worlds the player has
   actually walked, in the order they walked them. It is the one thing no other
   copy of this map carries. No marker sits at either end of it: a marker is an
@@ -1366,12 +1391,13 @@ station motifs are deliberately not tunnels with a visible far end.
   **right side** is not a plain per-selection detail pane the way Dresselhaus'/Majorana's own
   right columns are: the Qumatuomi map (`art/qumatuomiMap.ts`, "Qumatuomi map" above) sits fixed
   at the top, rendered once showing all 10 worlds at once and never swapped, given a height budget
-  (`110`px requested) equal to the silhouette's own native height, so it draws at 1:1 with no
-  scaling at all -- the map's *width* budget is generous (the right column's own width) so
-  height, not width, is always the binding side of its uniform scale-to-fit. That is also as large
-  as this panel can carry it: on a full page of destination rows the left column is the taller of
-  the two, so the panel's own tallest state costs no extra height, and at the largest text-size
-  preset the blurb beneath still clears its own shrink loop untouched on the longest world entry.
+  (`146`px requested) well past the silhouette's own `110`px native height, so it draws scaled up
+  and its painted regions and texture marks are large enough to read as terrain -- the map's
+  *width* budget is generous (the right column's own width) so height, not width, is always the
+  binding side of its uniform scale-to-fit. That is as large as this panel can carry it: at the
+  largest text-size preset the right column is the taller of the two and ends with the same margin
+  below it that the left column already ends on at the smallest, checked on the longest world
+  entry (World 9's) with a confirm button present.
   Each of the map's 10
   markers gets its own `setInteractive` circle hit area (larger than the marker's own few-px
   radius) and `pointerdown` handler, so clicking a marker previews that world exactly like
@@ -1808,16 +1834,15 @@ station motifs are deliberately not tunnels with a visible far end.
   "Attack effects" below) rather than the shared windup/travel/impact beat every other
   move uses.
 - **Worst-case layout budget.** This panel (and Landau's own above) carries more content than
-  any other guardian panel -- two full animation stages plus two inline pickers below her own
-  especially long intro quote -- so the vertical fit was verified against the actual worst case
-  rather than assumed: both moves tuned to `'majorana'` (a class every `chernSuperconductor`
-  crystal hosts, the type with the most hostable classes at five, so both pickers wrap to their
-  own worst-case three rows) and both leveled to Feynman's own Infinite tier (longest name
-  prefix, longest preview animation). Measured content bottom stayed under `CANVAS_H` (`480`) at
-  both the default (`1.5x`) and largest (`2x`) text-size presets with real margin to spare (
-  roughly 20-25px), confirmed via a headless render rather than by inspection alone -- the
-  quasiparticle picker's own denser wrapped-pill layout ("Quasiparticle picker" above) is what
-  makes this fit at all; a naive one-row-per-class vertical list does not.
+  any other guardian panel -- a full-height animation stage plus an inline quasiparticle picker,
+  below her own especially long intro quote -- so the vertical fit is verified against the actual
+  worst case rather than assumed: a `chernSuperconductor` crystal (the type with the most
+  hostable classes, at five, so the left column's own entry list is at its longest and
+  paginates) at the largest (`2x`) text-size preset, with the longest status line the pane can
+  show. Measured content bottom stays under `CANVAS_H` (`480`) with real margin (roughly 45px),
+  and the left column is what sets it -- the detail pane, taller stage included, still ends
+  above the Farewell button beneath the rows. Confirmed via a headless render rather than by
+  inspection alone.
 
 ## Paginated candidate lists (`OverworldScene.renderPagedButtons`)
 

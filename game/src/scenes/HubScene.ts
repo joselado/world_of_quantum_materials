@@ -245,7 +245,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
       .text(
         CANVAS_W / 2,
         62,
-        'A voice, deep in the Lab: "A Decoherence is spreading through the quantum material worlds. Master each phase of matter to stabilize it."',
+        'A Decoherence is spreading through the quantum material worlds. Master each phase of matter to stabilize it.',
         // Wrapped narrow enough to stay clear of the guardian clusters
         // standing in the two upper corners (spawnGuardianAvatars).
         { fontSize: fontPx(this, 12), fontStyle: 'italic', color: '#cfd8ff', align: 'center', wordWrap: { width: 420 } }
