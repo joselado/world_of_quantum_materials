@@ -281,6 +281,138 @@ export function paintSplitMerge(
   return (leftCenter + rightCenter) / 2;
 }
 
+// Punches impassable islands into ground that has already been painted -- the
+// shape half of every world whose ground is a place rather than a route. The
+// world paints a wide field first, then hands this a list of candidate
+// islands; what survives is that world's feature (a column base, a vortex pit,
+// a shard patch, a pool) standing *in* the floor, with the floor still open
+// around it.
+//
+// `clearance` is the walkable gap that must remain on every side of an island,
+// in tiles, and it is the whole reason this is one shared pass rather than
+// per-world placement code. An island is accepted only if every tile within
+// that distance of it is currently walkable, which is checked against the grid
+// as it stands -- so the same one rule holds an island off the field's own
+// edge, off the previous island, and off anything else already punched. At the
+// default it leaves invariant A's 2-tile floor under every aisle the islands
+// make between them, which is what stops a field of features from closing into
+// single-file gaps a spawn could cork.
+//
+// A candidate that doesn't fit is dropped rather than moved: a world asks for
+// more islands than it needs and takes the ones its own ground had room for,
+// which keeps placement declarative and keeps a crowded field from pushing
+// features somewhere the world didn't mean them to be. Each candidate lists
+// its own core tile first, and that is what comes back for `featureCores`.
+export function punchIslands(
+  walkable: boolean[][],
+  gridW: number,
+  gridH: number,
+  candidates: GridPoint[][],
+  clearance: number = MIN_SEGMENT_WIDTH
+): GridPoint[] {
+  const cores: GridPoint[] = [];
+  for (const island of candidates) {
+    if (!island.length || !islandFits(walkable, gridW, gridH, island, clearance)) continue;
+    for (const tile of island) walkable[tile.y][tile.x] = false;
+    cores.push(island[0]);
+  }
+  return cores;
+}
+
+// The ground a run of bands all hold in common -- the intersection of every
+// band within `reach` rows of `index`. What it answers is where an island may
+// be centred: a field that wanders has a different span on every row, so a
+// feature placed against the row it sits on can easily reach past what the
+// rows above and below actually cover, and punchIslands then refuses it. Ask
+// for the window over the rows the island will occupy plus the clearance it
+// needs, and what comes back is ground every one of those rows has.
+export function bandWindow(bands: WanderBand[], index: number, reach: number): { left: number; right: number } {
+  let left = bands[index].left;
+  let right = bands[index].right;
+  for (let j = Math.max(0, index - reach); j <= Math.min(bands.length - 1, index + reach); j++) {
+    left = Math.max(left, bands[j].left);
+    right = Math.min(right, bands[j].right);
+  }
+  return { left, right };
+}
+
+// One island's tiles as a filled disc, centre first -- the shape the worlds
+// that punch a hole rather than a post ask for (a vortex pit, a pool, a
+// vacancy). Centre first because punchIslands hands back each candidate's
+// first tile as its featureCore, and the feature a material draws on a core
+// belongs at the middle of the hole rather than on its rim.
+export function discIsland(centerX: number, centerY: number, radius: number): GridPoint[] {
+  const tiles: GridPoint[] = [{ x: centerX, y: centerY }];
+  for (let dy = -radius; dy <= radius; dy++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      if ((dx === 0 && dy === 0) || dx * dx + dy * dy > radius * radius) continue;
+      tiles.push({ x: centerX + dx, y: centerY + dy });
+    }
+  }
+  return tiles;
+}
+
+// Punches the first candidate that fits and stops, returning its core -- for a
+// feature the world is *named* for, where "dropped because it didn't fit" is
+// not an acceptable outcome. The caller offers the shape it wants first and
+// progressively humbler ones after it (a row or two along, a size smaller), so
+// a glacier always gets its vortex even on a roll of the ground that leaves no
+// room for the vortex it would have preferred. Returns null only if nothing
+// offered fits at all.
+export function punchFirst(
+  walkable: boolean[][],
+  gridW: number,
+  gridH: number,
+  candidates: GridPoint[][],
+  clearance: number = MIN_SEGMENT_WIDTH
+): GridPoint | null {
+  for (const island of candidates) {
+    const cores = punchIslands(walkable, gridW, gridH, [island], clearance);
+    if (cores.length) return cores[0];
+  }
+  return null;
+}
+
+function islandFits(walkable: boolean[][], gridW: number, gridH: number, island: GridPoint[], clearance: number): boolean {
+  const own = new Set(island.map((t) => key(t.x, t.y)));
+  for (const tile of island) {
+    if (!walkable[tile.y]?.[tile.x]) return false;
+    for (let dy = -clearance; dy <= clearance; dy++) {
+      for (let dx = -clearance; dx <= clearance; dx++) {
+        const x = tile.x + dx;
+        const y = tile.y + dy;
+        if (own.has(key(x, y))) continue;
+        if (!inBounds(x, y, gridW, gridH) || !walkable[y][x]) return false;
+      }
+    }
+  }
+  return true;
+}
+
+// The widest walkable run on a row, as its centre tile -- how a world built by
+// punching islands into a field picks a landmark (`goal`, `mid`) once its own
+// ground is drawn. Reading the finished grid rather than predicting a gap
+// keeps the landmark in open floor whatever the features did to that row.
+export function widestRunCenter(walkable: boolean[][], gridW: number, y: number): number | null {
+  if (y < 0 || y >= walkable.length) return null;
+  let bestLeft = -1;
+  let bestRight = -2;
+  let runStart = -1;
+  for (let x = 0; x <= gridW; x++) {
+    if (x < gridW && walkable[y][x]) {
+      if (runStart === -1) runStart = x;
+      continue;
+    }
+    if (runStart === -1) continue;
+    if (x - 1 - runStart > bestRight - bestLeft) {
+      bestLeft = runStart;
+      bestRight = x - 1;
+    }
+    runStart = -1;
+  }
+  return bestRight >= bestLeft ? Math.round((bestLeft + bestRight) / 2) : null;
+}
+
 // Derives one CorridorRow per occupied grid row from the *final* walkable
 // grid, after every shape-specific pass (including the chokepoint force)
 // has already run -- so encounter placement always lands on an actually

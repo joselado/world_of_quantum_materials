@@ -1,116 +1,114 @@
-// World 5 (superconductivity, Majorana): the main corridor spirals briefly
-// around one or two fixed, permanently-blocked "vortex core" points at a
-// few rows along its length -- a literal Abrikosov vortex the supercurrent
-// has to wind around -- before straightening back out and continuing on to
-// the goal.
+// World 5 (superconductivity, Nambu, Majorana): an open ice sheet with one or
+// two vortex pits punched clean through it. The sheet is wide and the pits sit
+// in the middle of it, so the route parts and rejoins around each one: the
+// player winds around a vortex because the geometry leaves no way through it,
+// not because a spiral was drawn for them to follow.
 //
-// The cores are returned in `featureCores` and cleared back to blocked after
-// every band, spiral and join has been painted. Both matter. The spiral's own
-// brush and the join carve out of the last core each pass close enough to the
-// centre to fill it, so a core protected only where it is placed is a core the
-// next stroke walks over; and the renderer is told which tiles are cores
-// rather than guessing from the shape, since that is what puts the pit exactly
-// where the physics puts it (materials/ice.ts).
+// That is the physics the world is named for. A supercurrent flows everywhere
+// in the condensate and has to circulate around a trapped flux line, and the
+// field is expelled from everywhere except the core -- so the sheet is blank
+// and open, and the only place anything shows is the pit, which
+// scenes/overworld/terrain/materials/ice.ts draws its rim and its cold glow of
+// trapped flux on.
+//
+// The pit centres come back from the shared punch as `featureCores`, which is
+// what puts that glow exactly where the physics puts it rather than wherever a
+// renderer guessed a hole might be. How many vortices the sheet carries is a
+// count, the same one or two at every world size, each of them scaled up with
+// the world.
 
-import { GeneratedMap, GridPoint, WorldScale, carveThickPath, clamp, inBounds, makeColorGrid, makeGrid, paintBands, wanderBands } from './shared';
-import type { WanderBand } from './shared';
+import {
+  bandWindow,
+  GeneratedMap,
+  GridPoint,
+  WorldScale,
+  clamp,
+  discIsland,
+  makeColorGrid,
+  makeGrid,
+  paintBands,
+  punchFirst,
+  wanderBands,
+  widestRunCenter,
+} from './shared';
 
-const TRUNK_WIDTH = 6;
-const SPIRAL_WIDTH = 4;
-const SPIRAL_R_MAX = 8;
-const SPIRAL_R_MIN = 2.2;
-// A number of turns, not a length -- a vortex winds as many times around its
-// core in a big world as in a small one, it just winds around a bigger core.
-const SPIRAL_TURNS = 1.3;
-// Steps painted per turn. Scaled with the spiral's own radius so the stroke
-// stays a smooth curve rather than a ring of separated stamps: the arc
-// between consecutive steps grows with the radius, and the brush painting it
-// is only so wide.
-const STEPS_PER_TURN = 48;
-
-function paintSpiral(
-  walkable: boolean[][],
-  gridW: number,
-  gridH: number,
-  core: GridPoint,
-  direction: 1 | -1,
-  scale: WorldScale
-): { entry: GridPoint; exit: GridPoint } {
-  const brush = scale.tiles(SPIRAL_WIDTH);
-  const rMax = SPIRAL_R_MAX * scale.factor;
-  const rMin = SPIRAL_R_MIN * scale.factor;
-  const steps = Math.round(SPIRAL_TURNS * STEPS_PER_TURN * Math.max(1, scale.factor));
-  const half = Math.floor(brush / 2);
-  let entry: GridPoint = core;
-  let exit: GridPoint = core;
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    const theta = direction * t * SPIRAL_TURNS * 2 * Math.PI;
-    const r = rMax - (rMax - rMin) * t;
-    const px = Math.round(core.x + r * Math.cos(theta));
-    const py = Math.round(core.y + r * Math.sin(theta));
-    for (let dx = -half; dx < brush - half; dx++) {
-      for (let dy = -half; dy < brush - half; dy++) {
-        const xx = px + dx;
-        const yy = py + dy;
-        if (inBounds(xx, yy, gridW, gridH)) walkable[yy][xx] = true;
-      }
-    }
-    if (i === 0) entry = { x: px, y: py };
-    if (i === steps) exit = { x: px, y: py };
-  }
-  return { entry, exit };
-}
+const SHEET_WIDTH = 15;
+const VORTEX_RADIUS = 4;
+// The smallest a vortex may be shrunk to when the ice leaves no room for a
+// full-sized one. A pit still has to be something the route parts around
+// rather than a hole to step over.
+const VORTEX_RADIUS_MIN = 2;
+// The narrowest a passage beside a pit may be built. Two tiles is invariant
+// A's own floor; this is what the sheet has to be wider than twice over, or
+// the pit is a wall rather than something to wind around.
+const PASSAGE_MIN = 2;
+// The sheet drifts, but gently: a pit needs the same ground held for every row
+// it touches plus its passages, and a corridor that swings hard leaves no
+// window wide enough for one anywhere along it. An open sheet has no reason to
+// swing hard either.
+const SHEET_DRIFT_CHANCE = 0.25;
+const SHEET_MAX_STEP = 1;
 
 export function generateWorld5Map(gridW: number, gridH: number, start: GridPoint, scale: WorldScale): GeneratedMap {
   const goalY = 1;
   const totalRows = start.y - goalY + 1;
-  // How many vortices the corridor winds around is a count: the same one or
-  // two at every world size, each of them scaled up with the world.
   const vortexCount = Math.random() < 0.5 ? 1 : 2;
-  const fracs = vortexCount === 1 ? [0.48] : [0.28, 0.66];
-  const spiralClearance = scale.tiles(SPIRAL_R_MAX + 2);
+  const fracs = vortexCount === 1 ? [0.48] : [0.3, 0.68];
 
-  const walkable = makeGrid(gridW, gridH);
-  const allBands: WanderBand[] = [];
-  const featureCores: GridPoint[] = [];
-
-  let segStartX = start.x;
-  let segStartY = start.y;
-
-  fracs.forEach((frac) => {
-    const targetY = start.y - Math.round(totalRows * frac);
-    const approachY = clamp(targetY + scale.tiles(6), goalY + scale.tiles(4), segStartY - 1);
-    const segBands = wanderBands(gridW, segStartX, segStartY, approachY, { width: scale.tiles(TRUNK_WIDTH), scale });
-    paintBands(walkable, gridW, segBands);
-    allBands.push(...segBands);
-
-    const lastBand = segBands[segBands.length - 1];
-    const side = Math.random() < 0.5 ? 1 : -1;
-    const core = { x: clamp(lastBand.center + side * spiralClearance, spiralClearance, gridW - spiralClearance), y: targetY };
-    featureCores.push(core);
-    const { entry, exit } = paintSpiral(walkable, gridW, gridH, core, side as 1 | -1, scale);
-    carveThickPath(walkable, gridW, gridH, { x: lastBand.center, y: approachY }, entry, scale.tiles(SPIRAL_WIDTH));
-
-    segStartX = exit.x;
-    segStartY = exit.y - 1;
+  const bands = wanderBands(gridW, start.x, start.y, goalY, {
+    width: scale.tiles(SHEET_WIDTH),
+    driftChance: SHEET_DRIFT_CHANCE,
+    maxStep: SHEET_MAX_STEP,
+    scale,
   });
+  const walkable = makeGrid(gridW, gridH);
+  paintBands(walkable, gridW, bands);
 
-  const finalBands = wanderBands(gridW, segStartX, segStartY, goalY, { width: scale.tiles(TRUNK_WIDTH), scale });
-  paintBands(walkable, gridW, finalBands);
-  if (finalBands.length) carveThickPath(walkable, gridW, gridH, { x: segStartX, y: segStartY + 1 }, { x: finalBands[0].center, y: finalBands[0].y }, scale.tiles(TRUNK_WIDTH - 2));
-  allBands.push(...finalBands);
+  const midBand = bands[Math.floor(bands.length / 2)];
 
-  for (const core of featureCores) walkable[core.y][core.x] = false;
+  // A pit of this size on this row, centred on ground every row it touches
+  // holds in common (the sheet drifts, so the row's own span is not enough to
+  // place against) and offset off-centre as far as the ice allows -- the two
+  // ways around a vortex are not meant to be the same walk.
+  const pitAt = (y: number, radius: number): GridPoint[] | null => {
+    const index = start.y - y;
+    if (index < 0 || index >= bands.length) return null;
+    // Never on the guardian's row or within a pit's own reach of it: the
+    // chokepoint pass wipes that row to a three-tile gap, and a pit beside the
+    // gap would close the only crossing.
+    if (Math.abs(y - midBand.y) <= radius + PASSAGE_MIN) return null;
+    const reach = radius + PASSAGE_MIN;
+    const window = bandWindow(bands, index, reach);
+    const lo = window.left + reach;
+    const hi = window.right - reach;
+    if (hi < lo) return null;
+    const cx = clamp(lo + Math.floor(Math.random() * (hi - lo + 1)), radius, gridW - radius - 1);
+    return discIsland(cx, y, radius);
+  };
 
-  const goalBand = finalBands[finalBands.length - 1] ?? allBands[allBands.length - 1];
-  const goal = { x: Math.round((goalBand.left + goalBand.right) / 2), y: goalBand.y };
+  // Every vortex gets placed. This world is named for them, and a glacier that
+  // rolled a corridor with no room for a full-sized pit gets a smaller one a
+  // few rows along rather than none: the candidates below run from the pit the
+  // world wants down to the smallest one still worth winding around.
+  const featureCores: GridPoint[] = [];
+  const wanted = scale.tiles(VORTEX_RADIUS, 1);
+  const floor = scale.tiles(VORTEX_RADIUS_MIN, 1);
+  for (const frac of fracs) {
+    const targetY = start.y - Math.round(totalRows * frac);
+    const candidates: GridPoint[][] = [];
+    for (let radius = wanted; radius >= floor; radius--) {
+      for (const dy of [0, -2, 2, -5, 5, -8, 8]) {
+        const pit = pitAt(targetY + dy, radius);
+        if (pit) candidates.push(pit);
+      }
+    }
+    const core = punchFirst(walkable, gridW, gridH, candidates, PASSAGE_MIN);
+    if (core) featureCores.push(core);
+  }
 
-  // Comfortably before the goal, not a literal midpoint index -- see
-  // world8.ts's own note on why a short final stretch needs this guard.
-  const midIdx = Math.max(0, Math.min(Math.floor(allBands.length / 2), allBands.length - scale.tiles(3)));
-  const midBand = allBands[midIdx] ?? goalBand;
-  const mid = { x: Math.round((midBand.left + midBand.right) / 2), y: midBand.y };
+  const goalBand = bands[bands.length - 1];
+  const goal = { x: widestRunCenter(walkable, gridW, goalBand.y) ?? goalBand.center, y: goalBand.y };
+  const mid = { x: widestRunCenter(walkable, gridW, midBand.y) ?? midBand.center, y: midBand.y };
 
   return { walkable, start, goal, mid, regionColor: makeColorGrid(gridW, gridH), biomeOverride: makeColorGrid(gridW, gridH), featureCores };
 }

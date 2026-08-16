@@ -187,7 +187,38 @@ game/src/
                                   main corridor and a 2-wide lane share one implementation),
                                   paintSplitMerge (world1.ts's/world8.ts's split-then-remerge stretch,
                                   optionally regionColor-tinted), paintColumnBand (paintBand's vertical
-                                  mirror, world4.ts's horizontal branches), carveThickPath/nearestWalkable
+                                  mirror, world4.ts's horizontal branches),
+                                  the island toolkit -- the way nine of the ten worlds are actually
+                                  built: paint a wide field, then punch that world's own impassable
+                                  features into it (world1.ts's hedgerow, world2.ts's columns,
+                                  world5.ts's vortex pits, world6.ts's shard clumps, world8.ts's pools,
+                                  world9.ts's vacancies):
+                                    punchIslands   -- offers a list of candidates and punches the ones
+                                                      that fit, enforcing one clearance rule on every
+                                                      side of every island against the grid as it stands,
+                                                      so the same pass holds a feature off the field's
+                                                      edge, off its neighbours and off the grid boundary,
+                                                      and keeps the gaps between them above invariant A.
+                                                      A candidate that doesn't fit is dropped; each
+                                                      candidate's first tile comes back as its featureCore
+                                    punchFirst     -- punches the first candidate that fits and stops,
+                                                      for a feature the world is *named* for: offer the
+                                                      shape wanted first and humbler ones after it, so a
+                                                      Vortex Glacier can never roll a map with no vortex
+                                    discIsland     -- one island's tiles as a filled disc, centre first
+                                    bandWindow     -- the ground a run of bands hold in common, which is
+                                                      where an island may be centred. A field that
+                                                      wanders has a different span every row, so a
+                                                      feature placed against its own row reaches past
+                                                      what the neighbours cover and gets refused
+                                    widestRunCenter -- picks a landmark (goal/mid) out of the finished
+                                                      floor rather than predicting where a gap will be
+                                  Two facts worth knowing before adding a feature: two islands cannot
+                                  stand closer than their own radii plus the clearance (asking for a
+                                  denser scatter yields islands that reject each other, not more
+                                  islands), and an island on the guardian's row fights forceChokepoint,
+                                  so every world keeps its features off mid.y),
+                                  carveThickPath/nearestWalkable
                                   (splicing a fixed point into a network-shaped layout that doesn't
                                   already touch it, world3.ts/world5.ts), the invariant-B primitives
                                   (forceChokepoint/reachable/verifyChokepoint) mapgen.ts runs centrally,
@@ -1440,7 +1471,10 @@ tile into a `TerrainTile`: its kind (one per off-path material, resolved from th
 use), its resolved `Biome`, its region tint, whether it carries decoration or the
 guardian-chokepoint highlight, and whether it is a `featureCore` -- an impassable tile a generator
 built its shape around and the finished grid still has blocked, which the world's own material
-draws its named feature on: `materials/ice.ts` a vortex pit, `materials/bog.ts` a local moment.
+draws its named feature on: `materials/ice.ts` a vortex pit, `materials/bog.ts` a local moment,
+`materials/columns.ts` one of the hall's own columns (that world's two lattices meet here -- a core
+carries a column wherever the generator put one, and every other impassable tile carries the
+column field's own every-second-tile spacing).
 That last one comes down from the generator rather than being recognised from the shape, and
 deliberately so: a blocked tile ringed by walkable ground is also what an ordinary corridor pinch
 and a forced chokepoint's wall look like, so inference draws pits where the world has none and

@@ -5,7 +5,7 @@ import { ellipseSteps, fillPolygon, fillDot } from '../../../../art/shapes';
 import { gridH, TILE_SCALE } from '../../projection';
 import type { AccentTile } from '../types';
 
-// 'bog' (the Screened Swamp, world 8): the open water the peat banks thread
+// 'bog' (the Screened Swamp, world 8): the open water punched into the peat
 // between, the reeds standing out of it, and the local moments burning in it.
 //
 // **The threat is the water, not the reeds.** Reeds are the Mean Fields'
@@ -23,7 +23,7 @@ import type { AccentTile } from '../types';
 // deeper in the halo has closed and the point is out. That is also this
 // world's escalation spine: further in is further screened.
 //
-// The corridor parts around a pool with a moment in it (world8.ts marks those
+// The shelf parts around a pool with a moment in it (world8.ts marks those
 // tiles as feature cores), so the split and the screening are one picture --
 // the path divides because something in the water is being put out.
 const TILE_PX = TILE_SCALE * LANE_PX;

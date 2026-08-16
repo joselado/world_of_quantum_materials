@@ -209,6 +209,39 @@ Run this after any content addition -- pairs naturally with the
 before reaching for `component-check`/`playthrough-check`, which check
 behavior rather than data.
 
+## Map generation: invariants and shape
+
+Two scripts, one a gate and one a reading, both pure Node -- the generator
+side (`src/world/mapgen.ts` and `generators/`) deliberately imports no Phaser,
+so each bundles just that slice with esbuild and runs it headless.
+
+**`npm run mapgen:check`** (`scripts/mapgen-check.mjs`, ~30s) is the gate.
+It generates every world hundreds of times at every world size the Settings
+station offers and independently re-verifies DESIGN.md §2's two invariants:
+that `start` can reach `goal`, and that `mid` is a genuine articulation point
+between them (removing it and its four neighbours must disconnect the two).
+It re-derives both itself rather than trusting `generateWorldMap`'s own retry
+and verify pass, since a bug inside `forceChokepoint`/`verifyChokepoint`
+would not be caught by that pass re-checking its own work. It also reports
+the invariant-A proxy -- what fraction of walkable tiles belong to no
+straight run of two -- as a rate rather than a pass/fail, and fails the run on
+a guardian standing on top of the goal. Run it after any change to a
+generator or to the shared passes.
+
+**`npm run mapshape:measure`** (`scripts/mapshape-measure.mjs`, ~15s) is the
+reading, and answers the question the gate cannot: how much ground does each
+world actually give the player to stand on? It reports mean walkable row
+width (as a fraction of the grid, so the number means the same thing at every
+size), how many disjoint walkable runs a row holds, and what fraction of the
+grid a world fills. Those are the two ways a world reads as wide -- floor
+area or route choice -- and the band a world is judged against is in
+`MAPSHAPE_BUILD_TASK.md`. Takes a size label (`npm run mapshape:measure
+Macro`), defaulting to Meso. No pass/fail and no exit code: it is a
+before/after reading taken around a change to a world's shape.
+
+Both read from the tile `OverworldScene` actually starts the player on, which
+is load-bearing: a world's shape is only what it is from where it is entered.
+
 ## Art-builder input sweep
 
 **`npm run art-sweep`** (`scripts/art-sweep.mjs`, ~20-35s) calls every

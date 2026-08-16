@@ -5,11 +5,11 @@ import { ellipseSteps } from '../../../../art/shapes';
 import { TILE_SCALE } from '../../projection';
 import type { AccentTile } from '../types';
 
-// 'ice' (the Vortex Glacier, world 5): the frozen lake either side of the
-// swept corridor, and the vortex pits inside it.
+// 'ice' (the Vortex Glacier, world 5): the frozen lake beyond the swept sheet
+// the player crosses, and the vortex pits punched through the sheet itself.
 //
-// A pit stands on a tile the generator placed as a vortex core and kept
-// blocked while the corridor spiralled around it (world/generators/world5.ts).
+// A pit stands on a tile the generator placed as a vortex core and kept blocked
+// while the sheet parted around it (world/generators/world5.ts).
 // It gets a dark rim and a faint cold glow of trapped flux down inside it: the
 // field is excluded everywhere else in this world, so the only place it can be
 // is here, and that glow is the field made visible exactly where the physics

@@ -8,7 +8,8 @@ terrain, palette, light, and the story the sequence tells.
 
 **The maps are under active revision.** World layouts are being fine-tuned, so
 this file's terrain and palette entries and `DESIGN.md` §2's map shapes are open
-for change rather than fixed. A proposed change to a world's ground is a design
+for change rather than fixed. The current pass over how much ground each world
+gives the player to stand on is `MAPSHAPE_BUILD_TASK.md`. A proposed change to a world's ground is a design
 question to be decided on its merits, not a violation to be raised — while this
 holds, judge such a proposal on whether it serves the world, and take the rest of
 this file (the naming law, the light rule, the escalation spines, the premise) as
@@ -192,24 +193,29 @@ lives.
 
 | # | Name | Walkable | Impassable | Light |
 |---|---|---|---|---|
-| 1 | **The Mean Fields** | wheat / mown grass | dense summer forest | bright morning |
-| 2 | **The Stone Lattice** | pale sandstone aisle | rows of identical sandstone columns | hard midday sun |
-| 3 | **The Edge Cliffs** | a lit ledge between two domains | shallow drop to sunken dead floors | bright, windy, motionless afternoon |
+| 1 | **The Mean Fields** | open wheat / mown grass, a hedgerow dividing it for a stretch | dense summer forest | bright morning |
+| 2 | **The Stone Lattice** | open pale sandstone floor, columns standing in it | the column field the hall is cut out of | hard midday sun |
+| 3 | **The Edge Cliffs** | a network of lit ledges between domains, meeting at junctions | shallow drop to sunken dead floors | bright, windy, motionless afternoon |
 | 4 | **The Storm Flats** | banded indigo ground, glowing boundary channels | ground the storm strikes | stormy dusk |
-| 5 | **The Vortex Glacier** | pale swept ice | frozen lake, vortex pits with trapped-flux glow | overcast twilight |
-| 6 | **The Iron Steppe** | black iron-sand | aligned iron shards, flipping across a domain wall | night, green aurora |
+| 5 | **The Vortex Glacier** | an open sheet of pale ice | vortex pits punched through it with trapped-flux glow, frozen lake beyond | overcast twilight |
+| 6 | **The Iron Steppe** | open black iron-sand | aligned iron shards standing in it in wavefronts, flipping across a domain wall | night, green aurora |
 | 7 | **The Entangled Web** | white-gold causeway | true void | no sky |
-| 8 | **The Screened Swamp** | peat bank threading between pools, parting and rejoining | open water that takes you; reeds standing in it | mist-glow and the moments burning in the pools |
-| 9 | **The Defect Scars** | scorched clay | molten crust — wounds still open | red glow |
+| 8 | **The Screened Swamp** | a peat shelf, wide at the entrance and closing to a bank by the end | pools of open water punched into it that take you; reeds standing in them | mist-glow and the moments burning in the pools |
+| 9 | **The Defect Scars** | an open plain of scorched clay | molten crust — wounds still open, and vacancies punched through the plain | red glow |
 | 10 | **The Devouring Mirror** | shifting silver-violet | terrain reconfiguring around you | uncanny shimmer |
 
 ### 1 — The Mean Fields *(mean field, spontaneous symmetry breaking)*
 
-You walk *in* a field, and forest is what hems it in. The walkable route is the
-bright one — wheat and mown grass — and the surround is dark canopy, so the
-value break runs the opposite way to a dirt-track world. The generator's two
-parallel branches (the degenerate symmetry-broken ground states) read as two
-fields divided by a hedgerow: scenery, not a diagram.
+You walk *in* a field, and forest is what hems it in. The walkable ground is the
+bright one — wheat and mown grass, open enough to wander — and the surround is
+dark canopy, so the value break runs the opposite way to a dirt-track world.
+
+Partway along, a hedgerow opens out of nothing down the middle of the field,
+widens, and closes again. While it stands there are two fields with no way
+between them, tinted apart, and those are the degenerate symmetry-broken ground
+states: the player picks one by picking a side and cannot unpick it until the
+hedgerow ends. Scenery, not a diagram — a hedge in a field is the most ordinary
+thing in the world, and it happens to be the shape of a broken symmetry.
 
 **The forest is open to being thinned or removed on rendering-cost grounds.**
 What it must not do is leave the world with nothing: with ground motifs gated
@@ -228,15 +234,24 @@ duplication.
 ### 2 — The Stone Lattice *(symmetries, tight-binding, effective models)*
 
 Built rather than grown: an open-air stone cloister in hard midday sun, and the
-only architecture in the game. The surround is rows of identical sandstone
-columns with dark shadow gaps, evenly spaced, marching off in both directions,
-and the aisle between them is flat pale stone.
+only architecture in the game. The floor is wide flat pale stone with columns
+standing in it, and it is cut out of a field of identical sandstone columns with
+dark shadow gaps, evenly spaced, marching off in both directions — so the hall
+is an aisle through a colonnade that continues past it rather than a room with
+sides.
 
-A colonnade is a one-dimensional lattice, so the player walks along the
-mathematical object rather than beside a picture of it. Every contrast axis
-flips against World 1 at once — organic
-vs. geometric, green vs. sandstone, soft irregular edges vs. hard straight ones
-— which is what stops two consecutive daylight worlds from reading as one.
+A colonnade is a lattice, and the player walks *through* it rather than beside a
+picture of it: the columns in the floor are a periodic array of scatterers, with
+a narrow aisle and a wide one alternating across the hall's width — the short
+and long bonds of a two-atom basis, walkable instead of drawn. That is what lets
+this world's ground be open without giving up its physics; the periodicity is
+carried by what stands in the floor, not by the outline of a corridor.
+
+The hall is straight-walled and constant-width, and it is the one ground in the
+game that does not wander. Every contrast axis flips against World 1 at once —
+organic vs. geometric, green vs. sandstone, soft irregular edges vs. hard
+straight ones — which is what stops two consecutive daylight worlds from reading
+as one. A cloister that drifted would be a ruin, and a ruin is a different world.
 
 Civilization is a brief episode: one built world, then never again. World 9's
 molten crust carries a few toppled column drums, which is what makes that a
@@ -250,6 +265,15 @@ differently-coloured ones. So: a lit ledge with a drop on either side, and the
 two bulk domains as the sunken floors flanking it. Bulk-boundary correspondence
 made literal — the edge state is the only place you can stand; the bulk is over
 the side.
+
+**This is the narrow world, on purpose, and the only one.** Every other world
+gives the player open ground; here the ledge is all there is, because ground you
+could walk out into would say the bulk is walkable, which is the opposite of
+what this world exists to show. What it gets instead of width is *choice*: the
+phase diagram is finely divided, so the seams form a network, and at every
+junction where several domains meet the player picks which boundary to follow
+north. Freedom without a single tile of walkable bulk, and a deliberate change of
+pace between two open worlds.
 
 **The drop is shallow, and never true void.** The domains are visible one storey
 down as extended flat expanses of dead colour, crystallized, airless, nothing
@@ -305,9 +329,14 @@ carried by the world's writing and its quiz material rather than by the ground.
 
 ### 5 — The Vortex Glacier *(superconductivity, Nambu, Majorana)*
 
-An open glacier at overcast twilight, with the corridor spiralling around one or
-two permanently blocked vortex cores. The pits are dark, rim-lit, with a faint
-cold glow of trapped flux down inside each one.
+An open sheet of ice at overcast twilight, with one or two vortex pits punched
+clean through it. The pits are dark, rim-lit, with a faint cold glow of trapped
+flux down inside each one, and they sit out in the middle of the sheet so the
+way past parts around them and closes again.
+
+The winding is left to the geometry rather than drawn: a supercurrent flows
+everywhere in the condensate and circulates around a trapped flux line because
+there is no way through it, and that is exactly what the player does here.
 
 Field expulsion is drawn where the field actually is: the pits. Everywhere else
 the ice is blank and pale — the field has been pushed out of it — and the only
@@ -317,11 +346,18 @@ glow survives rather than by streaks on the road.
 
 ### 6 — The Iron Steppe *(classical magnetism, magnons)*
 
-Night under a green aurora. Black iron-sand underfoot; the surround is fields of
-aligned iron shards, all leaning the same way, flipping direction across a
-domain wall. The magnetic order is something the player can see standing up out
-of the ground — the shards are the order made visible, and the domain wall is
-where it changes its mind.
+Night under a green aurora, on an open plain of black iron-sand — a steppe is a
+plain, and this one is walked across rather than along. Standing in it are
+clumps of aligned iron shards, all leaning the same way, flipping direction
+across a domain wall. The magnetic order is something the player can see
+standing up out of the ground — the shards are the order made visible, and the
+domain wall is where it changes its mind.
+
+The shards stand in **transverse wavefronts**, one wavelength apart down the
+plain and each front offset sideways from the last, so the train reads as
+travelling rather than as a fence repeated. A spin wave is a periodic
+disturbance of an ordered medium moving through it, and here it is the thing the
+player walks between.
 
 This is the **false calm**, and it is anatomically correct: the *mood* relaxes
 after ice and storm — the aurora is genuinely beautiful — while the *lethality*
@@ -353,10 +389,15 @@ Keep it still and structural — "shifting and alive" belongs entirely to World 
 
 ### 8 — The Screened Swamp *(quantum magnetism, spinons, Kondo)*
 
-Open black water under low mist, reed clumps standing out of it, and peat banks
-threading between the pools as the only ground that holds. No trees: the
-silhouette is horizontal — flat water, flat mist, upright reeds — which is what
-keeps it clearly apart from World 7's web overhead and World 9's broken ground.
+Open black water under low mist, reed clumps standing out of it, and peat that
+holds. No trees: the silhouette is horizontal — flat water, flat mist, upright
+reeds — which is what keeps it clearly apart from World 7's web overhead and
+World 9's broken ground.
+
+**The shelf closes as you go.** The peat enters wide and open, with the odd pool
+in it, and by the goal it has narrowed to a bank threading between water. That
+is the escalation spine written into the floor rather than into anything the
+player is told: the water is winning, and further in is further screened.
 
 **The threat is the water, not the reeds.** Reeds are "you just wouldn't walk
 there" — World 1's logic, which would regress the escalation spine at world
@@ -394,9 +435,17 @@ wounds still open and glowing. A lattice defect *is* frozen-in damage that never
 heals, and the contrast between the two carries it — the route is the damage that
 stopped, the surround is the damage that did not.
 
-The generator embeds patches of worlds 1–8's own looks along the corridor —
-borrowed defect "types" — which is also where World 2's toppled column drums
-belong, half-sunk in the crust.
+The plain carries two kinds of defect, which is what makes it a *sample* rather
+than a ruin. Patches of worlds 1–8's own looks are embedded along it — borrowed
+defect "types," the wrong atom on the right site, changing nothing about the
+ground but how it looks, and also where World 2's toppled column drums belong,
+half-sunk in the crust. And vacancies: holes punched clean out of the plain with
+the crust glowing in the gap, a site not occupied at all, which the player has
+to walk around rather than over.
+
+Both need the plain to be mostly *good* crystal to read at all. A defect is a
+local disturbance in something otherwise regular, so the ground is wide and
+whole, and the damage is what interrupts it.
 
 ### 10 — The Devouring Mirror *(machine learning for quantum materials)*
 

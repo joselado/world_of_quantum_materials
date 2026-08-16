@@ -28,7 +28,8 @@ owns the topic mapping, the wild pools and the progression gates.
 
 **The maps are under active revision.** The map shapes below are being fine-tuned
 and are open for change rather than fixed; `WORLDS.md`'s header carries the same
-note for the terrain and palette side. The topic mapping, the wild pools and the
+note for the terrain and palette side, and `MAPSHAPE_BUILD_TASK.md` is the
+current pass over how much ground each world gives the player to stand on. The topic mapping, the wild pools and the
 progression gates are not part of that revision and still hold.
 
 | World | Course topic | In-game name (`WORLD_NAMES`) | Wild material archetypes | Gate to next world |
@@ -51,16 +52,37 @@ generated fresh every visit by `game/src/world/generators/world<N>.ts` (dispatch
 
 | World | Map shape |
 |---|---|
-| 1 | A wide corridor splits into two thin, distinctly colored parallel branches -- the two degenerate symmetry-broken ground states -- then remerges into one wide corridor |
-| 2 | A periodic corridor: a short motif repeats via translation, alternating between two offset copies of it every row (a two-atom unit cell) |
-| 3 | The grid is partitioned into several colored Voronoi domains (distinct bulk topological phases); the only walkable ground is the boundary strip between two differently-colored domains |
+| 1 | An open field with a hedgerow running down the middle of it for a stretch: the hedgerow opens out of nothing, widens, and closes again, and while it stands the field is two distinctly colored fields with no way between them -- the two degenerate symmetry-broken ground states. The player picks a state by picking a side, and cannot unpick it until the hedgerow ends |
+| 2 | An open, straight-walled cloister floor with the lattice standing in it: impassable columns on a strictly periodic array inside the hall, carrying a two-atom basis across its width (a narrow aisle within each cell, a wide one through to the next), so the player walks through the periodic array of scatterers rather than along a path beside it. What varies per visit is the lattice phase alone -- where in the crystal the player entered |
+| 3 | The grid is partitioned into a good many colored Voronoi domains (distinct bulk topological phases); the only walkable ground is the boundary strip between two differently-colored ones. Deliberately the narrow world of the ten -- the edge state is the only place you can stand, so what opens it up is the number of seams and the junctions between them, where the player chooses which boundary to follow north, rather than any extra width of walkable bulk |
 | 4 | A wide trunk sprouts a mirrored pair of branches at intervals, each sprouting a smaller mirrored pair perpendicular to it, self-similar across a few scales (Hofstadter-butterfly-inspired) |
-| 5 | The main corridor spirals briefly around one or two fixed, permanently-blocked vortex-core points before straightening back out |
-| 6 | A mostly steady-width corridor whose width periodically bulges wider and narrows back -- a train of propagating wave packets along its length |
+| 5 | An open ice sheet with one or two vortex pits punched clean through it, each sitting mid-sheet so the route parts and rejoins around it: the player winds around a vortex because the geometry leaves no way through, not because a spiral was drawn to follow. The pit centres come back as feature cores, where the surround draws the rim and the cold glow of trapped flux |
+| 6 | An open plain with the magnetic order standing up out of it: shard clumps in transverse wavefronts, one wavelength apart down the plain's length, each front offset sideways from the last so the train reads as travelling rather than as a fence repeated |
 | 7 | 3-4 parallel lanes (a tensor network's own sites/legs) linked by periodic cross-link rungs (bonds) -- a real ladder, not one path with spurs |
-| 8 | A peat bank threading between pools of open water, which occasionally parts into two thin parallel banks for a stretch (fractionalization) before rejoining, possibly more than once; the middle of each pool it parts around is returned as a feature core, where the surround burns a local moment |
-| 9 | An ordinary wide corridor with several small patches embedded along it, each patch independently rendered using one of worlds 1-8's own biome look (a borrowed defect "type") |
+| 8 | A peat shelf with pools of open water punched into it. The shelf enters wide and closes steadily to a narrow bank by the goal, which is the world's escalation written into its floor; the shelf parts around the wider pools and rejoins past them (fractionalization), and every pool's centre is returned as a feature core, where the surround burns a local moment |
+| 9 | A wide plain of scorched clay carrying two kinds of defect: substitutional patches, each rendered with one of worlds 1-8's own biome look (a borrowed defect "type") and changing nothing about the shape, and vacancies, holes punched clean out of the plain with molten crust in the gap where the lattice is missing |
 | 10 | Reuses whichever of worlds 1-8's own generator matches the player's *current* material's main type (e.g. a superconductor-type player gets world 5's spiral); a player whose type doesn't resolve to one of the eight falls back to a fresh random pick among all eight every visit |
+
+**A world is ground with things standing in it, not a route drawn on a background.**
+Nine of the ten paint a wide field first and then punch that world's own impassable
+features into it (`generators/shared.ts`'s `punchIslands`) -- columns, a hedgerow, vortex
+pits, shard clumps, pools, vacancies. What that buys is a player who is somewhere rather
+than on a path: the walkable ground runs about 40-53% of the grid's width in every world,
+against a corridor's 20-25%, and the features are what the physics is carried by. World 3
+is the deliberate exception and stays narrow, because a walkable bulk would contradict the
+one thing bulk-boundary correspondence says; it gets its freedom from the number of seams
+and the junctions between them instead. `MAPSHAPE_BUILD_TASK.md` holds the per-world
+design and the band each is measured against (`npm run mapshape:measure`).
+
+Punching features into ground has one rule that is not negotiable, and `punchIslands`
+owns it: a **clearance** of at least invariant A's two tiles survives on every side of
+every feature, checked against the grid as it stands, so one pass keeps a feature off the
+field's edge, off its neighbours and off the grid boundary at once. Two consequences worth
+knowing before adding a feature to a world: a feature the world is *named* for is placed
+with `punchFirst` (offer the shape you want, then humbler ones, so a Vortex Glacier can
+never roll a map with no vortex in it), and two features cannot stand closer than their
+own radii plus that clearance -- asking for a denser scatter than that does not produce
+more features, it produces features that reject each other.
 
 Every shape is then tapered at both ends by a shared pass (`generators/shared.ts`'s
 `narrowGoalPass`/`openStartMouth`): the corridor narrows to a three-tile throat at the goal
@@ -1323,9 +1345,9 @@ Three kinds of number deliberately don't scale, and the reasons are worth keepin
   the same at every size.
 - **Periodic motifs** -- World 2's unit cell and World 6's magnon wavelength are
   lengths of the material, not of the map, so a bigger crystal is more unit cells at
-  the same lattice constant rather than stretched ones. World 2's corridor
-  consequently has a floor: it can never be narrower than its own unit cell steps
-  sideways from row to row, which at Nano is what the width is held at.
+  the same lattice constant rather than stretched ones. World 2's hall
+  consequently gets wider with the world while the column array keeps its own
+  period, so a Macro cloister is more columns across the same aisles.
 - **The two throats** -- the guardian's chokepoint gap and the pass throat
   (`PASS_HALF_WIDTH`) are three tiles wide in every world at every size. A
   chokepoint is narrow *relative to the world it interrupts*, and a pass is a

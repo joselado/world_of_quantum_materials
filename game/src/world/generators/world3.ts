@@ -24,8 +24,16 @@ import {
 // How many bulk phases the world is partitioned into -- a count, so it is the
 // same at every world size and the domains themselves grow with the map. A
 // bigger world is a coarser phase diagram walked further, not a finer one.
-const SEED_COUNT_MIN = 5;
-const SEED_COUNT_MAX = 8;
+//
+// This world is deliberately the narrow one. The edge state is the only place
+// you can stand, and widening the seam into a field would say the bulk is
+// walkable, which is the opposite of what bulk-boundary correspondence means.
+// So what opens this world up is the *number* of seams rather than their
+// width: a finely divided phase diagram is a network of walls with junctions
+// in it, and at a junction the player genuinely chooses which boundary to
+// follow north. Freedom without a single extra tile of walkable bulk.
+const SEED_COUNT_MIN = 8;
+const SEED_COUNT_MAX = 11;
 // How wide the edge channel between two domains is opened to, in tiles. The
 // raw Voronoi boundary is one tile, so this is delivered by dilating it -- see
 // the dilation pass below.

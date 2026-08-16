@@ -1,122 +1,141 @@
-// World 8 (quantum magnetism, spinons, Kondo): peat banks threading between
-// pools of open water. The bank occasionally parts into two thin parallel
-// banks for a stretch -- fractionalization, one excitation briefly reading as
-// two -- before recombining into one, possibly more than once along the same
-// journey, unlike world1.ts's single mean-field split (and left untinted,
-// since fractionalization isn't picking between two distinct
-// broken-symmetry ground states the way world1's split is).
+// World 8 (quantum magnetism, spinons, Kondo): a peat shelf with pools of
+// black water punched into it. The shelf is the ground that holds and the
+// water is what takes you, so the world is walked as a place with hazards in
+// it rather than as a bank threaded between them.
 //
-// What each split parts *around* is water, and the tile at the middle of that
-// pool is returned as a feature core so the surround can burn a local moment
-// in it (scenes/overworld/terrain/materials/bog.ts). The split and the
-// screening are then one picture: the bank divides because something in the
-// water is being put out.
+// **The escalation is the shelf itself.** It enters wide and open and closes
+// steadily to a narrow bank by the goal: the water is winning, and further in
+// is further screened. That is the world's spine written into the ground the
+// player stands on rather than into anything they have to be told, and the
+// shelf carries it rather than pool density because a pool needs clear ground
+// on every side of it -- past a certain crowding pools start refusing each
+// other, and a deep end that cannot fit its own water would read as *safer*
+// than the entrance.
+//
+// **The pools carry the screening and the splitting.** Each pool's centre
+// comes back as a feature core, and scenes/overworld/terrain/materials/bog.ts
+// burns a local moment there, closing its halo the further in it stands -- so
+// the moments are in the water by construction, which is where the medium that
+// screens them is. The wide pools are placed first and guaranteed: those are
+// the ones the shelf visibly parts around and rejoins past, which is one
+// excitation briefly reading as two. The bank divides because something in the
+// water is being put out, and here that is one fact about the ground rather
+// than two features laid over each other.
 
-import { GeneratedMap, GridPoint, WorldScale, clamp, makeColorGrid, makeGrid, paintBands, paintSplitMerge, wanderBands } from './shared';
+import {
+  bandWindow,
+  GeneratedMap,
+  GridPoint,
+  WanderBand,
+  WorldScale,
+  clamp,
+  discIsland,
+  makeColorGrid,
+  makeGrid,
+  paintBands,
+  punchFirst,
+  punchIslands,
+  wanderBands,
+  widestRunCenter,
+} from './shared';
 
-const WIDE_WIDTH = 6;
-const BRANCH_WIDTH = 3;
-const BRANCH_GAP = 5;
-const RAMP_ROWS = 3;
+// The shelf at the entrance and at the goal. Both are lengths of the map and
+// scale with the world; what does not change with size is that the second is
+// much less than the first.
+const SHELF_WIDTH_ENTRANCE = 17;
+const SHELF_WIDTH_DEEP = 12;
+// The shelf drifts gently. A pool needs the same ground held across every row
+// it touches plus its passages, and hard swings leave no window wide enough to
+// put one in.
+const SHELF_DRIFT_CHANCE = 0.25;
+const SHELF_MAX_STEP = 1;
+// The pools the shelf parts around -- a count, so the same two or three stand
+// in a Nano world as in a Macro one, each scaled up with the world.
+const WIDE_POOL_COUNT_MIN = 2;
+const WIDE_POOL_COUNT_MAX = 3;
+const WIDE_POOL_RADIUS = 4;
+const WIDE_POOL_RADIUS_MIN = 2;
+// The rest of the water, offered along the shelf and taken wherever there is
+// room. Two pools cannot stand closer than their own radii plus the passage
+// that has to survive between them, so this is spaced against that rather than
+// against how much water the world would like to have.
+const POOL_SPACING = 8;
+const POOL_RADIUS = 2;
+const PASSAGE_MIN = 2;
 
 export function generateWorld8Map(gridW: number, gridH: number, start: GridPoint, scale: WorldScale): GeneratedMap {
   const goalY = 1;
   const totalRows = start.y - goalY + 1;
-  // How many times the bank fractionalizes is a count, the same in a Nano
-  // world as in a Macro one -- each stretch is simply longer.
-  const splitCount = 2 + (Math.random() < 0.5 ? 1 : 0); // 2 or 3 fractionalization stretches
-  const rampRows = scale.tiles(RAMP_ROWS);
+  // How far into the world a row is, 0 at the entrance and 1 at the goal --
+  // the one number the shelf's own width is written against.
+  const depthOf = (y: number) => clamp((start.y - y) / Math.max(1, totalRows - 1), 0, 1);
 
-  // Reserve a real wide stretch just before the goal for Kondo's own
-  // guardian tile to stand in -- splitting the whole journey evenly across
-  // `splitCount` slots (as if the final stretch were just one more slot)
-  // could leave that last stretch only 1-2 rows long, putting `mid` right
-  // on top of `goal` instead of a comfortable distance before it.
-  const finalStretchRows = clamp(Math.round(totalRows * 0.18), scale.tiles(10), scale.tiles(16));
-  const splitZoneFloorY = goalY + finalStretchRows;
-
-  // What one fractionalization stretch costs at the least: the rows the split
-  // itself needs to part and recombine, plus a run of joined bank to reach it
-  // along. Both are what the shape means rather than tuning -- a split with no
-  // room to ramp is not two banks, and two splits with no bank between them
-  // are not two splits.
-  const minSplitRows = 2 * rampRows + scale.tiles(3);
-  const minSegmentRows = scale.tiles(6);
+  // The drift comes from the shared wander at the shelf's widest; each row is
+  // then narrowed around that same centre by how deep it is, so the shelf
+  // closes in without ever changing its mind about which way it is going.
+  const entranceWidth = scale.tiles(SHELF_WIDTH_ENTRANCE);
+  const deepWidth = scale.tiles(SHELF_WIDTH_DEEP);
+  const drifted = wanderBands(gridW, start.x, start.y, goalY, {
+    width: entranceWidth,
+    driftChance: SHELF_DRIFT_CHANCE,
+    maxStep: SHELF_MAX_STEP,
+    scale,
+  });
+  const bands: WanderBand[] = drifted.map((band) => {
+    const width = Math.round(entranceWidth + depthOf(band.y) * (deepWidth - entranceWidth));
+    const left = clamp(Math.round(band.center - width / 2), 0, gridW - width);
+    return { ...band, left, right: left + width - 1 };
+  });
 
   const walkable = makeGrid(gridW, gridH);
+  paintBands(walkable, gridW, bands);
+
+  const midBand = bands[Math.floor(bands.length / 2)];
+  const pools: GridPoint[][] = [];
+
+  // Where a pool of this size may sit on this row: the ground every row it
+  // touches holds in common, inset by the pool's own reach and the passage
+  // that has to survive beside it. Nothing comes back where the shelf is too
+  // narrow there to take one at all, which is most of the deep end -- by then
+  // the bank is the width of a bank.
+  const poolAt = (y: number, radius: number): GridPoint[] | null => {
+    const index = start.y - y;
+    if (index < 0 || index >= bands.length) return null;
+    if (y <= goalY || Math.abs(y - midBand.y) <= radius + PASSAGE_MIN) return null;
+    const reach = radius + PASSAGE_MIN;
+    const window = bandWindow(bands, index, reach);
+    const lo = window.left + reach;
+    const hi = window.right - reach;
+    if (hi < lo) return null;
+    const cx = clamp(lo + Math.floor(Math.random() * (hi - lo + 1)), radius, gridW - radius - 1);
+    return discIsland(cx, y, radius);
+  };
+
   const featureCores: GridPoint[] = [];
-  let cursorX = start.x;
-  let cursorY = start.y;
-
-  for (let s = 0; s < splitCount; s++) {
-    const remainingSlots = splitCount - s;
-    const room = cursorY - splitZoneFloorY;
-    // Splits are taken while there is journey left to take them in, and the
-    // reserved final stretch is never spent. A world that has run out of room
-    // fractionalizes fewer times rather than splitting past its own goal --
-    // which is what leaves `mid` and `goal` off the north edge of the grid
-    // entirely, and no map at all once the shared verification rejects it.
-    if (room < minSegmentRows + minSplitRows) break;
-
-    const targetY = clamp(
-      cursorY - Math.round(room / (remainingSlots + 1)),
-      splitZoneFloorY + minSplitRows,
-      cursorY - minSegmentRows
-    );
-    const bands = wanderBands(gridW, cursorX, cursorY, targetY, { width: scale.tiles(WIDE_WIDTH), scale });
-    paintBands(walkable, gridW, bands);
-    const lastBand = bands[bands.length - 1];
-
-    const splitRows = clamp(Math.round(totalRows * 0.1), minSplitRows, Math.min(scale.tiles(10), lastBand.y - splitZoneFloorY));
-    const mergedCenter = paintSplitMerge(
-      walkable,
-      gridW,
-      null,
-      lastBand.center,
-      lastBand.y,
-      splitRows,
-      scale.tiles(BRANCH_WIDTH),
-      scale.tiles(BRANCH_GAP),
-      rampRows
-    );
-
-    const core = poolCenter(walkable, gridW, lastBand.y - Math.floor(splitRows / 2));
+  const widePoolCount = WIDE_POOL_COUNT_MIN + Math.floor(Math.random() * (WIDE_POOL_COUNT_MAX - WIDE_POOL_COUNT_MIN + 1));
+  for (let i = 1; i <= widePoolCount; i++) {
+    const targetY = start.y - Math.round((totalRows * i) / (widePoolCount + 1));
+    const candidates: GridPoint[][] = [];
+    for (let radius = scale.tiles(WIDE_POOL_RADIUS, 1); radius >= scale.tiles(WIDE_POOL_RADIUS_MIN, 1); radius--) {
+      for (const dy of [0, -3, 3, -6, 6]) {
+        const pool = poolAt(targetY + dy, radius);
+        if (pool) candidates.push(pool);
+      }
+    }
+    const core = punchFirst(walkable, gridW, gridH, candidates, PASSAGE_MIN);
     if (core) featureCores.push(core);
-
-    cursorX = mergedCenter;
-    cursorY = lastBand.y - splitRows;
   }
 
-  const finalBands = wanderBands(gridW, cursorX, cursorY, goalY, { width: scale.tiles(WIDE_WIDTH), scale });
-  paintBands(walkable, gridW, finalBands);
+  const radius = scale.tiles(POOL_RADIUS, 1);
+  for (let y = start.y - scale.tiles(POOL_SPACING); y > goalY; y -= scale.tiles(POOL_SPACING)) {
+    const pool = poolAt(y, radius);
+    if (pool) pools.push(pool);
+  }
+  featureCores.push(...punchIslands(walkable, gridW, gridH, pools, PASSAGE_MIN));
 
-  const goalBand = finalBands[finalBands.length - 1];
-  const goal = { x: Math.round((goalBand.left + goalBand.right) / 2), y: goalBand.y };
+  const goalBand = bands[bands.length - 1];
+  const goal = { x: widestRunCenter(walkable, gridW, goalBand.y) ?? goalBand.center, y: goalBand.y };
+  const mid = { x: widestRunCenter(walkable, gridW, midBand.y) ?? midBand.center, y: midBand.y };
 
-  // Picks a row comfortably before the goal rather than a literal midpoint
-  // index -- for a short final stretch (a run of bad luck in the split
-  // budgeting above), `Math.floor(length/2)` can land on the very last row,
-  // putting the guardian's forced chokepoint on top of the goal tile itself.
-  const midIdx = Math.max(0, Math.min(Math.floor(finalBands.length / 2), finalBands.length - scale.tiles(3)));
-  const midBand = finalBands[midIdx];
-  const mid = { x: Math.round((midBand.left + midBand.right) / 2), y: midBand.y };
-
-  return { walkable, start, goal, mid, regionColor: makeColorGrid(gridW, gridH), biomeOverride: makeColorGrid(gridW, gridH) , featureCores };
-}
-
-// The middle of the water a split parts around, read back off the painted
-// grid rather than predicted: the two branches wander independently while
-// they are apart, so the gap between them is only known once they are drawn.
-// Returns nothing for a row whose branches happen to touch -- a pool with no
-// water in it has nothing to burn.
-function poolCenter(walkable: boolean[][], gridW: number, y: number): GridPoint | null {
-  if (y < 0 || y >= walkable.length) return null;
-  const row = walkable[y];
-  let x = 0;
-  while (x < gridW && !row[x]) x++;
-  while (x < gridW && row[x]) x++;
-  const gapStart = x;
-  while (x < gridW && !row[x]) x++;
-  if (x === gapStart || x >= gridW) return null;
-  return { x: Math.floor((gapStart + x - 1) / 2), y };
+  return { walkable, start, goal, mid, regionColor: makeColorGrid(gridW, gridH), biomeOverride: makeColorGrid(gridW, gridH), featureCores };
 }

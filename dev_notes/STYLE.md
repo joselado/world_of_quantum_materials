@@ -490,10 +490,13 @@ under one figure reads as floating even when neither is wrong on its own.
     mass once the fade has started, a single blob near the end of it. The wood stays at full
     density throughout: what recedes is how much shape each far crown is given, never how many
     trees there are.
-  - **'columns'** (the Stone Lattice, world 2): rows of identical sandstone columns on a
-    strict lattice of the grid, one every second tile in both directions, lit from one fixed
-    direction with deep cast shadow between them. The regularity is the point -- a colonnade
-    is a one-dimensional lattice, and jitter here draws a ruin.
+  - **'columns'** (the Stone Lattice, world 2): rows of identical sandstone columns, lit from
+    one fixed direction with deep cast shadow between them. Two strict lattices, and the
+    regularity is the point in both -- a colonnade is a lattice, and jitter here draws a ruin.
+    The column field the hall is cut out of carries one every second tile in both directions;
+    the columns standing in the hall itself are the generator's own periodic array
+    (`world/generators/world2.ts`), which arrive tagged as feature cores and carry a column
+    wherever it put one.
   - **'deadFloor'** (the Edge Cliffs, world 3): the sunken bulk one storey down, its stipple a
     strict lattice sheared per tile into a frozen moire. Never noise, which at this scale
     reads as a rendering fault, and never animated -- wind races across this world's sky while
@@ -513,7 +516,7 @@ under one figure reads as floating even when neither is wrong on its own.
     owns the extremes, so the route and the player's crystal keep their values through one.
   - **'ice'** (the Vortex Glacier, world 5): the frozen lake, still and faceted, plus the
     vortex pits inside it -- a dark rim and a slow, cold glow of trapped flux, drawn on each
-    tile the generator placed as a vortex core and kept blocked while the corridor spiralled
+    tile the generator placed as a vortex core and kept blocked while the sheet parted
     around it. The field is expelled everywhere else in this world, so the pits are the only
     place it can be, and the glow is that field made visible where the physics puts it.
   - **'shards'** (the Iron Steppe, world 6): leaning iron blades, all tilted the same way and
@@ -526,7 +529,7 @@ under one figure reads as floating even when neither is wrong on its own.
     is a local moment, ringed by small cool counter-lights that draw inward and brighten as the
     screening cloud closes -- wide and faint with the moment still burning near the world's
     entrance, shut tight with the point out deeper in, driven off the tile's own grid row. The
-    generator marks the middle of each pool the bank parts around as a feature core, so a moment
+    generator marks the middle of each pool the shelf parts around as a feature core, so a moment
     is always burning inside a split. An occasional pool wavers with the player's own crystal
     colour. Everything in this surround is a line, a small circle or a short ellipse and nothing
     is a sprite, which is what keeps the world cheaper to draw than a wood at the same tile
@@ -745,7 +748,7 @@ rather than free style choices:
 | World | Biome | Sky/ceiling | Off-path ground | Path | Decoration | Clouds | Wall theme |
 |---|---|---|---|---|---|---|---|
 | 1 | The Mean Fields | pale morning blue (`0x8fd0ff`→`0xe8f6ff`) | dark canopy `0x16341c` | pale wheat `0xd9d295` | flowers | yes | **forest** |
-| 2 | The Stone Lattice | hard midday blue (`0x5aa6e0`→`0xd6e6f0`) | deep cast shadow `0x4a3427` | sandstone aisle `0xdcc9a8` | mosaic (every tile) | no | **columns** |
+| 2 | The Stone Lattice | hard midday blue (`0x5aa6e0`→`0xd6e6f0`) | deep cast shadow `0x4a3427` | sandstone floor `0xdcc9a8` | mosaic (every tile) | no | **columns** |
 | 3 | The Edge Cliffs | bright afternoon (`0x4f9fd8`→`0xcfe6f2`) | dim slate `0x394349` under dead teal/ochre domain tints | lit ledge `0xdfe6e2` | edge flow (every tile) | yes, drifting | **deadFloor** |
 | 4 | The Storm Flats | stormy dusk (`0x151a3a`→`0x3a4270`) | struck ground `0x1b2044` | banded indigo `0x6272b8` | orbit rings | no | **charged** |
 | 5 | The Vortex Glacier | overcast twilight (`0x3c4a56`→`0x6e808c`) | frozen lake `0x54707e` | swept ice `0xa8c8d4` | flow lines (every tile) | no | **ice** |

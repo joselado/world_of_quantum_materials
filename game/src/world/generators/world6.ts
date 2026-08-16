@@ -1,61 +1,73 @@
-// World 6 (classical magnetism, magnons): a mostly steady-width corridor
-// whose width periodically bulges wider and narrows back -- a train of
-// propagating wave packets laid out along the corridor's length, rather
-// than a static sine-offset centerline. Walking the corridor means walking
-// through a repeating sequence of pulse crests and troughs.
+// World 6 (classical magnetism, magnons): an open plain of black iron-sand
+// with the magnetic order standing up out of it. A steppe is a plain by
+// definition, so the ground is wide and the shards are what the player walks
+// among rather than what lines a route.
+//
+// The shards stand in transverse wavefronts: a train of bars running across
+// the plain, one wavelength apart down its length, each successive front
+// offset sideways from the last so the train reads as travelling rather than
+// as a fence repeated. That is a spin wave drawn as the thing it is -- a
+// periodic disturbance of an ordered medium, moving through it -- and it puts
+// the world's own topic in the ground the player crosses instead of in the
+// width of a corridor.
+//
+// The wavelength is a property of the magnet, not of the map (with World 2's
+// unit cell, the geometry the world-size setting leaves alone): a bigger
+// world is more wave packets at the same wavelength, riding a proportionally
+// wider plain.
 
-import { GeneratedMap, GridPoint, MIN_SEGMENT_WIDTH, WorldScale, clamp, makeColorGrid, makeGrid, paintBand } from './shared';
+import {
+  GeneratedMap,
+  GridPoint,
+  WorldScale,
+  makeColorGrid,
+  makeGrid,
+  paintBands,
+  punchIslands,
+  wanderBands,
+  widestRunCenter,
+} from './shared';
 
-const BASE_WIDTH = 5;
-const BULGE_WIDTH = 5; // extra width added at a pulse's crest
-// The wave itself, and (with World 2's unit cell) the geometry the world-size
-// setting leaves alone: a magnon's wavelength is a property of the magnet,
-// not of how much of it there is. A bigger world is more wave packets at the
-// same wavelength, riding a proportionally wider corridor.
-const PULSE_PERIOD = 9; // rows between successive crests
-const PULSE_SIGMA = 2.1;
+const FIELD_WIDTH = 14;
+const PULSE_PERIOD = 9; // rows between successive wavefronts -- the wavelength
+const SHARD_LENGTH = 2; // one clump of shards, in tiles across
+const SHARD_SPACING = 4; // clump to clump along a wavefront, leaving 2-tile gaps
+const CREST_DRIFT = 2; // how far each wavefront is offset from the one behind it
 
 export function generateWorld6Map(gridW: number, gridH: number, start: GridPoint, scale: WorldScale): GeneratedMap {
   const goalY = 1;
-  const totalRows = start.y - goalY + 1;
-  const baseWidth = scale.tiles(BASE_WIDTH);
-  const bulgeWidth = scale.tiles(BULGE_WIDTH);
-  const half = baseWidth / 2;
-  const minCenter = half;
-  const maxCenter = gridW - half;
-  const holdRows = scale.tiles(3, 1);
-  const driftStep = scale.tiles(1, 1);
+  const bands = wanderBands(gridW, start.x, start.y, goalY, { width: scale.tiles(FIELD_WIDTH), scale });
 
   const walkable = makeGrid(gridW, gridH);
-  const bands: { y: number; left: number; right: number }[] = [];
+  paintBands(walkable, gridW, bands);
 
-  let center = clamp(start.x, minCenter, maxCenter);
-  let straight = 0;
-  for (let i = 0; i < totalRows; i++) {
-    const y = start.y - i;
+  // Settled before anything is punched: the guardian's row is wiped to a
+  // three-tile gap by the chokepoint pass, and a shard clump beside that gap
+  // would close the doorway.
+  const midBand = bands[Math.floor(bands.length / 2)];
+  const phase = Math.floor(Math.random() * PULSE_PERIOD);
 
-    if (straight >= holdRows && Math.random() < 0.35) {
-      const dir = Math.random() < 0.5 ? -1 : 1;
-      center = clamp(center + dir * driftStep, minCenter, maxCenter);
-      straight = 0;
-    } else {
-      straight += 1;
+  const clumps: GridPoint[][] = [];
+  for (let i = 0; i < bands.length; i++) {
+    if ((i + phase) % PULSE_PERIOD !== 0) continue;
+    const band = bands[i];
+    if (Math.abs(band.y - midBand.y) <= 2) continue;
+    const crest = Math.floor((i + phase) / PULSE_PERIOD);
+    const drift = (crest * CREST_DRIFT) % SHARD_SPACING;
+    for (let x = band.left + drift; x + SHARD_LENGTH - 1 <= band.right; x += SHARD_SPACING) {
+      const clump: GridPoint[] = [];
+      for (let dx = 0; dx < SHARD_LENGTH; dx++) clump.push({ x: x + dx, y: band.y });
+      clumps.push(clump);
     }
-
-    const phase = i % PULSE_PERIOD;
-    const distToCrest = Math.min(phase, PULSE_PERIOD - phase);
-    const bulge = bulgeWidth * Math.exp(-(distToCrest * distToCrest) / (2 * PULSE_SIGMA * PULSE_SIGMA));
-    const width = Math.max(MIN_SEGMENT_WIDTH, Math.round(baseWidth + bulge));
-
-    const band = paintBand(walkable, gridW, y, center, width);
-    if (band) bands.push({ y, ...band });
   }
+  // Whatever the plain had room for. A wavefront thins where the ground
+  // narrows rather than crowding it, which is also what keeps every gap
+  // between two clumps walkable.
+  punchIslands(walkable, gridW, gridH, clumps);
 
   const goalBand = bands[bands.length - 1];
-  const goal = { x: Math.round((goalBand.left + goalBand.right) / 2), y: goalBand.y };
+  const goal = { x: widestRunCenter(walkable, gridW, goalBand.y) ?? goalBand.center, y: goalBand.y };
+  const mid = { x: widestRunCenter(walkable, gridW, midBand.y) ?? midBand.center, y: midBand.y };
 
-  const midBand = bands[Math.floor(bands.length / 2)];
-  const mid = { x: Math.round((midBand.left + midBand.right) / 2), y: midBand.y };
-
-  return { walkable, start, goal, mid, regionColor: makeColorGrid(gridW, gridH), biomeOverride: makeColorGrid(gridW, gridH) , featureCores: [] };
+  return { walkable, start, goal, mid, regionColor: makeColorGrid(gridW, gridH), biomeOverride: makeColorGrid(gridW, gridH), featureCores: [] };
 }

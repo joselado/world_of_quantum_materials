@@ -59,10 +59,11 @@ stabilize it again.
 
 ## How it plays
 
-**Explore.** Each world is a walkable path rendered in an over-the-shoulder
+**Explore.** Each world is walkable ground rendered in an over-the-shoulder
 pseudo-3D view, the world redrawn from a smoothly moving camera as you walk.
 Every world's layout echoes its own physics, not just its scenery: a corridor
-that splits into two colored branches and remerges in the mean-field world, a
+that splits into two colored branches and remerges in the mean-field world, an
+open cloister you cross between rows of columns in the tight-binding world, a
 network of colored domains you trace the boundary of in the topological world,
 a spiral around a frozen vortex in the superconductivity world, a real ladder
 of linked lanes in the entanglement world. Reaching the far end means reading

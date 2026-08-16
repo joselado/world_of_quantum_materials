@@ -7,7 +7,7 @@ import type { AccentTile } from '../types';
 
 // How often a toppled drum from the Stone Lattice's colonnade shows in the
 // crust. Rare on purpose: the generator already embeds patches of worlds 1-8
-// along this corridor as borrowed defect "types", and this is the one piece
+// across this plain as borrowed defect "types", and this is the one piece
 // of the game's only architecture that outlived its world. Civilization is a
 // brief episode -- one built world, then never again -- and these half-sunk
 // drums are what turns that into a story rather than a set-dressing

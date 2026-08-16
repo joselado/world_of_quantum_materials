@@ -91,7 +91,7 @@ itself until the end of the road.
 
 ## 1. The Mean Fields
 
-<img src="../screenshots/storyline-world-1.png" width="420" alt="The Mean Fields seen from the middle of its corridor">
+<img src="../screenshots/storyline-world-1.png" width="420" alt="The Mean Fields seen from the middle of its open field, forest hemming it in">
 
 *Mean-field theory and spontaneous symmetry breaking.*
 
@@ -126,7 +126,7 @@ there, and it is learning from every phase of matter you master.
 
 ## 2. The Stone Lattice
 
-<img src="../screenshots/storyline-world-2.png" width="420" alt="The Stone Lattice seen from the middle of its corridor">
+<img src="../screenshots/storyline-world-2.png" width="420" alt="The Stone Lattice seen from the middle of its cloister floor, columns standing in the open stone">
 
 *Symmetries, tight-binding, and Bloch states.*
 
@@ -163,7 +163,7 @@ can spread across all of it at once again.
 
 ## 3. The Edge Cliffs
 
-<img src="../screenshots/storyline-world-3.png" width="420" alt="The Edge Cliffs seen from the middle of its corridor">
+<img src="../screenshots/storyline-world-3.png" width="420" alt="The Edge Cliffs seen from the middle of its network of lit ledges">
 
 *Topological band theory.*
 
@@ -240,7 +240,7 @@ carries is a whole one again.
 
 ## 5. The Vortex Glacier
 
-<img src="../screenshots/storyline-world-5.png" width="420" alt="The Vortex Glacier seen from the middle of its corridor">
+<img src="../screenshots/storyline-world-5.png" width="420" alt="The Vortex Glacier seen from the middle of its open ice sheet">
 
 *Superconductivity and Majorana modes.*
 
@@ -257,8 +257,8 @@ streaked with flow lines all bending away, and what gets pushed out has
 almost nowhere to go. Almost. A phase has to come back to itself when you
 carry it around a circle, never a turn and a half, so a handful of points
 here are simply forbidden. That is where the expelled flux ends up: trapped
-and glowing at the bottom of a pit. The corridor spirals around them.
-Nothing goes in.
+and glowing at the bottom of a pit. The ice parts around them and closes
+again past them. Nothing goes in.
 
 Something can live on ice like this that can live nowhere else. Split one
 traveler cleanly in two, each half its own opposite. Neither half is
@@ -282,7 +282,7 @@ goes back to being an identity: one phase, one wave, no seams left to cross.
 
 ## 6. The Iron Steppe
 
-<img src="../screenshots/storyline-world-6.png" width="420" alt="The Iron Steppe seen from the middle of its corridor">
+<img src="../screenshots/storyline-world-6.png" width="420" alt="The Iron Steppe seen from the middle of its open plain, iron shards standing in it">
 
 *Classical magnetism and magnons.*
 
@@ -362,13 +362,13 @@ because it lives nowhere in particular.
 
 ## 8. The Screened Swamp
 
-<img src="../screenshots/storyline-world-8.png" width="420" alt="The Screened Swamp seen from the middle of its corridor">
+<img src="../screenshots/storyline-world-8.png" width="420" alt="The Screened Swamp seen from the middle of its peat shelf, pools of black water in it">
 
 *Quantum magnetism, spinons, and Kondo physics.*
 
 The lanes end at a shoreline, and past it is bog: black water in pools with
-mist lying flat on it, reeds standing out of it, and a thread of peat bank
-that is the only ground that holds. Watch the water, not the reeds. Step off
+mist lying flat on it, reeds standing out of it, and peat that holds, open
+at first and closing to a thread the further in you go. Watch the water, not the reeds. Step off
 the bank and the medium closes over you.
 
 There is a rule every world so far has obeyed: a disturbance in a magnet is
@@ -408,7 +408,7 @@ again: halves crossing the whole crystal with nothing left to stop at.
 
 ## 9. The Defect Scars
 
-<img src="../screenshots/storyline-world-9.png" width="420" alt="The Defect Scars seen from the middle of its corridor">
+<img src="../screenshots/storyline-world-9.png" width="420" alt="The Defect Scars seen from the middle of its open plain of scorched clay">
 
 *Excitations and defects.*
 
@@ -452,7 +452,7 @@ studies.
 
 ## 10. The Devouring Mirror
 
-<img src="../screenshots/storyline-world-10.png" width="420" alt="The Devouring Mirror seen from the middle of its corridor">
+<img src="../screenshots/storyline-world-10.png" width="420" alt="The Devouring Mirror seen from the middle of the ground it has copied from the player">
 
 *Machine learning for quantum materials, and the ending.*
 
