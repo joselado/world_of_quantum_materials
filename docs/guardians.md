@@ -27,7 +27,7 @@ destination list is where a warp actually happens.
 
 ## Noether's Currents
 
-<img src="../screenshots/docs-guardians-noether-avatar.png" width="300" alt="Noether: a haloed golden figure floating in a flowing robe, sleeves spread wide">
+<img src="../screenshots/docs-guardians-noether-avatar.png" width="300" alt="Noether: two circling cells of golden current, motes carried round and round and never lost">
 
 Sells every ordinary attack move and stat upgrade in the game, priced by raw
 power. Her shop only shows what your *current* crystal form can actually
@@ -39,7 +39,7 @@ Electron Pulse until you transmute into a form whose physics supports more
 
 ## Bloch's States
 
-<img src="../screenshots/docs-guardians-bloch-avatar.png" width="300" alt="Bloch: a hooded traveller whose head is a wireframe Bloch sphere with a state-vector arrow, ringed by waypoint marks">
+<img src="../screenshots/docs-guardians-bloch-avatar.png" width="300" alt="Bloch: a crystal-lattice figure carrying a wave whose crests march through a row of evenly spaced atoms">
 
 Fast travel between worlds: Bloch teleports you to any world you've already
 visited, so backtracking never means re-walking a whole corridor.
@@ -53,7 +53,7 @@ visited, so backtracking never means re-walking a whole corridor.
 
 ## Dresselhaus's Nanostructures
 
-<img src="../screenshots/docs-guardians-dresselhaus-avatar.png" width="300" alt="Dresselhaus: a half-lit crystal figure with a carbon-hexagon ring for a head, circled by rotation arrows">
+<img src="../screenshots/docs-guardians-dresselhaus-avatar.png" width="300" alt="Dresselhaus: a half-lit crystal figure with a carbon-hexagon ring for a head">
 
 Lets you *transmute* into any crystal you've already defeated, your look
 and which of your moves are usable both switch over, your stats stay yours,

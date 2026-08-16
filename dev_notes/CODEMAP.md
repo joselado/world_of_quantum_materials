@@ -239,8 +239,8 @@ game/src/
                                   opponent-crystal swap and turn-preview redraw), since Phaser's own
                                   destroy() leaves tweens targeting a dead object running and the
                                   sparkle/glow tweens handed out here repeat forever
-    noether.ts                    makeNoetherAvatar() -- golden robed deity, halo + wide sleeves, world 1
-    bloch.ts                    makeBlochAvatar() -- robed figure, wireframe Bloch-sphere head, world 2
+    noether.ts                    makeNoetherAvatar() -- two counter-rotating gold circulation cells, world 1
+    bloch.ts                    makeBlochAvatar() -- plane wave crossing a lattice, over an open lattice body, world 2
     dresselhaus.ts               makeDresselhausAvatar() -- half-crystal transmutation figure, carbon-hexagon head, world 3
     landau.ts                  makeLandauAvatar() -- evenly spaced flat-level ladder + climbing electron, world 4
     majorana.ts                  makeMajoranaAvatar() -- figure split into two breathing halves, world 5
@@ -1867,8 +1867,9 @@ rival name is easy to miss if only `WORLD_NAMES` is updated.
 Every guardian has its own avatar builder in its own file, each with its own silhouette --
 distinguishable from the others by outline alone even at the Lab's small `0.55` scale, in
 greyscale (see STYLE.md's per-guardian overworld sections for each design and the physics it
-states): `art/noether.ts`'s `makeNoetherAvatar` (golden robed deity, halo + wide sleeves),
-`art/bloch.ts`'s `makeBlochAvatar` (robed figure, wireframe Bloch-sphere head, teal),
+states): `art/noether.ts`'s `makeNoetherAvatar` (two counter-rotating cells of closed gold
+streamlines, no figure at all), `art/bloch.ts`'s `makeBlochAvatar` (a travelling plane
+wave crossing a lattice-periodic envelope over a tapered open lattice body, teal),
 `art/dresselhaus.ts`'s `makeDresselhausAvatar` (half-crystal transmutation figure with a
 carbon-hexagon head, teal-green), `art/landau.ts` (ladder of evenly spaced flat levels
 with an electron jumping between them), `art/majorana.ts` (figure split into two breathing halves

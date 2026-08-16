@@ -1115,13 +1115,25 @@ station motifs are deliberately not tunnels with a visible far end.
 
 - Same panel treatment as a wild encounter, but stroked in gold (`0xffe066`) instead of
   blue-grey, and fronted by Noether's own avatar (`art/noether.ts`'s `makeNoetherAvatar`)
-  instead of a crystal -- a small cartoon deity floating in a flowing golden robe with wide
-  welcoming sleeves, a haloed head, and four motes orbiting the whole figure, deliberately
-  not another faceted crystal so a guardian reads as a distinct, benevolent presence rather
-  than a wild encounter. An inner container sways gently on its own (independent of the
-  panel's own bob tween on the outer container) so she reads as adrift rather than fixed in
-  place; a soft additive glow behind her pulses slowly for a "presence" that a flat
-  silhouette wouldn't give. A short layered-bell chime (`audio/sfx.ts`'s `playGuardianChime`,
+  instead of a crystal -- not a figure at all but the conserved current her theorem is
+  about, made visible: two offset circulation cells, each a nested family of closed
+  streamlines around a hot vortex core, the two turning in opposite senses the way two
+  adjacent cells of a divergence-free flow must. Each streamline is a ring of fine arc
+  segments whose brightness ramps into a leading edge (each bright arc riding a slightly
+  wider dark under-arc, so the flow stays legible over world 1's pale daytime terrain as
+  well as over dark panel backdrops), so its spin reads as luminous flow sweeping round
+  rather than a rotating dashed ring. Every streamline closes on itself, the flow runs at
+  the same speed on all of them (so an outer one takes longer to come round), and a fixed
+  set of brighter motes rides the middle streamline of each cell forever -- an unchanging
+  count is the conservation law itself. The two cores are the brightest points in the
+  figure and pulse on different timings (1500ms/1700ms, 300ms offset) so the pair never
+  beats in unison.
+  Silhouette: two hollow rings of running gold, no head, face or robe, deliberately neither
+  a person nor another faceted crystal. An inner container sways gently on its own
+  (independent of the panel's own bob tween on the outer container) so the flow reads as
+  adrift rather than fixed in place; a soft additive glow behind it -- concentric fills
+  fading outward, never a hard-edged disc -- pulses slowly for a
+  "presence" that thin streamlines wouldn't give on their own. A short layered-bell chime (`audio/sfx.ts`'s `playGuardianChime`,
   shared by every guardian panel) plays whenever the shop opens. Content is laid out top-down
   from a running `y` starting at `top = 20`: avatar centered at `avatarY = y + 42` (top edge
   landing a few px inside the panel's own top edge), intro quote text (11px italic) pushed down
@@ -1182,12 +1194,21 @@ station motifs are deliberately not tunnels with a visible far end.
 - World 2 only, standing at the middle tile like every other guardian -- same
   landmark/wander/re-open pattern as Noether (see above), just with `art/bloch.ts`'s
   `makeBlochAvatar` and a cyan
-  (`0x8fe8ff`) name label. His avatar swaps Noether's halo/head for a wireframe **Bloch
-  sphere** (outline circle + equator and meridian ellipses, additive-blended, slowly
-  spinning in place about its own centre on the head) with
-  a bright state-vector arrow pointing off-axis -- a superposition, not a pinned-down state,
-  matching his teleport ability -- plus three small orbiting `◇` waypoint marks instead of
-  Noether's `✦` motes.
+  (`0x8fe8ff`) name label. In place of a head he carries a
+  **Bloch state** -- world 2's own band-structure subject, psi_k(r) = e^(ik.r) u_k(r),
+  drawn as its two factors at once: a fixed row of five haloed ion sites one lattice
+  constant apart, a faint teal envelope whose corrugation repeats exactly with that
+  spacing and piles amplitude onto the sites, and inside it the bright state itself,
+  redrawn every frame off a phase a `repeat: -1` tween advances, with its crests marching
+  steadily through the array, each crest carrying a bead of light along the curve. Only
+  the carrier moves; the envelope stays pinned to the lattice. The
+  carrier's wavelength is deliberately not a multiple of the lattice constant, so the phase
+  really does advance by e^(ik.a) from one cell to the next instead of the two periods
+  collapsing into one. Below the wave there is no solid body at all: the torso is the
+  crystal itself, a tapered open outline holding the lattice's deeper rows -- sites
+  directly below the top row's, one lattice constant apart in both directions, dimming
+  with depth, the taper cutting the lattice off the way a crystal ends at its surface.
+  Silhouette: a broad wave band over a tapered open lattice body.
 - His panel (`showBlochHub`) is stroked teal (`0x4adde0`), `LIST_DETAIL_PANEL_W` (`720`) wide,
   and is a table+map layout -- the most content-dense guardian panel in the game (avatar/intro, a
   10-row destination table, the Qumatuomi map, a physics blurb, a status/confirm block, and the
@@ -1247,9 +1268,14 @@ station motifs are deliberately not tunnels with a visible far end.
   label; her avatar (`art/dresselhaus.ts`'s `makeDresselhausAvatar`) is a figure caught
   mid-transmutation -- Mildred Dresselhaus's own science made visual: from the waist down
   she *is* a point-down faceted crystal, shaded facet by facet in the same vocabulary as
-  the game's wild-crystal shards (`art/crystals.ts`), with a dark bust still emerging above
-  it and, in place of a face, a slowly rotating hexagonal carbon ring -- the unit every
-  nanostructure she mapped (graphite, graphene, nanotube, fullerene) is assembled from.
+  the game's wild-crystal shards (`art/crystals.ts`), its facet edges lit from a hot core
+  and a few sparkle points twinkling on their own timings, with a dark bust above it that
+  the crystallization is still climbing -- small hexagonal bond fragments growing up from
+  the waist and thinning out as they rise -- and, in place of a face, a slowly rotating
+  hexagonal carbon ring of haloed sites -- the unit every
+  nanostructure she mapped (graphite, graphene, nanotube, fullerene) is assembled from --
+  with a single bright mote riding the ring itself: the delocalized pi electron such a
+  ring shares among all six bonds.
   Silhouette: a wide angular diamond under a narrow bust, the roster's only bottom-heavy
   angular outline.
 - Her panel is a list+detail layout (`scenes/panels/listDetail.ts`, "List+detail panels"

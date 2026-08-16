@@ -299,6 +299,22 @@ async function main() {
           s['maybeReachMiddle'](mid.x, mid.y);
           return s['dialogueActive'] === true;
         });
+        // The first guardian reached in a fresh browser also raises the
+        // one-time 'guardians' tutorial tip, which opens in front of the
+        // panel and would otherwise be what gets captured. Dismissing it
+        // lets the guardian's own panel through.
+        await sleep(300);
+        await page.evaluate(() => {
+          function walk(list, out) {
+            for (const o of list) {
+              if (o.input && typeof o.text === 'string') out.push(o);
+              if (o.list) walk(o.list, out);
+            }
+          }
+          const all = [];
+          window.__game.scene.getScenes(true).forEach((sc) => walk(sc.children.list, all));
+          all.find((o) => o.text === 'Got it')?.emit('pointerdown');
+        });
         // Short: several guardian panels play a looping move-preview effect
         // beside each move, and a capture taken mid-cycle puts a plume across
         // the panel's own text. Shooting while the panel has settled but the

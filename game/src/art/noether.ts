@@ -2,12 +2,24 @@ import Phaser from 'phaser';
 import { shade } from './colors';
 import { GOLD_ACCENT } from '../ui/theme';
 
-// Noether's own avatar -- a small cartoon deity floating in a flowing
-// golden robe with no visible feet, haloed, with wide welcoming sleeves and
-// a ring of conserved-quantity motes orbiting her. Specific to Noether
-// (unlike the generic faceted crystal look shared by every wild material)
-// so a guardian reads as a distinct, benevolent presence rather than another
-// encounter.
+// Noether's own avatar -- world 1's guardian (Noether's theorem: every
+// continuous symmetry of the action carries a conserved current, which is
+// what world 1's spontaneous-symmetry-breaking topic is measured against).
+// Not a figure at all, the same licence art/landau.ts takes: the body is the
+// conserved current itself, drawn as pure light with no solid fill anywhere.
+// Two offset circulation cells, each a nested family of closed streamlines
+// around a blazing vortex core, turning in opposite senses the way two
+// adjacent cells of a divergence-free flow must. Each streamline is a ring
+// of fine arc segments whose brightness ramps up toward a leading edge, so
+// spinning it reads as luminous flow sweeping round rather than a rotating
+// dashed donut, and every one of them closes on itself: whatever the current
+// carries comes back around and none of it leaves. The arcs run at the same
+// speed on every streamline, so an outer one takes longer to come round than
+// an inner one, and a fixed set of brighter motes rides the middle
+// streamline forever -- the count never changes, which is the conservation
+// law made visible. The two cores are the brightest points in the figure and
+// pulse on different timings so the pair never beats in unison. Silhouette:
+// two offset hollow rings of running gold, no head, no face, no robe.
 // Later guardians follow the same rule: their own builder in their own file
 // (art/bloch.ts's makeBlochAvatar, art/franklin.ts's makeFranklinAvatar, and
 // any future ones per DESIGN.md §5) rather than reusing this one.
@@ -19,17 +31,20 @@ import { GOLD_ACCENT } from '../ui/theme';
 export function makeNoetherAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameObjects.Container {
   const S = 30 * scale;
   const gold = GOLD_ACCENT;
-  const robeColor = 0xfff3d0;
-  const skin = 0xffe9c2;
+  const hot = 0xfff6d8;
 
   const outer = scene.add.container(0, 0);
 
-  // Soft ambient radiance behind everything -- the "presence" a plain robe
-  // silhouette wouldn't read on its own.
+  // Ambient radiance behind everything -- concentric additive fills whose
+  // alpha falls off outward, so the light fades into the backdrop instead of
+  // ending at a disc edge.
   const glow = scene.add.graphics();
   glow.setBlendMode(Phaser.BlendModes.ADD);
-  glow.fillStyle(gold, 0.14);
-  glow.fillCircle(0, -S * 0.15, S * 0.85);
+  for (let i = 0; i < 6; i++) {
+    const t = i / 5;
+    glow.fillStyle(gold, 0.018 + 0.02 * t);
+    glow.fillCircle(0, -S * 0.05, S * (0.95 - 0.6 * t));
+  }
   outer.add(glow);
   scene.tweens.add({
     targets: glow,
@@ -42,114 +57,106 @@ export function makeNoetherAvatar(scene: Phaser.Scene, scale = 1): Phaser.GameOb
     ease: 'Sine.easeInOut',
   });
 
-  // Everything below sways gently, like a figure adrift rather than a fixed
+  // Everything below sways gently, like a flow adrift rather than a fixed
   // sprite -- a slow rotation, independent of any position/bob tween a
   // caller adds to `outer`.
   const sway = scene.add.container(0, 0);
   outer.add(sway);
   scene.tweens.add({ targets: sway, angle: { from: -2.5, to: 2.5 }, duration: 2600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
-  const headY = -S * 0.55;
+  // One circulation cell: three nested closed streamlines of graduated arc
+  // segments, a blazing vortex core, and a set of motes carried round the
+  // middle one. `spin` is +1/-1 for the sense of circulation; the two cells
+  // below are handed opposite signs.
+  const addCell = (cx: number, cy: number, R: number, spin: number, motes: number, pulseDur: number, pulseDelay: number) => {
+    const cell = scene.add.container(cx, cy);
+    // Squashed a little: the cells are seen from slightly above their plane,
+    // so a closed streamline projects as an ellipse rather than a disc.
+    cell.setScale(1, 0.86);
 
-  // Wide flowing sleeves first (behind the robe body), a welcoming
-  // wing-like silhouette rather than plain draped arms.
-  const sleeves = scene.add.graphics();
-  sleeves.fillStyle(shade(robeColor, -10), 0.95);
-  sleeves.fillPoints(
-    [
-      { x: -S * 0.45, y: -S * 0.15 },
-      { x: -S * 1.15, y: S * 0.15 },
-      { x: -S * 0.8, y: S * 0.55 },
-      { x: -S * 0.3, y: S * 0.35 },
-    ],
-    true
-  );
-  sleeves.fillPoints(
-    [
-      { x: S * 0.45, y: -S * 0.15 },
-      { x: S * 1.15, y: S * 0.15 },
-      { x: S * 0.8, y: S * 0.55 },
-      { x: S * 0.3, y: S * 0.35 },
-    ],
-    true
-  );
-  sway.add(sleeves);
+    // A streamline as `cycles` comet sweeps: fine arc segments whose alpha
+    // and width both ramp toward a leading edge, so the spin below reads as
+    // flow with a bright front and a fading wake. Each bright arc rides on a
+    // slightly wider dark under-arc, keeping the flow legible over world 1's
+    // pale daytime terrain as well as over dark panel backdrops. Drawn about
+    // the Graphics' own origin and spun about that origin, so a whole
+    // streamline's worth of motion costs one tween. Duration scales with
+    // radius: the same speed along every streamline, a longer one simply
+    // taking longer.
+    const dark = shade(gold, -70);
+    const streamline = (r: number, segs: number, cycles: number, width: number, alphaMax: number) => {
+      const g = scene.add.graphics();
+      const step = (Math.PI * 2) / segs;
+      const per = segs / cycles;
+      const seg = (i: number, w: number, color: number, alpha: number) => {
+        g.lineStyle(w, color, alpha);
+        g.beginPath();
+        g.arc(0, 0, r, spin * i * step, spin * (i * step + step * 0.88), spin < 0);
+        g.strokePath();
+      };
+      for (let i = 0; i < segs; i++) {
+        const t = (i % per) / (per - 1);
+        const ramp = 0.12 + 0.88 * Math.pow(t, 1.6);
+        seg(i, width * (0.55 + 0.45 * t) * 1.9, dark, alphaMax * ramp * 0.55);
+      }
+      for (let i = 0; i < segs; i++) {
+        const t = (i % per) / (per - 1);
+        const ramp = 0.12 + 0.88 * Math.pow(t, 1.6);
+        seg(i, width * (0.55 + 0.45 * t), t > 0.9 ? hot : gold, alphaMax * ramp);
+      }
+      cell.add(g);
+      scene.tweens.add({ targets: g, angle: spin * 360, duration: (4200 * r) / R, repeat: -1, ease: 'Linear' });
+      return g;
+    };
+    streamline(R, 26, 2, Math.max(1.4, R * 0.13), 0.95);
+    streamline(R * 0.72, 20, 2, Math.max(1.1, R * 0.1), 0.75);
+    streamline(R * 0.44, 14, 1, Math.max(1, R * 0.08), 0.55);
 
-  // Robe: a tapered gown with no visible feet, ending in a soft point --
-  // reads as floating rather than standing.
-  const robe = scene.add.graphics();
-  robe.fillStyle(shade(robeColor, 10), 1);
-  robe.fillPoints(
-    [
-      { x: -S * 0.5, y: -S * 0.3 },
-      { x: S * 0.5, y: -S * 0.3 },
-      { x: S * 0.32, y: S * 0.55 },
-      { x: 0, y: S * 0.85 },
-      { x: -S * 0.32, y: S * 0.55 },
-    ],
-    true
-  );
-  robe.fillStyle(shade(robeColor, -20), 0.6);
-  robe.fillTriangle(-S * 0.5, -S * 0.3, 0, S * 0.85, -S * 0.32, S * 0.55);
-  robe.lineStyle(1.5, shade(gold, -20), 0.7);
-  robe.strokePoints(
-    [
-      { x: -S * 0.5, y: -S * 0.3 },
-      { x: S * 0.5, y: -S * 0.3 },
-      { x: S * 0.32, y: S * 0.55 },
-      { x: 0, y: S * 0.85 },
-      { x: -S * 0.32, y: S * 0.55 },
-    ],
-    true
-  );
-  sway.add(robe);
+    const carried = scene.add.graphics();
+    for (let i = 0; i < motes; i++) {
+      const ang = (i * Math.PI * 2) / motes;
+      const mx = Math.cos(ang) * R * 0.72;
+      const my = Math.sin(ang) * R * 0.72;
+      carried.fillStyle(dark, 0.4);
+      carried.fillCircle(mx, my, Math.max(2.2, R * 0.24));
+      carried.fillStyle(gold, 0.55);
+      carried.fillCircle(mx, my, Math.max(1.8, R * 0.19));
+      carried.fillStyle(hot, 1);
+      carried.fillCircle(mx, my, Math.max(1.2, R * 0.12));
+    }
+    cell.add(carried);
+    scene.tweens.add({ targets: carried, angle: spin * 360, duration: 4200 * 0.72, repeat: -1, ease: 'Linear' });
 
-  // Halo, then head, then a small bun and face on top.
-  const halo = scene.add.graphics();
-  halo.setBlendMode(Phaser.BlendModes.ADD);
-  halo.lineStyle(2.5, gold, 0.9);
-  halo.strokeCircle(0, headY, S * 0.62);
-  halo.lineStyle(5, gold, 0.3);
-  halo.strokeCircle(0, headY, S * 0.62);
-  sway.add(halo);
+    // The vortex core: the brightest point of the cell, a hot centre inside
+    // its own falloff halo, pulsing on this cell's own timing.
+    const core = scene.add.graphics();
+    core.fillStyle(dark, 0.35);
+    core.fillCircle(0, 0, R * 0.36);
+    core.fillStyle(gold, 0.45);
+    core.fillCircle(0, 0, R * 0.19);
+    core.fillStyle(hot, 1);
+    core.fillCircle(0, 0, Math.max(1.4, R * 0.11));
+    cell.add(core);
+    scene.tweens.add({
+      targets: core,
+      alpha: { from: 0.65, to: 1 },
+      scaleX: { from: 0.85, to: 1.18 },
+      scaleY: { from: 0.85, to: 1.18 },
+      duration: pulseDur,
+      delay: pulseDelay,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
 
-  const head = scene.add.graphics();
-  head.fillStyle(shade(skin, 10), 1);
-  head.fillCircle(0, headY, S * 0.4);
-  head.fillStyle(shade(skin, -30), 1);
-  head.fillEllipse(-S * 0.34, headY - S * 0.05, S * 0.28, S * 0.5);
-  sway.add(head);
+    sway.add(cell);
+  };
 
-  const bun = scene.add.graphics();
-  bun.fillStyle(shade(gold, -10), 1);
-  bun.fillCircle(0, headY - S * 0.52, S * 0.16);
-  sway.add(bun);
-
-  const face = scene.add.graphics();
-  face.fillStyle(0x2a2018, 1);
-  face.fillCircle(-S * 0.14, headY, S * 0.045);
-  face.fillCircle(S * 0.14, headY, S * 0.045);
-  face.lineStyle(1.5, 0x2a2018, 0.8);
-  face.beginPath();
-  face.arc(0, headY + S * 0.06, S * 0.16, Phaser.Math.DegToRad(20), Phaser.Math.DegToRad(160), false);
-  face.strokePath();
-  sway.add(face);
-
-  // A ring of small motes orbiting the whole figure -- conserved quantities
-  // circling their theorem's namesake.
-  const orbit = scene.add.container(0, 0);
-  for (let i = 0; i < 4; i++) {
-    const ang = (i * Math.PI) / 2;
-    const spark = scene.add
-      .text(Math.cos(ang) * S * 0.95, Math.sin(ang) * S * 0.95 - S * 0.1, '✦', {
-        fontSize: `${Math.round(S * 0.32)}px`,
-        color: '#ffffff',
-      })
-      .setOrigin(0.5);
-    orbit.add(spark);
-  }
-  sway.add(orbit);
-  scene.tweens.add({ targets: orbit, angle: 360, duration: 5000, repeat: -1, ease: 'Linear' });
+  // Offset from each other rather than stacked on one axis, so the pair
+  // reads as two cells of one flow instead of a body with a head. Core
+  // pulses at 1500ms and 1700ms with a 300ms offset so they never sync.
+  addCell(S * 0.14, -S * 0.52, S * 0.36, 1, 3, 1500, 0);
+  addCell(-S * 0.08, S * 0.34, S * 0.55, -1, 4, 1700, 300);
 
   return outer;
 }
