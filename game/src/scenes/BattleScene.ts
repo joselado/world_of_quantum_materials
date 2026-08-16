@@ -17,7 +17,6 @@ import {
   getPlayerStats,
   getBattleMoves,
   getTunedMoveClass,
-  tunedMoveDisplayName,
   moveDisplayName,
   effectiveMovePower,
   getMoveLevel,
@@ -1547,6 +1546,11 @@ export class BattleScene extends Phaser.Scene {
       this.drawOpponentPlate();
       this.updateBars();
       this.renderStatusLabel(false);
+      // Each button's `!!2x` tag is a mismatch check against whoever the
+      // opponent is right now (moveButtonContent), so the menu is redrawn
+      // against the new form -- a move that reads as double damage has to be
+      // one that still is.
+      this.drawMoveMenu(this.currentMoveIds);
       this.setLogText(`${this.wild.name} reshapes into ${newForm.name}!`);
     });
 
@@ -1943,7 +1947,13 @@ export class BattleScene extends Phaser.Scene {
 
     const from = isPlayer ? this.playerAnchor : this.opponentAnchor;
     const to = isPlayer ? this.opponentAnchor : this.playerAnchor;
-    const targetCrystal = isPlayer ? this.opponentCrystal : this.playerCrystal;
+    // A thunk to the *field*, not the container, for the same reason
+    // playerAnchor/opponentAnchor are (see their own comment above):
+    // `transmuteAdapted` replaces `opponentCrystal` outright from inside
+    // `checkEndOrContinue`, which for an ordinary move runs while that move's
+    // effect is still in flight, so the impact beat has to land on whichever
+    // crystal is actually there when it fires.
+    const targetCrystal = () => (isPlayer ? this.opponentCrystal : this.playerCrystal);
     const shapeOverride = ANALYTIC_SHAPES[move.id] ?? ULTIMATE_SHAPES[move.id];
     const isUltimate = ULTIMATE_MOVE_IDS.includes(moveId);
     const whiff = isUltimate && bonusMultiplier === 0;
@@ -1957,11 +1967,11 @@ export class BattleScene extends Phaser.Scene {
     const applyResult = () => {
       const who = isPlayer ? 'You' : `Wild ${this.opponentView().name}`;
       const defenderName = defenderIsPlayer ? this.playerMaterial.name : this.opponentView().name;
-      // Feynman's level prefix (§5) is the player's own save state -- an
-      // opponent's own use of the same move id never carries it.
-      const displayName = isPlayer
-        ? moveDisplayName(this.game.registry, moveId)
-        : tunedMoveDisplayName(this.game.registry, moveId);
+      // Feynman's level prefix (§5) and Landau's class tuning are both the
+      // player's own save state -- an opponent's own use of a move id never
+      // carries either, so its side of the log reads the move's static name
+      // straight off MOVES (the same read resolveSelfBuff makes).
+      const displayName = isPlayer ? moveDisplayName(this.game.registry, moveId) : move.name;
       // The attacker's own Kondo buff (§5) ticks/casts regardless of whether
       // this particular hit lands -- it's the attacker's own technique, not
       // something that depends on the defender. Gated by `tickStatus` (see
@@ -1991,7 +2001,7 @@ export class BattleScene extends Phaser.Scene {
         const echoDmg = Math.round(dmg * ANYON_ECHO_FRACTION);
         if (echoDmg > 0) {
           this.applyDamage(defenderIsPlayer, echoDmg);
-          this.impactPunch(targetCrystal);
+          this.impactPunch(targetCrystal());
           echoText = ` ${PASSIVES.anyonEcho.name} strikes again for ${echoDmg}!`;
         }
       }
@@ -2042,7 +2052,7 @@ export class BattleScene extends Phaser.Scene {
         from,
         to,
         () => {
-          this.impactPunch(targetCrystal);
+          this.impactPunch(targetCrystal());
           applyResult();
         },
         mismatchMult * bonusMultiplier,
@@ -2060,7 +2070,7 @@ export class BattleScene extends Phaser.Scene {
       effectiveClass,
       from,
       to,
-      () => this.impactPunch(targetCrystal),
+      () => this.impactPunch(targetCrystal()),
       mismatchMult * bonusMultiplier,
       shapeOverride,
       undefined,

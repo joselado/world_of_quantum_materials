@@ -144,6 +144,28 @@ export function generateWorld3Map(gridW: number, gridH: number, start: GridPoint
   if (!mid) mid = { x: start.x, y: midY };
   splice(mid);
 
+  // A Manhattan disc tapers to a single tile at the far end of its own
+  // reach, and an interior domain wall always ends at a Voronoi vertex where
+  // the walls branching off it fill that taper back in. A wall running down
+  // the very edge of the grid has nothing beside it to do that, so the seam
+  // can come out one tile wide there -- and since the seam is the only
+  // walkable ground in this world, such a row is a single-file crossing
+  // rather than a corridor (invariant A). Widen any row the ground touches on
+  // exactly one tile back out to two.
+  for (let y = 0; y < gridH; y++) {
+    let only = -1;
+    let count = 0;
+    for (let x = 0; x < gridW && count < 2; x++) {
+      if (walkable[y][x]) {
+        count++;
+        only = x;
+      }
+    }
+    if (count !== 1) continue;
+    const partner = only + 1 < gridW ? only + 1 : only - 1;
+    if (inBounds(partner, y, gridW, gridH)) walkable[y][partner] = true;
+  }
+
   const regionColor = makeColorGrid(gridW, gridH);
   for (let y = 0; y < gridH; y++) {
     for (let x = 0; x < gridW; x++) {

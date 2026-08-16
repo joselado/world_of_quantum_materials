@@ -12,9 +12,9 @@
 //     goal and opens out of one at the start, so world N's entry is the same
 //     piece of geography as world N-1's exit.
 //  3. deriveRows/scatterTokens -- encounter-row sampling and qumatessence
-//     placement, computed from whatever the final walkable grid actually
-//     looks like rather than something each generator has to reason about,
-//     and kept out of both passes.
+//     placement, computed from whatever the final ground connected to `start`
+//     actually looks like rather than something each generator has to reason
+//     about, and kept out of both passes.
 //
 // Generation is randomized and runs on every world entry (a fresh corridor
 // each time), so a shape that fails either invariant just gets regenerated
@@ -40,6 +40,7 @@ import {
   openStartMouth,
   passZoneRows,
   reachable,
+  reachableGround,
   scatterTokens,
   verifyChokepoint,
   worldScale,
@@ -141,9 +142,15 @@ export function generateWorldMap(
   // Nothing spawns inside either pass. Encounters are sampled per corridor
   // row, so dropping those rows here keeps them out; tokens are placed by
   // tile and take the same row set.
+  //
+  // Both read the ground connected to `start` rather than the whole walkable
+  // grid: a network-shaped world can carry branches the chokepoint's row wall
+  // severed from the route, and a wild or a labelled pickup on one of those
+  // is something the player can see across the gap and never reach.
+  const routeGround = reachableGround(result.walkable, gridW, gridH, result.start);
   const passRows = passZoneRows(result.start, result.goal, result.mid, scale);
-  const rows = deriveRows(result.walkable, gridW, gridH).filter((r) => !passRows.has(r.y));
-  const tokens = scatterTokens(result.walkable, gridW, gridH, world, [result.start, result.goal, result.mid], tokenCount(scale), passRows);
+  const rows = deriveRows(routeGround, gridW, gridH).filter((r) => !passRows.has(r.y));
+  const tokens = scatterTokens(routeGround, gridW, gridH, world, [result.start, result.goal, result.mid], tokenCount(scale), passRows);
 
   return { ...result, rows, tokens };
 }

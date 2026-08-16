@@ -91,10 +91,15 @@ export class TitleScene extends Phaser.Scene {
   // mode picker switches, so switching modes never leaves the *other*
   // mode's qumatessence/unlockedMoves/playerForm/etc. sitting in the
   // registry under the newly-selected mode's flag (which is exactly the
-  // save-mixing bug this two-slot split exists to prevent).
+  // save-mixing bug this two-slot split exists to prevent). The in-progress
+  // map snapshot (`mapState`, OverworldScene's SavedMapState) belongs to one
+  // run rather than to a save slot, so it is dropped rather than reloaded:
+  // whichever run is picked from this screen starts by laying out its own
+  // world, not by resuming the corridor the previous one left standing.
   private loadIntoRegistry(superposition: boolean) {
     const save = loadSave(superposition);
     const registry = this.game.registry;
+    registry.remove('mapState');
     registry.set('qumatessence', save.qumatessence);
     registry.set('unlockedMoves', save.unlockedMoves);
     registry.set('playerHp', save.playerHp);

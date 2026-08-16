@@ -157,9 +157,12 @@ game/src/
                                   invariant B), narrowGoalPass/openStartMouth (the corridor tapers into
                                   a pass at the goal and out of the same pass at the start), and
                                   deriveRows/scatterTokens (encounter-row sampling + qumatessence
-                                  placement, computed from the final walkable grid rather than
+                                  placement, computed from the final walkable grid's own
+                                  start-connected component (reachableGround) rather than
                                   something each generator handles itself, and kept out of both
-                                  passes via passZoneRows). Retries a failing
+                                  passes via passZoneRows -- a network-shaped world can carry
+                                  branches the chokepoint severed from the route, and nothing is
+                                  ever placed on ground the player cannot walk to). Retries a failing
                                   generator (reachability or chokepoint check fails) with fresh
                                   randomness up to 10 times before falling back to generators/fallback.ts's
                                   plain corridor, console.error-ing rather than throwing -- generation
@@ -186,6 +189,8 @@ game/src/
                                   (splicing a fixed point into a network-shaped layout that doesn't
                                   already touch it, world3.ts/world5.ts), the invariant-B primitives
                                   (forceChokepoint/reachable/verifyChokepoint) mapgen.ts runs centrally,
+                                  reachableGround (the start-connected walkable component every placer
+                                  draws its candidates from),
                                   and the pass taper (narrowGoalPass/openStartMouth/passZoneRows) that
                                   makes world N's entry the same geography as world N-1's exit
       fallback.ts                generateFallbackMap() -- the plain wide wandering corridor with no
@@ -337,8 +342,10 @@ game/src/
                                   key in the same rebuild (that would clear that chain's `current` and
                                   defeat the retarget) -- only
                                   from a branch that starts no preview of its own (Noether's Stats tab,
-                                  whose pane has no animation in it, and his Moves tab's own
-                                  empty-forSale state, which renders no pane at all) or a real teardown
+                                  whose pane has no animation in it, his Moves tab's own
+                                  empty-forSale state, which renders no pane at all, and Feynman's
+                                  level-up question streak, which replaces the whole panel with
+                                  questions) or a real teardown
                                   (OverworldScene.closeDialogue()/HubScene.closeDialogue(), which call
                                   the no-key form to stop every chain at once). Stopping also wipes
                                   whatever is mid-flight (attackFx.ts's cancelPreviewFx), so closing a
@@ -968,10 +975,12 @@ verbatim for the defender's side, but for the *attacker's* side only when `isPla
 when `isPlayer` is true it reads `effectiveMovePower(registry, moveId)` instead (Feynman's
 move-leveling, §5, `data/materials.ts`), so a leveled move's power bump is the player's own
 save state and never leaks onto a wild's own copy of the same move id. Every rendering of a
-move's name in `BattleScene` (move buttons, the battle log) goes through the matching
-`moveDisplayName(registry, moveId)` on the player's own side (`tunedMoveDisplayName` otherwise)
-for the same isPlayer-gated reason -- see `moveButtonContent`/`resolveHit`'s `applyResult`/
-`resolveSelfBuff`. `resolveHit` also takes a `bonusMultiplier` param (default `1`,
+move's name in `BattleScene` (move buttons, the battle log) goes through
+`moveDisplayName(registry, moveId)` on the player's own side for the same isPlayer-gated
+reason, and through the move's own static `MOVES[id].name` on the opponent's, since neither
+Feynman's level prefix nor Landau's class tuning is ever an opponent's state -- see
+`moveButtonContent`/`resolveHit`'s `applyResult`/`resolveSelfBuff`. `resolveHit` also takes a
+`bonusMultiplier` param (default `1`,
 a no-op) -- `playerAttack` forwards one of Landau's Analytic moves' answer-gated 2x/0.5x, or
 one of Skłodowska-Curie's Ultimate moves' all-or-nothing 1x/0x, through to the one `resolveHit`
 call for that specific move id; the opponent's hit(s) in the same round are never affected. The
@@ -1360,8 +1369,9 @@ against a still-living Adapted (Kondo's self-buff moves never reach that functio
 includes that class), picks a real compound of one of those types at random from `allCrystals()`,
 and becomes a "Polycrystalline `<compound>` Golem" of it (same naming `WORLD_RIVALS[1-8]` uses),
 rebuilding `opponentCrystal`, rebuilding the opponent's nameplate through `drawOpponentPlate()`
-(whole, not retitled -- the plate is a one-shot fitted layout, see STYLE.md's "Nameplates")
-and logging the change. Both rebuilds happen
+(whole, not retitled -- the plate is a one-shot fitted layout, see STYLE.md's "Nameplates"),
+redrawing the move menu (`drawMoveMenu`, so every button's `!!2x` tag is a mismatch check
+against the form the player is now facing) and logging the change. Both rebuilds happen
 inside a tween's `onComplete`, i.e. inside Phaser's own game step, so anything either throws
 kills the `requestAnimationFrame` loop and freezes the canvas rather than just stalling the
 turn; `component-check`'s Test 4d drives this path once per move class and watches
@@ -1787,16 +1797,26 @@ world spill off the canvas while every other world looks fine.
 **Returning to the Hub always snapshots the in-progress world first.**
 `OverworldScene.returnToHub()` (H/Enter, the World 10 finale's "Return to the Lab", and
 `returnToPreviousWorld()`'s World-1 case -- every path from a world back to the Hub) calls
-`saveMapState()` before `scene.start('Hub')`, so the registry's `mapState` key always reflects
+`closeDialogue()` and then `saveMapState()` before `scene.start('Hub')`, so the registry's
+`mapState` key always reflects
 wherever the player actually stood, not just wherever a wild encounter/goal/middle-row event
-last happened to fire (`saveMapState`'s other call sites). `HubScene.canResumeWorld(world)`
+last happened to fire (`saveMapState`'s other call sites). The `closeDialogue()` is what
+`advanceToWorld`/`returnToPreviousWorld` do for the same reason: H/Enter fire with a guardian
+panel open, and a panel's move-effect preview chain is keyed on the scene instance Phaser
+reuses across `scene.start`, so a chain left registered would read as already running the next
+time that panel opens with its timer long since destroyed by the scene's own shutdown.
+`HubScene.canResumeWorld(world)`
 reads that same `mapState` key (`.world === world`) together with `visitedWorlds` to decide
 whether the Hub door (and the Lab's own Enter key, `HubScene.create()`'s `keydown-ENTER`
 listener -- the reverse direction of `OverworldScene`'s own H/Enter, guarded by the same
 one-panel-at-a-time `dialogueContainer` check every Lab station already uses) can promise a
 resume-in-place; `mapState` is registry-only and doesn't survive a page reload the way
 `visitedWorlds` does, so checking both is what keeps a reloaded session's door label from
-promising a resume it can no longer deliver. `HubScene.doorLabel()`/`enterWorld()` and the Lab's
+promising a resume it can no longer deliver. It belongs to one run rather than to a save
+slot, so `TitleScene.loadIntoRegistry()` drops it whenever it loads one (at boot, on a mode
+switch, and after an erase): whichever run is picked from the title screen lays out its own
+world instead of inheriting the corridor the previous one left standing.
+`HubScene.doorLabel()`/`enterWorld()` and the Lab's
 `keydown-ENTER` handler all read this one predicate rather than three separate checks that could
 drift apart.
 
@@ -1811,7 +1831,8 @@ VISIBLE_DEPTH_FRACTION`, not a literal, so widening the draw distance can't star
 spawns into view) or past `RESPAWN_MIN_ROWS_BEHIND` to the south (computed from
 `CAMERA_BACK_TILES`, since what bounds that side is where the camera sits, plus slack for
 `playerTile` moving to a step's destination while the camera is still tweening from the tile
-behind) -- walkable, empty, outside
+behind) -- on ground the player can actually walk to (`reachableGround` from the start tile,
+recomputed whenever the scene takes a walkable grid, generated or restored), empty, outside
 `passZoneRows(startTile, goalTile, midTile)` -- recomputed at runtime from the three points
 the scene already holds, rather than stored -- and off the start/goal/guardian tiles. On top
 of that, `respawnWild` keeps generation's own two rules (one encounter per row, never in a

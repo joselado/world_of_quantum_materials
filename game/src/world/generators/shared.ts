@@ -424,6 +424,38 @@ export function reachable(walkable: boolean[][], gridW: number, gridH: number, f
   return false;
 }
 
+// The walkable ground actually connected to `from`, as a grid rather than
+// the yes/no `reachable` above answers. A world whose shape is a network of
+// branches (world 3's domain walls, world 7's braid) can end up with whole
+// branches severed from the route by `forceChokepoint`'s row wall, and
+// anything placed on one of those is scenery the player can see and never
+// walk to. Every placer -- generateWorldMap's own encounter-row/qumatessence
+// scatter, and OverworldScene's respawns -- takes its candidates from this
+// rather than from the raw walkable grid, which stays whole so the severed
+// ground is still drawn as terrain.
+export function reachableGround(walkable: boolean[][], gridW: number, gridH: number, from: GridPoint): boolean[][] {
+  const ground = makeGrid(gridW, gridH);
+  if (!walkable[from.y]?.[from.x]) return ground;
+  ground[from.y][from.x] = true;
+  const stack: GridPoint[] = [from];
+  while (stack.length) {
+    const cur = stack.pop()!;
+    const neighbors: [number, number][] = [
+      [cur.x + 1, cur.y],
+      [cur.x - 1, cur.y],
+      [cur.x, cur.y + 1],
+      [cur.x, cur.y - 1],
+    ];
+    for (const [nx, ny] of neighbors) {
+      if (!inBounds(nx, ny, gridW, gridH)) continue;
+      if (ground[ny][nx] || !walkable[ny]?.[nx]) continue;
+      ground[ny][nx] = true;
+      stack.push({ x: nx, y: ny });
+    }
+  }
+  return ground;
+}
+
 // Finds the walkable tile closest (Manhattan) to `from` -- a full grid scan
 // rather than a ring-search outward, since the grid is small (well under
 // 2000 tiles) and this only runs a handful of times per map generation

@@ -8,6 +8,7 @@ import { PANEL_BG } from '../../ui/theme';
 import {
   MOVES,
   getMoveLevel,
+  getTunedMoveClass,
   moveDisplayName,
   tunedMoveDisplayName,
   feynmanLevelCost,
@@ -28,6 +29,8 @@ import {
   renderMoveDetailHeader,
   renderStatusAndConfirm,
 } from './listDetail';
+import { stopMoveEffectPreview } from '../../art/moveEffectPreview';
+import { ANALYTIC_SHAPES, ULTIMATE_SHAPES } from '../../art/attackEffects';
 
 // Feynman stands at world 7's middle tile (WORLD_GUARDIANS) and offers to
 // level up any move the player already carries (`unlockedMoves`, regardless
@@ -153,12 +156,17 @@ function renderMoveLevelList(
   const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
 
   let rightY = columnsTop;
+  // Feynman's list carries every move the player owns, Landau's Analytic pair
+  // and Skłodowska-Curie's Ultimate pair included, so the pane resolves the
+  // same current class/shape override those guardians' own panels do
+  // (listDetail.ts's renderMoveDetailHeader contract) -- otherwise a move
+  // titled "Magnon Lance" would preview as its static Phonon bolt.
   rightY = renderMoveDetailHeader(
     scene,
     container,
     moveDisplayName(scene.game.registry, move.id),
-    move.class,
-    undefined,
+    getTunedMoveClass(scene.game.registry, move.id),
+    ANALYTIC_SHAPES[move.id] ?? ULTIMATE_SHAPES[move.id],
     columns.rightColCenterX,
     rightY,
     columns.rightColW,
@@ -227,6 +235,13 @@ function startLevelUp(scene: GuardianPanelHost, move: Move, nextLevel: 1 | 2 | 3
 // "destroy container, re-show the guardian panel" convention every other
 // in-panel action already uses.
 function showLevelStreak(scene: GuardianPanelHost, moveId: string, targetLevel: 1 | 2 | 3) {
+  // The streak panel demonstrates nothing, so nothing in it will ever
+  // retarget the battle-effect loop the move list left running against its
+  // detail pane -- stop it explicitly, the same way Noether's panes that
+  // start no preview of their own do, rather than leaving the move's impact
+  // flashing over the questions (it draws above a dialogue container by
+  // design, art/moveEffectPreview.ts).
+  stopMoveEffectPreview();
   const questions = getAnalyticQuestions(scene.getVisitedWorlds(), MOVE_LEVEL_STREAKS[targetLevel]);
   let index = 0;
 
@@ -236,7 +251,7 @@ function showLevelStreak(scene: GuardianPanelHost, moveId: string, targetLevel: 
       scene.game.registry.set('moveLevels', { ...levels, [moveId]: targetLevel });
       persistFromRegistry(scene.game.registry);
     }
-    scene.dialogueContainer?.destroy(true);
+    destroyPanel(scene);
     showFeynmanPanel(scene);
   };
 
@@ -245,6 +260,10 @@ function showLevelStreak(scene: GuardianPanelHost, moveId: string, targetLevel: 
       finishStreak(true);
       return;
     }
+    // Each question replaces the one before it: the streak walks through
+    // several panels in a row, and the previous one has to come down before
+    // the next goes up or its own answer buttons stay live underneath.
+    destroyPanel(scene);
     const question = questions[index];
     scene.dialogueActive = true;
     const container = scene.add.container(0, 0).setDepth(100);

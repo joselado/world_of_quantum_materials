@@ -17,7 +17,7 @@ import {
 import { persistFromRegistry } from '../../data/save';
 import type { MoveClass } from '../../data/types';
 import { hostableClasses, renderInlineClassPicker } from './tunableMoveShop';
-import { TWO_UP_PANEL_W, TWO_UP_STAGE_H, sideBySideColumns, renderMoveDetailHeader, insertColumnDivider } from './listDetail';
+import { TWO_UP_PANEL_W, TWO_UP_STAGE_H, sideBySideColumns, renderMoveDetailHeader, insertColumnDivider, destroyPanel } from './listDetail';
 
 // Skłodowska-Curie stands at world 10's middle tile (WORLD_GUARDIANS,
 // `id: 'sklodowskaCurie'` -- deliberately not `'curie'`, so she's gated
@@ -226,6 +226,6 @@ function pickUltimateClass(scene: GuardianPanelHost, moveId: string, cls: MoveCl
     }
   }
   persistFromRegistry(scene.game.registry);
-  scene.dialogueContainer?.destroy(true);
+  destroyPanel(scene);
   showSklodowskaCuriePanel(scene);
 }

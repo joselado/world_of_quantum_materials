@@ -607,7 +607,7 @@ What this means in practice:
 - Qumatessence tokens are scattered across a handful of walkable tiles per map
   (`world/generators/shared.ts`'s `scatterTokens`), preferring an actual dead-end tile (a
   branch/spur tip, degree 1 in the walkable graph) when that world's shape has any, falling
-  back to any walkable tile otherwise -- so the original "reward sits at the end of a detour"
+  back to any other tile on the route otherwise -- so the original "reward sits at the end of a detour"
   read survives for the worlds that still build literal dead ends, without requiring every
   shape to have one.
 - Nothing ever materializes in frame. Wild crystals and qumatessence both come back as a
@@ -944,8 +944,10 @@ station motifs are deliberately not tunnels with a visible far end.
 ## Qumatessence pickups (`art/tokens.ts`, `data/tokens.ts`)
 
 - Placed by `world/generators/shared.ts`'s `scatterTokens`, which prefers dead-end tiles
-  (degree 1 in the walkable graph) and falls back to any walkable tile for a world whose
-  shape has too few of them -- the same rule "Overworld path" above states.
+  (degree 1 in the walkable graph) and falls back to any other tile on the route for a world
+  whose shape has too few of them -- the same rule "Overworld path" above states. Both cases
+  draw only from ground connected to the entry point (`reachableGround`), so a pickup is
+  never left on a branch the guardian's chokepoint cut off from the route.
 - Rendered as a "shiny cloud" (cluster of soft overlapping circles + bright core + halo +
   sparkles), `makeToken()` -- deliberately different silhouette from the faceted
   crystal/prism look used for wild encounters and the player, so pickups read as
@@ -2564,6 +2566,9 @@ world are shaped, since world N's start is world N-1's exit.
   multi-trigger, growing-size cascade a real leveled cast plays (the escalation rules above)
   instead of always showing the flat unleveled loop -- a still-unbought move (Noether's own rows)
   is simply never above level 0, since leveling requires already owning the move.
+  A preview leaves the music alone, whatever shape it plays: the dip belongs to a real cast,
+  and one fired every few seconds for as long as a panel is open would read as a fault in the
+  score rather than emphasis on a hit.
   `moveEffectPreview.ts` tracks any number of independent, simultaneously-looping preview
   *chains* at once, each identified by its own caller-supplied string key (default `'default'`,
   what every single-preview caller -- Noether, Kondo -- implicitly lands on, unaffected by this):

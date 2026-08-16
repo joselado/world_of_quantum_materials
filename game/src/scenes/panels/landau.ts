@@ -9,7 +9,7 @@ import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 import { ANALYTIC_MOVE_IDS, shopCost, moveDisplayName, getTunedMoveClass, getMoveLevel, quasiparticleLabel, MOVES } from '../../data/materials';
 import type { MoveClass } from '../../data/types';
 import { hostableClasses, renderInlineClassPicker } from './tunableMoveShop';
-import { TWO_UP_PANEL_W, TWO_UP_STAGE_H, sideBySideColumns, renderMoveDetailHeader, insertColumnDivider } from './listDetail';
+import { TWO_UP_PANEL_W, TWO_UP_STAGE_H, sideBySideColumns, renderMoveDetailHeader, insertColumnDivider, destroyPanel } from './listDetail';
 import { persistFromRegistry } from '../../data/save';
 
 // Landau stands at world 4's middle tile (WORLD_GUARDIANS) and sells his
@@ -185,7 +185,7 @@ function buyLandauMove(scene: GuardianPanelHost, id: string, cost: number, chose
   scene.game.registry.set('unlockedMoves', [...scene.getUnlockedMoves(), id]);
   scene.game.registry.set('moveClassTuning', { ...assigned, [id]: chosenClass });
   persistFromRegistry(scene.game.registry);
-  scene.dialogueContainer?.destroy(true);
+  destroyPanel(scene);
   showLandauPanel(scene);
 }
 
@@ -193,6 +193,6 @@ function retuneLandauMove(scene: GuardianPanelHost, id: string, chosenClass: Mov
   const assigned = (scene.game.registry.get('moveClassTuning') as Partial<Record<string, MoveClass>>) ?? {};
   scene.game.registry.set('moveClassTuning', { ...assigned, [id]: chosenClass });
   persistFromRegistry(scene.game.registry);
-  scene.dialogueContainer?.destroy(true);
+  destroyPanel(scene);
   showLandauPanel(scene);
 }

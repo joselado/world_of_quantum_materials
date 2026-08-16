@@ -67,7 +67,7 @@ import type { DiscoveredMaterial } from '../data/save';
 import type { Material, MaterialType } from '../data/types';
 import { generateWorldMap } from '../world/mapgen';
 import type { GridPoint } from '../world/mapgen';
-import { PASS_HALF_WIDTH, passZoneRows, scaleOfGrid, worldScale } from '../world/generators/shared';
+import { PASS_HALF_WIDTH, passZoneRows, reachableGround, scaleOfGrid, worldScale } from '../world/generators/shared';
 import type { WorldScale } from '../world/generators/shared';
 import { fontPx, fontScale, fitProseToBudget } from '../ui/text';
 import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX, TUTORIAL_CYAN, STORY_LAVENDER } from '../ui/theme';
@@ -85,10 +85,12 @@ import { showFranklinPanel } from './panels/franklin';
 
 // Snapshot of an in-progress map, stashed in the game registry so a round
 // trip through BattleScene resumes exactly where the player left off instead
-// of generating (and spawning onto) a brand new random map. Only cleared
-// when the scene is (re)created with `regenerate: true` -- an explicit
-// world change via the Hub door, Bloch's teleport, or a debug warp -- which
-// is the one situation meant to generate a fresh layout.
+// of generating (and spawning onto) a brand new random map. Ignored when the
+// scene is (re)created with `regenerate: true` -- an explicit world change
+// via the Hub door, Bloch's teleport, or a debug warp -- which is the one
+// situation meant to generate a fresh layout. It belongs to the run that
+// built it rather than to a save slot, so the title screen drops it whenever
+// it loads a slot (TitleScene.loadIntoRegistry).
 interface SavedMapState {
   world: number;
   playerTile: GridPoint;
@@ -540,6 +542,15 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // between grid cells.
   private camPos = { x: 0, y: 0 };
   private walkable: boolean[][] = [];
+  // The subset of `walkable` the player can actually walk to from the start
+  // tile (world/generators/shared.ts's reachableGround). A network-shaped
+  // world can carry branches the guardian's chokepoint severed from the
+  // route; they are still drawn as ground, but nothing is ever placed on
+  // them, since a wild or a pickup there is visible and unreachable forever.
+  // Derived from the grid rather than stored in the map snapshot: the grid
+  // never changes while a world is being walked, so this is recomputed
+  // wherever `walkable` itself is set.
+  private routeGround: boolean[][] = [];
   private encounterTiles: (Material | null)[][] = [];
   private tokenTiles: number[][] = [];
   // How many wild crystals this map stood up at generation, which is also the
@@ -850,13 +861,6 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
 
   create() {
     this.moving = false;
-    // World 9's rival re-rolls every time the player reaches this world
-    // (Hub door, Bloch's teleport, a crossed pass, a debug warp --
-    // every path that lands here goes through this same create()) --
-    // clearing the cached value here forces resolveRival9Type()'s first
-    // read this visit to roll fresh; it then stays cached (so the goal-tile
-    // preview and the actual battle still agree) for the rest of this visit.
-    if (this.world === 9) this.game.registry.remove('rival9Type');
     // Phaser reuses the same Scene instance across scene.start()/restart()
     // calls -- only init()/create() rerun, class field initializers don't --
     // so a dialogue left open when the player switches away (H or Enter to
@@ -896,8 +900,21 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // first, not after.
     this.applySuperpositionLeveling();
     const saved = state.get('mapState') as SavedMapState | undefined;
+    // A create() that restores the map it left is the same visit resumed (a
+    // battle just fought, the Lab just visited); anything else is a fresh
+    // arrival, laying out a new corridor to walk.
+    const resuming = saved !== undefined && saved.world === this.world && !this.regenerate;
 
-    if (saved && saved.world === this.world && !this.regenerate) {
+    // World 9's rival re-rolls every time the player *arrives* in this world
+    // (Hub door, Bloch's teleport, a crossed pass, a debug warp -- every path
+    // that lands here goes through this same create()): clearing the cached
+    // value forces resolveRival9Type()'s first read of the visit to roll
+    // fresh. It then stays cached for the rest of that visit, through every
+    // battle and Lab round trip, so the goal-tile boss the player walked up
+    // to read is the one they end up fighting.
+    if (this.world === 9 && !resuming) this.game.registry.remove('rival9Type');
+
+    if (resuming) {
       this.restoreMap(saved);
     } else {
       this.generateMap();
@@ -1222,6 +1239,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     const playerType = this.world === 10 ? getPlayerMaterial(this.game.registry).type : undefined;
     const map = generateWorldMap(gridW(), gridH(), this.playerTile, this.world, this.mapScale, playerType);
     this.walkable = map.walkable;
+    this.routeGround = reachableGround(map.walkable, gridW(), gridH(), map.start);
     this.tokenTiles = map.tokens;
     this.goalTile = map.goal;
     this.startTile = map.start;
@@ -1268,11 +1286,13 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // density stays roughly constant regardless of how wide the corridor
     // is -- placed at a random column within that row's walkable band.
     const encounterChance = this.encounterChance();
+    const landmarks = this.landmarkKeys();
     map.rows.forEach((r) => {
       if (r.y === this.playerTile.y) return; // never spawn right on the player
       if (wildPool.length === 0 || Math.random() >= encounterChance) return;
       const x = r.left + Math.floor(Math.random() * (r.right - r.left + 1));
       if (this.tokenTiles[r.y][x]) return;
+      if (landmarks.has(`${x},${r.y}`)) return;
       this.encounterTiles[r.y][x] = Phaser.Utils.Array.GetRandom(wildPool);
     });
 
@@ -1324,6 +1344,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.mapScale = scaleOfGrid(saved.walkable.length);
     this.playerTile = { ...saved.playerTile };
     this.walkable = saved.walkable;
+    this.routeGround = reachableGround(saved.walkable, gridW(), gridH(), saved.startTile);
     this.tokenTiles = saved.tokenTiles;
     this.encounterTiles = saved.encounterTiles;
     this.flowerMap = saved.flowerMap;
@@ -1372,7 +1393,15 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // Hub door's next "resume in place" attempt would silently regenerate a
   // fresh map instead (HubScene.canResumeWorld() checks this same `mapState`
   // key to decide whether its door/Enter-key promise a resume at all).
+  // Leaves through closeDialogue() first, the same way advanceToWorld/
+  // returnToPreviousWorld do: H/Enter fire with a guardian panel open, and a
+  // panel's move-effect preview chain (art/moveEffectPreview.ts) is keyed on
+  // this scene instance, which Phaser reuses across scene.start -- so a chain
+  // left registered here would be seen as already running the next time the
+  // same panel opens, with its timer long since destroyed by the scene's own
+  // shutdown and nothing left to restart it.
   private returnToHub() {
+    this.closeDialogue();
     this.saveMapState();
     this.scene.start('Hub');
   }
@@ -1708,12 +1737,13 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
 
   // Every tile a respawn is allowed to land on: outside the drawn world in
   // either direction (past RESPAWN_MIN_ROWS_AHEAD to the north or
-  // RESPAWN_MIN_ROWS_BEHIND to the south), walkable, empty, outside both
-  // passes, and off the three landmark tiles the guardian, the rival and the
-  // backward exit stand on. Refilling in both directions is what lets a player
-  // walk a corridor back and forth and always find more -- a rule that only
-  // reached ahead would leave the walked stretch bare and stop refilling at
-  // all once the player neared the north end of a map.
+  // RESPAWN_MIN_ROWS_BEHIND to the south), on ground the player can actually
+  // walk to, empty, outside both passes, and off the three landmark tiles the
+  // guardian, the rival and the backward exit stand on. Refilling in both
+  // directions is what lets a player walk a corridor back and forth and always
+  // find more -- a rule that only reached ahead would leave the walked stretch
+  // bare and stop refilling at all once the player neared the north end of a
+  // map.
   private respawnTiles(): GridPoint[] {
     const aheadOf = this.playerTile.y - RESPAWN_MIN_ROWS_AHEAD;
     const behind = this.playerTile.y + RESPAWN_MIN_ROWS_BEHIND;
@@ -1723,20 +1753,28 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // generator applies, recomputed from the three points mapState already
     // carries.
     const passRows = passZoneRows(this.startTile, this.goalTile, this.midTile, this.mapScale);
-    const landmarks = new Set([this.startTile, this.goalTile, this.midTile].map((p) => `${p.x},${p.y}`));
+    const landmarks = this.landmarkKeys();
 
     const tiles: GridPoint[] = [];
     for (let y = 0; y < gridH(); y++) {
       if (y > aheadOf && y < behind) continue;
       if (passRows.has(y)) continue;
       for (let x = 0; x < gridW(); x++) {
-        if (!this.walkable[y]?.[x]) continue;
+        if (!this.routeGround[y]?.[x]) continue;
         if (this.tokenTiles[y][x] || this.encounterTiles[y][x]) continue;
         if (landmarks.has(`${x},${y}`)) continue;
         tiles.push({ x, y });
       }
     }
     return tiles;
+  }
+
+  // The three tiles that read as landmarks rather than ground: the guardian's
+  // chokepoint, the rival's throat and the backward exit. Nothing is ever
+  // placed on one of them, at generation or on a respawn, so the thing
+  // standing there is the only thing standing there.
+  private landmarkKeys(): Set<string> {
+    return new Set([this.startTile, this.goalTile, this.midTile].map((p) => `${p.x},${p.y}`));
   }
 
   // Width of the contiguous walkable run this tile sits in, along its own row.

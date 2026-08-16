@@ -471,7 +471,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'What does "rhombohedral" pentalayer graphene stacking refer to in the hBN-aligned hybrid recipe?',
-      correct: 'An ABCCA-type stacking sequence of five graphene sheets',
+      correct: 'An ABCAB stacking sequence of five graphene sheets, the ABC rhombohedral repeat',
       incorrect: 'A single graphene sheet twisted by exactly 60 degrees',
     },
   ],
@@ -1957,7 +1957,7 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
     },
     {
       prompt: "How many graphene layers, stacked in what sequence, make up this hybrid's flat band?",
-      correct: 'Five layers in rhombohedral (ABCCA-type) stacking',
+      correct: 'Five layers in rhombohedral (ABCAB) stacking',
       incorrect: 'Two layers twisted at the magic angle',
     },
     {

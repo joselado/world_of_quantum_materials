@@ -161,6 +161,11 @@ export function playAttackEffect(
   // BattleScene defer the win/lose check and the opponent's turn until the
   // animation is actually done rather than seconds early.
   if (shape === 'meteor' || shape === 'nova') {
+    // The music dip belongs to the real cast, so it is fired here rather than
+    // inside the sequence itself -- playTargetEffect's looping panel preview
+    // runs the same sequence and must leave the score alone (see its own
+    // comment).
+    music.duck(attackEffectTotalDurationMs(shape, level));
     playUltimateRepeats(scene, shape, style.color, to, whiff, onImpact, powerRatio, onComplete, depthOffset, triggerCount);
     return;
   }
@@ -350,9 +355,7 @@ function playUltimateRepeats(
   triggerCount: number
 ) {
   const play = shape === 'meteor' ? playMeteor : playNova;
-  const singleMs = shape === 'meteor' ? METEOR_TOTAL_MS : NOVA_TOTAL_MS;
   const stagger = ULTIMATE_LEVEL_STAGGER_MS;
-  music.duck((triggerCount - 1) * stagger + singleMs);
 
   const playOnce = (scale: number, isLast: boolean) => {
     playAttackSfx(shape);

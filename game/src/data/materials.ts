@@ -1012,9 +1012,8 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // Leading spin-triplet/chiral superconductor candidate -- huge
     // beyond-Pauli-limit critical fields and (contested) reports of
     // time-reversal-symmetry-breaking, chiral in-gap surface states.
-    // Standalone (not a HYBRID_RECIPES result, unlike this world's other
-    // chernSuperconductor members), the same "real intrinsic compound gets
-    // its topic's own world" treatment world 4's MnBi₂Te₄ gets -- kept
+    // A real intrinsic compound rather than a HYBRID_RECIPES result, so it
+    // gets its topic's own world the same way world 4's MnBi₂Te₄ does -- kept
     // 'chernSuperconductor' rather than plain 'superconductor' since that
     // candidate topological pairing (not settled) is the entire reason it's
     // a research flagship, but honestly still a candidate, not confirmed.
@@ -1326,11 +1325,13 @@ export const WORLD_RIVALS: Partial<Record<number, Material>> = {
     undefined,
     shade(0x5a7ca6, 32)
   ),
-  // Polycrystalline graphene -- CVD-grown graphene grows as stitched-together
-  // single-crystal grains with visible grain boundaries (Huang et al.,
-  // Nature 2011), the defining "many grains fused into one sheet" example
-  // for a 'metal'-type 2D material. Color: darkened toward graphite-black.
-  // Kept shy of true black (rather than a stronger `darken()`) so
+  // Polycrystalline silica -- quartz in grains, each grain its own small
+  // perfect lattice, with a film of amorphous glass at every boundary
+  // between them. Bloch's theorem needs its repetition to reach the edge of
+  // the solid and here it stops at the edge of a grain, which makes it this
+  // world's own 'insulator'-type answer to "what a band structure needs to
+  // exist at all". Color: the type's pale grey-blue darkened to clouded
+  // stone. Kept shy of true black (rather than a stronger `darken()`) so
   // art/boss.ts's own per-shard shadow-side darkening still leaves the
   // torso and lit-side limbs a visibly dark grey instead of crushing to
   // flat (0,0,0) once its offsets stack on top of this base.
@@ -1341,7 +1342,7 @@ export const WORLD_RIVALS: Partial<Record<number, Material>> = {
     0,
     'prism',
     undefined,
-    darken(0x7a8a99, 28)
+    darken(0xb8c4cc, 48)
   ),
   // Bi₂Te₃ (world 3's own Bi₂Te₃ wild) is engineered polycrystalline on
   // purpose in real thermoelectric devices -- grain boundaries scatter
@@ -1550,8 +1551,9 @@ const HYBRID_RECIPES: { parents: [string, string]; result: Material }[] = [
   // (undoped) magnetism above.
   { parents: ['Chromium', 'Bi₂Te₃'], result: namedResult('Cr-doped (Bi,Sb)₂Te₃') },
   // Literalizes the mechanic's own original worked example -- Fe chains on
-  // Pb (Nadj-Perge et al. 2014) already exists as an ordinary world-5 wild;
-  // this just makes it reachable by fusion too.
+  // a Pb superconductor (Nadj-Perge et al. 2014), the experiment the whole
+  // Majorana-chain picture comes from. Like every other recipe result, it
+  // lives only in World 10's pool.
   { parents: ['Iron', 'Lead'], result: namedResult('Fe/Pb Majorana Chain') },
   // Twisted CrI₃'s multiferroicity (electromagnons from noncollinear moiré
   // spin textures) is a theoretical proposal, not yet an established

@@ -93,8 +93,9 @@ the player is a spawner rather than a world. Refilling behind as well as ahead i
 player walk a corridor back and forth and always find more; a rule that only reached ahead
 would leave the stretch already walked permanently bare and stop refilling at all near the
 north end of a map. A respawn obeys every rule the original scatter does: never in a pass,
-never on the start/goal/guardian tile, one wild per row at most and never in a walkable run
-narrower than 2 tiles, and drawn from the same `getWildPool(world)` the generator drew from --
+never on the start/goal/guardian tile, never on ground cut off from the route, one wild per
+row at most and never in a walkable run narrower than 2 tiles, and drawn from the same
+`getWildPool(world)` the generator drew from --
 so World 10 keeps respawning hybrid-recipe results only, and World 9 the whole non-hybrid
 roster.
 
@@ -1418,8 +1419,11 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   off its whole row except a small gap, so every route from the entry point to the goal is
   provably routed through it -- verified by flood fill with that tile removed, not just
   placed near the geometric middle of one of several possible routes) and deriving
-  encounter-row sampling/qumatessence placement from the final walkable shape. Every
-  generator's own walkable segments stay at least 2 tiles wide throughout, so a wild
+  encounter-row sampling/qumatessence placement from the part of the final walkable shape
+  that is actually connected to the entry point, so a branch the chokepoint's row wall
+  severed from the route is terrain the player walks past rather than ground holding a
+  pickup they can see across the gap and never reach.
+  Every generator's own walkable segments stay at least 2 tiles wide throughout, so a wild
   encounter spawned on the path can never fully block it. A generator whose output fails
   either check is retried with fresh randomness (up to 10 times) before falling back to a
   plain wide corridor, logged rather than thrown -- generation is randomized and runs on
