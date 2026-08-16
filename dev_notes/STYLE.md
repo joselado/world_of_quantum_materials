@@ -2066,8 +2066,24 @@ world are shaped, since world N's start is world N-1's exit.
     pushes the backdrop's local contrast up into the range the HP bars need. Where the two
     budgets pull apart, the arena wins and the overworld's horizon is drawn as a sky extra
     instead (the Screened Swamp).
-  - **Ground**: a vertical gradient from a fog-blended far edge to a darkened near edge,
-    with a translucent mist band pooling just below the horizon.
+  - **Ground**: two flat bands, stating which of the world's two grounds the fight started
+    on -- the one thing sky and ridges alone can't say (a fight beside a narrow seam would
+    look like a fight in an open field). From the horizon down to `FLOOR_EDGE_Y`
+    (`battle/hud.ts`) runs the impassable surround the route is hemmed in by
+    (`biome.ground`, fog-blended at its far edge, darkening nearer); below it, the walkable
+    floor the fight stands on (`biome.path` pulled about a third of the way toward
+    `biome.ground`, so a bright overworld floor still arrives inside the arena's compressed
+    value range). Their join meanders a few pixels around `FLOOR_EDGE_Y` along a seeded
+    Catmull-Rom polyline (`'battle-floor-<world>-<x>,<y>-edge'`, the ridges' own locale
+    seeding, so the same spot always draws the same edge) -- a boundary ruler-straight
+    across the whole frame reads as stagecraft, not terrain. The edge quotes the
+    overworld's boundary treatment: the impassable side darkens into the join (stacked
+    thin translucent bands hugging the curve, since a gradient fill can't follow a path)
+    and a thin lit lip runs along the walkable side. A translucent mist band pools just
+    below the horizon, and the scattered ground tufts tint from whichever band they stand
+    in (`ground` above the edge, `path` below). The player's crystal stands on the floor
+    band; the opponent sits above the horizon entirely -- the arena is a stylised stage,
+    and the opponent's own shadow pad, not the floor plane, is what it hovers over.
   - **Color grade**: one zone-level translucent tint keyed off what the ground around the
     encounter tile is made of (the locale's sampled surround, else the biome's own
     `wallTheme`) -- `ice` gets a cool cyan wash deepening down the field, `lava` an ember

@@ -32,6 +32,13 @@ import type { Material } from '../../data/types';
 export const FIELD_W = CANVAS_W;
 export const FIELD_H = CANVAS_H;
 export const HORIZON_Y = 262;
+// Where the walkable floor's far edge crosses the arena, splitting the near
+// ground into the surround the route is hemmed in by (above) and the floor the
+// fight is standing on (below). Held above the player's own feet
+// (PLAYER_POS.y) with room to spare, since the player must read as standing on
+// the floor rather than astride its edge; the opponent sits higher up the
+// frame by composition and is not on this plane at all.
+export const FLOOR_EDGE_Y = HORIZON_Y + 62;
 
 // The margin frame every screen-anchored element sits on. A single set of
 // rails rather than a per-widget margin is what makes the corners read as

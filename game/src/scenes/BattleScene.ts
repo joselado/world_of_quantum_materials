@@ -64,6 +64,7 @@ import { music } from '../audio/music';
 import {
   FIELD_W,
   FIELD_H,
+  FLOOR_EDGE_Y,
   HORIZON_Y,
   BOTTOM_RAIL,
   PLAYER_POS,
@@ -1166,12 +1167,80 @@ export class BattleScene extends Phaser.Scene {
       this.drawRidge(g, layer.baseY, layer.color, layer.alpha, heights, layer.rim);
     });
 
-    // Ground, its horizon edge pulled toward the fog color so it recedes
-    // into the same atmosphere the ridges sit in.
+    // The near ground is the corridor seen from where the player was standing:
+    // a band of the impassable ground that hems the route in, and in front of
+    // it the walkable floor they are actually fighting on. Both colours come
+    // from the same `art/biomes.ts` entry the overworld draws that world from,
+    // so the arena states which of the two grounds this fight started on --
+    // the one thing the backdrop could not say before, and the reason a fight
+    // beside a seam looked like a fight in an open field.
+    //
+    // This is still palette rather than a re-render of the corridor
+    // (`STYLE.md`'s battle backdrop rule): two flat bands and an edge, no
+    // projection and nothing from `terrain/materials/`, and the walkable band
+    // is pulled well down toward the surround's own value rather than drawn at
+    // the floor's full brightness, since the backdrop's whole value range is
+    // compressed so the crystals and the UI stay in front of it.
     const groundFar = blend(shade(biome.ground, 20), biome.fogTarget, 0.3);
     const groundNear = shade(biome.ground, -18);
     g.fillGradientStyle(groundFar, groundFar, groundNear, groundNear, 1);
     g.fillRect(0, HORIZON_Y, FIELD_W, FIELD_H - HORIZON_Y);
+
+    // The floor's far edge meanders a few pixels around FLOOR_EDGE_Y -- a
+    // Catmull-Rom polyline seeded like the ridges (same spot, same edge) --
+    // because a terrain boundary drawn ruler-straight across the whole frame
+    // reads as stagecraft rather than ground.
+    const waver = 5;
+    const edgeRand = seededRandom(hashSeed(`battle-floor-${this.world}-${spot}edge`));
+    const edgeMargin = 40;
+    const edgeCount = 9;
+    const edgeStep = (FIELD_W + edgeMargin * 2) / (edgeCount - 1);
+    const edgeControls = Array.from(
+      { length: edgeCount },
+      (_, i) => new Phaser.Math.Vector2(-edgeMargin + i * edgeStep, FLOOR_EDGE_Y + (edgeRand() * 2 - 1) * waver)
+    );
+    const edgePts = new Phaser.Curves.Spline(edgeControls).getPoints(80);
+
+    // Walkable floor, overdrawn on top of the surround gradient: a solid
+    // strip hugging the wavering edge, then the vertical gradient from just
+    // below the deepest waver (against a 150px gradient the seam between the
+    // two is far too small to see).
+    const floorFar = shade(blend(biome.path, biome.ground, 0.34), -4);
+    const floorNear = shade(blend(biome.path, biome.ground, 0.26), -14);
+    const floorFlatBottom = FLOOR_EDGE_Y + waver + 2;
+    g.fillStyle(floorFar, 1);
+    g.beginPath();
+    g.moveTo(edgePts[0].x, edgePts[0].y);
+    edgePts.forEach((p) => g.lineTo(p.x, p.y));
+    g.lineTo(FIELD_W + edgeMargin, floorFlatBottom);
+    g.lineTo(-edgeMargin, floorFlatBottom);
+    g.closePath();
+    g.fillPath();
+    g.fillGradientStyle(floorFar, floorFar, floorNear, floorNear, 1);
+    g.fillRect(0, floorFlatBottom, FIELD_W, FIELD_H - floorFlatBottom);
+
+    // The far edge of the walkable ground, quoting the overworld's own
+    // boundary: the impassable side darkens into the join, and a thin lit lip
+    // runs along the walkable side of it. Without the lip the two bands read
+    // as one gradient; with it, the floor has an edge and the player is
+    // standing on something. The shadow is stacked thin translucent bands
+    // hugging the curve (a gradient fill can't follow a path), each step
+    // small enough not to read as a stripe of its own.
+    const edgeShadow = shade(biome.ground, -38);
+    [18, 13, 9, 6, 3.5, 1.5].forEach((off) => {
+      g.fillStyle(edgeShadow, 0.1);
+      g.beginPath();
+      g.moveTo(edgePts[0].x, edgePts[0].y - off);
+      edgePts.forEach((p) => g.lineTo(p.x, p.y - off));
+      for (let i = edgePts.length - 1; i >= 0; i--) g.lineTo(edgePts[i].x, edgePts[i].y);
+      g.closePath();
+      g.fillPath();
+    });
+    g.lineStyle(2, blend(floorFar, 0xffffff, 0.45), 0.6);
+    g.beginPath();
+    g.moveTo(edgePts[0].x, edgePts[0].y + 1);
+    edgePts.forEach((p) => g.lineTo(p.x, p.y + 1));
+    g.strokePath();
     // Mist pooling just below the horizon, fading out down the field.
     const mist = shade(biome.fogTarget, 25);
     g.fillGradientStyle(mist, mist, mist, mist, 0.32, 0.32, 0, 0);
@@ -1361,10 +1430,14 @@ export class BattleScene extends Phaser.Scene {
     const spots: [number, number][] = [
       [36, 300], [590, 290], [549, 340], [111, 380], [25, 420],
       [MENU_X - 25, 400], [356, 300], [271, 440], [453, 420], [527, 460],
-      [153, 300], [MENU_X - 44, 220],
+      [153, 300], [MENU_X - 44, 286],
     ];
     spots.forEach(([x, y], i) => {
-      const tuftColor = shade(biome.path, -10 - (y - HORIZON_Y) * 0.15);
+      // Tufts above the floor's far edge stand in the impassable surround and
+      // tint from its ground colour; tufts below it stand on the walkable
+      // floor and tint from the path colour -- each band's detail speaks that
+      // band's own ground.
+      const tuftColor = shade(y < FLOOR_EDGE_Y ? biome.ground : biome.path, -10 - (y - HORIZON_Y) * 0.15);
       if (i % 3 === 0) {
         g.fillStyle(shade(biome.ground, -30), 0.55);
         g.fillEllipse(x, y, 10, 4);
