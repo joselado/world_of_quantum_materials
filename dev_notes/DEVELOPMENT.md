@@ -640,9 +640,13 @@ fog-coloured late worlds produce. Run it after any change to the battle
 backdrop, the crystal art, or the nameplates.
 
 It drives the real game to a rival battle in each world through the real gate
-route (reach the goal, face that world's own rival), so the opponent is the
-boss-sized silhouette standing against the ridgeline -- the harder case -- in
-the material the game itself chose. Both sides get a large HP buffer before
+route -- stand at the pass mouth, read the challenge prompt there, and go
+through `confirmGate` and the rival's own taunt exactly as a player pressing
+Space does -- so the opponent is the boss-sized silhouette standing against
+the ridgeline, the harder case, in the material the game itself chose. The
+prompt is what the script asserts on rather than a panel opening: arriving at
+the mouth deliberately raises nothing but the one-time `goal` tutorial tip, so
+a route that waits for a dialogue instead waits forever. Both sides get a large HP buffer before
 anything is captured, because a fresh save's max HP in the late worlds is low
 enough for the rival to end the fight first, and the bars are left at 60% so
 they are measured part-drained rather than in the one frame where they are

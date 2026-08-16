@@ -799,14 +799,39 @@ async function main() {
     if (!live) throw new Error(`world ${world}: Overworld never became active`);
     if (!(await resolveOverworldDialogue())) throw new Error(`world ${world}: entry dialogue never cleared`);
 
-    const opened = await page.evaluate(() => {
+    // Stand at the pass mouth, the tile below the goal. Arriving there is a
+    // no-op at the panel level -- the only thing it can raise is the one-time
+    // 'goal' tutorial tip, which is onboarding rather than the gate. What
+    // carries the challenge is the prompt at the mouth and the confirm behind
+    // it, never a button in a dialogue.
+    const arrival = await page.evaluate(() => {
       const s = window.__game.scene.getScene('Overworld');
       const goal = s['goalTile'];
-      s['playerTile'] = { x: goal.x, y: goal.y };
-      s['maybeReachGoal'](goal.x, goal.y);
+      const tile = { x: goal.x, y: goal.y + 1 };
+      s['playerTile'] = tile;
+      s['camPos'] = { x: tile.x, y: tile.y };
+      s['maybeReachGoal'](tile.x, tile.y);
       return !!s['dialogueActive'];
     });
-    if (!opened) throw new Error(`world ${world}: the gate panel never opened`);
+    if (arrival) {
+      await clickText(['Got it']);
+      await sleep(300);
+    }
+
+    const prompt = await page.evaluate(() => {
+      const s = window.__game.scene.getScene('Overworld');
+      s['updateGatePrompt']();
+      return s['gatePrompt'].visible ? s['gatePrompt'].text : null;
+    });
+    if (!prompt || !prompt.includes('challenge')) {
+      throw new Error(`world ${world}: the shut gate offered no challenge prompt at the mouth (prompt=${JSON.stringify(prompt)})`);
+    }
+
+    // Driven through the scene's own handler rather than page.keyboard, so it
+    // doesn't depend on where canvas focus happens to be. This is what opens
+    // the rival's taunt, which the clicks below page through to the fight.
+    await page.evaluate(() => window.__game.scene.getScene('Overworld')['confirmGate']());
+    await sleep(700);
 
     for (let i = 0; i < 8; i++) {
       if ((await getActiveScenes()).includes('Battle')) break;
