@@ -20,6 +20,9 @@ import {
   renderListColumnFooter,
   renderMoveDetailHeader,
   renderStatusAndConfirm,
+  renderTreeHeading,
+  treeHeadingHeight,
+  TREE_ENTRY_INDENT,
 } from './listDetail';
 import { stopMoveEffectPreview } from '../../art/moveEffectPreview';
 import { renderGuardianHeader } from './guardianHeader';
@@ -95,12 +98,20 @@ function renderShopBody(scene: GuardianPanelHost, container: Phaser.GameObjects.
   const movesOpen = scene.shopTab === 'moves';
 
   let leftY = columnsTop;
-  leftY = renderCategoryHeading(scene, container, columns, leftY, 'Moves', movesOpen);
+  leftY = renderTreeHeading(scene, container, columns, leftY, 'Moves', movesOpen, () => {
+    scene.shopTab = 'moves';
+    destroyPanel(scene);
+    showNoetherShop(scene);
+  });
   // The closed heading below still has to fit, so an open Moves list is told
   // how much room to leave for it.
-  const trailingHeadingRoom = movesOpen ? headingRowHeight(scene) : 0;
+  const trailingHeadingRoom = movesOpen ? treeHeadingHeight(scene) : 0;
   if (movesOpen) leftY = renderShopMoves(scene, container, columns, leftY, trailingHeadingRoom);
-  leftY = renderCategoryHeading(scene, container, columns, leftY + 4, 'Stats', !movesOpen);
+  leftY = renderTreeHeading(scene, container, columns, leftY + 4, 'Stats', !movesOpen, () => {
+    scene.shopTab = 'stats';
+    destroyPanel(scene);
+    showNoetherShop(scene);
+  });
   if (!movesOpen) leftY = renderShopStats(scene, container, columns, leftY);
 
   const rightBottom = movesOpen
@@ -113,56 +124,6 @@ function renderShopBody(scene: GuardianPanelHost, container: Phaser.GameObjects.
   return columnsBottom + 6;
 }
 
-// One heading row, spanning the left column: gold and marked open when its own
-// entries are showing beneath it, muted and marked closed when they are not.
-// Pressing a closed one opens it, which is the whole of the navigation.
-function renderCategoryHeading(
-  scene: GuardianPanelHost,
-  container: Phaser.GameObjects.Container,
-  columns: ListDetailColumns,
-  y: number,
-  label: string,
-  open: boolean
-): number {
-  const tab = label === 'Moves' ? 'moves' : 'stats';
-  const row = scene.add
-    .text(columns.leftX, y, `${open ? 'v' : '>'} ${label.toUpperCase()}`, {
-      fontSize: fontPx(scene, 12),
-      fontStyle: 'bold',
-      color: open ? GOLD_ACCENT_HEX : REFERENCE_BLUE_GREY_HEX,
-      backgroundColor: open ? '#333355' : '#1a1a2e',
-      padding: { x: 8, y: 4 },
-      fixedWidth: columns.leftColW,
-    })
-    .setOrigin(0, 0)
-    .setInteractive({ useHandCursor: true })
-    .on('pointerdown', () => {
-      if (scene.shopTab === tab) return;
-      scene.shopTab = tab as 'moves' | 'stats';
-      destroyPanel(scene);
-      showNoetherShop(scene);
-    });
-  container.add(row);
-  return y + row.height + 2;
-}
-
-// Measured off a throwaway row rather than assumed, the same way
-// renderListColumn sizes its own rows, so the room reserved for a closed
-// heading tracks the text-size preset.
-// Entries sit indented under the heading they belong to, so the column reads
-// as two levels at a glance rather than one flat run of rows.
-const ENTRY_INDENT = 14;
-
-function headingRowHeight(scene: GuardianPanelHost): number {
-  const sample = scene.add.text(-1000, -1000, '> SAMPLE', { fontSize: fontPx(scene, 12), fontStyle: 'bold', padding: { x: 8, y: 4 } });
-  const h = sample.height + 6;
-  sample.destroy();
-  return h;
-}
-
-// The open Moves heading's own entries: every move still unbought that this
-// form can actually carry. Returns the bottom of the rows so the closed Stats
-// heading can follow them.
 function renderShopMoves(
   scene: GuardianPanelHost,
   container: Phaser.GameObjects.Container,
@@ -173,7 +134,7 @@ function renderShopMoves(
   const forSale = movesForSale(scene);
   if (forSale.length === 0) {
     const empty = scene.add
-      .text(columns.leftX + ENTRY_INDENT, y, 'Nothing left to teach.', { fontSize: fontPx(scene, 11), color: REFERENCE_BLUE_GREY_HEX })
+      .text(columns.leftX + TREE_ENTRY_INDENT, y, 'Nothing left to teach.', { fontSize: fontPx(scene, 11), color: REFERENCE_BLUE_GREY_HEX })
       .setOrigin(0, 0);
     container.add(empty);
     return y + empty.height + 4;
@@ -182,9 +143,9 @@ function renderShopMoves(
   const listResult = renderListColumn({
     scene,
     container,
-    x: columns.leftX + ENTRY_INDENT,
+    x: columns.leftX + TREE_ENTRY_INDENT,
     y,
-    width: columns.leftColW - ENTRY_INDENT,
+    width: columns.leftColW - TREE_ENTRY_INDENT,
     items: forSale,
     idFor: (id) => id,
     labelFor: (id) => MOVES[id].name,
@@ -311,9 +272,9 @@ function renderShopStats(
   const listResult = renderListColumn({
     scene,
     container,
-    x: columns.leftX + ENTRY_INDENT,
+    x: columns.leftX + TREE_ENTRY_INDENT,
     y,
-    width: columns.leftColW - ENTRY_INDENT,
+    width: columns.leftColW - TREE_ENTRY_INDENT,
     items: STAT_ROWS,
     idFor: (row) => row.key,
     labelFor: (row) => STAT_LABELS[row.key],

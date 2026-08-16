@@ -5,18 +5,22 @@ import { makeLandauAvatar } from '../../art/landau';
 import { ANALYTIC_SHAPES } from '../../art/attackEffects';
 import { CANVAS_W } from '../../art/perspective';
 import { fontScale } from '../../ui/text';
-import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
+import { PANEL_BG } from '../../ui/theme';
 import { ANALYTIC_MOVE_IDS, shopCost, moveDisplayName, getTunedMoveClass, getMoveLevel, quasiparticleLabel, MOVES } from '../../data/materials';
 import type { MoveClass } from '../../data/types';
-import { hostableClasses, renderInlineClassPicker } from './tunableMoveShop';
+import { hostableClasses } from './tunableMoveShop';
 import {
   LIST_DETAIL_PANEL_W,
   listDetailColumns,
   renderListColumn,
   renderListColumnFooter,
   renderMoveDetailHeader,
+  renderStatusAndConfirm,
+  renderTreeHeading,
+  treeHeadingHeight,
   insertColumnDivider,
   destroyPanel,
+  TREE_ENTRY_INDENT,
 } from './listDetail';
 import { persistFromRegistry } from '../../data/save';
 
@@ -100,35 +104,58 @@ export function showLandauPanel(scene: GuardianPanelHost) {
   container.addAt(panel, 0);
 }
 
+// The left column is two levels: each of his two moves is a heading, and the
+// open one's own hostable quasiparticles are its entries. Picking a
+// quasiparticle row only *previews* it; the pane's own button is what spends
+// anything, the same preview-then-confirm flow every other list+detail panel
+// uses (STYLE.md's "List+detail panels").
 function renderAnalyticColumns(scene: GuardianPanelHost, container: Phaser.GameObjects.Container, y: number, panelWidth: number): number {
   const panelLeft = CANVAS_W / 2 - panelWidth / 2;
   const columns = listDetailColumns(panelLeft);
   const columnsTop = y;
 
   const ids = [...ANALYTIC_MOVE_IDS];
-  const selected = ids.includes(scene.landauMovePreview ?? '') ? (scene.landauMovePreview as string) : ids[0];
+  const openId = ids.includes(scene.landauMovePreview ?? '') ? (scene.landauMovePreview as string) : ids[0];
+  const classes = hostableClasses(scene);
+  const previewClass = classes.includes(scene.landauClassPreview as MoveClass)
+    ? (scene.landauClassPreview as MoveClass)
+    : getTunedMoveClass(scene.game.registry, openId);
 
-  const listResult = renderListColumn({
-    scene,
-    container,
-    x: columns.leftX,
-    y: columnsTop,
-    width: columns.leftColW,
-    items: ids,
-    idFor: (id) => id,
-    labelFor: (id) => moveDisplayName(scene.game.registry, id),
-    selectedId: selected,
-    page: 0,
-    onPageChange: () => {},
-    onSelect: (id) => {
+  let leftY = columnsTop;
+  ids.forEach((id, i) => {
+    const open = id === openId;
+    leftY = renderTreeHeading(scene, container, columns, leftY + (i === 0 ? 0 : 4), moveDisplayName(scene.game.registry, id), open, () => {
       scene.landauMovePreview = id;
+      scene.landauClassPreview = null;
       destroyPanel(scene);
       showLandauPanel(scene);
-    },
+    });
+    if (!open) return;
+    const assigned = ((scene.game.registry.get('moveClassTuning') as Partial<Record<string, MoveClass>>) ?? {})[id];
+    const listResult = renderListColumn({
+      scene,
+      container,
+      x: columns.leftX + TREE_ENTRY_INDENT,
+      y: leftY,
+      width: columns.leftColW - TREE_ENTRY_INDENT,
+      items: classes,
+      idFor: (cls) => cls,
+      labelFor: (cls) => `${quasiparticleLabel(cls)}${cls === assigned ? ' (current)' : ''}`,
+      selectedId: previewClass,
+      page: 0,
+      reserveBelow: i < ids.length - 1 ? treeHeadingHeight(scene) : 0,
+      onPageChange: () => {},
+      onSelect: (cls) => {
+        scene.landauClassPreview = cls;
+        destroyPanel(scene);
+        showLandauPanel(scene);
+      },
+    });
+    leftY = listResult.bottom;
   });
 
-  const rightBottom = renderAnalyticColumn(scene, container, selected, columns.rightColCenterX, columnsTop, columns.rightColW);
-  const leftBottom = renderListColumnFooter(scene, container, columns, listResult.bottom + 10, 'Farewell', () => scene.closeDialogue());
+  const rightBottom = renderAnalyticColumn(scene, container, openId, previewClass, columns.rightColCenterX, columnsTop, columns.rightColW);
+  const leftBottom = renderListColumnFooter(scene, container, columns, leftY + 10, 'Farewell', () => scene.closeDialogue());
   const columnsBottom = Math.max(leftBottom, rightBottom);
   insertColumnDivider(scene, container, columns.dividerX, columnsTop, columnsBottom);
   return columnsBottom + 6;
@@ -138,6 +165,7 @@ function renderAnalyticColumn(
   scene: GuardianPanelHost,
   container: Phaser.GameObjects.Container,
   id: string,
+  previewClass: MoveClass,
   centerX: number,
   y: number,
   colW: number
@@ -161,38 +189,37 @@ function renderAnalyticColumn(
   const isLearned = unlocked.includes(id);
   const cost = shopCost(MOVES[id]);
   const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
-  const affordable = isLearned || tokens >= cost;
   const assigned = ((scene.game.registry.get('moveClassTuning') as Partial<Record<string, MoveClass>>) ?? {})[id];
 
-  const statusScale = Math.min(fontScale(scene), 1.15);
   const statusLabel = !isLearned
-    ? `Costs ${cost} qumatessence to learn.`
+    ? `Costs ${cost} qumatessence to learn, carried by ${quasiparticleLabel(previewClass)}.`
     : !assigned
     ? 'Untuned: pick a quasiparticle.'
+    : previewClass === assigned
+    ? `Already tuned to ${quasiparticleLabel(assigned)}.`
     : activeClass === assigned
-    ? `Tuned to ${quasiparticleLabel(assigned)}.`
+    ? `Tuned to ${quasiparticleLabel(assigned)}. Retuning is free.`
     : `Tuned to ${quasiparticleLabel(assigned)}, reverted to ${quasiparticleLabel(activeClass)} (this form can't host it).`;
-  const statusText = scene.add
-    .text(centerX, ny, statusLabel, {
-      fontSize: `${Math.round(11 * statusScale)}px`,
-      color: REFERENCE_BLUE_GREY_HEX,
-      align: 'center',
-      wordWrap: { width: colW },
-    })
-    .setOrigin(0.5, 0);
-  container.add(statusText);
-  ny += statusText.height + 6;
 
-  const options = hostableClasses(scene).map((cls) => ({
-    cls,
-    label: `${quasiparticleLabel(cls)}${isLearned && cls === assigned ? ' (current)' : ''}`,
-    dim: !isLearned && !affordable,
-  }));
-  ny = renderInlineClassPicker(scene, container, centerX, ny, colW, options, (cls) =>
-    isLearned ? retuneLandauMove(scene, id, cls) : buyLandauMove(scene, id, cost, cls)
-  );
+  const commit =
+    isLearned && previewClass === assigned
+      ? undefined
+      : {
+          label: isLearned ? `Tune to ${quasiparticleLabel(previewClass)}` : `Learn ${displayName}`,
+          onClick: () => (isLearned ? retuneLandauMove(scene, id, previewClass) : buyLandauMove(scene, id, cost, previewClass)),
+          dimmed: !isLearned && tokens < cost,
+        };
 
-  return ny;
+  return renderStatusAndConfirm({
+    scene,
+    container,
+    centerX,
+    y: ny,
+    colW,
+    status: statusLabel,
+    statusCap: 1.15,
+    confirm: commit,
+  });
 }
 
 function buyLandauMove(scene: GuardianPanelHost, id: string, cost: number, chosenClass: MoveClass) {

@@ -6,7 +6,7 @@ import { wildHpForWorld } from '../data/balance';
 import { materialBlurb } from '../data/materialdex';
 import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
-import type { Material, MaterialType } from '../data/types';
+import type { Material, MaterialType, MoveClass } from '../data/types';
 import { TUTORIAL_TIPS, hasSeenTip, markTipSeen } from '../data/tutorial';
 import { music } from '../audio/music';
 import { fontPx, fontScale } from '../ui/text';
@@ -180,6 +180,8 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   kondoMovePreview: string | null = null;
   landauMovePreview: string | null = null;
   curieMovePreview: string | null = null;
+  landauClassPreview: MoveClass | null = null;
+  curieClassPreview: MoveClass | null = null;
   kondoMovePage = 0;
   // Same reset rules as dresselhausPreview/majoranaPreview above -- see
   // GuardianPanelHost's own comment on this field.
@@ -1305,6 +1307,8 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     this.kondoMovePreview = null;
     this.landauMovePreview = null;
     this.curieMovePreview = null;
+    this.landauClassPreview = null;
+    this.curieClassPreview = null;
     this.kondoMovePage = 0;
     this.blochPreview = null;
   }

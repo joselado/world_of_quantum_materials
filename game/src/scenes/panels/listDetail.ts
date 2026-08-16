@@ -235,7 +235,11 @@ export function renderListColumn<T>(params: RenderListColumnParams<T>): RenderLi
   const sampleRow = scene.add.text(-1000, -1000, 'Sample', { fontSize: fontPx(scene, 12), padding: { x: 8, y: 4 } });
   const rowH = sampleRow.height + 4;
   sampleRow.destroy();
-  const reservedTail = rowH * 2;
+  // What the escape button beneath the rows actually occupies: one button row
+  // plus the gap every caller leaves above it. Reserving two full rows for it
+  // costs a visible row of candidates at the largest text-size preset, which
+  // is exactly where rows are scarcest.
+  const reservedTail = rowH + 24;
   const reservedControls = rowH * 2;
   const available = CANVAS_H - columnsTop - reservedTail - (reserveBelow ?? 0);
   // The Prev/Next/Page-N-of-M controls only exist once the list actually
@@ -321,6 +325,67 @@ export function renderListColumn<T>(params: RenderListColumnParams<T>): RenderLi
 // larger of what it returns and their detail pane's bottom as the panel's
 // real content height -- the same `Math.max` both columns already went
 // through before the divider is drawn.
+// A two-level left column: headings the caller draws with this, and the open
+// heading's own entries paginated under it by renderListColumn (indented by
+// TREE_ENTRY_INDENT, so the column reads as two levels at a glance). Noether's
+// panel splits what he sells into Moves and Stats this way, and Landau's and
+// Skłodowska-Curie's split their two moves into one heading each, with that
+// move's hostable quasiparticles as its entries.
+//
+// Headings are chrome, not list items, and that is the point: paginated as
+// items, a second heading lands on page 2 at the largest text-size preset,
+// where a page holds three or four rows, and the way to the other section
+// would be a page flip away with nothing on screen saying so. An open list is
+// told what a heading below it still needs through renderListColumn's own
+// `reserveBelow`.
+export const TREE_ENTRY_INDENT = 14;
+
+export function renderTreeHeading(
+  scene: GuardianPanelHost,
+  container: Phaser.GameObjects.Container,
+  columns: ListDetailColumns,
+  y: number,
+  label: string,
+  open: boolean,
+  onOpen: () => void
+): number {
+  const marker = open ? 'v' : '>';
+  const row = scene.add
+    .text(columns.leftX, y, `${marker} ${label.toUpperCase()}`, {
+      fontSize: fontPx(scene, 12),
+      fontStyle: 'bold',
+      color: open ? GOLD_ACCENT_HEX : REFERENCE_BLUE_GREY_HEX,
+      backgroundColor: open ? '#333355' : '#1a1a2e',
+      padding: { x: 8, y: 4 },
+    })
+    .setOrigin(0, 0);
+  // Trimmed to the column the same way a row's own label is, then given the
+  // column's full width so open and closed headings line up as one stack --
+  // a long move name (Skłodowska-Curie's own two are the longest headings in
+  // the game) would otherwise run out past the chip at the largest text-size
+  // preset.
+  fitListLabel(row, `${marker} ${label.toUpperCase()}`, columns.leftColW - 16);
+  row.setFixedSize(columns.leftColW, 0);
+  row
+    .setInteractive({ useHandCursor: true })
+    .on('pointerdown', () => {
+      if (open) return;
+      onOpen();
+    });
+  container.add(row);
+  return y + row.height + 2;
+}
+
+// Measured off a throwaway row rather than assumed, the same way
+// renderListColumn sizes its own rows, so the room reserved for a closed
+// heading tracks the text-size preset.
+export function treeHeadingHeight(scene: GuardianPanelHost): number {
+  const sample = scene.add.text(-1000, -1000, '> SAMPLE', { fontSize: fontPx(scene, 12), fontStyle: 'bold', padding: { x: 8, y: 4 } });
+  const h = sample.height + 6;
+  sample.destroy();
+  return h;
+}
+
 export function renderListColumnFooter(
   scene: GuardianPanelHost,
   container: Phaser.GameObjects.Container,

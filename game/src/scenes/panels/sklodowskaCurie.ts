@@ -5,7 +5,7 @@ import { makeSklodowskaCurieAvatar } from '../../art/sklodowskaCurie';
 import { ULTIMATE_SHAPES } from '../../art/attackEffects';
 import { CANVAS_W } from '../../art/perspective';
 import { fontScale } from '../../ui/text';
-import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
+import { PANEL_BG } from '../../ui/theme';
 import {
   ULTIMATE_MOVE_IDS,
   ULTIMATE_CLASS_UNLOCK_COST,
@@ -16,15 +16,19 @@ import {
 } from '../../data/materials';
 import { persistFromRegistry } from '../../data/save';
 import type { MoveClass } from '../../data/types';
-import { hostableClasses, renderInlineClassPicker } from './tunableMoveShop';
+import { hostableClasses } from './tunableMoveShop';
 import {
   LIST_DETAIL_PANEL_W,
   listDetailColumns,
   renderListColumn,
   renderListColumnFooter,
   renderMoveDetailHeader,
+  renderStatusAndConfirm,
+  renderTreeHeading,
+  treeHeadingHeight,
   insertColumnDivider,
   destroyPanel,
+  TREE_ENTRY_INDENT,
 } from './listDetail';
 
 // Skłodowska-Curie stands at world 10's middle tile (WORLD_GUARDIANS,
@@ -113,35 +117,60 @@ export function showSklodowskaCuriePanel(scene: GuardianPanelHost) {
   container.addAt(panel, 0);
 }
 
+// The left column is two levels: each of her two Ultimate moves is a heading,
+// and the open one's own hostable quasiparticles are its entries. Picking a
+// quasiparticle row only *previews* it; the pane's own button is what unlocks
+// or retunes, the same preview-then-confirm flow every other list+detail panel
+// uses (STYLE.md's "List+detail panels"). That matters more here than
+// anywhere else in the game: an unlock costs ULTIMATE_CLASS_UNLOCK_COST, by
+// far the largest single price a player ever pays.
 function renderUltimateColumns(scene: GuardianPanelHost, container: Phaser.GameObjects.Container, y: number, panelWidth: number): number {
   const panelLeft = CANVAS_W / 2 - panelWidth / 2;
   const columns = listDetailColumns(panelLeft);
   const columnsTop = y;
 
   const ids = [...ULTIMATE_MOVE_IDS];
-  const selected = ids.includes(scene.curieMovePreview ?? '') ? (scene.curieMovePreview as string) : ids[0];
+  const openId = ids.includes(scene.curieMovePreview ?? '') ? (scene.curieMovePreview as string) : ids[0];
+  const classes = hostableClasses(scene);
+  const previewClass = classes.includes(scene.curieClassPreview as MoveClass)
+    ? (scene.curieClassPreview as MoveClass)
+    : getTunedMoveClass(scene.game.registry, openId);
 
-  const listResult = renderListColumn({
-    scene,
-    container,
-    x: columns.leftX,
-    y: columnsTop,
-    width: columns.leftColW,
-    items: ids,
-    idFor: (id) => id,
-    labelFor: (id) => moveDisplayName(scene.game.registry, id),
-    selectedId: selected,
-    page: 0,
-    onPageChange: () => {},
-    onSelect: (id) => {
+  let leftY = columnsTop;
+  ids.forEach((id, i) => {
+    const open = id === openId;
+    leftY = renderTreeHeading(scene, container, columns, leftY + (i === 0 ? 0 : 4), moveDisplayName(scene.game.registry, id), open, () => {
       scene.curieMovePreview = id;
+      scene.curieClassPreview = null;
       destroyPanel(scene);
       showSklodowskaCuriePanel(scene);
-    },
+    });
+    if (!open) return;
+    const assigned = ((scene.game.registry.get('moveClassTuning') as Partial<Record<string, MoveClass>>) ?? {})[id];
+    const listResult = renderListColumn({
+      scene,
+      container,
+      x: columns.leftX + TREE_ENTRY_INDENT,
+      y: leftY,
+      width: columns.leftColW - TREE_ENTRY_INDENT,
+      items: classes,
+      idFor: (cls) => cls,
+      labelFor: (cls) => `${quasiparticleLabel(cls)}${cls === assigned ? ' (current)' : ''}`,
+      selectedId: previewClass,
+      page: 0,
+      reserveBelow: i < ids.length - 1 ? treeHeadingHeight(scene) : 0,
+      onPageChange: () => {},
+      onSelect: (cls) => {
+        scene.curieClassPreview = cls;
+        destroyPanel(scene);
+        showSklodowskaCuriePanel(scene);
+      },
+    });
+    leftY = listResult.bottom;
   });
 
-  const rightBottom = renderUltimateColumn(scene, container, selected, columns.rightColCenterX, columnsTop, columns.rightColW);
-  const leftBottom = renderListColumnFooter(scene, container, columns, listResult.bottom + 10, 'Farewell', () => scene.closeDialogue());
+  const rightBottom = renderUltimateColumn(scene, container, openId, previewClass, columns.rightColCenterX, columnsTop, columns.rightColW);
+  const leftBottom = renderListColumnFooter(scene, container, columns, leftY + 10, 'Farewell', () => scene.closeDialogue());
   const columnsBottom = Math.max(leftBottom, rightBottom);
   insertColumnDivider(scene, container, columns.dividerX, columnsTop, columnsBottom);
   return columnsBottom + 6;
@@ -151,6 +180,7 @@ function renderUltimateColumn(
   scene: GuardianPanelHost,
   container: Phaser.GameObjects.Container,
   id: string,
+  previewClass: MoveClass,
   centerX: number,
   y: number,
   colW: number
@@ -158,61 +188,44 @@ function renderUltimateColumn(
   const displayName = moveDisplayName(scene.game.registry, id);
   const activeClass = getTunedMoveClass(scene.game.registry, id);
   const level = getMoveLevel(scene.game.registry, id);
-  let ny = renderMoveDetailHeader(
-    scene,
-    container,
-    displayName,
-    activeClass,
-    ULTIMATE_SHAPES[id],
-    centerX,
-    y,
-    colW,
-    level
-  );
+  let ny = renderMoveDetailHeader(scene, container, displayName, activeClass, ULTIMATE_SHAPES[id], centerX, y, colW, level);
 
-  const unlocked = scene.getUnlockedMoves();
-  const isUnlocked = unlocked.includes(id);
+  const isUnlocked = scene.getUnlockedMoves().includes(id);
   const assigned = ((scene.game.registry.get('moveClassTuning') as Partial<Record<string, MoveClass>>) ?? {})[id];
-
-  const statusScale = Math.min(fontScale(scene), 1.15);
-  const statusLabel = !isUnlocked
-    ? 'Not yet unlocked: pick a quasiparticle to unlock it.'
-    : !assigned
-    ? 'Unlocked, but untuned: pick a quasiparticle.'
-    : activeClass === assigned
-    ? `Carrying ${quasiparticleLabel(assigned)}.`
-    : `Carrying ${quasiparticleLabel(assigned)}, reverted to ${quasiparticleLabel(activeClass)} (this form can't host it).`;
-  const statusText = scene.add
-    .text(centerX, ny, statusLabel, {
-      fontSize: `${Math.round(11 * statusScale)}px`,
-      color: REFERENCE_BLUE_GREY_HEX,
-      align: 'center',
-      wordWrap: { width: colW },
-    })
-    .setOrigin(0.5, 0);
-  container.add(statusText);
-  ny += statusText.height + 6;
-
   const superposition = scene.isSuperpositionMode();
-  const hostable = hostableClasses(scene);
   const unlockedForMove = superposition
-    ? hostable
+    ? hostableClasses(scene)
     : ((scene.game.registry.get('ultimateClassesUnlocked') as Partial<Record<string, MoveClass[]>>) ?? {})[id] ?? [];
+  const classUnlocked = unlockedForMove.includes(previewClass);
   const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
 
-  const options = hostable.map((cls) => {
-    const isClassUnlocked = unlockedForMove.includes(cls);
-    const costLabel = isClassUnlocked ? 'Free' : `${ULTIMATE_CLASS_UNLOCK_COST} qumatessence`;
-    const isCurrent = isClassUnlocked && cls === assigned;
-    return {
-      cls,
-      label: `${quasiparticleLabel(cls)}: ${costLabel}${isCurrent ? ' (current)' : ''}`,
-      dim: !isClassUnlocked && tokens < ULTIMATE_CLASS_UNLOCK_COST,
-    };
-  });
-  ny = renderInlineClassPicker(scene, container, centerX, ny, colW, options, (cls) => pickUltimateClass(scene, id, cls));
+  const statusLabel = !isUnlocked
+    ? `Not yet unlocked. ${quasiparticleLabel(previewClass)} costs ${ULTIMATE_CLASS_UNLOCK_COST} qumatessence.`
+    : previewClass === assigned
+    ? `Already carrying ${quasiparticleLabel(previewClass)}.`
+    : classUnlocked
+    ? `${quasiparticleLabel(previewClass)} is already yours. Carrying it again is free.`
+    : `${quasiparticleLabel(previewClass)} costs ${ULTIMATE_CLASS_UNLOCK_COST} qumatessence to unlock.`;
 
-  return ny;
+  const commit =
+    isUnlocked && previewClass === assigned
+      ? undefined
+      : {
+          label: classUnlocked ? `Carry ${quasiparticleLabel(previewClass)}` : `Unlock ${quasiparticleLabel(previewClass)}`,
+          onClick: () => pickUltimateClass(scene, id, previewClass),
+          dimmed: !classUnlocked && tokens < ULTIMATE_CLASS_UNLOCK_COST,
+        };
+
+  return renderStatusAndConfirm({
+    scene,
+    container,
+    centerX,
+    y: ny,
+    colW,
+    status: statusLabel,
+    statusCap: 1.15,
+    confirm: commit,
+  });
 }
 
 // Unlocks (first time) or retunes (already unlocked) `moveId` to `cls` in a

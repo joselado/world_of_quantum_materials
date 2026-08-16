@@ -952,8 +952,9 @@ state can mark her met before the player has actually reached her.
   "`<quasiparticle>` Eruption" (`tunedMoveDisplayName`), defaulting to "Phonon Lance"/
   "Phonon Eruption" while untuned -- `skyfallBeam`'s own display name reads "Lance," not
   "Beam," so it never collides with the free starting Phonon Beam move once both default
-  to `'phonon'`. Buying a move (or later revisiting Landau) also opens an inline
-  quasiparticle picker beneath that move's own column (`renderInlineClassPicker`, offering
+  to `'phonon'`. Buying a move (or later revisiting Landau) is also where the quasiparticle
+  is chosen: the panel's left column lists each move as a heading and the open one's
+  hostable quasiparticles as its entries (offering
   `TUNABLE_MOVE_CLASSES` -- every ordinary Attacks-section class (i.e. every class
   except Kondo's `'screening'`) -- filtered down to only the ones the player's
   *current* form can actually host, `canHost(playerMaterial.type, cls)`: a class as

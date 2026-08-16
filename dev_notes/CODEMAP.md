@@ -98,10 +98,10 @@ game/src/
                                  buy-list-plus-switch engine franklin.ts calls (via its own
                                  renderPassiveList() wrapper), kept in its own file rather than
                                  folded into franklin.ts itself (see "Guardian panels" below),
-                                 tunableMoveShop.ts's hostableClasses()/renderInlineClassPicker()
-                                 is the shared inline quasiparticle-picker row-strip landau.ts's
-                                 and sklodowskaCurie.ts's own two-column panels each render
-                                 directly beneath a move's own column (Skłodowska-Curie's own
+                                 tunableMoveShop.ts's hostableClasses() is the shared filter
+                                 landau.ts and sklodowskaCurie.ts list as the entries under
+                                 whichever of their moves is open in their own two-level left
+                                 column (Skłodowska-Curie's own
                                  per-class-unlock pricing is different enough from Landau's flat
                                  one-time move purchase that each panel still formats/prices its
                                  own rows, see "Guardians" below), listDetail.ts's
@@ -783,10 +783,9 @@ everything else by absence, so only two things in it carry meaning.
   `insertColumnDivider`/`destroyPanel`, which are about panel chrome rather than the list+detail
   split itself -- by Franklin's own crystal-beside-list panel too. Both
   Landau's and Skłodowska-Curie's panels also share `tunableMoveShop.ts`'s
-  `hostableClasses`/`renderInlineClassPicker` -- the inline quasiparticle-picker row strip each
-  renders directly beneath a move's own column, written generically (any move id, filtered to
-  whatever the player's current form can host via `canHost`; caller supplies its own row
-  labels/afford state) rather than folded into either guardian's own file, the same shape a
+  `hostableClasses` -- which quasiparticles the player's *current* form can host (`canHost`),
+  which each lists as the entries under whichever of its moves is open in its own two-level left
+  column, rather than folded into either guardian's own file, the same shape a
   future guardian selling another tunable move could reuse. Their pricing models still differ --
   Skłodowska-Curie's per-class-unlock cost is fundamentally different from Landau's flat
   one-time move purchase (see "Guardians" below) -- so each panel keeps its own
@@ -2113,14 +2112,15 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   call ("Attack effects" in STYLE.md and
   `art/moveEffectPreview.ts` above) shows that move's own real battle-effect animation looping,
   its name read via `moveDisplayName` (folds in both the current quasiparticle and Feynman's own
-  level prefix). Below that, a status line, then -- **inline, directly beneath that column**,
-  not a separate full-panel sub-view -- `scenes/panels/tunableMoveShop.ts`'s
-  `hostableClasses`/`renderInlineClassPicker`: one small pill button per `TUNABLE_MOVE_CLASSES`
+  level prefix). **The quasiparticle choice is the second level of the left column**, not a strip
+  in the pane: `scenes/panels/tunableMoveShop.ts`'s
+  `hostableClasses` is every `TUNABLE_MOVE_CLASSES`
   entry (every ordinary Attacks-section class, i.e. everything except Kondo's `'screening'`)
-  filtered through `canHost(playerMaterial.type, cls)` (so only classes the player's *current*
-  form can host are ever pickable), each labeled via `quasiparticleLabel`. Clicking a row on a
-  still-unbought move both buys (checks/deducts `shopCost`, appends to `unlockedMoves`) and tunes
-  in one click (`buyLandauMove`); clicking a row on an already-bought move just retunes, free
+  filtered through `canHost(playerMaterial.type, cls)`, listed as rows under the open move and
+  labeled via `quasiparticleLabel`. A row click only sets `landauMovePreview`'s companion
+  `landauClassPreview`; the pane's own button commits, either buying (checks/deducts `shopCost`,
+  appends to `unlockedMoves`) and tuning in one action on a still-unbought move
+  (`buyLandauMove`), or retuning free on an already-bought one
   (`retuneLandauMove`) -- either way it writes registry/save `moveClassTuning[moveId]` (a map
   shared with Skłodowska-Curie's Ultimate moves below, since it's keyed by move id, not owner),
   read by `data/materials.ts`'s `getTunedMoveClass` in place of the move's own static `class`
@@ -2143,13 +2143,13 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   fight.
 - **Skłodowska-Curie's Ultimate-move panel** (`scenes/panels/sklodowskaCurie.ts`'s
   `showSklodowskaCuriePanel`/`renderUltimateColumns`/`renderUltimateColumn`/
-  `pickUltimateClass`) is the same **bespoke two-column layout** Landau's own panel uses, and
+  `pickUltimateClass`) is the same **two-level list+detail layout** Landau's own panel uses, and
   is deliberately **not** built on `tunableMoveShop.ts`'s buy/retune commit logic (though it does
-  share that module's `hostableClasses`/`renderInlineClassPicker` row-rendering) -- her pricing
-  model has no separate "buy the move" step at all. Both of the fixed `ULTIMATE_MOVE_IDS`
-  (`ultimateMeteor`/`ultimateNova`) always render side by side, named via `moveDisplayName`
-  (there's no forSale/learned split the way Noether's/Landau's own left columns have, since
-  picking a class *is* what first unlocks the move); each column's `renderMoveDetailHeader` shows
+  share that module's `hostableClasses`) -- her pricing
+  model has no separate "buy the move" step at all. The fixed `ULTIMATE_MOVE_IDS`
+  (`ultimateMeteor`/`ultimateNova`) are her two headings, named via `moveDisplayName`
+  (there's no forSale/learned split the way Noether's own left column has, since
+  picking a class *is* what first unlocks the move); the open one's `renderMoveDetailHeader` shows
   its own animation looping (overridden to the longer `playMeteor`/`playNova`
   sequences via `ULTIMATE_SHAPES`, "Attack effects" in STYLE.md, its own `curie:<moveId>`-keyed
   preview chain), a status line reading the

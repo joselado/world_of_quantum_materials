@@ -1239,12 +1239,14 @@ station motifs are deliberately not tunnels with a visible far end.
   click-to-rebuild-the-panel pattern as buying itself. A heading with its entries under it says
   once what a row of tabs above a list said twice, and reading down the column is the whole
   navigation.
-  - **The headings are chrome, not list rows.** They are drawn by the panel itself and only the
-    open heading's entries go through `renderListColumn`'s pagination. A heading paginated as an
-    item would land on page 2 at the largest text-size preset, where a page holds three or four
+  - **The headings are chrome, not list rows** (`listDetail.ts`'s `renderTreeHeading`, shared
+    with Landau's and Skłodowska-Curie's own panels). They are drawn by the panel itself and only
+    the open heading's entries go through `renderListColumn`'s pagination. A heading paginated as
+    an item would land on page 2 at the largest text-size preset, where a page holds three or four
     rows, and the way to the other category would be a page flip away with nothing on screen
-    saying so. An open list is told how much room the closed heading below it still needs
-    (`reserveBelow`).
+    saying so. An open list is told how much room a heading below it still needs
+    (`reserveBelow`), and a heading longer than the column is ellipsis-trimmed to it the same way
+    a row's own label is.
   - **Moves**: the entries name every still-unbought move the player's *current crystal
     form* can physically carry (`data/materials.ts`'s `SHOP_MOVE_IDS` filtered through
     `compatibleMoves`), no cost suffix -- that lives in the detail pane instead. Clicking a row
@@ -1408,10 +1410,13 @@ station motifs are deliberately not tunnels with a visible far end.
   `LIST_DETAIL_PANEL_W`): his two quiz-gated Analytic moves (`data/materials.ts`'s
   `ANALYTIC_MOVE_IDS`, a hardcoded pair, `skyfallBeam`/`groundEruption`) are two rows in the left
   column, and whichever is selected (`scene.landauMovePreview`) fills one full-width detail pane.
-  Two rows never paginate, so the list column is as short as a column gets, and one full-width
-  pane is what a full-height animation stage with an inline quasiparticle picker under it
-  actually needs -- half a panel never was. It also means every guardian who sells a move is read
-  the same way. The pane (`renderAnalyticColumn`) opens with that move's own real battle-effect
+  It also means every guardian who sells a move is read the same way. **The quasiparticle choice
+  is the second level of that column**, not a strip of pills in the pane: the open move's
+  hostable classes (`tunableMoveShop.ts`'s `hostableClasses`) are its entries, indented under it,
+  exactly the shape Noether's panel uses. Picking one only *previews* it
+  (`scene.landauClassPreview`); the pane's own button is what spends anything, which is the
+  preview-then-confirm rule every other list+detail panel already follows. The pane
+  (`renderAnalyticColumn`) opens with that move's own real battle-effect
   animation looping on its stage (`renderMoveDetailHeader`, "List+detail panels" above and
   "Attack effects" below),
   overriding the plain per-class bolt/ring/burst shape via `ANALYTIC_SHAPES` (each Analytic move
@@ -1428,23 +1433,18 @@ station motifs are deliberately not tunnels with a visible far end.
   a form that can no longer host the saved assignment, "Tuned to `<quasiparticle>`, reverted to
   Phonon (this form can't host it)." -- the fallback reads the bare quasiparticle noun,
   `quasiparticleLabel`, not the move's own shape word -- or "Untuned -- pick a quasiparticle." if
-  never assigned, Superposition Mode's own edge case) -- and, **inline directly beneath it, not a
-  separate full-panel sub-view**, one small pill button per quasiparticle class the player's
-  *current* form can host (`tunableMoveShop.ts`'s `hostableClasses`/`renderInlineClassPicker`,
-  "Quasiparticle picker" below), each labeled with the class's own bare name (`quasiparticleLabel`,
-  e.g. "Magnon" for `'magnon'`) plus " (current)" on whichever one the move is presently tuned to.
-  Clicking any row on a still-unbought move buys and tunes to that class in one click
-  (`buyLandauMove`, checking/spending `shopCost`, adding the move to `unlockedMoves`, and
-  recording the class -- all three at once, with no separate "buy" step before picking a
-  class); clicking a row on an already-bought move retunes to it
-  for free among any hostable class, no per-class cost (`retuneLandauMove`) -- picking a
-  different class re-renders the whole panel (this panel's own established
-  full-rebuild-per-click convention, same as every other guardian panel; only the retuned
-  column's own preview chain is retargeted by it, the other column's keeps looping through the
-  rebuild undisturbed, see "Attack effects" below). Skłodowska-Curie's own panel below does *not*
+  never assigned, Superposition Mode's own edge case), naming the previewed quasiparticle and
+  what it costs -- and the one button that spends anything: `Learn <name>` on a still-unbought
+  move (`buyLandauMove`, checking/spending `shopCost`, adding the move to `unlockedMoves`, and
+  recording the class, all three at once, with no separate "buy" step before picking a class), or
+  `Tune to <quasiparticle>` on an already-bought one, free among any hostable class with no
+  per-class cost (`retuneLandauMove`). A move already tuned to the previewed class offers no
+  button at all, the same nothing-to-commit convention every other pane uses. Committing
+  re-renders the whole panel, this panel's own established full-rebuild-per-click convention.
+  Skłodowska-Curie's own panel below does *not*
   reuse `buyLandauMove`/`retuneLandauMove`, her per-class-unlock pricing is different enough
-  that her own picker logic is bespoke, though both panels share the same `renderInlineClassPicker`
-  row-rendering/wrapping and `hostableClasses` filter.
+  that her own commit logic is bespoke, though both panels share the same `hostableClasses`
+  filter and the same two-level column.
 - **The move's displayed name always leads with its current quasiparticle**
   (`data/materials.ts`'s `tunedMoveDisplayName`, folded into `moveDisplayName` above) everywhere
   a move name shows up in battle too -- the move-menu button, the analytic-question panel's
@@ -1453,30 +1453,33 @@ station motifs are deliberately not tunnels with a visible far end.
   ("Lance"/"Eruption") rather than a second hand-authored word list, so `skyfallBeam` tuned to
   `'magnon'` reads as "Magnon Lance," `groundEruption` tuned to `'chargedAnyon'` as "Anyon
   Eruption," and so on. An untuned move defaults to `'phonon'`, reading as "Phonon
-  Lance"/"Phonon Eruption." Since the inline picker directly beneath a column is what sets this,
-  the name updates the instant a row is clicked, reading directly off the same click that chose
-  the class.
+  Lance"/"Phonon Eruption." The name updates as soon as a pick is committed, reading directly off
+  the class that was chosen.
 
 ## Quasiparticle picker (`scenes/panels/tunableMoveShop.ts`)
 
-- The small pill-button strip Landau's and Skłodowska-Curie's own columns (above/below) each
-  render directly beneath themselves (`renderInlineClassPicker`), inline in the main panel rather
-  than a separate full-panel sub-view.
+- **The choice of quasiparticle is the second level of the left column**, on both panels that
+  sell a tunable move (Landau's above, Skłodowska-Curie's below): each of that guardian's two
+  moves is a heading, and the open one's hostable classes are its entries, indented under it
+  (`listDetail.ts`'s `renderTreeHeading`, the same two-level column Noether's own panel uses).
+  Reading down one column beats a strip of small pills docked under the pane: it is the shape the
+  rest of the game already uses, the rows are ordinary full-size list rows rather than a denser
+  control of their own, and picking one is a *preview*, not a purchase.
   `hostableClasses(scene)` is `TUNABLE_MOVE_CLASSES` filtered through `canHost` against the
   player's *current* form, shared by both callers so "which quasiparticle should this carry" stays
   grounded in what the crystal can actually host right now rather than a free pick from every
-  class in the game. Rows pack left-to-right and wrap onto as many lines as the column actually
-  needs (rather than one fixed row per class) -- some forms host as many as five classes
-  (`chernSuperconductor`), and both panels already have two full animation stages plus two of
-  these pickers to fit above the canvas's bottom edge, a real, repeatedly-hit robustness
-  constraint (see each panel's own worst-case-content note). Deliberately smaller/denser than the
-  game's ordinary dialogue-button style -- `fontPx`-scaled but capped at the Compact preset's own
-  1x scale even at Normal/Large, tighter `{x:7,y:3}` padding -- since this is a dense strip of
-  many small optional controls, not body text a Large-text player needs magnified the way the
-  status line just above it already is. Each caller (Landau/Curie) formats its own row label
-  and afford/dim state, since the two pricing models differ; this module has no opinion on either
-  and just packs+renders whatever `QuasiparticleOption[]` it's handed, firing `onPick(cls)` on a
-  click.
+  class in the game. Entries read as the class's own bare name (`quasiparticleLabel`, e.g.
+  "Magnon" for `'magnon'`) plus " (current)" on whichever one the move is presently tuned to; the
+  cost lives in the pane's status line, not on the row, like every other list+detail panel.
+- **Picking never spends.** The row only sets that panel's own preview field
+  (`landauClassPreview`/`curieClassPreview`); the pane's button commits. Skłodowska-Curie's
+  unlock is the largest single price in the game, and one stray click should never be able to
+  spend it.
+- **How many classes fit.** The most any current form hosts is five (`chernSuperconductor`), and
+  five show whole at the Compact and Normal text-size presets. At Large the list pages two at a
+  time through `renderListColumn`'s own Prev/Next controls, with both headings and Farewell still
+  on screen, so nothing becomes unreachable. Six would behave the same way: whole at Compact and
+  Normal, paged at Large.
 
 ## Majorana in the overworld (`OverworldScene.showMajoranaPanel`)
 
@@ -1715,8 +1718,12 @@ station motifs are deliberately not tunnels with a visible far end.
   the left column, and whichever is selected (`scene.curieMovePreview`) fills one full-width
   detail pane. Her own intro quote is the longest in the game (it names all ten
   guardians), capped at the same `1.15`x text-size scale Landau's own intro is, since the
-  animation-stage-plus-inline-picker pane below it is the tallest any guardian has; see this
-  panel's own worst-case-content note below for how tight that budget is. The pane
+  animation-stage pane below it is the tallest any guardian has; see this
+  panel's own worst-case-content note below for how tight that budget is. Her quasiparticle
+  choice is the second level of the left column, the same as Landau's above, and
+  preview-then-confirm matters more here than anywhere else in the game: an unlock costs
+  `ULTIMATE_CLASS_UNLOCK_COST`, by far the largest single price a player ever pays, and it
+  should never be one stray click away. The pane
   (`renderUltimateColumn`) opens with that move's own real
   battle-effect animation looping on its stage (`renderMoveDetailHeader`), overriding
   the plain per-class shape via `ULTIMATE_SHAPES` to the longer, multi-phase `playMeteor`/
@@ -1728,20 +1735,16 @@ station motifs are deliberately not tunnels with a visible far end.
   Below that: a status line -- "Not yet unlocked -- pick a quasiparticle to unlock it." if the
   move isn't in `unlockedMoves` yet, or "Carrying `<quasiparticle>`." (or the same "reverted to
   Phonon" fallback wording Landau's own status line uses, or "Unlocked, but untuned -- pick a
-  quasiparticle." in Superposition Mode's own edge case) -- and, **inline directly beneath it**,
-  one pill button per hostable quasiparticle class (`tunableMoveShop.ts`'s
-  `hostableClasses`/`renderInlineClassPicker`, "Quasiparticle picker" above), each row's own cost
-  read straight off registry/save `ultimateClassesUnlocked[moveId]` rather than a single flat
-  cost the way Landau's picker shows: "`<quasiparticle>` -- Free" (plus " (current)" on
-  whichever class the move is presently tuned to) for a class already paid for on that move, else
-  "`<quasiparticle>` -- 1000 qumatessence" for one that isn't, dimmed per-row if the player can't
-  afford that specific class right now (unlike Landau's flat one-time move purchase, where every
-  row dims together). Picking any row is the one action that unlocks (first time) or retunes
-  (already unlocked) in a single click (`pickUltimateClass`) -- and, on a move's very first-ever
-  class pick, also adds the move id to `unlockedMoves`. A row here can be genuinely unaffordable
-  -- with no class yet unlocked for a move and too little qumatessence, that row is a no-op
-  click -- but the picker needs no dedicated escape button of its own for that case:
-  `renderFarewellFooter` below is always present as part of the main panel regardless of
+  quasiparticle." in Superposition Mode's own edge case), naming what the *previewed* class
+  costs: free if that class is already paid for on this move (registry/save
+  `ultimateClassesUnlocked[moveId]`), else `ULTIMATE_CLASS_UNLOCK_COST` qumatessence. Her pricing
+  is per class per move rather than Landau's single flat move purchase, so the status line reads
+  off the previewed class rather than one cost for the whole move. Below it, the one button that
+  spends: `Unlock <quasiparticle>` for a class not yet paid for on this move (dimmed if the
+  player can't afford that class right now), or `Carry <quasiparticle>` for one already paid
+  for, which is free. `pickUltimateClass` is what both run, and on a move's very first-ever class
+  pick it also adds the move id to `unlockedMoves`. A move already carrying the previewed class
+  offers no button. The Farewell button in the left column is always present regardless of
   affordability, so a too-poor player is never left with nothing clickable and `dialogueActive`
   stuck true. In Superposition Mode every hostable class reads and behaves as already unlocked, same
   blanket-grant treatment every other guardian's gated content gets.

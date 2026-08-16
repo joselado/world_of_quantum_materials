@@ -63,7 +63,7 @@ import { DEFAULT_ENCOUNTER_DENSITY, DEFAULT_WORLD_SIZE, gridDimsFor, worldSizeFa
 import type { WorldSizeId } from '../data/settings';
 import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
-import type { Material, MaterialType } from '../data/types';
+import type { Material, MaterialType, MoveClass } from '../data/types';
 import { generateWorldMap } from '../world/mapgen';
 import type { GridPoint } from '../world/mapgen';
 import { PASS_HALF_WIDTH, passZoneRows, reachableGround, scaleOfGrid, worldScale } from '../world/generators/shared';
@@ -468,6 +468,12 @@ export interface GuardianPanelHost extends Phaser.Scene {
   // moves, so neither needs a page field to go with it.
   landauMovePreview: string | null;
   curieMovePreview: string | null;
+  // Which quasiparticle those two panels are currently *previewing* for the
+  // open move -- the pick only commits from the pane's own button, so this is
+  // browsing state like every other preview field here. Null falls back to the
+  // move's own currently-tuned class.
+  landauClassPreview: MoveClass | null;
+  curieClassPreview: MoveClass | null;
   // Same convention as noetherMovePreview above, for Kondo's own list+detail
   // layout (scenes/panels/kondo.ts) -- holds one of KONDO_MOVE_IDS. Kondo's
   // own panel has no committed-choice field of its own (like Majorana, not
@@ -701,6 +707,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   noetherStatPage = 0;
   landauMovePreview: string | null = null;
   curieMovePreview: string | null = null;
+  landauClassPreview: MoveClass | null = null;
+  curieClassPreview: MoveClass | null = null;
   kondoMovePreview: string | null = null;
   kondoMovePage = 0;
   // Same reset rules as dresselhausPreview/majoranaPreview above -- see the
@@ -901,6 +909,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.noetherStatPage = 0;
     this.landauMovePreview = null;
     this.curieMovePreview = null;
+    this.landauClassPreview = null;
+    this.curieClassPreview = null;
     this.kondoMovePreview = null;
     this.kondoMovePage = 0;
     this.blochPreview = null;
@@ -2247,6 +2257,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.noetherStatPage = 0;
     this.landauMovePreview = null;
     this.curieMovePreview = null;
+    this.landauClassPreview = null;
+    this.curieClassPreview = null;
     this.kondoMovePreview = null;
     this.kondoMovePage = 0;
     this.blochPreview = null;
