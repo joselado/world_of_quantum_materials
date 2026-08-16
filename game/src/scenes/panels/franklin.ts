@@ -49,7 +49,7 @@ export function showFranklinPanel(scene: GuardianPanelHost) {
     y,
     panelWidth,
     avatar: makeFranklinAvatar,
-    quote: '"Fire X-rays through a defect-riddled crystal and the sharp spots blur into rings: every pore and dislocation leaves its signature in how the beam scatters. I can teach your crystal to scatter a blow the same way. Only one lesson holds at a time."',
+    quote: '"Fire X-rays through a crystal full of defects and the sharp spots blur into rings. Every pore and dislocation leaves its mark in how the beam scatters. I can teach your crystal to scatter a blow the same way. Only one lesson holds at a time."',
     introPx: fontPx(scene, 11),
   });
 

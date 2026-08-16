@@ -304,10 +304,11 @@ under one figure reads as floating even when neither is wrong on its own.
   Qumatex above, seven guardian panels' own browse steps, and the Lab's own Tutorial station build
   on, rather than each hand-rolling its own copy of the same left-column pagination math: three
   browse by *crystal* (Dresselhaus's single transmute step, Anderson's host-pick step, Majorana's
-  browse-by-hybrid-result step -- see their own entries below), three browse by *move*
-  (Noether's Moves tab, Kondo's, Feynman's move-leveling list -- also below), Noether's Stats tab
-  browses by *stat* (also below, its pane opening on the stat's own name and effect line since a
-  stat has no art of its own), Bloch's own
+  browse-by-hybrid-result step -- see their own entries below), five browse by *move*
+  (Noether's Moves section, Kondo's, Feynman's move-leveling list, and Landau's and
+  Skłodowska-Curie's own two-move lists -- also below), Noether's Stats section
+  browses by *stat* (also below, its pane opening on the stat's own name, effect line and
+  physics since a stat has no art of its own), Bloch's own
   destination table browses by *world number* ("Bloch in the overworld" below) -- its detail pane
   opens with the Qumatuomi map (`art/qumatuomiMap.ts`) fixed at the top, rendered once showing all
   10 worlds regardless of which row is selected, with the previewed destination's own physics
@@ -321,11 +322,12 @@ under one figure reads as floating even when neither is wrong on its own.
   under both columns. The left column is the shorter of the two in every one of these panels,
   so a footer inside it costs the panel no height, and the vertical budget a full-width footer
   row would take goes to the detail pane instead -- which is why the pane can afford its
-  `DETAIL_STAGE_H` (`104`) art block and `DETAIL_CRYSTAL_SIZE` (`44`) crystal. Landau's and
-  Skłodowska-Curie's two-up panels (below) use the shorter `TWO_UP_STAGE_H` (`84`) instead:
-  with no left column, their Farewell button stays in a full-width row below both columns, so
-  they have no reclaimed height to spend, and their columns additionally carry an inline
-  quasiparticle picker beneath the status line that a browsed detail pane doesn't. A panel that
+  `DETAIL_STAGE_H` (`104`) art block and `DETAIL_CRYSTAL_SIZE` (`44`) crystal. **A guardian with
+  only two things to sell is read this way too** (Landau's and Skłodowska-Curie's own panels,
+  below): two rows and one full-width pane cost far less height than two half-width panes side
+  by side, and neither half was ever wide enough for a full animation stage with an inline
+  quasiparticle picker under it. Two rows never paginate, so the list column is as short as a
+  column gets and the pane takes all of the height that buys. A panel that
   needs a *second* escape button ("Never mind" alongside "Farewell", on Anderson's pending
   two-step pick) is not one of these layouts -- that step is a flat centered move list, and its
   two buttons share one full-width row (`renderCancelFarewellFooter`).
@@ -1228,35 +1230,46 @@ station motifs are deliberately not tunnels with a visible far end.
   so the panel stays revisitable instead of a single one-shot popup. Panel height is sized to
   the content laid out above it (the same running-`y`-then-size-the-background idiom the
   wild-encounter panel uses), so whichever footer that tab carries always has room.
-- Below the intro line, two small tab buttons (`renderShopTabs`, placed at the running layout
-  `y` like every other row of this panel) switch the panel between a **Moves** list and a **Stats** list (`OverworldScene.shopTab`, reset to
-  `'moves'` on every scene create) -- the active tab is highlighted gold-on-slate, the
-  inactive one dim blue-grey, same click-to-rebuild-the-panel pattern as buying itself. The
-  panel is `LIST_DETAIL_PANEL_W` (`720`) wide on either tab, since both are list+detail
-  layouts ("List+detail panels" above), so switching tabs never resizes the panel around the
-  player.
-  - **Moves** is a list+detail layout (`scenes/panels/listDetail.ts`, "List+detail panels"
-    above): the left column names every still-unbought move the player's *current crystal
+- Below the intro line, the panel is one list+detail layout ("List+detail panels" above) at
+  `LIST_DETAIL_PANEL_W` (`720`), and its left column is **two levels deep**: the two things
+  Noether deals in stand as headings (**MOVES**, **STATS**), and pressing one opens that
+  heading's own entries indented beneath it while the other stays closed
+  (`OverworldScene.shopTab`, reset to `'moves'` on every scene create). The open heading is
+  gold-on-slate and marked `v`, the closed one dim blue-grey and marked `>`, the same
+  click-to-rebuild-the-panel pattern as buying itself. A heading with its entries under it says
+  once what a row of tabs above a list said twice, and reading down the column is the whole
+  navigation.
+  - **The headings are chrome, not list rows.** They are drawn by the panel itself and only the
+    open heading's entries go through `renderListColumn`'s pagination. A heading paginated as an
+    item would land on page 2 at the largest text-size preset, where a page holds three or four
+    rows, and the way to the other category would be a page flip away with nothing on screen
+    saying so. An open list is told how much room the closed heading below it still needs
+    (`reserveBelow`).
+  - **Moves**: the entries name every still-unbought move the player's *current crystal
     form* can physically carry (`data/materials.ts`'s `SHOP_MOVE_IDS` filtered through
     `compatibleMoves`), no cost suffix -- that lives in the detail pane instead. Clicking a row
     only *previews* it (`scene.noetherMovePreview`); the right column shows that move's own
-    real battle-effect animation on a loop (`renderMoveDetailHeader`, "List+detail panels"
-    above and "Attack effects" below -- the move's own static class, no shape override, since
-    an ordinary move's battle look never changes), its name, a `Costs <cost> qumatessence.`
-    line, and a `Learn <name>` confirm button (dimmed if unaffordable)
+    real battle-effect animation looping on its stage (`renderMoveDetailHeader`, "List+detail
+    panels" above and "Attack effects" below -- the move's own static class, no shape override,
+    since an ordinary move's battle look never changes), its name, a `Costs <cost>
+    qumatessence.` line, and a `Learn <name>` confirm button (dimmed if unaffordable)
     that's the one action actually checking/spending the cost and adding the move to
-    `unlockedMoves` -- browsing costs nothing regardless of how many moves are looked at. Empty
-    state (rendered as plain centered text with no columns): "Nothing your current form can
-    carry is left to teach."
-  - **Stats** is the same list+detail layout: the left column names the three stats
-    (Energy/Momentum/Lifetime, `data/balance.ts`'s `STAT_LABELS`), no value or cost suffix, and
-    clicking a row only *previews* it (`scene.noetherStatPreview`, paginated by
-    `noetherStatPage` like every other left column). A stat has no art to open its detail pane
+    `unlockedMoves` -- browsing costs nothing regardless of how many moves are looked at. With
+    nothing left to sell the heading reads "Nothing left to teach." and the pane says so at
+    length; the Stats heading is still right there, so the panel never collapses to a dead end.
+  - **Stats**: the entries name the three stats (Energy/Momentum/Lifetime, `data/balance.ts`'s
+    `STAT_LABELS`), no value or cost suffix, and clicking a row only *previews* it
+    (`scene.noetherStatPreview`). A stat has no art to open its detail pane
     with, so the pane leads with the stat's own name (bold, capped at the shared
-    `DETAIL_NAME_CAP`), then a one-line effect gloss ("Raises your crit chance.", "Higher goes
-    first each round.", "Higher takes less damage."), then a `Now at <value>. Raising it to
-    <value+1> costs <cost> qumatessence.` status line and a `Raise <stat>` confirm button
-    (dimmed if unaffordable) that is the one action checking/spending the cost. A stat already
+    `DETAIL_NAME_CAP`), then a one-line effect gloss in gold ("Raises your crit chance.",
+    "Higher goes first each round.", "Higher takes less damage."), then **what the stat
+    actually is in physics** (`data/statLore.ts`'s `STAT_LORE`, one short paragraph, capped
+    tighter than anything else in the pane since it is the longest text in the panel), then a
+    `Now at <value>. Raising it to <value+1> costs <cost> qumatessence.` status line and a
+    `Raise <stat>` confirm button (dimmed if unaffordable) that is the one action
+    checking/spending the cost. The three names are not decoration: energy, momentum and
+    lifetime are the three numbers that define a quasiparticle, so the stat sheet a player
+    raises here is the crystal's own excitation spectrum, and the pane says so. A stat already
     at `MAX_STAT` (all three of them in Superposition Mode, which pins them there) still
     selects and reads; its pane says `Already at <MAX_STAT>, as high as I can raise it.` and
     offers no button, the same nothing-to-commit convention Feynman's fully-leveled moves use.
@@ -1265,9 +1278,8 @@ station motifs are deliberately not tunnels with a visible far end.
   pass and presses at (see "Gates as passes" below), since the pass is where that world's boss
   actually stands. Where the panel is a list+detail layout (both of Noether's own tabs, and
   Bloch's panel below) that button sits in the left column beneath its rows
-  ("List+detail panels" above); the Moves tab's empty state, which renders no columns at all
-  and so has no left column to put one in, keeps it in a full-width row flowing right after
-  that text (`renderFarewellFooter`) rather than pinned to a fixed y.
+  ("List+detail panels" above), which on Noether's own panel means beneath whichever heading is
+  open and its entries.
 
 ## Bloch in the overworld (`OverworldScene.showBlochHub`)
 
@@ -1392,19 +1404,16 @@ station motifs are deliberately not tunnels with a visible far end.
   on a stepped tween -- never a slide, since there is no energy between two levels -- and
   the orbit glyphs read 'ħω'. Silhouette: a stack of horizontal bars, the roster's only
   rung ladder.
-- **Bespoke two-column layout** (`scenes/panels/landau.ts`, not the paginated list+detail
-  shape above): his two quiz-gated Analytic moves (`data/materials.ts`'s `ANALYTIC_MOVE_IDS`, a
-  hardcoded pair, `skyfallBeam`/`groundEruption`) are always both visible side by side, one full
-  column each, rather than browsed one at a time through a left-hand candidate list -- with only
-  ever two fixed moves, a list column would just spend width a second full animation stage can
-  use instead. Panel width is `TWO_UP_PANEL_W` (`scenes/panels/listDetail.ts`, `800`), wider than
-  the ordinary `LIST_DETAIL_PANEL_W` (`720`) list+detail panels use, split into two equal columns
-  by `sideBySideColumns(panelLeft, panelWidth)` (own left/right margin `18`, a `24`px gap between
-  them, `insertColumnDivider` drawing the same vertical rule list+detail panels use between the
-  two). Each column (`renderAnalyticColumn`) opens with that move's own real battle-effect
-  animation on a loop (`renderMoveDetailHeader`, "List+detail panels" above and "Attack effects"
-  below -- centered in the column, with its own preview chain keyed
-  `landau:<moveId>` so both columns' chains loop independently, see "Attack effects" below),
+- **List+detail layout** (`scenes/panels/landau.ts`, "List+detail panels" above, at the shared
+  `LIST_DETAIL_PANEL_W`): his two quiz-gated Analytic moves (`data/materials.ts`'s
+  `ANALYTIC_MOVE_IDS`, a hardcoded pair, `skyfallBeam`/`groundEruption`) are two rows in the left
+  column, and whichever is selected (`scene.landauMovePreview`) fills one full-width detail pane.
+  Two rows never paginate, so the list column is as short as a column gets, and one full-width
+  pane is what a full-height animation stage with an inline quasiparticle picker under it
+  actually needs -- half a panel never was. It also means every guardian who sells a move is read
+  the same way. The pane (`renderAnalyticColumn`) opens with that move's own real battle-effect
+  animation looping on its stage (`renderMoveDetailHeader`, "List+detail panels" above and
+  "Attack effects" below),
   overriding the plain per-class bolt/ring/burst shape via `ANALYTIC_SHAPES` (each Analytic move
   is `'beam'`/`'eruption'`) the same way `BattleScene` itself does, still colored by whichever
   quasiparticle class the move is currently tuned to (`getTunedMoveClass` -- a not-yet-tuned move
@@ -1700,17 +1709,16 @@ station motifs are deliberately not tunnels with a visible far end.
   order turning on and off). The finale-only outer halo ring and the eight-point starburst
   orbit (double the usual four) mark her as the guardians' capstone rather than a mid-game
   stop. Silhouette: the roster's only tall spike-with-ray-crown outline.
-- **Bespoke two-column layout** (`scenes/panels/sklodowskaCurie.ts`, the same shape Landau's
-  own panel above uses, not the paginated list+detail shape): her two Ultimate moves
-  (`data/materials.ts`'s `ULTIMATE_MOVE_IDS` -- `ultimateMeteor`/`ultimateNova`) are always both
-  visible side by side, one full column each. Same `TWO_UP_PANEL_W`/`sideBySideColumns` geometry
-  Landau's panel uses -- her own intro quote is the longest in the game (it names all ten
-  guardians), capped at the same `1.15`x text-size scale Landau's own intro is, since with two
-  full animation-stage-plus-inline-picker columns below it there is even less spare vertical
-  room here than on his panel; see this panel's own worst-case-content note below for how tight
-  that budget actually is. Each column (`renderUltimateColumn`) opens with that move's own real
-  battle-effect animation on a loop (`renderMoveDetailHeader`, centered in the column, with its
-  own preview chain keyed `curie:<moveId>`, same as Landau's own columns), overriding
+- **List+detail layout** (`scenes/panels/sklodowskaCurie.ts`, the same shape Landau's
+  own panel above uses): her two Ultimate moves
+  (`data/materials.ts`'s `ULTIMATE_MOVE_IDS` -- `ultimateMeteor`/`ultimateNova`) are two rows in
+  the left column, and whichever is selected (`scene.curieMovePreview`) fills one full-width
+  detail pane. Her own intro quote is the longest in the game (it names all ten
+  guardians), capped at the same `1.15`x text-size scale Landau's own intro is, since the
+  animation-stage-plus-inline-picker pane below it is the tallest any guardian has; see this
+  panel's own worst-case-content note below for how tight that budget is. The pane
+  (`renderUltimateColumn`) opens with that move's own real
+  battle-effect animation looping on its stage (`renderMoveDetailHeader`), overriding
   the plain per-class shape via `ULTIMATE_SHAPES` to the longer, multi-phase `playMeteor`/
   `playNova` sequences (below), still colored by whichever quasiparticle class the move is
   currently tuned to, and escalated to the player's real Feynman level for that move

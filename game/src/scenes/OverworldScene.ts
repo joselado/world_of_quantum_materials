@@ -463,6 +463,11 @@ export interface GuardianPanelHost extends Phaser.Scene {
   // other's list.
   noetherStatPreview: string | null;
   noetherStatPage: number;
+  // Same convention as noetherMovePreview above, for Landau's and
+  // Skłodowska-Curie's own list+detail panels -- each has exactly two fixed
+  // moves, so neither needs a page field to go with it.
+  landauMovePreview: string | null;
+  curieMovePreview: string | null;
   // Same convention as noetherMovePreview above, for Kondo's own list+detail
   // layout (scenes/panels/kondo.ts) -- holds one of KONDO_MOVE_IDS. Kondo's
   // own panel has no committed-choice field of its own (like Majorana, not
@@ -694,6 +699,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   noetherMovePage = 0;
   noetherStatPreview: string | null = null;
   noetherStatPage = 0;
+  landauMovePreview: string | null = null;
+  curieMovePreview: string | null = null;
   kondoMovePreview: string | null = null;
   kondoMovePage = 0;
   // Same reset rules as dresselhausPreview/majoranaPreview above -- see the
@@ -749,7 +756,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       labelColor: '#8fa0ff',
       strokeColor: 0x6a7fff,
       quote:
-        'Switch on a perpendicular field and every electron orbit closes: the continuous band collapses into flat levels, one fixed quantum of energy apart, with nothing in between. Answer my questions right and I will teach your crystal to strike by that same physics.',
+        'Switch on a field across the plane and every electron orbit closes. The smooth band breaks into flat levels, one fixed quantum of energy apart, with nothing in between. Answer my questions right and I will teach your crystal to strike by that same physics.',
       blurb: 'Sells two quiz-gated Analytic moves.',
       avatar: makeLandauAvatar,
       tile: 'middle',
@@ -773,7 +780,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       shortName: 'Anderson',
       labelColor: '#e8b27a',
       strokeColor: 0xc9884a,
-      quote: 'Enough disorder and a wave stops spreading at all: it localizes, trapped by the very randomness that surrounds it.',
+      quote: 'Enough disorder and a wave stops spreading. It localizes, trapped by the very randomness around it.',
       blurb: 'Lets you dope in an impurity move.',
       avatar: makeAndersonAvatar,
       tile: 'middle',
@@ -810,7 +817,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       labelColor: '#c9a8e0',
       strokeColor: 0xa878c9,
       quote:
-        'Fire X-rays through a defect-riddled crystal and the sharp spots blur into diffuse rings: every pore and dislocation leaves its own signature in how the beam scatters. I can teach your crystal to scatter a blow the same way.',
+        'Fire X-rays through a crystal full of defects and the sharp spots blur into rings. Every pore and dislocation leaves its own mark in how the beam scatters. I can teach your crystal to scatter a blow the same way.',
       blurb: 'Teaches always-on passive abilities.',
       avatar: makeFranklinAvatar,
       tile: 'middle',
@@ -823,7 +830,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       labelColor: '#d9e86a',
       strokeColor: 0xc9d84a,
       quote:
-        'I lead this circle of guardians, and here is our last lesson: answer three questions in a row on everything you have learned, and your crystal will strike with a force none of the others can match.',
+        'I lead this circle of guardians, and here is our last lesson. Answer three questions in a row on everything you have learned, and your crystal will strike with a force none of the others can match.',
       blurb: 'Teaches two quiz-gated Ultimate moves.',
       avatar: makeSklodowskaCurieAvatar,
       tile: 'middle',
@@ -892,6 +899,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.noetherMovePage = 0;
     this.noetherStatPreview = null;
     this.noetherStatPage = 0;
+    this.landauMovePreview = null;
+    this.curieMovePreview = null;
     this.kondoMovePreview = null;
     this.kondoMovePage = 0;
     this.blochPreview = null;
@@ -2236,6 +2245,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.noetherMovePage = 0;
     this.noetherStatPreview = null;
     this.noetherStatPage = 0;
+    this.landauMovePreview = null;
+    this.curieMovePreview = null;
     this.kondoMovePreview = null;
     this.kondoMovePage = 0;
     this.blochPreview = null;

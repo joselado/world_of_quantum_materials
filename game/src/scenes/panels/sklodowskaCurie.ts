@@ -17,7 +17,15 @@ import {
 import { persistFromRegistry } from '../../data/save';
 import type { MoveClass } from '../../data/types';
 import { hostableClasses, renderInlineClassPicker } from './tunableMoveShop';
-import { TWO_UP_PANEL_W, TWO_UP_STAGE_H, sideBySideColumns, renderMoveDetailHeader, insertColumnDivider, destroyPanel } from './listDetail';
+import {
+  LIST_DETAIL_PANEL_W,
+  listDetailColumns,
+  renderListColumn,
+  renderListColumnFooter,
+  renderMoveDetailHeader,
+  insertColumnDivider,
+  destroyPanel,
+} from './listDetail';
 
 // Skłodowska-Curie stands at world 10's middle tile (WORLD_GUARDIANS,
 // `id: 'sklodowskaCurie'` -- deliberately not `'curie'`, so she's gated
@@ -33,12 +41,12 @@ import { TWO_UP_PANEL_W, TWO_UP_STAGE_H, sideBySideColumns, renderMoveDetailHead
 // battle-side 3-question gate lives in BattleScene, not here -- this panel
 // only ever sells the quasiparticle tuning.
 //
-// Bespoke two-column layout (TWO_UP_PANEL_W, wider than the ordinary
-// LIST_DETAIL_PANEL_W list+detail panels use, scenes/panels/listDetail.ts),
-// the same shape Landau's own panel uses: both of her fixed two moves are
-// always visible side by side, not browsed one at a time through a left-hand
-// candidate list. Each column opens with that move's own real battle-effect
-// animation on a loop (renderMoveDetailHeader), overriding the plain
+// Ordinary list+detail layout (LIST_DETAIL_PANEL_W, scenes/panels/
+// listDetail.ts), the same shape Landau's own panel and every other selling
+// guardian's uses: her two moves are two rows in the left column, and
+// whichever is selected fills one full-width detail pane. The pane opens with
+// that move's own real battle-effect animation on a loop
+// (renderMoveDetailHeader), overriding the plain
 // per-class shape via ULTIMATE_SHAPES to the longer, multi-phase
 // playMeteor/playNova sequences -- the same override BattleScene itself
 // applies -- still colored by whichever quasiparticle class the move is
@@ -56,10 +64,10 @@ import { TWO_UP_PANEL_W, TWO_UP_STAGE_H, sideBySideColumns, renderMoveDetailHead
 // also adds the move id to `unlockedMoves` so it appears in the battle menu.
 // A row here can be genuinely unaffordable -- with no class yet unlocked for
 // a move and too little qumatessence, that row is a no-op click -- but this
-// picker needs no dedicated escape button of its own for that case:
-// `renderFarewellFooter` below is always present as part of the main panel
-// regardless of affordability, so a too-poor player is never left with
-// nothing clickable and `dialogueActive` stuck true.
+// picker needs no dedicated escape button of its own for that case: the
+// Farewell button in the left column is always present regardless of
+// affordability, so a too-poor player is never left with nothing clickable
+// and `dialogueActive` stuck true.
 export function showSklodowskaCuriePanel(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
   // Deliberately does NOT call stopMoveEffectPreview() here -- same
@@ -67,7 +75,7 @@ export function showSklodowskaCuriePanel(scene: GuardianPanelHost) {
   // columns' own renderMoveDetailHeader calls always run, retargeting their
   // own already-running preview chain in place.
 
-  const panelWidth = TWO_UP_PANEL_W;
+  const panelWidth = LIST_DETAIL_PANEL_W;
   const top = 20;
   const container = scene.add.container(0, 0).setDepth(100);
   scene.dialogueContainer = container;
@@ -77,23 +85,25 @@ export function showSklodowskaCuriePanel(scene: GuardianPanelHost) {
   // Capped tighter than the ordinary intro-quote scaling every other
   // guardian panel uses (STYLE.md) -- Skłodowska-Curie's own quote is the
   // longest in the game (it names all ten guardians) and this panel now
-  // carries two full animation-stage-plus-inline-picker columns below it, on
-  // top of the avatar/footer every panel already has; an uncapped quote at
-  // the largest text-size preset was enough on its own to push the columns'
-  // own confirm rows off the bottom of the canvas (same failure mode
-  // Anderson's own headline cap, STYLE.md, guards against).
+  // carries a full animation-stage-plus-inline-picker pane below it, on top
+  // of the avatar/footer every panel already has; an uncapped quote at the
+  // largest text-size preset was enough on its own to push the picker's own
+  // rows off the bottom of the canvas (same failure mode Anderson's own
+  // headline cap, STYLE.md, guards against).
   const introScale = Math.min(fontScale(scene), 1.15);
   y = renderGuardianHeader(scene, container, {
     y,
     panelWidth,
     avatar: makeSklodowskaCurieAvatar,
-    quote: '"I am Skłodowska-Curie, and I lead this circle of guardians: Noether, Bloch, Dresselhaus, Landau, Majorana, Anderson, Feynman, Kondo, Franklin, and I. Here is our last lesson. Answer three questions on the physics running through everything you have learned, all three correct, and your crystal strikes with a force none of the others can match. Miss even one and the blow lands nowhere at all. Tell me which quasiparticle should carry it, too. A new one costs dearly to unlock, but once bought it is yours to wear again for free."',
+    quote: '"I am Skłodowska-Curie, and I lead this circle of guardians: Noether, Bloch, Dresselhaus, Landau, Majorana, Anderson, Feynman, Kondo, Franklin, and I. Here is our last lesson. Answer three questions on the physics running through everything you have learned. Get all three right and your crystal strikes with a force none of the others can match. Miss even one and the blow lands nowhere at all. Tell me which quasiparticle carries it, too. A new one costs a lot to unlock, but once bought it is yours to wear again for free."',
     introPx: `${Math.round(11 * introScale)}px`,
   });
 
+  // Farewell rides inside the left column beneath its rows
+  // (renderListColumnFooter, called from renderUltimateColumns), not in a full-width row
+  // under both columns -- the left column is the shorter of the two, so a
+  // footer inside it costs the panel no height at all.
   y = renderUltimateColumns(scene, container, y, panelWidth);
-  y += 8;
-  y = scene.renderFarewellFooter(container, y);
   y += 8;
 
   const panelHeight = y - top;
@@ -105,12 +115,33 @@ export function showSklodowskaCuriePanel(scene: GuardianPanelHost) {
 
 function renderUltimateColumns(scene: GuardianPanelHost, container: Phaser.GameObjects.Container, y: number, panelWidth: number): number {
   const panelLeft = CANVAS_W / 2 - panelWidth / 2;
-  const columns = sideBySideColumns(panelLeft, panelWidth);
+  const columns = listDetailColumns(panelLeft);
   const columnsTop = y;
 
-  const leftBottom = renderUltimateColumn(scene, container, ULTIMATE_MOVE_IDS[0], columns.leftCenterX, columnsTop, columns.colW);
-  const rightBottom = renderUltimateColumn(scene, container, ULTIMATE_MOVE_IDS[1], columns.rightCenterX, columnsTop, columns.colW);
+  const ids = [...ULTIMATE_MOVE_IDS];
+  const selected = ids.includes(scene.curieMovePreview ?? '') ? (scene.curieMovePreview as string) : ids[0];
 
+  const listResult = renderListColumn({
+    scene,
+    container,
+    x: columns.leftX,
+    y: columnsTop,
+    width: columns.leftColW,
+    items: ids,
+    idFor: (id) => id,
+    labelFor: (id) => moveDisplayName(scene.game.registry, id),
+    selectedId: selected,
+    page: 0,
+    onPageChange: () => {},
+    onSelect: (id) => {
+      scene.curieMovePreview = id;
+      destroyPanel(scene);
+      showSklodowskaCuriePanel(scene);
+    },
+  });
+
+  const rightBottom = renderUltimateColumn(scene, container, selected, columns.rightColCenterX, columnsTop, columns.rightColW);
+  const leftBottom = renderListColumnFooter(scene, container, columns, listResult.bottom + 10, 'Farewell', () => scene.closeDialogue());
   const columnsBottom = Math.max(leftBottom, rightBottom);
   insertColumnDivider(scene, container, columns.dividerX, columnsTop, columnsBottom);
   return columnsBottom + 6;
@@ -136,9 +167,7 @@ function renderUltimateColumn(
     centerX,
     y,
     colW,
-    level,
-    `curie:${id}`,
-    TWO_UP_STAGE_H
+    level
   );
 
   const unlocked = scene.getUnlockedMoves();

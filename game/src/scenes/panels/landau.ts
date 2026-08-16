@@ -9,7 +9,15 @@ import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 import { ANALYTIC_MOVE_IDS, shopCost, moveDisplayName, getTunedMoveClass, getMoveLevel, quasiparticleLabel, MOVES } from '../../data/materials';
 import type { MoveClass } from '../../data/types';
 import { hostableClasses, renderInlineClassPicker } from './tunableMoveShop';
-import { TWO_UP_PANEL_W, TWO_UP_STAGE_H, sideBySideColumns, renderMoveDetailHeader, insertColumnDivider, destroyPanel } from './listDetail';
+import {
+  LIST_DETAIL_PANEL_W,
+  listDetailColumns,
+  renderListColumn,
+  renderListColumnFooter,
+  renderMoveDetailHeader,
+  insertColumnDivider,
+  destroyPanel,
+} from './listDetail';
 import { persistFromRegistry } from '../../data/save';
 
 // Landau stands at world 4's middle tile (WORLD_GUARDIANS) and sells his
@@ -20,13 +28,14 @@ import { persistFromRegistry } from '../../data/save';
 // Noether's own shop (SHOP_MOVE_IDS excludes them, see materials.ts's
 // comment) so Landau is their one source.
 //
-// Bespoke two-column layout (TWO_UP_PANEL_W, wider than the ordinary
-// LIST_DETAIL_PANEL_W list+detail panels use, scenes/panels/listDetail.ts):
-// both of his fixed two moves are always visible side by side, not browsed
-// one at a time through a left-hand candidate list the way a guardian with
-// more than a handful of options needs -- with only ever two moves, a list+
-// pagination column would just waste panel width a second full-size
-// animation stage can use instead. Each column (renderAnalyticColumn) opens
+// Ordinary list+detail layout (LIST_DETAIL_PANEL_W, scenes/panels/
+// listDetail.ts), the same shape every other guardian who sells something is
+// read through: his two moves are two rows in the left column, and whichever
+// is selected fills one full-width detail pane. Two rows and one pane cost
+// far less height than two half-width panes side by side did, which is the
+// whole reason this panel is shaped like its neighbours -- with a
+// full-height animation stage plus an inline picker under it, half a panel
+// was never enough width for either. The pane (renderAnalyticColumn) opens
 // with that move's own real battle-effect animation on a loop
 // (renderMoveDetailHeader), overriding the plain per-class bolt/ring/burst
 // shape via ANALYTIC_SHAPES (each Analytic move is 'beam' or 'eruption') the
@@ -55,7 +64,7 @@ export function showLandauPanel(scene: GuardianPanelHost) {
   // moveEffectPreview.ts's own defer-until-settled retarget logic) rather
   // than needing this panel to stop and restart either one itself.
 
-  const panelWidth = TWO_UP_PANEL_W;
+  const panelWidth = LIST_DETAIL_PANEL_W;
   const top = 20;
   const container = scene.add.container(0, 0).setDepth(100);
   scene.dialogueContainer = container;
@@ -64,22 +73,24 @@ export function showLandauPanel(scene: GuardianPanelHost) {
 
   // Capped tighter than the ordinary intro-quote scaling every other
   // guardian panel uses (STYLE.md), same reasoning/cap as Skłodowska-Curie's
-  // own intro (panels/sklodowskaCurie.ts) -- this panel carries two full
-  // animation-stage-plus-inline-picker columns below it, and an uncapped
-  // quote at the largest text-size preset risks pushing the columns' own
-  // confirm rows past the bottom of the canvas.
+  // own intro (panels/sklodowskaCurie.ts) -- a full-height animation stage
+  // plus an inline quasiparticle picker under it is the tallest detail pane
+  // any guardian has, and an uncapped quote at the largest text-size preset
+  // risks pushing the picker's own rows past the bottom of the canvas.
   const introScale = Math.min(fontScale(scene), 1.15);
   y = renderGuardianHeader(scene, container, {
     y,
     panelWidth,
     avatar: makeLandauAvatar,
-    quote: '"Put a strong enough field on a two-dimensional electron gas and its whole band collapses into a ladder of flat levels, one fixed quantum of energy apart. Tell me the physics right and I\'ll teach your crystal to strike by that ladder. Answer right and the hit climbs a rung and lands twice as hard, answer wrong and it barely lands at all. Tell me which quasiparticle to carry it with, too."',
+    quote: '"Put a strong enough field on a two-dimensional electron gas and its whole band breaks into a ladder of flat levels, one fixed quantum of energy apart. Tell me the physics right and I will teach your crystal to strike by that ladder. Answer right and the hit climbs a rung and lands twice as hard. Answer wrong and it barely lands at all. Tell me which quasiparticle should carry it, too."',
     introPx: `${Math.round(11 * introScale)}px`,
   });
 
+  // Farewell rides inside the left column beneath its rows
+  // (renderListColumnFooter, called from renderAnalyticColumns), not in a full-width row
+  // under both columns -- the left column is the shorter of the two, so a
+  // footer inside it costs the panel no height at all.
   y = renderAnalyticColumns(scene, container, y, panelWidth);
-  y += 8;
-  y = scene.renderFarewellFooter(container, y);
   y += 8;
 
   const panelHeight = y - top;
@@ -91,12 +102,33 @@ export function showLandauPanel(scene: GuardianPanelHost) {
 
 function renderAnalyticColumns(scene: GuardianPanelHost, container: Phaser.GameObjects.Container, y: number, panelWidth: number): number {
   const panelLeft = CANVAS_W / 2 - panelWidth / 2;
-  const columns = sideBySideColumns(panelLeft, panelWidth);
+  const columns = listDetailColumns(panelLeft);
   const columnsTop = y;
 
-  const leftBottom = renderAnalyticColumn(scene, container, ANALYTIC_MOVE_IDS[0], columns.leftCenterX, columnsTop, columns.colW);
-  const rightBottom = renderAnalyticColumn(scene, container, ANALYTIC_MOVE_IDS[1], columns.rightCenterX, columnsTop, columns.colW);
+  const ids = [...ANALYTIC_MOVE_IDS];
+  const selected = ids.includes(scene.landauMovePreview ?? '') ? (scene.landauMovePreview as string) : ids[0];
 
+  const listResult = renderListColumn({
+    scene,
+    container,
+    x: columns.leftX,
+    y: columnsTop,
+    width: columns.leftColW,
+    items: ids,
+    idFor: (id) => id,
+    labelFor: (id) => moveDisplayName(scene.game.registry, id),
+    selectedId: selected,
+    page: 0,
+    onPageChange: () => {},
+    onSelect: (id) => {
+      scene.landauMovePreview = id;
+      destroyPanel(scene);
+      showLandauPanel(scene);
+    },
+  });
+
+  const rightBottom = renderAnalyticColumn(scene, container, selected, columns.rightColCenterX, columnsTop, columns.rightColW);
+  const leftBottom = renderListColumnFooter(scene, container, columns, listResult.bottom + 10, 'Farewell', () => scene.closeDialogue());
   const columnsBottom = Math.max(leftBottom, rightBottom);
   insertColumnDivider(scene, container, columns.dividerX, columnsTop, columnsBottom);
   return columnsBottom + 6;
@@ -122,9 +154,7 @@ function renderAnalyticColumn(
     centerX,
     y,
     colW,
-    level,
-    `landau:${id}`,
-    TWO_UP_STAGE_H
+    level
   );
 
   const unlocked = scene.getUnlockedMoves();

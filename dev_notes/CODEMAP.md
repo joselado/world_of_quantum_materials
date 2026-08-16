@@ -108,19 +108,17 @@ game/src/
                                  renderListColumn()/listDetailColumns()/fitListLabel()/
                                  insertColumnDivider()/renderDetailCrystalHeader()/
                                  renderMoveDetailHeader()/renderSelfBuffMoveDetailHeader()/
-                                 renderStatusAndConfirm()/destroyPanel()/sideBySideColumns() is the
+                                 renderStatusAndConfirm()/destroyPanel() is the
                                  shared detail-pane scaffolding (STYLE.md's "List+detail panels") --
                                  renderListColumn/listDetailColumns back the paginated-left-column
                                  shape HubScene's own Qumatex panel, dresselhaus.ts/anderson.ts
                                  (host-pick step only)/majorana.ts (both pick-a-crystal steps),
-                                 noether.ts (both tabs)/kondo.ts (its own move-browsing step),
+                                 noether.ts (both sections of its two-level column)/kondo.ts,
+                                 landau.ts/sklodowskaCurie.ts (two rows each, one per fixed move),
                                  and bloch.ts (its own destination table -- the one caller whose
                                  right side is the persistent Qumatuomi map, art/qumatuomiMap.ts,
-                                 rather than a per-selection detail pane) all use, while
-                                 sideBySideColumns backs landau.ts's/sklodowskaCurie.ts's own
-                                 bespoke always-both-visible two-column layout instead (no
-                                 candidate list, so neither imports renderListColumn/
-                                 listDetailColumns at all). Every one of these panels' own
+                                 rather than a per-selection detail pane) all use.
+                                 Every one of these panels' own
                                  "which crystal"/"which move"/"which world" detail pane opens
                                  through -- renderDetailCrystalHeader for a crystal-plus-name
                                  header, renderMoveDetailHeader for a looping centered
@@ -314,7 +312,7 @@ game/src/
                                   METEOR_TOTAL_MS/NOVA_TOTAL_MS
     moveEffectPreview.ts         startMoveEffectPreview(params, key?)/stopMoveEffectPreview(key?) --
                                   loops playTargetEffect (above) inside a guardian panel's detail
-                                  pane (Noether's Moves tab, Kondo's self-buff step, Landau's/
+                                  pane (Noether's Moves section, Kondo's self-buff step, Landau's/
                                   Skłodowska-Curie's own two-column panels, scenes/panels/noether.ts,
                                   kondo.ts, landau.ts, sklodowskaCurie.ts's own
                                   renderMoveDetailHeader/renderSelfBuffMoveDetailHeader calls,
@@ -354,8 +352,8 @@ game/src/
                                   unconditionally right before a startMoveEffectPreview() on the same
                                   key in the same rebuild (that would clear that chain's `current` and
                                   defeat the retarget) -- only
-                                  from a branch that starts no preview of its own (Noether's Stats tab,
-                                  whose pane has no animation in it, his Moves tab's own
+                                  from a branch that starts no preview of its own (Noether's Stats section,
+                                  whose pane has no animation in it, his Moves section's own
                                   empty-forSale state, which renders no pane at all, and Feynman's
                                   level-up question streak, which replaces the whole panel with
                                   questions) or a real teardown
@@ -513,6 +511,12 @@ game/src/
                                   filtering, since the finale is meant to test everything the course
                                   covered, not one world's own topic
     greetings.ts                 Per-MaterialType flavor lines (encounter/victory/defeat)
+    statLore.ts                  STAT_LORE -- one short paragraph per Stats field on what that
+                                  stat is in physics and why it does what it does in a fight,
+                                  shown in the detail pane of Noether's Stats section. Energy/
+                                  Momentum/Lifetime are the three numbers that define a
+                                  quasiparticle, so this is the crystal's own excitation
+                                  spectrum rather than invented RPG attributes
     materialdex.ts               Per-material (fallback per-type) physics blurb for Qumatex --
                                   MATERIAL_BLURBS/materialBlurb(); HYBRID_FUSION_LORE, a separate
                                   epic-plus-physics blurb per HYBRID_RECIPES result for Majorana's
@@ -752,7 +756,7 @@ everything else by absence, so only two things in it carry meaning.
   avatar in the Lab, `HubScene.spawnGuardianAvatars`) implement it, so a guardian's
   panel renders identically -- same shop, same state, no scene transition -- regardless of
   which of the two scenes the player actually opened it from. A panel-specific helper only that
-  one guardian calls (e.g. Noether's `renderShopTabs`) moves
+  one guardian calls (e.g. Noether's own `renderCategoryHeading`) moves
   into the same file as a plain (non-exported) function taking `scene` as its first param; a
   helper more than one guardian calls (or written generically enough that a future guardian
   plausibly could) gets its own file under `scenes/panels/` instead rather than living in either
@@ -771,7 +775,7 @@ everything else by absence, so only two things in it carry meaning.
   `playGuardianChime`, so a panel never calls that itself. `listDetail.ts`'s own
   `renderListColumn`/`renderMoveDetailHeader`/
   `renderSelfBuffMoveDetailHeader`/`renderStatusAndConfirm`/`insertColumnDivider`/
-  `renderListColumnFooter`/`destroyPanel`/`sideBySideColumns` (see the file-tree entry above) is the
+  `renderListColumnFooter`/`destroyPanel` (see the file-tree entry above) is the
   genuinely multi-caller case, shared today by Dresselhaus/Anderson/Majorana/Noether/Kondo/
   Feynman's own
   panels plus HubScene's Qumatex panel (the paginated-left-column shape), by Landau's/
@@ -801,7 +805,7 @@ everything else by absence, so only two things in it carry meaning.
   crystal-, move-, stat-, or (Bloch's own) world-pick step's own transient "which row is currently
   previewed but not yet
   committed" field (`dresselhausPreview`, `andersonHostPreview`, `majoranaPreview`,
-  `noetherMovePreview`/`noetherStatPreview`/`kondoMovePreview`/
+  `noetherMovePreview`/`noetherStatPreview`/`kondoMovePreview`/`landauMovePreview`/`curieMovePreview`/
   `blochPreview` -- the last one `number | null`, a world number rather than a
   crystal/move name string -- distinct
   from `andersonSelection` above, which holds the already-*committed* host choice; Majorana/
@@ -927,7 +931,7 @@ real quasiparticle; there is no abstract "disorder" move or class.
 | `correlation` | **Lifetime** | defense / damage reduction |
 
 `data/balance.ts`'s `STAT_LABELS` (`Record<keyof Stats, string>`) is the single source of truth for
-the right-hand column: every place the player reads a stat name -- Noether's Stats tab
+the right-hand column: every place the player reads a stat name -- Noether's Stats section
 (`scenes/panels/noether.ts`'s `renderShopStats`) and the Lab's Stats station
 (`scenes/panels/hubStations.ts`'s `showStatsPanel`) -- takes its wording from there rather than
 spelling it out, so a wording change is a one-line edit. Prose that names a stat mid-sentence
@@ -2029,7 +2033,7 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   nothing-to-commit convention Dresselhaus's current form and Bloch's current world use); an
   unaffordable one dims the confirm rather than the row. With no unlocked moves at all the panel
   renders no columns, so it falls back to a full-width `renderFarewellFooter` -- the same
-  no-left-column-to-put-it-in case Noether's empty Moves tab handles. Confirming deducts the cost
+  no-left-column-to-put-it-in case an empty flat list handles. Confirming deducts the cost
   immediately (before a single question is asked, and never refunded) and calls `showLevelStreak`, a self-contained recursive question flow (`getAnalyticQuestions`
   from `data/quiz.ts`, the same visited-world-filtered pool Landau's own single question
   draws from) built the same way `OverworldScene.showEncounter`'s pre-battle quiz and
@@ -2070,7 +2074,7 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   -- called only from the confirm button, the point the result is first previewed being already a
   free browse -- see the Superposition Mode bullets above and DESIGN.md §5 for the pricing
   rationale.
-- **Noether's Moves tab** (`scenes/panels/noether.ts`'s `showNoetherShop`/`renderShopMoves`)
+- **Noether's Moves section** (`scenes/panels/noether.ts`'s `showNoetherShop`/`renderShopBody`/`renderShopMoves`/`renderMoveDetail`)
   browses by move through the list+detail layout ("Candidate-crystal
   lists" below extends to move-browsing too) rather than a flat button list: the left column
   names candidates (still-unbought, current-form-compatible `SHOP_MOVE_IDS`), a row click only
@@ -2082,22 +2086,31 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   deducts `shopCost` and appends to `unlockedMoves` directly. `ANALYTIC_MOVE_IDS`/
   `ULTIMATE_MOVE_IDS` (below) are deliberately excluded from `SHOP_MOVE_IDS` so Noether never
   also offers Landau's/Skłodowska-Curie's own moves.
-- **Noether's Stats tab** (`renderShopStats` in the same file) is the same layout over the three
+- **Noether's Stats section** (`renderShopStats`/`renderStatDetail` in the same file) is the same layout over the three
   `Stats` keys: the left column names them via `STAT_LABELS`, a row click sets
   `scene.noetherStatPreview`, and the detail pane carries the stat's own effect line, a
   `statUpgradeCost` status line and a "Raise `<stat>`" confirm button writing registry/save
-  `playerStats`. Its pane is the one in the game with no art block at all, so it renders its
+  `playerStats`. Between the effect line and the cost it carries `data/statLore.ts`'s
+  `STAT_LORE`: one short paragraph on what that stat *is* in physics, since Energy/Momentum/
+  Lifetime are the three numbers that define a quasiparticle rather than invented RPG
+  attributes. Its pane is the one in the game with no art block at all, so it renders its
   own name heading (capped at `listDetail.ts`'s shared `DETAIL_NAME_CAP`) instead of calling one
   of that module's detail-header openers, and it calls `stopMoveEffectPreview()` on the way in
-  since nothing in it will retarget the Moves tab's looping preview.
+  since nothing in it will retarget the Moves section's looping preview.
+- **The two sections are one two-level left column, not tabs.** `renderShopBody` draws a
+  heading row per section (`renderCategoryHeading`, gold and marked `v` when open, dim and
+  marked `>` when closed, `shopTab` holding which is open) and runs only the open section's
+  entries through `renderListColumn`, indented under it. Headings are chrome rather than list
+  items on purpose: paginated as items, the second heading lands on page 2 at the largest
+  text-size preset, where a page holds three or four rows. An open list is told what the closed
+  heading below it still needs via `renderListColumn`'s own `reserveBelow`.
 - **Landau's Analytic-move panel** (`scenes/panels/landau.ts`'s `showLandauPanel`/
-  `renderAnalyticColumns`/`renderAnalyticColumn`) is a **bespoke two-column layout**, not the
-  list+detail shape above -- with only ever two fixed moves (`ANALYTIC_MOVE_IDS`:
-  `skyfallBeam`/`groundEruption`), both always render side by side at once
-  (`scenes/panels/listDetail.ts`'s `sideBySideColumns`, panel width `TWO_UP_PANEL_W`) rather than
-  being browsed one at a time through a candidate list, so there is no preview/pagination field
-  of Landau's own on `GuardianPanelHost` at all. Each column's own `renderMoveDetailHeader`
-  call (its own `landau:<moveId>`-keyed preview chain, "Attack effects" in STYLE.md and
+  `renderAnalyticColumns`/`renderAnalyticColumn`) is a **list+detail layout** like every other
+  selling guardian's: his two fixed moves (`ANALYTIC_MOVE_IDS`:
+  `skyfallBeam`/`groundEruption`) are two rows in the left column, and the selected one
+  (`GuardianPanelHost.landauMovePreview`; two rows never paginate, so there is no page field to
+  go with it) fills one full-width detail pane. The pane's own `renderMoveDetailHeader`
+  call ("Attack effects" in STYLE.md and
   `art/moveEffectPreview.ts` above) shows that move's own real battle-effect animation looping,
   its name read via `moveDisplayName` (folds in both the current quasiparticle and Feynman's own
   level prefix). Below that, a status line, then -- **inline, directly beneath that column**,
@@ -2546,16 +2559,12 @@ see "Bloch in the overworld" (STYLE.md) for the full layout. The Lab's own Tutor
 *topic* the same way, with no art and no commit step at all -- the detail pane is just that
 topic's own title and body, selecting a row is the whole interaction -- reusing the scaffolding
 purely for its paginated-list-plus-detail-pane shape, not for anything crystal/move-specific
-about it. Landau's and
-Skłodowska-Curie's own panels do *not* use this scaffolding at all -- each has exactly two fixed
-moves, always both rendered at once through their own bespoke `sideBySideColumns` layout instead
-of a browsed candidate list (see "Guardians" above); neither imports `renderListColumn` or
-`listDetailColumns`. The two shapes also have genuinely different vertical budgets, which is the
-second reason to keep them apart rather than merge them: a list+detail panel hides its escape
-button inside the shorter left column and so gets that row's height back to spend on the detail
-pane, while a two-up panel has no left column, keeps a full-width footer row, and carries an
-inline quasiparticle picker in each column -- so the art-stage height is a property of the shape
-(`DETAIL_STAGE_H` vs `TWO_UP_STAGE_H` below), not a constant the two can share.
+about it. Landau's and Skłodowska-Curie's own panels use it too, with two rows each: a guardian
+with only two things to sell still reads better as a short list plus one full-width pane than as
+two half-width panes side by side, because the pane carries a full animation stage with an inline
+quasiparticle picker under it and half a panel is not wide enough for that. The escape button
+hiding inside the shorter left column is what buys the pane that height (`DETAIL_STAGE_H`
+below).
 `renderListColumn<T>`
 is this layout's own left-column pager: a
 single fixed sample-row-height measurement (not `renderPagedButtons`' per-item real-height
@@ -2593,17 +2602,14 @@ block and text instead. It places exactly one button; a panel needing a second e
 full-width two-button `renderCancelFarewellFooter` row instead. `DETAIL_STAGE_H` (`104`) and
 `DETAIL_CRYSTAL_SIZE` (`44`) are the one art-block height/crystal size all three detail-pane
 openers (and Qumatex's own pane) share, fixed regardless of the text-size setting ("art, not
-text"); Landau's/Skłodowska-Curie's own two-up columns pass `renderMoveDetailHeader` the
-shorter `TWO_UP_STAGE_H` (`84`) instead, since a panel with no left column reclaims no footer
-height to spend and their columns carry an inline class picker a browsed pane doesn't.
+text").
 `renderStatusAndConfirm` is the shared tail every one of
 those panes closes with: the cost/status line plus an optional confirm button (omitted where
 there's nothing to commit -- Dresselhaus's current form, Bloch's current or undiscovered world),
 parameterized only over the wording, the dimmed-when-unavailable flag, and two per-panel spacing
 knobs (`statusCap`, Anderson's tighter `1.1`; `gapAfterStatus`, Bloch's tighter `4`).
 `LIST_DETAIL_PANEL_W`
-(`720`) is the panel width every list+detail panel uses; Landau's/Skłodowska-Curie's own
-bespoke panels use the wider `TWO_UP_PANEL_W` (`800`) instead (see "Guardians" above).
+(`720`) is the panel width every list+detail panel uses.
 
 **A preview click is a scoped update, not a panel rebuild** in Dresselhaus's, Anderson's,
 Majorana's, Kondo's and Bloch's panels, and in the Lab's own Tutorial station -- follow this in

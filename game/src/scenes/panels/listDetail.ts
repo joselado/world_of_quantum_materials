@@ -29,14 +29,12 @@ import { GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY, REFERENCE_BLUE_GREY_HEX } from '.
 // crystal, for a self-buff move -- Kondo's
 // panel) are three shared detail-pane openers, and renderStatusAndConfirm
 // is the shared cost/status-line-plus-confirm-button tail every guardian
-// panel's pane closes with -- reused outside the paginated-
-// list shape too: Landau's/Skłodowska-Curie's own panels
-// (scenes/panels/landau.ts/sklodowskaCurie.ts) call renderMoveDetailHeader
-// from a bespoke, always-both-visible two-column layout (sideBySideColumns
-// below) rather than a browsed single detail pane, since each guardian only
-// ever has exactly two fixed moves worth showing, never a candidate list
-// worth paging through -- they don't import renderListColumn/
-// listDetailColumns at all.
+// panel's pane closes with. Landau's and Skłodowska-Curie's panels
+// (scenes/panels/landau.ts/sklodowskaCurie.ts) browse through this same
+// scaffolding even though each has only two fixed moves rather than a real
+// candidate list: two rows in a left column and one full-width pane cost far
+// less height than two half-width panes side by side, and it means every
+// guardian who sells a move is read the same way.
 //
 // A browsed panel's preview click is a *scoped update*, not a panel
 // rebuild: the caller keeps its avatar/intro/list rows on screen, moves the
@@ -87,14 +85,6 @@ export function listDetailColumns(panelLeft: number): ListDetailColumns {
   return { leftX, leftColW, dividerX, rightColLeft, rightColRight, rightColW, rightColCenterX };
 }
 
-// Landau's and Skłodowska-Curie's own panels (scenes/panels/landau.ts/
-// sklodowskaCurie.ts) each have exactly two fixed moves, always both visible
-// side by side rather than a browsed left-hand candidate list -- wider than
-// LIST_DETAIL_PANEL_W since two full animation-stage-plus-inline-picker
-// columns need more room than the ordinary list+detail split's narrower
-// right column ever did (STYLE.md's own reasoning for the wider width).
-export const TWO_UP_PANEL_W = 800;
-
 // The detail pane's own art block -- a crystal render, a looping battle-effect
 // animation, or a player crystal with a self-buff ring around it -- is a fixed
 // height regardless of the text-size setting ("art, not text", STYLE.md), so
@@ -112,15 +102,6 @@ export const DETAIL_CRYSTAL_SIZE = 44;
 // openers below and by a pane that renders its heading itself because it has
 // no art block to open with (Noether's Stats tab, scenes/panels/noether.ts).
 export const DETAIL_NAME_CAP = 1.45;
-
-// The two-up panels' stage is shorter, because their height budget is
-// tighter: with no left column their Farewell button occupies a full-width row
-// below both columns, and their columns carry an inline quasiparticle picker
-// beneath the status line that a browsed detail pane doesn't. At the largest
-// text-size preset Skłodowska-Curie's column reaches within ~25px of the
-// bottom of the canvas even at this height, so it has no room for the taller
-// one.
-export const TWO_UP_STAGE_H = 84;
 
 // A move preview is a real battle effect, composed against the whole arena: a
 // beam falls in from above the top of the field, an eruption throws debris
@@ -155,28 +136,6 @@ function drawPreviewStage(
     .setStrokeStyle(1, REFERENCE_BLUE_GREY, STAGE_BORDER_ALPHA);
   container.add(frame);
   return rect;
-}
-
-export interface SideBySideColumns {
-  colW: number;
-  leftCenterX: number;
-  rightCenterX: number;
-  dividerX: number;
-}
-
-// Two equal-width columns for a TWO_UP_PANEL_W-wide panel whose left edge
-// sits at `panelLeft` -- the fixed-left-column-plus-detail-pane split
-// listDetailColumns above gives every *browsed* panel doesn't fit here,
-// since there's no list to browse, just two moves that both always render
-// their own full detail pane at once.
-export function sideBySideColumns(panelLeft: number, panelWidth: number): SideBySideColumns {
-  const margin = 18;
-  const gap = 24;
-  const colW = (panelWidth - margin * 2 - gap) / 2;
-  const leftCenterX = panelLeft + margin + colW / 2;
-  const rightCenterX = panelLeft + panelWidth - margin - colW / 2;
-  const dividerX = panelLeft + margin + colW + gap / 2;
-  return { colW, leftCenterX, rightCenterX, dividerX };
 }
 
 // Trims a row's already-rendered label down to `maxWidth` (appending an
@@ -239,6 +198,12 @@ export interface RenderListColumnParams<T> {
   onPageChange: (page: number) => void;
   onSelect: (item: T) => void;
   emptyText?: string;
+  // Height the caller still needs below this column, on top of the escape
+  // button the fit already reserves for -- a category heading rendered under
+  // the rows (Noether's own two-section list, renderShopCategories below) is
+  // the case, since a page that fits right up to the footer would push it off
+  // the canvas.
+  reserveBelow?: number;
 }
 
 export interface RenderListColumnResult {
@@ -264,7 +229,7 @@ export interface RenderListColumnResult {
 // stable id (a crystal's name) rather than a list/page index, so the
 // highlighted row survives a page flip.
 export function renderListColumn<T>(params: RenderListColumnParams<T>): RenderListColumnResult {
-  const { scene, container, x, y: columnsTop, width, items, idFor, labelFor, colorFor, selectedId, page, onPageChange, onSelect, emptyText } =
+  const { scene, container, x, y: columnsTop, width, items, idFor, labelFor, colorFor, selectedId, page, onPageChange, onSelect, emptyText, reserveBelow } =
     params;
 
   const sampleRow = scene.add.text(-1000, -1000, 'Sample', { fontSize: fontPx(scene, 12), padding: { x: 8, y: 4 } });
@@ -272,8 +237,15 @@ export function renderListColumn<T>(params: RenderListColumnParams<T>): RenderLi
   sampleRow.destroy();
   const reservedTail = rowH * 2;
   const reservedControls = rowH * 2;
-  const available = CANVAS_H - columnsTop - reservedTail - reservedControls;
-  const fitPerPage = Math.max(1, Math.floor(available / rowH));
+  const available = CANVAS_H - columnsTop - reservedTail - (reserveBelow ?? 0);
+  // The Prev/Next/Page-N-of-M controls only exist once the list actually
+  // outgrows one page, so the room for them is only taken out of the budget
+  // when they are going to be there. Reserving it unconditionally is
+  // self-fulfilling: a list that would fit whole in the space the controls
+  // occupy gets paginated *into* needing them, which is how three stats ended
+  // up spread over two pages at the largest text-size preset.
+  const fitWhole = Math.max(1, Math.floor(available / rowH));
+  const fitPerPage = items.length <= fitWhole ? fitWhole : Math.max(1, Math.floor((available - reservedControls) / rowH));
   const totalPages = Math.max(1, Math.ceil(items.length / fitPerPage));
   const clampedPage = Phaser.Math.Clamp(page, 0, totalPages - 1);
   const pageItems = items.slice(clampedPage * fitPerPage, clampedPage * fitPerPage + fitPerPage);

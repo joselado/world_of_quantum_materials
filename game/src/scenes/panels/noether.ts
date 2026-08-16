@@ -6,8 +6,10 @@ import { fontPx, fontScale } from '../../ui/text';
 import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 import { MOVES, SHOP_MOVE_IDS, compatibleMoves, shopCost, getPlayerStats, statUpgradeCost, MAX_STAT } from '../../data/materials';
 import { STAT_LABELS } from '../../data/balance';
+import { STAT_LORE } from '../../data/statLore';
 import { persistFromRegistry } from '../../data/save';
 import type { Stats } from '../../data/types';
+import type { ListDetailColumns } from './listDetail';
 import {
   DETAIL_NAME_CAP,
   LIST_DETAIL_PANEL_W,
@@ -64,18 +66,7 @@ export function showNoetherShop(scene: GuardianPanelHost) {
     introPx: fontPx(scene, 11),
   });
 
-  y = renderShopTabs(scene, container, y);
-  y += 6;
-
-  // Either tab carries its own Farewell button inside its left column
-  // (renderListColumnFooter). The one branch that falls back to the
-  // full-width footer row is the Moves tab's empty state, which renders no
-  // columns at all (renderShopMoves below).
-  if (scene.shopTab === 'moves') {
-    y = renderShopMoves(scene, container, y, panelWidth) + 8;
-  } else {
-    y = renderShopStats(scene, container, y, panelWidth) + 8;
-  }
+  y = renderShopBody(scene, container, y, panelWidth) + 8;
 
   const panelHeight = y - top;
   const panel = scene.add
@@ -84,80 +75,122 @@ export function showNoetherShop(scene: GuardianPanelHost) {
   container.addAt(panel, 0);
 }
 
-function renderShopTabs(scene: GuardianPanelHost, container: Phaser.GameObjects.Container, y: number): number {
-  let maxHeight = 0;
-  (['moves', 'stats'] as const).forEach((tab, i) => {
-    const active = scene.shopTab === tab;
-    const btn = scene.add
-      .text(CANVAS_W / 2 + (i === 0 ? -45 : 45), y, tab === 'moves' ? 'Moves' : 'Stats', {
-        fontSize: fontPx(scene, 11),
-        color: active ? GOLD_ACCENT_HEX : REFERENCE_BLUE_GREY_HEX,
-        backgroundColor: active ? '#333355' : '#1a1a2e',
-        padding: { x: 8, y: 3 },
-      })
-      .setOrigin(0.5, 0)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => {
-        if (scene.shopTab === tab) return;
-        scene.shopTab = tab;
-        destroyPanel(scene);
-        showNoetherShop(scene);
-      });
-    container.add(btn);
-    maxHeight = Math.max(maxHeight, btn.height);
-  });
-  return y + maxHeight;
-}
-
-function renderShopMoves(scene: GuardianPanelHost, container: Phaser.GameObjects.Container, y: number, panelWidth: number): number {
-  const unlocked = scene.getUnlockedMoves();
-  const compatible = new Set(compatibleMoves(scene.playerMaterial));
-  const forSale = SHOP_MOVE_IDS.filter((id) => !unlocked.includes(id) && compatible.has(id));
-
-  if (forSale.length === 0) {
-    // No detail pane renders in this branch, so nothing else will ever call
-    // startMoveEffectPreview to replace whatever the list was last
-    // previewing -- stop it explicitly here rather than leaving it running
-    // against a screen that no longer shows it. (Deliberately not called
-    // unconditionally at the top of showNoetherShop: a rebuild that DOES
-    // reach renderMoveDetailHeader below needs the *running* chain left
-    // alone so its own defer-until-settled logic can retarget it without
-    // briefly overlapping two plays -- see moveEffectPreview.ts's own
-    // comment.)
-    stopMoveEffectPreview();
-    const text = scene.add
-      .text(CANVAS_W / 2, y, "Nothing your current form can carry is left to teach.", {
-        fontSize: fontPx(scene, 13),
-        color: '#ffffff',
-        align: 'center',
-        wordWrap: { width: 480 },
-      })
-      .setOrigin(0.5, 0);
-    container.add(text);
-    // No columns render in this branch, so there is no left column to put the
-    // Farewell button in -- it takes the full-width footer row the Stats tab
-    // uses instead. Without one the panel has nothing clickable at all and
-    // `dialogueActive` stays stuck true.
-    return scene.renderFarewellFooter(container, y + text.height + 8);
-  }
-
+// Everything Noether sells, in one two-level left column: the two things she
+// deals in stand as headings, and pressing one opens that heading's own
+// entries directly beneath it while the other stays closed. `shopTab` is which
+// one is open. Two headings and one list of entries beat a row of tabs above a
+// list here because the tabs and the list were saying the same kind of thing at
+// two different places on the panel; a heading with its own entries under it
+// says it once, and reading down the column is the whole navigation.
+//
+// The headings are chrome rather than list items: they are drawn here, and only
+// the open heading's entries go through renderListColumn's own pagination. A
+// heading paginated as an item would land on page 2 at the largest text-size
+// preset, where a page holds three or four rows, and the way to the other
+// category would be a page flip away with nothing on screen saying so.
+function renderShopBody(scene: GuardianPanelHost, container: Phaser.GameObjects.Container, y: number, panelWidth: number): number {
   const panelLeft = CANVAS_W / 2 - panelWidth / 2;
   const columns = listDetailColumns(panelLeft);
   const columnsTop = y;
+  const movesOpen = scene.shopTab === 'moves';
 
-  const effectivePreview = forSale.includes(scene.noetherMovePreview ?? '') ? (scene.noetherMovePreview as string) : forSale[0];
+  let leftY = columnsTop;
+  leftY = renderCategoryHeading(scene, container, columns, leftY, 'Moves', movesOpen);
+  // The closed heading below still has to fit, so an open Moves list is told
+  // how much room to leave for it.
+  const trailingHeadingRoom = movesOpen ? headingRowHeight(scene) : 0;
+  if (movesOpen) leftY = renderShopMoves(scene, container, columns, leftY, trailingHeadingRoom);
+  leftY = renderCategoryHeading(scene, container, columns, leftY + 4, 'Stats', !movesOpen);
+  if (!movesOpen) leftY = renderShopStats(scene, container, columns, leftY);
+
+  const rightBottom = movesOpen
+    ? renderMoveDetail(scene, container, columns, columnsTop)
+    : renderStatDetail(scene, container, columns, columnsTop);
+
+  const leftBottom = renderListColumnFooter(scene, container, columns, leftY + 10, 'Farewell', () => scene.closeDialogue());
+  const columnsBottom = Math.max(leftBottom, rightBottom);
+  insertColumnDivider(scene, container, columns.dividerX, columnsTop, columnsBottom);
+  return columnsBottom + 6;
+}
+
+// One heading row, spanning the left column: gold and marked open when its own
+// entries are showing beneath it, muted and marked closed when they are not.
+// Pressing a closed one opens it, which is the whole of the navigation.
+function renderCategoryHeading(
+  scene: GuardianPanelHost,
+  container: Phaser.GameObjects.Container,
+  columns: ListDetailColumns,
+  y: number,
+  label: string,
+  open: boolean
+): number {
+  const tab = label === 'Moves' ? 'moves' : 'stats';
+  const row = scene.add
+    .text(columns.leftX, y, `${open ? 'v' : '>'} ${label.toUpperCase()}`, {
+      fontSize: fontPx(scene, 12),
+      fontStyle: 'bold',
+      color: open ? GOLD_ACCENT_HEX : REFERENCE_BLUE_GREY_HEX,
+      backgroundColor: open ? '#333355' : '#1a1a2e',
+      padding: { x: 8, y: 4 },
+      fixedWidth: columns.leftColW,
+    })
+    .setOrigin(0, 0)
+    .setInteractive({ useHandCursor: true })
+    .on('pointerdown', () => {
+      if (scene.shopTab === tab) return;
+      scene.shopTab = tab as 'moves' | 'stats';
+      destroyPanel(scene);
+      showNoetherShop(scene);
+    });
+  container.add(row);
+  return y + row.height + 2;
+}
+
+// Measured off a throwaway row rather than assumed, the same way
+// renderListColumn sizes its own rows, so the room reserved for a closed
+// heading tracks the text-size preset.
+// Entries sit indented under the heading they belong to, so the column reads
+// as two levels at a glance rather than one flat run of rows.
+const ENTRY_INDENT = 14;
+
+function headingRowHeight(scene: GuardianPanelHost): number {
+  const sample = scene.add.text(-1000, -1000, '> SAMPLE', { fontSize: fontPx(scene, 12), fontStyle: 'bold', padding: { x: 8, y: 4 } });
+  const h = sample.height + 6;
+  sample.destroy();
+  return h;
+}
+
+// The open Moves heading's own entries: every move still unbought that this
+// form can actually carry. Returns the bottom of the rows so the closed Stats
+// heading can follow them.
+function renderShopMoves(
+  scene: GuardianPanelHost,
+  container: Phaser.GameObjects.Container,
+  columns: ListDetailColumns,
+  y: number,
+  reserveBelow: number
+): number {
+  const forSale = movesForSale(scene);
+  if (forSale.length === 0) {
+    const empty = scene.add
+      .text(columns.leftX + ENTRY_INDENT, y, 'Nothing left to teach.', { fontSize: fontPx(scene, 11), color: REFERENCE_BLUE_GREY_HEX })
+      .setOrigin(0, 0);
+    container.add(empty);
+    return y + empty.height + 4;
+  }
 
   const listResult = renderListColumn({
     scene,
     container,
-    x: columns.leftX,
-    y: columnsTop,
-    width: columns.leftColW,
+    x: columns.leftX + ENTRY_INDENT,
+    y,
+    width: columns.leftColW - ENTRY_INDENT,
     items: forSale,
     idFor: (id) => id,
     labelFor: (id) => MOVES[id].name,
-    selectedId: effectivePreview,
+    selectedId: effectiveMovePreview(scene, forSale),
     page: scene.noetherMovePage,
+    reserveBelow,
     onPageChange: (page) => {
       scene.noetherMovePage = page;
       destroyPanel(scene);
@@ -170,15 +203,52 @@ function renderShopMoves(scene: GuardianPanelHost, container: Phaser.GameObjects
     },
   });
   scene.noetherMovePage = listResult.page;
+  return listResult.bottom;
+}
 
-  const move = MOVES[effectivePreview];
-  let rightY = columnsTop;
-  rightY = renderMoveDetailHeader(scene, container, move.name, move.class, undefined, columns.rightColCenterX, rightY, columns.rightColW);
+function movesForSale(scene: GuardianPanelHost): string[] {
+  const unlocked = scene.getUnlockedMoves();
+  const compatible = new Set(compatibleMoves(scene.playerMaterial));
+  return SHOP_MOVE_IDS.filter((id) => !unlocked.includes(id) && compatible.has(id));
+}
+
+function effectiveMovePreview(scene: GuardianPanelHost, forSale: string[]): string {
+  return forSale.includes(scene.noetherMovePreview ?? '') ? (scene.noetherMovePreview as string) : forSale[0];
+}
+
+// The pane beside an open Moves heading: the selected move's own real battle
+// effect looping on its stage, its cost, and the one button that spends it.
+// With nothing left to sell there is no move to preview, so this is the branch
+// that stops the loop outright rather than retargeting it -- see
+// art/moveEffectPreview.ts on why a caller must not stop a chain it is about
+// to restart.
+function renderMoveDetail(
+  scene: GuardianPanelHost,
+  container: Phaser.GameObjects.Container,
+  columns: ListDetailColumns,
+  y: number
+): number {
+  const forSale = movesForSale(scene);
+  if (forSale.length === 0) {
+    stopMoveEffectPreview();
+    const text = scene.add
+      .text(columns.rightColCenterX, y, 'Nothing your current form can carry is left to teach.', {
+        fontSize: fontPx(scene, 13),
+        color: '#ffffff',
+        align: 'center',
+        wordWrap: { width: columns.rightColW },
+      })
+      .setOrigin(0.5, 0);
+    container.add(text);
+    return y + text.height + 6;
+  }
+
+  const move = MOVES[effectiveMovePreview(scene, forSale)];
+  let rightY = renderMoveDetailHeader(scene, container, move.name, move.class, undefined, columns.rightColCenterX, y, columns.rightColW);
 
   const cost = shopCost(move);
   const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
-
-  rightY = renderStatusAndConfirm({
+  return renderStatusAndConfirm({
     scene,
     container,
     centerX: columns.rightColCenterX,
@@ -187,15 +257,10 @@ function renderShopMoves(scene: GuardianPanelHost, container: Phaser.GameObjects
     status: `Costs ${cost} qumatessence.`,
     confirm: {
       label: `Learn ${move.name}`,
-      onClick: () => buyNoetherMove(scene, effectivePreview, cost),
+      onClick: () => buyNoetherMove(scene, move.id, cost),
       dimmed: tokens < cost,
     },
   });
-
-  const leftBottom = renderListColumnFooter(scene, container, columns, listResult.bottom + 10, 'Farewell', () => scene.closeDialogue());
-  const columnsBottom = Math.max(leftBottom, rightY);
-  insertColumnDivider(scene, container, columns.dividerX, columnsTop, columnsBottom);
-  return columnsBottom + 6;
 }
 
 function buyNoetherMove(scene: GuardianPanelHost, id: string, cost: number) {
@@ -220,36 +285,39 @@ function buyNoetherMove(scene: GuardianPanelHost, id: string, cost: number) {
 // moves and Dresselhaus's current form use). Superposition Mode pins every
 // stat to MAX_STAT (OverworldScene.applySuperpositionUnlocks), so that is
 // the state all three rows read in there.
-function renderShopStats(scene: GuardianPanelHost, container: Phaser.GameObjects.Container, y: number, panelWidth: number): number {
-  // This pane starts no battle-effect preview of its own, so nothing here
-  // will ever retarget the loop the Moves tab left running -- stop it
-  // explicitly, same reasoning as the empty-forSale branch above
-  // (renderShopMoves).
-  stopMoveEffectPreview();
+// The three stats a crystal is, listed under the Stats heading. A stat is
+// never filtered out: one already at MAX_STAT still selects and reads, its pane
+// simply offering no confirm button (the same nothing-to-commit convention
+// Feynman's fully-leveled moves and Dresselhaus's current form use).
+// Superposition Mode pins every stat to MAX_STAT
+// (OverworldScene.applySuperpositionUnlocks), so that is the state all three
+// rows read in there.
+const STAT_ROWS: { key: keyof Stats; effect: string }[] = [
+  { key: 'quantumness', effect: 'Raises your crit chance.' },
+  { key: 'velocity', effect: 'Higher goes first each round.' },
+  { key: 'correlation', effect: 'Higher takes less damage.' },
+];
 
-  const stats = getPlayerStats(scene.game.registry);
-  const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
-  const rows: { key: keyof Stats; effect: string }[] = [
-    { key: 'quantumness', effect: 'Raises your crit chance.' },
-    { key: 'velocity', effect: 'Higher goes first each round.' },
-    { key: 'correlation', effect: 'Higher takes less damage.' },
-  ];
+function selectedStat(scene: GuardianPanelHost): { key: keyof Stats; effect: string } {
+  return STAT_ROWS.find((row) => row.key === scene.noetherStatPreview) ?? STAT_ROWS[0];
+}
 
-  const columns = listDetailColumns(CANVAS_W / 2 - panelWidth / 2);
-  const columnsTop = y;
-
-  const selected = rows.find((row) => row.key === scene.noetherStatPreview) ?? rows[0];
-
+function renderShopStats(
+  scene: GuardianPanelHost,
+  container: Phaser.GameObjects.Container,
+  columns: ListDetailColumns,
+  y: number
+): number {
   const listResult = renderListColumn({
     scene,
     container,
-    x: columns.leftX,
-    y: columnsTop,
-    width: columns.leftColW,
-    items: rows,
+    x: columns.leftX + ENTRY_INDENT,
+    y,
+    width: columns.leftColW - ENTRY_INDENT,
+    items: STAT_ROWS,
     idFor: (row) => row.key,
     labelFor: (row) => STAT_LABELS[row.key],
-    selectedId: selected.key,
+    selectedId: selectedStat(scene).key,
     page: scene.noetherStatPage,
     onPageChange: (page) => {
       scene.noetherStatPage = page;
@@ -263,11 +331,30 @@ function renderShopStats(scene: GuardianPanelHost, container: Phaser.GameObjects
     },
   });
   scene.noetherStatPage = listResult.page;
+  return listResult.bottom;
+}
 
-  // A stat has no art block to open the pane with (listDetail.ts's own
-  // openers each render a crystal or a move effect), so the pane opens on
-  // its name directly, capped at the same DETAIL_NAME_CAP those openers use.
-  let rightY = columnsTop;
+// The pane beside an open Stats heading. A stat has no art block to open on
+// (listDetail.ts's own openers each render a crystal or a move effect), so it
+// opens on its own name, then what it does in a fight, then what it *is*:
+// data/statLore.ts's paragraph on the physics the name comes from, since these
+// three are the numbers that define a quasiparticle rather than invented RPG
+// attributes. This pane starts no battle-effect preview of its own, so nothing
+// here will ever retarget a loop the Moves heading left running; it stops that
+// loop outright instead.
+function renderStatDetail(
+  scene: GuardianPanelHost,
+  container: Phaser.GameObjects.Container,
+  columns: ListDetailColumns,
+  y: number
+): number {
+  stopMoveEffectPreview();
+
+  const stats = getPlayerStats(scene.game.registry);
+  const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
+  const selected = selectedStat(scene);
+
+  let rightY = y;
   const nameScale = Math.min(fontScale(scene), DETAIL_NAME_CAP);
   const nameText = scene.add
     .text(columns.rightColCenterX, rightY, STAT_LABELS[selected.key], {
@@ -285,7 +372,7 @@ function renderShopStats(scene: GuardianPanelHost, container: Phaser.GameObjects
   const effectText = scene.add
     .text(columns.rightColCenterX, rightY, selected.effect, {
       fontSize: `${Math.round(11 * effectScale)}px`,
-      color: REFERENCE_BLUE_GREY_HEX,
+      color: GOLD_ACCENT_HEX,
       align: 'center',
       wordWrap: { width: columns.rightColW },
     })
@@ -293,11 +380,26 @@ function renderShopStats(scene: GuardianPanelHost, container: Phaser.GameObjects
   container.add(effectText);
   rightY += effectText.height + 6;
 
+  // Capped tighter than the effect line above it: this is the longest text in
+  // the panel, and left uncapped it walks the confirm button off the bottom of
+  // the canvas at the largest text-size preset.
+  const loreScale = Math.min(fontScale(scene), 1.15);
+  const loreText = scene.add
+    .text(columns.rightColCenterX, rightY, STAT_LORE[selected.key], {
+      fontSize: `${Math.round(10 * loreScale)}px`,
+      color: REFERENCE_BLUE_GREY_HEX,
+      align: 'left',
+      wordWrap: { width: columns.rightColW },
+    })
+    .setOrigin(0.5, 0);
+  container.add(loreText);
+  rightY += loreText.height + 8;
+
   const value = stats[selected.key];
   const maxed = value >= MAX_STAT;
   const cost = statUpgradeCost(value, selected.key);
 
-  rightY = renderStatusAndConfirm({
+  return renderStatusAndConfirm({
     scene,
     container,
     centerX: columns.rightColCenterX,
@@ -314,11 +416,6 @@ function renderShopStats(scene: GuardianPanelHost, container: Phaser.GameObjects
           dimmed: tokens < cost,
         },
   });
-
-  const leftBottom = renderListColumnFooter(scene, container, columns, listResult.bottom + 10, 'Farewell', () => scene.closeDialogue());
-  const columnsBottom = Math.max(leftBottom, rightY);
-  insertColumnDivider(scene, container, columns.dividerX, columnsTop, columnsBottom);
-  return columnsBottom + 6;
 }
 
 function buyStatPoint(scene: GuardianPanelHost, key: keyof Stats, value: number, cost: number) {
