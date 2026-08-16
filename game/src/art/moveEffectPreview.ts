@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import { playTargetEffect, resolveAttackShape, targetEffectTotalDurationMs, cancelPreviewFx, type EffectAnchor } from './attackEffects';
+import { setPreviewClip, clearPreviewClip, type PreviewClipRect } from './attackFx';
+export type { PreviewClipRect };
 import type { AttackShape } from '../audio/sfx';
 import type { MoveClass } from '../data/types';
 import type { MoveLevel } from '../data/materials';
@@ -35,7 +37,14 @@ import type { MoveLevel } from '../data/materials';
 // silently underneath it. That same nonzero offset is what marks these
 // objects as a detached preview for art/attackFx.ts, which is how stopping a
 // chain can wipe whatever is mid-flight.
+//
+// Each simultaneously-running chain gets its own offset off this base, spaced
+// far enough apart (PREVIEW_DEPTH_STRIDE, wider than the 58-61 band a single
+// effect layers itself across) that two chains never interleave. The offset
+// doubles as that chain's identity in art/attackFx.ts, which is what lets two
+// previews on screen at once each be clipped to their own stage.
 const PREVIEW_DEPTH_OFFSET = 150;
+const PREVIEW_DEPTH_STRIDE = 10;
 
 // Pause between one play settling and the next one starting, so the preview
 // reads as a repeating demonstration rather than one unbroken strobe.
@@ -46,6 +55,13 @@ export interface MoveEffectPreviewParams {
   moveClass: MoveClass;
   // Where the effect lands -- the centre of the caller's own preview stage.
   at: EffectAnchor;
+  // The stage the effect is confined to, in canvas coordinates -- normally
+  // the pane's own stage block, which the caller has already laid out and
+  // drawn a frame around (scenes/panels/listDetail.ts's drawPreviewStage).
+  // A battle effect is composed against the whole arena and would otherwise
+  // reach far outside the panel it is being demonstrated in; see
+  // art/attackFx.ts's own note.
+  clip: PreviewClipRect;
   shapeOverride?: AttackShape;
   level?: MoveLevel;
 }
@@ -70,9 +86,22 @@ interface PreviewChain {
   current: MoveEffectPreviewParams;
   generation: number;
   pendingTimer: Phaser.Time.TimerEvent | null;
+  // Fixed for as long as this key has a chain, so retargeting one (Landau
+  // retuning a move, which rebuilds the panel) reuses its own depth band and
+  // its own clip registration rather than leaking a new one per rebuild.
+  depthOffset: number;
 }
 
 const chains = new Map<string, PreviewChain>();
+
+// The lowest depth band not currently spoken for, so a second chain starting
+// while a first is live lands on its own.
+function nextDepthOffset(): number {
+  const taken = new Set([...chains.values()].map((c) => c.depthOffset));
+  let offset = PREVIEW_DEPTH_OFFSET;
+  while (taken.has(offset)) offset += PREVIEW_DEPTH_STRIDE;
+  return offset;
+}
 
 // Starts (or retargets) the preview chain identified by `key`. If a play is
 // already in flight for this same chain, this call does NOT fire a second,
@@ -91,10 +120,15 @@ export function startMoveEffectPreview(params: MoveEffectPreviewParams, key: str
     existing.current = params;
     existing.scene = params.scene;
   } else {
-    chains.set(key, { scene: params.scene, current: params, generation: 0, pendingTimer: null });
+    chains.set(key, { scene: params.scene, current: params, generation: 0, pendingTimer: null, depthOffset: nextDepthOffset() });
   }
-  if (alreadyRunning) return;
   const chain = chains.get(key)!;
+  // Re-declared on every call, retarget included: a panel rebuild lays its
+  // pane out afresh and the stage can land somewhere else (a longer move
+  // name above it, a different text-size preset), so the clip follows the
+  // stage rather than being registered once when the chain is born.
+  setPreviewClip(params.scene, chain.depthOffset, params.clip);
+  if (alreadyRunning) return;
   chain.generation++;
   playNext(key, chain.generation);
 }
@@ -121,7 +155,7 @@ function playNext(key: string, myGen: number) {
     c.pendingTimer = scene.time.delayedCall(LOOP_PAUSE_MS, () => playNext(key, myGen));
   };
 
-  playTargetEffect(scene, moveClass, at, shapeOverride, isUltimate ? afterSettled : undefined, PREVIEW_DEPTH_OFFSET, level ?? 0);
+  playTargetEffect(scene, moveClass, at, shapeOverride, isUltimate ? afterSettled : undefined, chain.depthOffset, level ?? 0);
 
   if (!isUltimate) {
     chain.pendingTimer = scene.time.delayedCall(targetEffectTotalDurationMs(shape, level ?? 0), afterSettled);
@@ -145,6 +179,7 @@ export function stopMoveEffectPreview(key?: string) {
     for (const chain of chains.values()) {
       chain.generation++;
       if (chain.pendingTimer) chain.scene.time.removeEvent(chain.pendingTimer);
+      clearPreviewClip(chain.depthOffset);
     }
     chains.clear();
     cancelPreviewFx();
@@ -154,6 +189,7 @@ export function stopMoveEffectPreview(key?: string) {
   if (!chain) return;
   chain.generation++;
   if (chain.pendingTimer) chain.scene.time.removeEvent(chain.pendingTimer);
+  clearPreviewClip(chain.depthOffset);
   chains.delete(key);
   // Per-key stops only ever happen when nothing else is previewing (a single
   // chain's own panel closing), so this clears the same screen either way.

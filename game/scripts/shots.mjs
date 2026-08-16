@@ -69,9 +69,9 @@ const GUARDIANS = [
   [3, 'dresselhaus'],
   [4, 'landau'],
   [5, 'majorana'],
-  [6, 'kondo'],
+  [6, 'anderson'],
   [7, 'feynman'],
-  [8, 'anderson'],
+  [8, 'kondo'],
   [9, 'franklin'],
   [10, 'curie'],
 ];

@@ -2,13 +2,13 @@ import Phaser from 'phaser';
 import type { GuardianPanelHost } from '../OverworldScene';
 import { killTweensDeep, makeCrystal } from '../../art/crystals';
 import { CANVAS_H } from '../../art/perspective';
-import { startMoveEffectPreview } from '../../art/moveEffectPreview';
+import { startMoveEffectPreview, type PreviewClipRect } from '../../art/moveEffectPreview';
 import { materialDisplayName } from '../../data/materials';
 import type { MoveLevel } from '../../data/materials';
 import type { Material, MoveClass } from '../../data/types';
 import type { AttackShape } from '../../audio/sfx';
 import { fontPx, fontScale } from '../../ui/text';
-import { GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
+import { GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 
 // Shared two-column "list+detail" scaffolding (STYLE.md's "List+detail
 // panels"): a left column of paginated, clickable candidate-name rows and a
@@ -121,6 +121,41 @@ export const DETAIL_NAME_CAP = 1.45;
 // bottom of the canvas even at this height, so it has no room for the taller
 // one.
 export const TWO_UP_STAGE_H = 84;
+
+// A move preview is a real battle effect, composed against the whole arena: a
+// beam falls in from above the top of the field, an eruption throws debris
+// well past where it lands. Played inside a panel it would reach across the
+// panel and the room behind it, so the stage block above is a *stage* in the
+// literal sense -- the effect is clipped to it (art/attackFx.ts's
+// `setPreviewClip`) and the block is drawn as a recessed, bordered pane so
+// the clip reads as a screen the demonstration is playing on rather than art
+// cut off at nothing. Inset from the column's full width so the two columns of
+// a two-up panel keep a visible gap between their stages.
+const STAGE_INSET_X = 8;
+const STAGE_BG = 0x0b0b16;
+const STAGE_BG_ALPHA = 0.55;
+const STAGE_BORDER_ALPHA = 0.5;
+
+// The rectangle a pane's preview plays inside, in canvas coordinates, plus the
+// frame drawn around it. Returned so the caller can hand the same rect to
+// `startMoveEffectPreview` -- one source of truth for where the stage is, so
+// the frame the player sees and the clip the effect obeys can never disagree.
+function drawPreviewStage(
+  scene: Phaser.Scene,
+  container: Phaser.GameObjects.Container,
+  centerX: number,
+  y: number,
+  colW: number,
+  stageH: number
+): PreviewClipRect {
+  const width = Math.max(40, colW - STAGE_INSET_X * 2);
+  const rect = { x: centerX - width / 2, y, width, height: stageH };
+  const frame = scene.add
+    .rectangle(centerX, y + stageH / 2, width, stageH, STAGE_BG, STAGE_BG_ALPHA)
+    .setStrokeStyle(1, REFERENCE_BLUE_GREY, STAGE_BORDER_ALPHA);
+  container.add(frame);
+  return rect;
+}
 
 export interface SideBySideColumns {
   colW: number;
@@ -435,6 +470,7 @@ export function renderMoveDetailHeader(
   previewKey?: string,
   stageH: number = DETAIL_STAGE_H
 ): number {
+  const clip = drawPreviewStage(scene, container, centerX, y, rightColW, stageH);
   startMoveEffectPreview(
     {
       scene,
@@ -442,6 +478,7 @@ export function renderMoveDetailHeader(
       shapeOverride,
       level,
       at: { x: centerX, y: y + stageH / 2 },
+      clip,
     },
     previewKey
   );
@@ -565,6 +602,10 @@ export function renderSelfBuffMoveDetailHeader(
   const shadowRx = crystalSize * 1.18;
   const shadowRy = crystalSize * 0.27;
 
+  // Stage first, so the crystal it is cast on stands inside it rather than
+  // behind its backing.
+  const clip = drawPreviewStage(scene, container, centerX, y, rightColW, stageH);
+
   container.add(scene.add.ellipse(centerX, shadowY, shadowRx * 2, shadowRy * 2, 0x000000, 0.3));
 
   const crystal = makeCrystal(scene, crystalSize, material.color, material.variant, { seed: material.name, hybrid: material.hybridParents });
@@ -576,6 +617,7 @@ export function renderSelfBuffMoveDetailHeader(
     moveClass,
     level,
     at: { x: centerX, y: crystalCenterY },
+    clip,
   });
 
   let ny = y + stageH;

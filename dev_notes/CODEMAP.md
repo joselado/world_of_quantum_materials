@@ -325,7 +325,14 @@ game/src/
                                   depth 58-61) above a dialogue panel's own container (depth 100) so
                                   it draws on top of the pane instead of underneath it -- that same
                                   nonzero offset is what marks the objects as a detached preview for
-                                  attackFx.ts. `params.level`
+                                  attackFx.ts, and doubles as that chain's identity there, which is
+                                  what lets two chains on screen at once be clipped to different
+                                  rectangles (each chain takes its own band off
+                                  PREVIEW_DEPTH_OFFSET, PREVIEW_DEPTH_STRIDE apart, fixed for as
+                                  long as its key has a chain). `params.clip` is the rectangle that
+                                  chain plays inside, re-declared on every start/retarget so the clip
+                                  follows its stage; the caller (listDetail.ts's drawPreviewStage)
+                                  hands in the same rect it drew the stage frame from. `params.level`
                                   (Feynman's MoveLevel) is forwarded straight into playTargetEffect's
                                   own `level`, so a leveled move's preview escalates the same way a
                                   real cast does. Tracks any number of independent, simultaneously-
@@ -357,7 +364,8 @@ game/src/
                                   whatever is mid-flight (attackFx.ts's cancelPreviewFx), so closing a
                                   panel takes its animation with it rather than leaving a
                                   multi-second Ultimate sequence playing over the room
-    attackFx.ts                  fxGraphics()/fxCounter()/fxDelayedCall()/cancelPreviewFx() -- the
+    attackFx.ts                  fxGraphics()/fxCounter()/fxDelayedCall()/cancelPreviewFx()/
+                                  setPreviewClip()/clearPreviewClip() -- the
                                   object-creation choke point every attackShapes.ts/attackUltimates.ts
                                   shape draws through, so a *preview* of an effect can be torn down
                                   mid-flight. A nonzero depthOffset means "detached preview" (it is 0
@@ -368,7 +376,13 @@ game/src/
                                   onComplete. cancelPreviewFx stops tracked tweens
                                   before destroying tracked Graphics: a Phaser tween's stop() fires
                                   onStop, never onComplete, so no phase chained off an onComplete gets
-                                  to draw anything new after the cancel
+                                  to draw anything new after the cancel. setPreviewClip registers the
+                                  rectangle a preview is confined to, keyed by that same depthOffset,
+                                  and fxGraphics masks every preview Graphics to it as it is created
+                                  (a real cast passes 0, finds no entry and is masked by nothing) --
+                                  a re-declaration for the same scene redraws the existing mask's
+                                  source rather than swapping in a new mask object, since Graphics
+                                  already in flight hold a reference to it
     colors.ts                   shade(), darken(), blend(), hueShift(), hashSeed()/seededRandom() --
                                   the deterministic per-compound PRNG jitterFor() (crystals.ts) is built from
     qumatuomiMap.ts              buildQumatuomiMap(scene, { width, height, discoveredWorlds }) -- a

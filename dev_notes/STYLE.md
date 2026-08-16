@@ -354,7 +354,17 @@ under one figure reads as floating even when neither is wrong on its own.
   `renderMoveDetailHeader` block -- "Attack effects" below has the animation's own details), and
   Kondo's own self-buff move-browsing step (the same centered loop, but *over a rendered player
   crystal* -- a self-buff has to be seen buffing something -- via the shared
-  `renderSelfBuffMoveDetailHeader` block, "Kondo in the overworld" below). A guardian's
+  `renderSelfBuffMoveDetailHeader` block, "Kondo in the overworld" below). **A move preview
+  plays inside its own stage and nowhere else.** The art block those two blocks reserve is drawn
+  as a recessed, bordered pane (`drawPreviewStage`: a dark fill at `0.55` and a hairline
+  `REFERENCE_BLUE_GREY` border at `0.5`, inset `8`px from the column so two stages side by side
+  keep a visible gap), and the effect is clipped to exactly that rectangle. It has to be: the
+  preview is the *real* battle effect, composed against a whole arena, so a beam falls in from
+  above the top of the field and an eruption throws debris well past where it lands. Unclipped
+  at panel scale it covers the guardian's own portrait, their opening line, and the room behind
+  the panel. The frame is what makes the clip read as a screen the demonstration is playing on
+  rather than art cut off at nothing, and the same rectangle feeds both, so the border the
+  player sees and the boundary the effect obeys can never disagree. A guardian's
   list+detail step is a **preview-then-confirm** flow, distinct from the plain shop-row style
   used elsewhere (Anderson's own second step, picking a *move* rather than a crystal, still the
   right choice when there's no crystal/move art worth previewing), from Franklin's own
