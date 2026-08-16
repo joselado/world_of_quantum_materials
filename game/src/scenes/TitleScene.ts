@@ -3,12 +3,57 @@ import { clearSave, hasSave, loadSave } from '../data/save';
 import { music } from '../audio/music';
 import { CANVAS_W, CANVAS_H } from '../art/perspective';
 import { makeCrystal } from '../art/crystals';
+import { buildQumatuomiMap } from '../art/qumatuomiMap';
+import { drawStarNetwork } from '../art/stars';
 import { TYPE_LOOK } from '../data/materials';
 import type { MaterialType } from '../data/types';
 import { fontPx, fontScale } from '../ui/text';
 import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../ui/theme';
 
 type ShowcaseEntry = { type: MaterialType; size: number; dx: number; dy: number; duration: number; delay: number };
+
+// How the two framing elements -- the finished star network above and the
+// Qumatuomi map below -- sit around the showcase/title/buttons stack. One
+// line to flip:
+//
+//   'a' emblems: the network as a wide, faint field across the top behind the
+//       showcase crystals; the map small and fully lit at the bottom, below
+//       the hint, with the stack centered in the space above it.
+//   'b' watermark: the network as a tighter, brighter figure at the top; the
+//       map huge and very faint behind the whole stack, a land the buttons
+//       float over.
+//   'c' panorama: the network as a wide faint field reaching further down the
+//       frame; the map mid-size and half-lit as a bottom panorama that the
+//       mode picker and hint overlap.
+//
+// The network is always the *finished* stage (art/stars.ts's World 10 form),
+// drawn faint: meaningless as anything but a constellation until the player
+// has walked Worlds 7-10, and a recognition afterwards. The map always shows
+// all ten worlds discovered -- like the showcase, this is a "world full of
+// places" branding image, not a reflection of the player's own save.
+const TITLE_LAYOUT: 'a' | 'b' | 'c' = 'b';
+
+// Per-layout geometry for the two elements. `horizonY` feeds drawStarNetwork's
+// band math (stars fill from just below the top down toward it); `scale`
+// shrinks the whole star Graphics toward the top center for the tight-figure
+// variant. `reserveFrac` is how much of the map's own height is claimed as
+// bottom space the content stack centers above rather than into -- 1 keeps
+// the stack fully clear of the map, 0 lets it overlap freely, and a fraction
+// lets only the last line or two reach into the map's upper coast.
+const TITLE_STARS: Record<'a' | 'b' | 'c', { horizonY: number; alpha: number; scale: number }> = {
+  a: { horizonY: 132, alpha: 0.4, scale: 1 },
+  b: { horizonY: 176, alpha: 0.75, scale: 0.5 },
+  c: { horizonY: 250, alpha: 0.3, scale: 1 },
+};
+const TITLE_MAP: Record<'a' | 'b' | 'c', { width: number; alpha: number; reserveFrac: number }> = {
+  a: { width: 168, alpha: 1, reserveFrac: 1 },
+  b: { width: 560, alpha: 0.17, reserveFrac: 0 },
+  c: { width: 280, alpha: 0.38, reserveFrac: 0.5 },
+};
+// The gradient's own top color, which the star network's light is blended
+// toward so the constellation sits in this screen's air rather than on top
+// of it.
+const TITLE_SKY = 0x0c1030;
 
 // A "character-select roster" branding image -- all 13 of data/materials.ts's
 // TYPE_LOOK entries shown at once (purely a "world full of different
@@ -61,6 +106,14 @@ export class TitleScene extends Phaser.Scene {
   // and the mode picker's own highlight all depend on which mode is
   // currently selected.
   private root?: Phaser.GameObjects.Container;
+  // The star network's Graphics, redrawn every frame by update() so the
+  // finished network twinkles the same way it does in World 10's sky. Lives
+  // outside root: the framing elements don't depend on mode/save state, so a
+  // mode switch never rebuilds them.
+  private starsG?: Phaser.GameObjects.Graphics;
+  // Bottom space the map claims (TITLE_MAP's reserveFrac), which
+  // redrawContent centers the content stack above rather than into.
+  private mapReserve = 0;
 
   constructor() {
     super('Title');
@@ -84,12 +137,48 @@ export class TitleScene extends Phaser.Scene {
     music.play('overworld:1');
 
     const g = this.add.graphics();
-    g.fillGradientStyle(0x0c1030, 0x0c1030, 0x241a44, 0x241a44, 1);
+    g.fillGradientStyle(TITLE_SKY, TITLE_SKY, 0x241a44, 0x241a44, 1);
     g.fillRect(0, 0, CANVAS_W, CANVAS_H);
 
+    // The star network at the top -- the machine already lurking over the
+    // title, before the game has said a word about it. update() below
+    // redraws it each frame for the twinkle.
+    const stars = TITLE_STARS[TITLE_LAYOUT];
+    this.starsG = this.add.graphics();
+    this.starsG.setScale(stars.scale);
+    this.starsG.setX((CANVAS_W * (1 - stars.scale)) / 2);
+    this.starsG.setAlpha(stars.alpha);
+
+    this.addTitleMap();
     this.redrawContent(registry);
 
     this.input.keyboard!.once('keydown-SPACE', () => this.start());
+  }
+
+  update(time: number) {
+    if (!this.starsG) return;
+    this.starsG.clear();
+    drawStarNetwork({ g: this.starsG, world: 10, horizonY: TITLE_STARS[TITLE_LAYOUT].horizonY, target: TITLE_SKY, now: time });
+  }
+
+  // The world map at the bottom, built once at create() (it shows all ten
+  // worlds regardless of save state, so no mode switch ever needs to rebuild
+  // it) and kept beneath root in the display list, so the content stack
+  // always draws over it where the two meet.
+  private addTitleMap() {
+    const cfg = TITLE_MAP[TITLE_LAYOUT];
+    const build = buildQumatuomiMap(this, {
+      width: cfg.width,
+      height: Math.ceil(cfg.width * 0.52),
+      discoveredWorlds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    });
+    build.container.setAlpha(cfg.alpha);
+    if (TITLE_LAYOUT === 'b') {
+      build.container.setPosition(CANVAS_W / 2, CANVAS_H / 2 + 30);
+    } else {
+      build.container.setPosition(CANVAS_W / 2, CANVAS_H - build.height / 2 - 6);
+    }
+    this.mapReserve = cfg.reserveFrac > 0 ? Math.round(build.height * cfg.reserveFrac) + 12 : 0;
   }
 
   // Loads one mode's save slot into the registry wholesale -- every field,
@@ -241,7 +330,9 @@ export class TitleScene extends Phaser.Scene {
     root.add(hint);
     y += hint.height;
 
-    root.y = Math.max(6, Math.round((CANVAS_H - y) / 2));
+    // Centered in the space the bottom map doesn't claim (mapReserve is zero
+    // for layouts whose map the stack is allowed to overlap).
+    root.y = Math.max(6, Math.round((CANVAS_H - this.mapReserve - y) / 2));
   }
 
   // "New Game (erase save)" is destructive and irreversible (localStorage,

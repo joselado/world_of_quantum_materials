@@ -647,9 +647,9 @@ export function carveThickPath(walkable: boolean[][], gridW: number, gridH: numb
 // through the pass, not whether the pass exists.
 //
 // World 1's *backward* exit is deliberately not one of these. It leads to the
-// Lab, which is not a place (WORLDS.md section 4) -- every geographic
-// boundary in the game is a pass, and the single non-geographic one is a
-// door. That asymmetry is the point and is left alone here.
+// Lab, which is not a place (WORLDS.md section 4) -- every geographic boundary
+// in the game narrows into a pass, and the single non-geographic one never
+// narrows and stands empty. That asymmetry is the point and is left alone here.
 // The throat itself is one width at every world size. A pass is a doorway
 // between two worlds, not a feature of either, and it is the same doorway
 // walked twice -- so it is exactly as wide whether the world behind it is

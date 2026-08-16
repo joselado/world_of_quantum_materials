@@ -5,7 +5,6 @@ import { makeCrystal } from '../art/crystals';
 import { makeToken } from '../art/tokens';
 import { makeNoetherAvatar } from '../art/noether';
 import { BOSS_FOOT, BOSS_SILHOUETTE_BOTTOM, BOSS_SILHOUETTE_HALF_WIDTH, BOSS_SILHOUETTE_TOP, makeBossCrystal } from '../art/boss';
-import { DOOR_FOOT, makeDoorSprite } from '../art/door';
 import { BOARD_FOOT, makePassBoard } from '../art/passBoard';
 import { makeBlochAvatar } from '../art/bloch';
 import { makeFeynmanAvatar } from '../art/feynman';
@@ -158,10 +157,6 @@ const CRYSTAL_TO_TEXT = 20;
 const TEXT_TO_BUTTON = 16;
 const BELOW_BUTTON = 20;
 const BOTTOM_MARGIN = 10;
-// The doorway landmark at World 1's backward exit -- bigger than the player
-// (34) so it reads as a real structure. Every geographic boundary is a pass;
-// the Lab is not a place, so the one non-geographic boundary is a door.
-const DOOR_SPRITE_SIZE = 46;
 // The signboard in a pass. Read at approach distance and no further, so it
 // stays a signpost rather than competing with the horizon it captions.
 const BOARD_SPRITE_SIZE = 34;
@@ -1943,10 +1938,17 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // next world is visible past it.
   //
   // Two exceptions, both ontology rather than convenience: World 1's
-  // backward exit is a door, not a pass, because it leads to the Lab and the
-  // Lab is not a place; and World 10's forward pass gets no board, because
-  // the grammar means "another world lies beyond" and the finale's meaning is
+  // backward exit names no world, because it leads to the Lab and the Lab is
+  // not a place; and World 10's forward pass gets no board, because the
+  // grammar means "another world lies beyond" and the finale's meaning is
   // that there is not one.
+  //
+  // World 1's exit carries no landmark of its own at all. Nothing in this
+  // game hovers over the ground except a crystal, which is what a crystal
+  // *is* -- so an archway floating at the world's edge read as a misplaced
+  // creature rather than as a way out. The prompt the approach raises is what
+  // says the Lab is back there, and the exit's geography already says the
+  // rest: it is the one boundary in the game that never narrows into a pass.
   private spawnGateSprites() {
     this.gateSprites = [];
 
@@ -1955,17 +1957,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // shared.ts's openStartMouth), not on top of it. The camera looks forward
     // from just behind the player, so anything sitting exactly on startTile
     // would only ever be visible stacked under the player's own crystal.
-    if (this.world === 1) {
-      const door = makeDoorSprite(this, DOOR_SPRITE_SIZE);
-      this.gateSprites.push({
-        x: this.startTile.x,
-        y: this.startTile.y - 1,
-        size: DOOR_SPRITE_SIZE,
-        foot: DOOR_SPRITE_SIZE * DOOR_FOOT,
-        container: door,
-        seed: Math.random() * Math.PI * 2,
-      });
-    } else {
+    if (this.world > 1) {
       this.gateSprites.push(this.makeBoardSprite(this.startTile.x, this.startTile.y - 1, worldName(this.world - 1)));
     }
 

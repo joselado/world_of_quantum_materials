@@ -46,7 +46,7 @@ at ground level": same data, same rules, different lens.
 | ridgelines | that world's **distant self** | four generic curves, identical in all ten worlds |
 | sky and fog | the composition layer's colour pipeline | the arena's private horizon glow |
 | ground | the terrain materials' **definitions** — see below | a plain field |
-| crystal lighting | the additive-halo idea from `art/boss.ts` / `art/door.ts`, reworked per §"Crystal lighting" | nothing |
+| crystal lighting | the additive-halo idea from `art/boss.ts`, reworked per §"Crystal lighting" | nothing |
 
 A distant self is **shape plus base colour**; scale is the renderer's business,
 so the arena draws it at whatever size it wants. One authored silhouette then

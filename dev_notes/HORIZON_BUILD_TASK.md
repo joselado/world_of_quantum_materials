@@ -138,8 +138,8 @@ What it landed, and what any later stage sharing the pass must keep true:
   depth each frame, the rival included, so stage E's flanks can share the pass
   with it.
 - **Backward exits are passes with a board and no guard** in worlds 2–10.
-  World 1's is a door (it leads to the Lab, which is not a place); World 10 gets
-  no forward board (nothing lies beyond).
+  World 1's is neither a pass nor a board (it leads to the Lab, which is not a
+  place); World 10 gets no forward board (nothing lies beyond).
 
 ## E — Depth-projected flanks — deferred
 

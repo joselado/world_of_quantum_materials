@@ -20,7 +20,11 @@ game/src/
                                  its canvas size from there
   scenes/
     TitleScene.ts             Loads save -> registry, title showcase crystals, "Continue"/"New Game" -> Hub,
-                                 Story Mode / Superposition Mode picker
+                                 Story Mode / Superposition Mode picker; framed by the finished
+                                 star network (art/stars.ts, drawn faint across the top, redrawn
+                                 per frame in update() for its twinkle) and a small all-worlds
+                                 Qumatuomi map at the bottom (art/qumatuomiMap.ts, built once at
+                                 create() outside the rebuilt content container)
     HubScene.ts                World 0, static room, up to 8 stations: 2 that always exist
                                  (Qumatex/Door -- door label/click resume-in-place to
                                  highestUnlockedWorld() via canResumeWorld(), tracks
@@ -416,9 +420,12 @@ game/src/
                                   the deterministic per-compound PRNG jitterFor() (crystals.ts) is built from
     qumatuomiMap.ts              buildQumatuomiMap(scene, { width, height, discoveredWorlds }) -- a
                                   standalone, hand-drawn Finland-coastline map (a Suomi/"Qumatuomi"
-                                  pun) with one circle marker per world (1-10), each tinted with that
-                                  world's own art/biomes.ts palette once discovered or rendered
-                                  shrouded in mist otherwise (STYLE.md's "Qumatuomi map"); scales its
+                                  pun) with one circle marker per world (1-10). The landmass is
+                                  painted as ten nearest-world regions, each discovered world's
+                                  region flat-filled with its own art/biomes.ts terrain colour and
+                                  scattered with per-world texture marks, undiscovered regions
+                                  shrouded in flat grey and mist (STYLE.md's "Qumatuomi map";
+                                  MAP_STYLE in the module picks the region treatment); scales its
                                   silhouette uniformly to fit the given width/height. Returns
                                   { container, markers, width, height } -- markers is a { world,
                                   marker: Phaser.GameObjects.Shape }[] (each also carries
@@ -730,7 +737,7 @@ World 10's Adapted and nowhere else.
   its own ground contact sits *below* that origin. `updateWorldSprites` lands `foot` on the
   projected centre of tile `(x, y)`, so every landmark stands on its tile the way the player's
   avatar does. Art that carries a contact shadow exports the offset it drew that shadow at
-  (`art/boss.ts`'s `BOSS_FOOT`, `art/door.ts`'s `DOOR_FOOT`) rather than the caller guessing;
+  (`art/boss.ts`'s `BOSS_FOOT`, `art/passBoard.ts`'s `BOARD_FOOT`) rather than the caller guessing;
   art that deliberately hovers (a qumatessence cloud, a guardian adrift) passes `foot: 0`.
   Anything whose art actually *meets* the ground also sets `still`, which turns the wander and
   bob off -- see STYLE.md's "The contact rule." The
@@ -1397,8 +1404,11 @@ unreachable while the gate is shut.
 
 **Gate scenery.** `OverworldScene.spawnGateSprites` puts one `WorldSprite` in each pass. Backward:
 a board (`art/passBoard.ts`'s `makePassBoard`, `BOARD_SPRITE_SIZE = 34`) naming World N-1, always
-present since the way back carries no state -- except World 1, which gets `art/door.ts`'s
-`makeDoorSprite` instead, because it leads to the Lab and the Lab is not a place. Forward: a board
+present since the way back carries no state -- except World 1, whose backward exit carries
+no landmark at all, because it leads to the Lab and the Lab is not a place, so there is no
+world there to name. Nothing in this game hovers over the ground except a crystal, so a
+structure floating at the world's edge read as a misplaced creature rather than as a way
+out; the approach prompt is what says the Lab is back there. Forward: a board
 naming World N+1, spawned only once the rival is beaten, and never in World 10. Boards set
 `WorldSprite.still`, which suppresses the wander/bob a loose hovering crystal carries -- a
 signboard nailed to two posts does not drift. (The goal-tile golem sets it too, for its own

@@ -1311,8 +1311,8 @@ fight on its own. The backward pass carries no state, since the way back is open
 the moment the player walks in through it; landing in the earlier world that way puts
 the player at *its* far end with that world's goal already marked reached, so arriving
 reads as walking in from the far end rather than restarting the whole corridor. World
-1's backward exit is a door rather than a pass, because it leads to the Lab, which is
-not a place. Both directions are ordinary walking, not a menu action, alongside
+1's backward exit is not a pass and carries no board, because it leads to the Lab, which
+is not a place. Both directions are ordinary walking, not a menu action, alongside
 Bloch's teleport hub (§5) for jumping to an arbitrary already-visited world. Every
 crossing regenerates the destination world's map fresh, the same "walking between
 worlds always lays out a new corridor" rule §7 describes for every other transition.

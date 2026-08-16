@@ -123,13 +123,34 @@ under one figure reads as floating even when neither is wrong on its own.
 
 - Dark indigo gradient (`0x0c1030` → `0x241a44`), no biome/perspective machinery involved --
   this screen exists to load the save (see DESIGN.md §7) and hand off to the Hub, not to be a
-  world of its own. Everything below the gradient (showcase, title, button, mode picker, hint)
+  world of its own. The mode-dependent content (showcase, title, button, mode picker, hint)
   is built inside one container, laid out top-down in the container's own local coordinates
   first; only once the whole stack's real height is known does the container get offset
-  (`root.y = Math.max(6, Math.round((CANVAS_H - y) / 2))`) so the *whole composition* centers
-  vertically in the canvas, the same measure-then-center pattern `confirmNewGame` below uses
+  (`root.y = Math.max(6, Math.round((CANVAS_H - this.mapReserve - y) / 2))`) so the *whole
+  composition* centers vertically in the space above the bottom map, the same
+  measure-then-center pattern `confirmNewGame` below uses
   for its own popup -- needed here because the stack's real height depends on both the save
   state (an existing save adds an "erase save" line) and the Settings panel's text-size preset.
+- Two framing elements sit outside that container (they depend on neither mode nor save, so a
+  mode switch never rebuilds them), both beneath it in the display list so the content always
+  draws over them where they meet:
+  - **The finished star network** (`art/stars.ts`'s `drawStarNetwork` with `world: 10`) as a
+    tight figure at half scale (alpha `0.75`) across the top of the screen, above the showcase
+    crystals, blended toward the gradient's own top colour and redrawn each frame in `update()`
+    for its twinkle. Deliberately the *finished* network: to a new player it reads as a
+    constellation; to anyone who has walked Worlds 7-10 it is the Devouring Mirror's model,
+    already lurking over the title. Drawn tight rather than spread, so it reads as one figure
+    with a shape rather than as scattered links -- which is the whole point, since the thing it
+    is a picture of is a network. Earlier stages would say less. That showing the completed
+    network here is not the reveal it would be inside a world is what the title screen's
+    position buys: it sits outside the four-world progression the star arc runs across
+    (`WORLDS.md` section 1), so "the stages only ever add" is untouched by it.
+  - **The Qumatuomi map** (`art/qumatuomiMap.ts`, `560`px wide at alpha `0.17`) as a ghost
+    landmass behind the whole content stack. It always shows all ten worlds discovered -- like
+    the showcase it is a "world full of places" branding image, not a reflection of the
+    player's own save. Held at that alpha because it sits *under* the title, buttons and mode
+    picker rather than beside them: it is there to be recognised on a second look, and text
+    legibility wins wherever the two compete.
 - Title text reads "WORLD OF QUANTUM MATERIALS" (`30px` bold, white), the screen's visual
   anchor -- big enough and high enough in the stack that the showcase and mode picker below
   read as framing it rather than the other way around. Its font size is capped at the
@@ -905,13 +926,21 @@ main island. `buildQumatuomiMap` places one small circle marker per world (1-10)
 aesthetic left-to-right zigzag, with one deliberate exception: World 10's marker is a real
 south-coast place's actual coordinates through that same mapping rather than placed by eye --
 never labeled or surfaced to the player, the position alone is the reference.
-Each world's own local patch of map is tinted with that world's `art/biomes.ts` palette
-(`hillColor` outer / `path` inner, soft concentric circles rather than faceted shading, blended
-via `colors.ts`'s `blend()`) once the caller marks it discovered; an undiscovered world instead
-gets a flat dim silhouette patch (the same `0x33394a` the Materialdex's own undiscovered-crystal
-treatment uses) plus a few soft, deterministically-jittered light-grey mist puffs, so it reads as
-shrouded rather than merely a different color. The landmass fill itself stays perfectly flat, no
-per-tile diagonal shading, matching every other ground/floor fill in the game. The module wires no
+The landmass is painted as ten regions -- a nearest-world partition of the coastline's interior
+(point-in-polygon clipped, with soft blended borders where two regions meet) -- so the map reads
+as ten kinds of country rather than ten labelled dots. Each discovered world's region is
+flat-filled with that world's own terrain colour (its `art/biomes.ts` `ground` lifted toward its
+`path`, via `colors.ts`'s `blend()`) and scattered with small deterministic texture marks built
+from the world's own surround: tree crowns for the Mean Fields, sandstone flecks for the Stone
+Lattice, terrace lines, band stripes, flow streaks, leaning shards, gold web nodes, pools and
+reeds, cracks with embers, pale facets. Region cells are painted only fully inside the
+silhouette, leaving a thin rim of the shared land colour along every coast that reads as
+shoreline. An undiscovered world's whole region is instead the flat dim grey (the same `0x33394a`
+the Materialdex's own undiscovered-crystal treatment uses) plus a few soft,
+deterministically-jittered light-grey mist puffs, so it reads as shrouded rather than merely a
+different color. Every fill stays flat -- no per-tile diagonal shading -- matching every other
+ground/floor fill in the game (`MAP_STYLE` in the module is the one line that picks this region
+treatment). The module wires no
 interactivity of its own -- Bloch's panel ("Bloch in the overworld" below) is the one consumer of
 that build, attaching its own `setInteractive`/`pointerdown` handling to each returned marker and
 reading back the module's actual rendered `width`/`height` (uniform scale-to-fit can make either
@@ -965,6 +994,10 @@ strange links in World 8, drifting cloud occluding part of the pattern in World
   mist.
 - **The finished network carries visibly more light** — brighter nodes, haloed,
   with heavier links — because the reveal has to land at a glance.
+- **The title screen carries the finished form faint** (see "Title screen"
+  above): the same authored pattern, present before the player has met any of
+  it, readable as an ordinary constellation until Worlds 7-10 teach them
+  otherwise.
 
 ## The Lab's two signals (`HubScene`, `art/labMotifs.ts`)
 
@@ -1907,7 +1940,7 @@ station motifs are deliberately not tunnels with a visible far end.
   world's rival is beaten this avatar stops spawning, and the pass simply
   clearing is the whole of what "the way is open" looks like.
 
-## Gates as passes (`OverworldScene.spawnGateSprites`, `art/passBoard.ts`, `art/door.ts`)
+## Gates as passes (`OverworldScene.spawnGateSprites`, `art/passBoard.ts`)
 
 `dev_notes/WORLDS.md` §4's "Gates as passes" is the spec. One grammar throughout:
 **a palette seen through an opening is where you are going.** A gate is not an
@@ -1948,18 +1981,19 @@ world are shaped, since world N's start is world N-1's exit.
   a seam the player visibly steps over.
 - **The backward exit is a pass with a board and no guard**, carrying no state
   -- the way back is open from the moment the player arrives, having walked in
-  through it. **World 1's is a door** (`art/door.ts`'s `makeDoorSprite`,
-  `DOOR_SPRITE_SIZE = 46`: a genuinely rectangular stone archway with a small
-  corner radius so it doesn't collapse into a pill silhouette, a darker inset
-  opening, a lavender `0xd9a5ff` portal with orbiting white motes, and a wide
-  faint additive halo so it still reads as a beacon when distance shrinks it).
-  Every geographic boundary is a pass; the one non-geographic boundary is a
-  door, and the asymmetry is the ontology made visible. **World 10 gets no
-  forward board** -- the grammar means "another world lies beyond", and the
-  finale's meaning is that there is not one.
-- Board and door alike wear the same lavender (`STORY_LAVENDER`/`#d9a5ff`) the
-  story beat and the world-entry lore screen wear: the colour of connective
-  tissue between worlds.
+  through it. **World 1's carries nothing at all**: it leads to the Lab, which
+  is not a place, so there is no world there for a board to name, and it is the
+  one boundary that never narrows into a pass. Nothing in this game hovers over
+  the ground except a crystal, which is what a crystal *is*, so a structure
+  standing at the world's edge read as a misplaced creature rather than as a way
+  out. The prompt the approach raises is what says the Lab is back there, and
+  the asymmetry is the ontology made visible -- by an absence, which is the
+  honest shape for a way out of the world. **World 10 gets no forward board** --
+  the grammar means "another world lies beyond", and the finale's meaning is
+  that there is not one.
+- A board wears the same lavender (`STORY_LAVENDER`/`#d9a5ff`) the story beat
+  and the world-entry lore screen wear: the colour of connective tissue between
+  worlds.
 
 ## The between-worlds story beat (`OverworldScene.showStoryBeat`)
 

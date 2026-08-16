@@ -793,9 +793,13 @@ keypress, the exact semantic descendant of the click it replaces.
 finale's meaning is that there is not one. The Adapted holds the pass; when it
 falls, the pass frames the mirror-sky and nothing else.
 
-**World 1's backward exit is a door, not a pass**, because it leads to the Lab.
-Every geographic boundary is a pass; the one non-geographic boundary is a door.
-The asymmetry is the ontology made visible.
+**World 1's backward exit is not a pass**, because it does not lead to a place.
+Every geographic boundary in the game narrows into one; this boundary never
+narrows, and it stands empty — no board naming what is beyond, since nothing
+lies beyond it that a name would fit. What tells the player it is there is the
+prompt the approach raises. The asymmetry is the ontology made visible, and it
+is made visible by an absence, which is the honest shape for a way out of the
+world.
 
 Wayfinding is not the problem a gate solves — a corridor has nowhere else to
 walk. What the gate must carry is **state**: the way forward opens only once

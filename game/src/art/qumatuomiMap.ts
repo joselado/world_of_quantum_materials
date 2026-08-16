@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { getBiome } from './biomes';
 import { blend, hashSeed, seededRandom } from './colors';
+import { DISTANT_SELVES, MAX_CREST } from './horizons';
 import { CANVAS_W } from './perspective';
 
 // A standalone, hand-drawn Finland-coastline map (a Suomi/"Qumatuomi" pun),
@@ -12,7 +13,8 @@ import { CANVAS_W } from './perspective';
 // reads the returned marker list to attach its own click handling later.
 //
 // The same coastline has two builds, and they stay separate. `buildQumatuomiMap`
-// is the panel one: markers, region tints, a container to click.
+// is the panel one: markers, per-world region terrain (MAP_STYLE below), a
+// container to click.
 // `drawQumatuomiOverlook` is scenery -- the land below World 10's cliff, drawn
 // straight into a Graphics as a hazed record with every affordance stripped.
 // Sharing the geometry is the point, and sharing it *exactly* is what lets a
@@ -156,6 +158,73 @@ const UNDISCOVERED_FILL = 0x33394a;
 const UNDISCOVERED_STROKE = 0x565f78;
 const MIST_COLOR = 0xcfd6e6;
 
+// How the panel build renders each world's region -- one line to flip:
+//
+//   'a' painted biomes: the landmass is partitioned into ten regions (nearest
+//       world position, clipped to the coastline), each flat-filled with its
+//       world's own terrain colour and scattered with small texture marks
+//       built from that world's surround -- tree crowns, band stripes, flow
+//       streaks, leaning shards, cracks -- so the map reads as ten kinds of
+//       country rather than ten labelled dots.
+//   'b' terrain vignettes: the landmass keeps one shared land colour with a
+//       soft per-world tint, and an authored cluster of that world's own
+//       features (a stand of trees, a colonnade, reeds in a pool) stands at
+//       each world's position like the drawings on an old atlas.
+//   'c' regions + horizon miniatures: painted regions as in 'a', but instead
+//       of texture marks each world carries its own horizon silhouette
+//       (art/horizons.ts's distant self) as a miniature ridge across its
+//       region.
+//
+// All three keep the same coastline, markers and undiscovered shroud;
+// drawQumatuomiOverlook below is untouched by this choice (the overlook
+// deliberately strips every per-world region treatment).
+export type QumatuomiMapStyle = 'a' | 'b' | 'c';
+export const MAP_STYLE: QumatuomiMapStyle = 'a';
+
+// A world's region colour: its own ground carried most of the way, lifted
+// toward its walkable-path colour just enough that a map of it reads as
+// terrain seen from above rather than as the dark impassable surround alone.
+function regionColor(world: number): number {
+  const b = getBiome(world);
+  return blend(b.ground, b.path, 0.35);
+}
+
+// Point-in-polygon against the full silhouette (ray cast), rather than the
+// topAt/bottomAt interpolators: those scan intervals in list order and are
+// deliberately conservative under the northwestern arm, which would leave the
+// arm unpainted in a full-region fill.
+function insideLand(x: number, y: number): boolean {
+  let inside = false;
+  const pts = SILHOUETTE_POINTS;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [xi, yi] = pts[i];
+    const [xj, yj] = pts[j];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+function nearestTwoWorlds(x: number, y: number): { w1: number; d1: number; w2: number; d2: number } {
+  let w1 = 1;
+  let d1 = Infinity;
+  let w2 = 1;
+  let d2 = Infinity;
+  for (let w = 1; w <= 10; w++) {
+    const p = WORLD_POSITIONS[w];
+    const d = Math.hypot(x - p.x, y - p.y);
+    if (d < d1) {
+      w2 = w1;
+      d2 = d1;
+      w1 = w;
+      d1 = d;
+    } else if (d < d2) {
+      w2 = w;
+      d2 = d;
+    }
+  }
+  return { w1, d1, w2, d2 };
+}
+
 function interp(points: [number, number][], x: number): number {
   if (x <= points[0][0]) return points[0][1];
   const last = points[points.length - 1];
@@ -185,6 +254,343 @@ function maxSafeRadius(x: number, y: number, desired: number): number {
   const marginTop = y - topAt(x);
   const marginBottom = bottomAt(x) - y;
   return Math.max(4, Math.min(desired, marginTop * 0.85, marginBottom * 0.85));
+}
+
+type ToScreen = (nx: number, ny: number) => { x: number; y: number };
+
+// --- Style 'a' / 'c': painted regions --------------------------------------
+
+// Native-px cell size of the region fill, and how wide the soft blend between
+// two adjacent regions runs. Cells are painted only when all four corners sit
+// inside the coastline, which leaves a thin rim of the shared LAND_FILL along
+// every coast -- read as shoreline, and what keeps the paint from ever
+// spilling past the stroked outline without a clip mask.
+const REGION_CELL = 2;
+const REGION_BORDER_SOFT = 6;
+
+function paintRegions(g: Phaser.GameObjects.Graphics, discovered: Set<number>, toScreen: ToScreen, scale: number) {
+  const colorOf = (w: number) => (discovered.has(w) ? regionColor(w) : UNDISCOVERED_FILL);
+  for (let x = 0; x < NATIVE_W; x += REGION_CELL) {
+    for (let y = 0; y < NATIVE_H; y += REGION_CELL) {
+      if (
+        !insideLand(x, y) ||
+        !insideLand(x + REGION_CELL, y) ||
+        !insideLand(x, y + REGION_CELL) ||
+        !insideLand(x + REGION_CELL, y + REGION_CELL)
+      )
+        continue;
+      const { w1, w2, d1, d2 } = nearestTwoWorlds(x + REGION_CELL / 2, y + REGION_CELL / 2);
+      const margin = d2 - d1;
+      const col = margin < REGION_BORDER_SOFT ? blend(colorOf(w1), colorOf(w2), 0.5 - (margin / REGION_BORDER_SOFT) * 0.5) : colorOf(w1);
+      const p = toScreen(x, y);
+      g.fillStyle(col, 1);
+      g.fillRect(p.x, p.y, REGION_CELL * scale, REGION_CELL * scale);
+    }
+  }
+  // The skerries belong to whichever region their nearest world owns -- a rim
+  // of LAND_FILL stays around each, same as the mainland's shoreline.
+  ARCHIPELAGO_ISLANDS.forEach((isl) => {
+    const { w1 } = nearestTwoWorlds(isl.x, isl.y);
+    const p = toScreen(isl.x, isl.y);
+    g.fillStyle(colorOf(w1), 1);
+    g.fillCircle(p.x, p.y, Math.max(0.5, (isl.r - 0.6) * scale));
+  });
+}
+
+// --- Style 'a': per-world texture marks ------------------------------------
+
+// Deterministically scattered marks, each built from its world's own surround
+// (the same identities art/horizons.ts and the wall themes state): crowns for
+// the Mean Fields' forest, stone flecks for the Stone Lattice, terrace lines,
+// band stripes, flow streaks, leaning shards, gold web nodes, pools and
+// reeds, cracks with embers, pale facets. Marks stay off the soft borders and
+// off undiscovered regions.
+function drawTextureMark(g: Phaser.GameObjects.Graphics, world: number, p: { x: number; y: number }, s: number, rand: () => number) {
+  switch (world) {
+    case 1: {
+      g.fillStyle(0x1e4726, 0.9);
+      g.fillCircle(p.x, p.y, (0.8 + rand() * 0.6) * s);
+      break;
+    }
+    case 2: {
+      const w = 1.3 * s;
+      g.fillStyle(0xdcc9a8, 0.5);
+      g.fillRect(p.x - w / 2, p.y - w / 2, w, w);
+      break;
+    }
+    case 3: {
+      g.lineStyle(Math.max(0.6, 0.7 * s), 0x2c343a, 0.65);
+      g.lineBetween(p.x - 1.8 * s, p.y, p.x + 1.8 * s, p.y);
+      break;
+    }
+    case 4: {
+      g.lineStyle(Math.max(0.5, 0.6 * s), 0x8fa8e8, 0.5);
+      g.lineBetween(p.x - 2 * s, p.y, p.x + 2 * s, p.y);
+      break;
+    }
+    case 5: {
+      g.lineStyle(Math.max(0.5, 0.6 * s), 0xd8ecf4, 0.55);
+      g.lineBetween(p.x - 1.6 * s, p.y + 0.6 * s, p.x + 1.6 * s, p.y - 0.6 * s);
+      break;
+    }
+    case 6: {
+      g.lineStyle(Math.max(0.6, 0.8 * s), 0x6f9c7e, 0.6);
+      g.lineBetween(p.x - 0.6 * s, p.y + 1.1 * s, p.x + 0.6 * s, p.y - 1.1 * s);
+      break;
+    }
+    case 7: {
+      g.fillStyle(0xefdaa4, 0.85);
+      g.fillCircle(p.x, p.y, 0.55 * s);
+      if (rand() < 0.45) {
+        g.lineStyle(Math.max(0.4, 0.4 * s), 0xefdaa4, 0.4);
+        g.lineBetween(p.x, p.y, p.x + (rand() * 4 - 2) * s, p.y + (rand() * 4 - 2) * s);
+      }
+      break;
+    }
+    case 8: {
+      if (rand() < 0.5) {
+        g.fillStyle(0x0a100c, 0.75);
+        g.fillEllipse(p.x, p.y, 2.6 * s, 1.5 * s);
+      } else {
+        g.lineStyle(Math.max(0.5, 0.6 * s), 0x707a60, 0.8);
+        g.lineBetween(p.x, p.y + 0.9 * s, p.x, p.y - 0.9 * s);
+      }
+      break;
+    }
+    case 9: {
+      g.lineStyle(Math.max(0.5, 0.6 * s), 0x140608, 0.8);
+      const dx = (rand() - 0.5) * 2 * s;
+      g.lineBetween(p.x - 1.5 * s, p.y - dx, p.x, p.y + dx * 0.5);
+      g.lineBetween(p.x, p.y + dx * 0.5, p.x + 1.5 * s, p.y - dx * 0.3);
+      if (rand() < 0.4) {
+        g.fillStyle(0xff8a3a, 0.7);
+        g.fillCircle(p.x, p.y + dx * 0.5, 0.5 * s);
+      }
+      break;
+    }
+    case 10: {
+      g.fillStyle(0xd8c8ee, 0.4);
+      g.fillTriangle(p.x, p.y - 1.1 * s, p.x + 1 * s, p.y + 0.7 * s, p.x - 1 * s, p.y + 0.7 * s);
+      break;
+    }
+  }
+}
+
+function drawRegionTextures(g: Phaser.GameObjects.Graphics, discovered: Set<number>, toScreen: ToScreen, scale: number) {
+  const rand = seededRandom(hashSeed('qumatuomi-texture'));
+  for (let i = 0; i < 560; i++) {
+    const x = rand() * NATIVE_W;
+    const y = rand() * NATIVE_H;
+    if (!insideLand(x, y)) continue;
+    const { w1, d1, d2 } = nearestTwoWorlds(x, y);
+    if (d2 - d1 < 3) continue;
+    if (!discovered.has(w1)) continue;
+    drawTextureMark(g, w1, toScreen(x, y), scale, rand);
+  }
+}
+
+// --- Style 'b': terrain vignettes ------------------------------------------
+
+// One authored cluster per world, standing at the world's own position the
+// way an old atlas draws a few trees for a forest and a cone for a volcano.
+// Offsets are native px around the marker; every shape is that world's own
+// surround in miniature.
+function drawVignette(g: Phaser.GameObjects.Graphics, world: number, p: { x: number; y: number }, s: number) {
+  switch (world) {
+    case 1: {
+      // A stand of trees: crown circles on short trunks.
+      [
+        { x: -6, y: -3, r: 1.7 },
+        { x: -1, y: -6, r: 2 },
+        { x: 4, y: -2, r: 1.6 },
+        { x: 1, y: 2, r: 1.4 },
+      ].forEach((t) => {
+        g.lineStyle(Math.max(0.6, 0.7 * s), 0x143018, 0.9);
+        g.lineBetween(p.x + t.x * s, p.y + t.y * s, p.x + t.x * s, p.y + (t.y + 2.4) * s);
+        g.fillStyle(0x1e4726, 1);
+        g.fillCircle(p.x + t.x * s, p.y + t.y * s, t.r * s);
+        g.fillStyle(0x3f7a4a, 0.7);
+        g.fillCircle(p.x + (t.x - 0.4) * s, p.y + (t.y - 0.5) * s, t.r * 0.5 * s);
+      });
+      break;
+    }
+    case 2: {
+      // A colonnade: three columns under one lintel.
+      g.fillStyle(0xdcc9a8, 0.95);
+      [-4, 0, 4].forEach((dx) => g.fillRect(p.x + (dx - 0.8) * s, p.y - 4 * s, 1.6 * s, 5 * s));
+      g.fillRect(p.x - 5.4 * s, p.y - 5.2 * s, 10.8 * s, 1.2 * s);
+      g.fillStyle(0x4a3427, 0.8);
+      [-4, 0, 4].forEach((dx) => g.fillRect(p.x + (dx + 0.8) * s, p.y - 4 * s, 0.5 * s, 5 * s));
+      break;
+    }
+    case 3: {
+      // Terraced steps: a staircase of ledges with vertical drops.
+      g.lineStyle(Math.max(0.7, 0.9 * s), 0xdfe6e2, 0.9);
+      g.beginPath();
+      g.moveTo(p.x - 6 * s, p.y + 3 * s);
+      g.lineTo(p.x - 2 * s, p.y + 3 * s);
+      g.lineTo(p.x - 2 * s, p.y);
+      g.lineTo(p.x + 2 * s, p.y);
+      g.lineTo(p.x + 2 * s, p.y - 3 * s);
+      g.lineTo(p.x + 6 * s, p.y - 3 * s);
+      g.strokePath();
+      g.fillStyle(0x2c343a, 0.6);
+      g.fillRect(p.x - 6 * s, p.y + 3.2 * s, 4 * s, 1.2 * s);
+      g.fillRect(p.x - 2 * s, p.y + 0.2 * s, 4 * s, 1.2 * s);
+      g.fillRect(p.x + 2 * s, p.y - 2.8 * s, 4 * s, 1.2 * s);
+      break;
+    }
+    case 4: {
+      // Flat band lines with a lightning fork over them.
+      g.lineStyle(Math.max(0.5, 0.7 * s), 0x6272b8, 0.8);
+      g.lineBetween(p.x - 6 * s, p.y + 2 * s, p.x + 6 * s, p.y + 2 * s);
+      g.lineBetween(p.x - 6 * s, p.y + 3.6 * s, p.x + 6 * s, p.y + 3.6 * s);
+      g.lineStyle(Math.max(0.6, 0.8 * s), 0xa8e4ff, 0.95);
+      g.beginPath();
+      g.moveTo(p.x + 0.5 * s, p.y - 6 * s);
+      g.lineTo(p.x - 1.2 * s, p.y - 2.5 * s);
+      g.lineTo(p.x + 0.4 * s, p.y - 2.1 * s);
+      g.lineTo(p.x - 0.8 * s, p.y + 1.4 * s);
+      g.strokePath();
+      break;
+    }
+    case 5: {
+      // Pressure ridges: pale upright triangles in a row.
+      [
+        { x: -4.5, h: 3 },
+        { x: 0, h: 4.2 },
+        { x: 4.5, h: 2.6 },
+      ].forEach((r) => {
+        g.fillStyle(0xd8ecf4, 0.95);
+        g.fillTriangle(p.x + (r.x - 2) * s, p.y + 2 * s, p.x + r.x * s, p.y + (2 - r.h) * s, p.x + (r.x + 2) * s, p.y + 2 * s);
+        g.lineStyle(Math.max(0.4, 0.5 * s), 0x54707e, 0.8);
+        g.lineBetween(p.x + r.x * s, p.y + (2 - r.h) * s, p.x + (r.x + 2) * s, p.y + 2 * s);
+      });
+      break;
+    }
+    case 6: {
+      // Aligned shards, all leaning one way.
+      g.fillStyle(0x2c3a34, 1);
+      [-4, -0.5, 3].forEach((dx, i) => {
+        const h = [3.4, 4.4, 3][i];
+        g.fillTriangle(p.x + dx * s, p.y + 2 * s, p.x + (dx + 2.4) * s, p.y + (2 - h) * s, p.x + (dx + 3) * s, p.y + 2 * s);
+      });
+      g.lineStyle(Math.max(0.4, 0.5 * s), 0x6f9c7e, 0.9);
+      [-4, -0.5, 3].forEach((dx, i) => {
+        const h = [3.4, 4.4, 3][i];
+        g.lineBetween(p.x + dx * s, p.y + 2 * s, p.x + (dx + 2.4) * s, p.y + (2 - h) * s);
+      });
+      break;
+    }
+    case 7: {
+      // A little web: gold nodes joined by filaments.
+      const nodes = [
+        { x: -5, y: -2 },
+        { x: -1, y: -5 },
+        { x: 3.5, y: -1.5 },
+        { x: 0.5, y: 2.5 },
+        { x: 5, y: 3 },
+      ];
+      g.lineStyle(Math.max(0.4, 0.5 * s), 0xefdaa4, 0.7);
+      [
+        [0, 1],
+        [1, 2],
+        [2, 3],
+        [0, 3],
+        [2, 4],
+      ].forEach(([a, b]) => g.lineBetween(p.x + nodes[a].x * s, p.y + nodes[a].y * s, p.x + nodes[b].x * s, p.y + nodes[b].y * s));
+      g.fillStyle(0xefdaa4, 1);
+      nodes.forEach((n) => g.fillCircle(p.x + n.x * s, p.y + n.y * s, 0.8 * s));
+      break;
+    }
+    case 8: {
+      // A dark pool with reeds standing out of it.
+      g.fillStyle(0x0a100c, 0.9);
+      g.fillEllipse(p.x, p.y + 1.5 * s, 9 * s, 3.6 * s);
+      g.lineStyle(Math.max(0.5, 0.6 * s), 0x707a60, 0.95);
+      [-3, -1, 1.5, 3.5].forEach((dx, i) => {
+        const h = [3, 4.2, 3.6, 2.6][i];
+        g.lineBetween(p.x + dx * s, p.y + 1.2 * s, p.x + (dx + 0.5) * s, p.y + (1.2 - h) * s);
+      });
+      break;
+    }
+    case 9: {
+      // Open cracks with ember glow.
+      g.lineStyle(Math.max(0.6, 0.8 * s), 0x140608, 0.95);
+      g.beginPath();
+      g.moveTo(p.x - 5 * s, p.y - 1 * s);
+      g.lineTo(p.x - 1.5 * s, p.y + 0.6 * s);
+      g.lineTo(p.x + 1 * s, p.y - 0.8 * s);
+      g.lineTo(p.x + 5 * s, p.y + 0.4 * s);
+      g.strokePath();
+      g.beginPath();
+      g.moveTo(p.x - 1.5 * s, p.y + 0.6 * s);
+      g.lineTo(p.x - 0.5 * s, p.y + 3 * s);
+      g.strokePath();
+      g.fillStyle(0xff8a3a, 0.85);
+      g.fillCircle(p.x - 1.5 * s, p.y + 0.6 * s, 0.7 * s);
+      g.fillCircle(p.x + 2.8 * s, p.y - 0.1 * s, 0.5 * s);
+      g.fillCircle(p.x - 0.8 * s, p.y + 2 * s, 0.4 * s);
+      break;
+    }
+    case 10: {
+      // Reconfiguring facets: pale violet shards, one lit.
+      g.fillStyle(0x9a86c8, 0.7);
+      g.fillTriangle(p.x - 4.5 * s, p.y + 2 * s, p.x - 2.5 * s, p.y - 2 * s, p.x - 0.5 * s, p.y + 1.4 * s);
+      g.fillTriangle(p.x + 1 * s, p.y + 2.4 * s, p.x + 3 * s, p.y - 1 * s, p.x + 5 * s, p.y + 1.8 * s);
+      g.fillStyle(0xd8c8ee, 0.95);
+      g.fillTriangle(p.x - 1 * s, p.y - 0.5 * s, p.x + 1 * s, p.y - 4 * s, p.x + 2.6 * s, p.y - 0.2 * s);
+      break;
+    }
+  }
+}
+
+// --- Style 'c': horizon miniatures -----------------------------------------
+
+// Half-width and height budget of a miniature ridge, in native px. Height maps
+// the horizon module's own MAX_CREST so the relative scale between worlds'
+// silhouettes survives the shrink.
+const MINI_HORIZON_HALF_W = 13;
+const MINI_HORIZON_H = 6.5;
+
+function drawMiniHorizon(g: Phaser.GameObjects.Graphics, world: number, toScreen: ToScreen, scale: number) {
+  const pos = WORLD_POSITIONS[world];
+  const baseY = pos.y + 4;
+  const left = pos.x - MINI_HORIZON_HALF_W;
+  const shade = blend(regionColor(world), 0x000000, 0.45);
+  const self = DISTANT_SELVES[world];
+  if (self && self.points.length > 0) {
+    const pts = [
+      toScreen(left, baseY),
+      ...self.points.map((pt) => toScreen(left + (pt.x / CANVAS_W) * MINI_HORIZON_HALF_W * 2, baseY - (pt.h / MAX_CREST) * MINI_HORIZON_H)),
+      toScreen(pos.x + MINI_HORIZON_HALF_W, baseY),
+    ];
+    g.fillStyle(shade, 0.85);
+    g.fillPoints(pts, true);
+    return;
+  }
+  // Worlds whose distant self is not a silhouette (WORLDS.md section 4): the
+  // Entangled Web's glints, the Screened Swamp's waterline and reeds. The
+  // Devouring Mirror has no distant self at all and draws nothing here.
+  if (world === 7) {
+    g.lineStyle(Math.max(0.5, 0.6 * scale), 0xefdaa4, 0.85);
+    [-8, -2, 4].forEach((dx, i) => {
+      const a = toScreen(pos.x + dx, baseY - 2 - i);
+      const b = toScreen(pos.x + dx + 4, baseY - 3.4 - i);
+      g.lineBetween(a.x, a.y, b.x, b.y);
+    });
+  } else if (world === 8) {
+    const a = toScreen(left, baseY);
+    const b = toScreen(pos.x + MINI_HORIZON_HALF_W, baseY);
+    g.lineStyle(Math.max(0.5, 0.7 * scale), 0xb8c4b0, 0.6);
+    g.lineBetween(a.x, a.y, b.x, b.y);
+    g.lineStyle(Math.max(0.5, 0.6 * scale), 0x707a60, 0.9);
+    [-6, -2, 2, 6].forEach((dx, i) => {
+      const t = toScreen(pos.x + dx, baseY);
+      const tip = toScreen(pos.x + dx + 0.5, baseY - [2.4, 3.4, 2.8, 2][i]);
+      g.lineBetween(t.x, t.y, tip.x, tip.y);
+    });
+  }
 }
 
 export interface QumatuomiWorldMarker {
@@ -250,9 +656,17 @@ export function buildQumatuomiMap(scene: Phaser.Scene, opts: QumatuomiMapOptions
   });
   container.add(land);
 
-  // Per-world region tint / shroud, drawn beneath the markers themselves.
+  // Per-world region treatment (MAP_STYLE above), drawn beneath the markers
+  // themselves. Styles 'a'/'c' paint the whole landmass as ten regions first;
+  // style 'b' keeps the shared land colour and works per marker below.
   const regions = scene.add.graphics();
   container.add(regions);
+
+  if (MAP_STYLE === 'a' || MAP_STYLE === 'c') {
+    paintRegions(regions, discovered, toScreen, scale);
+    if (MAP_STYLE === 'a') drawRegionTextures(regions, discovered, toScreen, scale);
+    else for (let world = 1; world <= 10; world++) if (discovered.has(world)) drawMiniHorizon(regions, world, toScreen, scale);
+  }
 
   const markers: QumatuomiWorldMarker[] = [];
 
@@ -263,19 +677,27 @@ export function buildQumatuomiMap(scene: Phaser.Scene, opts: QumatuomiMapOptions
     const p = toScreen(pos.x, pos.y);
     const radius = radiusNative * scale;
 
-    if (isDiscovered) {
+    if (MAP_STYLE === 'b' && isDiscovered) {
       const biome = getBiome(world);
       [1, 0.66, 0.36].forEach((f, i) => {
         const col = blend(biome.hillColor, biome.path, 1 - f);
         regions.fillStyle(col, 0.16 + i * 0.14);
         regions.fillCircle(p.x, p.y, radius * f);
       });
-    } else {
+      // The cluster stands above the marker (which stays at the world's
+      // exact position for Bloch's click handling) the way an atlas icon
+      // stands above its label, and is drawn a step larger than the marker
+      // so it, not the circle, is what the eye reads as the place.
+      drawVignette(regions, world, { x: p.x, y: p.y - 3 * scale }, scale * 1.35);
+    } else if (!isDiscovered) {
       // Shrouded: a flat dim patch (same undiscovered grey the Materialdex
-      // uses for an unmet compound) plus a few soft, deterministically
-      // jittered mist puffs so it reads as fog rather than just "off."
-      regions.fillStyle(UNDISCOVERED_FILL, 0.55);
-      regions.fillCircle(p.x, p.y, radius);
+      // uses for an unmet compound; styles 'a'/'c' have already painted the
+      // whole region that grey) plus a few soft, deterministically jittered
+      // mist puffs so it reads as fog rather than just "off."
+      if (MAP_STYLE === 'b') {
+        regions.fillStyle(UNDISCOVERED_FILL, 0.55);
+        regions.fillCircle(p.x, p.y, radius);
+      }
       const rand = seededRandom(hashSeed(`qumatuomi-mist-${world}`));
       for (let i = 0; i < 3; i++) {
         const ang = rand() * Math.PI * 2;
