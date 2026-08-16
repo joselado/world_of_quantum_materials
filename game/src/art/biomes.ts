@@ -11,7 +11,7 @@ export type DecorationKind = 'flowers' | 'mosaic' | 'edgeFlow' | 'crystalGlints'
 // module under terrain/materials/ draws the tile's accent, so each world's
 // impassable surround reads as its own substance: 'forest' the Mean Fields'
 // summer canopy, 'columns' the Stone Lattice's colonnade, 'deadFloor' the
-// Edge Cliffs' sunken bulk, 'charged' the Storm Flats' live ground, 'ice' the
+// Winding Borders' sunken bulk, 'charged' the Storm Flats' live ground, 'ice' the
 // Vortex Glacier's frozen lake and its vortex pits, 'shards' the Iron
 // Steppe's leaning blades, 'bog' the Screened Swamp's open water, its reeds
 // and the moments burning in it, 'lava' the Defect Scars' molten crust, 'consuming'
@@ -47,7 +47,7 @@ export interface Biome {
   fogTarget: number;
   clouds: boolean;
   // How fast those clouds cross the sky, in pixels per second, zero for a
-  // still sky. Only the Edge Cliffs run this: racing cloud over ground where
+  // still sky. Only the Winding Borders run this: racing cloud over ground where
   // nothing can move is that world's whole tension.
   cloudDrift: number;
   decoration: DecorationKind;
@@ -111,7 +111,7 @@ const MEAN_FIELDS: Biome = {
 // worlds from reading as one place.
 //
 // Cloudless, deliberately: the Mean Fields carry morning cloud and the Edge
-// Cliffs carry racing cloud, so a hard empty midday sky is this world's own
+// The Winding Borders carry racing cloud, so a hard empty midday sky is this world's own
 // slot in that sequence.
 const STONE_LATTICE: Biome = {
   name: 'stoneLattice',
@@ -137,19 +137,22 @@ const STONE_LATTICE: Biome = {
   bands: null,
 };
 
-// World 3, the Edge Cliffs (topological band theory): a lit ledge with a
-// shallow drop either side of it, and the two bulk domains as sunken dead
-// floors flanking it. Bulk-boundary correspondence made literal -- the edge
-// state is the only place you can stand, and the bulk is over the side.
+// World 3, the Winding Borders (topological band theory): a network of lit
+// ledges with a shallow drop either side, and the bulk domains as sunken
+// fields of dead rubble flanking them. Bulk-boundary correspondence made
+// literal -- the edge state is the only place you can stand, and the bulk is
+// over the side.
 //
 // The drop is shallow and never true void. Nothingness belongs to the
 // Entangled Web alone, a visible floor below calibrates the eye far better
 // than uncalibrated black, and a gapped bulk is genuinely matter -- present,
-// extended, inert, just unavailable. The domain colors themselves come from
-// the generator (world/generators/world3.ts's DOMAIN_PALETTE); `ground` is
-// the dim slate they are mixed over.
-const EDGE_CLIFFS: Biome = {
-  name: 'edgeCliffs',
+// extended, inert, just unavailable. That the bulk is scree rather than a flat
+// wash is what makes it read as unwalkable at a glance
+// (scenes/overworld/terrain/materials/deadFloor.ts). The domain colors come
+// from the generator (world/generators/world3.ts's DOMAIN_PALETTE) and label
+// each phase; `ground` is the dim slate they are mixed over.
+const WINDING_BORDERS: Biome = {
+  name: 'windingBorders',
   skyTop: 0x4f9fd8,
   skyBottom: 0xcfe6f2,
   // Dead ochre: the sunken floors restated as low flat-topped plateaus with
@@ -183,7 +186,7 @@ const STORM_FLATS: Biome = {
   skyTop: 0x151a3a,
   skyBottom: 0x3a4270,
   // Dead flat, because this world is flat by locked identity and so is the
-  // Edge Cliffs before it. The two therefore cannot be told apart on shape at
+  // Winding Borders before it. The two therefore cannot be told apart on shape at
   // all, and the whole distinction is carried by this world's storm.
   //
   // Held far lighter than this world's own dusk, which is what the horizon is
@@ -429,7 +432,7 @@ const DEVOURING_MIRROR: Biome = {
 export const BIOMES: Partial<Record<number, Biome>> = {
   1: MEAN_FIELDS,
   2: STONE_LATTICE,
-  3: EDGE_CLIFFS,
+  3: WINDING_BORDERS,
   4: STORM_FLATS,
   5: VORTEX_GLACIER,
   6: IRON_STEPPE,

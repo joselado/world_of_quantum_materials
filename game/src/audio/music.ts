@@ -1297,7 +1297,7 @@ const BATTLE_SCORE_2 = makeBattleScore({
   crashGain: 0.26,
 });
 
-// World 3, the Edge Cliffs: airy and bright even at battle tempo -- no
+// World 3, the Winding Borders: airy and bright even at battle tempo -- no
 // drive on either voice, wide unison lead -- C# minor.
 const BATTLE_SCORE_3 = makeBattleScore({
   bpm: 148,

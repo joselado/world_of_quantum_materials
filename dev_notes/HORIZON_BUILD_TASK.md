@@ -92,7 +92,7 @@ horizon" is the rule; `CODEMAP.md`'s "The mist band and the distant self" and
 
 Two things beyond the silhouette landed with it, because WORLDS.md §4 requires
 distant selves a filled outline cannot state. A per-world **sky extra** on the
-same entry carries the Storm Flats' arc-flashes (the resolved Edge Cliffs →
+same entry carries the Storm Flats' arc-flashes (the resolved Winding Borders →
 Storm Flats adjacency, both worlds being flat by identity) and the Entangled
 Web's filament glints, which at swallow zero are its entire distant self. A
 separate `OVERHEAD_SKIES` table carries motifs read from the world the player

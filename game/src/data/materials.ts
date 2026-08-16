@@ -1679,7 +1679,7 @@ export function combineMaterials(a: Material, b: Material): Material {
 export const WORLD_NAMES: Partial<Record<number, string>> = {
   1: 'The Mean Fields',
   2: 'The Stone Lattice',
-  3: 'The Edge Cliffs',
+  3: 'The Winding Borders',
   4: 'The Storm Flats',
   5: 'The Vortex Glacier',
   6: 'The Iron Steppe',

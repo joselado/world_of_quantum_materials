@@ -125,6 +125,13 @@ export interface AccentTile {
   // TerrainView.playerColor).
   playerColor: number;
   now: number;
+  // This tile's mapgen domain tint, or null where it carries none. The fill
+  // pass has already blended it into the tile's colour; an accent needs it
+  // unblended where the tint carries *information* rather than mood -- the
+  // Winding Borders label each bulk phase with one, and materials/deadFloor.ts
+  // reads which phase it is standing on (and so how much rubble to stand up)
+  // back out of it.
+  regionTint: number | null;
 }
 
 export type AccentDraw = (g: Phaser.GameObjects.Graphics, tile: AccentTile) => void;

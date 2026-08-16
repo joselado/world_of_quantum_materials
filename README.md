@@ -204,7 +204,7 @@ archetypes, and a rival crystal gating the way to the next world.
 |---|---|---|
 | 1 | The Mean Fields | Second quantization, mean-field, symmetry breaking |
 | 2 | The Stone Lattice | Symmetries, tight-binding band structure |
-| 3 | The Edge Cliffs | Topological band theory |
+| 3 | The Winding Borders | Topological band theory |
 | 4 | The Storm Flats | Magnetic field, quantum Hall effect, Landau levels |
 | 5 | The Vortex Glacier | Superconductivity, Nambu representation, Majoranas |
 | 6 | The Iron Steppe | Classical magnetism and magnons |

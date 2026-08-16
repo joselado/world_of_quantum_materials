@@ -34,7 +34,7 @@ column:
 |---|---|---|---|---|---|
 | 1 Mean Fields | 38.0 | 11.4 | 42% | 1.29 | 23%, 1.16 |
 | 2 Stone Lattice | 38.2 | 11.5 | 42% | 1.66 | 19%, 1.00 |
-| 3 Edge Cliffs | 35.2 | 9.6 | 36% | 1.67 | 30%, 1.43 |
+| 3 Winding Borders | 35.2 | 9.6 | 36% | 1.67 | 30%, 1.43 |
 | **4 Storm Flats** | **48.0** | **14.4** | **53%** | **1.08** | **unchanged — the reference** |
 | 5 Vortex Glacier | 37.7 | 11.3 | 42% | 1.29 | 40%, 1.14 |
 | 6 Iron Steppe | 39.4 | 11.8 | 44% | 1.15 | 27%, 1.00 |
@@ -245,9 +245,9 @@ the argument for the width rather than merely an excuse for it.
 a fallback that looks like an ordinary world of this game is a fallback nobody
 notices has fired.
 
-### World 3 — The Edge Cliffs — mode (b), narrow on purpose — **built**
+### World 3 — The Winding Borders — mode (b), narrow on purpose — **built**
 
-<img src="../screenshots/storyline-world-3.png" width="420" alt="The Edge Cliffs: a lit ledge at a junction where several bulk domains meet">
+<img src="../screenshots/storyline-world-3.png" width="420" alt="The Winding Borders: a lit ledge at a junction where several bulk domains meet">
 
 The honest conflict in the set. Bulk-boundary correspondence *is* "the edge is
 the only place you can stand" — widening the seam into a field would say the bulk

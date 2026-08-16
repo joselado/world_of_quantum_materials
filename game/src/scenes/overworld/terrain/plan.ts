@@ -75,7 +75,7 @@ function classifyTiles(src: TerrainSource): TerrainTile[][] {
 
 // A tile's off-path material is its biome's, whatever else the tile carries.
 // A mapgen domain tint (world/mapgen.ts, world3.ts's Voronoi cells) colors
-// that material rather than replacing it: the Edge Cliffs' two dead domain
+// that material rather than replacing it: the Winding Borders' two dead domain
 // hues *are* its sunken floors, so the tint supplies the color and the
 // material supplies the crystalline stipple over it, and the world needs both
 // at once.

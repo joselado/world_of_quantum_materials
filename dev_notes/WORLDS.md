@@ -195,7 +195,7 @@ lives.
 |---|---|---|---|---|
 | 1 | **The Mean Fields** | open wheat / mown grass, a hedgerow dividing it for a stretch | dense summer forest | bright morning |
 | 2 | **The Stone Lattice** | open pale sandstone floor, columns standing in it | the column field the hall is cut out of | hard midday sun |
-| 3 | **The Edge Cliffs** | a network of lit ledges between domains, meeting at junctions | shallow drop to sunken dead floors | bright, windy, motionless afternoon |
+| 3 | **The Winding Borders** | a network of lit ledges between domains, meeting at junctions | shallow drop to sunken dead floors | bright, windy, motionless afternoon |
 | 4 | **The Storm Flats** | banded indigo ground, glowing boundary channels | ground the storm strikes | stormy dusk |
 | 5 | **The Vortex Glacier** | an open sheet of pale ice | vortex pits punched through it with trapped-flux glow, frozen lake beyond | overcast twilight |
 | 6 | **The Iron Steppe** | open black iron-sand | aligned iron shards standing in it in wavefronts, flipping across a domain wall | night, green aurora |
@@ -257,12 +257,12 @@ Civilization is a brief episode: one built world, then never again. World 9's
 molten crust carries a few toppled column drums, which is what makes that a
 story rather than a set-dressing experiment.
 
-### 3 — The Edge Cliffs *(topological band theory)*
+### 3 — The Winding Borders *(topological band theory)*
 
 The generator partitions the grid into Voronoi domains — distinct bulk
 topological phases — and the only walkable ground is the seam between two
 differently-coloured ones. So: a lit ledge with a drop on either side, and the
-two bulk domains as the sunken floors flanking it. Bulk-boundary correspondence
+bulk domains as sunken fields of dead rubble flanking it. Bulk-boundary correspondence
 made literal — the edge state is the only place you can stand; the bulk is over
 the side.
 
@@ -276,17 +276,35 @@ north. Freedom without a single tile of walkable bulk, and a deliberate change o
 pace between two open worlds.
 
 **The drop is shallow, and never true void.** The domains are visible one storey
-down as extended flat expanses of dead colour, crystallized, airless, nothing
-moving. This matters for three reasons: nothingness is World 7's one card, and
-spending it at slot three pre-spoils the emotional peak the light rule exists to
-protect; a gapped bulk is *matter* — present, extended, inert, just unavailable
-— which is the actual physics; and the player still navigates by colour
-territory, which the Voronoi shape depends on.
+down as fields of dead rubble, jammed, airless, nothing moving. This matters for
+three reasons: nothingness is World 7's one card, and spending it at slot three
+pre-spoils the emotional peak the light rule exists to protect; a gapped bulk is
+*matter* — present, extended, inert, just unavailable — which is the actual
+physics; and the player still navigates by colour territory, which the Voronoi
+shape depends on.
+
+**The bulk is scree, and that is a legibility requirement before it is a
+look.** Drawn as a flat wash it measured a local contrast of 0.03 against
+0.8–2.1 for every other world's impassable ground: no surface at all, and a
+surface-less expanse reads as another kind of floor rather than as somewhere you
+cannot go. Talus is the terrain a body refuses before the mind is asked. What
+delivers it is the hard cast shadow under every piece rather than the rock
+itself, and three rules hold it there: **obtuse shapes only, and no glint**,
+since facets and sparkle are the crystals' own language and the player and every
+wild encounter is one; **nothing animates**; and **every phase keeps its rubble,
+including the trivial one**, or that domain quietly recovers the walkable read
+the whole material exists to remove. It earns a physics reading besides: a
+gapped bulk is rigid and jammed, matter that cannot flow or carry anything
+across itself, and rubble is the picture of exactly that.
+
+**Each domain's invariant is countable in its ground.** A phase carries one slab
+standing proud of its rubble per unit of invariant, so the label survives having
+the colour drained rather than living in hue alone, and it can be checked against
+the neighbouring domain across the seam. The tint says *which* phase; the count
+says *which invariant*.
 
 Wind over a world where nothing can move is the horror, not a contradiction:
-clouds race overhead while the ground stays perfectly still. Keep the dead-matter
-stipple *structured* — a crystalline speckle or frozen moiré — so it reads as
-the texture of dead matter rather than as a rendering artifact.
+clouds race overhead while the ground stays perfectly still.
 
 ### 4 — The Storm Flats *(magnetic field, quantum Hall, Landau levels)*
 
@@ -685,7 +703,7 @@ in hue alone.** Hue is already guaranteed to shift by haze inheritance; this rul
 exists to catch the case where hue is *all* that shifts. Two worked examples,
 both already resolved:
 
-- **Edge Cliffs → Storm Flats** cannot satisfy this on shape: both worlds are
+- **Winding Borders → Storm Flats** cannot satisfy this on shape: both worlds are
   flat by locked identity, so the change would read as dead teal-and-ochre giving
   way to dead indigo. The differentiator is the **sky** — the Storm Flats' distant
   self is carried by its storm, arc-flashes over a dead-flat horizon line.
@@ -1078,11 +1096,13 @@ Recorded so they are not rediscovered as surprises:
   bands, flat glow lines and flat rings on a flat plane. The boundary shadow
   strips and the strikes are what keep it material; if either is dropped, the
   world regresses immediately.
-- **"The Edge Cliffs" is the one name whose verification is pending on
-  rendering.** A cliff is the one landform this engine can only imply. The
-  shallow-drop version lowers the risk — a visible floor below calibrates the
-  eye far better than uncalibrated black — but if the lit-lip-over-dark-mass
-  read fails, the name describes a world with no cliffs.
+- **World 3's name does not name a landform the engine has to imply.** A cliff
+  is the one landform it cannot draw, and a name resting on one describes a
+  world the player never sees; "Borders" rests instead on the thing the
+  generator actually builds, a network of seams between territories, and
+  "Winding" carries the invariant for anyone who knows the term while reading
+  as plain twisting for everyone who does not. The rule this is an instance of:
+  a name has to survive being checked against the frame.
 - **The 4→5 step is the flattest on the staircase** — storm to cold quiet is
   lateral rather than an escalation. Twilight is darker than dusk and the
   descent into cold reads as its own kind of worse, so this is tolerated rather

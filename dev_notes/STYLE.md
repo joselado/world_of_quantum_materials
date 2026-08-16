@@ -445,9 +445,11 @@ under one figure reads as floating even when neither is wrong on its own.
   and `biomeOverride` swaps which
   world's whole `art/biomes.ts` entry a tile renders with instead of the current world's own
   (world 9's patches, each independently borrowing one of worlds 1-8's look). An off-path
-  `regionColor` tile renders as plain ground in that tint regardless of `wallTheme` and carries
-  no terrain accent -- world 3's own biome is `wallTheme: 'deadFloor'` (see below), whose
-  stippled sunken bulk would otherwise fight the domain color it is supposed to read as.
+  `regionColor` tile renders in that tint *and* carries its biome's terrain accent, and world
+  3 needs both at once: the tint says which bulk phase the tile belongs to, and the accent
+  ('deadFloor', see below) is what says the tile cannot be walked on. Its rubble takes its own
+  colour from the tint rather than fighting it, and reads the domain's topological invariant
+  back out of it (`world3.ts`'s `invariantOfTint`) to decide how many slabs stand proud there.
 - **The walkable floor is one flat colour.** Nothing keyed to a tile's own `gx`/`gy` is drawn
   on the route the player walks, in any world: a floor carrying its own pattern competes with
   the walkable/impassable boundary for exactly the attention that boundary needs, and "where
@@ -497,10 +499,18 @@ under one figure reads as floating even when neither is wrong on its own.
     the columns standing in the hall itself are the generator's own periodic array
     (`world/generators/world2.ts`), which arrive tagged as feature cores and carry a column
     wherever it put one.
-  - **'deadFloor'** (the Edge Cliffs, world 3): the sunken bulk one storey down, its stipple a
-    strict lattice sheared per tile into a frozen moire. Never noise, which at this scale
-    reads as a rendering fault, and never animated -- wind races across this world's sky while
-    its ground stays perfectly still.
+  - **'deadFloor'** (the Winding Borders, world 3): the sunken bulk one storey down, drawn as
+    fields of dead rubble -- low blunt broken blocks, each with a hard cast shadow thrown the
+    same way by a fixed afternoon sun, tinted by the domain they lie in. **The shadow is what
+    does the work**: it is the hard light/dark boundary that reads as relief, and without it
+    the bulk measures a local contrast of 0.03 against 0.8-2.1 for every other world's
+    surround, which is a surface-less expanse and reads as walkable floor. Three rules hold:
+    obtuse shapes only and no glint (facets and sparkle belong to the crystals, and the player
+    and every wild encounter is one); nothing animates, since wind races over this world while
+    its ground stays perfectly still; and every phase keeps its rubble, including the trivial
+    one. The piece count thins with distance rather than the pieces fading, which is where the
+    material's cost lives. A domain's topological invariant is countable in it -- one slab
+    standing proud of the bed per unit -- so the label survives the colour being drained.
   - **'charged'** (the Storm Flats, world 4): the ground the storm strikes. The tile accent is
     the burn left behind -- a short forked scorch, fixed per tile and static, so the field
     reads as ground that has been hit many times. The strike itself is a separate pass drawn
@@ -749,7 +759,7 @@ rather than free style choices:
 |---|---|---|---|---|---|---|---|
 | 1 | The Mean Fields | pale morning blue (`0x8fd0ff`→`0xe8f6ff`) | dark canopy `0x16341c` | pale wheat `0xd9d295` | flowers | yes | **forest** |
 | 2 | The Stone Lattice | hard midday blue (`0x5aa6e0`→`0xd6e6f0`) | deep cast shadow `0x4a3427` | sandstone floor `0xdcc9a8` | mosaic (every tile) | no | **columns** |
-| 3 | The Edge Cliffs | bright afternoon (`0x4f9fd8`→`0xcfe6f2`) | dim slate `0x394349` under dead teal/ochre domain tints | lit ledge `0xdfe6e2` | edge flow (every tile) | yes, drifting | **deadFloor** |
+| 3 | The Winding Borders | bright afternoon (`0x4f9fd8`→`0xcfe6f2`) | dim slate `0x394349` under dead teal/ochre domain tints | lit ledge `0xdfe6e2` | edge flow (every tile) | yes, drifting | **deadFloor** |
 | 4 | The Storm Flats | stormy dusk (`0x151a3a`→`0x3a4270`) | struck ground `0x1b2044` | banded indigo `0x6272b8` | orbit rings | no | **charged** |
 | 5 | The Vortex Glacier | overcast twilight (`0x3c4a56`→`0x6e808c`) | frozen lake `0x54707e` | swept ice `0xa8c8d4` | flow lines (every tile) | no | **ice** |
 | 6 | The Iron Steppe | night (`0x050a14`→`0x0d1622`) under a green aurora | near-black `0x121517` | iron sand `0x3a3f40` | ripples | no | **shards** |
@@ -816,14 +826,14 @@ the steepness late, where the horizon band's own wash is already painting over t
 band has to reach *nearer* the camera than the steep stretch begins, not merely meet it. What
 survives is the step times however much of the wash is not over it, and the step itself grows with
 the distance between a world's ground colour and the air it is hazing into. The widest such gap in
-the game is the Stone Lattice at an open gate, deep cast shadow under the Edge Cliffs' bright
+the game is the Stone Lattice at an open gate, deep cast shadow under the Winding Borders' bright
 afternoon air, and it is the case the whole arrangement has to be sized against.
 
 **Distant selves.** Just above the line stands the *next* world's silhouette, composed from that
 world's own `hillColor` (base) and `hillAlpha` (swallow) on its `Biome` entry plus its profile in
 `art/horizons.ts` -- a world states how it looks from outside itself, once, and its neighbour
 renders that statement. Each profile is that world's own impassable surround restated at horizon
-scale: column teeth for the Stone Lattice, low stepped plateaus for the Edge Cliffs, random
+scale: column teeth for the Stone Lattice, low stepped plateaus for the Winding Borders, random
 vertical pressure ridges for the Vortex Glacier, a uniformly leaning sawtooth for the Iron Steppe,
 a notched glow-veined ridge for the Defect Scars. A generic hill in ten colours fails this rule --
 it is the theming *not* made visible at distance. Profiles are authored as explicit polylines, not
@@ -844,7 +854,7 @@ ground" below).
 **The adjacency rule: adjacent distant selves must differ in shape-language or sky-activity, never
 in hue alone.** Haze inheritance already guarantees hue shifts; this catches the case where hue is
 *all* that shifts, and it is checked by looking at each world's forward horizon from mid-corridor.
-Two pairs are settled and are requirements rather than suggestions. **Edge Cliffs to Storm Flats**
+Two pairs are settled and are requirements rather than suggestions. **Winding Borders to Storm Flats**
 cannot differ on shape, both worlds being flat by locked identity, so the differentiator is the
 sky: arc-flashes over a dead-flat line against stepped plateaus under racing cloud. **Vortex
 Glacier to Iron Steppe** are both jagged, cold-dark and under failing light, so the physics

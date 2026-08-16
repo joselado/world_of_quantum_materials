@@ -117,27 +117,28 @@ function columnTeeth(): HorizonPoint[] {
   return pts;
 }
 
-// World 3, the Edge Cliffs: a shallow drop onto sunken dead floors, so
-// flat-topped plateaus at a few heights with an abrupt vertical step wherever
-// two domains meet. Held low, because the drop itself is one storey -- what
+// World 3, the Winding Borders: rubble aprons at a few heights with an abrupt
+// vertical step wherever two domains meet -- the bulk's own scree restated at
+// horizon scale, which is what a talus field builds itself into when it comes
+// to rest. Held low, because the drop between domains is one storey: what
 // carries the world at distance is the stepping, not the elevation.
-const CLIFF_LEVELS = [8, 14, 10, 17, 7, 13, 9, 16, 11, 15];
+const TALUS_LEVELS = [8, 14, 10, 17, 7, 13, 9, 16, 11, 15];
 
-function cliffPlateaus(): HorizonPoint[] {
+function talusTerraces(): HorizonPoint[] {
   const pts: HorizonPoint[] = [];
-  const step = W / (CLIFF_LEVELS.length - 1);
-  CLIFF_LEVELS.forEach((h, i) => {
+  const step = W / (TALUS_LEVELS.length - 1);
+  TALUS_LEVELS.forEach((h, i) => {
     const x = i * step;
-    if (i > 0) pts.push({ x, h: CLIFF_LEVELS[i - 1] });
+    if (i > 0) pts.push({ x, h: TALUS_LEVELS[i - 1] });
     pts.push({ x, h });
   });
-  pts.push({ x: W, h: CLIFF_LEVELS[CLIFF_LEVELS.length - 1] });
+  pts.push({ x: W, h: TALUS_LEVELS[TALUS_LEVELS.length - 1] });
   return pts;
 }
 
 // World 4, the Storm Flats: dead flat, because Landau levels are
 // dispersionless flat bands and this world is flat by locked identity. Edge
-// Cliffs and Storm Flats therefore cannot be told apart on shape at all, so
+// The Winding Borders and the Storm Flats therefore cannot be told apart on shape at all, so
 // the whole distinction is carried by the sky (WORLDS.md section 4's first
 // worked example) -- distant lightning over flatness against stepped
 // plateaus under racing cloud.
@@ -161,7 +162,7 @@ const STORM_ARCS = [
 function stormSky({ g, horizonY, target, now }: HorizonSky) {
   // A standing glow over the flat line, present between flashes. The arcs are
   // this world's distant self, and an intermittent asset cannot be the whole
-  // of one -- a frame caught between two flashes would leave the Edge Cliffs
+  // of one -- a frame caught between two flashes would leave the Winding Borders
   // looking forward at a colour change and nothing else, which is exactly the
   // adjacency failure the arcs exist to prevent.
   for (let i = 0; i < 5; i++) {
@@ -443,7 +444,7 @@ const NOTHING: DistantSelf = { points: [] };
 export const DISTANT_SELVES: Partial<Record<number, DistantSelf>> = {
   1: { points: treeline() },
   2: { points: columnTeeth() },
-  3: { points: cliffPlateaus() },
+  3: { points: talusTerraces() },
   4: { points: stormLine(), sky: stormSky },
   5: { points: glacierRidges() },
   6: { points: shardRows() },

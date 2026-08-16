@@ -161,16 +161,16 @@ can spread across all of it at once again.
 
 ---
 
-## 3. The Edge Cliffs
+## 3. The Winding Borders
 
-<img src="../screenshots/storyline-world-3.png" width="420" alt="The Edge Cliffs seen from the middle of its network of lit ledges">
+<img src="../screenshots/storyline-world-3.png" width="420" alt="The Winding Borders seen from the middle of its network of lit ledges">
 
 *Topological band theory.*
 
-The columns stop, and the ground breaks open. What lies ahead is a floor of
-flat sunken domains, a storey below your feet, each one a solid, unbroken
-stretch of a single phase, dead and airless, with nothing moving down there
-at all. You cannot walk any of it.
+The columns stop, and the ground breaks open. What lies ahead is sunken
+domains, a storey below your feet, each one a single phase gone dead and
+airless, its floor jammed with broken rock that has not shifted in a very
+long time. You cannot walk any of it, and one look tells you so.
 
 What you can walk is the seam. Where two domains of different phase meet,
 the number that tells them apart has to change from one value to the other,
@@ -180,8 +180,7 @@ channel running along every line where the colors disagree. The bulk is
 unreachable. The boundary between two bulks is a road. That road has a rule
 too. Walk it one way and your spin points one way; walk it back and your
 spin must point the other, so nothing on it can turn around. Dent it, foul
-it, fill it with rubble: the channel steps around the damage and keeps
-going.
+it, break it: the channel steps around the damage and keeps going.
 
 The Decoherence does not bother with the rubble. It seeds the domains with
 small **magnetic** flaws, and a magnetic flaw is the one thing that can flip

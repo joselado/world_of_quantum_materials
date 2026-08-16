@@ -91,7 +91,7 @@ export function drawTerrain(view: TerrainView) {
         drawBandBoundary(g, tile.biome, y, pFL, pFR, pNR, pNL, depthRatio);
         if (contour) drawContactShadow(g, contour, tile.biome, camX, camY, depthRatio);
         if (GROUND_MOTIFS_ENABLED && depthRatio < DETAIL_MAX_DEPTH && tile.decorate) {
-          decorateTile(g, view.biome, accentTile(false, fill, pFL, pFR, pNR, pNL, x, y, depthRatio, hazeTarget(view, tile.biome), view.playerColor, view.now));
+          decorateTile(g, view.biome, accentTile(false, fill, pFL, pFR, pNR, pNL, x, y, depthRatio, hazeTarget(view, tile.biome), view.playerColor, view.now, tile.regionTint));
         }
         if (tile.midHighlight) {
           // The glow falls off radially from the guardian's own tile, so the
@@ -249,7 +249,7 @@ function drawMarginTile(view: TerrainView, edge: TerrainTile, gx: number, y: num
 
   if (depthRatio <= DETAIL_MAX_DEPTH) {
     const kind = edge.kind !== 'path' ? edge.kind : offPathKindOf(edge.biome);
-    drawAccent(g, kind, fill, pFL, pFR, pNR, pNL, gx, y, edge.featureCore, depthRatio, hazeTarget(view, edge.biome), view.playerColor, view.now);
+    drawAccent(g, kind, fill, pFL, pFR, pNR, pNL, gx, y, edge.featureCore, depthRatio, hazeTarget(view, edge.biome), view.playerColor, view.now, edge.regionTint);
   }
 }
 
@@ -358,7 +358,7 @@ function drawOffPathTile(
   drawBandBoundary(g, tile.biome, gy, pFL, pFR, pNR, pNL, depthRatio);
 
   if (depthRatio <= DETAIL_MAX_DEPTH) {
-    drawAccent(g, tile.kind, fill, pFL, pFR, pNR, pNL, gx, gy, tile.featureCore, depthRatio, hazeTarget(view, tile.biome), view.playerColor, view.now);
+    drawAccent(g, tile.kind, fill, pFL, pFR, pNR, pNL, gx, gy, tile.featureCore, depthRatio, hazeTarget(view, tile.biome), view.playerColor, view.now, tile.regionTint);
   }
 
   // The impassable side of the contact shadow, over the accent rather than
@@ -384,12 +384,13 @@ function drawAccent(
   depth: number,
   haze: number,
   playerColor: number,
-  now: number
+  now: number,
+  regionTint: number | null
 ) {
   if (kind === 'path') return;
   const accent = TERRAIN_ACCENTS[kind];
   if (!accent) return;
-  accent(g, accentTile(featureCore, fill, pFL, pFR, pNR, pNL, gx, gy, depth, haze, playerColor, now));
+  accent(g, accentTile(featureCore, fill, pFL, pFR, pNR, pNL, gx, gy, depth, haze, playerColor, now, regionTint));
 }
 
 // The per-tile geometry every accent and every decoration works from: the
@@ -407,7 +408,8 @@ function accentTile(
   depth: number,
   haze: number,
   playerColor: number,
-  now: number
+  now: number,
+  regionTint: number | null
 ): AccentTile {
   return {
     featureCore,
@@ -422,6 +424,7 @@ function accentTile(
     detail: detailFade(depth),
     playerColor,
     now,
+    regionTint,
   };
 }
 

@@ -38,21 +38,39 @@ const SEED_COUNT_MAX = 11;
 // raw Voronoi boundary is one tile, so this is delivered by dilating it -- see
 // the dilation pass below.
 const EDGE_WIDTH = 3;
-// One tint per bulk phase, blended 0.6 over the biome's dark void ground by
-// the renderer. Every entry is a saturated mid-value hue: distinct from each
-// other (adjacent domains must read as different phases at a glance -- that
-// contrast IS the world's physics) and all held well darker than the pale
-// ice-blue walkable path, so the edge channel between two domains stays the
-// brightest thing on screen. No pale or blue-white entries: a domain that
-// blends toward the path's own color would read as walkable ground.
-// The bulk domains, and they are all dead: a gapped bulk is matter that is
-// present, extended and inert, so the colors are desaturated and dark against
-// the lit seam the player actually walks. Two families, teal and ochre,
-// interleaved so that adjacent domains reliably differ -- which they must,
-// since the only walkable ground in this world is the boundary where two
-// differently-colored ones meet, and a seam with no color change across it
+// One tint per bulk phase, blended 0.6 over the biome's own ground by the
+// renderer, and the tint is *information*: it is how the player tells one
+// phase from the next, and how the surround knows how much rubble to stand up
+// on a tile (materials/deadFloor.ts reads the invariant back out of it).
+//
+// The palette is grouped by topological invariant, three entries to a group,
+// so a tint's index carries both which domain it is and what that domain's
+// invariant is. Every entry is dark and desaturated, well under the lit seam
+// the player walks: a gapped bulk is matter that is present, extended and
+// inert, so it is drawn dead against the one live thing in the world. Two
+// families, teal and ochre, interleaved within each group so adjacent domains
+// reliably differ -- they must, since the only walkable ground here is the
+// boundary where two different ones meet, and a seam with no change across it
 // would leave the player navigating by nothing.
-const DOMAIN_PALETTE = [0x3f5a55, 0x6b5a3c, 0x4a6b63, 0x7d6a47, 0x35504c, 0x5a4c33, 0x557a70, 0x8a7454];
+const DOMAIN_PALETTE = [
+  // invariant 0 -- trivial
+  0x3f5a55, 0x6b5a3c, 0x4a6b63,
+  // invariant 1
+  0x7d6a47, 0x35504c, 0x5a4c33,
+  // invariant 2
+  0x557a70, 0x8a7454, 0x46605a,
+];
+// How many bulk phases the palette above describes, per invariant.
+const TINTS_PER_INVARIANT = 3;
+
+// The invariant a domain tint stands for -- the renderer's half of the
+// convention above, exported so the two cannot drift apart. Returns 0 for a
+// tint this world never issued, since an unknown phase is best drawn as the
+// trivial one rather than as nothing at all.
+export function invariantOfTint(tint: number): number {
+  const index = DOMAIN_PALETTE.indexOf(tint);
+  return index < 0 ? 0 : Math.floor(index / TINTS_PER_INVARIANT);
+}
 
 export function generateWorld3Map(gridW: number, gridH: number, start: GridPoint, scale: WorldScale): GeneratedMap {
   const goalY = 1;

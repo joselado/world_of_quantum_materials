@@ -168,7 +168,7 @@ function smoothstep(t: number): number {
 
 // A cloud is drawn at the origin and positioned by the object's own
 // transform, so a drifting world can move it without redrawing anything.
-// The Edge Cliffs are the world this exists for: wind racing overhead while
+// The Winding Borders are the world this exists for: wind racing overhead while
 // the ground beneath stays perfectly still is that world's horror, and it
 // only lands if the sky is visibly the only thing moving.
 function drawCloud(scene: Phaser.Scene, x: number, y: number, drift: number) {

@@ -57,7 +57,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const BUDGETS = {
   1: { ops: 21000, objects: 500 },
   2: { ops: 10000, objects: 500 },
-  3: { ops: 15000, objects: 500 },
+  // World 3 draws more than its siblings by design: its impassable bulk is a
+  // rubble field, and it is a rubble field because measured against every
+  // other world's surround (local contrast 0.8-2.1) the flat speckle it used
+  // to carry came in at 0.03 -- no surface at all, and so read as walkable
+  // ground. Giving it a surface costs fills. The piece count thins with
+  // distance, so this is not the no-falloff effect this budget exists to
+  // catch, and the relative-cost check below confirms it is not an outlier.
+  3: { ops: 17000, objects: 500 },
   4: { ops: 13000, objects: 500 },
   5: { ops: 16000, objects: 500 },
   6: { ops: 10000, objects: 500 },

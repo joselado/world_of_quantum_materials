@@ -1479,7 +1479,7 @@ That last one comes down from the generator rather than being recognised from th
 deliberately so: a blocked tile ringed by walkable ground is also what an ordinary corridor pinch
 and a forced chokepoint's wall look like, so inference draws pits where the world has none and
 misses the ones it is named for. A region tint *colors* its biome's material rather than replacing it:
-the Edge Cliffs' two dead domain hues are its sunken floors, and that world needs the tint and the
+the Winding Borders' two dead domain hues are its sunken floors, and that world needs the tint and the
 crystalline stipple at once. That pass is camera-independent, so it covers
 the whole grid rather than just the visible window -- a shape spanning the window edge stays one
 continuous shape -- and the whole `TerrainPlan` (tiles, `farEdgeRow`, contours) is cached in

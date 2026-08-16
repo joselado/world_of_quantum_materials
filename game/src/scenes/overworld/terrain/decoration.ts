@@ -61,7 +61,7 @@ export function decorateTile(g: Phaser.GameObjects.Graphics, biome: Biome, tile:
     return;
   }
 
-  // World 3 (the Edge Cliffs): the ledge visibly flows. The streaks all drift
+  // World 3 (the Winding Borders): the ledge visibly flows. The streaks all drift
   // the same way and never the other, because that is the physics the whole
   // world rests on -- on an edge channel direction and spin are welded
   // together, so nothing on this road can turn around. A back-and-forth
