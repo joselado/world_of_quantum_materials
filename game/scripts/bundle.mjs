@@ -1,6 +1,7 @@
-// Builds the whole game into one self-contained `game.html` -- the copy a
-// player can save to their machine and open by double-clicking it, with no
-// server, no Node and no network.
+// Builds the whole game into one self-contained
+// `world_of_quantum_materials.html` -- the copy a player can save to their
+// machine and open by double-clicking it, with no server, no Node and no
+// network.
 //
 // Why this needs its own build rather than a copy of `npm run build`'s output:
 // a browser refuses to load a *module* script over `file://` (CORS blocks it,
@@ -64,7 +65,7 @@ if (inlined.includes('game.js')) {
 }
 
 fs.mkdirSync(distDir, { recursive: true });
-const outFile = path.join(distDir, 'game.html');
+const outFile = path.join(distDir, 'world_of_quantum_materials.html');
 fs.writeFileSync(outFile, inlined);
 fs.rmSync(tmpDir, { recursive: true, force: true });
 

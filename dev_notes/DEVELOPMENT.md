@@ -65,7 +65,7 @@ To produce a static build:
 
 ```
 npm run build    # outputs to game/dist/
-npm run bundle   # adds game/dist/game.html, the standalone single-file copy
+npm run bundle   # adds game/dist/world_of_quantum_materials.html, the standalone single-file copy
 npm run preview  # serve that build locally to sanity-check it
 ```
 
@@ -73,10 +73,11 @@ npm run preview  # serve that build locally to sanity-check it
 put -- a Pages sub-path, a local folder, any static host. Vite's default
 absolute base is correct for none of those but the last.
 
-`scripts/bundle.mjs` builds a second time to produce `game.html`, and it is a
-different build rather than a repackaging of the first: a browser refuses to
-load a *module* script over `file://`, so the standalone copy is built as a
-single classic IIFE chunk and inlined into the HTML, leaving a page that
+`scripts/bundle.mjs` builds a second time to produce
+`world_of_quantum_materials.html`, and it is a different build rather than a
+repackaging of the first: a browser refuses to load a *module* script over
+`file://`, so the standalone copy is built as a single classic IIFE chunk and
+inlined into the HTML, leaving a page that
 fetches nothing at all. That is only possible because the game loads no asset
 files either -- every sprite and note is generated at runtime -- so one script
 really is the whole game. It writes into `dist/` alongside the ordinary build,
@@ -87,8 +88,9 @@ string silently corrupts the bundle into something that throws at parse time.)
 
 Both are published by `.github/workflows/pages.yml` on every push to master:
 the site at `https://joselado.github.io/world_of_quantum_materials/` and the
-downloadable `game.html` beside it. The workflow runs the same `npm run build`
-(so `tsc -b` failing fails the deploy rather than publishing a broken game).
+downloadable `world_of_quantum_materials.html` beside it. The workflow runs the
+same `npm run build` (so `tsc -b` failing fails the deploy rather than
+publishing a broken game).
 The repo's Settings -> Pages -> Source must be set to "GitHub Actions" for the
 deploy job to have anywhere to publish; that is a one-time manual step.
 

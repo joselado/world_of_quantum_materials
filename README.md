@@ -26,7 +26,7 @@ university machine as happily as on your own laptop. You need to be online to
 open it.
 
 **Offline, as a single file.** Download
-[`game.html`](https://joselado.github.io/world_of_quantum_materials/game.html)
+[`world_of_quantum_materials.html`](https://joselado.github.io/world_of_quantum_materials/world_of_quantum_materials.html)
 (right-click the link, "Save Link As...") and open it by double-clicking it.
 The whole game is inside that one file, because every sprite and every note is
 drawn and played by code rather than loaded from anywhere, so once it is on
@@ -42,12 +42,10 @@ npm run play
 That installs what it needs on first run and opens the game. Same command on
 Windows, macOS and Linux.
 
-Your progress is saved in the browser you play in (or, for `game.html`, in the
-browser you open it with), so it stays on that machine, and clearing your
-browsing data clears it. There are no accounts and nothing is sent anywhere.
-
-Build instructions, the project's file layout, and design/contribution notes
-are in `dev_notes/DEVELOPMENT.md`.
+Your progress is saved in the browser you play in (or, for
+`world_of_quantum_materials.html`, in the browser you open it with), so it
+stays on that machine, and clearing your browsing data clears it. There are no
+accounts and nothing is sent anywhere.
 
 ## The premise
 

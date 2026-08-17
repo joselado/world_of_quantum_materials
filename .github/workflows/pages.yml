@@ -3,7 +3,8 @@
 # remember. Builds two things from one checkout and ships them together:
 #
 #   index.html + assets/  the playable site (what the link opens)
-#   game.html             the standalone single-file copy, downloadable from
+#   world_of_quantum_materials.html
+#                         the standalone single-file copy, downloadable from
 #                         the same site and playable offline afterwards
 #
 # One manual step this cannot do for itself: the repository's
