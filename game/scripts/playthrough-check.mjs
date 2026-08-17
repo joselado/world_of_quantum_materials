@@ -560,8 +560,17 @@ async function main() {
         continue;
       }
       const texts = await listInteractiveTexts();
+      // Two things a random Lab visit must not touch. The **door** ("Enter The
+      // Mean Fields", "Back to The Vortex Glacier" -- it names its destination
+      // rather than numbering it, DESIGN.md section 2) leaves the Lab, which is
+      // the caller's decision to make, not this detour's. The **Title Screen**
+      // station abandons the run outright: it boots back to the title, and a
+      // playthrough that presses it is no longer playing through anything.
+      // Matching the door by its old numbered labels is what let both happen,
+      // and the run then spent every remaining round clicking a station and a
+      // door in turn without noticing it had stopped making progress.
       const candidates = texts.filter(
-        (t) => !t.startsWith('Enter World') && !t.startsWith('Back to World')
+        (t) => !t.startsWith('Enter ') && !t.startsWith('Back to ') && t !== 'Title Screen'
       );
       if (candidates.length === 0) break;
       const closeLike = candidates.filter((t) => ['Farewell', 'Close', 'Cancel', 'Not yet'].includes(t));
@@ -708,7 +717,13 @@ async function main() {
       }
       if (finaleReached) break;
       log('In Hub, entering/resuming world via door...');
-      const r = await clickText(['Enter World', 'Back to World']);
+      // The Lab's door names its destination rather than numbering it ("Enter
+      // The Mean Fields", "Back to The Vortex Glacier" -- DESIGN.md section 2),
+      // so this matches the grammar's opening words and lets clickText's own
+      // prefix match find whichever world the save has reached. Matching the
+      // literal "Enter World" is what left this check failing at its first
+      // step, silently, for as long as the door has had a name.
+      const r = await clickText(['Enter ', 'Back to ']);
       if (!r.clicked) {
         failure = { reason: 'no-door-button', available: r.available };
         log(`FAILED: no door button found. available=${JSON.stringify(r.available)}`);
