@@ -2,7 +2,8 @@
 // mirroring music.ts's synthesis style. Shares its AudioContext/noise
 // buffer/drive curve via music.getSfxBus() rather than opening a second
 // context, so these effects land on the same output graph -- downstream of
-// music.duck() and upstream of music.toggleMute().
+// music.duck(), and on the master bus rather than inside a score's own
+// session gain, so muting the music from Settings leaves these audible.
 
 import { music } from './music';
 

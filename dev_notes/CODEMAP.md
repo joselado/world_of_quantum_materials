@@ -1356,7 +1356,8 @@ looked at from.
 device today: walking is `OverworldScene`'s `createCursorKeys()` arrows and nothing else, while
 choosing anything (a Lab station, a guardian, a panel button, a battle move) is a `pointerdown`
 and nothing else. `Space` takes whatever the current tile offers, `Enter`/`H` reach the Lab,
-`M` mutes, and `Left`/`Right` page the battle move menu. Neither device covers the whole game
+and `Left`/`Right` page the battle move menu. Muting is a Settings row rather than a key,
+so that it persists with the rest of a player's preferences. Neither device covers the whole game
 on its own.
 
 **Whenever that changes, update `README.md`'s "Controls" section in the same edit.** It is the

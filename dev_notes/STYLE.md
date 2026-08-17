@@ -2572,14 +2572,23 @@ world are shaped, since world N's start is world N-1's exit.
 ## Settings station (`scenes/panels/hubStations.ts`'s `showSettingsPanel`)
 
 - Same blue-grey (`0x8fa0c9`) stroke as the Lab's other reference stations, sized
-  `(CANVAS_W - 60)` wide with height grown to fit. Three rows -- "Enemy Density: `<preset>`"
-  (`data/settings.ts`'s `DENSITY_PRESETS`, Low/Normal/High/Very High), "Text Size: `<preset>`"
-  (`FONT_SCALE_PRESETS`, Compact/Normal/Large), and "Music Style: `<preset>`"
-  (`MUSIC_STYLE_PRESETS`) -- each cycling through its own presets on click and rebuilding the
-  panel in place, same click-to-rebuild pattern Noether's shop tabs use, rather than a slider
-  (each has only a handful of discrete steps). A muted blue-grey hint line sits beneath each
-  row ("Takes effect on the next map"/"Applies immediately"/"Applies immediately"), then a
-  single "Close" button.
+  `(CANVAS_W - 60)` wide with height grown to fit. Five rows, each backed by its own preset
+  list in `data/settings.ts`: "Enemy Density: `<preset>`" (`DENSITY_PRESETS`,
+  Low/Normal/High/Very High), "Text Size: `<preset>`" (`FONT_SCALE_PRESETS`,
+  Compact/Normal/Large), "Music Style: `<preset>`" (`MUSIC_STYLE_PRESETS`,
+  Classic/Modern/Mute), "Difficulty: `<preset>`" (`DIFFICULTY_TIER_PRESETS`, B.Sc./M.Sc./Ph.D.)
+  and "World Size: `<preset>`" (`WORLD_SIZE_PRESETS`, Nano/Meso/Macro). Each cycles through
+  its own presets on click and rebuilds the panel in place, the same click-to-rebuild
+  pattern Noether's shop tabs use, rather than a slider (each has only a handful of discrete
+  steps). A muted blue-grey hint line sits beneath each row saying when that row lands
+  ("Takes effect on the next map", "Applies immediately", "Applies to your very next
+  battle", "Takes effect the next time you enter a world"), then a single "Close" button.
+  The panel reaches 449 of the canvas's 480 pixels at the Large text preset, so it is close
+  to full and a sixth row would need the layout revisited rather than appended.
+- Turning the music off lives here as the `MUSIC_STYLE_PRESETS` "Mute" value rather than as
+  a key: it is a preference a player sets once, so it belongs with the other preferences and
+  persists with them. It silences the score only. Sound effects sit on the master bus rather
+  than inside a score's session gain (`audio/sfx.ts`) and keep playing.
 
 ## Contextual tutorial tips (`OverworldScene.showTutorialTip`/`renderTutorialTipPopup`, `HubScene.maybeShowLabTip`)
 

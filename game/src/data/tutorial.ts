@@ -93,7 +93,7 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     title: 'Walking the Path',
     unlock: { kind: 'tip' },
     body:
-      'Use the arrow keys to move: Up/Down step forward and back, Left/Right step sideways. Off-path ground is impassable (told apart by its color, not by a wall you\'d see), so watch where the walkable ground actually goes rather than holding one direction blindly. Press H or Enter any time to return to the Lab (your moves, stats, abilities, tutorial, and settings all live as stations there, and every guardian you have met stands in the room to be clicked), and M to mute or unmute the music.',
+      'Use the arrow keys to move: Up/Down step forward and back, Left/Right step sideways. Off-path ground is impassable (told apart by its color, not by a wall you\'d see), so watch where the walkable ground actually goes rather than holding one direction blindly. Press H or Enter any time to return to the Lab, where your moves, stats, abilities, tutorial, and settings all live as stations, and every guardian you have met stands in the room to be clicked. The Settings station is also where the music is set to Classic, Modern or Mute.',
   },
   encounter: {
     title: 'Wild Encounters',

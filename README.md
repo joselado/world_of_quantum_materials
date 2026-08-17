@@ -272,7 +272,6 @@ your moves in battle, and the arrows that page between kinds of move.
 | Enter or H | Return to the Lab (World 0) |
 | Enter, while in the Lab | Head back out to whichever world you're in the middle of (once you've entered one) |
 | Left / Right, in battle | Page between kinds of move |
-| M | Mute or unmute the music |
 
 Walking is the one thing the mouse can't do, and picking a move in battle or
 opening a station in the Lab is the one thing the keyboard can't do.
@@ -291,8 +290,9 @@ In the Lab, click the **Settings** station to adjust:
   fought them. Takes effect the next time you enter or re-enter a world.
 - **Text Size**: Compact, Normal, or Large. Applies immediately to every
   menu and dialogue in the game.
-- **Music Style**: Classic or Modern, two different arrangements of every
-  world's soundtrack. Applies immediately.
+- **Music**: Classic or Modern, two different arrangements of every world's
+  soundtrack, or Mute for no music at all. Sound effects keep playing either
+  way. Applies immediately, and is remembered between sessions.
 - **Difficulty**: B.Sc., M.Sc., or Ph.D., how hard every world's opponents
   hit. Unlike the settings above, meant to be changed mid-playthrough, not
   just once, and it applies to your very next battle.

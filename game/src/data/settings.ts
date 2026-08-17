@@ -46,14 +46,18 @@ export const FONT_SCALE_PRESETS: FontScalePreset[] = [
 
 export const DEFAULT_FONT_SCALE = FONT_SCALE_PRESETS[1].value; // Normal -- the new 1.5x default
 
-// Same Settings panel, third row: which of audio/music.ts's two score
-// tables (SCORES/"Classic", SCORES_MODERN/"Modern") MusicEngine.play() draws
-// from. Unlike density/font scale this takes effect immediately -- picking a
-// new value calls music.setStyle(), which restarts whatever's currently
-// playing under the new table. Exported here (rather than repeated as a
-// literal union in music.ts/save.ts) so all three files stay in sync from
-// one source.
-export type MusicStyle = 'classic' | 'modern';
+// Same Settings panel, third row: which of audio/music.ts's two score tables
+// (SCORES/"Classic", SCORES_MODERN/"Modern") MusicEngine.play() draws from,
+// plus "Mute" for no score at all. Turning the music off is a setting rather
+// than a key: it is a preference a player makes once and keeps, so it belongs
+// where the other preferences are and it persists with them, instead of
+// resetting every time the game boots. Unlike density/font scale this takes
+// effect immediately -- picking a new value calls music.setStyle(), which
+// restarts whatever's currently playing under the new table, or silences it.
+// Sound effects are unaffected: this row is the music. Exported here (rather
+// than repeated as a literal union in music.ts/save.ts) so all three files
+// stay in sync from one source.
+export type MusicStyle = 'classic' | 'modern' | 'mute';
 
 export interface MusicStylePreset {
   label: string;
@@ -63,6 +67,7 @@ export interface MusicStylePreset {
 export const MUSIC_STYLE_PRESETS: MusicStylePreset[] = [
   { label: 'Classic', value: 'classic' },
   { label: 'Modern', value: 'modern' },
+  { label: 'Mute', value: 'mute' },
 ];
 
 export const DEFAULT_MUSIC_STYLE = MUSIC_STYLE_PRESETS[0].value; // Classic -- the original soundtrack stays the default

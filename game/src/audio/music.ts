@@ -1942,13 +1942,16 @@ class MusicEngine {
   private style: MusicStyle = 'classic';
   private stopToken = 0;
   private timer: number | null = null;
-  private muted = false;
+  // The score the game last asked for, as opposed to `current`, the one
+  // actually sounding. The two differ while the style is 'mute', which is
+  // what lets un-muting resume the right track.
+  private wanted: string | null = null;
 
   private ensureCtx(): AudioContext {
     if (!this.ctx) {
       this.ctx = new AudioContext();
       this.master = this.ctx.createGain();
-      this.master.gain.value = this.muted ? 0 : 1;
+      this.master.gain.value = 1;
       // A gentle bus compressor so the busier battle mix (several layers
       // stacking on the downbeat) stays punchy without clipping.
       this.compressor = this.ctx.createDynamicsCompressor();
@@ -2033,14 +2036,27 @@ class MusicEngine {
   setStyle(style: MusicStyle) {
     if (this.style === style) return;
     this.style = style;
-    if (this.current) {
-      const key = this.current;
+    if (style === 'mute') {
+      // `wanted` survives the stop, so picking Classic or Modern again picks
+      // the score back up where the game currently is rather than leaving
+      // silence until the next scene change happens to call play().
+      this.stop();
+      return;
+    }
+    if (this.wanted) {
       this.current = null;
-      this.play(key);
+      this.play(this.wanted);
     }
   }
 
   play(which: string) {
+    // Tracked whatever the style is, so the engine always knows which score
+    // the game is asking for even while muted.
+    this.wanted = which;
+    if (this.style === 'mute') {
+      this.stop();
+      return;
+    }
     if (this.current === which) return;
     const table = this.style === 'modern' ? SCORES_MODERN : SCORES;
     const score = table[which] ?? SCORES[which];
@@ -2130,8 +2146,8 @@ class MusicEngine {
     this.ctx?.resume();
   }
 
-  // Dips the currently-playing track's volume (not the master bus, so it
-  // stacks correctly under toggleMute) and brings it back up, so the score
+  // Dips the currently-playing track's volume (its own session gain, not the
+  // master bus the sfx share) and brings it back up, so the score
   // visibly "gets out of the way" while an attack effect's sound plays.
   // Re-entrant: cancels any duck already in flight and reschedules the full
   // envelope from the current value, so back-to-back attacks (player then
@@ -2149,10 +2165,11 @@ class MusicEngine {
   }
 
   // Shared context/bus for one-shot sound effects (sfx.ts) -- downstream of
-  // duck() (so an effect's own sound isn't swallowed by its own duck) and
-  // upstream of toggleMute() (so muting silences sfx too). Also hands back
-  // the same cached noise buffer/drive curve the music tracks use, so sfx
-  // doesn't need its own copies.
+  // duck(), so an effect's own sound isn't swallowed by its own duck. Sfx sit
+  // on the master bus rather than inside a score's session gain, so the
+  // Settings panel's Mute style silences the music without silencing them.
+  // Also hands back the same cached noise buffer/drive curve the music tracks
+  // use, so sfx doesn't need its own copies.
   getSfxBus(): {
     ctx: AudioContext;
     dest: GainNode;
@@ -2161,18 +2178,6 @@ class MusicEngine {
   } {
     const ctx = this.ensureCtx();
     return { ctx, dest: this.master!, noiseBuffer: this.getNoiseBuffer(ctx), driveCurve: this.getDriveCurve() };
-  }
-
-  toggleMute(): boolean {
-    this.muted = !this.muted;
-    if (this.master) {
-      const ctx = this.ensureCtx();
-      const now = ctx.currentTime;
-      this.master.gain.cancelScheduledValues(now);
-      this.master.gain.setValueAtTime(this.master.gain.value, now);
-      this.master.gain.linearRampToValueAtTime(this.muted ? 0 : 1, now + 0.08);
-    }
-    return this.muted;
   }
 
   private scheduleTrack(ctx: AudioContext, track: Track, startAt: number, secPerBeat: number, dest: GainNode, ambience: GainNode) {

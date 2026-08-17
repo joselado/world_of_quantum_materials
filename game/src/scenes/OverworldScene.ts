@@ -1061,7 +1061,6 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.idleBob();
 
     this.cursors = this.input.keyboard!.createCursorKeys();
-    this.input.keyboard!.on('keydown-M', () => music.toggleMute());
     this.input.keyboard!.on('keydown-H', () => this.returnToHub());
     this.input.keyboard!.on('keydown-ENTER', () => this.returnToHub());
     this.input.keyboard!.on('keydown-SPACE', () => this.confirmGate());
