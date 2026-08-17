@@ -35,7 +35,7 @@ use, as a semiconductor-type player (Silicon, by default), you'll only see
 Electron Pulse until you transmute into a form whose physics supports more
 (see [Quasiparticles & moves](quasiparticles.md)).
 
-<img src="../screenshots/docs-guardians-noether-panel.png" width="300" alt="Noether's shop: the moves the current form can carry, the selected one playing its own battle effect beside its price">
+<img src="../screenshots/docs-guardians-noether-panel.png" width="300" alt="Noether's shop: the moves the current form can carry, Electron Pulse selected with its price">
 
 ## Bloch's States
 
@@ -49,7 +49,7 @@ visited, so backtracking never means re-walking a whole corridor.
 - Each world you haven't unlocked yet is priced separately, there's no
   single purchase that opens every destination at once
 
-<img src="../screenshots/docs-guardians-bloch-panel.png" width="300" alt="Bloch's destination list: every world already visited, the chosen one previewed with its map and its 15-qumatessence first trip">
+<img src="../screenshots/docs-guardians-bloch-panel.png" width="300" alt="Bloch's destination list: visited worlds named, unvisited ones masked, the chosen one ringed on the Qumatuomi map above its 15-qumatessence first trip">
 
 ## Dresselhaus's Nanostructures
 
@@ -90,7 +90,7 @@ every form hosts) for as long as you wear that form. Your pick is kept:
 transmute back into a form that can host it and the move carries it again,
 free and without retuning.
 
-<img src="../screenshots/docs-guardians-landau-panel.png" width="300" alt="Landau's shop: his two Analytic moves side by side, each playing its own effect above the quasiparticles it can be tuned to">
+<img src="../screenshots/docs-guardians-landau-panel.png" width="300" alt="Landau's shop: his two Analytic moves, Phonon Lance opened over the quasiparticles it can be tuned to, its effect striking mid-play on the stage">
 
 ## Majorana's Fusion
 
@@ -156,7 +156,7 @@ several times in quick, overlapping succession, each repeat bigger than the
 last (two for Double, three for Triple, four for Infinite), reading as a
 real escalating cascade rather than just a stronger single hit.
 
-<img src="../screenshots/docs-guardians-feynman-panel.png" width="300" alt="Feynman's panel: the moves already carried, with the streak of questions and the cost to push the selected one to Double">
+<img src="../screenshots/docs-guardians-feynman-panel.png" width="300" alt="Feynman's panel: the moves already carried, the selected one already at Double and cascading on the stage, with the question streak and cost to push it to Triple">
 
 ## Kondo's Clouds
 
@@ -223,4 +223,4 @@ qumatessence to unlock *per move*, after which retuning back to that class
 is free forever. Land a full 3-for-3 hit and it plays the longest, most
 dramatic summoning animation in the game.
 
-<img src="../screenshots/docs-guardians-curie-panel.png" width="300" alt="Skłodowska-Curie's panel: her two Ultimate moves side by side, one quasiparticle already unlocked and free to return to, the rest at 1000 qumatessence each">
+<img src="../screenshots/docs-guardians-curie-panel.png" width="300" alt="Skłodowska-Curie's panel: Phonon Meteor striking its stage mid-summoning, its phonon class already unlocked and free to carry, other classes at 1000 qumatessence each">

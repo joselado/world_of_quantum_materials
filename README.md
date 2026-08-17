@@ -101,11 +101,11 @@ to the Nickel Oxide beside it.
 <table>
 <tr>
 <td><img src="screenshots/encounter.png" width="300" alt="A wild Nickel Oxide asks a physics question mid-encounter"></td>
-<td><img src="screenshots/encounter-topological.png" width="300" alt="Bi2Te3 asks why its topological surface state is spin-momentum locked"></td>
+<td><img src="screenshots/encounter-topological.png" width="300" alt="A wild Bi2Te3 asks a topological physics question"></td>
 </tr>
 <tr>
-<td><img src="screenshots/encounter-supercon.png" width="300" alt="Aluminum asks which move class is unique to a Chern superconductor"></td>
-<td><img src="screenshots/encounter-tensornet.png" width="300" alt="Herbertsmithite asks how a quantum spin liquid's ground state differs from a conventional antiferromagnet's"></td>
+<td><img src="screenshots/encounter-supercon.png" width="300" alt="A wild Aluminum asks a superconductivity question"></td>
+<td><img src="screenshots/encounter-tensornet.png" width="300" alt="A wild Herbertsmithite asks a quantum magnetism question"></td>
 </tr>
 </table>
 
@@ -121,7 +121,7 @@ which crystal types can use each one.
 
 <table>
 <tr>
-<td><img src="screenshots/battle.png" width="300" alt="Battle against a wild Nickel Oxide, attack boosted"></td>
+<td><img src="screenshots/battle.png" width="300" alt="Battle against a wild crystal in the Mean Fields, the move menu open"></td>
 <td><img src="screenshots/battle-boss.png" width="300" alt="Battle against a rival's gigantic boss crystal"></td>
 </tr>
 <tr>

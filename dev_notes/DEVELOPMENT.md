@@ -599,30 +599,46 @@ content rather than failing loudly:
 
 ## Regenerating the doc screenshots
 
-**`npm run shots`** (`scripts/shots.mjs`, ~90 seconds) rewrites the PNGs in the
-repo's top-level `screenshots/` that `README.md` and `docs/` embed. Run it after
+**`npm run shots`** (`scripts/shots.mjs`, ~4 minutes) rewrites the PNGs in the
+repo's top-level `screenshots/` that `README.md` and `docs/` embed — every one
+of them; nothing in that directory is hand-captured. Run it after
 any change that alters what the game looks like, the same way `npm run docs` is
 run after a change to the content tables — a screenshot is the one part of the
 docs that cannot be kept true by reading it.
 
 Run a subset with `npm run shots -- worlds guardians`. The groups are `title`,
-`hub`, `worlds`, `guardians` and `battle`; no argument runs all of them.
+`hub`, `worlds`, `guardians`, `battle` and `encounters`; no argument runs all
+of them.
 
 Every shot is taken at the game's own 854x480 canvas and driven through the
-scene's own methods rather than by clicking, so it is reproducible. Two framing
-rules are baked in: a world is shot from the **middle of its corridor**, walked
-in with the game's own movement so the camera follows — from the entrance a
-world is mostly its own back-exit sign — and a guardian panel is shot **before
-its looping move previews ramp up**, since a capture taken mid-cycle puts a
-plume of effect across the panel's own text.
+scene's own methods rather than by clicking, so it is reproducible. Every group
+first seeds a mid-run Story Mode save straight into the registry
+(`seedProgress` in the script): materials defeated and discovered, every
+guardian met, tutorial tips consumed, a Kondo buff held, a Franklin passive
+active, an Anderson dopant in. A fresh save shows most guardian panels in
+their empty state ("You haven't defeated any materials yet..."), and the docs
+describe the populated panels a playing player actually uses — Story Mode
+rather than Superposition on purpose, since Superposition strips the
+prices/unlock states the docs' captions talk about.
+
+Framing rules baked in: a world is shot from the **middle of its corridor**,
+walked in with the game's own movement so the camera follows — from the
+entrance a world is mostly its own back-exit sign. A guardian panel whose pane
+carries a preview stage (Noether, Feynman, Kondo, Landau, Skłodowska-Curie) is
+shot **with its looping move preview mid-play**: the script watches the stage
+region from inside the page (Phaser's `snapshotArea`), freezes the game loop
+(`game.loop.sleep()`) the moment the encoded size of that region jumps — the
+effect arriving on stage — screenshots the frozen frame, and wakes the loop.
+The per-guardian trigger thresholds live in `STAGE_TRIGGER`, calibrated
+against the min/max region sizes the run logs; if no play is caught within a
+few loops the settled panel is shot instead (and the run says so). The shots
+that depend on a battle reaching a particular moment — a mismatch hit landing
+(driven as Magnon Pulse into Barium Titanate, a ferroelectric with no magnetic
+order to host it), a victory banner, an analytic question mid-flight — are
+each driven straight from the scene.
 
 A PNG under 5 kB fails the run: that is an empty or black frame, a shot that
 "worked" but captured nothing, which the docs would otherwise embed silently.
-
-Not everything in `screenshots/` is covered. The shots that depend on a battle
-reaching a particular moment — a type-mismatch hit landing, a victory banner —
-are still hand-captured; the script's own header lists what it does drive, and
-adding one is a matter of driving the state and adding an entry.
 
 ## Checking graphics performance
 
