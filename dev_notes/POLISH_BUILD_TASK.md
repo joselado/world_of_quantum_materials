@@ -11,16 +11,22 @@ spec conflict cannot ship unresolved in either direction, and a doc that
 promises a feature the build does not have is a defect in the doc or in the
 build, never in neither.
 
+A status of "fixed, verified" means someone drove the running game and looked;
+"fixed, unseen" means the code changed, typechecks and passes `content-lint`,
+and nothing has rendered it. The distinction is load-bearing here: item 0
+reached a player from behind a comment claiming the overflow was already
+handled, so a fix that has only been read is not a fix that has been checked.
+
 ---
 
 ## Status at a glance
 
 | # | Item | Kind | Status |
 |---|---|---|---|
-| **0** | **Rival taunt panel overflows; run cannot continue** | **blocker** | **open** |
+| 0 | Rival taunt panel overflows; run cannot continue | blocker | **fixed, verified** |
 | 1 | The Adapted renders pure white | defect | **fixed, unseen** |
 | 2 | World 9's rival renders pure white | defect | **fixed, unseen** |
-| 3 | Boss shown as an ordinary crystal in the TURNS row | defect | **fixed, unseen** |
+| 3 | Boss shown as an ordinary crystal in the TURNS row | defect | **fixed, verified** |
 | 4 | Music light rule violated in Worlds 8 and 9 | decision | **open** |
 | 5 | Bespoke per-world boss puzzles | decision | **open** |
 | 6 | `DESIGN.md` §10's ten open design questions | decision | **open** |
@@ -42,41 +48,32 @@ build, never in neither.
 
 ## Defects
 
-### 0. Rival taunt panel overflows the canvas — the run cannot continue
+### 0. Rival taunt panel overflows the canvas — fixed and verified
 
-**Fix this first.** Reported from play: the boss dialogue does not fit on screen
-and there is no way to move forward. That makes it the only item here that ends
-a playthrough rather than blemishing one — a player who cannot dismiss the taunt
-cannot reach the battle, so the world is unfinishable.
+The pass dialogue is the only way into a rival fight, so an advance button pushed
+past `CANVAS_H` does not merely look wrong: it strands the player at the pass and
+the world becomes unfinishable. That is what a player hit.
 
-`renderRivalTauntPage` (`game/src/scenes/OverworldScene.ts`, ~line 2455) stacks a
-fixed-height boss silhouette above wrapped taunt text above the advance button,
-growing downward from a fixed top. Its own comments claim the overflow is already
-handled: the text and button font scales are capped at `Math.min(fontScale, 1.5)`
-specifically because "the longer taunts (worlds 9/10) are long enough that the
-Settings panel's 2x Large preset would push this text past the fixed `CANVAS_H`
-once added to the crystal's own fixed headroom above." The report says that cap is
-not enough, so the comment describes an intent the code does not achieve.
+`renderRivalTauntPage` (`game/src/scenes/OverworldScene.ts`) now measures the whole
+stack before placing any of it, and places it in the reverse of reading order:
+button first, then the taunt fitted to the budget left once the golem is at
+`MIN_BOSS_SIZE`, then the golem with whatever height the other two did not need.
+The golem is the only one of the three that can give ground for free, so it is the
+one that gives it. `fitProseToBudget` (`ui/text.ts`) drives the taunt's own shrink
+loop off measured height rather than a font cap, which is what a font cap alone
+could not bound.
 
-The button is the part that must never leave the canvas — the text merely reading
-badly is survivable, being unable to press Next/Battle! is not.
+Verified against the running game at all three font-scale presets × all ten worlds
+× both taunt pages (60 states): the advance button's bottom edge lands at 450 in
+the worst case against a canvas of 480, and the panel never leaves the canvas on
+any side. World 9's second page is the longest taunt in the game and is the one
+state that spends its shrink budget, dropping to 16px.
 
-Likely contributors, in the order worth checking:
-- The crystal's headroom is fixed (`BOSS_CRYSTAL_SIZE × BOSS_SILHOUETTE_TOP/BOTTOM`)
-  and does not shrink when the text grows, so it spends the same vertical budget
-  at every preset.
-- The longest taunts (worlds 9 and 10) at the largest text preset are the stated
-  worst case and the first thing to reproduce.
-- The 1.5 cap bounds the font but not the resulting wrapped *height*, which is
-  what actually overflows.
+The trap worth remembering for any panel of this shape: capping the font size
+bounds the font, not the wrapped height it produces, and the wrapped height is
+what overflows.
 
-Worth fixing structurally rather than by shaving constants: measure the stack and
-shrink or scroll it to fit, the way Bloch's panel drives its own shrink loop off
-measured text height. A reproduction at every preset × every world belongs in the
-verification, since this class of bug is exactly what `verify-ui` exists for and
-it reached a player anyway.
-
-### 1–3. Boss rendering
+### 1–3. Boss rendering (1 and 2 open, 3 fixed and verified)
 
 `shade()` (`game/src/art/colors.ts:3`) calls Phaser's `Color.brighten()`, which
 adds `255 × amount / 100` to every channel. Any amount much above 100 therefore
@@ -91,21 +88,20 @@ remains for any future `shade()` call site: the amount is not a multiplier.
   because its type is rolled per visit and cached as `rival9Type`, so the colour
   has to keep reading as the rolled phase rather than take one literal.
   Worlds 1–8 set their colours explicitly via `colorOverride`; extend that.
-- **TURNS row** — `game/src/scenes/battle/hud.ts:302` builds every turn-order
-  icon with `makeCrystal` for both sides, while the arena
-  (`BattleScene.ts:428-432`) correctly picks `makeBossCrystal` for a rival
-  fight. The boss therefore appears as an ordinary crystal in the turn row of
-  the same battle it stands as a golem in. Open sub-question: whether the boss
-  art stays legible at `TURN_PREVIEW_ICON_SIZE` or needs a simplified
-  silhouette.
+- **TURNS row** — **fixed and verified.** `drawTurnPreview` (`battle/hud.ts`)
+  builds a rival's icons with `art/boss.ts`'s `makeBossIcon`, reduced to what
+  reads at `TURN_PREVIEW_ICON_SIZE`: the silhouette in the opponent's own
+  colour with a round ember dot for the eye, since the full-size art's 4x1px
+  cut slit would vanish. Checked in world 6 and world 10 rival fights, the
+  golem's head and shoulders read clearly at 32px against the player's own
+  crystal, so it needed no `k` increase. `transmuteAdapted` redraws the row
+  alongside the plate and the move menu, so The Adapted's mid-battle changes
+  of form reach all three at once rather than the row lagging a turn behind.
 
-**All three fixes are in the tree but were never seen.** They typecheck and pass
-`content-lint`; no screenshot was taken of any of them. Still to confirm by eye:
-The Adapted's dark prism at `0x4a4a4a`; the seven World 9 rival colours
-(`TYPE_LOOK[type]` blended halfway to `RIVAL_9_TARNISH`); `makeBossIcon`'s
-legibility at 32px, which is the riskiest — if it reads as mush, raising its `k`
-toward `size * 0.56` is the first thing to try; and whether the turn row follows
-The Adapted's mid-battle transmutes.
+**The two colour fixes are in the tree but were never seen.** They typecheck and
+pass `content-lint`; no screenshot was taken of either. Still to confirm by eye:
+The Adapted's dark prism at `0x4a4a4a`, and the seven World 9 rival colours
+(`TYPE_LOOK[type]` blended halfway to `RIVAL_9_TARNISH`).
 
 **Constraint for any `WORLD_RIVALS` edit** (documented at `materials.ts`'s own
 rivals-table comment): that object literal is walked as literal AST nodes by
@@ -123,8 +119,6 @@ instead of `TYPE_LOOK[type].color`).
   fix, and touches a shared string.
 - A pass chapter unlocks on the rival win, although the player meets its goal
   line and taunt slightly earlier; nothing persists that moment.
-- `STYLE.md`'s Settings section says "Three rows"; the panel has four.
-  Pre-existing drift, unrelated to the station.
 - The Story station's own doc edits were hand-written without a
   `docs-sync-check` pass; worth re-reading.
 

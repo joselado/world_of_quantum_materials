@@ -2295,6 +2295,14 @@ export class BattleScene extends Phaser.Scene {
       // against the new form -- a move that reads as double damage has to be
       // one that still is.
       this.drawMoveMenu(this.currentMoveIds);
+      // The turn row's opponent icons carry the boss silhouette in this
+      // form's own colour (hud.ts's drawTurnPreview reads opponentView()),
+      // so it is redrawn here with the plate and the menu rather than
+      // waiting for the end of the turn -- the three read as one opponent,
+      // and a row still showing the previous form beside a plate naming the
+      // new one is the same "which crystal am I fighting" confusion the
+      // silhouette exists to prevent.
+      this.drawTurnPreview();
       this.setLogText(`${this.wild.name} reshapes into ${newForm.name}!`);
     });
 
