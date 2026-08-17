@@ -58,8 +58,17 @@ import type { TutorialTipId } from '../data/tutorial';
 import { STORY_BEATS, WORLD_GOAL_TEXT, FINALE_TITLE, FINALE_BODY } from '../data/story';
 import { WORLD_LORE, RIVAL_TAUNTS, hasSeenWorldLore, markWorldLoreSeen } from '../data/worldLore';
 import type { WorldLore } from '../data/worldLore';
-import { DEFAULT_ENCOUNTER_DENSITY, DEFAULT_WORLD_SIZE, gridDimsFor, worldSizeFactor } from '../data/settings';
-import type { WorldSizeId } from '../data/settings';
+import {
+  DEFAULT_ENCOUNTER_DENSITY,
+  DEFAULT_TOUCH_CONTROLS,
+  DEFAULT_WORLD_SIZE,
+  gridDimsFor,
+  touchControlsActive,
+  worldSizeFactor,
+} from '../data/settings';
+import type { TouchControlsMode, WorldSizeId } from '../data/settings';
+import { createTouchPad, PAD_KEEPOUT } from './overworld/touchControls';
+import type { TouchPad } from './overworld/touchControls';
 import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
 import type { Material, MaterialType, MoveClass } from '../data/types';
@@ -642,6 +651,10 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   private playerCrystalGfx!: Phaser.GameObjects.Container;
   playerMaterial!: Material;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+  // The on-screen walking arrows (scenes/overworld/touchControls.ts), built
+  // only when the Settings station's Touch Controls row resolves to on --
+  // null on a keyboard machine, where nothing should sit over the world.
+  private touchPad: TouchPad | null = null;
   tokenText!: Phaser.GameObjects.Text;
   private goalText!: Phaser.GameObjects.Text;
   // The interact prompt: interface, not scenery. It obeys every text-size
@@ -1010,15 +1023,22 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       .setOrigin(0.5, 0)
       .setDepth(50)
       .setVisible(false);
+    // The way back to the Lab, said and offered in the same object: the hint
+    // is itself the button, so a player who cannot press Enter can tap it.
+    // With the walking arrows up it says so in the words a touchscreen player
+    // is reading it in, and it grows into a target a finger can hit.
+    const touchOn = this.touchControlsOn();
     const labHint = this.add
-      .text(CANVAS_W - 8, CANVAS_H - 8, 'Press Enter to go to the Lab', {
+      .text(CANVAS_W - 8, CANVAS_H - 8, touchOn ? 'Tap here for the Lab' : 'Press Enter to go to the Lab', {
         fontSize: fontPx(this, 12),
         color: REFERENCE_BLUE_GREY_HEX,
         backgroundColor: 'rgba(0,0,0,0.35)',
-        padding: { x: 4, y: 2 },
+        padding: touchOn ? { x: 12, y: 10 } : { x: 4, y: 2 },
       })
       .setOrigin(1, 1)
       .setDepth(50);
+    labHint.setInteractive({ useHandCursor: true });
+    labHint.on('pointerdown', () => this.returnToHub());
     // Interface, not scenery: fixed on screen, sized by the text preset, and
     // sitting low and centred where the pass itself is, so the offer reads as
     // attached to what the player is looking at without being painted into
@@ -1028,14 +1048,18 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // Stacked above the Lab hint by measuring it rather than by a fixed
     // offset: both grow with the text-size preset, and at the largest one a
     // guessed gap puts the two plates through each other.
+    //
+    // With the walking arrows up the prompt keeps out of both bottom corners
+    // (it wraps narrower, growing upward instead of sideways), so a long
+    // offer can never lie across the arrows a player is holding.
     this.gatePrompt = this.add
       .text(CANVAS_W / 2, labHint.y - labHint.height - 6, '', {
         fontSize: fontPx(this, 14),
         color: '#e6d9ff',
         backgroundColor: 'rgba(0,0,0,0.62)',
-        padding: { x: 8, y: 4 },
+        padding: touchOn ? { x: 12, y: 10 } : { x: 8, y: 4 },
         align: 'center',
-        wordWrap: { width: CANVAS_W - 60 },
+        wordWrap: { width: touchOn ? CANVAS_W - PAD_KEEPOUT * 2 : CANVAS_W - 60 },
       })
       .setOrigin(0.5, 1)
       .setDepth(50)
@@ -1061,6 +1085,9 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.idleBob();
 
     this.cursors = this.input.keyboard!.createCursorKeys();
+    // Below the dialogue panels' depth 100: a panel covers the arrows while
+    // it is open, and update() hides them outright for as long as it is.
+    this.touchPad = touchOn ? createTouchPad(this, 60) : null;
     this.input.keyboard!.on('keydown-H', () => this.returnToHub());
     this.input.keyboard!.on('keydown-ENTER', () => this.returnToHub());
     this.input.keyboard!.on('keydown-SPACE', () => this.confirmGate());
@@ -1342,6 +1369,15 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     return (this.game.registry.get('encounterDensity') as number) ?? DEFAULT_ENCOUNTER_DENSITY;
   }
 
+  // The same station's touch-controls knob, resolved through
+  // data/settings.ts's touchControlsActive so 'Auto' means "whatever this
+  // device is". Read once per scene create: the arrows, the Lab hint's own
+  // wording and the pass prompt's width are all built from one answer, so
+  // a change made in the Lab lands on the next world entered.
+  private touchControlsOn(): boolean {
+    return touchControlsActive((this.game.registry.get('touchControls') as TouchControlsMode) ?? DEFAULT_TOUCH_CONTROLS);
+  }
+
   // The same station's world-size knob, read at the same moment and for the
   // same reason: a world is built at whatever size the setting says when it
   // is generated, and keeps that size for as long as it stands.
@@ -1444,15 +1480,20 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.updateWorldSprites(this.gateSprites);
     this.updateGatePrompt();
     this.updateGoalBanner();
+    this.touchPad?.setVisible(!this.dialogueActive);
 
     if (this.moving || this.dialogueActive) return;
 
+    // The on-screen arrows are read as held state beside the keys, not as
+    // events, so holding one walks exactly the way holding an arrow key does
+    // and the same `moving` gate paces both.
+    const touch = this.touchPad?.held() ?? { dx: 0, dy: 0 };
     let dx = 0;
     let dy = 0;
-    if (this.cursors.left.isDown) dx = -1;
-    else if (this.cursors.right.isDown) dx = 1;
-    else if (this.cursors.up.isDown) dy = -1;
-    else if (this.cursors.down.isDown) dy = 1;
+    if (this.cursors.left.isDown || touch.dx < 0) dx = -1;
+    else if (this.cursors.right.isDown || touch.dx > 0) dx = 1;
+    else if (this.cursors.up.isDown || touch.dy < 0) dy = -1;
+    else if (this.cursors.down.isDown || touch.dy > 0) dy = 1;
 
     this.tryMove(dx, dy);
   }
@@ -2314,11 +2355,15 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.gatePrompt.setText(this.gatePromptLabel(gate)).setVisible(true).setInteractive({ useHandCursor: true });
   }
 
+  // The prompt names the input the player actually has: the key when there is
+  // a keyboard, the tap on the prompt itself when the walking arrows are up.
+  // Either one reaches confirmGate, so only the wording changes.
   private gatePromptLabel(gate: 'forward' | 'backward'): string {
-    if (gate === 'backward') return `Press Space to go back to ${this.world === 1 ? 'the Lab' : worldName(this.world - 1)}`;
-    if (!this.isRivalDefeated()) return `Press Space to challenge ${this.getWorldRival()?.name ?? 'the rival'}`;
-    if (this.world >= FINAL_WORLD) return 'Press Space to look out over the worlds';
-    return `Press Space to cross into ${worldName(this.world + 1)}`;
+    const press = this.touchPad ? 'Tap here' : 'Press Space';
+    if (gate === 'backward') return `${press} to go back to ${this.world === 1 ? 'the Lab' : worldName(this.world - 1)}`;
+    if (!this.isRivalDefeated()) return `${press} to challenge ${this.getWorldRival()?.name ?? 'the rival'}`;
+    if (this.world >= FINAL_WORLD) return `${press} to look out over the worlds`;
+    return `${press} to cross into ${worldName(this.world + 1)}`;
   }
 
   // The keypress, which is the whole of the commitment. Challenging in the

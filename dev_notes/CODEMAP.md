@@ -72,6 +72,11 @@ game/src/
                                  and drawDistantSelf's neighbour silhouette), plus
                                  hazeTarget/forwardHazeBlend and the HazeView/AtmosphereView
                                  contexts they read
+      touchControls.ts         createTouchPad() -- the four on-screen walking arrows in the
+                                 world's bottom-left corner, and PAD_KEEPOUT, the corner width
+                                 they claim. Built only when the Settings station's Touch
+                                 Controls row resolves to on (see "Touch, and what makes the
+                                 game playable on a phone" below)
       terrain/
         types.ts               TerrainKind/OffPathKind/TerrainTile/TerrainPlan/BattleLocale, the
                                  TerrainView render context, and the AccentTile/AccentDraw
@@ -1353,15 +1358,36 @@ aperture stand at the same depth -- so the one number holds at every distance th
 looked at from.
 
 **Input, and the README's Controls section.** What the player can press or click is split by
-device today: walking is `OverworldScene`'s `createCursorKeys()` arrows and nothing else, while
-choosing anything (a Lab station, a guardian, a panel button, a battle move) is a `pointerdown`
-and nothing else. `Space` takes whatever the current tile offers, `Enter`/`H` reach the Lab,
-and `Left`/`Right` page the battle move menu. Muting is a Settings row rather than a key,
-so that it persists with the rest of a player's preferences. Neither device covers the whole game
-on its own.
+device: walking is `OverworldScene`'s `createCursorKeys()` arrows plus the on-screen arrows
+below, while choosing anything (a Lab station, a guardian, a panel button, a battle move) is a
+`pointerdown` and nothing else. `Space` takes whatever the current tile offers, `Enter`/`H`
+reach the Lab (as does clicking the Lab hint in the world's bottom-right corner), and
+`Left`/`Right` page the battle move menu. Muting is a Settings row rather than a key, so that
+it persists with the rest of a player's preferences.
 
-**Whenever that changes, update `README.md`'s "Controls" section in the same edit.** It is the
-only player-facing statement of what the inputs are, and a control the game has but the README
+**Touch, and what makes the game playable on a phone.** Every action except walking already had
+a click target, so a pointer-only device needs exactly three things, all of them additive to the
+keyboard paths rather than replacing them:
+
+- `scenes/overworld/touchControls.ts`'s `createTouchPad(scene, depth)` -- the four walking
+  arrows in the world's bottom-left corner. A handle (`held()`/`setVisible()`/`destroy()`)
+  rather than one of `scenes/overworld/`'s per-frame render functions, since the pad holds the
+  one piece of state nothing else can derive: which direction is currently pressed.
+  `OverworldScene.update()` reads `held()` beside `cursors.*.isDown`, so a held arrow walks
+  through the same `moving` gate a held key does, and hides the pad whenever `dialogueActive`.
+  `PAD_KEEPOUT` is the corner width the pad claims, which the pass prompt wraps itself out of.
+- The Lab hint is itself the button (`pointerdown` -> `returnToHub()`), and reads "Tap here for
+  the Lab" with a finger-sized padding when the arrows are up.
+- `BattleScene`'s end-of-battle summary ends on a pointer as well as `SPACE`, and says so.
+
+Whether the arrows are drawn is the Settings station's Touch Controls row (`data/settings.ts`'s
+`TOUCH_CONTROLS_PRESETS`, `touchControlsActive()` resolving `'auto'` through `isTouchDevice()`),
+persisted as `SaveData.touchControls` and read fresh on each world entry. `main.ts` asks for
+three active pointers so an arrow can be held while the other hand taps, and `index.html` sets
+`touch-action: none` so a drag on the arrows walks rather than scrolling the page.
+
+**Whenever any of that changes, update `README.md`'s "Controls" section in the same edit.** It is
+the only player-facing statement of what the inputs are, and a control the game has but the README
 does not is a control most players never find. The standing goal is that the game becomes
 playable on the keyboard alone (menu selection and Lab stations reachable without a pointer),
 which is what a console port would need; a click-to-move overworld would do the same for the

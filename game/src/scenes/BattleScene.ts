@@ -53,8 +53,8 @@ import {
   DIFFICULTY_MULTIPLIERS,
   superpositionEnemyStats,
 } from '../data/balance';
-import { DEFAULT_DIFFICULTY_TIER } from '../data/settings';
-import type { DifficultyTier } from '../data/settings';
+import { DEFAULT_DIFFICULTY_TIER, DEFAULT_TOUCH_CONTROLS, touchControlsActive } from '../data/settings';
+import type { DifficultyTier, TouchControlsMode } from '../data/settings';
 import { victoryLine, defeatLine } from '../data/greetings';
 import { PASSIVES } from '../data/passives';
 import type { PassiveOwner } from '../data/passives';
@@ -3090,9 +3090,17 @@ export class BattleScene extends Phaser.Scene {
     // rather than the narrower in-battle width -- the move menu (destroyed
     // above, at the top of this method) is gone by now, so there's nothing
     // left to dodge.
-    this.setLogText(`${flavor}\n${tokenText}\n\n${blurb}\n\nPress SPACE to return.`, 150, LOG_WRAP_WIDTH_VICTORY);
+    // The way out of the summary is a key and a tap alike, and it says
+    // whichever one the player is holding the game by: on a touchscreen this
+    // is the one screen in the game with no button of its own, so without the
+    // tap there would be no way off it at all.
+    const touchOn = touchControlsActive((this.game.registry.get('touchControls') as TouchControlsMode) ?? DEFAULT_TOUCH_CONTROLS);
+    const returnHint = touchOn ? 'Tap the screen, or press SPACE, to return.' : 'Press SPACE to return.';
+    this.setLogText(`${flavor}\n${tokenText}\n\n${blurb}\n\n${returnHint}`, 150, LOG_WRAP_WIDTH_VICTORY);
     this.raiseLogToPanel(won);
 
-    this.input.keyboard!.once('keydown-SPACE', () => this.scene.start('Overworld', { world: this.world }));
+    const leave = () => this.scene.start('Overworld', { world: this.world });
+    this.input.keyboard!.once('keydown-SPACE', leave);
+    this.input.once(Phaser.Input.Events.POINTER_DOWN, leave);
   }
 }

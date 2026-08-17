@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- A phone browser must not zoom or scroll the page under the canvas:
+       the game fills the viewport and reads every touch itself, so a
+       double-tap or a drag on the walking arrows would otherwise pinch or
+       pan the page instead of walking. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>World of Quantum Materials</title>
   <!-- The player's own crystal, as a data URI rather than a file: this game
        ships no image assets (every sprite is drawn at runtime), and the
@@ -14,7 +18,7 @@
   <style>
     html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #111; font-family: sans-serif; }
     body { display: block; }
-    #game { width: 100vw; height: 100vh; }
+    #game { width: 100vw; height: 100vh; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
   </style>
 </head>
 <body>

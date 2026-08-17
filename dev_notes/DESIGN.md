@@ -1335,6 +1335,17 @@ down a wider corridor rather than the same walk seen from further away. Like the
 density above it, this is read at map-generation time, so it applies to the next
 world entered.
 
+**Touch controls.** The same Settings station offers Auto/On/Off
+(`data/settings.ts`'s `TOUCH_CONTROLS_PRESETS`) for the four on-screen walking
+arrows the overworld draws in its bottom-left corner
+(`scenes/overworld/touchControls.ts`). Walking was the one action with no click
+target of its own, so those arrows are what make the game playable in a phone or
+tablet browser; Auto, the default, resolves per device (`isTouchDevice()`), and
+On/Off are the player's override in either direction. Read on world entry, so a
+change applies to the next world entered. The keyboard path is untouched by any
+of the three values: the arrows are an addition, never a replacement, and the
+standing goal of keyboard-only play (`CODEMAP.md`'s "Input") still holds.
+
 Three kinds of number deliberately don't scale, and the reasons are worth keeping:
 
 - **Counts, not lengths** -- how many Voronoi domains World 3 is partitioned into,

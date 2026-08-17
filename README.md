@@ -254,12 +254,14 @@ place.
 
 ## Controls
 
-Play uses both: the mouse chooses, the keyboard walks.
+Play uses both: the mouse chooses, the keyboard walks. On a phone or a tablet,
+a finger does both.
 
 **With the mouse.** Everything on screen that offers something is clickable:
 the Lab's stations and the guardians standing in the room, every panel button,
 the prompt that appears at a pass, the answers to a wild crystal's question,
-your moves in battle, and the arrows that page between kinds of move.
+your moves in battle, the arrows that page between kinds of move, and the line
+in the bottom right corner of a world that takes you back to the Lab.
 
 **With the keyboard.**
 
@@ -271,8 +273,16 @@ your moves in battle, and the arrows that page between kinds of move.
 | Enter, while in the Lab | Head back out to whichever world you're in the middle of (once you've entered one) |
 | Left / Right, in battle | Page between kinds of move |
 
-Walking is the one thing the mouse can't do, and picking a move in battle or
-opening a station in the Lab is the one thing the keyboard can't do.
+Picking a move in battle or opening a station in the Lab is the one thing the
+keyboard can't do.
+
+**On a touchscreen.** Four arrows sit in the bottom left corner of every world:
+hold one and you walk, exactly as if you were holding the matching key. Tap the
+line in the bottom right corner to return to the Lab, and tap anywhere to leave
+the summary after a battle. Everything else was already a tap. The arrows appear
+on their own when you open the game on a phone or a tablet, and the Settings
+station can turn them on or off by hand. The game is built for a screen wider
+than it is tall, so turn the phone sideways.
 
 The Lab is where everything else lives: your moves and stats, tutorial replays,
 the story so far, and settings, each its own station in the room (see "Return
@@ -280,7 +290,9 @@ to the Lab" above).
 
 ## Settings
 
-In the Lab, click the **Settings** station to adjust:
+In the Lab, click the **Settings** station. Each setting is a row, with every
+value it can take laid out beside its name; click a value to pick it, and the
+one in gold is the one you are playing with.
 
 - **Enemy Density**: Low, Normal, High, or Very High, if wild crystals feel
   too sparse (or too frequent) along the path. Sets how many crystals a world
@@ -300,6 +312,11 @@ In the Lab, click the **Settings** station to adjust:
   qumatessence are spread through it at the same rate either way, so a bigger
   world holds proportionally more of both. Takes effect the next time you enter
   a world.
+- **Touch Controls**: Auto, On, or Off, the walking arrows in the corner of the
+  world. Auto puts them there when you are playing on a touchscreen and leaves
+  them off otherwise, which is what you want unless you want the opposite. The
+  keyboard keeps working whichever way it is set. Takes effect the next time you
+  enter a world.
 
 ![Settings panel](screenshots/settings.png)
 

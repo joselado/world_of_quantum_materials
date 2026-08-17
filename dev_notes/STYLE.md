@@ -2020,6 +2020,26 @@ world are shaped, since world N's start is world N-1's exit.
   and the world-entry lore screen wear: the colour of connective tissue between
   worlds.
 
+## On-screen walking arrows (`scenes/overworld/touchControls.ts`)
+
+- Interface, not scenery, in the same sense the Lab hint and the pass prompt are: fixed at the
+  bottom-left corner of the screen, drawn over the world at depth `60` (under the dialogue
+  panels' `100`), and untouched by the camera the world is projected through. Present only when
+  the Settings station's Touch Controls row resolves to on, and hidden outright for as long as a
+  dialogue panel is open.
+- Four square plates in a cross, `62` on a side with a `4` gap, each a black wash (alpha `0.45`,
+  `0.72` while held) the world still reads through, stroked in the reference blue-grey
+  (`0x8fa0c9`) and carrying a single blue-grey triangle pointing the way that plate walks. The
+  wash matches what the Lab hint and the pass prompt already put over the world; the brightening
+  under a finger is what makes a held arrow visibly held.
+- `62` is a finger, not a guess: the canvas is letterboxed to roughly `0.8` on a phone held in
+  landscape, which puts the plate at about 50 real pixels. Anything much smaller stops being
+  reliably hittable, so the plate size is a floor rather than a taste.
+- The corner belongs to the arrows: the pass prompt wraps itself out of both bottom corners
+  (`PAD_KEEPOUT`) while they are up, growing upward instead of sideways, so an offer can never
+  lie across an arrow the player is holding. The Lab hint, in the opposite corner, grows its own
+  padding to finger size and says "Tap here for the Lab".
+
 ## The between-worlds story beat (`OverworldScene.showStoryBeat`)
 
 - One line of `data/story.ts`'s `STORY_BEATS` on a single small panel, shown after a
@@ -2572,19 +2592,26 @@ world are shaped, since world N's start is world N-1's exit.
 ## Settings station (`scenes/panels/hubStations.ts`'s `showSettingsPanel`)
 
 - Same blue-grey (`0x8fa0c9`) stroke as the Lab's other reference stations, sized
-  `(CANVAS_W - 60)` wide with height grown to fit. Five rows, each backed by its own preset
-  list in `data/settings.ts`: "Enemy Density: `<preset>`" (`DENSITY_PRESETS`,
-  Low/Normal/High/Very High), "Text Size: `<preset>`" (`FONT_SCALE_PRESETS`,
-  Compact/Normal/Large), "Music Style: `<preset>`" (`MUSIC_STYLE_PRESETS`,
-  Classic/Modern/Mute), "Difficulty: `<preset>`" (`DIFFICULTY_TIER_PRESETS`, B.Sc./M.Sc./Ph.D.)
-  and "World Size: `<preset>`" (`WORLD_SIZE_PRESETS`, Nano/Meso/Macro). Each cycles through
-  its own presets on click and rebuilds the panel in place, the same click-to-rebuild
-  pattern Noether's shop tabs use, rather than a slider (each has only a handful of discrete
-  steps). A muted blue-grey hint line sits beneath each row saying when that row lands
-  ("Takes effect on the next map", "Applies immediately", "Applies to your very next
-  battle", "Takes effect the next time you enter a world"), then a single "Close" button.
-  The panel reaches 449 of the canvas's 480 pixels at the Large text preset, so it is close
-  to full and a sixth row would need the layout revisited rather than appended.
+  `(CANVAS_W - 60)` wide with height grown to fit. A table: one row per setting, the setting's
+  name and a muted blue-grey line saying when a change to it lands ("On the next map.",
+  "Immediately.", "On your next battle.", "On the next world.") in a `220`-wide left column,
+  and every value that setting can take as its own small plate along the row. The current
+  value reads gold-on-purple (`#ffe066` on `#3a2a5c`), the others blue-grey on `#1c1c30` --
+  the same selected/unselected pair a list+detail panel's rows use. Clicking a value picks it
+  and rebuilds the panel in place, the same click-to-rebuild pattern Noether's shop tabs use,
+  so a setting's whole range is readable at a glance rather than cycled through one step at a
+  time. A hairline rule (`0x4a4a70`, alpha `0.85`) separates each row from the next, and a
+  single "Close" button closes the panel.
+- Six rows, each backed by its own preset list in `data/settings.ts`: Enemy Density
+  (`DENSITY_PRESETS`, Low/Normal/High/Very High), Text Size (`FONT_SCALE_PRESETS`,
+  Compact/Normal/Large), Music Style (`MUSIC_STYLE_PRESETS`, Classic/Modern/Mute), Difficulty
+  (`DIFFICULTY_TIER_PRESETS`, B.Sc./M.Sc./Ph.D.), World Size (`WORLD_SIZE_PRESETS`,
+  Nano/Meso/Macro) and Touch Controls (`TOUCH_CONTROLS_PRESETS`, Auto/On/Off).
+- The name column and its "when" line are capped at the 1.5x text preset (the same cap
+  tutorial popups use); the value plates themselves, the part that is clicked, keep the
+  player's full chosen size. With that cap the panel reaches 443 of the canvas's 480 pixels at
+  the Large preset, so a seventh row or a longer "when" line needs re-measuring rather than
+  appending.
 - Turning the music off lives here as the `MUSIC_STYLE_PRESETS` "Mute" value rather than as
   a key: it is a preference a player sets once, so it belongs with the other preferences and
   persists with them. It silences the score only. Sound effects sit on the master bus rather

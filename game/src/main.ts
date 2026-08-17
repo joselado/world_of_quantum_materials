@@ -23,6 +23,11 @@ const config: Phaser.Types.Core.GameConfig = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
+  // Two fingers at once: the overworld's walking arrows are held down
+  // (scenes/overworld/touchControls.ts) while the other hand taps a prompt or
+  // the Lab hint, and Phaser tracks only one touch pointer unless asked for
+  // more.
+  input: { activePointers: 3 },
   scene: [TitleScene, HubScene, OverworldScene, BattleScene],
 };
 

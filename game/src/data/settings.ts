@@ -144,3 +144,48 @@ export function worldSizeFactor(id: WorldSizeId): number {
 export function gridDimsFor(factor: number): { w: number; h: number } {
   return { w: Math.round(BASE_GRID_W * factor), h: Math.round(BASE_GRID_H * factor) };
 }
+
+// Same Settings panel, sixth row: whether the overworld draws the on-screen
+// arrows (scenes/overworld/touchControls.ts) that let a player walk without a
+// keyboard. Walking is the one thing a pointer alone could not do -- every
+// other action in the game already has a click target -- so on a phone or a
+// tablet the arrows are what make the game playable at all.
+//
+// Three values rather than a plain on/off, because the right answer is
+// usually "whichever device this is": 'auto' asks the browser (isTouchDevice
+// below) and turns them on for a touchscreen, while 'on'/'off' are the
+// player's own override in either direction (a desktop player who wants to
+// walk by mouse, a laptop with a touchscreen who does not want the arrows
+// over the world).
+export type TouchControlsMode = 'auto' | 'on' | 'off';
+
+export interface TouchControlsPreset {
+  label: string;
+  value: TouchControlsMode;
+}
+
+export const TOUCH_CONTROLS_PRESETS: TouchControlsPreset[] = [
+  { label: 'Auto', value: 'auto' },
+  { label: 'On', value: 'on' },
+  { label: 'Off', value: 'off' },
+];
+
+export const DEFAULT_TOUCH_CONTROLS: TouchControlsMode = TOUCH_CONTROLS_PRESETS[0].value; // Auto -- on for a touchscreen
+
+// Whether this browser reports a touchscreen at all. Asked of the input
+// stack (a coarse pointer that can touch), never of the user-agent string:
+// what matters is whether a finger can reach the arrows, not which device
+// name the browser claims.
+export function isTouchDevice(): boolean {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+  if (navigator.maxTouchPoints > 0) return true;
+  return typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
+}
+
+// The one place the mode turns into a yes/no, so every scene asking "are the
+// arrows up" gets the same answer.
+export function touchControlsActive(mode: TouchControlsMode): boolean {
+  if (mode === 'on') return true;
+  if (mode === 'off') return false;
+  return isTouchDevice();
+}

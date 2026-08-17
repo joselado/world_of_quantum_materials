@@ -87,13 +87,13 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     title: 'Settings',
     unlock: { kind: 'always' },
     body:
-      "The Lab's Settings station holds five knobs. Enemy Density controls how many wild encounters the next map you generate will have, and World Size how big that map is: Nano, Meso or Macro, the same world laid out three times as wide and three times as far at the top end. Text Size and Music Style both apply immediately to whatever's already on screen. Difficulty scales every stat your opponents get, from an easier B.Sc. tier through the tuned M.Sc. default to a much tougher Ph.D. tier, and unlike the other four it applies starting with your very next battle, so it's meant to be adjusted mid-playthrough, not just picked once.",
+      "The Lab's Settings station holds six knobs. Enemy Density controls how many wild encounters the next map you generate will have, and World Size how big that map is: Nano, Meso or Macro, the same world laid out three times as wide and three times as far at the top end. Text Size and Music Style both apply immediately to whatever's already on screen. Touch Controls puts arrows for walking on screen, on by default when you are playing on a touchscreen. Difficulty scales every stat your opponents get, from an easier B.Sc. tier through the tuned M.Sc. default to a much tougher Ph.D. tier, and unlike the others it applies starting with your very next battle, so it's meant to be adjusted mid-playthrough, not just picked once.",
   },
   controls: {
     title: 'Walking the Path',
     unlock: { kind: 'tip' },
     body:
-      'Use the arrow keys to move: Up/Down step forward and back, Left/Right step sideways. Off-path ground is impassable (told apart by its color, not by a wall you\'d see), so watch where the walkable ground actually goes rather than holding one direction blindly. Press H or Enter any time to return to the Lab, where your moves, stats, abilities, tutorial, and settings all live as stations, and every guardian you have met stands in the room to be clicked. The Settings station is also where the music is set to Classic, Modern or Mute.',
+      'Use the arrow keys to move: Up/Down step forward and back, Left/Right step sideways. On a touchscreen, the same four arrows sit in the bottom left corner of the world, and holding one walks the same way holding a key does. Off-path ground is impassable (told apart by its color, not by a wall you\'d see), so watch where the walkable ground actually goes rather than holding one direction blindly. Press H or Enter any time, or click the Lab line in the bottom right corner, to return to the Lab, where your moves, stats, abilities, tutorial, and settings all live as stations, and every guardian you have met stands in the room to be clicked. The Settings station is also where the music is set to Classic, Modern or Mute.',
   },
   encounter: {
     title: 'Wild Encounters',
@@ -123,7 +123,7 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     title: 'Reaching the Goal',
     unlock: { kind: 'tip' },
     body:
-      "Every world narrows into a pass at its far end, and a gigantic boss stands in it, holding the way. You can shop with that world's guardian first, but nothing happens just by walking up. Step to the mouth of the pass and press Space to challenge it. Win, and the pass clears: the next world shows through the gap, a board names it, and pressing Space there again takes you across.",
+      "Every world narrows into a pass at its far end, and a gigantic boss stands in it, holding the way. You can shop with that world's guardian first, but nothing happens just by walking up. Step to the mouth of the pass and press Space, or click the prompt that appears, to challenge it. Win, and the pass clears: the next world shows through the gap, a board names it, and taking the prompt there again carries you across.",
   },
   teleport: {
     title: 'Teleportation',

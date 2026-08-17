@@ -35,8 +35,11 @@ import {
   DEFAULT_DIFFICULTY_TIER,
   WORLD_SIZE_PRESETS,
   DEFAULT_WORLD_SIZE,
+  TOUCH_CONTROLS_PRESETS,
+  DEFAULT_TOUCH_CONTROLS,
+  isTouchDevice,
 } from '../../data/settings';
-import type { WorldSizeId } from '../../data/settings';
+import type { WorldSizeId, TouchControlsMode } from '../../data/settings';
 import { STAT_LABELS } from '../../data/balance';
 import { persistFromRegistry } from '../../data/save';
 import { music } from '../../audio/music';
@@ -515,18 +518,49 @@ export function showStoryLog(scene: HubScene) {
   renderDetail();
 }
 
-// Wild-encounter density (data/settings.ts's DENSITY_PRESETS, read by
-// OverworldScene.generateMap via encounterChance()), text size
-// (FONT_SCALE_PRESETS, read live by every fontPx() call), music style
-// (MUSIC_STYLE_PRESETS, which of audio/music.ts's SCORES/SCORES_MODERN
-// tables MusicEngine draws from), and difficulty tier (DIFFICULTY_TIER_PRESETS,
-// data/balance.ts's DIFFICULTY_MULTIPLIERS applied to enemyStatsForWorld).
-// Each is a button that cycles through its presets in place (same
-// rebuild-the-panel pattern as Noether's shop), rather than a slider, since
-// all four have only a handful of discrete steps. Difficulty is the one
-// meant to be revisited mid-playthrough rather than set once -- Battle/
-// OverworldScene both read it live, so a change here lands on the player's
-// very next fight, not just future maps/panels.
+// The Lab's preferences, laid out as a table: one row per setting, its name
+// (and when a change to it lands) on the left, every value it can take on the
+// right, with the current one highlighted gold-on-purple the same way a
+// selected row reads in every list+detail panel (panels/listDetail.ts). A
+// value is picked by clicking it directly, and the panel rebuilds in place
+// around the new selection (the same click-to-rebuild pattern Noether's shop
+// tabs use) -- so a setting's whole range is readable at a glance rather than
+// something the player has to click through one step at a time.
+//
+// The six settings and what reads them: wild-encounter density
+// (DENSITY_PRESETS, read by OverworldScene.generateMap via encounterChance()),
+// text size (FONT_SCALE_PRESETS, read live by every fontPx() call), music
+// style (MUSIC_STYLE_PRESETS, which of audio/music.ts's SCORES/SCORES_MODERN
+// tables MusicEngine draws from), difficulty tier (DIFFICULTY_TIER_PRESETS,
+// data/balance.ts's DIFFICULTY_MULTIPLIERS applied to enemyStatsForWorld),
+// world size (WORLD_SIZE_PRESETS) and touch controls (TOUCH_CONTROLS_PRESETS,
+// the overworld's on-screen walking arrows).
+//
+// Difficulty is the one meant to be revisited mid-playthrough rather than set
+// once -- Battle/OverworldScene both read it live, so a change here lands on
+// the player's very next fight, not just future maps/panels.
+//
+// The name column and the "when" line under it are capped at the 1.5x text
+// preset (the same cap tutorial popups use, STYLE.md): six rows of labels at
+// a full 2x run the table past the bottom of the canvas, while the values
+// themselves -- the part that is clicked -- keep the player's full chosen
+// size.
+interface SettingsOption {
+  label: string;
+  selected: boolean;
+  onPick: () => void;
+}
+
+interface SettingsRow {
+  label: string;
+  when: string;
+  options: SettingsOption[];
+}
+
+const SETTINGS_NAME_COL_W = 220;
+const SETTINGS_COL_GAP = 16;
+const SETTINGS_OPTION_GAP = 6;
+
 export function showSettingsPanel(scene: HubScene) {
   scene.dialogueContainer?.destroy(true);
 
@@ -544,155 +578,141 @@ export function showSettingsPanel(scene: HubScene) {
   y += title.height + 8;
 
   const columns = labPanelColumns(panelWidth);
-  const contentWidth = columns.contentWrapW;
-
   const registry = scene.game.registry;
+  const contentLeft = columns.contentCenterX - columns.contentWrapW / 2;
+  const contentRight = columns.contentCenterX + columns.contentWrapW / 2;
+  const optionsLeft = contentLeft + SETTINGS_NAME_COL_W + SETTINGS_COL_GAP;
 
-  const densityIndex = encounterDensityIndex(registry);
-  const densityPreset = DENSITY_PRESETS[densityIndex];
-  const densityBtn = scene.addDialogueButtonAt(
-    container,
-    columns.contentCenterX,
-    y,
-    `Enemy Density: ${densityPreset.label}`,
-    () => {
-      const next = DENSITY_PRESETS[(densityIndex + 1) % DENSITY_PRESETS.length];
-      registry.set('encounterDensity', next.value);
-      persistFromRegistry(registry);
-      showSettingsPanel(scene);
+  const labelScale = Math.min(fontScale(scene), 1.5);
+  const namePx = `${Math.round(13 * labelScale)}px`;
+  const whenPx = `${Math.round(11 * labelScale)}px`;
+
+  // Every row is written the same way: pick a value, write it to the
+  // registry, save, and rebuild the panel so the highlight follows.
+  const choose = (key: string, value: unknown, after?: () => void) => () => {
+    registry.set(key, value);
+    persistFromRegistry(registry);
+    after?.();
+    showSettingsPanel(scene);
+  };
+
+  const density = DENSITY_PRESETS[encounterDensityIndex(registry)].value;
+  const font = FONT_SCALE_PRESETS[fontScaleIndex(registry)].value;
+  const style = MUSIC_STYLE_PRESETS[musicStyleIndex(registry)].value;
+  const tier = DIFFICULTY_TIER_PRESETS[difficultyTierIndex(registry)].value;
+  const size = WORLD_SIZE_PRESETS[worldSizeIndex(registry)].value;
+  const touch = TOUCH_CONTROLS_PRESETS[touchControlsIndex(registry)].value;
+
+  const rows: SettingsRow[] = [
+    {
+      label: 'Enemy Density',
+      when: 'On the next map.',
+      options: DENSITY_PRESETS.map((p) => ({
+        label: p.label,
+        selected: p.value === density,
+        onPick: choose('encounterDensity', p.value),
+      })),
     },
-    contentWidth
-  );
-  y += densityBtn.height + 4;
-
-  const densityHint = scene.add
-    .text(columns.contentCenterX, y, 'Takes effect on the next map.', {
-      fontSize: fontPx(scene, 11),
-      color: REFERENCE_BLUE_GREY_HEX,
-      align: 'center',
-      wordWrap: { width: contentWidth },
-      lineSpacing: 4,
-    })
-    .setOrigin(0.5, 0);
-  container.add(densityHint);
-  y += densityHint.height + 10;
-
-  const fontIndex = fontScaleIndex(registry);
-  const fontPreset = FONT_SCALE_PRESETS[fontIndex];
-  const fontBtn = scene.addDialogueButtonAt(
-    container,
-    columns.contentCenterX,
-    y,
-    `Text Size: ${fontPreset.label}`,
-    () => {
-      const next = FONT_SCALE_PRESETS[(fontIndex + 1) % FONT_SCALE_PRESETS.length];
-      registry.set('fontScale', next.value);
-      persistFromRegistry(registry);
-      showSettingsPanel(scene);
+    {
+      label: 'Text Size',
+      when: 'Immediately.',
+      options: FONT_SCALE_PRESETS.map((p) => ({
+        label: p.label,
+        selected: p.value === font,
+        onPick: choose('fontScale', p.value),
+      })),
     },
-    contentWidth
-  );
-  y += fontBtn.height + 4;
-
-  const fontHint = scene.add
-    .text(columns.contentCenterX, y, 'Applies immediately.', {
-      fontSize: fontPx(scene, 11),
-      color: REFERENCE_BLUE_GREY_HEX,
-      align: 'center',
-      wordWrap: { width: contentWidth },
-      lineSpacing: 4,
-    })
-    .setOrigin(0.5, 0);
-  container.add(fontHint);
-  y += fontHint.height + 10;
-
-  const styleIndex = musicStyleIndex(registry);
-  const stylePreset = MUSIC_STYLE_PRESETS[styleIndex];
-  const styleBtn = scene.addDialogueButtonAt(
-    container,
-    columns.contentCenterX,
-    y,
-    `Music Style: ${stylePreset.label}`,
-    () => {
-      const next = MUSIC_STYLE_PRESETS[(styleIndex + 1) % MUSIC_STYLE_PRESETS.length];
-      registry.set('musicStyle', next.value);
-      persistFromRegistry(registry);
-      music.setStyle(next.value);
-      showSettingsPanel(scene);
+    {
+      label: 'Music Style',
+      when: 'Immediately.',
+      options: MUSIC_STYLE_PRESETS.map((p) => ({
+        label: p.label,
+        selected: p.value === style,
+        onPick: choose('musicStyle', p.value, () => music.setStyle(p.value)),
+      })),
     },
-    contentWidth
-  );
-  y += styleBtn.height + 4;
-
-  const styleHint = scene.add
-    .text(columns.contentCenterX, y, 'Applies immediately.', {
-      fontSize: fontPx(scene, 11),
-      color: REFERENCE_BLUE_GREY_HEX,
-      align: 'center',
-      wordWrap: { width: contentWidth },
-      lineSpacing: 4,
-    })
-    .setOrigin(0.5, 0);
-  container.add(styleHint);
-  y += styleHint.height + 10;
-
-  const tierIndex = difficultyTierIndex(registry);
-  const tierPreset = DIFFICULTY_TIER_PRESETS[tierIndex];
-  const tierBtn = scene.addDialogueButtonAt(
-    container,
-    columns.contentCenterX,
-    y,
-    `Difficulty: ${tierPreset.label}`,
-    () => {
-      const next = DIFFICULTY_TIER_PRESETS[(tierIndex + 1) % DIFFICULTY_TIER_PRESETS.length];
-      registry.set('difficultyTier', next.value);
-      persistFromRegistry(registry);
-      showSettingsPanel(scene);
+    {
+      label: 'Difficulty',
+      when: 'On your next battle.',
+      options: DIFFICULTY_TIER_PRESETS.map((p) => ({
+        label: p.label,
+        selected: p.value === tier,
+        onPick: choose('difficultyTier', p.value),
+      })),
     },
-    contentWidth
-  );
-  y += tierBtn.height + 4;
-
-  const tierHint = scene.add
-    .text(columns.contentCenterX, y, 'Applies to your very next battle.', {
-      fontSize: fontPx(scene, 11),
-      color: REFERENCE_BLUE_GREY_HEX,
-      align: 'center',
-      wordWrap: { width: contentWidth },
-      lineSpacing: 4,
-    })
-    .setOrigin(0.5, 0);
-  container.add(tierHint);
-  y += tierHint.height + 10;
-
-  const sizeIndex = worldSizeIndex(registry);
-  const sizePreset = WORLD_SIZE_PRESETS[sizeIndex];
-  const sizeBtn = scene.addDialogueButtonAt(
-    container,
-    columns.contentCenterX,
-    y,
-    `World Size: ${sizePreset.label}`,
-    () => {
-      const next = WORLD_SIZE_PRESETS[(sizeIndex + 1) % WORLD_SIZE_PRESETS.length];
-      registry.set('worldSize', next.value);
-      persistFromRegistry(registry);
-      showSettingsPanel(scene);
+    {
+      label: 'World Size',
+      when: 'On the next world.',
+      options: WORLD_SIZE_PRESETS.map((p) => ({
+        label: p.label,
+        selected: p.value === size,
+        onPick: choose('worldSize', p.value),
+      })),
     },
-    contentWidth
-  );
-  y += sizeBtn.height + 4;
+    {
+      label: 'Touch Controls',
+      // Auto says what it resolved to on this machine, so the row is never
+      // just a word whose effect the player has to guess.
+      when: `Walking arrows on screen. Auto is ${isTouchDevice() ? 'on' : 'off'} here. On the next world.`,
+      options: TOUCH_CONTROLS_PRESETS.map((p) => ({
+        label: p.label,
+        selected: p.value === touch,
+        onPick: choose('touchControls', p.value),
+      })),
+    },
+  ];
 
-  const sizeHint = scene.add
-    .text(columns.contentCenterX, y, 'Takes effect the next time you enter a world.', {
-      fontSize: fontPx(scene, 11),
-      color: REFERENCE_BLUE_GREY_HEX,
-      align: 'center',
-      wordWrap: { width: contentWidth },
-      lineSpacing: 4,
-    })
-    .setOrigin(0.5, 0);
-  container.add(sizeHint);
-  y += sizeHint.height + 14;
+  rows.forEach((row, index) => {
+    if (index > 0) {
+      const rule = scene.add.graphics();
+      rule.lineStyle(1, 0x4a4a70, 0.85);
+      rule.lineBetween(contentLeft, y - 6, contentRight, y - 6);
+      container.add(rule);
+    }
+
+    const name = scene.add
+      .text(contentLeft, y, row.label, { fontSize: namePx, color: '#ffffff', wordWrap: { width: SETTINGS_NAME_COL_W } })
+      .setOrigin(0, 0);
+    container.add(name);
+    const when = scene.add
+      .text(contentLeft, y + name.height + 2, row.when, {
+        fontSize: whenPx,
+        color: REFERENCE_BLUE_GREY_HEX,
+        wordWrap: { width: SETTINGS_NAME_COL_W },
+        lineSpacing: 2,
+      })
+      .setOrigin(0, 0);
+    container.add(when);
+
+    // Values run along the row and wrap to a second line if this preset's
+    // text is wide enough to need it, so no value is ever pushed off the
+    // panel's right edge.
+    let cx = optionsLeft;
+    let cy = y;
+    let lineHeight = 0;
+    row.options.forEach((option) => {
+      const chip = scene.add
+        .text(cx, cy, option.label, {
+          fontSize: fontPx(scene, 13),
+          color: option.selected ? GOLD_ACCENT_HEX : REFERENCE_BLUE_GREY_HEX,
+          backgroundColor: option.selected ? '#3a2a5c' : '#1c1c30',
+          padding: { x: 10, y: 5 },
+        })
+        .setOrigin(0, 0);
+      if (cx > optionsLeft && cx + chip.width > contentRight) {
+        cx = optionsLeft;
+        cy += lineHeight + SETTINGS_OPTION_GAP;
+        lineHeight = 0;
+        chip.setPosition(cx, cy);
+      }
+      chip.setInteractive({ useHandCursor: true }).on('pointerdown', option.onPick);
+      container.add(chip);
+      cx += chip.width + SETTINGS_OPTION_GAP;
+      lineHeight = Math.max(lineHeight, chip.height);
+    });
+
+    y = Math.max(when.y + when.height, cy + lineHeight) + 12;
+  });
 
   const closeBtn = scene.addDialogueButtonAt(container, CANVAS_W / 2, y, 'Close', () => scene.closeDialogue(), 260);
   y += closeBtn.height + 8;
@@ -791,6 +811,13 @@ function difficultyTierIndex(registry: Phaser.Data.DataManager): number {
   const idx = DIFFICULTY_TIER_PRESETS.findIndex((p) => p.value === value);
   if (idx !== -1) return idx;
   return DIFFICULTY_TIER_PRESETS.findIndex((p) => p.value === DEFAULT_DIFFICULTY_TIER);
+}
+
+function touchControlsIndex(registry: Phaser.Data.DataManager): number {
+  const value = (registry.get('touchControls') as TouchControlsMode) ?? DEFAULT_TOUCH_CONTROLS;
+  const idx = TOUCH_CONTROLS_PRESETS.findIndex((p) => p.value === value);
+  if (idx !== -1) return idx;
+  return TOUCH_CONTROLS_PRESETS.findIndex((p) => p.value === DEFAULT_TOUCH_CONTROLS);
 }
 
 function worldSizeIndex(registry: Phaser.Data.DataManager): number {

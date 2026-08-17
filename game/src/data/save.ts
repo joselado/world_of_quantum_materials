@@ -10,8 +10,10 @@ import {
   DIFFICULTY_TIER_PRESETS,
   DEFAULT_WORLD_SIZE,
   WORLD_SIZE_PRESETS,
+  DEFAULT_TOUCH_CONTROLS,
+  TOUCH_CONTROLS_PRESETS,
 } from './settings';
-import type { MusicStyle, DifficultyTier, WorldSizeId } from './settings';
+import type { MusicStyle, DifficultyTier, WorldSizeId, TouchControlsMode } from './settings';
 import type { PassiveOwner } from './passives';
 
 // Two independent localStorage-backed save slots, one per starting mode
@@ -117,6 +119,12 @@ export interface SaveData {
   // this is read at map-generation time, so it applies to the next world
   // entered rather than to the one the player is standing in.
   worldSize: WorldSizeId;
+  // Same Settings panel, sixth row: whether the overworld's on-screen walking
+  // arrows are drawn, one of data/settings.ts's TOUCH_CONTROLS_PRESETS
+  // ('auto' resolves per device via touchControlsActive). Read live by
+  // OverworldScene/BattleScene, so a change here lands on the next world
+  // entry and the next end-of-battle prompt without a restart.
+  touchControls: TouchControlsMode;
   // Which of Kondo's three screening-class moves (data/materials.ts's
   // KONDO_MOVE_IDS) is currently the active/usable one -- null until the
   // player picks one for the first time in OverworldScene.showKondoPanel.
@@ -220,6 +228,7 @@ export function defaultSave(): SaveData {
     musicStyle: DEFAULT_MUSIC_STYLE,
     difficultyTier: DEFAULT_DIFFICULTY_TIER,
     worldSize: DEFAULT_WORLD_SIZE,
+    touchControls: DEFAULT_TOUCH_CONTROLS,
     kondoActiveMove: null,
     passivesUnlocked: [],
     activePassiveByOwner: {},
@@ -341,6 +350,7 @@ export function loadSave(superposition: boolean): SaveData {
     if (!MUSIC_STYLE_PRESETS.some((p) => p.value === data.musicStyle)) data.musicStyle = DEFAULT_MUSIC_STYLE;
     if (!DIFFICULTY_TIER_PRESETS.some((p) => p.value === data.difficultyTier)) data.difficultyTier = DEFAULT_DIFFICULTY_TIER;
     if (!WORLD_SIZE_PRESETS.some((p) => p.value === data.worldSize)) data.worldSize = DEFAULT_WORLD_SIZE;
+    if (!TOUCH_CONTROLS_PRESETS.some((p) => p.value === data.touchControls)) data.touchControls = DEFAULT_TOUCH_CONTROLS;
     return data;
   } catch {
     return { ...defaultSave(), superpositionMode: superposition };
@@ -381,6 +391,7 @@ export function persistFromRegistry(registry: RegistryLike) {
     musicStyle: (registry.get('musicStyle') as MusicStyle) ?? DEFAULT_MUSIC_STYLE,
     difficultyTier: (registry.get('difficultyTier') as DifficultyTier) ?? DEFAULT_DIFFICULTY_TIER,
     worldSize: (registry.get('worldSize') as WorldSizeId) ?? DEFAULT_WORLD_SIZE,
+    touchControls: (registry.get('touchControls') as TouchControlsMode) ?? DEFAULT_TOUCH_CONTROLS,
     kondoActiveMove: (registry.get('kondoActiveMove') as string | null) ?? null,
     passivesUnlocked: (registry.get('passivesUnlocked') as string[]) ?? [],
     activePassiveByOwner: (registry.get('activePassiveByOwner') as Partial<Record<PassiveOwner, string>>) ?? {},
