@@ -6,7 +6,7 @@ import { ANALYTIC_SHAPES } from '../../art/attackEffects';
 import { CANVAS_W } from '../../art/perspective';
 import { fontScale } from '../../ui/text';
 import { PANEL_BG } from '../../ui/theme';
-import { ANALYTIC_MOVE_IDS, shopCost, moveDisplayName, getTunedMoveClass, getMoveLevel, quasiparticleLabel, MOVES } from '../../data/materials';
+import { ANALYTIC_MOVE_IDS, shopCost, moveDisplayName, getTunedMoveClass, tunedClassOf, getMoveLevel, quasiparticleLabel, MOVES } from '../../data/materials';
 import type { MoveClass } from '../../data/types';
 import { hostableClasses } from './tunableMoveShop';
 import {
@@ -132,7 +132,11 @@ function renderAnalyticColumns(scene: GuardianPanelHost, container: Phaser.GameO
       showLandauPanel(scene);
     });
     if (!open) return;
-    const assigned = ((scene.game.registry.get('moveClassTuning') as Partial<Record<string, MoveClass>>) ?? {})[id];
+    // Never undefined: a move whose picker was never opened is carrying phonon,
+  // which is what the fight has always played it as (data/materials.ts's
+  // tunedClassOf), so the panel says so rather than offering an "untuned"
+  // state the battle side does not have.
+  const assigned = tunedClassOf(scene.game.registry, id);
     const listResult = renderListColumn({
       scene,
       container,
@@ -195,12 +199,14 @@ function renderAnalyticColumn(
   const isLearned = unlocked.includes(id);
   const cost = shopCost(MOVES[id]);
   const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
-  const assigned = ((scene.game.registry.get('moveClassTuning') as Partial<Record<string, MoveClass>>) ?? {})[id];
+  // Never undefined: a move whose picker was never opened is carrying phonon,
+  // which is what the fight has always played it as (data/materials.ts's
+  // tunedClassOf), so the panel says so rather than offering an "untuned"
+  // state the battle side does not have.
+  const assigned = tunedClassOf(scene.game.registry, id);
 
   const statusLabel = !isLearned
     ? `Costs ${cost} qumatessence to learn, carried by ${quasiparticleLabel(previewClass)}.`
-    : !assigned
-    ? 'Untuned: pick a quasiparticle.'
     : previewClass === assigned
     ? `Already tuned to ${quasiparticleLabel(assigned)}.`
     : activeClass === assigned

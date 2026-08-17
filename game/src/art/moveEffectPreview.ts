@@ -47,8 +47,20 @@ const PREVIEW_DEPTH_OFFSET = 150;
 const PREVIEW_DEPTH_STRIDE = 10;
 
 // Pause between one play settling and the next one starting, so the preview
-// reads as a repeating demonstration rather than one unbroken strobe.
-const LOOP_PAUSE_MS = 500;
+// reads as a repeating demonstration rather than one unbroken strobe. It is a
+// *ceiling* rather than a fixed wait: a demonstration should spend most of its
+// time demonstrating, and a flat pause spent the same half-second after a
+// 260ms bolt as after a five-second meteor, which left the short effects --
+// Noether's Electron Pulse above all -- showing a flash in a mostly dead
+// stage. Scaled to the effect's own length instead, with a floor so the
+// quickest ones still read as separate plays rather than a strobe.
+const LOOP_PAUSE_MAX_MS = 500;
+const LOOP_PAUSE_MIN_MS = 170;
+const LOOP_PAUSE_FRACTION = 0.5;
+
+function loopPauseMs(playedMs: number): number {
+  return Math.max(LOOP_PAUSE_MIN_MS, Math.min(LOOP_PAUSE_MAX_MS, Math.round(playedMs * LOOP_PAUSE_FRACTION)));
+}
 
 export interface MoveEffectPreviewParams {
   scene: Phaser.Scene;
@@ -149,16 +161,17 @@ function playNext(key: string, myGen: number) {
   // cycle after a short pause, re-reading this chain's own `current` fresh
   // rather than closing over these params, so a preview retarget mid-flight
   // takes effect on the very next cycle instead of being silently dropped.
+  const playedMs = targetEffectTotalDurationMs(shape, level ?? 0);
   const afterSettled = () => {
     const c = chains.get(key);
     if (!c || myGen !== c.generation) return;
-    c.pendingTimer = scene.time.delayedCall(LOOP_PAUSE_MS, () => playNext(key, myGen));
+    c.pendingTimer = scene.time.delayedCall(loopPauseMs(playedMs), () => playNext(key, myGen));
   };
 
   playTargetEffect(scene, moveClass, at, shapeOverride, isUltimate ? afterSettled : undefined, chain.depthOffset, level ?? 0);
 
   if (!isUltimate) {
-    chain.pendingTimer = scene.time.delayedCall(targetEffectTotalDurationMs(shape, level ?? 0), afterSettled);
+    chain.pendingTimer = scene.time.delayedCall(playedMs, afterSettled);
   }
 }
 

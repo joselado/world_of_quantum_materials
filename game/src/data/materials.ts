@@ -570,6 +570,22 @@ function assignedMoveClass(registry: RegistryLike, moveId: string): MoveClass | 
   return (registry.get('moveClassTuning') as Partial<Record<string, MoveClass>> | undefined)?.[moveId];
 }
 
+// The class a tunable move carries when its owner has never picked one -- a
+// move learned before tuning existed, or one whose picker was never opened.
+// Always hostable, since 'phonon' is on every MOVE_COMPATIBILITY list.
+export const DEFAULT_TUNED_CLASS: MoveClass = 'phonon';
+
+// What a tunable move is tuned to, for anything that shows the player its
+// tuning. **There is no untuned state.** The battle side already resolved a
+// missing assignment to 'phonon' (getTunedMoveClass below), so "untuned" was
+// never a thing the fight could act on -- only a thing a panel could display,
+// which left the player looking at a move that reads as carrying nothing while
+// it is in fact carrying phonon. This makes the displayed answer the same as
+// the played one.
+export function tunedClassOf(registry: RegistryLike, moveId: string): MoveClass {
+  return assignedMoveClass(registry, moveId) ?? DEFAULT_TUNED_CLASS;
+}
+
 // A tuned assignment is picked against whatever form the player was
 // wearing at the guardian's shop, but the player can transmute afterward --
 // if the form they're wearing *now* can no longer host that class (e.g.
