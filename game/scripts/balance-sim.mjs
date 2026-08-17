@@ -1002,14 +1002,17 @@ const GRIND_CAP = 50;
 // OverworldScene.generateMap rolls one wild encounter per corridor row
 // (never the player's own start row) at the Settings station's default
 // density, so one full walk of a freshly generated corridor meets about
-// this many wild fights -- ~6 at current values (GRID_H read live off
-// OverworldScene.ts's own const, density imported live from settings.ts).
+// this many wild fights -- ~6 at current values (the grid's own height and the
+// encounter density both read live off data/settings.ts, which is where both
+// now live: the overworld's grid dimensions became a property of the map
+// currently standing rather than a constant in the scene, once the Settings
+// station gained a world-size knob).
 // Grinding N wins therefore costs roughly N / this many whole-corridor
 // re-walks (each re-entry through a world door regenerates the map), which
 // is what each build's `grindCap` below is sized in: re-walk tolerance is a
 // concrete, per-effort-tier behavior in a way a bare win count isn't.
-const overworldSf = parseFile('src/scenes/OverworldScene.ts');
-const GRID_H = evalNode(findTopLevelConst(overworldSf, 'GRID_H'), overworldSf);
+const settingsSf = parseFile('src/data/settings.ts');
+const GRID_H = evalNode(findTopLevelConst(settingsSf, 'BASE_GRID_H'), settingsSf);
 const ENCOUNTERS_PER_CORRIDOR_WALK = (GRID_H - 1) * DEFAULT_ENCOUNTER_DENSITY;
 function grindWinsForWalks(walks) {
   return Math.max(1, Math.round(walks * ENCOUNTERS_PER_CORRIDOR_WALK));

@@ -1009,7 +1009,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       })
       .setOrigin(0.5, 0)
       .setDepth(50)
-      .setVisible(this.reachedGoal);
+      .setVisible(false);
     const labHint = this.add
       .text(CANVAS_W - 8, CANVAS_H - 8, 'Press Enter to go to the Lab', {
         fontSize: fontPx(this, 12),
@@ -1444,6 +1444,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.updateWorldSprites(this.bossSprites);
     this.updateWorldSprites(this.gateSprites);
     this.updateGatePrompt();
+    this.updateGoalBanner();
 
     if (this.moving || this.dialogueActive) return;
 
@@ -3111,9 +3112,21 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   private maybeReachGoal(_x: number, y: number) {
     if (this.reachedGoal || y > this.goalTile.y + 1) return;
     this.reachedGoal = true;
-    this.goalText.setVisible(true);
     this.saveMapState();
     this.showTutorialTip('goal');
+  }
+
+  // The far-edge line belongs to the far edge. It is a caption on a place, so
+  // it is shown while the player is standing in that place and not otherwise
+  // -- driven by where they are rather than latched on by `reachedGoal`, which
+  // is a fact about progress and stays true for the rest of the run. Latching
+  // it left the line sitting over the whole world once reached, and over a
+  // finished world from the first step back into it.
+  //
+  // Same "the whole row counts" rule maybeReachGoal uses: the mouth is a row,
+  // and the throat beyond it is where the rival stands.
+  private updateGoalBanner() {
+    this.goalText?.setVisible(!!this.goalTile && this.playerTile.y <= this.goalTile.y + 1);
   }
 
   // Same "whole row counts, not a single tile" rule as maybeReachGoal,

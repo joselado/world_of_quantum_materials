@@ -35,6 +35,11 @@ import { spawn, execSync } from 'node:child_process';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const GAME_DIR = process.env.GAME_DIR || path.resolve(__dirname, '..');
 const URL = process.env.QM_URL || 'http://localhost:5173/';
+// How many wilds the bot fights in a world before first trying its rival, and
+// the step it adds per failed attempt. A player arrives at a gate having
+// fought their way there; the bot has to do the same or it is testing a
+// different game.
+const FARM_PER_WORLD = 4;
 const GRID_W = 27;
 const GRID_H = 50;
 // Screenshots/logs from a run -- gitignored, not meant to be committed.
@@ -254,6 +259,12 @@ async function main() {
         goalTile: s['goalTile'],
         midTile: s['midTile'],
         walkable: s['walkable'],
+        // Where the wilds are standing. Only their coordinates: the Material
+        // objects behind them are large and the bot only needs somewhere to
+        // walk to.
+        wilds: (s['encounterTiles'] ?? []).flatMap((row, y) =>
+          row.map((m, x) => (m ? { x, y } : null)).filter(Boolean)
+        ),
         moving: s['moving'],
         dialogueActive: s['dialogueActive'],
         reachedGoal: s['reachedGoal'],
@@ -497,6 +508,55 @@ async function main() {
   // earlier world (below) and could be reused for ordinary wandering.
   // Doesn't aim for the goal, just exercises movement/encounters/battle in
   // a world the main loop isn't otherwise walking through right now.
+  // Walks to wild crystals and fights them, which is the thing a player does
+  // and the bot previously never did: the route below BFS-paths the *shortest*
+  // way to the pass, and a shortest path across an open world brushes almost
+  // nothing. That left every rival being met by a starting crystal, which the
+  // game is entitled to refuse -- DESIGN.md has income coming from fighting,
+  // and farming as the intended answer to a rival that is too strong. A check
+  // that never fights is testing whether the game can be speedrun, not whether
+  // it can be finished.
+  //
+  // Returns how many battles it actually resolved, so a caller can tell "no
+  // wilds left to fight" from "fought its fill".
+  async function farmWilds(maxFights) {
+    let fights = 0;
+    for (let guard = 0; guard < 60 * maxFights && fights < maxFights; guard++) {
+      const scenes = await getActiveScenes();
+      if (scenes.includes('Battle')) {
+        const result = await resolveBattle();
+        if (result.outcome === 'WON') stats.battlesWon++;
+        else if (result.outcome === 'LOST') stats.battlesLost++;
+        fights++;
+        log(`  [farm] battle ${result.outcome} (round ${result.rounds})`);
+        continue;
+      }
+      const dstate = await readActiveDialogueState();
+      if (dstate?.sceneKey !== 'Overworld') return fights;
+      if (dstate.dialogueActive) {
+        await resolveDialogues();
+        continue;
+      }
+      const ow = await readOverworldState();
+      if (!ow || !ow.wilds || ow.wilds.length === 0) return fights;
+
+      // Nearest by actual walking distance rather than by straight line: an
+      // open world is not a corridor, and the closest wild on the map may sit
+      // across ground the player cannot cross.
+      let best = null;
+      for (const w of ow.wilds) {
+        const path = bfs(ow.walkable, ow.playerTile, w);
+        if (path && path.length >= 2 && (!best || path.length < best.length)) best = path;
+      }
+      if (!best) return fights;
+      const [cur, next] = best;
+      await stepOverworld(Math.sign(next.x - cur.x), Math.sign(next.y - cur.y));
+      stats.totalSteps++;
+      await waitNotMoving(3000);
+    }
+    return fights;
+  }
+
   async function wanderAndFight(steps) {
     for (let i = 0; i < steps; i++) {
       const scenes = await getActiveScenes();
@@ -584,13 +644,25 @@ async function main() {
       // Affordability is still enforced by the purchase handler itself
       // (a too-expensive click just no-ops), so this can't overspend.
       const purchaseLike = candidates.filter((t) => t.includes('qumatessence'));
+      // What a player actually reaches for first, and the bot did not: buying
+      // uniformly at random was testing whether the game can be won while
+      // shopping badly, which is a different and much harder question than
+      // whether it can be won. Momentum decides turn order, and a fast enough
+      // side swings more than once a round; Electron Pulse outpowers the
+      // starting Phonon Beam and lands on most of what the early worlds field.
+      // Both were verified by hand as the purchases that turn World 1's rival
+      // from a wall into an ordinary fight.
+      const KEY_PURCHASES = /Momentum|Electron Pulse/;
+      const keyBuys = purchaseLike.filter((t) => KEY_PURCHASES.test(t));
       const weighted = [...candidates];
       candidates.forEach((t) => {
         if (t === 'Guardians' || t.startsWith('Travel to ')) weighted.push(t, t, t);
         if (t.includes('qumatessence')) weighted.push(t, t, t, t, t, t);
       });
       let pick;
-      if (purchaseLike.length && Math.random() < 0.7) {
+      if (keyBuys.length && Math.random() < 0.85) {
+        pick = keyBuys[Math.floor(Math.random() * keyBuys.length)];
+      } else if (purchaseLike.length && Math.random() < 0.7) {
         pick = purchaseLike[Math.floor(Math.random() * purchaseLike.length)];
       } else if (Math.random() < 0.2 && closeLike.length) {
         pick = closeLike[Math.floor(Math.random() * closeLike.length)];
@@ -609,7 +681,9 @@ async function main() {
       const r = await clickText(['Farewell', 'Close', 'Cancel', 'Not yet']);
       if (!r.clicked) {
         const texts = await listInteractiveTexts();
-        const alt = texts.find((t) => !t.startsWith('Enter World') && !t.startsWith('Back to World'));
+        const alt = texts.find(
+          (t) => !t.startsWith('Enter ') && !t.startsWith('Back to ') && t !== 'Title Screen'
+        );
         if (alt) await clickText([alt]);
         else break;
       }
@@ -617,7 +691,7 @@ async function main() {
     }
     await sleep(300);
     if (!(await getActiveScenes()).includes('Hub')) return true;
-    const r = await clickText(['Back to World', 'Enter World']);
+    const r = await clickText(['Back to ', 'Enter ']);
     log(`  clicked: "${r.clicked}" (returning to world)`);
     await sleep(700);
     return true;
@@ -665,6 +739,7 @@ async function main() {
 
   let finaleReached = false;
   let currentRivalAttempts = 0;
+  let farmedInWorld = 0;
   let lastKnownWorld = 0;
   const MAX_TOTAL_ITERATIONS = 6000;
   let iter = 0;
@@ -760,7 +835,22 @@ async function main() {
       if (ow.world !== lastKnownWorld) {
         lastKnownWorld = ow.world;
         currentRivalAttempts = 0;
+        farmedInWorld = 0;
         log(`=== Entered World ${ow.world} ===`);
+      }
+
+      // Fight before knocking. The target grows with every rival attempt,
+      // because "go and get stronger, then come back" is the game's own answer
+      // to a rival that is too strong, and a map refills itself as it is walked
+      // (DESIGN.md section 2's respawn rule), so there is always more to fight.
+      // A world with nothing left to fight right now stops asking rather than
+      // pacing forever.
+      const farmTarget = FARM_PER_WORLD + currentRivalAttempts * 2;
+      if (farmedInWorld < farmTarget) {
+        const got = await farmWilds(farmTarget - farmedInWorld);
+        farmedInWorld += got;
+        if (got > 0) continue;
+        farmedInWorld = farmTarget;
       }
       // The route ends at the pass mouth, one row south of the throat: the
       // throat is the rival's own tile while that world's rival still stands,
