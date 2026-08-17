@@ -170,6 +170,14 @@ const WORLD_CRYSTALS = Object.fromEntries(
   Object.entries(WORLD_CRYSTALS_RAW).map(([world, calls]) => [world, calls.map(crystalFromCall).filter(Boolean)])
 );
 
+// World 9's rival is built by a function rather than declared as a
+// WORLD_RIVALS row, so its name/moveset live in these two per-type tables
+// instead -- read here so check 6 can hold it to the same hostability rule
+// every other opponent is held to.
+const RIVAL_9_TYPES = evalNode(findTopLevelConst(materialsSf, 'RIVAL_9_TYPES'), materialsSf);
+const RIVAL_9_NAMES = evalNode(findTopLevelConst(materialsSf, 'RIVAL_9_NAMES'), materialsSf);
+const RIVAL_9_MOVES = evalNode(findTopLevelConst(materialsSf, 'RIVAL_9_MOVES'), materialsSf);
+
 const WORLD_RIVALS_RAW = evalNode(findTopLevelConst(materialsSf, 'WORLD_RIVALS'), materialsSf);
 // World 10's rival ("The Adapted") deliberately has no fixed type/crystal()
 // call of its own (its identity is decided live in battle, DESIGN.md §5) --
@@ -256,6 +264,12 @@ for (const move of Object.values(MOVES)) {
 // contains. This has been a live risk exactly once, when an opponent was
 // retyped without its moveset following, so the check is cheap insurance on
 // every future retype.
+//
+// World 9's rival is covered too, at the bottom of this check. It is built
+// by `rivalImpurityResonance` rather than declared as a WORLD_RIVALS row, so
+// the two loops below cannot see it -- and its seven rollable types have no
+// hostable class in common beyond 'phonon', which makes a moveset that
+// drifts out of step with the roll exactly the mistake this check catches.
 for (const [world, entries] of Object.entries(WORLD_CRYSTALS)) {
   for (const c of entries) {
     for (const moveId of c.moves ?? []) {
@@ -277,6 +291,45 @@ for (const [world, rival] of Object.entries(WORLD_RIVALS)) {
     if (!(MOVE_COMPATIBILITY[rival.type] ?? []).includes(move.class)) {
       flag(
         `WORLD_RIVALS[${world}] '${rival.name}' (${rival.type}) carries '${move.name}', whose class '${move.class}' its type cannot host`
+      );
+    }
+  }
+}
+
+// World 9's rolled rival: both per-type tables must cover exactly
+// RIVAL_9_TYPES (a rolled type with no entry crashes the battle on a
+// non-null assertion), and each type's own signature move must be one its
+// type can host. The moveset's other slot is 'thermalFluctuation', hostable
+// by construction -- check 2 already holds every type to carrying 'phonon'.
+{
+  const rollable = new Set(RIVAL_9_TYPES);
+  for (const [label, table] of [
+    ['RIVAL_9_NAMES', RIVAL_9_NAMES],
+    ['RIVAL_9_MOVES', RIVAL_9_MOVES],
+  ]) {
+    const covered = new Set(Object.keys(table));
+    if (!setEq(rollable, covered)) {
+      flag(`${label} covers ${fmtSet(covered)}, but RIVAL_9_TYPES rolls ${fmtSet(rollable)}`);
+    }
+  }
+  for (const type of RIVAL_9_TYPES) {
+    const moveId = RIVAL_9_MOVES[type];
+    if (!moveId) continue; // covered by the coverage check just above
+    const move = MOVES[moveId];
+    if (!move) {
+      flag(`RIVAL_9_MOVES['${type}']: move id '${moveId}' doesn't exist in MOVES`);
+      continue;
+    }
+    if (!(MOVE_COMPATIBILITY[type] ?? []).includes(move.class)) {
+      flag(
+        `RIVAL_9_MOVES['${type}'] is '${move.name}', whose class '${move.class}' that type cannot host ` +
+          `(World 9's rival rolls into it as '${RIVAL_9_NAMES[type] ?? type}')`
+      );
+    }
+    if (GOLEM_MOVE_IDS.includes(moveId)) {
+      flag(
+        `RIVAL_9_MOVES['${type}'] is the decohered move '${moveId}' -- World 9's rival is the one ` +
+          `rival the Decoherence took nothing from, so it carries pristine excitations (WORLDS.md section 6)`
       );
     }
   }

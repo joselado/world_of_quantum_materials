@@ -1280,15 +1280,38 @@ const RIVAL_9_NAMES: Partial<Record<MaterialType, string>> = {
 // rather than a pristine wild crystal's.
 const RIVAL_9_TARNISH = 0x6e737a;
 
-// A fixed, broadly-compatible moveset (Electron Pulse + Phonon Beam) rather
-// than one tailored per rolled type -- no single 2-move set could match
-// every one of RIVAL_9_TYPES' seven very different classes anyway, and wild/
-// rival movesets were never validated against MOVE_COMPATIBILITY (only the
-// player's own moveset is, via getBattleMoves).
+// The rolled host's own signature quasiparticle, paired with Phonon Beam.
+// One entry per RIVAL_9_TYPES member, each an excitation that type's own
+// wild counterpart already carries (Silver's plasmon, Ce₂Zr₂O₇'s spinon,
+// BiFeO₃'s electromagnon, ...), so what the rival throws is the physics of
+// whichever host it landed in -- which is the whole idea of this rival, and
+// what its own taunt says out loud ("I borrow one, and it decides everything
+// about me"): an impurity/defect-bound resonance with no lattice of its own,
+// borrowing the crystal it forms inside (WORLDS.md section 6). A single
+// shared moveset cannot do that job, since three of the seven rollable types
+// (classicalMagnet, quantumSpinLiquid, multiferroic) have no band electron
+// to emit at all and only 'metal' hosts a plasmon; the second slot stays
+// 'thermalFluctuation' because 'phonon' is the one class every type hosts.
+//
+// These are the pristine excitations, not the GOLEM_MOVE_IDS decohered ones
+// every other golem carries: World 9's rival is the one thing on this road
+// with no coherence to lose, so the Decoherence took nothing from it and its
+// borrowed quasiparticle comes through intact (WORLDS.md section 6's
+// exemption, the same one its taunt and its post-battle beat both state).
+const RIVAL_9_MOVES: Partial<Record<MaterialType, string>> = {
+  metal: 'plasmonPulse',
+  quantumSpinHall: 'helicalCurrent',
+  superconductor: 'higgsOscillation',
+  classicalMagnet: 'magneticField',
+  quantumSpinLiquid: 'entanglementSwap',
+  multiferroic: 'electromagnonPulse',
+  chernInsulator: 'chiralCurrent',
+};
+
 function rivalImpurityResonance(type: MaterialType): Material {
   // Every caller (rollRival9Type, and the cached rival9Type resolved from
-  // it) only ever produces a RIVAL_9_TYPES member, which RIVAL_9_NAMES
-  // covers completely -- see its own comment above.
+  // it) only ever produces a RIVAL_9_TYPES member, which RIVAL_9_NAMES and
+  // RIVAL_9_MOVES both cover completely -- see their own comments above.
   //
   // The color is derived from the rolled type's own base rather than picked
   // per type by hand the way WORLD_RIVALS[1-8]'s are: the roll is the whole
@@ -1302,7 +1325,7 @@ function rivalImpurityResonance(type: MaterialType): Material {
   return crystal(
     RIVAL_9_NAMES[type]!,
     type,
-    ['tunnelStrike', 'thermalFluctuation'],
+    [RIVAL_9_MOVES[type]!, 'thermalFluctuation'],
     0,
     undefined,
     undefined,

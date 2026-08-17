@@ -196,7 +196,16 @@ preview and the actual battle still agree on which type it turned out to be. Its
 still follows the same "real compound, polycrystalline form" convention every other
 rival's does, looked up per rolled type (`data/materials.ts`'s `RIVAL_9_NAMES`) rather
 than fixed, since which real compound the resonance is haunting depends on which type
-got rolled.
+got rolled. Its moveset is looked up the same way (`RIVAL_9_MOVES`): the rolled host's
+own signature quasiparticle, one that type's wild counterpart already carries, plus
+Phonon Beam in the second slot since `phonon` is the one class every type hosts. A
+resonance with no lattice of its own throws the physics of whatever it landed in (its
+taunt says so outright, "I borrow one, and it decides everything about me"), and a
+single shared moveset could not do that — three of the seven rollable types host no
+band electron at all, only `metal` hosts a plasmon, and `phonon` is the only class all
+seven share. These are the pristine excitations rather than the `GOLEM_MOVE_IDS` decohered
+ones every other golem carries, per WORLDS.md §6's exemption: World 9's rival is the
+one rival the Decoherence took nothing from.
 
 **Every world uses this same reach-goal → beat-rival → continue gate, not a bespoke
 per-world puzzle.** §6 below sketches a more ambitious per-world boss mechanic (a

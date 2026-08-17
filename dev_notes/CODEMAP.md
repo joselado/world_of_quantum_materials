@@ -1456,8 +1456,13 @@ Under the player (40) and well under any dialogue (100).
 `getRival(9, t)` builds `rivalImpurityResonance(t)`, a `Material` whose `type` is whatever's
 passed in and whose name is looked up per-type from `RIVAL_9_NAMES` (a polycrystalline-golem
 name for each of `RIVAL_9_TYPES`' 7 members, same "real compound's polycrystalline form"
-naming `WORLD_RIVALS[1-8]` uses); every other world ignores the param and returns its fixed
-`WORLD_RIVALS[world]` entry. `RIVAL_9_TYPES` (7 of the 13 `MaterialType` values -- metal,
+naming `WORLD_RIVALS[1-8]` uses) and whose moveset is looked up the same way from
+`RIVAL_9_MOVES` (that type's own signature quasiparticle, plus `thermalFluctuation` in the
+second slot); every other world ignores the param and returns its fixed
+`WORLD_RIVALS[world]` entry. Because this rival is built by a function rather than declared
+as a `WORLD_RIVALS` row, `scripts/content-lint.mjs`'s "every opponent's moves must be
+hostable by its own type" check reaches it through those two tables instead: it holds both
+to covering exactly `RIVAL_9_TYPES` and holds each signature move to `MOVE_COMPATIBILITY`. `RIVAL_9_TYPES` (7 of the 13 `MaterialType` values -- metal,
 quantumSpinHall, superconductor, classicalMagnet, quantumSpinLiquid, multiferroic,
 chernInsulator) and `rollRival9Type()` (a uniform pick from it) live in `data/materials.ts`
 too. `OverworldScene.resolveRival9Type()` is the one caller that actually rolls: it reads

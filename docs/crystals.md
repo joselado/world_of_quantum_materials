@@ -144,7 +144,9 @@ has a fixed type.
 World 9's rival is an impurity/defect-bound resonance that can form in any
 host crystal, so its type, and with it which compound's name and golem it
 takes, is rolled at random every time you reach World 9, and stays fixed
-only for that visit.
+only for that visit. It fights with whatever the host it landed in can
+carry: the rolled type's own signature quasiparticle, plus Phonon Beam.
+Check the boss preview on the goal tile before you commit to a form.
 
 World 10's rival, The Adapted, is "a model of you": it starts the fight
 mirroring whichever type you're currently wearing, then reshapes itself

@@ -156,11 +156,12 @@
 //   `Phaser.Utils.Array.GetRandom` picking uniformly among a crystal's own
 //   moves).
 // - World 9's rival has no fixed type (`getRival(9, ...)` rolls one of
-//   `RIVAL_9_TYPES` uniformly at battle time) -- its moveset is fixed
-//   (`rivalImpurityResonance`) and its max HP is `rivalHpForWorld(9)`
+//   `RIVAL_9_TYPES` uniformly at battle time) -- its moveset is the rolled
+//   type's own signature move plus Phonon Beam (`RIVAL_9_MOVES`,
+//   `rivalImpurityResonance`) and its max HP is `rivalHpForWorld(9)`
 //   regardless of which type gets rolled (world-driven, not per-species), so
-//   only the player's own outgoing-mismatch term is averaged across
-//   `RIVAL_9_TYPES`' 7 members.
+//   both the player's own outgoing-mismatch term and the rival's incoming
+//   damage are averaged across `RIVAL_9_TYPES`' 7 members.
 // - The final reported figures (the per-build tables) are *expected
 //   values*, not one stochastic playthrough: each hit is run through the
 //   real `resolveHitDamage` HIT_SAMPLES times with the seeded RNG and
@@ -354,6 +355,7 @@ const ULTIMATE_MOVE_IDS = evalNode(findTopLevelConst(materialsSf, 'ULTIMATE_MOVE
 const MOVE_COMPATIBILITY = evalNode(findTopLevelConst(materialsSf, 'MOVE_COMPATIBILITY'), materialsSf);
 const PLAYER_MATERIAL = evalNode(findTopLevelConst(materialsSf, 'PLAYER_MATERIAL'), materialsSf);
 const RIVAL_9_TYPES = evalNode(findTopLevelConst(materialsSf, 'RIVAL_9_TYPES'), materialsSf);
+const RIVAL_9_MOVES = evalNode(findTopLevelConst(materialsSf, 'RIVAL_9_MOVES'), materialsSf);
 const TUNABLE_MOVE_CLASSES = evalNode(findTopLevelConst(materialsSf, 'TUNABLE_MOVE_CLASSES'), materialsSf);
 
 const ULTIMATE_CLASS_UNLOCK_COST = evalNode(findTopLevelConst(materialsSf, 'ULTIMATE_CLASS_UNLOCK_COST'), materialsSf);
@@ -854,8 +856,14 @@ function defendersFor(world, isRival) {
   if (world === 9) {
     // No fixed WORLD_RIVALS[9] entry -- getRival(9, t) rolls t uniformly
     // from RIVAL_9_TYPES at battle time (rollRival9Type); average over all 7.
-    const base = WORLD_RIVALS[9] ?? { moves: ['tunnelStrike', 'thermalFluctuation'] };
-    return RIVAL_9_TYPES.map((type) => ({ ...base, type, maxHp }));
+    // Each rolled type brings its own moveset (RIVAL_9_MOVES' signature move
+    // plus Phonon Beam, mirroring rivalImpurityResonance), so the seven
+    // defenders differ in what they throw as well as in what they are.
+    return RIVAL_9_TYPES.map((type) => ({
+      type,
+      maxHp,
+      moves: [RIVAL_9_MOVES[type], 'thermalFluctuation'],
+    }));
   }
   return [{ ...WORLD_RIVALS[world], maxHp }];
 }

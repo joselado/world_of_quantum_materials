@@ -173,10 +173,13 @@ this page can see.
 **The hand-authored data tables' internal consistency** (checks 1-15): every
 `MaterialType` has a `MOVE_COMPATIBILITY` row and can host `phonon` (the
 universal fallback move), every crystal/rival's `moves` list resolves to a
-real `MOVES` id, no two moves share a display name (this project has shipped
+real `MOVES` id and to a class its own type can host, no two moves share a
+display name (this project has shipped
 exactly that bug before), `WORLD_NAMES`/`WORLD_RIVALS`/`WORLD_GUARDIANS` all
 cover the built worlds consistently (`WORLD_RIVALS` deliberately excluding
-World 9, whose rival is rolled at random rather than fixed), every
+World 9, whose rival is rolled at random rather than fixed, and whose
+per-type `RIVAL_9_NAMES`/`RIVAL_9_MOVES` tables are held to covering exactly
+`RIVAL_9_TYPES` in its place), every
 `HYBRID_RECIPES` result actually lives in `WORLD_CRYSTALS[10]` and vice versa
 (DESIGN.md §5's "hosts exactly the hybrid-recipe results, and nothing else"),
 every world 1-9 has a non-empty quiz pool, and every `TUTORIAL_TIPS` topic is
