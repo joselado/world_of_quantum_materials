@@ -383,7 +383,7 @@ different crystal form (§5) never changes it by itself, only the world does.
 an invented species name, and inherits its main type (and therefore its look and its
 type-chart matchups) from that compound's actual physics. Below is the candidate list,
 grouped by main type/topic, cross-checked against what
-`lecture_notes/tex_extended/sessions/sessionNN.tex` actually names for each topic;
+`lecture_notes/tex/sessions/sessionNN.tex` actually names for each topic;
 entries marked *(textbook fill-in)* are standard examples supplied because the
 corresponding session file names no concrete real compound for that topic.
 
@@ -1703,8 +1703,16 @@ configuration; see `dev_notes/DEVELOPMENT.md`.
   off-path terrain accents, and each world's map is generated at runtime by
   `game/src/world/mapgen.ts` rather than authored in a map editor.
 - Materialdex entries and post-battle explanations can be adapted from
-  `lecture_notes/tex_extended/sessions/sessionNN.tex` (symlinked into this repo's
-  root, see CLAUDE.md) rather than written fresh.
+  `lecture_notes/tex/sessions/sessionNN.tex` — the course's short session notes,
+  symlinked into this repo's root, see CLAUDE.md — rather than written fresh.
+- Wild-encounter quiz pools are bound by that mapping: a world-N pool (N = 1..9) may
+  only ask about the topics session N teaches, and a topic belongs to exactly one
+  world. So mean-field theory and its three worked examples are World 1's, a
+  criterion for magnetism (Stoner) and superexchange are World 6's, and
+  Fermi-surface nesting and the plasmon are World 9's, whichever compound is being
+  fought. `npm run quiz-topic-check` from `game/` scores every question against all
+  ten sessions and flags the ones whose own session does not rank first; the rule
+  itself is CLAUDE.md's "Quiz questions in short."
 
 ## 9. Current build status
 

@@ -26,14 +26,31 @@
 // finale) instead of any WORLD_QUESTIONS bucket -- fitting, since World 10's
 // rival ("The Adapted") is itself an adaptive AI.
 //
-// Content is sourced from lecture_notes/tex_extended/sessions/sessionNN.tex,
-// matching each world to that world's own course topic (world 1 ->
-// session01.tex, world 2 -> session02.tex, ... world 9 -> session09.tex --
-// see CLAUDE.md's topic table); a handful of real materials genuinely
-// off-syllabus (no session covers their specific topic, e.g. Silver's
-// plasmonics or GeTe's ferroelectric Rashba coupling) are written straight
-// from the compound's own real physics instead, noted inline where that's
-// the case.
+// Content is sourced from the course's short session notes,
+// lecture_notes/tex/sessions/sessionNN.tex, matching each world to that
+// world's own course topic (world 1 -> session01, world 2 -> session02, ...
+// world 9 -> session09).
+//
+// CLAUDE.md's "Quiz questions in short" is binding here: a world-N pool may
+// only ask about the topics session N teaches, and a topic belongs to exactly
+// one world. The boundaries that are easiest to cross by accident, since the
+// same compounds turn up on both sides: mean-field theory, its
+// self-consistency loop, and the three worked examples (charge density wave,
+// magnetism, superconductivity) are session 1's, while a *criterion* for
+// magnetism (Stoner), exchange splitting, the itinerant/localized contrast and
+// superexchange are session 6's; Fermi-surface nesting and the diverging
+// susceptibility it produces are session 9's. Iron and Cobalt spawn in both
+// world 1 and world 6 and are asked about differently in each.
+//
+// The scope is the session's topic, not its literal text: a handful of real
+// materials are genuinely off-syllabus (no session names them, e.g. Silver's
+// plasmonics or GeTe's ferroelectric Rashba coupling) and are written straight
+// from the compound's own real physics, noted inline where that's the case,
+// placed in the world whose session covers the physics being asked about.
+//
+// `npm run quiz-topic-check` (scripts/quiz-topic-check.mjs) scores every
+// question here against all ten session files and flags the ones whose own
+// session doesn't rank first -- run it after adding questions.
 
 export interface MaterialQuestion {
   prompt: string;
@@ -48,14 +65,19 @@ export interface AnalyticQuestion extends MaterialQuestion {
   worlds: number[];
 }
 
-// World 1 (session01.tex: mean-field Hubbard theory, Mott physics,
-// spontaneous symmetry breaking).
+// World 1 (session01: second quantization, mean-field theory, and spontaneous
+// symmetry breaking, in its three worked examples -- charge density wave,
+// magnetism, superconductivity).
 export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
   1: [
     // Nickel Oxide (NiO) -- Mott antiferromagnet, spontaneous symmetry breaking.
+    // Session 1 reaches magnetic order by ramping U in the mean-field Hubbard
+    // model, with no threshold in the story: a threshold for magnetism is the
+    // Stoner criterion, which is session 6's, so nothing here is framed that
+    // way.
     {
       prompt: "Why does NiO order antiferromagnetically below its Néel point?",
-      correct: 'U crosses a threshold, favoring opposite spins',
+      correct: 'Repulsive on-site U opens a Mott gap and builds a local moment on every site',
       incorrect: 'Spin-orbit coupling alone locks the spins',
     },
     {
@@ -74,25 +96,14 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'All spins along x, or along y',
     },
     {
-      prompt: 'On a honeycomb Hubbard lattice, why is a finite critical U needed before an antiferromagnetic gap opens (unlike a simple chain)?',
-      correct: 'Its density of states vanishes linearly there',
-      incorrect: 'Its density of states diverges there',
+      prompt: 'Switching on a repulsive U across a finite honeycomb island of the Hubbard model does what to its spectrum?',
+      correct: 'A Mott gap opens and grows with U',
+      incorrect: 'The spectrum stays gapless however large U becomes',
     },
     {
-      prompt: 'In the extended (infinite) 1D Hubbard chain, at what interaction strength does antiferromagnetic order first appear?',
-      correct: 'Any U > 0: no threshold',
-      incorrect: 'Only above a finite critical U_c',
-    },
-    // Chromium -- itinerant (nested-Fermi-surface) antiferromagnet, contrasted with MnO/NiO's Mott picture.
-    {
-      prompt: "Elemental chromium's spin-density-wave antiferromagnetism comes from Fermi-surface nesting. In this world's toy nested chain, what does that same mechanism do to the ordering threshold?",
-      correct: 'It removes the threshold entirely: order turns on for any U > 0',
-      incorrect: 'It raises the threshold to U_c = 4t, twice the dimer value',
-    },
-    {
-      prompt: 'Why does the two-site Hubbard dimer need a finite threshold U_c = 2t before magnetization turns on, unlike the extended, perfectly nested chain?',
-      correct: "Its small system lacks the chain's extensive, near-degenerate low-energy states",
-      incorrect: 'Two sites are simply too few to ever support magnetism at all',
+      prompt: 'At large repulsive U, how does the Mott gap of the Hubbard model grow?',
+      correct: 'Linearly with U, alongside a local moment forming on every site',
+      incorrect: 'It saturates at the bare bandwidth and stops growing',
     },
     {
       prompt: 'In mean-field Hubbard theory, what symmetry does a nonzero magnetization m = ⟨n↑⟩ − ⟨n↓⟩ spontaneously break?',
@@ -100,54 +111,67 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'Translational symmetry',
     },
     {
-      prompt: 'The perfect-nesting argument that removes the ordering threshold for the extended chain was first introduced in this world for a different order. Which one?',
-      correct: 'The charge density wave, from nearest-neighbor repulsion V',
-      incorrect: 'Superconducting pairing, from an attractive U < 0',
-    },
-    {
-      prompt: "Right at the nested chain's ordering threshold, how does its order parameter actually turn on as U grows from zero?",
-      correct: 'Exponentially slowly, ~e^(-const/U), not linearly',
-      incorrect: 'Discontinuously, jumping straight to its full value',
-    },
-    {
-      prompt: "Elemental chromium is an itinerant (metallic) antiferromagnet, unlike MnO/NiO's Mott-insulating picture. What's the key mean-field difference between the two roads to magnetism?",
-      correct: 'Nesting of an already-metallic Fermi surface, not a Mott gap from strong on-site U',
-      incorrect: "Chromium's magnetism comes from strong on-site U, identical to MnO/NiO's mechanism",
-    },
-    // Iron -- itinerant ferromagnet, mean-field/Stoner half of its pool (the
-    // rest, on magnon dispersion, lives in World 6's own pool below).
-    {
-      prompt: 'Why do iron and cobalt order magnetically while a comparable-U metal like aluminum or lead stays nonmagnetic?',
-      correct: 'Their narrow d bands give a large density of states at E_F',
-      incorrect: 'Their U is uniquely large among transition metals',
-    },
-    {
-      prompt: 'In a self-consistently solved mean-field iron chain, what grows with U and pushes the spin-up and spin-down bands apart?',
-      correct: 'The exchange splitting',
-      incorrect: 'Spin-orbit coupling',
-    },
-    {
-      prompt: "Iron's ferromagnetism is best described, in the itinerant/localized language, as...",
-      correct: 'Itinerant magnetism: delocalized electrons near a Stoner instability',
-      incorrect: 'Localized-moment magnetism from fully frozen charge',
-    },
-    // Cobalt -- itinerant ferromagnet, mean-field half of its pool (the
-    // rest, on the Stoner criterion and the magnon Goldstone mode, lives in
-    // World 6 below).
-    {
       prompt: 'In the mean-field Hubbard model, which direction does the spontaneous exchange field point?',
       correct: 'Any direction in spin space: not fixed to z',
       incorrect: 'Always along the z axis, fixed by the Hamiltonian',
     },
+    // Second quantization, the session's other named half and the language
+    // every later world's Hamiltonian is written in.
     {
-      prompt: 'Besides direct hopping between magnetic ions like cobalt, what other virtual process can flip an exchange coupling from antiferromagnetic to ferromagnetic?',
-      correct: 'Hopping through a bridging ligand (superexchange)',
-      incorrect: 'Simply increasing the direct hopping t',
+      prompt: 'In second quantization, how is the antisymmetry of a many-fermion state enforced?',
+      correct: 'By the anticommutation relations the operators themselves obey',
+      incorrect: 'By antisymmetrizing the wavefunction by hand, term by term',
     },
     {
-      prompt: 'Itinerant, Stoner-type magnetism (as in cobalt) is the regime where...',
-      correct: 'U is weak relative to the electronic bandwidth',
-      incorrect: 'U is much larger than the bandwidth, freezing the charge',
+      prompt: 'What makes first quantization impractical for a many-electron material, where second quantization is not?',
+      correct: 'Its many-body Hilbert space grows exponentially with the number of particles',
+      incorrect: 'It cannot describe electrons that interact with each other at all',
+    },
+    {
+      prompt: 'What does the operator c_n† actually do to a state, in the second-quantized language?',
+      correct: 'Adds one electron to site n, or annihilates the state if one is already there',
+      incorrect: 'Measures how many electrons are currently sitting on site n',
+    },
+    // Mean-field theory itself: the tool, its honest status, and the loop
+    // that solves it.
+    {
+      prompt: 'What does a mean-field decoupling do to the quartic interaction term in a Hubbard Hamiltonian?',
+      correct: 'Replaces one pair of operators by its expectation value, leaving a bilinear Hamiltonian',
+      incorrect: 'Removes the interaction entirely, leaving the non-interacting problem',
+    },
+    {
+      prompt: 'Why must a mean-field Hamiltonian be solved self-consistently rather than diagonalized once?',
+      correct: 'It is built from expectation values that depend on its own solution',
+      incorrect: 'Its matrix is too large to diagonalize in a single pass',
+    },
+    {
+      prompt: 'How honest is mean-field theory about its own status as an approximation?',
+      correct: 'It is uncontrolled: nothing bounds the error it makes',
+      incorrect: 'It is exact for any Hamiltonian with only two-body interactions',
+    },
+    // Worked example 1: the charge density wave, this session's broken
+    // translational symmetry.
+    {
+      prompt: 'A charge density wave forms on a spinless chain with nearest-neighbor repulsion V. Which symmetry of the original Hamiltonian does it break?',
+      correct: 'Translational symmetry: the sites stop being equivalent',
+      incorrect: 'Time-reversal symmetry: the sites acquire a magnetic moment',
+    },
+    {
+      prompt: 'As V grows on the spinless interacting chain, what happens to the single-particle spectrum?',
+      correct: 'A gap opens and widens as the charge imbalance grows',
+      incorrect: 'It stays gapless: the chain remains a metal at every V',
+    },
+    // Worked example 3: superconductivity and broken gauge symmetry, the
+    // third leg of the session's three-way split.
+    {
+      prompt: 'In the Hubbard Hamiltonian, what does the sign of the on-site interaction U decide?',
+      correct: 'U > 0 drives magnetism, U < 0 drives superconductivity',
+      incorrect: 'U > 0 drives a charge density wave, U < 0 drives magnetism',
+    },
+    {
+      prompt: 'The superconducting mean-field term Δ = ⟨c_i c_j⟩ is unusual because it pairs two annihilation operators. Which symmetry does that cost it?',
+      correct: 'Gauge symmetry: the two phases no longer cancel',
+      incorrect: 'Translational symmetry: the pairing has to pick a site',
     },
   ],
 
@@ -384,31 +408,8 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     // Off-syllabus (no session covers these compounds' own specific topic --
     // written from real physics, kept in World 2 since that's where they spawn).
-    {
-      prompt: "What feature of silver's electronic structure gives it such a sharp plasmon resonance?",
-      correct: 'A single, nearly free 5s conduction electron per atom with weak damping',
-      incorrect: 'A half-filled d-band pinned near the Fermi level',
-    },
-    {
-      prompt: "A metal's bulk plasma frequency scales with which quantity?",
-      correct: 'The square root of its free-electron density',
-      incorrect: 'The size of its band gap',
-    },
-    {
-      prompt: 'Why do real plasmonic/nanophotonic devices favor silver (and gold) over an ordinary semiconductor?',
-      correct: 'Their free carriers respond collectively at optical frequencies with low loss',
-      incorrect: "Their band gap happens to match visible-light photon energies",
-    },
-    {
-      prompt: "Which move class does a plasmon correspond to in this game's taxonomy?",
-      correct: "Plasmon Pulse, hosted only by the 'metal' type",
-      incorrect: 'Electron Pulse, hosted by every conducting type',
-    },
-    {
-      prompt: 'Above its own bulk plasma frequency, how does a metal like silver behave toward light?',
-      correct: 'It becomes transparent: the free-electron gas can no longer screen the field',
-      incorrect: 'It becomes a perfect reflector',
-    },
+    // Silver's plasmon questions are not among them: the plasmon is session 9's
+    // (its RPA section), so they live in World 9's pool.
     {
       prompt: "What structurally distinguishes a 'metal' from a 'semiconductor' in this game's taxonomy?",
       correct: "A metal's band is only partially filled, so it can carry a plasmon a gapped semiconductor cannot",
@@ -608,37 +609,41 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       correct: 'Orbital magnetism (circulating currents), rather than spin/local-moment magnetism',
       incorrect: 'Doped-in paramagnetic impurities',
     },
-    // Gallium Arsenide -- off-syllabus (session04 mentions GaAs only as a
-    // 2DEG substrate, not for its own bulk physics); written from real physics.
+    // Gallium Arsenide -- the quantum well that was the original quantum Hall
+    // platform, which is the whole of what session 4 asks of it: parabolic
+    // electrons, a level spacing linear in B, and the temperature that scale
+    // forces. Its bulk semiconductor physics (zinc blende, direct gap, mobility
+    // against silicon) is materials science no session teaches, so none of it
+    // is asked here.
     {
-      prompt: 'In GaAs, the conduction-band minimum and valence-band maximum sit at...',
-      correct: 'The same crystal momentum (Γ): a direct gap',
-      incorrect: 'Different momenta, as in silicon: an indirect gap',
+      prompt: 'Which platform first realized the quantum Hall effect?',
+      correct: 'Two-dimensional electron gases in semiconductor quantum wells, historically GaAs',
+      incorrect: 'Bulk three-dimensional metals cooled to millikelvin temperatures',
     },
     {
-      prompt: "Why does GaAs's direct gap make it useful for LEDs and laser diodes in a way silicon isn't?",
-      correct: 'An electron can recombine with a hole and emit a photon directly, without needing a phonon to conserve crystal momentum',
-      incorrect: "GaAs's gap size happens to fall in the infrared range, which silicon's does not",
+      prompt: "The electrons in a GaAs quantum well are ordinary parabolic electrons. How does their Landau level spacing depend on the magnetic field?",
+      correct: 'Linearly in B, with equally spaced levels',
+      incorrect: 'As the square root of B, with levels crowding together at high n',
     },
     {
-      prompt: 'What crystal structure does bulk GaAs adopt?',
-      correct: 'Zinc blende: Ga and As each forming an FCC sublattice, offset by a quarter of the body diagonal',
-      incorrect: 'Diamond structure, with every lattice site occupied by the same atom, like silicon',
+      prompt: 'For laboratory-accessible fields, roughly how large is the Landau level spacing in a GaAs quantum well?',
+      correct: 'About one millielectronvolt',
+      incorrect: 'About one electronvolt, comparable to a semiconductor band gap',
     },
     {
-      prompt: 'GaAs is classified as a III-V compound semiconductor because...',
-      correct: "Gallium (group III) and arsenic (group V) atoms alternate on the lattice, averaging four valence electrons per atom, like silicon's own group IV",
-      incorrect: "It's silicon doped with group III and group V dopant atoms",
+      prompt: 'Why does quantum Hall physics in GaAs need temperatures of order one kelvin?',
+      correct: 'Its level spacing is only a few millielectronvolts, so warmer samples smear the levels together',
+      incorrect: 'GaAs only becomes two-dimensional once it is cooled below a structural transition',
     },
     {
-      prompt: "GaAs's conduction-band electrons have a much smaller effective mass than silicon's. What real-world consequence does this have?",
-      correct: 'Higher electron mobility, exploited in high-speed transistors for RF and microwave electronics',
-      incorrect: 'Higher thermal conductivity, letting GaAs devices run hotter without heat spreaders',
+      prompt: "At the same magnetic field, how do graphene's Landau levels compare with a GaAs 2DEG's?",
+      correct: 'Roughly two orders of magnitude higher in energy',
+      incorrect: 'Roughly the same, since the field sets the scale in both cases',
     },
     {
-      prompt: "Why does silicon dominate mainstream integrated-circuit manufacturing despite GaAs's higher electron mobility?",
-      correct: 'Silicon has a stable native oxide (SiO₂) that makes an excellent MOSFET gate dielectric; GaAs has no comparable native oxide',
-      incorrect: "GaAs's band gap is too small to suppress leakage current at room temperature",
+      prompt: 'What is it about graphene, rather than the field, that puts its Landau levels so far above a parabolic-electron 2DEG like GaAs?',
+      correct: 'Its carriers are Dirac electrons, so the spectrum is the square root of the harmonic-oscillator one',
+      incorrect: 'Its carriers are far more numerous, so more of them can be pushed into each level',
     },
   ],
 
@@ -764,11 +769,6 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       correct: 'Zero for a pair; at least Δ for a lone electron',
       incorrect: 'The same cost, set by Δ, either way',
     },
-    {
-      prompt: 'Unlike ordinary non-magnetic disorder, magnetic disorder in a niobium sample...',
-      correct: 'Pair-breaks locally, producing Yu-Shiba-Rusinov-like bound states',
-      incorrect: 'Is screened out harmlessly, exactly like non-magnetic disorder',
-    },
     // Tantalum Disulfide (1H) -- standalone metallic/superconducting TMD, nodal pairing.
     {
       prompt: 'Given one Fermi surface, unconventional nodal pairing (unlike a full s-wave gap) leaves the system...',
@@ -868,8 +868,12 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
   // World 6 (session06.tex: classical magnetism, magnons, the
   // Dzyaloshinskii-Moriya interaction, multiferroics).
   6: [
-    // Iron -- ferromagnet, magnon dispersion/quasiparticle half of its pool
-    // (the mean-field/Stoner half lives in World 1's own pool above).
+    // Iron -- ferromagnet. Session 6 owns every side of it a question can be
+    // asked about: it revisits mean-field magnetism on a real lattice
+    // (exchange splitting), sets the Stoner threshold that decides which
+    // metals order at all, and then builds the magnon on top. World 1's own
+    // pool stays on the mean-field machinery itself and never reaches a
+    // criterion for magnetism.
     {
       prompt: "Near k=0, a ferromagnet's magnon dispersion behaves as...",
       correct: 'E(k) ∝ k²: quadratic',
@@ -885,12 +889,36 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       correct: 'Bosonic creation/annihilation operators',
       incorrect: 'Fermionic creation/annihilation operators',
     },
-    // Cobalt -- Stoner-criterion and magnon Goldstone-mode half of its pool
-    // (the rest lives in World 1's own pool above).
+    {
+      prompt: 'In a self-consistently solved mean-field iron chain, what grows with U and pushes the spin-up and spin-down bands apart?',
+      correct: 'The exchange splitting',
+      incorrect: 'Spin-orbit coupling',
+    },
+    {
+      prompt: "Iron's ferromagnetism is best described, in the itinerant/localized language, as...",
+      correct: 'Itinerant magnetism: delocalized electrons near a Stoner instability',
+      incorrect: 'Localized-moment magnetism from fully frozen charge',
+    },
+    // Cobalt -- Stoner criterion, superexchange, and the magnon Goldstone mode.
     {
       prompt: 'The Stoner criterion for a spontaneous ferromagnetic instability to develop is...',
       correct: 'U·D(E_F) ≥ 1',
       incorrect: 'U·D(E_F) ≤ 1',
+    },
+    {
+      prompt: 'Why do iron and cobalt order magnetically while a comparable-U metal like aluminum or lead stays nonmagnetic?',
+      correct: 'Their narrow d bands give a large density of states at E_F',
+      incorrect: 'Their U is uniquely large among transition metals',
+    },
+    {
+      prompt: 'Itinerant, Stoner-type magnetism (as in cobalt) is the regime where...',
+      correct: 'U is weak relative to the electronic bandwidth',
+      incorrect: 'U is much larger than the bandwidth, freezing the charge',
+    },
+    {
+      prompt: 'Besides direct hopping between magnetic ions like cobalt, what other virtual process can flip an exchange coupling from antiferromagnetic to ferromagnetic?',
+      correct: 'Hopping through a bridging ligand (superexchange)',
+      incorrect: 'Simply increasing the direct hopping t',
     },
     {
       prompt: "Why does a ferromagnet's magnon energy vanish exactly at k=0?",
@@ -1505,6 +1533,55 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       prompt: 'RPA is described as a controlled approximation with a specific regime of validity. Which regime is that?',
       correct: 'Weakly to moderately correlated metals',
       incorrect: 'Strongly correlated Mott insulators, its primary intended regime',
+    },
+    // Chromium -- the real material behind this world's nesting instability,
+    // an itinerant spin-density-wave antiferromagnet rather than a Mott one.
+    {
+      prompt: "Elemental chromium's antiferromagnetism is a spin density wave rather than a Mott-insulating order. What drives it?",
+      correct: 'Nesting of its already-metallic Fermi surface',
+      incorrect: 'An on-site U large enough to freeze the charge on every site',
+    },
+    {
+      prompt: 'On a perfectly nested Fermi surface, where ε(k+Q) = −ε(k) for every k, what does the bare susceptibility χ₀(Q,0) do?',
+      correct: 'Diverges logarithmically, so any interaction at all drives an instability',
+      incorrect: 'Stays finite, so the instability needs a large interaction to appear',
+    },
+    {
+      prompt: 'A logarithmically divergent susceptibility means the ordered state turns on for arbitrarily weak interaction. How does its order parameter grow from zero?',
+      correct: 'Exponentially slowly, ~e^(-const/U), not linearly',
+      incorrect: 'Discontinuously, jumping straight to its full value',
+    },
+    // Silver -- the plasmon, this session's other RPA pole: the collective
+    // charge oscillation the same interacting response function produces.
+    {
+      prompt: "What feature of silver's electronic structure gives it such a sharp plasmon resonance?",
+      correct: 'A single, nearly free 5s conduction electron per atom with weak damping',
+      incorrect: 'A half-filled d-band pinned near the Fermi level',
+    },
+    {
+      prompt: "A metal's bulk plasma frequency scales with which quantity?",
+      correct: 'The square root of its free-electron density',
+      incorrect: 'The size of its band gap',
+    },
+    {
+      prompt: 'Why do real plasmonic/nanophotonic devices favor silver (and gold) over an ordinary semiconductor?',
+      correct: 'Their free carriers respond collectively at optical frequencies with low loss',
+      incorrect: "Their band gap happens to match visible-light photon energies",
+    },
+    {
+      prompt: "Which move class does a plasmon correspond to in this game's taxonomy?",
+      correct: "Plasmon Pulse, hosted only by the 'metal' type",
+      incorrect: 'Electron Pulse, hosted by every conducting type',
+    },
+    {
+      prompt: 'Above its own bulk plasma frequency, how does a metal like silver behave toward light?',
+      correct: 'It becomes transparent: the free-electron gas can no longer screen the field',
+      incorrect: 'It becomes a perfect reflector',
+    },
+    {
+      prompt: 'Unlike ordinary non-magnetic disorder, magnetic disorder in a superconductor like niobium...',
+      correct: 'Pair-breaks locally, producing Yu-Shiba-Rusinov-like bound states',
+      incorrect: 'Is screened out harmlessly, exactly like non-magnetic disorder',
     },
     // GeTe -- off-syllabus, ferroelectric Rashba semiconductor.
     {

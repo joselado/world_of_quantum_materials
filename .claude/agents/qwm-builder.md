@@ -37,7 +37,7 @@ material, or battle-mechanic content, physical correctness comes before
 gameplay convenience. `lecture_notes/` at the repo root (when present -- it's
 a local-only, machine-specific symlink into the course-materials repo, may
 be absent on a fresh checkout) holds the source material in
-`lecture_notes/tex_extended/sessions/sessionNN.tex`; adapt Materialdex
+`lecture_notes/tex/sessions/sessionNN.tex`; adapt Materialdex
 blurbs, quiz questions, and in-game explanations from there rather than
 writing physics claims from scratch. If a physical detail is genuinely
 unclear or you're inventing something not grounded in either the lecture

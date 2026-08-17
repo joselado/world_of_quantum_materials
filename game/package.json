@@ -13,6 +13,7 @@
     "mapgen:check": "node scripts/mapgen-check.mjs",
     "mapshape:measure": "node scripts/mapshape-measure.mjs",
     "content-lint": "node scripts/content-lint.mjs",
+    "quiz-topic-check": "node scripts/quiz-topic-check.mjs",
     "art-sweep": "node scripts/art-sweep.mjs",
     "music-arc-check": "node scripts/music-arc-check.mjs",
     "greyscale-check": "node scripts/greyscale-check.mjs",

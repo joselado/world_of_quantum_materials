@@ -3,7 +3,7 @@
 // own intro quote uses (e.g. Noether's "Every symmetry hides a conservation
 // law..."), grounded in that world's own course topic (DESIGN.md's world-map
 // table, cross-referenced against
-// lecture_notes/tex_extended/sessions/sessionNN.tex). Distinct from
+// lecture_notes/tex/sessions/sessionNN.tex). Distinct from
 // worldLore.ts's two-page Decoherence-arc history (shown once, narrates an
 // attack on that world's physics) and story.ts's STORY_BEATS (one-line
 // transition beats between worlds): this blurb is neither narrative nor

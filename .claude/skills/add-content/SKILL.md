@@ -13,7 +13,7 @@ has the full field-level detail behind everything referenced here).
 ## Before you start: ground it physically
 
 This is a physics-teaching game -- new content should be grounded in the
-actual course material, not invented. `lecture_notes/tex_extended/sessions/
+actual course material, not invented. `lecture_notes/tex/sessions/
 sessionNN.tex` (a local-only symlink, may be absent on this machine) maps to
 worlds as `quiz.ts`'s own header comment documents: world 1 and 2 both draw
 from `session01.tex`, world 2 additionally from `session02.tex` (Bloch's

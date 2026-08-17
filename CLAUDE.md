@@ -64,9 +64,16 @@ Some of those files may sound contradictory with CLAUDE.md. If so, ask me for cl
 pushed to GitHub) into the course-materials repo's `lecture_notes/` directory —
 specifically machine-specific and not portable to another clone/machine. It exists
 so Materialdex entries, quiz questions, and post-battle explanations can be adapted
-from `lecture_notes/tex_extended/sessions/sessionNN.tex` rather than written fresh;
-see `dev_notes/DESIGN.md` §8 and `game/src/data/quiz.ts` for how session numbers map to game
-worlds. If the symlink is missing (e.g. on a fresh clone or a different machine), it
+from the course's own session notes rather than written fresh; see `dev_notes/DESIGN.md` §8
+and `game/src/data/quiz.ts` for how session numbers map to game worlds.
+
+**Use the short notes, `lecture_notes/tex/sessions/sessionNN.tex`.** They are what the
+course actually delivers, so they define what a session covers and therefore what the game
+may ask about. `lecture_notes/tex_extended/` holds a longer companion version that carries
+material beyond the session itself (session 1's extended text derives Fermi-surface nesting,
+for instance, where the short session 1 never mentions it) — reading it for background is
+fine, but it does not widen a session's scope and is never the authority for what a world
+may ask. If the symlink is missing (e.g. on a fresh clone or a different machine), it
 points at the Aalto Dropbox-synced course repo — recreate it locally, or skip that
 cross-referencing step if the course repo isn't present.
 
@@ -162,6 +169,33 @@ hybrid-recipe result as an ordinary wild.
 Worlds 1-8 each have a rival with a fixed type. World 9's rival has a type rolled at random
 every time the player reaches it. World 10's rival is "The Adapted," an adaptive AI boss
 with no fixed type — a model of the player's own crystal.
+
+## Quiz questions in short
+A wild encounter in world N (N = 1..9) may only ask about the topics
+`lecture_notes/tex/sessions/sessionNN.tex` — the **short** notes, per the cross-reference
+section above — actually teaches. The session is the scope: world 1 asks about second
+quantization, mean-field theory and spontaneous symmetry breaking and nothing else; world 6
+asks about classical magnetism and magnons; and so on down the list. A topic belongs to
+exactly one world, the world of the session that teaches it, so a question whose physics is
+taught in session 6 goes in world 6's pool even when the compound being fought also spawns
+in world 1.
+
+The cross-spawn rule above does not relax this. A compound that spawns in two worlds is
+asked about differently in each: Iron in world 1 is asked its mean-field, symmetry-breaking
+side; Iron in world 6 is asked its Stoner, itinerant-magnetism and magnon side. Which of a
+compound's properties a world may ask about is decided by that world's session, never by
+the compound.
+
+The scope is the session's *topic*, not its literal text. A world may ask about a real
+compound no session names at all — GaAs, UTe₂, HfO₂ and others have no session of their own
+and their questions are written from the compound's own physics — as long as the physics
+being asked about is the physics that world's session teaches.
+
+If a question is worth keeping but its physics sits in another session, move it to that
+session's world rather than rewriting the session boundary around it. `npm run quiz-topic-check`
+from `game/` scores every question against all ten sessions and flags the ones whose own
+session does not rank first; run it after adding questions. Ask me when a topic looks like
+it genuinely spans two sessions.
 
 ## Development hierarchy
 What is written in CLAUDE.md overrides anything said anywhere else. If I give an instruction

@@ -55,7 +55,7 @@ scale preset, not just the extremes.
 If the diff adds or changes a quasiparticle, material, move, hybrid recipe,
 or any other physics-flavored content: check it against `dev_notes/DESIGN.md`'s
 already-documented rules (type system, hybrid rules, per-world topic) for
-internal contradiction, and, when `lecture_notes/tex_extended/sessions/` is
+internal contradiction, and, when `lecture_notes/tex/sessions/` is
 present on this machine (it's a local-only symlink, may be absent), spot-check
 any specific physical claim against the relevant `sessionNN.tex` rather than
 taking the implementer's prose at face value. If the lecture notes aren't

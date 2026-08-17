@@ -209,6 +209,33 @@ Run this after any content addition -- pairs naturally with the
 before reaching for `component-check`/`playthrough-check`, which check
 behavior rather than data.
 
+## Quiz topic check
+
+`game/scripts/quiz-topic-check.mjs` (`npm run quiz-topic-check` from `game/`,
+~10s, pure Node) checks the one thing about a quiz question that reads
+perfectly and typechecks perfectly and is still wrong: that it is being asked
+in the right world. CLAUDE.md's "Quiz questions in short" binds a world-N pool
+(N = 1..9) to the topics session N teaches, and drift across that boundary is
+easy -- the same compound turns up in two worlds, and its physics does not.
+
+It reduces each question (prompt plus both answers) to its distinctive words
+and scores those against all ten short session files
+(`lecture_notes/tex/sessions/`) by tf-idf, so a word every session uses counts
+for nothing and a word only one session uses dominates. The session that
+scores highest is the one whose topic the question is really about; that not
+being the question's own world is the flag, printed with the terms the world's
+own session never uses and which sessions do.
+
+Read it as triage rather than a verdict. Ranking second is routine where two
+sessions share vocabulary, and a question about a compound no session names
+(GaAs, UTe2, HfO2) scores low everywhere by construction, which the rule
+allows as long as the physics fits the world. What is worth acting on is a
+large margin plus a `not in session N` list naming actual physics.
+
+`QM_QUIZ_WORLD=6` checks one world; `QM_QUIZ_ALL=1` prints every question
+rather than only the flagged ones. `lecture_notes/` is a local-only symlink,
+so on a checkout without it the script prints a skip line and exits 0.
+
 ## Map generation: invariants and shape
 
 Two scripts, one a gate and one a reading, both pure Node -- the generator
@@ -348,7 +375,7 @@ Superposition Mode title-screen picker lets you choose between them
 so Bloch's teleport hub gives instant access to any world/guardian, for testing
 without grinding), and the Lab's Settings station offers four rows --
 wild-encounter density, a Text Size preset applied via `ui/text.ts`'s
-`fontPx`/`fontScale` helpers, a Music Style (Classic/Modern) arrangement
+`fontPx`/`fontScale` helpers, a Music Style (Classic/Modern/Mute) arrangement
 switch, and a difficulty tier (B.Sc./M.Sc./Ph.D.) feeding
 `data/balance.ts`'s `DIFFICULTY_MULTIPLIERS`. `game/` is the only build.
 
