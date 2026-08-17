@@ -1645,9 +1645,15 @@ All audio is procedural Web Audio with no external assets
 (`game/src/audio/music.ts`) — one looping overworld score and one battle score
 per world, in two arrangements the player picks from the Lab's Settings
 station: "Classic" (chiptune-leaning arpeggios and a driving battle kit) and
-"Modern" (ambient orchestral string pads, a phrase-length legato melody, and
-no percussion in the overworld). Both draw on the same per-world key and
-tempo, so a world sounds like itself in either.
+"Modern", which is not authored separately but is the classic scores passed
+through a per-track smoothing transform (`modernizeScore`): string-pad
+attack/release swells, square/sawtooth mapped to clean triangle with the
+drive stripped, repeated pitches tied legato, a raised ambience send, and
+the overworld's drum kit dropped (battle keeps its full kit so a fight still
+reads as a fight). Because Modern is derived rather than re-composed, the
+hand-written gestures in the world-by-world table below survive in both
+styles, and an edit to a classic score reaches its Modern rendition
+automatically.
 
 **The ten overworld scores are one arc rather than ten moods**, and its shape
 is `dev_notes/WORLDS.md`'s light rule: the sequence darkens as coherence is
@@ -1733,9 +1739,9 @@ contextual tutorial tips, and the Story Mode/Superposition Mode picker are all i
 (§2, §4, §5, §7). `game/` is the only build; there is no separate no-install
 single-file `demo/` prototype. All audio is procedural Web Audio with no external assets
 (`game/src/audio/music.ts`), with both an overworld track and a battle track per world in
-two selectable arrangements — "Classic" and "Modern" — of the same per-world keys/tempos,
-toggled live from the Lab's Settings station; the ten overworld scores form one darkening
-arc across the sequence (§7's "Soundtrack").
+two selectable arrangements — "Classic" and "Modern", the latter derived from the classic
+scores by a smoothing transform — toggled live from the Lab's Settings station; the ten
+overworld scores form one darkening arc across the sequence (§7's "Soundtrack").
 
 Not yet built:
 - Bespoke per-world boss puzzles (§6) — every world currently uses the same reach-goal →

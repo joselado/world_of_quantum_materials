@@ -300,9 +300,11 @@ one in gold is the one you are playing with.
   fought them. Takes effect the next time you enter or re-enter a world.
 - **Text Size**: Compact, Normal, or Large. Applies immediately to every
   menu and dialogue in the game.
-- **Music**: Classic or Modern, two different arrangements of every world's
-  soundtrack, or Mute for no music at all. Sound effects keep playing either
-  way. Applies immediately, and is remembered between sessions.
+- **Music**: Classic or Modern, two renditions of every world's soundtrack.
+  Classic is the original chiptune style; Modern plays the same tunes with
+  softer, smoother tones. Or Mute for no music at all. Sound effects keep
+  playing either way. Applies immediately, and is remembered between
+  sessions.
 - **Difficulty**: B.Sc., M.Sc., or Ph.D., how hard every world's opponents
   hit. Unlike the settings above, meant to be changed mid-playthrough, not
   just once, and it applies to your very next battle.

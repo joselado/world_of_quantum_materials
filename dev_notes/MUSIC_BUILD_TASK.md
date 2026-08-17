@@ -250,9 +250,12 @@ machinery.
   root approached from below. Two rules, no per-world exceptions.
 - **Composed leads.** The current lead is chord-tone punctuation regenerated per
   bar — `stabBar` is bar-local *by signature*, so it cannot know it is halfway
-  through a phrase, which is why it reads as sequenced rather than composed.
-  `modernPhraseCell` already composes a four-bar arc and is the in-file proof
-  that a phrase-length lead is reachable.
+  through a phrase, which is why it reads as sequenced rather than composed. A
+  phrase-length generator needs the bar's position within its phrase as an
+  argument, the way `modernPhraseCell` once composed a four-bar arc for the
+  since-replaced generated Modern style. The Modern style now derives from the
+  classic scores by transform (`modernizeScore`), so composing the classic lead
+  is the whole job — both styles inherit it.
 - **A golem theme**, so a rival stops sounding like a wild encounter. One degree
   map transposed across nine worlds, bare fifths for mass, built by accretion —
   fragments, then a rising ladder, then the fragments again, because the golem

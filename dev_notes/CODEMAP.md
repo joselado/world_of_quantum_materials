@@ -447,9 +447,16 @@ game/src/
                                   styles (SCORES/"Classic", SCORES_MODERN/"Modern", all keyed
                                   `overworld:${world}`/`battle:${world}`), setStyle(MusicStyle)
                                   picks the table + restarts the current track,
-                                  makeBattleScore()/makeModernBattleScore() generate worlds
-                                  2-10's (resp. all 10 modern) battle themes (classic world 1 is
-                                  hand-written), duck() for attack beats.
+                                  makeBattleScore() generates worlds 2-10's battle themes
+                                  (classic world 1 is hand-written), duck() for attack beats.
+                                  SCORES_MODERN is not authored: it is SCORES mapped through
+                                  modernizeScore(score, opts), a per-track smoothing transform
+                                  (wave mapping, drive strip, attack/release/wet floors,
+                                  legato ties, per-scene-kind percussion policy) with one opts
+                                  table per scene kind (MODERN_OVERWORLD_OPTS/
+                                  MODERN_BATTLE_OPTS) -- so classic edits propagate to Modern
+                                  automatically, and a Modern-only tweak belongs in those opts
+                                  (or in the transform), never in a forked score.
                                   The ten overworld scores are one darkening arc keyed to
                                   WORLDS.md's light rule (DESIGN.md §7's "Soundtrack" is the
                                   world-by-world table): C tonic through worlds 1-6 with the
@@ -461,15 +468,11 @@ game/src/
                                   overworld comes from makeOverworldScore(), whose optional
                                   knobs (bassMode/padMode/leadOctave/leadWet/mirrorDelayBeats/
                                   extraTracks...) all default to the plain arrangement.
-                                  Battle articulation (silenceOpening/turnoverWalk/
-                                  addBrassPickups/battleSnarePattern/battleHatPattern/
-                                  crashTrack) is applied in makeBattleScore AND again in
-                                  world 1's hand-written BATTLE_SCORE -- a change to the battle
-                                  feel has to be made in both or world 1 silently diverges from
-                                  the other nine. These are separate from kickPulse/snarePulse/
-                                  hatPulse/subBassBar/battleIntroSting/chordTones/padVoiceBar/
-                                  harmonizeThird, which SCORES_MODERN also uses: fork those
-                                  rather than editing them.
+                                  Battle articulation (turnoverWalk/keepOpening/
+                                  battleSnarePattern/battleHatPattern/crashTrack) is applied
+                                  in makeBattleScore AND again in world 1's hand-written
+                                  BATTLE_SCORE -- a change to the battle feel has to be made in
+                                  both or world 1 silently diverges from the other nine.
   data/
     types.ts                    Move, Material, MoveClass, MaterialType, CrystalVariant, Stats
     balance.ts                   Every pure battle/economy formula, deliberately free of any

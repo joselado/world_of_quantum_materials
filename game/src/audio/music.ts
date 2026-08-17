@@ -19,12 +19,17 @@
 // fast and driving in every world, because a fight is the player's own
 // coherence pushing back against a world losing its own.
 //
-// A second arrangement
-// reuses each world's own key/tempo through its own pair of generators
-// instead of retuning anything: "Modern" (SCORES_MODERN) is an ambient
-// orchestral-pad style -- sustained extended-chord string pads, a melodic
-// phrase generator that spans whole sections instead of repeating a single
-// bar, and a thirds-below harmony voice, with no percussion at all.
+// A second arrangement, "Modern" (SCORES_MODERN), is *derived* from the
+// classic scores by a per-track smoothing transform (modernizeScore near the
+// bottom of this file) rather than authored separately: slow string-pad
+// attack/release swells in place of chip plucks, square/sawtooth mapped to
+// clean triangle with the drive stripped, repeated pitches tied into held
+// notes, a raised ambience send, and the overworld's percussion dropped
+// (battle keeps its full kit). Deriving rather than re-authoring is what
+// keeps every hand-written gesture above -- World 8's eroding quotation of
+// World 1, World 7's deleted bass/pad, World 6's aurora drone, World 10's
+// mirror canon -- intact in both styles, and it means any edit to a classic
+// score propagates to its Modern rendition automatically.
 // MusicEngine.setStyle() picks which table play() reads from; the Settings
 // panel is the player-facing toggle, backed by data/settings.ts's
 // MUSIC_STYLE_PRESETS.
@@ -789,16 +794,6 @@ function kickPulse(bars: number): PercNote[] {
   return Array.from({ length: bars * 4 }, (_, i) => ({ hit: i % 2 === 0, beats: 1 }));
 }
 
-// Backbeat on 2 and 4, alongside the kick on 1 and 3 -- turns the vamp into
-// a driving march rather than a flat eighth-note pulse.
-function snarePulse(bars: number): PercNote[] {
-  return Array.from({ length: bars * 4 }, (_, i) => ({ hit: i % 2 === 1, beats: 1 }));
-}
-
-function hatPulse(bars: number): PercNote[] {
-  return Array.from({ length: bars * 8 }, (_, i) => ({ hit: i % 2 === 1, beats: 0.5 }));
-}
-
 function octaveDown(notes: ToneNote[]): ToneNote[] {
   return notes.map((note) => (note.midi === null ? note : { midi: note.midi - 12, beats: note.beats }));
 }
@@ -826,9 +821,7 @@ function sectionBars(
 // articulation: the places a live band would push or lean on the beat,
 // which is the difference between a riff being played and a riff being
 // sequenced. The rhythm section runs unbroken underneath -- these punctuate
-// a groove rather than interrupting one. They are separate from the plain
-// kickPulse/snarePulse/hatPulse patterns rather than changes to them,
-// because the Modern arrangement's battle kit still uses those.
+// a groove rather than interrupting one.
 
 // Backbeat on 2 and 4, with beat 4 of `dragBar` broken into four sixteenths
 // -- a fill that drags the music over the seam into the reprise instead of
@@ -1460,429 +1453,6 @@ const BATTLE_SCORE_10 = makeBattleScore({
   crashGain: 0.3,
 });
 
-// --- The "Modern" style: an ambient orchestral-pad second arrangement of
-// all 20 worlds ---------------------------------------------------------
-//
-// Reuses each world's own key and tempo (the same ChordStep progressions the
-// classic scores above use, given again as literals here rather than
-// exported/shared, so nothing above this point is touched) through a
-// different pair of generators: a sustained, swelling extended-chord pad
-// standing in for a string section instead of a single arpeggiated
-// bass+fifth; a lead that's one composed phrase spanning a whole 4-bar
-// section (modernPhraseCell's four distinct cells: rise, reach a 9th, peak
-// and turn, resolve) instead of a single shape repeating bar after bar; and
-// a genuine harmony voice a third below the lead (harmonizeThird) instead of
-// classic's octave-doubling. A handful of tracks lean on the shared
-// ambience/delay bus (ToneTrack.wet) for a soft, hall-like tail. There is no
-// percussion at all in either scene kind -- pure melodic pads.
-
-interface ChordToneSet {
-  root: number;
-  second: number;
-  third: number;
-  fourth: number;
-  fifth: number;
-  sixth: number;
-  seventh: number;
-  ninth: number;
-  octave: number;
-}
-
-// Every scale-degree/extension modernPhraseCell and padVoiceBar draw from,
-// computed once per chord the same way melodyBar/vampBar compute their own
-// root/third/fifth locally -- `octave` is a semitone offset applied to the
-// bare root (0 = the root name's own register, 12/24 = one/two octaves up),
-// matching the convention the classic generators already use.
-function chordTones(rootName: string, quality: 'maj' | 'min', octave: number): ChordToneSet {
-  const root = n(rootName) + octave;
-  return {
-    root,
-    second: root + 2,
-    third: root + (quality === 'maj' ? 4 : 3),
-    fourth: root + 5,
-    fifth: root + 7,
-    sixth: root + (quality === 'maj' ? 9 : 8),
-    seventh: root + (quality === 'maj' ? 11 : 10),
-    ninth: root + 14,
-    octave: root + 12,
-  };
-}
-
-// Three phrase characters, echoing the classic style's shape variety
-// (skip/arch vs. sparse-drone vs. wide-and-shimmering) but each spanning a
-// whole bar with longer note values and passing/extended tones rather than
-// six eighth-notes of chord-tone skips. Every branch's four cases still sum
-// to exactly 4 beats, the same per-bar discipline melodyBar/vampBar keep, so
-// a section built from them always lands on the section's own loopBeats.
-type PhraseVariant = 'lyrical' | 'sparse' | 'soaring';
-
-function modernPhraseCell(
-  rootName: string,
-  quality: 'maj' | 'min',
-  cell: 0 | 1 | 2 | 3,
-  variant: PhraseVariant,
-  octave: number
-): ToneNote[] {
-  const c = chordTones(rootName, quality, octave);
-  if (variant === 'sparse') {
-    // Long held tones with real silence -- the cold/hazy worlds' phrasing,
-    // still one composed arc (reach the 9th in cell 1, resolve in cell 3)
-    // rather than a repeating shape.
-    switch (cell) {
-      case 0: return [{ midi: c.third, beats: 3 }, { midi: null, beats: 1 }];
-      case 1: return [{ midi: c.ninth, beats: 3 }, { midi: null, beats: 1 }];
-      case 2: return [{ midi: c.sixth, beats: 3 }, { midi: null, beats: 1 }];
-      case 3: return [{ midi: c.root, beats: 4 }];
-    }
-  }
-  if (variant === 'soaring') {
-    // Wider register jumps and an octave-plus peak -- the airy/major and
-    // shimmering-finale worlds.
-    switch (cell) {
-      case 0: return [{ midi: c.fifth, beats: 1 }, { midi: c.octave, beats: 1.5 }, { midi: c.seventh, beats: 1.5 }];
-      case 1: return [{ midi: c.ninth, beats: 2 }, { midi: c.octave, beats: 1 }, { midi: c.seventh, beats: 1 }];
-      case 2: return [{ midi: c.octave + 5, beats: 1.5 }, { midi: c.octave, beats: 1 }, { midi: c.fifth, beats: 1.5 }];
-      case 3: return [{ midi: c.third, beats: 2 }, { midi: c.second, beats: 1 }, { midi: c.root, beats: 1 }];
-    }
-  }
-  // 'lyrical' (the default): rise, reach the 9th, peak and turn, resolve.
-  switch (cell) {
-    case 0: return [{ midi: c.third, beats: 1.5 }, { midi: c.fifth, beats: 1 }, { midi: c.sixth, beats: 1.5 }];
-    case 1: return [{ midi: c.seventh, beats: 1 }, { midi: c.ninth, beats: 2 }, { midi: c.seventh, beats: 1 }];
-    case 2: return [{ midi: c.octave, beats: 1.5 }, { midi: c.sixth, beats: 1 }, { midi: c.fifth, beats: 1.5 }];
-    case 3: return [{ midi: c.third, beats: 2 }, { midi: c.second, beats: 1 }, { midi: c.root, beats: 1 }];
-  }
-}
-
-// A quiet second voice a third below the lead, derived from the lead's own
-// resolved pitches (rather than a second pass over the chord) so it always
-// lands correctly against whichever cell/variant produced the lead line.
-function harmonizeThird(notes: ToneNote[], quality: 'maj' | 'min'): ToneNote[] {
-  const interval = quality === 'maj' ? 4 : 3;
-  return notes.map((note) => (note.midi === null ? note : { midi: note.midi - interval, beats: note.beats }));
-}
-
-// A whole-note chord tone held for the full bar -- one voice of a
-// multi-voice sustained pad "section" (paired with attack/release swell
-// overrides at the call site), the modern style's stand-in for classic's
-// single arpeggiated bass + bare fifth.
-function padVoiceBar(
-  rootName: string,
-  quality: 'maj' | 'min',
-  voice: 'root' | 'third' | 'fifth' | 'seventh',
-  octave: number
-): ToneNote[] {
-  const c = chordTones(rootName, quality, octave);
-  return [{ midi: c[voice], beats: 4 }];
-}
-
-// vampBar's eighth-note ostinato, but touching the 7th on the "and" of beat
-// 4 instead of repeating the 5th -- the same driving rhythm-section energy,
-// just with the modern style's harmonic color.
-function modernVampBar(rootName: string, quality: 'maj' | 'min'): ToneNote[] {
-  const c = chordTones(rootName, quality, 0);
-  return [
-    { midi: c.root, beats: 0.5 }, { midi: c.root, beats: 0.5 }, { midi: c.third, beats: 0.5 }, { midi: c.fifth, beats: 0.5 },
-    { midi: c.root, beats: 0.5 }, { midi: c.root, beats: 0.5 }, { midi: c.fifth, beats: 0.5 }, { midi: c.seventh, beats: 0.5 },
-  ];
-}
-
-interface ModernOverworldScoreConfig {
-  bpm: number;
-  verse: ChordStep[];
-  bridge: ChordStep[];
-  variant?: PhraseVariant;
-  leadWave?: Wave;
-  leadGain?: number;
-}
-
-function makeModernOverworldScore(cfg: ModernOverworldScoreConfig): Score {
-  const chords = [...cfg.verse, ...cfg.bridge];
-  const loopBeats = chords.length * 4;
-  const variant = cfg.variant ?? 'lyrical';
-  const leadGain = cfg.leadGain ?? 0.14;
-  const leadWave = cfg.leadWave ?? 'triangle';
-
-  const lead = chords.flatMap(([r, q], i) => modernPhraseCell(r, q, (i % 4) as 0 | 1 | 2 | 3, variant, 12));
-  const harmony = chords.flatMap(([r, q], i) =>
-    harmonizeThird(modernPhraseCell(r, q, (i % 4) as 0 | 1 | 2 | 3, variant, 12), q)
-  );
-
-  const bass = chords.flatMap(([r, q]) => padVoiceBar(r, q, 'root', 0));
-  const padThird = chords.flatMap(([r, q]) => padVoiceBar(r, q, 'third', 0));
-  const padFifth = chords.flatMap(([r, q]) => padVoiceBar(r, q, 'fifth', 0));
-  const padSeventh = chords.flatMap(([r, q]) => padVoiceBar(r, q, 'seventh', 0));
-
-  return {
-    bpm: cfg.bpm,
-    loopBeats,
-    tracks: [
-      { kind: 'tone', wave: 'triangle', gain: 0.09, attack: 0.25, release: 0.4, notes: bass },
-      { kind: 'tone', wave: 'sine', gain: 0.03, unison: true, unisonSpread: 5, attack: 0.35, release: 0.5, wet: 0.12, notes: padThird },
-      { kind: 'tone', wave: 'sine', gain: 0.03, unison: true, unisonSpread: 5, attack: 0.35, release: 0.5, wet: 0.12, notes: padFifth },
-      { kind: 'tone', wave: 'triangle', gain: 0.025, attack: 0.4, release: 0.55, wet: 0.12, notes: padSeventh },
-      { kind: 'tone', wave: leadWave, gain: leadGain, unison: true, unisonSpread: 6, wet: 0.08, notes: lead },
-      { kind: 'tone', wave: leadWave, gain: leadGain * 0.42, wet: 0.08, notes: harmony },
-    ],
-  };
-}
-
-interface ModernBattleScoreConfig {
-  bpm: number;
-  mainA: ChordStep[];
-  mainB: ChordStep[];
-  bProgression: ChordStep[];
-  variant?: PhraseVariant;
-  subBassMode?: 'followChords' | 'holdTonic';
-  kickGen?: (bars: number) => PercNote[];
-  snareGen?: (bars: number) => PercNote[];
-  hatGen?: (bars: number) => PercNote[];
-}
-
-function makeModernBattleScore(cfg: ModernBattleScoreConfig): Score {
-  const aProgression = [...cfg.mainA, ...cfg.mainB];
-  const bProgression = cfg.bProgression;
-  const reprise = cfg.mainA;
-  const fullProgression = [...aProgression, ...bProgression, ...reprise];
-  const loopBeats = fullProgression.length * 4;
-  const variant = cfg.variant ?? 'lyrical';
-
-  const lead = fullProgression.flatMap(([r, q], i) => modernPhraseCell(r, q, (i % 4) as 0 | 1 | 2 | 3, variant, 24));
-  const harmony = fullProgression.flatMap(([r, q], i) =>
-    harmonizeThird(modernPhraseCell(r, q, (i % 4) as 0 | 1 | 2 | 3, variant, 24), q)
-  );
-
-  const subBassNotes = cfg.subBassMode === 'holdTonic'
-    ? fullProgression.flatMap(() => subBassBar(cfg.mainA[0][0]))
-    : fullProgression.flatMap(([root]) => subBassBar(root));
-
-  const padFifth = fullProgression.flatMap(([r, q]) => padVoiceBar(r, q, 'fifth', 12));
-  const padSeventh = fullProgression.flatMap(([r, q]) => padVoiceBar(r, q, 'seventh', 12));
-
-  const kickGen = cfg.kickGen ?? kickPulse;
-  const snareGen = cfg.snareGen ?? snarePulse;
-  const hatGen = cfg.hatGen ?? hatPulse;
-
-  return {
-    bpm: cfg.bpm,
-    loopBeats,
-    tracks: [
-      { kind: 'tone', wave: 'sawtooth', gain: 0.1, drive: true, notes: fullProgression.flatMap(([r, q]) => modernVampBar(r, q)) },
-      { kind: 'tone', wave: 'sine', gain: 0.1, notes: subBassNotes },
-      { kind: 'tone', wave: 'triangle', gain: 0.03, attack: 0.3, release: 0.4, wet: 0.15, notes: padFifth },
-      { kind: 'tone', wave: 'triangle', gain: 0.025, attack: 0.35, release: 0.45, wet: 0.15, notes: padSeventh },
-      { kind: 'tone', wave: 'triangle', gain: 0.14, unison: true, unisonSpread: 6, wet: 0.1, notes: lead },
-      { kind: 'tone', wave: 'triangle', gain: 0.063, wet: 0.1, notes: harmony },
-      { kind: 'tone', wave: 'sawtooth', gain: 0.16, drive: true, notes: battleIntroSting(loopBeats, cfg.mainA[0][0], cfg.mainA[0][1]) },
-      { kind: 'kick', gain: 0.85, notes: kickGen(fullProgression.length) },
-      { kind: 'snare', gain: 0.45, notes: snareGen(fullProgression.length) },
-      { kind: 'hat', gain: 0.2, notes: hatGen(fullProgression.length) },
-      {
-        kind: 'crash',
-        gain: 0.3,
-        notes: [
-          { hit: true, beats: 4 },
-          { hit: false, beats: (aProgression.length + bProgression.length) * 4 - 4 },
-          { hit: true, beats: 4 },
-          { hit: false, beats: reprise.length * 4 - 4 },
-        ],
-      },
-    ],
-  };
-}
-
-// One modern config per world, reusing that world's own key/tempo (the same
-// progressions/bpm the classic scores above use, given again as literals)
-// so a world's identity carries across styles while the arrangement itself
-// -- pad texture, phrase shape, harmonization -- differs.
-const MODERN_OVERWORLD_SCORE_1 = makeModernOverworldScore({
-  bpm: 96,
-  verse: [['C3', 'maj'], ['G2', 'maj'], ['A2', 'min'], ['F2', 'maj']],
-  bridge: [['D2', 'min'], ['G2', 'maj'], ['C3', 'maj'], ['A2', 'min']],
-});
-const MODERN_OVERWORLD_SCORE_2 = makeModernOverworldScore({
-  bpm: 100,
-  verse: [['C3', 'maj'], ['D3', 'maj'], ['C3', 'maj'], ['D3', 'maj']],
-  bridge: [['E2', 'min'], ['D3', 'maj'], ['C3', 'maj'], ['D3', 'maj']],
-});
-const MODERN_OVERWORLD_SCORE_3 = makeModernOverworldScore({
-  bpm: 104,
-  verse: [['C3', 'maj'], ['A#2', 'maj'], ['C3', 'maj'], ['F2', 'maj']],
-  bridge: [['G2', 'min'], ['A#2', 'maj'], ['C3', 'maj'], ['F2', 'maj']],
-  variant: 'soaring',
-});
-const MODERN_OVERWORLD_SCORE_4 = makeModernOverworldScore({
-  bpm: 132,
-  verse: [['C3', 'min'], ['G#2', 'maj'], ['D#3', 'maj'], ['A#2', 'maj']],
-  bridge: [['F2', 'min'], ['C3', 'min'], ['G#2', 'maj'], ['A#2', 'maj']],
-});
-const MODERN_OVERWORLD_SCORE_5 = makeModernOverworldScore({
-  bpm: 84,
-  verse: [['C3', 'min'], ['C#3', 'maj'], ['C3', 'min'], ['C#3', 'maj']],
-  bridge: [['G#2', 'maj'], ['C#3', 'maj'], ['C3', 'min'], ['C#3', 'maj']],
-  variant: 'sparse',
-});
-const MODERN_OVERWORLD_SCORE_6 = makeModernOverworldScore({
-  bpm: 116,
-  verse: [['C3', 'maj'], ['G2', 'maj'], ['A2', 'min'], ['F2', 'maj']],
-  bridge: [['A2', 'min'], ['F2', 'maj'], ['C3', 'maj'], ['G2', 'maj']],
-});
-// The classic arrangement's World 7 is a whole-tone canon with no harmony
-// under it at all. Pads need chords to hold, so this states the same
-// rootlessness the way a chord progression can: major triads whose roots
-// climb in major thirds, an augmented cycle that never establishes a tonic.
-const MODERN_OVERWORLD_SCORE_7 = makeModernOverworldScore({
-  bpm: 76,
-  verse: [['F#2', 'maj'], ['A#2', 'maj'], ['D3', 'maj'], ['A#2', 'maj']],
-  bridge: [['D3', 'maj'], ['F#2', 'maj'], ['A#2', 'maj'], ['D3', 'maj']],
-  variant: 'sparse',
-});
-const MODERN_OVERWORLD_SCORE_8 = makeModernOverworldScore({
-  bpm: 58,
-  verse: [['F#2', 'min'], ['G2', 'maj'], ['F#2', 'min'], ['D2', 'maj']],
-  bridge: [['B2', 'min'], ['G2', 'maj'], ['F#2', 'min'], ['D2', 'maj']],
-  variant: 'sparse',
-});
-const MODERN_OVERWORLD_SCORE_9 = makeModernOverworldScore({
-  bpm: 140,
-  verse: [['F#2', 'maj'], ['G2', 'maj'], ['F#2', 'maj'], ['G2', 'maj']],
-  bridge: [['B2', 'min'], ['G2', 'maj'], ['F#2', 'maj'], ['G2', 'maj']],
-});
-const MODERN_OVERWORLD_SCORE_10 = makeModernOverworldScore({
-  bpm: 158,
-  verse: [['F#2', 'maj'], ['G#2', 'maj'], ['F#2', 'maj'], ['D#2', 'min']],
-  bridge: [['G#2', 'maj'], ['D#2', 'min'], ['G#2', 'maj'], ['F#2', 'maj']],
-  variant: 'soaring',
-});
-
-const MODERN_BATTLE_SCORE_1 = makeModernBattleScore({
-  bpm: 160,
-  mainA: [['D2', 'min'], ['C2', 'maj'], ['D2', 'min'], ['C2', 'maj']],
-  mainB: [['A#2', 'maj'], ['C2', 'maj'], ['A#2', 'maj'], ['C2', 'maj']],
-  bProgression: [
-    ['G2', 'min'], ['D#2', 'maj'], ['A#2', 'maj'], ['F2', 'maj'],
-    ['G2', 'min'], ['D#2', 'maj'], ['A#2', 'maj'], ['F2', 'maj'],
-  ],
-});
-const MODERN_BATTLE_SCORE_2 = makeModernBattleScore({
-  bpm: 150,
-  mainA: [['A2', 'min'], ['G2', 'maj'], ['A2', 'min'], ['G2', 'maj']],
-  mainB: [['F2', 'maj'], ['G2', 'maj'], ['F2', 'maj'], ['G2', 'maj']],
-  bProgression: [
-    ['D2', 'min'], ['A#2', 'maj'], ['F2', 'maj'], ['C2', 'maj'],
-    ['D2', 'min'], ['A#2', 'maj'], ['F2', 'maj'], ['C2', 'maj'],
-  ],
-});
-const MODERN_BATTLE_SCORE_3 = makeModernBattleScore({
-  bpm: 148,
-  mainA: [['C#2', 'min'], ['B2', 'maj'], ['C#2', 'min'], ['B2', 'maj']],
-  mainB: [['A2', 'maj'], ['B2', 'maj'], ['A2', 'maj'], ['B2', 'maj']],
-  bProgression: [
-    ['F#2', 'min'], ['D2', 'maj'], ['A2', 'maj'], ['E2', 'maj'],
-    ['F#2', 'min'], ['D2', 'maj'], ['A2', 'maj'], ['E2', 'maj'],
-  ],
-  variant: 'soaring',
-});
-const MODERN_BATTLE_SCORE_4 = makeModernBattleScore({
-  bpm: 172,
-  mainA: [['E2', 'min'], ['D2', 'maj'], ['E2', 'min'], ['D2', 'maj']],
-  mainB: [['C2', 'maj'], ['D2', 'maj'], ['C2', 'maj'], ['D2', 'maj']],
-  bProgression: [
-    ['A2', 'min'], ['F2', 'maj'], ['C2', 'maj'], ['G2', 'maj'],
-    ['A2', 'min'], ['F2', 'maj'], ['C2', 'maj'], ['G2', 'maj'],
-  ],
-});
-const MODERN_BATTLE_SCORE_5 = makeModernBattleScore({
-  bpm: 110,
-  mainA: [['F2', 'min'], ['D#2', 'maj'], ['F2', 'min'], ['D#2', 'maj']],
-  mainB: [['C#2', 'maj'], ['D#2', 'maj'], ['C#2', 'maj'], ['D#2', 'maj']],
-  bProgression: [
-    ['A#2', 'min'], ['F#2', 'maj'], ['C#2', 'maj'], ['G#2', 'maj'],
-    ['A#2', 'min'], ['F#2', 'maj'], ['C#2', 'maj'], ['G#2', 'maj'],
-  ],
-  // Lead stays 'lyrical' (unlike this world's overworld theme) -- the cold,
-  // sparse feel already comes from the half-time kick/snare/hat below, and
-  // a battle needs the lead's full phrase rather than the overworld's rests
-  // to still read as a fight rather than a pause.
-  kickGen: kickPulseSparse,
-  snareGen: snarePulseSparse,
-  hatGen: hatPulseSparse,
-});
-const MODERN_BATTLE_SCORE_6 = makeModernBattleScore({
-  bpm: 164,
-  mainA: [['G2', 'min'], ['F2', 'maj'], ['G2', 'min'], ['F2', 'maj']],
-  mainB: [['D#2', 'maj'], ['F2', 'maj'], ['D#2', 'maj'], ['F2', 'maj']],
-  bProgression: [
-    ['C2', 'min'], ['G#2', 'maj'], ['D#2', 'maj'], ['A#2', 'maj'],
-    ['C2', 'min'], ['G#2', 'maj'], ['D#2', 'maj'], ['A#2', 'maj'],
-  ],
-});
-const MODERN_BATTLE_SCORE_7 = makeModernBattleScore({
-  bpm: 158,
-  mainA: [['B2', 'min'], ['A2', 'maj'], ['B2', 'min'], ['A2', 'maj']],
-  mainB: [['G2', 'maj'], ['A2', 'maj'], ['G2', 'maj'], ['A2', 'maj']],
-  bProgression: [
-    ['E2', 'min'], ['C2', 'maj'], ['G2', 'maj'], ['D2', 'maj'],
-    ['E2', 'min'], ['C2', 'maj'], ['G2', 'maj'], ['D2', 'maj'],
-  ],
-});
-const MODERN_BATTLE_SCORE_8 = makeModernBattleScore({
-  bpm: 108,
-  mainA: [['C2', 'min'], ['A#2', 'maj'], ['C2', 'min'], ['A#2', 'maj']],
-  mainB: [['G#2', 'maj'], ['A#2', 'maj'], ['G#2', 'maj'], ['A#2', 'maj']],
-  bProgression: [
-    ['F2', 'min'], ['C#2', 'maj'], ['G#2', 'maj'], ['D#2', 'maj'],
-    ['F2', 'min'], ['C#2', 'maj'], ['G#2', 'maj'], ['D#2', 'maj'],
-  ],
-  // Lead stays 'lyrical', same reasoning as world 5's battle above.
-  kickGen: kickPulseSparse,
-  snareGen: snarePulseSparse,
-  hatGen: hatPulseSparse,
-});
-const MODERN_BATTLE_SCORE_9 = makeModernBattleScore({
-  bpm: 176,
-  mainA: [['D2', 'min'], ['D#2', 'maj'], ['D2', 'min'], ['D#2', 'maj']],
-  mainB: [['A2', 'maj'], ['A#2', 'maj'], ['A2', 'maj'], ['A#2', 'maj']],
-  bProgression: [
-    ['G2', 'min'], ['G#2', 'maj'], ['D2', 'min'], ['D#2', 'maj'],
-    ['G2', 'min'], ['G#2', 'maj'], ['D2', 'min'], ['D#2', 'maj'],
-  ],
-  subBassMode: 'holdTonic',
-});
-const MODERN_BATTLE_SCORE_10 = makeModernBattleScore({
-  bpm: 150,
-  mainA: [['F#2', 'min'], ['E2', 'maj'], ['F#2', 'min'], ['E2', 'maj']],
-  mainB: [['D2', 'maj'], ['E2', 'maj'], ['D2', 'maj'], ['E2', 'maj']],
-  bProgression: [
-    ['B2', 'min'], ['G2', 'maj'], ['D2', 'maj'], ['A2', 'maj'],
-    ['B2', 'min'], ['G2', 'maj'], ['D2', 'maj'], ['A2', 'maj'],
-  ],
-  variant: 'soaring',
-});
-
-const SCORES_MODERN: Record<string, Score> = {
-  'overworld:1': MODERN_OVERWORLD_SCORE_1,
-  'overworld:2': MODERN_OVERWORLD_SCORE_2,
-  'overworld:3': MODERN_OVERWORLD_SCORE_3,
-  'overworld:4': MODERN_OVERWORLD_SCORE_4,
-  'overworld:5': MODERN_OVERWORLD_SCORE_5,
-  'overworld:6': MODERN_OVERWORLD_SCORE_6,
-  'overworld:7': MODERN_OVERWORLD_SCORE_7,
-  'overworld:8': MODERN_OVERWORLD_SCORE_8,
-  'overworld:9': MODERN_OVERWORLD_SCORE_9,
-  'overworld:10': MODERN_OVERWORLD_SCORE_10,
-  'battle:1': MODERN_BATTLE_SCORE_1,
-  'battle:2': MODERN_BATTLE_SCORE_2,
-  'battle:3': MODERN_BATTLE_SCORE_3,
-  'battle:4': MODERN_BATTLE_SCORE_4,
-  'battle:5': MODERN_BATTLE_SCORE_5,
-  'battle:6': MODERN_BATTLE_SCORE_6,
-  'battle:7': MODERN_BATTLE_SCORE_7,
-  'battle:8': MODERN_BATTLE_SCORE_8,
-  'battle:9': MODERN_BATTLE_SCORE_9,
-  'battle:10': MODERN_BATTLE_SCORE_10,
-};
-
 // Keyed by world number for both scene kinds ('overworld:N'/'battle:N') so
 // each of the 10 worlds gets its own theme for each scene; Hub/Title --
 // which aren't tied to a specific world number -- use world 1's overworld
@@ -1909,6 +1479,113 @@ const SCORES: Record<string, Score> = {
   'battle:9': BATTLE_SCORE_9,
   'battle:10': BATTLE_SCORE_10,
 };
+
+// --- The "Modern" style: the classic scores through a smoothing transform --
+//
+// Every Modern score is its classic counterpart passed through
+// modernizeScore rather than a separately-authored arrangement, so the
+// hand-written gestures that carry the arc (World 8's eroding quotation,
+// World 7's deleted bass/pad and whole-tone canon, World 6's aurora drone,
+// World 10's mirror voice) survive in both styles by construction, and any
+// later edit to a classic score reaches its Modern rendition for free. The
+// transform never touches note order or rests -- silence that is composed
+// (World 5's held bars, World 8's fog bar) stays composed -- and every
+// per-note change conserves each track's total beats, which is the loop-seam
+// invariant assertLoopBeats checks below.
+//
+// What "smoothing" concretely is, per tone track: square/sawtooth mapped to
+// clean triangle and the soft-clip drive stripped (the chiptune edge is
+// mostly timbre); attack/release floors so plucks become string-pad swells
+// (scheduleTone clamps both to the note's own duration, so a long floor is
+// safe on short notes); a floor on the ambience send for a hall tail; and,
+// in the overworld only, consecutive repeats of the same pitch tied into one
+// held note, turning arpeggiated figures legato. Percussion is policy per
+// scene kind: the overworld drops its kit (World 9's kick) and keeps only
+// the crash, softened, as weather (World 4's storm); battle keeps the full
+// kick/snare/hat march at slightly reduced gain, because the drums and tempo
+// are what keep a smoothed battle reading as a fight (the same "the rhythm
+// section never stops" rule the classic battle scores follow).
+
+interface ModernizeOpts {
+  waveMap: Partial<Record<Wave, Wave>>;
+  minAttack: number; // seconds; floor under each tone track's attack
+  minRelease: number; // seconds; floor under each tone track's release
+  minWet: number; // 0-1; floor under each tone track's ambience send
+  legato: boolean; // tie consecutive repeats of the same pitch into one note
+  keepDrums: boolean; // whether kick/snare/hat tracks survive at all
+  drumGain: number; // gain multiplier for kept kick/snare/hat
+  crashGain: number; // gain multiplier for crash tracks (always kept)
+}
+
+// Ties runs of the same pitch into one note. Rests never merge with
+// anything, so composed silence keeps its exact placement; total beats are
+// conserved by construction.
+function legatoNotes(notes: ToneNote[]): ToneNote[] {
+  const out: ToneNote[] = [];
+  for (const note of notes) {
+    const prev = out[out.length - 1];
+    if (prev && prev.midi !== null && prev.midi === note.midi) {
+      prev.beats += note.beats;
+    } else {
+      out.push({ ...note });
+    }
+  }
+  return out;
+}
+
+function modernizeScore(score: Score, opts: ModernizeOpts): Score {
+  const tracks: Track[] = [];
+  for (const track of score.tracks) {
+    if (track.kind === 'tone') {
+      tracks.push({
+        ...track,
+        wave: opts.waveMap[track.wave] ?? track.wave,
+        drive: undefined,
+        attack: Math.max(track.attack ?? 0, opts.minAttack),
+        release: Math.max(track.release ?? 0, opts.minRelease),
+        wet: Math.max(track.wet ?? 0, opts.minWet),
+        notes: opts.legato ? legatoNotes(track.notes) : track.notes.map((note) => ({ ...note })),
+      });
+    } else if (track.kind === 'crash') {
+      tracks.push({ ...track, gain: track.gain * opts.crashGain, notes: track.notes.map((note) => ({ ...note })) });
+    } else if (opts.keepDrums) {
+      tracks.push({ ...track, gain: track.gain * opts.drumGain, notes: track.notes.map((note) => ({ ...note })) });
+    }
+  }
+  return { bpm: score.bpm, loopBeats: score.loopBeats, tracks };
+}
+
+const MODERN_OVERWORLD_OPTS: ModernizeOpts = {
+  waveMap: { square: 'triangle', sawtooth: 'triangle' },
+  minAttack: 0.4,
+  minRelease: 0.7,
+  minWet: 0.3,
+  legato: true,
+  keepDrums: false,
+  drumGain: 0,
+  crashGain: 0.5,
+};
+
+const MODERN_BATTLE_OPTS: ModernizeOpts = {
+  waveMap: { square: 'triangle', sawtooth: 'triangle' },
+  // Enough to soften the chip pluck without blurring the eighth-note vamp
+  // at battle tempo, and no legato: the ostinato's repeated notes are the
+  // drive a battle needs to keep.
+  minAttack: 0.05,
+  minRelease: 0.12,
+  minWet: 0.15,
+  legato: false,
+  keepDrums: true,
+  drumGain: 0.8,
+  crashGain: 0.85,
+};
+
+const SCORES_MODERN: Record<string, Score> = Object.fromEntries(
+  Object.entries(SCORES).map(([key, score]) => [
+    key,
+    modernizeScore(score, key.startsWith('battle:') ? MODERN_BATTLE_OPTS : MODERN_OVERWORLD_OPTS),
+  ])
+);
 
 // A track's notes must sum to exactly its score's loopBeats -- scheduleLoop
 // advances its own audio-clock cursor by exactly loopBeats*secPerBeat each
@@ -1993,10 +1670,10 @@ class MusicEngine {
     return this.driveCurve;
   }
 
-  // A short slapback delay with a darkened feedback loop -- the modern
-  // style's "hall" send (ToneTrack.wet routes a fraction of a voice's
-  // signal here) for a soft reverb-like tail on its pads/lead without a
-  // full convolution reverb. Built fresh per play() call and its wet output
+  // A short slapback delay with a darkened feedback loop -- the "hall" send
+  // (ToneTrack.wet routes a fraction of a voice's signal here; classic
+  // worlds 7-10 use it, and the Modern transform floors it on every voice)
+  // for a soft reverb-like tail without a full convolution reverb. Built fresh per play() call and its wet output
   // routed into that same call's own `sessionGain` (`dest` here) rather
   // than straight to master -- crossfading away from a track (play() on a
   // new key, or setStyle() restarting the current one) ramps sessionGain to
