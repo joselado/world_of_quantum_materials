@@ -3,13 +3,14 @@ import type { GuardianPanelHost } from '../OverworldScene';
 import { renderGuardianHeader } from './guardianHeader';
 import { makeFeynmanAvatar } from '../../art/feynman';
 import { CANVAS_W } from '../../art/perspective';
-import { fontPx } from '../../ui/text';
-import { PANEL_BG } from '../../ui/theme';
+import { fontPx, fontScale } from '../../ui/text';
+import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 import {
   MOVES,
   compatibleMoves,
   getPlayerMaterial,
   getMoveLevel,
+  getUnlockedMoveLevel,
   getTunedMoveClass,
   moveDisplayName,
   tunedMoveDisplayName,
@@ -44,8 +45,9 @@ import { ANALYTIC_SHAPES, ULTIMATE_SHAPES } from '../../art/attackEffects';
 // questions that decides whether the level actually lands -- see
 // showLevelStreak below. A list+detail panel (listDetail.ts): the left
 // column lists the moves the player owns, the right pane previews the
-// selected one at its real current level and states what the next level
-// costs and how long a streak it demands.
+// selected one at the tier it is currently carried at, offers every tier it
+// has already unlocked as a free pick (renderCarriedLevelRow), and states
+// what the next tier up costs and how long a streak it demands.
 export function showFeynmanPanel(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
 
@@ -153,7 +155,12 @@ function renderMoveLevelList(
   scene.feynmanPage = listResult.page;
 
   const move = MOVES[effectivePreview];
-  const level = getMoveLevel(scene.game.registry, move.id) as MoveLevel;
+  // Two different levels, and the pane needs both: `unlocked` is the highest
+  // tier this move has ever landed (what the next attempt builds on),
+  // `carried` is the tier the player currently has it set to swing at (what
+  // the name, the stage's cascade and the battle itself use).
+  const unlocked = getUnlockedMoveLevel(scene.game.registry, move.id);
+  const carried = getMoveLevel(scene.game.registry, move.id) as MoveLevel;
   const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
 
   let rightY = columnsTop;
@@ -171,10 +178,12 @@ function renderMoveLevelList(
     columns.rightColCenterX,
     rightY,
     columns.rightColW,
-    level
+    carried
   );
 
-  if (level >= 3) {
+  rightY = renderCarriedLevelRow(scene, container, move.id, unlocked, carried, columns.rightColCenterX, rightY, columns.rightColW);
+
+  if (unlocked >= 3) {
     rightY = renderStatusAndConfirm({
       scene,
       container,
@@ -184,7 +193,7 @@ function renderMoveLevelList(
       status: `Already at "${MOVE_LEVEL_NAMES[3]}", the highest correction I can draw.`,
     });
   } else {
-    const nextLevel = (level + 1) as 1 | 2 | 3;
+    const nextLevel = (unlocked + 1) as 1 | 2 | 3;
     const cost = feynmanLevelCost(move, nextLevel);
     const streak = MOVE_LEVEL_STREAKS[nextLevel];
     rightY = renderStatusAndConfirm({
@@ -208,6 +217,83 @@ function renderMoveLevelList(
   const columnsBottom = Math.max(leftBottom, rightY);
   insertColumnDivider(scene, container, columns.dividerX, columnsTop, columnsBottom);
   return columnsBottom + 6;
+}
+
+// Which tier a move is carried at is the player's own pick among the tiers
+// they have landed, not automatically the deepest one (§5) -- so this row
+// offers every level from the move's uncorrected base up to its unlocked
+// ceiling, and picking one is what `getMoveLevel` reads everywhere
+// afterward: the move's name, its damage, the cascade its effect animates,
+// and (for one of Kondo's) how hard its cloud screens. Renders nothing at
+// all while a move is still at level 0, since there is no choice to make
+// yet, so the pane keeps the height it has always had until the player's
+// first tier lands. The carried tier reads as a dimmed no-op button, the
+// same "already the active choice" treatment every other pane's confirm
+// button uses for a commit that would change nothing.
+const CARRIED_LEVEL_LABELS = ['Base', ...MOVE_LEVEL_NAMES.slice(1)];
+
+function renderCarriedLevelRow(
+  scene: GuardianPanelHost,
+  container: Phaser.GameObjects.Container,
+  moveId: string,
+  unlocked: MoveLevel,
+  carried: MoveLevel,
+  centerX: number,
+  y: number,
+  colW: number
+): number {
+  if (unlocked <= 0) return y;
+
+  const captionScale = Math.min(fontScale(scene), 1.15);
+  const caption = scene.add
+    .text(centerX, y, 'Swing it at:', {
+      fontSize: `${Math.round(11 * captionScale)}px`,
+      color: REFERENCE_BLUE_GREY_HEX,
+      align: 'center',
+    })
+    .setOrigin(0.5, 0);
+  container.add(caption);
+  let rowY = y + caption.height + 4;
+
+  // One button per tier, laid across the pane's full width -- four at the
+  // most (base plus three corrections), which is why they can be a plain
+  // fixed row rather than the paged list every longer set of options in the
+  // game uses.
+  const levels = Array.from({ length: unlocked + 1 }, (_, i) => i as MoveLevel);
+  const gap = 6;
+  const buttonW = (colW - gap * (levels.length - 1)) / levels.length;
+  const buttonPx = `${Math.round(12 * Math.min(fontScale(scene), 1.15))}px`;
+  let bottom = rowY;
+  levels.forEach((lvl, i) => {
+    const x = centerX - colW / 2 + buttonW / 2 + i * (buttonW + gap);
+    const btn = scene.addDialogueButtonAt(
+      container,
+      x,
+      rowY,
+      CARRIED_LEVEL_LABELS[lvl],
+      () => {
+        if (lvl === carried) return;
+        carryMoveLevel(scene, moveId, lvl);
+      },
+      buttonW,
+      buttonPx
+    );
+    if (lvl === carried) btn.setAlpha(0.5);
+    bottom = Math.max(bottom, rowY + btn.height);
+  });
+  return bottom + 6;
+}
+
+// Sets which unlocked tier `moveId` is carried at (registry/save
+// `carriedMoveLevels`). Free and instantly reversible -- the tier itself was
+// already paid for when it was landed, and this only decides which of the
+// paid-for ones is in effect.
+function carryMoveLevel(scene: GuardianPanelHost, moveId: string, level: MoveLevel) {
+  const carried = (scene.game.registry.get('carriedMoveLevels') as Partial<Record<string, MoveLevel>>) ?? {};
+  scene.game.registry.set('carriedMoveLevels', { ...carried, [moveId]: level });
+  persistFromRegistry(scene.game.registry);
+  destroyPanel(scene);
+  showFeynmanPanel(scene);
 }
 
 // Pays up front, then hands off to the streak -- the qumatessence is gone
@@ -250,6 +336,11 @@ function showLevelStreak(scene: GuardianPanelHost, moveId: string, targetLevel: 
     if (success) {
       const levels = (scene.game.registry.get('moveLevels') as Partial<Record<string, MoveLevel>>) ?? {};
       scene.game.registry.set('moveLevels', { ...levels, [moveId]: targetLevel });
+      // Landing a tier also carries it: the correction the player just paid
+      // for and answered for is the one they walk away swinging, and the
+      // picker is there to step back down afterward if they want to.
+      const carried = (scene.game.registry.get('carriedMoveLevels') as Partial<Record<string, MoveLevel>>) ?? {};
+      scene.game.registry.set('carriedMoveLevels', { ...carried, [moveId]: targetLevel });
       persistFromRegistry(scene.game.registry);
     }
     destroyPanel(scene);

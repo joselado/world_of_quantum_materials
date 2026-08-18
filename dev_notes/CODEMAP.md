@@ -518,9 +518,13 @@ game/src/
                                   moves alike since both read/write the same registry/save
                                   moveClassTuning map,
                                   MOVE_LEVEL_NAMES/MOVE_LEVEL_MULTIPLIERS/MOVE_LEVEL_STREAKS/
-                                  getMoveLevel()/effectiveMovePower()/feynmanLevelCost()/
-                                  moveDisplayName() -- Feynman's move-leveling (§5, World 7): a
-                                  move's level (registry/save moveLevels), its power scaled by that
+                                  getUnlockedMoveLevel()/getMoveLevel()/effectiveMovePower()/
+                                  feynmanLevelCost()/
+                                  moveDisplayName() -- Feynman's move-leveling (§5, World 7): the
+                                  highest tier a move has landed (registry/save moveLevels) and
+                                  the tier it is currently carried at (registry/save
+                                  carriedMoveLevels, the level everything outside his own panel
+                                  means), its power scaled by that carried
                                   level's multiplier, the qumatessence cost to attempt the next
                                   tier, and the composed display name (level prefix plus
                                   tunedMoveDisplayName, or a 'screening' move's own static name)
@@ -1023,7 +1027,7 @@ through Noether's shop, and `applySuperpositionUnlocks` pins each of them to `MA
 **Max HP** (`data/balance.ts`) is never intrinsic to a `Material` either (no `maxHp` field at
 all -- see "Data model" above) -- both sides' current-battle max HP are resolved fresh in
 `BattleScene.create` and held in two scene fields, `playerMaxHp`/`opponentMaxHp`, read by
-every other HP-related spot in the file (`updateBars`, `applyHeal`/`applyRegenTick`, the
+every other HP-related spot in the file (`updateBars`, `applyDamage`, the
 registry reset in `endBattle`) instead of any `Material.maxHp`. `wildHpForWorld(world)` is a
 gentle linear base (23 at World 1 to 33 at World 10) shared by every ordinary wild
 in that world and by the player's own current max HP (no roll for the player, or for a
@@ -1098,48 +1102,47 @@ Ultimates) multi-phase animation timing are tuned around exactly one `resolveHit
 per round.
 
 **Self-buffs (Kondo's three moves).** `this.playerStatus`/`this.opponentStatus`
-(`ActiveStatus | null`, `{ kind: 'shielded' | 'evasive' | 'regenerating'; turnsLeft: number }`)
+(`ActiveStatus | null`, `{ kind: ScreeningChannel; turnsLeft: number }`, where
+`ScreeningChannel` is `data/materials.ts`'s `'spin' | 'charge' | 'symmetry'`)
 are battle-only fields, explicitly reset to `null` in `create()` (Phaser reuses the same Scene
 instance across `scene.start()` calls, so a field initializer alone doesn't reset them between
 battles -- same gotcha `OverworldScene`'s own dialogue-state fields already call out). A Kondo
 move (`KONDO_MOVE_IDS`) is never an attack -- `resolveHit` checks for one first thing and routes
 it to `resolveSelfBuff(isPlayer, move, tickStatus, onDone)` instead, which never touches
-`canHost`/`dmg`/`applyDamage` at all, applying the buff to the *caster's own* side
-(`isPlayer`, not `defenderIsPlayer`). Two small per-side lookups feed the buff's actual effect
-into the existing formulas rather than adding a parallel damage path: `statusShieldMultiplier`
-(`resolveHit`'s `dmg`, keyed by `defenderIsPlayer` -- Shielded reduces *incoming* damage to
-whoever holds it) and `statusEvasionChance` (returns 0 when not evasive; checked once per hit
-against `defenderIsPlayer`, and if `Math.random()` rolls under it the hit deals zero damage and
-`applyResult` logs "evaded!" instead of the usual damage/mismatch/crit clauses). All three of
-Kondo's buffs -- Shielded's damage reduction, Evasive's dodge chance, Regenerating's heal
-fraction -- scale with Feynman's own move-leveling (§5, World 7) via the shared
-`kondoMitigationFraction(isPlayer, moveId, base, cap)`: the *caster's own* level of the specific
-move that cast the buff (`screeningCloud`/`scatteringDrag`/`kondoBreakdown`) multiplies the base
-mitigation strength by `MOVE_LEVEL_MULTIPLIERS` the same way `effectiveMovePower` scales an
-ordinary attack, capped well under 100% so even an Infinite-tier buff leaves real risk on the
-table -- gated on `isPlayer` the same isPlayer-only way `effectiveMovePower` is, since no wild
+`canHost`/`dmg`/`applyDamage` at all, raising the cloud on the *caster's own* side
+(`isPlayer`, not `defenderIsPlayer`). One per-side lookup feeds the cloud's actual effect
+into the existing damage formula rather than adding a parallel path:
+`screeningMultiplier(defenderIsPlayer, effectiveClass)` returns `1 - screenReduction` when
+the defender's own cloud screens the incoming hit's effective quasiparticle class
+(`SCREENING_CHANNELS[moveClass].includes(status.kind)`) and a flat `1` otherwise -- so which
+attack is coming decides whether the buff does anything at all, and the class read is the
+*effective* one (`getTunedMoveClass`, already resolved a few lines above for the mismatch
+check), meaning a tuned Analytic/Ultimate move is screened as the quasiparticle the player
+assigned it. `screenReduction(isPlayer, channel)` is where Feynman's own move-leveling (§5,
+World 7) lands: it reads the *caster's own* level of the buff move that raised this cloud
+(`SCREENING_MOVE_BY_CHANNEL[channel]`) and indexes `data/balance.ts`'s flat
+`SCREEN_REDUCTION_BY_LEVEL` table (50% / 62% / 68% / 75%) -- a table rather than a
+`MOVE_LEVEL_MULTIPLIERS` product, since a half scaled by the 3x top tier would pass 1 outright
+-- gated on `isPlayer` the same isPlayer-only way `effectiveMovePower` is, since no wild
 ever casts a Kondo move. `resolveHit`/`resolveSelfBuff` both take a
 `tickStatus` param (default `true`) gating whether `applyOrTickBuff(move, isPlayer)` runs at
 all -- `playerAttack`'s `runHit` computes, per round, each side's own last index into `hits`
 (`lastIndexFor`, a scan rather than an arithmetic shortcut, since a self-buff move collapses its
 caster's own hit count to exactly 1 regardless of `fasterHits` -- see `playerAttack`'s own
 comment) and passes `true` only there. Ticking on a side's last action rather than its first
-matters: an existing buff (e.g. Regenerating on its final `turnsLeft`) has to keep applying
-through every one of that side's earlier hits that round before it expires, and a buff cast
+matters: an existing cloud on its final `turnsLeft` has to keep screening
+through every one of that side's earlier hits that round before it expires, and a cloud cast
 this round shouldn't retroactively apply to the actions that cast it. `applyOrTickBuff` itself
-does one of two things: if the move is one of Kondo's three (`KONDO_MOVE_BUFF: Record<moveId,
-StatusKind>`, a fixed lookup -- no randomness), it replaces the caster's buff outright via
-`setStatus` (one buff per side, never stacked); otherwise it ticks the caster's *existing* buff
-down by one, applying a Regenerating heal on every tick via `applyRegenTick` (a fraction
-(`REGEN_BASE_HEAL_FRACTION`, scaled by `kondoMitigationFraction` above) of the caster's own max
-HP, capped so it can't overheal), and clears the
-buff once `turnsLeft` hits 0. Either branch returns a log-line clause (`STATUS_INFO[kind]
-.applyText`/`.expireText`, plus the heal clause for Regenerating) appended to that hit's own
-message, the same "stack a clause onto the existing line" pattern `mismatchText`/`critText`
+does one of two things: if the move is one of Kondo's three (`SCREENING_CHANNEL_BY_MOVE:
+Record<moveId, ScreeningChannel>`, a fixed lookup -- no randomness), it replaces the caster's
+cloud outright via `setStatus` (one cloud per side, never stacked); otherwise it ticks the
+caster's *existing* cloud down by one and clears it once `turnsLeft` hits 0. Either branch
+returns a log-line clause (`STATUS_INFO[kind].applyText`/`.expireText`) appended to that hit's
+own message, the same "stack a clause onto the existing line" pattern `mismatchText`/`critText`
 already use. `setStatus` also calls `renderStatusLabel`, which updates a small
 always-present-but-usually-empty `Text` pill (`playerStatusLabel`/`opponentStatusLabel`,
 positioned just under each side's HP bar) to `"<Label> (<turnsLeft>)"` or clears it to `''` when
-there's no active buff.
+there's no active cloud.
 
 **Passives (Franklin's abilities).** `this.playerActivePassives`/
 `this.opponentActivePassives` (`Set<string>` of `data/passives.ts` ids) are read once in
@@ -1161,7 +1164,7 @@ an always-on passive reads as visually distinct from a ticking status at a glanc
 `activePassives(isPlayer)` is the
 generic per-side lookup every hook below reads (`opponentActivePassives` stays empty today,
 kept as its own field rather than hardcoding "player only" so the hooks read symmetrically
-off either side, same reasoning `statusShieldMultiplier` etc. already follow). All three of
+off either side, same reasoning `screeningMultiplier` already follows). All three of
 Franklin's own hook directly into `resolveHit`, identified by id (`data/passives.ts`'s
 `fractionalGuard`/`anyonEcho`/`edgeCurrent` -- ids kept as originally minted from an earlier
 retheme, see "Guardians" below): **Amorphous Halo** (`edgeCurrent`) softens the mismatch
@@ -1204,7 +1207,7 @@ presentational, since `resolveHit`'s own `power`/`dmg` already fold in the real
 isPlayer ? getMoveLevel(this.game.registry, moveId) : 0` (an opponent's copy of the same move id
 never carries a level) and passes it as `playAttackEffect`'s last param on both its ordinary and
 Ultimate call sites, and `resolveSelfBuff` does the same for Kondo's three self-buff moves (also
-leveled by Feynman, `kondoMitigationFraction`). Inside `art/attackEffects.ts`,
+leveled by Feynman, `screenReduction`). Inside `art/attackEffects.ts`,
 `playOrdinaryRepeats`/`playUltimateRepeats` fire `LEVEL_TRIGGER_COUNTS[level]` (1/2/3/4) copies
 of the single-hit beat, each `LEVEL_TRIGGER_SCALES` bigger than the last and staggered by a
 shape-family-specific delay (see STYLE.md's "Attack effects" for the exact numbers) -- only the
@@ -2122,12 +2125,22 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   `moveDisplayName`: the level prefix is the same word on every row of a well-leveled save and
   at the largest text-size preset it alone fills the `200`px column, trimming every row to an
   identical "Infinite ...". The detail pane, which has the width for the full leveled name,
-  previews the selected move at its real current level (`renderMoveDetailHeader` + `getMoveLevel`,
-  so the cascade matches what a real cast plays) over a `renderStatusAndConfirm` block naming the
-  next tier, that tier's streak length (`MOVE_LEVEL_STREAKS`) and its cost (`feynmanLevelCost`).
+  previews the selected move at the tier it is currently *carried* at (`renderMoveDetailHeader` +
+  `getMoveLevel`, so the cascade matches what a real cast plays) over a `renderStatusAndConfirm`
+  block naming the next tier, that tier's streak length (`MOVE_LEVEL_STREAKS`) and its cost
+  (`feynmanLevelCost`). The pane reads *two* levels, and the distinction is the whole of this
+  panel's own state: `getUnlockedMoveLevel` (registry/save `moveLevels`, the ceiling this move
+  has ever reached) decides what the next attempt targets, while `getMoveLevel` (registry/save
+  `carriedMoveLevels`) decides what is previewed and what the move actually does in battle.
+  Between the two sits `renderCarriedLevelRow`, the tier picker: one `addDialogueButtonAt` per
+  tier from base up to the ceiling, laid across the pane width as a fixed row (never more than
+  four, so no paging), the carried one dimmed as a no-op, each other one calling
+  `carryMoveLevel` -- a free, instantly reversible registry/save write, since the tier itself
+  was paid for when it was landed. The row renders nothing at all at ceiling 0, so the pane
+  keeps its shortest form until a first tier lands.
   An already-maxed move still selects and previews but gets no confirm button (the same
-  nothing-to-commit convention Dresselhaus's current form and Bloch's current world use); an
-  unaffordable one dims the confirm rather than the row. With no unlocked moves at all the panel
+  nothing-to-commit convention Dresselhaus's current form and Bloch's current world use), the
+  picker above it still live; an unaffordable one dims the confirm rather than the row. With no unlocked moves at all the panel
   renders no columns, so it falls back to a full-width `renderFarewellFooter` -- the same
   no-left-column-to-put-it-in case an empty flat list handles. Confirming deducts the cost
   immediately (before a single question is asked, and never refunded) and calls `showLevelStreak`, a self-contained recursive question flow (`getAnalyticQuestions`
@@ -2135,7 +2148,9 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   draws from) built the same way `OverworldScene.showEncounter`'s pre-battle quiz and
   `BattleScene.showUltimateQuestions` are, just living in the overworld panel rather than
   mid-battle -- stops at the first wrong answer (writing nothing) or, on a full streak, writes
-  the new tier to registry/save `moveLevels` before returning to `showFeynmanPanel`. See "Stats
+  the new tier to registry/save `moveLevels` *and* carries it (`carriedMoveLevels`, so a tier
+  just paid and answered for is the one the player walks away swinging) before returning to
+  `showFeynmanPanel`. See "Stats
   and battle resolution" above for `effectiveMovePower`/`moveDisplayName`, the two places a
   move's level actually surfaces in `BattleScene`.
 - **Majorana's hybrid-material panel** (`scenes/panels/majorana.ts`'s `showMajoranaPanel`) lets
@@ -2203,7 +2218,11 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
 - **Landau's Analytic-move panel** (`scenes/panels/landau.ts`'s `showLandauPanel`/
   `renderAnalyticColumns`/`renderAnalyticColumn`) is a **list+detail layout** like every other
   selling guardian's: his two fixed moves (`ANALYTIC_MOVE_IDS`:
-  `skyfallBeam`/`groundEruption`) are two rows in the left column, and the selected one
+  `skyfallBeam`/`groundEruption`) are two rows in the left column, headed by
+  `data/materials.ts`'s `moveShapeName` -- the bare shape word, "Lance" and "Eruption", with no
+  quasiparticle in front of it, since the quasiparticle is what the entries nested under the
+  open heading are for (see that function's own comment; the same applies to
+  Skłodowska-Curie's two headings below) -- and the selected one
   (`GuardianPanelHost.landauMovePreview`; two rows never paginate, so there is no page field to
   go with it) fills one full-width detail pane. The pane's own `renderMoveDetailHeader`
   call ("Attack effects" in STYLE.md and
@@ -2244,9 +2263,9 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   is deliberately **not** built on `tunableMoveShop.ts`'s buy/retune commit logic (though it does
   share that module's `hostableClasses`) -- her pricing
   model has no separate "buy the move" step at all. The fixed `ULTIMATE_MOVE_IDS`
-  (`ultimateMeteor`/`ultimateNova`) are her two headings, named via `moveDisplayName`
-  (there's no forSale/learned split the way Noether's own left column has, since
-  picking a class *is* what first unlocks the move); the open one's `renderMoveDetailHeader` shows
+  (`ultimateMeteor`/`ultimateNova`) are her two headings, named via `moveShapeName` -- bare
+  "Meteor" and "Nova", same reasoning as Landau's above (there's no forSale/learned split the
+  way Noether's own left column has, since picking a class *is* what first unlocks the move); the open one's `renderMoveDetailHeader` shows
   its own animation looping (overridden to the longer `playMeteor`/`playNova`
   sequences via `ULTIMATE_SHAPES`, "Attack effects" in STYLE.md, its own `curie:<moveId>`-keyed
   preview chain), a status line reading the
@@ -2272,8 +2291,8 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   against (a too-poor player is never left with nothing clickable and `dialogueActive` stuck
   true).
 - **Kondo's self-buff shop** (`scenes/panels/kondo.ts`'s `showKondoPanel`) sells
-  `data/materials.ts`'s `KONDO_MOVE_IDS` (three moves: `screeningCloud`/`scatteringDrag`/
-  `kondoBreakdown`, each tied to one of `types.ts`'s `'screening'`-class `MOVES` entries,
+  `data/materials.ts`'s `KONDO_MOVE_IDS` (three moves: `spinScreening`/`chargeScreening`/
+  `symmetryCloud`, each tied to one of `types.ts`'s `'screening'`-class `MOVES` entries,
   deliberately excluded from `SHOP_MOVE_IDS`/`ANALYTIC_MOVE_IDS`/`ULTIMATE_MOVE_IDS`). List+detail
   browse-by-move shop like Noether's above (`scenes/panels/
   listDetail.ts`, "Candidate-crystal lists" above): the left column names all three
@@ -2311,8 +2330,8 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   `compatibleMoves` filter every other learned move goes through -- no other move class has (or
   needs) an equip-slot-style mechanic like this. In battle, casting one calls `BattleScene`'s
   `resolveSelfBuff`/`applyOrTickBuff` (see "Self-buffs (Kondo's three moves)" above) to apply its
-  one fixed buff (`KONDO_MOVE_BUFF`, no randomness -- the move id decides the buff) to the
-  caster's own side, not the opponent.
+  one fixed cloud (`SCREENING_CHANNEL_BY_MOVE`, no randomness -- the move id decides which
+  quantum number is screened) on the caster's own side, not the opponent.
 - **Anderson's impurity-doping panel** (`scenes/panels/anderson.ts`'s `showAndersonPanel`/
   `learnImpurityMove`) is its own two-step pick (host, then move), and
   only its first step uses the list+detail layout ("Candidate-crystal lists" above) -- the
@@ -2483,7 +2502,9 @@ sharing state. Several things key off `isSuperpositionMode()`:
   not always the default starting `PLAYER_MATERIAL`. Feynman has no such single-active slot
   (every move he levels stands independently), so his version of the grant is unconditional
   rather than seed-once: every move id's `moveLevels` entry is set straight to `3` (max) on
-  every application, since there's no deliberate lower-level pick worth preserving.
+  every application. That is the ceiling only -- the player's own pick of which tier to
+  actually carry lives in `carriedMoveLevels`, which the grant never touches, so re-applying
+  it on every world entry cannot stamp over a deliberate lower-tier choice.
 - `HubScene.enterWorld()`/`doorLabel()` branch on `isSuperpositionMode()` to target
   `resumeWorld()` -- whatever world `mapState` actually holds -- instead of
   `highestUnlockedWorld()`, falling back to a fresh World 1 (`{ world: 1, regenerate: true }`)
@@ -2791,10 +2812,17 @@ guardians' abilities have been paid for at least once -- `data/materials.ts`'s
 the matching list is free from then on, one absent still costs qumatessence to pick again; see
 "Guardians" above and "Story Mode vs. Superposition Mode" for how Superposition Mode bypasses
 these without ever setting them), `moveLevels: Partial<Record<string, 0 | 1 | 2 | 3>>` (Feynman's
-move-leveling, §5 -- which level a given move id is currently at, missing entry means 0/never
-attempted; `data/materials.ts`'s `getMoveLevel`/`effectiveMovePower`/`feynmanLevelCost`, see
+move-leveling, §5 -- the highest tier a given move id has ever landed, missing entry means
+0/never attempted; `data/materials.ts`'s
+`getUnlockedMoveLevel`/`effectiveMovePower`/`feynmanLevelCost`, see
 "Guardians" above -- unlike the four one-time-unlock lists just above, Superposition Mode does
-*not* bypass this one, since leveling is a knowledge gate, not a currency gate), plus the
+*not* bypass this one, since leveling is a knowledge gate, not a currency gate),
+`carriedMoveLevels: Partial<Record<string, 0 | 1 | 2 | 3>>` (which of those already-landed
+tiers each move is currently *carried* at, picked from the tier row in Feynman's own pane --
+`getMoveLevel`, the level everything outside that pane means; a move absent from this map is
+carried at its `moveLevels` ceiling, so the map stays empty until a player uses the row, and
+Superposition Mode's max-everything grant writes the ceiling only and can never overwrite a
+pick made here), plus the
 earlier fields covered under Registry-then-persist above. `defaultSave()`/
 `persistFromRegistry()` are the two places that need touching together for any future field, and
 `loadSave()`'s `{ ...defaultSave(), ...saved }` spread keeps a save predating that field
@@ -2806,8 +2834,12 @@ resetting it to default would erase actual play (currency, an unlock list, stats
 cheap-to-redo selection. `loadSave()`'s `MIGRATIONS` array (`data/save.ts`) handles this: each
 entry patches a raw parsed save forward by one schema version (`MIGRATIONS[i]`: version `i` ->
 `i+1`), run in order from whatever version the save was last written at up to
-`CURRENT_SCHEMA_VERSION` (just `MIGRATIONS.length`, so nothing separate needs bumping);
-`persistFromRegistry()` stamps that current version onto every save it writes. A migration is
+`CURRENT_SCHEMA_VERSION` (`SCHEMA_BASELINE + MIGRATIONS.length`, so appending an entry is the
+only bump needed); `persistFromRegistry()` stamps that current version onto every save it
+writes. A save stamped below `SCHEMA_BASELINE`, or carrying no stamp at all, is clamped up to
+the baseline and replays every migration from there. The one entry in the array today renames
+Kondo's three move ids across `unlockedMoves`/`kondoActiveMove`/`moveLevels`, keeping the
+moves a player bought, which one they had active and the tiers they had put into them. A migration is
 appended, never edited in place, once shipped -- a save could be sitting at any past version.
 This is separate from `loadSave()`'s other safety nets (filtering `unlockedMoves` to ids
 still in `MOVES`; resetting `playerForm`/`rival9Type` if their `type` isn't in `TYPE_LOOK`;

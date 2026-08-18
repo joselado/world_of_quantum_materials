@@ -258,8 +258,8 @@ async function main() {
         // describes). Deliberately NOT Electron Pulse: Noether's shot
         // illustrates the shop still offering it, exactly as
         // docs/guardians.md's prose says.
-        g.registry.set('unlockedMoves', ['thermalFluctuation', 'magneticField', 'screeningCloud', 'skyfallBeam', 'ultimateMeteor']);
-        g.registry.set('kondoActiveMove', 'screeningCloud');
+        g.registry.set('unlockedMoves', ['thermalFluctuation', 'magneticField', 'spinScreening', 'skyfallBeam', 'ultimateMeteor']);
+        g.registry.set('kondoActiveMove', 'spinScreening');
         g.registry.set('passivesUnlocked', ['fractionalGuard', 'anyonEcho']);
         g.registry.set('activePassiveByOwner', { franklin: 'fractionalGuard' });
         g.registry.set('ultimateClassesUnlocked', { ultimateMeteor: ['phonon'] });

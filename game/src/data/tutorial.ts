@@ -167,7 +167,7 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     title: 'Status Effects',
     unlock: { kind: 'guardian', ids: ['kondo'] },
     body:
-      "Kondo (World 8) sells three self-buff techniques, each usable from any form since they aren't tied to a quasiparticle at all. Casting one costs a turn like any move, then holds for several turns after: one shields you from incoming damage, one gives incoming hits a chance to miss you entirely, one heals you back a little each turn. Only one can be active in battle at a time (switch which by revisiting Kondo), and a pill under your HP bar shows the effect and how many turns it has left.",
+      "Kondo (World 8) sells three self-buff techniques, each usable from any form since they aren't tied to a quasiparticle at all. Casting one costs a turn like any move, then wraps you in a screening cloud for several turns after. A cloud screens one thing only: Spin Screening halves incoming attacks carried by a quasiparticle with spin, Charge Screening halves the ones carrying charge, and Symmetry Cloud halves the modes of a broken symmetry, phonons and magnons among them. Anything the cloud does not screen still hits you in full. Only one can be active in battle at a time (switch which by revisiting Kondo), and a pill under your HP bar shows the cloud and how many turns it has left.",
   },
   passives: {
     title: 'Passive Abilities',

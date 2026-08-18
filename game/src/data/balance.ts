@@ -279,33 +279,21 @@ export const MISMATCH_MULTIPLIER = 2;
 
 // --- Kondo's self-buffs (DESIGN.md §5, World 8) -----------------------------
 
-// How many turns one of Kondo's three buffs (BattleScene's StatusKind) lasts
-// once cast, counted down in BattleScene.tickStatuses.
+// How many turns one of Kondo's three screening clouds (BattleScene's
+// StatusKind) lasts once cast, counted down in BattleScene.applyOrTickBuff.
 export const STATUS_DURATION = 3;
-// Each of Kondo's three buffs has a base mitigation strength (at move level
-// 0, i.e. before Feynman's leveling, §5 World 7) and a hard cap it can never
-// reach/exceed regardless of level, so even an "Infinite"-tier buff leaves
-// real risk on the table rather than reaching full immunity/certainty -- see
-// mitigationFraction below, which scales the base by the caster's own
-// MOVE_LEVEL_MULTIPLIERS the same way effectiveMovePower scales an ordinary
-// attack's power.
-export const SHIELD_BASE_REDUCTION = 0.2; // Shielded: base fraction of incoming damage reduced
-export const SHIELD_MAX_REDUCTION = 0.6; // level 3 (Infinite, 3x multiplier): 0.2 * 3 = 0.6 exactly, the cap doesn't actually bind
-export const EVASION_BASE_CHANCE = 0.2; // Evasive: base chance an incoming hit against the buffed side deals zero damage instead -- same magnitude family as Shielded's own base reduction, deliberately modest so an unleveled buff is a meaningful-but-not-dominant mitigation
-export const EVASION_MAX_CHANCE = 0.6; // same reasoning as SHIELD_MAX_REDUCTION
-export const REGEN_BASE_HEAL_FRACTION = 0.1; // Regenerating: base fraction of the buffed side's own max HP healed on each tick (3 ticks over the buff's life, spread out rather than landing in one hit)
-export const REGEN_MAX_HEAL_FRACTION = 0.3; // level 3: 0.1 * 3 = 0.3 exactly, the cap doesn't actually bind either -- kept defensively in case tiers/multipliers ever change
-
-// Scales one of Kondo's three buffs' base mitigation strength by the
-// caster's own current move-level multiplier (MOVE_LEVEL_MULTIPLIERS),
-// capped at `cap` so even an Infinite-tier buff leaves real risk on the
-// table. The isPlayer-gating (`moveLevels` is the player's own save state,
-// and no wild ever casts a Kondo move) stays in BattleScene.kondoMitigationFraction,
-// which reads the registry for the level and calls this with the resolved
-// multiplier -- this half is just the capped-scaling arithmetic.
-export function mitigationFraction(levelMultiplier: number, base: number, cap: number): number {
-  return Math.min(base * levelMultiplier, cap);
-}
+// All three of Kondo's buffs mitigate the same way: an incoming hit whose
+// quasiparticle carries the quantum number that buff screens
+// (data/materials.ts's SCREENING_CHANNELS) lands for half damage, and
+// every other hit lands untouched. Feynman's leveling (§5, World 7) deepens
+// the screening along this curve, indexed by the caster's own level for the
+// buff move -- diminishing returns toward a cap short of full immunity, so
+// even an "Infinite"-tier cloud leaves real damage coming through. An
+// explicit per-level table rather than a base scaled by
+// MOVE_LEVEL_MULTIPLIERS the way effectiveMovePower scales an attack's
+// power: a half scaled by the 3x top tier passes 1 outright, so a single cap
+// would swallow the middle two tiers and make them worth nothing.
+export const SCREEN_REDUCTION_BY_LEVEL = [0.5, 0.62, 0.68, 0.75];
 
 // --- Core damage resolution (BattleScene.resolveHit) ------------------------
 
@@ -402,9 +390,11 @@ export interface ResolveHitParams {
   // Landau's Analytic moves' answer-gated 2x/0.5x, or Skłodowska-Curie's
   // Ultimate moves' all-or-nothing 1x/0x -- 1 for every ordinary move.
   bonusMultiplier: number;
-  // Kondo's Shielded buff on the defender's side (statusShieldMultiplier) --
-  // 1 when not shielded.
-  shieldedMult: number;
+  // Whichever of Kondo's three screening buffs the defender is holding, if
+  // this hit's quasiparticle is one that buff screens
+  // (BattleScene.screeningMultiplier) -- 1 otherwise, including when the
+  // defender holds a buff that screens some other quantum number.
+  screenedMult: number;
   // Franklin's Diffraction Shadow on the defender's side -- 1 when inactive.
   fractionalGuardMult: number;
   // Injectable RNGs (default Math.random) so a caller (the balance
@@ -426,7 +416,7 @@ export interface ResolveHitOutcome {
 // damage number and whether it crit -- crit chance from the attacker's
 // Quantumness (critChance), a defense factor from the defender's Correlation
 // (defenseFactor), the quasiparticle-mismatch multiplier, every other
-// multiplicative term (quiz/Analytic/Ultimate bonus, Kondo Shielded,
+// multiplicative term (quiz/Analytic/Ultimate bonus, Kondo screening,
 // Franklin Diffraction Shadow), a 1.5x crit bonus, and +/-15% damage
 // variance, all multiplied together and rounded once at the end.
 export function resolveHitDamage(params: ResolveHitParams): ResolveHitOutcome {
@@ -440,7 +430,7 @@ export function resolveHitDamage(params: ResolveHitParams): ResolveHitOutcome {
       mismatchMult *
       params.attackMult *
       params.bonusMultiplier *
-      params.shieldedMult *
+      params.screenedMult *
       params.fractionalGuardMult *
       defense *
       (crit ? 1.5 : 1) *

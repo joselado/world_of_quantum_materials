@@ -6,7 +6,7 @@ import type { AttackShape } from '../audio/sfx';
 // bolt = a fast, focused shot (Phonon Beam, Electron Pulse, Spinon Swap,
 // Triplon Surge, Chiral Current); ring = an expanding wave pulse (Magnon
 // Pulse, Electromagnon Pulse, Plasmon Pulse, Ferron Pulse,
-// Higgs Oscillation, Helical Current, Screening Pulse); burst = many small
+// Higgs Oscillation, Helical Current, Spin Screening); burst = many small
 // particles converging/scattering (Anyon Braid, Majorana Split, Heavy
 // Fermion Pulse, Vison Loop). 'beam'/'eruption' are never picked from here
 // -- they're only ever reached via ANALYTIC_SHAPES' per-move-id override
@@ -48,8 +48,8 @@ export const EFFECT_STYLE: Record<MoveClass, { color: number; shape: AttackShape
   // A collective charge oscillation reads as an expanding wave like Magnon
   // Pulse's ring, tinted an electric cyan instead of magnon's red.
   plasmon: { color: 0x4ad9ff, shape: 'ring' },
-  // Kondo's three self-buff moves (Screening Pulse, Scattering Drag,
-  // Coherence Cascade) share one look -- an expanding ring reads as an
+  // Kondo's three self-buff moves (Spin Screening, Charge Screening,
+  // Symmetry Cloud) share one look -- an expanding ring reads as an
   // effect enveloping the caster, tinted Kondo's own rust-orange
   // (WORLD_GUARDIANS[8].strokeColor). BattleScene.resolveSelfBuff passes the
   // caster's own anchor as both `from` and `to`, so the ring centers on the

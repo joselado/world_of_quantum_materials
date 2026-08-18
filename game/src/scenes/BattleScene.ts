@@ -23,29 +23,25 @@ import {
   moveDisplayName,
   effectiveMovePower,
   getMoveLevel,
-  MOVE_LEVEL_MULTIPLIERS,
   enemyStatsForWorld,
   ANALYTIC_MOVE_IDS,
   ULTIMATE_MOVE_IDS,
   KONDO_MOVE_IDS,
+  SCREENING_CHANNELS,
+  SCREENING_MOVE_BY_CHANNEL,
+  SCREENING_CHANNEL_BY_MOVE,
   typesHosting,
   allCrystals,
 } from '../data/materials';
 import {
   battleStakeForWorld,
-  mitigationFraction,
   resolveHitDamage,
   MISMATCH_MULTIPLIER,
   FRACTIONAL_GUARD_DAMAGE_MULT,
   ANYON_ECHO_FRACTION,
   EDGE_CURRENT_MISMATCH_MULT,
   STATUS_DURATION,
-  SHIELD_BASE_REDUCTION,
-  SHIELD_MAX_REDUCTION,
-  EVASION_BASE_CHANCE,
-  EVASION_MAX_CHANCE,
-  REGEN_BASE_HEAL_FRACTION,
-  REGEN_MAX_HEAL_FRACTION,
+  SCREEN_REDUCTION_BY_LEVEL,
   wildHpForWorld,
   rivalHpForWorld,
   rollEncounterFactor,
@@ -53,6 +49,7 @@ import {
   DIFFICULTY_MULTIPLIERS,
   superpositionEnemyStats,
 } from '../data/balance';
+import type { ScreeningChannel } from '../data/materials';
 import { DEFAULT_DIFFICULTY_TIER, DEFAULT_TOUCH_CONTROLS, touchControlsActive } from '../data/settings';
 import type { DifficultyTier, TouchControlsMode } from '../data/settings';
 import { victoryLine, defeatLine } from '../data/greetings';
@@ -228,54 +225,51 @@ const R_MATERIALS: Record<OffPathKind, ArenaMaterial | null> = {
 const ANALYTIC_CORRECT_MULTIPLIER = 2;
 const ANALYTIC_WRONG_MULTIPLIER = 0.5;
 
-// Kondo's three self-buff moves (§5, World 8) each deterministically apply
-// one of these three 3-turn buffs to the *caster's own* side, replacing
-// whatever buff (if any) was already there rather than stacking -- exactly
-// one active buff per side at a time, matching the "one type-interaction
-// rule, on purpose" simplicity DESIGN.md §4 already commits to elsewhere.
-// Battle-ephemeral only (never persisted -- data/save.ts's SaveData has no
-// field for this), reset fresh at the start of every battle.
-type StatusKind = 'shielded' | 'evasive' | 'regenerating';
+// Kondo's three self-buff moves (§5, World 8) each deterministically raise
+// one 3-turn screening cloud on the *caster's own* side, replacing whatever
+// cloud (if any) was already there rather than stacking -- exactly one
+// active buff per side at a time, matching the "one type-interaction rule,
+// on purpose" simplicity DESIGN.md §4 already commits to elsewhere. Which
+// cloud is up decides *which attacks it damps*: a cloud only screens a
+// quasiparticle carrying the quantum number it is made of (screeningMultiplier
+// below, against data/materials.ts's SCREENING_CHANNELS), and every other
+// attack goes straight through it. Battle-ephemeral only (never persisted --
+// data/save.ts's SaveData has no field for this), reset fresh at the start
+// of every battle. There is no randomness anywhere in this: the player picks
+// which quantum number they are screened against by picking the move, and,
+// since only one of the three can be active in battle at a time, by which
+// one they set active with OverworldScene.showKondoPanel.
+type StatusKind = ScreeningChannel;
 
 interface ActiveStatus {
   kind: StatusKind;
   turnsLeft: number;
 }
 
-// Which buff a given Kondo move id deterministically applies -- no
-// randomness, the player picks the effect by picking the move (and, since
-// only one of the three can be active in battle at a time, by which one
-// they set active with OverworldScene.showKondoPanel).
-const KONDO_MOVE_BUFF: Record<string, StatusKind> = {
-  screeningCloud: 'shielded',
-  scatteringDrag: 'evasive',
-  kondoBreakdown: 'regenerating',
-};
-
 // Deliberately terse (one short clause, no second sentence) -- the log line
 // this appends to can already carry a mismatch clause and a crit clause
 // (setLogText's clamp was sized/verified against that two-clause worst case,
 // see STYLE.md), and the status pill under the HP bar already spells out the
-// ongoing effect ("Shielded (3)") for as long as it's active, so the log
+// ongoing effect ("Spin Screening (3)") for as long as it's active, so the log
 // line itself only needs to announce the moment, not re-explain the effect.
 const STATUS_INFO: Record<
   StatusKind,
   { label: string; applyText: (name: string) => string; expireText: (name: string) => string }
 > = {
-  shielded: {
-    label: 'Shielded',
-    applyText: (name) => `${name} is Shielded!`,
-    expireText: (name) => `${name}'s shielding fades.`,
+  spin: {
+    label: 'Spin Screening',
+    applyText: (name) => `${name} raises a spin screening cloud!`,
+    expireText: (name) => `${name}'s spin screening fades.`,
   },
-  evasive: {
-    label: 'Evasive',
-    applyText: (name) => `${name} turns Evasive!`,
-    expireText: (name) => `${name}'s evasiveness fades.`,
+  charge: {
+    label: 'Charge Screening',
+    applyText: (name) => `${name} raises a charge screening cloud!`,
+    expireText: (name) => `${name}'s charge screening fades.`,
   },
-  regenerating: {
-    label: 'Regenerating',
-    applyText: (name) => `${name} starts Regenerating!`,
-    expireText: (name) => `${name}'s regeneration fades.`,
+  symmetry: {
+    label: 'Symmetry Cloud',
+    applyText: (name) => `${name} raises a symmetry cloud!`,
+    expireText: (name) => `${name}'s symmetry cloud disperses.`,
   },
 };
 // Single status-pill color for all three (Kondo's own rust-orange, matching
@@ -2496,9 +2490,8 @@ export class BattleScene extends Phaser.Scene {
     // A side's own buff (Kondo's three moves, §5) must apply/tick down at
     // most once per round, even when that side lands more than one hit this
     // round -- and it has to be that side's *last* action this round, not
-    // its first: an existing buff (e.g. Regenerating on its final tick) has
-    // to keep applying through every one of that side's earlier hits before
-    // it expires, and a buff freshly cast this round shouldn't retroactively
+    // its first: an existing cloud on its final turn has to keep screening
+    // through every one of that side's earlier hits before it expires, and a buff freshly cast this round shouldn't retroactively
     // apply to the actions that cast it, only the round after. Found by
     // scanning `hits` for each side's own last index, rather than assumed
     // from position, since the self-buff collapse above means a side's
@@ -2659,10 +2652,12 @@ export class BattleScene extends Phaser.Scene {
     const mismatchMult = mismatch ? mismatchMultiplier : 1;
 
     const attackMult = isPlayer ? this.attackMultiplier : 1;
-    // Kondo's Screening Pulse buff (§5): incoming damage to whichever side
-    // currently has Shielded active is multiplied down, symmetric like
-    // every other resolveHit term, not hardcoded to "opponent only".
-    const shieldedMult = this.statusShieldMultiplier(defenderIsPlayer);
+    // Kondo's screening clouds (§5): a defender holding a cloud takes half
+    // damage from this hit only if the hit's own quasiparticle carries the
+    // quantum number that cloud screens, so which attack is coming decides
+    // whether the buff does anything at all. Symmetric like every other
+    // resolveHit term, not hardcoded to "opponent only".
+    const screenedMult = this.screeningMultiplier(defenderIsPlayer, effectiveClass);
     // Franklin's Diffraction Shadow (§5): incoming damage to whichever side
     // has it active is multiplied down for the whole battle -- a defect-
     // riddled lattice scatters and attenuates the blow, the way porous
@@ -2691,16 +2686,9 @@ export class BattleScene extends Phaser.Scene {
       mismatchMultiplier,
       attackMult,
       bonusMultiplier,
-      shieldedMult,
+      screenedMult,
       fractionalGuardMult,
     });
-    // Kondo's Scattering Drag buff (§5): a defender with Evasive active has
-    // a chance (statusEvasionChance -- 0 when not evasive) to dodge this hit
-    // entirely regardless of the damage just computed above -- checked once
-    // per hit, independent of mismatch/crit (a dodged hit never happened, it
-    // doesn't matter how hard it would have landed).
-    const evaded = Math.random() < this.statusEvasionChance(defenderIsPlayer);
-
     const from = isPlayer ? this.playerAnchor : this.opponentAnchor;
     const to = isPlayer ? this.opponentAnchor : this.playerAnchor;
     // A thunk to the *field*, not the container, for the same reason
@@ -2714,7 +2702,7 @@ export class BattleScene extends Phaser.Scene {
     const isUltimate = ULTIMATE_MOVE_IDS.includes(moveId);
     const whiff = isUltimate && bonusMultiplier === 0;
 
-    // Applies the hit's damage/log/echo/heal. For an ordinary move this runs
+    // Applies the hit's damage/log/echo. For an ordinary move this runs
     // synchronously right below (near-instant animation, no desync risk). For
     // an Ultimate move it's deferred until the multi-second animation's own
     // impact beat instead (see the branch at the bottom of this method), so
@@ -2722,7 +2710,6 @@ export class BattleScene extends Phaser.Scene {
     // seconds ahead of it.
     const applyResult = () => {
       const who = isPlayer ? 'You' : `Wild ${this.opponentView().name}`;
-      const defenderName = defenderIsPlayer ? this.playerMaterial.name : this.opponentView().name;
       // Feynman's level prefix (§5) and Landau's class tuning are both the
       // player's own save state -- an opponent's own use of a move id never
       // carries either, so its side of the log reads the move's static name
@@ -2735,11 +2722,6 @@ export class BattleScene extends Phaser.Scene {
       // faster side can land more than one hit in a single round. See
       // applyOrTickBuff.
       const buffText = tickStatus ? this.applyOrTickBuff(move, isPlayer) : '';
-
-      if (evaded) {
-        this.setLogText(`${who} used ${displayName}, but ${defenderName} evaded it!${buffText}`);
-        return;
-      }
 
       this.applyDamage(defenderIsPlayer, dmg);
 
@@ -2863,20 +2845,6 @@ export class BattleScene extends Phaser.Scene {
     this.updateBars();
   }
 
-  // Regenerating's per-tick heal (applyRegenTick, §4/§5) -- the healing
-  // counterpart to applyDamage above, capped at `maxHp` rather than clamped
-  // at 0.
-  private applyHeal(toPlayer: boolean, amount: number, maxHp: number) {
-    if (toPlayer) {
-      this.playerHp = Math.min(maxHp, this.playerHp + amount);
-      this.game.registry.set('playerHp', this.playerHp);
-      persistFromRegistry(this.game.registry);
-    } else {
-      this.opponentHp = Math.min(maxHp, this.opponentHp + amount);
-    }
-    this.updateBars();
-  }
-
   private getStatus(isPlayer: boolean): ActiveStatus | null {
     return isPlayer ? this.playerStatus : this.opponentStatus;
   }
@@ -2887,27 +2855,30 @@ export class BattleScene extends Phaser.Scene {
     this.renderStatusLabel(isPlayer);
   }
 
-  private statusShieldMultiplier(isPlayer: boolean): number {
-    if (this.getStatus(isPlayer)?.kind !== 'shielded') return 1;
-    return 1 - this.kondoMitigationFraction(isPlayer, 'screeningCloud', SHIELD_BASE_REDUCTION, SHIELD_MAX_REDUCTION);
+  // How much of an incoming hit whichever Kondo cloud this side is holding
+  // actually takes off (§5). A cloud screens one quantum number, so it only
+  // damps a quasiparticle that carries it (data/materials.ts's
+  // SCREENING_CHANNELS): a Symmetry Cloud halves a Phonon Beam and does
+  // nothing whatsoever against an Anyon Braid. The class read here is the
+  // hit's *effective* one (getTunedMoveClass, resolved by the caller), so a
+  // tuned Analytic/Ultimate move is screened as the quasiparticle the player
+  // assigned it rather than as its default.
+  private screeningMultiplier(isPlayer: boolean, moveClass: MoveClass): number {
+    const status = this.getStatus(isPlayer);
+    if (!status || !SCREENING_CHANNELS[moveClass].includes(status.kind)) return 1;
+    return 1 - this.screenReduction(isPlayer, status.kind);
   }
 
-  private statusEvasionChance(isPlayer: boolean): number {
-    if (this.getStatus(isPlayer)?.kind !== 'evasive') return 0;
-    return this.kondoMitigationFraction(isPlayer, 'scatteringDrag', EVASION_BASE_CHANCE, EVASION_MAX_CHANCE);
-  }
-
-  // Scales one of Kondo's three buffs' base mitigation strength by the
-  // *caster's own* level of the specific move that cast it (Feynman's
-  // move-leveling, §5), capped at `cap` -- gated on `isPlayer` the same way
-  // `effectiveMovePower` is: `moveLevels` is the player's own save state,
-  // and no wild ever casts a Kondo move in the first place (see
-  // `KONDO_MOVE_IDS`' own comment in data/materials.ts), so an opponent's
-  // copy of the same buff always reads the flat, unleveled `base` instead.
-  private kondoMitigationFraction(isPlayer: boolean, moveId: string, base: number, cap: number): number {
-    if (!isPlayer) return base;
-    const multiplier = MOVE_LEVEL_MULTIPLIERS[getMoveLevel(this.game.registry, moveId)];
-    return mitigationFraction(multiplier, base, cap);
+  // The screened fraction itself, deepened by the *caster's own* level of
+  // the buff move that raised this cloud (Feynman's move-leveling, §5) --
+  // gated on `isPlayer` the same way `effectiveMovePower` is: `moveLevels`
+  // is the player's own save state, and no wild ever casts a Kondo move in
+  // the first place (see `KONDO_MOVE_IDS`' own comment in
+  // data/materials.ts), so an opponent's copy of the same cloud always
+  // screens at the unleveled base half.
+  private screenReduction(isPlayer: boolean, channel: ScreeningChannel): number {
+    const level = isPlayer ? getMoveLevel(this.game.registry, SCREENING_MOVE_BY_CHANNEL[channel]) : 0;
+    return SCREEN_REDUCTION_BY_LEVEL[level];
   }
 
   // Resolves one of Kondo's three self-buff moves (§5, KONDO_MOVE_IDS) --
@@ -2919,12 +2890,11 @@ export class BattleScene extends Phaser.Scene {
   // of traveling to the opponent's -- a squash bounce on the caster's own
   // crystal reads as the buff taking hold without the camera shake/flash
   // `impactPunch` gives an ordinary "hit landed" beat, which would read as
-  // the caster taking damage instead. Never changes either side's HP by
-  // itself (Regenerating only ever heals, on a later tick -- see
-  // applyOrTickBuff/applyRegenTick), so there is no win/lose check to make
-  // here the way resolveHit's own tail has to. Kondo's three moves are as
-  // leveled-by-Feynman as any attack move (kondoMitigationFraction already
-  // scales their own buff strength by the caster's level) -- `level` here
+  // the caster taking damage instead. Never changes either side's HP at
+  // all, so there is no win/lose check to make here the way resolveHit's own
+  // tail has to. Kondo's three moves are as leveled-by-Feynman as any attack
+  // move (screenReduction already deepens their screening by the caster's
+  // level) -- `level` here
   // gets the same escalating-repeat ring pulse resolveHit's own attack path
   // gets, gated `isPlayer`-only the same way (no wild ever casts a Kondo
   // move, see KONDO_MOVE_IDS' own comment).
@@ -2952,52 +2922,29 @@ export class BattleScene extends Phaser.Scene {
   // retroactively apply to the actions that cast it), so this always fires
   // at most once per round per side, even when a side lands more than one
   // hit (DESIGN.md §4's velocity-ratio multi-attack). If the move is one of
-  // Kondo's three (KONDO_MOVE_BUFF), it replaces whatever buff the caster
-  // already had outright -- one buff per side, never stacked. Otherwise it
-  // ticks down whatever buff that side already carries by one, applying a
-  // Regenerating heal on every tick (including the one that expires it --
-  // see applyRegenTick), and clears/announces the buff once it expires.
-  // Returns the log clause to append (empty string if nothing to report),
-  // same "stack a clause onto the existing line" pattern as
-  // mismatchText/critText use elsewhere.
+  // Kondo's three (SCREENING_CHANNEL_BY_MOVE), it replaces whatever cloud
+  // the caster already had outright -- one cloud per side, never stacked, so
+  // screening a second quantum number always means giving up the first.
+  // Otherwise it ticks down whatever cloud that side already carries by one,
+  // and clears/announces it once it expires. Returns the log clause to
+  // append (empty string if nothing to report), same "stack a clause onto
+  // the existing line" pattern as mismatchText/critText use elsewhere.
   private applyOrTickBuff(move: Move, isPlayer: boolean): string {
     const casterName = isPlayer ? this.playerMaterial.name : this.opponentView().name;
-    const kondoBuff = KONDO_MOVE_BUFF[move.id];
-    if (kondoBuff) {
-      this.setStatus(isPlayer, { kind: kondoBuff, turnsLeft: STATUS_DURATION });
-      return ' ' + STATUS_INFO[kondoBuff].applyText(casterName);
+    const channel = SCREENING_CHANNEL_BY_MOVE[move.id];
+    if (channel) {
+      this.setStatus(isPlayer, { kind: channel, turnsLeft: STATUS_DURATION });
+      return ' ' + STATUS_INFO[channel].applyText(casterName);
     }
     const status = this.getStatus(isPlayer);
     if (!status) return '';
-    const clauses: string[] = [];
-    if (status.kind === 'regenerating') {
-      const healClause = this.applyRegenTick(isPlayer, casterName);
-      if (healClause) clauses.push(healClause);
-    }
     status.turnsLeft -= 1;
     if (status.turnsLeft <= 0) {
       this.setStatus(isPlayer, null);
-      clauses.push(STATUS_INFO[status.kind].expireText(casterName));
-    } else {
-      this.renderStatusLabel(isPlayer);
+      return ' ' + STATUS_INFO[status.kind].expireText(casterName);
     }
-    return clauses.length ? ' ' + clauses.join(' ') : '';
-  }
-
-  // Coherence Cascade's Regenerating buff (§5) -- heals the buffed side a
-  // fraction of its own max HP (REGEN_BASE_HEAL_FRACTION, scaled by the
-  // caster's own move level via kondoMitigationFraction), called once per
-  // tick from applyOrTickBuff above, capped so it never overheals past
-  // `maxHp`. Returns '' (no log clause) once the side is already at full
-  // HP -- there is nothing to report on a fully-healed side.
-  private applyRegenTick(isPlayer: boolean, casterName: string): string {
-    const maxHp = isPlayer ? this.playerMaxHp : this.opponentMaxHp;
-    const currentHp = isPlayer ? this.playerHp : this.opponentHp;
-    const healFraction = this.kondoMitigationFraction(isPlayer, 'kondoBreakdown', REGEN_BASE_HEAL_FRACTION, REGEN_MAX_HEAL_FRACTION);
-    const healAmount = Math.min(maxHp - currentHp, Math.round(maxHp * healFraction));
-    if (healAmount <= 0) return '';
-    this.applyHeal(isPlayer, healAmount, maxHp);
-    return `${casterName} regenerates ${healAmount} HP!`;
+    this.renderStatusLabel(isPlayer);
+    return '';
   }
 
   // Updates (or clears) the small status pill under that side's HP bar --

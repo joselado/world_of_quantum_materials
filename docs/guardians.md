@@ -151,36 +151,58 @@ paid is gone either way, there's no refund on a miss. The cost to attempt a
 tier scales with the move's own power and how deep a tier you're
 attempting, so a weak move is cheap to push and a strong one costs more.
 
+Landing a tier does not lock you into it. Every tier you have already
+landed stays available as a free choice, so a move sitting at Triple can be
+swung at Triple, at Double, or at its uncorrected base, and you switch
+between them at Feynman's panel as often as you like. The tier you are
+carrying is the move's real level in every sense: its damage, its name
+prefix, the cascade it fires, and how hard one of Kondo's clouds screens.
+A tier you have just landed is the one you walk away carrying, so a move
+you never come back to behaves exactly as it always has.
+
 A leveled move looks leveled when you actually cast it, too: it fires
 several times in quick, overlapping succession, each repeat bigger than the
 last (two for Double, three for Triple, four for Infinite), reading as a
 real escalating cascade rather than just a stronger single hit.
 
-<img src="../screenshots/docs-guardians-feynman-panel.png" width="300" alt="Feynman's panel: the moves already carried, the selected one already at Double and cascading on the stage, with the question streak and cost to push it to Triple">
+<img src="../screenshots/docs-guardians-feynman-panel.png" width="300" alt="Feynman's panel: the moves already carried, the selected one cascading on the stage at the tier it is being swung at, the row for picking any tier already landed, and the question streak and cost to push it one deeper">
 
 ## Kondo's Clouds
 
 <img src="../screenshots/docs-guardians-kondo-avatar.png" width="300" alt="Kondo: a small local moment drawn as an arrow, sitting inside two counter-rotating screening shells">
 
 Sells three self-buff moves, cast on yourself rather than the opponent, dealing no
-damage:
+damage. Each raises a cloud around you for a few turns, and a cloud screens
+one thing only: an incoming attack lands for half damage if its quasiparticle
+carries what the cloud screens, and lands in full if it does not.
 
-- **Screening Pulse**: shields you, reducing incoming damage for a few
-  turns
-- **Scattering Drag**: makes you evasive, giving incoming hits a chance to
-  miss entirely
-- **Coherence Cascade**: sets you regenerating, healing you a little each
-  turn
+- **Spin Screening**: halves attacks carried by a quasiparticle with spin,
+  such as Electron Pulse, Magnon Pulse, Spinon Swap, Triplon Surge,
+  Electromagnon Pulse, Chiral Current, Helical Current and Heavy Fermion
+  Pulse
+- **Charge Screening**: halves attacks carried by a quasiparticle that a
+  cloud of mobile charge can couple to, such as Electron Pulse, Plasmon
+  Pulse, Anyon Braid, Ferron Pulse, Electromagnon Pulse, Chiral Current,
+  Helical Current and Heavy Fermion Pulse
+- **Symmetry Cloud**: halves attacks carried by the mode of a broken
+  symmetry's own order parameter, namely Phonon Beam, Magnon Pulse, Ferron
+  Pulse, Electromagnon Pulse and Higgs Oscillation
 
-Picking a move picks the buff. Only one can be active at a time; switching
-means talking to Kondo again.
+Two attacks are carried by a quasiparticle with no charge, no spin and no
+order parameter of its own, so no cloud touches them at all: Majorana Split
+and Vison Loop. Landau's and Skłodowska-Curie's tunable moves are screened as
+whichever quasiparticle you have tuned them to, so an untuned one counts as a
+phonon.
+
+Picking a move picks the cloud. Only one can be active at a time; switching
+means talking to Kondo again, so holding one quantum number always means
+giving up the other two.
 
 <img src="../screenshots/docs-guardians-kondo-panel.png" width="300" alt="Kondo's self-buff shop: his three screening moves, with the one currently being held marked active">
 
 Each of these three can also be leveled up at [Feynman's](#feynmans-diagrammatics),
-same as any other move, leveling one makes its buff itself stronger (more
-damage reduction, a better dodge chance, more healing per tick), up to a cap
-so it never becomes complete immunity.
+same as any other move, leveling one deepens its screening past the base half,
+up to a cap so it never becomes complete immunity.
 
 ## Franklin's Scatterings
 

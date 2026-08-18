@@ -19,11 +19,15 @@ import {
 } from './listDetail';
 
 // Kondo stands at world 8's middle tile (WORLD_GUARDIANS) and sells three
-// self-buff moves (data/materials.ts's KONDO_MOVE_IDS -- Screening
-// Pulse/Scattering Drag/Coherence Cascade, kept out of Noether's and
+// self-buff moves (data/materials.ts's KONDO_MOVE_IDS -- Spin
+// Screening/Charge Screening/Symmetry Cloud, kept out of Noether's and
 // Landau's own lists so Kondo is their one source), usable from any
 // crystal form the player is currently wearing since a self-buff isn't
-// gated by MOVE_COMPATIBILITY at all.
+// gated by MOVE_COMPATIBILITY at all. Each one raises a cloud that screens
+// one quantum number, halving only those incoming attacks whose
+// quasiparticle carries it (data/materials.ts's SCREENING_CHANNELS), so
+// which of the three to hold is a read of what the next opponent is likely
+// to throw rather than a strictly-better/worse ranking.
 //
 // List+detail layout (scenes/panels/listDetail.ts, STYLE.md's "List+detail
 // panels"), the same shape Noether's/Landau's/Skłodowska-Curie's own
@@ -83,7 +87,7 @@ export function showKondoPanel(scene: GuardianPanelHost) {
     y,
     panelWidth,
     avatar: makeKondoAvatar,
-    quote: '"I am Kondo. Any quantum material can turn its own disorder to its advantage: screen itself, scatter its own signature, cascade its own coherence back together. Learn a technique, then tell me which one to hold. Only one at a time."',
+    quote: '"I am Kondo. A cloud of conduction electrons wraps a magnetic moment until the moment is gone. That is my whole trade, and it generalizes: gather the right cloud and a blow carrying spin, or charge, or the tremor of a broken symmetry, arrives at half strength. A cloud screens one thing only. Learn all three if you like, then tell me which one to hold."',
     introPx: `${Math.round(11 * introScale)}px`,
   });
 

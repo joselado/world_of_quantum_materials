@@ -67,14 +67,15 @@ export type MoveClass =
   // Pulse's class. Only 'metal' hosts it (a partially filled band is what
   // lets a free electron gas support one at all).
   | 'plasmon'
-  // Kondo's three moves (§5, World 8): Screening Pulse, Scattering Drag,
-  // Coherence Cascade -- self-buffs, not attacks. Each deterministically
-  // applies one of three 3-turn buffs to the *caster's own* side
-  // (Shielded/Evasive/Regenerating, BattleScene's resolveHit/
-  // resolveSelfBuff) instead of dealing damage. Left out of every type's
-  // MOVE_COMPATIBILITY list entirely (see materials.ts) rather than gated
-  // by it -- a self-buff never hosts/mismatches, so it doesn't need a
-  // compatibility entry to be usable from any form.
+  // Kondo's three moves (§5, World 8): Spin Screening, Charge Screening,
+  // Symmetry Cloud -- self-buffs, not attacks. Each raises a 3-turn cloud
+  // on the *caster's own* side (BattleScene's resolveHit/resolveSelfBuff)
+  // instead of dealing damage, halving incoming hits whose quasiparticle
+  // carries the quantum number that cloud screens (materials.ts's
+  // SCREENING_CHANNELS). Left out of every type's MOVE_COMPATIBILITY list
+  // entirely (see materials.ts) rather than gated by it -- a self-buff
+  // never hosts/mismatches, so it doesn't need a compatibility entry to be
+  // usable from any form.
   | 'screening';
 
 export type MaterialType =

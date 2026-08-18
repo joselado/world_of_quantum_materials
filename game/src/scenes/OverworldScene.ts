@@ -284,10 +284,13 @@ export function applySuperpositionUnlocks(registry: Phaser.Data.DataManager) {
   // Feynman: every move levels independently (`moveLevels`, keyed per move
   // id), with no single-active slot to default the way Kondo/Franklin/
   // Anderson/Dresselhaus-or-Majorana have -- "everything unlocked" for him
-  // means every move already at max level rather than one random pick
+  // means every move's ceiling already at max rather than one random pick
   // among mutually-exclusive options. Unconditional, same as
-  // unlockedMoves/discoveredMaterials/passivesUnlocked above -- there's no
-  // deliberate lower-level pick here worth preserving.
+  // unlockedMoves/discoveredMaterials/passivesUnlocked above: this raises
+  // the ceiling only, and which tier a move is actually *carried* at is a
+  // separate deliberate pick living in `carriedMoveLevels`, which this
+  // never touches, so re-applying the grant on every world entry cannot
+  // stamp over a player's own choice to swing a move at a lower tier.
   const maxedLevels: Partial<Record<string, number>> = {};
   Object.keys(MOVES).forEach((id) => {
     maxedLevels[id] = 3;

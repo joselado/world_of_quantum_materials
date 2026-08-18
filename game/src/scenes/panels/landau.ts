@@ -6,7 +6,7 @@ import { ANALYTIC_SHAPES } from '../../art/attackEffects';
 import { CANVAS_W } from '../../art/perspective';
 import { fontScale } from '../../ui/text';
 import { PANEL_BG } from '../../ui/theme';
-import { ANALYTIC_MOVE_IDS, shopCost, moveDisplayName, getTunedMoveClass, tunedClassOf, getMoveLevel, quasiparticleLabel, MOVES } from '../../data/materials';
+import { ANALYTIC_MOVE_IDS, shopCost, moveDisplayName, moveShapeName, getTunedMoveClass, tunedClassOf, getMoveLevel, quasiparticleLabel, MOVES } from '../../data/materials';
 import type { MoveClass } from '../../data/types';
 import { hostableClasses } from './tunableMoveShop';
 import {
@@ -27,11 +27,16 @@ import { persistFromRegistry } from '../../data/save';
 
 // Landau stands at world 4's middle tile (WORLD_GUARDIANS) and sells his
 // two quiz-gated Analytic moves (data/materials.ts's ANALYTIC_MOVE_IDS, a
-// lance move and an eruption move, each displayed as "<quasiparticle> Lance"/
-// "<quasiparticle> Eruption" via moveDisplayName, which also folds in
-// Feynman's own Double/Triple/Infinite level prefix) -- kept out of
-// Noether's own shop (SHOP_MOVE_IDS excludes them, see materials.ts's
-// comment) so Landau is their one source.
+// lance move and an eruption move, displayed everywhere the player actually
+// swings one as "<quasiparticle> Lance"/"<quasiparticle> Eruption" via
+// moveDisplayName, which also folds in Feynman's own Double/Triple/Infinite
+// level prefix) -- kept out of Noether's own shop (SHOP_MOVE_IDS excludes
+// them, see materials.ts's comment) so Landau is their one source.
+//
+// The two headings in this panel's own left column are the exception: they
+// read the bare shape word, "Lance" and "Eruption" (moveShapeName), because
+// the quasiparticle is exactly what the picker nested under the open heading
+// is for -- see moveShapeName's own comment.
 //
 // Ordinary list+detail layout (LIST_DETAIL_PANEL_W, scenes/panels/
 // listDetail.ts), the same shape every other guardian who sells something is
@@ -125,7 +130,7 @@ function renderAnalyticColumns(scene: GuardianPanelHost, container: Phaser.GameO
   let leftY = columnsTop;
   ids.forEach((id, i) => {
     const open = id === openId;
-    leftY = renderTreeHeading(scene, container, columns, leftY + (i === 0 ? 0 : 4), moveDisplayName(scene.game.registry, id), open, () => {
+    leftY = renderTreeHeading(scene, container, columns, leftY + (i === 0 ? 0 : 4), moveShapeName(id), open, () => {
       scene.landauMovePreview = id;
       scene.landauClassPreview = null;
       destroyPanel(scene);

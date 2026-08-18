@@ -196,11 +196,17 @@ export interface SaveData {
   andersonUnlockedHosts: string[];
   majoranaUnlockedResults: string[];
   // Feynman's move-leveling (§5, World 7, data/materials.ts's
-  // MOVE_LEVEL_MULTIPLIERS/getMoveLevel/effectiveMovePower) -- moveId ->
-  // level (0-3), missing entry means never attempted (level 0). Permanent
-  // once a level is reached, the same "first time costs, permanent
-  // afterward" shape every other guardian's one-time unlock already uses.
+  // MOVE_LEVEL_MULTIPLIERS/getUnlockedMoveLevel/effectiveMovePower) --
+  // moveId -> the highest tier (0-3) that move has ever landed, missing
+  // entry means never attempted (level 0). Permanent once a tier is
+  // reached, the same "first time costs, permanent afterward" shape every
+  // other guardian's one-time unlock already uses.
   moveLevels: Partial<Record<string, 0 | 1 | 2 | 3>>;
+  // Which of those unlocked tiers each move is currently *carried* at
+  // (data/materials.ts's getMoveLevel), picked at Feynman's panel. A move
+  // with no entry here is carried at its `moveLevels` ceiling, so this stays
+  // empty for a player who never uses the picker.
+  carriedMoveLevels: Partial<Record<string, 0 | 1 | 2 | 3>>;
 }
 
 export function defaultSave(): SaveData {
@@ -241,6 +247,7 @@ export function defaultSave(): SaveData {
     andersonUnlockedHosts: [],
     majoranaUnlockedResults: [],
     moveLevels: {},
+    carriedMoveLevels: {},
   };
 }
 
@@ -298,7 +305,35 @@ export function hasSave(superposition: boolean): boolean {
 type SaveMigration = (raw: Record<string, unknown>) => Record<string, unknown>;
 
 const SCHEMA_BASELINE = 1;
-const MIGRATIONS: SaveMigration[] = [];
+
+// Kondo's three buffs became screenings of one quantum number each (§5),
+// which renamed all three move ids. Rewriting them here rather than letting
+// the stale-id filter below drop them keeps whichever ones a player had
+// already bought, whichever one they had set active, and the Feynman levels
+// they had put into them -- real progress, not a cheap-to-redo selection.
+const RENAMED_MOVES: Record<string, string> = {
+  screeningCloud: 'spinScreening',
+  scatteringDrag: 'chargeScreening',
+  kondoBreakdown: 'symmetryCloud',
+};
+
+const MIGRATIONS: SaveMigration[] = [
+  (raw) => {
+    const rename = (id: string) => RENAMED_MOVES[id] ?? id;
+    const unlocked = raw.unlockedMoves;
+    if (Array.isArray(unlocked)) {
+      raw.unlockedMoves = unlocked.map((id) => (typeof id === 'string' ? rename(id) : id));
+    }
+    if (typeof raw.kondoActiveMove === 'string') raw.kondoActiveMove = rename(raw.kondoActiveMove);
+    const levels = raw.moveLevels;
+    if (levels && typeof levels === 'object') {
+      raw.moveLevels = Object.fromEntries(
+        Object.entries(levels as Record<string, unknown>).map(([id, level]) => [rename(id), level])
+      );
+    }
+    return raw;
+  },
+];
 const CURRENT_SCHEMA_VERSION = SCHEMA_BASELINE + MIGRATIONS.length;
 
 export function loadSave(superposition: boolean): SaveData {
@@ -404,6 +439,7 @@ export function persistFromRegistry(registry: RegistryLike) {
     andersonUnlockedHosts: (registry.get('andersonUnlockedHosts') as string[]) ?? [],
     majoranaUnlockedResults: (registry.get('majoranaUnlockedResults') as string[]) ?? [],
     moveLevels: (registry.get('moveLevels') as Partial<Record<string, 0 | 1 | 2 | 3>>) ?? {},
+    carriedMoveLevels: (registry.get('carriedMoveLevels') as Partial<Record<string, 0 | 1 | 2 | 3>>) ?? {},
   };
   try {
     // schemaVersion is a wire-format-only stamp read by loadSave() to know

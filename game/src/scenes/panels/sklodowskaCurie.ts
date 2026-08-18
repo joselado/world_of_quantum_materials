@@ -11,6 +11,7 @@ import {
   ULTIMATE_CLASS_UNLOCK_COST,
   quasiparticleLabel,
   moveDisplayName,
+  moveShapeName,
   getTunedMoveClass,
   getMoveLevel,
 } from '../../data/materials';
@@ -119,7 +120,11 @@ export function showSklodowskaCuriePanel(scene: GuardianPanelHost) {
 }
 
 // The left column is two levels: each of her two Ultimate moves is a heading,
-// and the open one's own hostable quasiparticles are its entries. Picking a
+// and the open one's own hostable quasiparticles are its entries. A heading
+// reads the bare shape word, "Meteor" and "Nova" (moveShapeName), rather
+// than the move's full resolved name: the quasiparticle in front of it is
+// exactly what the entries underneath are for, and the detail pane beside
+// them still shows the full name (see moveShapeName's own comment). Picking a
 // quasiparticle row only *previews* it; the pane's own button is what unlocks
 // or retunes, the same preview-then-confirm flow every other list+detail panel
 // uses (STYLE.md's "List+detail panels"). That matters more here than
@@ -140,7 +145,7 @@ function renderUltimateColumns(scene: GuardianPanelHost, container: Phaser.GameO
   let leftY = columnsTop;
   ids.forEach((id, i) => {
     const open = id === openId;
-    leftY = renderTreeHeading(scene, container, columns, leftY + (i === 0 ? 0 : 4), moveDisplayName(scene.game.registry, id), open, () => {
+    leftY = renderTreeHeading(scene, container, columns, leftY + (i === 0 ? 0 : 4), moveShapeName(id), open, () => {
       scene.curieMovePreview = id;
       scene.curieClassPreview = null;
       destroyPanel(scene);

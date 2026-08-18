@@ -233,6 +233,7 @@ export class TitleScene extends Phaser.Scene {
     registry.set('andersonUnlockedHosts', save.andersonUnlockedHosts);
     registry.set('majoranaUnlockedResults', save.majoranaUnlockedResults);
     registry.set('moveLevels', save.moveLevels);
+    registry.set('carriedMoveLevels', save.carriedMoveLevels);
     music.setStyle(save.musicStyle);
   }
 

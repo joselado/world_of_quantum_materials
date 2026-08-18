@@ -623,9 +623,9 @@ what the player's *current* crystal form can actually carry — see the transmut
 mechanic in §5).
 
 **One deliberate exception: Kondo's three moves aren't attacks at all, so
-`MOVE_COMPATIBILITY` doesn't apply to them.** Screening Pulse, Scattering Drag,
-and Coherence Cascade (`screening`, §5) are self-buffs — casting one applies a
-3-turn buff to the caster's own side instead of hitting the opponent, so there's
+`MOVE_COMPATIBILITY` doesn't apply to them.** Spin Screening, Charge Screening,
+and Symmetry Cloud (`screening`, §5) are self-buffs — casting one raises a
+3-turn cloud on the caster's own side instead of hitting the opponent, so there's
 no defender to mismatch against and no compatibility list to check. Left off
 every main type's `MOVE_COMPATIBILITY` list entirely rather than added to all of
 them, they're purchasable and usable from any form regardless. Landau's two Analytic moves (`skyfallBeam`/
@@ -677,8 +677,8 @@ rule above — the one universal move is also the one that never gets the mismat
 design. Landau's two Analytic moves (`skyfallBeam`/`groundEruption`) sit at power 10 on
 purpose — level with the `spinon`/`vison`/`chiral`/`helical`/`higgs`/`heavyFermion` tier and
 below only Anyon Braid/Majorana Split among the ordinary attack moves — since their real payoff is the answer-gated
-2x/0.5x multiplier above, not raw power. Kondo's three moves (Screening Pulse, Scattering
-Drag, Coherence Cascade, §5) carry the same low `power` value, on par with Electron Pulse,
+2x/0.5x multiplier above, not raw power. Kondo's three moves (Spin Screening, Charge
+Screening, Symmetry Cloud, §5) carry the same low `power` value, on par with Electron Pulse,
 but it's never read as damage at all — they're self-buffs, not attacks, so `power` only
 feeds their qumatessence price (§5's shop-cost formula), the same role it plays for every
 other move. Skłodowska-Curie's two Ultimate moves (power 100, ten
@@ -702,33 +702,48 @@ ratio, since their own answer-gating and (for Ultimates) multi-phase animation t
 already tuned around exactly one hit per side per round.
 
 **Self-buffs (Kondo's three moves, §5).** Kondo teaches three moves that are self-buffs, not
-attacks — casting one applies a 3-turn buff to the *caster's own* side instead of hitting the
-opponent, dealing no damage and never triggering the quasiparticle-mismatch rule below. Never
-randomly rolled: the player picks the effect by picking the move.
-Each buff's mitigation strength scales with Feynman's own move-leveling (§5, World 7) applied
-to that specific Kondo move, the caster's own level only (`BattleScene.kondoMitigationFraction`,
-the same isPlayer-gated shape `effectiveMovePower` uses for an ordinary attack's power) — an
-unleveled cast uses the base figure below, a leveled one multiplies the base by
-`MOVE_LEVEL_MULTIPLIERS` (1.5x/2x/3x) up to a hard cap so even an Infinite-tier buff leaves real
-risk on the table rather than reaching full immunity/certainty:
-- **Shielded** (Screening Pulse) — incoming damage to the buffed side is multiplied down by
-  `1 - reduction` for 3 turns, `reduction` starting at 20% (base) and capped at 60% (Infinite
-  tier: `min(0.2 × 3, 0.6) = 0.6` exactly, the cap never actually binds).
-- **Evasive** (Scattering Drag) — for 3 turns, each incoming hit against the buffed side has a
-  chance to deal zero damage instead (20% base, capped at 60%, same formula as Shielded's
-  reduction), logged as a distinct "evaded!" line rather than the usual damage/mismatch/crit
-  clauses.
-- **Regenerating** (Coherence Cascade) — the buffed side heals a fraction of its own max HP on
-  each of 3 ticks (once per round, spread across the buff's life rather than landing in one hit),
-  10% base and capped at 30% (Infinite tier: `min(0.1 × 3, 0.3) = 0.3` exactly).
+attacks — casting one raises a 3-turn screening cloud on the *caster's own* side instead of
+hitting the opponent, dealing no damage and never triggering the quasiparticle-mismatch rule
+below. Never randomly rolled: the player picks which cloud by picking the move.
 
-None of the three buff names doubles as a `MoveClass` — `majorana` and
-`polaron` are separately Majorana Split's and Polaron Drag's classes, unrelated
-quasiparticle physics, so a buff name matching one of those would read as if this
-generic technique were tied to that specific move instead.
+**A cloud screens one quantum number, and only damps a quasiparticle that carries it.** An
+incoming hit is halved when the attacking move's *effective* class (`getTunedMoveClass`, so a
+tuned Analytic/Ultimate move screens as whatever the player assigned it) carries the screened
+quantum number, and lands in full otherwise — `data/materials.ts`'s `SCREENING_CHANNELS` is
+the per-class table, and `BattleScene.screeningMultiplier` the single term it feeds:
+- **Spin Screening** — halves `electron`, `magnon`, `spinon`, `triplon`, `electromagnon`,
+  `chiral`, `helical`, `heavyFermion`. A charged anyon is deliberately absent: in a
+  spin-polarized fractional state it carries fractional charge and fractional statistics, no
+  spin.
+- **Charge Screening** — halves `electron`, `chargedAnyon`, `chiral`, `helical`,
+  `heavyFermion`, plus `plasmon`, `ferron` and `electromagnon`. The reading is "anything a
+  Coulomb screening cloud couples to," not "nonzero net charge," which is what brings in the
+  charge sector's own collective mode and the two dipole-active modes (free carriers screen
+  polar order, which is why a ferroelectric metal is a rarity).
+- **Symmetry Cloud** — halves the modes of a spontaneously broken symmetry's own order
+  parameter, amplitude branch included: `phonon`, `magnon`, `ferron`, `electromagnon`,
+  `higgs`. The Higgs is in because it is the order parameter's amplitude mode, the Goldstone's
+  partner rather than a Goldstone itself. A plasmon is out because a normal metal breaks no
+  symmetry.
 
-Only one buff can be active per side at a time — a fresh cast replaces whatever was already
-there rather than stacking, matching the deliberately simple "one type-interaction rule, not a
+`majorana` and `vison` are screened by nothing at all: neutral, spinless, and no order
+parameter of their own. `phonon` being a Symmetry Cloud target means the universal move, and
+every untuned Analytic/Ultimate move, is screened by that one cloud.
+
+The screened fraction starts at half and deepens with Feynman's own move-leveling (§5, World
+7) applied to that specific Kondo move, the caster's own level only
+(`BattleScene.screenReduction`, the same isPlayer-gated shape `effectiveMovePower` uses for an
+ordinary attack's power): `SCREEN_REDUCTION_BY_LEVEL` in `data/balance.ts` is a flat per-level
+table, 50% / 62% / 68% / 75%, rather than a base scaled by `MOVE_LEVEL_MULTIPLIERS` — a half
+scaled by the 3x top tier passes 1 outright, so a single cap would swallow the middle two
+tiers. The top tier stays short of full immunity by design.
+
+None of the three buff names doubles as a `MoveClass`, so a buff name never reads as if this
+generic technique were tied to one specific move's quasiparticle.
+
+Only one cloud can be active per side at a time — a fresh cast replaces whatever was already
+there rather than stacking, so screening one quantum number always means giving up the other
+two, matching the deliberately simple "one type-interaction rule, not a
 chart" philosophy above. Implemented generically per-side in `BattleScene.resolveSelfBuff`/
 `resolveHit` (the same multiplier-term shape every other `resolveHit` factor already uses)
 rather than hardcoded to "player only," even though only the player can currently learn the
@@ -737,8 +752,8 @@ per side regardless of how many actions that side took this round (a Momentum ad
 longer repeats a self-buff cast — see §4's velocity-ratio paragraph above — so this only
 matters for a side continuing to hold an already-active buff while using ordinary moves) and
 expires with its own battle-log line appended the same way a mismatch/crit clause stacks onto
-a hit's log line. Buffs are battle-only and reset at the start of every fight — never
-persisted to the save. A small pill under each side's HP bar in battle shows which buff (if
+a hit's log line. Clouds are battle-only and reset at the start of every fight — never
+persisted to the save. A small pill under each side's HP bar in battle shows which cloud (if
 any) is active and how many turns remain.
 
 **Quasiparticle mismatch.** The sole type-interaction rule in battle (§3): a defender
@@ -747,9 +762,9 @@ whose own type can't physically host the attacking move's quasiparticle class at
 hit at double force (`BattleScene.resolveHit`) — a plain band insulator has no magnetic
 order to damp a magnon pulse with, so it lands unmitigated. Applies symmetrically
 to both sides, same as every other `resolveHit` term. Surfaced in the battle log as "No
-natural defense against this!". Evasive's dodge roll (above) is checked the same way, symmetrically per side, alongside this and every other `resolveHit` multiplier term — a hit that
-evades skips the mismatch/crit/damage clauses entirely rather than landing at a reduced
-amount, since a dodged hit never connected at all.
+natural defense against this!". Kondo's screening term (above) sits alongside it as one more
+symmetric `resolveHit` multiplier, so a mismatched hit against a screened defender resolves
+both: doubled for the mismatch, then halved for the cloud.
 
 **Move menu is grouped by kind and paged one kind at a time, not one flat list.**
 `BattleScene.drawMoveMenu` splits the currently usable moves (`getBattleMoves`) into up to
@@ -1151,13 +1166,22 @@ state can mark her met before the player has actually reached her.
   hyperbole, not a literal unbounded-power claim; the real cap is the flat 3x.
   For an ordinary attack move that multiplier scales its `power` (`effectiveMovePower`,
   below); for Kondo's three self-buffs, whose own `power` is never read as damage in the
-  first place (§5 Kondo bullet, §3/§4), it instead scales that buff's own mitigation
-  strength (`BattleScene.kondoMitigationFraction`, capped well under 100% -- see §4's
-  Self-buffs paragraph for the exact base/cap figures), so leveling a Kondo move is a
+  first place (§5 Kondo bullet, §3/§4), it instead deepens that cloud's own screened
+  fraction (`BattleScene.screenReduction`, capped well under 100% -- see §4's
+  Self-buffs paragraph for the exact per-level figures), so leveling a Kondo move is a
   real mechanical upgrade too, not a name-only one.
   Registry/save `moveLevels` (moveId → 0-3, `data/save.ts`) is permanent once a tier is
   reached, the same "first time costs, permanent afterward" shape every other
-  guardian's one-time unlock already uses. Cost to attempt a given tier is
+  guardian's one-time unlock already uses. **That is a ceiling, not a setting: a move is
+  carried at whichever unlocked tier the player picks**, a second registry/save map
+  (`carriedMoveLevels`, written from the tier row in Feynman's own pane and free to change
+  as often as they like, since the tier was paid for when it was landed). `getMoveLevel`
+  reads the carried tier and is what every other part of the game means by a move's level
+  -- its power, its name prefix, its cascade, a Kondo cloud's screening strength --
+  while `getUnlockedMoveLevel` reads the ceiling and is used only to decide what the next
+  attempt targets. A move with no carried entry is carried at its ceiling, so a player who
+  never touches the row sees the always-deepest behaviour, and a freshly landed tier is
+  carried automatically. Cost to attempt a given tier is
   `move.power * 5 * level` (`feynmanLevelCost`) -- the same "priced off the move's own
   raw power" shape Noether's `shopCost` uses, scaled again by how deep a tier is being
   attempted. Unlike every other guardian's gate, the payment and the gate are
@@ -1175,7 +1199,7 @@ state can mark her met before the player has actually reached her.
   Landau's/Skłodowska-Curie's own quiz gates fire -- Feynman's leveling attempt is a
   standalone decision made at his panel, not something triggered by using a move in a
   fight. A leveled move's effective power (`effectiveMovePower`) -- or, for one of
-  Kondo's three, its effective mitigation strength (`kondoMitigationFraction`) -- only
+  Kondo's three, its screened fraction (`screenReduction`) -- only
   applies to the *player's own* copy of that move id -- an opponent's own use of the
   same move id (an ordinary wild's Electron Pulse, say) is never affected, since move
   levels are the player's own save state, not a property of the move itself; the level prefix folds
@@ -1187,32 +1211,30 @@ state can mark her met before the player has actually reached her.
   quasiparticle for `tunedMoveDisplayName` to read. Feynman has no single "active" slot
   the way Kondo/Franklin/Anderson/Dresselhaus-Majorana do (§7) -- every move he levels
   stands independently -- so Superposition Mode's blanket unlock grant treats
-  "everything already unlocked" for him as every move's `moveLevels` entry set straight
-  to 3 (max), unconditionally, every time the grant reapplies; there's no deliberate
-  lower-level pick worth preserving the way a seed-once check protects Kondo's/Franklin's/
-  Anderson's/Dresselhaus-or-Majorana's own picks. A Superposition Mode playthrough never
+  "everything already unlocked" for him as every move's `moveLevels` *ceiling* set
+  straight to 3 (max), unconditionally, every time the grant reapplies. It never writes
+  `carriedMoveLevels`, so the player's own choice of which tier to carry survives the
+  grant reapplying, and no seed-once check is needed to protect it the way one protects
+  Kondo's/Franklin's/Anderson's/Dresselhaus-or-Majorana's own picks. A Superposition Mode playthrough never
   has to actually answer Feynman's own questions to reach max level -- his panel still
   works exactly as in Story Mode if visited, each row already reading "max level."
 - **Kondo** → world 8 middle → sells three self-buff moves (`scenes/panels/kondo.ts`'s `showKondoPanel`,
-  `data/materials.ts`'s `KONDO_MOVE_IDS`) -- Screening Pulse, Scattering Drag, Coherence
-  Cascade -- each of which deterministically applies one of §4's three buffs (Shielded,
-  Evasive, Regenerating respectively) to the *caster's own* side instead of attacking the
-  opponent, dealing no damage and never checking `MOVE_COMPATIBILITY` at all. Named
-  generically rather than after the heavy-fermion/Kondo-lattice physics that inspired them,
-  since they deal in a generic scattering/decoherence process any crystal's own disorder or
-  environment can carry, not a quasiparticle tied to one type's specific band structure:
-  Screening Pulse re-forms the caster's own screening cloud, damping incoming damage;
-  Scattering Drag randomizes the caster's own scattering trajectory, giving incoming hits a
-  chance to miss entirely; Coherence Cascade re-forms the caster's own Kondo singlet turn by
-  turn, restoring coherence and healing it over time -- named for that coherence-building
-  process specifically so as not to invoke a literal Kondo breakdown, the opposite physics
-  (the heavy-fermion composite's own hybridization collapsing at a quantum critical point).
-  Each of the three, like every other move in the game, can be leveled up at Feynman's panel
-  (§5/§4 above) -- since Kondo's `power` is never read as damage, leveling one instead scales
-  its buff's own mitigation strength (`BattleScene.kondoMitigationFraction`), not a power
-  number: Screening Pulse's/Scattering Drag's damage-reduction/dodge-chance base climbs from
-  20% (unleveled) to 60% (Infinite tier), Coherence Cascade's per-tick heal from 10% to 30%,
-  both capped so even a maxed-out buff leaves real risk on the table.
+  `data/materials.ts`'s `KONDO_MOVE_IDS`) -- Spin Screening, Charge Screening, Symmetry
+  Cloud -- each of which deterministically raises one 3-turn cloud on the *caster's own*
+  side instead of attacking the opponent, dealing no damage and never checking
+  `MOVE_COMPATIBILITY` at all. Each cloud screens exactly one quantum number and halves only
+  the incoming attacks whose quasiparticle carries it (§4's Self-buffs paragraph for the
+  three class lists, `SCREENING_CHANNELS` for the table itself), which is what makes the
+  choice between them a read of what the next opponent throws rather than a ranking. The
+  generalization is the guardian's own physics: the Kondo effect is a conduction-electron
+  cloud screening a local moment until the moment is gone, Charge Screening is that same
+  cloud doing Thomas-Fermi screening of a charge disturbance instead, and Symmetry Cloud
+  restores the continuous symmetry an ordered state gave up, so it damps that order
+  parameter's own modes. Each of the three, like every other move in the game, can be
+  leveled up at Feynman's panel (§5/§4 above) -- since Kondo's `power` is never read as
+  damage, leveling one instead deepens its screened fraction
+  (`BattleScene.screenReduction`), not a power number: 50% unleveled up to 75% at Infinite
+  tier, capped so even a maxed-out cloud leaves real damage coming through.
   The player can buy all three
   independently, but only one is ever usable in battle at a time -- registry/save
   `kondoActiveMove`, switched only by returning to Kondo's own panel (a bought-but-inactive
@@ -1642,9 +1664,9 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   Superposition save starts as a random ordinary crystal or an already-fused hybrid
   rather than always the same default starting form. Feynman has no such single-active
   slot (every move he levels stands independently), so his own version of the grant is
-  unconditional rather than seed-once: every move id's `moveLevels` entry is set
-  straight to 3 (max) on every application, since there's no deliberate lower-level pick
-  worth preserving. With the player's own stats permanently maxed, opponents in this
+  unconditional rather than seed-once: every move id's `moveLevels` ceiling is set
+  straight to 3 (max) on every application, leaving `carriedMoveLevels` -- the player's
+  own pick of which unlocked tier to actually swing at -- untouched. With the player's own stats permanently maxed, opponents in this
   mode also stop scaling with the world -- `BattleScene`'s own `isSuperpositionMode`
   branch draws from `superpositionEnemyStats` (§3) instead of `enemyStatsForWorld`, one
   flat baseline shared by every world, still scaled by whichever difficulty tier is

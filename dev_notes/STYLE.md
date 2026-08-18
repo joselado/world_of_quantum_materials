@@ -1496,6 +1496,12 @@ station motifs are deliberately not tunnels with a visible far end.
   `LIST_DETAIL_PANEL_W`): his two quiz-gated Analytic moves (`data/materials.ts`'s
   `ANALYTIC_MOVE_IDS`, a hardcoded pair, `skyfallBeam`/`groundEruption`) are two rows in the left
   column, and whichever is selected (`scene.landauMovePreview`) fills one full-width detail pane.
+  Those two headings name the move by its bare shape word alone, "Lance" and "Eruption"
+  (`data/materials.ts`'s `moveShapeName`), with no quasiparticle in front: the quasiparticle is
+  what the entries nested under the open heading are for, so putting one in the heading too
+  would state it twice and read as fixed while the player is mid-change. The detail pane beside
+  them still carries the full resolved name (`moveDisplayName`, quasiparticle and Feynman tier
+  prefix included), and so does everywhere the move is actually swung.
   It also means every guardian who sells a move is read the same way. **The quasiparticle choice
   is the second level of that column**, not a strip of pills in the pane: the open move's
   hostable classes (`tunableMoveShop.ts`'s `hostableClasses`) are its entries, indented under it,
@@ -1663,19 +1669,29 @@ station motifs are deliberately not tunnels with a visible far end.
   move currently unusable in the player's present form is still worth leveling for later),
   each row showing the move's tuned name without its level prefix -- the prefix is the same
   word on every row once a save is well leveled, and it alone fills the column at the largest
-  text-size preset. Selecting a row previews that move in the right pane at its real current
-  level, over a status line reading `Level to "<next tier>": <N> questions in a row, <cost>
-  qumatessence paid whether it lands or not` and a confirm button. A move already at tier 3
-  still previews -- its cascade at full level is the reward for having leveled it -- with a
-  status line saying so and no confirm button; an unaffordable one dims the confirm, not the
-  row. Owning no moves at all leaves the panel a single line and a Farewell button.
+  text-size preset. Selecting a row previews that move in the right pane at the tier it is
+  currently *carried* at, over a status line reading `Level to "<next tier>": <N> questions in
+  a row, <cost> qumatessence paid whether it lands or not` and a confirm button. Between the
+  preview and that status line sits the tier picker: a "Swing it at:" caption over one small
+  button per tier the move has already unlocked (Base / Double / Triple / Infinite), laid
+  across the pane's full width as a plain fixed row rather than a paged list, since there are
+  never more than four. The carried tier is the dimmed no-op, the same "already the active
+  choice" treatment every confirm button uses. The whole block renders only once a move is
+  past tier 0 -- with nothing unlocked there is no choice to offer -- so the pane keeps its
+  shortest form until the player's first tier lands, and its tallest case (largest text-size
+  preset, two tiers unlocked, confirm button still present) still clears the bottom of the
+  canvas. A move already at tier 3 still previews -- its cascade at full level is the reward
+  for having leveled it -- with a status line saying so and no confirm button, the picker
+  above it still live; an unaffordable one dims the confirm, not the row. Owning no moves at
+  all leaves the panel a single line and a Farewell button.
 - Confirming deducts `feynmanLevelCost` immediately (the qumatessence is
   spent the instant the attempt starts, not on a successful outcome) and opens the
   question streak in its own sub-panel -- same amber stroke as the main panel, one
   question at a time (`data/quiz.ts`'s `getAnalyticQuestions`), two shuffled answer
   buttons per question, the same shape `OverworldScene.showEncounter`'s pre-battle quiz
   and BattleScene's own Analytic/Ultimate question panels use. Answering the whole
-  streak correctly writes the new level and returns to the main panel; missing any
+  streak correctly writes the new tier and carries it (a tier just paid and answered for is
+  the one the player walks away swinging) before returning to the main panel; missing any
   single question also returns to the main panel, level unchanged -- the qumatessence
   already spent is never refunded either way, so this sub-panel offers no "cancel": once
   started, the payment is already made.
@@ -1692,8 +1708,8 @@ station motifs are deliberately not tunnels with a visible far end.
   robe under them. Silhouette: the roster's only round, enclosing outline.
 - List+detail layout (`scenes/panels/listDetail.ts`, "List+detail panels" above), the same shape
   Noether's Moves tab and Feynman's own move-leveling list use: the left column names all
-  three of `data/materials.ts`'s `KONDO_MOVE_IDS` (Screening Pulse, Scattering Drag, Coherence
-  Cascade) via `moveDisplayName`. Clicking a row only *previews* it (`scene.kondoMovePreview`),
+  three of `data/materials.ts`'s `KONDO_MOVE_IDS` (Spin Screening, Charge Screening, Symmetry
+  Cloud) via `moveDisplayName`. Clicking a row only *previews* it (`scene.kondoMovePreview`),
   free regardless of how many moves are looked at. A Kondo move is a self-buff rather than a
   travelling attack -- `BattleScene.resolveSelfBuff` plays its real effect centered on the
   caster's own position (`from === to === pos`), not flying from attacker to target the way an
@@ -1801,8 +1817,10 @@ station motifs are deliberately not tunnels with a visible far end.
 - **List+detail layout** (`scenes/panels/sklodowskaCurie.ts`, the same shape Landau's
   own panel above uses): her two Ultimate moves
   (`data/materials.ts`'s `ULTIMATE_MOVE_IDS` -- `ultimateMeteor`/`ultimateNova`) are two rows in
-  the left column, and whichever is selected (`scene.curieMovePreview`) fills one full-width
-  detail pane. Her own intro quote is the longest in the game (it names all ten
+  the left column, headed by their bare shape word alone, "Meteor" and "Nova"
+  (`moveShapeName`, same reasoning as Landau's own two headings above), and whichever is
+  selected (`scene.curieMovePreview`) fills one full-width detail pane carrying the full
+  resolved name. Her own intro quote is the longest in the game (it names all ten
   guardians), capped at the same `1.15`x text-size scale Landau's own intro is, since the
   animation-stage pane below it is the tallest any guardian has; see this
   panel's own worst-case-content note below for how tight that budget is. Her quasiparticle
@@ -2325,11 +2343,12 @@ world are shaped, since world N's start is world N-1's exit.
   small grey raincloud (`addFailCloud`) just above the crystal, bobbing gently. Everything
   is added directly to the player crystal's container so it moves with the existing
   idle-bob tween for free.
-- Kondo's Shielded/Evasive/Regenerating self-buffs (DESIGN.md §4) get a much smaller
+- Kondo's three screening self-buffs (DESIGN.md §4) get a much smaller
   treatment than the quiz aura/raincloud above -- a plain text pill (`playerStatusLabel`/
   `opponentStatusLabel`) sitting as the next row down that side's own floating nameplate
   (see "Battle HUD frame and nameplates" above) rather than anything layered
-  onto the crystal itself, reading `"<Buff> (<turns left>)"` in Kondo's own rust-orange
+  onto the crystal itself, reading `"<Cloud> (<turns left>)"` (e.g. `"Spin Screening (3)"`)
+  in Kondo's own rust-orange
   (`#ff8f6a`, matching his guardian label/panel stroke and the `'screening'` attack-effect
   color below) over the same translucent-black tag background every HP-bar name label
   already uses. Empty (no active buff) by default on both sides -- the pill only ever
@@ -2760,7 +2779,7 @@ world are shaped, since world N's start is world N-1's exit.
   flat shapes -- which does mean a bright class color over a bright sky washes toward white;
   the fix used here is to keep white cores small and let the colored falloff carry the hue,
   since a second, normally-blended Graphics per effect would cost an object per shape.
-- Kondo's three self-buff moves (Screening Pulse, Scattering Drag, Coherence Cascade) share
+- Kondo's three self-buff moves (Spin Screening, Charge Screening, Symmetry Cloud) share
   the `'screening'` class's one look, unlike Landau's/Skłodowska-Curie's moves below -- an
   expanding ring (the same silhouette
   Magnon Pulse/Polaron Drag use, reading as an effect enveloping the caster) tinted Kondo's

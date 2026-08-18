@@ -94,9 +94,12 @@ and per-class pricing work.
 Kondo's three moves sit outside the roster above entirely: they're
 self-buffs, not attacks. They deal no damage and never trigger the
 quasiparticle-mismatch rule, so there's no compatibility list to check.
-Casting one buffs you for 3 turns instead of hitting the opponent: reduced
-incoming damage, a chance to dodge outright, or healing over time. Only
-one can be active at a time. See [Guardians](guardians.md#kondos-clouds) for
-details.
+Casting one wraps you in a screening cloud for 3 turns instead of hitting the
+opponent, and what a cloud screens is a quantum number: spin, charge, or the
+order parameter of a broken symmetry. An incoming attack whose quasiparticle
+carries that quantum number lands for half damage, and every other attack
+lands in full. Only one can be active at a time. See
+[Guardians](guardians.md#kondos-clouds) for the list of which quasiparticles
+each cloud screens.
 
 See [Crystals](crystals.md) for which crystal types appear in which world.

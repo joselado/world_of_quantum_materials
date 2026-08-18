@@ -258,9 +258,13 @@
 //   reduction) active rather than switching per fight -- the simplest
 //   defensive baseline, and a deliberate undercount of Ph.D.'s real ceiling
 //   (a human could switch to Satellite Reflection or Amorphous Halo when
-//   more valuable). Kondo's Screening Pulse (also flat incoming-damage
-//   reduction) is treated the same way, held active for the whole battle
-//   rather than re-cast/ticked down turn by turn.
+//   more valuable). Kondo is treated the same way: every build that buys
+//   from him holds Spin Screening, active for the whole battle rather than
+//   re-cast/ticked down turn by turn. That cloud halves only the incoming
+//   attacks whose quasiparticle carries spin (SCREENING_CHANNELS), so an
+//   enemy moveset with no spin-carrying move gets no reduction at all here
+//   -- the same undercount as above, since a human would hold whichever of
+//   the three actually matches what they are about to fight.
 // - A printed WIN/LOSE verdict is only trusted at face value when it's
 //   robust: each fight's margin is recomputed twice more, once with the
 //   player's best hit at -15%/the enemy's average hit at +15% (the model's
@@ -353,6 +357,7 @@ const MOVES = evalNode(findTopLevelConst(materialsSf, 'MOVES'), materialsSf);
 const ANALYTIC_MOVE_IDS = evalNode(findTopLevelConst(materialsSf, 'ANALYTIC_MOVE_IDS'), materialsSf);
 const ULTIMATE_MOVE_IDS = evalNode(findTopLevelConst(materialsSf, 'ULTIMATE_MOVE_IDS'), materialsSf);
 const MOVE_COMPATIBILITY = evalNode(findTopLevelConst(materialsSf, 'MOVE_COMPATIBILITY'), materialsSf);
+const SCREENING_CHANNELS = evalNode(findTopLevelConst(materialsSf, 'SCREENING_CHANNELS'), materialsSf);
 const PLAYER_MATERIAL = evalNode(findTopLevelConst(materialsSf, 'PLAYER_MATERIAL'), materialsSf);
 const RIVAL_9_TYPES = evalNode(findTopLevelConst(materialsSf, 'RIVAL_9_TYPES'), materialsSf);
 const RIVAL_9_MOVES = evalNode(findTopLevelConst(materialsSf, 'RIVAL_9_MOVES'), materialsSf);
@@ -538,7 +543,7 @@ const HIT_SAMPLES = 120; // Monte-Carlo samples per (move, defender) pair averag
 // each. `makeMonteCarloHitFn` below is `avgHitDamage` folded into this
 // shape; `frozenHitDamage` is the non-random one.
 function makeMonteCarloHitFn(rng) {
-  return (attackerStats, defenderStats, power, mismatch, mismatchMultiplier, attackMult, bonusMultiplier, shieldedMult, fractionalGuardMult) => {
+  return (attackerStats, defenderStats, power, mismatch, mismatchMultiplier, attackMult, bonusMultiplier, screenedMult, fractionalGuardMult) => {
     let total = 0;
     for (let i = 0; i < HIT_SAMPLES; i++) {
       const { damage } = resolveHitDamage({
@@ -549,7 +554,7 @@ function makeMonteCarloHitFn(rng) {
         mismatchMultiplier,
         attackMult,
         bonusMultiplier,
-        shieldedMult,
+        screenedMult,
         fractionalGuardMult,
         critRng: rng,
         varianceRng: rng,
@@ -567,7 +572,7 @@ function makeMonteCarloHitFn(rng) {
 // frozen so it can be called thousands of times (candidate forms x wins
 // counts) without ever advancing the seeded stream the reported figures
 // depend on for reproducibility.
-function frozenHitDamage(attackerStats, defenderStats, power, mismatch, mismatchMultiplier, attackMult, bonusMultiplier, shieldedMult, fractionalGuardMult) {
+function frozenHitDamage(attackerStats, defenderStats, power, mismatch, mismatchMultiplier, attackMult, bonusMultiplier, screenedMult, fractionalGuardMult) {
   return resolveHitDamage({
     attackerStats,
     defenderStats,
@@ -576,7 +581,7 @@ function frozenHitDamage(attackerStats, defenderStats, power, mismatch, mismatch
     mismatchMultiplier,
     attackMult,
     bonusMultiplier,
-    shieldedMult,
+    screenedMult,
     fractionalGuardMult,
     critRng: () => 1,
     varianceRng: () => 0.5,
@@ -715,8 +720,12 @@ function buyStatPoint(state) {
 
 // Defensive multipliers the *player* carries into a fight as the defender
 // (an opponent never has Kondo/Franklin -- see DESIGN.md §5/CODEMAP.md).
-function playerShieldedMult(state) {
-  return state.kondoActive ? 1 - 0.2 : 1; // Screening Pulse base reduction (SHIELD_BASE_REDUCTION), unleveled -- see header comment on why buffs aren't leveled in this model
+function playerScreenedMult(state, moveClass) {
+  // Unleveled base half (SCREEN_REDUCTION_BY_LEVEL[0]) -- see the header
+  // comment on why buffs aren't leveled in this model, and on why the
+  // modelled cloud is always the spin one.
+  const screened = state.kondoActive && SCREENING_CHANNELS[moveClass].includes('spin');
+  return screened ? 0.5 : 1;
 }
 function playerFractionalGuardMult(state) {
   return state.franklinActive === 'fractionalGuard' ? FRACTIONAL_GUARD_DAMAGE_MULT : 1;
@@ -796,7 +805,7 @@ function avgEnemyHit(hitFn, state, playerStats, enemyStats, enemyMoves) {
       playerMismatchMultiplierAsDefender(state),
       1,
       1,
-      playerShieldedMult(state),
+      playerScreenedMult(state, move.class),
       playerFractionalGuardMult(state)
     );
   }
@@ -1241,9 +1250,9 @@ const BUILDS = [
             continue;
           }
         }
-        if (world >= 8 && !state.kondoOwned && state.qumatessence >= shopCost(MOVES.screeningCloud)) {
-          state.qumatessence -= shopCost(MOVES.screeningCloud);
-          state.spentTotal += shopCost(MOVES.screeningCloud);
+        if (world >= 8 && !state.kondoOwned && state.qumatessence >= shopCost(MOVES.spinScreening)) {
+          state.qumatessence -= shopCost(MOVES.spinScreening);
+          state.spentTotal += shopCost(MOVES.spinScreening);
           state.kondoOwned = true;
           state.kondoActive = true;
           continue;
@@ -1295,7 +1304,7 @@ const BUILDS = [
           const landauMove = ANALYTIC_MOVE_IDS.find((id) => !state.ownedMoves.has(id));
           if (landauMove) wantCosts.push(shopCost(MOVES[landauMove]));
         }
-        if (world >= 8 && !state.kondoOwned) wantCosts.push(shopCost(MOVES.screeningCloud));
+        if (world >= 8 && !state.kondoOwned) wantCosts.push(shopCost(MOVES.spinScreening));
         if (world >= 9) {
           const nextPassive = Object.keys(PASSIVES).find((id) => !state.franklinOwned.has(id));
           if (nextPassive) wantCosts.push(PASSIVES[nextPassive].cost);

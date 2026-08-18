@@ -165,42 +165,42 @@ export const MOVES: Record<string, Move> = {
   // `moves` array -- only the player can currently learn them, and only
   // one of the three is ever active in battle at a time (registry/save
   // `kondoActiveMove`, switched only by talking to Kondo again --
-  // OverworldScene.showKondoPanel/getBattleMoves). Named generically rather
-  // than after the specific heavy-fermion/Kondo-lattice physics that
-  // inspired them, since a self-buff isn't gated by MOVE_COMPATIBILITY at
-  // all -- these are usable from any form, not just a Kondo-lattice or
-  // defect state. Screening Pulse re-forms the caster's own screening
-  // cloud, damping incoming damage (Shielded); Scattering Drag randomizes
-  // the caster's own scattering trajectory, giving incoming hits a chance
-  // to miss entirely (Evasive); Coherence Cascade re-forms the caster's own
-  // Kondo singlet turn by turn, restoring coherence and healing it over
-  // time (Regenerating) -- named for that coherence-building process, not
-  // "breakdown," since a literal Kondo breakdown is the opposite (the
-  // heavy-fermion composite's own hybridization collapsing at a quantum
-  // critical point). None of the three buff names doubles as a MoveClass --
-  // 'majorana' is separately Majorana Split's own class, unrelated
-  // quasiparticle physics, so a buff name matching it would read as if this
-  // generic technique were tied to that specific move instead.
-  screeningCloud: {
-    id: 'screeningCloud',
-    name: 'Screening Pulse',
+  // OverworldScene.showKondoPanel/getBattleMoves). A self-buff isn't gated
+  // by MOVE_COMPATIBILITY at all, so these are castable from any form, not
+  // just a Kondo-lattice or defect state.
+  //
+  // Each one screens one quantum number: a screening cloud only damps a
+  // disturbance it can actually couple to, so a buff halves an incoming
+  // hit exactly when that hit's quasiparticle carries the quantum number
+  // the cloud screens (SCREENING_CHANNELS below decides which, per
+  // quasiparticle class) and does nothing at all otherwise. Spin Screening
+  // is the Kondo effect proper, a conduction-electron cloud wrapping a
+  // local moment; Charge Screening is Thomas-Fermi screening, mobile
+  // charge damping any charge-density or dipole disturbance; Symmetry
+  // Cloud restores the continuous symmetry an ordered state broke, and so
+  // damps that order parameter's own modes. None of the three names
+  // doubles as a MoveClass, so a buff name never reads as if this generic
+  // technique were tied to one specific move's quasiparticle.
+  spinScreening: {
+    id: 'spinScreening',
+    name: 'Spin Screening',
     class: 'screening',
     power: 7,
-    description: 'Re-forms your own screening cloud: reduces damage you take for 3 turns.',
+    description: 'Wraps you in a cloud of screening spins: halves the damage of incoming attacks whose quasiparticle carries spin, for 3 turns.',
   },
-  scatteringDrag: {
-    id: 'scatteringDrag',
-    name: 'Scattering Drag',
+  chargeScreening: {
+    id: 'chargeScreening',
+    name: 'Charge Screening',
     class: 'screening',
     power: 7,
-    description: 'Randomizes your own scattering trajectory: a chance to evade an incoming hit entirely for 3 turns.',
+    description: 'Draws mobile charge around you: halves the damage of incoming attacks whose quasiparticle carries charge, for 3 turns.',
   },
-  kondoBreakdown: {
-    id: 'kondoBreakdown',
-    name: 'Coherence Cascade',
+  symmetryCloud: {
+    id: 'symmetryCloud',
+    name: 'Symmetry Cloud',
     class: 'screening',
     power: 7,
-    description: 'Re-forms your own Kondo singlet: restores coherence and heals you each turn for 3 turns.',
+    description: 'Restores the symmetry a broken-symmetry state gave up: halves the damage of incoming attacks carried by an order parameter\'s own mode, for 3 turns.',
   },
 };
 
@@ -355,6 +355,84 @@ export function quasiparticleLabel(moveClass: MoveClass): string {
 export const KONDO_MOVE_IDS = Object.values(MOVES)
   .filter((m) => m.class === 'screening')
   .map((m) => m.id);
+
+// The three quantum numbers one of Kondo's clouds can screen (§5) -- the
+// physics side of MOVES.spinScreening/chargeScreening/symmetryCloud.
+export type ScreeningChannel = 'spin' | 'charge' | 'symmetry';
+
+// Which of Kondo's buffs each buff move raises, and the inverse lookup.
+// The pair is derived from one literal so the two can never drift apart:
+// BattleScene needs both directions (move id -> channel when the buff is
+// cast, channel -> move id when reading the caster's Feynman level for the
+// buff that is currently up).
+export const SCREENING_MOVE_BY_CHANNEL: Record<ScreeningChannel, string> = {
+  spin: 'spinScreening',
+  charge: 'chargeScreening',
+  symmetry: 'symmetryCloud',
+};
+export const SCREENING_CHANNEL_BY_MOVE: Record<string, ScreeningChannel> = Object.fromEntries(
+  Object.entries(SCREENING_MOVE_BY_CHANNEL).map(([channel, id]) => [id, channel])
+) as Record<string, ScreeningChannel>;
+
+// Which quantum numbers each quasiparticle carries, and therefore which of
+// Kondo's clouds can screen an attack of that class (BattleScene's
+// screeningMultiplier, which reads the attack's *effective* class via
+// getTunedMoveClass -- so Landau's Analytic pair and Skłodowska-Curie's
+// Ultimate pair screen as whatever quasiparticle they are tuned to, and the
+// rivals' decohered moves as the class they carry). Empty means no cloud
+// touches that class at all.
+//
+// 'spin' is a nonzero spin quantum number: an electron and the heavy-fermion
+// composite are S=1/2, a magnon and a triplon carry S=1, a spinon is the
+// fractionalized S=1/2, an electromagnon is a magnon that picked up
+// electric-dipole activity, and the chiral/helical boundary modes are
+// electrons besides (helical is *defined* by spin-momentum locking). A
+// charged anyon is not on the list: in a spin-polarized fractional state it
+// carries fractional charge and fractional statistics, no spin.
+//
+// 'charge' is anything a Coulomb screening cloud couples to, not only a net
+// charge quantum number: the charged excitations (electron, charged anyon,
+// heavy fermion, the two boundary modes), the plasmon as the charge
+// sector's own collective mode, and the two dipole-active modes -- free
+// carriers famously screen polar order, which is why a ferroelectric metal
+// is such a rarity.
+//
+// 'symmetry' is an excitation of a spontaneously broken symmetry's own
+// order parameter, amplitude branch as well as phase branch: the acoustic
+// phonon (broken continuous translation), the magnon (broken spin
+// rotation), the ferron (broken inversion, the polarization's own quantum),
+// the electromagnon (the ordered multiferroic's hybridized branch), and the
+// Higgs -- the amplitude mode of a paired condensate, the Goldstone's
+// partner rather than a Goldstone itself, but an order-parameter mode all
+// the same. A plasmon is not here: a normal metal breaks no symmetry.
+// Spinon, vison and majorana are absent for the same reason from the other
+// direction -- a spin liquid has topological order without any broken
+// symmetry, and a Majorana zero mode is a fermionic bound state in the
+// condensate rather than a mode of the condensate itself.
+//
+// Majorana Split and Vison Loop end up screened by nothing at all: neutral,
+// spinless, and no order parameter of their own.
+export const SCREENING_CHANNELS: Record<MoveClass, ScreeningChannel[]> = {
+  electron: ['spin', 'charge'],
+  magnon: ['spin', 'symmetry'],
+  phonon: ['symmetry'],
+  spinon: ['spin'],
+  triplon: ['spin'],
+  electromagnon: ['spin', 'charge', 'symmetry'],
+  chiral: ['spin', 'charge'],
+  helical: ['spin', 'charge'],
+  higgs: ['symmetry'],
+  chargedAnyon: ['charge'],
+  majorana: [],
+  heavyFermion: ['spin', 'charge'],
+  ferron: ['charge', 'symmetry'],
+  vison: [],
+  plasmon: ['charge'],
+  // Kondo's own buffs never land on a defender, so nothing about them is
+  // ever screened -- this entry exists only because the table is keyed by
+  // the full MoveClass union.
+  screening: [],
+};
 
 // Every move Noether can eventually teach, priced by raw power
 // (`OverworldScene.shopCost`) -- everything except the player's starting
@@ -626,13 +704,26 @@ export function getTunedMoveClass(registry: RegistryLike, moveId: string): MoveC
 // tuned class anymore the name reverts to its Phonon form too, matching what
 // the mismatch check actually uses.
 export function tunedMoveDisplayName(registry: RegistryLike, moveId: string): string {
+  return `${quasiparticleLabel(getTunedMoveClass(registry, moveId))} ${moveShapeName(moveId)}`;
+}
+
+// A move's own fixed shape word on its own -- "Lance", "Eruption", "Meteor",
+// "Nova", "Pulse" -- with no quasiparticle in front of it. This is how
+// Landau's and Skłodowska-Curie's panels head the two moves each of them
+// sells: the quasiparticle is what the picker directly below the heading is
+// *for*, so naming one in the heading too would state the same thing twice
+// and, worse, read as a fixed property of the move while the player is in
+// the middle of changing it. Everywhere outside those two headings a
+// tunable move still goes by its full resolved name (the detail pane beside
+// the picker, the battle move menu, the battle log, Feynman's list), so the
+// quasiparticle a move is carrying is never hidden from the player at the
+// point they actually swing it.
+export function moveShapeName(moveId: string): string {
   const move = MOVES[moveId];
-  const active = getTunedMoveClass(registry, moveId);
   const ownLabel = `${quasiparticleLabel(move.class)} `;
-  const shape = move.name.startsWith(ownLabel)
+  return move.name.startsWith(ownLabel)
     ? move.name.slice(ownLabel.length)
     : move.name.split(' ').slice(1).join(' ');
-  return `${quasiparticleLabel(active)} ${shape}`;
 }
 
 // Feynman's move-leveling ("Feynman Diagrammatics," §5, World 7) -- three
@@ -658,15 +749,37 @@ export function tunedMoveDisplayName(registry: RegistryLike, moveId: string): st
 export type MoveLevel = 0 | 1 | 2 | 3;
 export const MOVE_LEVEL_NAMES: readonly string[] = ['', 'Double', 'Triple', 'Infinite'];
 
-// Which level a given move is currently leveled to -- registry/save
+// The highest tier a move has ever been leveled to -- registry/save
 // `moveLevels` (moveId -> level), missing entry defaults to 0 (never
 // attempted). Leveling is per move id, not per-crystal-form or per-run --
-// once a move is leveled up it stays leveled up forever, the same
-// permanent "first time costs, permanent afterward" shape every other
-// guardian's one-time unlock already uses.
-export function getMoveLevel(registry: RegistryLike, moveId: string): MoveLevel {
+// once a tier is landed it stays unlocked forever, the same permanent
+// "first time costs, permanent afterward" shape every other guardian's
+// one-time unlock already uses. This is the *ceiling*, not what the move
+// currently swings at: Feynman's panel offers every unlocked tier as a
+// choice, so read getMoveLevel below for the tier actually in effect.
+export function getUnlockedMoveLevel(registry: RegistryLike, moveId: string): MoveLevel {
   const levels = (registry.get('moveLevels') as Partial<Record<string, MoveLevel>> | undefined) ?? {};
   return levels[moveId] ?? 0;
+}
+
+// The tier a move is currently *carried* at -- registry/save
+// `carriedMoveLevels`, the player's own pick among the tiers they have
+// unlocked (scenes/panels/feynman.ts), and the level everything else in the
+// game means when it asks what level a move is: its damage
+// (effectiveMovePower), its displayed name prefix (moveDisplayName), the
+// escalating repeat its effect animates at, and the screening strength of
+// one of Kondo's clouds. A move with no entry is carried at its ceiling, so
+// a player who never visits the picker sees the same always-strongest
+// behaviour as before opting in, and Superposition Mode's blanket
+// max-everything grant (OverworldScene.applySuperpositionLeveling, which
+// writes `moveLevels` only) needs no second grant of its own. Clamped to
+// the ceiling rather than trusted, so a carried tier left in an old save
+// for a move that somehow reads lower now degrades to that lower tier
+// instead of granting an unearned one.
+export function getMoveLevel(registry: RegistryLike, moveId: string): MoveLevel {
+  const unlocked = getUnlockedMoveLevel(registry, moveId);
+  const carried = (registry.get('carriedMoveLevels') as Partial<Record<string, MoveLevel>> | undefined)?.[moveId];
+  return carried === undefined ? unlocked : (Math.min(carried, unlocked) as MoveLevel);
 }
 
 // The move's own base `power`, scaled by its current level's multiplier --
