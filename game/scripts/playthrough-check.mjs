@@ -2,10 +2,12 @@
 // boots a fresh save, then walks a headless-Chrome-driven session all the way
 // from World 1 through beating World 10's rival (the real finale panel,
 // OverworldScene.showFinalePanel()) -- BFS-pathfinding each generated map,
-// fighting every encounter and rival with whatever moves are unlocked,
-// bouncing to the Lab between rival attempts to shop (weighted toward actual
-// guardian-shop purchases, not just window-shopping), and occasionally taking
-// a Bloch side-trip to an earlier world. Losing individual battles is fine
+// fighting every encounter and rival with whatever moves are unlocked and
+// collecting the loose qumatessence each map scatters,
+// bouncing to the Lab between rival attempts to shop -- opening a met
+// guardian from the room's own avatar gallery and buying inside their panel,
+// weighted toward real purchases rather than window-shopping -- and
+// occasionally taking a Bloch side-trip to an earlier world. Losing individual battles is fine
 // and expected -- the question this answers is whether the whole chain is
 // completable at all, not whether it's completable perfectly.
 //
@@ -265,6 +267,12 @@ async function main() {
         wilds: (s['encounterTiles'] ?? []).flatMap((row, y) =>
           row.map((m, x) => (m ? { x, y } : null)).filter(Boolean)
         ),
+        // The qumatessence lying loose on the map (maybeCollectToken), which
+        // is most of what pays for the early shop -- picked up by walking
+        // over the tile, so it is a place to walk to exactly like a wild is.
+        tokens: (s['tokenTiles'] ?? []).flatMap((row, y) =>
+          row.map((v, x) => (v ? { x, y } : null)).filter(Boolean)
+        ),
         moving: s['moving'],
         dialogueActive: s['dialogueActive'],
         reachedGoal: s['reachedGoal'],
@@ -305,18 +313,80 @@ async function main() {
     return false;
   };
 
+  // The overworld's two HUD prompts -- the Lab hint in the bottom-right
+  // corner and the pass prompt above it (OverworldScene's `labHint` and
+  // `gatePrompt`) -- are interactive text objects that sit on the scene
+  // rather than inside a dialogue container, so a sweep of every interactive
+  // text in every active scene finds them alongside a panel's real buttons.
+  // Neither is ever this bot's way to do anything: it returns to the Lab with
+  // the Enter key (randomHubVisit) and commits at a pass through confirmGate
+  // (pressAtGate), both of which reach the same code the prompts do. Left
+  // clickable, the Lab hint is what a panel-clearing sweep reaches for while
+  // the player is still standing on their own start tile, which takes the run
+  // out of the world before it has fought anything.
+  const HUD_PROMPTS_EXACT = ['Press Enter to go to the Lab', 'Tap here for the Lab'];
+  const HUD_PROMPT_PREFIXES = ['Press Space to ', 'Tap here to '];
+  const isHudPrompt = (t) =>
+    HUD_PROMPTS_EXACT.includes(t) || HUD_PROMPT_PREFIXES.some((p) => t.startsWith(p));
+
   const listInteractiveTexts = () =>
-    page.evaluate(() => {
-      function walk(list, out) {
-        for (const obj of list) {
-          if (obj.input && typeof obj.text === 'string') out.push(obj.text);
-          if (obj.list) walk(obj.list, out);
+    page
+      .evaluate(() => {
+        function walk(list, out) {
+          for (const obj of list) {
+            if (obj.input && typeof obj.text === 'string') out.push(obj.text);
+            if (obj.list) walk(obj.list, out);
+          }
         }
+        const all = [];
+        window.__game.scene.getScenes(true).forEach((sc) => walk(sc.children.list, all));
+        return all;
+      })
+      .then((texts) => texts.filter((t) => !isHudPrompt(t)));
+
+  // The Lab's guardian gallery (HubScene.spawnGuardianAvatars), which is the
+  // only place a met guardian can be shopped: the click target is a plain
+  // rectangle behind the avatar and the name beside it is not interactive, so
+  // a sweep for interactive *text* cannot see a guardian at all. Guardian
+  // plates are the room's only interactive non-text objects, so the shape is
+  // enough to find them; each is named from the label standing under it.
+  const listGuardianPlates = () =>
+    page.evaluate(() => {
+      const hub = window.__game.scene.getScene('Hub');
+      if (!hub || !window.__game.scene.isActive('Hub')) return [];
+      const plates = [];
+      const labels = [];
+      for (const obj of hub.children.list) {
+        if (obj.input && typeof obj.text !== 'string') plates.push(obj);
+        else if (typeof obj.text === 'string' && obj.text.trim()) labels.push(obj);
       }
-      const all = [];
-      window.__game.scene.getScenes(true).forEach((sc) => walk(sc.children.list, all));
-      return all;
+      return plates.map((plate, i) => {
+        // The label sits directly under its own plate (GUARDIAN_LABEL_DROP),
+        // so the nearest text below the plate centre names it.
+        let name = null;
+        let bestDy = Infinity;
+        for (const l of labels) {
+          const dy = l.y - plate.y;
+          if (Math.abs(l.x - plate.x) > plate.width / 2) continue;
+          if (dy < -plate.height || dy > plate.height) continue;
+          if (Math.abs(dy) < bestDy) {
+            bestDy = Math.abs(dy);
+            name = l.text;
+          }
+        }
+        return { index: i, name };
+      });
     });
+
+  const clickGuardianPlate = (index) =>
+    page.evaluate((index) => {
+      const hub = window.__game.scene.getScene('Hub');
+      const plates = hub.children.list.filter((o) => o.input && typeof o.text !== 'string');
+      const plate = plates[index];
+      if (!plate) return false;
+      plate.emit('pointerdown');
+      return true;
+    }, index);
 
   const hubHasPanel = () =>
     page.evaluate(() => {
@@ -325,24 +395,30 @@ async function main() {
     });
 
   const clickText = (matchList) =>
-    page.evaluate((matchList) => {
-      function walk(list, out) {
-        for (const obj of list) {
-          if (obj.input && typeof obj.text === 'string') out.push(obj);
-          if (obj.list) walk(obj.list, out);
+    page.evaluate(
+      ({ matchList, hudExact, hudPrefixes }) => {
+        function walk(list, out) {
+          for (const obj of list) {
+            if (obj.input && typeof obj.text === 'string') out.push(obj);
+            if (obj.list) walk(obj.list, out);
+          }
         }
-      }
-      const all = [];
-      window.__game.scene.getScenes(true).forEach((sc) => walk(sc.children.list, all));
-      for (const wanted of matchList) {
-        const found = all.find((o) => o.text === wanted || o.text.startsWith(wanted));
-        if (found) {
-          found.emit('pointerdown');
-          return { clicked: found.text };
+        const found_ = [];
+        window.__game.scene.getScenes(true).forEach((sc) => walk(sc.children.list, found_));
+        const all = found_.filter(
+          (o) => !hudExact.includes(o.text) && !hudPrefixes.some((p) => o.text.startsWith(p))
+        );
+        for (const wanted of matchList) {
+          const found = all.find((o) => o.text === wanted || o.text.startsWith(wanted));
+          if (found) {
+            found.emit('pointerdown');
+            return { clicked: found.text };
+          }
         }
-      }
-      return { clicked: null, available: all.map((o) => o.text) };
-    }, matchList);
+        return { clicked: null, available: all.map((o) => o.text) };
+      },
+      { matchList, hudExact: HUD_PROMPTS_EXACT, hudPrefixes: HUD_PROMPT_PREFIXES }
+    );
 
   const PRIORITY = [
     'The Decoherence is stabilized',
@@ -538,13 +614,19 @@ async function main() {
         continue;
       }
       const ow = await readOverworldState();
-      if (!ow || !ow.wilds || ow.wilds.length === 0) return fights;
+      // Working a world is fighting what stands on it *and* picking up what
+      // lies on it: the loose qumatessence is what pays for the first move
+      // out of Noether's shop, and a run that walks past all of it arrives at
+      // every rival with the crystal it started with. Both are places to walk
+      // to, so both are targets here and the nearer one is taken first.
+      const targets = [...(ow?.wilds ?? []), ...(ow?.tokens ?? [])];
+      if (!ow || targets.length === 0) return fights;
 
       // Nearest by actual walking distance rather than by straight line: an
-      // open world is not a corridor, and the closest wild on the map may sit
-      // across ground the player cannot cross.
+      // open world is not a corridor, and the closest target on the map may
+      // sit across ground the player cannot cross.
       let best = null;
-      for (const w of ow.wilds) {
+      for (const w of targets) {
         const path = bfs(ow.walkable, ow.playerTile, w);
         if (path && path.length >= 2 && (!best || path.length < best.length)) best = path;
       }
@@ -590,14 +672,14 @@ async function main() {
   }
 
   // Simulates a player bouncing back to the Lab and poking around rather
-  // than always making the single optimal purchase -- picks mostly-random
-  // available buttons (occasionally backing out early, same as a real
-  // player browsing), which naturally wanders into Noether's shop, Guardians
-  // list, etc. and buys whatever's affordable it happens to click, without
+  // than always making the single optimal purchase -- opens a guardian from
+  // the gallery and then picks mostly-random buttons inside whatever panel
+  // that put up (occasionally backing out early, same as a real player
+  // browsing), buying whatever's affordable it happens to click without
   // hand-coding each guardian's own shop layout. "Travel to <world>" (Bloch,
-  // once met) and "Guardians" get extra weight so a real playthrough's habit
-  // of occasionally revisiting an earlier world to grind gets exercised
-  // deliberately rather than left to pure chance.
+  // once met) gets extra weight so a real playthrough's habit of occasionally
+  // revisiting an earlier world to grind gets exercised deliberately rather
+  // than left to pure chance.
   async function randomHubVisit(maxActions = 12) {
     log('  -> Detour to the Lab...');
     await page.keyboard.press('Enter');
@@ -607,6 +689,15 @@ async function main() {
       log('  !!! Enter key from Overworld did not reach Hub');
       return false;
     }
+    // A purchase the player cannot yet afford is dimmed and its handler
+    // returns without spending, so the button stays exactly where it was and
+    // a weighted pick reaches for it again on the next round -- a whole visit
+    // can go into pressing one confirm that was never going to fire. Counting
+    // what this visit has already pressed and dropping anything pressed twice
+    // is what a player does after the second press does nothing: look at
+    // something else. Reset per visit, since the next detour arrives richer.
+    const pressed = new Map();
+    const spentOn = (t) => pressed.get(t) ?? 0;
     for (let i = 0; i < maxActions; i++) {
       const active = await getActiveScenes();
       if (!active.includes('Hub')) {
@@ -619,8 +710,27 @@ async function main() {
         if (!(await getActiveScenes()).includes('Hub')) break;
         continue;
       }
+      // Nothing is bought from the room itself: every purchase in the Lab is
+      // made inside a guardian's own panel, and those open from the gallery's
+      // avatar plates rather than from any station. So while the room is what
+      // is on screen, opening a guardian is most of what this detour is for.
+      // Noether first when she is standing there -- she is the one who sells
+      // the two things World 1 turns on (below) -- and any other met guardian
+      // otherwise, so the later worlds' shops get exercised too.
+      if (!(await hubHasPanel())) {
+        const plates = await listGuardianPlates();
+        if (plates.length && Math.random() < 0.6) {
+          const noether = plates.find((pl) => /Noether/i.test(pl.name || ''));
+          const chosen = noether ?? plates[Math.floor(Math.random() * plates.length)];
+          if (await clickGuardianPlate(chosen.index)) {
+            log(`  [lab] opened guardian: "${chosen.name ?? `slot ${chosen.index}`}"`);
+            await sleep(700);
+            continue;
+          }
+        }
+      }
       const texts = await listInteractiveTexts();
-      // Two things a random Lab visit must not touch. The **door** ("Enter The
+      // Three things a random Lab visit must not touch. The **door** ("Enter The
       // Mean Fields", "Back to The Vortex Glacier" -- it names its destination
       // rather than numbering it, DESIGN.md section 2) leaves the Lab, which is
       // the caller's decision to make, not this detour's. The **Title Screen**
@@ -628,35 +738,45 @@ async function main() {
       // playthrough that presses it is no longer playing through anything.
       // Matching the door by its old numbered labels is what let both happen,
       // and the run then spent every remaining round clicking a station and a
-      // door in turn without noticing it had stopped making progress.
+      // door in turn without noticing it had stopped making progress. The
+      // **Settings** station retunes difficulty, world size and enemy density
+      // under the run: a browse that wanders in there and presses Ph.D. is no
+      // longer measuring the game the run set out to measure, and its result
+      // cannot be compared with any other run's.
       const candidates = texts.filter(
-        (t) => !t.startsWith('Enter ') && !t.startsWith('Back to ') && t !== 'Title Screen'
+        (t) =>
+          !t.startsWith('Enter ') &&
+          !t.startsWith('Back to ') &&
+          t !== 'Title Screen' &&
+          t !== 'Settings' &&
+          spentOn(t) < 2
       );
       if (candidates.length === 0) break;
       const closeLike = candidates.filter((t) => ['Farewell', 'Close', 'Cancel', 'Not yet'].includes(t));
-      // Priced shop *rows* carry "qumatessence" in their own label (the rows
-      // where the price appears nowhere else, e.g. Noether's stat rows
-      // `${label}: ${value} -> ${value+1} -- ${cost} qumatessence`; a
-      // list+detail pane's confirm button leaves the price to the status
-      // line above it and so doesn't match here) -- a
-      // real player who bothers to open a shop mostly buys things rather
-      // than window-shopping forever, so weight these heavily once visible.
-      // Affordability is still enforced by the purchase handler itself
-      // (a too-expensive click just no-ops), so this can't overspend.
+      // A guardian's panel is a list+detail pane: the price is stated in the
+      // status line, and the row and its confirm button ("Electron Pulse",
+      // then "Learn Electron Pulse") carry the name alone. Anything that does
+      // name its own price is a purchase too, so both shapes are weighted up
+      // -- a real player who bothers to open a shop mostly buys things rather
+      // than window-shopping forever. Affordability is still enforced by the
+      // purchase handler itself (a too-expensive click just no-ops), so this
+      // can't overspend.
       const purchaseLike = candidates.filter((t) => t.includes('qumatessence'));
-      // What a player actually reaches for first, and the bot did not: buying
-      // uniformly at random was testing whether the game can be won while
-      // shopping badly, which is a different and much harder question than
-      // whether it can be won. Momentum decides turn order, and a fast enough
-      // side swings more than once a round; Electron Pulse outpowers the
-      // starting Phonon Beam and lands on most of what the early worlds field.
-      // Both were verified by hand as the purchases that turn World 1's rival
-      // from a wall into an ordinary fight.
+      // What a player actually reaches for first: buying uniformly at random
+      // was testing whether the game can be won while shopping badly, which is
+      // a different and much harder question than whether it can be won.
+      // Momentum decides turn order, and a fast enough side swings more than
+      // once a round; Electron Pulse outpowers the starting Phonon Beam and
+      // lands on most of what the early worlds field. Both were verified by
+      // hand as the purchases that turn World 1's rival from a wall into an
+      // ordinary fight. Matched against every candidate rather than only the
+      // priced ones, since the row and the confirm button that actually buy
+      // them state the name without the cost.
       const KEY_PURCHASES = /Momentum|Electron Pulse/;
-      const keyBuys = purchaseLike.filter((t) => KEY_PURCHASES.test(t));
+      const keyBuys = candidates.filter((t) => KEY_PURCHASES.test(t));
       const weighted = [...candidates];
       candidates.forEach((t) => {
-        if (t === 'Guardians' || t.startsWith('Travel to ')) weighted.push(t, t, t);
+        if (t.startsWith('Travel to ')) weighted.push(t, t, t);
         if (t.includes('qumatessence')) weighted.push(t, t, t, t, t, t);
       });
       let pick;
@@ -670,6 +790,7 @@ async function main() {
         pick = weighted[Math.floor(Math.random() * weighted.length)];
       }
       await clickText([pick]);
+      pressed.set(pick, spentOn(pick) + 1);
       log(`  [lab] clicked: "${pick}"`);
       await sleep(350);
     }
@@ -682,7 +803,11 @@ async function main() {
       if (!r.clicked) {
         const texts = await listInteractiveTexts();
         const alt = texts.find(
-          (t) => !t.startsWith('Enter ') && !t.startsWith('Back to ') && t !== 'Title Screen'
+          (t) =>
+            !t.startsWith('Enter ') &&
+            !t.startsWith('Back to ') &&
+            t !== 'Title Screen' &&
+            t !== 'Settings'
         );
         if (alt) await clickText([alt]);
         else break;
@@ -839,12 +964,13 @@ async function main() {
         log(`=== Entered World ${ow.world} ===`);
       }
 
-      // Fight before knocking. The target grows with every rival attempt,
-      // because "go and get stronger, then come back" is the game's own answer
-      // to a rival that is too strong, and a map refills itself as it is walked
-      // (DESIGN.md section 2's respawn rule), so there is always more to fight.
-      // A world with nothing left to fight right now stops asking rather than
-      // pacing forever.
+      // Work the world before knocking -- fight what stands on it and pick up
+      // the qumatessence lying on it. The target grows with every rival
+      // attempt, because "go and get stronger, then come back" is the game's
+      // own answer to a rival that is too strong, and a map refills itself as
+      // it is walked (DESIGN.md section 2's respawn rule), so there is always
+      // more to fight. A world with nothing left on it right now stops asking
+      // rather than pacing forever.
       const farmTarget = FARM_PER_WORLD + currentRivalAttempts * 2;
       if (farmedInWorld < farmTarget) {
         const got = await farmWilds(farmTarget - farmedInWorld);

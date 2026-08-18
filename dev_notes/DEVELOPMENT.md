@@ -490,10 +490,17 @@ to over an hour) -- an actual, real, single continuous playthrough: boots a
 fresh save and drives it from World 1 through beating World 10's rival (the
 real finale panel, `OverworldScene.showFinalePanel()`), BFS-pathfinding each
 freshly generated map, fighting every encounter and rival with whatever moves
-are currently unlocked, bouncing to the Lab between rival attempts to shop
-(weighted toward guardian-shop purchase buttons, not just window-shopping, so
-it actually invests qumatessence rather than wandering forever), and
-occasionally taking a Bloch side-trip to revisit an earlier world. **Losing
+are currently unlocked and collecting the loose qumatessence each map
+scatters, bouncing to the Lab between rival attempts to shop --
+opening a met guardian from the room's own avatar gallery and buying inside
+their panel, weighted toward purchase buttons rather than window-shopping, so
+it actually invests qumatessence rather than wandering forever -- and
+occasionally taking a Bloch side-trip to revisit an earlier world. Two things
+the browse leaves alone: the Settings station (retuning difficulty, world size
+or enemy density mid-run changes the terms the run is measuring) and the two
+overworld HUD prompts, the Lab hint and the pass prompt, which are interactive
+text on the scene rather than dialogue buttons and are driven instead through
+the same code a keypress reaches. **Losing
 individual battles is expected and fine** -- HP resets after every fight
 regardless of outcome (`BattleScene.endBattle`, DESIGN.md §3's "Max HP"
 section), so a loss only costs that fight's qumatessence stake, and a lost
