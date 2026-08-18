@@ -277,36 +277,43 @@ function drawTetragonalShape(g: Phaser.GameObjects.Graphics, size: number, color
 function drawPrismShape(g: Phaser.GameObjects.Graphics, size: number, color: number, stretch: Stretch = NO_STRETCH) {
   const s = size;
   const P = (x: number, y: number) => ({ x: x * stretch.x, y: y * stretch.y });
+  // The top face is laid out first because every other point on the habit
+  // hangs off one of its vertices. A hexagonal column is a single solid, so
+  // its visible sides are the column's own faces dropping from the cap's
+  // three front corners -- not a separate box for the cap to sit on. Sides
+  // derived any other way leave the cap overhanging the body at the join,
+  // and a crystal that reads as several pieces means a Majorana fusion in
+  // this game (data/types.ts's CrystalVariant), which is a claim an ordinary
+  // compound must never make about itself.
   const topPts: { x: number; y: number }[] = [];
   for (let i = 0; i < 6; i++) {
     const ang = Phaser.Math.DegToRad(60 * i - 90);
     topPts.push(P(Math.cos(ang) * s * 0.55, -s * 0.25 + Math.sin(ang) * s * 0.32));
   }
-  const frontPts = [P(-s * 0.45, -s * 0.05), P(s * 0.05, -s * 0.05), P(s * 0.05, s * 0.75), P(-s * 0.45, s * 0.6)];
-  const sidePts = [P(s * 0.05, -s * 0.05), P(s * 0.5, 0), P(s * 0.5, s * 0.7), P(s * 0.05, s * 0.75)];
+  const [upper, upperRight, right, front, left, upperLeft] = topPts;
+  const depth = s * 0.68;
+  const drop = (pt: { x: number; y: number }) => ({ x: pt.x, y: pt.y + depth });
+  const bRight = drop(right);
+  const bFront = drop(front);
+  const bLeft = drop(left);
 
   g.fillStyle(shade(color, 35), 1);
   g.fillPoints(topPts, true);
   g.fillStyle(shade(color, -5), 1);
-  g.fillPoints(frontPts, true);
+  g.fillPoints([left, front, bFront, bLeft], true);
   g.fillStyle(shade(color, -30), 1);
-  g.fillPoints(sidePts, true);
+  g.fillPoints([front, right, bRight, bFront], true);
 
   // Facet edges first, thin and only a little darker than the faces they
-  // divide, then one heavy stroke around the whole habit. Stroking each face
-  // as its own closed polygon instead is what made the lit top cap read as a
-  // separate piece sitting on the body -- and a crystal in several pieces
-  // means a Majorana fusion in this game (data/types.ts's CrystalVariant), so
-  // an ordinary compound must never draw as one.
+  // divide, then one heavy stroke around the whole habit -- stroking each
+  // face as its own closed polygon would outline the cap separately from the
+  // body and undo the point above.
   g.lineStyle(1, shade(color, -30), 0.9);
-  g.strokePoints([topPts[4], topPts[3], topPts[2]], false);
-  g.strokePoints([P(s * 0.05, -s * 0.05), P(s * 0.05, s * 0.75)], false);
+  g.strokePoints([left, front, right], false);
+  g.strokePoints([front, bFront], false);
 
   g.lineStyle(2, shade(color, -50), 1);
-  g.strokePoints(
-    [topPts[5], topPts[0], topPts[1], topPts[2], P(s * 0.5, 0), P(s * 0.5, s * 0.7), P(s * 0.05, s * 0.75), P(-s * 0.45, s * 0.6), P(-s * 0.45, -s * 0.05), topPts[4]],
-    true
-  );
+  g.strokePoints([upperLeft, upper, upperRight, right, bRight, bFront, bLeft, left], true);
 }
 
 // A thin, flattened hexagonal sheet -- a single atomic layer floating in
