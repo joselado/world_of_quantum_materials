@@ -349,7 +349,7 @@ game/
     scenes/
       TitleScene.ts       loads the save, Story Mode / Superposition Mode picker, "Continue"/"New Game"
       HubScene.ts          World 0, static room, up to 8 stations (Abilities appears once a passive is learned; the door leads to the furthest unlocked world, or in Superposition Mode to the world you left, else a fresh World 1)
-      OverworldScene.ts    per-world walkable map, encounters, shop, rival gate; H/Enter warp to the Hub
+      OverworldScene.ts    per-world walkable map, encounters, shop, rival gate; Enter warps to the Hub
       overworld/            the corridor's ground plane and air: sky.ts, terrain/ (one module per
                               off-path material under terrain/materials/)
       panels/               guardian panel UIs plus hubStations.ts's Lab stations

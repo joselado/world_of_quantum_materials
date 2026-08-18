@@ -1946,20 +1946,20 @@ prose -- a fixed panel box plus an uncapped `fontPx` is what lets a longer entry
 world spill off the canvas while every other world looks fine.
 
 **Returning to the Hub always snapshots the in-progress world first.**
-`OverworldScene.returnToHub()` (H/Enter, the World 10 finale's "Return to the Lab", and
+`OverworldScene.returnToHub()` (Enter, the World 10 finale's "Return to the Lab", and
 `returnToPreviousWorld()`'s World-1 case -- every path from a world back to the Hub) calls
 `closeDialogue()` and then `saveMapState()` before `scene.start('Hub')`, so the registry's
 `mapState` key always reflects
 wherever the player actually stood, not just wherever a wild encounter/goal/middle-row event
 last happened to fire (`saveMapState`'s other call sites). The `closeDialogue()` is what
-`advanceToWorld`/`returnToPreviousWorld` do for the same reason: H/Enter fire with a guardian
+`advanceToWorld`/`returnToPreviousWorld` do for the same reason: Enter fires with a guardian
 panel open, and a panel's move-effect preview chain is keyed on the scene instance Phaser
 reuses across `scene.start`, so a chain left registered would read as already running the next
 time that panel opens with its timer long since destroyed by the scene's own shutdown.
 `HubScene.canResumeWorld(world)`
 reads that same `mapState` key (`.world === world`) together with `visitedWorlds` to decide
 whether the Hub door (and the Lab's own Enter key, `HubScene.create()`'s `keydown-ENTER`
-listener -- the reverse direction of `OverworldScene`'s own H/Enter, guarded by the same
+listener -- the reverse direction of `OverworldScene`'s own Enter, guarded by the same
 one-panel-at-a-time `dialogueContainer` check every Lab station already uses) can promise a
 resume-in-place; `mapState` is registry-only and doesn't survive a page reload the way
 `visitedWorlds` does, so checking both is what keeps a reloaded session's door label from

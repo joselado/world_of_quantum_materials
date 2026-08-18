@@ -1091,7 +1091,6 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // Below the dialogue panels' depth 100: a panel covers the arrows while
     // it is open, and update() hides them outright for as long as it is.
     this.touchPad = touchOn ? createTouchPad(this, 60) : null;
-    this.input.keyboard!.on('keydown-H', () => this.returnToHub());
     this.input.keyboard!.on('keydown-ENTER', () => this.returnToHub());
     this.input.keyboard!.on('keydown-SPACE', () => this.confirmGate());
 
@@ -1441,7 +1440,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.game.registry.set('mapState', saved);
   }
 
-  // Every path back to the Hub (H/Enter, the World 10 finale, stepping back
+  // Every path back to the Hub (Enter, the World 10 finale, stepping back
   // through World 1's own start door) goes through this rather than calling
   // `scene.start('Hub')` directly -- saveMapState() only fires at specific
   // event tiles (encounter/goal/middle) otherwise, so a player who simply
@@ -1451,7 +1450,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // fresh map instead (HubScene.canResumeWorld() checks this same `mapState`
   // key to decide whether its door/Enter-key promise a resume at all).
   // Leaves through closeDialogue() first, the same way advanceToWorld/
-  // returnToPreviousWorld do: H/Enter fire with a guardian panel open, and a
+  // returnToPreviousWorld do: Enter fires with a guardian panel open, and a
   // panel's move-effect preview chain (art/moveEffectPreview.ts) is keyed on
   // this scene instance, which Phaser reuses across scene.start -- so a chain
   // left registered here would be seen as already running the next time the

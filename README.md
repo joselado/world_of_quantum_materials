@@ -269,7 +269,7 @@ in the bottom right corner of a world that takes you back to the Lab.
 |---|---|
 | Arrow keys | Walk (Up/Down forward and back, Left/Right sideways) |
 | Space | Take whatever is offered where you stand: greet a wild crystal, challenge a rival, cross a pass, carry on after a battle |
-| Enter or H | Return to the Lab (World 0) |
+| Enter | Return to the Lab (World 0) |
 | Enter, while in the Lab | Head back out to whichever world you're in the middle of (once you've entered one) |
 | Left / Right, in battle | Page between kinds of move |
 

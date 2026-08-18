@@ -732,7 +732,7 @@ under one figure reads as floating even when neither is wrong on its own.
   debug warp, the Hub door/Lab Enter-key into a world never yet visited, or (World 10 only)
   transmuting/fusing into a new form while standing there, since World 10's shape is keyed off
   the player's own current type. A round trip through a battle, or leaving to the Hub and
-  coming back (H/Enter from the world, the Hub door, or the Lab's own Enter key), instead
+  coming back (Enter from the world, the Hub door, or the Lab's own Enter key), instead
   restores the exact same layout and player position (`OverworldScene.saveMapState`/
   `restoreMap`) -- every path back to the Hub goes through `OverworldScene.returnToHub()`,
   which snapshots the current map/position into the registry's `mapState` first, so the next
