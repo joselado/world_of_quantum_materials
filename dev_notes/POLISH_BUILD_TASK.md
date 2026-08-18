@@ -43,7 +43,7 @@ handled, so a fix that has only been read is not a fix that has been checked.
 | 17 | Crystal habits still to reconcile with lattice | physics | **open** |
 | 18 | Subtype combination table | design | **open** |
 | 19 | Opponent debuffs unimplemented | design | **open** |
-| 20 | Boss status pill sits inside its screening aura | defect | **open** |
+| 20 | Boss status pill sits inside its screening aura | defect | **fixed, verified** |
 
 ---
 
@@ -112,15 +112,26 @@ arrays, object literals, and calls built from those — not a unary minus (hence
 the `darken(c, n)` helper) and not a property access (hence raw hex literals
 instead of `TYPE_LOOK[type].color`).
 
-### 20. The boss's status pill sits inside its screening aura
+### 20. The boss's status pill and its screening aura -- fixed and verified
 
-A Kondo screening cloud draws a persistent aura around the carrying crystal
-(`art/screeningAuras.ts`, `BattleScene.syncScreeningAura`). The player's and a
-wild's auras stay at or under their crystal's own painted head-rise, so the
-nameplate stack above clears them. The boss golem's radius is derived
-differently -- from the midpoint of `BOSS_HEAD_RISE`/`BOSS_FOOT_DROP` -- and
-reaches high enough that the status pill under its nameplate lands inside the
-aura's glow. Legible in colour, close to unreadable with colour removed.
+An opponent's status pill hangs below its nameplate rather than inside the
+stack (`drawOpponentPlate` passes `reserveStatus: false`), so it sits over the
+head. The golem is the only body tall enough for its aura to reach that far,
+and its aura now stops short of the head by the pill's own measured height
+(`BattleScene.syncScreeningAura`) -- measured rather than a literal, since the
+text-size preset sets it. Confirmed by a before/after on one scene: the ring
+used to cross the pill text and now sits clear below it.
+
+Reachable only through a forced status, not in play: `opponentMoveId` draws
+from the opponent's own moveset, and no crystal or golem moveset contains a
+screening move (`KONDO_MOVE_IDS` are sold by Kondo and excluded from every
+type's compatibility list), so nothing but the player ever raises a cloud. The
+opponent branch is kept correct against the day something does.
+
+**Separate, still open:** the status pill is the one plate row drawn without a
+dark backing (`hud.ts`'s `statusLabel`, unlike the note and passive pills that
+carry `rgba(0,0,0,0.35)`), so on a light backdrop it reads faintly whoever is
+carrying it, player included.
 
 ### 11b. Story station loose ends
 

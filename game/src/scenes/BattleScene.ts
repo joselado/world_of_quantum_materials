@@ -2893,8 +2893,16 @@ export class BattleScene extends Phaser.Scene {
       if (isPlayer) {
         aura = addScreeningAura(this, this.playerCrystal, status.kind, PLAYER_HEAD_RISE + 5);
       } else if (this.isRival) {
-        const r = (BOSS_HEAD_RISE + BOSS_FOOT_DROP) / 2;
-        aura = addScreeningAura(this, this.opponentCrystal, status.kind, r, -(BOSS_HEAD_RISE - BOSS_FOOT_DROP) / 2);
+        // An opponent's status pill hangs below its nameplate rather than
+        // inside the stack (drawOpponentPlate passes `reserveStatus: false`,
+        // so the stack's own height doesn't account for it), which puts the
+        // pill over the head the aura would otherwise reach. The golem is
+        // the only body tall enough for the two to meet, so its aura stops
+        // short of the head by the pill's own measured height -- measured
+        // rather than a literal, since the text-size preset sets it.
+        const top = BOSS_HEAD_RISE - (this.opponentStatusLabel.height + 4);
+        const r = (top + BOSS_FOOT_DROP) / 2;
+        aura = addScreeningAura(this, this.opponentCrystal, status.kind, r, -(top - BOSS_FOOT_DROP) / 2);
       } else {
         aura = addScreeningAura(this, this.opponentCrystal, status.kind, WILD_HEAD_RISE + 5);
       }
