@@ -769,6 +769,25 @@ natural defense against this!". Kondo's screening term (above) sits alongside it
 symmetric `resolveHit` multiplier, so a mismatched hit against a screened defender resolves
 both: doubled for the mismatch, then halved for the cloud.
 
+**World 1 opponents attack with phonon moves only, while the player is still unbuilt.**
+Every opponent-side hit is rolled fresh from the opponent's own moveset
+(`BattleScene.playerAttack`'s `opponentMoveId`). In World 1 that roll is filtered down to
+the moves whose class is `phonon` — for the world's wild encounters and for its rival golem
+alike — as long as *every* one of the player's three stats is still strictly below
+`PHONON_ONLY_STAT_CEILING` (`data/balance.ts`, 5). `phonon` is the one class every type
+hosts, so a phonon hit can never take the mismatch bonus above: a player who has not yet met
+the mismatch rule cannot be double-damaged by a moveset they had no way to read. The
+training-wheel comes off as soon as any stat reaches the ceiling — a few points bought from
+Noether is enough — and worlds 2-10 always roll the whole authored moveset. The condition reads
+`BattleScene.playerStats`, the snapshot `create()` takes from the registry, so it is settled
+for the length of a fight; stats only ever change between battles anyway.
+
+This is a battle-time filter, not a change to `WORLD_CRYSTALS[1]`: the same compounds
+cross-spawn in later worlds (Iron and Cobalt in World 6, Barium Titanate in World 9) and keep
+their full movesets there, and the Materialdex keeps listing every move a compound carries.
+Every World 1 wild and the World 1 rival carry Phonon Beam, so the filtered pool is never
+empty; the code falls back to the unfiltered moveset if one were ever authored without it.
+
 **Move menu is grouped by kind and paged one kind at a time, not one flat list.**
 `BattleScene.drawMoveMenu` splits the currently usable moves (`getBattleMoves`) into up to
 four sections -- **Attacks** (every ordinary physics-gated move -- any move that isn't in

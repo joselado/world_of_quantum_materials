@@ -26,6 +26,16 @@ export const MAX_STAT = 100;
 
 export const DEFAULT_STATS: Stats = { quantumness: BASE_STAT, velocity: BASE_STAT, correlation: BASE_STAT };
 
+// World 1's phonon-only opponent rule (DESIGN.md §4, BattleScene's
+// `opponentMoveId`): the restriction holds only while *every* one of the
+// player's three stats is still strictly below this. It is a training-wheel
+// for a player who has not yet met the quasiparticle-mismatch rule, so it
+// comes off as soon as they have started building at all -- a few points
+// bought from Noether is enough. Whole-number like `playerStats` itself, and
+// read as a strict `<` so a player sitting at exactly this value in any one
+// stat is already past it.
+export const PHONON_ONLY_STAT_CEILING = 5;
+
 // What the player reads on a stat. Every panel/list/readout label takes its
 // wording from here rather than spelling it out; prose that names a stat
 // mid-sentence (data/tutorial.ts's battle-basics page, README.md) writes the

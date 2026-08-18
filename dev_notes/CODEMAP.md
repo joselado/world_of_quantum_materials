@@ -1062,7 +1062,13 @@ same math outside the browser) -- `resolveHit` assembles that hit's own per-term
 (mismatch bool + which multiplier applies, quiz/Analytic/Ultimate bonus, Kondo/Franklin
 defensive terms) and calls into it rather than computing the product inline.
 This is the only type-interaction term in the damage formula (DESIGN.md §3/§4) -- there is no
-separate type-chart multiplier. The move's own `power` feeding that formula is `move.power`
+separate type-chart multiplier. Which move the opponent swings is decided one level up, in
+`playerAttack`'s `opponentMoveId` thunk (re-rolled per opponent hit): it draws from
+`this.wild.moves`, filtered to the `phonon`-class entries when `this.world === 1` *and* every
+`playerStats` value is below `PHONON_ONLY_STAT_CEILING` (`data/balance.ts`, 5) -- wilds and
+rival alike, so the opening world can never land the mismatch bonus on a player who hasn't
+started building yet (DESIGN.md §4) -- with a fallback to the unfiltered moveset if that
+filter ever came up empty. The move's own `power` feeding that formula is `move.power`
 verbatim for the defender's side, but for the *attacker's* side only when `isPlayer` is false --
 when `isPlayer` is true it reads `effectiveMovePower(registry, moveId)` instead (Feynman's
 move-leveling, §5, `data/materials.ts`), so a leveled move's power bump is the player's own

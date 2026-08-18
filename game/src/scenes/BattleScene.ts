@@ -38,6 +38,7 @@ import {
   battleStakeForWorld,
   resolveHitDamage,
   MISMATCH_MULTIPLIER,
+  PHONON_ONLY_STAT_CEILING,
   FRACTIONAL_GUARD_DAMAGE_MULT,
   ANYON_ECHO_FRACTION,
   EDGE_CURRENT_MISMATCH_MULT,
@@ -2456,7 +2457,26 @@ export class BattleScene extends Phaser.Scene {
 
     const { fasterIsPlayer, fasterHits } = this.currentHitOrder();
     const playerFirst = fasterIsPlayer; // tie keeps player-first, same as currentHitOrder's own tie rule
-    const opponentMoveId = () => Phaser.Utils.Array.GetRandom(this.wild.moves);
+    // What the opponent throws, re-rolled fresh for each of its own hits.
+    // World 1 opponents (wilds and the rival alike) are restricted to their
+    // phonon-class moves while the player is still unbuilt -- every one of
+    // their three stats below PHONON_ONLY_STAT_CEILING (data/balance.ts).
+    // `phonon` is the one class every type hosts, so a phonon hit can never
+    // take the quasiparticle-mismatch double-damage bonus (§4): the opening
+    // world cannot punish a player who has not met the mismatch rule yet with
+    // a doubled hit out of a moveset they had no way to read. Once any stat
+    // reaches the ceiling the player is building, and World 1 rolls its whole
+    // authored moveset like every other world. The filter reads each move's
+    // own static `MOVES` class rather than `getTunedMoveClass`, which only
+    // remaps the player-only Analytic/Ultimate ids no wild or rival moveset
+    // carries. Falls back to the full moveset if a World 1 opponent were ever
+    // authored without a phonon move at all, so the roll can never come up
+    // empty.
+    const phononOnly =
+      this.world === 1 && Object.values(this.playerStats).every((v) => v < PHONON_ONLY_STAT_CEILING);
+    const opponentPool = phononOnly ? this.wild.moves.filter((id) => MOVES[id]?.class === 'phonon') : this.wild.moves;
+    const opponentMoveId = () =>
+      Phaser.Utils.Array.GetRandom(opponentPool.length > 0 ? opponentPool : this.wild.moves);
 
     const releaseLock = () => {
       this.turnLock = false;
@@ -2486,8 +2506,8 @@ export class BattleScene extends Phaser.Scene {
 
     // The round's full hit order: the faster side swings `fasterHits` times
     // (reusing the same moveId each time on the player's side; re-rolled
-    // fresh from the wild's own moveset each time on the enemy's side, same
-    // as its single hit always was), then the slower side swings once. One
+    // fresh from `opponentPool` each time on the enemy's side), then the
+    // slower side swings once. One
     // exception: a Kondo self-buff move is always exactly one action for its
     // round, even if the caster is the faster side -- it isn't an attack
     // landing repeatedly on a defender, just a single technique the caster

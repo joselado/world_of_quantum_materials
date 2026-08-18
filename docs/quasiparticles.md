@@ -56,6 +56,14 @@ of it.
 | Superconductor | Electron, Higgs, Phonon |
 <!-- GENERATED:COMPATIBILITY_TABLE END -->
 
+World 1 goes easy on you while you are starting out. As long as your Energy,
+Momentum and Lifetime are all still below 5, every opponent there, the wild
+crystals and the world's rival alike, attacks only with Phonon Beam. Every
+crystal type hosts phonons, so nothing World 1 throws at you can land at double
+damage, which makes it a safe place to learn the rule before it starts cutting
+both ways. Once any one of your three stats reaches 5, World 1 fights with its
+full moveset too, and from World 2 on opponents always do.
+
 ## Landau's Analytic moves
 
 Landau (World 4) sells two moves that aren't in the table above, since
