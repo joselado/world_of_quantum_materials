@@ -1387,6 +1387,14 @@ keyboard paths rather than replacing them:
 - The Lab hint is itself the button (`pointerdown` -> `returnToHub()`), and reads "Tap here for
   the Lab" with a finger-sized padding when the arrows are up.
 - `BattleScene`'s end-of-battle summary ends on a pointer as well as `SPACE`, and says so.
+  Both listeners are armed inside a `time.delayedCall(VICTORY_DISMISS_GRACE_MS, ...)` rather
+  than directly in `endBattle`: a winning ordinary move resolves synchronously inside the move
+  button's own `pointerdown` handler, and Phaser's `InputPlugin.processDownEvents` emits the
+  scene-level `POINTER_DOWN` for that same press right afterwards, so a listener registered on
+  the spot is fired by the click that ended the fight and the summary (the one place the
+  fight's physics is stated) never gets read. The same grace covers a held `SPACE`'s key
+  auto-repeat and a stray double-click. Any other scene-level dismiss listener registered from
+  inside a click handler needs the same treatment.
 
 Whether the arrows are drawn is the Settings station's Touch Controls row (`data/settings.ts`'s
 `TOUCH_CONTROLS_PRESETS`, `touchControlsActive()` resolving `'auto'` through `isTouchDevice()`),

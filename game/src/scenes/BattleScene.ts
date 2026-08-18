@@ -225,6 +225,12 @@ const R_MATERIALS: Record<OffPathKind, ArenaMaterial | null> = {
 const ANALYTIC_CORRECT_MULTIPLIER = 2;
 const ANALYTIC_WRONG_MULTIPLIER = 0.5;
 
+// How long the end-of-battle summary stays un-dismissable, so that the input
+// which ended the fight cannot also be the input that leaves the screen (see
+// endBattle). Long enough to swallow a click and its echo, short enough that
+// a player reaching for SPACE never feels the screen ignore them.
+const VICTORY_DISMISS_GRACE_MS = 400;
+
 // Kondo's three self-buff moves (§5, World 8) each deterministically raise
 // one 3-turn screening cloud on the *caster's own* side, replacing whatever
 // cloud (if any) was already there rather than stacking -- exactly one
@@ -3046,8 +3052,18 @@ export class BattleScene extends Phaser.Scene {
     this.setLogText(`${flavor}\n${tokenText}\n\n${blurb}\n\n${returnHint}`, 150, LOG_WRAP_WIDTH_VICTORY);
     this.raiseLogToPanel(won);
 
+    // Both ways out are armed only after a short grace period. A winning
+    // ordinary move resolves synchronously inside the move button's own
+    // `pointerdown` handler, and Phaser emits the scene-level POINTER_DOWN
+    // for that very same press immediately afterwards -- so a listener armed
+    // here and now would be fired by the click that ended the fight, and the
+    // summary (the one screen where the fight's physics is actually stated)
+    // would flash past unread. The same grace absorbs a held SPACE's key
+    // auto-repeat and a stray double-click.
     const leave = () => this.scene.start('Overworld', { world: this.world });
-    this.input.keyboard!.once('keydown-SPACE', leave);
-    this.input.once(Phaser.Input.Events.POINTER_DOWN, leave);
+    this.time.delayedCall(VICTORY_DISMISS_GRACE_MS, () => {
+      this.input.keyboard!.once('keydown-SPACE', leave);
+      this.input.once(Phaser.Input.Events.POINTER_DOWN, leave);
+    });
   }
 }
