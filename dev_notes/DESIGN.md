@@ -754,7 +754,10 @@ matters for a side continuing to hold an already-active buff while using ordinar
 expires with its own battle-log line appended the same way a mismatch/crit clause stacks onto
 a hit's log line. Clouds are battle-only and reset at the start of every fight — never
 persisted to the save. A small pill under each side's HP bar in battle shows which cloud (if
-any) is active and how many turns remain.
+any) is active and how many turns remain, and the cloud itself is visible for its whole
+duration as an aura wrapped around the carrying crystal, one silhouette per channel drawing
+the physics of what it screens (`art/screeningAuras.ts`, STYLE.md's "Battle status
+effects").
 
 **Quasiparticle mismatch.** The sole type-interaction rule in battle (§3): a defender
 whose own type can't physically host the attacking move's quasiparticle class at all

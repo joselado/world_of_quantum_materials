@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { killTweensDeep, makeCrystal } from '../art/crystals';
 import { makeBossCrystal } from '../art/boss';
+import { addScreeningAura, removeScreeningAura } from '../art/screeningAuras';
 import { shade, blend, hashSeed, seededRandom } from '../art/colors';
 import { getBiome } from '../art/biomes';
 import type { Biome, WallTheme } from '../art/biomes';
@@ -78,6 +79,7 @@ import {
   PLAYER_HEAD_RISE,
   WILD_HEAD_RISE,
   BOSS_HEAD_RISE,
+  BOSS_FOOT_DROP,
   HP_BAR_FILL_W,
   MENU_WIDTH,
   MENU_X,
@@ -426,6 +428,11 @@ export class BattleScene extends Phaser.Scene {
   // between battles -- see OverworldScene's own comment on the same gotcha).
   private playerStatus: ActiveStatus | null = null;
   private opponentStatus: ActiveStatus | null = null;
+  // The persistent aura wrapped around whichever crystal carries an active
+  // cloud (art/screeningAuras.ts) -- owned per side by syncScreeningAura,
+  // which setStatus drives, so apply/replace/expire all keep it in step.
+  private playerScreeningAura: Phaser.GameObjects.Container | null = null;
+  private opponentScreeningAura: Phaser.GameObjects.Container | null = null;
   private playerStatusLabel!: Phaser.GameObjects.Text;
   private opponentStatusLabel!: Phaser.GameObjects.Text;
   // Franklin's passives (§5) -- computed once in create() from
@@ -543,6 +550,8 @@ export class BattleScene extends Phaser.Scene {
     this.movePageIndex = 0;
     this.playerStatus = null;
     this.opponentStatus = null;
+    this.playerScreeningAura = null;
+    this.opponentScreeningAura = null;
     // Dropped rather than destroyed: the scene teardown already reclaimed the
     // previous battle's objects, and this is the same battle-ephemeral reset
     // every field above needs because Phaser reuses the Scene instance across
@@ -2275,6 +2284,10 @@ export class BattleScene extends Phaser.Scene {
     this.playTransmuteGlow(() => {
       this.adaptedForm = newForm;
 
+      // The old crystal's destroy(true) reclaims any screening aura mounted
+      // inside it, so only the reference needs dropping here; the rebuild
+      // below re-raises the aura on the new body if a cloud is active.
+      this.opponentScreeningAura = null;
       killTweensDeep(this, this.opponentCrystal);
       this.opponentCrystal.destroy(true);
       this.opponentCrystal = makeBossCrystal(this, BOSS_CRYSTAL_SIZE, newForm.color, newForm.variant, { footDrop: SHADOW_DROP });
@@ -2290,6 +2303,7 @@ export class BattleScene extends Phaser.Scene {
       this.drawOpponentPlate();
       this.updateBars();
       this.renderStatusLabel(false);
+      this.syncScreeningAura(false);
       // Each button's `!!2x` tag is a mismatch check against whoever the
       // opponent is right now (moveButtonContent), so the menu is redrawn
       // against the new form -- a move that reads as double damage has to be
@@ -2859,6 +2873,34 @@ export class BattleScene extends Phaser.Scene {
     if (isPlayer) this.playerStatus = status;
     else this.opponentStatus = status;
     this.renderStatusLabel(isPlayer);
+    this.syncScreeningAura(isPlayer);
+  }
+
+  // Keeps a side's persistent screening aura (art/screeningAuras.ts) in
+  // step with its status: the old aura (if any) fades out and the current
+  // cloud's fades in wrapped around that side's crystal, sized off the
+  // crystal's own measured painted extent (the hud.ts *_HEAD_RISE/FOOT_DROP
+  // offsets) rather than a hand-tuned literal. The boss golem's anchor is a
+  // ground reference, not a body center, so its aura is centered on the
+  // body's measured midpoint. A same-channel recast rebuilds the aura too
+  // -- re-raising the cloud is the cast's own beat.
+  private syncScreeningAura(isPlayer: boolean) {
+    const existing = isPlayer ? this.playerScreeningAura : this.opponentScreeningAura;
+    if (existing) removeScreeningAura(this, existing);
+    const status = this.getStatus(isPlayer);
+    let aura: Phaser.GameObjects.Container | null = null;
+    if (status) {
+      if (isPlayer) {
+        aura = addScreeningAura(this, this.playerCrystal, status.kind, PLAYER_HEAD_RISE + 5);
+      } else if (this.isRival) {
+        const r = (BOSS_HEAD_RISE + BOSS_FOOT_DROP) / 2;
+        aura = addScreeningAura(this, this.opponentCrystal, status.kind, r, -(BOSS_HEAD_RISE - BOSS_FOOT_DROP) / 2);
+      } else {
+        aura = addScreeningAura(this, this.opponentCrystal, status.kind, WILD_HEAD_RISE + 5);
+      }
+    }
+    if (isPlayer) this.playerScreeningAura = aura;
+    else this.opponentScreeningAura = aura;
   }
 
   // How much of an incoming hit whichever Kondo cloud this side is holding
@@ -2896,7 +2938,11 @@ export class BattleScene extends Phaser.Scene {
   // of traveling to the opponent's -- a squash bounce on the caster's own
   // crystal reads as the buff taking hold without the camera shake/flash
   // `impactPunch` gives an ordinary "hit landed" beat, which would read as
-  // the caster taking damage instead. Never changes either side's HP at
+  // the caster taking damage instead. The ring is only the cast's beat:
+  // what it leaves behind is the persistent aura applyOrTickBuff's
+  // setStatus raises around the caster's crystal (syncScreeningAura),
+  // fading in under the ring and staying for the cloud's whole duration.
+  // Never changes either side's HP at
   // all, so there is no win/lose check to make here the way resolveHit's own
   // tail has to. Kondo's three moves are as leveled-by-Feynman as any attack
   // move (screenReduction already deepens their screening by the caster's

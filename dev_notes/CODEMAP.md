@@ -297,6 +297,13 @@ game/src/
                                   feet and contact shadow land below the container origin);
                                   makeBossIcon() -- the same silhouette reduced to a static HUD-scale icon
                                   (battle/hud.ts's turn-order row), no shards/seams/sparks/tweens
+    screeningAuras.ts           addScreeningAura()/removeScreeningAura() -- the persistent
+                                  per-channel aura a Kondo screening buff wraps around the
+                                  carrying crystal in battle for the buff's whole duration
+                                  (see "Stats and battle resolution" below for the lifecycle);
+                                  one silhouette per ScreeningChannel, each drawing the
+                                  physics of what that cloud screens, all in Kondo's own
+                                  rust-orange (STYLE.md's "Battle status effects")
     tokens.ts                   makeToken() -- qumatessence pickup sprite
     labMotifs.ts                 One small icon builder per Lab station (Qumatex/Door/
                                   Moves/Stats/Abilities/Tutorial/Settings/Title Screen -- see
@@ -1142,7 +1149,18 @@ own message, the same "stack a clause onto the existing line" pattern `mismatchT
 already use. `setStatus` also calls `renderStatusLabel`, which updates a small
 always-present-but-usually-empty `Text` pill (`playerStatusLabel`/`opponentStatusLabel`,
 positioned just under each side's HP bar) to `"<Label> (<turnsLeft>)"` or clears it to `''` when
-there's no active cloud.
+there's no active cloud, and `syncScreeningAura(isPlayer)`, which keeps that side's persistent
+aura (`art/screeningAuras.ts`, `playerScreeningAura`/`opponentScreeningAura`) in step with its
+status: the old aura (if any) fades out and is reclaimed (`removeScreeningAura`, tweens
+included), and the current cloud's fades in mounted inside that side's crystal container
+(`addScreeningAura`), sized off hud.ts's measured `*_HEAD_RISE`/`BOSS_FOOT_DROP` offsets --
+the boss golem's is centered on its body's measured midpoint, since its anchor is a ground
+reference. Because `setStatus` is the single mutation path for apply/replace/expire, the aura
+can never outlive its buff; the two aura fields are battle-ephemeral like the statuses
+themselves and reset (dropped, not destroyed -- scene teardown already reclaimed the objects)
+in `create()`, and `transmuteAdapted` drops the opponent's aura reference before destroying
+the old boss crystal (the crystal's own `destroy(true)` reclaims the mounted aura) and
+re-syncs after the rebuild.
 
 **Passives (Franklin's abilities).** `this.playerActivePassives`/
 `this.opponentActivePassives` (`Set<string>` of `data/passives.ts` ids) are read once in

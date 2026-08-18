@@ -43,6 +43,7 @@ handled, so a fix that has only been read is not a fix that has been checked.
 | 17 | Crystal habits still to reconcile with lattice | physics | **open** |
 | 18 | Subtype combination table | design | **open** |
 | 19 | Opponent debuffs unimplemented | design | **open** |
+| 20 | Boss status pill sits inside its screening aura | defect | **open** |
 
 ---
 
@@ -110,6 +111,16 @@ execute the file. Their literal-reducer handles string/number/boolean literals,
 arrays, object literals, and calls built from those — not a unary minus (hence
 the `darken(c, n)` helper) and not a property access (hence raw hex literals
 instead of `TYPE_LOOK[type].color`).
+
+### 20. The boss's status pill sits inside its screening aura
+
+A Kondo screening cloud draws a persistent aura around the carrying crystal
+(`art/screeningAuras.ts`, `BattleScene.syncScreeningAura`). The player's and a
+wild's auras stay at or under their crystal's own painted head-rise, so the
+nameplate stack above clears them. The boss golem's radius is derived
+differently -- from the midpoint of `BOSS_HEAD_RISE`/`BOSS_FOOT_DROP` -- and
+reaches high enough that the status pill under its nameplate lands inside the
+aura's glow. Legible in colour, close to unreadable with colour removed.
 
 ### 11b. Story station loose ends
 

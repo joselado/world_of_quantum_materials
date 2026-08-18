@@ -1722,9 +1722,10 @@ station motifs are deliberately not tunnels with a visible far end.
   (`0xc9884a`) above; his avatar (`art/kondo.ts`'s `makeKondoAvatar`) is the Kondo effect
   drawn whole: a deliberately small dark figure (the local moment) carrying one bold
   pulsing spin arrow, wrapped inside a much larger screening cloud of open
-  conduction-electron arcs in two counter-rotating shells -- the same enclosing shape as
-  the shield his self-buff moves cast. The arcs are the avatar's outer edge; there is no
-  robe under them. Silhouette: the roster's only round, enclosing outline.
+  conduction-electron arcs in two counter-rotating shells -- the same enclosing shape,
+  and the same arc-shell vocabulary, as the persistent aura his self-buff moves wrap
+  around a crystal in battle (`art/screeningAuras.ts`). The arcs are the avatar's outer
+  edge; there is no robe under them. Silhouette: the roster's only round, enclosing outline.
 - List+detail layout (`scenes/panels/listDetail.ts`, "List+detail panels" above), the same shape
   Noether's Moves tab and Feynman's own move-leveling list use: the left column names all
   three of `data/materials.ts`'s `KONDO_MOVE_IDS` (Spin Screening, Charge Screening, Symmetry
@@ -2362,16 +2363,36 @@ world are shaped, since world N's start is world N-1's exit.
   small grey raincloud (`addFailCloud`) just above the crystal, bobbing gently. Everything
   is added directly to the player crystal's container so it moves with the existing
   idle-bob tween for free.
-- Kondo's three screening self-buffs (DESIGN.md §4) get a much smaller
-  treatment than the quiz aura/raincloud above -- a plain text pill (`playerStatusLabel`/
+- Kondo's three screening self-buffs (DESIGN.md §4) present as two pieces for as long
+  as a cloud is active. The bookkeeping is a plain text pill (`playerStatusLabel`/
   `opponentStatusLabel`) sitting as the next row down that side's own floating nameplate
-  (see "Battle HUD frame and nameplates" above) rather than anything layered
-  onto the crystal itself, reading `"<Cloud> (<turns left>)"` (e.g. `"Spin Screening (3)"`)
-  in Kondo's own rust-orange
+  (see "Battle HUD frame and nameplates" above), reading `"<Cloud> (<turns left>)"`
+  (e.g. `"Spin Screening (3)"`) in Kondo's own rust-orange
   (`#ff8f6a`, matching his guardian label/panel stroke and the `'screening'` attack-effect
   color below) over the same translucent-black tag background every HP-bar name label
   already uses. Empty (no active buff) by default on both sides -- the pill only ever
   reads as chrome that appears when relevant, not a permanent fixture of the HP-bar area.
+  The cloud itself is a persistent aura (`art/screeningAuras.ts`, driven by
+  `BattleScene.syncScreeningAura` off `setStatus`) wrapped around the carrying crystal for
+  the buff's whole duration, on either side -- mounted inside the crystal's own container
+  behind its body so idle bob and hit squash carry it for free, fading in under the cast's
+  ring pulse and fading out on expiry or on replacement by another channel. All three
+  auras stay in the same rust-orange family (the pill's label is what names the channel)
+  and are told apart by silhouette, each drawing the physics of what its cloud screens:
+  **Spin Screening** extends `art/kondo.ts`'s avatar-cloud vocabulary -- two
+  counter-rotating shells of open conduction-electron arcs, each trailing a mote -- plus a
+  still ring of small downward spin arrows: the orbital motion circulates while the
+  cloud's spins stay pinned antialigned against the moment they screen (the Kondo
+  singlet). **Charge Screening** is a static Thomas-Fermi profile that only breathes --
+  piled-up glow densest at the center, ringed by faint closed Friedel rings decaying
+  outward; nothing circulates. **Symmetry Cloud** is the restored order-parameter
+  manifold: one ring crossed by evenly spaced radial ticks in slow uniform rotation --
+  every orientation visited, none preferred. Each aura's bright structure stays at or
+  under its crystal's own measured painted extent (sized off hud.ts's
+  `*_HEAD_RISE`/`BOSS_FOOT_DROP` offsets; the boss golem's is centered on its body's
+  measured midpoint, since its anchor is a ground reference), so the nameplate stack above
+  never sits inside it, and additive alphas are kept low so all three silhouettes survive
+  the greyscale squint test.
 - Franklin's active passive (DESIGN.md §5) gets its own pill as the last row of the
   same nameplate stack, directly below that side's status pill, same size/background
   as the status pill but in a muted
@@ -2799,16 +2820,18 @@ world are shaped, since world N's start is world N-1's exit.
   the fix used here is to keep white cores small and let the colored falloff carry the hue,
   since a second, normally-blended Graphics per effect would cost an object per shape.
 - Kondo's three self-buff moves (Spin Screening, Charge Screening, Symmetry Cloud) share
-  the `'screening'` class's one look, unlike Landau's/Skłodowska-Curie's moves below -- an
-  expanding ring (the same silhouette
+  the `'screening'` class's one cast look, unlike Landau's/Skłodowska-Curie's moves below --
+  an expanding ring (the same silhouette
   Magnon Pulse/Polaron Drag use, reading as an effect enveloping the caster) tinted Kondo's
   own rust-orange (`0xe86a44`), played with the caster's own anchor as both `from` and `to`
   (`BattleScene.resolveSelfBuff`) so it centers on them instead of traveling toward the
   opponent, and paired with a plain squash-bounce on the caster's own crystal
   (`flashHit`) rather than the camera shake/flash an ordinary hit's `impactPunch` adds, so
-  casting a buff doesn't read as the caster taking damage. Distinct move names and the buff
-  log line each one produces already read as three different moves without three different
-  silhouettes too, so there's no `ANALYTIC_SHAPES`-style per-move override for this class.
+  casting a buff doesn't read as the caster taking damage. The ring is only the cast's
+  beat: what it leaves behind is the persistent per-channel aura wrapped around the
+  caster's crystal for the buff's duration (`art/screeningAuras.ts`, "Battle status
+  effects" above), which is also what tells the three moves apart visually, so the shared
+  cast ring needs no `ANALYTIC_SHAPES`-style per-move override for this class.
 - Landau's two Analytic moves break the "one shape per class" rule on purpose, each with
   its own silhouette rather than sharing whichever ordinary
   `EFFECT_STYLE` shape their currently-tuned quasiparticle carries (`art/attackStyles.ts`'s
