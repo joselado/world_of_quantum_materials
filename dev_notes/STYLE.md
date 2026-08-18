@@ -22,6 +22,25 @@ and in scope; the comment above it is not. Code comments, `dev_notes/**` (this f
 included) and `game/scripts/**` keep the repo's existing `--` style, and most `--` in the
 repo lives there.
 
+**No paper citations in anything a player reads.** No author names as attribution, no
+`et al.`, no journal, volume or year, no arXiv number, in Materialdex blurbs, quiz prompts
+and options, guardian dialogue, world lore, story beats, tutorial pages, `README.md`,
+`docs/*.md` or the built `guide.pdf`. A blurb states the physics on its own authority; the
+player is here to learn what a compound does, and a reference they cannot follow mid-battle
+only crowds the sentence. Drop the bibliographic part and keep the physics claim, rewriting
+the sentence so it still reads: "the largest quantum spin Hall gap anyone has measured, close
+to 0.8 eV" says everything the citation after it did.
+
+What is *not* a citation, and stays: eponymous physics vocabulary (the Bernevig-Hughes-Zhang
+model, Kane-Mele, Haldane, Stoner, Kramers' theorem, Yu-Shiba-Rusinov states), the guardians'
+own names, and a bare era when the timing is the point ("a 2023-2024 result", "the first
+experimental confirmation") as long as no paper is being pointed at.
+
+The same audience line applies as for dashes: code comments, `dev_notes/**` (`DESIGN.md`'s
+roster tables included) and `game/scripts/**` keep their citations, and should, since that is
+where a compound's provenance is recorded for whoever has to check the physics later. Removing
+a citation from a player string is not a reason to remove it from the comment above it.
+
 **Say "quantum material" where it fits, and "crystal" where it doesn't.** The player is a
 quantum material, and that is the phrase to reach for first, in the game as well as in the
 docs: it is the term the audience arrives with and the one the course is named for. "Crystal"

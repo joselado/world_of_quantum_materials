@@ -2106,7 +2106,7 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
   'NbSe₂/CrBr₃ Topological-SC Heterostructure': [
     {
       prompt: 'Artificial topological superconductivity from s-wave pairing + spin-orbit coupling + an exchange field was experimentally realized in which real heterostructure?',
-      correct: 'NbSe₂/CrBr₃ (Kezilebieke et al., Nature 588, 424, 2020)',
+      correct: 'NbSe₂/CrBr₃, a monolayer heterostructure',
       incorrect: 'Twisted bilayer graphene, at the magic angle',
     },
     {
@@ -2242,7 +2242,7 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
       incorrect: 'Doping the well with magnetic chromium ions',
     },
     {
-      prompt: "König et al.'s 2007 experiment confirmed the quantum spin Hall state in short HgTe/CdTe wells by measuring what?",
+      prompt: 'The transport experiment that first confirmed the quantum spin Hall state in short HgTe/CdTe wells measured what?',
       correct: 'A conductance close to the quantized value 2e²/h from helical edge transport',
       incorrect: 'A quantized Hall conductance under a strong external magnetic field',
     },
