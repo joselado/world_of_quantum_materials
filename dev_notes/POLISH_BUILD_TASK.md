@@ -128,11 +128,6 @@ screening move (`KONDO_MOVE_IDS` are sold by Kondo and excluded from every
 type's compatibility list), so nothing but the player ever raises a cloud. The
 opponent branch is kept correct against the day something does.
 
-**Separate, still open:** the status pill is the one plate row drawn without a
-dark backing (`hud.ts`'s `statusLabel`, unlike the note and passive pills that
-carry `rgba(0,0,0,0.35)`), so on a light backdrop it reads faintly whoever is
-carrying it, player included.
-
 ### 11b. Story station loose ends
 
 - The premise chapter reuses the Lab welcome tip verbatim, so it ends on
