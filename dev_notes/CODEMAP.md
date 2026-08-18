@@ -644,14 +644,15 @@ World 10's Adapted and nowhere else.
   Qumatex's "Name (ShortName)" line), and an optional `hybridParents` (both parents' own
   `color`/`variant`, set only by `combineMaterials` -- see below and STYLE.md's "Crystal
   sprites" section). No `maxHp` field -- HP is never intrinsic to a crystal, see "Max HP" below.
-- `crystal(name, type, moves, shadeStep?, variantOverride?, shortName?, colorOverride?)` is the
+- `crystal(name, type, moves, hueStep?, variantOverride?, shortName?, colorOverride?)` is the
   `WORLD_CRYSTALS`/`WORLD_RIVALS` row builder -- adding a `shortName` to an existing call while
-  leaving `shadeStep`/`variantOverride` at their defaults means passing `undefined` for those
-  positionally rather than omitting them (matches the existing pattern for `shadeStep` alone).
-  `colorOverride`, when given, replaces the whole `shade(look.color, shadeStep * 18)` computation
+  leaving `hueStep`/`variantOverride` at their defaults means passing `undefined` for those
+  positionally rather than omitting them (matches the existing pattern for `hueStep` alone).
+  `colorOverride`, when given, replaces the whole `hueShift(look.color, hueStepDegrees(hueStep))`
+  computation
   with that exact color -- every `WORLD_RIVALS[1-8]` entry uses it, since none of their
-  lore-described looks (a specific real-world hue/darkness) reduce to "the type's base color,
-  brightened by a multiple of 18%." Those calls build the override with `shade()`/`darken()`/
+  lore-described looks (a specific real-world hue/darkness) reduce to a rotation of the type's
+  own hue. Those calls build the override with `shade()`/`darken()`/
   `blend()`/`hueShift()` (`art/colors.ts`) over a raw `TYPE_LOOK[type].color` hex literal rather
   than a `TYPE_LOOK[type].color` property read, and never a bare negative-number literal (use
   `darken(color, amount)`, not `shade(color, -amount)`) -- both `scripts/content-lint.mjs` and
@@ -698,7 +699,8 @@ World 10's Adapted and nowhere else.
   there until the player tunes it via the relevant guardian's picker (`getTunedMoveClass`, see
   "Guardians" below). Decide any new class's `MOVE_COMPATIBILITY` membership on purpose, not by omission.
 - Per-type look lives in `TYPE_LOOK` (base color + variant, exported); individual compounds
-  of the same type get `shade(color, shadeStep * 18)` so siblings (Iron vs. Cobalt) read as a
+  of the same type get `hueShift(color, hueStepDegrees(hueStep))` so siblings (Iron vs. Cobalt)
+  read as a
   family (every rival golem opts out of this via `colorOverride` instead -- `WORLD_RIVALS[1-8]`
   with a hand-picked literal each, World 9's `rivalImpurityResonance` by blending its rolled
   type's own `TYPE_LOOK` base halfway to a tarnished grey so the color tracks the roll, see

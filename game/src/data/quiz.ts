@@ -475,6 +475,35 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       correct: 'An ABCAB stacking sequence of five graphene sheets, the ABC rhombohedral repeat',
       incorrect: 'A single graphene sheet twisted by exactly 60 degrees',
     },
+    // Phosphorene -- the world's one monolayer whose low-energy model is
+    // neither a Dirac cone nor an isotropic parabola, which is what makes it
+    // worth asking about in a session built on dispersion archetypes and
+    // multi-orbital tight-binding models.
+    {
+      prompt: "Phosphorene's puckered lattice puts four atoms in its unit cell rather than graphene's two. What does that do to its tight-binding Hamiltonian?",
+      correct: 'It becomes a larger matrix at each k, with hoppings within and between the two puckered sublayers',
+      incorrect: 'It collapses to a single band, simpler than graphene’s',
+    },
+    {
+      prompt: "Of the three dispersion archetypes, which describes phosphorene's band edges?",
+      correct: 'Parabolic, but with very different curvature along the two in-plane directions',
+      incorrect: 'A Dirac cone, the same archetype as graphene’s',
+    },
+    {
+      prompt: "Phosphorene's effective mass is light along the armchair direction and heavy along the zigzag one. What is that a statement about?",
+      correct: 'The curvature of its band, which sets the effective mass direction by direction',
+      incorrect: 'The number of electrons in the crystal, which differs by direction',
+    },
+    {
+      prompt: 'A single phosphorene layer has a direct gap near 2 eV while bulk black phosphorus has about 0.3 eV. In a tight-binding picture, what shrinks the gap as layers are stacked?',
+      correct: 'Interlayer hopping, which adds bands and pushes the band edges toward each other',
+      incorrect: 'The phosphorus atoms bonding differently, changing the crystal’s chemistry',
+    },
+    {
+      prompt: 'Phosphorene and graphene are built the same way in a tight-binding model. What actually differs?',
+      correct: 'The lattice geometry and the hopping amplitudes on it',
+      incorrect: 'Graphene needs a lattice; phosphorene is treated as a free electron gas',
+    },
   ],
 
   // World 3 (session03.tex: topological band theory, ℤ₂ invariant,
@@ -541,6 +570,64 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       prompt: "Why is Bi₂Te₃'s topological surface state called 'spin-momentum locked'?",
       correct: "An electron's spin direction is rigidly tied to its momentum direction on the surface Dirac cone",
       incorrect: 'Its spin flips randomly and independently of momentum, averaged over the surface',
+    },
+    // Bismuthene -- the honeycomb monolayer that takes this session's
+    // opposite-mass-per-spin construction to its practical limit, since the
+    // session itself names graphene's own spin-orbit coupling as the thing
+    // that is too small to see.
+    {
+      prompt: "Bismuthene's quantum spin Hall gap is close to 0.8 eV, the largest known. Graphene shares its honeycomb lattice and is technically a quantum spin Hall insulator too. Why is the effect hopeless to observe there?",
+      correct: 'Carbon’s intrinsic spin-orbit coupling is minuscule, so the gap it opens is negligible',
+      incorrect: 'Graphene breaks time-reversal symmetry, which forbids the state outright',
+    },
+    {
+      prompt: 'What supplies the opposite-sign-per-spin mass that makes bismuthene a quantum spin Hall insulator?',
+      correct: 'The strong atomic spin-orbit coupling of its bismuth atoms',
+      incorrect: 'A magnetic field applied perpendicular to the sheet',
+    },
+    {
+      prompt: "What does bismuthene's unusually large bulk gap buy its edge states?",
+      correct: 'A wide energy window in which the helical edge modes are the only states available',
+      incorrect: 'Protection against time-reversal-breaking perturbations, which a smaller gap would lack',
+    },
+    {
+      prompt: 'A magnetic adatom is placed on a bismuthene edge. What happens to the protected crossing?',
+      correct: 'It gaps: the adatom breaks time reversal, the symmetry doing the protecting',
+      incorrect: 'Nothing at all: a gap that large makes the edge immune to every perturbation',
+    },
+    {
+      prompt: 'What kind of state does bismuthene carry along its edge?',
+      correct: 'A helical pair, spin-up and spin-down counter-propagating along the same edge',
+      incorrect: 'A single chiral channel travelling one way only',
+    },
+    // Jacutingaite -- the Kane-Mele model as a naturally occurring mineral.
+    // Its monolayer quantum spin Hall state is predicted with supporting
+    // measurements rather than measured as directly as WTe₂'s, which one of
+    // these questions asks about outright rather than glossing over.
+    {
+      prompt: 'Which minimal model does monolayer jacutingaite realize?',
+      correct: 'The Kane-Mele model: a honeycomb lattice gapped by intrinsic spin-orbit coupling',
+      incorrect: 'The Su-Schrieffer-Heeger chain, a one-dimensional dimerized model',
+    },
+    {
+      prompt: 'The Kane-Mele construction gaps a honeycomb lattice without breaking time-reversal symmetry. What does that force the total Chern number to be?',
+      correct: 'Zero, while the spin Chern number stays nonzero',
+      incorrect: 'One, exactly as for a Chern insulator',
+    },
+    {
+      prompt: 'The Kane-Mele model was first written down for graphene. What does monolayer jacutingaite change about it?',
+      correct: 'Nothing structural: it supplies the same honeycomb, with spin-orbit coupling strong enough to open a usable gap',
+      incorrect: 'It replaces the ℤ₂ classification with a Chern-number one',
+    },
+    {
+      prompt: "How firmly established is monolayer jacutingaite's quantum spin Hall state, next to monolayer WTe₂'s?",
+      correct: 'Predicted from first principles with supporting measurements, rather than a directly measured effect',
+      incorrect: 'Confirmed decades earlier, and the textbook example ever since',
+    },
+    {
+      prompt: 'Jacutingaite stands out among topological materials for a reason that has nothing to do with its band structure. What is it?',
+      correct: 'It occurs naturally as a mineral, first found in an iron ore body',
+      incorrect: 'It is the only topological material with no band gap at all',
     },
   ],
 
@@ -1116,6 +1203,63 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       correct: 'An established experimental result, not just a theoretical prediction',
       incorrect: 'Also only theoretically predicted, never observed',
     },
+    // Fe₃GeTe₂ -- the itinerant member of this world's two-dimensional
+    // magnets, asked on the side World 1's pool deliberately leaves alone:
+    // the Stoner threshold, exchange splitting and the excitation built on
+    // top of the order.
+    {
+      prompt: 'Fe₃GeTe₂ is an itinerant ferromagnet. What does "itinerant" say about where its moment lives?',
+      correct: 'On the same delocalized band electrons that carry its current',
+      incorrect: 'On localized f-shell moments that never hop between sites',
+    },
+    {
+      prompt: 'In the Stoner picture, what has to hold for Fe₃GeTe₂ to order magnetically at all?',
+      correct: 'The interaction strength times the density of states at the Fermi level must exceed one',
+      incorrect: 'Its lattice must be bipartite',
+    },
+    {
+      prompt: "What does mean-field magnetism do to Fe₃GeTe₂'s spin-up and spin-down bands?",
+      correct: 'Splits them rigidly in energy, the exchange splitting, which grows with U',
+      incorrect: 'Merges them into a single spin-degenerate band',
+    },
+    {
+      prompt: 'Fe₃GeTe₂ has strong uniaxial magnetic anisotropy. In this session’s exchange language, what kind of term is that?',
+      correct: 'An Ising-like single-component coupling, which promotes an easy axis',
+      incorrect: 'A Dzyaloshinskii-Moriya cross-product term, which promotes spiral order',
+    },
+    {
+      prompt: 'Fe₃GeTe₂ orders ferromagnetically and FePS₃ antiferromagnetically. In the isotropic Heisenberg limit, how do their magnon dispersions differ near k = 0?',
+      correct: 'Quadratic for the ferromagnet, linear for the antiferromagnet',
+      incorrect: 'Both linear: the ordering pattern makes no difference',
+    },
+    // FePS₃ -- the Ising member of the MPS₃ family, which is what makes it a
+    // question about anisotropic exchange rather than another Heisenberg
+    // magnet.
+    {
+      prompt: 'FePS₃ is the Ising member of the MPS₃ family. What does an Ising-like exchange term Λ SᶻᵢSᶻⱼ do?',
+      correct: 'Promotes an easy axis: the system magnetizes more readily along one direction than another',
+      incorrect: 'Promotes noncollinear spiral order, the way a Dzyaloshinskii-Moriya term does',
+    },
+    {
+      prompt: 'MnPS₃ is Heisenberg-like, NiPS₃ XY-like, FePS₃ Ising-like. What in the Hamiltonian separates them?',
+      correct: 'How anisotropic the exchange coupling is, and along which spin components',
+      incorrect: 'The number of phosphorus atoms per formula unit',
+    },
+    {
+      prompt: "An isotropic Heisenberg antiferromagnet's magnon dispersion is gapless and linear near k = 0. What does FePS₃'s Ising anisotropy do to that?",
+      correct: 'Tilting a spin off the easy axis now costs energy, so the mode is no longer gapless',
+      incorrect: 'Nothing: anisotropy never touches a magnon spectrum',
+    },
+    {
+      prompt: 'Diagonalizing the magnon Hamiltonian of an antiferromagnet like FePS₃ needs a step a ferromagnet’s does not. Which?',
+      correct: 'A Bogoliubov transformation, since anomalous a b and a†b† terms appear',
+      incorrect: 'A Fourier transform, which the ferromagnetic case never requires',
+    },
+    {
+      prompt: 'FePS₃ carries no net magnetization at all. Can it still host magnons?',
+      correct: 'Yes: its two sublattices cancel, but the ordered pattern still supports spin waves',
+      incorrect: 'No: a magnon needs a net moment to precess around',
+    },
   ],
 
   // World 7 (session07.tex: entanglement entropy, the area law, matrix
@@ -1644,6 +1788,33 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       prompt: "What technology is HfO₂'s ferroelectric phase the real basis for?",
       correct: 'FeRAM/FeFET nonvolatile memory devices',
       incorrect: 'High-Tc superconducting qubit junctions',
+    },
+    // Monolayer SnTe -- off-syllabus, ferroelectric order at the
+    // two-dimensional limit, here for the same reason BaTiO₃/GeTe/HfO₂ are.
+    {
+      prompt: "Which way does monolayer SnTe's spontaneous polarization point?",
+      correct: 'In the plane of the sheet',
+      incorrect: 'Perpendicular to the sheet, like a stack of capacitor plates',
+    },
+    {
+      prompt: 'How high a temperature does a one-unit-cell SnTe film stay ferroelectric to?',
+      correct: 'Around 270 K, above bulk SnTe’s own transition',
+      incorrect: 'Only a few millikelvin',
+    },
+    {
+      prompt: "How was monolayer SnTe's polarization switched in experiment?",
+      correct: 'With the electric field from a scanning tunneling microscope tip',
+      incorrect: 'By cooling it below a superconducting transition',
+    },
+    {
+      prompt: 'SnTe and GeTe are both rocksalt-derived IV-VI ferroelectrics. What is distinctive about the monolayer SnTe entry?',
+      correct: 'Its polarization lies in-plane and survives at the two-dimensional limit',
+      incorrect: 'It is the only one of the two that is also magnetic',
+    },
+    {
+      prompt: 'What move can monolayer SnTe carry that an ordinary band semiconductor cannot?',
+      correct: 'Ferron Pulse, the quantum of its polarization order',
+      incorrect: 'Magnon Pulse, which needs magnetic order',
     },
   ],
 };

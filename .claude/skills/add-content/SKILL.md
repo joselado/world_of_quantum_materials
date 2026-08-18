@@ -30,8 +30,8 @@ skipping grounding entirely.
 
 ## A. Adding a new crystal/material
 
-1. Add a `crystal(name, type, maxHp, moves, shadeStep?, variantOverride?,
-   shortName?)` row (`game/src/data/materials.ts`) to the right world's
+1. Add a `crystal(name, type, moves, hueStep?, variantOverride?,
+   shortName?, colorOverride?)` row (`game/src/data/materials.ts`) to the right world's
    `WORLD_CRYSTALS[world]` pool (or `WORLD_RIVALS[world]` if it's a boss).
    - `type` must be an existing `MaterialType` (`TYPE_LOOK`'s keys).
      Proposing a genuinely new type is a much bigger change (touches
@@ -40,8 +40,10 @@ skipping grounding entirely.
      flag that explicitly rather than doing it as a side effect of adding
      one crystal.
    - Every id in `moves` must already exist in `MOVES`.
-   - `shadeStep` distinguishes same-type siblings (Iron vs. Cobalt) as a
-     family rather than reusing one exact color.
+   - `hueStep` distinguishes same-type siblings (Iron vs. Cobalt) as a
+     family rather than reusing one exact color, by rotating the type's base
+     hue (`hueStepDegrees`). Take the next integer unused by that type; the
+     ladder alternates sides and never saturates, so a high step is fine.
    - `variantOverride` only if this compound's real dimensionality/stacking
      doesn't match its type's default look (layered 2D materials ->
      `'layer'`, R-3m/R3c trigonal ones -> `'rhombohedral'` -- see

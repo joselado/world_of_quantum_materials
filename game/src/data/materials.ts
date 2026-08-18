@@ -785,8 +785,10 @@ export function materialTypeLabel(type: MaterialType): string {
 }
 
 // A crystal database row: real compound name + main type (which fixes its
-// look and its move compatibility). `shadeStep` just separates same-type
-// siblings visually (e.g. Iron vs. Cobalt) using TYPE_LOOK's base color.
+// look and its move compatibility). `hueStep` just separates same-type
+// siblings visually (e.g. Iron vs. Cobalt) by rotating TYPE_LOOK's base color
+// around the hue wheel at fixed saturation and brightness (`hueStepDegrees`
+// below).
 // `variantOverride` states a compound's own crystal habit where its structure
 // differs from the one its type's `TYPE_LOOK` entry assumes -- a lattice is a
 // property of the compound, and a main type groups compounds by their physics
@@ -795,20 +797,34 @@ export function materialTypeLabel(type: MaterialType): string {
 // among the bulk magnets). Only ever set from the compound's real structure,
 // never for visual variety; a compound whose structure is low-symmetry enough
 // to have no characteristic habit takes 'shard'.
-// `colorOverride` skips the `shadeStep` formula entirely and uses the given
+// `colorOverride` skips the `hueStep` formula entirely and uses the given
 // color as-is -- every rival golem (WORLD_RIVALS[1-8] and World 9's
 // `rivalImpurityResonance`) takes this route, since a golem's tarnished,
-// desaturated look doesn't reduce to "TYPE_LOOK's base color, brightened by
-// a multiple of 18%." No HP
+// desaturated look doesn't reduce to a rotation of its type's own hue. No HP
 // here -- a crystal's max HP in battle is never intrinsic to the compound,
 // only to which world it's fought in (an ordinary wild's `wildHpForWorld`,
 // a rival's `rivalHpForWorld`, both `data/balance.ts`, read live by
 // `BattleScene.create` rather than stored on `Material` at all).
+
+// How far around the hue wheel step n sits from its type's base color:
+// alternating sides, widening by 12 degrees each pair (0, +12, -12, +24, -24,
+// +36, ...). Rotating hue rather than stepping brightness is what keeps a
+// sibling recognizably its type's color instead of washing out: the steps in
+// use reach 7, and a purely additive brightness ladder clamps every channel to
+// 255 well before that, so the far end of a long family would render as white
+// crystals with no type color left at all. Alternating sides halves how far
+// the widest step travels (48 degrees at step 7 rather than 84), which keeps a
+// long family reading as one hue's neighborhood rather than sliding into an
+// unrelated one.
+function hueStepDegrees(step: number): number {
+  return (step % 2 === 0 ? -1 : 1) * Math.ceil(step / 2) * 12;
+}
+
 function crystal(
   name: string,
   type: MaterialType,
   moves: string[],
-  shadeStep = 0,
+  hueStep = 0,
   variantOverride?: CrystalVariant,
   shortName?: string,
   colorOverride?: number
@@ -818,7 +834,7 @@ function crystal(
     name,
     shortName,
     type,
-    color: colorOverride ?? shade(look.color, shadeStep * 18),
+    color: colorOverride ?? hueShift(look.color, hueStepDegrees(hueStep)),
     variant: variantOverride ?? look.variant,
     moves,
   };
@@ -955,6 +971,13 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // sibling).
     crystal('Indium Arsenide', 'semiconductor', ['tunnelStrike', 'thermalFluctuation'], 1, undefined, 'InAs'),
     crystal('Monolayer MoTe₂ (2H)', 'semiconductor', ['tunnelStrike', 'thermalFluctuation'], 3, 'layer'),
+    // Black phosphorus thinned to one sheet -- the world's one monolayer
+    // whose low-energy model is neither a Dirac cone nor an isotropic
+    // parabola: its puckered four-atom cell gives a direct gap at Γ with
+    // strongly anisotropic masses, so building its tight-binding model needs
+    // hoppings within and between the two puckered sublayers. 'layerSquare'
+    // for its rectangular in-plane cell, unlike the honeycomb sheets above.
+    crystal('Phosphorene', 'semiconductor', ['tunnelStrike', 'thermalFluctuation'], 4, 'layerSquare'),
     // HgTe's own bulk band structure is inverted -- Γ8/Γ6 touch at zero gap,
     // the same gapless character Graphene's own 'metal' entry above already
     // uses this type for, not an "ordinary gapped semiconductor" the way
@@ -988,6 +1011,22 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // Well (world 2's HgTe + CdTe fused, a World 10 wild -- see that pool's
     // own comment).
     crystal('Monolayer WTe₂', 'quantumSpinHall', ['helicalCurrent', 'thermalFluctuation'], 1, 'layerSquare'),
+    // A bismuth honeycomb grown on SiC (Reis et al., Science 2017) -- the
+    // largest quantum spin Hall gap known, around 0.8 eV, which is what the
+    // opposite-mass-per-spin construction this world builds gives you once
+    // the spin-orbit coupling comes from atoms as heavy as bismuth rather
+    // than from carbon. The substrate is a template and a wide-gap backdrop,
+    // not a partner phase: this is one compound's own topology, not a
+    // heterostructure, so it stays an ordinary wild rather than a hybrid
+    // recipe result.
+    crystal('Bismuthene', 'quantumSpinHall', ['helicalCurrent', 'tunnelStrike'], 3),
+    // The Kane-Mele model as a mineral: Pt₂HgSe₃ is a natural ore, and its
+    // monolayer is predicted to realize exactly that honeycomb-plus-intrinsic-
+    // spin-orbit-coupling model, with heavy Pt and Hg supplying the coupling
+    // (Marrazzo et al., PRL 2018). Predicted with supporting experiment
+    // rather than measured as directly as WTe₂'s own effect, which its
+    // materialdex blurb says out loud the way Twisted CrI₃'s does.
+    crystal('Jacutingaite', 'quantumSpinHall', ['helicalCurrent', 'thermalFluctuation'], 4, undefined, 'Pt₂HgSe₃'),
   ],
   // 'chernInsulator' rather than a dedicated field-driven-only type -- the
   // ordinary quantum Hall effect's quantized conductance is itself a Chern
@@ -1002,6 +1041,13 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // field, a specific engineered device, not a property of bulk GaAs
     // itself, so it doesn't carry that type here.
     crystal('Gallium Arsenide', 'semiconductor', ['tunnelStrike', 'thermalFluctuation'], 0, undefined, 'GaAs'),
+    // The quantum Hall state's other platform, and session 4 names it in the
+    // same breath as the GaAs quantum well above: a two-dimensional material
+    // whose carriers are Dirac rather than parabolic, so its Landau levels
+    // space as √B instead of linearly in B and its plateaus survive to ~100 K
+    // where GaAs's need ~1 K. Same entry as its World 1/2 rows -- what World 4
+    // asks about is its Landau-level side, not its plasmon or its lattice.
+    crystal('Graphene', 'metal', ['plasmonPulse', 'thermalFluctuation'], 0, 'layer'),
     // Real intrinsic magnetic topological insulator -- the actual zero-field
     // QAHE/Chern-insulator material, its magnetism built into the crystal
     // itself rather than doped in (contrast Cr-doped (Bi,Sb)₂Te₃, a World 10
@@ -1052,6 +1098,22 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // moment), but that's still magnon-carrying magnetic order, the same
     // 'classicalMagnet' slot Iron/Cobalt's itinerant ferromagnetism fills.
     crystal('Yttrium Iron Garnet', 'classicalMagnet', ['thermalFluctuation', 'magneticField'], 5, undefined, 'YIG'),
+    // The itinerant member of this world's 2D magnets: unlike the insulating
+    // chromium trihalides above, the same delocalized band electrons carry
+    // both its current and its moment, and its strong uniaxial anisotropy is
+    // what lets a single sheet order at all against the Mermin-Wagner
+    // argument. Ionic gating pushes its Curie temperature to about room
+    // temperature (Deng et al., Nature 2018). Also spawns in World 9, whose
+    // own pool is where a compound goes when a second world wants it and no
+    // second session teaches it.
+    crystal('Fe₃GeTe₂', 'classicalMagnet', ['thermalFluctuation', 'magneticField'], 6, 'layer'),
+    // The Ising member of the MPS₃ family, ordering antiferromagnetically
+    // near 118 K and staying ordered down to the monolayer, tracked there by
+    // a Raman mode that appears with the order (Lee et al., Nano Lett. 2016).
+    // Its single-ion anisotropy is what gaps its magnon spectrum, and what
+    // separates it from MnPS₃'s Heisenberg and NiPS₃'s XY behavior in the
+    // same chemical family.
+    crystal('FePS₃', 'classicalMagnet', ['thermalFluctuation', 'magneticField'], 7, 'layer'),
     // Type-II multiferroic from noncollinear/helimagnetic order down to the
     // monolayer limit (Song et al., Nature 2022) -- hosts genuine
     // electromagnons, 'multiferroic''s flagship. Same session (classical
@@ -1151,6 +1213,18 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // centrosymmetric monoclinic phase and not ferroelectric at all, so this
     // entry specifically means the thin-film phase.
     crystal('Hafnium Oxide', 'ferroelectric', ['ferronPulse', 'thermalFluctuation'], 2, 'shard', 'HfO₂'),
+    // The van der Waals itinerant ferromagnet, World 6's own (see that pool's
+    // entry), given a second home here rather than in World 1: its Stoner/band
+    // magnetism is genuinely mean-field symmetry breaking too, but World 1 is
+    // the tutorial world and a magnon carrier there lands at double force on a
+    // starting Silicon, which no beginner can answer yet.
+    crystal('Fe₃GeTe₂', 'classicalMagnet', ['thermalFluctuation', 'magneticField'], 6, 'layer'),
+    // Ferroelectricity at the two-dimensional limit: a one-unit-cell SnTe
+    // film polarizes in the plane of the sheet and stays polarized to about
+    // 270 K, above bulk SnTe's own transition (Chang et al., Science 2016),
+    // its domains switchable with an STM tip's field. Same "no session of its
+    // own" reason for living here as BaTiO₃/GeTe/HfO₂ above.
+    crystal('Monolayer SnTe', 'ferroelectric', ['ferronPulse', 'thermalFluctuation'], 3, 'layerSquare'),
   ],
   // The Devouring Mirror's wilds are exactly the game's named hybrid materials --
   // every HYBRID_RECIPES result and nothing else -- so the corridor plays
@@ -1348,7 +1422,7 @@ export const WORLD_RIVALS: Partial<Record<number, Material>> = {
   // semiconductor manufacturing). Color: brightened toward a pale, cool
   // silvery-blue -- "the color of scoured silicon" (real polysilicon reads
   // as a light silvery grey with a cool cast). Each rival below sets its
-  // color explicitly via `colorOverride` rather than `shadeStep` -- see
+  // color explicitly via `colorOverride` rather than `hueStep` -- see
   // `crystal()`'s own comment above -- with a raw TYPE_LOOK hex repeated as
   // a literal rather than read via `TYPE_LOOK[type].color`: this object is
   // walked as literal AST nodes by scripts/content-lint.mjs and

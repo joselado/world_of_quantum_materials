@@ -83,8 +83,8 @@ function evalNode(node, sf) {
 // computed live from the current world by BattleScene, data/balance.ts's
 // wildHpForWorld/rivalHpForWorld).
 function crystalFromCall(call) {
-  const [name, type, moves, shadeStep, variant] = call.args;
-  return { name, type, moves, shadeStep: shadeStep ?? 0, variant };
+  const [name, type, moves, hueStep, variant] = call.args;
+  return { name, type, moves, hueStep: hueStep ?? 0, variant };
 }
 
 // --- materials.ts -----------------------------------------------------

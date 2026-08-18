@@ -1156,7 +1156,15 @@ station motifs are deliberately not tunnels with a visible far end.
 - **Per-compound identity.** `TYPE_LOOK` fixes one habit + base color per `MaterialType`
   (and `variantOverride` the habit per compound), but individual compounds of the same type each
   get their own visual variation rather than rendering as that same silhouette in only a
-  different brightness. Every call site that has an actual `Material` passes `makeCrystal()`'s
+  different brightness. Two mechanisms stack, and both move hue rather than brightness.
+  **Stored on the `Material`:** `crystal()`'s `hueStep` rotates `TYPE_LOOK`'s base color around
+  the hue wheel at fixed saturation and value, alternating sides and widening by 12° each pair
+  (0, +12°, −12°, +24°, −24°, …, ±48° at step 7 — `hueStepDegrees`, `data/materials.ts`). It
+  rotates rather than brightens because a family can run to seven or eight members and an
+  additive brightness ladder clamps every channel to 255 long before that, leaving the far end
+  of a long family as white crystals with no type color left; alternating sides is what keeps
+  the widest step inside its own hue's neighborhood instead of sliding into an unrelated one.
+  **Applied at render:** every call site that has an actual `Material` passes `makeCrystal()`'s
   `opts.seed` (the material's own name);
   `art/crystals.ts`'s `jitterFor` hashes that name into a small deterministic PRNG
   (`hashSeed`/`seededRandom`, `art/colors.ts`) and derives a hue shift (`hueShift`, ±35°), a

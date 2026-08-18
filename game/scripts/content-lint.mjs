@@ -156,7 +156,7 @@ const SHOP_MOVE_IDS = Object.keys(MOVES).filter(
 const TYPE_LOOK = evalNode(findTopLevelConst(materialsSf, 'TYPE_LOOK'), materialsSf);
 const WORLD_NAMES = evalNode(findTopLevelConst(materialsSf, 'WORLD_NAMES'), materialsSf);
 
-// crystal(name, type, moves, shadeStep?, variantOverride?, shortName?) --
+// crystal(name, type, moves, hueStep?, variantOverride?, shortName?) --
 // every WORLD_CRYSTALS/WORLD_RIVALS row is one of these calls (materials.ts's
 // own comment on `crystal`), so args[0..2] are always name/type/moves.
 function crystalFromCall(call) {

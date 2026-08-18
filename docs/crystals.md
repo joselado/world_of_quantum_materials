@@ -44,12 +44,15 @@ appear.
 | Gallium Nitride | Semiconductor |
 | Indium Arsenide | Semiconductor |
 | Monolayer MoTe₂ (2H) | Semiconductor |
+| Phosphorene | Semiconductor |
 
 ### World 3: Topological band theory
 
 | Crystal | Type |
 | --- | --- |
 | Bi₂Te₃ | Quantum Spin Hall Insulator |
+| Bismuthene | Quantum Spin Hall Insulator |
+| Jacutingaite | Quantum Spin Hall Insulator |
 | Monolayer WTe₂ | Quantum Spin Hall Insulator |
 
 ### World 4: Magnetic field, quantum Hall effect, Landau levels
@@ -57,6 +60,7 @@ appear.
 | Crystal | Type |
 | --- | --- |
 | MnBi₂Te₄ | Chern Insulator |
+| Graphene | Metal |
 | Gallium Arsenide | Semiconductor |
 
 ### World 5: Superconductivity, Nambu representation, Majoranas
@@ -78,6 +82,8 @@ appear.
 | Chromium Tribromide | Classical Magnet |
 | Chromium Triiodide | Classical Magnet |
 | Cobalt | Classical Magnet |
+| Fe₃GeTe₂ | Classical Magnet |
+| FePS₃ | Classical Magnet |
 | Iron | Classical Magnet |
 | Manganese Oxide | Classical Magnet |
 | Yttrium Iron Garnet | Classical Magnet |
@@ -110,10 +116,12 @@ appear.
 | Crystal | Type |
 | --- | --- |
 | Fe(Te,Se) | Chern Superconductor |
+| Fe₃GeTe₂ | Classical Magnet |
 | Manganese | Classical Magnet |
 | Barium Titanate | Ferroelectric |
 | GeTe | Ferroelectric |
 | Hafnium Oxide | Ferroelectric |
+| Monolayer SnTe | Ferroelectric |
 | Niobium Diselenide | Superconductor |
 
 ### World 10: Machine learning for quantum materials

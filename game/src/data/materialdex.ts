@@ -91,6 +91,18 @@ export const MATERIAL_BLURBS: Record<string, string> = {
     "KH₂PO₄ is an order-disorder ferroelectric: protons hop between two off-center sites in each O-H...O bond, described by a pseudospin (Ising-like) mean-field model, unlike Barium Titanate's displacive transition (an ion sliding continuously off-center). Same SSB, a different microscopic route.",
   'Titanium Diselenide':
     "1T-TiSe₂'s charge density wave (~200 K) is World 1's own broken-continuous-translational-symmetry example: a softened lattice/charge modulation opens a small gap, the textbook real-material CDW. Its low-energy mode is the ordinary lattice phonon. Unlike a magnon or Higgs mode, phonons stay gapless in every material, CDW included.",
+  Bismuthene:
+    "A honeycomb sheet of bismuth grown on silicon carbide, carrying the largest quantum spin Hall gap anyone has measured, close to 0.8 eV (Reis et al., Science 2017). Graphene has the same lattice and is technically a quantum spin Hall insulator too, but carbon's intrinsic spin-orbit coupling is minuscule; swap in atoms as heavy as bismuth and the same opposite-mass-per-spin construction opens a gap big enough for the helical edge to matter at room temperature.",
+  Jacutingaite:
+    'Pt₂HgSe₃ is a genuine mineral, first found in an iron ore body in Minas Gerais, and its monolayer is predicted to realize the Kane-Mele model almost exactly: a honeycomb lattice gapped by the intrinsic spin-orbit coupling of heavy platinum and mercury (Marrazzo et al., PRL 2018). The prediction comes with supporting measurements rather than a direct transport signature, so it sits a step behind Monolayer WTe₂ in how firmly established it is.',
+  'Fe₃GeTe₂':
+    'The itinerant one among the two-dimensional magnets: the same delocalized band electrons carry both its current and its magnetic moment, unlike the insulating chromium trihalides whose moments sit still on their ions. An isotropic two-dimensional magnet could not order at any finite temperature at all, and this one gets around that with strong uniaxial anisotropy. Gating a monolayer with an ionic liquid pushes its Curie temperature up to roughly room temperature.',
+  'FePS₃':
+    'The Ising member of the MPS₃ family: MnPS₃ is Heisenberg-like and NiPS₃ XY-like, while FePS₃ locks its spins hard along one axis, which is exactly the anisotropy a two-dimensional magnet needs before it can order at all. It orders antiferromagnetically near 118 K and keeps doing so down to a single layer, tracked there by a Raman mode that appears along with the order.',
+  'Monolayer SnTe':
+    "Ferroelectricity surviving all the way to the two-dimensional limit. A film one unit cell thick polarizes in the plane of the sheet rather than across it, and stays polarized up to about 270 K, above the temperature bulk SnTe's own distortion survives to. Its domains can be imaged and switched with the electric field from a scanning tunneling microscope tip (Chang et al., Science 2016).",
+  Phosphorene:
+    'Black phosphorus thinned to a single sheet, and the odd one out among two-dimensional materials: its puckered lattice gives neither a Dirac cone like graphene nor an isotropic parabola. Its direct gap climbs from roughly 0.3 eV in the bulk to around 2 eV in one layer, and its carrier masses are strongly anisotropic, light along the armchair direction and heavy along the zigzag one, so which way you send a current through it genuinely matters.',
 };
 
 const TYPE_FALLBACK_BLURBS: Record<MaterialType, string> = {
