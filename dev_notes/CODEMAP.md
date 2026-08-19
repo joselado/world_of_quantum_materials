@@ -48,7 +48,8 @@ game/src/
                                  art/labMotifs.ts icon beside it)
     OverworldScene.ts          Per-world walkable map: movement, encounters, rival gate, shared
                                  dialogue/panel infrastructure (addDialogueButton(At),
-                                 renderPagedButtons, renderFarewellFooter) every panels/ file uses.
+                                 addQuestionButton, renderPagedButtons, renderFarewellFooter)
+                                 every panels/ file uses.
                                  H and Enter both warp straight to the Hub (scene.start('Hub')) --
                                  no in-world menu
     overworld/                 The corridor's ground plane and air, split out of OverworldScene
@@ -616,6 +617,12 @@ game/src/
                                    and fitProseToBudget(), the shared fitter for authored prose
                                    whose length the layout can't assume (see "Long authored
                                    prose is fitted to the canvas" below)
+    mathtext.ts                   makeQuestionText()/makeFormulaButton()/hasMath()/stripMath() --
+                                   typesetting for the formulas in the physics questions (see
+                                   "Formulas in question text" below): a quiz prompt or answer
+                                   marks its formulas with `$...$` and this lays the marked
+                                   spans out as real subscripts, superscripts and square roots
+                                   instead of literal punctuation
     theme.ts                      PANEL_BG/GOLD_ACCENT(_HEX)/REFERENCE_BLUE_GREY(_HEX)/
                                    TUTORIAL_CYAN(_HEX)/STORY_LAVENDER(_HEX) -- colors reused for a shared
                                    UI role (a panel background, an "active" accent, etc.) across
@@ -857,6 +864,7 @@ everything else by absence, so only two things in it carry meaning.
   `buyLandauMove`/`retuneLandauMove` or `pickUltimateClass` commit logic; only the picker's
   own row-packing/rendering is shared.
   Genuinely cross-cutting dialogue infrastructure -- `addDialogueButton(At)`,
+  `addQuestionButton` (its quiz-answer sibling, see "Formulas in question text" below),
   `renderPagedButtons`, `renderFarewellFooter`/`renderCancelFarewellFooter` (the latter's
   two-button "Never mind"/"Farewell" row, for a guardian panel with a pending two-step pick --
   Anderson's dope-in choice), `closeDialogue`, state accessors like
@@ -1989,6 +1997,40 @@ world-entry lore screen"/"Contextual tutorial tips," STYLE.md, for the per-panel
 numbers. Reach for this helper for any new panel rendering per-world or per-topic authored
 prose -- a fixed panel box plus an uncapped `fontPx` is what lets a longer entry for one
 world spill off the canvas while every other world looks fine.
+
+**Formulas in question text are typeset, not spelled out.** A quiz prompt or answer in
+`data/quiz.ts` marks each formula it contains with `$...$`, and `ui/mathtext.ts` lays the
+marked spans out as real mathematics -- subscripts drop, superscripts rise, `√(...)` gets a
+radical sign with a bar drawn over its radicand, variables lean while function names
+(`cos`, `exp`, `ln`, `sgn`, ...) stay upright. The grammar is only as wide as the question
+data needs: `_x`/`_{xy}`, `^x`/`^{xy}`, `√`, and the two shorthands the authored text
+already used -- a trailing `†` and Unicode script glyphs (`²`, `₂`) attach as scripts to the
+glyph before them. Parentheses, brackets and braces are literal everywhere except as a
+script argument or a radicand, so an anticommutator `{c_i, c_j†}` keeps its braces. Fractions
+stay inline as `a / b`: a stacked fraction doubles a line's height, and these panels render
+at 12-13px inside a height budget where that is the scarce resource.
+
+Two entry points, and both fall straight through to a plain Phaser `Text` when the string
+carries no `$` at all -- which is most question text, so most of it never touches this
+module:
+
+- **`makeQuestionText(scene, x, y, source, style)`** for a prompt. Returns a `Text` or a
+  `Container` with the `width`/`height` a panel stacks its content by, positioned like a
+  `Text` with `setOrigin(0.5, 0)`, so a caller's running-`y` layout is unchanged either way.
+- **`makeFormulaButton(scene, x, y, label, style, onClick)`** for an answer, reached through
+  `OverworldScene`/`HubScene`'s **`addQuestionButton`** (`addDialogueButton`'s
+  quiz-answer sibling) and `BattleScene.addAnswerButton`. A container has neither a text
+  background nor input bounds of its own, so the button draws its own plate and sets an
+  explicit rectangular hit area; it also carries the label's plain reading on a `text`
+  property, since both headless harnesses find a clickable by looking for an interactive
+  object with a string `text`.
+
+Every panel that asks a question goes through these: `OverworldScene.renderEncounterPage`,
+`BattleScene.renderQuestionPanel` (Landau's Analytic question and Sklodowska-Curie's
+Ultimate streak) and `scenes/panels/feynman.ts`'s move-level streak. `content-lint`'s check
+15 holds the markup itself together -- balanced `$`, balanced fences inside a span, no
+dangling `_`/`^`/`√` -- since a malformed span is still a perfectly valid string that
+`tsc` has no opinion about.
 
 **Returning to the Hub always snapshots the in-progress world first.**
 `OverworldScene.returnToHub()` (Enter, the World 10 finale's "Return to the Lab", and

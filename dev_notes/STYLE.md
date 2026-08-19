@@ -1223,7 +1223,7 @@ station motifs are deliberately not tunnels with a visible far end.
   rather than switching to a separate scene --
   asking a question or offering a fight shouldn't feel like leaving the map. Movement is
   frozen (`dialogueActive`) while it's open.
-- Single screen, no click-through: the wild crystal bobs at the top (`makeCrystal()`, size
+- One screen at the default text size, no click-through: the wild crystal bobs at the top (`makeCrystal()`, size
   30), directly below it an italic greeting line keyed to the material's main type
   (`data/greetings.ts`'s `encounterGreeting`, in muted blue-grey `#cfd8ff`), and directly
   below that -- already visible, no "Continue" step -- either the physics question (gold
@@ -1232,8 +1232,27 @@ station motifs are deliberately not tunnels with a visible far end.
   encounter doesn't always ask the same thing) with two shuffled answer buttons plus "Let me
   pass," or a plain "Fight!" / "Let me pass" choice if it doesn't. Buttons use
   the same `[ #222244 background / #ffff88 text ]` treatment `BattleScene`'s move buttons
-  use, for visual continuity between the map and the battle screen. Question, answer, and
-  greeting text are all kept short (one line each) so the panel reads at a glance.
+  use, for visual continuity between the map and the battle screen. Question, answer and
+  greeting text all wrap to the panel's own content width and the panel sizes itself to
+  what they come to, so a long question reads as a wrapped block rather than pushing the
+  buttons off the bottom.
+- Any formula inside the question or an answer is typeset rather than spelled out --
+  subscripts drop, superscripts rise, a square root gets a radical sign with a bar over its
+  radicand, variables lean and function names stay upright (`ui/mathtext.ts`, CODEMAP.md's
+  "Formulas in question text"). An answer button carrying one draws its own plate in the same
+  `[ #222244 background / #ffff88 text ]` treatment rather than using a text background, so
+  it is indistinguishable from a plain answer button beside it.
+- At the largest text-size presets a long question and two long answers together outgrow the
+  canvas, so the panel splits in two rather than shrinking the text back down or spilling off
+  screen. `renderEncounterPage` measures three layouts and takes the first whose every page
+  fits: everything on one page (what almost every encounter gets, and the only layout at the
+  default text size); question on page 1, question repeated above the answers on page 2; or,
+  for a question too long to share a page with the answers at all, question on page 1 and the
+  answers alone on page 2. The pages are joined by the same `'<- Prev'` / `'Page N/M'` /
+  `'Next ->'` row at +/-170 from centre that every paginated list uses
+  (`renderPagedButtons`), with the unavailable arrow dimmed to `0.35`. The question and the
+  shuffled answer order are drawn once when the encounter opens, so paging back and forth
+  re-shows the same question with the answers in the same places.
 - Choosing to fight (via a correct/wrong answer or the no-question "Fight!" button) starts
   `BattleScene`; "Let me pass" just closes the panel with no scene change and no
   win/loss consequence.

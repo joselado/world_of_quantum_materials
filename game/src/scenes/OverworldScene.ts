@@ -52,6 +52,8 @@ import { PASSIVES, PASSIVE_OWNERS } from '../data/passives';
 import type { PassiveOwner } from '../data/passives';
 import { pickTokenValue, tokenColorForValue } from '../data/tokens';
 import { getWorldQuestion } from '../data/quiz';
+import type { MaterialQuestion } from '../data/quiz';
+import { hasMath, makeQuestionText, makeFormulaButton } from '../ui/mathtext';
 import { encounterGreeting } from '../data/greetings';
 import { TUTORIAL_TIPS, hasSeenTip, markTipSeen } from '../data/tutorial';
 import type { TutorialTipId } from '../data/tutorial';
@@ -383,6 +385,12 @@ export interface GuardianPanelHost extends Phaser.Scene {
   dialogueActive: boolean;
   dialogueContainer?: Phaser.GameObjects.Container;
   addDialogueButton(container: Phaser.GameObjects.Container, y: number, label: string, onClick: () => void): Phaser.GameObjects.Text;
+  addQuestionButton(
+    container: Phaser.GameObjects.Container,
+    y: number,
+    label: string,
+    onClick: () => void
+  ): Phaser.GameObjects.Text | Phaser.GameObjects.Container;
   addDialogueButtonAt(
     container: Phaser.GameObjects.Container,
     x: number,
@@ -2162,92 +2170,222 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     persistFromRegistry(this.game.registry);
   }
 
-  // In-map dialogue for a wild encounter: one screen with the greeting and
-  // (for materials with a quiz entry) the physics question together, or
-  // straight to a fight/pass choice if there's no question yet. Deliberately
-  // an overlay inside this scene rather than a separate scene -- asking a
-  // question shouldn't feel like leaving the map.
-  // Content laid out top-down first (running `y`, each element's own height
-  // advancing it), panel sized/inserted behind everything afterward -- same
-  // pattern as showSettingsPanel/renderTutorialPage, needed here because
-  // this is the single most-seen dialogue in the game and both the
-  // greeting and the physics question vary in length per material.
+  // In-map dialogue for a wild encounter: the greeting and (for materials
+  // with a quiz entry) the physics question, or straight to a fight/pass
+  // choice if there's no question yet. Deliberately an overlay inside this
+  // scene rather than a separate scene -- asking a question shouldn't feel
+  // like leaving the map.
+  //
+  // The question and the shuffled answer order are drawn once here rather
+  // than inside the page renderer, so paging back and forth re-shows the
+  // same question with the answers in the same places instead of rerolling
+  // both on every arrow press.
   private showEncounter(material: Material) {
+    const question = getWorldQuestion(this.world, material.name);
+    const options = question
+      ? Phaser.Utils.Array.Shuffle([
+          { text: question.correct, correct: true },
+          { text: question.incorrect, correct: false },
+        ])
+      : undefined;
+    this.renderEncounterPage(material, question, options, 0);
+  }
+
+  // One page of the wild-encounter panel.
+  //
+  // Content is laid out top-down first (running `y`, each element's own
+  // height advancing it) and the panel sized/inserted behind it afterward --
+  // the same pattern as showSettingsPanel/renderTutorialPage, needed here
+  // because this is the single most-seen dialogue in the game and both the
+  // greeting and the physics question vary in length per material.
+  //
+  // At the larger text-size presets a long question and two long answers
+  // together outgrow the canvas, so the panel splits across pages joined by
+  // the same '<- Prev'/'Next ->' row every paginated list in the game uses
+  // (renderPagedButtons). Three layouts are measured in order and the first
+  // one whose every page fits the canvas wins, so a short encounter keeps
+  // the single uninterrupted screen and only a long one pays for the split:
+  //
+  //   'single'    everything on one page, no arrows -- what almost every
+  //               encounter at the default text size gets.
+  //   'split'     page 1 greets and asks; page 2 repeats the question above
+  //               the answers, so the question is still on screen while the
+  //               player picks.
+  //   'splitBare' as 'split', but page 2 carries the answers alone -- the
+  //               fallback for a question so long it cannot share a page
+  //               with them at all, one arrow press away from being re-read.
+  //
+  // Measuring passes build the same layout minus the crystal art, which is
+  // expensive to build and contributes a fixed offset rather than a measured
+  // height; only the page actually shown builds it.
+  private renderEncounterPage(
+    material: Material,
+    question: MaterialQuestion | undefined,
+    options: { text: string; correct: boolean }[] | undefined,
+    page: number
+  ) {
+    this.dialogueContainer?.destroy(true);
     this.dialogueActive = true;
 
     const panelWidth = 600;
     const contentWidth = panelWidth - 60;
     const top = 20;
-    const container = this.add.container(0, 0).setDepth(100);
-    this.dialogueContainer = container;
-
     const crystalY = top + 34;
-    const crystal = makeCrystal(this, 30, material.color, material.variant, {
-      seed: material.name,
-      hybrid: material.hybridParents,
-    });
-    crystal.setPosition(CANVAS_W / 2, crystalY);
-    container.add(crystal);
-    this.tweens.add({ targets: crystal, y: crystalY + 8, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    let y = crystalY + 40;
 
-    const greeting = this.add
-      .text(CANVAS_W / 2, y, encounterGreeting(material), {
-        fontSize: fontPx(this, 12),
-        fontStyle: 'italic',
-        color: '#cfd8ff',
-        align: 'center',
-        wordWrap: { width: contentWidth },
-      })
-      .setOrigin(0.5, 0);
-    container.add(greeting);
-    y += greeting.height + 14;
+    type Layout = 'single' | 'split' | 'splitBare';
 
-    const question = getWorldQuestion(this.world, material.name);
-    if (question) {
-      const prompt = this.add
-        .text(CANVAS_W / 2, y, question.prompt, {
-          fontSize: fontPx(this, 13),
+    const build = (layout: Layout, shownPage: number, withCrystal: boolean) => {
+      const container = this.add.container(0, 0).setDepth(100);
+      const split = layout !== 'single';
+      // Page 1 of a split panel greets and asks; page 2 answers. An unsplit
+      // panel does both at once.
+      const showGreeting = !split || shownPage === 0;
+      const showPrompt = !!question && (!split || shownPage === 0 || layout === 'split');
+      const showChoices = !split || shownPage === 1;
+
+      let y = top;
+      if (showGreeting) {
+        if (withCrystal) {
+          const crystal = makeCrystal(this, 30, material.color, material.variant, {
+            seed: material.name,
+            hybrid: material.hybridParents,
+          });
+          crystal.setPosition(CANVAS_W / 2, crystalY);
+          container.add(crystal);
+          this.tweens.add({ targets: crystal, y: crystalY + 8, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+        }
+        y = crystalY + 40;
+
+        const greeting = this.add
+          .text(CANVAS_W / 2, y, encounterGreeting(material), {
+            fontSize: fontPx(this, 12),
+            fontStyle: 'italic',
+            color: '#cfd8ff',
+            align: 'center',
+            wordWrap: { width: contentWidth },
+          })
+          .setOrigin(0.5, 0);
+        container.add(greeting);
+        y += greeting.height + 14;
+      }
+
+      if (question && showPrompt) {
+        const prompt = makeQuestionText(this, CANVAS_W / 2, y, question.prompt, {
+          fontSizePx: 13 * fontScale(this),
           color: GOLD_ACCENT_HEX,
-          align: 'center',
-          wordWrap: { width: contentWidth },
-        })
-        .setOrigin(0.5, 0);
-      container.add(prompt);
-      y += prompt.height + 14;
+          wrapWidth: contentWidth,
+        });
+        container.add(prompt);
+        y += prompt.height + 14;
+      }
 
-      const options = Phaser.Utils.Array.Shuffle([
-        { text: question.correct, correct: true },
-        { text: question.incorrect, correct: false },
-      ]);
+      if (showChoices) {
+        if (question && options) {
+          const btn1 = this.addQuestionButton(container, y, options[0].text, () =>
+            this.startBattle(material, options[0].correct ? QUIZ_CORRECT_MULTIPLIER : QUIZ_WRONG_MULTIPLIER)
+          );
+          y += btn1.height + 8;
+          const btn2 = this.addQuestionButton(container, y, options[1].text, () =>
+            this.startBattle(material, options[1].correct ? QUIZ_CORRECT_MULTIPLIER : QUIZ_WRONG_MULTIPLIER)
+          );
+          y += btn2.height + 8;
+          const btn3 = this.addDialogueButton(container, y, 'Let me pass', () => this.closeDialogue());
+          y += btn3.height;
+        } else {
+          const btn1 = this.addDialogueButton(container, y, 'Fight!', () => this.startBattle(material, 1));
+          y += btn1.height + 8;
+          const btn2 = this.addDialogueButton(container, y, 'Let me pass', () => this.closeDialogue());
+          y += btn2.height;
+        }
+      }
 
-      const btn1 = this.addDialogueButton(container, y, options[0].text, () =>
-        this.startBattle(material, options[0].correct ? QUIZ_CORRECT_MULTIPLIER : QUIZ_WRONG_MULTIPLIER)
-      );
-      y += btn1.height + 8;
-      const btn2 = this.addDialogueButton(container, y, options[1].text, () =>
-        this.startBattle(material, options[1].correct ? QUIZ_CORRECT_MULTIPLIER : QUIZ_WRONG_MULTIPLIER)
-      );
-      y += btn2.height + 8;
-      const btn3 = this.addDialogueButton(container, y, 'Let me pass', () => this.closeDialogue());
-      y += btn3.height;
-    } else {
-      const btn1 = this.addDialogueButton(container, y, 'Fight!', () => this.startBattle(material, 1));
-      y += btn1.height + 8;
-      const btn2 = this.addDialogueButton(container, y, 'Let me pass', () => this.closeDialogue());
-      y += btn2.height;
-    }
-    y += top;
+      if (split) {
+        y += 8;
+        // Same shared Prev/Next-and-page-label row renderPagedButtons uses,
+        // so a paged encounter reads like every other paged panel.
+        const prev = this.addDialogueButtonAt(
+          container,
+          CANVAS_W / 2 - 170,
+          y,
+          '<- Prev',
+          () => {
+            if (shownPage > 0) this.renderEncounterPage(material, question, options, shownPage - 1);
+          },
+          120
+        );
+        if (shownPage === 0) prev.setAlpha(0.35);
+        const next = this.addDialogueButtonAt(
+          container,
+          CANVAS_W / 2 + 170,
+          y,
+          'Next ->',
+          () => {
+            if (shownPage < 1) this.renderEncounterPage(material, question, options, shownPage + 1);
+          },
+          120
+        );
+        if (shownPage === 1) next.setAlpha(0.35);
+        const controlsRowH = Math.max(prev.height, next.height);
+        const pageLabel = this.add
+          .text(CANVAS_W / 2, y, `Page ${shownPage + 1}/2`, { fontSize: fontPx(this, 11), color: REFERENCE_BLUE_GREY_HEX })
+          .setOrigin(0.5, 0);
+        pageLabel.setY(y + (controlsRowH - pageLabel.height) / 2);
+        container.add(pageLabel);
+        y += controlsRowH;
+      }
 
-    const panelHeight = y - top;
-    const panel = this.add
-      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
-      .setStrokeStyle(2, 0x444466);
-    container.addAt(panel, 0);
+      y += top;
+      const panelHeight = y - top;
+      const panel = this.add
+        .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.94)
+        .setStrokeStyle(2, 0x444466);
+      container.addAt(panel, 0);
+      return { container, bottom: top + panelHeight };
+    };
+
+    // First layout whose every page fits the canvas. 'splitBare' is the
+    // floor rather than another candidate to fall past, since its page 2
+    // carries nothing but the answer buttons.
+    const fits = (layout: Layout) => {
+      const pages = layout === 'single' ? [0] : [0, 1];
+      const built = pages.map((p) => build(layout, p, false));
+      const ok = built.every((b) => b.bottom <= CANVAS_H);
+      built.forEach((b) => b.container.destroy(true));
+      return ok;
+    };
+    const layout: Layout = (['single', 'split'] as Layout[]).find(fits) ?? 'splitBare';
+    const shownPage = layout === 'single' ? 0 : Phaser.Math.Clamp(page, 0, 1);
+
+    this.dialogueContainer = build(layout, shownPage, true).container;
   }
 
   addDialogueButton(container: Phaser.GameObjects.Container, y: number, label: string, onClick: () => void) {
     return this.addDialogueButtonAt(container, CANVAS_W / 2, y, label, onClick, 480);
+  }
+
+  // A quiz answer, which unlike every other dialogue button may carry a
+  // formula in its label (ui/mathtext.ts) and then needs a drawn plate and
+  // an explicit hit area instead of a text background. Answers with no
+  // formula in them stay ordinary dialogue buttons.
+  addQuestionButton(container: Phaser.GameObjects.Container, y: number, label: string, onClick: () => void) {
+    if (!hasMath(label)) return this.addDialogueButton(container, y, label, onClick);
+    const btn = makeFormulaButton(
+      this,
+      CANVAS_W / 2,
+      y,
+      label,
+      {
+        fontSizePx: 13 * fontScale(this),
+        color: '#ffff88',
+        wrapWidth: 480,
+        backgroundColor: 0x222244,
+        padX: 10,
+        padY: 5,
+      },
+      onClick
+    );
+    container.add(btn);
+    return btn;
   }
 
   // Underlies addDialogueButton -- broken out so a footer row can place two

@@ -4,6 +4,7 @@ import { renderGuardianHeader } from './guardianHeader';
 import { makeFeynmanAvatar } from '../../art/feynman';
 import { CANVAS_W } from '../../art/perspective';
 import { fontPx, fontScale } from '../../ui/text';
+import { makeQuestionText } from '../../ui/mathtext';
 import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 import {
   MOVES,
@@ -376,14 +377,11 @@ function showLevelStreak(scene: GuardianPanelHost, moveId: string, targetLevel: 
     container.add(title);
     y += title.height + 10;
 
-    const prompt = scene.add
-      .text(CANVAS_W / 2, y, question.prompt, {
-        fontSize: fontPx(scene, 12),
-        color: '#ffffff',
-        align: 'center',
-        wordWrap: { width: panelWidth - 60 },
-      })
-      .setOrigin(0.5, 0);
+    const prompt = makeQuestionText(scene, CANVAS_W / 2, y, question.prompt, {
+      fontSizePx: 12 * fontScale(scene),
+      color: '#ffffff',
+      wrapWidth: panelWidth - 60,
+    });
     container.add(prompt);
     y += prompt.height + 14;
 
@@ -393,7 +391,7 @@ function showLevelStreak(scene: GuardianPanelHost, moveId: string, targetLevel: 
     ]);
 
     options.forEach((opt) => {
-      const btn = scene.addDialogueButton(container, y, opt.text, () => {
+      const btn = scene.addQuestionButton(container, y, opt.text, () => {
         if (!opt.correct) {
           finishStreak(false);
           return;

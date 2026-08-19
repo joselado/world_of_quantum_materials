@@ -13,6 +13,7 @@ import type { ProjectedPoint } from '../art/perspective';
 import { playAttackEffect, followAnchor, ANALYTIC_SHAPES, ULTIMATE_SHAPES, type EffectAnchor } from '../art/attackEffects';
 import { drawFranklinPassiveHalo } from '../art/passiveHalos';
 import { fontPx, fontScale } from '../ui/text';
+import { hasMath, makeQuestionText, makeFormulaButton } from '../ui/mathtext';
 import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY, REFERENCE_BLUE_GREY_HEX } from '../ui/theme';
 import {
   MOVES,
@@ -1112,14 +1113,11 @@ export class BattleScene extends Phaser.Scene {
       container.add(titleText);
       y += titleText.height + 8;
 
-      const promptText = this.add
-        .text(FIELD_W / 2, y, prompt, {
-          fontSize: `${Math.round(12 * scale)}px`,
-          color: '#ffffff',
-          align: 'center',
-          wordWrap: { width: contentWidth },
-        })
-        .setOrigin(0.5, 0);
+      const promptText = makeQuestionText(this, FIELD_W / 2, y, prompt, {
+        fontSizePx: 12 * scale,
+        color: '#ffffff',
+        wrapWidth: contentWidth,
+      });
       container.add(promptText);
       y += promptText.height + 14;
 
@@ -1151,6 +1149,12 @@ export class BattleScene extends Phaser.Scene {
     container.addAt(panel, 0);
   }
 
+  // An answer button. A label carrying a formula (ui/mathtext.ts) is typeset
+  // onto a drawn plate with an explicit hit area, since a container has
+  // neither a text background nor input bounds of its own; a label without
+  // one stays a plain text button. Both are built fresh at whatever `scale`
+  // renderQuestionPanel's shrink-to-fit has reached, so the panel keeps its
+  // overflow safety valve either way.
   private addAnswerButton(
     container: Phaser.GameObjects.Container,
     y: number,
@@ -1159,6 +1163,25 @@ export class BattleScene extends Phaser.Scene {
     width: number,
     onClick: () => void
   ) {
+    if (hasMath(label)) {
+      const formulaBtn = makeFormulaButton(
+        this,
+        FIELD_W / 2,
+        y,
+        label,
+        {
+          fontSizePx: 12 * scale,
+          color: '#ffff88',
+          wrapWidth: width,
+          backgroundColor: 0x222244,
+          padX: 10,
+          padY: 5,
+        },
+        onClick
+      );
+      container.add(formulaBtn);
+      return formulaBtn;
+    }
     const btn = this.add
       .text(FIELD_W / 2, y, label, {
         fontSize: `${Math.round(12 * scale)}px`,

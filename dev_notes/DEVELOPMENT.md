@@ -170,7 +170,7 @@ pure Node, no browser, no dev server) reads the source with the TypeScript
 compiler API and checks two families of thing none of the other checks on
 this page can see.
 
-**The hand-authored data tables' internal consistency** (checks 1-15): every
+**The hand-authored data tables' internal consistency** (checks 1-16): every
 `MaterialType` has a `MOVE_COMPATIBILITY` row and can host `phonon` (the
 universal fallback move), every crystal/rival's `moves` list resolves to a
 real `MOVES` id and to a class its own type can host, no two moves share a
@@ -182,7 +182,11 @@ per-type `RIVAL_9_NAMES`/`RIVAL_9_MOVES` tables are held to covering exactly
 `RIVAL_9_TYPES` in its place), every
 `HYBRID_RECIPES` result actually lives in `WORLD_CRYSTALS[10]` and vice versa
 (DESIGN.md §5's "hosts exactly the hybrid-recipe results, and nothing else"),
-every world 1-9 has a non-empty quiz pool, and every `TUTORIAL_TIPS` topic is
+every world 1-9 has a non-empty quiz pool, every formula span in a quiz
+prompt or answer is well-formed (`$...$` balanced, fences balanced inside a
+span, no dangling `_`/`^`/`√` -- a malformed span renders as literal `$` in
+front of a player mid-battle and is otherwise a perfectly valid string, so
+nothing else catches it), and every `TUTORIAL_TIPS` topic is
 reachable and declared in the order the game reveals it (a `{ kind: 'tip' }`
 topic has a trigger site, a `{ kind: 'guardian' }` topic names a real guardian
 and follows the ones unlocked in earlier worlds). Reads `materials.ts`/
@@ -190,7 +194,7 @@ and follows the ones unlocked in earlier worlds). Reads `materials.ts`/
 class-private `WORLD_GUARDIANS` table) the same AST-parsing way `gen-docs.mjs` does, for
 the same reason (`materials.ts` pulls in Phaser at module scope).
 
-**Orphan definite-assignment fields** (check 16), the one source-level rather
+**Orphan definite-assignment fields** (check 17), the one source-level rather
 than data-level check: it walks every `src/` class property declared
 `private x!: T` with no initializer and flags any whose name is never an
 assignment target anywhere in `src/`. The `!` is a promise to the compiler

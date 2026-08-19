@@ -262,8 +262,9 @@ a finger does both.
 **With the mouse.** Everything on screen that offers something is clickable:
 the Lab's stations and the guardians standing in the room, every panel button,
 the prompt that appears at a pass, the answers to a wild crystal's question,
-your moves in battle, the arrows that page between kinds of move, and the line
-in the bottom right corner of a world that takes you back to the Lab.
+your moves in battle, the arrows that page a long list or a question too long
+for one screen, and the line in the bottom right corner of a world that takes
+you back to the Lab.
 
 **With the keyboard.**
 

@@ -106,7 +106,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'It saturates at the bare bandwidth and stops growing',
     },
     {
-      prompt: 'In mean-field Hubbard theory, what symmetry does a nonzero magnetization m = ⟨n↑⟩ − ⟨n↓⟩ spontaneously break?',
+      prompt: 'In mean-field Hubbard theory, what symmetry does a nonzero magnetization $m = ⟨n↑⟩ − ⟨n↓⟩$ spontaneously break?',
       correct: 'Time-reversal symmetry',
       incorrect: 'Translational symmetry',
     },
@@ -128,7 +128,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'It cannot describe electrons that interact with each other at all',
     },
     {
-      prompt: 'What does the operator c_n† actually do to a state, in the second-quantized language?',
+      prompt: 'What does the operator $c_n†$ actually do to a state, in the second-quantized language?',
       correct: 'Adds one electron to site n, or annihilates the state if one is already there',
       incorrect: 'Measures how many electrons are currently sitting on site n',
     },
@@ -169,7 +169,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'U > 0 drives a charge density wave, U < 0 drives magnetism',
     },
     {
-      prompt: 'The superconducting mean-field term Δ = ⟨c_i c_j⟩ is unusual because it pairs two annihilation operators. Which symmetry does that cost it?',
+      prompt: 'The superconducting mean-field term $Δ = ⟨c_i c_j⟩$ is unusual because it pairs two annihilation operators. Which symmetry does that cost it?',
       correct: 'Gauge symmetry: the two phases no longer cancel',
       incorrect: 'Translational symmetry: the pairing has to pick a site',
     },
@@ -182,7 +182,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     {
       prompt: "Near its Dirac point, graphene's bands disperse as...",
       correct: 'E ∝ |k| (linear, Dirac-like)',
-      incorrect: 'E ∝ k² (ordinary parabolic)',
+      incorrect: '$E ∝ k²$ (ordinary parabolic)',
     },
     {
       prompt: "How many orbitals does graphene's honeycomb lattice carry per unit cell?",
@@ -205,9 +205,9 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'A sites to A, and B sites to B',
     },
     {
-      prompt: "Graphene's Fermi velocity v_F, in terms of hopping t and bond length a, is...",
-      correct: 'v_F = 3ta / (2ħ)',
-      incorrect: 'v_F = ta / ħ',
+      prompt: "Graphene's Fermi velocity $v_F$, in terms of hopping t and bond length a, is...",
+      correct: '$v_F = 3ta / (2ħ)$',
+      incorrect: '$v_F = ta / ħ$',
     },
     {
       prompt: 'Which graphene nanoribbon edge hosts a flat band of states pinned near zero energy?',
@@ -233,7 +233,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     {
       prompt: 'For a simple 1D tight-binding chain with hopping t, the band dispersion ε(φ) as a function of Bloch phase φ is...',
       correct: 'ε(φ) = 2t cos(φ)',
-      incorrect: 'ε(φ) = tφ² (a parabola)',
+      incorrect: '$ε(φ) = tφ²$ (a parabola)',
     },
     {
       prompt: 'In multi-orbital tight-binding band theory, what object diagonalizes the Hamiltonian at each fixed Bloch phase φ?',
@@ -242,7 +242,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'Ordinary semiconductors like GaN, near their band edges, are usually described by which dispersion shape?',
-      correct: 'Parabolic bands, E ∝ k²',
+      correct: 'Parabolic bands, $E ∝ k²$',
       incorrect: 'Dirac (linear) bands, E ∝ |k|',
     },
     {
@@ -268,7 +268,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: "How many independent Bloch phases does a 2D crystal's translational symmetry produce?",
-      correct: 'Two, φ_x and φ_y',
+      correct: 'Two, $φ_x$ and $φ_y$',
       incorrect: 'Three, one per spatial and spin direction',
     },
     {
@@ -284,7 +284,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     // Indium Arsenide -- narrow-gap dopable semiconductor, symmetry operators/Bloch phase.
     {
       prompt: 'A unitary symmetry operator in quantum mechanics always has eigenvalues with...',
-      correct: 'Unit modulus: a pure phase e^{iφ}',
+      correct: 'Unit modulus: a pure phase $e^{iφ}$',
       incorrect: 'An arbitrary, unconstrained real magnitude',
     },
     {
@@ -351,7 +351,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'They must all share exactly the same eigenvalue of S',
     },
     {
-      prompt: 'In the two-site mirror-symmetric hopping model, why do the bonding (c₁†+c₂†) and antibonding (c₁†−c₂†) states pick up mirror eigenvalues +1 and −1, without ever diagonalizing H?',
+      prompt: 'In the two-site mirror-symmetric hopping model, why do the bonding $(c₁†+c₂†)$ and antibonding $(c₁†−c₂†)$ states pick up mirror eigenvalues +1 and −1, without ever diagonalizing H?',
       correct: "It follows directly from the mirror's site-swap definition alone, no hopping amplitude needed",
       incorrect: "It requires first computing each state's hopping-amplitude-dependent energy",
     },
@@ -362,7 +362,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'Which of the three archetypal dispersions (parabolic, Dirac, or flat) describes most ordinary semiconductors, before any band-inversion physics is added?',
-      correct: 'Parabolic, E ∝ k²',
+      correct: 'Parabolic, $E ∝ k²$',
       incorrect: 'Dirac, E ∝ |k|',
     },
     {
@@ -377,12 +377,12 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     // CdTe -- ordinary gapped semiconductor, rotational symmetry.
     {
-      prompt: "On a 3-site ring with 120° rotational symmetry R (so R³ = 1), what values can the rotation eigenvalue's phase φ take?",
-      correct: 'φ_n = 2πn/3, for n = 0, 1, 2',
+      prompt: "On a 3-site ring with 120° rotational symmetry R (so $R³ = 1$), what values can the rotation eigenvalue's phase φ take?",
+      correct: '$φ_n = 2πn/3$, for n = 0, 1, 2',
       incorrect: "Any real value of φ, unconstrained by the ring's periodicity",
     },
     {
-      prompt: 'Applying a 90° rotation to a p_x orbital produces a p_y orbital. What does that tell you about whether p_x is an eigenstate of that rotation?',
+      prompt: 'Applying a 90° rotation to a $p_x$ orbital produces a $p_y$ orbital. What does that tell you about whether $p_x$ is an eigenstate of that rotation?',
       correct: 'It is not an eigenstate: the rotation maps it to a genuinely different state',
       incorrect: 'It is automatically an eigenstate, since orbitals are eigenstates of every symmetry',
     },
@@ -533,7 +533,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     {
       prompt: 'The topological invariant that survives generic spin-mixing and classifies quantum spin Hall insulators is...',
       correct: 'The ℤ₂ invariant ν',
-      incorrect: 'The spin Chern number C_s',
+      incorrect: 'The spin Chern number $C_s$',
     },
     {
       prompt: "For spin-1/2 electrons, why does Kramers' theorem force a twofold degeneracy at time-reversal-invariant momenta?",
@@ -563,7 +563,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: "Kramers' theorem forces two time-reversed partner states at the same time-reversal-invariant momentum to be linearly independent. Why?",
-      correct: 'Assuming they were proportional leads to |c|² = -1, impossible since T² = -1',
+      correct: 'Assuming they were proportional leads to $|c|² = -1$, impossible since $T² = -1$',
       incorrect: 'Because the Pauli exclusion principle forbids two electrons at the same momentum',
     },
     {
@@ -637,8 +637,8 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     // Graphene under a strong field -- Dirac Landau levels.
     {
       prompt: "In a strong magnetic field, graphene's Landau level energies scale as...",
-      correct: 'E_n ∝ √(nB): square root of both level index and field',
-      incorrect: 'E_n ∝ nB: linear in level index and field',
+      correct: '$E_n ∝ √(nB)$: square root of both level index and field',
+      incorrect: '$E_n ∝ nB$: linear in level index and field',
     },
     {
       prompt: "Graphene's n = 0 Landau level, unlike every other level in the ladder, sits at...",
@@ -652,13 +652,13 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: "Graphene's Landau levels come out as the square root of a harmonic-oscillator spectrum because the Dirac Hamiltonian itself isn't diagonal, but...",
-      correct: 'Its square H² is, built from ladder operators aa† and a†a',
+      correct: 'Its square $H²$ is, built from ladder operators $aa†$ and $a†a$',
       incorrect: 'It can be diagonalized directly in momentum space with no further work',
     },
     {
       prompt: "Near the K point, the effective low-energy Hamiltonian used to derive graphene's Landau levels is...",
-      correct: 'H₀ = v_F(p_x σ_x + p_y σ_y), a Dirac Hamiltonian',
-      incorrect: 'H₀ = p²/2m, an ordinary parabolic Hamiltonian',
+      correct: '$H₀ = v_F(p_x σ_x + p_y σ_y)$, a Dirac Hamiltonian',
+      incorrect: '$H₀ = p²/2m$, an ordinary parabolic Hamiltonian',
     },
     {
       prompt: "At a fixed magnetic field, graphene's Landau level spacing compared to a GaAs 2DEG's is...",
@@ -751,10 +751,10 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     {
       prompt: 'Below its critical temperature, what does aluminum do to an external magnetic field (the Meissner effect)?',
       correct: 'Actively expels it from the bulk',
-      incorrect: 'Tolerates it, same as above T_c',
+      incorrect: 'Tolerates it, same as above $T_c$',
     },
     {
-      prompt: 'Why is the superconducting flux quantum Φ₀ = h/2e rather than h/e?',
+      prompt: 'Why is the superconducting flux quantum $Φ₀ = h/2e$ rather than h/e?',
       correct: 'Cooper pairs carry charge 2e',
       incorrect: 'Aluminum ions carry charge 2e',
     },
@@ -786,7 +786,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'Diagonalizing the reduced Bogoliubov-de Gennes block gives quasiparticle energies E(k) =...',
-      correct: '±√(ε(k)² + |Δ(k)|²)',
+      correct: '$±√(ε(k)² + |Δ(k)|²)$',
       incorrect: '±(ε(k) + |Δ(k)|)',
     },
     {
@@ -801,9 +801,9 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     // YBCO -- unconventional d-wave cuprate superconductor.
     {
-      prompt: "YBCO's d-wave gap Δ(k) = Δ₀(cos kx − cos ky) vanishes exactly along...",
-      correct: 'The Brillouin-zone diagonals, kx = ±ky',
-      incorrect: 'The zone-boundary edges, kx = ±π',
+      prompt: "YBCO's d-wave gap $Δ(k) = Δ₀(cos k_x − cos k_y)$ vanishes exactly along...",
+      correct: 'The Brillouin-zone diagonals, $k_x = ±k_y$',
+      incorrect: 'The zone-boundary edges, $k_x = ±π$',
     },
     {
       prompt: "Because its gap has nodes, YBCO's Fermi surface ends up...",
@@ -821,7 +821,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'Spin-triplet (odd parity)',
     },
     {
-      prompt: 'Cuprate high-T_c superconductors like YBCO can reach critical temperatures in the...',
+      prompt: 'Cuprate high-$T_c$ superconductors like YBCO can reach critical temperatures in the...',
       correct: 'Hundreds of kelvin range',
       incorrect: 'Single-digit kelvin range, like simple metals',
     },
@@ -833,11 +833,11 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     // Niobium -- conventional s-wave superconductor, type-II vortices.
     {
       prompt: 'What exchange (Zeeman) field strength closes the gap of an s-wave superconductor like niobium?',
-      correct: 'J_c = Δ, equal to the gap itself',
-      incorrect: 'J_c = 2Δ',
+      correct: '$J_c = Δ$, equal to the gap itself',
+      incorrect: '$J_c = 2Δ$',
     },
     {
-      prompt: "How does niobium's resistance behave right at T_c, compared to an ordinary metal cooling down?",
+      prompt: "How does niobium's resistance behave right at $T_c$, compared to an ordinary metal cooling down?",
       correct: 'It drops suddenly to exactly zero',
       incorrect: 'It falls smoothly toward zero, same as a normal metal',
     },
@@ -963,7 +963,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     // criterion for magnetism.
     {
       prompt: "Near k=0, a ferromagnet's magnon dispersion behaves as...",
-      correct: 'E(k) ∝ k²: quadratic',
+      correct: '$E(k) ∝ k²$: quadratic',
       incorrect: 'E(k) ∝ |k|: linear',
     },
     {
@@ -989,12 +989,12 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     // Cobalt -- Stoner criterion, superexchange, and the magnon Goldstone mode.
     {
       prompt: 'The Stoner criterion for a spontaneous ferromagnetic instability to develop is...',
-      correct: 'U·D(E_F) ≥ 1',
-      incorrect: 'U·D(E_F) ≤ 1',
+      correct: '$U·D(E_F) ≥ 1$',
+      incorrect: '$U·D(E_F) ≤ 1$',
     },
     {
       prompt: 'Why do iron and cobalt order magnetically while a comparable-U metal like aluminum or lead stays nonmagnetic?',
-      correct: 'Their narrow d bands give a large density of states at E_F',
+      correct: 'Their narrow d bands give a large density of states at $E_F$',
       incorrect: 'Their U is uniquely large among transition metals',
     },
     {
@@ -1034,7 +1034,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'Phonons',
     },
     {
-      prompt: 'In mean-field Hubbard theory, the quantity m = ⟨n↑⟩ − ⟨n↓⟩ used to describe an ordered state like MnO\'s is called...',
+      prompt: 'In mean-field Hubbard theory, the quantity $m = ⟨n↑⟩ − ⟨n↓⟩$ used to describe an ordered state like MnO\'s is called...',
       correct: 'The magnetization',
       incorrect: 'The charge-density-wave order parameter',
     },
@@ -1044,9 +1044,9 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'Ferromagnetic order',
     },
     {
-      prompt: 'In the exactly-solved two-site Hubbard dimer, a toy model for Mott physics, the critical interaction U_c above which magnetization turns on is...',
-      correct: 'U_c = 2t',
-      incorrect: 'U_c = 4t',
+      prompt: 'In the exactly-solved two-site Hubbard dimer, a toy model for Mott physics, the critical interaction $U_c$ above which magnetization turns on is...',
+      correct: '$U_c = 2t$',
+      incorrect: '$U_c = 4t$',
     },
     // Chromium Triiodide (CrI₃) -- van der Waals ferromagnet, topological/DM magnons.
     {
@@ -1061,8 +1061,8 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'The Dzyaloshinskii-Moriya interaction couples neighboring spins via...',
-      correct: 'A cross product, D·(S_i × S_j)',
-      incorrect: 'A dot product, S_i · S_j',
+      correct: 'A cross product, $D·(S_i × S_j)$',
+      incorrect: 'A dot product, $S_i · S_j$',
     },
     {
       prompt: 'On a ribbon geometry, a topologically nontrivial magnon band structure hosts...',
@@ -1087,7 +1087,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'What two quantities does the Stoner criterion multiply together to test for spontaneous magnetism?',
-      correct: 'The interaction U and the density of states at the Fermi level D(E_F)',
+      correct: 'The interaction U and the density of states at the Fermi level $D(E_F)$',
       incorrect: 'The temperature T and the applied magnetic field B',
     },
     {
@@ -1096,12 +1096,12 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'It grows without bound as U increases',
     },
     {
-      prompt: "Near k=0, how does an antiferromagnet's magnon dispersion behave, in contrast to a ferromagnet's quadratic E(k)∝k²?",
+      prompt: "Near k=0, how does an antiferromagnet's magnon dispersion behave, in contrast to a ferromagnet's quadratic $E(k)∝k²$?",
       correct: 'E(k) ∝ |k|: linear, Dirac-cone-like',
-      incorrect: 'E(k) ∝ k²: also quadratic, same as the ferromagnet',
+      incorrect: '$E(k) ∝ k²$: also quadratic, same as the ferromagnet',
     },
     {
-      prompt: 'The direct superexchange mechanism (J=4t²/U, from a single-orbital Hubbard model) always produces coupling that is...',
+      prompt: 'The direct superexchange mechanism ($J=4t²/U$, from a single-orbital Hubbard model) always produces coupling that is...',
       correct: 'Antiferromagnetic, regardless of the sign of the hopping t',
       incorrect: 'Ferromagnetic, if the hopping t happens to be negative',
     },
@@ -1252,7 +1252,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'Diagonalizing the magnon Hamiltonian of an antiferromagnet like FePS₃ needs a step a ferromagnet’s does not. Which?',
-      correct: 'A Bogoliubov transformation, since anomalous a b and a†b† terms appear',
+      correct: 'A Bogoliubov transformation, since anomalous a b and $a†b†$ terms appear',
       incorrect: 'A Fourier transform, which the ferromagnetic case never requires',
     },
     {
@@ -1287,7 +1287,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'The volume law',
     },
     {
-      prompt: 'A product state with no entanglement at all has what kind of reduced density matrix ρ_A?',
+      prompt: 'A product state with no entanglement at all has what kind of reduced density matrix $ρ_A$?',
       correct: 'A rank-one projector',
       incorrect: 'A maximally mixed matrix',
     },
@@ -1304,13 +1304,13 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'Storing a general L-site spin-1/2 wave function exactly requires how many coefficients?',
-      correct: '2^L: exponential in system size',
-      incorrect: 'L²: polynomial in system size',
+      correct: '$2^L$: exponential in system size',
+      incorrect: '$L²$: polynomial in system size',
     },
     {
       prompt: 'The matrix product state ansatz replaces those exponentially many coefficients with a parameter count that scales as...',
-      correct: 'O(L M²), linear in system size',
-      incorrect: 'O(M^L), still exponential',
+      correct: '$O(L M²)$, linear in system size',
+      incorrect: '$O(M^L)$, still exponential',
     },
     {
       prompt: 'DMRG optimizes a matrix product state by minimizing the energy how many tensors at a time?',
@@ -1375,7 +1375,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'Square and honeycomb lattices',
     },
     {
-      prompt: "For the quantum Heisenberg dimer H = S₀·S₁, the unique ground state (unlike the classical Ising dimer's two degenerate states) is...",
+      prompt: "For the quantum Heisenberg dimer $H = S₀·S₁$, the unique ground state (unlike the classical Ising dimer's two degenerate states) is...",
       correct: 'A time-reversal-symmetric singlet',
       incorrect: 'One of two symmetry-broken, degenerate states',
     },
@@ -1411,7 +1411,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'Spinon, spin-1/2',
     },
     {
-      prompt: 'Under a local phase rotation of the auxiliary spinon fermions, the mean-field bond variable χ_ij picks up a relative phase. This makes χ_ij behave like a...',
+      prompt: 'Under a local phase rotation of the auxiliary spinon fermions, the mean-field bond variable $χ_ij$ picks up a relative phase. This makes $χ_ij$ behave like a...',
       correct: 'Lattice gauge field link variable',
       incorrect: 'Ordinary, gauge-invariant order parameter',
     },
@@ -1421,7 +1421,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'A chargon',
     },
     {
-      prompt: 'In the Kondo lattice, turning on the Kondo hybridization γ_K opens a gap where the flat localized-moment band would otherwise cross the dispersive conduction band, converting the metal into a...',
+      prompt: 'In the Kondo lattice, turning on the Kondo hybridization $γ_K$ opens a gap where the flat localized-moment band would otherwise cross the dispersive conduction band, converting the metal into a...',
       correct: 'Kondo insulator (heavy-fermion insulator)',
       incorrect: 'Ordinary band insulator, unrelated to magnetism',
     },
@@ -1460,7 +1460,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     {
       prompt: 'Unlike a Kondo insulator (SmB₆, or the 1T/1H-TaS₂ heterostructure), why does YbRh₂Si₂ remain a metal despite the same Kondo hybridization mechanism?',
       correct: 'Its Fermi level sits away from the hybridization gap, cutting through the heavy, renormalized bands',
-      incorrect: 'Its Kondo coupling γ_K is exactly zero, so no hybridization occurs at all',
+      incorrect: 'Its Kondo coupling $γ_K$ is exactly zero, so no hybridization occurs at all',
     },
     {
       prompt: "In the mean-field Kondo-lattice Hamiltonian, what does the flat, zero-energy f-fermion band represent physically for YbRh₂Si₂'s own local moments?",
@@ -1473,8 +1473,8 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'It stays exactly the bare electron mass, unaffected by hybridization',
     },
     {
-      prompt: 'Growing the Kondo hybridization γ_K in the mean-field lattice Hamiltonian does what to the gap at the anti-crossing?',
-      correct: 'Opens/grows it monotonically: the larger γ_K, the larger the gap',
+      prompt: 'Growing the Kondo hybridization $γ_K$ in the mean-field lattice Hamiltonian does what to the gap at the anti-crossing?',
+      correct: 'Opens/grows it monotonically: the larger $γ_K$, the larger the gap',
       incorrect: 'Shrinks it, since stronger coupling favors a gapless metal',
     },
     {
@@ -1562,7 +1562,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: "The Yu-Shiba-Rusinov bound-state energy depends on the impurity's exchange coupling J only through α = πν₀JS. What does that say about the sign of J?",
-      correct: 'It is irrelevant: only J² and the spin S matter',
+      correct: 'It is irrelevant: only $J²$ and the spin S matter',
       incorrect: 'Only an antiferromagnetic (negative) J can break Cooper pairs',
     },
     {
@@ -1571,7 +1571,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'It vanishes abruptly back into the gap edge',
     },
     {
-      prompt: 'Below the Yu-Shiba-Rusinov zero-energy crossing, the superconductor-plus-impurity ground state has total spin S_tot = 0. What does that describe?',
+      prompt: 'Below the Yu-Shiba-Rusinov zero-energy crossing, the superconductor-plus-impurity ground state has total spin $S_tot = 0$. What does that describe?',
       correct: 'Every Cooper pair intact, the impurity spin screened',
       incorrect: 'The impurity spin fully free, with one pair broken',
     },
@@ -1594,23 +1594,23 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'The spatial wavelength of Friedel oscillations around a 1D metallic impurity is set by...',
-      correct: 'π/k_F: half the Fermi wavelength',
+      correct: '$π/k_F$: half the Fermi wavelength',
       incorrect: 'The lattice constant, regardless of filling',
     },
     {
       prompt: 'In dimension d, how does the amplitude of Friedel oscillations decay with distance |x| from the impurity?',
-      correct: 'Algebraically, as a power law ~1/|x|^d',
+      correct: 'Algebraically, as a power law $~1/|x|^d$',
       incorrect: 'Exponentially, with a fixed correlation length',
     },
     {
-      prompt: 'Raising the chemical potential (and hence k_F) of a metal does what to the Friedel-oscillation wavelength around an impurity?',
+      prompt: 'Raising the chemical potential (and hence $k_F$) of a metal does what to the Friedel-oscillation wavelength around an impurity?',
       correct: 'Shortens it: the oscillations speed up',
       incorrect: 'Lengthens it: the oscillations slow down',
     },
     {
-      prompt: 'The static Lindhard function χ₀(q) develops a genuine singularity at the wavevector spanning occupied to empty states of equal energy across the Fermi surface. In 1D, this wavevector is...',
-      correct: 'q = 2k_F',
-      incorrect: 'q = k_F',
+      prompt: 'The static Lindhard function $χ₀(q)$ develops a genuine singularity at the wavevector spanning occupied to empty states of equal energy across the Fermi surface. In 1D, this wavevector is...',
+      correct: '$q = 2k_F$',
+      incorrect: '$q = k_F$',
     },
     {
       prompt: 'STM imaging of the standing-wave ripples around surface impurities, used to map the Fermi surface indirectly, is called...',
@@ -1649,9 +1649,9 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     // Manganese -- itinerant local-moment magnet, RPA read of the Stoner instability.
     {
-      prompt: "A classical mean-field magnet's susceptibility χ(T) diverges as 1/(T−T_c) approaching a ferromagnetic transition. What is the analogous form for an antiferromagnetic transition?",
-      correct: '1/(T+T_c): an apparent divergence at a negative temperature',
-      incorrect: '1/(T−T_c), identical to the ferromagnetic case',
+      prompt: "A classical mean-field magnet's susceptibility χ(T) diverges as $1/(T−T_c)$ approaching a ferromagnetic transition. What is the analogous form for an antiferromagnetic transition?",
+      correct: '$1/(T+T_c)$: an apparent divergence at a negative temperature',
+      incorrect: '$1/(T−T_c)$, identical to the ferromagnetic case',
     },
     {
       prompt: 'What does a diverging susceptibility actually tell you about a system?',
@@ -1664,12 +1664,12 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'By writing down an ordered magnetic ansatz and solving it self-consistently',
     },
     {
-      prompt: 'In the RPA response χ(q,ω) = χ₀/(1 − Uχ₀), what condition marks the actual magnetic instability?',
-      correct: 'Uχ₀(q,0) = 1: the denominator vanishing',
-      incorrect: 'χ₀(q,0) = 0: the numerator vanishing',
+      prompt: 'In the RPA response $χ(q,ω) = χ₀/(1 − Uχ₀)$, what condition marks the actual magnetic instability?',
+      correct: '$Uχ₀(q,0) = 1$: the denominator vanishing',
+      incorrect: '$χ₀(q,0) = 0$: the numerator vanishing',
     },
     {
-      prompt: 'For a Fermi surface with strong nesting, where does the bare spin response χ₀(q,0) actually peak, shifting the instability away from simple ferromagnetism?',
+      prompt: 'For a Fermi surface with strong nesting, where does the bare spin response $χ₀(q,0)$ actually peak, shifting the instability away from simple ferromagnetism?',
       correct: 'At the nesting wavevector Q, not at q = 0',
       incorrect: 'Always exactly at q = 0, regardless of nesting',
     },
@@ -1686,13 +1686,13 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'An on-site U large enough to freeze the charge on every site',
     },
     {
-      prompt: 'On a perfectly nested Fermi surface, where ε(k+Q) = −ε(k) for every k, what does the bare susceptibility χ₀(Q,0) do?',
+      prompt: 'On a perfectly nested Fermi surface, where ε(k+Q) = −ε(k) for every k, what does the bare susceptibility $χ₀(Q,0)$ do?',
       correct: 'Diverges logarithmically, so any interaction at all drives an instability',
       incorrect: 'Stays finite, so the instability needs a large interaction to appear',
     },
     {
       prompt: 'A logarithmically divergent susceptibility means the ordered state turns on for arbitrarily weak interaction. How does its order parameter grow from zero?',
-      correct: 'Exponentially slowly, ~e^(-const/U), not linearly',
+      correct: 'Exponentially slowly, $~e^(-const/U)$, not linearly',
       incorrect: 'Discontinuously, jumping straight to its full value',
     },
     // Silver -- the plasmon, this session's other RPA pole: the collective
@@ -1917,9 +1917,9 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
       incorrect: 'Inversion symmetry',
     },
     {
-      prompt: 'In a Chern insulator, the quantized Hall conductivity σ_xy is given by...',
-      correct: 'C e²/h, with C the Chern number',
-      incorrect: '(e²/h) times the bulk band gap',
+      prompt: 'In a Chern insulator, the quantized Hall conductivity $σ_xy$ is given by...',
+      correct: '$C e²/h$, with C the Chern number',
+      incorrect: '$(e²/h)$ times the bulk band gap',
     },
     {
       prompt: "Why can't a chiral edge current in a Chern insulator backscatter off a local impurity?",
@@ -1974,8 +1974,8 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
   'Fe/Pb Majorana Chain': [
     {
       prompt: 'A Majorana fermion is algebraically defined by which condition on its operator γ?',
-      correct: 'γ† = γ: it is its own antiparticle',
-      incorrect: 'γ† = −γ',
+      correct: '$γ† = γ$: it is its own antiparticle',
+      incorrect: '$γ† = −γ$',
     },
     {
       prompt: "In the Kitaev chain's topological phase, the two unpaired Majorana zero modes localize at...",
@@ -2045,13 +2045,13 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
     },
     {
       prompt: 'Any ordinary electron operator c can always be written as two Majorana operators via...',
-      correct: 'γ_A = c + c†, γ_B = −i(c − c†)',
-      incorrect: 'γ_A = c·c†, γ_B = c† − c·c†',
+      correct: '$γ_A = c + c†, γ_B = −i(c − c†)$',
+      incorrect: '$γ_A = c·c†, γ_B = c† − c·c†$',
     },
     {
       prompt: 'Inverting that decomposition, the ordinary electron operator c is recovered as...',
-      correct: 'c = ½(γ_A + iγ_B)',
-      incorrect: 'c = ½(γ_A − iγ_B)',
+      correct: '$c = ½(γ_A + iγ_B)$',
+      incorrect: '$c = ½(γ_A − iγ_B)$',
     },
     {
       prompt: 'The effective wire pairing Δ(k) = 2iΔ sin k is manifestly odd in k, identifying it as...',
@@ -2171,12 +2171,12 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
       incorrect: 'Each impurity independently forms its own isolated singlet, unaffected by the others',
     },
     {
-      prompt: 'At zero Kondo hybridization (γ_K = 0), what does the auxiliary f-fermion band in the Kondo-lattice model look like?',
+      prompt: 'At zero Kondo hybridization $(γ_K = 0)$, what does the auxiliary f-fermion band in the Kondo-lattice model look like?',
       correct: 'Perfectly flat at zero energy: these auxiliary fermions carry no hopping of their own',
       incorrect: 'Dispersive, with the same bandwidth as the conduction band',
     },
     {
-      prompt: 'Turning on the Kondo hybridization γ_K where the flat localized-moment band would otherwise cross the dispersive conduction band produces...',
+      prompt: 'Turning on the Kondo hybridization $γ_K$ where the flat localized-moment band would otherwise cross the dispersive conduction band produces...',
       correct: 'An anti-crossing: a gap that grows larger as the hybridization strength increases',
       incorrect: 'A sharper crossing point that stays exactly gapless',
     },
@@ -2186,7 +2186,7 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
       incorrect: '1T-TaS₂ on 2H-MoS₂',
     },
     {
-      prompt: 'In the Doniach picture, the Kondo coupling J_K favors a locally screened singlet. What does the competing direct exchange J between local moments favor instead?',
+      prompt: 'In the Doniach picture, the Kondo coupling $J_K$ favors a locally screened singlet. What does the competing direct exchange J between local moments favor instead?',
       correct: 'Magnetic correlations between the local moments',
       incorrect: 'An even larger Kondo hybridization gap',
     },
@@ -2243,7 +2243,7 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
     },
     {
       prompt: 'The transport experiment that first confirmed the quantum spin Hall state in short HgTe/CdTe wells measured what?',
-      correct: 'A conductance close to the quantized value 2e²/h from helical edge transport',
+      correct: 'A conductance close to the quantized value $2e²/h$ from helical edge transport',
       incorrect: 'A quantized Hall conductance under a strong external magnetic field',
     },
     {
@@ -2273,7 +2273,7 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
 export const ML_LECTURE_QUESTIONS: MaterialQuestion[] = [
   {
     prompt: 'A neural network quantum state (NNQS) replaces the exponentially many coefficients of a many-body wavefunction with...',
-    correct: 'A neural network C_θ(s) that computes the coefficient from a spin configuration',
+    correct: 'A neural network $C_θ(s)$ that computes the coefficient from a spin configuration',
     incorrect: 'A single fixed matrix, the same size for every system',
   },
   {
@@ -2282,13 +2282,13 @@ export const ML_LECTURE_QUESTIONS: MaterialQuestion[] = [
     incorrect: 'The classification accuracy on a labeled training set',
   },
   {
-    prompt: "The variational energy E[θ] of any trial state |ψ_θ⟩, compared to the true ground-state energy E₀, always satisfies...",
-    correct: 'E[θ] ≥ E₀',
-    incorrect: 'E[θ] ≤ E₀',
+    prompt: "The variational energy E[θ] of any trial state $|ψ_θ⟩$, compared to the true ground-state energy $E₀$, always satisfies...",
+    correct: '$E[θ] ≥ E₀$',
+    incorrect: '$E[θ] ≤ E₀$',
   },
   {
-    prompt: "Why is an NNQS's energy rewritten as a Monte Carlo average over configurations sampled from |C_θ(s)|², rather than evaluated directly as the exact ratio ⟨ψ_θ|H|ψ_θ⟩/⟨ψ_θ|ψ_θ⟩ in the spin-configuration basis?",
-    correct: 'So it never requires summing over all 2^L configurations explicitly',
+    prompt: "Why is an NNQS's energy rewritten as a Monte Carlo average over configurations sampled from $|C_θ(s)|²$, rather than evaluated directly as the exact ratio $⟨ψ_θ|H|ψ_θ⟩/⟨ψ_θ|ψ_θ⟩$ in the spin-configuration basis?",
+    correct: 'So it never requires summing over all $2^L$ configurations explicitly',
     incorrect: 'So the wavefunction no longer needs to be normalized',
   },
   {
@@ -2323,7 +2323,7 @@ export const ML_LECTURE_QUESTIONS: MaterialQuestion[] = [
   },
   {
     prompt: 'One way machine learning enters the Kohn-Sham self-consistency loop is by...',
-    correct: 'Learning or augmenting the exchange-correlation functional v_xc',
+    correct: 'Learning or augmenting the exchange-correlation functional $v_xc$',
     incorrect: 'Replacing the nuclear charge density with a fixed constant',
   },
   {
@@ -2403,7 +2403,7 @@ export function getWorldQuestion(world: number, materialName?: string): Material
 export const ANALYTIC_QUESTIONS: AnalyticQuestion[] = [
   {
     prompt: "Bloch's theorem writes a crystal electron's wavefunction as a plane wave times...",
-    correct: 'A lattice-periodic function, u_k(r + R) = u_k(r)',
+    correct: 'A lattice-periodic function, $u_k(r + R) = u_k(r)$',
     incorrect: 'A second, independent plane wave',
     worlds: [2],
   },
@@ -2415,26 +2415,26 @@ export const ANALYTIC_QUESTIONS: AnalyticQuestion[] = [
   },
   {
     prompt: 'The Stoner criterion for a spontaneous ferromagnetic instability is...',
-    correct: 'U·D(E_F) ≥ 1',
-    incorrect: 'U·D(E_F) ≤ 1',
+    correct: '$U·D(E_F) ≥ 1$',
+    incorrect: '$U·D(E_F) ≤ 1$',
     worlds: [1, 6],
   },
   {
     prompt: 'The energy of the n-th Landau level in a magnetic field B is...',
-    correct: 'E_n = ħω_c(n + 1/2)',
-    incorrect: 'E_n = ħω_c·n²',
+    correct: '$E_n = ħω_c(n + 1/2)$',
+    incorrect: '$E_n = ħω_c·n²$',
     worlds: [4],
   },
   {
-    prompt: "At zero temperature, the BCS gap Δ(0) relates to T_c as...",
-    correct: 'Δ(0) ≈ 1.76 k_B T_c',
-    incorrect: 'Δ(0) ≈ 0.5 k_B T_c',
+    prompt: "At zero temperature, the BCS gap Δ(0) relates to $T_c$ as...",
+    correct: '$Δ(0) ≈ 1.76 k_B T_c$',
+    incorrect: '$Δ(0) ≈ 0.5 k_B T_c$',
     worlds: [5],
   },
   {
     prompt: 'The London equation relates a superconductor’s current density J to the magnetic field B via...',
-    correct: '∇×J = -(n_s e² / m) B',
-    incorrect: '∇·J = -(n_s e² / m) B',
+    correct: '$∇×J = -(n_s e² / m) B$',
+    incorrect: '$∇·J = -(n_s e² / m) B$',
     worlds: [5],
   },
   {
@@ -2445,44 +2445,44 @@ export const ANALYTIC_QUESTIONS: AnalyticQuestion[] = [
   },
   {
     prompt: "Near k=0, a ferromagnet's magnon dispersion behaves as...",
-    correct: 'E(k) ∝ k² (quadratic)',
+    correct: '$E(k) ∝ k²$ (quadratic)',
     incorrect: 'E(k) ∝ |k| (linear)',
     worlds: [6],
   },
   {
     prompt: 'The von Neumann entanglement entropy of a density matrix ρ is defined as...',
     correct: 'S = -Tr(ρ log ρ)',
-    incorrect: 'S = Tr(ρ²)',
+    incorrect: '$S = Tr(ρ²)$',
     worlds: [7],
   },
   {
-    prompt: 'The Kondo temperature T_K depends on the exchange coupling J roughly as...',
-    correct: 'T_K ∝ exp(-1/(J·D(E_F))): exponentially small',
-    incorrect: 'T_K ∝ J²: a simple power law',
+    prompt: 'The Kondo temperature $T_K$ depends on the exchange coupling J roughly as...',
+    correct: '$T_K ∝ exp(-1/(J·D(E_F)))$: exponentially small',
+    incorrect: '$T_K ∝ J²$: a simple power law',
     worlds: [8],
   },
   {
-    prompt: 'In mean-field Hubbard theory, the order parameter m = ⟨n↑⟩ − ⟨n↓⟩ describes...',
+    prompt: 'In mean-field Hubbard theory, the order parameter $m = ⟨n↑⟩ − ⟨n↓⟩$ describes...',
     correct: 'The magnetization',
     incorrect: 'The charge-density-wave amplitude',
     worlds: [1],
   },
   {
     prompt: "Graphene's Fermi velocity, in terms of hopping t and bond length a, is...",
-    correct: 'v_F = 3ta / (2ħ)',
-    incorrect: 'v_F = ta / ħ',
+    correct: '$v_F = 3ta / (2ħ)$',
+    incorrect: '$v_F = ta / ħ$',
     worlds: [2],
   },
   {
-    prompt: 'In a Chern insulator, the quantized Hall conductivity σ_xy is given by...',
-    correct: 'C e²/h, with C the Chern number',
-    incorrect: '(e²/h) times the bulk band gap',
+    prompt: 'In a Chern insulator, the quantized Hall conductivity $σ_xy$ is given by...',
+    correct: '$C e²/h$, with C the Chern number',
+    incorrect: '$(e²/h)$ times the bulk band gap',
     worlds: [3],
   },
   {
     prompt: "In a strong field, graphene's Dirac Landau level energies scale with level index n and field B as...",
-    correct: 'E_n ∝ √(nB)',
-    incorrect: 'E_n ∝ nB',
+    correct: '$E_n ∝ √(nB)$',
+    incorrect: '$E_n ∝ nB$',
     worlds: [2, 4],
   },
   {
@@ -2492,15 +2492,15 @@ export const ANALYTIC_QUESTIONS: AnalyticQuestion[] = [
     worlds: [4],
   },
   {
-    prompt: 'The superconducting flux quantum Φ₀ equals...',
+    prompt: 'The superconducting flux quantum $Φ₀$ equals...',
     correct: 'h/2e',
     incorrect: 'h/e',
     worlds: [5],
   },
   {
     prompt: 'The Dzyaloshinskii-Moriya interaction couples neighboring spins via...',
-    correct: 'A cross product, D·(S_i × S_j)',
-    incorrect: 'A dot product, S_i · S_j',
+    correct: 'A cross product, $D·(S_i × S_j)$',
+    incorrect: 'A dot product, $S_i · S_j$',
     worlds: [6],
   },
   {
@@ -2523,14 +2523,14 @@ export const ANALYTIC_QUESTIONS: AnalyticQuestion[] = [
   },
   {
     prompt: 'Fermionic creation and annihilation operators obey the anticommutation relation...',
-    correct: '{c_i, c_j†} = δ_ij',
-    incorrect: '[c_i, c_j†] = δ_ij (a commutator)',
+    correct: '${c_i, c_j†} = δ_ij$',
+    incorrect: '$[c_i, c_j†] = δ_ij$ (a commutator)',
     worlds: [1],
   },
   {
     prompt: "The Hubbard model's interaction term is...",
-    correct: 'U Σ_i n_i↑ n_i↓: an energy cost per doubly occupied site',
-    incorrect: 'U Σ_i (n_i↑ + n_i↓): an energy cost per electron',
+    correct: '$U Σ_i n_{i↑} n_{i↓}$: an energy cost per doubly occupied site',
+    incorrect: '$U Σ_i (n_{i↑} + n_{i↓})$: an energy cost per electron',
     worlds: [1],
   },
   {
@@ -2559,38 +2559,38 @@ export const ANALYTIC_QUESTIONS: AnalyticQuestion[] = [
   },
   {
     prompt: 'The degeneracy of a Landau level per unit area is...',
-    correct: 'n_B = eB/h: one state per flux quantum h/e',
+    correct: '$n_B = eB/h$: one state per flux quantum h/e',
     incorrect: 'Independent of the magnetic field B',
     worlds: [4],
   },
   {
-    prompt: 'The magnetic length l_B in a field B is...',
-    correct: 'l_B = √(ħ/eB)',
-    incorrect: 'l_B = √(eB/ħ)',
+    prompt: 'The magnetic length $l_B$ in a field B is...',
+    correct: '$l_B = √(ħ/eB)$',
+    incorrect: '$l_B = √(eB/ħ)$',
     worlds: [4],
   },
   {
-    prompt: 'In terms of the normal-state dispersion ξ_k and gap Δ, the BCS quasiparticle energy is...',
-    correct: 'E_k = √(ξ_k² + Δ²)',
-    incorrect: 'E_k = ξ_k + Δ',
+    prompt: 'In terms of the normal-state dispersion $ξ_k$ and gap Δ, the BCS quasiparticle energy is...',
+    correct: '$E_k = √(ξ_k² + Δ²)$',
+    incorrect: '$E_k = ξ_k + Δ$',
     worlds: [5],
   },
   {
     prompt: 'A Majorana operator γ is defined by the property...',
-    correct: 'γ† = γ: it is its own antiparticle',
-    incorrect: 'γ† = −γ',
+    correct: '$γ† = γ$: it is its own antiparticle',
+    incorrect: '$γ† = −γ$',
     worlds: [5],
   },
   {
-    prompt: 'Above T_C, the Curie-Weiss susceptibility of a ferromagnet behaves as...',
-    correct: 'χ ∝ 1/(T − T_C)',
-    incorrect: 'χ ∝ (T − T_C)',
+    prompt: 'Above $T_C$, the Curie-Weiss susceptibility of a ferromagnet behaves as...',
+    correct: '$χ ∝ 1/(T − T_C)$',
+    incorrect: '$χ ∝ (T − T_C)$',
     worlds: [6],
   },
   {
     prompt: "Near k=0, an antiferromagnet's magnon dispersion behaves as...",
     correct: 'E(k) ∝ |k| (linear)',
-    incorrect: 'E(k) ∝ k² (quadratic)',
+    incorrect: '$E(k) ∝ k²$ (quadratic)',
     worlds: [6],
   },
   {
@@ -2600,9 +2600,9 @@ export const ANALYTIC_QUESTIONS: AnalyticQuestion[] = [
     worlds: [7],
   },
   {
-    prompt: 'In terms of the Schmidt coefficients λ_i of a bipartition, the entanglement entropy is...',
-    correct: 'S = −Σ_i λ_i² log λ_i²',
-    incorrect: 'S = −Σ_i λ_i log λ_i',
+    prompt: 'In terms of the Schmidt coefficients $λ_i$ of a bipartition, the entanglement entropy is...',
+    correct: '$S = −Σ_i λ_i² log λ_i²$',
+    incorrect: '$S = −Σ_i λ_i log λ_i$',
     worlds: [7],
   },
   {
@@ -2624,15 +2624,15 @@ export const ANALYTIC_QUESTIONS: AnalyticQuestion[] = [
     worlds: [9],
   },
   {
-    prompt: 'An Anderson-localized wavefunction decays away from its center r₀ as...',
-    correct: 'exp(−|r − r₀|/ξ), with ξ the localization length',
-    incorrect: 'A power law, 1/|r − r₀|²',
+    prompt: 'An Anderson-localized wavefunction decays away from its center $r₀$ as...',
+    correct: '$exp(−|r − r₀|/ξ)$, with ξ the localization length',
+    incorrect: 'A power law, $1/|r − r₀|²$',
     worlds: [9],
   },
   {
     prompt: 'With α = πν₀JS, a classical magnetic impurity’s Yu-Shiba-Rusinov state in an s-wave gap Δ sits at energy...',
-    correct: 'E = ±Δ(1 − α²)/(1 + α²)',
-    incorrect: 'E = ±Δ(1 + α²)/(1 − α²)',
+    correct: '$E = ±Δ(1 − α²)/(1 + α²)$',
+    incorrect: '$E = ±Δ(1 + α²)/(1 − α²)$',
     worlds: [9, 5],
   },
 ];
@@ -2681,14 +2681,14 @@ export function getAnalyticQuestions(visitedWorlds: number[], count: number): Ma
 export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   // -- World 1: second quantization, mean-field theory, Mott physics --
   {
-    prompt: 'The mean-field decoupling of the Hubbard interaction U n↑n↓ reads...',
-    correct: 'U(n↑⟨n↓⟩ + ⟨n↑⟩n↓ − ⟨n↑⟩⟨n↓⟩)',
-    incorrect: 'U(n↑⟨n↓⟩ + ⟨n↑⟩n↓ + ⟨n↑⟩⟨n↓⟩)',
+    prompt: 'The mean-field decoupling of the Hubbard interaction $U n↑n↓$ reads...',
+    correct: '$U(n↑⟨n↓⟩ + ⟨n↑⟩n↓ − ⟨n↑⟩⟨n↓⟩)$',
+    incorrect: '$U(n↑⟨n↓⟩ + ⟨n↑⟩n↓ + ⟨n↑⟩⟨n↓⟩)$',
   },
   {
     prompt: 'At half filling and large U, the Hubbard model reduces to a Heisenberg antiferromagnet with superexchange...',
-    correct: 'J = 4t²/U',
-    incorrect: 'J = 2t²/U',
+    correct: '$J = 4t²/U$',
+    incorrect: '$J = 2t²/U$',
   },
   {
     prompt: "Spontaneously breaking a continuous symmetry guarantees, by Goldstone's theorem...",
@@ -2697,12 +2697,12 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   },
   {
     prompt: "The two-site half-filled Hubbard dimer's mean-field antiferromagnetic order parameter m turns on...",
-    correct: 'Only above a critical interaction U_c = 2t: m=0 below it, then m=√(1−4t²/U²) above',
+    correct: 'Only above a critical interaction $U_c = 2t$: $m=0$ below it, then $m=√(1−4t²/U²)$ above',
     incorrect: 'Immediately at any U>0, growing smoothly from zero with no threshold',
   },
   {
     prompt:
-      "Unlike the perfectly-nested 1D chain, the Hubbard antiferromagnet on graphene's honeycomb lattice orders only above a finite threshold U_c because...",
+      "Unlike the perfectly-nested 1D chain, the Hubbard antiferromagnet on graphene's honeycomb lattice orders only above a finite threshold $U_c$ because...",
     correct:
       'Its density of states vanishes linearly at the Dirac point, D(E)∝|E|, suppressing the low-energy contribution that would otherwise drive an infinitesimal instability',
     incorrect: 'Its density of states diverges logarithmically at the Dirac point, the same nesting singularity the 1D chain has',
@@ -2720,16 +2720,16 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   },
   {
     prompt: "Kramers' theorem guarantees every level is doubly degenerate when the time-reversal operator satisfies...",
-    correct: 'T² = −1: half-integer spin',
-    incorrect: 'T² = +1: integer spin',
+    correct: '$T² = −1$: half-integer spin',
+    incorrect: '$T² = +1$: integer spin',
   },
   {
-    prompt: 'The 1D nearest-neighbor tight-binding chain H = t Σ_n (c_n†c_{n+1} + h.c.) has Bloch dispersion...',
-    correct: 'ε_φ = 2t cos φ, ranging over [−2t, 2t]',
-    incorrect: 'ε_φ = 4t cos φ, ranging over [−4t, 4t]',
+    prompt: 'The 1D nearest-neighbor tight-binding chain $H = t Σ_n (c_n†c_{n+1} + h.c.)$ has Bloch dispersion...',
+    correct: '$ε_φ = 2t cos φ$, ranging over [−2t, 2t]',
+    incorrect: '$ε_φ = 4t cos φ$, ranging over [−4t, 4t]',
   },
   {
-    prompt: 'The effective mass tensor (1/m*)ᵢⱼ = (1/ħ²) ∂²E/∂kᵢ∂kⱼ, built from the curvature of the dispersion, matters because...',
+    prompt: 'The effective mass tensor $(1/m*)ᵢⱼ = (1/ħ²) ∂²E/∂kᵢ∂kⱼ$, built from the curvature of the dispersion, matters because...',
     correct: 'It is the mass actually measured in transport and cyclotron-resonance experiments; the bare electron mass is not directly observable inside a solid',
     incorrect: 'It equals the bare electron mass measured directly by cyclotron resonance, since band curvature only renormalizes the group velocity, not the mass',
   },
@@ -2750,10 +2750,10 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
     incorrect: 'Intracell hopping exceeds intercell hopping, |v| > |w|',
   },
   {
-    prompt: 'For the two-band model H(k) = k_xσ_x + λk_yσ_y + mσ_z near a single gapped Dirac cone, the Chern number contributed by that one cone is...',
+    prompt: 'For the two-band model $H(k) = k_xσ_x + λk_yσ_y + mσ_z$ near a single gapped Dirac cone, the Chern number contributed by that one cone is...',
     correct:
-      'C_Dirac = (1/2) sgn(m) sgn(λ): a half-integer, since a physical lattice always sums an even number of time-reversal-partnered cones to get an integer',
-    incorrect: 'C_Dirac = sgn(m) sgn(λ), always an integer ±1 from a single cone alone',
+      '$C_Dirac = (1/2) sgn(m) sgn(λ)$: a half-integer, since a physical lattice always sums an even number of time-reversal-partnered cones to get an integer',
+    incorrect: '$C_Dirac = sgn(m) sgn(λ)$, always an integer ±1 from a single cone alone',
   },
   {
     prompt:
@@ -2780,14 +2780,14 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   },
   {
     prompt: 'Compared to an ordinary parabolic (Schrödinger) 2D electron gas, the Landau levels of Dirac (graphene-like) electrons in field B are...',
-    correct: 'E_n = sgn(n)·v_F√(2ħB|n|), n=0,±1,±2,…: unequally spaced, growing as √B, with a genuine zero-energy level pinned at n=0',
-    incorrect: 'E_n = ħω_c(n+1/2), just as in the parabolic case: equally spaced and growing linearly in B',
+    correct: '$E_n = sgn(n)·v_F√(2ħB|n|), n=0,±1,±2$,…: unequally spaced, growing as $√B$, with a genuine zero-energy level pinned at n=0',
+    incorrect: '$E_n = ħω_c(n+1/2)$, just as in the parabolic case: equally spaced and growing linearly in B',
   },
   // -- World 5: BCS, Nambu, Majoranas --
   {
-    prompt: 'BCS theory gives the critical temperature, in terms of the Debye frequency ω_D and coupling N₀V, as...',
-    correct: 'k_B T_c ≈ 1.13 ħω_D exp(−1/(N₀V)): non-perturbative in V',
-    incorrect: 'k_B T_c ∝ ħω_D (N₀V)²: second-order perturbation theory',
+    prompt: 'BCS theory gives the critical temperature, in terms of the Debye frequency $ω_D$ and coupling $N₀V$, as...',
+    correct: '$k_B T_c ≈ 1.13 ħω_D exp(−1/(N₀V))$: non-perturbative in V',
+    incorrect: '$k_B T_c ∝ ħω_D (N₀V)²$: second-order perturbation theory',
   },
   {
     prompt: 'The BCS ground state pairs electrons in the states...',
@@ -2807,13 +2807,13 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   // -- World 6: classical magnetism, magnons, DM --
   {
     prompt: "Thermal magnons deplete a 3D ferromagnet's magnetization at low T as...",
-    correct: 'M(0) − M(T) ∝ T^(3/2): the Bloch law',
-    incorrect: 'M(0) − M(T) ∝ T²',
+    correct: '$M(0) − M(T) ∝ T^(3/2)$: the Bloch law',
+    incorrect: '$M(0) − M(T) ∝ T²$',
   },
   {
     prompt: 'By the Mermin-Wagner theorem, a 2D Heisenberg ferromagnet with short-range interactions...',
     correct: 'Has no long-range order at any T > 0',
-    incorrect: 'Orders below a finite T_C, like its 3D counterpart',
+    incorrect: 'Orders below a finite $T_C$, like its 3D counterpart',
   },
   {
     prompt: "By Moriya's rules, the Dzyaloshinskii-Moriya vector D between two spins vanishes whenever...",
@@ -2822,13 +2822,13 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   },
   {
     prompt: 'By the Stoner criterion for the Hubbard model, a mean-field magnetic solution with m≠0 first appears once...',
-    correct: 'U·D(E_F) ≥ 1: the interaction times the density of states at the Fermi level clears one',
+    correct: '$U·D(E_F) ≥ 1$: the interaction times the density of states at the Fermi level clears one',
     incorrect: 'U > t: the interaction strength exceeds the bare hopping amplitude',
   },
   {
-    prompt: 'The superexchange coupling derived from a single-orbital Hubbard model at U≫t, J_ij = 4t_ij²/U...',
-    correct: 'Is always positive (antiferromagnetic), regardless of the sign or geometry of t_ij',
-    incorrect: 'Flips sign with t_ij, giving ferromagnetic coupling whenever the hopping t_ij is negative',
+    prompt: 'The superexchange coupling derived from a single-orbital Hubbard model at $U≫t, J_ij = 4t_ij²/U$...',
+    correct: 'Is always positive (antiferromagnetic), regardless of the sign or geometry of $t_ij$',
+    incorrect: 'Flips sign with $t_ij$, giving ferromagnetic coupling whenever the hopping $t_ij$ is negative',
   },
   // -- World 7: entanglement, tensor networks, MPS --
   {
@@ -2838,24 +2838,24 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   },
   {
     prompt: 'The number of parameters in a matrix product state of N sites, local dimension d, bond dimension M, scales...',
-    correct: 'Linearly in N: roughly N·d·M²',
-    incorrect: 'Exponentially in N, like the full d^N Hilbert space',
+    correct: 'Linearly in N: roughly $N·d·M²$',
+    incorrect: 'Exponentially in N, like the full $d^N$ Hilbert space',
   },
   {
     prompt: 'Tracing out half of an entangled pure state leaves a reduced density matrix that is...',
-    correct: 'Mixed: Tr ρ² < 1',
-    incorrect: 'Still pure: Tr ρ² = 1',
+    correct: 'Mixed: $Tr ρ² < 1$',
+    incorrect: 'Still pure: $Tr ρ² = 1$',
   },
   {
     prompt:
-      'In the Jordan-Wigner map S_i⁺=c_i†K_i, S_i⁻=c_iK_i, S_i^z=n_i−1/2, K_i=exp(iπΣ_{j<i}n_j), the string operator K_i is required because...',
+      'In the Jordan-Wigner map $S_i⁺=c_i†K_i, S_i⁻=c_iK_i, S_i^z=n_i−1/2, K_i=exp(iπΣ_{j<i}n_j)$, the string operator $K_i$ is required because...',
     correct:
       'Fermionic many-body wavefunctions are antisymmetric under exchange while spin wavefunctions are symmetric, so the string supplies the missing relative sign between sites',
     incorrect: 'It enforces the Pauli exclusion principle on the spin operators, which would otherwise allow double occupation of a site',
   },
   {
     prompt: 'Given a large enough bond dimension, a matrix product state can represent...',
-    correct: 'Any L-site state exactly: successive SVDs with no truncation need at most M = d^(L/2) at the central cut',
+    correct: 'Any L-site state exactly: successive SVDs with no truncation need at most $M = d^(L/2)$ at the central cut',
     incorrect: 'Only area-law states: a volume-law state escapes the ansatz at any finite bond dimension',
   },
   // -- World 8: quantum magnetism, spinons, Kondo, heavy fermions --
@@ -2887,22 +2887,22 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   },
   {
     prompt: 'Friedel oscillations of the electron density around an impurity in a metal have wavevector...',
-    correct: '2k_F: set by the sharp Fermi surface',
-    incorrect: 'k_F',
+    correct: '$2k_F$: set by the sharp Fermi surface',
+    incorrect: '$k_F$',
   },
   {
-    prompt: "By Anderson's theorem, the T_c of a conventional s-wave superconductor is...",
+    prompt: "By Anderson's theorem, the $T_c$ of a conventional s-wave superconductor is...",
     correct: 'Insensitive to nonmagnetic impurities, but suppressed by magnetic ones',
     incorrect: 'Suppressed equally by any impurity, magnetic or not',
   },
   {
     prompt:
-      'In the RPA (Bohm-Pines) treatment of the 3D electron gas, the plasmon dispersion at long wavelength, ω_pl(q)² = ω_p² + (3/5)v_F²q² + O(q⁴)...',
-    correct: 'Survives at q=0 with ω_pl=ω_p, since the plasmon is a genuinely collective mode of the whole charge density',
+      'In the RPA (Bohm-Pines) treatment of the 3D electron gas, the plasmon dispersion at long wavelength, $ω_pl(q)² = ω_p² + (3/5)v_F²q² + O(q⁴)$...',
+    correct: 'Survives at q=0 with $ω_pl=ω_p$, since the plasmon is a genuinely collective mode of the whole charge density',
     incorrect: 'Vanishes at q=0, exactly like the particle-hole continuum it is built out of',
   },
   {
-    prompt: 'For the 2D square-lattice dispersion ε(k) = −2t(cos k_x + cos k_y) at half filling, the static Lindhard function χ₀(q,0)...',
+    prompt: 'For the 2D square-lattice dispersion $ε(k) = −2t(cos k_x + cos k_y)$ at half filling, the static Lindhard function $χ₀(q,0)$...',
     correct: 'Develops a massive divergence exactly at Q=(π,π), the perfect-nesting wavevector where ε(k+Q)=−ε(k) for every k',
     incorrect: 'Stays smooth and featureless in q, since a genuinely 2D Fermi surface cannot nest the way a 1D one does',
   },
@@ -2912,9 +2912,9 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   // Curie's own dedicated hard pool, alongside the Methods block below.
   {
     prompt:
-      'Training a neural-network quantum state by minimizing the variational energy E[θ]=⟨ψ_θ|H|ψ_θ⟩/⟨ψ_θ|ψ_θ⟩ guarantees that E[θ]...',
-    correct: 'Never undershoots the true ground-state energy E₀, hitting it exactly only if |ψ_θ⟩ reaches the true ground state',
-    incorrect: 'Can undershoot E₀ if the network is expressive enough, since gradient descent has no lower bound',
+      'Training a neural-network quantum state by minimizing the variational energy $E[θ]=⟨ψ_θ|H|ψ_θ⟩/⟨ψ_θ|ψ_θ⟩$ guarantees that E[θ]...',
+    correct: 'Never undershoots the true ground-state energy $E₀$, hitting it exactly only if $|ψ_θ⟩$ reaches the true ground state',
+    incorrect: 'Can undershoot $E₀$ if the network is expressive enough, since gradient descent has no lower bound',
   },
   {
     prompt:
@@ -2935,9 +2935,9 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
     incorrect: 'A known Hamiltonian, to predict the observable it would produce: the ordinary forward direction of the same calculation',
   },
   {
-    prompt: 'Replacing the exchange-correlation functional in the Kohn-Sham loop with a machine-learned v_xc...',
-    correct: "Still requires diagonalizing H_KS self-consistently at every iteration: learning v_xc doesn't remove the self-consistency loop",
-    incorrect: 'Removes the need for the self-consistency loop entirely, since the learned v_xc is now exact',
+    prompt: 'Replacing the exchange-correlation functional in the Kohn-Sham loop with a machine-learned $v_xc$...',
+    correct: "Still requires diagonalizing $H_KS$ self-consistently at every iteration: learning $v_xc$ doesn't remove the self-consistency loop",
+    incorrect: 'Removes the need for the self-consistency loop entirely, since the learned $v_xc$ is now exact',
   },
   // -- Methods & experimental probes: exact diagonalization, mean-field/DFT
   // self-consistency, ARPES, STM -- cross-cutting the numerical and
@@ -2946,8 +2946,8 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   {
     prompt:
       'The dimension of the many-body Hilbert space for a chain of L spin-1/2 sites (and hence the number of coefficients needed to store its ground state exactly) grows as...',
-    correct: 'd = 2^L: exponentially with system size',
-    incorrect: 'd = L^2: only quadratically with system size',
+    correct: '$d = 2^L$: exponentially with system size',
+    incorrect: '$d = L^2$: only quadratically with system size',
   },
   {
     prompt: 'A mean-field or Kohn-Sham calculation is solved self-consistently by...',

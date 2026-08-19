@@ -5,11 +5,11 @@
 // difficulty (balance-sim.mjs) nor map shape (mapgen-check.mjs) -- it reads
 // the source itself and checks what stays consistent there, catching the
 // class of mistake those other checks structurally can't see. Two families:
-// the hand-authored data tables' internal consistency (checks 1-15) -- a
+// the hand-authored data tables' internal consistency (checks 1-16) -- a
 // typo'd move id, a world missing from one table but not its sibling, a
 // hybrid recipe whose result was never actually added to World 10's pool --
 // and source-level assertions the compiler is deliberately told not to make
-// (check 16, orphan definite-assignment fields).
+// (check 17, orphan definite-assignment fields).
 // This project has shipped exactly these kinds of bug before (a move name
 // collision, "fix Beam/Beam name collision"; a never-assigned `!` field that
 // froze World 10) -- this script exists so the next one gets caught before a
@@ -473,7 +473,42 @@ for (const w of BUILT_WORLDS.filter((w) => w !== '10')) {
   if (!pool || pool.length === 0) flag(`WORLD_QUESTIONS[${w}] is empty`);
 }
 
-// 15. The Lab's Tutorial station lists whichever topics a Story Mode save
+// 15. Formula markup in the quiz pools. Question prompts and answers mark
+// their formulas with `$...$` and ui/mathtext.ts typesets what is inside
+// (subscripts, superscripts, a real square root); a malformed span renders
+// as literal `$` in front of a player mid-battle, which nothing else here
+// would catch since the string is still a perfectly valid string. Read from
+// the raw source rather than the parsed tables so every pool is covered at
+// once -- WORLD_QUESTIONS, MATERIAL_QUESTIONS, and the Analytic/Ultimate/
+// machine-learning pools alike.
+{
+  const quizText = fs.readFileSync(path.join(gameDir, 'src/data/quiz.ts'), 'utf8');
+  const fieldRe = /(prompt|correct|incorrect):\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g;
+  const short = (t) => (t.length > 70 ? `${t.slice(0, 70)}...` : t);
+  let m;
+  while ((m = fieldRe.exec(quizText)) !== null) {
+    const body = m[2].slice(1, -1);
+    if (!body.includes('$')) continue;
+    const spans = body.split('$');
+    if (spans.length % 2 === 0) {
+      flag(`quiz.ts ${m[1]} has an unclosed formula span: "${short(body)}"`);
+      continue;
+    }
+    for (let i = 1; i < spans.length; i += 2) {
+      const span = spans[i];
+      const where = `quiz.ts ${m[1]} formula "${short(span)}"`;
+      if (span.trim() === '') flag(`${where} is empty`);
+      if (/[_^]$/.test(span)) flag(`${where} ends on a script marker with nothing to raise or drop`);
+      if (/√$/.test(span)) flag(`${where} ends on a root sign with nothing under it`);
+      for (const [open, close] of [['(', ')'], ['{', '}'], ['[', ']']]) {
+        const depth = [...span].reduce((d, c) => d + (c === open ? 1 : c === close ? -1 : 0), 0);
+        if (depth !== 0) flag(`${where} has unbalanced '${open}${close}'`);
+      }
+    }
+  }
+}
+
+// 16. The Lab's Tutorial station lists whichever topics a Story Mode save
 // has actually reached, in TUTORIAL_TIPS' own declaration order (data/
 // tutorial.ts's `visibleTutorialPages`), so that order has to be the order
 // the game reveals them in and every topic has to be reachable at all.
@@ -519,7 +554,7 @@ for (const w of BUILT_WORLDS.filter((w) => w !== '10')) {
   }
 }
 
-// 16. Orphan definite-assignment fields. A `private x!: T` declaration
+// 17. Orphan definite-assignment fields. A `private x!: T` declaration
 // asserts to the compiler "something will assign this before any read," and
 // the compiler then stops checking -- so if nothing ever does, every read is
 // `undefined` with no diagnostic from `tsc --noEmit` anywhere, and the first

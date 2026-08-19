@@ -12,6 +12,7 @@ import { tutorialTipsEnabled, DEFAULT_SETTINGS_CATEGORY } from '../data/settings
 import type { SettingsCategoryId } from '../data/settings';
 import { music } from '../audio/music';
 import { fontPx, fontScale } from '../ui/text';
+import { hasMath, makeFormulaButton } from '../ui/mathtext';
 import { PANEL_BG, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../ui/theme';
 import { BUILT_WORLDS, OverworldScene, applySuperpositionUnlocks } from './OverworldScene';
 import type { GuardianPanelHost, GuardianRosterEntry } from './OverworldScene';
@@ -877,6 +878,31 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
 
   addDialogueButton(container: Phaser.GameObjects.Container, y: number, label: string, onClick: () => void) {
     return this.addDialogueButtonAt(container, CANVAS_W / 2, y, label, onClick, 480);
+  }
+
+  // A quiz answer, which unlike every other dialogue button may carry a
+  // formula in its label (ui/mathtext.ts) and then needs a drawn plate and
+  // an explicit hit area instead of a text background. Answers with no
+  // formula in them stay ordinary dialogue buttons.
+  addQuestionButton(container: Phaser.GameObjects.Container, y: number, label: string, onClick: () => void) {
+    if (!hasMath(label)) return this.addDialogueButton(container, y, label, onClick);
+    const btn = makeFormulaButton(
+      this,
+      CANVAS_W / 2,
+      y,
+      label,
+      {
+        fontSizePx: 13 * fontScale(this),
+        color: '#ffff88',
+        wrapWidth: 480,
+        backgroundColor: 0x222244,
+        padX: 10,
+        padY: 5,
+      },
+      onClick
+    );
+    container.add(btn);
+    return btn;
   }
 
   // Shared pager for candidate-crystal lists -- identical to OverworldScene's

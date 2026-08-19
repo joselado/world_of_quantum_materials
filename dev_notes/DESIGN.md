@@ -840,13 +840,17 @@ it is built as a soft layered atmosphere (curved parallax ridgelines, fog blendi
 a terrain-keyed color grade, drifting haze, corner vignette) — STYLE.md's "Battle
 backdrop" section has the visual rules.
 
-**Wild encounter dialogue.** Bumping into a wild crystal opens a single in-map dialogue
+**Wild encounter dialogue.** Bumping into a wild crystal opens an in-map dialogue
 screen (`OverworldScene.showEncounter`, not a separate scene): a greeting line tied to
 that material's main type (`game/src/data/greetings.ts` -- a magnet's greeting reads
 differently from a superconductor's, since it's keyed by `MaterialType`, not generic) and
 one physics question from `game/src/data/quiz.ts`'s `getWorldQuestion(world, materialName)`
 together on that same screen -- one correct answer, one incorrect answer (order shuffled),
-plus "let me pass." Worlds are the primary organizing unit for quiz content, not materials:
+plus "let me pass." Formulas in a question or an answer are marked `$...$` in `quiz.ts` and
+typeset when drawn, so a square root reads as a radical and `v_F` as a real subscript
+(CODEMAP.md's "Formulas in question text"); at the largest text-size presets, a question and
+its answers that together outgrow the canvas split across two arrow-joined pages rather than
+shrinking or spilling (STYLE.md's "Wild encounter dialogue"). Worlds are the primary organizing unit for quiz content, not materials:
 `WORLD_QUESTIONS[world]` is each world's own pool, scoped to that world's own topic and
 difficulty (session NN.tex), and `getWorldQuestion` draws from it by default. A handful of
 materials additionally carry their own supplementary pool in `MATERIAL_QUESTIONS`, and
