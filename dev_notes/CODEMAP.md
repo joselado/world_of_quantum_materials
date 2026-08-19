@@ -2001,7 +2001,8 @@ world spill off the canvas while every other world looks fine.
 **Formulas in question text are typeset, not spelled out.** A quiz prompt or answer in
 `data/quiz.ts` marks each formula it contains with `$...$`, and `ui/mathtext.ts` lays the
 marked spans out as real mathematics -- subscripts drop, superscripts rise, `√(...)` gets a
-radical sign with a bar drawn over its radicand, variables lean while function names
+radical sign with a bar drawn over its radicand, bra-ket angles are drawn as chevrons,
+variables lean while function names
 (`cos`, `exp`, `ln`, `sgn`, ...) stay upright. The grammar is only as wide as the question
 data needs: `_x`/`_{xy}`, `^x`/`^{xy}`, `√`, and the two shorthands the authored text
 already used -- a trailing `†` and Unicode script glyphs (`²`, `₂`) attach as scripts to the
@@ -2016,7 +2017,12 @@ and the prose around it in the same string -- is set in its own monospace stack
 tail), not the game's default `Courier`: Courier has no Greek coverage on common platforms,
 so a Δ or ξ would come from a per-glyph fallback face and sit hairline-thin beside its own
 chunky Latin, and every family in the stack covers Greek and the angle brackets and ships a
-real oblique for the leaning variables. The face applies to the whole formula-bearing string
+real oblique for the leaning variables. The bra-ket angles `⟨` and `⟩` are drawn from a
+`Graphics` rather than set as characters, since they are the one thing the formulas use that
+lives outside the Unicode blocks a stock monospace face is reliably built to cover -- the
+stack resolves to Consolas on Windows, which carries the Greek and the operators but not
+these -- and a single character falling back to some other face is the very
+two-typefaces-in-one-expression look the stack exists to prevent. The face applies to the whole formula-bearing string
 rather than just the `$` spans because runs are top-aligned `Text` objects, and two families
 on one line would sit on two different baselines; a string with no `$` never reaches the
 module and stays on the default face, the usual math-in-its-own-face convention. Run widths

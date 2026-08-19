@@ -82,6 +82,7 @@ type Node =
   | { t: 'run'; text: string; italic: boolean }
   | { t: 'script'; base: Node; sub?: Node; sup?: Node }
   | { t: 'sqrt'; inner: Node }
+  | { t: 'angle'; open: boolean }
   | { t: 'row'; items: Node[] };
 
 // One entry in the flat stream the line-wrapper works on: a break
@@ -242,6 +243,13 @@ class MathParser {
     if (c === '|') this.inBars = !this.inBars;
     else if (c !== undefined && '([{⟨'.includes(c)) this.depth += 1;
     else if (c !== undefined && ')]}⟩'.includes(c)) this.depth = Math.max(0, this.depth - 1);
+    // The bra-ket angles are drawn rather than set. They are the one character
+    // the formulas use that sits outside the blocks a stock monospace face is
+    // reliably built to cover (Consolas, what the stack resolves to on Windows,
+    // carries the Greek and the operators but not these), and a single glyph
+    // falling back to some other face is exactly the two-typefaces-in-one-
+    // expression look the font stack exists to prevent.
+    if (c === '⟨' || c === '⟩') return { t: 'angle', open: c === '⟨' };
     return { t: 'run', text: c ?? '', italic: c !== undefined && ITALIC_LETTER.test(c) };
   }
 
@@ -423,6 +431,39 @@ class Layout {
             base.draw(x, top);
             sup?.draw(x + base.width, top + supDy);
             sub?.draw(x + base.width, top + subDy);
+          },
+        };
+      }
+      case 'angle': {
+        // A chevron drawn to the height of an ordinary glyph, so it sits in a
+        // line of text the way the character it stands for would.
+        const h = this.measure('M', px, false).h;
+        const w = Math.max(3, Math.round(px * 0.34));
+        const lw = Math.max(1, Math.round(px / 9));
+        const pad = Math.max(1, Math.round(px * 0.08));
+        return {
+          width: w + pad,
+          above: 0,
+          below: h,
+          draw: (x, top) => {
+            const x0 = Math.round(x) + (node.open ? pad : 0);
+            const t = Math.round(top + h * 0.12);
+            const b = Math.round(top + h * 0.88);
+            const mid = Math.round(top + h * 0.5);
+            const g = this.scene.add.graphics();
+            g.lineStyle(lw, Phaser.Display.Color.HexStringToColor(this.style.color).color, 1);
+            g.beginPath();
+            if (node.open) {
+              g.moveTo(x0 + w, t);
+              g.lineTo(x0, mid);
+              g.lineTo(x0 + w, b);
+            } else {
+              g.moveTo(x0, t);
+              g.lineTo(x0 + w, mid);
+              g.lineTo(x0, b);
+            }
+            g.strokePath();
+            this.container.add(g);
           },
         };
       }
