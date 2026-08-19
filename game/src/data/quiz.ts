@@ -1547,7 +1547,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     {
       prompt: 'What move does a frustrated, never-ordering compound like Ce₂Zr₂O₇ carry that an ordinary ordered magnet cannot?',
       correct: 'Spinon Swap, a fractionalized spin excitation',
-      incorrect: 'Magnon Pulse, an ordinary collective spin wave',
+      incorrect: 'Magnon Wave, an ordinary collective spin wave',
     },
   ],
 
@@ -1714,7 +1714,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: "Which move class does a plasmon correspond to in this game's taxonomy?",
-      correct: "Plasmon Pulse, hosted only by the 'metal' type",
+      correct: "Plasmon Resonance, hosted only by the 'metal' type",
       incorrect: 'Electron Pulse, hosted by every conducting type',
     },
     {
@@ -1755,8 +1755,8 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'What move can GeTe carry that a non-ferroelectric semiconductor like HgTe cannot?',
-      correct: 'Ferron Pulse, tied to its switchable polarization order',
-      incorrect: 'Plasmon Pulse, tied to a free electron gas',
+      correct: 'Ferron Switch, tied to its switchable polarization order',
+      incorrect: 'Plasmon Resonance, tied to a free electron gas',
     },
     // Hafnium Oxide -- off-syllabus, CMOS-compatible thin-film ferroelectric.
     {
@@ -1813,8 +1813,8 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'What move can monolayer SnTe carry that an ordinary band semiconductor cannot?',
-      correct: 'Ferron Pulse, the quantum of its polarization order',
-      incorrect: 'Magnon Pulse, which needs magnetic order',
+      correct: 'Ferron Switch, the quantum of its polarization order',
+      incorrect: 'Magnon Wave, which needs magnetic order',
     },
   ],
 };

@@ -1021,7 +1021,7 @@ no material name at all.
 
 **What a golem throws is decohered.** Its moves carry its world's own
 quasiparticle at its own class and power, named for what that excitation used to
-be (Decohered Chiral Current, Decohered Magnon Pulse). The corruption is in the
+be (Decohered Chiral Current, Decohered Magnon Wave). The corruption is in the
 excitation, not in the rulebook: the type-interaction rule is untouched, so a
 golem still lands double on a defender whose physics cannot host its class.
 World 2 is the far end of that gradient and carries no signature move at all,

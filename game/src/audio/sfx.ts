@@ -7,17 +7,52 @@
 
 import { music } from './music';
 
-// Same silhouettes art/attackEffects.ts uses per move class -- bolt/ring/
-// burst for the original seven classes, beam/eruption for Landau's
-// Analytic moves (a flashier, per-move rather than per-class pair:
-// `skyfallBeam` gets 'beam', `groundEruption` gets 'eruption'), and
-// meteor/nova for Skłodowska-Curie's Ultimate pair (`ultimateMeteor`/
-// `ultimateNova`) -- the flashiest tier, a multi-second "summon" sequence
-// well above beam/eruption's ~830-870ms.
-export type AttackShape = 'bolt' | 'ring' | 'burst' | 'beam' | 'eruption' | 'meteor' | 'nova';
+// Same silhouettes art/attackEffects.ts uses per move class -- one distinct
+// travelling silhouette per ordinary quasiparticle class (see
+// art/attackStyles.ts's EFFECT_STYLE for which class carries which), plus
+// 'buffring' for Kondo's screening self-buffs (a single caster-centred
+// wavefront, kept separate from plasmon's double-fronted 'ring'),
+// beam/eruption for Landau's Analytic moves (a flashier, per-move rather
+// than per-class pair: `skyfallBeam` gets 'beam', `groundEruption` gets
+// 'eruption'), and meteor/nova for Skłodowska-Curie's Ultimate pair
+// (`ultimateMeteor`/`ultimateNova`) -- the flashiest tier, a multi-second
+// "summon" sequence well above every single-beat shape's ~700-900ms.
+// 'burst' has no ordinary class mapped to it; it stays in the union as a
+// still-playable silhouette (playBurst) available to future overrides.
+export type AttackShape =
+  | 'bolt'
+  | 'lattice'
+  | 'wave'
+  | 'ring'
+  | 'buffring'
+  | 'flip'
+  | 'combwave'
+  | 'hop'
+  | 'sever'
+  | 'vortex'
+  | 'rail'
+  | 'helix'
+  | 'swell'
+  | 'mass'
+  | 'braid'
+  | 'split'
+  | 'burst'
+  | 'beam'
+  | 'eruption'
+  | 'meteor'
+  | 'nova';
 
-// A fast upward-sweeping, high-passed sawtooth "zap" -- bolt moves (a
-// focused shot: Phonon Beam, Electron Pulse, Spinon Swap).
+// Which of the three base one-shot cues a single-beat shape launches with --
+// each shape maps to whichever family its motion reads closest to: the
+// zap for the focused/discrete travellers, the noise-sweep whoosh for the
+// wave/ring family, the rumble for the massive/many-body cluster family.
+// beam/eruption/meteor/nova have bespoke cues of their own below.
+const RING_FAMILY = new Set<AttackShape>(['ring', 'buffring', 'wave', 'combwave', 'helix', 'swell']);
+const BURST_FAMILY = new Set<AttackShape>(['burst', 'mass', 'braid', 'split', 'vortex']);
+
+// A fast upward-sweeping, high-passed sawtooth "zap" -- the bolt family's
+// launch cue (the focused/discrete travellers: bolt, lattice, hop, sever,
+// rail, flip).
 function playBoltSfx(ctx: AudioContext, dest: GainNode, t: number) {
   const osc = ctx.createOscillator();
   osc.type = 'sawtooth';
@@ -40,8 +75,9 @@ function playBoltSfx(ctx: AudioContext, dest: GainNode, t: number) {
   osc.stop(t + 0.22);
 }
 
-// A bandpassed noise sweep plus a low sine "whomp" underneath -- ring moves
-// (an expanding wave pulse: Magnon Pulse).
+// A bandpassed noise sweep plus a low sine "whomp" underneath -- the ring
+// family's launch cue (the wave/wavefront shapes: ring, buffring, wave,
+// combwave, helix, swell).
 function playRingSfx(ctx: AudioContext, dest: GainNode, noiseBuffer: AudioBuffer, t: number) {
   const src = ctx.createBufferSource();
   src.buffer = noiseBuffer;
@@ -75,8 +111,8 @@ function playRingSfx(ctx: AudioContext, dest: GainNode, noiseBuffer: AudioBuffer
 }
 
 // A scatter of short bandpassed noise clicks at randomized pitches/offsets
-// -- burst moves (particles converging/scattering: Anyon Braid, Majorana
-// Split).
+// -- the burst family's launch cue (the massive/many-body cluster shapes:
+// burst, mass, braid, split, vortex).
 function playBurstSfx(ctx: AudioContext, dest: GainNode, noiseBuffer: AudioBuffer, t: number) {
   const hits = 6;
   for (let i = 0; i < hits; i++) {
@@ -285,8 +321,8 @@ function playNovaSfx(ctx: AudioContext, dest: GainNode, noiseBuffer: AudioBuffer
 export function playAttackSfx(shape: AttackShape) {
   const { ctx, dest, noiseBuffer } = music.getSfxBus();
   const t = ctx.currentTime;
-  if (shape === 'ring') playRingSfx(ctx, dest, noiseBuffer, t);
-  else if (shape === 'burst') playBurstSfx(ctx, dest, noiseBuffer, t);
+  if (RING_FAMILY.has(shape)) playRingSfx(ctx, dest, noiseBuffer, t);
+  else if (BURST_FAMILY.has(shape)) playBurstSfx(ctx, dest, noiseBuffer, t);
   else if (shape === 'beam') playBeamSfx(ctx, dest, noiseBuffer, t);
   else if (shape === 'eruption') playEruptionSfx(ctx, dest, noiseBuffer, t);
   else if (shape === 'meteor') playMeteorSfx(ctx, dest, noiseBuffer, t);

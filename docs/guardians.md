@@ -179,16 +179,16 @@ one thing only: an incoming attack lands for half damage if its quasiparticle
 carries what the cloud screens, and lands in full if it does not.
 
 - **Spin Screening**: halves attacks carried by a quasiparticle with spin,
-  such as Electron Pulse, Magnon Pulse, Spinon Swap, Triplon Surge,
-  Electromagnon Pulse, Chiral Current, Helical Current and Heavy Fermion
-  Pulse
+  such as Electron Pulse, Magnon Wave, Spinon Swap, Triplon Surge,
+  Electromagnon Drive, Chiral Current, Helical Lock and Heavy Fermion
+  Drag
 - **Charge Screening**: halves attacks carried by a quasiparticle that a
   cloud of mobile charge can couple to, such as Electron Pulse, Plasmon
-  Pulse, Anyon Braid, Ferron Pulse, Electromagnon Pulse, Chiral Current,
-  Helical Current and Heavy Fermion Pulse
+  Resonance, Anyon Braid, Ferron Switch, Electromagnon Drive, Chiral Current,
+  Helical Lock and Heavy Fermion Drag
 - **Symmetry Cloud**: halves attacks carried by the mode of a broken
-  symmetry's own order parameter, namely Phonon Beam, Magnon Pulse, Ferron
-  Pulse, Electromagnon Pulse and Higgs Oscillation
+  symmetry's own order parameter, namely Phonon Beam, Magnon Wave, Ferron
+  Switch, Electromagnon Drive and Higgs Oscillation
 
 Two attacks are carried by a quasiparticle with no charge, no spin and no
 order parameter of its own, so no cloud touches them at all: Majorana Split

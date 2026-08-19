@@ -10,7 +10,20 @@ import {
   IMPACT_MS,
   playWindup,
   playBolt,
+  playLattice,
+  playWave,
   playRing,
+  playFlip,
+  playCombwave,
+  playHop,
+  playSever,
+  playVortex,
+  playRail,
+  playHelix,
+  playSwell,
+  playMass,
+  playBraid,
+  playSplit,
   playBurst,
   playBeam,
   playEruption,
@@ -46,6 +59,62 @@ export function attackEffectDurationMs(shape: AttackShape): number {
   return WINDUP_MS + TRAVEL_MS[shape] + IMPACT_MS;
 }
 
+// Every shape but Skłodowska-Curie's meteor/nova plays through the shared
+// single-beat skeleton (windup -> one travelling silhouette -> impact
+// shockwave); this registry maps each such shape to the function that plays
+// its travelling beat, all on one signature. beam/eruption take no attacker
+// anchor (a beam falls from the sky, an eruption comes up from the ground),
+// so their entries drop `from`. 'ring'/'buffring' are the same wavefront
+// with two chasing fronts (Plasmon Resonance) or one (Kondo's screening
+// self-buffs) -- see playRing's own comment for why the buff keeps its own
+// shape. 'burst' has no ordinary move class mapped to it but stays playable
+// for shape overrides.
+type OrdinaryShape = Exclude<AttackShape, 'meteor' | 'nova'>;
+type OrdinaryPlayFn = (
+  scene: Phaser.Scene,
+  color: number,
+  from: EffectAnchor,
+  to: EffectAnchor,
+  onImpact?: (dir?: { x: number; y: number }) => void,
+  depthOffset?: number,
+  scale?: number
+) => void;
+const SHAPE_PLAY: Record<OrdinaryShape, OrdinaryPlayFn> = {
+  bolt: playBolt,
+  lattice: playLattice,
+  wave: playWave,
+  ring: (scene, color, from, to, onImpact, depthOffset, scale) => playRing(scene, color, from, to, onImpact, depthOffset, scale, 2),
+  buffring: (scene, color, from, to, onImpact, depthOffset, scale) => playRing(scene, color, from, to, onImpact, depthOffset, scale, 1),
+  flip: playFlip,
+  combwave: playCombwave,
+  hop: playHop,
+  sever: playSever,
+  vortex: playVortex,
+  rail: playRail,
+  helix: playHelix,
+  swell: playSwell,
+  mass: playMass,
+  braid: playBraid,
+  split: playSplit,
+  burst: playBurst,
+  beam: (scene, color, _from, to, onImpact, depthOffset, scale) => playBeam(scene, color, to, onImpact, depthOffset, scale),
+  eruption: (scene, color, _from, to, onImpact, depthOffset, scale) => playEruption(scene, color, to, onImpact, depthOffset, scale),
+};
+
+// Per-shape multiplier on the landing shockwave's size: lattice is the
+// weakest move in the game and lands small; mass is the heaviest thing in
+// the ordinary set and lands with its biggest thud. Every other shape lands
+// at the standard size.
+const IMPACT_EMPHASIS: Partial<Record<AttackShape, number>> = { lattice: 0.7, mass: 1.6 };
+
+// Which shapes keep their identity standing still: played centred on one
+// point (from === to), the silhouette still reads -- a wavefront expands, a
+// condensate breathes, a rotor spins, a needle snaps, a beam/eruption
+// summons itself at the target anyway. Everything else is nothing but
+// travel, and a detail pane's preview collapses it to its (enlarged) impact
+// shockwave instead -- see playTargetEffect.
+const PREVIEW_CENTERED = new Set<AttackShape>(['ring', 'buffring', 'swell', 'vortex', 'flip', 'beam', 'eruption']);
+
 // Feynman's move-leveling (§5, World 7) escalates a leveled move's own
 // animation into several overlapping, growing repeats of the same single
 // hit, purely as presentation -- the real power bump (MOVE_LEVEL_MULTIPLIERS,
@@ -62,9 +131,9 @@ export function attackEffectDurationMs(shape: AttackShape): number {
 // back into BattleScene through onImpact/onComplete for real state in the
 // first place -- see playAttackEffect's own doc comment). The stagger
 // between repeat starts differs by shape family: an ordinary/Analytic shape
-// (bolt/ring/burst/beam/eruption) staggers at `LEVEL_STAGGER_FRACTION` of
-// its own `TRAVEL_MS` (so a fast bolt cascades quickly, a slower beam more
-// deliberately); meteor/nova use a fixed real-world delay instead
+// (everything in SHAPE_PLAY) staggers at `LEVEL_STAGGER_FRACTION` of
+// its own `TRAVEL_MS` (so a fast bolt cascades quickly, a slower mass or
+// beam more deliberately); meteor/nova use a fixed real-world delay instead
 // (`ULTIMATE_LEVEL_STAGGER_MS`), since `TRAVEL_MS.meteor`/`.nova` describe a
 // whole multi-second summon->charge->impact->aftermath sequence, not a
 // single silhouette's travel time -- a fraction of it would stagger repeats
@@ -186,11 +255,14 @@ export function playAttackEffect(
 //   Analytic pair) already summon themselves at the target from off-field sky or
 //   ground rather than travelling from the attacker, so each plays its own
 //   full sequence unchanged, just without the windup.
-// - ring expands from its own origin, which collapses onto the single centre
-//   point here -- the same centred wave Kondo's self-buff moves already play
-//   in a real fight, where caster and target are one crystal.
-// - bolt/burst are nothing *but* travel, so what's left of one at the target
-//   is its impact: the shockwave alone.
+// - the shapes that keep their identity standing still (PREVIEW_CENTERED:
+//   ring/buffring's expanding wavefronts, swell's breathing condensate,
+//   vortex's spinning rotor, flip's snapping needle) play centred on the one
+//   point, from === to -- the same centred call Kondo's self-buff moves
+//   already make in a real fight, where caster and target are one crystal.
+// - every other shape is nothing *but* travel (a bolt's flight, a wave's
+//   ribbon, a hop's pads, mass's lumber...), so what's left of one at the
+//   target is its impact: the shockwave alone.
 //
 // Feynman's level escalation still applies, so a leveled move previews the
 // same growing cascade it really casts. The music duck a real cast uses is
@@ -218,19 +290,17 @@ export function playTargetEffect(
   // A shape whose whole preview *is* the shockwave gets it enlarged: at its
   // battle size it's a brief flash sized for the tail of something that just
   // crossed the screen, and on its own in a pane it barely registers. The
-  // shapes that draw a full silhouette of their own (beam/eruption/ring) fill
-  // the stage already and stay at their real size.
-  const impactOnly = shape === 'bolt' || shape === 'burst';
+  // PREVIEW_CENTERED shapes draw a full silhouette of their own on the spot
+  // and stay at their real size.
+  const centered = PREVIEW_CENTERED.has(shape);
   const stagger = targetSingleDurationMs(shape) * LEVEL_STAGGER_FRACTION;
   const playOnce = (scale: number) => {
     playAttackSfx(shape);
     const land = (dir?: { x: number; y: number }) => {
-      playImpactShockwave(scene, style.color, at, depthOffset, scale * (impactOnly ? IMPACT_ONLY_SCALE : 1), dir);
+      playImpactShockwave(scene, style.color, at, depthOffset, scale * (IMPACT_EMPHASIS[shape] ?? 1) * (centered ? 1 : IMPACT_ONLY_SCALE), dir);
       playImpactSfx(1);
     };
-    if (shape === 'beam') playBeam(scene, style.color, at, land, depthOffset, scale);
-    else if (shape === 'eruption') playEruption(scene, style.color, at, land, depthOffset, scale);
-    else if (shape === 'ring') playRing(scene, style.color, at, at, land, depthOffset, scale);
+    if (centered) SHAPE_PLAY[shape](scene, style.color, at, at, land, depthOffset, scale);
     else land();
   };
 
@@ -242,11 +312,11 @@ export function playTargetEffect(
 }
 
 // One play of playTargetEffect above, start to finish -- the target-side
-// silhouette's own travel plus its impact, or the impact alone for a shape
-// whose target side is nothing but that.
+// silhouette's own travel plus its impact for a PREVIEW_CENTERED shape, or
+// the impact alone for a shape whose target side is nothing but that.
 function targetSingleDurationMs(shape: AttackShape): number {
   if (shape === 'meteor' || shape === 'nova') return attackEffectDurationMs(shape);
-  if (shape === 'bolt' || shape === 'burst') return IMPACT_MS;
+  if (!PREVIEW_CENTERED.has(shape)) return IMPACT_MS;
   return TRAVEL_MS[shape] + IMPACT_MS;
 }
 
@@ -272,7 +342,7 @@ export function targetEffectTotalDurationMs(shape: AttackShape, level: 0 | 1 | 2
 // comment) can never be affected by how many times this fires.
 function playOrdinaryRepeats(
   scene: Phaser.Scene,
-  shape: AttackShape,
+  shape: OrdinaryShape,
   color: number,
   from: EffectAnchor,
   to: EffectAnchor,
@@ -293,20 +363,17 @@ function playOrdinaryRepeats(
       from,
       () => {
         // `dir` is whichever direction the landing shape was travelling in
-        // (a bolt/burst hands over its own arrival heading, a beam comes
-        // down, an eruption comes up, a ring supplies none) -- it only
+        // (a travelling head hands over its own arrival heading, a beam
+        // comes down, an eruption comes up; a ring, swell or split supplies
+        // none and stays radial) -- it only
         // aims the impact's debris spray, and BattleScene's own `onImpact`
         // takes no arguments, so nothing downstream of the animation sees it.
         const land = (dir?: { x: number; y: number }) => {
-          playImpactShockwave(scene, color, to, depthOffset, scale, dir);
+          playImpactShockwave(scene, color, to, depthOffset, scale * (IMPACT_EMPHASIS[shape] ?? 1), dir);
           playImpactSfx(powerRatio);
           if (isLast) onImpact?.();
         };
-        if (shape === 'ring') playRing(scene, color, from, to, land, depthOffset, scale);
-        else if (shape === 'burst') playBurst(scene, color, from, to, land, depthOffset, scale);
-        else if (shape === 'beam') playBeam(scene, color, to, land, depthOffset, scale);
-        else if (shape === 'eruption') playEruption(scene, color, to, land, depthOffset, scale);
-        else playBolt(scene, color, from, to, land, depthOffset, scale);
+        SHAPE_PLAY[shape](scene, color, from, to, land, depthOffset, scale);
       },
       depthOffset,
       scale

@@ -16,16 +16,16 @@ or non-Abelian excitation at the top.
 | --- | --- | --- | --- |
 | Phonon Beam | Phonon | 6 | Every type |
 | Electron Pulse | Electron | 7 | Chern Insulator, Chern Superconductor, Fractional Chern Insulator, Kondo Heavy Fermion, Metal, Metallic Magnet, Quantum Spin Hall Insulator, Semiconductor, Superconductor |
-| Magnon Pulse | Magnon | 8 | Insulating Magnet, Metallic Magnet, Multiferroic |
-| Plasmon Pulse | Plasmon | 8 | Metal, Metallic Magnet |
-| Ferron Pulse | Ferron | 8 | Ferroelectric, Multiferroic |
+| Magnon Wave | Magnon | 8 | Insulating Magnet, Metallic Magnet, Multiferroic |
+| Plasmon Resonance | Plasmon | 8 | Metal, Metallic Magnet |
+| Ferron Switch | Ferron | 8 | Ferroelectric, Multiferroic |
 | Triplon Surge | Triplon | 9 | Quantum Spin Liquid |
-| Electromagnon Pulse | Electromagnon | 9 | Multiferroic |
+| Electromagnon Drive | Electromagnon | 9 | Multiferroic |
 | Spinon Swap | Spinon | 10 | Kondo Heavy Fermion, Quantum Spin Liquid |
 | Chiral Current | Chiral | 10 | Chern Insulator, Chern Superconductor |
-| Helical Current | Helical | 10 | Quantum Spin Hall Insulator |
+| Helical Lock | Helical | 10 | Quantum Spin Hall Insulator |
 | Higgs Oscillation | Higgs | 10 | Chern Superconductor, Superconductor |
-| Heavy Fermion Pulse | Heavy Fermion | 10 | Kondo Heavy Fermion |
+| Heavy Fermion Drag | Heavy Fermion | 10 | Kondo Heavy Fermion |
 | Vison Loop | Vison | 10 | Quantum Spin Liquid |
 | Anyon Braid | Anyon | 11 | Fractional Chern Insulator |
 | Majorana Split | Majorana | 11 | Chern Superconductor |

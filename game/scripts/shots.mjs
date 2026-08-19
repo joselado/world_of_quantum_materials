@@ -251,7 +251,7 @@ async function main() {
         g.registry.set('metGuardians', ['noether', 'bloch', 'dresselhaus', 'landau', 'majorana', 'anderson', 'feynman', 'kondo', 'franklin', 'sklodowskaCurie']);
         g.registry.set('tutorialTipsSeen', Object.keys(tut.TUTORIAL_TIPS));
         g.registry.set('worldLoreSeen', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-        // Phonon Beam (the starter), Magnon Pulse (learned from the Iron
+        // Phonon Beam (the starter), Magnon Wave (learned from the Iron
         // dopant below), one Kondo buff, one of Landau's Analytic moves, one
         // of Skłodowska-Curie's Ultimates (whose phonon class is unlocked
         // below, so her panel shows the free-to-carry state its caption
@@ -766,7 +766,7 @@ async function main() {
       // `preferMismatch` starts the fight against Barium Titanate -- a World
       // 1 wild in its own right (a switchable polarization is spontaneous
       // symmetry breaking), and a ferroelectric with no magnetic order, so
-      // the seeded save's Magnon Pulse genuinely finds no host in it and the
+      // the seeded save's Magnon Wave genuinely finds no host in it and the
       // shot shows the "no natural defense" double-damage hit README's
       // caption describes. Left to the random pool, most of World 1's wilds
       // are magnetic and host magnons fine.
@@ -801,7 +801,7 @@ async function main() {
             const b = window.__game.scene.getScene('Battle');
             if (!b || typeof b['playerAttack'] !== 'function') return false;
             const mod = await import('/src/data/materials.ts');
-            // Magnon Pulse into the ferroelectric wild freshBattle(true)
+            // Magnon Wave into the ferroelectric wild freshBattle(true)
             // raised: a mismatch by construction (no magnetic order, no
             // magnon to host), so the hit lands at the double-damage "no
             // natural defense" moment this shot exists to show.

@@ -47,8 +47,8 @@ import { persistFromRegistry } from '../../data/save';
 // full-height animation stage plus an inline picker under it, half a panel
 // was never enough width for either. The pane (renderAnalyticColumn) opens
 // with that move's own real battle-effect animation on a loop
-// (renderMoveDetailHeader), overriding the plain per-class bolt/ring/burst
-// shape via ANALYTIC_SHAPES (each Analytic move is 'beam' or 'eruption') the
+// (renderMoveDetailHeader), overriding the plain per-class silhouette
+// via ANALYTIC_SHAPES (each Analytic move is 'beam' or 'eruption') the
 // same way BattleScene itself does, still colored by whichever quasiparticle
 // class the move is currently tuned to (getTunedMoveClass -- a not-yet-tuned
 // move falls back to its own default 'phonon', same fallback the real fight

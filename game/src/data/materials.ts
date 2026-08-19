@@ -21,7 +21,7 @@ export { BASE_STAT, MAX_STAT, DEFAULT_STATS, enemyStatsForWorld, statUpgradeCost
 
 // Every ordinary attack is named after the quasiparticle/excitation that
 // actually carries it, not an abstract "class" label -- Phonon Beam is a
-// beam of phonons, Magnon Pulse a pulse of magnons, and so on; only the
+// beam of phonons, Magnon Wave a pulse of magnons, and so on; only the
 // display `name` is quasiparticle-themed, `id`/`class` stay plain. There's
 // deliberately no single move just called "Impurity Scattering," since
 // disorder/impurities aren't one particle a crystal emits (see
@@ -49,22 +49,22 @@ export { BASE_STAT, MAX_STAT, DEFAULT_STATS, enemyStatsForWorld, statUpgradeCost
 // `data/TAXONOMY.txt`'s own quasiparticle roster:
 //   6  phonon (Phonon Beam) -- every crystal has a lattice
 //   7  electron (Electron Pulse) -- an ordinary band electron
-//   8  magnon (Magnon Pulse) / plasmon (Plasmon Pulse) / ferron (Ferron
-//      Pulse) -- tied: an ordinary collective mode of a magnet, a metal, or
+//   8  magnon (Magnon Wave) / plasmon (Plasmon Resonance) / ferron (Ferron
+//      Switch) -- tied: an ordinary collective mode of a magnet, a metal, or
 //      a ferroelectric respectively, none more exotic than the others
-//   9  electromagnon (Electromagnon Pulse) /
-//      triplon (Triplon Surge) -- tied: a lattice-dressed carrier, a
-//      magnon-phonon hybrid, and a dimer magnet's own confined triplet mode
+//   9  electromagnon (Electromagnon Drive) /
+//      triplon (Triplon Surge) -- tied: a magnon-phonon hybrid and a dimer
+//      magnet's own confined triplet mode
 //   10 spinon (Spinon Swap) / vison (Vison Loop) / chiral (Chiral Current) /
-//      helical (Helical Current) / higgs (Higgs Oscillation) / heavyFermion
-//      (Heavy Fermion Pulse) -- tied: fractionalized or topologically
+//      helical (Helical Lock) / higgs (Higgs Oscillation) / heavyFermion
+//      (Heavy Fermion Drag) -- tied: fractionalized or topologically
 //      protected, but none of them non-Abelian
 //   11 chargedAnyon (Anyon Braid) / majorana (Majorana Split) -- tied for
 //      the most exotic tier the course covers: fractional braiding
 //      statistics and non-Abelian zero modes
 export const MOVES: Record<string, Move> = {
   tunnelStrike: { id: 'tunnelStrike', name: 'Electron Pulse', class: 'electron', power: 7 },
-  magneticField: { id: 'magneticField', name: 'Magnon Pulse', class: 'magnon', power: 8 },
+  magneticField: { id: 'magneticField', name: 'Magnon Wave', class: 'magnon', power: 8 },
   thermalFluctuation: {
     id: 'thermalFluctuation',
     name: 'Phonon Beam',
@@ -81,7 +81,7 @@ export const MOVES: Record<string, Move> = {
   // A metal's own collective charge oscillation -- session 9's RPA treatment
   // names this "a new quasiparticle" in exactly those words. Only 'metal'
   // hosts it today.
-  plasmonPulse: { id: 'plasmonPulse', name: 'Plasmon Pulse', class: 'plasmon', power: 8 },
+  plasmonPulse: { id: 'plasmonPulse', name: 'Plasmon Resonance', class: 'plasmon', power: 8 },
   // A dimer/valence-bond quantum paramagnet's own confined S=1 mode --
   // distinct from (and conceptually the opposite of) spinon's
   // fractionalization, but both live on 'quantumSpinLiquid' (see that
@@ -92,17 +92,17 @@ export const MOVES: Record<string, Move> = {
   chiralCurrent: { id: 'chiralCurrent', name: 'Chiral Current', class: 'chiral', power: 10 },
   // Counter-propagating, spin-momentum-locked edge/surface pair -- a Kramers
   // pair, protected by time reversal rather than by broken symmetry.
-  helicalCurrent: { id: 'helicalCurrent', name: 'Helical Current', class: 'helical', power: 10 },
+  helicalCurrent: { id: 'helicalCurrent', name: 'Helical Lock', class: 'helical', power: 10 },
   // The amplitude mode of an ordered/paired condensate -- needs genuine
   // long-range order (Cooper pairing here), not just a gap.
   higgsOscillation: { id: 'higgsOscillation', name: 'Higgs Oscillation', class: 'higgs', power: 10 },
   // The Kondo-lattice hybridization quasiparticle -- a conduction electron
   // mass-renormalized by entangling with a local f-moment.
-  heavyFermionPulse: { id: 'heavyFermionPulse', name: 'Heavy Fermion Pulse', class: 'heavyFermion', power: 10 },
+  heavyFermionPulse: { id: 'heavyFermionPulse', name: 'Heavy Fermion Drag', class: 'heavyFermion', power: 10 },
   // The polarization order parameter's own quantum -- the ferroelectric
   // analog of a magnon, distinct from electromagnon (which needs magnetic
   // order to hybridize with in the first place).
-  ferronPulse: { id: 'ferronPulse', name: 'Ferron Pulse', class: 'ferron', power: 8 },
+  ferronPulse: { id: 'ferronPulse', name: 'Ferron Switch', class: 'ferron', power: 8 },
   // A Z2 gauge-flux (vortex) excitation -- spinon's topological-order
   // companion in a Z2 quantum spin liquid.
   visonLoop: { id: 'visonLoop', name: 'Vison Loop', class: 'vison', power: 10 },
@@ -117,11 +117,11 @@ export const MOVES: Record<string, Move> = {
   // why it is named for what it used to be. Opponent-only, in the same way
   // Analytic and Ultimate moves are player-only: no shop sells these and no
   // wild crystal carries one.
-  decoheredMagnon: { id: 'decoheredMagnon', name: 'Decohered Magnon Pulse', class: 'magnon', power: 8 },
+  decoheredMagnon: { id: 'decoheredMagnon', name: 'Decohered Magnon Wave', class: 'magnon', power: 8 },
   decoheredSpinon: { id: 'decoheredSpinon', name: 'Decohered Spinon Swap', class: 'spinon', power: 10 },
   decoheredTriplon: { id: 'decoheredTriplon', name: 'Decohered Triplon Surge', class: 'triplon', power: 9 },
   decoheredChiral: { id: 'decoheredChiral', name: 'Decohered Chiral Current', class: 'chiral', power: 10 },
-  decoheredHelical: { id: 'decoheredHelical', name: 'Decohered Helical Current', class: 'helical', power: 10 },
+  decoheredHelical: { id: 'decoheredHelical', name: 'Decohered Helical Lock', class: 'helical', power: 10 },
   decoheredHiggs: { id: 'decoheredHiggs', name: 'Decohered Higgs Oscillation', class: 'higgs', power: 10 },
   decoheredVison: { id: 'decoheredVison', name: 'Decohered Vison Loop', class: 'vison', power: 10 },
   // Landau's quiz-gated Analytic moves (§5, World 4, ANALYTIC_MOVE_IDS
@@ -156,7 +156,7 @@ export const MOVES: Record<string, Move> = {
   // (the magnetoelectric coupling itself), sitting alongside ordinary
   // magnons rather than replacing them (MOVE_COMPATIBILITY still grants
   // multiferroics 'magnon' too).
-  electromagnonPulse: { id: 'electromagnonPulse', name: 'Electromagnon Pulse', class: 'electromagnon', power: 9 },
+  electromagnonPulse: { id: 'electromagnonPulse', name: 'Electromagnon Drive', class: 'electromagnon', power: 9 },
   // Kondo's three moves (§5, World 8) -- self-buffs, not attacks: casting
   // one applies a 3-turn buff to the caster's own side (BattleScene's
   // resolveSelfBuff) instead of dealing damage, so `power` here is never
@@ -456,7 +456,7 @@ export const SHOP_MOVE_IDS = Object.keys(MOVES).filter(
 
 // Which quasiparticle classes a given main type can physically host --
 // Phonon Beam ('phonon') is on every list since every crystal has a
-// lattice, but e.g. Magnon Pulse only appears for types with actual
+// lattice, but e.g. Magnon Wave only appears for types with actual
 // magnetic order ('metallicMagnet', 'insulatingMagnet', 'multiferroic'),
 // never for a plain band
 // insulator/semiconductor like Silicon. This is what makes "Si doesn't have
@@ -705,7 +705,7 @@ export function getTunedMoveClass(registry: RegistryLike, moveId: string): MoveC
 // so a multi-word quasiparticle like 'heavyFermion' still reads as "Heavy
 // Fermion Meteor", not a truncated "Heavy Meteor". Stripping the label
 // rather than a fixed one word is what makes that work in both directions:
-// 'heavyFermion' is two words, so "Heavy Fermion Pulse" has to yield the
+// 'heavyFermion' is two words, so "Heavy Fermion Drag" has to yield the
 // shape "Pulse" and not a stray "Fermion Pulse". A name that does not begin
 // with its own class's label falls back to dropping the first word; the one
 // class with no quasiparticle noun, Kondo's 'screening', never reaches here
@@ -821,7 +821,7 @@ export function moveDisplayName(registry: RegistryLike, moveId: string): string 
 // The player is a crystal too -- just one entry out of this same roster, not a
 // separate species. Silicon: the semiconductor/tutorial-baseline type from
 // DESIGN.md's crystal database (topic 1) -- narrow enough a gap to dope, so
-// it doesn't host Plasmon Pulse the way a true 'metal' does. `moves` here is
+// it doesn't host Plasmon Resonance the way a true 'metal' does. `moves` here is
 // just the starting loadout (Phonon Beam only) -- which moves are actually
 // available in battle is tracked separately in the Phaser registry's
 // `unlockedMoves` entry, since that grows as the player buys more from
@@ -1006,7 +1006,7 @@ export function materialDisplayName(material: Material): string {
 export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
   1: [
     // Real graphene plasmonics (tunable, mid-IR) is its own well-known field
-    // -- Plasmon Pulse rather than Electron Pulse, so 'metal''s signature
+    // -- Plasmon Resonance rather than Electron Pulse, so 'metal''s signature
     // move is actually reachable by fighting/discovering a wild crystal, not
     // just buyable in the abstract.
     crystal('Graphene', 'metal', ['plasmonPulse', 'thermalFluctuation'], 0, 'layer'),
@@ -1093,7 +1093,7 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
   // their own lattice vibration and nothing else (see
   // MOVE_COMPATIBILITY.insulator).
   2: [
-    // Plasmon Pulse moveset -- see world 1's Graphene entry above.
+    // Plasmon Resonance moveset -- see world 1's Graphene entry above.
     crystal('Graphene', 'metal', ['plasmonPulse', 'thermalFluctuation'], 0, 'layer'),
     // Ag's half-filled 5s conduction band gives it the sharpest free-electron
     // plasmon of any elemental metal -- real plasmonics/nanophotonics
@@ -1140,7 +1140,7 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     crystal('CdTe', 'semiconductor', ['tunnelStrike', 'thermalFluctuation'], 5),
     // Tungsten's partially filled 5d bands make it an ordinary band
     // conductor -- its own interband transitions damp any plasmon response,
-    // so it carries Electron Pulse rather than Silver's Plasmon Pulse, the
+    // so it carries Electron Pulse rather than Silver's Plasmon Resonance, the
     // d-band conductor counterpart to that world's own free-electron metals.
     crystal('Tungsten', 'metal', ['tunnelStrike', 'thermalFluctuation'], 7, undefined, 'W'),
   ],
@@ -1523,7 +1523,7 @@ const RIVAL_9_TARNISH = 0x6e737a;
 // (insulatingMagnet, quantumSpinLiquid, multiferroic) have no band electron
 // to emit at all and only 'metal'/'metallicMagnet' host a plasmon; the second
 // slot stays 'thermalFluctuation' because 'phonon' is the one class every type
-// hosts. The two magnets share Magnon Pulse, since the magnon is the signature
+// hosts. The two magnets share Magnon Wave, since the magnon is the signature
 // excitation of magnetic order either way -- what separates the hosts is what
 // they can absorb rather than what they throw, the metallic one having an
 // electron and a plasmon channel the insulating one lacks.

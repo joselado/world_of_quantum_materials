@@ -99,7 +99,7 @@
 //   it again -- Phonon Beam-based Analytic/Ultimate moves stay usable
 //   regardless of form (their static class is 'phonon', hosted everywhere),
 //   and a class-specific shop move bought while wearing one form (e.g.
-//   Magnon Pulse, bought as an insulatingMagnet) goes the same way: usable
+//   Magnon Wave, bought as an insulatingMagnet) goes the same way: usable
 //   only while the current form still hosts that class.
 // - Each build maps to its own real in-game Settings difficulty tier
 //   (`tier` on each BUILDS entry -- 'bsc'/'msc'/'phd', data/settings.ts's

@@ -685,7 +685,7 @@ The per-guardian trigger thresholds live in `STAGE_TRIGGER`, calibrated
 against the min/max region sizes the run logs; if no play is caught within a
 few loops the settled panel is shot instead (and the run says so). The shots
 that depend on a battle reaching a particular moment — a mismatch hit landing
-(driven as Magnon Pulse into Barium Titanate, a ferroelectric with no magnetic
+(driven as Magnon Wave into Barium Titanate, a ferroelectric with no magnetic
 order to host it), a victory banner, an analytic question mid-flight — are
 each driven straight from the scene.
 

@@ -332,9 +332,13 @@ game/src/
                                   preview half: the *target's* share of the beat alone, centered on
                                   one point -- meteor/nova and beam/eruption play their own full
                                   sequences (they summon themselves at the target anyway, just
-                                  without the windup), a ring collapses onto the centre, and
-                                  bolt/burst -- which are nothing but travel -- are left with their
-                                  impact shockwave. resolveAttackShape()/attackEffectDurationMs()/
+                                  without the windup), the shapes that keep their identity standing
+                                  still (its PREVIEW_CENTERED set: ring/buffring, swell, vortex,
+                                  flip) play centred on the point, and every travel-only shape is
+                                  left with its enlarged impact shockwave. Ordinary shapes dispatch
+                                  through one SHAPE_PLAY registry (Record<shape, play fn>) shared
+                                  by real casts and previews, so a new silhouette is one registry
+                                  entry rather than a parallel if/else chain. resolveAttackShape()/attackEffectDurationMs()/
                                   attackEffectTotalDurationMs()/targetEffectTotalDurationMs() are
                                   exported for moveEffectPreview.ts's
                                   own use (below) -- the last two fold the `level` escalation's own
@@ -352,9 +356,15 @@ game/src/
     attackStyles.ts             EFFECT_STYLE (per-MoveClass color + silhouette), ANALYTIC_SHAPES/
                                   ULTIMATE_SHAPES (per-move-id overrides), resolveAttackShape()
     attackShapes.ts             The single-beat silhouettes and their timings: playWindup (attacker
-                                  side), playBolt/playRing/playBurst/playBeam/playEruption,
+                                  side), one play function per silhouette (playBolt, playLattice,
+                                  playWave, playRing -- 2 fronts for plasmon's 'ring', 1 for the
+                                  screening 'buffring' -- playFlip, playCombwave, playHop,
+                                  playSever, playVortex, playRail, playHelix, playSwell, playMass,
+                                  playBraid, playSplit, playBurst, playBeam, playEruption),
                                   playImpactShockwave (target side), WINDUP_MS/TRAVEL_MS/IMPACT_MS,
-                                  GROUND_DROP
+                                  GROUND_DROP, and arcPoint's `bow` multiplier (1 = standard up-bow,
+                                  negative sags below the line for mass, split runs two heads at
+                                  opposite signs)
     attackUltimates.ts          Skłodowska-Curie's Ultimate tier: playMeteor/playNova and their
                                   summon->charge->impact->aftermath phase functions,
                                   METEOR_TOTAL_MS/NOVA_TOTAL_MS
@@ -929,7 +939,7 @@ everything else by absence, so only two things in it carry meaning.
   replacing `opponentCrystal` mid-effect keeps being tracked), and passes them to both
   `resolveHit` and `resolveSelfBuff` (which passes the caster's own anchor as both `from` and
   `to`). The one place information legitimately crosses sides is *aim*: a travelling shape
-  (`playBolt`/`playBurst`) latches its origin once at launch (`latchAnchor`) while its
+  latches its origin once at launch (`latchAnchor`) while its
   destination stays live, and `playRing` samples both once to place its origin. Anything new
   that positions a battle effect relative to a crystal should take an anchor the same way
   rather than reading a fixed field coordinate -- `PLAYER_POS`/`opponentPos` stay what the
@@ -2448,7 +2458,7 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   `renderSelfBuffMoveDetailHeader`: it renders the player's own current crystal
   (`scene.playerMaterial`, same `makeCrystal` call/ground-shadow-ellipse convention as
   Franklin's own crystal block, `art/franklin.ts`) standing in the block with the move's
-  `'screening'`-class ring effect looping centered on it (`art/moveEffectPreview.ts`'s
+  `'screening'`-class single-wavefront `'buffring'` effect looping centered on it (`art/moveEffectPreview.ts`'s
   `startMoveEffectPreview`, called with an identical `from`/`to` point -- which works because
   `art/attackShapes.ts`'s `playRing` collapses its own `Phaser.Math.Linear(from, to, 0.12)`
   origin to that single point when `from` equals `to`, the same call `resolveSelfBuff` makes

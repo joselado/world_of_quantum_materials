@@ -423,7 +423,7 @@ pool.
 | semiconductor (1) | Gallium Nitride (GaN) | Doped semiconductor, plain single-particle band picture |
 | insulator (1) | Magnesium Oxide (MgO) | Simple ionic band insulator, gap too wide to dope/excite across — textbook baseline contrast to topological insulators; the ionic lattice also self-traps a stronger polaron than a bare semiconductor would |
 | metal (1→2 bridge) | Graphene (pristine, half-filled) | Gapless Dirac semimetal — the throughline example of session 2 (Bloch's theorem, tight-binding); precursor before symmetry-breaking (→ insulatingMagnet) or band-topology (→ topological) sets in; real graphene plasmonics is its own well-known field |
-| metal (2) | Silver (Ag) | Half-filled 5s conduction band gives it the sharpest free-electron plasmon of any elemental metal — real plasmonics/nanophotonics runs on silver (and gold), not graphene; not from the course, added to give `metal`'s Plasmon Pulse a second, more flagship host |
+| metal (2) | Silver (Ag) | Half-filled 5s conduction band gives it the sharpest free-electron plasmon of any elemental metal — real plasmonics/nanophotonics runs on silver (and gold), not graphene; not from the course, added to give `metal`'s Plasmon Resonance a second, more flagship host |
 | metal (2) | Mercury Telluride (HgTe) | Inverted-gap bulk band structure — Γ8/Γ6 touch at zero gap, the same gapless character Graphene's own `metal` entry above already carries, not an ordinary gapped semiconductor; §5's hybrid-recipe parent for HgTe/CdTe Quantum Well below, whose topology comes from this inversion |
 | semiconductor (2) | Indium Arsenide (InAs) | Ordinary band semiconductor whose real role is strong spin-orbit coupling — the actual second ingredient (alongside Aluminum) in a real Majorana-nanowire platform, §5's InAs/Al Majorana Wire hybrid recipe |
 | semiconductor (2) | Monolayer Molybdenum Ditelluride, 2H phase (MoTe$_2$) | The untwisted, semiconducting monolayer phase — distinct from the already-topological 1T′ phase below — that becomes Twisted Bilayer MoTe₂ once fused with itself (§5) |
@@ -432,7 +432,7 @@ pool.
 | semiconductor (4) | Gallium Arsenide (GaAs) | Ordinary direct-gap III-V semiconductor in its own right — the integer quantum Hall effect this world's `chernInsulator` members carry needs a clean 2D electron gas confined at a GaAs/AlGaAs heterostructure interface under strong field, not the bulk compound itself, so plain Gallium Arsenide doesn't carry that type here |
 | insulator (2) | Diamond (C) | ~5.5 eV gap, textbook wide-gap covalent insulator — pristine, no defect (e.g. nitrogen-vacancy) dressing; not from the course, added as `insulator`'s second member alongside Magnesium Oxide |
 | insulator (2, hybrid parent) | Monolayer Boron Nitride (hBN) | ~5.9 eV gap insulator whose honeycomb lattice is nearly commensurate with graphene's — real graphene devices are built on or encapsulated in it; §5 hybrid recipe parent (with Graphene) for Rhombohedral Pentalayer Graphene/hBN Moiré below |
-| metal (2) | Tungsten (W) | Partially filled 5d bands, ordinary band conductor — highest melting point of any elemental metal; not from the course, the d-band Electron Pulse counterpart to Silver's/Graphene's free-electron Plasmon Pulse |
+| metal (2) | Tungsten (W) | Partially filled 5d bands, ordinary band conductor — highest melting point of any elemental metal; not from the course, the d-band Electron Pulse counterpart to Silver's/Graphene's free-electron Plasmon Resonance |
 | insulatingMagnet (1) | Europium Oxide (EuO) | Half-filled Eu²⁺ 4f⁷ shell, well-isolated localized moments — the real material Weiss/mean-field theory's Brillouin-function prediction is classically tested against; a genuinely different mean-field derivation (localized-moment Weiss theory) from Iron/Cobalt's itinerant Stoner picture, and gapped where they are metallic: stoichiometric EuO is a ferromagnetic semiconductor, so its ordered moments carry a magnon and nothing else (heavily doped EuO does go metallic, the compound's own famous metal-insulator transition); not from the course |
 | insulatingMagnet (1) | Manganese Fluoride (MnF$_2$) | Simple ionic (superexchange-mediated) local-moment antiferromagnet with strong single-ion anisotropy — the real-material realization of the mean-field Ising antiferromagnet, a third distinct route to magnetic order alongside NiO's Mott-insulating Hubbard-$U$ picture and Chromium's itinerant spin-density-wave picture; not from the course |
 | ferroelectric (1) | Potassium Dihydrogen Phosphate (KH$_2$PO$_4$) | Order-disorder-type ferroelectric (proton tunneling between two off-center sites in an O-H...O bond, a pseudospin mean-field/Ising model) rather than Barium Titanate's displacive-type transition — same inversion-symmetry-breaking SSB, a genuinely different microscopic mechanism, and an even more literal mean-field-theory teaching example than BaTiO₃'s own soft-phonon-mode picture; not from the course |
@@ -489,7 +489,7 @@ pool.
 | ferroelectric (new type) | Barium Titanate (BaTiO$_3$) | The textbook ferroelectric — its Ti⁴⁺ ion sits off-center below ~120°C, giving the lattice a spontaneous switchable polarization; no course topic covers ferroelectricity specifically, so like every other type without a session of its own it lives in World 9, which can host any type — also spawns in World 1, since spontaneous symmetry breaking covers a polarization order parameter just as much as a magnetic one (CLAUDE.md's ordinary-wild-encounters note) |
 | ferroelectric (new type) | Germanium Telluride (GeTe) | Robust room-temperature ferroelectric Rashba semiconductor — a stronger, more switchable ferroelectric than BaTiO₃'s own ~120°C transition, same type, also a World 9 wild |
 | ferroelectric (new type) | Hafnium Oxide (HfO$_2$), ferroelectric phase | CMOS-compatible ferroelectric behind real FeRAM/FeFET devices — pristine, undoped epitaxial thin films switch too (Cheema et al., Nature 2020; strain rather than a dopant stabilizes the polar orthorhombic phase); bulk, unstrained HfO₂ is the ordinary centrosymmetric phase and not ferroelectric at all, so this specifically means the thin-film phase; not from the course, also a World 9 wild |
-| ferroelectric (new type) | Tin Telluride (SnTe), monolayer | Ferroelectric order at the two-dimensional limit — a one-unit-cell film polarizes *in* the plane of the sheet rather than across it and stays polarized to ~270 K, above bulk SnTe's own transition, with domains imaged and switched by an STM tip's field (Chang et al., Science 2016); same "no session of its own" reason for living in World 9 as BaTiO₃/GeTe/HfO₂, and World 9 only rather than taking BaTiO₃'s World 1 cross-list as well, since a Ferron Pulse carrier in the tutorial world lands at double force on a starting Silicon; not from the course |
+| ferroelectric (new type) | Tin Telluride (SnTe), monolayer | Ferroelectric order at the two-dimensional limit — a one-unit-cell film polarizes *in* the plane of the sheet rather than across it and stays polarized to ~270 K, above bulk SnTe's own transition, with domains imaged and switched by an STM tip's field (Chang et al., Science 2016); same "no session of its own" reason for living in World 9 as BaTiO₃/GeTe/HfO₂, and World 9 only rather than taking BaTiO₃'s World 1 cross-list as well, since a Ferron Switch carrier in the tutorial world lands at double force on a starting Silicon; not from the course |
 | chernSuperconductor (10, hybrid) | InAs/Al Majorana Wire | Engineered from an ordinary s-wave superconductor (Aluminum) proximitizing a strong-spin-orbit semiconductor (InAs) — genuine topological pairing, so `chernSuperconductor` rather than plain `superconductor`; §5 hybrid recipe result |
 
 `WORLD_RIVALS[10]`'s finale boss ("The Adapted," "a model of you") has no row above —
@@ -592,11 +592,14 @@ named after compounds:
 
 **Attacks are quasiparticles, not abstract labels.** Every move is named after the
 excitation that actually carries it (`game/src/data/materials.ts`'s `MOVES`), and each
-renders as its own particle-effect animation in battle (`game/src/art/attackEffects.ts`):
-a fast bolt for Phonon Beam/Electron Pulse/Spinon Swap/Triplon Surge/Chiral Current, an
-expanding ring pulse for Magnon Pulse/Polaron Drag/Electromagnon Pulse/Plasmon Pulse/Ferron
-Pulse/Higgs Oscillation/Helical Current, a converging/scattering particle burst for Anyon
-Braid/Majorana Split/Heavy Fermion Pulse/Vison Loop. There is deliberately no "impurity
+renders as its own distinct particle-effect silhouette in battle, one per move class and
+therefore one animation per ordinary move (`game/src/art/attackStyles.ts`'s `EFFECT_STYLE`,
+drawn by `game/src/art/attackShapes.ts`), picturing the excitation's own physics: Phonon
+Beam is a compression pulse running down a straight lattice line, Magnon Wave a transverse
+sine ribbon, Spinon Swap a singlet bond snapping into two spinons, Majorana Split two
+mirrored half-glows recombining at the target, and so on -- `dev_notes/STYLE.md`'s "Attack
+effects" section carries the full fifteen-shape roster and the shape grammar that keeps
+them mutually distinguishable. There is deliberately no "impurity
 scattering" move — disorder isn't a particle a crystal emits, so it has no place in the
 move roster as an abstract attack.
 
@@ -604,22 +607,21 @@ move roster as an abstract attack.
 `MOVE_COMPATIBILITY` table fixes, per main type, which quasiparticle classes it can host
 (`game/src/data/TAXONOMY.txt` is this table's hand-edited design source, see above). The
 three ordinary band types split three ways by how far a carrier gets: `metal` (e.g.
-Graphene) gets Electron Pulse, Phonon Beam, *and* Plasmon Pulse (only a partially filled
+Graphene) gets Electron Pulse, Phonon Beam, *and* Plasmon Resonance (only a partially filled
 band carries a plasmon); `semiconductor` (Silicon) gets Electron Pulse and Phonon Beam,
 its gap narrow enough for an ordinary band electron but not a free electron gas;
-`insulator` (Magnesium Oxide) gets Phonon Beam *and* Polaron Drag but not Electron Pulse,
-its gap too wide for an ordinary band electron to get through even though the ionic
-lattice self-traps a polaron more readily than a metal or semiconductor would. None of the
-three gets Magnon Pulse, since none has magnetic order to carry one. Every other class is
-gated the same way to whichever types the actual physics motivates it for (Magnon Pulse →
-magnetically ordered types; Chiral Current → integer-Chern types; Helical Current →
+`insulator` (Magnesium Oxide) gets Phonon Beam alone, its gap too wide for an ordinary
+band electron to get through and its bands too empty for a plasmon. None of the
+three gets Magnon Wave, since none has magnetic order to carry one. Every other class is
+gated the same way to whichever types the actual physics motivates it for (Magnon Wave →
+magnetically ordered types; Chiral Current → integer-Chern types; Helical Lock →
 time-reversal-protected edge/surface types; Anyon Braid → fractional-Chern only; Majorana
 Split → `chernSuperconductor` only, genuine topological pairing required; Higgs
 Oscillation → any superconducting type; Vison Loop/Triplon Surge → quantum-spin-liquid
 only; Spinon Swap → quantum-spin-liquid *and* Kondo-lattice, since a Kondo lattice
 fractionalizes into spinons at its own Kondo-breakdown quantum critical point; Heavy
-Fermion Pulse → Kondo-lattice only; Ferron Pulse →
-ferroelectric/multiferroic; Electromagnon Pulse → multiferroic only). This is enforced
+Fermion Drag → Kondo-lattice only; Ferron Switch →
+ferroelectric/multiferroic; Electromagnon Drive → multiferroic only). This is enforced
 everywhere the player's moveset shows up: the battle move menu (`getBattleMoves` = learned
 moves ∩ compatible moves) and Noether's shop (same intersection, so she only ever offers
 what the player's *current* crystal form can actually carry — see the transmutation
@@ -662,14 +664,14 @@ physics can't host the attacking move's quasiparticle class at all. See
 vibration or band electron is weak; a topological or non-Abelian excitation is strong — so
 every move the player can buy from Noether outpowers the free starting Phonon Beam. Six
 tiers, low to high (`data/materials.ts`'s `MOVES`): Phonon Beam (`phonon`, every crystal
-has a lattice) < Electron Pulse (`electron`, an ordinary band electron) < Magnon Pulse /
-Plasmon Pulse / Ferron Pulse (`magnon`/`plasmon`/`ferron`, tied — an ordinary collective
+has a lattice) < Electron Pulse (`electron`, an ordinary band electron) < Magnon Wave /
+Plasmon Resonance / Ferron Switch (`magnon`/`plasmon`/`ferron`, tied — an ordinary collective
 mode of a magnet, a metal, or a ferroelectric, none more exotic than the others; session
 9's own RPA treatment names "the plasmon" as a quasiparticle in exactly those words) <
-Polaron Drag / Electromagnon Pulse / Triplon Surge (`polaron`/`electromagnon`/`triplon`,
-tied — a lattice-dressed carrier, a magnon-phonon hybrid, and a dimer magnet's own confined
-triplet mode) < Spinon Swap / Vison Loop / Chiral Current / Helical Current / Higgs
-Oscillation / Heavy Fermion Pulse (`spinon`/`vison`/`chiral`/`helical`/`higgs`/
+Electromagnon Drive / Triplon Surge (`electromagnon`/`triplon`,
+tied — a magnon-phonon hybrid and a dimer magnet's own confined
+triplet mode) < Spinon Swap / Vison Loop / Chiral Current / Helical Lock / Higgs
+Oscillation / Heavy Fermion Drag (`spinon`/`vison`/`chiral`/`helical`/`higgs`/
 `heavyFermion`, tied — fractionalized or topologically protected, but none of them
 non-Abelian) < Anyon Braid / Majorana Split (`chargedAnyon`/`majorana`, tied for the most
 exotic tier the ordinary Attacks roster covers: fractional braiding statistics and
@@ -1047,7 +1049,7 @@ state can mark her met before the player has actually reached her.
   a white-hot core, two swirling side-rays, a trail of falling sparks, and a radiant
   sun expanding at the point of origin; `groundEruption` bursts a wide double
   shockwave ring and a bright geyser core up through nearly twice the shard count of
-  an ordinary burst. Each move's static `class` simply defaults to `'phonon'` --
+  the burst silhouette's particle cluster. Each move's static `class` simply defaults to `'phonon'` --
   the same universal, always-hostable class Phonon Beam itself carries -- so an
   untuned move is purchasable/usable from any form and never mismatches, without
   needing a class of its own. Their displayed name is always "`<quasiparticle>` Lance"/

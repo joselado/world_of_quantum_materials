@@ -1562,7 +1562,7 @@ station motifs are deliberately not tunnels with a visible far end.
   (`renderAnalyticColumn`) opens with that move's own real battle-effect
   animation looping on its stage (`renderMoveDetailHeader`, "List+detail panels" above and
   "Attack effects" below),
-  overriding the plain per-class bolt/ring/burst shape via `ANALYTIC_SHAPES` (each Analytic move
+  overriding the plain per-class silhouette via `ANALYTIC_SHAPES` (each Analytic move
   is `'beam'`/`'eruption'`) the same way `BattleScene` itself does, still colored by whichever
   quasiparticle class the move is currently tuned to (`getTunedMoveClass` -- a not-yet-tuned move
   falls back to its own default `'phonon'`, same fallback the real fight uses) and escalated to
@@ -2840,7 +2840,7 @@ world are shaped, since world N's start is world N-1's exit.
   eruption, an Ultimate's whole summon sequence) each resolve one crystal's current position
   every frame they draw, with no shared coordinate and no dependence on where the other crystal
   is -- so either crystal can move and its own half of the effect follows it. The only
-  information that crosses sides is *aim*, sampled once at launch: a travelling bolt/burst
+  information that crosses sides is *aim*, sampled once at launch: a travelling shape
   fixes its origin where it was fired from while still homing on the target's live position,
   and a ring places its origin once, a little way from the caster toward whatever it was aimed
   at. `BattleScene`'s `PLAYER_POS`/`OPPONENT_POS`/`BOSS_OPPONENT_POS` lay out the static field
@@ -2863,23 +2863,64 @@ world are shaped, since world N's start is world N-1's exit.
   `GROUND_ASPECT` and planted `GROUND_DROP` below its anchor -- the same ground plane the
   crystals' own shadows sit on, so a summon circle or a ground shockwave lies on the floor
   under the crystal instead of wrapping around its middle.
-- Every move renders a distinct particle effect keyed by its move class, not just a color
-  swap: a fast focused **bolt** -- a glowing head trailing a tapering comet tail of its own
-  recent positions, thrown on a shallow upward arc rather than a ruled straight line (Phonon
-  Beam, Electron Pulse, Spinon Swap); an **expanding ring** pulse, one soft-edged wavefront
-  with a fainter white echo chasing it (Magnon Pulse, Polaron Drag); or a loose cluster of
-  small particles that **converge/scatter** near the target, each keeping its own radius and
-  size so the swarm never collapses into an evenly spaced wheel (Anyon Braid, Majorana Split).
-  Each class also has its own color (e.g. orange for Phonon Beam, red for Magnon Pulse). All
+- **Every ordinary move renders its own distinct silhouette, one per move class** -- and each
+  ordinary move is one `MoveClass`, so this is one animation per move, not just a color swap.
+  Identity rides on shape along four orthogonal axes: topology/count; path geometry (the
+  standard up-bow for most, *straight* is phonon's alone, *down-bow* heavyFermion's alone,
+  *mirrored double-bow* majorana's alone, no path at all for the rings); timing signature
+  (smooth, stutter, mid-flight snap, discrete steps, breathing, slow lumber); and rotation
+  sense (continuous spin belongs to vison alone; flip and braid rotate only in discrete
+  steps). Every shape owns at least one axis value exclusively, so the set stays mutually
+  distinguishable with hue removed. The roster (`EFFECT_STYLE` in `art/attackStyles.ts`,
+  drawn in `art/attackShapes.ts`):
+  **bolt** (Electron Pulse) a fast focused shot, a glowing head trailing a comet tail;
+  **lattice** (Phonon Beam) a straight dotted line of lattice sites snapping in, then one
+  longitudinal compression pulse running down it, sites bunching and brightening at the
+  pulse -- the weakest move in the game, landing the smallest impact;
+  **wave** (Magnon Wave) a smooth transverse sine ribbon with a bright head envelope;
+  **combwave** (Electromagnon Drive) that ribbon grown short dipole teeth alternating side
+  with the wave phase, bristly against magnon's smooth curve;
+  **helix** (Helical Lock) two continuous strands 180° out of phase with white node dots at
+  their crossings, one crest pattern drifting forward and the other backward;
+  **ring** (Plasmon Resonance) two chasing wavefronts expanding toward the target;
+  **flip** (Ferron Switch) a double-headed polarization needle snapping 180° between up and
+  down in discrete flips, landing locked reversed with two opposed arrowheads kicking out;
+  **hop** (Triplon Surge) faint dimer pads fading in along the path and a bright triplet
+  packet hopping pad-to-pad in discrete jumps with visible dwells, never a glide;
+  **sever** (Spinon Swap) a singlet bond stretching, thinning at the middle and snapping --
+  the far half flies on to the target, the near half recoils into the caster;
+  **vortex** (Vison Loop) a small constant-radius rotor spinning fast as it translates, with
+  a loop that flashes and inverts around the target on arrival;
+  **rail** (Chiral Current) an edge line stroking itself in along the bow, then bright dashes
+  streaming along it single-file, all one way, the rail fading behind the last dash;
+  **swell** (Higgs Oscillation) a condensate orb breathing about a thin static reference
+  circle, ending in one deep contraction released as the impact;
+  **mass** (Heavy Fermion Drag) the slowest shape: a large body lumbering across on the one
+  path that sags below the line, motes spiralling in, landing the ordinary set's biggest
+  thud (both impact emphases live in `IMPACT_EMPHASIS`, `art/attackEffects.ts`);
+  **braid** (Anyon Braid) two compact dots exchanging positions in discrete half-turn swaps,
+  each crossing flashing and leaving a small fading arc of phase residue behind;
+  **split** (Majorana Split) two dim half-glows on widely separated mirrored arcs
+  reconverging exactly at the target, recombination being the impact flash.
+  The tight pairs keep deliberate discriminators: combwave's teeth run at least the ribbon's
+  amplitude; helix keeps its node dots and opposite crest drift against wave; braid is
+  point-dots with residue against helix's continuous ribbons; lattice is strictly straight
+  dots with no travelling head against rail's stroked bowed curve; hop draws no path against
+  rail's glide on one; swell oscillates hard about its reference circle against mass's
+  fixed-size, larger, slower, sagging body; sever is asymmetric where split is symmetric. A
+  **burst** silhouette (a loose converge/scatter particle cluster) stays in the shape
+  vocabulary and playable via override, with no ordinary class mapped to it.
+  Each class also has its own color (e.g. orange for Phonon Beam, red for Magnon Wave). All
   shapes render additive-blended (`Phaser.BlendModes.ADD`) so they glow instead of reading as
   flat shapes -- which does mean a bright class color over a bright sky washes toward white;
   the fix used here is to keep white cores small and let the colored falloff carry the hue,
   since a second, normally-blended Graphics per effect would cost an object per shape.
 - Kondo's three self-buff moves (Spin Screening, Charge Screening, Symmetry Cloud) share
   the `'screening'` class's one cast look, unlike Landau's/Skłodowska-Curie's moves below --
-  an expanding ring (the same silhouette
-  Magnon Pulse/Polaron Drag use, reading as an effect enveloping the caster) tinted Kondo's
-  own rust-orange (`0xe86a44`), played with the caster's own anchor as both `from` and `to`
+  a single expanding wavefront with a fainter white echo (its own `'buffring'` shape,
+  reading as an effect enveloping the caster -- deliberately one front where Plasmon
+  Resonance's attack ring is two, so the two stay apart even when both play centred in a
+  detail pane) tinted Kondo's own rust-orange (`0xe86a44`), played with the caster's own anchor as both `from` and `to`
   (`BattleScene.resolveSelfBuff`) so it centers on them instead of traveling toward the
   opponent, and paired with a plain squash-bounce on the caster's own crystal
   (`flashHit`) rather than the camera shake/flash an ordinary hit's `impactPunch` adds, so
@@ -2892,9 +2933,8 @@ world are shaped, since world N's start is world N-1's exit.
   its own silhouette rather than sharing whichever ordinary
   `EFFECT_STYLE` shape their currently-tuned quasiparticle carries (`art/attackStyles.ts`'s
   `ANALYTIC_SHAPES`, keyed by move id, not class), and each substantially more elaborate than
-  the three base bolt/ring/burst shapes -- deliberately reading as clearly stronger than an
-  ordinary hit, not just a
-  bigger bolt/ring/burst. **The beam move** (`skyfallBeam`, `playBeam`) drops a multi-layer
+  the ordinary per-class silhouettes -- deliberately reading as clearly stronger than an
+  ordinary hit, not just a bigger one. **The beam move** (`skyfallBeam`, `playBeam`) drops a multi-layer
   column of light from off the top of the screen straight down onto the target: a wide pulsing
   telegraph halo fades in first (ramped in early enough to have arrived well before the beam
   lands), then a white-hot core inside a brighter, wider outer column falls the rest of the
@@ -2905,7 +2945,7 @@ world are shaped, since world N's start is world N-1's exit.
   point of origin as the beam charges. **The eruption move** (`groundEruption`, `playEruption`)
   opens a crack in the floor under the target: shockwave rings spreading out across the ground
   plane, a tapered wavering geyser that rises and collapses within the beat rather than
-  freezing at full height, and nearly twice the ordinary burst's debris count (18 vs. 12)
+  freezing at full height, and nearly twice the burst silhouette's debris count (18 vs. 12)
   thrown up and out as streaks, seeded per cast so no two casts spray alike, with the heavier
   pieces arcing over and falling back. Neither takes an attacker anchor at all -- a beam falling
   from the sky and a crack opening in the ground don't originate there. Each
@@ -2929,21 +2969,22 @@ world are shaped, since world N's start is world N-1's exit.
   accreting rather than as one ring contracting.
 - The full beat, in order: a ~90ms windup at the attacker's own position -- sparks pulled
   *inward* to a brightening core, an inhale, so brightness peaks exactly on the frame the shot
-  is released -- the travelling effect itself (`art/attackShapes.ts`'s `TRAVEL_MS`, 340-520ms
-  depending on shape -- beam is the longest at 520ms), then a fire-and-forget impact shockwave
+  is released -- the travelling effect itself (`art/attackShapes.ts`'s `TRAVEL_MS`, 340-550ms
+  depending on shape -- mass is the slowest at 550ms, bolt the quickest at 340ms), then a fire-and-forget impact shockwave
   (~260ms) at the target: a soft flash, a wavefront, and ten tapering debris slivers seeded per
   impact so none of them reads as an evenly spoked asterisk. When the landing shape knows which
-  way it came in (a bolt/burst hands over its own arrival heading, a beam comes down, an
-  eruption comes up) the debris throws into the hemisphere away from it, ±70°; a ring or a
-  self-buff supplies no direction and stays evenly radial. On top of that
+  way it came in (a travelling head hands over its own arrival heading, a beam comes down, an
+  eruption comes up) the debris throws into the hemisphere away from it, ±70°; a ring, a
+  self-buff, swell's release and split's symmetric recombination supply no direction and stay
+  evenly radial. On top of that
   `BattleScene.impactPunch` layers the target crystal's scale-squash (`flashHit`), a small
   camera shake (`0.006`, kept subtle since the field's background is solid black right up to
   the canvas edge), and a brief pale lift of the whole field -- deliberately dim and short
   (`flash(70, 110, 118, 140)`), since a full-brightness white flash washes the field out for
   long enough to swallow whichever silhouette just landed, and costs most on exactly the
   flashiest moves. `BattleScene`'s `TURN_GAP_MS` (850ms) covers
-  every other shape's ~810-830ms worst case comfortably but sits ~20ms under the beam move's
-  own 870ms total -- in practice an imperceptible overlap with the very start of the next
+  most shapes' totals comfortably but sits 20-50ms under the slowest few (hop's and beam's
+  870ms, mass's 900ms) -- in practice an imperceptible overlap with the very start of the next
   turn's own windup flash, not worth chasing given how minor it is, but worth knowing if
   `TRAVEL_MS`/`TURN_GAP_MS` are ever retuned together. A leveled move (below) runs
   noticeably longer than this single-trigger budget, since it repeats the beat several times --
@@ -2957,16 +2998,16 @@ world are shaped, since world N's start is world N-1's exit.
   several overlapping, growing repeats of the same single hit** -- purely presentational, since
   the real power bump (`MOVE_LEVEL_MULTIPLIERS`, a flat 1.5x/2x/3x) is already folded into the
   hit's own damage math upstream of the animation; repeating the animation never repeats the
-  damage. Applies uniformly across every shape family bolt/ring/burst/beam/eruption/meteor/nova
-  -- nothing is exempted. Trigger count scales with level: Double=2, Triple=3, Infinite=4 (a
+  damage. Applies uniformly across every shape family, ordinary, Analytic and Ultimate alike --
+  nothing is exempted. Trigger count scales with level: Double=2, Triple=3, Infinite=4 (a
   finite cap that reads as "a cascade, too many to track" rather than a literal unbounded loop).
   Each successive repeat renders visibly bigger than the last (`LEVEL_TRIGGER_SCALES`, `1,
   1.25, 1.5, 3.5` -- a real multiplier on every shape's own stroke widths/radii/lengths, not
   just impact-sfx volume) and starts a bit after the previous one begins rather than after it
   finishes, so the repeats visibly overlap instead of playing back-to-back with gaps. The
-  stagger differs by shape family: an ordinary/Analytic shape (bolt/ring/burst/beam/eruption)
-  staggers at 40% of its own `TRAVEL_MS`, so a fast bolt cascades quickly and a slower beam more
-  deliberately; meteor/nova instead use a fixed 650ms real-world delay between repeat starts,
+  stagger differs by shape family: an ordinary/Analytic shape (every single-beat silhouette)
+  staggers at 40% of its own `TRAVEL_MS`, so a fast bolt cascades quickly and a slower mass or
+  beam more deliberately; meteor/nova instead use a fixed 650ms real-world delay between repeat starts,
   since their own `TRAVEL_MS` describes a whole multi-second summon->charge->impact->aftermath
   sequence rather than a single silhouette's travel time -- a percentage of it would stagger
   repeats by seconds. A leveled Ultimate plays its full multi-phase sequence once per repeat
@@ -2980,8 +3021,10 @@ world are shaped, since world N's start is world N-1's exit.
   trigger count. Only the *player's* own leveled moves escalate -- an opponent's copy of the
   same move id never carries a level (Feynman's leveling is the player's own save state), so a
   wild/rival casting the same move always plays the plain, single-trigger animation.
-- Each attack also plays a procedural one-shot sound keyed to the same bolt/ring/burst shape
-  (`audio/sfx.ts`'s `playAttackSfx`) on launch and an impact thump scaled by the
+- Each attack also plays a procedural one-shot sound on launch, keyed to its silhouette's
+  own sound family (`audio/sfx.ts`'s `playAttackSfx`: the zap for the focused/discrete
+  travellers, the noise-sweep whoosh for the wave/wavefront shapes, the rumble for the
+  massive cluster shapes; beam/eruption/meteor/nova keep bespoke cues of their own) and an impact thump scaled by the
   quasiparticle-mismatch multiplier (`playImpactSfx`, 2x on a mismatched hit, 1x otherwise)
   on arrival, and dips the currently-playing
   music track's volume for the beat's duration (`audio/music.ts`'s `MusicEngine.duck`) so the

@@ -7,7 +7,7 @@
 export type MoveClass =
   // Ordinary band electron -- Electron Pulse's class.
   | 'electron'
-  // Collective spin wave -- Magnon Pulse's class.
+  // Collective spin wave -- Magnon Wave's class.
   | 'magnon'
   // Lattice vibration -- Phonon Beam's class, the one quasiparticle every
   // crystal hosts regardless of type, so it's on every type's
@@ -22,7 +22,7 @@ export type MoveClass =
   // 'quantumSpinLiquid' here (a deliberate simplification, not a claim that
   // every quantum-spin-liquid candidate is literally dimerized).
   | 'triplon'
-  // Carries Electromagnon Pulse (multiferroic type only) -- the quasiparticle
+  // Carries Electromagnon Drive (multiferroic type only) -- the quasiparticle
   // a multiferroic hosts on top of its ordinary magnons, a spin wave that
   // picks up electric-dipole activity through magnon-phonon hybridization
   // (the magnetoelectric coupling itself).
@@ -31,7 +31,7 @@ export type MoveClass =
   // time-reversal broken. Chiral Current's class.
   | 'chiral'
   // Counter-propagating, spin-momentum-locked edge/surface pair protected by
-  // time reversal (a Kramers pair) -- Helical Current's class. Distinct from
+  // time reversal (a Kramers pair) -- Helical Lock's class. Distinct from
   // 'chiral': a helical channel can backscatter a Kramers partner into its
   // pair without breaking time-reversal symmetry, a chiral one has no
   // partner to backscatter into at all.
