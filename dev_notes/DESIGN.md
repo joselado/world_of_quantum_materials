@@ -698,16 +698,32 @@ Momentum divided by the slower side's, floored and capped at 5 (`clamp(floor(rat
 The cap keeps an extreme Momentum gap from producing an unbounded hit sequence; the slower side
 always still gets exactly one hit. All of the faster side's hits resolve first, consecutively,
 before the slower side's single hit — and the round stops immediately if either side's HP hits
-0 partway through, rather than firing the rest of the queued hits. Skłodowska-Curie's two
-quiz-gated Ultimate moves and Landau's two quiz-gated Analytic moves (§5) are exempt from this
-scaling — picking one of those keeps the plain one-hit-each behavior regardless of the Momentum
-ratio, since their own answer-gating and (for Ultimates) multi-phase animation timing are
-already tuned around exactly one hit per side per round.
+0 partway through, rather than firing the rest of the queued hits.
+
+**Every swing is its own pick.** A round is a list of slots — one per hit, the faster side's
+first — and on each of the player's own slots the move menu goes live and waits. Swinging three
+times in a round means picking three times, and the three picks are independent: three different
+quasiparticles against three different weaknesses if that is what the fight calls for. The
+opponent rolls its own move fresh on each of its slots for the same reason. This holds for every
+move without exception, quiz-gated ones included, and the gate travels with the move rather than
+with the round: each slot a Landau Analytic move is picked for asks its own question, and each
+slot a Skłodowska-Curie Ultimate is picked for asks its own three. A player fast enough to swing
+five times can spend all five on Ultimates and answer fifteen questions for it, or spend one and
+take the ordinary attacks for the rest.
+
+The "Turns" widget is what makes a multi-slot round readable: its leading icons are the current
+round's own remaining slots, so how many picks are left before the opponent swings is on screen
+throughout, with the tail tiling the next round's predicted shape.
 
 **Self-buffs (Kondo's three moves, §5).** Kondo teaches three moves that are self-buffs, not
 attacks — casting one raises a 3-turn screening cloud on the *caster's own* side instead of
 hitting the opponent, dealing no damage and never triggering the quasiparticle-mismatch rule
-below. Never randomly rolled: the player picks which cloud by picking the move.
+below. Never randomly rolled: the player picks which cloud by picking the move. A cast spends
+one slot like any other pick, so raising a cloud on the first of several swings still leaves the
+rest of them to attack with, and a side with a single slot spends its whole round on it. The
+cloud takes hold on whichever slot it is cast on; a side's cloud ticks down once per round, on
+that side's last slot, and never on the round it was raised in, so it always screens for exactly
+its full duration.
 
 **A cloud screens one quantum number, and only damps a quasiparticle that carries it.** An
 incoming hit is halved when the attacking move's *effective* class (`getTunedMoveClass`, so a

@@ -424,6 +424,22 @@ export class BattleScene extends Phaser.Scene {
   // here (Phaser reuses the Scene instance across scene.start() calls).
   private movePageIndex = 0;
   private currentMoveIds: string[] = [];
+  // The round being played out, one entry per slot -- true for a slot the
+  // player acts on, false for one the opponent acts on (beginRound). Empty
+  // between rounds. `roundSlot` is the slot about to resolve, so
+  // `roundSlots.slice(roundSlot)` is what the "Turns" row shows as still to
+  // come. `playerLastSlot`/`enemyLastSlot` are where each side's own cloud
+  // ticks; `pendingPlayerMove` is the move a menu click has committed for the
+  // player's next slot, held only for as long as it takes that slot to run.
+  // `buffCastThisRound` is per side, so a cloud raised this round isn't spent
+  // by the same round's own tick. All battle-ephemeral, so all reset in
+  // create() below (Phaser reuses the Scene instance across scene.start()).
+  private roundSlots: boolean[] = [];
+  private roundSlot = 0;
+  private playerLastSlot = -1;
+  private enemyLastSlot = -1;
+  private pendingPlayerMove: { moveId: string; bonusMultiplier: number } | null = null;
+  private buffCastThisRound = { player: false, enemy: false };
   // Kondo's status effects (§5) -- battle-ephemeral only, reset fresh in
   // create() below (Phaser reuses the same Scene instance across
   // scene.start() calls, so a field initializer alone wouldn't reset this
@@ -458,6 +474,16 @@ export class BattleScene extends Phaser.Scene {
   // transmutation is reflected everywhere the opponent's identity shows up.
   private opponentView(): Material {
     return this.adaptedForm ?? this.wild;
+  }
+
+  // How the combat log names the opponent. An ordinary encounter is a
+  // specimen met in the field, so it is "Wild <compound>", matching the
+  // opening line's own "A wild <compound> appeared!"; a rival is a named
+  // boss standing in the pass, so it is called by its name alone, the same
+  // way its own opening line ("<name> blocks the way onward!") does.
+  private opponentLabel(): string {
+    const name = this.opponentView().name;
+    return this.isRival ? name : `Wild ${name}`;
   }
 
   init(data: BattleInitData) {
@@ -550,6 +576,12 @@ export class BattleScene extends Phaser.Scene {
     this.opponentHp = this.opponentMaxHp;
     this.turnLock = false;
     this.movePageIndex = 0;
+    this.roundSlots = [];
+    this.roundSlot = 0;
+    this.playerLastSlot = -1;
+    this.enemyLastSlot = -1;
+    this.pendingPlayerMove = null;
+    this.buffCastThisRound = { player: false, enemy: false };
     this.playerStatus = null;
     this.opponentStatus = null;
     this.playerScreeningAura = null;
@@ -646,8 +678,11 @@ export class BattleScene extends Phaser.Scene {
   // automatically. A no-op while turnLock is held (mid-swing, and also true
   // for the rest of the scene's life once a KO ends the battle --
   // resolveHit's win/lose branch returns before ever releasing it, see
-  // playerAttack's own comment) or if there's only one page to begin with,
-  // same guard `addMoveButton` already applies to clicks. `!this.moveMenu`
+  // runNextSlot's own comment) or if there's only one page to begin with,
+  // same guard `addMoveButton` already applies to clicks. Paging between
+  // move kinds while the menu is live on one of the round's own player slots
+  // is exactly what the arrows are for, so the guard is on the lock rather
+  // than on being between rounds. `!this.moveMenu`
   // is a second, explicit belt-and-suspenders check -- endBattle destroys
   // it -- so a Left/Right press after the results screen is up can never
   // resurrect the panel even if the turnLock invariant above is ever
@@ -2437,18 +2472,18 @@ export class BattleScene extends Phaser.Scene {
   }
 
   // Redraws the small "Turns" preview row in the field's top-left corner
-  // (`TURN_PREVIEW_X/Y`): a best-effort look-ahead at the next
-  // `TURN_PREVIEW_LENGTH` hits, built by tiling `currentHitOrder`'s one-round
-  // pattern (the faster side's `fasterHits` icons, then the slower side's
-  // one) out to that length. It's only exactly right if the player keeps
-  // picking ordinary moves and neither side's stats change mid-sequence --
-  // an Ultimate/Analytic pick (exempt from the multi-hit scaling) or one of
-  // Kondo's self-buff moves (always resolves as the caster's own single
-  // action for the round regardless of Velocity, see `playerAttack`) makes
-  // that round's actual hit count deviate from the current preview, not a
-  // bug, just the approximation this widget is meant to be. Called once
-  // from `create()` and again every time a round actually finishes
-  // (`playerAttack`'s `releaseLock`).
+  // (`TURN_PREVIEW_X/Y`): the next `TURN_PREVIEW_LENGTH` slots in order. The
+  // leading icons are the current round's own remaining slots, read straight
+  // off `roundSlots` -- so a player three slots into a five-slot round can
+  // see how many picks they still have before the opponent swings, which is
+  // what makes a multi-slot round playable rather than a surprise. Whatever
+  // room is left over is filled by tiling `currentHitOrder`'s round pattern
+  // (the faster side's `fasterHits` icons, then the slower side's one), a
+  // look-ahead at rounds not laid out yet. Neither side's stats move during a
+  // battle, and a round's shape is decided by Momentum alone rather than by
+  // which moves get picked, so that tail is a real prediction rather than a
+  // guess. Redrawn on every slot (`runNextSlot`), so the leftmost icon is
+  // always whoever acts next.
   //
   // Each icon's sparkles (`makeCrystal`/`addHighlightAndSparkles`) carry an
   // infinitely-repeating tween -- `Container.destroy(true)` destroys the
@@ -2470,126 +2505,104 @@ export class BattleScene extends Phaser.Scene {
     const roundPattern: boolean[] = [];
     for (let i = 0; i < fasterHits; i++) roundPattern.push(fasterIsPlayer);
     roundPattern.push(!fasterIsPlayer);
-    const sequence = Array.from({ length: TURN_PREVIEW_LENGTH }, (_, i) => roundPattern[i % roundPattern.length]);
+    const remaining = this.roundSlots.slice(this.roundSlot);
+    const sequence = Array.from({ length: TURN_PREVIEW_LENGTH }, (_, i) =>
+      i < remaining.length ? remaining[i] : roundPattern[(i - remaining.length) % roundPattern.length]
+    );
     this.turnPreviewRow = drawTurnPreview(this, sequence, this.playerMaterial, this.opponentView(), this.isRival);
   }
 
+  // What the opponent throws on one of its own slots, rolled fresh each time.
+  // World 1 opponents (wilds and the rival alike) are restricted to their
+  // phonon-class moves while the player is still unbuilt -- every one of
+  // their three stats below PHONON_ONLY_STAT_CEILING (data/balance.ts).
+  // `phonon` is the one class every type hosts, so a phonon hit can never
+  // take the quasiparticle-mismatch double-damage bonus (§4): the opening
+  // world cannot punish a player who has not met the mismatch rule yet with
+  // a doubled hit out of a moveset they had no way to read. Once any stat
+  // reaches the ceiling the player is building, and World 1 rolls its whole
+  // authored moveset like every other world. The filter reads each move's
+  // own static `MOVES` class rather than `getTunedMoveClass`, which only
+  // remaps the player-only Analytic/Ultimate ids no wild or rival moveset
+  // carries. Falls back to the full moveset if a World 1 opponent were ever
+  // authored without a phonon move at all, so the roll can never come up
+  // empty.
+  private opponentMoveId(): string {
+    const phononOnly =
+      this.world === 1 && Object.values(this.playerStats).every((v) => v < PHONON_ONLY_STAT_CEILING);
+    const pool = phononOnly ? this.wild.moves.filter((id) => MOVES[id]?.class === 'phonon') : this.wild.moves;
+    return Phaser.Utils.Array.GetRandom(pool.length > 0 ? pool : this.wild.moves);
+  }
+
+  // Lays out the round about to be played: the faster side gets `fasterHits`
+  // slots, the slower side one, in that order (DESIGN.md §4). A slot is one
+  // action by one side -- on the player's slots the move menu goes live and
+  // the pick is made there, so a player swinging three times this round picks
+  // three times, and an Analytic/Ultimate pick answers its own question on
+  // each of the slots it is picked for. Nothing resolves here: `runNextSlot`
+  // waits for the round's first pick before the first slot runs, so a faster
+  // opponent's swings still land in answer to a move the player has already
+  // committed rather than out of an idle screen.
+  private beginRound() {
+    const { fasterIsPlayer, fasterHits } = this.currentHitOrder();
+    this.roundSlots = [];
+    for (let i = 0; i < fasterHits; i++) this.roundSlots.push(fasterIsPlayer);
+    this.roundSlots.push(!fasterIsPlayer);
+    this.roundSlot = 0;
+    // Which slot is each side's last one this round -- where that side's own
+    // cloud ticks down (see `tickBuff`). Read off the laid-out slots rather
+    // than derived from `fasterHits`, so the two can't disagree.
+    this.playerLastSlot = this.roundSlots.lastIndexOf(true);
+    this.enemyLastSlot = this.roundSlots.lastIndexOf(false);
+    this.buffCastThisRound = { player: false, enemy: false };
+  }
+
+  // The player has committed a move for their next slot. Every path into a
+  // player action lands here: an ordinary move button, and the two quiz-gated
+  // kinds once their own panel has been answered (addMoveButton), which is
+  // where `bonusMultiplier` comes from.
   private playerAttack(moveId: string, bonusMultiplier = 1) {
     if (this.turnLock) return;
     this.turnLock = true;
+    if (this.roundSlot >= this.roundSlots.length) this.beginRound();
+    this.pendingPlayerMove = { moveId, bonusMultiplier };
+    this.runNextSlot();
+  }
 
-    const { fasterIsPlayer, fasterHits } = this.currentHitOrder();
-    const playerFirst = fasterIsPlayer; // tie keeps player-first, same as currentHitOrder's own tie rule
-    // What the opponent throws, re-rolled fresh for each of its own hits.
-    // World 1 opponents (wilds and the rival alike) are restricted to their
-    // phonon-class moves while the player is still unbuilt -- every one of
-    // their three stats below PHONON_ONLY_STAT_CEILING (data/balance.ts).
-    // `phonon` is the one class every type hosts, so a phonon hit can never
-    // take the quasiparticle-mismatch double-damage bonus (§4): the opening
-    // world cannot punish a player who has not met the mismatch rule yet with
-    // a doubled hit out of a moveset they had no way to read. Once any stat
-    // reaches the ceiling the player is building, and World 1 rolls its whole
-    // authored moveset like every other world. The filter reads each move's
-    // own static `MOVES` class rather than `getTunedMoveClass`, which only
-    // remaps the player-only Analytic/Ultimate ids no wild or rival moveset
-    // carries. Falls back to the full moveset if a World 1 opponent were ever
-    // authored without a phonon move at all, so the roll can never come up
-    // empty.
-    const phononOnly =
-      this.world === 1 && Object.values(this.playerStats).every((v) => v < PHONON_ONLY_STAT_CEILING);
-    const opponentPool = phononOnly ? this.wild.moves.filter((id) => MOVES[id]?.class === 'phonon') : this.wild.moves;
-    const opponentMoveId = () =>
-      Phaser.Utils.Array.GetRandom(opponentPool.length > 0 ? opponentPool : this.wild.moves);
-
-    const releaseLock = () => {
+  // Walks the round one slot at a time. An opponent slot resolves on its own;
+  // a player slot resolves the move already committed, or -- when there is
+  // none -- hands the screen back to the move menu and waits for the pick
+  // that supplies one. A round walked to its end releases the lock the same
+  // way and leaves `roundSlot` past the last slot, which is `playerAttack`'s
+  // cue to lay the next round out; so the menu is live at exactly the moments
+  // the next slot is the player's, round boundaries included.
+  //
+  // `resolveHit` only calls back when neither side's HP has hit 0 (it goes
+  // straight to `endBattle` otherwise), so a KO partway through a round
+  // simply never reaches the remaining slots and never releases `turnLock`.
+  private runNextSlot() {
+    this.drawTurnPreview();
+    if (this.roundSlot >= this.roundSlots.length) {
       this.turnLock = false;
-      this.drawTurnPreview();
-    };
-
-    const exempt = ANALYTIC_MOVE_IDS.includes(moveId) || ULTIMATE_MOVE_IDS.includes(moveId);
-    if (exempt) {
-      if (playerFirst) {
-        this.resolveHit(
-          true,
-          moveId,
-          () => {
-            if (this.opponentHp <= 0 || this.playerHp <= 0) return;
-            this.time.delayedCall(TURN_GAP_MS, () => this.resolveHit(false, opponentMoveId(), releaseLock));
-          },
-          bonusMultiplier
-        );
-      } else {
-        this.resolveHit(false, opponentMoveId(), () => {
-          if (this.opponentHp <= 0 || this.playerHp <= 0) return;
-          this.time.delayedCall(TURN_GAP_MS, () => this.resolveHit(true, moveId, releaseLock, bonusMultiplier));
-        });
-      }
       return;
     }
-
-    // The round's full hit order: the faster side swings `fasterHits` times
-    // (reusing the same moveId each time on the player's side; re-rolled
-    // fresh from `opponentPool` each time on the enemy's side), then the
-    // slower side swings once. One
-    // exception: a Kondo self-buff move is always exactly one action for its
-    // round, even if the caster is the faster side -- it isn't an attack
-    // landing repeatedly on a defender, just a single technique the caster
-    // applies to themselves, and repeating it would only refresh the same
-    // buff to the same 3 turns with nothing else observable. The other
-    // side's own `fasterHits` (if *they* are the faster side instead) is
-    // untouched by this -- only the self-buff caster's own contribution to
-    // `hits` collapses to one.
-    const playerIsSelfBuff = KONDO_MOVE_IDS.includes(moveId);
-    const hits: { isPlayer: boolean; moveId: string }[] = [];
-    if (fasterIsPlayer) {
-      const playerHitCount = playerIsSelfBuff ? 1 : fasterHits;
-      for (let i = 0; i < playerHitCount; i++) hits.push({ isPlayer: true, moveId });
-      hits.push({ isPlayer: false, moveId: opponentMoveId() });
-    } else {
-      for (let i = 0; i < fasterHits; i++) hits.push({ isPlayer: false, moveId: opponentMoveId() });
-      hits.push({ isPlayer: true, moveId });
+    const isPlayer = this.roundSlots[this.roundSlot];
+    if (isPlayer && !this.pendingPlayerMove) {
+      this.turnLock = false;
+      return;
     }
-
-    // A side's own buff (Kondo's three moves, §5) must apply/tick down at
-    // most once per round, even when that side lands more than one hit this
-    // round -- and it has to be that side's *last* action this round, not
-    // its first: an existing cloud on its final turn has to keep screening
-    // through every one of that side's earlier hits before it expires, and a buff freshly cast this round shouldn't retroactively
-    // apply to the actions that cast it, only the round after. Found by
-    // scanning `hits` for each side's own last index, rather than assumed
-    // from position, since the self-buff collapse above means a side's
-    // block of hits isn't always exactly `fasterHits` long.
-    const lastIndexFor = (isPlayer: boolean) => {
-      let last = -1;
-      hits.forEach((h, i) => {
-        if (h.isPlayer === isPlayer) last = i;
-      });
-      return last;
-    };
-    const playerLastIndex = lastIndexFor(true);
-    const enemyLastIndex = lastIndexFor(false);
-
-    const runHit = (index: number) => {
-      const hit = hits[index];
-      const tickStatus = index === (hit.isPlayer ? playerLastIndex : enemyLastIndex);
-      const isLastHit = index === hits.length - 1;
-      this.resolveHit(
-        hit.isPlayer,
-        hit.moveId,
-        () => {
-          if (this.opponentHp <= 0 || this.playerHp <= 0) return;
-          if (isLastHit) {
-            releaseLock();
-          } else {
-            this.time.delayedCall(TURN_GAP_MS, () => runHit(index + 1));
-          }
-        },
-        hit.isPlayer ? bonusMultiplier : 1,
-        tickStatus
-      );
-    };
-
-    runHit(0);
+    const tickStatus = this.roundSlot === (isPlayer ? this.playerLastSlot : this.enemyLastSlot);
+    const onDone = () => this.time.delayedCall(TURN_GAP_MS, () => this.runNextSlot());
+    this.roundSlot += 1;
+    if (!isPlayer) {
+      // The committed move is left where it is: it belongs to the player's
+      // own next slot, which a faster opponent's swings run ahead of.
+      this.resolveHit(false, this.opponentMoveId(), onDone, 1, tickStatus);
+      return;
+    }
+    const pending = this.pendingPlayerMove!;
+    this.pendingPlayerMove = null;
+    this.resolveHit(true, pending.moveId, onDone, pending.bonusMultiplier, tickStatus);
   }
 
   // Sets the combat-log text and repositions it upward just enough to keep
@@ -2675,17 +2688,17 @@ export class BattleScene extends Phaser.Scene {
   // see applyResult/checkEndOrContinue and the isUltimate branch at the
   // bottom of this method. `tickStatus` (default true) gates whether this
   // call is allowed to apply/tick down the *attacking* side's own Kondo buff
-  // (§5) -- playerAttack passes true only for that side's *last* action
-  // within the round, so a side that lands more than one hit this round
-  // (the velocity-ratio multi-attack rule, DESIGN.md §4) still only has its
-  // own buff resolved once per round. One of Kondo's three moves (§5) is a
-  // self-buff, not an attack -- routed to `resolveSelfBuff` below instead,
-  // before any of the attack-only terms (mismatch, crit, damage) are
-  // computed at all.
+  // (§5) -- `runNextSlot` passes true only on that side's *last* slot of the
+  // round, so a side acting more than once this round (the velocity-ratio
+  // multi-attack rule, DESIGN.md §4) still only ticks its own cloud once.
+  // Raising a cloud is not gated by it: one of Kondo's three moves (§5) is a
+  // self-buff, not an attack, routed to `resolveSelfBuff` below before any of
+  // the attack-only terms (mismatch, crit, damage) are computed at all, and
+  // it takes hold on whichever slot it is cast on.
   private resolveHit(isPlayer: boolean, moveId: string, onDone: () => void, bonusMultiplier = 1, tickStatus = true) {
     const move = MOVES[moveId];
     if (KONDO_MOVE_IDS.includes(moveId)) {
-      this.resolveSelfBuff(isPlayer, move, tickStatus, onDone);
+      this.resolveSelfBuff(isPlayer, move, onDone);
       return;
     }
     const attackerStats = isPlayer ? this.playerStats : this.enemyStats;
@@ -2772,19 +2785,18 @@ export class BattleScene extends Phaser.Scene {
     // the HP bar/log line land in sync with what's on screen rather than
     // seconds ahead of it.
     const applyResult = () => {
-      const who = isPlayer ? 'You' : `Wild ${this.opponentView().name}`;
+      const who = isPlayer ? 'You' : this.opponentLabel();
       // Feynman's level prefix (§5) and Landau's class tuning are both the
       // player's own save state -- an opponent's own use of a move id never
       // carries either, so its side of the log reads the move's static name
       // straight off MOVES (the same read resolveSelfBuff makes).
       const displayName = isPlayer ? moveDisplayName(this.game.registry, moveId) : move.name;
-      // The attacker's own Kondo buff (§5) ticks/casts regardless of whether
+      // The attacker's own Kondo cloud (§5) ticks down regardless of whether
       // this particular hit lands -- it's the attacker's own technique, not
       // something that depends on the defender. Gated by `tickStatus` (see
       // resolveHit's own comment) rather than firing on every hit, since a
-      // faster side can land more than one hit in a single round. See
-      // applyOrTickBuff.
-      const buffText = tickStatus ? this.applyOrTickBuff(move, isPlayer) : '';
+      // side can act more than once in a single round. See tickBuff.
+      const buffText = tickStatus ? this.tickBuff(isPlayer) : '';
 
       this.applyDamage(defenderIsPlayer, dmg);
 
@@ -2990,7 +3002,7 @@ export class BattleScene extends Phaser.Scene {
   // crystal reads as the buff taking hold without the camera shake/flash
   // `impactPunch` gives an ordinary "hit landed" beat, which would read as
   // the caster taking damage instead. The ring is only the cast's beat:
-  // what it leaves behind is the persistent aura applyOrTickBuff's
+  // what it leaves behind is the persistent aura castBuff's
   // setStatus raises around the caster's crystal (syncScreeningAura),
   // fading in under the ring and staying for the cloud's whole duration.
   // Never changes either side's HP at
@@ -3001,15 +3013,15 @@ export class BattleScene extends Phaser.Scene {
   // gets the same escalating-repeat ring pulse resolveHit's own attack path
   // gets, gated `isPlayer`-only the same way (no wild ever casts a Kondo
   // move, see KONDO_MOVE_IDS' own comment).
-  private resolveSelfBuff(isPlayer: boolean, move: Move, tickStatus: boolean, onDone: () => void) {
-    const who = isPlayer ? 'You' : `Wild ${this.opponentView().name}`;
+  private resolveSelfBuff(isPlayer: boolean, move: Move, onDone: () => void) {
+    const who = isPlayer ? 'You' : this.opponentLabel();
     const pos = isPlayer ? this.playerAnchor : this.opponentAnchor;
     const targetCrystal = isPlayer ? this.playerCrystal : this.opponentCrystal;
     const level = isPlayer ? getMoveLevel(this.game.registry, move.id) : 0;
 
     playAttackEffect(this, move.class, pos, pos, () => this.flashHit(targetCrystal), 1, undefined, undefined, false, 0, level);
 
-    const buffText = tickStatus ? this.applyOrTickBuff(move, isPlayer) : '';
+    const buffText = this.castBuff(move, isPlayer);
     // Feynman's level prefix (§5) is the player's own save state -- see
     // resolveHit's own applyResult for the same isPlayer-gated read.
     const displayName = isPlayer ? moveDisplayName(this.game.registry, move.id) : move.name;
@@ -3018,29 +3030,38 @@ export class BattleScene extends Phaser.Scene {
     onDone();
   }
 
-  // Called from a resolveHit/resolveSelfBuff whose own `tickStatus` was true
-  // -- playerAttack only ever passes true for a side's *last* action within
-  // the round (so an existing buff stays active through every one of that
-  // side's earlier hits that round, and a buff cast this round doesn't
-  // retroactively apply to the actions that cast it), so this always fires
-  // at most once per round per side, even when a side lands more than one
-  // hit (DESIGN.md §4's velocity-ratio multi-attack). If the move is one of
-  // Kondo's three (SCREENING_CHANNEL_BY_MOVE), it replaces whatever cloud
-  // the caster already had outright -- one cloud per side, never stacked, so
-  // screening a second quantum number always means giving up the first.
-  // Otherwise it ticks down whatever cloud that side already carries by one,
-  // and clears/announces it once it expires. Returns the log clause to
-  // append (empty string if nothing to report), same "stack a clause onto
-  // the existing line" pattern as mismatchText/critText use elsewhere.
-  private applyOrTickBuff(move: Move, isPlayer: boolean): string {
+  // Raises the cloud one of Kondo's three moves screens with
+  // (SCREENING_CHANNEL_BY_MOVE), on whichever slot the caster spent on it. It
+  // replaces whatever cloud that side already had outright -- one cloud per
+  // side, never stacked, so screening a second quantum number always means
+  // giving up the first. The round is marked as having seen a cast, which is
+  // what keeps `tickBuff` from spending a turn of a cloud raised in the same
+  // round. Returns the log clause to append (same "stack a clause onto the
+  // existing line" pattern as mismatchText/critText use elsewhere).
+  private castBuff(move: Move, isPlayer: boolean): string {
     const casterName = isPlayer ? this.playerMaterial.name : this.opponentView().name;
     const channel = SCREENING_CHANNEL_BY_MOVE[move.id];
-    if (channel) {
-      this.setStatus(isPlayer, { kind: channel, turnsLeft: STATUS_DURATION });
-      return ' ' + STATUS_INFO[channel].applyText(casterName);
-    }
+    if (!channel) return '';
+    this.setStatus(isPlayer, { kind: channel, turnsLeft: STATUS_DURATION });
+    if (isPlayer) this.buffCastThisRound.player = true;
+    else this.buffCastThisRound.enemy = true;
+    return ' ' + STATUS_INFO[channel].applyText(casterName);
+  }
+
+  // Spends one turn of whatever cloud this side is carrying, and clears and
+  // announces it once it runs out. Called on that side's *last* slot of the
+  // round only, so a cloud on its final turn keeps screening through every
+  // one of that side's earlier slots before it expires; and skipped entirely
+  // on a round the same side raised a cloud in, so a cloud is never short a
+  // turn for having been cast in a round its caster also attacked in. Either
+  // way a cloud lasts exactly STATUS_DURATION rounds past the one it was cast
+  // in. Returns the log clause to append, empty when there is nothing to
+  // report.
+  private tickBuff(isPlayer: boolean): string {
+    if (isPlayer ? this.buffCastThisRound.player : this.buffCastThisRound.enemy) return '';
     const status = this.getStatus(isPlayer);
     if (!status) return '';
+    const casterName = isPlayer ? this.playerMaterial.name : this.opponentView().name;
     status.turnsLeft -= 1;
     if (status.turnsLeft <= 0) {
       this.setStatus(isPlayer, null);
@@ -3051,7 +3072,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   // Updates (or clears) the small status pill under that side's HP bar --
-  // called from setStatus (apply/expire) and from applyOrTickBuff's plain
+  // called from setStatus (apply/expire) and from tickBuff's plain
   // tick-down path (turnsLeft changed but the buff is still active).
   private renderStatusLabel(isPlayer: boolean) {
     const label = isPlayer ? this.playerStatusLabel : this.opponentStatusLabel;

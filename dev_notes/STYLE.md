@@ -2505,16 +2505,17 @@ world are shaped, since world N's start is world N-1's exit.
   additive ember dot for the head slit, and no grain shards, seams, sparks, contact shadow or
   idle tweens. The outline against a faceted gem is the whole distinction at that size, so the
   row shows the same two fighters the arena does.
-- The row previews the next five hits in order (DESIGN.md §4's velocity multi-hit rule):
-  the faster side's icons repeated `fasterHits` times, then the slower side's icon once,
-  tiled out to five. It's a best-effort look-ahead, not a guarantee -- it assumes ordinary
-  moves keep getting picked, so an Ultimate/Analytic pick (exempt from the multi-hit scaling)
-  or one of Kondo's self-buff moves (always resolves as a single action for its round, see
-  `playerAttack`) can make the actual round diverge from what it showed; the widget carries no
-  disclaimer text for this, since it's still an accurate read of "if nothing changes."
+- The row shows the next five slots in order (DESIGN.md §4's velocity multi-hit rule). Its
+  leading icons are the current round's own remaining slots, read straight off `roundSlots`,
+  so a player partway through a multi-slot round can see how many picks are left before the
+  opponent swings -- the thing that makes such a round playable rather than a surprise.
+  Whatever room is left over tiles the next round's shape (the faster side's icon repeated
+  `fasterHits` times, then the slower side's once). Neither side's stats move during a battle
+  and no move changes a round's shape, so the tail is a real prediction; the widget needs no
+  disclaimer text.
 - Built whole (label included) by `scenes/battle/hud.ts`'s `drawTurnPreview` -- once in
-  `create()` and again every time a round actually finishes (right where `turnLock`
-  releases), the previous row destroyed each time.
+  `create()` and again on every slot (`BattleScene.runNextSlot`), so the leftmost icon is
+  always whoever acts next; the previous row is destroyed each time.
 
 ## Battle move menu (`BattleScene.drawMoveMenu`)
 

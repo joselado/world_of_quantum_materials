@@ -1113,20 +1113,32 @@ by the slower side's, and `fasterHits` is `Phaser.Math.Clamp(Math.floor(ratio), 
 (`data/balance.ts`, `5`) -- the slower side always gets exactly one hit. A tie keeps the player going first, one hit each, same
 as the ratio-1 case. Both `playerAttack` (which resolves the round's actual hits) and
 `drawTurnPreview` (the "Turns" widget, STYLE.md's "Turn-order preview") call this same helper
-so their two views of "who's faster this round" can't drift apart. `playerAttack` builds
-an explicit `hits: { isPlayer, moveId }[]` array for the round (the faster side's entries first,
-reusing the same player-chosen `moveId` each time or re-rolling `opponentMoveId()` each time on
-the enemy's side, then the slower side's single entry) and walks it with a small recursive
-`runHit(index)` helper chained through `time.delayedCall(TURN_GAP_MS, ...)`, the same gap every
-hit has always used. Because `resolveHit`'s own `checkEndOrContinue` only calls its `onDone`
-callback when neither side's HP has hit 0 (it calls `endBattle` directly otherwise), `runHit`
-never needs its own extra KO check beyond mirroring that guard -- a KO partway through the
-faster side's hit sequence simply never schedules the remaining queued hits. `turnLock` is
-released exactly once, when the round's actual last hit's `onDone` fires. `ANALYTIC_MOVE_IDS`/
-`ULTIMATE_MOVE_IDS` moves are exempt from this queue entirely -- `playerAttack` short-circuits to
-the plain one-hit-each alternation for those, since Analytic/Ultimate's own quiz-gating and (for
-Ultimates) multi-phase animation timing are tuned around exactly one `resolveHit` call per side
-per round.
+so their two views of "who's faster this round" can't drift apart. A round is held as
+`roundSlots: boolean[]` (one entry per hit, `true` for a slot the player acts on) plus
+`roundSlot`, the index about to resolve; `beginRound()` lays the array out (the faster side's
+entries first, then the slower side's single one) and records `playerLastSlot`/`enemyLastSlot`
+off it. Every one of those fields is battle-ephemeral and reset in `create()`, `pendingPlayerMove`
+and `buffCastThisRound` included, since Phaser reuses the Scene instance across `scene.start()`.
+
+`runNextSlot()` walks the array one slot at a time, chained through
+`time.delayedCall(TURN_GAP_MS, ...)`, the same gap every hit uses. An opponent slot resolves on
+its own (`opponentMoveId()`, its own method, rolled fresh per slot). A player slot resolves
+`pendingPlayerMove` -- the `{ moveId, bonusMultiplier }` a move-menu click committed -- and when
+there is none, releases `turnLock` and returns, which puts the menu back in the player's hands
+for that slot's own pick. So the menu is live exactly when the next slot is the player's, and a
+player swinging `fasterHits` times picks that many times. `playerAttack(moveId, bonusMultiplier)`
+is the other half: it takes the lock, calls `beginRound()` if the previous round is spent, parks
+the pick in `pendingPlayerMove` and re-enters `runNextSlot()`. Laying the round out on that first
+pick rather than eagerly is what keeps a faster opponent's swings a response to a move the player
+has already committed. Because `resolveHit`'s own `checkEndOrContinue` only calls its `onDone`
+callback when neither side's HP has hit 0 (it calls `endBattle` directly otherwise),
+`runNextSlot` needs no extra KO check -- a KO partway through a round simply never reaches the
+remaining slots, and never releases `turnLock` again.
+
+Nothing is exempt from this: `ANALYTIC_MOVE_IDS`/`ULTIMATE_MOVE_IDS` moves occupy one slot like
+any other pick, and since their quiz panels hang off `addMoveButton`'s click handler rather than
+off the round, each slot one is picked for asks its own question (or, for an Ultimate, its own
+three) before `playerAttack` is reached with the resulting `bonusMultiplier`.
 
 **Self-buffs (Kondo's three moves).** `this.playerStatus`/`this.opponentStatus`
 (`ActiveStatus | null`, `{ kind: ScreeningChannel; turnsLeft: number }`, where
@@ -1135,7 +1147,7 @@ are battle-only fields, explicitly reset to `null` in `create()` (Phaser reuses 
 instance across `scene.start()` calls, so a field initializer alone doesn't reset them between
 battles -- same gotcha `OverworldScene`'s own dialogue-state fields already call out). A Kondo
 move (`KONDO_MOVE_IDS`) is never an attack -- `resolveHit` checks for one first thing and routes
-it to `resolveSelfBuff(isPlayer, move, tickStatus, onDone)` instead, which never touches
+it to `resolveSelfBuff(isPlayer, move, onDone)` instead, which never touches
 `canHost`/`dmg`/`applyDamage` at all, raising the cloud on the *caster's own* side
 (`isPlayer`, not `defenderIsPlayer`). One per-side lookup feeds the cloud's actual effect
 into the existing damage formula rather than adding a parallel path:
@@ -1151,22 +1163,22 @@ World 7) lands: it reads the *caster's own* level of the buff move that raised t
 `SCREEN_REDUCTION_BY_LEVEL` table (50% / 62% / 68% / 75%) -- a table rather than a
 `MOVE_LEVEL_MULTIPLIERS` product, since a half scaled by the 3x top tier would pass 1 outright
 -- gated on `isPlayer` the same isPlayer-only way `effectiveMovePower` is, since no wild
-ever casts a Kondo move. `resolveHit`/`resolveSelfBuff` both take a
-`tickStatus` param (default `true`) gating whether `applyOrTickBuff(move, isPlayer)` runs at
-all -- `playerAttack`'s `runHit` computes, per round, each side's own last index into `hits`
-(`lastIndexFor`, a scan rather than an arithmetic shortcut, since a self-buff move collapses its
-caster's own hit count to exactly 1 regardless of `fasterHits` -- see `playerAttack`'s own
-comment) and passes `true` only there. Ticking on a side's last action rather than its first
-matters: an existing cloud on its final `turnsLeft` has to keep screening
-through every one of that side's earlier hits that round before it expires, and a cloud cast
-this round shouldn't retroactively apply to the actions that cast it. `applyOrTickBuff` itself
-does one of two things: if the move is one of Kondo's three (`SCREENING_CHANNEL_BY_MOVE:
-Record<moveId, ScreeningChannel>`, a fixed lookup -- no randomness), it replaces the caster's
-cloud outright via `setStatus` (one cloud per side, never stacked); otherwise it ticks the
-caster's *existing* cloud down by one and clears it once `turnsLeft` hits 0. Either branch
-returns a log-line clause (`STATUS_INFO[kind].applyText`/`.expireText`) appended to that hit's
-own message, the same "stack a clause onto the existing line" pattern `mismatchText`/`critText`
-already use. `setStatus` also calls `renderStatusLabel`, which updates a small
+ever casts a Kondo move. Raising a cloud and spending a turn of one are two separate
+functions, since a cast can land on any slot while a tick may only happen once a round.
+`castBuff(move, isPlayer)` runs unconditionally from `resolveSelfBuff`: it reads
+`SCREENING_CHANNEL_BY_MOVE` (`Record<moveId, ScreeningChannel>`, a fixed lookup -- no
+randomness), replaces the caster's cloud outright via `setStatus` (one cloud per side, never
+stacked) and sets that side's `buffCastThisRound` flag. `tickBuff(isPlayer)` runs from
+`resolveHit`'s `applyResult` under the `tickStatus` param (default `true`), which `runNextSlot`
+passes as `true` only on `playerLastSlot`/`enemyLastSlot` -- that side's last slot of the round.
+It returns immediately if that side's `buffCastThisRound` flag is up, and otherwise takes one off
+`turnsLeft`, clearing the cloud once it reaches 0. The two guards are what make a cloud last
+exactly `STATUS_DURATION` rounds past the one it was raised in: ticking on a side's last slot
+rather than its first lets a cloud on its final turn keep screening through every one of that
+side's earlier slots, and the cast flag stops the same round that raised it from also spending
+it. Both return a log-line clause (`STATUS_INFO[kind].applyText`/`.expireText`) appended to that
+hit's own message, the same "stack a clause onto the existing line" pattern
+`mismatchText`/`critText` already use. `setStatus` also calls `renderStatusLabel`, which updates a small
 always-present-but-usually-empty `Text` pill (`playerStatusLabel`/`opponentStatusLabel`,
 positioned just under each side's HP bar) to `"<Label> (<turnsLeft>)"` or clears it to `''` when
 there's no active cloud, and `syncScreeningAura(isPlayer)`, which keeps that side's persistent

@@ -2984,7 +2984,18 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
 // with WORLD_QUESTIONS/MATERIAL_QUESTIONS/ANALYTIC_QUESTIONS/
 // ML_LECTURE_QUESTIONS above, so the Ultimate gate stays at its own
 // uniformly hard tier regardless of which world's wilds it's compared to.
+//
+// Fisher-Yates rather than `sort(() => Math.random() - 0.5)`: a comparator
+// that answers inconsistently does not give a uniform permutation, and which
+// questions the top `count` slots are biased toward depends on the engine's
+// own sort. This module is deliberately import-free (every other data module
+// that Node scripts transpile keeps the same property), so the shuffle is
+// written out here rather than taken from Phaser's own Utils.Array.
 export function getUltimateQuestions(count: number): MaterialQuestion[] {
-  const shuffled = [...ULTIMATE_QUESTIONS].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, count);
+  const pool = [...ULTIMATE_QUESTIONS];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, count);
 }

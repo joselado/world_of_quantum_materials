@@ -109,7 +109,8 @@ to the Nickel Oxide beside it.
 
 **Battle.** Turn-based, speed-ordered by your crystal's Momentum stat, and the
 faster side doesn't just go first, it swings more than once a round if it's
-fast enough. Every move is a real quasiparticle, and every material can only
+fast enough. Every swing is its own pick, so a fast crystal chooses a fresh
+move for each one. Every move is a real quasiparticle, and every material can only
 ever learn the moves its actual physics supports: a plain band insulator never
 gets a magnon move, since it has no magnetic order to carry one. If a defender's
 own physics can't host your move's quasiparticle at all, it lands at
@@ -233,7 +234,11 @@ wants their bearings more than the surprise.
 
 Turn order runs on Momentum: the faster side swings first, and swings again
 (up to 5 times a round) the more its Momentum outpaces the other side's, while
-the slower side always still gets its own hit. Energy raises your crit
+the slower side always still gets its own hit. Each of your swings is a
+separate choice from the move menu, and the "Turns" row in the top-left corner
+counts down how many you have left before the other side acts. That applies to
+the quiz-gated moves too: every swing you spend on one asks its question
+again. Energy raises your crit
 ("coherent hit") chance and Lifetime raises your defense; every stat runs from
 1 to a cap of 100, raised one point at a time at Noether's shop. HP is fully
 healed after each battle, so qumatessence, not HP attrition, is what is

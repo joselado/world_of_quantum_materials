@@ -245,12 +245,13 @@ export class TitleScene extends Phaser.Scene {
   // after every mode-picker switch/erase, so the label, the "erase save"
   // line, and the picker's own highlight always reflect whichever mode is
   // currently loaded rather than a value captured once at create() time.
-  // Old children are destroyed explicitly, not left to Container.destroy()
-  // (which only detaches its children by default, not destroy()s them), and
-  // their tweens are killed first since Phaser doesn't auto-stop a running
-  // tween just because its target GameObject is destroyed -- otherwise every
-  // mode switch would leak the previous screen's ~14 crystals/buttons and
-  // their tweens.
+  // Old children have their tweens killed before anything is torn down,
+  // since Phaser doesn't auto-stop a running tween just because its target
+  // GameObject is destroyed -- otherwise every mode switch would leave the
+  // previous screen's ~14 crystals/buttons still being animated by dead
+  // tweens. The explicit per-child destroy() beside it makes that list the
+  // same one the kill walked, rather than relying on the container's own
+  // teardown to reach exactly those objects.
   private redrawContent(registry: Phaser.Data.DataManager) {
     if (this.root) {
       const oldChildren = this.root.list.slice() as Phaser.GameObjects.GameObject[];
