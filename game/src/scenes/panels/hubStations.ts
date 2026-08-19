@@ -37,9 +37,13 @@ import {
   DEFAULT_WORLD_SIZE,
   TOUCH_CONTROLS_PRESETS,
   DEFAULT_TOUCH_CONTROLS,
+  SETTINGS_CATEGORIES,
+  ON_OFF_PRESETS,
+  tutorialTipsEnabled,
+  storyScreensEnabled,
   isTouchDevice,
 } from '../../data/settings';
-import type { WorldSizeId, TouchControlsMode } from '../../data/settings';
+import type { WorldSizeId, TouchControlsMode, SettingsCategoryId } from '../../data/settings';
 import { STAT_LABELS } from '../../data/balance';
 import { persistFromRegistry } from '../../data/save';
 import { music } from '../../audio/music';
@@ -527,24 +531,35 @@ export function showStoryLog(scene: HubScene) {
 // tabs use) -- so a setting's whole range is readable at a glance rather than
 // something the player has to click through one step at a time.
 //
-// The six settings and what reads them: wild-encounter density
-// (DENSITY_PRESETS, read by OverworldScene.generateMap via encounterChance()),
-// text size (FONT_SCALE_PRESETS, read live by every fontPx() call), music
-// style (MUSIC_STYLE_PRESETS, which of audio/music.ts's SCORES/SCORES_MODERN
-// tables MusicEngine draws from), difficulty tier (DIFFICULTY_TIER_PRESETS,
-// data/balance.ts's DIFFICULTY_MULTIPLIERS applied to enemyStatsForWorld),
-// world size (WORLD_SIZE_PRESETS) and touch controls (TOUCH_CONTROLS_PRESETS,
-// the overworld's on-screen walking arrows).
+// The table shows one category at a time (data/settings.ts's
+// SETTINGS_CATEGORIES), picked from a strip of category plates between the
+// title and the first row. The whole roster does not fit one screenful at the
+// largest text-size preset -- a value plate is ~43px tall there, so no row is
+// shorter than ~55px, and the canvas has room for about five once the title,
+// the Close button and the margins are paid for. Splitting by category buys
+// that room without giving up the direct-click table: a list+detail panel
+// would scale further but would hide every unselected setting's current value
+// behind a row, which is the one thing this panel exists to show.
+//
+// The eight settings and what reads them -- Gameplay: difficulty tier
+// (DIFFICULTY_TIER_PRESETS, data/balance.ts's DIFFICULTY_MULTIPLIERS applied
+// to enemyStatsForWorld), wild-encounter density (DENSITY_PRESETS, read by
+// OverworldScene.generateMap via encounterChance()), world size
+// (WORLD_SIZE_PRESETS). Story: story screens and tutorial tips (ON_OFF_PRESETS,
+// read by OverworldScene's lore/taunt/beat screens and showTutorialTip, and by
+// HubScene.maybeShowLabTip). Presentation: text size (FONT_SCALE_PRESETS, read
+// live by every fontPx() call), music style (MUSIC_STYLE_PRESETS, which of
+// audio/music.ts's SCORES/SCORES_MODERN tables MusicEngine draws from), touch
+// controls (TOUCH_CONTROLS_PRESETS, the overworld's on-screen walking arrows).
 //
 // Difficulty is the one meant to be revisited mid-playthrough rather than set
 // once -- Battle/OverworldScene both read it live, so a change here lands on
 // the player's very next fight, not just future maps/panels.
 //
-// The name column and the "when" line under it are capped at the 1.5x text
-// preset (the same cap tutorial popups use, STYLE.md): six rows of labels at
-// a full 2x run the table past the bottom of the canvas, while the values
-// themselves -- the part that is clicked -- keep the player's full chosen
-// size.
+// The category strip, the name column and the "when" line under it are capped
+// at the 1.5x text preset (the same cap tutorial popups use, STYLE.md), while
+// the values themselves -- the part that is clicked -- keep the player's full
+// chosen size.
 interface SettingsOption {
   label: string;
   selected: boolean;
@@ -552,6 +567,7 @@ interface SettingsOption {
 }
 
 interface SettingsRow {
+  category: SettingsCategoryId;
   label: string;
   when: string;
   options: SettingsOption[];
@@ -560,6 +576,7 @@ interface SettingsRow {
 const SETTINGS_NAME_COL_W = 220;
 const SETTINGS_COL_GAP = 16;
 const SETTINGS_OPTION_GAP = 6;
+const SETTINGS_TAB_GAP = 8;
 
 export function showSettingsPanel(scene: HubScene) {
   scene.dialogueContainer?.destroy(true);
@@ -587,6 +604,38 @@ export function showSettingsPanel(scene: HubScene) {
   const namePx = `${Math.round(13 * labelScale)}px`;
   const whenPx = `${Math.round(11 * labelScale)}px`;
 
+  // The category strip, centered above the table and separated from it by the
+  // same hairline the rows use between themselves. Bold, centered and capped
+  // where the value plates below are left-aligned in their own column and
+  // uncapped, so the two never read as one longer row of values.
+  const tabs = SETTINGS_CATEGORIES.map((category) =>
+    scene.add
+      .text(0, y, category.label, {
+        fontSize: `${Math.round(14 * labelScale)}px`,
+        color: category.id === scene.settingsCategory ? GOLD_ACCENT_HEX : REFERENCE_BLUE_GREY_HEX,
+        backgroundColor: category.id === scene.settingsCategory ? '#3a2a5c' : '#1c1c30',
+        fontStyle: 'bold',
+        padding: { x: 14, y: 6 },
+      })
+      .setOrigin(0, 0)
+  );
+  const tabsWidth = tabs.reduce((sum, tab) => sum + tab.width, 0) + SETTINGS_TAB_GAP * (tabs.length - 1);
+  let tabX = CANVAS_W / 2 - tabsWidth / 2;
+  tabs.forEach((tab, index) => {
+    tab.setPosition(tabX, y);
+    tab.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+      scene.settingsCategory = SETTINGS_CATEGORIES[index].id;
+      showSettingsPanel(scene);
+    });
+    container.add(tab);
+    tabX += tab.width + SETTINGS_TAB_GAP;
+  });
+  y += (tabs[0]?.height ?? 0) + 14;
+  const stripRule = scene.add.graphics();
+  stripRule.lineStyle(1, 0x4a4a70, 0.85);
+  stripRule.lineBetween(contentLeft, y - 6, contentRight, y - 6);
+  container.add(stripRule);
+
   // Every row is written the same way: pick a value, write it to the
   // registry, save, and rebuild the panel so the highlight follows.
   const choose = (key: string, value: unknown, after?: () => void) => () => {
@@ -603,35 +652,12 @@ export function showSettingsPanel(scene: HubScene) {
   const size = WORLD_SIZE_PRESETS[worldSizeIndex(registry)].value;
   const touch = TOUCH_CONTROLS_PRESETS[touchControlsIndex(registry)].value;
 
-  const rows: SettingsRow[] = [
+  const tips = tutorialTipsEnabled(registry);
+  const storyScreens = storyScreensEnabled(registry);
+
+  const allRows: SettingsRow[] = [
     {
-      label: 'Enemy Density',
-      when: 'On the next map.',
-      options: DENSITY_PRESETS.map((p) => ({
-        label: p.label,
-        selected: p.value === density,
-        onPick: choose('encounterDensity', p.value),
-      })),
-    },
-    {
-      label: 'Text Size',
-      when: 'Immediately.',
-      options: FONT_SCALE_PRESETS.map((p) => ({
-        label: p.label,
-        selected: p.value === font,
-        onPick: choose('fontScale', p.value),
-      })),
-    },
-    {
-      label: 'Music Style',
-      when: 'Immediately.',
-      options: MUSIC_STYLE_PRESETS.map((p) => ({
-        label: p.label,
-        selected: p.value === style,
-        onPick: choose('musicStyle', p.value, () => music.setStyle(p.value)),
-      })),
-    },
-    {
+      category: 'gameplay',
       label: 'Difficulty',
       when: 'On your next battle.',
       options: DIFFICULTY_TIER_PRESETS.map((p) => ({
@@ -641,6 +667,37 @@ export function showSettingsPanel(scene: HubScene) {
       })),
     },
     {
+      category: 'gameplay',
+      label: 'Enemy Density',
+      when: 'On the next map.',
+      options: DENSITY_PRESETS.map((p) => ({
+        label: p.label,
+        selected: p.value === density,
+        onPick: choose('encounterDensity', p.value),
+      })),
+    },
+    {
+      category: 'presentation',
+      label: 'Text Size',
+      when: 'Immediately.',
+      options: FONT_SCALE_PRESETS.map((p) => ({
+        label: p.label,
+        selected: p.value === font,
+        onPick: choose('fontScale', p.value),
+      })),
+    },
+    {
+      category: 'presentation',
+      label: 'Music Style',
+      when: 'Immediately.',
+      options: MUSIC_STYLE_PRESETS.map((p) => ({
+        label: p.label,
+        selected: p.value === style,
+        onPick: choose('musicStyle', p.value, () => music.setStyle(p.value)),
+      })),
+    },
+    {
+      category: 'gameplay',
       label: 'World Size',
       when: 'On the next world.',
       options: WORLD_SIZE_PRESETS.map((p) => ({
@@ -650,6 +707,7 @@ export function showSettingsPanel(scene: HubScene) {
       })),
     },
     {
+      category: 'presentation',
       label: 'Touch Controls',
       // Auto says what it resolved to on this machine, so the row is never
       // just a word whose effect the player has to guess.
@@ -660,7 +718,34 @@ export function showSettingsPanel(scene: HubScene) {
         onPick: choose('touchControls', p.value),
       })),
     },
+    // Both Story rows suppress a screen, never its text: an Off trigger still
+    // marks itself seen on the way past, so the Lab's Story and Tutorial
+    // stations fill in on the same schedule and keep what was skipped.
+    {
+      category: 'story',
+      label: 'Story Screens',
+      when: 'The lore, taunts and beats between worlds. Immediately.',
+      options: ON_OFF_PRESETS.map((p) => ({
+        label: p.label,
+        selected: p.value === storyScreens,
+        onPick: choose('storyScreensEnabled', p.value),
+      })),
+    },
+    {
+      category: 'story',
+      label: 'Tutorial Tips',
+      when: 'The popups explaining a feature. Immediately.',
+      options: ON_OFF_PRESETS.map((p) => ({
+        label: p.label,
+        selected: p.value === tips,
+        onPick: choose('tutorialTipsEnabled', p.value),
+      })),
+    },
   ];
+
+  // One category's rows at a time; the strip above is how the player reaches
+  // the rest. Declaration order within a category is the order it reads in.
+  const rows = allRows.filter((row) => row.category === scene.settingsCategory);
 
   rows.forEach((row, index) => {
     if (index > 0) {

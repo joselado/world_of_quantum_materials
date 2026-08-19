@@ -1255,6 +1255,14 @@ station motifs are deliberately not tunnels with a visible far end.
   crystals. Permanent -- unlike encounter/token sprites a guardian is never removed,
   since reaching their row still opens their panel on top of (not instead of) them
   standing there.
+- **Approach, read, press**, the same way a pass offers itself ("Gates as passes" below).
+  Standing on a met guardian's tile or any of the eight around it raises the same HUD plate
+  the pass prompt uses, in the same place and in the same words ("Press Space to talk with
+  X", "Tap here" with the walking arrows up), and Space or a click on the plate opens that
+  guardian's own panel. Its own object (`OverworldScene.guardianPrompt`), so each offer owns
+  its text, its hit area and its visibility; a pass offer wins if both are ever live at once.
+  Only *after* the guardian has been met: the first meeting is the walk onto their row, which
+  is the introduction, and this is the deliberate way back to someone already introduced.
 
 ## Guardian panel headers (`scenes/panels/guardianHeader.ts`)
 
@@ -2089,7 +2097,9 @@ world are shaped, since world N's start is world N-1's exit.
 ## The between-worlds story beat (`OverworldScene.showStoryBeat`)
 
 - One line of `data/story.ts`'s `STORY_BEATS` on a single small panel, shown after a
-  world's rival falls and before `advanceToWorld` moves the player on. `560` wide,
+  world's rival falls and before `advanceToWorld` moves the player on. A world with no beat
+  of its own, and every world with the Settings station's Story Screens row off ("Settings
+  station" below), falls straight through to `advanceToWorld` instead. `560` wide,
   height sized to the content (30px padding, the beat wrapped to 500px, 18px gap, the
   "Onward" button, 30px padding) and then centered on `y = 260` with the top clamped to
   a 16px margin, rather than a fixed box the text is trusted to fit. Stroked lavender
@@ -2105,7 +2115,10 @@ world are shaped, since world N's start is world N-1's exit.
   and the `'controls'` tutorial tip if more than one is due on the same entry -- it's
   the more establishing content), a two-page history panel plays from
   `data/worldLore.ts`'s `WORLD_LORE`, gated by `hasSeenWorldLore`/`markWorldLoreSeen`
-  against its own `worldLoreSeen` save field. Same dark rounded-rectangle-with-stroke
+  against its own `worldLoreSeen` save field. With the Settings station's Story Screens row
+  off ("Settings station" below), that entry point marks `worldLoreSeen` and hands straight
+  to whatever it was gating, so the Lab's Story station unmasks this world's chapters on the
+  same schedule and keeps the text. Same dark rounded-rectangle-with-stroke
   treatment as every other overworld dialogue, near-full-canvas width (`CANVAS_W - 40`),
   stroked lavender (`0xd9a5ff`) to match `showStoryBeat`'s own "connective tissue between
   worlds" convention. Heading is the world's name (`WORLD_NAMES`); each screen is laid out top-down (title, then body, then a button) with
@@ -2140,7 +2153,10 @@ world are shaped, since world N's start is world N-1's exit.
   lore screen above is: `data/worldLore.ts`'s `RIVAL_TAUNTS` supplies `part1` (rendered with
   a "Next ->" button) and `part2` (rendered with the mandatory "Battle!" button -- no "let me
   pass," since a gate that can be skipped isn't a gate); a world with no `RIVAL_TAUNTS` entry
-  falls back to a single generic line instead. The boss crystal is redrawn on both pages
+  falls back to a single generic line instead. With Story Screens off the confirm goes
+  straight into the fight: the taunt pages carry only forward buttons, so they are pacing
+  rather than a second confirmation, and the story log unmasks that world's chapter on the win
+  itself. The boss crystal is redrawn on both pages
   (`art/boss.ts`'s `makeBossCrystal`, at whatever height the page has left over once the
   button and taunt are placed, clamped between `MIN_BOSS_SIZE` and `OverworldScene.ts`'s own
   aperture-derived `BOSS_CRYSTAL_SIZE`), the same golem silhouette the rival renders as standing at the goal tile
@@ -2669,16 +2685,27 @@ world are shaped, since world N's start is world N-1's exit.
   so a setting's whole range is readable at a glance rather than cycled through one step at a
   time. A hairline rule (`0x4a4a70`, alpha `0.85`) separates each row from the next, and a
   single "Close" button closes the panel.
-- Six rows, each backed by its own preset list in `data/settings.ts`: Enemy Density
-  (`DENSITY_PRESETS`, Low/Normal/High/Very High), Text Size (`FONT_SCALE_PRESETS`,
-  Compact/Normal/Large), Music Style (`MUSIC_STYLE_PRESETS`, Classic/Modern/Mute), Difficulty
-  (`DIFFICULTY_TIER_PRESETS`, B.Sc./M.Sc./Ph.D.), World Size (`WORLD_SIZE_PRESETS`,
-  Nano/Meso/Macro) and Touch Controls (`TOUCH_CONTROLS_PRESETS`, Auto/On/Off).
-- The name column and its "when" line are capped at the 1.5x text preset (the same cap
-  tutorial popups use); the value plates themselves, the part that is clicked, keep the
-  player's full chosen size. With that cap the panel reaches 443 of the canvas's 480 pixels at
-  the Large preset, so a seventh row or a longer "when" line needs re-measuring rather than
-  appending.
+- The table shows one category at a time (`data/settings.ts`'s `SETTINGS_CATEGORIES` --
+  Gameplay, Story, Presentation), picked from a strip of category plates between the title and
+  the first row, with the same hairline rule under the strip that separates the rows. A
+  category plate is bold and the strip is centered, where the value plates are left-aligned in
+  their own column, so the two never read as one longer row of values. The open category is
+  `HubScene.settingsCategory`, panel state rather than a preference: not persisted, and reset
+  to the first category whenever the Lab is entered.
+- Eight rows, each backed by its own preset list in `data/settings.ts`. Gameplay: Difficulty
+  (`DIFFICULTY_TIER_PRESETS`, B.Sc./M.Sc./Ph.D.), Enemy Density (`DENSITY_PRESETS`,
+  Low/Normal/High/Very High), World Size (`WORLD_SIZE_PRESETS`, Nano/Meso/Macro). Story: Story
+  Screens and Tutorial Tips (`ON_OFF_PRESETS`). Presentation: Text Size (`FONT_SCALE_PRESETS`,
+  Compact/Normal/Large), Music Style (`MUSIC_STYLE_PRESETS`, Classic/Modern/Mute), Touch
+  Controls (`TOUCH_CONTROLS_PRESETS`, Auto/On/Off).
+- The category strip, the name column and its "when" line are capped at the 1.5x text preset
+  (the same cap tutorial popups use); the value plates themselves, the part that is clicked,
+  keep the player's full chosen size. A value plate is ~43px tall at the Large preset, so no
+  row is shorter than ~55px there, and the whole roster on one screenful does not fit the
+  canvas -- which is what the categories buy. Measured at Large, the tallest category
+  (Presentation, whose Touch Controls row carries a three-line "when") reaches 345 of the
+  canvas's 480 pixels, so a category is safe up to about five rows; past that, re-measure
+  rather than append.
 - Turning the music off lives here as the `MUSIC_STYLE_PRESETS` "Mute" value rather than as
   a key: it is a preference a player sets once, so it belongs with the other preferences and
   persists with them. It silences the score only. Sound effects sit on the master bus rather
@@ -2712,6 +2739,10 @@ world are shaped, since world N's start is world N-1's exit.
   Settings station, the Story/Superposition Mode choice already made at the Title screen --
   carry no trigger of their own and are only ever read through the Tutorial station itself
   ("Full tutorial recap" below).
+- With the Settings station's Tutorial Tips row off ("Settings station" below), a trigger still
+  marks its tip seen and runs whatever it was gating; only the popup is skipped. The station's
+  own list therefore fills in on exactly the schedule it otherwise would, and holds every tip
+  the player was not stopped by.
 
 ## Full tutorial recap (`scenes/panels/hubStations.ts`'s `showTutorialTopics`)
 

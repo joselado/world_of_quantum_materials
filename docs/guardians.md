@@ -1,8 +1,10 @@
 # Guardians
 
 One guardian waits partway through each of the ten worlds, each teaching you
-a different way to bend the game's usual rules. Every guardian you've met
-then stands in the Lab, five along each upper corner, running anticlockwise
+a different way to bend the game's usual rules. They greet you the first time
+you reach their row, and after that you can walk back up to any of them and
+press Space to talk again. Every guardian you've met
+also stands in the Lab, five along each upper corner, running anticlockwise
 around the room from Noether at the top left to Skłodowska-Curie at the top
 right, with their slot staying empty until you've met them. Clicking one opens
 their shop or panel right there, no travel required. Hover a figure to see their

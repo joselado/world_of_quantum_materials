@@ -133,8 +133,10 @@ guardians waiting partway through each world, ten in all, each teaching a
 different way of bending the game's usual rules: new moves and stats,
 teleportation, transmuting into a crystal you've defeated, always-on passive
 abilities, fusing two crystals into a hybrid, quiz-gated power moves, and a
-capstone quiz-gated ultimate move. Every guardian you've met then stands in the
-Lab, one click away. See [Guardians](docs/guardians.md) for what each one does.
+capstone quiz-gated ultimate move. Each one greets you the first time you reach
+their row, and once you have met them you can walk back up to them any time and
+press Space to talk again. Every guardian you've met also stands in the Lab, one
+click away. See [Guardians](docs/guardians.md) for what each one does.
 
 <table>
 <tr>
@@ -203,7 +205,7 @@ archetypes, and a rival crystal gating the way to the next world.
 | 1 | The Mean Fields | Second quantization, mean-field, symmetry breaking |
 | 2 | The Stone Lattice | Symmetries, tight-binding band structure |
 | 3 | The Winding Borders | Topological band theory |
-| 4 | The Storm Flats | Magnetic field, quantum Hall effect, Landau levels |
+| 4 | The Storm Flats | Integer and fractional quantum Hall effect |
 | 5 | The Vortex Glacier | Superconductivity, Nambu representation, Majoranas |
 | 6 | The Iron Steppe | Classical magnetism and magnons |
 | 7 | The Entangled Web | Quantum entanglement and tensor networks |
@@ -268,7 +270,7 @@ in the bottom right corner of a world that takes you back to the Lab.
 | Key | Action |
 |---|---|
 | Arrow keys | Walk (Up/Down forward and back, Left/Right sideways) |
-| Space | Take whatever is offered where you stand: greet a wild crystal, challenge a rival, cross a pass, carry on after a battle |
+| Space | Take whatever is offered where you stand: greet a wild crystal, talk with a guardian you have met, challenge a rival, cross a pass, carry on after a battle |
 | Enter | Return to the Lab (World 0) |
 | Enter, while in the Lab | Head back out to whichever world you're in the middle of (once you've entered one) |
 | Left / Right, in battle | Page between kinds of move |
@@ -290,14 +292,41 @@ to the Lab" above).
 
 ## Settings
 
-In the Lab, click the **Settings** station. Each setting is a row, with every
-value it can take laid out beside its name; click a value to pick it, and the
-one in gold is the one you are playing with.
+In the Lab, click the **Settings** station. The settings come in three groups,
+Gameplay, Story and Presentation, and you switch between them at the top of the
+panel. Within a group each setting is a row, with every value it can take laid
+out beside its name; click a value to pick it, and the one in gold is the one
+you are playing with.
 
+**Gameplay.**
+
+- **Difficulty**: B.Sc., M.Sc., or Ph.D., how hard every world's opponents
+  hit. Meant to be changed mid playthrough rather than picked once, and it
+  applies to your very next battle.
 - **Enemy Density**: Low, Normal, High, or Very High, if wild crystals feel
   too sparse (or too frequent) along the path. Sets how many crystals a world
   holds at once, so it also governs how many drift back in after you have
   fought them. Takes effect the next time you enter or re-enter a world.
+- **World Size**: Nano, Meso, or Macro. Every world keeps its own shape and
+  changes how big it is: Macro corridors run three times as wide and three
+  times as far, Nano ones are a brisk run through the same place. Crystals and
+  qumatessence are spread through it at the same rate either way, so a bigger
+  world holds proportionally more of both. Takes effect the next time you enter
+  a world.
+
+**Story.**
+
+- **Story Screens**: On or Off, whether a world's opening lore, a rival's
+  taunt and the beat between worlds stop you as you play. Turning them off
+  loses nothing: everything they would have shown fills into the Lab's Story
+  station just the same, waiting there whenever you want to read it.
+- **Tutorial Tips**: On or Off, the popups explaining a feature the first time
+  it comes up. Off, they still fill into the Lab's Tutorial station on exactly
+  the same schedule, so you can read any of them at your own pace. Handy on a
+  second playthrough, or any time you would rather not be stopped.
+
+**Presentation.**
+
 - **Text Size**: Compact, Normal, or Large. Applies immediately to every
   menu and dialogue in the game.
 - **Music**: Classic or Modern, two renditions of every world's soundtrack.
@@ -305,15 +334,6 @@ one in gold is the one you are playing with.
   softer, smoother tones. Or Mute for no music at all. Sound effects keep
   playing either way. Applies immediately, and is remembered between
   sessions.
-- **Difficulty**: B.Sc., M.Sc., or Ph.D., how hard every world's opponents
-  hit. Unlike the settings above, meant to be changed mid-playthrough, not
-  just once, and it applies to your very next battle.
-- **World Size**: Nano, Meso, or Macro. Every world keeps its own shape and
-  changes how big it is: Macro corridors run three times as wide and three
-  times as far, Nano ones are a brisk run through the same place. Crystals and
-  qumatessence are spread through it at the same rate either way, so a bigger
-  world holds proportionally more of both. Takes effect the next time you enter
-  a world.
 - **Touch Controls**: Auto, On, or Off, the walking arrows in the corner of the
   world. Auto puts them there when you are playing on a touchscreen and leaves
   them off otherwise, which is what you want unless you want the opposite. The
@@ -329,7 +349,9 @@ entering the Lab, your first steps, your first encounter, your first battle,
 your first guardian. In the Lab, click **Tutorial** to reread any of them,
 alongside a topic for every guardian's ability, the Settings station, and Story
 Mode vs. Superposition Mode. In Story Mode the list fills in as you play; in
-Superposition Mode every topic is listed from the start.
+Superposition Mode every topic is listed from the start. If you would rather
+not be stopped by the popups at all, the Settings station turns them off, and
+the list still fills in as you reach each one.
 
 ![A tutorial tip introducing the guardians](screenshots/tutorial-tip.png)
 
@@ -346,6 +368,9 @@ Before you start, the title screen asks you to pick a mode:
   Bloch's teleport hub offers every world immediately, and Dresselhaus,
   Majorana and Anderson offer every crystal in the game. Several starting picks
   are randomized, so a fresh Superposition save rarely looks the same twice.
+  The story screens start switched off here, since there is no road to walk
+  through: the whole arc still sits in the Lab's Story station, and the
+  Settings station switches the screens back on if you want them.
 
 ![Title screen's Story Mode / Superposition Mode picker](screenshots/title.png)
 ![Bloch's teleport hub with every world unlocked in Superposition Mode](screenshots/superposition-bloch.png)

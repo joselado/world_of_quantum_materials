@@ -8,6 +8,8 @@ import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
 import type { Material, MaterialType, MoveClass } from '../data/types';
 import { TUTORIAL_TIPS, hasSeenTip, markTipSeen } from '../data/tutorial';
+import { tutorialTipsEnabled, DEFAULT_SETTINGS_CATEGORY } from '../data/settings';
+import type { SettingsCategoryId } from '../data/settings';
 import { music } from '../audio/music';
 import { fontPx, fontScale } from '../ui/text';
 import { PANEL_BG, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../ui/theme';
@@ -144,6 +146,12 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // page flip and as chapters are reached.
   storyPage = 0;
   storySelectedIndex = 0;
+  // Which category the Settings station's own panel is showing
+  // (scenes/panels/hubStations.ts's showSettingsPanel). Panel state rather
+  // than a preference -- it is not persisted and resets to the first category
+  // every time the Lab is entered, the same way the guardian shops' open
+  // heading does.
+  settingsCategory: SettingsCategoryId = DEFAULT_SETTINGS_CATEGORY;
 
   // GuardianPanelHost implementation (see OverworldScene.ts's GuardianPanelHost
   // and CODEMAP.md's "Guardian panels") -- lets any guardian's own panel
@@ -539,6 +547,11 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     if (hasSeenTip(this.game.registry, 'lab')) return;
     markTipSeen(this.game.registry, 'lab');
     persistFromRegistry(this.game.registry);
+    // Marked either way, popup only when the Settings station's Tutorial Tips
+    // row is on -- the Lab's own Tutorial and Story stations both key a topic
+    // off this tip, and they fill in on the same schedule for a player who
+    // asked not to be stopped by it.
+    if (!tutorialTipsEnabled(this.game.registry)) return;
     const tip = TUTORIAL_TIPS.lab;
     this.showPanel(tip.title, tip.body);
   }
@@ -1297,6 +1310,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     this.tutorialSelectedIndex = 0;
     this.storyPage = 0;
     this.storySelectedIndex = 0;
+    this.settingsCategory = DEFAULT_SETTINGS_CATEGORY;
     this.dresselhausPreview = null;
     this.andersonHostPreview = null;
     this.majoranaPreview = null;

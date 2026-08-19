@@ -64,6 +64,8 @@ import {
   DEFAULT_WORLD_SIZE,
   gridDimsFor,
   touchControlsActive,
+  tutorialTipsEnabled,
+  storyScreensEnabled,
   worldSizeFactor,
 } from '../data/settings';
 import type { TouchControlsMode, WorldSizeId } from '../data/settings';
@@ -664,6 +666,10 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // preset, sits at a fixed place on screen rather than on a tile, and is
   // what carries the choice -- approach, read, press.
   private gatePrompt!: Phaser.GameObjects.Text;
+  // The same offer, made for a guardian the player has already met: its own
+  // object rather than a second label on the pass prompt above, so each offer
+  // owns its own text, its own hit area and its own visibility.
+  private guardianPrompt!: Phaser.GameObjects.Text;
   dialogueActive = false;
   dialogueContainer?: Phaser.GameObjects.Container;
   // Which section of Noether's panel is showing -- reset to 'moves' on
@@ -1072,6 +1078,24 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // hit area are the same object and cannot drift apart.
     this.gatePrompt.on('pointerdown', () => this.confirmGate());
 
+    // Standing with a guardian is offered the same way standing at a pass is,
+    // in the same place on screen and in the same words, since it is the same
+    // kind of thing: a landmark the player has walked up to, and a keypress
+    // that accepts what it offers.
+    this.guardianPrompt = this.add
+      .text(this.gatePrompt.x, this.gatePrompt.y, '', {
+        fontSize: fontPx(this, 14),
+        color: '#e6d9ff',
+        backgroundColor: 'rgba(0,0,0,0.62)',
+        padding: touchOn ? { x: 12, y: 10 } : { x: 8, y: 4 },
+        align: 'center',
+        wordWrap: { width: touchOn ? CANVAS_W - PAD_KEEPOUT * 2 : CANVAS_W - 60 },
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(50)
+      .setVisible(false);
+    this.guardianPrompt.on('pointerdown', () => this.talkToGuardian());
+
     // The player is a crystal too, not a trainer commanding one -- the
     // overworld avatar is just the player's current form (playerMaterial,
     // Silicon by default or whatever Dresselhaus transmuted them into) rendered
@@ -1092,7 +1116,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // it is open, and update() hides them outright for as long as it is.
     this.touchPad = touchOn ? createTouchPad(this, 60) : null;
     this.input.keyboard!.on('keydown-ENTER', () => this.returnToHub());
-    this.input.keyboard!.on('keydown-SPACE', () => this.confirmGate());
+    this.input.keyboard!.on('keydown-SPACE', () => this.confirmAction());
 
     // Defensive fallback only -- TitleScene normally seeds all of these
     // from localStorage (data/save.ts) before Overworld ever runs. Only
@@ -1174,6 +1198,13 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     }
     markTipSeen(this.game.registry, id);
     persistFromRegistry(this.game.registry);
+    // With the Settings station's Tutorial Tips row off, the tip is marked on
+    // the way past and the popup itself skipped, so the Lab's Tutorial station
+    // still lists this topic on the same schedule and holds its text.
+    if (!tutorialTipsEnabled(this.game.registry)) {
+      onClose?.();
+      return;
+    }
     this.renderTutorialTipPopup(TUTORIAL_TIPS[id].title, TUTORIAL_TIPS[id].body.split('\n\n'), onClose);
   }
 
@@ -1481,6 +1512,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.updateWorldSprites(this.bossSprites);
     this.updateWorldSprites(this.gateSprites);
     this.updateGatePrompt();
+    this.updateGuardianPrompt();
     this.updateGoalBanner();
     this.touchPad?.setVisible(!this.dialogueActive);
 
@@ -2368,9 +2400,64 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     return `${press} to cross into ${worldName(this.world + 1)}`;
   }
 
-  // The keypress, which is the whole of the commitment. Challenging in the
-  // shut state, crossing in the open one -- the confirmation the retired gate
-  // panels carried, relocated into the prompt rather than removed.
+  // This world's guardian when the player is standing with them: on the
+  // guardian's own tile or on any of the eight around it, close enough that
+  // the avatar and the player are plainly together on screen. Only after they
+  // have been met -- the first meeting is the walk onto their row
+  // (maybeReachMiddle/maybeAutoOpenMiddleDialogue), which is the introduction,
+  // and this is the way back to someone already introduced.
+  private guardianAtPlayer(): GuardianDef | null {
+    const guardian = OverworldScene.WORLD_GUARDIANS[this.world];
+    if (!guardian) return null;
+    const met = (this.game.registry.get('metGuardians') as string[]) ?? [];
+    if (!met.includes(guardian.id)) return null;
+    const tile = guardian.tile === 'start' ? this.startTile : guardian.tile === 'middle' ? this.midTile : this.goalTile;
+    if (!tile) return null;
+    return Math.abs(this.playerTile.x - tile.x) <= 1 && Math.abs(this.playerTile.y - tile.y) <= 1 ? guardian : null;
+  }
+
+  // Same rule the pass prompt follows: shown while the player is standing
+  // where the offer can be accepted, hidden while anything else owns the
+  // screen. A pass offer wins if both are somehow live at once, so the two
+  // plates can never stack in the one spot they share.
+  private updateGuardianPrompt() {
+    const guardian = this.dialogueActive || this.moving || this.gateAtPlayer() ? null : this.guardianAtPlayer();
+    if (!guardian) {
+      if (this.guardianPrompt.visible) this.guardianPrompt.setVisible(false).disableInteractive();
+      return;
+    }
+    const press = this.touchPad ? 'Tap here' : 'Press Space';
+    this.guardianPrompt
+      .setText(`${press} to talk with ${guardian.name}`)
+      .setVisible(true)
+      .setInteractive({ useHandCursor: true });
+  }
+
+  // Opening a met guardian's own panel from the world, the deliberate way in
+  // beside the automatic one that fires on first reaching their row.
+  private talkToGuardian() {
+    if (this.dialogueActive || this.moving) return;
+    const guardian = this.guardianAtPlayer();
+    if (!guardian) return;
+    this.guardianPrompt.setVisible(false).disableInteractive();
+    this.openGuardian(guardian);
+  }
+
+  // What Space does, which depends on what the player is standing with: a
+  // pass is the more consequential of the two, so it is offered first.
+  private confirmAction() {
+    if (this.dialogueActive || this.moving) return;
+    if (this.gateAtPlayer()) {
+      this.confirmGate();
+      return;
+    }
+    this.talkToGuardian();
+  }
+
+  // The keypress at a pass, which is the whole of the commitment. Challenging
+  // in the shut state, crossing in the open one -- the confirmation the
+  // retired gate panels carried, relocated into the prompt rather than
+  // removed.
   private confirmGate() {
     if (this.dialogueActive || this.moving) return;
     const gate = this.gateAtPlayer();
@@ -2445,6 +2532,15 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // create() doesn't need its own branch for "lore already seen" vs "lore
   // just finished."
   private showWorldLore(lore: WorldLore, onDone: () => void) {
+    // Story Screens off: mark the lore read and hand straight back, so the
+    // Lab's Story station unmasks this world's two chapters exactly as it
+    // would have and keeps the text the player chose not to be stopped by.
+    if (!storyScreensEnabled(this.game.registry)) {
+      markWorldLoreSeen(this.game.registry, this.world);
+      persistFromRegistry(this.game.registry);
+      onDone();
+      return;
+    }
     this.renderWorldLorePage(lore.page1.split('\n\n'), 'Next ->', () =>
       this.renderWorldLorePage(lore.page2.split('\n\n'), 'Onward', () => {
         markWorldLoreSeen(this.game.registry, this.world);
@@ -2543,10 +2639,11 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // tissue DESIGN.md's plot hook otherwise only surfaces at the very start
   // (the tutorial's first page) and the very end (showFinalePanel). Falls
   // straight through to advanceToWorld if a world has no STORY_BEATS entry,
-  // so a missing beat is never a dead end.
+  // so a missing beat is never a dead end, and the same way when the Settings
+  // station's Story Screens row is off.
   private showStoryBeat(completedWorld: number) {
     const line = STORY_BEATS[completedWorld];
-    if (!line) {
+    if (!line || !storyScreensEnabled(this.game.registry)) {
       this.advanceToWorld(completedWorld + 1);
       return;
     }
@@ -2705,6 +2802,14 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // chains its own two pages above. A world with no entry yet (a future/
     // unbuilt world) falls back to the old single generic line so it's
     // never a dead end.
+    // Story Screens off: straight into the fight. The taunt pages carry only
+    // forward buttons, so they are pacing rather than a confirmation step, and
+    // the story log unmasks this world's chapter on the win itself.
+    if (!storyScreensEnabled(this.game.registry)) {
+      this.startBattle(rival, 1, true);
+      return;
+    }
+
     const taunt = RIVAL_TAUNTS[this.world];
     if (taunt) {
       this.renderRivalTauntPage(rival, taunt.part1, 'Next ->', () =>

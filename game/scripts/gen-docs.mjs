@@ -150,7 +150,7 @@ const WORLD_TOPICS = {
   1: 'Second quantization, mean-field, symmetry breaking',
   2: 'Symmetries, tight-binding band structure',
   3: 'Topological band theory',
-  4: 'Magnetic field, quantum Hall effect, Landau levels',
+  4: 'Integer and fractional quantum Hall effect',
   5: 'Superconductivity, Nambu representation, Majoranas',
   6: 'Classical magnetism and magnons',
   7: 'Quantum entanglement and tensor networks',

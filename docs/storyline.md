@@ -202,7 +202,7 @@ every flaw that used to stop them.
 
 <img src="../screenshots/storyline-world-4.png" width="420" alt="The Storm Flats seen from the middle of its corridor">
 
-*Magnetic field, the quantum Hall effect, and Landau levels.*
+*The integer and fractional quantum Hall effect.*
 
 A surveyor came off the ledges with a map she could not finish: a trunk road
 splitting into two branches, each splitting again crosswise and smaller, and

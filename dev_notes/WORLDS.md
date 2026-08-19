@@ -306,7 +306,7 @@ says *which invariant*.
 Wind over a world where nothing can move is the horror, not a contradiction:
 clouds race overhead while the ground stays perfectly still.
 
-### 4 — The Storm Flats *(magnetic field, quantum Hall, Landau levels)*
+### 4 — The Storm Flats *(integer and fractional quantum Hall effect)*
 
 Discrete flat colour bands underfoot in a single-hue indigo ramp, a soft dark
 strip along each band's lower boundary, and a glowing channel at every boundary

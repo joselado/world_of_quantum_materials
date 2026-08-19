@@ -38,7 +38,7 @@ progression gates are not part of that revision and still hold.
 | 1 | Second quantization, mean-field, SSB | **The Mean Fields** | Free fermion, itinerant/local-moment magnets, ferroelectrics, a charge density wave, a superconductor | Beat first rival crystal |
 | 2 | Symmetries, tight-binding, effective models | **The Stone Lattice** | Bloch-wave critters, lattice defect variants | Beat that world's rival crystal |
 | 3 | Topological band theory | **The Winding Borders** | Quantum spin Hall insulators, bulk and monolayer alike | Cross a gap only an edge-mode move can bridge |
-| 4 | Magnetic field, QHE, Landau levels | **The Storm Flats** | Landau-level materials, an intrinsic zero-field Chern insulator | Solve a Landau-level maze |
+| 4 | Integer and fractional quantum Hall effect | **The Storm Flats** | Landau-level materials, an intrinsic zero-field Chern insulator | Solve a Landau-level maze |
 | 5 | Superconductivity, Nambu, Majorana | **The Vortex Glacier** | s-wave SC, triplet SC | Pair two Majorana halves |
 | 6 | Classical magnetism, magnons | **The Iron Steppe** | Ferro/antiferromagnets, magnon wave-riders, a multiferroic | Ride a magnon wave across a canyon |
 | 7 | Entanglement, tensor networks | **The Entangled Web** | Entangled pairs (fought as a bonded duo) | Compress a tangled area into a walkable MPS path |
@@ -926,7 +926,12 @@ short form (e.g. "YBCO", "Bi₂Te₃") doesn't carry one.
 Every one of the ten worlds has its own guardian, waiting mid-corridor
 (`OverworldScene`'s `WORLD_GUARDIANS` table, every entry's `tile: 'middle'`) rather than
 at the goal -- the goal tile is occupied by that world's boss (see below), so a guardian
-is someone the player meets partway through the journey, not a gate to it. Every
+is someone the player meets partway through the journey, not a gate to it. The first
+walk onto their row is the introduction, and it opens their panel by itself; afterwards
+their panel is opened deliberately, by standing with them (their tile or any of the eight
+around it) and pressing Space, the same approach-read-press the passes use
+(`OverworldScene.guardianAtPlayer`/`talkToGuardian`, STYLE.md's "Guardians in the
+overworld"). Every
 guardian stays reachable once met by standing in the Lab as their own clickable avatar
 (`HubScene.spawnGuardianAvatars`, `data/save.ts`'s `metGuardians`)
 -- clicking one opens that guardian's own panel (shop, teleport
@@ -1376,13 +1381,32 @@ Bloch's teleport hub (§5) for jumping to an arbitrary already-visited world. Ev
 crossing regenerates the destination world's map fresh, the same "walking between
 worlds always lays out a new corridor" rule §7 describes for every other transition.
 
-**Wild-encounter density.** The Lab's Settings station
-(`scenes/panels/hubStations.ts`'s `showSettingsPanel`) lets the player choose how often ordinary wild
+**The Settings station** (`scenes/panels/hubStations.ts`'s `showSettingsPanel`) holds eight
+settings in three categories the player switches between at the top of the panel: Gameplay
+(difficulty tier -- §3, wild-encounter density, world size), Story (story screens, tutorial
+tips) and Presentation (text size, music style, touch controls). Every one of them is its own
+preset list in `data/settings.ts` and its own save field.
+
+**Wild-encounter density.** That station lets the player choose how often ordinary wild
 crystals spawn per corridor row -- Low/Normal/High/Very High
 (`data/settings.ts`'s `DENSITY_PRESETS`), persisted like every other save field.
 Takes effect the next time a world map is generated (a fresh world entry or an
 explicit regenerate), not retroactively on the map the player is currently
 standing on.
+
+**Story screens and tutorial tips.** The same station's Story category turns off the screens
+that stop play: the world-entry lore, a rival's taunt and the between-worlds beat on one row,
+the contextual tutorial popups on the other (`data/settings.ts`'s `ON_OFF_PRESETS`,
+`tutorialTipsEnabled`/`storyScreensEnabled`). Off suppresses the screen, never the content --
+each trigger still fires where it always did, marks its own `tutorialTipsSeen`/`worldLoreSeen`
+entry and hands straight back to whatever it was gating, so the Lab's Tutorial and Story
+stations fill in on exactly the schedule they otherwise would and hold the skipped text for
+whoever wants it. That is what the setting is for: a player replaying, or one who would rather
+not be stopped, rather than a way to cut the story out of a save. Turning a row back on plays
+the screens still ahead of the player rather than replaying the ones already passed. Story
+screens are the one setting whose default depends on the mode (`defaultSave(superposition)`):
+on in Story Mode, off in Superposition Mode, which has no road to walk through. The finale
+screen is exempt from the switch, being the run's only acknowledgment that it is finished.
 
 **World size.** The same Settings station offers Nano/Meso/Macro
 (`data/settings.ts`'s `WORLD_SIZE_PRESETS`) -- one multiplicative factor (0.7 / 1 / 3)
@@ -1619,7 +1643,10 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   by save/registry `tutorialTipsSeen`). Each trigger site passes whatever it
   was about to do next as the tip's close callback (open the encounter panel,
   launch the battle, ...), so the tip is a one-time detour in front of that
-  action rather than a separate step callers have to branch on. Nine are
+  action rather than a separate step callers have to branch on. With the
+  Settings station's Tutorial Tips row off (§3) a trigger still marks its tip
+  seen and runs that callback, skipping only the popup, so the Tutorial
+  station's own list fills in exactly as it otherwise would. Nine are
   `{ kind: 'guardian' }` -- a guardian's own repeatable ability (Bloch's teleportation,
   Dresselhaus's transmutation, Landau's quiz-gated Analytic moves, Majorana's hybrid fusion,
   Anderson's host doping, Feynman's move leveling, Kondo's status effects, Franklin's passives,

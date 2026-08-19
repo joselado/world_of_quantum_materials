@@ -12,6 +12,8 @@ import {
   WORLD_SIZE_PRESETS,
   DEFAULT_TOUCH_CONTROLS,
   TOUCH_CONTROLS_PRESETS,
+  DEFAULT_TUTORIAL_TIPS,
+  defaultStoryScreens,
 } from './settings';
 import type { MusicStyle, DifficultyTier, WorldSizeId, TouchControlsMode } from './settings';
 import type { PassiveOwner } from './passives';
@@ -125,6 +127,18 @@ export interface SaveData {
   // OverworldScene/BattleScene, so a change here lands on the next world
   // entry and the next end-of-battle prompt without a restart.
   touchControls: TouchControlsMode;
+  // Same Settings panel, Story category: whether the contextual tutorial tips
+  // and the story screens (world-entry lore, rival taunt, between-worlds beat)
+  // stop play to be read, data/settings.ts's ON_OFF_PRESETS. Off suppresses
+  // the screen only -- its trigger still marks `tutorialTipsSeen`/
+  // `worldLoreSeen` on the way past, so the Lab's Tutorial and Story stations
+  // unmask on the same schedule either way and hold the skipped text. Read
+  // live by OverworldScene/HubScene, so a change lands on the next screen
+  // either would have shown. `storyScreensEnabled` is the one setting whose
+  // default depends on the slot (see settings.ts's defaultStoryScreens): on
+  // for Story Mode, off for Superposition Mode.
+  tutorialTipsEnabled: boolean;
+  storyScreensEnabled: boolean;
   // Which of Kondo's three screening-class moves (data/materials.ts's
   // KONDO_MOVE_IDS) is currently the active/usable one -- null until the
   // player picks one for the first time in OverworldScene.showKondoPanel.
@@ -209,7 +223,11 @@ export interface SaveData {
   carriedMoveLevels: Partial<Record<string, 0 | 1 | 2 | 3>>;
 }
 
-export function defaultSave(): SaveData {
+// Takes the slot it is being built for, because `storyScreensEnabled`'s
+// default differs between the two (data/settings.ts's defaultStoryScreens).
+// Every other field is slot-independent, and `superpositionMode` itself is
+// still forced by loadSave() on the way out rather than trusted from here.
+export function defaultSave(superposition: boolean): SaveData {
   return {
     qumatessence: 0,
     unlockedMoves: [...PLAYER_MATERIAL.moves],
@@ -235,6 +253,8 @@ export function defaultSave(): SaveData {
     difficultyTier: DEFAULT_DIFFICULTY_TIER,
     worldSize: DEFAULT_WORLD_SIZE,
     touchControls: DEFAULT_TOUCH_CONTROLS,
+    tutorialTipsEnabled: DEFAULT_TUTORIAL_TIPS,
+    storyScreensEnabled: defaultStoryScreens(superposition),
     kondoActiveMove: null,
     passivesUnlocked: [],
     activePassiveByOwner: {},
@@ -344,7 +364,7 @@ export function loadSave(superposition: boolean): SaveData {
     // `false`, or from the stored blob) so the registry key every other
     // scene reads (isSuperpositionMode()) always matches the slot this save
     // actually came from, even for a slot that's never been written yet.
-    if (!raw) return { ...defaultSave(), superpositionMode: superposition };
+    if (!raw) return { ...defaultSave(superposition), superpositionMode: superposition };
     let parsed = JSON.parse(raw) as Record<string, unknown>;
     // Clamped up to the baseline rather than trusted outright, so a save from
     // before it skips straight to the merge instead of indexing off the front
@@ -357,7 +377,7 @@ export function loadSave(superposition: boolean): SaveData {
       parsed = MIGRATIONS[version - SCHEMA_BASELINE](parsed);
       version += 1;
     }
-    const data: SaveData = { ...defaultSave(), ...(parsed as Partial<SaveData>), superpositionMode: superposition };
+    const data: SaveData = { ...defaultSave(superposition), ...(parsed as Partial<SaveData>), superpositionMode: superposition };
     // The permanent safety nets (see the comment above MIGRATIONS): drop any
     // move id or material type this version no longer defines, and fall back
     // to the default for any preset-backed setting whose stored value is not
@@ -386,9 +406,13 @@ export function loadSave(superposition: boolean): SaveData {
     if (!DIFFICULTY_TIER_PRESETS.some((p) => p.value === data.difficultyTier)) data.difficultyTier = DEFAULT_DIFFICULTY_TIER;
     if (!WORLD_SIZE_PRESETS.some((p) => p.value === data.worldSize)) data.worldSize = DEFAULT_WORLD_SIZE;
     if (!TOUCH_CONTROLS_PRESETS.some((p) => p.value === data.touchControls)) data.touchControls = DEFAULT_TOUCH_CONTROLS;
+    // Both toggles fall back the same way, except that story screens fall back
+    // to this slot's own default rather than to a single module-level constant.
+    if (typeof data.tutorialTipsEnabled !== 'boolean') data.tutorialTipsEnabled = DEFAULT_TUTORIAL_TIPS;
+    if (typeof data.storyScreensEnabled !== 'boolean') data.storyScreensEnabled = defaultStoryScreens(superposition);
     return data;
   } catch {
-    return { ...defaultSave(), superpositionMode: superposition };
+    return { ...defaultSave(superposition), superpositionMode: superposition };
   }
 }
 
@@ -427,6 +451,8 @@ export function persistFromRegistry(registry: RegistryLike) {
     difficultyTier: (registry.get('difficultyTier') as DifficultyTier) ?? DEFAULT_DIFFICULTY_TIER,
     worldSize: (registry.get('worldSize') as WorldSizeId) ?? DEFAULT_WORLD_SIZE,
     touchControls: (registry.get('touchControls') as TouchControlsMode) ?? DEFAULT_TOUCH_CONTROLS,
+    tutorialTipsEnabled: (registry.get('tutorialTipsEnabled') as boolean) ?? DEFAULT_TUTORIAL_TIPS,
+    storyScreensEnabled: (registry.get('storyScreensEnabled') as boolean) ?? defaultStoryScreens(superposition),
     kondoActiveMove: (registry.get('kondoActiveMove') as string | null) ?? null,
     passivesUnlocked: (registry.get('passivesUnlocked') as string[]) ?? [],
     activePassiveByOwner: (registry.get('activePassiveByOwner') as Partial<Record<PassiveOwner, string>>) ?? {},

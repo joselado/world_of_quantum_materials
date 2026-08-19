@@ -189,3 +189,86 @@ export function touchControlsActive(mode: TouchControlsMode): boolean {
   if (mode === 'off') return false;
   return isTouchDevice();
 }
+
+// The Settings panel's own top-level grouping (scenes/panels/hubStations.ts's
+// showSettingsPanel): the panel shows one category at a time, picked from a
+// strip of category buttons under its title. Eight rows at that panel's own
+// row height do not fit the canvas at the largest text-size preset -- a value
+// plate alone is ~43px tall there, so no row is shorter than ~55px, and the
+// panel has room for about five of them once its title, its Close button and
+// its margins are paid for. Three categories of at most five rows each is
+// what keeps every value plate on screen and directly clickable, which is the
+// property this panel is built around: a setting's whole range readable at a
+// glance rather than cycled through one step at a time.
+export type SettingsCategoryId = 'gameplay' | 'story' | 'presentation';
+
+export interface SettingsCategory {
+  id: SettingsCategoryId;
+  label: string;
+}
+
+export const SETTINGS_CATEGORIES: SettingsCategory[] = [
+  { id: 'gameplay', label: 'Gameplay' },
+  { id: 'story', label: 'Story' },
+  { id: 'presentation', label: 'Presentation' },
+];
+
+export const DEFAULT_SETTINGS_CATEGORY: SettingsCategoryId = SETTINGS_CATEGORIES[0].id;
+
+// The Story category's two rows: whether the contextual tutorial tips
+// (data/tutorial.ts's TUTORIAL_TIPS, OverworldScene.showTutorialTip/
+// HubScene.maybeShowLabTip) and the story screens (a world's entry lore, a
+// rival's taunt, the beat between worlds) stop play to be read.
+//
+// Off suppresses the screen, not the content. Each screen's own trigger still
+// fires where it always did: it marks itself seen, then hands straight back to
+// whatever it was gating, so `tutorialTipsSeen`/`worldLoreSeen` fill in exactly
+// as they do with the screens on, the Lab's Tutorial and Story stations unmask
+// their topics on the same schedule, and the skipped text stays readable there.
+// The switch is for a player who has read it all already, or who would rather
+// not be stopped; turning it back on plays the screens still ahead of them
+// rather than replaying the ones already passed.
+//
+// Labelled "Story Screens" and "Tutorial Tips" in the panel rather than plain
+// "Story"/"Tutorial", so an Off plate can't be read as removing the story from
+// the game or closing the station that holds it.
+export interface ToggleSettingPreset {
+  label: string;
+  value: boolean;
+}
+
+export const ON_OFF_PRESETS: ToggleSettingPreset[] = [
+  { label: 'On', value: true },
+  { label: 'Off', value: false },
+];
+
+export const DEFAULT_TUTORIAL_TIPS = true;
+
+// Story screens are the one setting whose default depends on which mode's
+// save slot it belongs to. Superposition Mode is the everything-open testing/
+// exploration slot -- it has no road to walk, so a save there starts with the
+// screens off and the story left in its station for whoever wants it. A Story
+// Mode save starts with them on, since being told the story as it happens is
+// the point of that slot.
+export function defaultStoryScreens(superposition: boolean): boolean {
+  return !superposition;
+}
+
+// The one place each toggle turns into a yes/no, so every scene asking "does
+// this screen play" gets the same answer. Minimal structural registry type
+// (mirrors data/save.ts's and data/tutorial.ts's own) so this stays a plain
+// data module.
+interface RegistryLike {
+  get: (key: string) => unknown;
+}
+
+export function tutorialTipsEnabled(registry: RegistryLike): boolean {
+  const value = registry.get('tutorialTipsEnabled');
+  return typeof value === 'boolean' ? value : DEFAULT_TUTORIAL_TIPS;
+}
+
+export function storyScreensEnabled(registry: RegistryLike): boolean {
+  const value = registry.get('storyScreensEnabled');
+  if (typeof value === 'boolean') return value;
+  return defaultStoryScreens(!!registry.get('superpositionMode'));
+}

@@ -55,7 +55,7 @@ appear.
 | Jacutingaite | Quantum Spin Hall Insulator |
 | Monolayer WTe₂ | Quantum Spin Hall Insulator |
 
-### World 4: Magnetic field, quantum Hall effect, Landau levels
+### World 4: Integer and fractional quantum Hall effect
 
 | Crystal | Type |
 | --- | --- |

@@ -585,7 +585,13 @@ game/src/
                                     FONT_SCALE_PRESETS, MUSIC_STYLE_PRESETS/DEFAULT_MUSIC_STYLE,
                                     DIFFICULTY_TIER_PRESETS/DEFAULT_DIFFICULTY_TIER -- B.Sc./M.Sc./
                                     Ph.D. difficulty tier, data/balance.ts's DIFFICULTY_MULTIPLIERS
-                                    applied to enemyStatsForWorld
+                                    applied to enemyStatsForWorld -- WORLD_SIZE_PRESETS,
+                                    TOUCH_CONTROLS_PRESETS/touchControlsActive(), ON_OFF_PRESETS with
+                                    tutorialTipsEnabled()/storyScreensEnabled() (the registry readers every
+                                    scene asks "does this screen play", and defaultStoryScreens(superposition),
+                                    the one setting whose default differs per save slot), and
+                                    SETTINGS_CATEGORIES/DEFAULT_SETTINGS_CATEGORY, the Settings panel's own
+                                    Gameplay/Story/Presentation grouping
     story.ts                       STORY_BEATS -- per-world Decoherence-arc line shown on advancing worlds --
                                     WORLD_GOAL_TEXT -- per-world one-liner for the goal-tile banner,
                                     falling back to a generic line for a world with no entry -- and
@@ -1446,10 +1452,25 @@ passes share one grammar, and it lives in four methods on `OverworldScene`:
 - `gatePromptLabel(gate)` -- what the prompt reads: challenge the named rival, cross into the
   named next world, "look out over the worlds" at World 10's cliff edge, or go back to the
   previous world / the Lab.
-- `confirmGate()` -- the commitment, bound to Space and to the prompt's own `pointerdown`.
-  Backward: `returnToPreviousWorld()`. Forward and shut: `showRivalEncounter()`. Forward and open:
-  `crossPass()`, or `showFinalePanel()` in World 10, whose pass opens onto its own cliff edge
-  rather than a next world.
+- `confirmGate()` -- the commitment at a pass, reached from the prompt's own `pointerdown` and
+  from `confirmAction()`. Backward: `returnToPreviousWorld()`. Forward and shut:
+  `showRivalEncounter()`. Forward and open: `crossPass()`, or `showFinalePanel()` in World 10,
+  whose pass opens onto its own cliff edge rather than a next world.
+
+The same three steps carry the other thing a player walks up to, a guardian they have already
+met, in three more methods:
+
+- `guardianAtPlayer()` -- this world's guardian when the player stands on their tile or any of
+  the eight around it, and `metGuardians` already holds them. Before that first meeting the
+  offer is absent: the walk onto their row is the introduction
+  (`maybeReachMiddle`/`maybeAutoOpenMiddleDialogue`).
+- `updateGuardianPrompt()` -- called every frame from `update()`, alongside `updateGatePrompt()`.
+  Drives `guardianPrompt`, its own HUD plate at the same anchor and in the same style as the pass
+  prompt, hidden while a panel is open, while walking, or while a pass offer is live.
+- `talkToGuardian()` -- opens that guardian's panel through the shared `openGuardian()`.
+
+`confirmAction()` is what Space is actually bound to: a pass offer first, the guardian
+otherwise.
 
 `crossPass()` fades a full-canvas rect to `PANEL_BG` over 420ms and plays `showStoryBeat` over
 that fade, so `STORY_BEATS` cannot stack against the board or the horizon reveal the player is
@@ -2409,12 +2430,12 @@ future guardian could choose them; nothing currently does.
 
 ## Lab stations and settings
 
-**The Lab's six reference/settings stations** (`scenes/panels/hubStations.ts`'s
+**The Lab's seven reference/settings stations** (`scenes/panels/hubStations.ts`'s
 `LAB_STATIONS` array -- `showMovesPanel`/`showStatsPanel`/`showAbilitiesPanel`/
-`showTutorialTopics`/`showSettingsPanel`/`showTitleScreenPanel`, each taking
+`showTutorialTopics`/`showStoryLog`/`showSettingsPanel`/`showTitleScreenPanel`, each taking
 `scene: HubScene`):
 built the same way a guardian panel file takes `scene: GuardianPanelHost` (see "Guardian panels"
-above) -- these six only ever run from `HubScene`, since pressing `H` or `Enter` from any
+above) -- these seven only ever run from `HubScene`, since pressing `H` or `Enter` from any
 Overworld scene warps straight there (`this.scene.start('Hub')`, no menu/overlay of choices in
 between) rather than opening anything mid-world. Each is a pure function of registry/save
 state (player stats/moves/passives, game settings), not of anything tied to
@@ -2424,7 +2445,7 @@ not private, on `HubScene` for the same "panel modules living outside the class 
 `private` member" reason `OverworldScene` widens its own dialogue infrastructure), gated so a
 station can't open over another already-open panel (`HubScene.addStationRow`'s
 `dialogueContainer` check). Each `LAB_STATIONS` entry also carries a `visible(scene)` predicate
--- true unconditionally for Moves/Stats/Tutorial/Settings/Title Screen, and for Abilities only
+-- true unconditionally for Moves/Stats/Tutorial/Story/Settings/Title Screen, and for Abilities only
 once `passivesUnlocked` is non-empty (or `isSuperpositionMode()` is true, which grants every
 passive anyway) --
 `HubScene.create()` filters `LAB_STATIONS` by this before laying out the room's station rows,
@@ -2464,10 +2485,10 @@ click target is a near-transparent interactive `Rectangle` covering the slot rat
 avatar `Container` (a Container has no hit area of its own) and takes the same
 `dialogueContainer` one-panel-at-a-time guard the station rows use.
 
-**Six of the Lab's seven non-door panels** (every station above except Tutorial, plus
-`HubScene`'s own `renderMaterialdexPanel`) share one heading color -- `hubStations.ts`'s
-exported `LAB_TITLE_COLOR` (`#ffe066`); Tutorial's heading is content-specific and reads in
-`TUTORIAL_CYAN_HEX` instead, matching its own cyan-stroked panel. The Moves, Stats, Abilities
+**Six of the Lab's eight non-door panels** (every station above except Tutorial and Story,
+plus `HubScene`'s own `renderMaterialdexPanel`) share one heading color -- `hubStations.ts`'s
+exported `LAB_TITLE_COLOR` (`#ffe066`); Tutorial's and Story's headings each read in their own
+panel's stroke colour instead (`TUTORIAL_CYAN_HEX`, `STORY_LAVENDER_HEX`). The Moves, Stats, Abilities
 and Settings panels share one centered-content geometry on top of that: `hubStations.ts`'s
 `labPanelColumns(panelWidth)` returns a fixed `contentCenterX`/`contentWrapW` margined in from
 both edges of the panel (Tutorial and Materialdex lay out their own two-column list/detail
@@ -2632,7 +2653,9 @@ world, with its detail pane cut to one short line rather than a pane of question
 derived, never stored: `{ kind: 'tip' }` reads `tutorialTipsSeen`, `{ kind: 'lore'; world }`
 reads `worldLoreSeen`, `{ kind: 'rival'; world }` reads `rivalDefeated`, and Superposition Mode
 reads everything -- so the station adds no persisted state and `defaultSave`/
-`persistFromRegistry` are untouched. `HubScene`'s own `storySelectedIndex` (an index into
+`persistFromRegistry` are untouched. That derivation is also why the Settings station's Story
+Screens row can be turned off without stranding a chapter: a skipped screen still marks its own
+seen-field on the way past, so every chapter unmasks on exactly the schedule it would have. `HubScene`'s own `storySelectedIndex` (an index into
 `STORY_LOG`, stable since the list never changes length) and `storyPage` track the selection and
 list page, both reset in `closeDialogue()` beside the tutorial pair. Browsing never writes
 `tutorialTipsSeen`/`worldLoreSeen`, so reading a chapter can't unlock a neighbour or suppress a
@@ -2810,10 +2833,17 @@ to always match the slot actually read rather than trusted from the stored blob)
 `musicStyle: MusicStyle` (same station's third row, one of `data/settings.ts`'s
 `MUSIC_STYLE_PRESETS` -- which of `audio/music.ts`'s `SCORES`/`SCORES_MODERN`
 tables `MusicEngine` draws from, applied immediately via `music.setStyle()`),
-`difficultyTier: DifficultyTier` (same station's fourth row, one of `data/settings.ts`'s
+`difficultyTier: DifficultyTier` (same station's Gameplay category, one of `data/settings.ts`'s
 `DIFFICULTY_TIER_PRESETS` -- B.Sc./M.Sc./Ph.D., `data/balance.ts`'s `DIFFICULTY_MULTIPLIERS`
 scaling `enemyStatsForWorld` -- read live by `BattleScene` at the start of every
 fight rather than cached, so a change applies to the very next battle),
+`tutorialTipsEnabled: boolean`/`storyScreensEnabled: boolean` (the Settings station's Story
+category: whether the contextual tips and the story screens stop play. Off suppresses the
+screen only -- each trigger still marks `tutorialTipsSeen`/`worldLoreSeen` on the way past, so
+the Tutorial and Story stations unmask on the same schedule either way and hold the skipped
+text. `storyScreensEnabled` is the one field whose default depends on the slot, which is why
+`defaultSave(superposition)` takes the flag: on in Story Mode, off in Superposition Mode, where
+there is no road to walk),
 `kondoActiveMove: string | null` (which of
 `data/materials.ts`'s `KONDO_MOVE_IDS` is currently
 usable in battle, `null` until the player picks one via `scenes/panels/kondo.ts`'s `showKondoPanel` -- see
@@ -2855,10 +2885,12 @@ tiers each move is currently *carried* at, picked from the tier row in Feynman's
 carried at its `moveLevels` ceiling, so the map stays empty until a player uses the row, and
 Superposition Mode's max-everything grant writes the ceiling only and can never overwrite a
 pick made here), plus the
-earlier fields covered under Registry-then-persist above. `defaultSave()`/
+earlier fields covered under Registry-then-persist above. `defaultSave(superposition)`/
 `persistFromRegistry()` are the two places that need touching together for any future field, and
-`loadSave()`'s `{ ...defaultSave(), ...saved }` spread keeps a save predating that field
-compatible for free -- it just gets the default.
+`loadSave()`'s `{ ...defaultSave(superposition), ...saved }` spread keeps a save predating that
+field compatible for free -- it just gets the default. `defaultSave` takes the slot it is
+building for because one field's default differs between the two (`storyScreensEnabled`, see
+above); everything else it returns is slot-independent.
 
 **Renaming or restructuring a field that holds real progress is a different case** from adding
 a new one -- the spread above can't carry an old value across to a new key on its own, and
