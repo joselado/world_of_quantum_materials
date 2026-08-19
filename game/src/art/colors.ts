@@ -41,7 +41,7 @@ export function blend(a: number, b: number, t: number): number {
 }
 
 // Rotates a color's hue by a few degrees while keeping its saturation/value --
-// used to give same-`TYPE_LOOK` compounds (e.g. every 'classicalMagnet'-type crystal
+// used to give same-`TYPE_LOOK` compounds (e.g. every 'insulatingMagnet'-type crystal
 // starts from one shared base color) a visibly different tint instead of only
 // the brightness step `shade()` gives siblings like Iron vs. Cobalt.
 export function hueShift(colorInt: number, degrees: number): number {

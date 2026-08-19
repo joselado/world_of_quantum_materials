@@ -1483,9 +1483,9 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'A superconducting phase and an ordinary band-insulating phase',
     },
     {
-      prompt: "Why does the game classify YbRh₂Si₂ as 'kondoHeavyFermion' rather than 'classicalMagnet', even though it eventually orders magnetically at very low temperature?",
+      prompt: "Why does the game classify YbRh₂Si₂ as 'kondoHeavyFermion' rather than 'metallicMagnet', even though it conducts and eventually orders magnetically at very low temperature?",
       correct: 'Its heavy, Kondo-hybridized quasiparticles (not simple localized spins) carry that order and define the compound',
-      incorrect: 'Because antiferromagnetism is impossible in any classicalMagnet-type material',
+      incorrect: 'Because antiferromagnetism is impossible in any metallic material',
     },
     // Cerium Cobalt Indide -- off-syllabus, second Kondo-lattice flagship.
     {
@@ -1545,7 +1545,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'Simple classical Ising spins',
     },
     {
-      prompt: 'What move does a frustrated, never-ordering compound like Ce₂Zr₂O₇ carry that an ordinary classicalMagnet cannot?',
+      prompt: 'What move does a frustrated, never-ordering compound like Ce₂Zr₂O₇ carry that an ordinary ordered magnet cannot?',
       correct: 'Spinon Swap, a fractionalized spin excitation',
       incorrect: 'Magnon Pulse, an ordinary collective spin wave',
     },

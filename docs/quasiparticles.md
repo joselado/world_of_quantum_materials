@@ -15,9 +15,9 @@ or non-Abelian excitation at the top.
 | Move | Quasiparticle | Power | Crystal types that can use it |
 | --- | --- | --- | --- |
 | Phonon Beam | Phonon | 6 | Every type |
-| Electron Pulse | Electron | 7 | Chern Insulator, Chern Superconductor, Fractional Chern Insulator, Kondo Heavy Fermion, Metal, Quantum Spin Hall Insulator, Semiconductor, Superconductor |
-| Magnon Pulse | Magnon | 8 | Classical Magnet, Multiferroic |
-| Plasmon Pulse | Plasmon | 8 | Metal |
+| Electron Pulse | Electron | 7 | Chern Insulator, Chern Superconductor, Fractional Chern Insulator, Kondo Heavy Fermion, Metal, Metallic Magnet, Quantum Spin Hall Insulator, Semiconductor, Superconductor |
+| Magnon Pulse | Magnon | 8 | Insulating Magnet, Metallic Magnet, Multiferroic |
+| Plasmon Pulse | Plasmon | 8 | Metal, Metallic Magnet |
 | Ferron Pulse | Ferron | 8 | Ferroelectric, Multiferroic |
 | Triplon Surge | Triplon | 9 | Quantum Spin Liquid |
 | Electromagnon Pulse | Electromagnon | 9 | Multiferroic |
@@ -43,12 +43,13 @@ of it.
 | --- | --- |
 | Chern Insulator | Chiral, Electron, Phonon |
 | Chern Superconductor | Chiral, Electron, Higgs, Majorana, Phonon |
-| Classical Magnet | Magnon, Phonon |
 | Ferroelectric | Ferron, Phonon |
 | Fractional Chern Insulator | Anyon, Electron, Phonon |
+| Insulating Magnet | Magnon, Phonon |
 | Insulator | Phonon |
 | Kondo Heavy Fermion | Electron, Heavy Fermion, Phonon, Spinon |
 | Metal | Electron, Phonon, Plasmon |
+| Metallic Magnet | Electron, Magnon, Phonon, Plasmon |
 | Multiferroic | Electromagnon, Ferron, Magnon, Phonon |
 | Quantum Spin Hall Insulator | Electron, Helical, Phonon |
 | Quantum Spin Liquid | Phonon, Spinon, Triplon, Vison |

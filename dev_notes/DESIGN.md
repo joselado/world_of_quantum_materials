@@ -229,16 +229,20 @@ Edit that file first when changing the taxonomy itself, then reconcile the `.ts`
 files (and this section) to match, rather than editing the three places
 independently.
 
-**Main types (13).** Ordinary, non-exotic band physics splits three ways by how far a
+**Main types (14).** Ordinary, non-exotic band physics splits three ways by how far a
 carrier gets: `metal` (a partially filled band — the only tier that carries a
 plasmon), `semiconductor` (gapped, but narrow enough to dope/thermally excite across
 — an ordinary band electron still gets through), and `insulator` (gapped too wide for
 even that — only the lattice itself, a phonon, gets through, though a self-trapped
 polaron is actually a *stronger* excitation there than in a bare metal or
-semiconductor). Magnetically/electrically ordered baselines: `classicalMagnet`
-(magnetically ordered, magnon-carrying — covers both the mean-field/Hubbard-U route
-into symmetry-broken order and the classical itinerant-ferromagnet route, since both
-are the same ordered-moment phase reached via a different derivation),
+semiconductor). Magnetically/electrically ordered baselines: `metallicMagnet` and
+`insulatingMagnet` (both magnetically ordered and magnon-carrying, split by
+conductivity exactly the way `metal` splits from `insulator` — a metallic magnet's
+moments ride the same partially filled band that carries its current, so it hosts an
+ordinary electron and a plasmon alongside its magnon, while an insulating magnet's
+gapped local moments leave the magnon and the lattice as all it has; the split cuts
+across how the order is derived rather than along it, so itinerant Stoner magnets land
+on one side and Mott-Hubbard or superexchange magnets on the other),
 `quantumSpinLiquid` (frustrated, never orders — hosts spinon, its Z2 topological-order
 companion vison, and triplon, a dimer/valence-bond quantum paramagnet's own confined
 mode, grouped in here as a deliberate simplification even though a triplon is
@@ -282,10 +286,10 @@ type column reads the same for both. Topic 9's defect-bound states (Yu-Shiba-Rus
 states, impurity resonances, vortex-bound Majorana states) are real disorder physics
 hosted inside a superconductor, so most of World 9's crystals are `superconductor` or
 `chernSuperconductor` type rather than a dedicated one — its one magnetic-impurity
-precursor compound (Manganese) is `classicalMagnet`.
+precursor compound (Manganese) is `metallicMagnet`.
 
 **Subtypes**, unlocked via guardians, cross with main types (e.g. superconductor +
-classicalMagnet subtype → spin-triplet superconductor, matching the example in the
+magnetic subtype → spin-triplet superconductor, matching the example in the
 source notes). Not all main+subtype pairs are physical/interesting — needs a full
 compatibility table before implementation (see open questions).
 
@@ -418,7 +422,7 @@ pool.
 | semiconductor (1) | Silicon (Si) | Conventional band semiconductor, narrow enough a gap to dope, no protected structure |
 | semiconductor (1) | Gallium Nitride (GaN) | Doped semiconductor, plain single-particle band picture |
 | insulator (1) | Magnesium Oxide (MgO) | Simple ionic band insulator, gap too wide to dope/excite across — textbook baseline contrast to topological insulators; the ionic lattice also self-traps a stronger polaron than a bare semiconductor would |
-| metal (1→2 bridge) | Graphene (pristine, half-filled) | Gapless Dirac semimetal — the throughline example of session 2 (Bloch's theorem, tight-binding); precursor before symmetry-breaking (→ classicalMagnet) or band-topology (→ topological) sets in; real graphene plasmonics is its own well-known field |
+| metal (1→2 bridge) | Graphene (pristine, half-filled) | Gapless Dirac semimetal — the throughline example of session 2 (Bloch's theorem, tight-binding); precursor before symmetry-breaking (→ insulatingMagnet) or band-topology (→ topological) sets in; real graphene plasmonics is its own well-known field |
 | metal (2) | Silver (Ag) | Half-filled 5s conduction band gives it the sharpest free-electron plasmon of any elemental metal — real plasmonics/nanophotonics runs on silver (and gold), not graphene; not from the course, added to give `metal`'s Plasmon Pulse a second, more flagship host |
 | metal (2) | Mercury Telluride (HgTe) | Inverted-gap bulk band structure — Γ8/Γ6 touch at zero gap, the same gapless character Graphene's own `metal` entry above already carries, not an ordinary gapped semiconductor; §5's hybrid-recipe parent for HgTe/CdTe Quantum Well below, whose topology comes from this inversion |
 | semiconductor (2) | Indium Arsenide (InAs) | Ordinary band semiconductor whose real role is strong spin-orbit coupling — the actual second ingredient (alongside Aluminum) in a real Majorana-nanowire platform, §5's InAs/Al Majorana Wire hybrid recipe |
@@ -429,14 +433,14 @@ pool.
 | insulator (2) | Diamond (C) | ~5.5 eV gap, textbook wide-gap covalent insulator — pristine, no defect (e.g. nitrogen-vacancy) dressing; not from the course, added as `insulator`'s second member alongside Magnesium Oxide |
 | insulator (2, hybrid parent) | Monolayer Boron Nitride (hBN) | ~5.9 eV gap insulator whose honeycomb lattice is nearly commensurate with graphene's — real graphene devices are built on or encapsulated in it; §5 hybrid recipe parent (with Graphene) for Rhombohedral Pentalayer Graphene/hBN Moiré below |
 | metal (2) | Tungsten (W) | Partially filled 5d bands, ordinary band conductor — highest melting point of any elemental metal; not from the course, the d-band Electron Pulse counterpart to Silver's/Graphene's free-electron Plasmon Pulse |
-| classicalMagnet (1) | Europium Oxide (EuO) | Half-filled Eu²⁺ 4f⁷ shell, well-isolated localized moments — the real material Weiss/mean-field theory's Brillouin-function prediction is classically tested against; a genuinely different mean-field derivation (localized-moment Weiss theory) from Iron/Cobalt's itinerant Stoner picture, even though both land on classicalMagnet order; not from the course |
-| classicalMagnet (1) | Manganese Fluoride (MnF$_2$) | Simple ionic (superexchange-mediated) local-moment antiferromagnet with strong single-ion anisotropy — the real-material realization of the mean-field Ising antiferromagnet, a third distinct route to classicalMagnet order alongside NiO's Mott-insulating Hubbard-$U$ picture and Chromium's itinerant spin-density-wave picture; not from the course |
+| insulatingMagnet (1) | Europium Oxide (EuO) | Half-filled Eu²⁺ 4f⁷ shell, well-isolated localized moments — the real material Weiss/mean-field theory's Brillouin-function prediction is classically tested against; a genuinely different mean-field derivation (localized-moment Weiss theory) from Iron/Cobalt's itinerant Stoner picture, and gapped where they are metallic: stoichiometric EuO is a ferromagnetic semiconductor, so its ordered moments carry a magnon and nothing else (heavily doped EuO does go metallic, the compound's own famous metal-insulator transition); not from the course |
+| insulatingMagnet (1) | Manganese Fluoride (MnF$_2$) | Simple ionic (superexchange-mediated) local-moment antiferromagnet with strong single-ion anisotropy — the real-material realization of the mean-field Ising antiferromagnet, a third distinct route to magnetic order alongside NiO's Mott-insulating Hubbard-$U$ picture and Chromium's itinerant spin-density-wave picture; not from the course |
 | ferroelectric (1) | Potassium Dihydrogen Phosphate (KH$_2$PO$_4$) | Order-disorder-type ferroelectric (proton tunneling between two off-center sites in an O-H...O bond, a pseudospin mean-field/Ising model) rather than Barium Titanate's displacive-type transition — same inversion-symmetry-breaking SSB, a genuinely different microscopic mechanism, and an even more literal mean-field-theory teaching example than BaTiO₃'s own soft-phonon-mode picture; not from the course |
 | metal (1) | Titanium Diselenide (TiSe$_2$) | 1T-TiSe₂'s own charge density wave (~200 K) is session1's own broken-continuous-translational-symmetry worked example, made real — a frozen (softened) lattice/charge modulation opens a small gap; stays `metal` rather than a dedicated type since session1 itself notes only the phonon is guaranteed gapless in every material, and a CDW's own low-energy fluctuation is exactly that lattice phonon branch, not a distinct quasiparticle; not from the course |
 | quantumSpinHall (3, hybrid) | HgTe/CdTe Quantum Well | The original 2D topological insulator (Bernevig-Hughes-Zhang model, König et al., Science 2007) — only the *engineered heterostructure* is topological, not either bulk parent above; §5 hybrid recipe result, lives as a World 10 wild rather than a World 3 one |
-| classicalMagnet (1) | Nickel Oxide (NiO) | Mott-insulating antiferromagnet — canonical mean-field/Hubbard-$U$ SSB example |
-| classicalMagnet (1, rare/special) | Graphene at strong coupling | Session 1 notes a finite $U_c$ opens a Mott/antiferromagnetic gap at the Dirac point — same base crystal as the metal entry above, but pushed past its symmetry-breaking threshold |
-| classicalMagnet (1) | Chromium (Cr) | Itinerant (metallic) antiferromagnet — the SDW mean-field/Stoner-criterion counterpart to NiO's Mott-insulating picture (Manganese Oxide, the same Mott-insulating family, is a World 6 wild); also §5's magnetic-dopant parent for Cr-doped (Bi,Sb)₂Te₃ below |
+| insulatingMagnet (1) | Nickel Oxide (NiO) | Mott-insulating antiferromagnet — canonical mean-field/Hubbard-$U$ SSB example |
+| insulatingMagnet (1, rare/special) | Graphene at strong coupling | Session 1 notes a finite $U_c$ opens a Mott/antiferromagnetic gap at the Dirac point — same base crystal as the metal entry above, but pushed past its symmetry-breaking threshold |
+| metallicMagnet (1) | Chromium (Cr) | Itinerant (metallic) antiferromagnet — the SDW mean-field/Stoner-criterion counterpart to NiO's Mott-insulating picture (Manganese Oxide, the same Mott-insulating family, is a World 6 wild); also §5's magnetic-dopant parent for Cr-doped (Bi,Sb)₂Te₃ below |
 | chernInsulator (3, magnetically doped) | Bismuth Selenide (Bi$_2$Se$_3$), magnetically doped | The added magnetism breaks time-reversal symmetry, turning the helical surface state chiral — quantum anomalous Hall, same doping-breaks-TRS mechanism as Cr-doped (Bi,Sb)₂Te₃ below |
 | quantumSpinHall (3) | Bismuth Telluride (Bi₂Te₃) | Undoped topological-insulator host, its bulk gap hiding a spin-momentum-locked helical surface state — §5's Chromium + Bi₂Te₃ hybrid recipe dopes magnetism in to make Cr-doped (Bi,Sb)₂Te₃ below |
 | quantumSpinHall (3, rare) | Samarium Hexaboride (SmB$_6$) | Topological Kondo insulator — many-body topology, a protected helical surface state hosted inside a Kondo-insulating bulk; also bridges to the kondoHeavyFermion/quantumSpinLiquid family below |
@@ -459,15 +463,15 @@ pool.
 | superconductor (5) | Tantalum Disulfide, 1H phase (TaS$_2$) | Metallic/superconducting TMD monolayer in its own right — distinct from the 1T phase below, and the other half of §5's 1T/1H-TaS₂ heterostructure hybrid recipe |
 | chernSuperconductor (9) | Iron Telluride/Selenide (Fe(Te,Se)) | Hosts Yu-Shiba-Rusinov *and* vortex-bound Majorana defect states (Zhang et al., Science 2018) — the vortex Majorana observation is genuine topological superconductivity, so this is `chernSuperconductor` rather than plain `superconductor` |
 | superconductor (9, textbook fill-in) | Niobium Diselenide (NbSe$_2$), STM-imaged impurities | Friedel oscillations / impurity-resonance textbook platform, ordinary (non-topological) disorder physics; also pairs with CrI₃/CrBr₃ in §5's topological-SC heterostructure recipes |
-| classicalMagnet (6) | Iron (Fe) | Classic itinerant ferromagnet, magnon carrier |
-| classicalMagnet (6) | Cobalt (Co) | Same family |
-| classicalMagnet (6) | Manganese Oxide (MnO) | Mott-insulating antiferromagnet — its magnetism comes from localized moments and Hubbard $U$ rather than Iron/Cobalt's itinerant band picture above, but still ordinary (non-topological) magnon-carrying classicalMagnet order, the same family as this world's other members |
-| classicalMagnet (6) | Chromium Triiodide (CrI$_3$) | Van der Waals ferromagnet with an observed topological magnon gap |
-| classicalMagnet (6) | Chromium Tribromide (CrBr$_3$) | Same van der Waals ferromagnet family as CrI₃ — pairs with Niobium Diselenide in Kezilebieke et al., Nature 588, 424 (2020)'s topological-superconductor heterostructure, §5 |
-| classicalMagnet (6) | Yttrium Iron Garnet (YIG, Y$_3$Fe$_5$O$_{12}$) | Ferrimagnetic (two antiparallel sublattices, unequal moment), with the lowest known magnon damping of any material — the real substrate nearly every magnon-transport/magnon-BEC experiment actually runs on; not from the course, added as `classicalMagnet`'s magnonics flagship |
-| classicalMagnet (6) | Iron Germanium Telluride (Fe$_3$GeTe$_2$) | The itinerant member of World 6's two-dimensional magnets — the same delocalized band electrons carry its current and its moment, unlike the insulating chromium trihalides above, and its strong uniaxial anisotropy is what lets a single sheet order; ionic gating pushes $T_c$ to roughly room temperature (Deng et al., Nature 2018); also spawns in World 9 rather than taking Iron and Cobalt's World 1 cross-list, since World 1 is the tutorial world and a magnon carrier there lands at double force on a starting Silicon; not from the course |
-| classicalMagnet (6) | Iron Phosphorus Trisulfide (FePS$_3$) | The Ising member of the MPS₃ family (MnPS₃ Heisenberg-like, NiPS₃ XY-like) — session 6's anisotropic-exchange content made real, ordering antiferromagnetically near 118 K and staying ordered down to the monolayer, tracked there by a Raman mode that appears with the order (Lee et al., Nano Lett. 2016); not from the course |
-| classicalMagnet (9) | Manganese (Mn) | Elemental Mn's own complex itinerant antiferromagnetism is beside the point — it's the textbook itinerant local-moment magnet for this topic |
+| metallicMagnet (6) | Iron (Fe) | Classic itinerant ferromagnet, magnon carrier |
+| metallicMagnet (6) | Cobalt (Co) | Same family |
+| insulatingMagnet (6) | Manganese Oxide (MnO) | Mott-insulating antiferromagnet — its magnetism comes from localized moments and Hubbard $U$ rather than Iron/Cobalt's itinerant band picture above, but still ordinary (non-topological) magnon-carrying order, and its Mott gap is what puts it on the insulating side of the magnet split |
+| insulatingMagnet (6) | Chromium Triiodide (CrI$_3$) | Van der Waals ferromagnet with an observed topological magnon gap |
+| insulatingMagnet (6) | Chromium Tribromide (CrBr$_3$) | Same van der Waals ferromagnet family as CrI₃ — pairs with Niobium Diselenide in Kezilebieke et al., Nature 588, 424 (2020)'s topological-superconductor heterostructure, §5 |
+| insulatingMagnet (6) | Yttrium Iron Garnet (YIG, Y$_3$Fe$_5$O$_{12}$) | Ferrimagnetic (two antiparallel sublattices, unequal moment), with the lowest known magnon damping of any material — the real substrate nearly every magnon-transport/magnon-BEC experiment actually runs on; not from the course, added as `insulatingMagnet`'s magnonics flagship (its ~2.85 eV gap is a large part of why its magnons live so long, there being no conduction electrons for them to scatter off) |
+| metallicMagnet (6) | Iron Germanium Telluride (Fe$_3$GeTe$_2$) | The itinerant member of World 6's two-dimensional magnets — the same delocalized band electrons carry its current and its moment, unlike the insulating chromium trihalides above, and its strong uniaxial anisotropy is what lets a single sheet order; ionic gating pushes $T_c$ to roughly room temperature (Deng et al., Nature 2018); also spawns in World 9 rather than taking Iron and Cobalt's World 1 cross-list, since World 1 is the tutorial world and a magnon carrier there lands at double force on a starting Silicon; not from the course |
+| insulatingMagnet (6) | Iron Phosphorus Trisulfide (FePS$_3$) | The Ising member of the MPS₃ family (MnPS₃ Heisenberg-like, NiPS₃ XY-like) — session 6's anisotropic-exchange content made real, ordering antiferromagnetically near 118 K and staying ordered down to the monolayer, tracked there by a Raman mode that appears with the order (Lee et al., Nano Lett. 2016); not from the course |
+| metallicMagnet (9) | Manganese (Mn) | Elemental Mn's own complex itinerant antiferromagnetism is beside the point — it's the textbook itinerant local-moment magnet for this topic |
 | quantumSpinLiquid (7, textbook fill-in) | Strontium Copper Borate (SrCu$_2$(BO$_3$)$_2$) | Shastry–Sutherland lattice — exactly-solvable dimerized/entangled ground state, a standard tensor-network benchmark material and a textbook triplon host |
 | quantumSpinLiquid (7, textbook fill-in) | Thallium Copper Chloride (TlCuCl$_3$) | Quantum spin-dimer compound — another textbook triplon example |
 | quantumSpinLiquid (7) | Herbertsmithite | The one real compound session 7 itself names, motivating MPS/tensor-network methods (kagome local moments); a Z2-spin-liquid candidate, a genuine vison host |
@@ -479,8 +483,8 @@ pool.
 | kondoHeavyFermion (8, new type) | Ytterbium Rhodium Silicide (YbRh$_2$Si$_2$) | The flagship heavy-fermion/Kondo-lattice quantum-critical-point material — gives Kondo's own world a genuine Kondo-lattice compound, distinct from the frustrated-magnet spin-liquid candidates above |
 | kondoHeavyFermion (8) | Cerium Cobalt Indide (CeCoIn$_5$) | A second Kondo-lattice flagship — Ce 4f moments hybridize into ~100-electron-mass quasiparticles right next to an antiferromagnetic quantum critical point; its own T→0 ground state is actually a d-wave superconductor built from those heavy quasiparticles, but the Kondo-lattice physics is what defines the compound, so it stays `kondoHeavyFermion` rather than `superconductor`; not from the course |
 | kondoHeavyFermion (8, engineered, hybrid) | 1T-TaS$_2$ on 1H-TaS$_2$ | Engineered 2D Kondo-lattice heterostructure — the 1T phase's localized Mott moments (quantumSpinLiquid, above) proximity-couple to the 1H phase's itinerant electrons (superconductor, world 5), the same local-moment/itinerant-electron pairing that defines Kondo-lattice physics in YbRh₂Si₂/CeCoIn₅ above; §5 hybrid recipe result, fusing the two standalone phase entries, lives as a World 10 wild rather than a World 8 one |
-| multiferroic (6, new type) | Nickel Diiodide (NiI$_2$), monolayer | Type-II multiferroic from noncollinear/helimagnetic order down to the monolayer limit (Song et al., Nature 2022) — hosts genuine electromagnons, the type's flagship. Same session (classical magnetism/magnons) as classicalMagnet above, so it's a World 6 wild too rather than its own world |
-| multiferroic (6, new type, hybrid) | Twisted CrI₃ | §5 hybrid recipe (CrI₃ + CrI₃) — noncollinear moiré spin textures theoretically predicted (not yet confirmed) to induce magnetoelectric coupling; untwisted CrI₃ itself is only classicalMagnet |
+| multiferroic (6, new type) | Nickel Diiodide (NiI$_2$), monolayer | Type-II multiferroic from noncollinear/helimagnetic order down to the monolayer limit (Song et al., Nature 2022) — hosts genuine electromagnons, the type's flagship. Same session (classical magnetism/magnons) as the ordered magnets above, so it's a World 6 wild too rather than its own world |
+| multiferroic (6, new type, hybrid) | Twisted CrI₃ | §5 hybrid recipe (CrI₃ + CrI₃) — noncollinear moiré spin textures theoretically predicted (not yet confirmed) to induce magnetoelectric coupling; untwisted CrI₃ itself is only insulatingMagnet |
 | multiferroic (6, new type) | Bismuth Ferrite (BiFeO$_3$) | The flagship room-temperature single-phase multiferroic — large switchable polarization (from the Bi³⁺ lone pair) coexisting with G-type antiferromagnetic order carrying a spin cycloid, with electromagnons actually observed (not just predicted, unlike Twisted CrI₃ above); not from the course |
 | ferroelectric (new type) | Barium Titanate (BaTiO$_3$) | The textbook ferroelectric — its Ti⁴⁺ ion sits off-center below ~120°C, giving the lattice a spontaneous switchable polarization; no course topic covers ferroelectricity specifically, so like every other type without a session of its own it lives in World 9, which can host any type — also spawns in World 1, since spontaneous symmetry breaking covers a polarization order parameter just as much as a magnetic one (CLAUDE.md's ordinary-wild-encounters note) |
 | ferroelectric (new type) | Germanium Telluride (GeTe) | Robust room-temperature ferroelectric Rashba semiconductor — a stronger, more switchable ferroelectric than BaTiO₃'s own ~120°C transition, same type, also a World 9 wild |
@@ -528,8 +532,7 @@ typically share and `data/materials.ts`'s `crystal()` `variantOverride` param st
 individual compound's own where it differs (wurtzite GaN among the zinc-blende
 semiconductors, rhombohedral Bi₂Te₃ and BiFeO₃, monolayer CrI₃ among the bulk magnets) —
 a main type groups compounds by their physics, so it doesn't track their symmetry. The one
-habit that is not a lattice claim is `'spire'` (classicalMagnet, quantumSpinLiquid,
-kondoHeavyFermion): a body grown tall and terminated in a point is a *growth* habit, and so
+habit that is not a lattice claim is `'spire'` (quantumSpinLiquid, kondoHeavyFermion): a body grown tall and terminated in a point is a *growth* habit, and so
 sits over any lattice. See `art/crystals.ts`'s `drawSolidShape` and STYLE.md's "Crystal
 sprites" for what each one is drawn as.
 
@@ -537,7 +540,7 @@ sprites" for what each one is drawn as.
 above, every crystal built with `data/materials.ts`'s `crystal()` gets a small,
 deterministic per-compound hue/rotation/stretch/sparkle variation (`art/crystals.ts`'s
 `jitterFor`, keyed off the compound's own name) layered on top of its `TYPE_LOOK`
-silhouette/color, so e.g. Manganese Oxide and Nickel Oxide (both `classicalMagnet`-type spires)
+silhouette/color, so e.g. Manganese Oxide and Nickel Oxide (both `insulatingMagnet`-type cubes)
 read as individuals rather than one recolored shape reused twice. See STYLE.md's "Crystal
 sprites" section for the mechanism.
 
@@ -580,7 +583,7 @@ rival's own `rivalHpForWorld(world)`, unaffected by any transmutation — see §
 **Subtype combination flavor (real-compound tie-ins):** the same mechanic from §3
 (main type + subtype → new material) has ready real-world flavor text once crystals are
 named after compounds:
-- superconductor + classicalMagnet subtype → spin-triplet superconductor: Strontium Ruthenate
+- superconductor + magnetic subtype → spin-triplet superconductor: Strontium Ruthenate
   (Sr$_2$RuO$_4$, historic triplet-SC candidate) or twisted graphene trilayers (observed
   spin-triplet SC under applied field, per session 5).
 - superconductor + topological subtype → chernSuperconductor: same engineered platforms

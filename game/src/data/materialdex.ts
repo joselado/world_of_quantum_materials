@@ -112,8 +112,10 @@ const TYPE_FALLBACK_BLURBS: Record<MaterialType, string> = {
     'An ordinary gapped band compound whose gap is too wide to practically cross: no carriers go anywhere, and what is left to excite is the lattice itself.',
   semiconductor:
     'An ordinary gapped band compound with a narrow enough gap to dope or thermally excite carriers across: a single-particle picture, no symmetry breaking or topology involved.',
-  classicalMagnet:
-    'Its magnetic moments order (ferro- or antiferromagnetically), whether reached via a mean-field/Hubbard-U picture or a classical itinerant one; its low-energy excitations are spin waves, magnons.',
+  metallicMagnet:
+    'A magnet that also conducts: its moments order (ferro- or antiferromagnetically) on the same partially filled band that carries its current, so an ordinary band electron and a free-electron-gas plasmon travel alongside its spin waves, its magnons.',
+  insulatingMagnet:
+    'A magnet with a gap: its local moments order (ferro- or antiferromagnetically) through superexchange or a Hubbard-U picture, with no carriers underneath them, so its spin waves, its magnons, are the only excitation it has beyond the lattice itself.',
   quantumSpinLiquid:
     'Frustration keeps its spins from ever ordering, even at zero temperature; it stays in a highly entangled, fractionalized state instead, carrying spinons and (in a Z2 liquid) visons.',
   kondoHeavyFermion:

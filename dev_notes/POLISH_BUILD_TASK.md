@@ -306,12 +306,13 @@ reconciling onto a single `getQuestions(pool, count, visitedWorlds?)`.
 ### 17. Crystal habits still to reconcile with lattice
 
 The `spire` variant is a **growth** habit — a body grown tall and terminated —
-rather than a symmetry claim, so it sits over any lattice, and its three types
-(`classicalMagnet`, `quantumSpinLiquid`, `kondoHeavyFermion`) keep it. Per-member
-lattice overrides are available if a compound should state its own symmetry
-instead: Fe/Cr/NiO/MnO/EuO → cubic, Co → prism, MnF₂/YbRh₂Si₂/CeCoIn₅ →
-tetragonal, Ce₂Zr₂O₇ → cubic or octahedral, α-RuCl₃ → honeycomb, YbMgGaO₄ →
-triangular.
+rather than a symmetry claim, so it sits over any lattice, and its two types
+(`quantumSpinLiquid`, `kondoHeavyFermion`) keep it. The magnets already state
+their symmetry: both `metallicMagnet` and `insulatingMagnet` default to `cubic`
+(Fe/Cr/Mn/NiO/MnO/EuO/YIG), with Co → prism and MnF₂ → tetragonal per member.
+Per-member overrides are still available for the two spire types if a compound
+should state its own symmetry instead: YbRh₂Si₂/CeCoIn₅ → tetragonal, Ce₂Zr₂O₇ →
+cubic or octahedral, α-RuCl₃ → honeycomb, YbMgGaO₄ → triangular.
 
 Four assignments are habit-level approximations worth a second look: `semiconductor`
 → octahedral is solid for diamond/Si/Ge and weaker for grown III-V boules, which

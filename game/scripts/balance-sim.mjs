@@ -94,12 +94,12 @@
 //   This is a no-op for Silicon-locked B.Sc. (Tunnel Strike's fixed
 //   'electron' class stays hostable throughout), but matters for a
 //   transmuted M.Sc./Ph.D.: wearing a form with no 'electron' channel
-//   (insulator/classicalMagnet/quantumSpinLiquid/ferroelectric/multiferroic)
+//   (insulator/insulatingMagnet/quantumSpinLiquid/ferroelectric/multiferroic)
 //   makes Tunnel Strike unusable until it transmutes somewhere that hosts
 //   it again -- Phonon Beam-based Analytic/Ultimate moves stay usable
 //   regardless of form (their static class is 'phonon', hosted everywhere),
 //   and a class-specific shop move bought while wearing one form (e.g.
-//   Magnon Pulse, bought as a classicalMagnet) goes the same way: usable
+//   Magnon Pulse, bought as an insulatingMagnet) goes the same way: usable
 //   only while the current form still hosts that class.
 // - Each build maps to its own real in-game Settings difficulty tier
 //   (`tier` on each BUILDS entry -- 'bsc'/'msc'/'phd', data/settings.ts's

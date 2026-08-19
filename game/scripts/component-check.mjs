@@ -390,8 +390,8 @@ async function main() {
   // =====================================================================
   // Test 2: battle round-trip
   // =====================================================================
-  const WILD_TYPES = ['metal', 'insulator', 'semiconductor', 'classicalMagnet', 'superconductor', 'chernInsulator'];
-  const WILD_COLORS = [0x7a8a99, 0xb8c4cc, 0x5a7ca6, 0xc97a3a, 0x7fd1e8, 0xc9d94a];
+  const WILD_TYPES = ['metal', 'insulator', 'semiconductor', 'metallicMagnet', 'insulatingMagnet', 'superconductor', 'chernInsulator'];
+  const WILD_COLORS = [0x7a8a99, 0xb8c4cc, 0x5a7ca6, 0xc97a3a, 0x8f4a32, 0x7fd1e8, 0xc9d94a];
 
   async function resolveBattleLoop(label) {
     let rounds = 0;

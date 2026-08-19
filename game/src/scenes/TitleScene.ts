@@ -81,12 +81,13 @@ const TITLE_SKY = 0x0c1030;
 // -- reads as a shelf of specimens rather than a decorative cluster.
 const FAR_SHOWCASE: ShowcaseEntry[] = [
   { type: 'metal', size: 15, dx: -360, dy: 14, duration: 1300, delay: 0 },
-  { type: 'insulator', size: 15, dx: -257, dy: 20, duration: 1400, delay: 140 },
-  { type: 'semiconductor', size: 15, dx: -154, dy: 10, duration: 1250, delay: 260 },
-  { type: 'quantumSpinLiquid', size: 15, dx: -51, dy: 18, duration: 1500, delay: 60 },
-  { type: 'kondoHeavyFermion', size: 15, dx: 51, dy: 12, duration: 1350, delay: 200 },
-  { type: 'chernInsulator', size: 15, dx: 154, dy: 20, duration: 1200, delay: 100 },
-  { type: 'ferroelectric', size: 15, dx: 257, dy: 10, duration: 1450, delay: 40 },
+  { type: 'insulator', size: 15, dx: -270, dy: 20, duration: 1400, delay: 140 },
+  { type: 'semiconductor', size: 15, dx: -180, dy: 10, duration: 1250, delay: 260 },
+  { type: 'insulatingMagnet', size: 15, dx: -90, dy: 16, duration: 1350, delay: 320 },
+  { type: 'quantumSpinLiquid', size: 15, dx: 0, dy: 18, duration: 1500, delay: 60 },
+  { type: 'kondoHeavyFermion', size: 15, dx: 90, dy: 12, duration: 1350, delay: 200 },
+  { type: 'chernInsulator', size: 15, dx: 180, dy: 20, duration: 1200, delay: 100 },
+  { type: 'ferroelectric', size: 15, dx: 270, dy: 10, duration: 1450, delay: 40 },
   { type: 'multiferroic', size: 15, dx: 360, dy: 16, duration: 1300, delay: 220 },
 ];
 // Front row: fewer and nearer, so bigger than the back row -- and uniform
@@ -94,7 +95,7 @@ const FAR_SHOWCASE: ShowcaseEntry[] = [
 // so where the row's own bobbing brings two together the middle one passes in
 // front.
 const NEAR_SHOWCASE: ShowcaseEntry[] = [
-  { type: 'classicalMagnet', size: 32, dx: -280, dy: 58, duration: 1150, delay: 260 },
+  { type: 'metallicMagnet', size: 32, dx: -280, dy: 58, duration: 1150, delay: 260 },
   { type: 'superconductor', size: 32, dx: -140, dy: 54, duration: 1250, delay: 60 },
   { type: 'quantumSpinHall', size: 32, dx: 0, dy: 58, duration: 1100, delay: 0 },
   { type: 'chernSuperconductor', size: 32, dx: 140, dy: 54, duration: 1300, delay: 120 },

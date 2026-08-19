@@ -17,16 +17,16 @@ appear.
 
 | Crystal | Type |
 | --- | --- |
-| Chromium | Classical Magnet |
-| Cobalt | Classical Magnet |
-| Europium Oxide | Classical Magnet |
-| Iron | Classical Magnet |
-| Manganese Fluoride | Classical Magnet |
-| Nickel Oxide | Classical Magnet |
 | Barium Titanate | Ferroelectric |
 | Potassium Dihydrogen Phosphate | Ferroelectric |
+| Europium Oxide | Insulating Magnet |
+| Manganese Fluoride | Insulating Magnet |
+| Nickel Oxide | Insulating Magnet |
 | Graphene | Metal |
 | Titanium Diselenide | Metal |
+| Chromium | Metallic Magnet |
+| Cobalt | Metallic Magnet |
+| Iron | Metallic Magnet |
 | Aluminum | Superconductor |
 
 ### World 2: Symmetries, tight-binding band structure
@@ -79,14 +79,14 @@ appear.
 
 | Crystal | Type |
 | --- | --- |
-| Chromium Tribromide | Classical Magnet |
-| Chromium Triiodide | Classical Magnet |
-| Cobalt | Classical Magnet |
-| Fe₃GeTe₂ | Classical Magnet |
-| FePS₃ | Classical Magnet |
-| Iron | Classical Magnet |
-| Manganese Oxide | Classical Magnet |
-| Yttrium Iron Garnet | Classical Magnet |
+| Chromium Tribromide | Insulating Magnet |
+| Chromium Triiodide | Insulating Magnet |
+| FePS₃ | Insulating Magnet |
+| Manganese Oxide | Insulating Magnet |
+| Yttrium Iron Garnet | Insulating Magnet |
+| Cobalt | Metallic Magnet |
+| Fe₃GeTe₂ | Metallic Magnet |
+| Iron | Metallic Magnet |
 | Bismuth Ferrite | Multiferroic |
 | Monolayer NiI₂ | Multiferroic |
 
@@ -116,12 +116,12 @@ appear.
 | Crystal | Type |
 | --- | --- |
 | Fe(Te,Se) | Chern Superconductor |
-| Fe₃GeTe₂ | Classical Magnet |
-| Manganese | Classical Magnet |
 | Barium Titanate | Ferroelectric |
 | GeTe | Ferroelectric |
 | Hafnium Oxide | Ferroelectric |
 | Monolayer SnTe | Ferroelectric |
+| Fe₃GeTe₂ | Metallic Magnet |
+| Manganese | Metallic Magnet |
 | Niobium Diselenide | Superconductor |
 
 ### World 10: Machine learning for quantum materials
@@ -174,7 +174,7 @@ convention once it reshapes.
 | 3 | Polycrystalline Bismuth Telluride Golem | Quantum Spin Hall Insulator |
 | 4 | Polycrystalline Manganese Bismuth Telluride Golem | Chern Insulator |
 | 5 | Polycrystalline YBCO Golem | Superconductor |
-| 6 | Polycrystalline Iron Golem | Classical Magnet |
+| 6 | Polycrystalline Iron Golem | Metallic Magnet |
 | 7 | Polycrystalline Herbertsmithite Golem | Quantum Spin Liquid |
 | 8 | Polycrystalline Ruthenium Trichloride Golem | Quantum Spin Liquid |
 <!-- GENERATED:RIVALS_TABLE END -->

@@ -28,6 +28,9 @@ been removed and folded into `quantum_spin_hall`, which now covers every
 helical (time-reversal-protected) boundary state regardless of
 dimensionality -- 3D bulk (Bi2Te3), bulk-derived monolayer (Monolayer
 WTe2), and engineered heterostructure (HgTe/CdTe Quantum Well) alike.
+Classical magnetic order is two classes, split by conductivity the same way
+metal and insulator are split: metallic_magnet carries an electron and a
+plasmon alongside its magnon, insulating_magnet carries the magnon alone.
 
 --- QUASIPARTICLES (16) ---
 
@@ -47,12 +50,13 @@ heavy fermion  mass-renormalized conduction-electron/local-moment composite
 ferron         quantized excitation of the polarization order parameter
 vison          Z2 gauge-flux (vortex) excitation of a Z2 spin liquid
 
---- CLASSES (13) ---
+--- CLASSES (14) ---
 
 metal:                phonon, electron, plasmon                    # Aluminum, Graphene
 insulator:             phonon                                       # Magnesium Oxide -- phonon alone: no carriers for an electron/plasmon, no order for a collective mode
 semiconductor:         phonon, electron                             # Silicon
-classical_magnet:      phonon, magnon                               # Iron, Manganese Oxide
+metallic_magnet:       phonon, electron, magnon, plasmon            # Iron, Cobalt, Chromium -- magnetic order carried by the same delocalized band electrons that carry the current, so an ordinary electron and a free-electron-gas plasmon sit alongside the magnon
+insulating_magnet:     phonon, magnon                               # Nickel Oxide, Yttrium Iron Garnet -- ordered local moments with a gap: the magnon and the lattice, no carriers for an electron or a plasmon
 quantum_spin_liquid:   phonon, spinon, vison, triplon               # Herbertsmithite, Strontium Copper Borate (triplon), alpha-RuCl3 (vison)
 kondo_heavy_fermion:   phonon, electron, heavy fermion, spinon      # YbRh2Si2
 superconductor:        phonon, electron, Higgs                      # Aluminum, Lead, Niobium -- ordinary (non-topological) pairing only, no majorana here
@@ -73,5 +77,5 @@ Weyl semimetals (TaAs) were considered for their own class (chiral Fermi
 arcs, the chiral anomaly -- genuinely distinct 3D gapless physics, not a
 chern_insulator variant, which would wrongly conflate a gapped 2D phase with
 a gapless 3D semimetal) but dropped from the roster instead, to hold the
-class count at 14. Revisit if 3D Weyl/Dirac semimetal physics earns its own
+class count where it is. Revisit if 3D Weyl/Dirac semimetal physics earns its own
 world/topic later.

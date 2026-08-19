@@ -64,8 +64,9 @@ export type MoveClass =
   // class, spinon's topological-order companion.
   | 'vison'
   // Collective charge-density oscillation of a free electron gas -- Plasmon
-  // Pulse's class. Only 'metal' hosts it (a partially filled band is what
-  // lets a free electron gas support one at all).
+  // Pulse's class. Only the two conducting types host it, 'metal' and
+  // 'metallicMagnet' (a partially filled band is what lets a free electron
+  // gas support one at all).
   | 'plasmon'
   // Kondo's three moves (§5, World 8): Spin Screening, Charge Screening,
   // Symmetry Cloud -- self-buffs, not attacks. Each raises a 3-turn cloud
@@ -95,13 +96,19 @@ export type MaterialType =
   // partially-filled band to carry a plasmon; unlike 'insulator', the gap is
   // narrow enough for an ordinary band electron to still get through.
   | 'semiconductor'
-  // Magnetically ordered, magnon-carrying -- covers both the mean-field/
-  // Mott-Hubbard route into symmetry-broken order (NiO and Chromium in
-  // topic 1, MnO in topic 6) and the classical itinerant-ferromagnet route
-  // (Iron, Cobalt, CrI₃, all topic 6), since both are the same
-  // ordered-moment phase of matter with the same low-energy excitation,
-  // just reached via a different derivation.
-  | 'classicalMagnet'
+  // Magnetically ordered *and* conducting -- the itinerant magnets (Iron,
+  // Cobalt, Chromium), whose moments are carried by the same delocalized
+  // band electrons that carry the current. Splits from 'insulatingMagnet'
+  // exactly the way 'metal' splits from 'insulator': a partially filled band
+  // means an ordinary band electron and a free-electron-gas plasmon sit
+  // alongside the magnon.
+  | 'metallicMagnet'
+  // Magnetically ordered and gapped -- ordered local moments with no
+  // carriers (NiO, MnF₂, CrI₃, YIG), whether the order is reached through
+  // a Mott-Hubbard/mean-field picture or plain superexchange. Hosts the
+  // magnon and the lattice and nothing else: with no partially filled band
+  // there is neither an electron nor a plasmon to excite.
+  | 'insulatingMagnet'
   // Frustrated/fractionalized -- never orders, even at zero temperature.
   // Hosts both spinon (the fractionalized excitation itself) and vison (its
   // topological-order companion) and triplon (a dimerized/valence-bond
@@ -147,7 +154,7 @@ export type MaterialType =
   | 'fractionalChern'
   // Electric polarization order with no magnetic order at all -- hosts
   // 'ferron', the polarization order parameter's own quantized excitation,
-  // the non-magnetic analog of 'classicalMagnet''s magnon.
+  // the non-magnetic analog of a magnet's magnon.
   | 'ferroelectric'
   // Magnetically ordered *and* magnetoelectrically coupled -- hosts both an
   // ordinary magnon, 'ferron' (the polarization order's own excitation),

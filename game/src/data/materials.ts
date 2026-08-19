@@ -457,7 +457,8 @@ export const SHOP_MOVE_IDS = Object.keys(MOVES).filter(
 // Which quasiparticle classes a given main type can physically host --
 // Phonon Beam ('phonon') is on every list since every crystal has a
 // lattice, but e.g. Magnon Pulse only appears for types with actual
-// magnetic order ('classicalMagnet', 'multiferroic'), never for a plain band
+// magnetic order ('metallicMagnet', 'insulatingMagnet', 'multiferroic'),
+// never for a plain band
 // insulator/semiconductor like Silicon. This is what makes "Si doesn't have
 // magnons" a rule the game enforces, not just flavor text -- both the
 // battle move list (getBattleMoves) and Noether's shop filter through this.
@@ -488,7 +489,17 @@ const MOVE_COMPATIBILITY: Record<MaterialType, MoveClass[]> = {
   // insulator is the least quantum thing a player can wear or fight.
   insulator: ['phonon'],
   semiconductor: ['electron', 'phonon'],
-  classicalMagnet: ['magnon', 'phonon'],
+  // A conducting magnet: 'magnon' on top of 'metal''s own electron/phonon/
+  // plasmon baseline, since the same partially filled band that carries its
+  // current also supports a free-electron-gas plasmon. The widest row of any
+  // non-topological type, and the reason a metallic magnet is the hardest
+  // ordinary crystal to land a mismatch hit on.
+  metallicMagnet: ['electron', 'phonon', 'magnon', 'plasmon'],
+  // Ordered moments behind a gap: the magnon and the lattice. No partially
+  // filled band, so neither 'electron' nor 'plasmon' -- the same reason
+  // 'insulator' is the narrowest row in this table, one collective mode
+  // wider.
+  insulatingMagnet: ['magnon', 'phonon'],
   // Hosts spinon (the fractionalized excitation itself), vison (its
   // topological-order companion), and triplon (a dimer/valence-bond
   // quantum-paramagnet's own confined mode, grouped in here rather than a
@@ -840,7 +851,25 @@ export const TYPE_LOOK: Record<MaterialType, { color: number; variant: CrystalVa
   // Diamond structure and zinc blende: the tetrahedrally-bonded cubic family,
   // whose habit is the {111} octahedron.
   semiconductor: { color: 0x5a7ca6, variant: 'octahedral' },
-  classicalMagnet: { color: 0xc97a3a, variant: 'spire' },
+  // The iron orange-brown of World 6's own steppe, on the bcc/fcc cubic habit
+  // the elemental itinerant magnets share (hcp Cobalt and the van der Waals
+  // metals state their own through `variantOverride`).
+  metallicMagnet: { color: 0xc97a3a, variant: 'cubic' },
+  // The same magnetic hue darkened toward oxide rust, so the two magnet
+  // types read as one family split in two rather than as unrelated colors,
+  // and separated by *value* rather than hue alone -- `hueStep` rotates a
+  // family up to ±48° around the wheel at fixed value, so only a value gap
+  // survives a long roster on both sides. Physically apt besides: these are
+  // the dark oxides (NiO, MnO, YIG) rather than bright metal. 'cubic' for
+  // the rock-salt oxides and the garnet; rutile MnF₂ and the layered
+  // trihalides override it. This family's members pick their `hueStep` by
+  // what the real compound looks like rather than in roster order, since the
+  // step ladder happens to sweep exactly the range these minerals occupy:
+  // the negative steps land in red and wine (EuO's dark red, MnF₂'s genuine
+  // Mn²⁺ pink, CrI₃'s violet sheen) and the far positive ones in olive
+  // (CrBr₃ and MnO's green cast), leaving the rust base for YIG's own dark
+  // garnet brown.
+  insulatingMagnet: { color: 0x8f4a32, variant: 'cubic' },
   quantumSpinLiquid: { color: 0x5ad9c9, variant: 'spire' },
   // Deep amber/gold -- "heavy," dense, mass-renormalized carriers.
   kondoHeavyFermion: { color: 0xd9962a, variant: 'spire' },
@@ -881,7 +910,8 @@ const MATERIAL_TYPE_NAMES: Record<MaterialType, string> = {
   metal: 'Metal',
   insulator: 'Insulator',
   semiconductor: 'Semiconductor',
-  classicalMagnet: 'Classical Magnet',
+  metallicMagnet: 'Metallic Magnet',
+  insulatingMagnet: 'Insulating Magnet',
   quantumSpinLiquid: 'Quantum Spin Liquid',
   kondoHeavyFermion: 'Kondo Heavy Fermion',
   superconductor: 'Superconductor',
@@ -980,36 +1010,42 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // move is actually reachable by fighting/discovering a wild crystal, not
     // just buyable in the abstract.
     crystal('Graphene', 'metal', ['plasmonPulse', 'thermalFluctuation'], 0, 'layer'),
-    crystal('Nickel Oxide', 'classicalMagnet', ['thermalFluctuation', 'magneticField'], 0, undefined, 'NiO'),
+    crystal('Nickel Oxide', 'insulatingMagnet', ['thermalFluctuation', 'magneticField'], 1, undefined, 'NiO'),
     // Elemental Cr is an itinerant (metallic) antiferromagnet -- the SDW
     // mean-field/Stoner-criterion counterpart to NiO's Mott-insulating
     // picture above (Manganese Oxide, the same Mott-insulating family, is a
     // World 6 wild). Also HYBRID_RECIPES' magnetic-dopant parent for
     // Cr-doped (Bi,Sb)₂Te₃ (world 3's Bi₂Te₃ + this).
-    crystal('Chromium', 'classicalMagnet', ['thermalFluctuation', 'magneticField'], 1, undefined, 'Cr'),
-    // Same classicalMagnet SSB family as NiO/Chromium above, not a new
-    // type for this world -- Iron and Cobalt are itinerant ferromagnets,
-    // textbook mean-field-broken-symmetry examples in their own right, also
-    // spawning in World 6 (magnons) since a compound isn't pinned to a
-    // single world once more than one topic legitimately motivates it.
-    crystal('Iron', 'classicalMagnet', ['thermalFluctuation', 'magneticField'], 2, undefined, 'Fe'),
-    crystal('Cobalt', 'classicalMagnet', ['thermalFluctuation', 'magneticField'], 3, undefined, 'Co'),
+    crystal('Chromium', 'metallicMagnet', ['thermalFluctuation', 'magneticField'], 3, undefined, 'Cr'),
+    // Iron and Cobalt are itinerant ferromagnets, textbook
+    // mean-field-broken-symmetry examples in their own right and 'metallicMagnet'
+    // for the same reason Chromium above is: their moments ride the same
+    // partially filled band that carries their current. Both also spawn in
+    // World 6 (magnons), since a compound isn't pinned to a single world once
+    // more than one topic legitimately motivates it.
+    crystal('Iron', 'metallicMagnet', ['thermalFluctuation', 'magneticField'], 0, undefined, 'Fe'),
+    crystal('Cobalt', 'metallicMagnet', ['thermalFluctuation', 'magneticField'], 1, 'prism', 'Co'),
     // Europium oxide's half-filled Eu²⁺ 4f⁷ shell gives it well-isolated
     // localized moments coupled by (indirect) exchange -- the actual
     // material Weiss/mean-field theory's own Brillouin-function prediction
     // is classically tested against (its magnetization-vs-temperature curve
     // is a textbook mean-field-theory-vs-experiment figure), a genuinely
     // different mean-field derivation (localized-moment Weiss theory) from
-    // Iron/Cobalt's itinerant Stoner picture above, even though both land on
-    // the same classicalMagnet order.
-    crystal('Europium Oxide', 'classicalMagnet', ['thermalFluctuation', 'magneticField'], 4, undefined, 'EuO'),
+    // Iron/Cobalt's itinerant Stoner picture above, and a different type with
+    // it: stoichiometric EuO is a ferromagnetic semiconductor, gapped rather
+    // than metallic, so its ordered moments come with no carriers to make an
+    // electron or a plasmon out of. (Heavily doped EuO does go metallic, the
+    // compound's own famous metal-insulator transition; the game takes it in
+    // its stoichiometric form.)
+    crystal('Europium Oxide', 'insulatingMagnet', ['thermalFluctuation', 'magneticField'], 2, undefined, 'EuO'),
     // A simple ionic (ligand-mediated superexchange) local-moment
     // antiferromagnet, its own strong single-ion anisotropy making it the
     // real-material realization of the mean-field Ising antiferromagnet
-    // model -- a third distinct route to classicalMagnet order alongside
-    // NiO's Mott-insulating Hubbard-U picture and Chromium's itinerant SDW
-    // above.
-    crystal('Manganese Fluoride', 'classicalMagnet', ['thermalFluctuation', 'magneticField'], 5, undefined, 'MnF₂'),
+    // model -- a third distinct route to magnetic order alongside NiO's
+    // Mott-insulating Hubbard-U picture and Chromium's itinerant SDW above,
+    // and an insulating one: rutile MnF₂'s wide gap leaves the magnon as its
+    // only excitation beyond the lattice.
+    crystal('Manganese Fluoride', 'insulatingMagnet', ['thermalFluctuation', 'magneticField'], 4, 'tetragonal', 'MnF₂'),
     // Spontaneous symmetry breaking isn't only magnetic -- Barium Titanate's
     // off-center Ti⁴⁺ ion breaking inversion symmetry into a switchable
     // polarization is the same SSB physics this world teaches, just a
@@ -1194,45 +1230,47 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     crystal('Uranium Ditelluride', 'chernSuperconductor', ['decoherenceWave', 'higgsOscillation'], 0, undefined, 'UTe₂'),
   ],
   6: [
-    crystal('Iron', 'classicalMagnet', ['thermalFluctuation', 'magneticField'], 0, undefined, 'Fe'),
-    crystal('Cobalt', 'classicalMagnet', ['thermalFluctuation', 'magneticField'], 1, undefined, 'Co'),
+    crystal('Iron', 'metallicMagnet', ['thermalFluctuation', 'magneticField'], 0, undefined, 'Fe'),
+    crystal('Cobalt', 'metallicMagnet', ['thermalFluctuation', 'magneticField'], 1, 'prism', 'Co'),
     // Mott-insulating antiferromagnet -- its magnetism comes from localized
     // moments and Hubbard U rather than Iron/Cobalt's itinerant band picture
-    // above, but it's still ordinary (non-topological) magnon-carrying
-    // classicalMagnet order, the same family as this world's other members.
-    crystal('Manganese Oxide', 'classicalMagnet', ['thermalFluctuation', 'magneticField'], 2, undefined, 'MnO'),
-    crystal('Chromium Triiodide', 'classicalMagnet', ['thermalFluctuation', 'magneticField'], 3, 'layer', 'CrI₃'),
+    // above, and the Mott gap is exactly what makes it 'insulatingMagnet':
+    // ordinary magnon-carrying order with no carriers underneath it.
+    crystal('Manganese Oxide', 'insulatingMagnet', ['thermalFluctuation', 'magneticField'], 7, undefined, 'MnO'),
+    crystal('Chromium Triiodide', 'insulatingMagnet', ['thermalFluctuation', 'magneticField'], 6, 'layer', 'CrI₃'),
     // Same van der Waals ferromagnet family as Chromium Triiodide above, the
     // other half of the NbSe₂/CrBr₃ topological-superconductor recipe.
-    crystal('Chromium Tribromide', 'classicalMagnet', ['thermalFluctuation', 'magneticField'], 4, 'layer', 'CrBr₃'),
+    crystal('Chromium Tribromide', 'insulatingMagnet', ['thermalFluctuation', 'magneticField'], 5, 'layer', 'CrBr₃'),
     // The magnonics workhorse -- lowest known magnon damping of any material,
     // the substrate real spin-wave-transport/magnon-BEC experiments actually
     // run on. Ferrimagnetic (two antiparallel sublattices with unequal
-    // moment), but that's still magnon-carrying magnetic order, the same
-    // 'classicalMagnet' slot Iron/Cobalt's itinerant ferromagnetism fills.
-    crystal('Yttrium Iron Garnet', 'classicalMagnet', ['thermalFluctuation', 'magneticField'], 5, undefined, 'YIG'),
-    // The itinerant member of this world's 2D magnets: unlike the insulating
-    // chromium trihalides above, the same delocalized band electrons carry
-    // both its current and its moment, and its strong uniaxial anisotropy is
+    // moment), but that's still magnon-carrying magnetic order. Insulating
+    // magnetic order specifically -- YIG's ~2.85 eV gap is a large part of why
+    // its magnons live so long, since there are no conduction electrons for
+    // them to scatter off.
+    crystal('Yttrium Iron Garnet', 'insulatingMagnet', ['thermalFluctuation', 'magneticField'], 0, undefined, 'YIG'),
+    // The itinerant member of this world's 2D magnets, and the one
+    // 'metallicMagnet' among them: unlike the insulating chromium trihalides
+    // above, the same delocalized band electrons carry both its current and
+    // its moment, and its strong uniaxial anisotropy is
     // what lets a single sheet order at all against the Mermin-Wagner
     // argument. Ionic gating pushes its Curie temperature to about room
     // temperature (Deng et al., Nature 2018). Also spawns in World 9, whose
     // own pool is where a compound goes when a second world wants it and no
     // second session teaches it.
-    crystal('Fe₃GeTe₂', 'classicalMagnet', ['thermalFluctuation', 'magneticField'], 6, 'layer'),
+    crystal('Fe₃GeTe₂', 'metallicMagnet', ['thermalFluctuation', 'magneticField'], 2, 'layer'),
     // The Ising member of the MPS₃ family, ordering antiferromagnetically
     // near 118 K and staying ordered down to the monolayer, tracked there by
     // a Raman mode that appears with the order (Lee et al., Nano Lett. 2016).
     // Its single-ion anisotropy is what gaps its magnon spectrum, and what
     // separates it from MnPS₃'s Heisenberg and NiPS₃'s XY behavior in the
     // same chemical family.
-    crystal('FePS₃', 'classicalMagnet', ['thermalFluctuation', 'magneticField'], 7, 'layer'),
+    crystal('FePS₃', 'insulatingMagnet', ['thermalFluctuation', 'magneticField'], 3, 'layer'),
     // Type-II multiferroic from noncollinear/helimagnetic order down to the
     // monolayer limit (Song et al., Nature 2022) -- hosts genuine
     // electromagnons, 'multiferroic''s flagship. Same session (classical
-    // magnetism/magnons) as the classicalMagnet compounds above, just a
-    // distinct type once the noncollinear order starts coupling to electric
-    // polarization.
+    // magnetism/magnons) as the ordered magnets above, just a distinct type
+    // once the noncollinear order starts coupling to electric polarization.
     crystal('Monolayer NiI₂', 'multiferroic', ['electromagnonPulse', 'magneticField'], 1, 'layerTriangle'),
     // The flagship room-temperature single-phase multiferroic -- large
     // switchable polarization (Ti⁴⁺-analog off-centering, but from the Bi³⁺
@@ -1304,11 +1342,11 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
   9: [
     crystal('Fe(Te,Se)', 'chernSuperconductor', ['decoherenceWave', 'higgsOscillation'], 1, 'tetragonal'),
     crystal('Niobium Diselenide', 'superconductor', ['higgsOscillation', 'thermalFluctuation'], 2, 'prism', 'NbSe₂'),
-    // Elemental Mn's own complex itinerant antiferromagnetism (same
-    // "classicalMagnet" liberty already taken with Chromium) is beside the
-    // point here -- it's the textbook itinerant local-moment magnet for this
-    // topic.
-    crystal('Manganese', 'classicalMagnet', ['thermalFluctuation', 'magneticField'], 3, undefined, 'Mn'),
+    // Elemental Mn's own complex itinerant antiferromagnetism (the same
+    // liberty already taken with Chromium) is beside the point here -- it's
+    // the textbook itinerant local-moment magnet for this topic, and a metal,
+    // so 'metallicMagnet'.
+    crystal('Manganese', 'metallicMagnet', ['thermalFluctuation', 'magneticField'], 4, undefined, 'Mn'),
     // The textbook ferroelectric -- its Ti⁴⁺ ion sits off-center below
     // ~120°C, giving the lattice a spontaneous switchable polarization. No
     // course topic covers ferroelectricity specifically, so like every other
@@ -1331,7 +1369,7 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // magnetism is genuinely mean-field symmetry breaking too, but World 1 is
     // the tutorial world and a magnon carrier there lands at double force on a
     // starting Silicon, which no beginner can answer yet.
-    crystal('Fe₃GeTe₂', 'classicalMagnet', ['thermalFluctuation', 'magneticField'], 6, 'layer'),
+    crystal('Fe₃GeTe₂', 'metallicMagnet', ['thermalFluctuation', 'magneticField'], 2, 'layer'),
     // Ferroelectricity at the two-dimensional limit: a one-unit-cell SnTe
     // film polarizes in the plane of the sheet and stays polarized to about
     // 270 K, above bulk SnTe's own transition (Chang et al., Science 2016),
@@ -1411,7 +1449,8 @@ export const RIVAL_9_TYPES: MaterialType[] = [
   'metal',
   'quantumSpinHall',
   'superconductor',
-  'classicalMagnet',
+  'metallicMagnet',
+  'insulatingMagnet',
   'quantumSpinLiquid',
   'multiferroic',
   'chernInsulator',
@@ -1432,7 +1471,11 @@ export function rollRival9Type(): MaterialType {
 //   comment) -- the same host crystal defect physics can form in.
 // - superconductor: polycrystalline niobium -- the actual engineering
 //   superconductor (as Nb/NbTi) wound into MRI and accelerator magnets.
-// - classicalMagnet: polycrystalline manganese (world 9's own Mn wild).
+// - metallicMagnet: polycrystalline manganese (world 9's own Mn wild).
+// - insulatingMagnet: polycrystalline YIG -- sintered polycrystalline garnet
+//   ceramic is the form microwave ferrite devices (circulators, isolators)
+//   are actually made of, so the polycrystalline claim is the compound's
+//   ordinary industrial state rather than a degraded single crystal.
 // - quantumSpinLiquid: polycrystalline Ce₂Zr₂O₇ -- inelastic neutron
 //   scattering on this pyrochlore spin-liquid candidate was done on a
 //   polycrystalline powder sample.
@@ -1446,8 +1489,8 @@ export function rollRival9Type(): MaterialType {
 //   magnetic order is what makes it a Chern insulator, and that's the same
 //   order its neutron-powder-diffraction structure solve measured, so the
 //   polycrystalline claim and the type-defining physics agree.
-// Only ever looked up for RIVAL_9_TYPES' 7 members (the only types
-// rivalImpurityResonance below is ever called with) -- covers those 7 and no
+// Only ever looked up for RIVAL_9_TYPES' 8 members (the only types
+// rivalImpurityResonance below is ever called with) -- covers those 8 and no
 // others on purpose, rather than a full Record<MaterialType, string>, since
 // the other 6 MaterialType members can never reach this lookup and inventing
 // placeholder names for them would just be dead weight.
@@ -1455,7 +1498,8 @@ const RIVAL_9_NAMES: Partial<Record<MaterialType, string>> = {
   metal: 'Polycrystalline Silver Golem',
   quantumSpinHall: 'Polycrystalline Bismuth Telluride Golem',
   superconductor: 'Polycrystalline Niobium Golem',
-  classicalMagnet: 'Polycrystalline Manganese Golem',
+  metallicMagnet: 'Polycrystalline Manganese Golem',
+  insulatingMagnet: 'Polycrystalline Yttrium Iron Garnet Golem',
   quantumSpinLiquid: 'Polycrystalline Cerium Zirconate Pyrochlore Golem',
   multiferroic: 'Polycrystalline Bismuth Ferrite Golem',
   chernInsulator: 'Polycrystalline Manganese Bismuth Telluride Golem',
@@ -1475,10 +1519,14 @@ const RIVAL_9_TARNISH = 0x6e737a;
 // what its own taunt says out loud ("I borrow one, and it decides everything
 // about me"): an impurity/defect-bound resonance with no lattice of its own,
 // borrowing the crystal it forms inside (WORLDS.md section 6). A single
-// shared moveset cannot do that job, since three of the seven rollable types
-// (classicalMagnet, quantumSpinLiquid, multiferroic) have no band electron
-// to emit at all and only 'metal' hosts a plasmon; the second slot stays
-// 'thermalFluctuation' because 'phonon' is the one class every type hosts.
+// shared moveset cannot do that job, since three of the eight rollable types
+// (insulatingMagnet, quantumSpinLiquid, multiferroic) have no band electron
+// to emit at all and only 'metal'/'metallicMagnet' host a plasmon; the second
+// slot stays 'thermalFluctuation' because 'phonon' is the one class every type
+// hosts. The two magnets share Magnon Pulse, since the magnon is the signature
+// excitation of magnetic order either way -- what separates the hosts is what
+// they can absorb rather than what they throw, the metallic one having an
+// electron and a plasmon channel the insulating one lacks.
 //
 // These are the pristine excitations, not the GOLEM_MOVE_IDS decohered ones
 // every other golem carries: World 9's rival is the one thing on this road
@@ -1489,7 +1537,8 @@ const RIVAL_9_MOVES: Partial<Record<MaterialType, string>> = {
   metal: 'plasmonPulse',
   quantumSpinHall: 'helicalCurrent',
   superconductor: 'higgsOscillation',
-  classicalMagnet: 'magneticField',
+  metallicMagnet: 'magneticField',
+  insulatingMagnet: 'magneticField',
   quantumSpinLiquid: 'entanglementSwap',
   multiferroic: 'electromagnonPulse',
   chernInsulator: 'chiralCurrent',
@@ -1623,7 +1672,7 @@ export const WORLD_RIVALS: Partial<Record<number, Material>> = {
   // `blend()`s the type's orange-brown toward a neutral iron grey.
   6: crystal(
     'Polycrystalline Iron Golem',
-    'classicalMagnet',
+    'metallicMagnet',
     ['decoheredMagnon', 'thermalFluctuation'],
     0,
     undefined,

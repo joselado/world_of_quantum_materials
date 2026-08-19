@@ -503,7 +503,7 @@ game/src/
                                   existing `import { shopCost, ... } from '../data/materials'`
                                   call site is unaffected.
     materials.ts                 MOVES, TYPE_LOOK, materialTypeLabel() -- MaterialType's
-                                  player-facing name (e.g. 'classicalMagnet' -> "Classical
+                                  player-facing name (e.g. 'metallicMagnet' -> "Metallic
                                   Magnet"), read by Qumatex's type filter and by
                                   gen-docs.mjs so a raw camelCase identifier is never shown
                                   to a player, WORLD_CRYSTALS, WORLD_RIVALS,
@@ -1520,9 +1520,9 @@ second slot); every other world ignores the param and returns its fixed
 `WORLD_RIVALS[world]` entry. Because this rival is built by a function rather than declared
 as a `WORLD_RIVALS` row, `scripts/content-lint.mjs`'s "every opponent's moves must be
 hostable by its own type" check reaches it through those two tables instead: it holds both
-to covering exactly `RIVAL_9_TYPES` and holds each signature move to `MOVE_COMPATIBILITY`. `RIVAL_9_TYPES` (7 of the 13 `MaterialType` values -- metal,
-quantumSpinHall, superconductor, classicalMagnet, quantumSpinLiquid, multiferroic,
-chernInsulator) and `rollRival9Type()` (a uniform pick from it) live in `data/materials.ts`
+to covering exactly `RIVAL_9_TYPES` and holds each signature move to `MOVE_COMPATIBILITY`. `RIVAL_9_TYPES` (8 of the 14 `MaterialType` values -- metal,
+quantumSpinHall, superconductor, metallicMagnet, insulatingMagnet, quantumSpinLiquid,
+multiferroic, chernInsulator) and `rollRival9Type()` (a uniform pick from it) live in `data/materials.ts`
 too. `OverworldScene.resolveRival9Type()` is the one caller that actually rolls: it reads
 registry/save `rival9Type`, rolling and caching a fresh one via `rollRival9Type()` +
 `persistFromRegistry` the first time it's ever called for that save, so every later call

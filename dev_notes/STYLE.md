@@ -1139,9 +1139,9 @@ station motifs are deliberately not tunnels with a visible far end.
     enough to have no characteristic habit (HfO₂'s ferroelectric orthorhombic phase).
     Each solid is lit from the upper left, the same direction `addHighlightAndSparkles`
     puts its specular highlight.
-  - **`spire`** (`drawSpireShape`; classicalMagnet, quantumSpinLiquid, kondoHeavyFermion)
+  - **`spire`** (`drawSpireShape`; quantumSpinLiquid, kondoHeavyFermion)
     is the one entry that states a *growth* habit rather than a lattice symmetry -- a body
-    grown tall and brought to a point -- which is why it sits over those three types
+    grown tall and brought to a point -- which is why it sits over those two types
     regardless of their members' individual lattices. One prismatic body rises into a
     pointed termination: the silhouette is filled dark first and the facets painted into
     it, so the outline stays a single closed shape. It is **one body**, like every other
