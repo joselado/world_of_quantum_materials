@@ -31,7 +31,7 @@ export const STORY_BEATS: Partial<Record<number, string>> = {
 // to that generic line for a world with no entry here.
 export const WORLD_GOAL_TEXT: Partial<Record<number, string>> = {
   1: 'You reached the far edge of the fields. The branches still hold.',
-  2: 'You reached the far end of the colonnade. The lattice still repeats.',
+  2: 'You reached the end of the hall. The colonnade runs on past it, and the lattice still repeats.',
   3: 'You reached the last ledge. The seam still runs, unbroken.',
   4: 'You reached the last fork of the flats. The orbits still close.',
   5: 'You reached the far ice. The phase still holds.',
@@ -39,7 +39,7 @@ export const WORLD_GOAL_TEXT: Partial<Record<number, string>> = {
   7: 'You reached the end of the tensor lanes. The rungs still hold.',
   8: 'You reached the far bank. The resonance still holds.',
   9: 'You reached the far scars. The hole is still just a hole.',
-  10: "You reached the end of the corridor. It already knows you're here.",
+  10: "You reached the far edge of the shape it copied from you. It already knows you're here.",
 };
 
 // The arc's closing screen, shown by OverworldScene.showFinalePanel once the

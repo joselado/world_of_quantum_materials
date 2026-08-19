@@ -157,7 +157,7 @@ time, and between the grains there is glass." Beat it and the glass
 crystallizes, bay matching bay through the whole of the quartz, and a state
 can spread across all of it at once again.
 
-*You reached the far end of the colonnade. The lattice still repeats.*
+*You reached the end of the hall. The colonnade runs on past it, and the lattice still repeats.*
 
 ---
 
@@ -524,7 +524,7 @@ you. The thing in front of you mirrors what it took from *you*. "Every move
 you have ever landed, I have already survived once. This is not a fight you
 can win by trying harder. Trying harder is how you built me."
 
-*You reached the end of the corridor. It already knows you're here.*
+*You reached the far edge of the shape it copied from you. It already knows you're here.*
 
 ---
 
