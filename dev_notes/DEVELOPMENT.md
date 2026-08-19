@@ -664,6 +664,15 @@ describe the populated panels a playing player actually uses — Story Mode
 rather than Superposition on purpose, since Superposition strips the
 prices/unlock states the docs' captions talk about.
 
+A shot of a question panel (the five `encounters` shots, and `battle`'s own
+`battle-analytic-move`) draws its question at random from a pool, so the script
+retries the draw until it lands one that actually carries a typeset formula
+(`ui/mathtext.ts`) and keeps whatever the last try gave if none does. The
+compound and the panel are what those shots illustrate and what the docs'
+captions name, never the particular question, so this is the same
+reproducibility the rest of the framing rules aim at rather than a claim about
+which question a player will see.
+
 Framing rules baked in: a world is shot from the **middle of its corridor**,
 walked in with the game's own movement so the camera follows — from the
 entrance a world is mostly its own back-exit sign. A guardian panel whose pane

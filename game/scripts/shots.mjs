@@ -609,7 +609,33 @@ async function main() {
           const mod = await import('/src/data/materials.ts');
           const mat = mod.findMaterialByName?.(compound);
           if (!mat || typeof s['showEncounter'] !== 'function') return false;
-          s['showEncounter'](mat);
+          // The question is drawn at random from the compound's world pool, so
+          // which one a shot catches is otherwise pure luck. Prefer a draw whose
+          // question or answers actually carry a typeset formula (ui/mathtext.ts):
+          // the panel's own rendering is what these shots illustrate, and a draw
+          // that exercises it illustrates more of the panel than one that happens
+          // not to. Whatever the last draw produced stands if none of them does --
+          // plenty of real questions are prose-only.
+          // Two signals, either of which means this draw is typeset. A formula
+          // answer is an interactive container carrying its label's plain reading
+          // on a `text` property (a plain answer is a Text object). A formula
+          // prompt is a container of nothing but Text and Graphics -- the bobbing
+          // crystal is a container too, and its own sparkles are Text, but it
+          // always carries an Ellipse as well, which is what tells the two apart.
+          const typeset = () => {
+            const c = s['dialogueContainer'];
+            if (!c) return false;
+            return c.list.some((o) =>
+              o.type === 'Container' &&
+              (o.input
+                ? typeof o.text === 'string'
+                : (o.list || []).length > 0 && o.list.every((k) => k.type === 'Text' || k.type === 'Graphics'))
+            );
+          };
+          for (let draw = 0; draw < 30; draw++) {
+            s['showEncounter'](mat);
+            if (typeset()) break;
+          }
           return true;
         }, { compound, world });
         await sleep(800);
@@ -694,7 +720,26 @@ async function main() {
         const mod = await import('/src/data/materials.ts');
         const move = mod.MOVES?.['skyfallBeam'];
         if (!move || typeof b['showAnalyticQuestion'] !== 'function') return false;
-        b['showAnalyticQuestion'](move, () => {});
+        // Same preference the encounter shots use: the question is drawn at
+        // random, so favor a draw that actually exercises the formula
+        // typesetting this panel does (ui/mathtext.ts) rather than shooting
+        // whichever one luck supplies. The panel has no bobbing crystal, so a
+        // container of nothing but Text and Graphics is a typeset prompt and an
+        // interactive one carrying a `text` property is a typeset answer.
+        const panel = () => b.children.list.filter((o) => o.type === 'Container' && o.depth === 100).pop();
+        const typeset = (c) =>
+          !!c &&
+          c.list.some((o) =>
+            o.type === 'Container' &&
+            (o.input
+              ? typeof o.text === 'string'
+              : (o.list || []).length > 0 && o.list.every((k) => k.type === 'Text' || k.type === 'Graphics'))
+          );
+        for (let draw = 0; draw < 30; draw++) {
+          b['showAnalyticQuestion'](move, () => {});
+          if (typeset(panel())) break;
+          if (draw < 29) panel()?.destroy(true);
+        }
         return true;
       });
       await sleep(900);

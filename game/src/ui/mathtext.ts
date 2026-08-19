@@ -92,6 +92,14 @@ function mergeRuns(items: Node[]): Node[] {
 
 class MathParser {
   private i = 0;
+  // How many literal fences deep the cursor is, and whether it sits between a
+  // pair of `|` bars. A space inside either is part of the expression being
+  // fenced, not a place to break a line, so `⟨c_i c_j⟩` and `|r − r₀|` each
+  // wrap as a unit instead of splitting down the middle. Bars are tracked
+  // apart from brackets because the same glyph opens and closes them, and a
+  // Dirac `⟨ψ|H|ψ⟩` would otherwise read its own separators as fence closers.
+  private depth = 0;
+  private inBars = false;
   constructor(private readonly src: string) {}
 
   // The top level of a `$...$` span: content plus the spaces between it,
@@ -106,7 +114,7 @@ class MathParser {
       }
     };
     while (this.i < this.src.length) {
-      if (this.src[this.i] === ' ') {
+      if (this.src[this.i] === ' ' && this.depth === 0 && !this.inBars) {
         this.i += 1;
         flush();
         items.push({ t: 'space' });
@@ -212,6 +220,9 @@ class MathParser {
       }
     }
     this.i += 1;
+    if (c === '|') this.inBars = !this.inBars;
+    else if (c !== undefined && '([{⟨'.includes(c)) this.depth += 1;
+    else if (c !== undefined && ')]}⟩'.includes(c)) this.depth = Math.max(0, this.depth - 1);
     return { t: 'run', text: c ?? '', italic: c !== undefined && ITALIC_LETTER.test(c) };
   }
 
