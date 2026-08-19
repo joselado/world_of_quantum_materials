@@ -1239,16 +1239,21 @@ station motifs are deliberately not tunnels with a visible far end.
 - Any formula inside the question or an answer is typeset rather than spelled out --
   subscripts drop, superscripts rise, a square root gets a radical sign with a bar over its
   radicand, variables lean and function names stay upright (`ui/mathtext.ts`, CODEMAP.md's
-  "Formulas in question text"). An answer button carrying one draws its own plate in the same
-  `[ #222244 background / #ffff88 text ]` treatment rather than using a text background, so
-  it is indistinguishable from a plain answer button beside it.
+  "Formulas in question text"). A formula-bearing string is set whole in the typesetter's own
+  monospace stack, which covers the Greek the default face lacks; a string with no formula
+  stays on the game's default face, the usual math-in-its-own-face convention. An answer
+  button carrying a formula draws its own plate in the same `[ #222244 background / #ffff88
+  text ]` treatment rather than using a text background, so it sits beside a plain answer
+  button as an equal, differing only in that face.
 - At the largest text-size presets a long question and two long answers together outgrow the
-  canvas, so the panel splits in two rather than shrinking the text back down or spilling off
+  canvas, so the panel splits in two before it ever shrinks the text, and never spills off
   screen. `renderEncounterPage` measures three layouts and takes the first whose every page
   fits: everything on one page (what almost every encounter gets, and the only layout at the
   default text size); question on page 1, question repeated above the answers on page 2; or,
   for a question too long to share a page with the answers at all, question on page 1 and the
-  answers alone on page 2. The pages are joined by the same `'<- Prev'` / `'Page N/M'` /
+  answers alone on page 2. Shrinking is the last resort behind all three: when even the bare
+  split's prompt page overflows the canvas, the greeting and question shrink stepwise (floor
+  0.7 of the preset size) until the page fits. The pages are joined by the same `'<- Prev'` / `'Page N/M'` /
   `'Next ->'` row at +/-170 from centre that every paginated list uses
   (`renderPagedButtons`), with the unavailable arrow dimmed to `0.35`. The question and the
   shuffled answer order are drawn once when the encounter opens, so paging back and forth

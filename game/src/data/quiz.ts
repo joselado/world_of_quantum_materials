@@ -801,7 +801,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     // YBCO -- unconventional d-wave cuprate superconductor.
     {
-      prompt: "YBCO's d-wave gap $Δ(k) = Δ₀(cos k_x − cos k_y)$ vanishes exactly along...",
+      prompt: "YBCO's d-wave gap $Δ(k) = Δ_d(cos k_x − cos k_y)$ vanishes exactly along...",
       correct: 'The Brillouin-zone diagonals, $k_x = ±k_y$',
       incorrect: 'The zone-boundary edges, $k_x = ±π$',
     },
@@ -2282,9 +2282,9 @@ export const ML_LECTURE_QUESTIONS: MaterialQuestion[] = [
     incorrect: 'The classification accuracy on a labeled training set',
   },
   {
-    prompt: "The variational energy E[θ] of any trial state $|ψ_θ⟩$, compared to the true ground-state energy $E₀$, always satisfies...",
-    correct: '$E[θ] ≥ E₀$',
-    incorrect: '$E[θ] ≤ E₀$',
+    prompt: "The variational energy E[θ] of any trial state $|ψ_θ⟩$, compared to the true ground-state energy $E_gs$, always satisfies...",
+    correct: '$E[θ] ≥ E_gs$',
+    incorrect: '$E[θ] ≤ E_gs$',
   },
   {
     prompt: "Why is an NNQS's energy rewritten as a Monte Carlo average over configurations sampled from $|C_θ(s)|²$, rather than evaluated directly as the exact ratio $⟨ψ_θ|H|ψ_θ⟩/⟨ψ_θ|ψ_θ⟩$ in the spin-configuration basis?",
@@ -2426,9 +2426,9 @@ export const ANALYTIC_QUESTIONS: AnalyticQuestion[] = [
     worlds: [4],
   },
   {
-    prompt: "At zero temperature, the BCS gap Δ(0) relates to $T_c$ as...",
-    correct: '$Δ(0) ≈ 1.76 k_B T_c$',
-    incorrect: '$Δ(0) ≈ 0.5 k_B T_c$',
+    prompt: "At zero temperature, the BCS gap $Δ(T=0)$ relates to $T_c$ as...",
+    correct: '$Δ(T=0) ≈ 1.76 k_B T_c$',
+    incorrect: '$Δ(T=0) ≈ 0.5 k_B T_c$',
     worlds: [5],
   },
   {
@@ -2807,8 +2807,8 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   // -- World 6: classical magnetism, magnons, DM --
   {
     prompt: "Thermal magnons deplete a 3D ferromagnet's magnetization at low T as...",
-    correct: '$M(0) − M(T) ∝ T^(3/2)$: the Bloch law',
-    incorrect: '$M(0) − M(T) ∝ T²$',
+    correct: '$M(T=0) − M(T) ∝ T^(3/2)$: the Bloch law',
+    incorrect: '$M(T=0) − M(T) ∝ T²$',
   },
   {
     prompt: 'By the Mermin-Wagner theorem, a 2D Heisenberg ferromagnet with short-range interactions...',
@@ -2913,8 +2913,8 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   {
     prompt:
       'Training a neural-network quantum state by minimizing the variational energy $E[θ]=⟨ψ_θ|H|ψ_θ⟩/⟨ψ_θ|ψ_θ⟩$ guarantees that E[θ]...',
-    correct: 'Never undershoots the true ground-state energy $E₀$, hitting it exactly only if $|ψ_θ⟩$ reaches the true ground state',
-    incorrect: 'Can undershoot $E₀$ if the network is expressive enough, since gradient descent has no lower bound',
+    correct: 'Never undershoots the true ground-state energy $E_gs$, hitting it exactly only if $|ψ_θ⟩$ reaches the true ground state',
+    incorrect: 'Can undershoot $E_gs$ if the network is expressive enough, since gradient descent has no lower bound',
   },
   {
     prompt:

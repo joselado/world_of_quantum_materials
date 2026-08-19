@@ -5,8 +5,9 @@ import Phaser from 'phaser';
 // small math grammar is typeset properly -- subscripts drop, superscripts
 // rise, a square root gets a real radical sign with a bar over its radicand --
 // instead of being read as literal punctuation. Everything outside the
-// delimiters is ordinary prose and is laid out exactly like the surrounding
-// UI text.
+// delimiters is ordinary prose, laid out word by word like the surrounding UI
+// text but set in the same face as the math beside it (MATH_FONT_FAMILY
+// below), so every run on a line shares one baseline.
 //
 // The grammar is deliberately only as wide as the question data needs (see
 // data/quiz.ts): `_x`/`_{xy}` subscripts, `^x`/`^{xy}` superscripts, `√(...)`,
@@ -20,15 +21,27 @@ import Phaser from 'phaser';
 // check `hasMath()` and keep using a plain Phaser Text, so the overwhelming
 // majority of question text is untouched by this module.
 
+// Everything this module renders -- the math and the prose around it in the
+// same string -- is set in its own monospace stack rather than Phaser's
+// default 'Courier'. Courier has no Greek coverage on common platforms, so a
+// Δ or ξ would come from a per-glyph fallback face and sit hairline-thin
+// beside its own chunky Latin; every family in this stack covers Greek and
+// the angle brackets, ships a real oblique for the leaning variables, and
+// the generic tail keeps a machine with none of the named faces on a
+// consistent monospace. The whole string gets the face, not just the `$`
+// spans, because runs are top-aligned Text objects: two families on one line
+// would sit on two different baselines. Strings with no `$` never reach this
+// module and stay on the game's default face.
+const MATH_FONT_FAMILY = 'Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace';
+
 // A run's own text is drawn by a Phaser Text object; scripts are the same
 // object at a smaller size, offset from the base run's top edge. The offsets
 // are fractions of the size being scripted, so they hold at every
 // FONT_SCALE_PRESETS setting (ui/text.ts) rather than only at the default.
 // Scripts are set larger than the 0.7 of the text size real typesetting uses.
-// The game's font at the smallest text-size preset puts a prompt at 13px, and
-// a 0.7 script off that is 9px, which in a monospace fallback face is a blur
-// rather than a readable letter. The floor holds that line for any caller
-// smaller still.
+// The game's smallest text-size preset puts a prompt at 13px, and a 0.7
+// script off that is 9px, which in a monospace face is a blur rather than a
+// readable letter. The floor holds that line for any caller smaller still.
 const SCRIPT_RATIO = 0.8;
 const SCRIPT_MIN_PX = 10;
 const SUB_SHIFT = 0.36;
@@ -283,12 +296,20 @@ interface Box {
   draw(x: number, top: number): void;
 }
 
-// Measuring a run means building a Phaser Text and reading it back, which is
-// far and away the expensive part of this module -- and the panels that use
-// it re-render the same strings repeatedly while shrinking to fit
-// (BattleScene.renderQuestionPanel). Sizes are cached across every build for
-// the life of the page; the key set is bounded by the authored question text.
-const measureCache = new Map<string, { w: number; h: number }>();
+// Run widths are measured on a shared canvas context, which reports the
+// browser's real fractional advance. A Phaser Text's own `width` is its
+// canvas texture's width, rounded up to a whole pixel -- read run-by-run
+// that pads every run boundary, and a formula built from several runs comes
+// out visibly looser than the same characters in one Text. Heights still
+// come from a Phaser probe (a Text's height is Phaser's line height, not a
+// canvas metric), but only once per font, not per string. Both caches live
+// for the life of the page; the panels that use this module re-render the
+// same strings repeatedly while shrinking to fit
+// (BattleScene.renderQuestionPanel), and the key set is bounded by the
+// authored question text.
+let measureCtx: CanvasRenderingContext2D | null = null;
+const widthCache = new Map<string, number>();
+const heightCache = new Map<string, number>();
 
 export interface MathTextStyle {
   // Already scaled by the caller (ui/text.ts's fontScale), in px.
@@ -313,21 +334,40 @@ class Layout {
     const slant = italic ? 'italic' : '';
     const fontStyle = [slant, weight].filter(Boolean).join(' ');
     return {
+      fontFamily: MATH_FONT_FAMILY,
       fontSize: `${px}px`,
       color: this.style.color,
       ...(fontStyle ? { fontStyle } : {}),
     };
   }
 
+  // The same face, size and slant as a CSS font shorthand, for the canvas
+  // context to measure with. It must select exactly the font the Phaser Text
+  // will draw with, or the fractional widths describe a different face.
+  private font(px: number, italic: boolean) {
+    const weight = this.style.fontStyle ?? '';
+    const slant = italic ? 'italic' : '';
+    return [slant, weight, `${px}px`, MATH_FONT_FAMILY].filter(Boolean).join(' ');
+  }
+
   private measure(text: string, px: number, italic: boolean) {
-    const key = `${px}|${italic}|${this.style.fontStyle ?? ''}|${text}`;
-    const hit = measureCache.get(key);
-    if (hit) return hit;
-    const probe = this.scene.add.text(0, 0, text, this.textStyle(px, italic)).setVisible(false);
-    const size = { w: probe.width, h: probe.height };
-    probe.destroy();
-    measureCache.set(key, size);
-    return size;
+    const font = this.font(px, italic);
+    const widthKey = `${font}|${text}`;
+    let w = widthCache.get(widthKey);
+    if (w === undefined) {
+      if (!measureCtx) measureCtx = document.createElement('canvas').getContext('2d')!;
+      measureCtx.font = font;
+      w = measureCtx.measureText(text).width;
+      widthCache.set(widthKey, w);
+    }
+    let h = heightCache.get(font);
+    if (h === undefined) {
+      const probe = this.scene.add.text(0, 0, 'Mg', this.textStyle(px, italic)).setVisible(false);
+      h = probe.height;
+      probe.destroy();
+      heightCache.set(font, h);
+    }
+    return { w, h };
   }
 
   box(node: Node, px: number): Box {
@@ -517,7 +557,9 @@ export function stripMath(source: string): string {
 // (scenes/panels/feynman.ts) all typeset the same way rather than each
 // growing its own copy. Both fall straight through to the plain Phaser
 // object when the string carries no formula, which is the overwhelming
-// majority of question text.
+// majority of question text. The plain path keeps the game's default face;
+// MATH_FONT_FAMILY belongs only to strings that carry a formula, the usual
+// math-in-its-own-face convention.
 
 // A prompt line. Returns something with the `width`/`height` a panel stacks
 // its content by, positioned like a Text with setOrigin(0.5, 0).

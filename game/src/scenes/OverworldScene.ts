@@ -2214,6 +2214,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   //   'splitBare' as 'split', but page 2 carries the answers alone -- the
   //               fallback for a question so long it cannot share a page
   //               with them at all, one arrow press away from being re-read.
+  //               If even its prompt page overflows the canvas, the greeting
+  //               and prompt shrink stepwise (floor 0.7) until it fits.
   //
   // Measuring passes build the same layout minus the crystal art, which is
   // expensive to build and contributes a fixed offset rather than a measured
@@ -2234,7 +2236,12 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
 
     type Layout = 'single' | 'split' | 'splitBare';
 
-    const build = (layout: Layout, shownPage: number, withCrystal: boolean) => {
+    // `shrink` scales the greeting and prompt down when even 'splitBare'
+    // cannot fit the canvas -- its page 1 is nothing but the answer buttons,
+    // so a page that still overflows is the prompt page, and the prompt is
+    // what has to give (same safety valve BattleScene.renderQuestionPanel
+    // uses for its whole panel).
+    const build = (layout: Layout, shownPage: number, withCrystal: boolean, shrink = 1) => {
       const container = this.add.container(0, 0).setDepth(100);
       const split = layout !== 'single';
       // Page 1 of a split panel greets and asks; page 2 answers. An unsplit
@@ -2258,7 +2265,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
 
         const greeting = this.add
           .text(CANVAS_W / 2, y, encounterGreeting(material), {
-            fontSize: fontPx(this, 12),
+            fontSize: `${Math.round(12 * fontScale(this) * shrink)}px`,
             fontStyle: 'italic',
             color: '#cfd8ff',
             align: 'center',
@@ -2271,7 +2278,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
 
       if (question && showPrompt) {
         const prompt = makeQuestionText(this, CANVAS_W / 2, y, question.prompt, {
-          fontSizePx: 13 * fontScale(this),
+          fontSizePx: 13 * fontScale(this) * shrink,
           color: GOLD_ACCENT_HEX,
           wrapWidth: contentWidth,
         });
@@ -2345,18 +2352,27 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
 
     // First layout whose every page fits the canvas. 'splitBare' is the
     // floor rather than another candidate to fall past, since its page 2
-    // carries nothing but the answer buttons.
-    const fits = (layout: Layout) => {
+    // carries nothing but the answer buttons -- and when even its prompt
+    // page overflows (a very long question at the largest text preset), the
+    // greeting and prompt shrink in steps until it fits, down to a 0.7
+    // floor.
+    const fits = (layout: Layout, shrink = 1) => {
       const pages = layout === 'single' ? [0] : [0, 1];
-      const built = pages.map((p) => build(layout, p, false));
+      const built = pages.map((p) => build(layout, p, false, shrink));
       const ok = built.every((b) => b.bottom <= CANVAS_H);
       built.forEach((b) => b.container.destroy(true));
       return ok;
     };
-    const layout: Layout = (['single', 'split'] as Layout[]).find(fits) ?? 'splitBare';
+    const layout: Layout = (['single', 'split'] as Layout[]).find((l) => fits(l)) ?? 'splitBare';
+    let shrink = 1;
+    if (layout === 'splitBare') {
+      while (shrink > 0.7 && !fits('splitBare', shrink)) {
+        shrink = Math.round((shrink - 0.05) * 100) / 100;
+      }
+    }
     const shownPage = layout === 'single' ? 0 : Phaser.Math.Clamp(page, 0, 1);
 
-    this.dialogueContainer = build(layout, shownPage, true).container;
+    this.dialogueContainer = build(layout, shownPage, true, shrink).container;
   }
 
   addDialogueButton(container: Phaser.GameObjects.Container, y: number, label: string, onClick: () => void) {

@@ -2010,12 +2010,25 @@ script argument or a radicand, so an anticommutator `{c_i, c_j†}` keeps its br
 stay inline as `a / b`: a stacked fraction doubles a line's height, and these panels render
 at 12-13px inside a height budget where that is the scarce resource.
 
-Two rules keep it legible at the game's own sizes. Every glyph and rule is drawn on a whole
-pixel, since a Phaser Text is a canvas texture and a fractional offset resamples it -- and
-script offsets are fractions of a font size, so without rounding most of a formula would sit
-off the pixel grid while the prose around it sits on it. And scripts are set at 0.8 of their
-base with a 10px floor, rather than the 0.7 real typesetting uses: the smallest text-size
-preset puts a prompt at 13px, and a 0.7 script off that is 9px, which in this font is a blur
+Four rules keep it legible at the game's own sizes. Everything the module renders -- math
+and the prose around it in the same string -- is set in its own monospace stack
+(`MATH_FONT_FAMILY`: Menlo/Consolas/DejaVu Sans Mono/Liberation Mono, generic `monospace`
+tail), not the game's default `Courier`: Courier has no Greek coverage on common platforms,
+so a Δ or ξ would come from a per-glyph fallback face and sit hairline-thin beside its own
+chunky Latin, and every family in the stack covers Greek and the angle brackets and ships a
+real oblique for the leaning variables. The face applies to the whole formula-bearing string
+rather than just the `$` spans because runs are top-aligned `Text` objects, and two families
+on one line would sit on two different baselines; a string with no `$` never reaches the
+module and stays on the default face, the usual math-in-its-own-face convention. Run widths
+are measured on a shared canvas context (`ctx.measureText`), which reports the browser's
+real fractional advance -- a Phaser `Text`'s own `width` is its texture's width rounded up
+to a whole pixel, and read run-by-run that pads every run boundary until a formula built
+from several runs sits visibly looser than the same characters in one `Text`. Every glyph
+and rule is still drawn on a whole pixel, since a Phaser Text is a canvas texture and a
+fractional offset resamples it -- positions round per draw off the fractional running
+cursor, so the sub-pixel error never accumulates. And scripts are set at 0.8 of their base
+with a 10px floor, rather than the 0.7 real typesetting uses: the smallest text-size preset
+puts a prompt at 13px, and a 0.7 script off that is 9px, which in a monospace face is a blur
 rather than a letter.
 
 Two entry points, and both fall straight through to a plain Phaser `Text` when the string
