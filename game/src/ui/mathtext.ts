@@ -24,7 +24,13 @@ import Phaser from 'phaser';
 // object at a smaller size, offset from the base run's top edge. The offsets
 // are fractions of the size being scripted, so they hold at every
 // FONT_SCALE_PRESETS setting (ui/text.ts) rather than only at the default.
-const SCRIPT_RATIO = 0.72;
+// Scripts are set larger than the 0.7 of the text size real typesetting uses.
+// The game's font at the smallest text-size preset puts a prompt at 13px, and
+// a 0.7 script off that is 9px, which in a monospace fallback face is a blur
+// rather than a readable letter. The floor holds that line for any caller
+// smaller still.
+const SCRIPT_RATIO = 0.8;
+const SCRIPT_MIN_PX = 10;
 const SUB_SHIFT = 0.36;
 const SUP_SHIFT = 0.28;
 // Gap between the top of a radicand and the bar drawn over it, and the
@@ -334,8 +340,15 @@ class Layout {
           below: h,
           draw: (x, top) => {
             if (node.text === '') return;
+            // Whole pixels: a Phaser Text is a canvas texture, and drawing one
+            // at a fractional offset resamples every glyph in it. Script
+            // offsets and line tops are both fractions of a font size, so
+            // without this most of a formula would sit off the pixel grid
+            // while the prose around it sits on it.
             this.container.add(
-              this.scene.add.text(x, top, node.text, this.textStyle(px, node.italic)).setOrigin(0, 0)
+              this.scene.add
+                .text(Math.round(x), Math.round(top), node.text, this.textStyle(px, node.italic))
+                .setOrigin(0, 0)
             );
           },
         };
@@ -357,7 +370,7 @@ class Layout {
       }
       case 'script': {
         const base = this.box(node.base, px);
-        const scriptPx = Math.max(7, Math.round(px * SCRIPT_RATIO));
+        const scriptPx = Math.max(SCRIPT_MIN_PX, Math.round(px * SCRIPT_RATIO));
         const sub = node.sub ? this.box(node.sub, scriptPx) : null;
         const sup = node.sup ? this.box(node.sup, scriptPx) : null;
         const subDy = px * SUB_SHIFT;
@@ -375,9 +388,11 @@ class Layout {
       }
       case 'sqrt': {
         const inner = this.box(node.inner, px);
-        const signW = px * RADICAL_WIDTH;
-        const gap = px * RADICAL_GAP;
-        const lw = Math.max(1, Math.round(px / 11));
+        const signW = Math.round(px * RADICAL_WIDTH);
+        const gap = Math.round(px * RADICAL_GAP);
+        // Matched to the weight of the glyphs it sits beside -- a hairline
+        // radical reads as a stray mark next to 19px text.
+        const lw = Math.max(1, Math.round(px / 9));
         // A little air after the radicand so the bar does not stop flush
         // against the last glyph.
         const tail = Math.max(2, px * 0.12);
@@ -386,19 +401,23 @@ class Layout {
           above: inner.above + gap + lw,
           below: inner.below,
           draw: (x, top) => {
-            const barY = top - inner.above - gap;
-            const bottom = top + inner.below;
+            const x0 = Math.round(x);
+            const barY = Math.round(top - inner.above - gap);
+            const bottom = Math.round(top + inner.below);
             const g = this.scene.add.graphics();
             g.lineStyle(lw, Phaser.Display.Color.HexStringToColor(this.style.color).color, 1);
             g.beginPath();
-            g.moveTo(x, top + inner.below * 0.55);
-            g.lineTo(x + signW * 0.22, top + inner.below * 0.42);
-            g.lineTo(x + signW * 0.52, bottom);
-            g.lineTo(x + signW * 0.82, barY);
-            g.lineTo(x + signW + inner.width + tail, barY);
+            // The four strokes of a radical: a short entry tick, the deep
+            // descent to its point, the rise to the bar, and the bar itself
+            // over the whole radicand.
+            g.moveTo(x0, Math.round(top + inner.below * 0.52));
+            g.lineTo(x0 + Math.round(signW * 0.3), Math.round(top + inner.below * 0.42));
+            g.lineTo(x0 + Math.round(signW * 0.55), bottom);
+            g.lineTo(x0 + Math.round(signW * 0.85), barY);
+            g.lineTo(x0 + Math.round(signW + inner.width + tail), barY);
             g.strokePath();
             this.container.add(g);
-            inner.draw(x + signW, top);
+            inner.draw(x0 + signW, top);
           },
         };
       }
@@ -544,15 +563,20 @@ export function makeFormulaButton(
   onClick: () => void
 ): Phaser.GameObjects.Container {
   const content = makeMathText(scene, 0, 0, label, style);
-  const w = content.width + style.padX * 2;
-  const h = content.height + style.padY * 2;
-  content.setPosition(0, -h / 2 + style.padY);
+  const w = Math.round(content.width + style.padX * 2);
+  const h = Math.round(content.height + style.padY * 2);
+  content.setPosition(0, Math.round(-h / 2 + style.padY));
 
   const plate = scene.add.rectangle(0, 0, w, h, style.backgroundColor);
   const button = scene.add.container(x, y + h / 2, [plate, content]);
   button.setSize(w, h);
+  // The hit area is measured from the container's own top-left corner, not
+  // from its centre where its children are placed: Phaser offsets the local
+  // point it tests by the display origin before handing it to the callback.
+  // A rectangle spanning -w/2..w/2 therefore covers only the quarter of the
+  // button where the two ranges happen to overlap.
   button.setInteractive({
-    hitArea: new Phaser.Geom.Rectangle(-w / 2, -h / 2, w, h),
+    hitArea: new Phaser.Geom.Rectangle(0, 0, w, h),
     hitAreaCallback: Phaser.Geom.Rectangle.Contains,
     useHandCursor: true,
   });

@@ -2010,6 +2010,14 @@ script argument or a radicand, so an anticommutator `{c_i, c_j†}` keeps its br
 stay inline as `a / b`: a stacked fraction doubles a line's height, and these panels render
 at 12-13px inside a height budget where that is the scarce resource.
 
+Two rules keep it legible at the game's own sizes. Every glyph and rule is drawn on a whole
+pixel, since a Phaser Text is a canvas texture and a fractional offset resamples it -- and
+script offsets are fractions of a font size, so without rounding most of a formula would sit
+off the pixel grid while the prose around it sits on it. And scripts are set at 0.8 of their
+base with a 10px floor, rather than the 0.7 real typesetting uses: the smallest text-size
+preset puts a prompt at 13px, and a 0.7 script off that is 9px, which in this font is a blur
+rather than a letter.
+
 Two entry points, and both fall straight through to a plain Phaser `Text` when the string
 carries no `$` at all -- which is most question text, so most of it never touches this
 module:
@@ -2024,6 +2032,15 @@ module:
   explicit rectangular hit area; it also carries the label's plain reading on a `text`
   property, since both headless harnesses find a clickable by looking for an interactive
   object with a string `text`.
+
+  Two things about a container button are worth knowing before writing another one. Its hit
+  area is measured from the container's **top-left**, `Rectangle(0, 0, w, h)`, even though
+  its children are placed around its centre -- Phaser offsets the local point by the display
+  origin before testing it, so the `-w/2 .. w/2` rectangle the geometry suggests leaves only
+  the quarter where the two ranges overlap clickable, and nothing about that failure is
+  visible in a screenshot. And a hit area is not covered by `component-check`, which reaches
+  a button through `emit('pointerdown')` rather than a real pointer; proving one works means
+  clicking real screen coordinates across the button's whole rectangle.
 
 Every panel that asks a question goes through these: `OverworldScene.renderEncounterPage`,
 `BattleScene.renderQuestionPanel` (Landau's Analytic question and Sklodowska-Curie's
