@@ -197,6 +197,18 @@ from `game/` scores every question against all ten sessions and flags the ones w
 session does not rank first; run it after adding questions. Ask me when a topic looks like
 it genuinely spans two sessions.
 
+Every question also has to pass an ambiguity check, when it is written and again whenever it
+is edited. A question fails when some defensible but unstated convention makes the wrong
+option right, or makes the right option not uniquely right. The recurring ones to check
+against: an axis or basis choice (which axis an Ising model's spins lie along), a sign
+convention (the sign of `t` in a hopping Hamiltonian, electron vs hole), an unstated baseline
+for "larger" or "increases", an option that is right only in one regime, dimension, filling,
+spin or lattice, and a symbol that names two different things (λ as a Schmidt amplitude vs as
+a density-matrix eigenvalue). Fix it by writing the convention into the prompt (spell the
+Hamiltonian out), or better, by replacing the wrong option with one that is wrong under every
+convention. A prompt must also stand alone: questions are drawn one at a time at random, so
+"that same classification" or "inverting that decomposition" has nothing to point at.
+
 ## Development hierarchy
 What is written in CLAUDE.md overrides anything said anywhere else. If I give an instruction
 that seems contradictory to it, ask me how to proceed — that's the only case where you may

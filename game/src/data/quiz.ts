@@ -91,9 +91,9 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'The parity (inversion) operator',
     },
     {
-      prompt: 'The classic toy model for spontaneous symmetry breaking is the classical Ising ferromagnet. What are its two equally valid ground states?',
-      correct: 'All spins up, or all spins down',
-      incorrect: 'All spins along x, or along y',
+      prompt: 'The classic toy model for spontaneous symmetry breaking is the classical Ising ferromagnet, whose spins take only two values along a single axis. How are its two ground states related to each other?',
+      correct: "By flipping every spin at once, the model's global spin flip",
+      incorrect: 'By rotating every spin continuously, through any angle',
     },
     {
       prompt: 'Switching on a repulsive U across a finite honeycomb island of the Hubbard model does what to its spectrum?',
@@ -231,8 +231,8 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'The mirror (reflection) operator',
     },
     {
-      prompt: 'For a simple 1D tight-binding chain with hopping t, the band dispersion ε(φ) as a function of Bloch phase φ is...',
-      correct: 'ε(φ) = 2t cos(φ)',
+      prompt: 'For the 1D tight-binding chain $H = −t Σ_n (c_n†c_{n+1} + h.c.)$, the band dispersion as a function of Bloch phase φ is...',
+      correct: 'ε(φ) = −2t cos(φ)',
       incorrect: '$ε(φ) = tφ²$ (a parabola)',
     },
     {
@@ -704,7 +704,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     // is asked here.
     {
       prompt: 'Which platform first realized the quantum Hall effect?',
-      correct: 'Two-dimensional electron gases in semiconductor quantum wells, historically GaAs',
+      correct: 'Two-dimensional electron gases in semiconductor devices, first a silicon inversion layer and then GaAs heterostructures',
       incorrect: 'Bulk three-dimensional metals cooled to millikelvin temperatures',
     },
     {
@@ -883,7 +883,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'The Fourier expansion of a periodic lattice potential',
     },
     {
-      prompt: 'In that same angular-momentum classification, which channel is spin-triplet pairing?',
+      prompt: 'In the angular-momentum classification of the pairing gap, which of these two channels is spin-triplet?',
       correct: 'L = 1 (p-wave)',
       incorrect: 'L = 2 (d-wave)',
     },
@@ -1039,12 +1039,12 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'The charge-density-wave order parameter',
     },
     {
-      prompt: 'In mean-field Hubbard theory on a lattice with repulsive U, the self-consistent solution favors which order over ferromagnetism?',
-      correct: 'Antiferromagnetic order',
-      incorrect: 'Ferromagnetic order',
+      prompt: 'On a bipartite lattice at half filling, what magnetic order does the self-consistent mean-field solution of the repulsive Hubbard model settle into?',
+      correct: 'Antiferromagnetic order, the two sublattices pointing opposite ways',
+      incorrect: 'Ferromagnetic order, every site pointing the same way',
     },
     {
-      prompt: 'In the exactly-solved two-site Hubbard dimer, a toy model for Mott physics, the critical interaction $U_c$ above which magnetization turns on is...',
+      prompt: 'Solving the half-filled two-site Hubbard dimer self-consistently at mean-field level, the critical interaction $U_c$ above which its magnetization turns on is...',
       correct: '$U_c = 2t$',
       incorrect: '$U_c = 4t$',
     },
@@ -1323,8 +1323,8 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'A single very large bond dimension',
     },
     {
-      prompt: "The 1D Heisenberg chain's exact ground-state energy per site in the thermodynamic limit, from the Bethe ansatz, is...",
-      correct: '1/4 − ln 2 ≈ −0.443 J',
+      prompt: "The spin-1/2 1D Heisenberg antiferromagnetic chain's exact ground-state energy per site in the thermodynamic limit, from the Bethe ansatz, is...",
+      correct: 'J(1/4 − ln 2) ≈ −0.443 J',
       incorrect: '−1/4 J exactly',
     },
     // Y₂BaNiO₅ -- real gapped S=1 Haldane-chain antiferromagnet.
@@ -2049,7 +2049,7 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
       incorrect: '$γ_A = c·c†, γ_B = c† − c·c†$',
     },
     {
-      prompt: 'Inverting that decomposition, the ordinary electron operator c is recovered as...',
+      prompt: 'With $γ_A = c + c†$ and $γ_B = −i(c − c†)$, the ordinary electron operator c is recovered as...',
       correct: '$c = ½(γ_A + iγ_B)$',
       incorrect: '$c = ½(γ_A − iγ_B)$',
     },
@@ -2408,9 +2408,9 @@ export const ANALYTIC_QUESTIONS: AnalyticQuestion[] = [
     worlds: [2],
   },
   {
-    prompt: 'For a 1D tight-binding chain with hopping t, the band dispersion E(k) is proportional to...',
-    correct: '-2t cos(ka)',
-    incorrect: '-2t sin(ka)',
+    prompt: 'For the 1D tight-binding chain $H = −t Σ_n (c_n†c_{n+1} + h.c.)$, the band dispersion E(k) is proportional to...',
+    correct: '−2t cos(ka)',
+    incorrect: '−2t sin(ka)',
     worlds: [2],
   },
   {
@@ -2510,7 +2510,7 @@ export const ANALYTIC_QUESTIONS: AnalyticQuestion[] = [
     worlds: [7],
   },
   {
-    prompt: "The 1D Heisenberg chain's exact ground-state energy per site in the thermodynamic limit, from the Bethe ansatz, is...",
+    prompt: "The spin-1/2 1D Heisenberg antiferromagnetic chain's exact ground-state energy per site in the thermodynamic limit, from the Bethe ansatz, is...",
     correct: 'J(1/4 − ln 2) ≈ −0.443 J',
     incorrect: '−1/4 J exactly',
     worlds: [8],
@@ -2600,7 +2600,7 @@ export const ANALYTIC_QUESTIONS: AnalyticQuestion[] = [
     worlds: [7],
   },
   {
-    prompt: 'In terms of the Schmidt coefficients $λ_i$ of a bipartition, the entanglement entropy is...',
+    prompt: 'For a bipartition with Schmidt decomposition $|ψ⟩ = Σ_i λ_i |a_i⟩|b_i⟩$, the entanglement entropy is...',
     correct: '$S = −Σ_i λ_i² log λ_i²$',
     incorrect: '$S = −Σ_i λ_i log λ_i$',
     worlds: [7],
@@ -2724,9 +2724,9 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
     incorrect: '$T² = +1$: integer spin',
   },
   {
-    prompt: 'The 1D nearest-neighbor tight-binding chain $H = t Σ_n (c_n†c_{n+1} + h.c.)$ has Bloch dispersion...',
-    correct: '$ε_φ = 2t cos φ$, ranging over [−2t, 2t]',
-    incorrect: '$ε_φ = 4t cos φ$, ranging over [−4t, 4t]',
+    prompt: 'The 1D nearest-neighbor tight-binding chain $H = −t Σ_n (c_n†c_{n+1} + h.c.)$ has Bloch dispersion...',
+    correct: '$ε_φ = −2t cos φ$, ranging over [−2t, 2t]',
+    incorrect: '$ε_φ = −4t cos φ$, ranging over [−4t, 4t]',
   },
   {
     prompt: 'The effective mass tensor $(1/m*)ᵢⱼ = (1/ħ²) ∂²E/∂kᵢ∂kⱼ$, built from the curvature of the dispersion, matters because...',
@@ -2774,7 +2774,7 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
     incorrect: 'e* = m·e',
   },
   {
-    prompt: 'Exchanging two Laughlin quasiparticles at ν = 1/m produces the anyonic statistical phase...',
+    prompt: 'Exchanging two Laughlin quasiparticles at ν = 1/m, so each ends up where the other started, produces the anyonic statistical phase...',
     correct: 'θ = π/m',
     incorrect: 'θ = 2π/m',
   },

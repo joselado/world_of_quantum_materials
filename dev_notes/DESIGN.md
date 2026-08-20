@@ -1844,6 +1844,14 @@ configuration; see `dev_notes/DEVELOPMENT.md`.
   fought. `npm run quiz-topic-check` from `game/` scores every question against all
   ten sessions and flags the ones whose own session does not rank first; the rule
   itself is CLAUDE.md's "Quiz questions in short."
+- Every question is a two-option choice, so it also has to be unambiguous: no unstated
+  axis, sign, regime or symbol convention under which the wrong option becomes right,
+  and no prompt leaning on a neighboring entry ("that same classification"), since
+  questions are drawn one at a time at random. Where a convention is load-bearing, the
+  prompt writes it out — e.g. the tight-binding questions state
+  `H = −t Σ_n (c_n†c_{n+1} + h.c.)` rather than saying "with hopping t" and leaving the
+  sign of the dispersion to the reader. The checklist is CLAUDE.md's "Quiz questions in
+  short."
 
 ## 9. Current build status
 
