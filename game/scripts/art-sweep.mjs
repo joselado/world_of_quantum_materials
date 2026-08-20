@@ -336,9 +336,12 @@ async function sweepAvatars(page) {
 }
 
 // Every (move class x shape override x level) an effect can be cast with,
-// through both entry points: playAttackEffect (a real cast, depthOffset 0)
-// and playTargetEffect (a guardian panel's detail-pane preview, which is
-// what a positive depthOffset means -- art/attackFx.ts). The class list is
+// through all three entry points: playAttackEffect (a real cast, depthOffset
+// 0), and playFlightEffect/playTargetEffect (a guardian panel's detail-pane
+// preview, which is what a positive depthOffset means -- art/attackFx.ts;
+// which of the two a preview uses is decided by whether the shape's real
+// cast crosses the field, so both are swept over every shape here rather
+// than only over the ones a panel would really route to each). The class list is
 // the full MoveClass union rather than each move's own authored class,
 // because a tunable move carries whichever class the player retuned it to
 // (data/materials.ts's getTunedMoveClass), so any class can arrive at any
@@ -359,6 +362,7 @@ async function sweepEffects(page, batchSize, breakMode) {
         for (const shapeOverride of S.overrides) {
           for (const level of [0, 3]) {
             cases.push({ entry: 'playAttackEffect', moveClass, shapeOverride, level, depthOffset: 0 });
+            cases.push({ entry: 'playFlightEffect', moveClass, shapeOverride, level, depthOffset: 1000 });
             cases.push({ entry: 'playTargetEffect', moveClass, shapeOverride, level, depthOffset: 1000 });
           }
         }
@@ -373,8 +377,9 @@ async function sweepEffects(page, batchSize, breakMode) {
         for (const c of batch) {
           const shape = S.effects.resolveAttackShape(c.moveClass, c.shapeOverride);
           const isUltimate = shape === 'meteor' || shape === 'nova';
+          const flies = S.effects.travelsAcrossField(shape);
           const dur =
-            c.entry === 'playAttackEffect'
+            c.entry === 'playAttackEffect' || (c.entry === 'playFlightEffect' && flies)
               ? S.effects.attackEffectTotalDurationMs(shape, c.level)
               : S.effects.targetEffectTotalDurationMs(shape, c.level);
           waitMs = Math.max(waitMs, dur);
@@ -402,6 +407,11 @@ async function sweepEffects(page, batchSize, breakMode) {
                 c.depthOffset,
                 c.level
               );
+            } else if (c.entry === 'playFlightEffect') {
+              // No callback of its own: a preview never gates anything on
+              // the effect landing, and a non-travelling shape handed to
+              // this entry point falls through to playTargetEffect inside.
+              S.effects.playFlightEffect(S.scene, moveClass, from, to, c.shapeOverride, c.depthOffset, c.level);
             } else if (isUltimate) {
               expectedCallbacks++;
               S.effects.playTargetEffect(S.scene, moveClass, to, c.shapeOverride, () => {

@@ -3029,10 +3029,19 @@ world are shaped, since world N's start is world N-1's exit.
   on arrival, and dips the currently-playing
   music track's volume for the beat's duration (`audio/music.ts`'s `MusicEngine.duck`) so the
   hit reads clearly over the score before the music comes back up.
-- **Noether's/Kondo's/Landau's/Skłodowska-Curie's own detail panes loop this same real effect**
-  (`art/moveEffectPreview.ts`, "List+detail panels" above and "Landau in the overworld"/
-  "Skłodowska-Curie in the overworld" below) rather than a static icon, at a small
-  fixed local `from`/`to` span sized to the pane -- a detail pane has no crystals of its own to
+- **Noether's/Feynman's/Kondo's/Landau's/Skłodowska-Curie's own detail panes loop this same
+  real effect** (`art/moveEffectPreview.ts`, "List+detail panels" above and "Landau in the
+  overworld"/"Skłodowska-Curie in the overworld" below) rather than a static icon, on a
+  **preview stage**: the recessed, bordered block at the top of the pane, which the effect is
+  clipped to (`art/attackFx.ts`'s `setPreviewClip`) so a demonstration reads as playing on its
+  own little screen instead of spilling across the panel and the room behind it. A move whose
+  real cast crosses the field (`attackEffects.ts`'s `travelsAcrossField`) demonstrates that
+  whole beat there -- the caster's windup low on one side of the stage, the silhouette's
+  flight, the impact high on the other, on the battle's own low-left-to-high-right diagonal
+  flattened to the stage's proportions (`moveEffectPreview.ts`'s `FLIGHT_*` fractions). The
+  moves that summon themselves where they land (Landau's beam/eruption, Skłodowska-Curie's
+  meteor/nova) and Kondo's self-buffs, cast by a crystal on itself, have no crossing to show
+  and play on the single point the pane hands in. A detail pane has no crystals of its own to
   follow, and a fixed point is a perfectly good anchor, it just never moves. `playAttackEffect`'s own Graphics normally draw at depth 58-61 (tuned for
   `BattleScene`'s background); a guardian panel's own dialogue container sits at depth `100`
   (`OverworldScene.ts`/`HubScene.ts`'s `showXPanel` convention), which would otherwise draw over
@@ -3048,7 +3057,7 @@ world are shaped, since world N's start is world N-1's exit.
   score rather than emphasis on a hit.
   `moveEffectPreview.ts` tracks any number of independent, simultaneously-looping preview
   *chains* at once, each identified by its own caller-supplied string key (default `'default'`,
-  what every single-preview caller -- Noether, Kondo -- implicitly lands on, unaffected by this):
+  what every single-preview caller -- Noether, Feynman, Kondo -- implicitly lands on, unaffected by this):
   Landau's and Skłodowska-Curie's own two-column panels (below) are the one case with two
   chains genuinely running at once, one per move id, so retuning one column's own move never
   disturbs the other column's already-looping chain. `stopMoveEffectPreview()` with no key stops

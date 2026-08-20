@@ -1,5 +1,14 @@
 import Phaser from 'phaser';
-import { playTargetEffect, resolveAttackShape, targetEffectTotalDurationMs, cancelPreviewFx, type EffectAnchor } from './attackEffects';
+import {
+  playFlightEffect,
+  playTargetEffect,
+  resolveAttackShape,
+  travelsAcrossField,
+  attackEffectTotalDurationMs,
+  targetEffectTotalDurationMs,
+  cancelPreviewFx,
+  type EffectAnchor,
+} from './attackEffects';
 import { setPreviewClip, clearPreviewClip, type PreviewClipRect } from './attackFx';
 export type { PreviewClipRect };
 import type { AttackShape } from '../audio/sfx';
@@ -15,16 +24,23 @@ import type { MoveLevel } from '../data/materials';
 // kondo.ts, landau.ts, sklodowskaCurie.ts, via scenes/panels/listDetail.ts's
 // renderMoveDetailHeader/renderSelfBuffMoveDetailHeader).
 //
-// A caller supplies one point (`at`) -- the centre of its own pane -- and the
-// preview plays the *target's* half of the beat there (attackEffects.ts's
-// playTargetEffect: what the move does where it lands, with the attacker's
-// windup and its flight across the field dropped), plus whichever class/shape
-// override that move actually plays with in a real fight (Landau's/Curie's
-// ANALYTIC_SHAPES/ULTIMATE_SHAPES overrides, resolved by the caller the same
-// way BattleScene itself does) and, optionally, the player's own current
-// Feynman level for that move (`getMoveLevel`) so the preview escalates into
-// the same multi-trigger, growing-size cascade a real leveled cast plays
-// instead of always showing the flat unleveled loop.
+// A move whose real cast crosses the field (attackEffects.ts's
+// `travelsAcrossField` -- everything but the four that summon themselves
+// where they land and Kondo's self-buffs) demonstrates that whole flight:
+// the caster's windup on one side of the stage, the silhouette's travel, the
+// impact on the other side (attackEffects.ts's playFlightEffect), laid out
+// across the caller's own `clip` rectangle by FLIGHT_* below. The rest play
+// on the single point the caller supplies (`at`, normally the centre of its
+// own pane) -- a summon arrives there on its own, and a self-buff is cast on
+// the crystal standing there (attackEffects.ts's playTargetEffect).
+//
+// Either way the preview uses whichever class/shape override that move
+// actually plays with in a real fight (Landau's/Curie's ANALYTIC_SHAPES/
+// ULTIMATE_SHAPES overrides, resolved by the caller the same way BattleScene
+// itself does) and, optionally, the player's own current Feynman level for
+// that move (`getMoveLevel`) so the preview escalates into the same
+// multi-trigger, growing-size cascade a real leveled cast plays instead of
+// always showing the flat unleveled loop.
 //
 // The real effect's own Graphics render at depth 58-61 (tuned for
 // BattleScene's own background) -- well below a dialogue panel's own
@@ -62,10 +78,37 @@ function loopPauseMs(playedMs: number): number {
   return Math.max(LOOP_PAUSE_MIN_MS, Math.min(LOOP_PAUSE_MAX_MS, Math.round(playedMs * LOOP_PAUSE_FRACTION)));
 }
 
+// Where the caster and the target stand on a preview stage, as fractions of
+// the stage's own rectangle -- a battle's own low-left-to-high-right
+// diagonal (BattleScene's PLAYER_POS -> OPPONENT_POS), flattened to the
+// slope a stage a few hundred pixels wide by one hundred tall can hold. The
+// margins left around both ends are what keeps the windup flash and the
+// landing shockwave inside the stage rather than half-clipped at its edges,
+// and the line sits low enough that a shape's up-bowed arc clears the top
+// while the one shape that sags below its line (mass) still lands on the
+// stage. A move at one of Feynman's levels does reach the frame: its last
+// repeat draws at several times normal size, more than a stage this size can
+// hold whatever the layout -- the same as an Ultimate's own whiteout impact,
+// which the stage has always clipped.
+const FLIGHT_FROM_X = 0.18;
+const FLIGHT_TO_X = 0.78;
+const FLIGHT_FROM_Y = 0.68;
+const FLIGHT_TO_Y = 0.44;
+
+function flightAnchors(clip: PreviewClipRect): { from: EffectAnchor; to: EffectAnchor } {
+  return {
+    from: { x: clip.x + clip.width * FLIGHT_FROM_X, y: clip.y + clip.height * FLIGHT_FROM_Y },
+    to: { x: clip.x + clip.width * FLIGHT_TO_X, y: clip.y + clip.height * FLIGHT_TO_Y },
+  };
+}
+
 export interface MoveEffectPreviewParams {
   scene: Phaser.Scene;
   moveClass: MoveClass;
-  // Where the effect lands -- the centre of the caller's own preview stage.
+  // Where a move that arrives on one point plays -- normally the centre of
+  // the caller's own preview stage, or the crystal a self-buff is cast on. A
+  // move that crosses the field ignores this and lays its own caster and
+  // target points out across `clip` instead.
   at: EffectAnchor;
   // The stage the effect is confined to, in canvas coordinates -- normally
   // the pane's own stage block, which the caller has already laid out and
@@ -148,27 +191,29 @@ export function startMoveEffectPreview(params: MoveEffectPreviewParams, key: str
 function playNext(key: string, myGen: number) {
   const chain = chains.get(key);
   if (!chain || myGen !== chain.generation) return;
-  const { scene, moveClass, at, shapeOverride, level } = chain.current;
+  const { scene, moveClass, at, clip, shapeOverride, level } = chain.current;
   const shape = resolveAttackShape(moveClass, shapeOverride);
   const isUltimate = shape === 'meteor' || shape === 'nova';
+  const flight = travelsAcrossField(shape) ? flightAnchors(clip) : null;
 
   // Fires once this play has fully settled (Ultimate's own onComplete for
   // meteor/nova -- already correct for any level, since only the last of a
   // leveled cascade's repeats is ever wired to it, see
-  // attackEffects.ts's playUltimateRepeats -- or a timed proxy off
-  // targetEffectTotalDurationMs for every other shape, since
-  // playTargetEffect never calls onComplete for those) -- schedules the next
-  // cycle after a short pause, re-reading this chain's own `current` fresh
+  // attackEffects.ts's playUltimateRepeats -- or a timed proxy off this
+  // play's own total duration for every other shape, since neither
+  // playFlightEffect nor playTargetEffect calls back for those) -- schedules
+  // the next cycle after a short pause, re-reading this chain's own `current` fresh
   // rather than closing over these params, so a preview retarget mid-flight
   // takes effect on the very next cycle instead of being silently dropped.
-  const playedMs = targetEffectTotalDurationMs(shape, level ?? 0);
+  const playedMs = flight ? attackEffectTotalDurationMs(shape, level ?? 0) : targetEffectTotalDurationMs(shape, level ?? 0);
   const afterSettled = () => {
     const c = chains.get(key);
     if (!c || myGen !== c.generation) return;
     c.pendingTimer = scene.time.delayedCall(loopPauseMs(playedMs), () => playNext(key, myGen));
   };
 
-  playTargetEffect(scene, moveClass, at, shapeOverride, isUltimate ? afterSettled : undefined, chain.depthOffset, level ?? 0);
+  if (flight) playFlightEffect(scene, moveClass, flight.from, flight.to, shapeOverride, chain.depthOffset, level ?? 0);
+  else playTargetEffect(scene, moveClass, at, shapeOverride, isUltimate ? afterSettled : undefined, chain.depthOffset, level ?? 0);
 
   if (!isUltimate) {
     chain.pendingTimer = scene.time.delayedCall(playedMs, afterSettled);

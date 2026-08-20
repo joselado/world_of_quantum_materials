@@ -296,10 +296,13 @@ at random out of the whole roster (`allCrystals()`) and feeds it straight to
   two-parent hybrid render path is swept too), with and without the
   per-compound `seed`/`hybrid` options.
 - The ten per-guardian avatar builders in `art/`.
-- `art/attackEffects.ts`'s `playAttackEffect` (a real cast) and
-  `playTargetEffect` (a guardian panel's looping detail-pane preview, which
-  is what a positive `depthOffset` means) over every `MoveClass` x every
-  per-move-id shape override x move levels 0 and 3. The class list is the
+- `art/attackEffects.ts`'s `playAttackEffect` (a real cast) and both preview
+  entry points, `playFlightEffect`/`playTargetEffect` (a guardian panel's
+  looping detail-pane preview, which is what a positive `depthOffset` means),
+  over every `MoveClass` x every per-move-id shape override x move levels 0
+  and 3. Both preview entry points are swept over every shape rather than
+  only the ones a panel really routes to each, so the fallback inside
+  `playFlightEffect` is covered too. The class list is the
   full union rather than each move's own authored class because a tunable
   move carries whichever class the player retuned it to, so any class can
   reach any move's override.

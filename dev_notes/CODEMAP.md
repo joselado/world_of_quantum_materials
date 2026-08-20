@@ -328,14 +328,20 @@ game/src/
                                   Its own `depthOffset` param (default 0, every BattleScene call site
                                   unaffected) shifts every Graphics object it creates by a fixed
                                   amount -- moveEffectPreview.ts (below) is the one caller that
-                                  passes a nonzero value. playTargetEffect() is the same engine's
-                                  preview half: the *target's* share of the beat alone, centered on
-                                  one point -- meteor/nova and beam/eruption play their own full
-                                  sequences (they summon themselves at the target anyway, just
-                                  without the windup), the shapes that keep their identity standing
-                                  still (its PREVIEW_CENTERED set: ring/buffring, swell, vortex,
-                                  flip) play centred on the point, and every travel-only shape is
-                                  left with its enlarged impact shockwave. Ordinary shapes dispatch
+                                  passes a nonzero value. playFlightEffect()/playTargetEffect() are the same
+                                  engine's two preview entry points, picked between by
+                                  travelsAcrossField(shape) (also exported): a move whose real cast
+                                  crosses the field plays its whole windup->travel->impact beat
+                                  through playFlightEffect, from and to wherever the caller puts the
+                                  two ends, with the real cast's music duck left out. Everything
+                                  else -- beam/eruption and meteor/nova, which summon themselves
+                                  where they land, and buffring, cast by a crystal on itself --
+                                  goes through playTargetEffect, centered on one point: those play
+                                  their own full sequences (just without the windup), the shapes
+                                  that keep their identity standing still (its PREVIEW_CENTERED set:
+                                  ring/buffring, swell, vortex, flip) play centred on the point, and
+                                  a travel-only shape reaching it is left with its enlarged impact
+                                  shockwave. Ordinary shapes dispatch
                                   through one SHAPE_PLAY registry (Record<shape, play fn>) shared
                                   by real casts and previews, so a new silhouette is one registry
                                   entry rather than a parallel if/else chain. resolveAttackShape()/attackEffectDurationMs()/
@@ -369,14 +375,19 @@ game/src/
                                   summon->charge->impact->aftermath phase functions,
                                   METEOR_TOTAL_MS/NOVA_TOTAL_MS
     moveEffectPreview.ts         startMoveEffectPreview(params, key?)/stopMoveEffectPreview(key?) --
-                                  loops playTargetEffect (above) inside a guardian panel's detail
-                                  pane (Noether's Moves section, Kondo's self-buff step, Landau's/
+                                  loops a move's real battle effect (above) inside a guardian panel's
+                                  detail pane (Noether's Moves section, Feynman's leveling pane,
+                                  Kondo's self-buff step, Landau's/
                                   Skłodowska-Curie's own two-column panels, scenes/panels/noether.ts,
-                                  kondo.ts, landau.ts, sklodowskaCurie.ts's own
+                                  feynman.ts, kondo.ts, landau.ts, sklodowskaCurie.ts's own
                                   renderMoveDetailHeader/renderSelfBuffMoveDetailHeader calls,
-                                  scenes/panels/listDetail.ts) rather than a static icon. A caller
-                                  passes one point (`params.at`, its own pane's centre) and gets the
-                                  target's half of the beat landing there. Plays at a
+                                  scenes/panels/listDetail.ts) rather than a static icon. A move that
+                                  crosses the field demonstrates that whole flight, its caster and
+                                  target laid out across `params.clip` by this module's own FLIGHT_*
+                                  fractions (the battle's low-left-to-high-right diagonal, flattened
+                                  to a stage's proportions); one that arrives on a single point plays
+                                  on `params.at`, the caller's own pane centre or the crystal a
+                                  self-buff is cast on. Plays at a
                                   PREVIEW_DEPTH_OFFSET pushing the effect's Graphics (normally
                                   depth 58-61) above a dialogue panel's own container (depth 100) so
                                   it draws on top of the pane instead of underneath it -- that same
@@ -389,8 +400,8 @@ game/src/
                                   chain plays inside, re-declared on every start/retarget so the clip
                                   follows its stage; the caller (listDetail.ts's drawPreviewStage)
                                   hands in the same rect it drew the stage frame from. `params.level`
-                                  (Feynman's MoveLevel) is forwarded straight into playTargetEffect's
-                                  own `level`, so a leveled move's preview escalates the same way a
+                                  (Feynman's MoveLevel) is forwarded straight into the play's own
+                                  `level`, so a leveled move's preview escalates the same way a
                                   real cast does. Tracks any number of independent, simultaneously-
                                   looping preview *chains* in a `Map<string, PreviewChain>` keyed by
                                   `key` (default `'default'`, what every single-preview caller --
@@ -664,7 +675,8 @@ from checking, so an unassigned one reads as `undefined` at runtime with no diag
 sweep") is the one script that imports `src/` modules for real rather than parsing them:
 it drives the running dev build in headless Chrome and calls every art builder
 (`makeBossCrystal`, `makeCrystal`, the `make<Name>Avatar` set, `playAttackEffect`/
-`playTargetEffect`) over every input the data tables admit, asserting no throw. It exists
+`playFlightEffect`/`playTargetEffect`) over every input the data tables admit, asserting no
+throw. It exists
 because `BattleScene.transmuteAdapted` is the only runtime path that feeds a randomly
 picked `Material` into an art builder, so any input a builder can't handle surfaces at
 World 10's Adapted and nowhere else.
@@ -2459,7 +2471,8 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   (`scene.playerMaterial`, same `makeCrystal` call/ground-shadow-ellipse convention as
   Franklin's own crystal block, `art/franklin.ts`) standing in the block with the move's
   `'screening'`-class single-wavefront `'buffring'` effect looping centered on it (`art/moveEffectPreview.ts`'s
-  `startMoveEffectPreview`, called with an identical `from`/`to` point -- which works because
+  `startMoveEffectPreview`, whose `travelsAcrossField` check keeps a `'buffring'` preview on the
+  one point it is given rather than flying it across the stage -- which works because
   `art/attackShapes.ts`'s `playRing` collapses its own `Phaser.Math.Linear(from, to, 0.12)`
   origin to that single point when `from` equals `to`, the same call `resolveSelfBuff` makes
   for a real cast, there passing the caster's own anchor twice). Below that: the move's own `description`

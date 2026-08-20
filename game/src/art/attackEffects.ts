@@ -111,9 +111,22 @@ const IMPACT_EMPHASIS: Partial<Record<AttackShape, number>> = { lattice: 0.7, ma
 // point (from === to), the silhouette still reads -- a wavefront expands, a
 // condensate breathes, a rotor spins, a needle snaps, a beam/eruption
 // summons itself at the target anyway. Everything else is nothing but
-// travel, and a detail pane's preview collapses it to its (enlarged) impact
+// travel, and a target-only play collapses it to its (enlarged) impact
 // shockwave instead -- see playTargetEffect.
 const PREVIEW_CENTERED = new Set<AttackShape>(['ring', 'buffring', 'swell', 'vortex', 'flip', 'beam', 'eruption']);
+
+// Whether a real cast of this shape actually crosses the field, attacker to
+// target -- which is what decides whether a panel preview has a flight to
+// show at all (art/moveEffectPreview.ts). Three ways a shape doesn't:
+// beam/eruption (Landau's Analytic pair) summon themselves at the target out
+// of the sky or the ground, meteor/nova (Skłodowska-Curie's Ultimates) run
+// their own summon sequence there, and buffring (Kondo's screenings) is cast
+// by a crystal on itself, so its caster and its target are one point in a
+// real fight too.
+const STAYS_AT_TARGET = new Set<AttackShape>(['beam', 'eruption', 'meteor', 'nova', 'buffring']);
+export function travelsAcrossField(shape: AttackShape): boolean {
+  return !STAYS_AT_TARGET.has(shape);
+}
 
 // Feynman's move-leveling (§5, World 7) escalates a leveled move's own
 // animation into several overlapping, growing repeats of the same single
@@ -239,28 +252,66 @@ export function playAttackEffect(
     return;
   }
 
-  playOrdinaryRepeats(scene, shape, style.color, from, to, onImpact, powerRatio, depthOffset, triggerCount);
+  playOrdinaryRepeats(scene, shape, style.color, from, to, onImpact, powerRatio, depthOffset, triggerCount, true);
 }
 
-// The target's half of a move's beat alone, centered on one point: what a
-// guardian panel's detail pane demonstrates (art/moveEffectPreview.ts). A
-// real cast spans the whole battlefield -- a windup flash at the attacker,
-// something crossing hundreds of pixels, then the arrival -- and none of that
-// survives being squeezed into a pane a hundred pixels wide, where the
-// interesting half (what the move does when it lands) ends up as a fraction
-// of a cramped diagonal. So the attacker's side is dropped entirely and only
-// what happens at the target is drawn, on the spot:
+// The whole beat, attacker to target, played across a guardian panel's own
+// preview stage (art/moveEffectPreview.ts): the windup at `from`, the
+// silhouette's flight, the impact where it lands at `to` -- the same
+// animation a real cast of this move plays in a fight, laid out across a
+// stage a few hundred pixels wide instead of the battlefield. What a
+// guardian panel demonstrates for any move whose real cast crosses the field
+// (`travelsAcrossField`); the moves that instead summon themselves where
+// they land, or are cast by a crystal on itself, have no flight to show and
+// go through playTargetEffect below, which this function hands them to.
+//
+// Feynman's level escalation applies here as it does to a real cast, so a
+// leveled move demonstrates the same growing cascade it swings with. The
+// music duck a real cast fires is deliberately left out -- a preview loops
+// every second or so for as long as a panel is open, and ducking the score
+// that often would read as a fault in the music rather than emphasis on a
+// hit.
+export function playFlightEffect(
+  scene: Phaser.Scene,
+  moveClass: MoveClass,
+  from: EffectAnchor,
+  to: EffectAnchor,
+  shapeOverride?: AttackShape,
+  depthOffset = 0,
+  level: 0 | 1 | 2 | 3 = 0
+) {
+  const style = EFFECT_STYLE[moveClass];
+  const shape = shapeOverride ?? style.shape;
+  // meteor/nova are named here as well as sitting in travelsAcrossField's own
+  // set, so the ordinary-shape play below narrows to a shape SHAPE_PLAY
+  // actually has an entry for -- the Ultimates run their own multi-phase
+  // sequence rather than the shared single-beat skeleton.
+  if (shape === 'meteor' || shape === 'nova' || !travelsAcrossField(shape)) {
+    playTargetEffect(scene, moveClass, to, shapeOverride, undefined, depthOffset, level);
+    return;
+  }
+  const triggerCount = LEVEL_TRIGGER_COUNTS[level] ?? 1;
+  playOrdinaryRepeats(scene, shape, style.color, from, to, undefined, 1, depthOffset, triggerCount, false);
+}
+
+// A move's beat played at the target alone, centered on one point: what a
+// guardian panel's detail pane demonstrates (art/moveEffectPreview.ts) for
+// the moves whose real cast has no flight across the field to show
+// (`travelsAcrossField` above -- the ones that summon themselves where they
+// land, and Kondo's self-buffs, cast by a crystal on itself). Every other
+// move demonstrates its full attacker-to-target beat instead
+// (playFlightEffect above). What lands on the spot here:
 //
 // - meteor/nova (Skłodowska-Curie's Ultimates) and beam/eruption (Landau's
-//   Analytic pair) already summon themselves at the target from off-field sky or
-//   ground rather than travelling from the attacker, so each plays its own
-//   full sequence unchanged, just without the windup.
+//   Analytic pair) summon themselves at the target from off-field sky or
+//   ground, so each plays its own full sequence, just without the windup.
 // - the shapes that keep their identity standing still (PREVIEW_CENTERED:
 //   ring/buffring's expanding wavefronts, swell's breathing condensate,
 //   vortex's spinning rotor, flip's snapping needle) play centred on the one
 //   point, from === to -- the same centred call Kondo's self-buff moves
-//   already make in a real fight, where caster and target are one crystal.
-// - every other shape is nothing *but* travel (a bolt's flight, a wave's
+//   make in a real fight, where caster and target are one crystal.
+// - a travelling shape reaching this entry point (a caller that has only one
+//   point to give) is nothing *but* travel (a bolt's flight, a wave's
 //   ribbon, a hop's pads, mass's lumber...), so what's left of one at the
 //   target is its impact: the shockwave alone.
 //
@@ -349,11 +400,15 @@ function playOrdinaryRepeats(
   onImpact: (() => void) | undefined,
   powerRatio: number,
   depthOffset: number,
-  triggerCount: number
+  triggerCount: number,
+  // False for a panel preview, which loops for as long as the panel is open
+  // (playFlightEffect above) -- ducking the score once a second reads as a
+  // fault in the music.
+  duckMusic: boolean
 ) {
   const singleMs = WINDUP_MS + TRAVEL_MS[shape] + IMPACT_MS;
   const stagger = TRAVEL_MS[shape] * LEVEL_STAGGER_FRACTION;
-  music.duck((triggerCount - 1) * stagger + singleMs);
+  if (duckMusic) music.duck((triggerCount - 1) * stagger + singleMs);
 
   const playOnce = (scale: number, isLast: boolean) => {
     playAttackSfx(shape);

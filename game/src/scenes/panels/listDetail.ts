@@ -478,11 +478,11 @@ export function renderDetailCrystalHeader(
 // Same "art block + name" shape renderDetailCrystalHeader above gives a
 // crystal-pick panel's detail pane, but for a *move* -- the "art" is the
 // move's own real battle-effect animation (art/moveEffectPreview.ts's
-// startMoveEffectPreview), looping on the centre of this block: the target's
-// half of the beat, landing on the spot, rather than the full attacker-to-
-// target flight a real battle plays across the whole field (a pane this size
-// has no room for the crossing, and the half worth showing is what the move
-// does when it arrives). Shared by
+// startMoveEffectPreview), looping inside this block: a move whose real cast
+// crosses the field demonstrates that whole beat here, the caster's windup
+// on one side of the block, the flight, the impact on the other; one that
+// summons itself where it lands plays on the block's centre. Shared by
+// Feynman's move-leveling pane,
 // Noether's Moves tab and Landau's/Skłodowska-Curie's own bespoke
 // two-column panels (scenes/panels/noether.ts, landau.ts,
 // sklodowskaCurie.ts -- Kondo's own self-buff moves use the sibling
