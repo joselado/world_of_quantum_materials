@@ -411,7 +411,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     // Silver's plasmon questions are not among them: the plasmon is session 9's
     // (its RPA section), so they live in World 9's pool.
     {
-      prompt: "What structurally distinguishes a 'metal' from a 'semiconductor' in this game's taxonomy?",
+      prompt: 'What structurally distinguishes a metal from a semiconductor?',
       correct: "A metal's band is only partially filled, so it can carry a plasmon a gapped semiconductor cannot",
       incorrect: 'A metal simply has a wider band gap than a semiconductor',
     },
@@ -431,7 +431,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'Electrical conductivity, carried by free electrons',
     },
     {
-      prompt: "Why can't an insulator like Diamond carry Electron Pulse in this game?",
+      prompt: "Why can't an insulator like Diamond carry Electron Pulse?",
       correct: 'Its gap is too wide for a band electron to be thermally or dopant-excited across',
       incorrect: 'It has no electrons in its valence band at all',
     },
@@ -910,8 +910,8 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'A simple substitutional alloy with no distinct hydrogen sublattice',
     },
     {
-      prompt: 'Does LaH₁₀ host a Majorana zero mode the way a chernSuperconductor does?',
-      correct: "No: its pairing is ordinary and non-topological, so it stays plain 'superconductor'",
+      prompt: 'Does LaH₁₀ host a Majorana zero mode the way a Chern Superconductor does?',
+      correct: 'No: its pairing is ordinary and non-topological, so it stays a plain superconductor',
       incorrect: 'Yes, its extreme Tc implies topological pairing',
     },
     {
@@ -931,9 +931,9 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'A universally agreed-upon, unambiguous vortex Majorana observation',
     },
     {
-      prompt: "Why does this game classify UTe₂ as 'chernSuperconductor' rather than plain 'superconductor'?",
-      correct: "As the leading candidate topological/triplet superconductor, it's the real material closest to that genuine topological-pairing physics",
-      incorrect: 'Because its critical temperature is the highest of any known superconductor',
+      prompt: 'In Bogoliubov-de Gennes language, why does spin-triplet pairing, the kind UTe₂ is a candidate for, open the door to Majorana modes?',
+      correct: 'An equal-spin triplet channel acts as an effectively spinless p-wave superconductor, whose vortices and edges bind zero modes',
+      incorrect: 'Triplet pairing removes the particle-hole symmetry that Bogoliubov-de Gennes always imposes',
     },
     {
       prompt: "What is unusual about UTe₂'s upper critical field for an ordinary spin-singlet superconductor?",
@@ -946,9 +946,9 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'Yes, it has been unambiguously confirmed by multiple independent groups',
     },
     {
-      prompt: 'Which move class is unique to chernSuperconductor among every type in this game?',
+      prompt: 'Which move class does only the Chern Superconductor type host?',
       correct: 'Majorana Split, requiring genuine topological pairing',
-      incorrect: 'Higgs Oscillation, since only chernSuperconductor hosts a condensate amplitude mode',
+      incorrect: 'Higgs Oscillation, since only a Chern Superconductor hosts a condensate amplitude mode',
     },
   ],
 
@@ -1184,7 +1184,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'The Fe³⁺ 3d⁵ configuration',
     },
     {
-      prompt: "What quasiparticle, unique to multiferroics in this game's taxonomy, has actually been observed in BiFeO₃'s spectrum?",
+      prompt: "What quasiparticle, unique to multiferroics, has actually been observed in BiFeO₃'s spectrum?",
       correct: 'The electromagnon, a magnon-phonon hybrid with electric-dipole activity',
       incorrect: 'The ferron alone, with no magnon-phonon hybridization',
     },
@@ -1223,7 +1223,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'Merges them into a single spin-degenerate band',
     },
     {
-      prompt: 'Fe₃GeTe₂ has strong uniaxial magnetic anisotropy. In this session’s exchange language, what kind of term is that?',
+      prompt: 'Fe₃GeTe₂ has strong uniaxial magnetic anisotropy. In exchange-Hamiltonian language, what kind of term is that?',
       correct: 'An Ising-like single-component coupling, which promotes an easy axis',
       incorrect: 'A Dzyaloshinskii-Moriya cross-product term, which promotes spiral order',
     },
@@ -1483,9 +1483,9 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'A superconducting phase and an ordinary band-insulating phase',
     },
     {
-      prompt: "Why does the game classify YbRh₂Si₂ as 'kondoHeavyFermion' rather than 'metallicMagnet', even though it conducts and eventually orders magnetically at very low temperature?",
-      correct: 'Its heavy, Kondo-hybridized quasiparticles (not simple localized spins) carry that order and define the compound',
-      incorrect: 'Because antiferromagnetism is impossible in any metallic material',
+      prompt: 'YbRh₂Si₂ sits at the Doniach balance point: it orders antiferromagnetically only below about 70 mK, and a small in-plane magnetic field pushes even that ordering temperature to zero. What does the field reach?',
+      correct: 'A quantum critical point, with Kondo screening and RKKY exchange balanced right down to zero temperature',
+      incorrect: 'A classical critical point, where thermal fluctuations still drive the magnetic transition',
     },
     // Cerium Cobalt Indide -- off-syllabus, second Kondo-lattice flagship.
     {
@@ -1504,9 +1504,9 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'A conventional band insulator',
     },
     {
-      prompt: "Why does this game classify CeCoIn₅ as 'kondoHeavyFermion' rather than 'superconductor', despite its superconducting ground state?",
-      correct: 'The Kondo-lattice heavy-fermion physics is what defines the compound; the pairing is a low-energy instability built on top of it',
-      incorrect: "Because 'superconductor' is reserved only for elemental metals like Aluminum and Lead",
+      prompt: "CeCoIn₅ pairs its heavy Kondo-lattice quasiparticles rather than ordinary conduction electrons. What does that heavy mass do to the superconductor's coherence length?",
+      correct: 'Shortens it drastically, since the renormalized quasiparticles move with a very small Fermi velocity',
+      incorrect: 'Lengthens it far beyond a conventional superconductor, since heavy carriers pair over longer distances',
     },
     {
       prompt: 'What kind of phase transition is CeCoIn₅ famous for sitting right next to?',
@@ -1514,7 +1514,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'A structural (crystallographic) phase transition',
     },
     {
-      prompt: 'Which quasiparticle, unique to the kondoHeavyFermion type, does CeCoIn₅ carry?',
+      prompt: 'Which quasiparticle, unique to the Kondo Heavy Fermion type, does CeCoIn₅ carry?',
       correct: 'A heavy fermion, the mass-renormalized conduction-electron/local-moment composite',
       incorrect: "A Higgs mode, the condensate's own amplitude oscillation",
     },
@@ -1535,9 +1535,9 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: "A Z2 gauge field, the same as α-RuCl₃'s Kitaev spin liquid",
     },
     {
-      prompt: "Why does the game still group Ce₂Zr₂O₇ under quantumSpinLiquid despite its U(1) (not Z2) gauge structure?",
-      correct: "It's a deliberate simplification, the same kind already made for triplon's confined-mode physics on this type",
-      incorrect: 'Because U(1) and Z2 quantum spin liquids are physically identical',
+      prompt: "Ce₂Zr₂O₇'s spins sit on corner-sharing tetrahedra. What local rule does each tetrahedron obey, leaving the magnet frustrated rather than uniquely ordered?",
+      correct: 'The two-in, two-out ice rule, satisfied by a huge number of spin arrangements at once',
+      incorrect: 'All four spins on a tetrahedron pointing the same way, as in a simple ferromagnet',
     },
     {
       prompt: 'What effective magnetic degrees of freedom do Ce³⁺ ions carry in Ce₂Zr₂O₇?',
@@ -1659,7 +1659,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'The complete microscopic structure of the ordered state that will form',
     },
     {
-      prompt: "How does this world's RPA treatment locate the Stoner magnetic instability?",
+      prompt: "How does the RPA treatment locate the Stoner magnetic instability?",
       correct: 'By watching when the disordered (paramagnetic) response function itself diverges',
       incorrect: 'By writing down an ordered magnetic ansatz and solving it self-consistently',
     },
@@ -1713,8 +1713,8 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: "Their band gap happens to match visible-light photon energies",
     },
     {
-      prompt: "Which move class does a plasmon correspond to in this game's taxonomy?",
-      correct: "Plasmon Resonance, hosted only by the 'metal' type",
+      prompt: 'Which move class does a plasmon correspond to?',
+      correct: 'Plasmon Resonance, hosted only by the Metal type',
       incorrect: 'Electron Pulse, hosted by every conducting type',
     },
     {
@@ -1749,9 +1749,9 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'Nothing: the spin texture is fixed independent of polarization',
     },
     {
-      prompt: "Why does the game classify GeTe as 'ferroelectric' rather than 'semiconductor', despite it being a genuine narrow-gap semiconductor?",
-      correct: 'Its switchable spontaneous polarization is the more specific, defining property being taxonomized',
-      incorrect: 'GeTe carries no band gap at all, ruling out semiconductor',
+      prompt: "GeTe's Rashba spin splitting runs through its whole bulk rather than living only at a surface. What makes that possible?",
+      correct: 'Its polar ferroelectric distortion breaks inversion symmetry in the bulk crystal itself',
+      incorrect: 'An external electric field has to be held across the sample at all times',
     },
     {
       prompt: 'What move can GeTe carry that a non-ferroelectric semiconductor like HgTe cannot?',
@@ -1781,7 +1781,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: "Does HfO₂'s ferroelectric phase require any magnetic order to be present?",
-      correct: "No: ferroelectric order carries no magnetic order at all in this game's taxonomy",
+      correct: 'No: ferroelectric order is an electric polarization order, carrying no magnetic order with it',
       incorrect: 'Yes, magnetism is what couples to and stabilizes the polarization',
     },
     {
@@ -2224,9 +2224,9 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
       incorrect: 'They reach the exact same physics through the exact same mechanism',
     },
     {
-      prompt: 'Why does this compound only appear as a World 10 wild rather than an earlier world’s?',
-      correct: "It's a HYBRID_RECIPES fusion result (Graphene + Monolayer Boron Nitride), and hybrid results live only in World 10",
-      incorrect: 'Its main type has no earlier-world anchor of its own',
+      prompt: 'Why does flattening the graphene bands with the moiré superlattice matter for reaching a fractional Chern insulator?',
+      correct: 'A flat band quenches the kinetic energy, so Coulomb interactions set the scale and can stabilize a fractional state',
+      incorrect: 'A flat band raises the kinetic energy above the interaction scale, leaving the electrons effectively free',
     },
   ],
 
@@ -2257,9 +2257,9 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
       incorrect: 'Charge conservation alone, regardless of time-reversal symmetry',
     },
     {
-      prompt: 'Why does the game place HgTe/CdTe Quantum Well only in World 10 rather than in an earlier world?',
-      correct: "It's a HYBRID_RECIPES fusion result of World 2's HgTe + CdTe, and hybrid results live only in World 10",
-      incorrect: 'Because quantum wells are never considered real quantumSpinHall materials',
+      prompt: "What does 'helical' mean for the pair of edge channels an HgTe/CdTe quantum well carries?",
+      correct: 'The two channels counter-propagate, with opposite spin locked to opposite direction of motion',
+      incorrect: 'Both channels run the same way around the sample, carrying the same spin',
     },
   ],
 };
@@ -2332,12 +2332,12 @@ export const ML_LECTURE_QUESTIONS: MaterialQuestion[] = [
     incorrect: 'The Hartree approximation',
   },
   {
-    prompt: "In this world's 'easy' phase-classification example, the ferromagnetic Ising model, what makes the phase easy to read off even without a network?",
+    prompt: "In the 'easy' phase-classification example, the ferromagnetic Ising model, what makes the phase easy to read off even without a network?",
     correct: 'A simple local order parameter (the total magnetization) distinguishes the two phases',
     incorrect: 'The two phases always look visibly different in every snapshot',
   },
   {
-    prompt: 'The Ising gauge theory is this world\'s "hard" phase-classification example because its two phases are distinguished by...',
+    prompt: 'The Ising gauge theory is the "hard" phase-classification example because its two phases are distinguished by...',
     correct: 'No local order parameter at all: only a nonlocal, topological distinction',
     incorrect: 'A local order parameter that is simply harder to compute',
   },
