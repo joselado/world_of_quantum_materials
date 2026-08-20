@@ -4,7 +4,15 @@ import { makeNoetherAvatar } from '../../art/noether';
 import { CANVAS_W } from '../../art/perspective';
 import { fontPx, fontScale } from '../../ui/text';
 import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
-import { MOVES, SHOP_MOVE_IDS, compatibleMoves, shopCost, getPlayerStats, statUpgradeCost, MAX_STAT } from '../../data/materials';
+import {
+  MOVES,
+  ORDINARY_MOVE_IDS,
+  compatibleMoves,
+  shopCost,
+  getPlayerStats,
+  statUpgradeCost,
+  MAX_STAT,
+} from '../../data/materials';
 import { STAT_LABELS } from '../../data/balance';
 import { STAT_LORE } from '../../data/statLore';
 import { persistFromRegistry } from '../../data/save';
@@ -41,13 +49,15 @@ import { renderGuardianHeader } from './guardianHeader';
 // Both tabs are list+detail layouts (scenes/panels/listDetail.ts,
 // STYLE.md's "List+detail panels") at the shared LIST_DETAIL_PANEL_W, so the
 // panel keeps one width and one row shape whichever tab is showing. The
-// Moves tab's left column just names still-unbought, current-form-compatible
-// moves; clicking one only *previews* it (scene.noetherMovePreview), the
-// right column showing that move's own real battle-effect animation on a
-// loop (renderMoveDetailHeader, the move's own static class, no shape
-// override -- unlike Landau's/Curie's tunable moves, an ordinary move's
-// battle look never changes) plus its cost and a "Learn <name>" confirm
-// button, the one action that actually checks/spends the cost. The Stats tab
+// Moves tab's left column names every ordinary attack the player's current
+// form can host, the ones still for sale ahead of the ones already carried
+// (browsableMoves below); clicking one only *previews* it
+// (scene.noetherMovePreview), the right column showing that move's own real
+// battle-effect animation on a loop at its uncorrected level 0
+// (renderMoveDetailHeader, the move's own static class, no shape override)
+// plus either its cost and a "Learn <name>" confirm
+// button, the one action that actually checks/spends the cost, or the line
+// saying the player already carries it. The Stats tab
 // (renderShopStats below) lists the three stats the same way; a stat has no
 // art of its own, so its detail pane opens with the stat's name and what it
 // does instead of a crystal render or an animation stage.
@@ -131,10 +141,10 @@ function renderShopMoves(
   y: number,
   reserveBelow: number
 ): number {
-  const forSale = movesForSale(scene);
-  if (forSale.length === 0) {
+  const browsable = browsableMoves(scene);
+  if (browsable.length === 0) {
     const empty = scene.add
-      .text(columns.leftX + TREE_ENTRY_INDENT, y, 'Nothing left to teach.', { fontSize: fontPx(scene, 11), color: REFERENCE_BLUE_GREY_HEX })
+      .text(columns.leftX + TREE_ENTRY_INDENT, y, 'No move for this form.', { fontSize: fontPx(scene, 11), color: REFERENCE_BLUE_GREY_HEX })
       .setOrigin(0, 0);
     container.add(empty);
     return y + empty.height + 4;
@@ -146,10 +156,10 @@ function renderShopMoves(
     x: columns.leftX + TREE_ENTRY_INDENT,
     y,
     width: columns.leftColW - TREE_ENTRY_INDENT,
-    items: forSale,
+    items: browsable,
     idFor: (id) => id,
     labelFor: (id) => MOVES[id].name,
-    selectedId: effectiveMovePreview(scene, forSale),
+    selectedId: effectiveMovePreview(scene, browsable),
     page: scene.noetherMovePage,
     reserveBelow,
     onPageChange: (page) => {
@@ -167,20 +177,45 @@ function renderShopMoves(
   return listResult.bottom;
 }
 
-function movesForSale(scene: GuardianPanelHost): string[] {
-  const unlocked = scene.getUnlockedMoves();
-  const compatible = new Set(compatibleMoves(scene.playerMaterial));
-  return SHOP_MOVE_IDS.filter((id) => !unlocked.includes(id) && compatible.has(id));
+// Every ordinary attack (ORDINARY_MOVE_IDS) the player's present form can
+// host, whether or not Noether has anything left to charge for it: the ones
+// she still sells first, then the ones the player already carries. The two
+// groups read the same way and open the same demonstration stage, so the list
+// is one list rather than two -- the same shape Kondo's and Landau's own move
+// lists take, where a learned row still selects and previews and only its
+// status line changes. Which of the two a row belongs to is re-derived in the
+// pane below (whether `unlockedMoves` names it), and a move bought here
+// crosses from the first group to the second on the rebuild that follows the
+// purchase. The free starting Phonon Beam is never for sale, so it simply
+// starts life in the carried half.
+//
+// The list is exactly the moves Noether herself deals in. Landau's Analytic
+// pair, Skłodowska-Curie's Ultimate pair and Kondo's screenings each carry
+// machinery that belongs to their own guardian -- a quiz gate, a tunable
+// quasiparticle, a cloud raised on the caster instead of a strike thrown at a
+// defender -- and each is browsed and demonstrated in that guardian's own
+// panel. What Noether shows is the plain quasiparticle strike and nothing
+// else.
+function browsableMoves(scene: GuardianPanelHost): string[] {
+  const unlocked = new Set(scene.getUnlockedMoves());
+  const ordinary = new Set(ORDINARY_MOVE_IDS);
+  const compatible = compatibleMoves(scene.playerMaterial).filter((id) => ordinary.has(id));
+  return [...compatible.filter((id) => !unlocked.has(id)), ...compatible.filter((id) => unlocked.has(id))];
 }
 
-function effectiveMovePreview(scene: GuardianPanelHost, forSale: string[]): string {
-  return forSale.includes(scene.noetherMovePreview ?? '') ? (scene.noetherMovePreview as string) : forSale[0];
+function effectiveMovePreview(scene: GuardianPanelHost, browsable: string[]): string {
+  return browsable.includes(scene.noetherMovePreview ?? '') ? (scene.noetherMovePreview as string) : browsable[0];
 }
 
 // The pane beside an open Moves heading: the selected move's own real battle
-// effect looping on its stage, its cost, and the one button that spends it.
-// With nothing left to sell there is no move to preview, so this is the branch
-// that stops the loop outright rather than retargeting it -- see
+// effect looping on its stage (the move's own static class, no shape
+// override -- an ordinary move's battle look never changes), then either what
+// it costs and the one button that spends it, or the line saying the player
+// already carries it. The demonstration always runs at level 0, the move's
+// uncorrected form -- Noether deals in the move itself, and the higher-order
+// corrections that make it cascade are Feynman's, shown on his own stage at
+// whatever tier the player has landed. With no move to preview at all this is
+// the branch that stops the loop outright rather than retargeting it -- see
 // art/moveEffectPreview.ts on why a caller must not stop a chain it is about
 // to restart.
 function renderMoveDetail(
@@ -189,11 +224,11 @@ function renderMoveDetail(
   columns: ListDetailColumns,
   y: number
 ): number {
-  const forSale = movesForSale(scene);
-  if (forSale.length === 0) {
+  const browsable = browsableMoves(scene);
+  if (browsable.length === 0) {
     stopMoveEffectPreview();
     const text = scene.add
-      .text(columns.rightColCenterX, y, 'Nothing your current form can carry is left to teach.', {
+      .text(columns.rightColCenterX, y, 'Your current form can carry no move at all.', {
         fontSize: fontPx(scene, 13),
         color: '#ffffff',
         align: 'center',
@@ -204,8 +239,19 @@ function renderMoveDetail(
     return y + text.height + 6;
   }
 
-  const move = MOVES[effectiveMovePreview(scene, forSale)];
+  const move = MOVES[effectiveMovePreview(scene, browsable)];
   let rightY = renderMoveDetailHeader(scene, container, move.name, move.class, undefined, columns.rightColCenterX, y, columns.rightColW);
+
+  if (scene.getUnlockedMoves().includes(move.id)) {
+    return renderStatusAndConfirm({
+      scene,
+      container,
+      centerX: columns.rightColCenterX,
+      y: rightY,
+      colW: columns.rightColW,
+      status: `You already carry ${move.name}.`,
+    });
+  }
 
   const cost = shopCost(move);
   const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
@@ -231,8 +277,9 @@ function buyNoetherMove(scene: GuardianPanelHost, id: string, cost: number) {
   scene.tokenText.setText(`Qumatessence: ${scene.qumatessence}`);
   scene.game.registry.set('unlockedMoves', [...scene.getUnlockedMoves(), id]);
   persistFromRegistry(scene.game.registry);
-  // Rebuild the whole panel so the purchased move disappears from
-  // the list and the token total on display stays correct.
+  // Rebuild the whole panel so the purchased move crosses from the for-sale
+  // half of the list to the carried half and the token total on display stays
+  // correct.
   destroyPanel(scene);
   showNoetherShop(scene);
 }

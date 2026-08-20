@@ -37,6 +37,13 @@ use, as a semiconductor-type player (Silicon, by default), you'll only see
 Electron Pulse until you transmute into a form whose physics supports more
 (see [Quasiparticles & moves](quasiparticles.md)).
 
+The same list names the ordinary attacks you already carry below the ones
+still for sale. Picking one costs nothing and plays it on her stage in its
+plain base form, so you can watch a move before you buy it and look at it
+again long after you have. Her list stays her own: Landau's Analytic moves,
+Skłodowska-Curie's Ultimate moves and Kondo's screenings are browsed at the
+guardian who teaches them.
+
 <img src="../screenshots/docs-guardians-noether-panel.png" width="300" alt="Noether's shop: the moves the current form can carry, Electron Pulse selected with its price">
 
 ## Bloch's States

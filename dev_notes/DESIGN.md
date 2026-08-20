@@ -1716,7 +1716,10 @@ world 7's boss fights as an entangled pair where damaging one damages both.
   method's own world-specific `playerHp` re-leveling, which stays local to
   `OverworldScene` since only that scene knows which world to heal against). The grant
   pins every player stat straight to `MAX_STAT` (world-independent, so it lives in the
-  shared grant rather than the per-world method) and unlocks every move and passive,
+  shared grant rather than the per-world method) and unlocks every passive plus every move a
+  player can hold (`data/materials.ts`'s `PLAYER_MOVE_IDS`, the whole roster minus the
+  opponent-only `GOLEM_MOVE_IDS` decohered ones, so "everything unlocked" cannot hand the
+  player a golem's own corrupted excitation),
   merges every built world into `visitedWorlds` (so Bloch's teleport hub,
   §5, offers every world immediately, with no separate "Warp" UI, on top of the world
   doors §5 every world already has), and pre-fills the Hub's Qumatex (§4) with every

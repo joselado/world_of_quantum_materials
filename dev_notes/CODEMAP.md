@@ -134,7 +134,8 @@ game/src/
                                  header, renderMoveDetailHeader for a looping centered
                                  attack-effect-plus-name one, renderSelfBuffMoveDetailHeader for
                                  the same idea over a rendered player crystal
-                                 (kondo.ts's own self-buff moves --
+                                 (kondo.ts's own self-buff moves, and feynman.ts when the row
+                                 being leveled is one of them --
                                  see "Kondo in the overworld" in STYLE.md and
                                  art/moveEffectPreview.ts, above) -- and closes through
                                  renderStatusAndConfirm, the shared cost/status-line-plus-confirm-
@@ -529,8 +530,15 @@ game/src/
                                   Magnet"), read by Qumatex's type filter and by
                                   gen-docs.mjs so a raw camelCase identifier is never shown
                                   to a player, WORLD_CRYSTALS, WORLD_RIVALS,
-                                  PLAYER_MATERIAL, SHOP_MOVE_IDS, ANALYTIC_MOVE_IDS,
-                                  ULTIMATE_MOVE_IDS, ULTIMATE_CLASS_UNLOCK_COST,
+                                  PLAYER_MATERIAL, ORDINARY_MOVE_IDS (every plain
+                                  quasiparticle strike, i.e. no quiz gate/tunable class/
+                                  self-buff/golem machinery -- what Noether's panel browses)
+                                  and SHOP_MOVE_IDS (those minus the free starting Phonon
+                                  Beam, i.e. what she actually sells), ANALYTIC_MOVE_IDS,
+                                  ULTIMATE_MOVE_IDS, GOLEM_MOVE_IDS, PLAYER_MOVE_IDS
+                                  (every move a player can hold, i.e. the roster minus the
+                                  opponent-only GOLEM_MOVE_IDS -- what Superposition Mode's
+                                  blanket grant hands out), ULTIMATE_CLASS_UNLOCK_COST,
                                   TUNABLE_MOVE_CLASSES, RIVAL_9_TYPES, WORLD_NAMES/worldName()
                                   -- the latter the "name, falling back to World N" read every
                                   caller showing a world by name uses (the Lab's door station,
@@ -2876,7 +2884,8 @@ second copy), `fitListLabel` is the shared ellipsis-trim-on-overflow helper, and
 shared header blocks each guardian panel's detail pane opens with -- a crystal render plus name
 for the three crystal-browsing panels, a looping battle-effect animation plus name for the
 move-browsing ones, the same animation centered on the player's own crystal for a self-buff move
-(Kondo's; Qumatex's own detail pane stays a separate render since it
+(Kondo's three, whether browsed in his own panel or leveled in Feynman's; Qumatex's own detail
+pane stays a separate render since it
 additionally masks an undiscovered entry and appends a physics blurb). Both move headers take the
 player's real Feynman `MoveLevel` (`getMoveLevel`) so a leveled move previews the same escalating
 multi-trigger cascade a real cast plays. `renderListColumnFooter` puts the panel's own escape button ("Farewell", or "Close" in the Lab)

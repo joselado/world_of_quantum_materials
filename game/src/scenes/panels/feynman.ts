@@ -8,6 +8,7 @@ import { makeQuestionText } from '../../ui/mathtext';
 import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 import {
   MOVES,
+  KONDO_MOVE_IDS,
   compatibleMoves,
   getPlayerMaterial,
   getMoveLevel,
@@ -31,6 +32,7 @@ import {
   insertColumnDivider,
   renderListColumnFooter,
   renderMoveDetailHeader,
+  renderSelfBuffMoveDetailHeader,
   renderStatusAndConfirm,
 } from './listDetail';
 import { stopMoveEffectPreview } from '../../art/moveEffectPreview';
@@ -86,10 +88,15 @@ export function showFeynmanPanel(scene: GuardianPanelHost) {
 // the list, at whatever level it already had, since the level lives on the
 // move rather than on the form.
 //
-// The Kondo single-active-move rule is deliberately *not* applied here (so
-// this is not simply `getBattleMoves`): which Kondo move is screened in right
-// now is a battle-loadout question, and both are equally real to level. Rows
-// carry the move's tuned name without
+// Kondo's three screening moves join that list on their own terms. They are
+// self-buffs rather than attacks, so `MOVE_COMPATIBILITY` says nothing about
+// them (their 'screening' class is on no type's list) and no form can fail to
+// host one -- an unlocked screening move is always here. Levels are real on
+// them: BattleScene.kondoMitigationFraction reads the tier to decide how hard
+// the cloud screens. The single-active-move rule is deliberately *not* applied
+// either (so this is not simply `getBattleMoves`): which one is screened in
+// right now is a battle-loadout question, and all three are equally real to
+// level. Rows carry the move's tuned name without
 // its level prefix (tunedMoveDisplayName, not moveDisplayName): the prefix
 // is the same word on every row of a well-leveled save, and at the largest
 // text-size preset it alone fills the 200px column, trimming every row to
@@ -107,7 +114,10 @@ function renderMoveLevelList(
   panelWidth: number
 ): number {
   const hostable = new Set(compatibleMoves(getPlayerMaterial(scene.game.registry)));
-  const moves = scene.getUnlockedMoves().filter((id) => hostable.has(id)).map((id) => MOVES[id]);
+  const moves = scene
+    .getUnlockedMoves()
+    .filter((id) => hostable.has(id) || KONDO_MOVE_IDS.includes(id))
+    .map((id) => MOVES[id]);
 
   if (moves.length === 0) {
     const text = scene.add
@@ -165,22 +175,39 @@ function renderMoveLevelList(
   const tokens = (scene.game.registry.get('qumatessence') as number) || 0;
 
   let rightY = columnsTop;
-  // Feynman's list carries every move the player owns, Landau's Analytic pair
-  // and Skłodowska-Curie's Ultimate pair included, so the pane resolves the
-  // same current class/shape override those guardians' own panels do
-  // (listDetail.ts's renderMoveDetailHeader contract) -- otherwise a move
-  // titled "Magnon Lance" would preview as its static Phonon bolt.
-  rightY = renderMoveDetailHeader(
-    scene,
-    container,
-    moveDisplayName(scene.game.registry, move.id),
-    getTunedMoveClass(scene.game.registry, move.id),
-    ANALYTIC_SHAPES[move.id] ?? ULTIMATE_SHAPES[move.id],
-    columns.rightColCenterX,
-    rightY,
-    columns.rightColW,
-    carried
-  );
+  // Feynman's list carries every move the player owns, so the pane opens the
+  // way that move's own guardian's pane opens. One of Kondo's screenings is
+  // cast on the player's own crystal rather than thrown at a defender, so it
+  // needs the crystal rendered underneath its ring
+  // (renderSelfBuffMoveDetailHeader, the same opener Kondo's own panel uses).
+  // Everything else travels, and resolves the same current class/shape
+  // override Landau's and Skłodowska-Curie's panels do (listDetail.ts's
+  // renderMoveDetailHeader contract) -- otherwise a move titled "Magnon
+  // Lance" would preview as its static Phonon bolt.
+  rightY =
+    move.class === 'screening'
+      ? renderSelfBuffMoveDetailHeader(
+          scene,
+          container,
+          getPlayerMaterial(scene.game.registry),
+          moveDisplayName(scene.game.registry, move.id),
+          move.class,
+          columns.rightColCenterX,
+          rightY,
+          columns.rightColW,
+          carried
+        )
+      : renderMoveDetailHeader(
+          scene,
+          container,
+          moveDisplayName(scene.game.registry, move.id),
+          getTunedMoveClass(scene.game.registry, move.id),
+          ANALYTIC_SHAPES[move.id] ?? ULTIMATE_SHAPES[move.id],
+          columns.rightColCenterX,
+          rightY,
+          columns.rightColW,
+          carried
+        );
 
   rightY = renderCarriedLevelRow(scene, container, move.id, unlocked, carried, columns.rightColCenterX, rightY, columns.rightColW);
 

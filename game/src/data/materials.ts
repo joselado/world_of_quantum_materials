@@ -245,6 +245,15 @@ export const GOLEM_MOVE_IDS = [
   'decoheredVison',
 ];
 
+// Every move a player can ever end up holding: the whole roster minus the
+// opponent-only decohered ones above. Ordinary play never reaches for this,
+// since a move only enters `unlockedMoves` by being bought from the guardian
+// who sells it; the blanket grant Superposition Mode makes
+// (OverworldScene.applySuperpositionUnlocks) does, so that "everything
+// unlocked" still means everything *a player* can hold rather than handing
+// them the golems' own corrupted excitations.
+export const PLAYER_MOVE_IDS = Object.keys(MOVES).filter((id) => !GOLEM_MOVE_IDS.includes(id));
+
 // Qumatessence cost to unlock one quasiparticle class for one Ultimate move
 // (Skłodowska-Curie's panel, registry/save `ultimateClassesUnlocked`) --
 // paid once per (move, class) pair, not per purchase like shopCost; once
@@ -434,25 +443,30 @@ export const SCREENING_CHANNELS: Record<MoveClass, ScreeningChannel[]> = {
   screening: [],
 };
 
-// Every move Noether can eventually teach, priced by raw power
-// (`OverworldScene.shopCost`) -- everything except the player's starting
-// Phonon Beam, Landau's quiz-gated Analytic moves (ANALYTIC_MOVE_IDS,
-// sold only by him), Skłodowska-Curie's quiz-gated Ultimate moves
-// (ULTIMATE_MOVE_IDS, sold only by her, and priced completely differently
-// besides -- see her panel), and Kondo's screening moves (KONDO_MOVE_IDS,
-// sold only by him). What actually shows up in her shop (and what actually
-// appears as a battle button) is this list filtered down to
-// `compatibleMoves(currentPlayerForm)`, so a semiconductor-type player is
-// only ever offered Electron Pulse until they transmute into a form whose
-// physics supports the rest (see MOVE_COMPATIBILITY/compatibleMoves).
-export const SHOP_MOVE_IDS = Object.keys(MOVES).filter(
+// The ordinary attack moves -- the plain quasiparticle strikes, with none of
+// the guardian-specific machinery on them: no quiz gate (Landau's
+// ANALYTIC_MOVE_IDS, Skłodowska-Curie's ULTIMATE_MOVE_IDS), no tunable
+// quasiparticle, no self-buff behaviour (Kondo's KONDO_MOVE_IDS), and not a
+// golem's corrupted excitation (GOLEM_MOVE_IDS). This is what Noether's shop
+// panel is about, browsable and buyable there and nowhere else.
+export const ORDINARY_MOVE_IDS = Object.keys(MOVES).filter(
   (id) =>
-    id !== 'thermalFluctuation' &&
     !ANALYTIC_MOVE_IDS.includes(id) &&
     !ULTIMATE_MOVE_IDS.includes(id) &&
     !GOLEM_MOVE_IDS.includes(id) &&
     !KONDO_MOVE_IDS.includes(id)
 );
+
+// Every move Noether can eventually *teach*, priced by raw power
+// (`OverworldScene.shopCost`) -- the ordinary attacks above minus the
+// player's starting Phonon Beam, which is the same kind of move and only
+// sits outside this list because every crystal already has it. What actually
+// shows up for sale in her shop (and what actually
+// appears as a battle button) is this list filtered down to
+// `compatibleMoves(currentPlayerForm)`, so a semiconductor-type player is
+// only ever offered Electron Pulse until they transmute into a form whose
+// physics supports the rest (see MOVE_COMPATIBILITY/compatibleMoves).
+export const SHOP_MOVE_IDS = ORDINARY_MOVE_IDS.filter((id) => id !== 'thermalFluctuation');
 
 // Which quasiparticle classes a given main type can physically host --
 // Phonon Beam ('phonon') is on every list since every crystal has a

@@ -1383,18 +1383,29 @@ station motifs are deliberately not tunnels with a visible far end.
     saying so. An open list is told how much room a heading below it still needs
     (`reserveBelow`), and a heading longer than the column is ellipsis-trimmed to it the same way
     a row's own label is.
-  - **Moves**: the entries name every still-unbought move the player's *current crystal
-    form* can physically carry (`data/materials.ts`'s `SHOP_MOVE_IDS` filtered through
-    `compatibleMoves`), no cost suffix -- that lives in the detail pane instead. Clicking a row
+  - **Moves**: the entries name every *ordinary attack* (`data/materials.ts`'s
+    `ORDINARY_MOVE_IDS`) the player's *current crystal form* can physically carry
+    (`compatibleMoves`), the ones still for sale (`SHOP_MOVE_IDS`) ahead of the ones already
+    learned, no cost suffix -- that lives in the detail pane instead.
+    Both groups read as one list rather than two, the same shape Kondo's and Landau's own move
+    lists take, and a move bought here crosses from the first group to the second on the rebuild
+    that follows the purchase; the free starting Phonon Beam is never for sale, so it starts
+    life in the learned half. **The list is exactly what Noether herself deals in.** Landau's
+    Analytic pair, Skłodowska-Curie's Ultimate pair and Kondo's screenings each carry machinery
+    belonging to their own guardian -- a quiz gate, a tunable quasiparticle, a cloud raised on
+    the caster rather than a strike thrown at a defender -- and each is browsed and demonstrated
+    in that guardian's own panel. Clicking a row
     only *previews* it (`scene.noetherMovePreview`); the right column shows that move's own
     real battle-effect animation looping on its stage (`renderMoveDetailHeader`, "List+detail
     panels" above and "Attack effects" below -- the move's own static class, no shape override,
-    since an ordinary move's battle look never changes), its name, a `Costs <cost>
-    qumatessence.` line, and a `Learn <name>` confirm button (dimmed if unaffordable)
-    that's the one action actually checking/spending the cost and adding the move to
-    `unlockedMoves` -- browsing costs nothing regardless of how many moves are looked at. With
-    nothing left to sell the heading reads "Nothing left to teach." and the pane says so at
-    length; the Stats heading is still right there, so the panel never collapses to a dead end.
+    since an ordinary move's battle look never changes), its name, and then either a
+    `Costs <cost> qumatessence.` line with a `Learn <name>` confirm button (dimmed if
+    unaffordable) that's the one action actually checking/spending the cost and adding the move
+    to `unlockedMoves`, or, for a move already carried, `You already carry <name>.` -- browsing
+    costs nothing regardless of how many moves are looked at. **The demonstration always runs at
+    level 0**, the move's uncorrected form: Noether deals in the move itself, and the
+    higher-order corrections that make it cascade are Feynman's, shown on his own stage at
+    whatever tier the player has landed.
   - **Stats**: the entries name the three stats (Energy/Momentum/Lifetime, `data/balance.ts`'s
     `STAT_LABELS`), no value or cost suffix, and clicking a row only *previews* it
     (`scene.noetherStatPreview`). A stat has no art to open its detail pane
@@ -1716,9 +1727,13 @@ station motifs are deliberately not tunnels with a visible far end.
   outline -- Anderson beside him in the Lab is the scatter with no connecting lines at
   all, this is the construct that is nothing but connections.
 - A list+detail panel (`LIST_DETAIL_PANEL_W`, "List+detail panels" above). The left column
-  lists every move the player has ever unlocked (`getUnlockedMoves`, not `getBattleMoves`: a
-  move currently unusable in the player's present form is still worth leveling for later),
-  each row showing the move's tuned name without its level prefix -- the prefix is the same
+  lists every unlocked move the player's present form can host (`getUnlockedMoves` filtered
+  through `compatibleMoves`), plus every unlocked one of Kondo's screenings whatever form is
+  worn -- a self-buff is on no type's compatibility list at all, so no form can fail to host
+  one, and its tier is real (it deepens the cloud's screened fraction). This is deliberately
+  not `getBattleMoves`: Kondo's single-active rule is a battle-loadout question, and all three
+  of his are equally real to level. Each row shows the move's tuned name without its level
+  prefix -- the prefix is the same
   word on every row once a save is well leveled, and it alone fills the column at the largest
   text-size preset. Selecting a row previews that move in the right pane at the tier it is
   currently *carried* at, over a status line reading `Level to "<next tier>": <N> questions in
@@ -1735,6 +1750,13 @@ station motifs are deliberately not tunnels with a visible far end.
   for having leveled it -- with a status line saying so and no confirm button, the picker
   above it still live; an unaffordable one dims the confirm, not the row. Owning no moves at
   all leaves the panel a single line and a Farewell button.
+- The pane opens the way that move's own guardian's pane opens. A travelling attack gets
+  `renderMoveDetailHeader` with the same current class/shape override Landau's and
+  Skłodowska-Curie's panels resolve (`getTunedMoveClass` plus `ANALYTIC_SHAPES`/
+  `ULTIMATE_SHAPES`), so a move titled "Magnon Lance" is not previewed as a Phonon bolt. One of
+  Kondo's screenings is cast on the player's own crystal rather than thrown at a defender, so
+  it gets `renderSelfBuffMoveDetailHeader` instead -- the player's crystal standing on its
+  ground shadow with the ring looping around it, the same opener Kondo's own panel uses.
 - Confirming deducts `feynmanLevelCost` immediately (the qumatessence is
   spent the instant the attempt starts, not on a successful outcome) and opens the
   question streak in its own sub-panel -- same amber stroke as the main panel, one
@@ -1771,8 +1793,9 @@ station motifs are deliberately not tunnels with a visible far end.
   standing on a ground-shadow ellipse, with the
   move's `'screening'`-class ring effect (`art/attackStyles.ts`'s `EFFECT_STYLE`, tinted
   `0xe86a44`) looping *centered on the crystal itself* rather than travelling across the pane --
-  the self-buff sibling of the ordinary `renderMoveDetailHeader` that Noether's, Feynman's,
-  Landau's and Skłodowska-Curie's own panes use. Like that
+  the self-buff sibling of the ordinary `renderMoveDetailHeader` that Noether's, Landau's and
+  Skłodowska-Curie's own panes use, and that Feynman's uses for everything but a screening
+  move. Like that
   sibling, it plays the move at the player's real Feynman level, so a leveled Kondo move previews
   the same escalating multi-trigger cascade a real cast plays. Below that:
   the move's own one-line `description` (`data/materials.ts`'s `Move.description`, only Kondo's
@@ -1785,8 +1808,8 @@ station motifs are deliberately not tunnels with a visible far end.
   separate click needed); buying a second or third afterward doesn't, and switching which one is
   active always requires reopening this panel and clicking "Make active," not a per-turn choice
   in the battle move menu. None of the three self-buff moves is gated by a crystal's own physics
-  at all, so all three are always for sale until bought -- no empty/wrong-form state to render
-  here, unlike Noether's shop.
+  at all, so all three always stand in this list whatever form the player is wearing -- no
+  wrong-form state to render here, unlike Noether's shop.
 
 ## Franklin in the overworld (`OverworldScene.showFranklinPanel`)
 

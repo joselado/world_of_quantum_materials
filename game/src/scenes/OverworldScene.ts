@@ -40,7 +40,7 @@ import {
   getWildPool,
   getRival,
   rollRival9Type,
-  MOVES,
+  PLAYER_MOVE_IDS,
   KONDO_MOVE_IDS,
   getPlayerMaterial,
   DEFAULT_STATS,
@@ -234,7 +234,7 @@ export const FINAL_WORLD = Math.max(...BUILT_WORLDS);
 // see both call sites' own placement, early in `create()`.
 export function applySuperpositionUnlocks(registry: Phaser.Data.DataManager) {
   if (!registry.get('superpositionMode')) return;
-  registry.set('unlockedMoves', Object.keys(MOVES));
+  registry.set('unlockedMoves', [...PLAYER_MOVE_IDS]);
   const visited = (registry.get('visitedWorlds') as number[]) ?? [];
   registry.set('visitedWorlds', Array.from(new Set([...visited, ...BUILT_WORLDS])));
   // Materialdex entries are a passive discovery log, not a player choice
@@ -296,7 +296,7 @@ export function applySuperpositionUnlocks(registry: Phaser.Data.DataManager) {
   // never touches, so re-applying the grant on every world entry cannot
   // stamp over a player's own choice to swing a move at a lower tier.
   const maxedLevels: Partial<Record<string, number>> = {};
-  Object.keys(MOVES).forEach((id) => {
+  PLAYER_MOVE_IDS.forEach((id) => {
     maxedLevels[id] = 3;
   });
   registry.set('moveLevels', maxedLevels);
