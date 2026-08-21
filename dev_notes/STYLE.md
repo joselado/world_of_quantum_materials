@@ -1239,12 +1239,13 @@ station motifs are deliberately not tunnels with a visible far end.
 - Any formula inside the question or an answer is typeset rather than spelled out --
   subscripts drop, superscripts rise, a square root gets a radical sign with a bar over its
   radicand, variables lean and function names stay upright (`ui/mathtext.ts`, CODEMAP.md's
-  "Formulas in question text"). A formula-bearing string is set whole in the typesetter's own
-  monospace stack, which covers the Greek the default face lacks; a string with no formula
-  stays on the game's default face, the usual math-in-its-own-face convention. An answer
+  "Formulas in question text"). Only what sits between a pair of `$` is set in the
+  typesetter's own monospace stack, which covers the Greek the default face lacks; the words
+  around it keep the game's default face, size and line height, so the prose of a
+  formula-bearing question is indistinguishable from the prose of one without. An answer
   button carrying a formula draws its own plate in the same `[ #222244 background / #ffff88
   text ]` treatment rather than using a text background, so it sits beside a plain answer
-  button as an equal, differing only in that face.
+  button as an equal.
 - At the largest text-size presets a long question and two long answers together outgrow the
   canvas, so the panel splits in two before it ever shrinks the text, and never spills off
   screen. `renderEncounterPage` measures three layouts and takes the first whose every page

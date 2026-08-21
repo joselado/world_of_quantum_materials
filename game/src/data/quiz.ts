@@ -181,7 +181,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     // Graphene -- honeycomb lattice, Dirac cone, tight-binding bands.
     {
       prompt: "Near its Dirac point, graphene's bands disperse as...",
-      correct: 'E ∝ |k| (linear, Dirac-like)',
+      correct: '$E ∝ |k|$ (linear, Dirac-like)',
       incorrect: '$E ∝ k²$ (ordinary parabolic)',
     },
     {
@@ -232,7 +232,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'For the 1D tight-binding chain $H = −t Σ_n (c_n†c_{n+1} + h.c.)$, the band dispersion as a function of Bloch phase φ is...',
-      correct: 'ε(φ) = −2t cos(φ)',
+      correct: '$ε(φ) = −2t cos(φ)$',
       incorrect: '$ε(φ) = tφ²$ (a parabola)',
     },
     {
@@ -243,7 +243,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     {
       prompt: 'Ordinary semiconductors like GaN, near their band edges, are usually described by which dispersion shape?',
       correct: 'Parabolic bands, $E ∝ k²$',
-      incorrect: 'Dirac (linear) bands, E ∝ |k|',
+      incorrect: 'Dirac (linear) bands, $E ∝ |k|$',
     },
     {
       prompt: 'Two symmetry operators can share a common eigenbasis with the Hamiltonian only if they satisfy which condition?',
@@ -363,7 +363,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     {
       prompt: 'Which of the three archetypal dispersions (parabolic, Dirac, or flat) describes most ordinary semiconductors, before any band-inversion physics is added?',
       correct: 'Parabolic, $E ∝ k²$',
-      incorrect: 'Dirac, E ∝ |k|',
+      incorrect: 'Dirac, $E ∝ |k|$',
     },
     {
       prompt: 'For an infinite chain, why does the translation operator T share an eigenbasis with the Hamiltonian?',
@@ -532,7 +532,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'The topological invariant that survives generic spin-mixing and classifies quantum spin Hall insulators is...',
-      correct: 'The ℤ₂ invariant ν',
+      correct: 'The $ℤ₂$ invariant $ν$',
       incorrect: 'The spin Chern number $C_s$',
     },
     {
@@ -787,7 +787,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     {
       prompt: 'Diagonalizing the reduced Bogoliubov-de Gennes block gives quasiparticle energies E(k) =...',
       correct: '$±√(ε(k)² + |Δ(k)|²)$',
-      incorrect: '±(ε(k) + |Δ(k)|)',
+      incorrect: '$±(ε(k) + |Δ(k)|)$',
     },
     {
       prompt: "A superconductor's ground state isn't an eigenstate of particle number N, but it does have a fixed...",
@@ -964,7 +964,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     {
       prompt: "Near k=0, a ferromagnet's magnon dispersion behaves as...",
       correct: '$E(k) ∝ k²$: quadratic',
-      incorrect: 'E(k) ∝ |k|: linear',
+      incorrect: '$E(k) ∝ |k|$: linear',
     },
     {
       prompt: 'A magnon propagating through a ferromagnetic conductor like iron carries...',
@@ -1097,7 +1097,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: "Near k=0, how does an antiferromagnet's magnon dispersion behave, in contrast to a ferromagnet's quadratic $E(k)∝k²$?",
-      correct: 'E(k) ∝ |k|: linear, Dirac-cone-like',
+      correct: '$E(k) ∝ |k|$: linear, Dirac-cone-like',
       incorrect: '$E(k) ∝ k²$: also quadratic, same as the ferromagnet',
     },
     {
@@ -2446,12 +2446,12 @@ export const ANALYTIC_QUESTIONS: AnalyticQuestion[] = [
   {
     prompt: "Near k=0, a ferromagnet's magnon dispersion behaves as...",
     correct: '$E(k) ∝ k²$ (quadratic)',
-    incorrect: 'E(k) ∝ |k| (linear)',
+    incorrect: '$E(k) ∝ |k|$ (linear)',
     worlds: [6],
   },
   {
     prompt: 'The von Neumann entanglement entropy of a density matrix ρ is defined as...',
-    correct: 'S = -Tr(ρ log ρ)',
+    correct: '$S = -Tr(ρ log ρ)$',
     incorrect: '$S = Tr(ρ²)$',
     worlds: [7],
   },
@@ -2589,7 +2589,7 @@ export const ANALYTIC_QUESTIONS: AnalyticQuestion[] = [
   },
   {
     prompt: "Near k=0, an antiferromagnet's magnon dispersion behaves as...",
-    correct: 'E(k) ∝ |k| (linear)',
+    correct: '$E(k) ∝ |k|$ (linear)',
     incorrect: '$E(k) ∝ k²$ (quadratic)',
     worlds: [6],
   },

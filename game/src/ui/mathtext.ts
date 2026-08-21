@@ -5,9 +5,10 @@ import Phaser from 'phaser';
 // small math grammar is typeset properly -- subscripts drop, superscripts
 // rise, a square root gets a real radical sign with a bar over its radicand --
 // instead of being read as literal punctuation. Everything outside the
-// delimiters is ordinary prose, laid out word by word like the surrounding UI
-// text but set in the same face as the math beside it (MATH_FONT_FAMILY
-// below), so every run on a line shares one baseline.
+// delimiters is ordinary prose, laid out word by word in the same face and at
+// the same line spacing a plain Phaser Text would give it, so a question that
+// happens to carry a formula reads as the same kind of text as one that does
+// not.
 //
 // The grammar is deliberately only as wide as the question data needs (see
 // data/quiz.ts): `_x`/`_{xy}` subscripts, `^x`/`^{xy}` superscripts, `√(...)`,
@@ -21,22 +22,28 @@ import Phaser from 'phaser';
 // check `hasMath()` and keep using a plain Phaser Text, so the overwhelming
 // majority of question text is untouched by this module.
 
-// Everything this module renders -- the math and the prose around it in the
-// same string -- is set in its own monospace stack rather than Phaser's
-// default 'Courier'. Courier has no Greek coverage on common platforms, so a
-// Δ or ξ would come from a per-glyph fallback face and sit hairline-thin
-// beside its own chunky Latin; every family in this stack covers Greek and
-// the angle brackets, ships a real oblique for the leaning variables, and
-// the generic tail keeps a machine with none of the named faces on a
-// consistent monospace. The whole string gets the face, not just the `$`
-// spans, because runs are top-aligned Text objects: two families on one line
-// would sit on two different baselines. Strings with no `$` never reach this
-// module and stay on the game's default face.
+// Two faces, one per kind of run. Prose is set in the face a plain Phaser
+// Text uses, so the words around a formula are indistinguishable from the
+// words of a question that carries no formula at all; that has to be the
+// literal default Phaser falls back to when a style names no family, not a
+// stack that merely resembles it. Math spans get their own monospace stack:
+// the default face has no Greek coverage on common platforms, so a Δ or ξ
+// inside an expression would come from a per-glyph fallback and sit
+// hairline-thin beside its own Latin, where every family in this stack
+// covers Greek and the angle brackets, ships a real oblique for the leaning
+// variables, and the generic tail keeps a machine with none of the named
+// faces on a consistent monospace. Setting the math in a face of its own is
+// the ordinary typographic convention anyway.
+//
+// Two faces meet on one line because the layout below is baseline-relative:
+// every run is placed by its own ascent, so a formula and the words on
+// either side of it share a baseline instead of a top edge.
+const PROSE_FONT_FAMILY = 'Courier';
 const MATH_FONT_FAMILY = 'Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace';
 
 // A run's own text is drawn by a Phaser Text object; scripts are the same
-// object at a smaller size, offset from the base run's top edge. The offsets
-// are fractions of the size being scripted, so they hold at every
+// object at a smaller size, its baseline shifted off the base run's. The
+// offsets are fractions of the size being scripted, so they hold at every
 // FONT_SCALE_PRESETS setting (ui/text.ts) rather than only at the default.
 // Scripts are set larger than the 0.7 of the text size real typesetting uses.
 // The game's smallest text-size preset puts a prompt at 13px, and a 0.7
@@ -44,8 +51,8 @@ const MATH_FONT_FAMILY = 'Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono"
 // readable letter. The floor holds that line for any caller smaller still.
 const SCRIPT_RATIO = 0.8;
 const SCRIPT_MIN_PX = 10;
-const SUB_SHIFT = 0.36;
-const SUP_SHIFT = 0.28;
+const SUB_DROP = 0.19;
+const SUP_RAISE = 0.45;
 // Gap between the top of a radicand and the bar drawn over it, and the
 // radical sign's own width, both as fractions of the size being rooted.
 const RADICAL_GAP = 0.16;
@@ -79,7 +86,7 @@ const SUB_CHARS: Record<string, string> = {
 // ---------------------------------------------------------------- parsing
 
 type Node =
-  | { t: 'run'; text: string; italic: boolean }
+  | { t: 'run'; text: string; italic: boolean; math: boolean }
   | { t: 'script'; base: Node; sub?: Node; sup?: Node }
   | { t: 'sqrt'; inner: Node }
   | { t: 'angle'; open: boolean }
@@ -87,22 +94,22 @@ type Node =
 
 // One entry in the flat stream the line-wrapper works on: a break
 // opportunity, a forced newline, or a piece of typeset content.
-type Item = { t: 'space' } | { t: 'break' } | { t: 'node'; node: Node };
+type Item = { t: 'space'; math: boolean } | { t: 'break' } | { t: 'node'; node: Node };
 
 function row(items: Node[]): Node {
   return items.length === 1 ? items[0] : { t: 'row', items: mergeRuns(items) };
 }
 
-// Adjacent single-character runs of the same slant collapse into one Text
-// object, so a formula costs a handful of game objects rather than one per
-// glyph. Scripts and radicals are their own nodes, so nothing merges across
-// them.
+// Adjacent single-character runs of the same face and slant collapse into one
+// Text object, so a formula costs a handful of game objects rather than one
+// per glyph. Scripts and radicals are their own nodes, so nothing merges
+// across them.
 function mergeRuns(items: Node[]): Node[] {
   const out: Node[] = [];
   for (const item of items) {
     const prev = out[out.length - 1];
-    if (item.t === 'run' && prev && prev.t === 'run' && prev.italic === item.italic) {
-      out[out.length - 1] = { t: 'run', text: prev.text + item.text, italic: prev.italic };
+    if (item.t === 'run' && prev && prev.t === 'run' && prev.italic === item.italic && prev.math === item.math) {
+      out[out.length - 1] = { t: 'run', text: prev.text + item.text, italic: prev.italic, math: prev.math };
     } else {
       out.push(item);
     }
@@ -137,7 +144,7 @@ class MathParser {
       if (this.src[this.i] === ' ' && this.depth === 0 && !this.inBars) {
         this.i += 1;
         flush();
-        items.push({ t: 'space' });
+        items.push({ t: 'space', math: true });
         continue;
       }
       group.push(this.parseItem());
@@ -161,7 +168,7 @@ class MathParser {
       parts.push(this.parseItem());
     }
     this.i += 1; // consume the closer (absent at end of input, harmless)
-    return parts.length ? row(parts) : { t: 'run', text: '', italic: false };
+    return parts.length ? row(parts) : { t: 'run', text: '', italic: false, math: true };
   }
 
   // An atom plus every script that attaches to it.
@@ -179,11 +186,11 @@ class MathParser {
         sup = this.parseScriptArg();
       } else if (c === '†' || c === '′' || c === '*') {
         this.i += 1;
-        sup = { t: 'run', text: c, italic: false };
+        sup = { t: 'run', text: c, italic: false, math: true };
       } else if (c !== undefined && SUP_CHARS[c] !== undefined) {
-        sup = { t: 'run', text: this.takeMapped(SUP_CHARS), italic: false };
+        sup = { t: 'run', text: this.takeMapped(SUP_CHARS), italic: false, math: true };
       } else if (c !== undefined && SUB_CHARS[c] !== undefined) {
-        sub = { t: 'run', text: this.takeMapped(SUB_CHARS), italic: false };
+        sub = { t: 'run', text: this.takeMapped(SUB_CHARS), italic: false, math: true };
       } else {
         break;
       }
@@ -217,7 +224,12 @@ class MathParser {
     const word = /^[A-Za-z0-9]+/.exec(this.src.slice(this.i));
     if (word) {
       this.i += word[0].length;
-      return { t: 'run', text: word[0], italic: /^[A-Za-z]+$/.test(word[0]) && !UPRIGHT_WORDS.has(word[0]) };
+      return {
+        t: 'run',
+        text: word[0],
+        italic: /^[A-Za-z]+$/.test(word[0]) && !UPRIGHT_WORDS.has(word[0]),
+        math: true,
+      };
     }
     return this.parseAtom();
   }
@@ -236,7 +248,7 @@ class MathParser {
       const word = /^[A-Za-z]+/.exec(this.src.slice(this.i))![0];
       if (UPRIGHT_WORDS.has(word)) {
         this.i += word.length;
-        return { t: 'run', text: word, italic: false };
+        return { t: 'run', text: word, italic: false, math: true };
       }
     }
     this.i += 1;
@@ -250,7 +262,7 @@ class MathParser {
     // falling back to some other face is exactly the two-typefaces-in-one-
     // expression look the font stack exists to prevent.
     if (c === '⟨' || c === '⟩') return { t: 'angle', open: c === '⟨' };
-    return { t: 'run', text: c ?? '', italic: c !== undefined && ITALIC_LETTER.test(c) };
+    return { t: 'run', text: c ?? '', italic: c !== undefined && ITALIC_LETTER.test(c), math: true };
   }
 
   // What sits under the bar: a parenthesised or braced group loses its
@@ -284,8 +296,8 @@ function tokenize(source: string): Item[] {
     for (const part of parts) {
       if (part === '') continue;
       if (part === '\n') items.push({ t: 'break' });
-      else if (/^[ \t]+$/.test(part)) items.push({ t: 'space' });
-      else items.push({ t: 'node', node: { t: 'run', text: part, italic: false } });
+      else if (/^[ \t]+$/.test(part)) items.push({ t: 'space', math: false });
+      else items.push({ t: 'node', node: { t: 'run', text: part, italic: false, math: false } });
     }
   });
   return items;
@@ -293,31 +305,34 @@ function tokenize(source: string): Item[] {
 
 // ---------------------------------------------------------------- layout
 
-// A laid-out piece of a formula. `above`/`below` are ink extents measured
-// from the box's own top edge -- the line a plain run's Text object sits on --
-// so a superscript reports `above > 0` and pushes its whole line down, and a
-// subscript reports a `below` past the run's own height.
+// A laid-out piece of a formula. `above`/`below` are its extents measured
+// from the baseline it will be drawn on, so a superscript reports an `above`
+// past its base run's ascent and a subscript a `below` past that run's
+// descent, and the line they sit on grows to hold them. Every box is placed
+// by its baseline rather than its top edge, which is what lets a run of prose
+// and a run of math -- two faces with two different ascents -- sit on the
+// same line without stepping.
 interface Box {
   width: number;
   above: number;
   below: number;
-  draw(x: number, top: number): void;
+  draw(x: number, baseline: number): void;
 }
 
 // Run widths are measured on a shared canvas context, which reports the
 // browser's real fractional advance. A Phaser Text's own `width` is its
 // canvas texture's width, rounded up to a whole pixel -- read run-by-run
 // that pads every run boundary, and a formula built from several runs comes
-// out visibly looser than the same characters in one Text. Heights still
-// come from a Phaser probe (a Text's height is Phaser's line height, not a
-// canvas metric), but only once per font, not per string. Both caches live
-// for the life of the page; the panels that use this module re-render the
-// same strings repeatedly while shrinking to fit
+// out visibly looser than the same characters in one Text. Vertical metrics
+// still come from a Phaser probe, since it is Phaser's own numbers that
+// decide where a Text puts its baseline, but only once per font rather than
+// per string. Both caches live for the life of the page; the panels that use
+// this module re-render the same strings repeatedly while shrinking to fit
 // (BattleScene.renderQuestionPanel), and the key set is bounded by the
 // authored question text.
 let measureCtx: CanvasRenderingContext2D | null = null;
 const widthCache = new Map<string, number>();
-const heightCache = new Map<string, number>();
+const metricsCache = new Map<string, { ascent: number; descent: number }>();
 
 export interface MathTextStyle {
   // Already scaled by the caller (ui/text.ts's fontScale), in px.
@@ -337,12 +352,12 @@ class Layout {
     private readonly style: MathTextStyle
   ) {}
 
-  private textStyle(px: number, italic: boolean) {
+  private textStyle(px: number, italic: boolean, math: boolean) {
     const weight = this.style.fontStyle ?? '';
     const slant = italic ? 'italic' : '';
     const fontStyle = [slant, weight].filter(Boolean).join(' ');
     return {
-      fontFamily: MATH_FONT_FAMILY,
+      fontFamily: math ? MATH_FONT_FAMILY : PROSE_FONT_FAMILY,
       fontSize: `${px}px`,
       color: this.style.color,
       ...(fontStyle ? { fontStyle } : {}),
@@ -352,14 +367,33 @@ class Layout {
   // The same face, size and slant as a CSS font shorthand, for the canvas
   // context to measure with. It must select exactly the font the Phaser Text
   // will draw with, or the fractional widths describe a different face.
-  private font(px: number, italic: boolean) {
+  private font(px: number, italic: boolean, math: boolean) {
     const weight = this.style.fontStyle ?? '';
     const slant = italic ? 'italic' : '';
-    return [slant, weight, `${px}px`, MATH_FONT_FAMILY].filter(Boolean).join(' ');
+    const family = math ? MATH_FONT_FAMILY : PROSE_FONT_FAMILY;
+    return [slant, weight, `${px}px`, family].filter(Boolean).join(' ');
   }
 
-  private measure(text: string, px: number, italic: boolean) {
-    const font = this.font(px, italic);
+  // How far a face's ink reaches above and below its baseline at a given
+  // size. Phaser puts a Text object's first baseline exactly `ascent` below
+  // its top edge and advances every further line by `ascent + descent`, so
+  // taking the same two numbers from a throwaway Text is what makes a run
+  // placed here land where the same characters in a plain Text would.
+  metrics(px: number, italic: boolean, math: boolean) {
+    const font = this.font(px, italic, math);
+    let m = metricsCache.get(font);
+    if (!m) {
+      const probe = this.scene.add.text(0, 0, '', this.textStyle(px, italic, math)).setVisible(false);
+      const tm = probe.getTextMetrics();
+      m = { ascent: tm.ascent, descent: tm.fontSize - tm.ascent };
+      probe.destroy();
+      metricsCache.set(font, m);
+    }
+    return m;
+  }
+
+  private measure(text: string, px: number, italic: boolean, math: boolean) {
+    const font = this.font(px, italic, math);
     const widthKey = `${font}|${text}`;
     let w = widthCache.get(widthKey);
     if (w === undefined) {
@@ -368,34 +402,28 @@ class Layout {
       w = measureCtx.measureText(text).width;
       widthCache.set(widthKey, w);
     }
-    let h = heightCache.get(font);
-    if (h === undefined) {
-      const probe = this.scene.add.text(0, 0, 'Mg', this.textStyle(px, italic)).setVisible(false);
-      h = probe.height;
-      probe.destroy();
-      heightCache.set(font, h);
-    }
-    return { w, h };
+    const { ascent, descent } = this.metrics(px, italic, math);
+    return { w, ascent, descent };
   }
 
   box(node: Node, px: number): Box {
     switch (node.t) {
       case 'run': {
-        const { w, h } = this.measure(node.text, px, node.italic);
+        const { w, ascent, descent } = this.measure(node.text, px, node.italic, node.math);
         return {
           width: w,
-          above: 0,
-          below: h,
-          draw: (x, top) => {
+          above: ascent,
+          below: descent,
+          draw: (x, baseline) => {
             if (node.text === '') return;
             // Whole pixels: a Phaser Text is a canvas texture, and drawing one
             // at a fractional offset resamples every glyph in it. Script
-            // offsets and line tops are both fractions of a font size, so
+            // offsets and baselines are both fractions of a font size, so
             // without this most of a formula would sit off the pixel grid
             // while the prose around it sits on it.
             this.container.add(
               this.scene.add
-                .text(Math.round(x), Math.round(top), node.text, this.textStyle(px, node.italic))
+                .text(Math.round(x), Math.round(baseline - ascent), node.text, this.textStyle(px, node.italic, node.math))
                 .setOrigin(0, 0)
             );
           },
@@ -407,10 +435,10 @@ class Layout {
           width: boxes.reduce((sum, b) => sum + b.width, 0),
           above: Math.max(0, ...boxes.map((b) => b.above)),
           below: Math.max(0, ...boxes.map((b) => b.below)),
-          draw: (x, top) => {
+          draw: (x, baseline) => {
             let cursor = x;
             for (const b of boxes) {
-              b.draw(cursor, top);
+              b.draw(cursor, baseline);
               cursor += b.width;
             }
           },
@@ -421,31 +449,33 @@ class Layout {
         const scriptPx = Math.max(SCRIPT_MIN_PX, Math.round(px * SCRIPT_RATIO));
         const sub = node.sub ? this.box(node.sub, scriptPx) : null;
         const sup = node.sup ? this.box(node.sup, scriptPx) : null;
-        const subDy = px * SUB_SHIFT;
-        const supDy = -px * SUP_SHIFT;
+        const subDy = px * SUB_DROP;
+        const supDy = -px * SUP_RAISE;
         return {
           width: base.width + Math.max(sub?.width ?? 0, sup?.width ?? 0),
           above: Math.max(base.above, sup ? sup.above - supDy : 0),
           below: Math.max(base.below, sub ? sub.below + subDy : 0),
-          draw: (x, top) => {
-            base.draw(x, top);
-            sup?.draw(x + base.width, top + supDy);
-            sub?.draw(x + base.width, top + subDy);
+          draw: (x, baseline) => {
+            base.draw(x, baseline);
+            sup?.draw(x + base.width, baseline + supDy);
+            sub?.draw(x + base.width, baseline + subDy);
           },
         };
       }
       case 'angle': {
         // A chevron drawn to the height of an ordinary glyph, so it sits in a
         // line of text the way the character it stands for would.
-        const h = this.measure('M', px, false).h;
+        const { ascent, descent } = this.metrics(px, false, true);
+        const h = ascent + descent;
         const w = Math.max(3, Math.round(px * 0.34));
         const lw = Math.max(1, Math.round(px / 9));
         const pad = Math.max(1, Math.round(px * 0.08));
         return {
           width: w + pad,
-          above: 0,
-          below: h,
-          draw: (x, top) => {
+          above: ascent,
+          below: descent,
+          draw: (x, baseline) => {
+            const top = baseline - ascent;
             const x0 = Math.round(x) + (node.open ? pad : 0);
             const t = Math.round(top + h * 0.12);
             const b = Math.round(top + h * 0.88);
@@ -481,24 +511,26 @@ class Layout {
           width: signW + inner.width + tail,
           above: inner.above + gap + lw,
           below: inner.below,
-          draw: (x, top) => {
+          draw: (x, baseline) => {
             const x0 = Math.round(x);
-            const barY = Math.round(top - inner.above - gap);
-            const bottom = Math.round(top + inner.below);
+            const inkTop = baseline - inner.above;
+            const inkHeight = inner.above + inner.below;
+            const barY = Math.round(inkTop - gap);
+            const bottom = Math.round(baseline + inner.below);
             const g = this.scene.add.graphics();
             g.lineStyle(lw, Phaser.Display.Color.HexStringToColor(this.style.color).color, 1);
             g.beginPath();
             // The four strokes of a radical: a short entry tick, the deep
             // descent to its point, the rise to the bar, and the bar itself
             // over the whole radicand.
-            g.moveTo(x0, Math.round(top + inner.below * 0.52));
-            g.lineTo(x0 + Math.round(signW * 0.3), Math.round(top + inner.below * 0.42));
+            g.moveTo(x0, Math.round(inkTop + inkHeight * 0.52));
+            g.lineTo(x0 + Math.round(signW * 0.3), Math.round(inkTop + inkHeight * 0.42));
             g.lineTo(x0 + Math.round(signW * 0.55), bottom);
             g.lineTo(x0 + Math.round(signW * 0.85), barY);
             g.lineTo(x0 + Math.round(signW + inner.width + tail), barY);
             g.strokePath();
             this.container.add(g);
-            inner.draw(x0 + signW, top);
+            inner.draw(x0 + signW, baseline);
           },
         };
       }
@@ -523,36 +555,42 @@ export function makeMathText(
   const px = Math.round(style.fontSizePx);
 
   // Measured as a difference rather than from a lone space, which a text
-  // measurement can report as zero width.
-  const spaceWidth =
-    layout.box({ t: 'run', text: 'm m', italic: false }, px).width -
-    layout.box({ t: 'run', text: 'mm', italic: false }, px).width;
-  const plainHeight = layout.box({ t: 'run', text: 'Mg', italic: false }, px).below;
+  // measurement can report as zero width. One per face: the gaps between
+  // words are prose, the gaps inside an expression are math.
+  const spaceWidth = (math: boolean) =>
+    layout.box({ t: 'run', text: 'm m', italic: false, math }, px).width -
+    layout.box({ t: 'run', text: 'mm', italic: false, math }, px).width;
+  const proseSpace = spaceWidth(false);
+  const mathSpace = spaceWidth(true);
+  // Every line starts out as tall as a line of plain prose, whatever it ends
+  // up carrying, so a line of words inside a formula-bearing string advances
+  // by exactly the line height a plain Phaser Text would give it.
+  const prose = layout.metrics(px, false, false);
 
   // Greedy line breaking, with a formula's own top-level spaces as the only
   // places it may split.
   type Placed = { box: Box; x: number };
   type Line = { placed: Placed[]; width: number; above: number; below: number };
   const lines: Line[] = [];
-  let line: Line = { placed: [], width: 0, above: 0, below: plainHeight };
+  let line: Line = { placed: [], width: 0, above: prose.ascent, below: prose.descent };
   const newLine = () => {
     lines.push(line);
-    line = { placed: [], width: 0, above: 0, below: plainHeight };
+    line = { placed: [], width: 0, above: prose.ascent, below: prose.descent };
   };
 
-  let pendingSpace = false;
+  let pendingSpace = 0;
   for (const item of tokenize(source)) {
     if (item.t === 'break') {
       newLine();
-      pendingSpace = false;
+      pendingSpace = 0;
       continue;
     }
     if (item.t === 'space') {
-      if (line.placed.length) pendingSpace = true;
+      if (line.placed.length) pendingSpace = item.math ? mathSpace : proseSpace;
       continue;
     }
     const box = layout.box(item.node, px);
-    const lead = pendingSpace ? spaceWidth : 0;
+    const lead = pendingSpace;
     if (line.placed.length && line.width + lead + box.width > style.wrapWidth) {
       newLine();
       line.placed.push({ box, x: 0 });
@@ -563,7 +601,7 @@ export function makeMathText(
     }
     line.above = Math.max(line.above, box.above);
     line.below = Math.max(line.below, box.below);
-    pendingSpace = false;
+    pendingSpace = 0;
   }
   if (line.placed.length || lines.length === 0) lines.push(line);
 
@@ -571,9 +609,9 @@ export function makeMathText(
   let cursorY = 0;
   for (const l of lines) {
     const originX = style.origin === 'left' ? 0 : -l.width / 2;
-    const top = cursorY + l.above;
-    for (const p of l.placed) p.box.draw(originX + p.x, top);
-    cursorY = top + l.below;
+    const baseline = cursorY + l.above;
+    for (const p of l.placed) p.box.draw(originX + p.x, baseline);
+    cursorY = baseline + l.below;
   }
 
   container.setSize(totalWidth, cursorY);
@@ -598,9 +636,9 @@ export function stripMath(source: string): string {
 // (scenes/panels/feynman.ts) all typeset the same way rather than each
 // growing its own copy. Both fall straight through to the plain Phaser
 // object when the string carries no formula, which is the overwhelming
-// majority of question text. The plain path keeps the game's default face;
-// MATH_FONT_FAMILY belongs only to strings that carry a formula, the usual
-// math-in-its-own-face convention.
+// majority of question text. Either way the prose is set in the game's
+// default face at the game's default line height; MATH_FONT_FAMILY reaches
+// only what sits between a pair of `$`.
 
 // A prompt line. Returns something with the `width`/`height` a panel stacks
 // its content by, positioned like a Text with setOrigin(0.5, 0).

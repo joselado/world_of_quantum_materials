@@ -2058,31 +2058,54 @@ script argument or a radicand, so an anticommutator `{c_i, c_j†}` keeps its br
 stay inline as `a / b`: a stacked fraction doubles a line's height, and these panels render
 at 12-13px inside a height budget where that is the scarce resource.
 
-Four rules keep it legible at the game's own sizes. Everything the module renders -- math
-and the prose around it in the same string -- is set in its own monospace stack
-(`MATH_FONT_FAMILY`: Menlo/Consolas/DejaVu Sans Mono/Liberation Mono, generic `monospace`
-tail), not the game's default `Courier`: Courier has no Greek coverage on common platforms,
-so a Δ or ξ would come from a per-glyph fallback face and sit hairline-thin beside its own
-chunky Latin, and every family in the stack covers Greek and the angle brackets and ships a
-real oblique for the leaning variables. The bra-ket angles `⟨` and `⟩` are drawn from a
-`Graphics` rather than set as characters, since they are the one thing the formulas use that
-lives outside the Unicode blocks a stock monospace face is reliably built to cover -- the
-stack resolves to Consolas on Windows, which carries the Greek and the operators but not
-these -- and a single character falling back to some other face is the very
-two-typefaces-in-one-expression look the stack exists to prevent. The face applies to the whole formula-bearing string
-rather than just the `$` spans because runs are top-aligned `Text` objects, and two families
-on one line would sit on two different baselines; a string with no `$` never reaches the
-module and stays on the default face, the usual math-in-its-own-face convention. Run widths
-are measured on a shared canvas context (`ctx.measureText`), which reports the browser's
-real fractional advance -- a Phaser `Text`'s own `width` is its texture's width rounded up
-to a whole pixel, and read run-by-run that pads every run boundary until a formula built
-from several runs sits visibly looser than the same characters in one `Text`. Every glyph
-and rule is still drawn on a whole pixel, since a Phaser Text is a canvas texture and a
-fractional offset resamples it -- positions round per draw off the fractional running
-cursor, so the sub-pixel error never accumulates. And scripts are set at 0.8 of their base
-with a 10px floor, rather than the 0.7 real typesetting uses: the smallest text-size preset
-puts a prompt at 13px, and a 0.7 script off that is 9px, which in a monospace face is a blur
-rather than a letter.
+Mark every formula an option carries, not just the one that made you reach for the markup.
+A question's two answers are drawn side by side on one panel, so leaving one of them
+unmarked (`E ∝ |k|` beside `$E ∝ k²$`) puts two different kinds of text in the same panel
+for no reason a reader can see.
+
+A handful of rules keep it legible, and keep a formula-bearing question looking like an
+ordinary one, at the game's own sizes.
+
+*Two faces, split at the `$`.* Prose runs are set in `PROSE_FONT_FAMILY` -- the literal
+`Courier` Phaser falls back to when a text style names no family -- so the words around a
+formula are the same face, size and colour as the words of a question that carries no
+formula at all. Only what sits between a pair of `$` gets `MATH_FONT_FAMILY`
+(Menlo/Consolas/DejaVu Sans Mono/Liberation Mono, generic `monospace` tail): the default
+face has no Greek coverage on common platforms, so a Δ or ξ inside an expression would come
+from a per-glyph fallback and sit hairline-thin beside its own Latin, where every family in
+that stack covers Greek and the angle brackets and ships a real oblique for the leaning
+variables. Setting the math in a face of its own is the ordinary typographic convention
+anyway. The bra-ket angles `⟨` and `⟩` are drawn from a `Graphics` rather than set as
+characters, since they are the one thing the formulas use that lives outside the Unicode
+blocks a stock monospace face is reliably built to cover -- the stack resolves to Consolas
+on Windows, which carries the Greek and the operators but not these -- and a single
+character falling back to some other face is the very two-typefaces-in-one-expression look
+the stack exists to prevent.
+
+*Baselines, not top edges.* Two faces meet on one line because every box is placed by the
+baseline it sits on rather than by its top: a run reports its `above`/`below` as its own
+ascent and descent, a script reports the extra reach of its raised or dropped baseline, and
+a line's baseline is the deepest ascent on it. Each line starts out as tall as a line of
+plain prose and each advances by the prose face's `ascent + descent`, which is exactly
+Phaser's own line height, so a formula-free line laid out by this module comes out
+pixel-identical to the same string in a plain `Text` -- same wrap points, same width, same
+height.
+
+*Fractional widths, whole-pixel draws.* Run widths are measured on a shared canvas context
+(`ctx.measureText`), which reports the browser's real fractional advance -- a Phaser
+`Text`'s own `width` is its texture's width rounded up to a whole pixel, and read
+run-by-run that pads every run boundary until a formula built from several runs sits
+visibly looser than the same characters in one `Text`. Vertical metrics come from a
+throwaway Phaser `Text` instead (`getTextMetrics`), since it is Phaser's own ascent that
+decides where a `Text` puts its baseline; both are cached per font for the life of the page.
+Every glyph and rule is still drawn on a whole pixel, since a Phaser Text is a canvas
+texture and a fractional offset resamples it -- positions round per draw off the fractional
+running cursor, so the sub-pixel error never accumulates.
+
+*Scripts big enough to read.* Scripts are set at 0.8 of their base with a 10px floor, rather
+than the 0.7 real typesetting uses: the smallest text-size preset puts a prompt at 13px, and
+a 0.7 script off that is 9px, which in a monospace face is a blur rather than a letter.
+Their baselines move by 0.45 of the base size up and 0.19 down, the usual proportions.
 
 Two entry points, and both fall straight through to a plain Phaser `Text` when the string
 carries no `$` at all -- which is most question text, so most of it never touches this
