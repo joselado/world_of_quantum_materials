@@ -110,9 +110,9 @@ const NEAR_SHOWCASE: ShowcaseEntry[] = [
 export class TitleScene extends Phaser.Scene {
   // The on-screen content (showcase, title, buttons, mode picker, hint) --
   // torn down and rebuilt by redrawContent() every time the mode picker
-  // switches, since the "Continue"/"New Game" label, the "erase save" line,
-  // and the mode picker's own highlight all depend on which mode is
-  // currently selected.
+  // switches, since the "Continue"/"New Game" label (on both the button and
+  // the SPACE hint), the "erase save" line, and the mode picker's own
+  // highlight all depend on which mode is currently selected.
   private root?: Phaser.GameObjects.Container;
   // The star network's Graphics, redrawn every frame by update() so the
   // finished network twinkles the same way it does in World 10's sky. Lives
@@ -335,7 +335,7 @@ export class TitleScene extends Phaser.Scene {
     y += 6;
 
     const hint = this.add
-      .text(CANVAS_W / 2, y, 'Press SPACE or click Continue to begin', {
+      .text(CANVAS_W / 2, y, `Press SPACE or click ${label} to begin`, {
         fontSize: fontPx(this, 12),
         color: REFERENCE_BLUE_GREY_HEX,
       })
