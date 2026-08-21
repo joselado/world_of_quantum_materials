@@ -242,9 +242,9 @@ export interface Material {
   };
 }
 
-// `quantumness` -> crit ("coherent hit") chance; `velocity` -> which side
-// acts first each round; `correlation` -> defense (per DESIGN.md §3's
-// attribute table). These field names are internal identifiers only -- the
+// `quantumness` -> how hard this side's hits land; `velocity` -> which side
+// acts first each round, and how many times; `correlation` -> how much of an
+// incoming hit this side soaks (per DESIGN.md §3's attribute table). These field names are internal identifiers only -- the
 // player reads Energy/Momentum/Lifetime, from data/balance.ts's STAT_LABELS.
 // Only the player and the current world's opponent carry a live
 // Stats block (see data/materials.ts's DEFAULT_STATS/enemyStatsForWorld) --

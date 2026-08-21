@@ -42,6 +42,7 @@ import {
   PHONON_ONLY_STAT_CEILING,
   FRACTIONAL_GUARD_DAMAGE_MULT,
   ANYON_ECHO_FRACTION,
+  ANYON_ECHO_CRIT_MULTIPLIER,
   EDGE_CURRENT_MISMATCH_MULT,
   STATUS_DURATION,
   SCREEN_REDUCTION_BY_LEVEL,
@@ -2750,7 +2751,11 @@ export class BattleScene extends Phaser.Scene {
     // by `power` here.
     const power = isPlayer ? effectiveMovePower(this.game.registry, moveId) : move.power;
     const level = isPlayer ? getMoveLevel(this.game.registry, moveId) : 0;
-    // The crit-chance/defense-factor/final-product math lives in
+    // Franklin's Satellite Reflection (§5) doubles its holder's own crit
+    // rate. Keyed off the *attacker*, unlike fractionalGuardMult above --
+    // a crit is something the attacking side rolls.
+    const critChanceMult = this.activePassives(isPlayer).has('anyonEcho') ? ANYON_ECHO_CRIT_MULTIPLIER : 1;
+    // The Energy/Lifetime-lever/final-product math lives in
     // data/balance.ts's resolveHitDamage (Phaser-free, shared with the
     // balance simulator script) -- this just assembles this hit's own
     // per-term multipliers and reads back the damage + whether it crit.
@@ -2764,6 +2769,7 @@ export class BattleScene extends Phaser.Scene {
       bonusMultiplier,
       screenedMult,
       fractionalGuardMult,
+      critChanceMult,
     });
     const from = isPlayer ? this.playerAnchor : this.opponentAnchor;
     const to = isPlayer ? this.opponentAnchor : this.playerAnchor;
@@ -2804,7 +2810,8 @@ export class BattleScene extends Phaser.Scene {
       const critText = crit ? ' A coherent critical hit!' : '';
 
       // Franklin's Satellite Reflection (§5): a crit from a side with it
-      // active triggers a bonus follow-up tick against the same defender,
+      // active (and its holder crits twice as often, see critChanceMult
+      // above) triggers a bonus follow-up tick against the same defender,
       // computed after the buff clause above so it still reads as part of
       // the same hit's log line -- fixed order (mismatch, crit, buff, echo,
       // heal), same "stack a clause onto the existing line" pattern every

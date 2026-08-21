@@ -802,9 +802,9 @@ async function main() {
   // At least one rival fight actually fought to a real WON outcome (every
   // other rival-gate test either loses honestly or pre-sets rivalDefeated
   // rather than winning it) -- boosts the player's own defense stat well
-  // past MAX_STAT (data/balance.ts's resolveHitDamage/defenseFactor floors
-  // incoming damage at 10% of nominal, not zero, however high Correlation
-  // goes) and gives it a massive HP buffer on top, so the outcome is
+  // past MAX_STAT (data/balance.ts's resolveHitDamage/lifetimeFactor divides
+  // incoming damage by at most 10x, never down to zero, however high
+  // Correlation goes) and gives it a massive HP buffer on top, so the outcome is
   // deterministic from that buffer alone rather than hoping variance/crit
   // rolls happen to favor a level-1 player against a full rival.
   async function testRivalGateActualWin(world) {

@@ -565,8 +565,8 @@ function makeMonteCarloHitFn(rng) {
   };
 }
 
-// Never crits (crit chance is capped at 0.5, and `1 < chance` is always
-// false) and always resolves damage variance to its exact 1.0 midpoint
+// Never crits (`1 < chance` is false for any chance, and BASE_CRIT_CHANCE is
+// well under 1 regardless) and always resolves damage variance to its exact 1.0 midpoint
 // (`floatBetween(0.85, 1.15, 0.5) === 1.0`) -- runs the real
 // `resolveHitDamage` like the Monte-Carlo path above, just with the RNG
 // frozen so it can be called thousands of times (candidate forms x wins

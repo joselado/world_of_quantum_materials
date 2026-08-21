@@ -232,7 +232,7 @@ gets more disordered.
 | Passive | Effect | Cost |
 | --- | --- | --- |
 | Diffraction Shadow | A defect-riddled lattice scatters and attenuates an incoming blow, the way porous carbon attenuates an X-ray beam. | 40 |
-| Satellite Reflection | A critical hit throws off a secondary diffraction peak: a bonus follow-up damage tick. | 45 |
+| Satellite Reflection | Coherent hits come twice as often, and each one throws off a secondary diffraction peak: a bonus follow-up damage tick. | 45 |
 | Amorphous Halo | A diffuse, defect-broadened halo softens the quasiparticle-mismatch double damage to a smaller multiplier. | 45 |
 <!-- GENERATED:FRANKLIN_PASSIVES_TABLE END -->
 

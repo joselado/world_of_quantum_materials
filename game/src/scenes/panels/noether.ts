@@ -301,7 +301,7 @@ function buyNoetherMove(scene: GuardianPanelHost, id: string, cost: number) {
 // (OverworldScene.applySuperpositionUnlocks), so that is the state all three
 // rows read in there.
 const STAT_ROWS: { key: keyof Stats; effect: string }[] = [
-  { key: 'quantumness', effect: 'Raises your crit chance.' },
+  { key: 'quantumness', effect: 'Higher deals more damage.' },
   { key: 'velocity', effect: 'Higher goes first each round.' },
   { key: 'correlation', effect: 'Higher takes less damage.' },
 ];

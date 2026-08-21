@@ -20,8 +20,9 @@ export const BASE_STAT = 1;
 
 // Noether's stat shop (panels/noether.ts's renderShopStats) refuses to sell
 // a stat past this -- the one hard ceiling in the stat system, everything
-// else (crit chance, the multi-hit ratio) is shaped to make full use of the
-// entire BASE_STAT-to-MAX_STAT range rather than plateauing early within it.
+// else (the Energy/Lifetime levers, the multi-hit ratio) is shaped to make
+// full use of the entire BASE_STAT-to-MAX_STAT range rather than plateauing
+// early within it.
 export const MAX_STAT = 100;
 
 export const DEFAULT_STATS: Stats = { quantumness: BASE_STAT, velocity: BASE_STAT, correlation: BASE_STAT };
@@ -58,21 +59,21 @@ export const STAT_LABELS: Record<keyof Stats, string> = {
 // systems (Dresselhaus's transmutation, Landau's Analytic moves, Feynman's
 // leveling, ...), so the gap that opens from there is meant to require
 // actually using them, staying genuinely hard for a near-optimal build all
-// the way to world 10. Correlation still gets the smaller share in both
-// phases -- its own effect on defense (defenseFactor below) isn't a flat
-// per-point rate the way a raw stat difference is, so it's weighted lighter
-// here to keep the overall climb balanced (`npm run balance-sim`-verified,
-// not derived in closed form). Scaled to a tenth of BASE_STAT itself
-// (0.1/0.35 per step rather than 1/3.5) so the curve's overall shape stays
-// the same relative size it was before BASE_STAT moved to 1 -- unscaled, a
-// whole-point-per-step growth would swing every world's difficulty far more
-// violently against a BASE_STAT of 1 than it used to against 10 (see
-// enemyStatsForWorld's own comment on why the result stays fractional
+// the way to world 10. All three stats grow at one shared rate: Energy and
+// Lifetime are mirror levers off one shared curve (statLever below) and the
+// multi-hit ratio reads Velocity against the player's own, so no one of the
+// three is worth less per point on the opponent's side than the others.
+// The rates are set so the two sides stay on comparable footing across the
+// whole run -- a played-through crystal reaches single-digit stats, not
+// tens, so an opponent tracking that same range is what keeps a late world
+// genuinely hard for a near-optimal build (`npm run balance-sim`-verified,
+// not derived in closed form). Fractional per step rather than whole-number
+// (see enemyStatsForWorld's own comment on why the result stays fractional
 // rather than rounding here, which is what makes a sub-1 per-step rate
 // actually register instead of vanishing under Math.round).
 const EARLY_PHASE_MAX_STEP = 2; // worlds 2-3 (steps 1-2 past world 1) grow at EARLY_GROWTH_PER_STEP
-const EARLY_GROWTH_PER_STEP: Stats = { quantumness: 0.1, velocity: 0.1, correlation: 0.05 };
-const LATE_GROWTH_PER_STEP: Stats = { quantumness: 0.35, velocity: 0.35, correlation: 0.22 };
+const EARLY_GROWTH_PER_STEP: Stats = { quantumness: 0.1, velocity: 0.1, correlation: 0.1 };
+const LATE_GROWTH_PER_STEP: Stats = { quantumness: 0.5, velocity: 0.5, correlation: 0.5 };
 
 // The Lab's Settings station (data/settings.ts's DifficultyTier/
 // DIFFICULTY_TIER_PRESETS) scales the whole curve above by one of these,
@@ -127,28 +128,30 @@ export function enemyStatsForWorld(world: number, difficultyMultiplier = 1): Sta
 // on the opponent's side either, so every fight in this mode draws from this
 // single representative value instead of enemyStatsForWorld's own per-world
 // climb. Deliberately NOT an average of enemyStatsForWorld's own (small,
-// BASE_STAT-anchored) curve -- a maxed-out player's own Correlation already
-// floors incoming damage (defenseFactor above) regardless of how strong a
-// small-numbered opponent is, so an averaged opponent (worked out to ~1-3)
-// was a one-hit stomp in practice. SUPERPOSITION_BASE_ENEMY_STAT is picked
-// (and `npm run balance-sim`-adjacent hand math-verified, not derived in
-// closed form) so that MAX_STAT reduces to a genuinely close fight -- k/d
-// close to the low single digits, the same shape a real Story Mode fight
-// has, not a 60+ round grind -- with the difficulty tier's own multiplier
-// on top giving real separation between tiers (M.Sc.'s `1` sits right at
-// that close-fight value; Ph.D.'s `1.4` pushes past MAX_STAT, where
-// Quantumness/Correlation's own plateau keeps it merely tighter rather than
-// unwinnable; B.Sc.'s `0.6` sits comfortably below it).
-const SUPERPOSITION_BASE_ENEMY_STAT = 80;
+// BASE_STAT-anchored) curve: Energy and Lifetime are ratio levers between
+// the two sides, so an opponent sitting far below a maxed-out player is a
+// one-hit stomp no matter how the rest of the fight is set up.
+// SUPERPOSITION_BASE_ENEMY_STAT is picked (and `npm run balance-sim`-adjacent
+// hand math-verified, not derived in closed form) so that MAX_STAT reduces to
+// a genuinely close fight -- k/d in the low single digits, the same shape a
+// real Story Mode fight has, not a 60+ round grind -- with the difficulty
+// tier's own multiplier on top giving real separation between tiers. It also
+// has to clear MAX_STAT/2, or a maxed-out player's Momentum would buy a
+// second swing every round on top of everything else: B.Sc.'s 0.6 drops
+// below that line on purpose (a maxed player does out-swing the easiest
+// tier), M.Sc.'s 1 sits just above it, and Ph.D.'s 1.4 pushes past MAX_STAT,
+// where the levers' own plateau keeps it merely tighter rather than
+// unwinnable.
+const SUPERPOSITION_BASE_ENEMY_STAT = 55;
 export function superpositionEnemyStats(difficultyMultiplier = 1): Stats {
   const stat = SUPERPOSITION_BASE_ENEMY_STAT * difficultyMultiplier;
   return { quantumness: stat, velocity: stat, correlation: stat };
 }
 
 // Correlation prices the same as Quantumness/Velocity -- all three share the
-// same "full range stays meaningful, then plateaus" shape (critChance, the
-// multi-hit ratio, and defenseFactor's own concave climb below), so no one
-// of them buys disproportionately more per point than the others. Kept as
+// same "full range stays meaningful, then plateaus" shape (the Energy and
+// Lifetime levers' shared concave climb below, and the multi-hit ratio), so
+// no one of them buys disproportionately more per point than the others. Kept as
 // its own named constant (rather than deleting the differential-pricing
 // machinery below) since re-introducing a per-stat multiplier is one
 // constant away if a future formula change reopens that gap -- checked
@@ -178,12 +181,12 @@ export function statUpgradeCost(currentValue: number, stat: keyof Stats): number
 // max HP by itself, only look/type/moveset do.
 
 const WILD_HP_BASE = 23;
-// Linear rather than enemyStatsForWorld's own two-phase curve -- a wild's HP
-// is a much smaller part of a fight's difficulty than its Quantumness/
-// Velocity/Correlation (which still follow that two-phase ramp), so it only
-// needs a gentle, steady climb: +10 total from World 1 to World 10, landing
-// near World 1's own historical ~23 baseline.
-const WILD_HP_GROWTH_PER_WORLD = 10 / 9;
+// Linear rather than enemyStatsForWorld's own two-phase curve -- HP doesn't
+// need that curve's shape, but it does have to climb faster than the curve's
+// own early rate: the late worlds are where the two sides' Energy/Lifetime
+// levers diverge most, and HP is what keeps a fight there from collapsing
+// into a single round. +20 total from World 1 to World 10.
+const WILD_HP_GROWTH_PER_WORLD = 20 / 9;
 
 // An ordinary wild's (and the player's own) base max HP for a given world --
 // shared by every crystal in that world's WORLD_CRYSTALS list, so a compound
@@ -205,15 +208,13 @@ export function wildHpForWorld(world: number): number {
 // A rival's own max HP, a separate and much steeper curve than an ordinary
 // wild's -- "many grains fused into one boss-scale mass" (WORLD_RIVALS' own
 // polycrystalline-golem framing) is meant to read as a genuine wall relative
-// to that world's ordinary wilds, not just a slightly bigger one. Loosely
-// calibrated to the golems' own historical 30/38/42/46/50/54/58/62 (worlds
-// 1-8) rather than reproducing it exactly -- linear growth landing on that
-// same 30 at World 1 and 62 at World 8, extended sensibly through World 9
-// (the rolled impurity resonance) and World 10 ("The Adapted"). No random
+// to that world's ordinary wilds, not just a slightly bigger one. Linear like
+// the wild curve and for the same reason, from 30 at World 1 to 91 at World
+// 10 ("The Adapted"). No random
 // roll, unlike an ordinary wild -- a rival is a fixed, known, repeatable
 // challenge, the same boss every time it's fought.
 const RIVAL_HP_BASE = 30;
-const RIVAL_HP_GROWTH_PER_WORLD = 4.5;
+const RIVAL_HP_GROWTH_PER_WORLD = 6.8;
 export function rivalHpForWorld(world: number): number {
   return Math.round(RIVAL_HP_BASE + RIVAL_HP_GROWTH_PER_WORLD * (world - 1));
 }
@@ -275,6 +276,11 @@ export const FRACTIONAL_GUARD_DAMAGE_MULT = 0.85;
 // Satellite Reflection (id anyonEcho): bonus follow-up tick on a crit, as a
 // fraction of the crit that triggered it.
 export const ANYON_ECHO_FRACTION = 0.3;
+// Satellite Reflection also doubles its holder's own crit rate
+// (BASE_CRIT_CHANCE), which is the one thing in the game that moves that
+// rate at all -- the passive is what turns a crit from something that just
+// happens into something a player can build for.
+export const ANYON_ECHO_CRIT_MULTIPLIER = 2;
 // Amorphous Halo (id edgeCurrent): softened quasiparticle-mismatch
 // multiplier for whichever side has it active as the defender (normally
 // MISMATCH_MULTIPLIER, 2x).
@@ -307,46 +313,58 @@ export const SCREEN_REDUCTION_BY_LEVEL = [0.5, 0.62, 0.68, 0.75];
 
 // --- Core damage resolution (BattleScene.resolveHit) ------------------------
 
-// Quantumness -> crit ("coherent hit") chance (DESIGN.md §3): linear from 1%
-// at BASE_STAT to a flat 100% right at MAX_STAT, so every point of
-// Quantumness in the sellable range keeps pulling its weight instead of
-// crit chance saturating partway through it, and a maxed-out Quantumness
-// crystal genuinely never rolls a non-crit. The clamp is defensive only --
-// Noether's shop never sells past MAX_STAT, so it never actually binds.
-const MIN_CRIT_CHANCE = 0.01;
-const MAX_CRIT_CHANCE = 1;
-export function critChance(attackerQuantumness: number): number {
-  return clamp(
-    MIN_CRIT_CHANCE + ((attackerQuantumness - BASE_STAT) * (MAX_CRIT_CHANCE - MIN_CRIT_CHANCE)) / (MAX_STAT - BASE_STAT),
-    MIN_CRIT_CHANCE,
-    MAX_CRIT_CHANCE
-  );
+// The two stat curves Energy and Lifetime drive, and the one shape they
+// share (DESIGN.md §3): a concave (square-root) climb in the stat, from a
+// 1x lever at BASE_STAT to a `maxLever`x one right at MAX_STAT. Concave
+// rather than straight so the first few points already buy something a
+// player can feel -- the whole range stays meaningful, but the benefit is
+// front-loaded, which is what keeps an early, cheap stat purchase worth
+// making at all. The clamp guards both directions: below BASE_STAT (never
+// happens in practice, stats bottom out there) `sqrt` of a negative input
+// would be NaN, and above MAX_STAT (an opponent's own stats,
+// difficulty-tier-scaled, can genuinely exceed it -- see
+// enemyStatsForWorld/superpositionEnemyStats) the lever would keep climbing
+// past its intended ceiling.
+//
+// Both levers share one ceiling so the two stats are worth the same per
+// point: Energy multiplies the damage a hit deals, Lifetime divides the
+// damage a hit takes, and neither buys more than the other for the same
+// qumatessence. Velocity is the third lever and has no curve of its own,
+// since its multi-hit bonus is a ratio between both sides' stats rather
+// than a function of one side's absolute value (see MAX_MULTI_HIT below).
+const MAX_STAT_LEVER = 10;
+function statLever(stat: number, maxLever: number): number {
+  const progress = clamp((stat - BASE_STAT) / (MAX_STAT - BASE_STAT), 0, 1);
+  return 1 + (maxLever - 1) * Math.sqrt(progress);
 }
 
-// Correlation -> defense: concave (square-root) climb from 0% damage
-// reduction at BASE_STAT to a flat MAX_DEFENSE_REDUCTION (90%) right at
-// MAX_STAT -- like critChance/the multi-hit ratio, the full range stays
-// meaningful and then plateaus, but unlike a straight line this front-loads
-// most of the benefit into the first several points (an early, cheap,
-// meaningful defensive buy stays available, the same property the old
-// unbounded `BASE_STAT / correlation` hyperbola had) while a straight line
-// would spread that benefit too thin to matter until many points in --
-// checked against `npm run balance-sim`: a straight-line version left the
-// B.Sc. archetype (which can only ever afford a handful of Correlation
-// points) unable to clear even World 1, since its first few points barely
-// moved the needle. A maxed-out Correlation crystal is very hard to hurt,
-// not literally unhittable, so there's always some real damage getting
-// through regardless of how defensive either side gets. The clamp guards
-// both directions: below BASE_STAT (never happens in practice, stats bottom
-// out there) `sqrt` of a negative input would be NaN, and above MAX_STAT (an
-// opponent's own stats, difficulty-tier-scaled, can genuinely exceed it --
-// see enemyStatsForWorld/superpositionEnemyStats) it would keep climbing
-// past the intended floor.
-const MAX_DEFENSE_REDUCTION = 0.9;
-export function defenseFactor(defenderCorrelation: number): number {
-  const progress = clamp((defenderCorrelation - BASE_STAT) / (MAX_STAT - BASE_STAT), 0, 1);
-  return 1 - MAX_DEFENSE_REDUCTION * Math.sqrt(progress);
+// Quantumness -> how hard the attacker's hits land. Energy is where a
+// quasiparticle sits above the ground state, so a higher-Energy excitation
+// carries a bigger quantum into the target and every blow deposits more.
+export function energyFactor(attackerQuantumness: number): number {
+  return statLever(attackerQuantumness, MAX_STAT_LEVER);
 }
+
+// Correlation -> how much of an incoming hit the defender soaks. Damage is
+// divided by this rather than multiplied by a fraction, so Lifetime is the
+// exact mirror of Energy: the same curve, the same ceiling, one on each side
+// of the exchange. A maxed-out Lifetime crystal is very hard to hurt, never
+// literally unhittable -- the divisor is finite, so real damage always gets
+// through no matter how defensive either side gets.
+export function lifetimeFactor(defenderCorrelation: number): number {
+  return statLever(defenderCorrelation, MAX_STAT_LEVER);
+}
+
+// Crit ("coherent hit") chance: a flat rate every attacker shares, not
+// something any stat raises. Each of the three stats drives exactly one
+// lever (energyFactor/lifetimeFactor/MAX_MULTI_HIT), so a crit is the
+// battle's own texture rather than a fourth thing to build toward -- the one
+// way to move it is Franklin's Satellite Reflection (data/passives.ts's
+// anyonEcho), which doubles its holder's own rate via
+// ANYON_ECHO_CRIT_MULTIPLIER below.
+export const BASE_CRIT_CHANCE = 0.2;
+// The crit bonus itself, applied to a hit that rolls one.
+export const CRIT_DAMAGE_MULTIPLIER = 1.5;
 
 // Velocity's own ceiling (DESIGN.md §4, BattleScene.currentHitOrder): the
 // faster side's hit count this round is `clamp(floor(velocityRatio), 1,
@@ -407,6 +425,11 @@ export interface ResolveHitParams {
   screenedMult: number;
   // Franklin's Diffraction Shadow on the defender's side -- 1 when inactive.
   fractionalGuardMult: number;
+  // Franklin's Satellite Reflection on the *attacker's* side, which doubles
+  // its holder's own crit rate (ANYON_ECHO_CRIT_MULTIPLIER) -- 1 when
+  // inactive. Optional: a call site with no passive in play (the balance
+  // simulator's own frozen-RNG path) can leave it off entirely.
+  critChanceMult?: number;
   // Injectable RNGs (default Math.random) so a caller (the balance
   // simulator, a future test) can drive deterministic or repeated rolls
   // instead of one live Math.random() sample per hit. Two separate RNGs,
@@ -423,28 +446,28 @@ export interface ResolveHitOutcome {
 }
 
 // The exact math BattleScene.resolveHit runs to turn one hit's inputs into a
-// damage number and whether it crit -- crit chance from the attacker's
-// Quantumness (critChance), a defense factor from the defender's Correlation
-// (defenseFactor), the quasiparticle-mismatch multiplier, every other
+// damage number and whether it crit -- the attacker's Energy lever
+// (energyFactor), the quasiparticle-mismatch multiplier, every other
 // multiplicative term (quiz/Analytic/Ultimate bonus, Kondo screening,
-// Franklin Diffraction Shadow), a 1.5x crit bonus, and +/-15% damage
-// variance, all multiplied together and rounded once at the end.
+// Franklin Diffraction Shadow), the crit bonus, and +/-15% damage variance,
+// all multiplied together, divided by the defender's Lifetime lever
+// (lifetimeFactor), and rounded once at the end.
 export function resolveHitDamage(params: ResolveHitParams): ResolveHitOutcome {
-  const chance = critChance(params.attackerStats.quantumness);
+  const chance = clamp(BASE_CRIT_CHANCE * (params.critChanceMult ?? 1), 0, 1);
   const crit = (params.critRng ?? Math.random)() < chance;
   const variance = floatBetween(0.85, 1.15, params.varianceRng ?? Math.random);
   const mismatchMult = params.mismatch ? params.mismatchMultiplier : 1;
-  const defense = defenseFactor(params.defenderStats.correlation);
   const damage = Math.round(
-    params.power *
+    (params.power *
+      energyFactor(params.attackerStats.quantumness) *
       mismatchMult *
       params.attackMult *
       params.bonusMultiplier *
       params.screenedMult *
       params.fractionalGuardMult *
-      defense *
-      (crit ? 1.5 : 1) *
-      variance
+      (crit ? CRIT_DAMAGE_MULTIPLIER : 1) *
+      variance) /
+      lifetimeFactor(params.defenderStats.correlation)
   );
   return { damage, crit };
 }

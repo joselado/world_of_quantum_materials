@@ -515,10 +515,14 @@ game/src/
                                   shopCost(), MOVE_LEVEL_MULTIPLIERS, MOVE_LEVEL_STREAKS,
                                   feynmanLevelCost(), battleStakeForWorld(),
                                   FRACTIONAL_GUARD_DAMAGE_MULT/ANYON_ECHO_FRACTION/
+                                  ANYON_ECHO_CRIT_MULTIPLIER/
                                   EDGE_CURRENT_MISMATCH_MULT (Franklin's passives, §5),
                                   MISMATCH_MULTIPLIER, mitigationFraction() (Kondo's buff-cap
-                                  math, §4/§5), critChance(), and resolveHitDamage() -- the exact
-                                  crit-chance/defense-factor/mismatch/final-product math
+                                  math, §4/§5), energyFactor()/lifetimeFactor() (the two mirror
+                                  stat levers off the shared statLever curve),
+                                  BASE_CRIT_CHANCE/CRIT_DAMAGE_MULTIPLIER, and
+                                  resolveHitDamage() -- the exact
+                                  stat-lever/crit/mismatch/final-product math
                                   BattleScene.resolveHit calls into rather than computing inline,
                                   so the battle scene and the balance simulator can never
                                   disagree on what a hit deals. materials.ts imports the
@@ -1045,8 +1049,8 @@ spelling it out, so a wording change is a one-line edit. Prose that names a stat
 (`data/tutorial.ts`'s battle-basics page, `README.md`) writes the display name literally, since a
 template substitution there would read worse than it reads now. The internal field names are
 identifiers only: they name the `Stats` interface's fields, the persisted `playerStats` save keys,
-and the balance-formula parameters (`critChance(attackerQuantumness)`,
-`defenseFactor(defenderCorrelation)`, `CORRELATION_COST_MULTIPLIER`).
+and the balance-formula parameters (`energyFactor(attackerQuantumness)`,
+`lifetimeFactor(defenderCorrelation)`, `CORRELATION_COST_MULTIPLIER`).
 
 Migrating the internals to match the display names is a possible future change. It would touch the
 `Stats` interface (`data/types.ts`), every field access across `data/balance.ts`,
@@ -1099,13 +1103,15 @@ sample-to-sample variance. `OverworldScene.applyPlayerForm`/`HubScene.applyPlaye
 itself.
 
 `BattleScene.resolveHit` is the single damage-resolution function both sides' attacks go
-through: crit chance from the attacker's `quantumness` (linear from 1% at `BASE_STAT` to 100% at
-`MAX_STAT`, `critChance`), incoming damage scaled by the defender's `correlation` (`defenseFactor`,
-a concave climb from 0% to a 90% cap -- see "Stats" above), and a `2x` "quasiparticle mismatch"
+through: outgoing damage multiplied by the attacker's `quantumness` lever (`energyFactor`),
+divided by the defender's `correlation` lever (`lifetimeFactor`, the same concave curve and the
+same 10x ceiling -- see "Stats" above), a flat `BASE_CRIT_CHANCE` (20%) crit roll worth
+`CRIT_DAMAGE_MULTIPLIER` (1.5x), doubled for an attacker holding Franklin's Satellite Reflection
+(`critChanceMult`/`ANYON_ECHO_CRIT_MULTIPLIER`), and a `2x` "quasiparticle mismatch"
 multiplier from
 `data/materials.ts`'s `canHost(defenderType, move.class)` -- a defender whose own
 `MOVE_COMPATIBILITY` list doesn't include the attacking move's class takes it at double force.
-The crit-chance/defense-factor/mismatch/final-product arithmetic itself lives in `data/
+The stat-lever/crit/mismatch/final-product arithmetic itself lives in `data/
 balance.ts`'s `resolveHitDamage` (Phaser-free, so `game/scripts/balance-sim.mjs` can run the
 same math outside the browser) -- `resolveHit` assembles that hit's own per-term multipliers
 (mismatch bool + which multiplier applies, quiz/Analytic/Ultimate bonus, Kondo/Franklin
@@ -1260,7 +1266,9 @@ after the primary hit's damage already landed, sharing a small helper with the o
 damage-application code path -- `applyDamage(toPlayer, amount)` (mirrors the
 registry-write/persist-only-for-the-player rule the original inline branch used, and calls
 `updateBars()`) -- re-called for a bonus `Math.round(dmg * ANYON_ECHO_FRACTION)` tick against
-the same defender when the attacker's own crit lands with it active. Its own log clause
+the same defender when the attacker's own crit lands with it active -- and it doubles that
+attacker's own crit rate (`critChanceMult`) on top, which is the one thing in the game that
+moves `BASE_CRIT_CHANCE` at all. Its own log clause
 (`echoText`) stacks onto the hit's line after `statusText`, same "stack a clause onto the
 existing line" pattern `mismatchText`/`critText`/`statusText` already use, in that fixed
 order.

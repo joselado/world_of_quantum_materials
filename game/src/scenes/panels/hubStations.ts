@@ -320,7 +320,7 @@ export function showStatsPanel(scene: HubScene) {
   const qumatessence = (scene.game.registry.get('qumatessence') as number) || 0;
   const playerMaterial = getPlayerMaterial(scene.game.registry);
   const body =
-    `${STAT_LABELS.quantumness}: ${stats.quantumness} (raises your crit chance)\n` +
+    `${STAT_LABELS.quantumness}: ${stats.quantumness} (higher deals more damage)\n` +
     `${STAT_LABELS.velocity}: ${stats.velocity} (higher goes first each round)\n` +
     `${STAT_LABELS.correlation}: ${stats.correlation} (higher takes less damage)\n\n` +
     `Qumatessence: ${qumatessence}\nCurrent form: ${playerMaterial.name}\n\n` +

@@ -239,9 +239,13 @@ the slower side always still gets its own hit. Each of your swings is a
 separate choice from the move menu, and the "Turns" row in the top-left corner
 counts down how many you have left before the other side acts. That applies to
 the quiz-gated moves too: every swing you spend on one asks its question
-again. Energy raises your crit
-("coherent hit") chance and Lifetime raises your defense; every stat runs from
-1 to a cap of 100, raised one point at a time at Noether's shop. HP is fully
+again. Energy multiplies the damage every blow you land deals, and Lifetime
+divides down the damage you take: exact mirrors of each other, worth the same
+per point. Momentum is worth about as much, but it pays differently, in whole
+extra swings rather than smoothly, and it stops paying once you are five times
+faster than whatever you are fighting. Every stat runs from 1 to a cap of 100,
+raised one point at a time at Noether's shop. A fifth of all hits land as a
+coherent hit for half again the damage, whoever throws them. HP is fully
 healed after each battle, so qumatessence, not HP attrition, is what is
 actually on the line from one fight to the next. The move menu shows one kind
 of move at a time (ordinary attacks, quiz-gated moves, or status-inflicting

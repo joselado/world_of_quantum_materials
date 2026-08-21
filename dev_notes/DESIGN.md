@@ -292,42 +292,56 @@ compatibility table before implementation (see open questions).
 Each attribute has a player-facing name and an internal `Stats` field name, and the two are
 independent — see CODEMAP.md's "Stats and battle resolution" for the pairing and what an internal
 rename would touch. This doc uses the player-facing names, with the field in backticks:
-- **Energy** (`quantumness`) → crit chance ("a coherent critical hit"): linear from 1% at
-  `BASE_STAT` to a
-  flat 100% right at `MAX_STAT` (`MIN_CRIT_CHANCE`/`MAX_CRIT_CHANCE`, `critChance`), so every
-  purchasable point keeps mattering instead of crit chance saturating partway through the sellable
-  range, and a maxed-out Energy crystal genuinely never rolls a non-crit
+- **Energy** (`quantumness`) → how hard the attacker's hits land (`energyFactor`): a concave
+  (square-root) climb in the stat, from a 1x multiplier at `BASE_STAT` to `MAX_STAT_LEVER` (10x)
+  right at `MAX_STAT`. The physics is that Energy is where a quasiparticle sits above the ground
+  state, so a higher-Energy excitation carries a bigger quantum into the target and every blow
+  deposits more
 - **Momentum** (`velocity`) → turn order and hit count each round: whichever side has the higher
   effective
   Momentum swings first, and swings `clamp(floor(ratio), 1, MAX_MULTI_HIT)` times that round, where
   `ratio` is its Momentum divided by the slower side's (`BattleScene.currentHitOrder`); the slower
   side always still gets exactly one swing. Ties keep the player going first, one swing each.
   `MAX_MULTI_HIT` is 5
-- **Lifetime** (`correlation`) → defense (`defenseFactor`): a concave (square-root) climb from 0%
-  damage
-  reduction at `BASE_STAT` to a flat `MAX_DEFENSE_REDUCTION` (90%) right at `MAX_STAT` -- the same
-  "full range stays meaningful, then plateaus" shape Energy/Momentum have, but front-loaded
-  (most of the benefit lands in the first several points, unlike a straight line) so an early, cheap
-  Lifetime buy still meaningfully helps rather than needing many points before it registers. A
-  maxed-out Lifetime crystal is very hard to hurt, not literally unhittable -- there's always
-  some real damage getting through, on both sides of a fight, regardless of how defensive either
+- **Lifetime** (`correlation`) → how much of an incoming hit the defender soaks
+  (`lifetimeFactor`): the exact mirror of Energy, the same curve off the same `statLever` helper
+  and the same `MAX_STAT_LEVER` (10x) ceiling, except damage is *divided* by it rather than
+  multiplied. Energy and Lifetime are therefore worth the same per point, one on each side of the
+  exchange. A maxed-out Lifetime crystal is very hard to hurt, not literally unhittable -- the
+  divisor is finite, so real damage always gets through regardless of how defensive either side
   gets
+
+Both curves are concave rather than straight so the full range stays meaningful while the benefit
+is front-loaded: the first few points already buy something a player can feel, which is what keeps
+an early, cheap stat purchase worth making at all. A crit ("a coherent critical hit") is not one of
+the three levers -- it is a flat `BASE_CRIT_CHANCE` (20%) for every attacker, worth
+`CRIT_DAMAGE_MULTIPLIER` (1.5x) when it lands, and the one thing that moves it is Franklin's
+Satellite Reflection (§5), which doubles its holder's own rate (`ANYON_ECHO_CRIT_MULTIPLIER`).
+
+The three levers are deliberately comparable per qumatessence over the range a real playthrough
+can afford (a few points each, not tens), and they are comparable in different shapes. Momentum's
+is a ratio against the opponent's own, so it pays in integer steps, pays double (it both grants
+your extra swings and denies theirs), and stops paying entirely once it reaches `MAX_MULTI_HIT` --
+Energy's and Lifetime's climb smoothly and never stop, and they stack multiplicatively with each
+other, so a build that spreads across all three beats pouring everything into whichever one looks
+strongest.
 
 Every crystal starts at `1/1/1` (`BASE_STAT`/`DEFAULT_STATS`) and can be raised up to `100`
 (`MAX_STAT`) per stat at Noether's shop -- a stat already at `MAX_STAT` shows as maxed and stops
 selling. The player's own stats live in the save (`playerStats`) and only grow by spending
 qumatessence with Noether (`scenes/panels/noether.ts`'s `renderShopStats`/`data/balance.ts`'s `statUpgradeCost`,
-`(current - BASE_STAT + 1) * 50` per point, the same rate for all three stats -- Lifetime prices
-the same as Energy/Momentum, since its own formula plateaus the same way theirs do); an opponent's
+`(current - BASE_STAT + 1) * 50` per point, the same rate for all three stats, since all three
+plateau the same way and none buys disproportionately more per point than the others); an opponent's
 stats are computed fresh from the world number (and the active
 difficulty tier, see below) at battle start (`enemyStatsForWorld(world, difficultyMultiplier)`,
 `data/balance.ts`) rather than hand-tuned per species, so difficulty climbs with the world.
 Growth follows a two-phase curve rather than one flat per-world rate: worlds 1-3 (the tutorial
 stretch, before the player has had a real chance to shop/transmute/level up) grow slowly, `+0.1`
-Energy/Momentum and `+0.05` Lifetime per world past world 1; worlds 4-10 assume a player
+per world past world 1 on all three stats; worlds 4-10 assume a player
 who has met the early guardians and can draw on their systems (Dresselhaus's transmutation,
-Landau's Analytic moves, Feynman's leveling, ...), so growth steepens to `+0.35`
-Energy/Momentum and `+0.22` Lifetime per world from there. An opponent's own stats stay
+Landau's Analytic moves, Feynman's leveling, ...), so growth steepens to `+0.5`
+per world from there. All three stats grow at one shared rate, since none of the three is worth
+less per point on the opponent's side than the others. An opponent's own stats stay
 fractional through this curve (never rounded here, since they're never shown to the player as a
 number, only felt through hit chance/damage/turn order) so its own sub-1 per-step rate actually
 registers rather than vanishing under premature rounding. `BattleScene.create` rounds the result
@@ -336,8 +350,10 @@ rival's stats are used exactly as this curve returns them. The player's own `pla
 whole numbers, since Noether's shop displays/sells them one point at a time, and none of this
 enemy-stat math ever feeds them (Superposition Mode's grant pins all three straight to
 `MAX_STAT`, see below).
-Lifetime still grows slightly slower than Energy/Momentum in both phases, weighted lighter
-to keep the overall climb balanced (`npm run balance-sim`-verified). Because the player's own
+The rates are set so the two sides stay on comparable footing across the whole run: a
+played-through crystal reaches single-digit stats rather than tens, so an opponent tracking that
+same range is what keeps a late world genuinely hard for a near-optimal build
+(`npm run balance-sim`-verified). Because the player's own
 Momentum only grows by spending qumatessence with Noether while the opponent's grows automatically
 every world, a player who never buys Momentum falls further behind the opponent's effective
 Momentum every world — raising both how often the opponent goes first and, per the multi-attack
@@ -363,7 +379,7 @@ next battle, no restart needed.
 transmutation, and hybrid material is available right away." With the player permanently maxed,
 there's no "this world is harder than the last" progression left for the opponent's own side to
 track either, so every fight in this mode draws its opponent stats from one flat, world-independent
-baseline (`SUPERPOSITION_BASE_ENEMY_STAT`, 80) instead of `enemyStatsForWorld`'s per-world climb --
+baseline (`SUPERPOSITION_BASE_ENEMY_STAT`, 55) instead of `enemyStatsForWorld`'s per-world climb --
 the same difficulty tier multiplier still applies on top, giving B.Sc./M.Sc./Ph.D. real separation
 (a comfortable win, a genuine-but-winnable fight, and a tight one, respectively) rather than every
 tier converging on the same "always trivially wins" result a maxed player would otherwise get
@@ -372,15 +388,15 @@ against a small, Story-Mode-curve-derived opponent.
 **Max HP is never intrinsic to a crystal** -- no `Material` (wild, rival, or the player's
 own current form) carries an HP number at all; it's purely a function of which world the
 fight is happening in, resolved fresh by `BattleScene.create` (`data/balance.ts`). An
-ordinary wild's base HP is `wildHpForWorld(world)` (a gentle linear climb, `23` at World 1
-to `33` at World 10 -- HP is a much smaller share of a fight's difficulty than the
-Energy/Momentum/Lifetime curve above, so it doesn't need that curve's two-phase
-shape), scaled once per encounter by a shared `rollEncounterFactor` (+/-15%, the same range
+ordinary wild's base HP is `wildHpForWorld(world)` (a linear climb, `23` at World 1
+to `43` at World 10 -- HP doesn't need the Energy/Momentum/Lifetime curve's two-phase shape,
+but it does have to climb faster than that curve's own early rate, since the late worlds are
+where the two sides' Energy/Lifetime levers diverge most and HP is what keeps a fight from
+collapsing into a single round), scaled once per encounter by a shared `rollEncounterFactor` (+/-15%, the same range
 `resolveHitDamage`'s own per-hit damage variance uses) applied to that wild's HP *and* its
 whole stat block together -- one coherent "this specimen is somewhat tougher/weaker than
 its world's average" trait, not four independent rolls. A rival's HP instead follows
-`rivalHpForWorld(world)` (steeper, `30` at World 1 to `71` at World 10, loosely calibrated
-to the golems' own historical 30/38/42/46/50/54/58/62), with no roll at all and plain
+`rivalHpForWorld(world)` (steeper, `30` at World 1 to `91` at World 10), with no roll at all and plain
 `enemyStatsForWorld(world)` stats -- a rival is a fixed, known, repeatable challenge, the
 same boss every time it's fought, unlike an ordinary wild's sample-to-sample variance. The
 player's own max HP uses `wildHpForWorld` too, for whichever world they're currently in, no
@@ -1318,9 +1334,10 @@ state can mark her met before the player has actually reached her.
   this battle," unlike Kondo's 3-turn buffs:
   - **Diffraction Shadow** -- incoming damage is multiplied down (×0.85) for the whole
     battle, the way porous carbon attenuates and scatters an X-ray beam.
-  - **Satellite Reflection** -- landing a critical hit throws off a secondary
-    diffraction peak: a bonus follow-up damage tick (~30% of that hit's damage)
-    immediately after.
+  - **Satellite Reflection** -- doubles its holder's own crit rate (20% → 40%,
+    `ANYON_ECHO_CRIT_MULTIPLIER`, the one thing in the game that moves that rate), and
+    each critical hit throws off a secondary diffraction peak: a bonus follow-up damage
+    tick (~30% of that hit's damage) immediately after.
   - **Amorphous Halo** -- softens the quasiparticle-mismatch double-damage rule
     (2x → 1.5x, `canHost`/`BattleScene.resolveHit`) -- a diffuse, defect-broadened halo
     partially shrugging off a hit that would otherwise land unmitigated.
