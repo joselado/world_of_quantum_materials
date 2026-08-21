@@ -143,10 +143,10 @@ whole-tone steps smearing into one another produce a cluster-wash that compounds
 the broken reading; and keep the collection **strictly melodic over the pedal,
 never stacked as chords**.
 
-The light rule's wording changed to permit this — see `WORLDS.md` §1. It is now
-drawn around *motion beneath the melody* rather than around instruments, with an
-explicit exemption for World 10's borrowed accompaniment, which would otherwise
-have been outlawed by the rule as first written.
+The light rule in sound is drawn around *motion beneath the melody* rather than
+around instruments — see `WORLDS.md` §1, which also says what the three worlds
+after this one may carry under their leads, and why World 10's borrowed
+accompaniment counts as quotation rather than as a world's own.
 
 ### The Lab gets its own theme, keyed to progress
 

@@ -133,12 +133,20 @@ shape you cannot quite see is the more honest picture of the thing anyway.
 
 **The musical light rule is the same rule in sound, and what World 7 removes is
 *motion beneath the melody*** — the chord progression, the moving bass line, the
-chordal pad. None of them returns in Worlds 8, 9 or 10, and the reverb that
-arrives with World 7 stays on to the end. **A sustained single-pitch pedal is
-permitted; anything that changes pitch, implies harmony, or articulates rhythm
-under the lead is not.** Wording it around motion rather than around instruments
-is what lets the rule forbid a refill — no later "just a little bass movement"
-can pass — while permitting the one thing World 7 needs to be audible at all.
+chordal pad. **World 7 itself keeps only a sustained single-pitch pedal**: nothing
+in that world changes pitch, implies harmony, or articulates rhythm under the
+lead, and the reverb that arrives with it stays on to the end. Wording the removal
+around motion rather than around instruments is what makes it total for that
+world while permitting the one thing World 7 needs to be audible at all.
+
+**What plays under the lead in Worlds 8, 9 and 10 is accompaniment that has been
+through that removal, never accompaniment that survived it.** World 8's harmony
+runs seven bars and then breaks off into a bar of nothing, which is the fog.
+World 9's grinds a semitone against itself in the most scorched mode available,
+over a bare pulse rather than a groove. World 10's is borrowed. None of the three
+is the unbroken, untroubled accompaniment Worlds 1 to 6 walk on, and none of them
+may become it: the day does not come back in sound any more than it does in
+light.
 
 That pedal is not a concession. **World 6's F♯ drone is the intruder grinding
 against the home key; World 7's pedal is that same drone, victorious, with
@@ -147,11 +155,10 @@ merely arrived at. It is also what makes the turn audible: an anchorless
 whole-tone cloud cannot establish a new tonic, so without it the score's largest
 harmonic event lands as vagueness.
 
-**One exemption, for the finale.** World 10's mixture layers borrowed basslines
-from the devoured worlds, which this rule would otherwise outlaw. The rule governs
-a world's *own living accompaniment*; World 10's is quotation, marked as lossy by
-the drive that distinguishes devoured material. **It is playback of the dead, not
-restoration of the living.**
+**World 10's accompaniment is quotation, not its own.** Its mixture layers
+borrowed basslines from the devoured worlds, marked as lossy by the drive that
+distinguishes devoured material. **It is playback of the dead, not restoration of
+the living.**
 
 The rule underneath all of it: **loss is only audible against a reference that
 survives in the same dimension.** Pitch loss needs one pitch anchor, rhythmic

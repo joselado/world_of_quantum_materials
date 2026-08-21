@@ -678,15 +678,19 @@ which question a player will see.
 
 Framing rules baked in: a world is shot from the **middle of its corridor**,
 walked in with the game's own movement so the camera follows — from the
-entrance a world is mostly its own back-exit sign. A guardian panel whose pane
-carries a preview stage (Noether, Feynman, Kondo, Landau, Skłodowska-Curie) is
-shot **with its looping move preview mid-play**: the script watches the stage
-region from inside the page (Phaser's `snapshotArea`), freezes the game loop
-(`game.loop.sleep()`) the moment the encoded size of that region jumps — the
-effect arriving on stage — screenshots the frozen frame, and wakes the loop.
-The per-guardian trigger thresholds live in `STAGE_TRIGGER`, calibrated
-against the min/max region sizes the run logs; if no play is caught within a
-few loops the settled panel is shot instead (and the run says so). The shots
+entrance a world is mostly its own back-exit sign. A panel whose pane carries a
+preview stage (Noether, Feynman, Kondo, Landau and Skłodowska-Curie's panels,
+and the Lab's own Moves station) is shot **with its looping move preview
+mid-play**: `freezeOnStagePlay` watches the stage region from inside the page
+(Phaser's `snapshotArea`), freezes the game loop (`game.loop.sleep()`) the
+moment the encoded size of that region jumps — the effect arriving on stage —
+so the caller can screenshot the frozen frame and wake the loop again. The
+per-guardian trigger thresholds live in `STAGE_TRIGGER`, calibrated against the
+min/max region sizes the run logs; if no play is caught within a few loops the
+settled panel is shot instead (and the run says so). Only an effect that lives
+for a good fraction of a second can be caught this way, since the region
+readback lags the frame it measures, which is why the Moves-station shot
+previews an Ultimate meteor rather than an ordinary strike. The shots
 that depend on a battle reaching a particular moment — a mismatch hit landing
 (driven as Magnon Wave into Barium Titanate, a ferroelectric with no magnetic
 order to host it), a victory banner, an analytic question mid-flight — are

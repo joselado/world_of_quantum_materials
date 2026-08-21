@@ -20,8 +20,14 @@ import {
   renderListColumn,
   insertColumnDivider,
   renderListColumnFooter,
+  renderMoveDetailHeader,
+  renderSelfBuffMoveDetailHeader,
   destroyPanel,
 } from './listDetail';
+import { ANALYTIC_SHAPES, ULTIMATE_SHAPES } from '../../art/attackEffects';
+import { stopMoveEffectPreview } from '../../art/moveEffectPreview';
+import { killTweensDeep } from '../../art/crystals';
+import { MOVE_CLASS_LORE } from '../../data/moveLore';
 import { PASSIVES, PASSIVE_OWNERS, PASSIVE_OWNER_LABELS } from '../../data/passives';
 import type { PassiveOwner } from '../../data/passives';
 import {
@@ -47,7 +53,19 @@ import type { WorldSizeId, TouchControlsMode, SettingsCategoryId } from '../../d
 import { STAT_LABELS } from '../../data/balance';
 import { persistFromRegistry } from '../../data/save';
 import { music } from '../../audio/music';
-import { getBattleMoves, effectiveMovePower, moveDisplayName, getPlayerStats, getPlayerMaterial } from '../../data/materials';
+import {
+  getBattleMoves,
+  effectiveMovePower,
+  moveDisplayName,
+  getPlayerStats,
+  getPlayerMaterial,
+  getMoveLevel,
+  getTunedMoveClass,
+  quasiparticleLabel,
+  MOVES,
+  ANALYTIC_MOVE_IDS,
+  ULTIMATE_MOVE_IDS,
+} from '../../data/materials';
 import {
   makeMovesMotif,
   makeStatsMotif,
@@ -91,12 +109,210 @@ export function labPanelColumns(panelWidth: number): LabPanelColumns {
 // HubScene` as the first param, same shape every scenes/panels/<guardian>.ts
 // file takes `scene: OverworldScene`, since HubScene is now this module's
 // only caller.
+// Every move the player could actually pick in a fight right now
+// (data/materials.ts's getBattleMoves: unlocked, hostable by the current form
+// or its dopant, and for Kondo's screenings only the one currently made
+// active), in the order the panel reads them: the ordinary attacks by power,
+// then Landau's tunable Analytic pair, then whichever cloud Kondo's is
+// holding, then Skłodowska-Curie's Ultimates last. Power ascending inside each
+// group, so reading down the column is reading up the escalation, and the
+// three groups that carry a guardian's own machinery sit past the plain
+// strikes rather than interleaved with them by raw number.
+function browsableBattleMoves(scene: HubScene): string[] {
+  const rank = (id: string): number => {
+    if (ULTIMATE_MOVE_IDS.includes(id)) return 3;
+    if (MOVES[id].class === 'screening') return 2;
+    if (ANALYTIC_MOVE_IDS.includes(id)) return 1;
+    return 0;
+  };
+  return [...getBattleMoves(scene.game.registry)].sort(
+    (a, b) => rank(a) - rank(b) || MOVES[a].power - MOVES[b].power || MOVES[a].name.localeCompare(MOVES[b].name)
+  );
+}
+
+// The Moves station: what the player is currently carrying, browsed one move
+// at a time. Same list+detail layout (scenes/panels/listDetail.ts, STYLE.md's
+// "List+detail panels") every guardian who deals in moves is read through, so
+// a move looks the same in the Lab as it does in the shop it came from, and
+// the same layout the Tutorial and Story stations beside it use.
+//
+// The pane opens with that move's own real battle-effect animation looping on
+// a stage (renderMoveDetailHeader), at the tier the move is actually carried
+// at (getMoveLevel), so a leveled move demonstrates the same cascade a real
+// cast plays rather than a plain single strike. Kondo's screening cloud is the
+// one that is not thrown at anybody: it is raised on the caster, so it shows
+// over the player's own crystal instead (renderSelfBuffMoveDetailHeader), the
+// same way Kondo's own panel shows it. A tunable move (Landau's Analytic pair,
+// Skłodowska-Curie's Ultimates) is drawn in whichever quasiparticle it is
+// currently tuned to and keeps its own lance/eruption/meteor/nova silhouette
+// (ANALYTIC_SHAPES/ULTIMATE_SHAPES), the same override BattleScene itself
+// passes.
+//
+// Under the animation: what the move carries and how hard it lands, then what
+// that quasiparticle *is* in physics (data/moveLore.ts's MOVE_CLASS_LORE,
+// keyed by the class the move currently carries). A screening cloud says what
+// the cloud does for the player first, since that is the move's own effect
+// text, and the physics of screening under it.
+//
+// A row click is a scoped update, not a panel rebuild (CODEMAP's "scoped
+// update" convention): the title and list rows stay, `setSelectedId` restyles
+// the highlighted row, and only `detailBlock`/`chromeBlock` re-render. A page
+// flip still rebuilds, since that changes which rows the list shows.
 export function showMovesPanel(scene: HubScene) {
-  const lines = getBattleMoves(scene.game.registry).map((id) => {
-    const power = Math.round(effectiveMovePower(scene.game.registry, id));
-    return `${moveDisplayName(scene.game.registry, id)}: Pwr ${power}`;
+  destroyPanel(scene);
+  scene.dialogueActive = true;
+
+  const panelWidth = LIST_DETAIL_PANEL_W;
+  const top = 20;
+  const container = scene.add.container(0, 0).setDepth(100);
+  scene.dialogueContainer = container;
+
+  // Added first so everything below (divider, footer, panel background)
+  // renders beneath every row/button added to `container` afterward.
+  const chromeBlock = scene.add.container(0, 0);
+  container.add(chromeBlock);
+
+  let y = top;
+  const title = scene.add
+    .text(CANVAS_W / 2, y, 'Your Moves', { fontSize: fontPx(scene, 15), color: LAB_TITLE_COLOR, fontStyle: 'bold' })
+    .setOrigin(0.5, 0);
+  container.add(title);
+  y += title.height + 6;
+
+  const hint = scene.add
+    .text(CANVAS_W / 2, y, 'Pick a move to watch it and read what it carries.', {
+      fontSize: fontPx(scene, 11),
+      color: REFERENCE_BLUE_GREY_HEX,
+    })
+    .setOrigin(0.5, 0);
+  container.add(hint);
+  y += hint.height + 10;
+
+  const panelLeft = CANVAS_W / 2 - panelWidth / 2;
+  const columns = listDetailColumns(panelLeft);
+  const columnsTop = y;
+
+  // Read once per panel build and closed over, so nothing can shift the rows
+  // out from under a click.
+  const ids = browsableBattleMoves(scene);
+  let selected = ids.includes(scene.movesSelectedId ?? '') ? (scene.movesSelectedId as string) : ids[0] ?? null;
+
+  const listResult = renderListColumn({
+    scene,
+    container,
+    x: columns.leftX,
+    y: columnsTop,
+    width: columns.leftColW,
+    items: ids,
+    idFor: (id) => id,
+    labelFor: (id) => moveDisplayName(scene.game.registry, id),
+    selectedId: selected,
+    page: scene.movesPage,
+    emptyText: 'Your current form can carry no move at all.',
+    onPageChange: (page) => {
+      scene.movesPage = page;
+      destroyPanel(scene);
+      showMovesPanel(scene);
+    },
+    onSelect: (id) => {
+      scene.movesSelectedId = id;
+      selected = id;
+      listResult.setSelectedId(id);
+      renderDetail();
+    },
   });
-  showInfoPanel(scene, 'Your Moves', lines.join('\n'));
+  scene.movesPage = listResult.page;
+
+  const detailBlock = scene.add.container(0, 0);
+  container.add(detailBlock);
+
+  const renderDetail = () => {
+    // The self-buff pane draws a real crystal, whose own sparkle tweens
+    // outlive a plain removeAll (listDetail.ts's destroyPanel comment).
+    killTweensDeep(scene, detailBlock);
+    detailBlock.removeAll(true);
+    chromeBlock.removeAll(true);
+
+    let rightY = columnsTop;
+    if (selected === null) {
+      // Nothing to demonstrate, so stop the loop outright rather than leaving
+      // the previous move's effect playing on a stage that is gone.
+      stopMoveEffectPreview();
+    } else {
+      const move = MOVES[selected];
+      const moveClass = getTunedMoveClass(scene.game.registry, selected);
+      const level = getMoveLevel(scene.game.registry, selected);
+      const displayName = moveDisplayName(scene.game.registry, selected);
+
+      rightY =
+        move.class === 'screening'
+          ? renderSelfBuffMoveDetailHeader(
+              scene,
+              detailBlock,
+              getPlayerMaterial(scene.game.registry),
+              displayName,
+              move.class,
+              columns.rightColCenterX,
+              rightY,
+              columns.rightColW,
+              level
+            )
+          : renderMoveDetailHeader(
+              scene,
+              detailBlock,
+              displayName,
+              moveClass,
+              ANALYTIC_SHAPES[selected] ?? ULTIMATE_SHAPES[selected],
+              columns.rightColCenterX,
+              rightY,
+              columns.rightColW,
+              level
+            );
+
+      const factLine =
+        move.class === 'screening'
+          ? move.description ?? ''
+          : `${quasiparticleLabel(moveClass)} carrier. Power ${Math.round(effectiveMovePower(scene.game.registry, selected))}.`;
+      const factText = scene.add
+        .text(columns.rightColCenterX, rightY, factLine, {
+          fontSize: `${Math.round(11 * Math.min(fontScale(scene), 1.2))}px`,
+          color: GOLD_ACCENT_HEX,
+          align: 'center',
+          wordWrap: { width: columns.rightColW },
+        })
+        .setOrigin(0.5, 0);
+      detailBlock.add(factText);
+      rightY += factText.height + 8;
+
+      // Shrink-only fitting, same budget arithmetic the Tutorial station's own
+      // pane uses: the only button in the panel is the left column's Close, so
+      // nothing under this column has to be reserved for, and a long blurb at
+      // the largest text-size preset has to be made to fit where it stands.
+      const loreText = scene.add
+        .text(columns.rightColCenterX, rightY, '', {
+          fontSize: `${Math.round(12 * fontScale(scene))}px`,
+          color: '#cfd8ff',
+          align: 'center',
+          wordWrap: { width: columns.rightColW },
+          lineSpacing: 4,
+        })
+        .setOrigin(0.5, 0);
+      detailBlock.add(loreText);
+      fitProseToBudget(loreText, [MOVE_CLASS_LORE[moveClass]], CANVAS_H - 16 - 14 - 14 - rightY);
+      rightY += loreText.height + 14;
+    }
+
+    const leftBottom = renderListColumnFooter(scene, chromeBlock, columns, listResult.bottom + 10, 'Close', () => scene.closeDialogue());
+    const columnsBottom = Math.max(leftBottom, rightY);
+    insertColumnDivider(scene, chromeBlock, columns.dividerX, columnsTop, columnsBottom);
+
+    const panelHeight = columnsBottom + 14 - top;
+    const panel = scene.add
+      .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.95)
+      .setStrokeStyle(2, REFERENCE_BLUE_GREY);
+    chromeBlock.addAt(panel, 0);
+  };
+  renderDetail();
 }
 
 export function showStatsPanel(scene: HubScene) {

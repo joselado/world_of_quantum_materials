@@ -201,6 +201,86 @@ async function main() {
       log(`  wrote ${name}.png (${kb} kB)`);
     };
 
+    // The panels that carry a demonstration stage (every guardian who deals
+    // in moves, and the Lab's own Moves station) loop the selected move's
+    // real battle effect on a recessed stage, and the visible part of a play
+    // is a brief window inside a couple-of-seconds loop -- a capture at any
+    // fixed moment lands in the quiet stretch as often as not and shows an
+    // empty stage. So: watch the stage region itself from inside the page
+    // (Phaser's own snapshotArea; the encoded size of the region jumps while
+    // an effect is drawn on it, and the region is small enough that nothing
+    // else moves there) and freeze the game loop (game.loop.sleep()) the
+    // moment a play is on stage, so the caller can screenshot the frozen
+    // frame and then wake the loop. The effect is clipped to its stage
+    // (art/moveEffectPreview.ts), so a mid-play frame is clean everywhere
+    // else. If no play shows within a few loops (Noether's electron zap is a
+    // couple of frames long), the caller shoots the panel as-is.
+    //
+    // `trigger` is how large a jump, relative to the empty stage's own
+    // encoded size, counts as "the effect is on stage now", and it is
+    // per-panel: Skłodowska-Curie's meteor builds from a faint summoning ring
+    // to a whiteout impact, so a low threshold would freeze on the faint
+    // ring; the briefer plays are never huge, so a high threshold would miss
+    // them entirely. Calibrated against the min/max sizes this logs.
+    // Thresholds sit just above the background's own flicker through the
+    // translucent panel (the stage is not opaque) -- a false trigger costs
+    // nothing, since a frame frozen on background flicker looks the same as
+    // the settled panel.
+    const freezeOnStagePlay = async (sceneKey, trigger, label, intervalMs = 70) => {
+      const result = await page.evaluate(
+        async ({ sceneKey, trigger, intervalMs }) => {
+          const g = window.__game;
+          const sc = g.scene.getScene(sceneKey);
+          const findStage = (list) => {
+            for (const o of list) {
+              if (o.type === 'Rectangle' && o.width > 300 && o.height >= 90 && o.height <= 160) return o.getBounds();
+              if (o.list) {
+                const r = findStage(o.list);
+                if (r) return r;
+              }
+            }
+            return null;
+          };
+          const rect = findStage(sc['dialogueContainer']?.list ?? []);
+          if (!rect) return null;
+          const snap = () =>
+            new Promise((res) =>
+              g.renderer.snapshotArea(
+                Math.round(rect.x) + 2,
+                Math.round(rect.y) + 2,
+                Math.round(rect.width) - 4,
+                Math.round(rect.height) - 4,
+                (img) => res(img.src.length)
+              )
+            );
+          // Running minimum as the "empty stage" baseline rather than the
+          // first few samples -- the panel may open mid-play, in which case
+          // the early samples ARE the effect and the quiet stretch after them
+          // is what establishes empty.
+          let min = Infinity;
+          let max = 0;
+          let samples = 0;
+          const t0 = Date.now();
+          while (Date.now() - t0 < 8000) {
+            const s = await snap();
+            samples += 1;
+            min = Math.min(min, s);
+            max = Math.max(max, s);
+            if (samples > 3 && s > min * trigger) {
+              g.loop.sleep();
+              return { frozen: true, min, max };
+            }
+            await new Promise((r) => setTimeout(r, intervalMs));
+          }
+          return { frozen: false, min, max };
+        },
+        { sceneKey, trigger, intervalMs }
+      );
+      if (!result) return false;
+      log(`  stage sizes for ${label}: min ${result.min}, max ${result.max}${result.frozen ? '' : ' -- no play caught, shooting the settled panel'}`);
+      return result.frozen;
+    };
+
     // A mid-run Story Mode save, written straight into the registry (the
     // runtime source of truth every scene reads -- see data/save.ts). Every
     // list a guardian panel shows is fed from here: defeats populate
@@ -324,6 +404,38 @@ async function main() {
         await shoot('hub-materialdex');
       } else log('  (skipped hub-materialdex -- no showMaterialdex on HubScene)');
 
+      // The Lab's Moves station, docs/quasiparticles.md's illustration of
+      // watching your own move play. Driven the way a player opens it (the
+      // station's own button on the Lab floor), with the previewed move
+      // preset first the same way Majorana's panel is below. The Ultimate
+      // meteor is the move chosen: the shot has to show a play actually on
+      // the stage, and a meteor is the longest-lived effect in the game,
+      // building from a summoning ring to an impact over most of a second,
+      // where an ordinary strike crosses its stage in two or three frames and
+      // is gone before the freeze below can land on it.
+      const movesOpened = await page.evaluate(() => {
+        const sc = window.__game.scene.getScene('Hub');
+        sc['closeDialogue']?.();
+        sc['movesSelectedId'] = 'ultimateMeteor';
+        sc['movesPage'] = 0;
+        const hits = [];
+        (function walk(list) {
+          for (const o of list) {
+            if (o.input && typeof o.text === 'string' && o.text === 'Moves') hits.push(o);
+            if (o.list) walk(o.list);
+          }
+        })(sc.children.list);
+        hits[0]?.emit('pointerdown');
+        return sc['dialogueContainer'] !== undefined;
+      });
+      await sleep(700);
+      if (movesOpened) {
+        const frozenMoves = await freezeOnStagePlay('Hub', 1.35, 'lab moves');
+        await shoot('docs-quasiparticles-moves');
+        if (frozenMoves) await page.evaluate(() => window.__game.loop.wake());
+        await page.evaluate(() => window.__game.scene.getScene('Hub')['closeDialogue']?.());
+      } else log('  (skipped docs-quasiparticles-moves -- Moves station did not open)');
+
       const settings = await page.evaluate(async () => {
         const g = window.__game;
         const sc = g.scene.getScene('Hub');
@@ -430,84 +542,9 @@ async function main() {
         // illustration.
         const targets = [`docs-guardians-${id}-panel`, `mentor-${id}`];
         if (id === 'majorana') targets.push('docs-hybrids-majorana');
-        // The stage-carrying panels (Noether, Feynman, Kondo, Landau,
-        // Skłodowska-Curie) loop the selected move's own real battle effect
-        // on a recessed stage, and the visible part of a play is a brief
-        // window inside a couple-of-seconds loop -- a capture at any fixed
-        // moment lands in the quiet stretch as often as not and shows an
-        // empty stage. So: watch the stage region itself from inside the
-        // page (Phaser's own snapshotArea; the encoded size of the region
-        // jumps while an effect is drawn on it, and the region is small
-        // enough that nothing else moves there) and freeze the game loop
-        // (game.loop.sleep()) the moment a play is on stage, screenshot the
-        // frozen frame, then wake the loop. The effect is clipped to its
-        // stage (art/moveEffectPreview.ts), so a mid-play frame is clean
-        // everywhere else. If no play shows within a few loops (Noether's
-        // electron zap is a couple of frames long), the panel is shot as-is.
-        // How large a jump (relative to the empty stage's own encoded size)
-        // counts as "the effect is on stage now", per guardian:
-        // Skłodowska-Curie's meteor builds from a faint summoning ring to a
-        // whiteout impact, so a low threshold would freeze on the faint
-        // ring; the others' plays are brief and never huge, so a high
-        // threshold would miss them entirely. Calibrated against the
-        // min/max sizes this block logs.
-        // Thresholds sit just above the background's own flicker through the
-        // translucent panel (the stage is not opaque) -- a false trigger
-        // costs nothing, since a frame frozen on background flicker looks
-        // the same as the settled panel.
+        // Per-panel trigger for freezeOnStagePlay above.
         const STAGE_TRIGGER = { noether: 1.03, feynman: 1.5, kondo: 1.05, landau: 1.08, curie: 1.35 };
-        const stagePanel = id in STAGE_TRIGGER;
-        let frozen = false;
-        if (stagePanel) {
-          frozen = await page.evaluate(async (trigger) => {
-            const g = window.__game;
-            const sc = g.scene.getScene('Overworld');
-            const findStage = (list) => {
-              for (const o of list) {
-                if (o.type === 'Rectangle' && o.width > 300 && o.height >= 90 && o.height <= 160) return o.getBounds();
-                if (o.list) {
-                  const r = findStage(o.list);
-                  if (r) return r;
-                }
-              }
-              return null;
-            };
-            const rect = findStage(sc['dialogueContainer']?.list ?? []);
-            if (!rect) return false;
-            const snap = () =>
-              new Promise((res) =>
-                g.renderer.snapshotArea(
-                  Math.round(rect.x) + 2,
-                  Math.round(rect.y) + 2,
-                  Math.round(rect.width) - 4,
-                  Math.round(rect.height) - 4,
-                  (img) => res(img.src.length)
-                )
-              );
-            // Running minimum as the "empty stage" baseline rather than the
-            // first few samples -- the panel may open mid-play, in which
-            // case the early samples ARE the effect and the quiet stretch
-            // after them is what establishes empty.
-            let min = Infinity;
-            let max = 0;
-            let samples = 0;
-            const t0 = Date.now();
-            while (Date.now() - t0 < 8000) {
-              const s = await snap();
-              samples += 1;
-              min = Math.min(min, s);
-              max = Math.max(max, s);
-              if (samples > 3 && s > min * trigger) {
-                g.loop.sleep();
-                return { frozen: true, min, max };
-              }
-              await new Promise((r) => setTimeout(r, 70));
-            }
-            return { frozen: false, min, max };
-          }, STAGE_TRIGGER[id]);
-          log(`  stage sizes for ${id}: min ${frozen.min}, max ${frozen.max}${frozen.frozen ? '' : ' -- no play caught, shooting the settled panel'}`);
-          frozen = frozen.frozen;
-        }
+        const frozen = id in STAGE_TRIGGER ? await freezeOnStagePlay('Overworld', STAGE_TRIGGER[id], id) : false;
         const chosen = await page.screenshot();
         for (const t of targets) {
           const file = path.join(SHOT_DIR, `${t}.png`);

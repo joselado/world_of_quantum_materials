@@ -598,6 +598,11 @@ game/src/
                                   filtering, since the finale is meant to test everything the course
                                   covered, not one world's own topic
     greetings.ts                 Per-MaterialType flavor lines (encounter/victory/defeat)
+    moveLore.ts                  MOVE_CLASS_LORE -- one short paragraph per MoveClass on what
+                                  that quasiparticle is in physics, shown under the animation
+                                  in the Lab's Moves station. Keyed by class rather than by
+                                  move id, so a tunable move reads the entry for whichever
+                                  class it currently carries
     statLore.ts                  STAT_LORE -- one short paragraph per Stats field on what that
                                   stat is in physics and why it does what it does in a fight,
                                   shown in the detail pane of Noether's Stats section. Energy/
@@ -2571,12 +2576,24 @@ once `passivesUnlocked` is non-empty (or `isSuperpositionMode()` is true, which 
 passive anyway) --
 `HubScene.create()` filters `LAB_STATIONS` by this before laying out the room's station rows,
 so Abilities simply doesn't appear until there's something to check there.
-`showMovesPanel` lists `getBattleMoves(registry)`
-(learned ∩ currently form-compatible, not the raw `unlockedMoves` list) as plain
-`<name> -- Pwr N` lines (`moveDisplayName`/`effectiveMovePower`, so a Feynman-leveled move's
-name/power both show up here too) -- no
-move-class label, no "incompatible" entries; a move the player has learned but can't currently
-use just doesn't show up until they transmute into a form that supports it. `showAbilitiesPanel`
+`showMovesPanel` browses `getBattleMoves(registry)`
+(learned ∩ currently form-compatible, not the raw `unlockedMoves` list; a move the player has
+learned but can't currently use simply isn't listed until they transmute into a form that
+supports it) through the shared list+detail scaffolding (`scenes/panels/listDetail.ts`, see
+"Guardian panels" above), the same way every guardian who deals in moves is read. Its own
+`browsableBattleMoves` orders the column ordinary attacks → Analytic pair → active screening
+cloud → Ultimates, power ascending inside each group. The pane beside it opens with that
+move's real battle-effect animation looping on a stage at the tier it is actually carried at
+(`renderMoveDetailHeader` + `getMoveLevel`), overriding the per-class silhouette with
+`ANALYTIC_SHAPES`/`ULTIMATE_SHAPES` and coloring it by `getTunedMoveClass` for a tunable move,
+exactly as `BattleScene` does; a `screening`-class move is raised on the caster rather than
+thrown, so it uses `renderSelfBuffMoveDetailHeader` over the player's own crystal instead.
+Below the animation: a `<quasiparticle> carrier. Power N.` line (`quasiparticleLabel`/
+`effectiveMovePower`, so a Feynman level shows up here too) or, for a screening cloud, that
+move's own `Move.description`; then `data/moveLore.ts`'s `MOVE_CLASS_LORE` paragraph on what
+the quasiparticle is in physics, shrink-fitted with `fitProseToBudget`. A row click is a
+scoped update (`movesSelectedId`/`movesPage` on `HubScene`, panel state only, reset by
+`closeDialogue()`); a page flip rebuilds. `showAbilitiesPanel`
 is the "check anytime" surface for Franklin's current passive loadout -- its own
 dedicated panel (not folded into `showStatsPanel`/its shared `showInfoPanel` body), looping over `data/
 passives.ts`'s `PASSIVE_OWNERS` (rather than a hand-written block) to build one

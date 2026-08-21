@@ -207,17 +207,12 @@ seven share. These are the pristine excitations rather than the `GOLEM_MOVE_IDS`
 ones every other golem carries, per WORLDS.md §6's exemption: World 9's rival is the
 one rival the Decoherence took nothing from.
 
-**Every world uses this same reach-goal → beat-rival → continue gate, not a bespoke
-per-world puzzle.** §6 below sketches a more ambitious per-world boss mechanic (a
-Landau-level maze, pairing a Majorana boss, riding a magnon wave, etc.); building those
-as one-off minigames for every world was scoped out of the initial full build-out pass
-as too large for one person (§10) in favor of the reusable gate every world already had.
-§6 stays as a record of that future direction, not a description of current behavior. The
-per-world *map shape* above (each world's own generator, `generators/world<N>.ts`) is a
-scoped-down version of that same ambition -- the journey to the guardian and the goal now
-reads as that world's own physics (a Voronoi domain network, a tensor-network ladder, a
-vortex spiral...) even though the gate mechanic waiting at the end of it is still the shared
-reach-goal → beat-rival → continue one, not a bespoke puzzle.
+**Every world uses this same reach-goal → beat-rival → continue gate** (§6 for what a
+boss encounter is made of). What varies from world to world is the *map shape* above:
+each world has its own generator (`generators/world<N>.ts`), so the journey to the
+guardian and the goal reads as that world's own physics -- a Voronoi domain network, a
+tensor-network ladder, a vortex spiral -- and the world's own rival, carrying that
+world's own excitation, is what waits at the pass.
 
 ## 3. Type system
 
@@ -1518,10 +1513,30 @@ edge of this world!" instead, so it's never a dead end.
 
 ## 6. Boss design
 
-Each world boss requires the ability that world specifically teaches, not just
-higher stats — e.g. world 3's boss is only vulnerable while an edge-state move is
-active; world 5's boss must be split into a Majorana pair before it can be damaged;
-world 7's boss fights as an entangled pair where damaging one damages both.
+A world's boss is the rival golem holding its forward pass. The encounter is one shape
+in all ten worlds: reach the goal, and the pass mouth answers a keypress
+(`OverworldScene.confirmGate`) with the rival's two-page taunt
+(`showRivalEncounter`, `data/worldLore.ts`'s `RIVAL_TAUNTS`), then the battle, then the
+crossing into world N+1. The guardian sits on the near side of that fight, so a player
+can shop and prepare before ever facing the rival (§2).
+
+What makes one boss different from another is the physics it carries rather than a
+mechanic of its own. A rival fights with the same battle system a wild crystal does
+(§4), at rival stats, throwing its world's own excitation -- decohered, since a golem's
+coherence was ground out of it (`GOLEM_MOVE_IDS`), so what it throws is named for what
+it used to be. Its type decides what the player's own quasiparticle lands double
+against, which is the preparation the fight actually asks for.
+
+Two of the ten answer to something other than a fixed row in `WORLD_RIVALS`:
+
+- **World 9's rival** is an impurity-bound resonance with no lattice of its own, so its
+  type is rolled on every visit and it borrows the rolled host's own signature
+  quasiparticle, pristine rather than decohered (§2, `RIVAL_9_TYPES`/`RIVAL_9_MOVES`).
+- **World 10's "The Adapted"** has no type at all until the player attacks. Once per
+  landed player attack it transmutes into a real compound of some type that genuinely
+  hosts the quasiparticle just used (`BattleScene.transmuteAdapted`, `typesHosting`), so
+  the finale is a boss that closes off the mismatch bonus the rest of the game taught the
+  player to hunt for. Its own moveset and HP never change underneath the disguise.
 
 ## 7. Technical architecture
 
@@ -1866,8 +1881,6 @@ scores by a smoothing transform — toggled live from the Lab's Settings station
 overworld scores form one darkening arc across the sequence (§7's "Soundtrack").
 
 Not yet built:
-- Bespoke per-world boss puzzles (§6) — every world currently uses the same reach-goal →
-  beat-rival → continue gate instead.
 - A mobile wrapper (Capacitor) and playtesting with students.
 
 ## 10. Open design questions

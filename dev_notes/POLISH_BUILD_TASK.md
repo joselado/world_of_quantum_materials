@@ -5,11 +5,11 @@ version. The game is playable end to end (`DESIGN.md` §9); everything here is
 either a defect, a decision only the owner can make, or a promise a doc makes
 that the code does not yet keep.
 
-Items are grouped by what unblocks them, not by size. The three at the top of
-"Decisions" gate a final version more than any amount of code does: a binding
-spec conflict cannot ship unresolved in either direction, and a doc that
-promises a feature the build does not have is a defect in the doc or in the
-build, never in neither.
+Items are grouped by what unblocks them, not by size. The decisions gate a final
+version more than any amount of code does: a doc that promises a feature the
+build does not have is a defect in the doc or in the build, never in neither, and
+where the code contradicts a binding spec it cannot ship unresolved in either
+direction.
 
 A status of "fixed, verified" means someone drove the running game and looked;
 "fixed, unseen" means the code changed, typechecks and passes `content-lint`,
@@ -27,12 +27,9 @@ handled, so a fix that has only been read is not a fix that has been checked.
 | 1 | The Adapted renders pure white | defect | **fixed, unseen** |
 | 2 | World 9's rival renders pure white | defect | **fixed, unseen** |
 | 3 | Boss shown as an ordinary crystal in the TURNS row | defect | **fixed, verified** |
-| 4 | Music light rule violated in Worlds 8 and 9 | decision | **open** |
-| 5 | Bespoke per-world boss puzzles | decision | **open** |
 | 6 | `DESIGN.md` §10's ten open design questions | decision | **open** |
 | 7 | B.Sc. difficulty multiplier and its stale comment | decision | **open** |
 | 8 | Feynman panel level-up preview | feature | **spec'd, not started** |
-| 9 | Lab Moves panel rework | feature | **spec'd, not started** |
 | 10 | Pass flanks (Horizon stage E) | deferred | **reconfirm or close** |
 | 11 | Progress-keyed Lab/Title theme | deferred | **reconfirm or close** |
 | 12 | Doc screenshots | defect | **fixed** |
@@ -150,28 +147,6 @@ The shots that depend on a battle reaching a particular moment — a type-mismat
 hit landing, a victory banner — are still hand-captured and are the remaining
 work here; the script's header lists what it drives.
 
-### 4. The musical light rule in Worlds 8 and 9
-
-`WORLDS.md` §1 states that what World 7 removes — chord progression, moving
-bass line, chordal pad — never returns in Worlds 8, 9 or 10, leaving only a
-sustained single-pitch pedal. In `game/src/audio/music.ts`, World 8's overworld
-score carries a seven-bar progression, a bass voice changing pitch once per bar
-(F#2 G2 F#2 D2 B2 G2 F#2) and a sustained fifth pad; World 9 is built by
-`makeOverworldScore` with verse/bridge progressions and the default
-`bassMode: 'arp'` walking bass. `MUSIC_BUILD_TASK.md` does not cover this.
-
-`WORLDS.md` is binding per `CLAUDE.md`, so this resolves one of two ways: the
-scores lose their accompaniment, or the rule changes and `WORLDS.md` says so.
-It cannot ship as it stands. See item 13 — verifying a fix here needs more than
-a green suite.
-
-### 5. Bespoke per-world boss puzzles
-
-`DESIGN.md` §6 describes them; §9 lists them as not built, with all ten worlds
-using the same reach-goal → beat-rival → continue gate. Either build them or
-amend §6 so the design doc stops promising what the game does not do. Ten worlds
-resolving identically is the build's largest sameness risk.
-
 ### 6. `DESIGN.md` §10's open design questions
 
 A final version should not ship with a section of open questions. Several are
@@ -196,13 +171,6 @@ clear all 10 worlds" overstates what the sim shows and should be corrected.
 
 Preview the escalating level-up animation at the player's current level inside
 Feynman's own guardian panel, rather than only in a real battle.
-
-### 9. Lab Moves panel rework
-
-`hubStations.ts`'s `showMovesPanel` reworked into a Qumatex-style browse: move
-animation on the right, one lore and one physics sentence per move, epicness
-scaled to move power, ultimates listed last. Source is `getBattleMoves` — the
-moves currently usable, not every unlocked move.
 
 ---
 
@@ -235,7 +203,7 @@ describes. Left unmerged by decision.
 `assertLoopBeats` calls `console.error` and does not throw, so a broken score
 still boots and `component-check` still passes. Verifying any music change means
 driving the game headless and watching for `music:` console messages — zero is
-the pass. Relevant to item 4.
+the pass.
 
 ### 13b. `greyscale-check` cannot reach a battle
 

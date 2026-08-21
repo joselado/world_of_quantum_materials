@@ -2659,13 +2659,19 @@ world are shaped, since world N's start is world N-1's exit.
   color). Each is its own station button on the Lab floor (see
   "The Hub" above), not a row in a shared menu -- clicking one is a no-op while another panel
   is already open.
-- "Moves"/"Stats" share a generic info panel (`showInfoPanel`, `560` wide, same blue-grey
-  stroke). Moves lists only the moves actually usable right now (`getBattleMoves` -- learned
-  moves intersected with what the current crystal form's physics can host, §3) as plain
-  `<name> -- Pwr N` lines (name and power both reflecting any Feynman level via
-  `moveDisplayName`/`effectiveMovePower`), no move-class label and no "incompatible" entries
-  cluttering the list; Stats lists Energy/Momentum/Lifetime plus qumatessence and
-  current form name. Both end in a single "Close" button.
+- **"Moves" is a list+detail browse** (`LIST_DETAIL_PANEL_W`, the shared scaffolding of
+  "List+detail panels" above), not a text list: the left column names every move usable right
+  now (`getBattleMoves` -- learned moves intersected with what the current crystal form's
+  physics can host, §3), ordinary attacks first by power, then the Analytic pair, the active
+  screening cloud, and the Ultimates last. The pane beside it runs that move's own battle
+  effect on a demonstration stage, at the tier the move is carried at, and reads out what it
+  carries (`<quasiparticle> carrier. Power N.`) over a paragraph on what that quasiparticle is
+  in physics. A screening cloud is demonstrated on the player's own crystal rather than thrown
+  across the stage, and states its own effect line in place of the carrier line. The panel's
+  one button is the left column's "Close".
+- "Stats" keeps the generic info panel (`showInfoPanel`, `560` wide, same blue-grey stroke):
+  Energy/Momentum/Lifetime plus qumatessence and current form name, ending in a single
+  "Close" button.
 - "Abilities" is its own dedicated panel (`showAbilitiesPanel`, `560` wide, same blue-grey
   stroke) rather than a third `showInfoPanel` body -- one name+description block
   per passive owner (`data/passives.ts`'s `PASSIVE_OWNERS`, currently just Franklin),

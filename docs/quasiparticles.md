@@ -65,6 +65,17 @@ damage, which makes it a safe place to learn the rule before it starts cutting
 both ways. Once any one of your three stats reaches 5, World 1 fights with its
 full moveset too, and from World 2 on opponents always do.
 
+## Watching your own moves
+
+The Lab's Moves station lists everything you can currently swing and plays it
+for you: pick a move and its real battle effect loops on a small stage, at
+whatever level you carry it at, over a line saying which quasiparticle it
+throws and how hard it lands, and a short piece on what that quasiparticle
+actually is in physics. Kondo's screening cloud is shown the way it is
+actually used, rising on your own crystal rather than thrown at anyone.
+
+<img src="../screenshots/docs-quasiparticles-moves.png" width="300" alt="The Lab's Moves station, an Ultimate meteor playing on its stage beside what the move carries and what a phonon is">
+
 ## Landau's Analytic moves
 
 Landau (World 4) sells two moves that aren't in the table above, since
