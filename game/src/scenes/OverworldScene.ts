@@ -949,6 +949,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // seed `playerForm` itself, see applySuperpositionUnlocks) has to land
     // first, not after.
     this.applySuperpositionLeveling();
+    this.levelHpToWorld();
     const saved = state.get('mapState') as SavedMapState | undefined;
     // A create() that restores the map it left is the same visit resumed (a
     // battle just fought, the Lab just visited); anything else is a fresh
@@ -1174,20 +1175,32 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   }
 
   // Superposition Mode (Title screen toggle, data/save.ts's `superpositionMode`):
-  // re-levels the player to a full heal for whatever world this scene just
-  // entered, on every entry -- not just the Hub door's initial jump, so
-  // Continue-to-next-world and Bloch's teleport stay topped up too. Every
-  // guardian's own blanket "already unlocked" grant -- moves, passives,
+  // every guardian's own blanket "already unlocked" grant -- moves, passives,
   // visited worlds, Materialdex, the random active picks for Kondo/Franklin/
   // Anderson/Dresselhaus-or-Majorana, Feynman's moves all maxed, and the
   // player's own stats all pinned to MAX_STAT -- lives in the shared
   // applySuperpositionUnlocks above BUILT_WORLDS, world-independent (no
   // "this world is harder than the last" progression left to re-level once
   // every stat is already at its ceiling), so HubScene.create applies it too,
-  // on the Lab itself.
+  // on the Lab itself. The HP half of "re-level for the world just entered"
+  // is levelHpToWorld below, which both modes run.
   private applySuperpositionLeveling() {
     if (!this.isSuperpositionMode()) return;
     applySuperpositionUnlocks(this.game.registry);
+    persistFromRegistry(this.game.registry);
+  }
+
+  // Max HP is a function of the world the fight happens in, not of the
+  // crystal the player is wearing (data/balance.ts's `wildHpForWorld`), so
+  // arriving in a world sets the player's HP to that world's own number --
+  // on every entry, whether it came from the Hub door, a crossed pass,
+  // Bloch's teleport or a world door. Nothing outside a battle damages the
+  // player and BattleScene heals them to full win or lose, so the number
+  // being reset here is always another world's cap rather than real
+  // attrition: without this, the first fight after moving up a world would
+  // open at the previous world's smaller maximum. Walking back to an earlier
+  // world lands at that world's lower cap by the same rule.
+  private levelHpToWorld() {
     this.game.registry.set('playerHp', wildHpForWorld(this.world));
     persistFromRegistry(this.game.registry);
   }

@@ -26,15 +26,13 @@ game/src/
                                  Qumatuomi map at the bottom (art/qumatuomiMap.ts, built once at
                                  create() outside the rebuilt content container)
     HubScene.ts                World 0, static room, up to 8 stations: 2 that always exist
-                                 (Qumatex/Door -- door label/click resume-in-place to
-                                 highestUnlockedWorld() via canResumeWorld(), tracks
-                                 rivalDefeated progress in Story Mode, labeled with the
-                                 destination's own name (materials.ts's worldName); in
-                                 Superposition Mode both label and click target resumeWorld()
-                                 instead, falling back to a fresh World 1 only when there's
-                                 nothing to resume; the Enter *key* always resumes
-                                 resumeWorld() -- the exact world/position mapState holds,
-                                 not necessarily highestUnlockedWorld())
+                                 (Qumatex/Door -- door label/click and the Enter *key* all
+                                 resume the exact world/position mapState holds, via
+                                 doorTarget() -> resumeWorld() -> canResumeWorld(), labeled
+                                 with the destination's own name (materials.ts's worldName);
+                                 with nothing to resume the door falls back to a fresh map on
+                                 highestUnlockedWorld() in Story Mode, World 1 in
+                                 Superposition Mode, and the Enter key is a no-op)
                                  plus up to 6 reference/settings stations (Moves/Stats/Abilities/
                                  Tutorial/Settings/Title Screen, panels/hubStations.ts's
                                  LAB_STATIONS -- Abilities filtered out until a first passive
@@ -1124,8 +1122,11 @@ shared roll, not four independent ones) -- `this.isRival ? 1 : rollEncounterFact
 `enemyStatsForWorld(world)` -- a rival is a fixed, repeatable challenge, not a specimen with
 sample-to-sample variance. `OverworldScene.applyPlayerForm`/`HubScene.applyPlayerForm`
 (transmuting/fusing into a new form) clamp the player's saved HP down to
-`wildHpForWorld(<current world>)` if above it, rather than to anything about the new form
-itself.
+`wildHpForWorld` if above it, rather than to anything about the new form
+itself -- against the current world in `OverworldScene`, against the world the Lab's door is
+pointing at (`doorTarget()`) in `HubScene`. `OverworldScene.levelHpToWorld()`, run from
+`create()` in both modes, then sets HP to `wildHpForWorld(this.world)` on arrival, so the clamp
+only governs the stretch between a transmutation and the trip out.
 
 `BattleScene.resolveHit` is the single damage-resolution function both sides' attacks go
 through: outgoing damage multiplied by the attacker's `quantumness` lever (`energyFactor`),
@@ -2039,7 +2040,9 @@ actor can ever appear to float in front of terrain it should be occluded by.
 
 `HubScene.highestUnlockedWorld()` walks `rivalDefeated` from world 1 until it finds a world not
 yet beaten, capped at `BUILT_WORLDS`'s own max (10) so beating World 10's rival and returning to
-the Hub before the finale panel fires re-enters World 10 rather than a nonexistent World 11.
+the Hub before the finale panel fires re-enters World 10 rather than a nonexistent World 11. It
+is the Lab door's Story-Mode fallback only, for a save with no `mapState` to resume; the door's
+first choice is wherever the player actually left from (`doorTarget()`).
 `OverworldScene.crossPass()`/`advanceToWorld(this.world + 1)` likewise
 compute the next world rather than hardcoding it. `advanceToWorld`'s second param, `enterFrom:
 'start' | 'goal'` (default `'start'`), is what the world-door feature (above) uses to land the
@@ -2716,11 +2719,10 @@ sharing state. Several things key off `isSuperpositionMode()`:
   guardian's own avatar in the room regardless of `metGuardians` in this mode, so each one's
   panel is already fully unlocked on a save that's
   never crossed a pass) and `OverworldScene.applySuperpositionLeveling()`
-  (re-applied on every `create()`, covering Continue, Bloch teleport, and the Hub door alike,
-  alongside that method's own world-specific `playerHp` reset to `wildHpForWorld(this.world)`,
-  which stays local to `OverworldScene` since only that scene knows which world to reset
-  against -- the stat grant itself is world-independent and lives in
-  `applySuperpositionUnlocks`, which pins every `playerStats` entry to `MAX_STAT`).
+  (re-applied on every `create()`, covering Continue, Bloch teleport, and the Hub door alike --
+  the stat grant is world-independent and lives in `applySuperpositionUnlocks`, which pins
+  every `playerStats` entry to `MAX_STAT`; the world-specific `playerHp` reset is
+  `levelHpToWorld()`, which `create()` runs in both modes, not just this one).
   `OverworldScene.create()` calls `applySuperpositionLeveling()` immediately after grabbing
   `this.game.registry`, before any map-state read/generation and before
   `getPlayerMaterial(state)` -- the grant can seed `playerForm` itself (below), and both

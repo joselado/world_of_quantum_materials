@@ -720,13 +720,11 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // survive a page reload -- so this checks both, the same two facts
   // OverworldScene.create() itself checks (`saved.world === this.world &&
   // !this.regenerate`) before deciding whether to restoreMap() or
-  // generateMap(). Shared by doorLabel()/enterWorld() (both keyed on
-  // `highestUnlockedWorld()`, the door's own frontier-world affordance) and
-  // resumeWorld() below (keyed on whatever world `mapState` actually holds,
-  // the Enter *key*'s own "go back to exactly where I was" affordance) --
-  // see resumeWorld()'s own comment for why those two aren't the same thing.
-  // Superposition Mode resumes in place through both of them too, same as
-  // Story Mode -- it pre-seeds `visitedWorlds` with all of BUILT_WORLDS (see
+  // generateMap(). Read only through resumeWorld() below, which asks it about
+  // whatever world `mapState` actually holds; the door station (doorTarget())
+  // and the Enter key both go through that one accessor, so they agree on
+  // where "back" is. Superposition Mode resumes in place the same way Story
+  // Mode does -- it pre-seeds `visitedWorlds` with all of BUILT_WORLDS (see
   // OverworldScene.create), so this reduces to just the `mapState` check.
   private canResumeWorld(world: number): boolean {
     const visited = (this.game.registry.get('visitedWorlds') as number[]) ?? [];
@@ -735,39 +733,37 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     return mapState?.world === world;
   }
 
-  // Superposition Mode has no fixed frontier world to fall back on the way
-  // Story Mode's `highestUnlockedWorld()` does (every world unlocks at once),
-  // so its own affordance is "back to wherever I was" (resumeWorld() below),
-  // falling back to a fresh World 1 only when there's genuinely nowhere to
-  // resume yet -- a fresh save that has never left the Lab in this mode.
   // The label names the destination itself (data/materials.ts's WORLD_NAMES,
   // the same names Bloch's destination rows and each world's own entry banner
   // use) rather than its number, so the door reads as a way back to a place
   // the player remembers walking rather than an index into a list.
   private doorLabel(): string {
-    if (this.isSuperpositionMode()) {
-      const world = this.resumeWorld();
-      return world !== undefined ? `Back to ${worldName(world)}` : `Enter ${worldName(1)}`;
-    }
-    const world = this.highestUnlockedWorld();
-    return this.canResumeWorld(world) ? `Back to ${worldName(world)}` : `Enter ${worldName(world)}`;
+    const { world, resume } = this.doorTarget();
+    return resume ? `Back to ${worldName(world)}` : `Enter ${worldName(world)}`;
   }
 
-  // The door station's own affordance: in Story Mode, always the player's
-  // frontier world (`highestUnlockedWorld()`), resuming in place there if
-  // it's genuinely in progress or generating a fresh map otherwise -- "take
-  // me to my furthest world." Superposition Mode has no such frontier, so it
-  // mirrors resumeWorld()'s own "take me back to exactly where I was"
-  // instead, only falling back to a fresh World 1 when there's nothing to
-  // resume.
+  // Where the door station leads, and whether that trip resumes a map in
+  // progress or lays out a fresh one. "Back to exactly where I was"
+  // (`resumeWorld()`) comes first in both modes, so opening the Lab from an
+  // earlier world and stepping straight back out through the door lands the
+  // player in that world rather than somewhere they never chose to go. Only
+  // when there is genuinely nothing to resume -- a fresh save that has never
+  // left the Lab, or a page reload, `mapState` being registry-only -- does
+  // the door fall back to a first trip out: the player's frontier world in
+  // Story Mode (`highestUnlockedWorld()`), World 1 in Superposition Mode,
+  // which has no frontier since every world unlocks at once. Bloch's
+  // destination rows stay the way to jump somewhere other than where the
+  // player stands, the door itself being a way back rather than a way
+  // onward.
+  private doorTarget(): { world: number; resume: boolean } {
+    const resumed = this.resumeWorld();
+    if (resumed !== undefined) return { world: resumed, resume: true };
+    return { world: this.isSuperpositionMode() ? 1 : this.highestUnlockedWorld(), resume: false };
+  }
+
   private enterWorld() {
-    if (this.isSuperpositionMode()) {
-      const world = this.resumeWorld();
-      this.scene.start('Overworld', { world: world ?? 1, regenerate: world === undefined });
-      return;
-    }
-    const world = this.highestUnlockedWorld();
-    this.scene.start('Overworld', { world, regenerate: !this.canResumeWorld(world) });
+    const { world, resume } = this.doorTarget();
+    this.scene.start('Overworld', { world, regenerate: !resume });
   }
 
   // Where the door currently leads, and therefore what its opening shows:
@@ -776,8 +772,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // position the player left.
   private doorDestination(): number {
     if (this.blochPreviewWorld != null) return this.blochPreviewWorld;
-    if (this.isSuperpositionMode()) return this.resumeWorld() ?? 1;
-    return this.highestUnlockedWorld();
+    return this.doorTarget().world;
   }
 
   private refreshDoorPreview() {
@@ -790,12 +785,12 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // first) -- not necessarily their highest-unlocked world. A player who
   // opens the Lab from an earlier world (Bloch's teleport hub, or walking
   // back through an earlier world's own door, both of which land somewhere
-  // other than the frontier) needs the Enter key to hand them back that
-  // exact world, not `highestUnlockedWorld()` -- using the door's own
-  // frontier-world target here would silently generate a fresh map on a
-  // world the player never actually chose to (re)start. Undefined only when
-  // there's genuinely nowhere to return to: a fresh save that has never left
-  // the Lab, or (mapState being registry-only) after a page reload.
+  // other than the frontier) gets handed back that exact world, by the Enter
+  // key and the door station alike; sending them to `highestUnlockedWorld()`
+  // instead would silently generate a fresh map on a world they never chose
+  // to (re)start. Undefined only when there's genuinely nowhere to return
+  // to: a fresh save that has never left the Lab, or (mapState being
+  // registry-only) after a page reload.
   private resumeWorld(): number | undefined {
     const mapState = this.game.registry.get('mapState') as { world: number } | undefined;
     return mapState && this.canResumeWorld(mapState.world) ? mapState.world : undefined;
@@ -834,17 +829,16 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // floating crystal preview in place rather than an overworld sprite; skips
   // OverworldScene.applyPlayerForm's World 10 map-regeneration branch since
   // the Lab is never World 10. HP is never intrinsic to a crystal form (see
-  // that function's own comment) -- capped by `wildHpForWorld` for whichever
-  // world the player will actually land in when they next leave the Lab,
-  // mirroring enterWorld()'s own mode branching exactly (Story Mode always
-  // goes to the frontier `highestUnlockedWorld()`, not wherever `mapState`
-  // happens to hold; only Superposition Mode -- which has no frontier --
-  // resumes via `resumeWorld()`) so a player who transmutes after Bloch-
-  // teleporting or walking back to an earlier world doesn't get an HP cap
-  // for a world the door won't actually take them to.
+  // that function's own comment) -- capped by `wildHpForWorld` for the world
+  // the door will actually take the player to (`doorTarget()`), so
+  // transmuting after Bloch-teleporting or walking back to an earlier world
+  // doesn't leave an HP cap for a world they aren't headed to. Arriving in
+  // that world tops the number back up to its own cap anyway
+  // (OverworldScene's levelHpToWorld), so this clamp only matters for the
+  // stretch of Lab time between the transmutation and the trip out.
   applyPlayerForm(material: Material) {
     this.game.registry.set('playerForm', material);
-    const world = this.isSuperpositionMode() ? this.resumeWorld() ?? 1 : this.highestUnlockedWorld();
+    const world = this.doorTarget().world;
     const worldMaxHp = wildHpForWorld(world);
     const clampedHp = Math.min((this.game.registry.get('playerHp') as number) ?? worldMaxHp, worldMaxHp);
     this.game.registry.set('playerHp', clampedHp);

@@ -183,7 +183,7 @@ end, ready to walk forward through it again whenever you like.
 physical station: Qumatex, a filterable index of every crystal in the game
 listed by name alongside a note on the real physics behind it, each with a
 "???" placeholder name and silhouette for anything you haven't found yet; a
-door back out to the furthest world you've reached; a Moves station where you
+door back out to whichever world you were last walking; a Moves station where you
 can watch any move you carry play on its own stage and read what the
 quasiparticle it throws actually is; and stations to check your stats, replay
 the tutorial, re-read the story so far, and adjust settings. Every guardian you've met stands in the room itself, so you can click

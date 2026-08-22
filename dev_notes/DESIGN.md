@@ -172,11 +172,12 @@ scene returns to it, resuming that world's own map and player position exactly r
 generating a fresh one. Pressing `Enter` again in the Lab is the exact reverse of that same
 trip: it sends the player back to precisely the world and position they left, regardless of
 how far their progress has otherwise advanced, so opening and closing the Lab from any world
-never moves the player. The door station is a separate, deliberately different affordance --
-always the player's furthest-reached world, named rather than numbered -- reading "Back to
-`<world name>`" and resuming in place
-once that world has genuinely been started, or "Enter `<world name>`" (always a fresh map) the
-first time it's ever reached.
+never moves the player. The door station leads to the same place, named rather than numbered:
+"Back to `<world name>`", resuming that world's map and position in place. Only when there is
+nothing to resume -- a save that has never left the Lab, or a page reload, the map snapshot
+being in-memory only -- does it fall back to a first trip out, reading "Enter `<world name>`"
+for the player's furthest-reached world and generating a fresh map. Bloch's destination rows
+are the way to *jump* somewhere other than where the player stands; the door is a way back.
 
 Each world's "Gate to next world" fight is a distinct **rival crystal** -- worlds 1-8 and
 10 have a fixed entry in `game/src/data/materials.ts`'s `WORLD_RIVALS`, world 9's is built
@@ -401,7 +402,10 @@ its world's average" trait, not four independent rolls. A rival's HP instead fol
 same boss every time it's fought, unlike an ordinary wild's sample-to-sample variance. The
 player's own max HP uses `wildHpForWorld` too, for whichever world they're currently in, no
 roll (their own body isn't a specimen with variance) -- so transmuting/fusing into a
-different crystal form (§5) never changes it by itself, only the world does.
+different crystal form (§5) never changes it by itself, only the world does. Arriving in a
+world sets the player's HP to that world's own number
+(`OverworldScene.levelHpToWorld`, run on every entry), so the first fight of a world opens at
+its full bar rather than the previous world's smaller one.
 
 **Crystal database.** Each wild "crystal" is named after a real compound rather than
 an invented species name, and inherits its main type (and therefore its look and its
