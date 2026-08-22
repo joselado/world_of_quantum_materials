@@ -1563,6 +1563,24 @@ Two of the ten answer to something other than a fixed row in `WORLD_RIVALS`:
   the finale is a boss that closes off the mismatch bonus the rest of the game taught the
   player to hunt for. Its own moveset and HP never change underneath the disguise.
 
+**Planned: an after-story boss.** A hidden encounter past World 10, stronger than anything
+on the main path, is what the top of the stat ladder exists for. Reaching `MAX_STAT` costs
+roughly a hundred playthroughs' worth of qumatessence in one stat (`statUpgradeCost` is
+linear per point, so total cost grows quadratically while the Energy/Lifetime lever grows
+as a square root, §3) -- deliberate, not an accident of the two formulas, and **not** to be
+"fixed" by flattening the price ladder or lowering `MAX_STAT` toward the stats 5-8 a normal
+run reaches. That headroom is this fight's to claim.
+
+Three things it has to answer when it is built. It must be tuned against a *farmed* build
+rather than `enemyStatsForWorld`'s world-10 values, which assume a player at stats 5-8 and
+evaporate against a 20-50 one. It has to be worth reaching in Story Mode on its own terms,
+since Superposition Mode already grants `MAX_STAT` for free (§5) and a fight that merely
+*requires* max stats is a mode switch away rather than a reward for the grind. And its
+Velocity sets a hard cliff in the build space: Momentum is a ratio against the opponent
+capped at `MAX_MULTI_HIT`, so past 5x the boss's own Velocity every further Momentum point
+buys exactly nothing while Energy and Lifetime keep paying -- pick that number deliberately
+rather than inheriting it.
+
 ## 7. Technical architecture
 
 - **Engine:** Phaser 3 via **Vite + TypeScript** (`game/`) — `npm install && npm
