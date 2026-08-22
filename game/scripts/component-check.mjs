@@ -14,6 +14,15 @@
 // and component checks" section for the fuller writeup (headless-Chrome
 // gotchas, when to reach for which script, how to read a failure).
 //
+// Headless Chrome here renders through software WebGL (SwiftShader) and its
+// renderer process occasionally dies mid-suite. That is an artifact of this
+// environment, not the game, so a test killed by it is retried once on a
+// freshly relaunched browser (relaunchBrowser/isCrashError below) instead of
+// being recorded as a failure -- the same treatment playthrough-check.mjs
+// gives it, and simpler here, since every test opens with its own registry
+// reset and scene jump and so needs no state carried across. The summary
+// line says how many relaunches a run took.
+//
 // Usage (from game/): npm run component-check
 // Or directly: node scripts/component-check.mjs
 // CHROME_BIN auto-detects Puppeteer's cached Chrome-for-Testing binary if
@@ -108,43 +117,124 @@ async function main() {
   const CHROME_BIN = detectChromeBin();
   const serverHandle = await ensureDevServer(log);
 
-  const browser = await puppeteer.launch({
+  // Reassignable, not const: headless Chrome here renders through software
+  // WebGL (SwiftShader) and its renderer process can die mid-suite, which
+  // relaunchBrowser() below recovers from by building a fresh browser and
+  // page. Every helper in this function reads these bindings rather than
+  // capturing a page object, so they all follow a relaunch automatically.
+  let browser;
+  let page;
+
+  const consoleErrors = []; // { t: epoch-ms, text }
+
+  // Everything a freshly-created page needs: viewport plus the four
+  // listeners that feed consoleErrors. Called once at launch and again on
+  // every relaunch, so a recovered page reports errors exactly like the
+  // original.
+  async function wirePage() {
+    page = await browser.newPage();
+    await page.setViewport({ width: CANVAS_W, height: CANVAS_H });
+    page.on('console', (msg) => {
+      // Chrome's console text for a failed resource load is a generic
+      // "Failed to load resource: the server responded with a status of 404
+      // (Not Found)" string with no URL in it, so a favicon.ico substring
+      // filter can never match it -- the response/requestfailed listeners
+      // below are the URL-aware, authoritative source for bad resource
+      // loads instead, so this generic message is dropped here entirely
+      // rather than risk masking (or wrongly flagging) a real one.
+      if (msg.text().startsWith('Failed to load resource:')) return;
+      if (msg.type() === 'error' && !msg.text().includes('favicon.ico')) {
+        consoleErrors.push({ t: Date.now(), text: msg.text() });
+      }
+    });
+    page.on('pageerror', (err) => {
+      consoleErrors.push({ t: Date.now(), text: String(err) });
+    });
+    // favicon.ico 404s are expected (this dev server serves no favicon) and
+    // benign -- every other resource failing is a real finding.
+    page.on('response', (res) => {
+      if (res.status() >= 400 && !res.url().includes('favicon.ico')) {
+        consoleErrors.push({ t: Date.now(), text: `HTTP ${res.status()} ${res.url()}` });
+      }
+    });
+    page.on('requestfailed', (req) => {
+      if (!req.url().includes('favicon.ico')) {
+        consoleErrors.push({ t: Date.now(), text: `request failed: ${req.url()} (${req.failure()?.errorText})` });
+      }
+    });
+  }
+
+  const launchOptions = {
     executablePath: CHROME_BIN,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
     headless: true,
-  });
-  const page = await browser.newPage();
-  await page.setViewport({ width: CANVAS_W, height: CANVAS_H });
+    // Puppeteer's default is 180s, which is how long a *hung* renderer (as
+    // opposed to a cleanly closed one) takes to surface as an error -- three
+    // minutes of a run spent waiting on a browser that is never coming back.
+    // 45s is far above any call this suite legitimately makes and turns a
+    // hang into a prompt relaunch.
+    protocolTimeout: 45000,
+  };
+  browser = await puppeteer.launch(launchOptions);
+  await wirePage();
 
-  const consoleErrors = []; // { t: epoch-ms, text }
-  page.on('console', (msg) => {
-    // Chrome's console text for a failed resource load is a generic
-    // "Failed to load resource: the server responded with a status of 404
-    // (Not Found)" string with no URL in it, so a favicon.ico substring
-    // filter can never match it -- the response/requestfailed listeners
-    // below are the URL-aware, authoritative source for bad resource
-    // loads instead, so this generic message is dropped here entirely
-    // rather than risk masking (or wrongly flagging) a real one.
-    if (msg.text().startsWith('Failed to load resource:')) return;
-    if (msg.type() === 'error' && !msg.text().includes('favicon.ico')) {
-      consoleErrors.push({ t: Date.now(), text: msg.text() });
+  // A dead renderer surfaces as one of these, thrown from whatever page call
+  // happened to be in flight -- never as a clean "the browser crashed"
+  // signal. Matching on the message is the only way to tell a crashed tab
+  // apart from a genuine game failure, and getting that wrong in the
+  // permissive direction is the expensive mistake: an unrecovered crash
+  // reports every remaining test as a named failure, which reads exactly
+  // like a catastrophic regression.
+  const CRASH_SIGNATURES = [
+    'Target closed',
+    'Target crashed',
+    'Session closed',
+    'Execution context was destroyed',
+    'detached Frame',
+    'frame was detached',
+    'Connection closed',
+    'protocolTimeout',
+  ];
+  // Matched on Puppeteer's own error *classes* first: ProtocolError and
+  // TargetCloseError are raised at the CDP layer and mean the browser
+  // connection itself is sick, never that the game misbehaved. A plain
+  // TimeoutError is deliberately NOT in here -- that one means a wait on the
+  // game's own state expired, which is exactly the stuck-panel/stuck-scene
+  // bug this suite exists to catch, and retrying it on a fresh browser would
+  // hide a real finding.
+  const isCrashError = (e) => {
+    const name = e && e.name ? String(e.name) : '';
+    if (name === 'ProtocolError' || name === 'TargetCloseError') return true;
+    const text = String((e && (e.message || e.toString())) ?? '');
+    return CRASH_SIGNATURES.some((sig) => text.includes(sig));
+  };
+
+  // Rebuild the browser and reload the page after a renderer death. Unlike
+  // playthrough-check.mjs -- which has to resume a run in progress from the
+  // persisted save -- every test here opens with resetRegistryOnly() and its
+  // own jumpToScene(), so there is no state to carry across: a fresh page at
+  // the title screen is a complete recovery, and the interrupted test can
+  // simply be run again. Capped, so a change that genuinely crashes the
+  // renderer every time still fails the suite instead of looping forever.
+  const MAX_BROWSER_RELAUNCHES = 8;
+  let browserRelaunches = 0;
+  async function relaunchBrowser(during) {
+    browserRelaunches++;
+    log(`  !!! headless-Chrome renderer died during "${during}" -- relaunching (${browserRelaunches}/${MAX_BROWSER_RELAUNCHES}) and retrying that test`);
+    try {
+      await browser.close();
+    } catch (e) {
+      /* already dead */
     }
-  });
-  page.on('pageerror', (err) => {
-    consoleErrors.push({ t: Date.now(), text: String(err) });
-  });
-  // favicon.ico 404s are expected (this dev server serves no favicon) and
-  // benign -- every other resource failing is a real finding.
-  page.on('response', (res) => {
-    if (res.status() >= 400 && !res.url().includes('favicon.ico')) {
-      consoleErrors.push({ t: Date.now(), text: `HTTP ${res.status()} ${res.url()}` });
-    }
-  });
-  page.on('requestfailed', (req) => {
-    if (!req.url().includes('favicon.ico')) {
-      consoleErrors.push({ t: Date.now(), text: `request failed: ${req.url()} (${req.failure()?.errorText})` });
-    }
-  });
+    browser = await puppeteer.launch(launchOptions);
+    await wirePage();
+    await page.goto(URL);
+    await page.waitForSelector('canvas');
+    await sleep(900);
+    // The dying renderer emits its own console/pageerror noise; attributing
+    // that to the retried test would fail it for the crash it just survived.
+    consoleErrors.length = 0;
+  }
 
   // ---- page-context helpers ----
   const getActiveScenes = () =>
@@ -281,19 +371,38 @@ async function main() {
 
   // ---- test-result bookkeeping ----
   const results = [];
+  // A test that dies to a crashed renderer (isCrashError) is retried once on
+  // a freshly relaunched browser rather than recorded as a failure, since
+  // the crash is an artifact of this environment's software WebGL and says
+  // nothing about the game. Without this, one dead renderer reports every
+  // remaining test as a named failure at ~0.0s each -- indistinguishable at
+  // a glance from a real, catastrophic regression, and the tests it swallows
+  // are always the tail of the suite (the rival gates, World 10's adaptive
+  // boss, and every save/boot resilience test). Bounded twice over: one
+  // retry per test, and MAX_BROWSER_RELAUNCHES across the whole run, so a
+  // change that really does kill the renderer still fails.
   async function runTest(name, fn) {
-    const t0 = Date.now();
     let pass = false;
     let detail = '';
-    try {
-      const r = await fn();
-      pass = r === undefined ? true : !!r.pass;
-      detail = r && r.detail ? r.detail : '';
-    } catch (e) {
-      pass = false;
-      detail = `threw: ${e && e.stack ? e.stack : e}`;
+    let t0 = Date.now();
+    let t1 = t0;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      t0 = Date.now();
+      try {
+        const r = await fn();
+        pass = r === undefined ? true : !!r.pass;
+        detail = r && r.detail ? r.detail : '';
+      } catch (e) {
+        if (isCrashError(e) && attempt === 0 && browserRelaunches < MAX_BROWSER_RELAUNCHES) {
+          await relaunchBrowser(name);
+          continue;
+        }
+        pass = false;
+        detail = `threw: ${e && e.stack ? e.stack : e}`;
+      }
+      break;
     }
-    const t1 = Date.now();
+    t1 = Date.now();
     const errs = errorsInWindow(t0, t1);
     if (errs.length) {
       pass = false;
@@ -1195,7 +1304,10 @@ async function main() {
   const wallMs = Date.now() - wallStart;
 
   log('=== SUMMARY ===');
-  log(`${passCount}/${results.length} passed, ${failCount} failed. Wall time: ${(wallMs / 1000).toFixed(1)}s`);
+  log(
+    `${passCount}/${results.length} passed, ${failCount} failed. Wall time: ${(wallMs / 1000).toFixed(1)}s` +
+      (browserRelaunches ? ` (recovered from ${browserRelaunches} headless-Chrome renderer crash(es) -- environment, not a finding)` : '')
+  );
   const failures = results.filter((r) => !r.pass);
   if (failures.length) {
     log('Failures:');
@@ -1205,7 +1317,7 @@ async function main() {
   fs.writeFileSync(`${SHOT_DIR}/component-tests-log.txt`, logLines.join('\n'));
   fs.writeFileSync(
     `${SHOT_DIR}/component-tests-summary.json`,
-    JSON.stringify({ passCount, failCount, wallMs, results }, null, 2)
+    JSON.stringify({ passCount, failCount, wallMs, browserRelaunches, results }, null, 2)
   );
 
   await browser.close();

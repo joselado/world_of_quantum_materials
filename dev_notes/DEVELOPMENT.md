@@ -529,12 +529,26 @@ as proof of a real bug on its own; see the next paragraph.
 Chrome in this environment falls back to software WebGL (SwiftShader --
 Chrome warns as much on boot), which is far more prone to renderer crashes
 under repeated Phaser scene create/destroy churn (many battles in a row) than
-real GPU rendering would be. `playthrough-check.mjs` treats a crashed
-tab/frame as recoverable, not a failure: it relaunches the browser and
-resumes from the persisted save (the same `data/save.ts` path a real player
-closing and reopening the game would exercise), capped at 8 relaunches before
-giving up. This is an artifact of the sandboxed environment, not the game --
-don't read a relaunch log line as a finding.
+real GPU rendering would be. Both scripts treat a crashed tab/frame as
+recoverable rather than as a failure, each in the way its own shape allows,
+and both cap the recovery at 8 relaunches before giving up:
+
+- `playthrough-check.mjs` relaunches the browser and resumes from the
+  persisted save (the same `data/save.ts` path a real player closing and
+  reopening the game would exercise), since a playthrough is one long run
+  with state to carry across.
+- `component-check.mjs` relaunches and simply runs the interrupted test
+  again (`relaunchBrowser`/`isCrashError`/`runTest`). Every test there opens
+  with its own registry reset and scene jump, so a fresh page at the title
+  screen is already a complete recovery, and a crash costs one retry rather
+  than the rest of the suite. Its summary line reports how many relaunches a
+  run needed.
+
+This is an artifact of the sandboxed environment, not the game -- don't read
+a relaunch log line as a finding. The game itself does not accumulate across
+that churn: 400 battle/world/Lab cycles in one tab hold the JS heap flat and
+leave tween, display-object and texture counts trendless, under this same
+software renderer.
 
 **Second lesson, kept here so it isn't relearned the hard way:** a script
 that blindly prefers a fixed button-label priority list can get stuck
