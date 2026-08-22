@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { makeCrystal } from '../art/crystals';
 import { CANVAS_W, CANVAS_H } from '../art/perspective';
-import { getPlayerMaterial, allCrystals, TYPE_LOOK, materialDisplayName, materialTypeLabel, worldName } from '../data/materials';
+import { getPlayerMaterial, getPlayerDopantLook, allCrystals, TYPE_LOOK, materialDisplayName, materialTypeLabel, worldName } from '../data/materials';
 import { wildHpForWorld } from '../data/balance';
 import { materialBlurb } from '../data/materialdex';
 import { persistFromRegistry } from '../data/save';
@@ -290,6 +290,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     this.playerCrystalGfx = makeCrystal(this, 46, this.playerMaterial.color, this.playerMaterial.variant, {
       seed: this.playerMaterial.name,
       hybrid: this.playerMaterial.hybridParents,
+      dopant: getPlayerDopantLook(this.game.registry),
     });
     this.playerPreview.add(this.playerCrystalGfx);
     this.tweens.add({ targets: this.playerPreview, y: 220, duration: 1000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
@@ -857,6 +858,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     this.playerCrystalGfx = makeCrystal(this, 46, material.color, material.variant, {
       seed: material.name,
       hybrid: material.hybridParents,
+      dopant: getPlayerDopantLook(this.game.registry),
     });
     this.playerPreview.add(this.playerCrystalGfx);
   }

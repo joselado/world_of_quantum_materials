@@ -1122,9 +1122,11 @@ station motifs are deliberately not tunnels with a visible far end.
   lattice, never picked for variety** -- `art/crystals.ts`'s `drawSolidShape` is the single
   place a `CrystalVariant` becomes a shape, so `makeCrystal`'s ordinary render and
   `drawVariantShape`'s hybrid halves can't disagree about what a variant looks like.
-  **Every habit is a single body, without exception** -- a crystal drawn from two separate
-  pieces means a Majorana fusion and nothing else (the **Hybrid materials** bullet below), so
-  the player can read "this is a fused state" straight off the silhouette. Ten habits:
+  **Every habit is a single body, without exception** -- extra pieces in a crystal are
+  reserved words: two co-equal full-size bodies joined by a bright seam mean a Majorana
+  fusion, and a single small guest seated at the host's base means a doped crystal (the
+  **Hybrid materials** and **Doped crystals** bullets below), so the player can read a
+  composite state straight off the silhouette. Ten habits:
   - **Solids.** `cubic` (`drawCubicShape`, a blocky isometric cube) for the cubic systems --
     rock salt, bcc/fcc metals, zinc blende, the cubic hydride. `octahedral`
     (`drawOctahedralShape`, two square pyramids meeting at a girdle) for the tetrahedrally
@@ -1145,9 +1147,9 @@ station motifs are deliberately not tunnels with a visible far end.
     regardless of their members' individual lattices. One prismatic body rises into a
     pointed termination: the silhouette is filled dark first and the facets painted into
     it, so the outline stays a single closed shape. It is **one body**, like every other
-    habit here -- a crystal drawn from separate pieces means a Majorana fusion and nothing
-    else, so a habit spending several pieces on itself takes a word the visual language has
-    already given to something more important. What distinguishes it from `prism` is the
+    habit here -- extra pieces are reserved words (a fusion's co-equal bodies, a dopant's
+    small guest), so a habit spending several pieces on itself takes a word the visual
+    language has already given to something more important. What distinguishes it from `prism` is the
     termination: `prism` is a flat-topped column, `spire` comes to a point.
   - **Monolayers.** `layer` (`drawLayerShape`) is one thin flattened hexagonal sheet with a
     soft *detached* shadow underneath it (not touching the sheet) so it reads as floating
@@ -1196,9 +1198,10 @@ station motifs are deliberately not tunnels with a visible far end.
   shards, the title screen's `TYPE_LOOK`-only showcase) omit `seed` and keep their exact
   hand-tuned look.
 - **Hybrid materials** (Majorana's fuse mechanic, DESIGN.md §5) render as an actual mixture of
-  both parents, not one flat blended color -- **the one crystal in the game drawn from two
-  separate pieces**, which is what makes a fused state readable at a glance against a roster
-  of single-body habits. `data/materials.ts`'s `combineMaterials` carries
+  both parents, not one flat blended color -- **the composite whose pieces are co-equal**,
+  two full-size offset bodies joined by a bright seam, as against a doped crystal's single
+  small guest at the base (the **Doped crystals** bullet below) -- which is what makes a
+  fused state readable at a glance against a roster of single-body habits. `data/materials.ts`'s `combineMaterials` carries
   each parent's own `color`/`variant` forward as the new `Material`'s `hybridParents`, and
   each `HYBRID_RECIPES` result carries the same field before any player fuses it, so a wild
   hybrid met in World 10 and a player-made one render identically;
@@ -1215,6 +1218,33 @@ station motifs are deliberately not tunnels with a visible far end.
   colors (`hexColor`) instead of the plain-white default. A hybrid `playerForm` restored from a
   save that predates `hybridParents` gets the field back from the roster entry of the same
   name on load (`data/save.ts`), so a hybrid is never drawn as a single shape.
+- **Doped crystals** (Anderson's doping mechanic, World 6's Lab) render as the host drawn
+  exactly as it always is -- same habit, jitter, highlight and sparkles -- with the doped-in
+  compound as **one small guest crystal seated into the host's base**: `art/crystals.ts`'s
+  `addDopant`, reached via `makeCrystal()`'s `opts.dopant` (`DopantLook`: the guest's own
+  `color` + `variant`). The guest is ~0.3x the host's `size`, drawn in front of the host and
+  tilted so it reads as lodged in the lattice rather than standing beside it -- a solid guest
+  leans a little, a plate guest tilts steeply enough to read as a wafer wedged diagonally
+  into the host's face, and draws a touch larger since an edge-on sheet carries far less
+  visual mass than a solid at the same size -- and it carries its identity and nothing else: its own color and habit ('spire' collapses to a
+  plain shard, as in a hybrid's halves), but no seed jitter, no highlight or sparkles of its
+  own, no glow, no seam, and no motion. A dopant is a single substituted atom -- the host is
+  still overwhelmingly itself -- and that asymmetry of size and placement is what separates
+  "doped" (one full-size body, one small subordinate guest) from "fused" (two co-equal bodies
+  joined by a bright seam) at a glance. Seating: on a solid host a solid guest tucks into the
+  front of the base, and the anchor follows the host's own jitter stretch/rotation so the
+  guest stays glued to the body it is substituted into; a plate guest on a solid or hybrid
+  host seats further inboard, toward the host's centreline, because edge-on it is nearly
+  flat -- at the solid-guest seat most of its footprint would sit off the host's face with
+  sky showing between the two -- so pulled inboard the host body backs the plate's whole
+  footprint and only its outer tip clears the silhouette. On a floating plate host (the
+  `layer*` habits) any guest seats into the plate's front rim instead, since below the sheet
+  it would sit on top of the hover shadow and read as a separate object standing underneath.
+  A plate *guest* likewise drops its detached hover shadow -- a substituted atom sits in the
+  lattice, it doesn't float in front of it. The guest renders on both an ordinary host and a
+  hybrid one (a fused player can be doped at the same time; on a hybrid the seat is fixed at
+  the fused body's base, or the front rim when both parents are plates), so the doped look
+  follows the player everywhere they are drawn: overworld, battle, the Lab, panels.
 
 ## Wild encounter dialogue (`OverworldScene.showEncounter`)
 

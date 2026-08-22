@@ -270,9 +270,16 @@ game/src/
                                   pass and only projected per frame
     crystals.ts                 makeCrystal() -- shared crystal sprite builder, opts.seed
                                   for per-compound jitter (jitterFor), opts.hybrid for a fused
-                                  hybrid look (drawHybridCrystal), opts.plain to drop the highlight
-                                  and sparkle glyphs when the crystal is one piece of a larger
-                                  composition; drawSolidShape() -- the one dispatcher turning a
+                                  hybrid look (drawHybridCrystal), opts.dopant (DopantLook, a
+                                  color+variant) for Anderson's doped look -- one small guest
+                                  crystal seated in the host's base (addDopant, seated by
+                                  dopantAnchor for an ordinary host and hybridDopantAnchor for a
+                                  fused one, both honored on either branch so a fused host can
+                                  also be doped; isPlateGuest picks the deeper seat, steeper tilt
+                                  and PLATE_DOPANT_SCALE a monolayer guest needs to read as
+                                  embedded rather than floating) -- and opts.plain to drop the
+                                  highlight and sparkle glyphs when the crystal is one piece of a
+                                  larger composition; drawSolidShape() -- the one dispatcher turning a
                                   CrystalVariant into a habit (a new variant needs a branch here and
                                   nowhere else), which both makeCrystal and drawVariantShape (the
                                   hybrid halves) go through; drawShardShape()/drawCubicShape() -- two of
@@ -776,8 +783,10 @@ World 10's Adapted and nowhere else.
   own lattice differs from the structure its type's `TYPE_LOOK` entry assumes states its own
   habit via `crystal()`'s `variantOverride` param (wurtzite GaN → `'prism'`, rhombohedral
   Bi₂Te₃/BiFeO₃/GeTe → `'rhombohedral'`, Graphene/CrI₃ → `'layer'`; see STYLE.md). Every
-  habit is one body -- two separate pieces in a crystal mean a Majorana fusion, drawn from
-  `hybridParents` rather than from any `CrystalVariant`.
+  habit is one body. Extra pieces in a crystal are the visual language's two reserved words,
+  neither of them a `CrystalVariant`: two co-equal offset bodies joined by a bright seam are a
+  Majorana fusion, drawn from `hybridParents`; one small guest seated in a full-size host's base
+  is Anderson's doped look, drawn from `makeCrystal`'s `opts.dopant` -- see STYLE.md for both.
 - `combineMaterials(a, b)` (Majorana's hybrid fuser, §5) looks up `hybridRecipeResult(a.name,
   b.name)` -- a curated, named parent-pair catalog (`HYBRID_RECIPES`), not a type-derived
   result -- and spreads that recipe's own authored `Material` (name/type/color/moves all
@@ -1019,6 +1028,22 @@ time (in Superposition Mode `applySuperpositionUnlocks` additionally seeds that 
 non-hybrid crystal while it's still unset); merely picking a host to
 browse its moveset (`scene.andersonSelection`) doesn't touch it, so previewing a candidate and
 backing out without learning a move leaves the previous impurity's channel firing.
+
+`andersonDopant` is also what the player *looks* like: `getPlayerDopantLook(registry)`
+(`data/materials.ts`) resolves it to a `DopantLook` (the doped compound's `color`/`variant`, or
+`undefined` when nothing is doped in), and every place that draws the player's own crystal
+passes it into `makeCrystal`'s `opts.dopant` -- `OverworldScene`'s player sprite (both the
+initial build and `redrawPlayerCrystal`), `BattleScene`'s player crystal and its turn-preview
+icons (`battle/hud.ts`'s `drawTurnPreview`, whose `playerDopant` argument reaches only the
+player's own icons), `HubScene`'s Lab crystal (both the initial build and the post-transmute
+redraw), `franklin.ts`'s passive-halo crystal, and `listDetail.ts`'s self-buff move stage
+(which reads the registry itself, since the crystal there is always the player's). A crystal
+that is *not* the player's never passes it: a wild, a rival, a Materialdex entry and Majorana's
+fusion parents all draw the species, and doping is something that happened to the player.
+Anderson's own detail pane is the one place that draws a dopant the player isn't carrying yet
+-- `renderDetailCrystalHeader`'s `opts.drawAs`/`opts.dopant` render the player's crystal
+carrying the browsed impurity while the name below still identifies the impurity, so the
+picture is what committing would make of them.
 
 **Move availability is an intersection, not a flat list.** `unlockedMoves` (registry/save) is
 a global "moves learned," unaffected by transmuting. What's actually offered in the battle

@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
 import type { GuardianPanelHost } from '../OverworldScene';
 import { killTweensDeep, makeCrystal } from '../../art/crystals';
+import type { DopantLook } from '../../art/crystals';
 import { CANVAS_H } from '../../art/perspective';
 import { startMoveEffectPreview, type PreviewClipRect } from '../../art/moveEffectPreview';
-import { materialDisplayName } from '../../data/materials';
+import { materialDisplayName, getPlayerDopantLook } from '../../data/materials';
 import type { MoveLevel } from '../../data/materials';
 import type { Material, MoveClass } from '../../data/types';
 import type { AttackShape } from '../../audio/sfx';
@@ -444,17 +445,27 @@ export function insertColumnDivider(
 // with a flat silhouette color and appends its own physics blurb --
 // genuinely different content from a guardian's cost/status/commit-button
 // pane.
+// `opts.drawAs` renders a different crystal than the one `material` names,
+// for a pane whose picture is the *result* of the choice rather than the
+// choice itself -- Anderson's, which draws the player's own crystal carrying
+// the browsed impurity while the name below still identifies the impurity
+// being browsed. `opts.dopant` is the impurity that crystal is carrying.
+// Both default off, so every other detail pane draws exactly its own
+// `material` and nothing else.
 export function renderDetailCrystalHeader(
   scene: Phaser.Scene,
   container: Phaser.GameObjects.Container,
   material: Material,
   centerX: number,
   y: number,
-  rightColW: number
+  rightColW: number,
+  opts?: { drawAs?: Material; dopant?: DopantLook }
 ): number {
-  const crystal = makeCrystal(scene, DETAIL_CRYSTAL_SIZE, material.color, material.variant, {
-    seed: material.name,
-    hybrid: material.hybridParents,
+  const drawn = opts?.drawAs ?? material;
+  const crystal = makeCrystal(scene, DETAIL_CRYSTAL_SIZE, drawn.color, drawn.variant, {
+    seed: drawn.name,
+    hybrid: drawn.hybridParents,
+    dopant: opts?.dopant,
   });
   const crystalBlockH = DETAIL_STAGE_H;
   crystal.setPosition(centerX, y + crystalBlockH / 2);
@@ -654,7 +665,14 @@ export function renderSelfBuffMoveDetailHeader(
 
   container.add(scene.add.ellipse(centerX, shadowY, shadowRx * 2, shadowRy * 2, 0x000000, 0.3));
 
-  const crystal = makeCrystal(scene, crystalSize, material.color, material.variant, { seed: material.name, hybrid: material.hybridParents });
+  // `material` here is always the player's own current form (this pane
+  // exists to show a self-buff rising on the caster), so the doped look is
+  // read straight off the registry rather than threaded through the call.
+  const crystal = makeCrystal(scene, crystalSize, material.color, material.variant, {
+    seed: material.name,
+    hybrid: material.hybridParents,
+    dopant: getPlayerDopantLook(scene.game.registry),
+  });
   crystal.setPosition(centerX, crystalCenterY);
   container.add(crystal);
 

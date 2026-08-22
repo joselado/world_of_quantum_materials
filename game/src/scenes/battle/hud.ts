@@ -19,6 +19,7 @@
 // each.
 import Phaser from 'phaser';
 import { makeCrystal } from '../../art/crystals';
+import type { DopantLook } from '../../art/crystals';
 import { BOSS_FOOT, makeBossIcon } from '../../art/boss';
 import { GROUND_DROP } from '../../art/attackShapes';
 import { GOLD_ACCENT, PANEL_BG, REFERENCE_BLUE_GREY } from '../../ui/theme';
@@ -304,7 +305,8 @@ export function drawTurnPreview(
   sequence: boolean[],
   playerMaterial: Material,
   opponentMaterial: Material,
-  opponentIsBoss: boolean
+  opponentIsBoss: boolean,
+  playerDopant?: DopantLook
 ): Phaser.GameObjects.Container {
   const container = scene.add.container(TURN_PREVIEW_X, TURN_PREVIEW_Y).setDepth(5);
   const label = scene.add
@@ -335,6 +337,10 @@ export function drawTurnPreview(
         : makeCrystal(scene, TURN_PREVIEW_ICON_SIZE, material.color, material.variant, {
             seed: material.name,
             hybrid: material.hybridParents,
+            // Only the player's own icons carry the doped look -- the row is
+            // the two fighters as they actually are, and an impurity doped
+            // into the player is not something the opponent is carrying.
+            dopant: isPlayer ? playerDopant : undefined,
           });
     // Whose-turn ring behind the crystal shapes (`addAt(..., 0)`): a bold
     // full-opacity gold ring for the player's hits, matching this project's

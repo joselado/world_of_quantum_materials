@@ -3,6 +3,7 @@ import { renderGuardianHeader } from './guardianHeader';
 import { makeFranklinAvatar } from '../../art/franklin';
 import { killTweensDeep, makeCrystal } from '../../art/crystals';
 import { drawFranklinPassiveHalo } from '../../art/passiveHalos';
+import { getPlayerDopantLook } from '../../data/materials';
 import { CANVAS_W } from '../../art/perspective';
 import { fontPx, fontScale } from '../../ui/text';
 import { PANEL_BG } from '../../ui/theme';
@@ -106,6 +107,7 @@ export function showFranklinPanel(scene: GuardianPanelHost) {
     const crystal = makeCrystal(scene, crystalSize, scene.playerMaterial.color, scene.playerMaterial.variant, {
       seed: scene.playerMaterial.name,
       hybrid: scene.playerMaterial.hybridParents,
+      dopant: getPlayerDopantLook(scene.game.registry),
     });
     crystal.setPosition(leftColCenterX, crystalCenterY);
     crystalBlock.add(crystal);

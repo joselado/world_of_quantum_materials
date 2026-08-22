@@ -130,12 +130,18 @@ current form can't otherwise host it. Dope in a different crystal later and
 you lose whichever channels only the old one gave you. Only original,
 standalone crystals work as hosts, never a [hybrid](hybrids.md).
 
+You can see what you are carrying. A crystal you have doped in rides along as
+a small guest seated in the base of your own crystal, in that compound's own
+colour and shape, and it shows everywhere you do: out on the map, in battle,
+in the Lab. Anderson's panel previews it before you commit, drawing your own
+crystal carrying whichever impurity you are looking at.
+
 - Browsing which crystal to dope in: always free
 - First time learning a move from a given host: 35 qumatessence
 - Every later visit to that same host (learning any of its moves, then or
   later): free
 
-<img src="../screenshots/docs-guardians-anderson-panel.png" width="300" alt="Anderson's panel: defeated crystals offered as impurity hosts, the crystal doped in right now named above the list">
+<img src="../screenshots/docs-guardians-anderson-panel.png" width="300" alt="Anderson's panel: defeated crystals offered as impurity hosts, the crystal doped in right now named above the list, and your own crystal previewed carrying the impurity you are browsing">
 
 ## Feynman's Diagrammatics
 

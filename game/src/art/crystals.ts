@@ -128,10 +128,11 @@ const SPIRE_OUTLINE: [number, number][] = [
 // facet is lit from the upper left, matching every other shape in this file
 // and the specular highlight `addHighlightAndSparkles` lays over them all.
 //
-// One body, like every other habit here: a crystal drawn from separate pieces
-// means a Majorana fusion and nothing else (data/types.ts's CrystalVariant),
-// so a habit made of several spires spends a word the visual language has
-// already given to something more important.
+// One body, like every other habit here: extra pieces in a crystal are
+// reserved words -- two co-equal bodies mean a Majorana fusion, a small
+// guest at the base means a dopant -- so a habit made of several spires
+// spends a word the visual language has already given to something more
+// important.
 function drawSpireShape(g: Phaser.GameObjects.Graphics, size: number, color: number, stretch: Stretch = NO_STRETCH) {
   const P = ([x, y]: [number, number]) => ({ x: x * size * stretch.x, y: y * size * stretch.y });
   const outline = SPIRE_OUTLINE.map(P);
@@ -282,9 +283,9 @@ function drawPrismShape(g: Phaser.GameObjects.Graphics, size: number, color: num
   // its visible sides are the column's own faces dropping from the cap's
   // three front corners -- not a separate box for the cap to sit on. Sides
   // derived any other way leave the cap overhanging the body at the join,
-  // and a crystal that reads as several pieces means a Majorana fusion in
-  // this game (data/types.ts's CrystalVariant), which is a claim an ordinary
-  // compound must never make about itself.
+  // and a crystal that reads as several pieces makes a composite-state claim
+  // in this game (a fusion's co-equal bodies, a dopant's small guest), which
+  // an ordinary compound must never make about itself.
   const topPts: { x: number; y: number }[] = [];
   for (let i = 0; i < 6; i++) {
     const ang = Phaser.Math.DegToRad(60 * i - 90);
@@ -321,11 +322,19 @@ function drawPrismShape(g: Phaser.GameObjects.Graphics, size: number, color: num
 // (monolayer graphene, monolayer WTe2, CrI3, ...). A soft detached shadow
 // underneath is what sells "floating": a solid crystal's shading implies a
 // gem resting on the ground, this implies a sheet hovering above it.
-function drawLayerShape(g: Phaser.GameObjects.Graphics, size: number, color: number, stretch: Stretch = NO_STRETCH) {
+function drawLayerShape(
+  g: Phaser.GameObjects.Graphics,
+  size: number,
+  color: number,
+  stretch: Stretch = NO_STRETCH,
+  groundShadow = true
+) {
   const s = size;
   const P = (x: number, y: number) => ({ x: x * stretch.x, y: y * stretch.y });
-  g.fillStyle(0x000000, 0.18);
-  g.fillEllipse(0, s * 0.55 * stretch.y, s * 1.1 * stretch.x, s * 0.22 * stretch.y);
+  if (groundShadow) {
+    g.fillStyle(0x000000, 0.18);
+    g.fillEllipse(0, s * 0.55 * stretch.y, s * 1.1 * stretch.x, s * 0.22 * stretch.y);
+  }
 
   const hexPts = (radius: number, yOff: number) => {
     const pts: { x: number; y: number }[] = [];
@@ -365,12 +374,15 @@ function drawPlateShape(
   color: number,
   stretch: Stretch,
   corners: number,
-  radiusScale: number
+  radiusScale: number,
+  groundShadow = true
 ) {
   const s = size;
   const P = (x: number, y: number) => ({ x: x * stretch.x, y: y * stretch.y });
-  g.fillStyle(0x000000, 0.18);
-  g.fillEllipse(0, s * 0.55 * stretch.y, s * 1.1 * stretch.x, s * 0.22 * stretch.y);
+  if (groundShadow) {
+    g.fillStyle(0x000000, 0.18);
+    g.fillEllipse(0, s * 0.55 * stretch.y, s * 1.1 * stretch.x, s * 0.22 * stretch.y);
+  }
 
   const plate = (radius: number, yOff: number) => {
     const pts: { x: number; y: number }[] = [];
@@ -448,9 +460,11 @@ export function killTweensDeep(scene: Pick<Phaser.Scene, 'tweens'>, obj: Phaser.
 // variant in its own right: it is the habit a compound gets when its
 // structure has no characteristic one.
 //
-// Every habit below is a single body -- two separate pieces in one crystal
-// mean a Majorana fusion and nothing else (`drawHybridCrystal`), so a
-// compound never draws as more than one solid on its own.
+// Every habit below is a single body -- extra pieces in a crystal are
+// reserved words: two co-equal bodies mean a Majorana fusion
+// (`drawHybridCrystal`), a small guest seated at the base means a dopant
+// (`addDopant`) -- so a compound never draws as more than one solid on its
+// own.
 // Each habit's own drawing is written in whatever proportions that solid
 // actually has, so the same `size` came out as a 55px spire and a 68px
 // octahedron -- a quarter apart, which reads as one specimen mattering more
@@ -477,7 +491,8 @@ function drawSolidShape(
   size: number,
   color: number,
   variant: CrystalVariant,
-  stretch: Stretch = NO_STRETCH
+  stretch: Stretch = NO_STRETCH,
+  groundShadow = true
 ) {
   size *= HABIT_SCALE[variant] ?? 1;
   if (variant === 'spire') drawSpireShape(g, size, color, stretch);
@@ -486,9 +501,9 @@ function drawSolidShape(
   else if (variant === 'octahedral') drawOctahedralShape(g, size, color, stretch);
   else if (variant === 'rhombohedral') drawRhombohedralShape(g, size, color, stretch);
   else if (variant === 'tetragonal') drawTetragonalShape(g, size, color, stretch);
-  else if (variant === 'layer') drawLayerShape(g, size, color, stretch);
-  else if (variant === 'layerTriangle') drawPlateShape(g, size, color, stretch, 3, 1.05);
-  else if (variant === 'layerSquare') drawPlateShape(g, size, color, stretch, 4, 0.88);
+  else if (variant === 'layer') drawLayerShape(g, size, color, stretch, groundShadow);
+  else if (variant === 'layerTriangle') drawPlateShape(g, size, color, stretch, 3, 1.05, groundShadow);
+  else if (variant === 'layerSquare') drawPlateShape(g, size, color, stretch, 4, 0.88, groundShadow);
   else drawShardShape(g, size, color, stretch);
 }
 
@@ -507,6 +522,7 @@ export function makeCrystal(
 
   if (opts?.hybrid) {
     drawHybridCrystal(scene, container, size, opts.hybrid);
+    if (opts.dopant) addDopant(scene, container, size, hybridDopantAnchor(size, opts.hybrid, opts.dopant), opts.dopant);
     return container;
   }
 
@@ -528,6 +544,8 @@ export function makeCrystal(
     const stars = Array.from({ length: jitter?.sparkleCount ?? 3 }, () => ({ glyph: jitter?.sparkleGlyph ?? '✦' }));
     addHighlightAndSparkles(scene, container, size, stars);
   }
+
+  if (opts?.dopant) addDopant(scene, container, size, dopantAnchor(size, variant, stretch, rot, opts.dopant), opts.dopant);
 
   return container;
 }
@@ -580,12 +598,24 @@ export interface HybridLook {
   variantB: CrystalVariant;
 }
 
+// Anderson's doping mechanic (World 6, the Lab): the look of the guest
+// crystal substituted into the player's own -- its color and habit, carried
+// so the doped render can show *which* compound sits in the host lattice.
+export interface DopantLook {
+  color: number;
+  variant: CrystalVariant;
+}
+
 export interface CrystalOptions {
   // Deterministic per-compound identity, normally the material's own name --
   // drives `jitterFor`'s hue/rotation/stretch variation. Ignored when
   // `hybrid` is set.
   seed?: string;
   hybrid?: HybridLook;
+  // A doped-in guest (Anderson's mechanic): rendered by `addDopant` as one
+  // small crystal seated in the host's base. Honoured on both the ordinary
+  // and the hybrid render -- a fused player can be doped at the same time.
+  dopant?: DopantLook;
   // Draw the bare faceted shape with no specular highlight and no twinkling
   // sparkle glyphs -- for a crystal that is one component of a larger
   // composition (art/boss.ts's golem torso) rather than a whole material
@@ -619,9 +649,10 @@ function drawVariantShape(g: Phaser.GameObjects.Graphics, size: number, color: n
 // region where they overlap actually brightens into a shared "fusion" glow,
 // split by a jagged glowing seam (the fusion boundary made literal) and
 // finished with sparkles tinted in both parents' own colors rather than
-// plain white. This is the one crystal in the game drawn from two separate
-// pieces: every `CrystalVariant` habit is a single body, so two shapes in
-// one crystal always mean a fusion. Reached via `makeCrystal`'s
+// plain white. This is the composite whose pieces are co-equal: every
+// `CrystalVariant` habit is a single body, and a dopant guest (`addDopant`)
+// stays small and subordinate at the host's base, so two full-size offset
+// bodies joined by a seam always mean a fusion. Reached via `makeCrystal`'s
 // `opts.hybrid`, which every hybrid material carries (see `hybridParents` in
 // data/types.ts).
 function drawHybridCrystal(
@@ -691,4 +722,101 @@ function drawHybridCrystal(
     { glyph: '✦', color: hexColor(colorB) },
     { glyph: '✧', color: hexColor(colorA) },
   ]);
+}
+
+// Where the dopant guest sits, in container space. On a solid host it tucks
+// into the front of the base; on a floating plate host (the `layer*` habits)
+// the base would put it under the sheet, on top of the hover shadow -- a
+// separate object standing below rather than an atom in the sheet -- so
+// there it seats into the plate's front rim instead. The anchor follows the
+// host's own jitter stretch and rotation so the guest stays glued to the
+// body it is substituted into.
+const PLATE_HABITS: ReadonlySet<CrystalVariant> = new Set(['layer', 'layerTriangle', 'layerSquare']);
+
+// The blocky habits bottom out higher than the pointed ones (cubic's base is
+// at ~0.65 size, rhombohedral's ~0.62, against shard's ~0.82), so they get a
+// higher, more centred seat -- one anchor for all solids left the guest
+// hanging off a cube's corner with barely any overlap.
+const SHALLOW_SEAT: ReadonlySet<CrystalVariant> = new Set(['cubic', 'rhombohedral']);
+
+// A plate guest on a solid (or hybrid) host seats further inboard than a
+// solid guest: edge-on, a plate is nearly flat, so at the solid-guest seat
+// most of its footprint would sit off the host's face with sky showing
+// between the two -- a separate object hovering beside the crystal rather
+// than an atom in it. Pulled toward the centreline, the host body backs the
+// plate's whole footprint and only its outer tip clears the silhouette.
+function isPlateGuest(dopant: DopantLook): boolean {
+  return PLATE_HABITS.has(dopant.variant);
+}
+
+function dopantAnchor(
+  size: number,
+  variant: CrystalVariant,
+  stretch: Stretch,
+  rotationRad: number,
+  dopant: DopantLook
+) {
+  const plateGuest = isPlateGuest(dopant);
+  const seat = PLATE_HABITS.has(variant)
+    ? { x: 0.24, y: 0.12 }
+    : SHALLOW_SEAT.has(variant)
+      ? plateGuest
+        ? { x: 0.06, y: 0.42 }
+        : { x: 0.16, y: 0.5 }
+      : plateGuest
+        ? { x: 0.08, y: 0.56 }
+        : { x: 0.2, y: 0.68 };
+  const x = seat.x * stretch.x * size;
+  const y = seat.y * stretch.y * size;
+  const cos = Math.cos(rotationRad);
+  const sin = Math.sin(rotationRad);
+  return { x: x * cos - y * sin, y: x * sin + y * cos };
+}
+
+// A hybrid host carries no jitter and its two parent bodies sit at fixed
+// offsets, so the seat is fixed too: at the fused body's base, or in the
+// front rim when both parents are plates and there is no base to tuck into.
+function hybridDopantAnchor(size: number, hybrid: HybridLook, dopant: DopantLook) {
+  const bothPlates = PLATE_HABITS.has(hybrid.variantA) && PLATE_HABITS.has(hybrid.variantB);
+  const seat = bothPlates
+    ? { x: 0.2, y: 0.2 }
+    : isPlateGuest(dopant)
+      ? { x: 0.06, y: 0.5 }
+      : { x: 0.16, y: 0.62 };
+  return { x: seat.x * size, y: seat.y * size };
+}
+
+// Anderson's doping mechanic made visible: one small guest crystal seated in
+// the host's base. Deliberately none of the fusion grammar
+// (`drawHybridCrystal`) -- no second full-size body, no additive glow, no
+// seam, no sparkles or motion of its own. A dopant is a single substituted
+// atom: the host is still overwhelmingly itself, and that asymmetry of size
+// and placement is what keeps "doped" from ever reading as "fused". The
+// guest keeps its own color and habit (`drawSolidShape`; 'spire' collapses
+// to a plain shard for the same reason it does in `drawVariantShape`, and a
+// plate guest drops its detached hover shadow -- a substituted atom sits in
+// the lattice, it doesn't float in front of it). It draws in front of the
+// host, tilted so it reads as lodged in the lattice rather than standing
+// beside it -- a solid guest leans a little, a plate guest tilts steeply
+// enough to read as a wafer wedged diagonally into the host's face (and
+// draws a touch larger, since an edge-on sheet carries far less visual mass
+// than a solid at the same size) -- and takes no seed jitter: its identity
+// is the doped compound's color and habit, nothing more.
+const DOPANT_SCALE = 0.3;
+const PLATE_DOPANT_SCALE = 0.34;
+
+function addDopant(
+  scene: Phaser.Scene,
+  container: Phaser.GameObjects.Container,
+  size: number,
+  anchor: { x: number; y: number },
+  dopant: DopantLook
+) {
+  const g = scene.add.graphics();
+  const variant = dopant.variant === 'spire' ? 'shard' : dopant.variant;
+  const plateGuest = isPlateGuest(dopant);
+  drawSolidShape(g, size * (plateGuest ? PLATE_DOPANT_SCALE : DOPANT_SCALE), dopant.color, variant, NO_STRETCH, false);
+  g.setPosition(anchor.x, anchor.y);
+  g.setRotation(Phaser.Math.DegToRad(plateGuest ? -30 : -10));
+  container.add(g);
 }

@@ -19,6 +19,7 @@ import {
   MOVES,
   canHost,
   getPlayerMaterial,
+  getPlayerDopantLook,
   getPlayerStats,
   getBattleMoves,
   getTunedMoveClass,
@@ -613,6 +614,7 @@ export class BattleScene extends Phaser.Scene {
     this.playerCrystal = makeCrystal(this, PLAYER_CRYSTAL_SIZE, this.playerMaterial.color, this.playerMaterial.variant, {
       seed: this.playerMaterial.name,
       hybrid: this.playerMaterial.hybridParents,
+      dopant: getPlayerDopantLook(this.game.registry),
     });
     this.playerCrystal.setPosition(PLAYER_POS.x, PLAYER_POS.y);
     this.bobCrystal(this.playerCrystal, PLAYER_POS.y);
@@ -2510,7 +2512,14 @@ export class BattleScene extends Phaser.Scene {
     const sequence = Array.from({ length: TURN_PREVIEW_LENGTH }, (_, i) =>
       i < remaining.length ? remaining[i] : roundPattern[(i - remaining.length) % roundPattern.length]
     );
-    this.turnPreviewRow = drawTurnPreview(this, sequence, this.playerMaterial, this.opponentView(), this.isRival);
+    this.turnPreviewRow = drawTurnPreview(
+      this,
+      sequence,
+      this.playerMaterial,
+      this.opponentView(),
+      this.isRival,
+      getPlayerDopantLook(this.game.registry)
+    );
   }
 
   // What the opponent throws on one of its own slots, rolled fresh each time.

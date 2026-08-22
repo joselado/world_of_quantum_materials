@@ -1181,9 +1181,17 @@ state can mark her met before the player has actually reached her.
   current form and the currently doped-in impurity's type (`getBattleMoves`) -- an
   impurity's channel is real for as long as the impurity stays doped in, and disappears
   the moment a different crystal is doped in instead, the same way a real dopant atom's
-  bound states vanish if you swap in a different dopant species. Distinct from
+  bound states vanish if you swap in a different dopant species. A doped-in impurity is
+  visible on the player's own crystal for as long as it is carried: one small guest crystal
+  in the doped compound's own color and habit, seated in the base of the player's otherwise
+  unchanged body (`art/crystals.ts`'s `opts.dopant`, STYLE.md's **Doped crystals**), drawn
+  everywhere the player appears rather than only in Anderson's panel -- the overworld, a
+  battle and its turn-preview row, the Lab. Anderson's own pane previews it before the
+  commitment: it draws the player's crystal carrying whichever impurity is being browsed,
+  under that impurity's name. Distinct from
   Dresselhaus (become the whole state) and Majorana (fuse two states together):
-  Anderson borrows a single excitation channel without becoming anything. Host
+  Anderson borrows a single excitation channel without becoming anything, and the look says
+  so -- a small guest in an unchanged host, never the two co-equal bodies of a fusion. Host
   pool excludes any `isHybridMaterial` (a Majorana fusion, or one of world 10's own
   named recipe-result wilds) -- doping in an impurity is meant to be one real compound's
   own excitation, not a channel a fusion already borrowed from two others. In

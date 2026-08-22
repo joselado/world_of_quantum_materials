@@ -43,6 +43,7 @@ import {
   PLAYER_MOVE_IDS,
   KONDO_MOVE_IDS,
   getPlayerMaterial,
+  getPlayerDopantLook,
   DEFAULT_STATS,
   allCrystals,
   isHybridMaterial,
@@ -1114,6 +1115,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.playerCrystalGfx = makeCrystal(this, PLAYER_CRYSTAL_SIZE, this.playerMaterial.color, this.playerMaterial.variant, {
       seed: this.playerMaterial.name,
       hybrid: this.playerMaterial.hybridParents,
+      dopant: getPlayerDopantLook(this.game.registry),
     });
     this.player.add([playerShadow, this.playerCrystalGfx]);
     this.player.setDepth(40);
@@ -3325,6 +3327,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.playerCrystalGfx = makeCrystal(this, PLAYER_CRYSTAL_SIZE, this.playerMaterial.color, this.playerMaterial.variant, {
       seed: this.playerMaterial.name,
       hybrid: this.playerMaterial.hybridParents,
+      dopant: getPlayerDopantLook(this.game.registry),
     });
     this.player.add(this.playerCrystalGfx);
   }

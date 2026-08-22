@@ -6,7 +6,15 @@ import { killTweensDeep } from '../../art/crystals';
 import { CANVAS_W } from '../../art/perspective';
 import { fontPx, fontScale } from '../../ui/text';
 import { PANEL_BG } from '../../ui/theme';
-import { MOVES, allCrystals, isHybridMaterial, findMaterialByName, getBattleMoves, ANDERSON_DOPE_COST } from '../../data/materials';
+import {
+  MOVES,
+  allCrystals,
+  isHybridMaterial,
+  findMaterialByName,
+  getBattleMoves,
+  getPlayerMaterial,
+  ANDERSON_DOPE_COST,
+} from '../../data/materials';
 import { persistFromRegistry } from '../../data/save';
 import {
   LIST_DETAIL_PANEL_W,
@@ -206,7 +214,14 @@ export function showAndersonPanel(scene: GuardianPanelHost) {
         const previewMaterial = findMaterialByName(preview);
         let rightY = columnsTop;
         if (previewMaterial) {
-          rightY = renderDetailCrystalHeader(scene, detailBlock, previewMaterial, columns.rightColCenterX, rightY, columns.rightColW);
+          // The picture is what doping this impurity in would make of you:
+          // your own crystal, carrying the browsed material at its base. The
+          // name below it still reads the impurity's, since that is what the
+          // list to the left is selecting.
+          rightY = renderDetailCrystalHeader(scene, detailBlock, previewMaterial, columns.rightColCenterX, rightY, columns.rightColW, {
+            drawAs: getPlayerMaterial(scene.game.registry),
+            dopant: { color: previewMaterial.color, variant: previewMaterial.variant },
+          });
 
           const unlockedHosts = (scene.game.registry.get('andersonUnlockedHosts') as string[]) ?? [];
           const hostUnlocked = superposition || unlockedHosts.includes(previewMaterial.name);

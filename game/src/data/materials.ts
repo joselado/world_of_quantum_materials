@@ -1,4 +1,5 @@
 import { shade, darken, blend, hueShift } from '../art/colors';
+import type { DopantLook } from '../art/crystals';
 import type { Material, Move, MoveClass, MaterialType, CrystalVariant, Stats } from './types';
 // Every pure stat/economy formula (BASE_STAT, enemyStatsForWorld,
 // statUpgradeCost, shopCost, Feynman's move-leveling multipliers/cost) lives
@@ -620,6 +621,21 @@ export function getPlayerStats(registry: RegistryLike): Stats {
 // them together.
 export function getPlayerMaterial(registry: RegistryLike): Material {
   return (registry.get('playerForm') as Material | undefined) ?? PLAYER_MATERIAL;
+}
+
+// The look of whatever impurity is doped into the player right now (registry
+// `andersonDopant`, set via Anderson's panel), or undefined when nothing is.
+// Every place the game draws *the player's own crystal* passes this straight
+// into `makeCrystal`'s `opts.dopant`, so the doped look follows the player
+// everywhere they appear -- the overworld, a battle, the Lab, the panels --
+// off one shared read rather than each scene deciding for itself. A crystal
+// that is not the player's (a wild, a rival, a Materialdex entry, one of
+// Majorana's fusion parents) never passes it: doping is something that
+// happened to *you*, not a property of the species.
+export function getPlayerDopantLook(registry: RegistryLike): DopantLook | undefined {
+  const dopantName = (registry.get('andersonDopant') as string | null) ?? null;
+  const dopant = dopantName ? findMaterialByName(dopantName) : null;
+  return dopant ? { color: dopant.color, variant: dopant.variant } : undefined;
 }
 
 // The moves the player can actually use in battle right now: the ones
