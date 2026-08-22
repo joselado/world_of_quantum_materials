@@ -1829,9 +1829,15 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
 //     which needs its own pool as the "material" side of World 10's own
 //     material-vs-ML-lecture picker (getWorldQuestion's world===10 branch).
 export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
-  // Spawns in World 1 (mean-field SSB) and World 9 ("any type" world) --
-  // its ferroelectric-structural content isn't mean-field-Hubbard-specific
-  // nor defect-physics-specific, so it stays a bonus pool for either.
+  // Spawns in World 1 (mean-field SSB) and World 9 ("any type" world). Every
+  // entry asks the ferroelectric transition as spontaneous symmetry breaking:
+  // an order parameter that vanishes in the symmetric phase, a set of equally
+  // good ordered states related by a symmetry of the disordered one, and the
+  // symmetry (inversion, not time-reversal) that a polarization costs the
+  // crystal. That is session 1's own classification of ordered matter by
+  // which symmetry it breaks, with a ferroelectric order parameter in place of
+  // a magnet's, so it reads as World 1 content without being tied to the
+  // Hubbard model specifically, and stays a usable bonus layer in World 9.
   'Barium Titanate': [
     {
       prompt: "What ionic displacement inside BaTiO₃'s perovskite unit cell produces its spontaneous electric polarization?",
@@ -1849,19 +1855,19 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
       incorrect: 'It conducts electricity freely once polarized',
     },
     {
-      prompt: 'Cooling further below its cubic-to-tetragonal transition, how many more structural phase transitions does BaTiO₃ undergo?',
-      correct: 'Two more: into orthorhombic, then rhombohedral phases',
-      incorrect: 'None: the tetragonal phase persists all the way to absolute zero',
+      prompt: 'A magnet breaks time-reversal symmetry when its magnetization turns on. Which symmetry does BaTiO₃ lose instead, when its spontaneous polarization turns on?',
+      correct: 'Inversion symmetry: a polarization points one way, and the cubic phase had no preferred direction',
+      incorrect: 'Time-reversal symmetry, exactly as a magnetization does',
     },
     {
-      prompt: 'BaTiO₃ is piezoelectric as well as ferroelectric. What does that mean?',
-      correct: 'Applying mechanical stress to it generates an electric polarization, and vice versa',
-      incorrect: 'It becomes ferromagnetic under mechanical stress',
+      prompt: "BaTiO₃'s cubic phase treats several axes as equivalent, so the polarized state it cools into has several equally good partners. What relates one of those ordered states to another?",
+      correct: 'A symmetry operation of the cubic phase, which maps one equally good polarized state onto another',
+      incorrect: 'A different Hamiltonian, since each polarized state needs its own energy landscape',
     },
     {
-      prompt: 'Real capacitors and piezoelectric transducers use BaTiO₃ specifically because of...',
-      correct: 'Its very large dielectric permittivity and switchable polarization near its transition',
-      incorrect: 'Its unusually high superconducting critical temperature',
+      prompt: "What plays the role of order parameter in BaTiO₃'s ferroelectric phase, the way the magnetization does in a magnet?",
+      correct: 'The spontaneous electric polarization, which vanishes in the cubic phase and grows below the transition',
+      incorrect: 'The Ti-O bond length, which is nonzero on both sides of the transition',
     },
   ],
 
@@ -2417,7 +2423,11 @@ export const ANALYTIC_QUESTIONS: AnalyticQuestion[] = [
     prompt: 'The Stoner criterion for a spontaneous ferromagnetic instability is...',
     correct: '$U·D(E_F) ≥ 1$',
     incorrect: '$U·D(E_F) ≤ 1$',
-    worlds: [1, 6],
+    // Stoner is session 6's criterion (and session 9 reaches it again through
+    // RPA); session 1 ramps U in the mean-field Hubbard model with no
+    // threshold in the story, so world 1 is not one of the worlds that
+    // unlocks this.
+    worlds: [6, 9],
   },
   {
     prompt: 'The energy of the n-th Landau level in a magnetic field B is...',
