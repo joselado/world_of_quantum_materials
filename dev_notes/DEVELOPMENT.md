@@ -482,7 +482,20 @@ panels' open/close, rival-gate win and loss paths, World 10's Adapted actually
 transmuting (once per move class, with both sides topped up so the swap is
 reached repeatedly -- the rival-gate loss path never gets there, since a
 fresh-save player dies before landing a hit on a living Adapted), and
-fresh/corrupt/old-shape save boot resilience. Every test also fails on any
+fresh/corrupt/old-shape save boot resilience, and one WebGL context
+loss/restore cycle forced on a live battle. That last one guards a property
+rather than a code path: a browser can take the WebGL context away at any
+moment (backgrounding a tab on mobile, a GPU driver reset, a laptop switching
+graphics chips) and hand it back a moment later, and unhandled that is a black
+canvas the player can only escape by reloading. Phaser restores its own
+resources across the cycle; its one documented exception is GPU-bound dynamic
+textures (`RenderTexture`/`DynamicTexture`), which their owner has to redraw
+on the renderer's `RESTORE_WEBGL` event. This game owns none -- everything is
+`Graphics` and `Text` rebuilt per scene -- which is why it carries no
+context-loss handler of its own, and the test asserts both halves: that the
+cycle really does recover, and that the precondition still holds. Adding a
+dynamic texture fails it, with the remedy in the failure message.
+Every test also fails on any
 uncaught page error inside its own window, which is what catches a throw in a
 tween callback -- those run inside Phaser's game step, so they kill the
 `requestAnimationFrame` loop and freeze the canvas instead of surfacing as a

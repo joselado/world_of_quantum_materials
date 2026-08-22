@@ -580,9 +580,25 @@ async function main() {
       };
     }
 
-    await sleep(900);
-    await page.keyboard.press('Space');
-    await sleep(500);
+    // The summary screen arms its own dismissal only VICTORY_DISMISS_GRACE_MS
+    // after endBattle runs, and endBattle itself waits on the killing blow's
+    // animation -- so the delay between "HP reached 0" (what resolveBattleLoop
+    // returns on) and "SPACE is listened for" is not a fixed number, and on a
+    // loaded machine it comfortably exceeds any single sleep worth writing.
+    // Press and re-check the way a player would, only ever pressing while the
+    // Battle scene is genuinely still up, so a stray press can never land on
+    // the Overworld behind it. A summary that outlasts every attempt is still
+    // a real failure and still reported as one.
+    let leftBattle = false;
+    for (let attempt = 0; attempt < 15; attempt++) {
+      if (!(await getActiveScenes()).includes('Battle')) {
+        leftBattle = true;
+        break;
+      }
+      await page.keyboard.press('Space');
+      await sleep(300);
+    }
+    if (!leftBattle) await sleep(200);
 
     const scenesAfter = await getActiveScenes();
     if (scenesAfter.includes('Battle')) {
@@ -604,6 +620,106 @@ async function main() {
     return {
       pass: true,
       detail: `iter ${i}: ${result.outcome} in ${result.rounds} rounds (world ${world}, type ${type}, isRival ${isRival}, startHp ${startHp}), clean return to Overworld`,
+    };
+  }
+
+  // =====================================================================
+  // Test 2b: WebGL context loss/restore
+  // =====================================================================
+  // A browser can take the WebGL context away at any moment -- backgrounding
+  // a tab on mobile, a GPU driver reset, a laptop switching graphics chips --
+  // and hand it back a moment later. Unhandled, that is a black canvas the
+  // player can only escape by reloading, so it is worth a standing check
+  // rather than an assumption.
+  //
+  // Phaser 3.80+ restores its own resources across that cycle and emits
+  // RESTORE_WEBGL when it is done. Its one documented exception is dynamic,
+  // GPU-bound textures (RenderTexture/DynamicTexture, anything drawn into on
+  // the GPU), which the owner has to redraw. This game has none -- everything
+  // is Graphics and Text rebuilt per scene -- which is exactly why it needs
+  // no context-loss handler of its own, and why that is worth *checking*
+  // rather than trusting: the day someone adds a DynamicTexture, automatic
+  // recovery silently stops being complete, and the failure a player sees is
+  // a half-blank screen after their phone comes back from the lock screen.
+  // So this asserts both halves: the cycle really does recover, and the
+  // precondition that lets it recover unaided still holds.
+  async function testContextLossRecovery() {
+    // Run it on a live battle -- the busiest scene, with the most tweens,
+    // effects and per-frame redraws in flight when the context vanishes.
+    await resetRegistryOnly();
+    await jumpToScene('Battle', {
+      wild: { name: 'Context Foe', type: 'metal', color: 0x7a8a99, variant: 'shard', moves: ['tunnelStrike'] },
+      world: 1,
+      attackMultiplier: 1,
+      isRival: false,
+    });
+    for (let i = 0; i < 20 && !(await getActiveScenes()).includes('Battle'); i++) await sleep(50);
+
+    const prepared = await page.evaluate(() => {
+      const g = window.__game;
+      const gl = g.renderer && g.renderer.gl;
+      if (!gl) return { ok: false, reason: 'no WebGL renderer (canvas fallback)' };
+      const ext = gl.getExtension('WEBGL_lose_context');
+      if (!ext) return { ok: false, reason: 'WEBGL_lose_context extension unavailable' };
+      window.__ctxLossExt = ext;
+      window.__ctxLossSeen = { lost: 0, restored: 0 };
+      g.canvas.addEventListener('webglcontextlost', () => window.__ctxLossSeen.lost++);
+      g.canvas.addEventListener('webglcontextrestored', () => window.__ctxLossSeen.restored++);
+      return { ok: true, frame: g.loop.frame };
+    });
+    // A canvas-fallback renderer has no context to lose, so there is nothing
+    // to assert rather than something to fail.
+    if (!prepared.ok) return { pass: true, detail: `skipped: ${prepared.reason}` };
+
+    await page.evaluate(() => window.__ctxLossExt.loseContext());
+    await sleep(900);
+    const lost = await page.evaluate(() => ({
+      ...window.__ctxLossSeen,
+      contextLost: !!window.__game.renderer.contextLost,
+    }));
+    if (!lost.lost || !lost.contextLost) {
+      return { pass: false, detail: `context did not actually drop (events=${JSON.stringify(lost)})` };
+    }
+
+    await page.evaluate(() => window.__ctxLossExt.restoreContext());
+    // Restoration is asynchronous and rebuilds every texture, so give it real
+    // time before reading the verdict.
+    await sleep(3000);
+    const after = await page.evaluate(() => {
+      const g = window.__game;
+      // Any texture the GPU owns and the game would have to redraw itself.
+      const dynamic = Object.entries(g.textures.list)
+        .filter(([, t]) => t && (t.constructor?.name === 'DynamicTexture' || t.constructor?.name === 'RenderTexture'))
+        .map(([k]) => k);
+      return {
+        ...window.__ctxLossSeen,
+        contextLost: !!g.renderer.contextLost,
+        glLost: !!(g.renderer.gl && g.renderer.gl.isContextLost && g.renderer.gl.isContextLost()),
+        running: g.loop.running,
+        frame: g.loop.frame,
+        scenes: g.scene.getScenes(true).map((sc) => sc.scene.key),
+        dynamic,
+      };
+    });
+    if (!after.restored) return { pass: false, detail: `no webglcontextrestored event (${JSON.stringify(after)})` };
+    if (after.contextLost || after.glLost) return { pass: false, detail: `context still lost after restore (${JSON.stringify(after)})` };
+    if (!after.running || after.frame <= prepared.frame) {
+      return { pass: false, detail: `game loop not advancing after restore (frame ${prepared.frame} -> ${after.frame})` };
+    }
+    if (!after.scenes.includes('Battle')) {
+      return { pass: false, detail: `Battle scene did not survive the context cycle (scenes=${JSON.stringify(after.scenes)})` };
+    }
+    if (after.dynamic.length) {
+      return {
+        pass: false,
+        detail:
+          `the game now owns GPU-bound dynamic texture(s) ${JSON.stringify(after.dynamic)} -- Phaser does not restore those ` +
+          `automatically, so something must now redraw them on the renderer's RESTORE_WEBGL event`,
+      };
+    }
+    return {
+      pass: true,
+      detail: `context lost and restored cleanly on a live battle; loop advanced ${prepared.frame} -> ${after.frame}, no GPU-bound dynamic textures to redraw`,
     };
   }
 
@@ -1233,6 +1349,9 @@ async function main() {
   for (let i = 1; i <= 3; i++) {
     await runTest(`battle round-trip #${i}`, () => testBattleRoundTrip(i));
   }
+
+  log('=== Test 2b: WebGL context loss/restore (live battle) ===');
+  await runTest('webgl context loss/restore', testContextLossRecovery);
 
   log('=== Test 3: guardian panel open/close round-trip (worlds 1-10) ===');
   for (let world = 1; world <= 10; world++) {
