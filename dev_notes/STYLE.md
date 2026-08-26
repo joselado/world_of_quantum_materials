@@ -3018,9 +3018,12 @@ world are shaped, since world N's start is world N-1's exit.
   4-6 seconds total, dramatically longer than any other move's effect, with `onImpact` firing
   at the sequence's own strike beat and `onComplete` only once the full aftermath decay
   finishes (see `BattleScene`'s "Ultimate moves defer damage/turn-handoff" in `CODEMAP.md`).
-  A whiff (any wrong answer in `showUltimateQuestions`) still plays the same windup/charge
-  phases, but swaps the final impact/aftermath beat for a distinct fizzle cue instead of a
-  hit. The meteor's rune is inscribed flat on the ground under the target and its mass punches
+  A whiff (any wrong answer in `showUltimateQuestions`) still plays the same summon/charge
+  phases, with one tell -- the held strain (the meteor's tremble, the nova's core pulse) goes
+  slack across the last stretch of the charge -- and then takes the summoned mass apart in
+  mid-air rather than striking with it: desaturated fragments drifting outward and fading,
+  nothing reaching the ground, a fizzle cue instead of the impact thud, and no shockwave,
+  crystal flash or camera shake. The meteor's rune is inscribed flat on the ground under the target and its mass punches
   into frame fast, then *brakes* into a straining, trembling hover for the last stretch before
   it drops -- the arrival is shaped inside the phase rather than by easing the phase's own
   counter, which would spend most of the charge with the mass still off-screen. The nova's

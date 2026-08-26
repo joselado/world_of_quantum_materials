@@ -2881,7 +2881,11 @@ export class BattleScene extends Phaser.Scene {
         from,
         to,
         () => {
-          this.impactPunch(targetCrystal());
+          // A whiff never reaches the defender at all -- the summoned mass
+          // comes apart in mid-air (art/attackUltimates.ts) -- so it gets
+          // none of the flash/shake that reads as a hit landing, just the
+          // log line and its zero damage.
+          if (!whiff) this.impactPunch(targetCrystal());
           applyResult();
         },
         mismatchMult * bonusMultiplier,

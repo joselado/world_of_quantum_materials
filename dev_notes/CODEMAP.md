@@ -386,7 +386,10 @@ game/src/
                                   opposite signs)
     attackUltimates.ts          Skłodowska-Curie's Ultimate tier: playMeteor/playNova and their
                                   summon->charge->impact->aftermath phase functions,
-                                  METEOR_TOTAL_MS/NOVA_TOTAL_MS
+                                  METEOR_TOTAL_MS/NOVA_TOTAL_MS, plus the whiff path's
+                                  drawMeteorFizzle/drawNovaFizzle (one dissipation spanning the
+                                  impact+aftermath pair) and strainAt (the charge's held strain,
+                                  which goes slack on a whiff)
     moveEffectPreview.ts         startMoveEffectPreview(params, key?)/stopMoveEffectPreview(key?) --
                                   loops a move's real battle effect (above) inside a guardian panel's
                                   detail pane (Noether's Moves section, Feynman's leveling pane,
@@ -1341,8 +1344,10 @@ Every other move's call to `playAttackEffect` omits `onComplete` and keeps calli
 blocks all input for however long it stays `true`, so no separate locking logic was needed for
 the longer window. A whiff (`bonusMultiplier === 0`, only reachable for an Ultimate move --
 `showUltimateQuestions`' any-wrong-answer path) still plays through `onImpact`/`onComplete` the
-same way, just with `dmg` resolving to (near-)zero and the log line reading a distinct fizzle
-message rather than the ordinary "used `<move>`! (N dmg)" line.
+same way, just with `dmg` resolving to (near-)zero, the log line reading a distinct fizzle
+message rather than the ordinary "used `<move>`! (N dmg)" line, and `onImpact` skipping
+`impactPunch` -- the animation's whiff path disperses the summoned mass in mid-air instead of
+striking, so the flash/shake that reads as a hit landing would contradict what is on screen.
 
 **A leveled move fires its animation as several staggered, growing repeats instead of once**
 (Feynman's move-leveling, §5, `data/materials.ts`'s `MoveLevel`/`getMoveLevel`) -- purely
