@@ -32,7 +32,11 @@ import type { MoveLevel } from '../data/materials';
 // across the caller's own `clip` rectangle by FLIGHT_* below. The rest play
 // on the single point the caller supplies (`at`, normally the centre of its
 // own pane) -- a summon arrives there on its own, and a self-buff is cast on
-// the crystal standing there (attackEffects.ts's playTargetEffect).
+// the crystal standing there (attackEffects.ts's playTargetEffect). The two
+// ground-anchored Analytic shapes are the one place the stage adapts the
+// effect rather than only framing it: they are composed against a defender's
+// body and the floor at its feet, neither of which a stage has, so they play
+// on the stage's own floor line instead (GROUND_LINE_Y below).
 //
 // Either way the preview uses whichever class/shape override that move
 // actually plays with in a real fight (Landau's/Curie's ANALYTIC_SHAPES/
@@ -94,6 +98,23 @@ const FLIGHT_FROM_X = 0.18;
 const FLIGHT_TO_X = 0.78;
 const FLIGHT_FROM_Y = 0.68;
 const FLIGHT_TO_Y = 0.44;
+
+// The stage's own floor, as a fraction of its height -- where Landau's two
+// ground-anchored Analytic shapes (beam, eruption) play. Both are composed
+// in a battle against a defender's body *and* the arena floor at its feet
+// (art/attackShapes.ts's GROUND_DROP): the beam's column stops at the
+// defender's centre with its pool of light spreading on the floor below,
+// the eruption's crack opens in that floor under the same body. A stage has
+// neither, so the anchor handed to playTargetEffect for these two is this
+// floor line rather than the caller's own centre point, and
+// attackEffects.ts's TARGET_ONLY_GROUND_DROP drops the extra offset: the
+// beam lands on the line instead of ending flat in mid-air where a defender
+// would have been, and the eruption's expanding floor rings spread along it
+// with room to grow inside the stage instead of out through its bottom edge.
+// Low enough for the rings, high enough that the geyser's own column still
+// stands inside a stage at TUNED_MOVE_STAGE_H.
+const GROUND_LINE_Y = 0.76;
+const GROUND_ANCHORED = new Set<AttackShape>(['beam', 'eruption']);
 
 function flightAnchors(clip: PreviewClipRect): { from: EffectAnchor; to: EffectAnchor } {
   return {
@@ -212,8 +233,10 @@ function playNext(key: string, myGen: number) {
     c.pendingTimer = scene.time.delayedCall(loopPauseMs(playedMs), () => playNext(key, myGen));
   };
 
+  const target = GROUND_ANCHORED.has(shape) ? { x: at.x, y: clip.y + clip.height * GROUND_LINE_Y } : at;
+
   if (flight) playFlightEffect(scene, moveClass, flight.from, flight.to, shapeOverride, chain.depthOffset, level ?? 0);
-  else playTargetEffect(scene, moveClass, at, shapeOverride, isUltimate ? afterSettled : undefined, chain.depthOffset, level ?? 0);
+  else playTargetEffect(scene, moveClass, target, shapeOverride, isUltimate ? afterSettled : undefined, chain.depthOffset, level ?? 0);
 
   if (!isUltimate) {
     chain.pendingTimer = scene.time.delayedCall(playedMs, afterSettled);

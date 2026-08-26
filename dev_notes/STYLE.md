@@ -3102,7 +3102,15 @@ world are shaped, since world N's start is world N-1's exit.
   moves that summon themselves where they land (Landau's beam/eruption, Skłodowska-Curie's
   meteor/nova) and Kondo's self-buffs, cast by a crystal on itself, have no crossing to show
   and play on the single point the pane hands in. A detail pane has no crystals of its own to
-  follow, and a fixed point is a perfectly good anchor, it just never moves. `playAttackEffect`'s own Graphics normally draw at depth 58-61 (tuned for
+  follow, and a fixed point is a perfectly good anchor, it just never moves. Landau's two are
+  the exception that needs a *ground* as well as a point: in a battle the beam's column stops
+  at the defender's own centre and its pool of light spreads on the floor `GROUND_DROP` below,
+  and the eruption's crack opens in that same floor under the same body. A stage has no body
+  standing in it, so those two play on the stage's own floor line
+  (`moveEffectPreview.ts`'s `GROUND_LINE_Y`) with that extra drop set to zero
+  (`attackEffects.ts`'s `TARGET_ONLY_GROUND_DROP`): the beam lands on the line rather than
+  ending flat in mid-air where a defender would have been, and the eruption's expanding floor
+  rings spread along it with room to grow inside the stage. `playAttackEffect`'s own Graphics normally draw at depth 58-61 (tuned for
   `BattleScene`'s background); a guardian panel's own dialogue container sits at depth `100`
   (`OverworldScene.ts`/`HubScene.ts`'s `showXPanel` convention), which would otherwise draw over
   (hide) the preview entirely, so `playAttackEffect`'s own `depthOffset` parameter (default `0`,

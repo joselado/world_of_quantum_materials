@@ -41,8 +41,9 @@ import {
 // across battles and reloads, replacing whatever was doped in before --
 // only one impurity species at a time) is written by learnImpurityMove
 // below, at the same moment the chosen move becomes a completely ordinary
-// entry in `unlockedMoves` -- picking a host and committing to one of its
-// moves is a single action, not two. MOVE_COMPATIBILITY still gates whether
+// entry in `unlockedMoves` and the player's own crystal is redrawn with the
+// new guest at its base (`scene.refreshPlayerCrystal`) -- picking a host and
+// committing to one of its moves is a single action, not two. MOVE_COMPATIBILITY still gates whether
 // a move actually shows up in the battle move menu (getBattleMoves), but
 // that gate checks the player's own current form *or* the currently
 // doped-in impurity's type -- an impurity state is a real, local excitation
@@ -382,6 +383,10 @@ function learnImpurityMove(scene: GuardianPanelHost, moveId: string, hostUnlocke
   }
   scene.game.registry.set('andersonDopant', scene.andersonSelection);
   persistFromRegistry(scene.game.registry);
+  // The new guest has to show up on the player's own crystal right away --
+  // both hosts build that sprite once at scene create, so without this the
+  // dope is only visible after the scene is rebuilt.
+  scene.refreshPlayerCrystal();
   scene.andersonSelection = null;
   scene.andersonPage = 0;
   scene.andersonMovePage = 0;

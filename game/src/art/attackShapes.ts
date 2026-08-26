@@ -1419,7 +1419,14 @@ export function playBeam(
   to: EffectAnchor,
   onImpact?: (dir?: Direction) => void,
   depthOffset = 0,
-  scale = 1
+  scale = 1,
+  // How far below `to` the floor the pool spreads across lies. GROUND_DROP
+  // in a battle, where `to` is the defender's own centre and the floor is at
+  // its feet; 0 when the caller has handed over the floor line itself and
+  // there is no body standing on it (a panel's preview stage,
+  // art/moveEffectPreview.ts), so the column lands on the ground rather than
+  // ending in mid-air where a defender would have been.
+  groundDrop = GROUND_DROP
 ) {
   const g = fxGraphics(scene, 60, depthOffset);
   const sun = fxGraphics(scene, 59, depthOffset);
@@ -1464,7 +1471,7 @@ export function playBeam(
       // where the column meets it, with a few licks curling back up.
       if (fall >= 1) {
         const q = Math.min(1, (t - 1 / 1.3) / (1 - 1 / 1.3));
-        const groundY = to.y + GROUND_DROP;
+        const groundY = to.y + groundDrop;
         g.fillStyle(color, 0.5 * (1 - q));
         g.fillEllipse(to.x, groundY, (20 + q * 40) * 2 * scale, (20 + q * 40) * 2 * GROUND_ASPECT * scale);
         for (let i = 0; i < 4; i++) {
@@ -1504,7 +1511,11 @@ export function playEruption(
   to: EffectAnchor,
   onImpact?: (dir?: Direction) => void,
   depthOffset = 0,
-  scale = 1
+  scale = 1,
+  // Same floor-offset argument playBeam takes above, for the same reason:
+  // GROUND_DROP below the defender in a battle, 0 when the caller's `to` is
+  // already the floor line the crack opens in.
+  groundDrop = GROUND_DROP
 ) {
   const g = fxGraphics(scene, 60, depthOffset);
   const n = 18;
@@ -1524,7 +1535,7 @@ export function playEruption(
     ease: 'Cubic.easeOut',
     onUpdate: (tw) => {
       const t = tw.getValue() ?? 0;
-      const groundY = to.y + GROUND_DROP;
+      const groundY = to.y + groundDrop;
       g.clear();
       // Expanding shockwave rings spreading out across the floor.
       drawAnnulus(g, color, to.x, groundY, (16 + t * 76) * scale, 3 * scale, 0.85 * (1 - t), GROUND_ASPECT);

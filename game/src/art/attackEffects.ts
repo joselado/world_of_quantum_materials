@@ -77,7 +77,10 @@ type OrdinaryPlayFn = (
   to: EffectAnchor,
   onImpact?: (dir?: { x: number; y: number }) => void,
   depthOffset?: number,
-  scale?: number
+  scale?: number,
+  // Only beam/eruption read this (how far below `to` their floor lies); every
+  // other entry ignores it, so one call site can pass it for all of them.
+  groundDrop?: number
 ) => void;
 const SHAPE_PLAY: Record<OrdinaryShape, OrdinaryPlayFn> = {
   bolt: playBolt,
@@ -97,8 +100,10 @@ const SHAPE_PLAY: Record<OrdinaryShape, OrdinaryPlayFn> = {
   braid: playBraid,
   split: playSplit,
   burst: playBurst,
-  beam: (scene, color, _from, to, onImpact, depthOffset, scale) => playBeam(scene, color, to, onImpact, depthOffset, scale),
-  eruption: (scene, color, _from, to, onImpact, depthOffset, scale) => playEruption(scene, color, to, onImpact, depthOffset, scale),
+  beam: (scene, color, _from, to, onImpact, depthOffset, scale, groundDrop) =>
+    playBeam(scene, color, to, onImpact, depthOffset, scale, groundDrop),
+  eruption: (scene, color, _from, to, onImpact, depthOffset, scale, groundDrop) =>
+    playEruption(scene, color, to, onImpact, depthOffset, scale, groundDrop),
 };
 
 // Per-shape multiplier on the landing shockwave's size: lattice is the
@@ -294,6 +299,15 @@ export function playFlightEffect(
   playOrdinaryRepeats(scene, shape, style.color, from, to, undefined, 1, depthOffset, triggerCount, false);
 }
 
+// The floor offset the two ground-anchored shapes (beam/eruption) play with
+// here. A battle drops their floor GROUND_DROP below `at`, because `at` is a
+// defender's own centre and the floor is at its feet; a target-only play has
+// no body standing anywhere, and its caller hands over the floor line itself
+// (art/moveEffectPreview.ts's GROUND_LINE_Y), so the beam's column lands on
+// that line and the eruption's crack opens in it. Every other shape ignores
+// the argument.
+const TARGET_ONLY_GROUND_DROP = 0;
+
 // A move's beat played at the target alone, centered on one point: what a
 // guardian panel's detail pane demonstrates (art/moveEffectPreview.ts) for
 // the moves whose real cast has no flight across the field to show
@@ -351,7 +365,7 @@ export function playTargetEffect(
       playImpactShockwave(scene, style.color, at, depthOffset, scale * (IMPACT_EMPHASIS[shape] ?? 1) * (centered ? 1 : IMPACT_ONLY_SCALE), dir);
       playImpactSfx(1);
     };
-    if (centered) SHAPE_PLAY[shape](scene, style.color, at, at, land, depthOffset, scale);
+    if (centered) SHAPE_PLAY[shape](scene, style.color, at, at, land, depthOffset, scale, TARGET_ONLY_GROUND_DROP);
     else land();
   };
 

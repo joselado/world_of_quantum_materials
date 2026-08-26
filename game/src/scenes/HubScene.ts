@@ -846,12 +846,21 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
 
     this.playerMaterial = material;
     // The room's light follows the crystal it is keyed to, so a transmutation
-    // re-lights the Lab in the same gesture.
+    // re-lights the Lab in the same gesture. A dope leaves the form alone, so
+    // refreshPlayerCrystal on its own doesn't re-light anything.
     this.relightRoom();
+    this.refreshPlayerCrystal();
+  }
+
+  // Rebuilds the Lab's floating crystal preview from the player's current
+  // form and doped-in impurity -- HubScene's counterpart to
+  // OverworldScene.refreshPlayerCrystal, called by applyPlayerForm above and
+  // by Anderson's dope (a new impurity guest on an unchanged body).
+  refreshPlayerCrystal() {
     this.playerCrystalGfx.destroy();
-    this.playerCrystalGfx = makeCrystal(this, 46, material.color, material.variant, {
-      seed: material.name,
-      hybrid: material.hybridParents,
+    this.playerCrystalGfx = makeCrystal(this, 46, this.playerMaterial.color, this.playerMaterial.variant, {
+      seed: this.playerMaterial.name,
+      hybrid: this.playerMaterial.hybridParents,
       dopant: getPlayerDopantLook(this.game.registry),
     });
     this.playerPreview.add(this.playerCrystalGfx);

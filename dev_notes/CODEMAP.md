@@ -347,7 +347,12 @@ game/src/
                                   that keep their identity standing still (its PREVIEW_CENTERED set:
                                   ring/buffring, swell, vortex, flip) play centred on the point, and
                                   a travel-only shape reaching it is left with its enlarged impact
-                                  shockwave. Ordinary shapes dispatch
+                                  shockwave. beam/eruption additionally play with their floor at
+                                  the point itself (TARGET_ONLY_GROUND_DROP, forwarded to
+                                  playBeam/playEruption's own `groundDrop`) rather than the
+                                  GROUND_DROP below it a defender's body would sit on -- a preview
+                                  stage has no body standing anywhere, so the caller hands in the
+                                  floor line itself. Ordinary shapes dispatch
                                   through one SHAPE_PLAY registry (Record<shape, play fn>) shared
                                   by real casts and previews, so a new silhouette is one registry
                                   entry rather than a parallel if/else chain. resolveAttackShape()/attackEffectDurationMs()/
@@ -374,7 +379,9 @@ game/src/
                                   playSever, playVortex, playRail, playHelix, playSwell, playMass,
                                   playBraid, playSplit, playBurst, playBeam, playEruption),
                                   playImpactShockwave (target side), WINDUP_MS/TRAVEL_MS/IMPACT_MS,
-                                  GROUND_DROP, and arcPoint's `bow` multiplier (1 = standard up-bow,
+                                  GROUND_DROP (playBeam/playEruption take it as an overridable
+                                  `groundDrop` argument, since a preview stage's floor is the
+                                  anchor itself), and arcPoint's `bow` multiplier (1 = standard up-bow,
                                   negative sags below the line for mass, split runs two heads at
                                   opposite signs)
     attackUltimates.ts          Skłodowska-Curie's Ultimate tier: playMeteor/playNova and their
@@ -393,7 +400,11 @@ game/src/
                                   fractions (the battle's low-left-to-high-right diagonal, flattened
                                   to a stage's proportions); one that arrives on a single point plays
                                   on `params.at`, the caller's own pane centre or the crystal a
-                                  self-buff is cast on. Plays at a
+                                  self-buff is cast on -- except the two ground-anchored shapes
+                                  (beam/eruption, its GROUND_ANCHORED set), which play on the
+                                  stage's own floor line (GROUND_LINE_Y, a fraction of the stage
+                                  height) so the beam lands on the ground instead of ending in
+                                  mid-air and the eruption's floor rings stay inside the stage. Plays at a
                                   PREVIEW_DEPTH_OFFSET pushing the effect's Graphics (normally
                                   depth 58-61) above a dialogue panel's own container (depth 100) so
                                   it draws on top of the pane instead of underneath it -- that same
@@ -939,7 +950,9 @@ everything else by absence, so only two things in it carry meaning.
   panels have no pagination/preview field of their own at all, since each always renders both of its two fixed moves at once rather than
   browsing a candidate list -- and the player-form
   mutator `applyPlayerForm` (shared by Dresselhaus's `transmuteInto` and Majorana's
-  `becomeHybrid`, both of which moved into their own panel file as plain functions) -- is each
+  `becomeHybrid`, both plain functions in their own panel file) and its narrower companion
+  `refreshPlayerCrystal` (redraw the player's crystal without changing its form -- Anderson's
+  dope, see "Player form" below) -- is each
   member of `GuardianPanelHost`, implemented as public (not `private`) methods/fields on both
   `OverworldScene` and `HubScene` independently (not a shared base class), since panel modules
   living outside either class can't reach a `private` member and Phaser scenes don't share a
@@ -1019,7 +1032,9 @@ past one back from, every visit to Majorana recomputes the reachable-hybrid list
 Anderson's `learnImpurityMove` is a third guardian that touches player state but deliberately
 *doesn't* go through `applyPlayerForm` at all -- it only appends a move id to `unlockedMoves`,
 leaving `playerForm` untouched, since the whole point of the impurity-doping mechanic is
-borrowing one move without becoming (or fusing into) anything. `learnImpurityMove` is also the
+borrowing one move without becoming (or fusing into) anything. It does call
+`scene.refreshPlayerCrystal()` (below), since the new impurity is visible on the player's own
+crystal even though the form under it is unchanged. `learnImpurityMove` is also the
 one place a deliberate pick writes registry/save key `andersonDopant`
 (`scenes/panels/anderson.ts`), replacing whatever was doped in before -- only one impurity at a
 time (in Superposition Mode `applySuperpositionUnlocks` additionally seeds that key to a random
@@ -1031,10 +1046,10 @@ backing out without learning a move leaves the previous impurity's channel firin
 (`data/materials.ts`) resolves it to a `DopantLook` (the doped compound's `color`/`variant`, or
 `undefined` when nothing is doped in), and every place that draws the player's own crystal
 passes it into `makeCrystal`'s `opts.dopant` -- `OverworldScene`'s player sprite (both the
-initial build and `redrawPlayerCrystal`), `BattleScene`'s player crystal and its turn-preview
+initial build and `refreshPlayerCrystal`), `BattleScene`'s player crystal and its turn-preview
 icons (`battle/hud.ts`'s `drawTurnPreview`, whose `playerDopant` argument reaches only the
-player's own icons), `HubScene`'s Lab crystal (both the initial build and the post-transmute
-redraw), `franklin.ts`'s passive-halo crystal, and `listDetail.ts`'s self-buff move stage
+player's own icons), `HubScene`'s Lab crystal (both the initial build and its own
+`refreshPlayerCrystal`), `franklin.ts`'s passive-halo crystal, and `listDetail.ts`'s self-buff move stage
 (which reads the registry itself, since the crystal there is always the player's). A crystal
 that is *not* the player's never passes it: a wild, a rival, a Materialdex entry and Majorana's
 fusion parents all draw the species, and doping is something that happened to the player.
@@ -1042,6 +1057,16 @@ Anderson's own detail pane is the one place that draws a dopant the player isn't
 -- `renderDetailCrystalHeader`'s `opts.drawAs`/`opts.dopant` render the player's crystal
 carrying the browsed impurity while the name below still identifies the impurity, so the
 picture is what committing would make of them.
+
+`refreshPlayerCrystal()` is a `GuardianPanelHost` member both hosts implement: it destroys and
+rebuilds the one persistent player crystal that scene owns (`OverworldScene`'s overworld avatar,
+`HubScene`'s floating Lab preview) from the *current* `playerForm` and `andersonDopant`. Both
+sprites are built once in `create()`, so any panel that changes how the player looks while
+standing in the scene has to call it or the change won't show until the scene is rebuilt.
+`applyPlayerForm` calls it on both hosts; Anderson's dope calls it directly, being the one
+change to the player's look that isn't a change of form. Everywhere else that draws the player
+(`BattleScene`, `franklin.ts`, `listDetail.ts`) builds its crystal per scene-create or per
+panel-render and so picks the registry up on its own.
 
 **Move availability is an intersection, not a flat list.** `unlockedMoves` (registry/save) is
 a global "moves learned," unaffected by transmuting. What's actually offered in the battle
@@ -2589,7 +2614,9 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   Mode auto-grants every move id to `unlockedMoves` on every world entry, so comparing against
   raw `unlockedMoves` would report every host as teaching nothing there. Picking a move is what
   actually commits: `unlockedMoves.push(id)` (if not already present) and `andersonDopant` are
-  set together, then persisted. No `applyPlayerForm` call at all -- see "Player form" above.
+  set together, then persisted, then `scene.refreshPlayerCrystal()` puts the new guest on the
+  player's own crystal without leaving the scene. No `applyPlayerForm` call at all -- see
+  "Player form" above.
   `scene.andersonSelection: string | null` is reset in both
   `create()`/`closeDialogue()`, and `scene.andersonMovePage` (the second step's own pager) and
   `scene.andersonHostPreview` (the first step's own list+detail preview field) reset alongside
@@ -2672,7 +2699,7 @@ their overworld sprite and their panel's header portrait use, never a Lab-specif
 `open` is the exact same callback `WORLD_GUARDIANS` dispatches to when the player walks up to
 that guardian mid-world. This works because `HubScene` implements `GuardianPanelHost` (see
 "Guardian panels" above) with its own copies of the qumatessence readout, `applyPlayerForm`,
-`advanceToWorld`, and every per-guardian pagination field, so a guardian's panel has everything
+`refreshPlayerCrystal`, `advanceToWorld`, and every per-guardian pagination field, so a guardian's panel has everything
 it needs without the player's world/scene/position ever changing just from opening it.
 `guardianSlot(world)` is the pure layout half -- ten fixed slots, five per upper corner, each
 cluster stacked one-over-two-over-two and filled in the order its module-level

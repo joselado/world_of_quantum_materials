@@ -424,6 +424,13 @@ export interface GuardianPanelHost extends Phaser.Scene {
   qumatessence: number;
   playerMaterial: Material;
   applyPlayerForm(material: Material): void;
+  // Rebuild the player's on-screen crystal in place, for a panel that
+  // changes how it looks without changing the form itself (Anderson's dope
+  // adds/replaces the small guest at the base). Both hosts draw a persistent
+  // player crystal built once at scene create -- the overworld avatar and the
+  // Lab's floating preview -- so neither picks up a registry change on its
+  // own.
+  refreshPlayerCrystal(): void;
   getUnlockedMoves(): string[];
   getVisitedWorlds(): number[];
   getDefeatedMaterials(): DiscoveredMaterial[];
@@ -3320,22 +3327,28 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     persistFromRegistry(this.game.registry);
 
     this.playerMaterial = material;
-    this.redrawPlayerCrystal();
+    this.refreshPlayerCrystal();
 
     // World 10's map shape is dispatched by the player's own material type
     // (world/generators/world10.ts) -- transmuting (Dresselhaus) or fusing
     // (Majorana) while standing there needs the map regenerated immediately
     // to reflect the new form, via the same regenerate-map path the Hub
     // door/Bloch's teleport/the world doors already use. Anderson's dope
-    // deliberately doesn't call applyPlayerForm at all (it only unlocks a
-    // move, leaving playerForm/type untouched -- see CODEMAP.md), so it has
-    // nothing to trigger here either.
+    // never calls applyPlayerForm (it only unlocks a move and swaps the
+    // doped-in impurity, leaving playerForm/type untouched -- see
+    // CODEMAP.md); it calls refreshPlayerCrystal directly instead, so it
+    // has no map shape to trigger here.
     if (this.world === 10) {
       this.advanceToWorld(10, 'start');
     }
   }
 
-  private redrawPlayerCrystal() {
+  // Rebuilds the overworld avatar from whatever the player's form and
+  // doped-in impurity currently are. Called by applyPlayerForm (a new form)
+  // and by Anderson's dope (a new impurity guest on the same body) -- the
+  // sprite is built once in create(), so anything that changes how the
+  // player looks mid-scene has to come back through here.
+  refreshPlayerCrystal() {
     this.playerCrystalGfx.destroy();
     this.playerCrystalGfx = makeCrystal(this, PLAYER_CRYSTAL_SIZE, this.playerMaterial.color, this.playerMaterial.variant, {
       seed: this.playerMaterial.name,
