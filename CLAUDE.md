@@ -89,12 +89,12 @@ checkout; that's gone now that this repo *is* the standalone checkout). Commit a
 ## Editing workflow
 
 - **Before every `git push`**, run the fast checks from `game/`: `npm run
-  content-lint` (seconds) and `npm run component-check` (a couple of
-  minutes). Always run both, regardless of what specifically changed — they're
-  cheap enough that "did this change plausibly need it" isn't worth reasoning
-  about. **Never run `npm run playthrough-check` (20 min–1hr+) unless the user
-  explicitly asks for it in that session** — it's too slow and disruptive to
-  run as a matter of course before every push; treat "run the full
+  content-lint` (seconds) and `npm run component-check` (about four minutes,
+  longer on a loaded machine). Always run both, regardless of what specifically
+  changed — they're cheap enough that "did this change plausibly need it" isn't
+  worth reasoning about. **Never run `npm run playthrough-check` (20 min–1hr+)
+  unless the user explicitly asks for it in that session** — it's too slow and
+  disruptive to run as a matter of course before every push; treat "run the full
   playthrough" as an explicit, separate request every time; presuming it from
   context, or defaulting to "if in doubt, run it" is not welcome, and it's not
   a substitute for asking.
