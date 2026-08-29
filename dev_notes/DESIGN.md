@@ -61,7 +61,7 @@ generated fresh every visit by `game/src/world/generators/world<N>.ts` (dispatch
 | 7 | 3-4 parallel lanes (a tensor network's own sites/legs) linked by periodic cross-link rungs (bonds) -- a real ladder, not one path with spurs |
 | 8 | A peat shelf with pools of open water punched into it. The shelf enters wide and closes steadily to a narrow bank by the goal, which is the world's escalation written into its floor; the shelf parts around the wider pools and rejoins past them (fractionalization), and every pool's centre is returned as a feature core, where the surround burns a local moment |
 | 9 | A wide plain of scorched clay carrying two kinds of defect: substitutional patches, each rendered with one of worlds 1-8's own biome look (a borrowed defect "type") and changing nothing about the shape, and vacancies, holes punched clean out of the plain with molten crust in the gap where the lattice is missing |
-| 10 | Reuses whichever of worlds 1-8's own generator matches the player's *current* material's main type (e.g. a superconductor-type player gets world 5's spiral); a player whose type doesn't resolve to one of the eight falls back to a fresh random pick among all eight every visit |
+| 10 | Reuses whichever of worlds 1-8's own generator matches the player's *current* material's main type (e.g. a superconductor-type player gets world 5's vortex-pitted ice sheet); a player whose type doesn't resolve to one of the eight falls back to a fresh random pick among all eight every visit |
 
 **A world is ground with things standing in it, not a route drawn on a background.**
 Nine of the ten paint a wide field first and then punch that world's own impassable
