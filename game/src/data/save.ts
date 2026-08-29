@@ -3,7 +3,7 @@ import { PLAYER_MATERIAL, DEFAULT_STATS, MOVES, TYPE_LOOK, findMaterialByName } 
 import { wildHpForWorld } from './balance';
 import {
   DEFAULT_ENCOUNTER_DENSITY,
-  DEFAULT_FONT_SCALE,
+  defaultFontScale,
   DEFAULT_MUSIC_STYLE,
   MUSIC_STYLE_PRESETS,
   DEFAULT_DIFFICULTY_TIER,
@@ -103,6 +103,9 @@ export interface SaveData {
   // applies to every scene's authored base px size, one of data/settings.ts's
   // FONT_SCALE_PRESETS. Unlike encounterDensity this takes effect immediately
   // (read live on every fontPx() call), not just on the next map generation.
+  // The one setting whose default depends on the device: a save that has
+  // never picked one starts at defaultFontScale(), 'Large' on a handheld and
+  // 'Normal' anywhere else.
   fontScale: number;
   // Same Settings panel, third row: which of data/settings.ts's
   // MUSIC_STYLE_PRESETS (audio/music.ts's SCORES/SCORES_MODERN) the
@@ -248,7 +251,7 @@ export function defaultSave(superposition: boolean): SaveData {
     worldLoreSeen: [],
     superpositionMode: false,
     encounterDensity: DEFAULT_ENCOUNTER_DENSITY,
-    fontScale: DEFAULT_FONT_SCALE,
+    fontScale: defaultFontScale(),
     musicStyle: DEFAULT_MUSIC_STYLE,
     difficultyTier: DEFAULT_DIFFICULTY_TIER,
     worldSize: DEFAULT_WORLD_SIZE,
@@ -446,7 +449,7 @@ export function persistFromRegistry(registry: RegistryLike) {
     worldLoreSeen: (registry.get('worldLoreSeen') as number[]) ?? [],
     superpositionMode: superposition,
     encounterDensity: (registry.get('encounterDensity') as number) ?? DEFAULT_ENCOUNTER_DENSITY,
-    fontScale: (registry.get('fontScale') as number) ?? DEFAULT_FONT_SCALE,
+    fontScale: (registry.get('fontScale') as number) ?? defaultFontScale(),
     musicStyle: (registry.get('musicStyle') as MusicStyle) ?? DEFAULT_MUSIC_STYLE,
     difficultyTier: (registry.get('difficultyTier') as DifficultyTier) ?? DEFAULT_DIFFICULTY_TIER,
     worldSize: (registry.get('worldSize') as WorldSizeId) ?? DEFAULT_WORLD_SIZE,

@@ -23,16 +23,13 @@ export const DEFAULT_ENCOUNTER_DENSITY = DENSITY_PRESETS[1].value; // Normal -- 
 // UI text-size presets for the same Settings panel -- a multiplier applied
 // to every scene's authored base px size via ui/text.ts's fontPx(), read
 // live (no re-generation needed, unlike density above) so a change is
-// visible the next time any panel/label redraws. 'Normal' is 1.5x the
-// original pre-this-setting sizes (the game's default text was judged too
-// small to read comfortably, but a full 2x default ran wide of what
-// several fixed-size panels -- and BattleScene's move menu, a hard
-// geometric box -- could actually hold without overlapping text). 2x is
-// still offered as the top 'Large' preset for players who want it, since
-// by then every panel has been made to adapt its own size to the content
-// (see e.g. hubStations.ts's showSettingsPanel own comment) rather than
-// assume a fixed pixel size -- verify layout-sensitive screens by
-// screenshot after touching either this list or a panel's layout.
+// visible the next time any panel/label redraws. The scale is relative to
+// the game's authored base sizes, which on their own read too small to be
+// comfortable: 'Normal' is 1.5x those, and 'Large' 2x. Every panel adapts
+// its own size to the content it holds (see e.g. hubStations.ts's
+// showSettingsPanel own comment) rather than assuming a fixed pixel size,
+// so all three presets have to lay out -- verify layout-sensitive screens
+// by screenshot after touching either this list or a panel's layout.
 export interface FontScalePreset {
   label: string;
   value: number;
@@ -44,7 +41,15 @@ export const FONT_SCALE_PRESETS: FontScalePreset[] = [
   { label: 'Large', value: 2 },
 ];
 
-export const DEFAULT_FONT_SCALE = FONT_SCALE_PRESETS[1].value; // Normal -- the new 1.5x default
+// The preset a save that has never set one starts at, decided per device
+// rather than fixed: a handheld (isHandheldDevice() below) is held at a
+// screen a fraction the size of a laptop's, so it defaults to 'Large',
+// while everything else defaults to 'Normal'. Read only where a value is
+// absent -- a stored preset is the player's own choice on either kind of
+// device and is never overridden by this.
+export function defaultFontScale(): number {
+  return isHandheldDevice() ? FONT_SCALE_PRESETS[2].value : FONT_SCALE_PRESETS[1].value;
+}
 
 // Same Settings panel, third row: which of audio/music.ts's two score tables
 // (SCORES/"Classic", SCORES_MODERN/"Modern") MusicEngine.play() draws from,
@@ -180,6 +185,18 @@ export function isTouchDevice(): boolean {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
   if (navigator.maxTouchPoints > 0) return true;
   return typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
+}
+
+// Whether this is a handheld -- a screen a finger drives with no mouse to
+// hover with, i.e. a phone or a tablet. Deliberately stricter than
+// isTouchDevice() above, which the walking arrows want: a laptop with a
+// touchscreen still has a hovering pointer and a screen read at arm's
+// length, so it is a desktop as far as text size is concerned. Falls back
+// to "not a handheld" where the media-query API is missing.
+export function isHandheldDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+  if (typeof window.matchMedia !== 'function') return false;
+  return window.matchMedia('(pointer: coarse) and (hover: none)').matches;
 }
 
 // The one place the mode turns into a yes/no, so every scene asking "are the

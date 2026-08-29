@@ -640,7 +640,10 @@ game/src/
     tutorial.ts                    TUTORIAL_TIPS (copy + per-topic `unlock`)/visibleTutorialPages() --
                                     contextual + replayable tutorial copy
     settings.ts                    DENSITY_PRESETS/DEFAULT_ENCOUNTER_DENSITY -- wild-encounter density presets,
-                                    FONT_SCALE_PRESETS, MUSIC_STYLE_PRESETS/DEFAULT_MUSIC_STYLE,
+                                    FONT_SCALE_PRESETS/defaultFontScale() -- text-size presets whose
+                                    default is per device, Large on a handheld (isHandheldDevice(),
+                                    a coarse pointer that cannot hover) and Normal elsewhere --
+                                    MUSIC_STYLE_PRESETS/DEFAULT_MUSIC_STYLE,
                                     DIFFICULTY_TIER_PRESETS/DEFAULT_DIFFICULTY_TIER -- B.Sc./M.Sc./
                                     Ph.D. difficulty tier, data/balance.ts's DIFFICULTY_MULTIPLIERS
                                     applied to enemyStatsForWorld -- WORLD_SIZE_PRESETS,

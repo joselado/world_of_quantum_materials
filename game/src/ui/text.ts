@@ -1,5 +1,5 @@
 import type Phaser from 'phaser';
-import { DEFAULT_FONT_SCALE } from '../data/settings';
+import { defaultFontScale } from '../data/settings';
 
 // Every readable UI/dialogue font size in the game (titles, buttons, hints,
 // labels, logs) is authored as a base px number and passed through this
@@ -19,7 +19,7 @@ export function fontPx(scene: Phaser.Scene, basePx: number): string {
 // to whatever a geometrically fixed box can actually fit -- rather than
 // just handing a px string straight to a text style.
 export function fontScale(scene: Phaser.Scene): number {
-  return (scene.game.registry.get('fontScale') as number) ?? DEFAULT_FONT_SCALE;
+  return (scene.game.registry.get('fontScale') as number) ?? defaultFontScale();
 }
 
 // Fits a block of authored prose into a fixed vertical budget, for the

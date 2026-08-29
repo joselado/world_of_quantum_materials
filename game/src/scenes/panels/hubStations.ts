@@ -35,7 +35,7 @@ import {
   DENSITY_PRESETS,
   DEFAULT_ENCOUNTER_DENSITY,
   FONT_SCALE_PRESETS,
-  DEFAULT_FONT_SCALE,
+  defaultFontScale,
   MUSIC_STYLE_PRESETS,
   DEFAULT_MUSIC_STYLE,
   DIFFICULTY_TIER_PRESETS,
@@ -1142,10 +1142,10 @@ function encounterDensityIndex(registry: Phaser.Data.DataManager): number {
 }
 
 function fontScaleIndex(registry: Phaser.Data.DataManager): number {
-  const value = (registry.get('fontScale') as number) ?? DEFAULT_FONT_SCALE;
+  const value = (registry.get('fontScale') as number) ?? defaultFontScale();
   const idx = FONT_SCALE_PRESETS.findIndex((p) => p.value === value);
   if (idx !== -1) return idx;
-  return FONT_SCALE_PRESETS.findIndex((p) => p.value === DEFAULT_FONT_SCALE);
+  return FONT_SCALE_PRESETS.findIndex((p) => p.value === defaultFontScale());
 }
 
 function musicStyleIndex(registry: Phaser.Data.DataManager): number {

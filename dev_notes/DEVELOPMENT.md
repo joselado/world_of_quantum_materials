@@ -387,7 +387,8 @@ Superposition Mode title-screen picker lets you choose between them
 so Bloch's teleport hub gives instant access to any world/guardian, for testing
 without grinding), and the Lab's Settings station offers four rows --
 wild-encounter density, a Text Size preset applied via `ui/text.ts`'s
-`fontPx`/`fontScale` helpers, a Music Style (Classic/Modern/Mute) arrangement
+`fontPx`/`fontScale` helpers (defaulting to Large on a phone or tablet,
+Normal elsewhere), a Music Style (Classic/Modern/Mute) arrangement
 switch, and a difficulty tier (B.Sc./M.Sc./Ph.D.) feeding
 `data/balance.ts`'s `DIFFICULTY_MULTIPLIERS`. `game/` is the only build.
 
@@ -437,13 +438,14 @@ misses every shadow the art drops, which is exactly the half of a standing
 figure's extent a layout has to clear.
 
 **Gotcha:** the default `fontScale` preset (`data/settings.ts`'s
-`DEFAULT_FONT_SCALE`) is `1.5`, not `1` -- a bounds check run only at
-`fontScale: 1` (or only at the largest preset, `2`) can miss an overflow
-that's actually present at the *default* a fresh player sees. Bloch's
-teleport hub overflowed exactly this way once Superposition Mode made a
-9-destination list routine: it fit fine at `1` and the bug wasn't caught
-until checked at `1.5`. Always include the default preset, not just the
-extremes, when bounds-checking a panel across `FONT_SCALE_PRESETS`.
+`defaultFontScale()`) is never `1`: it is `1.5` on a desktop and `2`, the
+largest preset, on a handheld. A bounds check run only at `fontScale: 1`
+can miss an overflow that's actually present at the *default* a fresh
+player sees. Bloch's teleport hub overflowed exactly this way once
+Superposition Mode made a 9-destination list routine: it fit fine at `1`
+and the bug wasn't caught until checked at `1.5`. Check a panel at every
+one of `FONT_SCALE_PRESETS`, since each of the three is somebody's
+default or one press away from it.
 
 **Gotcha:** when driving a battle scene from outside a UI click (e.g. via
 `page.evaluate` calling `emit('pointerdown')` on a button object), scope the

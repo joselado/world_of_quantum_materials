@@ -340,7 +340,9 @@ you are playing with.
 **Presentation.**
 
 - **Text Size**: Compact, Normal, or Large. Applies immediately to every
-  menu and dialogue in the game.
+  menu and dialogue in the game. On a phone or a tablet it starts at Large,
+  where the screen is smallest, and on anything else at Normal. Once you pick
+  a size yourself, that is the one the game keeps.
 - **Full Screen**: On or Off, whether the game fills the whole screen instead
   of sitting inside a browser tab. Press **F** anywhere in the game to switch
   it, and Esc leaves it again. Applies immediately. It is the one setting the

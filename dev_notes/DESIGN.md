@@ -1458,6 +1458,19 @@ screens are the one setting whose default depends on the mode (`defaultSave(supe
 on in Story Mode, off in Superposition Mode, which has no road to walk through. The finale
 screen is exempt from the switch, being the run's only acknowledgment that it is finished.
 
+**Text size.** The same Settings station offers Compact/Normal/Large
+(`data/settings.ts`'s `FONT_SCALE_PRESETS`, 1x / 1.5x / 2x on every base px size
+authored in the game, applied through `ui/text.ts`'s `fontPx()`/`fontScale()`).
+Read live, so a change lands the next time any panel or label redraws. Its
+default is the one that depends on the device rather than on a constant
+(`defaultFontScale()`): a handheld -- a coarse pointer with no hover, i.e. a
+phone or a tablet, `isHandheldDevice()` -- starts at Large, everything else at
+Normal, on the grounds that the same canvas is read on a screen a fraction the
+size. A touchscreen laptop is a desktop by that test, which is deliberate: it
+hovers and it is read at arm's length. Only a save with no stored value takes
+the device default; a stored preset is the player's own choice and is left
+alone on either kind of device.
+
 **World size.** The same Settings station offers Nano/Meso/Macro
 (`data/settings.ts`'s `WORLD_SIZE_PRESETS`) -- one multiplicative factor (0.7 / 1 / 3)
 applied to every length a world is built out of: the grid itself
