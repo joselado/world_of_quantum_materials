@@ -82,6 +82,7 @@ import type { GridPoint } from '../world/mapgen';
 import { PASS_HALF_WIDTH, passZoneRows, reachableGround, scaleOfGrid, worldScale } from '../world/generators/shared';
 import type { WorldScale } from '../world/generators/shared';
 import { fontPx, fontScale, fitProseToBudget } from '../ui/text';
+import { installFullscreenKey } from '../ui/fullscreen';
 import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX, TUTORIAL_CYAN, STORY_LAVENDER } from '../ui/theme';
 import { music } from '../audio/music';
 import { renderGuardianHeader } from './panels/guardianHeader';
@@ -1135,6 +1136,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.touchPad = touchOn ? createTouchPad(this, 60) : null;
     this.input.keyboard!.on('keydown-ENTER', () => this.returnToHub());
     this.input.keyboard!.on('keydown-SPACE', () => this.confirmAction());
+    installFullscreenKey(this);
 
     // Defensive fallback only -- TitleScene normally seeds all of these
     // from localStorage (data/save.ts) before Overworld ever runs. Only

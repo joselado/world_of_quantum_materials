@@ -2777,20 +2777,25 @@ world are shaped, since world N's start is world N-1's exit.
   their own column, so the two never read as one longer row of values. The open category is
   `HubScene.settingsCategory`, panel state rather than a preference: not persisted, and reset
   to the first category whenever the Lab is entered.
-- Eight rows, each backed by its own preset list in `data/settings.ts`. Gameplay: Difficulty
-  (`DIFFICULTY_TIER_PRESETS`, B.Sc./M.Sc./Ph.D.), Enemy Density (`DENSITY_PRESETS`,
+- Nine rows, all but one backed by its own preset list in `data/settings.ts`. Gameplay:
+  Difficulty (`DIFFICULTY_TIER_PRESETS`, B.Sc./M.Sc./Ph.D.), Enemy Density (`DENSITY_PRESETS`,
   Low/Normal/High/Very High), World Size (`WORLD_SIZE_PRESETS`, Nano/Meso/Macro). Story: Story
   Screens and Tutorial Tips (`ON_OFF_PRESETS`). Presentation: Text Size (`FONT_SCALE_PRESETS`,
-  Compact/Normal/Large), Music Style (`MUSIC_STYLE_PRESETS`, Classic/Modern/Mute), Touch
-  Controls (`TOUCH_CONTROLS_PRESETS`, Auto/On/Off).
+  Compact/Normal/Large), Full Screen (`ON_OFF_PRESETS` over Phaser's own scale-manager state,
+  `ui/fullscreen.ts`), Music Style (`MUSIC_STYLE_PRESETS`, Classic/Modern/Mute), Touch
+  Controls (`TOUCH_CONTROLS_PRESETS`, Auto/On/Off). Full Screen is the one row with no save
+  field: a browser grants fullscreen only inside a user gesture, so the row reads the live
+  state and redraws on the browser's own `ENTER_FULLSCREEN`/`LEAVE_FULLSCREEN` events, and it
+  is dropped entirely where the API is unavailable (an iPhone browser).
 - The category strip, the name column and its "when" line are capped at the 1.5x text preset
   (the same cap tutorial popups use); the value plates themselves, the part that is clicked,
   keep the player's full chosen size. A value plate is ~43px tall at the Large preset, so no
   row is shorter than ~55px there, and the whole roster on one screenful does not fit the
-  canvas -- which is what the categories buy. Measured at Large, the tallest category
-  (Presentation, whose Touch Controls row carries a three-line "when") reaches 345 of the
-  canvas's 480 pixels, so a category is safe up to about five rows; past that, re-measure
-  rather than append.
+  canvas -- which is what the categories buy. Measured at Large, the tallest category is
+  Presentation, whose four rows (Full Screen carrying a four-line "when", Touch Controls a
+  three-line one) reach 448 of the canvas's 480 pixels. That is the practical ceiling: a row
+  costs roughly 100px there, so a fifth Presentation row would not fit. Re-measure before
+  adding one anywhere rather than reasoning from the row count alone.
 - Turning the music off lives here as the `MUSIC_STYLE_PRESETS` "Mute" value rather than as
   a key: it is a preference a player sets once, so it belongs with the other preferences and
   persists with them. It silences the score only. Sound effects sit on the master bus rather
@@ -3045,15 +3050,14 @@ world are shaped, since world N's start is world N-1's exit.
   the canvas edge), and a brief pale lift of the whole field -- deliberately dim and short
   (`flash(70, 110, 118, 140)`), since a full-brightness white flash washes the field out for
   long enough to swallow whichever silhouette just landed, and costs most on exactly the
-  flashiest moves. `BattleScene`'s `TURN_GAP_MS` (850ms) covers
-  most shapes' totals comfortably but sits 20-50ms under the slowest few (hop's and beam's
-  870ms, mass's 900ms) -- in practice an imperceptible overlap with the very start of the next
-  turn's own windup flash, not worth chasing given how minor it is, but worth knowing if
-  `TRAVEL_MS`/`TURN_GAP_MS` are ever retuned together. A leveled move (below) runs
-  noticeably longer than this single-trigger budget, since it repeats the beat several times --
-  `TURN_GAP_MS` is not retuned for that case; the tail end of a leveled cascade is left to
-  overlap the very start of the next turn's own windup, the same way the beam move's own 20ms
-  overrun already does, just larger.
+  flashiest moves. `BattleScene`'s `TURN_GAP_MS` (300ms) runs from the
+  landing, not from the cast (`resolveHit` resolves a move inside its animation's own
+  `onImpact`), so it has only the 260ms impact shockwave left to cover plus a beat to read the
+  log line -- the windup and travel ahead of the landing are outside it, and a slow shape no
+  longer eats into the gap the way a cast-relative one would. Retune it against `IMPACT_MS`
+  rather than against `TRAVEL_MS`. A leveled move (below) repeats the whole beat several times
+  but wires only its last repeat's landing to `onImpact`, so the gap still starts from the final
+  hit; the earlier repeats' decoration is what overlaps the next turn's own windup.
   Drawn fresh each frame with a `Graphics` object cleared and redrawn every tween tick (same
   pattern as the overworld's per-frame ground mesh) rather than a sprite, then destroyed on
   arrival/decay.

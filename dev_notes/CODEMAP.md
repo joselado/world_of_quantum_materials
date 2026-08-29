@@ -670,6 +670,13 @@ game/src/
                                     previewed -- distinct from story.ts's transition
                                     beats and worldLore.ts's once-per-save Decoherence-arc history
   ui/
+    fullscreen.ts                 fullscreenAvailable()/isFullscreen()/toggleFullscreen()/
+                                   installFullscreenKey() -- the only place the browser's
+                                   Fullscreen API is reached from, so the Settings row and the
+                                   F key read and move one state. No save field: a browser
+                                   grants fullscreen only inside a user gesture, so a persisted
+                                   value could not be restored at boot (see "Lab stations and
+                                   settings" below)
     text.ts                       fontPx()/fontScale() -- see "Lab stations and settings" below --
                                    and fitProseToBudget(), the shared fitter for authored prose
                                    whose length the layout can't assume (see "Long authored
@@ -1194,11 +1201,10 @@ call for that specific move id; the opponent's hit(s) in the same round are neve
 question(s) are always answered *before* `resolveHit` runs (`BattleScene.showAnalyticQuestion`/
 `showUltimateQuestions`, called from the move button's own click handler, not from inside
 `playerAttack`/`resolveHit`) -- keeping `resolveHit` itself synchronous rather than teaching it
-to await something was a deliberate call, since it already inline-calls `endBattle` and chains
-via `time.delayedCall` for ordinary moves. An Ultimate move is the one exception to that
-synchronicity, deferring its own damage-application/log and win-lose-check/turn-release into
-`playAttackEffect`'s `onImpact`/`onComplete` callbacks instead of running them inline -- see the
-Ultimate-specific paragraph below.
+to await something was a deliberate call. Its *tail* is not inline, though: every move hands its
+damage-application/log and its win-lose-check/turn-release to `playAttackEffect`'s
+`onImpact`/`onComplete` callbacks, so a hit resolves when it lands rather than when it is cast --
+see "A hit resolves on its landing" below.
 
 **Turn order and multi-attack (`BattleScene.playerAttack`, `BattleScene.currentHitOrder`).**
 `velocity` (each side's own raw effective value) decides both who
@@ -1327,22 +1333,25 @@ moves `BASE_CRIT_CHANCE` at all. Its own log clause
 existing line" pattern `mismatchText`/`critText`/`statusText` already use, in that fixed
 order.
 
-**Ultimate moves defer damage/turn-handoff to match their multi-second animation.**
-`resolveHit`'s tail is fully synchronous for every ordinary move: `playAttackEffect` fires
-(fire-and-forget), `applyResult()` (damage/log/passive hooks) and `checkEndOrContinue()`
-(win-lose check + `onDone()`/turn-release) run immediately afterward, all before the
-~830ms-or-shorter animation even finishes -- fine at that duration, but a 4-6s Ultimate summon
-would desync badly (HP dropping and the opponent's counter-swing scheduled while the summon is
-still playing). `playAttackEffect` takes an additional optional `onComplete?: () => void`
-alongside its existing `onImpact?: () => void` (`art/attackEffects.ts`) -- for
-`ULTIMATE_MOVE_IDS` only, `resolveHit` folds `applyResult()` into `onImpact` (so it lands at the
-sequence's own impact beat, not five seconds early) and defers `checkEndOrContinue()` into
-`onComplete` (so it only fires once the full windup→charge→impact→aftermath sequence finishes).
-Every other move's call to `playAttackEffect` omits `onComplete` and keeps calling
-`applyResult()`/`checkEndOrContinue()` inline right after, so this is zero-regression for the
-~25 non-Ultimate moves. `turnLock` (set before the move fires, cleared in `onDone`) already
-blocks all input for however long it stays `true`, so no separate locking logic was needed for
-the longer window. A whiff (`bonusMultiplier === 0`, only reachable for an Ultimate move --
+**A hit resolves on its landing, never on its cast.** `resolveHit`'s tail hands both halves of a
+move's result to `playAttackEffect`'s callbacks (`art/attackEffects.ts`, which takes an optional
+`onComplete?: () => void` alongside its `onImpact?: () => void`) rather than running them inline:
+`applyResult()` (damage/log/passive hooks) and `checkEndOrContinue()` (win-lose check +
+`onDone()`/turn-release) both fire from `onImpact` for an ordinary move, at the last repeat's own
+landing. Anything else desyncs what the screen shows from what the state says -- HP dropping, the
+opponent's counter-swing scheduled, and `endBattle`'s summary panel opening while the player's own
+silhouette is still crossing the field. `TURN_GAP_MS` (`300`) is therefore measured from the
+landing, not from the cast, and is sized for what is still playing then (the 260ms impact
+shockwave and a beat to read the log line) rather than for a whole windup/travel/impact beat.
+The Adapted's reshape keeps its own longer `TRANSMUTE_HOLD_MS` (`850`), sized for reading the
+new form rather than for an attack animation.
+
+An `ULTIMATE_MOVE_ID` splits the two: `applyResult()` on `onImpact` (the sequence's own impact
+beat, not five seconds early) and `checkEndOrContinue()` on `onComplete`, once the full
+windup→charge→impact→aftermath sequence has finished -- its aftermath decay is part of the same
+landing, where an ordinary shape's trailing 260ms shockwave is short enough to play under the
+result. `turnLock` (set before the move fires, cleared in `onDone`) blocks all input for however
+long it stays `true`, so no separate locking logic is needed for either window. A whiff (`bonusMultiplier === 0`, only reachable for an Ultimate move --
 `showUltimateQuestions`' any-wrong-answer path) still plays through `onImpact`/`onComplete` the
 same way, just with `dmg` resolving to (near-)zero, the log line reading a distinct fizzle
 message rather than the ordinary "used `<move>`! (N dmg)" line, and `onImpact` skipping
@@ -1363,11 +1372,11 @@ shape-family-specific delay (see STYLE.md's "Attack effects" for the exact numbe
 LAST copy is wired to the real `onImpact`/`onComplete` a caller passed in; every earlier copy
 gets a no-op for both. This is what keeps a leveled Ultimate's `checkEndOrContinue` (folded into
 `onComplete` above) firing exactly once regardless of trigger count -- wiring it to every repeat
-instead would release `turnLock` (and could call `endBattle`) more than once per move. For an
-ordinary (non-Ultimate) move this repeat-count is lower-stakes structurally: `applyResult()`/
-`checkEndOrContinue()` already run synchronously right after `playAttackEffect` returns, not
-gated on any callback from it (this section's own opening paragraph), so how many times the
-animation itself fires can never affect real damage/turn-state for that path either way.
+instead would release `turnLock` (and could call `endBattle`) more than once per move. The same
+single-firing guarantee is what an ordinary move rests on too, and for the same reason: its
+`applyResult()`/`checkEndOrContinue()` both hang off `onImpact` ("A hit resolves on its landing"
+above), so a callback wired to every repeat would apply a leveled move's damage two to four
+times over.
 
 **Battle move menu is sectioned, paged one section (or one section-fragment) at a time.**
 `BattleScene.moveSections(moveIds)` splits `getBattleMoves`'s result into up to four
@@ -1517,10 +1526,13 @@ looked at from.
 **Input, and the README's Controls section.** What the player can press or click is split by
 device: walking is `OverworldScene`'s `createCursorKeys()` arrows plus the on-screen arrows
 below, while choosing anything (a Lab station, a guardian, a panel button, a battle move) is a
-`pointerdown` and nothing else. `Space` takes whatever the current tile offers, `Enter`/`H`
-reach the Lab (as does clicking the Lab hint in the world's bottom-right corner), and
-`Left`/`Right` page the battle move menu. Muting is a Settings row rather than a key, so that
-it persists with the rest of a player's preferences.
+`pointerdown` and nothing else. `Space` takes whatever the current tile offers, `Enter`
+reaches the Lab (as does clicking the Lab hint in the world's bottom-right corner),
+`Left`/`Right` page the battle move menu, and `F` fills the screen or leaves it again
+(`ui/fullscreen.ts`'s `installFullscreenKey`, called from all four scenes' `create()`, so the
+key works wherever the player is). Muting is a Settings row rather than a key, so that
+it persists with the rest of a player's preferences; full screen is both a key and a row,
+since it is the one preference a browser will not let the game restore for itself.
 
 **Touch, and what makes the game playable on a phone.** Every action except walking already had
 a click target, so a pointer-only device needs exactly three things, all of them additive to the
@@ -1537,13 +1549,13 @@ keyboard paths rather than replacing them:
   the Lab" with a finger-sized padding when the arrows are up.
 - `BattleScene`'s end-of-battle summary ends on a pointer as well as `SPACE`, and says so.
   Both listeners are armed inside a `time.delayedCall(VICTORY_DISMISS_GRACE_MS, ...)` rather
-  than directly in `endBattle`: a winning ordinary move resolves synchronously inside the move
-  button's own `pointerdown` handler, and Phaser's `InputPlugin.processDownEvents` emits the
-  scene-level `POINTER_DOWN` for that same press right afterwards, so a listener registered on
-  the spot is fired by the click that ended the fight and the summary (the one place the
-  fight's physics is stated) never gets read. The same grace covers a held `SPACE`'s key
-  auto-repeat and a stray double-click. Any other scene-level dismiss listener registered from
-  inside a click handler needs the same treatment.
+  than directly in `endBattle`, which covers a held `SPACE`'s key auto-repeat and a stray
+  double-click on the move button that ended the fight -- either would otherwise dismiss the
+  summary (the one place the fight's physics is stated) before it has been read. The grace also
+  guards the general hazard that any scene-level dismiss listener registered from inside a click
+  handler faces: Phaser's `InputPlugin.processDownEvents` emits the scene-level `POINTER_DOWN`
+  for the same press that registered the listener, so a listener armed on the spot fires
+  immediately. Any other such listener needs the same treatment.
 
 Whether the arrows are drawn is the Settings station's Touch Controls row (`data/settings.ts`'s
 `TOUCH_CONTROLS_PRESETS`, `touchControlsActive()` resolving `'auto'` through `isTouchDevice()`),

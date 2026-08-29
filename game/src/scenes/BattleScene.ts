@@ -13,6 +13,7 @@ import type { ProjectedPoint } from '../art/perspective';
 import { playAttackEffect, followAnchor, ANALYTIC_SHAPES, ULTIMATE_SHAPES, type EffectAnchor } from '../art/attackEffects';
 import { drawFranklinPassiveHalo } from '../art/passiveHalos';
 import { fontPx, fontScale } from '../ui/text';
+import { installFullscreenKey } from '../ui/fullscreen';
 import { hasMath, makeQuestionText, makeFormulaButton } from '../ui/mathtext';
 import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY, REFERENCE_BLUE_GREY_HEX } from '../ui/theme';
 import {
@@ -322,10 +323,17 @@ function passivePillText(ids: Set<string>): string {
 // live in data/balance.ts, imported above (Phaser-free so the balance
 // simulator script can load them too).
 
-// Gap before the next turn fires -- long enough for the fuller attack beat
-// (windup + travel + impact shockwave, up to ~810ms for a ring move) in
-// art/attackEffects.ts to land and read clearly before the screen moves on.
-const TURN_GAP_MS = 850;
+// Gap before the next turn fires, measured from the hit's own landing rather
+// than from the cast (resolveHit resolves a move inside its animation's
+// onImpact -- see that function). It covers what is still playing at that
+// point: art/attackShapes.ts's 260ms impact shockwave, plus a beat to read the
+// log line the landing just wrote. The windup and travel ahead of the landing
+// are not its job: the turn holds for them.
+const TURN_GAP_MS = 300;
+// How long the Adapted's reshape holds before the turn moves on
+// (transmuteAdapted). Sized for the transmutation's own glow rather than for
+// an attack beat, so it is its own number.
+const TRANSMUTE_HOLD_MS = 850;
 // Every move-menu page is capped at this many rows, however many moves its
 // section actually has (moveMenuPages splits a larger section into several
 // same-label pages instead) -- a fixed cap keeps every page's row budget
@@ -669,6 +677,7 @@ export class BattleScene extends Phaser.Scene {
     // "no-op if there's nothing to switch to" guard as those.
     this.input.keyboard!.on('keydown-LEFT', () => this.switchMovePage(-1));
     this.input.keyboard!.on('keydown-RIGHT', () => this.switchMovePage(1));
+    installFullscreenKey(this);
 
     this.updateBars();
   }
@@ -2328,11 +2337,10 @@ export class BattleScene extends Phaser.Scene {
   // same power it was authored with, just under a new disguise -- and HP was
   // never tied to its identity in the first place (`opponentMaxHp` stays
   // fixed for the whole battle regardless of how many times it transmutes).
-  // `onDone` fires after a fixed TURN_GAP_MS beat (the same gap
-  // every other turn transition uses), independent of the glow effect's own
-  // exact runtime, the same "don't gate the game's own flow on a purely
-  // decorative animation" pattern an ordinary non-Ultimate move's
-  // playAttackEffect call already follows.
+  // `onDone` fires after a fixed TRANSMUTE_HOLD_MS beat, independent of the
+  // glow effect's own exact runtime -- the reshape is a piece of information
+  // the player has to take in ("which crystal am I fighting now"), so the hold
+  // is sized for reading it rather than gated on the decoration finishing.
   private transmuteAdapted(moveClass: MoveClass, onDone: () => void) {
     const hostTypes = typesHosting(moveClass);
     const candidates = allCrystals().filter((m) => hostTypes.includes(m.type));
@@ -2382,7 +2390,7 @@ export class BattleScene extends Phaser.Scene {
       this.setLogText(`${this.wild.name} reshapes into ${newForm.name}!`);
     });
 
-    this.time.delayedCall(TURN_GAP_MS, onDone);
+    this.time.delayedCall(TRANSMUTE_HOLD_MS, onDone);
   }
 
   // The transmutation's own light effect, playing directly on/around the
@@ -2687,10 +2695,11 @@ export class BattleScene extends Phaser.Scene {
   // all-correct/whiff multiplier (default 1, a no-op for every ordinary
   // move) -- always already decided by the time this runs
   // (showAnalyticQuestion/showUltimateQuestions resolve before playerAttack
-  // ever calls this). For every non-Ultimate move the tail below (damage/log/
-  // win-lose/onDone) still runs synchronously right after the animation
-  // fires, same as ever. For Skłodowska-Curie's two Ultimate moves (§5,
-  // World 10) it doesn't: their 4-6s multi-phase animation
+  // ever calls this). The tail below (damage/log/win-lose/onDone) hangs off
+  // the animation's own callbacks rather than running inline, so a hit
+  // resolves where it lands: for an ordinary move all of it fires on the
+  // impact beat. For Skłodowska-Curie's two Ultimate moves (§5,
+  // World 10) the two halves split apart: their 4-6s multi-phase animation
   // (art/attackEffects.ts's playMeteor/playNova) needs the damage/log to
   // land in sync with the animation's own impact beat (not ~5s early) and
   // the win/lose check + onDone (which schedules the opponent's counter-
@@ -2793,12 +2802,10 @@ export class BattleScene extends Phaser.Scene {
     const isUltimate = ULTIMATE_MOVE_IDS.includes(moveId);
     const whiff = isUltimate && bonusMultiplier === 0;
 
-    // Applies the hit's damage/log/echo. For an ordinary move this runs
-    // synchronously right below (near-instant animation, no desync risk). For
-    // an Ultimate move it's deferred until the multi-second animation's own
-    // impact beat instead (see the branch at the bottom of this method), so
-    // the HP bar/log line land in sync with what's on screen rather than
-    // seconds ahead of it.
+    // Applies the hit's damage/log/echo, called from the animation's own
+    // impact beat for every move (see the two branches at the bottom of this
+    // method), so the HP bar and the log line land in sync with what is on
+    // screen rather than ahead of the silhouette that is still travelling.
     const applyResult = () => {
       const who = isPlayer ? 'You' : this.opponentLabel();
       // Feynman's level prefix (§5) and Landau's class tuning are both the
@@ -2842,11 +2849,13 @@ export class BattleScene extends Phaser.Scene {
       );
     };
 
-    // Win/lose check + turn handoff. For an ordinary move this runs right
-    // after applyResult, synchronously below. For an Ultimate move it's
-    // deferred to the animation's onComplete instead, so the opponent's
-    // counter-swing can't be scheduled (and the battle can't end) until the
-    // full summon animation has actually finished playing.
+    // Win/lose check + turn handoff. Never fired on the cast: a move's whole
+    // result -- its damage, its log line and, on a KO, endBattle's summary --
+    // belongs to the moment the hit actually lands, not to the moment the
+    // silhouette leaves the attacker. An ordinary move resolves on the
+    // animation's own impact beat (`onImpact` below); an Ultimate waits for
+    // the full summon sequence to finish (`onComplete`, above), since its
+    // aftermath is part of the same landing.
     //
     // World 10's rival transmutation (adaptedForm, transmuteAdapted below)
     // fires from here rather than from applyResult -- `isPlayer` already
@@ -2898,12 +2907,21 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
+    // Everything the hit does happens in `onImpact`, which the animation
+    // fires once, on the last repeat's landing (art/attackEffects.ts's
+    // playOrdinaryRepeats). `TURN_GAP_MS` then runs from the landing rather
+    // than from the cast, which is what keeps the opponent's counter-swing
+    // behind the player's own silhouette instead of beside it.
     playAttackEffect(
       this,
       effectiveClass,
       from,
       to,
-      () => this.impactPunch(targetCrystal()),
+      () => {
+        this.impactPunch(targetCrystal());
+        applyResult();
+        checkEndOrContinue();
+      },
       mismatchMult * bonusMultiplier,
       shapeOverride,
       undefined,
@@ -2911,8 +2929,6 @@ export class BattleScene extends Phaser.Scene {
       0,
       level
     );
-    applyResult();
-    checkEndOrContinue();
   }
 
   // Which of Franklin's passives (data/passives.ts) are currently
@@ -3190,14 +3206,14 @@ export class BattleScene extends Phaser.Scene {
     this.setLogText(`${flavor}\n${tokenText}\n\n${blurb}\n\n${returnHint}`, 150, LOG_WRAP_WIDTH_VICTORY);
     this.raiseLogToPanel(won);
 
-    // Both ways out are armed only after a short grace period. A winning
-    // ordinary move resolves synchronously inside the move button's own
-    // `pointerdown` handler, and Phaser emits the scene-level POINTER_DOWN
-    // for that very same press immediately afterwards -- so a listener armed
-    // here and now would be fired by the click that ended the fight, and the
+    // Both ways out are armed only after a short grace period, which absorbs
+    // a held SPACE's key auto-repeat and a stray double-click on the move
+    // button that just ended the fight -- either would otherwise dismiss the
     // summary (the one screen where the fight's physics is actually stated)
-    // would flash past unread. The same grace absorbs a held SPACE's key
-    // auto-repeat and a stray double-click.
+    // before it has been read. It also guards the general hazard any
+    // scene-level dismiss listener armed from inside a click handler faces:
+    // Phaser emits the scene-level POINTER_DOWN for the very press that armed
+    // it, so a listener registered on the spot fires immediately.
     const leave = () => this.scene.start('Overworld', { world: this.world });
     this.time.delayedCall(VICTORY_DISMISS_GRACE_MS, () => {
       this.input.keyboard!.once('keydown-SPACE', leave);

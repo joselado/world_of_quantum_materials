@@ -12,6 +12,7 @@ import { tutorialTipsEnabled, DEFAULT_SETTINGS_CATEGORY } from '../data/settings
 import type { SettingsCategoryId } from '../data/settings';
 import { music } from '../audio/music';
 import { fontPx, fontScale } from '../ui/text';
+import { installFullscreenKey } from '../ui/fullscreen';
 import { hasMath, makeFormulaButton } from '../ui/mathtext';
 import { PANEL_BG, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX } from '../ui/theme';
 import { BUILT_WORLDS, OverworldScene, applySuperpositionUnlocks } from './OverworldScene';
@@ -366,6 +367,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
       if (world === undefined) return;
       this.scene.start('Overworld', { world, regenerate: false });
     });
+    installFullscreenKey(this);
 
     this.maybeShowLabTip();
   }

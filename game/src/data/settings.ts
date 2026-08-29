@@ -192,14 +192,17 @@ export function touchControlsActive(mode: TouchControlsMode): boolean {
 
 // The Settings panel's own top-level grouping (scenes/panels/hubStations.ts's
 // showSettingsPanel): the panel shows one category at a time, picked from a
-// strip of category buttons under its title. Eight rows at that panel's own
+// strip of category buttons under its title. Nine rows at that panel's own
 // row height do not fit the canvas at the largest text-size preset -- a value
-// plate alone is ~43px tall there, so no row is shorter than ~55px, and the
-// panel has room for about five of them once its title, its Close button and
-// its margins are paid for. Three categories of at most five rows each is
-// what keeps every value plate on screen and directly clickable, which is the
-// property this panel is built around: a setting's whole range readable at a
-// glance rather than cycled through one step at a time.
+// plate alone is ~43px tall there, so no row is shorter than ~55px, and a row
+// carrying a multi-line "when" runs to ~100px, once the panel's title, its
+// Close button and its margins are paid for. Three categories is what keeps
+// every value plate on screen and directly clickable, which is the property
+// this panel is built around: a setting's whole range readable at a glance
+// rather than cycled through one step at a time. The ceiling is measured
+// height, not a row count: Presentation's four rows already reach 448 of the
+// canvas's 480 pixels at Large, so measure before adding a fifth anywhere
+// (STYLE.md's Settings panel section carries the current numbers).
 export type SettingsCategoryId = 'gameplay' | 'story' | 'presentation';
 
 export interface SettingsCategory {

@@ -1430,11 +1430,12 @@ Bloch's teleport hub (§5) for jumping to an arbitrary already-visited world. Ev
 crossing regenerates the destination world's map fresh, the same "walking between
 worlds always lays out a new corridor" rule §7 describes for every other transition.
 
-**The Settings station** (`scenes/panels/hubStations.ts`'s `showSettingsPanel`) holds eight
+**The Settings station** (`scenes/panels/hubStations.ts`'s `showSettingsPanel`) holds nine
 settings in three categories the player switches between at the top of the panel: Gameplay
 (difficulty tier -- §3, wild-encounter density, world size), Story (story screens, tutorial
-tips) and Presentation (text size, music style, touch controls). Every one of them is its own
-preset list in `data/settings.ts` and its own save field.
+tips) and Presentation (text size, full screen, music style, touch controls). Every one of them
+but full screen is its own preset list in `data/settings.ts` and its own save field; full
+screen has neither, being read live from the browser (below).
 
 **Wild-encounter density.** That station lets the player choose how often ordinary wild
 crystals spawn per corridor row -- Low/Normal/High/Very High
@@ -1477,6 +1478,19 @@ On/Off are the player's override in either direction. Read on world entry, so a
 change applies to the next world entered. The keyboard path is untouched by any
 of the three values: the arrows are an addition, never a replacement, and the
 standing goal of keyboard-only play (`CODEMAP.md`'s "Input") still holds.
+
+**Full screen.** The same Settings station offers On/Off for whether the game fills the whole
+screen rather than sitting inside a browser tab, and `F` does the same thing from anywhere in
+the game (`ui/fullscreen.ts`, installed per scene by `installFullscreenKey`). Alone among the
+rows it is deliberately not persisted: a browser grants fullscreen only from inside a user
+gesture, so a saved value could not be honoured at boot and the row would claim a state the
+game is not in. Phaser's scale manager holds the state instead, the row reads it live, and the
+panel redraws on the browser's own `ENTER_FULLSCREEN`/`LEAVE_FULLSCREEN` events, so leaving
+with `Esc` or pressing `F` while the panel is open moves the highlight too. Browsers with no
+Fullscreen API at all (an iPhone) get no row rather than one whose values do nothing. This is
+what makes the game fill a laptop screen without the player knowing the browser's own
+fullscreen key, and it is the same switch a PWA install or a desktop wrapper would otherwise
+be needed for.
 
 Three kinds of number deliberately don't scale, and the reasons are worth keeping:
 

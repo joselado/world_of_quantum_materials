@@ -285,6 +285,7 @@ you back to the Lab.
 | Enter | Return to the Lab (World 0) |
 | Enter, while in the Lab | Head back out to whichever world you're in the middle of (once you've entered one) |
 | Left / Right, in battle | Page between kinds of move |
+| F | Fill the screen with the game, or leave it again |
 
 Picking a move in battle or opening a station in the Lab is the one thing the
 keyboard can't do.
@@ -340,6 +341,12 @@ you are playing with.
 
 - **Text Size**: Compact, Normal, or Large. Applies immediately to every
   menu and dialogue in the game.
+- **Full Screen**: On or Off, whether the game fills the whole screen instead
+  of sitting inside a browser tab. Press **F** anywhere in the game to switch
+  it, and Esc leaves it again. Applies immediately. It is the one setting the
+  game does not remember between sessions, because a browser only gives a page
+  the whole screen when you ask for it yourself. A few browsers, an iPhone
+  among them, offer no full screen at all, and there the row is not shown.
 - **Music**: Classic or Modern, two renditions of every world's soundtrack.
   Classic is the original chiptune style; Modern plays the same tunes with
   softer, smoother tones. Or Mute for no music at all. Sound effects keep

@@ -8,6 +8,7 @@ import { drawStarNetwork } from '../art/stars';
 import { TYPE_LOOK } from '../data/materials';
 import type { MaterialType } from '../data/types';
 import { fontPx, fontScale } from '../ui/text';
+import { installFullscreenKey } from '../ui/fullscreen';
 import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../ui/theme';
 
 type ShowcaseEntry = { type: MaterialType; size: number; dx: number; dy: number; duration: number; delay: number };
@@ -161,6 +162,7 @@ export class TitleScene extends Phaser.Scene {
     this.redrawContent(registry);
 
     this.input.keyboard!.once('keydown-SPACE', () => this.start());
+    installFullscreenKey(this);
   }
 
   update(time: number) {

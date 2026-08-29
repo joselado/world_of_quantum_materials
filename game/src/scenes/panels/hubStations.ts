@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import type { HubScene } from '../HubScene';
 import { CANVAS_W, CANVAS_H } from '../../art/perspective';
 import { fontPx, fontScale, fitProseToBudget } from '../../ui/text';
+import { fullscreenAvailable, isFullscreen, toggleFullscreen } from '../../ui/fullscreen';
 import {
   PANEL_BG,
   GOLD_ACCENT_HEX,
@@ -751,22 +752,25 @@ export function showStoryLog(scene: HubScene) {
 // SETTINGS_CATEGORIES), picked from a strip of category plates between the
 // title and the first row. The whole roster does not fit one screenful at the
 // largest text-size preset -- a value plate is ~43px tall there, so no row is
-// shorter than ~55px, and the canvas has room for about five once the title,
-// the Close button and the margins are paid for. Splitting by category buys
+// shorter than ~55px and one carrying a multi-line "when" runs to ~100px, once
+// the title, the Close button and the margins are paid for; Presentation's
+// four rows reach 448 of the canvas's 480 pixels. Splitting by category buys
 // that room without giving up the direct-click table: a list+detail panel
 // would scale further but would hide every unselected setting's current value
 // behind a row, which is the one thing this panel exists to show.
 //
-// The eight settings and what reads them -- Gameplay: difficulty tier
+// The nine settings and what reads them -- Gameplay: difficulty tier
 // (DIFFICULTY_TIER_PRESETS, data/balance.ts's DIFFICULTY_MULTIPLIERS applied
 // to enemyStatsForWorld), wild-encounter density (DENSITY_PRESETS, read by
 // OverworldScene.generateMap via encounterChance()), world size
 // (WORLD_SIZE_PRESETS). Story: story screens and tutorial tips (ON_OFF_PRESETS,
 // read by OverworldScene's lore/taunt/beat screens and showTutorialTip, and by
 // HubScene.maybeShowLabTip). Presentation: text size (FONT_SCALE_PRESETS, read
-// live by every fontPx() call), music style (MUSIC_STYLE_PRESETS, which of
-// audio/music.ts's SCORES/SCORES_MODERN tables MusicEngine draws from), touch
-// controls (TOUCH_CONTROLS_PRESETS, the overworld's on-screen walking arrows).
+// live by every fontPx() call), full screen (ON_OFF_PRESETS over ui/
+// fullscreen.ts's live scale-manager state, the one row with no save field
+// behind it), music style (MUSIC_STYLE_PRESETS, which of audio/music.ts's
+// SCORES/SCORES_MODERN tables MusicEngine draws from), touch controls
+// (TOUCH_CONTROLS_PRESETS, the overworld's on-screen walking arrows).
 //
 // Difficulty is the one meant to be revisited mid-playthrough rather than set
 // once -- Battle/OverworldScene both read it live, so a change here lands on
@@ -867,6 +871,9 @@ export function showSettingsPanel(scene: HubScene) {
   const tier = DIFFICULTY_TIER_PRESETS[difficultyTierIndex(registry)].value;
   const size = WORLD_SIZE_PRESETS[worldSizeIndex(registry)].value;
   const touch = TOUCH_CONTROLS_PRESETS[touchControlsIndex(registry)].value;
+  // Asked of the scale manager, not the registry: fullscreen is the one row
+  // with no save field behind it (ui/fullscreen.ts's own comment for why).
+  const fullscreen = isFullscreen(scene);
 
   const tips = tutorialTipsEnabled(registry);
   const storyScreens = storyScreensEnabled(registry);
@@ -902,6 +909,28 @@ export function showSettingsPanel(scene: HubScene) {
         onPick: choose('fontScale', p.value),
       })),
     },
+    // Offered only where the browser has the API at all -- an iPhone browser
+    // has no fullscreen to give, and a row whose values do nothing is worse
+    // than a row that isn't there.
+    ...(fullscreenAvailable(scene)
+      ? [
+          {
+            category: 'presentation' as const,
+            label: 'Full Screen',
+            when: 'The game fills the screen. Press F anywhere. Immediately.',
+            options: ON_OFF_PRESETS.map((p) => ({
+              label: p.label,
+              selected: p.value === fullscreen,
+              // No registry write and no rebuild here: the browser only grants
+              // the request a tick later, so the panel redraws on its
+              // ENTER_FULLSCREEN/LEAVE_FULLSCREEN event instead (below).
+              onPick: () => {
+                if (p.value !== fullscreen) toggleFullscreen(scene);
+              },
+            })),
+          },
+        ]
+      : []),
     {
       category: 'presentation',
       label: 'Music Style',
@@ -1023,6 +1052,25 @@ export function showSettingsPanel(scene: HubScene) {
     .rectangle(CANVAS_W / 2, top + panelHeight / 2, panelWidth, panelHeight, PANEL_BG, 0.95)
     .setStrokeStyle(2, REFERENCE_BLUE_GREY);
   container.addAt(panel, 0);
+
+  // The Full Screen row draws Phaser's own state rather than a saved value,
+  // and that state moves without the panel: the request resolves a tick after
+  // the click, Esc leaves fullscreen on its own, and F works while the panel
+  // is open. So the redraw hangs off the browser's own events, which is what
+  // keeps the gold plate on the value the player is actually in. Torn down
+  // with the container, so a closed panel leaves nothing listening.
+  if (fullscreenAvailable(scene)) {
+    const redraw = () => {
+      if (scene.dialogueContainer !== container) return;
+      showSettingsPanel(scene);
+    };
+    scene.scale.on(Phaser.Scale.Events.ENTER_FULLSCREEN, redraw);
+    scene.scale.on(Phaser.Scale.Events.LEAVE_FULLSCREEN, redraw);
+    container.once('destroy', () => {
+      scene.scale.off(Phaser.Scale.Events.ENTER_FULLSCREEN, redraw);
+      scene.scale.off(Phaser.Scale.Events.LEAVE_FULLSCREEN, redraw);
+    });
+  }
 }
 
 // The way out of the game, asked before it is taken. The Lab is where a run
