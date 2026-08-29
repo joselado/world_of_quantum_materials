@@ -240,6 +240,30 @@ async function main() {
   const getActiveScenes = () =>
     page.evaluate(() => window.__game.scene.getScenes(true).map((s) => s.scene.key));
 
+  // Dismisses the end-of-battle summary and waits until the Battle scene is
+  // actually gone. Never a fixed sleep, because the thing being waited on runs
+  // on *game* time while a sleep runs on wall time, and in this headless
+  // renderer the two are far apart: Phaser's TimeStep clamps each frame's
+  // delta to `deltaSmoothingMax` (10ms), and software WebGL manages only
+  // 2-6fps here, so the scene clock advances roughly 7x slower than the wall
+  // clock. `endBattle` arms its dismissal inside a
+  // `delayedCall(VICTORY_DISMISS_GRACE_MS)` -- 400ms of game time, measured at
+  // ~2.8s of real time on this machine -- so no single sleep is right at both
+  // frame rates. Press and re-check the way a player would, only ever pressing
+  // while the Battle scene is genuinely still up, so a stray press can never
+  // land on the Overworld behind it. A summary that outlasts every attempt is
+  // still a real failure and is still reported as one by the caller.
+  async function dismissBattleSummary(attempts = 20) {
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      if (!(await getActiveScenes()).includes('Battle')) return true;
+      await page.keyboard.press('Space');
+      await sleep(300);
+    }
+    // One last beat, for a scene.start already in flight when the loop ran out.
+    await sleep(200);
+    return !(await getActiveScenes()).includes('Battle');
+  }
+
   // The one gotcha called out for direct (non-in-scene) scene transitions:
   // scene.start() from outside a scene doesn't stop whatever's running, so
   // every jump explicitly stops all four top-level scenes first.
@@ -502,9 +526,19 @@ async function main() {
   const WILD_TYPES = ['metal', 'insulator', 'semiconductor', 'metallicMagnet', 'insulatingMagnet', 'superconductor', 'chernInsulator'];
   const WILD_COLORS = [0x7a8a99, 0xb8c4cc, 0x5a7ca6, 0xc97a3a, 0x8f4a32, 0x7fd1e8, 0xc9d94a];
 
+  // Bounded by casts the player actually commits, never by poll iterations: a
+  // single in-game turn takes an unpredictable amount of *real* time here (see
+  // dismissBattleSummary for why), so counting polls fails a perfectly healthy
+  // battle for the crime of running on a slow renderer. A fight that genuinely
+  // will not end is what MAX_CASTS catches. The wall-clock deadline is only a
+  // runaway guard so a wedged scene can't hang the suite -- it is not the
+  // thing being asserted, and it is set far above any real battle's length.
+  const MAX_CASTS = 40;
+  const BATTLE_DEADLINE_MS = 240000;
   async function resolveBattleLoop(label) {
     let rounds = 0;
-    while (rounds++ < 40) {
+    const deadline = Date.now() + BATTLE_DEADLINE_MS;
+    while (rounds < MAX_CASTS && Date.now() < deadline) {
       const st = await page.evaluate(() => {
         const s = window.__game.scene.getScene('Battle');
         if (!s || !window.__game.scene.isActive('Battle')) return null;
@@ -528,8 +562,11 @@ async function main() {
           const s = window.__game.scene.getScene('Battle');
           s['playerAttack'](moveId);
         }, st.moveIds[0]);
+        rounds += 1;
       }
-      await sleep(550);
+      // Short enough that a freed turn is picked up promptly; polls are free
+      // here, since the budget above counts casts rather than iterations.
+      await sleep(300);
     }
     await page.screenshot({ path: `${SHOT_DIR}/fail-battle-${label}-timeout.png` });
     return { outcome: 'timeout', rounds };
@@ -580,25 +617,7 @@ async function main() {
       };
     }
 
-    // The summary screen arms its own dismissal only VICTORY_DISMISS_GRACE_MS
-    // after endBattle runs, and endBattle itself waits on the killing blow's
-    // animation -- so the delay between "HP reached 0" (what resolveBattleLoop
-    // returns on) and "SPACE is listened for" is not a fixed number, and on a
-    // loaded machine it comfortably exceeds any single sleep worth writing.
-    // Press and re-check the way a player would, only ever pressing while the
-    // Battle scene is genuinely still up, so a stray press can never land on
-    // the Overworld behind it. A summary that outlasts every attempt is still
-    // a real failure and still reported as one.
-    let leftBattle = false;
-    for (let attempt = 0; attempt < 15; attempt++) {
-      if (!(await getActiveScenes()).includes('Battle')) {
-        leftBattle = true;
-        break;
-      }
-      await page.keyboard.press('Space');
-      await sleep(300);
-    }
-    if (!leftBattle) await sleep(200);
+    await dismissBattleSummary();
 
     const scenesAfter = await getActiveScenes();
     if (scenesAfter.includes('Battle')) {
@@ -893,9 +912,7 @@ async function main() {
     if (result.outcome !== 'WON' && result.outcome !== 'LOST') {
       return { pass: false, detail: `world ${world}: rival battle ended abnormally (${result.outcome}) after ${result.rounds} rounds. clicks=${JSON.stringify(clicks)}` };
     }
-    await sleep(900);
-    await page.keyboard.press('Space');
-    await sleep(600);
+    await dismissBattleSummary();
 
     const scenesAfter = await getActiveScenes();
     if (!scenesAfter.includes('Overworld') || scenesAfter.includes('Battle')) {
@@ -1069,9 +1086,7 @@ async function main() {
       await page.screenshot({ path: `${SHOT_DIR}/fail-rivalgate-actualwin-w${world}.png` });
       return { pass: false, detail: `world ${world}: boosted player still did not WIN (got ${result.outcome} after ${result.rounds} rounds) -- possible real battle-balance/logic issue, not just harness randomness` };
     }
-    await sleep(900);
-    await page.keyboard.press('Space');
-    await sleep(600);
+    await dismissBattleSummary();
     const scenesAfter = await getActiveScenes();
     if (!scenesAfter.includes('Overworld') || scenesAfter.includes('Battle')) {
       await page.screenshot({ path: `${SHOT_DIR}/fail-rivalgate-actualwin-w${world}-after.png` });
@@ -1107,6 +1122,13 @@ async function main() {
   const ADAPTED_WILD = { name: 'The Adapted', type: 'topological', color: 0x9b7bd4, variant: 'shard', moves: ['tunnelStrike'] };
   const SWAPS_PER_MOVE = 3;
 
+  // Budget in real milliseconds for an in-game turn to finish. Generous
+  // because a turn's length here is set by the renderer, not by the game's own
+  // constants: an Ultimate's summon sequence is seconds of game time and the
+  // clock advances at most `deltaSmoothingMax` per frame at 2-6fps (see
+  // dismissBattleSummary). It is a runaway guard, not an assertion about
+  // pacing.
+  const TURN_FREE_BUDGET_MS = 90000;
   async function waitTurnFree(ms) {
     for (let i = 0; i < Math.ceil(ms / 100); i++) {
       const st = await page.evaluate(() => {
@@ -1133,7 +1155,7 @@ async function main() {
 
     const names = [];
     for (let swap = 1; swap <= SWAPS_PER_MOVE; swap++) {
-      const free = await waitTurnFree(15000);
+      const free = await waitTurnFree(TURN_FREE_BUDGET_MS);
       if (free !== 'free') return { pass: false, detail: `${moveId}: swap ${swap}: turn never freed up (${free}) -- forms so far ${JSON.stringify(names)}` };
 
       // Top both sides right up so neither can win before the next transmute.
@@ -1163,15 +1185,27 @@ async function main() {
 
       await page.evaluate((m) => window.__game.scene.getScene('Battle')['playerAttack'](m), moveId);
 
-      // Poll rather than sleep a fixed beat: the Ultimate branch defers the
-      // transmute to its summon animation's completion, which runs seconds
-      // longer than an ordinary move's effect. Two equal frame counts a poll
-      // apart mean the render loop itself stopped -- a frozen canvas, which is
-      // what a throw inside the swap (it runs in a tween callback, inside
-      // Phaser's game step) actually produces.
+      // Poll rather than sleep a fixed beat: the transmute follows the move's
+      // own animation, and an Ultimate's summon sequence is seconds of game
+      // time -- which, at the 2-6fps this headless renderer manages against a
+      // clock Phaser advances by at most `deltaSmoothingMax` per frame, is the
+      // better part of a real minute (see dismissBattleSummary). The budget is
+      // sized for that worst case; a healthy swap still breaks out as soon as
+      // it lands.
+      //
+      // A stopped render loop -- what a throw inside the swap produces, since
+      // it runs in a tween callback inside Phaser's own game step -- shows up
+      // as a frame counter that never moves. It takes STALL_POLLS_FROZEN
+      // consecutive unchanged reads to call that, not one: a single frame
+      // lasts longer than one poll whenever the renderer is this slow, so
+      // comparing adjacent polls would report a merely slow canvas as a dead
+      // one.
+      const SWAP_POLLS = 200;
+      const STALL_POLLS_FROZEN = 12;
       let swapped = null;
       let prevFrame = -1;
-      for (let i = 0; i < 40; i++) {
+      let stalledPolls = 0;
+      for (let i = 0; i < SWAP_POLLS; i++) {
         await sleep(300);
         const st = await page.evaluate(() => {
           const g = window.__game;
@@ -1184,11 +1218,12 @@ async function main() {
             plate: !!(s && s['opponentPlate']),
           };
         });
-        if (i > 0 && st.frame === prevFrame) {
+        stalledPolls = i > 0 && st.frame === prevFrame ? stalledPolls + 1 : 0;
+        if (stalledPolls >= STALL_POLLS_FROZEN) {
           await page.screenshot({ path: `${SHOT_DIR}/fail-adapted-${moveId}-frozen.png` });
           return {
             pass: false,
-            detail: `${moveId}: swap ${swap}: render loop stopped advancing (frame stuck at ${st.frame}) -- the canvas is frozen, not merely stalled. form=${st.name}`,
+            detail: `${moveId}: swap ${swap}: render loop stopped advancing (frame stuck at ${st.frame} across ${stalledPolls} polls) -- the canvas is frozen, not merely stalled. form=${st.name}`,
           };
         }
         prevFrame = st.frame;
@@ -1200,7 +1235,7 @@ async function main() {
       names.push(swapped.name);
     }
 
-    const settled = await waitTurnFree(15000);
+    const settled = await waitTurnFree(TURN_FREE_BUDGET_MS);
     if (settled !== 'free') return { pass: false, detail: `${moveId}: turn never freed up after the last transmute (${settled})` };
 
     return { pass: true, detail: `${moveId}: ${names.length} transmutes, loop kept running, forms ${JSON.stringify(names)}` };

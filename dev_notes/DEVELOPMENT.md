@@ -473,10 +473,11 @@ it down afterward (an already-running server is left alone). Output
 (screenshots, logs, JSON summaries) goes to `game/.check-artifacts/`
 (gitignored, not meant to be committed).
 
-**`npm run component-check`** (`scripts/component-check.mjs`, ~2-3 minutes) --
+**`npm run component-check`** (`scripts/component-check.mjs`, ~5-10 minutes
+depending on machine load) --
 jumps directly into scenes/states via `scene.start(...)` and scene-private
-fields rather than playing through them, so each of its ~50 tests takes
-seconds: world-entry dialogue termination for every world (the lore →
+fields rather than playing through them, so each of its 56 tests exercises one
+mechanism directly: world-entry dialogue termination for every world (the lore →
 goal/middle-tip → controls-tip chain), battle round-trips, all ten guardian
 panels' open/close, rival-gate win and loss paths, World 10's Adapted actually
 transmuting (once per move class, with both sides topped up so the swap is
@@ -495,6 +496,22 @@ on the renderer's `RESTORE_WEBGL` event. This game owns none -- everything is
 context-loss handler of its own, and the test asserts both halves: that the
 cycle really does recover, and that the precondition still holds. Adding a
 dynamic texture fails it, with the remedy in the failure message.
+**Every wait in this script is on an observable signal, never on a fixed number
+of real milliseconds**, and anything added to it has to follow that rule. The
+reason is that game time and wall time come apart badly here: Phaser's
+`TimeStep` advances the scene clock by at most `deltaSmoothingMax` (10ms) per
+frame, and software WebGL under headless Chrome manages only 2-6fps on this
+game, so the scene clock runs roughly 7x slower than the wall clock. A 400ms
+in-game `delayedCall` -- `BattleScene`'s `VICTORY_DISMISS_GRACE_MS`, which is
+what arms the end-of-battle summary's own dismissal -- takes about 2.8 seconds
+of real time there, and correspondingly less on a fast machine. So the suite
+presses-and-rechecks (`dismissBattleSummary`), polls for the state it wants,
+and bounds its loops by things the game actually did (casts committed, swaps
+observed) with wall-clock deadlines used only as runaway guards. A fixed sleep
+tuned on a fast machine turns into an intermittent failure on a slow one, and
+reads exactly like a regression in the game. If a timing assertion here starts
+failing, check `window.__game.loop.actualFps` before suspecting the game.
+
 Every test also fails on any
 uncaught page error inside its own window, which is what catches a throw in a
 tween callback -- those run inside Phaser's game step, so they kill the
