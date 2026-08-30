@@ -385,12 +385,18 @@ visual landmark. Contextual tutorial tips guide new players, a Story Mode /
 Superposition Mode title-screen picker lets you choose between them
 (Superposition Mode auto-levels the player and pre-marks every world visited
 so Bloch's teleport hub gives instant access to any world/guardian, for testing
-without grinding), and the Lab's Settings station offers four rows --
-wild-encounter density, a Text Size preset applied via `ui/text.ts`'s
-`fontPx`/`fontScale` helpers (defaulting to Large on a phone or tablet,
-Normal elsewhere), a Music Style (Classic/Modern/Mute) arrangement
-switch, and a difficulty tier (B.Sc./M.Sc./Ph.D.) feeding
-`data/balance.ts`'s `DIFFICULTY_MULTIPLIERS`. `game/` is the only build.
+without grinding), and the Lab's Settings station offers nine rows in the three categories
+`SETTINGS_CATEGORIES` declares, switched between at the top of the panel.
+Gameplay: a difficulty tier (B.Sc./M.Sc./Ph.D.) feeding `data/balance.ts`'s
+`DIFFICULTY_MULTIPLIERS`, wild-encounter density, and a world size
+(Nano/Meso/Macro) scaling the generated map. Story: Story Screens and Tutorial
+Tips, either of which can be turned off without losing content, since the Lab's
+Story and Tutorial stations still hold it. Presentation: a Text Size preset
+applied via `ui/text.ts`'s `fontPx`/`fontScale` helpers (defaulting to Large on
+a phone or tablet, Normal elsewhere), a Full Screen row built only where
+`fullscreenAvailable(scene)` is true, a Music Style (Classic/Modern/Mute)
+arrangement switch, and Touch Controls for the on-screen walking arrows.
+`game/` is the only build.
 
 ## Verifying UI changes
 
@@ -475,8 +481,8 @@ it down afterward (an already-running server is left alone). Output
 (screenshots, logs, JSON summaries) goes to `game/.check-artifacts/`
 (gitignored, not meant to be committed).
 
-**`npm run component-check`** (`scripts/component-check.mjs`, ~5-10 minutes
-depending on machine load) --
+**`npm run component-check`** (`scripts/component-check.mjs`, about four
+minutes, longer on a loaded machine) --
 jumps directly into scenes/states via `scene.start(...)` and scene-private
 fields rather than playing through them, so each of its 56 tests exercises one
 mechanism directly: world-entry dialogue termination for every world (the lore →
@@ -816,8 +822,11 @@ enough for the rival to end the fight first, and the bars are left at 60% so
 they are measured part-drained rather than in the one frame where they are
 guaranteed full. `Math.random` is stubbed with a seeded stream and every tween
 is rewound to phase zero and paused before capture, so two runs render the
-same ten arenas: consecutive runs currently agree to the last decimal on every
-number below.
+same ten arenas: a world both runs reach agrees to the last decimal on every
+number below. Reaching all ten in one run is the part that is not reliable
+today -- a run can end partway with `window.__game` gone from the page, at a
+world that varies between runs, which is why the readings are trustworthy but
+the suite is not yet a gate. `POLISH_BUILD_TASK.md` #13b tracks it.
 
 Three frames are captured per arena: the full frame, the backdrop alone, and
 the frame with only the crystals hidden. The second gives the value of the

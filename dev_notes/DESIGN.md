@@ -32,19 +32,28 @@ note for the terrain and palette side, and `MAPSHAPE_BUILD_TASK.md` is the
 current pass over how much ground each world gives the player to stand on. The topic mapping, the wild pools and the
 progression gates are not part of that revision and still hold.
 
-| World | Course topic | In-game name (`WORLD_NAMES`) | Wild material archetypes | Gate to next world |
-|---|---|---|---|---|
-| 0 (Hub) | — | "The Lab" — guardian's house, Qumatex | — | Start world 1 |
-| 1 | Second quantization, mean-field, SSB | **The Mean Fields** | Free fermion, itinerant/local-moment magnets, ferroelectrics, a charge density wave, a superconductor | Beat first rival crystal |
-| 2 | Symmetries, tight-binding, effective models | **The Stone Lattice** | Bloch-wave critters, lattice defect variants | Beat that world's rival crystal |
-| 3 | Topological band theory | **The Winding Borders** | Quantum spin Hall insulators, bulk and monolayer alike | Cross a gap only an edge-mode move can bridge |
-| 4 | Integer and fractional quantum Hall effect | **The Storm Flats** | Landau-level materials, an intrinsic zero-field Chern insulator | Solve a Landau-level maze |
-| 5 | Superconductivity, Nambu, Majorana | **The Vortex Glacier** | s-wave SC, triplet SC | Pair two Majorana halves |
-| 6 | Classical magnetism, magnons | **The Iron Steppe** | Ferro/antiferromagnets, magnon wave-riders, a multiferroic | Ride a magnon wave across a canyon |
-| 7 | Entanglement, tensor networks | **The Entangled Web** | Entangled pairs (fought as a bonded duo) | Compress a tangled area into a walkable MPS path |
-| 8 | Quantum magnetism, spinons, Kondo | **The Screened Swamp** | Spin liquids, Kondo-screened critters, a genuine Kondo-lattice heavy-fermion compound | Screen a "local moment" boss mechanic |
-| 9 | Excitations and defects | **The Defect Scars** | Defect-bound states, impurity resonances, a couple of ferroelectrics with no course topic of their own, plus every non-hybrid material from worlds 1-8 | Repair/exploit N defects to stabilize a bridge |
-| 10 | ML for quantum materials | **The Devouring Mirror** | Every hybrid-recipe crystal, and only hybrid-recipe crystals, plus the final boss, which transmutes live in battle to mirror the player | Final battle |
+**The gate out of a world is the same in all ten.** Each map has one goal tile at
+its far end; standing on it raises a prompt, and taking that prompt
+(`OverworldScene.confirmGate`) fights that world's rival crystal the first time
+and crosses the pass to the next world every time after, which is the flow §4
+describes from the battle side. World 10 ends in the finale panel instead of a
+crossing. Every world also carries a backward door on its own start tile, out
+to the world before it, or to the Lab from World 1. No world has a puzzle or a
+movement gate of its own.
+
+| World | Course topic | In-game name (`WORLD_NAMES`) | Wild material archetypes |
+|---|---|---|---|
+| 0 (Hub) | — | "The Lab" — guardian's house, Qumatex | — |
+| 1 | Second quantization, mean-field, SSB | **The Mean Fields** | Free fermion, itinerant/local-moment magnets, ferroelectrics, a charge density wave, a superconductor |
+| 2 | Symmetries, tight-binding, effective models | **The Stone Lattice** | Bloch-wave critters, lattice defect variants |
+| 3 | Topological band theory | **The Winding Borders** | Quantum spin Hall insulators, bulk and monolayer alike |
+| 4 | Integer and fractional quantum Hall effect | **The Storm Flats** | Landau-level materials, an intrinsic zero-field Chern insulator |
+| 5 | Superconductivity, Nambu, Majorana | **The Vortex Glacier** | s-wave SC, triplet SC |
+| 6 | Classical magnetism, magnons | **The Iron Steppe** | Ferro/antiferromagnets, magnon wave-riders, a multiferroic |
+| 7 | Entanglement, tensor networks | **The Entangled Web** | Entangled pairs (fought as a bonded duo) |
+| 8 | Quantum magnetism, spinons, Kondo | **The Screened Swamp** | Spin liquids, Kondo-screened critters, a genuine Kondo-lattice heavy-fermion compound |
+| 9 | Excitations and defects | **The Defect Scars** | Defect-bound states, impurity resonances, a couple of ferroelectrics with no course topic of their own, plus every non-hybrid material from worlds 1-8 |
+| 10 | ML for quantum materials | **The Devouring Mirror** | Every hybrid-recipe crystal, and only hybrid-recipe crystals, plus the final boss, which transmutes live in battle to mirror the player |
 
 Each world's overworld *map shape* (not just its biome skin) is its own physics motif too,
 generated fresh every visit by `game/src/world/generators/world<N>.ts` (dispatched from
@@ -779,8 +788,8 @@ generic technique were tied to one specific move's quasiparticle.
 
 Only one cloud can be active per side at a time — a fresh cast replaces whatever was already
 there rather than stacking, so screening one quantum number always means giving up the other
-two, matching the deliberately simple "one type-interaction rule, not a
-chart" philosophy above. Implemented generically per-side in `BattleScene.resolveSelfBuff`/
+two, matching the deliberately simple "one type-interaction rule, not a chart" philosophy
+above. Implemented generically per-side in `BattleScene.resolveSelfBuff`/
 `resolveHit` (the same multiplier-term shape every other `resolveHit` factor already uses)
 rather than hardcoded to "player only," even though only the player can currently learn the
 moves that apply them — no `WORLD_CRYSTALS` entry knows them yet. Ticks down once per round
@@ -887,8 +896,13 @@ shrinking or spilling (STYLE.md's "Wild encounter dialogue"). Worlds are the pri
 `WORLD_QUESTIONS[world]` is each world's own pool, scoped to that world's own topic and
 difficulty (session NN.tex), and `getWorldQuestion` draws from it by default. A handful of
 materials additionally carry their own supplementary pool in `MATERIAL_QUESTIONS`, and
-whenever the material actually fought has one, `getWorldQuestion` coin-flips between the
-world's pool and that material's pool instead of always using the world's. This exists for
+`getWorldQuestion` coin-flips between the world's pool and that material's pool whenever the
+material actually fought has one *and* is authored into this world's own `WORLD_CRYSTALS`
+entry (`isNativeToWorld`). That second condition is what keeps World 9's inheritance from
+dragging another session's topic in with a compound: World 9 draws every non-hybrid material
+from worlds 1-8, and a pool written against World 7's session has no business being asked in
+the defect world. A compound authored into World 9's own pool, Barium Titanate among them,
+keeps its bonus layer there. This exists for
 two distinct reasons: a couple of materials that spawn in two worlds (Barium Titanate,
 Herbertsmithite) have authored content too topic-uniform to split cleanly between their two
 worlds' own pools, so it lives as a shared bonus layer instead; and every named hybrid-recipe

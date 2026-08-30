@@ -237,50 +237,6 @@ export function paintBands(walkable: boolean[][], gridW: number, bands: WanderBa
   bands.forEach((b) => paintBand(walkable, gridW, b.y, b.center, b.right - b.left + 1));
 }
 
-// Paints a stretch that splits from one wide-ish center into two thinner
-// parallel lanes, holds the split for the run, then ramps back together --
-// shared by world1.ts (mean-field symmetry breaking, tinted) and world8.ts
-// (spinon fractionalization, untinted, and possibly repeated a few times
-// along the same corridor). `colors`, if given, tints the two lanes'
-// regionColor distinctly (left, right) for the duration of the split; pass
-// nothing for an untinted split. Returns the merged centerX a caller should
-// continue building from.
-export function paintSplitMerge(
-  walkable: boolean[][],
-  gridW: number,
-  regionColor: NullableNumberGrid | null,
-  startCenter: number,
-  startY: number,
-  rows: number,
-  laneWidth: number,
-  gap: number,
-  rampRows: number,
-  colors?: [number, number]
-): number {
-  let leftCenter = startCenter;
-  let rightCenter = startCenter;
-  for (let i = 0; i < rows; i++) {
-    const y = startY - i;
-    if (y < 0) break;
-    const rampT = clamp(Math.min(i, rows - 1 - i) / rampRows, 0, 1);
-    const targetOffset = (rampT * gap) / 2;
-
-    if (Math.random() < 0.3) leftCenter += Math.random() < 0.5 ? -1 : 1;
-    if (Math.random() < 0.3) rightCenter += Math.random() < 0.5 ? -1 : 1;
-    const mid = (leftCenter + rightCenter) / 2;
-    leftCenter = clamp(mid - targetOffset, laneWidth / 2, gridW - laneWidth / 2);
-    rightCenter = clamp(mid + targetOffset, laneWidth / 2, gridW - laneWidth / 2);
-
-    const leftBand = paintBand(walkable, gridW, y, leftCenter, laneWidth);
-    const rightBand = paintBand(walkable, gridW, y, rightCenter, laneWidth);
-    if (regionColor && colors) {
-      if (leftBand) for (let x = leftBand.left; x <= leftBand.right; x++) regionColor[y][x] = colors[0];
-      if (rightBand) for (let x = rightBand.left; x <= rightBand.right; x++) regionColor[y][x] = colors[1];
-    }
-  }
-  return (leftCenter + rightCenter) / 2;
-}
-
 // Punches impassable islands into ground that has already been painted -- the
 // shape half of every world whose ground is a place rather than a route. The
 // world paints a wide field first, then hands this a list of candidate

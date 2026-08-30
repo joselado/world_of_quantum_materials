@@ -194,9 +194,8 @@ game/src/
                                   wandering-band painter every corridor-like generator builds on
                                   (wanderBands/paintBand/paintBands, parameterized on width so a 7-wide
                                   main corridor and a 2-wide lane share one implementation),
-                                  paintSplitMerge (world1.ts's/world8.ts's split-then-remerge stretch,
-                                  optionally regionColor-tinted), paintColumnBand (paintBand's vertical
-                                  mirror, world4.ts's horizontal branches),
+                                  paintColumnBand (paintBand's vertical mirror, world4.ts's
+                                  horizontal branches),
                                   the island toolkit -- the way nine of the ten worlds are actually
                                   built: paint a wide field, then punch that world's own impassable
                                   features into it (world1.ts's hedgerow, world2.ts's columns,
@@ -283,7 +282,10 @@ game/src/
                                   hybrid halves) go through; drawShardShape()/drawCubicShape() -- two of
                                   those habits, also exported for boss.ts's golem limbs; killTweensDeep(scene, obj) --
                                   the shared recursive tween-kill every caller about to destroy a
-                                  Container runs first (scenes/panels/listDetail.ts's destroyPanel,
+                                  Container runs first, and setTweensPausedDeep(scene, obj, paused) --
+                                  its pause/resume counterpart, which OverworldScene.updateWorldSprites
+                                  runs when a world sprite's visibility flips, since setVisible(false)
+                                  hides a sprite without stopping the tweens animating it (scenes/panels/listDetail.ts's destroyPanel,
                                   franklin.ts's crystal-block re-render, BattleScene's
                                   opponent-crystal swap and turn-preview redraw), since Phaser's own
                                   destroy() leaves tweens targeting a dead object running and the
@@ -605,7 +607,11 @@ game/src/
                                   materials with topic-uniform content, plus every WORLD_CRYSTALS[10]
                                   hybrid result), which getWorldQuestion(world, materialName)
                                   coin-flips against the world's own pool whenever the fought
-                                  material has one. World 10 draws differently: getWorldQuestion(10,
+                                  material has one and is authored into that world's own
+                                  WORLD_CRYSTALS entry (materials.ts's isNativeToWorld) -- so a
+                                  compound reaching World 9 only through its inheritance loop is
+                                  asked World 9's own questions, not the session it was written
+                                  for. World 10 draws differently: getWorldQuestion(10,
                                   materialName) coin-flips between the fought hybrid's own
                                   MATERIAL_QUESTIONS pool and ML_LECTURE_QUESTIONS (session10.tex,
                                   the course's ML finale) -- plus the world-tagged ANALYTIC_QUESTIONS pool

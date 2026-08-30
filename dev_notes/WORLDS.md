@@ -363,11 +363,13 @@ The winding is left to the geometry rather than drawn: a supercurrent flows
 everywhere in the condensate and circulates around a trapped flux line because
 there is no way through it, and that is exactly what the player does here.
 
-Field expulsion is drawn where the field actually is: the pits. Everywhere else
-the ice is blank and pale — the field has been pushed out of it — and the only
-places anything shows are the cores, where the trapped flux glows. The world is
-*the place that pushes something invisible away from itself*, told by where the
-glow survives rather than by streaks on the road.
+Field expulsion is drawn twice over, and the two halves say the same thing. The
+ice itself is swept: every tile carries pale flow-lines that bow away from the
+bulk and converge only into the pits, so the ground the player walks on is the
+field being pushed out, line by line. The pits are where that push fails — the
+cores, where the trapped flux still glows, the only places any light survives.
+The world is *the place that pushes something invisible away from itself*, told
+by the direction the ice is combed and by where the glow is left standing.
 
 ### 6 — The Iron Steppe *(classical magnetism, magnons)*
 
@@ -792,9 +794,9 @@ obeys every text-size preset, and it carries the choice.
 **Approach, read, press.** Both gate states share one interaction grammar, and
 the keypress is what makes it safe. Arrival alone must never transition or start
 a fight: a pass is the most interesting object in a world and players will walk
-into it to look. The confirmation is not removed with the old menus, it is
-relocated into the prompt — and the story beat between worlds fires on that
-keypress, the exact semantic descendant of the click it replaces.
+into it to look. The confirmation lives in the prompt itself rather than in a
+menu on top of it — and the story beat between worlds fires on that same
+keypress.
 
 **World 10 has no board.** The grammar means "another world lies beyond", and the
 finale's meaning is that there is not one. The Adapted holds the pass; when it
@@ -994,8 +996,8 @@ patterns, because they are what make the arc land rather than merely exist.
 
 **The Decoherence is never generic.** In every world it attacks one *named
 mechanism*, and always the one that world exists to teach — it doesn't erase the
-Meadow's order, it makes the broken symmetry doubt itself; it doesn't break the
-lattice's atoms, it puts one alcove fractionally out of step so the delocalized
+Mean Fields' order, it makes the broken symmetry doubt itself; it doesn't break
+the lattice's atoms, it puts one column fractionally out of step so the delocalized
 state has nowhere to live; it doesn't touch the Majorana halves, it shortens the
 passage until they can feel each other. A world whose Decoherence page could be
 pasted into another world's slot has failed this rule.

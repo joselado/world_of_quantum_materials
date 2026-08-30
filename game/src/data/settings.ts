@@ -18,7 +18,7 @@ export const DENSITY_PRESETS: DensityPreset[] = [
   { label: 'Very High', value: 0.35 },
 ];
 
-export const DEFAULT_ENCOUNTER_DENSITY = DENSITY_PRESETS[1].value; // Normal -- matches the old fixed ENCOUNTER_CHANCE
+export const DEFAULT_ENCOUNTER_DENSITY = DENSITY_PRESETS[1].value; // Normal
 
 // UI text-size presets for the same Settings panel -- a multiplier applied
 // to every scene's authored base px size via ui/text.ts's fontPx(), read
@@ -51,7 +51,7 @@ export function defaultFontScale(): number {
   return isHandheldDevice() ? FONT_SCALE_PRESETS[2].value : FONT_SCALE_PRESETS[1].value;
 }
 
-// Same Settings panel, third row: which of audio/music.ts's two score tables
+// Same Settings panel, Presentation: which of audio/music.ts's two score tables
 // (SCORES/"Classic", SCORES_MODERN/"Modern") MusicEngine.play() draws from,
 // plus "Mute" for no score at all. Turning the music off is a setting rather
 // than a key: it is a preference a player makes once and keeps, so it belongs
@@ -77,7 +77,7 @@ export const MUSIC_STYLE_PRESETS: MusicStylePreset[] = [
 
 export const DEFAULT_MUSIC_STYLE = MUSIC_STYLE_PRESETS[0].value; // Classic -- the original soundtrack stays the default
 
-// Same Settings panel, fourth row: how hard the world curve hits, a
+// Same Settings panel, Gameplay: how hard the world curve hits, a
 // multiplier applied to every stat data/balance.ts's enemyStatsForWorld
 // returns (DIFFICULTY_MULTIPLIERS, that file). Named after
 // game/scripts/balance-sim.mjs's own three simulated playtest archetypes
@@ -104,7 +104,7 @@ export const DIFFICULTY_TIER_PRESETS: DifficultyTierPreset[] = [
 
 export const DEFAULT_DIFFICULTY_TIER: DifficultyTier = DIFFICULTY_TIER_PRESETS[1].value; // M.Sc. -- the tuned default
 
-// Same Settings panel, fifth row: how big a world is. One multiplicative
+// Same Settings panel, Gameplay: how big a world is. One multiplicative
 // factor applied to every length the overworld is built out of -- the grid
 // itself, every corridor width, every branch/spur/spiral, every stretch
 // measured in rows -- so a world keeps its shape and changes only its size
@@ -150,7 +150,7 @@ export function gridDimsFor(factor: number): { w: number; h: number } {
   return { w: Math.round(BASE_GRID_W * factor), h: Math.round(BASE_GRID_H * factor) };
 }
 
-// Same Settings panel, sixth row: whether the overworld draws the on-screen
+// Same Settings panel, Presentation: whether the overworld draws the on-screen
 // arrows (scenes/overworld/touchControls.ts) that let a player walk without a
 // keyboard. Walking is the one thing a pointer alone could not do -- every
 // other action in the game already has a click target -- so on a phone or a

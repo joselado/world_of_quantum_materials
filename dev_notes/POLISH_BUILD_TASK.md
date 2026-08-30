@@ -41,6 +41,7 @@ handled, so a fix that has only been read is not a fix that has been checked.
 | 18 | Subtype combination table | design | **open** |
 | 19 | Opponent debuffs unimplemented | design | **open** |
 | 20 | Boss status pill sits inside its screening aura | defect | **fixed, verified** |
+| 21 | Nothing on screen can be chosen from the keyboard | feature | **open** |
 
 ---
 
@@ -205,14 +206,52 @@ still boots and `component-check` still passes. Verifying any music change means
 driving the game headless and watching for `music:` console messages — zero is
 the pass.
 
-### 13b. `greyscale-check` cannot reach a battle
+### 13b. `greyscale-check` does not finish a run
 
-`npm run greyscale-check` fails in all ten worlds with "stuck before the battle
-started." The script clicks a `Battle!` button after `maybeReachGoal`, but the
-rival gate is accepted by `confirmGate()` at the pass mouth (`goalTile.y + 1`,
-`OverworldScene.ts`) — a keypress, with no such button — so the flow stops at the
-goal banner and `startBattle` is never called. Until this is repaired, no battle
-legibility claim can be backed by the check, only by reading frames.
+The script reaches battles and reads them. It stands at the pass mouth
+(`goal.y + 1`), asserts on the challenge prompt, and invokes `confirmGate()`
+directly, which is the flow `DEVELOPMENT.md` describes; the `Battle!` entry in
+its click list is only the taunt-paging loop after that. A world it reaches
+reports full numbers, so a battle legibility claim for that world is backed by
+the check.
+
+What it does not do is get through all ten in one run. Two consecutive runs
+each died partway with
+`TypeError: Cannot read properties of undefined (reading 'scene')` out of
+`setCrystalsVisible` — `window.__game` gone from the page — and they died at
+*different* worlds (3, then 7), with one world also flaking to "stuck before
+the battle started" in between. So the numbers a run does print are usable and
+the ones it never reaches are simply missing, which makes the suite unusable as
+a gate even though every reading it produces is good.
+
+The shape of the failure is a page that has gone away underneath the script,
+which is the headless-Chrome crash-recovery case `component-check` already
+solves; porting that recovery here is the concrete next step. Until then
+`DEVELOPMENT.md`'s claim that consecutive runs agree to the last decimal holds
+only for the worlds a given run happens to reach.
+
+### 21. Nothing on screen can be chosen from the keyboard
+
+The keyboard walks and accepts what is offered where the player stands, and
+nothing more. The complete surface is Arrows (walk), Space (confirm where you
+stand, start from the title, leave the battle summary), Enter (Lab in and out),
+F (fullscreen) and Left/Right (page between kinds of move in battle). Every
+*choice* is pointer-only: `addMoveButton` binds `pointerdown` alone, and so do
+quiz answers, Lab stations and guardian-panel buttons. So the keyboard can page
+between kinds of move but cannot pick one.
+
+`README.md`'s Controls section states this plainly, so it is not doc drift; it
+is a gap against keyboard-only play, which is what a console port would need.
+The natural shape reuses keys that already exist: Up/Down move a selection
+cursor within the current move page, Space commits, Left/Right keep paging. The
+same cursor generalizes to quiz answers, Lab stations and panel buttons, which
+is the larger half of the work since it touches every panel's layout code.
+
+Nothing about pointer behaviour would change. `component-check` drives scenes
+through private methods and `emit('pointerdown')`, so it would pass unchanged
+either way and cannot gate this; `verify-ui` is what would show the cursor
+actually lands where it should. Whether this is in scope for a final version is
+a decision, not a defect.
 
 ### 14. Playtesting with students
 

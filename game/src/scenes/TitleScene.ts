@@ -489,10 +489,10 @@ export class TitleScene extends Phaser.Scene {
     };
     refresh();
 
-    // A noticeably wider gap than the two buttons' own internal padding
-    // (unlike the old 12px gap, which read as one combined control) so each
-    // button plus its own caption below it reads as its own self-contained
-    // choice rather than two options crammed together.
+    // A gap noticeably wider than the two buttons' own internal padding, so
+    // each button plus its own caption below it reads as its own
+    // self-contained choice rather than two options crammed together. A gap
+    // near the padding's own size reads as one combined control instead.
     const gap = 50;
     const totalW = storyBtn.width + superBtn.width + gap;
     storyBtn.setX(CANVAS_W / 2 - totalW / 2 + storyBtn.width / 2);

@@ -112,9 +112,9 @@ export function decorateTile(g: Phaser.GameObjects.Graphics, biome: Biome, tile:
     return;
   }
 
-  // World 4 (the Storm Flats): quantised orbit rings. With the world's name
-  // no longer saying "orbit", these rings are the only thing left teaching
-  // that a Landau level is a quantised orbit -- so they are pedagogy, not
+  // World 4 (the Storm Flats): quantised orbit rings. Nothing else in the
+  // world, its name included, says "orbit", so these rings are the only thing
+  // teaching that a Landau level is a quantised orbit -- pedagogy, not
   // decoration, and the concentric pair carries the quantisation itself:
   // successive orbits differ by exactly one flux quantum, never a fraction.
   // Drawn as ellipses, since a circle on the ground is seen at a slant.
