@@ -158,11 +158,15 @@ const WORLD_NAMES = evalNode(findTopLevelConst(materialsSf, 'WORLD_NAMES'), mate
 
 // crystal(name, type, moves, hueStep?, variantOverride?, shortName?) --
 // every WORLD_CRYSTALS/WORLD_RIVALS row is one of these calls (materials.ts's
-// own comment on `crystal`), so args[0..2] are always name/type/moves.
+// own comment on `crystal`), so args[0..2] are always name/type/moves. The
+// trailing look arguments are carried too, for check 18's cross-pool
+// comparison; `hueStep` defaults to 0 in `crystal` itself, so an omitted
+// argument is normalized to 0 here rather than left undefined, or a pool that
+// spells the default out would read as a difference.
 function crystalFromCall(call) {
   if (!call || call.__call !== 'crystal') return null; // World 10's rival ("The Adapted") is a plain object, not a crystal() call
-  const [name, type, moves] = call.args;
-  return { name, type, moves: moves ?? [] };
+  const [name, type, moves, hueStep, variantOverride, shortName] = call.args;
+  return { name, type, moves: moves ?? [], hueStep: hueStep ?? 0, variantOverride, shortName };
 }
 
 const WORLD_CRYSTALS_RAW = evalNode(findTopLevelConst(materialsSf, 'WORLD_CRYSTALS'), materialsSf);
@@ -654,6 +658,45 @@ for (const w of BUILT_WORLDS.filter((w) => w !== '10')) {
       `${d.file}:${d.line} ${d.owner}.${d.name} is declared with a definite-assignment '!' but nothing in src/ ever assigns it -- ` +
         `every read of it is undefined at runtime, and the '!' is exactly what stops tsc from saying so`
     );
+  }
+}
+
+// 18. A compound that appears in more than one world's pool must look the
+// same in each. `hueStep` is chosen to separate siblings *within* one pool,
+// so nothing stops two pools from picking different steps for the same
+// compound -- and then it renders as two different colors, while
+// `allCrystals()` keeps only the first pool's entry, so the Materialdex shows
+// one of them and a field encounter in the other world shows the other. Type
+// and variant are checked alongside it for the same reason. Movesets are
+// deliberately *not* compared: a compound is expected to throw its host
+// world's own signature excitation (Herbertsmithite carries Spinon Swap with
+// Thermal Fluctuation in World 7 and with Vison Loop in World 8), which is
+// content, not drift.
+{
+  const byName = new Map();
+  for (const world of BUILT_WORLDS) {
+    for (const c of WORLD_CRYSTALS[world] ?? []) {
+      if (!byName.has(c.name)) byName.set(c.name, []);
+      byName.get(c.name).push({ world, ...c });
+    }
+  }
+  for (const [name, entries] of byName) {
+    if (entries.length < 2) continue;
+    for (const field of ['type', 'hueStep', 'variantOverride', 'shortName']) {
+      const values = new Map();
+      for (const e of entries) {
+        const key = JSON.stringify(e[field] ?? null);
+        if (!values.has(key)) values.set(key, []);
+        values.get(key).push(e.world);
+      }
+      if (values.size < 2) continue;
+      const shown = Array.from(values, ([v, worlds]) => `${v} in world ${worlds.join('/')}`).join(', ');
+      flag(
+        `'${name}' appears in ${entries.length} world pools with a different ${field} in each (${shown}) -- ` +
+          `one compound has to look the same everywhere it spawns, and allCrystals() keeps only the first pool's entry, ` +
+          `so the Materialdex and a field encounter would disagree`
+      );
+    }
   }
 }
 

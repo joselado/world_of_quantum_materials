@@ -16,8 +16,11 @@
 // Three checks:
 //   1. Draw budget      -- graphics ops + objects for one overworld paint pass,
 //                          per world, against a ceiling.
-//   2. Tween leaks      -- opening and closing every panel returns the tween
-//                          count to baseline (Phaser's destroy() does not kill
+//   2. Tween leaks      -- two round trips that really happen: six Lab
+//                          station panels opened by clicking their own
+//                          buttons and closed again, and tokens collected off
+//                          an overworld map. Both must return the tween count
+//                          to baseline (Phaser's destroy() does not kill
 //                          tweens; art/crystals.ts's killTweensDeep is why).
 //   3. Relative cost    -- each world's paint pass timed against the median of
 //                          all ten *in the same run*, so the ratio is immune to
@@ -232,28 +235,122 @@ async function main() {
     }
 
     // -----------------------------------------------------------------
-    log('=== 2: tween leaks across panel open/close ===');
-    const tweenLeak = await page.evaluate(async () => {
+    // Two round trips, because a Phaser container's destroy() does not stop
+    // the tweens running on it and the two places that matters are different:
+    // a panel rebuilt over and over from the Lab, and a world sprite picked
+    // up off the map. Both have to actually happen for the count to mean
+    // anything -- a check that destroys nothing measures nothing.
+    log('=== 2: tween leaks ===');
+    log('  2a: Lab station panels, opened and closed');
+    const panelLeak = await page.evaluate(async () => {
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       const g = window.__game;
       g.scene.start('Hub');
-      await new Promise((r) => setTimeout(r, 900));
+      await sleep(900);
       const s = g.scene.getScene('Hub');
       const count = () => s.tweens.getTweens().length;
-      const baseline = count();
-      // Every station that opens a panel, opened and closed in turn.
-      const before = baseline;
-      for (let i = 0; i < 3; i++) {
-        s.dialogueContainer?.destroy(true);
-        await new Promise((r) => setTimeout(r, 120));
+
+      // The station buttons are Text objects in the room; clicking one is
+      // the same path a player takes, so whatever a panel builds on open is
+      // what gets measured.
+      const texts = [];
+      const walk = (list) => {
+        for (const o of list) {
+          if (o.type === 'Text') texts.push(o);
+          if (o.list) walk(o.list);
+        }
+      };
+      walk(s.children.list);
+      const wanted = ['Moves', 'Stats', 'Tutorial', 'Story', 'Settings', 'Title Screen'];
+      const missing = [];
+      const opened = [];
+
+      // One warm-up cycle first: a panel may legitimately start a tween that
+      // outlives its own container (a room-level flourish), and the baseline
+      // has to be read after that has happened once, not before.
+      for (let pass = 0; pass < 3; pass++) {
+        for (const label of wanted) {
+          const btn = texts.find((o) => (o.text || '').trim() === label);
+          if (!btn) {
+            if (pass === 0) missing.push(label);
+            continue;
+          }
+          btn.emit('pointerdown');
+          await sleep(120);
+          if (pass === 0 && s.dialogueContainer) opened.push(label);
+          s.closeDialogue();
+          await sleep(120);
+        }
+        if (pass === 0) var before = count();
       }
-      const after = count();
-      return { before, after };
+      const orphaned = s.tweens
+        .getTweens()
+        .filter((tw) => (tw.targets || []).some((t) => t && typeof t === 'object' && 'scene' in t && t.scene === undefined)).length;
+      return { before, after: count(), missing, opened, orphaned };
     });
-    if (tweenLeak.after > tweenLeak.before) {
-      failures.push(`tween leak: ${tweenLeak.before} tweens before panel cycling, ${tweenLeak.after} after`);
-      log(`FAIL tween leak -- ${tweenLeak.before} -> ${tweenLeak.after}`);
+    if (panelLeak.missing.length) {
+      failures.push(`tween leak (panels): station button(s) not found in the Lab: ${panelLeak.missing.join(', ')} -- the check cannot open what it cannot click`);
+      log(`FAIL tween leak (panels) -- missing station button(s): ${panelLeak.missing.join(', ')}`);
+    } else if (panelLeak.opened.length < 6) {
+      failures.push(`tween leak (panels): only ${panelLeak.opened.length} of 6 stations actually opened a panel (${panelLeak.opened.join(', ')})`);
+      log(`FAIL tween leak (panels) -- only ${panelLeak.opened.length}/6 opened`);
+    } else if (panelLeak.orphaned > 0) {
+      failures.push(
+        `tween leak (panels): ${panelLeak.orphaned} tween(s) are still animating a destroyed object after closing every station panel`
+      );
+      log(`FAIL tween leak (panels) -- ${panelLeak.orphaned} tween(s) left on destroyed objects`);
+    } else if (panelLeak.after > panelLeak.before) {
+      failures.push(`tween leak (panels): ${panelLeak.before} tweens after one open/close pass over 6 stations, ${panelLeak.after} after three`);
+      log(`FAIL tween leak (panels) -- ${panelLeak.before} -> ${panelLeak.after}`);
     } else {
-      log(`PASS tween leak -- ${tweenLeak.before} -> ${tweenLeak.after}, no growth`);
+      log(`PASS tween leak (panels) -- 6 stations x3 cycles, ${panelLeak.before} -> ${panelLeak.after}, no growth`);
+    }
+
+    log('  2b: world sprites, picked up off the map');
+    const pickupLeak = await page.evaluate(async () => {
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      const g = window.__game;
+      g.scene.start('Overworld', { world: 1, regenerate: true });
+      await sleep(1200);
+      const s = g.scene.getScene('Overworld');
+      const count = () => s.tweens.getTweens().length;
+
+      // Tokens, not crystals: collecting one destroys the sprite outright
+      // with no dialogue and no scene change, which is exactly the case where
+      // a leaked repeat:-1 sparkle would run for the rest of the visit.
+      // Counting is the wrong instrument here and it is worth saying why: a
+      // sprite's sparkles are created when it spawns, so a pickup that leaks
+      // them does not *grow* the tween count, it just fails to shrink it.
+      // What a leak actually looks like is a live tween whose target has been
+      // destroyed, and Phaser clears a destroyed GameObject's `scene`, so
+      // that is directly observable.
+      const orphans = () =>
+        s.tweens
+          .getTweens()
+          .filter((tw) => (tw.targets || []).some((t) => t && typeof t === 'object' && 'scene' in t && t.scene === undefined))
+          .length;
+
+      const tokens = (s['tokenSprites'] || []).slice(0, 8).map((t) => ({ x: t.x, y: t.y }));
+      if (tokens.length === 0) return { collected: 0, before: 0, after: 0, orphaned: 0 };
+      const before = count();
+      for (const t of tokens) s['maybeCollectToken'](t.x, t.y);
+      await sleep(200);
+      return { collected: tokens.length, before, after: count(), orphaned: orphans() };
+    });
+    if (pickupLeak.collected === 0) {
+      failures.push('tween leak (pickups): world 1 spawned no tokens, so the pickup path was never exercised');
+      log('FAIL tween leak (pickups) -- no tokens to collect');
+    } else if (pickupLeak.orphaned > 0) {
+      failures.push(
+        `tween leak (pickups): after collecting ${pickupLeak.collected} tokens, ${pickupLeak.orphaned} tween(s) are still animating a destroyed object -- ` +
+          `the pickup path is destroying a container without killTweensDeep`
+      );
+      log(`FAIL tween leak (pickups) -- ${pickupLeak.orphaned} tween(s) left on destroyed objects`);
+    } else {
+      log(
+        `PASS tween leak (pickups) -- ${pickupLeak.collected} tokens collected, ${pickupLeak.before} -> ${pickupLeak.after} tweens, ` +
+          `none left on a destroyed object`
+      );
     }
 
     // -----------------------------------------------------------------
@@ -281,7 +378,7 @@ async function main() {
     log(`perf-check: ${failures.length} failure(s), ${warnings.length} warning(s). Wall time: ${wall}s`);
     process.exit(1);
   }
-  log(`perf-check: clean -- 10 worlds within budget, no tween growth, ${warnings.length} warning(s). Wall time: ${wall}s`);
+  log(`perf-check: clean -- 10 worlds within budget, no tween growth across panels or pickups, ${warnings.length} warning(s). Wall time: ${wall}s`);
 }
 
 main().catch((e) => {
