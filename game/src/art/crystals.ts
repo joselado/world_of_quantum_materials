@@ -453,6 +453,28 @@ export function killTweensDeep(scene: Pick<Phaser.Scene, 'tweens'>, obj: Phaser.
   }
 }
 
+// The same deep walk, pausing rather than killing. `setVisible(false)` hides
+// a sprite but does nothing to the tweens animating it, so a culled crystal's
+// sparkles keep being evaluated every frame for something nobody can see --
+// and a Macro map at high density carries a couple of hundred of those at
+// once. `pause()` holds elapsed time rather than resetting it, so a sparkle
+// resumes on its own phase instead of jumping when the sprite comes back
+// into view. Call it only when visibility actually flips: walking the tree
+// every frame would cost more than the tweens do.
+export function setTweensPausedDeep(
+  scene: Pick<Phaser.Scene, 'tweens'>,
+  obj: Phaser.GameObjects.GameObject,
+  paused: boolean
+) {
+  for (const tween of scene.tweens.getTweensOf(obj)) {
+    if (paused) tween.pause();
+    else tween.resume();
+  }
+  if (obj instanceof Phaser.GameObjects.Container) {
+    obj.each((child: Phaser.GameObjects.GameObject) => setTweensPausedDeep(scene, child, paused));
+  }
+}
+
 // One `CrystalVariant`'s own habit, drawn into `g` centered on (0,0) -- the
 // single place a variant name is turned into a shape, so `makeCrystal`'s
 // ordinary render and `drawVariantShape`'s hybrid halves can never disagree

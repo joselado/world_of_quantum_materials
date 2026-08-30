@@ -19,7 +19,7 @@
 // fast and driving in every world, because a fight is the player's own
 // coherence pushing back against a world losing its own.
 //
-// A second arrangement, "Modern" (SCORES_MODERN), is *derived* from the
+// A second arrangement, "Modern", is *derived* from the
 // classic scores by a per-track smoothing transform (modernizeScore near the
 // bottom of this file) rather than authored separately: slow string-pad
 // attack/release swells in place of chip plucks, square/sawtooth mapped to
@@ -1580,20 +1580,34 @@ const MODERN_BATTLE_OPTS: ModernizeOpts = {
   crashGain: 0.85,
 };
 
-const SCORES_MODERN: Record<string, Score> = Object.fromEntries(
-  Object.entries(SCORES).map(([key, score]) => [
-    key,
-    modernizeScore(score, key.startsWith('battle:') ? MODERN_BATTLE_OPTS : MODERN_OVERWORLD_OPTS),
-  ])
-);
+// Derived per score on first use rather than as a whole table up front. The
+// default style is Classic, so a player who never opens Settings never needs
+// any of this -- and the whole table is a permanently live second copy of the
+// soundtrack, on the order of eight thousand small note objects. Building one
+// score costs well under a millisecond, so the switch to Modern is inaudible,
+// and each derived score is kept so a track that is played again is not
+// rebuilt.
+const modernCache = new Map<string, Score>();
+
+function modernScore(key: string): Score | undefined {
+  const cached = modernCache.get(key);
+  if (cached) return cached;
+  const source = SCORES[key];
+  if (!source) return undefined;
+  const derived = modernizeScore(source, key.startsWith('battle:') ? MODERN_BATTLE_OPTS : MODERN_OVERWORLD_OPTS);
+  assertLoopBeats(`${key} (modern)`, derived);
+  modernCache.set(key, derived);
+  return derived;
+}
 
 // A track's notes must sum to exactly its score's loopBeats -- scheduleLoop
 // advances its own audio-clock cursor by exactly loopBeats*secPerBeat each
 // iteration (see MusicEngine.play), so a mismatch isn't cumulative drift,
 // it's a voice that cuts out early or overlaps itself at every loop seam.
-// Checked once at module load over every score in both tables, since this
-// is the one class of bug that typechecks clean and can't be caught by ear
-// from a description of the notes.
+// Checked over every authored score at module load, and over each derived
+// Modern arrangement as it is built, since this is the one class of bug that
+// typechecks clean and can't be caught by ear from a description of the
+// notes.
 function assertLoopBeats(key: string, score: Score) {
   for (const track of score.tracks) {
     const sum = track.notes.reduce((total, note) => total + note.beats, 0);
@@ -1603,7 +1617,6 @@ function assertLoopBeats(key: string, score: Score) {
   }
 }
 for (const [key, score] of Object.entries(SCORES)) assertLoopBeats(key, score);
-for (const [key, score] of Object.entries(SCORES_MODERN)) assertLoopBeats(`${key} (modern)`, score);
 
 // Fades between the previous track's session gain and a new one instead of
 // hard-cutting, so a long pad note doesn't ring on top of the next scene's
@@ -1615,6 +1628,10 @@ class MusicEngine {
   private noiseBuffer: AudioBuffer | null = null;
   private driveCurve: Float32Array<ArrayBuffer> | null = null;
   private activeGain: GainNode | null = null;
+  // The outgoing track's ambience input, kept only so it can be unwired
+  // alongside its session gain once the crossfade has finished -- see
+  // `retire` below.
+  private activeAmbience: GainNode | null = null;
   private current: string | null = null;
   private style: MusicStyle = 'classic';
   private stopToken = 0;
@@ -1682,6 +1699,27 @@ class MusicEngine {
   // along with everything else instead of ringing on into the next track.
   // The same routing means duck() (which also only touches sessionGain)
   // ducks the wet tail along with the dry signal, as the player expects.
+  // Unwires a finished track from the graph. Silencing a session gain is not
+  // the same as removing it: it stays connected to master, and so does its
+  // whole ambience bus, whose delay feeds back into itself. The game switches
+  // score on every overworld-to-battle-and-back transition, so leaving them
+  // wired accumulates a few thousand nodes across a long session. Scheduled
+  // comfortably after the 0.15s crossfade rather than immediately, because
+  // disconnecting before the ramp has reached zero would cut the outgoing
+  // echo tail dead, which is the one thing audible here.
+  private retire(gain: GainNode | null, ambience: GainNode | null) {
+    if (!gain && !ambience) return;
+    window.setTimeout(() => {
+      try {
+        gain?.disconnect();
+        ambience?.disconnect();
+      } catch (e) {
+        // A node already detached (context torn down under us) is not an error
+        // worth surfacing -- the point of this call is that it stops existing.
+      }
+    }, 300);
+  }
+
   private createAmbienceBus(ctx: AudioContext, dest: GainNode): GainNode {
     const input = ctx.createGain();
     input.gain.value = 1;
@@ -1705,11 +1743,12 @@ class MusicEngine {
     return input;
   }
 
-  // Which score table play() reads from -- 'classic' (SCORES) or 'modern'
-  // (SCORES_MODERN). Restarts whatever's currently playing under the new
-  // table (bypassing play()'s own no-op guard, which otherwise treats a
-  // style change on the *same* key as nothing happening) so the Settings
-  // toggle takes effect immediately rather than on the next scene transition.
+  // Which arrangement play() reads -- 'classic' (SCORES as authored) or
+  // 'modern' (modernScore's derivation of the same key). Restarts whatever's
+  // currently playing under the new arrangement (bypassing play()'s own no-op
+  // guard, which otherwise treats a style change on the *same* key as nothing
+  // happening) so the Settings toggle takes effect immediately rather than on
+  // the next scene transition.
   setStyle(style: MusicStyle) {
     if (this.style === style) return;
     this.style = style;
@@ -1735,8 +1774,7 @@ class MusicEngine {
       return;
     }
     if (this.current === which) return;
-    const table = this.style === 'modern' ? SCORES_MODERN : SCORES;
-    const score = table[which] ?? SCORES[which];
+    const score = (this.style === 'modern' ? modernScore(which) : undefined) ?? SCORES[which];
     if (!score) {
       // Whatever's currently playing (if anything) is deliberately left
       // running rather than cut to silence -- an unknown key is a bug
@@ -1755,6 +1793,15 @@ class MusicEngine {
       prevGain.gain.cancelScheduledValues(now);
       prevGain.gain.setValueAtTime(prevGain.gain.value, now);
       prevGain.gain.linearRampToValueAtTime(0, now + 0.15);
+      this.retire(prevGain, this.activeAmbience);
+      this.activeAmbience = null;
+    }
+    // The outgoing track's own lookahead timer. It is already self-
+    // terminating on the token check, but clearing it means the callback
+    // never runs at all rather than running once to discover it is stale.
+    if (this.timer !== null) {
+      window.clearTimeout(this.timer);
+      this.timer = null;
     }
 
     const sessionGain = ctx.createGain();
@@ -1764,6 +1811,7 @@ class MusicEngine {
     this.activeGain = sessionGain;
     this.current = which;
     const ambience = this.createAmbienceBus(ctx, sessionGain);
+    this.activeAmbience = ambience;
 
     const secPerBeat = 60 / score.bpm;
     const loopBeatsSeconds = score.loopBeats * secPerBeat;
@@ -1815,7 +1863,9 @@ class MusicEngine {
       this.activeGain.gain.cancelScheduledValues(now);
       this.activeGain.gain.setValueAtTime(this.activeGain.gain.value, now);
       this.activeGain.gain.linearRampToValueAtTime(0, now + 0.15);
+      this.retire(this.activeGain, this.activeAmbience);
       this.activeGain = null;
+      this.activeAmbience = null;
     }
   }
 

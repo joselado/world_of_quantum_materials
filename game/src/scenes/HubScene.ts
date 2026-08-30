@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { makeCrystal } from '../art/crystals';
+import { killTweensDeep, makeCrystal } from '../art/crystals';
 import { CANVAS_W, CANVAS_H } from '../art/perspective';
 import { getPlayerMaterial, getPlayerDopantLook, allCrystals, TYPE_LOOK, materialDisplayName, materialTypeLabel, worldName } from '../data/materials';
 import { wildHpForWorld } from '../data/balance';
@@ -859,6 +859,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // OverworldScene.refreshPlayerCrystal, called by applyPlayerForm above and
   // by Anderson's dope (a new impurity guest on an unchanged body).
   refreshPlayerCrystal() {
+    killTweensDeep(this, this.playerCrystalGfx);
     this.playerCrystalGfx.destroy();
     this.playerCrystalGfx = makeCrystal(this, 46, this.playerMaterial.color, this.playerMaterial.variant, {
       seed: this.playerMaterial.name,
@@ -1332,6 +1333,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // pick, list paging, settings change) before rebuilding.
   closeDialogue() {
     stopMoveEffectPreview();
+    if (this.dialogueContainer) killTweensDeep(this, this.dialogueContainer);
     this.dialogueContainer?.destroy(true);
     this.dialogueContainer = undefined;
     // Same per-guardian session-field reset as OverworldScene.closeDialogue()

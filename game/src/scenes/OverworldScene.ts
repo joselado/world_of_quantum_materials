@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { BIOMES, getBiome } from '../art/biomes';
 import type { Biome } from '../art/biomes';
-import { makeCrystal } from '../art/crystals';
+import { killTweensDeep, makeCrystal, setTweensPausedDeep } from '../art/crystals';
 import { makeToken } from '../art/tokens';
 import { makeNoetherAvatar } from '../art/noether';
 import { BOSS_FOOT, BOSS_SILHOUETTE_BOTTOM, BOSS_SILHOUETTE_HALF_WIDTH, BOSS_SILHOUETTE_TOP, makeBossCrystal } from '../art/boss';
@@ -364,6 +364,10 @@ interface WorldSprite {
   // still free to be alive, from art of its own that moves without leaving
   // the ground (art/boss.ts's feet-pivoted idle rig).
   still?: boolean;
+  // Last visibility the culler set, so updateWorldSprites can tell a flip
+  // from a frame that simply agrees with the one before it and only pause or
+  // resume this sprite's tweens on the flip.
+  culled?: boolean;
 }
 
 // The interface every guardian-panel file (scenes/panels/<guardian>.ts,
@@ -518,11 +522,10 @@ export interface GuardianPanelHost extends Phaser.Scene {
   blochPreview: number | null;
 }
 
-// One entry per world with a guardian -- replaces the old per-guardian
-// `spawnXSprite`/`this.world === N` branches with a single data-driven
-// dispatch (spawnGuardianSprite/openGuardian), the same "reusable rather than
-// per-world bespoke" approach the map generator and biome table already
-// use. Every guardian sets `open` explicitly: Noether (shop), Bloch
+// One entry per world with a guardian, dispatched data-driven through
+// spawnGuardianSprite/openGuardian rather than by a per-guardian branch on
+// the world number -- the same "reusable rather than per-world bespoke"
+// approach the map generator and biome table use. Every guardian sets `open` explicitly: Noether (shop), Bloch
 // (teleport hub), Dresselhaus (transmutation), Landau (analytic moves),
 // Majorana (hybrid materials), Anderson (impurity doping, World 6), Feynman
 // (move-leveling, World 7), Kondo (self-buff moves), Franklin (passive
@@ -2130,8 +2133,14 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
         laneL <= laneClip &&
         laneR >= -laneClip &&
         depth / DRAW_DISTANCE_TILES < VISIBLE_DEPTH_FRACTION;
-      c.container.setVisible(visible);
-      c.label?.setVisible(visible);
+      if (c.culled !== !visible) {
+        c.culled = !visible;
+        c.container.setVisible(visible);
+        c.label?.setVisible(visible);
+        // A hidden sprite's sparkles are still tweens the manager steps every
+        // frame, so they are parked for as long as it stays off screen.
+        setTweensPausedDeep(this, c.container, !visible);
+      }
       if (!visible) continue;
 
       // `p` is the sprite's tile centre on the ground plane, so the art is
@@ -2169,6 +2178,12 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     const spriteIndex = this.crystalSprites.findIndex((c) => c.x === x && c.y === y);
     if (spriteIndex !== -1) {
       const [sprite] = this.crystalSprites.splice(spriteIndex, 1);
+      // Destroying a container does not stop the tweens running on it, and a
+      // crystal's sparkles are `repeat: -1` -- so without this they animate a
+      // dead object for the rest of the visit. Only an encounter that ends in
+      // a fight changes scene and tears the whole TweenManager down with it;
+      // the "let me pass" branch stays right here.
+      killTweensDeep(this, sprite.container);
       sprite.container.destroy();
       sprite.label?.destroy();
     }
@@ -2490,6 +2505,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // either way.
   closeDialogue() {
     stopMoveEffectPreview();
+    if (this.dialogueContainer) killTweensDeep(this, this.dialogueContainer);
     this.dialogueContainer?.destroy(true);
     this.dialogueContainer = undefined;
     this.dialogueActive = false;
@@ -2659,10 +2675,9 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
 
   // Crossing, with the story beat riding the transition rather than standing
   // beside it: the screen fades to the connective lavender first, and
-  // STORY_BEATS is read over that fade. It is the semantic descendant of the
-  // click that used to carry it, and playing it over the fade is what stops
-  // it stacking against the board and the horizon reveal the player is in the
-  // middle of looking at.
+  // STORY_BEATS is read over that fade. Playing it over the fade is what
+  // stops it stacking against the board and the horizon reveal the player is
+  // in the middle of looking at.
   private crossPass() {
     const fade = this.add
       .rectangle(CANVAS_W / 2, CANVAS_H / 2, CANVAS_W, CANVAS_H, PANEL_BG, 0)
@@ -2978,8 +2993,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // a narration+dialogue line, then a second that raises the stakes --
     // chained as two pages the same destroy-and-rebuild way showWorldLore
     // chains its own two pages above. A world with no entry yet (a future/
-    // unbuilt world) falls back to the old single generic line so it's
-    // never a dead end.
+    // unbuilt world) falls back to a single generic line so it's never a
+    // dead end.
     // Story Screens off: straight into the fight. The taunt pages carry only
     // forward buttons, so they are pacing rather than a confirmation step, and
     // the story log unmasks this world's chapter on the win itself.
@@ -3351,6 +3366,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // sprite is built once in create(), so anything that changes how the
   // player looks mid-scene has to come back through here.
   refreshPlayerCrystal() {
+    killTweensDeep(this, this.playerCrystalGfx);
     this.playerCrystalGfx.destroy();
     this.playerCrystalGfx = makeCrystal(this, PLAYER_CRYSTAL_SIZE, this.playerMaterial.color, this.playerMaterial.variant, {
       seed: this.playerMaterial.name,
@@ -3428,6 +3444,9 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     const spriteIndex = this.tokenSprites.findIndex((c) => c.x === x && c.y === y);
     if (spriteIndex !== -1) {
       const [sprite] = this.tokenSprites.splice(spriteIndex, 1);
+      // Same as a crystal pickup: the token's own sparkle tweens outlive the
+      // container, and collecting one never changes scene.
+      killTweensDeep(this, sprite.container);
       sprite.container.destroy();
       sprite.label?.destroy();
     }
