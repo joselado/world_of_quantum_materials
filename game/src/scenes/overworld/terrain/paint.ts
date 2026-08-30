@@ -42,6 +42,9 @@ const DETAIL_MAX_DEPTH = 0.75;
 export function drawTerrain(view: TerrainView) {
   const g = view.gfx;
   g.clear();
+  // The camera has moved since the last frame, so no row's cached colors
+  // survive into this one.
+  rowGroundRow = NaN;
 
   const { tiles, farEdgeRow, contours } = view.plan;
   const camX = view.camX;
@@ -63,6 +66,15 @@ export function drawTerrain(view: TerrainView) {
   for (let y = minY; y <= maxY; y++) {
     drawMarginColumns(view, tiles[y], y);
     const laneClip = laneClipAt(camY - y + 0.5);
+    // A tile's right lane is the next tile's left lane exactly -- both are
+    // `x - camX + 0.5` -- and both sit at this row's two depths, so the pair
+    // of points projected for one column's right edge is the pair the next
+    // column needs for its left edge. Carried across only while the columns
+    // are genuinely adjacent: either clip test below can skip a column, and a
+    // carry across a gap would place the tile at its neighbour's edge.
+    let carryCol = -2;
+    let carryF: ProjectedPoint | null = null;
+    let carryN: ProjectedPoint | null = null;
     for (let x = 0; x < cols; x++) {
       const laneL = x - camX - 0.5;
       const laneR = x - camX + 0.5;
@@ -72,10 +84,14 @@ export function drawTerrain(view: TerrainView) {
       const depthNear = camY - y - 0.5;
       if (depthFar + CAMERA_BACK_TILES <= 0) continue;
 
-      const pFL = projectTile(laneL, depthFar);
+      const adjacent = carryCol === x - 1 && carryF !== null && carryN !== null;
+      const pFL = adjacent ? carryF! : projectTile(laneL, depthFar);
+      const pNL = adjacent ? carryN! : projectTile(laneL, depthNear);
       const pFR = projectTile(laneR, depthFar);
       const pNR = projectTile(laneR, depthNear);
-      const pNL = projectTile(laneL, depthNear);
+      carryCol = x;
+      carryF = pFR;
+      carryN = pNR;
 
       const depthRatio = Phaser.Math.Clamp(depthFar / DRAW_DISTANCE_TILES, 0, 1);
       const tile = tiles[y][x];
@@ -83,7 +99,8 @@ export function drawTerrain(view: TerrainView) {
       const fill = contour ? projectContour(contour.outline, camX, camY) : [pFL, pFR, pNR, pNL];
 
       if (tile.kind === 'path') {
-        let color = groundColor(bandBase(tile.biome, tile.biome.path, y), depthRatio, walkableHazeTarget(view, tile.biome, depthRatio));
+        const rg = rowGround(view, tile.biome, y, depthRatio);
+        let color = rg.path;
         if (tile.regionTint != null) color = blend(color, tile.regionTint, regionTintAt(depthRatio, 0.55));
         color = seamed(view, color, y);
         g.fillStyle(color, 1);
@@ -91,7 +108,7 @@ export function drawTerrain(view: TerrainView) {
         drawBandBoundary(g, tile.biome, y, pFL, pFR, pNR, pNL, depthRatio);
         if (contour) drawContactShadow(g, contour, tile.biome, camX, camY, depthRatio);
         if (GROUND_MOTIFS_ENABLED && depthRatio < DETAIL_MAX_DEPTH && tile.decorate) {
-          decorateTile(g, view.biome, accentTile(false, fill, pFL, pFR, pNR, pNL, x, y, depthRatio, hazeTarget(view, tile.biome), view.playerColor, view.now, tile.regionTint));
+          decorateTile(g, view.biome, accentTile(false, fill, pFL, pFR, pNR, pNL, x, y, depthRatio, rg.haze, view.playerColor, view.now, tile.regionTint));
         }
         if (tile.midHighlight) {
           // The glow falls off radially from the guardian's own tile, so the
@@ -195,20 +212,28 @@ function drawMarginRows(view: TerrainView, deepestRow: number) {
     drawMarginColumns(view, edge, gy);
     const depthRatio = Phaser.Math.Clamp(depthFar / DRAW_DISTANCE_TILES, 0, 1);
     const laneClip = laneClipAt(depthFar);
+    // Same shared-edge carry as the main sweep above.
+    let carryCol = -2;
+    let carryF: ProjectedPoint | null = null;
+    let carryN: ProjectedPoint | null = null;
     for (let x = 0; x < cols; x++) {
       const laneL = x - camX - 0.5;
       const laneR = x - camX + 0.5;
       if (laneL > laneClip || laneR < -laneClip) continue;
 
-      const pFL = projectTile(laneL, depthFar);
+      const adjacent = carryCol === x - 1 && carryF !== null && carryN !== null;
+      const pFL = adjacent ? carryF! : projectTile(laneL, depthFar);
+      const pNL = adjacent ? carryN! : projectTile(laneL, depthNear);
       const pFR = projectTile(laneR, depthFar);
       const pNR = projectTile(laneR, depthNear);
-      const pNL = projectTile(laneL, depthNear);
+      carryCol = x;
+      carryF = pFR;
+      carryN = pNR;
       const fill = [pFL, pFR, pNR, pNL];
       const tile = edge[x];
 
       if (tile.kind === 'path' && roadRunsOn) {
-        let color = groundColor(bandBase(tile.biome, tile.biome.path, gy), depthRatio, walkableHazeTarget(view, tile.biome, depthRatio));
+        let color = rowGround(view, tile.biome, gy, depthRatio).path;
         if (tile.regionTint != null) color = blend(color, tile.regionTint, regionTintAt(depthRatio, 0.55));
         g.fillStyle(color, 1);
         fillPolygon(g, fill);
@@ -249,7 +274,7 @@ function drawMarginTile(view: TerrainView, edge: TerrainTile, gx: number, y: num
 
   if (depthRatio <= DETAIL_MAX_DEPTH) {
     const kind = edge.kind !== 'path' ? edge.kind : offPathKindOf(edge.biome);
-    drawAccent(g, kind, fill, pFL, pFR, pNR, pNL, gx, y, edge.featureCore, depthRatio, hazeTarget(view, edge.biome), view.playerColor, view.now, edge.regionTint);
+    drawAccent(g, kind, fill, pFL, pFR, pNR, pNL, gx, y, edge.featureCore, depthRatio, rowGround(view, edge.biome, y, depthRatio).haze, view.playerColor, view.now, edge.regionTint);
   }
 }
 
@@ -358,7 +383,7 @@ function drawOffPathTile(
   drawBandBoundary(g, tile.biome, gy, pFL, pFR, pNR, pNL, depthRatio);
 
   if (depthRatio <= DETAIL_MAX_DEPTH) {
-    drawAccent(g, tile.kind, fill, pFL, pFR, pNR, pNL, gx, gy, tile.featureCore, depthRatio, hazeTarget(view, tile.biome), view.playerColor, view.now, tile.regionTint);
+    drawAccent(g, tile.kind, fill, pFL, pFR, pNR, pNL, gx, gy, tile.featureCore, depthRatio, rowGround(view, tile.biome, gy, depthRatio).haze, view.playerColor, view.now, tile.regionTint);
   }
 
   // The impassable side of the contact shadow, over the accent rather than
@@ -436,11 +461,58 @@ function detailFade(depth: number): number {
   return Phaser.Math.Clamp((DETAIL_MAX_DEPTH - depth) / (DETAIL_MAX_DEPTH - DETAIL_FADE_FROM), 0, 1);
 }
 
+// Ground colors memoized per row. Everything feeding a tile's base color is
+// fixed across one grid row except the tile's own biome: the row index picks
+// the band step, and the row index plus the camera fix the depth, so the
+// depth fog, the haze target and the walkable haze lightening are all
+// constant along the row. Only the region tint and the gate seam are genuinely
+// per-tile, and both are applied by the caller on top of what is cached here.
+//
+// A row spans one or two biomes in practice, so a short linear scan is
+// cheaper than hashing, and entries are rewritten in place rather than
+// reallocated. The row sweep is strictly row-major (drawMarginRows, then the
+// main sweep, each doing its margin columns and its own tiles at one row
+// index), so a single row's worth of entries is all that ever needs to be
+// live. Keyed on the row index and reset at the top of every frame, because
+// the camera moves between frames and the same row index then sits at a
+// different depth.
+interface RowGround {
+  biome: Biome;
+  haze: number;
+  path: number;
+  ground: number;
+}
+
+const rowGroundCache: RowGround[] = [];
+let rowGroundCount = 0;
+let rowGroundRow = NaN;
+
+function rowGround(view: TerrainView, biome: Biome, gy: number, depthRatio: number): RowGround {
+  if (gy !== rowGroundRow) {
+    rowGroundRow = gy;
+    rowGroundCount = 0;
+  }
+  for (let i = 0; i < rowGroundCount; i++) {
+    if (rowGroundCache[i].biome === biome) return rowGroundCache[i];
+  }
+  let entry = rowGroundCache[rowGroundCount];
+  if (!entry) {
+    entry = { biome, haze: 0, path: 0, ground: 0 };
+    rowGroundCache[rowGroundCount] = entry;
+  }
+  entry.biome = biome;
+  entry.haze = hazeTarget(view, biome);
+  entry.path = groundColor(bandBase(biome, biome.path, gy), depthRatio, walkableHazeTarget(view, biome, depthRatio));
+  entry.ground = groundColor(bandBase(biome, biome.ground, gy), depthRatio, entry.haze);
+  rowGroundCount++;
+  return entry;
+}
+
 // The flat fill color of an impassable tile: the biome's own off-path
 // ground, stepped onto its band where the biome has bands, hazed for depth,
 // and tinted toward a mapgen domain's color where the tile belongs to one.
 function offPathColor(view: TerrainView, biome: Biome, regionTint: number | null, gy: number, depthRatio: number): number {
-  const base = groundColor(bandBase(biome, biome.ground, gy), depthRatio, hazeTarget(view, biome));
+  const base = rowGround(view, biome, gy, depthRatio).ground;
   return regionTint != null ? blend(base, regionTint, regionTintAt(depthRatio, 0.6)) : base;
 }
 

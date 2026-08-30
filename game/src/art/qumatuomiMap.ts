@@ -3,6 +3,7 @@ import { getBiome } from './biomes';
 import { blend, hashSeed, seededRandom } from './colors';
 import { DISTANT_SELVES, MAX_CREST } from './horizons';
 import { CANVAS_W } from './perspective';
+import { fillDot } from './shapes';
 
 // A standalone, hand-drawn Finland-coastline map (a Suomi/"Qumatuomi" pun),
 // built the same way every other art/ builder in this game is -- Graphics
@@ -353,7 +354,13 @@ interface RegionPaintOptions {
 
 function paintRegions(g: Phaser.GameObjects.Graphics, o: RegionPaintOptions) {
   const tint = o.tint ?? NO_TINT;
-  const colorOf = (w: number) => tint(o.discovered.has(w) ? regionColor(w) : UNDISCOVERED_FILL);
+  // The palette is ten entries and the partition is several hundred runs, so
+  // it is resolved once per call rather than once or twice per run. That
+  // matters here specifically because the overlook redraws this every frame,
+  // and `regionColor` and `tint` are both blends.
+  const palette: number[] = [];
+  for (let w = 1; w <= 10; w++) palette[w] = tint(o.discovered.has(w) ? regionColor(w) : UNDISCOVERED_FILL);
+  const colorOf = (w: number) => palette[w] ?? tint(UNDISCOVERED_FILL);
   // Half a pixel of overlap on each run, so two neighbours drawn at a
   // fractional scale meet rather than leaving a hairline of the land fill
   // between them. Every fill here is opaque, so an overlap costs nothing.
@@ -370,7 +377,7 @@ function paintRegions(g: Phaser.GameObjects.Graphics, o: RegionPaintOptions) {
     const { w1 } = nearestTwoWorlds(isl.x, isl.y);
     const p = o.toScreen(isl.x, isl.y);
     g.fillStyle(colorOf(w1), 1);
-    g.fillCircle(p.x, p.y, Math.max(0.5, (isl.r - 0.6) * o.sx));
+    fillDot(g, p.x, p.y, Math.max(0.5, (isl.r - 0.6) * o.sx));
   });
 }
 
@@ -470,8 +477,44 @@ interface RegionTextureOptions {
   tint?: Tint;
 }
 
+// The surviving scatter, resolved once and replayed after that -- the same
+// reasoning as `regionRuns` above, and for the same caller: the overlook is
+// scenery redrawn every frame, and 560 point-in-polygon tests plus 560
+// ten-way nearest-world scans is not something to pay for sixty times a
+// second. Only the screen transform and the tint change between frames, and
+// both are applied on replay.
+//
+// Each mark also carries the random draws its own shape consumed. The scatter
+// is one deterministic stream, and a mark in an undiscovered region is skipped
+// *before* it draws anything, so which values each surviving mark receives
+// depends on which worlds are discovered -- hence a cache keyed on that, not a
+// single list. A given viewer's discovery state does not change while they
+// stand at the cliff, so the overlook hits one entry every frame.
+interface TextureMark {
+  world: number;
+  x: number;
+  y: number;
+  draws: number[];
+}
+
+const textureMarkCache = new Map<string, TextureMark[]>();
+
 function drawRegionTextures(g: Phaser.GameObjects.Graphics, o: RegionTextureOptions) {
+  const tint = o.tint ?? NO_TINT;
+  const key = Array.from(o.discovered).sort((a, b) => a - b).join(',');
+  const cached = textureMarkCache.get(key);
+  if (cached) {
+    for (const m of cached) {
+      let i = 0;
+      drawTextureMark(g, m.world, o.toScreen(m.x, m.y), o.markScale, () => m.draws[i++] ?? 0, tint);
+    }
+    return;
+  }
+
+  // First pass for this discovery state: draw exactly as before, recording
+  // each surviving mark and the values it took off the stream.
   const rand = seededRandom(hashSeed('qumatuomi-texture'));
+  const marks: TextureMark[] = [];
   for (let i = 0; i < 560; i++) {
     const x = rand() * NATIVE_W;
     const y = rand() * NATIVE_H;
@@ -479,8 +522,16 @@ function drawRegionTextures(g: Phaser.GameObjects.Graphics, o: RegionTextureOpti
     const { w1, d1, d2 } = nearestTwoWorlds(x, y);
     if (d2 - d1 < 3) continue;
     if (!o.discovered.has(w1)) continue;
-    drawTextureMark(g, w1, o.toScreen(x, y), o.markScale, rand, o.tint ?? NO_TINT);
+    const draws: number[] = [];
+    const record = () => {
+      const v = rand();
+      draws.push(v);
+      return v;
+    };
+    drawTextureMark(g, w1, o.toScreen(x, y), o.markScale, record, tint);
+    marks.push({ world: w1, x, y, draws });
   }
+  textureMarkCache.set(key, marks);
 }
 
 // --- Style 'b': terrain vignettes ------------------------------------------

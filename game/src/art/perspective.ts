@@ -1,4 +1,3 @@
-import Phaser from 'phaser';
 import { CANVAS_W, CANVAS_H } from '../config/screen';
 
 // Over-the-shoulder pseudo-3D projection for the overworld: the camera sits
@@ -44,12 +43,19 @@ export function project(lane: number, depth: number): ProjectedPoint {
 // of color at the horizon. `target` defaults to a pale sky blue but callers
 // pass a biome-specific fog color (e.g. a dark cave haze) so the blend still
 // looks right off the Mean Fields' own pale blue sky.
+// Integer shift/mask arithmetic for the same reason art/colors.ts's `blend`
+// uses it: this runs several times per tile across the whole visible grid
+// every frame, and Phaser's Color helpers allocate on every call. Note the
+// channels are deliberately *not* rounded here -- the shifts truncate, which
+// is what this function has always produced and what the ground palette is
+// tuned against, so rounding them would move every fogged tile by a value.
 export function fogColor(base: number, depthRatio: number, target = 0xbfe3ff): number {
-  const c1 = Phaser.Display.Color.IntegerToColor(base);
-  const c2 = Phaser.Display.Color.IntegerToColor(target);
-  const t = Phaser.Math.Clamp(depthRatio, 0, 1) * 0.6;
-  const r = Phaser.Math.Linear(c1.red, c2.red, t);
-  const g = Phaser.Math.Linear(c1.green, c2.green, t);
-  const b = Phaser.Math.Linear(c1.blue, c2.blue, t);
-  return Phaser.Display.Color.GetColor(r, g, b);
+  const t = Math.max(0, Math.min(1, depthRatio)) * 0.6;
+  const r1 = (base >> 16) & 255;
+  const g1 = (base >> 8) & 255;
+  const b1 = base & 255;
+  const r = (((target >> 16) & 255) - r1) * t + r1;
+  const g = (((target >> 8) & 255) - g1) * t + g1;
+  const b = ((target & 255) - b1) * t + b1;
+  return (r << 16) | (g << 8) | b;
 }

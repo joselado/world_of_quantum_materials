@@ -559,16 +559,42 @@ function drawDistantSelf(g: Phaser.GameObjects.Graphics, view: AtmosphereView, t
     // swallow where all of them overlap, so the knob means what it says.
     const passes = DISTANT_SWALLOW_STEPS * DISTANT_FEATHER_PX;
     g.fillStyle(blend(depicted.hillColor, target, DISTANT_DROWN), 1 - Math.pow(1 - depicted.hillAlpha, 1 / passes));
-    for (let step = 0; step < DISTANT_SWALLOW_STEPS; step++) {
-      for (let drop = 0; drop < DISTANT_FEATHER_PX; drop++) {
-        fillSilhouette(g, self.points, step / DISTANT_SWALLOW_STEPS, drop);
-      }
+    const tris = silhouetteTriangles(world, self.points);
+    for (let i = 0; i < tris.length; i += 6) {
+      g.fillTriangle(tris[i], tris[i + 1], tris[i + 2], tris[i + 3], tris[i + 4], tris[i + 5]);
     }
   }
 
   // The world *depicted*, which is the neighbour ahead -- a distant self is
   // that world seen from a world away, not the one being stood in.
   self.sky?.({ g, horizonY: HORIZON_Y, target, now: view.now, route: view.route, world: view.world + 1 });
+}
+
+// The silhouette's tessellation, cached per depicted world. Nothing about
+// the geometry moves: the profile is a module-level constant
+// (art/horizons.ts's DISTANT_SELVES), and so are HORIZON_Y, MAX_CREST and the
+// foot/drop each of the `passes` copies is drawn at. The only thing that
+// changes frame to frame is the fill color, which follows the live haze
+// target. So every vertex is computed once per world and replayed after that,
+// leaving the per-frame cost as the fillTriangle calls alone.
+//
+// They stay inside the terrain Graphics rather than moving to a cached object
+// of their own: this shape is painted mid-stream, over the sky wash and under
+// the mist band and the ground that follow it in the same command list, and
+// that ordering is what the atmosphere is assembled out of.
+const silhouetteCache = new Map<number, number[]>();
+
+function silhouetteTriangles(world: number, profile: HorizonPoint[]): number[] {
+  const cached = silhouetteCache.get(world);
+  if (cached) return cached;
+  const tris: number[] = [];
+  for (let step = 0; step < DISTANT_SWALLOW_STEPS; step++) {
+    for (let drop = 0; drop < DISTANT_FEATHER_PX; drop++) {
+      tessellateSilhouette(tris, profile, step / DISTANT_SWALLOW_STEPS, drop);
+    }
+  }
+  silhouetteCache.set(world, tris);
+  return tris;
 }
 
 // One copy of the silhouette: the strip between its crest (dropped `drop`
@@ -588,7 +614,7 @@ function drawDistantSelf(g: Phaser.GameObjects.Graphics, view: AtmosphereView, t
 //
 // The strip covers exactly the same region: consecutive quads share an edge,
 // and a segment whose floor has already met its crest contributes no area.
-function fillSilhouette(g: Phaser.GameObjects.Graphics, profile: HorizonPoint[], foot: number, drop: number) {
+function tessellateSilhouette(out: number[], profile: HorizonPoint[], foot: number, drop: number) {
   let prevX = 0;
   let prevCrest = 0;
   let prevFloor = 0;
@@ -601,8 +627,8 @@ function fillSilhouette(g: Phaser.GameObjects.Graphics, profile: HorizonPoint[],
     // height: it covers nothing, and the later swallow steps leave every
     // shallow dip in the profile exactly there.
     if (i > 0 && (floor > crest || prevFloor > prevCrest)) {
-      g.fillTriangle(prevX, prevCrest, p.x, crest, p.x, floor);
-      g.fillTriangle(prevX, prevCrest, p.x, floor, prevX, prevFloor);
+      out.push(prevX, prevCrest, p.x, crest, p.x, floor);
+      out.push(prevX, prevCrest, p.x, floor, prevX, prevFloor);
     }
     prevX = p.x;
     prevCrest = crest;

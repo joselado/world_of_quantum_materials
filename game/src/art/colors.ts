@@ -31,13 +31,24 @@ export function darken(colorInt: number, amount: number): number {
 // tone (e.g. "tarnished silver") the same way, since a plain hue rotation
 // can't desaturate a `TYPE_LOOK` base the way some of those descriptions
 // need.
+//
+// Pure integer shift/mask arithmetic rather than Phaser's Color helpers,
+// because this is a hot path: the terrain paint pass calls it several times
+// per tile, hundreds of tiles a frame, and `IntegerToColor` allocates an
+// intermediate object plus a `Color` instance whose constructor also builds
+// an `rgba(...)` string no caller here ever reads. The channel arithmetic is
+// the same as before, `Math.round` per channel included, so the result is
+// bit-identical; art/perspective.ts's `fogColor` is written the same way for
+// the same reason, but truncates rather than rounds, which is its own
+// long-standing behaviour and equally load-bearing for the palette.
 export function blend(a: number, b: number, t: number): number {
-  const ca = Phaser.Display.Color.IntegerToColor(a);
-  const cb = Phaser.Display.Color.IntegerToColor(b);
-  const r = Math.round(ca.red + (cb.red - ca.red) * t);
-  const g = Math.round(ca.green + (cb.green - ca.green) * t);
-  const bl = Math.round(ca.blue + (cb.blue - ca.blue) * t);
-  return Phaser.Display.Color.GetColor(r, g, bl);
+  const ar = (a >> 16) & 255;
+  const ag = (a >> 8) & 255;
+  const ab = a & 255;
+  const r = Math.round(ar + (((b >> 16) & 255) - ar) * t);
+  const g = Math.round(ag + (((b >> 8) & 255) - ag) * t);
+  const bl = Math.round(ab + ((b & 255) - ab) * t);
+  return (r << 16) | (g << 8) | bl;
 }
 
 // Rotates a color's hue by a few degrees while keeping its saturation/value --
