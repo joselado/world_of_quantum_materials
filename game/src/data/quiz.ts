@@ -10,7 +10,11 @@
 //   - A few materials (Barium Titanate, Herbertsmithite) spawn in two worlds
 //     but their authored content is genuinely topic-uniform rather than
 //     splittable along either world's own topic, so it lives as a bonus layer
-//     usable in either world instead of being force-split.
+//     usable in either world instead of being force-split. A bonus pool is in
+//     scope only for the worlds the compound's own WORLD_CRYSTALS entries
+//     name: reaching a world through World 9's inheritance loop does not put
+//     the pool in scope there, since the pool was written against the session
+//     the compound was authored for.
 //   - Every named hybrid-recipe result (WORLD_CRYSTALS[10]'s own wilds, e.g.
 //     Cr-doped (Bi,Sb)₂Te₃) spawns *only* in World 10, and needs its own pool
 //     so World 10's own picker (below) has a "material" side to coin-flip
@@ -51,6 +55,8 @@
 // `npm run quiz-topic-check` (scripts/quiz-topic-check.mjs) scores every
 // question here against all ten session files and flags the ones whose own
 // session doesn't rank first -- run it after adding questions.
+
+import { isNativeToWorld } from './materials';
 
 export interface MaterialQuestion {
   prompt: string;
@@ -821,8 +827,8 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'Spin-triplet (odd parity)',
     },
     {
-      prompt: 'Cuprate high-$T_c$ superconductors like YBCO can reach critical temperatures in the...',
-      correct: 'Hundreds of kelvin range',
+      prompt: 'Cuprate high-$T_c$ superconductors like YBCO reach critical temperatures in the...',
+      correct: 'Roughly 90 to 135 K range, above liquid nitrogen',
       incorrect: 'Single-digit kelvin range, like simple metals',
     },
     {
@@ -1070,9 +1076,9 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'No edge states: topology only shows up in the bulk',
     },
     {
-      prompt: 'What symmetry must be broken for Dzyaloshinskii-Moriya exchange to appear at all?',
-      correct: 'Mirror symmetry',
-      incorrect: 'Time-reversal symmetry',
+      prompt: 'Dzyaloshinskii-Moriya exchange on a bond between two spins requires the absence of what?',
+      correct: 'An inversion center at the midpoint of the bond',
+      incorrect: 'Any mirror plane containing the bond',
     },
     {
       prompt: 'Unlike the chiral electronic edge states of a Chern insulator, chiral edge magnons carry...',
@@ -1714,7 +1720,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
     },
     {
       prompt: 'Which move class does a plasmon correspond to?',
-      correct: 'Plasmon Resonance, hosted only by the Metal type',
+      correct: 'Plasmon Resonance, hosted by the Metal and Metallic Magnet types',
       incorrect: 'Electron Pulse, hosted by every conducting type',
     },
     {
@@ -1754,7 +1760,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'An external electric field has to be held across the sample at all times',
     },
     {
-      prompt: 'What move can GeTe carry that a non-ferroelectric semiconductor like HgTe cannot?',
+      prompt: 'What move can GeTe carry that a non-ferroelectric compound like HgTe cannot?',
       correct: 'Ferron Switch, tied to its switchable polarization order',
       incorrect: 'Plasmon Resonance, tied to a free electron gas',
     },
@@ -1821,8 +1827,9 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
 
 // Materials that carry their own supplementary question pool on top of their
 // world's pool (getWorldQuestion coin-flips between the two whenever the
-// fought material has an entry here). Two distinct reasons a material ends
-// up here -- see this file's top comment:
+// fought material has an entry here and the world is one the material is
+// authored into). Two distinct reasons a material ends up here -- see this
+// file's top comment:
 //   - Barium Titanate/Herbertsmithite spawn in two worlds each with content
 //     too topic-uniform to split cleanly between them.
 //   - Every other entry is a WORLD_CRYSTALS[10]-only hybrid-recipe result,
@@ -1871,9 +1878,13 @@ export const MATERIAL_QUESTIONS: Record<string, MaterialQuestion[]> = {
     },
   ],
 
-  // Spawns in World 7 (entanglement/tensor networks) and World 8 (frustrated
-  // magnetism) -- genuinely kagome/quantum-spin-liquid content relevant to
-  // both, not narrowly tensor-network-specific, so it stays a shared bonus pool.
+  // Authored into World 7 (entanglement/tensor networks) and World 8
+  // (frustrated magnetism) -- genuinely kagome/quantum-spin-liquid content
+  // relevant to both, not narrowly tensor-network-specific, so it stays a
+  // shared bonus pool across those two. Herbertsmithite also reaches World 9
+  // through the inheritance loop, and this pool is out of scope there: a
+  // kagome/tensor-network question is not what the defect world teaches.
+  // `isNativeToWorld` is what enforces that.
   Herbertsmithite: [
     {
       prompt: "Why does mean-field theory fail for a quantum spin liquid like herbertsmithite's kagome moments?",
@@ -2375,11 +2386,18 @@ export const ML_LECTURE_QUESTIONS: MaterialQuestion[] = [
 ];
 
 // A world's own pool (WORLD_QUESTIONS), coin-flipped against the fought
-// material's own bonus pool when it has one (see MATERIAL_QUESTIONS' own
-// comment above). World 10 draws differently -- see this function's own
-// world===10 branch and this file's top comment.
+// material's own bonus pool when it has one *and* the material is authored
+// into this world's pool (see MATERIAL_QUESTIONS' own comment above). The
+// native test is what keeps World 9's inheritance from dragging another
+// session's topic in with the compound: World 9 draws every non-hybrid
+// material from worlds 1-8, and a bonus pool written against World 7's
+// session has no business being asked in the defect world. A compound
+// authored into World 9's own pool, Barium Titanate among them, passes the
+// test and keeps its bonus layer there. World 10 draws differently -- see
+// this function's own world===10 branch and this file's top comment.
 export function getWorldQuestion(world: number, materialName?: string): MaterialQuestion | undefined {
-  const materialPool = materialName ? MATERIAL_QUESTIONS[materialName] : undefined;
+  const materialPool =
+    materialName && isNativeToWorld(world, materialName) ? MATERIAL_QUESTIONS[materialName] : undefined;
   const useMaterialPool = !!materialPool && materialPool.length > 0 && Math.random() < 0.5;
 
   if (world === 10) {

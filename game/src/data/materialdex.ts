@@ -19,12 +19,19 @@ export const MATERIAL_BLURBS: Record<string, string> = {
     "GaN is an ordinary doped semiconductor: its transport is governed by a single-particle band picture, with no symmetry breaking or topological structure involved.",
   'Magnesium Oxide':
     'MgO is a simple ionic band insulator, the textbook baseline against which topological insulators (a gapped spectrum for a very different reason) are usually contrasted.',
-  // The ten rivals, and the one place the game states plainly what a golem is.
-  // A rival's blurb is what BattleScene shows the moment it falls, so this is
-  // the text a player reads ten times across the game, once per boss, each
-  // time naming the specific order that boss lost. Kept as physics rather than
-  // as accusation: the material says what happened to it, and the player
-  // assembles the pattern (WORLDS.md section 6).
+  // The eight authored rivals, and the one place the game states plainly what
+  // a golem is. A rival's blurb is what BattleScene shows the moment it falls,
+  // so this is the text a player reads once per boss, each time naming the
+  // specific order that boss lost. Kept as physics rather than as accusation:
+  // the material says what happened to it, and the player assembles the
+  // pattern (WORLDS.md section 6).
+  //
+  // Worlds 1-8 have an entry each, below. The last two worlds reach
+  // `materialBlurb` by other routes: World 9's rival is one of the eight rolled
+  // RIVAL_9_NAMES and takes `TYPE_FALLBACK_BLURBS` for its rolled type, which
+  // is accurate physics for that type if not specific to the golem; World 10's
+  // is read through BattleScene's `opponentView()`, so The Adapted shows the
+  // blurb of whichever real compound it is currently wearing.
   'Polycrystalline Silicon Golem':
     "Silicon's electrons fill a conventional band structure right up to a gap: an ordinary semiconductor, no protected states or broken symmetry needed to explain it. Ground into grains, each one broke the symmetry on its own and in its own direction, so averaged over the whole body the order parameter is zero. A thousand commitments, summing to nothing decided.",
   'Polycrystalline Silica Golem':

@@ -80,8 +80,10 @@ export const MOVES: Record<string, Move> = {
   entanglementSwap: { id: 'entanglementSwap', name: 'Spinon Swap', class: 'spinon', power: 10 },
   decoherenceWave: { id: 'decoherenceWave', name: 'Majorana Split', class: 'majorana', power: 11 },
   // A metal's own collective charge oscillation -- session 9's RPA treatment
-  // names this "a new quasiparticle" in exactly those words. Only 'metal'
-  // hosts it today.
+  // names this "a new quasiparticle" in exactly those words. Hosted by the two
+  // conducting types, 'metal' and 'metallicMagnet': a partially filled band is
+  // what lets a free electron gas support one at all (see types.ts's own
+  // comment on the 'plasmon' class).
   plasmonPulse: { id: 'plasmonPulse', name: 'Plasmon Resonance', class: 'plasmon', power: 8 },
   // A dimer/valence-bond quantum paramagnet's own confined S=1 mode --
   // distinct from (and conceptually the opposite of) spinon's
@@ -275,11 +277,11 @@ export const ULTIMATE_CLASS_UNLOCK_COST = 1000;
 // just keyed per candidate rather than per passive/class. Priced well
 // below Franklin's 40-50 whole-passive band and Noether's/
 // Landau's/Kondo's ~35-55 `shopCost` moves, since a single option here is
-// a narrower purchase than a whole passive or move -- unlocking every
-// option of an ability (e.g. every world Bloch can reach) costs
-// meaningfully more in total than the old flat per-ability price did, by
-// design, since the player is now paying per destination/crystal/host/
-// result rather than once for unlimited access. Same relative ordering as
+// a narrower purchase than a whole passive or move. Unlocking every option
+// of an ability (e.g. every world Bloch can reach) therefore costs
+// meaningfully more in total than one flat per-ability price would, by
+// design: the player pays per destination/crystal/host/result rather than
+// once for unlimited access. Same relative ordering as
 // before: Bloch (world 2) is pure convenience -- it grants no new battle
 // power, only skips walking to one already-reachable world -- so it's
 // priced lowest; Dresselhaus (world 3) commits to becoming one specific
@@ -572,10 +574,10 @@ export function compatibleMoves(material: Material): string[] {
 // Whether a defender's own type can physically host a given quasiparticle
 // class at all -- the same MOVE_COMPATIBILITY table compatibleMoves() reads
 // for the attacker's side, checked here for the defender's. Backs
-// BattleScene.resolveHit's "quasiparticle mismatch" damage rule, now the
-// sole type-interaction term in battle (the earlier strong/weak TYPE_CHART
-// was dropped as an unnecessary second system on top of it -- see DESIGN.md
-// §4): a defender with no natural channel for a quasiparticle (e.g. a plain
+// BattleScene.resolveHit's "quasiparticle mismatch" damage rule, which is
+// the sole type-interaction term in battle -- a strong/weak type chart on
+// top of it would be a second system saying the same thing, see DESIGN.md
+// §4: a defender with no natural channel for a quasiparticle (e.g. a plain
 // band insulator hit by a magnon pulse, having no magnetic order to carry/
 // damp it at all) takes that hit at double force. Phonon Beam ('phonon') is
 // on every type's MOVE_COMPATIBILITY list, so it can never trigger this --
@@ -615,9 +617,9 @@ export function getPlayerStats(registry: RegistryLike): Stats {
 }
 
 // The player's current crystal form -- Silicon by default, or whatever
-// Dresselhaus transmuted them into (§5, `OverworldScene.transmuteInto`). Every scene
-// that used to read PLAYER_MATERIAL directly for the player's own look/
-// stats/moves should read this instead, since transmutation changes all of
+// Dresselhaus transmuted them into (§5, `OverworldScene.transmuteInto`).
+// Every scene reads the player's own look/stats/moves through this rather
+// than from PLAYER_MATERIAL directly, since transmutation changes all of
 // them together.
 export function getPlayerMaterial(registry: RegistryLike): Material {
   return (registry.get('playerForm') as Material | undefined) ?? PLAYER_MATERIAL;
@@ -1326,10 +1328,10 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
   8: [
     // A Kitaev spin liquid candidate -- α-RuCl₃'s Z2 topological order makes
     // it a genuine vison host, not just a generic spinon carrier.
-    crystal('α-Ruthenium Trichloride', 'quantumSpinLiquid', ['entanglementSwap', 'visonLoop'], 0, undefined, 'RuCl₃'),
+    crystal('α-Ruthenium Trichloride', 'quantumSpinLiquid', ['entanglementSwap', 'visonLoop'], 1, undefined, 'RuCl₃'),
     // A Z2-spin-liquid candidate in its own right -- same vison flavor as
     // RuCl₃ above.
-    crystal('Herbertsmithite', 'quantumSpinLiquid', ['entanglementSwap', 'visonLoop'], 1),
+    crystal('Herbertsmithite', 'quantumSpinLiquid', ['entanglementSwap', 'visonLoop']),
     crystal('YbMgGaO₄', 'quantumSpinLiquid', ['entanglementSwap', 'thermalFluctuation'], 2),
     // The star-of-David CDW Mott insulator / spin-liquid candidate phase --
     // the other half of the 1T/1H-TaS₂ heterostructure hybrid recipe (world
@@ -1382,7 +1384,7 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // course topic covers ferroelectricity specifically, so like every other
     // type without a session of its own, it lives in this "any type" world
     // rather than being shoehorned into a topic that doesn't teach it.
-    crystal('Barium Titanate', 'ferroelectric', ['ferronPulse', 'thermalFluctuation'], 0, undefined, 'BaTiO₃'),
+    crystal('Barium Titanate', 'ferroelectric', ['ferronPulse', 'thermalFluctuation'], 5, undefined, 'BaTiO₃'),
     // Robust room-temperature ferroelectric Rashba semiconductor -- a
     // stronger, more switchable ferroelectric than BaTiO₃'s own ~120°C
     // transition, same type.
@@ -1395,10 +1397,11 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // entry specifically means the thin-film phase.
     crystal('Hafnium Oxide', 'ferroelectric', ['ferronPulse', 'thermalFluctuation'], 2, 'shard', 'HfO₂'),
     // The van der Waals itinerant ferromagnet, World 6's own (see that pool's
-    // entry), given a second home here rather than in World 1: its Stoner/band
-    // magnetism is genuinely mean-field symmetry breaking too, but World 1 is
-    // the tutorial world and a magnon carrier there lands at double force on a
-    // starting Silicon, which no beginner can answer yet.
+    // entry), given a second home here rather than in World 1. Iron and Cobalt
+    // are the itinerant ferromagnets World 1 borrows to teach mean-field
+    // symmetry breaking, and they carry it; this one adds nothing to that
+    // lesson that they do not already make, while the defect world wants a
+    // layered magnet whose order survives down to a monolayer.
     crystal('Fe₃GeTe₂', 'metallicMagnet', ['thermalFluctuation', 'magneticField'], 2, 'layer'),
     // Ferroelectricity at the two-dimensional limit: a one-unit-cell SnTe
     // film polarizes in the plane of the sheet and stays polarized to about
@@ -1719,7 +1722,7 @@ export const WORLD_RIVALS: Partial<Record<number, Material>> = {
   7: crystal(
     'Polycrystalline Herbertsmithite Golem',
     'quantumSpinLiquid',
-    ['decoheredSpinon', 'decoheredVison'],
+    ['decoheredSpinon', 'decoheredTriplon'],
     0,
     undefined,
     undefined,
@@ -1738,7 +1741,7 @@ export const WORLD_RIVALS: Partial<Record<number, Material>> = {
   8: crystal(
     'Polycrystalline Ruthenium Trichloride Golem',
     'quantumSpinLiquid',
-    ['decoheredSpinon', 'decoheredTriplon'],
+    ['decoheredSpinon', 'decoheredVison'],
     0,
     undefined,
     undefined,
@@ -1817,18 +1820,17 @@ export function allCrystals(): Material[] {
 
 // Majorana's hybridization mechanic (§5): fuse two materials the player has
 // already defeated into a new state -- a curated, physically-grounded
-// catalog of named parent pairs, not a generic type-pair rule. This used to
-// be a generic "these two main types always produce that main type" table
-// (the old HYBRID_RULES), which forbade same-type pairs on the reasoning
-// that "fusing two superconductors isn't a new phase, it's just a bigger
-// superconductor" -- but real engineered platforms include exactly that
-// (Twisted Bilayer Graphene from two graphene sheets; an InAs/Al Majorana
-// wire pairs a superconductor with a spin-orbit semiconductor, not two
-// different main types), so this is now a closed catalog keyed by parent
-// *name*: a pair with no entry below simply can't be fused, same-type or
-// not, rather than falling back to a generic type-derived result. Not
-// exhaustive over every possible pair on purpose, same reasoning as the
-// table's predecessor -- inventing an arbitrary result for a pair with no
+// catalog of named parent pairs, not a generic type-pair rule. A rule keyed
+// on the two main types would have to forbid same-type pairs, on the
+// reasoning that "fusing two superconductors isn't a new phase, it's just a
+// bigger superconductor" -- but real engineered platforms include exactly
+// that (Twisted Bilayer Graphene from two graphene sheets; an InAs/Al
+// Majorana wire pairs a superconductor with a spin-orbit semiconductor, not
+// two different main types), which is why the catalog is keyed by parent
+// *name* instead: a pair with no entry below simply can't be fused,
+// same-type or not, rather than falling back to a generic type-derived
+// result. Not exhaustive over every possible pair on purpose, for the same
+// reason -- inventing an arbitrary result for a pair with no
 // real-world grounding isn't the goal. Every `result` is a real
 // WORLD_CRYSTALS entry -- all of them live in World 10, see that pool's own
 // comment -- reused as-is rather than duplicated, so a hybrid a player fuses
@@ -1953,9 +1955,9 @@ export function isHybridMaterial(name: string): boolean {
 
 // Fuses two materials with an authored recipe (checked via
 // `hybridRecipeResult` -- callers must not call this for an unrecognized
-// pair, this doesn't re-validate) into that recipe's named result. Unlike
-// the old type-derived hybrid, the result's own name/type/moves are
-// all authored on its WORLD_CRYSTALS entry, not computed here -- this
+// pair, this doesn't re-validate) into that recipe's named result. The
+// result's own name/type/moves are all authored on its WORLD_CRYSTALS
+// entry rather than derived from the parents' types here -- this
 // function's job is just attaching `hybridParents` (so the fused crystal
 // still renders as an actual visual mixture of both parents, per DESIGN.md's
 // "player-created hybrid" note), sorted the same order-independent way the
@@ -2013,6 +2015,16 @@ export function worldName(world: number): string {
 // this loop to inherit in the first place. Deduped by name so a compound
 // that already repeats across worlds (Graphene, Herbertsmithite, ...)
 // doesn't show up twice in world 9's own pool.
+// Whether a compound is authored into a world's own pool, as opposed to only
+// reaching that world through World 9's inheritance loop below. Quiz scoping
+// reads this: a material's bonus question pool (quiz.ts's MATERIAL_QUESTIONS)
+// is in scope only for the worlds its own WORLD_CRYSTALS entry names, so a
+// compound that lands in World 9 purely by inheritance is asked World 9's own
+// questions rather than the session topic it was authored against elsewhere.
+export function isNativeToWorld(world: number, name: string): boolean {
+  return (WORLD_CRYSTALS[world] ?? []).some((m) => m.name === name);
+}
+
 export function getWildPool(world: number): Material[] {
   const own = WORLD_CRYSTALS[world] ?? [];
   if (world !== 9) return own;

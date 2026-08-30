@@ -138,7 +138,7 @@ export const RIVAL_TAUNTS: Partial<Record<number, RivalTaunt>> = {
   },
   9: {
     part1:
-      'There is no golem waiting in the wastes. There is a flaw, a knot of something that is not the ground, and the ground obligingly builds a body out of itself to hold it. "Whatever this patch is made of, that is what I am today. Ask tomorrow and the answer changes."',
+      'No golem waits for you in the wastes. There is a flaw, a knot of something that is not the ground, and the ground obligingly builds a body out of itself to hold it, there and then, out of whatever the wastes are made of at that spot. "Whatever this patch is made of, that is what I am today. Ask tomorrow and the answer changes."',
     part2:
       '"I do not have a lattice of my own. I borrow one, and it decides everything about me. That is not a weakness. It is the only honest thing in these worlds: I am the question, and the crystal is the answer. Beat me here and you have beaten a metal, or a magnet, or whatever I happened to land in. You have not beaten me. I will be somewhere else by then, wearing something else. Everything else that ever fell on this road fell because something was taken from it, and you have been handing it back, world after world. Nothing was ever taken from me. There is nothing in me to hand back. Did you never wonder what was doing the taking?"',
   },
