@@ -135,9 +135,12 @@ up.** Both kinds carry exactly one ceiling, and it is a *concurrent* one: wilds 
 the population that map was generated with, which is what the Settings station's
 encounter-density preset sets, and qumatessence toward its own initial scatter count.
 Respawns replace what was taken rather than outpacing the setting, and a player walking the
-same corridor long enough can always find more of both. Both ceilings live in the map
-snapshot (§7's `saveMapState`/`restoreMap`), so a round trip through battle or the Lab
-resumes the same half-refilled world rather than a fresh one.
+same corridor long enough can always find more of both. The wild ceiling is floored at one:
+the density preset is a per-row chance, so a short map at a low density can roll its way to
+an empty scatter, and since the ceiling is read off that scatter an empty one would be a
+world that never refills at all. A map that rolls no wilds is therefore given one outright.
+Both ceilings live in the map snapshot (§7's `saveMapState`/`restoreMap`), so a round trip
+through battle or the Lab resumes the same half-refilled world rather than a fresh one.
 
 **Farming is intended, and the reason is thematic rather than economic.** The wild crystals
 are tests, the golem holding a world's pass is the exam, and grinding encounters is studying
@@ -1453,7 +1456,8 @@ screen has neither, being read live from the browser (below).
 
 **Wild-encounter density.** That station lets the player choose how often ordinary wild
 crystals spawn per corridor row -- Low/Normal/High/Very High
-(`data/settings.ts`'s `DENSITY_PRESETS`), persisted like every other save field.
+(`data/settings.ts`'s `DENSITY_PRESETS`), persisted like every other save field. Even the
+lowest preset leaves a world with at least one wild in it (§2's floored ceiling).
 Takes effect the next time a world map is generated (a fresh world entry or an
 explicit regenerate), not retroactively on the map the player is currently
 standing on.

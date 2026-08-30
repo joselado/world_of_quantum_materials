@@ -2277,6 +2277,12 @@ its drop with the same `pickTokenValue(world)`. Both build their sprite through
 
 `wildTarget`/`tokenTarget` are the two ceilings (DESIGN.md §2's "Respawning"), counted off
 the actual placements in `generateMap` and carried in `SavedMapState` alongside the grids.
+Because the wild ceiling is counted off that scatter, a scatter of none would be a world the
+refill keeps at none, so `generateMap`'s per-row density roll is followed by a floor: if the
+rolls placed nothing, one row is picked at random and given a wild. Both the roll and the
+floor place through the same `placeWildOn(row)` helper, which is where the per-placement
+rules (never the player's own row, never a token tile, never a landmark, never a tile already
+taken) live, so the guaranteed wild obeys exactly what a rolled one does.
 Both bound the *concurrent* population only -- a map gives back without limit over time, which
 is what lets a player farm a corridor, and holds only what it stood up at any one instant,
 which is what keeps the density preset meaningful. They are the reason a respawn calls

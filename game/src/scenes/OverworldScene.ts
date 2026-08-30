@@ -80,7 +80,7 @@ import type { Material, MaterialType, MoveClass } from '../data/types';
 import { generateWorldMap } from '../world/mapgen';
 import type { GridPoint } from '../world/mapgen';
 import { PASS_HALF_WIDTH, passZoneRows, reachableGround, scaleOfGrid, worldScale } from '../world/generators/shared';
-import type { WorldScale } from '../world/generators/shared';
+import type { CorridorRow, WorldScale } from '../world/generators/shared';
 import { fontPx, fontScale, fitProseToBudget } from '../ui/text';
 import { installFullscreenKey } from '../ui/fullscreen';
 import { PANEL_BG, GOLD_ACCENT, GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY_HEX, TUTORIAL_CYAN, STORY_LAVENDER } from '../ui/theme';
@@ -1400,14 +1400,42 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // is -- placed at a random column within that row's walkable band.
     const encounterChance = this.encounterChance();
     const landmarks = this.landmarkKeys();
-    map.rows.forEach((r) => {
-      if (r.y === this.playerTile.y) return; // never spawn right on the player
-      if (wildPool.length === 0 || Math.random() >= encounterChance) return;
+    // One row's attempt: a random column inside that row's walkable band,
+    // taken unless something already owns the tile. Both the density roll
+    // and the guarantee under it go through this, so a wild placed either
+    // way obeys the same rules.
+    const placeWildOn = (r: CorridorRow): boolean => {
+      if (r.y === this.playerTile.y) return false; // never spawn right on the player
       const x = r.left + Math.floor(Math.random() * (r.right - r.left + 1));
-      if (this.tokenTiles[r.y][x]) return;
-      if (landmarks.has(`${x},${r.y}`)) return;
+      if (this.tokenTiles[r.y][x]) return false;
+      if (landmarks.has(`${x},${r.y}`)) return false;
+      if (this.encounterTiles[r.y][x]) return false;
       this.encounterTiles[r.y][x] = Phaser.Utils.Array.GetRandom(wildPool);
-    });
+      return true;
+    };
+
+    if (wildPool.length > 0) {
+      let placed = 0;
+      map.rows.forEach((r) => {
+        if (Math.random() >= encounterChance) return;
+        if (placeWildOn(r)) placed++;
+      });
+
+      // A map whose rolls all came up empty would stay empty for the whole
+      // visit rather than merely starting sparse: the refill ceiling below is
+      // read off this very scatter, so a population of none is the population
+      // every later refill restores the world to. Short worlds at low
+      // densities roll that often enough to be a real outcome (a Nano map at
+      // Low density, about 20 rows at 0.08 each, lands there roughly one time
+      // in six), so a world that rolled nothing is given one wild outright --
+      // what keeps DESIGN.md §2's promise that walking a corridor can always
+      // find more.
+      if (placed === 0) {
+        for (const r of Phaser.Utils.Array.Shuffle(map.rows.slice())) {
+          if (placeWildOn(r)) break;
+        }
+      }
+    }
 
     // What this map stood up is what respawns refill it back toward -- both
     // read off the actual placements above rather than re-derived, so density
