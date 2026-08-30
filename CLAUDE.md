@@ -61,21 +61,24 @@ Some of those files may sound contradictory with CLAUDE.md. If so, ask me for cl
 ## Course-content cross-reference
 
 `lecture_notes/` at the repo root is a **local-only symlink** (gitignored, not
-pushed to GitHub) into the course-materials repo's `lecture_notes/` directory —
-specifically machine-specific and not portable to another clone/machine. It exists
+pushed to GitHub) into the course's public notes repo,
+`~/Documents/programs/Advanced_Quantum_Materials_2027/lecture_notes/` — machine-specific
+and not portable to another clone/machine. It exists
 so Materialdex entries, quiz questions, and post-battle explanations can be adapted
 from the course's own session notes rather than written fresh; see `dev_notes/DESIGN.md` §8
 and `game/src/data/quiz.ts` for how session numbers map to game worlds.
 
 **Use the short notes, `lecture_notes/tex/sessions/sessionNN.tex`.** They are what the
 course actually delivers, so they define what a session covers and therefore what the game
-may ask about. `lecture_notes/tex_extended/` holds a longer companion version that carries
-material beyond the session itself (session 1's extended text derives Fermi-surface nesting,
-for instance, where the short session 1 never mentions it) — reading it for background is
-fine, but it does not widen a session's scope and is never the authority for what a world
-may ask. If the symlink is missing (e.g. on a fresh clone or a different machine), it
-points at the Aalto Dropbox-synced course repo — recreate it locally, or skip that
-cross-referencing step if the course repo isn't present.
+may ask about. A longer companion version, `tex_extended/`, carries material beyond the
+session itself (session 1's extended text derives Fermi-surface nesting, for instance, where
+the short session 1 never mentions it) — reading it for background is fine, but it does not
+widen a session's scope and is never the authority for what a world may ask. It is **not**
+reachable through this symlink: it stayed behind in the private Aalto Dropbox-synced course
+folder (`~/adv_quantum_materials_2027/lecture_notes/tex_extended/`) when the short notes moved
+out into their own repo. If the symlink is missing (e.g. on a fresh clone or a different
+machine), recreate it locally, or skip that cross-referencing step if the notes repo isn't
+present.
 
 ## Syncing with GitHub
 
