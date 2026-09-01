@@ -2,7 +2,7 @@
 
 **You are a quantum material.** A browser-based role-playing game that teaches
 Aalto University's [*Advanced Quantum
-Materials*](https://github.com/joselado/Advanced_Quantum_Materials_2025) course
+Materials*](https://github.com/joselado/Advanced_Quantum_Materials_2027) course
 from the inside: you start as Silicon, walk ten worlds (one per course topic),
 and battle the real compounds that ambush you, using only the quasiparticles
 your own lattice can host. Every attack is a genuine excitation (magnons,
