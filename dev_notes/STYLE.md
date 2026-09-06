@@ -439,11 +439,13 @@ under one figure reads as floating even when neither is wrong on its own.
   commit (which of its three moves is usable in battle) lives in registry/save
   `kondoActiveMove` instead, written only by the detail pane's own "Make active" button.
   `blochPreview` is `number | null` (a world number), not a string, since Bloch's own rows/markers
-  identify a destination by world number rather than by a crystal/move name. Landau and
-  Skłodowska-Curie have no preview/pagination field of their own at all -- each has exactly two
-  fixed moves, always both rendered at once, so there is no candidate list to browse in the first
-  place; see their own entries below for their bespoke layout and its own "Retune"/per-class-unlock
-  buttons.
+  identify a destination by world number rather than by a crystal/move name. Landau's and
+  Skłodowska-Curie's pair (`landauMovePreview`/`curieMovePreview` with
+  `landauClassPreview`/`curieClassPreview` and `landauClassPage`/`curieClassPage`) browses the
+  quasiparticle list under whichever of their two fixed moves is open: two moves is few enough
+  that the moves themselves never paginate, while the classes under one of them do at the larger
+  text-size presets; see their own entries below for their layout and its own
+  "Retune"/per-class-unlock buttons.
 - **Tutorial** (`scenes/panels/hubStations.ts`'s `showTutorialTopics`, stroked cyan `0x5ad9ff`,
   `LIST_DETAIL_PANEL_W` wide) is a list+detail panel ("List+detail panels" below) over
   `data/tutorial.ts`'s `visibleTutorialPages` -- the same two-column shape a guardian's own
@@ -730,8 +732,9 @@ under one figure reads as floating even when neither is wrong on its own.
   the two invariants above before falling back to a plain wide corridor) on first load and on
   an explicit world change that's genuinely new ground -- Bloch's teleport, a backward pass, a
   debug warp, the Hub door/Lab Enter-key into a world never yet visited, or (World 10 only)
-  transmuting/fusing into a new form while standing there, since World 10's shape is keyed off
-  the player's own current type. A round trip through a battle, or leaving to the Hub and
+  transmuting/fusing into a new form -- while standing there, or in the Lab with a World 10 map
+  in progress, in which case the trip back out lays out the new shape -- since World 10's shape
+  is keyed off the player's own current type. A round trip through a battle, or leaving to the Hub and
   coming back (Enter from the world, the Hub door, or the Lab's own Enter key), instead
   restores the exact same layout and player position (`OverworldScene.saveMapState`/
   `restoreMap`) -- every path back to the Hub goes through `OverworldScene.returnToHub()`,

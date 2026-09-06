@@ -159,18 +159,30 @@ export function paintBand(walkable: boolean[][], gridW: number, y: number, cente
 // walkable tiles in column `x`, centered on `centerY` -- used by branches
 // that run mostly horizontally (world4.ts's fractal branches), where the
 // thing being widened is the branch's height rather than its width.
+//
+// The column index is rounded before anything indexes with it, the same way
+// paintBand rounds its own `left`: callers hand this a wander center, which
+// is a half-tile whenever a band gets clamped against the grid edge, and a
+// fractional index writes a string-keyed property onto the row array instead
+// of a tile -- ground that silently never appears rather than an error.
 export function paintColumnBand(walkable: boolean[][], gridH: number, x: number, centerY: number, height: number): { top: number; bottom: number } | null {
-  if (x < 0 || x >= (walkable[0]?.length ?? 0)) return null;
+  const col = Math.round(x);
+  if (col < 0 || col >= (walkable[0]?.length ?? 0)) return null;
   const h = Math.max(2, Math.round(height));
   let top = Math.round(centerY - h / 2);
   top = clamp(top, 0, gridH - h);
   const bottom = top + h - 1;
-  for (let y = top; y <= bottom; y++) walkable[y][x] = true;
+  for (let y = top; y <= bottom; y++) walkable[y][col] = true;
   return { top, bottom };
 }
 
 export interface WanderBand {
   y: number;
+  // Where the band is centred, in tiles but not necessarily *on* one: an
+  // odd-width corridor clamped against either grid edge centres on a half
+  // tile (wanderBands' own `half = width / 2`). The painters round it
+  // themselves, so anything else using it as a tile coordinate -- a generator
+  // falling back on it for a goal or guardian point, say -- has to round too.
   center: number;
   left: number;
   right: number;

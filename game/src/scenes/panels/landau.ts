@@ -133,6 +133,7 @@ function renderAnalyticColumns(scene: GuardianPanelHost, container: Phaser.GameO
     leftY = renderTreeHeading(scene, container, columns, leftY + (i === 0 ? 0 : 4), moveShapeName(id), open, () => {
       scene.landauMovePreview = id;
       scene.landauClassPreview = null;
+      scene.landauClassPage = 0;
       destroyPanel(scene);
       showLandauPanel(scene);
     });
@@ -152,15 +153,20 @@ function renderAnalyticColumns(scene: GuardianPanelHost, container: Phaser.GameO
       idFor: (cls) => cls,
       labelFor: (cls) => `${quasiparticleLabel(cls)}${cls === assigned ? ' (current)' : ''}`,
       selectedId: previewClass,
-      page: 0,
+      page: scene.landauClassPage,
       reserveBelow: i < ids.length - 1 ? treeHeadingHeight(scene) : 0,
-      onPageChange: () => {},
+      onPageChange: (page) => {
+        scene.landauClassPage = page;
+        destroyPanel(scene);
+        showLandauPanel(scene);
+      },
       onSelect: (cls) => {
         scene.landauClassPreview = cls;
         destroyPanel(scene);
         showLandauPanel(scene);
       },
     });
+    scene.landauClassPage = listResult.page;
     leftY = listResult.bottom;
   });
 

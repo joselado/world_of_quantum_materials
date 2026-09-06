@@ -243,7 +243,9 @@ game/src/
                                   one is. world10.ts dispatches to whichever of world1-8's own generator
                                   matches the player's current Material.type (data/materials.ts's
                                   getPlayerMaterial), re-triggered live by OverworldScene.applyPlayerForm
-                                  whenever the player transmutes/fuses while standing in World 10
+                                  whenever the player transmutes/fuses while standing in World 10, and
+                                  by HubScene.applyPlayerForm marking a World 10 map in progress stale
+                                  (world10NeedsRegenerate) so the trip back out reshapes it
   art/
     perspective.ts             Pseudo-3D projection (lane/depth from the camera -> screen point); re-exports
                                   CANVAS_W/CANVAS_H from config/screen.ts since every
@@ -538,7 +540,7 @@ game/src/
                                   FRACTIONAL_GUARD_DAMAGE_MULT/ANYON_ECHO_FRACTION/
                                   ANYON_ECHO_CRIT_MULTIPLIER/
                                   EDGE_CURRENT_MISMATCH_MULT (Franklin's passives, §5),
-                                  MISMATCH_MULTIPLIER, mitigationFraction() (Kondo's buff-cap
+                                  MISMATCH_MULTIPLIER, SCREEN_REDUCTION_BY_LEVEL (Kondo's buff-cap
                                   math, §4/§5), energyFactor()/lifetimeFactor() (the two mirror
                                   stat levers off the shared statLever curve),
                                   BASE_CRIT_CHANCE/CRIT_DAMAGE_MULTIPLIER, and
@@ -949,7 +951,7 @@ everything else by absence, so only two things in it carry meaning.
   per-panel pagination/selection
   field (`shopTab`, `blochPage`, `dresselhausPage`, `majoranaPage`,
   `andersonPage`/`andersonSelection`/`andersonMovePage`, `feynmanPage`/`feynmanPreview`,
-  `noetherMovePage`/`noetherStatPage`/`kondoMovePage`), each list+detail
+  `noetherMovePage`/`noetherStatPage`/`kondoMovePage`/`landauClassPage`/`curieClassPage`), each list+detail
   crystal-, move-, stat-, or (Bloch's own) world-pick step's own transient "which row is currently
   previewed but not yet
   committed" field (`dresselhausPreview`, `andersonHostPreview`, `majoranaPreview`,
@@ -1104,7 +1106,7 @@ real quasiparticle; there is no abstract "disorder" move or class.
 
 | internal `Stats` field | player-facing name | role |
 | --- | --- | --- |
-| `quantumness` | **Energy** | crit ("coherent hit") chance |
+| `quantumness` | **Energy** | how hard a hit lands (`energyFactor()`) |
 | `velocity` | **Momentum** | turn order and hits per round |
 | `correlation` | **Lifetime** | defense / damage reduction |
 
@@ -1156,13 +1158,15 @@ all -- see "Data model" above) -- both sides' current-battle max HP are resolved
 `BattleScene.create` and held in two scene fields, `playerMaxHp`/`opponentMaxHp`, read by
 every other HP-related spot in the file (`updateBars`, `applyDamage`, the
 registry reset in `endBattle`) instead of any `Material.maxHp`. `wildHpForWorld(world)` is a
-gentle linear base (23 at World 1 to 33 at World 10) shared by every ordinary wild
+gentle linear base (23 at World 1 to 43 at World 10) shared by every ordinary wild
 in that world and by the player's own current max HP (no roll for the player, or for a
 rival -- see below); an ordinary wild's own battle HP additionally gets one
 `rollEncounterFactor()` roll (+/-15%, `data/balance.ts`, same range `resolveHitDamage`'s own
 damage variance uses) applied to it *and* that same battle's `enemyStats` together (one
 shared roll, not four independent ones) -- `this.isRival ? 1 : rollEncounterFactor()` in
-`create()`. A rival instead uses `rivalHpForWorld(world)` (steeper, no roll) and plain
+`create()`. Only the HP that roll produces is rounded, staying the whole number
+`wildHpForWorld` already returns; the rolled stats stay fractional, since rounding them at
+World 1-3's small values would quantise both the roll and the difficulty tier away. A rival instead uses `rivalHpForWorld(world)` (steeper, no roll) and plain
 `enemyStatsForWorld(world)` -- a rival is a fixed, repeatable challenge, not a specimen with
 sample-to-sample variance. `OverworldScene.applyPlayerForm`/`HubScene.applyPlayerForm`
 (transmuting/fusing into a new form) clamp the player's saved HP down to
@@ -2667,7 +2671,13 @@ several possible routes -- see the `world/` file-tree entry above and DESIGN.md 
 alongside `start`/`goal`, threaded through `OverworldScene.midTile` and `SavedMapState` the same
 way `goalTile`/`startTile` are. Reaching that row (`OverworldScene.maybeReachMiddle`, mirroring
 `maybeReachGoal`'s "whole row counts, not one tile" rule) sets `reachedMiddle` and calls
-`maybeAutoOpenMiddleDialogue()` -- the mid-corridor counterpart to `maybeReachGoal()`/
+`maybeAutoOpenMiddleDialogue()`. That call is attempted on every step onto the row, not only the
+one that sets the flag, and `closeDialogue()` retries it too: the same tile can carry a wild or a
+token, both handled earlier in the same move-completion, and either leaves a panel up that makes
+the auto-open a no-op. `openGuardian` is the only writer of `metGuardians` in the game, so a
+skipped introduction would leave that guardian unmeetable for the rest of the map -- the retries
+pass `onlyIfUnmet`, which is what keeps them from reopening an already-met guardian's panel every
+time the player crosses the row. It is the mid-corridor counterpart to `maybeReachGoal()`/
 `maybeReachGoal`, both still used for the goal tile's own panel. `'start'`/`'goal'` remain valid
 `tile` values (and `spawnGuardianSprite`'s tile-lookup still branches on all three) purely so a
 future guardian could choose them; nothing currently does.
@@ -2692,8 +2702,12 @@ station can't open over another already-open panel (`HubScene.addStationRow`'s
 -- true unconditionally for Moves/Stats/Tutorial/Story/Settings/Title Screen, and for Abilities only
 once `passivesUnlocked` is non-empty (or `isSuperpositionMode()` is true, which grants every
 passive anyway) --
-`HubScene.create()` filters `LAB_STATIONS` by this before laying out the room's station rows,
-so Abilities simply doesn't appear until there's something to check there.
+`HubScene.buildStationGrid()` filters `LAB_STATIONS` by this before laying out the room's
+station rows, so Abilities simply doesn't appear until there's something to check there. It is
+called from `create()` and again from `closeDialogue()`, since a panel can change what belongs
+in the room without the player leaving it (learning a first passive from Franklin's avatar is
+what makes Abilities visible); a signature of the row labels makes the second call a no-op
+unless the set actually differs.
 `showMovesPanel` browses `getBattleMoves(registry)`
 (learned ∩ currently form-compatible, not the raw `unlockedMoves` list; a move the player has
 learned but can't currently use simply isn't listed until they transmute into a form that

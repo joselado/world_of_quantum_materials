@@ -52,14 +52,14 @@ export function generateWorld1Map(gridW: number, gridH: number, start: GridPoint
   punchIslands(walkable, gridW, gridH, [hedge]);
 
   const goalBand = bands[bands.length - 1];
-  const goal = { x: widestRunCenter(walkable, gridW, goalBand.y) ?? goalBand.center, y: goalBand.y };
+  const goal = { x: widestRunCenter(walkable, gridW, goalBand.y) ?? Math.round(goalBand.center), y: goalBand.y };
 
   // Comfortably past the hedgerow and comfortably before the goal: the
   // guardian belongs in whole field, and its chokepoint must not land on a row
   // the pass taper also wants.
   const midIdx = clamp(Math.round((hedgeEnd + bands.length) / 2), hedgeEnd + 1, bands.length - 1 - scale.tiles(3));
   const midBand = bands[midIdx] ?? goalBand;
-  const mid = { x: widestRunCenter(walkable, gridW, midBand.y) ?? midBand.center, y: midBand.y };
+  const mid = { x: widestRunCenter(walkable, gridW, midBand.y) ?? Math.round(midBand.center), y: midBand.y };
 
   return { walkable, start, goal, mid, regionColor, biomeOverride: makeColorGrid(gridW, gridH), featureCores: [] };
 }

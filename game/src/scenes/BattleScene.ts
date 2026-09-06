@@ -543,12 +543,20 @@ export class BattleScene extends Phaser.Scene {
     const baseEnemyStats = superposition
       ? superpositionEnemyStats(DIFFICULTY_MULTIPLIERS[difficultyTier])
       : enemyStatsForWorld(this.world, DIFFICULTY_MULTIPLIERS[difficultyTier]);
+    // The rolled stats stay fractional, unlike the rolled HP below. Nothing
+    // ever displays an opponent's stat as a number (they are felt through
+    // damage, turn order and hits per round), so there is nothing for a whole
+    // number to look right in -- and rounding here would throw away most of
+    // what the two inputs are for: `enemyStatsForWorld` sits at 1.0-1.2 for
+    // Worlds 1-3, where a round() collapses both the +/-15% specimen roll and
+    // the whole B.Sc./M.Sc. difficulty spread onto the same integer.
+    // `balance-sim` scores the tiers against these same unrounded values.
     this.enemyStats = this.isRival
       ? baseEnemyStats
       : {
-          quantumness: Math.round(baseEnemyStats.quantumness * encounterFactor),
-          velocity: Math.round(baseEnemyStats.velocity * encounterFactor),
-          correlation: Math.round(baseEnemyStats.correlation * encounterFactor),
+          quantumness: baseEnemyStats.quantumness * encounterFactor,
+          velocity: baseEnemyStats.velocity * encounterFactor,
+          correlation: baseEnemyStats.correlation * encounterFactor,
         };
     this.playerMaxHp = wildHpForWorld(this.world);
     this.opponentMaxHp = this.isRival ? rivalHpForWorld(this.world) : Math.round(wildHpForWorld(this.world) * encounterFactor);

@@ -103,13 +103,15 @@ export const DIFFICULTY_MULTIPLIERS: Record<DifficultyTier, number> = {
 // the player as a number at all, only felt through hit chance/damage/turn
 // order, so there's nothing for fractional precision to look wrong in and
 // every bit of it stays available to the two-phase growth curve (and the
-// difficulty multiplier on top of it). BattleScene.create still rounds an
-// ordinary wild's own +/-15% `rollEncounterFactor` roll on top of this (a
-// specimen's HP bar-relative toughness has to be a whole number), and
-// Superposition Mode's `OverworldScene.applySuperpositionLeveling` rounds
-// separately when it copies this function's result into the player's own
-// `playerStats` -- this function itself is the one shared source both round
-// from, so neither rounding rule has to duplicate the other's math.
+// difficulty multiplier on top of it). BattleScene.create keeps it fractional
+// through an ordinary wild's own +/-15% `rollEncounterFactor` roll for the
+// same reason, and rounds only the HP that roll produces, keeping it the whole
+// number `wildHpForWorld`/`rivalHpForWorld` already hand back and that damage
+// is subtracted from a point at a time. Superposition Mode's
+// `OverworldScene.applySuperpositionLeveling` does round when it copies this
+// function's result into the player's own `playerStats`, which the shop does
+// display -- this function itself is the one shared source both read, so
+// neither rule has to duplicate the other's math.
 export function enemyStatsForWorld(world: number, difficultyMultiplier = 1): Stats {
   const steps = Math.max(0, world - 1);
   const earlySteps = Math.min(steps, EARLY_PHASE_MAX_STEP);
@@ -319,12 +321,18 @@ export const SCREEN_REDUCTION_BY_LEVEL = [0.5, 0.62, 0.68, 0.75];
 // rather than straight so the first few points already buy something a
 // player can feel -- the whole range stays meaningful, but the benefit is
 // front-loaded, which is what keeps an early, cheap stat purchase worth
-// making at all. The clamp guards both directions: below BASE_STAT (never
-// happens in practice, stats bottom out there) `sqrt` of a negative input
-// would be NaN, and above MAX_STAT (an opponent's own stats,
+// making at all. The clamp guards both directions: below BASE_STAT `sqrt` of
+// a negative input would be NaN, and above MAX_STAT (an opponent's own stats,
 // difficulty-tier-scaled, can genuinely exceed it -- see
 // enemyStatsForWorld/superpositionEnemyStats) the lever would keep climbing
-// past its intended ceiling.
+// past its intended ceiling. The low end is reached in ordinary play, not
+// just defensively: the B.Sc. tier's 0.6 multiplier puts every World 1-3
+// opponent below BASE_STAT, so their Energy and Lifetime levers both sit flat
+// at 1.0 -- the same value M.Sc.'s World 1 opponent gets, since BASE_STAT is
+// where the curve starts. Velocity carries the whole difference between those
+// two tiers in Worlds 1-3, since its multi-hit bonus reads the raw stat ratio
+// (MAX_MULTI_HIT below) instead of going through this curve, and neither
+// wildHpForWorld nor rivalHpForWorld takes the multiplier at all.
 //
 // Both levers share one ceiling so the two stats are worth the same per
 // point: Energy multiplies the damage a hit deals, Lifetime divides the

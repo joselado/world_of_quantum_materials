@@ -125,8 +125,8 @@ export function generateWorld9Map(gridW: number, gridH: number, start: GridPoint
   // Both landmarks come off the finished plain, since a vacancy may have
   // taken the middle of the row they would otherwise have stood on.
   const goalBand = bands[bands.length - 1];
-  const goal = { x: widestRunCenter(walkable, gridW, goalBand.y) ?? goalBand.center, y: goalBand.y };
-  const mid = { x: widestRunCenter(walkable, gridW, midBand.y) ?? midBand.center, y: midBand.y };
+  const goal = { x: widestRunCenter(walkable, gridW, goalBand.y) ?? Math.round(goalBand.center), y: goalBand.y };
+  const mid = { x: widestRunCenter(walkable, gridW, midBand.y) ?? Math.round(midBand.center), y: midBand.y };
 
   return { walkable, start, goal, mid, regionColor: makeColorGrid(gridW, gridH), biomeOverride, featureCores: [] };
 }

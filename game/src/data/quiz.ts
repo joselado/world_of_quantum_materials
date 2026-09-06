@@ -1360,7 +1360,7 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'It stays exactly constant, the same as the gapped case',
     },
     {
-      prompt: 'PEPS, the natural 2D generalization of the MPS ansatz used for 1D chains like this one, is harder to optimize because...',
+      prompt: 'PEPS, the natural 2D generalization of the MPS ansatz used for 1D chains such as Y₂BaNiO₅, is harder to optimize because...',
       correct: 'Contracting a general 2D tensor network is itself computationally hard, unlike 1D',
       incorrect: 'PEPS require exponentially many tensors as the system grows, unlike MPS',
     },
@@ -1577,9 +1577,9 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       incorrect: 'It vanishes abruptly back into the gap edge',
     },
     {
-      prompt: 'Below the Yu-Shiba-Rusinov zero-energy crossing, the superconductor-plus-impurity ground state has total spin $S_tot = 0$. What does that describe?',
-      correct: 'Every Cooper pair intact, the impurity spin screened',
-      incorrect: 'The impurity spin fully free, with one pair broken',
+      prompt: "Past $α = πν₀JS = 1$, once a spin-½ impurity's Yu-Shiba-Rusinov level has crossed below zero energy, the superconductor-plus-impurity ground state has total spin $S_tot = 0$. What does that describe?",
+      correct: 'One Cooper pair broken: the quasiparticle now bound to the impurity screens its spin',
+      incorrect: 'Every Cooper pair intact, and the impurity spin left free',
     },
     {
       prompt: "Anderson's theorem protects the s-wave gap from non-magnetic disorder. Why does that protection not apply to a chiral (p-wave) topological superconductor?",
@@ -2808,7 +2808,7 @@ export const ULTIMATE_QUESTIONS: MaterialQuestion[] = [
   },
   {
     prompt: 'Compared to an ordinary parabolic (Schrödinger) 2D electron gas, the Landau levels of Dirac (graphene-like) electrons in field B are...',
-    correct: '$E_n = sgn(n)·v_F√(2ħB|n|), n=0,±1,±2$,…: unequally spaced, growing as $√B$, with a genuine zero-energy level pinned at n=0',
+    correct: '$E_n = sgn(n)·v_F√(2eħB|n|), n=0,±1,±2$,…: unequally spaced, growing as $√B$, with a genuine zero-energy level pinned at n=0',
     incorrect: '$E_n = ħω_c(n+1/2)$, just as in the parabolic case: equally spaced and growing linearly in B',
   },
   // -- World 5: BCS, Nambu, Majoranas --

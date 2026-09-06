@@ -1093,14 +1093,18 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // mechanism, and an even more literal mean-field-theory teaching example
     // than BaTiO₃'s own soft-phonon-mode picture.
     crystal('Potassium Dihydrogen Phosphate', 'ferroelectric', ['ferronPulse', 'thermalFluctuation'], 0, undefined, 'KH₂PO₄'),
-    // A charge density wave is exactly the broken-continuous-translational-
-    // symmetry case session1's own first worked mean-field example (the
-    // spinless 1D chain) builds -- 1T-TiSe₂'s own CDW transition (~200 K)
-    // opens a small gap via a frozen (softened) lattice/charge modulation,
-    // the textbook real-material CDW compound. Stays 'metal' rather than
-    // needing a dedicated type -- session1 itself notes only the phonon is
-    // guaranteed gapless in every material (unlike a magnon or the Higgs
-    // mode), and a CDW's own low-energy fluctuation is exactly that lattice
+    // A charge density wave is the translational-symmetry-breaking case
+    // session1's own first worked mean-field example (the spinless 1D chain)
+    // builds -- 1T-TiSe₂'s own CDW transition (~200 K) opens a small gap via
+    // a frozen (softened) lattice/charge modulation, the textbook
+    // real-material CDW compound. What a commensurate CDW breaks is the
+    // lattice's *discrete* translational symmetry (TiSe₂ freezes into a
+    // 2a×2a×2c superlattice; the half-filled spinless chain doubles its unit
+    // cell): the continuous one already went when the crystal formed, and the
+    // acoustic phonon is that Goldstone mode. Stays 'metal' rather than
+    // needing a dedicated type -- only the acoustic phonon is guaranteed
+    // gapless in every material (unlike a magnon or the Higgs mode), and a
+    // commensurate CDW's own low-energy fluctuation is exactly that lattice
     // phonon branch, not a distinct quasiparticle of its own -- so it keeps
     // 'metal''s ordinary Electron Pulse/Phonon Beam moveset (its own
     // "translational symmetry breaking" story lives in this comment and its

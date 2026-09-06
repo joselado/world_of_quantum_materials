@@ -480,11 +480,7 @@ export interface GuardianPanelHost extends Phaser.Scene {
   // shop"), holding a move id rather than a crystal/hybrid-result name.
   // noetherMovePage paginates its own left column the same way
   // dresselhausPage/majoranaPage do. Same reset rules (scene create,
-  // closeDialogue()) as every other per-guardian field above. Landau's and
-  // Skłodowska-Curie's own panels (scenes/panels/landau.ts/
-  // sklodowskaCurie.ts) have no preview/pagination field of their own --
-  // each has exactly two fixed moves, always both rendered side by side
-  // rather than browsed one at a time through a candidate list.
+  // closeDialogue()) as every other per-guardian field above.
   noetherMovePreview: string | null;
   noetherMovePage: number;
   // The same pair again for Noether's other tab, holding a `Stats` key
@@ -494,8 +490,9 @@ export interface GuardianPanelHost extends Phaser.Scene {
   noetherStatPreview: string | null;
   noetherStatPage: number;
   // Same convention as noetherMovePreview above, for Landau's and
-  // Skłodowska-Curie's own list+detail panels -- each has exactly two fixed
-  // moves, so neither needs a page field to go with it.
+  // Skłodowska-Curie's own list+detail panels -- which of their two fixed
+  // moves is open. Two is few enough that the moves themselves never
+  // paginate; the quasiparticle list underneath the open one does.
   landauMovePreview: string | null;
   curieMovePreview: string | null;
   // Which quasiparticle those two panels are currently *previewing* for the
@@ -504,6 +501,14 @@ export interface GuardianPanelHost extends Phaser.Scene {
   // move's own currently-tuned class.
   landauClassPreview: MoveClass | null;
   curieClassPreview: MoveClass | null;
+  // Which page of that quasiparticle list is showing, paginated by
+  // renderListColumn exactly as noetherMovePage is. A form's hostable classes
+  // outgrow one page at the larger text-size presets (STYLE.md's picker
+  // section), and without a page field the column's own Prev/Next would have
+  // nothing to write to. Reset alongside the class preview whenever the open
+  // move changes, since the new move's list is a different list.
+  landauClassPage: number;
+  curieClassPage: number;
   // Same convention as noetherMovePreview above, for Kondo's own list+detail
   // layout (scenes/panels/kondo.ts) -- holds one of KONDO_MOVE_IDS. Kondo's
   // own panel has no committed-choice field of its own (like Majorana, not
@@ -746,6 +751,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   curieMovePreview: string | null = null;
   landauClassPreview: MoveClass | null = null;
   curieClassPreview: MoveClass | null = null;
+  landauClassPage = 0;
+  curieClassPage = 0;
   kondoMovePreview: string | null = null;
   kondoMovePage = 0;
   // Same reset rules as dresselhausPreview/majoranaPreview above -- see the
@@ -948,6 +955,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.curieMovePreview = null;
     this.landauClassPreview = null;
     this.curieClassPreview = null;
+    this.landauClassPage = 0;
+    this.curieClassPage = 0;
     this.kondoMovePreview = null;
     this.kondoMovePage = 0;
     this.blochPreview = null;
@@ -1252,6 +1261,12 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // break left to take shrinks instead. `onClose` runs once the last screen
   // is dismissed.
   private renderTutorialTipPopup(title: string, paragraphs: string[], onClose?: () => void) {
+    // A tip can land on top of a panel that is already up -- the encounter tip
+    // renders over the wild's own panel, and the guardian tip over whatever
+    // was open when the row was reached -- so the same deep tween kill
+    // closeDialogue does is owed here, or the crystal in the panel being
+    // replaced goes on being animated after it is destroyed.
+    if (this.dialogueContainer) killTweensDeep(this, this.dialogueContainer);
     this.dialogueContainer?.destroy(true);
     this.dialogueActive = true;
 
@@ -2293,6 +2308,11 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     options: { text: string; correct: boolean }[] | undefined,
     page: number
   ) {
+    // Same teardown closeDialogue does, since paging replaces a panel that is
+    // already up: the wild's crystal carries `repeat: -1` bob/sparkle tweens
+    // on objects inside its container, and Phaser keeps running a tween whose
+    // target has been destroyed.
+    if (this.dialogueContainer) killTweensDeep(this, this.dialogueContainer);
     this.dialogueContainer?.destroy(true);
     this.dialogueActive = true;
 
@@ -2556,9 +2576,30 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.curieMovePreview = null;
     this.landauClassPreview = null;
     this.curieClassPreview = null;
+    this.landauClassPage = 0;
+    this.curieClassPage = 0;
     this.kondoMovePreview = null;
     this.kondoMovePage = 0;
     this.blochPreview = null;
+
+    // An introduction owed from a step that also opened something else (the
+    // wild or the token on the same tile, see maybeReachMiddle) is taken now
+    // that the panel is out of the way. Deferred a frame because closing is
+    // often a handoff rather than an ending -- a tutorial tip closes into the
+    // encounter it was explaining -- and whatever opens next should win; the
+    // guardian is still owed after that one closes too. The scene-leaving
+    // callers (returnToHub, advanceToWorld) close first and start the next
+    // scene immediately after, so this timer is scheduled and then dropped
+    // with the rest of the clock on shutdown, which is what should happen:
+    // the world being left has no panel to open. A step already under way
+    // when the timer fires (a held direction key, which `update` acts on as
+    // soon as the panel is gone) is left to finish: `playerTile` has moved
+    // ahead of the sprite by then, and that step's own completion runs
+    // maybeReachMiddle, which asks again from wherever it actually landed.
+    this.time.delayedCall(0, () => {
+      if (this.moving) return;
+      this.maybeAutoOpenMiddleDialogue(true);
+    });
   }
 
   private isRivalDefeated(): boolean {
@@ -3047,6 +3088,10 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   }
 
   private renderRivalTauntPage(rival: Material, line: string, buttonLabel: string, onButton: () => void) {
+    // Paging between taunts replaces a panel holding the boss golem, whose
+    // pool pulses on a `repeat: -1` tween hung inside its container
+    // (art/boss.ts) -- same deep kill before teardown as everywhere else.
+    if (this.dialogueContainer) killTweensDeep(this, this.dialogueContainer);
     this.dialogueContainer?.destroy(true);
     this.dialogueActive = true;
 
@@ -3457,11 +3502,20 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // the middle row and it's already been reached -- the first time the
   // player arrives there, and again after a battle fought right on that row
   // -- rather than on every battle fought anywhere in the world.
-  private maybeAutoOpenMiddleDialogue() {
+  //
+  // `onlyIfUnmet` is for the retries that chase a *missed* introduction
+  // (maybeReachMiddle, closeDialogue) rather than the ordinary reopen: they
+  // fire on every step onto the row and every panel close, so without it an
+  // already-introduced guardian's panel would pop open again each time the
+  // player crossed their row.
+  private maybeAutoOpenMiddleDialogue(onlyIfUnmet = false) {
     if (!this.reachedMiddle || this.dialogueActive) return;
     if (this.playerTile.y !== this.midTile.y) return;
     const guardian = OverworldScene.WORLD_GUARDIANS[this.world];
-    if (guardian?.tile === 'middle') this.openGuardian(guardian);
+    if (!guardian || guardian.tile !== 'middle') return;
+    const met = (this.game.registry.get('metGuardians') as string[]) ?? [];
+    if (onlyIfUnmet && met.includes(guardian.id)) return;
+    this.openGuardian(guardian);
   }
 
   private maybeCollectToken(x: number, y: number) {
@@ -3514,10 +3568,22 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
 
   // Same "whole row counts, not a single tile" rule as maybeReachGoal,
   // applied to the guardian's mid-corridor row instead.
+  //
+  // The introduction is owed until it has actually happened, which is why the
+  // auto-open is attempted on every step onto the row rather than only on the
+  // step that latches `reachedMiddle`. The tile walked onto can carry a wild
+  // or a qumatessence token, and both are handled earlier in the same
+  // onComplete (tryMove) and leave a panel up -- `maybeAutoOpenMiddleDialogue`
+  // is then a no-op, and `openGuardian` is the only thing in the game that
+  // ever writes this guardian into `metGuardians`. Missing it would leave
+  // them standing there unmeetable, with no walk-up prompt (guardianAtPlayer
+  // needs the same record) and an empty slot in the Lab's gallery.
   private maybeReachMiddle(_x: number, y: number) {
-    if (this.reachedMiddle || y !== this.midTile.y) return;
-    this.reachedMiddle = true;
-    this.saveMapState();
-    this.maybeAutoOpenMiddleDialogue();
+    if (y !== this.midTile.y) return;
+    if (!this.reachedMiddle) {
+      this.reachedMiddle = true;
+      this.saveMapState();
+    }
+    this.maybeAutoOpenMiddleDialogue(true);
   }
 }

@@ -148,6 +148,7 @@ function renderUltimateColumns(scene: GuardianPanelHost, container: Phaser.GameO
     leftY = renderTreeHeading(scene, container, columns, leftY + (i === 0 ? 0 : 4), moveShapeName(id), open, () => {
       scene.curieMovePreview = id;
       scene.curieClassPreview = null;
+      scene.curieClassPage = 0;
       destroyPanel(scene);
       showSklodowskaCuriePanel(scene);
     });
@@ -163,15 +164,20 @@ function renderUltimateColumns(scene: GuardianPanelHost, container: Phaser.GameO
       idFor: (cls) => cls,
       labelFor: (cls) => `${quasiparticleLabel(cls)}${cls === assigned ? ' (current)' : ''}`,
       selectedId: previewClass,
-      page: 0,
+      page: scene.curieClassPage,
       reserveBelow: i < ids.length - 1 ? treeHeadingHeight(scene) : 0,
-      onPageChange: () => {},
+      onPageChange: (page) => {
+        scene.curieClassPage = page;
+        destroyPanel(scene);
+        showSklodowskaCuriePanel(scene);
+      },
       onSelect: (cls) => {
         scene.curieClassPreview = cls;
         destroyPanel(scene);
         showSklodowskaCuriePanel(scene);
       },
     });
+    scene.curieClassPage = listResult.page;
     leftY = listResult.bottom;
   });
 

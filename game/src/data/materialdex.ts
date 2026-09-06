@@ -97,7 +97,7 @@ export const MATERIAL_BLURBS: Record<string, string> = {
   'Potassium Dihydrogen Phosphate':
     "KH₂PO₄ is an order-disorder ferroelectric: protons hop between two off-center sites in each O-H...O bond, described by a pseudospin (Ising-like) mean-field model, unlike Barium Titanate's displacive transition (an ion sliding continuously off-center). Same SSB, a different microscopic route.",
   'Titanium Diselenide':
-    "1T-TiSe₂'s charge density wave (~200 K) breaks a continuous translational symmetry: a softened lattice/charge modulation opens a small gap, the textbook real-material CDW. Its low-energy mode is the ordinary lattice phonon. Unlike a magnon or Higgs mode, phonons stay gapless in every material, CDW included.",
+    "1T-TiSe₂'s charge density wave (~200 K) breaks the lattice's own discrete translational symmetry: a softened lattice/charge modulation freezes into a commensurate 2a×2a×2c superlattice and opens a small gap, the textbook real-material CDW. Its low-energy mode is the ordinary lattice phonon. Unlike a magnon or Higgs mode, acoustic phonons stay gapless in every material, CDW included.",
   Bismuthene:
     "A honeycomb sheet of bismuth grown on silicon carbide, carrying the largest quantum spin Hall gap anyone has measured, close to 0.8 eV. Graphene has the same lattice and is technically a quantum spin Hall insulator too, but carbon's intrinsic spin-orbit coupling is minuscule; swap in atoms as heavy as bismuth and the same opposite-mass-per-spin construction opens a gap big enough for the helical edge to matter at room temperature.",
   Jacutingaite:

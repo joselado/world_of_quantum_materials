@@ -200,6 +200,8 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   curieMovePreview: string | null = null;
   landauClassPreview: MoveClass | null = null;
   curieClassPreview: MoveClass | null = null;
+  landauClassPage = 0;
+  curieClassPage = 0;
   kondoMovePage = 0;
   // Same reset rules as dresselhausPreview/majoranaPreview above -- see
   // GuardianPanelHost's own comment on this field.
@@ -217,6 +219,18 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   }
   // The door station's own motif, kept so its opening can be re-pointed.
   private doorMotif?: Phaser.GameObjects.Container;
+  // Everything buildStationGrid put on screen, so a rebuild can clear exactly
+  // what the last one placed, plus the row of labels that grid was built for
+  // -- an unchanged signature means there is nothing to rebuild.
+  private stationObjects: Phaser.GameObjects.GameObject[] = [];
+  private stationSignature = '';
+  // A World 10 map left in progress was laid out for the form the player was
+  // carrying at the time (world/generators/world10.ts dispatches its shape on
+  // the player's own material type), so transmuting or fusing in the Lab
+  // invalidates it. Set by applyPlayerForm and spent by whichever way out of
+  // the room the player takes (takeWorld10Reshape), which then lays out a
+  // fresh map instead of resuming that one.
+  private world10NeedsRegenerate = false;
   // The room's light layer, repainted in place whenever the player's crystal
   // changes (relightRoom).
   private roomGlow?: Phaser.GameObjects.Graphics;
@@ -298,58 +312,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
 
     this.spawnGuardianAvatars();
 
-    // Margin is a fraction of CANVAS_W, not a flat pixel count, so the three
-    // station columns stay proportionally inset from the walls at any canvas
-    // width. Rounded so a station's motif+label pair lands on whole pixels.
-    const stationMargin = Math.round(CANVAS_W * 0.18);
-    const stationX = [stationMargin, CANVAS_W / 2, CANVAS_W - stationMargin];
-
-    // Every station in the room -- Qumatex and the door (which always
-    // exist), then the reference/settings stations (scenes/panels/
-    // hubStations.ts's LAB_STATIONS) filtered down to whichever the player
-    // has actually unlocked, Abilities needing a first passive learned
-    // (LAB_STATIONS' own `visible` checks) --
-    // packed together into one grid of rows of three with no gaps, rather
-    // than reserving a fixed grid slot for a station that isn't visible yet
-    // or special-casing Qumatex/the door into their own row. Every station
-    // carries its own small `art/labMotifs.ts` motif beside its label --
-    // Qumatex a crystal grid, the door a freestanding lit archway.
-    const doorMotif = (scene: Phaser.Scene, size: number) => makeDoorMotif(scene, size, this.doorDestination());
-    const stations: { label: string; onClick: () => void; motif?: (scene: Phaser.Scene, size: number) => Phaser.GameObjects.Container }[] = [
-      { label: 'Qumatex', onClick: () => this.showMaterialdex(), motif: makeQumatexMotif },
-      { label: this.doorLabel(), onClick: () => this.enterWorld(), motif: doorMotif },
-      ...LAB_STATIONS.filter((station) => station.visible(this)).map((station) => ({
-        label: station.label,
-        onClick: () => station.onClick(this),
-        motif: station.motif,
-      })),
-    ];
-    // Low in the room, leaving the wall above the counter to the guardian
-    // clusters rather than splitting that band between the two. The grid is
-    // laid out from there and then lifted as a whole by however much it
-    // overshoots the canvas floor -- a long door label ("Back to Frozen
-    // Zero-Resistance Caverns") wraps to two or three lines at the Large text
-    // size, which is enough to push a three-row grid off the bottom.
-    let y = STATION_ROW_TOP;
-    const placed: Phaser.GameObjects.GameObject[] = [];
-    for (let i = 0; i < stations.length; i += 3) {
-      const rowStations = stations.slice(i, i + 3);
-      let rowHeight = 0;
-      rowStations.forEach((station, col) => {
-        const row = this.addStationRow(stationX[col], y, station.label, station.onClick, station.motif);
-        if (station.motif === doorMotif) this.doorMotif = row.motif;
-        placed.push(row.button, ...(row.motif ? [row.motif] : []));
-        rowHeight = Math.max(rowHeight, row.button.height);
-      });
-      y += rowHeight + 8;
-    }
-    const overshoot = y - 8 - (CANVAS_H - STATION_GRID_BOTTOM_MARGIN);
-    if (overshoot > 0) {
-      for (const obj of placed) {
-        const positioned = obj as Phaser.GameObjects.Text | Phaser.GameObjects.Container;
-        positioned.setY(positioned.y - overshoot);
-      }
-    }
+    this.buildStationGrid(true);
 
     // Reverse direction of OverworldScene's own keydown-ENTER (which sends
     // the player *to* the Hub, always via returnToHub()'s saveMapState()) --
@@ -360,16 +323,108 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     // one) always lands them back exactly where they were. Same one-panel-
     // at-a-time guard the door station's own click handler uses. A fresh
     // save with nothing in progress yet (no resumable `mapState`) leaves
-    // Enter a no-op here, same as before.
+    // Enter a no-op here. Resuming in place is the point of this key, so it
+    // regenerates only where the door does: a World 10 map whose shape the
+    // player's new form has outdated.
     this.input.keyboard!.on('keydown-ENTER', () => {
       if (this.dialogueContainer) return;
       const world = this.resumeWorld();
       if (world === undefined) return;
-      this.scene.start('Overworld', { world, regenerate: false });
+      this.scene.start('Overworld', { world, regenerate: this.takeWorld10Reshape(world) });
     });
     installFullscreenKey(this);
 
     this.maybeShowLabTip();
+  }
+
+  // Every station in the room -- Qumatex and the door (which always exist),
+  // then the reference/settings stations (scenes/panels/hubStations.ts's
+  // LAB_STATIONS) filtered down to whichever the player has actually
+  // unlocked, Abilities needing a first passive learned (LAB_STATIONS' own
+  // `visible` checks) -- packed together into one grid of rows of three with
+  // no gaps, rather than reserving a fixed grid slot for a station that isn't
+  // visible yet or special-casing Qumatex/the door into their own row. Every
+  // station carries its own small `art/labMotifs.ts` motif beside its label --
+  // Qumatex a crystal grid, the door a freestanding lit archway.
+  //
+  // Rebuilt rather than built once, because what belongs here can change
+  // without the player leaving the room: buying a first passive from
+  // Franklin's avatar is what makes Abilities visible. `closeDialogue` calls
+  // this after every panel, and the signature check makes that a no-op unless
+  // the row of labels actually differs.
+  //
+  // The signature is labels only, deliberately. The Settings station's
+  // text-size preset also feeds this layout, but changing it re-renders only
+  // that panel -- the room's title, blurb and guardian labels, all built in
+  // create(), keep the size they were built at until the scene next starts.
+  // Rebuilding the stations alone on a font change would single them out as
+  // the one thing in the room at the new size.
+  private buildStationGrid(afterSceneCreate = false) {
+    // A scene restart re-runs create() but not the class field initializers
+    // above (this scene is long-lived -- see closeDialogue), so the previous
+    // visit's tracking has to be dropped here. Without it the signature check
+    // below would match against a grid Phaser has already torn down, and skip
+    // drawing one at all.
+    if (afterSceneCreate) {
+      this.stationObjects = [];
+      this.stationSignature = '';
+    }
+
+    // Margin is a fraction of CANVAS_W, not a flat pixel count, so the three
+    // station columns stay proportionally inset from the walls at any canvas
+    // width. Rounded so a station's motif+label pair lands on whole pixels.
+    const stationMargin = Math.round(CANVAS_W * 0.18);
+    const stationX = [stationMargin, CANVAS_W / 2, CANVAS_W - stationMargin];
+
+    const doorMotif = (scene: Phaser.Scene, size: number) => makeDoorMotif(scene, size, this.doorDestination());
+    const stations: { label: string; onClick: () => void; motif?: (scene: Phaser.Scene, size: number) => Phaser.GameObjects.Container }[] = [
+      { label: 'Qumatex', onClick: () => this.showMaterialdex(), motif: makeQumatexMotif },
+      { label: this.doorLabel(), onClick: () => this.enterWorld(), motif: doorMotif },
+      ...LAB_STATIONS.filter((station) => station.visible(this)).map((station) => ({
+        label: station.label,
+        onClick: () => station.onClick(this),
+        motif: station.motif,
+      })),
+    ];
+
+    const signature = stations.map((station) => station.label).join('|');
+    if (this.stationObjects.length && signature === this.stationSignature) return;
+    this.stationSignature = signature;
+    // The door's motif pulses on a `repeat: -1` tween hung on a Graphics child
+    // inside its container (art/labMotifs.ts), and Phaser keeps running a tween
+    // whose target has been destroyed, so the kill has to walk descendants.
+    for (const obj of this.stationObjects) {
+      killTweensDeep(this, obj);
+      obj.destroy();
+    }
+    this.stationObjects = [];
+    this.doorMotif = undefined;
+
+    // Low in the room, leaving the wall above the counter to the guardian
+    // clusters rather than splitting that band between the two. The grid is
+    // laid out from there and then lifted as a whole by however much it
+    // overshoots the canvas floor -- a long door label ("Back to Frozen
+    // Zero-Resistance Caverns") wraps to two or three lines at the Large text
+    // size, which is enough to push a three-row grid off the bottom.
+    let y = STATION_ROW_TOP;
+    for (let i = 0; i < stations.length; i += 3) {
+      const rowStations = stations.slice(i, i + 3);
+      let rowHeight = 0;
+      rowStations.forEach((station, col) => {
+        const row = this.addStationRow(stationX[col], y, station.label, station.onClick, station.motif);
+        if (station.motif === doorMotif) this.doorMotif = row.motif;
+        this.stationObjects.push(row.button, ...(row.motif ? [row.motif] : []));
+        rowHeight = Math.max(rowHeight, row.button.height);
+      });
+      y += rowHeight + 8;
+    }
+    const overshoot = y - 8 - (CANVAS_H - STATION_GRID_BOTTOM_MARGIN);
+    if (overshoot > 0) {
+      for (const obj of this.stationObjects) {
+        const positioned = obj as Phaser.GameObjects.Text | Phaser.GameObjects.Container;
+        positioned.setY(positioned.y - overshoot);
+      }
+    }
   }
 
   // Shared row builder for every Lab station -- a button in the same
@@ -765,7 +820,26 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
 
   private enterWorld() {
     const { world, resume } = this.doorTarget();
-    this.scene.start('Overworld', { world, regenerate: !resume });
+    const reshape = this.takeWorld10Reshape(world);
+    this.scene.start('Overworld', { world, regenerate: !resume || reshape });
+  }
+
+  // Whether this trip out has to lay out a fresh map even though there is one
+  // to resume: only World 10, and only after a transmutation/fusion in the Lab
+  // has changed the type its shape was dispatched on.
+  //
+  // Consumed rather than merely read, and consumed on the way out rather than
+  // cleared on the way in: the mark has to outlive anything that re-enters
+  // this room (the Title Screen station and back, say) and be spent by the
+  // trip that actually acts on it, or the map it describes could be resumed
+  // later still wearing the old shape. Every exit spends it -- the door, the
+  // Enter key, and Bloch's `advanceToWorld` -- and it clears for any
+  // destination, since once the player has walked out to some other world
+  // there is no World 10 map left in `mapState` for the mark to be about.
+  private takeWorld10Reshape(world: number): boolean {
+    const stale = this.world10NeedsRegenerate;
+    this.world10NeedsRegenerate = false;
+    return world === 10 && stale;
   }
 
   // Where the door currently leads, and therefore what its opening shows:
@@ -821,6 +895,10 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // there, not a "resume" the way the Hub door's own `enterWorld` is.
   advanceToWorld(world: number, enterFrom: 'start' | 'goal' = 'start') {
     this.closeDialogue();
+    // Already regenerating, so the reshape mark has nothing left to ask for --
+    // but it still has to be spent here, or it would outlive this trip and
+    // force a spurious regeneration of a World 10 map that is already correct.
+    this.takeWorld10Reshape(world);
     this.scene.start('Overworld', { world, regenerate: true, enterFrom });
   }
 
@@ -828,9 +906,12 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // counterpart to OverworldScene.applyPlayerForm, called by the same
   // Dresselhaus/Majorana panel code (transmuteInto/becomeHybrid) regardless
   // of which scene the player opened that guardian in. Redraws the Lab's own
-  // floating crystal preview in place rather than an overworld sprite; skips
-  // OverworldScene.applyPlayerForm's World 10 map-regeneration branch since
-  // the Lab is never World 10. HP is never intrinsic to a crystal form (see
+  // floating crystal preview in place rather than an overworld sprite. The
+  // World 10 map-shape rule OverworldScene.applyPlayerForm handles by
+  // regenerating on the spot is handled here by marking the map in progress
+  // stale (`world10NeedsRegenerate`), since the room the player is standing
+  // in is the Lab and the new shape is only owed on the way out.
+  // HP is never intrinsic to a crystal form (see
   // that function's own comment) -- capped by `wildHpForWorld` for the world
   // the door will actually take the player to (`doorTarget()`), so
   // transmuting after Bloch-teleporting or walking back to an earlier world
@@ -840,7 +921,8 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   // stretch of Lab time between the transmutation and the trip out.
   applyPlayerForm(material: Material) {
     this.game.registry.set('playerForm', material);
-    const world = this.doorTarget().world;
+    const { world, resume } = this.doorTarget();
+    if (world === 10 && resume) this.world10NeedsRegenerate = true;
     const worldMaxHp = wildHpForWorld(world);
     const clampedHp = Math.min((this.game.registry.get('playerHp') as number) ?? worldMaxHp, worldMaxHp);
     this.game.registry.set('playerHp', clampedHp);
@@ -1368,7 +1450,14 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     this.curieMovePreview = null;
     this.landauClassPreview = null;
     this.curieClassPreview = null;
+    this.landauClassPage = 0;
+    this.curieClassPage = 0;
     this.kondoMovePage = 0;
     this.blochPreview = null;
+
+    // A panel that just closed may have changed which stations belong in the
+    // room: learning a first passive from Franklin's avatar is what puts
+    // Abilities there. No-op unless the row of labels actually differs.
+    this.buildStationGrid();
   }
 }

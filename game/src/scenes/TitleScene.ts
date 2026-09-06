@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { clearSave, hasSave, loadSave } from '../data/save';
 import { music } from '../audio/music';
 import { CANVAS_W, CANVAS_H } from '../art/perspective';
-import { makeCrystal } from '../art/crystals';
+import { killTweensDeep, makeCrystal } from '../art/crystals';
 import { buildQumatuomiMap } from '../art/qumatuomiMap';
 import { drawStarNetwork } from '../art/stars';
 import { TYPE_LOOK } from '../data/materials';
@@ -131,16 +131,23 @@ export class TitleScene extends Phaser.Scene {
   create() {
     const registry = this.game.registry;
 
-    // Which mode is preselected the moment the title screen first loads,
-    // before the player has touched the mode picker: whichever mode has an
-    // existing save if only one of the two does, so a returning player
-    // lands directly on their own "Continue" instead of an empty picker.
-    // Story Mode is the tiebreak when both or neither have a save yet,
-    // since it's the primary progression and Superposition Mode is an
-    // explicit testing/exploration extra layered on top of it.
+    // Which mode is preselected when the title screen loads. A player who
+    // came back here from the Lab's own Title Screen station mid-session
+    // keeps the mode they were already playing -- the registry's flag is the
+    // live answer, and re-deciding from the save slots would drop a
+    // Superposition-Mode player into their Story save just because they have
+    // one. `superpositionMode` is written only by loadIntoRegistry below, so
+    // an unset flag is exactly the cold-boot case, and that is where the save
+    // slots decide instead: whichever mode has an existing save if only one
+    // of the two does, so a returning player lands directly on their own
+    // "Continue" instead of an empty picker. Story Mode is the tiebreak when
+    // both or neither have a save yet, since it's the primary progression and
+    // Superposition Mode is an explicit testing/exploration extra layered on
+    // top of it.
+    const live = registry.get('superpositionMode') as boolean | undefined;
     const storySaved = hasSave(false);
     const superpositionSaved = hasSave(true);
-    const initialSuperposition = !storySaved && superpositionSaved;
+    const initialSuperposition = live ?? (!storySaved && superpositionSaved);
     this.loadIntoRegistry(initialSuperposition);
 
     music.play('overworld:1');
@@ -251,13 +258,17 @@ export class TitleScene extends Phaser.Scene {
   // since Phaser doesn't auto-stop a running tween just because its target
   // GameObject is destroyed -- otherwise every mode switch would leave the
   // previous screen's ~14 crystals/buttons still being animated by dead
-  // tweens. The explicit per-child destroy() beside it makes that list the
-  // same one the kill walked, rather than relying on the container's own
-  // teardown to reach exactly those objects.
+  // tweens. `killTweensDeep` walks each child's own descendants too, which is
+  // what a showcase crystal needs: makeCrystal hangs `repeat: -1` sparkle
+  // tweens on objects *inside* the crystal container, and a kill that only
+  // saw root's direct children would leave every one of them running. The
+  // explicit per-child destroy() beside it makes that list the same one the
+  // kill walked, rather than relying on the container's own teardown to reach
+  // exactly those objects.
   private redrawContent(registry: Phaser.Data.DataManager) {
     if (this.root) {
       const oldChildren = this.root.list.slice() as Phaser.GameObjects.GameObject[];
-      this.tweens.killTweensOf(oldChildren);
+      oldChildren.forEach((child) => killTweensDeep(this, child));
       oldChildren.forEach((child) => child.destroy());
       this.root.destroy();
     }

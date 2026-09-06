@@ -108,9 +108,10 @@ is ever narrower than 2 tiles (so a wild encounter spawned on the path can never
 it), and that world's guardian tile is a forced, verified chokepoint -- every route from the
 entry point to the goal is provably routed through it (`generators/shared.ts`'s
 `forceChokepoint`/`verifyChokepoint`), not just placed near the geometric middle of one of
-several possible routes. World 10's shape is re-rolled immediately, without leaving the
-world, whenever the player transmutes (Dresselhaus) or fuses (Majorana) into a new form while
-standing there, since its whole shape is keyed off that form's type.
+several possible routes. World 10's shape is keyed off the player's own form, so transmuting
+(Dresselhaus) or fusing (Majorana) into a new one re-rolls it: immediately and without leaving
+the world when it happens while standing there, and on the next trip out of the Lab when it
+happens in the Lab with a World 10 map still in progress.
 
 **Respawning.** A world refills itself while the player walks it, so a map that has been
 picked clean doesn't stay a dead corridor: on every step the player takes, wild crystals
@@ -357,8 +358,11 @@ per world from there. All three stats grow at one shared rate, since none of the
 less per point on the opponent's side than the others. An opponent's own stats stay
 fractional through this curve (never rounded here, since they're never shown to the player as a
 number, only felt through hit chance/damage/turn order) so its own sub-1 per-step rate actually
-registers rather than vanishing under premature rounding. `BattleScene.create` rounds the result
-only for an ordinary wild, whose `rollEncounterFactor()` +/-15% roll scales the baseline first; a
+registers rather than vanishing under premature rounding. They stay fractional through
+`BattleScene.create` too, including an ordinary wild's `rollEncounterFactor()` +/-15% roll, for
+the same reason: at Worlds 1-3 the curve sits at 1.0-1.2, close enough to `BASE_STAT` that
+rounding would collapse both that roll and the whole B.Sc./M.Sc. difficulty spread onto the same
+integer. Only the HP that roll produces is rounded, an HP bar counting in whole points. A
 rival's stats are used exactly as this curve returns them. The player's own `playerStats` are
 whole numbers, since Noether's shop displays/sells them one point at a time, and none of this
 enemy-stat math ever feeds them (Superposition Mode's grant pins all three straight to
@@ -463,7 +467,7 @@ pool.
 | insulatingMagnet (1) | Europium Oxide (EuO) | Half-filled Eu²⁺ 4f⁷ shell, well-isolated localized moments — the real material Weiss/mean-field theory's Brillouin-function prediction is classically tested against; a genuinely different mean-field derivation (localized-moment Weiss theory) from Iron/Cobalt's itinerant Stoner picture, and gapped where they are metallic: stoichiometric EuO is a ferromagnetic semiconductor, so its ordered moments carry a magnon and nothing else (heavily doped EuO does go metallic, the compound's own famous metal-insulator transition); not from the course |
 | insulatingMagnet (1) | Manganese Fluoride (MnF$_2$) | Simple ionic (superexchange-mediated) local-moment antiferromagnet with strong single-ion anisotropy — the real-material realization of the mean-field Ising antiferromagnet, a third distinct route to magnetic order alongside NiO's Mott-insulating Hubbard-$U$ picture and Chromium's itinerant spin-density-wave picture; not from the course |
 | ferroelectric (1) | Potassium Dihydrogen Phosphate (KH$_2$PO$_4$) | Order-disorder-type ferroelectric (proton tunneling between two off-center sites in an O-H...O bond, a pseudospin mean-field/Ising model) rather than Barium Titanate's displacive-type transition — same inversion-symmetry-breaking SSB, a genuinely different microscopic mechanism, and an even more literal mean-field-theory teaching example than BaTiO₃'s own soft-phonon-mode picture; not from the course |
-| metal (1) | Titanium Diselenide (TiSe$_2$) | 1T-TiSe₂'s own charge density wave (~200 K) is session1's own broken-continuous-translational-symmetry worked example, made real — a frozen (softened) lattice/charge modulation opens a small gap; stays `metal` rather than a dedicated type since session1 itself notes only the phonon is guaranteed gapless in every material, and a CDW's own low-energy fluctuation is exactly that lattice phonon branch, not a distinct quasiparticle; not from the course |
+| metal (1) | Titanium Diselenide (TiSe$_2$) | 1T-TiSe₂'s own charge density wave (~200 K) is session1's own translational-symmetry-breaking CDW worked example, made real — a frozen (softened) lattice/charge modulation opens a small gap. A commensurate CDW breaks the lattice's *discrete* translational symmetry (TiSe₂ into a 2a×2a×2c superlattice), the continuous one having gone when the crystal formed; stays `metal` rather than a dedicated type since only the acoustic phonon is guaranteed gapless in every material, and a commensurate CDW's own low-energy fluctuation is exactly that lattice phonon branch, not a distinct quasiparticle; not from the course |
 | quantumSpinHall (3, hybrid) | HgTe/CdTe Quantum Well | The original 2D topological insulator (Bernevig-Hughes-Zhang model, König et al., Science 2007) — only the *engineered heterostructure* is topological, not either bulk parent above; §5 hybrid recipe result, lives as a World 10 wild rather than a World 3 one |
 | insulatingMagnet (1) | Nickel Oxide (NiO) | Mott-insulating antiferromagnet — canonical mean-field/Hubbard-$U$ SSB example |
 | insulatingMagnet (1, rare/special) | Graphene at strong coupling | Session 1 notes a finite $U_c$ opens a Mott/antiferromagnetic gap at the Dirac point — same base crystal as the metal entry above, but pushed past its symmetry-breaking threshold |
@@ -1713,8 +1717,9 @@ rather than inheriting it.
   layout is regenerated (fresh `Math.random` calls) on
   first load and whenever the player switches worlds -- the Hub door, Bloch's
   teleport, a pass (§5), a debug warp, or (World 10 only) transmuting/fusing into a new
-  form while already standing there, since World 10's shape is keyed off the player's own
-  current type; a round trip through
+  form, either while already standing there or in the Lab with a World 10 map in progress, in
+  which case the trip back out lays out the new shape; World 10's shape is keyed off the
+  player's own current type. A round trip through
   battle instead restores the exact layout and player position it started
   from (`OverworldScene.saveMapState`/`restoreMap`, via the Phaser registry).
   The pre-battle encounter dialogue itself never leaves the overworld scene.
@@ -1754,10 +1759,13 @@ rather than inheriting it.
   player asked to erase this one). Switching modes without erasing anything reaches the same
   registry-reload path, keeping the displayed "Continue"/"New Game" label, the "erase save"
   line, and the picker's own highlight always in sync with whichever mode is currently
-  selected. Which mode is preselected the moment the title screen first loads: whichever mode
-  has an existing save if only one of the two does, Story Mode as the tiebreak when both or
-  neither do, since it's the primary progression and Superposition Mode is an explicit
-  testing/exploration extra layered on top of it.
+  selected. Which mode is preselected when the title screen loads: on a cold boot, whichever
+  mode has an existing save if only one of the two does, Story Mode as the tiebreak when both
+  or neither do, since it's the primary progression and Superposition Mode is an explicit
+  testing/exploration extra layered on top of it. Coming back to the title mid-session (the
+  Lab's Title Screen station) instead keeps the mode already being played, read off the
+  registry's live `superpositionMode` — a save in the other slot is not a reason to switch
+  someone out of the mode they are in.
 - **Data-driven content:** materials and moves live in `game/src/data/materials.ts`
   (including the per-world `WORLD_CRYSTALS` database), the sole source of truth —
   there is no separate `data/materials.json` draft to keep in sync — so balance/content
