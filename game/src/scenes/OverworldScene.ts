@@ -56,7 +56,7 @@ import { getWorldQuestion } from '../data/quiz';
 import type { MaterialQuestion } from '../data/quiz';
 import { hasMath, makeQuestionText, makeFormulaButton } from '../ui/mathtext';
 import { encounterGreeting } from '../data/greetings';
-import { TUTORIAL_TIPS, hasSeenTip, markTipSeen } from '../data/tutorial';
+import { TUTORIAL_TIPS, hasSeenTip, markTipSeen, tipBodyFor } from '../data/tutorial';
 import type { TutorialTipId } from '../data/tutorial';
 import { WORLD_GOAL_TEXT, FINALE_TITLE, storyBeatFor, finaleBodyFor } from '../data/story';
 import { worldLoreFor, rivalTauntFor, hasSeenWorldLore, markWorldLoreSeen } from '../data/worldLore';
@@ -1250,7 +1250,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       onClose?.();
       return;
     }
-    this.renderTutorialTipPopup(TUTORIAL_TIPS[id].title, TUTORIAL_TIPS[id].body.split('\n\n'), onClose);
+    const body = tipBodyFor(id, storyLength(this.game.registry));
+    this.renderTutorialTipPopup(TUTORIAL_TIPS[id].title, body.split('\n\n'), onClose);
   }
 
   // A single-topic version of the Lab's Tutorial station (no topic list,
@@ -2781,7 +2782,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   }
 
   // World-entry lore (data/worldLore.ts's worldLoreFor, the Brief or Detailed
-  // table per the Settings station's Story Length row) -- a two-page history
+  // table per the Settings station's Text Length row) -- a two-page history
   // of this world shown once per save the first time the player steps into
   // it (gated by hasSeenWorldLore/markWorldLoreSeen, its own save field
   // independent of visitedWorlds, see save.ts's worldLoreSeen comment).

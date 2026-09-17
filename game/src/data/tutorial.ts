@@ -1,3 +1,5 @@
+import type { StoryLength } from './settings';
+
 // Tutorial content (DESIGN.md's onboarding pass). Every topic in the game
 // lives in `TUTORIAL_TIPS` below, and the record's own declaration order is
 // the canonical order the game reveals them in -- a fresh save meets them
@@ -87,7 +89,7 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     title: 'Settings',
     unlock: { kind: 'always' },
     body:
-      "The Lab's Settings station holds ten knobs, in three groups you switch between at the top of the panel. Gameplay: Difficulty scales every stat your opponents get, from an easier B.Sc. tier through the tuned M.Sc. default to a much tougher Ph.D. tier, and it applies starting with your very next battle, so it is meant to be adjusted mid playthrough rather than picked once; Enemy Density controls how many wild encounters the next map you generate will have, and World Size how big that map is: Nano, Meso or Macro, the same world laid out three times as wide and three times as far at the top end. Story: Story Screens and Tutorial Tips decide whether the world lore, the rival taunts and popups like this one stop you as you play, and Story Length picks how much those story screens tell, Brief in about a third of the words or Detailed in full. Turn Story Screens or Tutorial Tips off and nothing is lost, since everything it would have shown still fills in at the Lab's Story and Tutorial stations, waiting for you there. Presentation: Text Size and Music Style both apply immediately to whatever is already on screen, Full Screen fills the whole screen with the game where your browser offers it, and Touch Controls puts arrows for walking on screen, on by default when you are playing on a touchscreen.",
+      "The Lab's Settings station holds ten knobs, in three groups you switch between at the top of the panel. Gameplay: Difficulty scales every stat your opponents get, from an easier B.Sc. tier through the tuned M.Sc. default to a much tougher Ph.D. tier, and it applies starting with your very next battle, so it is meant to be adjusted mid playthrough rather than picked once; Enemy Density controls how many wild encounters the next map you generate will have, and World Size how big that map is: Nano, Meso or Macro, the same world laid out three times as wide and three times as far at the top end. Story: Story Screens and Tutorial Tips decide whether the world lore, the rival taunts and popups like this one stop you as you play, and Text Length picks how much those screens and popups say, Brief in about a third of the words or Detailed in full. Turn Story Screens or Tutorial Tips off and nothing is lost, since everything it would have shown still fills in at the Lab's Story and Tutorial stations, waiting for you there. Presentation: Text Size and Music Style both apply immediately to whatever is already on screen, Full Screen fills the whole screen with the game where your browser offers it, and Touch Controls puts arrows for walking on screen, on by default when you are playing on a touchscreen.",
   },
   controls: {
     title: 'Walking the Path',
@@ -182,6 +184,31 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
       "Skłodowska-Curie (World 10) sells two quiz-gated Ultimate moves, far stronger than anything else in the game and priced per quasiparticle: for each move, picking a class your form can host costs a large sum of qumatessence the first time, and also puts the move in your battle menu; retuning to a class you've already paid for is free. In battle an Ultimate move asks three physics questions in a row: all correct for its full force, miss one and it does nothing that turn.",
   },
 };
+
+// The Brief body of every topic that plays as a popup (`unlock: { kind: 'tip' }`),
+// what the popup shows when the Settings station's Text Length row is on Brief
+// (data/settings.ts's STORY_LENGTH_PRESETS). Roughly a third of the full body,
+// keeping what the player needs in that moment and dropping the rest, which
+// the Lab's Tutorial station still holds: that station always shows the full
+// body, the same way the Story station always shows the Detailed story. A
+// topic read only at the station has no popup and so no Brief body.
+export const TUTORIAL_TIP_BRIEF: Partial<Record<TutorialTipId, string>> = {
+  lab: 'A Decoherence is spreading through the quantum worlds. Stabilize them, starting through the door. Your progress autosaves.',
+  controls:
+    'Arrow keys walk: Up/Down forward and back, Left/Right sideways, or the arrows in the bottom left corner on a touchscreen. Only the walkable ground can be crossed, so watch its color. Press Enter, or click the Lab line, to return to the Lab.',
+  encounter: 'A wild material\'s quiz boosts you if right and weakens you if wrong. "Let me pass" skips the fight.',
+  battle:
+    'Higher Momentum swings first, sometimes more than once. Pick a move per swing: a defender that cannot host its quasiparticle takes double damage.',
+  qumatessence: 'Wins and shiny clouds earn qumatessence, spent with guardians on moves and stats.',
+  guardian: "Each world's guardian sells a service for qumatessence. Once met, they wait in the Lab.",
+  goal: "A boss holds the pass at each world's far end. Press Space at the mouth of the pass to challenge it, and win to cross.",
+};
+
+// The body a popup shows, picked by the Text Length setting, falling back to
+// the full body for a topic with no Brief one.
+export function tipBodyFor(id: TutorialTipId, length: StoryLength): string {
+  return (length === 'brief' ? TUTORIAL_TIP_BRIEF[id] : undefined) ?? TUTORIAL_TIPS[id].body;
+}
 
 // Minimal structural type (mirrors data/save.ts's RegistryLike) so this
 // stays a plain data module.

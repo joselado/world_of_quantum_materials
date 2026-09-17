@@ -1480,10 +1480,10 @@ screens are the one setting whose default depends on the mode (`defaultSave(supe
 on in Story Mode, off in Superposition Mode, which has no road to walk through. The finale
 screen is exempt from the switch, being the run's only acknowledgment that it is finished.
 
-**Story length.** The same category's Story Length row picks how much the story screens tell:
-Brief (the default) or Detailed (`data/settings.ts`'s `STORY_LENGTH_PRESETS`, save field
-`storyLength`). Every screen that carries the arc (world-entry lore, a rival's taunt, the
-between-worlds beat and the finale) is written twice, the Detailed text and a Brief one
+**Text length.** The same category's Text Length row picks how much the screens that stop play
+say: Brief (the default) or Detailed (`data/settings.ts`'s `STORY_LENGTH_PRESETS`, save field
+`storyLength`, named for the story it was built for). Every screen that carries the arc
+(world-entry lore, a rival's taunt, the between-worlds beat and the finale) is written twice, the Detailed text and a Brief one
 roughly a third its length (`WORLD_LORE_BRIEF`/`RIVAL_TAUNTS_BRIEF` in `data/worldLore.ts`,
 `STORY_BEATS_BRIEF`/`FINALE_BODY_BRIEF` in `data/story.ts`), with the same keys and the same
 two-page/two-part shape, so a screen only chooses which table to read
@@ -1491,8 +1491,11 @@ two-page/two-part shape, so a screen only chooses which table to read
 for a missing Brief entry). Brief is the default because these screens stop play. A Brief entry
 keeps every beat WORLDS.md's voice rules require and gives up only texture; `content-lint`
 checks that every Detailed entry has a Brief sibling and that the Brief text stays near a third
-of the words. The goal-tile line is already one sentence and has a single version. The Lab's
-Story station always reads the Detailed tables, since it is where the full text lives.
+of the words. The goal-tile line is already one sentence and has a single version. The
+tutorial popups follow the same row: every topic that plays as a popup has a Brief body in
+`data/tutorial.ts`'s `TUTORIAL_TIP_BRIEF`, read through `tipBodyFor`, held by `content-lint` to
+the same limits, while a topic read only at the Tutorial station has none. The Lab's Story and
+Tutorial stations always show the Detailed text, since they are where the full text lives.
 
 **Text size.** The same Settings station offers Compact/Normal/Large
 (`data/settings.ts`'s `FONT_SCALE_PRESETS`, 1x / 1.5x / 2x on every base px size

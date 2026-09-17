@@ -2783,7 +2783,7 @@ world are shaped, since world N's start is world N-1's exit.
 - Ten rows, all but one backed by its own preset list in `data/settings.ts`. Gameplay:
   Difficulty (`DIFFICULTY_TIER_PRESETS`, B.Sc./M.Sc./Ph.D.), Enemy Density (`DENSITY_PRESETS`,
   Low/Normal/High/Very High), World Size (`WORLD_SIZE_PRESETS`, Nano/Meso/Macro). Story: Story
-  Screens and Tutorial Tips (`ON_OFF_PRESETS`), Story Length (`STORY_LENGTH_PRESETS`,
+  Screens and Tutorial Tips (`ON_OFF_PRESETS`), Text Length (`STORY_LENGTH_PRESETS`,
   Brief/Detailed). Presentation: Text Size (`FONT_SCALE_PRESETS`,
   Compact/Normal/Large), Full Screen (`ON_OFF_PRESETS` over Phaser's own scale-manager state,
   `ui/fullscreen.ts`), Music Style (`MUSIC_STYLE_PRESETS`, Classic/Modern/Mute), Touch
@@ -2797,7 +2797,7 @@ world are shaped, since world N's start is world N-1's exit.
   row is shorter than ~55px there, and the whole roster on one screenful does not fit the
   canvas -- which is what the categories buy. Measured at Large, the tallest category is
   Presentation, whose four rows (Full Screen carrying a four-line "when", Touch Controls a
-  three-line one) reach 448 of the canvas's 480 pixels, and Story's three rows reach 417. That is
+  three-line one) reach 448 of the canvas's 480 pixels, and Story's three rows reach 435. That is
   the practical ceiling: a row costs roughly 100px there, so a fifth Presentation row or a fourth
   Story row would not fit. Re-measure before
   adding one anywhere rather than reasoning from the row count alone.
@@ -2820,6 +2820,9 @@ world are shaped, since world N's start is world N-1's exit.
   is a single paragraph, so that fitting only ever shrinks; a tip written with a paragraph
   break would instead continue on a further screen whose button reads "Next ->", and `onClose`
   fires only once the last screen is dismissed.
+  The body is `data/tutorial.ts`'s `tipBodyFor(id, length)`: the Brief body from
+  `TUTORIAL_TIP_BRIEF` while the Settings station's Text Length row is on Brief, the full body
+  on Detailed. The Tutorial station's own pane always shows the full body.
   The Lab's version (`HubScene.maybeShowLabTip`) reuses `HubScene.showPanel` instead (purple
   `0x9a6ad9` stroke, the same gold-title/measured-top-down-layout convention "The Hub" above
   describes for the Lab's other seven panels, just without a left motif of its own -- it's a

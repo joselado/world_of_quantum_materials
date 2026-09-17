@@ -700,8 +700,8 @@ for (const w of BUILT_WORLDS.filter((w) => w !== '10')) {
   }
 }
 
-// 19. Every story screen's text exists at both Story Length settings, and the
-// Brief one is actually brief. The screens read the Brief table through
+// 19. Every story screen's text, and every tutorial popup's, exists at both
+// Text Length settings, and the Brief one is actually brief. The screens read the Brief table through
 // worldLoreFor/rivalTauntFor/storyBeatFor/finaleBodyFor, which fall back to
 // Detailed for a missing entry, so a world written once still plays; this
 // check is what keeps that fallback a safety net rather than the quiet
@@ -738,7 +738,7 @@ for (const w of BUILT_WORLDS.filter((w) => w !== '10')) {
   let briefTotal = 0;
   for (const [label, detailed, brief] of pairs) {
     if (typeof brief !== 'string' || !brief.trim()) {
-      flag(`${label} has no Brief version -- the Story Length setting's Brief default would show the Detailed text here`);
+      flag(`${label} has no Brief version -- the Text Length setting's Brief default would show the Detailed text here`);
       continue;
     }
     const ratio = words(brief) / words(detailed);
@@ -753,6 +753,42 @@ for (const w of BUILT_WORLDS.filter((w) => w !== '10')) {
       `the Brief story text totals ${briefTotal} words against ${detailedTotal} Detailed (${(briefTotal / detailedTotal).toFixed(2)}), ` +
         `well above the third the Settings panel promises`
     );
+  }
+
+  // The tutorial popups follow the same setting: every topic that plays as a
+  // popup (`unlock.kind === 'tip'`) needs a Brief body held to the same limits,
+  // and nothing else should carry one, since a station-only topic never pops
+  // up and the station always shows the full body.
+  const tutorialSf = parseFile('src/data/tutorial.ts');
+  const tips = evalNode(findTopLevelConst(tutorialSf, 'TUTORIAL_TIPS'), tutorialSf);
+  const tipBrief = evalNode(findTopLevelConst(tutorialSf, 'TUTORIAL_TIP_BRIEF'), tutorialSf);
+  let tipDetailed = 0;
+  let tipBriefTotal = 0;
+  for (const [id, page] of Object.entries(tips)) {
+    const brief = tipBrief[id];
+    if (page.unlock?.kind !== 'tip') {
+      if (brief !== undefined) flag(`TUTORIAL_TIP_BRIEF.${id} exists, but '${id}' never plays as a popup, so nothing reads it`);
+      continue;
+    }
+    if (typeof brief !== 'string' || !brief.trim()) {
+      flag(`tutorial popup '${id}' has no TUTORIAL_TIP_BRIEF body -- the Brief default would show its full body`);
+      continue;
+    }
+    const ratio = words(brief) / words(page.body);
+    if (ratio > 0.6) {
+      flag(`TUTORIAL_TIP_BRIEF.${id} is ${words(brief)} words against ${words(page.body)} in full (${ratio.toFixed(2)}), not brief`);
+    }
+    tipDetailed += words(page.body);
+    tipBriefTotal += words(brief);
+  }
+  if (tipDetailed && tipBriefTotal / tipDetailed > 0.4) {
+    flag(
+      `the Brief tutorial popups total ${tipBriefTotal} words against ${tipDetailed} in full (${(tipBriefTotal / tipDetailed).toFixed(2)}), ` +
+        `well above the third the Settings panel promises`
+    );
+  }
+  for (const id of Object.keys(tipBrief)) {
+    if (!(id in tips)) flag(`TUTORIAL_TIP_BRIEF.${id} names no TUTORIAL_TIPS topic`);
   }
 }
 

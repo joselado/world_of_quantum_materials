@@ -344,10 +344,10 @@ you are playing with.
   taunt and the beat between worlds stop you as you play. Turning them off
   loses nothing: everything they would have shown fills into the Lab's Story
   station just the same, waiting there whenever you want to read it.
-- **Story Length**: Brief or Detailed, how much those story screens tell.
-  Brief, the default, tells each one in about a third of the words; Detailed is
-  the full text. The Lab's Story station always holds the full text, whichever
-  you pick.
+- **Text Length**: Brief or Detailed, how much those story screens and the
+  tutorial popups say. Brief, the default, says each one in about a third of
+  the words; Detailed is the full text. The Lab's Story and Tutorial stations
+  always hold the full text, whichever you pick.
 - **Tutorial Tips**: On or Off, the popups explaining a feature the first time
   it comes up. Off, they still fill into the Lab's Tutorial station on exactly
   the same schedule, so you can read any of them at your own pace. Handy on a

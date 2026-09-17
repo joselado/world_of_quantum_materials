@@ -28,7 +28,7 @@ export const STORY_BEATS: Partial<Record<number, string>> = {
 };
 
 // The Brief version of each beat above, roughly a third its length, read
-// when the Settings station's Story Length row is on Brief. It keeps the
+// when the Settings station's Text Length row is on Brief. It keeps the
 // beat's two moves, the release observed as physics and the look forward, and
 // gives up the rest.
 export const STORY_BEATS_BRIEF: Partial<Record<number, string>> = {
@@ -75,7 +75,7 @@ export const FINALE_BODY =
 export const FINALE_BODY_BRIEF =
   'It was built out of your own play, and you out-adapted your own reflection anyway. The golems are materials again, annealed and home. What was learned stays learned, and the light it cost does not come back, but nothing reads the record anymore, and everything that can still choose is choosing.';
 
-// The text a story screen reads, picked by the Story Length setting, falling
+// The text a story screen reads, picked by the Text Length setting, falling
 // back to the Detailed text when no Brief one exists.
 export function storyBeatFor(world: number, length: StoryLength): string | undefined {
   return (length === 'brief' ? STORY_BEATS_BRIEF[world] : undefined) ?? STORY_BEATS[world];

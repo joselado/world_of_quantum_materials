@@ -153,7 +153,7 @@ export const RIVAL_TAUNTS: Partial<Record<number, RivalTaunt>> = {
 };
 
 // The Brief versions of both tables above, what a story screen reads when the
-// Settings station's Story Length row is on Brief (data/settings.ts's
+// Settings station's Text Length row is on Brief (data/settings.ts's
 // STORY_LENGTH_PRESETS, its own comment for why that is the default). Each
 // entry is roughly a third of its Detailed sibling and keeps the same shape,
 // two pages and two parts, so the paging code never branches on length. A
@@ -288,7 +288,7 @@ export const RIVAL_TAUNTS_BRIEF: Partial<Record<number, RivalTaunt>> = {
   },
 };
 
-// The table a story screen reads, picked by the Story Length setting. Falls
+// The table a story screen reads, picked by the Text Length setting. Falls
 // back to the Detailed entry when a world has no Brief one, so a world
 // written only once still shows its story at either setting.
 export function worldLoreFor(world: number, length: StoryLength): WorldLore | undefined {

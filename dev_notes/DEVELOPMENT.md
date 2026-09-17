@@ -192,8 +192,9 @@ topic has a trigger site, a `{ kind: 'guardian' }` topic names a real guardian
 and follows the ones unlocked in earlier worlds). Check 18 holds a compound
 that spawns in several world pools to one look across all of them, and check 19
 holds every story screen's text (`WORLD_LORE`, `RIVAL_TAUNTS`, `STORY_BEATS`,
-`FINALE_BODY`) to having a Brief sibling that is actually brief: at most 0.6 of
-its Detailed words per entry and at most 0.4 over the whole arc. Reads `materials.ts`/
+`FINALE_BODY`) and every tutorial popup's body (`TUTORIAL_TIP_BRIEF`) to having a
+Brief sibling that is actually brief: at most 0.6 of its Detailed words per
+entry and at most 0.4 over the whole arc and over the popups. Reads `materials.ts`/
 `types.ts`/`passives.ts`/`quiz.ts`/`tutorial.ts`/`worldLore.ts`/`story.ts`/`OverworldScene.ts` (for the
 class-private `WORLD_GUARDIANS` table) the same AST-parsing way `gen-docs.mjs` does, for
 the same reason (`materials.ts` pulls in Phaser at module scope).
@@ -395,8 +396,8 @@ Gameplay: a difficulty tier (B.Sc./M.Sc./Ph.D.) feeding `data/balance.ts`'s
 `DIFFICULTY_MULTIPLIERS`, wild-encounter density, and a world size
 (Nano/Meso/Macro) scaling the generated map. Story: Story Screens and Tutorial
 Tips, either of which can be turned off without losing content, since the Lab's
-Story and Tutorial stations still hold it, and Story Length, Brief (the default)
-or Detailed story text. Presentation: a Text Size preset
+Story and Tutorial stations still hold it, and Text Length, Brief (the default)
+or Detailed story screens and tip popups. Presentation: a Text Size preset
 applied via `ui/text.ts`'s `fontPx`/`fontScale` helpers (defaulting to Large on
 a phone or tablet, Normal elsewhere), a Full Screen row built only where
 `fullscreenAvailable(scene)` is true, a Music Style (Classic/Modern/Mute)

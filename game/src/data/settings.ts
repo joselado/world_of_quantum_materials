@@ -293,17 +293,20 @@ export function storyScreensEnabled(registry: RegistryLike): boolean {
   return defaultStoryScreens(!!registry.get('superpositionMode'));
 }
 
-// The Story category's third row: how much of the story each story screen
-// tells. Every screen that carries the arc (a world's entry lore, a rival's
-// taunt, the beat between worlds, the ending) is written twice, a Detailed
-// version and a Brief one roughly a third its length, keyed identically and
-// shaped identically (two lore pages, two taunt parts, one beat), so the
-// screens themselves never branch on this: they only ask which table to read
-// (data/worldLore.ts's worldLoreFor/rivalTauntFor, data/story.ts's
-// storyBeatFor/finaleBodyFor). Brief is the default because the screens stop
-// play, and a player who wants the whole of it picks Detailed once. The Lab's
-// Story station always reads Detailed regardless, the same way it keeps what
-// Story Screens Off skips: it is where the full text lives.
+// The Story category's third row, labelled "Text Length": how much the screens
+// that stop play say. Every screen that carries the arc (a world's entry lore,
+// a rival's taunt, the beat between worlds, the ending) and every tutorial
+// popup is written twice, a Detailed version and a Brief one roughly a third
+// its length, keyed identically and shaped identically (two lore pages, two
+// taunt parts, one beat, one tip body), so the screens themselves never branch
+// on this: they only ask which text to read (data/worldLore.ts's
+// worldLoreFor/rivalTauntFor, data/story.ts's storyBeatFor/finaleBodyFor,
+// data/tutorial.ts's tipBodyFor). Named for the story in code, since the story
+// is what it was built for, and labelled for text in the panel, since it now
+// covers the tips too. Brief is the default because these screens stop play,
+// and a player who wants the whole of it picks Detailed once. The Lab's Story
+// and Tutorial stations always read Detailed regardless, the same way they keep
+// what an Off row skips: they are where the full text lives.
 export type StoryLength = 'brief' | 'detailed';
 
 export interface StoryLengthPreset {

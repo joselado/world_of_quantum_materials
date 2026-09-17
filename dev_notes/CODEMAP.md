@@ -646,7 +646,9 @@ game/src/
                                   panel
     save.ts                      localStorage schema + persistFromRegistry()/load()
     tutorial.ts                    TUTORIAL_TIPS (copy + per-topic `unlock`)/visibleTutorialPages() --
-                                    contextual + replayable tutorial copy
+                                    contextual + replayable tutorial copy. TUTORIAL_TIP_BRIEF is the
+                                    Brief body of every popup topic, read through tipBodyFor(); the
+                                    Tutorial station always shows the full body
     settings.ts                    DENSITY_PRESETS/DEFAULT_ENCOUNTER_DENSITY -- wild-encounter density presets,
                                     FONT_SCALE_PRESETS/defaultFontScale() -- text-size presets whose
                                     default is per device, Large on a handheld (isHandheldDevice(),
@@ -659,8 +661,8 @@ game/src/
                                     tutorialTipsEnabled()/storyScreensEnabled() (the registry readers every
                                     scene asks "does this screen play", and defaultStoryScreens(superposition),
                                     the one setting whose default differs per save slot),
-                                    STORY_LENGTH_PRESETS/DEFAULT_STORY_LENGTH/storyLength() (Brief or
-                                    Detailed story text, Brief by default), and
+                                    STORY_LENGTH_PRESETS/DEFAULT_STORY_LENGTH/storyLength() (the "Text Length"
+                                    row: Brief or Detailed story screens and tip popups, Brief by default), and
                                     SETTINGS_CATEGORIES/DEFAULT_SETTINGS_CATEGORY, the Settings panel's own
                                     Gameplay/Story/Presentation grouping
     story.ts                       STORY_BEATS -- per-world Decoherence-arc line shown on advancing worlds --
@@ -673,7 +675,7 @@ game/src/
                                     playthrough delivers it, for the Lab's Story station. Authors no copy
                                     of its own: assembles every chapter from tutorial.ts's `lab` page,
                                     worldLore.ts, story.ts, so a chapter re-read here and met in play can
-                                    never drift. Always the Detailed tables, whatever Story Length says. Each chapter's `unlock` maps onto save state the
+                                    never drift. Always the Detailed tables, whatever Text Length says. Each chapter's `unlock` maps onto save state the
                                     playthrough already persists (tutorialTipsSeen/worldLoreSeen/
                                     rivalDefeated) -- no progress field of its own
     worldLore.ts                   WORLD_LORE (per-world 2-page history, shown once per save on first entry)/
@@ -2930,7 +2932,7 @@ reads everything -- so the station adds no persisted state and `defaultSave`/
 `persistFromRegistry` are untouched. That derivation is also why the Settings station's Story
 Screens row can be turned off without stranding a chapter: a skipped screen still marks its own
 seen-field on the way past, so every chapter unmasks on exactly the schedule it would have.
-The station always reads the Detailed tables, whatever the Story Length row says, since it is
+The station always reads the Detailed tables, whatever the Text Length row says, since it is
 where the full text lives. `HubScene`'s own `storySelectedIndex` (an index into
 `STORY_LOG`, stable since the list never changes length) and `storyPage` track the selection and
 list page, both reset in `closeDialogue()` beside the tutorial pair. Browsing never writes
@@ -3120,8 +3122,8 @@ screen only -- each trigger still marks `tutorialTipsSeen`/`worldLoreSeen` on th
 the Tutorial and Story stations unmask on the same schedule either way and hold the skipped
 text. `storyScreensEnabled` is the one field whose default depends on the slot, which is why
 `defaultSave(superposition)` takes the flag: on in Story Mode, off in Superposition Mode, where
-there is no road to walk), `storyLength: StoryLength` (same category, Brief or Detailed story
-text, read at the moment a story screen opens),
+there is no road to walk), `storyLength: StoryLength` (same category's Text Length row, Brief or
+Detailed story screens and tip popups, read at the moment a screen opens),
 `kondoActiveMove: string | null` (which of
 `data/materials.ts`'s `KONDO_MOVE_IDS` is currently
 usable in battle, `null` until the player picks one via `scenes/panels/kondo.ts`'s `showKondoPanel` -- see

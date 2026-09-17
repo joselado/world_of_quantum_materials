@@ -996,7 +996,7 @@ patterns, because they are what make the arc land rather than merely exist.
 
 `WORLD_LORE`, `RIVAL_TAUNTS`, `STORY_BEATS` and the finale are each written twice: the Detailed
 text and a Brief one (`*_BRIEF`) roughly a third its length, with the same keys and the same
-two-page and two-part shape, picked by the Settings station's Story Length row (Brief by
+two-page and two-part shape, picked by the Settings station's Text Length row (Brief by
 default). Every rule in this section binds the Brief text exactly as it binds the Detailed one:
 a Brief page 2 still names the one mechanism, a Brief boast still reads both ways, a Brief beat
 still observes the release and looks forward. What a Brief entry gives up is texture, never a

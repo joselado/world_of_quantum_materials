@@ -7,8 +7,8 @@ import { materialBlurb } from '../data/materialdex';
 import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
 import type { Material, MaterialType, MoveClass } from '../data/types';
-import { TUTORIAL_TIPS, hasSeenTip, markTipSeen } from '../data/tutorial';
-import { tutorialTipsEnabled, DEFAULT_SETTINGS_CATEGORY } from '../data/settings';
+import { TUTORIAL_TIPS, hasSeenTip, markTipSeen, tipBodyFor } from '../data/tutorial';
+import { tutorialTipsEnabled, storyLength, DEFAULT_SETTINGS_CATEGORY } from '../data/settings';
 import type { SettingsCategoryId } from '../data/settings';
 import { music } from '../audio/music';
 import { fontPx, fontScale } from '../ui/text';
@@ -619,8 +619,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     // off this tip, and they fill in on the same schedule for a player who
     // asked not to be stopped by it.
     if (!tutorialTipsEnabled(this.game.registry)) return;
-    const tip = TUTORIAL_TIPS.lab;
-    this.showPanel(tip.title, tip.body);
+    this.showPanel(TUTORIAL_TIPS.lab.title, tipBodyFor('lab', storyLength(this.game.registry)));
   }
 
   // Builds the Lab as an actual room -- ceiling, back wall with built-in

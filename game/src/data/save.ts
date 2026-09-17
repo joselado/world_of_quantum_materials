@@ -144,9 +144,10 @@ export interface SaveData {
   // for Story Mode, off for Superposition Mode.
   tutorialTipsEnabled: boolean;
   storyScreensEnabled: boolean;
-  // Same Story category: whether those story screens read their Brief or
-  // their Detailed text (data/settings.ts's STORY_LENGTH_PRESETS). Read live
-  // at the moment a screen opens, so a change lands on the next one.
+  // Same Story category, the "Text Length" row: whether those story screens
+  // and tutorial popups read their Brief or their Detailed text
+  // (data/settings.ts's STORY_LENGTH_PRESETS). Read live at the moment a
+  // screen opens, so a change lands on the next one.
   storyLength: StoryLength;
   // Which of Kondo's three screening-class moves (data/materials.ts's
   // KONDO_MOVE_IDS) is currently the active/usable one -- null until the
