@@ -209,7 +209,7 @@ export function touchControlsActive(mode: TouchControlsMode): boolean {
 
 // The Settings panel's own top-level grouping (scenes/panels/hubStations.ts's
 // showSettingsPanel): the panel shows one category at a time, picked from a
-// strip of category buttons under its title. Nine rows at that panel's own
+// strip of category buttons under its title. Ten rows at that panel's own
 // row height do not fit the canvas at the largest text-size preset -- a value
 // plate alone is ~43px tall there, so no row is shorter than ~55px, and a row
 // carrying a multi-line "when" runs to ~100px, once the panel's title, its
@@ -235,7 +235,7 @@ export const SETTINGS_CATEGORIES: SettingsCategory[] = [
 
 export const DEFAULT_SETTINGS_CATEGORY: SettingsCategoryId = SETTINGS_CATEGORIES[0].id;
 
-// The Story category's two rows: whether the contextual tutorial tips
+// Two of the Story category's rows: whether the contextual tutorial tips
 // (data/tutorial.ts's TUTORIAL_TIPS, OverworldScene.showTutorialTip/
 // HubScene.maybeShowLabTip) and the story screens (a world's entry lore, a
 // rival's taunt, the beat between worlds) stop play to be read.
@@ -291,4 +291,34 @@ export function storyScreensEnabled(registry: RegistryLike): boolean {
   const value = registry.get('storyScreensEnabled');
   if (typeof value === 'boolean') return value;
   return defaultStoryScreens(!!registry.get('superpositionMode'));
+}
+
+// The Story category's third row: how much of the story each story screen
+// tells. Every screen that carries the arc (a world's entry lore, a rival's
+// taunt, the beat between worlds, the ending) is written twice, a Detailed
+// version and a Brief one roughly a third its length, keyed identically and
+// shaped identically (two lore pages, two taunt parts, one beat), so the
+// screens themselves never branch on this: they only ask which table to read
+// (data/worldLore.ts's worldLoreFor/rivalTauntFor, data/story.ts's
+// storyBeatFor/finaleBodyFor). Brief is the default because the screens stop
+// play, and a player who wants the whole of it picks Detailed once. The Lab's
+// Story station always reads Detailed regardless, the same way it keeps what
+// Story Screens Off skips: it is where the full text lives.
+export type StoryLength = 'brief' | 'detailed';
+
+export interface StoryLengthPreset {
+  label: string;
+  value: StoryLength;
+}
+
+export const STORY_LENGTH_PRESETS: StoryLengthPreset[] = [
+  { label: 'Brief', value: 'brief' },
+  { label: 'Detailed', value: 'detailed' },
+];
+
+export const DEFAULT_STORY_LENGTH: StoryLength = STORY_LENGTH_PRESETS[0].value; // Brief
+
+export function storyLength(registry: RegistryLike): StoryLength {
+  const value = registry.get('storyLength');
+  return STORY_LENGTH_PRESETS.some((p) => p.value === value) ? (value as StoryLength) : DEFAULT_STORY_LENGTH;
 }

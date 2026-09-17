@@ -14,6 +14,11 @@ import type { TutorialTipId } from './tutorial';
 // and the ending (data/story.ts's FINALE_TITLE/FINALE_BODY) -- so re-reading
 // a beat here and meeting it in play can never drift apart.
 //
+// It always reads the Detailed tables, whatever the Settings station's Story
+// Length row says. The screens in play follow that row; this station is where
+// the full text lives, the same way it keeps what Story Screens Off skips, so
+// a player on Brief loses nothing by it.
+//
 // `STORY_LOG`'s own declaration order is the chronology: the premise, then
 // each world's chapters in the order that world plays them (three per world;
 // World 10 carries four, its reveal split in two), then the ending. A new

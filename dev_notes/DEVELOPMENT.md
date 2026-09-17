@@ -170,7 +170,7 @@ pure Node, no browser, no dev server) reads the source with the TypeScript
 compiler API and checks two families of thing none of the other checks on
 this page can see.
 
-**The hand-authored data tables' internal consistency** (checks 1-16): every
+**The hand-authored data tables' internal consistency** (checks 1-16, 18, 19): every
 `MaterialType` has a `MOVE_COMPATIBILITY` row and can host `phonon` (the
 universal fallback move), every crystal/rival's `moves` list resolves to a
 real `MOVES` id and to a class its own type can host, no two moves share a
@@ -189,8 +189,12 @@ front of a player mid-battle and is otherwise a perfectly valid string, so
 nothing else catches it), and every `TUTORIAL_TIPS` topic is
 reachable and declared in the order the game reveals it (a `{ kind: 'tip' }`
 topic has a trigger site, a `{ kind: 'guardian' }` topic names a real guardian
-and follows the ones unlocked in earlier worlds). Reads `materials.ts`/
-`types.ts`/`passives.ts`/`quiz.ts`/`tutorial.ts`/`OverworldScene.ts` (for the
+and follows the ones unlocked in earlier worlds). Check 18 holds a compound
+that spawns in several world pools to one look across all of them, and check 19
+holds every story screen's text (`WORLD_LORE`, `RIVAL_TAUNTS`, `STORY_BEATS`,
+`FINALE_BODY`) to having a Brief sibling that is actually brief: at most 0.6 of
+its Detailed words per entry and at most 0.4 over the whole arc. Reads `materials.ts`/
+`types.ts`/`passives.ts`/`quiz.ts`/`tutorial.ts`/`worldLore.ts`/`story.ts`/`OverworldScene.ts` (for the
 class-private `WORLD_GUARDIANS` table) the same AST-parsing way `gen-docs.mjs` does, for
 the same reason (`materials.ts` pulls in Phaser at module scope).
 
@@ -385,13 +389,14 @@ visual landmark. Contextual tutorial tips guide new players, a Story Mode /
 Superposition Mode title-screen picker lets you choose between them
 (Superposition Mode auto-levels the player and pre-marks every world visited
 so Bloch's teleport hub gives instant access to any world/guardian, for testing
-without grinding), and the Lab's Settings station offers nine rows in the three categories
+without grinding), and the Lab's Settings station offers ten rows in the three categories
 `SETTINGS_CATEGORIES` declares, switched between at the top of the panel.
 Gameplay: a difficulty tier (B.Sc./M.Sc./Ph.D.) feeding `data/balance.ts`'s
 `DIFFICULTY_MULTIPLIERS`, wild-encounter density, and a world size
 (Nano/Meso/Macro) scaling the generated map. Story: Story Screens and Tutorial
 Tips, either of which can be turned off without losing content, since the Lab's
-Story and Tutorial stations still hold it. Presentation: a Text Size preset
+Story and Tutorial stations still hold it, and Story Length, Brief (the default)
+or Detailed story text. Presentation: a Text Size preset
 applied via `ui/text.ts`'s `fontPx`/`fontScale` helpers (defaulting to Large on
 a phone or tablet, Normal elsewhere), a Full Screen row built only where
 `fullscreenAvailable(scene)` is true, a Music Style (Classic/Modern/Mute)

@@ -658,24 +658,29 @@ game/src/
                                     TOUCH_CONTROLS_PRESETS/touchControlsActive(), ON_OFF_PRESETS with
                                     tutorialTipsEnabled()/storyScreensEnabled() (the registry readers every
                                     scene asks "does this screen play", and defaultStoryScreens(superposition),
-                                    the one setting whose default differs per save slot), and
+                                    the one setting whose default differs per save slot),
+                                    STORY_LENGTH_PRESETS/DEFAULT_STORY_LENGTH/storyLength() (Brief or
+                                    Detailed story text, Brief by default), and
                                     SETTINGS_CATEGORIES/DEFAULT_SETTINGS_CATEGORY, the Settings panel's own
                                     Gameplay/Story/Presentation grouping
     story.ts                       STORY_BEATS -- per-world Decoherence-arc line shown on advancing worlds --
                                     WORLD_GOAL_TEXT -- per-world one-liner for the goal-tile banner,
                                     falling back to a generic line for a world with no entry -- and
                                     FINALE_TITLE/FINALE_BODY, the arc's closing screen
-                                    (OverworldScene.showFinalePanel)
+                                    (OverworldScene.showFinalePanel). STORY_BEATS_BRIEF/FINALE_BODY_BRIEF
+                                    are the Brief versions, read through storyBeatFor()/finaleBodyFor()
     storyLog.ts                    STORY_LOG/storyLogIndex() -- the whole Decoherence arc in the order a
                                     playthrough delivers it, for the Lab's Story station. Authors no copy
                                     of its own: assembles every chapter from tutorial.ts's `lab` page,
                                     worldLore.ts, story.ts, so a chapter re-read here and met in play can
-                                    never drift. Each chapter's `unlock` maps onto save state the
+                                    never drift. Always the Detailed tables, whatever Story Length says. Each chapter's `unlock` maps onto save state the
                                     playthrough already persists (tutorialTipsSeen/worldLoreSeen/
                                     rivalDefeated) -- no progress field of its own
     worldLore.ts                   WORLD_LORE (per-world 2-page history, shown once per save on first entry)/
                                     RIVAL_TAUNTS (per-world 2-part rival gate taunt) -- worldLoreSeen gating via
-                                    hasSeenWorldLore/markWorldLoreSeen
+                                    hasSeenWorldLore/markWorldLoreSeen. WORLD_LORE_BRIEF/RIVAL_TAUNTS_BRIEF
+                                    are the Brief versions, same keys and shape; screens read either through
+                                    worldLoreFor()/rivalTauntFor(), which fall back to Detailed
     worldFlavor.ts                  WORLD_FLAVOR -- one short epic-plus-physics paragraph per world, Bloch's
                                     own panel's detail-pane blurb for whichever destination is currently
                                     previewed -- distinct from story.ts's transition
@@ -2924,7 +2929,9 @@ reads `worldLoreSeen`, `{ kind: 'rival'; world }` reads `rivalDefeated`, and Sup
 reads everything -- so the station adds no persisted state and `defaultSave`/
 `persistFromRegistry` are untouched. That derivation is also why the Settings station's Story
 Screens row can be turned off without stranding a chapter: a skipped screen still marks its own
-seen-field on the way past, so every chapter unmasks on exactly the schedule it would have. `HubScene`'s own `storySelectedIndex` (an index into
+seen-field on the way past, so every chapter unmasks on exactly the schedule it would have.
+The station always reads the Detailed tables, whatever the Story Length row says, since it is
+where the full text lives. `HubScene`'s own `storySelectedIndex` (an index into
 `STORY_LOG`, stable since the list never changes length) and `storyPage` track the selection and
 list page, both reset in `closeDialogue()` beside the tutorial pair. Browsing never writes
 `tutorialTipsSeen`/`worldLoreSeen`, so reading a chapter can't unlock a neighbour or suppress a
@@ -3113,7 +3120,8 @@ screen only -- each trigger still marks `tutorialTipsSeen`/`worldLoreSeen` on th
 the Tutorial and Story stations unmask on the same schedule either way and hold the skipped
 text. `storyScreensEnabled` is the one field whose default depends on the slot, which is why
 `defaultSave(superposition)` takes the flag: on in Story Mode, off in Superposition Mode, where
-there is no road to walk),
+there is no road to walk), `storyLength: StoryLength` (same category, Brief or Detailed story
+text, read at the moment a story screen opens),
 `kondoActiveMove: string | null` (which of
 `data/materials.ts`'s `KONDO_MOVE_IDS` is currently
 usable in battle, `null` until the player picks one via `scenes/panels/kondo.ts`'s `showKondoPanel` -- see

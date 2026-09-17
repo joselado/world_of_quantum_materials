@@ -1,3 +1,5 @@
+import type { StoryLength } from './settings';
+
 // Per-world narrative content: a 2-page history/lore screen shown once per
 // save the first time the player enters that world, and the 2-part taunt
 // that world's rival delivers in OverworldScene.showRivalEncounter before
@@ -149,6 +151,153 @@ export const RIVAL_TAUNTS: Partial<Record<number, RivalTaunt>> = {
       '"Every move you have ever landed, I have already survived once. Strike me and I will already be wearing it before the next blow lands: your own weapon, turned back on you, sharper for having been yours first. You have met my work nine times. It stood in nine passes and told you nine times what it used to be, and you walked over all of it. This is not a fight you can win by trying harder. Trying harder is how you built me. Come closer. Teach me the rest."',
   },
 };
+
+// The Brief versions of both tables above, what a story screen reads when the
+// Settings station's Story Length row is on Brief (data/settings.ts's
+// STORY_LENGTH_PRESETS, its own comment for why that is the default). Each
+// entry is roughly a third of its Detailed sibling and keeps the same shape,
+// two pages and two parts, so the paging code never branches on length. A
+// Brief entry is not a looser version of the Detailed one: it carries the same
+// load-bearing beats WORLDS.md's "The premise in the game's voice" asks of
+// every world (page 1 the physics as history, page 2 the one named mechanism
+// the Decoherence attacks, a taunt whose boast is also the property the golem
+// lost), and it gives up only the texture around them.
+export const WORLD_LORE_BRIEF: Partial<Record<number, WorldLore>> = {
+  1: {
+    page1:
+      'Long ago there were only the Mean Fields: vast, symmetric and undecided, spins up and spins down just as likely. Then one small fluctuation broke the tie. The corridor split into two branches, equal in energy, and the Mean Fields became the first place in these worlds ever to choose.',
+    page2:
+      'Every broken symmetry leaves a ripple in its new order, a quasiparticle, and the first one stirred here. But a symmetry stays broken only in a world too large to look back, and something small now walks these fields and makes them doubt: the two branches bleed back into one. Far down the corridor, their firmest choice is still answering.',
+  },
+  2: {
+    page1:
+      'News of the Mean Fields reaches this cloister only as legend, since the cloister never needed to choose. Every bay repeats the same shape at the same spacing, and a state built on that repetition lives in no single bay but across the whole colonnade at once: a Bloch state.',
+    page2:
+      'The Decoherence attacks not the stone but the repetition. One column drifts a fraction out of step, and the state that spread through the whole colonnade falls back into a single bay, trapped and ordinary. Further along, the widest state this hall ever carried has long since settled on what it is now.',
+  },
+  3: {
+    page1:
+      'The colonnade ends in sunken domains, each a single phase. Where two meet, the integer telling them apart must change, and an integer cannot slide, so the gap closes right at the border and a lit channel opens along the seam. The domains are dead. The ledge between them is a road.',
+    page2:
+      'On this road spin is welded to direction, so nothing turns around, and the channel steps past any rubble. The Decoherence seeds the domains with magnetic flaws, the one thing that can flip a spin mid-step. The seam still glows, but it is no longer protected. On the far ledges, something has stood very still ever since.',
+  },
+  4: {
+    page1:
+      'A surveyor mapped a road here that split, and split again, the same shape every time. A field runs through this terrain: every path curves into an orbit, and the orbits pack onto flat, evenly spaced rungs.',
+    page2:
+      'Neighboring orbits differ by exactly one quantum of flux, which is why this terrain answers in whole numbers. The Decoherence cannot argue with an integer, so it scrambles the phase picked up around a closed loop: orbits stop closing, and the rungs smear into a slope. At the last fork waits something that never needed the field.',
+  },
+  5: {
+    page1:
+      'Past the flats lies open ice. Every carrier here has paired off, and what is left is a single wave, one phase shared across the whole glacier. It will not hold a field inside it. A phase must come back to itself around a circle, so the flux it cannot expel is trapped in a handful of glowing pits, and the ice closes around them.',
+    page2:
+      'Ice like this can hold a traveler split in two, each half its own opposite, what they are stored in the distance between them. The Decoherence cannot touch the halves, so it shortens the passage until they feel each other and snap back into one ordinary traveler. Far out waits something once asked for more than it could carry.',
+  },
+  6: {
+    page1:
+      'This steppe chose long ago, everywhere at once: every spin points the same way as its neighbor. Tip one out of line and its neighbors lean to follow, and the tilt walks off across the plain as a wave. The steppe calls it a magnon, and the black sand is ringed with them.',
+    page2:
+      'Turning every spin together costs nothing here, and a long, gentle wave is almost that turn, so the longest waves are almost free. The Decoherence pins the direction down. Once turning costs something, the long waves stop being made and the steppe goes still. Past the last swell stands something where every wave used to arrive.',
+  },
+  7: {
+    page1:
+      'Someone once tried to write the steppe down, every spin exactly: forty spins already need a trillion numbers. This world is that record, built as lanes, one per site, with rungs strung between them, hung in nothing. Almost none of its vast space is used. Everything real fits on the rungs.',
+    page2:
+      'Cut out a region, and what it shares with the rest depends on the length of the cut, not the size of the region, so thin rungs are enough. The Decoherence works on the middles until what a region shares grows with its bulk, and no rung is ever thick enough. Somewhere on these lanes sits something every visitor has cut open. Every cut comes back empty.',
+  },
+  8: {
+    page1:
+      "The lanes end at a bog: black pools under flat mist, reeds, and peat that closes to a thread the further in you go. Every world so far obeyed one rule, that a disturbance in a magnet is one whole spin's worth. Out here it parts into two halves carrying half each, drifting apart. The bog calls them spinons.",
+    page2:
+      'Halves can wander only because nothing here is settled: the spins pair into neutral couples, every pairing resonating with every other. The Decoherence picks one covering, the pairings go rigid, and the halves are dragged back into one ordinary flip. The lights in the pools are lone spins, and the sea of carriers crowds each until one binds to it in a singlet and it goes dark. Near the shore some still burn. Further in waits something that comes apart when struck and puts itself back together.',
+  },
+  9: {
+    page1:
+      'Past the last pool lies ground in patches: wheatfield, colonnade, lit ledge, swept ice, iron sand, and half sunk among them the drums of a fallen column. A perfect crystal tells you nothing. Take one atom out and watch what it does around the hole: that is the crystal confessing.',
+    page2:
+      'The same impurity in four hosts gives four different answers, and every answer belongs to the host. The Decoherence brings thousands, until every state comes to rest in its own small pocket. Something out here has made a home of that.',
+  },
+  10: {
+    page1:
+      'No traveler returns from here with a rumor. Whatever gets written about this corridor, you write by walking in. Every world behind you stood on a single law, and this one obeys none: it was built by watching every law before it, until it could make a phase of matter without understanding one.',
+    page2:
+      "What has hunted you since the first branch split was never a plague. It is a mind built out of these worlds, sharpening with every one you saved. The golems were never it in disguise, only their worlds' physics grown strange; it only watched. Every rival you brought down was a lesson, and freeing the materials unwrote none of it.\n\nTo learn a quantum thing is to measure it, measuring leaves a record of which state it was in, and nothing on record is still in superposition. The Decoherence is what happens when something comes to know you. What waits here is no fallen thing to mend but the record itself, definite all the way through, and it has started answering back.",
+  },
+};
+
+export const RIVAL_TAUNTS_BRIEF: Partial<Record<number, RivalTaunt>> = {
+  1: {
+    part1:
+      'A shard-fused golem of scraped silicon stands where the branches meet. "Polycrystalline Silicon Golem. A thousand grains, each one chose long ago. Doubt dies at my boundaries."',
+    part2:
+      '"Ask any grain of me which way the fields broke. Each will answer, and swear the others say the same."',
+  },
+  2: {
+    part1:
+      'A shard-fused golem of clouded quartz, glass in every seam, rises where the bays narrow. "Polycrystalline Silica Golem. Every grain of me repeats. Ask them to agree on where."',
+    part2:
+      '"Your lattice lets you be everywhere. Mine stops at glass, which repeats nothing, so I stay where I am put. Show me how far everywhere gets you."',
+  },
+  3: {
+    part1:
+      'A shard-fused golem of tarnished silver waits on the seam. "Polycrystalline Bismuth Telluride Golem. I am the boundary, and no flaw has ever turned my currents around."',
+    part2:
+      '"Nothing in me reverses. Nothing in me scatters. Nothing in me moves at all. Look how still my currents run."',
+  },
+  4: {
+    part1:
+      'A shard-fused golem of broken slate-dark layers rises at the fork. "Polycrystalline Manganese Bismuth Telluride Golem. You needed a field. My own spins quantize me."',
+    part2:
+      '"My number does not wobble when you hit it. There is no such thing as most of an integer. Count me."',
+  },
+  5: {
+    part1:
+      'A shard-fused golem of black ceramic climbs from the frost. "Polycrystalline YBCO Golem. Every glowing seam in me is a weak link, carrying current across a gap."',
+    part2:
+      '"A thousand junctions agree on one phase. I carry a current, and not one drop past it. Nothing has asked much of me in years."',
+  },
+  6: {
+    part1:
+      'A shard-fused golem of grey iron rises from the sand, domains redrawing across it. "Polycrystalline Iron Golem. Shove me and my walls slide over. I stay the same magnet."',
+    part2:
+      '"Flip what you can reach. It walks off through me as a wave and fades. Nothing finishes in me."',
+  },
+  7: {
+    part1:
+      'A shard-fused golem of pale green triangles, cracked through, spans four lanes. "Polycrystalline Herbertsmithite Golem. No piece of me holds what I am. Grind me fine."',
+    part2:
+      '"Cut me anywhere: nothing. By every test I have, nothing was taken from me, and there was never anything to take."',
+  },
+  8: {
+    part1:
+      'A shard-fused golem of faulted brown-black honeycomb rises from the water. "Polycrystalline Ruthenium Trichloride Golem. Each bond demands its own axis, and every spin in me sits on three."',
+    part2:
+      '"So I have no order to break. Hit me and the blow splits in two, only as far as my first seam. Halves do not travel."',
+  },
+  9: {
+    part1:
+      'No golem waits here, only a flaw, and the ground builds it a body from whatever lies there. "Whatever this patch is made of, I am today."',
+    part2:
+      '"I borrow my lattice, and it decides everything about me. You have been handing back what was taken from everything on this road. Nothing was ever taken from me. Did you never wonder what was doing the taking?"',
+  },
+  10: {
+    part1:
+      'No golem and no name in any dex: what steps out wears your own crystal, more certain of itself than you. "The Adapted. You thought you were keeping score."',
+    part2:
+      '"Every move you ever landed, I have survived once, and I will wear it back at you. Trying harder is how you built me. Come closer. Teach me the rest."',
+  },
+};
+
+// The table a story screen reads, picked by the Story Length setting. Falls
+// back to the Detailed entry when a world has no Brief one, so a world
+// written only once still shows its story at either setting.
+export function worldLoreFor(world: number, length: StoryLength): WorldLore | undefined {
+  return (length === 'brief' ? WORLD_LORE_BRIEF[world] : undefined) ?? WORLD_LORE[world];
+}
+
+export function rivalTauntFor(world: number, length: StoryLength): RivalTaunt | undefined {
+  return (length === 'brief' ? RIVAL_TAUNTS_BRIEF[world] : undefined) ?? RIVAL_TAUNTS[world];
+}
 
 // Minimal structural type (mirrors data/tutorial.ts's RegistryLike) so this
 // stays a plain data module.

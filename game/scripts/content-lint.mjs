@@ -5,7 +5,7 @@
 // difficulty (balance-sim.mjs) nor map shape (mapgen-check.mjs) -- it reads
 // the source itself and checks what stays consistent there, catching the
 // class of mistake those other checks structurally can't see. Two families:
-// the hand-authored data tables' internal consistency (checks 1-16) -- a
+// the hand-authored data tables' internal consistency (checks 1-16, 18, 19) -- a
 // typo'd move id, a world missing from one table but not its sibling, a
 // hybrid recipe whose result was never actually added to World 10's pool --
 // and source-level assertions the compiler is deliberately told not to make
@@ -697,6 +697,62 @@ for (const w of BUILT_WORLDS.filter((w) => w !== '10')) {
           `so the Materialdex and a field encounter would disagree`
       );
     }
+  }
+}
+
+// 19. Every story screen's text exists at both Story Length settings, and the
+// Brief one is actually brief. The screens read the Brief table through
+// worldLoreFor/rivalTauntFor/storyBeatFor/finaleBodyFor, which fall back to
+// Detailed for a missing entry, so a world written once still plays; this
+// check is what keeps that fallback a safety net rather than the quiet
+// reason a Brief setting shows the full text. Each Brief string has to be
+// shorter than its Detailed sibling by a real margin (at most 0.6 of its
+// words: a taunt's first part spends several on the golem's full material
+// name, which does not shrink), and the Brief text as a whole has to stay
+// near the third it is promised in the Settings panel.
+{
+  const loreSf = parseFile('src/data/worldLore.ts');
+  const storySf = parseFile('src/data/story.ts');
+  const words = (s) => s.split(/\s+/).filter(Boolean).length;
+  const pairs = [];
+  const nested = (sf, name, fields) => {
+    const detailed = evalNode(findTopLevelConst(sf, name), sf);
+    const brief = evalNode(findTopLevelConst(sf, `${name}_BRIEF`), sf);
+    for (const world of Object.keys(detailed)) {
+      for (const field of fields) pairs.push([`${name}[${world}].${field}`, detailed[world][field], brief[world]?.[field]]);
+    }
+  };
+  nested(loreSf, 'WORLD_LORE', ['page1', 'page2']);
+  nested(loreSf, 'RIVAL_TAUNTS', ['part1', 'part2']);
+  {
+    const detailed = evalNode(findTopLevelConst(storySf, 'STORY_BEATS'), storySf);
+    const brief = evalNode(findTopLevelConst(storySf, 'STORY_BEATS_BRIEF'), storySf);
+    for (const world of Object.keys(detailed)) pairs.push([`STORY_BEATS[${world}]`, detailed[world], brief[world]]);
+  }
+  pairs.push([
+    'FINALE_BODY',
+    evalNode(findTopLevelConst(storySf, 'FINALE_BODY'), storySf),
+    evalNode(findTopLevelConst(storySf, 'FINALE_BODY_BRIEF'), storySf),
+  ]);
+  let detailedTotal = 0;
+  let briefTotal = 0;
+  for (const [label, detailed, brief] of pairs) {
+    if (typeof brief !== 'string' || !brief.trim()) {
+      flag(`${label} has no Brief version -- the Story Length setting's Brief default would show the Detailed text here`);
+      continue;
+    }
+    const ratio = words(brief) / words(detailed);
+    if (ratio > 0.6) {
+      flag(`${label}'s Brief text is ${words(brief)} words against ${words(detailed)} Detailed (${ratio.toFixed(2)}), not brief`);
+    }
+    detailedTotal += words(detailed);
+    briefTotal += words(brief);
+  }
+  if (detailedTotal && briefTotal / detailedTotal > 0.4) {
+    flag(
+      `the Brief story text totals ${briefTotal} words against ${detailedTotal} Detailed (${(briefTotal / detailedTotal).toFixed(2)}), ` +
+        `well above the third the Settings panel promises`
+    );
   }
 }
 

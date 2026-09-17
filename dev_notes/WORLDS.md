@@ -994,6 +994,14 @@ patterns, because they are what make the arc land rather than merely exist.
 | `WORLD_GOAL_TEXT` | `data/story.ts` | on reaching the goal tile | one line: this world's physics still holds |
 | `WORLD_FLAVOR` | `data/worldFlavor.ts` | Bloch's destination preview | plain physics, deliberately *not* narrative |
 
+`WORLD_LORE`, `RIVAL_TAUNTS`, `STORY_BEATS` and the finale are each written twice: the Detailed
+text and a Brief one (`*_BRIEF`) roughly a third its length, with the same keys and the same
+two-page and two-part shape, picked by the Settings station's Story Length row (Brief by
+default). Every rule in this section binds the Brief text exactly as it binds the Detailed one:
+a Brief page 2 still names the one mechanism, a Brief boast still reads both ways, a Brief beat
+still observes the release and looks forward. What a Brief entry gives up is texture, never a
+beat.
+
 **The Decoherence is never generic.** In every world it attacks one *named
 mechanism*, and always the one that world exists to teach — it doesn't erase the
 Mean Fields' order, it makes the broken symmetry doubt itself; it doesn't break

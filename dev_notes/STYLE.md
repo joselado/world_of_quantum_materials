@@ -2780,10 +2780,11 @@ world are shaped, since world N's start is world N-1's exit.
   their own column, so the two never read as one longer row of values. The open category is
   `HubScene.settingsCategory`, panel state rather than a preference: not persisted, and reset
   to the first category whenever the Lab is entered.
-- Nine rows, all but one backed by its own preset list in `data/settings.ts`. Gameplay:
+- Ten rows, all but one backed by its own preset list in `data/settings.ts`. Gameplay:
   Difficulty (`DIFFICULTY_TIER_PRESETS`, B.Sc./M.Sc./Ph.D.), Enemy Density (`DENSITY_PRESETS`,
   Low/Normal/High/Very High), World Size (`WORLD_SIZE_PRESETS`, Nano/Meso/Macro). Story: Story
-  Screens and Tutorial Tips (`ON_OFF_PRESETS`). Presentation: Text Size (`FONT_SCALE_PRESETS`,
+  Screens and Tutorial Tips (`ON_OFF_PRESETS`), Story Length (`STORY_LENGTH_PRESETS`,
+  Brief/Detailed). Presentation: Text Size (`FONT_SCALE_PRESETS`,
   Compact/Normal/Large), Full Screen (`ON_OFF_PRESETS` over Phaser's own scale-manager state,
   `ui/fullscreen.ts`), Music Style (`MUSIC_STYLE_PRESETS`, Classic/Modern/Mute), Touch
   Controls (`TOUCH_CONTROLS_PRESETS`, Auto/On/Off). Full Screen is the one row with no save
@@ -2796,8 +2797,9 @@ world are shaped, since world N's start is world N-1's exit.
   row is shorter than ~55px there, and the whole roster on one screenful does not fit the
   canvas -- which is what the categories buy. Measured at Large, the tallest category is
   Presentation, whose four rows (Full Screen carrying a four-line "when", Touch Controls a
-  three-line one) reach 448 of the canvas's 480 pixels. That is the practical ceiling: a row
-  costs roughly 100px there, so a fifth Presentation row would not fit. Re-measure before
+  three-line one) reach 448 of the canvas's 480 pixels, and Story's three rows reach 417. That is
+  the practical ceiling: a row costs roughly 100px there, so a fifth Presentation row or a fourth
+  Story row would not fit. Re-measure before
   adding one anywhere rather than reasoning from the row count alone.
 - Turning the music off lives here as the `MUSIC_STYLE_PRESETS` "Mute" value rather than as
   a key: it is a preference a player sets once, so it belongs with the other preferences and

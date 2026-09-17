@@ -58,8 +58,8 @@ import { hasMath, makeQuestionText, makeFormulaButton } from '../ui/mathtext';
 import { encounterGreeting } from '../data/greetings';
 import { TUTORIAL_TIPS, hasSeenTip, markTipSeen } from '../data/tutorial';
 import type { TutorialTipId } from '../data/tutorial';
-import { STORY_BEATS, WORLD_GOAL_TEXT, FINALE_TITLE, FINALE_BODY } from '../data/story';
-import { WORLD_LORE, RIVAL_TAUNTS, hasSeenWorldLore, markWorldLoreSeen } from '../data/worldLore';
+import { WORLD_GOAL_TEXT, FINALE_TITLE, storyBeatFor, finaleBodyFor } from '../data/story';
+import { worldLoreFor, rivalTauntFor, hasSeenWorldLore, markWorldLoreSeen } from '../data/worldLore';
 import type { WorldLore } from '../data/worldLore';
 import {
   DEFAULT_ENCOUNTER_DENSITY,
@@ -69,6 +69,7 @@ import {
   touchControlsActive,
   tutorialTipsEnabled,
   storyScreensEnabled,
+  storyLength,
   worldSizeFactor,
 } from '../data/settings';
 import type { TouchControlsMode, WorldSizeId } from '../data/settings';
@@ -1183,7 +1184,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // World lore is the more "establishing" content when both are due on
     // the same entry, so it plays first and finishEntry (the guardian's
     // auto-dialogue, then the controls tip) only runs once it's dismissed.
-    const lore = WORLD_LORE[this.world];
+    const lore = worldLoreFor(this.world, storyLength(this.game.registry));
     if (lore && !hasSeenWorldLore(this.game.registry, this.world)) {
       this.showWorldLore(lore, finishEntry);
     } else {
@@ -2779,7 +2780,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.showTutorialTip('guardian', () => (guardian.open ?? ((s: OverworldScene) => s.showGuardianLore(guardian)))(this));
   }
 
-  // World-entry lore (data/worldLore.ts's WORLD_LORE) -- a two-page history
+  // World-entry lore (data/worldLore.ts's worldLoreFor, the Brief or Detailed
+  // table per the Settings station's Story Length row) -- a two-page history
   // of this world shown once per save the first time the player steps into
   // it (gated by hasSeenWorldLore/markWorldLoreSeen, its own save field
   // independent of visitedWorlds, see save.ts's worldLoreSeen comment).
@@ -2904,7 +2906,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // so a missing beat is never a dead end, and the same way when the Settings
   // station's Story Screens row is off.
   private showStoryBeat(completedWorld: number) {
-    const line = STORY_BEATS[completedWorld];
+    const line = storyBeatFor(completedWorld, storyLength(this.game.registry));
     if (!line || !storyScreensEnabled(this.game.registry)) {
       this.advanceToWorld(completedWorld + 1);
       return;
@@ -3030,7 +3032,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // to): an ending screen pages to nothing, so the closing text gives up
     // font size rather than splitting, and the panel always ends on the
     // canvas at every FONT_SCALE_PRESETS setting.
-    fitProseToBudget(body, [FINALE_BODY], CANVAS_H - y - (16 + thanks.height + 20 + button.height + top));
+    fitProseToBudget(body, [finaleBodyFor(storyLength(this.game.registry))], CANVAS_H - y - (16 + thanks.height + 20 + button.height + top));
     y += body.height + 16;
 
     thanks.setY(y);
@@ -3072,7 +3074,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       return;
     }
 
-    const taunt = RIVAL_TAUNTS[this.world];
+    const taunt = rivalTauntFor(this.world, storyLength(this.game.registry));
     if (taunt) {
       this.renderRivalTauntPage(rival, taunt.part1, 'Next ->', () =>
         this.renderRivalTauntPage(rival, taunt.part2, 'Battle!', () => this.startBattle(rival, 1, true))

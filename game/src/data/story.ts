@@ -1,3 +1,5 @@
+import type { StoryLength } from './settings';
+
 // The narrator's liberation beat per world, shown right after that world's
 // rival is beaten and before OverworldScene.advanceToWorld moves the player
 // on (OverworldScene.crossPass): first the golem's release observed as a
@@ -23,6 +25,22 @@ export const STORY_BEATS: Partial<Record<number, string>> = {
   7: 'The fracture lines in the pale green mineral seal. The one state no piece was ever holding spreads back across every piece at once, whole exactly because it lives nowhere in particular. The network holds its bonds. Past its last rung the lanes give onto black water that fractionalizes everything entering it: spin liquids that never settle on an order of their own.',
   8: 'The stacking faults in the brown-black layers heal, seam by seam. What comes apart in it now travels: halves cross the whole crystal, with no boundary left to hold them in. The water settles into something you can name again. Ahead the ground itself is scarred, old burns closed over and crust still open and glowing between them: defects and impurities, the Decoherence wearing through the material.',
   9: "The flaw disperses, and the ground it borrowed goes back to being ground. There was nothing in it to free: the one thing on this road with no coherence to lose has none to be handed back. The scars close. What's left is a world that re-forms around you as you walk and takes the ground back behind you: adaptive, watching, the last and strangest phase of matter you will face.",
+};
+
+// The Brief version of each beat above, roughly a third its length, read
+// when the Settings station's Story Length row is on Brief. It keeps the
+// beat's two moves, the release observed as physics and the look forward, and
+// gives up the rest.
+export const STORY_BEATS_BRIEF: Partial<Record<number, string>> = {
+  1: "The silicon's grain boundaries let go, a thousand choices annealing into one. Ahead, the Decoherence spreads on, learning from every phase you master.",
+  2: 'The glass between the grains crystallizes, bay matching bay. Ahead, the ground breaks into dead domains with one lit ledge between them.',
+  3: "The silver's disorder drains, and its currents walk past every flaw again. Ahead, bands glow under a storm that never breaks.",
+  4: 'Order settles back through the slate-dark layers, and every loop closes again. Beyond lies a glacier cold enough for zero resistance.',
+  5: 'The weak links in the black ceramic fuse shut into one seamless wave. Beyond, spin waves ripple across black iron sand.',
+  6: "The iron's grain boundaries let go, and a wave crosses unscattered at last. Past it hangs a world made only of entanglement.",
+  7: "The green mineral's fractures seal, and the state no piece holds spreads across all of it. Beyond lies black water, where spins never settle.",
+  8: 'The stacking faults in the brown-black layers heal, and halves cross the whole crystal. Ahead the ground is scarred with defects and impurities.',
+  9: 'The flaw disperses, and the ground it borrowed is ground again, with nothing in it to free. Ahead, a world re-forms around you, watching.',
 };
 
 // One line of world-specific flavor shown on the goal-tile banner
@@ -51,3 +69,18 @@ export const FINALE_TITLE = 'The Decoherence is stabilized.';
 
 export const FINALE_BODY =
   "It reached for every trick it had ever watched you land, and still came up short. It was never a plague loose in these nine worlds. It was built out of your own play and trained to wear your own moves back at you, and you out-adapted your own reflection anyway. Every symmetry, every edge state, every fractional charge you fought to protect holds on its own now, with nothing left studying how to unmake it. And the golems are golems no longer. They were ground down holding their passes, and now that the grinding has stopped they are materials again: annealed, ordered, back in the worlds they could not save alone. What was learned about them stays learned, and the light it cost does not come back. But nothing is reading the record anymore, and everything that can still choose is choosing.";
+
+// The ending at Brief length, the same beats as FINALE_BODY in a third of the
+// words.
+export const FINALE_BODY_BRIEF =
+  'It was built out of your own play, and you out-adapted your own reflection anyway. The golems are materials again, annealed and home. What was learned stays learned, and the light it cost does not come back, but nothing reads the record anymore, and everything that can still choose is choosing.';
+
+// The text a story screen reads, picked by the Story Length setting, falling
+// back to the Detailed text when no Brief one exists.
+export function storyBeatFor(world: number, length: StoryLength): string | undefined {
+  return (length === 'brief' ? STORY_BEATS_BRIEF[world] : undefined) ?? STORY_BEATS[world];
+}
+
+export function finaleBodyFor(length: StoryLength): string {
+  return length === 'brief' ? FINALE_BODY_BRIEF : FINALE_BODY;
+}

@@ -1451,10 +1451,10 @@ Bloch's teleport hub (§5) for jumping to an arbitrary already-visited world. Ev
 crossing regenerates the destination world's map fresh, the same "walking between
 worlds always lays out a new corridor" rule §7 describes for every other transition.
 
-**The Settings station** (`scenes/panels/hubStations.ts`'s `showSettingsPanel`) holds nine
+**The Settings station** (`scenes/panels/hubStations.ts`'s `showSettingsPanel`) holds ten
 settings in three categories the player switches between at the top of the panel: Gameplay
-(difficulty tier -- §3, wild-encounter density, world size), Story (story screens, tutorial
-tips) and Presentation (text size, full screen, music style, touch controls). Every one of them
+(difficulty tier -- §3, wild-encounter density, world size), Story (story screens, story length,
+tutorial tips) and Presentation (text size, full screen, music style, touch controls). Every one of them
 but full screen is its own preset list in `data/settings.ts` and its own save field; full
 screen has neither, being read live from the browser (below).
 
@@ -1479,6 +1479,20 @@ the screens still ahead of the player rather than replaying the ones already pas
 screens are the one setting whose default depends on the mode (`defaultSave(superposition)`):
 on in Story Mode, off in Superposition Mode, which has no road to walk through. The finale
 screen is exempt from the switch, being the run's only acknowledgment that it is finished.
+
+**Story length.** The same category's Story Length row picks how much the story screens tell:
+Brief (the default) or Detailed (`data/settings.ts`'s `STORY_LENGTH_PRESETS`, save field
+`storyLength`). Every screen that carries the arc (world-entry lore, a rival's taunt, the
+between-worlds beat and the finale) is written twice, the Detailed text and a Brief one
+roughly a third its length (`WORLD_LORE_BRIEF`/`RIVAL_TAUNTS_BRIEF` in `data/worldLore.ts`,
+`STORY_BEATS_BRIEF`/`FINALE_BODY_BRIEF` in `data/story.ts`), with the same keys and the same
+two-page/two-part shape, so a screen only chooses which table to read
+(`worldLoreFor`/`rivalTauntFor`/`storyBeatFor`/`finaleBodyFor`, each falling back to Detailed
+for a missing Brief entry). Brief is the default because these screens stop play. A Brief entry
+keeps every beat WORLDS.md's voice rules require and gives up only texture; `content-lint`
+checks that every Detailed entry has a Brief sibling and that the Brief text stays near a third
+of the words. The goal-tile line is already one sentence and has a single version. The Lab's
+Story station always reads the Detailed tables, since it is where the full text lives.
 
 **Text size.** The same Settings station offers Compact/Normal/Large
 (`data/settings.ts`'s `FONT_SCALE_PRESETS`, 1x / 1.5x / 2x on every base px size

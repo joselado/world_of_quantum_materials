@@ -240,6 +240,7 @@ export class TitleScene extends Phaser.Scene {
     registry.set('touchControls', save.touchControls);
     registry.set('tutorialTipsEnabled', save.tutorialTipsEnabled);
     registry.set('storyScreensEnabled', save.storyScreensEnabled);
+    registry.set('storyLength', save.storyLength);
     registry.set('blochUnlockedWorlds', save.blochUnlockedWorlds);
     registry.set('dresselhausUnlockedCrystals', save.dresselhausUnlockedCrystals);
     registry.set('andersonUnlockedHosts', save.andersonUnlockedHosts);

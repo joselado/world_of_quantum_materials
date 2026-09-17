@@ -14,8 +14,10 @@ import {
   TOUCH_CONTROLS_PRESETS,
   DEFAULT_TUTORIAL_TIPS,
   defaultStoryScreens,
+  DEFAULT_STORY_LENGTH,
+  STORY_LENGTH_PRESETS,
 } from './settings';
-import type { MusicStyle, DifficultyTier, WorldSizeId, TouchControlsMode } from './settings';
+import type { MusicStyle, DifficultyTier, WorldSizeId, TouchControlsMode, StoryLength } from './settings';
 import type { PassiveOwner } from './passives';
 
 // Two independent localStorage-backed save slots, one per starting mode
@@ -142,6 +144,10 @@ export interface SaveData {
   // for Story Mode, off for Superposition Mode.
   tutorialTipsEnabled: boolean;
   storyScreensEnabled: boolean;
+  // Same Story category: whether those story screens read their Brief or
+  // their Detailed text (data/settings.ts's STORY_LENGTH_PRESETS). Read live
+  // at the moment a screen opens, so a change lands on the next one.
+  storyLength: StoryLength;
   // Which of Kondo's three screening-class moves (data/materials.ts's
   // KONDO_MOVE_IDS) is currently the active/usable one -- null until the
   // player picks one for the first time in OverworldScene.showKondoPanel.
@@ -258,6 +264,7 @@ export function defaultSave(superposition: boolean): SaveData {
     touchControls: DEFAULT_TOUCH_CONTROLS,
     tutorialTipsEnabled: DEFAULT_TUTORIAL_TIPS,
     storyScreensEnabled: defaultStoryScreens(superposition),
+    storyLength: DEFAULT_STORY_LENGTH,
     kondoActiveMove: null,
     passivesUnlocked: [],
     activePassiveByOwner: {},
@@ -413,6 +420,7 @@ export function loadSave(superposition: boolean): SaveData {
     // to this slot's own default rather than to a single module-level constant.
     if (typeof data.tutorialTipsEnabled !== 'boolean') data.tutorialTipsEnabled = DEFAULT_TUTORIAL_TIPS;
     if (typeof data.storyScreensEnabled !== 'boolean') data.storyScreensEnabled = defaultStoryScreens(superposition);
+    if (!STORY_LENGTH_PRESETS.some((p) => p.value === data.storyLength)) data.storyLength = DEFAULT_STORY_LENGTH;
     return data;
   } catch {
     return { ...defaultSave(superposition), superpositionMode: superposition };
@@ -456,6 +464,7 @@ export function persistFromRegistry(registry: RegistryLike) {
     touchControls: (registry.get('touchControls') as TouchControlsMode) ?? DEFAULT_TOUCH_CONTROLS,
     tutorialTipsEnabled: (registry.get('tutorialTipsEnabled') as boolean) ?? DEFAULT_TUTORIAL_TIPS,
     storyScreensEnabled: (registry.get('storyScreensEnabled') as boolean) ?? defaultStoryScreens(superposition),
+    storyLength: (registry.get('storyLength') as StoryLength) ?? DEFAULT_STORY_LENGTH,
     kondoActiveMove: (registry.get('kondoActiveMove') as string | null) ?? null,
     passivesUnlocked: (registry.get('passivesUnlocked') as string[]) ?? [],
     activePassiveByOwner: (registry.get('activePassiveByOwner') as Partial<Record<PassiveOwner, string>>) ?? {},

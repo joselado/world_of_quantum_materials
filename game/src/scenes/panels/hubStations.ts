@@ -48,6 +48,8 @@ import {
   ON_OFF_PRESETS,
   tutorialTipsEnabled,
   storyScreensEnabled,
+  storyLength,
+  STORY_LENGTH_PRESETS,
   isTouchDevice,
 } from '../../data/settings';
 import type { WorldSizeId, TouchControlsMode, SettingsCategoryId } from '../../data/settings';
@@ -877,6 +879,7 @@ export function showSettingsPanel(scene: HubScene) {
 
   const tips = tutorialTipsEnabled(registry);
   const storyScreens = storyScreensEnabled(registry);
+  const length = storyLength(registry);
 
   const allRows: SettingsRow[] = [
     {
@@ -974,6 +977,16 @@ export function showSettingsPanel(scene: HubScene) {
         label: p.label,
         selected: p.value === storyScreens,
         onPick: choose('storyScreensEnabled', p.value),
+      })),
+    },
+    {
+      category: 'story',
+      label: 'Story Length',
+      when: 'Brief is a third as long. The Story station keeps it all. Immediately.',
+      options: STORY_LENGTH_PRESETS.map((p) => ({
+        label: p.label,
+        selected: p.value === length,
+        onPick: choose('storyLength', p.value),
       })),
     },
     {
