@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { BIOMES, getBiome } from '../art/biomes';
 import type { Biome } from '../art/biomes';
-import { killTweensDeep, makeCrystal, setTweensPausedDeep } from '../art/crystals';
+import { drawCrystalSilhouette, killTweensDeep, makeCrystal, setTweensPausedDeep } from '../art/crystals';
 import { makeToken } from '../art/tokens';
 import { makeNoetherAvatar } from '../art/noether';
 import { BOSS_FOOT, BOSS_SILHOUETTE_BOTTOM, BOSS_SILHOUETTE_HALF_WIDTH, BOSS_SILHOUETTE_TOP, makeBossCrystal } from '../art/boss';
@@ -33,6 +33,7 @@ import { drawSky, forwardHazeBlend } from './overworld/sky';
 import type { GateView } from './overworld/sky';
 import { buildTerrainPlan, sampleBattleLocale } from './overworld/terrain/plan';
 import { drawTerrain } from './overworld/terrain/paint';
+import { drawReflectionNet, eventHorizonAt } from './overworld/terrain/materials/consuming';
 import type { BattleLocale, TerrainPlan, TerrainView } from './overworld/terrain/types';
 import {
   PLAYER_MATERIAL,
@@ -133,6 +134,9 @@ interface SavedMapState {
 const CRYSTAL_SIZE = 22;
 const TOKEN_SIZE = 26;
 const PLAYER_CRYSTAL_SIZE = 34;
+// Above the ground graphics (the event horizon is drawn into them) and below
+// the wild crystals and The Adapted at 20.
+const MIRROR_GHOST_DEPTH = 15;
 // A sprite's ground contact -- where its own shadow is drawn, in local px
 // below its container origin, before the depth scale is applied. The
 // projection puts this point on its tile's centre, so every landmark stands
@@ -680,6 +684,12 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   private worldGfx!: Phaser.GameObjects.Graphics;
   private player!: Phaser.GameObjects.Container;
   private playerCrystalGfx!: Phaser.GameObjects.Container;
+  // The player's reflection inside the Devouring Mirror's event horizon (see
+  // buildMirrorGhost): the network drawn each frame, and the silhouette it
+  // is clipped to. Null in every other world.
+  private mirrorNet: Phaser.GameObjects.Graphics | null = null;
+  private mirrorSilhouette: Phaser.GameObjects.Graphics | null = null;
+  private mirrorRotation = 0;
   playerMaterial!: Material;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   // The on-screen walking arrows (scenes/overworld/touchControls.ts), built
@@ -1142,6 +1152,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.player.add([playerShadow, this.playerCrystalGfx]);
     this.player.setDepth(40);
     this.idleBob();
+    this.buildMirrorGhost();
 
     this.cursors = this.input.keyboard!.createCursorKeys();
     // Below the dialogue panels' depth 100: a panel covers the arrows while
@@ -1737,7 +1748,58 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.gate = this.gateView();
     this.hazeBlend = forwardHazeBlend(this.world, this.gate.open, this.camPos.y, this.goalTile.y);
     this.hazeCache.clear();
-    drawTerrain(this.terrainView());
+    const view = this.terrainView();
+    drawTerrain(view);
+    this.placeMirrorGhost(view);
+  }
+
+  // The player's reflection inside the Devouring Mirror's event horizon
+  // (terrain/materials/consuming.ts): a network in the player's own shape,
+  // inverted, clipped to the avatar's silhouette and brightening as the
+  // approach closes. The silhouette is built from the same form the avatar
+  // is, so a transmuted or doped player sees exactly their own outline --
+  // which is the point -- filled with the thing that has been learning them
+  // rather than with themselves. Sits above the ground it is drawn into and
+  // below every actor, so The Adapted stands in front of it.
+  private buildMirrorGhost() {
+    this.destroyMirrorGhost();
+    if (this.biome.wallTheme !== 'consuming') return;
+    this.mirrorSilhouette = this.make.graphics({ x: 0, y: 0 }, false);
+    this.mirrorRotation = drawCrystalSilhouette(this.mirrorSilhouette, PLAYER_CRYSTAL_SIZE, this.playerMaterial.variant, {
+      seed: this.playerMaterial.name,
+      hybrid: this.playerMaterial.hybridParents,
+    });
+    this.mirrorNet = this.add.graphics().setDepth(MIRROR_GHOST_DEPTH).setVisible(false);
+    this.mirrorNet.setMask(this.mirrorSilhouette.createGeometryMask());
+  }
+
+  private destroyMirrorGhost() {
+    this.mirrorNet?.destroy();
+    this.mirrorNet = null;
+    this.mirrorSilhouette?.destroy();
+    this.mirrorSilhouette = null;
+  }
+
+  // Every frame, from the same view the terrain was just drawn from: the
+  // reflection follows the disc, and is gone with it once the pass opens.
+  private placeMirrorGhost(view: TerrainView) {
+    if (!this.mirrorNet || !this.mirrorSilhouette) return;
+    const hole = eventHorizonAt(view);
+    if (!hole) {
+      this.mirrorNet.setVisible(false);
+      return;
+    }
+    // A reflection on something that is not still: it sways, slightly, and
+    // never quite settles into a likeness (WORLDS.md section 2 -- the copies
+    // never resolve completely).
+    const sway = Math.sin(view.now / 900) * 0.04;
+    const scale = (hole.r * 0.95) / PLAYER_CRYSTAL_SIZE;
+    this.mirrorSilhouette
+      .setPosition(hole.x + hole.r * sway, hole.y + hole.r * 0.1)
+      .setRotation(this.mirrorRotation)
+      .setScale(scale * (1 + sway), -scale);
+    this.mirrorNet.setVisible(true).clear();
+    drawReflectionNet(this.mirrorNet, hole, this.playerMaterial.color, view.now);
   }
 
   // One Container(+Text) per encounter/token tile, created once and
@@ -3450,6 +3512,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       dopant: getPlayerDopantLook(this.game.registry),
     });
     this.player.add(this.playerCrystalGfx);
+    this.buildMirrorGhost();
   }
 
   // Fallback panel for a guardian left without a bespoke `open` handler

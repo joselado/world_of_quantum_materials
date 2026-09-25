@@ -11,6 +11,7 @@ import { GROUND_MOTIFS_ENABLED, decorateTile } from './decoration';
 import { fillPolygon } from '../../../art/shapes';
 import { TERRAIN_ACCENTS } from './materials';
 import { drawStormStrikes } from './materials/charged';
+import { drawEventHorizon, drawGroundNetwork } from './materials/consuming';
 import { offPathKindOf } from './plan';
 import type { AccentTile, TerrainKind, TerrainTile, TerrainView } from './types';
 
@@ -123,11 +124,20 @@ export function drawTerrain(view: TerrainView) {
       }
     }
   }
+  // The Devouring Mirror's surround is one connected network rather than a
+  // tile texture -- a link between two tiles cannot be drawn by either tile
+  // alone -- so it is drawn as its own pass over the finished ground, under
+  // the atmosphere, from a graph built once per plan.
+  if (view.biome.wallTheme === 'consuming') drawGroundNetwork(view);
   drawDepthHaze(g, view);
   // The Storm Flats' strikes cross the air as well as the ground, so they are
   // drawn over the atmosphere rather than as a per-tile accent inside it --
   // a bolt painted under the haze is a bolt the haze puts out.
   if (view.biome.wallTheme === 'charged') drawStormStrikes(g, view);
+  // The Devouring Mirror's event horizon hangs behind the pass, over the
+  // atmosphere for the same reason: a black disc the mist has softened is
+  // not black.
+  if (view.biome.wallTheme === 'consuming') drawEventHorizon(view);
 }
 
 // Projects a cached tile-space outline (art/contours.ts) at the current
@@ -413,6 +423,9 @@ function drawAccent(
   regionTint: number | null
 ) {
   if (kind === 'path') return;
+  // The Mirror's network is drawn whole by drawGroundNetwork; its per-tile
+  // accent is for the battle arena's stand, where there is no grid to link.
+  if (kind === 'consuming') return;
   const accent = TERRAIN_ACCENTS[kind];
   if (!accent) return;
   accent(g, accentTile(featureCore, fill, pFL, pFR, pNR, pNL, gx, gy, depth, haze, playerColor, now, regionTint));

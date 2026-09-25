@@ -459,9 +459,13 @@ studies.
 
 Nothing comes out of here. No traveler returns with a rumor and no legend
 crosses the threshold ahead of you; this corridor has swallowed every story
-that ever tried to arrive before you. It is silver-violet and shifting, lit
-by nothing but itself, and it re-forms around whatever crystal you currently
-are while taking the ground back behind you as you walk. Its wild encounters
+that ever tried to arrive before you. It is silver-violet over black, lit by
+nothing but itself: the ground on either side of the road is a network — the
+one you have watched assemble in the sky since the Entangled Web, come down
+and switched on, sparking — and the corridor re-forms around whatever crystal
+you currently are. Near the end, behind the thing that holds the pass,
+something black hangs over the horizon, and what it shows you is yourself,
+made of the same network. Its wild encounters
 are the **hybrids**, the fused crystals from Majorana's station, found
 nowhere else in these worlds.
 

@@ -526,7 +526,11 @@ async function main() {
           if (guardianId === 'majorana') s['majoranaPreview'] = 'HgTe/CdTe Quantum Well';
           const mid = s['midTile'];
           s['playerTile'] = { x: mid.x, y: mid.y };
-          s['maybeReachMiddle'](mid.x, mid.y);
+          // Every guardian is already met in the seeded save, and the arrival
+          // retry (maybeReachMiddle) only chases a *missed* introduction, so
+          // take the ordinary reopen path: standing on the row once reached.
+          s['reachedMiddle'] = true;
+          s['maybeAutoOpenMiddleDialogue']();
           return s['dialogueActive'] === true;
         }, id);
         await sleep(600);
@@ -597,7 +601,8 @@ async function main() {
         }
         const mid = s['midTile'];
         s['playerTile'] = { x: mid.x, y: mid.y };
-        s['maybeReachMiddle'](mid.x, mid.y);
+        s['reachedMiddle'] = true;
+        s['maybeAutoOpenMiddleDialogue']();
         return s['dialogueActive'] === true;
       });
       await sleep(700);

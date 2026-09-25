@@ -529,6 +529,38 @@ function drawSolidShape(
   else drawShardShape(g, size, color, stretch);
 }
 
+// The habit's silhouette alone, filled flat in white, for use as a geometry
+// mask: the Devouring Mirror's reflection is a network clipped to the
+// player's own shape (scenes/OverworldScene.ts's mirror ghost). Drawn with
+// the same jitter `makeCrystal` applies, so the silhouette is the avatar's
+// exactly, and a hybrid's is its two parents' bodies standing where
+// `drawHybridCrystal` stands them. Returns the rotation the caller applies to
+// the Graphics itself, the way `makeCrystal` rotates its own.
+export function drawCrystalSilhouette(
+  g: Phaser.GameObjects.Graphics,
+  size: number,
+  variant: CrystalVariant,
+  opts?: Pick<CrystalOptions, 'seed' | 'hybrid'>
+): number {
+  if (opts?.hybrid) {
+    const { variantA, variantB } = opts.hybrid;
+    g.save();
+    g.translateCanvas(-size * 0.22, size * 0.05);
+    g.rotateCanvas(Phaser.Math.DegToRad(-13));
+    drawVariantShape(g, size * 0.86, 0xffffff, variantA);
+    g.restore();
+    g.save();
+    g.translateCanvas(size * 0.22, size * 0.02);
+    g.rotateCanvas(Phaser.Math.DegToRad(13));
+    drawVariantShape(g, size * 0.86, 0xffffff, variantB);
+    g.restore();
+    return 0;
+  }
+  const jitter = opts?.seed ? jitterFor(opts.seed, 0xffffff) : null;
+  drawSolidShape(g, size, 0xffffff, variant, jitter?.stretch ?? NO_STRETCH, false);
+  return jitter?.rotationRad ?? 0;
+}
+
 // Builds a shiny crystal (a Container so it can be positioned/tweened as one
 // unit) matching a material's `variant` -- one of `drawSolidShape`'s habits,
 // plus a specular highlight and a few twinkling sparkles for the "shiny"

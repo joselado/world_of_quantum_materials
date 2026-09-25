@@ -596,8 +596,18 @@ under one figure reads as floating even when neither is wrong on its own.
     and the crust read as a checkerboard of the tile grid. Its alpha is held dim enough that
     the crust never climbs toward the value of the walkable clay route it must be told apart
     from. A rare tile also carries a half-sunk drum from the Stone Lattice's fallen colonnade.
-  - **'consuming'** (the Devouring Mirror, world 10): facets that re-cut themselves on a slow
-    cycle, tinted toward the player's own crystal color -- the world is built out of them.
+  - **'consuming'** (the Devouring Mirror, world 10): the network, laid on near-black ground --
+    glowing nodes joined by weighted links (three grades of weight), activation sweeping away
+    from the player toward the pass, links discharging in white for one time slice at a time,
+    density rising along the corridor and the last dozen rows tinted the player's own color.
+    Drawn as one connected object by its own pass rather than tile by tile (a link between two
+    tiles belongs to neither), thinned with depth and sharing fill/line styles across a row to
+    stay inside the world's draw budget. Behind the pass, over the atmosphere, the event horizon:
+    a black disc, photon ring, beamed accretion disc, infalling motes and the network's last
+    links streaming up into it, all taking the player's color as they close -- and inside it a
+    network in the player's own silhouette, inverted (`OverworldScene`'s mirror ghost). It fades
+    in with the boss and is capped so its top edge clears the world-name plate. The per-tile
+    accent draws a lone node and is what the battle arena's surround stand uses.
   A ground-tile fill itself (walkable or off-path, accented or `regionColor`-tinted) is a
   single flat color per tile, not a per-tile diagonal-facet/gradient shading -- floors read
   better flat; don't add such shading without asking first.
@@ -768,7 +778,7 @@ vocabulary stays short and plain: the rule polices obscurity, not intensity.
 
 **The light rule.** The sequence is one long day dying, and the day is coherence -- morning,
 midday, afternoon, stormy dusk, overcast twilight, night, **no sky at all**, fog, firelight,
-shimmer. **After World 7 the sun never returns**: every light in Worlds 8-10 is emitted by the
+the network's glow. **After World 7 the sun never returns**: every light in Worlds 8-10 is emitted by the
 world itself, never received from above. World 6 is the hinge, the first world lit by
 something it emits (the aurora) while a sky is still there. This costs nothing but palette
 discipline and it is the premise made visible, so it is not negotiable for atmosphere's sake.
@@ -812,7 +822,7 @@ rather than free style choices:
 | 7 | The Entangled Web | none -- black (`0x000000`) | true void `0x000000` | white-gold filament `0xefdaa4` | lanes and rungs (every tile) | no | rock (black, no accent) |
 | 8 | The Screened Swamp | dark above, pale mist at the horizon (`0x1c231e`→`0x616d60`) | near-black water `0x121815` | peat bank `0x625f50` | mist motes | no | **bog** |
 | 9 | The Defect Scars | scorched red-black (`0x1a0808`→`0x3a1414`) | charred `0x2a0e0a` | scorched clay `0x9c6a52` | cracks | no | **lava** |
-| 10 | The Devouring Mirror | silver-violet shimmer (`0x2a1a3a`→`0x6a4a8a`) | reconfiguring `0x2e2044` | dissolving silver `0xd8c8ee` | dissolve (every tile) | no | **consuming** |
+| 10 | The Devouring Mirror | silver-violet (`0x2a1a3a`→`0x6a4a8a`) | near-black `0x0a0612` under the network | dissolving silver `0xd8c8ee` | dissolve (every tile) | no | **consuming** |
 
 Every world owns a hue, because unassigned colours are where collisions breed. Violet belongs
 to the Devouring Mirror by right, as the finale, which is why the Storm Flats are indigo

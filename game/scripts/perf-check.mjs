@@ -74,7 +74,12 @@ const BUDGETS = {
   7: { ops: 11000, objects: 500 },
   8: { ops: 15000, objects: 500 },
   9: { ops: 15000, objects: 500 },
-  10: { ops: 18000, objects: 500 },
+  // World 10's surround is a network drawn node by node and link by link
+  // (terrain/materials/consuming.ts), plus the event horizon behind the pass.
+  // It thins with depth and shares line/fill styles across a row, and still
+  // measures ~17.8k on a Stone-Lattice-shaped map; the ceiling holds the same
+  // few-percent headroom the others do.
+  10: { ops: 20000, objects: 500 },
 };
 
 // How far above the median world's paint time a single world may sit before

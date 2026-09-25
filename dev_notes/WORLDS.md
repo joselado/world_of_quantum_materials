@@ -17,10 +17,9 @@ binding as ever. Everything outside the maps is unaffected.
 
 **Implementation status:** the fiction below is settled and the code is on it —
 `data/materials.ts`'s `WORLD_NAMES`, `art/biomes.ts`, `art/horizons.ts` and the
-per-material modules under `scenes/overworld/terrain/materials/`. Three pieces
+per-material modules under `scenes/overworld/terrain/materials/`. Two pieces
 are still outstanding, each tracked in its own file: §4's depth-projected flanks
-in `HORIZON_BUILD_TASK.md`; World 10's rendered reflections (§2) in
-`REFLECTIONS_BUILD_TASK.md`; and §1's World 7 pedal and World 10 mixture,
+in `HORIZON_BUILD_TASK.md`; and §1's World 7 pedal and World 10 mixture,
 together with §4's progress-keyed Lab theme, in `MUSIC_BUILD_TASK.md`.
 
 ---
@@ -83,10 +82,10 @@ premise (§0) rendered as light, so the rule is diegetic rather than atmospheric
 the player is watching decoherence arrive.
 
 Morning → midday → afternoon → stormy dusk → overcast twilight → night →
-**stars alone** → fog → firelight → shimmer.
+**stars alone** → fog → firelight → the network's glow.
 
 **After World 7, the sun never returns.** The world's own light — fog-glow,
-magma, the Mirror's shimmer — is what lights Worlds 8–10 from the ground. The
+magma, the Mirror's network — is what lights Worlds 8–10 from the ground. The
 day does not come back, and the back third stays somewhere it cannot reach.
 
 **Starlight is the one thing received from above in the back third**, and it is
@@ -113,7 +112,7 @@ been looking at a picture of World 10's boss for three worlds.
 | **7** The Entangled Web | **scattered** | Faint, ordinary stars. Unconnected points, nothing to read into them yet. |
 | **8** The Screened Swamp | **first links** | Strange connections appear between a few of them — lines no constellation would draw. |
 | **9** The Defect Scars | **occluded** | Cloud drifts across and hides part of the pattern, so what is being assembled cannot be seen whole. |
-| **10** The Devouring Mirror | **the network** | Every point joined. The thing that has been assembling itself is finished, and it is what the player is about to fight. |
+| **10** The Devouring Mirror | **the network** | Every point joined. The thing that has been assembling itself is finished, and it is what the player is about to fight — and it has come down: the ground of this world carries the same network, switched on (§2). |
 
 Three rules hold it together.
 
@@ -209,7 +208,7 @@ lives.
 | 7 | **The Entangled Web** | white-gold causeway | true void | no sky |
 | 8 | **The Screened Swamp** | a peat shelf, wide at the entrance and closing to a bank by the end | pools of open water punched into it that take you; reeds standing in them | mist-glow and the moments burning in the pools |
 | 9 | **The Defect Scars** | an open plain of scorched clay | molten crust — wounds still open, and vacancies punched through the plain | red glow |
-| 10 | **The Devouring Mirror** | shifting silver-violet | terrain reconfiguring around you | uncanny shimmer |
+| 10 | **The Devouring Mirror** | pale silver-violet floor | near-black ground carrying the network — glowing nodes, weighted links, sparking — and the event horizon hanging behind the pass | the network's own glow |
 
 ### 1 — The Mean Fields *(mean field, spontaneous symmetry breaking)*
 
@@ -478,51 +477,68 @@ whole, and the damage is what interrupts it.
 
 The world that isn't a world, and the only name in the set with no terrain noun
 — which is correct, because a mirror is not a place you visit, it's a thing you
-face. Shifting silver-violet, the terrain reconfiguring around whatever crystal
-the player currently is: the name has to be a description rather than a boast,
-so the world must visibly *take* something.
+face. Silver-violet on near-black, the map's own shape mirroring whatever
+crystal the player currently is: the name has to be a description rather than
+a boast, so the world must visibly *take* something.
 
-**The surround is the player, rendered.** The impassable terrain does not merely
-reconfigure — what it reconfigures *into* is increasingly defined copies of the
-player's own crystal, sharpening as they approach the boss. That is the training
-loop drawn as terrain, and it is what cashes both the devouring and the mirror.
-On screen the surround is faceted silver-violet that re-cuts itself on a slow
-cycle, tinted toward the player's own crystal colour; drawing those facets as
-the copies themselves is tracked in `REFLECTIONS_BUILD_TASK.md`.
+**The surround is the model, laid on the ground.** The sky has been assembling
+a network since World 7 (§1's "The stars"), and here it has come down: the
+impassable ground is near-black and carries the same kind of network — glowing
+nodes joined by weighted links, dense at the entrance and denser toward the
+pass — and it is *running*. Activation sweeps through it away from the player
+toward the pass, so every step the player takes is fed forward; links discharge
+continuously; the last dozen rows before the pass are the output layer, and
+take the player's own colour. That is the training loop drawn as terrain, and
+what the network is computing is the player. A single impassable tile standing
+in the road (the Stone Lattice's columns, when the map takes that shape) is a
+node punched through the floor. Nothing stands up: the network lies flat on the
+plane, its nodes foreshortened with the ground.
 
-The other half of that loop — **the path dissolving behind the player as the
+World 7's ground is also nodes joined by bonds, and the two must not be
+confused. The Web's floor is the *walkable* lanes and rungs of a tensor
+network, still and white-gold; the Mirror's is the *surround*, near-black,
+sparking, and visibly the sky's network landed — the same nodes-and-weights
+figure the player has watched assemble overhead for three worlds, now
+underfoot and switched on.
+
+**The event horizon hangs behind the pass.** It is not there from the
+entrance: it comes in with the boss, fading up over the rows in which The
+Adapted's own sprite comes out of the fog, and grows as the player closes,
+capped where its top edge still clears the world-name plate. A black disc with
+a photon ring, an accretion disc whose far side is lensed over the top, motes
+spiralling in, and the network's last links streaming up into it — the
+*devouring* drawn literally, and as physically honest as a stylised disc can
+be. Its glow, ring and accretion take the player's colour as the approach
+closes: the hole is made of what it has eaten, and by the pass that is the
+player. When The Adapted falls the horizon is gone, and what lies past the edge
+is the map of everything it consumed (§4).
+
+**Inside the disc is the reflection, and it is the mirror.** Not the player's
+crystal but a network in the player's shape: a lattice of nodes and links in
+their own colour, sparking on the same clock as the ground, clipped to the
+avatar's exact silhouette (a fused player sees both parents' bodies),
+inverted, swaying slightly. Absorbing the player and becoming them are one
+picture — a copy assembled out of samples, which is what the model holds of
+them. It brightens as the approach closes and **never resolves into a
+likeness**, for three reasons at once: the Adapted must remain the only
+*perfect* copy in the world or it walks on stage as a duplicate of scenery;
+samples from a still-training model genuinely vary in fidelity, and the
+converged model is the fight; and almost-you is more frightening than
+exactly-you, because exactness reads as a mirror while a near-miss reads as
+something *trying*. It is never interactable — no prompt, clicks fall through,
+since it is world rather than object — and The Adapted stands in front of it.
+The player's own crystal keeps the highest contrast and saturation on screen.
+
+**The terrain carries the convergence from faint to almost, and the battle's
+own tightening canon carries the last lap from almost to unison.** The two
+media relay rather than duplicate, handing off at the door.
+
+The other half of the loop — **the path dissolving behind the player as the
 world re-forms ahead**, so the world eats the trail at the back and emits the
 player at the front — is written as this world's floor motif and sits behind
 `GROUND_MOTIFS_ENABLED` with every other world's (`STYLE.md`'s "Overworld
-path"). While the floor is flat and the copies are undrawn, both halves of the
-image are carried by the writing rather than by the terrain.
-
-**The copies never resolve completely.** The terrain asymptotes; only the boss
-converges. Every reflection stays slightly wrong — soft-edged, off-colour,
-incomplete, the pose not quite right — for three reasons at once: the Adapted
-must remain the only *perfect* copy in the world or it walks on stage as a
-duplicate of scenery; samples from a still-training model genuinely do vary in
-fidelity, and the converged model is the fight; and almost-you is more
-frightening than exactly-you, because exactness reads as a mirror while a
-near-miss reads as something *trying*.
-
-**Reflections are surface phenomena; actors are ground phenomena.** A copy
-standing *on* the terrain is a second character, while a copy visible *in* it is
-a reflection — so they are clipped inside the surround's facets, under the
-world's sheen, tinted toward silver-violet, with no ground contact and no cast
-shadow. The behaviour that settles it beyond doubt: **they move only when the
-player moves, with a lag.** Mimicry-with-delay is the one thing every player
-instantly reads as a reflection, and it cannot be mistaken for an NPC because it
-has no volition. They are never interactable — no prompt, and clicks fall
-through, since they are world rather than object. The player's own crystal keeps
-the highest contrast and saturation on screen; reflections stay inside the
-backdrop's compressed band.
-
-**The lag shortens as definition rises, and never reaches zero.** Zero lag, full
-definition and unison all belong to the fight alone — the terrain carries the
-convergence from faint to almost, and the battle's own tightening canon carries
-the last lap from almost to unison. The two media relay rather than duplicate,
-handing off at the door.
+path"). While the floor is flat, that half of the image is carried by the
+writing rather than by the terrain.
 
 The name is the most deeply verified in the game, and not by texture: World 10's
 generator literally mirrors the player, reusing whichever of worlds 1–8's
@@ -589,7 +605,7 @@ Every world owns a hue, and unassigned colours are where collisions breed.
 | 7 | white-gold filaments on black — the only warm glow before World 9 |
 | 8 | near-black green-grey water, sickly pale mist, reeds darker than either |
 | 9 | scorched red, molten orange |
-| 10 | silver-violet |
+| 10 | silver-violet on near-black — the network's light on black ground, and the black of the horizon behind the pass |
 
 Violet belongs to World 10 by right, as the finale — which is why World 4 is
 indigo rather than storm-violet and World 6's aurora is pure green rather than
@@ -914,7 +930,8 @@ thing that had it.
 the pass, the Mirror is an ordinary corridor and the map is not visible at all.
 Once it falls, the road past the pass is simply gone: no repeated road, no
 horizon silhouette, no ground at all past the last row — the world stops, and
-the view opens. The finale is taken standing at that edge.
+the view opens. The event horizon that hung behind the pass while The Adapted
+stood (§2) goes with it. The finale is taken standing at that edge.
 
 **Render it as ground far below, not as an image pasted flat to the screen**: it
 lies in the gap between the cliff lip and the horizon, with the cliff's own
@@ -971,7 +988,7 @@ and the last world is a mirror.
 **That reflection must stay broken**: a few soft shapes sliding against each
 other on moving water, never a likeness assembling itself. The gradient only
 works if the two stages read as different phenomena — **something in the water,
-then a portrait** — so that World 10's rendered reflections (§2) land as
+then a portrait** — so that World 10's reflection (§2), a portrait in the horizon, lands as
 categorically new rather than as more of the same. Left unspecified, this is
 exactly the detail an artist will naturally polish, and polishing it costs the
 reveal. It is also rare on purpose: a hint the player notices and wonders about,

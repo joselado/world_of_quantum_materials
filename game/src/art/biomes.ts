@@ -418,9 +418,11 @@ const DEVOURING_MIRROR: Biome = {
   // trained model has of its training data -- and a violet ridge would
   // announce a shape the Mirror never had.
   hillAlpha: 0,
-  ground: 0x2e2044,
+  // Near-black, so the network lying on it is the only light the ground has,
+  // and the surround reads as a drop rather than as darker floor.
+  ground: 0x0a0612,
   path: 0xd8c8ee,
-  fogTarget: 0x4a3068,
+  fogTarget: 0x30204a,
   clouds: false,
   cloudDrift: 0,
   decoration: 'dissolve',

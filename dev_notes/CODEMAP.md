@@ -278,7 +278,9 @@ game/src/
                                   and PLATE_DOPANT_SCALE a monolayer guest needs to read as
                                   embedded rather than floating) -- and opts.plain to drop the
                                   highlight and sparkle glyphs when the crystal is one piece of a
-                                  larger composition; drawSolidShape() -- the one dispatcher turning a
+                                  larger composition; drawCrystalSilhouette() -- the habit's
+                                  silhouette alone, filled flat with the same jitter, for a geometry
+                                  mask (the Devouring Mirror's reflection); drawSolidShape() -- the one dispatcher turning a
                                   CrystalVariant into a habit (a new variant needs a branch here and
                                   nowhere else), which both makeCrystal and drawVariantShape (the
                                   hybrid halves) go through; drawShardShape()/drawCubicShape() -- two of
@@ -981,7 +983,8 @@ everything else by absence, so only two things in it carry meaning.
   mutator `applyPlayerForm` (shared by Dresselhaus's `transmuteInto` and Majorana's
   `becomeHybrid`, both plain functions in their own panel file) and its narrower companion
   `refreshPlayerCrystal` (redraw the player's crystal without changing its form -- Anderson's
-  dope, see "Player form" below) -- is each
+  dope, see "Player form" below; in World 10 it also rebuilds the mirror ghost's silhouette,
+  see "Off-path terrain materials") -- is each
   member of `GuardianPanelHost`, implemented as public (not `private`) methods/fields on both
   `OverworldScene` and `HubScene` independently (not a shared base class), since panel modules
   living outside either class can't reach a `private` member and Phaser scenes don't share a
@@ -2025,6 +2028,24 @@ it is a feature core, its depth ratio and live fog target, the detail-pass fallo
 crystal colour and the scene clock -- which `paint.ts` builds only for a material that actually
 draws, so a bare-ground tile costs nothing beyond its fill. `rock.ts` is exactly that case and
 maps to `null`.
+
+`consuming.ts` (the Devouring Mirror) is the one material that is more than a per-tile accent,
+because its surround is one connected network and a link between two tiles belongs to neither.
+`drawGroundNetwork(view)`, called from `drawTerrain` after the tile sweep and before
+`drawDepthHaze`, draws the nodes, weighted links, activation pulses and sparks from a graph built
+once per `TerrainPlan` (`graphFor`, a `WeakMap` keyed on the plan; nodes on impassable tiles by a
+per-tile hash with density rising toward the pass, `featureCore` tiles and lone tiles in the road
+always nodes, links never crossing the corridor). `drawEventHorizon(view)`, called after
+`drawDepthHaze` beside `drawStormStrikes`, draws the black hole behind the pass and the trunk links
+running up into it; `eventHorizonAt(view)` reports where it hangs (null past the reveal distance
+and once `view.overlook` is set); `drawReflectionNet` draws the player-shaped network that
+`OverworldScene.placeMirrorGhost` clips to the avatar's silhouette every frame (a geometry mask
+drawn by `art/crystals.ts`'s `drawCrystalSilhouette`, built by `buildMirrorGhost` in `create()`
+and again from `refreshPlayerCrystal`). `paint.ts`'s `drawAccent` skips the 'consuming' kind in
+the overworld; the per-tile `drawConsumingAccent` (a lone node) remains for
+`BattleScene.drawSurroundStand`. The pass thins nodes with depth and pushes a fill/line style only
+when it changes, since `scripts/perf-check.mjs` counts style calls as draw ops against World 10's
+budget.
 
 Three of those fields are the ones a new material most often gets wrong. **Grid coordinates**, not
 screen ones, are what make a feature stand still in the world: anything anchored to the map (the
