@@ -1941,7 +1941,7 @@ them -- projected through the same placement. It is drawn over the landmass and 
 marker sits at either end, because a marker is an affordance and this is a record.
 
 **The star network (`art/stars.ts`).** Worlds 7-10 share one sky that assembles a network across
-them (WORLDS.md section 1's "The stars"). `drawStarNetwork` is called from `drawDepthHaze`
+them (WORLDS.md section 1's "The stars"). `drawStarNetwork` is called from `drawDepthHaze` (and from `BattleScene.drawRealisticBackdrop`, for the arena's sky at the same stage, frozen at `R_FROZEN_NOW`)
 directly rather than through `OVERHEAD_SKIES`, because it has to be painted *under* the mist band:
 the band is the air, and a star low in the frame is seen through more of it than one high up, which
 is what lets the field use the whole sky instead of the strip above the mist. `NODES`/`FIRST_LINKS`
@@ -2042,10 +2042,15 @@ and once `view.overlook` is set); `drawReflectionNet` draws the player-shaped ne
 `OverworldScene.placeMirrorGhost` clips to the avatar's silhouette every frame (a geometry mask
 drawn by `art/crystals.ts`'s `drawCrystalSilhouette`, built by `buildMirrorGhost` in `create()`
 and again from `refreshPlayerCrystal`). `paint.ts`'s `drawAccent` skips the 'consuming' kind in
-the overworld; the per-tile `drawConsumingAccent` (a lone node) remains for
-`BattleScene.drawSurroundStand`. The pass thins nodes with depth and pushes a fill/line style only
-when it changes, since `scripts/perf-check.mjs` counts style calls as draw ops against World 10's
-budget.
+the overworld. The battle arena's stand is the same network: `BattleScene.drawSurroundStand`
+hands each synthesised row whole to `drawConsumingStandRow` together with the row behind it, which
+places the row's nodes by the same hash and density (`BattleLocale.convergence`, sampled by
+`plan.ts`'s `sampleBattleLocale` with `rowsToPass`), links them along the row and to the nearest
+nodes of the row behind, sparks them on the frozen clock, and returns its nodes for the next row.
+The arena draws no event horizon -- that belongs to the walk up to the pass. The per-tile
+`drawConsumingAccent` (a lone node) stays in `TERRAIN_ACCENTS` for any other per-tile context. The
+overworld pass thins nodes with depth and pushes a fill/line style only when it changes, since
+`scripts/perf-check.mjs` counts style calls as draw ops against World 10's budget.
 
 Three of those fields are the ones a new material most often gets wrong. **Grid coordinates**, not
 screen ones, are what make a feature stand still in the world: anything anchored to the map (the

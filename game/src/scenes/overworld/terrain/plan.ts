@@ -1,3 +1,4 @@
+import Phaser from 'phaser';
 import { getBiome } from '../../../art/biomes';
 import type { Biome } from '../../../art/biomes';
 import { buildContourGrid } from '../../../art/contours';
@@ -116,12 +117,15 @@ export function sampleBattleLocale(plan: TerrainPlan, at: GridPoint): BattleLoca
       if (tile.regionTint != null) tints.set(tile.regionTint, (tints.get(tile.regionTint) ?? 0) + 1);
     }
   }
+  const corridorRows = gridH() - 1 - plan.farEdgeRow;
   return {
     x,
     y,
     biome: here.biome,
     surround: dominant(kinds) ?? offPathKindOf(here.biome),
     regionTint: dominant(tints) ?? null,
+    rowsToPass: y - plan.farEdgeRow,
+    convergence: corridorRows <= 0 ? 1 : Phaser.Math.Clamp((gridH() - 1 - y) / corridorRows, 0, 1),
   };
 }
 

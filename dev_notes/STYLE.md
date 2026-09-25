@@ -606,8 +606,9 @@ under one figure reads as floating even when neither is wrong on its own.
     a black disc, photon ring, beamed accretion disc, infalling motes and the network's last
     links streaming up into it, all taking the player's color as they close -- and inside it a
     network in the player's own silhouette, inverted (`OverworldScene`'s mirror ghost). It fades
-    in with the boss and is capped so its top edge clears the world-name plate. The per-tile
-    accent draws a lone node and is what the battle arena's surround stand uses.
+    in with the boss and is capped so its top edge clears the world-name plate. The battle
+    arena's stand is the same network across its receding rows, linked row to row and sparking
+    on the frozen clock, with no event horizon -- that belongs to the walk up to the pass.
   A ground-tile fill itself (walkable or off-path, accented or `regionColor`-tinted) is a
   single flat color per tile, not a per-tile diagonal-facet/gradient shading -- floors read
   better flat; don't add such shading without asking first.
@@ -1049,6 +1050,9 @@ strange links in World 8, drifting cloud occluding part of the pattern in World
 - **Drawn under the mist band**, so how far a star fades is the atmosphere's
   answer and the field can use the whole sky rather than the strip above the
   mist.
+- **In the arena too** (`BattleScene.drawRealisticBackdrop`), at the stage of
+  the world the fight is in and frozen with the rest of the once-painted
+  backdrop, so a fight in World 10 is fought under the finished network.
 - **The finished network carries visibly more light** — brighter nodes, haloed,
   with heavier links — because the reveal has to land at a glance.
 - **The title screen carries the finished form faint** (see "Title screen"

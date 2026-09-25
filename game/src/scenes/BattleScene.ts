@@ -7,8 +7,10 @@ import { getBiome } from '../art/biomes';
 import type { Biome, WallTheme } from '../art/biomes';
 import { wallThemeOf } from './overworld/terrain/plan';
 import { TERRAIN_ACCENTS } from './overworld/terrain/materials';
+import { drawConsumingStandRow } from './overworld/terrain/materials/consuming';
 import type { AccentTile, BattleLocale, OffPathKind } from './overworld/terrain/types';
 import { DISTANT_SELVES, MAX_CREST, type HorizonPoint } from '../art/horizons';
+import { drawStarNetwork } from '../art/stars';
 import type { ProjectedPoint } from '../art/perspective';
 import { playAttackEffect, followAnchor, ANALYTIC_SHAPES, ULTIMATE_SHAPES, type EffectAnchor } from '../art/attackEffects';
 import { drawFranklinPassiveHalo } from '../art/passiveHalos';
@@ -221,7 +223,9 @@ const R_MATERIALS: Record<OffPathKind, ArenaMaterial | null> = {
   shards: { scale: 0.5, core: 0, spacing: 1.15 },
   bog: { scale: 0.62, core: 0.1, spacing: 1 },
   lava: { scale: 0.8, core: 0, spacing: 1 },
-  consuming: { scale: 1.5, core: 0, spacing: 1.2 },
+  // Nodes are sized in u like the pits, but a network is many small points
+  // rather than one feature per tile, so the scale sits well under one.
+  consuming: { scale: 0.55, core: 0, spacing: 0.7 },
 };
 
 // Correct/wrong multipliers for Landau's two quiz-gated Analytic moves (§5) --
@@ -1614,6 +1618,12 @@ export class BattleScene extends Phaser.Scene {
       this.drawCloud(500, 26);
     }
 
+    // The starfield the last four worlds carry (art/stars.ts): the network
+    // the overworld assembles overhead from World 7 and finishes in World 10,
+    // in the arena's sky at the same stage, under the mist as the overworld
+    // draws it, and frozen at R_FROZEN_NOW with everything else painted once.
+    drawStarNetwork({ g, world: this.world, horizonY: R_HORIZON_Y, target: air, now: R_FROZEN_NOW });
+
     // The distance, in two passes of this world's own profile: a far echo
     // half the height and nearly all air, and the profile itself in front of
     // it. A distant self is how a world looks from a world away, and what is
@@ -1784,6 +1794,13 @@ export class BattleScene extends Phaser.Scene {
     const baseGy = this.locale?.y ?? 40;
     const span = R_FLOOR_EDGE_Y - R_HORIZON_Y;
 
+    // The Devouring Mirror's stand is one network rather than a scatter of
+    // features, so its rows are handed whole to the material with the row
+    // behind each (drawConsumingStandRow), and it links them itself.
+    const network = kind === 'consuming';
+    let farNodes: AccentTile[] | null = null;
+    const approach = { rowsToPass: this.locale?.rowsToPass ?? 40, convergence: this.locale?.convergence ?? 0 };
+
     // Back to front, so nearer rows overlap further ones -- occlusion is the
     // depth cue that costs nothing and cannot be argued with.
     for (let row = R_SURROUND_ROWS.length - 1; row >= 0; row--) {
@@ -1807,22 +1824,23 @@ export class BattleScene extends Phaser.Scene {
       const rowTop = row === R_SURROUND_ROWS.length - 1 ? R_HORIZON_Y : R_HORIZON_Y + span * ((f + R_SURROUND_ROWS[row + 1]) / 2);
       const rowBot = row === 0 ? R_FLOOR_EDGE_Y + 4 : R_HORIZON_Y + span * ((f + R_SURROUND_ROWS[row - 1]) / 2);
 
+      const rowTiles: AccentTile[] = [];
       for (let col = 0; col < cols; col++) {
         const cellX = -tileW + (col + 0.5) * tileW;
         const cx = cellX + (rand() - 0.5) * tileW * 0.5;
         const cy = rowY + (rand() - 0.5) * span * f * 0.22;
         const core = rand() < spec.core;
         const s = (core && spec.coreScale != null ? spec.coreScale : spec.scale) * f;
-        draw(
-          layer,
-          this.arenaAccentTile(biome, air, cx, cy, s, drown, f, core, baseGx + col, baseGy - row * 2, {
-            x: cellX,
-            w: tileW,
-            top: rowTop,
-            bot: rowBot,
-          })
-        );
+        const tile = this.arenaAccentTile(biome, air, cx, cy, s, drown, f, core, baseGx + col, baseGy - row * 2, {
+          x: cellX,
+          w: tileW,
+          top: rowTop,
+          bot: rowBot,
+        });
+        if (network) rowTiles.push(tile);
+        else draw(layer, tile);
       }
+      if (network) farNodes = drawConsumingStandRow(layer, rowTiles, farNodes, approach, row * 2 + 2);
 
       // The air standing between this row and the next one forward. Applied
       // per row rather than once at the end: what is behind a veil has to be

@@ -462,19 +462,23 @@ export function drawGroundNetwork(view: TerrainView) {
 
 // A discharge along a link: a jagged white thread with a soft glow under it.
 function drawSpark(g: Phaser.GameObjects.Graphics, a: NetNode, b: NetNode, roll: number, fade: number) {
-  const dx = b.sx - a.sx;
-  const dy = b.sy - a.sy;
+  drawSparkBetween(g, a.sx, a.sy, b.sx, b.sy, a.scale, roll + a.x, fade);
+}
+
+function drawSparkBetween(g: Phaser.GameObjects.Graphics, ax: number, ay: number, bx: number, by: number, scale: number, seed: number, fade: number) {
+  const dx = bx - ax;
+  const dy = by - ay;
   const len = Math.hypot(dx, dy) || 1;
   const nx = -dy / len;
   const ny = dx / len;
-  const pts: { x: number; y: number }[] = [{ x: a.sx, y: a.sy }];
+  const pts: { x: number; y: number }[] = [{ x: ax, y: ay }];
   for (let k = 1; k < 4; k++) {
     const t = k / 4;
-    const off = (hash01(roll * 977 + k * 3.1, k * 7.7 + a.x) - 0.5) * 0.3 * len;
-    pts.push({ x: a.sx + dx * t + nx * off, y: a.sy + dy * t + ny * off });
+    const off = (hash01(seed * 977 + k * 3.1, k * 7.7 + seed) - 0.5) * 0.3 * len;
+    pts.push({ x: ax + dx * t + nx * off, y: ay + dy * t + ny * off });
   }
-  pts.push({ x: b.sx, y: b.sy });
-  line(g, 3.2 * a.scale + 1, blend(SPARK_LIGHT, LINK_LIGHT, 0.4), 0.3 * fade);
+  pts.push({ x: bx, y: by });
+  line(g, 3.2 * scale + 1, blend(SPARK_LIGHT, LINK_LIGHT, 0.4), 0.3 * fade);
   g.strokePoints(pts, false);
   line(g, 1.2, SPARK_LIGHT, 0.95 * fade);
   g.strokePoints(pts, false);
@@ -550,13 +554,9 @@ export function drawEventHorizon(view: TerrainView) {
   const hole = eventHorizonAt(view);
   if (!hole) return;
   const g = view.gfx;
-  const { x, y, r, mirror, reveal } = hole;
+  const { x, y, r, reveal } = hole;
   const player = view.playerColor;
   const now = view.now;
-  const glowC = blend(HOLE_GLOW, player, 0.5 * mirror);
-  const discC = blend(HOLE_DISC, player, 0.3 + 0.5 * mirror);
-  const ringC = blend(HOLE_RING, player, 0.2 + 0.3 * mirror);
-  const bright = now / 3200;
 
   // The last of the network runs up into it.
   const trunkC = blend(LINK_LIGHT, player, 0.5);
@@ -572,6 +572,17 @@ export function drawEventHorizon(view: TerrainView) {
     g.fillStyle(blend(player, SPARK_LIGHT, t * 0.6), (0.35 + 0.6 * t) * fade * reveal);
     g.fillEllipse(px, py, 3 + 2 * t, 2 + 1.4 * t);
   }
+  drawHorizonDisc(g, hole, player, now);
+}
+
+// The disc itself. The arena does not draw one: its stand carries the
+// network, and the horizon belongs to the walk up to the pass.
+function drawHorizonDisc(g: Phaser.GameObjects.Graphics, hole: EventHorizon, player: number, now: number) {
+  const { x, y, r, mirror, reveal } = hole;
+  const glowC = blend(HOLE_GLOW, player, 0.5 * mirror);
+  const discC = blend(HOLE_DISC, player, 0.3 + 0.5 * mirror);
+  const ringC = blend(HOLE_RING, player, 0.2 + 0.3 * mirror);
+  const bright = now / 3200;
 
   // The glow the disc sits in.
   [
@@ -694,9 +705,81 @@ export function drawReflectionNet(g: Phaser.GameObjects.Graphics, hole: EventHor
   }
 }
 
-// The per-tile accent, for contexts with no grid to link across (the battle
-// arena's surround stand): a lone node on the tiles that would carry one,
-// breathing on the clock as if a front were passing.
+// The arena's stand of this material (BattleScene.drawSurroundStand): the
+// network across the synthesised rows, one row per call, back to front. A
+// row is handed with the nodes of the row behind it, so a link between rows
+// is drawn in the nearer row's layer, over the veil of air between them.
+// `rowAhead` is how many tiles beyond the floor's edge the row stands, which
+// is what the frozen activation front is measured against. Returns the nodes
+// this row placed, for the next row's call.
+export interface ArenaApproach {
+  rowsToPass: number;
+  convergence: number;
+}
+
+export function drawConsumingStandRow(
+  g: Phaser.GameObjects.Graphics,
+  tiles: AccentTile[],
+  far: AccentTile[] | null,
+  approach: ArenaApproach,
+  rowAhead: number
+): AccentTile[] {
+  resetStyles();
+  const density = NODE_DENSITY_NEAR + (NODE_DENSITY_FAR - NODE_DENSITY_NEAR) * approach.convergence;
+  const nodes = tiles.filter((t) => isNodeAt(t.gx, t.gy, density)).sort((a, b) => a.cx - b.cx);
+  if (nodes.length === 0) return nodes;
+  const now = nodes[0].now;
+  const front = ((now % SWEEP_MS) / SWEEP_MS) * SWEEP_SPAN;
+  const slice = Math.floor(now / SPARK_SLICE_MS);
+  const mirror = Phaser.Math.Clamp(1 - approach.rowsToPass / MIRROR_ROWS, 0, 1);
+  // The arena's `depth` is its own drown, which runs past the overworld's
+  // fade-out on the far rows; the rows' own layer alpha already carries that
+  // distance, so the network's fade is scaled back to keep the far rows lit.
+  const fadeDepth = (t: AccentTile) => t.depth * 0.6;
+  const cellW = (t: AccentTile) => Math.abs(t.fill[2].x - t.fill[3].x);
+  const hashOf = (t: AccentTile) => hash01(t.gx * 3 + 1, t.gy * 7 + 2);
+  const glowOf = (t: AccentTile) => quantGlow(activation(rowAhead + (hashOf(t) - 0.5) * FRONT_JITTER, front));
+
+  const links: [AccentTile, AccentTile][] = [];
+  nodes.forEach((a, i) => {
+    const b = nodes[i + 1];
+    if (b && b.cx - a.cx < 2.6 * cellW(a)) links.push([a, b]);
+    if (!far) return;
+    const near = far
+      .map((f) => ({ f, dx: Math.abs(f.cx - a.cx) }))
+      .filter(({ dx }) => dx < 2.2 * cellW(a))
+      .sort((p, q) => p.dx - q.dx);
+    if (near[0]) links.push([a, near[0].f]);
+    if (near[1] && hash01(a.gx * 5 + 3, a.gy * 11 + 4) < 0.5) links.push([a, near[1].f]);
+  });
+
+  const sparked = new Set<AccentTile>();
+  for (const [a, b] of links) {
+    const w = hash01(a.gx * 7 + b.gx * 13 + 5, a.gy * 17 + b.gy * 19 + 6);
+    const weight = w < 0.55 ? 0.65 : w < 0.85 ? 1.1 : 2.1;
+    const lit = Math.max(glowOf(a), glowOf(b));
+    const fade = netFade(fadeDepth(a));
+    // Brighter than the overworld's links: the rows' own layer alpha and the
+    // veils between them take the distance, so the material need not.
+    const color = blend(blend(LINK_LIGHT, NODE_LIGHT, lit * 0.6), a.haze, a.depth * 0.4);
+    line(g, Math.max(0.8, weight * 2.2 * a.s), color, (0.42 + 0.2 * (weight - 0.6)) * (0.5 + 0.5 * lit) * fade * a.detail);
+    g.lineBetween(a.cx, a.cy, b.cx, b.cy);
+    const roll = hash01(a.gx * 31 + b.gx * 7 + slice * 0.618, a.gy * 13 + b.gy * 3 + slice * 0.382);
+    if (roll < SPARK_BASE * (0.35 + 1.4 * lit + 0.8 * approach.convergence)) {
+      drawSparkBetween(g, a.cx, a.cy, b.cx, b.cy, a.s * 0.6, roll + a.gx, fade * a.detail);
+      sparked.add(a);
+      sparked.add(b);
+    }
+  }
+  for (const n of nodes) {
+    drawNode(g, n.cx, n.cy, n.s, fadeDepth(n), n.haze, hashOf(n), sparked.has(n) ? 1 : glowOf(n), mirror, n.playerColor);
+  }
+  return nodes;
+}
+
+// The per-tile accent, for contexts with no grid to link across: a lone node
+// on the tiles that would carry one, breathing on the clock as if a front
+// were passing.
 export function drawConsumingAccent(g: Phaser.GameObjects.Graphics, { cx, cy, s, gx, gy, depth, haze, detail, playerColor, now }: AccentTile) {
   if (detail <= 0) return;
   if (!isNodeAt(gx, gy, NODE_DENSITY_FAR)) return;

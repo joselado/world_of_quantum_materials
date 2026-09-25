@@ -54,6 +54,13 @@ export interface BattleLocale {
   // The dominant mapgen domain tint around the tile (worlds 1/3/8's colored
   // regions), null where the surround carries none.
   regionTint: number | null;
+  // How far the tile stands short of the pass, in rows, and where it stands
+  // along the corridor (0 at the entrance row, 1 at the pass row). What the
+  // Devouring Mirror's arena reads to show the same approach the overworld
+  // showed from that spot -- the density of its network and whether the
+  // event horizon is in view yet (materials/consuming.ts).
+  rowsToPass: number;
+  convergence: number;
 }
 
 // The whole grid, read once: its per-tile terrain, the northernmost row the

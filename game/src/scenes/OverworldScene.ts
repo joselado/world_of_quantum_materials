@@ -1771,6 +1771,9 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     });
     this.mirrorNet = this.add.graphics().setDepth(MIRROR_GHOST_DEPTH).setVisible(false);
     this.mirrorNet.setMask(this.mirrorSilhouette.createGeometryMask());
+    // The mask source is never on the display list, so the scene's own
+    // teardown does not reach it.
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.destroyMirrorGhost());
   }
 
   private destroyMirrorGhost() {
