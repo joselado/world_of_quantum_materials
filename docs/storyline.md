@@ -451,7 +451,7 @@ studies.
 
 ## 10. The Devouring Mirror
 
-<img src="../screenshots/storyline-world-10.png" width="420" alt="The Devouring Mirror seen from the middle of the ground it has copied from the player">
+<img src="../screenshots/storyline-world-10.png" width="420" alt="The Devouring Mirror from the last rows before its pass: the network on the ground, The Adapted in the throat, and the event horizon behind it showing the player back">
 
 *Machine learning for quantum materials, and the ending.*
 
