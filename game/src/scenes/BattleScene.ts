@@ -512,9 +512,13 @@ export class BattleScene extends Phaser.Scene {
     // world's boss, rendered bigger and at a different position than an
     // ordinary wild encounter (see BOSS_OPPONENT_POS/BOSS_CRYSTAL_SIZE).
     this.opponentPos = this.isRival ? BOSS_OPPONENT_POS : OPPONENT_POS;
+    // Also before drawBackground(): the surround's accent tiles take the
+    // player's own colour (arenaAccentTile's `playerColor`), and Phaser
+    // reuses this scene instance, so reading it any later would paint the
+    // previous battle's form -- or none at all, in a session's first fight.
+    this.playerMaterial = getPlayerMaterial(this.game.registry);
     this.drawBackground();
 
-    this.playerMaterial = getPlayerMaterial(this.game.registry);
     this.playerStats = getPlayerStats(this.game.registry);
 
     // Neither side's max HP/stats are intrinsic to a crystal form -- both
@@ -2329,8 +2333,8 @@ export class BattleScene extends Phaser.Scene {
   }
 
   // World 10's rival transmutation (§5/§6, DESIGN.md) -- called from
-  // resolveHit's checkEndOrContinue once per player attack that resolves
-  // against a still-living Adapted. Picks a new type at random from among
+  // resolveHit's checkEndOrContinue once per player attack that lands on a
+  // still-living Adapted (a whiffed Ultimate doesn't). Picks a new type at random from among
   // every MaterialType that genuinely hosts `moveClass` (typesHosting,
   // data/materials.ts's reverse MOVE_COMPATIBILITY lookup), then a real,
   // already-defined compound of that type from the full roster (allCrystals())
@@ -2869,9 +2873,11 @@ export class BattleScene extends Phaser.Scene {
     // fires from here rather than from applyResult -- `isPlayer` already
     // excludes the opponent's own swings, the two win/lose branches above
     // already return before it, and Kondo's self-buff moves never reach this
-    // function at all (resolveHit's own early return above), so this is
-    // exactly "every player Attack/Analytic/Ultimate move that resolves
-    // against a living Adapted," with no separate condition needed. The
+    // function at all (resolveHit's own early return above), so with the
+    // `!whiff` guard this is exactly "every player Attack/Analytic/Ultimate
+    // move that lands on a living Adapted." A whiffed Ultimate comes apart
+    // before it reaches the defender, so there is no hit for the boss to
+    // adapt to and it keeps its current form. The
     // *current* hit already checked its own mismatch above against whatever
     // type the opponent was *before* this -- the adaptation is a reaction to
     // the class just used, not a precognitive dodge of this hit.
@@ -2884,7 +2890,7 @@ export class BattleScene extends Phaser.Scene {
         this.endBattle(false);
         return;
       }
-      if (isPlayer && this.adaptedForm) {
+      if (isPlayer && this.adaptedForm && !whiff) {
         this.transmuteAdapted(effectiveClass, onDone);
         return;
       }
@@ -3063,15 +3069,33 @@ export class BattleScene extends Phaser.Scene {
     const targetCrystal = isPlayer ? this.playerCrystal : this.opponentCrystal;
     const level = isPlayer ? getMoveLevel(this.game.registry, move.id) : 0;
 
-    playAttackEffect(this, move.class, pos, pos, () => this.flashHit(targetCrystal), 1, undefined, undefined, false, 0, level);
+    // The turn moves on from the buff's landing, not its cast, like every
+    // other move (TURN_GAP_MS runs from a landing): a leveled buff's last
+    // ring lands most of a second after the cast, and handing the turn over
+    // at the cast would put the opponent's own hit on this same crystal
+    // while the buff's squash is still playing.
+    playAttackEffect(
+      this,
+      move.class,
+      pos,
+      pos,
+      () => {
+        this.flashHit(targetCrystal);
+        onDone();
+      },
+      1,
+      undefined,
+      undefined,
+      false,
+      0,
+      level
+    );
 
     const buffText = this.castBuff(move, isPlayer);
     // Feynman's level prefix (§5) is the player's own save state -- see
     // resolveHit's own applyResult for the same isPlayer-gated read.
     const displayName = isPlayer ? moveDisplayName(this.game.registry, move.id) : move.name;
     this.setLogText(`${who} used ${displayName}!${buffText}`);
-
-    onDone();
   }
 
   // Raises the cloud one of Kondo's three moves screens with
@@ -3132,8 +3156,11 @@ export class BattleScene extends Phaser.Scene {
 
   // Quick punchy scale-squash on the target crystal when a projectile
   // effect lands, so hits register even before the HP bar visibly moves.
+  // Explicit `from: 1`: a tween with no start value captures whatever scale
+  // the crystal has when it begins, so a squash starting while another is
+  // still mid-yoyo would capture the squashed scale and settle back on it.
   private flashHit(container: Phaser.GameObjects.Container) {
-    this.tweens.add({ targets: container, scaleX: 1.18, scaleY: 0.82, duration: 90, yoyo: true });
+    this.tweens.add({ targets: container, scaleX: { from: 1, to: 1.18 }, scaleY: { from: 1, to: 0.82 }, duration: 90, yoyo: true });
   }
 
   // The full "hit landed" beat on top of art/attackEffects.ts's own impact

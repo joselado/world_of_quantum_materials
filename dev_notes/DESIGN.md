@@ -543,6 +543,12 @@ form in any host crystal" reasoning `RIVAL_9_TYPES`/`rollRival9Type` already use
 rival, literalized for ordinary encounters too. Hybrid-recipe results are excluded from
 that borrowed set — a fused state isn't "a defect in an earlier crystal."
 
+A compound that spawns in more than one world (Iron, Cobalt, Aluminum, Graphene, Barium
+Titanate, Fe$_3$GeTe$_2$, Herbertsmithite) is the same enemy in each: one type, one look and
+one moveset everywhere it appears, since the excitations it throws are its own physics
+rather than its host world's (`content-lint` check 18). Which of its properties a world's
+*quiz* asks about is a separate matter, decided by that world's session.
+
 Session files for topics 9 and 10 name no concrete real compounds at all (they stay at
 the level of "a metal," "a superconductor," generic ML methods), so those two rows lean
 entirely on textbook fill-ins rather than course-sourced examples — worth flagging if
@@ -597,7 +603,8 @@ separate table from the wild pool, is the one entity in the game with no fixed m
 all — a "no real compound, a model of you" finale boss whose type is decided live every
 fight instead. It starts each battle mirroring the player's own current type
 (`getPlayerMaterial`), then transmutes — type, look, and display name together — every time
-the player's attack resolves against it, reactively taking on a real, already-defined
+the player's attack lands on it (a whiffed Ultimate, which never reaches it, leaves its form
+alone), reactively taking on a real, already-defined
 compound's disguise (a "Polycrystalline `<compound>` Golem," the same naming every other
 world's rival already follows) that hosts whichever quasiparticle class was just used against
 it (`data/materials.ts`'s `typesHosting`, a reverse `MOVE_COMPATIBILITY` lookup, feeds
@@ -1252,10 +1259,12 @@ state can mark her met before the player has actually reached her.
   direct notational sibling to world 7's own course topic: session07.tex's "Tensor
   diagrams" section draws a tensor as a point with legs, joining two legs meaning
   summing over a shared index -- the same "represent a contraction as a picture" idea a
-  Feynman diagram's own vertices-and-propagators notation uses. Any move the player has
-  ever unlocked (`unlockedMoves`, regardless of which guardian originally sold it --
-  Noether's ordinary attacks, Landau's Analytic pair, Kondo's self-buffs, an
-  Anderson-doped move, even the starting Phonon Beam) can be leveled through three fixed
+  Feynman diagram's own vertices-and-propagators notation uses. Any unlocked move the
+  player's current crystal can carry (`unlockedMoves` filtered by `hostableMoveIds`: the
+  form's own classes plus its Anderson dopant's; regardless of which guardian originally
+  sold it -- Noether's ordinary attacks, Landau's Analytic pair, Kondo's self-buffs, which
+  no form fails to host, an Anderson-doped move, even the starting Phonon Beam) can be
+  leveled through three fixed
   tiers, one at a time in sequence (a move must already hold tier N-1 before N can be
   attempted): **Double** (1.5x, a 2-question streak), **Triple** (2x, a
   4-question streak), **Infinite** (3x, an 8-question streak) -- "Infinite" is
@@ -1538,7 +1547,11 @@ rows it is deliberately not persisted: a browser grants fullscreen only from ins
 gesture, so a saved value could not be honoured at boot and the row would claim a state the
 game is not in. Phaser's scale manager holds the state instead, the row reads it live, and the
 panel redraws on the browser's own `ENTER_FULLSCREEN`/`LEAVE_FULLSCREEN` events, so leaving
-with `Esc` or pressing `F` while the panel is open moves the highlight too. Browsers with no
+with `Esc` or pressing `F` while the panel is open moves the highlight too. Its two chips act on
+the pointer's release (one that follows a press on that same chip), where every other chip acts
+on the press: on a touchscreen the press is a
+`touchstart`, which browsers do not count as a user gesture, so a press-bound chip would be
+refused on exactly the phones and tablets that have no `F` key. Browsers with no
 Fullscreen API at all (an iPhone) get no row rather than one whose values do nothing. This is
 what makes the game fill a laptop screen without the player knowing the browser's own
 fullscreen key, and it is the same switch a PWA install or a desktop wrapper would otherwise
@@ -1769,7 +1782,9 @@ rather than inheriting it.
   screen's main button reads "Continue" for that mode -- `TitleScene`'s "New Game (erase
   save)" link erases only the currently selected mode's own slot, never both, gated behind
   an inline yes/no confirm (`TitleScene.confirmNewGame`) since it's destructive and
-  irreversible. Confirming calls `data/save.ts`'s `clearSave(superposition)` for the selected
+  irreversible. The confirm is modal: while it is up, the main button, SPACE, the mode picker
+  and the erase link all stand down, and the slot it erases is the one selected when it opened,
+  so no click made around it can turn it onto the other mode's save. Confirming calls `data/save.ts`'s `clearSave(superposition)` for the selected
   mode, then reloads that same mode's now-empty slot back into the registry and rebuilds the
   screen in place (rather than a full `this.scene.restart()`, which would rerun the picker's
   own initial-mode tiebreak and could flip the screen to the *other* mode right after the

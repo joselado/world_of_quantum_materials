@@ -567,8 +567,12 @@ export function makeMathText(
   // by exactly the line height a plain Phaser Text would give it.
   const prose = layout.metrics(px, false, false);
 
-  // Greedy line breaking, with a formula's own top-level spaces as the only
-  // places it may split.
+  // Greedy line breaking, with spaces -- prose ones and a formula's own
+  // top-level ones -- as the only places a line may end. Nodes with no space
+  // between them (a formula and the comma, colon or bracket touching it) are
+  // one run and move to a new line together, the way plain Phaser Text keeps
+  // "$v_F$," one word; only a run too wide for any line splits between its
+  // nodes.
   type Placed = { box: Box; x: number };
   type Line = { placed: Placed[]; width: number; above: number; below: number };
   const lines: Line[] = [];
@@ -577,32 +581,49 @@ export function makeMathText(
     lines.push(line);
     line = { placed: [], width: 0, above: prose.ascent, below: prose.descent };
   };
+  const place = (box: Box, lead: number) => {
+    if (line.placed.length && line.width + lead + box.width > style.wrapWidth) {
+      newLine();
+      lead = 0;
+    }
+    line.placed.push({ box, x: line.width + lead });
+    line.width += lead + box.width;
+    line.above = Math.max(line.above, box.above);
+    line.below = Math.max(line.below, box.below);
+  };
 
   let pendingSpace = 0;
+  let run: Box[] = [];
+  let runLead = 0;
+  const flushRun = () => {
+    if (!run.length) return;
+    const runWidth = run.reduce((sum, box) => sum + box.width, 0);
+    if (line.placed.length && runWidth <= style.wrapWidth && line.width + runLead + runWidth > style.wrapWidth) {
+      newLine();
+      runLead = 0;
+    }
+    run.forEach((box, i) => place(box, i === 0 ? runLead : 0));
+    run = [];
+  };
   for (const item of tokenize(source)) {
     if (item.t === 'break') {
+      flushRun();
       newLine();
       pendingSpace = 0;
       continue;
     }
     if (item.t === 'space') {
+      flushRun();
       if (line.placed.length) pendingSpace = item.math ? mathSpace : proseSpace;
       continue;
     }
-    const box = layout.box(item.node, px);
-    const lead = pendingSpace;
-    if (line.placed.length && line.width + lead + box.width > style.wrapWidth) {
-      newLine();
-      line.placed.push({ box, x: 0 });
-      line.width = box.width;
-    } else {
-      line.placed.push({ box, x: line.width + lead });
-      line.width += lead + box.width;
+    if (!run.length) {
+      runLead = pendingSpace;
+      pendingSpace = 0;
     }
-    line.above = Math.max(line.above, box.above);
-    line.below = Math.max(line.below, box.below);
-    pendingSpace = 0;
+    run.push(layout.box(item.node, px));
   }
+  flushRun();
   if (line.placed.length || lines.length === 0) lines.push(line);
 
   const totalWidth = Math.max(0, ...lines.map((l) => l.width));

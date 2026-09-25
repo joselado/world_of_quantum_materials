@@ -228,7 +228,12 @@ function renderAnalyticColumn(
     isLearned && previewClass === assigned
       ? undefined
       : {
-          label: isLearned ? `Tune to ${quasiparticleLabel(previewClass)}` : `Learn ${displayName}`,
+          // Named for the class being bought, not the move's current tuning
+          // (always phonon before it is learned): the click buys it tuned to
+          // previewClass.
+          label: isLearned
+            ? `Tune to ${quasiparticleLabel(previewClass)}`
+            : `Learn ${quasiparticleLabel(previewClass)} ${moveShapeName(id)}`,
           onClick: () => (isLearned ? retuneLandauMove(scene, id, previewClass) : buyLandauMove(scene, id, cost, previewClass)),
           dimmed: !isLearned && tokens < cost,
         };

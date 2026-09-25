@@ -133,6 +133,16 @@ function narrowTileFraction(walkable, gridW, gridH) {
   return total === 0 ? 0 : narrow / total;
 }
 
+// The first walkable tile north of `goalY` or south of `startY`, as "x,y",
+// or null when the ground keeps to the band between the two passes.
+function outOfBandTile(walkable, gridW, gridH, goalY, startY) {
+  for (let y = 0; y < gridH; y++) {
+    if (y >= goalY && y <= startY) continue;
+    for (let x = 0; x < gridW; x++) if (walkable[y][x]) return key(x, y);
+  }
+  return null;
+}
+
 let failures = 0;
 let totalNarrowFrac = 0;
 let totalMaps = 0;
@@ -181,6 +191,16 @@ for (const size of SIZES) {
         console.error(`FAIL ${size.label} world ${world} (${playerType ?? 'n/a'}) iter ${i}: goal still reachable with mid removed -- not a real chokepoint`);
       }
 
+      // Nothing walkable outside the goal..start band: north of the goal row
+      // is the view past the exit pass (plan.ts and OverworldScene read that
+      // row as the world's far edge), south of the start row is behind the
+      // entry pass, and wilds, tokens and respawns would land on either.
+      const outside = outOfBandTile(map.walkable, GRID_W, GRID_H, map.goal.y, map.start.y);
+      if (outside) {
+        failures++;
+        console.error(`FAIL ${size.label} world ${world} (${playerType ?? 'n/a'}) iter ${i}: walkable tile at ${outside} outside rows ${map.goal.y}..${map.start.y}`);
+      }
+
       totalNarrowFrac += narrowTileFraction(map.walkable, GRID_W, GRID_H);
     }
   }
@@ -196,4 +216,4 @@ if (failures > 0) {
   console.error(`${failures} invariant failure(s).`);
   process.exit(1);
 }
-console.log('All maps passed reachability + chokepoint (invariant B) verification.');
+console.log('All maps passed reachability + chokepoint (invariant B) + in-band verification.');

@@ -9,7 +9,7 @@ import { PANEL_BG, REFERENCE_BLUE_GREY_HEX } from '../../ui/theme';
 import {
   MOVES,
   KONDO_MOVE_IDS,
-  compatibleMoves,
+  hostableMoveIds,
   getPlayerMaterial,
   getMoveLevel,
   getUnlockedMoveLevel,
@@ -80,13 +80,15 @@ export function showFeynmanPanel(scene: GuardianPanelHost) {
 }
 
 // One row per unlocked move **the player's current crystal can actually
-// host** -- the unlocked list filtered by `compatibleMoves` on the form they
-// are wearing right now. Feynman deepens a move the player carries, and a
-// quasiparticle their present lattice has no way to support is not one they
-// carry; offering to level it is offering to sharpen something they cannot
-// swing. Transmuting or fusing into a form that hosts it brings it back into
-// the list, at whatever level it already had, since the level lives on the
-// move rather than on the form.
+// host** -- the unlocked list filtered by `hostableMoveIds`: the form they
+// are wearing right now plus the channels its doped-in Anderson impurity
+// opens, the same set that decides what they can swing in battle. Feynman
+// deepens a move the player carries, and a quasiparticle their present
+// crystal has no way to support is not one they carry; offering to level it
+// is offering to sharpen something they cannot swing. Transmuting, fusing or
+// doping into a crystal that hosts it brings it back into the list, at
+// whatever level it already had, since the level lives on the move rather
+// than on the form.
 //
 // Kondo's three screening moves join that list on their own terms. They are
 // self-buffs rather than attacks, so `MOVE_COMPATIBILITY` says nothing about
@@ -113,7 +115,7 @@ function renderMoveLevelList(
   y: number,
   panelWidth: number
 ): number {
-  const hostable = new Set(compatibleMoves(getPlayerMaterial(scene.game.registry)));
+  const hostable = hostableMoveIds(scene.game.registry);
   const moves = scene
     .getUnlockedMoves()
     .filter((id) => hostable.has(id) || KONDO_MOVE_IDS.includes(id))

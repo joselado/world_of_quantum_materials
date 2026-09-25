@@ -184,13 +184,23 @@ function drawCloud(scene: Phaser.Scene, x: number, y: number, drift: number) {
   g.setPosition(x, y);
   if (drift <= 0) return;
 
-  const span = CANVAS_W + 120;
+  // Out past the right edge from wherever it was placed, then every pass
+  // after that comes back in from beyond the left edge and crosses the whole
+  // sky, so a cloud never appears out of nothing mid-sky.
+  const leftX = -60;
+  const rightX = CANVAS_W + 60;
   scene.tweens.add({
     targets: g,
-    x: x + span,
-    duration: (span / drift) * 1000,
-    repeat: -1,
-    onRepeat: () => g.setX(x - 60),
+    x: rightX,
+    duration: (Math.max(0, rightX - x) / drift) * 1000,
+    onComplete: () => {
+      scene.tweens.add({
+        targets: g,
+        x: { from: leftX, to: rightX },
+        duration: ((rightX - leftX) / drift) * 1000,
+        repeat: -1,
+      });
+    },
   });
 }
 

@@ -661,17 +661,17 @@ for (const w of BUILT_WORLDS.filter((w) => w !== '10')) {
   }
 }
 
-// 18. A compound that appears in more than one world's pool must look the
-// same in each. `hueStep` is chosen to separate siblings *within* one pool,
-// so nothing stops two pools from picking different steps for the same
-// compound -- and then it renders as two different colors, while
+// 18. A compound that appears in more than one world's pool must look and
+// fight the same in each. `hueStep` is chosen to separate siblings *within*
+// one pool, so nothing stops two pools from picking different steps for the
+// same compound -- and then it renders as two different colors, while
 // `allCrystals()` keeps only the first pool's entry, so the Materialdex shows
 // one of them and a field encounter in the other world shows the other. Type
-// and variant are checked alongside it for the same reason. Movesets are
-// deliberately *not* compared: a compound is expected to throw its host
-// world's own signature excitation (Herbertsmithite carries Spinon Swap with
-// Thermal Fluctuation in World 7 and with Vison Loop in World 8), which is
-// content, not drift.
+// and variant are checked alongside it for the same reason, and so is the
+// moveset (compared as a set): a compound's excitations are its own physics,
+// not its host world's, and a by-name lookup (findMaterialByName, which
+// Anderson's learnable-move step reads the host's moves from) returns the
+// first pool's entry, so a second moveset would never be offered there.
 {
   const byName = new Map();
   for (const world of BUILT_WORLDS) {
@@ -682,10 +682,10 @@ for (const w of BUILT_WORLDS.filter((w) => w !== '10')) {
   }
   for (const [name, entries] of byName) {
     if (entries.length < 2) continue;
-    for (const field of ['type', 'hueStep', 'variantOverride', 'shortName']) {
+    for (const field of ['type', 'hueStep', 'variantOverride', 'shortName', 'moves']) {
       const values = new Map();
       for (const e of entries) {
-        const key = JSON.stringify(e[field] ?? null);
+        const key = field === 'moves' ? JSON.stringify([...(e.moves ?? [])].sort()) : JSON.stringify(e[field] ?? null);
         if (!values.has(key)) values.set(key, []);
         values.get(key).push(e.world);
       }
@@ -693,7 +693,7 @@ for (const w of BUILT_WORLDS.filter((w) => w !== '10')) {
       const shown = Array.from(values, ([v, worlds]) => `${v} in world ${worlds.join('/')}`).join(', ');
       flag(
         `'${name}' appears in ${entries.length} world pools with a different ${field} in each (${shown}) -- ` +
-          `one compound has to look the same everywhere it spawns, and allCrystals() keeps only the first pool's entry, ` +
+          `one compound has to look and fight the same everywhere it spawns, and allCrystals() keeps only the first pool's entry, ` +
           `so the Materialdex and a field encounter would disagree`
       );
     }

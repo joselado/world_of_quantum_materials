@@ -123,6 +123,13 @@ export class TitleScene extends Phaser.Scene {
   // Bottom space the map claims (TITLE_MAP's reserveFrac), which
   // redrawContent centers the content stack above rather than into.
   private mapReserve = 0;
+  // The erase confirm while it is up, else null. Every control beneath it
+  // (Continue/New Game, SPACE, the mode picker, the erase line itself) checks
+  // this and stands down, the same way HubScene's controls check
+  // dialogueContainer: the popup draws over the screen but does not stop
+  // clicks reaching what is under it, and a mode switch made under an open
+  // "erase your save?" would change which save it is about.
+  private eraseConfirm: Phaser.GameObjects.Container | null = null;
 
   constructor() {
     super('Title');
@@ -130,6 +137,9 @@ export class TitleScene extends Phaser.Scene {
 
   create() {
     const registry = this.game.registry;
+    // Phaser reuses the scene instance, so a popup left open when the player
+    // last started from here was destroyed with that visit's display list.
+    this.eraseConfirm = null;
 
     // Which mode is preselected when the title screen loads. A player who
     // came back here from the Lab's own Title Screen station mid-session
@@ -168,7 +178,13 @@ export class TitleScene extends Phaser.Scene {
     this.addTitleMap();
     this.redrawContent(registry);
 
-    this.input.keyboard!.once('keydown-SPACE', () => this.start());
+    // Once, so a held or repeated SPACE can't queue the Hub twice; a press
+    // the open erase confirm refuses re-arms it for the next one.
+    const onSpace = () => {
+      if (this.eraseConfirm) this.input.keyboard!.once('keydown-SPACE', onSpace);
+      else this.start();
+    };
+    this.input.keyboard!.once('keydown-SPACE', onSpace);
     installFullscreenKey(this);
   }
 
@@ -378,9 +394,18 @@ export class TitleScene extends Phaser.Scene {
   // larger Text Size preset grew the confirm text past what the fixed
   // layout had room for.
   private confirmNewGame() {
+    if (this.eraseConfirm) return;
+    // The slot this popup asks about, fixed when it opens: the question on
+    // screen is about the save the player was looking at when they asked.
+    const superposition = !!this.game.registry.get('superpositionMode');
     const panelWidth = 420;
     const top = 20;
     const container = this.add.container(0, 0).setDepth(200);
+    this.eraseConfirm = container;
+    const close = () => {
+      container.destroy();
+      this.eraseConfirm = null;
+    };
 
     let y = top;
 
@@ -415,9 +440,8 @@ export class TitleScene extends Phaser.Scene {
         // to the *other* mode if that one happens to still have a save,
         // right after the player asked to erase this one.
         const registry = this.game.registry;
-        const superposition = !!registry.get('superpositionMode');
         clearSave(superposition);
-        container.destroy();
+        close();
         this.loadIntoRegistry(superposition);
         this.redrawContent(registry);
       });
@@ -431,7 +455,7 @@ export class TitleScene extends Phaser.Scene {
       })
       .setOrigin(0.5, 0)
       .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => container.destroy());
+      .on('pointerdown', close);
     container.add(no);
     const buttonGap = 16;
     const buttonsTotalW = yes.width + no.width + buttonGap;
@@ -524,12 +548,12 @@ export class TitleScene extends Phaser.Scene {
     // it happens, via the same ~40 persistFromRegistry() call sites every
     // other scene already uses.
     storyBtn.on('pointerdown', () => {
-      if (!isSuperposition()) return;
+      if (this.eraseConfirm || !isSuperposition()) return;
       this.loadIntoRegistry(false);
       this.redrawContent(registry);
     });
     superBtn.on('pointerdown', () => {
-      if (isSuperposition()) return;
+      if (this.eraseConfirm || isSuperposition()) return;
       this.loadIntoRegistry(true);
       this.redrawContent(registry);
     });
@@ -594,6 +618,7 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private start() {
+    if (this.eraseConfirm) return;
     this.scene.start('Hub');
   }
 }

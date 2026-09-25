@@ -147,8 +147,11 @@ crystal carrying whichever impurity you are looking at.
 
 <img src="../screenshots/docs-guardians-feynman-avatar.png" width="300" alt="Feynman: a figure drawn as a diagram, vertices joined by propagator lines with loop corrections hanging off them">
 
-Lets you level up any move you already know how to use, no matter which
-guardian originally taught it to you. Three tiers sit on top of a move's
+Lets you level up any move you've learned that your current crystal can
+use (its own form's moves, plus any an Anderson impurity opens), no matter
+which guardian originally taught it to you. A move your present form can't
+host drops out of the list until you transmute, fuse or dope back into one
+that can, still at whatever level it had. Three tiers sit on top of a move's
 base form (Double, Triple, and Infinite), each one a bigger boost (1.5x,
 then 2x, then 3x) and its own name prefix ("Electron Pulse" becomes
 "Double Electron Pulse," then "Triple Electron Pulse," then "Infinite

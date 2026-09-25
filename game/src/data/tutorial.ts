@@ -163,7 +163,7 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     listLabel: 'Move Leveling',
     unlock: { kind: 'guardian', ids: ['feynman'] },
     body:
-      "Feynman (World 7) can level up any move you've already learned, from any guardian, through three tiers (Double, Triple, and Infinite), each hitting harder than the last. Picking a move spends qumatessence immediately, win or lose, then opens a streak of physics questions: answer every one right in a row and the move levels up for good; miss a single one and the attempt is lost, though the move stays exactly as strong as before. Each tier asks for a longer correct streak than the one before it.",
+      "Feynman (World 7) can level up any move you've learned that your current crystal can use (its own form's moves, plus any your Anderson impurity opens), whichever guardian taught it, through three tiers (Double, Triple, and Infinite), each hitting harder than the last. Picking a move spends qumatessence immediately, win or lose, then opens a streak of physics questions: answer every one right in a row and the move levels up for good; miss a single one and the attempt is lost, though the move stays exactly as strong as before. Each tier asks for a longer correct streak than the one before it.",
   },
   statusEffects: {
     title: 'Status Effects',

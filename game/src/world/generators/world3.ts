@@ -142,6 +142,21 @@ export function generateWorld3Map(gridW: number, gridH: number, start: GridPoint
     }
   }
 
+  // The world is the ground between its two passes and nothing else, the
+  // same goalY..start.y band every other world's shape keeps to: the Voronoi
+  // walls and their dilation run over the whole grid, so rows north of the
+  // goal (the view past the exit pass) and south of the start (behind the
+  // entry pass) are closed here. Once before the splices, so a landmark
+  // splices into ground inside the band, and once after, since the start
+  // splice's thick carve stamps a row past the arrival.
+  const clipToBand = () => {
+    for (let y = 0; y < gridH; y++) {
+      if (y >= goalY && y <= start.y) continue;
+      for (let x = 0; x < gridW; x++) walkable[y][x] = false;
+    }
+  };
+  clipToBand();
+
   // Splice the three fixed landmark points into the boundary network --
   // none of them is guaranteed to already land on a domain wall.
   const splice = (p: GridPoint) => {
@@ -169,6 +184,7 @@ export function generateWorld3Map(gridW: number, gridH: number, start: GridPoint
   }
   if (!mid) mid = { x: start.x, y: midY };
   splice(mid);
+  clipToBand();
 
   // A Manhattan disc tapers to a single tile at the far end of its own
   // reach, and an interior domain wall always ends at a Voronoi vertex where

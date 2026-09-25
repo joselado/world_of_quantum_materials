@@ -22,7 +22,10 @@ export function isFullscreen(scene: Phaser.Scene): boolean {
 
 // Both entry points come through here. Phaser handles a DOM input event in the
 // native handler rather than queueing it to the next frame, so a keypress or a
-// click on a Settings chip still carries the user gesture the API requires.
+// Settings chip still carries the user gesture the API requires -- as long as
+// the chip answers the pointer's release: a touchscreen's press is a
+// touchstart, which browsers do not count as a gesture (the Settings panel's
+// `onRelease` option; Phaser's own startFullscreen docs say the same).
 //
 // The request resolves a tick later, on the browser's own
 // ENTER_FULLSCREEN/LEAVE_FULLSCREEN event -- `isFullscreen()` read immediately

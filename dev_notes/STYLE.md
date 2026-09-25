@@ -1622,8 +1622,8 @@ station motifs are deliberately not tunnels with a visible far end.
   Phonon (this form can't host it)." -- the fallback reads the bare quasiparticle noun,
   `quasiparticleLabel`, not the move's own shape word -- or "Untuned -- pick a quasiparticle." if
   never assigned, Superposition Mode's own edge case), naming the previewed quasiparticle and
-  what it costs -- and the one button that spends anything: `Learn <name>` on a still-unbought
-  move (`buyLandauMove`, checking/spending `shopCost`, adding the move to `unlockedMoves`, and
+  what it costs -- and the one button that spends anything: `Learn <quasiparticle> <shape>` on a
+  still-unbought move, naming the previewed class it will be bought tuned to (`buyLandauMove`, checking/spending `shopCost`, adding the move to `unlockedMoves`, and
   recording the class, all three at once, with no separate "buy" step before picking a class), or
   `Tune to <quasiparticle>` on an already-bought one, free among any hostable class with no
   per-class cost (`retuneLandauMove`). A move already tuned to the previewed class offers no

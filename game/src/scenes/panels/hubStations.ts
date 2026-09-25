@@ -786,6 +786,14 @@ interface SettingsOption {
   label: string;
   selected: boolean;
   onPick: () => void;
+  // Fires on the pointer's release rather than its press, and only for a
+  // release that follows a press on this same chip. Only the Full Screen chips
+  // need it: a browser grants fullscreen only inside a user activation, and on
+  // a touchscreen the press arrives as touchstart, which does not count as one
+  // -- the release (touchend) does. The press has to be the chip's own because
+  // a press on another chip can rebuild the panel (a Text Size pick moves
+  // every row), leaving its release over whatever now sits under the finger.
+  onRelease?: boolean;
 }
 
 interface SettingsRow {
@@ -930,6 +938,7 @@ export function showSettingsPanel(scene: HubScene) {
               onPick: () => {
                 if (p.value !== fullscreen) toggleFullscreen(scene);
               },
+              onRelease: true,
             })),
           },
         ]
@@ -1048,7 +1057,18 @@ export function showSettingsPanel(scene: HubScene) {
         lineHeight = 0;
         chip.setPosition(cx, cy);
       }
-      chip.setInteractive({ useHandCursor: true }).on('pointerdown', option.onPick);
+      chip.setInteractive({ useHandCursor: true });
+      if (option.onRelease) {
+        let pressed = false;
+        chip.on('pointerdown', () => (pressed = true));
+        chip.on('pointerup', () => {
+          if (!pressed) return;
+          pressed = false;
+          option.onPick();
+        });
+      } else {
+        chip.on('pointerdown', option.onPick);
+      }
       container.add(chip);
       cx += chip.width + SETTINGS_OPTION_GAP;
       lineHeight = Math.max(lineHeight, chip.height);

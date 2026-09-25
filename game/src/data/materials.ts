@@ -640,6 +640,21 @@ export function getPlayerDopantLook(registry: RegistryLike): DopantLook | undefi
   return dopant ? { color: dopant.color, variant: dopant.variant } : undefined;
 }
 
+// Every attack move id the player's current crystal can carry: its own
+// form's (compatibleMoves) plus whatever its doped-in Anderson impurity
+// (registry `andersonDopant`) additionally hosts. What getBattleMoves filters
+// the learned list by, and what Feynman's panel lists, so the moves offered
+// for leveling are exactly the ones the player can swing.
+export function hostableMoveIds(registry: RegistryLike): Set<string> {
+  const allowed = new Set(compatibleMoves(getPlayerMaterial(registry)));
+  const dopantName = (registry.get('andersonDopant') as string | null) ?? null;
+  const dopant = dopantName ? findMaterialByName(dopantName) : null;
+  if (dopant) {
+    for (const id of compatibleMoves(dopant)) allowed.add(id);
+  }
+  return allowed;
+}
+
 // The moves the player can actually use in battle right now: the ones
 // they've learned (registry `unlockedMoves`, grown via Noether's shop)
 // intersected with what their current form's physics supports
@@ -664,12 +679,7 @@ export function getPlayerDopantLook(registry: RegistryLike): DopantLook | undefi
 // regardless of the player's current form the moment it's the active one.
 export function getBattleMoves(registry: RegistryLike): string[] {
   const unlocked = (registry.get('unlockedMoves') as string[]) ?? [...PLAYER_MATERIAL.moves];
-  const allowed = new Set(compatibleMoves(getPlayerMaterial(registry)));
-  const dopantName = (registry.get('andersonDopant') as string | null) ?? null;
-  const dopant = dopantName ? findMaterialByName(dopantName) : null;
-  if (dopant) {
-    for (const id of compatibleMoves(dopant)) allowed.add(id);
-  }
+  const allowed = hostableMoveIds(registry);
   const activeKondoMove = (registry.get('kondoActiveMove') as string | null) ?? null;
   return unlocked.filter((id) => {
     if (KONDO_MOVE_IDS.includes(id)) return id === activeKondoMove;
@@ -1318,7 +1328,9 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     crystal('Bismuth Ferrite', 'multiferroic', ['electromagnonPulse', 'magneticField'], 0, 'rhombohedral', 'BiFeO₃'),
   ],
   7: [
-    crystal('Herbertsmithite', 'quantumSpinLiquid', ['entanglementSwap', 'thermalFluctuation']),
+    // Also in World 8's pool, with the same moves: a Z2-spin-liquid candidate
+    // on the kagome lattice, so a vison host as well as a spinon one.
+    crystal('Herbertsmithite', 'quantumSpinLiquid', ['entanglementSwap', 'visonLoop']),
     // Shastry-Sutherland dimerized/entangled ground state -- a textbook
     // triplon host, not just a generic spinon-carrying spin liquid.
     crystal('Strontium Copper Borate', 'quantumSpinLiquid', ['entanglementSwap', 'triplonSurge'], 1, undefined, 'SrCu₂(BO₃)₂'),

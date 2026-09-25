@@ -190,7 +190,7 @@ nothing else catches it), and every `TUTORIAL_TIPS` topic is
 reachable and declared in the order the game reveals it (a `{ kind: 'tip' }`
 topic has a trigger site, a `{ kind: 'guardian' }` topic names a real guardian
 and follows the ones unlocked in earlier worlds). Check 18 holds a compound
-that spawns in several world pools to one look across all of them, and check 19
+that spawns in several world pools to one look and one moveset across all of them, and check 19
 holds every story screen's text (`WORLD_LORE`, `RIVAL_TAUNTS`, `STORY_BEATS`,
 `FINALE_BODY`) and every tutorial popup's body (`TUTORIAL_TIP_BRIEF`) to having a
 Brief sibling that is actually brief: at most 0.6 of its Detailed words per
@@ -266,8 +266,12 @@ and verify pass, since a bug inside `forceChokepoint`/`verifyChokepoint`
 would not be caught by that pass re-checking its own work. It also reports
 the invariant-A proxy -- what fraction of walkable tiles belong to no
 straight run of two -- as a rate rather than a pass/fail, and fails the run on
-a guardian standing on top of the goal. Run it after any change to a
-generator or to the shared passes.
+a guardian standing on top of the goal or on any walkable tile outside the
+rows between the goal and the start: north of the goal is the view past the
+exit pass and south of the start is behind the entry pass, and a generator
+that builds its shape over the whole grid (World 3's Voronoi walls) has to
+clip itself back to that band. Run it after any change to a generator or to
+the shared passes.
 
 **`npm run mapshape:measure`** (`scripts/mapshape-measure.mjs`, ~15s) is the
 reading, and answers the question the gate cannot: how much ground does each

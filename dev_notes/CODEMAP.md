@@ -573,6 +573,7 @@ game/src/
                                   getWildPool(), getRival(world, rival9Type?),
                                   compatibleMoves(),
                                   canHost(), getPlayerMaterial(), getPlayerStats(), getBattleMoves(),
+                                  hostableMoveIds() -- form + Anderson dopant's move ids,
                                   findMaterialByName(),
                                   rollRival9Type() -- rolls World 9's rival's random MaterialType,
                                   fed into getRival() (see "Rival/boss fights" below),
@@ -1358,7 +1359,10 @@ move's result to `playAttackEffect`'s callbacks (`art/attackEffects.ts`, which t
 `onComplete?: () => void` alongside its `onImpact?: () => void`) rather than running them inline:
 `applyResult()` (damage/log/passive hooks) and `checkEndOrContinue()` (win-lose check +
 `onDone()`/turn-release) both fire from `onImpact` for an ordinary move, at the last repeat's own
-landing. Anything else desyncs what the screen shows from what the state says -- HP dropping, the
+landing. `resolveSelfBuff` releases the turn the same way, from its ring's own `onImpact`, so a
+leveled Kondo buff's squash on the caster has finished before the opponent's hit can land on that
+same crystal (`flashHit` also tweens from an explicit scale of `1`, so two squashes that do
+overlap still settle back to rest). Anything else desyncs what the screen shows from what the state says -- HP dropping, the
 opponent's counter-swing scheduled, and `endBattle`'s summary panel opening while the player's own
 silhouette is still crossing the field. `TURN_GAP_MS` (`300`) is therefore measured from the
 landing, not from the cast, and is sized for what is still playing then (the 260ms impact
@@ -1692,9 +1696,9 @@ matters (`resolveHit`'s mismatch check, `moveButtonContent`'s `!!2x` preview, `d
 every opponent-identity log line, `endBattle`'s flavor/blurb) instead of `this.wild` directly.
 Set in `create()` to mirror `getPlayerMaterial`'s own current type (visuals/name stay "The
 Adapted"'s own until the first transmutation). `resolveHit`'s `checkEndOrContinue` calls
-`transmuteAdapted(effectiveClass)` once per player Attack/Analytic/Ultimate move that resolves
-against a still-living Adapted (Kondo's self-buff moves never reach that function at all, see
-`resolveHit`'s own early return) -- it reverse-looks-up `data/materials.ts`'s
+`transmuteAdapted(effectiveClass)` once per player Attack/Analytic/Ultimate move that lands
+on a still-living Adapted (a whiffed Ultimate doesn't, guarded by `!whiff`; Kondo's self-buff
+moves never reach that function at all, see `resolveHit`'s own early return) -- it reverse-looks-up `data/materials.ts`'s
 `typesHosting(moveClass)` (every `MaterialType` whose `MOVE_COMPATIBILITY` list actually
 includes that class), picks a real compound of one of those types at random from `allCrystals()`,
 and becomes a "Polycrystalline `<compound>` Golem" of it (same naming `WORLD_RIVALS[1-8]` uses),
@@ -2424,8 +2428,12 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   different mechanic shape entirely from every other guardian's -- not a purchase catalog, but
   a leveling attempt against a move the player already owns. `renderMoveLevelList` is a
   list+detail layout (`scenes/panels/listDetail.ts`, "Candidate-crystal lists" above) over
-  `scene.getUnlockedMoves()` (deliberately not `getBattleMoves()` -- a move currently unusable
-  in the player's present form is still worth leveling), paginated by `renderListColumn` via
+  `scene.getUnlockedMoves()` filtered by `hostableMoveIds(registry)` (`data/materials.ts`: the
+  current form's `compatibleMoves` plus the Anderson dopant's, the same set `getBattleMoves`
+  filters by), with every unlocked Kondo move kept -- deliberately not `getBattleMoves()` itself,
+  whose single-active-Kondo-move rule is a battle-loadout choice, not a limit on leveling. A
+  move the present form can't carry leaves the list until a transmute/fusion/doping brings it
+  back, at whatever level it already had. Paginated by `renderListColumn` via
   `scene.feynmanPage`/`scene.feynmanPreview`. Rows carry `tunedMoveDisplayName`, **not**
   `moveDisplayName`: the level prefix is the same word on every row of a well-leveled save and
   at the largest text-size preset it alone fills the `200`px column, trimming every row to an
@@ -2651,8 +2659,9 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   right column's own "Dope in `<name>`" confirm button) is what sets `scene.andersonSelection`
   and advances to step two; it does not touch `andersonDopant`, so previewing or even
   committing to a host to browse its moveset and backing out doesn't disturb whatever's
-  already doped in. Step two looks the host up via `findMaterialByName` and lists
-  whichever of its `.moves` aren't already *usable* (`!getBattleMoves(registry).includes(id)`,
+  already doped in. Step two looks the host up via `findMaterialByName` (a compound spawning in
+  several worlds carries one moveset in all of them, `content-lint` check 18, so the first entry
+  is the compound's) and lists whichever of its `.moves` aren't already *usable* (`!getBattleMoves(registry).includes(id)`,
   checked before this host becomes the dopant) rather than merely unlearned -- Superposition
   Mode auto-grants every move id to `unlockedMoves` on every world entry, so comparing against
   raw `unlockedMoves` would report every host as teaching nothing there. Picking a move is what
@@ -3210,7 +3219,10 @@ other's flag), so this list only needs to exist in one place regardless of entry
 
 **Starting over.** `data/save.ts`'s `clearSave(superposition)` just removes the matching
 localStorage key -- `TitleScene`'s "New Game (erase save)" link (behind
-`confirmNewGame`'s yes/no confirm) erases only the currently selected mode's own slot, then
+`confirmNewGame`'s yes/no confirm) erases only the mode's own slot selected when the confirm
+opened -- `TitleScene.eraseConfirm` holds the popup while it is up, and `start()`, the SPACE
+handler, both mode buttons and `confirmNewGame` itself return early on it, the same
+stand-down-under-a-dialogue check HubScene's controls make on `dialogueContainer` -- then
 calls `loadIntoRegistry`/`redrawContent` directly for that same mode rather than
 `this.scene.restart()`, so the picker stays on the mode the player was just looking at instead
 of re-running the initial-mode tiebreak (which could otherwise flip the screen to the *other*
