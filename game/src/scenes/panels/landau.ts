@@ -60,19 +60,19 @@ import { persistFromRegistry } from '../../data/save';
 // move, clicking any row buys and tunes to that class in one step
 // (buyLandauMove); for an already-bought move, clicking a row retunes for
 // free among any hostable class (retuneLandauMove), the currently-tuned
-// row marked "(current)". Picking a different class re-renders the whole
-// panel (this file's own established full-rebuild-per-click convention,
-// same as every other guardian panel), but only *this* column's own preview
-// chain (art/moveEffectPreview.ts, keyed per move id) is retargeted by
-// it -- the other column's chain keeps looping through the rebuild
-// undisturbed, since it's still passed the same params it already had.
+// row marked "(current)". Every click re-renders the whole panel (this
+// file's own established full-rebuild-per-click convention, same as every
+// other guardian panel); the pane's preview chain (art/moveEffectPreview.ts)
+// restarts from the first frame when the rebuild changes what it shows --
+// the other move opened, a class committed, so the beam or the eruption
+// plays in its new colour at once -- and keeps its play in flight when the
+// rebuild only moved the picker's selection under it.
 export function showLandauPanel(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
-  // Deliberately does NOT call stopMoveEffectPreview() here -- both
-  // columns' own renderMoveDetailHeader calls below always run, retargeting
-  // their own already-running preview chain in place (art/
-  // moveEffectPreview.ts's own defer-until-settled retarget logic) rather
-  // than needing this panel to stop and restart either one itself.
+  // Deliberately does NOT call stopMoveEffectPreview() here -- the pane's
+  // own renderMoveDetailHeader call below always runs, and the chain itself
+  // decides whether that is a restart or a continuation (art/
+  // moveEffectPreview.ts); a stop first would restart it on every click.
 
   const panelWidth = LIST_DETAIL_PANEL_W;
   const top = 20;

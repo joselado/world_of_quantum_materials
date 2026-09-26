@@ -509,11 +509,14 @@ export function renderDetailCrystalHeader(
 // Landau's/Curie's pass their move's real level so a leveled Analytic/
 // Ultimate move's preview escalates into the same multi-trigger cascade a
 // real cast plays instead of always showing the flat unleveled loop.
-// `previewKey` (default 'default', see art/moveEffectPreview.ts)
-// distinguishes one call site's own preview chain from another's -- every
-// caller here has exactly one detail pane open at a time and so never needs
-// to pass one, except Landau's/Curie's own two-column panels, which have
-// two live simultaneously and key each by its own move id.
+// `displayName` doubles as the preview's `subject`: the chain restarts from
+// the first frame whenever the caption changes (another move picked, a
+// retune, a different carried level), and keeps its play in flight through
+// a rebuild that changed nothing on the stage (a purchase, a page turn) --
+// see startMoveEffectPreview. `previewKey` (default 'default', see
+// art/moveEffectPreview.ts) distinguishes one call site's own preview chain
+// from another's -- every caller here has exactly one detail pane open at a
+// time and so never passes one.
 export function renderMoveDetailHeader(
   scene: Phaser.Scene,
   container: Phaser.GameObjects.Container,
@@ -534,6 +537,7 @@ export function renderMoveDetailHeader(
       moveClass,
       shapeOverride,
       level,
+      subject: displayName,
       at: { x: centerX, y: y + stageH / 2 },
       clip,
     },
@@ -640,7 +644,11 @@ export function renderStatusAndConfirm(params: StatusAndConfirmParams): number {
 // Feynman MoveLevel for this move (`getMoveLevel`), threaded through the
 // same way renderMoveDetailHeader above threads its own, so a leveled
 // self-buff previews the escalating multi-trigger cascade a real cast plays
-// rather than the flat unleveled loop.
+// rather than the flat unleveled loop. `displayName` is the preview's
+// `subject` here too, and it is what makes the switch between two of
+// Kondo's moves visible at all: all three play the one screening ring, so
+// only the caption tells the chain a different move was picked and the ring
+// should rise again from its first frame.
 export function renderSelfBuffMoveDetailHeader(
   scene: Phaser.Scene,
   container: Phaser.GameObjects.Container,
@@ -680,6 +688,7 @@ export function renderSelfBuffMoveDetailHeader(
     scene,
     moveClass,
     level,
+    subject: displayName,
     at: { x: centerX, y: crystalCenterY },
     clip,
   });

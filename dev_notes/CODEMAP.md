@@ -450,35 +450,45 @@ game/src/
                                   hands in the same rect it drew the stage frame from. `params.level`
                                   (Feynman's MoveLevel) is forwarded straight into the play's own
                                   `level`, so a leveled move's preview escalates the same way a
-                                  real cast does. Tracks any number of independent, simultaneously-
-                                  looping preview *chains* in a `Map<string, PreviewChain>` keyed by
-                                  `key` (default `'default'`, what every single-preview caller --
-                                  Noether, Kondo -- implicitly uses, unaffected by the multi-chain
-                                  support) rather than one module-scoped `current`/`generation` pair
-                                  for the whole module -- Landau's/Skłodowska-Curie's own two-column
-                                  panels are the one case with two chains genuinely running at once
-                                  (keyed `landau:<moveId>`/`curie:<moveId>`, one per column), so
-                                  retuning one column's own move never disturbs the other column's
-                                  already-looping chain. Calling startMoveEffectPreview again on the
-                                  same key retargets that chain to a different move without needing to
-                                  stop it first -- the in-flight play finishes on its own and that
-                                  chain's next cycle picks up whatever
-                                  its own `current` is by then, so a rapid preview switch never draws
-                                  two overlapping plays at once on the same chain. Callers must NOT
-                                  call stopMoveEffectPreview()
-                                  unconditionally right before a startMoveEffectPreview() on the same
-                                  key in the same rebuild (that would clear that chain's `current` and
-                                  defeat the retarget) -- only
-                                  from a branch that starts no preview of its own (Noether's Stats section,
-                                  whose pane has no animation in it, his Moves section's own
-                                  empty-forSale state, which renders no pane at all, and Feynman's
-                                  level-up question streak, which replaces the whole panel with
-                                  questions) or a real teardown
-                                  (OverworldScene.closeDialogue()/HubScene.closeDialogue(), which call
-                                  the no-key form to stop every chain at once). Stopping also wipes
-                                  whatever is mid-flight (attackFx.ts's cancelPreviewFx), so closing a
-                                  panel takes its animation with it rather than leaving a
-                                  multi-second Ultimate sequence playing over the room
+                                  real cast does. `params.subject` is the pane's own caption for
+                                  the move (`displayName`, passed by both of listDetail.ts's
+                                  openers): it is what tells two moves of one class apart (Kondo's
+                                  three self-buffs all play the one screening ring), so picking
+                                  the other one still reads as a change. Tracks any number of
+                                  independent, simultaneously-looping preview *chains* in a
+                                  `Map<string, PreviewChain>` keyed by `key` (default
+                                  `'default'`, which every caller uses since every pane shows one
+                                  move at a time; a caller that ever keeps two stages live at once
+                                  keys each separately). Calling startMoveEffectPreview again on
+                                  the same key is how a pane follows the player's selection:
+                                  `sameDemonstration` compares the new params with the chain's
+                                  own `current` (subject, class, shape override, level, and the
+                                  `at`/`clip` stage geometry), and a match -- a rebuild for a
+                                  purchase, a page turn of the list beside the pane, a picker row
+                                  highlighted with nothing committed -- leaves the play in flight
+                                  alone and only re-declares the clip; anything else is a
+                                  **restart**: the chain's own in-flight objects are wiped that
+                                  instant (attackFx.ts's `cancelPreviewFx(depthOffset)`, that one
+                                  chain's batch), its pending loop timer dropped, its generation
+                                  bumped, and the new move played from its first frame. Switching
+                                  move, quasiparticle or carried level therefore cuts straight to
+                                  the new demonstration rather than finishing the old cycle
+                                  first, and two plays never overlap on one chain (a sound the cut
+                                  play had already launched plays out, audio/sfx.ts being
+                                  fire-and-forget). Callers must NOT call stopMoveEffectPreview()
+                                  unconditionally right before a startMoveEffectPreview() on the
+                                  same key in the same rebuild (that would restart the loop on
+                                  every click, changed or not) -- only from a branch that starts
+                                  no preview of its own (Noether's Stats section, whose pane has
+                                  no animation in it, his Moves section's own empty-forSale
+                                  state, which renders no pane at all, and Feynman's level-up
+                                  question streak, which replaces the whole panel with questions)
+                                  or a real teardown (OverworldScene.closeDialogue()/
+                                  HubScene.closeDialogue(), which call the no-key form to stop
+                                  every chain at once). Stopping also wipes whatever is mid-flight
+                                  (attackFx.ts's cancelPreviewFx), so closing a panel takes its
+                                  animation with it rather than leaving a multi-second Ultimate
+                                  sequence playing over the room
     attackFx.ts                  fxGraphics()/fxImage()/fxTileSprite()/fxEmitter()/fxRetire()/
                                   FxSpout/fxCounter()/fxDelayedCall()/cancelPreviewFx()/
                                   setPreviewClip()/clearPreviewClip() -- the
@@ -490,7 +500,13 @@ game/src/
                                   -- a real cast allocates and tracks nothing extra and stays
                                   fire-and-forget, every phase destroying its own objects in its own
                                   onComplete (an emitter through fxRetire, which stops it and destroys it
-                                  once its last particle can have died). cancelPreviewFx stops tracked tweens
+                                  once its last particle can have died). What a preview creates is
+                                  tracked as a batch per depthOffset -- each chain's own identity,
+                                  since moveEffectPreview.ts hands every chain a distinct one --
+                                  so `cancelPreviewFx(depthOffset)` wipes one chain (the restart
+                                  path, which keeps that chain's clip for the play that follows)
+                                  and the no-argument form wipes every chain and every clip (the
+                                  teardown path). Either stops tracked tweens
                                   before destroying tracked objects: a Phaser tween's stop() fires
                                   onStop, never onComplete, so no phase chained off an onComplete gets
                                   to draw anything new after the cancel. setPreviewClip registers the
@@ -2630,8 +2646,9 @@ above for the `scenes/panels/` file-per-guardian convention every one of them fo
   "Meteor" and "Nova", same reasoning as Landau's above (there's no forSale/learned split the
   way Noether's own left column has, since picking a class *is* what first unlocks the move); the open one's `renderMoveDetailHeader` shows
   its own animation looping (overridden to the longer `playMeteor`/`playNova`
-  sequences via `ULTIMATE_SHAPES`, "Attack effects" in STYLE.md, its own `curie:<moveId>`-keyed
-  preview chain), a status line reading the
+  sequences via `ULTIMATE_SHAPES`, "Attack effects" in STYLE.md; the chain restarts the moment
+  the other move or another class is picked, so a meteor is never left to finish its fall
+  first), a status line reading the
   move's current quasiparticle (`getTunedMoveClass`, the same helper Landau's panel reads) or
   "Not yet unlocked" if the move isn't in `unlockedMoves` yet, and -- **inline directly beneath
   it** -- one pill button per hostable class, this time each row's own cost read straight off
@@ -3147,8 +3164,9 @@ hybrid halo's glow, Bloch's ring pulse) -- Tutorial's own panel carries none of 
 `destroyPanel` on every rebuild anyway for the same "safe even with nothing to kill" consistency.
 Noether's Moves tab rebuilds through `destroyPanel` on
 a preview click too: its detail pane renders no crystal at all, and its animation preview is a
-`moveEffectPreview.ts` chain that retargets rather than restarting, so a scoped update would buy
-it much less than it buys the five guardian panels above.
+`moveEffectPreview.ts` chain that carries itself across the rebuild on its own (restarting only
+when the shown move changes), so a scoped update would buy it much less than it buys the five
+guardian panels above.
 
 ## Save schema
 

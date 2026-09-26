@@ -10,13 +10,20 @@ import Phaser from 'phaser';
 // (art/moveEffectPreview.ts) is the opposite case -- the player can close the
 // panel at any frame, including halfway through a 5-second Ultimate
 // sequence, and whatever is on screen has to go with it rather than keep
-// drawing over the room for another several seconds.
+// drawing over the room for another several seconds; and the player can
+// pick a different move or quasiparticle at any frame, at which point the
+// demonstration in flight is over and the new one starts from its first
+// frame in its place.
 //
 // `depthOffset` is what tells the two apart: it is 0 for every BattleScene
 // call site and a large positive number for a preview (the offset that lifts
 // the effect above a dialogue panel's own container), so a nonzero offset
 // means "detached preview" and is the single condition for tracking anything
-// here. A real cast allocates and tracks nothing extra.
+// here. A real cast allocates and tracks nothing extra. Each preview chain
+// has a distinct offset (moveEffectPreview.ts hands them out), so the offset
+// is also the chain's identity here: what a chain has on screen is tracked
+// as its own batch, and one chain can be swept without touching another
+// that is still playing beside it.
 //
 // What a shape can create: an additive Graphics (the ordinary silhouettes,
 // runes and cracks), a tinted image or tile sprite of one of
@@ -24,12 +31,25 @@ import Phaser from 'phaser';
 // shockwave), and a particle emitter of one (sparks, embers, smoke, dust,
 // debris). All of them come through here, so every one of them is masked to
 // its preview stage and swept up by cancelPreviewFx alike.
-const previewObjects: Phaser.GameObjects.GameObject[] = [];
-const previewTweens: Phaser.Tweens.Tween[] = [];
-const previewTimers: Phaser.Time.TimerEvent[] = [];
+interface PreviewBatch {
+  objects: Phaser.GameObjects.GameObject[];
+  tweens: Phaser.Tweens.Tween[];
+  timers: Phaser.Time.TimerEvent[];
+}
+
+const previewBatches = new Map<number, PreviewBatch>();
 
 function isPreview(depthOffset: number): boolean {
   return depthOffset > 0;
+}
+
+function batchFor(depthOffset: number): PreviewBatch {
+  let batch = previewBatches.get(depthOffset);
+  if (!batch) {
+    batch = { objects: [], tweens: [], timers: [] };
+    previewBatches.set(depthOffset, batch);
+  }
+  return batch;
 }
 
 // Where a preview is allowed to draw.
@@ -108,7 +128,7 @@ function place<T extends FxObject>(obj: T, depth: number, depthOffset: number, b
   obj.setDepth(depth + depthOffset);
   obj.setBlendMode(blend);
   if (isPreview(depthOffset)) {
-    previewObjects.push(obj);
+    batchFor(depthOffset).objects.push(obj);
     const clip = previewClips.get(depthOffset);
     if (clip) obj.setMask(clip.mask);
   }
@@ -216,7 +236,7 @@ export class FxSpout {
 // spawning its next phase after the panel is gone.
 export function fxCounter(scene: Phaser.Scene, depthOffset: number, config: Phaser.Types.Tweens.NumberTweenBuilderConfig): Phaser.Tweens.Tween {
   const tween = scene.tweens.addCounter(config);
-  if (isPreview(depthOffset)) previewTweens.push(tween);
+  if (isPreview(depthOffset)) batchFor(depthOffset).tweens.push(tween);
   return tween;
 }
 
@@ -224,19 +244,32 @@ export function fxCounter(scene: Phaser.Scene, depthOffset: number, config: Phas
 // an emitter's deferred teardown (fxRetire).
 export function fxDelayedCall(scene: Phaser.Scene, depthOffset: number, delay: number, callback: () => void): Phaser.Time.TimerEvent {
   const timer = scene.time.delayedCall(delay, callback);
-  if (isPreview(depthOffset)) previewTimers.push(timer);
+  if (isPreview(depthOffset)) batchFor(depthOffset).timers.push(timer);
   return timer;
 }
 
-// Wipes every in-flight preview effect at once. Tweens stop first: a Phaser
-// tween's stop() fires onStop, never onComplete, so no phase chained off an
-// onComplete gets a chance to draw anything new after this returns.
-export function cancelPreviewFx() {
-  for (const tween of previewTweens) tween.stop();
-  for (const timer of previewTimers) timer.remove(false);
-  for (const obj of previewObjects) obj.destroy();
-  previewTweens.length = 0;
-  previewTimers.length = 0;
-  previewObjects.length = 0;
-  for (const depthOffset of [...previewClips.keys()]) clearPreviewClip(depthOffset);
+// Wipes what one preview chain (by `depthOffset`) has in flight, or -- with
+// no offset -- every chain's at once. Tweens stop first: a Phaser tween's
+// stop() fires onStop, never onComplete, so no phase chained off an
+// onComplete gets a chance to draw anything new after this returns. The
+// one-chain form keeps that chain's clip registered: it is the restart path
+// (moveEffectPreview.ts retargeting a chain to a different move), and the
+// chain's next play lands on the same stage. The all-chains form is the
+// teardown path and drops every clip with the objects.
+export function cancelPreviewFx(depthOffset?: number) {
+  if (depthOffset === undefined) {
+    for (const offset of [...previewBatches.keys()]) cancelBatch(offset);
+    for (const offset of [...previewClips.keys()]) clearPreviewClip(offset);
+    return;
+  }
+  cancelBatch(depthOffset);
+}
+
+function cancelBatch(depthOffset: number) {
+  const batch = previewBatches.get(depthOffset);
+  if (!batch) return;
+  for (const tween of batch.tweens) tween.stop();
+  for (const timer of batch.timers) timer.remove(false);
+  for (const obj of batch.objects) obj.destroy();
+  previewBatches.delete(depthOffset);
 }

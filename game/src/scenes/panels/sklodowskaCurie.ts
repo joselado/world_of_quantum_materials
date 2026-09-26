@@ -77,9 +77,11 @@ import {
 export function showSklodowskaCuriePanel(scene: GuardianPanelHost) {
   scene.dialogueActive = true;
   // Deliberately does NOT call stopMoveEffectPreview() here -- same
-  // reasoning as showLandauPanel's own comment (panels/landau.ts): both
-  // columns' own renderMoveDetailHeader calls always run, retargeting their
-  // own already-running preview chain in place.
+  // reasoning as showLandauPanel's own comment (panels/landau.ts): the
+  // pane's own renderMoveDetailHeader call always runs, and the chain
+  // restarts on its own when the move or its class changes (a meteor cut
+  // off mid-fall is gone at once, the new one summoned from the start) and
+  // keeps looping otherwise.
 
   const panelWidth = LIST_DETAIL_PANEL_W;
   const top = 20;

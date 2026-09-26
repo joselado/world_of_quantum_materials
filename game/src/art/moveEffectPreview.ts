@@ -19,10 +19,14 @@ import type { MoveLevel } from '../data/materials';
 // BattleScene fires when the move is cast in a fight, sound and all, not a
 // separate static icon or a stripped-down copy -- inside a guardian panel's
 // detail pane (STYLE.md's "List+detail panels" and "Landau in the
-// overworld"/"Skłodowska-Curie in the overworld"; Noether's/Kondo's/
-// Landau's/Skłodowska-Curie's own panels, scenes/panels/noether.ts,
-// kondo.ts, landau.ts, sklodowskaCurie.ts, via scenes/panels/listDetail.ts's
-// renderMoveDetailHeader/renderSelfBuffMoveDetailHeader).
+// overworld"/"Skłodowska-Curie in the overworld"; Noether's/Feynman's/
+// Kondo's/Landau's/Skłodowska-Curie's own panels, scenes/panels/noether.ts,
+// feynman.ts, kondo.ts, landau.ts, sklodowskaCurie.ts, and the Lab's Qumatex
+// station, via scenes/panels/listDetail.ts's
+// renderMoveDetailHeader/renderSelfBuffMoveDetailHeader). The loop follows
+// the pane: pick another move, quasiparticle or level and the play in flight
+// is cut that instant and the new one starts from its first frame
+// (startMoveEffectPreview below).
 //
 // A move whose real cast crosses the field (attackEffects.ts's
 // `travelsAcrossField` -- everything but the four that summon themselves
@@ -140,21 +144,28 @@ export interface MoveEffectPreviewParams {
   clip: PreviewClipRect;
   shapeOverride?: AttackShape;
   level?: MoveLevel;
+  // What the pane says it is demonstrating -- the move's own display name,
+  // as the caption under the stage reads it. Two moves can share a class
+  // and so a look (Kondo's three self-buffs all play the one screening
+  // ring), and the caption is what still tells them apart: a chain handed a
+  // different subject restarts even when nothing it would draw has changed,
+  // since the player picked a different move and expects to see that move
+  // demonstrated from its first frame.
+  subject?: string;
 }
 
 // A preview "chain" is a single looping play, tracked independently of every
-// other chain by its own caller-supplied `key`. Landau's/Skłodowska-Curie's
-// two-column panels (scenes/panels/landau.ts/sklodowskaCurie.ts) run two
-// chains at once, one per column, since both of a guardian's fixed two moves
-// are always visible side by side rather than browsed one at a time through
-// a shared detail pane. Every other caller (Noether's shop, Kondo's self-buff
-// preview) only ever wants one chain at a time and doesn't pass a `key`,
-// landing on DEFAULT_KEY below -- a key no other caller shares behaves as a
-// single independent chain regardless of how many other chains exist.
-// `generation` invalidates any settle callback left over from a chain that's
-// been stopped or retargeted to different params (bumped by both stop() and
-// a fresh start() call on an already-registered key) so a stale timer can
-// never resurrect playback after the panel has moved on.
+// other chain by its own caller-supplied `key`. Every guardian pane shows
+// one move at a time, so every caller (listDetail.ts's two detail-header
+// openers, which Noether's, Feynman's, Kondo's, Landau's and
+// Skłodowska-Curie's panels and the Lab's Qumatex station all go through)
+// leaves `key` unset and lands on DEFAULT_KEY below; a caller that ever
+// keeps two stages live at once keys each separately, and a key no other
+// caller shares behaves as a single independent chain regardless of how
+// many other chains exist. `generation` invalidates any settle callback
+// left over from a chain that's been stopped or restarted (bumped by both
+// stop() and a start() call that restarts an already-registered key) so a
+// stale timer can never resurrect playback after the panel has moved on.
 const DEFAULT_KEY = 'default';
 
 interface PreviewChain {
@@ -162,10 +173,32 @@ interface PreviewChain {
   current: MoveEffectPreviewParams;
   generation: number;
   pendingTimer: Phaser.Time.TimerEvent | null;
-  // Fixed for as long as this key has a chain, so retargeting one (Landau
+  // Fixed for as long as this key has a chain, so restarting one (Landau
   // retuning a move, which rebuilds the panel) reuses its own depth band and
   // its own clip registration rather than leaking a new one per rebuild.
   depthOffset: number;
+}
+
+// Whether two starts on the same chain ask for the same demonstration on
+// the same stage. A panel rebuilds itself whole on every click (scenes/
+// panels/*.ts's full-rebuild-per-click convention), so most starts a chain
+// sees are for the very move it is already looping -- a purchase, a page
+// turn of the list beside it -- and those leave the play in flight alone.
+// Anything else (a different move, quasiparticle or Feynman level, or the
+// same move on a stage that has moved) is a new demonstration.
+function sameDemonstration(a: MoveEffectPreviewParams, b: MoveEffectPreviewParams): boolean {
+  return (
+    a.subject === b.subject &&
+    a.moveClass === b.moveClass &&
+    a.shapeOverride === b.shapeOverride &&
+    (a.level ?? 0) === (b.level ?? 0) &&
+    a.at.x === b.at.x &&
+    a.at.y === b.at.y &&
+    a.clip.x === b.clip.x &&
+    a.clip.y === b.clip.y &&
+    a.clip.width === b.clip.width &&
+    a.clip.height === b.clip.height
+  );
 }
 
 const chains = new Map<string, PreviewChain>();
@@ -179,32 +212,44 @@ function nextDepthOffset(): number {
   return offset;
 }
 
-// Starts (or retargets) the preview chain identified by `key`. If a play is
-// already in flight for this same chain, this call does NOT fire a second,
-// overlapping play on top of it -- it just updates the chain's own `current`,
-// and the in-flight play's own settle callback (afterSettled below) picks up
-// whatever `current` is by the time it fires. The previously-selected move
-// finishes its own cycle, then the newly selected one starts, never both
-// drawing at once. A caller doesn't need to call stopMoveEffectPreview itself
-// before retargeting a chain (e.g. Landau's panel rebuilding after a
-// retune), just before tearing the chain down for good (Farewell/close) with
-// nothing new to preview in its place.
+// Starts (or retargets) the preview chain identified by `key`. A chain
+// already looping the same demonstration (sameDemonstration above -- the
+// panel rebuilt itself for a reason that changed nothing on the stage)
+// keeps its play in flight and this call only re-declares its clip. A chain
+// asked for a different demonstration restarts: whatever it has on screen
+// is wiped that instant (attackFx.ts's cancelPreviewFx, this chain's own
+// batch only, its tweens stopped before any onComplete can chain a further
+// phase), its scheduled next cycle is dropped, and the new move plays from
+// its first frame. Picking another move, another quasiparticle or another
+// Feynman level in a pane therefore cuts straight to that choice rather
+// than sitting through the rest of the previous move's cycle. A sound the
+// cut play had already launched finishes on its own (audio/sfx.ts's
+// oscillators are fire-and-forget), which is at most a second of overlap
+// on a rapid switch. Two plays never draw at once on the same chain. A
+// caller doesn't call stopMoveEffectPreview itself before retargeting a
+// chain -- that would restart the loop on every rebuild, changed or not --
+// only before tearing the chain down for good (Farewell/close) with nothing
+// new to preview in its place.
 export function startMoveEffectPreview(params: MoveEffectPreviewParams, key: string = DEFAULT_KEY) {
-  const existing = chains.get(key);
-  const alreadyRunning = !!existing && existing.scene === params.scene;
-  if (existing) {
-    existing.current = params;
-    existing.scene = params.scene;
-  } else {
-    chains.set(key, { scene: params.scene, current: params, generation: 0, pendingTimer: null, depthOffset: nextDepthOffset() });
+  let chain = chains.get(key);
+  if (chain && chain.scene === params.scene && sameDemonstration(chain.current, params)) {
+    chain.current = params;
+    // Re-declared on every call: the clip follows the stage rather than
+    // being registered once when the chain is born.
+    setPreviewClip(params.scene, chain.depthOffset, params.clip);
+    return;
   }
-  const chain = chains.get(key)!;
-  // Re-declared on every call, retarget included: a panel rebuild lays its
-  // pane out afresh and the stage can land somewhere else (a longer move
-  // name above it, a different text-size preset), so the clip follows the
-  // stage rather than being registered once when the chain is born.
+  if (chain) {
+    if (chain.pendingTimer) chain.scene.time.removeEvent(chain.pendingTimer);
+    chain.pendingTimer = null;
+    cancelPreviewFx(chain.depthOffset);
+    chain.scene = params.scene;
+    chain.current = params;
+  } else {
+    chain = { scene: params.scene, current: params, generation: 0, pendingTimer: null, depthOffset: nextDepthOffset() };
+    chains.set(key, chain);
+  }
   setPreviewClip(params.scene, chain.depthOffset, params.clip);
-  if (alreadyRunning) return;
   chain.generation++;
   playNext(key, chain.generation);
 }
@@ -223,9 +268,11 @@ function playNext(key: string, myGen: number) {
   // attackEffects.ts's playUltimateRepeats -- or a timed proxy off this
   // play's own total duration for every other shape, since neither
   // playFlightEffect nor playTargetEffect calls back for those) -- schedules
-  // the next cycle after a short pause, re-reading this chain's own `current` fresh
-  // rather than closing over these params, so a preview retarget mid-flight
-  // takes effect on the very next cycle instead of being silently dropped.
+  // the next cycle after a short pause. That cycle reads this chain's own
+  // `current` afresh rather than closing over these params, and runs only
+  // while this play's generation is still the chain's: a restart in the
+  // meantime has already wiped this play and bumped the generation, so the
+  // pause it scheduled dies with it.
   const playedMs = flight ? attackEffectTotalDurationMs(shape, level ?? 0) : targetEffectTotalDurationMs(shape, level ?? 0);
   const afterSettled = () => {
     const c = chains.get(key);
@@ -244,7 +291,7 @@ function playNext(key: string, myGen: number) {
 }
 
 // Stops one chain (by `key`), or -- called with no key -- every chain at
-// once, and wipes whatever any preview currently has on screen
+// once, and wipes whatever the stopped chain(s) currently have on screen
 // (art/attackFx.ts's cancelPreviewFx: mid-flight Graphics destroyed, their
 // tweens stopped before any onComplete can chain a further phase). Closing a
 // panel takes its animation with it, including partway through one of
@@ -270,9 +317,7 @@ export function stopMoveEffectPreview(key?: string) {
   if (!chain) return;
   chain.generation++;
   if (chain.pendingTimer) chain.scene.time.removeEvent(chain.pendingTimer);
+  cancelPreviewFx(chain.depthOffset);
   clearPreviewClip(chain.depthOffset);
   chains.delete(key);
-  // Per-key stops only ever happen when nothing else is previewing (a single
-  // chain's own panel closing), so this clears the same screen either way.
-  if (chains.size === 0) cancelPreviewFx();
 }

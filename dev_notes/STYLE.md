@@ -3205,11 +3205,16 @@ world are shaped, since world N's start is world N-1's exit.
   A preview leaves the music alone, whatever shape it plays: the dip belongs to a real cast,
   and one fired every few seconds for as long as a panel is open would read as a fault in the
   score rather than emphasis on a hit.
-  `moveEffectPreview.ts` tracks any number of independent, simultaneously-looping preview
-  *chains* at once, each identified by its own caller-supplied string key (default `'default'`,
-  what every single-preview caller -- Noether, Feynman, Kondo -- implicitly lands on, unaffected by this):
-  Landau's and Skłodowska-Curie's own two-column panels (below) are the one case with two
-  chains genuinely running at once, one per move id, so retuning one column's own move never
-  disturbs the other column's already-looping chain. `stopMoveEffectPreview()` with no key stops
-  every chain at once (every guardian panel's own Farewell/close path); passed a key, it stops
-  only that one chain.
+  **The loop follows the selection.** Picking another move in the list beside the pane, another
+  quasiparticle for it, or another carried level cuts the play in flight that instant and starts
+  the new move from its first frame -- a beam half-fallen or a meteor half-summoned is gone at
+  once, never left to finish before the chosen one begins, and two plays never draw on one stage
+  at the same time. A rebuild that changes nothing on the stage (a purchase, a page turn, a
+  picker row highlighted but not yet committed) leaves the loop running where it was
+  (`moveEffectPreview.ts`'s `sameDemonstration`, which keys on the pane's own caption as well as
+  the class/shape/level, so even two moves that look identical -- Kondo's three screening rings --
+  restart when the player switches between them). `moveEffectPreview.ts` tracks any number of
+  independent, simultaneously-looping preview *chains* at once, each identified by its own
+  caller-supplied string key (default `'default'`, what every caller lands on, since every pane
+  shows one move at a time). `stopMoveEffectPreview()` with no key stops every chain at once
+  (every guardian panel's own Farewell/close path); passed a key, it stops only that one chain.
