@@ -96,7 +96,7 @@ same entry carries the Storm Flats' arc-flashes (the resolved Winding Borders �
 Storm Flats adjacency, both worlds being flat by identity) and the Entangled
 Web's filament glints, which at swallow zero are its entire distant self. A
 separate `OVERHEAD_SKIES` table carries motifs read from the world the player
-is **standing in** rather than from its neighbour — the Iron Steppe's aurora.
+is **standing in** rather than from its neighbour — the Broken Coast's aurora.
 The two answer different questions and are deliberately not one table. The
 Storm Flats' own storm is in neither: it is an event that lands, drawn with the
 terrain it strikes (`terrain/materials/charged.ts`).
@@ -250,11 +250,11 @@ still reads as a border pasted on the sky. The vertical budget is fine for both
 (the excursion from the mist is 10.2 and 8.3), so this is a shape problem, not
 a value one: lift world 3's relief or swallow, or take it to zero deliberately.
 For reference the rest are world 4's storm line 0.0 (flat by identity, carried
-by its arc-flashes instead), world 6's shard sawtooth 5.2, world 9's scar ridge
+by its arc-flashes instead), world 6's coast blocks (not re-measured since the coast rework), world 9's scar ridge
 27.4.
 
-**The Iron Steppe's aurora is cramped at the short sky.** Rescaled to fit, it
-runs from just clear of the shard crests to the top of the frame with no hard
+**The Broken Coast's aurora is cramped at the short sky.** Rescaled to fit, it
+runs from just clear of the rock's crests to the top of the frame with no hard
 cut, but at 60px tall the sway and fold the slice structure is built for do not
 survive, and it reads closer to a few dim bands than to a curtain. Lifting its
 alpha or letting the lowest slices reach further down are both open.

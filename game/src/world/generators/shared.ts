@@ -266,7 +266,7 @@ export function paintBands(walkable: boolean[][], gridW: number, bands: WanderBa
 // shape half of every world whose ground is a place rather than a route. The
 // world paints a wide field first, then hands this a list of candidate
 // islands; what survives is that world's feature (a column base, a vortex pit,
-// a shard patch, a pool) standing *in* the floor, with the floor still open
+// a rock stack, a pool) standing *in* the floor, with the floor still open
 // around it.
 //
 // `clearance` is the walkable gap that must remain on every side of an island,
@@ -730,11 +730,15 @@ function nearestWalkableOnRow(walkable: boolean[][], gridW: number, y: number, n
 // so a tile-bound spawn can never fill the route -- so the exception is only
 // safe if the narrowed rows are kept clear of everything that spawns on a
 // tile: wild encounters and qumatessence alike. Both ends are covered, since
-// a throat at the entry is exactly as narrow as one at the goal.
-export function passZoneRows(start: GridPoint, goal: GridPoint, mid: GridPoint, scale: WorldScale): Set<number> {
+// a throat at the entry is exactly as narrow as one at the goal. Every row
+// behind the start tile counts as pass as well: a world that carries its
+// entry throat on through those rows to the grid's near edge (world6.ts)
+// is showing the way back, not offering ground.
+export function passZoneRows(start: GridPoint, goal: GridPoint, mid: GridPoint, scale: WorldScale, gridH: number): Set<number> {
   const rows = new Set<number>();
   for (let i = 0; i < passDepth(goal, mid, scale); i++) rows.add(goal.y + i);
   for (let i = 0; i < passDepth(start, mid, scale); i++) rows.add(start.y - i);
+  for (let y = start.y + 1; y < gridH; y++) rows.add(y);
   return rows;
 }
 

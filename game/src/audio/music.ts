@@ -1351,7 +1351,7 @@ const BATTLE_SCORE_5 = makeBattleScore({
   crashGain: 0.16,
 });
 
-// World 6, the Iron Steppe: bright and driving, a touch faster than the
+// World 6, the Broken Coast: bright and driving, a touch faster than the
 // default battle feel -- G minor.
 const BATTLE_SCORE_6 = makeBattleScore({
   bpm: 164,

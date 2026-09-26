@@ -29,7 +29,7 @@ const built = await esbuild.build({
   stdin: {
     contents: [
       "export { generateWorldMap } from './src/world/mapgen';",
-      "export { worldScale } from './src/world/generators/shared';",
+      "export { worldScale, PASS_HALF_WIDTH } from './src/world/generators/shared';",
       "export { WORLD_SIZE_PRESETS, gridDimsFor } from './src/data/settings';",
     ].join('\n'),
     resolveDir: gameDir,
@@ -44,7 +44,7 @@ const built = await esbuild.build({
 
 const outFile = path.join(os.tmpdir(), `mapgen-check-${process.pid}-${Date.now()}.mjs`);
 fs.writeFileSync(outFile, built.outputFiles[0].text);
-const { generateWorldMap, worldScale, gridDimsFor, WORLD_SIZE_PRESETS } = await import(`file://${outFile}`);
+const { generateWorldMap, worldScale, gridDimsFor, WORLD_SIZE_PRESETS, PASS_HALF_WIDTH } = await import(`file://${outFile}`);
 fs.unlinkSync(outFile);
 
 // Every size the Lab's Settings station offers (data/settings.ts's
@@ -135,10 +135,17 @@ function narrowTileFraction(walkable, gridW, gridH) {
 
 // The first walkable tile north of `goalY` or south of `startY`, as "x,y",
 // or null when the ground keeps to the band between the two passes.
-function outOfBandTile(walkable, gridW, gridH, goalY, startY) {
+function outOfBandTile(walkable, gridW, gridH, goalY, start) {
   for (let y = 0; y < gridH; y++) {
-    if (y >= goalY && y <= startY) continue;
-    for (let x = 0; x < gridW; x++) if (walkable[y][x]) return key(x, y);
+    if (y >= goalY && y <= start.y) continue;
+    for (let x = 0; x < gridW; x++) {
+      if (!walkable[y][x]) continue;
+      // Behind the start row the entry throat itself may run on to the
+      // grid's edge (world6.ts's way back); anything wider than the throat
+      // is ground the world is offering where nothing should stand.
+      if (y > start.y && Math.abs(x - start.x) <= PASS_HALF_WIDTH) continue;
+      return key(x, y);
+    }
   }
   return null;
 }
@@ -194,8 +201,11 @@ for (const size of SIZES) {
       // Nothing walkable outside the goal..start band: north of the goal row
       // is the view past the exit pass (plan.ts and OverworldScene read that
       // row as the world's far edge), south of the start row is behind the
-      // entry pass, and wilds, tokens and respawns would land on either.
-      const outside = outOfBandTile(map.walkable, GRID_W, GRID_H, map.goal.y, map.start.y);
+      // entry pass, and wilds, tokens and respawns would land on either. The
+      // one exception is the entry throat's own width behind the start,
+      // which a world may carry to the grid's edge as the way back: those
+      // rows are pass rows (passZoneRows), so nothing spawns on them.
+      const outside = outOfBandTile(map.walkable, GRID_W, GRID_H, map.goal.y, map.start);
       if (outside) {
         failures++;
         console.error(`FAIL ${size.label} world ${world} (${playerType ?? 'n/a'}) iter ${i}: walkable tile at ${outside} outside rows ${map.goal.y}..${map.start.y}`);

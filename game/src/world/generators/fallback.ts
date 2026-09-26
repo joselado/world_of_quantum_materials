@@ -1,10 +1,8 @@
 // Plain wide wandering corridor, no per-world physics motif of its own --
-// the shape every world used before per-world generators existed. Two
-// callers: mapgen.ts's retry loop falls back to this if a world's own
+// the shape every world used before per-world generators existed. One
+// caller: mapgen.ts's retry loop falls back to this if a world's own
 // generator can't produce a valid (reachable, chokepointed) map within its
-// attempt budget, and a couple of generators (world6.ts, world9.ts) build
-// their own motif as a modification layered on top of this same base shape
-// rather than duplicating the wandering-band logic.
+// attempt budget.
 
 import { GeneratedMap, GridPoint, WorldScale, makeColorGrid, makeGrid, paintBands, wanderBands, worldScale } from './shared';
 

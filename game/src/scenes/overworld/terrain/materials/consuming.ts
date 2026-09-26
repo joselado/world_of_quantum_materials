@@ -153,8 +153,8 @@ export interface EventHorizon {
   reveal: number;
 }
 
-// The same deterministic per-tile hash the Iron Steppe's shards use, so a
-// node stands still in the world rather than on the screen.
+// A deterministic per-tile hash, so a node stands still in the world rather
+// than on the screen.
 function hash01(x: number, y: number): number {
   return Math.abs((Math.sin(x * 12.9898 + y * 78.233) * 43758.5453) % 1);
 }

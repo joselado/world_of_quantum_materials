@@ -28,7 +28,7 @@ import { fogColor } from '../../../art/perspective';
 // to the wash actually over it: the visible part is (1 - alpha) times the
 // step, and the step itself scales with how far a world's ground sits from
 // its haze target, which the Vortex Glacier at an open gate (icy dark ground,
-// the Iron Steppe's cream air ahead) stretches further than anything else in
+// the Broken Coast's air ahead) stretches further than anything else in
 // the game.
 export const FOG_CLOSE = 0.55;
 

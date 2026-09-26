@@ -24,7 +24,7 @@ const TILE_PX = TILE_SCALE * LANE_PX;
 
 // The scatter of detail a decorated *walkable* tile carries when
 // GROUND_MOTIFS_ENABLED is on, one motif per biome (art/biomes.ts's
-// `decoration`) -- the Storm Flats' quantised orbit rings, the Iron Steppe's
+// `decoration`) -- the Storm Flats' quantised orbit rings, the Broken Coast's
 // spin-wave ripples, the Defect Scars' cracks. Impassable terrain gets its
 // material's own accent instead (materials/), and that is what carries a
 // world's identity while the floor is flat.
@@ -145,9 +145,9 @@ export function decorateTile(g: Phaser.GameObjects.Graphics, biome: Biome, tile:
     return;
   }
 
-  // World 6 (the Iron Steppe): spin-wave ripples running through the iron
-  // sand. They travel: tip one spin out of line and its neighbours lean to
-  // follow, and the tilt walks off across the steppe as a wave, which is the
+  // World 6 (the Broken Coast): spin-wave ripples running through the
+  // shingle. They travel: tip one spin out of line and its neighbours lean to
+  // follow, and the tilt runs off down the coast as a wave, which is the
   // whole of what a magnon is. Rings expand outward and fade, so the ground is
   // visibly carrying something rather than merely patterned with circles.
   if (biome.decoration === 'ripples') {

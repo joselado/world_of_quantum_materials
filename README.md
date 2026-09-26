@@ -75,7 +75,7 @@ The ten worlds are one road, and the light dies along it, from morning through
 storm and night to no sky at all, after which every world lights itself.
 The ground on either side of the path is never somewhere you can walk, and it
 looks less survivable with every world: summer forest, then stone, a drop,
-ground the storm strikes, ice and vortex pits, iron shards, open void, water
+ground the storm strikes, ice and vortex pits, broken rock and open sea, open void, water
 that takes you, molten crust, and at the end terrain that reshapes itself
 around you. From each world's far end you can see the next one on the horizon.
 
@@ -218,7 +218,7 @@ archetypes, and a rival crystal gating the way to the next world.
 | 3 | The Winding Borders | Topological band theory |
 | 4 | The Storm Flats | Integer and fractional quantum Hall effect |
 | 5 | The Vortex Glacier | Superconductivity, Nambu representation, Majoranas |
-| 6 | The Iron Steppe | Classical magnetism and magnons |
+| 6 | The Broken Coast | Classical magnetism and magnons |
 | 7 | The Entangled Web | Quantum entanglement and tensor networks |
 | 8 | The Screened Swamp | Quantum magnetism, spinons, Kondo physics |
 | 9 | The Defect Scars | Excitations and defects |

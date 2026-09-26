@@ -65,7 +65,7 @@ const WORLDS = [
   [3, 'The Winding Borders'],
   [4, 'The Storm Flats'],
   [5, 'The Vortex Glacier'],
-  [6, 'The Iron Steppe'],
+  [6, 'The Broken Coast'],
   [7, 'The Entangled Web'],
   [8, 'The Screened Swamp'],
   [9, 'The Defect Scars'],

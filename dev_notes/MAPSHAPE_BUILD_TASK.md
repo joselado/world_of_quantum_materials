@@ -37,7 +37,7 @@ column:
 | 3 Winding Borders | 35.2 | 9.6 | 36% | 1.67 | 30%, 1.43 |
 | **4 Storm Flats** | **48.0** | **14.4** | **53%** | **1.08** | **unchanged — the reference** |
 | 5 Vortex Glacier | 37.7 | 11.3 | 42% | 1.29 | 40%, 1.14 |
-| 6 Iron Steppe | 39.4 | 11.8 | 44% | 1.15 | 27%, 1.00 |
+| 6 Broken Coast | 36.6 | 11.0 | 41% | 1.26 | 27%, 1.00 |
 | **7 Entangled Web** | **36.1** | **10.8** | **40%** | **2.42** | **unchanged — the reference** |
 | 8 Screened Swamp | 35.3 | 10.6 | 39% | 1.44 | 21%, 1.14 |
 | 9 Defect Scars | 36.9 | 11.1 | 41% | 1.32 | 25%, 1.00 |
@@ -76,7 +76,7 @@ saying something false.
 
 `WORLDS.md` is explicit that with ground motifs gated off, **the impassable
 surround is the only place a world's identity lives** (§2, World 1). Every tile
-converted from surround to floor is a tile of forest/columns/shards/reeds that
+converted from surround to floor is a tile of forest/columns/boulders/reeds that
 no longer draws. Worlds 4 and 7 can be as wide as they are precisely because
 their surround is cheap to state — banded ground the storm strikes, and literal
 void.
@@ -191,20 +191,18 @@ smaller ones, then a few rows along) so the world cannot roll a map without one.
 Now 1.49 pits per map against a one-or-two roll, none missing in 600 maps across
 the three sizes.
 
-### World 6 — The Iron Steppe — mode (a) — **built**
+### World 6 — The Broken Coast — mode (a) — **built**
 
-<img src="../screenshots/storyline-world-6.png" width="420" alt="The Iron Steppe: an open plain of iron-sand with shard clumps standing in it">
+<img src="../screenshots/storyline-world-6.png" width="420" alt="The Broken Coast: a shingle beach between checkered rock and the swelling sea">
 
-A steppe is a plain, and 7.2 tiles was not a plain. Wide black iron-sand with
-the **shard clumps standing in it** — the image `WORLDS.md` already asked for,
-with the shards inside the world instead of lining a corridor.
-
-The magnon is now **transverse wavefronts**: clumps in ranks one wavelength apart
-down the plain, each rank offset sideways from the one behind it so the train
-reads as travelling rather than as a fence repeated. That states the physics
-better than the width pulse it replaces — a spin wave is a periodic disturbance
-of an ordered medium moving through it, and the player walks between its fronts.
-The wavelength stays unscaled by world size, as before.
+A **coast**: a shingle beach `tiles(13)` wide walked along the shore, between
+checkered rock on the left and open sea on the right, with tide pools of the
+same sea punched into it near the water. The beach is the field and the two
+surrounds are the world's identity, so the width comes from the strand itself
+rather than from what stands in it; the pools are what give a row its second
+run. The sea side is settled against the finished grid, so the pass tapers and
+the guardian's wall leave water, not rock, seaward of the footing, and the
+entry throat runs on behind the start to the grid's near edge as the way back.
 
 ### World 8 — The Screened Swamp — mode (a) — **built**
 
@@ -277,7 +275,7 @@ World 10 measures in band at all three sizes.
 `generators/shared.ts` carries the toolkit every redesign here is built from: a
 world paints a wide field, hands over a list of candidate islands, and takes back
 the ones its ground had room for. Six worlds are that plus a per-world island
-shape (hedgerow, columns, vortex pits, shard clumps, pools, vacancies) and a
+shape (hedgerow, columns, vortex pits, tide pools, pools, vacancies) and a
 per-world field. `punchIslands` places what fits; `punchFirst` guarantees a
 feature the world is named for; `discIsland` is the shape most of them want;
 `bandWindow` is where an island may be centred on drifting ground.
@@ -354,7 +352,7 @@ exclusion around it.
 - **`DESIGN.md` §2's map-shape table** needs one rewritten row per changed
   world, and **`WORLDS.md`**'s per-world terrain paragraphs need their
   walkable/impassable wording reconciled (World 2's aisle, World 5's spiral,
-  World 6's shard fields, World 8's banks, World 1's branches). Written as
+  World 6's beach, World 8's banks, World 1's branches). Written as
   current state, not as a record of the change.
 
 ## Verification

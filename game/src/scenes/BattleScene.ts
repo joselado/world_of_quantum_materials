@@ -8,6 +8,8 @@ import type { Biome, WallTheme } from '../art/biomes';
 import { wallThemeOf } from './overworld/terrain/plan';
 import { TERRAIN_ACCENTS } from './overworld/terrain/materials';
 import { drawConsumingStandRow } from './overworld/terrain/materials/consuming';
+import { drawSeaStandRow } from './overworld/terrain/materials/coast';
+import { isSeaTint } from '../world/generators/world6';
 import type { AccentTile, BattleLocale, OffPathKind } from './overworld/terrain/types';
 import { DISTANT_SELVES, MAX_CREST, type HorizonPoint } from '../art/horizons';
 import { drawStarNetwork } from '../art/stars';
@@ -220,7 +222,8 @@ const R_MATERIALS: Record<OffPathKind, ArenaMaterial | null> = {
   charged: { scale: 14, core: 0, spacing: 1.15 },
   // The lake's cleavage lines are raw-pixel too; its pits are sized in u.
   ice: { scale: 9, coreScale: 0.5, core: 0.3, spacing: 1.1 },
-  shards: { scale: 0.5, core: 0, spacing: 1.15 },
+  // Two full-tile washes, the checkerboard and the sea, sized like the bog's.
+  coast: { scale: 0.62, core: 0, spacing: 1 },
   bog: { scale: 0.62, core: 0.1, spacing: 1 },
   lava: { scale: 0.8, core: 0, spacing: 1 },
   // Nodes are sized in u like the pits, but a network is many small points
@@ -1586,8 +1589,8 @@ export class BattleScene extends Phaser.Scene {
   //
   // The place itself comes from `terrain/materials/` -- the same modules the
   // overworld draws that world's impassable ground with, so the Mean Fields
-  // stand a wood beyond the floor, the Stone Lattice a colonnade, the Iron
-  // Steppe leaning blades -- and from `art/horizons.ts`, whose per-world
+  // stand a wood beyond the floor, the Stone Lattice a colonnade, the Broken
+  // Coast its checkered rock or its sea -- and from `art/horizons.ts`, whose per-world
   // profile stands on the skyline as more of the same world further off.
   // Both arrive already drowned in the arena's air, which is what keeps a
   // loud local material from becoming a loud arena.
@@ -1780,8 +1783,8 @@ export class BattleScene extends Phaser.Scene {
   // front of it by a veil of that air. The tiles handed to the material are
   // synthesised for a flat near view -- the arena has no projection of its
   // own -- but their grid coordinates come from the encounter's own tile, so
-  // everything a material anchors to the map (which way the Iron Steppe's
-  // blades lean, where the Screened Swamp's moments burn) is what it was at
+  // everything a material anchors to the map (which sublattice a Broken
+  // Coast square is on, where the Screened Swamp's moments burn) is what it was at
   // the spot the fight started.
   private drawSurroundStand(biome: Biome, air: number, seed: string) {
     const kind: OffPathKind = this.locale?.surround ?? (biome.wallTheme === 'rock' ? 'solid' : biome.wallTheme);
@@ -1798,6 +1801,11 @@ export class BattleScene extends Phaser.Scene {
     // features, so its rows are handed whole to the material with the row
     // behind each (drawConsumingStandRow), and it links them itself.
     const network = kind === 'consuming';
+    // The Broken Coast's sea is one body of water: a fight started beside it
+    // faces out to sea, so each row of the stand is one swell receding rather
+    // than a row of separate cells (drawSeaStandRow). Beside the rock the
+    // per-tile boulders stand as they do everywhere else.
+    const sea = kind === 'coast' && isSeaTint(this.locale?.regionTint ?? null);
     let farNodes: AccentTile[] | null = null;
     const approach = { rowsToPass: this.locale?.rowsToPass ?? 40, convergence: this.locale?.convergence ?? 0 };
 
@@ -1823,6 +1831,12 @@ export class BattleScene extends Phaser.Scene {
       // washes tile the receding plane instead of showing their own quads.
       const rowTop = row === R_SURROUND_ROWS.length - 1 ? R_HORIZON_Y : R_HORIZON_Y + span * ((f + R_SURROUND_ROWS[row + 1]) / 2);
       const rowBot = row === 0 ? R_FLOOR_EDGE_Y + 4 : R_HORIZON_Y + span * ((f + R_SURROUND_ROWS[row - 1]) / 2);
+
+      if (sea) {
+        drawSeaStandRow(layer, { top: rowTop, bot: rowBot, left: -tileW, right: FIELD_W + tileW }, row, air, drown, Math.min(1, 0.3 + f * 0.8), R_FROZEN_NOW);
+        if (row > 0) this.drawArenaVeil(layer, air, 0.1 + 0.1 * (1 - f), 46, span);
+        continue;
+      }
 
       const rowTiles: AccentTile[] = [];
       for (let col = 0; col < cols; col++) {
@@ -2111,7 +2125,7 @@ export class BattleScene extends Phaser.Scene {
         g.fillRect(0, HORIZON_Y, FIELD_W, 70);
         break;
       }
-      case 'shards': {
+      case 'coast': {
         // Aurora green pooled along the horizon, the only light this world
         // has left and emitted rather than received.
         const aurora = 0x3fd97a;

@@ -12,8 +12,8 @@ export type DecorationKind = 'flowers' | 'mosaic' | 'edgeFlow' | 'crystalGlints'
 // impassable surround reads as its own substance: 'forest' the Mean Fields'
 // summer canopy, 'columns' the Stone Lattice's colonnade, 'deadFloor' the
 // Winding Borders' sunken bulk, 'charged' the Storm Flats' live ground, 'ice' the
-// Vortex Glacier's frozen lake and its vortex pits, 'shards' the Iron
-// Steppe's leaning blades, 'bog' the Screened Swamp's open water, its reeds
+// Vortex Glacier's frozen lake and its vortex pits, 'coast' the Broken
+// Coast's checkered rock and its swelling sea, 'bog' the Screened Swamp's open water, its reeds
 // and the moments burning in it, 'lava' the Defect Scars' molten crust, 'consuming'
 // the Devouring Mirror's reconfiguring facets, and 'rock' bare ground with no
 // accent at all -- which in the Entangled Web means true black, since its
@@ -21,9 +21,9 @@ export type DecorationKind = 'flowers' | 'mosaic' | 'edgeFlow' | 'crystalGlints'
 //
 // The ground plane stays flat under all of them: a theme changes the color
 // and what is laid over it, never the height of the floor. What a theme may
-// do is stand sprites on that flat ground, which is what the trees, columns,
-// shards and reeds are.
-export type WallTheme = 'rock' | 'forest' | 'columns' | 'deadFloor' | 'charged' | 'ice' | 'shards' | 'bog' | 'lava' | 'consuming';
+// do is stand sprites on that flat ground, which is what the trees, columns
+// and reeds are.
+export type WallTheme = 'rock' | 'forest' | 'columns' | 'deadFloor' | 'charged' | 'ice' | 'coast' | 'bog' | 'lava' | 'consuming';
 
 export interface Biome {
   name: string;
@@ -244,10 +244,13 @@ const VORTEX_GLACIER: Biome = {
   bands: null,
 };
 
-// World 6, the Iron Steppe (classical magnetism, magnons): night under a
-// green aurora, black iron-sand underfoot with spin-wave ripples running
-// through it, and fields of aligned iron shards leaning uniformly one way and
-// flipping across a domain wall.
+// World 6, the Broken Coast (classical magnetism, magnons): night under a
+// green aurora, walked along a shingle beach with the topic's two halves
+// standing either side of it. Seaward, open water carrying spin waves as
+// swells, their crests and troughs coloured by the two signs of the
+// transverse spin; landward, an antiferromagnet as checkered rock, two greys
+// on two sublattices, broken along its domain walls
+// (scenes/overworld/terrain/materials/coast.ts).
 //
 // The hinge of the light arc: the sky still exists, but it is already lying
 // about where light comes from. Everything visible here is emitted by the
@@ -255,31 +258,35 @@ const VORTEX_GLACIER: Biome = {
 // away for good.
 //
 // The false calm, and anatomically so -- the mood relaxes after ice and
-// storm while the lethality does not, since leaning shards are the most
-// overtly impaling surround so far.
-const IRON_STEPPE: Biome = {
-  name: 'ironSteppe',
+// storm while the lethality does not: the sea beside the beach is open water
+// at night, and the rock is broken along every wall.
+const BROKEN_COAST: Biome = {
+  name: 'brokenCoast',
   skyTop: 0x050a14,
   skyBottom: 0x0d1622,
-  // Leaning teeth, all tilted together, with the lean reversing at one point
-  // along the horizon -- the domain wall, visible from a world away. That
-  // uniform lean is what separates this from the Vortex Glacier before it,
-  // which is jagged, cold-dark and under failing light in exactly the same
-  // way but whose pressure ridges are random and vertical.
+  // Checkered blocks on the left, flat sea on the right: the coast seen from
+  // a world away, a crenellated rock whose tops alternate like the top row of
+  // its own checkerboard, dropping to a dead-flat water line. The regular
+  // alternation and the flat half are what separate this from the Vortex
+  // Glacier before it, which is jagged, cold-dark and under failing light in
+  // exactly the same way but whose pressure ridges are random and vertical.
   //
-  // Aurora green rather than iron black: the shards' lit edges are the only
-  // thing a world away can see of them, and a black base against this world's
-  // own near-black air is a horizon that is not there.
-  hillColor: 0x6f9c7e,
+  // Aurora green rather than rock grey: the aurora on the rock's tops is the
+  // only thing a world away can see of it, and a dark base against this
+  // world's own near-black air is a horizon that is not there.
+  hillColor: 0x6a8f7c,
   hillAlpha: 0.55,
-  ground: 0x121517,
-  path: 0x3a3f40,
-  fogTarget: 0x16241d,
+  // Cool dark rock, which is what both the checkerboard and the far sea
+  // dissolve back into once the accent pass has faded: the checks straddle
+  // it, and the sea's tint blends into it.
+  ground: 0x262c33,
+  path: 0x5d625b,
+  fogTarget: 0x18241f,
   clouds: false,
   cloudDrift: 0,
   decoration: 'ripples',
   decorationChance: 0.55,
-  wallTheme: 'shards',
+  wallTheme: 'coast',
   bands: null,
 };
 
@@ -302,7 +309,7 @@ const ENTANGLED_WEB: Biome = {
   // Swallowed: this world's impassable is nothing, so it has no surround to
   // restate at horizon scale. Its distant self is an absence with structure
   // instead -- the sky ending, with filament glints hanging in blackness
-  // (art/horizons.ts). The Iron Steppe looking forward into a horizon that
+  // (art/horizons.ts). The Broken Coast looking forward into a horizon that
   // empties out is exactly the tell its false calm needs, and the composition
   // system supplies it for free.
   hillAlpha: 0,
@@ -408,7 +415,7 @@ const DEFECT_SCARS: Biome = {
 // description rather than a boast, so the world must visibly take something.
 //
 // Violet belongs here by right, as the finale, which is why the Storm Flats
-// are indigo and the Iron Steppe's aurora is pure green.
+// are indigo and the Broken Coast's aurora is pure green.
 const DEVOURING_MIRROR: Biome = {
   name: 'devouringMirror',
   skyTop: 0x2a1a3a,
@@ -439,7 +446,7 @@ export const BIOMES: Partial<Record<number, Biome>> = {
   3: WINDING_BORDERS,
   4: STORM_FLATS,
   5: VORTEX_GLACIER,
-  6: IRON_STEPPE,
+  6: BROKEN_COAST,
   7: ENTANGLED_WEB,
   8: SCREENED_SWAMP,
   9: DEFECT_SCARS,

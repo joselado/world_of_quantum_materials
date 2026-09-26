@@ -51,7 +51,7 @@ import { generateWorld2Map } from './generators/world2';
 import { generateWorld3Map } from './generators/world3';
 import { generateWorld4Map } from './generators/world4';
 import { generateWorld5Map } from './generators/world5';
-import { generateWorld6Map } from './generators/world6';
+import { finishWorld6Map, generateWorld6Map } from './generators/world6';
 import { generateWorld7Map } from './generators/world7';
 import { generateWorld8Map } from './generators/world8';
 import { generateWorld9Map } from './generators/world9';
@@ -140,6 +140,10 @@ export function generateWorldMap(
     openStartMouth(result.walkable, gridW, gridH, result.start, result.mid, scale);
   }
 
+  // The Broken Coast's sea is settled against the finished grid, so whatever
+  // the passes above blocked on the sea side of its beach is water.
+  if (world === 6) finishWorld6Map(result, gridW, gridH);
+
   // Nothing spawns inside either pass. Encounters are sampled per corridor
   // row, so dropping those rows here keeps them out; tokens are placed by
   // tile and take the same row set.
@@ -149,7 +153,7 @@ export function generateWorldMap(
   // severed from the route, and a wild or a labelled pickup on one of those
   // is something the player can see across the gap and never reach.
   const routeGround = reachableGround(result.walkable, gridW, gridH, result.start);
-  const passRows = passZoneRows(result.start, result.goal, result.mid, scale);
+  const passRows = passZoneRows(result.start, result.goal, result.mid, scale, gridH);
   const rows = deriveRows(routeGround, gridW, gridH).filter((r) => !passRows.has(r.y));
   const tokens = scatterTokens(routeGround, gridW, gridH, world, [result.start, result.goal, result.mid], tokenCount(scale), passRows);
 

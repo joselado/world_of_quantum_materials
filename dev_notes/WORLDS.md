@@ -53,8 +53,10 @@ an old one, is judged against them before anything else.
 **No name promises anything the texture doesn't show.**
 
 Every world name is a physics word plus a terrain word, and both halves must be
-visible on screen. "The Iron Steppe" works because the iron is *there* — black
-iron-sand underfoot, iron shards in the surround. A name the player cannot
+visible on screen. "The Broken Coast" works because the coast is *there* — a
+beach between checkered rock and open sea — and so is the breaking: the rock is
+broken along the walls where its checkerboard slips, and the order that makes a
+checkerboard at all is a broken symmetry. A name the player cannot
 verify by looking out the window is a name that has drifted into being a
 lecture index.
 
@@ -177,12 +179,12 @@ player's feet.
 
 **What the impassable terrain is** — from "you just wouldn't walk there" to "it
 would kill you": forest → stone → a drop → ground the storm strikes → ice and
-pits → iron shards → nothing at all → water that takes you → molten crust →
+pits → broken rock and open sea → nothing at all → water that takes you → molten crust →
 terrain that consumes.
 
 **What the walkable ground is** — from ground *built for walking* (a field
 path, a tiled aisle), to ground that merely *happens to be traversable* (ice,
-iron sand), to ground that *isn't ground at all* (filaments over void, scorched
+a shingle beach), to ground that *isn't ground at all* (filaments over void, scorched
 crust, a surface that dissolves behind you).
 
 A world where neither spine holds is a world that will read as placeholder art.
@@ -204,7 +206,7 @@ lives.
 | 3 | **The Winding Borders** | a network of lit ledges between domains, meeting at junctions | shallow drop to sunken dead floors | bright, windy, motionless afternoon |
 | 4 | **The Storm Flats** | banded indigo ground, glowing boundary channels | ground the storm strikes | stormy dusk |
 | 5 | **The Vortex Glacier** | an open sheet of pale ice | vortex pits punched through it with trapped-flux glow, frozen lake beyond | overcast twilight |
-| 6 | **The Iron Steppe** | open black iron-sand | aligned iron shards standing in it in wavefronts, flipping across a domain wall | night, green aurora |
+| 6 | **The Broken Coast** | a shingle beach walked along the shore, tide pools lying in it | checkered rock to the left — boulders in two greys, one per sublattice, broken along domain walls — and open sea to the right, swells rolling in with the spin's two signs on them | night, green aurora |
 | 7 | **The Entangled Web** | white-gold causeway | true void | no sky |
 | 8 | **The Screened Swamp** | a peat shelf, wide at the entrance and closing to a bank by the end | pools of open water punched into it that take you; reeds standing in them | mist-glow and the moments burning in the pools |
 | 9 | **The Defect Scars** | an open plain of scorched clay | molten crust — wounds still open, and vacancies punched through the plain | red glow |
@@ -381,27 +383,33 @@ light survives, with the supercurrent circling it. The world is *the place that
 pushes something invisible away from itself*, told by a blank sheet and by
 where the glow is left standing in it.
 
-### 6 — The Iron Steppe *(classical magnetism, magnons)*
+### 6 — The Broken Coast *(classical magnetism, magnons)*
 
-Night under a green aurora, on an open plain of black iron-sand — a steppe is a
-plain, and this one is walked across rather than along. Standing in it are
-clumps of aligned iron shards, all leaning the same way, flipping direction
-across a domain wall. The magnetic order is something the player can see
-standing up out of the ground — the shards are the order made visible, and the
-domain wall is where it changes its mind.
+Night under a green aurora, on a shingle beach walked north along the shore.
+The topic stands on either side of it. To the right, the sea: the ordered
+medium, with spin waves running through it as swells that roll in toward the
+beach, each coloured by the two signs of the transverse spin — red where the
+spins lean one way, blue where they lean the other — with a pale crest line and
+a dark trough line rolling in with them. To the left, the rock: an
+antiferromagnet, a field of boulders in two greys, one per sublattice, every
+rock the opposite shade of its four neighbours. Every so often that
+checkerboard slips by one rock along a seam, two like rocks meet, and the field
+is broken along a domain wall — an antiphase boundary, drawn as the crack the
+name is about.
 
-The shards stand in **transverse wavefronts**, one wavelength apart down the
-plain and each front offset sideways from the last, so the train reads as
-travelling rather than as a fence repeated. A spin wave is a periodic
-disturbance of an ordered medium moving through it, and here it is the thing the
-player walks between.
+Tide pools of the same sea lie in the beach near the water, and the same swells
+run through them. Right of the walkable ground there is only sea, whatever the
+passes block; left of it only rock. The entry throat runs on behind the start
+tile to the grid's edge, so the way back to the glacier is visible from the
+beach.
 
 This is the **false calm**, and it is anatomically correct: the *mood* relaxes
-after ice and storm — the aurora is genuinely beautiful — while the *lethality*
-does not, since leaning iron shards are the most overtly impaling surround so
-far. A false calm the player cannot retrospectively recognize as false is just a
-pretty world, so it needs one tell: the aurora stutters, or the shard field
-beyond the domain wall visibly flips while you watch.
+after ice and storm — the aurora is genuinely beautiful, and so is the sea —
+while the *lethality* does not: the water beside the beach is open sea at
+night, and the rock is broken along every wall. A false calm the player cannot
+retrospectively recognize as false is just a pretty world, so it has two tells:
+the aurora stutters, and the forward horizon shows the world *stop*, since the
+Entangled Web ahead has no surround at all.
 
 It is also the hinge of the light arc (§1): the sky still exists, but it is
 already lying about where light comes from.
@@ -612,7 +620,7 @@ Every world owns a hue, and unassigned colours are where collisions breed.
 | 3 | dead teal and dead ochre (the two domains), against a bright sky |
 | 4 | storm indigo, single-hue ramp |
 | 5 | pale ice-cyan, desaturated, narrow value range |
-| 6 | black iron-sand under pure green aurora |
+| 6 | dark shingle, cool grey rock and blue-black sea under pure green aurora; the swells' red and blue are dim bands on the water, not a world hue |
 | 7 | white-gold filaments on black — the only warm glow before World 9 |
 | 8 | near-black green-grey water, sickly pale mist, reeds darker than either |
 | 9 | scorched red, molten orange |
@@ -700,7 +708,7 @@ is the arrival beat, and that is obtained instead by bleeding the previous
 world's ground palette into the first few margin rows on entry.
 
 **A distant self is that world's impassable surround restated at horizon scale**
-— column teeth for the Stone Lattice, leaning shard rows for the Iron Steppe, a
+— column teeth for the Stone Lattice, crenellated rock beside flat sea for the Broken Coast, a
 cracked glow-veined ridge for the Defect Scars. A generic hill profile in a
 different colour per world fails this rule: it is the theming *not* made visible
 at distance.
@@ -717,7 +725,7 @@ line is its air, its overhead motif and its neighbour — never a portrait of it
 - **The Entangled Web** has no surround — its impassable is nothing — so its
   distant self is an absence with structure: the sky ending, thin white-gold
   filament glints in blackness where a horizon should be. Swallow zero. This is a
-  gift rather than a gap: the Iron Steppe's forward horizon showing the world
+  gift rather than a gap: the Broken Coast's forward horizon showing the world
   *stop* is exactly the tell its false calm needs, supplied by the composition
   system for free.
 - **The Screened Swamp** has a distant self, but neither half of it is a
@@ -745,11 +753,13 @@ both already resolved:
   self is carried by its storm, arc-flashes over a dead-flat horizon line.
   Distant lightning over flatness against racing cloud over flatness is
   unmistakable, and honest, because the storm is that world's identity.
-- **Vortex Glacier → Iron Steppe** are both jagged, cold-dark and under failing
-  light. The physics separates them: the Steppe's shards lean *uniformly* one way
-  (aligned moments), so its horizon teeth all tilt together, where the glacier's
-  pressure ridges are random and vertical. Let the lean **flip at one point along
-  the horizon** — the domain wall, visible from a world away.
+- **Vortex Glacier → Broken Coast** are both cold-dark and under failing light.
+  The shape separates them: the coast's rock is a run of regular blocks whose
+  tops alternate between two heights the way its checkerboard alternates between
+  two greys, and half its horizon is dead-flat sea, where the glacier's pressure
+  ridges are random and vertical across the whole line. The alternation **slips
+  at one point along the run** — the domain wall, visible from a world away —
+  and the sea's own glints carry the swells' red and blue.
 
 ### Haze inheritance
 

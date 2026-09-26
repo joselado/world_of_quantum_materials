@@ -49,7 +49,7 @@ movement gate of its own.
 | 3 | Topological band theory | **The Winding Borders** | Quantum spin Hall insulators, bulk and monolayer alike |
 | 4 | Integer and fractional quantum Hall effect | **The Storm Flats** | Landau-level materials, an intrinsic zero-field Chern insulator |
 | 5 | Superconductivity, Nambu, Majorana | **The Vortex Glacier** | s-wave SC, triplet SC |
-| 6 | Classical magnetism, magnons | **The Iron Steppe** | Ferro/antiferromagnets, magnon wave-riders, a multiferroic |
+| 6 | Classical magnetism, magnons | **The Broken Coast** | Ferro/antiferromagnets, magnon wave-riders, a multiferroic |
 | 7 | Entanglement, tensor networks | **The Entangled Web** | Entangled pairs (fought as a bonded duo) |
 | 8 | Quantum magnetism, spinons, Kondo | **The Screened Swamp** | Spin liquids, Kondo-screened critters, a genuine Kondo-lattice heavy-fermion compound |
 | 9 | Excitations and defects | **The Defect Scars** | Defect-bound states, impurity resonances, a couple of ferroelectrics with no course topic of their own, plus every non-hybrid material from worlds 1-8 |
@@ -66,7 +66,7 @@ generated fresh every visit by `game/src/world/generators/world<N>.ts` (dispatch
 | 3 | The grid is partitioned into a good many colored Voronoi domains (distinct bulk topological phases); the only walkable ground is the boundary strip between two differently-colored ones. Deliberately the narrow world of the ten -- the edge state is the only place you can stand, so what opens it up is the number of seams and the junctions between them, where the player chooses which boundary to follow north, rather than any extra width of walkable bulk |
 | 4 | A wide trunk sprouts a mirrored pair of branches at intervals, each sprouting a smaller mirrored pair perpendicular to it, self-similar across a few scales (Hofstadter-butterfly-inspired) |
 | 5 | An open ice sheet with one or two vortex pits punched clean through it, each sitting mid-sheet so the route parts and rejoins around it: the player winds around a vortex because the geometry leaves no way through, not because a spiral was drawn to follow. The pit centres come back as feature cores, each with the radius it was punched at, and the surround draws the whole vortex across the pit: a bowl darkening to a normal core where the trapped flux glows, and the persistent supercurrent spiralling around it, turning slowly in the same sense in every pit |
-| 6 | An open plain with the magnetic order standing up out of it: shard clumps in transverse wavefronts, one wavelength apart down the plain's length, each front offset sideways from the last so the train reads as travelling rather than as a fence repeated |
+| 6 | A coast walked north along its beach: a wandering strand of shingle between checkered rock on the left and open sea on the right, with tide pools of the same sea lying in the beach near the water. Which side is which is settled against the finished grid, so whatever the shared passes block on the sea side is water; and the entry throat runs on behind the start tile to the grid's edge as the visible way back |
 | 7 | 3-4 parallel lanes (a tensor network's own sites/legs) linked by periodic cross-link rungs (bonds) -- a real ladder, not one path with spurs |
 | 8 | A peat shelf with pools of open water punched into it. The shelf enters wide and closes steadily to a narrow bank by the goal, which is the world's escalation written into its floor; the shelf parts around the wider pools and rejoins past them (fractionalization), and every pool's centre is returned as a feature core, where the surround burns a local moment |
 | 9 | A wide plain of scorched clay carrying two kinds of defect: substitutional patches, each rendered with one of worlds 1-8's own biome look (a borrowed defect "type") and changing nothing about the shape, and vacancies, holes punched clean out of the plain with molten crust in the gap where the lattice is missing |
@@ -75,7 +75,7 @@ generated fresh every visit by `game/src/world/generators/world<N>.ts` (dispatch
 **A world is ground with things standing in it, not a route drawn on a background.**
 Nine of the ten paint a wide field first and then punch that world's own impassable
 features into it (`generators/shared.ts`'s `punchIslands`) -- columns, a hedgerow, vortex
-pits, shard clumps, pools, vacancies. What that buys is a player who is somewhere rather
+pits, tide pools, bog pools, vacancies. What that buys is a player who is somewhere rather
 than on a path: the walkable ground runs about 40-53% of the grid's width in every world,
 against a corridor's 20-25%, and the features are what the physics is carried by. World 3
 is the deliberate exception and stays narrow, because a walkable bulk would contradict the
@@ -101,7 +101,10 @@ gate's state, and nothing spawns inside either pass -- neither wild encounters n
 qumatessence. The taper stops short of the guardian's row, since it runs after the
 chokepoint pass and would otherwise overwrite the gap that forces every route through the
 guardian. World 1's backward exit stays a door rather than a pass: it leads to the Lab,
-which is not a place, and that is the game's one non-geographic boundary.
+which is not a place, and that is the game's one non-geographic boundary. The rows behind
+the start tile count as pass rows too (`passZoneRows`): World 6 carries its entry throat on
+through them to the grid's near edge so the way back is visible from the beach, and nothing
+spawns there either.
 
 Every shape still obeys the same two rules regardless of its own motif: no walkable segment
 is ever narrower than 2 tiles (so a wild encounter spawned on the path can never fully block

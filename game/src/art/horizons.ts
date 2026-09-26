@@ -9,8 +9,8 @@ import { CANVAS_W } from './perspective';
 // scenes/overworld/sky.ts's drawDistantSelf.
 //
 // A distant self is that world's own impassable surround restated at horizon
-// scale -- the Stone Lattice's colonnade becomes horizon teeth, the Iron
-// Steppe's leaning shards become a leaning sawtooth. A rolling hill in ten
+// scale -- the Stone Lattice's colonnade becomes horizon teeth, the Broken
+// Coast's checkered rock becomes a crenellated line beside flat sea. A rolling hill in ten
 // colors is the theming *not* made visible at distance, which is why every
 // entry here is built from its world's own surround rather than from a shared
 // noise function.
@@ -28,7 +28,7 @@ import { CANVAS_W } from './perspective';
 
 // A point on the profile: screen x, and crest height in pixels above the
 // horizon line. Two points sharing an x is how a vertical edge is written --
-// a column's side, a shard's sheared face -- so hard-edged surrounds stay
+// a column's side, a checkered block's face -- so hard-edged surrounds stay
 // hard at any sampling. Authored as an explicit polyline rather than sampled
 // from a height function: the sharp profiles need only a handful of points
 // where uniform sampling would need hundreds to stop chamfering their edges.
@@ -192,9 +192,9 @@ function stormSky({ g, horizonY, target, now }: HorizonSky) {
 
 // World 5, the Vortex Glacier: pressure ridges, random in width and height
 // and standing straight up. Their randomness and their verticality are what
-// separate this from the Iron Steppe beyond it, which is jagged and cold-dark
-// under failing light in exactly the same way but leans (WORLDS.md section
-// 4's second worked example).
+// separate this from the Broken Coast beyond it, which is cold-dark under
+// failing light in exactly the same way but is half regular blocks and half
+// flat sea (WORLDS.md section 4's second worked example).
 function glacierRidges(): HorizonPoint[] {
   const pts: HorizonPoint[] = [{ x: 0, h: 4 }];
   let x = 0;
@@ -209,24 +209,56 @@ function glacierRidges(): HorizonPoint[] {
   return pts;
 }
 
-// World 6, the Iron Steppe: fields of aligned iron shards, every one leaning
-// the same way, flipping direction across a single domain wall. The lean is
-// written as an asymmetric sawtooth -- a slow rise to a sheared vertical face
-// leans one way, a vertical face falling away slowly leans the other -- and
-// the wall is the one x where the two patterns meet, so the magnetic order is
-// legible from a world away.
-const SHARD_PERIOD = 26;
-const SHARD_WALL_X = W * 0.63;
+// World 6, the Broken Coast: checkered rock on the left and open sea on the
+// right, which is the coast as its own map lays it out, seen from a world
+// away. The rock is a run of blocks whose tops alternate between two heights
+// the way the top row of its checkerboard alternates between two greys, with
+// vertical faces between them; at one point along the run the alternation
+// slips and two blocks of one height stand together -- the domain wall,
+// visible from a world away. The sea is a dead-flat line, and the wave
+// pattern on it is carried by a sky extra (coastSky) rather than the outline.
+const COAST_BLOCK_W = 22;
+const COAST_SHORE_X = W * 0.58;
+const COAST_WALL_X = W * 0.27;
+const COAST_BLOCK_H = [13, 22];
 
-function shardRows(): HorizonPoint[] {
+function coastBlocks(): HorizonPoint[] {
   const pts: HorizonPoint[] = [];
-  for (let x = 0; x <= W + SHARD_PERIOD; x += SHARD_PERIOD) {
-    const h = 23 + 5 * Math.sin(x * 0.031);
-    const tip = x + SHARD_PERIOD * 0.78;
-    if (x < SHARD_WALL_X) pts.push({ x, h: 3 }, { x: tip, h }, { x: tip, h: 3 });
-    else pts.push({ x, h: 3 }, { x, h }, { x: tip, h: 3 });
+  let slipped = false;
+  let i = 0;
+  for (let x = 0; x < COAST_SHORE_X; x += COAST_BLOCK_W, i++) {
+    if (!slipped && x >= COAST_WALL_X) {
+      slipped = true;
+      i += 1;
+    }
+    const h = COAST_BLOCK_H[i % 2] + 2 * Math.sin(x * 0.05);
+    const right = Math.min(x + COAST_BLOCK_W, COAST_SHORE_X);
+    pts.push({ x, h }, { x: right, h });
   }
+  pts.push({ x: COAST_SHORE_X, h: 2 }, { x: W, h: 2 });
   return pts;
+}
+
+// The spin waves on the sea, from a world away: short glints lying on the
+// water line, each coloured by the sign of the transverse spin at its own
+// place in the wave -- red one way, blue the other -- and the whole pattern
+// sliding along the shore, so the sea is visibly carrying something before
+// the player has set foot on the coast.
+const COAST_GLINTS = 7;
+const COAST_GLINT_RED = 0xc4483a;
+const COAST_GLINT_BLUE = 0x3560c8;
+
+function coastSky({ g, horizonY, target, now }: HorizonSky) {
+  const span = W - COAST_SHORE_X;
+  for (let i = 0; i < COAST_GLINTS; i++) {
+    const t = (i + 0.5) / COAST_GLINTS;
+    const x = COAST_SHORE_X + span * t;
+    const phase = t * Math.PI * 4 - now / 900;
+    const spin = 0.5 + 0.5 * Math.cos(phase);
+    const len = 10 + 8 * Math.sin(phase * 0.5 + i);
+    g.lineStyle(1, blend(blend(COAST_GLINT_BLUE, COAST_GLINT_RED, spin), target, 0.35), 0.45);
+    g.lineBetween(x - len / 2, horizonY - 1 - (i % 2), x + len / 2, horizonY - 1 - (i % 2));
+  }
 }
 
 // World 7, the Entangled Web: outside a tensor network there is no space, so
@@ -375,7 +407,7 @@ function scarSky({ g, horizonY, target, now }: HorizonSky) {
   });
 }
 
-// The Iron Steppe's aurora: the sky still exists here, but it is already
+// The Broken Coast's aurora: the sky still exists here, but it is already
 // lying about where light comes from -- the sun is gone and everything the
 // player can see is emitted by the world itself. That makes this world the
 // hinge of the light arc, one world before the sky is taken away entirely.
@@ -400,7 +432,7 @@ function auroraOverhead({ g, horizonY, now }: HorizonSky) {
     // anywhere, and any slice tall enough to see is a bar of green glass.
     // Each slice also sways and narrows as it climbs, which is what gives the
     // sheet its fold.
-    // The curtain hangs from just clear of the shard crests up to the top of
+    // The curtain hangs from just clear of the rock's crests up to the top of
     // the frame -- an aurora that stops short of the frame edge reads as a
     // painted band, and the sky above a high horizon line is a narrow strip.
     const SLICES = 30;
@@ -447,7 +479,7 @@ export const DISTANT_SELVES: Partial<Record<number, DistantSelf>> = {
   3: { points: talusTerraces() },
   4: { points: stormLine(), sky: stormSky },
   5: { points: glacierRidges() },
-  6: { points: shardRows() },
+  6: { points: coastBlocks(), sky: coastSky },
   7: { points: [], sky: webSky },
   8: { points: [], sky: swampSky },
   9: { points: scarRidge(), sky: scarSky },

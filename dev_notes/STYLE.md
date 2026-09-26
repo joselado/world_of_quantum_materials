@@ -515,7 +515,7 @@ under one figure reads as floating even when neither is wrong on its own.
   always flat** -- impassable ground lies in the same plane as the walkable floor, and is told
   apart by color and by the boundary treatment below, never by the terrain rising into a
   wall. What a material may do is stand *objects* on that flat ground: the Mean Fields' trees,
-  the Stone Lattice's columns, the Iron Steppe's shards, the Screened Swamp's reeds. Those are
+  the Stone Lattice's columns, the Broken Coast's boulders, the Screened Swamp's reeds. Those are
   sprites on a tile, the same as a guardian or a door, not extruded terrain -- there is no
   height field, no occlusion pass and no elevation anywhere in the collision grid. They get
   their occlusion free, because the terrain sweep paints far-to-near and anything drawn upward
@@ -585,10 +585,18 @@ under one figure reads as floating even when neither is wrong on its own.
     sheet carries the boundary's own rim light. The field is expelled everywhere else in
     this world, so the pits are the only place it can be, and the glow is that field made
     visible where the physics puts it.
-  - **'shards'** (the Iron Steppe, world 6): leaning iron blades, all tilted the same way and
-    flipping across a domain wall that drifts, so shards reverse while the player watches.
-    Their lit edge is aurora green -- the only light this world has, and emitted rather than
-    received.
+  - **'coast'** (the Broken Coast, world 6): one material drawing two surrounds, told apart by
+    the tile's region tint (`world/generators/world6.ts` tints every tile seaward of the beach
+    and none of the rock). The rock is a boulder per tile -- the tile's own outline pulled in
+    toward its centre by a different amount at every corner, lifted by its own height with
+    dark front faces dropped to the ground and one facet catching the aurora -- in two greys
+    by sublattice, so the field is a checkerboard made of stone; where the checkerboard slips
+    by one rock a wide crack with a lit lip runs along the tile edge, the domain wall. The sea
+    is the tile washed in strips coloured by the spin's phase, red one way and blue the other,
+    with a pale crest line and a dark trough line traced through the tile and clipped to it so
+    each front joins up across tiles and rolls in toward the beach as one line. Both are
+    anchored to the grid; the strips drop from four to one and every line fades with the
+    detail pass.
   - **'bog'** (the Screened Swamp, world 8): near-black open water under a mist wash that is
     the actual hazard and gathers with distance until the pool is barely readable as a surface,
     with clumps of dark reed stalks standing out of it. A lone bright point burning in the water
@@ -797,10 +805,10 @@ discipline and it is the premise made visible, so it is not negotiable for atmos
 
 **The two escalation spines.** Both must be legible in a screenshot cropped to the player's
 feet. What the impassable terrain *is*, from "you just wouldn't walk there" to "it would kill
-you": forest, stone, a drop, ground the storm strikes, ice and pits, iron shards, nothing at all, fog
+you": forest, stone, a drop, ground the storm strikes, ice and pits, broken rock and open sea, nothing at all, fog
 that takes you, molten crust, terrain that consumes. What the walkable ground *is*, from
 ground built for walking (a field path, a tiled aisle) through ground that merely happens to
-be traversable (ice, iron sand) to ground that isn't ground at all (filaments over void,
+be traversable (ice, a shingle beach) to ground that isn't ground at all (filaments over void,
 scorched crust, a surface that dissolves behind you). A world where neither spine holds will
 read as placeholder art.
 
@@ -830,7 +838,7 @@ rather than free style choices:
 | 3 | The Winding Borders | bright afternoon (`0x4f9fd8`→`0xcfe6f2`) | dim slate `0x394349` under dead teal/ochre domain tints | lit ledge `0xdfe6e2` | edge flow (every tile) | yes, drifting | **deadFloor** |
 | 4 | The Storm Flats | stormy dusk (`0x151a3a`→`0x3a4270`) | struck ground `0x1b2044` | banded indigo `0x6272b8` | orbit rings | no | **charged** |
 | 5 | The Vortex Glacier | overcast twilight (`0x3c4a56`→`0x6e808c`) | frozen lake `0x54707e` | swept ice `0xa8c8d4` | flow lines (every tile) | no | **ice** |
-| 6 | The Iron Steppe | night (`0x050a14`→`0x0d1622`) under a green aurora | near-black `0x121517` | iron sand `0x3a3f40` | ripples | no | **shards** |
+| 6 | The Broken Coast | night (`0x050a14`→`0x0d1622`) under a green aurora | cool dark rock `0x262c33`, sea tiles tinted toward `0x0a1a3a` | shingle `0x5d625b` | ripples | no | **coast** |
 | 7 | The Entangled Web | none -- black (`0x000000`) | true void `0x000000` | white-gold filament `0xefdaa4` | lanes and rungs (every tile) | no | rock (black, no accent) |
 | 8 | The Screened Swamp | dark above, pale mist at the horizon (`0x1c231e`→`0x616d60`) | near-black water `0x121815` | peat bank `0x625f50` | mist motes | no | **bog** |
 | 9 | The Defect Scars | scorched red-black (`0x1a0808`→`0x3a1414`) | charred `0x2a0e0a` | scorched clay `0x9c6a52` | cracks | no | **lava** |
@@ -838,7 +846,9 @@ rather than free style choices:
 
 Every world owns a hue, because unassigned colours are where collisions breed. Violet belongs
 to the Devouring Mirror by right, as the finale, which is why the Storm Flats are indigo
-rather than storm-violet and the Iron Steppe's aurora is pure green rather than green-violet.
+rather than storm-violet and the Broken Coast's aurora is pure green rather than green-violet. The
+coast's swells carry red and blue as dim bands on blue-black water, a pattern rather than a hue the
+world owns, which is what keeps them off World 9's scorched red and World 4's indigo.
 
 The Mean Fields are the one world whose value break runs the way a field runs rather than the
 way a track does: pale wheat underfoot and dark canopy around it, so the walkable route is the
@@ -902,7 +912,7 @@ world's own `hillColor` (base) and `hillAlpha` (swallow) on its `Biome` entry pl
 `art/horizons.ts` -- a world states how it looks from outside itself, once, and its neighbour
 renders that statement. Each profile is that world's own impassable surround restated at horizon
 scale: column teeth for the Stone Lattice, low stepped plateaus for the Winding Borders, random
-vertical pressure ridges for the Vortex Glacier, a uniformly leaning sawtooth for the Iron Steppe,
+vertical pressure ridges for the Vortex Glacier, crenellated blocks beside a flat sea line for the Broken Coast,
 a notched glow-veined ridge for the Defect Scars. A generic hill in ten colours fails this rule --
 it is the theming *not* made visible at distance. Profiles are authored as explicit polylines, not
 sampled from a height function, so a hard-edged surround stays hard at a handful of points where
@@ -915,7 +925,7 @@ Entangled Web's filament glints and the Screened Swamp's flat band of mist-lit s
 dark reed clumps in it. A drowned silhouette carries one value; the swamp needs two, its band
 lighter than the air and its reeds darker, so neither half can be that fill. Distinct from an **overhead motif**
 (`OVERHEAD_SKIES`), which is read from the world the player is *standing in* rather than from its
-neighbour: the Iron Steppe's aurora. The Storm Flats' own storm is not in that table, because it
+neighbour: the Broken Coast's aurora. The Storm Flats' own storm is not in that table, because it
 is not a sky motif -- it is an event that lands, drawn with the terrain it strikes ("Struck
 ground" below).
 
@@ -925,10 +935,10 @@ in hue alone.** Haze inheritance already guarantees hue shifts; this catches the
 Two pairs are settled and are requirements rather than suggestions. **Winding Borders to Storm Flats**
 cannot differ on shape, both worlds being flat by locked identity, so the differentiator is the
 sky: arc-flashes over a dead-flat line against stepped plateaus under racing cloud. **Vortex
-Glacier to Iron Steppe** are both jagged, cold-dark and under failing light, so the physics
-separates them -- the Steppe's shards lean *uniformly*, with the lean flipping at one point along
-the horizon (the domain wall, visible from a world away), where the glacier's pressure ridges are
-random and vertical.
+Glacier to Broken Coast** are both cold-dark and under failing light, so the shape separates them
+-- the coast's rock is a run of regular blocks whose tops alternate between two heights, slipping
+at one point along the run (the domain wall, visible from a world away), and half its line is
+dead-flat sea, where the glacier's pressure ridges are random and vertical across the whole line.
 
 Three rules govern how one is painted, and they are what keep it from reading as a slab:
 
@@ -950,8 +960,8 @@ Three rules govern how one is painted, and they are what keep it from reading as
   simply is not there. What survives is roughly `|hillLum - ownFogLum| x (1 - DISTANT_DROWN) x
   hillAlpha`, and under about 3 luminance is invisible. Every distant self is therefore lit by
   whatever that world emits rather than coloured like its ground -- the Vortex Glacier's pale
-  ice-cyan pressure ridges, the Storm Flats' storm-lit strip, the Iron Steppe's aurora-green
-  shard field, the Defect Scars' crust-lit ridge. **A world whose base color cannot stay inside the budget at any
+  ice-cyan pressure ridges, the Storm Flats' storm-lit strip, the Broken Coast's aurora-green
+  rock blocks, the Defect Scars' crust-lit ridge. **A world whose base color cannot stay inside the budget at any
   swallow worth drawing goes to zero and shows no silhouette at all** -- an emptied-out horizon
   beats a slab, every time.
 
@@ -979,7 +989,7 @@ as ten kinds of country rather than ten labelled dots. Each discovered world's r
 flat-filled with that world's own terrain colour (its `art/biomes.ts` `ground` lifted toward its
 `path`, via `colors.ts`'s `blend()`) and scattered with small deterministic texture marks built
 from the world's own surround: tree crowns for the Mean Fields, sandstone flecks for the Stone
-Lattice, terrace lines, band stripes, flow streaks, leaning shards, gold web nodes, pools and
+Lattice, terrace lines, band stripes, flow streaks, checkered blocks beside swells, gold web nodes, pools and
 reeds, cracks with embers, pale facets. Region cells are painted only fully inside the
 silhouette, leaving a thin rim of the shared land colour along every coast that reads as
 shoreline. An undiscovered world's whole region is instead the flat dim grey (the same `0x33394a`
@@ -2341,15 +2351,18 @@ world are shaped, since world N's start is world N-1's exit.
     the last rows.
   - **The surround standing on it** (`drawSurroundStand`): the world's own material from
     `scenes/overworld/terrain/materials/` -- the Mean Fields' wood, the Stone Lattice's
-    colonnade, the Winding Borders' rubble, the Iron Steppe's blades, the Screened Swamp's
+    colonnade, the Winding Borders' rubble, the Broken Coast's boulders, the Screened Swamp's
     reeds, the Defect Scars' crust -- in five rows beyond the floor's far edge, each
     further row smaller, more densely packed, deeper in the air, drawn into its own layer
     at its own opacity and separated from the row in front by a veil of that air. Drawn
     back to front, so nearer rows occlude further ones. The `AccentTile`s are synthesised
     for a flat near view (the arena has no projection of its own), but their grid
     coordinates come from the encounter's own tile, so whatever a material anchors to the
-    map -- which way the Iron Steppe's blades lean, where the Screened Swamp's moments
-    burn -- is what it was where the fight started. `R_MATERIALS` converts the arena's
+    map -- which sublattice a Broken Coast boulder is on, where the Screened Swamp's moments
+    burn -- is what it was where the fight started. A fight started beside the coast's water
+    faces out to sea, so its stand is the sea drawn by the row (`drawSeaStandRow`): each
+    receding row one swell, washed in the spin's colour at its own distance out, with the
+    crest and trough lines lying along it. `R_MATERIALS` converts the arena's
     per-row perspective scale into each material's own units, since a material sizes its
     feature either as u = 90·s pixels or in raw `s` pixels and those two conventions are
     orders of magnitude apart. Bare ground (`solid`) draws nothing, which is the Entangled

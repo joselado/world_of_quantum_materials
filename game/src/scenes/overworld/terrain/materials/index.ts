@@ -6,7 +6,7 @@ import { drawDeadFloorAccent } from './deadFloor';
 import { drawChargedAccent } from './charged';
 import { drawLavaAccent } from './lava';
 import { drawIceAccent } from './ice';
-import { drawShardsAccent } from './shards';
+import { drawCoastAccent } from './coast';
 import { drawBogAccent } from './bog';
 import { drawConsumingAccent } from './consuming';
 
@@ -28,7 +28,7 @@ export const TERRAIN_ACCENTS: Record<OffPathKind, AccentDraw | null> = {
   charged: drawChargedAccent,
   lava: drawLavaAccent,
   ice: drawIceAccent,
-  shards: drawShardsAccent,
+  coast: drawCoastAccent,
   bog: drawBogAccent,
   consuming: drawConsumingAccent,
 };

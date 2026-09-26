@@ -893,7 +893,7 @@ export const TYPE_LOOK: Record<MaterialType, { color: number; variant: CrystalVa
   // Diamond structure and zinc blende: the tetrahedrally-bonded cubic family,
   // whose habit is the {111} octahedron.
   semiconductor: { color: 0x5a7ca6, variant: 'octahedral' },
-  // The iron orange-brown of World 6's own steppe, on the bcc/fcc cubic habit
+  // Iron's own orange-brown, on the bcc/fcc cubic habit
   // the elemental itinerant magnets share (hcp Cobalt and the van der Waals
   // metals state their own through `variantOverride`).
   metallicMagnet: { color: 0xc97a3a, variant: 'cubic' },
@@ -2004,7 +2004,7 @@ export const WORLD_NAMES: Partial<Record<number, string>> = {
   3: 'The Winding Borders',
   4: 'The Storm Flats',
   5: 'The Vortex Glacier',
-  6: 'The Iron Steppe',
+  6: 'The Broken Coast',
   7: 'The Entangled Web',
   8: 'The Screened Swamp',
   9: 'The Defect Scars',

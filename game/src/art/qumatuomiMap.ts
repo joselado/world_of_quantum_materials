@@ -168,7 +168,7 @@ const MIST_COLOR = 0xcfd6e6;
 //       world position, clipped to the coastline), each flat-filled with its
 //       world's own terrain colour and scattered with small texture marks
 //       built from that world's surround -- tree crowns, band stripes, flow
-//       streaks, leaning shards, cracks -- so the map reads as ten kinds of
+//       streaks, checkered blocks, cracks -- so the map reads as ten kinds of
 //       country rather than ten labelled dots.
 //   'b' terrain vignettes: the landmass keeps one shared land colour with a
 //       soft per-world tint, and an authored cluster of that world's own
@@ -386,7 +386,7 @@ function paintRegions(g: Phaser.GameObjects.Graphics, o: RegionPaintOptions) {
 // Deterministically scattered marks, each built from its world's own surround
 // (the same identities art/horizons.ts and the wall themes state): crowns for
 // the Mean Fields' forest, stone flecks for the Stone Lattice, terrace lines,
-// band stripes, flow streaks, leaning shards, gold web nodes, pools and
+// band stripes, flow streaks, checkered blocks beside swells, gold web nodes, pools and
 // reeds, cracks with embers, pale facets. Marks stay off the soft borders and
 // off undiscovered regions.
 function drawTextureMark(
@@ -614,16 +614,26 @@ function drawVignette(g: Phaser.GameObjects.Graphics, world: number, p: { x: num
       break;
     }
     case 6: {
-      // Aligned shards, all leaning one way.
-      g.fillStyle(0x2c3a34, 1);
-      [-4, -0.5, 3].forEach((dx, i) => {
-        const h = [3.4, 4.4, 3][i];
-        g.fillTriangle(p.x + dx * s, p.y + 2 * s, p.x + (dx + 2.4) * s, p.y + (2 - h) * s, p.x + (dx + 3) * s, p.y + 2 * s);
-      });
-      g.lineStyle(Math.max(0.4, 0.5 * s), 0x6f9c7e, 0.9);
-      [-4, -0.5, 3].forEach((dx, i) => {
-        const h = [3.4, 4.4, 3][i];
-        g.lineBetween(p.x + dx * s, p.y + 2 * s, p.x + (dx + 2.4) * s, p.y + (2 - h) * s);
+      // The coast in miniature: a 2x2 checkerboard of two greys on the left,
+      // the antiferromagnet's sublattices, and two swells on the right, one
+      // red and one blue, the two signs of the spin a magnon carries.
+      [0, 1].forEach((i) =>
+        [0, 1].forEach((j) => {
+          g.fillStyle((i + j) % 2 ? 0x30363e : 0x1f2429, 1);
+          g.fillRect(p.x + (-5 + i * 2.4) * s, p.y + (-2.4 + j * 2.4) * s, 2.4 * s, 2.4 * s);
+        })
+      );
+      [
+        { y: -1.2, c: 0xc4483a },
+        { y: 1.4, c: 0x3560c8 },
+      ].forEach((w) => {
+        g.lineStyle(Math.max(0.4, 0.7 * s), w.c, 0.9);
+        g.beginPath();
+        g.moveTo(p.x + 0.6 * s, p.y + w.y * s);
+        g.lineTo(p.x + 2 * s, p.y + (w.y - 1) * s);
+        g.lineTo(p.x + 3.4 * s, p.y + w.y * s);
+        g.lineTo(p.x + 4.8 * s, p.y + (w.y - 1) * s);
+        g.strokePath();
       });
       break;
     }

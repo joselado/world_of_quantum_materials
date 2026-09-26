@@ -70,7 +70,15 @@ const BUDGETS = {
   3: { ops: 17000, objects: 500 },
   4: { ops: 13000, objects: 500 },
   5: { ops: 16000, objects: 500 },
-  6: { ops: 10000, objects: 500 },
+  // World 6's surround is two full-tile washes rather than a scatter of
+  // sprites: a boulder field with relief (faces, top, facet, seams) on the
+  // rock side and a sea striped by its wave on the other
+  // (terrain/materials/coast.ts). Both thin with depth -- the strips drop
+  // from four to one as the detail pass fades, and every line goes with it
+  // -- so this is not the no-falloff effect the budget exists to catch. It
+  // measures ~10.7k on a Meso map; the ceiling holds the same headroom the
+  // others do.
+  6: { ops: 14000, objects: 500 },
   7: { ops: 11000, objects: 500 },
   8: { ops: 15000, objects: 500 },
   9: { ops: 15000, objects: 500 },

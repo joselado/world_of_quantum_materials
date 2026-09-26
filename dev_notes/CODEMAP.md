@@ -94,7 +94,7 @@ game/src/
                                  whether the walkable floor draws one at all
         materials/             One module per off-path material behind a dispatcher (see
                                  "Off-path terrain materials" below): rock.ts, forest.ts,
-                                 columns.ts, deadFloor.ts, charged.ts, ice.ts, shards.ts,
+                                 columns.ts, deadFloor.ts, charged.ts, ice.ts, coast.ts,
                                  bog.ts, lava.ts, consuming.ts, and index.ts's
                                  TERRAIN_ACCENTS table
     panels/                    One file per guardian's panel UI (see "Guardian panels" below),
@@ -200,7 +200,7 @@ game/src/
                                   the island toolkit -- the way nine of the ten worlds are actually
                                   built: paint a wide field, then punch that world's own impassable
                                   features into it (world1.ts's hedgerow, world2.ts's columns,
-                                  world5.ts's vortex pits, world6.ts's shard clumps, world8.ts's pools,
+                                  world5.ts's vortex pits, world6.ts's tide pools, world8.ts's pools,
                                   world9.ts's vacancies):
                                     punchIslands   -- offers a list of candidates and punches the ones
                                                       that fit, enforcing one clearance rule on every
@@ -242,8 +242,7 @@ game/src/
                                   and the pass taper (narrowGoalPass/openStartMouth/passZoneRows) that
                                   makes world N's entry the same geography as world N-1's exit
       fallback.ts                generateFallbackMap() -- the plain wide wandering corridor with no
-                                  per-world motif of its own; mapgen.ts's retry-exhausted fallback, also
-                                  the base shape world6.ts/world9.ts build their own motif on top of
+                                  per-world motif of its own; mapgen.ts's retry-exhausted fallback
       world1.ts .. world10.ts    One file per world's own generator (GeneratedMap: walkable/start/goal/
                                   mid/regionColor/biomeOverride/featureCores), each implementing that world's own
                                   course-topic motif -- see DESIGN.md §2's per-world table for what each
@@ -1883,7 +1882,7 @@ hidden in proportion to the wash actually over it -- the visible part is `(1 - a
 step -- and a band whose foot landed on `FOG_CLOSE` itself would be down to a few percent exactly
 where it is needed. The step itself scales with how far a world's ground sits from its haze
 target, which is why the Vortex Glacier at an open gate is the binding case in the game: icy dark
-ground against the Iron Steppe's cream air ahead spans three to four times the range any other
+ground against the Broken Coast's air ahead spans three to four times the range any other
 world reaches in either gate state.
 `walkableHazeTarget` fades its own lightening out on the same
 schedule (`0.35 * (1 - depthRatio^3)`, flat enough to hold the route nearly to the end), or the
@@ -2061,7 +2060,7 @@ derived from it so the mist always clears the tallest one. `DISTANT_SELVES[w].sk
 extra drawn over the mist for the *neighbour's* horizon (the Storm Flats' arc-flashes, the
 Entangled Web's filament glints, which at swallow zero are its whole distant self).
 `OVERHEAD_SKIES[w]` is the separate table read from the world the player is **standing in** rather
-than from its neighbour -- the Iron Steppe's aurora. The two tables answer different questions and
+than from its neighbour -- the Broken Coast's aurora. The two tables answer different questions and
 must not be merged. The Storm Flats is deliberately absent from both: its storm is an event that
 lands rather than a sky motif, so it is drawn with the terrain it strikes (`drawStormStrikes` in
 `terrain/materials/charged.ts`, called from `drawTerrain` after `drawDepthHaze` -- a bolt has to
@@ -2083,7 +2082,7 @@ core's glow pulses slowly (`PULSE_MS`); the lake around the pits carries no moti
 **Off-path terrain materials.** One module per material under
 `scenes/overworld/terrain/materials/`, the same "one file per thing" convention the guardian
 avatars follow: `rock.ts`, `forest.ts`, `columns.ts`, `deadFloor.ts`, `charged.ts`, `ice.ts`,
-`shards.ts`, `bog.ts`, `lava.ts`, `consuming.ts`, reached through `index.ts`'s `TERRAIN_ACCENTS`
+`coast.ts`, `bog.ts`, `lava.ts`, `consuming.ts`, reached through `index.ts`'s `TERRAIN_ACCENTS`
 table keyed by `OffPathKind`. Every impassable tile is flat ground in its
 biome's own off-path color, in the same plane as the walkable floor; what its material decides is
 only the accent laid over that fill, so each world's impassable terrain reads as its own
@@ -2118,9 +2117,28 @@ The arena draws no event horizon -- that belongs to the walk up to the pass. The
 overworld pass thins nodes with depth and pushes a fill/line style only when it changes, since
 `scripts/perf-check.mjs` counts style calls as draw ops against World 10's budget.
 
+`coast.ts` (the Broken Coast) is one module drawing two surrounds, told apart by the tile's region
+tint: `world/generators/world6.ts` writes `SEA_TINT` on every tile seaward of the beach (its
+`isSeaTint` reads it back) and nothing on the rock, and its `finishWorld6Map`, called from
+`mapgen.ts`'s `generateWorldMap` after the shared chokepoint and pass tapers, settles that against the
+finished grid so whatever those passes block on the sea side is water. The same generator carries the
+entry throat on behind the start tile to the grid's near edge as the visible way back; those rows are
+pass rows (`generators/shared.ts`'s `passZoneRows`, which takes the grid height for it), so nothing
+spawns on them, and `scripts/mapgen-check.mjs`'s band rule allows walkable ground behind the start
+only inside the throat's own width. The rock is a boulder per tile (`boulder`: the tile's outline
+pulled in toward its centre by a per-corner amount, lifted by its own height with front faces dropped
+to the ground), shaded by `sublattice`, with the domain wall a crack along the tile edge where
+`domainParity` changes; the sea is the tile washed in strips coloured by `spinPhase`, with the crest
+and trough fronts traced through the tile by `frontCol` and clipped to it so they join across tiles.
+The battle arena draws the sea by the row instead (`drawSeaStandRow`, called from
+`BattleScene.drawSurroundStand` when the locale's tint is the sea's), since a fight beside the water
+faces out to sea and each receding row is one swell; beside the rock the per-tile boulders stand as
+they do everywhere else.
+
 Three of those fields are the ones a new material most often gets wrong. **Grid coordinates**, not
 screen ones, are what make a feature stand still in the world: anything anchored to the map (the
-Iron Steppe's shards leaning one way until the domain wall, the Vortex Glacier's pits) must derive
+Broken Coast's checkerboard keeping each boulder on its sublattice up to the domain wall, the Vortex
+Glacier's pits) must derive
 its geometry from `gx`/`gy`, since a feature phased off `cx`/`cy` swims across the ground as the
 camera moves. **`haze` and `depth`** are how a material recedes into the same air as the ground
 under it; ignoring them stands a world's palette straight up against the mist at the last row
@@ -2138,7 +2156,7 @@ is 1, a single lit cap over the shaded mass once the fade has started, and one t
 is what makes that safe -- `detail` is exactly 1 across the whole range where a tree is drawn at
 full strength, so a crown is only ever simplified once the frame is already dissolving it, and a
 threshold keyed to a tree's *on-screen size*
-instead would snap crowns between tiers as the player walked into them. Trees, columns, shards and
+instead would snap crowns between tiers as the player walked into them. Trees, columns, boulders and
 reeds stand up off the ground plane; the plane itself stays
 flat everywhere (`STYLE.md`'s "Overworld path"). They get their occlusion free from the sweep
 painting far-to-near, with no height field and no repaint pass. Adding a material means adding
@@ -2147,7 +2165,7 @@ in `terrain/types.ts`); nothing in the paint pass itself changes, and two people
 materials without touching the same file.
 
 **Ground motifs.** `terrain/decoration.ts`'s `decorateTile` holds one floor motif per world --
-the Stone Lattice's sublattice mosaic, the Storm Flats' orbit rings, the Iron Steppe's spin-wave
+the Stone Lattice's sublattice mosaic, the Storm Flats' orbit rings, the Broken Coast's spin-wave
 ripples, and the rest. Whether the walkable floor draws any of them is a single default-off
 switch in that file, `GROUND_MOTIFS_ENABLED`, read at `terrain/paint.ts`'s one call site; with
 it off the route is one flat colour in every world (`STYLE.md`'s "Overworld path"). The motifs

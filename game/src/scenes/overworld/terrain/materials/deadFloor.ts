@@ -105,8 +105,8 @@ export function drawDeadFloorAccent(
   }
 
   // The invariant, counted: one slab standing proud of the bed per unit of it,
-  // each leaning its own way. A uniform lean would read as the Iron Steppe's
-  // aligned shards, and the invariant is unsigned anyway, so there is no
+  // each leaning its own way. A uniform lean would read as a magnetic order
+  // of its own, and the invariant is unsigned anyway, so there is no
   // direction here to point. Drawn only near enough to be counted -- a
   // half-resolved count is worse than none, since the whole point of it is
   // that it can be checked against the neighbouring domain's.

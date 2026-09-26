@@ -279,40 +279,43 @@ goes back to being an identity: one phase, one wave, no seams left to cross.
 
 ---
 
-## 6. The Iron Steppe
+## 6. The Broken Coast
 
-<img src="../screenshots/storyline-world-6.png" width="420" alt="The Iron Steppe seen from the middle of its open plain, iron shards standing in it">
+<img src="../screenshots/storyline-world-6.png" width="420" alt="The Broken Coast seen from its beach, checkered rock to the left and the swelling sea to the right">
 
 *Classical magnetism and magnons.*
 
-Night, black iron sand, and a green aurora: the most beautiful of the ten
-worlds, and the most plainly lethal, since the surround is fields of iron
-shards all leaning the same way. This is a false calm. The mood relaxes
-after storm and ice. Nothing else does.
+Night, a shingle beach, and a green aurora: the most beautiful of the ten
+worlds, and the most plainly lethal, since the beach runs between open sea
+on one side and rock broken along every wall on the other. This is a false
+calm. The mood relaxes after storm and ice. Nothing else does.
 
-The ground here made its choice long ago and everywhere at once: every spin
-points the same way as its neighbor. Tip one out of line and it will not
-stay tipped. Its neighbors lean to follow, and theirs after them, and the
-tilt walks off across the plain as a wave, arriving somewhere far away as
-the same disturbance that set out. That wave is a **magnon**, and you can
-see them: the sand is ringed with them, and the leaning shards are what the
-order looks like standing up.
+The sea made its choice long ago and everywhere at once: every spin points
+the same way as its neighbor. Tip one out of line and it will not stay
+tipped. Its neighbors lean to follow, and theirs after them, and the tilt
+runs off down the coast as a wave, arriving somewhere far away as the same
+disturbance that set out. That wave is a **magnon**, and you can see them:
+every swell rolling in is one, red where the spins lean one way and blue
+where they lean the other. The rock across the beach chose differently.
+Every rock in it points against its neighbors, two greys taking turns, and
+wherever that taking of turns slips by one rock the field is broken along a
+wall.
 
-A magnon is cheap because the steppe does not care which way it points. Turn
+A magnon is cheap because the sea does not care which way it points. Turn
 every spin together, through any angle, and nothing has been paid, so a very
-long gentle wave costs almost nothing. That is why this place never stops
+long gentle swell costs almost nothing. That is why this place never stops
 moving. The Decoherence leaves the order alone and takes the choice away: it
 pins the direction down, turning stops being free, and the instant it costs
-something the long slow waves stop being made at all. The steppe goes still,
-and stillness here is not peace. Standing where every wave this world ever
+something the long slow swells stop being made at all. The sea goes still,
+and stillness here is not peace. Standing where every wave this coast ever
 sent has arrived and gone quiet is the **Polycrystalline Iron Golem**, made
 of domains whose walls simply slide when it is struck. "It will not stay
 flipped and it will not stay put: it will walk off through me as a wave and
 fade out somewhere in my back." Beat it and the boundaries in the iron let
 go, grain growing into grain, and the first wave to cross it in an age
-passes through without scattering and out over the steppe.
+passes through without scattering and out along the coast.
 
-*You reached the far steppe. The last swell still moves.*
+*You reached the end of the coast. The last swell still moves.*
 
 ---
 
@@ -322,7 +325,7 @@ passes through without scattering and out over the steppe.
 
 *Entanglement and tensor networks.*
 
-Someone once tried to write the steppe down: every spin, every direction,
+Someone once tried to write the coast down: every spin, every direction,
 exactly, on paper. They got to forty spins and stopped. Two choices per
 spin, doubling with every spin added, and forty already needs a trillion
 numbers. There was not enough paper. There was never going to be: a quantum
@@ -414,7 +417,7 @@ again: halves crossing the whole crystal with nothing left to stop at.
 The water gives out and the mist lifts off it onto open ground with holes in
 it. Not ruins. Patches. One stretch is wheatfield. The next is colonnade,
 repeating itself. Further on, a strip of lit ledge, a scrap of swept ice, a
-few square metres of iron sand still rippling. Half sunk in the molten crust
+few square metres of checkered rock still broken along its walls. Half sunk in the molten crust
 lie the drums of a fallen column: the only thing anyone ever built in these
 worlds, and it did not stay built. The walkable scorched clay is old damage,
 closed over. The crust you cannot walk on is damage still open and glowing.

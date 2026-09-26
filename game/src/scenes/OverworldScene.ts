@@ -1999,7 +1999,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // (world/generators/shared.ts's passZoneRows) -- the same suppression the
     // generator applies, recomputed from the three points mapState already
     // carries.
-    const passRows = passZoneRows(this.startTile, this.goalTile, this.midTile, this.mapScale);
+    const passRows = passZoneRows(this.startTile, this.goalTile, this.midTile, this.mapScale, gridH());
     const landmarks = this.landmarkKeys();
 
     const tiles: GridPoint[] = [];

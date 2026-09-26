@@ -9,7 +9,7 @@ import type { AtmosphereView } from '../sky';
 // walkable trail, 'solid' plain bare impassable ground, and every other kind
 // an off-path material that lays its own accent over that same ground (see
 // materials/), one per world's impassable surround.
-export type TerrainKind = 'path' | 'solid' | 'forest' | 'columns' | 'deadFloor' | 'charged' | 'ice' | 'shards' | 'bog' | 'lava' | 'consuming';
+export type TerrainKind = 'path' | 'solid' | 'forest' | 'columns' | 'deadFloor' | 'charged' | 'ice' | 'coast' | 'bog' | 'lava' | 'consuming';
 
 // The kinds an impassable tile can take -- one per off-path material, each
 // with its own module under materials/.
@@ -119,8 +119,8 @@ export interface TerrainView extends AtmosphereView {
 // beyond its fill.
 //
 // `gx`/`gy` are what make a feature stand still in the world rather than on
-// the screen. Anything anchored to the map -- the Iron Steppe's shards
-// leaning one way until the domain wall and the other way past it, the
+// the screen. Anything anchored to the map -- the Broken Coast's checkerboard
+// keeping each square on its own sublattice up to the domain wall, the
 // Vortex Glacier's vortex turning about its fixed core -- must derive its
 // geometry from these; a feature phased off `cx`/`cy` swims across the ground
 // as the camera moves, which is right for a drifting shimmer and wrong for

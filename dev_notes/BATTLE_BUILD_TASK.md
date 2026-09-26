@@ -56,7 +56,7 @@ horizon, and its battle ridgeline.
 **The ground is the one place the near view earns its own treatment.** The
 terrain materials are authored at tile scale; blown up to arena close-up they
 read as enlarged pixels rather than as ground. Reuse the material *definitions* —
-palette, motif, the iron-sand ripple, the mosaic pattern — and give the arena its
+palette, motif, the coast's swell, the mosaic pattern — and give the arena its
 own close-up drawing pass over them.
 
 ## Delete rather than replace

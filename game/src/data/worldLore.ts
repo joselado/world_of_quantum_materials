@@ -53,13 +53,13 @@ export const WORLD_LORE: Partial<Record<number, WorldLore>> = {
   },
   6: {
     page1:
-      'Word does climb off the glacier in the end. By the time it crosses this steppe it is not word anymore. It is a swell, carried the way the steppe carries everything: a rise that passes through and lets the black sand down again behind it.\n\nThe ground here made its choice long ago, everywhere at once. Every spin points the same way as its neighbor. Tip a single spin out of line and it will not stay tipped. Its neighbors lean to follow, and theirs after them, and the tilt walks off across the plain as a wave. It arrives somewhere far away as the same disturbance that set out. The steppe calls one of these a magnon. You are standing inside several, and you can see them: the sand is ringed with them, and the shards leaning over you are what the order looks like standing up.',
+      'Word does climb off the glacier in the end. By the time it reaches this coast it is not word anymore. It is a swell, carried the way the sea here carries everything: a rise that runs down the shore and lets the water down again behind it.\n\nThe sea made its choice long ago, everywhere at once. Every spin in it points the same way as its neighbor. Tip a single spin out of line and it will not stay tipped. Its neighbors lean to follow, and theirs after them, and the tilt runs off down the coast as a wave. It arrives somewhere far away as the same disturbance that set out. The coast calls one of these a magnon. You can see them: every swell is one, red where the spins lean one way and blue where they lean the other, rolling in past you. The rock across the beach chose differently. Every square of it points against its neighbors, two greys taking turns, and wherever that taking of turns slips by one square the rock is broken along a wall.',
     page2:
-      'A magnon is cheap because the steppe does not care which way it points. Turn every spin together, through any angle, and nothing has been paid. A very long, very gentle wave is almost exactly that turn, so the longest waves cost almost nothing. That is why this steppe never stops moving.\n\nThe Decoherence takes the choice away. It leaves the order alone and pins the direction down, so turning is no longer free. The instant turning costs something, the long slow waves stop being made. The steppe goes still, and stillness here is not peace. Past the last swell, something stands where every wave this world ever sent has arrived, spent itself and gone quiet. It carried them once: wave after wave passed on whole, across a clear path. The stillness had to grind that path out of it grain by grain before this steppe went quiet. It has not once turned to look.',
+      'A magnon is cheap because the sea does not care which way it points. Turn every spin together, through any angle, and nothing has been paid. A very long, very gentle swell is almost exactly that turn, so the longest waves cost almost nothing. That is why this sea never stops moving.\n\nThe Decoherence takes the choice away. It leaves the order alone and pins the direction down, so turning is no longer free. The instant turning costs something, the long slow swells stop being made. The sea goes still, and stillness here is not peace. Past the last swell, something stands where every wave this coast ever sent has arrived, spent itself and gone quiet. It carried them once: wave after wave passed on whole, across a clear path. The stillness had to grind that path out of it grain by grain before this coast went quiet. It has not once turned to look.',
   },
   7: {
     page1:
-      'Someone once tried to write the steppe down. Every spin, every direction, exactly, on paper. They got to forty spins and stopped. Two choices per spin, doubling with every spin added, and forty of them already needs a trillion numbers. There was not enough paper.\n\nThis world is that record, built, and hung in nothing. There is no ground under it and no sky over it, because outside the network there is no space to have either. Lanes run side by side, one for every site, and rungs are strung between them for everything one lane knows about the next. And here is the strange mercy of this place: almost none of that vast space is ever used. The states nature actually settles into sit in a tiny corner of it. Everything real fits on the rungs.',
+      'Someone once tried to write the coast down. Every spin, every direction, exactly, on paper. They got to forty spins and stopped. Two choices per spin, doubling with every spin added, and forty of them already needs a trillion numbers. There was not enough paper.\n\nThis world is that record, built, and hung in nothing. There is no ground under it and no sky over it, because outside the network there is no space to have either. Lanes run side by side, one for every site, and rungs are strung between them for everything one lane knows about the next. And here is the strange mercy of this place: almost none of that vast space is ever used. The states nature actually settles into sit in a tiny corner of it. Everything real fits on the rungs.',
     page2:
       'The rule that keeps this world small is a rule about boundaries. Cut a region out of it and ask how much it holds in common with the rest. The answer depends only on the length of the cut, never on the size of the region. All the shared knowledge lives on the boundary and none of it in the middle, which is why a rung of modest thickness is enough at all.\n\nThe Decoherence works on the middles. It shares what was never meant to be shared, until what a region holds in common with the rest grows with its whole bulk instead of its edge. Every rung then needs to be thicker, and no thickness ever finishes the job. Somewhere along these lanes sits something that has been cut open by everyone who ever came here. For a long age the cuts cost it nothing, because what it was lived in no piece a cut could reach. So the cutting went on, and it went on until the one state that spanned the whole of it was gone. Every cut since has come back saying nothing.',
   },
@@ -71,7 +71,7 @@ export const WORLD_LORE: Partial<Record<number, WorldLore>> = {
   },
   9: {
     page1:
-      'The water gives out, the mist lifts off it, and what lies past the last pool is open ground with holes in it. Not ruins. Patches. One stretch is wheatfield. The next is colonnade, repeating itself. Further on, a strip of lit ledge, a scrap of swept ice, a few square metres of iron sand still rippling. Among them, half sunk in the crust, lie the drums of a fallen column. It is the only thing anyone ever built in these worlds, and it did not stay built.\n\nEvery scholar who came out here was told the same thing first: a perfect crystal tells you nothing. If you want to know what a ground state truly is, take one atom out of it and watch. What the crystal does around that hole is the crystal confessing. These scars are the most honest place in these worlds.',
+      'The water gives out, the mist lifts off it, and what lies past the last pool is open ground with holes in it. Not ruins. Patches. One stretch is wheatfield. The next is colonnade, repeating itself. Further on, a strip of lit ledge, a scrap of swept ice, a few square metres of checkered rock still broken along its walls. Among them, half sunk in the crust, lie the drums of a fallen column. It is the only thing anyone ever built in these worlds, and it did not stay built.\n\nEvery scholar who came out here was told the same thing first: a perfect crystal tells you nothing. If you want to know what a ground state truly is, take one atom out of it and watch. What the crystal does around that hole is the crystal confessing. These scars are the most honest place in these worlds.',
     page2:
       'What settles around a hole is never the same twice. Set the same impurity down in four different hosts and you get four completely different answers, and every one of those answers belongs to the host, not to the defect.\n\nOne hole tells you something. The Decoherence brings thousands, and past a certain density they stop telling you anything. Everything in the crystal comes to rest exactly where it stands, each state shut in its own small pocket, unable to answer any question at all. Something out here has made a home of that. You will meet it once. You will not meet the same thing twice.',
   },
@@ -122,7 +122,7 @@ export const RIVAL_TAUNTS: Partial<Record<number, RivalTaunt>> = {
   },
   6: {
     part1:
-      'A shard-fused golem of grey iron rises out of the black sand, its surface divided into bright regions that flow and re-draw themselves as it moves. "Polycrystalline Iron Golem. Domains. Each one a patch of this steppe that agreed on a direction. When something shoves me I do not crack: the walls between them slide over, and afterwards I am the same magnet I always was."',
+      'A shard-fused golem of grey iron rises off the shingle, its surface divided into bright regions that flow and re-draw themselves as it moves. "Polycrystalline Iron Golem. Domains. Each one a patch of this coast that agreed on a direction. When something shoves me I do not crack: the walls between them slide over, and afterwards I am the same magnet I always was."',
     part2:
       '"Go ahead. Flip whatever you can reach. It will not stay flipped and it will not stay put: it will walk off through me as a wave and fade out somewhere in my back. Nothing you start here finishes. Nothing has finished in me for a long time."',
   },
@@ -195,13 +195,13 @@ export const WORLD_LORE_BRIEF: Partial<Record<number, WorldLore>> = {
   },
   6: {
     page1:
-      'This steppe chose long ago, everywhere at once: every spin points the same way as its neighbor. Tip one out of line and its neighbors lean to follow, and the tilt walks off across the plain as a wave. The steppe calls it a magnon, and the black sand is ringed with them.',
+      'This sea chose long ago, everywhere at once: every spin points the same way as its neighbor. Tip one out of line and its neighbors lean to follow, and the tilt runs off down the coast as a wave. The coast calls it a magnon, and every swell is one, red one way and blue the other. The rock across the beach points against itself instead, square by square, and is broken along a wall wherever that slips.',
     page2:
-      'Turning every spin together costs nothing here, and a long, gentle wave is almost that turn, so the longest waves are almost free. The Decoherence pins the direction down. Once turning costs something, the long waves stop being made and the steppe goes still. Past the last swell stands something where every wave used to arrive.',
+      'Turning every spin together costs nothing here, and a long, gentle swell is almost that turn, so the longest waves are almost free. The Decoherence pins the direction down. Once turning costs something, the long waves stop being made and the sea goes still. Past the last swell stands something where every wave used to arrive.',
   },
   7: {
     page1:
-      'Someone once tried to write the steppe down, every spin exactly: forty spins already need a trillion numbers. This world is that record, built as lanes, one per site, with rungs strung between them, hung in nothing. Almost none of its vast space is used. Everything real fits on the rungs.',
+      'Someone once tried to write the coast down, every spin exactly: forty spins already need a trillion numbers. This world is that record, built as lanes, one per site, with rungs strung between them, hung in nothing. Almost none of its vast space is used. Everything real fits on the rungs.',
     page2:
       'Cut out a region, and what it shares with the rest depends on the length of the cut, not the size of the region, so thin rungs are enough. The Decoherence works on the middles until what a region shares grows with its bulk, and no rung is ever thick enough. Somewhere on these lanes sits something every visitor has cut open. Every cut comes back empty.',
   },
@@ -213,7 +213,7 @@ export const WORLD_LORE_BRIEF: Partial<Record<number, WorldLore>> = {
   },
   9: {
     page1:
-      'Past the last pool lies ground in patches: wheatfield, colonnade, lit ledge, swept ice, iron sand, and half sunk among them the drums of a fallen column. A perfect crystal tells you nothing. Take one atom out and watch what it does around the hole: that is the crystal confessing.',
+      'Past the last pool lies ground in patches: wheatfield, colonnade, lit ledge, swept ice, checkered rock, and half sunk among them the drums of a fallen column. A perfect crystal tells you nothing. Take one atom out and watch what it does around the hole: that is the crystal confessing.',
     page2:
       'The same impurity in four hosts gives four different answers, and every answer belongs to the host. The Decoherence brings thousands, until every state comes to rest in its own small pocket. Something out here has made a home of that.',
   },
@@ -258,7 +258,7 @@ export const RIVAL_TAUNTS_BRIEF: Partial<Record<number, RivalTaunt>> = {
   },
   6: {
     part1:
-      'A shard-fused golem of grey iron rises from the sand, domains redrawing across it. "Polycrystalline Iron Golem. Shove me and my walls slide over. I stay the same magnet."',
+      'A shard-fused golem of grey iron rises off the shingle, domains redrawing across it. "Polycrystalline Iron Golem. Shove me and my walls slide over. I stay the same magnet."',
     part2:
       '"Flip what you can reach. It walks off through me as a wave and fades. Nothing finishes in me."',
   },
