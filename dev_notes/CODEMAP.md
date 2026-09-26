@@ -918,7 +918,7 @@ World 10's Adapted and nowhere else.
   of the same type get `hueShift(color, hueStepDegrees(hueStep))` so siblings (Iron vs. Cobalt)
   read as a
   family (every rival golem opts out of this via `colorOverride` instead -- `WORLD_RIVALS[1-8]`
-  with a hand-picked literal each, World 9's `rivalImpurityResonance` by blending its rolled
+  with a hand-picked literal each, World 9's `rival9Golem` by blending its rolled
   type's own `TYPE_LOOK` base halfway to a tarnished grey so the color tracks the roll, see
   `crystal()`'s own entry above), *and* (rendering-side, not stored on the `Material` itself) `art/crystals.ts`'s
   `jitterFor(material.name, ...)` gives each one its own hue/rotation/stretch/sparkle
@@ -1800,16 +1800,16 @@ Under the player (40) and well under any dialogue (100).
 
 **World 9's rival has no fixed type, unlike every other world's.** `data/materials.ts`'s
 `getRival(world, rival9Type?)` takes an optional second param that only world 9 reads --
-`getRival(9, t)` builds `rivalImpurityResonance(t)`, a `Material` whose `type` is whatever's
+`getRival(9, t)` builds `rival9Golem(t)`, a `Material` whose `type` is whatever's
 passed in and whose name is looked up per-type from `RIVAL_9_NAMES` (a polycrystalline-golem
-name for each of `RIVAL_9_TYPES`' 7 members, same "real compound's polycrystalline form"
+name for each of `RIVAL_9_TYPES`' 8 members, same "real compound's polycrystalline form"
 naming `WORLD_RIVALS[1-8]` uses) and whose moveset is looked up the same way from
-`RIVAL_9_MOVES` (that type's own signature quasiparticle, plus `thermalFluctuation` in the
-second slot); every other world ignores the param and returns its fixed
+`RIVAL_9_MOVES` (that type's own signature quasiparticle in its decohered `GOLEM_MOVE_IDS` form,
+plus `thermalFluctuation` in the second slot); every other world ignores the param and returns its fixed
 `WORLD_RIVALS[world]` entry. Because this rival is built by a function rather than declared
 as a `WORLD_RIVALS` row, `scripts/content-lint.mjs`'s "every opponent's moves must be
 hostable by its own type" check reaches it through those two tables instead: it holds both
-to covering exactly `RIVAL_9_TYPES` and holds each signature move to `MOVE_COMPATIBILITY`. `RIVAL_9_TYPES` (8 of the 14 `MaterialType` values -- metal,
+to covering exactly `RIVAL_9_TYPES` and holds each signature move to `MOVE_COMPATIBILITY` and to being a decohered golem move. `RIVAL_9_TYPES` (8 of the 14 `MaterialType` values -- metal,
 quantumSpinHall, superconductor, metallicMagnet, insulatingMagnet, quantumSpinLiquid,
 multiferroic, chernInsulator) and `rollRival9Type()` (a uniform pick from it) live in `data/materials.ts`
 too. `OverworldScene.resolveRival9Type()` is the one caller that actually rolls: it reads

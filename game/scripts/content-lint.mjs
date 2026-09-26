@@ -270,7 +270,7 @@ for (const move of Object.values(MOVES)) {
 // every future retype.
 //
 // World 9's rival is covered too, at the bottom of this check. It is built
-// by `rivalImpurityResonance` rather than declared as a WORLD_RIVALS row, so
+// by `rival9Golem` rather than declared as a WORLD_RIVALS row, so
 // the two loops below cannot see it -- and its seven rollable types have no
 // hostable class in common beyond 'phonon', which makes a moveset that
 // drifts out of step with the roll exactly the mistake this check catches.
@@ -303,7 +303,7 @@ for (const [world, rival] of Object.entries(WORLD_RIVALS)) {
 // World 9's rolled rival: both per-type tables must cover exactly
 // RIVAL_9_TYPES (a rolled type with no entry crashes the battle on a
 // non-null assertion), and each type's own signature move must be one its
-// type can host. The moveset's other slot is 'thermalFluctuation', hostable
+// type can host, in its decohered golem form. The moveset's other slot is 'thermalFluctuation', hostable
 // by construction -- check 2 already holds every type to carrying 'phonon'.
 {
   const rollable = new Set(RIVAL_9_TYPES);
@@ -330,10 +330,10 @@ for (const [world, rival] of Object.entries(WORLD_RIVALS)) {
           `(World 9's rival rolls into it as '${RIVAL_9_NAMES[type] ?? type}')`
       );
     }
-    if (GOLEM_MOVE_IDS.includes(moveId)) {
+    if (!GOLEM_MOVE_IDS.includes(moveId)) {
       flag(
-        `RIVAL_9_MOVES['${type}'] is the decohered move '${moveId}' -- World 9's rival is the one ` +
-          `rival the Decoherence took nothing from, so it carries pristine excitations (WORLDS.md section 6)`
+        `RIVAL_9_MOVES['${type}'] is the pristine move '${moveId}' -- World 9's rival is a golem like ` +
+          `every other, so it carries its host's decohered excitation (GOLEM_MOVE_IDS, WORLDS.md section 6)`
       );
     }
   }

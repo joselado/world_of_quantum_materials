@@ -127,6 +127,8 @@ export const MOVES: Record<string, Move> = {
   decoheredHelical: { id: 'decoheredHelical', name: 'Decohered Helical Lock', class: 'helical', power: 10 },
   decoheredHiggs: { id: 'decoheredHiggs', name: 'Decohered Higgs Oscillation', class: 'higgs', power: 10 },
   decoheredVison: { id: 'decoheredVison', name: 'Decohered Vison Loop', class: 'vison', power: 10 },
+  decoheredPlasmon: { id: 'decoheredPlasmon', name: 'Decohered Plasmon Resonance', class: 'plasmon', power: 8 },
+  decoheredElectromagnon: { id: 'decoheredElectromagnon', name: 'Decohered Electromagnon Drive', class: 'electromagnon', power: 9 },
   // Landau's quiz-gated Analytic moves (§5, World 4, ANALYTIC_MOVE_IDS
   // below) -- power sits below the other exotic-tier moves since their real
   // payoff is the answer-gated 2x/0.5x multiplier BattleScene applies, not
@@ -246,6 +248,8 @@ export const GOLEM_MOVE_IDS = [
   'decoheredHelical',
   'decoheredHiggs',
   'decoheredVison',
+  'decoheredPlasmon',
+  'decoheredElectromagnon',
 ];
 
 // Every move a player can ever end up holding: the whole roster minus the
@@ -984,7 +988,7 @@ export function materialTypeLabel(type: MaterialType): string {
 // to have no characteristic habit takes 'shard'.
 // `colorOverride` skips the `hueStep` formula entirely and uses the given
 // color as-is -- every rival golem (WORLD_RIVALS[1-8] and World 9's
-// `rivalImpurityResonance`) takes this route, since a golem's tarnished,
+// `rival9Golem`) takes this route, since a golem's tarnished,
 // desaturated look doesn't reduce to a rotation of its type's own hue. No HP
 // here -- a crystal's max HP in battle is never intrinsic to the compound,
 // only to which world it's fought in (an ordinary wild's `wildHpForWorld`,
@@ -1487,10 +1491,11 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
   ],
 };
 
-// World 9's rival -- an impurity/defect-bound resonance that can form in any
-// host crystal -- has no single fixed type the way every other rival does,
-// so its type (and, via RIVAL_9_NAMES below, its name) is rolled at random
-// rather than authored. OverworldScene re-rolls it every time the player
+// World 9's rival is a golem like every other world's, with one difference:
+// the Defect Scars are patched together from every world before them, so the
+// material that held out longest there can be any of several hosts, and its
+// type (and, via RIVAL_9_NAMES below, its name) is rolled at random rather
+// than authored. OverworldScene re-rolls it every time the player
 // reaches World 9 and caches the result in the registry/save (`rival9Type`)
 // for the rest of that visit, so the goal-tile boss preview and the actual
 // battle still agree on which crystal it turned out to be.
@@ -1510,9 +1515,8 @@ export function rollRival9Type(): MaterialType {
 }
 
 // A per-type polycrystalline-golem name (same "real compound, polycrystalline
-// form" naming WORLD_RIVALS[1-8] uses, since an impurity/defect-bound
-// resonance can form in any host crystal -- world 9's own rolled type just
-// picks which host). Each entry is grounded in a real compound genuinely
+// form" naming WORLD_RIVALS[1-8] uses -- world 9's own rolled type just
+// picks which compound). Each entry is grounded in a real compound genuinely
 // studied in polycrystalline form, matching the rolled MaterialType:
 // - metal: polycrystalline silver -- screen-printed Ag paste is the ordinary
 //   polycrystalline contact metal in real silicon solar cells.
@@ -1539,7 +1543,7 @@ export function rollRival9Type(): MaterialType {
 //   order its neutron-powder-diffraction structure solve measured, so the
 //   polycrystalline claim and the type-defining physics agree.
 // Only ever looked up for RIVAL_9_TYPES' 8 members (the only types
-// rivalImpurityResonance below is ever called with) -- covers those 8 and no
+// rival9Golem below is ever called with) -- covers those 8 and no
 // others on purpose, rather than a full Record<MaterialType, string>, since
 // the other 6 MaterialType members can never reach this lookup and inventing
 // placeholder names for them would just be dead weight.
@@ -1560,15 +1564,13 @@ const RIVAL_9_NAMES: Partial<Record<MaterialType, string>> = {
 // rather than a pristine wild crystal's.
 const RIVAL_9_TARNISH = 0x6e737a;
 
-// The rolled host's own signature quasiparticle, paired with Phonon Beam.
-// One entry per RIVAL_9_TYPES member, each an excitation that type's own
-// wild counterpart already carries (Silver's plasmon, Ce₂Zr₂O₇'s spinon,
-// BiFeO₃'s electromagnon, ...), so what the rival throws is the physics of
-// whichever host it landed in -- which is the whole idea of this rival, and
-// what its own taunt says out loud ("I borrow one, and it decides everything
-// about me"): an impurity/defect-bound resonance with no lattice of its own,
-// borrowing the crystal it forms inside (WORLDS.md section 6). A single
-// shared moveset cannot do that job, since three of the eight rollable types
+// The rolled host's own signature quasiparticle, decohered, paired with
+// Phonon Beam. One entry per RIVAL_9_TYPES member, each the GOLEM_MOVE_IDS
+// corruption of an excitation that type's own wild counterpart already
+// carries (Silver's plasmon, Ce₂Zr₂O₇'s spinon, BiFeO₃'s electromagnon, ...):
+// World 9's golem is a fallen resistor like every other, so what it throws is
+// its own compound's excitation with the coherence ground out of it
+// (WORLDS.md section 6). A single shared moveset cannot do that job, since three of the eight rollable types
 // (insulatingMagnet, quantumSpinLiquid, multiferroic) have no band electron
 // to emit at all and only 'metal'/'metallicMagnet' host a plasmon; the second
 // slot stays 'thermalFluctuation' because 'phonon' is the one class every type
@@ -1576,24 +1578,18 @@ const RIVAL_9_TARNISH = 0x6e737a;
 // excitation of magnetic order either way -- what separates the hosts is what
 // they can absorb rather than what they throw, the metallic one having an
 // electron and a plasmon channel the insulating one lacks.
-//
-// These are the pristine excitations, not the GOLEM_MOVE_IDS decohered ones
-// every other golem carries: World 9's rival is the one thing on this road
-// with no coherence to lose, so the Decoherence took nothing from it and its
-// borrowed quasiparticle comes through intact (WORLDS.md section 6's
-// exemption, the same one its taunt and its post-battle beat both state).
 const RIVAL_9_MOVES: Partial<Record<MaterialType, string>> = {
-  metal: 'plasmonPulse',
-  quantumSpinHall: 'helicalCurrent',
-  superconductor: 'higgsOscillation',
-  metallicMagnet: 'magneticField',
-  insulatingMagnet: 'magneticField',
-  quantumSpinLiquid: 'entanglementSwap',
-  multiferroic: 'electromagnonPulse',
-  chernInsulator: 'chiralCurrent',
+  metal: 'decoheredPlasmon',
+  quantumSpinHall: 'decoheredHelical',
+  superconductor: 'decoheredHiggs',
+  metallicMagnet: 'decoheredMagnon',
+  insulatingMagnet: 'decoheredMagnon',
+  quantumSpinLiquid: 'decoheredSpinon',
+  multiferroic: 'decoheredElectromagnon',
+  chernInsulator: 'decoheredChiral',
 };
 
-function rivalImpurityResonance(type: MaterialType): Material {
+function rival9Golem(type: MaterialType): Material {
   // Every caller (rollRival9Type, and the cached rival9Type resolved from
   // it) only ever produces a RIVAL_9_TYPES member, which RIVAL_9_NAMES and
   // RIVAL_9_MOVES both cover completely -- see their own comments above.
@@ -1621,7 +1617,7 @@ function rivalImpurityResonance(type: MaterialType): Material {
 // The single "beat this to unlock the guardian and the way onward" gate per
 // world (DESIGN.md's world table, "Gate to next world" column) -- distinct
 // from WORLD_CRYSTALS' ordinary wild encounters, which never block
-// progress. World 9 has no static entry here -- see rivalImpurityResonance/
+// progress. World 9 has no static entry here -- see rival9Golem/
 // getRival above and below.
 export const WORLD_RIVALS: Partial<Record<number, Material>> = {
   // Every rival 1-8 is named for a real compound's polycrystalline form --
@@ -1801,7 +1797,7 @@ export const WORLD_RIVALS: Partial<Record<number, Material>> = {
 // rolled and cached a type (OverworldScene, so the preview and the battle
 // agree); an unresolved call still rolls a fresh one rather than crashing.
 export function getRival(world: number, rival9Type?: MaterialType): Material | undefined {
-  if (world === 9) return rivalImpurityResonance(rival9Type ?? rollRival9Type());
+  if (world === 9) return rival9Golem(rival9Type ?? rollRival9Type());
   return WORLD_RIVALS[world];
 }
 
@@ -2021,9 +2017,9 @@ export function worldName(world: number): string {
 
 // World 9 (defects/excitations) additionally spawns every non-hybrid
 // material from worlds 1-8 on top of its own dedicated defect compounds --
-// the same "an impurity/defect-bound resonance can form in any host
-// crystal" reasoning RIVAL_9_TYPES/rollRival9Type already use for its rival,
-// literalized for its ordinary wild encounters too, and the reason World 9
+// a defect can sit in any host crystal, and the Defect Scars are patched
+// together from every world before them (the same reason its rival's type is
+// rolled, RIVAL_9_TYPES/rollRival9Type), which is the reason World 9
 // can host any type rather than a single course-topic type the way worlds
 // 1-8 do. Hybrid-recipe results are excluded -- a fused state isn't "a
 // defect in an earlier crystal," it's a different mechanic (Majorana's own

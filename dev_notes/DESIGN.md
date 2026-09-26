@@ -204,25 +204,22 @@ world's forward pass actually opens onto. The rival fight is deliberately
 once the goal is reached, so the player can shop/prep before ever facing the rival, rather
 than being stuck needing bought moves to beat a rival they can't reach the guardian to
 prepare for (`OverworldScene.confirmGate`). Every rival has a fixed main type
-except World 9's -- an impurity/defect-bound resonance that can form in any host
-crystal, so its type is rolled at random every time the player reaches World 9
+except World 9's -- a golem like every other rival, but the Defect Scars are patched
+together from every world before them, so the material that held out longest there can be
+any of several hosts, and its type is rolled at random every time the player reaches World 9
 (`data/materials.ts`'s `RIVAL_9_TYPES`/`rollRival9Type`, cleared and re-rolled by
 `OverworldScene.create()` on every visit) and cached in the save (`rival9Type`,
 `OverworldScene.resolveRival9Type`) for the rest of that visit, so the goal-tile boss
 preview and the actual battle still agree on which type it turned out to be. Its name
 still follows the same "real compound, polycrystalline form" convention every other
 rival's does, looked up per rolled type (`data/materials.ts`'s `RIVAL_9_NAMES`) rather
-than fixed, since which real compound the resonance is haunting depends on which type
-got rolled. Its moveset is looked up the same way (`RIVAL_9_MOVES`): the rolled host's
-own signature quasiparticle, one that type's wild counterpart already carries, plus
-Phonon Beam in the second slot since `phonon` is the one class every type hosts. A
-resonance with no lattice of its own throws the physics of whatever it landed in (its
-taunt says so outright, "I borrow one, and it decides everything about me"), and a
-single shared moveset could not do that — three of the seven rollable types host no
-band electron at all, only `metal` hosts a plasmon, and `phonon` is the only class all
-seven share. These are the pristine excitations rather than the `GOLEM_MOVE_IDS` decohered
-ones every other golem carries, per WORLDS.md §6's exemption: World 9's rival is the
-one rival the Decoherence took nothing from.
+than fixed, since which real compound the golem is depends on which type got rolled. Its
+moveset is looked up the same way (`RIVAL_9_MOVES`): the rolled host's own signature
+quasiparticle, decohered like every other golem's (`GOLEM_MOVE_IDS`, WORLDS.md §6), plus
+Phonon Beam in the second slot since `phonon` is the one class every type hosts. A single
+shared moveset could not do that — three of the eight rollable types host no band
+electron at all, only `metal` and `metallicMagnet` host a plasmon, and `phonon` is the only
+class all eight share.
 
 **Every world uses this same reach-goal → beat-rival → continue gate** (§6 for what a
 boss encounter is made of). What varies from world to world is the *map shape* above:
@@ -1641,9 +1638,9 @@ against, which is the preparation the fight actually asks for.
 
 Two of the ten answer to something other than a fixed row in `WORLD_RIVALS`:
 
-- **World 9's rival** is an impurity-bound resonance with no lattice of its own, so its
-  type is rolled on every visit and it borrows the rolled host's own signature
-  quasiparticle, pristine rather than decohered (§2, `RIVAL_9_TYPES`/`RIVAL_9_MOVES`).
+- **World 9's rival** is a golem like the rest, but its type is rolled on every visit,
+  and it throws the rolled host's own signature quasiparticle, decohered like every
+  other golem's (§2, `RIVAL_9_TYPES`/`RIVAL_9_MOVES`).
 - **World 10's "The Adapted"** has no type at all until the player attacks. Once per
   landed player attack it transmutes into a real compound of some type that genuinely
   hosts the quasiparticle just used (`BattleScene.transmuteAdapted`, `typesHosting`), so

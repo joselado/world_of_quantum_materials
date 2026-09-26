@@ -2082,7 +2082,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.guardianSprites.push({ x: tile.x, y: tile.y, size: 42, foot: 0, container: avatar, label, seed: Math.random() * Math.PI * 2 });
   }
 
-  // World 9's rival (an impurity/defect-bound resonance) has no fixed type --
+  // World 9's rival golem has no fixed type --
   // it's re-rolled (data/materials.ts's rollRival9Type) every time the player
   // reaches World 9 (create()'s own `rival9Type` registry clear above forces
   // the first read below each visit to roll fresh) and then cached in the

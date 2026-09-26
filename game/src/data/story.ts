@@ -4,8 +4,7 @@ import type { StoryLength } from './settings';
 // rival is beaten and before OverworldScene.advanceToWorld moves the player
 // on (OverworldScene.crossPass): first the golem's release observed as a
 // physical fact in that world's own physics vocabulary (its disorder
-// anneals and the freed material rejoins its world; World 9's flaw is the
-// exception, having no coherence to lose and so nothing to free), then a
+// anneals and the freed material rejoins its world), then a
 // line of connective tissue looking forward -- the bridge between the intro
 // (data/tutorial.ts's first page) and the ending
 // (OverworldScene.showFinalePanel), so the Decoherence plot is more than a
@@ -24,7 +23,7 @@ export const STORY_BEATS: Partial<Record<number, string>> = {
   6: 'The boundaries in the iron let go, grain growing into grain, and the first wave to cross it in an age passes through without scattering and out along the coast. Past it lies a whole world of nothing but bonds and entanglement, hung in nothing at all. If the Decoherence can unravel that, it can unravel anything.',
   7: 'The fracture lines in the pale green mineral seal. The one state no piece was ever holding spreads back across every piece at once, whole exactly because it lives nowhere in particular. The network holds its bonds. Past its last rung the lanes give onto black water that fractionalizes everything entering it: spin liquids that never settle on an order of their own.',
   8: 'The stacking faults in the brown-black layers heal, seam by seam. What comes apart in it now travels: halves cross the whole crystal, with no boundary left to hold them in. The water goes back to resonating, every pairing at once and none of them chosen. Ahead the ground itself is scarred, old burns closed over and crust still open and glowing between them: defects and impurities, the Decoherence wearing through the material.',
-  9: "The flaw disperses, and the ground it borrowed goes back to being ground. There was nothing in it to free: the one thing on this road with no coherence to lose has none to be handed back. The scars close. What's left is a world that re-forms around you as you walk and takes the ground back behind you: adaptive, watching, the last and strangest phase of matter you will face.",
+  9: "The vacancies in the golem anneal out one by one, until too few holes are left to trap anything, and the states it held shut in their pockets spread across the whole crystal again. Whatever crystal it was, it rejoins the scars whole. What's left ahead is a world that re-forms around you as you walk and takes the ground back behind you: adaptive, watching, the last and strangest phase of matter you will face.",
 };
 
 // The Brief version of each beat above, roughly a third its length, read
@@ -40,7 +39,7 @@ export const STORY_BEATS_BRIEF: Partial<Record<number, string>> = {
   6: "The iron's grain boundaries let go, and a wave crosses unscattered at last. Past it hangs a world made only of entanglement.",
   7: "The green mineral's fractures seal, and the state no piece holds spreads across all of it. Beyond lies black water, where spins never settle.",
   8: 'The stacking faults in the brown-black layers heal, and halves cross the whole crystal. Ahead the ground is scarred with defects and impurities.',
-  9: 'The flaw disperses, and the ground it borrowed is ground again, with nothing in it to free. Ahead, a world re-forms around you, watching.',
+  9: "The golem's vacancies anneal out, and its trapped states spread across the whole crystal again. Ahead, a world re-forms around you, watching.",
 };
 
 // One line of world-specific flavor shown on the goal-tile banner

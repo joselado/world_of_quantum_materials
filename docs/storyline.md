@@ -76,7 +76,7 @@ was left where it fell. Beat one and the grinding ends. The disorder
 anneals, the material comes back whole, and it returns to the world it could
 not save alone. The narrator will tell you so. The golem never learns.
 
-Listen to what they actually boast about, though. Read the first eight of them
+Listen to what they actually boast about, though. Read the nine of them
 against the physics you are being taught along the way, and a second meaning
 builds itself under the first. It will not finish before the ninth world,
 and you are not meant to hurry it.
@@ -437,19 +437,16 @@ the defect.
 One hole tells you something. The Decoherence brings thousands, and past a
 certain density they stop telling you anything at all: everything comes to
 rest exactly where it stands, each state shut in its own small pocket,
-unable to answer any question. Something out here has made a home of that.
-For the first time on the road there is no golem waiting in the ordinary
-sense, because the thing holding the pass has no lattice of its own. It is a
-flaw, a knot of something that is not the ground, and the ground obligingly
-builds a body out of itself to hold it. Whatever patch it lands in is what
-it is today, and it will be something else tomorrow. "Beat me here and you
-have beaten a metal, or a magnet, or whatever I happened to land in. You
-have not beaten me." Beat it and the flaw simply disperses, and the ground
-it borrowed goes back to being ground. Of all the passes before the last,
-it is the only one whose fall frees nothing, because it is the one thing out here with no coherence to
-lose, so nothing was ever taken from it to hand back. Remember that on the
-last road: a thing with no substance of its own, wearing whatever it
-studies.
+unable to answer any question. Something out here held out against that
+longer than anything else on these scars, and it holds the pass now: a
+tarnished crystal pocked with a thousand vacancies, each glowing faintly,
+none of the glows reaching the next. No two visits find it made of the same
+compound. Its type is rolled fresh every time you arrive, so check the boss
+before you pick a form. "A thousand holes in me, and I have answered every
+one." It has, right where each was made, and nothing in it carries an
+answer anywhere else. Beat it and its vacancies anneal out one by one, until
+too few are left to trap anything, and the states it held shut in their
+pockets spread across the whole crystal again.
 
 *You reached the far scars. The hole is still just a hole.*
 
@@ -520,7 +517,7 @@ outside. It is simply what happens when something out there comes to know
 you. This is what it meant, all along, that you are a quantum material: your
 own quantumness is what has been at stake the whole way, and the last enemy
 is being understood. It is also why this last fight cannot end the way the
-fights before it did. Broken order can be mended, and eight times you mended
+fights before it did. Broken order can be mended, and nine times you mended
 it. A record is not broken order. There is nothing in the Adapted to free.
 
 What steps out of the dark at the end of the corridor has no compound, no

@@ -157,11 +157,11 @@
 //   moves).
 // - World 9's rival has no fixed type (`getRival(9, ...)` rolls one of
 //   `RIVAL_9_TYPES` uniformly at battle time) -- its moveset is the rolled
-//   type's own signature move plus Phonon Beam (`RIVAL_9_MOVES`,
-//   `rivalImpurityResonance`) and its max HP is `rivalHpForWorld(9)`
+//   type's own decohered signature move plus Phonon Beam (`RIVAL_9_MOVES`,
+//   `rival9Golem`) and its max HP is `rivalHpForWorld(9)`
 //   regardless of which type gets rolled (world-driven, not per-species), so
 //   both the player's own outgoing-mismatch term and the rival's incoming
-//   damage are averaged across `RIVAL_9_TYPES`' 7 members.
+//   damage are averaged across `RIVAL_9_TYPES`' 8 members.
 // - The final reported figures (the per-build tables) are *expected
 //   values*, not one stochastic playthrough: each hit is run through the
 //   real `resolveHitDamage` HIT_SAMPLES times with the seeded RNG and
@@ -864,9 +864,9 @@ function defendersFor(world, isRival) {
   const maxHp = rivalHpForWorld(world);
   if (world === 9) {
     // No fixed WORLD_RIVALS[9] entry -- getRival(9, t) rolls t uniformly
-    // from RIVAL_9_TYPES at battle time (rollRival9Type); average over all 7.
+    // from RIVAL_9_TYPES at battle time (rollRival9Type); average over all 8.
     // Each rolled type brings its own moveset (RIVAL_9_MOVES' signature move
-    // plus Phonon Beam, mirroring rivalImpurityResonance), so the seven
+    // plus Phonon Beam, mirroring rival9Golem), so the eight
     // defenders differ in what they throw as well as in what they are.
     return RIVAL_9_TYPES.map((type) => ({
       type,

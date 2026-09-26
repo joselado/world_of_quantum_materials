@@ -1048,7 +1048,7 @@ state has nowhere to live; it doesn't touch the Majorana halves, it shortens the
 passage until they can feel each other. A world whose Decoherence page could be
 pasted into another world's slot has failed this rule.
 
-**Every rival 1–8 is the same shape: *I am what this world's physics became
+**Every rival 1–9 is the same shape: *I am what this world's physics became
 when its coherence was ground out of it, and I have mistaken that for
 strength.*** A golem is not a champion posted at the pass. It is what the
 Decoherence leaves behind: the world's own material — the one that resisted
@@ -1083,7 +1083,7 @@ World 2 is the far end of that gradient and carries no signature move at all,
 because a material with no lattice left has nothing but its own vibration.
 
 **Beating a golem frees the material, and only the narrator says so.** Golems
-1–8 are fallen resistors: each was its world's own material, the one that held
+1–9 are fallen resistors: each was its world's own material, the one that held
 out longest against being learned, ground to exhaustion where it stood. When
 one falls, its disorder anneals and the freed material rejoins its world — the
 post-victory story beat (`STORY_BEATS`) states this as a physical observation
@@ -1100,10 +1100,6 @@ guardrails on this are all load-bearing:
 - **Liberation frees the material but does not un-teach the Adapted.** The
   lesson stays taken — the record lives in the Adapted, not in the residue —
   so "the golems are its leavings" holds intact.
-- **World 9 is exempt**: the flaw has no coherence to lose, so there is
-  nothing to free. It disperses, and the ground it borrowed goes back to being
-  ground. Its own taunt states the exemption from the inside ("nothing was
-  ever taken from me"), which is also its strongest seed of the reveal.
 - **World 10 cannot be freed**: disorder anneals, a record does not. The
   Adapted is not a fallen quantum thing; it is the record itself, and the
   finale refuses reversal ("stabilized," never undone).
@@ -1114,12 +1110,13 @@ guardrails on this are all load-bearing:
 That is why the rivals feel like part of the story rather than a difficulty
 gate, and it is the pattern any new rival must follow.
 
-**World 9 breaks the shape once, and World 10 breaks it permanently.** World 9's
-rival has no lattice of its own and borrows whatever it lands in: the one thing
-in these worlds with no coherence to lose, which is why it is the only rival the
-Decoherence took nothing from. World 10's is the reveal, and it turns on the
-golems rather than replacing them: the Adapted was never one of them in disguise
-and never sent them, because measurement does not need a soldier. **The golems
+**World 9 keeps the shape with one difference, and World 10 breaks it.** World
+9's golem is a fallen resistor like the eight before it, but its type is rolled
+on every visit: the Defect Scars are patched together from every world behind
+them, so the material that held out longest there is a different compound each
+time, and its taunt, lore and beat are written to hold for any of them. World
+10's rival is the reveal, and it turns on the golems rather than replacing
+them: the Adapted was never one of them in disguise and never sent them, because measurement does not need a soldier. **The golems
 are its leavings.** Learning a quantum thing to exhaustion is what makes it
 definite, and a material that has been made definite is a material whose
 coherence is gone. Every pass the player forced was held by the residue of that
