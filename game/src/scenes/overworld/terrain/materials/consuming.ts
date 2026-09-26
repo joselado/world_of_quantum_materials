@@ -451,7 +451,7 @@ export function drawGroundNetwork(view: TerrainView) {
       const s = a.scale + (b.scale - a.scale) * t;
       const r = 0.055 * TILE_PX * s;
       fill(g, pulse, 0.85 * fade);
-      g.fillEllipse(x, y, r * 2.4, r * 1.4);
+      g.fillEllipse(x, y, r * 2.4, r * 1.4, ellipseSteps(r * 2.4, r * 1.4));
     });
   }
 
@@ -515,10 +515,10 @@ function drawNode(
     g.fillEllipse(x, y, haloW, haloH, ellipseSteps(haloW, haloH));
   }
   fill(g, color, (0.7 + 0.3 * glow) * fade);
-  g.fillEllipse(x, y, r * 2, r * 1.1);
+  g.fillEllipse(x, y, r * 2, r * 1.1, ellipseSteps(r * 2, r * 1.1));
   if (glow > 0.25) {
     fill(g, SPARK_LIGHT, (glow - 0.25) * 0.9 * fade);
-    g.fillEllipse(x, y, r * 0.9, r * 0.5);
+    g.fillEllipse(x, y, r * 0.9, r * 0.5, ellipseSteps(r * 0.9, r * 0.5));
   }
 }
 
@@ -570,7 +570,7 @@ export function drawEventHorizon(view: TerrainView) {
     const px = n.sx + (x - n.sx) * t;
     const py = n.sy + (y + r * 0.2 - n.sy) * t;
     g.fillStyle(blend(player, SPARK_LIGHT, t * 0.6), (0.35 + 0.6 * t) * fade * reveal);
-    g.fillEllipse(px, py, 3 + 2 * t, 2 + 1.4 * t);
+    g.fillEllipse(px, py, 3 + 2 * t, 2 + 1.4 * t, ellipseSteps(3 + 2 * t, 2 + 1.4 * t));
   }
   drawHorizonDisc(g, hole, player, now);
 }
@@ -638,7 +638,7 @@ function drawHorizonDisc(g: Phaser.GameObjects.Graphics, hole: EventHorizon, pla
     if (Math.hypot(mx - x, my - y) < r * 1.02) continue;
     const size = (1.2 + 2.2 * phase) * Math.max(0.5, r / 60);
     g.fillStyle(blend(player, SPARK_LIGHT, phase * 0.8), (0.3 + 0.7 * phase) * reveal);
-    g.fillEllipse(mx, my, size * 2, size * 1.3);
+    g.fillEllipse(mx, my, size * 2, size * 1.3, ellipseSteps(size * 2, size * 1.3));
   }
 }
 
