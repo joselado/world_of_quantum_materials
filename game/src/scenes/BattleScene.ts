@@ -2979,9 +2979,11 @@ export class BattleScene extends Phaser.Scene {
         }
       }
 
+      // The possessive: "Your" for the player, "<name>'s" for the opponent.
+      const whose = isPlayer ? 'Your' : `${who}'s`;
       this.setLogText(
         whiff
-          ? `${who}'s ${displayName} fizzles out. The pattern never locked!`
+          ? `${whose} ${displayName} fizzles out. The pattern never locked!`
           : `${who} used ${displayName}! (${dmg} dmg)${mismatchText}${critText}${buffText}${echoText}`
       );
     };
