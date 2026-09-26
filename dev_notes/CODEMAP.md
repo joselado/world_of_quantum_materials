@@ -19,7 +19,8 @@ game/src/
                                  art/perspective.ts for every scene/panel that already imports
                                  its canvas size from there
   scenes/
-    TitleScene.ts             Loads save -> registry, title showcase crystals, "Continue"/"New Game" -> Hub,
+    TitleScene.ts             Loads save -> registry, paints art/fxTextures.ts's FX textures
+                                 once at boot, title showcase crystals, "Continue"/"New Game" -> Hub,
                                  Story Mode / Superposition Mode picker; framed by the finished
                                  star network (art/stars.ts, drawn faint across the top, redrawn
                                  per frame in update() for its twinkle) and a small all-worlds
@@ -325,7 +326,7 @@ game/src/
                                   like every other builder in this directory, never run through
                                   ui/text.ts's fontPx()/fontScale()
     attackEffects.ts            The attack-effect engine, and the single entry point every caller
-                                  imports from (it re-exports whatever the four modules below
+                                  imports from (it re-exports whatever the five modules below
                                   define publicly, so a caller never needs to know which one a
                                   given piece lives in). playAttackEffect() picks the shape --
                                   beam/eruption are ANALYTIC_SHAPES' per-move-id overrides
@@ -338,7 +339,7 @@ game/src/
                                   growing repeats via playOrdinaryRepeats/playUltimateRepeats,
                                   only the last of which is wired to the real onImpact/onComplete.
                                   Its own `depthOffset` param (default 0, every BattleScene call site
-                                  unaffected) shifts every Graphics object it creates by a fixed
+                                  unaffected) shifts every object it creates (Graphics, images, emitters) by a fixed
                                   amount -- moveEffectPreview.ts (below) is the one caller that
                                   passes a nonzero value. playFlightEffect()/playTargetEffect() are the same
                                   engine's two preview entry points, picked between by
@@ -383,18 +384,39 @@ game/src/
                                   playWave, playRing -- 2 fronts for plasmon's 'ring', 1 for the
                                   screening 'buffring' -- playFlip, playCombwave, playHop,
                                   playSever, playVortex, playRail, playHelix, playSwell, playMass,
-                                  playBraid, playSplit, playBurst, playBeam, playEruption),
-                                  playImpactShockwave (target side), WINDUP_MS/TRAVEL_MS/IMPACT_MS,
-                                  GROUND_DROP (playBeam/playEruption take it as an overridable
-                                  `groundDrop` argument, since a preview stage's floor is the
-                                  anchor itself), and arcPoint's `bow` multiplier (1 = standard up-bow,
+                                  playBraid, playSplit, playBurst),
+                                  playImpactShockwave (target side), WINDUP_MS/TRAVEL_MS/IMPACT_MS
+                                  (beam/eruption's entries included, though their play functions
+                                  live in attackAnalytics.ts), GROUND_DROP/GROUND_ASPECT, the shared
+                                  drawing vocabulary (drawGlow/drawBloom/drawAnnulus/drawArcRing),
+                                  the exported `Direction` type, and arcPoint's `bow` multiplier (1 = standard up-bow,
                                   negative sags below the line for mass, split runs two heads at
                                   opposite signs)
+    attackAnalytics.ts          Landau's Analytic pair: playBeam/playEruption (no attacker
+                                  anchor; `groundDrop` overridable, since a preview stage's floor
+                                  is the anchor itself) drawn with fxTextures.ts's painted
+                                  material through attackFx.ts's fxImage/fxTileSprite/fxEmitter,
+                                  plus the helpers the Ultimates share: layFlat/placeAt (an image
+                                  on the ground plane / centred on a point), groundAngle (a
+                                  particle heading along the floor), tumble (a rock's spin),
+                                  belowGround (the death zone that removes debris the frame it
+                                  falls back through the floor) and QUANTITY_CAP (how far a
+                                  leveled repeat's `scale` reaches particle counts and rates)
+    fxTextures.ts               ensureFxTextures() paints the ten FX_TEX canvas textures the
+                                  spectacle moves draw with (glow, spark, ring, smoke, three rock
+                                  frames -- ROCK_FRAMES, 160px each so a leveled meteor stays
+                                  crisp -- column, streak, flare, rays, flow) once per Game, with
+                                  2D-canvas gradients and seeded value noise; called at boot from
+                                  TitleScene.create and guarded again by every play function.
+                                  ringDisplaySize()/rockDisplaySize() convert a wanted radius to
+                                  the image size that puts the texture's crest/silhouette there
     attackUltimates.ts          Skłodowska-Curie's Ultimate tier: playMeteor/playNova and their
                                   summon->charge->impact->aftermath phase functions,
                                   METEOR_TOTAL_MS/NOVA_TOTAL_MS, plus the whiff path's
-                                  drawMeteorFizzle/drawNovaFizzle (one dissipation spanning the
-                                  impact+aftermath pair) and strainAt (the charge's held strain,
+                                  startMeteorFizzle/startNovaFizzle (one dissipation spanning the
+                                  impact+aftermath pair, its objects built by Impact and handed to
+                                  Aftermath through a `Shared` record), drawRune (a glowing arc
+                                  ring) and strainAt (the charge's held strain,
                                   which goes slack on a whiff)
     moveEffectPreview.ts         startMoveEffectPreview(params, key?)/stopMoveEffectPreview(key?) --
                                   loops a move's real battle effect (above) inside a guardian panel's
@@ -414,7 +436,7 @@ game/src/
                                   stage's own floor line (GROUND_LINE_Y, a fraction of the stage
                                   height) so the beam lands on the ground instead of ending in
                                   mid-air and the eruption's floor rings stay inside the stage. Plays at a
-                                  PREVIEW_DEPTH_OFFSET pushing the effect's Graphics (normally
+                                  PREVIEW_DEPTH_OFFSET pushing the effect's objects (normally
                                   depth 58-61) above a dialogue panel's own container (depth 100) so
                                   it draws on top of the pane instead of underneath it -- that same
                                   nonzero offset is what marks the objects as a detached preview for
@@ -457,17 +479,19 @@ game/src/
                                   whatever is mid-flight (attackFx.ts's cancelPreviewFx), so closing a
                                   panel takes its animation with it rather than leaving a
                                   multi-second Ultimate sequence playing over the room
-    attackFx.ts                  fxGraphics()/fxCounter()/fxDelayedCall()/cancelPreviewFx()/
+    attackFx.ts                  fxGraphics()/fxImage()/fxTileSprite()/fxEmitter()/fxRetire()/
+                                  FxSpout/fxCounter()/fxDelayedCall()/cancelPreviewFx()/
                                   setPreviewClip()/clearPreviewClip() -- the
-                                  object-creation choke point every attackShapes.ts/attackUltimates.ts
-                                  shape draws through, so a *preview* of an effect can be torn down
+                                  object-creation choke point every attackShapes.ts/attackAnalytics.ts/
+                                  attackUltimates.ts effect draws through, so a *preview* of an effect can be torn down
                                   mid-flight. A nonzero depthOffset means "detached preview" (it is 0
                                   for every BattleScene call site and large for moveEffectPreview.ts's
                                   panel previews) and is the sole condition for tracking anything here
                                   -- a real cast allocates and tracks nothing extra and stays
-                                  fire-and-forget, every phase destroying its own Graphics in its own
-                                  onComplete. cancelPreviewFx stops tracked tweens
-                                  before destroying tracked Graphics: a Phaser tween's stop() fires
+                                  fire-and-forget, every phase destroying its own objects in its own
+                                  onComplete (an emitter through fxRetire, which stops it and destroys it
+                                  once its last particle can have died). cancelPreviewFx stops tracked tweens
+                                  before destroying tracked objects: a Phaser tween's stop() fires
                                   onStop, never onComplete, so no phase chained off an onComplete gets
                                   to draw anything new after the cancel. setPreviewClip registers the
                                   rectangle a preview is confined to, keyed by that same depthOffset,

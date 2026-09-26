@@ -5,6 +5,7 @@ import { CANVAS_W, CANVAS_H } from '../art/perspective';
 import { killTweensDeep, makeCrystal } from '../art/crystals';
 import { buildQumatuomiMap } from '../art/qumatuomiMap';
 import { drawStarNetwork } from '../art/stars';
+import { ensureFxTextures } from '../art/fxTextures';
 import { TYPE_LOOK } from '../data/materials';
 import type { MaterialType } from '../data/types';
 import { fontPx, fontScale } from '../ui/text';
@@ -136,6 +137,9 @@ export class TitleScene extends Phaser.Scene {
   }
 
   create() {
+    // The spectacle moves' painted textures (art/fxTextures.ts), made once
+    // here at boot so no battle pays for them on a first cast.
+    ensureFxTextures(this);
     const registry = this.game.registry;
     // Phaser reuses the scene instance, so a popup left open when the player
     // last started from here was destroyed with that visit's display list.

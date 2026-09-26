@@ -509,9 +509,11 @@ graphics chips) and hand it back a moment later, and unhandled that is a black
 canvas the player can only escape by reloading. Phaser restores its own
 resources across the cycle; its one documented exception is GPU-bound dynamic
 textures (`RenderTexture`/`DynamicTexture`), which their owner has to redraw
-on the renderer's `RESTORE_WEBGL` event. This game owns none -- everything is
-`Graphics` and `Text` rebuilt per scene -- which is why it carries no
-context-loss handler of its own, and the test asserts both halves: that the
+on the renderer's `RESTORE_WEBGL` event. This game owns none: everything is
+`Graphics` and `Text` rebuilt per scene, plus the plain canvas textures the
+spectacle moves draw with (`art/fxTextures.ts`, painted once at boot), which
+Phaser re-uploads from their canvas like any loaded image -- which is why it
+carries no context-loss handler of its own, and the test asserts both halves: that the
 cycle really does recover, and that the precondition still holds. Adding a
 dynamic texture fails it, with the remedy in the failure message.
 **Every wait in this script is on an observable signal, never on a fixed number
@@ -749,7 +751,15 @@ moment the encoded size of that region jumps — the effect arriving on stage �
 so the caller can screenshot the frozen frame and wake the loop again. The
 per-guardian trigger thresholds live in `STAGE_TRIGGER`, calibrated against the
 min/max region sizes the run logs; if no play is caught within a few loops the
-settled panel is shot instead (and the run says so). Only an effect that lives
+settled panel is shot instead (and the run says so). The four spectacle moves
+(Landau's beam/eruption, Skłodowska-Curie's meteor/nova) are caught on their
+own particles instead: a stage carrying at least a per-panel `particleTrigger`
+of live particles from the preview's emitters is mid-play by definition, with
+no readback lag, so those panels (and the Moves station) pass a size trigger
+that never fires and let the particle count pick the frame -- set above the
+meteor's summon motes so its rock is caught in the air. The watch is bounded in
+game time rather than wall time, since a heavy world's scene clock runs several
+times slower than the wall clock under software WebGL. Only an effect that lives
 for a good fraction of a second can be caught this way, since the region
 readback lags the frame it measures, which is why the Moves-station shot
 previews an Ultimate meteor rather than an ordinary strike. The shots

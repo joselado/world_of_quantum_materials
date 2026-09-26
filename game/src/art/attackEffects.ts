@@ -25,10 +25,9 @@ import {
   playBraid,
   playSplit,
   playBurst,
-  playBeam,
-  playEruption,
   playImpactShockwave,
 } from './attackShapes';
+import { playBeam, playEruption } from './attackAnalytics';
 import { playMeteor, playNova, METEOR_TOTAL_MS, NOVA_TOTAL_MS } from './attackUltimates';
 import { fxDelayedCall } from './attackFx';
 

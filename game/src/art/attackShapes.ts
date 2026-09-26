@@ -21,9 +21,11 @@ export const WINDUP_MS = 90;
 // impact -> aftermath, see METEOR_TOTAL_MS/NOVA_TOTAL_MS there) rather than
 // the flat WINDUP_MS + TRAVEL_MS[shape] + IMPACT_MS formula every other
 // shape uses, since that formula doesn't scale to a multi-second sequence.
-// Every single-beat shape keeps WINDUP_MS + its travel + IMPACT_MS within
+// Every ordinary shape keeps WINDUP_MS + its travel + IMPACT_MS within
 // ~900ms; mass (550) is deliberately the slowest silhouette of the ordinary
-// set, lattice/bolt the quickest.
+// set, lattice/bolt the quickest. Landau's beam/eruption run a little
+// longer (art/attackAnalytics.ts): each has a telegraph, a strike and a
+// dying-away to fit inside its one beat.
 export const TRAVEL_MS: Record<AttackShape, number> = {
   bolt: 340,
   lattice: 380,
@@ -42,8 +44,8 @@ export const TRAVEL_MS: Record<AttackShape, number> = {
   braid: 460,
   split: 440,
   burst: 400,
-  beam: 520,
-  eruption: 480,
+  beam: 640,
+  eruption: 600,
   meteor: 5200,
   nova: 4800,
 };
@@ -173,38 +175,6 @@ export function drawArcRing(
   }
 }
 
-// Radiating slivers that taper to a point, replacing a fan of constant-width
-// lines -- the same treatment playImpactShockwave gives its debris, at the
-// scale a summon's ground-crack rays need.
-export function drawTaperedRays(
-  g: Phaser.GameObjects.Graphics,
-  color: number,
-  x: number,
-  y: number,
-  count: number,
-  inner: number,
-  outer: number,
-  width: number,
-  alpha: number,
-  flatten = 1
-) {
-  if (alpha <= 0) return;
-  g.fillStyle(color, alpha);
-  for (let i = 0; i < count; i++) {
-    const ang = (i / count) * Math.PI * 2 + 0.13;
-    const cos = Math.cos(ang);
-    const sin = Math.sin(ang);
-    g.fillTriangle(
-      x + cos * outer,
-      y + sin * outer * flatten,
-      x + cos * inner - sin * width,
-      y + (sin * inner + cos * width) * flatten,
-      x + cos * inner + sin * width,
-      y + (sin * inner - cos * width) * flatten
-    );
-  }
-}
-
 // A gathering of sparks pulled inward to a brightening core at the
 // attacker's own position, right before the effect launches -- an inhale, so
 // the launch reads as something released rather than something appearing.
@@ -248,7 +218,7 @@ export function playWindup(
 // hit came in. Only ever produced by a travelling shape out of its own
 // launch-latched origin and live destination, so it carries no live
 // dependency on the attacker.
-interface Direction {
+export interface Direction {
   x: number;
   y: number;
 }
@@ -1317,251 +1287,6 @@ export function playBraid(
     onComplete: () => {
       g.destroy();
       onImpact?.(arrivalDirection(origin, to, scale));
-    },
-  });
-}
-
-// One layer of a falling column of light, drawn as a filled path whose
-// half-width varies down its own height rather than as an axis-aligned
-// rectangle: it narrows at the sky end and flares toward the ground, with a
-// slow travelling waist so the light reads as having air and movement in it.
-// `sway` bows the whole layer sideways by a phase that also varies with
-// height, which is what makes the two side-rays wrap around the main column
-// instead of sliding past it. `x` is resolved from the live anchor on every
-// call, so the whole column tracks the target.
-const COLUMN_SAMPLES = 10;
-function drawColumn(
-  g: Phaser.GameObjects.Graphics,
-  color: number,
-  at: EffectAnchor,
-  topY: number,
-  bottomY: number,
-  halfWidth: number,
-  alpha: number,
-  t: number,
-  sway: number
-) {
-  if (bottomY <= topY || alpha <= 0) return;
-  const span = bottomY - topY;
-  const edge = (i: number, side: number) => {
-    const u = i / (COLUMN_SAMPLES - 1);
-    const w = halfWidth * (0.45 + 0.55 * Math.pow(u, 1.4)) + 3 * Math.sin(u * 7 + t * 9);
-    const offset = sway * Math.sin(u * 3 + t * 20);
-    return { x: at.x + offset + side * w, y: topY + u * span };
-  };
-  g.fillStyle(color, alpha);
-  g.beginPath();
-  const start = edge(0, -1);
-  g.moveTo(start.x, start.y);
-  for (let i = 1; i < COLUMN_SAMPLES; i++) {
-    const p = edge(i, -1);
-    g.lineTo(p.x, p.y);
-  }
-  for (let i = COLUMN_SAMPLES - 1; i >= 0; i--) {
-    const p = edge(i, 1);
-    g.lineTo(p.x, p.y);
-  }
-  g.closePath();
-  g.fillPath();
-}
-
-// A jet of light rising from the ground: a tapered filled path, widest at
-// its base and narrowing to a tip, with a slow wobble down its length. The
-// vertical counterpart of drawColumn above, and the reason a geyser no
-// longer needs a pair of axis-aligned rectangles.
-const JET_SAMPLES = 8;
-function drawJet(
-  g: Phaser.GameObjects.Graphics,
-  color: number,
-  x: number,
-  groundY: number,
-  height: number,
-  halfWidth: number,
-  alpha: number,
-  t: number
-) {
-  if (height <= 0 || alpha <= 0) return;
-  const edge = (i: number, side: number) => {
-    const u = i / (JET_SAMPLES - 1);
-    const w = halfWidth * Math.pow(1 - u, 0.7) + 2 * Math.sin(u * 6 + t * 30);
-    return { x: x + Math.sin(u * 4 + t * 12) * 3 + side * w, y: groundY - u * height };
-  };
-  g.fillStyle(color, alpha);
-  g.beginPath();
-  const start = edge(0, -1);
-  g.moveTo(start.x, start.y);
-  for (let i = 1; i < JET_SAMPLES; i++) {
-    const p = edge(i, -1);
-    g.lineTo(p.x, p.y);
-  }
-  for (let i = JET_SAMPLES - 1; i >= 0; i--) {
-    const p = edge(i, 1);
-    g.lineTo(p.x, p.y);
-  }
-  g.closePath();
-  g.fillPath();
-}
-
-// A thick column of light dropping straight down onto the target from off
-// the top of the screen -- takes no attacker anchor at all, since a beam
-// falling out of the sky doesn't originate there. Telegraphs first (a faint,
-// full-height column fades in before the bright head starts falling) so the
-// "incoming" beat reads clearly, then the head travels the height of the
-// field to land. Substantially flashier than the other move classes on
-// purpose -- Landau's own request was "a beam falling from the sky,"
-// clearly reading as stronger than an ordinary hit: a pair of swirling
-// side-rays orbit the main column, a radiant sun expands at the point of
-// origin as the beam charges, and a trail of falling sparks chases the head
-// down.
-export function playBeam(
-  scene: Phaser.Scene,
-  color: number,
-  to: EffectAnchor,
-  onImpact?: (dir?: Direction) => void,
-  depthOffset = 0,
-  scale = 1,
-  // How far below `to` the floor the pool spreads across lies. GROUND_DROP
-  // in a battle, where `to` is the defender's own centre and the floor is at
-  // its feet; 0 when the caller has handed over the floor line itself and
-  // there is no body standing on it (a panel's preview stage,
-  // art/moveEffectPreview.ts), so the column lands on the ground rather than
-  // ending in mid-air where a defender would have been.
-  groundDrop = GROUND_DROP
-) {
-  const g = fxGraphics(scene, 60, depthOffset);
-  const sun = fxGraphics(scene, 59, depthOffset);
-  const originY = -40;
-  fxCounter(scene, depthOffset, {
-    from: 0,
-    to: 1,
-    duration: TRAVEL_MS.beam,
-    // Linear, with the fall shaped inside onUpdate -- an eased counter
-    // spends the whole first third of the travel with the column still
-    // effectively off-screen and its telegraph invisible.
-    ease: 'Linear',
-    onUpdate: (tw) => {
-      const t = tw.getValue() ?? 0;
-      const fall = Math.min(1, t * 1.3);
-      const headY = Phaser.Math.Linear(originY, to.y, fall);
-      const pulse = 0.75 + 0.25 * Math.sin(t * 46);
-      g.clear();
-      // Wide, pulsing telegraph halo -- ramped in on the raw tween so it has
-      // fully arrived by the time the head is a third of the way down,
-      // rather than still fading up as the beam lands.
-      drawColumn(g, color, to, originY, to.y, 34 * scale, 0.22 * Math.min(1, t * 2.5) * pulse, t, 0);
-      // Two side-rays wrapping around the main column, their offset varying
-      // down the column's own height so they visibly spiral rather than
-      // sliding sideways as one rigid pair.
-      drawColumn(g, color, to, originY, headY, 5 * scale, 0.5 * t, t, 20 * scale);
-      drawColumn(g, color, to, originY, headY, 5 * scale, 0.5 * t, t, -20 * scale);
-      // Main column, brighter/wider than the side-rays, flaring toward the
-      // ground so it reads as a shaft of light with air in it.
-      drawColumn(g, color, to, originY, headY, 15 * scale, 0.9, t, 0);
-      // White-hot core.
-      drawColumn(g, 0xffffff, to, originY, headY, 5 * scale, 0.95, t, 0);
-      // Sparks shaken loose from the head, drifting back up the column.
-      for (let i = 0; i < 7; i++) {
-        const sy = headY - i * 16;
-        if (sy < originY) continue;
-        const sx = to.x + Math.sin(t * 34 + i * 1.7) * (14 - i) * scale;
-        g.fillStyle(i % 2 === 0 ? 0xffffff : color, 0.85 - i * 0.11);
-        fillDot(g, sx, sy, (3.2 - i * 0.22) * scale);
-      }
-      // Once the head is down, a pool of light spreading across the ground
-      // where the column meets it, with a few licks curling back up.
-      if (fall >= 1) {
-        const q = Math.min(1, (t - 1 / 1.3) / (1 - 1 / 1.3));
-        const groundY = to.y + groundDrop;
-        g.fillStyle(color, 0.5 * (1 - q));
-        g.fillEllipse(to.x, groundY, (20 + q * 40) * 2 * scale, (20 + q * 40) * 2 * GROUND_ASPECT * scale);
-        for (let i = 0; i < 4; i++) {
-          const side = i % 2 === 0 ? 1 : -1;
-          const spread = (14 + i * 7 + q * 26) * scale * side;
-          g.lineStyle(2.5 * scale, color, 0.6 * (1 - q));
-          g.beginPath();
-          g.moveTo(to.x, groundY);
-          g.lineTo(to.x + spread * 0.6, groundY - 10 * scale);
-          g.lineTo(to.x + spread, groundY - (18 + q * 14) * scale);
-          g.strokePath();
-        }
-      }
-      // Radiant sun expanding at the point of origin as the beam charges.
-      sun.clear();
-      drawBloom(sun, 0xffffff, to.x, originY, (12 + t * 46) * scale, 0.55 * (1 - t));
-      drawAnnulus(sun, color, to.x, originY, (18 + t * 58) * scale, 3 * scale, 0.75 * (1 - t));
-    },
-    onComplete: () => {
-      g.destroy();
-      sun.destroy();
-      onImpact?.({ x: 0, y: 1 });
-    },
-  });
-}
-
-// Shards bursting up and outward from a crack in the ground under the
-// target -- also takes no attacker anchor, since the eruption comes up from
-// beneath the defender rather than travelling from the attacker.
-// Substantially flashier than the other move classes on purpose (Landau's
-// own request): an expanding double shockwave ring on the ground, a bright
-// geyser core punching straight up through the shards, and nearly double the
-// shard count spread wider than an ordinary burst.
-export function playEruption(
-  scene: Phaser.Scene,
-  color: number,
-  to: EffectAnchor,
-  onImpact?: (dir?: Direction) => void,
-  depthOffset = 0,
-  scale = 1,
-  // Same floor-offset argument playBeam takes above, for the same reason:
-  // GROUND_DROP below the defender in a battle, 0 when the caller's `to` is
-  // already the floor line the crack opens in.
-  groundDrop = GROUND_DROP
-) {
-  const g = fxGraphics(scene, 60, depthOffset);
-  const n = 18;
-  // Seeded once per cast: without the jitter the shards fly as an evenly
-  // spaced string of identical dots on one common arc, which reads as
-  // decoration rather than as debris.
-  const shards = Array.from({ length: n }, (_, i) => ({
-    angle: -Math.PI / 2 + ((i / (n - 1)) - 0.5) * 2.3 + (Math.random() - 0.5) * 0.4,
-    speed: 0.65 + Math.random() * 0.7,
-    size: 0.8 + Math.random() * 0.5,
-    heavy: i % 3 !== 0,
-  }));
-  fxCounter(scene, depthOffset, {
-    from: 0,
-    to: 1,
-    duration: TRAVEL_MS.eruption,
-    ease: 'Cubic.easeOut',
-    onUpdate: (tw) => {
-      const t = tw.getValue() ?? 0;
-      const groundY = to.y + groundDrop;
-      g.clear();
-      // Expanding shockwave rings spreading out across the floor.
-      drawAnnulus(g, color, to.x, groundY, (16 + t * 76) * scale, 3 * scale, 0.85 * (1 - t), GROUND_ASPECT);
-      drawAnnulus(g, 0xffffff, to.x, groundY, (10 + t * 54) * scale, 2.5 * scale, 0.5 * (1 - t), GROUND_ASPECT);
-      // Crack glow opening in the ground.
-      g.fillStyle(color, 0.65 * (1 - t));
-      g.fillEllipse(to.x, groundY, (74 + t * 54) * scale, (74 + t * 54) * GROUND_ASPECT * scale);
-      // Geyser jet: a tapered, wavering column that rises and collapses
-      // within the beat rather than freezing at full height and fading.
-      const coreH = 110 * Math.sin(Math.min(1, t * 1.25) * Math.PI) * scale;
-      drawJet(g, color, to.x, groundY, coreH, 14 * scale, 0.55 * (1 - t * 0.4), t);
-      drawJet(g, 0xffffff, to.x, groundY, coreH * 0.94, 5 * scale, 0.85 * (1 - t * 0.4), t);
-      // Debris thrown up and out, the heavier pieces arcing over and falling
-      // back rather than every piece flying straight forever.
-      for (const shard of shards) {
-        const dist = t * 100 * shard.speed * scale;
-        const px = to.x + Math.cos(shard.angle) * dist * 0.6;
-        const py = groundY + Math.sin(shard.angle) * dist + (shard.heavy ? 44 * t * t * scale : 0);
-        const trail = (7 + shard.speed * 3) * scale;
-        g.lineStyle((3 - t * 1.5) * shard.size * scale, shard.heavy ? color : 0xffffff, 0.95 * (1 - t * 0.6));
-        g.lineBetween(px - Math.cos(shard.angle) * trail * 0.6, py - Math.sin(shard.angle) * trail, px, py);
-      }
-    },
-    onComplete: () => {
-      g.destroy();
-      onImpact?.({ x: 0, y: -1 });
     },
   });
 }

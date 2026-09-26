@@ -226,9 +226,22 @@ async function main() {
     // translucent panel (the stage is not opaque) -- a false trigger costs
     // nothing, since a frame frozen on background flicker looks the same as
     // the settled panel.
-    const freezeOnStagePlay = async (sceneKey, trigger, label, intervalMs = 70) => {
+    //
+    // The four spectacle moves (Landau's beam/eruption, Skłodowska-Curie's
+    // meteor/nova) are caught another way: they throw particles
+    // (art/attackFx.ts's fxEmitter), and a stage carrying at least
+    // `particleTrigger` live ones is mid-play by definition -- the meteor's
+    // fire trail, the beam's ember spray -- with no readback lag at all. Their
+    // panels pass a size trigger high enough never to fire, so the particle
+    // count alone decides the frame. A preview's objects sit in the
+    // PREVIEW_DEPTH_OFFSET band (art/moveEffectPreview.ts), which is how the
+    // count is scoped to the stage. The count is per panel: a beam's ember
+    // spray peaks around thirty, a meteor's fire trail well past forty, and
+    // its summon rune's motes just under thirty, so the meteor is caught with
+    // its rock in the air rather than while the rune is still being drawn.
+    const freezeOnStagePlay = async (sceneKey, trigger, label, intervalMs = 70, particleTrigger = 30) => {
       const result = await page.evaluate(
-        async ({ sceneKey, trigger, intervalMs }) => {
+        async ({ sceneKey, trigger, intervalMs, particleTrigger }) => {
           const g = window.__game;
           const sc = g.scene.getScene(sceneKey);
           const findStage = (list) => {
@@ -260,24 +273,36 @@ async function main() {
           let min = Infinity;
           let max = 0;
           let samples = 0;
+          let maxParticles = 0;
+          // Bounded in game time, not wall time: under software WebGL a heavy
+          // world's scene clock runs several times slower than the wall
+          // clock, and a meteor's charge is over two seconds of game time
+          // into its play. The wall cap is a runaway guard.
           const t0 = Date.now();
-          while (Date.now() - t0 < 8000) {
+          const g0 = sc.time.now;
+          while (sc.time.now - g0 < 12000 && Date.now() - t0 < 60000) {
             const s = await snap();
             samples += 1;
             min = Math.min(min, s);
             max = Math.max(max, s);
+            const particles = sc.children.list.reduce((n, o) => n + (o.depth >= 150 && Array.isArray(o.alive) ? o.alive.length : 0), 0);
+            maxParticles = Math.max(maxParticles, particles);
+            if (particles >= particleTrigger) {
+              g.loop.sleep();
+              return { frozen: true, min, max, particles };
+            }
             if (samples > 3 && s > min * trigger) {
               g.loop.sleep();
-              return { frozen: true, min, max };
+              return { frozen: true, min, max, particles };
             }
             await new Promise((r) => setTimeout(r, intervalMs));
           }
-          return { frozen: false, min, max };
+          return { frozen: false, min, max, maxParticles, samples, gameMs: Math.round(sc.time.now - g0), wallMs: Date.now() - t0 };
         },
-        { sceneKey, trigger, intervalMs }
+        { sceneKey, trigger, intervalMs, particleTrigger }
       );
       if (!result) return false;
-      log(`  stage sizes for ${label}: min ${result.min}, max ${result.max}${result.frozen ? '' : ' -- no play caught, shooting the settled panel'}`);
+      log(`  stage sizes for ${label}: min ${result.min}, max ${result.max}${result.particles ? `, ${result.particles} particles live` : ''}${result.frozen ? '' : ` -- no play caught (peak ${result.maxParticles} particles over ${result.samples} samples, ${result.gameMs}ms game / ${result.wallMs}ms wall), shooting the settled panel`}`);
       return result.frozen;
     };
 
@@ -430,7 +455,7 @@ async function main() {
       });
       await sleep(700);
       if (movesOpened) {
-        const frozenMoves = await freezeOnStagePlay('Hub', 1.35, 'lab moves');
+        const frozenMoves = await freezeOnStagePlay('Hub', 9, 'lab moves', 70, 40);
         await shoot('docs-quasiparticles-moves');
         if (frozenMoves) await page.evaluate(() => window.__game.loop.wake());
         await page.evaluate(() => window.__game.scene.getScene('Hub')['closeDialogue']?.());
@@ -562,9 +587,11 @@ async function main() {
         // illustration.
         const targets = [`docs-guardians-${id}-panel`, `mentor-${id}`];
         if (id === 'majorana') targets.push('docs-hybrids-majorana');
-        // Per-panel trigger for freezeOnStagePlay above.
-        const STAGE_TRIGGER = { noether: 1.03, feynman: 1.5, kondo: 1.05, landau: 1.08, curie: 1.35 };
-        const frozen = id in STAGE_TRIGGER ? await freezeOnStagePlay('Overworld', STAGE_TRIGGER[id], id) : false;
+        // Per-panel trigger for freezeOnStagePlay above; Landau's and
+        // Skłodowska-Curie's panels are caught on live particles instead.
+        const STAGE_TRIGGER = { noether: 1.03, feynman: 1.5, kondo: 1.05, landau: 9, curie: 9 };
+        const PARTICLE_TRIGGER = { landau: 20, curie: 40 };
+        const frozen = id in STAGE_TRIGGER ? await freezeOnStagePlay('Overworld', STAGE_TRIGGER[id], id, 70, PARTICLE_TRIGGER[id] ?? 30) : false;
         const chosen = await page.screenshot();
         for (const t of targets) {
           const file = path.join(SHOT_DIR, `${t}.png`);

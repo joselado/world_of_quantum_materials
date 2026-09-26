@@ -2920,7 +2920,7 @@ world are shaped, since world N's start is world N-1's exit.
 - Reading a chapter never marks it reached: nothing on this path writes `tutorialTipsSeen` or
   `worldLoreSeen`, so opening the premise can't suppress the Lab's own welcome popup.
 
-## Attack effects (`art/attackEffects.ts` + `art/attackAnchors.ts`/`attackStyles.ts`/`attackShapes.ts`/`attackUltimates.ts`, `audio/sfx.ts`, `scenes/BattleScene.ts`)
+## Attack effects (`art/attackEffects.ts` + `art/attackAnchors.ts`/`attackStyles.ts`/`attackShapes.ts`/`attackAnalytics.ts`/`attackUltimates.ts`/`attackFx.ts`/`fxTextures.ts`, `audio/sfx.ts`, `scenes/BattleScene.ts`)
 
 - **Each side of an effect is anchored to its own crystal, live.** The attacker's half (the
   windup flash) and the target's half (the impact shockwave, the falling beam, the ground
@@ -2934,22 +2934,48 @@ world are shaped, since world N's start is world N-1's exit.
   furniture (where each crystal is first placed, its HP-bar column, its ground shadow); effects
   follow the crystals themselves, which include their own idle bob.
 - **Curves and falloff over hard geometry**, the same direction the battle backdrop and the
-  overworld's contour-smoothed terrain take. Every shape is built from a small shared drawing
-  vocabulary in `art/attackShapes.ts` rather than from bare strokes: `drawGlow` fakes a soft
-  radial falloff as four concentric discs whose radii grow geometrically while their alphas
+  overworld's contour-smoothed terrain take. Every ordinary shape is built from a small shared
+  drawing vocabulary in `art/attackShapes.ts` rather than from bare strokes: `drawGlow` fakes a
+  soft radial falloff as four concentric discs whose radii grow geometrically while their alphas
   roughly halve (a Graphics fill is flat, so this is how a gradient gets faked); `drawBloom` is
   its two-layer counterpart for something that already has a body of its own, since drawGlow's
   wide falloff at a radius of tens of pixels would wash out the backdrop; `drawAnnulus` draws a
   wavefront as three bell-weighted concentric strokes so its edge falls off either side of the
   crest instead of reading as a wire circle; `drawArcRing` builds a runic ring from
   counter-rotating arc fragments, ticks and orbiting motes rather than a closed polygon with
-  spokes; `drawTaperedRays` and the impact debris draw as slivers that narrow to a point rather
-  than lines of constant width; `drawColumn`/`drawJet` build a falling beam and a rising geyser
-  as sampled filled paths whose width varies along their length, with a slow travelling waist,
-  rather than as axis-aligned rectangles. Anything drawn on the floor is squashed to
+  spokes; the impact debris draws as slivers that narrow to a point rather than lines of
+  constant width. Anything drawn on the floor is squashed to
   `GROUND_ASPECT` and planted `GROUND_DROP` below its anchor -- the same ground plane the
   crystals' own shadows sit on, so a summon circle or a ground shockwave lies on the floor
   under the crystal instead of wrapping around its middle.
+- **The four spectacle moves draw with painted material, not flat fills.** Landau's Analytic
+  pair and Skłodowska-Curie's Ultimate pair are light, rock, smoke and dust rather than
+  silhouettes, and a flat fill has none of the soft edges, real falloff, grain and shading
+  those need. `art/fxTextures.ts` paints ten small textures once, at boot
+  (`TitleScene.create`, so no battle pays for them on a first cast), with the 2D canvas's own
+  gradients and a little value noise: a soft glow, a hot spark, a soft-edged ring, a lumpy
+  smoke puff, three shaded rock chunks (lit from the upper left, dark facets, grain, a dark
+  rim, painted at 160px so a leveled meteor's body stays crisp at several times a plain one's
+  size), a shaft of light narrow at the top and flaring downward, a horizontal lens streak, a
+  starburst flare, irregular rays and a tileable strip of vertical turbulence. Every one is
+  white with its shape in the alpha channel, so a tint is the color: the same glow tinted a
+  move's class color and blended additively is that class's light, and the same puff tinted
+  grey and blended normally is smoke. The effects use them as tinted images (a beam's shaft,
+  a shockwave, a crater's glow), tile sprites (the turbulence scrolling along a beam or up a
+  geyser) and particle emitters (sparks, embers, fire, smoke, dust, rock debris under gravity
+  that tumbles and dies the frame it falls back through the floor), all created through
+  `art/attackFx.ts` so a preview's clip and cancel reach them like any Graphics. Blend follows
+  what a thing is: light is `ADD`, rock, smoke and dust are `NORMAL`, and the meteor's shadow
+  on the floor is `MULTIPLY`, so a bright ground plane still darkens under it. Particle sizes
+  are chosen in pixels against the texture they scale (a 128px glow at scale 0.2 is a 26px
+  tongue of fire, not a 96px balloon), smoke and dust are mid greys rather than near-black so
+  they read against the dark arena, and emission rates run through `FxSpout`, which
+  integrates a per-second rate over the scene clock so a stream is the same density at any
+  frame rate. Every emitter is left at the origin and fed explicit world points, since an
+  emitter's particles live in its local space and a trail has to stay in the air where it was
+  left rather than follow the falling mass that shed it. These textures are plain canvas
+  textures, never `RenderTexture`/`DynamicTexture`, so a lost WebGL context re-uploads them
+  like any loaded image (`DEVELOPMENT.md`'s context-loss test).
 - **Every ordinary move renders its own distinct silhouette, one per move class** -- and each
   ordinary move is one `MoveClass`, so this is one animation per move, not just a color swap.
   Identity rides on shape along four orthogonal axes: topology/count; path geometry (the
@@ -2997,9 +3023,9 @@ world are shaped, since world N's start is world N-1's exit.
   fixed-size, larger, slower, sagging body; sever is asymmetric where split is symmetric. A
   **burst** silhouette (a loose converge/scatter particle cluster) stays in the shape
   vocabulary and playable via override, with no ordinary class mapped to it.
-  Each class also has its own color (e.g. orange for Phonon Beam, red for Magnon Wave). All
-  shapes render additive-blended (`Phaser.BlendModes.ADD`) so they glow instead of reading as
-  flat shapes -- which does mean a bright class color over a bright sky washes toward white;
+  Each class also has its own color (e.g. orange for Phonon Beam, red for Magnon Wave). Every
+  ordinary shape renders additive-blended (`Phaser.BlendModes.ADD`) so it glows instead of reading as
+  a flat shape -- which does mean a bright class color over a bright sky washes toward white;
   the fix used here is to keep white cores small and let the colored falloff carry the hue,
   since a second, normally-blended Graphics per effect would cost an object per shape.
 - Kondo's three self-buff moves (Spin Screening, Charge Screening, Symmetry Cloud) share
@@ -3017,27 +3043,30 @@ world are shaped, since world N's start is world N-1's exit.
   effects" above), which is also what tells the three moves apart visually, so the shared
   cast ring needs no `ANALYTIC_SHAPES`-style per-move override for this class.
 - Landau's two Analytic moves break the "one shape per class" rule on purpose, each with
-  its own silhouette rather than sharing whichever ordinary
+  its own sequence rather than sharing whichever ordinary
   `EFFECT_STYLE` shape their currently-tuned quasiparticle carries (`art/attackStyles.ts`'s
   `ANALYTIC_SHAPES`, keyed by move id, not class), and each substantially more elaborate than
   the ordinary per-class silhouettes -- deliberately reading as clearly stronger than an
-  ordinary hit, not just a bigger one. **The beam move** (`skyfallBeam`, `playBeam`) drops a multi-layer
-  column of light from off the top of the screen straight down onto the target: a wide pulsing
-  telegraph halo fades in first (ramped in early enough to have arrived well before the beam
-  lands), then a white-hot core inside a brighter, wider outer column falls the rest of the
-  way, flanked by two side-rays that wrap around it, trailed by a chain of sparks, and closed
-  out by a pool of light spreading across the ground where the column meets it with a few licks
-  curling back up. Every layer is a sampled path that narrows at the sky end and flares toward
-  the ground, so the shaft reads as light with air in it. Meanwhile a radiant sun grows at the
-  point of origin as the beam charges. **The eruption move** (`groundEruption`, `playEruption`)
-  opens a crack in the floor under the target: shockwave rings spreading out across the ground
-  plane, a tapered wavering geyser that rises and collapses within the beat rather than
-  freezing at full height, and nearly twice the burst silhouette's debris count (18 vs. 12)
-  thrown up and out as streaks, seeded per cast so no two casts spray alike, with the heavier
-  pieces arcing over and falling back. Neither takes an attacker anchor at all -- a beam falling
-  from the sky and a crack opening in the ground don't originate there. Each
-  still renders in whichever color its own currently-tuned quasiparticle class carries
-  (`EFFECT_STYLE`), same as an ordinary move -- only the silhouette is overridden.
+  ordinary hit, not just a bigger one (`art/attackAnalytics.ts`; both still run on the
+  single-beat contract, one counter tween over their `TRAVEL_MS` with `onImpact` on its
+  completion). **The beam move** (`skyfallBeam`, `playBeam`) drops a column of light from off
+  the top of the screen straight down onto the target: a faint full-height haze and a pool of
+  light spreading on the floor telegraph it while a starburst glare grows just inside the top
+  edge of the frame (the source is seen, not only its shaft), then the head falls on an
+  accelerating curve -- an outer shaft, turbulence scrolling down its length, a white core, a
+  hot head with a lens streak across it, throwing sparks -- lands, and burns on the spot for
+  the rest of the beat: a ring races out across the floor, embers spray up out of the point of
+  contact, dust rolls away along the ground, the shaft flickers, and then it narrows and dies.
+  **The eruption move** (`groundEruption`, `playEruption`) opens a fissure in the floor under
+  the target: glowing cracks (seeded per cast, drawn as a wide faint stroke under a thin bright
+  one) race out across the ground plane over a growing underlight, then the floor blows -- a
+  flash, a geyser of light with turbulence streaming up it and fire boiling off its top, rock
+  chunks thrown up under gravity that tumble and fall back, embers, a ring of dust racing out
+  along the ground and a plume of smoke rising and thinning as the geyser collapses inside the
+  beat rather than freezing at full height. Neither takes an attacker anchor at all -- a beam
+  falling from the sky and a crack opening in the ground don't originate there. Each still
+  renders its light in whichever color its own currently-tuned quasiparticle class carries
+  (`EFFECT_STYLE`), same as an ordinary move; rock, smoke and dust keep their own greys.
 - Skłodowska-Curie's two Ultimate moves (`ultimateMeteor`/`ultimateNova`) get the same
   per-move-id shape-override treatment (`ULTIMATE_SHAPES`), but run their own multi-phase
   summon→charge→impact→aftermath sequence (`playMeteor`/`playNova`) rather than the shared
@@ -3045,22 +3074,43 @@ world are shaped, since world N's start is world N-1's exit.
   4-6 seconds total, dramatically longer than any other move's effect, with `onImpact` firing
   at the sequence's own strike beat and `onComplete` only once the full aftermath decay
   finishes (see `BattleScene`'s "Ultimate moves defer damage/turn-handoff" in `CODEMAP.md`).
-  A whiff (any wrong answer in `showUltimateQuestions`) still plays the same summon/charge
-  phases, with one tell -- the held strain (the meteor's tremble, the nova's core pulse) goes
-  slack across the last stretch of the charge -- and then takes the summoned mass apart in
-  mid-air rather than striking with it: desaturated fragments drifting outward and fading,
-  nothing reaching the ground, a fizzle cue instead of the impact thud, and no shockwave,
-  crystal flash or camera shake. The meteor's rune is inscribed flat on the ground under the target and its mass punches
-  into frame fast, then *brakes* into a straining, trembling hover for the last stretch before
-  it drops -- the arrival is shaped inside the phase rather than by easing the phase's own
-  counter, which would spend most of the charge with the mass still off-screen. The nova's
-  rune stands upright around the target instead, and its charge pulls motes inward on their own
-  individual clocks, each respawning further out as it reaches the core, so it reads as matter
-  accreting rather than as one ring contracting.
+  **The meteor** inscribes a glowing rune flat on the floor under the target (sparks lifting
+  off it as it is drawn, dust stirring inside it), then a rock the size of the target punches
+  into frame from above -- a shaded chunk turning slowly, its leading face heated molten,
+  wrapped in the move's light, trailing fire and smoke, small chunks orbiting it -- and
+  *brakes* into a straining, trembling hover for the last stretch before it drops, its shadow
+  tightening and darkening on the floor as it comes down; the arrival is shaped inside the
+  phase rather than by easing the phase's own counter, which would spend most of the charge
+  with the mass still off-screen. The slam is a blinding flash, a shockwave and a slower ring
+  of dust racing out across the floor, a burst of rays, a lens streak across the point of
+  contact, rock thrown up that tumbles and falls back, embers, fire and a rolling cloud of
+  dust, over a crater left glowing that smokes and sheds embers through the aftermath. **The
+  nova**'s rune stands upright around the target instead, over a growing starburst; its charge
+  pulls sparks inward from all around the core, each aimed at it on emit and given exactly the
+  speed that lands it there at the end of its life, brightening from the move's color to white
+  as it arrives (streaks of light drawn in behind them, each on its own clock), while an
+  accretion disc forms around the core at a tilt to the camera with arcs spinning in its
+  plane, so it reads as matter accreting rather than as one ring contracting. The blast is a
+  flash, a white shockwave with a slower colored one behind it, a lens streak clean across the
+  field, rays, sparks flung out in every direction and glowing gas billowing outward that
+  lingers as the remnant while the core cools from white into the move's color and shrinks
+  away. A whiff (any wrong answer in `showUltimateQuestions`) still plays the same
+  summon/charge phases, with one tell -- the held strain (the meteor's tremble, the nova's
+  core pulse) goes slack across the last stretch of the charge -- and then takes the summoned
+  mass apart in mid-air rather than striking with it, in one flat grey: the meteor's light
+  dies, the rock dims and shrinks behind a puff of grey smoke and chunks of it fly outward
+  and tumble; the nova's infall runs backwards as grey streaks and sparks streaming out. Nothing
+  reaches the ground, a fizzle cue plays instead of the impact thud, and there is no
+  shockwave, crystal flash or camera shake. Each phase creates and destroys its own objects;
+  what a phase leaves behind on purpose is its emitters' last particles (`fxRetire` stops
+  emission and destroys the emitter once its longest-lived particle can have died), so a trail
+  of smoke hangs in the air over the impact and embers are still rising when the aftermath ends.
 - The full beat, in order: a ~90ms windup at the attacker's own position -- sparks pulled
   *inward* to a brightening core, an inhale, so brightness peaks exactly on the frame the shot
   is released -- the travelling effect itself (`art/attackShapes.ts`'s `TRAVEL_MS`, 340-550ms
-  depending on shape -- mass is the slowest at 550ms, bolt the quickest at 340ms), then a fire-and-forget impact shockwave
+  for the ordinary shapes -- mass is the slowest at 550ms, bolt the quickest at 340ms -- and
+  640ms/600ms for Landau's beam/eruption, which fit a telegraph, a strike and a die-away
+  inside their one beat), then a fire-and-forget impact shockwave
   (~260ms) at the target: a soft flash, a wavefront, and ten tapering debris slivers seeded per
   impact so none of them reads as an evenly spoked asterisk. When the landing shape knows which
   way it came in (a travelling head hands over its own arrival heading, a beam comes down, an
@@ -3080,9 +3130,10 @@ world are shaped, since world N's start is world N-1's exit.
   rather than against `TRAVEL_MS`. A leveled move (below) repeats the whole beat several times
   but wires only its last repeat's landing to `onImpact`, so the gap still starts from the final
   hit; the earlier repeats' decoration is what overlaps the next turn's own windup.
-  Drawn fresh each frame with a `Graphics` object cleared and redrawn every tween tick (same
-  pattern as the overworld's per-frame ground mesh) rather than a sprite, then destroyed on
-  arrival/decay.
+  An ordinary shape is drawn fresh each frame with a `Graphics` object cleared and redrawn
+  every tween tick (same pattern as the overworld's per-frame ground mesh), then destroyed on
+  arrival/decay; the four spectacle moves reposition their textured images and feed their
+  emitters on the same tick.
 - **A leveled move (Feynman's move-leveling, §5, World 7) escalates its own animation into
   several overlapping, growing repeats of the same single hit** -- purely presentational, since
   the real power bump (`MOVE_LEVEL_MULTIPLIERS`, a flat 1.5x/2x/3x) is already folded into the
@@ -3092,7 +3143,9 @@ world are shaped, since world N's start is world N-1's exit.
   finite cap that reads as "a cascade, too many to track" rather than a literal unbounded loop).
   Each successive repeat renders visibly bigger than the last (`LEVEL_TRIGGER_SCALES`, `1,
   1.25, 1.5, 3.5` -- a real multiplier on every shape's own stroke widths/radii/lengths, not
-  just impact-sfx volume) and starts a bit after the previous one begins rather than after it
+  just impact-sfx volume, while particle counts and emission rates follow it only up to
+  `QUANTITY_CAP` (1.6), so a 3.5x repeat is three and a half times the size and not three and
+  a half times the particles) and starts a bit after the previous one begins rather than after it
   finishes, so the repeats visibly overlap instead of playing back-to-back with gaps. The
   stagger differs by shape family: an ordinary/Analytic shape (every single-beat silhouette)
   staggers at 40% of its own `TRAVEL_MS`, so a fast bolt cascades quickly and a slower mass or
