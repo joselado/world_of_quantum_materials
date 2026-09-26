@@ -21,6 +21,17 @@ export interface GridPoint {
   y: number;
 }
 
+// An impassable feature a generator built its shape around, as the terrain
+// receives it: the centre tile the feature is drawn at, and the radius of
+// the disc that was punched for it, in tiles (0 for a single-tile feature
+// such as one of the Stone Lattice's column bases). The radius comes from
+// the generator rather than being measured off the finished grid, for the
+// same reason the core does: a blocked disc and an ordinary pinch of
+// corridor look alike from the outside.
+export interface FeatureCore extends GridPoint {
+  radius: number;
+}
+
 // The one multiplicative factor the Lab's Settings station's world-size knob
 // (data/settings.ts's WORLD_SIZE_PRESETS) turns into an actual map: every
 // length a generator is written in -- corridor widths, branch lengths, spiral
@@ -100,10 +111,12 @@ export interface GeneratedMap {
   // blocked tile with a walkable ring is what a lot of ordinary corridor
   // pinches also look like, so inferring it from the neighbourhood puts
   // features where there are none and misses the ones the world is named for.
-  // Worlds 5 and 8 are the only generators that place them; World 10 inherits
+  // Worlds 2, 5 and 8 are the generators that place them; World 10 inherits
   // World 5's list along with its shape, and simply never draws anything at
-  // them, its surround being a different material.
-  featureCores: GridPoint[];
+  // them, its surround being a different material. Each carries the radius
+  // it was punched at, which is how the Vortex Glacier draws a whole vortex
+  // across the pit rather than a mark on its centre tile.
+  featureCores: FeatureCore[];
 }
 
 export function makeGrid(gridW: number, gridH: number): boolean[][] {
@@ -320,23 +333,24 @@ export function discIsland(centerX: number, centerY: number, radius: number): Gr
   return tiles;
 }
 
-// Punches the first candidate that fits and stops, returning its core -- for a
-// feature the world is *named* for, where "dropped because it didn't fit" is
-// not an acceptable outcome. The caller offers the shape it wants first and
-// progressively humbler ones after it (a row or two along, a size smaller), so
-// a glacier always gets its vortex even on a roll of the ground that leaves no
-// room for the vortex it would have preferred. Returns null only if nothing
-// offered fits at all.
+// Punches the first candidate that fits and stops, returning its core and
+// which candidate it was -- for a feature the world is *named* for, where
+// "dropped because it didn't fit" is not an acceptable outcome. The caller
+// offers the shape it wants first and progressively humbler ones after it (a
+// row or two along, a size smaller), so a glacier always gets its vortex even
+// on a roll of the ground that leaves no room for the vortex it would have
+// preferred; the index is how it then knows which size it got. Returns null
+// only if nothing offered fits at all.
 export function punchFirst(
   walkable: boolean[][],
   gridW: number,
   gridH: number,
   candidates: GridPoint[][],
   clearance: number = MIN_SEGMENT_WIDTH
-): GridPoint | null {
-  for (const island of candidates) {
-    const cores = punchIslands(walkable, gridW, gridH, [island], clearance);
-    if (cores.length) return cores[0];
+): { core: GridPoint; index: number } | null {
+  for (let index = 0; index < candidates.length; index++) {
+    const cores = punchIslands(walkable, gridW, gridH, [candidates[index]], clearance);
+    if (cores.length) return { core: cores[0], index };
   }
   return null;
 }

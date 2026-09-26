@@ -570,10 +570,21 @@ under one figure reads as floating even when neither is wrong on its own.
     wash over the frame: a strike is momentarily the brightest thing on screen and gameplay
     owns the extremes, so the route and the player's crystal keep their values through one.
   - **'ice'** (the Vortex Glacier, world 5): the frozen lake, still and faceted, plus the
-    vortex pits inside it -- a dark rim and a slow, cold glow of trapped flux, drawn on each
-    tile the generator placed as a vortex core and kept blocked while the sheet parted
-    around it. The field is expelled everywhere else in this world, so the pits are the only
-    place it can be, and the glow is that field made visible where the physics puts it.
+    vortex pits punched through the sheet. A pit is an Abrikosov vortex drawn whole rather
+    than tile by tile (`drawVortices`, called from `drawTerrain` after the tile pass and
+    under the atmosphere, over the disc the generator punched and kept blocked): a bowl of
+    nested darkening discs from the rim in, two faint closed streamlines, four pale
+    streamlines spiralling from the rim into the core -- widest and brightest at the core,
+    decaying outward over the penetration depth -- and the core itself, dark where the
+    condensate is gone with the trapped flux glowing in it on a slow pulse. The arms turn
+    together once every twelve seconds at a constant rate, a persistent current, in the same
+    sense in every pit. Every point is generated on the ground plane in tiles around the
+    core and projected with the tile projection, so the swirl foreshortens with the pit and
+    stands still in the world; the pit's own tiles draw no facets under it, so the
+    streamlines are the only lines in the bowl, and a lip of lake between the bowl and the
+    sheet carries the boundary's own rim light. The field is expelled everywhere else in
+    this world, so the pits are the only place it can be, and the glow is that field made
+    visible where the physics puts it.
   - **'shards'** (the Iron Steppe, world 6): leaning iron blades, all tilted the same way and
     flipping across a domain wall that drifts, so shards reverse while the player watches.
     Their lit edge is aurora green -- the only light this world has, and emitted rather than

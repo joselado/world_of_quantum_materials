@@ -1881,6 +1881,10 @@ export class BattleScene extends Phaser.Scene {
         at(cell.x - cell.w * 0.5, cell.bot),
       ],
       featureCore: core,
+      // The arena's stand has no generator behind it, so no feature reaches
+      // across its tiles; the one material that draws its feature whole (the
+      // Vortex Glacier's pits) has nothing to draw here either way.
+      feature: null,
       cx,
       cy,
       s,

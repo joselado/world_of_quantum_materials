@@ -742,7 +742,12 @@ which question a player will see.
 
 Framing rules baked in: a world is shot from the **middle of its corridor**,
 walked in with the game's own movement so the camera follows — from the
-entrance a world is mostly its own back-exit sign. A panel whose pane carries a
+entrance a world is mostly its own back-exit sign. Two worlds are then
+reframed on their defining feature, camera moved with the tile: the Vortex
+Glacier from a few rows short of its first pit's near rim, on the pit's column
+(the generator places that pit anywhere from a third of the way up the sheet,
+often past the detail range of a seven-step walk), and the Devouring Mirror
+from the last rows before its pass, where the event horizon is in view. A panel whose pane carries a
 preview stage (Noether, Feynman, Kondo, Landau and Skłodowska-Curie's panels,
 and the Lab's own Moves station) is shot **with its looping move preview
 mid-play**: `freezeOnStagePlay` watches the stage region from inside the page

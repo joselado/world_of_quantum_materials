@@ -507,6 +507,30 @@ async function main() {
             await new Promise((r) => setTimeout(r, 120));
           }
         });
+        // The Vortex Glacier's defining feature is its first pit, which the
+        // generator places anywhere from a third of the way up the sheet, so
+        // a walk of seven steps from the entrance leaves it past the detail
+        // range as often as not. Its shot is taken from a few rows short of
+        // that pit's near rim, on the pit's own column, so the vortex is on
+        // the stage: the nearest walkable tile on that row if the sheet has
+        // drifted off the column there. The camera is moved with the tile,
+        // as for the Devouring Mirror below.
+        if (world === 5) {
+          await page.evaluate(() => {
+            const s = window.__game.scene.getScene('Overworld');
+            const pit = [...s['featureCores']].sort((a, b) => b.y - a.y)[0];
+            if (!pit) return;
+            const y = pit.y + pit.radius + 3;
+            const row = s['walkable'][y];
+            if (!row) return;
+            let x = pit.x;
+            for (let d = 0; d < row.length && !row[x]; d++) x = pit.x + (d % 2 ? -1 : 1) * Math.ceil(d / 2);
+            if (!row[x]) return;
+            s['playerTile'] = { x, y };
+            s['camPos'].x = x;
+            s['camPos'].y = y;
+          });
+        }
         // The Devouring Mirror's defining feature hangs behind its pass and
         // only comes into view over the last rows, so its shot is taken from
         // there: the network on the ground, The Adapted in the throat and the

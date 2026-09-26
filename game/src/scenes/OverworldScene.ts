@@ -80,7 +80,7 @@ import { persistFromRegistry } from '../data/save';
 import type { DiscoveredMaterial } from '../data/save';
 import type { Material, MaterialType, MoveClass } from '../data/types';
 import { generateWorldMap } from '../world/mapgen';
-import type { GridPoint } from '../world/mapgen';
+import type { FeatureCore, GridPoint } from '../world/mapgen';
 import { PASS_HALF_WIDTH, passZoneRows, reachableGround, scaleOfGrid, worldScale } from '../world/generators/shared';
 import type { CorridorRow, WorldScale } from '../world/generators/shared';
 import { fontPx, fontScale, fitProseToBudget } from '../ui/text';
@@ -119,7 +119,7 @@ interface SavedMapState {
   midTile: GridPoint;
   regionColor: (number | null)[][];
   biomeOverride: (number | null)[][];
-  featureCores: GridPoint[];
+  featureCores: FeatureCore[];
   reachedGoal: boolean;
   reachedMiddle: boolean;
   // Respawn bookkeeping (see "Respawning" below): the standing population of
@@ -635,11 +635,11 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // whose generator doesn't use them.
   private regionColor: (number | null)[][] = [];
   private biomeOverride: (number | null)[][] = [];
-  // Impassable tiles the generator built its shape around; the world's own
-  // off-path material draws its named feature at each -- world 5's vortex
-  // pits, world 8's local moments (world/generators/shared.ts's
-  // `featureCores`).
-  private featureCores: GridPoint[] = [];
+  // Impassable tiles the generator built its shape around, each with the
+  // radius it was punched at; the world's own off-path material draws its
+  // named feature at each -- world 5's vortex pits, world 8's local moments
+  // (world/generators/shared.ts's `featureCores`).
+  private featureCores: FeatureCore[] = [];
   // Whole-grid terrain classification and boundary geometry, built on demand
   // by terrainPlan() and dropped in create() once the map for this visit is in
   // place. Phaser reuses the same scene instance across every scene.start, so

@@ -93,7 +93,8 @@ export function generateWorld2Map(gridW: number, gridH: number, start: GridPoint
       }
     }
   }
-  const featureCores = punchIslands(walkable, gridW, gridH, bases);
+  // A base is one tile, so its feature has no reach beyond it.
+  const featureCores = punchIslands(walkable, gridW, gridH, bases).map((core) => ({ ...core, radius: 0 }));
 
   // Both landmarks are read back off the finished floor rather than predicted
   // from the lattice: the widest run on a row is open aisle whatever the

@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import type { Biome } from '../../../art/biomes';
 import type { ProjectedPoint } from '../../../art/perspective';
 import type { TileContour } from '../../../art/contours';
-import type { GridPoint } from '../../../world/mapgen';
+import type { FeatureCore, GridPoint } from '../../../world/mapgen';
 import type { AtmosphereView } from '../sky';
 
 // What a tile's terrain actually is, once the grid has been read: 'path' is
@@ -32,6 +32,19 @@ export interface TerrainTile {
   // ordinary corridor pinch looks like, so inference puts features where the
   // world has none.
   featureCore: boolean;
+  // Set on every tile of a feature's disc, the core included: where the tile
+  // stands relative to the core and how far the feature reaches. The Vortex
+  // Glacier's pit tiles carry this so the tile pass leaves them bare under
+  // the vortex drawn whole across them (materials/ice.ts's drawVortices).
+  feature: TileFeature | null;
+}
+
+// A tile's place inside one of the generator's features, in tiles from the
+// core, with the radius the feature still holds (TerrainPlan.features).
+export interface TileFeature {
+  dx: number;
+  dy: number;
+  radius: number;
 }
 
 // Where a fight started, read off the same plan the corridor is drawn from
@@ -71,6 +84,12 @@ export interface TerrainPlan {
   tiles: TerrainTile[][];
   farEdgeRow: number;
   contours: (TileContour | null)[][];
+  // The generator's features as the finished grid still holds them: every
+  // core the grid left blocked, with the largest radius around it the grid
+  // still has blocked whole. What a material that draws its feature whole
+  // rather than tile by tile walks each frame (materials/ice.ts's
+  // drawVortices).
+  features: FeatureCore[];
 }
 
 // Everything the per-frame paint pass reads, assembled once per frame by the
@@ -102,14 +121,16 @@ export interface TerrainView extends AtmosphereView {
 // `gx`/`gy` are what make a feature stand still in the world rather than on
 // the screen. Anything anchored to the map -- the Iron Steppe's shards
 // leaning one way until the domain wall and the other way past it, the
-// Vortex Glacier's flow-lines bending around a fixed core -- must derive its
+// Vortex Glacier's vortex turning about its fixed core -- must derive its
 // geometry from these; a feature phased off `cx`/`cy` swims across the ground
 // as the camera moves, which is right for a drifting shimmer and wrong for
 // anything the world is supposed to *contain*.
 export interface AccentTile {
   fill: ProjectedPoint[];
-  // Whether this tile is a vortex core, from its TerrainTile (see above).
+  // Whether this tile is a feature's core, and where it stands inside a
+  // feature's disc if it does, both from its TerrainTile (see above).
   featureCore: boolean;
+  feature: TileFeature | null;
   cx: number;
   cy: number;
   s: number;

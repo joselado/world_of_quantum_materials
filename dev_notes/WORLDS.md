@@ -354,21 +354,32 @@ carried by the world's writing and its quiz material rather than by the ground.
 ### 5 — The Vortex Glacier *(superconductivity, Nambu, Majorana)*
 
 An open sheet of ice at overcast twilight, with one or two vortex pits punched
-clean through it. The pits are dark, rim-lit, with a faint cold glow of trapped
-flux down inside each one, and they sit out in the middle of the sheet so the
-way past parts around them and closes again.
+clean through it. Each pit is a vortex, drawn as one: a dark, rim-lit bowl
+falling toward a small normal core where the trapped flux glows, and inside
+the bowl the persistent supercurrent that circulates around that flux — pale
+streamlines spiralling in from the rim to the core, densest and brightest at
+the core and thinning outward over the penetration depth, the whole pattern
+turning slowly and steadily, never faster and never slower, because a
+persistent current does not decay. Every pit turns in the same sense, since
+the trapped flux all points one way. The core is the only light this world
+has. The pits sit out in the middle of the sheet so the way past parts around
+them and closes again.
 
-The winding is left to the geometry rather than drawn: a supercurrent flows
-everywhere in the condensate and circulates around a trapped flux line because
-there is no way through it, and that is exactly what the player does here.
+The player's own winding is left to the geometry rather than drawn: a
+supercurrent flows everywhere in the condensate and circulates around a
+trapped flux line because there is no way through it, and that is exactly what
+the player does here. No spiral is painted on the walkable ice to follow; the
+circulation that *is* drawn lives inside the pit, where the player cannot go,
+and is the vortex itself.
 
-Field expulsion is drawn twice over, and the two halves say the same thing. The
-ice itself is swept: every tile carries pale flow-lines that bow away from the
-bulk and converge only into the pits, so the ground the player walks on is the
-field being pushed out, line by line. The pits are where that push fails — the
-cores, where the trapped flux still glows, the only places any light survives.
-The world is *the place that pushes something invisible away from itself*, told
-by the direction the ice is combed and by where the glow is left standing.
+Field expulsion is told by where the light is, not by a pattern on the floor.
+The walkable ice is one flat, pale, unmarked sheet, as every world's floor is
+(§2's opening rule): nothing is painted on the ground the player walks. The
+field that sheet has pushed out of itself shows only where the push fails —
+the pits, whose cores hold the trapped flux and its glow, the only places any
+light survives, with the supercurrent circling it. The world is *the place that
+pushes something invisible away from itself*, told by a blank sheet and by
+where the glow is left standing in it.
 
 ### 6 — The Iron Steppe *(classical magnetism, magnons)*
 

@@ -12,8 +12,9 @@ import { fillPolygon } from '../../../art/shapes';
 import { TERRAIN_ACCENTS } from './materials';
 import { drawStormStrikes } from './materials/charged';
 import { drawEventHorizon, drawGroundNetwork } from './materials/consuming';
+import { drawVortices } from './materials/ice';
 import { offPathKindOf } from './plan';
-import type { AccentTile, TerrainKind, TerrainTile, TerrainView } from './types';
+import type { AccentTile, TerrainKind, TerrainTile, TerrainView, TileFeature } from './types';
 
 // Thinnest projected row still worth painting, in screen pixels. The
 // projection is asymptotic, so rows keep compressing toward the horizon long
@@ -109,7 +110,7 @@ export function drawTerrain(view: TerrainView) {
         drawBandBoundary(g, tile.biome, y, pFL, pFR, pNR, pNL, depthRatio);
         if (contour) drawContactShadow(g, contour, tile.biome, camX, camY, depthRatio);
         if (GROUND_MOTIFS_ENABLED && depthRatio < DETAIL_MAX_DEPTH && tile.decorate) {
-          decorateTile(g, view.biome, accentTile(false, fill, pFL, pFR, pNR, pNL, x, y, depthRatio, rg.haze, view.playerColor, view.now, tile.regionTint));
+          decorateTile(g, view.biome, accentTile(false, null, fill, pFL, pFR, pNR, pNL, x, y, depthRatio, rg.haze, view.playerColor, view.now, tile.regionTint));
         }
         if (tile.midHighlight) {
           // The glow falls off radially from the guardian's own tile, so the
@@ -129,6 +130,11 @@ export function drawTerrain(view: TerrainView) {
   // alone -- so it is drawn as its own pass over the finished ground, under
   // the atmosphere, from a graph built once per plan.
   if (view.biome.wallTheme === 'consuming') drawGroundNetwork(view);
+  // The Vortex Glacier's pits are each one vortex spanning every tile of
+  // their disc -- a swirl assembled tile by tile would break at every seam --
+  // so they are drawn whole over the finished ground, under the atmosphere,
+  // from the plan's own list of surviving features.
+  if (view.biome.wallTheme === 'ice') drawVortices(view);
   drawDepthHaze(g, view);
   // The Storm Flats' strikes cross the air as well as the ground, so they are
   // drawn over the atmosphere rather than as a per-tile accent inside it --
@@ -284,7 +290,7 @@ function drawMarginTile(view: TerrainView, edge: TerrainTile, gx: number, y: num
 
   if (depthRatio <= DETAIL_MAX_DEPTH) {
     const kind = edge.kind !== 'path' ? edge.kind : offPathKindOf(edge.biome);
-    drawAccent(g, kind, fill, pFL, pFR, pNR, pNL, gx, y, edge.featureCore, depthRatio, rowGround(view, edge.biome, y, depthRatio).haze, view.playerColor, view.now, edge.regionTint);
+    drawAccent(g, kind, fill, pFL, pFR, pNR, pNL, gx, y, edge.featureCore, edge.feature, depthRatio, rowGround(view, edge.biome, y, depthRatio).haze, view.playerColor, view.now, edge.regionTint);
   }
 }
 
@@ -393,7 +399,7 @@ function drawOffPathTile(
   drawBandBoundary(g, tile.biome, gy, pFL, pFR, pNR, pNL, depthRatio);
 
   if (depthRatio <= DETAIL_MAX_DEPTH) {
-    drawAccent(g, tile.kind, fill, pFL, pFR, pNR, pNL, gx, gy, tile.featureCore, depthRatio, rowGround(view, tile.biome, gy, depthRatio).haze, view.playerColor, view.now, tile.regionTint);
+    drawAccent(g, tile.kind, fill, pFL, pFR, pNR, pNL, gx, gy, tile.featureCore, tile.feature, depthRatio, rowGround(view, tile.biome, gy, depthRatio).haze, view.playerColor, view.now, tile.regionTint);
   }
 
   // The impassable side of the contact shadow, over the accent rather than
@@ -416,6 +422,7 @@ function drawAccent(
   gx: number,
   gy: number,
   featureCore: boolean,
+  feature: TileFeature | null,
   depth: number,
   haze: number,
   playerColor: number,
@@ -428,7 +435,7 @@ function drawAccent(
   if (kind === 'consuming') return;
   const accent = TERRAIN_ACCENTS[kind];
   if (!accent) return;
-  accent(g, accentTile(featureCore, fill, pFL, pFR, pNR, pNL, gx, gy, depth, haze, playerColor, now, regionTint));
+  accent(g, accentTile(featureCore, feature, fill, pFL, pFR, pNR, pNL, gx, gy, depth, haze, playerColor, now, regionTint));
 }
 
 // The per-tile geometry every accent and every decoration works from: the
@@ -436,6 +443,7 @@ function drawAccent(
 // on screen, where it sits on the grid, and the clock.
 function accentTile(
   featureCore: boolean,
+  feature: TileFeature | null,
   fill: ProjectedPoint[],
   pFL: ProjectedPoint,
   pFR: ProjectedPoint,
@@ -451,6 +459,7 @@ function accentTile(
 ): AccentTile {
   return {
     featureCore,
+    feature,
     fill,
     cx: (pFL.x + pFR.x + pNR.x + pNL.x) / 4,
     cy: (pFL.y + pFR.y + pNR.y + pNL.y) / 4,

@@ -252,7 +252,7 @@ the counting kind.
 Every carrier on this glacier has paired off and given up whatever it used
 to be alone. What is left is a single wave, one phase, shared across the
 entire field at once. It will not hold a field inside it either. The ice is
-streaked with flow lines all bending away, and what gets pushed out has
+swept clean, every line of it bending away, and what gets pushed out has
 almost nowhere to go. Almost. A phase has to come back to itself when you
 carry it around a circle, never a turn and a half, so a handful of points
 here are simply forbidden. That is where the expelled flux ends up: trapped

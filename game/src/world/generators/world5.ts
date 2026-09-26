@@ -19,6 +19,7 @@
 
 import {
   bandWindow,
+  FeatureCore,
   GeneratedMap,
   GridPoint,
   WorldScale,
@@ -90,20 +91,26 @@ export function generateWorld5Map(gridW: number, gridH: number, start: GridPoint
   // rolled a corridor with no room for a full-sized pit gets a smaller one a
   // few rows along rather than none: the candidates below run from the pit the
   // world wants down to the smallest one still worth winding around.
-  const featureCores: GridPoint[] = [];
+  // The radius each pit was actually punched at travels with its core: the
+  // vortex is drawn across the whole pit (materials/ice.ts), and the pit that
+  // fit may be smaller than the one asked for.
+  const featureCores: FeatureCore[] = [];
   const wanted = scale.tiles(VORTEX_RADIUS, 1);
   const floor = scale.tiles(VORTEX_RADIUS_MIN, 1);
   for (const frac of fracs) {
     const targetY = start.y - Math.round(totalRows * frac);
     const candidates: GridPoint[][] = [];
+    const radii: number[] = [];
     for (let radius = wanted; radius >= floor; radius--) {
       for (const dy of [0, -2, 2, -5, 5, -8, 8]) {
         const pit = pitAt(targetY + dy, radius);
-        if (pit) candidates.push(pit);
+        if (!pit) continue;
+        candidates.push(pit);
+        radii.push(radius);
       }
     }
-    const core = punchFirst(walkable, gridW, gridH, candidates, PASSAGE_MIN);
-    if (core) featureCores.push(core);
+    const punched = punchFirst(walkable, gridW, gridH, candidates, PASSAGE_MIN);
+    if (punched) featureCores.push({ ...punched.core, radius: radii[punched.index] });
   }
 
   const goalBand = bands[bands.length - 1];

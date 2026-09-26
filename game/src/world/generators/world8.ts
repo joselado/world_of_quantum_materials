@@ -24,6 +24,7 @@
 
 import {
   bandWindow,
+  FeatureCore,
   GeneratedMap,
   GridPoint,
   WanderBand,
@@ -111,19 +112,22 @@ export function generateWorld8Map(gridW: number, gridH: number, start: GridPoint
     return discIsland(cx, y, radius);
   };
 
-  const featureCores: GridPoint[] = [];
+  const featureCores: FeatureCore[] = [];
   const widePoolCount = WIDE_POOL_COUNT_MIN + Math.floor(Math.random() * (WIDE_POOL_COUNT_MAX - WIDE_POOL_COUNT_MIN + 1));
   for (let i = 1; i <= widePoolCount; i++) {
     const targetY = start.y - Math.round((totalRows * i) / (widePoolCount + 1));
     const candidates: GridPoint[][] = [];
+    const radii: number[] = [];
     for (let radius = scale.tiles(WIDE_POOL_RADIUS, 1); radius >= scale.tiles(WIDE_POOL_RADIUS_MIN, 1); radius--) {
       for (const dy of [0, -3, 3, -6, 6]) {
         const pool = poolAt(targetY + dy, radius);
-        if (pool) candidates.push(pool);
+        if (!pool) continue;
+        candidates.push(pool);
+        radii.push(radius);
       }
     }
-    const core = punchFirst(walkable, gridW, gridH, candidates, PASSAGE_MIN);
-    if (core) featureCores.push(core);
+    const punched = punchFirst(walkable, gridW, gridH, candidates, PASSAGE_MIN);
+    if (punched) featureCores.push({ ...punched.core, radius: radii[punched.index] });
   }
 
   const radius = scale.tiles(POOL_RADIUS, 1);
@@ -131,7 +135,7 @@ export function generateWorld8Map(gridW: number, gridH: number, start: GridPoint
     const pool = poolAt(y, radius);
     if (pool) pools.push(pool);
   }
-  featureCores.push(...punchIslands(walkable, gridW, gridH, pools, PASSAGE_MIN));
+  featureCores.push(...punchIslands(walkable, gridW, gridH, pools, PASSAGE_MIN).map((core) => ({ ...core, radius })));
 
   const goalBand = bands[bands.length - 1];
   const goal = { x: widestRunCenter(walkable, gridW, goalBand.y) ?? Math.round(goalBand.center), y: goalBand.y };

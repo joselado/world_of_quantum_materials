@@ -209,12 +209,14 @@ const STORM_FLATS: Biome = {
 };
 
 // World 5, the Vortex Glacier (superconductivity, Nambu, Majorana): an open
-// glacier at overcast twilight, the corridor spiralling around one or two
-// permanently blocked vortex cores. "Swept" is literal -- the ice is streaked
-// with flow-lines that bend away from the bulk and converge only into the
-// pits, which is field expulsion drawn as terrain. The world becomes the
-// place that pushes something invisible away from itself, rather than "the
-// ice one".
+// sheet of ice at overcast twilight, the route parting around one or two
+// vortex pits punched through it. The sheet itself is flat and unmarked, as
+// every world's floor is (the `decoration` below is the motif it would carry
+// with terrain/decoration.ts's GROUND_MOTIFS_ENABLED on); the field it has
+// pushed out of itself shows only in the pits, where the trapped flux glows
+// with the supercurrent circling it (terrain/materials/ice.ts). The world is
+// the place that pushes something invisible away from itself, rather than
+// "the ice one".
 //
 // Held desaturated and in a narrow value range: a wide ice-to-near-black
 // spread makes each depth step of the haze a visible band across the floor,

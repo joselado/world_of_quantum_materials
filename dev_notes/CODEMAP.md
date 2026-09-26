@@ -209,11 +209,17 @@ game/src/
                                                       edge, off its neighbours and off the grid boundary,
                                                       and keeps the gaps between them above invariant A.
                                                       A candidate that doesn't fit is dropped; each
-                                                      candidate's first tile comes back as its featureCore
+                                                      candidate's first tile comes back as its core, and
+                                                      the generator pairs it with the radius it punched
+                                                      (`FeatureCore`, a GridPoint plus `radius`, 0 for a
+                                                      single-tile feature such as a column base) for
+                                                      `featureCores`
                                     punchFirst     -- punches the first candidate that fits and stops,
-                                                      for a feature the world is *named* for: offer the
-                                                      shape wanted first and humbler ones after it, so a
-                                                      Vortex Glacier can never roll a map with no vortex
+                                                      returning its core and the index of the candidate
+                                                      that fit, for a feature the world is *named* for:
+                                                      offer the shape wanted first and humbler ones after
+                                                      it, so a Vortex Glacier can never roll a map with no
+                                                      vortex, and read the size actually got off the index
                                     discIsland     -- one island's tiles as a filled disc, centre first
                                     bandWindow     -- the ground a run of bands hold in common, which is
                                                       where an island may be centred. A field that
@@ -1772,13 +1778,21 @@ belongs on one side or the other. `scenes/overworld/terrain/plan.ts`'s `buildTer
 tile into a `TerrainTile`: its kind (one per off-path material, resolved from the biome's own
 `wallTheme` by `offPathKindOf`, which is the single resolution both the plan and the lateral margin
 use), its resolved `Biome`, its region tint, whether it carries decoration or the
-guardian-chokepoint highlight, and whether it is a `featureCore` -- an impassable tile a generator
+guardian-chokepoint highlight, whether it is a `featureCore` -- an impassable tile a generator
 built its shape around and the finished grid still has blocked, which the world's own material
 draws its named feature on: `materials/ice.ts` a vortex pit, `materials/bog.ts` a local moment,
 `materials/columns.ts` one of the hall's own columns (that world's two lattices meet here -- a core
 carries a column wherever the generator put one, and every other impassable tile carries the
-column field's own every-second-tile spacing).
-That last one comes down from the generator rather than being recognised from the shape, and
+column field's own every-second-tile spacing) -- and, on every tile of a feature's disc, the core
+included, a `feature` (`TileFeature`: its offset from the core in tiles and the feature's radius),
+which is how the Vortex Glacier's pit tiles know to draw no facets under the vortex painted whole
+across them. The plan also carries `features`, the surviving cores themselves
+(`survivingFeatures`): each core the grid left blocked, with the largest radius around it the grid
+still has blocked whole (`discBlocked` over the same disc `discIsland` punched), since the shared
+chokepoint and pass passes run after the generator and could carve a pit open -- a feature drawn
+whole across a walkable tile would be paint on the road. That is what a material that draws its
+feature whole rather than tile by tile walks each frame (`materials/ice.ts`'s `drawVortices`).
+Both come down from the generator rather than being recognised from the shape, and
 deliberately so: a blocked tile ringed by walkable ground is also what an ordinary corridor pinch
 and a forced chokepoint's wall look like, so inference draws pits where the world has none and
 misses the ones it is named for. A region tint *colors* its biome's material rather than replacing it:
@@ -2052,7 +2066,19 @@ must not be merged. The Storm Flats is deliberately absent from both: its storm 
 lands rather than a sky motif, so it is drawn with the terrain it strikes (`drawStormStrikes` in
 `terrain/materials/charged.ts`, called from `drawTerrain` after `drawDepthHaze` -- a bolt has to
 be painted over the atmosphere it crosses, and it reads the terrain plan so it can only ever land
-on an impassable tile).
+on an impassable tile). The Vortex Glacier's pits are the other feature drawn as a pass of their
+own rather than per tile, for the opposite reason: `terrain/materials/ice.ts`'s `drawVortices` is
+called from `drawTerrain` after the tile sweep and *before* `drawDepthHaze`, like the Devouring
+Mirror's `drawGroundNetwork`, because a vortex spanning every tile of its disc would break at every
+seam if each tile drew its own piece, while the whole of it is ground and belongs under the air.
+It walks the plan's `features` (each surviving core with its radius), skips a pit past the detail
+depth or wholly behind the camera, and generates every point on the ground plane in tiles around
+the core, projected with `projectTile` -- so the bowl, the two rings, the four spiralling arms and
+the glowing core foreshorten with the pit and stand still in the world. A point behind the camera
+plane is clipped to it (`NEAR_EPS`), and a stroke is broken wherever two consecutive points were
+clipped (`tracePath`), so a pit the player walks past never draws a line along the bottom of the
+frame. The arms turn at a constant rate (`ROTATION_MS`) in one sense for every pit, and the
+core's glow pulses slowly (`PULSE_MS`); the lake around the pits carries no motion at all.
 
 **Off-path terrain materials.** One module per material under
 `scenes/overworld/terrain/materials/`, the same "one file per thing" convention the guardian
@@ -2137,8 +2163,11 @@ on-screen size against a sub-pixel error budget (for an n-gon on a radius-r elli
 gap to the true curve is `r*(1 - cos(PI/n))`). The buckets are discrete deliberately: a count
 that slid continuously with distance would re-tessellate a silhouette every frame the player
 moves, and an edge that re-cuts itself each frame crawls. Every per-tile ellipse in the terrain
-pass goes through it -- `art/trees.ts`'s crowns, `materials/lava.ts`, `materials/consuming.ts`,
-`materials/ice.ts` and `materials/charged.ts`'s strike pools -- and any new one should.
+pass goes through it -- `art/trees.ts`'s crowns, `materials/lava.ts`, `materials/consuming.ts`
+and `materials/charged.ts`'s strike pools -- and any new one should. (`materials/ice.ts` draws no
+ellipses: a vortex's discs and rings are polygons of ground points projected one by one, at a
+fixed `CIRCLE_STEPS`, since a circle on the ground is not an ellipse on screen once it is wide
+enough for the projection to bend it.)
 
 `fillDot(g, x, y, r)` is the same budget for a filled circle: Phaser's own `fillCircle` goes
 through `arc`, which the renderer expands into about a hundred segments whatever the radius is,

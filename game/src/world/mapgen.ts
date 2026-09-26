@@ -34,6 +34,7 @@ import {
   GridPoint,
   NullableNumberGrid,
   WorldScale,
+  FeatureCore,
   deriveRows,
   forceChokepoint,
   narrowGoalPass,
@@ -56,7 +57,7 @@ import { generateWorld8Map } from './generators/world8';
 import { generateWorld9Map } from './generators/world9';
 import { generateWorld10Map } from './generators/world10';
 
-export type { GridPoint } from './generators/shared';
+export type { FeatureCore, GridPoint } from './generators/shared';
 
 export interface WorldMap {
   walkable: boolean[][]; // [y][x] -- every walkable tile, whatever that world's own shape is
@@ -67,7 +68,7 @@ export interface WorldMap {
   mid: GridPoint; // this world's guardian stands here, and every route is forced through it
   regionColor: NullableNumberGrid; // per-tile tint (world 1's/3's/8's colored branches/domains)
   biomeOverride: NullableNumberGrid; // per-tile "render with world K's biome instead" (world 9's patches)
-  featureCores: GridPoint[]; // impassable tiles the shape was built around (world 5's vortex pits, world 8's local moments)
+  featureCores: FeatureCore[]; // impassable tiles the shape was built around, each with its punched radius (world 5's vortex pits, world 8's local moments)
 }
 
 const MAX_ATTEMPTS = 10;

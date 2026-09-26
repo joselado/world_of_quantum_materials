@@ -2,9 +2,9 @@ import Phaser from 'phaser';
 import { getBiome } from '../../../art/biomes';
 import type { Biome } from '../../../art/biomes';
 import { buildContourGrid } from '../../../art/contours';
-import type { GridPoint } from '../../../world/mapgen';
+import type { FeatureCore, GridPoint } from '../../../world/mapgen';
 import { gridW, gridH } from '../projection';
-import type { BattleLocale, OffPathKind, TerrainPlan, TerrainTile } from './types';
+import type { BattleLocale, OffPathKind, TerrainPlan, TerrainTile, TileFeature } from './types';
 import type { WallTheme } from '../../../art/biomes';
 
 // The grid as the plan pass reads it -- everything OverworldScene knows about
@@ -13,7 +13,7 @@ export interface TerrainSource {
   walkable: boolean[][];
   regionColor: (number | null)[][];
   biomeOverride: (number | null)[][];
-  featureCores: GridPoint[];
+  featureCores: FeatureCore[];
   flowerMap: boolean[][];
   midTile: GridPoint;
   biome: Biome;
@@ -32,24 +32,65 @@ export interface TerrainSource {
 // boundary) stays one continuous shape instead of being cut at whatever the
 // camera happened to see when the plan was built.
 export function buildTerrainPlan(src: TerrainSource): TerrainPlan {
-  const tiles = classifyTiles(src);
+  const features = survivingFeatures(src);
+  const tiles = classifyTiles(src, features);
   const farEdgeRow = findFarEdgeRow(src.walkable);
   const contours = buildContourGrid(
     src.endsAtCliff ? src.walkable : depthContinuedWalkable(src.walkable, farEdgeRow),
     gridW(),
     gridH()
   );
-  return { tiles, farEdgeRow, contours };
+  return { tiles, farEdgeRow, contours, features };
 }
 
-function classifyTiles(src: TerrainSource): TerrainTile[][] {
+// The generator's features as the finished grid still holds them. A core only
+// counts where the grid actually left it blocked, and its reach is the
+// largest disc around it the grid still has blocked whole: the shared
+// chokepoint and pass passes run after the generator and could carve a pit or
+// a pool open, and a feature drawn on walkable floor would be a hole in the
+// road -- or, for one drawn whole across its disc, paint on it.
+function survivingFeatures(src: TerrainSource): FeatureCore[] {
+  const out: FeatureCore[] = [];
+  for (const core of src.featureCores) {
+    if (src.walkable[core.y]?.[core.x]) continue;
+    let radius = 0;
+    for (let r = core.radius; r > 0; r--) {
+      if (discBlocked(src.walkable, core, r)) {
+        radius = r;
+        break;
+      }
+    }
+    out.push({ x: core.x, y: core.y, radius });
+  }
+  return out;
+}
+
+// Whether every tile of the disc of this radius around the core (the same
+// disc world/generators/shared.ts's discIsland punches) is still blocked.
+function discBlocked(walkable: boolean[][], core: GridPoint, radius: number): boolean {
+  for (let dy = -radius; dy <= radius; dy++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      if (dx * dx + dy * dy > radius * radius) continue;
+      if (walkable[core.y + dy]?.[core.x + dx]) return false;
+    }
+  }
+  return true;
+}
+
+function classifyTiles(src: TerrainSource, features: FeatureCore[]): TerrainTile[][] {
   const cols = gridW();
   const rows = gridH();
-  // A core only counts where the finished grid actually left it blocked: the
-  // shared chokepoint and pass passes run after the generator and could carve
-  // one open, and a pit or a pool feature drawn on walkable floor would be a
-  // hole in the road.
-  const cores = new Set(src.featureCores.filter((c) => !src.walkable[c.y]?.[c.x]).map((c) => `${c.x},${c.y}`));
+  // Every tile of every surviving feature's disc, keyed by position, with
+  // its place in the disc -- the core itself at (0, 0).
+  const featureAt = new Map<string, TileFeature>();
+  for (const f of features) {
+    for (let dy = -f.radius; dy <= f.radius; dy++) {
+      for (let dx = -f.radius; dx <= f.radius; dx++) {
+        if (dx * dx + dy * dy > f.radius * f.radius) continue;
+        featureAt.set(`${f.x + dx},${f.y + dy}`, { dx, dy, radius: f.radius });
+      }
+    }
+  }
   const plan: TerrainTile[][] = [];
   for (let y = 0; y < rows; y++) {
     const row: TerrainTile[] = [];
@@ -60,13 +101,15 @@ function classifyTiles(src: TerrainSource): TerrainTile[][] {
       const overrideWorld = src.biomeOverride[y]?.[x];
       const biome = overrideWorld != null ? getBiome(overrideWorld) : src.biome;
       const regionTint = src.regionColor[y]?.[x] ?? null;
+      const feature = featureAt.get(`${x},${y}`) ?? null;
       row.push({
         kind: src.walkable[y]?.[x] ? 'path' : offPathKindOf(biome),
         biome,
         regionTint,
         decorate: !!src.flowerMap[y]?.[x],
         midHighlight: Math.abs(x - src.midTile.x) <= 1 && Math.abs(y - src.midTile.y) <= 1,
-        featureCore: cores.has(`${x},${y}`),
+        featureCore: feature !== null && feature.dx === 0 && feature.dy === 0,
+        feature,
       });
     }
     plan.push(row);
