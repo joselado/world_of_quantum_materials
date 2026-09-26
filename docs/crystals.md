@@ -158,13 +158,13 @@ Check the boss preview on the goal tile before you commit to a form.
 
 World 10's rival, The Adapted, is "a model of you": it starts the fight
 mirroring whichever type you're currently wearing, then reshapes itself
-every time you land a hit, always taking on a real compound's disguise that
-hosts whatever quasiparticle class you just attacked with, so repeating the
-same attack loses its edge, while varying your moves keeps it guessing. Every
-other rival is named for a real compound's *polycrystalline* form: many
-crystal grains fused into one mass, rendered as an actual golem built from
-fused shards, The Adapted's own disguises follow that same naming
-convention once it reshapes.
+every time you land a hit, always taking on the type and look of a real
+compound that hosts whatever quasiparticle class you just attacked with, so
+repeating the same attack loses its edge, while varying your moves keeps it
+guessing. The battle log names the compound it has just become, but The
+Adapted keeps its own name through every form. Every other rival is named
+for a real compound's *polycrystalline* form: many crystal grains fused into
+one mass, rendered as an actual golem built from fused shards.
 
 <!-- GENERATED:RIVALS_TABLE START -->
 | World | Rival | Type |

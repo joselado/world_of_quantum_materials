@@ -28,7 +28,7 @@ import {
 } from './listDetail';
 
 // Anderson stands at world 6's middle tile (WORLD_GUARDIANS) and lets the
-// player "dope in" a crystal they've encountered (or, in Superposition
+// player "dope in" a crystal they've defeated (or, in Superposition
 // Mode, any crystal in the game) as an impurity, then learn one specific
 // move from its moveset -- an Anderson-impurity take on the same idea
 // Dresselhaus/Majorana explore differently: Dresselhaus becomes the whole

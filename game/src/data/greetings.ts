@@ -36,7 +36,7 @@ const VICTORY_LINES: Record<MaterialType, string> = {
   chernInsulator: "The {name} drops out of its quantized state. Victory!",
   quantumSpinHall: "The {name}'s helical edge finally scatters. Victory!",
   fractionalChern: "The {name}'s fractional pieces finally recombine. Victory!",
-  ferroelectric: "The {name}'s polarization finally flips out of your favor. Victory!",
+  ferroelectric: "The {name}'s polarization finally flips out of its favor. Victory!",
   multiferroic: "The {name}'s polarization and spins fall out of lock. Victory!",
 };
 
@@ -57,8 +57,11 @@ const DEFEAT_LINES: Record<MaterialType, string> = {
   multiferroic: 'The {name} locks its polarization to your every move. Defeat.',
 };
 
+// A name that carries its own article ("The Adapted") stands in for the
+// template's "The {name}" whole, so it never reads "The The Adapted".
 function fill(template: string, name: string): string {
-  return template.replace('{name}', name);
+  const own = name.startsWith('The ') ? template.replace('The {name}', '{name}') : template;
+  return own.replace('{name}', name);
 }
 
 export function encounterGreeting(material: Material): string {

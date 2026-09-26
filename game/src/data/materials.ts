@@ -1766,9 +1766,10 @@ export const WORLD_RIVALS: Partial<Record<number, Material>> = {
   // The finale: no real compound (see DESIGN.md §5's plot hook), and no
   // fixed type either -- "a model of you," decided live every fight
   // (BattleScene's own `adaptedForm`/`transmuteAdapted`): it starts the
-  // battle mirroring the player's own current type, then transmutes into a
-  // real compound's disguise every time the player lands a hit, reactively
-  // taking on whichever quasiparticle class was just used against it. `type`
+  // battle mirroring the player's own current type, then takes on a real
+  // compound's type and look every time the player lands a hit, reactively
+  // hosting whichever quasiparticle class was just used against it, while
+  // keeping this entry's name throughout. `type`
   // below is only a placeholder to satisfy Material's shape for the
   // pre-battle overworld/dialogue preview (OverworldScene's
   // spawnBossSprite/showRivalEncounter, both purely visual before the fight

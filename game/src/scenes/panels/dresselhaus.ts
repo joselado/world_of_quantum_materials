@@ -82,7 +82,7 @@ export function showDresselhausPanel(scene: GuardianPanelHost) {
     avatar: makeDresselhausAvatar,
     quote: superposition
       ? '"I am Dresselhaus. In superposition every nanostructure is within reach at once: become anything that exists, not only what you have already beaten."'
-      : '"I am Dresselhaus. Build the same atoms into a different nanostructure and you get a different material entirely: new electrons, new phonons, and no new chemistry. Study a defeated crystal\'s structure closely enough and you can rebuild yourself into it, for a while."',
+      : '"I am Dresselhaus. Carbon taught me that structure decides everything: the same atoms, built as graphite, a nanotube or a single sheet, make different materials entirely. Study a defeated crystal\'s structure closely enough and you can rebuild yourself into it, atoms and all, for a while."',
     introPx: fontPx(scene, 11),
   });
 

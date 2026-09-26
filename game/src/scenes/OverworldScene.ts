@@ -565,6 +565,10 @@ interface GuardianDef {
   shortName: string;
   labelColor: string;
   strokeColor: number;
+  // Shown only by showGuardianLore, the fallback panel for a guardian with no
+  // `open` of their own. A guardian with a panel shows that panel's own quote
+  // (scenes/panels/*.ts) instead, so this line has to stay true to the same
+  // mechanic but is not what the player reads while `open` is set.
   quote: string;
   // One-line "what they do" -- the same copy docs/guardians.md's own
   // roster table uses, surfaced in-game by the hover readout on that
@@ -718,7 +722,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // scene create and every closeDialogue().
   dresselhausPage = 0;
   majoranaPage = 0;
-  // Anderson's impurity-doping panel (§5, World 9): the host crystal picked
+  // Anderson's impurity-doping panel (§5, World 6): the host crystal picked
   // to "dope in," while the panel rebuilds to ask which one of its moves to
   // learn -- null means "no doping in progress, show the host pick list."
   // Same reset/pagination rules as dresselhausPage/majoranaPage above.
@@ -806,7 +810,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       shortName: 'Dresselhaus',
       labelColor: '#6ee8ba',
       strokeColor: 0x4ad9a0,
-      quote: 'Build the same atoms into a different nanostructure and you get a different material entirely.',
+      quote: 'Structure decides everything: the same carbon atoms, built as graphite, a nanotube or a single sheet, make different materials entirely.',
       blurb: 'Lets you transmute into a defeated material.',
       avatar: makeDresselhausAvatar,
       tile: 'middle',
@@ -819,7 +823,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       labelColor: '#8fa0ff',
       strokeColor: 0x6a7fff,
       quote:
-        'Switch on a field across the plane and every electron orbit closes. The smooth band breaks into flat levels, one fixed quantum of energy apart, with nothing in between. Answer my questions right and I will teach your crystal to strike by that same physics.',
+        'Switch on a field across the plane and every electron orbit closes. The smooth band breaks into flat levels, one fixed quantum of energy apart, with nothing in between. Learn a move from me and every strike will ask you that physics before it lands.',
       blurb: 'Sells two quiz-gated Analytic moves.',
       avatar: makeLandauAvatar,
       tile: 'middle',
@@ -938,7 +942,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.moving = false;
     // Phaser reuses the same Scene instance across scene.start()/restart()
     // calls -- only init()/create() rerun, class field initializers don't --
-    // so a dialogue left open when the player switches away (H or Enter to
+    // so a dialogue left open when the player switches away (Enter to
     // return to the Lab, a debug warp, Bloch's teleport -- all skip straight
     // to scene.start without closing whatever's open first) would otherwise
     // leave dialogueActive stuck true forever on this instance, freezing
@@ -1028,8 +1032,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     // narrowed to stop short of it, so a long world name (e.g. world 10's
     // "The Devouring Mirror") or a big text-size setting wraps
     // downward onto a second line instead of running wide enough to
-    // collide with the counter. No permanent key-hint lines for movement,
-    // M, or H live in this corner -- the Lab's Tutorial station is the
+    // collide with the counter. No permanent key-hint lines for movement
+    // or Space live in this corner -- the Lab's Tutorial station is the
     // canonical replayable recap for those (data/tutorial.ts), and a fixed
     // on-screen reminder here would just duplicate it while adding more
     // overflow risk to a corner that's already tight. The one deliberate

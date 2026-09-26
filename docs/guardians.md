@@ -69,9 +69,10 @@ and which of your moves are usable both switch over, your stats stay yours,
 and nothing you've already learned is erased. Switch back later and you get
 the rest of it back for free.
 
-The idea: the same atoms, built into a different nanostructure, become a
-different material entirely, so understanding a defeated crystal well
-enough lets you rebuild yourself into it, for a while. Only works on
+The idea: structure decides what a material is (the same carbon atoms make
+graphite, a nanotube or graphene), so understanding a defeated crystal's
+structure well enough lets you rebuild yourself into it, atoms and all, for
+a while. Only works on
 standalone crystals, never a [hybrid](hybrids.md).
 
 - First time becoming a given crystal: 25 qumatessence

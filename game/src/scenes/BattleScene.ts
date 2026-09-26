@@ -429,10 +429,10 @@ export class BattleScene extends Phaser.Scene {
   private opponentCrystal!: Phaser.GameObjects.Container;
   // The opponent's own nameplate, held (rather than just its hp bar and
   // status label) so `drawOpponentPlate` can tear the whole fitted layout
-  // down and rebuild it when World 10's rival renames itself mid-fight.
+  // down and rebuild it when World 10's rival reshapes mid-fight.
   private opponentPlate?: Nameplate;
   private opponentPos: { x: number; y: number } = OPPONENT_POS;
-  // World 10's rival ("The Adapted") has no fixed type/look/name of its own
+  // World 10's rival ("The Adapted") has no fixed type/look of its own
   // -- see data/materials.ts's WORLD_RIVALS[10] comment. Set in create()
   // (mirroring the player's own current type) only for that one fight, then
   // replaced wholesale every time transmuteAdapted() fires; `null` for every
@@ -602,8 +602,9 @@ export class BattleScene extends Phaser.Scene {
 
     // World 10's rival mirrors the player's own current type from turn one
     // (literalizing "a model of you" immediately, not just once it first
-    // reacts) -- its look/name stay "The Adapted"'s own until the first
-    // transmutation actually fires (checkEndOrContinue, resolveHit below).
+    // reacts) -- its look stays "The Adapted"'s own until the first
+    // transmutation actually fires (checkEndOrContinue, resolveHit below),
+    // and its name for the whole fight.
     this.adaptedForm =
       this.isRival && this.world === 10
         ? { ...this.wild, type: this.playerMaterial.type }
@@ -2451,11 +2452,10 @@ export class BattleScene extends Phaser.Scene {
   //
   // Its own method rather than inline in create() because the plate is a
   // one-shot fitted layout (see `Nameplate.destroy`) and World 10's rival
-  // renames itself mid-fight: transmuteAdapted rebuilds the whole plate
-  // through this after swapping `adaptedForm`, so the new name gets a chip
-  // and a shrink-to-fit actually measured against it. Reads the name off
-  // `opponentView()`, so it picks up whichever identity is current with no
-  // argument to keep in step.
+  // reshapes mid-fight: transmuteAdapted rebuilds the whole plate through
+  // this after swapping `adaptedForm`, re-binding the hp bar and status pill
+  // to the new body. Reads the name off `opponentView()`, so it picks up
+  // whichever identity is current with no argument to keep in step.
   private drawOpponentPlate() {
     this.opponentPlate?.destroy();
     this.opponentPlate = drawNameplate(this, {
@@ -2478,14 +2478,16 @@ export class BattleScene extends Phaser.Scene {
   // data/materials.ts's reverse MOVE_COMPATIBILITY lookup), then a real,
   // already-defined compound of that type from the full roster (allCrystals())
   // to become -- so the opponent reacts by taking on a type it can actually
-  // host the class the player just used, the same "Polycrystalline
-  // <compound> Golem" naming every other world's rival already follows. The
+  // host the class the player just used. Its name stays "The Adapted"
+  // through every form: World 10 carries no material name (WORLDS.md §6),
+  // and a form it models is a copy, never one of the golems worn as a
+  // disguise, so the compound is named in the log line alone. The
   // swap plays out as an in-field glow/dissolve/reform effect directly on
   // the boss's own sprite (playTransmuteGlow below), the same way an ordinary
   // attack effect or impactPunch's crit flash already renders in the field
   // rather than a separate panel/overlay. `this.wild.moves` (its real attack
   // moveset) is never touched by any of this, so it keeps fighting at the
-  // same power it was authored with, just under a new disguise -- and HP was
+  // same power it was authored with, just in a new form -- and HP was
   // never tied to its identity in the first place (`opponentMaxHp` stays
   // fixed for the whole battle regardless of how many times it transmutes).
   // `onDone` fires after a fixed TRANSMUTE_HOLD_MS beat, independent of the
@@ -2500,7 +2502,7 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
     const picked = Phaser.Utils.Array.GetRandom(candidates);
-    const newForm: Material = { ...picked, name: `Polycrystalline ${picked.name} Golem` };
+    const newForm: Material = { ...picked, name: this.wild.name };
 
     this.playTransmuteGlow(() => {
       this.adaptedForm = newForm;
@@ -2515,12 +2517,9 @@ export class BattleScene extends Phaser.Scene {
       this.opponentCrystal.setPosition(this.opponentPos.x, this.opponentPos.y);
       this.flashHit(this.opponentCrystal);
 
-      // Rebuilt whole rather than retitled in place: the plate's chip is
-      // fitted to its name's rendered width, and a "Polycrystalline <compound>
-      // Golem" name is long enough that reusing the old fit would spill the
-      // label out of its own chip and over the bar under it. The rebuild
-      // re-binds the hp bar and status pill, so both have to be re-rendered
-      // onto the new objects.
+      // Rebuilt whole rather than patched in place: the plate is a one-shot
+      // fitted layout, and the rebuild re-binds the hp bar and status pill,
+      // so both have to be re-rendered onto the new objects.
       this.drawOpponentPlate();
       this.updateBars();
       this.renderStatusLabel(false);
@@ -2538,7 +2537,7 @@ export class BattleScene extends Phaser.Scene {
       // new one is the same "which crystal am I fighting" confusion the
       // silhouette exists to prevent.
       this.drawTurnPreview();
-      this.setLogText(`${this.wild.name} reshapes into ${newForm.name}!`);
+      this.setLogText(`${this.wild.name} reshapes into ${picked.name}!`);
     });
 
     this.time.delayedCall(TRANSMUTE_HOLD_MS, onDone);
@@ -3443,10 +3442,11 @@ export class BattleScene extends Phaser.Scene {
 
     const tokenText = won ? `+${stake} qumatessence!` : `-${tokens - newTokens} qumatessence...`;
     // opponentView() rather than this.wild -- for World 10's rival, this
-    // reads whatever real compound it was last disguised as (or the player's
-    // own mirrored type, if the fight ended before its first transmutation),
-    // so the closing flavor/blurb actually matches whichever form was just
-    // beaten instead of a placeholder type that was never meant to be shown.
+    // reads the type of whatever real compound it last reshaped into (or the
+    // player's own mirrored type, if the fight ended before its first
+    // transmutation), so the closing flavor and blurb actually match whichever
+    // form was just beaten instead of a placeholder type that was never meant to
+    // be shown.
     const flavor = won ? victoryLine(this.opponentView()) : defeatLine(this.opponentView());
     const blurb = materialBlurb(this.opponentView());
     // The end-of-battle summary runs several lines longer than an in-combat

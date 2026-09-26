@@ -761,13 +761,15 @@ export function showStoryLog(scene: HubScene) {
 // would scale further but would hide every unselected setting's current value
 // behind a row, which is the one thing this panel exists to show.
 //
-// The nine settings and what reads them -- Gameplay: difficulty tier
-// (DIFFICULTY_TIER_PRESETS, data/balance.ts's DIFFICULTY_MULTIPLIERS applied
-// to enemyStatsForWorld), wild-encounter density (DENSITY_PRESETS, read by
-// OverworldScene.generateMap via encounterChance()), world size
-// (WORLD_SIZE_PRESETS). Story: story screens and tutorial tips (ON_OFF_PRESETS,
-// read by OverworldScene's lore/taunt/beat screens and showTutorialTip, and by
-// HubScene.maybeShowLabTip). Presentation: text size (FONT_SCALE_PRESETS, read
+// The ten settings (nine where the browser has no fullscreen API) and what
+// reads them -- Gameplay: difficulty tier (DIFFICULTY_TIER_PRESETS,
+// data/balance.ts's DIFFICULTY_MULTIPLIERS applied to enemyStatsForWorld),
+// wild-encounter density (DENSITY_PRESETS, read by OverworldScene.generateMap
+// via encounterChance()), world size (WORLD_SIZE_PRESETS). Story: story
+// screens and tutorial tips (ON_OFF_PRESETS, read by OverworldScene's
+// lore/taunt/beat screens and showTutorialTip, and by HubScene.maybeShowLabTip),
+// and text length (STORY_LENGTH_PRESETS, read by worldLoreFor/rivalTauntFor/
+// storyBeatFor/finaleBodyFor/tipBodyFor). Presentation: text size (FONT_SCALE_PRESETS, read
 // live by every fontPx() call), full screen (ON_OFF_PRESETS over ui/
 // fullscreen.ts's live scale-manager state, the one row with no save field
 // behind it), music style (MUSIC_STYLE_PRESETS, which of audio/music.ts's
@@ -913,7 +915,7 @@ export function showSettingsPanel(scene: HubScene) {
     {
       category: 'presentation',
       label: 'Text Size',
-      when: 'Immediately.',
+      when: 'Every menu and dialogue. Immediately.',
       options: FONT_SCALE_PRESETS.map((p) => ({
         label: p.label,
         selected: p.value === font,

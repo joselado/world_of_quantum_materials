@@ -605,11 +605,12 @@ World 9 rather than World 9 alone, per that same table's note. `WORLD_RIVALS[10]
 separate table from the wild pool, is the one entity in the game with no fixed main type at
 all — a "no real compound, a model of you" finale boss whose type is decided live every
 fight instead. It starts each battle mirroring the player's own current type
-(`getPlayerMaterial`), then transmutes — type, look, and display name together — every time
+(`getPlayerMaterial`), then transmutes — type and look together, its name staying "The Adapted" — every time
 the player's attack lands on it (a whiffed Ultimate, which never reaches it, leaves its form
-alone), reactively taking on a real, already-defined
-compound's disguise (a "Polycrystalline `<compound>` Golem," the same naming every other
-world's rival already follows) that hosts whichever quasiparticle class was just used against
+alone), reactively taking on the type and look of a real, already-defined
+compound (named only in the battle log: World 10 carries no material name, and a form it
+models is a copy, never one of the golems worn as a disguise, `WORLDS.md` §6) that hosts
+whichever quasiparticle class was just used against
 it (`data/materials.ts`'s `typesHosting`, a reverse `MOVE_COMPATIBILITY` lookup, feeds
 `allCrystals()` to pick a real compound of a genuinely matching type). The net effect
 rewards varying attack classes rather than repeating one: having just adapted to host a
@@ -1647,7 +1648,7 @@ Two of the ten answer to something other than a fixed row in `WORLD_RIVALS`:
   landed player attack it transmutes into a real compound of some type that genuinely
   hosts the quasiparticle just used (`BattleScene.transmuteAdapted`, `typesHosting`), so
   the finale is a boss that closes off the mismatch bonus the rest of the game taught the
-  player to hunt for. Its own moveset and HP never change underneath the disguise.
+  player to hunt for. Its name, moveset and HP never change underneath its changing form.
 
 **Planned: an after-story boss.** A hidden encounter past World 10, stronger than anything
 on the main path, is what the top of the stat ladder exists for. Reaching `MAX_STAT` costs

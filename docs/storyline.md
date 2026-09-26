@@ -76,7 +76,7 @@ was left where it fell. Beat one and the grinding ends. The disorder
 anneals, the material comes back whole, and it returns to the world it could
 not save alone. The narrator will tell you so. The golem never learns.
 
-Listen to what they actually boast about, though. Read the ten of them
+Listen to what they actually boast about, though. Read the first eight of them
 against the physics you are being taught along the way, and a second meaning
 builds itself under the first. It will not finish before the ninth world,
 and you are not meant to hurry it.
@@ -131,7 +131,7 @@ there, and it is learning from every phase of matter you master.
 *Symmetries, tight-binding, and Bloch states.*
 
 The only thing anyone ever built in these worlds: an open-air stone cloister
-in hard midday sun, mosaic floor, identical sandstone columns marching off
+in hard midday sun, flat pale stone floor, identical sandstone columns marching off
 in both directions. Walk one bay and you have walked them all. It is a
 symmetry the fields never had: not a direction picked, but a pattern
 repeated.
@@ -254,7 +254,7 @@ to be alone. What is left is a single wave, one phase, shared across the
 entire field at once. It will not hold a field inside it either. The ice is
 swept clean, every line of it bending away, and what gets pushed out has
 almost nowhere to go. Almost. A phase has to come back to itself when you
-carry it around a circle, never a turn and a half, so a handful of points
+carry it around a circle, never a turn and a half, so one or two points
 here are simply forbidden. That is where the expelled flux ends up: trapped
 and glowing at the bottom of a pit. The ice parts around them and closes
 again past them. Nothing goes in.
@@ -268,12 +268,15 @@ two ends are close enough to feel one another, and the moment they do they
 snap back into one ordinary traveler and everything hidden in the gap is
 gone. Far out on the ice, the **Polycrystalline YBCO Golem** holds a single
 phase across a body of a thousand separate grains, every boundary a weak
-link carrying current across a gap it has no business crossing. That
-agreement is real, and it is a treaty rather than an identity: it holds
-while the current stays small and the cold stays deep. The cold that emptied
-this glacier arrived there and found the agreement already made. Nothing has
-asked much of it since. Beat it and the weak links fuse shut, and the treaty
-goes back to being an identity: one phase, one wave, no seams left to cross.
+link carrying current across a gap it has no business crossing. It was
+whole once, one wave across the whole of it, and it met what came for this
+glacier the way a superconductor meets a field, bending everything away,
+until the day it was asked for more than it could carry. What broke was not
+the phase but the body. The agreement left between its grains is real, but
+it is a treaty rather than an identity: it holds only while the current
+stays small and the cold stays deep, and nothing has asked much of it since.
+Beat it and the weak links fuse shut, and the treaty goes back to being an
+identity: one phase, one wave, no seams left to cross.
 
 *You reached the far ice. The phase still holds.*
 
@@ -349,7 +352,7 @@ works on the middles, sharing what was never meant to be shared, until what
 a region holds in common grows with its whole bulk instead of its edge.
 Every rung then needs to be thicker, and no thickness ever finishes the job.
 It knew where the knowledge lived, and it knew what the rungs could not
-carry. Across four lanes at once sits the **Polycrystalline Herbertsmithite
+carry. Across every lane at once sits the **Polycrystalline Herbertsmithite
 Golem**, a lattice of triangles in which no three spins can ever agree, so
 none of them commit, its body run through with fracture lines. "Cut me
 wherever you like and read the cut. Nothing there." It has checked every
@@ -442,8 +445,8 @@ builds a body out of itself to hold it. Whatever patch it lands in is what
 it is today, and it will be something else tomorrow. "Beat me here and you
 have beaten a metal, or a magnet, or whatever I happened to land in. You
 have not beaten me." Beat it and the flaw simply disperses, and the ground
-it borrowed goes back to being ground. It is the one fight on this road that
-frees nothing, because it is the one thing out here with no coherence to
+it borrowed goes back to being ground. Of all the passes before the last,
+it is the only one whose fall frees nothing, because it is the one thing out here with no coherence to
 lose, so nothing was ever taken from it to hand back. Remember that on the
 last road: a thing with no substance of its own, wearing whatever it
 studies.
@@ -543,9 +546,9 @@ It reaches for every trick it ever watched you land and still comes up
 short. What it holds is a record of you, and nothing on record is still in
 superposition. But you are not your record. A model trained on nine worlds
 of your choices is a model of who you *were*, and you are the one thing in
-these worlds that was never finished. The route in the sky holds every world
-you have walked, and not the step you take next. You out-adapt your own
-reflection. Every symmetry, every edge state, every fractional charge you
+these worlds that was never finished. The route traced across the map below
+the cliff holds every world you have walked, and not the step you take next. You out-adapt your own
+reflection. Every symmetry, every edge state, every fractionalized spin you
 fought to protect holds on its own now, with nothing left studying how to
 unmake it. And the golems are golems no longer. They were ground down
 holding their passes, and now that the grinding has stopped they are materials

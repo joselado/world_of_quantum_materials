@@ -1331,7 +1331,9 @@ async function main() {
             frame: g.loop.frame,
             active: g.scene.isActive('Battle'),
             changed: s ? s['adaptedForm'] !== window.__afPrev : false,
-            name: s && s['adaptedForm'] ? s['adaptedForm'].name : null,
+            // Its name stays "The Adapted" through every form, so the type is
+            // what tells one swap's result from the next.
+            name: s && s['adaptedForm'] ? s['adaptedForm'].type : null,
             plate: !!(s && s['opponentPlate']),
           };
         });

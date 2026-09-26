@@ -89,13 +89,13 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     title: 'Settings',
     unlock: { kind: 'always' },
     body:
-      "The Lab's Settings station holds ten knobs, in three groups you switch between at the top of the panel. Gameplay: Difficulty scales every stat your opponents get, from an easier B.Sc. tier through the tuned M.Sc. default to a much tougher Ph.D. tier, and it applies starting with your very next battle, so it is meant to be adjusted mid playthrough rather than picked once; Enemy Density controls how many wild encounters the next map you generate will have, and World Size how big that map is: Nano, Meso or Macro, the same world laid out three times as wide and three times as far at the top end. Story: Story Screens and Tutorial Tips decide whether the world lore, the rival taunts and popups like this one stop you as you play, and Text Length picks how much those screens and popups say, Brief in about a third of the words or Detailed in full. Turn Story Screens or Tutorial Tips off and nothing is lost, since everything it would have shown still fills in at the Lab's Story and Tutorial stations, waiting for you there. Presentation: Text Size and Music Style both apply immediately to whatever is already on screen, Full Screen fills the whole screen with the game where your browser offers it, and Touch Controls puts arrows for walking on screen, on by default when you are playing on a touchscreen.",
+      "The Lab's Settings station sorts its knobs into three groups you switch between at the top of the panel. Gameplay: Difficulty scales every stat your opponents get, from an easier B.Sc. tier through the tuned M.Sc. default to a much tougher Ph.D. tier, and it applies starting with your very next battle, so it is meant to be adjusted mid playthrough rather than picked once; Enemy Density controls how many wild encounters the next map you generate will have, and World Size how big that map is: Nano, Meso or Macro, the same world laid out three times as wide and three times as far at the top end. Story: Story Screens and Tutorial Tips decide whether the world lore, the rival taunts and popups like this one stop you as you play, and Text Length picks how much those screens and popups say, Brief in about a third of the words or Detailed in full. Turn Story Screens or Tutorial Tips off and nothing is lost, since everything it would have shown still fills in at the Lab's Story and Tutorial stations, waiting for you there. Presentation: Text Size applies to every menu and dialogue from the moment you pick it, Music Style to whatever is already playing, Full Screen fills the whole screen with the game where your browser offers it, and Touch Controls puts arrows for walking on screen, on by default when you are playing on a touchscreen.",
   },
   controls: {
     title: 'Walking the Path',
     unlock: { kind: 'tip' },
     body:
-      'Use the arrow keys to move: Up/Down step forward and back, Left/Right step sideways. On a touchscreen, the same four arrows sit in the bottom left corner of the world, and holding one walks the same way holding a key does. Off-path ground is impassable (told apart by its color, not by a wall you\'d see), so watch where the walkable ground actually goes rather than holding one direction blindly. Press Enter any time, or click the Lab line in the bottom right corner, to return to the Lab, where your moves, stats, abilities, tutorial, and settings all live as stations, and every guardian you have met stands in the room to be clicked. The Settings station is also where the music is set to Classic, Modern or Mute.',
+      'Use the arrow keys to move: Up/Down step forward and back, Left/Right step sideways. On a touchscreen, the same four arrows sit in the bottom left corner of the world, and holding one walks the same way holding a key does. Off-path ground is impassable (told apart by its color, not by a wall you\'d see), so watch where the walkable ground actually goes rather than holding one direction blindly. Press Enter any time, or click the Lab line in the bottom right corner, to return to the Lab, where Qumatex, your moves and stats, the story so far, the tutorial and the settings all live as stations (abilities join them once you learn one), and every guardian you have met stands in the room to be clicked. The Settings station is also where the music is set to Classic, Modern or Mute.',
   },
   encounter: {
     title: 'Wild Encounters',
@@ -107,7 +107,7 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     title: 'Battles',
     unlock: { kind: 'tip' },
     body:
-      'Battles are turn-based: whichever side has higher Momentum swings first each round, and swings more than once if it is fast enough. Pick a move from the panel on the right for each swing you get, and watch the Turns row to see how many are left. Every move is a real quasiparticle, and a defender with no natural way to host it takes double damage.',
+      'Battles are turn-based: whichever side has higher Momentum swings first each round, and swings more than once if it is fast enough. Pick a move from the panel on the right for each swing you get, and watch the Turns row to see how many are left. Every attack is a real quasiparticle, and a defender with no natural way to host it takes double damage.',
   },
   qumatessence: {
     title: 'Qumatessence',
@@ -137,13 +137,13 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     title: 'Transmutation',
     unlock: { kind: 'guardian', ids: ['dresselhaus'] },
     body:
-      "Dresselhaus (World 3) lets you rebuild yourself into any other quantum material you've already defeated: same atoms, different nanostructure, so you inherit that form's whole moveset and quasiparticle physics for as long as you wear it. Your HP still comes from the world you're in, not from which form you're wearing. Each crystal costs qumatessence to unlock the first time you become it; switching back and forth after that is free.",
+      "Dresselhaus (World 3) lets you rebuild yourself into any other quantum material you've already defeated, taking on its structure and its quasiparticle physics for as long as you wear it. Your moves stay the ones you've learned: the new form decides which of them it can carry, and switching back brings the rest back. Your HP still comes from the world you're in, not from which form you're wearing. Each crystal costs qumatessence to unlock the first time you become it; switching back and forth after that is free.",
   },
   analyticMoves: {
     title: 'Analytic Moves',
     unlock: { kind: 'guardian', ids: ['landau'] },
     body:
-      "Landau (World 4) sells two quiz-gated Analytic moves, each carrying whichever quasiparticle your current form can host. Buying one costs qumatessence once, and retuning it to a different hostable class any time you revisit him is free. In battle, an Analytic move asks a single physics question before it lands: answer right and the hit lands much harder, wrong and it barely lands at all.",
+      "Landau (World 4) sells two quiz-gated Analytic moves, each carrying whichever quasiparticle your current form can host. Buying one costs qumatessence once, and retuning it to a different hostable class any time you revisit him is free. In battle, an Analytic move asks a single physics question before it lands: answer right and the hit lands twice as hard, wrong and it lands at half strength.",
   },
   hybridFusion: {
     title: 'Hybrid Fusion',
@@ -156,7 +156,7 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     listLabel: 'Doping In',
     unlock: { kind: 'guardian', ids: ['anderson'] },
     body:
-      "Anderson (World 6) lets you dope in a quantum material you've encountered as an impurity, without becoming it; browsing hosts costs nothing. Committing to one opens a second step: pick one specific move from that host's own moveset to learn, spending qumatessence to do it. Only one impurity is doped in at a time; swapping to a different host doesn't erase a move you've already learned, it just changes which moves besides your own form's are currently usable.",
+      "Anderson (World 6) lets you dope in a quantum material you've defeated as an impurity, without becoming it; browsing hosts costs nothing. Committing to one opens a second step: pick one specific move from that host's own moveset to learn. The first move from each host costs qumatessence; every later one from that same host is free. Only one impurity is doped in at a time; swapping to a different host doesn't erase a move you've already learned, it just changes which moves besides your own form's are currently usable.",
   },
   moveLeveling: {
     title: "Feynman's Move Leveling",
@@ -201,7 +201,7 @@ export const TUTORIAL_TIP_BRIEF: Partial<Record<TutorialTipId, string>> = {
     'Higher Momentum swings first, sometimes more than once. Pick a move per swing: a defender that cannot host its quasiparticle takes double damage.',
   qumatessence: 'Wins and shiny clouds earn qumatessence, spent with guardians on moves and stats.',
   guardian: "Each world's guardian sells a service for qumatessence. Once met, they wait in the Lab.",
-  goal: "A boss holds the pass at each world's far end. Press Space at the mouth of the pass to challenge it, and win to cross.",
+  goal: "A boss holds the pass at each world's far end. Press Space at the mouth of the pass to challenge it; once it falls, press Space there again to cross.",
 };
 
 // The body a popup shows, picked by the Text Length setting, falling back to

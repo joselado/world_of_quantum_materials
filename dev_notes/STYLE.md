@@ -2514,10 +2514,9 @@ world are shaped, since world N's start is world N-1's exit.
   reaches highest. HP bars are `140x10` with a dark stroked track behind a
   `134x6` fill, so a bar at full health still reads as a gauge. Because the chip
   is fitted to the name's rendered width and the bar sits under its measured
-  height, the plate is a one-shot layout: a side whose name changes mid-battle
+  height, the plate is a one-shot layout: a side that reshapes mid-battle
   (World 10's Adapted) rebuilds its plate whole via the `destroy()` the plate
-  hands back, so the new name gets a chip and a shrink-to-fit measured against
-  it rather than overflowing one fitted to the old name.
+  hands back rather than patching the old one in place.
 - **Gold means "the player."** The player's plate chip is stroked gold
   (`GOLD_ACCENT`), the opponent's dim blue-grey (`REFERENCE_BLUE_GREY`) --
   the same code the turn-order rings and the move menu's own gold chrome

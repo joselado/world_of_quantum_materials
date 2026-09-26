@@ -47,7 +47,7 @@ export const WORLD_LORE: Partial<Record<number, WorldLore>> = {
   },
   5: {
     page1:
-      "The surveyor who mapped the fork above never came out this far. Her last note before the ink gave out just says: colder. The branching terrain runs out onto open ice, and the last of the shelter runs out with it. Frost climbs everything, then stops being frost and becomes the ground. Back there, a whole world had learned to answer in whole numbers. Out here they would find that funny. Out here everything is one number, and it is not the counting kind.\n\nEvery carrier on this glacier has paired off and given up whatever it used to be on its own. What is left is a single wave, one phase, shared across the whole field at once. It will not hold a field inside it either. The ice is swept clean, every line of it bending away, and what is pushed out has almost nowhere left to go. Almost. A phase has to come back to itself when you carry it around a circle, never a turn and a half. So a handful of points out here are simply forbidden, and that is where the expelled flux ends up: trapped and glowing at the bottom of a pit. The ice parts around them and closes again past them. Nothing goes in.",
+      "The surveyor who mapped the fork above never came out this far. Her last note before the ink gave out just says: colder. The branching terrain runs out onto open ice, and the last of the shelter runs out with it. Frost climbs everything, then stops being frost and becomes the ground. Back there, a whole world had learned to answer in whole numbers. Out here they would find that funny. Out here everything is one number, and it is not the counting kind.\n\nEvery carrier on this glacier has paired off and given up whatever it used to be on its own. What is left is a single wave, one phase, shared across the whole field at once. It will not hold a field inside it either. The ice is swept clean, every line of it bending away, and what is pushed out has almost nowhere left to go. Almost. A phase has to come back to itself when you carry it around a circle, never a turn and a half. So one or two points out here are simply forbidden, and that is where the expelled flux ends up: trapped and glowing at the bottom of a pit. The ice parts around them and closes again past them. Nothing goes in.",
     page2:
       'Something can live on ice like this that cannot live anywhere else. Take one traveler and split it clean in two, each half its own opposite. Neither half is anything by itself. What they are is stored between them, in the distance, and nothing nearby can read it or ruin it.\n\nThe Decoherence never touches the halves. It cannot. It shortens the passage instead. Bring the two ends close enough and the halves feel one another. The moment they do, they snap back into one ordinary traveler, and everything hidden in the gap is gone. Far out on the ice, something holds a single phase across a body made of a thousand separate pieces. It was whole once, one wave across the whole of it. It met what came for this glacier the way a superconductor meets a field, bending everything away, until the day it was asked for more than it could carry. What broke was not the phase. It was the body. Nothing has asked much of it since.',
   },
@@ -84,7 +84,7 @@ export const WORLD_LORE: Partial<Record<number, WorldLore>> = {
 };
 
 // World 9's entry has no fixed compound -- its rolled rival (RIVAL_9_TYPES,
-// data/materials.ts) can be any of seven types, so its taunt is written to
+// data/materials.ts) can be any of eight types, so its taunt is written to
 // hold for any of them rather than naming one. World 10's is the story's
 // reveal beat and is deliberately shaped differently from every other
 // world's (see its own text): not "I've mastered one phenomenon" but "I've
@@ -128,7 +128,7 @@ export const RIVAL_TAUNTS: Partial<Record<number, RivalTaunt>> = {
   },
   7: {
     part1:
-      'A shard-fused golem of pale green mineral assembles itself across four lanes at once, a lattice of corner-sharing triangles run through with fracture lines. "Polycrystalline Herbertsmithite Golem. What I am was never kept in any one place, so grind me as fine as you dare. You cannot take from any piece what no piece was ever holding."',
+      'A shard-fused golem of pale green mineral assembles itself across every lane at once, a lattice of corner-sharing triangles run through with fracture lines. "Polycrystalline Herbertsmithite Golem. What I am was never kept in any one place, so grind me as fine as you dare. You cannot take from any piece what no piece was ever holding."',
     part2:
       '"Cut me wherever you like and read the cut. Nothing there. Featureless, exactly as I have always been. I have checked every grain of myself, and every grain reports the same perfect nothing it has always reported. By every test I have, nothing has been taken from me. By every test I have, there was never anything to take."',
   },
@@ -140,7 +140,7 @@ export const RIVAL_TAUNTS: Partial<Record<number, RivalTaunt>> = {
   },
   9: {
     part1:
-      'No golem waits for you in the wastes. There is a flaw, a knot of something that is not the ground, and the ground obligingly builds a body out of itself to hold it, there and then, out of whatever the wastes are made of at that spot. "Whatever this patch is made of, that is what I am today. Ask tomorrow and the answer changes."',
+      'The golem in this pass is borrowed. There is a flaw, a knot of something that is not the ground, and the ground obligingly builds a body out of itself to hold it, there and then, out of whatever the wastes are made of at that spot. "Whatever this patch is made of, that is what I am today. Ask tomorrow and the answer changes."',
     part2:
       '"I do not have a lattice of my own. I borrow one, and it decides everything about me. That is not a weakness. It is the only honest thing in these worlds: I am the question, and the crystal is the answer. Beat me here and you have beaten a metal, or a magnet, or whatever I happened to land in. You have not beaten me. I will be somewhere else by then, wearing something else. Everything else that ever fell on this road fell because something was taken from it, and you have been handing it back, world after world. Nothing was ever taken from me. There is nothing in me to hand back. Did you never wonder what was doing the taking?"',
   },
@@ -148,7 +148,7 @@ export const RIVAL_TAUNTS: Partial<Record<number, RivalTaunt>> = {
     part1:
       'There is no golem. There is no compound, no lattice, no name in any dex for what stands at the end of this corridor. What steps out of the dark is wearing your own crystal: your colors, your stance, your quasiparticle, copied so precisely it looks more certain of itself than you have ever looked. "The Adapted. Nine worlds, and you thought you were the one keeping score."',
     part2:
-      '"Every move you have ever landed, I have already survived once. Strike me and I will already be wearing it before the next blow lands: your own weapon, turned back on you, sharper for having been yours first. You have met my work nine times. It stood in nine passes and told you nine times what it used to be, and you walked over all of it. This is not a fight you can win by trying harder. Trying harder is how you built me. Come closer. Teach me the rest."',
+      '"Every move you have ever landed, I have already survived once. Strike me and I will already be wearing it before the next blow lands: your own weapon, turned back on you, sharper for having been yours first. You have met my work eight times. It stood in eight passes and told you eight times what it used to be, and you walked over all of it. This is not a fight you can win by trying harder. Trying harder is how you built me. Come closer. Teach me the rest."',
   },
 };
 
@@ -189,7 +189,7 @@ export const WORLD_LORE_BRIEF: Partial<Record<number, WorldLore>> = {
   },
   5: {
     page1:
-      'Past the flats lies open ice. Every carrier here has paired off, and what is left is a single wave, one phase shared across the whole glacier. It will not hold a field inside it. A phase must come back to itself around a circle, so the flux it cannot expel is trapped in a handful of glowing pits, and the ice closes around them.',
+      'Past the flats lies open ice. Every carrier here has paired off, and what is left is a single wave, one phase shared across the whole glacier. It will not hold a field inside it. A phase must come back to itself around a circle, so the flux it cannot expel is trapped in one or two glowing pits, and the ice closes around them.',
     page2:
       'Ice like this can hold a traveler split in two, each half its own opposite, what they are stored in the distance between them. The Decoherence cannot touch the halves, so it shortens the passage until they feel each other and snap back into one ordinary traveler. Far out waits something once asked for more than it could carry.',
   },
@@ -264,7 +264,7 @@ export const RIVAL_TAUNTS_BRIEF: Partial<Record<number, RivalTaunt>> = {
   },
   7: {
     part1:
-      'A shard-fused golem of pale green triangles, cracked through, spans four lanes. "Polycrystalline Herbertsmithite Golem. No piece of me holds what I am. Grind me fine."',
+      'A shard-fused golem of pale green triangles, cracked through, spans every lane. "Polycrystalline Herbertsmithite Golem. No piece of me holds what I am. Grind me fine."',
     part2:
       '"Cut me anywhere: nothing. By every test I have, nothing was taken from me, and there was never anything to take."',
   },
@@ -276,7 +276,7 @@ export const RIVAL_TAUNTS_BRIEF: Partial<Record<number, RivalTaunt>> = {
   },
   9: {
     part1:
-      'No golem waits here, only a flaw, and the ground builds it a body from whatever lies there. "Whatever this patch is made of, I am today."',
+      'The golem here is borrowed: a flaw, and the ground builds it a body from whatever lies there. "Whatever this patch is made of, I am today."',
     part2:
       '"I borrow my lattice, and it decides everything about me. You have been handing back what was taken from everything on this road. Nothing was ever taken from me. Did you never wonder what was doing the taking?"',
   },

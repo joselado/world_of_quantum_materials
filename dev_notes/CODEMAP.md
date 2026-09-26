@@ -1828,14 +1828,15 @@ non-null only for `this.isRival && this.world === 10`) is this fight's actual li
 type/look/name, read through the `opponentView()` helper everywhere the opponent's identity
 matters (`resolveHit`'s mismatch check, `moveButtonContent`'s `!!2x` preview, `drawTurnPreview`,
 every opponent-identity log line, `endBattle`'s flavor/blurb) instead of `this.wild` directly.
-Set in `create()` to mirror `getPlayerMaterial`'s own current type (visuals/name stay "The
-Adapted"'s own until the first transmutation). `resolveHit`'s `checkEndOrContinue` calls
+Set in `create()` to mirror `getPlayerMaterial`'s own current type (its look stays "The
+Adapted"'s own until the first transmutation, and its name for the whole fight). `resolveHit`'s `checkEndOrContinue` calls
 `transmuteAdapted(effectiveClass)` once per player Attack/Analytic/Ultimate move that lands
 on a still-living Adapted (a whiffed Ultimate doesn't, guarded by `!whiff`; Kondo's self-buff
 moves never reach that function at all, see `resolveHit`'s own early return) -- it reverse-looks-up `data/materials.ts`'s
 `typesHosting(moveClass)` (every `MaterialType` whose `MOVE_COMPATIBILITY` list actually
 includes that class), picks a real compound of one of those types at random from `allCrystals()`,
-and becomes a "Polycrystalline `<compound>` Golem" of it (same naming `WORLD_RIVALS[1-8]` uses),
+and takes on that compound's type and look while keeping the name "The Adapted" (the compound
+is named only in the log line, `WORLDS.md` §6),
 rebuilding `opponentCrystal`, rebuilding the opponent's nameplate through `drawOpponentPlate()`
 (whole, not retitled -- the plate is a one-shot fitted layout, see STYLE.md's "Nameplates"),
 redrawing the move menu (`drawMoveMenu`, so every button's `!!2x` tag is a mismatch check

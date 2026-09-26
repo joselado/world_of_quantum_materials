@@ -33,7 +33,7 @@ import { blend } from '../art/colors';
 import { stopMoveEffectPreview } from '../art/moveEffectPreview';
 
 // World 0, "The Lab" (DESIGN.md's world table) -- boot destination from
-// TitleScene and the return point from Overworld (press H or Enter). Unlike
+// TitleScene and the return point from Overworld (press Enter). Unlike
 // the numbered worlds it isn't a walkable procedural map: it's a single
 // static room with up to nine stations -- Qumatex and the door onward,
 // which always exist, plus seven reference/settings stations (Moves, Stats,

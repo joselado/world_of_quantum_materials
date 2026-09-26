@@ -92,7 +92,7 @@ export function showLandauPanel(scene: GuardianPanelHost) {
     y,
     panelWidth,
     avatar: makeLandauAvatar,
-    quote: '"Put a strong enough field on a two-dimensional electron gas and its whole band breaks into a ladder of flat levels, one fixed quantum of energy apart. Tell me the physics right and I will teach your crystal to strike by that ladder. Answer right and the hit climbs a rung and lands twice as hard. Answer wrong and it barely lands at all. Tell me which quasiparticle should carry it, too."',
+    quote: '"Put a strong enough field on a two-dimensional electron gas and its whole band breaks into a ladder of flat levels, one fixed quantum of energy apart. Tell me the physics right and I will teach your crystal to strike by that ladder. Answer right and the hit climbs a rung and lands twice as hard. Answer wrong and it lands at half strength. Tell me which quasiparticle should carry it, too."',
     introPx: `${Math.round(11 * introScale)}px`,
   });
 
