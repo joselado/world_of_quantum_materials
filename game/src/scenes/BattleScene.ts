@@ -16,6 +16,7 @@ import { drawStarNetwork } from '../art/stars';
 import type { ProjectedPoint } from '../art/perspective';
 import { playAttackEffect, followAnchor, ANALYTIC_SHAPES, ULTIMATE_SHAPES, type EffectAnchor } from '../art/attackEffects';
 import { isArena, markArena } from '../art/attackFx';
+import { bakeLayers } from '../art/bake';
 import type { UltimateStage } from '../art/attackUltimates';
 import { drawFranklinPassiveHalo } from '../art/passiveHalos';
 import { fontPx, fontScale } from '../ui/text';
@@ -126,6 +127,9 @@ const BACKDROP_MODE: 'layered' | 'bands' | 'realistic' = 'realistic';
 const OVERSCAN_X = 190;
 const OVERSCAN_Y = 110;
 const ARENA_ZOOM_OUT = 0.72;
+// The texture the realistic backdrop's painted-once layers are baked into
+// at the start of every battle (drawRealisticBackdrop).
+const BACKDROP_TEXTURE = 'battle-backdrop';
 // The painted arena's horizontal extent.
 const ARENA_X0 = -OVERSCAN_X;
 const ARENA_W = FIELD_W + OVERSCAN_X * 2;
@@ -1635,6 +1639,9 @@ export class BattleScene extends Phaser.Scene {
     // below that the sky arrives at from above and the horizon is a place
     // inside one atmosphere rather than a seam between two.
     const air = blend(biome.fogTarget, biome.skyBottom, 0.4);
+    // Where the painted-once layers begin: everything added from here to the
+    // horizon veil is flattened into one texture below (art/bake.ts).
+    const paintedFrom = this.children.length;
     const g = this.arena(this.add.graphics());
 
     // Sky: a three-stop wash whose brightening accelerates downward, the way
@@ -1765,6 +1772,13 @@ export class BattleScene extends Phaser.Scene {
     // A last thin veil along the horizon over everything, so the far stand
     // and the sky share the same air after all the detail has been laid in.
     this.drawArenaVeil(this.arena(this.add.graphics()), air, 0.16, 40, 30);
+    // Every layer above is still -- frozen at R_FROZEN_NOW where anything in
+    // it could move -- so it is painted into one texture here, and the frame
+    // pays for one image instead of re-tessellating tens of thousands of
+    // fills. The haze banks drift and the vignette belongs to the HUD
+    // camera, so both stay live above it.
+    const painted = this.children.list.slice(paintedFrom);
+    this.arena(bakeLayers(this, BACKDROP_TEXTURE, painted, { x: ARENA_X0, y: -OVERSCAN_Y, w: ARENA_W, h: FIELD_H + OVERSCAN_Y * 2 }));
     this.drawArenaHaze(air);
     this.drawVignette(biome);
 

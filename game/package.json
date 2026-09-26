@@ -18,6 +18,7 @@
     "music-arc-check": "node scripts/music-arc-check.mjs",
     "greyscale-check": "node scripts/greyscale-check.mjs",
     "perf-check": "node scripts/perf-check.mjs",
+    "frame-cost": "node scripts/frame-cost.mjs",
     "shots": "node scripts/shots.mjs",
     "guide": "node scripts/guide.mjs",
     "component-check": "node scripts/component-check.mjs",

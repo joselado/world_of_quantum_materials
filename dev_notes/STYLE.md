@@ -106,6 +106,24 @@ What this means in practice:
   - **`fillCircle` tessellates to about a hundred segments whatever its
     radius.** Use `art/shapes.ts`'s `fillDot`, which sizes the count off the
     radius the way `ellipseSteps` does for every other round shape.
+    `fillEllipse`/`strokeEllipse` without a `smoothness` argument take 32
+    segments at any size, so pass `ellipseSteps` there too.
+- **A Graphics drawn once is still paid for on every frame.** The
+  re-tessellation above does not care whether the command list ever changes,
+  and on a machine without a GPU every stacked translucent layer is also
+  filled again in software. Art that is painted once and then left alone is
+  baked (`art/bake.ts`'s `bakeLayers`): flattened into one texture by the same
+  renderer, supersampled to stand in for the canvas's antialiasing, and shown
+  as a single image in the layers' own place. The battle backdrop, the Lab
+  room and the Lab's station motifs are baked. A bake is only the same picture
+  under two conditions, both of which a candidate has to meet: every layer
+  blends normally, and nothing fades the result afterwards (a translucent
+  parent container fades each fill separately, a flattened image as one). A
+  camera zooming out on a bake resamples it, which softens its finest lines
+  slightly -- the battle's Ultimate pull-back to 0.72 costs about 8% of the
+  fine detail and holds steady through the zoom, which was judged worth the
+  cost the live layers would put back during every Ultimate. Anything that
+  moves, animates or is repainted stays live above or below the bake.
 - **When an effect cannot be made affordable, cut it and say so.** Shipping a
   cost quietly is the failure mode this rule exists to prevent.
 
@@ -212,8 +230,8 @@ under one figure reads as floating even when neither is wrong on its own.
 ## The Hub (`scenes/HubScene.ts`, world 0)
 
 - A single static room, not a walkable map, built entirely from `drawRoom()`'s one-time
-  Graphics calls (no `update()` on this scene, so the extra detail below costs nothing per
-  frame): a dark band ceiling (`y` 0-46) with three recessed light-panel glows and a seam line
+  Graphics calls and baked into a texture (`art/bake.ts`), so the extra detail below costs one
+  image per frame: a dark band ceiling (`y` 0-46) with three recessed light-panel glows and a seam line
   marking where it meets the back wall; the wall itself the same dark blue-purple gradient the
   room always had (`0x1a1a2e` → `0x242440`), now confined between that ceiling seam and the
   floor rather than spanning the whole canvas, carrying a pair of conduit pipes with rivets and
@@ -2300,8 +2318,9 @@ world are shaped, since world N's start is world N-1's exit.
 
 ## Battle backdrop (`BattleScene.drawRealisticBackdrop`)
 
-- The arena backdrop is drawn once per battle entry (in `create()`, never per-frame) and
-  shows **the place on the map the fight started in**: the same ground, the same
+- The arena backdrop is drawn once per battle entry (in `create()`, never per-frame), baked
+  into one texture (`art/bake.ts`) up to and including the last horizon veil, and shows **the
+  place on the map the fight started in**: the same ground, the same
   impassable surround, the same skyline the player was just walking through, seen from
   ground level. Which place that is comes from `BattleInitData.locale` (sampled by
   `scenes/overworld/terrain/plan.ts`'s `sampleBattleLocale` over a 5x5 window around the
@@ -3134,7 +3153,8 @@ world are shaped, since world N's start is world N-1's exit.
   HP bar redrawn mid-cast lands on the right camera, and merged back into one camera once
   the zoom is at 1 (so the check scripts that walk the display list always see it whole).
   What the pulled-back camera looks at past the field is the backdrop's overscan ("Battle
-  backdrop" above). The vignette carries no arena tag: it frames the screen rather than the
+  backdrop" above), whose bake the zoom resamples: slightly softer in its finest lines than
+  at zoom 1, and steady through the zoom. The vignette carries no arena tag: it frames the screen rather than the
   field, so while the camera is pulled back the HUD camera draws it at screen size and the
   field's corners are as bright as the overscan around them. A preview never pulls back --
   the zoom is the battle's, not the effect's.

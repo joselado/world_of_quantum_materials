@@ -277,6 +277,12 @@ game/src/
                                  ~100-segment fillCircle; fillPolygon(g, pts) -- a filled convex
                                  shape, two triangles for the four-point case rather than a
                                  triangulated path (see "Ellipse tessellation" below)
+    bake.ts                    bakeLayers(scene, key, layers, region) -- flattens painted-once
+                                 Graphics into one DynamicTexture (painted at BAKE_SUPERSAMPLE and
+                                 averaged down to 1:1, even-sized, on a whole pixel) shown by one
+                                 Image in the first layer's slot, and freed with that Image; the
+                                 layers stay hidden in place and repaint it on RESTORE_WEBGL. See
+                                 "Painted-once art is baked" below
     contours.ts                Smoothed walkable/impassable boundary geometry in tile space --
                                   per-tile ground outline, contact-shadow strips, rim light --
                                   built once per world-state by OverworldScene's cached terrain
@@ -1134,6 +1140,19 @@ everything else by absence, so only two things in it carry meaning.
   first wild *encounter*, feeds the Hub's Qumatex) and `defeatedMaterials`
   (`BattleScene.endBattle`, written on an ordinary wild *win*, feeds Dresselhaus's transmutation
   panel). Don't conflate them -- a material can be encountered without being defeated.
+- **Painted-once art is baked.** A Graphics object is re-tessellated on every frame it renders,
+  whether or not its commands ever change, so art drawn once and then left alone goes through
+  `art/bake.ts`'s `bakeLayers` once it is finished: `BattleScene.drawRealisticBackdrop` bakes
+  everything from the sky through the last horizon veil (`BACKDROP_TEXTURE`),
+  `HubScene.drawRoom` bakes the room's structure (`lab-room`), and `HubScene.addStationRow`
+  bakes each station motif's line art in its own slot in the motif's container
+  (`lab-motif-<slot>-<n>`). What moves or is repainted stays live on either side of the image:
+  the battle's drifting haze and HUD-side vignette, the Lab's `roomGlow` and the door motif's
+  portal. `bakeLayers` refuses (in dev) a layer that blends other than normally or sits in a
+  translucent container, since neither flattens into the same picture (STYLE.md's cost rule
+  says why), and `scripts/component-check.mjs`'s context-loss test checks that every baked
+  texture comes back with its pixels. A baked texture lives exactly as long as the image showing
+  it, so a scene that is not running holds none; each bake site takes a key of its own.
 
 ## Player form and moves
 
@@ -1598,7 +1617,9 @@ exactly that seam to capture a backdrop-only frame, which is what lets it measur
 against its own background without importing any palette data. Keep new backdrop drawing
 inside `drawBackground()` rather than after the combatants; the check asserts the seam still
 holds on every run and reports a broken harness rather than silently measuring the wrong
-thing, but the assertion is a tripwire, not a fix.
+thing, but the assertion is a tripwire, not a fix. The baked backdrop image (see "Painted-once
+art is baked") takes the sky layer's slot, so it sits on the backdrop side of the seam along
+with the hidden layers it was painted from.
 
 **BattleScene also requests the world's battle track.** `create()` calls `music.play` with the
 key `battle:<world>` -- `audio/music.ts`'s `SCORES` table has one procedural battle score per

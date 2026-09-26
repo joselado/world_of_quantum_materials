@@ -507,15 +507,21 @@ rather than a code path: a browser can take the WebGL context away at any
 moment (backgrounding a tab on mobile, a GPU driver reset, a laptop switching
 graphics chips) and hand it back a moment later, and unhandled that is a black
 canvas the player can only escape by reloading. Phaser restores its own
-resources across the cycle; its one documented exception is GPU-bound dynamic
-textures (`RenderTexture`/`DynamicTexture`), which their owner has to redraw
-on the renderer's `RESTORE_WEBGL` event. This game owns none: everything is
-`Graphics` and `Text` rebuilt per scene, plus the plain canvas textures the
-spectacle moves draw with (`art/fxTextures.ts`, painted once at boot), which
-Phaser re-uploads from their canvas like any loaded image -- which is why it
-carries no context-loss handler of its own, and the test asserts both halves: that the
-cycle really does recover, and that the precondition still holds. Adding a
-dynamic texture fails it, with the remedy in the failure message.
+resources across the cycle, including the plain canvas textures the spectacle
+moves draw with (`art/fxTextures.ts`, painted once at boot), which it
+re-uploads from their canvas like any loaded image. Its one documented
+exception is GPU-bound dynamic textures (`RenderTexture`/`DynamicTexture`),
+which come back empty for their owner to paint again on the renderer's
+`RESTORE_WEBGL` event. The game's are the baked backdrops (`art/bake.ts`: the
+battle arena, the Lab room and its station motifs), and `bakeLayers` repaints
+each one from its hidden source layers on that event. So the test asserts both
+halves: that the cycle really does recover, and that every dynamic texture
+comes back with the pixels it had before -- a 4x4 grid read out of each one
+before the loss and after the restore must match. A dynamic texture nobody
+repaints comes back transparent and fails it, with the remedy in the failure
+message. It finds them by `instanceof Phaser.Textures.DynamicTexture`, never by
+constructor name: Vite's pre-bundled Phaser renames the class
+(`DynamicTexture2`), and a name check matches nothing.
 **Every wait in this script is on an observable signal, never on a fixed number
 of real milliseconds**, and anything added to it has to follow that rule. The
 reason is that game time and wall time come apart badly here: Phaser's
@@ -782,10 +788,10 @@ A PNG under 5 kB fails the run: that is an empty or black frame, a shot that
 `STYLE.md`'s cost rule. It is fast enough to sit beside `content-lint` as a
 pre-push check rather than inside `component-check`.
 
-It asserts on **work, not time**. Headless Chrome throttles
-`requestAnimationFrame` and rasterizes in software, so frame deltas measured
-there come back around 100ms whatever the game is doing — an absolute
-frame-time gate would be flaky and meaningless. Draw-call counts, live object
+It asserts on **work, not time**. It launches headless Chrome with
+`--disable-gpu`, which rasterizes in software, so frame deltas measured there
+come back around 100ms whatever the game is doing — an absolute frame-time
+gate would be flaky and meaningless. Draw-call counts, live object
 counts and tween counts are the same on every machine and catch what actually
 causes lag: an effect that draws per tile with no falloff, or a panel that
 leaks an endless tween per rebuild.
@@ -821,6 +827,44 @@ difference as a win or a loss.
 It does not tell you the game feels smooth on your machine, only that nothing
 has started doing dramatically more work than it used to. Your own eyes remain
 the final check.
+
+## Measuring frame cost
+
+**`npm run frame-cost`** (`scripts/frame-cost.mjs`, about 3 minutes a mode)
+answers what `perf-check`'s counts cannot: how much of a core each scene takes
+while the player sits in it, and how many frames a machine without a GPU
+manages. It visits the title screen, the Lab, every world's overworld, every
+world's battle and two rival fights, and for each reports fps, the
+JavaScript milliseconds per frame inside the game step split into update
+(scene logic, including the overworld's per-frame terrain rebuild) and render
+(where a Graphics object's re-tessellation lands), the step's p95, and on
+Linux the CPU the renderer and GPU processes burn per second of wall time.
+`Math.random` is pinned, so every mode sees the same maps and arenas.
+
+It runs each scene under the three renderers a player's browser can hand the
+game, since a change can be free on one and ruinous on another:
+
+- **`gpu`** -- WebGL on the machine's own GPU. Headless Chrome reaches it with
+  `--use-angle=gl --enable-gpu --ignore-gpu-blocklist`, and then paces frames
+  on vsync at 60fps like a desktop browser; the run prints the renderer string
+  it got, so a machine with no usable GPU shows up as SwiftShader rather than
+  passing silently.
+- **`swiftshader`** -- WebGL rasterized on the CPU, what a browser without a
+  usable GPU runs when it still offers WebGL. Pixel fill is the whole cost, so
+  stacked full-screen translucent layers are what show up here, and the
+  canvas's own multisampling roughly doubles it.
+- **`canvas`** -- no WebGL at all, so `Phaser.AUTO` falls back to the Canvas
+  renderer, forced by making `getContext('webgl')` return null. That renderer
+  does not implement `fillGradientStyle`, so every gradient in the game draws
+  as a flat fill of whatever colour was set last -- the skies go black. That
+  is how this path looks today, not something the measurement introduces.
+
+`QM_FRAME_MODES` and `QM_FRAME_SCENES` narrow a run (`owN`, `btN`, `btNr`,
+`title`, `hub`), `QM_FRAME_SECS` sets the measured window, `QM_FRAME_JSON`
+dumps the rows for diffing two runs, and it picks its own port (5195,
+`QM_FRAME_PORT`). It is an instrument, not a gate: its numbers move with the
+machine and with whatever else it is running, so compare two runs made back
+to back on one machine, never a run against a figure written down earlier.
 
 ## Checking arena legibility
 

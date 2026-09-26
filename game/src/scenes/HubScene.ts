@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { killTweensDeep, makeCrystal } from '../art/crystals';
 import { CANVAS_W, CANVAS_H } from '../art/perspective';
+import { bakeLayers } from '../art/bake';
 import { getPlayerMaterial, getPlayerDopantLook, allCrystals, TYPE_LOOK, materialDisplayName, materialTypeLabel, worldName } from '../data/materials';
 import { wildHpForWorld } from '../data/balance';
 import { materialBlurb } from '../data/materialdex';
@@ -411,7 +412,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
       const rowStations = stations.slice(i, i + 3);
       let rowHeight = 0;
       rowStations.forEach((station, col) => {
-        const row = this.addStationRow(stationX[col], y, station.label, station.onClick, station.motif);
+        const row = this.addStationRow(stationX[col], y, station.label, station.onClick, station.motif, i + col);
         if (station.motif === doorMotif) this.doorMotif = row.motif;
         this.stationObjects.push(row.button, ...(row.motif ? [row.motif] : []));
         rowHeight = Math.max(rowHeight, row.button.height);
@@ -440,7 +441,8 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     y: number,
     label: string,
     onClick: () => void,
-    makeMotif?: (scene: Phaser.Scene, size: number) => Phaser.GameObjects.Container
+    makeMotif?: (scene: Phaser.Scene, size: number) => Phaser.GameObjects.Container,
+    slot = 0
   ): { button: Phaser.GameObjects.Text; motif?: Phaser.GameObjects.Container } {
     const btn = this.addButton(x, y, label, () => {
       if (this.dialogueContainer) return;
@@ -453,6 +455,16 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     btn.setX(pairLeft + STATION_MOTIF_SIZE + STATION_MOTIF_GAP + btn.width / 2);
     const motif = makeMotif(this, STATION_MOTIF_SIZE);
     motif.setPosition(pairLeft + STATION_MOTIF_SIZE / 2, y + btn.height / 2);
+    // Each motif's line art is one Graphics drawn once and never touched
+    // again, painted into a texture of its own (art/bake.ts) in its own place
+    // among the container's children, keyed by the station's slot in the
+    // grid. The door's portal is repainted as the destination changes and
+    // blends additively, so it stays live.
+    const live = motif.getData('portal') as Phaser.GameObjects.GameObject | undefined;
+    const s = STATION_MOTIF_SIZE;
+    motif.list
+      .filter((child) => child instanceof Phaser.GameObjects.Graphics && child !== live)
+      .forEach((art, i) => bakeLayers(this, `lab-motif-${slot}-${i}`, [art], { x: -s, y: -s, w: s * 2, h: s * 2 }));
     return { button: btn, motif };
   }
 
@@ -706,6 +718,10 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     for (let tx = 0; tx <= CANVAS_W; tx += tileW) g.lineBetween(tx, floorTop, tx, CANVAS_H);
     for (let ty = floorTop; ty <= CANVAS_H; ty += tileH) g.lineBetween(0, ty, CANVAS_W, ty);
 
+    // The structure never changes once drawn, so it is painted into a texture
+    // (art/bake.ts); the lighting above it is repainted when the player
+    // transmutes, and blends additively, so it stays live.
+    bakeLayers(this, 'lab-room', [g], { x: 0, y: 0, w: CANVAS_W, h: CANVAS_H });
     this.relightRoom();
   }
 

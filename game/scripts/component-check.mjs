@@ -654,14 +654,13 @@ async function main() {
   // Phaser 3.80+ restores its own resources across that cycle and emits
   // RESTORE_WEBGL when it is done. Its one documented exception is dynamic,
   // GPU-bound textures (RenderTexture/DynamicTexture, anything drawn into on
-  // the GPU), which the owner has to redraw. This game has none -- everything
-  // is Graphics and Text rebuilt per scene -- which is exactly why it needs
-  // no context-loss handler of its own, and why that is worth *checking*
-  // rather than trusting: the day someone adds a DynamicTexture, automatic
-  // recovery silently stops being complete, and the failure a player sees is
-  // a half-blank screen after their phone comes back from the lock screen.
-  // So this asserts both halves: the cycle really does recover, and the
-  // precondition that lets it recover unaided still holds.
+  // the GPU): Phaser gives them back empty, and their owner has to paint them
+  // again. The battle's backdrop is one (art/bake.ts, which repaints on
+  // RESTORE_WEBGL), and a texture nobody repaints fails silently -- what a
+  // player sees is a half-blank screen after their phone comes back from the
+  // lock screen. So this asserts both halves: the cycle really does recover,
+  // and every dynamic texture the game owns comes back with the pixels it
+  // had before the context went away.
   async function testContextLossRecovery() {
     // Run it on a live battle -- the busiest scene, with the most tweens,
     // effects and per-frame redraws in flight when the context vanishes.
@@ -684,7 +683,27 @@ async function main() {
       window.__ctxLossSeen = { lost: 0, restored: 0 };
       g.canvas.addEventListener('webglcontextlost', () => window.__ctxLossSeen.lost++);
       g.canvas.addEventListener('webglcontextrestored', () => window.__ctxLossSeen.restored++);
-      return { ok: true, frame: g.loop.frame };
+      // A 4x4 grid of pixels read back out of every GPU-bound dynamic texture,
+      // now and again after the restore: a texture its owner never repainted
+      // comes back transparent, which the grid cannot miss on a painted one.
+      // Matched by instanceof, not by constructor name: Vite's pre-bundled
+      // Phaser renames the class (DynamicTexture2), and a RenderTexture draws
+      // into a DynamicTexture of its own, so this catches both.
+      window.__sampleDynamic = () => {
+        const out = {};
+        for (const [key, t] of Object.entries(g.textures.list)) {
+          if (!(t instanceof Phaser.Textures.DynamicTexture)) continue;
+          const px = [];
+          for (let i = 1; i <= 4; i++) {
+            for (let j = 1; j <= 4; j++) {
+              t.snapshotPixel(Math.floor((t.width * i) / 5), Math.floor((t.height * j) / 5), (c) => px.push([c.r, c.g, c.b, c.a]));
+            }
+          }
+          out[key] = px;
+        }
+        return out;
+      };
+      return { ok: true, frame: g.loop.frame, dynamic: window.__sampleDynamic() };
     });
     // A canvas-fallback renderer has no context to lose, so there is nothing
     // to assert rather than something to fail.
@@ -706,10 +725,8 @@ async function main() {
     await sleep(3000);
     const after = await page.evaluate(() => {
       const g = window.__game;
-      // Any texture the GPU owns and the game would have to redraw itself.
-      const dynamic = Object.entries(g.textures.list)
-        .filter(([, t]) => t && (t.constructor?.name === 'DynamicTexture' || t.constructor?.name === 'RenderTexture'))
-        .map(([k]) => k);
+      // Every texture the GPU owns and the game has to redraw itself.
+      const dynamic = window.__sampleDynamic();
       return {
         ...window.__ctxLossSeen,
         contextLost: !!g.renderer.contextLost,
@@ -728,17 +745,28 @@ async function main() {
     if (!after.scenes.includes('Battle')) {
       return { pass: false, detail: `Battle scene did not survive the context cycle (scenes=${JSON.stringify(after.scenes)})` };
     }
-    if (after.dynamic.length) {
-      return {
-        pass: false,
-        detail:
-          `the game now owns GPU-bound dynamic texture(s) ${JSON.stringify(after.dynamic)} -- Phaser does not restore those ` +
-          `automatically, so something must now redraw them on the renderer's RESTORE_WEBGL event`,
-      };
+    const repainted = [];
+    for (const [key, before] of Object.entries(prepared.dynamic)) {
+      const now = after.dynamic[key];
+      if (!now) continue; // destroyed across the cycle: nothing left to show
+      const blank = before.some((p) => p[3] > 0) && now.every((p) => p[3] === 0);
+      const drift = Math.max(...before.map((p, i) => Math.max(...p.map((v, k) => Math.abs(v - (now[i]?.[k] ?? -999))))));
+      if (blank || drift > 2) {
+        return {
+          pass: false,
+          detail:
+            `dynamic texture "${key}" came back ${blank ? 'blank' : `changed (a sampled channel moved by ${drift})`} after the ` +
+            `context cycle -- Phaser gives GPU-bound textures back empty, so whatever painted it must paint it again on the ` +
+            `renderer's RESTORE_WEBGL event (art/bake.ts does this for the battle backdrop)`,
+        };
+      }
+      repainted.push(key);
     }
     return {
       pass: true,
-      detail: `context lost and restored cleanly on a live battle; loop advanced ${prepared.frame} -> ${after.frame}, no GPU-bound dynamic textures to redraw`,
+      detail:
+        `context lost and restored cleanly on a live battle; loop advanced ${prepared.frame} -> ${after.frame}; ` +
+        `dynamic texture(s) repainted to their pre-loss pixels: ${repainted.length ? repainted.join(', ') : 'none owned'}`,
     };
   }
 
