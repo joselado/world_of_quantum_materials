@@ -26,9 +26,10 @@ import {
   playSplit,
   playBurst,
   playImpactShockwave,
+  GROUND_DROP,
 } from './attackShapes';
 import { playBeam, playEruption } from './attackAnalytics';
-import { playMeteor, playNova, METEOR_TOTAL_MS, NOVA_TOTAL_MS } from './attackUltimates';
+import { playMeteor, playNova, METEOR_TOTAL_MS, NOVA_TOTAL_MS, type UltimateStage } from './attackUltimates';
 import { fxDelayedCall } from './attackFx';
 
 // The battle-effect engine: which shape a move plays, how long the beat
@@ -232,7 +233,8 @@ export function playAttackEffect(
   onComplete?: () => void,
   whiff = false,
   depthOffset = 0,
-  level: 0 | 1 | 2 | 3 = 0
+  level: 0 | 1 | 2 | 3 = 0,
+  stage?: UltimateStage
 ) {
   const style = EFFECT_STYLE[moveClass];
   const shape = shapeOverride ?? style.shape;
@@ -252,7 +254,7 @@ export function playAttackEffect(
     // runs the same sequence and must leave the score alone (see its own
     // comment).
     music.duck(attackEffectTotalDurationMs(shape, level));
-    playUltimateRepeats(scene, shape, style.color, to, whiff, onImpact, powerRatio, onComplete, depthOffset, triggerCount);
+    playUltimateRepeats(scene, shape, style.color, to, whiff, onImpact, powerRatio, onComplete, depthOffset, triggerCount, GROUND_DROP, stage);
     return;
   }
 
@@ -298,13 +300,14 @@ export function playFlightEffect(
   playOrdinaryRepeats(scene, shape, style.color, from, to, undefined, 1, depthOffset, triggerCount, false);
 }
 
-// The floor offset the two ground-anchored shapes (beam/eruption) play with
-// here. A battle drops their floor GROUND_DROP below `at`, because `at` is a
-// defender's own centre and the floor is at its feet; a target-only play has
-// no body standing anywhere, and its caller hands over the floor line itself
-// (art/moveEffectPreview.ts's GROUND_LINE_Y), so the beam's column lands on
-// that line and the eruption's crack opens in it. Every other shape ignores
-// the argument.
+// The floor offset the ground-anchored shapes (beam/eruption, and the
+// meteor) play with here. A battle drops their floor GROUND_DROP below
+// `at`, because `at` is a defender's own centre and the floor is at its
+// feet; a target-only play has no body standing anywhere, and its caller
+// hands over the floor line itself (art/moveEffectPreview.ts's
+// GROUND_LINE_Y), so the beam's column lands on that line, the eruption's
+// crack opens in it and the meteor's rune lies on it with the ball hanging
+// its fixed height above. Every other shape ignores the argument.
 const TARGET_ONLY_GROUND_DROP = 0;
 
 // A move's beat played at the target alone, centered on one point: what a
@@ -340,14 +343,15 @@ export function playTargetEffect(
   shapeOverride?: AttackShape,
   onComplete?: () => void,
   depthOffset = 0,
-  level: 0 | 1 | 2 | 3 = 0
+  level: 0 | 1 | 2 | 3 = 0,
+  stage?: UltimateStage
 ) {
   const style = EFFECT_STYLE[moveClass];
   const shape = shapeOverride ?? style.shape;
   const triggerCount = LEVEL_TRIGGER_COUNTS[level] ?? 1;
 
   if (shape === 'meteor' || shape === 'nova') {
-    playUltimateRepeats(scene, shape, style.color, at, false, undefined, 1, onComplete, depthOffset, triggerCount);
+    playUltimateRepeats(scene, shape, style.color, at, false, undefined, 1, onComplete, depthOffset, triggerCount, TARGET_ONLY_GROUND_DROP, stage);
     return;
   }
 
@@ -487,33 +491,31 @@ function playUltimateRepeats(
   powerRatio: number,
   onComplete: (() => void) | undefined,
   depthOffset: number,
-  triggerCount: number
+  triggerCount: number,
+  groundDrop = GROUND_DROP,
+  stage?: UltimateStage
 ) {
-  const play = shape === 'meteor' ? playMeteor : playNova;
   const stagger = ULTIMATE_LEVEL_STAGGER_MS;
 
   const playOnce = (scale: number, isLast: boolean) => {
     playAttackSfx(shape);
-    play(
-      scene,
-      color,
-      to,
-      whiff,
-      () => {
-        if (whiff) {
-          playFizzleSfx();
-        } else {
-          playImpactShockwave(scene, color, to, depthOffset, scale);
-          playImpactSfx(powerRatio);
-        }
-        if (isLast) onImpact?.();
-      },
-      () => {
-        if (isLast) onComplete?.();
-      },
-      depthOffset,
-      scale
-    );
+    const land = () => {
+      if (whiff) {
+        playFizzleSfx();
+      } else {
+        playImpactShockwave(scene, color, to, depthOffset, scale);
+        playImpactSfx(powerRatio);
+      }
+      if (isLast) onImpact?.();
+    };
+    const settle = () => {
+      if (isLast) onComplete?.();
+    };
+    // The meteor is staged against the floor (its rune, its hover height,
+    // its slam), so it takes the floor line like the eruption does; the
+    // nova is centred on the target's body and has no floor.
+    if (shape === 'meteor') playMeteor(scene, color, to, whiff, land, settle, depthOffset, scale, groundDrop, stage);
+    else playNova(scene, color, to, whiff, land, settle, depthOffset, scale, groundDrop, stage);
   };
 
   for (let i = 0; i < triggerCount; i++) {

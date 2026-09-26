@@ -2,9 +2,10 @@ import Phaser from 'phaser';
 import type { EffectAnchor } from './attackAnchors';
 import { GROUND_DROP, GROUND_ASPECT, drawAnnulus, drawArcRing } from './attackShapes';
 import { fxGraphics, fxImage, fxEmitter, fxRetire, fxCounter, FxSpout } from './attackFx';
-import { ensureFxTextures, FX_TEX, ROCK_FRAMES, ringDisplaySize, rockDisplaySize } from './fxTextures';
-import { layFlat, placeAt, groundAngle, tumble, belowGround, QUANTITY_CAP } from './attackAnalytics';
+import { ensureFxTextures, FX_TEX, ringDisplaySize, orbDisplaySize, shellDisplaySize } from './fxTextures';
+import { layFlat, placeAt, groundAngle, QUANTITY_CAP, hot, energyGlobs } from './attackAnalytics';
 import { blend, darken } from './colors';
+import { CANVAS_W, CANVAS_H } from '../config/screen';
 
 // Skłodowska-Curie's Ultimate pair (§5, World 10, ULTIMATE_SHAPES) -- the
 // flashiest tier, a 4-6s "Final-Fantasy-style summon" sequence rather than a
@@ -22,21 +23,19 @@ import { blend, darken } from './colors';
 // impact, embers are still rising when the aftermath ends (fxRetire).
 //
 // Both are drawn with lit, textured material (art/fxTextures.ts) rather
-// than flat fills: the meteor is a shaded rock with a molten leading face,
-// a fire-and-smoke trail and a shadow tightening on the floor as it comes
-// down; the nova a core heated to a pale shade of the move's color inside an
-// accretion disc, matter falling in as sparks; the strikes real shockwaves,
-// dust, debris under gravity, lens streaks and glowing gas. Everything is
-// tinted the move's own currently-tuned quasiparticle color -- its light at
-// full strength or pushed toward white where it is hottest, its smoke and
-// dust the same color darkened or dulled, and the meteor's rock (its body,
-// the chunks orbiting it and the debris the slam throws up) since the mass
-// being summoned is that quasiparticle, not a stone it happens to ride in
-// on: a Magnon Meteor is a red rock under red light, an Electron Nova a
-// blue core inside a blue disc. Nothing in a landing cast is plain white or
-// grey. The rock texture's shading is neutral grey (fxTextures.ts's
-// paintRocks), so the tint is the rock's color rather than a wash over a
-// brown.
+// than flat fills: the meteor is a ball of energy -- a hot core under a
+// roiling skin, lightning crackling off it, light streaming up off it and a
+// shadow tightening on the floor as it comes down; the nova a core heated
+// to a pale shade of the move's color inside an accretion disc, matter
+// falling in as sparks; the strikes a fireball and a hemispherical front
+// (meteor), a spherical shockwave (nova), dust, globs of energy under
+// gravity, lens streaks and glowing gas. Everything is tinted the move's
+// own currently-tuned quasiparticle color -- its light at full strength or
+// pushed toward white where it is hottest, its dust the same color dulled
+// -- since the mass being summoned is that quasiparticle itself, a ball of
+// its energy rather than a stone it rides in on: a Magnon Meteor is a red
+// ball under red light, an Electron Nova a blue core inside a blue disc.
+// Nothing in a landing cast is plain white or grey.
 //
 // `whiff` (set when an Ultimate move fails its 3-question gate,
 // BattleScene's resolveHit) takes the summoned mass apart instead of letting
@@ -55,6 +54,22 @@ import { blend, darken } from './colors';
 // `EffectAnchor` (resolved fresh each frame, art/attackAnchors.ts) and never
 // reads the attacker's position at all -- a summoned meteor/nova arrives at
 // the defender, it doesn't travel from the caster.
+// Where an Ultimate's stage lies beyond its target: the point in the sky a
+// meteor comes in from, and the floor a nova draws its energy up out of (an
+// x span, and how far down the screen the floor reaches -- its top is the
+// target's own floor line). A battle hands in its arena (BattleScene's
+// ultimateStage, painted past the field's edges for its pulled-back camera)
+// and a preview its stage (art/moveEffectPreview.ts), so the far point is
+// the corner of whatever is being looked at; the default is a bare field.
+export interface UltimateStage {
+  far: { x: number; y: number };
+  floor: { x0: number; x1: number; y1: number };
+}
+export const DEFAULT_ULTIMATE_STAGE: UltimateStage = {
+  far: { x: -CANVAS_W * 0.16, y: -CANVAS_H * 0.18 },
+  floor: { x0: -CANVAS_W * 0.2, x1: CANVAS_W * 1.2, y1: CANVAS_H * 1.2 },
+};
+
 const METEOR_SUMMON_MS = 1300;
 const METEOR_CHARGE_MS = 2000;
 const METEOR_IMPACT_MS = 900;
@@ -71,25 +86,26 @@ export const NOVA_TOTAL_MS = NOVA_SUMMON_MS + NOVA_CHARGE_MS + NOVA_IMPACT_MS + 
 // the whiff dissipation builds exactly the silhouette Charge left hanging
 // over the target and pulls that apart, so the two have to agree on where the
 // mass ends up and how big it is or the handover shows as a visible cut.
-const METEOR_HOVER_DY = -34;
-const METEOR_MASS_R = 58;
-const METEOR_ORBIT_FACTOR = 1.6;
+// (Where the meteor's ball is when it breaks up is wherever it had got to
+// on its way in, left in `Shared` by Charge.)
+const METEOR_BALL_R = 40;
 const METEOR_RUNE_R = 58;
 const NOVA_CORE_R = 32;
 const NOVA_RING_FACTOR = 2.4;
+// How far the nova's spherical shockwave travels before it has faded out,
+// at scale 1: most of the field (FIELD_H/2 = 240, BattleScene.ts).
+const NOVA_SHOCK_R = 280;
 // The nova's accretion disc lies at this tilt to the camera.
 const DISC_TILT = 0.32;
 
 // The move's color at the intensities a meteor or a nova needs, so that
-// everything a cast puts on screen -- its light, its rock, its smoke -- is
+// everything a cast puts on screen -- its light, its gas, its dust -- is
 // the tuned quasiparticle's color and never a generic white or grey: `hot`
-// is the color pushed toward white for the hottest points (a leading face, a
-// core, a flash, the birth of a spark), `smokeOf` the color darkened and dulled into soot,
-// `dustOf` the same lifted to the pale of a dust cloud, and `paleOf` the near-
-// white of a dust ring. Only the whiff dissipation stays grey (FIZZLE_GREY),
-// since a failed cast is the one that carries no quasiparticle any more.
-const hot = (color: number) => blend(color, 0xffffff, 0.45);
-const smokeOf = (color: number) => blend(darken(color, 40), 0x5a545e, 0.4);
+// (art/attackAnalytics.ts) is the color pushed toward white for the hottest
+// points (a core, a flash, the birth of a spark), `dustOf` the color lifted
+// to the pale of a dust cloud, and `paleOf` the near-white of a dust ring.
+// Only the whiff dissipation stays grey (FIZZLE_GREY), since a failed cast
+// is the one that carries no quasiparticle any more.
 const dustOf = (color: number) => blend(color, 0x9a938c, 0.5);
 const paleOf = (color: number) => blend(color, 0xffffff, 0.55);
 
@@ -140,6 +156,8 @@ interface Fizzle {
 }
 interface Shared {
   fizzle?: Fizzle;
+  // Where the meteor's plunge ended (playMeteorCharge), for the slam.
+  contact?: MeteorContact;
 }
 
 // ---------------------------------------------------------------------------
@@ -154,7 +172,7 @@ interface Shared {
 // rather than a polygon and spokes: a closed hexagon ringed by radiating
 // lines reads as a wire wheel, while turning fragments read as something
 // being inscribed.
-function playMeteorSummon(scene: Phaser.Scene, color: number, to: EffectAnchor, onDone: () => void, depthOffset = 0, scale = 1) {
+function playMeteorSummon(scene: Phaser.Scene, color: number, to: EffectAnchor, onDone: () => void, depthOffset: number, scale: number, groundDrop: number) {
   ensureFxTextures(scene);
   const q = Math.min(scale, QUANTITY_CAP);
   const g = fxGraphics(scene, 58, depthOffset);
@@ -196,7 +214,7 @@ function playMeteorSummon(scene: Phaser.Scene, color: number, to: EffectAnchor, 
     onUpdate: (tw) => {
       const t = tw.getValue() ?? 0;
       const now = scene.time.now;
-      const groundY = to.y + GROUND_DROP;
+      const groundY = to.y + groundDrop;
       const r = (10 + t * 66) * scale;
       g.clear();
       drawAnnulus(g, color, to.x, groundY, r, 2.5 * scale, 0.3 + t * 0.6, GROUND_ASPECT);
@@ -219,160 +237,250 @@ function playMeteorSummon(scene: Phaser.Scene, color: number, to: EffectAnchor, 
   });
 }
 
-// Charge: a rock the size of the target in the move's own color, its leading
-// face heated to a paler shade of it, wrapped in that light and trailing fire
-// and smoke of the same color, with small
-// chunks orbiting it, descending from off the top of the screen to hang just
-// above the target -- a mass, not a shot -- while its shadow tightens and
-// darkens on the floor beneath and the summon circle keeps pulsing there.
-// Its arrival/growth is driven by `growT`, not the raw tween `t` -- reaching
-// full size and position by HOLD_T of the phase and holding there for the
-// rest (mass still burning/orbiting/turning on raw `t`, just no longer
-// growing or falling) reads as "reared back and straining, about to blow"
-// for that last stretch, the held-breath beat right before Impact's onImpact
-// fires. onImpact itself stays at frame 0 of the Impact phase (mirrors every
-// other shape's land()), so this hold -- not a delayed onImpact -- is what
-// sells "suddenly explode" rather than "still visibly growing when it
-// detonates".
+// Lightning crackling off the ball: jagged polylines from its skin outward,
+// re-rolled every ARC_MS by the phase drawing them so they flicker rather
+// than hang. Each is an angle, a reach past the skin (in radii) and a
+// lateral kink per segment.
+const ARC_MS = 60;
+const ARC_SEGMENTS = 4;
+interface Arc {
+  angle: number;
+  reach: number;
+  kinks: number[];
+}
+function rollArcs(n: number): Arc[] {
+  return Array.from({ length: n }, () => ({
+    angle: Math.random() * Math.PI * 2,
+    reach: 0.5 + Math.random() * 0.9,
+    kinks: Array.from({ length: ARC_SEGMENTS + 1 }, () => (Math.random() - 0.5) * 2),
+  }));
+}
+function drawArc(g: Phaser.GameObjects.Graphics, color: number, pts: { x: number; y: number }[], alpha: number, scale: number) {
+  const passes: [number, number, number][] = [
+    [4 * scale, color, 0.35 * alpha],
+    [1.5 * scale, hot(color), alpha],
+  ];
+  for (const [width, tint, a] of passes) {
+    g.lineStyle(width, tint, a);
+    g.beginPath();
+    pts.forEach((p, i) => (i === 0 ? g.moveTo(p.x, p.y) : g.lineTo(p.x, p.y)));
+    g.strokePath();
+  }
+}
+function drawSkinArcs(g: Phaser.GameObjects.Graphics, color: number, x: number, y: number, r: number, arcs: Arc[], alpha: number, scale: number) {
+  for (const arc of arcs) {
+    const cos = Math.cos(arc.angle);
+    const sin = Math.sin(arc.angle);
+    const pts = arc.kinks.map((k, i) => {
+      const along = r * (0.85 + (arc.reach * i) / ARC_SEGMENTS);
+      const lateral = i === 0 || i === ARC_SEGMENTS ? 0 : k * r * 0.22;
+      return { x: x + cos * along - sin * lateral, y: y + sin * along + cos * lateral };
+    });
+    drawArc(g, color, pts, alpha, scale);
+  }
+}
+
+// The approach. The ball closes on the target from the stage's far point
+// (UltimateStage.far -- out past the top-left of what a pulled-back battle
+// camera sees, a preview stage's own corner) at a steady pace in depth, and
+// is drawn in perspective: its apparent size and its progress across the
+// screen both go as 1 / (1 + depth), so it hangs small and far for most of
+// the phase and swells and sweeps in over the last stretch, the way a thing
+// falling out of the sky does. METEOR_FAR_DEPTH is the depth it starts at,
+// in units of the distance at which it is drawn at full size.
+const METEOR_FAR_DEPTH = 7;
+// Where in the phase a whiffed ball breaks up on the way in.
+const METEOR_BREAK_T = 0.72;
+
+// The ball's contact point at the end of the approach: its centre sits this
+// many radii above the floor, so its underside is in the ground.
+const METEOR_CONTACT_SINK = 0.45;
+
+// What Charge leaves for Impact: where the ball is and how big, at contact
+// on a landing cast or at the break-up on a whiff.
+interface MeteorContact {
+  x: number;
+  y: number;
+  r: number;
+}
+
+// The ball's apparent size at progress `t` of the approach (1 at contact),
+// and how far across the screen it has come, from 0 at the far point to 1
+// at the target: mostly the perspective law's own progress, so the close
+// is a rush, blended with a steady drift (METEOR_DRIFT of the motion) so
+// the ball is seen crossing the sky from its first frame rather than
+// hanging at the far point until the last stretch.
+const METEOR_DRIFT = 0.35;
+function meteorSize(t: number): number {
+  return 1 / (1 + (1 - t) * METEOR_FAR_DEPTH);
+}
+function meteorProgress(t: number): number {
+  const s0 = meteorSize(0);
+  const perspective = (meteorSize(t) - s0) / (1 - s0);
+  return METEOR_DRIFT * t + (1 - METEOR_DRIFT) * perspective;
+}
+
+// Charge: the meteor comes in from deep space. A point of light appears far
+// out at the stage's far point, with a lens flare so the eye catches it,
+// and closes on the target over the whole phase (meteorSize/
+// meteorProgress): a ball of the move's own energy -- a hot core under a
+// roiling skin (two orb layers turning against each other) in a halo of
+// its light, lightning crackling off it, sparks orbiting it -- stretched
+// along its own motion by how fast it is going, shedding a trail of light
+// that hangs in the air where it was left, while the rune under the target
+// flickers faster and the ball's shadow on the floor comes up out of
+// nothing as it nears. It arrives exactly as this phase ends, so that
+// Impact's `onImpact` -- the damage, the crystal's flinch, the shake --
+// fires on the frame of contact rather than before or after it: the
+// swelling, accelerating close is what reads as a strike rather than a
+// thing floating down.
+//
+// On a whiff the ball never arrives: at METEOR_BREAK_T of the phase it
+// stalls where it is, its light goes out of it (strainAt), and Impact takes
+// it apart there, still far out over the field.
 function playMeteorCharge(
   scene: Phaser.Scene,
   color: number,
   to: EffectAnchor,
   whiff: boolean,
   onDone: () => void,
-  depthOffset = 0,
-  scale = 1
+  depthOffset: number,
+  scale: number,
+  groundDrop: number,
+  stage: UltimateStage,
+  shared: Shared
 ) {
   const q = Math.min(scale, QUANTITY_CAP);
   const rune = fxGraphics(scene, 58, depthOffset);
+  const arcs = fxGraphics(scene, 61, depthOffset);
   const under = fxImage(scene, 58, depthOffset, FX_TEX.glow).setTint(color).setAlpha(0);
   const shadow = fxImage(scene, 58, depthOffset, FX_TEX.glow, undefined, Phaser.BlendModes.MULTIPLY).setTint(0x000000).setAlpha(0);
-  const rock = fxImage(scene, 60, depthOffset, FX_TEX.rock, ROCK_FRAMES[0], Phaser.BlendModes.NORMAL).setTint(color);
   const halo = fxImage(scene, 59, depthOffset, FX_TEX.glow).setTint(color);
-  const face = fxImage(scene, 61, depthOffset, FX_TEX.glow).setTint(hot(color));
-  const chunks = Array.from({ length: 5 }, (_, i) => fxImage(scene, 60, depthOffset, FX_TEX.rock, ROCK_FRAMES[1 + (i % 2)], Phaser.BlendModes.NORMAL).setTint(color));
-  const fire = fxEmitter(scene, 60, depthOffset, FX_TEX.glow, {
+  const skin = fxImage(scene, 60, depthOffset, FX_TEX.orb).setTint(color);
+  const skin2 = fxImage(scene, 60, depthOffset, FX_TEX.orb).setTint(blend(color, hot(color), 0.5));
+  const core = fxImage(scene, 61, depthOffset, FX_TEX.glow).setTint(hot(color));
+  const flare = fxImage(scene, 61, depthOffset, FX_TEX.flare).setTint(hot(color));
+  const orbiters = Array.from({ length: 3 }, () => fxImage(scene, 61, depthOffset, FX_TEX.spark).setTint(hot(color)));
+  // The trail: light shed where the ball is, left hanging there. Each
+  // particle is born at the ball's current size.
+  let trailSize = 0.1 * scale;
+  const trail = fxEmitter(scene, 60, depthOffset, FX_TEX.glow, {
     emitting: false,
-    lifespan: { min: 320, max: 640 },
-    speed: { min: 30, max: 110 },
-    angle: { min: 250, max: 290 },
-    gravityY: -90,
-    scale: { start: 0.2 * scale, end: 0.03 },
-    alpha: { start: 0.9, end: 0 },
-    tint: [hot(color), color, darken(color, 70)],
+    lifespan: { min: 260, max: 520 },
+    speed: { min: 4, max: 24 },
+    angle: { min: 0, max: 360 },
+    scale: { onEmit: () => trailSize, onUpdate: (_particle, _key, t, value) => value * (1 - 0.7 * t) },
+    alpha: { start: 0.8, end: 0 },
+    tint: [hot(color), color, darken(color, 60)],
   });
-  const smoke = fxEmitter(
-    scene,
-    59,
-    depthOffset,
-    FX_TEX.smoke,
-    {
-      emitting: false,
-      lifespan: { min: 650, max: 1200 },
-      speed: { min: 12, max: 45 },
-      angle: { min: 250, max: 290 },
-      gravityY: -40,
-      rotate: { min: 0, max: 360 },
-      scale: { start: 0.2 * scale, end: 0.8 * scale },
-      alpha: { start: 0.38, end: 0 },
-      tint: smokeOf(color),
-    },
-    Phaser.BlendModes.NORMAL
-  );
   const sparks = fxEmitter(scene, 61, depthOffset, FX_TEX.spark, {
     emitting: false,
     lifespan: { min: 200, max: 450 },
-    speed: { min: 40, max: 170 },
-    angle: { min: 200, max: 340 },
-    gravityY: 150,
-    scale: { start: 0.4 * scale, end: 0 },
+    speed: { min: 20, max: 120 },
+    angle: { min: 0, max: 360 },
+    scale: { start: 0.35 * scale, end: 0 },
     alpha: { start: 1, end: 0 },
     tint: [hot(color), color],
   });
-  const fireSpout = new FxSpout(fire);
-  const smokeSpout = new FxSpout(smoke);
+  const trailSpout = new FxSpout(trail);
   const sparkSpout = new FxSpout(sparks);
-  // Fully off the top of the frame even at a leveled repeat's size.
-  const originY = -60 - METEOR_MASS_R * scale;
+  let skinArcs: Arc[] = [];
+  let nextArcAt = 0;
+  const motionAngle = Phaser.Math.RadToDeg(Math.atan2(to.y + groundDrop - stage.far.y, to.x - stage.far.x)) + 90;
   fxCounter(scene, depthOffset, {
     from: 0,
     to: 1,
     duration: METEOR_CHARGE_MS,
-    // Linear, with the arrival shaped below -- an eased counter leaves the
-    // mass loitering off the top of the screen for most of the phase and
-    // then drops it all at once, which spends the hold beat before it can
-    // be seen.
+    // Linear: the perspective law below is the whole shaping of the approach.
     ease: 'Linear',
     onUpdate: (tw) => {
       const t = tw.getValue() ?? 0;
       const now = scene.time.now;
-      const groundY = to.y + GROUND_DROP;
-      // Punches into frame fast, then brakes into the hover: the mass is
-      // full-size and in place by HOLD_T of the phase and strains there for
-      // the rest, the held breath before Impact fires -- strain that goes
-      // slack instead (strainAt) when the cast has already failed.
-      const growT = Phaser.Math.Easing.Cubic.Out(Math.min(t / HOLD_T, 1));
-      const strain = strainAt(t, whiff);
-      const tremble = Math.sin(t * 70) * 2.5 * scale * Math.max(0, (t - 0.6) / 0.4) * strain;
-      const massX = to.x + tremble;
-      const massY = Phaser.Math.Linear(originY, to.y + METEOR_HOVER_DY, growT);
-      const massR = (14 + growT * (METEOR_MASS_R - 14)) * scale;
-      const heat = 0.7 + 0.3 * Math.sin(t * 40) * strain;
-
-      const bodySize = rockDisplaySize(massR);
-      rock.setPosition(massX, massY).setDisplaySize(bodySize, bodySize).setAngle(t * 90 + tremble * 3);
-      // The heated face sits low in the body, so it reads as a lit mass with
-      // a direction of travel instead of a flat glowing ball.
-      placeAt(halo, massX, massY + massR * 0.2, massR * 2.8, 0.18 + 0.12 * heat);
-      placeAt(face, massX, massY + massR * 0.55, massR * 1.3, 0.6 * heat);
-      chunks.forEach((chunk, i) => {
-        const ang = t * 9 + (i / chunks.length) * Math.PI * 2;
-        const orbR = massR * METEOR_ORBIT_FACTOR;
-        const size = rockDisplaySize(4.5 * scale);
-        chunk
-          .setPosition(massX + Math.cos(ang) * orbR, massY + Math.sin(ang) * orbR * 0.6)
-          .setDisplaySize(size, size)
-          .setAngle(t * 300 + i * 70);
+      const groundY = to.y + groundDrop;
+      // A whiffed ball stalls at the break point; a landing one comes all
+      // the way in.
+      const tt = whiff ? Math.min(t, METEOR_BREAK_T) : t;
+      const size = meteorSize(tt);
+      const progress = meteorProgress(tt);
+      const rFull = METEOR_BALL_R * scale;
+      const r = Math.max(2, rFull * size);
+      const contactX = to.x;
+      const contactY = groundY - rFull * METEOR_CONTACT_SINK;
+      const x = stage.far.x + (contactX - stage.far.x) * progress;
+      const y = stage.far.y + (contactY - stage.far.y) * progress;
+      // The light going out of a whiffed ball once it has stalled.
+      const strain = whiff ? clamp01(1 - (t - METEOR_BREAK_T) / (1 - METEOR_BREAK_T)) : 1;
+      const light = 0.5 + 0.5 * strain;
+      const pulse = 0.75 + 0.25 * Math.sin(t * 40) * strain;
+      // Stretched along its motion by its speed across the screen: the
+      // perspective law's own rate, which is what makes the close a rush.
+      const speed = whiff && t > METEOR_BREAK_T ? 0 : Math.min(1, (size * size * METEOR_FAR_DEPTH) / 3);
+      const stretchY = 1 + 0.7 * speed;
+      const stretchX = 1 - 0.22 * speed;
+      const skinSize = orbDisplaySize(r);
+      skin.setPosition(x, y).setDisplaySize(skinSize * stretchX, skinSize * stretchY).setAngle(motionAngle).setAlpha(0.95 * light);
+      skin2.setPosition(x, y).setDisplaySize(skinSize * 0.82 * stretchX, skinSize * 0.82 * stretchY).setAngle(motionAngle + 180 - t * 90).setAlpha(0.35 * light);
+      placeAt(halo, x, y, r * 4.4 * pulse + 6 * scale, (0.16 + 0.1 * size) * light);
+      placeAt(core, x, y, r * 0.95 * pulse + 3 * scale, 0.4 * light);
+      // The flare is what is seen while the ball is still a point: it
+      // starts at a size of its own and grows with the ball.
+      placeAt(flare, x, y, (14 * scale + r * 3.2) * (0.7 + 0.3 * pulse), (0.35 + 0.25 * size) * light * strain);
+      flare.setAngle(t * 50);
+      orbiters.forEach((spark, i) => {
+        const ang = t * 11 + (i / orbiters.length) * Math.PI * 2;
+        const orbR = r * 1.6;
+        spark
+          .setPosition(x + Math.cos(ang) * orbR, y + Math.sin(ang) * orbR * 0.55)
+          .setDisplaySize(6 * scale * (0.4 + 0.6 * size), 6 * scale * (0.4 + 0.6 * size))
+          .setAlpha(light * Math.min(1, size * 3));
       });
-      fireSpout.emitEach(now, 160 * q * (0.4 + 0.6 * growT), () => ({
-        x: massX + (Math.random() - 0.5) * massR * 0.8,
-        y: massY - massR * 0.3,
-      }));
-      smokeSpout.emitEach(now, 36 * q, () => ({ x: massX + (Math.random() - 0.5) * massR * 0.6, y: massY - massR * 0.7 }));
-      sparkSpout.emitEach(now, 25 * q, () => ({ x: massX + (Math.random() - 0.5) * massR, y: massY + massR * 0.4 }));
 
-      // The shadow the mass throws on the floor, wide and faint while it is
-      // high, tightening and darkening as it comes down to hover.
-      layFlat(shadow, to.x, groundY, massR * 2.8 * (1.6 - 0.6 * growT), 0.12 + 0.45 * growT);
+      if (now >= nextArcAt) {
+        nextArcAt = now + ARC_MS;
+        skinArcs = size > 0.2 ? rollArcs(Math.round(1 + 3 * size * strain)) : [];
+      }
+      arcs.clear();
+      drawSkinArcs(arcs, color, x, y, r * (1 + 0.3 * speed), skinArcs, 0.7 * strain, scale);
+
+      trailSize = (0.05 + 0.4 * size) * scale;
+      trailSpout.emitEach(now, (60 + 500 * size) * q * light, () => ({ x: x + (Math.random() - 0.5) * r * 0.8, y: y + (Math.random() - 0.5) * r * 0.8 }));
+      sparkSpout.emitEach(now, 40 * q * size * light, () => ({ x: x + (Math.random() - 0.5) * r, y: y + (Math.random() - 0.5) * r }));
+
+      // Its shadow on the floor under the target, coming up out of nothing
+      // as it nears.
+      layFlat(shadow, to.x, groundY, rFull * 3.2 * (1.6 - 0.8 * size), 0.55 * size * size * strain);
 
       rune.clear();
-      const pulse = 0.6 + 0.4 * Math.sin(t * 28);
+      const flicker = 0.6 + 0.4 * Math.sin(t * (24 + 60 * size));
       const circleR = (METEOR_RUNE_R + Math.sin(t * 10) * 4) * scale;
-      drawAnnulus(rune, color, to.x, groundY, circleR, 3 * scale, 0.4 * pulse, GROUND_ASPECT);
-      drawAnnulus(rune, hot(color), to.x, groundY, circleR * 1.3, 2 * scale, 0.3 * pulse, GROUND_ASPECT);
-      layFlat(under, to.x, groundY, 200 * scale, 0.15 + 0.35 * pulse);
+      drawAnnulus(rune, color, to.x, groundY, circleR, 3 * scale, (0.35 + 0.45 * size) * flicker, GROUND_ASPECT);
+      drawAnnulus(rune, hot(color), to.x, groundY, circleR * 1.3, 2 * scale, 0.3 * flicker, GROUND_ASPECT);
+      layFlat(under, to.x, groundY, 200 * scale, 0.15 + 0.35 * flicker + 0.3 * size);
+      shared.contact = { x, y, r };
     },
     onComplete: () => {
-      [rune, under, shadow, rock, halo, face, ...chunks].forEach((o) => o.destroy());
-      fxRetire(scene, depthOffset, fire, 700);
-      fxRetire(scene, depthOffset, smoke, 1300);
+      [rune, arcs, under, shadow, halo, skin, skin2, core, flare, ...orbiters].forEach((o) => o.destroy());
+      fxRetire(scene, depthOffset, trail, 600);
       fxRetire(scene, depthOffset, sparks, 500);
       onDone();
     },
   });
 }
 
-// The meteor's mass coming apart where Charge left it hanging: its light
-// dies almost at once, the rock dims and shrinks in place behind a puff of
-// grey smoke, and chunks of it fly outward on an ease-out (fast, then
-// coasting) while sagging a little and tumbling. Everything stays well above
-// the floor -- ground contact is the language of a strike that landed, so a
-// whiff never draws anything on the ground plane except the summon rune it
-// is letting go of.
-function startMeteorFizzle(scene: Phaser.Scene, to: EffectAnchor, depthOffset: number, scale: number): Fizzle {
-  const body = fxImage(scene, 60, depthOffset, FX_TEX.rock, ROCK_FRAMES[0], Phaser.BlendModes.NORMAL).setTint(FIZZLE_GREY);
+// The ball coming apart where it stalled on the way in: its light dies
+// almost at once, the skin dims and shrinks in place behind a puff of grey
+// vapour, and fragments of it fly outward on an ease-out (fast, then
+// coasting) while sagging a little, turning and going out. The body and
+// its fragments are drawn NORMAL rather than additive: a grey light added
+// to the arena is next to nothing, where a solid grey ball going out reads
+// -- what has left it is its light, carried by the halo dying. Everything
+// stays in the air where it broke up -- ground contact is the language of
+// a strike that landed, so a whiff never draws anything on the ground
+// plane except the summon rune it is letting go of.
+function startMeteorFizzle(scene: Phaser.Scene, at: MeteorContact, depthOffset: number, scale: number): Fizzle {
+  const body = fxImage(scene, 60, depthOffset, FX_TEX.orb, undefined, Phaser.BlendModes.NORMAL).setTint(FIZZLE_GREY);
   const halo = fxImage(scene, 59, depthOffset, FX_TEX.glow).setTint(FIZZLE_GREY);
-  const frags = Array.from({ length: 9 }, (_, i) => fxImage(scene, 60, depthOffset, FX_TEX.rock, ROCK_FRAMES[i % ROCK_FRAMES.length], Phaser.BlendModes.NORMAL).setTint(FIZZLE_GREY));
+  const frags = Array.from({ length: 9 }, () => fxImage(scene, 60, depthOffset, FX_TEX.orb, undefined, Phaser.BlendModes.NORMAL).setTint(FIZZLE_GREY));
   const smoke = fxEmitter(
     scene,
     59,
@@ -385,27 +493,30 @@ function startMeteorFizzle(scene: Phaser.Scene, to: EffectAnchor, depthOffset: n
       angle: { min: 0, max: 360 },
       gravityY: -12,
       rotate: { min: 0, max: 360 },
-      scale: { start: 0.2 * scale, end: 0.7 * scale },
+      scale: { start: 0.15 * scale, end: 0.5 * scale },
       alpha: { start: 0.3, end: 0 },
       tint: [0x77747a, 0x77747a],
     },
     Phaser.BlendModes.NORMAL
   );
-  smoke.explode(Math.round(10 * Math.min(scale, QUANTITY_CAP)), to.x, to.y + METEOR_HOVER_DY);
+  smoke.explode(Math.round(10 * Math.min(scale, QUANTITY_CAP)), at.x, at.y);
+  // Sized against the ball as it was at the break, which is smaller than
+  // a ball at contact by how far out it stalled.
+  const k = at.r / (METEOR_BALL_R * scale);
   return {
     draw(p) {
       const fade = 1 - p;
-      const hoverY = to.y + METEOR_HOVER_DY - p * 14 * scale;
-      const r = METEOR_MASS_R * (1 - p * 0.55) * scale;
-      const size = rockDisplaySize(r);
-      body.setPosition(to.x, hoverY).setDisplaySize(size, size).setAlpha(clamp01(1 - p * 2.2));
-      placeAt(halo, to.x, hoverY, r * 3, 0.4 * Math.pow(fade, 1.5));
+      const y = at.y - p * 14 * scale * k;
+      const r = at.r * (1 - p * 0.55);
+      const size = orbDisplaySize(r);
+      body.setPosition(at.x, y).setDisplaySize(size, size).setAngle(p * 40).setAlpha(clamp01(0.9 - p * 2));
+      placeAt(halo, at.x, y, r * 3, 0.4 * Math.pow(fade, 1.5));
       frags.forEach((frag, i) => {
         const ang = (i / frags.length) * Math.PI * 2 + i * 0.7;
-        const dist = Math.pow(p, 0.65) * (70 + (i % 3) * 26) * scale;
-        const fragSize = rockDisplaySize(Math.max(0.6, (7 - (i % 3) * 1.6) * (1 - p * 0.5) * scale));
+        const dist = Math.pow(p, 0.65) * (70 + (i % 3) * 26) * scale * k;
+        const fragSize = orbDisplaySize(Math.max(0.6, (6 - (i % 3) * 1.4) * (1 - p * 0.5) * scale * k));
         frag
-          .setPosition(to.x + Math.cos(ang) * dist, hoverY + Math.sin(ang) * dist * 0.55 + p * p * 26 * scale)
+          .setPosition(at.x + Math.cos(ang) * dist, y + Math.sin(ang) * dist * 0.55 + p * p * 26 * scale * k)
           .setDisplaySize(fragSize, fragSize)
           .setAngle(p * 200 * (i % 2 ? 1 : -1) + i * 40)
           .setAlpha(0.9 * Math.pow(fade, 0.75));
@@ -418,19 +529,31 @@ function startMeteorFizzle(scene: Phaser.Scene, to: EffectAnchor, depthOffset: n
   };
 }
 
-// Impact (`ultimateMeteor`): calls `onImpact()` immediately, then plays
-// either the full heavy slam -- a blinding flash, a shockwave and a slower
-// ring of dust racing out across the floor, a burst of rays, a lens streak
-// across the point of contact, rock thrown up under gravity that tumbles and
-// falls back, embers, fire and a rolling cloud of dust, over a crater left
-// glowing -- big enough to reach most of the 854x480 field (FIELD_W/FIELD_H,
-// BattleScene.ts), the "explosion fills the screen" beat the small-then-big
-// charge above was building toward -- or, on a whiff, the hovering mass
-// coming apart where it hangs, which reads as "it never got there" rather
-// than as a weaker version of the same boom. Every light here is ADD-blend
-// and alpha-fades with `t` rather than an opaque fill, so the log text/HP
-// bars (BattleScene, depth 0) still read through it even at this size, just
-// brightened for a beat.
+// How far the slam's hemispherical front and its ground ring reach, at
+// scale 1: most of the 854x480 field (FIELD_W/FIELD_H, BattleScene.ts), the
+// "explosion fills the screen" beat the condensing ball was building
+// toward. The front's brightness is a function of how far it has travelled,
+// gone entirely by this radius -- a blast wave fading with distance.
+const METEOR_BLAST_R = 300;
+
+// Impact (`ultimateMeteor`): calls `onImpact()` immediately -- this phase
+// begins on the frame the approach ends, so the ball's contact and the hit's
+// own flinch, shake and damage land together -- then plays either the full
+// slam or, on a whiff, the ball coming apart where it stalled on the way in,
+// which reads as "it never got there" rather than as a weaker version of
+// the same boom. The slam: the ball flattens into the floor and is gone inside a
+// blinding contact flash; a fireball of the move's own energy rises and
+// spreads from the point of contact (a dome of light climbing out of it and
+// glowing gas boiling up and outward); a hemispherical front races out
+// from the contact point at a blast wave's pace (radius as the two-fifths
+// power of time, Sedov-Taylor, so it leaps out and then slows), fading as
+// it travels, over a shockwave ring and a slower ring of dust racing out
+// across the floor; a burst of rays and a lens streak across the point of
+// contact; globs of the ball's own energy thrown up under gravity that arc
+// and fall back; embers, fire and a rolling cloud of dust, over a crater
+// left glowing. Every light here is ADD-blend and alpha-fades with `t`
+// rather than an opaque fill, so the log text/HP bars (BattleScene, depth
+// 0) still read through it even at this size, just brightened for a beat.
 function playMeteorImpact(
   scene: Phaser.Scene,
   color: number,
@@ -440,12 +563,14 @@ function playMeteorImpact(
   onDone: () => void,
   depthOffset: number,
   scale: number,
+  groundDrop: number,
   shared: Shared
 ) {
   onImpact();
   if (whiff) {
     const g = fxGraphics(scene, 60, depthOffset);
-    const fizzle = startMeteorFizzle(scene, to, depthOffset, scale);
+    const groundY0 = to.y + groundDrop;
+    const fizzle = startMeteorFizzle(scene, shared.contact ?? { x: to.x, y: groundY0 - METEOR_BALL_R * scale * 3, r: METEOR_BALL_R * scale * 0.3 }, depthOffset, scale);
     shared.fizzle = fizzle;
     fxCounter(scene, depthOffset, {
       from: 0,
@@ -458,11 +583,11 @@ function playMeteorImpact(
       ease: 'Linear',
       onUpdate: (tw) => {
         const t = tw.getValue() ?? 0;
-        const groundY = to.y + GROUND_DROP;
+        const groundY = to.y + groundDrop;
         g.clear();
         fizzle.draw(t * METEOR_FIZZLE_SPLIT);
-        // The summon rune goes out along with the mass rather than being cut
-        // off mid-pulse; it is the only thing a whiff ever draws on the
+        // The summon rune goes out along with the ball rather than being
+        // cut off mid-pulse; it is the only thing a whiff ever draws on the
         // ground plane, and it is finished by the end of this phase.
         drawAnnulus(g, FIZZLE_GREY, to.x, groundY, METEOR_RUNE_R * scale, 3 * scale, 0.3 * (1 - t), GROUND_ASPECT);
       },
@@ -475,34 +600,27 @@ function playMeteorImpact(
   }
 
   const q = Math.min(scale, QUANTITY_CAP);
-  const groundY0 = to.y + GROUND_DROP;
+  const groundY0 = to.y + groundDrop;
+  const contact = shared.contact ?? { x: to.x, y: groundY0 - METEOR_BALL_R * scale * METEOR_CONTACT_SINK, r: METEOR_BALL_R * scale };
+  const squash = fxImage(scene, 61, depthOffset, FX_TEX.orb).setTint(hot(color));
   const flash = fxImage(scene, 61, depthOffset, FX_TEX.glow).setTint(hot(color));
-  const shock = fxImage(scene, 59, depthOffset, FX_TEX.ring).setTint(color);
+  const fireball = fxImage(scene, 60, depthOffset, FX_TEX.glow).setTint(color);
+  const fireballCore = fxImage(scene, 61, depthOffset, FX_TEX.glow).setTint(hot(color));
+  // The shell texture cropped to its upper half: a hemisphere standing on
+  // the floor line, its base where the ground ring runs.
+  const front = fxImage(scene, 60, depthOffset, FX_TEX.shell).setTint(color).setCrop(0, 0, 256, 128);
+  const shock = fxImage(scene, 59, depthOffset, FX_TEX.ring).setTint(hot(color));
   const dustRing = fxImage(scene, 58, depthOffset, FX_TEX.ring, undefined, Phaser.BlendModes.NORMAL).setTint(paleOf(color));
   const rays = fxImage(scene, 60, depthOffset, FX_TEX.rays).setTint(color);
   const streak = fxImage(scene, 61, depthOffset, FX_TEX.streak).setTint(hot(color));
   const crater = fxImage(scene, 58, depthOffset, FX_TEX.glow).setTint(color);
-  const rocks = fxEmitter(
-    scene,
-    60,
-    depthOffset,
-    FX_TEX.rock,
-    {
-      frame: [...ROCK_FRAMES],
-      emitting: false,
-      lifespan: { min: 800, max: 1400 },
-      speed: { min: 150, max: 420 },
-      angle: { min: 215, max: 325 },
-      gravityY: 700,
-      scale: { min: 0.14 * scale, max: 0.36 * scale },
-      rotate: tumble,
-      // The mass's own fragments, so they keep its color (art/attackAnalytics.ts's
-      // eruption throws up the floor instead, and its debris stays stone).
-      tint: color,
-      deathZone: belowGround(groundY0),
-    },
-    Phaser.BlendModes.NORMAL
-  );
+  const globs = energyGlobs(scene, 60, depthOffset, color, scale, groundY0, {
+    lifespan: { min: 800, max: 1400 },
+    speed: { min: 150, max: 420 },
+    angle: { min: 215, max: 325 },
+    gravityY: 700,
+    size: 0.1,
+  });
   const embers = fxEmitter(scene, 61, depthOffset, FX_TEX.spark, {
     emitting: false,
     lifespan: { min: 500, max: 1100 },
@@ -523,6 +641,19 @@ function playMeteorImpact(
     alpha: { start: 0.9, end: 0 },
     tint: [hot(color), color, darken(color, 70)],
   });
+  // The fireball's body: glowing gas thrown up and out from the contact
+  // point, rising as it spreads and thins.
+  const blast = fxEmitter(scene, 60, depthOffset, FX_TEX.smoke, {
+    emitting: false,
+    lifespan: { min: 450, max: 900 },
+    speed: { min: 60, max: 260 },
+    angle: { min: 195, max: 345 },
+    gravityY: -70,
+    rotate: { min: 0, max: 360 },
+    scale: { start: 0.3 * scale, end: 1.1 * scale },
+    alpha: { start: 0.75, end: 0 },
+    tint: [hot(color), color, darken(color, 45)],
+  });
   const dust = fxEmitter(
     scene,
     58,
@@ -541,41 +672,59 @@ function playMeteorImpact(
     },
     Phaser.BlendModes.NORMAL
   );
-  rocks.explode(Math.round(18 * q), to.x, groundY0 - 6);
-  embers.explode(Math.round(60 * q), to.x, groundY0 - 6);
-  fire.explode(Math.round(26 * q), to.x, groundY0 - 6);
-  dust.explode(Math.round(24 * q), to.x, groundY0);
+  globs.explode(Math.round(18 * q), contact.x, groundY0 - 6);
+  embers.explode(Math.round(60 * q), contact.x, groundY0 - 6);
+  fire.explode(Math.round(26 * q), contact.x, groundY0 - 6);
+  blast.explode(Math.round(30 * q), contact.x, groundY0 - 10 * scale);
+  dust.explode(Math.round(24 * q), contact.x, groundY0);
   fxCounter(scene, depthOffset, {
     from: 0,
     to: 1,
     duration: METEOR_IMPACT_MS,
-    ease: 'Cubic.easeOut',
+    // Linear, with each element shaped below: the front follows a blast
+    // wave's own law and the rest ease out on their own.
+    ease: 'Linear',
     onUpdate: (tw) => {
       const t = tw.getValue() ?? 0;
-      const groundY = to.y + GROUND_DROP;
-      placeAt(flash, to.x, groundY - 10 * scale, (60 + 620 * t) * scale, 0.95 * Math.pow(1 - t, 1.5));
-      layFlat(shock, to.x, groundY, ringDisplaySize((16 + 300 * t) * scale), 0.9 * Math.pow(1 - t, 0.6));
-      layFlat(dustRing, to.x, groundY, ringDisplaySize((8 + 230 * t) * scale), 0.6 * Math.pow(1 - t, 0.7));
-      layFlat(rays, to.x, groundY, (80 + 640 * t) * scale, 0.75 * (1 - t));
-      rays.setAngle(t * 14);
-      streak.setPosition(to.x, groundY - 8 * scale).setDisplaySize((240 + 700 * t) * scale, 10 * scale).setAlpha(0.9 * Math.pow(1 - t, 2));
-      layFlat(crater, to.x, groundY, 240 * scale, 0.8);
+      const tOut = Phaser.Math.Easing.Cubic.Out(t);
+      const groundY = to.y + groundDrop;
+      // The ball flattens into the floor and is gone inside the flash.
+      const k = clamp01(t / 0.12);
+      const squashSize = orbDisplaySize(contact.r);
+      squash.setPosition(contact.x, Phaser.Math.Linear(contact.y, groundY - contact.r * 0.25, k)).setDisplaySize(squashSize * (1 + 1.6 * k), squashSize * (1 - 0.85 * k)).setAlpha(1 - k);
+      placeAt(flash, contact.x, groundY - 10 * scale, (60 + 620 * tOut) * scale, 0.95 * Math.pow(1 - tOut, 1.5));
+      // The fireball: climbing out of the contact point as it swells.
+      const rise = Phaser.Math.Easing.Sine.Out(t);
+      placeAt(fireball, contact.x, groundY - (30 + 110 * rise) * scale, (90 + 320 * rise) * scale, 0.5 * Math.pow(1 - t, 1.2));
+      placeAt(fireballCore, contact.x, groundY - (24 + 70 * rise) * scale, (50 + 160 * rise) * scale, 0.5 * Math.pow(1 - t, 2));
+      // The front: Sedov-Taylor, fading with distance, gone at METEOR_BLAST_R.
+      const frontR = METEOR_BLAST_R * scale * Math.pow(t, 0.4);
+      const travelled = frontR / (METEOR_BLAST_R * scale);
+      const frontSize = shellDisplaySize(frontR);
+      front.setPosition(contact.x, groundY).setDisplaySize(frontSize, frontSize).setAlpha(0.85 * Math.pow(1 - travelled, 1.3));
+      layFlat(shock, contact.x, groundY, ringDisplaySize((16 + 300 * tOut) * scale), 0.9 * Math.pow(1 - tOut, 0.6));
+      layFlat(dustRing, contact.x, groundY, ringDisplaySize((8 + 230 * tOut) * scale), 0.6 * Math.pow(1 - tOut, 0.7));
+      layFlat(rays, contact.x, groundY, (80 + 640 * tOut) * scale, 0.75 * (1 - tOut));
+      rays.setAngle(tOut * 14);
+      streak.setPosition(contact.x, groundY - 8 * scale).setDisplaySize((240 + 700 * tOut) * scale, 10 * scale).setAlpha(0.9 * Math.pow(1 - tOut, 2));
+      layFlat(crater, contact.x, groundY, 240 * scale, 0.8);
     },
     onComplete: () => {
-      [flash, shock, dustRing, rays, streak, crater].forEach((o) => o.destroy());
-      fxRetire(scene, depthOffset, rocks, 1500);
+      [squash, flash, fireball, fireballCore, front, shock, dustRing, rays, streak, crater].forEach((o) => o.destroy());
+      fxRetire(scene, depthOffset, globs, 1500);
       fxRetire(scene, depthOffset, embers, 1200);
       fxRetire(scene, depthOffset, fire, 800);
+      fxRetire(scene, depthOffset, blast, 1000);
       fxRetire(scene, depthOffset, dust, 1500);
       onDone();
     },
   });
 }
 
-// Aftermath (`ultimateMeteor`): the crater's glow cooling while smoke rises
-// off it and the last embers drift up -- or, on a whiff, the last of the
-// broken-up mass thinning out in mid-air, well clear of the ground. Ends by
-// tearing down every object this phase created and firing `onComplete`
+// Aftermath (`ultimateMeteor`): the crater's glow cooling while glowing gas
+// rises off it and the last embers drift up -- or, on a whiff, the last of
+// the broken-up ball thinning out in mid-air, far from the ground. Ends
+// by tearing down every object this phase created and firing `onComplete`
 // exactly once.
 function playMeteorAftermath(
   scene: Phaser.Scene,
@@ -585,6 +734,7 @@ function playMeteorAftermath(
   onComplete: () => void,
   depthOffset: number,
   scale: number,
+  groundDrop: number,
   shared: Shared
 ) {
   if (whiff) {
@@ -611,24 +761,17 @@ function playMeteorAftermath(
 
   const q = Math.min(scale, QUANTITY_CAP);
   const crater = fxImage(scene, 58, depthOffset, FX_TEX.glow).setTint(color);
-  const smoke = fxEmitter(
-    scene,
-    59,
-    depthOffset,
-    FX_TEX.smoke,
-    {
-      emitting: false,
-      lifespan: { min: 900, max: 1500 },
-      speed: { min: 15, max: 50 },
-      angle: { min: 250, max: 290 },
-      gravityY: -35,
-      rotate: { min: 0, max: 360 },
-      scale: { start: 0.2 * scale, end: 0.9 * scale },
-      alpha: { start: 0.5, end: 0 },
-      tint: smokeOf(color),
-    },
-    Phaser.BlendModes.NORMAL
-  );
+  const gas = fxEmitter(scene, 59, depthOffset, FX_TEX.smoke, {
+    emitting: false,
+    lifespan: { min: 900, max: 1500 },
+    speed: { min: 15, max: 50 },
+    angle: { min: 250, max: 290 },
+    gravityY: -35,
+    rotate: { min: 0, max: 360 },
+    scale: { start: 0.2 * scale, end: 0.9 * scale },
+    alpha: { start: 0.4, end: 0 },
+    tint: [color, darken(color, 50)],
+  });
   const embers = fxEmitter(scene, 61, depthOffset, FX_TEX.spark, {
     emitting: false,
     lifespan: { min: 600, max: 1200 },
@@ -639,7 +782,7 @@ function playMeteorAftermath(
     alpha: { start: 1, end: 0 },
     tint: [hot(color), color],
   });
-  const smokeSpout = new FxSpout(smoke);
+  const gasSpout = new FxSpout(gas);
   const emberSpout = new FxSpout(embers);
   fxCounter(scene, depthOffset, {
     from: 0,
@@ -649,14 +792,14 @@ function playMeteorAftermath(
     onUpdate: (tw) => {
       const t = tw.getValue() ?? 0;
       const now = scene.time.now;
-      const groundY = to.y + GROUND_DROP;
+      const groundY = to.y + groundDrop;
       layFlat(crater, to.x, groundY, 240 * scale, 0.8 * (1 - t));
-      smokeSpout.emitEach(now, 80 * q * (1 - t), () => ({ x: to.x + (Math.random() - 0.5) * 40 * scale, y: groundY - 4 }));
+      gasSpout.emitEach(now, 80 * q * (1 - t), () => ({ x: to.x + (Math.random() - 0.5) * 40 * scale, y: groundY - 4 }));
       emberSpout.emitEach(now, 45 * q * (1 - t), () => ({ x: to.x + (Math.random() - 0.5) * 50 * scale, y: groundY - 4 }));
     },
     onComplete: () => {
       crater.destroy();
-      fxRetire(scene, depthOffset, smoke, 1600);
+      fxRetire(scene, depthOffset, gas, 1600);
       fxRetire(scene, depthOffset, embers, 1300);
       onComplete();
     },
@@ -664,8 +807,14 @@ function playMeteorAftermath(
 }
 
 // `ultimateMeteor` -- see the shared Ultimate-tier comment above for the
-// phase/callback contract. Reads as a heavy mass falling from above and
-// slamming the target, distinct from playNova's outward-building blast.
+// phase/callback contract. Reads as a ball of energy falling out of deep
+// space onto the target, distinct from playNova's outward-building blast.
+// `groundDrop` is how far below `to` the floor lies (GROUND_DROP under a
+// defender's centre in a battle; 0 on a preview stage, which hands in its
+// floor line as `to` -- art/moveEffectPreview.ts), the same overridable
+// floor Landau's eruption takes, since the strike is staged against the
+// floor: the rune lies on it and the slam lands on it. `stage` is where the
+// ball comes in from (UltimateStage).
 export function playMeteor(
   scene: Phaser.Scene,
   color: number,
@@ -674,18 +823,19 @@ export function playMeteor(
   onImpact: () => void,
   onComplete: () => void,
   depthOffset = 0,
-  scale = 1
+  scale = 1,
+  groundDrop = GROUND_DROP,
+  stage: UltimateStage = DEFAULT_ULTIMATE_STAGE
 ) {
   const shared: Shared = {};
   playMeteorSummon(scene, color, to, () => {
     playMeteorCharge(scene, color, to, whiff, () => {
       playMeteorImpact(scene, color, to, whiff, onImpact, () => {
-        playMeteorAftermath(scene, color, to, whiff, onComplete, depthOffset, scale, shared);
-      }, depthOffset, scale, shared);
-    }, depthOffset, scale);
-  }, depthOffset, scale);
+        playMeteorAftermath(scene, color, to, whiff, onComplete, depthOffset, scale, groundDrop, shared);
+      }, depthOffset, scale, groundDrop, shared);
+    }, depthOffset, scale, groundDrop, stage, shared);
+  }, depthOffset, scale, groundDrop);
 }
-
 // ---------------------------------------------------------------------------
 // ultimateNova
 
@@ -735,17 +885,20 @@ function playNovaSummon(scene: Phaser.Scene, color: number, to: EffectAnchor, on
   });
 }
 
-// Charge: matter falling INWARD onto a brightening, pulsing core -- sparks
-// streaming in from all around it, each on its own clock, and streaks of
-// light drawn in behind them -- while an accretion disc forms around the
-// core, lying at a tilt to the camera with arcs spinning in its plane, and a
-// starburst grows at the centre: the inverse motion of playMeteorCharge's
-// falling mass, so the two moves read as opposites (something arriving from
-// outside vs. something collapsing inward before it blows back out) rather
-// than variants of the same idea. The core's own growth (not the infall or
-// its pulse, both still driven by raw `t`) saturates at HOLD_T of the phase
-// and holds -- same "small -> big -> held, straining" beat
-// playMeteorCharge's growT gives the falling mass, so the last stretch
+// Charge: the energy of the whole battlefield drawn up into the target --
+// sparks born all over the visible floor (UltimateStage.floor, from the
+// target's own floor line down to the bottom of the stage and across its
+// width) each aimed at the core and arriving as its life ends, streaks of
+// light climbing from floor points to the core on their own clocks, and
+// the floor itself lit from beneath as it drains -- onto a brightening,
+// pulsing core, while an accretion disc forms around it, lying at a tilt to
+// the camera with arcs spinning in its plane, and a starburst grows at the
+// centre: the inverse motion of playMeteorCharge's approach, so the two
+// moves read as opposites (something arriving from outside vs. the ground
+// itself gathering into one point before it blows back out) rather than
+// variants of the same idea. The core's own growth (not the infall or its
+// pulse, both still driven by raw `t`) saturates at HOLD_T of the phase and
+// holds -- a "small -> big -> held, straining" beat, so the last stretch
 // before Impact reads as a core visibly full and under pressure rather than
 // one still visibly swelling right up to the cut.
 function playNovaCharge(
@@ -754,8 +907,10 @@ function playNovaCharge(
   to: EffectAnchor,
   whiff: boolean,
   onDone: () => void,
-  depthOffset = 0,
-  scale = 1
+  depthOffset: number,
+  scale: number,
+  groundDrop: number,
+  stage: UltimateStage
 ) {
   const q = Math.min(scale, QUANTITY_CAP);
   const g = fxGraphics(scene, 60, depthOffset);
@@ -763,25 +918,34 @@ function playNovaCharge(
   const halo = fxImage(scene, 60, depthOffset, FX_TEX.glow).setTint(color).setAlpha(0);
   const core = fxImage(scene, 61, depthOffset, FX_TEX.glow).setTint(hot(color)).setAlpha(0);
   const flare = fxImage(scene, 61, depthOffset, FX_TEX.flare).setTint(hot(color)).setAlpha(0);
-  // Each spark is aimed at the core on emit and given exactly the speed
-  // that lands it there at the end of its life, brightening from the
-  // move's color to its hot shade as it arrives.
+  // The floor the energy is drawn up out of: the whole visible floor, from
+  // the target's own floor line down to the bottom of the stage and across
+  // its full width (UltimateStage.floor), lit from beneath as it drains.
+  const groundY0 = to.y + groundDrop;
+  const floorY1 = Math.max(groundY0 + 1, stage.floor.y1);
+  const floorPoint = () => ({ x: stage.floor.x0 + Math.random() * (stage.floor.x1 - stage.floor.x0), y: groundY0 + Math.random() * (floorY1 - groundY0) });
+  const under = fxImage(scene, 58, depthOffset, FX_TEX.glow).setTint(color).setAlpha(0);
+  // Each spark is born on the floor, aimed at the core on emit and given
+  // exactly the speed that lands it there at the end of its life,
+  // brightening from the move's color to its hot shade as it arrives.
   const infall = fxEmitter(scene, 61, depthOffset, FX_TEX.spark, {
     emitting: false,
-    lifespan: { min: 450, max: 900 },
+    lifespan: { min: 600, max: 1200 },
     angle: { onEmit: (particle) => (particle ? Phaser.Math.RadToDeg(Math.atan2(to.y - particle.y, to.x - particle.x)) : 0) },
     speed: { onEmit: (particle) => (particle ? Math.hypot(to.x - particle.x, to.y - particle.y) / Math.max(0.05, particle.life / 1000) : 0) },
-    scale: { start: 0.4 * scale, end: 0.12 * scale },
-    alpha: { start: 0.25, end: 1 },
+    scale: { start: 0.45 * scale, end: 0.14 * scale },
+    alpha: { start: 0.2, end: 1 },
     tint: [color, hot(color)],
   });
   const infallSpout = new FxSpout(infall);
-  const streaks = Array.from({ length: 12 }, (_, i) => ({
-    angle: (i / 12) * Math.PI * 2,
+  // Streaks of light drawn in from the floor, each on its own clock,
+  // respawning at a fresh floor point when it reaches the core.
+  const streaks = Array.from({ length: 14 }, (_, i) => ({
+    from: floorPoint(),
     phase: Math.random(),
-    speed: 0.8 + Math.random() * 0.8,
-    maxR: 50 + Math.random() * 40,
+    speed: 0.7 + Math.random() * 0.7,
     pale: i % 2 === 0,
+    last: 0,
   }));
   fxCounter(scene, depthOffset, {
     from: 0,
@@ -798,19 +962,28 @@ function playNovaCharge(
       // having gone dead a moment before they come apart.
       const pulse = 0.7 + 0.3 * Math.sin(t * 36) * strainAt(t, whiff);
       g.clear();
-      // Each streak runs its own infall on its own clock and respawns
-      // further out when it reaches the core, so the swarm reads as matter
-      // falling in continuously rather than as one shared ring contracting.
+      // Each streak runs its own rise on its own clock -- a line of light
+      // climbing from a point on the floor to the core, brightening as it
+      // arrives -- and respawns at another floor point when it gets there,
+      // so the whole floor reads as feeding the core rather than one ring
+      // contracting.
       for (const streak of streaks) {
-        const p = (t * streak.speed + streak.phase) % 1;
-        const r = (1 - Math.pow(p, 0.8)) * streak.maxR * scale;
-        const ang = streak.angle + t * 6;
-        const cos = Math.cos(ang);
-        const sin = Math.sin(ang);
-        const tail = r + 8 * p * scale;
-        g.lineStyle(2 * scale, streak.pale ? hot(color) : color, 0.75 * p);
-        g.lineBetween(to.x + cos * tail, to.y + sin * tail, to.x + cos * r, to.y + sin * r);
+        const cycle = t * streak.speed + streak.phase;
+        const p = cycle % 1;
+        if (Math.floor(cycle) !== streak.last) {
+          streak.last = Math.floor(cycle);
+          streak.from = floorPoint();
+        }
+        const along = Math.pow(p, 0.8);
+        const hx = streak.from.x + (to.x - streak.from.x) * along;
+        const hy = streak.from.y + (to.y - streak.from.y) * along;
+        const tailF = Math.max(0, along - 0.06 - 0.08 * p);
+        g.lineStyle(2 * scale, streak.pale ? hot(color) : color, 0.8 * p);
+        g.lineBetween(streak.from.x + (to.x - streak.from.x) * tailF, streak.from.y + (to.y - streak.from.y) * tailF, hx, hy);
       }
+      // The floor lit from beneath, brightest under the target, as the
+      // energy comes up out of it.
+      layFlat(under, to.x, groundY0 + (floorY1 - groundY0) * 0.25, (stage.floor.x1 - stage.floor.x0) * 0.9, 0.12 + 0.3 * t * strainAt(t, whiff));
       const discR = coreR * NOVA_RING_FACTOR * 1.15;
       disc.setPosition(to.x, to.y).setDisplaySize(ringDisplaySize(discR), ringDisplaySize(discR) * DISC_TILT).setAlpha(0.45 * t);
       drawRune(g, color, to.x, to.y, discR, t * 2.5, 0.3 + 0.5 * t, scale, DISC_TILT);
@@ -819,15 +992,11 @@ function playNovaCharge(
       placeAt(core, to.x, to.y, coreR * 2.2 * pulse, 0.55 + t * 0.4);
       placeAt(flare, to.x, to.y, coreR * 4.5 * (0.5 + 0.5 * t), 0.35 + 0.55 * t);
       flare.setAngle(t * 60);
-      infallSpout.emitEach(now, 90 * q * (0.5 + t), () => {
-        const r = (60 + Math.random() * 50) * scale;
-        const ang = Math.random() * Math.PI * 2;
-        return { x: to.x + Math.cos(ang) * r, y: to.y + Math.sin(ang) * r };
-      });
+      infallSpout.emitEach(now, 110 * q * (0.4 + t), floorPoint);
     },
     onComplete: () => {
-      [g, disc, halo, core, flare].forEach((o) => o.destroy());
-      fxRetire(scene, depthOffset, infall, 900);
+      [g, disc, halo, core, flare, under].forEach((o) => o.destroy());
+      fxRetire(scene, depthOffset, infall, 1200);
       onDone();
     },
   });
@@ -917,8 +1086,14 @@ function playNovaImpact(
 
   const q = Math.min(scale, QUANTITY_CAP);
   const flash = fxImage(scene, 61, depthOffset, FX_TEX.glow).setTint(hot(color));
-  const shock = fxImage(scene, 61, depthOffset, FX_TEX.ring).setTint(hot(color));
-  const shock2 = fxImage(scene, 60, depthOffset, FX_TEX.ring).setTint(color);
+  // The sphere: a solid body of the move's energy (the orb texture, its
+  // roiling skin turning slowly) with a hotter heart, under a limb of its
+  // own color and a hotter one just inside it for thickness.
+  const sphereBody = fxImage(scene, 60, depthOffset, FX_TEX.orb).setTint(color);
+  const sphereHeart = fxImage(scene, 60, depthOffset, FX_TEX.glow).setTint(hot(color));
+  const sphere = fxImage(scene, 60, depthOffset, FX_TEX.shell).setTint(color);
+  const sphereHot = fxImage(scene, 61, depthOffset, FX_TEX.shell).setTint(hot(color));
+  const equator = fxImage(scene, 60, depthOffset, FX_TEX.ring).setTint(hot(color));
   const streak = fxImage(scene, 61, depthOffset, FX_TEX.streak).setTint(hot(color));
   const rays = fxImage(scene, 60, depthOffset, FX_TEX.rays).setTint(color);
   const core = fxImage(scene, 61, depthOffset, FX_TEX.glow).setTint(hot(color));
@@ -947,19 +1122,42 @@ function playNovaImpact(
     from: 0,
     to: 1,
     duration: NOVA_IMPACT_MS,
-    ease: 'Cubic.easeOut',
+    // Linear, with the shockwave on a blast wave's own law below and the
+    // flash, rays and streak easing out on their own.
+    ease: 'Linear',
     onUpdate: (tw) => {
       const t = tw.getValue() ?? 0;
-      placeAt(flash, to.x, to.y, (70 + 560 * t) * scale, 0.96 * Math.pow(1 - t, 1.6));
-      placeAt(shock, to.x, to.y, ringDisplaySize((20 + 250 * t) * scale), 0.9 * Math.pow(1 - t, 0.6));
-      placeAt(shock2, to.x, to.y, ringDisplaySize((10 + 200 * t) * scale), 0.6 * Math.pow(1 - t, 0.8));
-      streak.setPosition(to.x, to.y).setDisplaySize((300 + 900 * t) * scale, 12 * scale).setAlpha(0.9 * Math.pow(1 - t, 2));
-      placeAt(rays, to.x, to.y, (100 + 700 * t) * scale, 0.7 * (1 - t));
-      rays.setAngle(t * 25);
-      placeAt(core, to.x, to.y, NOVA_CORE_R * 2.2 * scale * (1 - 0.5 * t), 0.9 * (1 - 0.6 * t));
+      const tOut = Phaser.Math.Easing.Cubic.Out(t);
+      placeAt(flash, to.x, to.y, (70 + 560 * tOut) * scale, 0.96 * Math.pow(1 - tOut, 2));
+      // The shockwave: a dense sphere of the move's energy growing out of
+      // the centre at a blast wave's pace (radius as the two-fifths power
+      // of time, Sedov-Taylor: it leaps out and then slows), its brightness
+      // a function of how far it has travelled and gone entirely at
+      // NOVA_SHOCK_R -- a front that fades with distance rather than on a
+      // clock, so it fades at the same radius at any level. Its body is
+      // solid (the orb texture) with a hotter heart that dies faster than
+      // the rest, its limb a shell of its own color with a hotter, thinner
+      // one just inside for thickness, and the accretion disc from Charge
+      // is blown out with it as a ring in the same tilted plane, which is
+      // what sells the sphere as a volume rather than a disc.
+      const shockR = NOVA_SHOCK_R * scale * Math.pow(t, 0.4);
+      const travelled = shockR / (NOVA_SHOCK_R * scale);
+      const bodySize = orbDisplaySize(shockR);
+      sphereBody.setPosition(to.x, to.y).setDisplaySize(bodySize, bodySize).setAngle(t * 30).setAlpha(0.8 * Math.pow(1 - travelled, 1.1));
+      placeAt(sphereHeart, to.x, to.y, shockR * 1.7, 0.6 * Math.pow(1 - travelled, 2.2));
+      const shellSize = shellDisplaySize(shockR);
+      sphere.setPosition(to.x, to.y).setDisplaySize(shellSize, shellSize).setAlpha(0.95 * Math.pow(1 - travelled, 1.3));
+      const hotSize = shellDisplaySize(shockR * 0.9);
+      sphereHot.setPosition(to.x, to.y).setDisplaySize(hotSize, hotSize).setAlpha(0.6 * Math.pow(1 - travelled, 2.2));
+      const eqSize = ringDisplaySize(shockR * 1.02);
+      equator.setPosition(to.x, to.y).setDisplaySize(eqSize, eqSize * DISC_TILT).setAlpha(0.55 * Math.pow(1 - travelled, 1.6));
+      streak.setPosition(to.x, to.y).setDisplaySize((300 + 900 * tOut) * scale, 12 * scale).setAlpha(0.9 * Math.pow(1 - tOut, 2.5));
+      placeAt(rays, to.x, to.y, (100 + 700 * tOut) * scale, 0.6 * Math.pow(1 - tOut, 1.5));
+      rays.setAngle(tOut * 25);
+      placeAt(core, to.x, to.y, NOVA_CORE_R * 2.2 * scale * (1 - 0.5 * tOut), 0.9 * (1 - 0.6 * tOut));
     },
     onComplete: () => {
-      [flash, shock, shock2, streak, rays, core].forEach((o) => o.destroy());
+      [flash, sphereBody, sphereHeart, sphere, sphereHot, equator, streak, rays, core].forEach((o) => o.destroy());
       fxRetire(scene, depthOffset, nebula, 1700);
       fxRetire(scene, depthOffset, sparks, 1100);
       onDone();
@@ -968,8 +1166,9 @@ function playNovaImpact(
 }
 
 // Aftermath (`ultimateNova`): the remnant -- the core cooling from its hot
-// shade into the move's own color and shrinking away, a last faint ring still
-// widening, gas and sparks drifting out from where it was -- or, on a whiff,
+// shade into the move's own color and shrinking away, gas and sparks
+// drifting out from where it was (the shockwave itself has faded out by
+// distance before this) -- or, on a whiff,
 // the tail of the outflow Impact started. Ends by tearing down every object
 // this phase created and firing `onComplete` exactly once.
 function playNovaAftermath(
@@ -1003,7 +1202,6 @@ function playNovaAftermath(
 
   const q = Math.min(scale, QUANTITY_CAP);
   const core = fxImage(scene, 60, depthOffset, FX_TEX.glow).setTint(color);
-  const remnant = fxImage(scene, 59, depthOffset, FX_TEX.ring).setTint(color);
   const gas = fxEmitter(scene, 59, depthOffset, FX_TEX.smoke, {
     emitting: false,
     lifespan: { min: 800, max: 1400 },
@@ -1034,14 +1232,12 @@ function playNovaAftermath(
       const t = tw.getValue() ?? 0;
       const now = scene.time.now;
       placeAt(core, to.x, to.y, NOVA_CORE_R * 2.4 * scale * (1 - t), 0.6 * (1 - t));
-      placeAt(remnant, to.x, to.y, ringDisplaySize((230 + 120 * t) * scale), 0.35 * (1 - t));
       const within = () => ({ x: to.x + (Math.random() - 0.5) * 60 * scale, y: to.y + (Math.random() - 0.5) * 60 * scale });
       gasSpout.emitEach(now, 40 * q * (1 - t), within);
       sparkSpout.emitEach(now, 30 * q * (1 - t), within);
     },
     onComplete: () => {
       core.destroy();
-      remnant.destroy();
       fxRetire(scene, depthOffset, gas, 1500);
       fxRetire(scene, depthOffset, sparks, 1300);
       onComplete();
@@ -1061,7 +1257,9 @@ export function playNova(
   onImpact: () => void,
   onComplete: () => void,
   depthOffset = 0,
-  scale = 1
+  scale = 1,
+  groundDrop = GROUND_DROP,
+  stage: UltimateStage = DEFAULT_ULTIMATE_STAGE
 ) {
   const shared: Shared = {};
   playNovaSummon(scene, color, to, () => {
@@ -1069,6 +1267,6 @@ export function playNova(
       playNovaImpact(scene, color, to, whiff, onImpact, () => {
         playNovaAftermath(scene, color, to, whiff, onComplete, depthOffset, scale, shared);
       }, depthOffset, scale, shared);
-    }, depthOffset, scale);
+    }, depthOffset, scale, groundDrop, stage);
   }, depthOffset, scale);
 }

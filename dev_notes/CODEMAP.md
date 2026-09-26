@@ -146,7 +146,14 @@ game/src/
                                  settings" below) -- taking scene: HubScene instead of
                                  scene: GuardianPanelHost, since HubScene is their only caller
     BattleScene.ts             Turn-based battle: move menu, damage/turn resolution, attack
-                                 effects, log, end-of-battle summary
+                                 effects, log, end-of-battle summary; the arena camera's
+                                 pull-back for an Ultimate (pullBack, with splitCameras/
+                                 mergeCameras running a HUD camera over the zoomed arena camera
+                                 by the arena tag, ARENA_ZOOM_OUT/ULTIMATE_PULL_BACK_MS/
+                                 ULTIMATE_PULL_IN_MS), the overscan the realistic backdrop paints
+                                 for it (OVERSCAN_X/Y, ARENA_X0/ARENA_W), arena() (tags a world
+                                 object) and ultimateStage() (the arena corner a meteor comes in
+                                 from and the floor a nova gathers from, handed to playAttackEffect)
     battle/
       hud.ts                   Battle-screen layout, split out of BattleScene: the rails/positions/
                                  sizing constants every battle element is placed from (LEFT/RIGHT/
@@ -290,7 +297,9 @@ game/src/
                                   CrystalVariant into a habit (a new variant needs a branch here and
                                   nowhere else), which both makeCrystal and drawVariantShape (the
                                   hybrid halves) go through; drawShardShape()/drawCubicShape() -- two of
-                                  those habits, also exported for boss.ts's golem limbs; killTweensDeep(scene, obj) --
+                                  those habits, also exported for boss.ts's golem grains, and
+                                  shardOutline()/cubicOutline() -- their outlines, which boss.ts
+                                  strokes as lit seams; killTweensDeep(scene, obj) --
                                   the shared recursive tween-kill every caller about to destroy a
                                   Container runs first, and setTweensPausedDeep(scene, obj, paused) --
                                   its pause/resume counterpart, which OverworldScene.updateWorldSprites
@@ -311,6 +320,9 @@ game/src/
     franklin.ts                   makeFranklinAvatar() -- figure holding a diffraction-ring detector plate, world 9
     sklodowskaCurie.ts            makeSklodowskaCurieAvatar() -- radiant ray-crowned spire, world 10
     boss.ts                      makeBossCrystal() -- towering humanoid golem boss avatar at a world's goal,
+                                  its body the PIECES grains tiling SILHOUETTE (drawn under them
+                                  only as a faint shadow and edge) with addSeam lighting each
+                                  grain's outline as a grain boundary,
                                   plus the BOSS_SILHOUETTE_TOP/BOTTOM extents its callers lay out around
                                   and BOSS_FOOT, the default for its own `footDrop` option (where its
                                   feet and contact shadow land below the container origin);
@@ -403,18 +415,25 @@ game/src/
                                   material through attackFx.ts's fxImage/fxTileSprite/fxEmitter,
                                   plus the helpers the Ultimates share: layFlat/placeAt (an image
                                   on the ground plane / centred on a point), groundAngle (a
-                                  particle heading along the floor), tumble (a rock's spin),
+                                  particle heading along the floor), tumble (a glob's spin),
                                   belowGround (the death zone that removes debris the frame it
-                                  falls back through the floor) and QUANTITY_CAP (how far a
-                                  leveled repeat's `scale` reaches particle counts and rates)
-    fxTextures.ts               ensureFxTextures() paints the ten FX_TEX canvas textures the
-                                  spectacle moves draw with (glow, spark, ring, smoke, three rock
-                                  frames -- ROCK_FRAMES, 160px each so a leveled meteor stays
-                                  crisp -- column, streak, flare, rays, flow) once per Game, with
-                                  2D-canvas gradients and seeded value noise; called at boot from
+                                  falls back through the floor), QUANTITY_CAP (how far a
+                                  leveled repeat's `scale` reaches particle counts and rates),
+                                  hot (the move's color pushed toward white, the hottest points of
+                                  every spectacle cast) and energyGlobs (the orb-texture debris
+                                  emitter the eruption and the meteor's slam both throw:
+                                  class-colored, born hot, shrinking through life -- the
+                                  `shrinking` op -- spinning, under gravity, dying below the floor)
+    fxTextures.ts               ensureFxTextures() paints the eleven FX_TEX canvas textures the
+                                  spectacle moves draw with (glow, spark, ring, smoke, orb -- a
+                                  ball of energy, ORB_PX = 192 so a leveled meteor keeps its skin
+                                  -- shell -- a hollow sphere, the nova's shockwave -- column,
+                                  streak, flare, rays, flow) once per Game, with 2D-canvas
+                                  gradients and seeded value noise; called at boot from
                                   TitleScene.create and guarded again by every play function.
-                                  ringDisplaySize()/rockDisplaySize() convert a wanted radius to
-                                  the image size that puts the texture's crest/silhouette there
+                                  ringDisplaySize()/shellDisplaySize()/orbDisplaySize() convert a
+                                  wanted radius to the image size that puts the texture's
+                                  crest/limb/skin there
     attackUltimates.ts          Skłodowska-Curie's Ultimate tier: playMeteor/playNova and their
                                   summon->charge->impact->aftermath phase functions,
                                   METEOR_TOTAL_MS/NOVA_TOTAL_MS, plus the whiff path's
@@ -422,10 +441,20 @@ game/src/
                                   impact+aftermath pair, its objects built by Impact and handed to
                                   Aftermath through a `Shared` record), drawRune (a glowing arc
                                   ring), strainAt (the charge's held strain,
-                                  which goes slack on a whiff) and the hot/smokeOf/dustOf/paleOf
-                                  shades that keep a meteor's or nova's light, rock, smoke and
-                                  dust all in the move's tuned color (only the whiff stays
-                                  FIZZLE_GREY)
+                                  which goes slack on a whiff), the UltimateStage each Ultimate
+                                  takes (a far point and a floor rect -- DEFAULT_ULTIMATE_STAGE for
+                                  a bare field, BattleScene.ultimateStage for the arena,
+                                  moveEffectPreview.ts's pane corner and bottom for a stage),
+                                  meteorSize/meteorProgress (the approach's perspective law,
+                                  METEOR_FAR_DEPTH deep to start, a whiff stalling at
+                                  METEOR_BREAK_T), rollArcs/drawSkinArcs (the lightning off the
+                                  ball, re-rolled every ARC_MS), the MeteorContact record Charge
+                                  leaves in `Shared` for the slam or the break-up,
+                                  METEOR_BLAST_R/NOVA_SHOCK_R (how far each blast front travels
+                                  before it has faded), and the dustOf/paleOf shades that, with
+                                  attackAnalytics.ts's hot, keep a meteor's or nova's light,
+                                  energy and dust all in the move's tuned color (only the whiff
+                                  stays FIZZLE_GREY)
     moveEffectPreview.ts         startMoveEffectPreview(params, key?)/stopMoveEffectPreview(key?) --
                                   loops a move's real battle effect (above) inside a guardian panel's
                                   detail pane (Noether's Moves section, Feynman's leveling pane,
@@ -439,11 +468,13 @@ game/src/
                                   fractions (the battle's low-left-to-high-right diagonal, flattened
                                   to a stage's proportions); one that arrives on a single point plays
                                   on `params.at`, the caller's own pane centre or the crystal a
-                                  self-buff is cast on -- except the two ground-anchored shapes
-                                  (beam/eruption, its GROUND_ANCHORED set), which play on the
-                                  stage's own floor line (GROUND_LINE_Y, a fraction of the stage
-                                  height) so the beam lands on the ground instead of ending in
-                                  mid-air and the eruption's floor rings stay inside the stage. Plays at a
+                                  self-buff is cast on -- except the ground-anchored shapes
+                                  (beam/eruption/meteor, the GROUND_LINE_Y map), which play on the
+                                  stage's own floor line (a fraction of the stage height per
+                                  shape, the meteor's lower to leave room for its ball above it)
+                                  so the beam lands on the ground instead of ending in mid-air,
+                                  the eruption's floor rings stay inside the stage and the
+                                  meteor's ball condenses inside it. Plays at a
                                   PREVIEW_DEPTH_OFFSET pushing the effect's objects (normally
                                   depth 58-61) above a dialogue panel's own container (depth 100) so
                                   it draws on top of the pane instead of underneath it -- that same
@@ -502,7 +533,10 @@ game/src/
                                   setPreviewClip()/clearPreviewClip() -- the
                                   object-creation choke point every attackShapes.ts/attackAnalytics.ts/
                                   attackUltimates.ts effect draws through, so a *preview* of an effect can be torn down
-                                  mid-flight. A nonzero depthOffset means "detached preview" (it is 0
+                                  mid-flight, and where every effect object gets the arena tag
+                                  (markArena()/isArena(): what BattleScene's pulled-back camera
+                                  renders as the world rather than the HUD, also set by BattleScene
+                                  itself on its backdrop, crystals and shadows). A nonzero depthOffset means "detached preview" (it is 0
                                   for every BattleScene call site and large for moveEffectPreview.ts's
                                   panel previews) and is the sole condition for tracking anything here
                                   -- a real cast allocates and tracks nothing extra and stays

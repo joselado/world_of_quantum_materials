@@ -15,6 +15,8 @@ import { DISTANT_SELVES, MAX_CREST, type HorizonPoint } from '../art/horizons';
 import { drawStarNetwork } from '../art/stars';
 import type { ProjectedPoint } from '../art/perspective';
 import { playAttackEffect, followAnchor, ANALYTIC_SHAPES, ULTIMATE_SHAPES, type EffectAnchor } from '../art/attackEffects';
+import { isArena, markArena } from '../art/attackFx';
+import type { UltimateStage } from '../art/attackUltimates';
 import { drawFranklinPassiveHalo } from '../art/passiveHalos';
 import { fontPx, fontScale } from '../ui/text';
 import { installFullscreenKey } from '../ui/fullscreen';
@@ -113,6 +115,24 @@ import {
 // 'bands' (four gradient bands) are the earlier treatments, kept switchable so
 // the three can be compared on the same encounter rather than from memory.
 const BACKDROP_MODE: 'layered' | 'bands' | 'realistic' = 'realistic';
+
+// The arena is painted this far past the field on every side, so a camera
+// pulled back for an Ultimate (pullBack, ARENA_ZOOM_OUT) looks at painted
+// sky, surround and floor rather than the canvas edge: at ARENA_ZOOM_OUT
+// the camera sees FIELD_W / ARENA_ZOOM_OUT by FIELD_H / ARENA_ZOOM_OUT of
+// the world (1186 x 667 -- 166 past each side, 93 above and below). Only
+// the realistic backdrop, the mode in use, paints the overscan; the layered
+// and band modes paint the field alone.
+const OVERSCAN_X = 190;
+const OVERSCAN_Y = 110;
+const ARENA_ZOOM_OUT = 0.72;
+// The painted arena's horizontal extent.
+const ARENA_X0 = -OVERSCAN_X;
+const ARENA_W = FIELD_W + OVERSCAN_X * 2;
+// How long the camera takes to pull back at an Ultimate's cast, and to ease
+// back in from its strike.
+const ULTIMATE_PULL_BACK_MS = 1200;
+const ULTIMATE_PULL_IN_MS = 900;
 
 // The four-band backdrop's own geometry, top down. The floor takes whatever is
 // left, which is most of the lower half -- it is where the fight happens.
@@ -396,6 +416,11 @@ export class BattleScene extends Phaser.Scene {
   private playerMaxHp = 0;
   private opponentMaxHp = 0;
   private turnLock = false;
+  // The pulled-back camera's HUD camera and what the arena camera was told
+  // to ignore for it (pullBack), and the vignette that fades while it lasts.
+  private hudCam: Phaser.Cameras.Scene2D.Camera | null = null;
+  private hudIgnored = new Set<Phaser.GameObjects.GameObject>();
+  private vignette?: Phaser.GameObjects.Graphics;
   private opponentHpBar!: Phaser.GameObjects.Rectangle;
   private playerHpBar!: Phaser.GameObjects.Rectangle;
   private opponentCrystal!: Phaser.GameObjects.Container;
@@ -620,14 +645,22 @@ export class BattleScene extends Phaser.Scene {
     // every field above needs because Phaser reuses the Scene instance across
     // scene.start() calls.
     this.opponentPlate = undefined;
+    // A scene is one instance re-created per battle, and its cameras are
+    // destroyed with it: a pull-back cut short by a KO would otherwise leave
+    // the next battle holding a dead HUD camera.
+    this.hudCam = null;
+    this.hudIgnored.clear();
+    this.vignette = undefined;
 
     // A rival fight's opponent is that world's boss -- render it with the
     // same gigantic, multi-shard look it has standing at the goal tile in
     // the overworld (art/boss.ts's makeBossCrystal), not the plain shared
     // makeCrystal() every ordinary wild encounter uses.
-    this.opponentCrystal = this.isRival
-      ? makeBossCrystal(this, BOSS_CRYSTAL_SIZE, this.opponentView().color, this.opponentView().variant, { footDrop: SHADOW_DROP })
-      : makeCrystal(this, WILD_CRYSTAL_SIZE, this.wild.color, this.wild.variant, { seed: this.wild.name, hybrid: this.wild.hybridParents });
+    this.opponentCrystal = this.arena(
+      this.isRival
+        ? makeBossCrystal(this, BOSS_CRYSTAL_SIZE, this.opponentView().color, this.opponentView().variant, { footDrop: SHADOW_DROP })
+        : makeCrystal(this, WILD_CRYSTAL_SIZE, this.wild.color, this.wild.variant, { seed: this.wild.name, hybrid: this.wild.hybridParents })
+    );
     this.opponentCrystal.setPosition(this.opponentPos.x, this.opponentPos.y);
     // A gem hovers; a golem stands. Only the crystals get the idle bob --
     // lifting a rival's whole container would carry its contact shadow up
@@ -638,11 +671,13 @@ export class BattleScene extends Phaser.Scene {
     this.drawOpponentPlate();
 
     // Player (bottom-left)
-    this.playerCrystal = makeCrystal(this, PLAYER_CRYSTAL_SIZE, this.playerMaterial.color, this.playerMaterial.variant, {
-      seed: this.playerMaterial.name,
-      hybrid: this.playerMaterial.hybridParents,
-      dopant: getPlayerDopantLook(this.game.registry),
-    });
+    this.playerCrystal = this.arena(
+      makeCrystal(this, PLAYER_CRYSTAL_SIZE, this.playerMaterial.color, this.playerMaterial.variant, {
+        seed: this.playerMaterial.name,
+        hybrid: this.playerMaterial.hybridParents,
+        dopant: getPlayerDopantLook(this.game.registry),
+      })
+    );
     this.playerCrystal.setPosition(PLAYER_POS.x, PLAYER_POS.y);
     this.bobCrystal(this.playerCrystal, PLAYER_POS.y);
 
@@ -1339,7 +1374,7 @@ export class BattleScene extends Phaser.Scene {
       return;
     }
 
-    const g = this.add.graphics();
+    const g = this.arena(this.add.graphics());
 
     // Sky as an eased two-segment vertical wash (dark zenith easing into a
     // brighter horizon) rather than one linear gradient -- the mid-stop sits
@@ -1496,8 +1531,8 @@ export class BattleScene extends Phaser.Scene {
     // called, see create()'s own comment) rather than the plain OPPONENT_POS
     // constant, so the shadow still sits under the crystal in a rival fight,
     // where the opponent actually renders at BOSS_OPPONENT_POS instead.
-    this.add.ellipse(this.opponentPos.x, this.opponentPos.y + SHADOW_DROP, 120, 28, shadowColor, 0.35);
-    this.add.ellipse(PLAYER_POS.x, PLAYER_POS.y + SHADOW_DROP, 130, 30, shadowColor, 0.35);
+    this.arena(this.add.ellipse(this.opponentPos.x, this.opponentPos.y + SHADOW_DROP, 120, 28, shadowColor, 0.35));
+    this.arena(this.add.ellipse(PLAYER_POS.x, PLAYER_POS.y + SHADOW_DROP, 130, 30, shadowColor, 0.35));
   }
 
   // The four-band backdrop: walkable, impassable, mist, sky, bottom to top,
@@ -1522,7 +1557,7 @@ export class BattleScene extends Phaser.Scene {
   // any crystal or HP bar -- which is why the flat version of this backdrop
   // failed the arena's legibility gate in seven worlds out of ten.
   private drawBandBackdrop(biome: Biome) {
-    const g = this.add.graphics();
+    const g = this.arena(this.add.graphics());
 
     // Everything distant converges on one air colour, so the bands have
     // somewhere to meet. Held between the fog and the sky's own bottom, which
@@ -1565,8 +1600,8 @@ export class BattleScene extends Phaser.Scene {
     g.fillRect(0, BAND_FLOOR_EDGE_Y, FIELD_W, 3);
 
     const shadowColor = shade(biome.ground, -40);
-    this.add.ellipse(this.opponentPos.x, this.opponentPos.y + SHADOW_DROP, 120, 28, shadowColor, 0.35);
-    this.add.ellipse(PLAYER_POS.x, PLAYER_POS.y + SHADOW_DROP, 130, 30, shadowColor, 0.35);
+    this.arena(this.add.ellipse(this.opponentPos.x, this.opponentPos.y + SHADOW_DROP, 120, 28, shadowColor, 0.35));
+    this.arena(this.add.ellipse(PLAYER_POS.x, PLAYER_POS.y + SHADOW_DROP, 130, 30, shadowColor, 0.35));
   }
 
   // The arena as the place the fight started in, built from one ground plane
@@ -1602,17 +1637,20 @@ export class BattleScene extends Phaser.Scene {
     // below that the sky arrives at from above and the horizon is a place
     // inside one atmosphere rather than a seam between two.
     const air = blend(biome.fogTarget, biome.skyBottom, 0.4);
-    const g = this.add.graphics();
+    const g = this.arena(this.add.graphics());
 
     // Sky: a three-stop wash whose brightening accelerates downward, the way
     // scattering does, ending in the air colour at the horizon line itself.
     const skyLow = blend(biome.skyBottom, air, 0.75);
     const skyMid = blend(biome.skyTop, skyLow, 0.5);
     const skyMidY = Math.round(R_HORIZON_Y * 0.42);
+    // The zenith continues flat above the field, for the pulled-back camera.
+    g.fillStyle(biome.skyTop, 1);
+    g.fillRect(ARENA_X0, -OVERSCAN_Y, ARENA_W, OVERSCAN_Y);
     g.fillGradientStyle(biome.skyTop, biome.skyTop, skyMid, skyMid, 1);
-    g.fillRect(0, 0, FIELD_W, skyMidY);
+    g.fillRect(ARENA_X0, 0, ARENA_W, skyMidY);
     g.fillGradientStyle(skyMid, skyMid, skyLow, skyLow, 1);
-    g.fillRect(0, skyMidY, FIELD_W, R_HORIZON_Y - skyMidY);
+    g.fillRect(ARENA_X0, skyMidY, ARENA_W, R_HORIZON_Y - skyMidY);
 
     if (biome.clouds) {
       this.drawSun(596, 34);
@@ -1626,6 +1664,15 @@ export class BattleScene extends Phaser.Scene {
     // in the arena's sky at the same stage, under the mist as the overworld
     // draws it, and frozen at R_FROZEN_NOW with everything else painted once.
     drawStarNetwork({ g, world: this.world, horizonY: R_HORIZON_Y, target: air, now: R_FROZEN_NOW });
+    // The same network again a field's width to either side, so the
+    // overscan's sky carries stars out to the edge of what a pulled-back
+    // camera sees rather than ending at the field's own.
+    for (const shift of [-FIELD_W, FIELD_W]) {
+      g.save();
+      g.translateCanvas(shift, 0);
+      drawStarNetwork({ g, world: this.world, horizonY: R_HORIZON_Y, target: air, now: R_FROZEN_NOW });
+      g.restore();
+    }
 
     // The distance, in two passes of this world's own profile: a far echo
     // half the height and nearly all air, and the profile itself in front of
@@ -1666,7 +1713,11 @@ export class BattleScene extends Phaser.Scene {
       { length: edgeCount },
       (_, i) => new Phaser.Math.Vector2(-edgeMargin + i * edgeStep, R_FLOOR_EDGE_Y + (edgeRand() * 2 - 1) * 4)
     );
-    const edgePts = new Phaser.Curves.Spline(edgeControls).getPoints(90);
+    // Past the field the edge runs on level into the overscan at the height
+    // it reached the field's side.
+    edgeControls.unshift(new Phaser.Math.Vector2(ARENA_X0 - 10, edgeControls[0].y));
+    edgeControls.push(new Phaser.Math.Vector2(ARENA_X0 + ARENA_W + 10, edgeControls[edgeControls.length - 1].y));
+    const edgePts = new Phaser.Curves.Spline(edgeControls).getPoints(120);
 
     // The walkable colour is pulled toward the surround's own before anything
     // else happens to it: several worlds paint their route far brighter than
@@ -1679,11 +1730,15 @@ export class BattleScene extends Phaser.Scene {
     g.beginPath();
     g.moveTo(edgePts[0].x, edgePts[0].y);
     edgePts.forEach((p) => g.lineTo(p.x, p.y));
-    g.lineTo(FIELD_W + edgeMargin, R_FLOOR_EDGE_Y + 6);
-    g.lineTo(-edgeMargin, R_FLOOR_EDGE_Y + 6);
+    g.lineTo(ARENA_X0 + ARENA_W + 10, R_FLOOR_EDGE_Y + 6);
+    g.lineTo(ARENA_X0 - 10, R_FLOOR_EDGE_Y + 6);
     g.closePath();
     g.fillPath();
     this.drawGroundPlane(g, floorBase, biome, air, R_FLOOR_EDGE_Y + 6, FIELD_H, baseGy);
+    // The floor carries on below the field's bottom edge for the
+    // pulled-back camera, as a plane of its own so the field's own strips
+    // stay exactly where they are.
+    this.drawGroundPlane(g, floorBase, biome, air, FIELD_H, FIELD_H + OVERSCAN_Y, baseGy);
 
     // What the stand casts onto the ground in front of it, and the lit lip of
     // the walkable side under it. A contact shadow is what stops the surround
@@ -1708,13 +1763,13 @@ export class BattleScene extends Phaser.Scene {
 
     // A last thin veil along the horizon over everything, so the far stand
     // and the sky share the same air after all the detail has been laid in.
-    this.drawArenaVeil(this.add.graphics(), air, 0.16, 40, 30);
+    this.drawArenaVeil(this.arena(this.add.graphics()), air, 0.16, 40, 30);
     this.drawArenaHaze(air);
     this.drawVignette(biome);
 
     const shadowColor = shade(biome.ground, -40);
-    this.add.ellipse(this.opponentPos.x, this.opponentPos.y + SHADOW_DROP, 120, 28, shadowColor, 0.35);
-    this.add.ellipse(PLAYER_POS.x, PLAYER_POS.y + SHADOW_DROP, 130, 30, shadowColor, 0.35);
+    this.arena(this.add.ellipse(this.opponentPos.x, this.opponentPos.y + SHADOW_DROP, 120, 28, shadowColor, 0.35));
+    this.arena(this.add.ellipse(PLAYER_POS.x, PLAYER_POS.y + SHADOW_DROP, 130, 30, shadowColor, 0.35));
   }
 
   // A horizon profile filled at the arena's own horizon line, drowned in the
@@ -1734,14 +1789,18 @@ export class BattleScene extends Phaser.Scene {
   ) {
     const steps = 5;
     const baseY = R_HORIZON_Y + lift;
+    // The profile is tuned to the field's width; past it, either end runs
+    // on level at its own height into the overscan rather than the profile
+    // being stretched to fit, which would change the horizon the field sees.
+    const extended: HorizonPoint[] = [{ x: ARENA_X0, h: profile[0].h }, ...profile, { x: ARENA_X0 + ARENA_W, h: profile[profile.length - 1].h }];
     g.fillStyle(color, 1 - Math.pow(1 - swallow, 1 / steps));
     for (let step = 0; step < steps; step++) {
       const foot = step / steps;
       let prevX = 0;
       let prevCrest = 0;
       let prevFloor = 0;
-      for (let i = 0; i < profile.length; i++) {
-        const p = profile[i];
+      for (let i = 0; i < extended.length; i++) {
+        const p = extended[i];
         const h = Math.min(p.h, MAX_CREST) * heightScale;
         const crest = baseY - h;
         const floor = Math.max(baseY - h * foot, crest);
@@ -1762,17 +1821,17 @@ export class BattleScene extends Phaser.Scene {
   // frame -- higher than either crystal in front of it.
   private drawArenaVeil(g: Phaser.GameObjects.Graphics, air: number, alpha: number, rise: number, fall: number) {
     g.fillGradientStyle(air, air, air, air, 0, 0, alpha, alpha);
-    g.fillRect(0, R_HORIZON_Y - rise, FIELD_W, rise);
+    g.fillRect(ARENA_X0, R_HORIZON_Y - rise, ARENA_W, rise);
     g.fillGradientStyle(air, air, air, air, alpha, alpha, 0, 0);
-    g.fillRect(0, R_HORIZON_Y, FIELD_W, fall);
+    g.fillRect(ARENA_X0, R_HORIZON_Y, ARENA_W, fall);
   }
 
   // Two slow banks of air drifting along the horizon. The only thing in the
   // backdrop that moves: still air over a still landscape reads as a
   // painting of one.
   private drawArenaHaze(air: number) {
-    const bank1 = this.add.ellipse(FIELD_W * 0.28, R_HORIZON_Y - 12, 520, 46, air, 0.11);
-    const bank2 = this.add.ellipse(FIELD_W * 0.74, R_HORIZON_Y + 4, 600, 34, air, 0.13);
+    const bank1 = this.arena(this.add.ellipse(FIELD_W * 0.28, R_HORIZON_Y - 12, 520, 46, air, 0.11));
+    const bank2 = this.arena(this.add.ellipse(FIELD_W * 0.74, R_HORIZON_Y + 4, 600, 34, air, 0.13));
     this.tweens.add({ targets: bank1, x: bank1.x + 54, duration: 21000, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     this.tweens.add({ targets: bank2, x: bank2.x - 44, duration: 26000, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
   }
@@ -1793,6 +1852,9 @@ export class BattleScene extends Phaser.Scene {
     if (!spec || !draw) return;
 
     const rand = seededRandom(hashSeed(`${seed}-stand-${kind}`));
+    // The overscan's columns draw from an RNG of their own, so the field's
+    // tiles take exactly the draws they take without them.
+    const randOver = seededRandom(hashSeed(`${seed}-stand-${kind}-over`));
     const baseGx = this.locale?.x ?? 13;
     const baseGy = this.locale?.y ?? 40;
     const span = R_FLOOR_EDGE_Y - R_HORIZON_Y;
@@ -1821,7 +1883,7 @@ export class BattleScene extends Phaser.Scene {
       // opacity, which is the only distance control some materials have: the
       // Defect Scars' crust and the Stone Lattice's shafts paint at fixed
       // saturation and full alpha whatever depth they are handed.
-      const layer = this.add.graphics();
+      const layer = this.arena(this.add.graphics());
       layer.setAlpha(0.3 + 0.7 * f);
 
       // The cell the tile occupies on the ground, which is what the two
@@ -1833,17 +1895,16 @@ export class BattleScene extends Phaser.Scene {
       const rowBot = row === 0 ? R_FLOOR_EDGE_Y + 4 : R_HORIZON_Y + span * ((f + R_SURROUND_ROWS[row - 1]) / 2);
 
       if (sea) {
-        drawSeaStandRow(layer, { top: rowTop, bot: rowBot, left: -tileW, right: FIELD_W + tileW }, row, air, drown, Math.min(1, 0.3 + f * 0.8), R_FROZEN_NOW);
+        drawSeaStandRow(layer, { top: rowTop, bot: rowBot, left: ARENA_X0 - tileW, right: ARENA_X0 + ARENA_W + tileW }, row, air, drown, Math.min(1, 0.3 + f * 0.8), R_FROZEN_NOW);
         if (row > 0) this.drawArenaVeil(layer, air, 0.1 + 0.1 * (1 - f), 46, span);
         continue;
       }
 
       const rowTiles: AccentTile[] = [];
-      for (let col = 0; col < cols; col++) {
-        const cellX = -tileW + (col + 0.5) * tileW;
-        const cx = cellX + (rand() - 0.5) * tileW * 0.5;
-        const cy = rowY + (rand() - 0.5) * span * f * 0.22;
-        const core = rand() < spec.core;
+      const placeTile = (col: number, cellX: number, r: () => number) => {
+        const cx = cellX + (r() - 0.5) * tileW * 0.5;
+        const cy = rowY + (r() - 0.5) * span * f * 0.22;
+        const core = r() < spec.core;
         const s = (core && spec.coreScale != null ? spec.coreScale : spec.scale) * f;
         const tile = this.arenaAccentTile(biome, air, cx, cy, s, drown, f, core, baseGx + col, baseGy - row * 2, {
           x: cellX,
@@ -1853,6 +1914,13 @@ export class BattleScene extends Phaser.Scene {
         });
         if (network) rowTiles.push(tile);
         else draw(layer, tile);
+      };
+      for (let col = 0; col < cols; col++) placeTile(col, -tileW + (col + 0.5) * tileW, rand);
+      // The overscan's columns either side.
+      const extra = Math.ceil(OVERSCAN_X / tileW) + 1;
+      for (let k = 0; k < extra; k++) {
+        placeTile(-1 - k, -tileW - (k + 0.5) * tileW, randOver);
+        placeTile(cols + k, -tileW + (cols + k + 0.5) * tileW, randOver);
       }
       if (network) farNodes = drawConsumingStandRow(layer, rowTiles, farNodes, approach, row * 2 + 2);
 
@@ -1964,7 +2032,7 @@ export class BattleScene extends Phaser.Scene {
       g.fillStyle(blend(color, air, drown), 1);
       // Half a pixel of overlap: adjacent strips must not leave a seam of the
       // layer beneath showing between them.
-      g.fillRect(0, prevY - 0.5, FIELD_W, y - prevY + 1);
+      g.fillRect(ARENA_X0, prevY - 0.5, ARENA_W, y - prevY + 1);
       prevY = y;
     }
     // Drawn after the strips so a boundary's shadow lies on the band below it
@@ -1973,10 +2041,10 @@ export class BattleScene extends Phaser.Scene {
     boundaries.forEach(({ y, fade }) => {
       const depth = Math.max(2, (botY - topY) * 0.02 + 60 / Math.max(1, R_FLOOR_K / (y - R_HORIZON_Y)));
       g.fillGradientStyle(0x000000, 0x000000, 0x000000, 0x000000, 0.3 * fade, 0.3 * fade, 0, 0);
-      g.fillRect(0, y, FIELD_W, depth);
+      g.fillRect(ARENA_X0, y, ARENA_W, depth);
       if (ramp) {
         g.lineStyle(1.5, ramp.channel, 0.45 * fade);
-        g.lineBetween(0, y, FIELD_W, y);
+        g.lineBetween(ARENA_X0, y, ARENA_X0 + ARENA_W, y);
       }
     });
   }
@@ -1989,8 +2057,12 @@ export class BattleScene extends Phaser.Scene {
   // on. The depth is in the *gradient* of it, and a texture gradient is what
   // separates a receding plane from a painted one.
   private drawFloorTexture(biome: Biome, air: number, floorBase: number, seed: string) {
-    const g = this.add.graphics();
+    const g = this.arena(this.add.graphics());
     const rand = seededRandom(hashSeed(`${seed}-floor`));
+    // Stones past the field's sides draw from an RNG of their own, so the
+    // field's pattern is the same with or without the overscan.
+    const randOver = seededRandom(hashSeed(`${seed}-floor-over`));
+    const overscanOnly = (x: number, size: number) => x < -size || x > FIELD_W + size;
     const cx0 = FIELD_W * 0.5;
     const dNear = R_FLOOR_K / (FIELD_H - R_HORIZON_Y);
     const dFar = R_FLOOR_K / (R_FLOOR_EDGE_Y - R_HORIZON_Y);
@@ -2019,10 +2091,11 @@ export class BattleScene extends Phaser.Scene {
       for (let l = -26; l <= 26; l++) {
         if (rand() > 0.42) continue;
         const x = cx0 + (l + (rand() - 0.5) * 0.85) * lane;
-        if (x < -size || x > FIELD_W + size) continue;
-        const pale = rand() < 0.45;
+        if (x < ARENA_X0 - size || x > ARENA_X0 + ARENA_W + size) continue;
+        const r = overscanOnly(x, size) ? randOver : rand;
+        const pale = r() < 0.45;
         g.fillStyle(pale ? light : dark, (pale ? 0.13 : 0.17) * fade);
-        g.fillEllipse(x, y + (rand() - 0.5) * size * 0.4, size * (0.5 + rand() * 0.7), size * (0.2 + rand() * 0.2));
+        g.fillEllipse(x, y + (r() - 0.5) * size * 0.4, size * (0.5 + r() * 0.7), size * (0.2 + r() * 0.2));
       }
     }
 
@@ -2043,11 +2116,12 @@ export class BattleScene extends Phaser.Scene {
       for (let l = -14; l <= 14; l++) {
         if (rand() > 0.09) continue;
         const x = cx0 + (l + (rand() - 0.5) * 0.9) * lane;
-        if (x < -size || x > FIELD_W + size) continue;
+        if (x < ARENA_X0 - size || x > ARENA_X0 + ARENA_W + size) continue;
+        const r = overscanOnly(x, size) ? randOver : rand;
         g.fillStyle(shade(floorBase, -26), 0.16);
         g.fillEllipse(x + size * 0.2, y + size * 0.22, size * 1.1, size * 0.34);
-        g.fillStyle(rand() < 0.5 ? shade(floorBase, 22) : shade(floorBase, -14), 0.22);
-        g.fillEllipse(x, y, size * (0.5 + rand() * 0.4), size * (0.4 + rand() * 0.3));
+        g.fillStyle(r() < 0.5 ? shade(floorBase, 22) : shade(floorBase, -14), 0.22);
+        g.fillEllipse(x, y, size * (0.5 + r() * 0.4), size * (0.4 + r() * 0.3));
       }
     }
 
@@ -2055,10 +2129,10 @@ export class BattleScene extends Phaser.Scene {
     // is lightest, so the ground is lit rather than merely coloured.
     const lit = blend(floorBase, biome.skyBottom, 0.16);
     g.fillGradientStyle(lit, lit, lit, lit, 0, 0.16, 0, 0.02);
-    g.fillRect(0, R_FLOOR_EDGE_Y + 20, FIELD_W, FIELD_H - R_FLOOR_EDGE_Y - 20);
+    g.fillRect(ARENA_X0, R_FLOOR_EDGE_Y + 20, ARENA_W, FIELD_H + OVERSCAN_Y - R_FLOOR_EDGE_Y - 20);
     // and the air itself lying over the ground's far reach.
     g.fillGradientStyle(air, air, air, air, 0.26, 0.26, 0, 0);
-    g.fillRect(0, R_FLOOR_EDGE_Y, FIELD_W, 96);
+    g.fillRect(ARENA_X0, R_FLOOR_EDGE_Y, ARENA_W, 96);
   }
 
   // One rolling ridge silhouette spanning the field width: a Catmull-Rom
@@ -2151,8 +2225,8 @@ export class BattleScene extends Phaser.Scene {
   // UI. Cheap: two ellipses on infinite yoyo tweens, no per-frame redraw.
   private drawHazeBands(biome: Biome) {
     const hazeColor = shade(biome.fogTarget, 35);
-    const haze1 = this.add.ellipse(FIELD_W * 0.3, HORIZON_Y - 26, 460, 44, hazeColor, 0.08);
-    const haze2 = this.add.ellipse(FIELD_W * 0.72, HORIZON_Y - 6, 540, 36, hazeColor, 0.1);
+    const haze1 = this.arena(this.add.ellipse(FIELD_W * 0.3, HORIZON_Y - 26, 460, 44, hazeColor, 0.08));
+    const haze2 = this.arena(this.add.ellipse(FIELD_W * 0.72, HORIZON_Y - 6, 540, 36, hazeColor, 0.1));
     this.tweens.add({ targets: haze1, x: haze1.x + 46, duration: 17000, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     this.tweens.add({ targets: haze2, x: haze2.x - 54, duration: 21000, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
   }
@@ -2161,7 +2235,8 @@ export class BattleScene extends Phaser.Scene {
   // at the frame corner and falls to zero toward center-frame, leaving the
   // middle of the arena (where both crystals live) untouched.
   private drawVignette(biome: Biome) {
-    const g = this.add.graphics();
+    const g = this.arena(this.add.graphics());
+    this.vignette = g;
     const c = blend(biome.skyTop, 0x000000, 0.75);
     const w = 300;
     const h = 200;
@@ -2179,7 +2254,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private drawSun(x: number, y: number) {
-    const g = this.add.graphics();
+    const g = this.arena(this.add.graphics());
     g.fillStyle(0xfff6c9, 0.35);
     g.fillCircle(x, y, 34);
     g.fillStyle(0xfff9e0, 0.9);
@@ -2187,7 +2262,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private drawCloud(x: number, y: number) {
-    const g = this.add.graphics();
+    const g = this.arena(this.add.graphics());
     g.fillStyle(0xffffff, 0.85);
     g.fillEllipse(x, y, 46, 20);
     g.fillEllipse(x - 18, y + 4, 30, 16);
@@ -2200,16 +2275,16 @@ export class BattleScene extends Phaser.Scene {
   // the biome's own path color so they still read as an accent rather than
   // clashing with a world whose palette isn't blue/green.
   private drawBackgroundCrystals(biome: Biome) {
-    const outcrop = makeCrystal(this, 16, shade(biome.path, 10), 'prism');
+    const outcrop = this.arena(makeCrystal(this, 16, shade(biome.path, 10), 'prism'));
     outcrop.setPosition(70, 250);
     outcrop.setAlpha(0.8);
 
-    const outcrop2 = makeCrystal(this, 11, shade(biome.path, -10), 'shard');
+    const outcrop2 = this.arena(makeCrystal(this, 11, shade(biome.path, -10), 'shard'));
     outcrop2.setPosition(95, 258);
     outcrop2.setAlpha(0.75);
 
     // Sits just inside the move menu's left edge (MENU_X).
-    const outcrop3 = makeCrystal(this, 13, shade(biome.hillColor, 25), 'shard');
+    const outcrop3 = this.arena(makeCrystal(this, 13, shade(biome.hillColor, 25), 'shard'));
     outcrop3.setPosition(MENU_X - 40, 252);
     outcrop3.setAlpha(0.8);
   }
@@ -2219,7 +2294,7 @@ export class BattleScene extends Phaser.Scene {
   // biome's path color (pale wheat in the Mean Fields, swept ice on the
   // Vortex Glacier, ...) rather than a hardcoded grass green everywhere.
   private drawGroundDetail(biome: Biome) {
-    const g = this.add.graphics();
+    const g = this.arena(this.add.graphics());
     // Spread across the field's visible width, staying just inside the
     // move menu's left edge (MENU_X).
     const spots: [number, number][] = [
@@ -2253,7 +2328,7 @@ export class BattleScene extends Phaser.Scene {
   // embers -- all added behind the crystal's own shapes (index 0) so the
   // crystal itself stays on top and readable.
   private addBoostHalo(container: Phaser.GameObjects.Container) {
-    const glow = this.add.graphics();
+    const glow = this.arena(this.add.graphics());
     glow.setBlendMode(Phaser.BlendModes.ADD);
     glow.fillStyle(GOLD_ACCENT, 0.18);
     glow.fillCircle(0, 0, 58);
@@ -2273,7 +2348,7 @@ export class BattleScene extends Phaser.Scene {
       ease: 'Sine.easeInOut',
     });
 
-    const spikes = this.add.graphics();
+    const spikes = this.arena(this.add.graphics());
     spikes.setBlendMode(Phaser.BlendModes.ADD);
     const spikeCount = 10;
     for (let i = 0; i < spikeCount; i++) {
@@ -2302,7 +2377,7 @@ export class BattleScene extends Phaser.Scene {
   // Wrong-answer penalty: a small grey raincloud drooping above the
   // player's crystal.
   private addFailCloud(container: Phaser.GameObjects.Container) {
-    const cloud = this.add.graphics();
+    const cloud = this.arena(this.add.graphics());
     cloud.fillStyle(0x777788, 0.9);
     cloud.fillEllipse(0, -58, 36, 16);
     cloud.fillEllipse(-15, -53, 22, 13);
@@ -2408,7 +2483,7 @@ export class BattleScene extends Phaser.Scene {
       this.opponentScreeningAura = null;
       killTweensDeep(this, this.opponentCrystal);
       this.opponentCrystal.destroy(true);
-      this.opponentCrystal = makeBossCrystal(this, BOSS_CRYSTAL_SIZE, newForm.color, newForm.variant, { footDrop: SHADOW_DROP });
+      this.opponentCrystal = this.arena(makeBossCrystal(this, BOSS_CRYSTAL_SIZE, newForm.color, newForm.variant, { footDrop: SHADOW_DROP }));
       this.opponentCrystal.setPosition(this.opponentPos.x, this.opponentPos.y);
       this.flashHit(this.opponentCrystal);
 
@@ -2934,12 +3009,17 @@ export class BattleScene extends Phaser.Scene {
     };
 
     if (isUltimate) {
+      // The camera pulls back for the cast and eases in again from the
+      // strike (pullBack), so it is at 1 before onComplete can end the
+      // battle or swap the boss's form.
+      this.pullBack(true, ULTIMATE_PULL_BACK_MS);
       playAttackEffect(
         this,
         effectiveClass,
         from,
         to,
         () => {
+          this.pullBack(false, ULTIMATE_PULL_IN_MS);
           // A whiff never reaches the defender at all -- the summoned mass
           // comes apart in mid-air (art/attackUltimates.ts) -- so it gets
           // none of the flash/shake that reads as a hit landing, just the
@@ -2952,7 +3032,8 @@ export class BattleScene extends Phaser.Scene {
         () => checkEndOrContinue(),
         whiff,
         0,
-        level
+        level,
+        this.ultimateStage()
       );
       return;
     }
@@ -3207,6 +3288,85 @@ export class BattleScene extends Phaser.Scene {
   // shockwave already carries the hit locally, and a full-brightness
   // white flash washes the field out for long enough to swallow whichever
   // silhouette just landed -- the flashier the move, the more it costs.
+  // Marks an object as part of the arena rather than the HUD (see pullBack).
+  private arena<T extends Phaser.GameObjects.GameObject>(obj: T): T {
+    return markArena(obj);
+  }
+
+  // What lies beyond the target for Skłodowska-Curie's Ultimates
+  // (art/attackUltimates.ts's UltimateStage): the point out past the
+  // field's left edge, near its top, a meteor is first seen at -- inside
+  // what the pulled-back camera sees, outside what the field alone would,
+  // and below where the turn-order row sits on the HUD camera, so the point
+  // of light is not first seen behind it -- and the painted floor, out to
+  // the overscan, a nova gathers from.
+  private ultimateStage(): UltimateStage {
+    return {
+      far: { x: ARENA_X0 + 50, y: 20 },
+      floor: { x0: ARENA_X0, x1: ARENA_X0 + ARENA_W, y1: FIELD_H + OVERSCAN_Y },
+    };
+  }
+
+  // The pulled-back camera. Skłodowska-Curie's Ultimates play against the
+  // whole sky and floor, so for their cast the arena camera pulls back to
+  // ARENA_ZOOM_OUT -- the meteor is first seen far out at the top-left of
+  // what the camera can now see, the nova draws energy up out of the whole
+  // visible floor -- and eases back in from the strike, both ways on a Sine
+  // rather than a cut. The HUD does not move: while the camera is pulled
+  // back a second camera renders the HUD alone at zoom 1 over the arena
+  // camera, and the two split the display list by the arena tag
+  // (art/attackFx.ts's markArena -- the backdrop, the crystals, their
+  // shadows and every effect object carry it; everything else is HUD). The
+  // split is re-run every frame while the pull-back lasts (update), so a
+  // log line or an HP bar redrawn mid-cast lands on the right camera, and
+  // it is undone once the zoom is back at 1, so between casts there is one
+  // camera as ever and the scripts that walk the display list see it whole.
+  // The overscan the backdrop paints (OVERSCAN_X/Y) is what the pulled-back
+  // camera looks at past the field's edges; the vignette, which frames the
+  // field, fades out for the duration so its corners do not float inside
+  // the wider view. impactPunch's shake and flash are the arena camera's,
+  // so the HUD holds still through the strike as well.
+  private pullBack(out: boolean, ms: number) {
+    const main = this.cameras.main;
+    if (out && !this.hudCam) {
+      this.hudCam = this.cameras.add(0, 0, FIELD_W, FIELD_H, false, 'hud');
+      this.splitCameras();
+    }
+    if (this.vignette) this.tweens.add({ targets: this.vignette, alpha: out ? 0 : 1, duration: ms, ease: 'Sine.easeInOut' });
+    main.zoomTo(out ? ARENA_ZOOM_OUT : 1, ms, 'Sine.easeInOut', true, (_cam, progress) => {
+      if (!out && progress >= 1 && this.scene.isActive()) this.mergeCameras();
+    });
+  }
+
+  private splitCameras() {
+    const main = this.cameras.main;
+    const hud = this.hudCam;
+    if (!hud) return;
+    for (const obj of this.children.list) {
+      if (isArena(obj)) {
+        if (!(obj.cameraFilter & hud.id)) hud.ignore(obj);
+      } else if (!(obj.cameraFilter & main.id)) {
+        main.ignore(obj);
+        this.hudIgnored.add(obj);
+      }
+    }
+  }
+
+  private mergeCameras() {
+    const main = this.cameras.main;
+    const hud = this.hudCam;
+    if (!hud) return;
+    for (const obj of this.hudIgnored) obj.cameraFilter &= ~main.id;
+    this.hudIgnored.clear();
+    for (const obj of this.children.list) obj.cameraFilter &= ~hud.id;
+    this.cameras.remove(hud);
+    this.hudCam = null;
+  }
+
+  update() {
+    if (this.hudCam) this.splitCameras();
+  }
+
   private impactPunch(container: Phaser.GameObjects.Container) {
     this.flashHit(container);
     this.cameras.main.shake(140, 0.006);

@@ -11,6 +11,19 @@ interface Stretch {
 }
 const NO_STRETCH: Stretch = { x: 1, y: 1 };
 
+// A shard's outline, walked clockwise from its top point -- what
+// drawShardShape strokes, and what art/boss.ts lights as a grain boundary.
+export function shardOutline(size: number, stretch: Stretch = NO_STRETCH): { x: number; y: number }[] {
+  const P = (x: number, y: number) => ({ x: x * stretch.x, y: y * stretch.y });
+  return [P(0, -size), P(size * 0.55, -size * 0.25), P(size * 0.32, size * 0.55), P(0, size * 0.9), P(-size * 0.32, size * 0.55), P(-size * 0.55, -size * 0.25)];
+}
+
+// A cube's outline, walked clockwise from its top corner.
+export function cubicOutline(size: number, stretch: Stretch = NO_STRETCH): { x: number; y: number }[] {
+  const P = (x: number, y: number) => ({ x: x * stretch.x, y: y * stretch.y });
+  return [P(0, -size * 0.85), P(size * 0.55, -size * 0.45), P(size * 0.55, size * 0.25), P(0, size * 0.65), P(-size * 0.55, size * 0.25), P(-size * 0.55, -size * 0.45)];
+}
+
 // A single faceted gem, drawn centered on (0,0) in the Graphics object's own
 // local space -- callers position/rotate it via the Graphics object's own
 // transform rather than doing point-rotation math by hand.
@@ -20,13 +33,8 @@ export function drawShardShape(
   color: number,
   stretch: Stretch = NO_STRETCH
 ) {
+  const [top, upperRight, lowerRight, bottom, lowerLeft, upperLeft] = shardOutline(size, stretch);
   const P = (x: number, y: number) => ({ x: x * stretch.x, y: y * stretch.y });
-  const top = P(0, -size);
-  const upperLeft = P(-size * 0.55, -size * 0.25);
-  const upperRight = P(size * 0.55, -size * 0.25);
-  const bottom = P(0, size * 0.9);
-  const lowerLeft = P(-size * 0.32, size * 0.55);
-  const lowerRight = P(size * 0.32, size * 0.55);
   const core = P(0, -size * 0.05);
 
   g.fillStyle(shade(color, 45), 1);

@@ -103,22 +103,25 @@ const FLIGHT_TO_X = 0.78;
 const FLIGHT_FROM_Y = 0.68;
 const FLIGHT_TO_Y = 0.44;
 
-// The stage's own floor, as a fraction of its height -- where Landau's two
-// ground-anchored Analytic shapes (beam, eruption) play. Both are composed
-// in a battle against a defender's body *and* the arena floor at its feet
-// (art/attackShapes.ts's GROUND_DROP): the beam's column stops at the
-// defender's centre with its pool of light spreading on the floor below,
-// the eruption's crack opens in that floor under the same body. A stage has
-// neither, so the anchor handed to playTargetEffect for these two is this
-// floor line rather than the caller's own centre point, and
-// attackEffects.ts's TARGET_ONLY_GROUND_DROP drops the extra offset: the
-// beam lands on the line instead of ending flat in mid-air where a defender
-// would have been, and the eruption's expanding floor rings spread along it
-// with room to grow inside the stage instead of out through its bottom edge.
-// Low enough for the rings, high enough that the geyser's own column still
-// stands inside a stage at TUNED_MOVE_STAGE_H.
-const GROUND_LINE_Y = 0.76;
-const GROUND_ANCHORED = new Set<AttackShape>(['beam', 'eruption']);
+// The stage's own floor, as a fraction of its height, for the shapes that
+// are staged against a floor: Landau's beam and eruption, and
+// Skłodowska-Curie's meteor. Each is composed in a battle against a
+// defender's body *and* the arena floor at its feet (art/attackShapes.ts's
+// GROUND_DROP): the beam's column stops at the defender's centre with its
+// pool of light spreading on the floor below, the eruption's crack opens in
+// that floor under the same body, the meteor's rune lies on it and its ball
+// hangs a fixed height above it. A stage has neither, so the anchor handed
+// to playTargetEffect for these is this floor line rather than the caller's
+// own centre point, and attackEffects.ts's TARGET_ONLY_GROUND_DROP drops
+// the extra offset: the beam lands on the line instead of ending flat in
+// mid-air where a defender would have been, and the eruption's expanding
+// floor rings spread along it with room to grow inside the stage instead of
+// out through its bottom edge. Low enough for the rings, high enough that
+// the geyser's own column still stands inside a stage at
+// TUNED_MOVE_STAGE_H. The meteor's floor sits lower still, since what it
+// needs room for is above the floor: the ball condenses METEOR_HOVER over
+// it, and on the higher line most of the ball would hang above the stage.
+const GROUND_LINE_Y: Partial<Record<AttackShape, number>> = { beam: 0.76, eruption: 0.76, meteor: 0.86 };
 
 function flightAnchors(clip: PreviewClipRect): { from: EffectAnchor; to: EffectAnchor } {
   return {
@@ -280,10 +283,17 @@ function playNext(key: string, myGen: number) {
     c.pendingTimer = scene.time.delayedCall(loopPauseMs(playedMs), () => playNext(key, myGen));
   };
 
-  const target = GROUND_ANCHORED.has(shape) ? { x: at.x, y: clip.y + clip.height * GROUND_LINE_Y } : at;
+  const groundLine = GROUND_LINE_Y[shape];
+  const target = groundLine !== undefined ? { x: at.x, y: clip.y + clip.height * groundLine } : at;
+  // An Ultimate's stage beyond its target is the pane itself: the meteor
+  // comes in from the stage's top-left corner and the nova draws its energy
+  // up from a floor along the stage's bottom.
+  const stage = isUltimate
+    ? { far: { x: clip.x + clip.width * 0.05, y: clip.y + clip.height * 0.08 }, floor: { x0: clip.x, x1: clip.x + clip.width, y1: clip.y + clip.height * 0.92 } }
+    : undefined;
 
   if (flight) playFlightEffect(scene, moveClass, flight.from, flight.to, shapeOverride, chain.depthOffset, level ?? 0);
-  else playTargetEffect(scene, moveClass, target, shapeOverride, isUltimate ? afterSettled : undefined, chain.depthOffset, level ?? 0);
+  else playTargetEffect(scene, moveClass, target, shapeOverride, isUltimate ? afterSettled : undefined, chain.depthOffset, level ?? 0, stage);
 
   if (!isUltimate) {
     chain.pendingTimer = scene.time.delayedCall(playedMs, afterSettled);

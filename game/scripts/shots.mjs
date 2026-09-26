@@ -236,9 +236,12 @@ async function main() {
     // count alone decides the frame. A preview's objects sit in the
     // PREVIEW_DEPTH_OFFSET band (art/moveEffectPreview.ts), which is how the
     // count is scoped to the stage. The count is per panel: a beam's ember
-    // spray peaks around thirty, a meteor's fire trail well past forty, and
-    // its summon rune's motes just under thirty, so the meteor is caught with
-    // its rock in the air rather than while the rune is still being drawn.
+    // spray peaks around thirty, a meteor's summon-rune motes sit just under
+    // thirty, its trail passes forty early in the approach and runs past a
+    // hundred and fifty as it closes, and its slam and aftermath carry more
+    // still -- so a trigger of forty catches the meteor on its way in and one
+    // of a hundred and fifty catches it about to strike or striking, rather
+    // than a frame of the rune being drawn or of the last embers.
     const freezeOnStagePlay = async (sceneKey, trigger, label, intervalMs = 70, particleTrigger = 30) => {
       const result = await page.evaluate(
         async ({ sceneKey, trigger, intervalMs, particleTrigger }) => {
@@ -455,7 +458,7 @@ async function main() {
       });
       await sleep(700);
       if (movesOpened) {
-        const frozenMoves = await freezeOnStagePlay('Hub', 9, 'lab moves', 70, 40);
+        const frozenMoves = await freezeOnStagePlay('Hub', 9, 'lab moves', 70, 150);
         await shoot('docs-quasiparticles-moves');
         if (frozenMoves) await page.evaluate(() => window.__game.loop.wake());
         await page.evaluate(() => window.__game.scene.getScene('Hub')['closeDialogue']?.());

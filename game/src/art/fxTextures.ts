@@ -5,7 +5,7 @@ import { seededRandom } from './colors';
 // (art/attackAnalytics.ts) and Skłodowska-Curie's Ultimate pair
 // (art/attackUltimates.ts). Every ordinary silhouette is a Graphics object
 // redrawn per frame from flat fills, which is the right tool for a bolt or a
-// ribbon; a beam of light, a burning rock, a plume of smoke or a shockwave
+// ribbon; a beam of light, a ball of energy, a plume of smoke or a shockwave
 // need soft edges, a real radial falloff, grain and shading, none of which a
 // flat fill has. These are painted once, on a canvas, with the 2D context's
 // gradients and a little value noise, and then used as ordinary textures:
@@ -17,11 +17,10 @@ import { seededRandom } from './colors';
 // Every texture is white with its shape in the alpha channel, so a tint is
 // the color: a white glow tinted a move's own class color, blended
 // additively, is that class's light, and the same smoke puff tinted dark
-// and blended normally is soot. The one texture that carries shading of its
-// own, the rock, carries it as neutral greys for the same reason: tinted a
-// class color it is a lit mass of that color (a meteor is the quasiparticle
-// itself, so its body takes the class color just as its light does), and
-// tinted a stone tone it is ground thrown up by an eruption.
+// and blended normally is soot. Even the orb's roiling skin and the shell's
+// limb are carried in alpha alone, so a meteor's body tinted a class color
+// is a ball of that class's light (the summoned mass is the quasiparticle
+// itself) and a shell tinted the same is a shockwave of it.
 //
 // These are plain canvas textures, not RenderTextures/DynamicTextures: the
 // canvas is the source, so a lost WebGL context re-uploads them like any
@@ -36,8 +35,14 @@ export const FX_TEX = {
   ring: 'fx-ring',
   // A lumpy puff: smoke, dust and (tinted, additive) glowing gas.
   smoke: 'fx-smoke',
-  // Three shaded rock chunks (ROCK_FRAMES): a meteor's body, its debris.
-  rock: 'fx-rock',
+  // A ball of energy: a solid hot core under a roiling, mottled skin with a
+  // bright limb -- a meteor's body, and the globs an impact or an eruption
+  // throws. Mottled rather than radially even, so a spin shows on it.
+  orb: 'fx-orb',
+  // A hollow sphere seen from outside: a faint interior brightening toward
+  // a crisp limb, the way a translucent shell is brightest where the line
+  // of sight runs along it -- a nova's spherical shockwave.
+  shell: 'fx-shell',
   // A shaft of light, soft-edged, narrow at the top and flaring downward.
   column: 'fx-column',
   // A horizontal lens streak: the anamorphic flare a hot point throws.
@@ -50,11 +55,6 @@ export const FX_TEX = {
   flow: 'fx-flow',
 } as const;
 
-export const ROCK_FRAMES = ['r0', 'r1', 'r2'] as const;
-// A rock frame's edge in pixels: large enough that a leveled meteor's body
-// (several times a plain one's) stays crisp when it is drawn at that size.
-const ROCK_PX = 160;
-
 // The ring texture's crest sits at this fraction of its half-size, so an
 // image sized with ringDisplaySize(r) puts its crest at radius r.
 const RING_CREST = 0.78;
@@ -62,11 +62,22 @@ export function ringDisplaySize(r: number): number {
   return (r * 2) / RING_CREST;
 }
 
-// A rock frame's silhouette reaches about this fraction of its half-size.
-const ROCK_FILL = 0.86;
-export function rockDisplaySize(r: number): number {
-  return (r * 2) / ROCK_FILL;
+// The shell's limb sits at this fraction of its half-size; sized with
+// shellDisplaySize(r) its limb is at radius r.
+const SHELL_CREST = 0.8;
+export function shellDisplaySize(r: number): number {
+  return (r * 2) / SHELL_CREST;
 }
+
+// The orb's skin reaches about this fraction of its half-size; sized with
+// orbDisplaySize(r) it is a ball of radius r.
+const ORB_FILL = 0.88;
+export function orbDisplaySize(r: number): number {
+  return (r * 2) / ORB_FILL;
+}
+// The orb is painted at this edge: large enough that a leveled meteor's body
+// (several times a plain one's) keeps its skin's detail at that size.
+const ORB_PX = 192;
 
 const FLOW_SIZE = 128;
 export const FLOW_TEX_SIZE = FLOW_SIZE;
@@ -78,8 +89,8 @@ export function ensureFxTextures(scene: Phaser.Scene): void {
   paint(tm, FX_TEX.spark, 32, 32, paintSpark);
   paint(tm, FX_TEX.ring, 256, 256, paintRing);
   paint(tm, FX_TEX.smoke, 128, 128, paintSmoke);
-  const rock = paint(tm, FX_TEX.rock, ROCK_PX * ROCK_FRAMES.length, ROCK_PX, paintRocks);
-  ROCK_FRAMES.forEach((name, i) => rock.add(name, 0, i * ROCK_PX, 0, ROCK_PX, ROCK_PX));
+  paint(tm, FX_TEX.orb, ORB_PX, ORB_PX, paintOrb);
+  paint(tm, FX_TEX.shell, 256, 256, paintShell);
   paint(tm, FX_TEX.column, 64, 256, paintColumn);
   paint(tm, FX_TEX.streak, 256, 16, paintStreak);
   paint(tm, FX_TEX.flare, 128, 128, paintFlare);
@@ -139,7 +150,7 @@ function makeNoise(seed: number, periodX: number, periodY: number): (x: number, 
 }
 
 // Several octaves of that noise summed, each twice the frequency and half the
-// weight of the last: the lumpy detail of a cloud or a rock's grain.
+// weight of the last: the lumpy detail of a cloud or an orb's roiling skin.
 function fbm(noise: (x: number, y: number) => number, x: number, y: number, octaves: number): number {
   let sum = 0;
   let amp = 0.5;
@@ -202,80 +213,40 @@ function paintSmoke(ctx: CanvasRenderingContext2D, w: number, h: number) {
   });
 }
 
-// Three irregular chunks, each lit from the upper left and falling to
-// shadow at the lower right, with a few darker facets, a grain of noise and
-// a dark rim -- enough shading for a rock to read as a solid rather than as
-// a grey blob. The shading is a neutral ramp from near-white to near-black,
-// never a hue of its own, so the tint an image or emitter applies IS the
-// rock's color: the lit facet comes out at the tint itself, the shadow at
-// the tint darkened. The ramp's top stays a little short of pure white so
-// the grain still has room to brighten it.
-function paintRocks(ctx: CanvasRenderingContext2D, w: number, h: number) {
-  const rand = seededRandom(7);
-  const noise = makeNoise(23, 8, 8);
-  const size = h;
-  const outline = (ox: number): { x: number; y: number }[] => {
-    const cx = ox + size / 2;
-    const cy = size / 2;
-    const n = 11;
-    return Array.from({ length: n }, (_, i) => {
-      const ang = (i / n) * Math.PI * 2;
-      const r = (size / 2) * ROCK_FILL * (0.72 + rand() * 0.28);
-      return { x: cx + Math.cos(ang) * r, y: cy + Math.sin(ang) * r * 0.92 };
-    });
-  };
-  const trace = (pts: { x: number; y: number }[]) => {
-    ctx.beginPath();
-    pts.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
-    ctx.closePath();
-  };
-  for (let f = 0; f < ROCK_FRAMES.length; f++) {
-    const ox = f * size;
-    const pts = outline(ox);
-    ctx.save();
-    trace(pts);
-    ctx.clip();
-    const grad = ctx.createLinearGradient(ox + size * 0.1, size * 0.08, ox + size * 0.9, size * 0.94);
-    grad.addColorStop(0, '#ececec');
-    grad.addColorStop(0.45, '#8a8a8a');
-    grad.addColorStop(1, '#2c2c2c');
-    ctx.fillStyle = grad;
-    ctx.fillRect(ox, 0, size, size);
-    for (let k = 0; k < 5; k++) {
-      const cx = ox + size * (0.25 + rand() * 0.5);
-      const cy = size * (0.25 + rand() * 0.5);
-      const r = size * (0.15 + rand() * 0.25);
-      ctx.fillStyle = `rgba(0,0,0,${0.1 + rand() * 0.2})`;
-      ctx.beginPath();
-      for (let v = 0; v < 4; v++) {
-        const ang = rand() * Math.PI * 2;
-        const px = cx + Math.cos(ang) * r;
-        const py = cy + Math.sin(ang) * r;
-        if (v === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
-      }
-      ctx.closePath();
-      ctx.fill();
-    }
-    ctx.restore();
-    trace(pts);
-    ctx.lineWidth = size * 0.026;
-    ctx.strokeStyle = 'rgba(14,14,14,0.85)';
-    ctx.stroke();
-  }
-  const img = ctx.getImageData(0, 0, w, h);
-  const d = img.data;
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      const i = (y * w + x) * 4;
-      if (d[i + 3] === 0) continue;
-      const grain = 0.78 + 0.32 * fbm(noise, (x / size) * 8, (y / size) * 8, 3);
-      d[i] = Math.min(255, d[i] * grain);
-      d[i + 1] = Math.min(255, d[i + 1] * grain);
-      d[i + 2] = Math.min(255, d[i + 2] * grain);
-    }
-  }
-  ctx.putImageData(img, 0, 0);
+// A ball of energy: a solid core, a skin that roils -- value noise eating
+// into the alpha more and more toward the edge, so the surface is mottled
+// and a spin shows on it -- and a slightly brighter limb, so the ball has a
+// skin rather than fading out like a glow. The inner half is left solid
+// and the limb kept faint so that a small glob of it still reads as a ball
+// of light rather than as a bubble. Painted large (ORB_PX) so a leveled
+// meteor's body keeps the mottling at several times a plain size.
+function paintOrb(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const noise = makeNoise(29, 5, 5);
+  const half = w / 2;
+  perPixel(ctx, w, h, (x, y) => {
+    const d = Math.hypot(x - half, y - half) / half;
+    const body = smoothstep(ORB_FILL + 0.06, ORB_FILL - 0.1, d);
+    const n = fbm(noise, (x / w) * 5, (y / h) * 5, 4);
+    const roil = 1 - 0.7 * smoothstep(0.42, 0.85, d) * clamp01(0.72 - n) * 1.8;
+    const limb = 0.12 * Math.exp(-Math.pow((d - ORB_FILL + 0.06) / 0.07, 2));
+    return body * (clamp01(roil) + limb);
+  });
+}
+
+// A hollow sphere: a faint interior that brightens toward the limb (the
+// line of sight runs through more of a thin shell the nearer the edge it
+// passes), a crisp crest at the limb itself, and a soft halo just outside
+// it. Sized with shellDisplaySize(r) it is a sphere of radius r.
+function paintShell(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const half = w / 2;
+  perPixel(ctx, w, h, (x, y) => {
+    const d = Math.hypot(x - half, y - half) / half;
+    const inside = smoothstep(SHELL_CREST + 0.02, SHELL_CREST - 0.04, d);
+    const interior = (0.07 + 0.3 * Math.pow(clamp01(d / SHELL_CREST), 3)) * inside;
+    const crest = Math.exp(-Math.pow((d - SHELL_CREST) / 0.05, 2));
+    const halo = 0.28 * Math.exp(-Math.pow((d - SHELL_CREST) / 0.13, 2));
+    return interior + crest + halo;
+  });
 }
 
 // Narrow at the top, flaring toward the bottom, soft across its width: drawn

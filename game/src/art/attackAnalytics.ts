@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import type { EffectAnchor } from './attackAnchors';
 import { GROUND_DROP, GROUND_ASPECT, TRAVEL_MS, type Direction } from './attackShapes';
 import { fxGraphics, fxImage, fxTileSprite, fxEmitter, fxRetire, fxCounter, FxSpout } from './attackFx';
-import { ensureFxTextures, FX_TEX, ROCK_FRAMES, FLOW_TEX_SIZE, ringDisplaySize } from './fxTextures';
+import { ensureFxTextures, FX_TEX, FLOW_TEX_SIZE, ringDisplaySize } from './fxTextures';
 import { blend, darken } from './colors';
 
 // Landau's Analytic pair (§5, World 4, ANALYTIC_SHAPES): the beam that falls
@@ -13,10 +13,11 @@ import { blend, darken } from './colors';
 // shockwave after -- but neither takes an attacker anchor, since a beam
 // from the sky and a crack in the floor don't originate at the caster, and
 // both draw with lit, textured material rather than flat fills: soft
-// columns of light, real smoke and dust, rock debris under gravity, a lens
-// streak at the point of contact and the light each throws on the floor
+// columns of light, real smoke and dust, globs of energy under gravity, a
+// lens streak at the point of contact and the light each throws on the floor
 // (art/fxTextures.ts). Both still take the move's own currently-tuned
-// quasiparticle color, which is what every light here is tinted with.
+// quasiparticle color, which is what every light here -- and the energy an
+// eruption throws up -- is tinted with.
 //
 // Everything is target-side and reads `to` fresh each frame; the floor is
 // `groundDrop` below it (GROUND_DROP under a defender's centre in a battle,
@@ -44,8 +45,9 @@ export const groundAngle: Phaser.Types.GameObjects.Particles.EmitterOpCustomEmit
   onEmit: () => (Math.random() < 0.5 ? 0 : 180) + (Math.random() - 0.5) * 2 * GROUND_SPREAD,
 };
 
-// A tumbling rock: a random facing on emit, then a spin of its own each
-// update, so no two chunks turn alike.
+// A tumbling glob: a random facing on emit, then a spin of its own each
+// update, so the orb texture's mottled skin visibly turns and no two globs
+// turn alike.
 type Spinning = Phaser.GameObjects.Particles.Particle & { spin?: number };
 export const tumble: Phaser.Types.GameObjects.Particles.EmitterOpCustomUpdateConfig = {
   onEmit: (particle) => {
@@ -65,6 +67,63 @@ export const QUANTITY_CAP = 1.6;
 // the arena's floor.
 export function belowGround(groundY: number): Phaser.Types.GameObjects.Particles.ParticleEmitterDeathZoneConfig {
   return { type: 'onEnter', source: new Phaser.Geom.Rectangle(-4000, groundY + 10, 8000, 4000) };
+}
+
+// The move's color pushed toward white: the hottest points of a cast (a
+// core, a flash, the birth of a spark or a glob) are this rather than plain
+// white, so a cast stays one quasiparticle's color even at its brightest.
+export const hot = (color: number) => blend(color, 0xffffff, 0.45);
+
+// A glob's size: drawn at random within a spread on emit, then shrinking
+// through its life as the energy it carries bleeds off.
+type Sized = Phaser.GameObjects.Particles.Particle & { size0?: number };
+function shrinking(base: number, spread: number, endFraction: number): Phaser.Types.GameObjects.Particles.EmitterOpCustomUpdateConfig {
+  return {
+    onEmit: (particle) => {
+      const size = base * (1 - spread + Math.random() * 2 * spread);
+      (particle as Sized).size0 = size;
+      return size;
+    },
+    onUpdate: (particle, _key, t) => ((particle as Sized).size0 ?? base) * (1 - (1 - endFraction) * t),
+  };
+}
+
+// Globs of energy thrown out by a strike -- what an eruption throws up out
+// of its fissure and what a meteor's slam scatters. The orb texture in the
+// move's own color, born at its hot shade and cooling to the color as they
+// fly, shrinking and dimming through their life, spinning so the skin's
+// roil shows, under gravity and gone the frame they fall back through the
+// floor. Debris here is the quasiparticle's own energy rather than stone,
+// so it takes the class color and adds its light like every other light in
+// the cast. `size` is the orb's scale at birth against its texture (an
+// ORB_PX-wide orb at 0.1 is a 19px glob); `scale` is a leveled repeat's.
+export function energyGlobs(
+  scene: Phaser.Scene,
+  depth: number,
+  depthOffset: number,
+  color: number,
+  scale: number,
+  groundY: number,
+  motion: {
+    lifespan: { min: number; max: number };
+    speed: { min: number; max: number };
+    angle: { min: number; max: number };
+    gravityY: number;
+    size: number;
+  }
+): Phaser.GameObjects.Particles.ParticleEmitter {
+  return fxEmitter(scene, depth, depthOffset, FX_TEX.orb, {
+    emitting: false,
+    lifespan: motion.lifespan,
+    speed: motion.speed,
+    angle: motion.angle,
+    gravityY: motion.gravityY,
+    scale: shrinking(motion.size * scale, 0.4, 0.3),
+    alpha: { start: 1, end: 0.1 },
+    rotate: tumble,
+    tint: [hot(color), color],
+    deathZone: belowGround(groundY),
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -217,12 +276,6 @@ export function playBeam(
 
 // Where in the beat the fissure has opened and the burst fires.
 const ERUPT_OPEN = 0.2;
-// The debris an eruption throws up is the floor itself, so it is tinted a
-// warm stone rather than the move's color (the rock texture's own shading is
-// neutral grey, fxTextures.ts's paintRocks); the light around it -- fire,
-// embers, the glow in the cracks -- carries the quasiparticle color. The
-// meteor's rock takes the move's color instead, being the summoned mass.
-const ERUPT_STONE = 0xe6ddd2;
 const CRACK_COUNT = 7;
 const CRACK_SEGMENTS = 5;
 
@@ -252,10 +305,10 @@ function makeCracks(scale: number): Crack[] {
 // through a split in the floor, rather than a wire drawn on it.
 function drawCracks(g: Phaser.GameObjects.Graphics, color: number, cx: number, groundY: number, cracks: Crack[], open: number, alpha: number, scale: number) {
   if (alpha <= 0 || open <= 0) return;
-  const hot = blend(color, 0xffffff, 0.6);
+  const molten = blend(color, 0xffffff, 0.6);
   const passes: [number, number, number][] = [
     [5 * scale, color, 0.3 * alpha],
-    [1.6 * scale, hot, 0.95 * alpha],
+    [1.6 * scale, molten, 0.95 * alpha],
   ];
   for (const [width, tint, a] of passes) {
     g.lineStyle(width, tint, a);
@@ -278,10 +331,12 @@ function drawCracks(g: Phaser.GameObjects.Graphics, color: number, cx: number, g
 
 // A fissure opening under the target: cracks race out across the floor over
 // a growing underlight, then the floor blows -- a flash, a geyser of light
-// with turbulence streaming up it and fire boiling off its top, rock chunks
-// thrown up under gravity that tumble and fall back, embers, a ring of dust
-// racing out along the ground and a dark plume of smoke rising and thinning
-// as the geyser collapses.
+// with turbulence streaming up it and fire boiling off its top, globs of the
+// move's own energy thrown up under gravity that arc, dim and fall back,
+// embers, a ring of dust racing out along the ground and a dark plume of
+// smoke rising and thinning as the geyser collapses. The smoke and dust are
+// the floor's, so they keep their greys; the energy that comes up through
+// the fissure is the quasiparticle's, so it takes the class color.
 export function playEruption(
   scene: Phaser.Scene,
   color: number,
@@ -321,25 +376,13 @@ export function playEruption(
     alpha: { start: 1, end: 0 },
     tint: [0xffffff, color],
   });
-  const rocks = fxEmitter(
-    scene,
-    60,
-    depthOffset,
-    FX_TEX.rock,
-    {
-      frame: [...ROCK_FRAMES],
-      emitting: false,
-      lifespan: { min: 700, max: 1100 },
-      speed: { min: 140, max: 420 },
-      angle: { min: 222, max: 318 },
-      gravityY: 620,
-      scale: { min: 0.12 * scale, max: 0.3 * scale },
-      rotate: tumble,
-      tint: ERUPT_STONE,
-      deathZone: belowGround(to.y + groundDrop),
-    },
-    Phaser.BlendModes.NORMAL
-  );
+  const globs = energyGlobs(scene, 60, depthOffset, color, scale, to.y + groundDrop, {
+    lifespan: { min: 700, max: 1100 },
+    speed: { min: 140, max: 420 },
+    angle: { min: 222, max: 318 },
+    gravityY: 620,
+    size: 0.11,
+  });
   const smoke = fxEmitter(
     scene,
     59,
@@ -403,7 +446,7 @@ export function playEruption(
 
       if (t >= ERUPT_OPEN && !fired) {
         fired = true;
-        rocks.explode(Math.round(18 * q), to.x, groundY - 4);
+        globs.explode(Math.round(18 * q), to.x, groundY - 4);
         fire.explode(Math.round(36 * q), to.x, groundY);
         embers.explode(Math.round(36 * q), to.x, groundY);
         dust.explode(Math.round(14 * q), to.x, groundY);
@@ -438,7 +481,7 @@ export function playEruption(
       [g, under, flash, jet, jetFlow, jetCore, dustRing].forEach((o) => o.destroy());
       fxRetire(scene, depthOffset, fire, 700);
       fxRetire(scene, depthOffset, embers, 1000);
-      fxRetire(scene, depthOffset, rocks, 1200);
+      fxRetire(scene, depthOffset, globs, 1200);
       fxRetire(scene, depthOffset, smoke, 1400);
       fxRetire(scene, depthOffset, dust, 1000);
       onImpact?.({ x: 0, y: -1 });

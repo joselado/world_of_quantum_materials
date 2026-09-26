@@ -27,7 +27,7 @@ import Phaser from 'phaser';
 //
 // What a shape can create: an additive Graphics (the ordinary silhouettes,
 // runes and cracks), a tinted image or tile sprite of one of
-// art/fxTextures.ts's painted textures (a beam's shaft, a meteor's rock, a
+// art/fxTextures.ts's painted textures (a beam's shaft, a meteor's ball, a
 // shockwave), and a particle emitter of one (sparks, embers, smoke, dust,
 // debris). All of them come through here, so every one of them is masked to
 // its preview stage and swept up by cancelPreviewFx alike.
@@ -124,7 +124,22 @@ type FxObject = Phaser.GameObjects.GameObject &
 
 // Places any effect object at its depth and blend, and -- for a preview --
 // tracks it for cancelPreviewFx and clips it to its stage.
+// Everything a battle effect creates is part of the arena -- the world a
+// pulled-back camera looks at (BattleScene's pullBack) as opposed to the HUD
+// laid over it -- and is tagged as such here so the scene can tell the two
+// apart without a list. A preview's objects carry the tag too; nothing reads
+// it outside a battle.
+const ARENA_TAG = 'arena';
+export function markArena<T extends Phaser.GameObjects.GameObject>(obj: T): T {
+  obj.setData(ARENA_TAG, true);
+  return obj;
+}
+export function isArena(obj: Phaser.GameObjects.GameObject): boolean {
+  return obj.data?.get(ARENA_TAG) === true;
+}
+
 function place<T extends FxObject>(obj: T, depth: number, depthOffset: number, blend: Phaser.BlendModes): T {
+  markArena(obj);
   obj.setDepth(depth + depthOffset);
   obj.setBlendMode(blend);
   if (isPreview(depthOffset)) {
@@ -140,9 +155,17 @@ export function fxGraphics(scene: Phaser.Scene, depth: number, depthOffset: numb
   return place(scene.add.graphics(), depth, depthOffset, Phaser.BlendModes.ADD);
 }
 
-// An image of one of art/fxTextures.ts's textures, at (0, 0) until its
-// effect positions it. Additive by default (light); a rock or a puff of
+// An image of one of art/fxTextures.ts's textures, off-screen until its
+// effect positions it. Additive by default (light); a puff of
 // smoke asks for NORMAL, a ground shadow for MULTIPLY.
+// Every image and tile sprite is born far off-screen (FX_OFFSCREEN): an
+// effect positions and sizes its objects from inside its counter tween, and
+// a tween added this frame takes its first update on the next one, so an
+// object born at the origin at its texture's full size would show there for
+// one frame -- at zoom 1 the field's corner, but well inside a pulled-back
+// camera's view (BattleScene's pullBack).
+const FX_OFFSCREEN = -10000;
+
 export function fxImage(
   scene: Phaser.Scene,
   depth: number,
@@ -151,7 +174,7 @@ export function fxImage(
   frame?: string,
   blend: Phaser.BlendModes = Phaser.BlendModes.ADD
 ): Phaser.GameObjects.Image {
-  return place(scene.add.image(0, 0, key, frame), depth, depthOffset, blend);
+  return place(scene.add.image(FX_OFFSCREEN, FX_OFFSCREEN, key, frame), depth, depthOffset, blend);
 }
 
 // A tile sprite of one of those textures, for something that scrolls (the
@@ -165,7 +188,7 @@ export function fxTileSprite(
   height: number,
   blend: Phaser.BlendModes = Phaser.BlendModes.ADD
 ): Phaser.GameObjects.TileSprite {
-  return place(scene.add.tileSprite(0, 0, width, height, key), depth, depthOffset, blend);
+  return place(scene.add.tileSprite(FX_OFFSCREEN, FX_OFFSCREEN, width, height, key), depth, depthOffset, blend);
 }
 
 // A particle emitter of one of those textures. Emitters here sit at the

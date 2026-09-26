@@ -2078,30 +2078,38 @@ station motifs are deliberately not tunnels with a visible far end.
   `RIVAL_9_NAMES` in `data/materials.ts`, each name a real compound's
   *polycrystalline* form -- "many grains fused into one mass"). Its build,
   bottom to top:
-  - **One dark humanoid outline polygon** (`art/boss.ts`'s `SILHOUETTE`, traced
-    once in units of `size`) filled in `shade(color, -62)` and stroked at 3px,
-    drawn under every shard. Guaranteeing the creature read as one shape is what
-    lets the grains on top be as angular and noisy as the polycrystalline theme
-    wants, and the dark fill doubles as the hard edge that keeps the golem
-    legible over a daylight biome as well as a dark one. The same polygon at
-    `1.04` scale, additive in `shade(color, 70)`, sits behind it as a rim light --
-    a bright sliver in a dark biome, invisibly subtle in a bright one.
+  - **One humanoid outline polygon** (`art/boss.ts`'s `SILHOUETTE`, traced once in
+    units of `size`), drawn under the grains only as a faint shadow (`shade(color,
+    -62)` at 0.25 alpha) with a 3px dark stroke. The body is the grains; what shows
+    of the polygon is the slivers between them and a hard rim around the whole
+    figure, which is what keeps the golem legible over a daylight biome as well as
+    a dark one without the fill reading as the body. The same polygon at `1.04`
+    scale, additive in `shade(color, 70)`, sits behind it as a rim light -- a bright
+    sliver in a dark biome, invisibly subtle in a bright one.
   - **Top-heavy proportions**: shoulders that peak higher than the small sunken
     head, long arms hanging to oversized boulder fists past the knees, a waist
-    that tapers in, short planted legs. Six limb shards (two legs, two upper
-    arms, two pauldrons) plus a pelvis and a collar block, each a shaded sibling
-    of the base color (via `shade`, and each darkened relative to it so the boss
-    reads heavier than an ordinary wild of the same compound), fused around one
-    oversized torso core, with the two oversized fists drawn after that core so
-    they hang in front of it. Limbs are always a
+    that tapers in, short planted legs. Twenty grains (`PIECES`: feet, shins and
+    thighs up each leg, a pelvis block with a hip either side, ribs either side of
+    the core, upper arms, forearms, shoulder blocks with pauldrons over them and a
+    collar block), each a shaded sibling of the base color a little either side of
+    it (`shadeStep`; the boss's weight comes from its dark rim and the shadow pooled
+    under it, since grains darkened as well go black on a dark compound), placed so
+    that together they tile the outline with neighbours overlapping rather than
+    abutting, fused around a torso core set in the chest with the ribs, collar and
+    pelvis showing around it, with the two oversized fists drawn after that core
+    so they hang in front of it and a head shard last. Limbs are always a
     solid habit (`drawShardShape`/`drawCubicShape`) rather than the material's own
     `variant` -- the translucent monolayer plates read as flimsy on an
     arm -- so the compound's own habit lives in the torso core instead.
-  - **Grain-boundary seams**: five jagged polylines drawn twice, once dark as the
-    crack and once offset and additive as the light coming through it, each on its
-    own Graphics so it pulses on its own clock. The brightest of them is a slit cut
-    across the head, a dark socket with hot ember-orange inset inside it -- one
-    slit, not a pair of eyes, so it stays a lit fracture rather than a face.
+  - **Grain-boundary seams**: every grain's own outline (`crystals.ts`'s
+    `shardOutline`/`cubicOutline`) stroked again, thin and additive in the seam
+    color, each on its own Graphics so it pulses on its own clock (`addSeam`, five
+    staggered phases). Where a later grain overlaps an earlier one its lit edge is
+    hidden, so what shows is the light along the exposed boundaries between grains
+    and a hair of it along the figure's rim, and the seams follow the grains
+    wherever they are placed rather than cutting across a facet. The brightest seam
+    is a slit cut across the head, a dark socket with hot ember-orange inset inside
+    it -- one slit, not a pair of eyes, so it stays a lit fracture rather than a face.
   - **Ground staging** instead of a body halo: a normal-blended dark contact
     shadow pooled under the feet in three nested ellipses, tight and dark where
     the golem touches and spreading out into a wide faint penumbra, with the
@@ -2404,6 +2412,20 @@ world are shaped, since world N's start is world N-1's exit.
   treatments are kept switchable on `BACKDROP_MODE` for comparison on the same encounter:
   `'layered'` (sky wash, seeded Catmull-Rom ridgelines, two flat ground bands) and
   `'bands'` (four gradient bands meeting in the fog).
+- **Painted past the field's edges.** The realistic backdrop paints an overscan of
+  `OVERSCAN_X`/`OVERSCAN_Y` (190/110) on every side, so the camera pulled back for an
+  Ultimate (`ARENA_ZOOM_OUT`, "Attack effects" below) looks at painted sky, surround and
+  floor rather than the canvas edge: the zenith continues flat above the field, every sky,
+  veil and ground-plane fill spans the wider width, the floor carries on below the field as
+  a plane of its own, the floor's far edge runs on level past the field at the height it
+  reached its side, the star network is drawn again a field's width to either side, the
+  distant self's profile runs on level at its end heights rather than being stretched, and
+  the surround stand and the floor's stones get extra columns past the field drawn from RNGs
+  of their own. Everything the field itself shows is pixel-for-pixel what it would be
+  without the overscan (the seeded draws the field's tiles and stones take are untouched, and
+  the field's own ground strips are laid exactly where they were), which `visual-proof`'s
+  seeded before/after diff at zoom 1 is the check for. The two switchable treatments paint
+  the field alone.
 
 ## Boss opponent in battle (`scenes/BattleScene.ts`)
 
@@ -2973,32 +2995,34 @@ world are shaped, since world N's start is world N-1's exit.
   crystals' own shadows sit on, so a summon circle or a ground shockwave lies on the floor
   under the crystal instead of wrapping around its middle.
 - **The four spectacle moves draw with painted material, not flat fills.** Landau's Analytic
-  pair and Skłodowska-Curie's Ultimate pair are light, rock, smoke and dust rather than
+  pair and Skłodowska-Curie's Ultimate pair are light, energy, smoke and dust rather than
   silhouettes, and a flat fill has none of the soft edges, real falloff, grain and shading
-  those need. `art/fxTextures.ts` paints ten small textures once, at boot
+  those need. `art/fxTextures.ts` paints eleven small textures once, at boot
   (`TitleScene.create`, so no battle pays for them on a first cast), with the 2D canvas's own
   gradients and a little value noise: a soft glow, a hot spark, a soft-edged ring, a lumpy
-  smoke puff, three shaded rock chunks (lit from the upper left, dark facets, grain, a dark
-  rim, painted at 160px so a leveled meteor's body stays crisp at several times a plain one's
-  size), a shaft of light narrow at the top and flaring downward, a horizontal lens streak, a
+  smoke puff, a ball of energy (a solid core under a roiling, noise-mottled skin with a faint
+  bright limb, painted at 192px so a leveled meteor's body keeps its skin at several times a
+  plain one's size, its inner half left solid so a small glob of it reads as a ball of light
+  rather than a bubble), a hollow shell (a faint interior brightening toward a crisp limb, the
+  way a translucent sphere is brightest where the line of sight runs along it), a shaft of
+  light narrow at the top and flaring downward, a horizontal lens streak, a
   starburst flare, irregular rays and a tileable strip of vertical turbulence. Every one is
   white with its shape in the alpha channel, so a tint is the color: the same glow tinted a
   move's class color and blended additively is that class's light, and the same puff tinted
-  grey and blended normally is smoke. The rock, the one texture with shading of its own,
-  carries it as neutral greys for the same reason: tinted the move's class color it is the
-  meteor's own mass in that color, and tinted a warm stone it is the floor an eruption
-  throws up. The effects use them as tinted images (a beam's shaft,
+  grey and blended normally is smoke; even the orb's roiling skin and the shell's limb are
+  carried in alpha alone, so the orb tinted a class color is a ball of that class's energy and
+  the shell tinted the same is a shockwave of it. The effects use them as tinted images (a beam's shaft,
   a shockwave, a crater's glow), tile sprites (the turbulence scrolling along a beam or up a
-  geyser) and particle emitters (sparks, embers, fire, smoke, dust, rock debris under gravity
-  that tumbles and dies the frame it falls back through the floor), all created through
+  geyser) and particle emitters (sparks, embers, fire, smoke, dust, globs of energy under
+  gravity that spin, shrink and die the frame they fall back through the floor), all created through
   `art/attackFx.ts` so a preview's clip and cancel reach them like any Graphics. Blend follows
-  what a thing is: light is `ADD`, rock, smoke and dust are `NORMAL`, and the meteor's shadow
+  what a thing is: light and energy are `ADD`, smoke and dust are `NORMAL`, and the meteor's shadow
   on the floor is `MULTIPLY`, so a bright ground plane still darkens under it. Particle sizes
   are chosen in pixels against the texture they scale (a 128px glow at scale 0.2 is a 26px
   tongue of fire, not a 96px balloon), smoke and dust sit at mid values rather than near-black
-  so they read against the dark arena (Landau's pair in greys; the meteor's in the move's own
-  color darkened into soot and lifted into dust, so its whole cast is one quasiparticle's
-  color), and emission rates run through `FxSpout`, which
+  so they read against the dark arena (Landau's pair in greys; the meteor's dust in the move's
+  own color lifted to a pale, so its whole cast is one quasiparticle's color), and emission
+  rates run through `FxSpout`, which
   integrates a per-second rate over the scene clock so a stream is the same density at any
   frame rate. Every emitter is left at the origin and fed explicit world points, since an
   emitter's particles live in its local space and a trail has to stay in the air where it was
@@ -3089,13 +3113,27 @@ world are shaped, since world N's start is world N-1's exit.
   **The eruption move** (`groundEruption`, `playEruption`) opens a fissure in the floor under
   the target: glowing cracks (seeded per cast, drawn as a wide faint stroke under a thin bright
   one) race out across the ground plane over a growing underlight, then the floor blows -- a
-  flash, a geyser of light with turbulence streaming up it and fire boiling off its top, rock
-  chunks thrown up under gravity that tumble and fall back, embers, a ring of dust racing out
-  along the ground and a plume of smoke rising and thinning as the geyser collapses inside the
+  flash, a geyser of light with turbulence streaming up it and fire boiling off its top, globs
+  of the move's own energy thrown up under gravity that arc, dim and fall back, embers, a ring
+  of dust racing out along the ground and a plume of smoke rising and thinning as the geyser collapses inside the
   beat rather than freezing at full height. Neither takes an attacker anchor at all -- a beam
   falling from the sky and a crack opening in the ground don't originate there. Each still
-  renders its light in whichever color its own currently-tuned quasiparticle class carries
-  (`EFFECT_STYLE`), same as an ordinary move; rock, smoke and dust keep their own greys.
+  renders its light -- and the energy the eruption throws up out of its fissure -- in
+  whichever color its own currently-tuned quasiparticle class carries (`EFFECT_STYLE`), same
+  as an ordinary move; the smoke and dust are the floor's and keep their own greys.
+- **The camera pulls back for an Ultimate.** `BattleScene.pullBack` eases the arena camera
+  out to `ARENA_ZOOM_OUT` (0.72) over `ULTIMATE_PULL_BACK_MS` at the cast and back in over
+  `ULTIMATE_PULL_IN_MS` from the strike, both on a Sine rather than a cut, so the meteor is
+  first seen far out past the field's corner and the nova gathers from a floor wider than
+  the field. The HUD does not move: for the duration a second camera renders the HUD alone
+  at zoom 1 over the arena camera, the two splitting the display list by the arena tag
+  (`art/attackFx.ts`'s `markArena` -- the backdrop, the crystals, their shadows and every
+  effect object carry it; everything else is HUD), re-split every frame so a log line or an
+  HP bar redrawn mid-cast lands on the right camera, and merged back into one camera once
+  the zoom is at 1 (so the check scripts that walk the display list always see it whole).
+  What the pulled-back camera looks at past the field is the backdrop's overscan ("Battle
+  backdrop" above); the vignette, which frames the field, fades out for the duration. A
+  preview never pulls back -- the zoom is the battle's, not the effect's.
 - Skłodowska-Curie's two Ultimate moves (`ultimateMeteor`/`ultimateNova`) get the same
   per-move-id shape-override treatment (`ULTIMATE_SHAPES`), but run their own multi-phase
   summon→charge→impact→aftermath sequence (`playMeteor`/`playNova`) rather than the shared
@@ -3104,38 +3142,69 @@ world are shaped, since world N's start is world N-1's exit.
   at the sequence's own strike beat and `onComplete` only once the full aftermath decay
   finishes (see `BattleScene`'s "Ultimate moves defer damage/turn-handoff" in `CODEMAP.md`).
   **The meteor** inscribes a glowing rune flat on the floor under the target (sparks lifting
-  off it as it is drawn, dust stirring inside it), then a rock the size of the target punches
-  into frame from above -- a shaded chunk in the move's own quasiparticle color (the summoned
-  mass *is* that quasiparticle: a Magnon Meteor is a red rock, an Electron Meteor a blue one,
-  and the chunks orbiting it and the debris its slam throws up share the color) turning
-  slowly, its leading face heated to a paler shade of that same color, wrapped in that light,
-  trailing fire and smoke of the same color (every flash, spark, plume and dust cloud of the
-  cast is the tuned color pushed toward white, darkened into soot or lifted into dust, never
-  a plain white or grey, so the whole cast reads as one quasiparticle) -- and
-  *brakes* into a straining, trembling hover for the last stretch before it drops, its shadow
-  tightening and darkening on the floor as it comes down; the arrival is shaped inside the
-  phase rather than by easing the phase's own counter, which would spend most of the charge
-  with the mass still off-screen. The slam is a blinding flash, a shockwave and a slower ring
-  of dust racing out across the floor, a burst of rays, a lens streak across the point of
-  contact, rock thrown up that tumbles and falls back, embers, fire and a rolling cloud of
-  dust, over a crater left glowing that smokes and sheds embers through the aftermath. **The
+  off it as it is drawn, dust stirring inside it), then comes in from deep space: a point of
+  light with a lens flare appears far out at the stage's far point -- off the field's left
+  edge near its top, inside what the pulled-back camera sees (below) and clear of the
+  turn-order row -- and closes on the target
+  over the whole charge, drawn in perspective (`meteorSize`/`meteorProgress`: its apparent
+  size and its progress across the screen both go as one over one plus its depth,
+  `METEOR_FAR_DEPTH` deep to start), so it hangs small and far for most of the phase and
+  swells and sweeps in over the last stretch the way a thing falling out of the sky does. It
+  is a ball of the move's own energy -- a hot core under a roiling skin (two orb layers
+  turning against each other) in a halo of its light, lightning crackling off it, sparks
+  orbiting it -- stretched along its own motion by how fast it is going and shedding a trail
+  of light that hangs where it was left, while the rune flickers faster and the ball's shadow
+  on the floor comes up out of nothing as it nears. It arrives exactly as the charge ends,
+  so that `onImpact` (the damage, the crystal's flinch, the shake) fires on the frame of
+  contact rather than before or after it: the swelling, accelerating close is what reads
+  as a strike rather than a thing floating down. The meteor takes the same overridable floor
+  the eruption does (`groundDrop`) and an `UltimateStage` saying where its far point is (a
+  battle's arena corner, a preview stage's own corner), so it plays on a preview stage's
+  floor line and crosses the stage diagonally. The slam: the ball flattens into the floor
+  and is gone inside a blinding contact flash; a fireball of the move's energy climbs out of
+  the contact point (a dome of light rising as it swells, glowing gas boiling up and
+  outward); a hemispherical front (the shell texture cropped to its upper half, standing on
+  the floor line) races out at a blast wave's pace -- radius as the two-fifths power of
+  time, Sedov-Taylor, so it leaps out and then slows -- and fades with the distance it has
+  travelled, gone at `METEOR_BLAST_R`; under it a shockwave ring and a slower ring of dust
+  race out across the floor, a burst of rays and a lens streak cross the point of contact,
+  globs of the ball's own energy are thrown up under gravity to arc and fall back, with
+  embers, fire and a rolling cloud of dust, over a crater left glowing that sheds glowing
+  gas and embers through the aftermath. Everything the cast puts on screen is the tuned
+  quasiparticle's color -- the summoned mass *is* that quasiparticle, so a Magnon Meteor is
+  a red ball under red light and an Electron Meteor a blue one -- pushed toward white where
+  it is hottest and lifted to a pale for the dust, never a plain white or grey, so the whole
+  cast reads as one quasiparticle. **The
   nova**'s rune stands upright around the target instead, over a growing starburst; its charge
   pulls sparks inward from all around the core, each aimed at it on emit and given exactly the
   speed that lands it there at the end of its life, brightening from the move's color to its
   hot shade as it arrives (streaks of light drawn in behind them, each on its own clock), while
   an accretion disc forms around the core at a tilt to the camera with arcs spinning in its
-  plane, so it reads as matter accreting rather than as one ring contracting. The blast is a
-  flash, a shockwave in the move's hot shade with a slower, deeper-colored one behind it, a
-  lens streak clean across the field, rays, sparks flung out in every direction and glowing
-  gas billowing outward that lingers as the remnant while the core cools from its hot shade
+  plane, so it reads as matter accreting rather than as one ring contracting. The energy it
+  gathers is the battlefield's own: the sparks are born all over the visible floor (the
+  `UltimateStage`'s floor -- from the target's own floor line down to the bottom of the
+  pulled-back arena and across its width, or along a preview stage's bottom), streaks of
+  light climb from floor points to the core on their own clocks, and the floor is lit from
+  beneath as it drains. The blast is a flash and then a dense sphere of the move's energy
+  growing out of the centre at a blast wave's pace (radius as the two-fifths power of time,
+  Sedov-Taylor): a solid body (the orb texture, its skin turning slowly) with a hotter heart
+  that dies faster than the rest, its limb a shell of its own color with a hotter, thinner
+  one just inside for thickness, and the accretion disc blown out with it as a ring in the
+  same tilted plane so it reads as a volume rather than a flat ring, all fading with the
+  distance travelled and gone at `NOVA_SHOCK_R` -- a front that fades by radius rather than
+  on a clock, so a leveled repeat fades at the same relative distance -- with a lens streak
+  clean across the field, rays, sparks flung out in every direction and glowing gas
+  billowing outward that lingers as the remnant while the core cools from its hot shade
   into the move's color and shrinks away. The nova follows the meteor's color rule: its core,
   flash, shockwave and streak are the tuned color pushed toward white, never plain white, so a
   Magnon Nova is red through and through and an Electron Nova blue. A whiff (any wrong answer in `showUltimateQuestions`) still plays the same
-  summon/charge phases, with one tell -- the held strain (the meteor's tremble, the nova's
-  core pulse) goes slack across the last stretch of the charge -- and then takes the summoned
-  mass apart in mid-air rather than striking with it, in one flat grey: the meteor's light
-  dies, the rock dims and shrinks behind a puff of grey smoke and chunks of it fly outward
-  and tumble; the nova's infall runs backwards as grey streaks and sparks streaming out. Nothing
+  summon/charge phases, with one tell -- the meteor stalls on its way in at
+  `METEOR_BREAK_T` of the charge and its light goes out of it, the nova's core pulse goes
+  slack across the last stretch -- and then takes the summoned mass apart in mid-air rather
+  than striking with it, in one flat grey: the meteor's light dies, the ball dims and shrinks
+  behind a puff of grey vapour and fragments of it drift outward, turning, and go out, still
+  far out over the field; the nova's infall runs backwards as grey streaks and sparks
+  streaming out. Nothing
   reaches the ground, a fizzle cue plays instead of the impact thud, and there is no
   shockwave, crystal flash or camera shake. Each phase creates and destroys its own objects;
   what a phase leaves behind on purpose is its emitters' last particles (`fxRetire` stops
@@ -3220,15 +3289,18 @@ world are shaped, since world N's start is world N-1's exit.
   moves that summon themselves where they land (Landau's beam/eruption, Skłodowska-Curie's
   meteor/nova) and Kondo's self-buffs, cast by a crystal on itself, have no crossing to show
   and play on the single point the pane hands in. A detail pane has no crystals of its own to
-  follow, and a fixed point is a perfectly good anchor, it just never moves. Landau's two are
-  the exception that needs a *ground* as well as a point: in a battle the beam's column stops
-  at the defender's own centre and its pool of light spreads on the floor `GROUND_DROP` below,
-  and the eruption's crack opens in that same floor under the same body. A stage has no body
-  standing in it, so those two play on the stage's own floor line
-  (`moveEffectPreview.ts`'s `GROUND_LINE_Y`) with that extra drop set to zero
+  follow, and a fixed point is a perfectly good anchor, it just never moves. Landau's two and
+  the meteor are the exceptions that need a *ground* as well as a point: in a battle the
+  beam's column stops at the defender's own centre and its pool of light spreads on the floor
+  `GROUND_DROP` below, the eruption's crack opens in that same floor under the same body, and
+  the meteor's rune lies on it and its slam lands on it. A stage has no body standing in it,
+  so those play on the stage's own floor line (`moveEffectPreview.ts`'s `GROUND_LINE_Y`, a
+  fraction of the stage height per shape) with that extra drop set to zero
   (`attackEffects.ts`'s `TARGET_ONLY_GROUND_DROP`): the beam lands on the line rather than
   ending flat in mid-air where a defender would have been, and the eruption's expanding floor
-  rings spread along it with room to grow inside the stage. `playAttackEffect`'s own Graphics normally draw at depth 58-61 (tuned for
+  rings spread along it with room to grow inside the stage. The two Ultimates also take an
+  `UltimateStage` from the pane (its top-left corner for the meteor to come in from, its
+  bottom as the floor the nova gathers from), where a battle hands in its own arena. `playAttackEffect`'s own Graphics normally draw at depth 58-61 (tuned for
   `BattleScene`'s background); a guardian panel's own dialogue container sits at depth `100`
   (`OverworldScene.ts`/`HubScene.ts`'s `showXPanel` convention), which would otherwise draw over
   (hide) the preview entirely, so `playAttackEffect`'s own `depthOffset` parameter (default `0`,

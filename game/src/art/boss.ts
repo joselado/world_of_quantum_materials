@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { drawCubicShape, drawShardShape, makeCrystal } from './crystals';
+import { drawCubicShape, drawShardShape, shardOutline, cubicOutline, makeCrystal } from './crystals';
 import { shade } from './colors';
 import type { CrystalVariant } from '../data/types';
 
@@ -25,16 +25,16 @@ export const BOSS_SILHOUETTE_HALF_WIDTH = 1.1;
 export const BOSS_FOOT = 0.98;
 
 // The golem's outline, traced once in units of `size` (y positive downward,
-// center at the origin) and drawn as a single dark polygon under every
-// shard: a small sunken head between shoulders that peak higher than it,
-// long arms hanging to oversized fists, a waist that tapers in, and short
-// planted legs. Drawing the humanoid read as one guaranteed shape means the
-// grain shards on top are free to be as angular and noisy as the
-// "polycrystalline" theme wants without the creature dissolving into a pile
-// of gems -- and the dark fill doubles as a hard edge that keeps the
-// silhouette legible against a bright daylight biome as well as a dark one.
-// Traced down the right side, around the right arm and leg, then back up
-// the mirrored left side.
+// center at the origin): a small sunken head between shoulders that peak
+// higher than it, long arms hanging to oversized fists, a waist that tapers
+// in, and short planted legs. The body itself is the grains -- PIECES below
+// tile this outline with crystal pieces -- and the polygon is drawn under
+// them only as a faint shadow with a dark edge: what shows of it is the
+// slivers between grains and a hard rim around the whole figure, which is
+// what keeps the silhouette legible against a bright daylight biome as
+// well as a dark one without the fill reading as the body. Traced down the
+// right side, around the right arm and leg, then back up the mirrored left
+// side.
 const SILHOUETTE: [number, number][] = [
   [-0.16, -1.3],
   [0.16, -1.3],
@@ -72,56 +72,42 @@ const SILHOUETTE: [number, number][] = [
   [-0.22, -1.0],
 ];
 
-// Body shards, in units of `size`, fused around the torso core added after
-// them (its own bulk overlaps and fuses their inner edges). Limbs are always
-// a solid habit -- an angular shard or a blocky cube -- rather than the
-// material's own `variant`: the monolayer plates are translucent
-// floating sheets, which read as flimsy on an arm, so the compound's own
-// habit lives in the torso core instead, where it stays the golem's chest
-// and is still what the eye lands on first.
+// The grains the body is fused from, in units of `size`, listed back to
+// front and placed so that together they tile SILHOUETTE: feet, shins and
+// thighs up each leg, a pelvis block with a hip either side, ribs either
+// side of where the torso core will sit, upper arms, forearms, shoulder
+// blocks with pauldrons over them and a collar block under the head, with
+// the torso core, the fists and the head
+// added after them (the core's own bulk overlaps and fuses the ribs, collar
+// and pelvis; the fists hang in front of the forearms). Neighbouring pieces
+// overlap rather than abut, so the humanoid reads as one mass of grains
+// with no gap in it. Limbs are always a solid habit -- an angular shard or
+// a blocky cube -- rather than the material's own `variant`: the monolayer
+// plates are translucent floating sheets, which read as flimsy on an arm,
+// so the compound's own habit lives in the torso core instead, where it
+// stays the golem's chest and is still what the eye lands on first.
 type Habit = 'shard' | 'cubic';
-const LIMBS: { dx: number; dy: number; scale: number; shadeStep: number; rot: number; habit: Habit }[] = [
-  { dx: -0.34, dy: 0.6, scale: 0.38, shadeStep: -1, rot: -0.05, habit: 'shard' }, // left leg
-  { dx: 0.34, dy: 0.6, scale: 0.38, shadeStep: 1, rot: 0.05, habit: 'shard' }, // right leg
-  { dx: 0, dy: 0.34, scale: 0.34, shadeStep: -2, rot: 0, habit: 'cubic' }, // pelvis block
-  { dx: -0.72, dy: -0.2, scale: 0.32, shadeStep: -2, rot: -0.28, habit: 'shard' }, // left upper arm
-  { dx: 0.72, dy: -0.2, scale: 0.32, shadeStep: 2, rot: 0.26, habit: 'shard' }, // right upper arm
-  { dx: -0.6, dy: -0.6, scale: 0.38, shadeStep: -1, rot: -0.5, habit: 'shard' }, // left pauldron
-  { dx: 0.6, dy: -0.6, scale: 0.38, shadeStep: 1, rot: 0.5, habit: 'shard' }, // right pauldron
-  { dx: 0, dy: -0.7, scale: 0.26, shadeStep: 1, rot: 0, habit: 'cubic' }, // collar block
-];
-
-// Grain boundaries lit from inside -- the seams where the fused grains meet,
-// which is what most of the rivals' own intro lines point at ("a mosaic of
-// grains with a faint glow at every seam," "a thousand distinct crystalline
-// grains stitched edge to edge," "edges lit where the two phases disagree").
-// Each path is drawn twice: once dark, as the crack itself, and once offset
-// and additive, as the light coming through it.
-const SEAMS: [number, number][][] = [
-  [
-    [-0.3, -0.62],
-    [-0.1, -0.3],
-    [-0.24, 0.02],
-    [-0.06, 0.34],
-  ],
-  [
-    [0.3, -0.55],
-    [0.1, -0.18],
-    [0.26, 0.14],
-  ],
-  [
-    [-0.66, -0.42],
-    [-0.8, -0.06],
-    [-0.72, 0.18],
-  ],
-  [
-    [0.56, -0.9],
-    [0.74, -0.62],
-  ],
-  [
-    [-0.4, 0.48],
-    [-0.3, 0.86],
-  ],
+const PIECES: { dx: number; dy: number; scale: number; shadeStep: number; rot: number; habit: Habit }[] = [
+  { dx: -0.38, dy: 0.84, scale: 0.22, shadeStep: -2, rot: 0, habit: 'cubic' }, // left foot
+  { dx: 0.38, dy: 0.84, scale: 0.22, shadeStep: 2, rot: 0, habit: 'cubic' }, // right foot
+  { dx: -0.36, dy: 0.66, scale: 0.34, shadeStep: -1, rot: -0.05, habit: 'shard' }, // left shin
+  { dx: 0.36, dy: 0.66, scale: 0.34, shadeStep: 1, rot: 0.05, habit: 'shard' }, // right shin
+  { dx: -0.3, dy: 0.42, scale: 0.32, shadeStep: -2, rot: -0.12, habit: 'shard' }, // left thigh
+  { dx: 0.3, dy: 0.42, scale: 0.32, shadeStep: 2, rot: 0.12, habit: 'shard' }, // right thigh
+  { dx: 0, dy: 0.36, scale: 0.36, shadeStep: -2, rot: 0, habit: 'cubic' }, // pelvis block
+  { dx: -0.46, dy: 0.3, scale: 0.22, shadeStep: -1, rot: -0.3, habit: 'shard' }, // left hip
+  { dx: 0.46, dy: 0.3, scale: 0.22, shadeStep: 1, rot: 0.3, habit: 'shard' }, // right hip
+  { dx: -0.5, dy: -0.12, scale: 0.3, shadeStep: -2, rot: -0.35, habit: 'shard' }, // left ribs
+  { dx: 0.5, dy: -0.12, scale: 0.3, shadeStep: 2, rot: 0.35, habit: 'shard' }, // right ribs
+  { dx: -0.42, dy: -0.84, scale: 0.24, shadeStep: -1, rot: 0, habit: 'cubic' }, // left shoulder
+  { dx: 0.42, dy: -0.84, scale: 0.24, shadeStep: 1, rot: 0, habit: 'cubic' }, // right shoulder
+  { dx: -0.74, dy: -0.22, scale: 0.34, shadeStep: -2, rot: -0.3, habit: 'shard' }, // left upper arm
+  { dx: 0.74, dy: -0.22, scale: 0.34, shadeStep: 2, rot: 0.28, habit: 'shard' }, // right upper arm
+  { dx: -0.9, dy: 0.18, scale: 0.3, shadeStep: -1, rot: -0.15, habit: 'shard' }, // left forearm
+  { dx: 0.9, dy: 0.18, scale: 0.3, shadeStep: 1, rot: 0.15, habit: 'shard' }, // right forearm
+  { dx: -0.6, dy: -0.62, scale: 0.4, shadeStep: -1, rot: -0.5, habit: 'shard' }, // left pauldron
+  { dx: 0.6, dy: -0.62, scale: 0.4, shadeStep: 1, rot: 0.5, habit: 'shard' }, // right pauldron
+  { dx: 0, dy: -0.72, scale: 0.28, shadeStep: 1, rot: 0, habit: 'cubic' }, // collar block
 ];
 
 // The seams' own hot light, and the embers venting off the body -- one fixed
@@ -130,6 +116,41 @@ const SEAMS: [number, number][][] = [
 // shared signature and still contrasts against every base hue.
 const EMBER = 0xffcf6a;
 const SEAM_GLOW = 0xffb347;
+
+// Grain boundaries lit from inside -- the seams where the fused grains meet,
+// which is what most of the rivals' own intro lines point at ("a mosaic of
+// grains with a faint glow at every seam," "a thousand distinct crystalline
+// grains stitched edge to edge," "edges lit where the two phases disagree").
+// Every grain's own outline is the seam: each of PIECES gets its outline
+// stroked again, thin and additive in SEAM_GLOW, on a Graphics of its own so
+// it pulses on its own clock. Where a later grain overlaps an earlier one
+// its lit edge is hidden, so what shows is the light along the exposed
+// boundaries between grains (and a hair of it along the figure's rim), and
+// the seams follow the grains wherever they are placed rather than being
+// drawn as separate lines that could cut across a facet. One Graphics per
+// seam rather than one for all: a body whose every seam brightens in
+// lockstep reads as a single looping animation, where staggered ones read
+// as something alive straining inside.
+const SEAM_PHASES = 5;
+function addSeam(scene: Phaser.Scene, art: Phaser.GameObjects.Container, pts: { x: number; y: number }[], x: number, y: number, rot: number, i: number) {
+  const glow = scene.add.graphics();
+  glow.setBlendMode(Phaser.BlendModes.ADD);
+  glow.lineStyle(1.5, SEAM_GLOW, 0.85);
+  glow.strokePoints(pts, true);
+  glow.setPosition(x, y);
+  glow.setRotation(rot);
+  art.add(glow);
+  const phase = i % SEAM_PHASES;
+  scene.tweens.add({
+    targets: glow,
+    alpha: { from: 0.3, to: 0.85 },
+    duration: 1300 + phase * 180,
+    delay: phase * 300,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.easeInOut',
+  });
+}
 
 // A world's rival/boss crystal, rendered as a golem -- a humanoid silhouette
 // (head, torso, two arms, two legs) fused from many angular grain shards,
@@ -227,38 +248,50 @@ export function makeBossCrystal(
   rim.fillPoints(poly(1.04), true);
   art.add(rim);
 
+  // The faint shadow and hard edge under the grains (see SILHOUETTE).
   const outline = scene.add.graphics();
-  outline.fillStyle(shade(color, -62), 1);
+  outline.fillStyle(shade(color, -62), 0.25);
   outline.fillPoints(poly(1), true);
   outline.lineStyle(3, shade(color, -75), 1);
   outline.strokePoints(poly(1), true);
   art.add(outline);
 
+  // Each grain, then its lit outline over it. The grains sit a little
+  // either side of the base color (shadeStep) rather than all below it:
+  // the boss's weight comes from its dark rim and the shadow pooled under
+  // it, and grains darkened as well would go black on a dark compound.
   const fists: Phaser.GameObjects.Graphics[] = [];
-  LIMBS.forEach((s) => {
+  PIECES.forEach((s, i) => {
     const g = scene.add.graphics();
-    const limbColor = shade(color, s.shadeStep * 14 - 20);
-    if (s.habit === 'cubic') drawCubicShape(g, size * s.scale, limbColor);
-    else drawShardShape(g, size * s.scale, limbColor);
+    const grainColor = shade(color, s.shadeStep * 14 + 4);
+    const grainSize = size * s.scale;
+    if (s.habit === 'cubic') drawCubicShape(g, grainSize, grainColor);
+    else drawShardShape(g, grainSize, grainColor);
     g.setPosition(size * s.dx, size * s.dy);
     g.setRotation(s.rot);
     art.add(g);
+    addSeam(scene, art, s.habit === 'cubic' ? cubicOutline(grainSize) : shardOutline(grainSize), size * s.dx, size * s.dy, s.rot, i);
   });
 
-  const torso = makeCrystal(scene, size * 0.74, shade(color, -14), variant, { plain: true });
-  torso.setPosition(0, -size * 0.14);
+  // The torso core: the compound's own habit, set in the chest with the
+  // ribs, collar and pelvis showing around it, so the torso reads as grains
+  // fused around a core rather than as one block. Its seams are its
+  // neighbours' lit edges.
+  const torso = makeCrystal(scene, size * 0.58, shade(color, -14), variant, { plain: true });
+  torso.setPosition(0, -size * 0.2);
   art.add(torso);
 
   // Oversized fists hanging past the knees, drawn after the torso so they
   // stay in front of it -- top-heavy proportions plus low, heavy hands are
   // most of what separates "looming" from "standing there."
-  [-1, 1].forEach((sideSign) => {
+  [-1, 1].forEach((sideSign, i) => {
     const g = scene.add.graphics();
-    drawCubicShape(g, size * 0.3, shade(color, sideSign * 18 - 26));
-    g.setPosition(sideSign * size * 0.92, size * 0.34);
+    drawCubicShape(g, size * 0.3, shade(color, sideSign * 18 - 10));
+    g.setPosition(sideSign * size * 0.92, size * 0.4);
     g.setRotation(sideSign * 0.17);
     art.add(g);
     fists.push(g);
+    addSeam(scene, art, cubicOutline(size * 0.3), sideSign * size * 0.92, size * 0.4, sideSign * 0.17, PIECES.length + i);
   });
 
   const head = scene.add.graphics();
@@ -266,6 +299,7 @@ export function makeBossCrystal(
   head.setPosition(0, -size * 1.06);
   head.setRotation(0.04);
   art.add(head);
+  addSeam(scene, art, shardOutline(size * 0.26), 0, -size * 1.06, 0.04, PIECES.length + 2);
 
   // The brightest seam of all, cut across the head: a dark socket so it
   // still reads as a hard slot over a pale biome, with the hot light inset
@@ -287,33 +321,6 @@ export function makeBossCrystal(
   glare.fillPoints(slit(0.02), true);
   art.add(glare);
   scene.tweens.add({ targets: glare, alpha: { from: 0.55, to: 1 }, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-
-  const cracks = scene.add.graphics();
-  cracks.lineStyle(3, shade(color, -70), 0.9);
-  SEAMS.forEach((path) => {
-    cracks.strokePoints(path.map(([x, y]) => ({ x: x * size, y: y * size })), false);
-  });
-  art.add(cracks);
-
-  // One Graphics per seam, so each pulses on its own clock -- a body whose
-  // every seam brightens in lockstep reads as a single looping animation,
-  // where staggered ones read as something alive straining inside.
-  SEAMS.forEach((path, i) => {
-    const glow = scene.add.graphics();
-    glow.setBlendMode(Phaser.BlendModes.ADD);
-    glow.lineStyle(1.5, SEAM_GLOW, 0.85);
-    glow.strokePoints(path.map(([x, y]) => ({ x: x * size + 1, y: y * size + 1 })), false);
-    art.add(glow);
-    scene.tweens.add({
-      targets: glow,
-      alpha: { from: 0.35, to: 0.9 },
-      duration: 1300 + i * 180,
-      delay: i * 300,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
-  });
 
   // Heat venting off the body: sparks rising from the waist and fading out
   // above the head, each on its own duration and delay so they never march
