@@ -824,9 +824,19 @@ Three checks:
   ten *in the same run*, so the ratio is immune to machine speed. A warning,
   not a failure: it answers "is this world unusually heavy for this game?"
 
-`BUDGETS` is set from measured counts with headroom, because a map is generated
-fresh on every visit and a world's count moves a few percent between runs.
-Raising an entry is a deliberate act — if a world genuinely needs to draw more,
+Every count is exact and repeats run to run: each world's map is generated
+from a fixed seed (`MAP_SEED` plus the world number) and its measured pass is
+painted at a fixed moment on the scene clock (`MAP_PAINT_AT`), since the
+animated accents branch on the time. Left to chance, a world's count swings
+with whichever map it draws -- World 3's from about 11k to 17.8k ops -- so a
+failure could be the luck of the map rather than a change in the code.
+
+`BUDGETS` is set from those counts with headroom, and the headroom has to cover
+the world's spread across maps rather than hug the one seeded map: a change to
+map generation redraws the seeded map, which can move a world's count anywhere
+in its spread without anything having got more expensive. The spreads are
+written beside the entries that have one worth knowing. Raising an entry is a
+deliberate act — if a world genuinely needs to draw more,
 raise its ceiling and say why, rather than nudging numbers until the suite is
 quiet. Lowering one is the other half of the same rule: when a pass gets
 cheaper, the ceiling comes down with it, or the headroom quietly becomes room

@@ -33,12 +33,19 @@
 // cached Chrome-for-Testing binary if unset; if the dev server isn't already up
 // on :5173 this starts one and tears it down at the end.
 //
-// Updating the budgets: BUDGETS below is a ceiling per world, set from measured
-// counts with headroom, because a map is generated fresh on every visit and the
-// same world's count moves by a few percent between runs -- a ceiling set tight
-// against one observation would fail on the next map. Raising one is a deliberate act -- if a world genuinely needs to draw
-// more, raise its entry and say why in the commit, rather than nudging every
-// number until the suite is quiet.
+// Every map is seeded (MAP_SEED), so a world's count is the same on every run
+// and a failure is a change in the code, never the luck of the map. Left to
+// Math.random a world's count swings with the map it happens to draw -- World 3
+// between about 11k and 17.8k ops -- and a check that fails on the draw of a
+// map is a check people learn to rerun rather than read.
+//
+// Updating the budgets: BUDGETS below is a ceiling per world, set from the
+// seeded count with headroom. A change to map generation redraws the seeded
+// map, which moves a world's count anywhere in that spread without anything
+// having got more expensive, so the headroom covers the spread rather than
+// hugging one map. Raising one is a deliberate act -- if a world genuinely
+// needs to draw more, raise its entry and say why in the commit, rather than
+// nudging every number until the suite is quiet.
 
 import puppeteer from 'puppeteer-core';
 import path from 'node:path';
@@ -72,7 +79,10 @@ const BUDGETS = {
   // ground. Giving it a surface costs fills. The piece count thins with
   // distance, so this is not the no-falloff effect this budget exists to
   // catch, and the relative-cost check below confirms it is not an outlier.
-  3: { ops: 17000, objects: 500 },
+  // It also has the widest spread of any world, 11.1k-17.8k ops across
+  // seeded maps, since how much rubble a frame holds depends on how much of
+  // the map in view is impassable; the ceiling sits above the top of that.
+  3: { ops: 19500, objects: 500 },
   4: { ops: 13000, objects: 500 },
   5: { ops: 16000, objects: 500 },
   // World 6's surround is two full-tile washes rather than a scatter of
@@ -81,19 +91,23 @@ const BUDGETS = {
   // (terrain/materials/coast.ts). Both thin with depth -- the strips drop
   // from four to one as the detail pass fades, and every line goes with it
   // -- so this is not the no-falloff effect the budget exists to catch. It
-  // measures ~10.7k on a Meso map; the ceiling holds the same headroom the
-  // others do.
+  // measures 10.2k-10.6k across seeded maps; the ceiling holds the same
+  // headroom the others do.
   6: { ops: 14000, objects: 500 },
   7: { ops: 11000, objects: 500 },
   8: { ops: 15000, objects: 500 },
   9: { ops: 15000, objects: 500 },
   // World 10's surround is a network drawn node by node and link by link
   // (terrain/materials/consuming.ts), plus the event horizon behind the pass.
-  // It thins with depth and shares line/fill styles across a row, and still
-  // measures ~17.8k on a Stone-Lattice-shaped map; the ceiling holds the same
-  // few-percent headroom the others do.
+  // It thins with depth and shares line/fill styles across a row, and
+  // measures 13.4k-14.8k across seeded maps.
   10: { ops: 20000, objects: 500 },
 };
+
+// The seed each world's map is generated from: MAP_SEED + the world number;
+// and the scene-clock time, in ms, its measured paint pass is drawn at.
+const MAP_SEED = 7000;
+const MAP_PAINT_AT = 10000;
 
 // How far above the median world's paint time a single world may sit before
 // this warns. Relative, so it says "this world is unusually heavy for this
@@ -161,6 +175,17 @@ function teardownDevServer(handle, log) {
 // and it is the code that regresses.
 const INSTRUMENT = `
 window.__perf = { ops: 0, on: false };
+// A seeded stand-in for Math.random, reseeded right before each map is built.
+window.__seedRandom = (seed) => {
+  let s = seed >>> 0;
+  Math.random = () => {
+    s = (s + 0x6d2b79f5) >>> 0;
+    let t = s;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+};
 (() => {
   const G = Phaser.GameObjects.Graphics.prototype;
   const METHODS = [
@@ -213,16 +238,21 @@ async function main() {
     log('=== 1: draw budget, per world ===');
     const perWorld = [];
     for (let world = 1; world <= 10; world++) {
-      const r = await page.evaluate(async (w) => {
+      const r = await page.evaluate(async ({ w, seed, PAINT_AT }) => {
         const g = window.__game;
-        g.scene.start('Overworld', { world: w });
+        window.__seedRandom(seed + w);
+        g.scene.start('Overworld', { world: w, regenerate: true });
         await new Promise((res) => setTimeout(res, 900));
         const s = g.scene.getScene('Overworld');
 
         // One measured paint pass. drawWorld is the whole terrain+decoration
         // pipeline; counting one call of it is counting one frame's terrain.
+        // Painted at a fixed moment on the scene clock: the animated accents
+        // branch on the time (a node lit or not, a strike mid-flash), so a
+        // free clock moves the count a few percent from run to run.
         window.__perf.ops = 0;
         window.__perf.on = true;
+        s.time.now = PAINT_AT;
         const t0 = performance.now();
         s.drawWorld?.();
         const ms = performance.now() - t0;
@@ -238,7 +268,7 @@ async function main() {
         walk(s.children.list);
 
         return { world: w, ops: window.__perf.ops, objects, ms };
-      }, world);
+      }, { w: world, seed: MAP_SEED, PAINT_AT: MAP_PAINT_AT });
       perWorld.push(r);
 
       const budget = BUDGETS[world];
@@ -325,9 +355,10 @@ async function main() {
     }
 
     log('  2b: world sprites, picked up off the map');
-    const pickupLeak = await page.evaluate(async () => {
+    const pickupLeak = await page.evaluate(async (seed) => {
       const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       const g = window.__game;
+      window.__seedRandom(seed + 1);
       g.scene.start('Overworld', { world: 1, regenerate: true });
       await sleep(1200);
       const s = g.scene.getScene('Overworld');
@@ -354,7 +385,7 @@ async function main() {
       for (const t of tokens) s['maybeCollectToken'](t.x, t.y);
       await sleep(200);
       return { collected: tokens.length, before, after: count(), orphaned: orphans() };
-    });
+    }, MAP_SEED);
     if (pickupLeak.collected === 0) {
       failures.push('tween leak (pickups): world 1 spawned no tokens, so the pickup path was never exercised');
       log('FAIL tween leak (pickups) -- no tokens to collect');
