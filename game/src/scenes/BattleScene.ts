@@ -417,10 +417,9 @@ export class BattleScene extends Phaser.Scene {
   private opponentMaxHp = 0;
   private turnLock = false;
   // The pulled-back camera's HUD camera and what the arena camera was told
-  // to ignore for it (pullBack), and the vignette that fades while it lasts.
+  // to ignore for it (pullBack).
   private hudCam: Phaser.Cameras.Scene2D.Camera | null = null;
   private hudIgnored = new Set<Phaser.GameObjects.GameObject>();
-  private vignette?: Phaser.GameObjects.Graphics;
   private opponentHpBar!: Phaser.GameObjects.Rectangle;
   private playerHpBar!: Phaser.GameObjects.Rectangle;
   private opponentCrystal!: Phaser.GameObjects.Container;
@@ -650,7 +649,6 @@ export class BattleScene extends Phaser.Scene {
     // the next battle holding a dead HUD camera.
     this.hudCam = null;
     this.hudIgnored.clear();
-    this.vignette = undefined;
 
     // A rival fight's opponent is that world's boss -- render it with the
     // same gigantic, multi-shard look it has standing at the goal tile in
@@ -1644,8 +1642,11 @@ export class BattleScene extends Phaser.Scene {
     const skyLow = blend(biome.skyBottom, air, 0.75);
     const skyMid = blend(biome.skyTop, skyLow, 0.5);
     const skyMidY = Math.round(R_HORIZON_Y * 0.42);
-    // The zenith continues flat above the field, for the pulled-back camera.
-    g.fillStyle(biome.skyTop, 1);
+    // The sky keeps darkening above the field toward the zenith, for the
+    // pulled-back camera: a flat band of the top colour would read as a
+    // crease against the gradient brightening away below it.
+    const zenith = blend(biome.skyTop, 0x000000, 0.2);
+    g.fillGradientStyle(zenith, zenith, biome.skyTop, biome.skyTop, 1);
     g.fillRect(ARENA_X0, -OVERSCAN_Y, ARENA_W, OVERSCAN_Y);
     g.fillGradientStyle(biome.skyTop, biome.skyTop, skyMid, skyMid, 1);
     g.fillRect(ARENA_X0, 0, ARENA_W, skyMidY);
@@ -2129,7 +2130,16 @@ export class BattleScene extends Phaser.Scene {
     // is lightest, so the ground is lit rather than merely coloured.
     const lit = blend(floorBase, biome.skyBottom, 0.16);
     g.fillGradientStyle(lit, lit, lit, lit, 0, 0.16, 0, 0.02);
-    g.fillRect(ARENA_X0, R_FLOOR_EDGE_Y + 20, ARENA_W, FIELD_H + OVERSCAN_Y - R_FLOOR_EDGE_Y - 20);
+    g.fillRect(0, R_FLOOR_EDGE_Y + 20, FIELD_W, FIELD_H - R_FLOOR_EDGE_Y - 20);
+    // The same light carried into the overscan at the values it has on the
+    // field's edges (nothing on the left, where it is zero), so the field's
+    // own ramp is exactly what it is without the overscan.
+    g.fillGradientStyle(lit, lit, lit, lit, 0.16, 0.16, 0.02, 0.02);
+    g.fillRect(FIELD_W, R_FLOOR_EDGE_Y + 20, OVERSCAN_X, FIELD_H - R_FLOOR_EDGE_Y - 20);
+    g.fillGradientStyle(lit, lit, lit, lit, 0, 0.02, 0, 0.02);
+    g.fillRect(0, FIELD_H, FIELD_W, OVERSCAN_Y);
+    g.fillGradientStyle(lit, lit, lit, lit, 0.02, 0.02, 0.02, 0.02);
+    g.fillRect(FIELD_W, FIELD_H, OVERSCAN_X, OVERSCAN_Y);
     // and the air itself lying over the ground's far reach.
     g.fillGradientStyle(air, air, air, air, 0.26, 0.26, 0, 0);
     g.fillRect(ARENA_X0, R_FLOOR_EDGE_Y, ARENA_W, 96);
@@ -2234,9 +2244,13 @@ export class BattleScene extends Phaser.Scene {
   // Corner-only translucent vignette: four gradient rects whose alpha peaks
   // at the frame corner and falls to zero toward center-frame, leaving the
   // middle of the arena (where both crystals live) untouched.
+  // The vignette frames the screen, not the field: it carries no arena tag,
+  // so while the camera is pulled back (pullBack) the HUD camera draws it
+  // over the arena at screen size, and the field's corners are as bright as
+  // the overscan around them. Drawn here, before any HUD element, so on
+  // either camera it sits under the plates and the log.
   private drawVignette(biome: Biome) {
-    const g = this.arena(this.add.graphics());
-    this.vignette = g;
+    const g = this.add.graphics();
     const c = blend(biome.skyTop, 0x000000, 0.75);
     const w = 300;
     const h = 200;
@@ -3322,17 +3336,16 @@ export class BattleScene extends Phaser.Scene {
   // it is undone once the zoom is back at 1, so between casts there is one
   // camera as ever and the scripts that walk the display list see it whole.
   // The overscan the backdrop paints (OVERSCAN_X/Y) is what the pulled-back
-  // camera looks at past the field's edges; the vignette, which frames the
-  // field, fades out for the duration so its corners do not float inside
-  // the wider view. impactPunch's shake and flash are the arena camera's,
-  // so the HUD holds still through the strike as well.
+  // camera looks at past the field's edges; the vignette is HUD-side
+  // (drawVignette) and keeps framing the screen. impactPunch's shake and
+  // flash are the arena camera's, so the HUD holds still through the strike
+  // as well.
   private pullBack(out: boolean, ms: number) {
     const main = this.cameras.main;
     if (out && !this.hudCam) {
       this.hudCam = this.cameras.add(0, 0, FIELD_W, FIELD_H, false, 'hud');
       this.splitCameras();
     }
-    if (this.vignette) this.tweens.add({ targets: this.vignette, alpha: out ? 0 : 1, duration: ms, ease: 'Sine.easeInOut' });
     main.zoomTo(out ? ARENA_ZOOM_OUT : 1, ms, 'Sine.easeInOut', true, (_cam, progress) => {
       if (!out && progress >= 1 && this.scene.isActive()) this.mergeCameras();
     });

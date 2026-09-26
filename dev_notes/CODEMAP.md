@@ -152,7 +152,8 @@ game/src/
                                  by the arena tag, ARENA_ZOOM_OUT/ULTIMATE_PULL_BACK_MS/
                                  ULTIMATE_PULL_IN_MS), the overscan the realistic backdrop paints
                                  for it (OVERSCAN_X/Y, ARENA_X0/ARENA_W), arena() (tags a world
-                                 object) and ultimateStage() (the arena corner a meteor comes in
+                                 object; the vignette is left untagged so it frames the screen)
+                                 and ultimateStage() (the arena corner a meteor comes in
                                  from and the floor a nova gathers from, handed to playAttackEffect)
     battle/
       hud.ts                   Battle-screen layout, split out of BattleScene: the rails/positions/
@@ -424,11 +425,12 @@ game/src/
                                   emitter the eruption and the meteor's slam both throw:
                                   class-colored, born hot, shrinking through life -- the
                                   `shrinking` op -- spinning, under gravity, dying below the floor)
-    fxTextures.ts               ensureFxTextures() paints the eleven FX_TEX canvas textures the
+    fxTextures.ts               ensureFxTextures() paints the twelve FX_TEX canvas textures the
                                   spectacle moves draw with (glow, spark, ring, smoke, orb -- a
                                   ball of energy, ORB_PX = 192 so a leveled meteor keeps its skin
-                                  -- shell -- a hollow sphere, the nova's shockwave -- column,
-                                  streak, flare, rays, flow) once per Game, with 2D-canvas
+                                  -- shell -- a hollow sphere, the nova's shockwave's limb --
+                                  plasma -- a disc of bright filaments, the sphere's skin --
+                                  column, streak, flare, rays, flow) once per Game, with 2D-canvas
                                   gradients and seeded value noise; called at boot from
                                   TitleScene.create and guarded again by every play function.
                                   ringDisplaySize()/shellDisplaySize()/orbDisplaySize() convert a
@@ -449,7 +451,14 @@ game/src/
                                   METEOR_FAR_DEPTH deep to start, a whiff stalling at
                                   METEOR_BREAK_T), rollArcs/drawSkinArcs (the lightning off the
                                   ball, re-rolled every ARC_MS), the MeteorContact record Charge
-                                  leaves in `Shared` for the slam or the break-up,
+                                  leaves in `Shared` for the slam or the break-up, the records
+                                  that span phases on a clock of their own -- MeteorSlam
+                                  (startMeteorSlam/drawMeteorSlam/endMeteorSlam, the explosion
+                                  born at contact and burning through the Aftermath,
+                                  METEOR_BLAST_MS), NovaCore (the core, halo and disc Charge
+                                  builds and Aftermath tears down) and NovaBlast
+                                  (startNovaBlast/drawNovaBlast/endNovaBlast, the sphere born at
+                                  the strike, NOVA_BLAST_MS) --
                                   METEOR_BLAST_R/NOVA_SHOCK_R (how far each blast front travels
                                   before it has faded), and the dustOf/paleOf shades that, with
                                   attackAnalytics.ts's hot, keep a meteor's or nova's light,
@@ -1965,9 +1974,12 @@ defect patches put several biomes on screen at once).
 
 **The gate's own drawing.** One record carries the forward pass to every pass that draws it:
 `sky.ts`'s `GateView` (throat row, throat lane relative to the camera, half-width in tiles,
-whether the rival has fallen, and the neighbour's `Biome`), rebuilt each frame by
-`OverworldScene.gateView()` and hung off `AtmosphereView`. Three consumers read it and cannot
-disagree about whether the way is open:
+whether the rival has fallen, how much of what lies beyond an open pass is shown -- `reveal`,
+`sky.ts`'s `passReveal()`: zero from further than `HAZE_INHERIT_TILES` south of the goal row,
+one from `REVEAL_FULL_TILES` in, a fade between, so an open pass is something the player comes
+upon rather than a beacon seen from the whole world -- and the neighbour's `Biome`), rebuilt
+each frame by `OverworldScene.gateView()` and hung off `AtmosphereView`. Three consumers read
+it and cannot disagree about whether the way is open, and all three draw at its `reveal`:
 
 - `sky.ts`'s `drawPassAperture`, called from `drawDepthHaze` after the distant self -- the notch.
   Three nested tapering shapes (never a stack of rows: abutting translucent rows double-blend on a
@@ -1975,14 +1987,15 @@ disagree about whether the way is open:
   `skyBottom`, rising out of `projectTile(0, DRAW_DISTANCE_TILES).y` -- where the repeated road
   runs out -- to `APERTURE_H` above the horizon line. Its width is the throat's own, measured at
   that same depth, so the opening continues the road rather than floating over it. Drawn only when
-  the gate is open: a shut pass shows nothing of what lies beyond it, and there is no fogged notch.
-- `terrain/paint.ts`'s `seamed` -- the ground seam. The next world's `path` at `SEAM_STRENGTH` on
-  the throat row and on everything the repeated road carries past it, fading out over `SEAM_ROWS`
-  south of it. Running the far side at full strength rather than stopping at the throat is what
+  the gate is open and at its `reveal`: a shut pass shows nothing of what lies beyond it, and
+  there is no fogged notch.
+- `terrain/paint.ts`'s `seamed` -- the ground seam. The next world's `path` at `SEAM_STRENGTH`
+  times the gate's `reveal` on the throat row and on everything the repeated road carries past
+  it, fading out over `SEAM_ROWS` south of it. Running the far side at full strength rather than stopping at the throat is what
   keeps the ground agreeing with the aperture above it; a seam that reverted beyond the gate would
   put a stripe across the corridor instead of a threshold under it.
 - `drawMarginRows`'s `roadRunsOn` (above) -- the repeated road, which only runs while the gate is
-  open.
+  open and its `reveal` is above zero.
 
 `forwardHazeBlend` takes the same `open` flag, so haze inheritance and the aperture are gated on
 one value rather than two reads of the registry.

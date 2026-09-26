@@ -108,6 +108,13 @@ export interface GateView {
   halfTiles: number;
   /** Whether this world's rival has fallen. */
   open: boolean;
+  /**
+   * How much of what lies beyond an open pass is shown, 0 far from it to 1
+   * near it (passReveal): the light through the gap, the road running on
+   * through it and the seam of the next world's floor are seen only from
+   * close enough, the way the next world's air arrives (forwardHazeBlend).
+   */
+  reveal: number;
   /** The world on the other side, or null in the last world, which has none. */
   next: Biome | null;
 }
@@ -230,6 +237,18 @@ export function forwardHazeBlend(world: number, gateOpen: boolean, camY: number,
   if (!gateOpen) return 0;
   const rows = camY - goalRow;
   return Phaser.Math.Clamp(1 - rows / HAZE_INHERIT_TILES, 0, 1) * HAZE_INHERIT_MAX;
+}
+
+// How much of what lies beyond an open pass is shown, from the camera's
+// distance to the goal row: nothing from further than the next world's air
+// reaches (HAZE_INHERIT_TILES), all of it from REVEAL_FULL_TILES in, and a
+// fade between. An open pass is not a beacon seen from the whole world; it
+// is something the player comes upon.
+const REVEAL_FULL_TILES = 6;
+export function passReveal(gateOpen: boolean, camY: number, goalRow: number): number {
+  if (!gateOpen) return 0;
+  const rows = camY - goalRow;
+  return Phaser.Math.Clamp((HAZE_INHERIT_TILES - rows) / (HAZE_INHERIT_TILES - REVEAL_FULL_TILES), 0, 1);
 }
 
 // The whole atmosphere pass, drawn into worldGfx after the ground plane and
@@ -415,9 +434,12 @@ const APERTURE_DROWN = 0.35;
 // Nothing at all is drawn while the gate is shut. A body in the way is a
 // plainer statement than any weather over the gap, and a shut pass showing a
 // fogged notch would be showing something of a world it is refusing to show.
+// An open one is drawn at the gate's `reveal`, so the light through the gap
+// comes up as the player nears it rather than standing at the end of the
+// road from anywhere in the world.
 function drawPassAperture(g: Phaser.GameObjects.Graphics, view: AtmosphereView, target: number) {
   const gate = view.gate;
-  if (!gate?.open || !gate.next) return;
+  if (!gate?.open || !gate.next || gate.reveal <= 0) return;
 
   // The road converges toward the vanishing point, so the opening sits where
   // this world's own corridor runs out rather than dead centre of the frame.
@@ -447,7 +469,7 @@ function drawPassAperture(g: Phaser.GameObjects.Graphics, view: AtmosphereView, 
     // sky above the line is still a slot rather than a point.
     const w = halfW * Math.max(0.14, (t - splitT) / (1 - splitT));
     const strength = t < splitT ? t / splitT : Math.pow(1 - (t - splitT) / (1 - splitT), 1.4);
-    g.fillStyle(t < splitT ? sky : ground, APERTURE_PEAK * strength);
+    g.fillStyle(t < splitT ? sky : ground, APERTURE_PEAK * strength * gate.reveal);
     g.fillRect(cx - w, y, w * 2, rowH);
   }
 }

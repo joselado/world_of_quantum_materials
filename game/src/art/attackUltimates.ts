@@ -73,13 +73,13 @@ export const DEFAULT_ULTIMATE_STAGE: UltimateStage = {
 const METEOR_SUMMON_MS = 1300;
 const METEOR_CHARGE_MS = 2000;
 const METEOR_IMPACT_MS = 900;
-const METEOR_AFTERMATH_MS = 1000;
+const METEOR_AFTERMATH_MS = 2000;
 export const METEOR_TOTAL_MS = METEOR_SUMMON_MS + METEOR_CHARGE_MS + METEOR_IMPACT_MS + METEOR_AFTERMATH_MS; // 5200ms
 
 const NOVA_SUMMON_MS = 1200;
 const NOVA_CHARGE_MS = 1900;
 const NOVA_IMPACT_MS = 850;
-const NOVA_AFTERMATH_MS = 950;
+const NOVA_AFTERMATH_MS = 1800;
 export const NOVA_TOTAL_MS = NOVA_SUMMON_MS + NOVA_CHARGE_MS + NOVA_IMPACT_MS + NOVA_AFTERMATH_MS; // 4900ms
 
 // The Charge phase's own end state, shared with the phases either side of it:
@@ -156,8 +156,15 @@ interface Fizzle {
 }
 interface Shared {
   fizzle?: Fizzle;
-  // Where the meteor's plunge ended (playMeteorCharge), for the slam.
+  // Where the meteor's approach ended (playMeteorCharge), for the slam.
   contact?: MeteorContact;
+  // The meteor's explosion, born by Impact and burning on through Aftermath.
+  slam?: MeteorSlam;
+  // The nova's core, halo and accretion disc, built by Charge and carried
+  // through Impact into Aftermath so nothing at the centre is ever cut.
+  novaCore?: NovaCore;
+  // The nova's sphere, born by Impact and expanding on through Aftermath.
+  blast?: NovaBlast;
 }
 
 // ---------------------------------------------------------------------------
@@ -531,29 +538,112 @@ function startMeteorFizzle(scene: Phaser.Scene, at: MeteorContact, depthOffset: 
 
 // How far the slam's hemispherical front and its ground ring reach, at
 // scale 1: most of the 854x480 field (FIELD_W/FIELD_H, BattleScene.ts), the
-// "explosion fills the screen" beat the condensing ball was building
-// toward. The front's brightness is a function of how far it has travelled,
-// gone entirely by this radius -- a blast wave fading with distance.
+// "explosion fills the screen" beat the approach was building toward. The
+// front's brightness is a function of how far it has travelled, gone
+// entirely by this radius -- a blast wave fading with distance.
 const METEOR_BLAST_R = 300;
+// How long the slam's explosion lives, from contact: it builds across the
+// Impact phase and burns on through most of the Aftermath, so the strike
+// is not over in the frame it lands.
+const METEOR_BLAST_MS = 2000;
+
+// The slam's explosion, built by Impact on the frame of contact and drawn by
+// both Impact and Aftermath against the clock it was born on, so the
+// handover between the two phases is invisible: a fireball of the move's
+// energy climbing out of the contact point and swelling as it rises -- a
+// dome of light with a hotter heart, fed by glowing gas boiling up out of
+// the point of contact for the first half of its life -- then burning down;
+// the hemispherical front racing out under it at a blast wave's pace
+// (radius as the two-fifths power of time, Sedov-Taylor) and fading with
+// the distance it has travelled; the crater glowing, then cooling, embers
+// lifting off it the whole while.
+interface MeteorSlam {
+  fireball: Phaser.GameObjects.Image;
+  fireballCore: Phaser.GameObjects.Image;
+  front: Phaser.GameObjects.Image;
+  crater: Phaser.GameObjects.Image;
+  gas: Phaser.GameObjects.Particles.ParticleEmitter;
+  embers: Phaser.GameObjects.Particles.ParticleEmitter;
+  gasSpout: FxSpout;
+  emberSpout: FxSpout;
+  start: number;
+}
+
+function startMeteorSlam(scene: Phaser.Scene, color: number, depthOffset: number, scale: number): MeteorSlam {
+  const fireball = fxImage(scene, 60, depthOffset, FX_TEX.glow).setTint(color);
+  const fireballCore = fxImage(scene, 61, depthOffset, FX_TEX.glow).setTint(hot(color));
+  // The shell texture cropped to its upper half: a hemisphere standing on
+  // the floor line, its base where the ground ring runs.
+  const front = fxImage(scene, 60, depthOffset, FX_TEX.shell).setTint(color).setCrop(0, 0, 256, 128);
+  const crater = fxImage(scene, 58, depthOffset, FX_TEX.glow).setTint(color);
+  const gas = fxEmitter(scene, 60, depthOffset, FX_TEX.smoke, {
+    emitting: false,
+    lifespan: { min: 700, max: 1300 },
+    speed: { min: 40, max: 200 },
+    angle: { min: 200, max: 340 },
+    gravityY: -80,
+    rotate: { min: 0, max: 360 },
+    scale: { start: 0.3 * scale, end: 1.2 * scale },
+    alpha: { start: 0.6, end: 0 },
+    tint: [hot(color), color, darken(color, 45)],
+  });
+  const embers = fxEmitter(scene, 61, depthOffset, FX_TEX.spark, {
+    emitting: false,
+    lifespan: { min: 600, max: 1200 },
+    speed: { min: 20, max: 90 },
+    angle: { min: 240, max: 300 },
+    gravityY: -30,
+    scale: { start: 0.45 * scale, end: 0 },
+    alpha: { start: 1, end: 0 },
+    tint: [hot(color), color],
+  });
+  return { fireball, fireballCore, front, crater, gas, embers, gasSpout: new FxSpout(gas), emberSpout: new FxSpout(embers), start: scene.time.now };
+}
+
+function drawMeteorSlam(slam: MeteorSlam, now: number, contact: MeteorContact, groundY: number, scale: number) {
+  const q = clamp01((now - slam.start) / METEOR_BLAST_MS);
+  const qq = Math.min(scale, QUANTITY_CAP);
+  // The fireball climbs and swells over the first part of its life, holds,
+  // then burns down.
+  const climb = Phaser.Math.Easing.Sine.Out(clamp01(q / 0.6));
+  const burn = q < 0.45 ? clamp01(q / 0.08) : Math.pow(1 - (q - 0.45) / 0.55, 1.2);
+  placeAt(slam.fireball, contact.x, groundY - (30 + 150 * climb) * scale, (80 + 380 * climb) * scale, 0.55 * burn);
+  const heart = q < 0.3 ? 1 : Math.pow(1 - (q - 0.3) / 0.7, 1.6);
+  placeAt(slam.fireballCore, contact.x, groundY - (24 + 90 * climb) * scale, (50 + 200 * climb) * scale, 0.6 * heart);
+  // The front: Sedov-Taylor over the first part of the blast, fading with
+  // distance and gone at METEOR_BLAST_R.
+  const fq = clamp01(q / 0.55);
+  const travelled = Math.pow(fq, 0.4);
+  const frontSize = shellDisplaySize(METEOR_BLAST_R * scale * travelled);
+  slam.front.setPosition(contact.x, groundY).setDisplaySize(frontSize, frontSize).setAlpha(0.85 * Math.pow(1 - travelled, 1.3));
+  layFlat(slam.crater, contact.x, groundY, 240 * scale, 0.8 * (q < 0.5 ? 1 : 1 - (q - 0.5) / 0.5));
+  // Gas boils up out of the contact point for the first half of the blast;
+  // embers lift off the crater the whole while, thinning as it cools.
+  slam.gasSpout.emitEach(now, (q < 0.5 ? 140 : 0) * qq, () => ({ x: contact.x + (Math.random() - 0.5) * 40 * scale, y: groundY - 10 * scale }));
+  slam.emberSpout.emitEach(now, 60 * qq * (1 - q), () => ({ x: contact.x + (Math.random() - 0.5) * 50 * scale, y: groundY - 4 }));
+}
+
+function endMeteorSlam(scene: Phaser.Scene, slam: MeteorSlam, depthOffset: number) {
+  [slam.fireball, slam.fireballCore, slam.front, slam.crater].forEach((o) => o.destroy());
+  fxRetire(scene, depthOffset, slam.gas, 1400);
+  fxRetire(scene, depthOffset, slam.embers, 1300);
+}
 
 // Impact (`ultimateMeteor`): calls `onImpact()` immediately -- this phase
 // begins on the frame the approach ends, so the ball's contact and the hit's
-// own flinch, shake and damage land together -- then plays either the full
-// slam or, on a whiff, the ball coming apart where it stalled on the way in,
+// own flinch, shake and damage land together -- then plays either the slam
+// or, on a whiff, the ball coming apart where it stalled on the way in,
 // which reads as "it never got there" rather than as a weaker version of
-// the same boom. The slam: the ball flattens into the floor and is gone inside a
-// blinding contact flash; a fireball of the move's own energy rises and
-// spreads from the point of contact (a dome of light climbing out of it and
-// glowing gas boiling up and outward); a hemispherical front races out
-// from the contact point at a blast wave's pace (radius as the two-fifths
-// power of time, Sedov-Taylor, so it leaps out and then slows), fading as
-// it travels, over a shockwave ring and a slower ring of dust racing out
-// across the floor; a burst of rays and a lens streak across the point of
-// contact; globs of the ball's own energy thrown up under gravity that arc
-// and fall back; embers, fire and a rolling cloud of dust, over a crater
-// left glowing. Every light here is ADD-blend and alpha-fades with `t`
-// rather than an opaque fill, so the log text/HP bars (BattleScene, depth
-// 0) still read through it even at this size, just brightened for a beat.
+// the same boom. The slam's fast part is this phase's own: the ball
+// flattens into the floor and is gone inside a blinding contact flash, a
+// shockwave ring and a slower ring of dust race out across the floor, a
+// burst of rays and a lens streak cross the point of contact, globs of the
+// ball's own energy are thrown up under gravity to arc and fall back, with
+// fire and a rolling cloud of dust. Its explosion (startMeteorSlam) is born
+// here too and goes on building through the Aftermath. Every light here is
+// ADD-blend and alpha-fades rather than an opaque fill, so the log text/HP
+// bars (BattleScene, depth 0) still read through it even at this size, just
+// brightened for a beat.
 function playMeteorImpact(
   scene: Phaser.Scene,
   color: number,
@@ -604,16 +694,10 @@ function playMeteorImpact(
   const contact = shared.contact ?? { x: to.x, y: groundY0 - METEOR_BALL_R * scale * METEOR_CONTACT_SINK, r: METEOR_BALL_R * scale };
   const squash = fxImage(scene, 61, depthOffset, FX_TEX.orb).setTint(hot(color));
   const flash = fxImage(scene, 61, depthOffset, FX_TEX.glow).setTint(hot(color));
-  const fireball = fxImage(scene, 60, depthOffset, FX_TEX.glow).setTint(color);
-  const fireballCore = fxImage(scene, 61, depthOffset, FX_TEX.glow).setTint(hot(color));
-  // The shell texture cropped to its upper half: a hemisphere standing on
-  // the floor line, its base where the ground ring runs.
-  const front = fxImage(scene, 60, depthOffset, FX_TEX.shell).setTint(color).setCrop(0, 0, 256, 128);
   const shock = fxImage(scene, 59, depthOffset, FX_TEX.ring).setTint(hot(color));
   const dustRing = fxImage(scene, 58, depthOffset, FX_TEX.ring, undefined, Phaser.BlendModes.NORMAL).setTint(paleOf(color));
   const rays = fxImage(scene, 60, depthOffset, FX_TEX.rays).setTint(color);
   const streak = fxImage(scene, 61, depthOffset, FX_TEX.streak).setTint(hot(color));
-  const crater = fxImage(scene, 58, depthOffset, FX_TEX.glow).setTint(color);
   const globs = energyGlobs(scene, 60, depthOffset, color, scale, groundY0, {
     lifespan: { min: 800, max: 1400 },
     speed: { min: 150, max: 420 },
@@ -621,7 +705,7 @@ function playMeteorImpact(
     gravityY: 700,
     size: 0.1,
   });
-  const embers = fxEmitter(scene, 61, depthOffset, FX_TEX.spark, {
+  const burst = fxEmitter(scene, 61, depthOffset, FX_TEX.spark, {
     emitting: false,
     lifespan: { min: 500, max: 1100 },
     speed: { min: 120, max: 380 },
@@ -640,19 +724,6 @@ function playMeteorImpact(
     scale: { start: 0.22 * scale, end: 0.04 },
     alpha: { start: 0.9, end: 0 },
     tint: [hot(color), color, darken(color, 70)],
-  });
-  // The fireball's body: glowing gas thrown up and out from the contact
-  // point, rising as it spreads and thins.
-  const blast = fxEmitter(scene, 60, depthOffset, FX_TEX.smoke, {
-    emitting: false,
-    lifespan: { min: 450, max: 900 },
-    speed: { min: 60, max: 260 },
-    angle: { min: 195, max: 345 },
-    gravityY: -70,
-    rotate: { min: 0, max: 360 },
-    scale: { start: 0.3 * scale, end: 1.1 * scale },
-    alpha: { start: 0.75, end: 0 },
-    tint: [hot(color), color, darken(color, 45)],
   });
   const dust = fxEmitter(
     scene,
@@ -673,59 +744,52 @@ function playMeteorImpact(
     Phaser.BlendModes.NORMAL
   );
   globs.explode(Math.round(18 * q), contact.x, groundY0 - 6);
-  embers.explode(Math.round(60 * q), contact.x, groundY0 - 6);
+  burst.explode(Math.round(60 * q), contact.x, groundY0 - 6);
   fire.explode(Math.round(26 * q), contact.x, groundY0 - 6);
-  blast.explode(Math.round(30 * q), contact.x, groundY0 - 10 * scale);
   dust.explode(Math.round(24 * q), contact.x, groundY0);
+  const slam = startMeteorSlam(scene, color, depthOffset, scale);
+  shared.slam = slam;
+  slam.gas.explode(Math.round(16 * q), contact.x, groundY0 - 10 * scale);
   fxCounter(scene, depthOffset, {
     from: 0,
     to: 1,
     duration: METEOR_IMPACT_MS,
-    // Linear, with each element shaped below: the front follows a blast
-    // wave's own law and the rest ease out on their own.
+    // Linear, with each element shaped below: the fast part eases out on its
+    // own and the explosion follows its own clock (drawMeteorSlam).
     ease: 'Linear',
     onUpdate: (tw) => {
       const t = tw.getValue() ?? 0;
       const tOut = Phaser.Math.Easing.Cubic.Out(t);
+      const now = scene.time.now;
       const groundY = to.y + groundDrop;
       // The ball flattens into the floor and is gone inside the flash.
       const k = clamp01(t / 0.12);
       const squashSize = orbDisplaySize(contact.r);
       squash.setPosition(contact.x, Phaser.Math.Linear(contact.y, groundY - contact.r * 0.25, k)).setDisplaySize(squashSize * (1 + 1.6 * k), squashSize * (1 - 0.85 * k)).setAlpha(1 - k);
       placeAt(flash, contact.x, groundY - 10 * scale, (60 + 620 * tOut) * scale, 0.95 * Math.pow(1 - tOut, 1.5));
-      // The fireball: climbing out of the contact point as it swells.
-      const rise = Phaser.Math.Easing.Sine.Out(t);
-      placeAt(fireball, contact.x, groundY - (30 + 110 * rise) * scale, (90 + 320 * rise) * scale, 0.5 * Math.pow(1 - t, 1.2));
-      placeAt(fireballCore, contact.x, groundY - (24 + 70 * rise) * scale, (50 + 160 * rise) * scale, 0.5 * Math.pow(1 - t, 2));
-      // The front: Sedov-Taylor, fading with distance, gone at METEOR_BLAST_R.
-      const frontR = METEOR_BLAST_R * scale * Math.pow(t, 0.4);
-      const travelled = frontR / (METEOR_BLAST_R * scale);
-      const frontSize = shellDisplaySize(frontR);
-      front.setPosition(contact.x, groundY).setDisplaySize(frontSize, frontSize).setAlpha(0.85 * Math.pow(1 - travelled, 1.3));
       layFlat(shock, contact.x, groundY, ringDisplaySize((16 + 300 * tOut) * scale), 0.9 * Math.pow(1 - tOut, 0.6));
       layFlat(dustRing, contact.x, groundY, ringDisplaySize((8 + 230 * tOut) * scale), 0.6 * Math.pow(1 - tOut, 0.7));
       layFlat(rays, contact.x, groundY, (80 + 640 * tOut) * scale, 0.75 * (1 - tOut));
       rays.setAngle(tOut * 14);
       streak.setPosition(contact.x, groundY - 8 * scale).setDisplaySize((240 + 700 * tOut) * scale, 10 * scale).setAlpha(0.9 * Math.pow(1 - tOut, 2));
-      layFlat(crater, contact.x, groundY, 240 * scale, 0.8);
+      drawMeteorSlam(slam, now, contact, groundY, scale);
     },
     onComplete: () => {
-      [squash, flash, fireball, fireballCore, front, shock, dustRing, rays, streak, crater].forEach((o) => o.destroy());
+      [squash, flash, shock, dustRing, rays, streak].forEach((o) => o.destroy());
       fxRetire(scene, depthOffset, globs, 1500);
-      fxRetire(scene, depthOffset, embers, 1200);
+      fxRetire(scene, depthOffset, burst, 1200);
       fxRetire(scene, depthOffset, fire, 800);
-      fxRetire(scene, depthOffset, blast, 1000);
       fxRetire(scene, depthOffset, dust, 1500);
       onDone();
     },
   });
 }
 
-// Aftermath (`ultimateMeteor`): the crater's glow cooling while glowing gas
-// rises off it and the last embers drift up -- or, on a whiff, the last of
-// the broken-up ball thinning out in mid-air, far from the ground. Ends
-// by tearing down every object this phase created and firing `onComplete`
-// exactly once.
+// Aftermath (`ultimateMeteor`): the explosion Impact set off going on
+// building, holding and burning down (drawMeteorSlam), the crater cooling
+// under it -- or, on a whiff, the last of the broken-up ball thinning out in
+// mid-air, far from the ground. Ends by tearing down what the two phases
+// shared and firing `onComplete` exactly once.
 function playMeteorAftermath(
   scene: Phaser.Scene,
   color: number,
@@ -737,6 +801,7 @@ function playMeteorAftermath(
   groundDrop: number,
   shared: Shared
 ) {
+  void color;
   if (whiff) {
     const fizzle = shared.fizzle;
     fxCounter(scene, depthOffset, {
@@ -759,48 +824,19 @@ function playMeteorAftermath(
     return;
   }
 
-  const q = Math.min(scale, QUANTITY_CAP);
-  const crater = fxImage(scene, 58, depthOffset, FX_TEX.glow).setTint(color);
-  const gas = fxEmitter(scene, 59, depthOffset, FX_TEX.smoke, {
-    emitting: false,
-    lifespan: { min: 900, max: 1500 },
-    speed: { min: 15, max: 50 },
-    angle: { min: 250, max: 290 },
-    gravityY: -35,
-    rotate: { min: 0, max: 360 },
-    scale: { start: 0.2 * scale, end: 0.9 * scale },
-    alpha: { start: 0.4, end: 0 },
-    tint: [color, darken(color, 50)],
-  });
-  const embers = fxEmitter(scene, 61, depthOffset, FX_TEX.spark, {
-    emitting: false,
-    lifespan: { min: 600, max: 1200 },
-    speed: { min: 20, max: 80 },
-    angle: { min: 240, max: 300 },
-    gravityY: -30,
-    scale: { start: 0.45 * scale, end: 0 },
-    alpha: { start: 1, end: 0 },
-    tint: [hot(color), color],
-  });
-  const gasSpout = new FxSpout(gas);
-  const emberSpout = new FxSpout(embers);
+  const slam = shared.slam;
+  const contact = shared.contact ?? { x: to.x, y: to.y, r: METEOR_BALL_R * scale };
   fxCounter(scene, depthOffset, {
     from: 0,
     to: 1,
     duration: METEOR_AFTERMATH_MS,
-    ease: 'Sine.easeOut',
-    onUpdate: (tw) => {
-      const t = tw.getValue() ?? 0;
-      const now = scene.time.now;
-      const groundY = to.y + groundDrop;
-      layFlat(crater, to.x, groundY, 240 * scale, 0.8 * (1 - t));
-      gasSpout.emitEach(now, 80 * q * (1 - t), () => ({ x: to.x + (Math.random() - 0.5) * 40 * scale, y: groundY - 4 }));
-      emberSpout.emitEach(now, 45 * q * (1 - t), () => ({ x: to.x + (Math.random() - 0.5) * 50 * scale, y: groundY - 4 }));
+    ease: 'Linear',
+    onUpdate: () => {
+      if (slam) drawMeteorSlam(slam, scene.time.now, contact, to.y + groundDrop, scale);
     },
     onComplete: () => {
-      crater.destroy();
-      fxRetire(scene, depthOffset, gas, 1600);
-      fxRetire(scene, depthOffset, embers, 1300);
+      if (slam) endMeteorSlam(scene, slam, depthOffset);
+      shared.slam = undefined;
       onComplete();
     },
   });
@@ -910,7 +946,8 @@ function playNovaCharge(
   depthOffset: number,
   scale: number,
   groundDrop: number,
-  stage: UltimateStage
+  stage: UltimateStage,
+  shared: Shared
 ) {
   const q = Math.min(scale, QUANTITY_CAP);
   const g = fxGraphics(scene, 60, depthOffset);
@@ -957,6 +994,9 @@ function playNovaCharge(
       const now = scene.time.now;
       const growT = Math.min(t / HOLD_T, 1);
       const coreR = (6 + growT * (NOVA_CORE_R - 6)) * scale;
+      // Over the last stretch what is still coming in is drawn into the
+      // core, so nothing is left mid-flight for Impact to cut.
+      const gather = 1 - clamp01((t - 0.9) / 0.1);
       // The pulse flattens out across the hold beat on a whiff (strainAt) --
       // the same slack the meteor's tremble loses, so both Ultimates read as
       // having gone dead a moment before they come apart.
@@ -978,7 +1018,7 @@ function playNovaCharge(
         const hx = streak.from.x + (to.x - streak.from.x) * along;
         const hy = streak.from.y + (to.y - streak.from.y) * along;
         const tailF = Math.max(0, along - 0.06 - 0.08 * p);
-        g.lineStyle(2 * scale, streak.pale ? hot(color) : color, 0.8 * p);
+        g.lineStyle(2 * scale, streak.pale ? hot(color) : color, 0.8 * p * gather);
         g.lineBetween(streak.from.x + (to.x - streak.from.x) * tailF, streak.from.y + (to.y - streak.from.y) * tailF, hx, hy);
       }
       // The floor lit from beneath, brightest under the target, as the
@@ -992,11 +1032,13 @@ function playNovaCharge(
       placeAt(core, to.x, to.y, coreR * 2.2 * pulse, 0.55 + t * 0.4);
       placeAt(flare, to.x, to.y, coreR * 4.5 * (0.5 + 0.5 * t), 0.35 + 0.55 * t);
       flare.setAngle(t * 60);
-      infallSpout.emitEach(now, 110 * q * (0.4 + t), floorPoint);
+      infallSpout.emitEach(now, 110 * q * (0.4 + t) * gather, floorPoint);
     },
     onComplete: () => {
-      [g, disc, halo, core, flare, under].forEach((o) => o.destroy());
+      [g, flare, under].forEach((o) => o.destroy());
       fxRetire(scene, depthOffset, infall, 1200);
+      // The centre carries on into Impact and Aftermath (NovaCore).
+      shared.novaCore = { core, halo, disc };
       onDone();
     },
   });
@@ -1045,17 +1087,91 @@ function startNovaFizzle(scene: Phaser.Scene, to: EffectAnchor, depthOffset: num
   };
 }
 
+// The nova's centre, built by Charge and carried through Impact into
+// Aftermath rather than rebuilt per phase, so the core never blinks and the
+// accretion disc is the same ring that the blast blows outward as the
+// sphere's equator.
+interface NovaCore {
+  core: Phaser.GameObjects.Image;
+  halo: Phaser.GameObjects.Image;
+  disc: Phaser.GameObjects.Image;
+}
+
+// How long the nova's sphere lives, from the strike: it grows across the
+// Impact phase and on into the Aftermath, fading by distance as it goes.
+const NOVA_BLAST_MS = 1500;
+
+// The sphere: a dense body of the move's energy -- two orb layers turning
+// against each other under a slowly turning plasma skin, with a hotter
+// heart that dies faster than the rest -- under a limb of its own color and
+// a hotter, thinner one just inside it for thickness, with the accretion
+// disc blown out as a ring in the same tilted plane. Born by Impact on the
+// frame of the strike and drawn by both Impact and Aftermath against the
+// clock it was born on, so the handover between the phases is invisible.
+interface NovaBlast {
+  body: Phaser.GameObjects.Image;
+  body2: Phaser.GameObjects.Image;
+  plasma: Phaser.GameObjects.Image;
+  heart: Phaser.GameObjects.Image;
+  shell: Phaser.GameObjects.Image;
+  shellHot: Phaser.GameObjects.Image;
+  start: number;
+}
+
+function startNovaBlast(scene: Phaser.Scene, color: number, depthOffset: number): NovaBlast {
+  return {
+    body: fxImage(scene, 60, depthOffset, FX_TEX.orb).setTint(color),
+    body2: fxImage(scene, 60, depthOffset, FX_TEX.orb).setTint(blend(color, hot(color), 0.35)),
+    plasma: fxImage(scene, 60, depthOffset, FX_TEX.plasma).setTint(hot(color)),
+    heart: fxImage(scene, 60, depthOffset, FX_TEX.glow).setTint(hot(color)),
+    shell: fxImage(scene, 60, depthOffset, FX_TEX.shell).setTint(color),
+    shellHot: fxImage(scene, 61, depthOffset, FX_TEX.shell).setTint(hot(color)),
+    start: scene.time.now,
+  };
+}
+
+// The sphere at time `now`: growing out of the centre at a blast wave's pace
+// (radius as the two-fifths power of time, Sedov-Taylor: it leaps out and
+// then slows), its brightness a function of how far it has travelled and
+// gone entirely at NOVA_SHOCK_R -- a front that fades with distance rather
+// than on a clock, so it fades at the same radius at any level. The disc it
+// blows out starts at the radius Charge left it and rides the front once the
+// front has passed it.
+function drawNovaBlast(blast: NovaBlast, core: NovaCore | undefined, now: number, to: EffectAnchor, scale: number, discR0: number) {
+  const q = clamp01((now - blast.start) / NOVA_BLAST_MS);
+  const shockR = NOVA_SHOCK_R * scale * Math.pow(q, 0.4);
+  const travelled = shockR / (NOVA_SHOCK_R * scale);
+  const left = 1 - travelled;
+  const bodySize = orbDisplaySize(shockR);
+  blast.body.setPosition(to.x, to.y).setDisplaySize(bodySize, bodySize).setAngle(q * 40).setAlpha(0.9 * left);
+  blast.body2.setPosition(to.x, to.y).setDisplaySize(bodySize * 0.94, bodySize * 0.94).setAngle(45 - q * 60).setAlpha(0.6 * Math.pow(left, 1.2));
+  blast.plasma.setPosition(to.x, to.y).setDisplaySize(bodySize, bodySize).setAngle(q * 25).setAlpha(0.85 * Math.pow(left, 1.1));
+  placeAt(blast.heart, to.x, to.y, shockR * 1.6, 0.6 * Math.pow(left, 2.2));
+  const shellSize = shellDisplaySize(shockR);
+  blast.shell.setPosition(to.x, to.y).setDisplaySize(shellSize, shellSize).setAlpha(0.95 * Math.pow(left, 1.3));
+  const hotSize = shellDisplaySize(shockR * 0.9);
+  blast.shellHot.setPosition(to.x, to.y).setDisplaySize(hotSize, hotSize).setAlpha(0.6 * Math.pow(left, 2.2));
+  if (core) {
+    const eqR = Math.max(shockR * 1.02, discR0);
+    const eqSize = ringDisplaySize(eqR);
+    core.disc.setPosition(to.x, to.y).setDisplaySize(eqSize, eqSize * DISC_TILT).setAlpha(0.45 * Math.pow(left, 1.6));
+  }
+}
+
+function endNovaBlast(blast: NovaBlast) {
+  [blast.body, blast.body2, blast.plasma, blast.heart, blast.shell, blast.shellHot].forEach((o) => o.destroy());
+}
+
 // Impact (`ultimateNova`): calls `onImpact()` immediately, then either the
-// full outward blast -- a blinding flash, a shockwave in the move's hot
-// shade with a slower, deeper-colored one behind it, a lens streak clean across the field, a burst of
-// rays, sparks flung out in every direction and glowing gas billowing
-// outward from the core, reaching close to the field's own half-height
-// (FIELD_H/2 = 240, BattleScene.ts) so it reads as filling most of the
-// screen rather than a pocket-sized burst -- or, on a whiff, Charge's own
-// infall run backwards: everything it gathered streaming back out and going
-// dark instead of detonating. Every light ADD-blend and alpha-faded with `t`
-// throughout, same reasoning as playMeteorImpact's own comment: brightens
-// what's underneath for a beat rather than opaquely hiding it.
+// blast -- a flash, then the sphere (startNovaBlast) growing out of the
+// centre while the core it grows from keeps burning and the disc is blown
+// out with it, with a lens streak clean across the field, rays and sparks
+// flung out in every direction and glowing gas billowing outward -- or, on
+// a whiff, Charge's own infall run backwards: everything it gathered
+// streaming back out and going dark instead of detonating. Every light
+// ADD-blend and alpha-faded throughout, same reasoning as playMeteorImpact's
+// own comment: brightens what's underneath for a beat rather than opaquely
+// hiding it.
 function playNovaImpact(
   scene: Phaser.Scene,
   color: number,
@@ -1069,6 +1185,10 @@ function playNovaImpact(
 ) {
   onImpact();
   if (whiff) {
+    // The fizzle has a grey centre of its own; the lit one goes at once.
+    const nc = shared.novaCore;
+    if (nc) [nc.core, nc.halo, nc.disc].forEach((o) => o.destroy());
+    shared.novaCore = undefined;
     const fizzle = startNovaFizzle(scene, to, depthOffset, scale);
     shared.fizzle = fizzle;
     fxCounter(scene, depthOffset, {
@@ -1085,18 +1205,11 @@ function playNovaImpact(
   }
 
   const q = Math.min(scale, QUANTITY_CAP);
+  const core = shared.novaCore;
+  const discR0 = NOVA_CORE_R * NOVA_RING_FACTOR * 1.15 * scale;
   const flash = fxImage(scene, 61, depthOffset, FX_TEX.glow).setTint(hot(color));
-  // The sphere: a solid body of the move's energy (the orb texture, its
-  // roiling skin turning slowly) with a hotter heart, under a limb of its
-  // own color and a hotter one just inside it for thickness.
-  const sphereBody = fxImage(scene, 60, depthOffset, FX_TEX.orb).setTint(color);
-  const sphereHeart = fxImage(scene, 60, depthOffset, FX_TEX.glow).setTint(hot(color));
-  const sphere = fxImage(scene, 60, depthOffset, FX_TEX.shell).setTint(color);
-  const sphereHot = fxImage(scene, 61, depthOffset, FX_TEX.shell).setTint(hot(color));
-  const equator = fxImage(scene, 60, depthOffset, FX_TEX.ring).setTint(hot(color));
   const streak = fxImage(scene, 61, depthOffset, FX_TEX.streak).setTint(hot(color));
   const rays = fxImage(scene, 60, depthOffset, FX_TEX.rays).setTint(color);
-  const core = fxImage(scene, 61, depthOffset, FX_TEX.glow).setTint(hot(color));
   const nebula = fxEmitter(scene, 59, depthOffset, FX_TEX.smoke, {
     emitting: false,
     lifespan: { min: 900, max: 1600 },
@@ -1118,46 +1231,33 @@ function playNovaImpact(
   });
   nebula.explode(Math.round(18 * q), to.x, to.y);
   sparks.explode(Math.round(80 * q), to.x, to.y);
+  const blast = startNovaBlast(scene, color, depthOffset);
+  shared.blast = blast;
   fxCounter(scene, depthOffset, {
     from: 0,
     to: 1,
     duration: NOVA_IMPACT_MS,
-    // Linear, with the shockwave on a blast wave's own law below and the
-    // flash, rays and streak easing out on their own.
+    // Linear, with the flash, rays and streak easing out on their own and
+    // the sphere on its own clock (drawNovaBlast).
     ease: 'Linear',
     onUpdate: (tw) => {
       const t = tw.getValue() ?? 0;
       const tOut = Phaser.Math.Easing.Cubic.Out(t);
+      const now = scene.time.now;
       placeAt(flash, to.x, to.y, (70 + 560 * tOut) * scale, 0.96 * Math.pow(1 - tOut, 2));
-      // The shockwave: a dense sphere of the move's energy growing out of
-      // the centre at a blast wave's pace (radius as the two-fifths power
-      // of time, Sedov-Taylor: it leaps out and then slows), its brightness
-      // a function of how far it has travelled and gone entirely at
-      // NOVA_SHOCK_R -- a front that fades with distance rather than on a
-      // clock, so it fades at the same radius at any level. Its body is
-      // solid (the orb texture) with a hotter heart that dies faster than
-      // the rest, its limb a shell of its own color with a hotter, thinner
-      // one just inside for thickness, and the accretion disc from Charge
-      // is blown out with it as a ring in the same tilted plane, which is
-      // what sells the sphere as a volume rather than a disc.
-      const shockR = NOVA_SHOCK_R * scale * Math.pow(t, 0.4);
-      const travelled = shockR / (NOVA_SHOCK_R * scale);
-      const bodySize = orbDisplaySize(shockR);
-      sphereBody.setPosition(to.x, to.y).setDisplaySize(bodySize, bodySize).setAngle(t * 30).setAlpha(0.8 * Math.pow(1 - travelled, 1.1));
-      placeAt(sphereHeart, to.x, to.y, shockR * 1.7, 0.6 * Math.pow(1 - travelled, 2.2));
-      const shellSize = shellDisplaySize(shockR);
-      sphere.setPosition(to.x, to.y).setDisplaySize(shellSize, shellSize).setAlpha(0.95 * Math.pow(1 - travelled, 1.3));
-      const hotSize = shellDisplaySize(shockR * 0.9);
-      sphereHot.setPosition(to.x, to.y).setDisplaySize(hotSize, hotSize).setAlpha(0.6 * Math.pow(1 - travelled, 2.2));
-      const eqSize = ringDisplaySize(shockR * 1.02);
-      equator.setPosition(to.x, to.y).setDisplaySize(eqSize, eqSize * DISC_TILT).setAlpha(0.55 * Math.pow(1 - travelled, 1.6));
       streak.setPosition(to.x, to.y).setDisplaySize((300 + 900 * tOut) * scale, 12 * scale).setAlpha(0.9 * Math.pow(1 - tOut, 2.5));
       placeAt(rays, to.x, to.y, (100 + 700 * tOut) * scale, 0.6 * Math.pow(1 - tOut, 1.5));
       rays.setAngle(tOut * 25);
-      placeAt(core, to.x, to.y, NOVA_CORE_R * 2.2 * scale * (1 - 0.5 * tOut), 0.9 * (1 - 0.6 * tOut));
+      drawNovaBlast(blast, core, now, to, scale, discR0);
+      if (core) {
+        // The core the blast grows from, still burning at its heart and
+        // shrinking as its energy goes out into the sphere.
+        placeAt(core.core, to.x, to.y, NOVA_CORE_R * 2.2 * scale * (1 - 0.5 * tOut), 0.9 * (1 - 0.6 * tOut));
+        placeAt(core.halo, to.x, to.y, NOVA_CORE_R * 6 * scale, 0.7 * (1 - tOut));
+      }
     },
     onComplete: () => {
-      [flash, sphereBody, sphereHeart, sphere, sphereHot, equator, streak, rays, core].forEach((o) => o.destroy());
+      [flash, streak, rays].forEach((o) => o.destroy());
       fxRetire(scene, depthOffset, nebula, 1700);
       fxRetire(scene, depthOffset, sparks, 1100);
       onDone();
@@ -1165,12 +1265,12 @@ function playNovaImpact(
   });
 }
 
-// Aftermath (`ultimateNova`): the remnant -- the core cooling from its hot
-// shade into the move's own color and shrinking away, gas and sparks
-// drifting out from where it was (the shockwave itself has faded out by
-// distance before this) -- or, on a whiff,
-// the tail of the outflow Impact started. Ends by tearing down every object
-// this phase created and firing `onComplete` exactly once.
+// Aftermath (`ultimateNova`): the sphere Impact set off going on out and
+// fading by distance (drawNovaBlast), the core cooling from its hot shade
+// into the move's own color and shrinking away, gas and sparks drifting out
+// from where it was -- or, on a whiff, the tail of the outflow Impact
+// started. Ends by tearing down what the phases shared and firing
+// `onComplete` exactly once.
 function playNovaAftermath(
   scene: Phaser.Scene,
   color: number,
@@ -1201,7 +1301,9 @@ function playNovaAftermath(
   }
 
   const q = Math.min(scale, QUANTITY_CAP);
-  const core = fxImage(scene, 60, depthOffset, FX_TEX.glow).setTint(color);
+  const core = shared.novaCore;
+  const blast = shared.blast;
+  const discR0 = NOVA_CORE_R * NOVA_RING_FACTOR * 1.15 * scale;
   const gas = fxEmitter(scene, 59, depthOffset, FX_TEX.smoke, {
     emitting: false,
     lifespan: { min: 800, max: 1400 },
@@ -1227,17 +1329,28 @@ function playNovaAftermath(
     from: 0,
     to: 1,
     duration: NOVA_AFTERMATH_MS,
-    ease: 'Sine.easeOut',
+    ease: 'Linear',
     onUpdate: (tw) => {
       const t = tw.getValue() ?? 0;
       const now = scene.time.now;
-      placeAt(core, to.x, to.y, NOVA_CORE_R * 2.4 * scale * (1 - t), 0.6 * (1 - t));
+      const ease = Phaser.Math.Easing.Sine.Out(t);
+      if (blast) drawNovaBlast(blast, core, now, to, scale, discR0);
+      if (core) {
+        // Picks the core up at the size and brightness Impact left it and
+        // cools it, its tint going from the hot shade to the move's own.
+        core.core.setTint(blend(hot(color), color, ease));
+        placeAt(core.core, to.x, to.y, NOVA_CORE_R * 1.1 * scale * (1 - ease), 0.36 * (1 - ease));
+        core.halo.setAlpha(0);
+      }
       const within = () => ({ x: to.x + (Math.random() - 0.5) * 60 * scale, y: to.y + (Math.random() - 0.5) * 60 * scale });
       gasSpout.emitEach(now, 40 * q * (1 - t), within);
       sparkSpout.emitEach(now, 30 * q * (1 - t), within);
     },
     onComplete: () => {
-      core.destroy();
+      if (core) [core.core, core.halo, core.disc].forEach((o) => o.destroy());
+      if (blast) endNovaBlast(blast);
+      shared.novaCore = undefined;
+      shared.blast = undefined;
       fxRetire(scene, depthOffset, gas, 1500);
       fxRetire(scene, depthOffset, sparks, 1300);
       onComplete();
@@ -1267,6 +1380,6 @@ export function playNova(
       playNovaImpact(scene, color, to, whiff, onImpact, () => {
         playNovaAftermath(scene, color, to, whiff, onComplete, depthOffset, scale, shared);
       }, depthOffset, scale, shared);
-    }, depthOffset, scale, groundDrop, stage);
+    }, depthOffset, scale, groundDrop, stage, shared);
   }, depthOffset, scale);
 }

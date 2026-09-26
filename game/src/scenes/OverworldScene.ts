@@ -29,7 +29,7 @@ import {
   projectTile,
   setActiveGridDims,
 } from './overworld/projection';
-import { drawSky, forwardHazeBlend } from './overworld/sky';
+import { drawSky, forwardHazeBlend, passReveal } from './overworld/sky';
 import type { GateView } from './overworld/sky';
 import { buildTerrainPlan, sampleBattleLocale } from './overworld/terrain/plan';
 import { drawTerrain } from './overworld/terrain/paint';
@@ -2686,6 +2686,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       lane: this.goalTile.x - this.camPos.x,
       halfTiles: PASS_HALF_WIDTH + 0.5,
       open,
+      reveal: passReveal(open, this.camPos.y, this.goalTile.y),
       next: open ? BIOMES[this.world + 1] ?? null : null,
     };
   }

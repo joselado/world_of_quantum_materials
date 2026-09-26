@@ -218,7 +218,9 @@ function drawMarginRows(view: TerrainView, deepestRow: number) {
   const camX = view.camX;
   const camY = view.camY;
   const edge = view.plan.tiles[view.plan.farEdgeRow];
-  const roadRunsOn = !view.gate || view.gate.open;
+  // The road runs on through an open pass only once the player is near
+  // enough to see what it opens onto (GateView.reveal).
+  const roadRunsOn = !view.gate || (view.gate.open && view.gate.reveal > 0);
   const cols = gridW();
   for (let gy = view.plan.farEdgeRow - 1; gy >= deepestRow; gy--) {
     const depthFar = camY - gy + 0.5;
@@ -334,10 +336,10 @@ const SEAM_STRENGTH = 0.45;
 // terrain error. Nothing at all while the gate is shut.
 function seamed(view: TerrainView, color: number, gy: number): number {
   const gate = view.gate;
-  if (!gate?.open || !gate.next) return color;
+  if (!gate?.open || !gate.next || gate.reveal <= 0) return color;
   const rows = gy - gate.row;
   if (rows < 0 || rows >= SEAM_ROWS) return color;
-  return blend(color, gate.next.path, SEAM_STRENGTH * (1 - rows / SEAM_ROWS));
+  return blend(color, gate.next.path, SEAM_STRENGTH * gate.reveal * (1 - rows / SEAM_ROWS));
 }
 
 // Distant walkable ground hazes toward a lighter target than its

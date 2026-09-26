@@ -43,6 +43,9 @@ export const FX_TEX = {
   // a crisp limb, the way a translucent shell is brightest where the line
   // of sight runs along it -- a nova's spherical shockwave.
   shell: 'fx-shell',
+  // A disc of dense plasma: bright filaments webbed through it, so a sphere
+  // wearing it reads as made of energy rather than of one smooth light.
+  plasma: 'fx-plasma',
   // A shaft of light, soft-edged, narrow at the top and flaring downward.
   column: 'fx-column',
   // A horizontal lens streak: the anamorphic flare a hot point throws.
@@ -91,6 +94,7 @@ export function ensureFxTextures(scene: Phaser.Scene): void {
   paint(tm, FX_TEX.smoke, 128, 128, paintSmoke);
   paint(tm, FX_TEX.orb, ORB_PX, ORB_PX, paintOrb);
   paint(tm, FX_TEX.shell, 256, 256, paintShell);
+  paint(tm, FX_TEX.plasma, ORB_PX, ORB_PX, paintPlasma);
   paint(tm, FX_TEX.column, 64, 256, paintColumn);
   paint(tm, FX_TEX.streak, 256, 16, paintStreak);
   paint(tm, FX_TEX.flare, 128, 128, paintFlare);
@@ -230,6 +234,23 @@ function paintOrb(ctx: CanvasRenderingContext2D, w: number, h: number) {
     const roil = 1 - 0.7 * smoothstep(0.42, 0.85, d) * clamp01(0.72 - n) * 1.8;
     const limb = 0.12 * Math.exp(-Math.pow((d - ORB_FILL + 0.06) / 0.07, 2));
     return body * (clamp01(roil) + limb);
+  });
+}
+
+// A disc of dense plasma: ridged value noise (bright where the noise
+// crosses its middle, dark either side of it) contrast-stretched into
+// filaments, inside the orb's own soft edge. Turned slowly over the orb
+// layers it is the sphere's roiling skin.
+function paintPlasma(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const noise = makeNoise(53, 6, 6);
+  const half = w / 2;
+  perPixel(ctx, w, h, (x, y) => {
+    const d = Math.hypot(x - half, y - half) / half;
+    const edge = smoothstep(ORB_FILL + 0.04, ORB_FILL - 0.12, d);
+    const n = fbm(noise, (x / w) * 6, (y / h) * 6, 4);
+    const ridged = 1 - Math.abs(2 * n - 1);
+    const veins = smoothstep(0.55, 0.95, ridged);
+    return edge * (0.25 + 0.75 * veins);
   });
 }
 

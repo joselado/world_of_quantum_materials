@@ -2997,14 +2997,16 @@ world are shaped, since world N's start is world N-1's exit.
 - **The four spectacle moves draw with painted material, not flat fills.** Landau's Analytic
   pair and Skłodowska-Curie's Ultimate pair are light, energy, smoke and dust rather than
   silhouettes, and a flat fill has none of the soft edges, real falloff, grain and shading
-  those need. `art/fxTextures.ts` paints eleven small textures once, at boot
+  those need. `art/fxTextures.ts` paints twelve small textures once, at boot
   (`TitleScene.create`, so no battle pays for them on a first cast), with the 2D canvas's own
   gradients and a little value noise: a soft glow, a hot spark, a soft-edged ring, a lumpy
   smoke puff, a ball of energy (a solid core under a roiling, noise-mottled skin with a faint
   bright limb, painted at 192px so a leveled meteor's body keeps its skin at several times a
   plain one's size, its inner half left solid so a small glob of it reads as a ball of light
   rather than a bubble), a hollow shell (a faint interior brightening toward a crisp limb, the
-  way a translucent sphere is brightest where the line of sight runs along it), a shaft of
+  way a translucent sphere is brightest where the line of sight runs along it), a disc of
+  dense plasma (ridged value noise contrast-stretched into bright filaments, the roiling skin
+  a nova's sphere turns under its other layers), a shaft of
   light narrow at the top and flaring downward, a horizontal lens streak, a
   starburst flare, irregular rays and a tileable strip of vertical turbulence. Every one is
   white with its shape in the alpha channel, so a tint is the color: the same glow tinted a
@@ -3132,15 +3134,19 @@ world are shaped, since world N's start is world N-1's exit.
   HP bar redrawn mid-cast lands on the right camera, and merged back into one camera once
   the zoom is at 1 (so the check scripts that walk the display list always see it whole).
   What the pulled-back camera looks at past the field is the backdrop's overscan ("Battle
-  backdrop" above); the vignette, which frames the field, fades out for the duration. A
-  preview never pulls back -- the zoom is the battle's, not the effect's.
+  backdrop" above). The vignette carries no arena tag: it frames the screen rather than the
+  field, so while the camera is pulled back the HUD camera draws it at screen size and the
+  field's corners are as bright as the overscan around them. A preview never pulls back --
+  the zoom is the battle's, not the effect's.
 - Skłodowska-Curie's two Ultimate moves (`ultimateMeteor`/`ultimateNova`) get the same
   per-move-id shape-override treatment (`ULTIMATE_SHAPES`), but run their own multi-phase
   summon→charge→impact→aftermath sequence (`playMeteor`/`playNova`) rather than the shared
   windup/travel/impact beat every other shape (including Landau's beam/eruption) uses --
-  4-6 seconds total, dramatically longer than any other move's effect, with `onImpact` firing
-  at the sequence's own strike beat and `onComplete` only once the full aftermath decay
-  finishes (see `BattleScene`'s "Ultimate moves defer damage/turn-handoff" in `CODEMAP.md`).
+  about six seconds total (the meteor 6.2 s, the nova 5.75 s), dramatically longer than any
+  other move's effect, with `onImpact` firing at the sequence's own strike beat and
+  `onComplete` only once the full aftermath -- two seconds for the meteor, 1.8 s for the
+  nova -- finishes (see `BattleScene`'s "Ultimate moves defer damage/turn-handoff" in
+  `CODEMAP.md`).
   **The meteor** inscribes a glowing rune flat on the floor under the target (sparks lifting
   off it as it is drawn, dust stirring inside it), then comes in from deep space: a point of
   light with a lens flare appears far out at the stage's far point -- off the field's left
@@ -3160,17 +3166,21 @@ world are shaped, since world N's start is world N-1's exit.
   as a strike rather than a thing floating down. The meteor takes the same overridable floor
   the eruption does (`groundDrop`) and an `UltimateStage` saying where its far point is (a
   battle's arena corner, a preview stage's own corner), so it plays on a preview stage's
-  floor line and crosses the stage diagonally. The slam: the ball flattens into the floor
-  and is gone inside a blinding contact flash; a fireball of the move's energy climbs out of
-  the contact point (a dome of light rising as it swells, glowing gas boiling up and
-  outward); a hemispherical front (the shell texture cropped to its upper half, standing on
-  the floor line) races out at a blast wave's pace -- radius as the two-fifths power of
-  time, Sedov-Taylor, so it leaps out and then slows -- and fades with the distance it has
-  travelled, gone at `METEOR_BLAST_R`; under it a shockwave ring and a slower ring of dust
-  race out across the floor, a burst of rays and a lens streak cross the point of contact,
-  globs of the ball's own energy are thrown up under gravity to arc and fall back, with
-  embers, fire and a rolling cloud of dust, over a crater left glowing that sheds glowing
-  gas and embers through the aftermath. Everything the cast puts on screen is the tuned
+  floor line and crosses the stage diagonally. The slam's fast part is the impact phase's
+  own: the ball flattens into the floor and is gone inside a blinding contact flash, a
+  shockwave ring and a slower ring of dust race out across the floor, a burst of rays and a
+  lens streak cross the point of contact, and globs of the ball's own energy are thrown up
+  under gravity to arc and fall back, with fire and a rolling cloud of dust. Its explosion
+  is born on the frame of contact and lives on its own clock (`METEOR_BLAST_MS`, two
+  seconds) across the impact phase and most of the aftermath, drawn by both against that
+  clock so the handover is invisible: a fireball of the move's energy climbs out of the
+  contact point and swells as it rises -- a dome of light with a hotter heart, fed by
+  glowing gas boiling up out of the point of contact for the first half of its life -- then
+  burns down; a hemispherical front (the shell texture cropped to its upper half, standing
+  on the floor line) races out under it at a blast wave's pace -- radius as the two-fifths
+  power of time, Sedov-Taylor, so it leaps out and then slows -- and fades with the
+  distance it has travelled, gone at `METEOR_BLAST_R`; and the crater glows, then cools,
+  embers lifting off it the whole while. Everything the cast puts on screen is the tuned
   quasiparticle's color -- the summoned mass *is* that quasiparticle, so a Magnon Meteor is
   a red ball under red light and an Electron Meteor a blue one -- pushed toward white where
   it is hottest and lifted to a pale for the dust, never a plain white or grey, so the whole
@@ -3185,17 +3195,24 @@ world are shaped, since world N's start is world N-1's exit.
   `UltimateStage`'s floor -- from the target's own floor line down to the bottom of the
   pulled-back arena and across its width, or along a preview stage's bottom), streaks of
   light climb from floor points to the core on their own clocks, and the floor is lit from
-  beneath as it drains. The blast is a flash and then a dense sphere of the move's energy
+  beneath as it drains; over the last tenth of the charge what is still coming in is drawn
+  into the core, so nothing is left mid-flight for the blast to cut. The core, its halo and
+  the accretion disc are built once by the charge and carried through the impact and the
+  aftermath rather than rebuilt per phase, so the centre never blinks. The blast is a flash
+  and then a dense sphere of the move's energy, born on the frame of the strike and living
+  on its own clock (`NOVA_BLAST_MS`, 1.5 s) across the impact phase and into the aftermath,
   growing out of the centre at a blast wave's pace (radius as the two-fifths power of time,
-  Sedov-Taylor): a solid body (the orb texture, its skin turning slowly) with a hotter heart
-  that dies faster than the rest, its limb a shell of its own color with a hotter, thinner
-  one just inside for thickness, and the accretion disc blown out with it as a ring in the
-  same tilted plane so it reads as a volume rather than a flat ring, all fading with the
-  distance travelled and gone at `NOVA_SHOCK_R` -- a front that fades by radius rather than
-  on a clock, so a leveled repeat fades at the same relative distance -- with a lens streak
-  clean across the field, rays, sparks flung out in every direction and glowing gas
-  billowing outward that lingers as the remnant while the core cools from its hot shade
-  into the move's color and shrinks away. The nova follows the meteor's color rule: its core,
+  Sedov-Taylor): two orb layers turning against each other under a slowly turning plasma
+  skin, with a hotter heart that dies faster than the rest, its limb a shell of its own
+  color with a hotter, thinner one just inside for thickness, and the accretion disc blown
+  out with it -- starting at the radius the charge left it and riding the front once the
+  front has passed it -- as a ring in the same tilted plane so it reads as a volume rather
+  than a flat ring, all fading with the distance travelled and gone at `NOVA_SHOCK_R` -- a
+  front that fades by radius rather than on a clock, so a leveled repeat fades at the same
+  relative distance -- with a lens streak clean across the field, rays, sparks flung out in
+  every direction and glowing gas billowing outward that lingers as the remnant while the
+  core, still burning at its heart through the blast, cools from its hot shade into the
+  move's color and shrinks away over the aftermath. The nova follows the meteor's color rule: its core,
   flash, shockwave and streak are the tuned color pushed toward white, never plain white, so a
   Magnon Nova is red through and through and an Electron Nova blue. A whiff (any wrong answer in `showUltimateQuestions`) still plays the same
   summon/charge phases, with one tell -- the meteor stalls on its way in at
