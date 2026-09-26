@@ -2984,7 +2984,10 @@ world are shaped, since world N's start is world N-1's exit.
   starburst flare, irregular rays and a tileable strip of vertical turbulence. Every one is
   white with its shape in the alpha channel, so a tint is the color: the same glow tinted a
   move's class color and blended additively is that class's light, and the same puff tinted
-  grey and blended normally is smoke. The effects use them as tinted images (a beam's shaft,
+  grey and blended normally is smoke. The rock, the one texture with shading of its own,
+  carries it as neutral greys for the same reason: tinted the move's class color it is the
+  meteor's own mass in that color, and tinted a warm stone it is the floor an eruption
+  throws up. The effects use them as tinted images (a beam's shaft,
   a shockwave, a crater's glow), tile sprites (the turbulence scrolling along a beam or up a
   geyser) and particle emitters (sparks, embers, fire, smoke, dust, rock debris under gravity
   that tumbles and dies the frame it falls back through the floor), all created through
@@ -2992,8 +2995,10 @@ world are shaped, since world N's start is world N-1's exit.
   what a thing is: light is `ADD`, rock, smoke and dust are `NORMAL`, and the meteor's shadow
   on the floor is `MULTIPLY`, so a bright ground plane still darkens under it. Particle sizes
   are chosen in pixels against the texture they scale (a 128px glow at scale 0.2 is a 26px
-  tongue of fire, not a 96px balloon), smoke and dust are mid greys rather than near-black so
-  they read against the dark arena, and emission rates run through `FxSpout`, which
+  tongue of fire, not a 96px balloon), smoke and dust sit at mid values rather than near-black
+  so they read against the dark arena (Landau's pair in greys; the meteor's in the move's own
+  color darkened into soot and lifted into dust, so its whole cast is one quasiparticle's
+  color), and emission rates run through `FxSpout`, which
   integrates a per-second rate over the scene clock so a stream is the same density at any
   frame rate. Every emitter is left at the origin and fed explicit world points, since an
   emitter's particles live in its local space and a trail has to stay in the air where it was
@@ -3100,8 +3105,13 @@ world are shaped, since world N's start is world N-1's exit.
   finishes (see `BattleScene`'s "Ultimate moves defer damage/turn-handoff" in `CODEMAP.md`).
   **The meteor** inscribes a glowing rune flat on the floor under the target (sparks lifting
   off it as it is drawn, dust stirring inside it), then a rock the size of the target punches
-  into frame from above -- a shaded chunk turning slowly, its leading face heated molten,
-  wrapped in the move's light, trailing fire and smoke, small chunks orbiting it -- and
+  into frame from above -- a shaded chunk in the move's own quasiparticle color (the summoned
+  mass *is* that quasiparticle: a Magnon Meteor is a red rock, an Electron Meteor a blue one,
+  and the chunks orbiting it and the debris its slam throws up share the color) turning
+  slowly, its leading face heated to a paler shade of that same color, wrapped in that light,
+  trailing fire and smoke of the same color (every flash, spark, plume and dust cloud of the
+  cast is the tuned color pushed toward white, darkened into soot or lifted into dust, never
+  a plain white or grey, so the whole cast reads as one quasiparticle) -- and
   *brakes* into a straining, trembling hover for the last stretch before it drops, its shadow
   tightening and darkening on the floor as it comes down; the arrival is shaped inside the
   phase rather than by easing the phase's own counter, which would spend most of the charge
@@ -3111,14 +3121,16 @@ world are shaped, since world N's start is world N-1's exit.
   dust, over a crater left glowing that smokes and sheds embers through the aftermath. **The
   nova**'s rune stands upright around the target instead, over a growing starburst; its charge
   pulls sparks inward from all around the core, each aimed at it on emit and given exactly the
-  speed that lands it there at the end of its life, brightening from the move's color to white
-  as it arrives (streaks of light drawn in behind them, each on its own clock), while an
-  accretion disc forms around the core at a tilt to the camera with arcs spinning in its
+  speed that lands it there at the end of its life, brightening from the move's color to its
+  hot shade as it arrives (streaks of light drawn in behind them, each on its own clock), while
+  an accretion disc forms around the core at a tilt to the camera with arcs spinning in its
   plane, so it reads as matter accreting rather than as one ring contracting. The blast is a
-  flash, a white shockwave with a slower colored one behind it, a lens streak clean across the
-  field, rays, sparks flung out in every direction and glowing gas billowing outward that
-  lingers as the remnant while the core cools from white into the move's color and shrinks
-  away. A whiff (any wrong answer in `showUltimateQuestions`) still plays the same
+  flash, a shockwave in the move's hot shade with a slower, deeper-colored one behind it, a
+  lens streak clean across the field, rays, sparks flung out in every direction and glowing
+  gas billowing outward that lingers as the remnant while the core cools from its hot shade
+  into the move's color and shrinks away. The nova follows the meteor's color rule: its core,
+  flash, shockwave and streak are the tuned color pushed toward white, never plain white, so a
+  Magnon Nova is red through and through and an Electron Nova blue. A whiff (any wrong answer in `showUltimateQuestions`) still plays the same
   summon/charge phases, with one tell -- the held strain (the meteor's tremble, the nova's
   core pulse) goes slack across the last stretch of the charge -- and then takes the summoned
   mass apart in mid-air rather than striking with it, in one flat grey: the meteor's light

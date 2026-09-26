@@ -17,7 +17,11 @@ import { seededRandom } from './colors';
 // Every texture is white with its shape in the alpha channel, so a tint is
 // the color: a white glow tinted a move's own class color, blended
 // additively, is that class's light, and the same smoke puff tinted dark
-// and blended normally is soot.
+// and blended normally is soot. The one texture that carries shading of its
+// own, the rock, carries it as neutral greys for the same reason: tinted a
+// class color it is a lit mass of that color (a meteor is the quasiparticle
+// itself, so its body takes the class color just as its light does), and
+// tinted a stone tone it is ground thrown up by an eruption.
 //
 // These are plain canvas textures, not RenderTextures/DynamicTextures: the
 // canvas is the source, so a lost WebGL context re-uploads them like any
@@ -201,7 +205,11 @@ function paintSmoke(ctx: CanvasRenderingContext2D, w: number, h: number) {
 // Three irregular chunks, each lit from the upper left and falling to
 // shadow at the lower right, with a few darker facets, a grain of noise and
 // a dark rim -- enough shading for a rock to read as a solid rather than as
-// a grey blob.
+// a grey blob. The shading is a neutral ramp from near-white to near-black,
+// never a hue of its own, so the tint an image or emitter applies IS the
+// rock's color: the lit facet comes out at the tint itself, the shadow at
+// the tint darkened. The ramp's top stays a little short of pure white so
+// the grain still has room to brighten it.
 function paintRocks(ctx: CanvasRenderingContext2D, w: number, h: number) {
   const rand = seededRandom(7);
   const noise = makeNoise(23, 8, 8);
@@ -228,9 +236,9 @@ function paintRocks(ctx: CanvasRenderingContext2D, w: number, h: number) {
     trace(pts);
     ctx.clip();
     const grad = ctx.createLinearGradient(ox + size * 0.1, size * 0.08, ox + size * 0.9, size * 0.94);
-    grad.addColorStop(0, '#d8d3cc');
-    grad.addColorStop(0.45, '#8b847c');
-    grad.addColorStop(1, '#2e2a27');
+    grad.addColorStop(0, '#ececec');
+    grad.addColorStop(0.45, '#8a8a8a');
+    grad.addColorStop(1, '#2c2c2c');
     ctx.fillStyle = grad;
     ctx.fillRect(ox, 0, size, size);
     for (let k = 0; k < 5; k++) {
@@ -252,7 +260,7 @@ function paintRocks(ctx: CanvasRenderingContext2D, w: number, h: number) {
     ctx.restore();
     trace(pts);
     ctx.lineWidth = size * 0.026;
-    ctx.strokeStyle = 'rgba(18,15,13,0.85)';
+    ctx.strokeStyle = 'rgba(14,14,14,0.85)';
     ctx.stroke();
   }
   const img = ctx.getImageData(0, 0, w, h);

@@ -24,10 +24,19 @@ import { blend, darken } from './colors';
 // Both are drawn with lit, textured material (art/fxTextures.ts) rather
 // than flat fills: the meteor is a shaded rock with a molten leading face,
 // a fire-and-smoke trail and a shadow tightening on the floor as it comes
-// down; the nova a white-hot core inside an accretion disc, matter falling
-// in as sparks; the strikes real shockwaves, dust, debris under gravity,
-// lens streaks and glowing gas. Every light is tinted the move's own
-// currently-tuned quasiparticle color.
+// down; the nova a core heated to a pale shade of the move's color inside an
+// accretion disc, matter falling in as sparks; the strikes real shockwaves,
+// dust, debris under gravity, lens streaks and glowing gas. Everything is
+// tinted the move's own currently-tuned quasiparticle color -- its light at
+// full strength or pushed toward white where it is hottest, its smoke and
+// dust the same color darkened or dulled, and the meteor's rock (its body,
+// the chunks orbiting it and the debris the slam throws up) since the mass
+// being summoned is that quasiparticle, not a stone it happens to ride in
+// on: a Magnon Meteor is a red rock under red light, an Electron Nova a
+// blue core inside a blue disc. Nothing in a landing cast is plain white or
+// grey. The rock texture's shading is neutral grey (fxTextures.ts's
+// paintRocks), so the tint is the rock's color rather than a wash over a
+// brown.
 //
 // `whiff` (set when an Ultimate move fails its 3-question gate,
 // BattleScene's resolveHit) takes the summoned mass apart instead of letting
@@ -70,8 +79,19 @@ const NOVA_CORE_R = 32;
 const NOVA_RING_FACTOR = 2.4;
 // The nova's accretion disc lies at this tilt to the camera.
 const DISC_TILT = 0.32;
-// The heat of the meteor's leading face, blended into the move's own color.
-const FACE_HEAT = 0xffc070;
+
+// The move's color at the intensities a meteor or a nova needs, so that
+// everything a cast puts on screen -- its light, its rock, its smoke -- is
+// the tuned quasiparticle's color and never a generic white or grey: `hot`
+// is the color pushed toward white for the hottest points (a leading face, a
+// core, a flash, the birth of a spark), `smokeOf` the color darkened and dulled into soot,
+// `dustOf` the same lifted to the pale of a dust cloud, and `paleOf` the near-
+// white of a dust ring. Only the whiff dissipation stays grey (FIZZLE_GREY),
+// since a failed cast is the one that carries no quasiparticle any more.
+const hot = (color: number) => blend(color, 0xffffff, 0.45);
+const smokeOf = (color: number) => blend(darken(color, 40), 0x5a545e, 0.4);
+const dustOf = (color: number) => blend(color, 0x9a938c, 0.5);
+const paleOf = (color: number) => blend(color, 0xffffff, 0.55);
 
 // A whiff draws in one flat grey across every phase it touches, rather than
 // the move's own quasiparticle color: the point is that this cast carries no
@@ -146,7 +166,7 @@ function playMeteorSummon(scene: Phaser.Scene, color: number, to: EffectAnchor, 
     angle: { min: 250, max: 290 },
     scale: { start: 0.45 * scale, end: 0 },
     alpha: { start: 1, end: 0 },
-    tint: [0xffffff, color],
+    tint: [hot(color), color],
   });
   const dust = fxEmitter(
     scene,
@@ -162,7 +182,7 @@ function playMeteorSummon(scene: Phaser.Scene, color: number, to: EffectAnchor, 
       rotate: { min: 0, max: 360 },
       scale: { start: 0.1 * scale, end: 0.35 * scale },
       alpha: { start: 0.18, end: 0 },
-      tint: [0x7a7482, 0x7a7482],
+      tint: dustOf(color),
     },
     Phaser.BlendModes.NORMAL
   );
@@ -199,8 +219,9 @@ function playMeteorSummon(scene: Phaser.Scene, color: number, to: EffectAnchor, 
   });
 }
 
-// Charge: a rock the size of the target, its leading face heated white,
-// wrapped in the move's own light and trailing fire and smoke, with small
+// Charge: a rock the size of the target in the move's own color, its leading
+// face heated to a paler shade of it, wrapped in that light and trailing fire
+// and smoke of the same color, with small
 // chunks orbiting it, descending from off the top of the screen to hang just
 // above the target -- a mass, not a shot -- while its shadow tightens and
 // darkens on the floor beneath and the summon circle keeps pulsing there.
@@ -226,10 +247,10 @@ function playMeteorCharge(
   const rune = fxGraphics(scene, 58, depthOffset);
   const under = fxImage(scene, 58, depthOffset, FX_TEX.glow).setTint(color).setAlpha(0);
   const shadow = fxImage(scene, 58, depthOffset, FX_TEX.glow, undefined, Phaser.BlendModes.MULTIPLY).setTint(0x000000).setAlpha(0);
-  const rock = fxImage(scene, 60, depthOffset, FX_TEX.rock, ROCK_FRAMES[0], Phaser.BlendModes.NORMAL);
+  const rock = fxImage(scene, 60, depthOffset, FX_TEX.rock, ROCK_FRAMES[0], Phaser.BlendModes.NORMAL).setTint(color);
   const halo = fxImage(scene, 59, depthOffset, FX_TEX.glow).setTint(color);
-  const face = fxImage(scene, 61, depthOffset, FX_TEX.glow).setTint(blend(color, FACE_HEAT, 0.55));
-  const chunks = Array.from({ length: 5 }, (_, i) => fxImage(scene, 60, depthOffset, FX_TEX.rock, ROCK_FRAMES[1 + (i % 2)], Phaser.BlendModes.NORMAL));
+  const face = fxImage(scene, 61, depthOffset, FX_TEX.glow).setTint(hot(color));
+  const chunks = Array.from({ length: 5 }, (_, i) => fxImage(scene, 60, depthOffset, FX_TEX.rock, ROCK_FRAMES[1 + (i % 2)], Phaser.BlendModes.NORMAL).setTint(color));
   const fire = fxEmitter(scene, 60, depthOffset, FX_TEX.glow, {
     emitting: false,
     lifespan: { min: 320, max: 640 },
@@ -238,7 +259,7 @@ function playMeteorCharge(
     gravityY: -90,
     scale: { start: 0.2 * scale, end: 0.03 },
     alpha: { start: 0.9, end: 0 },
-    tint: [0xffffff, color, darken(color, 70)],
+    tint: [hot(color), color, darken(color, 70)],
   });
   const smoke = fxEmitter(
     scene,
@@ -254,7 +275,7 @@ function playMeteorCharge(
       rotate: { min: 0, max: 360 },
       scale: { start: 0.2 * scale, end: 0.8 * scale },
       alpha: { start: 0.38, end: 0 },
-      tint: [0x5a545e, 0x5a545e],
+      tint: smokeOf(color),
     },
     Phaser.BlendModes.NORMAL
   );
@@ -266,7 +287,7 @@ function playMeteorCharge(
     gravityY: 150,
     scale: { start: 0.4 * scale, end: 0 },
     alpha: { start: 1, end: 0 },
-    tint: [0xffffff, color],
+    tint: [hot(color), color],
   });
   const fireSpout = new FxSpout(fire);
   const smokeSpout = new FxSpout(smoke);
@@ -328,7 +349,7 @@ function playMeteorCharge(
       const pulse = 0.6 + 0.4 * Math.sin(t * 28);
       const circleR = (METEOR_RUNE_R + Math.sin(t * 10) * 4) * scale;
       drawAnnulus(rune, color, to.x, groundY, circleR, 3 * scale, 0.4 * pulse, GROUND_ASPECT);
-      drawAnnulus(rune, 0xffffff, to.x, groundY, circleR * 1.3, 2 * scale, 0.3 * pulse, GROUND_ASPECT);
+      drawAnnulus(rune, hot(color), to.x, groundY, circleR * 1.3, 2 * scale, 0.3 * pulse, GROUND_ASPECT);
       layFlat(under, to.x, groundY, 200 * scale, 0.15 + 0.35 * pulse);
     },
     onComplete: () => {
@@ -455,11 +476,11 @@ function playMeteorImpact(
 
   const q = Math.min(scale, QUANTITY_CAP);
   const groundY0 = to.y + GROUND_DROP;
-  const flash = fxImage(scene, 61, depthOffset, FX_TEX.glow);
+  const flash = fxImage(scene, 61, depthOffset, FX_TEX.glow).setTint(hot(color));
   const shock = fxImage(scene, 59, depthOffset, FX_TEX.ring).setTint(color);
-  const dustRing = fxImage(scene, 58, depthOffset, FX_TEX.ring, undefined, Phaser.BlendModes.NORMAL).setTint(0xd8ccc0);
+  const dustRing = fxImage(scene, 58, depthOffset, FX_TEX.ring, undefined, Phaser.BlendModes.NORMAL).setTint(paleOf(color));
   const rays = fxImage(scene, 60, depthOffset, FX_TEX.rays).setTint(color);
-  const streak = fxImage(scene, 61, depthOffset, FX_TEX.streak);
+  const streak = fxImage(scene, 61, depthOffset, FX_TEX.streak).setTint(hot(color));
   const crater = fxImage(scene, 58, depthOffset, FX_TEX.glow).setTint(color);
   const rocks = fxEmitter(
     scene,
@@ -475,6 +496,9 @@ function playMeteorImpact(
       gravityY: 700,
       scale: { min: 0.14 * scale, max: 0.36 * scale },
       rotate: tumble,
+      // The mass's own fragments, so they keep its color (art/attackAnalytics.ts's
+      // eruption throws up the floor instead, and its debris stays stone).
+      tint: color,
       deathZone: belowGround(groundY0),
     },
     Phaser.BlendModes.NORMAL
@@ -487,7 +511,7 @@ function playMeteorImpact(
     gravityY: 260,
     scale: { start: 0.6 * scale, end: 0 },
     alpha: { start: 1, end: 0 },
-    tint: [0xffffff, color],
+    tint: [hot(color), color],
   });
   const fire = fxEmitter(scene, 60, depthOffset, FX_TEX.glow, {
     emitting: false,
@@ -497,7 +521,7 @@ function playMeteorImpact(
     gravityY: 120,
     scale: { start: 0.22 * scale, end: 0.04 },
     alpha: { start: 0.9, end: 0 },
-    tint: [0xffffff, color, darken(color, 70)],
+    tint: [hot(color), color, darken(color, 70)],
   });
   const dust = fxEmitter(
     scene,
@@ -513,7 +537,7 @@ function playMeteorImpact(
       rotate: { min: 0, max: 360 },
       scale: { start: 0.18 * scale, end: 0.8 * scale },
       alpha: { start: 0.6, end: 0 },
-      tint: [0x7a716a, 0x7a716a],
+      tint: dustOf(color),
     },
     Phaser.BlendModes.NORMAL
   );
@@ -601,7 +625,7 @@ function playMeteorAftermath(
       rotate: { min: 0, max: 360 },
       scale: { start: 0.2 * scale, end: 0.9 * scale },
       alpha: { start: 0.5, end: 0 },
-      tint: [0x5c5560, 0x5c5560],
+      tint: smokeOf(color),
     },
     Phaser.BlendModes.NORMAL
   );
@@ -613,7 +637,7 @@ function playMeteorAftermath(
     gravityY: -30,
     scale: { start: 0.45 * scale, end: 0 },
     alpha: { start: 1, end: 0 },
-    tint: [0xffffff, color],
+    tint: [hot(color), color],
   });
   const smokeSpout = new FxSpout(smoke);
   const emberSpout = new FxSpout(embers);
@@ -674,7 +698,7 @@ function playNovaSummon(scene: Phaser.Scene, color: number, to: EffectAnchor, on
   ensureFxTextures(scene);
   const q = Math.min(scale, QUANTITY_CAP);
   const g = fxGraphics(scene, 60, depthOffset);
-  const flare = fxImage(scene, 60, depthOffset, FX_TEX.flare).setTint(blend(color, 0xffffff, 0.4)).setAlpha(0);
+  const flare = fxImage(scene, 60, depthOffset, FX_TEX.flare).setTint(hot(color)).setAlpha(0);
   const motes = fxEmitter(scene, 61, depthOffset, FX_TEX.spark, {
     emitting: false,
     lifespan: { min: 300, max: 600 },
@@ -682,7 +706,7 @@ function playNovaSummon(scene: Phaser.Scene, color: number, to: EffectAnchor, on
     angle: { min: 0, max: 360 },
     scale: { start: 0.45 * scale, end: 0 },
     alpha: { start: 1, end: 0 },
-    tint: [0xffffff, color],
+    tint: [hot(color), color],
   });
   const moteSpout = new FxSpout(motes);
   fxCounter(scene, depthOffset, {
@@ -737,11 +761,11 @@ function playNovaCharge(
   const g = fxGraphics(scene, 60, depthOffset);
   const disc = fxImage(scene, 59, depthOffset, FX_TEX.ring).setTint(color).setAlpha(0);
   const halo = fxImage(scene, 60, depthOffset, FX_TEX.glow).setTint(color).setAlpha(0);
-  const core = fxImage(scene, 61, depthOffset, FX_TEX.glow).setAlpha(0);
-  const flare = fxImage(scene, 61, depthOffset, FX_TEX.flare).setTint(blend(color, 0xffffff, 0.5)).setAlpha(0);
+  const core = fxImage(scene, 61, depthOffset, FX_TEX.glow).setTint(hot(color)).setAlpha(0);
+  const flare = fxImage(scene, 61, depthOffset, FX_TEX.flare).setTint(hot(color)).setAlpha(0);
   // Each spark is aimed at the core on emit and given exactly the speed
   // that lands it there at the end of its life, brightening from the
-  // move's color to white as it arrives.
+  // move's color to its hot shade as it arrives.
   const infall = fxEmitter(scene, 61, depthOffset, FX_TEX.spark, {
     emitting: false,
     lifespan: { min: 450, max: 900 },
@@ -749,7 +773,7 @@ function playNovaCharge(
     speed: { onEmit: (particle) => (particle ? Math.hypot(to.x - particle.x, to.y - particle.y) / Math.max(0.05, particle.life / 1000) : 0) },
     scale: { start: 0.4 * scale, end: 0.12 * scale },
     alpha: { start: 0.25, end: 1 },
-    tint: [color, 0xffffff],
+    tint: [color, hot(color)],
   });
   const infallSpout = new FxSpout(infall);
   const streaks = Array.from({ length: 12 }, (_, i) => ({
@@ -784,7 +808,7 @@ function playNovaCharge(
         const cos = Math.cos(ang);
         const sin = Math.sin(ang);
         const tail = r + 8 * p * scale;
-        g.lineStyle(2 * scale, streak.pale ? 0xffffff : color, 0.75 * p);
+        g.lineStyle(2 * scale, streak.pale ? hot(color) : color, 0.75 * p);
         g.lineBetween(to.x + cos * tail, to.y + sin * tail, to.x + cos * r, to.y + sin * r);
       }
       const discR = coreR * NOVA_RING_FACTOR * 1.15;
@@ -853,8 +877,8 @@ function startNovaFizzle(scene: Phaser.Scene, to: EffectAnchor, depthOffset: num
 }
 
 // Impact (`ultimateNova`): calls `onImpact()` immediately, then either the
-// full outward blast -- a blinding flash, a white shockwave with a slower
-// colored one behind it, a lens streak clean across the field, a burst of
+// full outward blast -- a blinding flash, a shockwave in the move's hot
+// shade with a slower, deeper-colored one behind it, a lens streak clean across the field, a burst of
 // rays, sparks flung out in every direction and glowing gas billowing
 // outward from the core, reaching close to the field's own half-height
 // (FIELD_H/2 = 240, BattleScene.ts) so it reads as filling most of the
@@ -892,12 +916,12 @@ function playNovaImpact(
   }
 
   const q = Math.min(scale, QUANTITY_CAP);
-  const flash = fxImage(scene, 61, depthOffset, FX_TEX.glow);
-  const shock = fxImage(scene, 61, depthOffset, FX_TEX.ring);
+  const flash = fxImage(scene, 61, depthOffset, FX_TEX.glow).setTint(hot(color));
+  const shock = fxImage(scene, 61, depthOffset, FX_TEX.ring).setTint(hot(color));
   const shock2 = fxImage(scene, 60, depthOffset, FX_TEX.ring).setTint(color);
-  const streak = fxImage(scene, 61, depthOffset, FX_TEX.streak);
+  const streak = fxImage(scene, 61, depthOffset, FX_TEX.streak).setTint(hot(color));
   const rays = fxImage(scene, 60, depthOffset, FX_TEX.rays).setTint(color);
-  const core = fxImage(scene, 61, depthOffset, FX_TEX.glow);
+  const core = fxImage(scene, 61, depthOffset, FX_TEX.glow).setTint(hot(color));
   const nebula = fxEmitter(scene, 59, depthOffset, FX_TEX.smoke, {
     emitting: false,
     lifespan: { min: 900, max: 1600 },
@@ -906,7 +930,7 @@ function playNovaImpact(
     rotate: { min: 0, max: 360 },
     scale: { start: 0.2 * scale, end: 0.7 * scale },
     alpha: { start: 0.4, end: 0 },
-    tint: [0xffffff, color, darken(color, 50)],
+    tint: [hot(color), color, darken(color, 50)],
   });
   const sparks = fxEmitter(scene, 61, depthOffset, FX_TEX.spark, {
     emitting: false,
@@ -915,7 +939,7 @@ function playNovaImpact(
     angle: { min: 0, max: 360 },
     scale: { start: 0.7 * scale, end: 0 },
     alpha: { start: 1, end: 0 },
-    tint: [0xffffff, color],
+    tint: [hot(color), color],
   });
   nebula.explode(Math.round(18 * q), to.x, to.y);
   sparks.explode(Math.round(80 * q), to.x, to.y);
@@ -943,8 +967,8 @@ function playNovaImpact(
   });
 }
 
-// Aftermath (`ultimateNova`): the remnant -- the core cooling from white
-// into the move's own color and shrinking away, a last faint ring still
+// Aftermath (`ultimateNova`): the remnant -- the core cooling from its hot
+// shade into the move's own color and shrinking away, a last faint ring still
 // widening, gas and sparks drifting out from where it was -- or, on a whiff,
 // the tail of the outflow Impact started. Ends by tearing down every object
 // this phase created and firing `onComplete` exactly once.
@@ -997,7 +1021,7 @@ function playNovaAftermath(
     angle: { min: 0, max: 360 },
     scale: { start: 0.4 * scale, end: 0 },
     alpha: { start: 1, end: 0 },
-    tint: [0xffffff, color],
+    tint: [hot(color), color],
   });
   const gasSpout = new FxSpout(gas);
   const sparkSpout = new FxSpout(sparks);

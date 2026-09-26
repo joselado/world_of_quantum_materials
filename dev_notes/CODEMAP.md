@@ -421,8 +421,11 @@ game/src/
                                   startMeteorFizzle/startNovaFizzle (one dissipation spanning the
                                   impact+aftermath pair, its objects built by Impact and handed to
                                   Aftermath through a `Shared` record), drawRune (a glowing arc
-                                  ring) and strainAt (the charge's held strain,
-                                  which goes slack on a whiff)
+                                  ring), strainAt (the charge's held strain,
+                                  which goes slack on a whiff) and the hot/smokeOf/dustOf/paleOf
+                                  shades that keep a meteor's or nova's light, rock, smoke and
+                                  dust all in the move's tuned color (only the whiff stays
+                                  FIZZLE_GREY)
     moveEffectPreview.ts         startMoveEffectPreview(params, key?)/stopMoveEffectPreview(key?) --
                                   loops a move's real battle effect (above) inside a guardian panel's
                                   detail pane (Noether's Moves section, Feynman's leveling pane,

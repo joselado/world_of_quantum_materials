@@ -217,6 +217,12 @@ export function playBeam(
 
 // Where in the beat the fissure has opened and the burst fires.
 const ERUPT_OPEN = 0.2;
+// The debris an eruption throws up is the floor itself, so it is tinted a
+// warm stone rather than the move's color (the rock texture's own shading is
+// neutral grey, fxTextures.ts's paintRocks); the light around it -- fire,
+// embers, the glow in the cracks -- carries the quasiparticle color. The
+// meteor's rock takes the move's color instead, being the summoned mass.
+const ERUPT_STONE = 0xe6ddd2;
 const CRACK_COUNT = 7;
 const CRACK_SEGMENTS = 5;
 
@@ -329,6 +335,7 @@ export function playEruption(
       gravityY: 620,
       scale: { min: 0.12 * scale, max: 0.3 * scale },
       rotate: tumble,
+      tint: ERUPT_STONE,
       deathZone: belowGround(to.y + groundDrop),
     },
     Phaser.BlendModes.NORMAL
