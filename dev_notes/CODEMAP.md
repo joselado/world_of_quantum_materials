@@ -11,7 +11,9 @@ stale, fix it rather than leaving it wrong.
 
 ```
 game/src/
-  main.ts                    Phaser game config, scene list, boot order
+  main.ts                    Phaser game config, scene list, boot order; installCanvasRenderer()
+                               before the game exists, and chooseRenderer() -- Canvas when the only
+                               WebGL is a software rasterizer, ?renderer=webgl|canvas to pin one
   config/
     screen.ts                 CANVAS_W/CANVAS_H (854x480, 16:9) -- single source of truth for
                                  the game's canvas size, read directly by main.ts's GameConfig
@@ -283,6 +285,13 @@ game/src/
                                  Image in the first layer's slot, and freed with that Image; the
                                  layers stay hidden in place and repaint it on RESTORE_WEBGL. See
                                  "Painted-once art is baked" below
+    canvasRenderer.ts          installCanvasRenderer() -- what Phaser's Canvas renderer is taught
+                                 so it draws the game as WebGL does: a Graphics renderer that reads
+                                 fillGradientStyle in full and fills gradient rects/triangles by
+                                 WebGL's own interpolation, fills runs of opaque same-colour
+                                 triangles as one path and grows large ones half a pixel (so tile
+                                 seams close), and tinted copies of textures for tinted sprites,
+                                 tile sprites and particles. See "Two renderers" below
     contours.ts                Smoothed walkable/impassable boundary geometry in tile space --
                                   per-tile ground outline, contact-shadow strips, rim light --
                                   built once per world-state by OverworldScene's cached terrain
@@ -1153,6 +1162,16 @@ everything else by absence, so only two things in it carry meaning.
   says why), and `scripts/component-check.mjs`'s context-loss test checks that every baked
   texture comes back with its pixels. A baked texture lives exactly as long as the image showing
   it, so a scene that is not running holds none; each bake site takes a key of its own.
+- **Two renderers.** A machine with a GPU draws the game with WebGL; one without draws it with
+  Phaser's Canvas renderer (`main.ts`'s `chooseRenderer`), taught by `art/canvasRenderer.ts` to
+  draw gradients and tints as WebGL does. Anything new has to look right on both, which in
+  practice means staying inside what that module covers: gradients (`fillGradientStyle`) only
+  on `fillRect`/`fillTriangle`, never on a path; tints (`setTint`, `setTintFill`, a particle
+  emitter's `tint`) whole-object, not per corner; and none of Phaser's WebGL-only features --
+  pre/post FX pipelines, custom shaders, bitmap masks, `lineGradientStyle`. Geometry masks and
+  the ADD/MULTIPLY blend modes have Canvas equivalents and are fine. `component-check`'s Canvas
+  parity test compares sky, floor and a tinted glow across the two, and `npm run frame-cost`
+  measures both.
 
 ## Player form and moves
 

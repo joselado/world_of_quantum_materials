@@ -99,6 +99,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const GAME_DIR = process.env.GAME_DIR || path.resolve(__dirname, '..');
 const PORT = process.env.QM_GREY_PORT || '5191';
 const URL = process.env.QM_URL || `http://localhost:${PORT}/`;
+// The game is loaded with ?renderer=webgl: headless Chrome's WebGL is a
+// software one, which the game would otherwise pass over for its Canvas
+// renderer (src/main.ts's chooseRenderer), and this script measures the
+// WebGL path players with a GPU get.
+const GAME_URL = `${URL}${URL.includes('?') ? '&' : '?'}renderer=webgl`;
 const SEED = Number(process.env.QM_GREY_SEED || 20250814);
 const JSON_OUT = process.env.QM_GREY_JSON || '';
 const WORLDS = (process.env.QM_GREY_WORLDS || '1,2,3,4,5,6,7,8,9,10')
@@ -949,7 +954,7 @@ async function main() {
 
   // ---- run ----
   log(`Booting ${URL} ...`);
-  await page.goto(URL);
+  await page.goto(GAME_URL);
   await page.waitForSelector('canvas');
   await sleep(900);
 

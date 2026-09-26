@@ -23,7 +23,10 @@ into shape.
 Works on any current browser on Windows, macOS or Linux. Needs no account, no
 download and no permission to install software, so it runs on a locked-down
 university machine as happily as on your own laptop. You need to be online to
-open it.
+open it. A computer without a graphics card plays it too: the game notices and
+draws with the browser's own canvas instead, which keeps it smooth there.
+Adding `?renderer=canvas` or `?renderer=webgl` to the address picks one by
+hand, should it ever guess wrong.
 
 **Offline, as a single file.** Download
 [`world_of_quantum_materials.html`](https://joselado.github.io/world_of_quantum_materials/world_of_quantum_materials.html)

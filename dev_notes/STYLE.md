@@ -124,6 +124,12 @@ What this means in practice:
   fine detail and holds steady through the zoom, which was judged worth the
   cost the live layers would put back during every Ultimate. Anything that
   moves, animates or is repainted stays live above or below the bake.
+- **A machine without a GPU is a player too.** It draws the game on the CPU,
+  with the Canvas renderer (CODEMAP's "Two renderers"), where every pixel of
+  every stacked translucent layer is paid for in software. The worst of the
+  game there is its overworld, at most of one core; `npm run frame-cost`'s
+  `canvas` mode is the measurement, and a new effect should be judged in it as
+  well as on a GPU.
 - **When an effect cannot be made affordable, cut it and say so.** Shipping a
   cost quietly is the failure mode this rule exists to prevent.
 

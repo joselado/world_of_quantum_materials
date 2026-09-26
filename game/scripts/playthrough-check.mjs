@@ -37,6 +37,11 @@ import { spawn, execSync } from 'node:child_process';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const GAME_DIR = process.env.GAME_DIR || path.resolve(__dirname, '..');
 const URL = process.env.QM_URL || 'http://localhost:5173/';
+// The game is loaded with ?renderer=webgl: headless Chrome's WebGL is a
+// software one, which the game would otherwise pass over for its Canvas
+// renderer (src/main.ts's chooseRenderer), and this script measures the
+// WebGL path players with a GPU get.
+const GAME_URL = `${URL}${URL.includes('?') ? '&' : '?'}renderer=webgl`;
 // How many wilds the bot fights in a world before first trying its rival, and
 // the step it adds per failed attempt. A player arrives at a gate having
 // fought their way there; the bot has to do the same or it is testing a
@@ -219,7 +224,7 @@ async function main() {
     });
     page = await browser.newPage();
     await wirePage();
-    await page.goto(URL);
+    await page.goto(GAME_URL);
     await page.waitForSelector('canvas');
     await sleep(1200);
     // Deliberately NOT clearing localStorage -- resuming, not starting over.
@@ -824,7 +829,7 @@ async function main() {
 
   // ---- boot ----
   log('Booting fresh game...');
-  await page.goto(URL);
+  await page.goto(GAME_URL);
   await page.waitForSelector('canvas');
   await sleep(1200);
   await page.evaluate(() => localStorage.clear());

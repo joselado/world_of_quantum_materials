@@ -52,6 +52,11 @@ const GAME_DIR = process.env.GAME_DIR || path.resolve(__dirname, '..');
 const REPO_DIR = path.resolve(GAME_DIR, '..');
 const SHOT_DIR = path.join(REPO_DIR, 'screenshots');
 const URL = process.env.QM_URL || 'http://localhost:5173/';
+// The game is loaded with ?renderer=webgl: headless Chrome's WebGL is a
+// software one, which the game would otherwise pass over for its Canvas
+// renderer (src/main.ts's chooseRenderer), and this script measures the
+// WebGL path players with a GPU get.
+const GAME_URL = `${URL}${URL.includes('?') ? '&' : '?'}renderer=webgl`;
 const CANVAS_W = 854;
 const CANVAS_H = 480;
 
@@ -178,7 +183,7 @@ async function main() {
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: CANVAS_W, height: CANVAS_H });
-    await page.goto(URL, { waitUntil: 'domcontentloaded' });
+    await page.goto(GAME_URL, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.__game && window.__game.scene.getScenes(true).length, {
       timeout: 30000,
     });

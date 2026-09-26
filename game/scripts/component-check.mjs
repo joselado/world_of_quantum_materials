@@ -40,6 +40,11 @@ import { spawn, execSync } from 'node:child_process';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const GAME_DIR = process.env.GAME_DIR || path.resolve(__dirname, '..');
 const URL = process.env.QM_URL || 'http://localhost:5173/';
+// The game is loaded with ?renderer=webgl: headless Chrome's WebGL is a
+// software one, which the game would otherwise pass over for its Canvas
+// renderer (src/main.ts's chooseRenderer), and this script measures the
+// WebGL path players with a GPU get.
+const GAME_URL = `${URL}${URL.includes('?') ? '&' : '?'}renderer=webgl`;
 // Screenshots/logs from a run -- gitignored, not meant to be committed.
 const SHOT_DIR = path.join(GAME_DIR, '.check-artifacts');
 fs.mkdirSync(SHOT_DIR, { recursive: true });
@@ -228,7 +233,7 @@ async function main() {
     }
     browser = await puppeteer.launch(launchOptions);
     await wirePage();
-    await page.goto(URL);
+    await page.goto(GAME_URL);
     await page.waitForSelector('canvas');
     await sleep(900);
     // The dying renderer emits its own console/pageerror noise; attributing
@@ -768,6 +773,90 @@ async function main() {
         `context lost and restored cleanly on a live battle; loop advanced ${prepared.frame} -> ${after.frame}; ` +
         `dynamic texture(s) repainted to their pre-loss pixels: ${repainted.length ? repainted.join(', ') : 'none owned'}`,
     };
+  }
+
+  // =====================================================================
+  // Test 2c: the Canvas renderer draws what the WebGL one does
+  // =====================================================================
+  // A machine without a usable GPU is put on Phaser's Canvas renderer
+  // (src/main.ts's chooseRenderer), which art/canvasRenderer.ts teaches to
+  // draw gradients and tints; out of the box it paints skies black and every
+  // tinted effect white. Every other test here runs on WebGL, so this one
+  // loads the game a second time with ?renderer=canvas, stands up the same
+  // battle in both, lays the same tinted glow over each, and compares pixels:
+  // flat sky and open floor, where the two renderers must agree to within
+  // rounding, and the glow's centre, which must carry its tint.
+  async function testCanvasRenderer() {
+    const sample = (p) =>
+      p.evaluate(async () => {
+        const g = window.__game;
+        g.scene.getScenes(true).forEach((sc) => g.scene.stop(sc.scene.key));
+        g.scene.start('Battle', {
+          wild: { name: 'Parity Foe', type: 'metal', color: 0x7a8a99, variant: 'shard', moves: ['tunnelStrike'] },
+          world: 1,
+          attackMultiplier: 1,
+          isRival: false,
+        });
+        const s = g.scene.getScene('Battle');
+        const frames = (n) =>
+          new Promise((res) => {
+            const f0 = g.loop.frame;
+            const tick = () => (g.loop.frame >= f0 + n && g.scene.isActive('Battle') ? res() : requestAnimationFrame(tick));
+            tick();
+          });
+        await frames(2);
+        s.tweens.getTweens().forEach((t) => {
+          try {
+            t.seek(0);
+          } catch (e) {
+            /* a tween that cannot seek is still paused */
+          }
+          t.pause();
+        });
+        s.add.image(90, 260, 'fx-glow').setTint(0xff2020).setDepth(10000);
+        await frames(3);
+        const px = (x, y) => new Promise((res) => g.renderer.snapshotPixel(x, y, (c) => res([c.r, c.g, c.b])));
+        return {
+          renderer: g.renderer.gl ? 'webgl' : 'canvas',
+          sky: await px(427, 8),
+          floor: await px(427, 300),
+          floorNear: await px(90, 400),
+          tint: await px(90, 260),
+        };
+      });
+
+    await resetRegistryOnly();
+    const webgl = await sample(page);
+    const canvasPage = await browser.newPage();
+    try {
+      await canvasPage.setViewport({ width: CANVAS_W, height: CANVAS_H });
+      canvasPage.on('pageerror', (e) => consoleErrors.push({ t: Date.now(), text: `canvas page: ${e.message}` }));
+      await canvasPage.goto(GAME_URL.replace('renderer=webgl', 'renderer=canvas'));
+      await canvasPage.waitForFunction(() => window.__game && window.__game.scene.getScenes(true).length, { timeout: 60000 });
+      const canvas = await sample(canvasPage);
+      if (webgl.renderer !== 'webgl' || canvas.renderer !== 'canvas') {
+        return { pass: false, detail: `renderers were ${webgl.renderer} and ${canvas.renderer}, not webgl and canvas` };
+      }
+      const off = (a, b) => Math.max(...a.map((v, i) => Math.abs(v - b[i])));
+      const worst = ['sky', 'floor', 'floorNear', 'tint']
+        .map((k) => ({ k, d: off(webgl[k], canvas[k]) }))
+        .sort((a, b) => b.d - a.d)[0];
+      const [r, gr, b] = canvas.tint;
+      if (!(r > 200 && gr < 90 && b < 90)) {
+        return { pass: false, detail: `a glow tinted 0xff2020 drew as ${JSON.stringify(canvas.tint)} under Canvas -- tints are not reaching its sprites` };
+      }
+      if (worst.d > 6) {
+        return {
+          pass: false,
+          detail:
+            `Canvas and WebGL disagree by ${worst.d} at the ${worst.k} sample (webgl ${JSON.stringify(webgl[worst.k])}, ` +
+            `canvas ${JSON.stringify(canvas[worst.k])}) -- a black or flat sky means gradients are not being drawn`,
+        };
+      }
+      return { pass: true, detail: `sky, floor and a tinted glow agree across renderers (worst channel off by ${worst.d}, at ${worst.k})` };
+    } finally {
+      await canvasPage.close();
+    }
   }
 
   // =====================================================================
@@ -1365,7 +1454,7 @@ async function main() {
   // Run everything
   // =====================================================================
   log('Booting page for the first time...');
-  await page.goto(URL);
+  await page.goto(GAME_URL);
   await page.waitForSelector('canvas');
   await sleep(900);
 
@@ -1415,6 +1504,8 @@ async function main() {
 
   log('=== Test 2b: WebGL context loss/restore (live battle) ===');
   await runTest('webgl context loss/restore', testContextLossRecovery);
+  log('=== Test 2c: Canvas renderer parity (no WebGL) ===');
+  await runTest('canvas renderer parity', testCanvasRenderer);
 
   log('=== Test 3: guardian panel open/close round-trip (worlds 1-10) ===');
   for (let world = 1; world <= 10; world++) {

@@ -491,18 +491,33 @@ it down afterward (an already-running server is left alone). Output
 (screenshots, logs, JSON summaries) goes to `game/.check-artifacts/`
 (gitignored, not meant to be committed).
 
+**Every script loads the game with `?renderer=webgl`.** The game chooses its
+renderer at boot (`src/main.ts`'s `chooseRenderer`): WebGL on a real GPU, but
+the Canvas renderer when the only WebGL on offer is a software rasterizer
+(SwiftShader, llvmpipe), because on a machine without a GPU the browser's 2D
+canvas runs the game at three times the frame rate for a fraction of the CPU.
+Headless Chrome's WebGL is exactly such a software one, so a script that did
+not pin WebGL would silently be testing the Canvas path instead. The one place
+the Canvas path is tested on purpose is `component-check`'s parity test.
+
 **`npm run component-check`** (`scripts/component-check.mjs`, about four
 minutes, longer on a loaded machine) --
 jumps directly into scenes/states via `scene.start(...)` and scene-private
-fields rather than playing through them, so each of its 56 tests exercises one
+fields rather than playing through them, so each of its 57 tests exercises one
 mechanism directly: world-entry dialogue termination for every world (the lore →
 goal/middle-tip → controls-tip chain), battle round-trips, all ten guardian
 panels' open/close, rival-gate win and loss paths, World 10's Adapted actually
 transmuting (once per move class, with both sides topped up so the swap is
 reached repeatedly -- the rival-gate loss path never gets there, since a
 fresh-save player dies before landing a hit on a living Adapted), and
-fresh/corrupt/old-shape save boot resilience, and one WebGL context
-loss/restore cycle forced on a live battle. That last one guards a property
+fresh/corrupt/old-shape save boot resilience, a Canvas-renderer parity check,
+and one WebGL context loss/restore cycle forced on a live battle. The parity
+check loads the game a second time with `?renderer=canvas`, stands up the same
+battle on both renderers with a red-tinted glow laid over it, and compares
+pixels: flat sky and open floor must agree to within 6 levels, and the glow
+must come out red. Phaser's stock Canvas renderer fails both, drawing the sky
+black (`art/canvasRenderer.ts` explains why) and every tint white. The context
+loss/restore cycle guards a property
 rather than a code path: a browser can take the WebGL context away at any
 moment (backgrounding a tab on mobile, a GPU driver reset, a laptop switching
 graphics chips) and hand it back a moment later, and unhandled that is a black
@@ -849,15 +864,15 @@ game, since a change can be free on one and ruinous on another:
   on vsync at 60fps like a desktop browser; the run prints the renderer string
   it got, so a machine with no usable GPU shows up as SwiftShader rather than
   passing silently.
-- **`swiftshader`** -- WebGL rasterized on the CPU, what a browser without a
-  usable GPU runs when it still offers WebGL. Pixel fill is the whole cost, so
-  stacked full-screen translucent layers are what show up here, and the
-  canvas's own multisampling roughly doubles it.
-- **`canvas`** -- no WebGL at all, so `Phaser.AUTO` falls back to the Canvas
-  renderer, forced by making `getContext('webgl')` return null. That renderer
-  does not implement `fillGradientStyle`, so every gradient in the game draws
-  as a flat fill of whatever colour was set last -- the skies go black. That
-  is how this path looks today, not something the measurement introduces.
+- **`swiftshader`** -- WebGL rasterized on the CPU. Pixel fill is the whole
+  cost, so stacked full-screen translucent layers are what show up here, and
+  the canvas's own multisampling roughly doubles it. The game passes a
+  software WebGL over for the Canvas renderer, so no player runs this path
+  unless they ask for it; it is measured to keep that choice honest.
+- **`canvas`** -- the Canvas renderer with `art/canvasRenderer.ts`'s
+  gradients and tints, which is what a machine without a usable GPU runs,
+  whether its browser offers software WebGL or none at all. Loaded with
+  `?renderer=canvas`; the other two modes load with `?renderer=webgl`.
 
 `QM_FRAME_MODES` and `QM_FRAME_SCENES` narrow a run (`owN`, `btN`, `btNr`,
 `title`, `hub`), `QM_FRAME_SECS` sets the measured window, `QM_FRAME_JSON`

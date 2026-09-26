@@ -11,18 +11,21 @@
 // other on the same machine, never a run against a number written down weeks
 // earlier.
 //
-// Three renderer modes, because a player's browser picks one of three paths:
+// Three renderer modes, the three paths a player's machine can put the game on:
 //   gpu          WebGL on the machine's own GPU (ANGLE over OpenGL). Headless
 //                Chrome reaches the real GPU with --use-angle=gl --enable-gpu
 //                --ignore-gpu-blocklist; the run prints the renderer string it
 //                got, so a machine without one is visible as SwiftShader here.
-//   swiftshader  WebGL rasterized on the CPU (SwiftShader) -- what a browser
-//                without a usable GPU runs when it still offers WebGL. Pixel
-//                fill is the whole cost here, so this is where stacked
-//                translucent layers show.
-//   canvas       No WebGL at all, so Phaser.AUTO falls back to its Canvas
-//                renderer -- what a browser that refuses software WebGL runs.
-//                Forced by making getContext('webgl*') return null.
+//   swiftshader  WebGL rasterized on the CPU (SwiftShader). The game passes
+//                a software WebGL over for its Canvas renderer (src/main.ts's
+//                chooseRenderer), so no player lands here unless the URL asks
+//                for WebGL; it is measured to show why. Pixel fill is the
+//                whole cost here, so this is where stacked translucent layers
+//                show.
+//   canvas       The Canvas renderer, with art/canvasRenderer.ts's gradients
+//                and tints -- what a machine without a usable GPU runs,
+//                whether its browser offers software WebGL or none at all.
+// The first two load the game with ?renderer=webgl, the last ?renderer=canvas.
 //
 // Per scene and mode it reports: fps; JavaScript ms per frame inside the game
 // step, split into update (scene logic, including the overworld's per-frame
@@ -75,6 +78,7 @@ const MODE_ARGS = {
   swiftshader: ['--disable-gpu', '--enable-unsafe-swiftshader'],
   canvas: ['--disable-gpu'],
 };
+const MODE_RENDERER = { gpu: 'webgl', swiftshader: 'webgl', canvas: 'canvas' };
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -180,15 +184,7 @@ async function runMode(chromeBin, mode) {
         return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
       };
     }, SEED);
-    if (mode === 'canvas') {
-      await page.evaluateOnNewDocument(() => {
-        const getContext = HTMLCanvasElement.prototype.getContext;
-        HTMLCanvasElement.prototype.getContext = function (type, ...rest) {
-          return /webgl/i.test(type) ? null : getContext.call(this, type, ...rest);
-        };
-      });
-    }
-    await page.goto(URL, { waitUntil: 'domcontentloaded' });
+    await page.goto(`${URL}?renderer=${MODE_RENDERER[mode]}`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => window.__game && window.__game.scene.getScenes(true).length, { timeout: 60000 });
 
     const renderer = await page.evaluate(() => {

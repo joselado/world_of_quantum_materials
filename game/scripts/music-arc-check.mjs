@@ -44,6 +44,11 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const GAME_DIR = process.env.GAME_DIR || path.resolve(__dirname, '..');
 const PORT = process.env.QM_MUSIC_PORT || '5188';
 const URL = process.env.QM_URL || `http://localhost:${PORT}/`;
+// The game is loaded with ?renderer=webgl: headless Chrome's WebGL is a
+// software one, which the game would otherwise pass over for its Canvas
+// renderer (src/main.ts's chooseRenderer), and this script measures the
+// WebGL path players with a GPU get.
+const GAME_URL = `${URL}${URL.includes('?') ? '&' : '?'}renderer=webgl`;
 const STYLE = process.env.QM_MUSIC_STYLE === 'modern' ? 'modern' : 'classic';
 const CAPTURE_MS = Number(process.env.QM_MUSIC_CAPTURE_MS || 45000);
 const JSON_OUT = process.env.QM_MUSIC_JSON || '';
@@ -336,7 +341,7 @@ async function main() {
 
     const rows = [];
     for (const key of keys) {
-      await page.goto(URL, { waitUntil: 'domcontentloaded' });
+      await page.goto(GAME_URL, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('canvas', { timeout: 20000 });
       await sleep(1500);
       const row = await measureInPage(page, key, CAPTURE_MS, STYLE);
@@ -344,7 +349,7 @@ async function main() {
       rows.push(row);
     }
 
-    await page.goto(URL, { waitUntil: 'domcontentloaded' });
+    await page.goto(GAME_URL, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('canvas', { timeout: 20000 });
     await sleep(1500);
 
