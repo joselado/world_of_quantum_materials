@@ -19,6 +19,10 @@ export const MATERIAL_BLURBS: Record<string, string> = {
     "GaN is an ordinary doped semiconductor: its transport is governed by a single-particle band picture, with no symmetry breaking or topological structure involved.",
   'Magnesium Oxide':
     'MgO is a simple ionic band insulator, the textbook baseline against which topological insulators (a gapped spectrum for a very different reason) are usually contrasted.',
+  'Sodium Chloride':
+    "Table salt: Na⁺ and Cl⁻ alternating on a rock-salt lattice, with a gap of about 8.5 eV. The two ions sit at very different energies, so the alternating on-site potential a charge density wave has to build for itself out of interactions is simply there in NaCl from the start: gapped with no interaction at all, and no ordering transition to close it.",
+  'Lithium Fluoride':
+    'The lightest alkali and the most electronegative halogen on a rock-salt lattice give LiF the widest gap of any alkali halide, about 14 eV, which is why it stays transparent further into the ultraviolet than any other common optical window. Like MgO and NaCl, it is an insulator with every interaction switched off: its filled shells leave nothing for interactions to order.',
   // The eight authored rivals, and the one place the game states plainly what
   // a golem is. A rival's blurb is what BattleScene shows the moment it falls,
   // so this is the text a player reads once per boss, each time naming the

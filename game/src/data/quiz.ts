@@ -179,6 +179,42 @@ export const WORLD_QUESTIONS: Record<number, MaterialQuestion[]> = {
       correct: 'Gauge symmetry: the two phases no longer cancel',
       incorrect: 'Translational symmetry: the pairing has to pick a site',
     },
+    // Magnesium Oxide, Sodium Chloride, Lithium Fluoride -- the trivial band
+    // insulators session 1 names as its baseline: gapped with no interaction
+    // at all, and breaking nothing beyond the translations every crystal
+    // breaks. Asked as the contrast to the session's own interaction-driven
+    // gaps (the charge density wave, the Mott gap), never as band theory,
+    // which is session 2's.
+    {
+      prompt: 'Magnesium oxide (MgO) and nickel oxide (NiO) share the same rock-salt lattice. Drop the electron-electron Coulomb repulsion from a model Hamiltonian of each. Which one still has a gap that keeps electrons from propagating?',
+      correct: 'MgO: a conventional insulator, gapped with no repulsion at all',
+      incorrect: 'NiO: its Mott gap survives without the repulsion',
+    },
+    {
+      prompt: "In sodium chloride (NaCl), every Na site and every Cl site has its own on-site energy. Is that difference spontaneous symmetry breaking, like the charge density wave's?",
+      correct: 'No: the Hamiltonian itself is not symmetric between Na and Cl sites',
+      incorrect: 'Yes: a symmetric Hamiltonian picks which sublattice holds more charge',
+    },
+    {
+      prompt: "Setting V to zero on the spinless chain makes the charge density wave's imbalance between even and odd sites vanish. Drop the electron-electron Coulomb repulsion from a model Hamiltonian of sodium chloride (NaCl). What happens to its charge imbalance between Na and Cl sites?",
+      correct: 'It stays: the Na and Cl on-site energies differ with no repulsion at all',
+      incorrect: "It vanishes, just as the charge density wave's does at V = 0",
+    },
+    {
+      prompt: 'Lithium fluoride (LiF) has a band gap of about 14 eV. Drop the electron-electron Coulomb repulsion from a model Hamiltonian of it. What happens to the gap?',
+      correct: "It stays open: a conventional insulator's gap needs no repulsion",
+      incorrect: 'It closes, the way a Mott gap does once U is switched off',
+    },
+    {
+      prompt: 'A wide-gap insulator like MgO has no magnetic order and no superconductivity. Which spontaneously broken symmetry does it still have, and which quasiparticle comes with it?',
+      correct: 'Continuous translational symmetry, with the phonon',
+      incorrect: 'Gauge symmetry, with the Higgs mode',
+    },
+    {
+      prompt: 'An ordinary, trivial insulator like NaCl and a topological insulator can share exactly the same broken and unbroken symmetries. What tells them apart?',
+      correct: 'Their topological classification, rather than their symmetry classification',
+      incorrect: 'Which symmetry each one spontaneously breaks',
+    },
   ],
 
   // World 2 (session02.tex: symmetry operators, Bloch's theorem,

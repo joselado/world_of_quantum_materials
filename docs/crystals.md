@@ -22,6 +22,9 @@ appear.
 | Europium Oxide | Insulating Magnet |
 | Manganese Fluoride | Insulating Magnet |
 | Nickel Oxide | Insulating Magnet |
+| Lithium Fluoride | Insulator |
+| Magnesium Oxide | Insulator |
+| Sodium Chloride | Insulator |
 | Graphene | Metal |
 | Titanium Diselenide | Metal |
 | Chromium | Metallic Magnet |
@@ -36,6 +39,7 @@ appear.
 | Diamond | Insulator |
 | Magnesium Oxide | Insulator |
 | Monolayer Boron Nitride | Insulator |
+| Sodium Chloride | Insulator |
 | Graphene | Metal |
 | HgTe | Metal |
 | Silver | Metal |

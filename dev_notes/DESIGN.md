@@ -44,7 +44,7 @@ movement gate of its own.
 | World | Course topic | In-game name (`WORLD_NAMES`) | Wild material archetypes |
 |---|---|---|---|
 | 0 (Hub) | — | "The Lab" — guardian's house, Qumatex | — |
-| 1 | Second quantization, mean-field, SSB | **The Mean Fields** | Free fermion, itinerant/local-moment magnets, ferroelectrics, a charge density wave, a superconductor |
+| 1 | Second quantization, mean-field, SSB | **The Mean Fields** | Free fermion, itinerant/local-moment magnets, ferroelectrics, a charge density wave, a superconductor, trivial ionic band insulators |
 | 2 | Symmetries, tight-binding, effective models | **The Stone Lattice** | Bloch-wave critters, lattice defect variants |
 | 3 | Topological band theory | **The Winding Borders** | Quantum spin Hall insulators, bulk and monolayer alike |
 | 4 | Integer and fractional quantum Hall effect | **The Storm Flats** | Landau-level materials, an intrinsic zero-field Chern insulator |
@@ -434,7 +434,7 @@ corresponding session file names no concrete real compound for that topic.
 Wired into `game/src/data/materials.ts` as `WORLD_CRYSTALS`, a **per-world database**
 keyed by world number rather than one global list — each world's `OverworldScene`
 pulls its own wild-encounter pool via `getWildPool(world)`, drawing every row from the
-matching type/topic section of the table below (worlds 1-2 each run ~10-12; every other
+matching type/topic section of the table below (worlds 1-2 each run ~13-14; every other
 world stays in the 2-11 range -- topic 2 has no dedicated main type of
 its own, so it mixes metal/semiconductor/insulator compounds with "lattice" flavor
 instead of world 1's tutorial picks; world 10's pool draws exclusively from §5's
@@ -452,7 +452,9 @@ pool.
 |---|---|---|
 | semiconductor (1) | Silicon (Si) | Conventional band semiconductor, narrow enough a gap to dope, no protected structure |
 | semiconductor (1) | Gallium Nitride (GaN) | Doped semiconductor, plain single-particle band picture |
-| insulator (1) | Magnesium Oxide (MgO) | Simple ionic band insulator, gap too wide to dope/excite across — textbook baseline contrast to topological insulators; the ionic lattice also self-traps a stronger polaron than a bare semiconductor would |
+| insulator (1, 2) | Magnesium Oxide (MgO) | Simple ionic band insulator, gap (~7.8 eV) too wide to dope/excite across — textbook baseline contrast to topological insulators; the ionic lattice also self-traps a stronger polaron than a bare semiconductor would. In World 1 it is the closed-shell member of the rock-salt trio it forms with Nickel Oxide and Europium Oxide: the same lattice, gapped with the interaction term dropped, where NiO's partly filled d shell would be a metal without its U |
+| insulator (1, 2) | Sodium Chloride (NaCl) | Rock-salt ionic insulator, gap ~8.5 eV, named by session 1 alongside MgO and boron nitride as a conventional insulator — its Na and Cl sites carry different on-site energies, the same alternating term the charge density wave's mean field builds for itself, put in by chemistry, so it has no order parameter and no transition; in World 2 it is the ionic limit of a two-orbital tight-binding model, its gap set mostly by the on-site energy difference rather than by hopping |
+| insulator (1) | Lithium Fluoride (LiF) | Rock-salt ionic insulator with the widest gap of any alkali halide, ~14 eV — the lightest alkali and the most electronegative halogen; the same session-1 baseline as MgO and NaCl, insulating with the interaction term dropped; not from the course |
 | metal (1→2 bridge) | Graphene (pristine, half-filled) | Gapless Dirac semimetal — the throughline example of session 2 (Bloch's theorem, tight-binding); precursor before symmetry-breaking (→ insulatingMagnet) or band-topology (→ topological) sets in; real graphene plasmonics is its own well-known field |
 | metal (2) | Silver (Ag) | Half-filled 5s conduction band gives it the sharpest free-electron plasmon of any elemental metal — real plasmonics/nanophotonics runs on silver (and gold), not graphene; not from the course, added to give `metal`'s Plasmon Resonance a second, more flagship host |
 | metal (2) | Mercury Telluride (HgTe) | Inverted-gap bulk band structure — Γ8/Γ6 touch at zero gap, the same gapless character Graphene's own `metal` entry above already carries, not an ordinary gapped semiconductor; §5's hybrid-recipe parent for HgTe/CdTe Quantum Well below, whose topology comes from this inversion |
@@ -461,7 +463,7 @@ pool.
 | semiconductor (2) | Phosphorene (black phosphorus monolayer) | The world's one monolayer whose low-energy model is neither a Dirac cone nor an isotropic parabola — a puckered four-atom cell giving a direct gap at Γ (~0.3 eV in bulk, ~2 eV in one layer) with strongly anisotropic masses, light along armchair and heavy along zigzag, so building its tight-binding model needs hoppings within and between the two puckered sublayers; the effective-mass-from-band-curvature and dispersion-archetype content session 2 teaches, on a compound that is not another honeycomb; not from the course |
 | semiconductor (2) | Cadmium Telluride (CdTe) | Individually an ordinary wide-gap semiconductor — the barrier layer in the HgTe/CdTe quantum-well recipe above |
 | semiconductor (4) | Gallium Arsenide (GaAs) | Ordinary direct-gap III-V semiconductor in its own right — the integer quantum Hall effect this world's `chernInsulator` members carry needs a clean 2D electron gas confined at a GaAs/AlGaAs heterostructure interface under strong field, not the bulk compound itself, so plain Gallium Arsenide doesn't carry that type here |
-| insulator (2) | Diamond (C) | ~5.5 eV gap, textbook wide-gap covalent insulator — pristine, no defect (e.g. nitrogen-vacancy) dressing; not from the course, added as `insulator`'s second member alongside Magnesium Oxide |
+| insulator (2) | Diamond (C) | ~5.5 eV gap, textbook wide-gap covalent insulator — pristine, no defect (e.g. nitrogen-vacancy) dressing; the covalent counterpart to the ionic Magnesium Oxide and Sodium Chloride; not from the course |
 | insulator (2, hybrid parent) | Monolayer Boron Nitride (hBN) | ~5.9 eV gap insulator whose honeycomb lattice is nearly commensurate with graphene's — real graphene devices are built on or encapsulated in it; §5 hybrid recipe parent (with Graphene) for Rhombohedral Pentalayer Graphene/hBN Moiré below |
 | metal (2) | Tungsten (W) | Partially filled 5d bands, ordinary band conductor — highest melting point of any elemental metal; not from the course, the d-band Electron Pulse counterpart to Silver's/Graphene's free-electron Plasmon Resonance |
 | insulatingMagnet (1) | Europium Oxide (EuO) | Half-filled Eu²⁺ 4f⁷ shell, well-isolated localized moments — the real material Weiss/mean-field theory's Brillouin-function prediction is classically tested against; a genuinely different mean-field derivation (localized-moment Weiss theory) from Iron/Cobalt's itinerant Stoner picture, and gapped where they are metallic: stoichiometric EuO is a ferromagnetic semiconductor, so its ordered moments carry a magnon and nothing else (heavily doped EuO does go metallic, the compound's own famous metal-insulator transition); not from the course |

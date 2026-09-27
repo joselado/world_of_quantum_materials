@@ -1130,6 +1130,25 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     // entry) the same deliberate way Iron/Cobalt/Barium Titanate already
     // are, rather than invented fresh for this world.
     crystal('Aluminum', 'superconductor', ['higgsOscillation', 'thermalFluctuation'], 0, 'cubic', 'Al'),
+    // The trivial band insulators session 1 itself names ("magnesium oxide,
+    // sodium chloride, or boron nitride"): gapped with every interaction
+    // switched off, and ordered in no way beyond being a crystal at all, so
+    // the one quasiparticle they carry is the phonon -- the Goldstone mode of
+    // the continuous translational symmetry every crystal breaks, the first
+    // row of that session's broken-symmetry table. All three are rock-salt,
+    // the lattice NiO and EuO above share: closed-shell cations under a
+    // filled anion p shell leave nothing for interactions to order, where
+    // NiO's partly filled d shell would be a metal without its U. Their two
+    // ions sit at different on-site energies, alternating from one
+    // sublattice to the other -- the same term the charge density wave's
+    // mean field builds for itself, put in here by chemistry, so there is no
+    // order parameter and no transition to close the gap. Magnesium Oxide
+    // and Sodium Chloride also spawn in World 2 as tight-binding examples.
+    crystal('Magnesium Oxide', 'insulator', ['thermalFluctuation'], 0, undefined, 'MgO'),
+    crystal('Sodium Chloride', 'insulator', ['thermalFluctuation'], 3, undefined, 'NaCl'),
+    // The widest gap of any alkali halide, about 14 eV: the lightest alkali
+    // and the most electronegative halogen.
+    crystal('Lithium Fluoride', 'insulator', ['thermalFluctuation'], 4, undefined, 'LiF'),
   ],
   // Topic 2 (symmetries, tight-binding) has no dedicated main type of its
   // own in the type system -- it mixes the metal/semiconductor/insulator
@@ -1138,9 +1157,9 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
   // semimetal, the archetypal plasmonic conductor, and an ordinary d-band
   // conductor respectively); Gallium Nitride, Indium Arsenide, and the
   // semiconducting MoTe₂ phase are narrow-gap dopable semiconductors, same
-  // category as Silicon; Magnesium Oxide, Diamond, and Monolayer Boron
-  // Nitride are gapped too wide for that instead, true insulators, left with
-  // their own lattice vibration and nothing else (see
+  // category as Silicon; Magnesium Oxide, Sodium Chloride, Diamond, and
+  // Monolayer Boron Nitride are gapped too wide for that instead, true
+  // insulators, left with their own lattice vibration and nothing else (see
   // MOVE_COMPATIBILITY.insulator).
   2: [
     // Plasmon Resonance moveset -- see world 1's Graphene entry above.
@@ -1151,6 +1170,12 @@ export const WORLD_CRYSTALS: Partial<Record<number, Material[]>> = {
     crystal('Silver', 'metal', ['plasmonPulse', 'thermalFluctuation'], 1, undefined, 'Ag'),
     crystal('Gallium Nitride', 'semiconductor', ['tunnelStrike', 'thermalFluctuation'], 2, 'prism', 'GaN'),
     crystal('Magnesium Oxide', 'insulator', ['thermalFluctuation'], 0, undefined, 'MgO'),
+    // MgO's rock-salt sibling one valence down (Na⁺Cl⁻ rather than
+    // Mg²⁺O²⁻), gap ~8.5 eV: filled Cl 3p bands below empty Na 3s ones,
+    // their separation set mostly by the difference between the two ions'
+    // on-site energies rather than by hopping -- the ionic limit of a
+    // two-orbital tight-binding model.
+    crystal('Sodium Chloride', 'insulator', ['thermalFluctuation'], 3, undefined, 'NaCl'),
     // Diamond's ~5.5 eV indirect gap is far too wide for doping or thermal
     // excitation to put a carrier in the conduction band -- the textbook
     // wide-gap covalent insulator, pristine (no nitrogen-vacancy or other
