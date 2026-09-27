@@ -417,10 +417,11 @@ class Layout {
           draw: (x, baseline) => {
             if (node.text === '') return;
             // Whole pixels: a Phaser Text is a canvas texture, and drawing one
-            // at a fractional offset resamples every glyph in it. Script
-            // offsets and baselines are both fractions of a font size, so
-            // without this most of a formula would sit off the pixel grid
-            // while the prose around it sits on it.
+            // at a fractional offset resamples every glyph in it. ui/crispText.ts
+            // snaps every Text as it draws anyway; rounding here as well is
+            // what puts a glyph on the same grid as the radical bar and
+            // chevrons drawn beside it, which are Graphics and are not
+            // snapped, so a radicand cannot slip a pixel under its own bar.
             this.container.add(
               this.scene.add
                 .text(Math.round(x), Math.round(baseline - ascent), node.text, this.textStyle(px, node.italic, node.math))
@@ -449,8 +450,15 @@ class Layout {
         const scriptPx = Math.max(SCRIPT_MIN_PX, Math.round(px * SCRIPT_RATIO));
         const sub = node.sub ? this.box(node.sub, scriptPx) : null;
         const sup = node.sup ? this.box(node.sup, scriptPx) : null;
-        const subDy = px * SUB_DROP;
-        const supDy = -px * SUP_RAISE;
+        // Whole pixels, like every other vertical metric here (Phaser's
+        // ascent and descent already are). A fractional shift would carry
+        // into the line's extent and so into the container's height, and
+        // every panel stacks the next element at `y += height` -- the answer
+        // plates under a prompt with a subscript in it would all land between
+        // pixel rows. ui/crispText.ts snaps each Text as it draws, but not the
+        // shapes and rules around it.
+        const subDy = Math.round(px * SUB_DROP);
+        const supDy = -Math.round(px * SUP_RAISE);
         return {
           width: base.width + Math.max(sub?.width ?? 0, sup?.width ?? 0),
           above: Math.max(base.above, sup ? sup.above - supDy : 0),
@@ -515,7 +523,10 @@ class Layout {
             const x0 = Math.round(x);
             const inkTop = baseline - inner.above;
             const inkHeight = inner.above + inner.below;
-            const barY = Math.round(inkTop - gap);
+            // An odd-width stroke centred on a pixel boundary straddles two
+            // rows and draws as a grey smear two pixels tall; half a pixel
+            // down puts the bar on one row.
+            const barY = Math.round(inkTop - gap) + (lw % 2 ? 0.5 : 0);
             const bottom = Math.round(baseline + inner.below);
             const g = this.scene.add.graphics();
             g.lineStyle(lw, Phaser.Display.Color.HexStringToColor(this.style.color).color, 1);
@@ -707,7 +718,11 @@ export function makeFormulaButton(
   const content = makeMathText(scene, 0, 0, label, style);
   const w = Math.round(content.width + style.padX * 2);
   const h = Math.round(content.height + style.padY * 2);
-  content.setPosition(0, Math.round(-h / 2 + style.padY));
+  // Exactly `padY` below the button's top edge, which the caller puts on a
+  // whole pixel. The container itself sits at `y + h/2`, half a pixel off
+  // whenever `h` is odd, so rounding this offset on its own would leave the
+  // label's absolute position off the grid by that same half pixel.
+  content.setPosition(0, style.padY - h / 2);
 
   const plate = scene.add.rectangle(0, 0, w, h, style.backgroundColor);
   const button = scene.add.container(x, y + h / 2, [plate, content]);

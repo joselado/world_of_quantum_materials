@@ -6,6 +6,7 @@ import { BattleScene } from './scenes/BattleScene';
 import { checkDataIntegrity } from './data/integrity';
 import { CANVAS_W, CANVAS_H } from './config/screen';
 import { installCanvasRenderer } from './art/canvasRenderer';
+import { installCrispText } from './ui/crispText';
 
 // Dev-only: catches a renamed/removed move id or a built world missing its
 // biome before the game even boots, rather than a specific save/player
@@ -17,6 +18,8 @@ if (import.meta.env.DEV) {
 // Before the game exists, so a browser without WebGL gets a Canvas renderer
 // that draws gradients and tints as the WebGL one does (art/canvasRenderer.ts).
 installCanvasRenderer();
+// Every Text drawn on a whole pixel, in either renderer (ui/crispText.ts).
+installCrispText();
 
 // Which renderer draws the game. WebGL on a real GPU is the cheapest by far;
 // but WebGL offered by a software rasterizer (a machine with no usable GPU)

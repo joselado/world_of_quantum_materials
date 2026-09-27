@@ -814,6 +814,9 @@ game/src/
                                    marks its formulas with `$...$` and this lays the marked
                                    spans out as real subscripts, superscripts and square roots
                                    instead of literal punctuation
+    crispText.ts                  installCrispText() -- every Phaser Text drawn with its top-left
+                                   corner on a whole pixel, in both renderers (see "Text on whole
+                                   pixels" below)
     theme.ts                      PANEL_BG/GOLD_ACCENT(_HEX)/REFERENCE_BLUE_GREY(_HEX)/
                                    TUTORIAL_CYAN(_HEX)/STORY_LAVENDER(_HEX) -- colors reused for a shared
                                    UI role (a panel background, an "active" accent, etc.) across
@@ -1172,6 +1175,22 @@ everything else by absence, so only two things in it carry meaning.
   the ADD/MULTIPLY blend modes have Canvas equivalents and are fine. `component-check`'s Canvas
   parity test compares sky, floor and a tinted glow across the two, and `npm run frame-cost`
   measures both.
+- **Text on whole pixels.** A Phaser `Text` is a canvas texture with one texel per game pixel,
+  so drawn off the pixel grid every glyph is resampled across two columns or rows. The usual
+  way a label lands there is being centred -- `setOrigin(0.5, ...)` puts the left edge of an
+  odd-width label at `x.5` -- or sitting under an element of fractional height in a panel
+  that stacks at `y += height`. `ui/crispText.ts`'s `installCrispText()`, called from
+  `main.ts` beside `installCanvasRenderer()`, makes every `Text` draw on a whole pixel
+  whatever its position: in WebGL the draw runs with the camera's `renderRoundPixels` set,
+  which snaps the quad's top-left corner and keeps its size; in Canvas that flag snaps only
+  the drawn translation, so a `Text`'s display origin is rounded to a whole number as well.
+  It is render-only (a `Text` keeps its own `x`/`y`, so layout, tweens and hit areas are
+  unchanged) and only at a whole-number camera zoom, as Phaser itself does, so under the
+  battle's pulled-back arena camera the runs of one line do not jitter against each other.
+  Phaser's own `roundPixels` game setting stays off: it snaps every sprite, and in the
+  Canvas renderer it draws every image half a pixel wider. Shapes and `Graphics` are not
+  snapped, so a panel still keeps its own plates and rules on the grid by laying out in
+  whole pixels (see "Formulas in question text" below).
 
 ## Player form and moves
 
@@ -2406,12 +2425,21 @@ throwaway Phaser `Text` instead (`getTextMetrics`), since it is Phaser's own asc
 decides where a `Text` puts its baseline; both are cached per font for the life of the page.
 Every glyph and rule is still drawn on a whole pixel, since a Phaser Text is a canvas
 texture and a fractional offset resamples it -- positions round per draw off the fractional
-running cursor, so the sub-pixel error never accumulates.
+running cursor, so the sub-pixel error never accumulates. Only widths are fractional:
+every vertical metric is whole, the script shifts included, so a formula container's
+height is a whole number and a panel stacking the next element at `y += height` keeps
+the answer plates under a subscripted prompt on the pixel grid -- `ui/crispText.ts`
+snaps each `Text` as it draws, but not the plates, panel rectangles and rules around it. `makeFormulaButton` places its label exactly `padY` below the
+button's top edge for the same reason: the container sits at `y + h/2`, half a pixel off
+whenever `h` is odd, so the label's offset from it must not be rounded on its own. A
+radical's bar drawn with an odd stroke width is moved half a pixel down onto one row,
+since centred on a pixel boundary it would smear across two.
 
 *Scripts big enough to read.* Scripts are set at 0.8 of their base with a 10px floor, rather
 than the 0.7 real typesetting uses: the smallest text-size preset puts a prompt at 13px, and
 a 0.7 script off that is 9px, which in a monospace face is a blur rather than a letter.
-Their baselines move by 0.45 of the base size up and 0.19 down, the usual proportions.
+Their baselines move by 0.45 of the base size up and 0.19 down, the usual proportions,
+rounded to whole pixels.
 
 Two entry points, and both fall straight through to a plain Phaser `Text` when the string
 carries no `$` at all -- which is most question text, so most of it never touches this
