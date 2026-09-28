@@ -117,6 +117,11 @@ physics blurb before deciding.
 - First time fusing into a given hybrid result: 60 qumatessence
 - Every later fusion into that same result: free, however you reach it
 
+Every hybrid also carries the built-in Hybrid Aura passive (see
+[Hybrids](hybrids.md#hybrid-aura)): 30% harder hits and 30% less damage
+taken, for as long as you wear the form, at no slot cost. It shows up at
+the Lab's Abilities station beside whatever you have learned from Franklin.
+
 <img src="../screenshots/docs-guardians-majorana-panel.png" width="300" alt="Majorana's fusion panel: the hybrids currently reachable, one previewed as its two component crystals, the fused result and a 60-qumatessence cost">
 
 ## Anderson's Impurities

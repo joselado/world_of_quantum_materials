@@ -95,7 +95,7 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     title: 'Walking the Path',
     unlock: { kind: 'tip' },
     body:
-      'Use the arrow keys to move: Up/Down step forward and back, Left/Right step sideways. On a touchscreen, the same four arrows sit in the bottom left corner of the world, and holding one walks the same way holding a key does. Off-path ground is impassable (told apart by its color, not by a wall you\'d see), so watch where the walkable ground actually goes rather than holding one direction blindly. Press Enter any time, or click the Lab line in the bottom right corner, to return to the Lab, where Qumatex, your moves and stats, the story so far, the tutorial and the settings all live as stations (abilities join them once you learn one), and every guardian you have met stands in the room to be clicked. The Settings station is also where the music is set to Classic, Modern or Mute.',
+      'Use the arrow keys to move: Up/Down step forward and back, Left/Right step sideways. On a touchscreen, the same four arrows sit in the bottom left corner of the world, and holding one walks the same way holding a key does. Off-path ground is impassable (told apart by its color, not by a wall you\'d see), so watch where the walkable ground actually goes rather than holding one direction blindly. Press Enter any time, or click the Lab line in the bottom right corner, to return to the Lab, where Qumatex, your moves and stats, the story so far, the tutorial and the settings all live as stations (abilities join them once you have one), and every guardian you have met stands in the room to be clicked. The Settings station is also where the music is set to Classic, Modern or Mute.',
   },
   encounter: {
     title: 'Wild Encounters',
@@ -149,7 +149,7 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     title: 'Hybrid Fusion',
     unlock: { kind: 'guardian', ids: ['majorana'] },
     body:
-      "Majorana (World 5) fuses two quantum materials you've already defeated into a genuinely new hybrid material, and you become it the moment you fuse. Not every pairing fuses into something real, so browse by result to see which hybrids your current roster of defeated crystals can actually reach. Each hybrid result costs qumatessence to unlock the first time you fuse into it; every later fusion into that same result is free.",
+      "Majorana (World 5) fuses two quantum materials you've already defeated into a genuinely new hybrid material, and you become it the moment you fuse. Not every pairing fuses into something real, so browse by result to see which hybrids your current roster of defeated crystals can actually reach. Each hybrid result costs qumatessence to unlock the first time you fuse into it; every later fusion into that same result is free. Every hybrid also carries Hybrid Aura, a passive built into the form itself: your hits land 30% harder and every hit you take is softened by 30% for as long as you wear it. It takes no slot, is never set aside, and is listed at the Lab's Abilities station.",
   },
   hostDoping: {
     title: 'Doping In an Impurity',
@@ -175,7 +175,7 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     title: 'Passive Abilities',
     unlock: { kind: 'guardian', ids: ['franklin'] },
     body:
-      "Franklin (World 9) teaches passive abilities instead of moves: once bought, a passive isn't chosen from the move menu each turn, it's simply active for a whole battle, working automatically in the background. Buy as many as you like, but a passive only runs while it has room: Franklin sells your crystal up to three passive slots, one at a time and each dearer than the last, and every passive takes one, two or three of them. Switch which ones are active by revisiting Franklin, or check your current loadout any time from the Lab's Abilities station.",
+      "Franklin (World 9) teaches passive abilities instead of moves: once bought, a passive isn't chosen from the move menu each turn, it's simply active for a whole battle, working automatically in the background. Buy as many as you like, but a passive only runs while it has room: Franklin sells your crystal up to three passive slots, one at a time and each dearer than the last, and every passive takes one, two or three of them. Switch which ones are active by revisiting Franklin, or check your current loadout any time from the Lab's Abilities station. A hybrid crystal also carries one passive of its own, Hybrid Aura, built into the form itself: it takes no slot, is never set aside, and is listed at the Abilities station like any other.",
   },
   ultimateMoves: {
     title: 'Ultimate Moves',

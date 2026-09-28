@@ -465,6 +465,22 @@ for (const [world, rival] of Object.entries(WORLD_RIVALS)) {
   }
 }
 
+// 12c. Every built-in passive (passives.ts's BUILT_IN_PASSIVES -- the ones
+// a crystal carries by what it is, never bought or slotted) is actually
+// hooked into battle: BattleScene reads each one off a side's active set as
+// `.has('<id>')`, and one it never names is listed on the pill and at the
+// Lab's Abilities station while doing nothing -- valid TypeScript, inert in
+// the game. A plain text search for that call, like 12b.
+{
+  const BUILT_IN_PASSIVES = evalNode(findTopLevelConst(passivesSf, 'BUILT_IN_PASSIVES'), passivesSf);
+  const battleSrc = fs.readFileSync(path.join(gameDir, 'src/scenes/BattleScene.ts'), 'utf8');
+  for (const [key, p] of Object.entries(BUILT_IN_PASSIVES)) {
+    if (p.id !== key) flag(`BUILT_IN_PASSIVES['${key}'].id is '${p.id}', not its own key`);
+    if (PASSIVES[p.id]) flag(`BUILT_IN_PASSIVES['${p.id}'] collides with a PASSIVES id`);
+    if (!battleSrc.includes(`has('${p.id}')`)) flag(`BUILT_IN_PASSIVES['${p.id}'] is never read by BattleScene (no .has('${p.id}') hook)`);
+  }
+}
+
 // 13. Every hybrid recipe's parents must resolve to a real crystal (any
 // world), and its result -- looked up by name via materials.ts's own
 // `namedResult`/`findMaterialByName`, which already throws at module-load

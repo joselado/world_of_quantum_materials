@@ -1284,7 +1284,10 @@ station motifs are deliberately not tunnels with a visible far end.
   themselves, since that washes out to solid white against anything but a black
   background (the overworld sky never is). A soft additive-blended glow (their averaged color)
   and a jagged white-gold seam down the middle *do* use `ADD`, since those are meant to read as
-  light/energy rather than solid material. Finished with sparkles tinted in both parents' own
+  light/energy rather than solid material. That glow is also the whole visual of the Hybrid
+  Aura passive every hybrid carries (DESIGN.md §4): a hybrid draws no extra ring or ground halo
+  for it in battle, unlike Franklin's passives, since the aura is what the crystal already is.
+  Finished with sparkles tinted in both parents' own
   colors (`hexColor`) instead of the plain-white default. A hybrid `playerForm` restored from a
   save that predates `hybridParents` gets the field back from the roster entry of the same
   name on load (`data/save.ts`), so a hybrid is never drawn as a single shape.
@@ -2859,11 +2862,13 @@ world are shaped, since world N's start is world N-1's exit.
   Energy/Momentum/Lifetime plus qumatessence and current form name, ending in a single
   "Close" button.
 - "Abilities" is its own dedicated panel (`showAbilitiesPanel`, `560` wide, same blue-grey
-  stroke) rather than a third `showInfoPanel` body -- per passive owner (`data/passives.ts`'s
-  `PASSIVE_OWNERS`, currently just Franklin) one bold name line, "`<owner>`: `<active names>`
-  (N of M slots used)", then one description line per active passive, each its own `Text`
-  object with explicitly capped font sizes (`nameScale`/`descScale`, the same caps
-  Franklin's own pane uses) rather
+  stroke) rather than a third `showInfoPanel` body -- first, only while the current form is a
+  hybrid, a "Built in: Hybrid Aura" block (`data/passives.ts`'s `BUILT_IN_PASSIVES`; a plain
+  crystal shows no block rather than an empty one), then per passive owner (`PASSIVE_OWNERS`,
+  currently just Franklin) one bold name line, "`<owner>`: `<active names>` (N of M slots
+  used)", every block being one bold name line followed by one description line per passive,
+  each its own `Text` object with explicitly capped font sizes (`nameScale`/`descScale`, the
+  same caps Franklin's own pane uses) rather
   than folding the full descriptions into `showInfoPanel`'s single wrapped body, since that
   body's shrink-to-fit only lowers font size and never truncates -- two full passive
   descriptions back to back could still overflow the canvas at that panel's largest text-size

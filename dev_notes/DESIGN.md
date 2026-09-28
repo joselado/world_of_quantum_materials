@@ -178,7 +178,8 @@ since none of that
 content (player stats/moves/passives, game settings) is
 tied to being mid-world. Abilities only actually appears in the room once
 there's something to check there -- a first passive learned
-(save/registry `passivesUnlocked`) -- rather than on a fresh save with nothing yet to show;
+(save/registry `passivesUnlocked`), or a current form that carries a built-in one (a
+hybrid's Hybrid Aura, §4) -- rather than on a fresh save with nothing yet to show;
 Superposition Mode (below) treats it as unlocked from the start, matching how its own
 guardian/passive grants already work. Alongside the stations, every guardian the player has
 met stands in the room as their own clickable avatar (§5) rather than being listed in a
@@ -836,6 +837,25 @@ natural defense against this!". Kondo's screening term (above) sits alongside it
 symmetric `resolveHit` multiplier, so a mismatched hit against a screened defender resolves
 both: doubled for the mismatch, then halved for the cloud.
 
+**Hybrid Aura.** Every hybrid-recipe crystal (§5's `HYBRID_RECIPES` results, which are the
+whole of World 10's wild pool) carries one built-in passive, Hybrid Aura
+(`data/passives.ts`'s `BUILT_IN_PASSIVES`, read off the material itself by
+`builtInPassiveIds` at the start of every battle rather than off any save key): its holder's
+own hits land at ×1.3 (`HYBRID_AURA_ATTACK_MULT`, keyed off the attacker) and the hits it
+takes are softened to ×0.7 (`HYBRID_AURA_DAMAGE_MULT`, keyed off the defender), both flat
+`resolveHit` multipliers beside the mismatch, screening and Diffraction Shadow terms, so a
+hybrid hitting a hybrid resolves both. Symmetric like every other term: a wild hybrid met in
+World 10 carries it exactly as a fused player does, so World 10's wilds hit harder and hold
+out longer than their stats alone say -- and fusing at Majorana's is a real power step, not
+only a change of type. The Adapted never carries it (§6), whatever hybrid compound it
+reshapes into: it is a model of a material, not a fused one. A reflected hit (Full
+Reflection, §5) carries the number the hit resolved to, both aura terms included. Built into
+the form rather than bought: it takes no Franklin slot, is never set aside, sits first on the
+battle pill and at the Lab's Abilities station ("Built in: Hybrid Aura", above Franklin's
+line), and lasts exactly as long as the player wears a hybrid form. The additive glow every
+hybrid already wears (STYLE.md's **Hybrid materials**) is the aura's whole visual; there is
+no separate ground halo for it.
+
 **World 1 opponents attack with phonon moves only, while the player is still unbuilt.**
 Every opponent-side hit is rolled fresh from the opponent's own moveset
 (`BattleScene.playerAttack`'s `opponentMoveId`; World 10's third finale stage rolls
@@ -1180,9 +1200,11 @@ state can mark her met before the player has actually reached her.
   graphene layers, not one.
   Recipe results are ordinary `WORLD_CRYSTALS` entries (all of them World
   10's pool, see §2/§7 below) rather than synthesized on the fly, so a hybrid
-  encountered wild and one fused by hand are the exact same crystal; `combineMaterials`
-  additionally attaches `hybridParents` so the fused form still renders as an actual
-  visual mixture of both parents. Deliberately no memory of earlier fusions to instantly
+  encountered wild and one fused by hand are the exact same crystal, and every one of them
+  carries the built-in Hybrid Aura passive (§4: its own hits ×1.3, hits it takes ×0.7, no
+  slot, never set aside, listed at the Lab's Abilities station) for as long as it is worn;
+  `combineMaterials` additionally attaches `hybridParents` so the fused form still renders
+  as an actual visual mixture of both parents. Deliberately no memory of earlier fusions to instantly
   re-become -- every visit picks a fresh pair the same as any other combine; the player's
   *current* form (which may already be a hybrid) still persists on its own via `playerForm`
   regardless. In Superposition Mode the ingredient pool is every crystal in
@@ -1729,12 +1751,17 @@ Two of the ten answer to something other than a fixed row in `WORLD_RIVALS`:
     quasiparticle just used (`BattleScene.transmuteAdapted`, `typesHosting`), so the fight
     closes off the mismatch bonus the rest of the game taught the player to hunt for. Its
     name, moveset (`WORLD_RIVALS[10].moves`) and bar (`rivalHpForWorld(10)`) never change
-    underneath its changing form.
+    underneath its changing form, and it never carries Hybrid Aura (§4), even reshaped as a
+    hybrid-recipe compound: the aura belongs to a fused material, and the Adapted is a
+    model of one (`BattleScene.create` reads the opponent's built-in passives off the rival
+    entry it is named as, once, before any reshape).
   - **Stage 2, The Model of You**, is the finished record: it wears the player's bare form
     -- type, habit and colour, with nothing doped in -- for the whole stage and never reshapes
     (a record is definite), throws only the player's own *basic* moves (`unlockedMoves` ∩
-    `ORDINARY_MOVE_IDS` ∩ what that bare form hosts, so no Feynman level, no passive, no
-    Kondo cloud and no impurity's channel; an opponent's copy of a move is never leveled),
+    `ORDINARY_MOVE_IDS` ∩ what that bare form hosts, so no Feynman level, no passive -- a
+    hybrid player's Hybrid Aura included, since what the Model wears is the player's type,
+    not a fused material (§4) -- no Kondo cloud and no impurity's channel; an opponent's
+    copy of a move is never leveled),
     and carries the player's own max HP (`wildHpForWorld(10)`) as it carries their type and
     moves -- the copy is exact, which makes this stage a mirror rather than a wall. Both
     sides host every class the other throws, so neither side lands the mismatch bonus --

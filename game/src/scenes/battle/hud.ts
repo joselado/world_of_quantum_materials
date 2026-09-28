@@ -235,10 +235,11 @@ export function drawNameplate(scene: Phaser.Scene, opts: NameplateOptions): Name
   const statusLabel = scene.add
     .text(0, 0, '', { fontSize: `${Math.round(opts.namePx * 0.8)}px`, color: STATUS_PILL_COLOR, padding: { x: 4, y: 1 } })
     .setOrigin(0.5, 0);
-  // Wrapped at the plate's own width like the name above it: three
-  // one-slot passives at the largest text-size preset join into a line
-  // wider than the field, and a second pill line costs the stack less than
-  // a clipped one costs the reading.
+  // Wrapped at the plate's own width like the name above it: a hybrid's
+  // Hybrid Aura plus three one-slot Franklin passives at the largest
+  // text-size preset join into a line wider than the field, and a second
+  // or third pill line costs the stack less than a clipped one costs the
+  // reading.
   const passive = opts.passiveText
     ? scene.add
         .text(0, 0, opts.passiveText, {

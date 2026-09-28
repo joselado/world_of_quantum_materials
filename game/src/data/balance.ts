@@ -309,6 +309,19 @@ export const LAST_SCATTERING_MIN_HP = 1;
 // taking nothing (BattleScene.resolveHit's reflected branch).
 export const FULL_REFLECTION_CHANCE = 0.1;
 
+// --- Hybrid Aura (DESIGN.md §5, every hybrid-recipe crystal) ----------------
+
+// Hybrid Aura (id hybridAura, data/passives.ts's BUILT_IN_PASSIVES): the
+// always-on ability every hybrid-recipe material carries by what it is,
+// never bought and never slotted. Its holder's own hits are multiplied up by
+// HYBRID_AURA_ATTACK_MULT (keyed off the attacker, like Satellite
+// Reflection's crit term) and the hits it takes are multiplied down by
+// HYBRID_AURA_DAMAGE_MULT (keyed off the defender, like Diffraction Shadow),
+// both as flat resolveHitDamage terms. Both sides carry it symmetrically: a
+// World 10 wild hybrid has it exactly as a fused player does.
+export const HYBRID_AURA_ATTACK_MULT = 1.3;
+export const HYBRID_AURA_DAMAGE_MULT = 0.7;
+
 // The ordinary quasiparticle-mismatch multiplier (DESIGN.md §3/§4) -- a
 // defender whose own physics can't host the attacking move's class at all
 // takes that hit at double force. Franklin's Amorphous Halo (above) softens
@@ -454,6 +467,12 @@ export interface ResolveHitParams {
   screenedMult: number;
   // Franklin's Diffraction Shadow on the defender's side -- 1 when inactive.
   fractionalGuardMult: number;
+  // Hybrid Aura (HYBRID_AURA_ATTACK_MULT) on the *attacker's* side, and
+  // Hybrid Aura (HYBRID_AURA_DAMAGE_MULT) on the defender's side -- 1 when
+  // that side is not a hybrid. Optional the same way critChanceMult is: a
+  // call site with no hybrid in play can leave both off.
+  hybridAuraAttackMult?: number;
+  hybridAuraGuardMult?: number;
   // Franklin's Satellite Reflection on the *attacker's* side, which doubles
   // its holder's own crit rate (ANYON_ECHO_CRIT_MULTIPLIER) -- 1 when
   // inactive. Optional: a call site with no passive in play (the balance
@@ -478,7 +497,8 @@ export interface ResolveHitOutcome {
 // damage number and whether it crit -- the attacker's Energy lever
 // (energyFactor), the quasiparticle-mismatch multiplier, every other
 // multiplicative term (quiz/Analytic/Ultimate bonus, Kondo screening,
-// Franklin Diffraction Shadow), the crit bonus, and +/-15% damage variance,
+// Franklin Diffraction Shadow, either side's Hybrid Aura), the crit bonus,
+// and +/-15% damage variance,
 // all multiplied together, divided by the defender's Lifetime lever
 // (lifetimeFactor), and rounded once at the end.
 export function resolveHitDamage(params: ResolveHitParams): ResolveHitOutcome {
@@ -494,6 +514,8 @@ export function resolveHitDamage(params: ResolveHitParams): ResolveHitOutcome {
       params.bonusMultiplier *
       params.screenedMult *
       params.fractionalGuardMult *
+      (params.hybridAuraAttackMult ?? 1) *
+      (params.hybridAuraGuardMult ?? 1) *
       (crit ? CRIT_DAMAGE_MULTIPLIER : 1) *
       variance) /
       lifetimeFactor(params.defenderStats.correlation)

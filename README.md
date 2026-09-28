@@ -198,7 +198,7 @@ listed by name alongside a note on the real physics behind it, each with a
 door back out to whichever world you were last walking; a Moves station where
 you can watch any move you carry play on its own stage and read what the
 quasiparticle it throws actually is; and stations to check your stats, look
-over the passive abilities you have learned, replay the tutorial, re-read the
+over the passive abilities your crystal runs, replay the tutorial, re-read the
 story so far, adjust settings, and step back out to the title screen. Every
 guardian you've met stands in the room itself, so you can click one to reopen
 their panel without leaving. Your progress autosaves as you play, so there's
@@ -231,7 +231,9 @@ archetypes, and a rival crystal gating the way to the next world.
 
 World 10's wilds are every hybrid crystal fusable at Majorana's station (see
 [Hybrids](docs/hybrids.md)), real compounds in their own right, just ones
-reached by fusing two parents rather than found unmixed anywhere else. Its
+reached by fusing two parents rather than found unmixed anywhere else, and
+every one carries the built-in Hybrid Aura, the same aura fusing gives you:
+harder hits, and less taken. Its
 rival, The Adapted, is a final boss built as "a model of you", fought in
 three stages on three bars, with your own HP refilled between them. First
 The Adapted: it starts the fight mirroring whichever type you're currently

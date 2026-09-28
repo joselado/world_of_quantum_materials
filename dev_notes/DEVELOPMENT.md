@@ -184,6 +184,10 @@ per-type `RIVAL_9_NAMES`/`RIVAL_9_MOVES` tables are held to covering exactly
 (DESIGN.md §5's "hosts exactly the hybrid-recipe results, and nothing else"),
 every passive has a halo branch in `art/passiveHalos.ts` (check 12b -- a passive
 the halo dispatch doesn't name is valid TypeScript and simply invisible in the game),
+every built-in passive (`BUILT_IN_PASSIVES`, a hybrid's Hybrid Aura) is keyed by its own
+id, collides with no `PASSIVES` id, and is actually read by `BattleScene` as a
+`.has('<id>')` hook (check 12c -- one it never reads is listed on the pill and in the Lab
+while doing nothing),
 every world 1-9 has a non-empty quiz pool, every formula span in a quiz
 prompt or answer is well-formed (`$...$` balanced, fences balanced inside a
 span, no dangling `_`/`^`/`√` -- a malformed span renders as literal `$` in
@@ -366,7 +370,7 @@ game/
     audio/                procedural sfx + per-scene music tracks
     scenes/
       TitleScene.ts       loads the save, Story Mode / Superposition Mode picker, "Continue"/"New Game"
-      HubScene.ts          World 0, static room, up to 8 stations (Abilities appears once a passive is learned; the door leads back to the world you left, falling back to the furthest unlocked world, or a fresh World 1 in Superposition Mode, when there is nothing to resume)
+      HubScene.ts          World 0, static room, up to 8 stations (Abilities appears once a passive is learned or the current form is a hybrid; the door leads back to the world you left, falling back to the furthest unlocked world, or a fresh World 1 in Superposition Mode, when there is nothing to resume)
       OverworldScene.ts    per-world walkable map, encounters, shop, rival gate; Enter warps to the Hub
       overworld/            the corridor's ground plane and air: sky.ts, terrain/ (one module per
                               off-path material under terrain/materials/)

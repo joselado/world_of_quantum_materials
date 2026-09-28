@@ -11,6 +11,23 @@ Dresselhaus's transmute list and Anderson's impurity-host list both skip
 every hybrid, since those two mechanics are about one real, standalone
 crystal's own physics.
 
+## Hybrid Aura
+
+Every hybrid, whether you fused it or met it wild in World 10, carries a
+built-in passive ability, Hybrid Aura: your hits land 30% harder and every
+hit you take is softened by 30%, for as long as you wear the hybrid form.
+Two phases coupled across one interface lend each other what neither has
+alone, which is the whole point of building a heterostructure. It is part
+of the crystal rather than something you buy: it takes none of Franklin's
+passive slots, can't be set aside, and is listed at the Lab's Abilities
+station and on your crystal's pill in battle like any other passive. The
+glow a hybrid wears is the aura; there is nothing extra to look for.
+
+The wild hybrids of World 10 carry it too, so they hit harder and hold out
+longer than their stats alone say. The Adapted, World 10's rival, never
+carries it, even when it reshapes into a hybrid compound: it is a model of
+a material, not a fused one.
+
 ## Fusion recipes (Majorana)
 
 Not every possible pairing works: this is a curated, physically grounded

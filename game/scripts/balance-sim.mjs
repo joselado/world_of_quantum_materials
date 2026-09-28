@@ -391,7 +391,15 @@ const MAJORANA_FUSE_COST = evalNode(findTopLevelConst(materialsSf, 'MAJORANA_FUS
 //   no wild outside world 10 ever is -- modeling it would need
 //   HYBRID_RECIPES plus each hybrid's own hosting rules for one or two
 //   late-game worlds' worth of marginal advantage; left unmodeled as a
-//   small, deliberate undercount of Ph.D.'s ceiling in worlds 9-10.
+//   small, deliberate undercount of Ph.D.'s ceiling in worlds 9-10. The
+//   same undercount covers Hybrid Aura (data/passives.ts's built-in passive,
+//   HYBRID_AURA_ATTACK_MULT/HYBRID_AURA_DAMAGE_MULT): a fused player would
+//   carry it, and no modeled build ever fuses. The *opponent's* side of it
+//   is modeled, though -- every World 10 wild is a hybrid-recipe result
+//   (WORLD_CRYSTALS[10] is exactly that set, content-lint's own invariant),
+//   so each one hits harder and takes less there (`hybridAura` on the
+//   defenders defendersFor builds); rivals never carry it, the Adapted
+//   being a model of a material rather than a fused one.
 void BLOCH_DESTINATION_COST;
 void ANDERSON_DOPE_COST;
 void MAJORANA_FUSE_COST;
@@ -539,6 +547,8 @@ const {
   MISMATCH_MULTIPLIER,
   EDGE_CURRENT_MISMATCH_MULT,
   FRACTIONAL_GUARD_DAMAGE_MULT,
+  HYBRID_AURA_ATTACK_MULT,
+  HYBRID_AURA_DAMAGE_MULT,
   wildHpForWorld,
   rivalHpForWorld,
   MAX_MULTI_HIT,
@@ -572,7 +582,7 @@ const HIT_SAMPLES = 120; // Monte-Carlo samples per (move, defender) pair averag
 // each. `makeMonteCarloHitFn` below is `avgHitDamage` folded into this
 // shape; `frozenHitDamage` is the non-random one.
 function makeMonteCarloHitFn(rng) {
-  return (attackerStats, defenderStats, power, mismatch, mismatchMultiplier, attackMult, bonusMultiplier, screenedMult, fractionalGuardMult) => {
+  return (attackerStats, defenderStats, power, mismatch, mismatchMultiplier, attackMult, bonusMultiplier, screenedMult, fractionalGuardMult, hybridAuraAttackMult = 1, hybridAuraGuardMult = 1) => {
     let total = 0;
     for (let i = 0; i < HIT_SAMPLES; i++) {
       const { damage } = resolveHitDamage({
@@ -585,6 +595,8 @@ function makeMonteCarloHitFn(rng) {
         bonusMultiplier,
         screenedMult,
         fractionalGuardMult,
+        hybridAuraAttackMult,
+        hybridAuraGuardMult,
         critRng: rng,
         varianceRng: rng,
       });
@@ -601,7 +613,7 @@ function makeMonteCarloHitFn(rng) {
 // frozen so it can be called thousands of times (candidate forms x wins
 // counts) without ever advancing the seeded stream the reported figures
 // depend on for reproducibility.
-function frozenHitDamage(attackerStats, defenderStats, power, mismatch, mismatchMultiplier, attackMult, bonusMultiplier, screenedMult, fractionalGuardMult) {
+function frozenHitDamage(attackerStats, defenderStats, power, mismatch, mismatchMultiplier, attackMult, bonusMultiplier, screenedMult, fractionalGuardMult, hybridAuraAttackMult = 1, hybridAuraGuardMult = 1) {
   return resolveHitDamage({
     attackerStats,
     defenderStats,
@@ -612,6 +624,8 @@ function frozenHitDamage(attackerStats, defenderStats, power, mismatch, mismatch
     bonusMultiplier,
     screenedMult,
     fractionalGuardMult,
+    hybridAuraAttackMult,
+    hybridAuraGuardMult,
     critRng: () => 1,
     varianceRng: () => 0.5,
   }).damage;
@@ -790,18 +804,21 @@ function bestMismatchClass(type, pool) {
 
 // --- Fight evaluation --------------------------------------------------
 
-// Player's best average damage-per-hit against one defender {type},
-// maximized over every owned, currently-usable attack move -- for every
+// Player's best average damage-per-hit against one defender {type,
+// hybridAura} (a hybrid defender softens every hit it takes by
+// HYBRID_AURA_DAMAGE_MULT; the player never carries the aura here, see the
+// header's Majorana bullet), maximized over every owned, currently-usable
+// attack move -- for every
 // effort tier, not just Ph.D.: BattleScene's move menu itself prints each
 // move's effective power and a "!!2x" mismatch tag against the current
 // opponent (moveButtonContent), so this pick models "tap the biggest number
 // on the annotated menu", not memorized type-chart optimization. See header
 // comment.
-function bestPlayerHit(hitFn, state, playerStats, enemyStats, defenderType) {
+function bestPlayerHit(hitFn, state, playerStats, enemyStats, defender) {
   let best = 0;
   for (const moveId of ownedAttackMoves(state)) {
     const cls = moveClassFor(state, moveId);
-    const mismatch = !canHost(defenderType, cls);
+    const mismatch = !canHost(defender.type, cls);
     const dmg = hitFn(
       playerStats,
       enemyStats,
@@ -811,7 +828,9 @@ function bestPlayerHit(hitFn, state, playerStats, enemyStats, defenderType) {
       quizAttackMult(state.accuracy),
       bonusMultiplierFor(state, moveId),
       1,
-      1
+      1,
+      1,
+      defender.hybridAura ? HYBRID_AURA_DAMAGE_MULT : 1
     );
     if (dmg > best) best = dmg;
   }
@@ -819,13 +838,14 @@ function bestPlayerHit(hitFn, state, playerStats, enemyStats, defenderType) {
 }
 
 // Enemy's average damage-per-hit against the player, averaged uniformly
-// across the defender's own moveset (Phaser.Utils.Array.GetRandom picks
-// uniformly), factoring in whatever defensive buffs/passives the player
-// currently holds and whichever form the player currently wears (mismatch
-// as the defender).
-function avgEnemyHit(hitFn, state, playerStats, enemyStats, enemyMoves) {
+// across the enemy's own moveset (Phaser.Utils.Array.GetRandom picks
+// uniformly), factoring in the enemy's own Hybrid Aura if it is a hybrid
+// (HYBRID_AURA_ATTACK_MULT on every hit it throws), whatever defensive
+// buffs/passives the player currently holds and whichever form the player
+// currently wears (mismatch as the defender).
+function avgEnemyHit(hitFn, state, playerStats, enemyStats, enemy) {
   let total = 0;
-  for (const moveId of enemyMoves) {
+  for (const moveId of enemy.moves) {
     const move = MOVES[moveId];
     const mismatch = !canHost(state.playerType, move.class);
     total += hitFn(
@@ -837,10 +857,12 @@ function avgEnemyHit(hitFn, state, playerStats, enemyStats, enemyMoves) {
       1,
       1,
       playerScreenedMult(state, move.class),
-      playerFractionalGuardMult(state)
+      playerFractionalGuardMult(state),
+      enemy.hybridAura ? HYBRID_AURA_ATTACK_MULT : 1,
+      1
     );
   }
-  return total / enemyMoves.length;
+  return total / enemy.moves.length;
 }
 
 // One fight's full evaluation against a single defender {type, maxHp,
@@ -863,8 +885,8 @@ let activeDifficultyMultiplier = 1;
 function evaluateFight(hitFn, state, world, defender) {
   const playerStats = state.stats;
   const enemyStats = enemyStatsForWorld(world, activeDifficultyMultiplier);
-  const playerHitDmg = bestPlayerHit(hitFn, state, playerStats, enemyStats, defender.type);
-  const enemyHitDmg = avgEnemyHit(hitFn, state, playerStats, enemyStats, defender.moves);
+  const playerHitDmg = bestPlayerHit(hitFn, state, playerStats, enemyStats, defender);
+  const enemyHitDmg = avgEnemyHit(hitFn, state, playerStats, enemyStats, defender);
   const { playerHits, enemyHits } = roundHits(playerStats.velocity, enemyStats.velocity);
   const playerDmgPerRound = playerHitDmg * playerHits;
   const enemyDmgPerRound = enemyHitDmg * enemyHits;
@@ -886,11 +908,15 @@ function averageFights(fights) {
 // robustness check, so the two can't drift apart. Attaches each defender's
 // own live `maxHp` here (wildHpForWorld/rivalHpForWorld -- see
 // evaluateFight's own comment) rather than reading one off the parsed
-// WORLD_CRYSTALS/WORLD_RIVALS data, which never carries HP at all.
+// WORLD_CRYSTALS/WORLD_RIVALS data, which never carries HP at all, and
+// `hybridAura` -- true for every World 10 wild, since that world's pool is
+// exactly the hybrid-recipe set (header comment), false for every other
+// wild and every rival.
 function defendersFor(world, isRival) {
   if (!isRival) {
     const maxHp = wildHpForWorld(world);
-    return getWildPool(world).map((d) => ({ ...d, maxHp }));
+    const hybridAura = world === 10;
+    return getWildPool(world).map((d) => ({ ...d, maxHp, hybridAura }));
   }
   const maxHp = rivalHpForWorld(world);
   if (world === 9) {
@@ -903,9 +929,10 @@ function defendersFor(world, isRival) {
       type,
       maxHp,
       moves: [RIVAL_9_MOVES[type], 'thermalFluctuation'],
+      hybridAura: false,
     }));
   }
-  return [{ ...WORLD_RIVALS[world], maxHp }];
+  return [{ ...WORLD_RIVALS[world], maxHp, hybridAura: false }];
 }
 
 function evaluateWildFight(hitFn, state, world) {
@@ -926,8 +953,8 @@ function marginWithMultipliers(state, world, defenders, playerMult, enemyMult) {
   const enemyStats = enemyStatsForWorld(world, activeDifficultyMultiplier);
   const { playerHits, enemyHits } = roundHits(playerStats.velocity, enemyStats.velocity);
   const fights = defenders.map((d) => {
-    const playerDmgPerRound = bestPlayerHit(frozenHitDamage, state, playerStats, enemyStats, d.type) * playerMult * playerHits;
-    const enemyDmgPerRound = avgEnemyHit(frozenHitDamage, state, playerStats, enemyStats, d.moves) * enemyMult * enemyHits;
+    const playerDmgPerRound = bestPlayerHit(frozenHitDamage, state, playerStats, enemyStats, d) * playerMult * playerHits;
+    const enemyDmgPerRound = avgEnemyHit(frozenHitDamage, state, playerStats, enemyStats, d) * enemyMult * enemyHits;
     const roundsToKill = playerDmgPerRound > 0 ? Math.ceil(d.maxHp / playerDmgPerRound) : Infinity;
     const roundsToDie = enemyDmgPerRound > 0 ? Math.ceil(wildHpForWorld(world) / enemyDmgPerRound) : Infinity;
     return { roundsToKill, roundsToDie, margin: roundsToDie - roundsToKill };

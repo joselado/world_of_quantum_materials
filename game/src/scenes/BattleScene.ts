@@ -58,6 +58,8 @@ import {
   ANYON_ECHO_CRIT_MULTIPLIER,
   EDGE_CURRENT_MISMATCH_MULT,
   LAST_SCATTERING_MIN_HP,
+  HYBRID_AURA_ATTACK_MULT,
+  HYBRID_AURA_DAMAGE_MULT,
   FULL_REFLECTION_CHANCE,
   STATUS_DURATION,
   SCREEN_REDUCTION_BY_LEVEL,
@@ -74,7 +76,7 @@ import { DEFAULT_DIFFICULTY_TIER, DEFAULT_TOUCH_CONTROLS, touchControlsActive, s
 import { FINALE_STAGES, finaleStageFor, finaleVictoryLineFor, finaleDefeatLineFor } from '../data/story';
 import type { DifficultyTier, TouchControlsMode } from '../data/settings';
 import { victoryLine, defeatLine } from '../data/greetings';
-import { PASSIVES, allActivePassiveIds } from '../data/passives';
+import { PASSIVES, allActivePassiveIds, builtInPassiveIds, passiveName } from '../data/passives';
 import { materialBlurb } from '../data/materialdex';
 import { getAnalyticQuestion, getUltimateQuestions } from '../data/quiz';
 import { persistFromRegistry } from '../data/save';
@@ -351,19 +353,20 @@ const STATUS_INFO: Record<
 // STATUS_PILL_COLOR's rust-orange so an always-on passive reads as visually
 // distinct from a ticking status at a glance.
 
-// A side holds up to PASSIVE_MAX_SLOTS Franklin passives at a time
+// A side holds its built-in passives (a hybrid's Hybrid Aura, listed
+// first) plus up to PASSIVE_MAX_SLOTS Franklin passives at a time
 // (data/passives.ts) -- joined onto a single pill line, '' when empty, the
 // same convention STATUS_INFO's pill uses, so a future second owner could
-// stack onto the same line without changing this function. PASSIVES[id]?
+// stack onto the same line without changing this function. passiveName()
 // rather than a direct index -- every other read of playerActivePassives/
 // opponentActivePassives (activePassives() below) only ever calls .has(id),
-// so this is the first spot that actually dereferences one; guarding it
-// means a stale id left over from a since-renamed passive in an old save
-// degrades to "that name just doesn't show" instead of throwing out of
-// create().
+// so this is the first spot that actually dereferences one; it answers
+// undefined for a stale id left over from a since-renamed passive in an old
+// save, which degrades to "that name just doesn't show" instead of throwing
+// out of create().
 function passivePillText(ids: Set<string>): string {
   return [...ids]
-    .map((id) => PASSIVES[id]?.name)
+    .map((id) => passiveName(id))
     .filter((name): name is string => !!name)
     .join(' · ');
 }
@@ -374,17 +377,21 @@ function passivePillText(ids: Set<string>): string {
 // multiplier/flag term read directly off whichever side currently has it
 // active (this.activePassives(isPlayer), populated once in create() from
 // registry/save activePassivesByOwner and never touched again mid-battle).
-// Only the player can ever have one today, but every hook below reads
-// generically off `isPlayer`/`defenderIsPlayer` the same way every other
-// resolveHit term does, in case a future enemy ever has one. Three are
-// multipliers inside resolveHit's damage math (Diffraction Shadow,
-// Satellite Reflection, Amorphous Halo); the other two act on the hit as a
-// whole -- Full Reflection sends it back at the attacker (resolveHit's
-// `reflected` branch) and Last Scattering floors what it can take off
-// (damageFloor/applyDamage). FRACTIONAL_GUARD_DAMAGE_MULT/ANYON_ECHO_FRACTION/
-// EDGE_CURRENT_MISMATCH_MULT/LAST_SCATTERING_MIN_HP/FULL_REFLECTION_CHANCE
-// live in data/balance.ts, imported above (Phaser-free so the balance
-// simulator script can load them too).
+// The same sets also hold each side's built-in passives (data/passives.ts's
+// BUILT_IN_PASSIVES, read off the material itself by builtInPassiveIds):
+// a hybrid's Hybrid Aura, which a World 10 wild hybrid carries exactly as a
+// fused player does, so every hook below reads generically off
+// `isPlayer`/`defenderIsPlayer` the same way every other resolveHit term
+// does. Three of Franklin's are multipliers inside resolveHit's damage math
+// (Diffraction Shadow, Satellite Reflection, Amorphous Halo), as are both
+// halves of Hybrid Aura (its holder's hits up, hits on its holder down);
+// Franklin's other two act on the hit as a whole -- Full Reflection sends
+// it back at the attacker (resolveHit's `reflected` branch) and Last
+// Scattering floors what it can take off (damageFloor/applyDamage).
+// FRACTIONAL_GUARD_DAMAGE_MULT/ANYON_ECHO_FRACTION/EDGE_CURRENT_MISMATCH_MULT/
+// LAST_SCATTERING_MIN_HP/FULL_REFLECTION_CHANCE/HYBRID_AURA_ATTACK_MULT/
+// HYBRID_AURA_DAMAGE_MULT live in data/balance.ts, imported above
+// (Phaser-free so the balance simulator script can load them too).
 
 // Gap before the next turn fires, measured from the hit's own landing rather
 // than from the cast (resolveHit resolves a move inside its animation's
@@ -584,12 +591,13 @@ export class BattleScene extends Phaser.Scene {
   private opponentScreeningAura: Phaser.GameObjects.Container | null = null;
   private playerStatusLabel!: Phaser.GameObjects.Text;
   private opponentStatusLabel!: Phaser.GameObjects.Text;
-  // Franklin's passives (§5) -- computed once in create() from
-  // registry/save activePassivesByOwner and held for the whole battle (no
-  // tick-down, unlike playerStatus/opponentStatus above).
-  // opponentActivePassives stays empty today (no WORLD_CRYSTALS entry has
-  // one), kept as its own field rather than hardcoding "player only" so
-  // activePassives() below reads symmetrically off either side.
+  // Each side's active passives (§5) -- computed once in create() and held
+  // for the whole battle (no tick-down, unlike playerStatus/opponentStatus
+  // above): the player's built-in passives (a hybrid form's Hybrid Aura)
+  // plus Franklin's from registry/save activePassivesByOwner, and the
+  // opponent's built-in ones alone (a wild World 10 hybrid's Hybrid Aura;
+  // no opponent ever holds a Franklin passive, and the Adapted, a model
+  // rather than a fused material, never carries the aura either).
   private playerActivePassives = new Set<string>();
   private opponentActivePassives = new Set<string>();
 
@@ -700,19 +708,26 @@ export class BattleScene extends Phaser.Scene {
     this.battleOver = false;
     this.lastOpponentMoveId = null;
 
-    // Franklin's active passives (§5) -- read once here, held for the whole
-    // battle.
-    this.playerActivePassives = new Set(allActivePassiveIds(this.game.registry));
-    this.opponentActivePassives = new Set();
-    // Franklin's ground halos (art/passiveHalos.ts), one per active passive
-    // stacked around the same shadow, drawn once here rather than per-turn
-    // -- no passive is ever active for the opponent side
-    // (opponentActivePassives above stays empty), so only the player's own
-    // ground shadow ever gets them. Drawn before the player crystal itself
-    // (create()'s own later section) so they render behind it, anchored to
-    // the shadow ellipse's position (drawBackground's own `PLAYER_POS.x,
-    // 392`) rather than wrapped around the crystal body the way
-    // addBoostHalo's temporary aura is.
+    // Each side's active passives (§5) -- read once here, held for the whole
+    // battle: built-ins off the material itself (a hybrid's Hybrid Aura,
+    // listed first so the pill reads "what you are, then what you learned"),
+    // then Franklin's off the save for the player. The opponent's are read
+    // off `this.wild` -- a World 10 wild hybrid carries the aura, while the
+    // Adapted (named as the rival, never as a hybrid, whatever real compound
+    // it later reshapes into) never does: it is a model of a material, not a
+    // fused one.
+    this.playerActivePassives = new Set([...builtInPassiveIds(this.playerMaterial), ...allActivePassiveIds(this.game.registry)]);
+    this.opponentActivePassives = new Set(builtInPassiveIds(this.wild));
+    // Franklin's ground halos (art/passiveHalos.ts), one per active Franklin
+    // passive (`id in PASSIVES` -- a built-in passive has no halo of its own,
+    // a hybrid's additive glow already being its aura) stacked around the
+    // same shadow, drawn once here rather than per-turn -- no Franklin
+    // passive is ever active for the opponent side, so only the player's
+    // own ground shadow ever gets them. Drawn before the player crystal
+    // itself (create()'s own later section) so they render behind it,
+    // anchored to the shadow ellipse's position (drawBackground's own
+    // `PLAYER_POS.x, 392`) rather than wrapped around the crystal body the
+    // way addBoostHalo's temporary aura is.
     const franklinPassiveIds = [...this.playerActivePassives].filter((id) => id in PASSIVES);
     if (franklinPassiveIds.length > 0) {
       // Part of the arena (they lie on the floor under the crystal), so they
@@ -3354,6 +3369,12 @@ export class BattleScene extends Phaser.Scene {
     // rate. Keyed off the *attacker*, unlike fractionalGuardMult above --
     // a crit is something the attacking side rolls.
     const critChanceMult = this.activePassives(isPlayer).has('anyonEcho') ? ANYON_ECHO_CRIT_MULTIPLIER : 1;
+    // Hybrid Aura (§5, every hybrid material's built-in passive): the
+    // attacker's own hits land harder for the whole battle, and the hits a
+    // defender takes are softened -- one term keyed off each side, so a
+    // hybrid hitting a hybrid resolves both.
+    const hybridAuraAttackMult = this.activePassives(isPlayer).has('hybridAura') ? HYBRID_AURA_ATTACK_MULT : 1;
+    const hybridAuraGuardMult = this.activePassives(defenderIsPlayer).has('hybridAura') ? HYBRID_AURA_DAMAGE_MULT : 1;
     // The Energy/Lifetime-lever/final-product math lives in
     // data/balance.ts's resolveHitDamage (Phaser-free, shared with the
     // balance simulator script) -- this just assembles this hit's own
@@ -3369,6 +3390,8 @@ export class BattleScene extends Phaser.Scene {
       screenedMult,
       fractionalGuardMult,
       critChanceMult,
+      hybridAuraAttackMult,
+      hybridAuraGuardMult,
     });
     const from = isPlayer ? this.playerAnchor : this.opponentAnchor;
     const to = isPlayer ? this.opponentAnchor : this.playerAnchor;
@@ -3552,11 +3575,10 @@ export class BattleScene extends Phaser.Scene {
     );
   }
 
-  // Which of Franklin's passives (data/passives.ts) are currently
-  // active for a given side -- read once per battle in create(), see that
-  // field's own comment. Generic over `isPlayer` the same way
-  // getStatus/statusShieldMultiplier below are, even though only the player
-  // can currently have one.
+  // Which passives (data/passives.ts -- Franklin's and built-in alike) are
+  // currently active for a given side -- read once per battle in create(),
+  // see that field's own comment. Generic over `isPlayer` the same way
+  // getStatus/statusShieldMultiplier below are.
   private activePassives(isPlayer: boolean): Set<string> {
     return isPlayer ? this.playerActivePassives : this.opponentActivePassives;
   }

@@ -29,7 +29,16 @@ import { ANALYTIC_SHAPES, ULTIMATE_SHAPES } from '../../art/attackEffects';
 import { stopMoveEffectPreview } from '../../art/moveEffectPreview';
 import { killTweensDeep } from '../../art/crystals';
 import { MOVE_CLASS_LORE } from '../../data/moveLore';
-import { PASSIVES, PASSIVE_OWNERS, PASSIVE_OWNER_LABELS, activePassiveIds, passiveSlotCount, passiveSlotsUsed } from '../../data/passives';
+import {
+  PASSIVES,
+  PASSIVE_OWNERS,
+  PASSIVE_OWNER_LABELS,
+  BUILT_IN_PASSIVES,
+  activePassiveIds,
+  builtInPassiveIds,
+  passiveSlotCount,
+  passiveSlotsUsed,
+} from '../../data/passives';
 import {
   DENSITY_PRESETS,
   DEFAULT_ENCOUNTER_DENSITY,
@@ -380,13 +389,16 @@ function showInfoPanel(scene: HubScene, title: string, body: string) {
   container.addAt(panel, 0);
 }
 
-// The "checkable anytime" surface for a passive owner's current loadout
-// (data/passives.ts, DESIGN.md §5) -- one name line per owner ("Franklin:
-// <active names> (N of M slots used)") followed by one description line per
-// active passive, each its own Text object with explicitly capped font
-// sizes rather than folding every full description into showInfoPanel's
-// single wrapped body, since that body's shrink-to-fit only lowers font
-// size and never truncates.
+// The "checkable anytime" surface for every passive the player's crystal
+// currently runs (data/passives.ts, DESIGN.md §5): first the built-in ones
+// the current form carries by what it is ("Built in: Hybrid Aura", only
+// while the form is a hybrid -- a plain crystal shows no built-in block at
+// all rather than an empty one), then one name line per owner ("Franklin:
+// <active names> (N of M slots used)"), each followed by one description
+// line per passive, every line its own Text object with explicitly capped
+// font sizes rather than folding every full description into
+// showInfoPanel's single wrapped body, since that body's shrink-to-fit only
+// lowers font size and never truncates.
 export function showAbilitiesPanel(scene: HubScene) {
   scene.dialogueContainer?.destroy(true);
 
@@ -409,17 +421,11 @@ export function showAbilitiesPanel(scene: HubScene) {
   const descScale = Math.min(fontScale(scene), 1.2);
   const descPx = `${Math.round(10 * descScale)}px`;
 
-  const loadout = PASSIVE_OWNERS.map((owner) => ({
-    guardian: PASSIVE_OWNER_LABELS[owner],
-    // `?.` guards a stale id left in an old save by a since-renamed passive,
-    // the same way BattleScene's passivePillText does.
-    activeIds: activePassiveIds(scene.game.registry, owner).filter((id) => PASSIVES[id]),
-    slots: passiveSlotCount(scene.game.registry, owner),
-  }));
-  loadout.forEach(({ guardian, activeIds, slots }) => {
-    const names = activeIds.length > 0 ? activeIds.map((id) => PASSIVES[id].name).join(' · ') : 'None equipped';
+  // A name line plus one description line per id, the shape both the
+  // built-in block and every owner's block below are drawn in.
+  const addBlock = (headline: string, ids: string[], nameOf: (id: string) => string, descOf: (id: string) => string) => {
     const nameLine = scene.add
-      .text(columns.contentCenterX, y, `${guardian}: ${names} (${passiveSlotsUsed(activeIds)} of ${slots} slots used)`, {
+      .text(columns.contentCenterX, y, headline, {
         fontSize: namePx,
         color: '#ffffff',
         fontStyle: 'bold',
@@ -429,9 +435,9 @@ export function showAbilitiesPanel(scene: HubScene) {
       .setOrigin(0.5, 0);
     container.add(nameLine);
     y += nameLine.height + 3;
-    for (const id of activeIds) {
+    for (const id of ids) {
       const descLine = scene.add
-        .text(columns.contentCenterX, y, `${PASSIVES[id].name}: ${PASSIVES[id].description}`, {
+        .text(columns.contentCenterX, y, `${nameOf(id)}: ${descOf(id)}`, {
           fontSize: descPx,
           color: REFERENCE_BLUE_GREY_HEX,
           align: 'center',
@@ -442,6 +448,35 @@ export function showAbilitiesPanel(scene: HubScene) {
       y += descLine.height + 4;
     }
     y += 10;
+  };
+
+  // What the crystal is comes before what it learned: a hybrid form's
+  // Hybrid Aura, read off the current form the same way a battle reads it.
+  const builtInIds = builtInPassiveIds(getPlayerMaterial(scene.game.registry));
+  if (builtInIds.length > 0) {
+    addBlock(
+      `Built in: ${builtInIds.map((id) => BUILT_IN_PASSIVES[id].name).join(' · ')}`,
+      builtInIds,
+      (id) => BUILT_IN_PASSIVES[id].name,
+      (id) => BUILT_IN_PASSIVES[id].description
+    );
+  }
+
+  const loadout = PASSIVE_OWNERS.map((owner) => ({
+    guardian: PASSIVE_OWNER_LABELS[owner],
+    // `?.` guards a stale id left in an old save by a since-renamed passive,
+    // the same way BattleScene's passivePillText does.
+    activeIds: activePassiveIds(scene.game.registry, owner).filter((id) => PASSIVES[id]),
+    slots: passiveSlotCount(scene.game.registry, owner),
+  }));
+  loadout.forEach(({ guardian, activeIds, slots }) => {
+    const names = activeIds.length > 0 ? activeIds.map((id) => PASSIVES[id].name).join(' · ') : 'None equipped';
+    addBlock(
+      `${guardian}: ${names} (${passiveSlotsUsed(activeIds)} of ${slots} slots used)`,
+      activeIds,
+      (id) => PASSIVES[id].name,
+      (id) => PASSIVES[id].description
+    );
   });
 
   const footer = scene.add
@@ -1220,13 +1255,23 @@ function isSuperpositionMode(scene: HubScene): boolean {
 
 // Abilities starts out absent from the Lab room entirely on a fresh save
 // (HubScene.create() filters LAB_STATIONS by `visible` below) -- there's
-// nothing to check until the player has actually learned a passive.
-// Superposition Mode (a testing/exploration aid, DESIGN.md §5) always treats
-// it as visible: it grants every passive unconditionally the first time an
-// Overworld scene runs (OverworldScene.applySuperpositionLeveling), which
-// wouldn't cover the very first Lab visit of a fresh Superposition save.
+// nothing to check until the crystal actually runs a passive: one learned
+// from Franklin, or one built into the current form (a hybrid's Hybrid
+// Aura, data/passives.ts's builtInPassiveIds), so a player who fuses at
+// Majorana's before ever meeting Franklin still finds the aura listed.
+// Re-evaluated by HubScene.buildStationGrid on every closeDialogue, which is
+// what makes the station appear the moment a panel in the room (Franklin's,
+// Majorana's Farewell) changes the answer. Superposition Mode (a
+// testing/exploration aid, DESIGN.md §5) always treats it as visible: it
+// grants every passive unconditionally the first time an Overworld scene
+// runs (OverworldScene.applySuperpositionLeveling), which wouldn't cover the
+// very first Lab visit of a fresh Superposition save.
 function hasLearnedAnyAbility(scene: HubScene): boolean {
-  return isSuperpositionMode(scene) || ((scene.game.registry.get('passivesUnlocked') as string[]) ?? []).length > 0;
+  return (
+    isSuperpositionMode(scene) ||
+    ((scene.game.registry.get('passivesUnlocked') as string[]) ?? []).length > 0 ||
+    builtInPassiveIds(getPlayerMaterial(scene.game.registry)).length > 0
+  );
 }
 
 export interface LabStation {

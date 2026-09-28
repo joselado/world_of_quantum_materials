@@ -17,6 +17,16 @@
 // `PassiveOwner` stays a keyed type rather than Franklin's ids living
 // unkeyed, since `activePassivesByOwner`/`passiveSlotsByOwner`/
 // `passivesUnlocked` are written generically against whichever owners exist.
+//
+// A second kind of passive lives further down: BUILT_IN_PASSIVES, the
+// abilities a crystal has by what it *is* rather than by what a guardian
+// taught it (today just every hybrid material's Hybrid Aura). Those have no
+// owner, no cost and no slot, are never persisted, and are derived from the
+// material at the start of each battle (builtInPassiveIds) -- so they never
+// enter the slot/unlock bookkeeping above at all.
+import type { Material } from './types';
+import { isHybridMaterial } from './materials';
+
 export type PassiveOwner = 'franklin';
 
 // Every current owner of a passive kit, in guardian order -- consumed by
@@ -129,6 +139,56 @@ export const PASSIVES: Record<string, Passive> = {
 export const FRANKLIN_PASSIVE_IDS = Object.values(PASSIVES)
   .filter((p) => p.owner === 'franklin')
   .map((p) => p.id);
+
+// A passive a crystal carries by what it is: no owner, no cost, no slot,
+// nothing bought and nothing to set aside. Read off the material itself
+// (builtInPassiveIds below) rather than off any registry/save key, so a
+// wild hybrid met in World 10 carries it exactly as a fused player does,
+// and it can never go stale in a save. Kept out of PASSIVES on purpose:
+// everything that reads PASSIVES (Franklin's panel, the slot math, the
+// Superposition unlock grant, the halo dispatch, content-lint's per-passive
+// checks) is about a passive that is bought and slotted, and none of that
+// applies here. The battle hooks read these ids through the same
+// activePassives() sets as Franklin's (BattleScene.create seeds both sides'
+// sets with them), so a built-in passive is "active" in exactly the sense a
+// Franklin one is -- just for a reason the player never chose.
+export interface BuiltInPassive {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export const BUILT_IN_PASSIVES: Record<string, BuiltInPassive> = {
+  // Every hybrid-recipe material (data/materials.ts's isHybridMaterial). An
+  // engineered interface is more than either of its parents -- proximity
+  // coupling across the seam lends each phase what the other has, which is
+  // the whole point of building a heterostructure -- so a fused crystal
+  // both hits harder and takes less, by HYBRID_AURA_ATTACK_MULT/
+  // HYBRID_AURA_DAMAGE_MULT (data/balance.ts). No art of its own: the
+  // additive glow every hybrid already wears (art/crystals.ts's
+  // drawHybridCrystal) is the aura.
+  hybridAura: {
+    id: 'hybridAura',
+    name: 'Hybrid Aura',
+    description: 'Two phases coupled across one interface lend each other what neither has alone: your hits land 30% harder and every hit you take is softened by 30%. Built into every hybrid crystal, it takes no slot and is never set aside.',
+  },
+};
+
+// The built-in passives a material carries -- today ['hybridAura'] for a
+// hybrid-recipe result and [] for everything else. Judged by name, the same
+// way Dresselhaus/Anderson/Majorana tell a hybrid apart, so a hybrid
+// `playerForm` restored from an old save and a wild World 10 hybrid answer
+// identically.
+export function builtInPassiveIds(material: Pick<Material, 'name'>): string[] {
+  return isHybridMaterial(material.name) ? ['hybridAura'] : [];
+}
+
+// Display name for any passive id, Franklin's or built-in -- undefined for
+// a stale id left in an old save by a since-renamed passive, which callers
+// (BattleScene's pill, the Lab's Abilities panel) simply skip.
+export function passiveName(id: string): string | undefined {
+  return PASSIVES[id]?.name ?? BUILT_IN_PASSIVES[id]?.name;
+}
 
 // Minimal structural registry type (same shape data/save.ts uses) so these
 // readers stay Phaser-free and usable from any scene or panel.

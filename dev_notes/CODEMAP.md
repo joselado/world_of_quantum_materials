@@ -39,7 +39,8 @@ game/src/
                                  plus up to 6 reference/settings stations (Moves/Stats/Abilities/
                                  Tutorial/Settings/Title Screen, panels/hubStations.ts's
                                  LAB_STATIONS -- Abilities filtered out until a first passive
-                                 is learned).
+                                 is learned or the current form carries a built-in one, a
+                                 hybrid's Hybrid Aura).
                                  Progress autosaves, so the room has no save station of its own.
                                  Every met guardian also stands in the room as their own
                                  clickable avatar (spawnGuardianAvatars/guardianSlot, see "Lab
@@ -660,6 +661,8 @@ game/src/
                                   ANYON_ECHO_CRIT_MULTIPLIER/
                                   EDGE_CURRENT_MISMATCH_MULT/LAST_SCATTERING_MIN_HP/
                                   FULL_REFLECTION_CHANCE (Franklin's passives, §5),
+                                  HYBRID_AURA_ATTACK_MULT/HYBRID_AURA_DAMAGE_MULT (every
+                                  hybrid's built-in Hybrid Aura, §4),
                                   MISMATCH_MULTIPLIER, SCREEN_REDUCTION_BY_LEVEL (Kondo's buff-cap
                                   math, §4/§5), energyFactor()/lifetimeFactor() (the two mirror
                                   stat levers off the shared statLever curve),
@@ -728,7 +731,14 @@ game/src/
                                   Passive.slots (how many a passive takes while active);
                                   activePassiveIds()/allActivePassiveIds()/passiveSlotCount()/
                                   passiveSlotsUsed() -- the registry readers every scene and
-                                  panel goes through
+                                  panel goes through; BUILT_IN_PASSIVES (id/name/description
+                                  only -- no owner, cost or slot: the passives a crystal has
+                                  by what it is, today every hybrid's Hybrid Aura),
+                                  builtInPassiveIds(material) (the ids a material carries,
+                                  judged by isHybridMaterial on its name -- never persisted,
+                                  read fresh off the form by BattleScene.create and the Lab)
+                                  and passiveName(id) (name lookup across both catalogs,
+                                  undefined for a stale id)
     tokens.ts                    Qumatessence value tiers + weights
     quiz.ts                      Per-world physics question pools (WORLD_QUESTIONS[1-9]) as the
                                   primary wild-encounter quiz source; a few materials additionally
@@ -1491,19 +1501,24 @@ in `create()`, and `transmuteAdapted` drops the opponent's aura reference before
 the old boss crystal (the crystal's own `destroy(true)` reclaims the mounted aura) and
 re-syncs after the rebuild.
 
-**Passives (Franklin's abilities).** `this.playerActivePassives`/
-`this.opponentActivePassives` (`Set<string>` of `data/passives.ts` ids) are read once in
-`create()` from registry/save `activePassivesByOwner` (through `data/passives.ts`'s
-`allActivePassiveIds`, keyed by `PassiveOwner`; up to `PASSIVE_MAX_SLOTS` per owner) and held
-for the whole battle -- unlike Kondo's self-buffs above, a passive has no `turnsLeft`/tick-down
-machinery at all, it's just on or off for the battle. Each side's active passives get their
+**Passives (Franklin's abilities and the built-in Hybrid Aura).** `this.playerActivePassives`/
+`this.opponentActivePassives` (`Set<string>` of `data/passives.ts` ids) are seeded once in
+`create()` and held for the whole battle: each side's built-in passives first
+(`builtInPassiveIds` off the material itself -- `playerMaterial` for the player, `this.wild`
+for the opponent, so a World 10 wild hybrid carries Hybrid Aura and the Adapted, named as the
+rival and never as a hybrid, never does, whatever it later reshapes into), then, for the
+player only, Franklin's from registry/save `activePassivesByOwner` (through
+`allActivePassiveIds`, keyed by `PassiveOwner`; up to `PASSIVE_MAX_SLOTS` per owner). Unlike
+Kondo's self-buffs above, a passive has no `turnsLeft`/tick-down machinery at all, it's just
+on or off for the battle. Each side's active passives get their
 own pill too, built inside `scenes/battle/hud.ts`'s `drawNameplate` from its `passiveText`
 option and laid out as the last row of that plate's bottom-anchored stack, directly below the
 side's status pill (its height counts toward the stack height the plate shrinks its name down
 to fit into the room above the crystal's head) -- since the
 set never changes mid-battle there's no tick-down render function like `renderStatusLabel`,
-the pill's text (`passivePillText`, `PASSIVES[id]?.name` joined with `·` for the 0-3 entries a
-side can hold, `?.` guarding against a stale id from an old save) is built once and passed
+the pill's text (`passivePillText`, `passiveName(id)` -- Franklin's and built-in alike --
+joined with `·` for the up to four entries a side can hold, undefined for a stale id from an
+old save simply dropped) is built once and passed
 into `drawNameplate` as that plate's last stack row (word-wrapped at the plate's own width,
 since three names at the Large preset outrun the field), and the `Text` object isn't kept as a
 field, unlike `playerStatusLabel`/`opponentStatusLabel` (those are fields because
@@ -1511,9 +1526,13 @@ field, unlike `playerStatusLabel`/`opponentStatusLabel` (those are fields becaus
 `PASSIVE_PILL_COLOR` (a muted blue-violet) rather than `STATUS_PILL_COLOR`'s rust-orange, so
 an always-on passive reads as visually distinct from a ticking status at a glance.
 `activePassives(isPlayer)` is the
-generic per-side lookup every hook below reads (`opponentActivePassives` stays empty today,
-kept as its own field rather than hardcoding "player only" so the hooks read symmetrically
-off either side, same reasoning `screeningMultiplier` already follows). All five of
+generic per-side lookup every hook below reads, symmetrically off either side (same reasoning
+`screeningMultiplier` already follows) -- an opponent's set only ever holds built-in ids, a
+Franklin passive being the player's alone. **Hybrid Aura** (`hybridAura`, the one built-in)
+is two `resolveHitDamage` terms: `hybridAuraAttackMult` (`HYBRID_AURA_ATTACK_MULT`, keyed off
+the attacker) and `hybridAuraGuardMult` (`HYBRID_AURA_DAMAGE_MULT`, keyed off the defender),
+so a hybrid hitting a hybrid resolves both; it draws no ground halo (`create()`'s halo loop
+filters to `id in PASSIVES`), the hybrid's own additive glow being the aura. All five of
 Franklin's own hook directly into `resolveHit`, identified by id (`data/passives.ts`'s
 `fractionalGuard`/`anyonEcho`/`edgeCurrent` -- ids kept as originally minted from an earlier
 retheme, see "Guardians" below -- plus `lastScattering`/`fullReflection`): **Amorphous Halo**
@@ -3058,8 +3077,10 @@ not private, on `HubScene` for the same "panel modules living outside the class 
 station can't open over another already-open panel (`HubScene.addStationRow`'s
 `dialogueContainer` check). Each `LAB_STATIONS` entry also carries a `visible(scene)` predicate
 -- true unconditionally for Moves/Stats/Tutorial/Story/Settings/Title Screen, and for Abilities only
-once `passivesUnlocked` is non-empty (or `isSuperpositionMode()` is true, which grants every
-passive anyway) --
+once `passivesUnlocked` is non-empty, or the current form carries a built-in passive
+(`builtInPassiveIds(getPlayerMaterial(...))`, a hybrid's Hybrid Aura -- so fusing at
+Majorana's avatar in the room reveals the station on the panel's close), or
+`isSuperpositionMode()` is true, which grants every passive anyway --
 `HubScene.buildStationGrid()` filters `LAB_STATIONS` by this before laying out the room's
 station rows, so Abilities simply doesn't appear until there's something to check there. It is
 called from `create()` and again from `closeDialogue()`, since a panel can change what belongs
@@ -3084,14 +3105,17 @@ move's own `Move.description`; then `data/moveLore.ts`'s `MOVE_CLASS_LORE` parag
 the quasiparticle is in physics, shrink-fitted with `fitProseToBudget`. A row click is a
 scoped update (`movesSelectedId`/`movesPage` on `HubScene`, panel state only, reset by
 `closeDialogue()`); a page flip rebuilds. `showAbilitiesPanel`
-is the "check anytime" surface for Franklin's current passive loadout -- its own
-dedicated panel (not folded into `showStatsPanel`/its shared `showInfoPanel` body), looping over `data/
-passives.ts`'s `PASSIVE_OWNERS` (rather than a hand-written block) to build, per owner, one
-name line ("`<owner>`: `<active names>` (N of M slots used)", labeled via `PASSIVE_OWNER_LABELS`
-and read through `activePassiveIds`/`passiveSlotsUsed`/`passiveSlotCount`) plus one description line per active
-passive, so a player doesn't have to walk back to the guardian's own
-panel just to remember which passives are running (and doesn't have to remember what each
-actually does either, since the full descriptions show here too).
+is the "check anytime" surface for every passive the crystal currently runs -- its own
+dedicated panel (not folded into `showStatsPanel`/its shared `showInfoPanel` body). One local
+`addBlock` (a bold name line plus one description line per id) draws first the built-in block
+("Built in: Hybrid Aura", from `builtInPassiveIds(getPlayerMaterial(...))`/`BUILT_IN_PASSIVES`,
+present only while the form is a hybrid -- a plain crystal shows no block rather than an
+empty one), then, looping over `data/passives.ts`'s `PASSIVE_OWNERS` (rather than a
+hand-written block), one block per owner ("`<owner>`: `<active names>` (N of M slots used)",
+labeled via `PASSIVE_OWNER_LABELS` and read through
+`activePassiveIds`/`passiveSlotsUsed`/`passiveSlotCount`), so a player doesn't have to walk
+back to the guardian's own panel just to remember which passives are running (and doesn't
+have to remember what each actually does either, since the full descriptions show here too).
 
 **The Lab's guardian gallery** (`HubScene.spawnGuardianAvatars`/`guardianSlot`/
 `showGuardianTooltip`, called once from `create()`): every guardian in registry `metGuardians`
