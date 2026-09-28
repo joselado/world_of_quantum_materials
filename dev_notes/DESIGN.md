@@ -1722,7 +1722,9 @@ Two of the ten answer to something other than a fixed row in `WORLD_RIVALS`:
   rival stake is paid once, for the whole chain, and `rivalDefeated[10]` is set only when
   the third stage falls. All three stand at `enemyStatsForWorld(10)`; their bars are
   `data/balance.ts`'s `finaleStageHp`.
-  - **Stage 1, The Adapted**, has no type at all until the player attacks. Once per landed
+  - **Stage 1, The Adapted**, opens wearing the player's own current type -- a model of
+    them from the first turn, in the Adapted's own look -- so even the opening hit never
+    lands the mismatch bonus (a doped-in impurity's channel excepted). Once per landed
     player attack it transmutes into a real compound of some type that genuinely hosts the
     quasiparticle just used (`BattleScene.transmuteAdapted`, `typesHosting`), so the fight
     closes off the mismatch bonus the rest of the game taught the player to hunt for. Its

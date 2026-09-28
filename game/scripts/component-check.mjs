@@ -1252,7 +1252,7 @@ async function main() {
   // Ultimates are worth their own case because that branch defers
   // checkEndOrContinue (and so the transmute) to the summon animation's
   // completion instead of running it inline.
-  const ADAPTED_WILD = { name: 'The Adapted', type: 'topological', color: 0x9b7bd4, variant: 'shard', moves: ['tunnelStrike'] };
+  const ADAPTED_WILD = { name: 'The Adapted', type: 'metal', color: 0x9b7bd4, variant: 'shard', moves: ['tunnelStrike'] };
   const SWAPS_PER_MOVE = 3;
 
   // Budget in real milliseconds for an in-game turn to finish. Generous

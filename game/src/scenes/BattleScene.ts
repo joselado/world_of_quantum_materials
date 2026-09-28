@@ -752,6 +752,9 @@ export class BattleScene extends Phaser.Scene {
     this.arenaZoom = 1;
     this.playerPlate = undefined;
     this.backdropImage = undefined;
+    this.turnPreviewRow = undefined;
+    this.moveMenu = undefined;
+    this.sampledName = '';
 
     // A rival fight's opponent is that world's boss -- render it with the
     // same gigantic, multi-shard look it has standing at the goal tile in
@@ -2701,7 +2704,9 @@ export class BattleScene extends Phaser.Scene {
   // camera flash at the swap -- the same accent color Dresselhaus's own
   // transmutation panel uses (art/dresselhaus.ts), a stylistic nod tying
   // this to the game's one other "become a different crystal" moment,
-  // distinct from any ordinary attack's own EFFECT_STYLE color.
+  // distinct from any ordinary attack's own EFFECT_STYLE color. Part of the
+  // arena like every other effect drawn on a crystal (pullBack), so it stays
+  // on the golem's body under a pulled-back camera.
   private playTransmuteGlow(onSwap: () => void) {
     // Centred on the golem's own body rather than on `opponentPos`, which is
     // a ground reference (see hud.ts's BOSS_GROUND_LIFT) and would put the
@@ -2710,7 +2715,7 @@ export class BattleScene extends Phaser.Scene {
     const y = this.opponentPos.y - BOSS_GROUND_LIFT;
     const RISE_MS = 360;
     const FALL_MS = 320;
-    const g = this.add.graphics().setDepth(59).setBlendMode(Phaser.BlendModes.ADD);
+    const g = this.arena(this.add.graphics().setDepth(59).setBlendMode(Phaser.BlendModes.ADD));
     this.tweens.addCounter({
       from: 0,
       to: 1,
@@ -2730,7 +2735,7 @@ export class BattleScene extends Phaser.Scene {
 
         for (let i = 0; i < 8; i++) {
           const ang = (i / 8) * Math.PI * 2;
-          const spark = this.add.circle(x, y, 3, 0xbdffe8, 0.95).setBlendMode(Phaser.BlendModes.ADD);
+          const spark = this.arena(this.add.circle(x, y, 3, 0xbdffe8, 0.95).setBlendMode(Phaser.BlendModes.ADD));
           this.tweens.add({
             targets: spark,
             x: x + Math.cos(ang) * 60,
@@ -3306,11 +3311,16 @@ export class BattleScene extends Phaser.Scene {
     // swaps in whatever quasiparticle the player assigned instead of the
     // move's default 'phonon', so a tuned move mismatches like an ordinary
     // attack of that class would -- on top of, not instead of,
-    // bonusMultiplier from the question. Franklin's Amorphous Halo (§5)
-    // softens this to a smaller multiplier for whichever side has it active
-    // as the defender -- a defect-broadened diffraction halo partially
-    // shrugging off a hit that would otherwise land unmitigated.
-    const effectiveClass = getTunedMoveClass(this.game.registry, moveId);
+    // bonusMultiplier from the question. Tuning is the player's own save
+    // state, read on the player's side only (the same isPlayer gate
+    // `effectiveMovePower`/`getMoveLevel` below use): an opponent's move
+    // carries its own static class, and getTunedMoveClass would otherwise
+    // judge its hostability against the *player's* form. Franklin's
+    // Amorphous Halo (§5) softens this to a smaller multiplier for
+    // whichever side has it active as the defender -- a defect-broadened
+    // diffraction halo partially shrugging off a hit that would otherwise
+    // land unmitigated.
+    const effectiveClass = isPlayer ? getTunedMoveClass(this.game.registry, moveId) : move.class;
     const mismatch = !canHost(defenderType, effectiveClass);
     const mismatchMultiplier = this.activePassives(defenderIsPlayer).has('edgeCurrent')
       ? EDGE_CURRENT_MISMATCH_MULT

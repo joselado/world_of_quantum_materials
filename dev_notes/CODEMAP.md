@@ -1380,7 +1380,11 @@ filter ever came up empty. The move's own `power` feeding that formula is `move.
 verbatim for the defender's side, but for the *attacker's* side only when `isPlayer` is false --
 when `isPlayer` is true it reads `effectiveMovePower(registry, moveId)` instead (Feynman's
 move-leveling, §5, `data/materials.ts`), so a leveled move's power bump is the player's own
-save state and never leaks onto a wild's own copy of the same move id. Every rendering of a
+save state and never leaks onto a wild's own copy of the same move id. The quasiparticle class
+the mismatch and screening checks read (`effectiveClass`) is gated the same way: `getTunedMoveClass`
+on the player's side, the move's own static `class` on the opponent's -- Landau's/Skłodowska-Curie's
+tuning is the player's save state, and `getTunedMoveClass` judges hostability against the
+player's form, which has nothing to say about a move the opponent throws. Every rendering of a
 move's name in `BattleScene` (move buttons, the battle log) goes through
 `moveDisplayName(registry, moveId)` on the player's own side for the same isPlayer-gated
 reason, and through the move's own static `MOVES[id].name` on the opponent's, since neither
