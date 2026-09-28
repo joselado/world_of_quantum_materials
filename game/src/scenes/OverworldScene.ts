@@ -131,6 +131,8 @@ interface SavedMapState {
   tokenTarget: number;
 }
 
+// Walking pace: the time the camera takes to cross one tile at full speed.
+const WALK_MS_PER_TILE = 220;
 const CRYSTAL_SIZE = 22;
 const TOKEN_SIZE = 26;
 const PLAYER_CRYSTAL_SIZE = 34;
@@ -208,7 +210,7 @@ const QUIZ_WRONG_MULTIPLIER = 0.6;
 // camera faces north permanently and sits CAMERA_BACK_TILES behind the
 // player, so a tile even one row south of the player's own is already culled
 // -- but `playerTile` moves to the destination the instant a step begins
-// while the camera is still tweening from the tile behind, so the margin has
+// while the camera is still on its way from the tile behind, so the margin has
 // to cover a full step of that lag, plus the same wander slack, plus one
 // spare.
 const RESPAWN_MIN_ROWS_AHEAD = Math.ceil(DRAW_DISTANCE_TILES * VISIBLE_DEPTH_FRACTION) + 2;
@@ -594,11 +596,14 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   // goalTile, arriving from that world's far end.
   private enterFrom: 'start' | 'goal' = 'start';
   private biome: Biome = getBiome(1);
+  // True while a step is under way; stepTarget is the tile the camera is on
+  // its way to (playerTile already, since a step moves the tile at once).
   private moving = false;
+  private stepTarget: GridPoint | null = null;
   private playerTile = { x: 0, y: 0 };
-  // Camera position tweens smoothly toward playerTile every move, giving a
-  // continuous "world flows past a fixed camera" feel instead of a snap-cut
-  // between grid cells.
+  // Camera position, carried toward playerTile a frame at a time by
+  // advanceWalk, giving a continuous "world flows past a fixed camera" feel
+  // instead of a snap-cut between grid cells.
   private camPos = { x: 0, y: 0 };
   private walkable: boolean[][] = [];
   // The subset of `walkable` the player can actually walk to from the start
@@ -940,6 +945,7 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
 
   create() {
     this.moving = false;
+    this.stepTarget = null;
     // Phaser reuses the same Scene instance across scene.start()/restart()
     // calls -- only init()/create() rerun, class field initializers don't --
     // so a dialogue left open when the player switches away (Enter to
@@ -1600,6 +1606,14 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   }
 
   update() {
+    // A key read while standing starts its step in this same frame, and the
+    // walk is advanced before the world is drawn, so the first frame of a
+    // step already shows the camera under way.
+    if (!this.moving && !this.dialogueActive) {
+      const held = this.heldDirection();
+      if (held) this.tryMove(held.dx, held.dy);
+    }
+    this.advanceWalk();
     this.drawWorld();
     this.updateWorldSprites(this.crystalSprites);
     this.updateWorldSprites(this.tokenSprites);
@@ -1610,25 +1624,27 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.updateGuardianPrompt();
     this.updateGoalBanner();
     this.touchPad?.setVisible(!this.dialogueActive);
-
-    if (this.moving || this.dialogueActive) return;
-
-    // The on-screen arrows are read as held state beside the keys, not as
-    // events, so holding one walks exactly the way holding an arrow key does
-    // and the same `moving` gate paces both.
-    const touch = this.touchPad?.held() ?? { dx: 0, dy: 0 };
-    let dx = 0;
-    let dy = 0;
-    if (this.cursors.left.isDown || touch.dx < 0) dx = -1;
-    else if (this.cursors.right.isDown || touch.dx > 0) dx = 1;
-    else if (this.cursors.up.isDown || touch.dy < 0) dy = -1;
-    else if (this.cursors.down.isDown || touch.dy > 0) dy = 1;
-
-    this.tryMove(dx, dy);
   }
 
+  // The direction the player is holding, if any. The arrow keys and the
+  // on-screen arrows are read as held state beside each other, not as
+  // events, so holding one walks exactly the way holding the other does.
+  private heldDirection(): { dx: number; dy: number } | null {
+    const touch = this.touchPad?.held() ?? { dx: 0, dy: 0 };
+    if (this.cursors.left.isDown || touch.dx < 0) return { dx: -1, dy: 0 };
+    if (this.cursors.right.isDown || touch.dx > 0) return { dx: 1, dy: 0 };
+    if (this.cursors.up.isDown || touch.dy < 0) return { dx: 0, dy: -1 };
+    if (this.cursors.down.isDown || touch.dy > 0) return { dx: 0, dy: 1 };
+    return null;
+  }
+
+  // Starts one step: playerTile moves to the destination at once (the
+  // prompts, the respawn margin and the save all read the tile the player is
+  // stepping onto) and advanceWalk carries the camera there. Refused while a
+  // step is under way -- a held key is read again the moment that step
+  // arrives -- and refused off the walkable ground.
   private tryMove(dx: number, dy: number) {
-    if (dx === 0 && dy === 0) return;
+    if (this.moving || (dx === 0 && dy === 0)) return;
 
     const nx = Phaser.Math.Clamp(this.playerTile.x + dx, 0, gridW() - 1);
     const ny = Phaser.Math.Clamp(this.playerTile.y + dy, 0, gridH() - 1);
@@ -1641,24 +1657,62 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
 
     this.moving = true;
     this.playerTile = { x: nx, y: ny };
-
-    this.tweens.add({
-      targets: this.camPos,
-      x: nx,
-      y: ny,
-      duration: 220,
-      ease: 'Sine.easeInOut',
-      onComplete: () => {
-        this.moving = false;
-        this.refillHidden();
-        this.maybeTriggerEncounter(nx, ny);
-        this.maybeCollectToken(nx, ny);
-        this.maybeReachMiddle(nx, ny);
-        this.maybeReachGoal(nx, ny);
-      },
-    });
-
+    this.stepTarget = { x: nx, y: ny };
     this.stepBounce(dx);
+  }
+
+  // Walking is integrated here frame by frame rather than tweened a tile at
+  // a time. The camera glides toward the step's tile at WALK_MS_PER_TILE, and
+  // a step that arrives with a key still held spends the frame's leftover
+  // distance on the next step straight away, so a held key is one continuous
+  // motion: the camera crosses every tile boundary at full speed instead of
+  // easing to a stop on each one. A step that arrives with nothing held stops
+  // exactly on its tile.
+  private advanceWalk() {
+    if (!this.stepTarget) return;
+    // Paced on wall time (the loop's raw delta) rather than the smoothed
+    // delta update() is handed: Phaser pins that one to the 60 fps target
+    // while the page is out of focus or in its post-reset cooldown, and on a
+    // slow machine that would stretch a tile to a dozen slow frames. Never
+    // more than one tile a frame, however long the frame was (a tab back
+    // from the background): arrival runs at most once per frame and the
+    // camera never skips ground.
+    let dist = Math.min(this.game.loop.rawDelta, WALK_MS_PER_TILE) / WALK_MS_PER_TILE;
+    while (this.stepTarget && dist > 0) {
+      const cam = this.camPos;
+      const dx = this.stepTarget.x - cam.x;
+      const dy = this.stepTarget.y - cam.y;
+      const len = Math.hypot(dx, dy);
+      if (dist < len) {
+        cam.x += (dx / len) * dist;
+        cam.y += (dy / len) * dist;
+        return;
+      }
+      const { x, y } = this.stepTarget;
+      cam.x = x;
+      cam.y = y;
+      dist -= len;
+      this.stepTarget = null;
+      this.moving = false;
+      this.arriveAt(x, y);
+      // Whatever arrival opened owns the screen now; the rest of this
+      // frame's distance is not walked into it.
+      if (this.dialogueActive) return;
+      const held = this.heldDirection();
+      if (!held) return;
+      this.tryMove(held.dx, held.dy);
+    }
+  }
+
+  // Everything a step's arrival on a tile sets off, in this order: the world
+  // refills its hidden ground first, then the tile's own events, any of
+  // which can open a panel.
+  private arriveAt(x: number, y: number) {
+    this.refillHidden();
+    this.maybeTriggerEncounter(x, y);
+    this.maybeCollectToken(x, y);
+    this.maybeReachMiddle(x, y);
+    this.maybeReachGoal(x, y);
   }
 
   private stepBounce(dx: number) {

@@ -892,8 +892,8 @@ async function main() {
     }
 
     // Walk the player onto the guardian's middle row and trigger the
-    // same "reached this row" path tryMove's onComplete uses, rather than
-    // duplicating its open logic here.
+    // same "reached this row" path a step's arrival (OverworldScene.arriveAt)
+    // uses, rather than duplicating its open logic here.
     const openResult = await page.evaluate(() => {
       const s = window.__game.scene.getScene('Overworld');
       const mid = s['midTile'];
@@ -938,7 +938,7 @@ async function main() {
 
   // =====================================================================
   // Walks the player to the mouth of this world's forward pass -- the tile a
-  // gate is entered from -- the same way tryMove's onComplete does, and
+  // gate is entered from -- the same way a step's arrival does, and
   // dismisses the one-time goal tip if this is the first time that row has
   // been reached. Arrival alone must never open anything else and must never
   // transition or start a fight: that is the whole point of the pass

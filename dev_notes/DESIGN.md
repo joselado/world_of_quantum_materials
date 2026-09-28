@@ -1732,8 +1732,10 @@ rather than inheriting it.
   a literal 854x480 pixel size.
 - **Overworld camera:** over-the-shoulder pseudo-3D (`src/art/perspective.ts`)
   — the player's crystal floats in place at the bottom of the screen while the
-  world is redrawn every frame from a smoothly-tweened camera position, giving
-  a continuous "walking down a path" feel similar to World of Final Fantasy's
+  world is redrawn every frame from a camera position carried a frame at a
+  time toward the player's tile (one tile per 220 ms; a held key is one
+  continuous glide across tile boundaries, not a stop on each), giving a
+  continuous "walking down a path" feel similar to World of Final Fantasy's
   field view. The camera sits a fixed distance *behind* the player's own tile
   (`CAMERA_BACK_TILES`), which is what lets the fixed on-screen avatar stand on
   the tile the movement grid actually places it on rather than somewhere ahead

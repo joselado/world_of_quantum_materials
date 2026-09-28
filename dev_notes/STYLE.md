@@ -130,6 +130,14 @@ What this means in practice:
   game there is its overworld, at most of one core; `npm run frame-cost`'s
   `canvas` mode is the measurement, and a new effect should be judged in it as
   well as on a GPU.
+- **Walking is one motion, not a stop on every tile.** A hitch does not have
+  to come from a slow frame. The overworld walk is integrated a frame at a
+  time (CODEMAP's "Walking"), so a held key carries the camera across every
+  tile boundary at full speed; a tween per tile would stall it for about four
+  near-still frames on each (its ease-out, Phaser's zero-delta first tween
+  frame, the next tile's ease-in), and at 220 ms a tile that is a stutter the
+  player feels as the screen freezing. Judge a movement change by the
+  per-frame camera displacement while a key is held, not by frame time alone.
 - **When an effect cannot be made affordable, cut it and say so.** Shipping a
   cost quietly is the failure mode this rule exists to prevent.
 

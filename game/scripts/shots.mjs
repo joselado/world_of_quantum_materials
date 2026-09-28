@@ -505,7 +505,9 @@ async function main() {
           // leaves the view still framed on the entrance.
           for (let step = 0; step < 7; step++) {
             s['tryMove']?.(0, -1);
-            await new Promise((r) => setTimeout(r, 170));
+            // A step is refused while the previous one is still under way,
+            // so each waits for the camera to arrive before the next.
+            for (let i = 0; i < 150 && s['moving']; i++) await new Promise((r) => setTimeout(r, 20));
             if (s['dialogueActive']) break;
           }
           await new Promise((r) => setTimeout(r, 400));

@@ -1742,8 +1742,9 @@ keyboard paths rather than replacing them:
   arrows in the world's bottom-left corner. A handle (`held()`/`setVisible()`/`destroy()`)
   rather than one of `scenes/overworld/`'s per-frame render functions, since the pad holds the
   one piece of state nothing else can derive: which direction is currently pressed.
-  `OverworldScene.update()` reads `held()` beside `cursors.*.isDown`, so a held arrow walks
-  through the same `moving` gate a held key does, and hides the pad whenever `dialogueActive`.
+  `OverworldScene.heldDirection()` reads `held()` beside `cursors.*.isDown`, so a held arrow
+  walks exactly the way a held key does (see "Walking" below), and `update()` hides the pad
+  whenever `dialogueActive`.
   `PAD_KEEPOUT` is the corner width the pad claims, which the pass prompt wraps itself out of.
 - The Lab hint is itself the button (`pointerdown` -> `returnToHub()`), and reads "Tap here for
   the Lab" with a finger-sized padding when the arrows are up.
@@ -2002,7 +2003,7 @@ the visible window (`DRAW_DISTANCE_TILES`,
 `laneClipAt`) doing only the camera-dependent half: projecting the cached contour geometry (or the
 tile's four corners where it has none) through `projectTile` (`scenes/overworld/projection.ts`,
 over `art/perspective.ts`) at the current
-(possibly mid-tween) camera position (`projectContour`, `drawContactShadow`), deriving
+(possibly mid-step) camera position (`projectContour`, `drawContactShadow`), deriving
 `depthRatio` for the fog/detail falloff, and painting -- including the time-driven accents (lava
 crust pulse, water shimmer, void starlight, chokepoint glow). Impassable tiles are painted flat,
 in the same plane as the floor (`drawOffPathTile`/`offPathColor` plus the material's own accent,
@@ -2580,8 +2581,28 @@ world instead of inheriting the corridor the previous one left standing.
 `keydown-ENTER` handler all read this one predicate rather than three separate checks that could
 drift apart.
 
+**Walking is integrated a frame at a time, not tweened a tile at a time.**
+`OverworldScene.update()` reads the held direction while the player stands (`heldDirection()`:
+the arrow keys and the on-screen arrows as one held state) and `tryMove(dx, dy)` starts a step:
+it refuses a step while one is under way, off the walkable grid, or onto the throat row while the
+rival lives, and otherwise moves `playerTile` to the destination at once and sets `stepTarget`.
+`advanceWalk()` then carries `camPos` toward `stepTarget` at `WALK_MS_PER_TILE` (220 ms a
+tile of wall time -- it integrates `game.loop.rawDelta`, since the smoothed delta Phaser hands
+`update()` is pinned to the 60 fps target while the page is out of focus or in its post-reset
+cooldown -- and never more than one tile in a frame), and on arrival runs `arriveAt(x, y)` --
+`refillHidden`, `maybeTriggerEncounter`, `maybeCollectToken`, `maybeReachMiddle`,
+`maybeReachGoal`, in that order -- then, if nothing opened a panel and a direction is still
+held, starts the next step and spends the same frame's leftover distance on it. That carry-over
+is what makes a held key one continuous motion: the camera crosses every tile boundary at full
+speed. (A tween per tile cannot do this -- its own ease-out, Phaser's zero-delta first tween
+frame and the next tile's ease-in leave the camera near-still for about four frames on every
+tile, which reads as a stutter while walking.) `moving` is true exactly while `stepTarget` is
+set; the prompts, `confirmAction` and `returnToHub` read it, and the check scripts
+(`playthrough-check.mjs`'s `waitNotMoving`, `shots.mjs`'s walk-in) poll it between steps.
+`create()` clears both, since Phaser reuses the scene instance across `scene.start`.
+
 **A walked world refills itself, out of sight in both directions.** `OverworldScene`'s
-`refillHidden()` -- run from `tryMove`'s step-completion callback, since which ground is
+`refillHidden()` -- run from `arriveAt`, a step's arrival, since which ground is
 hidden can only change when the player moves -- tops both populations back up to their
 ceilings, a wild at a time (`respawnWild`) and a pickup at a time (`respawnToken`). Both draw
 their tile from the single `respawnTiles()` candidate set, which
@@ -2590,7 +2611,7 @@ is where every placement rule lives: outside the drawn world in either direction
 VISIBLE_DEPTH_FRACTION`, not a literal, so widening the draw distance can't start popping
 spawns into view) or past `RESPAWN_MIN_ROWS_BEHIND` to the south (computed from
 `CAMERA_BACK_TILES`, since what bounds that side is where the camera sits, plus slack for
-`playerTile` moving to a step's destination while the camera is still tweening from the tile
+`playerTile` moving to a step's destination while the camera is still on its way from the tile
 behind) -- on ground the player can actually walk to (`reachableGround` from the start tile,
 recomputed whenever the scene takes a walkable grid, generated or restored), empty, outside
 `passZoneRows(startTile, goalTile, midTile)` -- recomputed at runtime from the three points
