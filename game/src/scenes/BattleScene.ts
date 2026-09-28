@@ -57,6 +57,8 @@ import {
   ANYON_ECHO_FRACTION,
   ANYON_ECHO_CRIT_MULTIPLIER,
   EDGE_CURRENT_MISMATCH_MULT,
+  LAST_SCATTERING_MIN_HP,
+  FULL_REFLECTION_CHANCE,
   STATUS_DURATION,
   SCREEN_REDUCTION_BY_LEVEL,
   wildHpForWorld,
@@ -72,8 +74,7 @@ import { DEFAULT_DIFFICULTY_TIER, DEFAULT_TOUCH_CONTROLS, touchControlsActive, s
 import { FINALE_STAGES, finaleStageFor, finaleVictoryLineFor, finaleDefeatLineFor } from '../data/story';
 import type { DifficultyTier, TouchControlsMode } from '../data/settings';
 import { victoryLine, defeatLine } from '../data/greetings';
-import { PASSIVES } from '../data/passives';
-import type { PassiveOwner } from '../data/passives';
+import { PASSIVES, allActivePassiveIds } from '../data/passives';
 import { materialBlurb } from '../data/materialdex';
 import { getAnalyticQuestion, getUltimateQuestions } from '../data/quiz';
 import { persistFromRegistry } from '../data/save';
@@ -350,9 +351,9 @@ const STATUS_INFO: Record<
 // STATUS_PILL_COLOR's rust-orange so an always-on passive reads as visually
 // distinct from a ticking status at a glance.
 
-// A side can hold one Franklin passive at a time (data/passives.ts's one
-// current PassiveOwner) -- joined onto a single pill line the same '' when
-// empty convention STATUS_INFO's pill uses, so a future second owner could
+// A side holds up to PASSIVE_MAX_SLOTS Franklin passives at a time
+// (data/passives.ts) -- joined onto a single pill line, '' when empty, the
+// same convention STATUS_INFO's pill uses, so a future second owner could
 // stack onto the same line without changing this function. PASSIVES[id]?
 // rather than a direct index -- every other read of playerActivePassives/
 // opponentActivePassives (activePassives() below) only ever calls .has(id),
@@ -372,11 +373,16 @@ function passivePillText(ids: Set<string>): string {
 // for the whole battle it's active for, so each one is just a flat
 // multiplier/flag term read directly off whichever side currently has it
 // active (this.activePassives(isPlayer), populated once in create() from
-// registry/save activePassiveByOwner and never touched again mid-battle).
+// registry/save activePassivesByOwner and never touched again mid-battle).
 // Only the player can ever have one today, but every hook below reads
 // generically off `isPlayer`/`defenderIsPlayer` the same way every other
-// resolveHit term does, in case a future enemy ever has one.
-// FRACTIONAL_GUARD_DAMAGE_MULT/ANYON_ECHO_FRACTION/EDGE_CURRENT_MISMATCH_MULT
+// resolveHit term does, in case a future enemy ever has one. Three are
+// multipliers inside resolveHit's damage math (Diffraction Shadow,
+// Satellite Reflection, Amorphous Halo); the other two act on the hit as a
+// whole -- Full Reflection sends it back at the attacker (resolveHit's
+// `reflected` branch) and Last Scattering floors what it can take off
+// (damageFloor/applyDamage). FRACTIONAL_GUARD_DAMAGE_MULT/ANYON_ECHO_FRACTION/
+// EDGE_CURRENT_MISMATCH_MULT/LAST_SCATTERING_MIN_HP/FULL_REFLECTION_CHANCE
 // live in data/balance.ts, imported above (Phaser-free so the balance
 // simulator script can load them too).
 
@@ -579,7 +585,7 @@ export class BattleScene extends Phaser.Scene {
   private playerStatusLabel!: Phaser.GameObjects.Text;
   private opponentStatusLabel!: Phaser.GameObjects.Text;
   // Franklin's passives (§5) -- computed once in create() from
-  // registry/save activePassiveByOwner and held for the whole battle (no
+  // registry/save activePassivesByOwner and held for the whole battle (no
   // tick-down, unlike playerStatus/opponentStatus above).
   // opponentActivePassives stays empty today (no WORLD_CRYSTALS entry has
   // one), kept as its own field rather than hardcoding "player only" so
@@ -696,24 +702,26 @@ export class BattleScene extends Phaser.Scene {
 
     // Franklin's active passives (§5) -- read once here, held for the whole
     // battle.
-    const activeByOwner = (this.game.registry.get('activePassiveByOwner') as Partial<Record<PassiveOwner, string>>) ?? {};
-    this.playerActivePassives = new Set(Object.values(activeByOwner).filter((id): id is string => !!id));
+    this.playerActivePassives = new Set(allActivePassiveIds(this.game.registry));
     this.opponentActivePassives = new Set();
-    // Franklin's ground halo (art/passiveHalos.ts) for whichever passive is
-    // active, drawn once here rather than per-turn -- no passive is ever
-    // active for the opponent side (opponentActivePassives above stays
-    // empty), so only the player's own ground shadow ever gets one. Drawn
-    // before the player crystal itself (create()'s own later section) so it
-    // renders behind it, anchored to the shadow ellipse's position
-    // (drawBackground's own `PLAYER_POS.x, 392`) rather than wrapped around
-    // the crystal body the way addBoostHalo's temporary aura is.
-    const franklinPassiveId = [...this.playerActivePassives].find((id) => id in PASSIVES);
-    if (franklinPassiveId) {
-      // Part of the arena (it lies on the floor under the crystal), so it
-      // follows the crystal under a pulled-back camera rather than staying
+    // Franklin's ground halos (art/passiveHalos.ts), one per active passive
+    // stacked around the same shadow, drawn once here rather than per-turn
+    // -- no passive is ever active for the opponent side
+    // (opponentActivePassives above stays empty), so only the player's own
+    // ground shadow ever gets them. Drawn before the player crystal itself
+    // (create()'s own later section) so they render behind it, anchored to
+    // the shadow ellipse's position (drawBackground's own `PLAYER_POS.x,
+    // 392`) rather than wrapped around the crystal body the way
+    // addBoostHalo's temporary aura is.
+    const franklinPassiveIds = [...this.playerActivePassives].filter((id) => id in PASSIVES);
+    if (franklinPassiveIds.length > 0) {
+      // Part of the arena (they lie on the floor under the crystal), so they
+      // follow the crystal under a pulled-back camera rather than staying
       // on the HUD.
       const haloLayer = this.arena(this.add.container(0, 0));
-      drawFranklinPassiveHalo(this, haloLayer, PLAYER_POS.x, PLAYER_POS.y + SHADOW_DROP, franklinPassiveId, 65, 15);
+      for (const id of franklinPassiveIds) {
+        drawFranklinPassiveHalo(this, haloLayer, PLAYER_POS.x, PLAYER_POS.y + SHADOW_DROP, id, 65, 15);
+      }
     }
 
     const savedHp = (this.game.registry.get('playerHp') as number) || this.playerMaxHp;
@@ -3361,9 +3369,21 @@ export class BattleScene extends Phaser.Scene {
     // effect is still in flight, so the impact beat has to land on whichever
     // crystal is actually there when it fires.
     const targetCrystal = () => (isPlayer ? this.opponentCrystal : this.playerCrystal);
+    const attackerCrystal = () => (isPlayer ? this.playerCrystal : this.opponentCrystal);
     const shapeOverride = ANALYTIC_SHAPES[move.id] ?? ULTIMATE_SHAPES[move.id];
     const isUltimate = ULTIMATE_MOVE_IDS.includes(moveId);
     const whiff = isUltimate && bonusMultiplier === 0;
+    // Franklin's Full Reflection (§5): a defender with it active turns one
+    // hit in FULL_REFLECTION_CHANCE straight back onto the attacker, for the
+    // same damage number this hit would have done, and takes nothing --
+    // total external reflection, the beam never entering the crystal. Rolled
+    // here, before the animation starts, so the impact beat below already
+    // knows which crystal it lands on. Never on a whiff (nothing reaches the
+    // defender to reflect) and never for a hit that rounds to zero.
+    const reflected =
+      !whiff && dmg > 0 && this.activePassives(defenderIsPlayer).has('fullReflection') && Math.random() < FULL_REFLECTION_CHANCE;
+    // The side this hit's damage actually lands on.
+    const hitPlayer = reflected ? isPlayer : defenderIsPlayer;
 
     // Applies the hit's damage/log/echo, called from the animation's own
     // impact beat for every move (see the two branches at the bottom of this
@@ -3383,7 +3403,14 @@ export class BattleScene extends Phaser.Scene {
       // side can act more than once in a single round. See tickBuff.
       const buffText = tickStatus ? this.tickBuff(isPlayer) : '';
 
-      this.applyDamage(defenderIsPlayer, dmg);
+      // Franklin's Last Scattering (§5): the floor this whole attack can
+      // take the side it lands on down to, decided once here before any of
+      // its damage lands, so the hit and its Satellite Reflection echo tick
+      // below count as one attack -- the echo can't finish what the hit was
+      // held from finishing. Each swing of a multi-hit round is its own
+      // attack, so a side already at the floor is not protected again.
+      const floor = this.damageFloor(hitPlayer);
+      let held = this.applyDamage(hitPlayer, dmg, floor);
 
       const mismatchText = mismatch ? ' No natural defense against this!' : '';
       const critText = crit ? ' A coherent critical hit!' : '';
@@ -3393,24 +3420,28 @@ export class BattleScene extends Phaser.Scene {
       // above) triggers a bonus follow-up tick against the same defender,
       // computed after the buff clause above so it still reads as part of
       // the same hit's log line -- fixed order (mismatch, crit, buff, echo,
-      // heal), same "stack a clause onto the existing line" pattern every
-      // other term here uses.
+      // held), same "stack a clause onto the existing line" pattern every
+      // other term here uses. A reflected hit never landed on the defender,
+      // so it throws off no echo.
       let echoText = '';
-      if (crit && this.activePassives(isPlayer).has('anyonEcho')) {
+      if (crit && !reflected && this.activePassives(isPlayer).has('anyonEcho')) {
         const echoDmg = Math.round(dmg * ANYON_ECHO_FRACTION);
         if (echoDmg > 0) {
-          this.applyDamage(defenderIsPlayer, echoDmg);
+          held = this.applyDamage(defenderIsPlayer, echoDmg, floor) || held;
           this.impactPunch(targetCrystal());
           echoText = ` ${PASSIVES.anyonEcho.name} strikes again for ${echoDmg}!`;
         }
       }
+      const heldText = held ? ` ${PASSIVES.lastScattering.name} holds one point of life!` : '';
 
       // The possessive: "Your" for the player, "<name>'s" for the opponent.
       const whose = isPlayer ? 'Your' : `${who}'s`;
       this.setLogText(
         whiff
           ? `${whose} ${displayName} fizzles out. The pattern never locked!`
-          : `${who} used ${displayName}! (${dmg} dmg)${mismatchText}${critText}${buffText}${echoText}`
+          : reflected
+          ? `${who} used ${displayName}! ${PASSIVES.fullReflection.name} sends it straight back for ${dmg}!${buffText}${heldText}`
+          : `${who} used ${displayName}! (${dmg} dmg)${mismatchText}${critText}${buffText}${echoText}${heldText}`
       );
     };
 
@@ -3469,8 +3500,10 @@ export class BattleScene extends Phaser.Scene {
           // A whiff never reaches the defender at all -- the summoned mass
           // comes apart in mid-air (art/attackUltimates.ts) -- so it gets
           // none of the flash/shake that reads as a hit landing, just the
-          // log line and its zero damage.
-          if (!whiff) this.impactPunch(targetCrystal());
+          // log line and its zero damage. A reflected hit lands on the
+          // attacker instead, with the mirror's own flash at the defender.
+          if (reflected) this.reflectFlash(targetCrystal());
+          if (!whiff) this.impactPunch(reflected ? attackerCrystal() : targetCrystal());
           applyResult();
         },
         mismatchMult * bonusMultiplier,
@@ -3495,7 +3528,8 @@ export class BattleScene extends Phaser.Scene {
       from,
       to,
       () => {
-        this.impactPunch(targetCrystal());
+        if (reflected) this.reflectFlash(targetCrystal());
+        this.impactPunch(reflected ? attackerCrystal() : targetCrystal());
         applyResult();
         checkEndOrContinue();
       },
@@ -3517,20 +3551,36 @@ export class BattleScene extends Phaser.Scene {
     return isPlayer ? this.playerActivePassives : this.opponentActivePassives;
   }
 
-  // Applies damage to whichever side is the defender, mirroring the
-  // registry-write/persist rule the original inline branch used: only the
-  // player's HP needs to survive a reload, so only that branch touches the
-  // registry. Shared by resolveHit's primary hit and Anyon Echo's bonus tick
-  // so both go through the exact same bookkeeping.
-  private applyDamage(toPlayer: boolean, amount: number) {
+  // Franklin's Last Scattering (§5): the HP a side with it active can be
+  // taken down to by the attack about to land -- LAST_SCATTERING_MIN_HP
+  // while it still has more than that, 0 (no floor) otherwise, and 0 for a
+  // side without it. Read once per attack by resolveHit's applyResult, not
+  // per applyDamage call, so a hit and its echo tick share one floor.
+  private damageFloor(toPlayer: boolean): number {
+    const hp = toPlayer ? this.playerHp : this.opponentHp;
+    return this.activePassives(toPlayer).has('lastScattering') && hp > LAST_SCATTERING_MIN_HP ? LAST_SCATTERING_MIN_HP : 0;
+  }
+
+  // Applies damage to whichever side it lands on (the defender, or the
+  // attacker for a reflected hit), mirroring the registry-write/persist
+  // rule the original inline branch used: only the player's HP needs to
+  // survive a reload, so only that branch touches the registry. Shared by
+  // resolveHit's primary hit and Anyon Echo's bonus tick so both go through
+  // the exact same bookkeeping. `floor` is damageFloor's answer for this
+  // attack; returns whether the floor actually held (the hit would have
+  // gone below it), so the log line can say so.
+  private applyDamage(toPlayer: boolean, amount: number, floor = 0): boolean {
+    const before = toPlayer ? this.playerHp : this.opponentHp;
+    const after = Math.max(floor, before - amount);
     if (toPlayer) {
-      this.playerHp = Math.max(0, this.playerHp - amount);
+      this.playerHp = after;
       this.game.registry.set('playerHp', this.playerHp);
       persistFromRegistry(this.game.registry);
     } else {
-      this.opponentHp = Math.max(0, this.opponentHp - amount);
+      this.opponentHp = after;
     }
     this.updateBars();
+    return floor > 0 && before - amount < floor;
   }
 
   private getStatus(isPlayer: boolean): ActiveStatus | null {
@@ -3818,6 +3868,32 @@ export class BattleScene extends Phaser.Scene {
     this.flashHit(container);
     this.cameras.main.shake(140, 0.006);
     this.cameras.main.flash(70, 110, 118, 140, false);
+  }
+
+  // The mirror's own beat for Franklin's Full Reflection (§5): a bright
+  // pale-lavender ring bursting outward from the reflecting crystal and
+  // fading in about the time the impact shockwave takes, so the eye reads
+  // "it bounced off here" before the attacker's own squash lands. Additive
+  // and short, in Franklin's own palette rather than gold (STYLE.md's
+  // passive-halo rule), and part of the arena so it follows the crystal
+  // under a pulled-back camera.
+  private reflectFlash(container: Phaser.GameObjects.Container) {
+    const ring = this.arena(this.add.graphics());
+    ring.setBlendMode(Phaser.BlendModes.ADD);
+    ring.lineStyle(3, 0xe8dcff, 0.9);
+    ring.strokeEllipse(0, 0, 70, 70);
+    ring.lineStyle(1, 0xc9a8ff, 0.6);
+    ring.strokeEllipse(0, 0, 50, 50);
+    ring.setPosition(container.x, container.y);
+    this.tweens.add({
+      targets: ring,
+      scaleX: { from: 0.5, to: 1.7 },
+      scaleY: { from: 0.5, to: 1.7 },
+      alpha: { from: 1, to: 0 },
+      duration: 300,
+      ease: 'Cubic.easeOut',
+      onComplete: () => ring.destroy(),
+    });
   }
 
   private endBattle(won: boolean) {

@@ -175,7 +175,7 @@ export const TUTORIAL_TIPS: Record<TutorialTipId, TutorialPage> = {
     title: 'Passive Abilities',
     unlock: { kind: 'guardian', ids: ['franklin'] },
     body:
-      "Franklin (World 9) teaches passive abilities instead of moves: once bought, a passive isn't chosen from the move menu each turn, it's simply active for a whole battle, working automatically in the background. Buy as many as you like, but only one can be active at a time; switch which one by revisiting Franklin, or check your current loadout any time from the Lab's Abilities station.",
+      "Franklin (World 9) teaches passive abilities instead of moves: once bought, a passive isn't chosen from the move menu each turn, it's simply active for a whole battle, working automatically in the background. Buy as many as you like, but a passive only runs while it has room: Franklin sells your crystal up to three passive slots, one at a time and each dearer than the last, and every passive takes one, two or three of them. Switch which ones are active by revisiting Franklin, or check your current loadout any time from the Lab's Abilities station.",
   },
   ultimateMoves: {
     title: 'Ultimate Moves',

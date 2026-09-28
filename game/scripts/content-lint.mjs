@@ -207,6 +207,8 @@ const WORLD_GUARDIANS_RAW = evalNode(findClassProperty(overworldSf, 'OverworldSc
 
 const passivesSf = parseFile('src/data/passives.ts');
 const PASSIVES = evalNode(findTopLevelConst(passivesSf, 'PASSIVES'), passivesSf);
+const PASSIVE_MAX_SLOTS = evalNode(findTopLevelConst(passivesSf, 'PASSIVE_MAX_SLOTS'), passivesSf);
+const PASSIVE_SLOT_COSTS = evalNode(findTopLevelConst(passivesSf, 'PASSIVE_SLOT_COSTS'), passivesSf);
 
 const quizSf = parseFile('src/data/quiz.ts');
 const WORLD_QUESTIONS = evalNode(findTopLevelConst(quizSf, 'WORLD_QUESTIONS'), quizSf);
@@ -433,6 +435,33 @@ for (const [world, rival] of Object.entries(WORLD_RIVALS)) {
   const guardianIds = new Set(Object.values(WORLD_GUARDIANS_RAW).map((g) => g.id));
   for (const p of Object.values(PASSIVES)) {
     if (!guardianIds.has(p.owner)) flag(`PASSIVES['${p.id}'].owner '${p.owner}' isn't a real guardian id`);
+  }
+}
+
+// 12a. Every passive's slot size is a whole number of the crystal's slots
+// (1..PASSIVE_MAX_SLOTS) -- a size above the ladder's top rung could never
+// be activated by anyone, and PASSIVE_SLOT_COSTS has to price exactly one
+// rung per slot, or Franklin's slot button reads an undefined price.
+{
+  for (const p of Object.values(PASSIVES)) {
+    if (!Number.isInteger(p.slots) || p.slots < 1 || p.slots > PASSIVE_MAX_SLOTS) {
+      flag(`PASSIVES['${p.id}'].slots ${p.slots} is not a whole number in 1..${PASSIVE_MAX_SLOTS}`);
+    }
+  }
+  if (!Array.isArray(PASSIVE_SLOT_COSTS) || PASSIVE_SLOT_COSTS.length !== PASSIVE_MAX_SLOTS) {
+    flag(`PASSIVE_SLOT_COSTS has ${PASSIVE_SLOT_COSTS?.length} entries; PASSIVE_MAX_SLOTS is ${PASSIVE_MAX_SLOTS}`);
+  }
+}
+
+// 12b. Every passive has a ground halo: art/passiveHalos.ts's
+// drawFranklinPassiveHalo dispatches on the passive id, and a passive it
+// doesn't name draws nothing in battle or in Franklin's pane -- valid
+// TypeScript, invisible in the game. Checked as a plain text search for the
+// quoted id in that file, since the dispatch is an if-chain of literals.
+{
+  const halosSrc = fs.readFileSync(path.join(gameDir, 'src/art/passiveHalos.ts'), 'utf8');
+  for (const p of Object.values(PASSIVES)) {
+    if (!halosSrc.includes(`'${p.id}'`)) flag(`PASSIVES['${p.id}'] has no halo branch in art/passiveHalos.ts`);
   }
 }
 

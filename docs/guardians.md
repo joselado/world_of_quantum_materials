@@ -227,23 +227,38 @@ up to a cap so it never becomes complete immunity.
 
 <img src="../screenshots/docs-guardians-franklin-avatar.png" width="300" alt="Franklin: a figure holding up a sheet of film carrying diffraction rings and their scattered spots">
 
-Teaches three passive abilities, always-on effects for the whole battle,
-not moves you pick each turn. You can learn all three, but only one is ever
-equipped at a time; talk to Franklin again to switch. Themed around X-ray
-diffraction of a defect-riddled or porous crystal, the way a real
-diffraction pattern blurs from sharp spots into diffuse rings as a sample
-gets more disordered.
+Teaches five passive abilities, always-on effects for the whole battle,
+not moves you pick each turn. You can learn all five, but a passive only
+runs while it has room: your crystal starts with no passive slot, and
+Franklin sells up to three of them, one at a time, with the "Buy slot"
+button under her list, at 200, then 800, then 3200 qumatessence. Each
+passive takes up a fixed number of slots while active (the table below):
+one for most, two for Full Reflection, all three for Last Scattering. Talk
+to Franklin again to switch which ones are active: making a passive active
+uses your free slots, or sets aside the ones you equipped longest ago until
+it fits, and you can set any active one aside yourself. Themed around X-ray diffraction of a defect-riddled or porous
+crystal, the way a real diffraction pattern blurs from sharp spots into
+diffuse rings as a sample gets more disordered.
 
-<img src="../screenshots/docs-guardians-franklin-panel.png" width="300" alt="Franklin's panel: your crystal wearing the halo of whichever passive is active, beside the three passives and their prices">
+Two of the five act on a whole hit rather than on the damage number. Last
+Scattering leaves you with one point of life from any attack that would
+have finished you, as long as you had more than one going in (an
+attenuated beam never drops to nothing); the next hit at one point is not
+caught. Full Reflection sends one incoming attack in ten straight back at
+the attacker for its full damage, and you take nothing from it.
+
+<img src="../screenshots/docs-guardians-franklin-panel.png" width="300" alt="Franklin's panel: the five passives beside your crystal wearing the halo of the passive being looked at, with its price and slot size, and the Buy slot button under the list">
 
 <!-- GENERATED:FRANKLIN_PASSIVES_TABLE START -->
 #### Franklin's passives
 
-| Passive | Effect | Cost |
-| --- | --- | --- |
-| Diffraction Shadow | A defect-riddled lattice scatters and attenuates an incoming blow, the way porous carbon attenuates an X-ray beam. | 40 |
-| Satellite Reflection | Coherent hits come twice as often, and each one throws off a secondary diffraction peak: a bonus follow-up damage tick. | 45 |
-| Amorphous Halo | A diffuse, defect-broadened halo softens the quasiparticle-mismatch double damage to a smaller multiplier. | 45 |
+| Passive | Effect | Slots | Cost |
+| --- | --- | --- | --- |
+| Diffraction Shadow | A defect-riddled lattice scatters and attenuates an incoming blow, the way porous carbon attenuates an X-ray beam. | 1 | 40 |
+| Satellite Reflection | Coherent hits come twice as often, and each one throws off a secondary diffraction peak: a bonus follow-up damage tick. | 1 | 45 |
+| Amorphous Halo | A diffuse, defect-broadened halo softens the quasiparticle-mismatch double damage to a smaller multiplier. | 1 | 45 |
+| Last Scattering | An attenuated beam never drops to nothing: a blow that would finish you leaves one point of life, as long as you had more than one. | 3 | 55 |
+| Full Reflection | Below the critical angle a beam reflects entirely off the surface: one incoming attack in ten bounces back at the attacker, and you take nothing. | 2 | 50 |
 <!-- GENERATED:FRANKLIN_PASSIVES_TABLE END -->
 
 ## Skłodowska-Curie's Experiments

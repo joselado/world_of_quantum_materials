@@ -299,6 +299,15 @@ export const ANYON_ECHO_CRIT_MULTIPLIER = 2;
 // multiplier for whichever side has it active as the defender (normally
 // MISMATCH_MULTIPLIER, 2x).
 export const EDGE_CURRENT_MISMATCH_MULT = 1.5;
+// Last Scattering (id lastScattering): a hit that would take its holder to
+// zero leaves it at this many HP instead, provided the holder had more than
+// this before the attack landed -- BattleScene.applyDamage's floor, decided
+// once per attack (a hit and its Satellite Reflection echo tick together).
+export const LAST_SCATTERING_MIN_HP = 1;
+// Full Reflection (id fullReflection): the chance that an incoming hit
+// bounces back onto the attacker for its full damage number, with its holder
+// taking nothing (BattleScene.resolveHit's reflected branch).
+export const FULL_REFLECTION_CHANCE = 0.1;
 
 // The ordinary quasiparticle-mismatch multiplier (DESIGN.md §3/§4) -- a
 // defender whose own physics can't host the attacking move's class at all

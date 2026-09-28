@@ -29,8 +29,7 @@ import { ANALYTIC_SHAPES, ULTIMATE_SHAPES } from '../../art/attackEffects';
 import { stopMoveEffectPreview } from '../../art/moveEffectPreview';
 import { killTweensDeep } from '../../art/crystals';
 import { MOVE_CLASS_LORE } from '../../data/moveLore';
-import { PASSIVES, PASSIVE_OWNERS, PASSIVE_OWNER_LABELS } from '../../data/passives';
-import type { PassiveOwner } from '../../data/passives';
+import { PASSIVES, PASSIVE_OWNERS, PASSIVE_OWNER_LABELS, activePassiveIds, passiveSlotCount, passiveSlotsUsed } from '../../data/passives';
 import {
   DENSITY_PRESETS,
   DEFAULT_ENCOUNTER_DENSITY,
@@ -382,11 +381,12 @@ function showInfoPanel(scene: HubScene, title: string, body: string) {
 }
 
 // The "checkable anytime" surface for a passive owner's current loadout
-// (data/passives.ts, DESIGN.md §5) -- one name+description block per owner,
-// each its own pair of Text objects with explicitly capped font sizes
-// rather than folding both full descriptions into showInfoPanel's single
-// wrapped body, since that body's shrink-to-fit only lowers font size and
-// never truncates.
+// (data/passives.ts, DESIGN.md §5) -- one name line per owner ("Franklin:
+// <active names> (N of M slots used)") followed by one description line per
+// active passive, each its own Text object with explicitly capped font
+// sizes rather than folding every full description into showInfoPanel's
+// single wrapped body, since that body's shrink-to-fit only lowers font
+// size and never truncates.
 export function showAbilitiesPanel(scene: HubScene) {
   scene.dialogueContainer?.destroy(true);
 
@@ -409,14 +409,17 @@ export function showAbilitiesPanel(scene: HubScene) {
   const descScale = Math.min(fontScale(scene), 1.2);
   const descPx = `${Math.round(10 * descScale)}px`;
 
-  const activeByOwner = (scene.game.registry.get('activePassiveByOwner') as Partial<Record<PassiveOwner, string>>) ?? {};
-  const loadout: { guardian: string; activeId: string | null }[] = PASSIVE_OWNERS.map((owner) => ({
+  const loadout = PASSIVE_OWNERS.map((owner) => ({
     guardian: PASSIVE_OWNER_LABELS[owner],
-    activeId: activeByOwner[owner] ?? null,
+    // `?.` guards a stale id left in an old save by a since-renamed passive,
+    // the same way BattleScene's passivePillText does.
+    activeIds: activePassiveIds(scene.game.registry, owner).filter((id) => PASSIVES[id]),
+    slots: passiveSlotCount(scene.game.registry, owner),
   }));
-  loadout.forEach(({ guardian, activeId }) => {
+  loadout.forEach(({ guardian, activeIds, slots }) => {
+    const names = activeIds.length > 0 ? activeIds.map((id) => PASSIVES[id].name).join(' · ') : 'None equipped';
     const nameLine = scene.add
-      .text(columns.contentCenterX, y, `${guardian}: ${activeId ? PASSIVES[activeId].name : 'None equipped'}`, {
+      .text(columns.contentCenterX, y, `${guardian}: ${names} (${passiveSlotsUsed(activeIds)} of ${slots} slots used)`, {
         fontSize: namePx,
         color: '#ffffff',
         fontStyle: 'bold',
@@ -426,9 +429,9 @@ export function showAbilitiesPanel(scene: HubScene) {
       .setOrigin(0.5, 0);
     container.add(nameLine);
     y += nameLine.height + 3;
-    if (activeId) {
+    for (const id of activeIds) {
       const descLine = scene.add
-        .text(columns.contentCenterX, y, PASSIVES[activeId].description, {
+        .text(columns.contentCenterX, y, `${PASSIVES[id].name}: ${PASSIVES[id].description}`, {
           fontSize: descPx,
           color: REFERENCE_BLUE_GREY_HEX,
           align: 'center',
@@ -436,16 +439,16 @@ export function showAbilitiesPanel(scene: HubScene) {
         })
         .setOrigin(0.5, 0);
       container.add(descLine);
-      y += descLine.height;
+      y += descLine.height + 4;
     }
-    y += 14;
+    y += 10;
   });
 
   const footer = scene.add
     .text(
       columns.contentCenterX,
       y,
-      `Switch which one's active by revisiting ${PASSIVE_OWNERS.map((o) => PASSIVE_OWNER_LABELS[o]).join('/')}.`,
+      `Switch which ones are active by revisiting ${PASSIVE_OWNERS.map((o) => PASSIVE_OWNER_LABELS[o]).join('/')}.`,
       {
         fontSize: fontPx(scene, 11),
         color: REFERENCE_BLUE_GREY_HEX,

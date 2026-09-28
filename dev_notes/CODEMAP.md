@@ -105,10 +105,6 @@ game/src/
                                  guardianHeader.ts's renderGuardianHeader() is the large-portrait-
                                  plus-opening-line block all of them (and showGuardianLore) open
                                  with,
-                                 passiveList.ts's renderChoiceList() is the shared
-                                 buy-list-plus-switch engine franklin.ts calls (via its own
-                                 renderPassiveList() wrapper), kept in its own file rather than
-                                 folded into franklin.ts itself (see "Guardian panels" below),
                                  tunableMoveShop.ts's hostableClasses() is the shared filter
                                  landau.ts and sklodowskaCurie.ts list as the entries under
                                  whichever of their moves is open in their own two-level left
@@ -323,7 +319,7 @@ game/src/
                                   its pause/resume counterpart, which OverworldScene.updateWorldSprites
                                   runs when a world sprite's visibility flips, since setVisible(false)
                                   hides a sprite without stopping the tweens animating it (scenes/panels/listDetail.ts's destroyPanel,
-                                  franklin.ts's crystal-block re-render, BattleScene's
+                                  franklin.ts's/kondo.ts's detail-pane re-render, BattleScene's
                                   opponent-crystal swap and turn-preview redraw), since Phaser's own
                                   destroy() leaves tweens targeting a dead object running and the
                                   sparkle/glow tweens handed out here repeat forever
@@ -662,7 +658,8 @@ game/src/
                                   feynmanLevelCost(), battleStakeForWorld(),
                                   FRACTIONAL_GUARD_DAMAGE_MULT/ANYON_ECHO_FRACTION/
                                   ANYON_ECHO_CRIT_MULTIPLIER/
-                                  EDGE_CURRENT_MISMATCH_MULT (Franklin's passives, §5),
+                                  EDGE_CURRENT_MISMATCH_MULT/LAST_SCATTERING_MIN_HP/
+                                  FULL_REFLECTION_CHANCE (Franklin's passives, §5),
                                   MISMATCH_MULTIPLIER, SCREEN_REDUCTION_BY_LEVEL (Kondo's buff-cap
                                   math, §4/§5), energyFactor()/lifetimeFactor() (the two mirror
                                   stat levers off the shared statLever curve),
@@ -725,7 +722,13 @@ game/src/
                                   hybrid-material fuser
     passives.ts                   PASSIVES/FRANKLIN_PASSIVE_IDS/PASSIVE_OWNERS/
                                   PASSIVE_OWNER_LABELS -- Franklin's whole-battle passive
-                                  abilities (id/name/owner/description/cost)
+                                  abilities (id/name/owner/description/cost);
+                                  PASSIVE_MAX_SLOTS/PASSIVE_SLOT_COSTS (the slot ladder:
+                                  three slots, bought one at a time at 200/800/3200) and
+                                  Passive.slots (how many a passive takes while active);
+                                  activePassiveIds()/allActivePassiveIds()/passiveSlotCount()/
+                                  passiveSlotsUsed() -- the registry readers every scene and
+                                  panel goes through
     tokens.ts                    Qumatessence value tiers + weights
     quiz.ts                      Per-world physics question pools (WORLD_QUESTIONS[1-9]) as the
                                   primary wild-encounter quiz source; a few materials additionally
@@ -1051,12 +1054,8 @@ everything else by absence, so only two things in it carry meaning.
   into the same file as a plain (non-exported) function taking `scene` as its first param; a
   helper more than one guardian calls (or written generically enough that a future guardian
   plausibly could) gets its own file under `scenes/panels/` instead rather than living in either
-  guardian's file -- `passiveList.ts`'s `renderChoiceList` (the shared "buy several, only one
-  active, switch by revisiting" engine Franklin's passive kit sells, through its own thin
-  `renderPassiveList` adapter over its own `passivesUnlocked`/`activePassiveByOwner` registry
-  keys) is the current example, kept in its own file even with a single caller today since a
-  future guardian selling another flat, non-previewable "buy several, equip one" kit could reuse
-  it the same way. `guardianHeader.ts`'s `renderGuardianHeader` is the block every one of those
+  guardian's file -- `tunableMoveShop.ts`'s `hostableClasses` (below) is the current example.
+  `guardianHeader.ts`'s `renderGuardianHeader` is the block every one of those
   panels opens with -- that guardian's own avatar at `PORTRAIT_SCALE`, standing in its own column
   at the panel's left edge, with their opening line beside it (STYLE.md's "Guardian panel
   headers") -- called by all ten plus `OverworldScene.showGuardianLore`, which is the fallback a
@@ -1065,14 +1064,12 @@ everything else by absence, so only two things in it carry meaning.
   several cap their own intro font below the text-size setting. It also plays the shared
   `playGuardianChime`, so a panel never calls that itself. `listDetail.ts`'s own
   `renderListColumn`/`renderMoveDetailHeader`/
-  `renderSelfBuffMoveDetailHeader`/`renderStatusAndConfirm`/`insertColumnDivider`/
-  `renderListColumnFooter`/`destroyPanel` (see the file-tree entry above) is the
-  genuinely multi-caller case, shared today by Dresselhaus/Anderson/Majorana/Noether/Kondo/
-  Feynman's own
-  panels plus HubScene's Qumatex panel (the paginated-left-column shape), by Landau's/
-  Skłodowska-Curie's own panels (the bespoke always-both-visible two-column shape), and -- for
-  `insertColumnDivider`/`destroyPanel`, which are about panel chrome rather than the list+detail
-  split itself -- by Franklin's own crystal-beside-list panel too. Both
+  `renderSelfBuffMoveDetailHeader`/`renderPassiveDetailHeader`/`renderStatusAndConfirm`/
+  `insertColumnDivider`/`renderListColumnFooter`/`destroyPanel` (see the file-tree entry above)
+  is the genuinely multi-caller case, shared today by Dresselhaus/Anderson/Majorana/Noether/Kondo/
+  Franklin/Feynman's own
+  panels plus HubScene's Qumatex panel (the paginated-left-column shape) and by Landau's/
+  Skłodowska-Curie's own panels (the bespoke always-both-visible two-column shape). Both
   Landau's and Skłodowska-Curie's panels also share `tunableMoveShop.ts`'s
   `hostableClasses` -- which quasiparticles the player's *current* form can host (`canHost`),
   which each lists as the entries under whichever of its moves is open in its own two-level left
@@ -1492,17 +1489,19 @@ re-syncs after the rebuild.
 
 **Passives (Franklin's abilities).** `this.playerActivePassives`/
 `this.opponentActivePassives` (`Set<string>` of `data/passives.ts` ids) are read once in
-`create()` from registry/save `activePassiveByOwner` (keyed by `PassiveOwner`, `data/
-passives.ts`) and held for the whole battle -- unlike Kondo's self-buffs above, a passive has no `turnsLeft`/tick-down
+`create()` from registry/save `activePassivesByOwner` (through `data/passives.ts`'s
+`allActivePassiveIds`, keyed by `PassiveOwner`; up to `PASSIVE_MAX_SLOTS` per owner) and held
+for the whole battle -- unlike Kondo's self-buffs above, a passive has no `turnsLeft`/tick-down
 machinery at all, it's just on or off for the battle. Each side's active passives get their
 own pill too, built inside `scenes/battle/hud.ts`'s `drawNameplate` from its `passiveText`
 option and laid out as the last row of that plate's bottom-anchored stack, directly below the
 side's status pill (its height counts toward the stack height the plate shrinks its name down
 to fit into the room above the crystal's head) -- since the
 set never changes mid-battle there's no tick-down render function like `renderStatusLabel`,
-the pill's text (`passivePillText`, `PASSIVES[id]?.name` joined with `·` for the 0-2 entries a
+the pill's text (`passivePillText`, `PASSIVES[id]?.name` joined with `·` for the 0-3 entries a
 side can hold, `?.` guarding against a stale id from an old save) is built once and passed
-into `drawNameplate` as that plate's last stack row, and the `Text` object isn't kept as a
+into `drawNameplate` as that plate's last stack row (word-wrapped at the plate's own width,
+since three names at the Large preset outrun the field), and the `Text` object isn't kept as a
 field, unlike `playerStatusLabel`/`opponentStatusLabel` (those are fields because
 `renderStatusLabel` reads them back later; nothing reads the passive pill back). It uses
 `PASSIVE_PILL_COLOR` (a muted blue-violet) rather than `STATUS_PILL_COLOR`'s rust-orange, so
@@ -1510,23 +1509,36 @@ an always-on passive reads as visually distinct from a ticking status at a glanc
 `activePassives(isPlayer)` is the
 generic per-side lookup every hook below reads (`opponentActivePassives` stays empty today,
 kept as its own field rather than hardcoding "player only" so the hooks read symmetrically
-off either side, same reasoning `screeningMultiplier` already follows). All three of
+off either side, same reasoning `screeningMultiplier` already follows). All five of
 Franklin's own hook directly into `resolveHit`, identified by id (`data/passives.ts`'s
 `fractionalGuard`/`anyonEcho`/`edgeCurrent` -- ids kept as originally minted from an earlier
-retheme, see "Guardians" below): **Amorphous Halo** (`edgeCurrent`) softens the mismatch
+retheme, see "Guardians" below -- plus `lastScattering`/`fullReflection`): **Amorphous Halo**
+(`edgeCurrent`) softens the mismatch
 multiplier (`mismatchMult`, 2x → `EDGE_CURRENT_MISMATCH_MULT` 1.5x) when the *defender* has it
 active; **Diffraction Shadow** (`fractionalGuard`) adds a `fractionalGuardMult` (0.85) term to
 the `dmg` formula, also keyed off the defender; **Satellite Reflection** (`anyonEcho`) fires
 after the primary hit's damage already landed, sharing a small helper with the ordinary
-damage-application code path -- `applyDamage(toPlayer, amount)` (mirrors the
+damage-application code path -- `applyDamage(toPlayer, amount, floor?)` (mirrors the
 registry-write/persist-only-for-the-player rule the original inline branch used, and calls
 `updateBars()`) -- re-called for a bonus `Math.round(dmg * ANYON_ECHO_FRACTION)` tick against
 the same defender when the attacker's own crit lands with it active -- and it doubles that
 attacker's own crit rate (`critChanceMult`) on top, which is the one thing in the game that
-moves `BASE_CRIT_CHANCE` at all. Its own log clause
-(`echoText`) stacks onto the hit's line after `statusText`, same "stack a clause onto the
-existing line" pattern `mismatchText`/`critText`/`statusText` already use, in that fixed
-order.
+moves `BASE_CRIT_CHANCE` at all. **Full Reflection** (`fullReflection`) is rolled in
+`resolveHit` before the animation starts (`reflected`: `Math.random() < FULL_REFLECTION_CHANCE`
+when the defender has it, never on a whiff or a zero-damage hit) so the impact beat already
+knows where it lands: the same `dmg` goes to the attacker instead (`hitPlayer`), the defender
+takes nothing, no echo fires, `impactPunch` lands on the attacker's crystal and `reflectFlash`
+(a short additive pale-lavender ring bursting off the reflecting crystal) plays at the
+defender's. **Last Scattering** (`lastScattering`) is `damageFloor(toPlayer)`:
+`LAST_SCATTERING_MIN_HP` when the side about to take this attack has it active and is above
+that, 0 otherwise -- read once per `applyResult` and passed as `applyDamage`'s `floor` for
+both the hit and its echo tick, so the two count as one attack; `applyDamage` returns whether
+the floor actually held, which feeds the line's own log clause. Log clauses stack onto the
+hit's line in a fixed order (mismatch, crit, buff, echo, held), the same "stack a clause onto
+the existing line" pattern throughout; a reflected hit gets its own line (`Full Reflection
+sends it straight back for N!`) carrying only the buff and held clauses. An attacker KO'd by
+its own reflected swing goes through the ordinary `checkEndOrContinue`, which checks both
+sides regardless of whose swing it was (the finale's stage-falling path included).
 
 **A hit resolves on its landing, never on its cast.** `resolveHit`'s tail hands both halves of a
 move's result to `playAttackEffect`'s callbacks (`art/attackEffects.ts`, which takes an optional
@@ -2688,77 +2700,67 @@ a blind find-and-replace on a name is unsafe).
 Franklin (world 9), and Skłodowska-Curie (world 10) all have real mechanics**, following the
 same `open: (s) => showXPanel(s)` pattern as Noether/Bloch/Dresselhaus (see "Guardian panels"
 above for the `scenes/panels/` file-per-guardian convention every one of them follows):
-- **Franklin's passive panel** (`scenes/panels/franklin.ts`'s `showFranklinPanel`) sells the
-  "still-unbought get a buy button, already-bought get a 'Make `<name>` active' button or a
-  dimmed '`<name>` (active)' tag" shape -- "buying the very first one auto-activates it, buying
-  a second or third doesn't" -- through `scenes/panels/passiveList.ts`'s
-  `renderChoiceList(scene, container, y, items: ChoiceListItem[], state: ChoiceListState, reopen,
-  options?: ChoiceListRenderOptions)` via its own thin `renderPassiveList(scene, container, y,
-  passiveIds, owner: PassiveOwner, reopen, options?)` wrapper, which builds `items` from
-  `data/passives.ts` and a `ChoiceListState` backed by `passivesUnlocked`/`activePassiveByOwner`
-  (keyed by `owner`, parameterized even though Franklin is the sole `PassiveOwner` today).
-  `ChoiceListRenderOptions` (`centerX`/`wrapWidth`, defaulting to `CANVAS_W / 2`/`480` if
-  omitted; `onSelect`) is the opt-in surface franklin.ts's own two-column layout (below) uses to
-  lay the list out in a narrower right-hand column and to add a non-committal "look" click on
-  each row's description on top of the existing buy/activate buttons. Like Kondo's self-buff
+- **Franklin's passive panel** (`scenes/panels/franklin.ts`'s `showFranklinPanel`) is a
+  list+detail panel (`scenes/panels/listDetail.ts`, the same shape Kondo's uses, "Candidate-
+  crystal lists" above): the left column names the five `FRANKLIN_PASSIVE_IDS`, a row click
+  only previews (`scene.franklinPreview`/`franklinPage`, `GuardianPanelHost` fields on both
+  scenes, reset by `closeDialogue()` like every other preview field), and the right column
+  opens with `listDetail.ts`'s `renderPassiveDetailHeader(scene, container, material,
+  displayName, haloIds, haloAlpha, centerX, y, rightColW)` -- the player's own current crystal
+  (`makeCrystal`, the same call convention `BattleScene` uses) standing on a ground shadow
+  inside the shared recessed preview stage, wearing `art/passiveHalos.ts`'s
+  `drawFranklinPassiveHalo(scene, container, x, y, passiveId, rx, ry, alpha?)` for each id in
+  `haloIds` -- then the passive's `description`, and `renderStatusAndConfirm`'s status line
+  and one confirm button. An active passive's pane passes the whole active list as `haloIds`
+  at full alpha (what the crystal wears in battle); an inactive passive's passes its own id
+  alone at `0.45`. The crystal in that header is size `40` rather than `DETAIL_CRYSTAL_SIZE`
+  so Amorphous Halo's `2.8x` glow stays inside the stage. Slots are bought from their own
+  button in the left column between the rows and Farewell (`renderSlotButton`, rendered
+  into `chromeBlock` with the footer: "Buy slot N (`<cost>`)" for the next rung of
+  `PASSIVE_SLOT_COSTS`, dimmed when unaffordable, then a dimmed no-op "3 slots owned" tag),
+  never as a row -- a slot is room, not a sixth ability, and a row would read as one. The
+  button's height is measured off a throwaway sample and handed to `renderListColumn` as
+  `reserveBelow`, and its label is capped at `SLOT_BUTTON_CAP` (`1.3`) so it stays on one
+  line in the 200px column at the largest text-size preset. State is read through
+  `data/passives.ts`'s `activePassiveIds`/`passiveSlotCount`/`passiveSlotsUsed` and written
+  by four panel-local functions -- `buyPassive` (deducts, appends to `passivesUnlocked`, and
+  activates in the same click if the passive fits the free slots), `activatePassive` (adds
+  the passive, first setting aside whichever oldest-equipped entries `displacedBy` says it
+  needs the room of -- the same list the status line named before the click; never reached
+  for a passive whose `slots` exceed what the crystal owns, since that button is inert),
+  `deactivatePassive` ("Set `<name>` aside"), and `buySlot` (the next rung:
+  `passiveSlotsByOwner[owner] += 1` for `PASSIVE_SLOT_COSTS[owned]`) -- each of which
+  persists, `destroyPanel`s and reopens, since every one changes state the panes read. Like Kondo's self-buff
   moves (below), a passive is never gated by `MOVE_COMPATIBILITY` at all (the same "player-learned
   technique, not a quasiparticle a crystal has to host" reasoning) -- every passive is always
   purchasable regardless of current form, so this panel has no "wrong form" empty state to
-  special-case. Each still-unbought row also prints its own `description` underneath in a
-  smaller, capped-scale font (`Math.min(fontScale(this), 1.3)` for the buy button itself, `1.2`
-  for the description) -- this panel has no shrink-to-fit safety net the way `showInfoPanel`
-  does, and letting either scale all the way to the text-size setting's uncapped 'Large' preset
-  (like every other guardian panel's buttons do) pushed the Farewell button off the bottom of the
-  canvas the first time this was tried, verified via a live headless-Chromium run at every
-  `fontScale` preset. See "Stats and battle resolution" above for exactly how each of Franklin's
-  three passives hooks into `BattleScene`.
-- **Franklin's own panel layout** puts a fixed-size crystal-preview block (`showFranklinPanel`'s
-  `renderCrystalBlock`) in a left column beside the passive list's own right column (a `760`-wide
-  panel split via `ChoiceListRenderOptions`' `centerX`/`wrapWidth`, divided by a thin vertical
-  line the same way `HubScene.renderMaterialdexPanel`'s own two-column Qumatex divider is drawn),
-  rather than stacking the crystal above the list -- putting the two side by side means the
-  crystal block adds no extra panel height beyond whichever column is already taller, which
-  matters since this panel has no shrink-to-fit net and was already tight against `CANVAS_H` at
-  the largest text-size preset before this block existed. The crystal itself is
-  `makeCrystal(scene, 34, scene.playerMaterial.color, scene.playerMaterial.variant, { seed:
-  scene.playerMaterial.name, hybrid: scene.playerMaterial.hybridParents })` -- the player's own
-  current crystal, the same call convention `BattleScene` uses -- standing on a plain ground
-  shadow ellipse (`0x000000` at `0.3` alpha, no biome to shade it off the way `BattleScene`'s own
-  shadow is). `art/passiveHalos.ts`'s `drawFranklinPassiveHalo(scene, container, x, y, passiveId,
-  rx, ry, alpha?)` draws each of the three passives' own ground halo around that shadow, driven by
-  which passive is being looked at -- a plain `previewId` closure variable local to
-  `showFranklinPanel`, starting from whichever is actually active
-  (`activePassiveByOwner.franklin`) and reassigned by `ChoiceListRenderOptions.onSelect` on a
-  description-row click, never written to the registry so looking stays free -- rendered at full
-  alpha with an "(active)" label for the one actually active in battle, or `0.45` alpha with a
-  "(preview)" label for any other passive. This is deliberately *not* persisted state: buying or
-  activating a passive (`renderChoiceList`'s own buttons) always calls `reopen()`
-  (`showFranklinPanel` again from scratch), which re-reads `activePassiveByOwner.franklin` fresh
-  and starts the crystal back on whatever is now actually active -- a persisted preview field
-  would otherwise go stale across exactly that commit and show a passive that was only ever
-  looked at, not the one just bought/activated. The crystal block itself is rebuilt in place
-  (`art/crystals.ts`'s shared `killTweensDeep` first, to stop Amorphous Halo's own glow tween and
-  `makeCrystal`'s per-shard sparkle tweens from still targeting a destroyed object; then
-  `crystalBlock.removeAll(true)` and
-  redrawn) on each preview click rather than a full `reopen()`, and the label's own height is
-  reserved up front from the longest possible passive-name-plus-"(preview)" string (the same
-  sample-measurement technique `renderPagedButtons`/Qumatex's own paginated list use) so a later
-  preview click can never grow the block past the height the panel was first sized for.
-  `BattleScene.create()` draws the same
-  `drawFranklinPassiveHalo` once around the player's own ground shadow
-  (`PLAYER_POS.x, PLAYER_POS.y + SHADOW_DROP`, matching `drawBackground`'s own shadow ellipse
-  there) for whichever passive is in
-  `playerActivePassives` (see "Passives (Franklin's abilities)" above) -- at full alpha only,
-  since a passive showing up in battle at all already means it's the active one. `art/
-  passiveHalos.ts` keeps each of the three halos visually distinct from each other and from
-  `BattleScene.addBoostHalo`'s own "temporary bonus" aura: Diffraction Shadow is a static ring of
-  small dim scattered spots (a powder/polycrystalline sample's own spotty diffraction rings);
-  Satellite Reflection is a static, fainter ring offset to one side (a diffraction pattern's own
-  secondary spot beside the main one); Amorphous Halo is the only one that moves, a soft
-  additive-blended glow breathing on a slow 3.2s pulse (an amorphous solid's own diffuse halo,
-  literally that term in X-ray diffraction) -- all three stay in Franklin's own lavender/purple
-  family and never gold, so they can't be confused with `addBoostHalo`'s gold aura if both happen
-  to be on screen at once.
+  special-case. The intro quote is capped at `1.15` like Kondo's, since the pane (a `104`px
+  stage, a three-line description, a status line and a button) clears the canvas floor by a
+  few pixels at the Large text-size preset, verified via a live headless-Chromium run at
+  every `fontScale` preset for every row in both the one-slot and two-slot states. See
+  "Stats and battle resolution" above for exactly how each of Franklin's five passives hooks
+  into `BattleScene`.
+- **Franklin's halos in battle.** `BattleScene.create()` draws `drawFranklinPassiveHalo`
+  once per active id around the player's own ground shadow (`PLAYER_POS.x, PLAYER_POS.y +
+  SHADOW_DROP`, matching `drawBackground`'s own shadow ellipse there), stacked in one
+  arena-tagged container, for everything in `playerActivePassives` (see "Passives (Franklin's
+  abilities)" above) -- at full alpha only, since a passive showing up in battle at all
+  already means it's active. `art/passiveHalos.ts` keeps each of the five halos in its own
+  band of the shadow so two stack without competing, and all distinct from
+  `BattleScene.addBoostHalo`'s own "temporary bonus" aura: Diffraction Shadow is a static ring
+  of small dim scattered spots just outside the rim (a powder/polycrystalline sample's own
+  spotty diffraction rings); Satellite Reflection is a static, fainter ring offset to one
+  side (a diffraction pattern's own secondary spot beside the main one); Amorphous Halo is a
+  soft additive-blended glow breathing on a slow 3.2s pulse well outside everything else (an
+  amorphous solid's own diffuse halo, literally that term in X-ray diffraction); Last
+  Scattering is three thin rings stepping outward from the rim and fading with each step
+  (Beer-Lambert attenuation) plus one small bright point at the front of the rim that
+  breathes but never dims below a floor (the last of the beam always getting through); Full
+  Reflection is the rim itself drawn as a polished edge -- a bright sheen along the far rim
+  with a soft glow outside it, a fainter twin along the near rim, and a glint at the left
+  where the beam grazes in, shimmering on a slow pulse. All five stay in Franklin's own
+  lavender/purple family and never gold, so they can't be confused with `addBoostHalo`'s
+  gold aura if both happen to be on screen at once.
 - **Feynman's move-leveling panel** (`scenes/panels/feynman.ts`'s `showFeynmanPanel`) is a
   different mechanic shape entirely from every other guardian's -- not a purchase catalog, but
   a leveling attempt against a move the player already owns. `renderMoveLevelList` is a
@@ -3080,11 +3082,12 @@ scoped update (`movesSelectedId`/`movesPage` on `HubScene`, panel state only, re
 `closeDialogue()`); a page flip rebuilds. `showAbilitiesPanel`
 is the "check anytime" surface for Franklin's current passive loadout -- its own
 dedicated panel (not folded into `showStatsPanel`/its shared `showInfoPanel` body), looping over `data/
-passives.ts`'s `PASSIVE_OWNERS` (rather than a hand-written block) to build one
-name+description row per owner, labeled via `PASSIVE_OWNER_LABELS` and read from registry
-`activePassiveByOwner[owner]`, so a player doesn't have to walk back to either guardian's own
-panel just to remember which passive is running (and doesn't have to remember what that passive
-actually does either, since the full description shows here too).
+passives.ts`'s `PASSIVE_OWNERS` (rather than a hand-written block) to build, per owner, one
+name line ("`<owner>`: `<active names>` (N of M slots used)", labeled via `PASSIVE_OWNER_LABELS`
+and read through `activePassiveIds`/`passiveSlotsUsed`/`passiveSlotCount`) plus one description line per active
+passive, so a player doesn't have to walk back to the guardian's own
+panel just to remember which passives are running (and doesn't have to remember what each
+actually does either, since the full descriptions show here too).
 
 **The Lab's guardian gallery** (`HubScene.spawnGuardianAvatars`/`guardianSlot`/
 `showGuardianTooltip`, called once from `create()`): every guardian in registry `metGuardians`
@@ -3125,7 +3128,7 @@ room, at a much
 smaller fixed size (`STATION_MOTIF_SIZE = 26`) than a motif drawn inside a full panel would
 use. A panel whose own row list can grow long caps its row font scale
 (`Math.min(fontScale(scene), 1.3)`) rather than
-adding a shrink-to-fit loop, the tradeoff `renderPassiveList`/`showAbilitiesPanel`
+adding a shrink-to-fit loop, the tradeoff `showAbilitiesPanel`
 make; `showInfoPanel`/`HubScene.showPanel` keep their own shrink-to-fit loops (floor `9`px)
 since their body length varies more per instance, and `showTutorialTopics`' own detail-pane
 render gets the same behavior from the shared `fitProseToBudget` (see "Long authored prose is
@@ -3154,7 +3157,8 @@ sharing state. Several things key off `isSuperpositionMode()`:
   World 10's own map-shape dispatch and the player-material read need to see that seeded
   value already in the registry.
 - `applySuperpositionUnlocks` grants every move (`unlockedMoves = Object.keys(MOVES)`) and
-  every passive (`passivesUnlocked = Object.keys(PASSIVES)`), merges every `BUILT_WORLDS`
+  every passive (`passivesUnlocked = Object.keys(PASSIVES)`) plus every passive slot
+  (`passiveSlotsByOwner[owner] = PASSIVE_MAX_SLOTS`), merges every `BUILT_WORLDS`
   entry into `visitedWorlds` (read by Feynman's/`BattleScene`'s Analytic-question eligibility
   and `HubScene.canResumeWorld`, not by Bloch -- see the candidate-pool point below), and
   unconditionally overwrites registry `discoveredMaterials` with one entry per
@@ -3166,9 +3170,11 @@ sharing state. Several things key off `isSuperpositionMode()`:
   `applySuperpositionUnlocks` also seeds that one active slot to a random pick among the
   unlocked options, but only if it's still unset -- so a deliberate pick made at that
   guardian's own panel survives every later re-application of the grant: `kondoActiveMove`
-  to a random one of `KONDO_MOVE_IDS`; `activePassiveByOwner[owner]` (for each
-  `PASSIVE_OWNERS` entry, today just `'franklin'`) to a random passive id among that owner's
-  own `PASSIVES` entries; `andersonDopant` to a random non-hybrid crystal (`allCrystals()`
+  to a random one of `KONDO_MOVE_IDS`; `activePassivesByOwner[owner]` (for each
+  `PASSIVE_OWNERS` entry, today just `'franklin'`) to random passive ids among that owner's
+  own `PASSIVES` entries, drawn until no further one fits the `PASSIVE_MAX_SLOTS` slots
+  (`passiveSlotsUsed`); `andersonDopant` to a random
+  non-hybrid crystal (`allCrystals()`
   filtered through `isHybridMaterial`); and `playerForm` to a random pick from a pool
   coin-flipped between Dresselhaus's plain-crystal pool (`allCrystals()` filtered to
   non-hybrid) and Majorana's hybrid-result pool (`allCrystals()` filtered to hybrid) -- so a
@@ -3477,10 +3483,14 @@ usable in battle, `null` until the player picks one via `scenes/panels/kondo.ts`
 "Guardians" above; the other two bought-but-inactive Kondo moves, if any, still live in the
 ordinary `unlockedMoves` list, this field only tracks which one currently passes
 `getBattleMoves`' extra filter), `passivesUnlocked: string[]` (every passive ever bought, flat
-since passive ids are globally unique across `PASSIVES`) and
-`activePassiveByOwner: Partial<Record<PassiveOwner, string>>` (which passive is currently
-equipped, per owner -- `data/passives.ts`'s `PassiveOwner`/`PASSIVE_OWNERS`, same "several
-unlocked, one active per owner" shape as `kondoActiveMove`, see "Guardians" above),
+since passive ids are globally unique across `PASSIVES`),
+`activePassivesByOwner: Partial<Record<PassiveOwner, string[]>>` (which passives are currently
+equipped, per owner, oldest-equipped first -- `data/passives.ts`'s `PassiveOwner`/`PASSIVE_OWNERS`,
+the "several unlocked, a few active per owner" shape `kondoActiveMove` has with one slot, see
+"Guardians" above; an entry in `MIGRATIONS` carries a save's single-id `activePassiveByOwner` across as a
+one-entry list, plus the one slot its holding implied) and `passiveSlotsByOwner:
+Partial<Record<PassiveOwner, number>>` (how many passive slots have been bought for an
+owner's kit, `0` when absent; every active passive takes `Passive.slots` of them),
 `moveClassTuning: Partial<Record<string, MoveClass>>` (which quasiparticle a given tunable move
 is tuned to, by move id -- shared by Landau's two Analytic moves and Skłodowska-Curie's two
 Ultimate moves alike, since it's keyed by move id, not owner; an id missing from this map is
@@ -3548,7 +3558,7 @@ calls are a third, separate hand-written list that has to gain the same new fiel
 field silently stays `undefined` in the registry on every fresh load (a save file itself would
 still have the right value, since `loadSave()`'s `{ ...defaultSave(), ...saved }` spread is
 generic -- only this registry-seeding step is the hand-listed one). Caught the hard way while
-wiring up `activePassiveByOwner`: `OverworldScene`/`BattleScene`
+wiring up `activePassivesByOwner`: `OverworldScene`/`BattleScene`
 both read the *registry*, not `loadSave()` directly, so a field missing from this list reads as
 permanently unset in every scene despite `data/save.ts` being fully correct.
 `loadIntoRegistry(superposition)` is called both at boot and every time the mode picker

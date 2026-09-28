@@ -18,7 +18,7 @@ import {
   STORY_LENGTH_PRESETS,
 } from './settings';
 import type { MusicStyle, DifficultyTier, WorldSizeId, TouchControlsMode, StoryLength } from './settings';
-import type { PassiveOwner } from './passives';
+import type { ActivePassivesByOwner, PassiveSlotsByOwner } from './passives';
 
 // Two independent localStorage-backed save slots, one per starting mode
 // (Story Mode / Superposition Mode -- see the `superpositionMode` field
@@ -155,17 +155,23 @@ export interface SaveData {
   // All three can be bought independently (they stay in unlockedMoves
   // regardless), but getBattleMoves only ever surfaces this one.
   kondoActiveMove: string | null;
-  // Every passive ability the player has ever bought, flat across both
-  // current owners (data/passives.ts's PassiveOwner) since passive ids are
-  // globally unique across PASSIVES -- same "buy several, only one active,
+  // Every passive ability the player has ever bought, flat across every
+  // owner (data/passives.ts's PassiveOwner) since passive ids are globally
+  // unique across PASSIVES -- the same "buy several, keep a few active,
   // switch by revisiting the guardian" shape as Kondo's moves above, but a
   // passive is a whole-battle always-on modifier rather than a move picked
   // from the battle menu each turn.
   passivesUnlocked: string[];
-  // Which passive is currently active for each owner (BattleScene reads
-  // this once at battle start, see its own comments) -- an owner missing
-  // from this map has nothing equipped yet.
-  activePassiveByOwner: Partial<Record<PassiveOwner, string>>;
+  // Which passives are currently active for each owner, oldest-equipped
+  // first (BattleScene reads this once at battle start, see its own
+  // comments; Franklin's panel sets the oldest aside when a new pick needs
+  // their room) -- an owner missing from this map has nothing equipped yet.
+  activePassivesByOwner: ActivePassivesByOwner;
+  // How many passive slots have been bought for each owner's kit
+  // (0..data/passives.ts's PASSIVE_MAX_SLOTS, one at a time from Franklin at
+  // PASSIVE_SLOT_COSTS); every active passive takes up `Passive.slots` of
+  // them. An owner missing from this map owns none.
+  passiveSlotsByOwner: PassiveSlotsByOwner;
   // Which quasiparticle class a given tunable move (by move id) is
   // currently tuned to (data/materials.ts's getTunedMoveClass,
   // scenes/panels/tunableMoveShop.ts's showMoveClassPicker) -- shared by
@@ -268,7 +274,8 @@ export function defaultSave(superposition: boolean): SaveData {
     storyLength: DEFAULT_STORY_LENGTH,
     kondoActiveMove: null,
     passivesUnlocked: [],
-    activePassiveByOwner: {},
+    activePassivesByOwner: {},
+    passiveSlotsByOwner: {},
     moveClassTuning: {},
     ultimateClassesUnlocked: {},
     rival9Type: null,
@@ -362,6 +369,25 @@ const MIGRATIONS: SaveMigration[] = [
         Object.entries(levels as Record<string, unknown>).map(([id, level]) => [rename(id), level])
       );
     }
+    return raw;
+  },
+  // A crystal holds Franklin's passives in bought slots, several at once,
+  // so the per-owner active pick is a list (`activePassivesByOwner`) rather
+  // than a single id (`activePassiveByOwner`), and running one needs a slot
+  // (`passiveSlotsByOwner`). Which passive is equipped is a cheap-to-redo
+  // selection by the letter of the rule above, but taking the default here
+  // would send a player who bought and equipped one into their next battle
+  // silently unprotected, with nothing on screen saying why -- so the one
+  // equipped id is carried across as a one-entry list, together with the
+  // one slot its holding implied.
+  (raw) => {
+    const single = raw.activePassiveByOwner;
+    if (single && typeof single === 'object' && raw.activePassivesByOwner === undefined) {
+      const carried = Object.entries(single as Record<string, unknown>).filter(([, id]) => typeof id === 'string' && id);
+      raw.activePassivesByOwner = Object.fromEntries(carried.map(([owner, id]) => [owner, [id]]));
+      if (raw.passiveSlotsByOwner === undefined) raw.passiveSlotsByOwner = Object.fromEntries(carried.map(([owner]) => [owner, 1]));
+    }
+    delete raw.activePassiveByOwner;
     return raw;
   },
 ];
@@ -468,7 +494,8 @@ export function persistFromRegistry(registry: RegistryLike) {
     storyLength: (registry.get('storyLength') as StoryLength) ?? DEFAULT_STORY_LENGTH,
     kondoActiveMove: (registry.get('kondoActiveMove') as string | null) ?? null,
     passivesUnlocked: (registry.get('passivesUnlocked') as string[]) ?? [],
-    activePassiveByOwner: (registry.get('activePassiveByOwner') as Partial<Record<PassiveOwner, string>>) ?? {},
+    activePassivesByOwner: (registry.get('activePassivesByOwner') as ActivePassivesByOwner) ?? {},
+    passiveSlotsByOwner: (registry.get('passiveSlotsByOwner') as PassiveSlotsByOwner) ?? {},
     moveClassTuning: (registry.get('moveClassTuning') as Partial<Record<string, MoveClass>>) ?? {},
     ultimateClassesUnlocked: (registry.get('ultimateClassesUnlocked') as Partial<Record<string, MoveClass[]>>) ?? {},
     rival9Type: (registry.get('rival9Type') as MaterialType | null) ?? null,

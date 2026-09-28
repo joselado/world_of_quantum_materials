@@ -4,6 +4,7 @@ import { killTweensDeep, makeCrystal } from '../../art/crystals';
 import type { DopantLook } from '../../art/crystals';
 import { CANVAS_H } from '../../art/perspective';
 import { startMoveEffectPreview, type PreviewClipRect } from '../../art/moveEffectPreview';
+import { drawFranklinPassiveHalo } from '../../art/passiveHalos';
 import { materialDisplayName, getPlayerDopantLook } from '../../data/materials';
 import type { MoveLevel } from '../../data/materials';
 import type { Material, MoveClass } from '../../data/types';
@@ -26,9 +27,11 @@ import { GOLD_ACCENT_HEX, REFERENCE_BLUE_GREY, REFERENCE_BLUE_GREY_HEX } from '.
 // (the crystal-render-plus-name block a crystal-picking guardian's detail
 // pane opens with), renderMoveDetailHeader (the looping-animation-plus-name
 // block an attack move-picking guardian's detail pane opens with),
-// and renderSelfBuffMoveDetailHeader (the same idea over a rendered player
-// crystal, for a self-buff move -- Kondo's
-// panel) are three shared detail-pane openers, and renderStatusAndConfirm
+// renderSelfBuffMoveDetailHeader (the same idea over a rendered player
+// crystal, for a self-buff move -- Kondo's panel), and
+// renderPassiveDetailHeader (the player crystal again, wearing a passive's
+// ground halo -- Franklin's panel) are four shared detail-pane openers, and
+// renderStatusAndConfirm
 // is the shared cost/status-line-plus-confirm-button tail every guardian
 // panel's pane closes with. Landau's and Skłodowska-Curie's panels
 // (scenes/panels/landau.ts/sklodowskaCurie.ts) browse through this same
@@ -692,6 +695,68 @@ export function renderSelfBuffMoveDetailHeader(
     at: { x: centerX, y: crystalCenterY },
     clip,
   });
+
+  let ny = y + stageH;
+
+  const nameScale = Math.min(fontScale(scene), DETAIL_NAME_CAP);
+  const nameText = scene.add
+    .text(centerX, ny, displayName, {
+      fontSize: `${Math.round(14 * nameScale)}px`,
+      color: '#ffffff',
+      fontStyle: 'bold',
+      align: 'center',
+      wordWrap: { width: rightColW },
+    })
+    .setOrigin(0.5, 0);
+  container.add(nameText);
+  return ny + nameText.height + 6;
+}
+
+// Passive variant of renderSelfBuffMoveDetailHeader above -- Franklin's
+// passives (scenes/panels/franklin.ts) have no battle effect of their own to
+// loop: what a passive looks like is its ground halo (art/passiveHalos.ts),
+// drawn around the ground shadow the player's own crystal stands on, in
+// battle and here alike. So this renders that crystal on its shadow inside
+// the same recessed stage every other opener uses, with `haloIds`' halos
+// around the shadow at `haloAlpha` (full for a loadout that is really
+// active, reduced for a passive only being looked at -- the same
+// preview-vs-active split BattleScene never needs, since anything it draws
+// is active by definition), then the same name-text tail. The crystal is a
+// little smaller than DETAIL_CRYSTAL_SIZE so the widest halo (Amorphous
+// Halo's diffuse glow, 2.8x the shadow's half-height below its center) stays
+// inside the stage rather than spilling past its frame.
+export function renderPassiveDetailHeader(
+  scene: Phaser.Scene,
+  container: Phaser.GameObjects.Container,
+  material: Material,
+  displayName: string,
+  haloIds: string[],
+  haloAlpha: number,
+  centerX: number,
+  y: number,
+  rightColW: number
+): number {
+  const stageH = DETAIL_STAGE_H;
+  const crystalSize = 40;
+  const crystalCenterY = y + crystalSize * 0.95;
+  const shadowY = crystalCenterY + crystalSize * 0.85;
+  const shadowRx = crystalSize * 1.18;
+  const shadowRy = crystalSize * 0.27;
+
+  drawPreviewStage(scene, container, centerX, y, rightColW, stageH);
+
+  container.add(scene.add.ellipse(centerX, shadowY, shadowRx * 2, shadowRy * 2, 0x000000, 0.3));
+  for (const id of haloIds) {
+    drawFranklinPassiveHalo(scene, container, centerX, shadowY, id, shadowRx, shadowRy, haloAlpha);
+  }
+
+  const crystal = makeCrystal(scene, crystalSize, material.color, material.variant, {
+    seed: material.name,
+    hybrid: material.hybridParents,
+    dopant: getPlayerDopantLook(scene.game.registry),
+  });
+  crystal.setPosition(centerX, crystalCenterY);
+  container.add(crystal);
 
   let ny = y + stageH;
 

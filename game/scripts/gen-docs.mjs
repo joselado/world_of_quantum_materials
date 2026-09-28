@@ -223,8 +223,8 @@ function genGuardianPassives() {
   const section = (owner, title) => {
     const rows = Object.values(PASSIVES)
       .filter((p) => p.owner === owner)
-      .map((p) => [p.name, p.description, String(p.cost)]);
-    return `#### ${title}\n\n${table(['Passive', 'Effect', 'Cost'], rows)}`;
+      .map((p) => [p.name, p.description, String(p.slots), String(p.cost)]);
+    return `#### ${title}\n\n${table(['Passive', 'Effect', 'Slots', 'Cost'], rows)}`;
   };
   return {
     franklinTable: section('franklin', "Franklin's passives"),

@@ -182,6 +182,8 @@ per-type `RIVAL_9_NAMES`/`RIVAL_9_MOVES` tables are held to covering exactly
 `RIVAL_9_TYPES` in its place), every
 `HYBRID_RECIPES` result actually lives in `WORLD_CRYSTALS[10]` and vice versa
 (DESIGN.md §5's "hosts exactly the hybrid-recipe results, and nothing else"),
+every passive has a halo branch in `art/passiveHalos.ts` (check 12b -- a passive
+the halo dispatch doesn't name is valid TypeScript and simply invisible in the game),
 every world 1-9 has a non-empty quiz pool, every formula span in a quiz
 prompt or answer is well-formed (`$...$` balanced, fences balanced inside a
 span, no dangling `_`/`^`/`√` -- a malformed span renders as literal `$` in

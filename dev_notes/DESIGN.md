@@ -1361,8 +1361,8 @@ state can mark her met before the player has actually reached her.
   to choose and commit to. The shop panel itself doubles as the switch -- a bought-and-inactive
   move gets a "Make `<name>`
   active" button, the active one shows a dimmed "`<name>` (active)" tag instead, and every row
-  (bought or not) prints the move's own one-line description underneath, the same convention
-  Franklin's own passive rows use. Buying the *first*
+  (bought or not) shows the move's own one-line description in its detail pane, the same
+  list+detail shape Franklin's own panel uses. Buying the *first*
   Kondo move activates it automatically (still "picked by talking to Kondo," just in the same
   click as the purchase) so a fresh purchase is never invisible in battle with no explanation;
   buying a second or third on top of an already-active one doesn't, and switching between
@@ -1373,18 +1373,22 @@ state can mark her met before the player has actually reached her.
   none of Kondo's three actually pass `getBattleMoves`' extra check -- picked randomly
   rather than always the same one so a fresh Superposition save doesn't always start on the
   same move.
-- **Franklin** → world 9 middle → teaches three passive abilities
+- **Franklin** → world 9 middle → teaches five passive abilities
   (`data/passives.ts`'s `FRANKLIN_PASSIVE_IDS`, `scenes/panels/franklin.ts`'s `showFranklinPanel`) --
   an always-on, whole-battle modifier rather than a move picked from the battle menu
-  each turn. All three can be bought independently, but only one is ever active in
-  battle at a time (registry/save `activePassiveByOwner`, switched only by revisiting
-  Franklin's panel), the same "learn several, equip one" shape Kondo's three self-buff
-  moves already use (above) -- fitting, since Franklin's own
-  physics (X-ray diffraction of a defect-riddled or porous crystal -- a real,
-  if lesser-known, tie between Rosalind Franklin's characterization work and
-  world 9's "excitations and defects" topic) is world 9's topic, and a passive with no
-  per-turn choice and no duration/tick-down is itself a clean fit for "always on for
-  this battle," unlike Kondo's 3-turn buffs:
+  each turn. All five can be bought independently, but a passive only runs while it has
+  room: the crystal starts with no passive slot, Franklin sells up to three
+  (`PASSIVE_MAX_SLOTS`) one at a time, and every passive takes up a fixed number of them
+  while active (`Passive.slots` -- one each for Diffraction Shadow, Satellite Reflection
+  and Amorphous Halo, two for Full Reflection, all three for Last Scattering). Which are
+  active lives in registry/save `activePassivesByOwner`, oldest-equipped first, and the
+  slots bought in `passiveSlotsByOwner`; both change only at Franklin's panel -- the
+  "learn several, equip what fits" shape Kondo's three self-buff moves use with a single
+  free slot (above) -- fitting, since Franklin's own physics (X-ray diffraction of a defect-riddled
+  or porous crystal -- a real, if lesser-known, tie between Rosalind Franklin's
+  characterization work and world 9's "excitations and defects" topic) is world 9's
+  topic, and a passive with no per-turn choice and no duration/tick-down is itself a
+  clean fit for "always on for this battle," unlike Kondo's 3-turn buffs:
   - **Diffraction Shadow** -- incoming damage is multiplied down (×0.85) for the whole
     battle, the way porous carbon attenuates and scatters an X-ray beam.
   - **Satellite Reflection** -- doubles its holder's own crit rate (20% → 40%,
@@ -1394,10 +1398,66 @@ state can mark her met before the player has actually reached her.
   - **Amorphous Halo** -- softens the quasiparticle-mismatch double-damage rule
     (2x → 1.5x, `canHost`/`BattleScene.resolveHit`) -- a diffuse, defect-broadened halo
     partially shrugging off a hit that would otherwise land unmitigated.
+  - **Last Scattering** -- an attack that would take its holder to zero leaves it at 1 HP
+    instead (`LAST_SCATTERING_MIN_HP`), provided the holder had more than 1 HP when the
+    attack landed: Beer-Lambert attenuation never reaches zero, however thick the
+    sample. "One attack" is one resolved hit together with its Satellite Reflection echo
+    tick (`BattleScene.damageFloor`, decided once per hit before any of its damage lands),
+    so the echo can never finish what the hit was held from finishing; each swing of a
+    multi-hit round is its own attack, so a holder already at 1 HP is not protected
+    again -- the passive buys exactly one more hit than the numbers allow, never
+    immortality. The name is the game's own coinage rather than diffraction vocabulary;
+    the physics it stands on is the attenuation law.
+  - **Full Reflection** -- one incoming hit in ten (`FULL_REFLECTION_CHANCE`) bounces
+    straight back onto the attacker for the full damage number it would have done, and
+    the holder takes nothing: total external reflection, a grazing X-ray beam below the
+    critical angle never entering the crystal at all. The reflected damage is the number
+    the hit resolved to (the defender's own Lifetime lever, mismatch and crit included),
+    not re-resolved against the attacker; a reflected hit throws off no Satellite
+    Reflection echo, since it never landed on the defender, and lands on the attacker
+    subject to the attacker's own Last Scattering floor. An attacker can KO itself this
+    way -- the ordinary win/lose check runs after every hit regardless of whose swing it
+    was, the finale's stage-falling path included. A whiffed Ultimate is never
+    reflected (nothing reaches the defender), nor is a hit that rounds to zero.
 
-  Superposition Mode's blanket unlock grant (§7) seeds `activePassiveByOwner.franklin` to
-  a random one of the three if nothing's equipped yet, the same seed-only-if-unset shape
-  as Kondo's own `kondoActiveMove` pick above.
+  **Pricing.** The passives themselves stay cheap, a 40-55 band (`Passive.cost`, the two
+  situational ones at the top of it: Last Scattering 55, Full Reflection 50); what a
+  player really pays for is the room to run them. Slots are bought one at a time from the
+  same panel at `PASSIVE_SLOT_COSTS` -- 200, 800, 3200 -- each rung four times the one
+  before, so the ladder reads as three different purchases rather than one price paid
+  thrice: the first slot is about one world-9 battle stake (~180) and is what makes any
+  passive active at all; the second is a real late-game saving; the third -- the only way
+  to hold Last Scattering, or Full Reflection beside another lesson -- costs more than
+  three of Skłodowska-Curie's per-class Ultimate unlocks (1000 each), a finale-scale goal
+  rather than a world-9 shopping trip. A passive's slot size is its weight in the
+  loadout, sized by how much of a fight it decides: a flat multiplier is one, a hit
+  bounced back whole is two, a guaranteed survival is all three. Slots are the same
+  pay-once-then-free-forever shape as Bloch's/Dresselhaus's/Anderson's/Majorana's
+  per-option unlocks; filling them with an already-bought passive is free, as is setting
+  one aside.
+
+  **The panel** is a list+detail panel (`scenes/panels/listDetail.ts`, the same shape
+  Kondo's uses): the five passives on the left, and on the right the player's own
+  crystal wearing the previewed passive's ground halo (the same halo the battle draws
+  under it; an active passive shows the whole active loadout at full alpha, every active
+  halo stacked, since that is what the crystal wears in battle; an inactive one shows
+  its own halo alone, dimmed), its description, a status line and one confirm button --
+  "Learn", "Make active", or "Set aside", the status line always naming how many slots
+  the passive takes. Slots are not passives and are not rows among them: the next rung
+  of the ladder is its own button under the list, between the passives and Farewell --
+  "Buy slot N (`<cost>`)", then a dimmed "3 slots owned" tag. Making a passive active
+  uses the free slots; when they are not enough it sets the oldest-equipped passives
+  aside until it fits, and the status line names them before the click; a passive that
+  needs more slots than the crystal owns says so and its button is inert. Buying a
+  passive that fits in the free slots activates it in the same click (so a purchase is
+  never invisible in the next battle, the same reasoning as Kondo's first-purchase
+  auto-activation); one that doesn't fit stays learned-but-idle until the player makes
+  room.
+
+  Superposition Mode's blanket unlock grant (§7) buys all three slots and seeds
+  `activePassivesByOwner.franklin` to random picks drawn until no further one fits, if
+  nothing's equipped yet, the same seed-only-if-unset shape as Kondo's own
+  `kondoActiveMove` pick above.
 - **Skłodowska-Curie** → world 10 middle → the guardian of the finale world, regarded
   as the leader of the guardians' circle, teaching the game's one capstone mechanic:
   two "Ultimate Move" moves, `ultimateMeteor`/`ultimateNova` (`data/materials.ts`'s
@@ -1926,12 +1986,13 @@ rather than inheriting it.
   costs (§5) are bypassed outright rather than paid -- each panel checks
   `isSuperpositionMode()` directly instead of the persisted unlocked-option list, so
   toggling the mode back off doesn't leave any option permanently free on the save.
-  For the four guardians whose kit is "several unlocked, only one truly active," the
-  same grant also seeds that one active slot to a random pick among the unlocked
-  options, but only if it's still unset -- a deliberate pick made at that guardian's own
+  For the four guardians whose kit is "several unlocked, only one or two truly active,"
+  the same grant also seeds the active slot(s) to random picks among the unlocked
+  options, but only if still unset -- a deliberate pick made at that guardian's own
   panel always survives every later re-application of the grant: `kondoActiveMove` to a
-  random one of Kondo's three self-buff moves, `activePassiveByOwner.franklin` to a
-  random one of Franklin's three passives, `andersonDopant` to a random non-hybrid
+  random one of Kondo's three self-buff moves, `activePassivesByOwner.franklin` to random
+  picks among Franklin's five passives drawn until no further one fits the three slots
+  (the grant also buys all three, `passiveSlotsByOwner`), `andersonDopant` to a random non-hybrid
   crystal, and `playerForm` to a random pick from a pool coin-flipped between
   Dresselhaus's plain-crystal pool and Majorana's hybrid-result pool -- so a fresh
   Superposition save starts as a random ordinary crystal or an already-fused hybrid

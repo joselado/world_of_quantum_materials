@@ -204,6 +204,8 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
   landauClassPage = 0;
   curieClassPage = 0;
   kondoMovePage = 0;
+  franklinPreview: string | null = null;
+  franklinPage = 0;
   // Same reset rules as dresselhausPreview/majoranaPreview above -- see
   // GuardianPanelHost's own comment on this field.
   // The travel panel's live selection. An accessor rather than a plain field
@@ -581,7 +583,7 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     const container = this.add.container(0, 0).setDepth(60);
     this.guardianTooltip = container;
 
-    // Capped text scale, the same tradeoff renderPassiveList/showAbilitiesPanel
+    // Capped text scale, the same tradeoff Franklin's pane/showAbilitiesPanel
     // make: a guardian's full name is one long unbreakable word ("Skłodowska-
     // Curie's"), which word wrap can't split, so at the Large preset an
     // uncapped size would push it past this fixed-width box.
@@ -1468,6 +1470,8 @@ export class HubScene extends Phaser.Scene implements GuardianPanelHost {
     this.landauClassPage = 0;
     this.curieClassPage = 0;
     this.kondoMovePage = 0;
+    this.franklinPreview = null;
+    this.franklinPage = 0;
     this.blochPreview = null;
 
     // A panel that just closed may have changed which stations belong in the

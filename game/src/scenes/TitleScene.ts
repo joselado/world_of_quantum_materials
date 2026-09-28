@@ -249,7 +249,8 @@ export class TitleScene extends Phaser.Scene {
     registry.set('fontScale', save.fontScale);
     registry.set('kondoActiveMove', save.kondoActiveMove);
     registry.set('passivesUnlocked', save.passivesUnlocked);
-    registry.set('activePassiveByOwner', save.activePassiveByOwner);
+    registry.set('activePassivesByOwner', save.activePassivesByOwner);
+    registry.set('passiveSlotsByOwner', save.passiveSlotsByOwner);
     registry.set('moveClassTuning', save.moveClassTuning);
     registry.set('ultimateClassesUnlocked', save.ultimateClassesUnlocked);
     registry.set('rival9Type', save.rival9Type);

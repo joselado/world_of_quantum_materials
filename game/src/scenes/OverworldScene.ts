@@ -50,8 +50,8 @@ import {
   isHybridMaterial,
 } from '../data/materials';
 import { wildHpForWorld, MAX_STAT } from '../data/balance';
-import { PASSIVES, PASSIVE_OWNERS } from '../data/passives';
-import type { PassiveOwner } from '../data/passives';
+import { PASSIVES, PASSIVE_OWNERS, PASSIVE_MAX_SLOTS, passiveSlotsUsed } from '../data/passives';
+import type { ActivePassivesByOwner, PassiveSlotsByOwner } from '../data/passives';
 import { pickTokenValue, tokenColorForValue } from '../data/tokens';
 import { getWorldQuestion } from '../data/quiz';
 import type { MaterialQuestion } from '../data/quiz';
@@ -262,19 +262,32 @@ export function applySuperpositionUnlocks(registry: Phaser.Data.DataManager) {
   if (!registry.get('kondoActiveMove')) {
     registry.set('kondoActiveMove', KONDO_MOVE_IDS[Math.floor(Math.random() * KONDO_MOVE_IDS.length)]);
   }
-  // Same "unlock every item, seed one random active pick per owner" shape
-  // for every passive owner's kit (today just Franklin's three).
+  // Same "unlock every item, seed random active picks per owner" shape for
+  // every passive owner's kit (today just Franklin's five): every passive
+  // bought, every slot bought (PASSIVE_MAX_SLOTS), and -- only if nothing is
+  // equipped yet -- random picks drawn until no further one fits in the
+  // slots (each passive takes `slots` of them), so a fresh Superposition
+  // save shows a full loadout in its first battle rather than one random
+  // passive with empty slots beside it.
   registry.set('passivesUnlocked', Object.keys(PASSIVES));
-  const activeByOwner = { ...((registry.get('activePassiveByOwner') as Partial<Record<PassiveOwner, string>>) ?? {}) };
+  const slotsByOwner = { ...((registry.get('passiveSlotsByOwner') as PassiveSlotsByOwner) ?? {}) };
+  const activeByOwner = { ...((registry.get('activePassivesByOwner') as ActivePassivesByOwner) ?? {}) };
   for (const owner of PASSIVE_OWNERS) {
-    if (!activeByOwner[owner]) {
-      const ownerPassiveIds = Object.values(PASSIVES)
+    slotsByOwner[owner] = PASSIVE_MAX_SLOTS;
+    if ((activeByOwner[owner] ?? []).length === 0) {
+      const pool = Object.values(PASSIVES)
         .filter((p) => p.owner === owner)
         .map((p) => p.id);
-      activeByOwner[owner] = ownerPassiveIds[Math.floor(Math.random() * ownerPassiveIds.length)];
+      const picks: string[] = [];
+      while (pool.length > 0) {
+        const candidate = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+        if (passiveSlotsUsed([...picks, candidate]) <= PASSIVE_MAX_SLOTS) picks.push(candidate);
+      }
+      activeByOwner[owner] = picks;
     }
   }
-  registry.set('activePassiveByOwner', activeByOwner);
+  registry.set('passiveSlotsByOwner', slotsByOwner);
+  registry.set('activePassivesByOwner', activeByOwner);
   // Anderson's impurity slot: a random non-hybrid crystal doped in, same
   // seed-only-if-unset treatment as kondoActiveMove above.
   if (!registry.get('andersonDopant')) {
@@ -378,7 +391,7 @@ interface WorldSprite {
 }
 
 // The interface every guardian-panel file (scenes/panels/<guardian>.ts,
-// tunableMoveShop.ts, passiveList.ts) is written against instead of the
+// tunableMoveShop.ts) is written against instead of the
 // concrete `OverworldScene` class -- both `OverworldScene` (a guardian met
 // mid-walk) and `HubScene` (the same guardian reopened by clicking their own
 // avatar in the Lab, see HubScene.spawnGuardianAvatars) implement it,
@@ -525,6 +538,13 @@ export interface GuardianPanelHost extends Phaser.Scene {
   // by the detail pane's own confirm button.
   kondoMovePreview: string | null;
   kondoMovePage: number;
+  // Franklin's own list+detail layout (scenes/panels/franklin.ts) -- holds
+  // one of FRANKLIN_PASSIVE_IDS or the panel's own second-slot row id. Same
+  // preview-only role as kondoMovePreview above: the committed loadout lives
+  // in registry/save activePassivesByOwner/passiveSlotsByOwner, set only by
+  // the detail pane's own confirm button.
+  franklinPreview: string | null;
+  franklinPage: number;
   // Bloch's own table+map layout (scenes/panels/bloch.ts): which world
   // number is currently previewed (highlighted in the destination table AND
   // pulsing on the Qumatuomi map), independent of and reset the same way as
@@ -775,6 +795,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
   curieClassPage = 0;
   kondoMovePreview: string | null = null;
   kondoMovePage = 0;
+  franklinPreview: string | null = null;
+  franklinPage = 0;
   // Same reset rules as dresselhausPreview/majoranaPreview above -- see the
   // GuardianPanelHost interface's own comment on this field.
   blochPreview: number | null = null;
@@ -980,6 +1002,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.curieClassPage = 0;
     this.kondoMovePreview = null;
     this.kondoMovePage = 0;
+    this.franklinPreview = null;
+    this.franklinPage = 0;
     this.blochPreview = null;
     this.biome = getBiome(this.world);
 
@@ -1188,7 +1212,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
       state.set('metGuardians', []);
       state.set('kondoActiveMove', null);
       state.set('passivesUnlocked', []);
-      state.set('activePassiveByOwner', {});
+      state.set('activePassivesByOwner', {});
+      state.set('passiveSlotsByOwner', {});
       state.set('moveClassTuning', {});
       state.set('ultimateClassesUnlocked', {});
       state.set('andersonDopant', null);
@@ -2705,6 +2730,8 @@ export class OverworldScene extends Phaser.Scene implements GuardianPanelHost {
     this.curieClassPage = 0;
     this.kondoMovePreview = null;
     this.kondoMovePage = 0;
+    this.franklinPreview = null;
+    this.franklinPage = 0;
     this.blochPreview = null;
 
     // An introduction owed from a step that also opened something else (the

@@ -1,23 +1,26 @@
-// Franklin (world 9) teaches three passive abilities instead of selling
-// moves -- an always-on battle-wide effect rather than something picked
-// from the move menu each turn, mirroring how Kondo's three screening moves
-// are learned independently but only one is ever *usable* at a time
-// (data/materials.ts's KONDO_MOVE_IDS/kondoActiveMove): every passive below
-// can be bought independently (registry/save `passivesUnlocked`), but only
-// one is ever active in battle (registry/save `activePassiveByOwner`, keyed
-// by PassiveOwner), switched only by revisiting Franklin's panel
-// (OverworldScene.showFranklinPanel). Unlike Kondo's moves, there's no
-// per-turn choice and no duration/tick-down -- a passive is simply on for
-// the whole battle it's active for, hooked directly into
-// BattleScene.resolveHit's crit/turn-order/damage terms as flat always-on
-// modifiers (see BattleScene's own comments for exactly where each one
-// hooks in). `PassiveOwner` stays a keyed type rather than Franklin's ids
-// living unkeyed, since `activePassiveByOwner`/`passivesUnlocked` are
-// written generically against whichever owners exist.
+// Franklin (world 9) teaches passive abilities instead of selling moves --
+// an always-on battle-wide effect rather than something picked from the
+// move menu each turn. Every passive below can be bought independently
+// (registry/save `passivesUnlocked`), but a passive is only ever *active*
+// while it has room: the crystal's passive slots (registry/save
+// `passiveSlotsByOwner`, none to start with, up to PASSIVE_MAX_SLOTS bought
+// one at a time from Franklin at PASSIVE_SLOT_COSTS), and every passive
+// takes up a fixed number of them (`Passive.slots` -- one for most, two for
+// Full Reflection, all three for Last Scattering). Which ones are active
+// lives in registry/save `activePassivesByOwner` (keyed by PassiveOwner, in
+// the order they were equipped), switched only from Franklin's own panel
+// (scenes/panels/franklin.ts). Unlike Kondo's moves, there's no per-turn
+// choice and no duration/tick-down -- a passive is simply on for the whole
+// battle it's active for, hooked directly into
+// BattleScene.resolveHit/applyDamage as flat always-on terms (see
+// BattleScene's own comments for exactly where each one hooks in).
+// `PassiveOwner` stays a keyed type rather than Franklin's ids living
+// unkeyed, since `activePassivesByOwner`/`passiveSlotsByOwner`/
+// `passivesUnlocked` are written generically against whichever owners exist.
 export type PassiveOwner = 'franklin';
 
 // Every current owner of a passive kit, in guardian order -- consumed by
-// OverworldScene.applySuperpositionLeveling (one loop instead of one
+// OverworldScene.applySuperpositionUnlocks (one loop instead of one
 // duplicated block per owner) and by the Lab's Abilities station
 // (scenes/panels/hubStations.ts's showAbilitiesPanel).
 export const PASSIVE_OWNERS: PassiveOwner[] = ['franklin'];
@@ -29,6 +32,22 @@ export const PASSIVE_OWNER_LABELS: Record<PassiveOwner, string> = {
   franklin: 'Franklin',
 };
 
+// The slot ladder: a crystal starts with no passive slot at all, and
+// Franklin sells them one at a time, PASSIVE_SLOT_COSTS[n] for the (n+1)th,
+// up to PASSIVE_MAX_SLOTS. Each step costs four times the one before, so
+// the ladder reads as three different purchases rather than one price paid
+// thrice: the first slot is about one world-9 battle stake
+// (data/balance.ts's battleStakeForWorld, ~180 there) and is what makes any
+// passive active at all; the second is a real late-game saving; the third
+// -- the only way to hold Last Scattering, or Full Reflection beside
+// another lesson -- costs more than three of Skłodowska-Curie's per-class
+// Ultimate unlocks (data/materials.ts's ULTIMATE_CLASS_UNLOCK_COST), a
+// finale-scale goal rather than a world-9 shopping trip. The passives
+// themselves stay cheap (a 40-55 band, `cost` below): what a player pays for
+// is the room to run them, sized by how much each one does.
+export const PASSIVE_MAX_SLOTS = 3;
+export const PASSIVE_SLOT_COSTS: readonly number[] = [200, 800, 3200];
+
 export interface Passive {
   id: string;
   name: string;
@@ -39,31 +58,32 @@ export interface Passive {
   // quasiparticle with a power rating, so reusing shopCost would mean
   // inventing a fake power number just to feed it back in.
   cost: number;
+  // How many of the crystal's passive slots this one takes up while active
+  // (1..PASSIVE_MAX_SLOTS) -- the passive's weight in the loadout, sized by
+  // how much of a fight it decides: a flat multiplier is one, a hit bounced
+  // back whole is two, a guaranteed survival is all three.
+  slots: number;
 }
 
-// Descriptions are kept to one short clause each on purpose -- Franklin's
-// panel (OverworldScene.showFranklinPanel) prints one under every
-// still-unbought passive's buy button, on top of an already full-height
-// guardian panel (avatar, intro quote, three buy rows, a Farewell footer),
-// and that panel has no shrink-to-fit safety net the way showInfoPanel
-// does, and a longer, multi-line description per passive pushed the whole
-// panel's Farewell button off the bottom of the canvas the first time this
-// was tried at the default preset already. Its own section
-// passes `buttonPx` explicitly (addDialogueButtonAt, not the uncapped
-// addDialogueButton convenience wrapper) for exactly this reason.
+// Descriptions are kept to one or two short clauses each on purpose --
+// Franklin's panel (scenes/panels/franklin.ts) prints the selected one in
+// its detail pane under a fixed-height art stage, and that pane has to
+// close with a status line and a confirm button inside the canvas at the
+// largest text-size preset (the same budget Kondo's own pane lives in).
 export const PASSIVES: Record<string, Passive> = {
   // Franklin (world 9, X-ray diffraction of defect-riddled/porous carbon --
   // the real-world tie between Rosalind Franklin and "excitations and
-  // defects"). Ids stay as originally minted (fractionalGuard/anyonEcho/
-  // edgeCurrent) -- they were never guardian-named, only the display text
-  // and underlying owner change here; BattleScene's hooks read these same
-  // ids unmodified.
+  // defects"). The first three ids stay as originally minted
+  // (fractionalGuard/anyonEcho/edgeCurrent) -- they were never
+  // guardian-named, only the display text and underlying owner are
+  // Franklin's; BattleScene's hooks read these same ids unmodified.
   fractionalGuard: {
     id: 'fractionalGuard',
     name: 'Diffraction Shadow',
     owner: 'franklin',
     description: 'A defect-riddled lattice scatters and attenuates an incoming blow, the way porous carbon attenuates an X-ray beam.',
     cost: 40,
+    slots: 1,
   },
   anyonEcho: {
     id: 'anyonEcho',
@@ -71,6 +91,7 @@ export const PASSIVES: Record<string, Passive> = {
     owner: 'franklin',
     description: 'Coherent hits come twice as often, and each one throws off a secondary diffraction peak: a bonus follow-up damage tick.',
     cost: 45,
+    slots: 1,
   },
   edgeCurrent: {
     id: 'edgeCurrent',
@@ -78,9 +99,70 @@ export const PASSIVES: Record<string, Passive> = {
     owner: 'franklin',
     description: 'A diffuse, defect-broadened halo softens the quasiparticle-mismatch double damage to a smaller multiplier.',
     cost: 45,
+    slots: 1,
+  },
+  // Beer-Lambert attenuation: however thick and defect-riddled the sample,
+  // the transmitted beam falls off exponentially and never reaches zero.
+  // Takes every slot the crystal can have -- surviving one more hit than
+  // the numbers allow is the strongest single thing a passive here does,
+  // so it is the one lesson that is held alone.
+  lastScattering: {
+    id: 'lastScattering',
+    name: 'Last Scattering',
+    owner: 'franklin',
+    description: 'An attenuated beam never drops to nothing: a blow that would finish you leaves one point of life, as long as you had more than one.',
+    cost: 55,
+    slots: 3,
+  },
+  // Total external reflection: below the critical angle a grazing X-ray beam
+  // reflects entirely off the surface and never enters the crystal at all.
+  fullReflection: {
+    id: 'fullReflection',
+    name: 'Full Reflection',
+    owner: 'franklin',
+    description: 'Below the critical angle a beam reflects entirely off the surface: one incoming attack in ten bounces back at the attacker, and you take nothing.',
+    cost: 50,
+    slots: 2,
   },
 };
 
 export const FRANKLIN_PASSIVE_IDS = Object.values(PASSIVES)
   .filter((p) => p.owner === 'franklin')
   .map((p) => p.id);
+
+// Minimal structural registry type (same shape data/save.ts uses) so these
+// readers stay Phaser-free and usable from any scene or panel.
+interface RegistryLike {
+  get: (key: string) => unknown;
+}
+
+export type ActivePassivesByOwner = Partial<Record<PassiveOwner, string[]>>;
+export type PassiveSlotsByOwner = Partial<Record<PassiveOwner, number>>;
+
+// The passives an owner currently has active, in the order they were
+// equipped (oldest first) -- the order Franklin's panel uses to decide
+// which ones a new pick takes the place of when there is no room left.
+export function activePassiveIds(registry: RegistryLike, owner: PassiveOwner): string[] {
+  const byOwner = (registry.get('activePassivesByOwner') as ActivePassivesByOwner | undefined) ?? {};
+  return byOwner[owner] ?? [];
+}
+
+// Every active passive across every owner -- what a battle reads once at
+// its start (BattleScene.create).
+export function allActivePassiveIds(registry: RegistryLike): string[] {
+  return PASSIVE_OWNERS.flatMap((owner) => activePassiveIds(registry, owner));
+}
+
+// How many passive slots this save has bought for an owner's kit
+// (0..PASSIVE_MAX_SLOTS).
+export function passiveSlotCount(registry: RegistryLike, owner: PassiveOwner): number {
+  const byOwner = (registry.get('passiveSlotsByOwner') as PassiveSlotsByOwner | undefined) ?? {};
+  return Math.min(PASSIVE_MAX_SLOTS, Math.max(0, byOwner[owner] ?? 0));
+}
+
+// How many slots a set of passive ids takes up together. A stale id from an
+// old save (no PASSIVES entry) weighs nothing, the same way BattleScene's
+// pill simply doesn't name it.
+export function passiveSlotsUsed(ids: string[]): number {
+  return ids.reduce((n, id) => n + (PASSIVES[id]?.slots ?? 0), 0);
+}

@@ -411,8 +411,7 @@ under one figure reads as floating even when neither is wrong on its own.
   plus a real crystal render (or, for a move-browsing panel, its animation preview, or for
   Bloch's own panel, the map) side by
   side, unlike the narrower `600`px width a plain single-column panel (Feynman's own
-  question-streak sub-panel) uses; Franklin's own panel (below) is wider still
-  (`760`) for its own, differently-shaped two-column crystal-beside-list layout, distinct from both.
+  question-streak sub-panel) uses.
   `listDetailColumns(panelLeft)` returns the one fixed set of column margins/widths
   every list+detail panel shares (left column `200`px wide, a divider, then the right column
   filling the rest). `renderListColumn` draws the left column exactly the way Qumatex's own
@@ -444,9 +443,7 @@ under one figure reads as floating even when neither is wrong on its own.
   player sees and the boundary the effect obeys can never disagree. A guardian's
   list+detail step is a **preview-then-confirm** flow, distinct from the plain shop-row style
   used elsewhere (Anderson's own second step, picking a *move* rather than a crystal, still the
-  right choice when there's no crystal/move art worth previewing), from Franklin's own
-  crystal-beside-list layout (below), which previews a passive's
-  ground halo on an always-visible crystal rather than swapping between candidate rows, and from
+  right choice when there's no crystal/move art worth previewing), and from
   Landau's/Skłodowska-Curie's own bespoke two-column panels ("Landau in the overworld"/
   "Skłodowska-Curie in the overworld" below), which show both of a guardian's fixed two moves at
   once rather than browsing a candidate list at all: clicking a
@@ -1931,54 +1928,40 @@ station motifs are deliberately not tunnels with a visible far end.
   Lab scale, where the guardians stand small and side by side: Kondo's screening shells
   are a disc by necessity, since an enclosing cloud is that physics, so a round plate here
   would leave the two sharing one outline and separable only by colour.
-- Qumatex-like: below the avatar/quote, the panel (`scenes/panels/franklin.ts`, `760` wide)
-  splits into two columns -- a fixed-size crystal-preview block on the left, the passive shop
-  list on the right, divided by the same thin vertical line every list+detail panel uses
-  (`scenes/panels/listDetail.ts`'s `insertColumnDivider`, drawn beneath every row and button).
-  Putting the crystal beside the list rather than above it means the
-  crystal block adds no extra height beyond whichever column is already taller, since this panel
-  has no shrink-to-fit safety net and was already close to `CANVAS_H` at the largest text-size
-  preset before the crystal existed.
-- The **crystal block** renders the player's own current crystal (`makeCrystal(scene, 34,
-  scene.playerMaterial.color, scene.playerMaterial.variant, { seed: scene.playerMaterial.name,
-  hybrid: scene.playerMaterial.hybridParents })`, the same call convention `BattleScene` uses)
-  standing on a plain `0x000000`-at-`0.3`-alpha ground-shadow ellipse (no biome here to shade it
-  off the way `BattleScene`'s own shadow is), fixed-size regardless of the text-size setting
-  ("art, not text," same reasoning as Qumatex's own `crystalBlockH`). Whichever passive is
-  currently being looked at gets its own ground halo drawn around that shadow
-  (`art/passiveHalos.ts`, see "Battle status effects" below for what each of the three looks
-  like) plus a small status label underneath: full alpha and "`<name>` (active)" for the passive
-  actually active in battle, `0.45` alpha and "`<name>` (preview)" for any other passive, or "No
-  passive active" if none is active yet and nothing's been clicked. The label's own reserved
-  height is measured up front from the longest possible `<name> (preview)` string so a later
-  preview swap can never grow the block past what the panel was first sized for.
-- Buy-list-plus-switch shape (`renderPassiveList`, Franklin's own thin wrapper around
-  `scenes/panels/passiveList.ts`'s `renderChoiceList` engine), laid out in the right column via
-  `ChoiceListRenderOptions`' `centerX`/`wrapWidth` (which default to full-canvas-centered when a
-  caller passes neither): a still-unbought passive (`data/passives.ts`'s
-  `FRANKLIN_PASSIVE_IDS` -- Diffraction Shadow, Satellite Reflection, Amorphous Halo)
-  gets a `<name> -- <cost> qumatessence` buy button plus a one-line description
-  underneath, both capped at a lower font-scale ceiling than every other guardian
-  panel's buttons (`Math.min(fontScale(this), 1.3)` for the label, `1.2` for the
-  description) rather than scaling all the way to the Lab's Settings station's
-  uncapped 'Large' text-size preset -- this panel has no shrink-to-fit safety net the
-  way the Lab's info panels do, and three buy rows each carrying their own
-  description, on top of the avatar/intro/Farewell footer every guardian panel already
-  has, pushed the Farewell button off the bottom of the canvas at the default
-  text-size preset the first time this was tried uncapped. An already-bought passive
-  gets a clickable "Make `<name>` active" button, or a dimmed "`<name>` (active)" tag
-  for whichever one currently is. Buying the first passive activates it immediately,
-  same reasoning as Kondo's first move; buying a second or third doesn't, and switching
-  which one is active always requires reopening this panel. No "wrong form" empty
-  state -- like Kondo's own self-buff moves, a passive is never gated by a crystal's
-  own physics at all, so all three are always purchasable. Clicking any row's own
-  description (not its buy/activate button) previews that passive's ground halo on the crystal
-  block instead (`ChoiceListRenderOptions.onSelect`, reassigning a plain closure variable local
-  to `showFranklinPanel`, never the registry) -- the same "look costs nothing, only committing
-  does" convention every other guardian panel's own preview-vs-commit split already follows,
-  extended here to a passive's own look rather than just its cost. Buying or activating a passive
-  always reopens this panel from scratch, so the crystal falls back to whatever is now actually
-  active rather than a preview click from before that purchase surviving stale.
+- List+detail layout (`scenes/panels/franklin.ts`, `LIST_DETAIL_PANEL_W`, the same shape
+  and column geometry as Kondo's panel above, intro quote capped at `1.15` for the same
+  reason): the left column lists the five passives (`data/passives.ts`'s
+  `FRANKLIN_PASSIVE_IDS` -- Diffraction Shadow, Satellite Reflection, Amorphous Halo, Last
+  Scattering, Full Reflection), then, under the rows and above Farewell, one button that is
+  not a row: "Buy slot N (`<cost>`)", the next rung of the passive-slot ladder
+  (200/800/3200), dimmed when unaffordable and a dimmed "3 slots owned" tag once the ladder
+  is climbed. It is kept out of the list on purpose -- room listed among the abilities reads
+  as a sixth ability. Its label is capped at `1.3` so it stays on one line in the 200px
+  column at the Large preset. A row click previews; only that button and the pane's confirm
+  button commit.
+- The **detail pane** opens with the player's own current crystal (`makeCrystal`, the same
+  call convention `BattleScene` uses, at size `40`) standing on a plain `0x000000`-at-`0.3`
+  ground-shadow ellipse inside the shared recessed preview stage
+  (`listDetail.ts`'s `renderPassiveDetailHeader`), wearing the previewed passive's own
+  ground halo around that shadow (`art/passiveHalos.ts`, see "Battle status effects" below
+  for what each of the five looks like): an active passive shows the whole active loadout,
+  every active halo stacked around the one shadow at full alpha (what the crystal wears in
+  battle); an inactive one shows its own halo alone at `0.45`. Under the stage:
+  the passive's name, its one- or two-clause physics description, a status line and one
+  confirm button (`renderStatusAndConfirm`), the status line always naming the passive's
+  slot size: "Costs `<cost>` qumatessence to learn. Takes N slots." / "Learn `<name>`" for a
+  still-unbought passive; "`<name>` is active, taking N of your M slots." / "Set `<name>`
+  aside" for an active one; for a bought inactive one, "Learned, but not currently active.
+  Takes N slots; F free." / "Make `<name>` active", or "...; making it active sets `<A>` and
+  `<B>` aside." when the free slots are not enough, or "Learned, but not active: it takes N
+  slots and your crystal owns M." with the button dimmed and inert when the crystal owns
+  fewer slots than the passive needs. Buying a passive that fits the free slots activates it in
+  the same click, same reasoning as Kondo's first move; buying with every slot full doesn't,
+  and switching is always its own explicit click. No "wrong form" empty state -- like
+  Kondo's own self-buff moves, a passive is never gated by a crystal's own physics at all,
+  so every row is always purchasable. Buying, activating or setting aside reopens the panel
+  from scratch (the crystal's halos follow whatever is now really active); a preview click
+  is a scoped update of the pane alone.
 
 ## Skłodowska-Curie in the overworld (`OverworldScene.showSklodowskaCuriePanel`)
 
@@ -2636,36 +2619,49 @@ world are shaped, since world N's start is world N-1's exit.
   measured midpoint, since its anchor is a ground reference), so the nameplate stack above
   never sits inside it, and additive alphas are kept low so all three silhouettes survive
   the greyscale squint test.
-- Franklin's active passive (DESIGN.md §5) gets its own pill as the last row of the
-  same nameplate stack, directly below that side's status pill, same size/background
-  as the status pill but in a muted
+- Franklin's active passives (DESIGN.md §5, up to three one-slot ones at once) get their own pill as the
+  last row of the same nameplate stack, directly below that side's status pill, same
+  size/background as the status pill but in a muted
   blue-violet (`PASSIVE_PILL_COLOR`, `#8fa0ff` -- its own fixed constant, not derived from
   her own label color) rather than Kondo's
   rust-orange, so an always-on passive reads as visually distinct from a ticking status at a
-  glance. Reads as the joined name(s) of whichever passive(s) are active (`·`-separated,
-  ready for a future second passive owner to stack onto the same line), and is simply not
-  drawn at all when no passive is active -- the plate floats in open field rather than in a
-  crowded corner, so it needs no clamping or drop-it-if-there's-no-room fallback of its own.
-- Franklin's active passive also gets a **ground halo** around the player's own ground-shadow
+  glance. Reads as the joined names of whichever passives are active (`·`-separated), wrapped
+  at the plate's own width like the name above it -- three one-slot passives at the Large
+  preset join into a line wider than the field, and their second line counts toward the
+  stack the plate shrinks its name to fit -- and is simply not
+  drawn at all when no passive is active.
+- Each active passive also gets a **ground halo** around the player's own ground-shadow
   ellipse (`BattleScene.drawBackground`'s
   `this.add.ellipse(PLAYER_POS.x, PLAYER_POS.y + SHADOW_DROP, 130, 30, ...)`),
   drawn once in `create()` (not per-turn) by `art/passiveHalos.ts`'s
-  `drawFranklinPassiveHalo(scene, container, x, y, passiveId, rx, ry, alpha?)`, keyed off
-  whichever id is in `playerActivePassives` -- never for the opponent, since no wild/rival ever
-  has an active passive. Anchored to the shadow's own position rather than wrapped around the
-  crystal body, and deliberately calmer than `addBoostHalo`'s energetic "temporary bonus" aura
-  (no rotating spikes/rising embers) since a passive is an always-on trait, not a per-turn boost.
-  Each of the three reads distinctly, grounded in its own physics: **Diffraction Shadow**
-  (`fractionalGuard`) is a static ring of small dim scattered spots, the spotty rings a
-  powder/polycrystalline sample's own diffraction pattern gives; **Satellite Reflection**
-  (`anyonEcho`) is a static, fainter ring offset to one side, echoing a diffraction pattern's own
-  secondary spot beside the main one; **Amorphous Halo** (`edgeCurrent`) is the only one that
-  moves, a soft additive-blended glow breathing on a slow 3.2s pulse -- an amorphous solid's own
-  diffuse halo, literally that term in X-ray diffraction. All three stay within Franklin's own
+  `drawFranklinPassiveHalo(scene, container, x, y, passiveId, rx, ry, alpha?)`, once per id in
+  `playerActivePassives`, stacked around the one shadow -- never for the opponent, since no
+  wild/rival ever has an active passive. Anchored to the shadow's own position rather than
+  wrapped around the crystal body, and deliberately calmer than `addBoostHalo`'s energetic
+  "temporary bonus" aura (no rotating spikes/rising embers) since a passive is an always-on
+  trait, not a per-turn boost. Each of the five keeps to its own band of the ellipse so two
+  stack without competing, and reads distinctly, grounded in its own physics: **Diffraction
+  Shadow** (`fractionalGuard`) is a static ring of small dim scattered spots just outside the
+  rim, the spotty rings a powder/polycrystalline sample's own diffraction pattern gives;
+  **Satellite Reflection** (`anyonEcho`) is a static, fainter ring offset to one side, echoing
+  a diffraction pattern's own secondary spot beside the main one; **Amorphous Halo**
+  (`edgeCurrent`) is a soft additive-blended glow well outside everything else, breathing on a
+  slow 3.2s pulse -- an amorphous solid's own diffuse halo, literally that term in X-ray
+  diffraction; **Last Scattering** (`lastScattering`) is three thin rings stepping outward
+  from the rim and fading with each step (Beer-Lambert attenuation falling off and never
+  reaching zero) plus one small bright point at the front of the rim that breathes on a slow
+  pulse but never dims below a floor -- the last of the beam, always getting through; **Full
+  Reflection** (`fullReflection`) is the rim itself drawn as a polished edge: a bright sheen
+  along the far rim with a soft additive glow just outside it, a fainter twin along the near
+  rim, and a glint at the left where the grazing beam meets the mirror, shimmering on a slow
+  pulse. All five stay within Franklin's own
   lavender/purple family and never gold, so they can't be confused with `addBoostHalo`'s gold
   aura if both happen to be on screen at once (a passive can be active during a boosted turn).
   The same builder previews each halo in Franklin's own panel (see "Franklin in the overworld"
-  above) at reduced alpha unless the passive shown is the one actually active.
+  above) at reduced alpha unless the passive shown is really active. A Full Reflection that
+  fires in battle adds one more beat of its own, `BattleScene.reflectFlash`: a pale-lavender
+  additive ring bursting outward from the reflecting crystal and fading over 300ms, played at
+  the defender while the impact squash and camera shake land on the attacker instead.
 - The "A wild X appeared!" opener and the win/lose closing line are flavor text from
   `data/greetings.ts` (`victoryLine`/`defeatLine`), keyed to the wild material's type the
   same way the overworld encounter greeting is. A rival fight swaps the opener for "X blocks
@@ -2863,11 +2859,12 @@ world are shaped, since world N's start is world N-1's exit.
   Energy/Momentum/Lifetime plus qumatessence and current form name, ending in a single
   "Close" button.
 - "Abilities" is its own dedicated panel (`showAbilitiesPanel`, `560` wide, same blue-grey
-  stroke) rather than a third `showInfoPanel` body -- one name+description block
-  per passive owner (`data/passives.ts`'s `PASSIVE_OWNERS`, currently just Franklin),
-  each its own pair of `Text` objects with explicitly capped
-  font sizes (`nameScale`/`descScale`, same capping `renderPassiveList` already uses) rather
-  than folding both full descriptions into `showInfoPanel`'s single wrapped body, since that
+  stroke) rather than a third `showInfoPanel` body -- per passive owner (`data/passives.ts`'s
+  `PASSIVE_OWNERS`, currently just Franklin) one bold name line, "`<owner>`: `<active names>`
+  (N of M slots used)", then one description line per active passive, each its own `Text`
+  object with explicitly capped font sizes (`nameScale`/`descScale`, the same caps
+  Franklin's own pane uses) rather
+  than folding the full descriptions into `showInfoPanel`'s single wrapped body, since that
   body's shrink-to-fit only lowers font size and never truncates -- two full passive
   descriptions back to back could still overflow the canvas at that panel's largest text-size
   preset even at the shrink loop's own floor.

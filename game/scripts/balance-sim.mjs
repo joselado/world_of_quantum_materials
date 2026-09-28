@@ -252,12 +252,17 @@
 //   (a LOSE verdict, not just a fragile INCONCLUSIVE) is never walked past
 //   that world -- `simulateBuild` stops there and every later world is
 //   reported as unreached rather than simulated as if progress continued.
-// - Only one Franklin passive and one Kondo self-buff can ever be *active*
-//   in battle at a time, even once several are owned. Every build that buys
-//   Franklin passives keeps Diffraction Shadow (flat incoming-damage
-//   reduction) active rather than switching per fight -- the simplest
-//   defensive baseline, and a deliberate undercount of Ph.D.'s real ceiling
-//   (a human could switch to Satellite Reflection or Amorphous Halo when
+// - One Kondo self-buff can ever be *active* in battle at a time, and a
+//   Franklin passive only runs inside a bought slot (PASSIVE_SLOT_COSTS,
+//   three rungs; each passive takes one to three of them). This model buys
+//   exactly the one slot Diffraction Shadow needs (franklinCost/buyFranklin
+//   above) and never a second or third, and never models the two
+//   situational passives (Last Scattering's 1-HP floor, Full Reflection's
+//   10% bounce-back): every build that buys Franklin passives keeps
+//   Diffraction Shadow (flat incoming-damage reduction) active rather than
+//   switching per fight -- the simplest defensive baseline, and a deliberate
+//   undercount of Ph.D.'s real ceiling (a human could buy more slots and
+//   hold several, or switch to Satellite Reflection or Amorphous Halo when
 //   more valuable). Kondo is treated the same way: every build that buys
 //   from him holds Spin Screening, active for the whole battle rather than
 //   re-cast/ticked down turn by turn. That cloud halves only the incoming
@@ -466,6 +471,30 @@ function canHost(type, moveClass) {
 
 const passivesSf = parseFile('src/data/passives.ts');
 const PASSIVES = evalNode(findTopLevelConst(passivesSf, 'PASSIVES'), passivesSf);
+const PASSIVE_SLOT_COSTS = evalNode(findTopLevelConst(passivesSf, 'PASSIVE_SLOT_COSTS'), passivesSf);
+
+// What it costs this build to buy passive `id` from Franklin *and run it*:
+// the passive's own price plus every slot rung still missing for it
+// (PASSIVE_SLOT_COSTS, bought one at a time). Only Diffraction Shadow is
+// ever run in this model (see the header), so only it pays for slots; every
+// later passive is bought as an owned-but-idle purchase at its bare price,
+// which is exactly what the game charges for one that isn't activated.
+function franklinCost(state, id) {
+  if (id !== 'fractionalGuard') return PASSIVES[id].cost;
+  let cost = PASSIVES[id].cost;
+  for (let n = state.franklinSlots; n < PASSIVES[id].slots; n++) cost += PASSIVE_SLOT_COSTS[n];
+  return cost;
+}
+function buyFranklin(state, id) {
+  const cost = franklinCost(state, id);
+  state.qumatessence -= cost;
+  state.spentTotal += cost;
+  state.franklinOwned.add(id);
+  if (id === 'fractionalGuard') {
+    state.franklinSlots = Math.max(state.franklinSlots, PASSIVES[id].slots);
+    state.franklinActive = 'fractionalGuard';
+  }
+}
 
 // --- Live formulas: data/balance.ts, transpiled and actually imported ----
 // (never a hand-copied duplicate -- see this file's own header comment).
@@ -641,6 +670,7 @@ function newState(accuracy, grindCap) {
     kondoActive: false,
     franklinOwned: new Set(),
     franklinActive: null,
+    franklinSlots: 0, // passive slots bought from Franklin (PASSIVE_SLOT_COSTS rungs)
     accuracy,
     // The player's current crystal form (Dresselhaus's transmutation --
     // see header comment). Starts as Silicon/PLAYER_MATERIAL for every
@@ -667,6 +697,7 @@ function cloneState(state) {
     moveLevels: new Map(state.moveLevels),
     tunedClass: new Map(state.tunedClass),
     franklinOwned: new Set(state.franklinOwned),
+    franklinSlots: state.franklinSlots,
     dresselhausUnlocked: new Set(state.dresselhausUnlocked),
     ultimateClassUnlocked: new Map([...state.ultimateClassUnlocked].map(([id, classes]) => [id, new Set(classes)])),
   };
@@ -1118,8 +1149,7 @@ const BUILDS = [
           statUpgradeCost(state.stats[a], a) <= statUpgradeCost(state.stats[b], b) ? a : b
         );
         const statCost = statUpgradeCost(state.stats[cheapestStat], cheapestStat);
-        const passiveCost =
-          world >= 9 && !state.franklinOwned.has('fractionalGuard') ? PASSIVES.fractionalGuard.cost : Infinity;
+        const passiveCost = world >= 9 && !state.franklinOwned.has('fractionalGuard') ? franklinCost(state, 'fractionalGuard') : Infinity;
         const cheapestFix = Math.min(tunnelCost, statCost, passiveCost);
         if (state.qumatessence < cheapestFix) farmIfStuck(hitFn, state, world, cheapestFix - state.qumatessence, margin);
         if (!state.ownedMoves.has('tunnelStrike') && state.qumatessence >= tunnelCost) {
@@ -1128,15 +1158,13 @@ const BUILDS = [
           state.ownedMoves.add('tunnelStrike');
           continue;
         }
-        // Diffraction Shadow before another stat point once available: by
-        // world 9 the next stat point costs several times the passive's
-        // flat 40, and the passive's 15% incoming-damage cut applies to
-        // every fight from then on with zero further interaction.
+        // Diffraction Shadow (with the one slot it needs, franklinCost)
+        // before another stat point once affordable: by world 9 the next
+        // stat point costs a comparable sum, and the passive's 15%
+        // incoming-damage cut applies to every fight from then on with zero
+        // further interaction.
         if (passiveCost !== Infinity && state.qumatessence >= passiveCost) {
-          state.qumatessence -= passiveCost;
-          state.spentTotal += passiveCost;
-          state.franklinOwned.add('fractionalGuard');
-          state.franklinActive = 'fractionalGuard';
+          buyFranklin(state, 'fractionalGuard');
           continue;
         }
         if (state.qumatessence >= statCost) {
@@ -1184,11 +1212,8 @@ const BUILDS = [
           }
         }
         if (world >= 7 && tryFeynmanLevel(state)) continue;
-        if (world >= 9 && !state.franklinOwned.has('fractionalGuard') && state.qumatessence >= PASSIVES.fractionalGuard.cost) {
-          state.qumatessence -= PASSIVES.fractionalGuard.cost;
-          state.spentTotal += PASSIVES.fractionalGuard.cost;
-          state.franklinOwned.add('fractionalGuard');
-          state.franklinActive = 'fractionalGuard';
+        if (world >= 9 && !state.franklinOwned.has('fractionalGuard') && state.qumatessence >= franklinCost(state, 'fractionalGuard')) {
+          buyFranklin(state, 'fractionalGuard');
           continue;
         }
         if (world >= 10 && !state.ownedMoves.has('ultimateMeteor') && state.qumatessence >= ULTIMATE_CLASS_UNLOCK_COST) {
@@ -1259,14 +1284,12 @@ const BUILDS = [
         }
         if (world >= 9) {
           const nextPassive = Object.keys(PASSIVES).find((id) => !state.franklinOwned.has(id));
-          if (nextPassive && state.qumatessence >= PASSIVES[nextPassive].cost) {
-            state.qumatessence -= PASSIVES[nextPassive].cost;
-            state.spentTotal += PASSIVES[nextPassive].cost;
-            state.franklinOwned.add(nextPassive);
-            // Kept active for the whole battle regardless of which one was
-            // bought most recently -- see header comment on why Diffraction
-            // Shadow specifically is the one modeled as always-active.
-            state.franklinActive = 'fractionalGuard';
+          if (nextPassive && state.qumatessence >= franklinCost(state, nextPassive)) {
+            // Diffraction Shadow (the first key) is the one bought with its
+            // slot and kept active for the whole battle regardless of what
+            // is bought after it -- see the header comment on why it
+            // specifically is the one modeled as always-active.
+            buyFranklin(state, nextPassive);
             continue;
           }
         }
@@ -1307,7 +1330,7 @@ const BUILDS = [
         if (world >= 8 && !state.kondoOwned) wantCosts.push(shopCost(MOVES.spinScreening));
         if (world >= 9) {
           const nextPassive = Object.keys(PASSIVES).find((id) => !state.franklinOwned.has(id));
-          if (nextPassive) wantCosts.push(PASSIVES[nextPassive].cost);
+          if (nextPassive) wantCosts.push(franklinCost(state, nextPassive));
         }
         const cheapestWant = Math.min(...wantCosts);
         const margin = Math.min(evaluateWildFight(hitFn, state, world).margin, evaluateRivalFight(hitFn, state, world).margin);

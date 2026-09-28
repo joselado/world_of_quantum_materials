@@ -374,7 +374,7 @@ async function main() {
         g.registry.set('unlockedMoves', ['thermalFluctuation', 'magneticField', 'spinScreening', 'skyfallBeam', 'ultimateMeteor']);
         g.registry.set('kondoActiveMove', 'spinScreening');
         g.registry.set('passivesUnlocked', ['fractionalGuard', 'anyonEcho']);
-        g.registry.set('activePassiveByOwner', { franklin: 'fractionalGuard' });
+        g.registry.set('activePassivesByOwner', { franklin: ['fractionalGuard'] });
         g.registry.set('ultimateClassesUnlocked', { ultimateMeteor: ['phonon'] });
         // Tuned, not left untuned: an untuned Analytic move plays no
         // preview on Landau's stage at all, and the tuned state also shows
