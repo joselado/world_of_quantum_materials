@@ -734,6 +734,36 @@ for (const w of BUILT_WORLDS.filter((w) => w !== '10')) {
     evalNode(findTopLevelConst(storySf, 'FINALE_BODY'), storySf),
     evalNode(findTopLevelConst(storySf, 'FINALE_BODY_BRIEF'), storySf),
   ]);
+  pairs.push([
+    'FINALE_VICTORY_LINE',
+    evalNode(findTopLevelConst(storySf, 'FINALE_VICTORY_LINE'), storySf),
+    evalNode(findTopLevelConst(storySf, 'FINALE_VICTORY_LINE_BRIEF'), storySf),
+  ]);
+  pairs.push([
+    'FINALE_DEFEAT_LINE',
+    evalNode(findTopLevelConst(storySf, 'FINALE_DEFEAT_LINE'), storySf),
+    evalNode(findTopLevelConst(storySf, 'FINALE_DEFEAT_LINE_BRIEF'), storySf),
+  ]);
+  // The finale's stage screens: both stages, each with a title, a body and a
+  // button at both lengths, the body paired like every other twice-written
+  // text and the title and button identical at both (the name a stage
+  // stands under is not a matter of length).
+  {
+    const detailed = evalNode(findTopLevelConst(storySf, 'FINALE_STAGES'), storySf);
+    const brief = evalNode(findTopLevelConst(storySf, 'FINALE_STAGES_BRIEF'), storySf);
+    for (const stage of ['2', '3']) {
+      const d = detailed[stage];
+      const b = brief[stage];
+      if (!d) { flag(`FINALE_STAGES[${stage}] is missing`); continue; }
+      for (const field of ['title', 'body', 'button']) {
+        if (typeof d[field] !== 'string' || !d[field].trim()) flag(`FINALE_STAGES[${stage}].${field} is empty`);
+      }
+      if (!b) { flag(`FINALE_STAGES_BRIEF[${stage}] is missing`); continue; }
+      if (b.title !== d.title) flag(`FINALE_STAGES_BRIEF[${stage}].title '${b.title}' differs from the Detailed '${d.title}'`);
+      if (b.button !== d.button) flag(`FINALE_STAGES_BRIEF[${stage}].button '${b.button}' differs from the Detailed '${d.button}'`);
+      pairs.push([`FINALE_STAGES[${stage}].body`, d.body, b.body]);
+    }
+  }
   let detailedTotal = 0;
   let briefTotal = 0;
   for (const [label, detailed, brief] of pairs) {

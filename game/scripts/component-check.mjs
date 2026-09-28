@@ -538,6 +538,16 @@ async function main() {
   // will not end is what MAX_CASTS catches. The wall-clock deadline is only a
   // runaway guard so a wedged scene can't hang the suite -- it is not the
   // thing being asserted, and it is set far above any real battle's length.
+  //
+  // The end of a fight is the scene's own `battleOver`, not a bar at zero:
+  // World 10's rival is three stages on three bars (BattleScene's
+  // finaleStage), and a bar at zero there is a stage falling, with the next
+  // one's screen to press through. While the lock is held over a zero bar the
+  // fight is between stages -- the glow, then the panel -- and SPACE is what
+  // leaves the panel; pressed during the glow it lands on nothing, so it is
+  // simply pressed on every poll until the next form's bar is up. The budget
+  // counts the chain's casts together: a random-world round trip that draws
+  // World 10 as a rival plays all three stages in one activation.
   const MAX_CASTS = 40;
   const BATTLE_DEADLINE_MS = 240000;
   async function resolveBattleLoop(label) {
@@ -552,11 +562,17 @@ async function main() {
           playerHp: s['playerHp'],
           opponentHp: s['opponentHp'],
           moveIds: s['currentMoveIds'],
+          battleOver: s['battleOver'],
         };
       });
       if (!st) return { outcome: 'scene-gone', rounds };
-      if (st.playerHp <= 0 || st.opponentHp <= 0) {
+      if (st.battleOver) {
         return { outcome: st.playerHp <= 0 ? 'LOST' : 'WON', rounds };
+      }
+      if (st.turnLock && st.opponentHp <= 0) {
+        await page.keyboard.press('Space');
+        await sleep(300);
+        continue;
       }
       if (!st.turnLock) {
         if (!st.moveIds || st.moveIds.length === 0) {
@@ -1361,6 +1377,148 @@ async function main() {
   }
 
   // =====================================================================
+  // Test 4e: World 10's finale, all three stages in one fight
+  // =====================================================================
+  // The Adapted falls into The Model of You, which falls into The Quantum
+  // Adapted, which falling is the win (BattleScene.advanceFinaleStage /
+  // standFinaleForm / rollQuantumForm). Driven the way testAdaptedTransmute
+  // drives its fight, with an unkillable, hard-hitting player so every stage
+  // ends on the boss's bar. What is asserted at each stage is the rule that
+  // stage is built on, read off the scene: the Model's bar is the player's
+  // own, its pool is the player's unlocked basic moves the bare form hosts
+  // and nothing the impurity, the guardians' quiz moves or Kondo add; the
+  // cloud's bar is the rival's, its pool is every basic move, its type
+  // changes across rounds and what it throws is what a semiconductor cannot
+  // host; and the player's bar is full again on each new stage. The save
+  // is set up so every excluded kind is actually present to be excluded.
+  async function testFinaleStages() {
+    await resetRegistryOnly();
+    await page.evaluate(() => {
+      const r = window.__game.registry;
+      // Momentum level with the rival's (one slot each per round, so the boss
+      // gets to throw every round), Energy high enough to end a bar in a few
+      // casts, Lifetime that cannot be dented.
+      r.set('playerStats', { quantumness: 30, velocity: 5, correlation: 99999 });
+      // Silicon (semiconductor: electron + phonon) with a magnetic impurity
+      // doped in, a leveled move, Landau's and Skłodowska-Curie's quiz moves
+      // and an active Kondo cloud -- one of each thing the Model must not copy.
+      r.set('unlockedMoves', ['thermalFluctuation', 'tunnelStrike', 'magneticField', 'skyfallBeam', 'ultimateMeteor', 'spinScreening']);
+      r.set('andersonDopant', 'Iron');
+      r.set('moveLevels', { tunnelStrike: 3 });
+      r.set('kondoActiveMove', 'spinScreening');
+    });
+    await jumpToScene('Battle', { wild: ADAPTED_WILD, world: 10, attackMultiplier: 1, isRival: true });
+    let ready = false;
+    for (let i = 0; i < 20; i++) {
+      if ((await getActiveScenes()).includes('Battle')) { ready = true; break; }
+      await sleep(50);
+    }
+    if (!ready) return { pass: false, detail: 'Battle scene never became active' };
+
+    const read = () =>
+      page.evaluate(() => {
+        const s = window.__game.scene.getScene('Battle');
+        if (!s || !window.__game.scene.isActive('Battle')) return null;
+        return {
+          turnLock: s['turnLock'],
+          stage: s['finaleStage'],
+          pool: s['finalePool'],
+          playerHp: s['playerHp'],
+          playerMaxHp: s['playerMaxHp'],
+          opponentHp: s['opponentHp'],
+          opponentMaxHp: s['opponentMaxHp'],
+          name: s['opponentView']().name,
+          type: s['opponentView']().type,
+          lastMove: s['lastOpponentMoveId'],
+          battleOver: s['battleOver'],
+          moveIds: s['currentMoveIds'],
+        };
+      });
+    // Casts Phonon Beam whenever the lock is free, presses SPACE whenever
+    // the fight is between stages, and returns as soon as `until` holds.
+    const driveUntil = async (label, until) => {
+      const deadline = Date.now() + BATTLE_DEADLINE_MS;
+      let casts = 0;
+      while (Date.now() < deadline && casts < 80) {
+        const st = await read();
+        if (!st) return { st: null, why: `${label}: scene gone` };
+        if (until(st)) return { st };
+        if (st.battleOver) return { st: null, why: `${label}: fight ended first (stage ${st.stage}, playerHp ${st.playerHp})` };
+        if (st.turnLock && st.opponentHp <= 0) {
+          await page.keyboard.press('Space');
+        } else if (!st.turnLock) {
+          await page.evaluate(() => window.__game.scene.getScene('Battle')['playerAttack']('thermalFluctuation'));
+          casts += 1;
+        }
+        await sleep(300);
+      }
+      return { st: null, why: `${label}: timed out after ${casts} casts` };
+    };
+
+    // Stage 1 -> 2.
+    let r = await driveUntil('to stage 2', (st) => st.stage === 2 && !st.turnLock);
+    if (!r.st) return { pass: false, detail: r.why };
+    let st = r.st;
+    const expectedPool = ['thermalFluctuation', 'tunnelStrike'];
+    const pool = [...st.pool].sort();
+    if (st.name !== 'The Model of You') return { pass: false, detail: `stage 2 is named '${st.name}'` };
+    if (st.type !== 'semiconductor') return { pass: false, detail: `stage 2 wears type '${st.type}', not the player's bare semiconductor` };
+    if (JSON.stringify(pool) !== JSON.stringify(expectedPool)) return { pass: false, detail: `stage 2 pool ${JSON.stringify(pool)}, expected ${JSON.stringify(expectedPool)}` };
+    if (st.opponentMaxHp !== st.playerMaxHp || st.opponentHp !== st.opponentMaxHp) return { pass: false, detail: `stage 2 bar ${st.opponentHp}/${st.opponentMaxHp}, player max ${st.playerMaxHp}` };
+    if (st.playerHp !== st.playerMaxHp) return { pass: false, detail: `player not refilled on stage 2: ${st.playerHp}/${st.playerMaxHp}` };
+
+    // Stage 2 -> 3.
+    r = await driveUntil('to stage 3', (st) => st.stage === 3 && !st.turnLock);
+    if (!r.st) return { pass: false, detail: r.why };
+    st = r.st;
+    if (st.name !== 'The Quantum Adapted') return { pass: false, detail: `stage 3 is named '${st.name}'` };
+    if (st.pool.length < 12) return { pass: false, detail: `stage 3 pool has ${st.pool.length} moves, expected every basic move` };
+    if (st.opponentMaxHp <= st.playerMaxHp || st.opponentHp !== st.opponentMaxHp) return { pass: false, detail: `stage 3 bar ${st.opponentHp}/${st.opponentMaxHp}` };
+    if (st.playerHp !== st.playerMaxHp) return { pass: false, detail: `player not refilled on stage 3: ${st.playerHp}/${st.playerMaxHp}` };
+
+    // Several rounds of stage 3 with its bar topped up so it cannot fall: its
+    // type is re-sampled each round, and every move it throws is one a
+    // semiconductor cannot host (neither of the two it can, Phonon Beam and
+    // Electron Pulse). A round here is one player cast, the boss's own slot,
+    // and the roll where the lock frees again.
+    await page.evaluate(() => {
+      const s = window.__game.scene.getScene('Battle');
+      s['opponentMaxHp'] = 99999;
+      s['opponentHp'] = 99999;
+      s['updateBars']();
+    });
+    const types = new Set([st.type]);
+    const thrown = [];
+    for (let round = 0; round < 5; round++) {
+      await page.evaluate(() => window.__game.scene.getScene('Battle')['playerAttack']('thermalFluctuation'));
+      await sleep(300);
+      const rr = await driveUntil(`stage 3 round ${round}`, (s2) => !s2.turnLock);
+      if (!rr.st) return { pass: false, detail: rr.why };
+      types.add(rr.st.type);
+      if (rr.st.lastMove) thrown.push(rr.st.lastMove);
+    }
+    const hostable = new Set(['thermalFluctuation', 'tunnelStrike']);
+    const bad = thrown.filter((id) => hostable.has(id));
+    if (bad.length) return { pass: false, detail: `stage 3 threw hostable move(s) ${JSON.stringify(bad)} (all thrown: ${JSON.stringify(thrown)})` };
+    if (thrown.length < 5) return { pass: false, detail: `stage 3 threw ${thrown.length} move(s) in five rounds: ${JSON.stringify(thrown)}` };
+    if (types.size < 2) return { pass: false, detail: `stage 3 kept one type across six samples: ${[...types].join(', ')}` };
+
+    // Stage 3 -> the win.
+    await page.evaluate(() => {
+      const s = window.__game.scene.getScene('Battle');
+      s['opponentMaxHp'] = 5;
+      s['opponentHp'] = 5;
+      s['updateBars']();
+    });
+    r = await driveUntil('to the win', (s2) => s2.battleOver);
+    if (!r.st) return { pass: false, detail: r.why };
+    const defeated = await page.evaluate(() => (window.__game.registry.get('rivalDefeated') || {})[10] === true);
+    if (!defeated) return { pass: false, detail: 'finale won but rivalDefeated[10] not set' };
+    if (!(await dismissBattleSummary())) return { pass: false, detail: 'summary did not dismiss after the finale win' };
+    return { pass: true, detail: `three stages: pool ${JSON.stringify(pool)}, stage-3 types ${[...types].join('/')}, threw ${JSON.stringify(thrown)}` };
+  }
+
+  // =====================================================================
   // Test 5: fresh-save and corrupt-save boot
   // =====================================================================
   async function bootAndReachTitle() {
@@ -1530,6 +1688,9 @@ async function main() {
   for (const moveId of ['tunnelStrike', 'skyfallBeam', 'ultimateMeteor']) {
     await runTest(`adapted transmute via ${moveId}`, () => testAdaptedTransmute(moveId));
   }
+
+  log('=== Test 4e: World 10 finale, three stages in one fight ===');
+  await runTest('finale: Adapted -> Model of You -> Quantum Adapted -> win', () => testFinaleStages());
 
   log('=== Test 5: fresh-save and corrupt-save boot ===');
   await runTest('boot: fresh save', () =>

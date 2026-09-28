@@ -509,7 +509,13 @@ goal/middle-tip → controls-tip chain), battle round-trips, all ten guardian
 panels' open/close, rival-gate win and loss paths, World 10's Adapted actually
 transmuting (once per move class, with both sides topped up so the swap is
 reached repeatedly -- the rival-gate loss path never gets there, since a
-fresh-save player dies before landing a hit on a living Adapted), and
+fresh-save player dies before landing a hit on a living Adapted), World 10's
+finale played through all three stages in one fight (the Model's bar and
+basic-moves pool checked against a save that carries every excluded kind -- a
+dopant, a leveled move, quiz moves and a Kondo cloud -- then the Quantum
+Adapted's type re-sampled across rounds and every move it throws one the
+player's type cannot host, then the win: `rivalDefeated[10]` set and the summary
+dismissed), and
 fresh/corrupt/old-shape save boot resilience, a Canvas-renderer parity check,
 and one WebGL context loss/restore cycle forced on a live battle. The parity
 check loads the game a second time with `?renderer=canvas`, stands up the same

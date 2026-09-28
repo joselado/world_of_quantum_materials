@@ -221,6 +221,18 @@ export function rivalHpForWorld(world: number): number {
   return Math.round(RIVAL_HP_BASE + RIVAL_HP_GROWTH_PER_WORLD * (world - 1));
 }
 
+// World 10's finale is three fights in one scene (BattleScene's
+// `finaleStage`, DESIGN.md §6), each on a fresh bar of its own. Stage 1
+// (The Adapted) and stage 3 (The Quantum Adapted) stand at rival scale.
+// Stage 2 (The Model of You) is the finished record of the player and
+// carries the player's own max HP -- `wildHpForWorld` for that world, the
+// same read the player's bar comes from -- as it carries their type and
+// their moves: the copy is exact, which is what makes that stage a mirror
+// rather than a wall, and the breath between the two rival-scale bars.
+export function finaleStageHp(stage: 1 | 2 | 3, world: number): number {
+  return stage === 2 ? wildHpForWorld(world) : rivalHpForWorld(world);
+}
+
 // Qumatessence price for a shop move, scaled off its own power -- the
 // stronger the quasiparticle, the more it costs, the same "priced to keep
 // buying meaningful" shape as statUpgradeCost. Shared by every guardian who

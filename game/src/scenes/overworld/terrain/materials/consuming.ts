@@ -68,7 +68,7 @@ const FRONT_JITTER = 0.9;
 
 // Sparks: a link discharges for one time slice at a time, rolled per link per
 // slice, more often where a front is passing and nearer the pass.
-const SPARK_SLICE_MS = 130;
+export const SPARK_SLICE_MS = 130;
 const SPARK_BASE = 0.045;
 
 // The event horizon. It is not there from the entrance: it comes in with the
@@ -652,7 +652,16 @@ const REFLECT_SPACING = 0.19;
 
 export function drawReflectionNet(g: Phaser.GameObjects.Graphics, hole: EventHorizon, playerColor: number, now: number) {
   const { x, y, r, mirror, reveal } = hole;
-  const alpha = reveal * (0.55 + 0.45 * mirror);
+  drawNetDisc(g, x, y, r, reveal * (0.55 + 0.45 * mirror), playerColor, now);
+}
+
+// The network itself, over a disc of radius `r` about (x, y) at `alpha` --
+// the reflection's own drawing, shared with the finale's two later forms
+// (art/modelOfYou.ts clips it to the player's silhouette upright, art/
+// quantumAdapted.ts burns it inside the smoke), so the record the horizon
+// shows and the record that steps out to fight are one figure. `now` drives
+// the spark clock (SPARK_SLICE_MS) and the nodes' breathing.
+export function drawNetDisc(g: Phaser.GameObjects.Graphics, x: number, y: number, r: number, alpha: number, playerColor: number, now: number) {
   const step = r * REFLECT_SPACING;
   const rowStep = step * 0.866;
   const nodeC = blend(playerColor, SPARK_LIGHT, 0.45);

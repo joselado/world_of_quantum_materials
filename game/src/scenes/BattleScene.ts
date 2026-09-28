@@ -1,8 +1,10 @@
 import Phaser from 'phaser';
-import { killTweensDeep, makeCrystal } from '../art/crystals';
+import { killTweensDeep, makeCrystal, setTweensPausedDeep } from '../art/crystals';
 import { makeBossCrystal } from '../art/boss';
+import { makeModelOfYou } from '../art/modelOfYou';
+import { makeQuantumAdapted, retintQuantumAdapted } from '../art/quantumAdapted';
 import { addScreeningAura, removeScreeningAura } from '../art/screeningAuras';
-import { shade, blend, hashSeed, seededRandom } from '../art/colors';
+import { shade, blend, beyond, hashSeed, seededRandom } from '../art/colors';
 import { getBiome } from '../art/biomes';
 import type { Biome, WallTheme } from '../art/biomes';
 import { wallThemeOf } from './overworld/terrain/plan';
@@ -12,7 +14,7 @@ import { drawSeaStandRow } from './overworld/terrain/materials/coast';
 import { isSeaTint } from '../world/generators/world6';
 import type { AccentTile, BattleLocale, OffPathKind } from './overworld/terrain/types';
 import { DISTANT_SELVES, MAX_CREST, type HorizonPoint } from '../art/horizons';
-import { drawStarNetwork } from '../art/stars';
+import { drawStarNetwork, drawStarCanopy } from '../art/stars';
 import type { ProjectedPoint } from '../art/perspective';
 import { playAttackEffect, followAnchor, ANALYTIC_SHAPES, ULTIMATE_SHAPES, type EffectAnchor } from '../art/attackEffects';
 import { isArena, markArena } from '../art/attackFx';
@@ -43,6 +45,8 @@ import {
   SCREENING_CHANNEL_BY_MOVE,
   typesHosting,
   allCrystals,
+  compatibleMoves,
+  ORDINARY_MOVE_IDS,
 } from '../data/materials';
 import {
   battleStakeForWorld,
@@ -57,13 +61,15 @@ import {
   SCREEN_REDUCTION_BY_LEVEL,
   wildHpForWorld,
   rivalHpForWorld,
+  finaleStageHp,
   rollEncounterFactor,
   MAX_MULTI_HIT,
   DIFFICULTY_MULTIPLIERS,
   superpositionEnemyStats,
 } from '../data/balance';
 import type { ScreeningChannel } from '../data/materials';
-import { DEFAULT_DIFFICULTY_TIER, DEFAULT_TOUCH_CONTROLS, touchControlsActive } from '../data/settings';
+import { DEFAULT_DIFFICULTY_TIER, DEFAULT_TOUCH_CONTROLS, touchControlsActive, storyLength, storyScreensEnabled } from '../data/settings';
+import { FINALE_STAGES, finaleStageFor, finaleVictoryLineFor, finaleDefeatLineFor } from '../data/story';
 import type { DifficultyTier, TouchControlsMode } from '../data/settings';
 import { victoryLine, defeatLine } from '../data/greetings';
 import { PASSIVES } from '../data/passives';
@@ -92,6 +98,11 @@ import {
   WILD_HEAD_RISE,
   BOSS_HEAD_RISE,
   BOSS_FOOT_DROP,
+  MODEL_HEAD_RISE,
+  MODEL_FOOT_DROP,
+  SMOKE_HEAD_RISE,
+  SMOKE_FOOT_DROP,
+  SMOKE_PLATE_RISE,
   HP_BAR_FILL_W,
   MENU_WIDTH,
   MENU_X,
@@ -107,6 +118,7 @@ import {
   drawNameplate,
   drawTurnPreview,
   type Nameplate,
+  type OpponentIcon,
 } from './battle/hud';
 
 // Which backdrop the arena draws. 'realistic' is the one the game ships
@@ -127,6 +139,20 @@ const BACKDROP_MODE: 'layered' | 'bands' | 'realistic' = 'realistic';
 const OVERSCAN_X = 190;
 const OVERSCAN_Y = 110;
 const ARENA_ZOOM_OUT = 0.72;
+// The zoom at which the painted overscan still just covers the viewport:
+// nothing may hold the camera further out than this, or the canvas edge
+// shows past the arena.
+const ARENA_ZOOM_FLOOR = FIELD_W / (FIELD_W + OVERSCAN_X * 2);
+// World 10's third finale stage holds the arena pulled back to this zoom for
+// the whole stage (standFinaleForm -> settleArenaZoom): The Quantum Adapted
+// is built at QUANTUM_SIZE_SCALE times the golem's size, a cloud that fills
+// the field's upper right, and the pull-back is what keeps it and the
+// player's own crystal in one frame with the player small beneath it. Sits
+// just above ARENA_ZOOM_FLOOR, so an Ultimate cast in that stage pulls back
+// no further than the floor (pullBack clamps to it).
+const QUANTUM_ARENA_ZOOM = 0.7;
+const QUANTUM_SIZE_SCALE = 3;
+const QUANTUM_SETTLE_MS = 900;
 // The texture the realistic backdrop's painted-once layers are baked into
 // at the start of every battle (drawRealisticBackdrop).
 const BACKDROP_TEXTURE = 'battle-backdrop';
@@ -424,6 +450,11 @@ export class BattleScene extends Phaser.Scene {
   // to ignore for it (pullBack).
   private hudCam: Phaser.Cameras.Scene2D.Camera | null = null;
   private hudIgnored = new Set<Phaser.GameObjects.GameObject>();
+  // The zoom the arena rests at between pull-backs: 1 for every fight but
+  // World 10's third finale stage (QUANTUM_ARENA_ZOOM). Every HUD element
+  // anchored to an arena object goes through hudPoint() so it sits over the
+  // object at whichever rest zoom is in force.
+  private arenaZoom = 1;
   private opponentHpBar!: Phaser.GameObjects.Rectangle;
   private playerHpBar!: Phaser.GameObjects.Rectangle;
   private opponentCrystal!: Phaser.GameObjects.Container;
@@ -431,18 +462,42 @@ export class BattleScene extends Phaser.Scene {
   // status label) so `drawOpponentPlate` can tear the whole fitted layout
   // down and rebuild it when World 10's rival reshapes mid-fight.
   private opponentPlate?: Nameplate;
+  // The player's plate, held the same way: rebuilt whole when the arena's
+  // rest zoom changes under it (settleArenaZoom).
+  private playerPlate?: Nameplate;
   private opponentPos: { x: number; y: number } = OPPONENT_POS;
+  // The baked backdrop and the air its painted stars are drowned toward
+  // (drawRealisticBackdrop), for the finale's third stage to lay its own sky
+  // directly over the one and in the other (standFinaleForm).
+  private backdropImage?: Phaser.GameObjects.GameObject;
+  private arenaAir = 0x000000;
   // World 10's rival ("The Adapted") has no fixed type/look of its own
   // -- see data/materials.ts's WORLD_RIVALS[10] comment. Set in create()
   // (mirroring the player's own current type) only for that one fight, then
-  // replaced wholesale every time transmuteAdapted() fires; `null` for every
+  // replaced wholesale every time transmuteAdapted() fires and again by each
+  // later finale stage (standFinaleForm, rollQuantumForm); `null` for every
   // other fight, in which case opponentView() below falls back to the plain
   // static `this.wild` the same way every read here always did. Only its
-  // type/name/color/variant are ever read off this -- `this.wild.moves`
-  // (its actual attack moveset) stays fixed throughout, see
-  // transmuteAdapted's own comment; HP is never read off either `Material`
-  // at all (see `opponentMaxHp`'s own comment above).
+  // type/name/color/variant are ever read off this -- what it throws is
+  // `finalePool` below, see opponentMoveId; HP is never read off either
+  // `Material` at all (see `opponentMaxHp`'s own comment above).
   private adaptedForm: Material | null = null;
+  // World 10's finale is three fights in one scene (DESIGN.md §6): The
+  // Adapted, then The Model of You, then The Quantum Adapted, each on a bar
+  // of its own, with a screen between them (advanceFinaleStage). 0 for every
+  // other fight; 1 from create() for that one, stepped by standFinaleForm.
+  // `finalePool` is what the standing stage throws: the Adapted's own
+  // authored moves, then the player's own basic moves, then every basic
+  // move (opponentMoveId). `battleOver` and `lastOpponentMoveId` are read by
+  // scripts/component-check.mjs, which cannot take "a bar hit zero" for
+  // "the fight ended" when a bar refills mid-scene. All four are
+  // battle-ephemeral and reset in create() like every field above.
+  private finaleStage: 0 | 1 | 2 | 3 = 0;
+  private finalePool: string[] = [];
+  // Public rather than private: nothing in the scene reads them, only the
+  // check script does, through the scene object.
+  battleOver = false;
+  lastOpponentMoveId: string | null = null;
   private playerCrystal!: Phaser.GameObjects.Container;
   // Where each side's half of an attack effect draws (art/attackAnchors.ts).
   // Each one reads only its own crystal's live container position, so the
@@ -609,6 +664,10 @@ export class BattleScene extends Phaser.Scene {
       this.isRival && this.world === 10
         ? { ...this.wild, type: this.playerMaterial.type }
         : null;
+    this.finaleStage = this.adaptedForm ? 1 : 0;
+    this.finalePool = this.adaptedForm ? [...this.wild.moves] : [];
+    this.battleOver = false;
+    this.lastOpponentMoveId = null;
 
     // Franklin's active passives (§5) -- read once here, held for the whole
     // battle.
@@ -625,7 +684,10 @@ export class BattleScene extends Phaser.Scene {
     // the crystal body the way addBoostHalo's temporary aura is.
     const franklinPassiveId = [...this.playerActivePassives].find((id) => id in PASSIVES);
     if (franklinPassiveId) {
-      const haloLayer = this.add.container(0, 0);
+      // Part of the arena (it lies on the floor under the crystal), so it
+      // follows the crystal under a pulled-back camera rather than staying
+      // on the HUD.
+      const haloLayer = this.arena(this.add.container(0, 0));
       drawFranklinPassiveHalo(this, haloLayer, PLAYER_POS.x, PLAYER_POS.y + SHADOW_DROP, franklinPassiveId, 65, 15);
     }
 
@@ -654,6 +716,9 @@ export class BattleScene extends Phaser.Scene {
     // the next battle holding a dead HUD camera.
     this.hudCam = null;
     this.hudIgnored.clear();
+    this.arenaZoom = 1;
+    this.playerPlate = undefined;
+    this.backdropImage = undefined;
 
     // A rival fight's opponent is that world's boss -- render it with the
     // same gigantic, multi-shard look it has standing at the goal tile in
@@ -695,26 +760,7 @@ export class BattleScene extends Phaser.Scene {
     // bottom-anchored, so an unreserved pill would shove the name and bar
     // upward on the turn it lands).
     this.currentMoveIds = getBattleMoves(this.game.registry);
-    const boosted = this.attackMultiplier > 1;
-    const playerPlate = drawNameplate(this, {
-      centerX: PLAYER_POS.x,
-      headTop: PLAYER_POS.y - PLAYER_HEAD_RISE,
-      name: this.playerMaterial.name,
-      namePx: Math.round(14 * Math.min(fontScale(this), 1.5)),
-      accent: GOLD_ACCENT,
-      reserveStatus: this.currentMoveIds.some((id) => KONDO_MOVE_IDS.includes(id)),
-      passiveText: passivePillText(this.playerActivePassives),
-      note:
-        this.attackMultiplier === 1
-          ? undefined
-          : {
-              text: boosted ? 'Attack boosted!' : 'Attack weakened...',
-              color: boosted ? '#88ff88' : '#ff8888',
-              px: Math.round(12 * Math.min(fontScale(this), 1.5)),
-            },
-    });
-    this.playerHpBar = playerPlate.hpFill;
-    this.playerStatusLabel = playerPlate.statusLabel;
+    this.drawPlayerPlate();
 
     const openingLine = this.isRival ? `${this.wild.name} blocks the way onward!` : `A wild ${this.wild.name} appeared!`;
     this.logText = this.add.text(LOG_X, LOG_Y, '', {
@@ -1640,6 +1686,9 @@ export class BattleScene extends Phaser.Scene {
     // below that the sky arrives at from above and the horizon is a place
     // inside one atmosphere rather than a seam between two.
     const air = blend(biome.fogTarget, biome.skyBottom, 0.4);
+    // Kept for the finale's third stage, whose own sky (standFinaleForm's
+    // canopy) is drowned toward the same air the painted stars are.
+    this.arenaAir = air;
     // Where the painted-once layers begin: everything added from here to the
     // horizon veil is flattened into one texture below (art/bake.ts).
     const paintedFrom = this.children.length;
@@ -1650,12 +1699,26 @@ export class BattleScene extends Phaser.Scene {
     const skyLow = blend(biome.skyBottom, air, 0.75);
     const skyMid = blend(biome.skyTop, skyLow, 0.5);
     const skyMidY = Math.round(R_HORIZON_Y * 0.42);
-    // The sky keeps darkening above the field toward the zenith, for the
-    // pulled-back camera: a flat band of the top colour would read as a
-    // crease against the gradient brightening away below it.
-    const zenith = blend(biome.skyTop, 0x000000, 0.2);
-    g.fillGradientStyle(zenith, zenith, biome.skyTop, biome.skyTop, 1);
-    g.fillRect(ARENA_X0, -OVERSCAN_Y, ARENA_W, OVERSCAN_Y);
+    // Above the field the wash carries on for the pulled-back camera -- the
+    // finale's third stage looks at this band for a whole stage
+    // (QUANTUM_ARENA_ZOOM) -- as the same gradient continued: it leaves the
+    // field's top edge at exactly the slope the field's own sky has there
+    // (so there is no seam to see, neither a crease against a flat band nor
+    // a kink against a slower one) and eases off toward the zenith, the
+    // darkening per pixel decaying over SKY_EASE_PX. Drawn as a stack of
+    // linear strips that trace that curve; the top ends about half a
+    // skyTop-to-skyMid step beyond skyTop, dark but not black.
+    const SKY_EASE_PX = 28;
+    const SKY_STRIPS = 8;
+    const skyAbove = (up: number) => beyond(biome.skyTop, skyMid, (SKY_EASE_PX * (1 - Math.exp(-up / SKY_EASE_PX))) / skyMidY);
+    for (let i = 0; i < SKY_STRIPS; i++) {
+      const upLow = (OVERSCAN_Y * i) / SKY_STRIPS;
+      const upHigh = (OVERSCAN_Y * (i + 1)) / SKY_STRIPS;
+      const cHigh = skyAbove(upHigh);
+      const cLow = skyAbove(upLow);
+      g.fillGradientStyle(cHigh, cHigh, cLow, cLow, 1);
+      g.fillRect(ARENA_X0, -upHigh, ARENA_W, upHigh - upLow + 1);
+    }
     g.fillGradientStyle(biome.skyTop, biome.skyTop, skyMid, skyMid, 1);
     g.fillRect(ARENA_X0, 0, ARENA_W, skyMidY);
     g.fillGradientStyle(skyMid, skyMid, skyLow, skyLow, 1);
@@ -1779,7 +1842,7 @@ export class BattleScene extends Phaser.Scene {
     // fills. The haze banks drift and the vignette belongs to the HUD
     // camera, so both stay live above it.
     const painted = this.children.list.slice(paintedFrom);
-    this.arena(bakeLayers(this, BACKDROP_TEXTURE, painted, { x: ARENA_X0, y: -OVERSCAN_Y, w: ARENA_W, h: FIELD_H + OVERSCAN_Y * 2 }));
+    this.backdropImage = this.arena(bakeLayers(this, BACKDROP_TEXTURE, painted, { x: ARENA_X0, y: -OVERSCAN_Y, w: ARENA_W, h: FIELD_H + OVERSCAN_Y * 2 }));
     this.drawArenaHaze(air);
     this.drawVignette(biome);
 
@@ -2458,9 +2521,10 @@ export class BattleScene extends Phaser.Scene {
   // whichever identity is current with no argument to keep in step.
   private drawOpponentPlate() {
     this.opponentPlate?.destroy();
+    const head = this.hudPoint(this.opponentPos.x, this.opponentPos.y - this.opponentExtent().plateRise);
     this.opponentPlate = drawNameplate(this, {
-      centerX: this.opponentPos.x,
-      headTop: this.opponentPos.y - (this.isRival ? BOSS_HEAD_RISE : WILD_HEAD_RISE),
+      centerX: head.x,
+      headTop: head.y,
       name: this.opponentView().name,
       namePx: Math.round((this.isRival ? 11 : 14) * Math.min(fontScale(this), 1.5)),
       accent: REFERENCE_BLUE_GREY,
@@ -2469,6 +2533,64 @@ export class BattleScene extends Phaser.Scene {
     });
     this.opponentHpBar = this.opponentPlate.hpFill;
     this.opponentStatusLabel = this.opponentPlate.statusLabel;
+  }
+
+  // The player's own plate, floating above their head exactly the way the
+  // opponent's does. Room for the Kondo status pill is reserved only when
+  // this form actually has one of his moves to cast (the plate is
+  // bottom-anchored, so an unreserved pill would shove the name and bar
+  // upward on the turn it lands). Rebuilt whole, like the opponent's, when
+  // the arena's rest zoom moves the crystal under it.
+  private drawPlayerPlate() {
+    this.playerPlate?.destroy();
+    const boosted = this.attackMultiplier > 1;
+    const head = this.hudPoint(PLAYER_POS.x, PLAYER_POS.y - PLAYER_HEAD_RISE);
+    this.playerPlate = drawNameplate(this, {
+      centerX: head.x,
+      headTop: head.y,
+      name: this.playerMaterial.name,
+      namePx: Math.round(14 * Math.min(fontScale(this), 1.5)),
+      accent: GOLD_ACCENT,
+      reserveStatus: this.currentMoveIds.some((id) => KONDO_MOVE_IDS.includes(id)),
+      passiveText: passivePillText(this.playerActivePassives),
+      note:
+        this.attackMultiplier === 1
+          ? undefined
+          : {
+              text: boosted ? 'Attack boosted!' : 'Attack weakened...',
+              color: boosted ? '#88ff88' : '#ff8888',
+              px: Math.round(12 * Math.min(fontScale(this), 1.5)),
+            },
+    });
+    this.playerHpBar = this.playerPlate.hpFill;
+    this.playerStatusLabel = this.playerPlate.statusLabel;
+  }
+
+  // Where an arena point sits on the HUD at the arena's rest zoom: the main
+  // camera zooms about the field's centre, so a HUD element anchored to an
+  // arena object (a plate over a head) is placed through this. The identity
+  // at zoom 1, which is every fight but the finale's third stage.
+  private hudPoint(x: number, y: number): { x: number; y: number } {
+    const z = this.arenaZoom;
+    return { x: FIELD_W / 2 + (x - FIELD_W / 2) * z, y: FIELD_H / 2 + (y - FIELD_H / 2) * z };
+  }
+
+  // Holds the arena at `arenaZoom` for the rest of the fight: the HUD camera
+  // is split off the way an Ultimate's pull-back splits it (pullBack), the
+  // main camera eases to the rest zoom, and both plates are rebuilt over the
+  // heads they now float above. The cameras are not merged back afterwards;
+  // pullBack's own ease-in returns to this zoom rather than to 1.
+  private settleArenaZoom(ms: number) {
+    if (!this.hudCam) {
+      this.hudCam = this.cameras.add(0, 0, FIELD_W, FIELD_H, false, 'hud');
+      this.splitCameras();
+    }
+    this.drawOpponentPlate();
+    this.drawPlayerPlate();
+    this.updateBars();
+    this.renderStatusLabel(false);
+    this.renderStatusLabel(true);
+    this.cameras.main.zoomTo(this.arenaZoom, ms, 'Sine.easeInOut', true);
   }
 
   // World 10's rival transmutation (§5/§6, DESIGN.md) -- called from
@@ -2613,6 +2735,258 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
+  // How far the standing opponent's painted art reaches above and below its
+  // anchor (hud.ts's measured *_HEAD_RISE/*_FOOT_DROP pairs), for the aura
+  // sized to its body, and where its plate anchors (`plateRise`, the head
+  // for every figure but the cloud, whose plate sits in its thin crown --
+  // hud.ts's SMOKE_PLATE_RISE): an ordinary wild, the rival golem, or the
+  // finale's record or cloud.
+  private opponentExtent(): { headRise: number; footDrop: number; plateRise: number } {
+    if (!this.isRival) return { headRise: WILD_HEAD_RISE, footDrop: 0, plateRise: WILD_HEAD_RISE };
+    if (this.finaleStage === 2) return { headRise: MODEL_HEAD_RISE, footDrop: MODEL_FOOT_DROP, plateRise: MODEL_HEAD_RISE };
+    if (this.finaleStage === 3) return { headRise: SMOKE_HEAD_RISE, footDrop: SMOKE_FOOT_DROP, plateRise: SMOKE_PLATE_RISE };
+    return { headRise: BOSS_HEAD_RISE, footDrop: BOSS_FOOT_DROP, plateRise: BOSS_HEAD_RISE };
+  }
+
+  // Which figure the turn row's opponent icons carry (hud.ts's
+  // drawTurnPreview): the same one standing on the field.
+  private opponentIconKind(): OpponentIcon {
+    if (!this.isRival) return 'crystal';
+    if (this.finaleStage === 2) return 'model';
+    if (this.finaleStage === 3) return 'quantum';
+    return 'golem';
+  }
+
+  // World 10's finale (DESIGN.md §6): the stage just brought to zero comes
+  // apart and the next form stands, with the stage's screen between them
+  // (data/story.ts's FINALE_STAGES). Called from resolveHit's
+  // checkEndOrContinue in place of endBattle(true) while a stage remains.
+  // turnLock stays held from the KO until the new form's menu goes live
+  // (standFinaleForm), so nothing can be picked under the panel. The old form
+  // is hidden at the glow's peak rather than destroyed: every effect anchor
+  // is a thunk to `opponentCrystal` and the aura mounts inside it, so it
+  // stays a live object until the swap replaces it whole. Nothing is freed
+  // here -- a record does not anneal -- so no story beat plays; the screen is
+  // the Adapted's own voice carried into the fight, and it is skipped like
+  // every other story screen when the Settings station has them off.
+  private advanceFinaleStage() {
+    const next = (this.finaleStage + 1) as 2 | 3;
+    const stage = finaleStageFor(next, storyLength(this.game.registry));
+    const fallen = this.opponentView().name;
+    this.setLogText(next === 2 ? `${fallen} goes still and comes apart. Nothing anneals.` : `${fallen} breaks along no grain, and the pass is not empty.`);
+    this.setStatus(false, null);
+    this.playTransmuteGlow(() => {
+      this.opponentCrystal.setVisible(false);
+      setTweensPausedDeep(this, this.opponentCrystal, true);
+    });
+    this.time.delayedCall(TRANSMUTE_HOLD_MS, () => {
+      const stand = () => this.standFinaleForm(next);
+      if (!storyScreensEnabled(this.game.registry)) {
+        stand();
+        return;
+      }
+      this.renderStagePanel({ title: stage.title, body: stage.body, buttonLabel: stage.button, onContinue: stand });
+    });
+  }
+
+  // The next stage takes the field. Stage 2, The Model of You, is the
+  // player's bare form -- type, habit and colour, nothing doped in -- and
+  // throws only the player's own basic moves (ORDINARY_MOVE_IDS) that this
+  // form itself hosts: no Feynman level (an opponent's copy of a move is
+  // never leveled, see resolveHit), no passive, no cloud, and no impurity's
+  // channel, since compatibleMoves reads the form alone -- a doped-in class
+  // stays the player's own edge over it, and the Model can never throw it
+  // back. Phonon Beam is always unlocked and always hostable, so the pool is
+  // never empty. Stage 3, The Quantum Adapted, throws every basic move and
+  // answers as a fresh sample of the environment each round (rollQuantumForm).
+  // Both bars refill -- the player's to full as well; the screen between
+  // stages is the breath, and a lost stage restarts the whole finale from the
+  // pass -- every cloud and status clears, the round is laid out afresh and
+  // the menu goes live against the new form.
+  private standFinaleForm(stage: 2 | 3) {
+    this.finaleStage = stage;
+    if (stage === 2) {
+      const unlocked = (this.game.registry.get('unlockedMoves') as string[]) ?? [];
+      const hostable = new Set(compatibleMoves(this.playerMaterial));
+      const pool = unlocked.filter((id) => ORDINARY_MOVE_IDS.includes(id) && hostable.has(id));
+      this.finalePool = pool.length > 0 ? pool : ['thermalFluctuation'];
+      this.adaptedForm = { ...this.playerMaterial, name: FINALE_STAGES[2].title, moves: this.finalePool };
+    } else {
+      this.finalePool = [...ORDINARY_MOVE_IDS];
+      this.adaptedForm = { ...this.sampleEnvironment(), name: FINALE_STAGES[3].title, moves: this.finalePool };
+    }
+
+    this.opponentScreeningAura = null;
+    killTweensDeep(this, this.opponentCrystal);
+    this.opponentCrystal.destroy(true);
+    const view = this.opponentView();
+    this.opponentCrystal = this.arena(
+      stage === 2
+        ? makeModelOfYou(this, BOSS_CRYSTAL_SIZE, this.playerMaterial, this.opponentPos, { footDrop: SHADOW_DROP })
+        : makeQuantumAdapted(this, BOSS_CRYSTAL_SIZE * QUANTUM_SIZE_SCALE, view.color, this.playerMaterial.color, { footDrop: SHADOW_DROP })
+    );
+    // The cloud is built at three times the golem's size, so the arena is
+    // held pulled back for the whole stage to keep it and the player in one
+    // frame (QUANTUM_ARENA_ZOOM); set before the plates below are drawn, so
+    // they are laid out over the heads' pulled-back positions from the start
+    // and the camera eases the arena to them. The stage's own sky goes in
+    // with it: a second star network over the whole painted sky, up through
+    // the overscan the pulled-back camera looks at (art/stars.ts's
+    // drawStarCanopy), slotted into the display list directly above the
+    // baked backdrop so it lies under the haze, the floor shadows and both
+    // crystals like the painted stars do.
+    if (stage === 3) {
+      this.arenaZoom = QUANTUM_ARENA_ZOOM;
+      const sky = this.arena(this.add.graphics());
+      drawStarCanopy({
+        g: sky,
+        x0: ARENA_X0,
+        x1: ARENA_X0 + ARENA_W,
+        top: -OVERSCAN_Y,
+        horizonY: R_HORIZON_Y,
+        target: this.arenaAir,
+        now: R_FROZEN_NOW,
+      });
+      if (this.backdropImage) this.children.moveTo(sky, this.children.getIndex(this.backdropImage) + 1);
+    }
+    this.opponentCrystal.setPosition(this.opponentPos.x, this.opponentPos.y);
+    this.flashHit(this.opponentCrystal);
+    this.cameras.main.flash(160, 0xe6, 0xdc, 0xff, false);
+
+    this.opponentMaxHp = finaleStageHp(stage, this.world);
+    this.opponentHp = this.opponentMaxHp;
+    this.playerHp = this.playerMaxHp;
+    this.game.registry.set('playerHp', this.playerHp);
+    persistFromRegistry(this.game.registry);
+    this.setStatus(true, null);
+    this.setStatus(false, null);
+    this.buffCastThisRound = { player: false, enemy: false };
+    this.roundSlots = [];
+    this.roundSlot = 0;
+    this.playerLastSlot = -1;
+    this.enemyLastSlot = -1;
+    this.pendingPlayerMove = null;
+
+    if (stage === 3) this.settleArenaZoom(QUANTUM_SETTLE_MS);
+    else this.drawOpponentPlate();
+    this.updateBars();
+    this.renderStatusLabel(false);
+    this.drawMoveMenu(this.currentMoveIds);
+    this.drawTurnPreview();
+    this.setLogText(
+      stage === 2
+        ? `${view.name} stands where the golem stood, in your own shape.`
+        : `${view.name} fills the pass. This round it answers as ${this.sampledName}.`
+    );
+    this.turnLock = false;
+  }
+
+  // The compound the environment is answering as, for the log: the sample
+  // itself is folded into adaptedForm under the stage's own name.
+  private sampledName = '';
+
+  // One sample of the environment's mixed state: any real compound in the
+  // game, uniform -- everything it consumed, and each round one of them. The
+  // compound it is answering as now is left out, so each round answers as a
+  // different one (the bath has moved on between asks, which is what the
+  // stage's own text says); the player's own is not excluded.
+  private sampleEnvironment(): Material {
+    const pool = allCrystals().filter((m) => m.name !== this.sampledName);
+    const picked = Phaser.Utils.Array.GetRandom(pool.length > 0 ? pool : allCrystals());
+    this.sampledName = picked.name;
+    return picked;
+  }
+
+  // Stage 3's form for the round about to be picked: a fresh sample, whose
+  // type is what the player's moves are now checked against (the menu's
+  // !!2x tags) and whose colour the cloud takes (retintQuantumAdapted, a
+  // crossfade rather than a rebuild). Called where a round ends and the
+  // menu goes live (runNextSlot), never inside beginRound, which runs lazily
+  // inside playerAttack after the pick is already made: rolled there, the
+  // tags the player just read would be stale. What it throws is unaffected
+  // (opponentMoveId reads the player's type, not this one). The plate is not
+  // rebuilt: the name it carries does not change.
+  private rollQuantumForm() {
+    const picked = this.sampleEnvironment();
+    this.adaptedForm = { ...picked, name: FINALE_STAGES[3].title, moves: this.finalePool };
+    retintQuantumAdapted(this.opponentCrystal, picked.color);
+    this.drawMoveMenu(this.currentMoveIds);
+    this.drawTurnPreview();
+    this.setLogText(`${FINALE_STAGES[3].title} answers as ${picked.name} now.`);
+  }
+
+  // The screen between two finale stages (advanceFinaleStage): a title, the
+  // stage's prose and one button, on the same opaque bordered panel every
+  // block of read-me text in this scene gets (renderQuestionPanel), gold like
+  // the end-of-battle summary, shrinking to fit the field the same way.
+  // SPACE and a tap leave it too, armed after the grace the summary uses: on
+  // a touchscreen the button is small, and a held key or the click that
+  // ended the stage must not skip the one screen that says what happened.
+  private renderStagePanel(params: { title: string; body: string; buttonLabel: string; onContinue: () => void }) {
+    const { title, body, buttonLabel, onContinue } = params;
+    const panelWidth = 560;
+    const top = 50;
+    const contentWidth = panelWidth - 60;
+    let done = false;
+    let container: Phaser.GameObjects.Container | undefined;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      this.input.keyboard!.off('keydown-SPACE', finish);
+      this.input.off(Phaser.Input.Events.POINTER_DOWN, finish);
+      container?.destroy(true);
+      onContinue();
+    };
+
+    const attempt = (scale: number) => {
+      const c = this.add.container(0, 0).setDepth(100);
+      let y = top + 16;
+      const titleText = this.add
+        .text(FIELD_W / 2, y, title, {
+          fontSize: `${Math.round(16 * scale)}px`,
+          color: GOLD_ACCENT_HEX,
+          fontStyle: 'bold',
+          align: 'center',
+          wordWrap: { width: contentWidth },
+        })
+        .setOrigin(0.5, 0);
+      c.add(titleText);
+      y += titleText.height + 10;
+      const bodyText = this.add
+        .text(FIELD_W / 2, y, body, {
+          fontSize: `${Math.round(12 * scale)}px`,
+          color: '#ffffff',
+          wordWrap: { width: contentWidth },
+          lineSpacing: 2,
+        })
+        .setOrigin(0.5, 0);
+      c.add(bodyText);
+      y += bodyText.height + 14;
+      const btn = this.addAnswerButton(c, y, buttonLabel, scale, contentWidth, finish);
+      y += btn.height + 8;
+      return { container: c, panelHeight: y - top + 10 };
+    };
+
+    let scale = Math.min(fontScale(this), 1.5);
+    let built = attempt(scale);
+    while (top + built.panelHeight > FIELD_H - 10 && scale > 0.7) {
+      built.container.destroy(true);
+      scale = Math.max(0.7, scale - 0.1);
+      built = attempt(scale);
+    }
+    container = built.container;
+    const panel = this.add
+      .rectangle(FIELD_W / 2, top + built.panelHeight / 2, panelWidth, built.panelHeight, PANEL_BG, 0.94)
+      .setStrokeStyle(2, GOLD_ACCENT);
+    container.addAt(panel, 0);
+
+    this.time.delayedCall(VICTORY_DISMISS_GRACE_MS, () => {
+      if (done) return;
+      this.input.keyboard!.once('keydown-SPACE', finish);
+      this.input.once(Phaser.Input.Events.POINTER_DOWN, finish);
+    });
+  }
+
   // Velocity decides who swings first each round, and by how much faster it
   // is, how many extra times it swings (DESIGN.md §4): `ratio` is the faster
   // side's effective Velocity divided by the slower side's, and the faster
@@ -2675,7 +3049,7 @@ export class BattleScene extends Phaser.Scene {
       sequence,
       this.playerMaterial,
       this.opponentView(),
-      this.isRival,
+      this.opponentIconKind(),
       getPlayerDopantLook(this.game.registry)
     );
   }
@@ -2695,11 +3069,28 @@ export class BattleScene extends Phaser.Scene {
   // carries. Falls back to the full moveset if a World 1 opponent were ever
   // authored without a phonon move at all, so the roll can never come up
   // empty.
+  //
+  // In World 10's finale the roll is from `finalePool`, the standing stage's
+  // own moves, and the last stage does not roll blind: The Quantum Adapted
+  // throws what the player's own lattice cannot carry -- uniform among the
+  // basic moves whose class fails `canHost` against the player's bare type,
+  // the same read resolveHit makes for the player as defender -- so every
+  // one of its hits takes the mismatch bonus. Every type hosts a minority
+  // of the classes, so that set is never empty in practice; it falls back
+  // to the whole pool if it were. The player's Anderson impurity is not
+  // read here, as it is not read for the defender anywhere.
   private opponentMoveId(): string {
+    const moves = this.finaleStage ? this.finalePool : this.wild.moves;
     const phononOnly =
       this.world === 1 && Object.values(this.playerStats).every((v) => v < PHONON_ONLY_STAT_CEILING);
-    const pool = phononOnly ? this.wild.moves.filter((id) => MOVES[id]?.class === 'phonon') : this.wild.moves;
-    return Phaser.Utils.Array.GetRandom(pool.length > 0 ? pool : this.wild.moves);
+    let pool = phononOnly ? moves.filter((id) => MOVES[id]?.class === 'phonon') : moves;
+    if (this.finaleStage === 3) {
+      const vulnerable = moves.filter((id) => !canHost(this.playerMaterial.type, MOVES[id].class));
+      if (vulnerable.length > 0) pool = vulnerable;
+    }
+    const id = Phaser.Utils.Array.GetRandom(pool.length > 0 ? pool : moves);
+    this.lastOpponentMoveId = id;
+    return id;
   }
 
   // Lays out the round about to be played: the faster side gets `fasterHits`
@@ -2751,6 +3142,10 @@ export class BattleScene extends Phaser.Scene {
   private runNextSlot() {
     this.drawTurnPreview();
     if (this.roundSlot >= this.roundSlots.length) {
+      // The finale's last stage answers as a new compound for the round about
+      // to be picked -- here, where the menu goes live, so the form the
+      // player reads their !!2x tags against is the one they then fight.
+      if (this.finaleStage === 3) this.rollQuantumForm();
       this.turnLock = false;
       return;
     }
@@ -3009,28 +3404,32 @@ export class BattleScene extends Phaser.Scene {
     // the full summon sequence to finish (`onComplete`, above), since its
     // aftermath is part of the same landing.
     //
-    // World 10's rival transmutation (adaptedForm, transmuteAdapted below)
-    // fires from here rather than from applyResult -- `isPlayer` already
-    // excludes the opponent's own swings, the two win/lose branches above
-    // already return before it, and Kondo's self-buff moves never reach this
-    // function at all (resolveHit's own early return above), so with the
-    // `!whiff` guard this is exactly "every player Attack/Analytic/Ultimate
-    // move that lands on a living Adapted." A whiffed Ultimate comes apart
-    // before it reaches the defender, so there is no hit for the boss to
-    // adapt to and it keeps its current form. The
+    // World 10's rival transmutation (transmuteAdapted below, the finale's
+    // first stage only -- its later two forms never reshape on a hit, see
+    // standFinaleForm) fires from here rather than from applyResult --
+    // `isPlayer` already excludes the opponent's own swings, the two win/lose
+    // branches above already return before it, and Kondo's self-buff moves
+    // never reach this function at all (resolveHit's own early return
+    // above), so with the `!whiff` guard this is exactly "every player
+    // Attack/Analytic/Ultimate move that lands on a living Adapted." A
+    // whiffed Ultimate comes apart before it reaches the defender, so there
+    // is no hit for the boss to adapt to and it keeps its current form. The
     // *current* hit already checked its own mismatch above against whatever
     // type the opponent was *before* this -- the adaptation is a reaction to
     // the class just used, not a precognitive dodge of this hit.
     const checkEndOrContinue = () => {
       if (this.opponentHp <= 0) {
-        this.endBattle(true);
+        // The finale's first two stages coming to zero is a stage falling,
+        // not the fight ending (advanceFinaleStage); only its third is.
+        if (this.finaleStage === 1 || this.finaleStage === 2) this.advanceFinaleStage();
+        else this.endBattle(true);
         return;
       }
       if (this.playerHp <= 0) {
         this.endBattle(false);
         return;
       }
-      if (isPlayer && this.adaptedForm && !whiff) {
+      if (isPlayer && this.finaleStage === 1 && !whiff) {
         this.transmuteAdapted(effectiveClass, onDone);
         return;
       }
@@ -3151,9 +3550,10 @@ export class BattleScene extends Phaser.Scene {
         // the only body tall enough for the two to meet, so its aura stops
         // short of the head by the pill's own measured height -- measured
         // rather than a literal, since the text-size preset sets it.
-        const top = BOSS_HEAD_RISE - (this.opponentStatusLabel.height + 4);
-        const r = (top + BOSS_FOOT_DROP) / 2;
-        aura = addScreeningAura(this, this.opponentCrystal, status.kind, r, -(top - BOSS_FOOT_DROP) / 2);
+        const { headRise, footDrop } = this.opponentExtent();
+        const top = headRise - (this.opponentStatusLabel.height + 4);
+        const r = (top + footDrop) / 2;
+        aura = addScreeningAura(this, this.opponentCrystal, status.kind, r, -(top - footDrop) / 2);
       } else {
         aura = addScreeningAura(this, this.opponentCrystal, status.kind, WILD_HEAD_RISE + 5);
       }
@@ -3361,8 +3761,9 @@ export class BattleScene extends Phaser.Scene {
       this.hudCam = this.cameras.add(0, 0, FIELD_W, FIELD_H, false, 'hud');
       this.splitCameras();
     }
-    main.zoomTo(out ? ARENA_ZOOM_OUT : 1, ms, 'Sine.easeInOut', true, (_cam, progress) => {
-      if (!out && progress >= 1 && this.scene.isActive()) this.mergeCameras();
+    const target = out ? Math.max(ARENA_ZOOM_OUT * this.arenaZoom, ARENA_ZOOM_FLOOR) : this.arenaZoom;
+    main.zoomTo(target, ms, 'Sine.easeInOut', true, (_cam, progress) => {
+      if (!out && progress >= 1 && this.arenaZoom === 1 && this.scene.isActive()) this.mergeCameras();
     });
   }
 
@@ -3402,6 +3803,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private endBattle(won: boolean) {
+    this.battleOver = true;
     // Nulled, not just destroyed -- switchMovePage's `!this.moveMenu`
     // guard checks the field itself, and a destroy()ed Container is still a
     // truthy JS reference, so leaving this set would make that guard clause
@@ -3447,8 +3849,25 @@ export class BattleScene extends Phaser.Scene {
     // transmutation), so the closing flavor and blurb actually match whichever
     // form was just beaten instead of a placeholder type that was never meant to
     // be shown.
-    const flavor = won ? victoryLine(this.opponentView()) : defeatLine(this.opponentView());
-    const blurb = materialBlurb(this.opponentView());
+    // The finale's last stage falling gets its own closing line in place of
+    // both (data/story.ts's FINALE_VICTORY_LINE): what was beaten was a
+    // sample of the environment, and a compound's greeting and Materialdex
+    // blurb would describe whichever compound it happened to be answering as.
+    // A loss to its later two stages likewise: the record and the bath are
+    // not compounds, and the whole finale restarts from the first form, which
+    // is what the finale's own defeat line says (FINALE_DEFEAT_LINE). A loss
+    // to the first stage keeps the compound-keyed line and blurb every rival
+    // loss shows, for whichever real compound the Adapted was wearing.
+    const finaleWon = won && this.finaleStage === 3;
+    const finaleLost = !won && this.finaleStage >= 2;
+    const flavor = finaleWon
+      ? finaleVictoryLineFor(storyLength(this.game.registry))
+      : finaleLost
+        ? finaleDefeatLineFor(storyLength(this.game.registry))
+        : won
+          ? victoryLine(this.opponentView())
+          : defeatLine(this.opponentView());
+    const blurb = finaleWon || finaleLost ? '' : `\n\n${materialBlurb(this.opponentView())}`;
     // The end-of-battle summary runs several lines longer than an in-combat
     // log line (flavor + token delta + the physics blurb), so it needs a
     // much higher clamp ceiling than setLogText's default LOG_Y -- a big
@@ -3463,7 +3882,7 @@ export class BattleScene extends Phaser.Scene {
     // tap there would be no way off it at all.
     const touchOn = touchControlsActive((this.game.registry.get('touchControls') as TouchControlsMode) ?? DEFAULT_TOUCH_CONTROLS);
     const returnHint = touchOn ? 'Tap the screen, or press SPACE, to return.' : 'Press SPACE to return.';
-    this.setLogText(`${flavor}\n${tokenText}\n\n${blurb}\n\n${returnHint}`, 150, LOG_WRAP_WIDTH_VICTORY);
+    this.setLogText(`${flavor}\n${tokenText}${blurb}\n\n${returnHint}`, 150, LOG_WRAP_WIDTH_VICTORY);
     this.raiseLogToPanel(won);
 
     // Both ways out are armed only after a short grace period, which absorbs

@@ -2439,11 +2439,17 @@ world are shaped, since world N's start is world N-1's exit.
   `'bands'` (four gradient bands meeting in the fog).
 - **Painted past the field's edges.** The realistic backdrop paints an overscan of
   `OVERSCAN_X`/`OVERSCAN_Y` (190/110) on every side, so the camera pulled back for an
-  Ultimate (`ARENA_ZOOM_OUT`, "Attack effects" below) looks at painted sky, surround and
-  floor rather than the canvas edge: the zenith continues flat above the field, every sky,
-  veil and ground-plane fill spans the wider width, the floor carries on below the field as
-  a plane of its own, the floor's far edge runs on level past the field at the height it
-  reached its side, the star network is drawn again a field's width to either side, the
+  Ultimate (`ARENA_ZOOM_OUT`, "Attack effects" below), or held pulled back for the finale's
+  third stage (`QUANTUM_ARENA_ZOOM`, "Boss opponent in battle" below), looks at painted sky,
+  surround and floor rather than the canvas edge: the sky wash continues above the field
+  as the same gradient eased off -- leaving the field's top edge at the slope the field's
+  own sky has there and darkening ever more slowly toward the zenith (a stack of linear
+  strips tracing that curve, `art/colors.ts`'s `beyond` carrying the gradient past its last
+  stop), so a pulled-back camera sees neither a crease nor a darker strip across the top --
+  every sky, veil and ground-plane fill spans the wider width, the floor carries on below
+  the field as a plane of its own, the floor's far edge runs on level past the field at the
+  height it reached its side, the star network is drawn again a field's width to either
+  side, the
   distant self's profile runs on level at its end heights rather than being stretched, and
   the surround stand and the floor's stones get extra columns past the field drawn from RNGs
   of their own. Everything the field itself shows is pixel-for-pixel what it would be
@@ -2484,6 +2490,48 @@ world are shaped, since world N's start is world N-1's exit.
   horizontally. Its nameplate floats off `BOSS_HEAD_RISE` and the move menu's
   own ceiling (`MENU_MIN_TOP`, below) is `BOSS_OPPONENT_POS.y + BOSS_FOOT_DROP +
   7`, so moving the boss can never silently leave either one overlapping it.
+- **The finale's two later forms** stand at the same anchor with the same
+  `footDrop`, each in its own builder file, and each has its own measured pair
+  in `hud.ts` that `BattleScene.opponentExtent` hands to the plate and the aura:
+  `art/modelOfYou.ts`'s `makeModelOfYou` (`MODEL_HEAD_RISE = 97`/`MODEL_FOOT_DROP
+  = 60`) is the Devouring Mirror's reflection righted -- the network drawn by
+  `consuming.ts`'s `drawNetDisc`, clipped by a geometry mask to the player's own
+  habit from `drawCrystalSilhouette`, over a near-black fill and a dark contact
+  shadow, still and unbobbed like the golem (a record does not move). The mask
+  source is never on the display list, so it is placed in world space from the
+  anchor the caller passes and reclaimed on the container's DESTROY.
+  `art/quantumAdapted.ts`'s `makeQuantumAdapted` is built at three times the
+  golem's size (`BattleScene`'s `QUANTUM_SIZE_SCALE`, so `SMOKE_HEAD_RISE = 230`/
+  `SMOKE_FOOT_DROP = 75` in arena units; its plate anchors lower, at
+  `SMOKE_PLATE_RISE = 150`, in the cloud's thin crown -- off the painted top there
+  is no room under `TOP_RAIL` at the stage's zoom and the name would collapse to
+  the plate's smallest size) and the arena is held pulled back to
+  `QUANTUM_ARENA_ZOOM = 0.7` for the whole stage -- just above
+  `ARENA_ZOOM_FLOOR`, the zoom at which the painted overscan still covers the
+  viewport -- so the cloud fills the field's upper right with the player's own
+  crystal small beneath it, the David-and-Goliath frame the last stage wants.
+  The HUD camera is split off as for an Ultimate and kept; both nameplates are
+  laid out through `BattleScene.hudPoint` (the arena point's place on the HUD
+  at the rest zoom, since the main camera zooms about the field's centre), and
+  an Ultimate cast in that stage pulls back no further than the floor. The stage
+  brings its own sky with it: a second star network (`art/stars.ts`'s
+  `drawStarCanopy`, a jittered triangular lattice with holes and hash-thinned
+  links in the finished network's node-and-halo look) laid over the whole painted
+  sky, edge to edge and up through the overscan, slotted into the display list
+  directly above the baked backdrop so it lies under the haze, the floor shadows
+  and both crystals as the painted stars do -- the environment that consumed
+  everything has nothing left unconnected in its sky. It
+  hovers, so it has no contact shadow, only a lit pool
+  on the floor: two smoke layers (a NORMAL dark body for mass against the pale
+  floor, an ADD lit gas over it), a small ADD core, the player-coloured network
+  (ADD) and sparse ADD sparks, all drifting as one group and retinted per round
+  through `retintQuantumAdapted` (new smoke in the new colour, the old fading on
+  its own lifespan). Particle counts are capped (`BODY_ALIVE`/`GAS_ALIVE`/
+  `SPARKS_ALIVE`), and the additive layers stay dim so the player's own crystal
+  keeps the highest contrast on screen. **Emitters go last in the container:**
+  under Phaser 3.90's WebGL renderer a particle emitter inside a container draws
+  only when nothing follows it in that container's list, so the smoke is drawn
+  over the network rather than behind it and the body layer is kept thin.
 - Same look the boss already has standing at its world's goal tile in the
   overworld (`OverworldScene.spawnBossSprite`), carried into the fight itself
   rather than switching to the plain crystal look every wild battle uses.
@@ -2645,7 +2693,13 @@ world are shaped, since world N's start is world N-1's exit.
   the material's own color rather than the arena golem's much darker silhouette fill, with one
   additive ember dot for the head slit, and no grain shards, seams, sparks, contact shadow or
   idle tweens. The outline against a faceted gem is the whole distinction at that size, so the
-  row shows the same two fighters the arena does.
+  row shows the same two fighters the arena does. The finale's later forms carry their own
+  icons the same way (`hud.ts`'s `OpponentIcon`, picked by `BattleScene.opponentIconKind`):
+  The Model of You's is the player's own habit shaded near-black under a few lit nodes and
+  links (`art/modelOfYou.ts`'s `makeModelIcon`, built from the player's form so its habit
+  is theirs and unmistakably not the player's own icon beside it), The Quantum Adapted's a
+  soft additive dot in the round's compound colour with a spark of the player's colour at
+  its heart (`art/quantumAdapted.ts`'s `makeQuantumIcon`). Both static, like the golem's.
 - The row shows the next five slots in order (DESIGN.md §4's velocity multi-hit rule). Its
   leading icons are the current round's own remaining slots, read straight off `roundSlots`,
   so a player partway through a multi-slot round can see how many picks are left before the

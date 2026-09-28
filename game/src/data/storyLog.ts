@@ -1,5 +1,5 @@
 import { worldName } from './materials';
-import { STORY_BEATS, WORLD_GOAL_TEXT, FINALE_TITLE, FINALE_BODY } from './story';
+import { STORY_BEATS, WORLD_GOAL_TEXT, FINALE_TITLE, FINALE_BODY, FINALE_STAGES } from './story';
 import { WORLD_LORE, RIVAL_TAUNTS } from './worldLore';
 import { TUTORIAL_TIPS } from './tutorial';
 import type { TutorialTipId } from './tutorial';
@@ -21,7 +21,8 @@ import type { TutorialTipId } from './tutorial';
 //
 // `STORY_LOG`'s own declaration order is the chronology: the premise, then
 // each world's chapters in the order that world plays them (three per world;
-// World 10 carries four, its reveal split in two), then the ending. A new
+// World 10 carries six: its reveal split in two, and the two screens between
+// its finale's three stages after its pass), then the ending. A new
 // beat is added by declaring it at the point of the playthrough that
 // reveals it.
 //
@@ -97,9 +98,21 @@ function worldChapters(world: number, titles?: { decoherence?: string; pass?: st
 // (OverworldScene.renderWorldLorePage) -- and both chapter bodies stay
 // assembled from the same WORLD_LORE string, so re-reading and meeting the
 // text in play cannot drift apart.
+//
+// The finale's own two later stages (data/story.ts's FINALE_STAGES, the
+// screens BattleScene shows between the three fights) follow the pass
+// chapter as chapters of their own, unlocked with it: nothing persists which
+// stage a lost attempt reached, and the whole finale reads as one sequence
+// either way.
 function world10Chapters(): StoryEntry[] {
   const [history, reveal, pass] = worldChapters(10, { decoherence: 'The Reveal', pass: 'The Adapted' });
   const paragraphs = reveal.body.split('\n\n');
+  const stage = (n: 2 | 3): StoryEntry => ({
+    title: `${worldName(10)}: ${FINALE_STAGES[n].title}`,
+    listLabel: `10. ${FINALE_STAGES[n].title.replace(/^The /, '')}`,
+    body: FINALE_STAGES[n].body,
+    unlock: { kind: 'rival', world: 10 },
+  });
   return [
     history,
     { ...reveal, body: paragraphs.slice(0, 2).join('\n\n') },
@@ -110,6 +123,8 @@ function world10Chapters(): StoryEntry[] {
       body: paragraphs.slice(2).join('\n\n'),
     },
     pass,
+    stage(2),
+    stage(3),
   ];
 }
 
@@ -134,8 +149,9 @@ export const STORY_LOG: StoryEntry[] = [
     title: FINALE_TITLE,
     listLabel: 'The Ending',
     body: FINALE_BODY,
-    // The finale panel fires on the last built world's rival falling, so the
-    // ending and World 10's own pass chapter open together.
+    // The finale panel opens at the pass once the last built world's rival
+    // has fallen, so the ending and World 10's own pass and stage chapters
+    // open together.
     unlock: { kind: 'rival', world: 10 },
   },
 ];

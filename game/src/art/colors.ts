@@ -51,6 +51,19 @@ export function blend(a: number, b: number, t: number): number {
   return (r << 16) | (g << 8) | bl;
 }
 
+// The colour `k` of the way from `a` *away from* `b`: blend's line carried on
+// past `a`, clamped per channel so it stays a colour. A gradient that has to
+// continue beyond its last stop with the same slope (the arena sky above the
+// field, BattleScene.drawRealisticBackdrop) is drawn toward this.
+export function beyond(a: number, b: number, k: number): number {
+  const ch = (shift: number) => {
+    const from = (a >> shift) & 255;
+    const toward = (b >> shift) & 255;
+    return Math.max(0, Math.min(255, Math.round(from + (from - toward) * k)));
+  };
+  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
+}
+
 // Rotates a color's hue by a few degrees while keeping its saturation/value --
 // used to give same-`TYPE_LOOK` compounds (e.g. every 'insulatingMagnet'-type crystal
 // starts from one shared base color) a visibly different tint instead of only

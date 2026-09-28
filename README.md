@@ -179,9 +179,10 @@ always a real compound in *polycrystalline* form (many grains fused into one,
 the same idea the golem's own body literalizes). Each one boasts about the very
 property its own grains took from it, and none of them knows that is what it is
 doing. World 10's rival, The Adapted,
-is the one that breaks the pattern. Step to the mouth of the pass and press
-Space to challenge it. Beat it and the pass clears: the next world's colours
-show through the gap, a board names it, and pressing Space again crosses over.
+is the one that breaks the pattern, and it is three fights in one. Step to
+the mouth of the pass and press Space to challenge it. Beat it and the pass
+clears: the next world's colours show through the gap, a board names it, and
+pressing Space again crosses over.
 
 **Walk back anytime.** The near end of every world, right where you first
 walked in, is a pass too, with nobody guarding it, leading back to the world
@@ -230,11 +231,18 @@ archetypes, and a rival crystal gating the way to the next world.
 World 10's wilds are every hybrid crystal fusable at Majorana's station (see
 [Hybrids](docs/hybrids.md)), real compounds in their own right, just ones
 reached by fusing two parents rather than found unmixed anywhere else. Its
-rival, The Adapted, is a final boss built as "a model of you": it starts the
-fight mirroring whichever type you're currently wearing, then reshapes
-itself every time you land a hit, transmuting live into a real compound
-that hosts whatever quasiparticle class you just attacked with. See
-[Crystals](docs/crystals.md) for every world's full wild-material list.
+rival, The Adapted, is a final boss built as "a model of you", fought in
+three stages on three bars, with your own HP refilled between them. First
+The Adapted: it starts the fight mirroring whichever type you're currently
+wearing, then reshapes itself every time you land a hit, transmuting live
+into a real compound that hosts whatever quasiparticle class you just
+attacked with. Then The Model of You: the finished record, wearing your
+type and throwing only your own basic moves, none of your levels, passives,
+clouds or doping. Last, The Quantum Adapted: a smoke that answers as a
+different real compound every round, before you pick, and throws whichever
+basic move your own crystal cannot host. Lose at any stage and the next
+attempt starts again from the first. See [Crystals](docs/crystals.md) for
+every world's full wild-material list.
 
 Each world has its own history, its own way the Decoherence comes for it,
 and its own rival standing in the way, and the ten of them tell one story.

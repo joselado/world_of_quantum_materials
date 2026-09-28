@@ -166,7 +166,15 @@ every time you land a hit, always taking on the type and look of a real
 compound that hosts whatever quasiparticle class you just attacked with, so
 repeating the same attack loses its edge, while varying your moves keeps it
 guessing. The battle log names the compound it has just become, but The
-Adapted keeps its own name through every form. Every other rival is named
+Adapted keeps its own name through every form. Bring its bar to zero and the
+fight goes on: it comes apart into The Model of You, a network in the shape
+of your own crystal that wears your type for good and throws only the basic
+moves you have learned (none of your levels, passives, clouds or doping),
+on a bar the size of your own; and when that falls, The Quantum Adapted, a
+lit smoke that answers as a different real compound every round, named in
+the log before you pick, and throws whichever basic move your own crystal
+cannot host. Your HP refills between the three, and losing at any of them
+starts the next attempt from the first. Every other rival is named
 for a real compound's *polycrystalline* form: many crystal grains fused into
 one mass, rendered as an actual golem built from fused shards.
 

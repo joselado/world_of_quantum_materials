@@ -21,6 +21,8 @@ import Phaser from 'phaser';
 import { makeCrystal } from '../../art/crystals';
 import type { DopantLook } from '../../art/crystals';
 import { BOSS_FOOT, makeBossIcon } from '../../art/boss';
+import { makeModelIcon } from '../../art/modelOfYou';
+import { makeQuantumIcon } from '../../art/quantumAdapted';
 import { GROUND_DROP } from '../../art/attackShapes';
 import { GOLD_ACCENT, PANEL_BG, REFERENCE_BLUE_GREY } from '../../ui/theme';
 import { fontScale } from '../../ui/text';
@@ -92,6 +94,26 @@ export const PLAYER_HEAD_RISE = 57;
 export const WILD_HEAD_RISE = 45;
 export const BOSS_HEAD_RISE = 108;
 export const BOSS_FOOT_DROP = 57;
+// The finale's two later forms (art/modelOfYou.ts, art/quantumAdapted.ts),
+// measured the same way at BOSS_CRYSTAL_SIZE with the golem's own footDrop:
+// the record stands on the golem's contact line, the cloud hangs over it
+// with a lit pool on the floor. BattleScene.opponentExtent picks the pair
+// for whichever form stands.
+export const MODEL_HEAD_RISE = 97;
+export const MODEL_FOOT_DROP = 60;
+export const SMOKE_HEAD_RISE = 230;
+export const SMOKE_FOOT_DROP = 75;
+// Where the cloud's nameplate anchors, well below its painted top: the cloud
+// has no head to clear, its crown is thin smoke, and a plate pushed up off the
+// full SMOKE_HEAD_RISE at the stage's pulled-back zoom has no room left under
+// TOP_RAIL and collapses to the smallest name in the game. So the plate sits
+// in the crown instead, at full size, with the dense body of the cloud below it.
+export const SMOKE_PLATE_RISE = 150;
+
+// Which figure the opponent's icons in the turn row carry: an ordinary
+// crystal, the rival golem, the finale's record in the player's own shape,
+// or the finale's cloud.
+export type OpponentIcon = 'crystal' | 'golem' | 'model' | 'quantum';
 
 // Nameplate geometry, shared by both sides.
 export const HP_BAR_W = 140;
@@ -305,7 +327,7 @@ export function drawTurnPreview(
   sequence: boolean[],
   playerMaterial: Material,
   opponentMaterial: Material,
-  opponentIsBoss: boolean,
+  opponentIcon: OpponentIcon,
   playerDopant?: DopantLook
 ): Phaser.GameObjects.Container {
   const container = scene.add.container(TURN_PREVIEW_X, TURN_PREVIEW_Y).setDepth(5);
@@ -327,21 +349,30 @@ export function drawTurnPreview(
   const rowY = label.height + 4 + Math.max(0, TURN_PREVIEW_RING_RADIUS - TURN_PREVIEW_ICON_SIZE / 2);
   sequence.forEach((isPlayer, i) => {
     const material = isPlayer ? playerMaterial : opponentMaterial;
-    // A rival's icons carry the golem silhouette the same opponent has on the
-    // field (art/boss.ts's makeBossIcon, reduced to what reads at this size),
-    // so the row shows the same two fighters the arena does rather than
-    // demoting the boss to an ordinary crystal.
+    // The opponent's icons carry the figure the same opponent has on the
+    // field, reduced to what reads at this size -- the rival golem
+    // (art/boss.ts's makeBossIcon), the finale's record in the player's own
+    // shape (art/modelOfYou.ts's makeModelIcon, built from the player's form
+    // so its habit is theirs) or the finale's cloud in the round's colour
+    // (art/quantumAdapted.ts's makeQuantumIcon) -- so the row shows the same
+    // two fighters the arena does rather than demoting a boss to an
+    // ordinary crystal.
+    const kind = isPlayer ? 'crystal' : opponentIcon;
     const icon =
-      !isPlayer && opponentIsBoss
+      kind === 'golem'
         ? makeBossIcon(scene, TURN_PREVIEW_ICON_SIZE, material.color)
-        : makeCrystal(scene, TURN_PREVIEW_ICON_SIZE, material.color, material.variant, {
-            seed: material.name,
-            hybrid: material.hybridParents,
-            // Only the player's own icons carry the doped look -- the row is
-            // the two fighters as they actually are, and an impurity doped
-            // into the player is not something the opponent is carrying.
-            dopant: isPlayer ? playerDopant : undefined,
-          });
+        : kind === 'model'
+          ? makeModelIcon(scene, TURN_PREVIEW_ICON_SIZE, playerMaterial)
+          : kind === 'quantum'
+            ? makeQuantumIcon(scene, TURN_PREVIEW_ICON_SIZE, material.color, playerMaterial.color)
+            : makeCrystal(scene, TURN_PREVIEW_ICON_SIZE, material.color, material.variant, {
+                seed: material.name,
+                hybrid: material.hybridParents,
+                // Only the player's own icons carry the doped look -- the row is
+                // the two fighters as they actually are, and an impurity doped
+                // into the player is not something the opponent is carrying.
+                dopant: isPlayer ? playerDopant : undefined,
+              });
     // Whose-turn ring behind the crystal shapes (`addAt(..., 0)`): a bold
     // full-opacity gold ring for the player's hits, matching this project's
     // established active/highlighted accent color, versus a thinner, dimmer

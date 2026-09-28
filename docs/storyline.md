@@ -531,6 +531,30 @@ you. The thing in front of you mirrors what it took from *you*. "Every move
 you have ever landed, I have already survived once. This is not a fight you
 can win by trying harder. Trying harder is how you built me."
 
+Bring it to zero and it does not fall. Nothing anneals, because a golem's
+disorder anneals and this had none; it has only stopped adapting, because
+there is nothing left in you it has not seen. What steps out of the falling
+shards is the reflection from the horizon, righted and standing where the
+golem stood: **The Model of You**, a network in the exact shape of your own
+crystal, every node lit in your colour. It wears your phase and throws your
+own basic moves, and nothing you were lent -- not the levels a guardian
+ground onto them, not the impurity you carry, not the clouds you were taught
+to raise. It never reshapes again. A record has no reason to. "I have
+finished. This is you, held exactly. And I hold exactly."
+
+Bring the record to zero and the pass fills with a smoke that does not rise,
+lit from inside, sparks running through it and the network still burning in
+it like a filament: **The Quantum Adapted**. Understand what this is. To learn
+you, something had to measure you, and a measurement is not kept by the
+record; it is kept by the thing that did the measuring. That thing was never
+a copy of you, and it is the one thing here that is still quantum: everything
+in these worlds that it consumed, entangled with you and with all of it at
+once, and no record can say which of them it is. Ask, and it answers as one.
+Ask again, and it answers as another -- a different real compound every round,
+shown to you before you choose, and what it throws is always the one
+excitation your own lattice cannot carry. "There is no move you own that I
+have not eaten. This is the last thing you teach me."
+
 *You reached the far edge of the shape it copied from you. It already knows you're here.*
 
 ---
@@ -539,8 +563,10 @@ can win by trying harder. Trying harder is how you built me."
 
 You win it anyway.
 
-It reaches for every trick it ever watched you land and still comes up
-short. What it holds is a record of you, and nothing on record is still in
+The smoke thins and does not re-form. The sparks run out of links to cross,
+the network goes dark node by node, and the last colour left in it is your
+own. It reached for every trick it ever watched you land and still came up
+short. What it held was a record of you, and nothing on record is still in
 superposition. But you are not your record. A model trained on nine worlds
 of your choices is a model of who you *were*, and you are the one thing in
 these worlds that was never finished. The route traced across the map below

@@ -36,8 +36,8 @@ progression gates are not part of that revision and still hold.
 its far end; standing on it raises a prompt, and taking that prompt
 (`OverworldScene.confirmGate`) fights that world's rival crystal the first time
 and crosses the pass to the next world every time after, which is the flow §4
-describes from the battle side. World 10 ends in the finale panel instead of a
-crossing. Every world also carries a backward door on its own start tile, out
+describes from the battle side. World 10's rival is three fights in one scene
+(§6), and World 10 ends in the finale panel instead of a crossing. Every world also carries a backward door on its own start tile, out
 to the world before it, or to the Lab from World 1. No world has a puzzle or a
 movement gate of its own.
 
@@ -53,7 +53,7 @@ movement gate of its own.
 | 7 | Entanglement, tensor networks | **The Entangled Web** | Entangled pairs (fought as a bonded duo) |
 | 8 | Quantum magnetism, spinons, Kondo | **The Screened Swamp** | Spin liquids, Kondo-screened critters, a genuine Kondo-lattice heavy-fermion compound |
 | 9 | Excitations and defects | **The Defect Scars** | Defect-bound states, impurity resonances, a couple of ferroelectrics with no course topic of their own, plus every non-hybrid material from worlds 1-8 |
-| 10 | ML for quantum materials | **The Devouring Mirror** | Every hybrid-recipe crystal, and only hybrid-recipe crystals, plus the final boss, which transmutes live in battle to mirror the player |
+| 10 | ML for quantum materials | **The Devouring Mirror** | Every hybrid-recipe crystal, and only hybrid-recipe crystals, plus the final boss, fought in three stages (§6): the Adapted, which transmutes live in battle to mirror the player; the Model of You, the finished record of them; the Quantum Adapted, the environment that measured them |
 
 Each world's overworld *map shape* (not just its biome skin) is its own physics motif too,
 generated fresh every visit by `game/src/world/generators/world<N>.ts` (dispatched from
@@ -413,7 +413,9 @@ collapsing into a single round), scaled once per encounter by a shared `rollEnco
 `resolveHitDamage`'s own per-hit damage variance uses) applied to that wild's HP *and* its
 whole stat block together -- one coherent "this specimen is somewhat tougher/weaker than
 its world's average" trait, not four independent rolls. A rival's HP instead follows
-`rivalHpForWorld(world)` (steeper, `30` at World 1 to `91` at World 10), with no roll at all and plain
+`rivalHpForWorld(world)` (steeper, `30` at World 1 to `91` at World 10; World 10's finale draws
+each stage's bar from `finaleStageHp`, §6, whose second stage carries the player's own
+`wildHpForWorld(10)`), with no roll at all and plain
 `enemyStatsForWorld(world)` stats -- a rival is a fixed, known, repeatable challenge, the
 same boss every time it's fought, unlike an ordinary wild's sample-to-sample variance. The
 player's own max HP uses `wildHpForWorld` too, for whichever world they're currently in, no
@@ -620,6 +622,9 @@ against it. Implemented entirely in `BattleScene` (`adaptedForm`, `transmuteAdap
 overworld/dialogue preview) — its `moves` (attack moveset) stay fixed throughout, only its
 defensive identity is dynamic; max HP was never tied to its identity in the first place (a
 rival's own `rivalHpForWorld(world)`, unaffected by any transmutation — see §3's own note).
+That reshaping fight is the first of the finale's three stages: once its bar is brought to
+zero it comes apart and The Model of You stands, then The Quantum Adapted, each on a fresh
+bar and each with a screen between (§6, `BattleScene.finaleStage`).
 
 **Subtype combination flavor (real-compound tie-ins):** the same mechanic from §3
 (main type + subtype → new material) has ready real-world flavor text once crystals are
@@ -833,7 +838,8 @@ both: doubled for the mismatch, then halved for the cloud.
 
 **World 1 opponents attack with phonon moves only, while the player is still unbuilt.**
 Every opponent-side hit is rolled fresh from the opponent's own moveset
-(`BattleScene.playerAttack`'s `opponentMoveId`). In World 1 that roll is filtered down to
+(`BattleScene.playerAttack`'s `opponentMoveId`; World 10's third finale stage rolls
+uniformly over the moves the player's type cannot host, §6). In World 1 that roll is filtered down to
 the moves whose class is `phonon` — for the world's wild encounters and for its rival golem
 alike — as long as *every* one of the player's three stats is still strictly below
 `PHONON_ONLY_STAT_CEILING` (`data/balance.ts`, 5). `phonon` is the one class every type
@@ -968,7 +974,9 @@ World 1 to 200 in World 10, rounded to the nearest 10 (`BattleScene`'s
 without inflating World 1. A rival fight always pays out double that same world's ordinary
 stake, win or lose, since beating the world's gating rival is the harder, rarer fight.
 Either way the player's crystal is fully healed afterward (`scenes/BattleScene.ts`) -- the
-qumatessence stake, not HP attrition, is what's on the line from one battle to the next. The
+qumatessence stake, not HP attrition, is what's on the line from one battle to the next.
+World 10's finale refills it between its three stages as well, and pays its rival stake once
+for the whole chain (§6). The
 battle's opening line and its win/lose closing line are both flavor text from
 `game/src/data/greetings.ts`, likewise keyed by the wild material's type.
 
@@ -1585,7 +1593,8 @@ Three kinds of number deliberately don't scale, and the reasons are worth keepin
 materials to lose their protected properties. The player masters each phase of
 matter to stabilize it. World 10's boss is revealed as the source — an entity
 that reshapes itself live in battle to counter whatever quasiparticle class the
-player just attacked with.
+player just attacked with, then stands as the finished record of the player, and
+last as the environment that did the learning (§6's three stages).
 
 **Story beats between worlds.** The plot isn't only the tutorial's first page and
 the ending — beating each world's rival shows a short Decoherence-arc line
@@ -1643,11 +1652,46 @@ Two of the ten answer to something other than a fixed row in `WORLD_RIVALS`:
 - **World 9's rival** is a golem like the rest, but its type is rolled on every visit,
   and it throws the rolled host's own signature quasiparticle, decohered like every
   other golem's (§2, `RIVAL_9_TYPES`/`RIVAL_9_MOVES`).
-- **World 10's "The Adapted"** has no type at all until the player attacks. Once per
-  landed player attack it transmutes into a real compound of some type that genuinely
-  hosts the quasiparticle just used (`BattleScene.transmuteAdapted`, `typesHosting`), so
-  the finale is a boss that closes off the mismatch bonus the rest of the game taught the
-  player to hunt for. Its name, moveset and HP never change underneath its changing form.
+- **World 10's "The Adapted"** is three fights in one scene, on three bars, with a screen
+  between them (`BattleScene.finaleStage`, `advanceFinaleStage`, `standFinaleForm`;
+  the screens are `data/story.ts`'s `FINALE_STAGES`, WORLDS.md §6). A bar brought to zero on
+  the first two stages is a stage falling, not the fight ending; only the third's is. The
+  player's own HP refills to full at each transition -- the screen is the breath -- and a
+  loss at any stage returns them to the pass as any rival loss does, the next attempt
+  starting again from the first stage: nothing about a reached stage is persisted. The
+  rival stake is paid once, for the whole chain, and `rivalDefeated[10]` is set only when
+  the third stage falls. All three stand at `enemyStatsForWorld(10)`; their bars are
+  `data/balance.ts`'s `finaleStageHp`.
+  - **Stage 1, The Adapted**, has no type at all until the player attacks. Once per landed
+    player attack it transmutes into a real compound of some type that genuinely hosts the
+    quasiparticle just used (`BattleScene.transmuteAdapted`, `typesHosting`), so the fight
+    closes off the mismatch bonus the rest of the game taught the player to hunt for. Its
+    name, moveset (`WORLD_RIVALS[10].moves`) and bar (`rivalHpForWorld(10)`) never change
+    underneath its changing form.
+  - **Stage 2, The Model of You**, is the finished record: it wears the player's bare form
+    -- type, habit and colour, with nothing doped in -- for the whole stage and never reshapes
+    (a record is definite), throws only the player's own *basic* moves (`unlockedMoves` ∩
+    `ORDINARY_MOVE_IDS` ∩ what that bare form hosts, so no Feynman level, no passive, no
+    Kondo cloud and no impurity's channel; an opponent's copy of a move is never leveled),
+    and carries the player's own max HP (`wildHpForWorld(10)`) as it carries their type and
+    moves -- the copy is exact, which makes this stage a mirror rather than a wall. Both
+    sides host every class the other throws, so neither side lands the mismatch bonus --
+    except a doped player, whose impurity's moves the Model cannot host and cannot throw
+    back: what it learned is the crystal, not the impurity carried in.
+  - **Stage 3, The Quantum Adapted**, is not a copy of the player but the environment
+    that measured them (WORLDS.md §2). It answers as a fresh real compound every round --
+    uniform over `allCrystals()` less the compound it is answering as now, so each round is a
+    different one; the player's own is not excluded --
+    rolled where the round ends and the menu goes live (`rollQuantumForm`, from
+    `runNextSlot`), so the `!!2x` tags the player reads are the form they then fight; the
+    cloud takes the compound's colour. It holds every basic move (`ORDINARY_MOVE_IDS`) and
+    throws, uniformly, one whose class the player's bare type cannot host, so every hit it
+    lands takes the mismatch bonus: the last stage is the one opponent that never rolls
+    blind. It stands at three times the golem's size with the arena held pulled back for
+    the whole stage, the player's own crystal small beneath it, under a sky of its own -- a
+    second star network filling the whole painted sky (STYLE.md's boss section).
+    Its bar is `rivalHpForWorld(10)`; its fall ends the chain with its own closing line
+    (`FINALE_VICTORY_LINE`) in place of a compound's greeting and blurb.
 
 **Planned: an after-story boss.** A hidden encounter past World 10, stronger than anything
 on the main path, is what the top of the stat ladder exists for. Reaching `MAX_STAT` costs

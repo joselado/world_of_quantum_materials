@@ -220,3 +220,83 @@ export function drawStarNetwork(o: StarSky) {
 
   if (o.world === 9) drawOcclusion(o);
 }
+
+// The sky of World 10's third finale stage (BattleScene.standFinaleForm):
+// not the authored figure but a second network, laid over the whole painted
+// sky -- edge to edge, and up through the overscan the pulled-back camera of
+// that stage looks at -- in the finished network's own look. The Quantum
+// Adapted is the environment that consumed everything, and its sky has
+// nothing left unconnected in it. A jittered triangular lattice with holes
+// and links thinned by hash, so it reads as grown rather than gridded;
+// drowned toward the fog like the stars, and fading over the last stretch
+// above the horizon so no node lands on the ground.
+export interface StarCanopy {
+  g: Phaser.GameObjects.Graphics;
+  /** The painted sky's left and right edges. */
+  x0: number;
+  x1: number;
+  /** The painted sky's top edge (above the field, for a pulled-back camera). */
+  top: number;
+  horizonY: number;
+  target: number;
+  now: number;
+}
+
+const CANOPY_STEP = 46;
+
+function hash01(x: number, y: number): number {
+  return Math.abs((Math.sin(x * 12.9898 + y * 78.233) * 43758.5453) % 1);
+}
+
+export function drawStarCanopy(o: StarCanopy) {
+  const g = o.g;
+  const star = blend(STAR_LIGHT, o.target, STAR_DROWN);
+  const link = blend(LINK_LIGHT, o.target, STAR_DROWN);
+  const floor = o.horizonY - BAND_FLOOR_LIFT;
+  const rowStep = CANOPY_STEP * 0.866;
+  const rows = Math.floor((floor - (o.top + BAND_TOP)) / rowStep);
+  const cols = Math.ceil((o.x1 - o.x0) / CANOPY_STEP) + 1;
+  const at = (i: number, j: number) => {
+    if (hash01(i * 3 + 1, j * 5 + 2) < 0.16) return null;
+    const jx = (hash01(i * 7 + 3, j * 11 + 5) - 0.5) * CANOPY_STEP * 0.8;
+    const jy = (hash01(i * 13 + 7, j * 17 + 3) - 0.5) * rowStep * 0.6;
+    const x = o.x0 + (j + (i & 1) * 0.5) * CANOPY_STEP + jx;
+    const y = o.top + BAND_TOP + i * rowStep + jy;
+    if (y > floor || y < o.top) return null;
+    const fade = Phaser.Math.Clamp((floor - y) / (BAND_FADE * 3), 0, 1) * 0.35 + 0.65;
+    return { x, y, fade };
+  };
+
+  // Links first, as in the figure: to the right neighbour and the two below,
+  // each kept or dropped by its own hash.
+  for (let i = 0; i <= rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      const a = at(i, j);
+      if (!a) continue;
+      const odd = i & 1;
+      [
+        [i, j + 1],
+        [i + 1, j - 1 + odd],
+        [i + 1, j + odd],
+      ].forEach(([bi, bj]) => {
+        const b = at(bi, bj);
+        if (!b) return;
+        const w = hash01(i * 19 + bi * 23 + 1, j * 29 + bj * 31 + 2);
+        if (w < 0.3) return;
+        g.lineStyle(1.2, link, 0.5 * Math.min(a.fade, b.fade) * (0.6 + 0.4 * w));
+        g.lineBetween(a.x, a.y, b.x, b.y);
+      });
+    }
+  }
+  for (let i = 0; i <= rows; i++) {
+    for (let j = 0; j < cols; j++) {
+      const p = at(i, j);
+      if (!p) continue;
+      const twinkle = 1 - TWINKLE_DEPTH * (0.5 + 0.5 * Math.sin(o.now * TWINKLE_RATE + (i * 31 + j) * 1.7));
+      g.fillStyle(star, 0.9 * p.fade * twinkle);
+      fillDot(g, p.x, p.y, 1.9);
+      g.fillStyle(star, 0.16 * p.fade * twinkle);
+      fillDot(g, p.x, p.y, 4.2);
+    }
+  }
+}

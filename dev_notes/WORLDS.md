@@ -544,7 +544,11 @@ likeness**, for three reasons at once: the Adapted must remain the only
 samples from a still-training model genuinely vary in fidelity, and the
 converged model is the fight; and almost-you is more frightening than
 exactly-you, because exactness reads as a mirror while a near-miss reads as
-something *trying*. It is never interactable — no prompt, clicks fall through,
+something *trying*. The converged copy is met only in the fight, as its second
+stage: The Model of You is this same figure -- the network in the player's
+own silhouette, in their colour, sparking on the same clock -- righted and
+standing where the golem stood (`art/modelOfYou.ts`), the one place the
+reflection is allowed to resolve, because there it *is* the fight. It is never interactable — no prompt, clicks fall through,
 since it is world rather than object — and The Adapted stands in front of it.
 The player's own crystal keeps the highest contrast and saturation on screen.
 
@@ -585,6 +589,23 @@ also, verbatim, the name of a real technique for learning quantum states from
 randomised measurements (Huang, Kueng & Preskill, 2020; shadow tomography rather
 than machine learning strictly, though it is now a workhorse in ML-for-quantum
 work).
+
+**The three stages of the fight state the hierarchy in order.** The Adapted
+is the model still training, reshaping around every blow. The Model of You is
+the record once training has converged: definite all the way through, wearing
+the player's own phase and moves and nothing they were lent, and it never
+reshapes again, because a record has no reason to. The Quantum Adapted is what
+the no-cloning theorem leaves for the last: not a copy of the player -- the
+copy the Mirror makes of an unknown quantum state can only be classical -- but
+the *environment that did the measuring*, entangled with the player and with
+everything it consumed,
+genuinely quantum where the record could not be. Its type each round is one
+sample of that mixed state, any compound in these worlds, and what it throws is
+whatever the player's own lattice cannot carry, because it knows them. The
+smoke is the bath; the network burning inside it is the record it keeps. The
+stage's own screen carries the bridging line (*to learn you, something had to
+measure you; a measurement is not kept by the record but by the thing that did
+the measuring*), so the name "Quantum" is honest rather than a boast.
 
 **Keep the hierarchy straight.** Decoherence is the *villain's mechanism*;
 machine learning is still the *lesson*. The dex entries, the quiz and the
@@ -1030,6 +1051,7 @@ patterns, because they are what make the arc land rather than merely exist.
 | `RIVAL_TAUNTS` | `data/worldLore.ts` | before the rival fight | two parts: the rival's boast |
 | `STORY_BEATS` | `data/story.ts` | after a rival is beaten | the golem's release, observed by the narrator, then connective tissue looking forward |
 | `WORLD_GOAL_TEXT` | `data/story.ts` | on reaching the goal tile | one line: this world's physics still holds |
+| `FINALE_STAGES` | `data/story.ts` | between the finale's three stages, World 10 only | the narrator on the stage just brought to zero, then the next form's own line |
 | `WORLD_FLAVOR` | `data/worldFlavor.ts` | Bloch's destination preview | plain physics, deliberately *not* narrative |
 
 `WORLD_LORE`, `RIVAL_TAUNTS`, `STORY_BEATS` and the finale are each written twice: the Detailed
@@ -1093,6 +1115,10 @@ guardrails on this are all load-bearing:
 - **No post-battle golem dialogue surface exists, and none may be added.** The
   freed material never speaks, never thanks, never lingers as a figure in the
   pass; gratitude anywhere would break "the golem never learns what it is."
+  The finale's stage screens (`FINALE_STAGES`) are not that surface: the
+  Adapted is no fallen resistor, nothing has fallen when a stage comes to zero
+  -- a record does not anneal, it re-forms -- and the fight is still on, so its
+  next form speaking there is the taunt's own voice carried into the fight.
 - **The light never returns.** Liberation restores the mechanism and frees the
   material; no beat says fog lifted or a world brightened. The lost light is
   cost already paid, which is what keeps the arc melancholy rather than
@@ -1100,9 +1126,12 @@ guardrails on this are all load-bearing:
 - **Liberation frees the material but does not un-teach the Adapted.** The
   lesson stays taken — the record lives in the Adapted, not in the residue —
   so "the golems are its leavings" holds intact.
-- **World 10 cannot be freed**: disorder anneals, a record does not. The
-  Adapted is not a fallen quantum thing; it is the record itself, and the
-  finale refuses reversal ("stabilized," never undone).
+- **World 10 cannot be freed**: disorder anneals, a record does not. Nothing
+  in the pass is a fallen quantum thing: the Adapted's first two stages are
+  the record itself, which re-forms when brought to zero, and its third is the
+  environment that kept the record -- quantum, but never broken order, so its
+  fall frees nothing either. The finale refuses reversal ("stabilized," never
+  undone).
 - **"Hero" appears in no player-facing string.** The resistance is told in the
   lore closers' hearsay voice on the tone gradient; the release is told by the
   beat as annealing observed, never as an emotional transaction.
@@ -1123,7 +1152,12 @@ coherence is gone. Every pass the player forced was held by the residue of that
 learning, and every rival brought down was a lesson the Adapted had already
 taken. That is the arc's payoff and the reason the finale is a mirror: the
 Adapted's model of the player, complete and predictive and incapable of
-superposition, is the tenth golem, and the player is looking at it.
+superposition, is the tenth golem, and the player is looking at it. The fight
+plays that out in three stages (§2's "The three stages of the fight"): the
+model still training, then the record it converges to -- the copy, incapable
+of superposition -- then the environment that kept the record, which is not a
+copy and is still quantum: the one such thing in the pass, and the last thing
+the player defeats.
 
 **The golems stay innocent, and this is load-bearing.** They are never the
 Adapted's agents. Each one fought the Decoherence and fell — its world's

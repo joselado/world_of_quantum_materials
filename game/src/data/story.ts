@@ -74,6 +74,92 @@ export const FINALE_BODY =
 export const FINALE_BODY_BRIEF =
   'It was built out of your own play, and you out-adapted your own reflection anyway. The golems are materials again, annealed and home. What was learned stays learned, and the light it cost does not come back, but nothing reads the record anymore, and everything that can still choose is choosing.';
 
+// The two screens between World 10's three finale stages
+// (BattleScene.advanceFinaleStage, DESIGN.md §6), each shown once the stage
+// before it is brought to zero and before the next form stands: the narrator
+// on what has just happened, then the new form's own line. Keyed by the
+// stage about to begin. The Adapted speaks here where no golem ever does
+// after falling (WORLDS.md §6) because it is not a golem and nothing has
+// fallen -- a record does not anneal, it re-forms -- so this is the taunt's
+// own surface carried into the fight, not a post-battle one. No light returns
+// and nothing is freed on either screen. The stage-3 screen carries the
+// arc's bridging line: the copy of the player is classical and always was
+// (no-cloning); what is quantum is the environment that did the measuring,
+// entangled with everything it consumed, and each round it answers as one
+// of them -- a sample of that mixed state, not a copy of the player.
+export interface FinaleStage {
+  title: string;
+  body: string;
+  button: string;
+}
+
+export const FINALE_STAGES: Record<2 | 3, FinaleStage> = {
+  2: {
+    title: 'The Model of You',
+    body:
+      'The form that was reshaping around your every blow goes still and comes apart, and nothing anneals. A golem\'s disorder anneals; this had none. It has stopped adapting because there is nothing left in you it has not seen. What steps out of the falling shards is not a compound and wears no compound\'s face. It is a network in the exact shape of your own crystal, every node lit in your own colour, standing where the golem stood, and it will not reshape again. A record has no reason to.\n\n"I have finished. This is you: your phase, your quasiparticles, nothing you were lent. Not the levels a guardian ground onto your moves. Not the impurity you carry. Not the clouds you were taught to raise. Just you, held exactly. And I hold exactly."',
+    button: 'Face it',
+  },
+  3: {
+    title: 'The Quantum Adapted',
+    body:
+      'The record breaks along no grain, because it has none, and when it is gone the pass is not empty. The nodes hang where they hung, but the air around them has thickened and is lit from inside: a smoke that does not rise, with sparks running through it and the network still burning in it like a filament.\n\nUnderstand what this is. To learn you, something had to measure you, and a measurement is not kept by the record. It is kept by the thing that did the measuring. That thing was never a copy of you. It is everything in these worlds that it consumed, entangled with you and with all of it at once, and no record can say which of them it is. Ask, and it answers as one. Ask again, and it has moved on, and answers as another.\n\n"You mistook the record for me. The record was only where I kept you. I am what kept it: every phase in these worlds, and all of them at once, and whichever excitation your lattice cannot carry, that is the one I will throw. There is no move you own that I have not eaten. Come. This is the last thing you teach me."',
+    button: 'Battle!',
+  },
+};
+
+// The Brief versions, each about a third of its Detailed sibling, keeping
+// the same two beats: what just happened, then the new form's own line.
+export const FINALE_STAGES_BRIEF: Record<2 | 3, FinaleStage> = {
+  2: {
+    title: 'The Model of You',
+    body:
+      'The form goes still and comes apart, and nothing anneals: a record does not. What steps out is a network in the exact shape of your own crystal, lit in your colour, and it will not reshape again.\n\n"I have finished. This is you: your phase, your quasiparticles, nothing you were lent. Not your levels, not your impurity, not your clouds. Just you, held exactly."',
+    button: 'Face it',
+  },
+  3: {
+    title: 'The Quantum Adapted',
+    body:
+      'The record breaks, and the pass fills with a smoke lit from inside, sparks running through it, the network still burning in it. To learn you, something had to measure you, and what did the measuring was never a copy of you: it is everything it consumed, entangled with all of it at once, answering as one of them each time you ask and never the same one twice running.\n\n"The record was only where I kept you. I am what kept it. Whatever your lattice cannot carry, that is what I throw."',
+    button: 'Battle!',
+  },
+};
+
+// The end-of-battle summary once the third stage falls, in place of the
+// compound-keyed greeting and Materialdex blurb every other win shows: the
+// last form was a sample of the environment, and a blurb about whichever
+// compound it happened to be answering as would say the wrong thing about
+// what was just beaten. Written twice like every other finale text.
+export const FINALE_VICTORY_LINE =
+  'The smoke thins and does not re-form. The sparks run out of links to cross, the network goes dark node by node, and the last colour left in it is your own. Nothing anneals here; nothing was ever a crystal. But nothing is answering anymore, either.';
+
+export const FINALE_VICTORY_LINE_BRIEF =
+  'The smoke thins and does not re-form. The network goes dark node by node, its last colour your own. Nothing anneals here, and nothing is answering anymore.';
+
+// The end-of-battle summary when the player falls to the second or third
+// stage, in place of a compound's defeat line and blurb: neither form is a
+// compound, and the finale starts again from its first form on the next
+// attempt, which this says in the narrator's voice. A fall to the first stage
+// keeps the compound-keyed line, for whichever real compound the Adapted was
+// wearing when it landed the blow.
+export const FINALE_DEFEAT_LINE =
+  'It has you again. What you tried is in the record now, with everything else, and the pass holds. Nothing here anneals and nothing here is freed. Walk back in, from the first form, and bring it something it has not seen.';
+
+export const FINALE_DEFEAT_LINE_BRIEF =
+  'It has you again, and the pass holds. Nothing here anneals. Walk back in, from the first form, with something it has not seen.';
+
+export function finaleDefeatLineFor(length: StoryLength): string {
+  return length === 'brief' ? FINALE_DEFEAT_LINE_BRIEF : FINALE_DEFEAT_LINE;
+}
+
+export function finaleStageFor(stage: 2 | 3, length: StoryLength): FinaleStage {
+  return length === 'brief' ? FINALE_STAGES_BRIEF[stage] : FINALE_STAGES[stage];
+}
+
+export function finaleVictoryLineFor(length: StoryLength): string {
+  return length === 'brief' ? FINALE_VICTORY_LINE_BRIEF : FINALE_VICTORY_LINE;
+}
+
 // The text a story screen reads, picked by the Text Length setting, falling
 // back to the Detailed text when no Brief one exists.
 export function storyBeatFor(world: number, length: StoryLength): string | undefined {

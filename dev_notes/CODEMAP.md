@@ -161,8 +161,10 @@ game/src/
       hud.ts                   Battle-screen layout, split out of BattleScene: the rails/positions/
                                  sizing constants every battle element is placed from (LEFT/RIGHT/
                                  TOP/BOTTOM_RAIL, PLAYER_POS/OPPONENT_POS/BOSS_OPPONENT_POS, the
-                                 measured *_HEAD_RISE/BOSS_FOOT_DROP painted-art offsets,
-                                 BOSS_GROUND_LIFT, HP-bar
+                                 measured *_HEAD_RISE/*_FOOT_DROP painted-art offsets for the wild,
+                                 the player, the golem and the finale's two later forms
+                                 (MODEL_*/SMOKE_*), BOSS_GROUND_LIFT, the OpponentIcon kind
+                                 drawTurnPreview dispatches the opponent's icon on, HP-bar
                                  dims, MENU_*, TURN_PREVIEW_*, LOG_*), plus the two HUD pieces that
                                  are pure geometry: drawNameplate (one floating name-over-bar plate,
                                  both sides) and drawTurnPreview (the "TURNS" icon row). Plain
@@ -335,6 +337,19 @@ game/src/
     kondo.ts                     makeKondoAvatar() -- small moment figure inside a screening-cloud arc shell, world 8
     franklin.ts                   makeFranklinAvatar() -- figure holding a diffraction-ring detector plate, world 9
     sklodowskaCurie.ts            makeSklodowskaCurieAvatar() -- radiant ray-crowned spire, world 10
+    modelOfYou.ts                makeModelOfYou(scene, size, form, at, opts) -- The Model of You, World 10's
+                                  second finale stage: consuming.ts's drawNetDisc network in the player's
+                                  colour behind a geometry mask cut by crystals.ts's drawCrystalSilhouette
+                                  (the mask source lives in world space, placed from `at`, reclaimed on
+                                  DESTROY), over a near-black fill and a contact shadow, redrawn on
+                                  SPARK_SLICE_MS; makeModelIcon() for the turn row. One file per finale
+                                  form, the guardian-avatar rule applied to the boss's forms.
+    quantumAdapted.ts            makeQuantumAdapted(scene, size, tint, playerColor, opts) -- The Quantum
+                                  Adapted, the third stage: a lit floor pool, an ADD core, the player-
+                                  coloured drawNetDisc network, then (last in the container, see STYLE.md's
+                                  boss section) two smoke emitters and a spark emitter, all drifting as
+                                  one group; retintQuantumAdapted() recolours it per round through the
+                                  container's 'retint' data; makeQuantumIcon() for the turn row.
     boss.ts                      makeBossCrystal() -- towering humanoid golem boss avatar at a world's goal,
                                   its body the PIECES grains tiling SILHOUETTE (drawn under them
                                   only as a faint shadow and edge) with addSeam lighting each
@@ -778,8 +793,15 @@ game/src/
                                     WORLD_GOAL_TEXT -- per-world one-liner for the goal-tile banner,
                                     falling back to a generic line for a world with no entry -- and
                                     FINALE_TITLE/FINALE_BODY, the arc's closing screen
-                                    (OverworldScene.showFinalePanel). STORY_BEATS_BRIEF/FINALE_BODY_BRIEF
-                                    are the Brief versions, read through storyBeatFor()/finaleBodyFor()
+                                    (OverworldScene.showFinalePanel), FINALE_STAGES -- the two screens
+                                    between World 10's three finale stages (title, body, button, keyed
+                                    by the stage about to begin; BattleScene.renderStagePanel) -- and
+                                    FINALE_VICTORY_LINE, the end-of-battle line once the third stage
+                                    falls, and FINALE_DEFEAT_LINE, the one for a fall to the second or
+                                    third. STORY_BEATS_BRIEF/FINALE_BODY_BRIEF/FINALE_STAGES_BRIEF/
+                                    FINALE_VICTORY_LINE_BRIEF/FINALE_DEFEAT_LINE_BRIEF are the Brief
+                                    versions, read through storyBeatFor()/finaleBodyFor()/
+                                    finaleStageFor()/finaleVictoryLineFor()/finaleDefeatLineFor()
     storyLog.ts                    STORY_LOG/storyLogIndex() -- the whole Decoherence arc in the order a
                                     playthrough delivers it, for the Lab's Story station. Authors no copy
                                     of its own: assembles every chapter from tutorial.ts's `lab` page,
@@ -1325,7 +1347,8 @@ damage variance uses) applied to it *and* that same battle's `enemyStats` togeth
 shared roll, not four independent ones) -- `this.isRival ? 1 : rollEncounterFactor()` in
 `create()`. Only the HP that roll produces is rounded, staying the whole number
 `wildHpForWorld` already returns; the rolled stats stay fractional, since rounding them at
-World 1-3's small values would quantise both the roll and the difficulty tier away. A rival instead uses `rivalHpForWorld(world)` (steeper, no roll) and plain
+World 1-3's small values would quantise both the roll and the difficulty tier away. A rival instead uses `rivalHpForWorld(world)` (steeper, no roll; World 10's finale draws each
+stage's bar from `finaleStageHp`, which hands its second stage the player's own `wildHpForWorld`) and plain
 `enemyStatsForWorld(world)` -- a rival is a fixed, repeatable challenge, not a specimen with
 sample-to-sample variance. `OverworldScene.applyPlayerForm`/`HubScene.applyPlayerForm`
 (transmuting/fusing into a new form) clamp the player's saved HP down to
@@ -1848,7 +1871,8 @@ type/look/name, read through the `opponentView()` helper everywhere the opponent
 matters (`resolveHit`'s mismatch check, `moveButtonContent`'s `!!2x` preview, `drawTurnPreview`,
 every opponent-identity log line, `endBattle`'s flavor/blurb) instead of `this.wild` directly.
 Set in `create()` to mirror `getPlayerMaterial`'s own current type (its look stays "The
-Adapted"'s own until the first transmutation, and its name for the whole fight). `resolveHit`'s `checkEndOrContinue` calls
+Adapted"'s own until the first transmutation, and its name for the whole first stage --
+the later two stand under `FINALE_STAGES`' own titles). `resolveHit`'s `checkEndOrContinue` calls
 `transmuteAdapted(effectiveClass)` once per player Attack/Analytic/Ultimate move that lands
 on a still-living Adapted (a whiffed Ultimate doesn't, guarded by `!whiff`; Kondo's self-buff
 moves never reach that function at all, see `resolveHit`'s own early return) -- it reverse-looks-up `data/materials.ts`'s
@@ -1866,7 +1890,56 @@ turn; `component-check`'s Test 4d drives this path once per move class and watch
 `game.loop.frame` for exactly that. `this.wild.moves`
 (its actual attack moveset) is never touched by this -- only its defensive identity is
 dynamic; HP was never tied to its identity in the first place (`opponentMaxHp`, see "Max
-HP" below, stays fixed for the whole battle).
+HP" below, stays fixed for the whole stage).
+
+**That fight is the first of three stages in one scene (DESIGN.md §6).** `BattleScene`'s
+`finaleStage` (`0 | 1 | 2 | 3`, 1 from `create()` for `isRival && world === 10`, 0 for every
+other fight) and `finalePool` (what the standing stage throws: `wild.moves`, then the player's
+basic moves, then `ORDINARY_MOVE_IDS`) are live state beside `adaptedForm`, reset in `create()`
+like every other battle-ephemeral field. `resolveHit`'s `checkEndOrContinue` routes a zero
+opponent bar on stages 1-2 to `advanceFinaleStage()` instead of `endBattle(true)`: the log line,
+`setStatus(false, null)`, then `playTransmuteGlow` hiding the old container at its peak
+(`setVisible(false)` + `setTweensPausedDeep`, never destroyed there -- every effect anchor is a
+thunk to `opponentCrystal`), then after `TRANSMUTE_HOLD_MS` the stage screen
+(`renderStagePanel`, the `renderQuestionPanel` idiom with one button, SPACE/tap after
+`VICTORY_DISMISS_GRACE_MS`; skipped when `storyScreensEnabled` is off), whose dismissal runs
+`standFinaleForm(stage)`: `adaptedForm` becomes the stage's form (stage 2: `playerMaterial`
+spread under `FINALE_STAGES[2].title` with the basic-moves pool; stage 3: a `sampleEnvironment()`
+pick under `FINALE_STAGES[3].title` with every basic move), the old container is destroyed and
+`makeModelOfYou`/`makeQuantumAdapted` built at `opponentPos` with `footDrop: SHADOW_DROP`, both
+bars refill (`finaleStageHp`; `playerHp` set to `playerMaxHp`, written back to the registry and persisted), both
+statuses clear, the round state resets and the plate/bars/menu/turn row redraw before
+`turnLock` releases -- it is held from the KO to that point, which is what keeps
+`component-check`'s `waitTurnFree` honest. `opponentMoveId` reads `finalePool` in the finale
+and, on stage 3, filters to the moves whose class `canHost(playerMaterial.type, ·)` rejects;
+`rollQuantumForm()` re-samples the stage-3 form where `runNextSlot` ends a round (not in
+`beginRound`, which runs lazily inside `playerAttack` after the pick), retints the cloud and
+redraws the menu's `!!2x` tags and the turn row. `opponentExtent()` picks the hud.ts pair for
+the standing form (plate, aura); `opponentIconKind()` picks the turn-row icon. Stage 3 is
+built at `QUANTUM_SIZE_SCALE` times `BOSS_CRYSTAL_SIZE` and holds the arena pulled back:
+`arenaZoom` (1 for every other fight, reset in `create()`) is set to `QUANTUM_ARENA_ZOOM`
+before the plates are drawn, and `settleArenaZoom()` splits the HUD camera off the way
+`pullBack` does, rebuilds both plates (`drawOpponentPlate`, `drawPlayerPlate` -- the player's
+plate is held in `playerPlate` for exactly this) and eases the main camera to the rest zoom
+without ever merging the cameras back. `hudPoint(x, y)` maps an arena point to where it sits
+on the HUD at the rest zoom (the camera zooms about the field's centre), and every HUD
+element anchored to an arena object -- both nameplates -- is placed through it. The stage
+also lays its own sky: `art/stars.ts`'s `drawStarCanopy` over the whole painted sky
+(`ARENA_X0..ARENA_X0 + ARENA_W`, `-OVERSCAN_Y..R_HORIZON_Y`), drowned toward `arenaAir`
+(the air `drawRealisticBackdrop` keeps for it) and moved to the display-list slot directly
+after `backdropImage` (the baked backdrop, kept for exactly this), so it renders under
+everything the arena adds after the bake. `pullBack`
+pulls back to `ARENA_ZOOM_OUT * arenaZoom` clamped at `ARENA_ZOOM_FLOOR` (where the painted
+overscan still covers the viewport) and eases in to `arenaZoom`, merging the cameras only at
+rest zoom 1; Franklin's floor halo is arena-tagged so it follows the crystal under any
+pull-back. `endBattle`
+sets `battleOver` first and shows `finaleVictoryLineFor` for a stage-3 win and
+`finaleDefeatLineFor` for a loss at stage 2 or 3, in place of the compound-keyed greeting and
+blurb (a stage-1 loss keeps those, for the real compound the Adapted was wearing).
+`sampleEnvironment` leaves out the compound the cloud is answering as now, so each round is a
+different one. `opponentExtent` also carries `plateRise`, where the plate anchors: the head for
+every figure but the cloud, whose plate sits in its crown (hud.ts's `SMOKE_PLATE_RISE`). `battleOver` and `lastOpponentMoveId` are public probe fields for
+`component-check`'s Test 4e, which plays the chain through and asserts each stage's rule.
 
 **Progression is exclusive to the pass.** No panel anywhere offers a progression action:
 leaving a world is something the player walks to and presses at (`confirmGate`). Every guardian
@@ -2110,7 +2183,11 @@ the band is the air, and a star low in the frame is seen through more of it than
 is what lets the field use the whole sky instead of the strip above the mist. `NODES`/`FIRST_LINKS`
 /`NETWORK_LINKS` are authored tables, never rolled -- the World 10 sky has to be the World 7 sky
 finished -- and the stage is read straight off the world number: links from World 8, occluding
-cloud in World 9 only, the full set plus haloed nodes in World 10.
+cloud in World 9 only, the full set plus haloed nodes in World 10. `drawStarCanopy` is the one
+sky in the game that is not the authored figure: a hashed, hole-punched triangular lattice in the
+finished network's look, laid over the whole painted arena sky for World 10's third finale stage
+alone (`BattleScene.standFinaleForm`), where the pulled-back camera would otherwise look up at a
+strip of stars under a bare zenith.
 
 **The mist band and the distant self.** `drawDepthHaze` runs its passes off one `target`, so
 nothing in the frame can disagree about what color the air is: a whole-sky tint, the ground wash,
@@ -2214,7 +2291,9 @@ always nodes, links never crossing the corridor). `drawEventHorizon(view)`, call
 `drawDepthHaze` beside `drawStormStrikes`, draws the black hole behind the pass and the trunk links
 running up into it; `eventHorizonAt(view)` reports where it hangs (null past the reveal distance
 and once `view.overlook` is set); `drawReflectionNet` draws the player-shaped network that
-`OverworldScene.placeMirrorGhost` clips to the avatar's silhouette every frame (a geometry mask
+`OverworldScene.placeMirrorGhost` clips to the avatar's silhouette every frame, through the
+exported `drawNetDisc(g, x, y, r, alpha, color, now)` core that `art/modelOfYou.ts` and
+`art/quantumAdapted.ts` draw the finale's later forms with (a geometry mask
 drawn by `art/crystals.ts`'s `drawCrystalSilhouette`, built by `buildMirrorGhost` in `create()`
 and again from `refreshPlayerCrystal`). `paint.ts`'s `drawAccent` skips the 'consuming' kind in
 the overworld. The battle arena's stand is the same network: `BattleScene.drawSurroundStand`
@@ -3162,9 +3241,10 @@ generically.
 a playthrough delivers it, as the same list+detail panel the tutorial recap uses, stroked story
 lavender `0xd9a5ff`. `STORY_LOG`'s declaration order is the chronology -- the premise, each
 world's chapters (entry history, the Decoherence's attack on it, and its pass: goal line,
-two-part rival taunt, the beat that follows the win; World 10 carries four, its reveal split
-in two because its lore page 2 outgrows the pane's shrink-only fit), then the ending -- and
-the panel lists all thirty-three at every point in a playthrough. A chapter the save hasn't reached keeps its row and
+two-part rival taunt, the beat that follows the win; World 10 carries six: its reveal split
+in two because its lore page 2 outgrows the pane's shrink-only fit, and the two screens between
+its finale's three stages after its pass), then the ending -- and
+the panel lists all thirty-five at every point in a playthrough. A chapter the save hasn't reached keeps its row and
 is masked to `'???'` in the dimmer `#6a7396` via `renderListColumn`'s own `labelFor`/`colorFor`
 hooks, the same treatment Qumatex gives an undiscovered crystal and Bloch's table an unvisited
 world, with its detail pane cut to one short line rather than a pane of question marks. Reach is
